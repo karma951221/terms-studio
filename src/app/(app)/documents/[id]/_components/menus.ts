@@ -174,6 +174,8 @@ export function articleMenu(env: MenuEnv, articleId: Id, title = true): MenuSect
   }
   const paragraph = emptyNode("paragraph", env.newId);
   add.push({ label: "항 추가", action: { do: "ops", ops: [{ type: "insert", node: paragraph, at: { parentId: articleId } }], focus: paragraph.id } });
+  // 조 끝에 공용조항(조 단위) — 조의 첫 자리가 공용조항인 조(「준용규정」 = 〔항 공용조항〕 하나)를 항 없이 세운다 (2026-09-28, 실물재현 E2E)
+  add.push({ label: "공용조항 참조 추가…", action: { do: "popup", popup: { kind: "clauseBlock", at: { parentId: articleId } } } });
 
   const own: MenuItem[] = [];
   if (env.docKind === "special") own.push({ label: "조연결…", action: { do: "popup", popup: { kind: "link", articleId } } });

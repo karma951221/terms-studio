@@ -49,7 +49,12 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
     expect(labels(articleMenu(env(tree(), "special"), "n4"))).toContain("조연결…");
     const b = nodeBuilders(sequentialIds("n"));
     const top = b.document("D", [b.article("가", [])]);
-    expect(labels(articleMenu(env(top), top.children[0].id)).slice(0, 3)).toEqual(["아래에 조 추가", "아래에 관 추가", "항 추가"]);
+    expect(labels(articleMenu(env(top), top.children[0].id)).slice(0, 4)).toEqual(["아래에 조 추가", "아래에 관 추가", "항 추가", "공용조항 참조 추가…"]);
+  });
+
+  it("조 제목 — 조 끝에 공용조항(조 단위)을 넣는 팝업 (첫 자리가 공용조항인 조 · 2026-09-28)", () => {
+    const item = articleMenu(env(tree(), "special"), "n4").flat().find((i) => i.label === "공용조항 참조 추가…");
+    expect(item?.action).toEqual({ do: "popup", popup: { kind: "clauseBlock", at: { parentId: "n4" } } });
   });
 
   it("조건 머리 · 칩 · 문장 속 넣기 — 가지가 하나면 가지 삭제 잠김, 문장 안 조건 가지 안이면 문장 안 조건 없음", () => {
