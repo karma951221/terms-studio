@@ -1,23 +1,22 @@
-/** 담보속성 조회 (L1) — 목록은 고르는 자리, 값 편집은 상세에서 한다. */
+/**
+ * 담보속성 조회 (L1) — **한 행 = 유효값 하나** (기능/담보속성 §4, 2026-09-28). 유형은 행마다 적고, 값이 없는 유형은 값 칸이 빈 한 행.
+ * 목록은 고르는 자리 — 값 편집은 유형 상세에서 한다.
+ */
+import Link from "next/link";
+
 import { EmptyState } from "@/app/_components/EmptyState";
-import { ListPage, codeCol, nameCol, type ListColumn } from "@/app/_components/ListPage";
-import { ENTITY_LABEL, FIELD_LABEL, NAME_LABEL, newLabel, searchPlaceholder } from "@/app/_lib/labels";
-import { formatDate, includesQuery, paginate } from "@/app/_lib/list";
-import type { AttributeKind } from "@/domain/product";
+import { InfoTip } from "@/app/_components/InfoTip";
+import { ListPage, type ListColumn } from "@/app/_components/ListPage";
+import { ENTITY_LABEL, FIELD_LABEL, NAME_LABEL, NAMING_FRAGMENT_TIP, newLabel, searchPlaceholder } from "@/app/_lib/labels";
+import { formatDate, paginate } from "@/app/_lib/list";
 import { getServices } from "@/lib/services";
 
+import { attributeValueRows, matchesAttributeRow, type AttributeValueRow } from "./list-rows";
 import { attributeAudits } from "./ui-data";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 50;
-
-function valuePreview(item: AttributeKind): string {
-  const values = [...item.values].sort((a, b) => a.order - b.order);
-  const shown = values.slice(0, 5).map((value) => value.label).join(" · ");
-  const rest = values.length - 5;
-  return `${shown || "—"}${rest > 0 ? ` … 외 ${rest}` : ""}`;
-}
 
 export default async function AttributesPage({ searchParams }: { searchParams: Promise<{ error?: string; q?: string; page?: string }> }) {
   const sp = await searchParams;
@@ -25,16 +24,21 @@ export default async function AttributesPage({ searchParams }: { searchParams: P
   const [items, audits, users] = await Promise.all([services.product.listAttributeKinds(), attributeAudits(), services.auth.listUsers()]);
   const userName = new Map(users.map((user) => [user.id, user.name] as const));
   const q = (sp.q ?? "").trim();
-  const filtered = items.filter((item) => includesQuery(q, [item.code, item.label, ...item.values.map((value) => value.label)]));
+  const filtered = attributeValueRows(items).filter((row) => matchesAttributeRow(q, row));
   const { rows, total, page } = paginate(filtered, sp.page, PAGE_SIZE);
 
-  const columns: readonly ListColumn<AttributeKind>[] = [
-    codeCol((item) => item.code),
-    nameCol(NAME_LABEL.attribute, (item) => item.label, (item) => `/attributes/${item.code}`),
-    { header: FIELD_LABEL.values, width: "values", cell: valuePreview },
-    { header: FIELD_LABEL.count, width: "num", cell: (item) => item.values.length },
-    { header: FIELD_LABEL.updatedAt, width: "md", mono: true, cell: (item) => { const audit = audits.get(item.code); return audit ? formatDate(audit.updatedAt) : "—"; } },
-    { header: FIELD_LABEL.updatedBy, width: "md", cell: (item) => { const by = audits.get(item.code)?.updatedBy; return (by && userName.get(by)) ?? "—"; } },
+  const columns: readonly ListColumn<AttributeValueRow>[] = [
+    { header: FIELD_LABEL.attributeCode, width: "code", cell: (row) => <code>{row.kind.code}</code> },
+    { header: NAME_LABEL.attribute, width: "md", cell: (row) => <Link href={`/attributes/${row.kind.code}`}>{row.kind.label}</Link> },
+    { header: FIELD_LABEL.valueCode, width: "sm", mono: true, cell: (row) => row.value?.code ?? "—" },
+    { header: FIELD_LABEL.valueName, width: "flex", cell: (row) => row.value?.label ?? <span className="ts-muted">값 없음</span> },
+    {
+      header: <>{FIELD_LABEL.namingFragment} <InfoTip text={NAMING_FRAGMENT_TIP} /></>,
+      width: "md",
+      cell: (row) => (row.value ? row.value.fragment || <span className="ts-muted">—</span> : "—"),
+    },
+    { header: FIELD_LABEL.updatedAt, width: "md", mono: true, cell: (row) => { const audit = audits.get(row.kind.code); return audit ? formatDate(audit.updatedAt) : "—"; } },
+    { header: FIELD_LABEL.updatedBy, width: "md", cell: (row) => { const by = audits.get(row.kind.code)?.updatedBy; return (by && userName.get(by)) ?? "—"; } },
   ];
 
   return (
@@ -45,7 +49,7 @@ export default async function AttributesPage({ searchParams }: { searchParams: P
       search={{ placeholder: searchPlaceholder(FIELD_LABEL.code, NAME_LABEL.attribute, FIELD_LABEL.value) }}
       columns={columns}
       rows={rows}
-      rowKey={(item) => item.code}
+      rowKey={(row) => `${row.kind.code}:${row.value?.code ?? ""}`}
       total={total}
       page={page}
       pageSize={PAGE_SIZE}
