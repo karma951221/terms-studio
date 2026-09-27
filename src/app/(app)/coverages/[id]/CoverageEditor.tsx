@@ -7,6 +7,8 @@
  * - **탭을 옮겨도 편집 모드와 변경분이 유지**된다 — 그래서 탭은 링크가 아니라 클라이언트 상태다.
  *   URL `?tab=` 은 history.replaceState 로 따라만 간다 (내비게이션이 나면 초안이 날아간다).
  * - 저장 하나가 네 탭의 변경을 다 담는다. 변경이 있는 탭 이름에 점(•).
+ * - **값 폼은 노드마다 따로 뜨고, 노드별 초안은 여기(Tabs)가 편집 세션 동안 보관한다** (점검 H4 · `value-drafts.ts`) —
+ *   노드 · 탭을 오가도 각 노드의 미저장 입력이 남고, 저장 한 번에 전부 실린다. 취소하면 걷혀 읽기 화면이 저장값을 보인다.
  * - **구조(세부보장 · 급부의 추가 · 삭제 · 순서)는 탑재 수로 갈린다** (ADR-0052) — 미탑재(N=0)면 편집 모드의 트리가 편집기가 되고
  *   저장 하나에 담긴다 (삭제가 섞이면 영향 확인 · 관리자만). 탑재됐으면(N≥1) 이름만 고치고, 구조는 트리 머리의 「구조 편집 →」 로
  *   별도 화면(`/coverages/[id]/structure`)에서 — 편집 중 변경이 있으면 ✕ 와 같은 확인 뒤 이동.
@@ -15,7 +17,7 @@
  */
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 
 import { EditShell, Field, useEditField, useEditLeave } from "@/app/_components/EditShell";
 import { InfoTip } from "@/app/_components/InfoTip";
@@ -23,12 +25,14 @@ import { isDirty } from "@/app/_lib/edit";
 import { ENTITY_LABEL, FIELD_LABEL, NAME_LABEL } from "@/app/_lib/labels";
 import { decodeNodeKey, encodeNodeKey, savedStructureOf, structureIssues, type CoverageNodeLevel, type StructureDraftSub, type StructureSavedSub } from "@/domain/coverage";
 import type { NodeCompleteness } from "@/services/coverage";
-import { StructForm, type FormModel, type Submission } from "@/forms";
+import { StructForm, type FormModel, type FormState, type Submission } from "@/forms";
 
 import { StructureTree } from "../_components/StructureTree";
 import { createSpecialDocumentAction } from "../actions";
 import { removeCoverageEditAction, saveCoverageEditAction } from "../edit-actions";
 import type { CoverageEditData } from "../edit-types";
+
+import { formKeyOf, initValueDrafts, valueDraftsReducer, type ValueDrafts } from "./value-drafts";
 
 export interface EditorNode {
   key: string;
@@ -150,13 +154,16 @@ function BasicTab({ coverageId, nodes, original, usageCount, documentId, attribu
 
 // ───────────────────────────── 값 탭 ─────────────────────────────
 
-function ValueTab({ level, nodes, byNode, formByNode, selected, onSelect, showCodes, highlightPath }: {
+function ValueTab({ level, nodes, byNode, formByNode, selected, onSelect, drafts, onDraft, showCodes, highlightPath }: {
   level: CoverageNodeLevel;
   nodes: EditorNode[];
   byNode: NodeCompleteness[];
   formByNode: Record<string, FormModel>;
   selected: string | undefined;
   onSelect: (key: string) => void;
+  /** 이 편집 세션의 노드별 초안 — 노드를 다시 열 때 복원한다. */
+  drafts: ValueDrafts;
+  onDraft: (node: string, state: FormState) => void;
   showCodes?: boolean;
   highlightPath?: string;
 }) {
@@ -180,15 +187,18 @@ function ValueTab({ level, nodes, byNode, formByNode, selected, onSelect, showCo
         <p className="ts-form-empty">이 층에 묻는 값이 없다.</p>
       ) : (
         <div className="ts-value-block">
+          {/* 노드마다 인스턴스를 나눈다 — 같은 인스턴스를 이어 쓰면 초안이 다른 노드로 새거나 사라진다 (점검 H4). */}
           <StructForm
+            key={formKeyOf(drafts, current.key)}
             model={form}
+            initialState={drafts.byNode[current.key]}
             embedded
             readOnly={values.mode === "read"}
             showCodes={showCodes}
             highlightPath={highlightPath}
-            onChange={(submission) => {
-              const next = { ...values.value, [current.key]: submission };
-              values.setValue(next);
+            onChange={(submission, state) => {
+              onDraft(current.key, state);
+              values.setValue({ ...values.value, [current.key]: submission });
             }}
           />
         </div>
@@ -236,6 +246,10 @@ function Tabs(props: Omit<CoverageEditorProps, "id"> & { coverageId: string }) {
   const description = useEditField<string>("description");
   const structure = useEditField<StructureDraftSub[]>("structure");
   const values = useEditField<Record<string, Submission>>("values");
+  // 노드별 값 초안 — 편집 세션 경계를 따라간다(취소면 걷고, 저장이면 새 저장값이 올 때까지 둔다).
+  // 렌더 중 상태 조정 (StructForm 의 지문 reset 과 같은 패턴).
+  const [drafts, dispatchDrafts] = useReducer(valueDraftsReducer, values.mode, initValueDrafts);
+  if (drafts.mode !== values.mode) dispatchDrafts({ type: "mode", mode: values.mode, values: values.value });
 
   // URL 은 따라만 간다 — router 로 옮기면 서버 컴포넌트가 다시 그려져 초안이 날아간다.
   useEffect(() => {
@@ -278,6 +292,8 @@ function Tabs(props: Omit<CoverageEditorProps, "id"> & { coverageId: string }) {
           formByNode={formByNode}
           selected={selected[tab]}
           onSelect={(key) => setSelected((current) => ({ ...current, [tab]: key }))}
+          drafts={drafts}
+          onDraft={(node, state) => dispatchDrafts({ type: "draft", node, state })}
           showCodes={showCodes}
           highlightPath={highlightPath}
         />
