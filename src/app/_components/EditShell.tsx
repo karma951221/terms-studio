@@ -51,6 +51,9 @@ function ImpactLines({ outcome }: { outcome: Extract<EditOutcome, { ok: "confirm
   </ul>;
 }
 
+/** 편집 모드에서 잠긴 즉시 실행 명령(헤더 🗑 등)의 tooltip — 디자인원칙 §2 L2. */
+export const EDIT_MODE_LOCKED_TIP = "저장하거나 취소한 뒤 실행";
+
 /** 「고친 내용을 버립니까?」 — 편집 중 나가기 · ✕ 취소가 함께 쓰는 확인. */
 export function DiscardDialog({ onStay, onDiscard }: { onStay: () => void; onDiscard: () => void }) {
   return <dialog open className="ts-dialog"><p className="ts-confirm-title">고친 내용을 버립니까?</p><div className="ts-confirm-actions"><button type="button" onClick={onStay}>계속 편집</button><button type="button" className="danger" onClick={onDiscard}>버리기</button></div></dialog>;
@@ -177,7 +180,8 @@ export function EditShell<T extends EditData>({
       <span className="ts-edit-actions">
         {mode === "read" ? extraActions : editActions}
         {mode === "read" ? <button type="button" onClick={() => setMode("edit")} disabled={pending}>편집</button> : <><IconButton icon={<IconClose />} label="편집 취소" disabled={pending} onClick={() => leave(cancel)} /><button type="button" className="primary" disabled={!dirty || blocked || pending} onClick={() => handle("save")}>{pending ? "저장 중…" : "저장"}</button></>}
-        {deleteAction ? <IconButton icon={<IconTrash />} label={deleteTooltip ?? deleteLabel ?? `${shownTitle} 삭제`} danger disabled={pending} onClick={() => handle("delete")} /> : null}
+        {/* 즉시 실행 명령은 편집 모드에서 비활성 — 미저장 변경과 즉시 삭제가 한 화면에 겹치지 않게 (디자인원칙 §2 L2 · 점검 P2) */}
+        {deleteAction ? <IconButton icon={<IconTrash />} label={mode === "edit" ? EDIT_MODE_LOCKED_TIP : deleteTooltip ?? deleteLabel ?? `${shownTitle} 삭제`} danger disabled={pending || mode === "edit"} onClick={() => handle("delete")} /> : null}
       </span>
     </div>
     {error ? <p className="ts-error-banner">{error}</p> : null}
