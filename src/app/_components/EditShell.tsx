@@ -128,6 +128,17 @@ export function EditShell<T extends EditData>({
   const [mode, setMode] = useState<"read" | "edit">(initialMode);
   const [baseline, setBaseline] = useState<T>(initial);
   const [data, setData] = useState<T>(initial);
+  // 서버가 새 원본을 넘기면(저장 뒤 refresh — 서버가 채번한 코드 등) 읽기 모드의 화면을 그 원본으로 맞춘다.
+  // 저장 직후 로컬 값(`new:1` 같은 임시 코드)이 「새 값」으로 남던 결함 (2026-09-28, 실물재현 E2E). 편집 중이면 초안을 지킨다.
+  const initialKey = JSON.stringify(initial);
+  const [seenInitial, setSeenInitial] = useState(initialKey);
+  if (seenInitial !== initialKey) {
+    setSeenInitial(initialKey);
+    if (mode === "read") {
+      setBaseline(initial);
+      setData(initial);
+    }
+  }
   const [error, setError] = useState("");
   /** 「버립니까?」 확인 — ✕ 면 읽기 모드(또는 cancelHref)로, 떠나는 링크면 그 링크의 `go` 로. */
   const [discard, setDiscard] = useState<{ go: () => void }>();
