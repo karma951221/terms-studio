@@ -25,7 +25,6 @@ import type { ClauseEditData, ClauseEditOption } from "../edit-types";
 function initialData(clause: Clause): ClauseEditData {
   return {
     label: clause.label,
-    description: clause.description,
     body: clause.body,
     options: clause.options.map((option) => ({
       code: option.code,

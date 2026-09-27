@@ -1,7 +1,6 @@
 /** 새 공용조항 (생성) — 다른 생성 화면과 같은 폼 패턴. */
 import { CreateHead, FormRow } from "@/app/_components/FormRow";
 import { ErrorBanner } from "@/app/_components/ErrorBanner";
-import { NoteField } from "@/app/_components/NoteField";
 import { ENTITY_LABEL, NAME_LABEL, newLabel } from "@/app/_lib/labels";
 
 import { createClauseAction } from "../actions";
@@ -20,9 +19,7 @@ export default async function NewClausePage({ searchParams }: { searchParams: Pr
         <FormRow label={NAME_LABEL.clause} htmlFor="clause-label">
           <input id="clause-label" type="text" name="label" required autoFocus />
         </FormRow>
-        <ModeBody>
-          <NoteField id="clause-desc" placeholder="예: 특별약관이 소멸하는 사유를 정한 공통 문구" />
-        </ModeBody>
+        <ModeBody />
       </form>
     </div>
   );

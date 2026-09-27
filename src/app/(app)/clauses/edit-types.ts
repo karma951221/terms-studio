@@ -16,7 +16,6 @@ export interface ClauseEditOption {
 
 export interface ClauseEditData extends Record<string, unknown> {
   label: string;
-  description: string;
   /** 본문 노드 트리 — 구조 에디터가 통째로 들고 있다가 저장에 한 번 나간다. */
   body: ClauseBody;
   options: ClauseEditOption[];

@@ -27,7 +27,6 @@ export async function createClauseAction(formData: FormData): Promise<void> {
     label: str(formData, "label"),
     mode,
     body,
-    description: str(formData, "description"),
   });
   if (!r.ok) redirect(errorRedirectPath(`${BASE}/new`, msg(r.rejection)));
   redirect(detailPath(r.value.code));
@@ -36,13 +35,6 @@ export async function createClauseAction(formData: FormData): Promise<void> {
 export async function renameAction(code: Code, formData: FormData): Promise<void> {
   const actor = await currentActor();
   const r = await getServices().clause.rename(actor, code, str(formData, "label"));
-  if (!r.ok) redirect(errorRedirectPath(detailPath(code), msg(r.rejection)));
-  redirect(detailPath(code));
-}
-
-export async function setDescriptionAction(code: Code, formData: FormData): Promise<void> {
-  const actor = await currentActor();
-  const r = await getServices().clause.setDescription(actor, code, str(formData, "description"));
   if (!r.ok) redirect(errorRedirectPath(detailPath(code), msg(r.rejection)));
   redirect(detailPath(code));
 }

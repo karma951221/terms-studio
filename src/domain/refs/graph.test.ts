@@ -36,7 +36,6 @@ const 고지유형enum: EnumDef = { code: "E0001", label: "고지유형", values
 const 소멸: Clause = {
   code: "C001",
   label: "특별약관의 소멸",
-  description: "",
   mode: "block",
   body: [{ id: "c1-p1", kind: "paragraph", children: [{ id: "c1-t1", kind: "text", text: "소멸합니다. " }, { id: "c1-opt", kind: "optionSlot", optionCode: "O01" }] }],
   options: [{ code: "O01", label: "어조", order: 0, values: [{ code: "death", label: "사망", body: [{ id: "c1-v1", kind: "text", text: "사망 시" }], order: 0 }, { code: "lapse", label: "해지", body: [], order: 1 }] }],
@@ -45,7 +44,6 @@ const 소멸: Clause = {
 const 준용: Clause = {
   code: "C002",
   label: "준용규정",
-  description: "",
   mode: "inline",
   body: [
     { id: "c2-cond", kind: "inlineCond", branches: [{ id: "c2-b1", when: "D0001 = true and attr.A0001 = 'V01'", children: [{ id: "c2-t1", kind: "text", text: "갱신형" }] }] },
@@ -212,7 +210,6 @@ describe("refs 그래프 — 구분자 참조의 노드 한정자 `@노드` (ADR
   const 공용_한정자: Clause = {
     code: "C009",
     label: "한정자 문구",
-    description: "",
     mode: "inline",
     body: [{ id: "c9-cond", kind: "inlineCond", branches: [{ id: "c9-b1", when: "D0003@ben-1 > 0", children: [{ id: "c9-t", kind: "text", text: "지급" }] }] }],
     options: [],
@@ -259,7 +256,6 @@ describe("refs 그래프 — 조 참조(articleRef)를 속한 조로 잇는다",
   const 공용_조참조: Clause = {
     code: "C010",
     label: "조 참조 문구",
-    description: "",
     mode: "inline",
     body: [{ id: "c10-aref", kind: "articleRef", targets: [{ nodeId: "g-art-pay" }], connector: "및" }],
     options: [],
@@ -269,7 +265,6 @@ describe("refs 그래프 — 조 참조(articleRef)를 속한 조로 잇는다",
   const 공용_항참조: Clause = {
     code: "C011",
     label: "항 참조 문구",
-    description: "",
     mode: "inline",
     body: [{ id: "c11-aref", kind: "articleRef", targets: [{ nodeId: "g-par-pay-1" }], connector: "및" }],
     options: [],
@@ -279,7 +274,6 @@ describe("refs 그래프 — 조 참조(articleRef)를 속한 조로 잇는다",
   const 공용_깨진참조: Clause = {
     code: "C012",
     label: "깨진 참조 문구",
-    description: "",
     mode: "inline",
     body: [{ id: "c12-aref", kind: "articleRef", targets: [{ nodeId: "no-such-node" }], connector: "및" }],
     options: [],

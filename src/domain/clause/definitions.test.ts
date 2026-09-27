@@ -14,7 +14,6 @@ import {
   reorderOptions,
   reorderOptionValues,
   setBody,
-  setClauseDescription,
   setMode,
   setOptionValueBody,
   type ClauseContext,
@@ -78,7 +77,6 @@ describe("공용조항 S1 — 정의와 요구 구분자 자동 추출", () => {
       code: "C0001",
       label: "특별약관의 소멸",
       mode: "block",
-      description: "",
       body: 소멸_본문,
       options: [],
       required: { discriminators: [], attributes: [] },
@@ -170,10 +168,6 @@ describe("공용조항 — 표시명 · 설명 · 본문 · 모드 수정", () =
     expect(reasonOf(renameClause(clause, "", []))).toBe("invalid");
     // 원본 불변
     expect(clause.label).toBe("준용규정");
-  });
-
-  it("설명 변경", () => {
-    expect(unwrap(setClauseDescription(clause, "실물 10건 공통")).description).toBe("실물 10건 공통");
   });
 
   it("본문 수정 시 요구 구분자를 다시 계산한다 — 새 구분자를 읽으면 늘고, 참조를 빼면 준다", () => {

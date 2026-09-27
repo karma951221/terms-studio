@@ -76,7 +76,6 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
       {
         code: "C001",
         label: "특별약관의 소멸",
-        description: "",
         mode: "block",
         body: [{ id: "c1-p", kind: "paragraph", children: [{ id: "c1-t", kind: "text", text: "소멸합니다. " }, { id: "c1-o", kind: "optionSlot", optionCode: "O01" }] }],
         options: [{ code: "O01", label: "어조", order: 0, values: [{ code: "death", label: "사망", body: [{ id: "c1-v1", kind: "text", text: "사망 시" }], order: 0 }, { code: "lapse", label: "해지", body: [], order: 1 }] }],
@@ -85,7 +84,6 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
       {
         code: "C002",
         label: "준용규정",
-        description: "",
         mode: "inline",
         body: [
           { id: "c2-c", kind: "inlineCond", branches: [{ id: "c2-b", when: "D0006 = '기준A'", children: [{ id: "c2-t", kind: "text", text: "기준A 적용" }] }] },

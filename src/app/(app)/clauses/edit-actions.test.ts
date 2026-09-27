@@ -39,13 +39,13 @@ describe("saveClauseEditAction", () => {
     const clause = unwrap(await s.clause.create(editor, { label: "청약철회", mode: "inline", body: [text("t", "철회할 수 있습니다.")] }));
     const option = { code: "new:1", label: "철회기간", values: [{ code: "new:2", label: "15일" }, { code: "new:3", label: "30일" }] };
     const broken: Inline[] = [text("t", "철회할 수 있습니다."), { id: "o", kind: "optionSlot", optionCode: "new:1" }, { id: "s", kind: "slot", ref: "D0099" }];
-    const r = await saveClauseEditAction(clause.code, { label: "청약 철회", description: "메모", body: broken, options: [option] });
+    const r = await saveClauseEditAction(clause.code, { label: "청약 철회", body: broken, options: [option] });
     expect(r.ok).toBe(false);
     expect(await s.clause.get(clause.code)).toEqual(clause);
 
     // 본문을 고쳐 다시 저장 — 첫 시도가 옵션을 만들었다 지웠다면 O02 가 됐을 것
     const fixed: Inline[] = [text("t", "철회할 수 있습니다."), { id: "o", kind: "optionSlot", optionCode: "new:1" }];
-    expect(await saveClauseEditAction(clause.code, { label: "청약 철회", description: "메모", body: fixed, options: [option] })).toEqual({ ok: true });
+    expect(await saveClauseEditAction(clause.code, { label: "청약 철회", body: fixed, options: [option] })).toEqual({ ok: true });
     expect((await s.clause.get(clause.code))?.options.map((o) => o.code)).toEqual(["O01"]);
   });
 
@@ -61,7 +61,6 @@ describe("saveClauseEditAction", () => {
     const [, second] = created.options[0]!.values;
     const r = await saveClauseEditAction(created.code, {
       label: created.label,
-      description: created.description ?? "",
       body: created.body,
       options: [{ code: "O01", label: "지급기일", values: [{ code: second!.code, label: "7영업일" }, { code: "new:1", label: "10영업일" }] }],
     });

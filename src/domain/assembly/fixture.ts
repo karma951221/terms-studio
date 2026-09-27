@@ -162,7 +162,6 @@ export const alphaClauses: Clause[] = [
   {
     code: "C0001",
     label: "특별약관의 소멸",
-    description: "",
     mode: "block",
     body: [
       {
@@ -191,7 +190,6 @@ export const alphaClauses: Clause[] = [
   {
     code: "C0002",
     label: "준용 문구",
-    description: "",
     mode: "inline",
     body: [
       { id: "c2-t1", kind: "text", text: "이 약관에서 정하지 않은 사항은 " },
@@ -204,7 +202,6 @@ export const alphaClauses: Clause[] = [
   {
     code: "C0003",
     label: "보통약관 면책 보충",
-    description: "",
     mode: "block",
     body: [{ id: "c3-par", kind: "paragraph", children: [{ id: "c3-text", kind: "text", text: "법령에 따라 보험금 지급이 제한되는 경우에는 보험금을 지급하지 않습니다." }] }],
     options: [],

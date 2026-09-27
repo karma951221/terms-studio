@@ -11,7 +11,6 @@ const 소멸: Clause = {
   code: "C0001",
   label: "특별약관의 소멸",
   mode: "block",
-  description: "",
   body: [{ id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text: "소멸합니다." }] }],
   options: [
     { code: "O01", label: "사유", order: 0, values: [

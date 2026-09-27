@@ -144,7 +144,6 @@ export async function createClause(input: NewClause, ctx: ClauseContext): Promis
       code: "C?",
       label: label.value,
       mode: input.mode,
-      description: input.description ?? "",
       body: (input.body ?? []) as Inline[] & Block[],
       options,
     } as Omit<Clause, "required">,
@@ -181,10 +180,6 @@ export function renameClause(clause: Clause, label: string, existing: readonly C
   const r = checkLabel(label, existing, clause.code);
   if (!r.ok) return r as Result<Clause>;
   return ok({ ...clause, label: r.value });
-}
-
-export function setClauseDescription(clause: Clause, description: string): Result<Clause> {
-  return ok({ ...clause, description });
 }
 
 /** 본문 교체 — 모드는 그대로. 요구 구분자를 다시 계산한다. */
@@ -342,7 +337,7 @@ export async function duplicateClause(origin: Clause, ctx: ClauseContext): Promi
   const body = remapOptionSlots(deepCopy(origin.body), codeMap);
 
   return withAnalysis(
-    { code, label, mode: origin.mode, description: origin.description, body, options } as Omit<Clause, "required">,
+    { code, label, mode: origin.mode, body, options } as Omit<Clause, "required">,
     ctx.analyze,
   );
 }

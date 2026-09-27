@@ -37,10 +37,6 @@ export async function saveClauseEditAction(code: string, input: ClauseEditData):
       const error = failed(await services.clause.rename(actor, code, input.label), "label");
       if (error) return error;
     }
-    if (input.description !== before.description) {
-      const error = failed(await services.clause.setDescription(actor, code, input.description), "description");
-      if (error) return error;
-    }
 
     /*
      * 순서가 중요하다. 본문이 「방금 만든 옵션」을 가리킬 수 있어서다 —

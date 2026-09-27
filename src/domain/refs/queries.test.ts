@@ -25,7 +25,7 @@ const D = (code: string, label = code): Discriminator => ({ code, label, descrip
 const 지급률: Discriminator = { code: "D0003", label: "지급률", description: "", level: "benefit", expression: "pay.rate" };
 const konst: Discriminator = { code: "D0004", label: "평균공시이율", description: "", level: "product", expression: "'2.5%'" };
 const derived: Discriminator = { code: "D0005", label: "면책여부합", description: "", level: "coverage", expression: "any(pay.exempt)" };
-const clause = (code: string, label: string, body: Clause["body"] = [{ id: `${code}-p`, kind: "paragraph", children: [] }]): Clause => ({ code, label, description: "", mode: "block", body: body as never, options: [], required: { discriminators: [], attributes: [] } });
+const clause = (code: string, label: string, body: Clause["body"] = [{ id: `${code}-p`, kind: "paragraph", children: [] }]): Clause => ({ code, label, mode: "block", body: body as never, options: [], required: { discriminators: [], attributes: [] } });
 
 const fx = surgeryFixture();
 const special: DocumentInput = { id: "doc-s", kind: "special", ownerId: fx.coverageId, title: fx.special.title, generalDocumentId: "doc-g", tree: fx.special };
@@ -149,7 +149,6 @@ describe("relationView — 관계정보 뷰 (정방향 · 역방향 · 옵션 �
         {
           code: "C001",
           label: "소멸",
-          description: "",
           mode: "block",
           options: [{ code: "O01", label: "어조", order: 0, values: [{ code: "death", label: "사망", body: [], order: 0 }] }],
           body: [{ id: "cb", kind: "condBlock", branches: [{ id: "br", when: "D0001 = true", children: [] }] }],

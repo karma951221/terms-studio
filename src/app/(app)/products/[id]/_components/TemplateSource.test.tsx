@@ -20,7 +20,6 @@ const clauses: Clause[] = [
     mode: "inline",
     code: "C0001",
     label: "소멸",
-    description: "",
     body: [],
     required: { discriminators: [], attributes: [] },
     options: [

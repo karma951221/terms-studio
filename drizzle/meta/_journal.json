@@ -92,6 +92,13 @@
       "when": 1790481065439,
       "tag": "0012_document_version",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790510041137,
+      "tag": "0013_clause_drop_description",
+      "breakpoints": true
     }
   ]
 }
