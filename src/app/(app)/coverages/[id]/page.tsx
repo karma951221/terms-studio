@@ -1,21 +1,26 @@
 import { Breadcrumb } from "@/app/_components/Breadcrumb";
 import { ErrorBanner } from "@/app/_components/ErrorBanner";
 import { ENTITY_LABEL } from "@/app/_lib/labels";
-import { encodeNodeKey, nodesOf, structureDraftOf } from "@/domain/coverage";
+import { decodeNodeKey, encodeNodeKey, nodesOf, structureDraftOf } from "@/domain/coverage";
+import { indexTree } from "@/domain/document";
 import { usagesOf } from "@/domain/refs";
 import { buildForm, type FormModel } from "@/forms";
 import { currentActor, getServices } from "@/lib/services";
 
-import { CoverageEditor, type EditorNode } from "./CoverageEditor";
+import { CoverageEditor, type CoverageTemplate } from "./CoverageEditor";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * 담보 상세 — 탭 없는 한 화면 (기능/담보 §4 「상세」). `?node=<level>:<id>&field=<폼키.필드키>` 는 진입 좌표 — 그 카드를 펼치고
+ * 스크롤 · 강조한다. `?tab=` 은 옛 좌표라 읽지 않는다.
+ */
 export default async function CoverageDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; tab?: string; node?: string; field?: string }>;
+  searchParams: Promise<{ error?: string; node?: string; field?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
@@ -38,42 +43,41 @@ export default async function CoverageDetailPage({
   ]);
   const enumLookup = (code: string) => enumsList.find((e) => e.code === code);
 
-  // 트리 순서대로 노드를 편다 — 순번 · 급부 수 · 소속 세부보장 이름을 화면이 그대로 쓴다.
-  const nodes: EditorNode[] = [];
-  for (const node of nodesOf(tree)) {
-    const key = encodeNodeKey(node.level, node.id);
-    if (node.level === "coverage") {
-      nodes.push({ key, level: node.level, id: node.id, name: node.name });
-      continue;
-    }
-    if (node.level === "subCoverage") {
-      const sub = tree.subCoverages.find((s) => s.id === node.id);
-      nodes.push({ key, level: node.level, id: node.id, name: node.name, order: (sub?.order ?? 0) + 1, benefitCount: sub?.benefits.length ?? 0 });
-      continue;
-    }
-    const parent = tree.subCoverages.find((s) => s.benefits.some((b) => b.id === node.id));
-    const benefit = parent?.benefits.find((b) => b.id === node.id);
-    nodes.push({ key, level: node.level, id: node.id, name: node.name, order: (benefit?.order ?? 0) + 1, parentName: parent?.name });
-  }
-
-  // 네 탭이 한 화면이므로 값 폼은 노드마다 미리 짓는다 (탭을 옮겨도 서버에 다시 안 간다).
+  // 모든 카드가 한 화면에 뜨므로 값 폼은 노드마다 미리 짓는다.
+  const nodes = nodesOf(tree);
   const formByNode: Record<string, FormModel> = {};
   await Promise.all(
     nodes.map(async (node) => {
       const form = await services.coverage.form({ level: node.level, id: node.id });
-      formByNode[node.key] = form.ok
+      formByNode[encodeNodeKey(node.level, node.id)] = form.ok
         ? buildForm(node.level, enumLookup, new Map(Object.entries(form.value.slots)))
         : buildForm(node.level, enumLookup, new Map());
     }),
   );
 
+  // 진입 좌표 — `?node=` 가 이 담보의 노드면 그 카드, 없고 `?field=` 만 있으면 그 필드를 가진 첫 카드.
+  const keys = Object.keys(formByNode);
+  const target =
+    sp.node && decodeNodeKey(sp.node) && keys.includes(sp.node)
+      ? sp.node
+      : sp.field
+        ? nodes.map((n) => encodeNodeKey(n.level, n.id)).find((key) => formByNode[key]!.fields.some((f) => f.path === sp.field))
+        : undefined;
+
   const usageCount = usagesOf(graph, { kind: "coverageNode", level: "coverage", id: tree.id }, { via: ["mount"] }).length;
-  // 담보약관의 공용조항 옵션은 담보 마스터 안에서 다 정해야 한다 (기능/담보 §3.5) — 저장 검사와 같은 검증으로 남은 수를 센다.
-  const unresolvedOptionCount = tree.documentId ? await services.document.unresolvedOptionCount(tree.documentId) : 0;
+  // 담보약관 띠 — 제목 · 조 수 · 미결정 공용조항 옵션 수 (기능/담보 §3.5). 옵션은 저장 검사와 같은 검증으로 센다.
+  let template: CoverageTemplate | undefined;
+  if (tree.documentId) {
+    const [doc, unresolvedOptionCount] = await Promise.all([services.document.get(tree.documentId), services.document.unresolvedOptionCount(tree.documentId)]);
+    if (doc) {
+      const articleCount = [...indexTree(doc.tree).nodes.values()].filter((entry) => entry.node.kind === "article").length;
+      template = { id: doc.id, title: doc.title, articleCount, unresolvedOptionCount };
+    }
+  }
   const attributeValueLabels = attributeKinds.flatMap((kind) => kind.values.map((value) => value.label));
 
   // 이름 · 구조가 바뀌면 초안을 새 진실로 다시 세운다 (EnumDetailPage 와 같은 패턴).
-  const signature = nodes.map((n) => `${n.key}=${n.name}`).join("|");
+  const signature = [tree.name, ...nodes.map((n) => `${encodeNodeKey(n.level, n.id)}=${n.name}`)].join("|");
 
   return (
     <div>
@@ -82,15 +86,12 @@ export default async function CoverageDetailPage({
         key={signature}
         id={tree.id}
         initial={{ label: tree.name, description: tree.description, structure: structureDraftOf(tree), values: {} }}
-        nodes={nodes}
         formByNode={formByNode}
         usageCount={usageCount}
-        documentId={tree.documentId}
-        unresolvedOptionCount={unresolvedOptionCount}
+        template={template}
         attributeValueLabels={attributeValueLabels}
-        initialTab={sp.tab}
-        initialNode={sp.node}
-        highlightPath={sp.field}
+        target={target}
+        highlightPath={target ? sp.field : undefined}
         showCodes={actor.role === "admin"}
       />
     </div>

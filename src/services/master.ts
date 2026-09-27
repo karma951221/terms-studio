@@ -131,7 +131,7 @@ export function createMasterService(db: Db, deps: MasterServiceDeps): MasterServ
           ownerKind: n.level,
           ownerId: n.id,
           label,
-          href: (path) => `/coverages/${tree.id}?tab=${n.level}&node=${n.level}:${n.id}&${fieldParam(path)}`,
+          href: (path) => `/coverages/${tree.id}?node=${n.level}:${n.id}&${fieldParam(path)}`,
         });
       }
     }

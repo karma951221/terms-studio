@@ -55,7 +55,7 @@ export interface StructFormProps {
    */
   onChange?: (submission: Submission, state: FormState) => void;
   /**
-   * 이 인스턴스가 처음 뜰 때의 편집 상태 — 노드를 오가며 인스턴스를 새로 띄우는 화면(담보 값 탭)이 그 노드의 초안을 복원하는 자리 (점검 H4).
+   * 이 인스턴스가 처음 뜰 때의 편집 상태 — 인스턴스를 새로 띄우면서 보관한 초안을 복원하는 자리 (점검 H4 때 담보 값 탭이 썼다 · 지금은 테스트가 초안 상태를 주입하는 데 쓴다).
    * 초안이 만들어진 뒤 저장값이 바뀌었으면(모델 지문이 다르면) 버리고 새 저장값에서 시작한다. 이후 바뀌어도 다시 읽지 않는다.
    */
   initialState?: FormState;

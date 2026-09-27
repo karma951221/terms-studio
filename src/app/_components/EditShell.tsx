@@ -17,16 +17,24 @@ interface EditContextValue<T extends EditData = EditData> {
   pending: boolean;
   data: T;
   setValue: (name: string, value: unknown) => void;
+  /** 직전 값에서 새 값을 — 한 틱에 여러 입력기가 같은 필드를 고쳐도 서로 덮지 않는다. */
+  update: (name: string, next: (current: unknown) => unknown) => void;
   /** 편집 중 변경이 있으면 ✕ 와 같은 「버립니까?」 확인 뒤에, 없으면 바로 `go` 를 실행한다 (다른 화면으로 나가는 링크용). */
   leave: (go: () => void) => void;
 }
 
 const EditContext = createContext<EditContextValue | null>(null);
 
-export function useEditField<T = unknown>(name: string): { mode: "read" | "edit"; pending: boolean; value: T; setValue: (value: T) => void } {
+export function useEditField<T = unknown>(name: string): { mode: "read" | "edit"; pending: boolean; value: T; setValue: (value: T) => void; update: (next: (current: T) => T) => void } {
   const context = useContext(EditContext);
   if (!context) throw new Error("Field는 EditShell 안에서만 쓸 수 있습니다.");
-  return { mode: context.mode, pending: context.pending, value: context.data[name] as T, setValue: (value) => context.setValue(name, value) };
+  return {
+    mode: context.mode,
+    pending: context.pending,
+    value: context.data[name] as T,
+    setValue: (value) => context.setValue(name, value),
+    update: (next) => context.update(name, (current) => next(current as T)),
+  };
 }
 
 /** 편집 화면을 떠나는 조작(다른 화면으로 가는 링크)이 미저장 변경을 ✕ 와 같은 확인으로 거른다. */
@@ -43,7 +51,7 @@ function ImpactLines({ outcome }: { outcome: Extract<EditOutcome, { ok: "confirm
     <li>사람이 입력한 값 {impact.valueRowsLost}건이 사라진다</li>
     {impact.cascade.length ? <li>함께 삭제되는 항목 {impact.cascade.length}건</li> : null}
     {impact.brokenRefs.length ? <li>깨질 참조 {impact.brokenRefs.length}건</li> : null}
-    {/* 탑재 상품담보 — 구조 정정이 미치는 상품과 그 스냅샷에서 사라질 값 행 (ADR-0052 결정 2) */}
+    {/* 탑재 상품담보 — 구조 정정이 미치는 상품과 그 스냅샷에서 사라질 값 행 (ADR-0075) */}
     {mounts.length ? <li>
       탑재 상품담보 {mounts.length}건
       <ul>{mounts.map((m) => <li key={m.productCoverageId}>{m.productName} › {m.productCoverageName} (값 {m.snapshotValueRowsLost}행)</li>)}</ul>
@@ -109,7 +117,7 @@ export function EditShell<T extends EditData>({
   /** 초안이 아직 저장할 수 없는 상태인지 (구조 초안의 빈 이름 · 형제 중복 등) — 참이면 저장 버튼이 잠긴다. */
   saveDisabled?: (data: T) => boolean;
   /**
-   * 명령 화면(담보의 「구조 편집」 등)은 편집으로 바로 연다 — 읽기 모드가 할 일이 없다.
+   * 명령 화면은 편집으로 바로 열 수 있다 — 읽기 모드가 할 일이 없다.
    * 그런 화면은 `cancelHref`(✕ 는 읽기 모드 대신 이 경로로) · `saveSuccessHref`(저장 뒤 이 경로로) 를 같이 준다.
    */
   initialMode?: "read" | "edit";
@@ -170,7 +178,7 @@ export function EditShell<T extends EditData>({
   };
   const leave = (go: () => void) => (mode === "edit" && dirty ? setDiscard({ go }) : go());
 
-  return <EditContext.Provider value={{ mode, pending, data, setValue: (name, value) => setData((current) => ({ ...current, [name]: value })), leave }}>
+  return <EditContext.Provider value={{ mode, pending, data, setValue: (name, value) => setData((current) => ({ ...current, [name]: value })), update: (name, next) => setData((current) => ({ ...current, [name]: next(current[name]) })), leave }}>
     <div className="ts-edit-head">
       {/* 경로가 곧 제목 줄 — 마지막 마디는 편집 중인 이름을 따라간다 */}
       <Breadcrumb items={[...path, { label: shownTitle }]} guard={leave} />

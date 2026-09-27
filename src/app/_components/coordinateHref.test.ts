@@ -40,10 +40,10 @@ describe("coordinateHref — 담보 마스터 · 담보약관 좌표 (ownerId �
     expect(coordinateHref({ document: "special", ownerId: "cov-1", documentId: "doc-1", nodePath: ["a1", "n2"] })).toBe("/documents/doc-1?node=n2");
   });
 
-  it("값 소유 노드를 알면 담보 상세의 그 레벨 탭 · 그 노드 (`?tab=<level>&node=<level:id>`) — refPath 가 있으면 `?field=` 로 그 값 자리까지", () => {
-    expect(coordinateHref({ document: "coverageMaster", ownerId: "cov-1", node: { level: "benefit", id: "ben-1" }, refPath: "pay.rate" })).toBe("/coverages/cov-1?tab=benefit&node=benefit%3Aben-1&field=pay.rate");
-    expect(coordinateHref({ document: "coverageMaster", ownerId: "cov-1", node: { level: "coverage", id: "cov-1" } })).toBe("/coverages/cov-1?tab=coverage&node=coverage%3Acov-1");
-    expect(coordinateHref({ document: "special", ownerId: "cov-1", node: { level: "subCoverage", id: "sub-1" } })).toBe("/coverages/cov-1?tab=subCoverage&node=subCoverage%3Asub-1");
+  it("값 소유 노드를 알면 담보 상세의 그 노드 카드 (`?node=<level:id>`) — refPath 가 있으면 `?field=` 로 그 값 자리까지", () => {
+    expect(coordinateHref({ document: "coverageMaster", ownerId: "cov-1", node: { level: "benefit", id: "ben-1" }, refPath: "pay.rate" })).toBe("/coverages/cov-1?node=benefit%3Aben-1&field=pay.rate");
+    expect(coordinateHref({ document: "coverageMaster", ownerId: "cov-1", node: { level: "coverage", id: "cov-1" } })).toBe("/coverages/cov-1?node=coverage%3Acov-1");
+    expect(coordinateHref({ document: "special", ownerId: "cov-1", node: { level: "subCoverage", id: "sub-1" } })).toBe("/coverages/cov-1?node=subCoverage%3Asub-1");
   });
 
   it("문서도 노드도 모르면 담보 상세로 — 문서 노드 id 를 담보 화면의 ?node= 에 싣지 않는다", () => {

@@ -52,7 +52,7 @@ describe("master 서비스 (PGlite)", () => {
 
       const deathRow = page.rows.find((r) => r.ownerId === death.id)!;
       expect(deathRow).toMatchObject({ ownerKind: "coverage", label: "일반상해사망", value: "사망보험금" });
-      expect(deathRow.href).toBe(`/coverages/${death.id}?tab=coverage&node=coverage:${death.id}&field=coverage_basic.claim_name`);
+      expect(deathRow.href).toBe(`/coverages/${death.id}?node=coverage:${death.id}&field=coverage_basic.claim_name`);
 
       const surgeryRow = page.rows.find((r) => r.ownerId === surgery.id)!;
       expect(surgeryRow.label).toBe("수술비");
@@ -66,7 +66,7 @@ describe("master 서비스 (PGlite)", () => {
       const row = page.rows.find((r) => r.ownerId === benefit.id)!;
       expect(row.ownerKind).toBe("benefit");
       expect(row.label).toBe(`일반상해사망 › ${death.subCoverages[0].name} › 사망보험금`);
-      expect(row.href).toBe(`/coverages/${death.id}?tab=benefit&node=benefit:${benefit.id}&field=pay.rate`);
+      expect(row.href).toBe(`/coverages/${death.id}?node=benefit:${benefit.id}&field=pay.rate`);
     });
 
     it("존재하지 않는 경로 → 빈 결과 (거부 아님)", async () => {

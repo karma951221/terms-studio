@@ -17,7 +17,7 @@ export function coordinateHref(coordinate: Coordinate | undefined): string | und
   if (coordinate.document === "catalog") return `/catalog/${coordinate.ownerId}`;
   // 담보 마스터 · 담보약관 좌표의 ownerId 는 **담보 id** 다 (문서 id 가 아니다 — `Coordinate` 주석).
   //   문서를 아는 생산자는 `documentId` 를 실어 준다 → 그 문서 화면의 그 노드로 (문면 오류는 문면에서 고친다).
-  //   값 소유 노드를 아는 생산자는 `node` 를 실어 준다 → 담보 상세의 그 레벨 탭(탭 이름 = 노드 레벨) · 그 노드 값 폼으로
+  //   값 소유 노드를 아는 생산자는 `node` 를 실어 준다 → 담보 상세의 그 노드 카드로(펼치고 스크롤 · 강조)
   //   (`?field=` 는 값 자리 `폼키.필드키` = refPath — 그 행을 강조한다, 기능/마스터 §3.5).
   //   둘 다 모르면 담보 상세로 (거기서 「담보약관 열기」). 담보 화면의 `?node=` 는 담보 트리 키(`level:id`)라 문서 노드 id 는 싣지 않는다.
   if (coordinate.document === "coverageMaster" || coordinate.document === "special") {
@@ -25,7 +25,7 @@ export function coordinateHref(coordinate: Coordinate | undefined): string | und
     if (coordinate.node) {
       const key = encodeURIComponent(encodeNodeKey(coordinate.node.level, coordinate.node.id));
       const field = coordinate.refPath ? `&field=${encodeURIComponent(coordinate.refPath)}` : "";
-      return `/coverages/${coordinate.ownerId}?tab=${coordinate.node.level}&node=${key}${field}`;
+      return `/coverages/${coordinate.ownerId}?node=${key}${field}`;
     }
     return `/coverages/${coordinate.ownerId}`;
   }

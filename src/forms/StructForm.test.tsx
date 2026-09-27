@@ -307,7 +307,7 @@ describe("StructForm — 여는 폼 카드 (ADR-0065 §4)", () => {
 });
 
 describe("StructForm — 노드별 초안 복원 (점검 H4 ②)", () => {
-  // 담보 값 탭은 노드마다 인스턴스를 나누고(key), 다시 열 때 그 노드의 초안(FormState)을 넘겨 복원한다.
+  // 인스턴스를 새로 띄우며 보관한 초안(FormState)을 넘기면 그것으로 복원한다.
   it("initialState 를 주면 저장값 · 프리필 대신 그 초안으로 그린다", () => {
     const model = buildForm("benefit", enums, new Map(), undefined, master);
     const edited = formReducer(initFormState(model), { type: "edit", path: "pay.rate", draft: "70" });

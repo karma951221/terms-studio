@@ -42,9 +42,9 @@ test(
       return page.url();
     });
 
-    const docUrl = await ev.action("반복표#3", "담보 약관 템플릿을 만든다", async () => {
-      await page.getByRole("button", { name: "편집", exact: true }).click();
-      await page.getByRole("button", { name: "템플릿 생성" }).click();
+    const docUrl = await ev.action("반복표#3", "담보약관 띠의 「만들기」로 담보 약관 템플릿을 만든다 — 읽기 모드에서 바로", async () => {
+      await expect(page.locator(".ts-cov-band")).toContainText("없음");
+      await page.getByRole("button", { name: "만들기", exact: true }).click();
       await page.waitForURL(/\/documents\/[0-9a-f-]+$/);
       return page.url();
     });
