@@ -12,8 +12,7 @@ export const MENU_FLOW: MenuGroup[] = [
   {
     title: "기준 데이터",
     items: [
-      { href: "/master", label: "마스터", desc: "약관이 참조하는 코드 폼과 필드" },
-      { href: "/types", label: "유형", desc: "선택지 목록(열거형 변수)" },
+      { href: "/master", label: "마스터", desc: "약관이 참조하는 코드 폼 · 필드와 선택지 목록" },
       { href: "/catalog", label: ENTITY_LABEL.discriminator, desc: "마스터 필드에 건 식 — 조문을 가르는 조건" },
     ],
   },

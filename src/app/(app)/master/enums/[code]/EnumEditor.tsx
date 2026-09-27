@@ -9,8 +9,9 @@ import { ENTITY_LABEL, FIELD_LABEL, NAME_LABEL, addLabel } from "@/app/_lib/labe
 import type { EnumDef } from "@/domain/catalog";
 import type { ReactNode } from "react";
 
-import { removeEnumEditAction, saveEnumEditAction } from "../../edit-actions";
-import type { EnumEditData, EnumEditValue } from "../../edit-types";
+import { ENUMS_CRUMB } from "../../MasterTabs";
+import { removeEnumEditAction, saveEnumEditAction } from "../edit-actions";
+import type { EnumEditData, EnumEditValue } from "../edit-types";
 
 function ValuesEditor({ usage }: { usage: Record<string, number> }) {
   const field = useEditField<EnumEditValue[]>("values");
@@ -44,7 +45,7 @@ function ValuesEditor({ usage }: { usage: Record<string, number> }) {
 export function EnumEditor({ item, usage, usageCount, valueUsage }: { item: EnumDef; usage: ReactNode; usageCount: number; valueUsage: Record<string, number> }) {
   const values = [...item.values].sort((a, b) => a.order - b.order).map(({ code, label }) => ({ code, label }));
   const initial: EnumEditData = { label: item.label, description: item.description ?? "", values };
-  return <EditShell initial={initial} title={item.label} code={item.code} extraActions={<UsageDialog count={usageCount}>{usage}</UsageDialog>} path={[{ label: FIELD_LABEL.type, href: "/types/enums" }]} saveAction={(input, confirm) => saveEnumEditAction(item.code, { ...input, values: input.values.filter((value) => value.label.trim() || !value.code.startsWith("new:")) }, confirm)} deleteAction={removeEnumEditAction.bind(null, item.code)} deleteLabel={`${item.label} 삭제`} deleteTooltip={`${ENTITY_LABEL.enum} ${item.label}(${item.code}) 삭제`} deleteSuccessHref="/types/enums">
+  return <EditShell initial={initial} title={item.label} code={item.code} extraActions={<UsageDialog count={usageCount}>{usage}</UsageDialog>} path={[{ label: ENUMS_CRUMB.label, href: ENUMS_CRUMB.href }]} saveAction={(input, confirm) => saveEnumEditAction(item.code, { ...input, values: input.values.filter((value) => value.label.trim() || !value.code.startsWith("new:")) }, confirm)} deleteAction={removeEnumEditAction.bind(null, item.code)} deleteLabel={`${item.label} 삭제`} deleteTooltip={`${ENTITY_LABEL.enum} ${item.label}(${item.code}) 삭제`} deleteSuccessHref="/master/enums">
     <div className="ts-l2-main">
       <Field name="label" label={NAME_LABEL.enum} />
       <ValuesEditor usage={valueUsage} />
