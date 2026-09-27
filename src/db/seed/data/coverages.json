@@ -86,7 +86,37 @@
   {
     "code": "surgery17",
     "name": "수술비(1-7종, 연간3회한)[상해]보장",
-    "benefitName": "수술비",
+    "benefitName": "1종 상해수술비(연간3회한)",
+    "subCoverages": [
+      {
+        "name": "1종 상해수술비(연간3회한)",
+        "benefitName": "1종 상해수술비(연간3회한)"
+      },
+      {
+        "name": "2종 상해수술비(연간3회한)",
+        "benefitName": "2종 상해수술비(연간3회한)"
+      },
+      {
+        "name": "3종 상해수술비(연간3회한)",
+        "benefitName": "3종 상해수술비(연간3회한)"
+      },
+      {
+        "name": "4종 상해수술비(연간3회한)",
+        "benefitName": "4종 상해수술비(연간3회한)"
+      },
+      {
+        "name": "5종 상해수술비(연간3회한)",
+        "benefitName": "5종 상해수술비(연간3회한)"
+      },
+      {
+        "name": "6종 상해수술비(연간3회한)",
+        "benefitName": "6종 상해수술비(연간3회한)"
+      },
+      {
+        "name": "7종 상해수술비(연간3회한)",
+        "benefitName": "7종 상해수술비(연간3회한)"
+      }
+    ],
     "coverageValues": [
       {
         "path": "coverage_basic.claim_name",
@@ -99,6 +129,20 @@
     "code": "burn",
     "name": "신화상치료비보장",
     "benefitName": "화상진단비",
+    "subCoverages": [
+      {
+        "name": "화상진단비",
+        "benefitName": "화상진단비"
+      },
+      {
+        "name": "화상수술비",
+        "benefitName": "화상수술비"
+      },
+      {
+        "name": "중증화상및부식진단비",
+        "benefitName": "중증화상및부식진단비"
+      }
+    ],
     "coverageValues": [
       {
         "path": "coverage_basic.claim_name",

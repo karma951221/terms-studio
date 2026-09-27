@@ -76,6 +76,20 @@ describe("seedAlphaPlus — 알파Plus 실물 시드 (PGlite)", () => {
     expect(Object.fromEntries(await services.product.getPlanOptionValues(options[1].id))).toEqual({ "waiver.applies": { entered: true, value: true }, "waiver.reasons": { entered: true, value: ["V01", "V02"] } });
   });
 
+  it("수술비(1-7종) — 세부보장 7 · 각 급부 1, 이름은 「N종 상해수술비(연간3회한)」", async () => {
+    const surgery = (await services.coverage.list()).find((c) => c.name === "수술비(1-7종, 연간3회한)[상해]보장")!;
+    const names = [1, 2, 3, 4, 5, 6, 7].map((n) => `${n}종 상해수술비(연간3회한)`);
+    expect(surgery.subCoverages.map((s) => s.name)).toEqual(names);
+    expect(surgery.subCoverages.map((s) => s.benefits.map((b) => b.name))).toEqual(names.map((n) => [n]));
+  });
+
+  it("신화상치료비 — 세부보장 3 · 각 급부 1, 급부명 = 세부보장명", async () => {
+    const burn = (await services.coverage.list()).find((c) => c.name === "신화상치료비보장")!;
+    const names = ["화상진단비", "화상수술비", "중증화상및부식진단비"];
+    expect(burn.subCoverages.map((s) => s.name)).toEqual(names);
+    expect(burn.subCoverages.map((s) => s.benefits.map((b) => b.name))).toEqual(names.map((n) => [n]));
+  });
+
   it("급부 특성 시드 구분자 — 감액여부(3레벨) · 면책 넷 (ADR-0065 §5)", async () => {
     const defs = await services.catalog.list();
     const byLabel = (label: string, level: string) => defs.find((d) => d.label === label && d.level === level);

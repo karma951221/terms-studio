@@ -84,12 +84,22 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
     code: string;
     name: string;
     benefitName: string;
+    /** 세부보장이 여럿인 담보 — 각 세부보장에 급부 1. 없으면 담보명 세부보장 1 + benefitName 급부 1. */
+    subCoverages?: { name: string; benefitName: string }[];
     coverageValues: { path: string; value: unknown }[];
     benefitValues: { path: string; value: unknown }[];
   }
   const coverageIds = new Map<string, Id>();
   for (const specification of coverages as unknown as CoverageSpec[]) {
-    const tree = unwrap(await services.coverage.create(actor, { name: specification.name, benefitName: specification.benefitName }));
+    const [first, ...rest] = specification.subCoverages ?? [];
+    let tree = unwrap(
+      await services.coverage.create(actor, {
+        name: specification.name,
+        subCoverageName: first?.name,
+        benefitName: first?.benefitName ?? specification.benefitName,
+      }),
+    );
+    for (const sub of rest) tree = unwrap(await services.coverage.addSubCoverage(actor, tree.id, sub));
     coverageIds.set(specification.code, tree.id);
     const benefitId = tree.subCoverages[0].benefits[0].id;
     for (const entry of specification.coverageValues) unwrap(await services.coverage.writeValue(actor, { level: "coverage", id: tree.id }, entry.path, entry.value as Value));
