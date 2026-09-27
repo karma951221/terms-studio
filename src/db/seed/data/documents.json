@@ -60,17 +60,13 @@
                 {
                   "id": "b-a4-p1-x3",
                   "kind": "text",
-                  "text": "에서 장해지급률이 상해 발생일부터 180일 이내에 확정되지 않는 경우에는 상해 발생일부터 180일이 되는 날의 의사 진단에 기초하여 고정될 것으로 인정되는 상태를 장해지급률로 결정합니다. 다만, "
+                  "text": "에서 "
                 },
                 {
-                  "id": "b-a4-p1-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "b-a4-p1-x4",
-                  "kind": "text",
-                  "text": "에 장해판정시기를 별도로 정한 경우에는 그에 따릅니다."
+                  "id": "b-a4-p1-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0009",
+                  "options": {}
                 }
               ]
             },
@@ -101,24 +97,17 @@
               "kind": "paragraph",
               "children": [
                 {
-                  "id": "b-a4-p3-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
+                  "id": "b-a4-p3-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0010",
+                  "options": {
+                    "O01": "V01"
+                  }
                 },
                 {
-                  "id": "b-a4-p3-x4",
+                  "id": "b-a4-p3-x5r",
                   "kind": "text",
-                  "text": "에 해당되지 않는 후유장해는 피보험자의 직업, 연령, 신분 또는 성별 등에 관계없이 신체의 장해정도에 따라"
-                },
-                {
-                  "id": "b-a4-p3-x2",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "b-a4-p3-x5",
-                  "kind": "text",
-                  "text": "의 구분에 준하여 지급액을 결정합니다. 다만, "
+                  "text": " 다만, "
                 },
                 {
                   "id": "b-a4-p3-x3",
@@ -155,7 +144,13 @@
                 {
                   "id": "b-a4-p4-x3",
                   "kind": "text",
-                  "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
+                  "text": "의 "
+                },
+                {
+                  "id": "b-a4-p4-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0001",
+                  "options": {}
                 }
               ]
             },
@@ -172,25 +167,10 @@
               ]
             },
             {
-              "id": "b-a4-p5",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "b-a4-p5-x2",
-                  "kind": "text",
-                  "text": "같은 상해로 두 가지 이상의 후유장해가 생긴 경우에는 후유장해 지급률을 합산하여 지급합니다. 다만, "
-                },
-                {
-                  "id": "b-a4-p5-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "b-a4-p5-x3",
-                  "kind": "text",
-                  "text": "의 각 신체부위별 판정기준에 별도로 정한 경우에는 그 기준에 따릅니다."
-                }
-              ]
+              "id": "b-a4-p5-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0011",
+              "options": {}
             },
             {
               "id": "b-a4-p6",
@@ -385,7 +365,13 @@
                 {
                   "id": "s1-a2-p3-x3",
                   "kind": "text",
-                  "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
+                  "text": "의 "
+                },
+                {
+                  "id": "s1-a2-p3-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0001",
+                  "options": {}
                 }
               ]
             }
@@ -412,9 +398,25 @@
                   "scope": "self"
                 },
                 {
-                  "id": "s1-a3-p1-x2",
+                  "id": "s1-a3-p1-x2a",
                   "kind": "text",
-                  "text": "에서 정한 사망보험금 지급사유가 발생한 경우에는 이 특별약관은 그 때부터 소멸됩니다."
+                  "text": "에서 정한 "
+                },
+                {
+                  "id": "s1-a3-p1-x2s",
+                  "kind": "slot",
+                  "ref": "D0001"
+                },
+                {
+                  "id": "s1-a3-p1-x2b",
+                  "kind": "text",
+                  "text": " "
+                },
+                {
+                  "id": "s1-a3-p1-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0005",
+                  "options": {}
                 }
               ]
             },
@@ -436,7 +438,15 @@
                 {
                   "id": "s1-a3-p2-x2",
                   "kind": "text",
-                  "text": "에 따라 이 특별약관이 소멸되는 경우에는 회사는 이 특별약관의 해약환급금을 지급하지 않습니다."
+                  "text": "에 따라 "
+                },
+                {
+                  "id": "s1-a3-p2-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0004",
+                  "options": {
+                    "O01": "V02"
+                  }
                 }
               ]
             },
@@ -463,7 +473,13 @@
                 {
                   "id": "s1-a3-p3-x3",
                   "kind": "text",
-                  "text": " 이외의 사유로 사망한 경우에는 이 특별약관은 그 때부터 소멸되며, 이 경우 회사는 그 때까지「보험료 및 해약환급금 산출방법서」에서 정한 이 특별약관의 사망 당시 계약자적립액 및 미경과보험료를 계약자에게 지급합니다."
+                  "text": " 이외의 사유로 "
+                },
+                {
+                  "id": "s1-a3-p3-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0003",
+                  "options": {}
                 }
               ]
             }
@@ -475,56 +491,10 @@
           "title": "준용규정",
           "children": [
             {
-              "id": "s1-a4-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s1-a4-p1-x3",
-                  "kind": "text",
-                  "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
-                },
-                {
-                  "id": "s1-a4-p1-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "g-a9"
-                    },
-                    {
-                      "nodeId": "g-a10"
-                    },
-                    {
-                      "nodeId": "g-a38"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "general"
-                },
-                {
-                  "id": "s1-a4-p1-x4",
-                  "kind": "text",
-                  "text": "은 제외하며, 보통약관 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
-                },
-                {
-                  "id": "s1-a4-p1-x2",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "g-a27_1"
-                    },
-                    {
-                      "nodeId": "g-a27_2"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "general"
-                },
-                {
-                  "id": "s1-a4-p1-x5",
-                  "kind": "text",
-                  "text": "도 제외합니다."
-                }
-              ]
+              "id": "s1-a4-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0002",
+              "options": {}
             }
           ]
         }
@@ -678,17 +648,13 @@
                 {
                   "id": "s2-a2-p1-x3",
                   "kind": "text",
-                  "text": "에서 장해지급률이 상해 발생일부터 180일 이내에 확정되지 않는 경우에는 상해 발생일부터 180일이 되는 날의 의사 진단에 기초하여 고정될 것으로 인정되는 상태를 장해지급률로 결정합니다. 다만, "
+                  "text": "에서 "
                 },
                 {
-                  "id": "s2-a2-p1-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "s2-a2-p1-x4",
-                  "kind": "text",
-                  "text": "에 장해판정시기를 별도로 정한 경우에는 그에 따릅니다."
+                  "id": "s2-a2-p1-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0009",
+                  "options": {}
                 }
               ]
             },
@@ -719,24 +685,12 @@
               "kind": "paragraph",
               "children": [
                 {
-                  "id": "s2-a2-p3-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "s2-a2-p3-x3",
-                  "kind": "text",
-                  "text": "에 해당되지 않는 후유장해는 피보험자의 직업, 연령, 신분 또는 성별 등에 관계없이 신체의 장해정도에 따라"
-                },
-                {
-                  "id": "s2-a2-p3-x2",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "s2-a2-p3-x4",
-                  "kind": "text",
-                  "text": "의 구분에 준하여 지급액을 결정합니다."
+                  "id": "s2-a2-p3-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0010",
+                  "options": {
+                    "O01": "V01"
+                  }
                 }
               ]
             },
@@ -763,30 +717,21 @@
                 {
                   "id": "s2-a2-p4-x3",
                   "kind": "text",
-                  "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
+                  "text": "의 "
+                },
+                {
+                  "id": "s2-a2-p4-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0001",
+                  "options": {}
                 }
               ]
             },
             {
-              "id": "s2-a2-p5",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s2-a2-p5-x2",
-                  "kind": "text",
-                  "text": "같은 상해로 두 가지 이상의 후유장해가 생긴 경우에는 후유장해 지급률을 합산하여 지급합니다. 다만, "
-                },
-                {
-                  "id": "s2-a2-p5-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "s2-a2-p5-x3",
-                  "kind": "text",
-                  "text": "의 각 신체부위별 판정기준에 별도로 정한 경우에는 그 기준에 따릅니다."
-                }
-              ]
+              "id": "s2-a2-p5-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0011",
+              "options": {}
             },
             {
               "id": "s2-a2-p6",
@@ -861,7 +806,13 @@
                 {
                   "id": "s2-a3-p1-x2",
                   "kind": "text",
-                  "text": "에서 정한 일반상해 80%이상후유장해 생활자금 지급사유가 발생한 경우에는 이 특별약관은 그 때부터 소멸됩니다."
+                  "text": "에서 정한 일반상해 80%이상후유장해 생활자금 "
+                },
+                {
+                  "id": "s2-a3-p1-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0005",
+                  "options": {}
                 }
               ]
             },
@@ -883,7 +834,15 @@
                 {
                   "id": "s2-a3-p2-x2",
                   "kind": "text",
-                  "text": "에 따라 이 특별약관이 소멸된 경우에는 회사는 이 특별약관의 해약환급금을 지급하지 않습니다."
+                  "text": "에 따라 "
+                },
+                {
+                  "id": "s2-a3-p2-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0004",
+                  "options": {
+                    "O01": "V01"
+                  }
                 }
               ]
             },
@@ -894,7 +853,13 @@
                 {
                   "id": "s2-a3-p3-x1",
                   "kind": "text",
-                  "text": "이 특별약관의 피보험자가 사망한 경우에는 이 특별약관은 그 때부터 소멸되며, 이 경우 회사는 그 때까지「보험료 및 해약환급금 산출방법서」에서 정한 이 특별약관의 사망 당시 계약자적립액 및 미경과보험료를 계약자에게 지급합니다."
+                  "text": "이 특별약관의 피보험자가 "
+                },
+                {
+                  "id": "s2-a3-p3-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0003",
+                  "options": {}
                 }
               ]
             }
@@ -906,56 +871,10 @@
           "title": "준용규정",
           "children": [
             {
-              "id": "s2-a4-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s2-a4-p1-x3",
-                  "kind": "text",
-                  "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
-                },
-                {
-                  "id": "s2-a4-p1-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "g-a9"
-                    },
-                    {
-                      "nodeId": "g-a10"
-                    },
-                    {
-                      "nodeId": "g-a38"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "general"
-                },
-                {
-                  "id": "s2-a4-p1-x4",
-                  "kind": "text",
-                  "text": "은 제외하며, 보통약관 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
-                },
-                {
-                  "id": "s2-a4-p1-x2",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "g-a27_1"
-                    },
-                    {
-                      "nodeId": "g-a27_2"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "general"
-                },
-                {
-                  "id": "s2-a4-p1-x5",
-                  "kind": "text",
-                  "text": "도 제외합니다."
-                }
-              ]
+              "id": "s2-a4-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0002",
+              "options": {}
             }
           ]
         }
@@ -1048,7 +967,13 @@
                 {
                   "id": "s3-a2-p2-x3",
                   "kind": "text",
-                  "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
+                  "text": "의 "
+                },
+                {
+                  "id": "s3-a2-p2-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0001",
+                  "options": {}
                 }
               ]
             }
@@ -1143,7 +1068,13 @@
                 {
                   "id": "s3-a4-p1-x1",
                   "kind": "text",
-                  "text": "이 특별약관의 피보험자가 사망한 경우에는 이 특별약관은 그 때부터 소멸되며, 이 경우 회사는 그 때까지「보험료 및 해약환급금 산출방법서」에서 정한 이 특별약관의 사망 당시 계약자적립액 및 미경과보험료를 계약자에게 지급합니다."
+                  "text": "이 특별약관의 피보험자가 "
+                },
+                {
+                  "id": "s3-a4-p1-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0003",
+                  "options": {}
                 }
               ]
             }
@@ -1155,56 +1086,10 @@
           "title": "준용규정",
           "children": [
             {
-              "id": "s3-a5-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s3-a5-p1-x3",
-                  "kind": "text",
-                  "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
-                },
-                {
-                  "id": "s3-a5-p1-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "g-a9"
-                    },
-                    {
-                      "nodeId": "g-a10"
-                    },
-                    {
-                      "nodeId": "g-a38"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "general"
-                },
-                {
-                  "id": "s3-a5-p1-x4",
-                  "kind": "text",
-                  "text": "은 제외하며, 보통약관 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
-                },
-                {
-                  "id": "s3-a5-p1-x2",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "g-a27_1"
-                    },
-                    {
-                      "nodeId": "g-a27_2"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "general"
-                },
-                {
-                  "id": "s3-a5-p1-x5",
-                  "kind": "text",
-                  "text": "도 제외합니다."
-                }
-              ]
+              "id": "s3-a5-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0002",
+              "options": {}
             }
           ]
         }
@@ -1358,17 +1243,13 @@
                 {
                   "id": "s4-a2-p1-x3",
                   "kind": "text",
-                  "text": "에서 장해지급률이 상해 발생일부터 180일 이내에 확정되지 않는 경우에는 상해 발생일부터 180일이 되는 날의 의사 진단에 기초하여 고정될 것으로 인정되는 상태를 장해지급률로 결정합니다. 다만, "
+                  "text": "에서 "
                 },
                 {
-                  "id": "s4-a2-p1-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "s4-a2-p1-x4",
-                  "kind": "text",
-                  "text": "에 장해판정시기를 별도로 정한 경우에는 그에 따릅니다."
+                  "id": "s4-a2-p1-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0009",
+                  "options": {}
                 }
               ]
             },
@@ -1399,24 +1280,12 @@
               "kind": "paragraph",
               "children": [
                 {
-                  "id": "s4-a2-p3-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "s4-a2-p3-x3",
-                  "kind": "text",
-                  "text": "에 해당되지 않는 후유장해는 피보험자의 직업, 연령, 신분 또는 성별 등에 관계없이 신체의 장해정도에 따라"
-                },
-                {
-                  "id": "s4-a2-p3-x2",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "s4-a2-p3-x4",
-                  "kind": "text",
-                  "text": "의 구분에 준하여 장해지급률을 결정합니다."
+                  "id": "s4-a2-p3-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0010",
+                  "options": {
+                    "O01": "V02"
+                  }
                 }
               ]
             },
@@ -1443,30 +1312,21 @@
                 {
                   "id": "s4-a2-p4-x3",
                   "kind": "text",
-                  "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
+                  "text": "의 "
+                },
+                {
+                  "id": "s4-a2-p4-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0001",
+                  "options": {}
                 }
               ]
             },
             {
-              "id": "s4-a2-p5",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s4-a2-p5-x2",
-                  "kind": "text",
-                  "text": "같은 상해로 두 가지 이상의 후유장해가 생긴 경우에는 후유장해 지급률을 합산하여 지급합니다. 다만, "
-                },
-                {
-                  "id": "s4-a2-p5-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "s4-a2-p5-x3",
-                  "kind": "text",
-                  "text": "의 각 신체부위별 판정기준에 별도로 정한 경우에는 그 기준에 따릅니다."
-                }
-              ]
+              "id": "s4-a2-p5-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0011",
+              "options": {}
             },
             {
               "id": "s4-a2-p6",
@@ -1541,7 +1401,13 @@
                 {
                   "id": "s4-a3-p1-x2",
                   "kind": "text",
-                  "text": "에서 정한 일반상해 50%이상후유장해 생활자금 지급사유가 발생한 경우에는 이 특별약관은 그 때부터 소멸됩니다."
+                  "text": "에서 정한 일반상해 50%이상후유장해 생활자금 "
+                },
+                {
+                  "id": "s4-a3-p1-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0005",
+                  "options": {}
                 }
               ]
             },
@@ -1563,7 +1429,15 @@
                 {
                   "id": "s4-a3-p2-x2",
                   "kind": "text",
-                  "text": "에 따라 이 특별약관이 소멸된 경우에는 회사는 이 특별약관의 해약환급금을 지급하지 않습니다."
+                  "text": "에 따라 "
+                },
+                {
+                  "id": "s4-a3-p2-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0004",
+                  "options": {
+                    "O01": "V01"
+                  }
                 }
               ]
             },
@@ -1574,7 +1448,13 @@
                 {
                   "id": "s4-a3-p3-x1",
                   "kind": "text",
-                  "text": "이 특별약관의 피보험자가 사망한 경우에는 이 특별약관은 그 때부터 소멸되며, 이 경우 회사는 그 때까지「보험료 및 해약환급금 산출방법서」에서 정한 이 특별약관의 사망 당시 계약자적립액 및 미경과보험료를 계약자에게 지급합니다."
+                  "text": "이 특별약관의 피보험자가 "
+                },
+                {
+                  "id": "s4-a3-p3-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0003",
+                  "options": {}
                 }
               ]
             }
@@ -1586,56 +1466,10 @@
           "title": "준용규정",
           "children": [
             {
-              "id": "s4-a4-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s4-a4-p1-x3",
-                  "kind": "text",
-                  "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
-                },
-                {
-                  "id": "s4-a4-p1-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "g-a9"
-                    },
-                    {
-                      "nodeId": "g-a10"
-                    },
-                    {
-                      "nodeId": "g-a38"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "general"
-                },
-                {
-                  "id": "s4-a4-p1-x4",
-                  "kind": "text",
-                  "text": "은 제외하며, 보통약관 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
-                },
-                {
-                  "id": "s4-a4-p1-x2",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "g-a27_1"
-                    },
-                    {
-                      "nodeId": "g-a27_2"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "general"
-                },
-                {
-                  "id": "s4-a4-p1-x5",
-                  "kind": "text",
-                  "text": "도 제외합니다."
-                }
-              ]
+              "id": "s4-a4-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0002",
+              "options": {}
             }
           ]
         }
@@ -1728,7 +1562,13 @@
                 {
                   "id": "s5-a2-p2-x3",
                   "kind": "text",
-                  "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
+                  "text": "의 "
+                },
+                {
+                  "id": "s5-a2-p2-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0001",
+                  "options": {}
                 }
               ]
             }
@@ -1744,9 +1584,10 @@
               "kind": "paragraph",
               "children": [
                 {
-                  "id": "s5-a3-p1-x1",
-                  "kind": "text",
-                  "text": "이 특별약관에서「수술」이라 함은 의사, 치과의사 또는 한의사의 면허를 가진 자(이하「의사」라 합니다)가 치료가 필요하다고 인정한 경우로서 의사의 관리하에 치료를 직접적인 목적으로 기구를 사용하여 생체(生體)에 절단(切斷, 특정부위를 잘라 내는 것), 절제(切除, 특정부위를 잘라 없애는 것) 등의 조작을 가하는 것을 말합니다."
+                  "id": "s5-a3-p1-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0006",
+                  "options": {}
                 }
               ]
             },
@@ -1768,7 +1609,13 @@
                 {
                   "id": "s5-a3-p2-x2",
                   "kind": "text",
-                  "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
+                  "text": "의"
+                },
+                {
+                  "id": "s5-a3-p2-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0007",
+                  "options": {}
                 }
               ]
             },
@@ -1790,7 +1637,13 @@
                 {
                   "id": "s5-a3-p3-x2",
                   "kind": "text",
-                  "text": "의「수술」에는 보건복지부 산하 신의료기술평가위원회 또는 이에 준하는 기관으로부터 안전성과 치료효과를 인정받은 최신 수술기법으로 생체에 절단, 절제 등의 조작을 가하는 수술도 포함됩니다."
+                  "text": "의"
+                },
+                {
+                  "id": "s5-a3-p3-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0008",
+                  "options": {}
                 }
               ]
             },
@@ -1975,7 +1828,13 @@
                 {
                   "id": "s5-a5-p1-x1",
                   "kind": "text",
-                  "text": "이 특별약관의 피보험자가 사망한 경우에는 이 특별약관은 그 때부터 소멸되며, 이 경우 회사는 그 때까지「보험료 및 해약환급금 산출방법서」에서 정한 이 특별약관의 사망 당시 계약자적립액 및 미경과보험료를 계약자에게 지급합니다."
+                  "text": "이 특별약관의 피보험자가 "
+                },
+                {
+                  "id": "s5-a5-p1-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0003",
+                  "options": {}
                 }
               ]
             }
@@ -1987,56 +1846,10 @@
           "title": "준용규정",
           "children": [
             {
-              "id": "s5-a6-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s5-a6-p1-x3",
-                  "kind": "text",
-                  "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
-                },
-                {
-                  "id": "s5-a6-p1-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "g-a9"
-                    },
-                    {
-                      "nodeId": "g-a10"
-                    },
-                    {
-                      "nodeId": "g-a38"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "general"
-                },
-                {
-                  "id": "s5-a6-p1-x4",
-                  "kind": "text",
-                  "text": "은 제외하며, 보통약관 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
-                },
-                {
-                  "id": "s5-a6-p1-x2",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "g-a27_1"
-                    },
-                    {
-                      "nodeId": "g-a27_2"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "general"
-                },
-                {
-                  "id": "s5-a6-p1-x5",
-                  "kind": "text",
-                  "text": "도 제외합니다."
-                }
-              ]
+              "id": "s5-a6-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0002",
+              "options": {}
             }
           ]
         }
@@ -2119,7 +1932,13 @@
                 {
                   "id": "s6-a2-p2-x3",
                   "kind": "text",
-                  "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
+                  "text": "의 "
+                },
+                {
+                  "id": "s6-a2-p2-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0001",
+                  "options": {}
                 }
               ]
             }
@@ -2256,9 +2075,10 @@
               "kind": "paragraph",
               "children": [
                 {
-                  "id": "s6-a3-p4-x1",
-                  "kind": "text",
-                  "text": "이 특별약관에서「수술」이라 함은 의사, 치과의사 또는 한의사의 면허를 가진 자(이하「의사」라 합니다)가 치료가 필요하다고 인정한 경우로서 의사의 관리하에 치료를 직접적인 목적으로 기구를 사용하여 생체(生體)에 절단(切斷, 특정부위를 잘라 내는 것), 절제(切除, 특정부위를 잘라 없애는 것) 등의 조작을 가하는 것을 말합니다."
+                  "id": "s6-a3-p4-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0006",
+                  "options": {}
                 }
               ]
             },
@@ -2280,7 +2100,13 @@
                 {
                   "id": "s6-a3-p5-x2",
                   "kind": "text",
-                  "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
+                  "text": "의"
+                },
+                {
+                  "id": "s6-a3-p5-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0007",
+                  "options": {}
                 }
               ]
             },
@@ -2302,7 +2128,13 @@
                 {
                   "id": "s6-a3-p6-x2",
                   "kind": "text",
-                  "text": "의「수술」에는 보건복지부 산하 신의료기술평가위원회 또는 이에 준하는 기관으로부터 안전성과 치료효과를 인정받은 최신 수술기법으로 생체에 절단, 절제 등의 조작을 가하는 수술도 포함됩니다."
+                  "text": "의"
+                },
+                {
+                  "id": "s6-a3-p6-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0008",
+                  "options": {}
                 }
               ]
             },
@@ -2438,9 +2270,25 @@
                   "scope": "self"
                 },
                 {
-                  "id": "s6-a4-p1-x2",
+                  "id": "s6-a4-p1-x2a",
                   "kind": "text",
-                  "text": "에서 정한 중대한특정상해수술비 지급사유가 발생한 경우에는 이 특별약관은 그 때부터 소멸됩니다."
+                  "text": "에서 정한 "
+                },
+                {
+                  "id": "s6-a4-p1-x2s",
+                  "kind": "slot",
+                  "ref": "D0001"
+                },
+                {
+                  "id": "s6-a4-p1-x2b",
+                  "kind": "text",
+                  "text": " "
+                },
+                {
+                  "id": "s6-a4-p1-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0005",
+                  "options": {}
                 }
               ]
             },
@@ -2462,7 +2310,15 @@
                 {
                   "id": "s6-a4-p2-x2",
                   "kind": "text",
-                  "text": "에 따라 이 특별약관이 소멸된 경우에는 회사는 이 특별약관의 해약환급금을 지급하지 않습니다."
+                  "text": "에 따라 "
+                },
+                {
+                  "id": "s6-a4-p2-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0004",
+                  "options": {
+                    "O01": "V01"
+                  }
                 }
               ]
             },
@@ -2473,7 +2329,13 @@
                 {
                   "id": "s6-a4-p3-x1",
                   "kind": "text",
-                  "text": "이 특별약관의 피보험자가 사망한 경우에는 이 특별약관은 그 때부터 소멸되며, 이 경우 회사는 그 때까지「보험료 및 해약환급금 산출방법서」에서 정한 이 특별약관의 사망 당시 계약자적립액 및 미경과보험료를 계약자에게 지급합니다."
+                  "text": "이 특별약관의 피보험자가 "
+                },
+                {
+                  "id": "s6-a4-p3-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0003",
+                  "options": {}
                 }
               ]
             }
@@ -2485,56 +2347,10 @@
           "title": "준용규정",
           "children": [
             {
-              "id": "s6-a5-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s6-a5-p1-x3",
-                  "kind": "text",
-                  "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
-                },
-                {
-                  "id": "s6-a5-p1-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "g-a9"
-                    },
-                    {
-                      "nodeId": "g-a10"
-                    },
-                    {
-                      "nodeId": "g-a38"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "general"
-                },
-                {
-                  "id": "s6-a5-p1-x4",
-                  "kind": "text",
-                  "text": "은 제외하며, 보통약관 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
-                },
-                {
-                  "id": "s6-a5-p1-x2",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "g-a27_1"
-                    },
-                    {
-                      "nodeId": "g-a27_2"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "general"
-                },
-                {
-                  "id": "s6-a5-p1-x5",
-                  "kind": "text",
-                  "text": "도 제외합니다."
-                }
-              ]
+              "id": "s6-a5-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0002",
+              "options": {}
             }
           ]
         }
@@ -3638,7 +3454,13 @@
                 {
                   "id": "s7-a2-p2-x2",
                   "kind": "text",
-                  "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
+                  "text": "의"
+                },
+                {
+                  "id": "s7-a2-p2-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0007",
+                  "options": {}
                 }
               ]
             },
@@ -3997,7 +3819,13 @@
                 {
                   "id": "s7-a3-p8-x3",
                   "kind": "text",
-                  "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
+                  "text": "의 "
+                },
+                {
+                  "id": "s7-a3-p8-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0001",
+                  "options": {}
                 }
               ]
             }
@@ -4294,7 +4122,13 @@
                 {
                   "id": "s7-a7-p1-x1",
                   "kind": "text",
-                  "text": "이 특별약관의 피보험자가 사망한 경우에는 이 특별약관은 그 때부터 소멸되며, 이 경우 회사는 그 때까지「보험료 및 해약환급금 산출방법서」에서 정한 이 특별약관의 사망 당시 계약자적립액 및 미경과보험료를 계약자에게 지급합니다."
+                  "text": "이 특별약관의 피보험자가 "
+                },
+                {
+                  "id": "s7-a7-p1-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0003",
+                  "options": {}
                 }
               ]
             }
@@ -4306,101 +4140,10 @@
           "title": "준용규정",
           "children": [
             {
-              "id": "s7-a8-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s7-a8-p1-x1",
-                  "kind": "text",
-                  "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
-                },
-                {
-                  "id": "s7-a8-c1",
-                  "kind": "inlineCond",
-                  "branches": [
-                    {
-                      "id": "s7-a8-c1-t",
-                      "when": "exist(attr.A0001) and attr.A0001 = '2'",
-                      "children": [
-                        {
-                          "id": "s7-a8-c1-t-x1",
-                          "kind": "articleRef",
-                          "targets": [
-                            {
-                              "nodeId": "g-a9"
-                            },
-                            {
-                              "nodeId": "g-a10"
-                            },
-                            {
-                              "nodeId": "g-a27_1"
-                            },
-                            {
-                              "nodeId": "g-a27_2"
-                            },
-                            {
-                              "nodeId": "g-a38"
-                            }
-                          ],
-                          "connector": "및",
-                          "scope": "general"
-                        },
-                        {
-                          "id": "s7-a8-c1-t-x2",
-                          "kind": "text",
-                          "text": "은 제외합니다."
-                        }
-                      ]
-                    },
-                    {
-                      "id": "s7-a8-c1-e",
-                      "children": [
-                        {
-                          "id": "s7-a8-c1-e-x1",
-                          "kind": "articleRef",
-                          "targets": [
-                            {
-                              "nodeId": "g-a9"
-                            },
-                            {
-                              "nodeId": "g-a10"
-                            },
-                            {
-                              "nodeId": "g-a38"
-                            }
-                          ],
-                          "connector": "및",
-                          "scope": "general"
-                        },
-                        {
-                          "id": "s7-a8-c1-e-x3",
-                          "kind": "text",
-                          "text": "은 제외하며, 보통약관 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
-                        },
-                        {
-                          "id": "s7-a8-c1-e-x2",
-                          "kind": "articleRef",
-                          "targets": [
-                            {
-                              "nodeId": "g-a27_1"
-                            },
-                            {
-                              "nodeId": "g-a27_2"
-                            }
-                          ],
-                          "connector": "및",
-                          "scope": "general"
-                        },
-                        {
-                          "id": "s7-a8-c1-e-x4",
-                          "kind": "text",
-                          "text": "도 제외합니다."
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
+              "id": "s7-a8-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0002",
+              "options": {}
             }
           ]
         }
@@ -4635,7 +4378,13 @@
                 {
                   "id": "s9-a3-p3-x3",
                   "kind": "text",
-                  "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
+                  "text": "의 "
+                },
+                {
+                  "id": "s9-a3-p3-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0001",
+                  "options": {}
                 }
               ]
             }
@@ -4725,9 +4474,10 @@
               "kind": "paragraph",
               "children": [
                 {
-                  "id": "s9-a5-p1-x1",
-                  "kind": "text",
-                  "text": "이 특별약관에서「수술」이라 함은 의사, 치과의사 또는 한의사의 면허를 가진 자(이하「의사」라 합니다)가 치료가 필요하다고 인정한 경우로서 의사의 관리하에 치료를 직접적인 목적으로 기구를 사용하여 생체(生體)에 절단(切斷, 특정부위를 잘라 내는 것), 절제(切除, 특정부위를 잘라 없애는 것) 등의 조작을 가하는 것을 말합니다."
+                  "id": "s9-a5-p1-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0006",
+                  "options": {}
                 }
               ]
             },
@@ -4749,7 +4499,13 @@
                 {
                   "id": "s9-a5-p2-x2",
                   "kind": "text",
-                  "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
+                  "text": "의"
+                },
+                {
+                  "id": "s9-a5-p2-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0007",
+                  "options": {}
                 }
               ]
             },
@@ -4771,7 +4527,13 @@
                 {
                   "id": "s9-a5-p3-x2",
                   "kind": "text",
-                  "text": "의「수술」에는 보건복지부 산하 신의료기술평가위원회 또는 이에 준하는 기관으로부터 안전성과 치료효과를 인정받은 최신 수술기법으로 생체에 절단, 절제 등의 조작을 가하는 수술도 포함됩니다."
+                  "text": "의"
+                },
+                {
+                  "id": "s9-a5-p3-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0008",
+                  "options": {}
                 }
               ]
             },
@@ -4927,7 +4689,13 @@
                 {
                   "id": "s9-a7-p1-x1",
                   "kind": "text",
-                  "text": "이 특별약관의 피보험자가 사망한 경우에는 이 특별약관은 그 때부터 소멸되며, 이 경우 회사는 그 때까지「보험료 및 해약환급금 산출방법서」에서 정한 이 특별약관의 사망 당시 계약자적립액 및 미경과보험료를 계약자에게 지급합니다."
+                  "text": "이 특별약관의 피보험자가 "
+                },
+                {
+                  "id": "s9-a7-p1-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0003",
+                  "options": {}
                 }
               ]
             },
@@ -4999,56 +4767,10 @@
           "title": "준용규정",
           "children": [
             {
-              "id": "s9-a8-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s9-a8-p1-x3",
-                  "kind": "text",
-                  "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
-                },
-                {
-                  "id": "s9-a8-p1-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "g-a9"
-                    },
-                    {
-                      "nodeId": "g-a10"
-                    },
-                    {
-                      "nodeId": "g-a38"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "general"
-                },
-                {
-                  "id": "s9-a8-p1-x4",
-                  "kind": "text",
-                  "text": "은 제외하며, 보통약관 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
-                },
-                {
-                  "id": "s9-a8-p1-x2",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "g-a27_1"
-                    },
-                    {
-                      "nodeId": "g-a27_2"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "general"
-                },
-                {
-                  "id": "s9-a8-p1-x5",
-                  "kind": "text",
-                  "text": "도 제외합니다."
-                }
-              ]
+              "id": "s9-a8-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0002",
+              "options": {}
             }
           ]
         }

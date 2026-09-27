@@ -8,7 +8,9 @@
  * 3. 담보속성 조건 오버레이(`inlineConds`)를 얹고, 항·호·목 텍스트의 조·별표 참조 평문을 `inlinesFromText` 로
  *    참조 슬롯으로 바꾼다 — 조건 가지 안의 참조도 같이 풀린다.
  * 4. 보통약관의 기본계약 대치 조는 제목만 남기고, 기본계약 문면은 그 조들을 뽑아 조연결한다.
- * 5. 슬롯 오버레이(담보명 등) · 조 자리 조건 오버레이(`articleConds`)를 얹고 `validateTree` 로 검증한 뒤 `src/db/seed/data/{generals,documents,appendices}.json` 을 쓴다.
+ * 5. 슬롯 오버레이(담보명 등)를 얹는다.
+ * 6. 공용조항(`CLAUSES`)을 만들고 — 평문에서, 또는 원문 한 자리(`from`)에서 — 담보약관의 쓰임 자리를 참조로 바꾼다 (`clauses.ts`).
+ * 7. 조 자리 조건 오버레이(`articleConds`)를 얹고 `validateTree` 로 검증한 뒤 `src/db/seed/data/{generals,documents,appendices,clauses}.json` 을 쓴다.
  *
  * 변환하지 못한 참조는 `[report]` 로 stdout 에 남긴다 — 사람이 본다 (법령 인용은 의도된 미변환).
  */
@@ -18,7 +20,8 @@ import path from "node:path";
 import type { ArticleNode, BlockNode, BoxNode, DocumentNode, InlineNode, ParagraphNode, SectionNode, TableNode } from "../../src/domain/document/nodes";
 import { indexTree, validateTree } from "../../src/domain/document/nodes";
 import type { Id } from "../../src/domain/types";
-import { APPENDICES, FIXTURE_DIR, GENERAL, SEED_DIR, SPECIALS, type SlotOverlay, type SpecialSpec } from "./config";
+import { applyClauseUse, inlineBody, optionCode, reId, toClauseInline, valueCode, type ClauseRecord } from "./clauses";
+import { APPENDICES, CLAUSES, FIXTURE_DIR, GENERAL, SEED_DIR, SPECIALS, type SlotOverlay, type SpecialSpec } from "./config";
 import { parseTerms, type ParsedArticle, type ParsedDoc } from "./parse";
 import { applyArticleConds, applyInlineConds, articlesOf } from "./overlay";
 import { inlinesFromText, leftoverReferences, type ArticleEntry, type ArticleIndex, type RefEnv } from "./refs";
@@ -250,16 +253,39 @@ function main(): void {
   }
   const generalIssues = validate(general.tree, "general");
 
-  // ── 담보약관
+  // ── 담보약관 (구조 · 조건 · 참조 · 슬롯)
+  const built = new Map<string, Built>();
+  for (const spec of SPECIALS) built.set(spec.code, buildSpecial(spec, generalParsed, general, report));
+
+  // ── 공용조항 — 본문을 만들고 담보약관의 쓰임 자리를 참조로
+  const clauses = CLAUSES.map((c) => buildClause(c, built, general, report));
+  const clauseByCode = new Map(clauses.map((c) => [c.code, c]));
+  for (const spec of SPECIALS) {
+    const b = built.get(spec.code)!;
+    const articleOf = (number: string) => [...articlesOf(b.tree)].find((x) => b.numberOf.get(x.id) === number);
+    for (const u of spec.clauses ?? []) {
+      const clause = clauseByCode.get(u.clause);
+      if (!clause) throw new Error(`${spec.code}: 공용조항 ${u.clause} 정의 없음`);
+      applyClauseUse(u, clause, articleOf, `[${spec.code}]`, report);
+    }
+  }
+
+  // ── 조 자리 조건 · 검증
   const documents: { code: string; ownerCoverage: string; general: string; tree: DocumentNode }[] = [];
   const specialIssues: string[] = [];
-  for (const spec of SPECIALS) documents.push({ code: spec.code, ownerCoverage: spec.ownerCoverage, general: GENERAL.code, tree: buildSpecial(spec, generalParsed, general, report, specialIssues) });
+  for (const spec of SPECIALS) {
+    const b = built.get(spec.code)!;
+    applyArticleConds(b.tree, b.numberOf, spec.articleConds ?? [], report);
+    specialIssues.push(...validate(b.tree, "special", general.tree).map((l) => `${spec.code}: ${l}`));
+    documents.push({ code: spec.code, ownerCoverage: spec.ownerCoverage, general: GENERAL.code, tree: b.tree });
+  }
 
   // ── 출력
   const out = (file: string, data: unknown) => writeFileSync(path.join(root, SEED_DIR, file), `${JSON.stringify(data, null, 2)}\n`);
   out("appendices.json", APPENDICES.map((a) => ({ code: a.code, name: a.name, description: "" })));
   out("generals.json", [{ code: GENERAL.code, tree: general.tree }]);
   out("documents.json", documents);
+  out("clauses.json", clauses);
 
   const stats = (tree: DocumentNode) => {
     const ix = indexTree(tree);
@@ -267,13 +293,42 @@ function main(): void {
     return `관 ${count("section")} · 조 ${count("article")} · 항 ${count("paragraph")} · 호 ${count("item")} · 목 ${count("subitem")} · 표 ${count("table")} · 박스 ${count("box")} · 조참조 ${count("articleRef")} · 별표참조 ${count("appendixRef")} · 슬롯 ${count("slot")} · 조건 ${count("condBlock")}/${count("inlineCond")}`;
   };
   console.log(`[general] ${general.tree.title}: ${stats(general.tree)}`);
-  for (const d of documents) console.log(`[special] ${d.tree.title}: ${stats(d.tree)}`);
+  for (const d of documents) console.log(`[special] ${d.tree.title}: ${stats(d.tree)} · 공용조항 ${count(d.tree, "clauseInlineRef") + count(d.tree, "clauseBlockRef")}`);
+  for (const c of clauses) console.log(`[clause] ${c.code} ${c.label} (${c.mode}) — 쓰임 ${documents.reduce((n, d) => n + JSON.stringify(d.tree).split(`"clauseCode":"${c.code}"`).length - 1, 0)}`);
   for (const line of report) console.log(`[report] ${line}`);
   for (const line of [...generalIssues, ...specialIssues]) console.log(`[invalid] ${line}`);
   if (generalIssues.length + specialIssues.length > 0) process.exit(1);
 }
 
-function buildSpecial(spec: SpecialSpec, generalParsed: ParsedDoc, general: Built, report: string[], issues: string[]): DocumentNode {
+const count = (tree: DocumentNode, kind: string) => [...indexTree(tree).nodes.values()].filter((e) => e.node.kind === kind).length;
+
+/** 공용조항 한 건 — 평문(`text`)을 변환하거나 원문 한 자리(`from`)의 항 본문을 딴다. 조 참조는 보통약관 마스터만. */
+function buildClause(spec: (typeof CLAUSES)[number], built: Map<string, Built>, general: Built, report: string[]): ClauseRecord {
+  const prefix = `c${Number(spec.code.slice(1))}`;
+  const empty = { byNumber: new Map() };
+  const convert = (text: string, newId: () => Id) =>
+    inlinesFromText(text, { self: empty, general: general.index, appendixByNumber, currentArticleId: `${prefix}-a`, report }, newId);
+  const options = (spec.options ?? []).map((o, oi) => ({
+    code: optionCode(oi),
+    label: o.label,
+    order: oi,
+    values: o.values.map((v, vi) => ({ code: valueCode(vi), label: v.label, order: vi, body: inlineBody(v.text, `${prefix}-o${oi + 1}v${vi + 1}`, convert) })),
+  }));
+  let body: ClauseRecord["body"];
+  if (spec.from) {
+    const b = built.get(spec.from.spec);
+    const a = b && [...articlesOf(b.tree)].find((x) => b.numberOf.get(x.id) === spec.from!.article);
+    const p = a?.children.find((c) => c.kind === "paragraph" && c.id === `${a.id}-p${spec.from!.paragraph}`);
+    if (!p || p.kind !== "paragraph") throw new Error(`${spec.code}: 원문 자리 ${spec.from.spec} 조 ${spec.from.article} 제${spec.from.paragraph}항 없음`);
+    body = reId([{ id: "p", kind: "paragraph" as const, children: structuredClone(p.children).map(toClauseInline) }], prefix);
+  } else {
+    const inline = inlineBody(spec.text!, prefix, convert);
+    body = spec.mode === "inline" ? inline : [{ id: `${prefix}-p1`, kind: "paragraph", children: inline }];
+  }
+  return { code: spec.code, label: spec.label, mode: spec.mode, description: spec.description, body, options };
+}
+
+function buildSpecial(spec: SpecialSpec, generalParsed: ParsedDoc, general: Built, report: string[]): Built {
   let built: Built;
   if (spec.extractFrom) {
     const source = spec.extractFrom.file === GENERAL.file ? generalParsed : parseTerms(read(spec.extractFrom.file));
@@ -297,9 +352,7 @@ function buildSpecial(spec: SpecialSpec, generalParsed: ParsedDoc, general: Buil
   }
   applySlots(built, spec.slots, report);
   reportLeftovers(built, `[${spec.code}]`, report);
-  applyArticleConds(built.tree, built.numberOf, spec.articleConds ?? [], report);
-  issues.push(...validate(built.tree, "special", general.tree).map((l) => `${spec.code}: ${l}`));
-  return built.tree;
+  return built;
 }
 
 main();

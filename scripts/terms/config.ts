@@ -70,6 +70,33 @@ export interface ArticleCondOverlay {
   when: string;
 }
 
+/**
+ * 공용조항 정의 — 여러 담보약관이 되풀이하는 문구 (기능/공용조항 §3.1). 코드는 시스템 채번(`C0001`…)이라 배열 순서가 곧 코드다.
+ * 본문은 평문(`text`, `{O01}` = 옵션 자리)에서 만들거나 원문 한 자리(`from`, 조건 오버레이가 얹힌 뒤)에서 딴다.
+ * 공용조항 안의 조 참조는 **보통약관 마스터**만 — 사용처 자신의 조 · 항을 가리키는 구절은 사용처에 남긴다 (§3.5).
+ */
+export interface ClauseSpec {
+  code: string;
+  label: string;
+  mode: "inline" | "block";
+  description: string;
+  text?: string;
+  from?: { spec: string; article: string; paragraph: number };
+  /** 옵션 — 선택지 문구는 평문 (§3.2). 코드는 O01 · V01 … 순. */
+  options?: { label: string; values: { label: string; text: string }[] }[];
+}
+
+/**
+ * 공용조항 쓰임 — 원문 조 번호 · 항 번호 자리를 참조로 바꾼다. 「문구」는 항 안 첫 등장 구간, 「항」은 항 전체.
+ * `options` 는 옵션 코드 → 선택지 코드 (사용처 소유 선택, §3.2).
+ */
+export interface ClauseUse {
+  article: string;
+  paragraph: number;
+  clause: string;
+  options?: Record<string, string>;
+}
+
 export interface GeneralSpec {
   code: string;
   file: string;
@@ -95,7 +122,102 @@ export interface SpecialSpec {
   inlineConds?: InlineCondOverlay[];
   /** 담보속성 조건 오버레이 — 조 자리 on/off. */
   articleConds?: ArticleCondOverlay[];
+  /** 공용조항 쓰임 — 슬롯 오버레이 뒤에 얹는다. */
+  clauses?: ClauseUse[];
 }
+
+/**
+ * 공용조항 11건 — 원문 11벌에서 셋 이상의 담보약관(또는 소멸 구조 유형)이 되풀이하는 문구 (모델명세 §3).
+ * 「특별약관의 소멸」은 조 하나가 아니라 **구조 유형별 조합**이다 — 사용처 자신을 가리키는 항(「제1조(…)에서 정한 …」 ·
+ * 「제1항에 따라」)은 담보약관에 남고, 공통 문장만 공용조항이다 (§3.5).
+ *   T1 소멸 급부 없음            : ① 「이 특별약관의 피보험자가 」 + C0003
+ *   T2 세부보장 1 · 급부가 소멸 급부 : ① 제1조 참조 + C0005 · ② 제1항 참조 + C0004 · ③ 「이 특별약관의 피보험자가 」 + C0003
+ *   T3 세부보장 여럿 · 그중 하나가 소멸 : ① 「이 특별약관의 피보험자가 」 + C0003 · ②③ 그 세부보장의 소멸 (담보약관 직접)
+ */
+export const CLAUSES: ClauseSpec[] = [
+  {
+    code: "C0001",
+    label: "제3자 판정",
+    mode: "inline",
+    description: "보험금 지급사유에 합의하지 못할 때 제3자(종합병원 전문의)의 의견에 따른다 — 「보험수익자와 회사가 제N조(보험금의 지급사유)의 」 뒤",
+    text: "보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다.",
+  },
+  {
+    code: "C0002",
+    label: "준용규정",
+    mode: "block",
+    description: "특별약관에서 정하지 않은 사항은 보통약관을 따른다 — 제외 조 목록은 갱신형(담보속성 A0001 = 2)이면 다섯 조 무조건, 아니면 세 조 + 1종 가입 시 두 조",
+    from: { spec: "surgery17-doc", article: "8", paragraph: 1 },
+  },
+  {
+    code: "C0003",
+    label: "사망 시 소멸",
+    mode: "inline",
+    description: "피보험자 사망으로 특별약관이 소멸하고 계약자적립액 · 미경과보험료를 지급한다 — 「이 특별약관의 피보험자가 」 뒤 (사망이 곧 지급사유인 담보는 그 사이에 「제1항 이외의 사유로 」)",
+    text: "사망한 경우에는 이 특별약관은 그 때부터 소멸되며, 이 경우 회사는 그 때까지「보험료 및 해약환급금 산출방법서」에서 정한 이 특별약관의 사망 당시 계약자적립액 및 미경과보험료를 계약자에게 지급합니다.",
+  },
+  {
+    code: "C0004",
+    label: "소멸 시 해약환급금 미지급",
+    mode: "inline",
+    description: "지급사유 발생으로 특별약관이 소멸하면 해약환급금을 지급하지 않는다 — 「제1항에 따라 」 뒤",
+    text: "이 특별약관이 {O01} 경우에는 회사는 이 특별약관의 해약환급금을 지급하지 않습니다.",
+    options: [{ label: "소멸 표현", values: [{ label: "소멸된", text: "소멸된" }, { label: "소멸되는", text: "소멸되는" }] }],
+  },
+  {
+    code: "C0005",
+    label: "지급사유 발생 시 소멸",
+    mode: "inline",
+    description: "소멸 급부의 지급사유가 생기면 특별약관이 소멸한다 — 「제1조(보험금의 지급사유)에서 정한 <보험금명> 」 뒤",
+    text: "지급사유가 발생한 경우에는 이 특별약관은 그 때부터 소멸됩니다.",
+  },
+  {
+    code: "C0006",
+    label: "수술의 정의",
+    mode: "inline",
+    description: "「수술」의 정의 — 뒤 항들이 이 항을 「제N항」으로 가리키므로 항은 사용처 소유, 문장만 공용조항",
+    text: "이 특별약관에서「수술」이라 함은 의사, 치과의사 또는 한의사의 면허를 가진 자(이하「의사」라 합니다)가 치료가 필요하다고 인정한 경우로서 의사의 관리하에 치료를 직접적인 목적으로 기구를 사용하여 생체(生體)에 절단(切斷, 특정부위를 잘라 내는 것), 절제(切除, 특정부위를 잘라 없애는 것) 등의 조작을 가하는 것을 말합니다.",
+  },
+  {
+    code: "C0007",
+    label: "수술의 장소",
+    mode: "inline",
+    description: "수술은 국내외 의료기관에서 행한 것에 한한다 — 「제N항의」 뒤",
+    text: "「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다.",
+  },
+  {
+    code: "C0008",
+    label: "신의료기술 수술",
+    mode: "inline",
+    description: "신의료기술평가위원회 등이 인정한 최신 수술기법도 수술에 포함한다 — 「제N항의」 뒤",
+    text: "「수술」에는 보건복지부 산하 신의료기술평가위원회 또는 이에 준하는 기관으로부터 안전성과 치료효과를 인정받은 최신 수술기법으로 생체에 절단, 절제 등의 조작을 가하는 수술도 포함됩니다.",
+  },
+  {
+    code: "C0009",
+    label: "장해지급률 확정 시기",
+    mode: "inline",
+    description: "장해지급률이 180일 안에 확정되지 않으면 180일째 진단으로 정한다 — 「제N조(보험금의 지급사유)에서 」 뒤",
+    text: "장해지급률이 상해 발생일부터 180일 이내에 확정되지 않는 경우에는 상해 발생일부터 180일이 되는 날의 의사 진단에 기초하여 고정될 것으로 인정되는 상태를 장해지급률로 결정합니다. 다만, 【별표2(장해분류표)】에 장해판정시기를 별도로 정한 경우에는 그에 따릅니다.",
+  },
+  {
+    code: "C0010",
+    label: "분류표 외 후유장해",
+    mode: "inline",
+    description: "장해분류표에 없는 후유장해는 분류표의 구분에 준해 정한다 — 무엇을 정하는지(지급액 · 장해지급률)는 사용처가 고른다",
+    text: "【별표2(장해분류표)】에 해당되지 않는 후유장해는 피보험자의 직업, 연령, 신분 또는 성별 등에 관계없이 신체의 장해정도에 따라【별표2(장해분류표)】의 구분에 준하여 {O01}을 결정합니다.",
+    options: [{ label: "결정 대상", values: [{ label: "지급액", text: "지급액" }, { label: "장해지급률", text: "장해지급률" }] }],
+  },
+  {
+    code: "C0011",
+    label: "후유장해 합산",
+    mode: "block",
+    description: "같은 상해로 두 가지 이상의 후유장해가 생기면 지급률을 합산한다",
+    text: "같은 상해로 두 가지 이상의 후유장해가 생긴 경우에는 후유장해 지급률을 합산하여 지급합니다. 다만, 【별표2(장해분류표)】의 각 신체부위별 판정기준에 별도로 정한 경우에는 그 기준에 따릅니다.",
+  },
+];
+
+/** 쓰임 줄임말 — 원문 조 · 항 → 공용조항 (옵션 O01 선택). */
+const at = (article: string, paragraph: number, clause: string, o01?: string): ClauseUse => ({ article, paragraph, clause, ...(o01 ? { options: { O01: o01 } } : {}) });
 
 /** 갱신형 탑재분인가 — 담보속성 A0001(갱신유형) = V02. `exist` 가드는 속성을 쓰지 않는 탑재분을 위해 (식언어 §6). */
 const RENEWAL = "exist(attr.A0001) and attr.A0001 = '2'";
@@ -110,14 +232,34 @@ export const SPECIALS: SpecialSpec[] = [
     title: "일반상해80%이상후유장해 기본계약 문면",
     extractFrom: { file: "보통약관.md", articles: ["3", "4"], linkTo: ["3", "4"] },
     slots: [],
+    clauses: [at("4", 1, "C0009"), at("4", 3, "C0010", "V01"), at("4", 4, "C0001"), at("4", 5, "C0011")],
   },
-  { code: "death-doc", ownerCoverage: "death", idPrefix: "s1", file: "일반상해사망보장.md", slots: [] },
+  {
+    code: "death-doc",
+    ownerCoverage: "death",
+    idPrefix: "s1",
+    file: "일반상해사망보장.md",
+    // 제3조 ①의 보험금명은 담보 값(D0001 = 사망보험금) — 소멸 급부가 곧 사망이라 ③ 앞에 「제1항 이외의 사유로 」(T2 사망형)
+    slots: [{ article: "3", find: "사망보험금", ref: "D0001" }],
+    clauses: [at("2", 3, "C0001"), at("3", 1, "C0005"), at("3", 2, "C0004", "V02"), at("3", 3, "C0003"), at("4", 1, "C0002")],
+  },
   {
     code: "living80-doc",
     ownerCoverage: "living80",
     idPrefix: "s2",
     file: "일반상해80%이상후유장해_생활자금보장.md",
     slots: [{ article: "1", find: "일반상해80%이상후유장해 생활자금", ref: "D0001" }],
+    // 제3조 ①의 보험금명은 원문이 「일반상해 80%…」로 띄어 써 담보 값과 달라 평문으로 둔다
+    clauses: [
+      at("2", 1, "C0009"),
+      at("2", 3, "C0010", "V01"),
+      at("2", 4, "C0001"),
+      at("2", 5, "C0011"),
+      at("3", 1, "C0005"),
+      at("3", 2, "C0004", "V01"),
+      at("3", 3, "C0003"),
+      at("4", 1, "C0002"),
+    ],
   },
   {
     code: "fracture-doc",
@@ -125,6 +267,7 @@ export const SPECIALS: SpecialSpec[] = [
     idPrefix: "s3",
     file: "골절(치아파절_제외)진단비Ⅱ보장.md",
     slots: [{ article: "1", find: "골절(치아파절 제외)진단비", ref: "D0001" }],
+    clauses: [at("2", 2, "C0001"), at("4", 1, "C0003"), at("5", 1, "C0002")],
   },
   {
     code: "living50-doc",
@@ -132,6 +275,16 @@ export const SPECIALS: SpecialSpec[] = [
     idPrefix: "s4",
     file: "일반상해50%이상후유장해_생활자금보장.md",
     slots: [{ article: "1", find: "일반상해50%이상후유장해 생활자금", ref: "D0001" }],
+    clauses: [
+      at("2", 1, "C0009"),
+      at("2", 3, "C0010", "V02"),
+      at("2", 4, "C0001"),
+      at("2", 5, "C0011"),
+      at("3", 1, "C0005"),
+      at("3", 2, "C0004", "V01"),
+      at("3", 3, "C0003"),
+      at("4", 1, "C0002"),
+    ],
   },
   {
     code: "fracture-surgery-doc",
@@ -139,13 +292,27 @@ export const SPECIALS: SpecialSpec[] = [
     idPrefix: "s5",
     file: "골절수술비Ⅱ보장.md",
     slots: [{ article: "1", find: "골절수술비", ref: "D0001" }],
+    clauses: [at("2", 2, "C0001"), at("3", 1, "C0006"), at("3", 2, "C0007"), at("3", 3, "C0008"), at("5", 1, "C0003"), at("6", 1, "C0002")],
   },
   {
     code: "major-injury-surgery-doc",
     ownerCoverage: "major-injury-surgery",
     idPrefix: "s6",
     file: "중대한특정상해수술비보장.md",
-    slots: [{ article: "1", find: "중대한특정상해수술비", ref: "D0001" }],
+    slots: [
+      { article: "1", find: "중대한특정상해수술비", ref: "D0001" },
+      { article: "4", find: "중대한특정상해수술비", ref: "D0001" },
+    ],
+    clauses: [
+      at("2", 2, "C0001"),
+      at("3", 4, "C0006"),
+      at("3", 5, "C0007"),
+      at("3", 6, "C0008"),
+      at("4", 1, "C0005"),
+      at("4", 2, "C0004", "V01"),
+      at("4", 3, "C0003"),
+      at("5", 1, "C0002"),
+    ],
   },
   {
     // 비갱신형 · 갱신형 **두 벌을 내는 한 벌**이다 (ADR-0003 실증) — 원문은 갱신형 쪽(조 8개, 상위집합)을 싣고
@@ -173,6 +340,8 @@ export const SPECIALS: SpecialSpec[] = [
     ],
     // ⑤ 제6조(보험기간) 은 갱신형에만 있다 — 꺼지면 뒤 조 번호가 당겨져 비갱신형 원문의 7조 구성이 된다
     articleConds: [{ article: "6", when: RENEWAL }],
+    // 준용규정(④)은 공용조항 C0002 의 본문이 된다 — 조건은 공용조항 안으로 옮겨 가고 이 자리는 참조
+    clauses: [at("2", 2, "C0007"), at("3", 8, "C0001"), at("7", 1, "C0003"), at("8", 1, "C0002")],
   },
   {
     code: "burn-doc",
@@ -185,6 +354,8 @@ export const SPECIALS: SpecialSpec[] = [
       { article: "2", find: "화상진단비", ref: "D0001" },
       { article: "2", find: "화상진단비", ref: "D0001" },
     ],
+    // 소멸 T3 — 세부보장 셋 중 중증화상및부식진단비만 소멸 급부: ① 사망 소멸(공용) · ②③ 그 세부보장의 소멸(직접)
+    clauses: [at("3", 3, "C0001"), at("5", 1, "C0006"), at("5", 2, "C0007"), at("5", 3, "C0008"), at("7", 1, "C0003"), at("8", 1, "C0002")],
   },
 ];
 

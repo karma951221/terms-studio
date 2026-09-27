@@ -119,17 +119,6 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
     }
   }
 
-  for (const raw of clauses as unknown as Array<Record<string, unknown> & { code: Code; options: Array<Record<string, unknown>> }>) {
-    const code = raw.code;
-    const definition = omit(raw, ["code", "description", "required"]);
-    definition.options = raw.options.map((option) => ({
-      ...omit(option, ["code", "order", "values"]),
-      values: (option.values as Array<Record<string, unknown>>).map((value) => omit(value, ["code", "order"])),
-    }));
-    const created = unwrap(await services.clause.create(actor, definition as unknown as NewClause));
-    expectCode(created.code, code);
-  }
-
   // 코드는 시스템 채번(AX000001…) — JSON 의 code 는 채번 순서가 어긋나지 않았는지 대조용 (기능/별표 §3.1).
   for (const appendix of appendices) {
     const created = unwrap(await services.document.createAppendix(actor, { name: appendix.name, description: appendix.description }));
@@ -141,6 +130,18 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
     const document = unwrap(await services.document.createGeneral(actor, specification.tree.title));
     unwrap(await services.document.importTree(actor, document.id, specification.tree));
     generalIds.set(specification.code, document.id);
+  }
+
+  // 공용조항은 보통약관 조 · 별표를 참조하므로 그 뒤에 만든다 (정의 검사 ① 이 대상 존재를 본다 — 기능/공용조항 §3.4).
+  for (const raw of clauses as unknown as Array<Record<string, unknown> & { code: Code; options: Array<Record<string, unknown>> }>) {
+    const code = raw.code;
+    const definition = omit(raw, ["code", "description", "required"]);
+    definition.options = raw.options.map((option) => ({
+      ...omit(option, ["code", "order", "values"]),
+      values: (option.values as Array<Record<string, unknown>>).map((value) => omit(value, ["code", "order"])),
+    }));
+    const created = unwrap(await services.clause.create(actor, definition as unknown as NewClause));
+    expectCode(created.code, code);
   }
 
   const documentIds = new Map<string, Id>();

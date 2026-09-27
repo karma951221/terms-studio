@@ -14,7 +14,7 @@ import { ALPHA_PLUS_PRODUCT_NAME, seedAlphaPlus } from "./alphaPlus";
 const admin: Actor = { userId: "00000000-0000-4000-8000-000000000001", role: "admin" };
 
 /**
- * 시드가 실물 알파Plus 재료(카탈로그 · 담보 9 · 상품 · 별표 21 · 탑재 11)를 실제 서비스로 끝까지 만들고, 재실행에 안전한지.
+ * 시드가 실물 알파Plus 재료(카탈로그 · 담보 9 · 공용조항 11 · 상품 · 별표 21 · 탑재 11)를 실제 서비스로 끝까지 만들고, 재실행에 안전한지.
  * 원문과의 대조는 `real.test.ts` 몫.
  */
 describe("seedAlphaPlus — 알파Plus 실물 시드 (PGlite)", () => {
@@ -123,6 +123,27 @@ describe("seedAlphaPlus — 알파Plus 실물 시드 (PGlite)", () => {
     expect(byLabel("면책15세이상", "benefit")?.expression).toBe("exemption.age15_only");
     const catalog = new Map(defs.map((d) => [d.code, d]));
     expect(discriminatorResultType(byLabel("감액여부", "coverage")!, undefined, catalog)).toEqual({ kind: "boolean" });
+  });
+
+  it("공용조항 11건 — 원문이 되풀이하는 문구 (알파플러스_모델명세 §3)", async () => {
+    const list = await services.clause.list();
+    expect(list.map((c) => [c.code, c.label, c.mode])).toEqual([
+      ["C0001", "제3자 판정", "inline"],
+      ["C0002", "준용규정", "block"],
+      ["C0003", "사망 시 소멸", "inline"],
+      ["C0004", "소멸 시 해약환급금 미지급", "inline"],
+      ["C0005", "지급사유 발생 시 소멸", "inline"],
+      ["C0006", "수술의 정의", "inline"],
+      ["C0007", "수술의 장소", "inline"],
+      ["C0008", "신의료기술 수술", "inline"],
+      ["C0009", "장해지급률 확정 시기", "inline"],
+      ["C0010", "분류표 외 후유장해", "inline"],
+      ["C0011", "후유장해 합산", "block"],
+    ]);
+    // 준용규정은 담보속성(갱신유형)을 읽는다 — 요구 참조는 저장 때 식에서 뽑는다 (ADR-0010)
+    expect((await services.clause.get("C0002"))?.required).toEqual({ discriminators: [], attributes: ["A0001"] });
+    // 쓰임 수 = 참조하는 문서 수 — 사망 시 소멸은 특약 8벌(사망 · 생활자금 둘 · 골절진단 · 골절수술 · 중대한특정상해 · 수술비 · 신화상)
+    expect((await services.clause.summaries()).find((c) => c.code === "C0003")?.usageCount).toBe(8);
   });
 
   it("두 번째 호출 — no-op (상품명으로 이미 있음을 판단), 상품 id 동일 · 여전히 complete=true", async () => {
