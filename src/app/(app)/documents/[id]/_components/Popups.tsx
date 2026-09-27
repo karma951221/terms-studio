@@ -82,9 +82,12 @@ function PopForm({ env, onClose, build, children }: { env: PopupEnv; onClose: ()
 
 /** 조 참조 칸 — 범위 · 대상(여럿) · 연결어. 넣기와 고치기가 같이 쓴다. */
 function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode }) {
+  // 범위가 고정이면(공용조항 — 보통약관 조만) 범위 고르기 · 이 템플릿 후보가 없다
+  const fixed = ctx.articleRefScope;
   return (
     <>
-      {ctx.docKind === "special" && (
+      {fixed && <input type="hidden" name="scope" value={fixed} />}
+      {!fixed && ctx.docKind === "special" && (
         <div className="ts-form-row">
           <label htmlFor="pop-ref-scope">범위</label>
           <select id="pop-ref-scope" name="scope" defaultValue={node?.scope ?? "self"}>
@@ -96,15 +99,17 @@ function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode })
       <div className="ts-form-row ts-form-full">
         <label htmlFor="pop-ref-targets">참조 대상 (여럿 고를 수 있다)</label>
         <select id="pop-ref-targets" name="targets" multiple size={8} defaultValue={node?.targets.map((t) => t.nodeId) ?? []}>
-          <optgroup label="이 템플릿">
-            {[...ctx.references.self].map(([nodeId, target]) => (
-              <option key={`self:${nodeId}`} value={nodeId}>
-                {referenceTargetLabel(target)}
-              </option>
-            ))}
-          </optgroup>
+          {!fixed && (
+            <optgroup label="이 템플릿">
+              {[...ctx.references.self].map(([nodeId, target]) => (
+                <option key={`self:${nodeId}`} value={nodeId}>
+                  {referenceTargetLabel(target)}
+                </option>
+              ))}
+            </optgroup>
+          )}
           {ctx.docKind === "special" && (
-            <optgroup label="대응 보통약관">
+            <optgroup label={fixed ? "보통약관" : "대응 보통약관"}>
               {[...ctx.references.general].map(([nodeId, target]) => (
                 <option key={`general:${nodeId}`} value={nodeId}>
                   {referenceTargetLabel(target)}

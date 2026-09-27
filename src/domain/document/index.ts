@@ -3,6 +3,7 @@
  *
  * - nodes.ts       : 노드 타입 · allowedChildren · indexTree · validateTree · ClauseGate · TreeEnv
  * - builders.ts    : 노드 빌더 (id 공급원 주입)
+ * - clauseTree.ts  : 공용조항 본문 ↔ 편집 트리 (공용조항 화면이 문면 에디터를 쓰는 어댑터)
  * - commands.ts    : Command · applyCommand(s) · cloneTree
  * - edit.ts        : 편집본 — EditOp · applyEdit · replayEdits (ADR-0074 브라우저 편집본 · 서버 재적용)
  * - validate.ts    : validateDocument (저장 검증 한 벌) · clauseGateFrom · catalogTypeResolver
@@ -17,6 +18,7 @@
  */
 export * from "./appendix";
 export * from "./builders";
+export * from "./clauseTree";
 export * from "./commands";
 export * from "./conditionRows";
 export * from "./edit";
