@@ -1,0 +1,67 @@
+import { describe, expect, it } from "vitest";
+
+import { indexTree, nodeBuilders, replayEdits, sequentialIds, type DocumentNode, type EditOp, type ParagraphNode } from "@/domain/document";
+
+import { inlineAtOf, moveOps, newTable, pasteGridOps, removeChipOps, unwrapOps, wrapOps } from "./editOps";
+
+/** 편집본에 명령 목록을 적용한 트리 — 거부면 던진다. */
+function run(tree: DocumentNode, ops: readonly EditOp[]): DocumentNode {
+  const r = replayEdits({ tree }, ops, { env: {}, generalRefs: () => undefined });
+  if (!r.ok) throw new Error(`거부: ${JSON.stringify(r.rejection)}`);
+  return r.value.tree;
+}
+
+/** 조 하나(항 둘) — text n1 · slot n2 · paragraph n3 · text n4 · paragraph n5 · article n6 · document n7. */
+function doc(): DocumentNode {
+  const b = nodeBuilders(sequentialIds("n"));
+  return b.document("D", [b.article("가", [b.paragraph([b.text("앞 "), b.slot("D0001")]), b.paragraph([b.text("둘째")])])]);
+}
+
+describe("가운데 편집기 조작 → 편집 명령", () => {
+  it("조건으로 감싸기 → 풀기 — 항이 제자리로 돌아온다", () => {
+    const d = doc();
+    const wrapped = run(d, wrapOps(d, "n5", "D0001 = true", sequentialIds("w")));
+    const article = indexTree(wrapped).nodes.get("n6")!.node as { children: { kind: string; id: string }[] };
+    expect(article.children.map((c) => c.kind)).toEqual(["paragraph", "condBlock"]);
+    const branchId = indexTree(wrapped).nodes.get("n5")!.parentId!;
+    const back = run(wrapped, unwrapOps(wrapped, branchId));
+    expect((indexTree(back).nodes.get("n6")!.node as { children: { id: string }[] }).children.map((c) => c.id)).toEqual(["n3", "n5"]);
+  });
+
+  it("문장 안 조건 풀기 — 첫 가지 문장을 그 자리에 꺼낸다", () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    const cond = b.inlineCond([b.inlineBranch("D0001 = true", [b.text("갱신계약")]), b.inlineBranch(undefined, [b.text("최초계약")])]); // n1 n2 n3 n4 n5
+    const d = b.document("D", [b.article("가", [b.paragraph([b.text("이 "), cond])])]);
+    const out = run(d, unwrapOps(d, "n2"));
+    const p = [...indexTree(out).nodes.values()].find((e) => e.node.kind === "paragraph")!.node as ParagraphNode;
+    expect(p.children.map((c) => (c.kind === "text" ? c.text : c.kind))).toEqual(["이 ", "갱신계약"]);
+  });
+
+  it("칩 삭제 · 문장 자리 찾기", () => {
+    const d = doc();
+    expect(inlineAtOf(d, indexTree(d), "n2")?.at).toEqual({ parentId: "n3" });
+    const out = run(d, removeChipOps(d, "n2"));
+    expect((indexTree(out).nodes.get("n3")!.node as ParagraphNode).children.map((c) => c.id)).toEqual(["n1"]);
+  });
+
+  it("위로 · 아래로 — 경계면 명령 없음", () => {
+    const d = doc();
+    expect(moveOps(d, "n3", -1)).toEqual([]);
+    expect(moveOps(d, "n3", 1)).toEqual([{ type: "move", nodeId: "n3", to: { parentId: "n6", slot: "children", index: 1 } }]);
+  });
+
+  it("표 넣기 · 엑셀 붙여넣기 — 모자란 행 · 열을 늘리고 셀을 채운다", () => {
+    const t = newTable(1, 1, true, sequentialIds("t"));
+    expect(t.rows).toEqual([{ header: true, cells: [[]] }]);
+    const b = nodeBuilders(sequentialIds("n"));
+    const d = b.document("D", [b.article("가", [t])]);
+    const ops = pasteGridOps(t, 0, 0, "용어\t정의\n계약자\t회사와…", sequentialIds("c"))!;
+    const out = run(d, ops);
+    const table = indexTree(out).nodes.get(t.id)!.node as { rows: { cells: { text?: string }[][] }[] };
+    expect(table.rows.map((r) => r.cells.map((c) => c[0]?.text ?? ""))).toEqual([
+      ["용어", "정의"],
+      ["계약자", "회사와…"],
+    ]);
+    expect(pasteGridOps(t, 0, 0, "한 칸", sequentialIds("c"))).toBeUndefined();
+  });
+});

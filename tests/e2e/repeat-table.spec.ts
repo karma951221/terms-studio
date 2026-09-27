@@ -4,7 +4,8 @@ import { expect, test } from "./_lib/fixtures";
 
 /**
  * 행 반복 표 — 담보 약관 문면 편집기 (ADR-0070 결정 6 · 설계 2026-09-22 §3.1 · §4).
- * 새 담보 → 담보 약관 템플릿 → 표 → 「행 반복」 세부보장마다 → 템플릿 셀에 「구조 표기」 → 미리보기에서 세부보장 수만큼 펼침 →
+ * 새 담보 → 담보 약관 템플릿 → (오른쪽 클릭) 조 · 항 · 표 → 셀 조작 줄 「이 행 반복…」 세부보장마다 → 템플릿 셀 오른쪽 클릭 「구조 표기」 →
+ * 미리보기에서 세부보장 수만큼 펼침 →
  * 담보에 세부보장을 하나 더하면 미리보기 행도 하나 는다.
  * 시드 담보 · 문서는 건드리지 않는다 (실물재현 E2E 가 같은 DB 를 대조한다).
  */
@@ -49,61 +50,76 @@ test(
       return page.url();
     });
 
-    const add = async (kind: string, fields: Record<string, string>) => {
-      const menu = page.locator("aside.ts-l3-side details.ts-insert-menu").first();
-      if ((await menu.getAttribute("open")) === null) await menu.locator("summary").click();
-      await menu.locator("select[name=kind]").selectOption(kind);
-      for (const [name, value] of Object.entries(fields)) {
-        const field = menu.locator(`[name=${name}]`);
-        if ((await field.evaluate((el) => el.tagName)) === "SELECT") await field.selectOption(value);
-        else await field.fill(value);
-      }
-      // 편집본에 적용 — 서버로 가지 않는다 (ADR-0074). 저장은 바의 「저장」 한 번.
-      await menu.getByRole("button", { name: "고른 종류로 노드 추가" }).click();
+    // 가운데 그 자리 편집 (기능/문면 §4.3) — 넣기 · 조작은 오른쪽 클릭 메뉴, 셀은 누르면 조작 줄. 전부 편집본에만 들어가고 저장은 바의 「저장」 한 번.
+    const menu = async (target: Locator, item: string) => {
+      await target.click({ button: "right" });
+      await page.getByRole("menuitem", { name: item, exact: true }).click();
     };
-    const openNode = async (name: RegExp) => {
-      await page.getByRole("button", { name }).first().click();
-      await expect(page.getByRole("button", { name: "← 템플릿 전체로" })).toBeVisible();
-    };
+    const body = page.locator(".ts-l3-body");
+    const cell = (name: string) => body.getByRole("textbox", { name, exact: true });
 
-    await ev.action("반복표#4", "편집을 누르고 조를 넣고 그 조에 머리글 1행 · 빈 템플릿 1행 표를 넣는다", async () => {
+    await ev.action("반복표#4", "편집을 누르고 빈 본문을 오른쪽 클릭해 조를 넣고, 항 아래에 머리글 1행 · 템플릿 1행 표를 넣는다", async () => {
       await page.getByRole("button", { name: "편집", exact: true }).click();
       await expect(page.getByRole("button", { name: "저장", exact: true })).toBeVisible();
-      await add("article", { title: "감액 지급" });
-      await openNode(/^제1조\(감액 지급\) 고치기/);
-      await add("table", { title: "세부보장별 감액", headerRows: "1", rows: "세부보장|비고\n|" });
-      await expect(page.locator("table.ts-doc-table")).toHaveCount(1);
+      await expect(page.getByText("오른쪽 클릭으로 추가 · 이동")).toBeVisible();
+      await menu(body.locator("[data-doc-empty]"), "조 추가");
+      const title = body.getByRole("textbox", { name: "조 제목" });
+      await title.fill("감액 지급");
+      await title.press("Enter");
+      await expect(page.getByRole("heading", { name: "제1조(감액 지급)" })).toBeVisible();
+      await menu(page.getByRole("heading", { name: "제1조(감액 지급)" }), "항 추가");
+      await menu(body.locator(".ts-doc-paragraph").first(), "아래에 표 추가…");
+      const pop = page.getByRole("dialog", { name: "표 넣기" });
+      await pop.getByLabel("행 수").fill("2");
+      await pop.getByLabel("열 수").fill("2");
+      await pop.getByLabel("표 제목").fill("세부보장별 감액");
+      await pop.getByRole("button", { name: "표 만들기" }).click();
+      await expect(body.locator("table.ts-doc-table")).toHaveCount(1);
+      await cell("1행 1열").fill("세부보장");
+      await cell("1행 2열").fill("비고");
+      await cell("1행 2열").press("Tab");
+      await expect(cell("1행 1열")).toHaveText("세부보장");
+      await expect(cell("1행 2열")).toHaveText("비고");
     });
 
-    await ev.action("반복표#5", "표 속성에서 행 반복을 「세부보장마다」로 적용한다 — 템플릿 행에 for 띠", async () => {
-      await openNode(/^표 세부보장별 감액 고치기/);
-      const repeat = page.getByLabel("행 반복");
-      await expect(repeat.locator("option")).toHaveText(["없음", "세부보장마다", "세부보장 › 급부마다"]);
-      await repeat.selectOption({ label: "세부보장마다" });
-      await page.getByRole("button", { name: "표 적용" }).click();
-      await expect(page.locator(".ts-l3-body .ts-doc-for-band")).toHaveText("세부보장마다");
-      await expect(page.getByLabel("행 반복")).toHaveValue("1");
+    await ev.action("반복표#5", "템플릿 셀을 누르면 뜨는 조작 줄의 「이 행 반복…」 — 세부보장마다 · 템플릿 행에 for 띠", async () => {
+      await cell("2행 1열").click();
+      const bar = page.getByRole("toolbar", { name: "2행 1열 셀 조작" });
+      await expect(bar).toBeVisible();
+      await bar.getByRole("button", { name: "이 행 반복…" }).click();
+      const pop = page.getByRole("dialog", { name: "행 반복" });
+      await expect(pop.getByLabel("행 반복").locator("option")).toHaveText(["없음", "세부보장마다", "세부보장 › 급부마다"]);
+      await pop.getByLabel("행 반복").selectOption({ label: "세부보장마다" });
+      await pop.getByRole("button", { name: "확인" }).click();
+      await expect(body.locator(".ts-doc-for-band")).toHaveText("세부보장마다");
     });
 
-    await ev.action("반복표#6", "템플릿 셀(2행 1열)에 구조 표기 「세부보장」을 넣는다 — 칩으로 선다", async () => {
-      await page.getByRole("button", { name: "2행 1열 셀에 추가" }).click();
-      await expect(page.locator("aside.ts-l3-side")).toContainText("2행 1열 셀");
-      const kind = page.locator("aside.ts-l3-side details.ts-insert-menu").first().locator("select[name=kind]");
-      await expect(kind.locator("option", { hasText: "구조 표기" })).toHaveCount(1);
-      await add("structKey", { structLevel: "subCoverage" });
-      await expect(page.locator(".ts-l3-body table.ts-doc-table")).toContainText("[세부보장명]");
+    await ev.action("반복표#6", "템플릿 셀(2행 1열)을 오른쪽 클릭 › 구조 표기 「세부보장」 — 칩으로 선다", async () => {
+      await menu(cell("2행 1열"), "구조 표기…");
+      const pop = page.getByRole("dialog", { name: "구조 표기 넣기" });
+      await pop.getByLabel("구조 표기").selectOption("subCoverage");
+      await pop.getByRole("button", { name: "넣기" }).click();
+      await expect(body.locator("table.ts-doc-table")).toContainText("[세부보장명]");
     });
 
-    await ev.action("반복표#7", "머리글 셀에는 구조 표기를 고를 수 없다", async () => {
-      await page.getByRole("button", { name: "1행 1열 셀에 추가" }).click();
-      await expect(page.locator("aside.ts-l3-side")).toContainText("1행 1열 셀");
-      const kind = page.locator("aside.ts-l3-side details.ts-insert-menu").first().locator("select[name=kind]");
-      await expect(kind.locator("option", { hasText: "구조 표기" })).toHaveCount(0);
+    await ev.action("반복표#7", "머리글 셀의 오른쪽 클릭 메뉴에는 구조 표기가 없다 · 셀 조작 줄로 행을 넣고 뺀다", async () => {
+      await cell("1행 1열").click({ button: "right" });
+      await expect(page.getByRole("menuitem", { name: "치환 슬롯…" })).toBeVisible();
+      await expect(page.getByRole("menuitem", { name: "구조 표기…" })).toHaveCount(0);
+      await page.keyboard.press("Escape");
+      await cell("2행 2열").click();
+      await page.getByRole("toolbar", { name: "2행 2열 셀 조작" }).getByRole("button", { name: "아래에 행" }).click();
+      await expect(body.locator("table.ts-doc-table tbody tr")).toHaveCount(3);
+      await cell("3행 1열").click();
+      await page.getByRole("toolbar", { name: "3행 1열 셀 조작" }).getByRole("button", { name: "행 삭제" }).click();
+      await expect(body.locator("table.ts-doc-table tbody tr")).toHaveCount(2);
     });
 
     await ev.action("반복표#7a", "저장 한 번으로 반영하고 읽기 모드로 돌아온다", async () => {
       await submit(page, page.getByRole("button", { name: "저장", exact: true }));
       await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
+      await expect(page.locator(".ts-l3-body table.ts-doc-table")).toContainText("[세부보장명]");
+      await page.reload();
       await expect(page.locator(".ts-l3-body table.ts-doc-table")).toContainText("[세부보장명]");
     });
 

@@ -1,19 +1,22 @@
 "use client";
 
 /**
- * 조문 저작 화면 (L3) — 목차(조만) · 명조 본문 · 모드에 종속된 우측 패널 (디자인원칙 §2 L3 · 리뷰 #43).
+ * 조문 저작 화면 (L3) — 목차(관 › 조) · 가운데 조 하나의 편집기 · 보조 정보 우측 패널 (기능/문면 §4.3).
  *
  * ADR-0074 「편집 → 저장 한 번」:
  * - 읽기 모드에서 시작한다. `편집` 을 누르면 원본 트리와 그 **판**을 받아 브라우저에 **편집본**을 만들고, 같은 자리 버튼이 `저장` 이 된다.
- * - 편집 중의 모든 명령은 순수 도메인 `applyEdit` 로 편집본에 곧바로 적용되고(명령 단위 검사도 그 자리에서) 명령 목록으로 쌓인다.
- *   본문 · 목차 · 우측 패널 · 조건 팝업 · 검증 목록 · 사전평가는 편집 중이면 편집본을 그린다.
+ * - 편집 중의 모든 조작은 순수 도메인 `applyEdit` 로 편집본에 곧바로 적용되고(명령 단위 검사도 그 자리에서) 명령 목록으로 쌓인다.
  * - `저장` = 명령 목록 + 시작 판을 서버로. 서버가 판 확인 · 재적용 · 전체 검증 뒤 한 번에 반영한다.
- *   검증 오류면 편집을 계속하고 오류를 노드로 안내, 판이 다르면 「다른 사람이 먼저 저장했습니다」(편집본 유지). 잠금은 없다.
+ *   검증 오류면 편집을 계속하고 오류를 그 자리로 안내, 판이 다르면 「다른 사람이 먼저 저장했습니다」(편집본 유지). 잠금은 없다.
  * - 경로 링크 · ✕ · 화면을 떠나는 링크는 고친 것이 있으면 「고친 내용을 버립니까?」, 새로고침 · 창 닫기는 브라우저 경고.
- *   편집본을 로컬 저장소에 백업하지 않는다 — 떠나면 사라진다.
- * - 템플릿 삭제 · 복제는 읽기 모드의 더보기 메뉴 — 편집 중에는 없다.
+ *
+ * 가운데 = 그 자리 편집 (2026-09-27):
+ * - 가운데에는 **조 하나**만 보인다 — 목차에서 고른 조, 처음은 제1조. 약관 전체 이어 읽기는 더보기 › 미리보기.
+ * - 조 제목 · 관 제목 · 문장은 그 자리에서 고치고, 초점이 떠나면 편집본에 들어간다(「적용」 단계 없음).
+ * - 칩 · 조건 머리는 누르면 바로 아래에 팝업. 넣기 · 이동 · 복제 · 삭제는 **오른쪽 클릭 메뉴**가 유일한 입구다(편집 모드만).
+ * - 화면은 100vh 에 고정되고 목차 · 가운데 · 우측 패널이 각자 스크롤한다.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type MouseEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import { Breadcrumb } from "@/app/_components/Breadcrumb";
@@ -37,6 +40,7 @@ import {
   indexTree,
   numberTree,
   preEvaluate,
+  randomIds,
   referenceTargetIndex,
   repeatLevels,
   repeatScopeOf,
@@ -47,6 +51,7 @@ import {
   type DraftState,
   type EditEnv,
   type EditOp,
+  type InlineAt,
   type ReferenceTarget,
 } from "@/domain/document";
 import type { Code, Coordinate, Id, Impact, Issue } from "@/domain/types";
@@ -55,9 +60,14 @@ import { loadGeneralForEditAction, saveDocumentEditAction, startDocumentEditActi
 import { docListHref } from "../../lib";
 import { refLabelOf } from "./condition/display";
 import type { ConditionContext } from "./condition/types";
-import { DocBody } from "./DocBody";
-import type { DocCtx, DocMode, Selection } from "./ctx";
-import { moveOps } from "./formOps";
+import { decodeAt, type Anchor, type CellAt, type DocCtx, type DocMode, type EditHandlers } from "./ctx";
+import { ArticleBody, DocBody } from "./DocBody";
+import { afterOf, emptyNode, inlineListAt, pasteGridOps } from "./editOps";
+import { caretFromPoint, tokensOf } from "./Inline";
+import { identityRuns, runsFromTokens, sameRuns, type Token } from "./inlineRuns";
+import { articleMenu, blockMenu, chipMenu, condMenu, documentMenu, inlineInsertItems, sectionMenu, type MenuEnv, type MenuItem, type MenuSections, type PopupSpec } from "./menus";
+import { PopupHost, type PopupEnv } from "./Popups";
+import { ContextMenu, Popover } from "./Popover";
 import { RemoveCard } from "./RemoveCard";
 import { DraftIssues, SidePanel, type PanelData } from "./SidePanel";
 import { Toc, articlesOf } from "./Toc";
@@ -91,7 +101,7 @@ export interface EditorProps {
   /** 조건 팝업 문맥(반복 표 「현재 행」 없이) — 담보 트리 · 구분자 · 열린 폼 · 빠른 조건. */
   condition: ConditionContext;
   slotCandidates: readonly { path: string; label: string }[];
-  /** 좌표 링크(`?node=`)로 들어왔을 때 고른 자리. */
+  /** 좌표 링크(`?node=`)로 들어왔을 때 열 자리 — 그 조를 열고 그 자리를 강조한다. */
   initialNode?: Id;
   /** `?view=eval` — 미리보기를 켠 채로. */
   initialEval?: boolean;
@@ -117,15 +127,35 @@ const NODE_WHAT: Record<string, string> = {
   paragraph: "항",
   item: "호",
   subitem: "목",
-  text: "문장",
-  slot: "치환 슬롯",
-  inlineCond: "문장 안 조건",
   condBlock: "조건 블록",
   clauseBlockRef: "공용조항 참조",
-  clauseInlineRef: "공용조항 참조",
-  articleRef: "조 참조 슬롯",
-  appendixRef: "별표 참조 슬롯",
+  forBlock: "반복 블록",
 };
+
+/** 노드가 든 조 — 조면 자기, 관이면 그 첫 조. */
+function articleOfNode(tree: DraftState["tree"], nodeId: Id): Id | undefined {
+  const ix = indexTree(tree);
+  const e = ix.nodes.get(nodeId);
+  if (e?.node.kind === "section") return articlesOf(e.node)[0]?.id;
+  return e?.articleId ?? ix.branches.get(nodeId)?.articleId;
+}
+
+/** 조 전체 보기(더보기 › 미리보기) — 약관 한 벌을 이어 읽는다. */
+function FullPreview({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (ref.current && !ref.current.open) ref.current.showModal();
+  }, []);
+  return (
+    <dialog ref={ref} className="ts-dialog ts-dialog-full" aria-label="미리보기 — 약관 전체" onClose={onClose}>
+      <div className="ts-dialog-full-head">
+        <p className="ts-pop-title">미리보기 — 약관 전체</p>
+        <IconButton icon={<IconClose />} label="미리보기 닫기" onClick={onClose} />
+      </div>
+      <div className="ts-dialog-full-body">{children}</div>
+    </dialog>
+  );
+}
 
 export function DocumentEditor(props: EditorProps) {
   const { doc } = props;
@@ -140,20 +170,28 @@ export function DocumentEditor(props: EditorProps) {
   };
   const [generalCache, setGeneralCache] = useState<Record<Id, GeneralForEdit>>(() => (props.general ? { [props.general.id]: props.general } : {}));
   const generalRef = useRef(generalCache);
-  const [sel, setSel] = useState<Selection>(props.initialNode ? { node: props.initialNode } : {});
-  const [art, setArt] = useState<Id>();
-  const [removing, setRemoving] = useState<Id>();
+  const [art, setArt] = useState<Id | undefined>(() => (props.initialNode ? articleOfNode(doc.tree, props.initialNode) : undefined));
+  const [flashId, setFlashId] = useState<Id | undefined>(props.initialNode);
+  const [menu, setMenu] = useState<{ x: number; y: number; sections: MenuSections }>();
+  const [pop, setPop] = useState<{ spec: PopupSpec; anchor: Anchor }>();
+  const [removing, setRemoving] = useState<{ nodeId: Id; anchor: Anchor }>();
+  const [activeCell, setActiveCell] = useState<CellAt>();
+  const [focusRequest, setFocusRequest] = useState<Id>();
+  const [fullView, setFullView] = useState(false);
   const [banner, setBanner] = useState<Banner>();
   const [conflict, setConflict] = useState<string>();
   const [confirmSave, setConfirmSave] = useState<Impact>();
   const [discard, setDiscard] = useState<{ go: () => void }>();
   const [evalOn, setEvalOn] = useState(Boolean(props.initialEval));
-  const [revision, setRevision] = useState(0);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const menuAt = useRef<Anchor>({ x: 0, y: 0 });
 
   const dirty = mode === "edit" && (draft?.ops.length ?? 0) > 0;
   const original: DraftState = useMemo(() => ({ tree: doc.tree, ...(doc.generalDocumentId ? { generalDocumentId: doc.generalDocumentId } : {}) }), [doc.tree, doc.generalDocumentId]);
   const current = mode === "edit" && draft ? draft.state : original;
   const tree = current.tree;
+  /** 누르는 순간의 편집본 트리 — 메뉴를 연 뒤 문장 칸이 초점을 잃으며 글이 먼저 적용될 수 있다. */
+  const latest = useCallback(() => draftRef.current?.state.tree ?? doc.tree, [doc.tree]);
 
   // ── 검증 재료 — 서버 저장 검증과 같은 한 벌(validateDocument)을 서버가 넘긴 정의로 짓는다 ──
   const coordinate: Coordinate = useMemo(() => ({ document: doc.kind, ownerId: doc.ownerId ?? doc.id, documentId: doc.id, ownerName: doc.title }), [doc.kind, doc.ownerId, doc.id, doc.title]);
@@ -219,39 +257,51 @@ export function DocumentEditor(props: EditorProps) {
 
   const index = useMemo(() => indexTree(tree), [tree]);
   const articles = useMemo(() => articlesOf(tree), [tree]);
-  const selectedEntry = sel.node ? index.nodes.get(sel.node) : undefined;
-  const selectedBranch = sel.node ? index.branches.get(sel.node) : undefined;
-  const currentArticleId = art ?? selectedEntry?.articleId ?? selectedBranch?.articleId;
-  const selectedCell = useMemo(
-    () => (sel.cell && selectedEntry?.node.kind === "table" && selectedEntry.node.rows[sel.cell.row]?.cells[sel.cell.col] ? { tableId: selectedEntry.node.id, ...sel.cell } : undefined),
-    [sel.cell, selectedEntry],
+
+  // ── 가운데에 열 조 — 고른 조가 사라졌으면(삭제 · 편집 취소) 원래 자리에서 가장 가까운 조, 처음은 제1조 ──
+  // 조 목록이 바뀐 렌더에서 상태를 맞춘다 (React 「prop 이 바뀌면 상태를 조정한다」 패턴 — 이펙트 안 setState 는 피한다)
+  const articleIds = articles.map((a) => a.id);
+  const [seenOrder, setSeenOrder] = useState<Id[]>(articleIds);
+  if (seenOrder.join("|") !== articleIds.join("|")) {
+    setSeenOrder(articleIds);
+    if (art && !articleIds.includes(art)) {
+      const at = seenOrder.indexOf(art);
+      const after = at >= 0 ? seenOrder.slice(at + 1).find((id) => articleIds.includes(id)) : undefined;
+      const before = at >= 0 ? seenOrder.slice(0, at).reverse().find((id) => articleIds.includes(id)) : undefined;
+      setArt(after ?? before ?? articleIds[0]);
+    }
+  }
+  const currentArticleId = art && articleIds.includes(art) ? art : articleIds[0];
+
+  // 조를 옮기면 가운데 스크롤은 맨 위로 — 강조할 자리가 있으면 그 자리로
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!body) return;
+    const target = flashId ? body.querySelector(`[data-node="${CSS.escape(flashId)}"]`) : null;
+    if (target) target.scrollIntoView({ block: "center" });
+    else body.scrollTop = 0;
+  }, [currentArticleId, flashId]);
+  useEffect(() => {
+    if (!flashId) return;
+    const t = setTimeout(() => setFlashId(undefined), 2500);
+    return () => clearTimeout(t);
+  }, [flashId]);
+
+  /** 그 자리로 — 그 조를 가운데에 열고 그 자리를 잠깐 강조한다 (검증 목록 「고칠 자리로」 · 참조처). */
+  const go = useCallback(
+    (nodeId: Id) => {
+      const articleId = articleOfNode(latest(), nodeId);
+      if (articleId) setArt(articleId);
+      setFlashId(nodeId);
+    },
+    [latest],
   );
 
-  // 반복 표 템플릿 셀 안이면 조건 팝업 · 슬롯 트리에 「현재 행」 가지 (ADR-0070 · 설계 §3.1) — 담보약관만
-  const condition: ConditionContext = useMemo(() => {
-    if (!props.condition.coverage || !sel.node) return props.condition;
-    let row: ConditionContext["row"];
-    if (selectedCell && selectedEntry?.node.kind === "table") {
-      const t = selectedEntry.node;
-      if (t.repeat && !t.rows[selectedCell.row]?.header) row = { levels: repeatLevels(t), readable: rowReadableLevels(repeatLevels(t)) };
-    } else {
-      const nodeId = index.nodes.has(sel.node) ? sel.node : selectedBranch?.ownerId;
-      const scoped = nodeId ? repeatScopeOf(tree, nodeId) : undefined;
-      if (scoped) row = { levels: scoped.levels, readable: scoped.readable };
-    }
-    return row ? { ...props.condition, row } : props.condition;
-  }, [props.condition, sel.node, selectedCell, selectedEntry, selectedBranch, index, tree]);
-
   // ── 조작 ──
-  const select = useCallback((next: Selection) => {
-    setSel(next);
-    setRemoving(undefined);
-  }, []);
-
-  /** 편집본에 명령을 적용한다 — 하나라도 거부되면 아무것도 적용하지 않고 사유 배너. */
-  const apply = (ops: readonly EditOp[]): boolean => {
+  /** 편집본에 명령을 적용한다 — 하나라도 거부되면 아무것도 적용하지 않고 사유 배너. 적용한 명령(복제는 사본 id 가 실린)을 돌려준다. */
+  const applyRecorded = (ops: readonly EditOp[]): EditOp[] | undefined => {
     const d = draftRef.current;
-    if (!d) return false;
+    if (!d) return undefined;
     let state = d.state;
     const recorded: EditOp[] = [];
     const env = makeEditEnv(generalRef.current);
@@ -260,17 +310,16 @@ export function DocumentEditor(props: EditorProps) {
       if (!r.ok) {
         const view = describeRejection(r.rejection);
         setBanner({ message: `적용하지 못했다 — ${view.message}`, ...(view.issues && view.issues.length > 1 ? { issues: view.issues } : {}) });
-        return false;
+        return undefined;
       }
       state = r.value.state;
       recorded.push(r.value.op);
     }
-    if (recorded.length === 0) return true;
-    setDraft({ ...d, state, ops: [...d.ops, ...recorded] });
+    if (recorded.length > 0) setDraft({ ...d, state, ops: [...d.ops, ...recorded] });
     setBanner(undefined);
-    setRevision((n) => n + 1);
-    return true;
+    return recorded;
   };
+  const apply = (ops: readonly EditOp[]): boolean => applyRecorded(ops) !== undefined;
 
   const setGeneral = (generalDocumentId: Id | undefined) => {
     if (generalDocumentId === undefined || generalRef.current[generalDocumentId]) {
@@ -323,9 +372,14 @@ export function DocumentEditor(props: EditorProps) {
     setConflict(undefined);
     setRemoving(undefined);
     setConfirmSave(undefined);
+    setMenu(undefined);
+    setPop(undefined);
+    setActiveCell(undefined);
   };
 
   const save = (confirm = false) => {
+    // 문장 칸에 초점이 남아 있으면 먼저 편집본에 넣는다 (초점이 떠날 때 적용된다)
+    (document.activeElement as HTMLElement | null)?.blur?.();
     const d = draftRef.current;
     if (!d) return;
     startTransition(async () => {
@@ -349,7 +403,7 @@ export function DocumentEditor(props: EditorProps) {
   };
 
   /** 고친 것이 있으면 「고친 내용을 버립니까?」 뒤에, 없으면 바로 (디자인원칙 §1.7). */
-  const leave = useCallback((go: () => void) => (dirty ? setDiscard({ go }) : go()), [dirty]);
+  const leave = (go: () => void) => (dirty ? setDiscard({ go }) : go());
 
   // 새로고침 · 창 닫기 — 브라우저 경고. 편집본은 로컬에 백업하지 않는다.
   useEffect(() => {
@@ -362,10 +416,10 @@ export function DocumentEditor(props: EditorProps) {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [dirty]);
 
-  // 화면을 떠나는 링크(경로 · 내비 · 「고치러 가기」)는 고친 것이 있으면 확인을 거친다. 같은 화면 안 앵커(#art-…)는 그대로.
+  // 화면을 떠나는 링크(경로 · 내비 · 「고치러 가기」)는 고친 것이 있으면 확인을 거친다.
   useEffect(() => {
     if (!dirty) return;
-    const onClick = (event: MouseEvent) => {
+    const onClick = (event: globalThis.MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const anchor = (event.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
       if (!anchor || anchor.target === "_blank") return;
@@ -380,15 +434,6 @@ export function DocumentEditor(props: EditorProps) {
     return () => document.removeEventListener("click", onClick, true);
   }, [dirty, router]);
 
-  // 좌표 링크로 들어왔으면 그 조로 스크롤 (처음 한 번)
-  useEffect(() => {
-    if (!props.initialNode) return;
-    const ix = indexTree(doc.tree);
-    const articleId = ix.nodes.get(props.initialNode)?.articleId ?? ix.branches.get(props.initialNode)?.articleId;
-    if (articleId) document.getElementById(`art-${articleId}`)?.scrollIntoView({ block: "start" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const toggleEval = () => {
     const next = !evalOn;
     setEvalOn(next);
@@ -401,83 +446,254 @@ export function DocumentEditor(props: EditorProps) {
     }
   };
 
+  // ── 오른쪽 클릭 메뉴 — 누른 자리(data-*)로 메뉴를 짓는다 ──
+  const menuEnv = (): MenuEnv => {
+    const t = latest();
+    return { tree: t, ix: indexTree(t), docKind: doc.kind, newId: randomIds };
+  };
+
+  const inlineSections = (env: MenuEnv, at: InlineAt, tokens: Token[]): MenuSections => {
+    if ("tableId" in at) {
+      const t = env.ix.nodes.get(at.tableId)?.node;
+      const template = t?.kind === "table" && t.repeat !== undefined && !t.rows[at.row]?.header ? repeatLevels(t) : undefined;
+      return [inlineInsertItems(at, tokens, { inInlineCond: false, ...(template ? { structLevels: template } : {}) }), ...blockMenu(env, at.tableId)];
+    }
+    const branch = env.ix.branches.get(at.parentId);
+    if (branch) return [inlineInsertItems(at, tokens, { inInlineCond: env.ix.nodes.get(branch.ownerId)?.node.kind === "inlineCond" })];
+    const owner = env.ix.nodes.get(at.parentId);
+    return [inlineInsertItems(at, tokens, { inInlineCond: owner?.inInlineCond ?? false }), ...(owner ? blockMenu(env, at.parentId) : [])];
+  };
+
+  const onContextMenu = (event: MouseEvent<HTMLElement>) => {
+    if (mode !== "edit") return;
+    event.preventDefault();
+    event.stopPropagation();
+    const target = event.target as HTMLElement;
+    const env = menuEnv();
+    const data = (selector: string, key: string): string | undefined => (target.closest(selector) as HTMLElement | null)?.dataset[key];
+    let sections: MenuSections;
+    const chip = data("[data-chip]", "chip");
+    const head = data("[data-cond-head]", "condHead");
+    const articleTitle = data("[data-article-title]", "articleTitle");
+    const sectionTitle = data("[data-section-title]", "sectionTitle");
+    const inline = target.closest("[data-inline]") as HTMLElement | null;
+    const block = data("[data-block]", "block");
+    const article = data("[data-article]", "article");
+    if (chip) sections = chipMenu(env, chip);
+    else if (head) sections = condMenu(env, head);
+    else if (articleTitle) sections = articleMenu(env, articleTitle);
+    else if (sectionTitle) sections = sectionMenu(env, sectionTitle);
+    else if (inline?.dataset.inline) {
+      const at = decodeAt(inline.dataset.inline);
+      const caret = caretFromPoint(event.clientX, event.clientY);
+      const tokens = tokensOf(inline, caret && inline.contains(caret.node) ? caret : undefined);
+      sections = at ? inlineSections(env, at, tokens) : [];
+    } else if (block) sections = blockMenu(env, block);
+    else if (article) sections = articleMenu(env, article);
+    else sections = documentMenu(env);
+    menuAt.current = { x: event.clientX, y: event.clientY + 4, top: event.clientY };
+    setMenu({ x: event.clientX, y: event.clientY, sections });
+  };
+
+  const runMenu = (item: MenuItem) => {
+    const a = item.action;
+    if (a.do === "popup") {
+      setPop({ spec: a.popup, anchor: menuAt.current });
+      return;
+    }
+    if (a.do === "remove") {
+      setRemoving({ nodeId: a.nodeId, anchor: menuAt.current });
+      return;
+    }
+    const ops = typeof a.ops === "function" ? a.ops(latest()) : a.ops;
+    if (ops.length === 0) return;
+    const recorded = applyRecorded(ops);
+    if (!recorded) return;
+    if (a.focus) setFocusRequest(a.focus);
+    if (a.goArticle) setArt(a.goArticle);
+    if (a.goDuplicate) {
+      const dup = recorded.find((op) => op.type === "duplicate");
+      const copyId = dup && dup.type === "duplicate" ? dup.ids?.[0] : undefined;
+      const target = copyId ? articleOfNode(latest(), copyId) : undefined;
+      if (target) setArt(target);
+    }
+  };
+
+  const edit: EditHandlers = {
+    apply,
+    commitInline: (at, tokens) => {
+      const list = inlineListAt(latest(), at);
+      if (!list) return;
+      const runs = runsFromTokens(list, tokens, randomIds);
+      if (sameRuns(runs, identityRuns(list))) return;
+      apply([{ type: "setInlines", at, runs }]);
+    },
+    enter: (ownerId) => {
+      const t = latest();
+      const ix = indexTree(t);
+      const kind = ix.nodes.get(ownerId)?.node.kind;
+      const after = afterOf(ix, ownerId);
+      if (!after || (kind !== "paragraph" && kind !== "item" && kind !== "subitem")) return;
+      const node = emptyNode(kind, randomIds);
+      if (apply([{ type: "insert", node, at: after }])) setFocusRequest(node.id);
+    },
+    removeEmpty: (ownerId) => {
+      const ix = indexTree(latest());
+      const e = ix.nodes.get(ownerId);
+      if (!e) return false;
+      const n = e.node as { items?: unknown[]; subitems?: unknown[] };
+      if ((n.items?.length ?? 0) > 0 || (n.subitems?.length ?? 0) > 0) return false;
+      const prev = [...ix.nodes.values()].find((o) => o.parentId === e.parentId && o.slot === e.slot && o.index === e.index - 1);
+      if (!apply([{ type: "remove", nodeId: ownerId }])) return false;
+      if (prev && (prev.node.kind === "paragraph" || prev.node.kind === "item" || prev.node.kind === "subitem")) setFocusRequest(prev.node.id);
+      return true;
+    },
+    pasteGrid: (cell, text) => {
+      const t = indexTree(latest()).nodes.get(cell.tableId)?.node;
+      if (!t || t.kind !== "table") return false;
+      const ops = pasteGridOps(t, cell.row, cell.col, text, randomIds);
+      if (!ops) return false;
+      apply(ops);
+      return true;
+    },
+    setTitle: (nodeId, title) => {
+      apply([{ type: "setTitle", nodeId, title: title.trim() }]);
+    },
+    setBox: (nodeId, title, lines) => {
+      apply([{ type: "setBox", nodeId, title: title.trim(), lines }]);
+    },
+    popup: (spec, anchor) => setPop({ spec, anchor }),
+    focusInline: (at) => setActiveCell("tableId" in at ? at : undefined),
+    ...(activeCell ? { activeCell } : {}),
+    setActiveCell,
+    ...(focusRequest ? { focusRequest } : {}),
+    focusDone: () => setFocusRequest(undefined),
+    contextMenu: onContextMenu,
+  };
+
   const ctx: DocCtx = {
     documentId: doc.id,
     docKind: doc.kind,
     mode,
-    ...(sel.node && mode === "edit" ? { selectedId: sel.node } : {}),
-    ...(selectedCell && mode === "edit" ? { selectedCell } : {}),
     numbers,
     ...(evaluation ? { branchEval: evaluation.branches, slotEval: evaluation.slots } : {}),
     appendixName,
     clauseLabel,
     optionText,
     references,
-    select,
-    apply,
-    fail: (message) => setBanner({ message: `적용하지 못했다 — ${message}` }),
-    move: (nodeId, dir) => {
-      const ops = moveOps(tree, nodeId, dir);
-      if (ops.length > 0) apply(ops);
-    },
-    askRemove: (nodeId) => setRemoving(nodeId),
     refLabel,
+    ...(flashId ? { flashId } : {}),
+    ...(mode === "edit" ? { edit } : {}),
   };
 
-  const panel: PanelData = {
+  // 팝업의 조건 · 슬롯 문맥 — 반복 표 템플릿 셀 안이면 「현재 행」 가지 (ADR-0070 · 설계 §3.1). 담보약관만.
+  const conditionFor = (spec: PopupSpec): ConditionContext => {
+    if (!props.condition.coverage) return props.condition;
+    const withRow = (levels: ReturnType<typeof repeatLevels> | undefined) => (levels && levels.length > 0 ? { ...props.condition, row: { levels, readable: rowReadableLevels(levels) } } : props.condition);
+    const scopeOf = (id: Id) => {
+      const owner = index.branches.get(id)?.ownerId ?? id;
+      return repeatScopeOf(tree, owner)?.levels;
+    };
+    switch (spec.kind) {
+      case "insertInline": {
+        if ("tableId" in spec.at) {
+          const t = index.nodes.get(spec.at.tableId)?.node;
+          return withRow(t?.kind === "table" && t.repeat && !t.rows[spec.at.row]?.header ? repeatLevels(t) : undefined);
+        }
+        return withRow(scopeOf(spec.at.parentId));
+      }
+      case "editChip":
+      case "wrap":
+        return withRow(scopeOf(spec.nodeId));
+      case "when":
+        return withRow(scopeOf(spec.branchId));
+      case "addBranch":
+        return withRow(scopeOf(spec.condId));
+      default:
+        return props.condition;
+    }
+  };
+
+  const popupEnv: PopupEnv = {
+    ctx,
     tree,
-    index,
+    latest,
+    apply,
+    newId: randomIds,
     appendices: props.appendices,
     clauses: props.clauses,
-    condition,
-    slotCandidates: props.slotCandidates,
     generals: props.generals,
     ...(current.generalDocumentId ? { generalDocumentId: current.generalDocumentId } : {}),
     ...(props.suggestedGeneralId ? { suggestedGeneralId: props.suggestedGeneralId } : {}),
+    setGeneral,
+    condition: pop ? conditionFor(pop.spec) : props.condition,
+  };
+
+  const generalTitle = current.generalDocumentId
+    ? (props.generals.find((g) => g.id === current.generalDocumentId)?.title ?? renderCache[current.generalDocumentId]?.title)
+    : props.suggestedGeneralId
+      ? props.generals.find((g) => g.id === props.suggestedGeneralId)?.title
+      : undefined;
+
+  const panel: PanelData = {
+    index,
     issues,
     documentTitle: tree.title,
+    ...(generalTitle ? { generalTitle } : {}),
+    generalProposed: current.generalDocumentId === undefined && props.suggestedGeneralId !== undefined,
     ...(evaluation ? { branchEval: evaluation.branches } : {}),
     evalRan: evaluation !== undefined,
     evalAvailable,
     ...(props.evalNote ? { evalNote: props.evalNote } : {}),
-    ...(evaluation && mode === "read" ? { rendered: <DocBody tree={tree} ctx={{ ...ctx, mode: "read", tables: evaluation.tables }} /> } : {}),
+    ...(evaluation && mode === "read" ? { rendered: <DocBody tree={tree} ctx={{ ...ctx, tables: evaluation.tables }} /> } : {}),
     toggleEval,
-    setGeneral,
+    go,
   };
 
-  // ── 삭제 확인 카드 (편집본) ──
+  const popAt = (rect: DOMRect): Anchor => ({ x: rect.left, y: rect.bottom, top: rect.top });
+  const moreItems: MoreMenuItem[] =
+    mode === "edit"
+      ? [
+          { label: "미리보기", onSelect: () => setFullView(true) },
+          { label: "템플릿 이름…", onSelect: (rect) => setPop({ spec: { kind: "docTitle" }, anchor: popAt(rect) }) },
+          ...(doc.kind === "special" ? [{ label: "대응 보통약관…", onSelect: (rect: DOMRect) => setPop({ spec: { kind: "general" }, anchor: popAt(rect) }) }] : []),
+        ]
+      : [{ label: "미리보기", onSelect: () => setFullView(true) }, ...props.moreItems];
+
+  // ── 삭제 확인 (편집본) — 누른 자리 가까이 ──
   let removeCard: ReactNode = null;
   if (mode === "edit" && removing) {
-    const entry = index.nodes.get(removing);
+    const entry = index.nodes.get(removing.nodeId);
     if (entry) {
       const num = numbers.get(entry.node.id);
       const ordinal = num && ["paragraph", "item", "subitem"].includes(entry.node.kind) ? `제${num.n}` : "";
-      const what = entry.node.kind === "article" ? `${num?.label ?? "조"}(${(entry.node as { title: string }).title})` : `${ordinal}${NODE_WHAT[entry.node.kind] ?? entry.node.kind}`.trim();
+      const what =
+        entry.node.kind === "article" ? `${num?.label ?? "조"}(${(entry.node as { title: string }).title})` : entry.node.kind === "section" ? `${num?.label ?? "관"} ${(entry.node as { title: string }).title}` : `${ordinal}${NODE_WHAT[entry.node.kind] ?? entry.node.kind}`.trim();
       removeCard = (
-        <RemoveCard
-          documentId={doc.id}
-          tree={tree}
-          node={entry.node}
-          what={what}
-          articles={articles}
-          inOriginal={indexTree(doc.tree).nodes.has(entry.node.id)}
-          onRemove={() => {
-            if (apply([{ type: "remove", nodeId: entry.node.id }])) {
+        <Popover anchor={removing.anchor} label={`${what} 삭제`} onClose={() => setRemoving(undefined)}>
+          <RemoveCard
+            documentId={doc.id}
+            tree={tree}
+            node={entry.node}
+            what={what}
+            articles={articles}
+            inOriginal={indexTree(doc.tree).nodes.has(entry.node.id)}
+            onRemove={() => {
+              if (apply([{ type: "remove", nodeId: entry.node.id }])) setRemoving(undefined);
+            }}
+            onCancel={() => setRemoving(undefined)}
+            onGo={(nodeId) => {
               setRemoving(undefined);
-              setSel({});
-            }
-          }}
-          onCancel={() => setRemoving(undefined)}
-          onGo={(nodeId) => select({ node: nodeId })}
-        />
+              go(nodeId);
+            }}
+          />
+        </Popover>
       );
     }
   }
 
-  const panelKey = `${mode}:${sel.node ?? "doc"}:${sel.cell ? `${sel.cell.row}-${sel.cell.col}` : ""}:${revision}`;
-
   return (
-    // 바는 자기 높이만, 나머지 한 줄이 남는 높이를 먹는다 — 열·행 모두 globals.css 의 .ts-l3 가 정한다.
+    // 화면 높이에 고정 — 바는 위에, 목차 · 가운데 · 우측 패널은 각자 스크롤한다 (globals.css .ts-l3).
     // L3 는 전폭 화면이다 — `.ts-main:has(> .ts-l3)`(globals.css)가 공통 레이아웃의 최대폭·패딩을 여기서만 푼다.
     <div className="ts-l3" aria-busy={pending || undefined}>
       <div className="ts-l3-bar">
@@ -486,11 +702,15 @@ export function DocumentEditor(props: EditorProps) {
           조 <b>{articles.length}</b> · 검증 오류 <b>{errorCount}</b> / 노드 {index.nodes.size}
         </span>
         {mode === "edit" && (
-          <span className="ts-l3-dirty" title="편집본에 적용한 명령 수 — 저장해야 원본에 반영된다">
-            {dirty ? `편집 중 · 고친 것 ${draft!.ops.length}건 — 저장해야 반영` : "편집 중"}
-          </span>
+          <>
+            <span className="ts-l3-dirty" title="편집본에 넣은 명령 수 — 저장해야 원본에 반영된다">
+              {dirty ? `편집 중 · 고친 것 ${draft!.ops.length}건 — 저장해야 반영` : "편집 중"}
+            </span>
+            <span className="ts-l3-hint">오른쪽 클릭으로 추가 · 이동</span>
+          </>
         )}
         <span className="ts-l3-bar-actions">
+          <MoreMenu items={moreItems} />
           {mode === "edit" ? (
             <>
               <IconButton
@@ -510,19 +730,33 @@ export function DocumentEditor(props: EditorProps) {
               </button>
             </>
           ) : (
-            <>
-              {props.moreItems.length > 0 && <MoreMenu items={props.moreItems} />}
-              <button type="button" onClick={startEdit} disabled={pending}>
-                편집
-              </button>
-            </>
+            <button type="button" onClick={startEdit} disabled={pending}>
+              편집
+            </button>
           )}
         </span>
       </div>
 
-      <Toc articles={articles} numbers={numbers} {...(currentArticleId ? { currentArticleId } : {})} onPick={setArt} />
+      <Toc
+        tree={tree}
+        numbers={numbers}
+        {...(currentArticleId ? { currentArticleId } : {})}
+        onPick={(id) => {
+          setArt(id);
+          setFlashId(undefined);
+          setActiveCell(undefined);
+        }}
+      />
 
-      <div className="ts-l3-body">
+      <div
+        className="ts-l3-body"
+        ref={bodyRef}
+        onContextMenu={onContextMenu}
+        onPointerDown={(e) => {
+          // 표 밖을 누르면 셀 조작 줄을 닫는다
+          if (activeCell && !(e.target as HTMLElement).closest(".ts-doc-table, .ts-cell-bar")) setActiveCell(undefined);
+        }}
+      >
         {conflict && (
           <div className="ts-error-banner" role="alert">
             <p>{conflict}</p>
@@ -538,7 +772,7 @@ export function DocumentEditor(props: EditorProps) {
         {banner && (
           <div className="ts-error-banner" role="alert">
             <p>{banner.message}</p>
-            {banner.issues && banner.issues.length > 0 && <DraftIssues ctx={{ select }} issues={banner.issues} />}
+            {banner.issues && banner.issues.length > 0 && <DraftIssues go={go} issues={banner.issues} />}
           </div>
         )}
         {props.notice}
@@ -549,19 +783,38 @@ export function DocumentEditor(props: EditorProps) {
             </option>
           ))}
         </datalist>
-        <DocBody tree={tree} ctx={ctx} />
+        {currentArticleId ? (
+          <ArticleBody index={index} articleId={currentArticleId} ctx={ctx} />
+        ) : (
+          <div className="ts-empty" data-doc-empty="true">
+            <p className="ts-empty-what">아직 조가 하나도 없다 — 이 템플릿은 조립해도 아무것도 만들지 않는다.</p>
+            <p className="ts-empty-example">예: 제1조(보험금의 지급사유) · 제2조(보험금을 지급하지 않는 사유)</p>
+            <p className="ts-empty-action">
+              {mode === "edit" ? "여기를 오른쪽 클릭해 「조 추가」 · 「관 추가」로 시작한다. 다 쓰면 「저장」." : "위 바의 「편집」을 누르고, 본문을 오른쪽 클릭해 조를 넣는다. 다 쓰면 「저장」."}
+            </p>
+          </div>
+        )}
       </div>
 
-      {removeCard ? <aside className="ts-l3-side">{removeCard}</aside> : <SidePanel key={panelKey} ctx={ctx} data={panel} />}
+      <SidePanel ctx={ctx} data={panel} />
+
+      {menu && <ContextMenu x={menu.x} y={menu.y} sections={menu.sections} onPick={runMenu} onClose={() => setMenu(undefined)} />}
+      {pop && mode === "edit" && <PopupHost env={popupEnv} spec={pop.spec} anchor={pop.anchor} onClose={() => setPop(undefined)} />}
+      {removeCard}
+      {fullView && (
+        <FullPreview onClose={() => setFullView(false)}>
+          <DocBody tree={tree} ctx={ctx} />
+        </FullPreview>
+      )}
 
       {discard ? (
         <DiscardDialog
           onStay={() => setDiscard(undefined)}
           onDiscard={() => {
-            const { go } = discard;
+            const { go: proceed } = discard;
             setDiscard(undefined);
             endEdit();
-            go();
+            proceed();
           }}
         />
       ) : null}

@@ -24,6 +24,8 @@ import {
 import { parse, type CompareOp, type DiscriminatorRef, type Literal } from "@/domain/expression";
 import type { FieldType } from "@/domain/types";
 
+import type { Anchor } from "../ctx";
+import { placeAt } from "../Popover";
 import { DiscriminatorTree } from "./DiscriminatorTree";
 import type { ConditionContext, CtxDiscriminator, QuickCondition } from "./types";
 
@@ -32,7 +34,7 @@ type Focus = { row: number; cell: "left" | "right" };
 const TREE_LEVELS = new Set<string>(COVERAGE_NODE_LEVELS);
 
 /**
- * 이 팝업은 서버 액션 `<form>` 안에 떠 있다 (BranchForms · AddForm · NodeForms 세 곳 모두) — 버튼은
+ * 이 팝업은 그 자리 팝업의 `<form>` 안에 뜰 수 있다(문장 안 조건 넣기의 조건식 칸) — 버튼은
  * 전부 `type="button"` 이지만 input 위에서 Enter 는 HTML 암시적 제출로 그 form 을 그대로 제출해
  * 버린다(hidden `when` 은 마지막으로 확인한 값 그대로, 편집 중 내용은 버려진다). Escape 는 다이얼로그의
  * 네이티브 동작(닫기)이라 여기서 막지 않는다 — input 위의 Enter 만 막는다.
@@ -173,12 +175,15 @@ export function ConditionDialog({
   initial,
   onConfirm,
   onCancel,
+  anchor,
 }: {
   open: boolean;
   context: ConditionContext;
   initial?: string;
   onConfirm: (source: string) => void;
   onCancel: () => void;
+  /** 누른 자리(조건 머리 · 칩) — 주면 가운데가 아니라 그 바로 아래에 뜬다 (기능/문면 §4.3). */
+  anchor?: Anchor;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [rows, setRows] = useState<ConditionRows>(() => parseInitial(initial).rows);
@@ -193,7 +198,8 @@ export function ConditionDialog({
     if (!dialog) return;
     if (open && !dialog.open) dialog.showModal();
     if (!open && dialog.open) dialog.close();
-  }, [open]);
+    if (open && anchor) placeAt(dialog, anchor);
+  }, [open, anchor]);
 
   // 열릴 때마다(또는 initial 이 바뀌었을 때) 이전 편집 중 상태를 버리고 다시 판다 — 렌더 중 상태 조정
   // (React 문서의 "prop 이 바뀌면 상태를 조정한다" 패턴), 이펙트 안 setState 는 피한다.

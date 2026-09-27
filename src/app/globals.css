@@ -2952,8 +2952,7 @@ label.ts-field > textarea {
   line-height: 1.6;
 }
 
-/* 문서 세계 안의 「누르는 자리」 — 편집 모드의 인라인 글자 · 조건 칩 · 셀 ＋ (ADR-0074: 쿼리 링크가 아니라 편집본 선택).
-   버튼이지만 글자처럼 보인다 — 점선 밑줄이 「여기 고칠 수 있다」를 말하고, 고른 자리는 실선 주칠 밑줄. */
+/* 글자처럼 보이는 버튼 — 검증 목록의 「고칠 자리로」 · 삭제 확인의 「그 자리로」. 점선 밑줄이 「누를 수 있다」를 말한다. */
 button.ts-doc-pick {
   display: inline;
   min-height: 0;
@@ -2989,21 +2988,6 @@ button.ts-doc-pick.ts-doc-cond-head[aria-current="true"] {
   text-decoration: underline solid var(--ts-mark);
 }
 
-button.ts-doc-cell-add {
-  display: inline-flex;
-  min-height: 0;
-  margin-left: 4px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--ts-ink-3);
-  vertical-align: middle;
-}
-
-button.ts-doc-cell-add[aria-current="true"] {
-  color: var(--ts-mark);
-}
-
 /* 저장 중 — 본문 · 패널은 잠긴다 (디자인원칙 §2 L2 「저장 중에는 전부 disabled」) */
 .ts-l3[aria-busy="true"] .ts-l3-body,
 .ts-l3[aria-busy="true"] .ts-l3-side {
@@ -3017,57 +3001,361 @@ button.ts-doc-cell-add[aria-current="true"] {
   color: var(--ts-mark);
 }
 
-/* ── 12. L3 저작 셸 — 목차 196 · 본문 · 우측 360 (§2 L3) ──────────────────── */
+/* ── 12. L3 저작 셸 — 화면 높이 고정 · 목차 220 · 가운데 · 우측 340, 셋이 각자 스크롤 (기능/문면 §4.3) ── */
 
 .ts-l3 {
   display: grid;
-  grid-template-columns: 196px minmax(0, 1fr) 360px;
+  grid-template-columns: 220px minmax(0, 1fr) 340px;
   grid-template-rows: auto minmax(0, 1fr);
-  align-items: stretch;
-  min-height: calc(100vh - 1px);
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 저작 화면에서는 페이지 자체가 스크롤하지 않는다 — 내비도 자기 안에서 스크롤 */
+.ts-app:has(.ts-l3) {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.ts-app:has(.ts-l3) .ts-nav {
+  overflow: auto;
 }
 
 .ts-l3-toc {
+  min-height: 0;
   border-right: 1px solid var(--ts-rule);
   padding: 12px 8px;
   overflow: auto;
   font-size: 13px;
 }
 
-.ts-l3-toc a {
+.ts-l3-toc button {
   display: block;
+  width: 100%;
+  min-height: 0;
   padding: 2px 6px;
+  border: 0;
   border-left: 2px solid transparent;
+  border-radius: 0;
+  background: none;
   color: var(--ts-ink-2);
-  text-decoration: none;
+  font: inherit;
+  text-align: left;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
 }
 
-.ts-l3-toc a:hover {
+.ts-l3-toc button:hover:not(:disabled) {
   background: var(--ts-surface-2);
   color: var(--ts-ink);
 }
 
-.ts-l3-toc a[aria-current="true"],
-.ts-l3-toc a[aria-current="page"] {
+.ts-l3-toc button:disabled {
+  color: var(--ts-ink-3);
+  cursor: default;
+}
+
+.ts-l3-toc button[aria-current="true"] {
   color: var(--ts-mark);
   border-left-color: var(--ts-mark);
 }
 
+.ts-l3-toc .ts-toc-article.is-nested {
+  padding-left: 22px;
+}
+
+.ts-toc-section {
+  margin: 4px 0;
+}
+
+.ts-toc-section-row {
+  display: flex;
+  align-items: center;
+}
+
+.ts-l3-toc .ts-toc-fold {
+  flex: 0 0 18px;
+  width: 18px;
+  padding: 2px 0;
+  border-left: 0;
+  text-align: center;
+  color: var(--ts-ink-3);
+}
+
+.ts-l3-toc .ts-toc-section-name {
+  font-weight: 700;
+  color: var(--ts-ink);
+}
+
 .ts-l3-body {
   min-width: 0;
+  min-height: 0;
   padding: 12px 24px 32px;
   overflow: auto;
 }
 
 .ts-l3-side {
+  min-height: 0;
   border-left: 1px solid var(--ts-rule);
   background: var(--ts-surface);
   padding: 12px;
   overflow: auto;
   font-size: 13px;
+}
+
+.ts-l3-hint {
+  font-size: 12px;
+  color: var(--ts-ink-3);
+}
+
+.ts-side-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 8px;
+  margin: 0 0 4px;
+}
+
+.ts-side-facts dt {
+  color: var(--ts-ink-3);
+}
+
+.ts-side-facts dd {
+  margin: 0;
+}
+
+/* ── 12-0. 가운데 그 자리 편집 — 문장 칸 · 칩 · 조건 머리 · 셀 조작 줄 · 오른쪽 클릭 메뉴 · 팝업 ── */
+
+.ts-inl {
+  outline: none;
+  border-radius: 2px;
+  white-space: pre-wrap;
+  cursor: text;
+}
+
+.ts-inl:hover {
+  box-shadow: 0 0 0 1px var(--ts-rule);
+}
+
+.ts-inl:focus {
+  box-shadow: 0 0 0 1px var(--ts-rule-strong);
+  background: var(--ts-surface);
+}
+
+.ts-inl:empty::before {
+  content: attr(data-placeholder);
+  color: var(--ts-ink-3);
+  font-family: var(--sans);
+  font-size: 12px;
+}
+
+.ts-inl.is-multiline {
+  display: block;
+}
+
+.ts-chip-inline {
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.ts-chip-inline:hover {
+  background: var(--ts-surface-2);
+}
+
+.ts-doc-inline-chip {
+  border: 1px dotted var(--ts-rule-strong);
+  border-radius: 3px;
+  padding: 0 3px;
+  margin-inline: 1px;
+}
+
+.ts-doc-inline-head {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ts-ink-3);
+}
+
+.ts-doc-inline-sep {
+  color: var(--ts-ink-3);
+}
+
+button.ts-doc-cond-btn {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.ts-doc-cond-btn:hover {
+  background: none;
+  color: var(--ts-mark);
+}
+
+.ts-doc-hint {
+  font-family: var(--sans);
+  font-size: 12px;
+}
+
+.ts-cell {
+  position: relative;
+  display: block;
+}
+
+.ts-cell > .ts-inl {
+  display: block;
+  min-height: 1.5em;
+}
+
+.ts-cell > .ts-inl.is-active {
+  box-shadow: 0 0 0 1px var(--ts-mark);
+}
+
+.ts-table-edit {
+  position: relative;
+}
+
+.ts-cell-bar-at {
+  padding: 0 6px;
+  color: var(--ts-ink-3);
+  align-self: center;
+}
+
+.ts-cell-bar {
+  position: absolute;
+  bottom: calc(100% - 6px);
+  left: 1.5em;
+  z-index: 5;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  white-space: nowrap;
+  background: var(--ts-surface);
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 400;
+  text-indent: 0;
+}
+
+.ts-cell-bar button {
+  min-height: 22px;
+  padding: 0 6px;
+  font-size: 11px;
+}
+
+.ts-ctx-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 220px;
+  padding: 4px 0;
+  background: var(--ts-surface);
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 16%);
+  font-family: var(--sans);
+  font-size: 13px;
+}
+
+.ts-ctx-section + .ts-ctx-section {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--ts-rule);
+}
+
+.ts-ctx-menu button {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  text-align: left;
+}
+
+.ts-ctx-menu button:hover:not(:disabled),
+.ts-ctx-menu button:focus-visible {
+  background: var(--ts-surface-2);
+}
+
+.ts-ctx-menu button.danger:hover:not(:disabled),
+.ts-ctx-menu button.danger:focus-visible {
+  color: var(--ts-error);
+  background: var(--ts-error-bg);
+}
+
+.ts-pop {
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: 12px;
+}
+
+.ts-pop.is-wide {
+  width: min(600px, calc(100vw - 32px));
+}
+
+.ts-pop::backdrop {
+  background: transparent;
+}
+
+.ts-pop-title {
+  margin: 0 0 8px;
+  font-weight: 700;
+}
+
+.ts-pop-branch {
+  margin-bottom: 8px;
+  padding-left: 8px;
+  border-left: 2px solid var(--ts-ink-3);
+}
+
+.ts-pop-branch-body.ts-doc {
+  max-width: none;
+  margin: 4px 0;
+  padding: 2px 0;
+}
+
+.ts-dialog-full {
+  width: min(960px, calc(100vw - 32px));
+  height: calc(100vh - 64px);
+  padding: 0;
+}
+
+.ts-dialog-full[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.ts-dialog-full-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--ts-rule);
+}
+
+.ts-dialog-full-head .ts-pop-title {
+  margin: 0;
+}
+
+.ts-dialog-full-body {
+  flex: 1;
+  overflow: auto;
+  padding: 12px 24px;
+}
+
+/* 「고칠 자리로」 · 좌표 링크 — 그 자리를 잠깐 강조한다 */
+.is-flash {
+  outline: 2px solid var(--ts-mark);
+  outline-offset: 2px;
 }
 
 .ts-l3-bar {
@@ -3182,16 +3470,6 @@ button.ts-doc-cell-add[aria-current="true"] {
   margin-right: 2px;
 }
 
-.ts-insert-menu {
-  margin: 4px 0;
-  font-size: 12px;
-}
-
-.ts-insert-menu summary {
-  cursor: pointer;
-  color: var(--ts-ink-3);
-}
-
 .ts-cond,
 .ts-cond-inline {
   border-left: 2px solid var(--ts-ink-3);
@@ -3211,26 +3489,6 @@ button.ts-doc-cell-add[aria-current="true"] {
   margin-right: 4px;
 }
 
-
-
-.ts-doc-actions {
-  display: inline-flex;
-  gap: 2px;
-  margin-left: 8px;
-  align-items: center;
-  /* 문서 세계의 매달림 들여쓰기(text-indent) 밖으로 빼야 아이콘이 겹치지 않는다. */
-  float: right;
-  font-family: var(--sans);
-  text-indent: 0;
-}
-
-.ts-doc-actions button {
-  padding: 1px 6px;
-}
-
-.ts-doc-actions .ts-iconbtn {
-  padding: 0;
-}
 
 
 /* 링크처럼 보이는 버튼 · 카드 머리의 ⊕ 추가 · 이름 옆 인라인 이슈 */

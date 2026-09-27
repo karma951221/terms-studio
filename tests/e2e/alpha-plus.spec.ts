@@ -213,38 +213,39 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
         return page.url();
       });
 
-      // 편집 → 조작 → 저장 (ADR-0074). 「여기에 추가」는 편집본에만 들어가고 서버로 가지 않는다.
-      const add = async (kind: string, fields: Record<string, string>) => {
-        const menu = page.locator("aside.ts-l3-side details.ts-insert-menu").first();
-        await menu.locator("summary").click();
-        await menu.locator("select[name=kind]").selectOption(kind);
-        for (const [name, value] of Object.entries(fields)) await menu.locator(`[name=${name}]`).fill(value);
-        await menu.getByRole("button", { name: "고른 종류로 노드 추가" }).click();
-      };
-      /** 본문의 「… 고치기」 버튼을 눌러 그 노드를 우측 패널에 싣는다 — 패널 제목 옆 「← 템플릿 전체로」가 뜰 때까지. */
-      const openNode = async (name: RegExp) => {
-        await page.getByRole("button", { name }).first().click();
-        await expect(page.getByRole("button", { name: "← 템플릿 전체로" })).toBeVisible();
+      // 편집 → 그 자리 편집 · 오른쪽 클릭 → 저장 (ADR-0074 · 기능/문면 §4.3). 고친 것은 편집본에만 들어가고 서버로 가지 않는다.
+      const body = page.locator(".ts-l3-body");
+      const menu = async (target: ReturnType<typeof page.locator>, item: string) => {
+        await target.click({ button: "right" });
+        await page.getByRole("menuitem", { name: item, exact: true }).click();
       };
 
-      await ev.action("실물재현#2.3", "편집을 누르고 관을 넣는다", async () => {
+      await ev.action("실물재현#2.3", "편집을 누르고 빈 본문을 오른쪽 클릭해 관을 넣는다 — 관은 첫 조 하나를 품고 온다", async () => {
         await page.getByRole("button", { name: "편집", exact: true }).click();
         await expect(page.getByRole("button", { name: "저장", exact: true })).toBeVisible();
-        await add("section", { title: "목적 및 용어의 정의" });
+        await menu(body.locator("[data-doc-empty]"), "관 추가");
+        const title = body.getByRole("textbox", { name: "관 제목" });
+        await title.fill("목적 및 용어의 정의");
+        await title.press("Enter");
+        await expect(page.getByRole("heading", { name: "제1관 목적 및 용어의 정의" })).toBeVisible();
       });
-      await ev.action("실물재현#2.4", "관 안에 조를 넣는다", async () => {
-        await openNode(/^제1관 목적 및 용어의 정의 고치기/);
-        await add("article", { title: "목적" });
+      await ev.action("실물재현#2.4", "관 안 조의 제목을 그 자리에서 고친다", async () => {
+        const title = body.getByRole("textbox", { name: "조 제목" });
+        await title.fill("목적");
+        await title.press("Enter");
+        await expect(page.getByRole("heading", { name: "제1조(목적)" })).toBeVisible();
+        await expect(page.locator(".ts-l3-toc")).toContainText("제1관 목적 및 용어의 정의");
       });
-      await ev.action("실물재현#2.5", "조 안에 항을 넣는다", async () => {
-        await openNode(/^제1조\(목적\) 고치기/);
-        await add("paragraph", {});
+      await ev.action("실물재현#2.5", "조 제목을 오른쪽 클릭해 항을 넣는다 — 커서가 새 항으로 간다", async () => {
+        await menu(page.getByRole("heading", { name: "제1조(목적)" }), "항 추가");
+        await expect(body.getByRole("textbox", { name: "항 — 문장을 쓴다" })).toBeFocused();
       });
-      await ev.action("실물재현#2.6", "항에 본문을 쓴다", async () => {
-        await openNode(/^제1항 고치기|^항 고치기/);
-        await add("text", {
-          text: "이 보험계약(이하 「계약」이라 합니다)은 보험계약자(이하 「계약자」라 합니다)와 보험회사(이하 「회사」라 합니다) 사이에 피보험자의 상해에 대한 위험을 보장하기 위하여 체결됩니다.",
-        });
+      await ev.action("실물재현#2.6", "항에 본문을 그 자리에서 쓴다", async () => {
+        const paragraph = body.getByRole("textbox", { name: "항 — 문장을 쓴다" });
+        await paragraph.fill(
+          "이 보험계약(이하 「계약」이라 합니다)은 보험계약자(이하 「계약자」라 합니다)와 보험회사(이하 「회사」라 합니다) 사이에 피보험자의 상해에 대한 위험을 보장하기 위하여 체결됩니다.",
+        );
+        await paragraph.press("Tab");
       });
 
       await ev.action("실물재현#2.6a", "저장 한 번으로 반영하고 읽기 모드로 돌아온다", async () => {

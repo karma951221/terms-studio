@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * 노드 삭제 확인 카드 — 우측 패널 전체를 차지한다 (디자인원칙 §9.5 · 리뷰 #33).
+ * 노드 삭제 확인 카드 — 오른쪽 클릭 「삭제」를 누른 자리 가까이 팝업으로 뜬다 (기능/문면 §4.3 · 디자인원칙 §9.5).
  *
  * ADR-0074: 지우는 것은 **편집본**이다 — 「저장하면 사라집니다」. 저장 전에는 `취소`(✕)로 되돌아온다.
  * - 함께 사라지는 것(항 2 · 호 5 …)은 편집본 트리에서 센다.
@@ -40,7 +40,7 @@ export function RemoveCard({
   inOriginal: boolean;
   onRemove: () => void;
   onCancel: () => void;
-  /** 참조처로 — 그 자리를 우측 패널에 싣는다. */
+  /** 참조처로 — 가운데에 그 조를 열고 그 자리를 강조한다. */
   onGo: (nodeId: Id) => void;
 }) {
   const [outside, setOutside] = useState<Coordinate[] | undefined>(node.kind === "article" && inOriginal ? undefined : []);
