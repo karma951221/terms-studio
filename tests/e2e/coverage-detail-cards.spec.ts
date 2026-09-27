@@ -9,6 +9,7 @@ import { expect, test } from "./_lib/fixtures";
  * - 데스크톱 너비에서 세부보장 카드가 한 줄에 2개 이상 선다(그리드).
  * - 담보약관 템플릿 띠가 없다. 「담보 기본」 폼은 상자 없이 담보 카드 본문에 바로 선다.
  * - 편집 모드: 「+ 세부보장」 점선 타일 · ⊖ 가 보이고, 「⊕ 면책」 을 누르면 면책 입력칸이 열린다.
+ * - 선택 필드(면책여부 · 지급률): 읽기 모드엔 값이 없으면 행이 없고, 편집 모드 「⊕ 지급률」로 칸이 생긴다 (2026-09-27).
  * 전제: `npm run db:seed` 로 관통 1 시드가 들어간 개발 DB — 시드 담보 · 문서는 건드리지 않는다(취소로 마친다).
  */
 
@@ -61,6 +62,14 @@ test(
       await expect(body.locator(":scope > form").getByText("담보 기본", { exact: true })).toHaveCount(0);
     });
 
+    await ev.action("담보카드#4c", "읽기 모드 급부 카드에는 값 없는 선택 필드(면책여부 · 지급률) 행이 없다", async () => {
+      const benefits = page.locator("section.ts-cov-card[data-level='benefit']");
+      await expect(benefits.locator("[data-path='pay.exempt']")).toHaveCount(0);
+      await expect(benefits.locator("[data-path='pay.rate']")).toHaveCount(0);
+      await expect(benefits.first().getByText("면책여부", { exact: true })).toHaveCount(0);
+      await expect(benefits.first().getByText("지급률", { exact: true })).toHaveCount(0);
+    });
+
     await ev.action("담보카드#5", "데스크톱 너비 — 세부보장 카드가 한 줄에 2개 이상(그리드) 선다", async () => {
       const cards = page.locator("section.ts-cov-card[data-level='subCoverage']");
       const box0 = await cards.nth(0).boundingBox();
@@ -84,6 +93,15 @@ test(
       await firstBenefit.getByRole("button", { name: "면책", exact: true }).click();
       await expect(firstBenefit.getByRole("group", { name: "면책" })).toBeVisible();
       await expect(firstBenefit.locator('input[name="exemption.months"]')).toHaveCount(1);
+    });
+
+    await ev.action("담보카드#7b", "첫 급부의 「⊕ 지급률」을 누르면 지급률 입력칸이 생기고, 「⊕ 면책여부」는 그대로 남는다", async () => {
+      const firstBenefit = page.locator("section.ts-cov-card[data-level='benefit']").first();
+      await expect(firstBenefit.locator('input[name="pay.rate"]')).toHaveCount(0);
+      await firstBenefit.getByRole("button", { name: "지급률", exact: true }).click();
+      await expect(firstBenefit.locator('input[name="pay.rate"]')).toHaveCount(1);
+      await expect(firstBenefit.getByRole("button", { name: "지급률 빼기 — 값을 지운다" })).toBeVisible();
+      await expect(firstBenefit.getByRole("button", { name: "면책여부", exact: true })).toBeVisible();
     });
 
     await ev.action("담보카드#8", "취소 — 시드 담보를 바꾸지 않고 편집을 버린다", async () => {

@@ -83,8 +83,7 @@ describe("담보값입력 S3 — 완결성 조회는 마스터 자리 전부가 
     const b = accident.subCoverages[0].benefits[0];
     expect(completeness(accident, values()).map((m) => [m.owner.level, m.ownerName, m.path])).toEqual([
       ["coverage", "일반상해사망", "coverage_basic.claim_name"],
-      ["benefit", "일반상해사망 > 일반상해사망 > 일반상해사망보험금", "pay.exempt"],
-      ["benefit", "일반상해사망 > 일반상해사망 > 일반상해사망보험금", "pay.rate"],
+      // 선택 필드(면책여부 · 지급률)는 값이 없으면 세지 않는다 (2026-09-27)
       ["benefit", "일반상해사망 > 일반상해사망 > 일반상해사망보험금", "pay.first_only"],
     ]);
     expect(completeness(accident, values())[0]).toMatchObject({
@@ -92,7 +91,7 @@ describe("담보값입력 S3 — 완결성 조회는 마스터 자리 전부가 
       owner: { id: accident.id },
     });
     expect(completeness(accident, values())[1]).toMatchObject({
-      label: "보험금지급 › 면책여부",
+      label: "보험금지급 › 최초1회한",
       owner: { id: b.id },
     });
   });
@@ -108,7 +107,7 @@ describe("담보값입력 S3 — 완결성 조회는 마스터 자리 전부가 
       }),
     );
     const other = surgery.subCoverages[1].benefits[0].id;
-    expect(missing.map((m) => m.owner.id)).toEqual([other, other, other]);
+    expect(missing.map((m) => m.owner.id)).toEqual([other]);
   });
 
   it("실행 기반 필터(CompletenessFilter)를 얹으면 그 결과가 조회 결과다 — C2 가 실제 타는 분기로 좁힌다", () => {

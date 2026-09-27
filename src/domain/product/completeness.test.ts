@@ -12,18 +12,12 @@ describe("완결성 — 값 자리는 레벨의 마스터 필드 전부다 (ADR-
 });
 
 describe("폼입력 S3 · 담보값입력 S3 — 상품담보 완결성 (스냅샷 실체 기준)", () => {
-  it("급부 스냅샷의 지급률만 입력됐으면 면책여부 · 최초1회한이 미입력으로 잡힌다", () => {
+  it("급부 스냅샷의 지급률만 입력됐으면 최초1회한이 미입력 — 선택 필드 면책여부는 값이 없으면 세지 않는다", () => {
     const slots = new Map([["pay.rate", entered(50)]]);
     const missing = missingSlotsOf({ kind: "productBenefit", id: "n2" }, "1종수술급부", "benefit", (p) =>
       slots.get(p),
     );
     expect(missing).toEqual([
-      {
-        owner: { kind: "productBenefit", id: "n2" },
-        ownerName: "1종수술급부",
-        level: "benefit",
-        path: "pay.exempt",
-      },
       {
         owner: { kind: "productBenefit", id: "n2" },
         ownerName: "1종수술급부",

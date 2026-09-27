@@ -352,19 +352,16 @@ describe("product 서비스 (PGlite)", () => {
       expect(snap.subCoverages.map((s) => s.name)).toEqual(["1종수술", "2종수술"]);
       const newBen = snap.subCoverages[1].benefits[0];
       expect((await svc.getSnapshotValues(pcSurgery)).get(newBen.id)?.size ?? 0).toBe(0); // 빈 값
-      // 완결성: 새 급부의 보험금지급 3 자리 + 1종수술급부 면책여부 · 최초1회한 (지급률은 입력함)
+      // 완결성: 급부마다 최초1회한 — 면책여부 · 지급률은 선택 필드라 값이 없으면 세지 않는다 (1종수술급부 지급률은 입력함)
       const missing = await svc.coverageMissing(pcSurgery);
       expect(missing.map((m) => `${m.ownerName}:${m.path}`).sort()).toEqual([
-        "1종수술급부:pay.exempt",
         "1종수술급부:pay.first_only",
-        "2종수술급부:pay.exempt",
         "2종수술급부:pay.first_only",
-        "2종수술급부:pay.rate",
       ]);
-      // 분모: 담보 레벨 담보명 1 + 급부 2개 × 보험금지급 3 자리 = 7
+      // 분모: 담보명 1 + 1종수술급부(입력한 지급률 + 최초1회한) 2 + 2종수술급부 최초1회한 1 = 4
       const summary = await svc.coverageCompleteness(pcSurgery);
-      expect(summary.total).toBe(7);
-      expect(summary.missing).toHaveLength(5);
+      expect(summary.total).toBe(4);
+      expect(summary.missing).toHaveLength(2);
 
       await writeSlot(t.db, { kind: "productBenefit", id: newBen.id }, "pay.exempt", true);
       trees.set(SURGERY, { id: SURGERY, name: "수술비", subCoverages: [{ id: SURGERY_SUB1, name: "1종수술", order: 0, benefits: [{ id: SURGERY_BEN1, name: "1종수술급부", order: 0 }] }] });

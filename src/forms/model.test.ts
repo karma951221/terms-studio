@@ -11,6 +11,7 @@ import {
   formReducer,
   formSlotsOf,
   initFormState,
+  isFieldAbsent,
   isFieldHidden,
   toSubmission,
   zodSchemaFor,
@@ -670,5 +671,87 @@ describe("기본 숨김 필드 (hiddenByDefault) — 감액 「이후 지급률�
     const revealed = formReducer(s, { type: "reveal", path: "reduction.after_rate" });
     expect(isFieldHidden(revealed, "reduction.after_rate")).toBe(false);
     expect(toSubmission(revealed)).toEqual(toSubmission(s));
+  });
+});
+
+describe("선택 필드 (optional) — 면책여부 · 지급률, 필요할 때만 「⊕」로 더한다 (2026-09-27)", () => {
+  const master: MasterForm[] = [
+    {
+      key: "pay", label: "보험금지급", level: "benefit",
+      fields: [
+        { key: "exempt", label: "면책여부", type: { kind: "boolean" }, optional: true },
+        { key: "rate", label: "지급률", type: { kind: "number" }, optional: true, defaultValue: 100 },
+        { key: "note", label: "비고", type: { kind: "string" } },
+      ],
+    },
+  ];
+  const enums: EnumLookup = () => undefined;
+  const stateWith = (...slots: [string, ValueSlot][]) => initFormState(buildForm("benefit", enums, new Map(slots), undefined, master));
+
+  it("폼 모델이 필드 속성 optional 을 옮긴다 — 붙인 필드만", () => {
+    const model = buildForm("benefit", enums, new Map(), undefined, master);
+    expect(model.fields.map((f) => [f.path, f.optional])).toEqual([
+      ["pay.exempt", true],
+      ["pay.rate", true],
+      ["pay.note", undefined],
+    ]);
+  });
+
+  it("값이 없으면 자리가 없다 — 기본값이 있어도 프리필하지 않는다 · 제출에 없다", () => {
+    const s = stateWith();
+    expect(isFieldAbsent(s, "pay.exempt")).toBe(true);
+    expect(isFieldAbsent(s, "pay.rate")).toBe(true);
+    expect(isFieldAbsent(s, "pay.note")).toBe(false);
+    expect(s.fields["pay.rate"].draft).toBe("");
+    expect(s.fields["pay.rate"].proposed).toBe(false);
+    expect(toSubmission(s).values).toEqual([]);
+  });
+
+  it("저장 값이 있으면 자리가 있다", () => {
+    const s = stateWith(["pay.rate", entered(80)]);
+    expect(isFieldAbsent(s, "pay.rate")).toBe(false);
+    expect(s.fields["pay.rate"].draft).toBe("80");
+  });
+
+  it("addField — 자리가 생기고 기본값이 제안으로 채워진다 · 저장하면 실린다", () => {
+    const s = formReducer(stateWith(), { type: "addField", path: "pay.rate" });
+    expect(isFieldAbsent(s, "pay.rate")).toBe(false);
+    expect(s.added["pay.rate"]).toBe(true);
+    expect(s.fields["pay.rate"].draft).toBe("100");
+    expect(s.fields["pay.rate"].proposed).toBe(true);
+    expect(toSubmission(s).values).toEqual([{ path: "pay.rate", value: 100 }]);
+  });
+
+  it("더한 뒤 칸을 비워도 자리는 남는다 — 빼려면 removeField", () => {
+    let s = formReducer(stateWith(), { type: "addField", path: "pay.exempt" });
+    s = formReducer(s, { type: "edit", path: "pay.exempt", draft: "" });
+    expect(isFieldAbsent(s, "pay.exempt")).toBe(false);
+  });
+
+  it("removeField — 자리를 감추고 저장돼 있던 값은 지우기로 제출한다", () => {
+    const s = formReducer(stateWith(["pay.exempt", entered(true)]), { type: "removeField", path: "pay.exempt" });
+    expect(isFieldAbsent(s, "pay.exempt")).toBe(true);
+    expect(s.fields["pay.exempt"].entered).toBe(false);
+    expect(toSubmission(s).values).toEqual([{ path: "pay.exempt", value: undefined }]);
+  });
+
+  it("더했다가 바로 빼면 제출할 것이 없다", () => {
+    let s = formReducer(stateWith(), { type: "addField", path: "pay.rate" });
+    s = formReducer(s, { type: "removeField", path: "pay.rate" });
+    expect(isFieldAbsent(s, "pay.rate")).toBe(true);
+    expect(toSubmission(s).values).toEqual([]);
+  });
+
+  it("선택 필드가 아니면 addField · removeField 는 아무것도 하지 않는다", () => {
+    const s = stateWith();
+    expect(formReducer(s, { type: "removeField", path: "pay.note" })).toBe(s);
+    expect(formReducer(s, { type: "addField", path: "pay.note" })).toBe(s);
+  });
+
+  it("reset(저장 후 새 모델) 이면 더한 표시가 초기화된다", () => {
+    let s = formReducer(stateWith(), { type: "addField", path: "pay.rate" });
+    s = formReducer(s, { type: "reset", model: buildForm("benefit", enums, new Map(), undefined, master) });
+    expect(s.added).toEqual({});
+    expect(isFieldAbsent(s, "pay.rate")).toBe(true);
   });
 });

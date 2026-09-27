@@ -3947,7 +3947,16 @@ button.ts-ref-fold:hover {
   color: var(--ts-error);
 }
 
-/* 닫힌 선택 폼 — 폼 맨 아래 한 줄 「⊕ 감액 ⊕ 면책」 (편집 모드만) */
+/* 더한 선택 필드의 ⊖ — 라벨 옆, 평소에도 danger 색 (값을 지운다) */
+.ts-form-label-cell .ts-iconbtn.ts-form-field-remove {
+  width: 16px;
+  height: 16px;
+  margin-left: 2px;
+  vertical-align: -3px;
+  color: var(--ts-error);
+}
+
+/* 닫힌 선택 폼 — 폼 맨 아래 한 줄 「⊕ 감액 ⊕ 면책」 · 자리 없는 선택 필드 「⊕ 면책여부 ⊕ 지급률」 (편집 모드만) */
 .ts-form-optional-add {
   display: flex;
   flex-wrap: wrap;

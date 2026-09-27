@@ -61,6 +61,8 @@ export interface FieldView {
   masterLabel?: string;
   /** 기본 숨김 — 값이 기본값 그대로면 칸을 감춘다 (`isFieldHidden`, 기능/담보 §3.4). */
   hiddenByDefault?: true;
+  /** 선택 필드 — 값이 없으면 자리를 보이지 않고 「⊕ {라벨}」로 더한다 (`isFieldAbsent`, 2026-09-27). */
+  optional?: true;
 }
 
 /**
@@ -122,6 +124,7 @@ function fieldView(
   type: FieldType,
   defaultValue: Value | undefined,
   hiddenByDefault: boolean,
+  optional: boolean,
   form: FormRef,
   enums: EnumLookup,
   current: Map<SlotPath, ValueSlot>,
@@ -137,6 +140,7 @@ function fieldView(
   }
   if (defaultValue !== undefined) view.prefill = defaultValue;
   if (hiddenByDefault) view.hiddenByDefault = true;
+  if (optional) view.optional = true;
   // 탑재 스냅샷을 손댄 자리만 「스냅샷 · 변경됨」 — 마스터와 같으면 평범한 직접값이다 (§1.2)
   const master = snapshot?.masterValues.get(path);
   if (snapshot && master?.entered && !valueEquals(master.value, view.value)) {
@@ -165,7 +169,7 @@ export function buildForm(
     const card: FormCard = {
       ...ref,
       fields: fieldsOfForm(form).map((r) =>
-        fieldView(r.path, r.field.label, r.field.type, r.field.defaultValue, r.field.hiddenByDefault === true, ref, enums, current, snapshot),
+        fieldView(r.path, r.field.label, r.field.type, r.field.defaultValue, r.field.hiddenByDefault === true, r.field.optional === true, ref, enums, current, snapshot),
       ),
     };
     if (form.description !== undefined) card.description = form.description;
@@ -249,6 +253,8 @@ export interface FormState {
   open: Record<Code, boolean>;
   /** 기본 숨김 필드 중 「바꾸기」로 편 자리. 다시 접지 않는다 — 저장 후 새 모델이 오면 초기화. */
   revealed: Record<SlotPath, boolean>;
+  /** 선택 필드 중 「⊕ {라벨}」로 더한 자리. 「⊖」로 빼면 지운다 — 저장 후 새 모델이 오면 초기화 (2026-09-27). */
+  added: Record<SlotPath, boolean>;
 }
 
 export type FormAction =
@@ -265,7 +271,11 @@ export type FormAction =
   /** 여는 폼 카드를 닫는다 — 「없음」, 그 카드 필드는 전부 빈 초안이 된다. */
   | { type: "closeForm"; form: Code }
   /** 기본 숨김 필드를 편다 (「{라벨} 바꾸기」). 값은 건드리지 않는다. */
-  | { type: "reveal"; path: SlotPath };
+  | { type: "reveal"; path: SlotPath }
+  /** 선택 필드를 더한다 (「⊕ {라벨}」) — 칸을 보이고 기본값이 있으면 제안으로 채운다. */
+  | { type: "addField"; path: SlotPath }
+  /** 선택 필드를 뺀다 (「⊖」) — 칸을 감추고 값을 비운다. 저장돼 있던 값은 지우기로 제출된다. */
+  | { type: "removeField"; path: SlotPath };
 
 function emptyDraft(type: FieldType): Draft {
   if (type.kind === "table") return [];
@@ -374,21 +384,39 @@ export function initFormState(model: FormModel): FormState {
   for (const card of model.cards) open[card.key] = initialOpen(card);
   const fields: Record<SlotPath, FieldState> = {};
   for (const view of model.fields) {
-    fields[view.path] = initFieldState(view, open[view.form.key] ?? true);
+    fields[view.path] = initFieldState(view, (open[view.form.key] ?? true) && fieldPresent(view, false));
   }
-  return { model, fields, open, revealed: {} };
+  return { model, fields, open, revealed: {}, added: {} };
+}
+
+/**
+ * 선택 필드가 자리를 갖나 — 선택 필드가 아니거나, 저장 값이 있거나, 더했을 때.
+ * 자리가 없는 선택 필드는 닫힌 여는 폼의 필드처럼 **프리필 없이 빈 칸**이다 — 안 더한 자리에 제안값이 실리면 안 된다.
+ */
+function fieldPresent(view: FieldView, added: boolean): boolean {
+  return !view.optional || added || view.state === "entered";
 }
 
 export function formReducer(state: FormState, action: FormAction): FormState {
   if (action.type === "reset") return initFormState(action.model);
   if (action.type === "reveal") return { ...state, revealed: { ...state.revealed, [action.path]: true } };
+  if (action.type === "addField" || action.type === "removeField") {
+    const f = state.fields[action.path];
+    if (!f?.view.optional) return state;
+    const isAdded = action.type === "addField";
+    const added = { ...state.added, [action.path]: isAdded };
+    const next = isAdded
+      ? initFieldState(f.view, state.open[f.view.form.key] ?? true, true)
+      : fieldStateOf(f.view, emptyDraft(f.view.type), true);
+    return { ...state, added, fields: { ...state.fields, [action.path]: next } };
+  }
   if (action.type === "openForm" || action.type === "closeForm") {
     const isOpen = action.type === "openForm";
     const open = { ...state.open, [action.form]: isOpen };
     const fields = { ...state.fields };
     for (const view of state.model.fields) {
       if (view.form.key !== action.form) continue;
-      fields[view.path] = initFieldState(view, isOpen, true);
+      fields[view.path] = initFieldState(view, isOpen && fieldPresent(view, state.added?.[view.path] === true), true);
     }
     return { ...state, open, fields };
   }
@@ -428,6 +456,17 @@ export function isFieldHidden(state: FormState, path: SlotPath): boolean {
   const f = state.fields[path];
   if (!f?.view.hiddenByDefault || state.revealed?.[path]) return false;
   return f.entered && f.error === undefined && f.view.prefill !== undefined && valueEquals(f.value, f.view.prefill);
+}
+
+/**
+ * 선택 필드가 지금 자리가 없나 — 더하지 않았고 칸에 값도 없을 때. 자리 없는 필드는 행 대신
+ * 편집 모드의 「⊕ {라벨}」 버튼으로만 서고, 읽기 모드에는 아무것도 없다 (2026-09-27).
+ * 칸에 값이 있으면(저장 값 · 입력 중) 자리가 있다 — 숨은 곳에 값이 있으면 안 된다.
+ */
+export function isFieldAbsent(state: FormState, path: SlotPath): boolean {
+  const f = state.fields[path];
+  if (!f?.view.optional) return false;
+  return state.added?.[path] !== true && !f.entered;
 }
 
 // ───────────────────────────── 제출 ─────────────────────────────

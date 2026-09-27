@@ -7,6 +7,7 @@
  * - 미입력은 값이 아니라 상태 — 저장소가 자리를 모르거나(undefined) `entered:false` 면 미입력.
  * - **여는 폼(`MasterForm.optional`)** — 값 행이 하나도 없으면 그 폼의 자리 자체가 없다: `missingSlots` 는
  *   세지 않고(`countedSlotsOf`), 직접 읽으면 자리 없음. 값 행이 하나라도 있으면 나머지 필드는 보통 자리다.
+ * - **선택 필드(`MasterField.optional`)** — 값이 없으면 `missingSlots` 가 세지 않는다. 식이 읽는 뜻은 그대로(미입력)다.
  */
 import { fieldsOfLevel, findMasterField, formsOfLevel, masterPath, type MasterForm, type MasterTree } from "../master";
 import type { AttachLevel, Coordinate, FieldType, Issue, TableColumn, Value, ValueSlot } from "../types";
@@ -156,14 +157,19 @@ export function isFormOpened(form: MasterForm, read: SlotReader): boolean {
 }
 
 /**
- * 이 노드에서 실제로 세는 값 자리 — 안 연 여는 폼의 자리는 뺀다 (ADR-0065 §4).
+ * 이 노드에서 실제로 세는 값 자리 — 안 연 여는 폼의 자리 · 값 없는 선택 필드는 뺀다 (ADR-0065 §4 · 2026-09-27).
  * `missingSlots` 의 분모이자 완결성 총량(`services/coverage.ts` `completenessSummary`)의 분모 재료.
  */
 export function countedSlotsOf(level: AttachLevel, read: SlotReader, master?: MasterTree): SlotPath[] {
   const out: SlotPath[] = [];
   for (const form of formsOfLevel(level, master)) {
     if (form.optional && !isFormOpened(form, read)) continue;
-    for (const f of form.fields) out.push(masterPath(form.key, f.key));
+    for (const f of form.fields) {
+      const path = masterPath(form.key, f.key);
+      // 선택 필드는 더했을 때(값이 있을 때)만 자리다 — 안 더한 것은 「없음」이지 미입력이 아니다
+      if (f.optional && read(path)?.entered !== true) continue;
+      out.push(path);
+    }
   }
   return out;
 }

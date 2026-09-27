@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { MasterForm } from "../master";
 import { entered, NOT_ENTERED, type FieldType, type ValueSlot } from "../types";
 import type { EnumDef, EnumLookup } from "./types";
-import { isFormOpened, missingSlots, prefill, slotType, validateValue, valueSlotsOf, type SlotReader } from "./values";
+import { countedSlotsOf, isFormOpened, missingSlots, prefill, slotType, validateValue, valueSlotsOf, type SlotReader } from "./values";
 
 const 고지유형: EnumDef = {
   code: "E0001",
@@ -180,5 +180,35 @@ describe("여는 폼(optional) — 값 행이 없으면 자리 없음 (ADR-0065 
   it("isFormOpened — 폼 필드 중 하나라도 입력됨", () => {
     expect(isFormOpened(master[1], () => undefined)).toBe(false);
     expect(isFormOpened(master[1], (p) => (p === "reduction.periods" ? entered([{ end: 12 }]) : undefined))).toBe(true);
+  });
+});
+
+describe("선택 필드(MasterField.optional) — 값이 없으면 세지 않는다 (2026-09-27)", () => {
+  const master: MasterForm[] = [
+    {
+      key: "pay",
+      label: "보험금지급",
+      level: "benefit",
+      fields: [
+        { key: "exempt", label: "면책여부", type: { kind: "boolean" }, optional: true },
+        { key: "rate", label: "지급률", type: { kind: "number" }, optional: true },
+        { key: "note", label: "비고", type: { kind: "string" } },
+      ],
+    },
+  ];
+  it("값 없는 선택 필드는 미입력 목록 · 분모에 없다 · 값이 있으면 센다", () => {
+    expect(missingSlots("benefit", () => undefined, master)).toEqual(["pay.note"]);
+    expect(countedSlotsOf("benefit", () => undefined, master)).toEqual(["pay.note"]);
+    const withRate: SlotReader = (p) => (p === "pay.rate" ? entered(80) : undefined);
+    expect(countedSlotsOf("benefit", withRate, master)).toEqual(["pay.rate", "pay.note"]);
+    expect(missingSlots("benefit", withRate, master)).toEqual(["pay.note"]);
+  });
+  it("값 자리 목록(valueSlotsOf)에는 그대로 있다 — 자리는 늘 있고 보이는 방식만 다르다", () => {
+    expect(valueSlotsOf("benefit", master)).toEqual(["pay.exempt", "pay.rate", "pay.note"]);
+  });
+  it("정본 마스터 — 보험금지급의 면책여부 · 지급률이 선택 필드다", () => {
+    expect(slotType("benefit", "pay.exempt")).toEqual({ kind: "boolean" });
+    expect(countedSlotsOf("benefit", () => undefined).filter((p) => p.startsWith("pay."))).not.toContain("pay.exempt");
+    expect(countedSlotsOf("benefit", () => undefined).filter((p) => p.startsWith("pay."))).not.toContain("pay.rate");
   });
 });

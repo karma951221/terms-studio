@@ -64,8 +64,9 @@ export const MASTER: readonly MasterForm[] = [
     level: "benefit",
     description: "급부 하나의 지급 조건 — 담보 레벨 구분자가 집계로 읽는 자리",
     fields: [
-      { key: "exempt", label: "면책여부", type: { kind: "boolean" } },
-      { key: "rate", label: "지급률", type: { kind: "number" } },
+      // 선택 필드 — 필요한 급부만 「⊕ 면책여부」 · 「⊕ 지급률」로 더한다 (2026-09-27)
+      { key: "exempt", label: "면책여부", type: { kind: "boolean" }, optional: true },
+      { key: "rate", label: "지급률", type: { kind: "number" }, optional: true },
       {
         key: "first_only",
         label: "최초1회한",

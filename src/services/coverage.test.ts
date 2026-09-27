@@ -181,28 +181,25 @@ describe("coverage 서비스 (PGlite)", () => {
   });
 
   describe("담보값입력 S3 — 완결성 조회는 마스터 자리 전부가 대상", () => {
-    it("일반상해사망: 담보명 + 급부 자리 미입력. 첫 급부의 면책여부는 입력돼 빠진다", async () => {
+    it("일반상해사망: 담보명 + 급부 자리 미입력. 선택 필드(면책여부 · 지급률)는 값이 없으면 세지 않는다", async () => {
       const missing = unwrap(await svc.completeness(accident.id));
       expect(missing.map((m) => [m.owner.level, m.path])).toEqual([
         ["coverage", "coverage_basic.claim_name"],
-        ["benefit", "pay.rate"], // 첫 급부: exempt 입력됨
-        ["benefit", "pay.first_only"],
-        ["benefit", "pay.exempt"], // 두 번째 세부보장(1종수술)의 급부
-        ["benefit", "pay.rate"],
-        ["benefit", "pay.first_only"],
+        ["benefit", "pay.first_only"], // 첫 급부: exempt 입력됨 · rate 는 선택 필드
+        ["benefit", "pay.first_only"], // 두 번째 세부보장(1종수술)의 급부
       ]);
     });
 
-    it("수술비: 담보명이 입력돼 급부 자리만 남는다 (7 세부보장 · 급부 8개 × 3 자리)", async () => {
+    it("수술비: 담보명이 입력돼 급부 자리만 남는다 (7 세부보장 · 급부 8개 × 최초1회한 — 선택 필드는 세지 않는다)", async () => {
       const missing = unwrap(await svc.completeness(surgery.id));
       expect(missing.filter((m) => m.owner.level === "coverage")).toEqual([]);
-      expect(missing).toHaveLength(24);
+      expect(missing).toHaveLength(8);
     });
 
     it("완결성 요약은 분모를 함께 준다 — 「값 자리 N 중 M 입력」 (디자인원칙 §9.2·§9.6)", async () => {
       const summary = unwrap(await svc.completenessSummary(accident.id));
-      // 담보명 1 + 급부 2개 × 보험금지급 3 자리 = 7 (세부보장 레벨 마스터는 비어 있다)
-      expect(summary.total).toBe(7);
+      // 담보명 1 + 첫 급부(입력한 면책여부 + 최초1회한) 2 + 둘째 급부 최초1회한 1 = 4 (세부보장 레벨 마스터는 비어 있다 · 값 없는 선택 필드는 세지 않는다)
+      expect(summary.total).toBe(4);
       expect(summary.missing).toEqual(unwrap(await svc.completeness(accident.id)));
       expect(summary.total - summary.missing.length).toBe(1); // 첫 급부의 면책여부만 입력돼 있다
     });

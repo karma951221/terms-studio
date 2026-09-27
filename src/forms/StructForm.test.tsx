@@ -422,3 +422,71 @@ describe("StructForm — 노드 카드 안(flat)은 폼 상자가 없다 (2026-0
     expect(html).toContain("<fieldset");
   });
 });
+
+describe("StructForm — 선택 필드 (면책여부 · 지급률, 2026-09-27)", () => {
+  const optionalMaster: MasterForm[] = [
+    {
+      key: "pay",
+      label: "보험금지급",
+      level: "benefit",
+      fields: [
+        { key: "exempt", label: "면책여부", type: { kind: "boolean" }, optional: true },
+        { key: "rate", label: "지급률", type: { kind: "number" }, optional: true },
+      ],
+    },
+    {
+      key: "reduction",
+      label: "감액",
+      level: "benefit",
+      optional: true,
+      fields: [{ key: "new_only", label: "신규만", type: { kind: "boolean" } }],
+    },
+  ];
+  const modelOf = (...slots: [string, ValueSlot][]) => buildForm("benefit", enums, new Map(slots), undefined, optionalMaster);
+
+  it("읽기 모드 — 값이 없으면 행이 없고, 폼이 통째로 비면 그 폼을 그리지 않는다", () => {
+    const html = renderToStaticMarkup(<StructForm model={modelOf()} embedded readOnly flat />);
+    expect(html).not.toContain("면책여부");
+    expect(html).not.toContain("지급률");
+    expect(html).not.toContain('aria-label="보험금지급"');
+    expect(html).not.toContain("추가");
+  });
+
+  it("읽기 모드 — 값이 있는 선택 필드만 보인다 · ⊖ 없음", () => {
+    const html = renderToStaticMarkup(<StructForm model={modelOf(["pay.rate", entered(80)])} embedded readOnly flat />);
+    expect(tagsWith(html, 'name="pay.rate"')[0]).toContain('value="80"');
+    expect(html).not.toContain("면책여부");
+    expect(html).not.toContain("빼기");
+  });
+
+  it("편집 모드 — 값이 없으면 칸 대신 폼 아래 「⊕ 면책여부」「⊕ 지급률」 버튼 (「⊕ 감액」과 같은 모양)", () => {
+    const html = renderToStaticMarkup(<StructForm model={modelOf()} embedded flat />);
+    expect(html).not.toContain('name="pay.exempt"');
+    expect(html).not.toContain('name="pay.rate"');
+    const buttons = tagsWith(html, 'class="ts-form-optional-btn"');
+    expect(buttons.some((t) => t.includes('title="면책여부 추가"'))).toBe(true);
+    expect(buttons.some((t) => t.includes('title="지급률 추가"'))).toBe(true);
+    expect(buttons.some((t) => t.includes('title="감액 추가"'))).toBe(true);
+  });
+
+  it("편집 모드 — 더한(addField) 필드는 칸이 보이고 라벨 옆 ⊖ 가 있다 · 그 필드의 ⊕ 는 사라진다", () => {
+    const model = modelOf();
+    const added = formReducer(initFormState(model), { type: "addField", path: "pay.rate" });
+    const html = renderToStaticMarkup(<StructForm model={model} embedded flat initialState={added} />);
+    expect(tagsWith(html, 'name="pay.rate"')).toHaveLength(1);
+    expect(html).toContain('aria-label="지급률 빼기 — 값을 지운다"');
+    expect(html).not.toContain('title="지급률 추가"');
+    expect(html).toContain('title="면책여부 추가"');
+  });
+
+  it("편집 모드 — 저장 값이 있는 필드는 처음부터 칸 + ⊖, ⊖(removeField) 하면 칸이 사라지고 ⊕ 로 돌아간다", () => {
+    const model = modelOf(["pay.exempt", entered(true)]);
+    const before = renderToStaticMarkup(<StructForm model={model} embedded flat />);
+    expect(tagsWith(before, 'name="pay.exempt"').length).toBeGreaterThan(0);
+    expect(before).toContain('aria-label="면책여부 빼기 — 값을 지운다"');
+    const removed = formReducer(initFormState(model), { type: "removeField", path: "pay.exempt" });
+    const after = renderToStaticMarkup(<StructForm model={model} embedded flat initialState={removed} />);
+    expect(after).not.toContain('name="pay.exempt"');
+    expect(after).toContain('title="면책여부 추가"');
+  });
+});

@@ -16,6 +16,8 @@
  *   `highlightPath` 면 그 행을 강조하고 스크롤한다.
  * - **노드 카드 안(`flat`)은 폼 상자가 없다 (2026-09-27)**: 담보 · 세부보장 · 급부 카드가 이미 테두리라 폼 카드를 겹치지 않는다 —
  *   필드 행이 카드 본문에 바로 선다. 폼이 둘 이상 보이거나(급부 — 보험금지급 + 감액) 선택 폼이면 작은 제목 한 줄만.
+ * - **선택 필드(`optional` — 면책여부 · 지급률)도 더하기 전엔 자리가 없다 (2026-09-27)**: 값이 없으면 읽기 모드에 행이 없고,
+ *   편집 모드에서는 그 폼 맨 아래 「⊕ {라벨}」 한 줄. 더한 필드는 라벨 옆 ⊖ 로 뺀다(값을 지운다). 보일 행이 하나도 없는 폼은 그리지 않는다.
  * - **선택 폼(감액 · 면책, `optional`)은 더하기 전엔 자리가 없다 (ADR-0065 §4 · 2026-09-27)**: 닫힌 선택 폼은 읽기 모드에서
  *   아무것도 그리지 않고, 편집 모드에서는 폼 맨 아래 한 줄 「⊕ 감액 · ⊕ 면책」 으로만 선다. 연 폼은 제목 옆 ⊖ 로 닫는다(값을 지운다).
  *
@@ -34,6 +36,7 @@ import {
   formatValue,
   formReducer,
   initFormState,
+  isFieldAbsent,
   isFieldHidden,
   toSubmission,
   type Draft,
@@ -238,6 +241,8 @@ interface FieldRowProps {
   externalIssues: Issue[];
   onEdit: (draft: Draft) => void;
   onRevert: () => void;
+  /** 선택 필드의 ⊖ — 칸을 감추고 값을 지운다 (편집 모드만). */
+  onRemove?: () => void;
   /** 라벨 옆 코드 ⓘ 링크. */
   showCode?: boolean;
   /** 읽기 모드 — 입력칸을 잠그고(inert) 「미입력」 배지를 달지 않는다. */
@@ -246,7 +251,7 @@ interface FieldRowProps {
   highlighted?: boolean;
 }
 
-function FieldRow({ idBase, field, externalIssues, onEdit, onRevert, showCode, readOnly, highlighted }: FieldRowProps) {
+function FieldRow({ idBase, field, externalIssues, onEdit, onRevert, onRemove, showCode, readOnly, highlighted }: FieldRowProps) {
   const { view } = field;
   const [askRevert, setAskRevert] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
@@ -290,6 +295,15 @@ function FieldRow({ idBase, field, externalIssues, onEdit, onRevert, showCode, r
           <a className="ts-field-code" href={`/master/${view.path}`} title={view.path} aria-label={view.path}>
             <IconInfo />
           </a>
+        )}
+        {onRemove && (
+          <IconButton
+            className="ts-form-field-remove"
+            danger
+            icon={<IconMinusCircle />}
+            label={`${view.label} 빼기 — 값을 지운다`}
+            onClick={onRemove}
+          />
         )}
       </span>
       {/* 읽기 모드는 입력만 잠근다 — 라벨 옆 ⓘ 의 tooltip · 링크는 살아 있어야 한다 */}
@@ -403,27 +417,18 @@ export function StructForm({
   // 선택 폼은 열렸을 때만 카드로 선다 — 닫힌 것은 편집 모드에서 폼 아래 「⊕ {폼}」 한 줄로만.
   const shownCards = model.cards.filter((card) => !card.optional || live.open[card.key]);
   const closedCards = model.cards.filter((card) => card.optional && !live.open[card.key]);
-
-  return (
-    <form className={readOnly ? "ts-form ts-form-read" : "ts-form"} data-level={model.level} onSubmit={handleSubmit}>
-      <h2 className="ts-form-title">{model.label}</h2>
-      {model.cards.length === 0 && <p className="ts-form-empty">입력할 값 자리가 없습니다.</p>}
-      {shownCards.map((card) => {
-        const remove = card.optional && !readOnly && (
-          // 연 선택 폼 — ⊖ 는 그 자리를 지운다(값도). 다시 더하려면 폼 아래 「⊕ {폼}」 (ADR-0065 §4)
-          <IconButton
-            className="ts-form-card-remove"
-            danger
-            icon={<IconMinusCircle />}
-            label={`${card.label} 없음으로 — 값을 지운다`}
-            onClick={() => dispatch({ type: "closeForm", form: card.key })}
-          />
-        );
-        const rows = card.fields.map((view) =>
+  // 오류가 걸렸거나 강조로 건너온 자리는 숨기지 않는다 (기능/담보 §3.4).
+  const pinned = (path: string) => issuesAt(path).length > 0 || highlightPath === path;
+  // 카드마다 그릴 행 · 더할 수 있는 선택 필드. 읽기 모드에서 보일 행이 하나도 없는 카드는 통째로 그리지 않는다 (2026-09-27).
+  const visibleCards = shownCards
+    .map((card) => {
+      const absent = card.fields.filter((view) => isFieldAbsent(live, view.path) && !pinned(view.path));
+      const rows = card.fields
+        .filter((view) => !absent.includes(view))
+        .map((view) =>
           // 기본 숨김 — 기본값 그대로면 칸 대신 작은 링크 하나. 읽기 모드는 아무것도 안 보인다.
-          // 오류가 걸렸거나 강조로 건너온 자리는 숨기지 않는다 (기능/담보 §3.4).
-          isFieldHidden(live, view.path) && issuesAt(view.path).length === 0 && highlightPath !== view.path ? (
-            !readOnly && (
+          isFieldHidden(live, view.path) && !pinned(view.path) ? (
+            readOnly ? null : (
               <p key={view.path} className="ts-form-reveal-row" data-path={view.path}>
                 <button type="button" className="ts-linklike ts-form-reveal" onClick={() => dispatch({ type: "reveal", path: view.path })}>
                   {view.label} 바꾸기
@@ -438,15 +443,53 @@ export function StructForm({
               externalIssues={issuesAt(view.path)}
               onEdit={(draft) => dispatch({ type: "edit", path: view.path, draft })}
               onRevert={() => dispatch({ type: "revertToMaster", path: view.path })}
+              onRemove={view.optional && !readOnly ? () => dispatch({ type: "removeField", path: view.path }) : undefined}
               showCode={showCodes}
               readOnly={readOnly}
               highlighted={highlightPath === view.path}
             />
           ),
+        )
+        .filter((row) => row !== null);
+      return { card, rows, addable: readOnly ? [] : absent };
+    })
+    .filter(({ rows, addable }) => rows.length > 0 || addable.length > 0);
+
+  return (
+    <form className={readOnly ? "ts-form ts-form-read" : "ts-form"} data-level={model.level} onSubmit={handleSubmit}>
+      <h2 className="ts-form-title">{model.label}</h2>
+      {model.cards.length === 0 && <p className="ts-form-empty">입력할 값 자리가 없습니다.</p>}
+      {visibleCards.map(({ card, rows, addable }) => {
+        const remove = card.optional && !readOnly && (
+          // 연 선택 폼 — ⊖ 는 그 자리를 지운다(값도). 다시 더하려면 폼 아래 「⊕ {폼}」 (ADR-0065 §4)
+          <IconButton
+            className="ts-form-card-remove"
+            danger
+            icon={<IconMinusCircle />}
+            label={`${card.label} 없음으로 — 값을 지운다`}
+            onClick={() => dispatch({ type: "closeForm", form: card.key })}
+          />
+        );
+        const addRow = addable.length > 0 && (
+          // 자리 없는 선택 필드 — 폼 맨 아래 한 줄의 작은 더하기 버튼 (「⊕ 감액」과 같은 모양, 2026-09-27)
+          <p className="ts-form-optional-add ts-form-field-add">
+            {addable.map((view) => (
+              <button
+                key={view.path}
+                type="button"
+                className="ts-form-optional-btn"
+                title={`${view.label} 추가`}
+                data-path={view.path}
+                onClick={() => dispatch({ type: "addField", path: view.path })}
+              >
+                <IconPlusCircle /> {view.label}
+              </button>
+            ))}
+          </p>
         );
         if (flat) {
           // 노드 카드 안 — 폼마다 테두리 상자를 두르지 않는다. 폼이 둘 이상 보이거나 선택 폼이면 작은 제목 한 줄만 (2026-09-27)
-          const titled = card.optional || shownCards.length > 1;
+          const titled = card.optional || visibleCards.length > 1;
           return (
             <div key={card.key} role="group" className="ts-form-group" aria-label={card.label} data-form={card.key}>
               {titled && (
@@ -457,6 +500,7 @@ export function StructForm({
                 </p>
               )}
               {rows}
+              {addRow}
             </div>
           );
         }
@@ -469,6 +513,7 @@ export function StructForm({
               {remove}
             </legend>
             {rows}
+            {addRow}
           </fieldset>
         );
       })}
