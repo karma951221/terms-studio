@@ -1,8 +1,8 @@
 import Link from "next/link";
 
+import { basicsCrumb } from "@/app/_components/BasicsTabs";
 import { Breadcrumb } from "@/app/_components/Breadcrumb";
 import { coordinateHref } from "@/app/_components/coordinateHref";
-import { ENTITY_LABEL } from "@/app/_lib/labels";
 import { formatCoordinate } from "@/domain/coordinate";
 import { MASTER } from "@/domain/master";
 import { affectedProducts, dependentDiscriminators, describeKey, nodeKey, refStats, transitiveUsages, type EdgeVia } from "@/domain/refs";
@@ -23,7 +23,7 @@ export default async function CatalogDetailPage({ params }: { params: Promise<{ 
   const { code } = await params;
   const services = getServices();
   const def = await services.catalog.get(code);
-  if (!def) return <div><Breadcrumb items={[{ label: ENTITY_LABEL.discriminator, href: "/catalog" }, { label: code }]} /><p className="ts-error-banner">찾을 수 없습니다.</p></div>;
+  if (!def) return <div><Breadcrumb items={[basicsCrumb("discriminators"), { label: code }]} /><p className="ts-error-banner">찾을 수 없습니다.</p></div>;
   const [graph, enums, defs, inspection] = await Promise.all([
     services.refs.graph(),
     services.catalog.listEnums(),

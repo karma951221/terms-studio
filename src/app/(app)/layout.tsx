@@ -34,7 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <div key={group.title} className="ts-nav-group">
                 <p className="ts-nav-group-title">{group.title}</p>
                 {group.items.map((item) => (
-                  <NavLink key={item.href} href={item.href} label={item.label} />
+                  <NavLink key={item.href} href={item.href} label={item.label} {...(item.activePaths ? { activePaths: item.activePaths } : {})} />
                 ))}
               </div>
             ))}

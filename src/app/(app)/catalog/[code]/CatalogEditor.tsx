@@ -11,6 +11,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 
+import { basicsCrumb } from "@/app/_components/BasicsTabs";
 import { EditShell, Field, useEditField } from "@/app/_components/EditShell";
 import { InfoTip } from "@/app/_components/InfoTip";
 import { UsageDialog } from "@/app/_components/UsageDialog";
@@ -171,7 +172,7 @@ export function CatalogEditor({
       extraActions={<UsageDialog count={usageCount}>{usage}</UsageDialog>}
       editActions={<EditInspectButton code={def.code} level={def.level} onResult={setInspection} />}
       readBadges={badges.map((b) => <span key={b.label} className="ts-badge warning" title={b.title}>{b.label}</span>)}
-      path={[{ label: ENTITY_LABEL.discriminator, href: "/catalog" }]}
+      path={[basicsCrumb("discriminators")]}
       saveAction={saveDiscriminatorEditAction.bind(null, def.code)}
       deleteAction={removeDiscriminatorEditAction.bind(null, def.code)}
       deleteLabel={`${def.label} 삭제`}
