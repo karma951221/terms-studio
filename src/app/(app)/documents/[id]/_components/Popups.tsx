@@ -37,6 +37,7 @@ import { InlineSlot } from "./Inline";
 import { runsFromTokens } from "./inlineRuns";
 import type { PopupSpec } from "./menus";
 import { PopActions, Popover } from "./Popover";
+import { RefTargetTree } from "./RefTargetTree";
 
 export interface PopupEnv {
   ctx: DocCtx;
@@ -95,24 +96,18 @@ function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode })
       )}
       <div className="ts-form-row ts-form-full">
         <label htmlFor="pop-ref-targets">참조 대상 (여럿 고를 수 있다)</label>
-        <select id="pop-ref-targets" name="targets" multiple size={8} defaultValue={node?.targets.map((t) => t.nodeId) ?? []}>
-          <optgroup label="이 템플릿">
-            {[...ctx.references.self].map(([nodeId, target]) => (
-              <option key={`self:${nodeId}`} value={nodeId}>
-                {referenceTargetLabel(target)}
-              </option>
-            ))}
-          </optgroup>
-          {ctx.docKind === "special" && (
-            <optgroup label="대응 보통약관">
-              {[...ctx.references.general].map(([nodeId, target]) => (
-                <option key={`general:${nodeId}`} value={nodeId}>
-                  {referenceTargetLabel(target)}
-                </option>
-              ))}
-            </optgroup>
-          )}
-        </select>
+        <RefTargetTree
+          id="pop-ref-targets"
+          defaultSelected={node?.targets.map((t) => t.nodeId) ?? []}
+          scopes={
+            ctx.docKind === "special"
+              ? [
+                  { key: "self", label: "이 템플릿", index: ctx.references.self },
+                  { key: "general", label: "대응 보통약관", index: ctx.references.general },
+                ]
+              : [{ key: "self", index: ctx.references.self }]
+          }
+        />
       </div>
       <div className="ts-form-row">
         <span className="ts-form-label">연결어</span>

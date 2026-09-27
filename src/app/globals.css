@@ -3302,6 +3302,84 @@ button.ts-doc-cond-btn:hover {
   width: min(600px, calc(100vw - 32px));
 }
 
+/* 조 참조 대상 고르기 트리 — 좌측 목차(.ts-l3-toc)와 같은 접기 문법 ▸/▾, 줄마다 체크박스 */
+.ts-ref-tree {
+  max-height: 280px;
+  overflow: auto;
+  padding: 4px 0;
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+  background: var(--ts-surface);
+  font-size: 13px;
+}
+
+.ts-ref-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ts-ref-row {
+  display: flex;
+  align-items: center;
+  min-height: 22px;
+  padding-right: 6px;
+}
+
+.ts-ref-row:hover {
+  background: var(--ts-surface-2);
+}
+
+.ts-ref-row[aria-selected="true"] > .ts-ref-pick {
+  color: var(--ts-mark);
+}
+
+.ts-ref-fold {
+  flex: 0 0 18px;
+  width: 18px;
+  min-height: 0;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--ts-ink-3);
+  text-align: center;
+}
+
+button.ts-ref-fold:hover {
+  background: none;
+  color: var(--ts-ink);
+}
+
+.ts-ref-pick {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ts-ink-2);
+  cursor: pointer;
+}
+
+.ts-ref-hidden {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--ts-mark);
+  white-space: nowrap;
+}
+
+.ts-ref-scope,
+.ts-ref-section {
+  padding: 4px 6px 2px;
+  font-weight: 700;
+  color: var(--ts-ink);
+}
+
+.ts-ref-scope {
+  font-size: 12px;
+  color: var(--ts-ink-3);
+}
+
 .ts-pop::backdrop {
   background: transparent;
 }
