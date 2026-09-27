@@ -184,3 +184,87 @@ export function diffByArticle(expected: readonly string[], actual: readonly stri
   }
   return out;
 }
+
+// ───────────────────────────── 조 순서 허용 대조 (2026-09-28) ─────────────────────────────
+
+/** 관 헤딩 줄 (`# 제N관 제목`). */
+const SECTION_LINE = /^#\s*제\d+관\s*/;
+
+export interface UnorderedDiff {
+  /** 원문에만 있는 조 (제목 · 본문 정규화 기준). */
+  missing: Chunk[];
+  /** 조립 결과에만 있는 조. */
+  extra: Chunk[];
+  /** 관 제목 순서가 다르면 [원문, 조립]. */
+  sections?: [string[], string[]];
+}
+
+const chunkKey = (c: Chunk) => `${squash(c.title)}\n${c.lines.map(normalizeLine).join("\n")}`;
+const sectionTitles = (lines: readonly string[]) => lines.filter((l) => SECTION_LINE.test(l)).map((l) => squash(l.replace(SECTION_LINE, "")));
+
+/**
+ * 조 순서를 허용하는 대조 — 조 덩어리를 (조 명 + 정규화 본문) 키의 **다중집합**으로 비교한다 (QA/인수기준 실물 재현 허용 차이 ⑥).
+ * 관 헤딩은 덩어리에서 떼어 관 제목 순서만 따로 본다. 번호가 조립 순서와 맞는지는 `referenceNumberIssues` 가 본다.
+ */
+export function diffArticlesUnordered(expected: readonly string[], actual: readonly string[]): UnorderedDiff {
+  const strip = (cs: Chunk[]) => cs.map((c) => ({ title: c.title, lines: c.lines.filter((l) => !SECTION_LINE.test(l)) }));
+  const e = strip(chunks(expected));
+  const a = strip(chunks(actual));
+  const pool = new Map<string, Chunk[]>();
+  for (const c of a) pool.set(chunkKey(c), [...(pool.get(chunkKey(c)) ?? []), c]);
+  const missing: Chunk[] = [];
+  for (const c of e) {
+    const left = pool.get(chunkKey(c));
+    if (left && left.length > 0) left.shift();
+    else missing.push(c);
+  }
+  const extra = [...pool.values()].flat();
+  const es = sectionTitles(expected);
+  const as = sectionTitles(actual);
+  return { missing, extra, ...(es.join("|") !== as.join("|") ? { sections: [es, as] as [string[], string[]] } : {}) };
+}
+
+/** 조 헤딩 `## 제N조(제목)` → 번호 · 제목. */
+const HEADING = /^##\s*제(\d+)조\((.*)\)\s*$/;
+/** 본문의 조 참조 「제N조(제목)」 — 제목 안 괄호 한 겹까지 (「골절(치아파절 제외)…」). 가지번호 없음(조립 결과). */
+const ARTICLE_REF = /제(\d+)조\(((?:[^()]|\([^()]*\))*)\)/g;
+/** 직전 낱말이 「…법 」 「…법률 」 「…령 」 「…규칙 」(낫표로 닫혀도) 이면 법령 인용이다 — 「「금융소비자보호에 관한 법률」제2조(정의)」. */
+const LAW_CITATION = /(법|법률|령|규칙)」?\s?$/;
+
+/** 조 헤딩으로 번호 → 제목 표 (조립 결과 줄). */
+export function articleTitles(lines: readonly string[]): Map<number, string> {
+  const out = new Map<number, string>();
+  for (const l of lines) {
+    const m = HEADING.exec(l);
+    if (m) out.set(Number(m[1]), squash(m[2]));
+  }
+  return out;
+}
+
+/**
+ * 조립 결과의 조 번호 · 조 참조 번호가 **조립 순서**와 맞는지 — 조 순서가 원문과 달라도 되는 대신 이것은 맞아야 한다.
+ * - 조 헤딩 번호는 1부터 빈틈없이 잇는다.
+ * - 본문의 「제N조(제목)」(법령 인용 제외)은 이 문서의 제N조 또는 보통약관의 제N조가 그 제목이어야 한다.
+ */
+export function referenceNumberIssues(lines: readonly string[], general?: ReadonlyMap<number, string>): string[] {
+  const issues: string[] = [];
+  const self = articleTitles(lines);
+  let expectedNumber = 1;
+  for (const l of lines) {
+    const m = HEADING.exec(l);
+    if (!m) continue;
+    if (Number(m[1]) !== expectedNumber) issues.push(`조 번호가 조립 순서와 다름: ${l} (기대 제${expectedNumber}조)`);
+    expectedNumber += 1;
+  }
+  for (const l of lines) {
+    if (HEADING.test(l)) continue;
+    for (const m of l.matchAll(ARTICLE_REF)) {
+      if (LAW_CITATION.test(l.slice(0, m.index))) continue;
+      const n = Number(m[1]);
+      const title = squash(m[2]);
+      if (self.get(n) === title || general?.get(n) === title) continue;
+      issues.push(`조 참조 「${m[0]}」 — 제${n}조는 「${self.get(n) ?? general?.get(n) ?? "없음"}」`);
+    }
+  }
+  return issues;
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { diffByArticle, normalizeLine, renderedToLines, sourceToLines } from "./compare";
+import { diffArticlesUnordered, diffByArticle, normalizeLine, referenceNumberIssues, renderedToLines, sourceToLines } from "./compare";
 import type { RenderedDoc } from "./types";
 
 const doc: RenderedDoc = {
@@ -135,5 +135,36 @@ describe("대조기 — 조립 결과 ↔ 원문 (파싱양식)", () => {
   it("조 수가 다르면 없는 쪽이 빈 조로 보고된다", () => {
     const diffs = diffByArticle(["## 제1조(목적)", "= 같다"], ["## 제1조(목적)", "= 같다", "## 제2조(추가)", "= 더"]);
     expect(diffs).toEqual([{ index: 1, title: "추가", expected: [], actual: ["= 더"] }]);
+  });
+});
+
+describe("조 순서 허용 대조 (2026-09-28)", () => {
+  const source = ["# 제1관 목적", "## 제1조(목적)", "= 가.", "## 제2조(정의)", "@ 제1조(목적)에 따라 나.", "@ 다."];
+
+  it("조 순서가 달라도 조 명 + 본문이 같으면 같다 — 참조 번호는 조 명 기준", () => {
+    const actual = ["# 제1관 목적", "## 제1조(정의)", "@ 제2조(목적)에 따라 나.", "@ 다.", "## 제2조(목적)", "= 가."];
+    expect(diffArticlesUnordered(source, actual)).toEqual({ missing: [], extra: [] });
+  });
+
+  it("본문이 다르면 양쪽에 남는다 · 같은 조가 두 번이면 한 번만 짝짓는다", () => {
+    const actual = ["# 제1관 목적", "## 제1조(목적)", "= 가.", "## 제2조(목적)", "= 가.", "## 제3조(정의)", "@ 다른 글."];
+    const d = diffArticlesUnordered(source, actual);
+    expect(d.missing.map((c) => c.title)).toEqual(["정의"]);
+    expect(d.extra.map((c) => c.title).sort()).toEqual(["목적", "정의"]);
+  });
+
+  it("관 제목 순서가 다르면 따로 보고한다", () => {
+    expect(diffArticlesUnordered(["# 제1관 가", "# 제2관 나"], ["# 제1관 나", "# 제2관 가"]).sections).toEqual([["가", "나"], ["나", "가"]]);
+  });
+
+  it("조 번호 · 조 참조 번호는 조립 순서와 맞아야 한다 — 법령 인용과 보통약관 조는 통과", () => {
+    const general = new Map([[5, "보험금을지급하지않는사유"]]);
+    const ok = ["## 제1조(목적)", "= 의료법 제3조(의료기관)에 따라 보통약관 제5조(보험금을 지급하지 않는 사유) 및 제2조(정의)", "## 제2조(정의)", "= 가."];
+    expect(referenceNumberIssues(ok, general)).toEqual([]);
+    const bad = ["## 제1조(목적)", "= 제1조(정의)를 따른다", "## 제3조(정의)", "= 가."];
+    expect(referenceNumberIssues(bad, general)).toEqual([
+      "조 번호가 조립 순서와 다름: ## 제3조(정의) (기대 제2조)",
+      "조 참조 「제1조(정의)」 — 제1조는 「목적」",
+    ]);
   });
 });
