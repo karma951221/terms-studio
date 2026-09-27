@@ -3407,10 +3407,6 @@ button.ts-doc-cell-add[aria-current="true"] {
   white-space: nowrap;
 }
 
-.ts-node-list .ts-count {
-  font-variant-numeric: tabular-nums;
-}
-
 .ts-value-block {
   margin-bottom: 12px;
 }

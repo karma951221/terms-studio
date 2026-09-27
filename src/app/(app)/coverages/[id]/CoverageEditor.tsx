@@ -23,8 +23,7 @@ import { EditShell, Field, useEditField, useEditLeave } from "@/app/_components/
 import { InfoTip } from "@/app/_components/InfoTip";
 import { isDirty } from "@/app/_lib/edit";
 import { ENTITY_LABEL, FIELD_LABEL, NAME_LABEL } from "@/app/_lib/labels";
-import { decodeNodeKey, encodeNodeKey, savedStructureOf, structureIssues, type CoverageNodeLevel, type StructureDraftSub, type StructureSavedSub } from "@/domain/coverage";
-import type { NodeCompleteness } from "@/services/coverage";
+import { decodeNodeKey, savedStructureOf, structureIssues, type CoverageNodeLevel, type StructureDraftSub, type StructureSavedSub } from "@/domain/coverage";
 import { StructForm, type FormModel, type FormState, type Submission } from "@/forms";
 
 import { StructureTree } from "../_components/StructureTree";
@@ -51,7 +50,6 @@ export interface CoverageEditorProps {
   id: string;
   initial: CoverageEditData;
   nodes: EditorNode[];
-  byNode: NodeCompleteness[];
   /** 노드 키 → 그 레벨 마스터 값 폼 (ADR-0037: 레벨 하나에 폼 하나). */
   formByNode: Record<string, FormModel>;
   usageCount: number;
@@ -154,10 +152,9 @@ function BasicTab({ coverageId, nodes, original, usageCount, documentId, attribu
 
 // ───────────────────────────── 값 탭 ─────────────────────────────
 
-function ValueTab({ level, nodes, byNode, formByNode, selected, onSelect, drafts, onDraft, showCodes, highlightPath }: {
+function ValueTab({ level, nodes, formByNode, selected, onSelect, drafts, onDraft, showCodes, highlightPath }: {
   level: CoverageNodeLevel;
   nodes: EditorNode[];
-  byNode: NodeCompleteness[];
   formByNode: Record<string, FormModel>;
   selected: string | undefined;
   onSelect: (key: string) => void;
@@ -174,7 +171,6 @@ function ValueTab({ level, nodes, byNode, formByNode, selected, onSelect, drafts
   const nameOf = (node: EditorNode) => draftName.get(node.key) ?? node.name;
   const levelNodes = nodes.filter((n) => n.level === level);
   const current = levelNodes.find((n) => n.key === selected) ?? levelNodes[0];
-  const countOf = (key: string) => byNode.find((c) => encodeNodeKey(c.node.level, c.node.id) === key);
 
   if (!current) return <p className="ts-form-empty">이 층에 노드가 없다.</p>;
 
@@ -212,18 +208,14 @@ function ValueTab({ level, nodes, byNode, formByNode, selected, onSelect, drafts
   return (
     <div className="ts-node-split">
       <ul className="ts-node-list">
-        {levelNodes.map((node) => {
-          const count = countOf(node.key);
-          return (
-            <li key={node.key}>
-              <button type="button" onClick={() => onSelect(node.key)} aria-current={node.key === current.key ? "true" : undefined}>
-                <span className="ts-tree-num">{node.order}</span>
-                <span className="ts-node-name">{node.parentName ? `${node.parentName} › ${nameOf(node)}` : nameOf(node)}</span>
-                <span className="ts-count">{count ? `${count.entered} / ${count.total}` : "—"}</span>
-              </button>
-            </li>
-          );
-        })}
+        {levelNodes.map((node) => (
+          <li key={node.key}>
+            <button type="button" onClick={() => onSelect(node.key)} aria-current={node.key === current.key ? "true" : undefined}>
+              <span className="ts-tree-num">{node.order}</span>
+              <span className="ts-node-name">{node.parentName ? `${node.parentName} › ${nameOf(node)}` : nameOf(node)}</span>
+            </button>
+          </li>
+        ))}
       </ul>
       {body}
     </div>
@@ -233,7 +225,7 @@ function ValueTab({ level, nodes, byNode, formByNode, selected, onSelect, drafts
 // ───────────────────────────── 탭 + 껍데기 ─────────────────────────────
 
 function Tabs(props: Omit<CoverageEditorProps, "id"> & { coverageId: string }) {
-  const { coverageId, nodes, byNode, formByNode, usageCount, documentId, attributeValueLabels, initial, initialTab, initialNode, highlightPath, showCodes } = props;
+  const { coverageId, nodes, formByNode, usageCount, documentId, attributeValueLabels, initial, initialTab, initialNode, highlightPath, showCodes } = props;
   const [tab, setTab] = useState<Tab>(isTab(initialTab) ? initialTab : "basic");
   // `?node=` 는 그 레벨 슬롯에만 들어간다 — 다른 레벨은 첫 노드로 연다.
   const [selected, setSelected] = useState<Record<CoverageNodeLevel, string | undefined>>(() => {
@@ -288,7 +280,6 @@ function Tabs(props: Omit<CoverageEditorProps, "id"> & { coverageId: string }) {
         <ValueTab
           level={tab}
           nodes={nodes}
-          byNode={byNode}
           formByNode={formByNode}
           selected={selected[tab]}
           onSelect={(key) => setSelected((current) => ({ ...current, [tab]: key }))}

@@ -31,14 +31,12 @@ export default async function CoverageDetailPage({
     );
   }
 
-  const [enumsList, graph, summaryResult, attributeKinds] = await Promise.all([
+  const [enumsList, graph, attributeKinds] = await Promise.all([
     services.catalog.listEnums(),
     services.refs.graph(),
-    services.coverage.completenessSummary(tree.id),
     services.product.listAttributeKinds(),
   ]);
   const enumLookup = (code: string) => enumsList.find((e) => e.code === code);
-  const byNode = summaryResult.ok ? summaryResult.value.byNode : [];
 
   // 트리 순서대로 노드를 편다 — 순번 · 급부 수 · 소속 세부보장 이름을 화면이 그대로 쓴다.
   const nodes: EditorNode[] = [];
@@ -85,7 +83,6 @@ export default async function CoverageDetailPage({
         id={tree.id}
         initial={{ label: tree.name, description: tree.description, structure: structureDraftOf(tree), values: {} }}
         nodes={nodes}
-        byNode={byNode}
         formByNode={formByNode}
         usageCount={usageCount}
         documentId={tree.documentId}
