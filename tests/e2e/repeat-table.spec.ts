@@ -30,6 +30,9 @@ test(
   "행 반복 표: 표 → 행 반복 → 구조 표기 → 미리보기 펼침 · 세부보장 추가 후 행 증가",
   { annotation: { type: "좌표없음", description: "ADR-0070 반복 표 — 설계 2026-09-22 §4 E2E" } },
   async ({ page, ev }) => {
+    // 담보 상세의 담보약관 띠(「만들기」)가 빠졌다 (2026-09-27, 기능/담보 §6.2) — 새 담보에 담보약관 템플릿을 만드는 화면 입구가 없다.
+    // 담보약관 템플릿 메뉴에 만들기가 생기면 반복표#3 을 그 입구로 고쳐 되살린다.
+    test.fixme(true, "담보약관 템플릿 만들기 입구 없음 — 반복표#3");
     test.setTimeout(120_000);
     await ev.action("반복표#1", "관리자로 로그인한다", () => login(page));
 
@@ -43,7 +46,7 @@ test(
       return page.url();
     });
 
-    const docUrl = await ev.action("반복표#3", "담보약관 띠의 「만들기」로 담보 약관 템플릿을 만든다 — 읽기 모드에서 바로", async () => {
+    const docUrl = await ev.action("반복표#3", "담보 약관 템플릿을 만든다 — 입구 없음(위 fixme)", async () => {
       await expect(page.locator(".ts-cov-band")).toContainText("없음");
       await page.getByRole("button", { name: "만들기", exact: true }).click();
       await page.waitForURL(/\/documents\/[0-9a-f-]+$/);

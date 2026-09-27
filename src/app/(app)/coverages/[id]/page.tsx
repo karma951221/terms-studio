@@ -2,18 +2,17 @@ import { Breadcrumb } from "@/app/_components/Breadcrumb";
 import { ErrorBanner } from "@/app/_components/ErrorBanner";
 import { ENTITY_LABEL } from "@/app/_lib/labels";
 import { decodeNodeKey, encodeNodeKey, nodesOf, structureDraftOf } from "@/domain/coverage";
-import { indexTree } from "@/domain/document";
 import { usagesOf } from "@/domain/refs";
 import { buildForm, type FormModel } from "@/forms";
 import { currentActor, getServices } from "@/lib/services";
 
-import { CoverageEditor, type CoverageTemplate } from "./CoverageEditor";
+import { CoverageEditor } from "./CoverageEditor";
 
 export const dynamic = "force-dynamic";
 
 /**
- * 담보 상세 — 탭 없는 한 화면 (기능/담보 §4 「상세」). `?node=<level>:<id>&field=<폼키.필드키>` 는 진입 좌표 — 그 카드를 펼치고
- * 스크롤 · 강조한다. `?tab=` 은 옛 좌표라 읽지 않는다.
+ * 담보 상세 — 탭 없는 한 화면 (기능/담보 §4 「상세」). `?node=<level>:<id>&field=<폼키.필드키>` 는 진입 좌표 — 그 카드(필드)로
+ * 스크롤 · 강조한다. `?tab=` 은 옛 좌표라 읽지 않는다. 담보약관 템플릿은 이 화면에 없다 — 담보약관 템플릿 메뉴가 입구다 (2026-09-27).
  */
 export default async function CoverageDetailPage({
   params,
@@ -65,15 +64,6 @@ export default async function CoverageDetailPage({
         : undefined;
 
   const usageCount = usagesOf(graph, { kind: "coverageNode", level: "coverage", id: tree.id }, { via: ["mount"] }).length;
-  // 담보약관 띠 — 제목 · 조 수 · 미결정 공용조항 옵션 수 (기능/담보 §3.5). 옵션은 저장 검사와 같은 검증으로 센다.
-  let template: CoverageTemplate | undefined;
-  if (tree.documentId) {
-    const [doc, unresolvedOptionCount] = await Promise.all([services.document.get(tree.documentId), services.document.unresolvedOptionCount(tree.documentId)]);
-    if (doc) {
-      const articleCount = [...indexTree(doc.tree).nodes.values()].filter((entry) => entry.node.kind === "article").length;
-      template = { id: doc.id, title: doc.title, articleCount, unresolvedOptionCount };
-    }
-  }
   const attributeValueLabels = attributeKinds.flatMap((kind) => kind.values.map((value) => value.label));
 
   // 이름 · 구조가 바뀌면 초안을 새 진실로 다시 세운다 (EnumDetailPage 와 같은 패턴).
@@ -88,7 +78,6 @@ export default async function CoverageDetailPage({
         initial={{ label: tree.name, description: tree.description, structure: structureDraftOf(tree), values: {} }}
         formByNode={formByNode}
         usageCount={usageCount}
-        template={template}
         attributeValueLabels={attributeValueLabels}
         target={target}
         highlightPath={target ? sp.field : undefined}

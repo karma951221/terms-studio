@@ -3630,33 +3630,7 @@ button.ts-ref-fold:hover {
 }
 
 
-/* ── 담보 상세 — 한 화면: 담보약관 띠 + 중첩 카드 (기능/담보 §4 「상세」) ─────────────── */
-
-/* 담보약관 띠 — 헤더 바로 아래 한 줄. 열기 · 만들기는 줄 끝 */
-.ts-cov-band {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 6px;
-  margin: 0 0 12px;
-  padding: 6px 10px;
-  border: 1px solid var(--ts-rule);
-  border-radius: 6px;
-  background: var(--ts-surface-2);
-  font-size: 13px;
-}
-
-.ts-cov-band-label {
-  color: var(--ts-ink-2);
-}
-
-.ts-cov-band-action {
-  margin-left: auto;
-}
-
-.ts-warn-text {
-  color: var(--ts-warn);
-}
+/* ── 담보 상세 — 한 화면: 중첩 카드 (기능/담보 §4 「상세」) ─────────────── */
 
 /* 카드 — 담보 ⊃ 세부보장 ⊃ 급부. 안쪽 카드는 들여 쌓는다 */
 .ts-cov-card {
