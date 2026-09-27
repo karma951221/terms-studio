@@ -21,7 +21,7 @@ describe("공용조항 에디터 메뉴 — 문면 메뉴를 공용조항 자리
     const onRefuse = vi.fn();
     const e = env("block", onRefuse);
     const sections = clauseInlineMenu(e, { parentId: "p1" }, [{ text: "항" }, { caret: true }]);
-    expect(labels(sections)).toEqual(expect.arrayContaining(["치환 슬롯…", "조 참조…", "별표 참조…", "문장 안 조건…", "옵션 자리 — 기일", "아래에 항 추가", "호 추가"]));
+    expect(labels(sections)).toEqual(expect.arrayContaining(["치환 슬롯…", "조 참조…", "별표 참조…", "문장 안 조건", "옵션 자리 — 기일", "아래에 항 추가", "호 추가"]));
     const clauseRef = find(sections, "공용조항(문장 안)…")!;
     expect(clauseRef.refusal).toBe(REFUSE.clauseRef); // 툴바는 잠그고 이 사유를 tooltip 으로
     expect(clauseRef.action.do).toBe("ops");
@@ -45,16 +45,16 @@ describe("공용조항 에디터 메뉴 — 문면 메뉴를 공용조항 자리
   it("블록 메뉴: 표 · 박스 · 공용조항(조 단위)은 싣지 않거나 거부, 호에는 조건으로 감싸기가 없다", () => {
     const e = env("block");
     const paragraph = labels(clauseBlockMenu(e, "p1"));
-    expect(paragraph).toContain("조건으로 감싸기…");
+    expect(paragraph).toContain("조건으로 감싸기");
     expect(paragraph.some((l) => l.includes("표") || l.includes("박스"))).toBe(false);
-    expect(labels(clauseBlockMenu(e, "i1"))).not.toContain("조건으로 감싸기…");
+    expect(labels(clauseBlockMenu(e, "i1"))).not.toContain("조건으로 감싸기");
   });
 
-  it("본문 빈 자리: 항 추가 + 조 · 관 추가는 거부 배너", () => {
+  it("본문 빈 자리: 항 추가 · 조건 블록 넣기 + 조 · 관 추가는 거부 배너", () => {
     const onRefuse = vi.fn();
     const e = env("block", onRefuse);
     const sections = clauseBodyMenu(e);
-    expect(labels(sections)).toEqual(["항 추가", "조 추가", "관 추가", "공용조항 참조 추가…"]);
+    expect(labels(sections)).toEqual(["항 추가", "조건 블록 넣기", "조 추가", "관 추가", "공용조항 참조 추가…"]);
     const article = find(sections, "조 추가")!;
     if (article.action.do === "ops" && typeof article.action.ops === "function") article.action.ops(e.tree);
     expect(onRefuse).toHaveBeenCalledWith(REFUSE.article);

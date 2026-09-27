@@ -13,8 +13,9 @@
  * 가운데 = 그 자리 편집 (2026-09-27):
  * - 가운데에는 **조 하나**만 보인다 — 목차에서 고른 조, 처음은 제1조. 약관 전체 이어 읽기는 더보기 › 미리보기.
  * - 조 제목 · 관 제목 · 문장은 그 자리에서 고치고, 초점이 떠나면 편집본에 들어간다(「적용」 단계 없음).
- * - 칩 · 조건 머리는 누르면 바로 아래에 팝업. 넣기 · 이동 · 복제 · 삭제 · 조건식은 본문 위 **툴바**가 입구다 — 가운데서 마지막으로
+ * - 칩은 누르면 바로 아래에 팝업. 넣기 · 이동 · 복제 · 삭제 · 조건식은 본문 위 **툴바**가 입구다 — 가운데서 마지막으로
  *   누르거나 초점이 간 자리(`place`)로 버튼이 켜지고 꺼진다. 오른쪽 클릭 메뉴는 같은 목록의 지름길(조건 넣기는 툴바에만).
+ * - 「조건식」은 팝업 없이 조건 블록(빈 IF 줄)을 세우고, 식은 그 머리 줄에서 그 자리로 고친다 (2026-09-28).
  * - 화면은 100vh 에 고정되고 목차 · 가운데 · 우측 패널이 각자 스크롤한다.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type MouseEvent, type ReactNode } from "react";
@@ -65,7 +66,7 @@ import { ArticleBody, DocBody } from "./DocBody";
 import { afterOf, emptyNode, inlineListAt, pasteGridOps } from "./editOps";
 import { caretFromPoint, tokensOf } from "./Inline";
 import { identityRuns, runsFromTokens, sameRuns, type Token } from "./inlineRuns";
-import { placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
+import { clausePickItems, condMenu, inlineCondItem, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
 import { placeOf, readInline } from "./place";
 import { EditorToolbar } from "./EditorToolbar";
 import { DOCUMENT_TOOLS, allTools, condItem, itemsFor, type ToolId } from "./tools";
@@ -501,8 +502,11 @@ export function DocumentEditor(props: EditorProps) {
     if (toolId === "cond") {
       const item = condItem(sections, cut !== undefined);
       if (!item) return;
-      const a = item.action;
-      runMenu(a.do === "popup" && a.popup.kind === "insertInline" && cut !== undefined ? { ...item, action: { do: "popup", popup: { ...a.popup, prefill: cut } } } : item, anchor);
+      // 고른 글은 문장 안 조건의 IF 가지 문장이 된다 — 조각에서는 이미 빠져 있다
+      const chosen = item.label === "문장 안 조건" && cut !== undefined && at.kind === "inline" ? inlineCondItem(at.at, tokens, randomIds, cut) : item;
+      // 넣기 전에 쓰던 문장을 편집본에 넣는다(초점이 떠나며 적용) — 감싸는 블록이 쓰던 글을 두고 가지 않게
+      if (chosen.label !== "문장 안 조건") (document.activeElement as HTMLElement | null)?.blur?.();
+      runMenu(chosen, anchor);
       return;
     }
     const tool = allTools(DOCUMENT_TOOLS).find((t) => t.id === toolId);
@@ -510,6 +514,12 @@ export function DocumentEditor(props: EditorProps) {
     if (items.length === 0) return;
     if (tool?.multi && items.length > 1) {
       setMenu({ x: anchor.x, y: anchor.y, sections: [items] });
+      return;
+    }
+    // 「공용조항」 — 버튼 아래 작은 메뉴에서 공용조항을 고른다(모달 없음). 공용조항이 없으면 그 사유를 보이는 팝업
+    const first = items[0].action;
+    if (toolId === "clauseBlock" && first.do === "popup" && first.popup.kind === "clauseBlock" && props.clauses.length > 0) {
+      setMenu({ x: anchor.x, y: anchor.y, sections: [clausePickItems(props.clauses, first.popup.at, randomIds)] });
       return;
     }
     // 바로 적용하는 조작은 쓰던 문장을 먼저 편집본에 넣는다(초점이 떠나며 적용) — 복제 · 이동이 쓰던 글을 두고 가지 않게
@@ -559,6 +569,7 @@ export function DocumentEditor(props: EditorProps) {
     const recorded = applyRecorded(ops);
     if (!recorded) return;
     if (a.focus) setFocusRequest(a.focus);
+    if (a.openChip) setPop({ spec: { kind: "editChip", nodeId: a.openChip }, anchor });
     if (a.goArticle) {
       setArt(a.goArticle);
       setPlace({ kind: "article", id: a.goArticle });
@@ -621,6 +632,16 @@ export function DocumentEditor(props: EditorProps) {
     ...(focusRequest ? { focusRequest } : {}),
     focusDone: () => setFocusRequest(undefined),
     contextMenu: onContextMenu,
+    headItems: (branchId) => condMenu(menuEnv(), branchId).flat(),
+    run: (item, anchor) => runMenu(item, anchor),
+  };
+
+  // 조건 머리 줄 · 팝업의 조건 · 슬롯 문맥 — 반복 표 템플릿 셀 안이면 「현재 행」 가지 (ADR-0070 · 설계 §3.1). 담보약관만.
+  const withRow = (levels: ReturnType<typeof repeatLevels> | undefined): ConditionContext =>
+    props.condition.coverage && levels && levels.length > 0 ? { ...props.condition, row: { levels, readable: rowReadableLevels(levels) } } : props.condition;
+  const scopeOf = (id: Id) => {
+    const owner = index.branches.get(id)?.ownerId ?? id;
+    return repeatScopeOf(tree, owner)?.levels;
   };
 
   const ctx: DocCtx = {
@@ -634,18 +655,13 @@ export function DocumentEditor(props: EditorProps) {
     optionText,
     references,
     refLabel,
+    clauses: props.clauses,
+    conditionFor: (nodeId) => withRow(scopeOf(nodeId)),
     ...(flashId ? { flashId } : {}),
     ...(mode === "edit" ? { edit } : {}),
   };
 
-  // 팝업의 조건 · 슬롯 문맥 — 반복 표 템플릿 셀 안이면 「현재 행」 가지 (ADR-0070 · 설계 §3.1). 담보약관만.
   const conditionFor = (spec: PopupSpec): ConditionContext => {
-    if (!props.condition.coverage) return props.condition;
-    const withRow = (levels: ReturnType<typeof repeatLevels> | undefined) => (levels && levels.length > 0 ? { ...props.condition, row: { levels, readable: rowReadableLevels(levels) } } : props.condition);
-    const scopeOf = (id: Id) => {
-      const owner = index.branches.get(id)?.ownerId ?? id;
-      return repeatScopeOf(tree, owner)?.levels;
-    };
     switch (spec.kind) {
       case "insertInline": {
         if ("tableId" in spec.at) {
@@ -655,12 +671,7 @@ export function DocumentEditor(props: EditorProps) {
         return withRow(scopeOf(spec.at.parentId));
       }
       case "editChip":
-      case "wrap":
         return withRow(scopeOf(spec.nodeId));
-      case "when":
-        return withRow(scopeOf(spec.branchId));
-      case "addBranch":
-        return withRow(scopeOf(spec.condId));
       default:
         return props.condition;
     }

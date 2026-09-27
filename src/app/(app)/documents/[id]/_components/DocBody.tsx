@@ -5,48 +5,118 @@
  *
  * - 가운데는 **조 하나**다(`ArticleBody`) — 조 위에 소속 관 머리 줄, 조를 감싼 블록 조건이 있으면 그 띠와 머리 줄.
  *   약관 전체를 이어 읽는 것(`DocBody`)은 더보기 › 미리보기와 사전평가 결과 조문만 쓴다.
- * - 읽기 모드에는 조작이 없다. 편집 모드에서는 **그 자리가 편집기**다 — 제목 · 문장은 그 자리에서 치고, 칩 · 조건 머리는 누르면
+ * - 읽기 모드에는 조작이 없다. 편집 모드에서는 **그 자리가 편집기**다 — 제목 · 문장 · 조건 머리 줄은 그 자리에서 고치고, 칩은 누르면
  *   바로 아래에 팝업, 넣기 · 이동 · 복제 · 삭제 · 조건식은 본문 위 툴바(자리는 `data-*` 로 읽는다, 오른쪽 클릭 메뉴는 지름길). 블록마다 붙던 버튼 줄은 없다.
- * - 조건 분기는 배경색 없이 왼쪽 띠 + 머리 줄(IF / ELIF / ELSE)로만 표시한다.
+ * - 조건 블록은 테두리 상자(배경 없음)다 — 가지마다 머리 줄(IF / ELIF / ELSE) + 그 아래 내용. 편집 모드의 머리 줄은 늘 열린 조건식 줄
+ *   (`CondRows` — 변수 · 연산자 · 값, ⊕ ⊖)과 끝의 작은 버튼(ELIF · ELSE · 풀기 · 삭제)이다. 팝업 없음 (2026-09-28).
+ * - 공용조항(조 단위)은 머리 띠 「공용조항 (이름)」 + 🗑 · 그 아래 공용조항 본문(읽기 전용)을 든 상자다.
  * - 노드 id·8자리 접두를 화면에 내보내지 않는다 (리뷰 #25).
  */
 import type { MouseEvent, ReactNode } from "react";
 
+import { IconButton, IconTrash } from "@/app/_components/icons";
 import { StaticTable } from "@/app/_components/StaticNodes";
 import { REPEAT_DEPTH_LABEL } from "@/app/_lib/labels";
-import { referenceTargetLabel, type ArticleNode, type BlockBranch, type DocumentNode, type Node, type TableNode, type TreeIndex } from "@/domain/document";
+import {
+  CLAUSE_LINE_ID,
+  clauseBodyToTree,
+  numberTree,
+  optionCodeOf,
+  referenceTargetLabel,
+  type ArticleNode,
+  type BlockBranch,
+  type ClauseBlockRefNode,
+  type DocumentNode,
+  type InlineNode,
+  type Node,
+  type TableNode,
+  type TreeIndex,
+} from "@/domain/document";
 import type { Id } from "@/domain/types";
 
 import { parseLines } from "../../lib";
+import { CondRows } from "./condition/CondRows";
 import { anchorOf, chipText, type DocCtx } from "./ctx";
 import { EditableText, InlineSlot } from "./Inline";
+import type { MenuItem } from "./menus";
 
 const flash = (ctx: DocCtx, id: Id) => (ctx.flashId === id ? " is-flash" : "");
 
-/** 블록 조건 가지의 머리 줄 — `IF 조건식` · `ELIF …` · `ELSE`. 편집 모드에서는 눌러서 조건을 고친다(바로 아래 팝업). */
-function CondHead({ ctx, branch, label }: { ctx: DocCtx; branch: BlockBranch; label: string }) {
+/** 머리 줄 끝의 작은 버튼 — 그 가지 자리의 목록(툴바와 같은 목록)에서 이름으로 고른다. */
+/** IF 머리 줄에만 — 가지 추가 · ELSE · 풀기. 뒤 가지(ELIF · ELSE) 머리 줄은 「이 가지 삭제」만. */
+const HEAD_TOOLS: { match: (label: string) => boolean; text: string; title: string }[] = [
+  { match: (l) => l === "가지 추가(ELIF)", text: "+ELIF", title: "가지 추가(ELIF) — 빈 조건 줄과 빈 항을 든 가지" },
+  { match: (l) => l === "ELSE 가지 추가", text: "+ELSE", title: "ELSE 가지 추가 — 그 밖의 경우" },
+  { match: (l) => l.startsWith("조건 풀기"), text: "풀기", title: "조건 풀기 — 이 가지 내용만 남긴다" },
+];
+
+function HeadTools({ ctx, branch, first }: { ctx: DocCtx; branch: BlockBranch; first: boolean }) {
+  const edit = ctx.edit!;
+  const items = edit.headItems(branch.id);
+  const run = (item: MenuItem | undefined) => (e: MouseEvent<HTMLElement>) => item && edit.run(item, anchorOf(e.currentTarget));
+  const removeBlock = items.find((i) => i.label === "조건 블록 삭제");
+  const removeBranch = items.find((i) => i.label === "이 가지 삭제");
+  return (
+    <span className="ts-cond-tools">
+      {(first ? HEAD_TOOLS : []).map((t) => {
+        const item = items.find((i) => t.match(i.label) && !i.disabled);
+        if (!item) return null;
+        return (
+          <button key={t.text} type="button" className="ts-cond-mini" title={t.title} onClick={run(item)}>
+            {t.text}
+          </button>
+        );
+      })}
+      {first ? (
+        removeBlock && <IconButton className="ts-cond-rowbtn" icon={<IconTrash />} danger label="조건 블록 삭제" onClick={run(removeBlock)} />
+      ) : (
+        removeBranch && <IconButton className="ts-cond-rowbtn" icon={<IconTrash />} danger label="이 가지 삭제" onClick={run(removeBranch)} />
+      )}
+    </span>
+  );
+}
+
+/**
+ * 블록 조건 가지의 머리 줄 — 읽기 모드는 `IF 조건식` 한 줄(글자), 편집 모드는 그 자리에서 고치는 조건식 줄(`CondRows`).
+ * `data-cond-head` 는 툴바 · 오른쪽 클릭이 자리(조건 가지)를 읽는 표지다.
+ */
+function CondHead({ ctx, branch, label, first }: { ctx: DocCtx; branch: BlockBranch; label: string; first: boolean }) {
   const { text, full } = chipText(branch.when, ctx.mode, ctx.refLabel);
   const state = ctx.branchEval?.get(branch.id)?.state;
   const suffix = state === "taken" ? " · 참" : state === "notTaken" ? " · 거짓" : state === "undetermined" ? " · 미결" : state === "error" ? " · 오류" : "";
-  const body = `${label}${branch.when === undefined ? "" : ` ${text}`}${suffix}`;
-  if (!ctx.edit) {
+  const edit = ctx.edit;
+  if (!edit || !ctx.conditionFor) {
     return (
-      <span className="ts-doc-cond-head" title={full}>
-        {body}
-      </span>
+      <p className="ts-doc-cond-head" title={full}>
+        <span className="ts-cond-badge">{label}</span>
+        {branch.when === undefined ? "" : ` ${text}`}
+        {suffix}
+      </p>
     );
   }
-  const edit = ctx.edit;
+  const tools = <HeadTools ctx={ctx} branch={branch} first={first} />;
   return (
-    <button
-      type="button"
-      className="ts-doc-cond-head ts-doc-cond-btn"
-      data-cond-head={branch.id}
-      title={`조건 고치기 — ${full} · 가지 추가 · 풀기 · 삭제는 툴바`}
-      onClick={(e) => edit.popup({ kind: "when", branchId: branch.id }, anchorOf(e.currentTarget))}
-    >
-      {body}
-    </button>
+    <div className="ts-doc-cond-head is-edit" data-cond-head={branch.id}>
+      {branch.when === undefined ? (
+        <div className="ts-cond-rows">
+          <div className="ts-cond-line">
+            <span className="ts-cond-badge">{label}</span>
+            <span className="ts-muted">그 밖의 경우</span>
+            {tools}
+          </div>
+        </div>
+      ) : (
+        <CondRows
+          label={label}
+          when={branch.when}
+          context={ctx.conditionFor(branch.id)}
+          onCommit={(source) => edit.apply([{ type: "setWhen", branchId: branch.id, when: source }])}
+          focus={edit.focusRequest === branch.id}
+          onFocused={edit.focusDone}
+          tools={tools}
+        />
+      )}
+    </div>
   );
 }
 
@@ -145,7 +215,71 @@ function Box({ node, ctx }: { node: Node & { kind: "box" }; ctx: DocCtx }) {
   );
 }
 
-/** 블록 조건 — 가지마다 왼쪽 띠 하나 + 머리 줄. 첫 가지는 실선(IF), 나머지는 파선(ELIF · ELSE). */
+/** 공용조항 옵션 자리(운반체) → 사용처가 고른 선택지 문구. 안 골랐으면 〔옵션명〕. */
+function optionChip(clause: { options: readonly { code: string; label: string; values: readonly { code: string; label: string; body: readonly { kind: string; text?: string }[] }[] }[] }, chosen: Record<string, string>) {
+  return (node: InlineNode) => {
+    const code = optionCodeOf(node);
+    if (code === undefined) return undefined;
+    const option = clause.options.find((o) => o.code === code);
+    const value = option?.values.find((v) => v.code === chosen[code]);
+    const text = value ? value.body.map((n) => n.text ?? "").join("") || value.label : undefined;
+    return {
+      className: "ts-doc-ref",
+      what: "옵션 자리",
+      title: option ? `옵션 자리 — ${option.label}${value ? ` · ${value.label}` : " · 미선택"}` : "없는 옵션",
+      body: text ?? `〔${option?.label ?? code}〕`,
+    };
+  };
+}
+
+/**
+ * 공용조항(조 단위) 블록 — 머리 띠 「공용조항 (이름)」 · 옵션 선택(편집이면 눌러서 고치기) · 🗑, 그 아래 공용조항 본문(읽기 전용).
+ * 본문 안은 이 문서의 자리가 아니다 — `data-clause-ref` 가 누른 자리를 이 블록으로 모은다(`place.ts`).
+ */
+function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
+  const edit = ctx.edit;
+  const clause = ctx.clauses?.find((c) => c.code === node.clauseCode);
+  const label = ctx.clauseLabel.get(node.clauseCode) ?? clause?.label;
+  const options = ctx.optionText(node.clauseCode, node.options);
+  const hasOptions = !clause || clause.options.length > 0;
+  let body: ReactNode = <p className="ts-muted">{label ? "본문을 불러오지 않았다." : `${node.clauseCode} — 없는 공용조항이다(깨진 참조).`}</p>;
+  if (clause) {
+    const tree = clauseBodyToTree(clause.mode, clause.body, clause.label);
+    const nodes = tree.children[0]?.kind === "article" ? tree.children[0].children : [];
+    const inner: DocCtx = { ...ctx, mode: "read", edit: undefined, numbers: numberTree(tree), branchEval: undefined, flashId: undefined, chipOverride: optionChip(clause, node.options) };
+    const line = clause.mode === "inline" ? nodes.find((n) => n.id === CLAUSE_LINE_ID) : undefined;
+    body = nodes.length === 0 ? <p className="ts-muted">본문이 비어 있다.</p> : line && line.kind === "paragraph" ? <p className="ts-doc-paragraph is-line"><InlineSlot at={{ parentId: line.id }} nodes={line.children} ctx={inner} /></p> : <Block nodes={nodes} ctx={inner} />;
+  }
+  return (
+    <div className={`ts-doc-clause${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id} data-clause-ref={node.id}>
+      <div className="ts-doc-clause-head">
+        <span className="ts-doc-clause-name" title={`공용조항(조 단위) · ${node.clauseCode}`}>
+          공용조항 ({label ?? `${node.clauseCode} — 없는 공용조항`})
+        </span>
+        {hasOptions &&
+          (edit ? (
+            <button type="button" className="ts-doc-clause-opt" title="옵션 고치기" onClick={(e) => edit.popup({ kind: "editChip", nodeId: node.id }, anchorOf(e.currentTarget))}>
+              {options}
+            </button>
+          ) : (
+            <span className="ts-doc-clause-opt">{options}</span>
+          ))}
+        {edit && (
+          <IconButton
+            className="ts-doc-clause-del"
+            icon={<IconTrash />}
+            danger
+            label={`공용조항 ${label ?? node.clauseCode} 삭제`}
+            onClick={(e) => edit.run({ label: "삭제", action: { do: "remove", nodeId: node.id } }, anchorOf(e.currentTarget))}
+          />
+        )}
+      </div>
+      <div className="ts-doc-clause-body">{body}</div>
+    </div>
+  );
+}
+
+/** 블록 조건 — 가지마다 테두리 상자 + 머리 줄. 첫 가지는 실선(IF), 나머지는 파선(ELIF · ELSE). */
 function CondBlock({ node, ctx, as }: { node: Node & { kind: "condBlock" }; ctx: DocCtx; as: "div" | "li" }) {
   const Tag = as;
   return (
@@ -154,7 +288,7 @@ function CondBlock({ node, ctx, as }: { node: Node & { kind: "condBlock" }; ctx:
         const dim = ctx.branchEval?.get(br.id)?.state === "notTaken";
         return (
           <Tag key={br.id} data-node={br.id} className={`ts-doc-cond${i === 0 ? "" : " is-alt"}${dim ? " ts-dim" : ""}${flash(ctx, br.id)}`} style={dim ? { textDecoration: "line-through" } : undefined}>
-            <CondHead ctx={ctx} branch={br} label={branchLabel(node.branches, i)} />
+            <CondHead ctx={ctx} branch={br} label={branchLabel(node.branches, i)} first={i === 0} />
             <Block nodes={br.children} ctx={ctx} inList={as === "li"} />
           </Tag>
         );
@@ -203,24 +337,8 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
           </li>
         );
 
-      case "clauseBlockRef": {
-        const num = ctx.numbers.get(node.id);
-        const label = ctx.clauseLabel.get(node.clauseCode) ?? `${node.clauseCode}(없는 공용조항)`;
-        const edit = ctx.edit;
-        return (
-          <div key={node.id} className={`ts-doc-paragraph${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
-            <span className="ts-doc-num">{num?.label}</span>{" "}
-            <span
-              className={`ts-doc-ref${edit ? " ts-chip-inline" : ""}`}
-              title={`공용조항(조 단위) · ${node.clauseCode} · ${ctx.optionText(node.clauseCode, node.options)}${edit ? " — 눌러서 옵션 고치기" : ""}`}
-              onClick={edit ? (e) => edit.popup({ kind: "editChip", nodeId: node.id }, anchorOf(e.currentTarget)) : undefined}
-            >
-              〔{label}〕
-            </span>{" "}
-            <span className="ts-doc-cond-head">{ctx.optionText(node.clauseCode, node.options)}</span>
-          </div>
-        );
-      }
+      case "clauseBlockRef":
+        return <ClauseBlock key={node.id} node={node} ctx={ctx} />;
 
       case "condBlock":
         return <CondBlock key={node.id} node={node} ctx={ctx} as={inList ? "li" : "div"} />;
@@ -340,7 +458,7 @@ export function ArticleBody({ index, articleId, ctx }: { index: TreeIndex; artic
       const dim = ctx.branchEval?.get(id)?.state === "notTaken";
       content = (
         <div data-node={id} className={`ts-doc-cond${br.index === 0 ? "" : " is-alt"}${dim ? " ts-dim" : ""}${flash(ctx, id)}`}>
-          <CondHead ctx={ctx} branch={br.branch as BlockBranch} label={branchLabel(owner?.branches ?? [], br.index)} />
+          <CondHead ctx={ctx} branch={br.branch as BlockBranch} label={branchLabel(owner?.branches ?? [], br.index)} first={br.index === 0} />
           {content}
         </div>
       );

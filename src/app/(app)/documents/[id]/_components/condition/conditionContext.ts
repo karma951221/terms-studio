@@ -1,7 +1,7 @@
 /**
  * 조건 팝업 문맥 조립 (서버 전용 · 순수) — 담보 트리 · 구분자(타입 · 읽는 폼) · 열린 폼 · 빠른 조건 (ADR-0066 §4~§7).
  *
- * `ConditionDialog` 가 좌변 트리 · 타입별 우변 입력 · 「항상 거짓」 경고를 그리는 데 필요한 자료를
+ * 조건 머리 줄(`CondRows`)이 변수 목록 · 타입별 값 입력 · 「항상 거짓」 경고를 그리는 데 필요한 자료를
  * 한 번에 만든다. 클라이언트로 그대로 건너가므로(JSON) 함수·Map 은 담지 않는다 — `ConditionContext` 참고.
  */
 import { discriminatorResultType, isFormOpened, type Discriminator, type EnumDef } from "@/domain/catalog";

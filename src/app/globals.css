@@ -38,6 +38,9 @@
   --ts-graph-6: #7a6038;
   --ts-graph-7: #6a5f78;
   --ts-graph-8: #476b55;
+  /* 조건 블록 테두리 · 공용조항 블록 머리 띠 (기능/문면 §4.3, 2026-09-28) — 기존 색에서 빌린다(다크 모드도 따라간다) */
+  --ts-cond-line: var(--ts-ok);
+  --ts-clause-line: var(--ts-graph-5);
 
   /* 글꼴 — 디자인원칙 §3. 맑은 고딕은 시스템 설치본만 부른다(웹폰트 배포 불가) */
   --sans: "Malgun Gothic", "맑은 고딕", AppleSDGothicNeo-Regular, "Apple SD Gothic Neo",
@@ -1271,11 +1274,17 @@ button.danger:focus-visible {
 .ts-clause-editor > .ts-doc {
   min-height: 120px;
   padding: 16px 20px;
+  /* 문서 세계(명조 · 종이색)가 편집 상자 폭 전체를 채운다 — 44em 에서 끊겨 두 색이 나란히 서지 않게 */
+  max-width: none;
+  margin-bottom: 0;
+  border-radius: 0 0 4px 4px;
 }
 
 .ts-clause-editor .ts-inl:empty {
   display: inline-block;
   min-width: 60%;
+  /* 인라인 블록은 항의 내어쓰기(-1.5em)를 물려받는다 — 자리 글이 상자 밖으로 삐져나가지 않게 */
+  text-indent: 0;
 }
 
 /* 「문구」의 한 줄 — 번호가 없으니 항의 내어쓰기를 푼다 */
@@ -2796,15 +2805,68 @@ label.ts-field > textarea {
   text-indent: 0;
 }
 
-/* 조건 분기 — 배경색을 쓰지 않는다. 괘선이 자기 열을 차지한다 (§2 L3) */
+/* 조건 블록 — 테두리 상자(배경 없음). 가지마다 머리 줄 + 내용, 뒤 가지(ELIF · ELSE)는 파선 (기능/문면 §4.3, 2026-09-28) */
 .ts-doc-cond {
-  border-left: 2px solid var(--ts-ink-3);
-  padding-left: 10px;
-  margin: 4px 0;
+  border: 1px solid var(--ts-cond-line);
+  border-radius: 3px;
+  padding: 2px 10px 6px;
+  margin: 6px 0;
+  text-indent: 0;
 }
 
 .ts-doc-cond.is-alt {
-  border-left-style: dashed;
+  border-style: dashed;
+  margin-top: -2px;
+}
+
+/* 공용조항(조 단위) 블록 — 머리 띠 「공용조항 (이름)」 · 옵션 · 🗑, 그 아래 공용조항 본문(읽기 전용) */
+.ts-doc-clause {
+  border: 1px solid var(--ts-clause-line);
+  border-radius: 3px;
+  margin: 6px 0;
+  text-indent: 0;
+}
+
+.ts-doc-clause-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+  padding: 0 4px 0 10px;
+  background: var(--ts-clause-line);
+  color: var(--ts-surface);
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ts-doc-clause-name {
+  font-weight: 700;
+}
+
+.ts-doc-clause-opt {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  opacity: 0.85;
+}
+
+button.ts-doc-clause-opt {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.ts-doc-clause-head .ts-doc-clause-del {
+  margin-left: auto;
+  color: inherit;
+}
+
+.ts-doc-clause-body {
+  padding: 4px 10px 6px;
 }
 
 /* 문장 안 조건 — 배경 없이 밑줄만. 첫 가지는 점선, 뒤 가지(elif · else)는 파선 (§2 L3). */
@@ -2827,6 +2889,122 @@ label.ts-field > textarea {
   font-size: 12px;
   color: var(--ts-ink-3);
   line-height: 1.6;
+}
+
+p.ts-doc-cond-head {
+  margin: 2px 0 4px;
+  color: var(--ts-ink-2);
+}
+
+/* 조건 머리 줄 — IF 배지 + [변수 ▾] [연산자 ▾] [값] ⊕ ⊖, 둘째 줄부터 [AND ▾]. 끝에 작은 버튼(ELIF · ELSE · 풀기 · 🗑) */
+.ts-cond-badge {
+  display: inline-block;
+  min-width: 44px;
+  margin-right: 4px;
+  padding: 0 6px;
+  border-radius: 3px;
+  background: var(--ts-cond-line);
+  color: var(--ts-surface);
+  font: 700 11px/20px var(--mono);
+  text-align: center;
+}
+
+.ts-cond-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0 6px;
+  margin-bottom: 4px;
+  border-bottom: 1px dashed var(--ts-rule);
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ts-cond-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.ts-cond-line select,
+.ts-cond-line input {
+  height: 24px;
+  min-height: 24px;
+  padding: 0 4px;
+  font-family: var(--sans);
+  font-size: 12px;
+}
+
+.ts-cond-line .ts-cond-badge {
+  margin-right: 0;
+}
+
+.ts-cond-join {
+  width: 56px;
+  font-weight: 700;
+}
+
+.ts-cond-var {
+  width: 220px;
+  max-width: 100%;
+}
+
+.ts-cond-op {
+  width: 96px;
+}
+
+.ts-cond-value {
+  width: 140px;
+}
+
+.ts-cond-raw {
+  flex: 1 1 260px;
+}
+
+.ts-cond-value-ref {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px;
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+}
+
+.ts-cond-x {
+  min-height: 0;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--ts-ink-3);
+}
+
+.ts-cond-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.ts-cond-mini {
+  height: 22px;
+  min-height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+  font-size: 11px;
+  line-height: 20px;
+}
+
+.ts-cond-issue {
+  color: var(--ts-error);
+  font-size: 11px;
+}
+
+.ts-cond-warn {
+  color: var(--ts-warn);
+  font-size: 11px;
 }
 
 /* 글자처럼 보이는 버튼 — 검증 목록의 「고칠 자리로」 · 삭제 확인의 「그 자리로」. 점선 밑줄이 「누를 수 있다」를 말한다. */
@@ -3410,50 +3588,7 @@ button.ts-ref-fold:hover {
   }
 }
 
-/* ── 12-1. 조건 팝업 — 두 칸(줄 · 트리) · 담보 구분자 트리 (ADR-0066 §4~§7) ── */
-
-.ts-cond-editor {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.ts-cond-chip-edit {
-  border: 1px solid var(--ts-rule-strong);
-  border-radius: 3px;
-  background: var(--ts-surface);
-  padding: 1px 7px;
-  color: var(--ts-ink);
-  text-align: left;
-}
-
-.ts-cond-dialog .ts-dialog-body {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 12px;
-}
-
-.ts-cond-row {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  margin-bottom: 6px;
-}
-
-.ts-chip.is-focus {
-  outline: 2px solid var(--ts-mark);
-}
-
-.ts-chip-broken {
-  color: var(--ts-error);
-}
-
-.ts-cond-quick {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 8px;
-}
+/* ── 12-1. 구분자 트리 — 슬롯 참조 칸(반복 표 셀) (ADR-0066 §6 · ADR-0070) ── */
 
 .ts-cond-tree {
   display: flex;
@@ -4438,3 +4573,12 @@ button.ts-ref-fold:hover {
 /* 기본 숨김 필드를 펴는 작은 링크 (기능/담보 §3.4 — 감액 「이후 지급률 바꾸기」) */
 .ts-form-reveal-row { margin: 4px 0 0; }
 .ts-form-reveal { font-size: 0.85em; }
+
+/* 문장 안 조건 팝업의 머리 줄 — 팝업 폭에 한 줄로 */
+.ts-pop .ts-cond-var {
+  width: 180px;
+}
+
+.ts-pop .ts-cond-value {
+  width: 110px;
+}

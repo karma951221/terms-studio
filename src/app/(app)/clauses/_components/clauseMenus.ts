@@ -4,11 +4,12 @@
  *
  * 기능/공용조항 §4.3 「에디터 도구」:
  * - 같은 도구 — 조건 블록 · 인라인 조건 · 값 슬롯 · 참조 슬롯(별표 · 보통약관 조 · 항 · 호 · 목) + **옵션 자리 넣기**(옵션 목록 단의 옵션마다 한 줄).
+ *   「조건식」은 문면과 같다 — 항을 골랐으면 감싸고, 본문 빈 자리면 빈 항을 든 조건 블록을 끝에, 「문구」면 문장 안 조건 (2026-09-28).
  * - 막는 것 — 조 · 관 추가(조는 사용처 소유) · 공용조항 참조 넣기(중첩 금지). 그 도구 자리는 남는다 — 툴바는 잠그고 사유를 tooltip 으로,
  *   오른쪽 클릭 메뉴는 누르면 거부 배너(`refusing`).
  * - 공용조항 본문에 없는 것(표 · 박스 · 행 반복 · 조연결 · 구조 표기 · 호/목 자리의 조건 블록)은 싣지 않는다.
  */
-import { blockMenu, chipMenu, condMenu, inlineInsertItems, type MenuEnv, type MenuItem, type MenuSections, type Place } from "@/app/(app)/documents/[id]/_components/menus";
+import { blockMenu, chipMenu, condBlockItem, condMenu, inlineInsertItems, type MenuEnv, type MenuItem, type MenuSections, type Place } from "@/app/(app)/documents/[id]/_components/menus";
 import { emptyNode, inlineListAt } from "@/app/(app)/documents/[id]/_components/editOps";
 import { runsFromTokens, type Token } from "@/app/(app)/documents/[id]/_components/inlineRuns";
 import { CLAUSE_ARTICLE_ID, CLAUSE_LINE_ID, optionCarrier, type EditOp, type IdSource, type InlineAt } from "@/domain/document";
@@ -47,12 +48,12 @@ function adapt(item: MenuItem, env: MenuEnv, onRefuse: (message: string) => void
     if (p.kind === "clauseBlock") return refusing(item.label.replace("(조 단위) ", " 참조 "), REFUSE.clauseRef, onRefuse);
     if (p.kind === "insertInline" && p.what === "clauseInlineRef") return refusing(item.label, REFUSE.clauseRef, onRefuse);
     if (p.kind === "insertInline" && p.what === "structKey") return undefined;
-    // 조건 블록은 항 자리에만 선다 — 공용조항의 호 · 목 목록에는 조건 블록이 없다 (clause/nodes.ts)
-    if (p.kind === "wrap") {
-      const kind = env.ix.nodes.get(p.nodeId)?.node.kind;
-      return kind === "paragraph" || kind === "condBlock" ? item : undefined;
-    }
     return item;
+  }
+  // 조건 블록은 항 자리에만 선다 — 공용조항의 호 · 목 목록에는 조건 블록이 없다 (clause/nodes.ts)
+  if (item.wrapTarget !== undefined) {
+    const kind = env.ix.nodes.get(item.wrapTarget)?.node.kind;
+    return kind === "paragraph" || kind === "condBlock" ? item : undefined;
   }
   if (a.do === "ops" && Array.isArray(a.ops) && a.ops.some((op) => op.type === "insert" && DROPPED_NODES.has(op.node.kind))) return undefined;
   return item;
@@ -101,18 +102,19 @@ export function clauseInlineMenu(env: ClauseMenuEnv, at: InlineAt, tokens: Token
   const branch = env.ix.branches.get(at.parentId);
   const owner = branch ? undefined : env.ix.nodes.get(at.parentId);
   const inInlineCond = branch ? env.ix.nodes.get(branch.ownerId)?.node.kind === "inlineCond" : (owner?.inInlineCond ?? false);
-  const insert = adaptAll([inlineInsertItems(at, tokens, { inInlineCond })], env, env.onRefuse);
+  const insert = adaptAll([inlineInsertItems(at, tokens, { inInlineCond, newId: env.newId })], env, env.onRefuse);
   const options = optionInsertItems(at, tokens, env.options, env.newId);
   const block = env.mode === "block" && owner ? clauseBlockMenu(env, at.parentId) : [];
   return [...insert, ...(options.length > 0 ? [options] : []), ...block];
 }
 
-/** 본문 빈 자리(「항」 유형) — 항 추가 + 막힌 도구(조 · 관). */
+/** 본문 빈 자리(「항」 유형) — 항 추가 · 조건 블록 넣기(빈 항을 든 조건 블록을 끝에) + 막힌 도구(조 · 관). */
 export function clauseBodyMenu(env: ClauseMenuEnv): MenuSections {
   if (env.mode === "inline") return [];
   const paragraph = emptyNode("paragraph", env.newId);
   return [
     [{ label: "항 추가", action: { do: "ops", ops: [{ type: "insert", node: paragraph, at: { parentId: CLAUSE_ARTICLE_ID } }], focus: paragraph.id } }],
+    [condBlockItem(env, { parentId: CLAUSE_ARTICLE_ID }, ["paragraph"])],
     [refusing("조 추가", REFUSE.article, env.onRefuse), refusing("관 추가", REFUSE.article, env.onRefuse), refusing("공용조항 참조 추가…", REFUSE.clauseRef, env.onRefuse)],
   ];
 }

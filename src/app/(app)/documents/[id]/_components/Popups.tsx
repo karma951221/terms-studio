@@ -4,11 +4,12 @@
  * 그 자리 팝업들 (기능/문면 §4.3) — 칩 · 조건 머리를 누르거나 오른쪽 클릭 메뉴에서 고르면 그 자리 바로 아래에 뜬다.
  *
  * 팝업의 확인은 편집본에 곧바로 명령을 적용한다(서버로 가지 않는다 — ADR-0074). 원본 반영은 바의 `저장` 한 번.
- * 조건식은 지금의 구조화 팝업(`ConditionDialog`)을 그대로 쓴다 — 텍스트 식 입력은 없다(ADR-0066). 바뀐 것은 뜨는 자리뿐이다.
+ * 조건식에는 팝업이 없다 — 조건 블록 머리 줄에서 그 자리로 고친다(2026-09-28). 문장 안 조건 칩의 팝업만 가지마다 같은 머리 줄(`CondRows`)을 쓴다.
  * 우측 패널에는 입력칸이 없다 — 여기가 입력칸이 뜨는 유일한 자리다.
  */
 import { useState, type FormEvent, type ReactNode } from "react";
 
+import { IconButton, IconTrash } from "@/app/_components/icons";
 import { DOC_KIND_LABEL, REPEAT_DEPTH_LABEL, STRUCT_KEY_CHIP } from "@/app/_lib/labels";
 import type { Clause } from "@/domain/clause";
 import {
@@ -27,12 +28,11 @@ import {
 import { ATTACH_LEVEL_LABEL, REFERENCE_CONNECTORS, isReferenceConnector, type Code, type Id, type ReferenceConnector } from "@/domain/types";
 
 import { str } from "../../lib";
-import { ConditionDialog } from "./condition/ConditionDialog";
-import { ConditionEditor } from "./condition/ConditionEditor";
+import { CondRows } from "./condition/CondRows";
 import { SlotRefInput } from "./condition/SlotRefInput";
 import type { ConditionContext } from "./condition/types";
-import { anchorOf, chipText, type Anchor, type DocCtx } from "./ctx";
-import { inlineListAt, newTable, wrapOps } from "./editOps";
+import type { Anchor, DocCtx } from "./ctx";
+import { inlineListAt, newTable } from "./editOps";
 import { InlineSlot } from "./Inline";
 import { runsFromTokens } from "./inlineRuns";
 import type { PopupSpec } from "./menus";
@@ -217,11 +217,14 @@ function AppendixSelect({ appendices, value }: { appendices: readonly Appendix[]
   );
 }
 
-const INSERT_TITLE = { slot: "치환 슬롯 넣기", articleRef: "조 참조 넣기", appendixRef: "별표 참조 넣기", clauseInlineRef: "공용조항(문장 안) 넣기", inlineCond: "문장 안 조건 넣기", structKey: "구조 표기 넣기" } as const;
+const INSERT_TITLE = { slot: "치환 슬롯 넣기", articleRef: "조 참조 넣기", appendixRef: "별표 참조 넣기", clauseInlineRef: "공용조항(문장 안) 넣기", structKey: "구조 표기 넣기" } as const;
 
-/** 문장 안 조건 고치기 — 가지마다 조건(누르면 조건 팝업) · 그 가지 문장(그 자리 편집기) · 가지 삭제, 아래에 가지 추가. */
+/**
+ * 문장 안 조건 — 가지마다 머리 줄(`CondRows`, 그 자리에서 고친다) · 그 가지 문장(그 자리 편집기) · 가지 삭제, 아래에 가지 추가.
+ * 툴바 「조건식」으로 막 넣은 칩이면 IF 머리 줄 첫 칸에 초점이 간다.
+ */
 function InlineCondPopup({ env, nodeId, anchor, onClose }: { env: PopupEnv; nodeId: Id; anchor: Anchor; onClose: () => void }) {
-  const [cond, setCond] = useState<{ branchId?: Id; anchor: Anchor }>();
+  const [focusFirst, setFocusFirst] = useState(true);
   const node = indexTree(env.tree).nodes.get(nodeId)?.node;
   if (!node || node.kind !== "inlineCond") return null;
   const hasElse = node.branches.some((b) => b.when === undefined);
@@ -230,25 +233,39 @@ function InlineCondPopup({ env, nodeId, anchor, onClose }: { env: PopupEnv; node
   return (
     <Popover anchor={anchor} label="문장 안 조건" onClose={onClose} wide>
       <div onContextMenu={env.ctx.edit?.contextMenu}>
-        {node.branches.map((br: InlineBranch, i) => (
-          <div key={br.id} className="ts-pop-branch">
-            <span className="ts-doc-cond-head">{i === 0 ? "IF" : br.when === undefined ? "ELSE" : "ELIF"}</span>{" "}
-            {br.when !== undefined && (
-              <button type="button" className="ts-cond-chip-edit ts-mono" onClick={(e) => setCond({ branchId: br.id, anchor: anchorOf(e.currentTarget) })}>
-                {chipText(br.when, "edit", env.ctx.refLabel).full}
-              </button>
-            )}
-            <div className="ts-pop-branch-body ts-doc">
-              <InlineSlot at={{ parentId: br.id }} nodes={br.children} ctx={env.ctx} placeholder={i === 0 ? "참일 때 문장" : "그 밖의 경우 문장"} />
+        {node.branches.map((br: InlineBranch, i) => {
+          const label = i === 0 ? "IF" : br.when === undefined ? "ELSE" : "ELIF";
+          const remove = (
+            <IconButton className="ts-cond-rowbtn" icon={<IconTrash />} danger label={`${label} 가지 삭제`} disabled={node.branches.length <= 1} onClick={() => env.apply([{ type: "removeBranch", branchId: br.id }])} />
+          );
+          return (
+            <div key={br.id} className="ts-pop-branch">
+              {br.when === undefined ? (
+                <div className="ts-cond-line">
+                  <span className="ts-cond-badge">ELSE</span>
+                  <span className="ts-muted">그 밖의 경우</span>
+                  {remove}
+                </div>
+              ) : (
+                <CondRows
+                  label={label}
+                  when={br.when}
+                  context={env.condition}
+                  onCommit={(source) => env.apply([{ type: "setWhen", branchId: br.id, when: source }])}
+                  focus={i === 0 && focusFirst && br.when === ""}
+                  onFocused={() => setFocusFirst(false)}
+                  tools={remove}
+                />
+              )}
+              <div className="ts-pop-branch-body ts-doc">
+                <InlineSlot at={{ parentId: br.id }} nodes={br.children} ctx={env.ctx} placeholder={br.when === undefined ? "그 밖의 경우 문장" : "참일 때 문장"} />
+              </div>
             </div>
-            <button type="button" className="danger" disabled={node.branches.length <= 1} onClick={() => env.apply([{ type: "removeBranch", branchId: br.id }])}>
-              가지 삭제
-            </button>
-          </div>
-        ))}
+          );
+        })}
         <div className="ts-form-actions">
-          <button type="button" onClick={(e) => setCond({ anchor: anchorOf(e.currentTarget) })}>
-            가지 추가(ELIF)…
+          <button type="button" onClick={() => env.apply([{ type: "addBranch", condId: node.id, branch: b.inlineBranch("", []), ...(elseIndex >= 0 ? { index: elseIndex } : {}) }])}>
+            가지 추가(ELIF)
           </button>
           {!hasElse && (
             <button type="button" onClick={() => env.apply([{ type: "addBranch", condId: node.id, branch: b.inlineBranch(undefined, []) }])}>
@@ -259,23 +276,8 @@ function InlineCondPopup({ env, nodeId, anchor, onClose }: { env: PopupEnv; node
             닫기
           </button>
         </div>
-        <p className="ts-muted">가지 문장은 그 자리에서 고친다 — 오른쪽 클릭으로 슬롯 · 참조를 넣는다. 고친 것은 편집본에 들어가고 저장해야 반영된다.</p>
+        <p className="ts-muted">식은 머리 줄에서, 가지 문장은 그 자리에서 고친다 — 오른쪽 클릭으로 슬롯 · 참조를 넣는다. 고친 것은 편집본에 들어가고 저장해야 반영된다.</p>
       </div>
-      {cond && (
-        <ConditionDialog
-          open
-          anchor={cond.anchor}
-          context={env.condition}
-          initial={cond.branchId ? node.branches.find((x) => x.id === cond.branchId)?.when : undefined}
-          onCancel={() => setCond(undefined)}
-          onConfirm={(source) => {
-            const ok = cond.branchId
-              ? env.apply([{ type: "setWhen", branchId: cond.branchId, when: source }])
-              : env.apply([{ type: "addBranch", condId: node.id, branch: b.inlineBranch(source, []), ...(elseIndex >= 0 ? { index: elseIndex } : {}) }]);
-            if (ok) setCond(undefined);
-          }}
-        />
-      )}
     </Popover>
   );
 }
@@ -307,14 +309,6 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             const code = str(fd, "clauseCode");
             return code ? b.clauseInline(code, optionsOf(fd)) : "공용조항을 고른다.";
           }
-          case "inlineCond": {
-            const when = str(fd, "when");
-            if (!when) return "조건식을 만든다.";
-            // 넣는 문장은 앞뒤 공백을 자르지 않는다 — 슬롯 앞뒤 한 칸을 문장이 들고 있다 (§3.8)
-            const thenText = String(fd.get("thenText") ?? "");
-            const elseText = String(fd.get("elseText") ?? "");
-            return b.inlineCond([b.inlineBranch(when, thenText ? [b.text(thenText)] : []), b.inlineBranch(undefined, elseText ? [b.text(elseText)] : [])]);
-          }
           case "structKey": {
             const level = str(fd, "structLevel");
             return level === "plan" || level === "coverage" || level === "subCoverage" || level === "benefit" ? b.structKey(level) : "구조 표기 레벨을 고른다.";
@@ -343,22 +337,6 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             {spec.what === "articleRef" && <ArticleRefFields ctx={ctx} />}
             {spec.what === "appendixRef" && <AppendixSelect appendices={env.appendices} />}
             {spec.what === "clauseInlineRef" && <ClauseFields clauses={env.clauses} />}
-            {spec.what === "inlineCond" && (
-              <>
-                <div className="ts-form-row">
-                  <span className="ts-form-label">조건식</span>
-                  <ConditionEditor name="when" context={env.condition} startOpen />
-                </div>
-                <div className="ts-form-row">
-                  <label htmlFor="pop-then">참일 때</label>
-                  <input id="pop-then" type="text" name="thenText" placeholder="조건이 맞을 때 문장" defaultValue={spec.prefill} />
-                </div>
-                <div className="ts-form-row">
-                  <label htmlFor="pop-else">아닐 때</label>
-                  <input id="pop-else" type="text" name="elseText" placeholder="그 밖의 경우 문장" />
-                </div>
-              </>
-            )}
             {spec.what === "structKey" && (
               <div className="ts-form-row">
                 <label htmlFor="pop-struct">구조 표기</label>
@@ -416,55 +394,6 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             <PopActions onCancel={onClose} />
           </PopForm>
         </Popover>
-      );
-    }
-
-    case "when": {
-      const br = ix.branches.get(spec.branchId);
-      if (!br) return null;
-      return (
-        <ConditionDialog
-          open
-          anchor={anchor}
-          context={env.condition}
-          initial={br.branch.when}
-          onCancel={onClose}
-          onConfirm={(source) => {
-            if (env.apply([{ type: "setWhen", branchId: spec.branchId, when: source }])) onClose();
-          }}
-        />
-      );
-    }
-
-    case "wrap":
-      return (
-        <ConditionDialog
-          open
-          anchor={anchor}
-          context={env.condition}
-          onCancel={onClose}
-          onConfirm={(source) => {
-            const ops = wrapOps(env.latest(), spec.nodeId, source, env.newId);
-            if (ops.length > 0 && env.apply(ops)) onClose();
-          }}
-        />
-      );
-
-    case "addBranch": {
-      const owner = ix.nodes.get(spec.condId)?.node;
-      if (!owner || (owner.kind !== "condBlock" && owner.kind !== "inlineCond")) return null;
-      const elseIndex = owner.branches.findIndex((x) => x.when === undefined);
-      return (
-        <ConditionDialog
-          open
-          anchor={anchor}
-          context={env.condition}
-          onCancel={onClose}
-          onConfirm={(source) => {
-            const branch = owner.kind === "inlineCond" ? b.inlineBranch(source, []) : b.branch(source, []);
-            if (env.apply([{ type: "addBranch", condId: spec.condId, branch, ...(elseIndex >= 0 ? { index: elseIndex } : {}) }])) onClose();
-          }}
-        />
       );
     }
 

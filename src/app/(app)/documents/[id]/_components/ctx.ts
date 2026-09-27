@@ -3,18 +3,20 @@
  * 규칙 없음. 표시명 해소(공용조항 · 별표 · 조 참조)와 조작 콜백만 든다.
  *
  * ADR-0074: 조작은 전부 편집본에 명령을 적용할 뿐 서버로 가지 않는다. 가운데 본문이 그 자리 편집기다 —
- * 문장 · 제목은 그 자리에서 고치고(초점이 떠나면 편집본에), 칩 · 조건 머리는 누르면 바로 아래에 팝업, 넣기 · 조작은 본문 위 툴바(오른쪽 클릭 메뉴는 지름길).
+ * 문장 · 제목 · 조건 머리 줄은 그 자리에서 고치고(초점이 떠나면 편집본에), 칩은 누르면 바로 아래에 팝업, 넣기 · 조작은 본문 위 툴바(오른쪽 클릭 메뉴는 지름길).
  */
 import type { MouseEvent } from "react";
 
 import type { ReactNode } from "react";
 
+import type { Clause } from "@/domain/clause";
 import type { BranchEvaluation, EditOp, InlineAt, InlineNode, NodeNumber, ReferenceTarget, SlotEvaluation, TableEvaluation } from "@/domain/document";
 import { format, parse, type DisplayName } from "@/domain/expression";
 import type { Code, Id } from "@/domain/types";
 
+import type { ConditionContext } from "./condition/types";
 import type { Token } from "./inlineRuns";
-import type { PopupSpec } from "./menus";
+import type { MenuItem, PopupSpec } from "./menus";
 
 export type DocMode = "read" | "edit";
 
@@ -70,6 +72,10 @@ export interface DocCtx {
   chipOverride?: (node: InlineNode) => { className: string; title: string; body: ReactNode; what: string } | undefined;
   /** 조 참조의 범위를 고정한다 — 공용조항은 보통약관 조만 가리킨다(기능/공용조항 §3.5). 있으면 조 참조 팝업에 범위 고르기가 없다. */
   articleRefScope?: "general";
+  /** 조건 머리 줄의 변수 목록 문맥 — 노드(가지 · 조건 블록) 자리대로(반복 표 안이면 「현재 행」). 편집 모드에서만 쓴다. */
+  conditionFor?: (nodeId: Id) => ConditionContext;
+  /** 공용조항 블록이 본문을 그리는 재료 — 코드로 찾는다. 없으면 이름만. */
+  clauses?: readonly Clause[];
 }
 
 /** 가운데 편집기의 조작 — 편집 모드에서만 준다. */
@@ -99,11 +105,15 @@ export interface EditHandlers {
   focusDone: () => void;
   /** 팝업 안의 문장 칸(문장 안 조건의 가지)도 같은 오른쪽 클릭 메뉴를 쓴다. */
   contextMenu: (event: MouseEvent<HTMLElement>) => void;
+  /** 조건 머리 줄 끝의 작은 버튼(가지 추가 · ELSE · 풀기 · 가지 삭제 · 블록 삭제)이 쓰는 목록 — 툴바의 그 자리 목록과 같다. */
+  headItems: (branchId: Id) => MenuItem[];
+  /** 목록 항목 하나를 돌린다 — 툴바 · 오른쪽 클릭 메뉴와 같은 길. 공용조항 블록의 🗑 도 이 길(삭제 확인). */
+  run: (item: MenuItem, anchor: Anchor) => void;
 }
 
 /** 조건식 칩 글자 — 읽기 모드는 길면 자르고 전체는 tooltip 으로 준다 (디자인원칙 §2 L3). */
 export function chipText(when: string | undefined, mode: DocMode, refLabel?: DisplayName): { text: string; full: string } {
-  const full = when === undefined ? "그 밖의 경우 (else)" : displayOf(when, refLabel);
+  const full = when === undefined ? "그 밖의 경우 (else)" : when.trim() === "" ? "(조건 없음)" : displayOf(when, refLabel);
   if (mode === "edit" || full.length <= 56) return { text: full, full };
   return { text: `${full.slice(0, 56)}…`, full };
 }

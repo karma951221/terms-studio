@@ -75,14 +75,15 @@ export function newTable(rows: number, cols: number, headerFirst: boolean, newId
 }
 
 /**
- * 조건으로 감싸기 — 노드 자리에 조건 블록(가지 하나)을 세우고 노드를 그 가지 안으로 옮긴다.
+ * 조건으로 감싸기 — 노드 자리에 조건 블록(가지 하나)을 세우고 노드를 그 가지 안으로 옮긴다. `branchId` 를 주면 그 가지 id 로
+ * (툴바가 새 가지의 머리 줄에 초점을 두려고 미리 정한다).
  * 가지 안 허용 집합은 블록이 선 자리와 같다(투명) — 옮기는 명령이 자리 규칙을 다시 본다.
  */
-export function wrapOps(tree: DocumentNode, nodeId: Id, when: string, newId: IdSource): EditOp[] {
+export function wrapOps(tree: DocumentNode, nodeId: Id, when: string, newId: IdSource, branchId?: Id): EditOp[] {
   const e = indexTree(tree).nodes.get(nodeId);
   if (!e || e.parentId === undefined) return [];
   const b = nodeBuilders(newId);
-  const branch = b.branch(when, []);
+  const branch = { ...b.branch(when, []), ...(branchId ? { id: branchId } : {}) };
   const cond = b.condBlock([branch]);
   return [
     { type: "insert", node: cond, at: { parentId: e.parentId, slot: e.slot, index: e.index } },

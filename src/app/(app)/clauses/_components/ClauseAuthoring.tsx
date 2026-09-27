@@ -28,7 +28,7 @@ import { EditorToolbar } from "@/app/(app)/documents/[id]/_components/EditorTool
 import { afterOf, emptyNode, inlineAtOf, inlineListAt } from "@/app/(app)/documents/[id]/_components/editOps";
 import { InlineSlot, caretFromPoint, tokensOf } from "@/app/(app)/documents/[id]/_components/Inline";
 import { identityRuns, runsFromTokens, runsReplacing, sameRuns, type Token } from "@/app/(app)/documents/[id]/_components/inlineRuns";
-import { placeExists, type MenuItem, type MenuSections, type Place, type PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
+import { inlineCondItem, placeExists, type MenuItem, type MenuSections, type Place, type PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
 import { placeOf, readInline } from "@/app/(app)/documents/[id]/_components/place";
 import { PopupHost, type PopupEnv } from "@/app/(app)/documents/[id]/_components/Popups";
 import { ContextMenu, PopActions, Popover } from "@/app/(app)/documents/[id]/_components/Popover";
@@ -62,7 +62,7 @@ import { createClauseAction } from "../actions";
 import { removeClauseEditAction, saveClauseEditAction } from "../edit-actions";
 import type { ClauseEditOption } from "../edit-types";
 import type { ClauseEditorData } from "../editorData";
-import { clauseDefaultPlace, clausePlaceMenu, withClauseRefusals, type ClauseMenuEnv } from "./clauseMenus";
+import { clauseCondMenu, clauseDefaultPlace, clausePlaceMenu, withClauseRefusals, type ClauseMenuEnv } from "./clauseMenus";
 import { OptionsPane } from "./OptionsPane";
 
 export interface ClauseAuthoringProps {
@@ -303,8 +303,10 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     if (toolId === "cond") {
       const item = condItem(sections, cut !== undefined);
       if (!item) return;
-      const a = item.action;
-      runMenu(a.do === "popup" && a.popup.kind === "insertInline" && cut !== undefined ? { ...item, action: { do: "popup", popup: { ...a.popup, prefill: cut } } } : item, anchor);
+      // 고른 글은 문장 안 조건의 IF 가지 문장이 된다 — 조각에서는 이미 빠져 있다
+      const chosen = item.label === "문장 안 조건" && cut !== undefined && at.kind === "inline" ? inlineCondItem(at.at, tokens, randomIds, cut) : item;
+      if (chosen.label !== "문장 안 조건") (document.activeElement as HTMLElement | null)?.blur?.();
+      runMenu(chosen, anchor);
       return;
     }
     const tool = allTools(CLAUSE_TOOLS).find((t) => t.id === toolId);
@@ -331,7 +333,9 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     }
     const ops = typeof a.ops === "function" ? a.ops(latest()) : a.ops;
     if (ops.length === 0) return;
-    if (apply(ops) && a.focus) setFocusRequest(a.focus);
+    if (!apply(ops)) return;
+    if (a.focus) setFocusRequest(a.focus);
+    if (a.openChip) setPop({ spec: { kind: "editChip", nodeId: a.openChip }, anchor });
   };
 
   const edit: EditHandlers = {
@@ -372,6 +376,8 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     ...(focusRequest ? { focusRequest } : {}),
     focusDone: () => setFocusRequest(undefined),
     contextMenu: onContextMenu,
+    headItems: (branchId) => clauseCondMenu(menuEnv(), branchId).flat(),
+    run: (item, anchor) => runMenu(item, anchor),
   };
 
   const ctx: DocCtx = {
@@ -386,6 +392,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     refLabel,
     chipOverride,
     articleRefScope: "general",
+    conditionFor: () => data.condition,
     ...(flashId ? { flashId } : {}),
     ...(editing ? { edit } : {}),
   };

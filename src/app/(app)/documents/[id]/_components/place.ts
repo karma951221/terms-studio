@@ -7,9 +7,12 @@ import { tokensOf } from "./Inline";
 import type { Token } from "./inlineRuns";
 import type { Place } from "./menus";
 
-/** 누른 요소 → 자리. 칩 · 조건 머리 · 조 제목 · 관 제목 · 문장 칸 · 블록 · 조 순으로 가까운 것. 본문 빈 곳이면 undefined. */
+/** 누른 요소 → 자리. 공용조항 블록 · 칩 · 조건 머리 · 조 제목 · 관 제목 · 문장 칸 · 블록 · 조 순으로 가까운 것. 본문 빈 곳이면 undefined. */
 export function placeOf(target: Element): Place | undefined {
   const data = (selector: string, key: string): string | undefined => (target.closest(selector) as HTMLElement | null)?.dataset[key];
+  // 공용조항 블록 안(그 공용조항의 본문)은 이 문서의 자리가 아니다 — 블록 하나로 모은다
+  const clauseRef = data("[data-clause-ref]", "clauseRef");
+  if (clauseRef) return { kind: "block", id: clauseRef };
   const chip = data("[data-chip]", "chip");
   if (chip) return { kind: "chip", id: chip };
   const head = data("[data-cond-head]", "condHead");

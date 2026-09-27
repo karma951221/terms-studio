@@ -1,7 +1,7 @@
 /**
  * 조건 팝업 문맥 — 서버가 만들어 클라이언트로 넘기는 직렬화 가능 자료 (ADR-0066 §4~§7).
  *
- * `buildConditionContext`(conditionContext.ts, 서버 전용)가 만들고 `ConditionEditor`·`ConditionDialog`
+ * `buildConditionContext`(conditionContext.ts, 서버 전용)가 만들고 조건 머리 줄(`CondRows`)·슬롯 트리
  * (클라이언트)가 그대로 소비한다 — props 로 서버 → 클라이언트를 건너가므로 함수·Map·Date 는 담지 않는다.
  */
 import type { CoverageNodeLevel } from "@/domain/coverage";

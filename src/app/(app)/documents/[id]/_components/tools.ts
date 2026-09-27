@@ -5,8 +5,10 @@
  * (`placeMenu` — 오른쪽 클릭 메뉴와 같은 목록)에서 이름이 맞는 항목을 찾아 그대로 돌리는 것이다 — 규칙은 목록이 들고 있다.
  * 목록의 모든 항목은 버튼 하나에 대응한다(`toolFor` — 테스트가 지킨다).
  *
- * 「조건식」은 하나의 버튼이 자리대로 넣는다 — 문장에서 글을 골랐으면 그 글을 문장 안 조건으로, 아니면 지금 블록(항 · 조 · 관 …)을
- * 조건 블록으로 감싼다. 감쌀 블록이 없는 자리(표 셀 · 「문구」 공용조항 · 문장 안 조건 가지)면 커서 자리에 문장 안 조건.
+ * 「조건식」은 하나의 버튼이 자리대로 넣는다 — 팝업 없이 곧바로 선다(2026-09-28). 문장에서 글을 골랐으면 그 글을 문장 안 조건으로,
+ * 아니면 지금 블록(항 · 조 제목 · 관 …)을 조건 블록으로 감싸고, 고른 블록이 없는 자리(조 본문 · 공용조항 본문)면 빈 항을 든 새 조건 블록.
+ * 어느 쪽이든 빈 IF 줄 하나가 서고 첫 칸에 초점이 간다 — 식은 그 머리 줄에서 고른다. 감쌀 블록도 넣을 자리도 없으면(「문구」 공용조항 ·
+ * 문장 안 조건 가지) 커서 자리에 문장 안 조건.
  */
 import type { MenuItem, MenuSections } from "./menus";
 
@@ -26,7 +28,6 @@ export type ToolId =
   | "structKey"
   | "optionSlot"
   | "cond"
-  | "when"
   | "elif"
   | "else"
   | "unwrap"
@@ -62,7 +63,7 @@ const oneOf =
   (label: string) =>
     labels.includes(label);
 
-const COND_INSERT = oneOf("조건으로 감싸기…", "문장 안 조건…");
+const COND_INSERT = oneOf("조건으로 감싸기", "조건 블록 넣기", "문장 안 조건");
 
 /** 문면 저작 툴바 — 묶음 순서가 곧 화면 순서. */
 export const DOC_TOOLS: ToolGroup[] = [
@@ -93,9 +94,8 @@ export const DOC_TOOLS: ToolGroup[] = [
   {
     name: "조건",
     tools: [
-      { id: "cond", label: "조건식", title: "조건식 넣기 — 글을 골랐으면 그 글을 문장 안 조건으로, 아니면 지금 블록을 조건으로 감싼다", match: COND_INSERT },
-      { id: "when", label: "식 고치기", title: "조건 고치기 — 고른 조건 가지의 식", match: oneOf("조건 고치기…") },
-      { id: "elif", label: "가지 추가", title: "가지 추가(ELIF) — 고른 조건 블록에", match: oneOf("가지 추가(ELIF)…") },
+      { id: "cond", label: "조건식", title: "조건식 블록 넣기 — 지금 블록을 감싸거나(없으면 새 블록) 빈 IF 줄이 선다. 글을 골랐으면 문장 안 조건", match: COND_INSERT },
+      { id: "elif", label: "가지 추가", title: "가지 추가(ELIF) — 고른 조건 블록에", match: oneOf("가지 추가(ELIF)") },
       { id: "else", label: "ELSE", title: "ELSE 가지 추가 — 고른 조건 블록에", match: oneOf("ELSE 가지 추가") },
       { id: "unwrap", label: "조건 풀기", title: "조건 풀기 — 고른 가지(문장 안 조건은 첫 가지) 내용만 남긴다", match: (l) => l.startsWith("조건 풀기") },
       { id: "removeBranch", label: "가지 삭제", title: "이 가지 삭제 — 가지가 하나면 잠긴다", match: oneOf("이 가지 삭제") },
@@ -147,14 +147,15 @@ export function itemsFor(tool: Tool, sections: MenuSections): MenuItem[] {
 }
 
 /**
- * 「조건식」이 넣을 항목 — 글을 골랐으면(`selected`) 문장 안 조건, 아니면 감싸기, 감쌀 블록이 없으면 문장 안 조건.
+ * 「조건식」이 넣을 항목 — 글을 골랐으면(`selected`) 문장 안 조건, 아니면 감싸기, 감쌀 블록이 없으면 새 조건 블록, 그것도 없으면 문장 안 조건.
  */
 export function condItem(sections: MenuSections, selected: boolean): MenuItem | undefined {
-  const items = sections.flat();
-  const inline = items.find((i) => i.label === "문장 안 조건…");
-  const wrap = items.find((i) => i.label === "조건으로 감싸기…");
+  const items = sections.flat().filter((i) => !i.refusal);
+  const inline = items.find((i) => i.label === "문장 안 조건");
+  const wrap = items.find((i) => i.label === "조건으로 감싸기");
+  const block = items.find((i) => i.label === "조건 블록 넣기");
   if (selected && inline) return inline;
-  return wrap ?? inline;
+  return wrap ?? block ?? inline;
 }
 
 export interface ToolState {

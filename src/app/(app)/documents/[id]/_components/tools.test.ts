@@ -3,8 +3,7 @@ import { describe, expect, it } from "vitest";
 import { clauseDefaultPlace, clausePlaceMenu, withClauseRefusals, type ClauseMenuEnv } from "@/app/(app)/clauses/_components/clauseMenus";
 import { CLAUSE_LINE_ID, clauseBodyToTree, indexTree, nodeBuilders, replayEdits, sequentialIds, type DocumentNode, type EditOp } from "@/domain/document";
 
-import { wrapOps } from "./editOps";
-import { forContextMenu, placeMenu, type MenuEnv, type MenuSections, type Place } from "./menus";
+import { forContextMenu, inlineCondItem, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place } from "./menus";
 import { CLAUSE_LINE_TOOLS, CLAUSE_TOOLS, DOCUMENT_TOOLS, allTools, condItem, itemsFor, toolFor, toolState } from "./tools";
 
 function env(tree: DocumentNode, docKind: "special" | "general" = "special"): MenuEnv {
@@ -55,6 +54,14 @@ function everyPlace(s: ReturnType<typeof sample>): Place[] {
 
 const labels = (sections: MenuSections) => sections.flat().map((i) => i.label);
 
+/** 목록 항목의 명령을 편집본에 돌린다 — 팝업 항목이면 실패(조건식은 팝업이 없어야 한다). */
+function runItem(tree: DocumentNode, item: MenuItem): { tree: DocumentNode; focus?: string; openChip?: string } {
+  const a = item.action;
+  if (a.do !== "ops") throw new Error(`명령이 아니다: ${a.do}`);
+  const ops = typeof a.ops === "function" ? a.ops(tree) : a.ops;
+  return { tree: run(tree, ops), ...(a.focus ? { focus: a.focus } : {}), ...(a.openChip ? { openChip: a.openChip } : {}) };
+}
+
 describe("약관 에디터 툴바 (기능/문면 §4.3)", () => {
   it("툴바는 모든 조작을 버튼으로 싣는다 — 어느 자리의 목록 항목이든 맡는 버튼이 있다", () => {
     const s = sample();
@@ -83,42 +90,81 @@ describe("약관 에디터 툴바 (기능/문면 §4.3)", () => {
     expect(on).not.toContain("elif");
     expect(on).not.toContain("up"); // 맨 위 항
     const head = placeMenu(env(s.tree), { kind: "head", id: s.cond.branches[0].id });
-    expect(itemsFor(allTools(DOCUMENT_TOOLS).find((t) => t.id === "elif")!, head).map((i) => i.label)).toEqual(["가지 추가(ELIF)…"]);
+    expect(itemsFor(allTools(DOCUMENT_TOOLS).find((t) => t.id === "elif")!, head).map((i) => i.label)).toEqual(["가지 추가(ELIF)"]);
   });
 
-  it("「조건식」 — 글을 골랐으면 문장 안 조건, 아니면 지금 블록을 감싼다 · 감쌀 블록이 없으면 문장 안 조건", () => {
+  it("「조건식」 — 글을 골랐으면 문장 안 조건, 아니면 지금 블록을 감싼다 · 조 본문이면 새 조건 블록 · 감쌀 블록이 없으면 문장 안 조건", () => {
     const s = sample();
     const inline = placeMenu(env(s.tree), { kind: "inline", at: { parentId: s.paragraph.id } }, [{ text: "앞 " }, { caret: true }]);
-    expect(condItem(inline, true)?.label).toBe("문장 안 조건…");
-    expect(condItem(inline, false)).toMatchObject({ label: "조건으로 감싸기…", action: { do: "popup", popup: { kind: "wrap", nodeId: s.paragraph.id } } });
+    expect(condItem(inline, true)?.label).toBe("문장 안 조건");
+    expect(condItem(inline, false)).toMatchObject({ label: "조건으로 감싸기", wrapTarget: s.paragraph.id, action: { do: "ops" } });
     const cell = placeMenu(env(s.tree), { kind: "inline", at: { tableId: s.table.id, row: 1, col: 0 } });
     // 표 셀 — 감싸기는 표 블록(항 목록 자리)이 받는다
-    expect(condItem(cell, false)).toMatchObject({ action: { popup: { kind: "wrap", nodeId: s.table.id } } });
+    expect(condItem(cell, false)).toMatchObject({ wrapTarget: s.table.id });
+    expect(condItem(placeMenu(env(s.tree), { kind: "article", id: s.top.id }), false)?.label).toBe("조건 블록 넣기");
     const branchLine = placeMenu(env(s.tree), { kind: "inline", at: { parentId: s.cond.branches[0].id } });
-    expect(labels(branchLine)).not.toContain("조건으로 감싸기…");
+    expect(labels(branchLine)).not.toContain("조건으로 감싸기");
+    // 어느 쪽이든 팝업이 아니다 — 곧바로 명령
+    for (const sections of [inline, cell, branchLine]) expect(condItem(sections, false)?.action.do).toBe("ops");
   });
 
-  it("「조건식」 누르면 조건이 들어간다 — 감싸기 팝업의 식으로 항이 조건 블록 안에 선다", () => {
+  it("「조건식」 누르면 팝업 없이 조건 블록이 선다 — 빈 IF 줄(식 \"\") 하나, 항은 그 가지 안, 초점은 새 가지의 머리 줄", () => {
     const s = sample();
-    const item = condItem(placeMenu(env(s.tree), { kind: "block", id: s.top.children[0].id }), false)!;
-    expect(item.action.do).toBe("popup");
-    const nodeId = item.action.do === "popup" && item.action.popup.kind === "wrap" ? item.action.popup.nodeId : "";
-    const out = run(s.tree, wrapOps(s.tree, nodeId, "D0001 = true", sequentialIds("w")));
-    const ix = indexTree(out);
-    const owner = ix.branches.get(ix.nodes.get(nodeId)!.parentId!)!;
+    const target = s.top.children[0].id;
+    const out = runItem(s.tree, condItem(placeMenu(env(s.tree), { kind: "block", id: target }), false)!);
+    const ix = indexTree(out.tree);
+    const owner = ix.branches.get(ix.nodes.get(target)!.parentId!)!;
     expect(ix.nodes.get(owner.ownerId)?.node.kind).toBe("condBlock");
-    expect(owner.branch.when).toBe("D0001 = true");
+    expect(owner.branch.when).toBe("");
+    expect(out.focus).toBe(owner.branch.id);
   });
 
-  it("오른쪽 클릭 메뉴에는 조건 넣기가 없다 — 조건으로 감싸기 · 문장 안 조건은 툴바에만", () => {
+  it("조 본문의 「조건식」 — 빈 IF 줄 + 빈 항 하나를 든 조건 블록을 조 끝에 넣는다", () => {
+    const s = sample();
+    const out = runItem(s.tree, condItem(placeMenu(env(s.tree), { kind: "article", id: s.top.id }), false)!);
+    const top = indexTree(out.tree).nodes.get(s.top.id)!.node as { children: { kind: string; branches?: { id: string; when?: string; children: { kind: string }[] }[] }[] };
+    const cond = top.children.at(-1)!;
+    expect(cond.kind).toBe("condBlock");
+    expect(cond.branches).toHaveLength(1);
+    expect(cond.branches![0].when).toBe("");
+    expect(cond.branches![0].children.map((c) => c.kind)).toEqual(["paragraph"]);
+    expect(out.focus).toBe(cond.branches![0].id);
+  });
+
+  it("문장 안 조건 — 커서 자리에 칩(빈 IF + ELSE)이 서고 그 칩의 팝업을 연다 · 고른 글은 IF 가지 문장", () => {
+    const s = sample();
+    const at = { parentId: s.paragraph.id };
+    const out = runItem(s.tree, inlineCondItem(at, [{ text: "앞 " }, { chip: s.slot.id }, { caret: true }], sequentialIds("q"), "고른 글"));
+    const chip = indexTree(out.tree).nodes.get(out.openChip!)!.node;
+    expect(chip.kind).toBe("inlineCond");
+    if (chip.kind !== "inlineCond") return;
+    expect(chip.branches.map((b) => b.when)).toEqual(["", undefined]);
+    expect(chip.branches[0].children).toMatchObject([{ kind: "text", text: "고른 글" }]);
+  });
+
+  it("가지 추가(ELIF) · ELSE — 팝업 없이 빈 가지(빈 IF 줄 · 빈 항)가 ELSE 앞에 선다", () => {
+    const s = sample();
+    const head = placeMenu(env(s.tree), { kind: "head", id: s.cond.branches[0].id });
+    const withElse = runItem(s.tree, head.flat().find((i) => i.label === "ELSE 가지 추가")!).tree;
+    const head2 = placeMenu(env(withElse), { kind: "head", id: s.cond.branches[0].id });
+    const out = runItem(withElse, head2.flat().find((i) => i.label === "가지 추가(ELIF)")!);
+    const cond = indexTree(out.tree).nodes.get(s.cond.id)!.node;
+    if (cond.kind !== "condBlock") throw new Error("조건 블록이 아니다");
+    expect(cond.branches.map((b) => b.when)).toEqual(["D0001 = true", "", undefined]);
+    expect(cond.branches[1].children.map((c) => c.kind)).toEqual(["paragraph"]);
+    expect(out.focus).toBe(cond.branches[1].id);
+  });
+
+  it("오른쪽 클릭 메뉴에는 조건 넣기가 없다 — 조건으로 감싸기 · 조건 블록 넣기 · 문장 안 조건은 툴바에만", () => {
     const s = sample();
     for (const place of everyPlace(s)) {
       const menu = labels(forContextMenu(placeMenu(env(s.tree), place, [{ caret: true }])));
-      expect(menu).not.toContain("조건으로 감싸기…");
-      expect(menu).not.toContain("문장 안 조건…");
+      for (const label of ["조건으로 감싸기", "조건 블록 넣기", "문장 안 조건"]) expect(menu).not.toContain(label);
     }
-    // 조건 고치기 · 가지 조작은 메뉴에 남는다
-    expect(labels(forContextMenu(placeMenu(env(s.tree), { kind: "head", id: s.cond.branches[0].id })))).toContain("조건 고치기…");
+    // 가지 조작은 메뉴에 남는다 — 식 고치기 항목은 없다(머리 줄에서 고친다)
+    const head = labels(forContextMenu(placeMenu(env(s.tree), { kind: "head", id: s.cond.branches[0].id })));
+    expect(head).toContain("가지 추가(ELIF)");
+    expect(head.some((l) => l.startsWith("조건 고치기"))).toBe(false);
   });
 });
 
@@ -158,6 +204,17 @@ describe("공용조항 툴바 (기능/공용조항 §4.3)", () => {
     const e = clauseEnv("inline");
     const place = clauseDefaultPlace("inline");
     expect(place).toEqual({ kind: "inline", at: { parentId: CLAUSE_LINE_ID } });
-    expect(condItem(clausePlaceMenu(e, place), false)?.label).toBe("문장 안 조건…");
+    expect(condItem(clausePlaceMenu(e, place), false)?.label).toBe("문장 안 조건");
+  });
+
+  it("「항」 유형 본문 빈 자리 — 「조건식」이 켜지고 빈 항을 든 조건 블록을 넣는다 · 호 자리는 감싸지 않는다", () => {
+    const e = clauseEnv("block");
+    const body = withClauseRefusals(e, clausePlaceMenu(e, { kind: "document" }));
+    expect(toolState(allTools(CLAUSE_TOOLS).find((t) => t.id === "cond")!, body).disabled).toBe(false);
+    const out = runItem(e.tree, condItem(body, false)!);
+    const article = out.tree.children[0] as { children: { kind: string }[] };
+    expect(article.children.map((c) => c.kind)).toEqual(["paragraph", "condBlock"]);
+    expect(labels(clausePlaceMenu(e, { kind: "block", id: "p1" }))).toContain("조건으로 감싸기");
+    expect(labels(clausePlaceMenu(e, { kind: "block", id: "i1" }))).not.toContain("조건으로 감싸기");
   });
 });
