@@ -8,7 +8,7 @@
  * 화면 안에서 여닫는 것(미리보기 대화상자 · 그 자리 팝업)은 `onSelect` 로 준다.
  * 바깥 클릭 · Esc 로 닫히고, 화살표로 항목을 오간다. 열림 상태는 `aria-expanded` 가 말한다.
  */
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import Link from "next/link";
 
 export interface MoreMenuItem {
@@ -19,9 +19,29 @@ export interface MoreMenuItem {
   onSelect?: (anchor: DOMRect) => void;
   /** 파괴적 항목 — hover/focus 에서만 error 색 (§1.6). */
   danger?: boolean;
+  /** 항목 아래 한 줄 설명 — 고르기 전에 차이를 알아야 하는 메뉴(공용조항 `+` 의 문구 / 항). */
+  hint?: string;
 }
 
-export function MoreMenu({ label = "더보기", items, className }: { label?: string; items: MoreMenuItem[]; className?: string }) {
+/**
+ * `trigger` 를 주면 「더보기 ▾」 대신 그것을 버튼 속에 그린다(`+` 아이콘 등) — `label` 은 그때 버튼의 이름(tooltip)이 된다.
+ * `align="start"` 면 메뉴가 버튼 왼쪽 끝에 맞춰 오른쪽으로 펼쳐진다(제목 옆 `+`).
+ */
+export function MoreMenu({
+  label = "더보기",
+  items,
+  className,
+  trigger,
+  buttonClassName,
+  align = "end",
+}: {
+  label?: string;
+  items: MoreMenuItem[];
+  className?: string;
+  trigger?: ReactNode;
+  buttonClassName?: string;
+  align?: "start" | "end";
+}) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -61,11 +81,12 @@ export function MoreMenu({ label = "더보기", items, className }: { label?: st
   };
 
   return (
-    <div ref={rootRef} className={["ts-more", className].filter(Boolean).join(" ")}>
+    <div ref={rootRef} className={["ts-more", align === "start" ? "is-start" : null, className].filter(Boolean).join(" ")}>
       <button
         ref={buttonRef}
         type="button"
-        className="ts-more-button"
+        className={buttonClassName ?? "ts-more-button"}
+        {...(trigger ? { title: label, "aria-label": label } : {})}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
@@ -77,10 +98,14 @@ export function MoreMenu({ label = "더보기", items, className }: { label?: st
           }
         }}
       >
-        {label}
-        <span className="ts-more-caret" aria-hidden="true">
-          ▾
-        </span>
+        {trigger ?? (
+          <>
+            {label}
+            <span className="ts-more-caret" aria-hidden="true">
+              ▾
+            </span>
+          </>
+        )}
       </button>
       {open && (
         <div ref={listRef} id={menuId} role="menu" aria-label={label} className="ts-more-menu" onKeyDown={onMenuKeyDown}>
@@ -90,17 +115,18 @@ export function MoreMenu({ label = "더보기", items, className }: { label?: st
                 key={item.label}
                 role="menuitem"
                 href={item.href}
-                className={item.danger ? "ts-more-menu-item danger" : "ts-more-menu-item"}
+                className={["ts-more-menu-item", item.danger ? "danger" : null, item.hint ? "has-hint" : null].filter(Boolean).join(" ")}
                 onClick={() => setOpen(false)}
               >
                 {item.label}
+                {item.hint ? <span className="ts-more-menu-hint">{item.hint}</span> : null}
               </Link>
             ) : (
               <button
                 key={item.label}
                 type="button"
                 role="menuitem"
-                className={item.danger ? "ts-more-menu-item danger" : "ts-more-menu-item"}
+                className={["ts-more-menu-item", item.danger ? "danger" : null, item.hint ? "has-hint" : null].filter(Boolean).join(" ")}
                 onClick={() => {
                   setOpen(false);
                   const rect = buttonRef.current?.getBoundingClientRect() ?? new DOMRect();
@@ -108,6 +134,7 @@ export function MoreMenu({ label = "더보기", items, className }: { label?: st
                 }}
               >
                 {item.label}
+                {item.hint ? <span className="ts-more-menu-hint">{item.hint}</span> : null}
               </button>
             ),
           )}

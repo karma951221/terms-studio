@@ -74,7 +74,6 @@ const surgeryClauses: Clause[] = [
   {
     code: "C001",
     label: "특별약관의 소멸",
-    description: "",
     mode: "block",
     body: [{ id: "c1-p", kind: "paragraph", children: [{ id: "c1-t1", kind: "text", text: "이 특별약관은 " }, { id: "c1-o", kind: "optionSlot", optionCode: "tone" }, { id: "c1-t2", kind: "text", text: " 소멸합니다." }] }],
     options: [
@@ -93,7 +92,6 @@ const surgeryClauses: Clause[] = [
   {
     code: "C002",
     label: "준용 문구",
-    description: "",
     mode: "inline",
     body: [
       { id: "c2-t1", kind: "text", text: "이 약관에서 정하지 않은 사항은 보통약관을 따릅니다." },

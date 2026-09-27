@@ -45,7 +45,6 @@ export interface RequiredRefs {
 interface ClauseBase {
   code: Code;
   label: string;
-  description: string;
   options: OptionDef[];
   required: RequiredRefs;
 }
@@ -87,7 +86,6 @@ export interface NewClause {
   mode: ClauseMode;
   body?: ClauseBody;
   options?: NewOption[];
-  description?: string;
 }
 
 /** 목록 화면용 요약 — 코드 · 표시명 · 모드 · 사용처 수 · 최종수정(언제 · 누가). */

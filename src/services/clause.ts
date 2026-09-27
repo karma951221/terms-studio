@@ -1,7 +1,7 @@
 /**
  * 공용조항 서비스 — 모든 쓰기의 진입점. actor 검사 · 도메인 규칙 · repo 호출.
  *
- * - 비파괴 액션(채번 · 표시명 · 설명 · 본문 · 모드 · 옵션 추가/수정/삭제 · 순서 · 복제)은 editor 도 가능.
+ * - 비파괴 액션(채번 · 표시명 · 본문 · 모드 · 옵션 추가/수정/삭제 · 순서 · 복제)은 editor 도 가능.
  *   본문·옵션이 바뀌는 저장은 ① 요구 구분자 재추출 ② 사용처 전부 재검사 → `{ clause, recheck }` 를 돌려준다.
  *   저장 자체는 미부착이 생겨도 차단하지 않는다 (D-P3-8).
  * - 파괴적 액션은 `clause.delete` 하나 — `destructive()` 2단: editor → forbidden ·
@@ -29,7 +29,6 @@ import {
   reorderOptions,
   reorderOptionValues,
   setBody,
-  setClauseDescription,
   setMode,
   setOptionValueBody,
   usageCoordinate,
@@ -94,7 +93,6 @@ export interface ClauseService {
   // 정의 — 비파괴
   create(actor: Actor, input: NewClause): Promise<Result<Clause>>;
   rename(actor: Actor, code: Code, label: string): Promise<Result<Clause>>;
-  setDescription(actor: Actor, code: Code, description: string): Promise<Result<Clause>>;
   setBody(actor: Actor, code: Code, body: ClauseBody): Promise<Result<SaveOutcome>>;
   setMode(actor: Actor, code: Code, mode: ClauseMode, body: ClauseBody): Promise<Result<SaveOutcome>>;
   duplicate(actor: Actor, code: Code): Promise<Result<Clause>>;
@@ -274,7 +272,6 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
         return r;
       }),
     rename: (actor, code, label) => edit(actor, code, (def, ctx) => renameClause(def, label, ctx.existing)),
-    setDescription: (actor, code, description) => edit(actor, code, (def) => setClauseDescription(def, description)),
     setBody: (actor, code, body) => editAndRecheck(actor, code, (def, ctx) => setBody(def, body, ctx.analyze)),
     setMode: (actor, code, mode, body) => editAndRecheck(actor, code, (def, ctx) => setMode(def, mode, body, ctx.analyze)),
     duplicate: (actor, code) =>

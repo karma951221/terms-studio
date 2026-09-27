@@ -14,7 +14,6 @@ const 준용규정: BlockClause = {
   code: "C0001",
   label: "준용규정",
   mode: "block",
-  description: "",
   body: [{ id: "p1", kind: "paragraph", children: [{ id: "o1", kind: "optionSlot", optionCode: "O01" }] }],
   options: [{ code: "O01", label: "준용 대상", order: 0, values: [{ code: "V01", label: "보통약관", order: 0, body: [] }] }],
   required: { discriminators: ["D0001", "D0009"], attributes: [] },

@@ -87,9 +87,12 @@ function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode })
   // 고른 연결어 — 대상이 하나로 줄었다 다시 늘어도 기억한다 (고치기면 저장된 값에서 시작)
   const [connector, setConnector] = useState<ReferenceConnector>(node?.connector ?? "및");
   const joins = count >= 2;
+  // 범위가 고정이면(공용조항 — 보통약관 조만) 범위 고르기 · 이 템플릿 후보가 없다
+  const fixed = ctx.articleRefScope;
   return (
     <>
-      {ctx.docKind === "special" && (
+      {fixed && <input type="hidden" name="scope" value={fixed} />}
+      {!fixed && ctx.docKind === "special" && (
         <div className="ts-form-row">
           <label htmlFor="pop-ref-scope">범위</label>
           <select id="pop-ref-scope" name="scope" defaultValue={node?.scope ?? "self"}>
@@ -105,12 +108,14 @@ function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode })
           defaultSelected={node?.targets.map((t) => t.nodeId) ?? []}
           onCountChange={setCount}
           scopes={
-            ctx.docKind === "special"
-              ? [
-                  { key: "self", label: "이 템플릿", index: ctx.references.self },
-                  { key: "general", label: "대응 보통약관", index: ctx.references.general },
-                ]
-              : [{ key: "self", index: ctx.references.self }]
+            fixed
+              ? [{ key: "general", label: "보통약관", index: ctx.references.general }]
+              : ctx.docKind === "special"
+                ? [
+                    { key: "self", label: "이 템플릿", index: ctx.references.self },
+                    { key: "general", label: "대응 보통약관", index: ctx.references.general },
+                  ]
+                : [{ key: "self", index: ctx.references.self }]
           }
         />
       </div>

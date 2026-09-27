@@ -164,7 +164,7 @@ export const DOC_TEMPLATE_LABEL = {
 /** 공용조항 모드 — 두 값의 차이가 「어디에 서느냐」라서, 고를 때 읽을 뜻풀이를 붙인다. */
 export const MODE_OPTIONS = [
   { value: "inline", label: MODE_LABEL.inline, hint: "조 안 문장 중간에 끼어 들어간다 — 문장 조각 하나." },
-  { value: "block", label: MODE_LABEL.block, hint: "조 자리에 통째로 선다 — 항 하나 또는 항 목록." },
+  { value: "block", label: MODE_LABEL.block, hint: "조 안 항 자리에 선다 — 항 하나 또는 항 목록(호 · 목 포함)." },
 ] as const;
 
 /** 부착 레벨 2지선다가 아니라 5지선다 — 라디오로 늘어놓는다 (선택지가 짧고 개수가 고정이다). */

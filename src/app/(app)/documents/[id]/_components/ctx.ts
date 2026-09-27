@@ -7,7 +7,9 @@
  */
 import type { MouseEvent } from "react";
 
-import type { BranchEvaluation, EditOp, InlineAt, NodeNumber, ReferenceTarget, SlotEvaluation, TableEvaluation } from "@/domain/document";
+import type { ReactNode } from "react";
+
+import type { BranchEvaluation, EditOp, InlineAt, InlineNode, NodeNumber, ReferenceTarget, SlotEvaluation, TableEvaluation } from "@/domain/document";
 import { format, parse, type DisplayName } from "@/domain/expression";
 import type { Code, Id } from "@/domain/types";
 
@@ -61,6 +63,13 @@ export interface DocCtx {
   flashId?: Id;
   /** 편집 모드에서만 있다. */
   edit?: EditHandlers;
+  /**
+   * 칩 모양을 화면이 바꿔 그리는 훅 — 공용조항 화면이 옵션 자리 운반체(`clauseInlineRef` · `option:O01`)를 「〔옵션명〕」으로 그린다.
+   * undefined 를 돌려주면 기본 모양. `what` 은 편집 모드 tooltip 의 칩 이름.
+   */
+  chipOverride?: (node: InlineNode) => { className: string; title: string; body: ReactNode; what: string } | undefined;
+  /** 조 참조의 범위를 고정한다 — 공용조항은 보통약관 조만 가리킨다(기능/공용조항 §3.5). 있으면 조 참조 팝업에 범위 고르기가 없다. */
+  articleRefScope?: "general";
 }
 
 /** 가운데 편집기의 조작 — 편집 모드에서만 준다. */

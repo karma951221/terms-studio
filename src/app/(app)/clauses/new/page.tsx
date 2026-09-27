@@ -1,29 +1,16 @@
-/** 새 공용조항 (생성) — 다른 생성 화면과 같은 폼 패턴. */
-import { CreateHead, FormRow } from "@/app/_components/FormRow";
-import { ErrorBanner } from "@/app/_components/ErrorBanner";
-import { NoteField } from "@/app/_components/NoteField";
-import { ENTITY_LABEL, NAME_LABEL, newLabel } from "@/app/_lib/labels";
-
-import { createClauseAction } from "../actions";
-import { ModeBody } from "./ModeBody";
+/**
+ * 새 공용조항 — 이 화면 자체가 상세와 같은 세 단 에디터다 (기능/공용조항 §4.2).
+ * 유형은 목록 `+` 메뉴에서 골라 쿼리(`?type=inline|block`)로 들어온다 — 에디터 안에는 유형을 바꾸는 조작이 없다.
+ * 이름 · 유형만 받는 중간 화면은 없고, 저장하는 순간 검사 ① 을 통과해야 만들어진다.
+ */
+import { ClauseAuthoring } from "../_components/ClauseAuthoring";
+import { loadClauseEditorData } from "../editorData";
 
 export const dynamic = "force-dynamic";
 
-const FORM_ID = "create-clause";
-
-export default async function NewClausePage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { error } = await searchParams;
-  return (
-    <div>
-      <CreateHead title={newLabel(ENTITY_LABEL.clause)} formId={FORM_ID} path={[{ label: ENTITY_LABEL.clause, href: "/clauses" }]} banner={<ErrorBanner message={error} />} />
-      <form id={FORM_ID} action={createClauseAction} className="ts-create-form">
-        <FormRow label={NAME_LABEL.clause} htmlFor="clause-label">
-          <input id="clause-label" type="text" name="label" required autoFocus />
-        </FormRow>
-        <ModeBody>
-          <NoteField id="clause-desc" placeholder="예: 특별약관이 소멸하는 사유를 정한 공통 문구" />
-        </ModeBody>
-      </form>
-    </div>
-  );
+export default async function NewClausePage({ searchParams }: { searchParams: Promise<{ type?: string }> }) {
+  const { type } = await searchParams;
+  const mode = type === "block" ? "block" : "inline";
+  const data = await loadClauseEditorData();
+  return <ClauseAuthoring key={mode} label="" mode={mode} body={[]} options={[]} data={data} />;
 }

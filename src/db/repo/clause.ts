@@ -47,7 +47,6 @@ function toClause(row: ClauseRow): Clause {
   const base = {
     code: row.code,
     label: row.label,
-    description: row.description,
     options: row.options,
     required: { discriminators: row.requiredDiscriminators, attributes: row.requiredAttributes },
   };
@@ -61,7 +60,6 @@ function toRow(def: Clause) {
     code: def.code,
     label: def.label,
     mode: def.mode,
-    description: def.description,
     body: def.body,
     options: def.options,
     requiredDiscriminators: def.required.discriminators,

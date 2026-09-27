@@ -1156,31 +1156,30 @@ button.danger:focus-visible {
   padding: 4px 0 10px 20px;
 }
 
-/* ── 공용조항 상세 — 왼쪽 기재내용 · 오른쪽 옵션 ──────────────────────────
- * 이 화면에서 보러 오는 것은 본문과 옵션 둘뿐이라 단을 둘로만 가른다. 본문이 주(主)이므로
- * 남는 폭을 본문이 먹고, 옵션은 읽을 만한 최소폭을 지킨다. 좁아지면 세로로 쌓는다.
+/* ── 공용조항 에디터 — 가운데 약관 에디터 · 인스펙터 · 옵션 목록, 셋이 각자 스크롤 (기능/공용조항 §4.3) ──
+ * 가운데는 문면 저작 에디터 그대로(.ts-l3-body), 인스펙터 · 옵션 목록은 L3 우측 패널(.ts-l3-side) 두 장.
  */
-.ts-clause-split {
+.ts-l3.is-clause {
+  grid-template-columns: minmax(0, 1fr) 280px 320px;
+}
+
+.ts-inspector-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--ts-rule);
+}
+
+.ts-option-values > li.ts-option-value {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 34%);
-  gap: 24px;
-  align-items: start;
-  margin-top: 16px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 6px;
+  padding: 4px 0;
 }
 
-.ts-clause-body,
-.ts-clause-options {
-  min-width: 0;
-}
-
-.ts-clause-options {
-  border-left: 1px solid var(--ts-rule-strong);
-  padding-left: 16px;
-}
-
-.ts-clause-body > textarea.ts-json {
-  width: 100%;
-  min-height: 320px;
+.ts-option-value > .ts-option-text {
+  grid-column: 1 / -1;
 }
 
 /* 이름 하나를 더하는 칸 — 입력과 「더하기」가 한 덩어리로 붙는다. */
@@ -1251,18 +1250,6 @@ button.danger:focus-visible {
   min-width: 0;
 }
 
-@media (max-width: 900px) {
-  .ts-clause-split {
-    grid-template-columns: 1fr;
-  }
-
-  .ts-clause-options {
-    border-left: 0;
-    padding-left: 0;
-    border-top: 1px solid var(--ts-rule-strong);
-    padding-top: 16px;
-  }
-}
 
 .ts-l2-split {
   display: grid;
@@ -1472,33 +1459,6 @@ button.danger:focus-visible {
   padding: 4px 0 10px 20px;
 }
 
-/* ── 공용조항 상세 — 왼쪽 기재내용 · 오른쪽 옵션 ──────────────────────────
- * 이 화면에서 보러 오는 것은 본문과 옵션 둘뿐이라 단을 둘로만 가른다. 본문이 주(主)이므로
- * 남는 폭을 본문이 먹고, 옵션은 읽을 만한 최소폭을 지킨다. 좁아지면 세로로 쌓는다.
- */
-.ts-clause-split {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 34%);
-  gap: 24px;
-  align-items: start;
-  margin-top: 16px;
-}
-
-.ts-clause-body,
-.ts-clause-options {
-  min-width: 0;
-}
-
-.ts-clause-options {
-  border-left: 1px solid var(--ts-rule-strong);
-  padding-left: 16px;
-}
-
-.ts-clause-body > textarea.ts-json {
-  width: 100%;
-  min-height: 320px;
-}
-
 /* 이름 하나를 더하는 칸 — 입력과 「더하기」가 한 덩어리로 붙는다. */
 .ts-add-input {
   display: flex;
@@ -1567,18 +1527,6 @@ button.danger:focus-visible {
   min-width: 0;
 }
 
-@media (max-width: 900px) {
-  .ts-clause-split {
-    grid-template-columns: 1fr;
-  }
-
-  .ts-clause-options {
-    border-left: 0;
-    padding-left: 0;
-    border-top: 1px solid var(--ts-rule-strong);
-    padding-top: 16px;
-  }
-}
 
 .ts-l2-split {
     grid-template-columns: 1fr;
@@ -4366,6 +4314,10 @@ button.ts-ref-fold:hover {
 .ts-more-menu-item:focus-visible { background: var(--ts-surface-2); }
 .ts-more-menu-item.danger:hover,
 .ts-more-menu-item.danger:focus-visible { color: var(--ts-error); background: var(--ts-error-bg); }
+.ts-more.is-start .ts-more-menu { left: 0; right: auto; }
+.ts-more-menu:has(.has-hint) { min-width: 260px; }
+.ts-more-menu-item.has-hint { flex-direction: column; align-items: flex-start; gap: 2px; height: auto; padding: 6px 12px; white-space: normal; text-align: left; }
+.ts-more-menu-hint { font-size: 12px; color: var(--ts-ink-3); line-height: 1.4; }
 
 /* 기본정보 본문 */
 .ts-basic-editor { max-width: 1040px; padding-top: 20px; }

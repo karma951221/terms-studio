@@ -98,9 +98,8 @@ describe("clause 서비스 (PGlite)", () => {
       expect((await svc.list()).length).toBe(2);
     });
 
-    it("표시명·설명 변경은 편집자 자유, 코드 불변", async () => {
+    it("표시명 변경은 편집자 자유, 코드 불변", async () => {
       expect(unwrap(await svc.rename(editor, "C0002", "특별약관의 소멸(일반형)")).label).toBe("특별약관의 소멸(일반형)");
-      expect(unwrap(await svc.setDescription(editor, "C0002", "실물 10건 공통")).description).toBe("실물 10건 공통");
       expect(reasonOf(await svc.rename(editor, "C0002", "준용규정"))).toBe("duplicate");
       expect(reasonOf(await svc.rename(editor, "C0099", "x"))).toBe("notFound");
     });

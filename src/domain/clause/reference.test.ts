@@ -33,7 +33,6 @@ const 준용규정: BlockClause = {
   code: "C0001",
   label: "준용규정",
   mode: "block",
-  description: "",
   body: [
     { id: "p1", kind: "paragraph", children: [
       { id: "t1", kind: "text", text: "이 특별약관에서 정하지 않은 사항은 " },

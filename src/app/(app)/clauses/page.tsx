@@ -1,8 +1,9 @@
 /** 공용조항 조회 (L1) — 화면은 컬럼만 적고, 조립은 ListPage 가 한다. */
-import { EmptyState } from "@/app/_components/EmptyState";
+import Link from "next/link";
+
 import { ListPage, codeCol, dateCol, nameCol, userCol, type ListColumn } from "@/app/_components/ListPage";
 import type { ColumnFilterSpec } from "@/app/_components/ListFilters";
-import { ENTITY_LABEL, FIELD_LABEL, MODE_LABEL, NAME_LABEL, newLabel, searchPlaceholder } from "@/app/_lib/labels";
+import { ENTITY_LABEL, FIELD_LABEL, MODE_LABEL, MODE_OPTIONS, NAME_LABEL, newLabel, searchPlaceholder } from "@/app/_lib/labels";
 import { includesQuery, paginate } from "@/app/_lib/list";
 import type { ClauseMode, ClauseSummary } from "@/domain/clause/types";
 import { getServices } from "@/lib/services";
@@ -14,6 +15,9 @@ const MODES: readonly ClauseMode[] = ["inline", "block"];
 const FILTERS = [
   { key: "mode", label: "유형", options: MODES.map((value) => ({ value, label: MODE_LABEL[value] })) },
 ] as const satisfies readonly ColumnFilterSpec[];
+
+/** `+` 의 유형 메뉴 — 유형은 생성 때 정하고 그 뒤 바꾸지 않아서(기능/공용조항 §3.1) 누를 때 먼저 고른다 (§4.1). */
+const CREATE_MENU = MODE_OPTIONS.map((o) => ({ label: o.label, hint: o.hint, href: `/clauses/new?type=${o.value}` }));
 
 interface SearchParams {
   error?: string;
@@ -48,7 +52,7 @@ export default async function ClausesPage({ searchParams }: { searchParams: Prom
   return (
     <ListPage
       title={ENTITY_LABEL.clause}
-      create={{ href: "/clauses/new", label: newLabel(ENTITY_LABEL.clause) }}
+      create={{ label: newLabel(ENTITY_LABEL.clause), menu: CREATE_MENU }}
       search={{ placeholder: searchPlaceholder(FIELD_LABEL.code, NAME_LABEL.clause) }}
       filters={FILTERS}
       columns={columns}
@@ -62,12 +66,21 @@ export default async function ClausesPage({ searchParams }: { searchParams: Prom
       error={sp.error}
       empty={
         summaries.length === 0 ? (
-          <EmptyState
-            what="공용조항은 여러 담보약관이 공통으로 가져다 쓰는 문구 템플릿이다."
-            example="특별약관의 소멸, 준용규정"
-            actionHref="/clauses/new"
-            actionLabel="새 공용조항 만들기"
-          />
+          <div className="ts-empty">
+            <p className="ts-empty-what">공용조항은 여러 약관 템플릿이 공통으로 참조해 쓰는 문구 템플릿이다.</p>
+            <p className="ts-empty-example">예: 특별약관의 소멸, 준용규정</p>
+            <p className="ts-empty-action">
+              새 공용조항 만들기 —{" "}
+              {CREATE_MENU.map((item, i) => (
+                <span key={item.href}>
+                  {i > 0 ? " · " : null}
+                  <Link href={item.href} title={item.hint}>
+                    {item.label}
+                  </Link>
+                </span>
+              ))}
+            </p>
+          </div>
         ) : (
           <p className="ts-empty-what">이 조건에 맞는 공용조항이 없습니다.</p>
         )

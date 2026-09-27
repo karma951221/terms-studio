@@ -25,7 +25,6 @@ export const clauses = pgTable("clauses", {
   label: text("label").notNull(),
   /** "inline" | "block" */
   mode: text("mode").$type<ClauseMode>().notNull(),
-  description: text("description").notNull().default(""),
   /** 본문 — inline 이면 Inline[], block 이면 Block[] (nodes.ts). */
   body: jsonb("body").$type<ClauseBody>().notNull(),
   /** 옵션 정의 목록 (OptionDef[]). */

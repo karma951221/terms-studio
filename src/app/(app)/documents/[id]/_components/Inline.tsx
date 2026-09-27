@@ -43,7 +43,9 @@ const CHIP_WHAT: Record<string, string> = {
 };
 
 /** 칩 하나의 글자 · 모양 · tooltip. 읽기와 편집이 같이 쓴다. */
-function chipParts(node: InlineNode, ctx: DocCtx): { className: string; title: string; body: ReactNode } {
+function chipParts(node: InlineNode, ctx: DocCtx): { className: string; title: string; body: ReactNode; what?: string } {
+  const custom = ctx.chipOverride?.(node);
+  if (custom) return custom;
   switch (node.kind) {
     case "slot": {
       const ev = ctx.slotEval?.get(node.id);
@@ -257,7 +259,7 @@ function InlineEditor({ at, nodes, ctx, owner, focusKey, placeholder }: { at: In
     >
       {nodes.map((node) => {
         if (node.kind === "text") return <Fragment key={node.id}>{node.text}</Fragment>;
-        const { className, title, body } = chipParts(node, ctx);
+        const { className, title, body, what } = chipParts(node, ctx);
         const state = node.kind === "inlineCond" ? node.branches.map((br) => ctx.branchEval?.get(br.id)?.state) : [];
         return (
           <span
@@ -266,7 +268,7 @@ function InlineEditor({ at, nodes, ctx, owner, focusKey, placeholder }: { at: In
             data-chip={node.id}
             data-node={node.id}
             className={`${className} ts-chip-inline${state.includes("notTaken") ? " has-dim" : ""}${ctx.flashId === node.id ? " is-flash" : ""}`}
-            title={`${CHIP_WHAT[node.kind] ?? node.kind} — 눌러서 고치기 · 오른쪽 클릭으로 풀기 · 삭제 (${title})`}
+            title={`${what ?? CHIP_WHAT[node.kind] ?? node.kind} — 눌러서 고치기 · 오른쪽 클릭으로 풀기 · 삭제 (${title})`}
             onClick={(event) => {
               event.preventDefault();
               if (node.kind !== "structKey" && node.kind !== "inlineFor") edit.popup({ kind: "editChip", nodeId: node.id }, anchorOf(event.currentTarget));

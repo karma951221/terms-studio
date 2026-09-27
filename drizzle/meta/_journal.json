@@ -99,6 +99,13 @@
       "when": 1790510222066,
       "tag": "0013_discriminator_description_doc_refs",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790512194096,
+      "tag": "0014_clause_drop_description",
+      "breakpoints": true
     }
   ]
 }
