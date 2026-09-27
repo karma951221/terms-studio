@@ -3,10 +3,18 @@ import path from "node:path";
 
 const ROOT = process.cwd();
 
-export const RUN_DIR = path.join(ROOT, ".data", "e2e-run");
-export const SERVER_LOG = path.join(ROOT, ".data", "e2e-server.log");
-export const GOLDEN_KEY_FILE = path.join(ROOT, ".data", "e2e-golden-key");
-export const FAST_MARKER = path.join(ROOT, ".data", "e2e-fast");
+/**
+ * E2E 프로필 — `full`(기본: 알파Plus 실물 시드 전량) · `real`(바탕만: 별표 + 보통약관, 나머지는 화면으로 넣는다).
+ * 프로필마다 golden · 실행 DB · 서버 로그를 따로 둔다 — 서로의 fast 재사용을 흐리지 않게.
+ * 근거: docs/QA/시나리오/실물재현_E2E_시나리오.md §4
+ */
+export const E2E_PROFILE: "full" | "real" = process.env.E2E_PROFILE === "real" ? "real" : "full";
+const TAG = E2E_PROFILE === "real" ? "e2e-real" : "e2e";
+
+export const RUN_DIR = path.join(ROOT, ".data", `${TAG}-run`);
+export const SERVER_LOG = path.join(ROOT, ".data", `${TAG}-server.log`);
+export const GOLDEN_KEY_FILE = path.join(ROOT, ".data", `${TAG}-golden-key`);
+export const FAST_MARKER = path.join(ROOT, ".data", `${TAG}-fast`);
 export const FAILURES_DIR = path.join(ROOT, "test-results", "failures");
 
 /**

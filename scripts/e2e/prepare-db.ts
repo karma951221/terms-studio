@@ -3,12 +3,13 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { goldenKey } from "./golden";
-import { FAST_MARKER, GOLDEN_KEY_FILE, RUN_DIR } from "./paths";
+import { E2E_PROFILE, FAST_MARKER, GOLDEN_KEY_FILE, RUN_DIR } from "./paths";
 
 const root = process.cwd();
 const dataDir = path.join(root, ".data");
 const key = goldenKey(root, ["drizzle", "src/db/schema", "src/db/seed"]);
-const goldenDir = path.join(dataDir, `e2e-golden-${key}`);
+// 프로필 real 은 바탕 시드(별표 + 보통약관)만 — `SEED_PROFILE=base` (src/db/seed/index.ts)
+const goldenDir = path.join(dataDir, E2E_PROFILE === "real" ? `e2e-golden-real-${key}` : `e2e-golden-${key}`);
 const temporaryDir = `${goldenDir}.tmp`;
 
 fs.mkdirSync(dataDir, { recursive: true });
@@ -24,10 +25,10 @@ fs.rmSync(FAST_MARKER, { force: true });
 
 if (!fs.existsSync(goldenDir)) {
   fs.rmSync(temporaryDir, { recursive: true, force: true });
-  console.log(`[e2e] golden 생성 — ${key}`);
+  console.log(`[e2e] golden 생성 — ${E2E_PROFILE} ${key}`);
   const seeded = spawnSync("npx", ["tsx", "src/db/seed/index.ts"], {
     cwd: root,
-    env: { ...process.env, PGLITE_DATA_DIR: temporaryDir, DB_DRIVER: "pglite" },
+    env: { ...process.env, PGLITE_DATA_DIR: temporaryDir, DB_DRIVER: "pglite", ...(E2E_PROFILE === "real" ? { SEED_PROFILE: "base" } : {}) },
     stdio: "inherit",
   });
   if (seeded.error) throw seeded.error;

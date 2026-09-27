@@ -15,8 +15,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:real": "E2E_PROFILE=real playwright test",
     "e2e:coverage": "tsx scripts/e2e/coverage.ts",
-    "e2e:clean": "rm -rf .data/e2e-golden-* .data/e2e-run .data/e2e-server.log .data/e2e-golden-key .data/e2e-fast",
+    "e2e:clean": "rm -rf .data/e2e-golden-* .data/e2e-run .data/e2e-server.log .data/e2e-golden-key .data/e2e-fast .data/e2e-real-run .data/e2e-real-server.log .data/e2e-real-golden-key .data/e2e-real-fast",
     "terms:convert": "tsx scripts/terms/convert.ts",
     "docs:links": "tsx scripts/docs/check-links.ts"
   },

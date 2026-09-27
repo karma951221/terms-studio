@@ -40,6 +40,40 @@ async function assertAssembles(services: Services, productId: Id): Promise<void>
   if (!result.value.complete) throw new Error(`[seed:alphaPlus] 실물 조립 검증 실패: ${JSON.stringify(result.value.issues)}`);
 }
 
+/**
+ * 별표 21 + 보통약관 템플릿 — 보통약관 트리가 별표를 참조하므로 별표가 먼저다. 보통약관 시드 코드 → 문서 id.
+ * 실물 화면 E2E 의 바탕 DB(`loadRealBase`)도 이것만 넣는다.
+ */
+async function loadAppendicesAndGenerals(services: Services, actor: Actor): Promise<Map<string, Id>> {
+  // 코드는 시스템 채번(AX000001…) — JSON 의 code 는 채번 순서가 어긋나지 않았는지 대조용 (기능/별표 §3.1).
+  for (const appendix of appendices) {
+    const created = unwrap(await services.document.createAppendix(actor, { name: appendix.name, description: appendix.description }));
+    expectCode(created.code, appendix.code);
+  }
+
+  const generalIds = new Map<string, Id>();
+  for (const specification of generals as unknown as Array<{ code: string; tree: DocumentNode }>) {
+    const document = unwrap(await services.document.createGeneral(actor, specification.tree.title));
+    unwrap(await services.document.importTree(actor, document.id, specification.tree));
+    generalIds.set(specification.code, document.id);
+  }
+  return generalIds;
+}
+
+/**
+ * 실물 화면 E2E 의 바탕 — 별표 21 과 보통약관(1,085줄)만 넣는다 (docs/QA/시나리오/실물재현_E2E_시나리오.md §4).
+ * 나머지(열거형 · 구분자 · 담보속성 · 담보 · 공용조항 · 담보약관 · 상품)는 E2E 가 화면으로 넣는다.
+ * 보통약관은 가져오기 화면이 없어 시드로 넣고, 별표는 보통약관이 참조해 그보다 먼저 있어야 해서 함께 넣는다.
+ * 이미 보통약관이 있으면 아무것도 하지 않는다.
+ */
+export async function loadRealBase(services: Services, actor: Actor): Promise<{ created: boolean }> {
+  const titles = (generals as unknown as Array<{ tree: DocumentNode }>).map((g) => g.tree.title);
+  const existing = await services.document.list("general");
+  if (existing.some((d) => titles.includes(d.title))) return { created: false };
+  await loadAppendicesAndGenerals(services, actor);
+  return { created: true };
+}
+
 /** JSON 정본을 서비스 API로 적재한다. JSON의 의미 코드는 참조 키로만 쓰고 UUID는 서비스가 발급한다. */
 export async function loadAlphaPlus(services: Services, actor: Actor): Promise<SeedResult> {
   const existing = (await services.product.listProducts()).find((product) => product.name === ALPHA_PLUS_PRODUCT_NAME);
@@ -98,18 +132,7 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
     }
   }
 
-  // 코드는 시스템 채번(AX000001…) — JSON 의 code 는 채번 순서가 어긋나지 않았는지 대조용 (기능/별표 §3.1).
-  for (const appendix of appendices) {
-    const created = unwrap(await services.document.createAppendix(actor, { name: appendix.name, description: appendix.description }));
-    expectCode(created.code, appendix.code);
-  }
-
-  const generalIds = new Map<string, Id>();
-  for (const specification of generals as unknown as Array<{ code: string; tree: DocumentNode }>) {
-    const document = unwrap(await services.document.createGeneral(actor, specification.tree.title));
-    unwrap(await services.document.importTree(actor, document.id, specification.tree));
-    generalIds.set(specification.code, document.id);
-  }
+  const generalIds = await loadAppendicesAndGenerals(services, actor);
 
   // 공용조항은 보통약관 조 · 별표를 참조하므로 그 뒤에 만든다 (정의 검사 ① 이 대상 존재를 본다 — 기능/공용조항 §3.4).
   for (const raw of clauses as unknown as Array<Record<string, unknown> & { code: Code; options: Array<Record<string, unknown>> }>) {
