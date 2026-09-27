@@ -16,7 +16,8 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, replace:
 
 import { EditShell } from "@/app/_components/EditShell";
 import { encodeNodeKey, type StructureDraftSub, type StructureSavedSub } from "@/domain/coverage";
-import type { FormModel } from "@/forms";
+import { entered } from "@/domain/types";
+import { buildForm, type FormModel } from "@/forms";
 
 import { CoverageCards, MIN_STRUCTURE } from "./CoverageCards";
 
@@ -161,4 +162,27 @@ describe("CoverageCards — 편집 모드 구조 조작 (aaf753c)", () => {
     expect(html).not.toContain("급부 추가");
     expect(html).not.toContain("ts-row-actions");
   });
+});
+
+describe("CoverageCards — 담보 기본은 담보 카드 본문에 바로 선다 (2026-09-27)", () => {
+  const formByNode = () => ({
+    [COVERAGE_KEY]: buildForm("coverage", () => undefined, new Map([["coverage_basic.claim_name", entered("수술급여금")]])),
+  });
+
+  for (const mode of ["read", "edit"] as const) {
+    it(`${mode} — 「담보 기본」 폼 상자(fieldset · legend) · 제목이 없고, 보험금명 행이 담보 카드 본문에 있다`, () => {
+      const html = render(mode, 1, formByNode());
+      // EditShell 자신의 <fieldset class="ts-edit-fields"> 는 상자가 아니다 — 폼 카드만 본다
+      expect(html).not.toContain('<fieldset class="ts-form-card"');
+      expect(html).not.toContain("<legend");
+      expect(html).not.toContain("ts-form-card");
+      expect(html).not.toContain("ts-form-group-title");
+      const body = html.indexOf("ts-cov-card-body");
+      const row = html.indexOf('data-path="coverage_basic.claim_name"');
+      const grid = html.indexOf("ts-cov-grid");
+      expect(body).toBeGreaterThan(0);
+      expect(row).toBeGreaterThan(body);
+      expect(row).toBeLessThan(grid);
+    });
+  }
 });

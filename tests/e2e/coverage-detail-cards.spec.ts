@@ -7,7 +7,7 @@ import { expect, test } from "./_lib/fixtures";
  * 시드 담보 「수술비(1-7종, 연간3회한)[상해]보장」(세부보장 7 — 「N종 상해수술비(연간3회한)」)로:
  * - 조회만으로(아무것도 누르지 않고) 세부보장 7개가 다 보인다 — 접혀 있지 않다.
  * - 데스크톱 너비에서 세부보장 카드가 한 줄에 2개 이상 선다(그리드).
- * - 담보약관 템플릿 띠가 없다.
+ * - 담보약관 템플릿 띠가 없다. 「담보 기본」 폼은 상자 없이 담보 카드 본문에 바로 선다.
  * - 편집 모드: 「+ 세부보장」 점선 타일 · ⊖ 가 보이고, 「⊕ 면책」 을 누르면 면책 입력칸이 열린다.
  * 전제: `npm run db:seed` 로 관통 1 시드가 들어간 개발 DB — 시드 담보 · 문서는 건드리지 않는다(취소로 마친다).
  */
@@ -50,6 +50,15 @@ test(
     await ev.action("담보카드#4", "담보약관 템플릿 띠 · 「미결정」 배지가 없다", async () => {
       await expect(page.locator(".ts-cov-band")).toHaveCount(0);
       await expect(page.getByText("미결정")).toHaveCount(0);
+    });
+
+    await ev.action("담보카드#4b", "「담보 기본」은 상자 없이 담보 카드 본문에 바로 선다 — 보험금명 행이 있고 폼 카드(fieldset) · 제목이 없다", async () => {
+      const coverageCard = page.locator("section.ts-cov-card[data-level='coverage']");
+      const body = coverageCard.locator(":scope > .ts-cov-card-body");
+      await expect(body.locator(":scope > form [data-path='coverage_basic.claim_name']")).toHaveCount(1);
+      await expect(coverageCard.locator("fieldset.ts-form-card")).toHaveCount(0);
+      await expect(coverageCard.locator("legend")).toHaveCount(0);
+      await expect(body.locator(":scope > form").getByText("담보 기본", { exact: true })).toHaveCount(0);
     });
 
     await ev.action("담보카드#5", "데스크톱 너비 — 세부보장 카드가 한 줄에 2개 이상(그리드) 선다", async () => {

@@ -394,3 +394,31 @@ describe("StructForm — 기본 숨김 필드 (감액 「이후 지급률」, �
     expect(tagsWith(shown, 'name="reduction.after_rate"')[0]).toContain('value="70"');
   });
 });
+
+describe("StructForm — 노드 카드 안(flat)은 폼 상자가 없다 (2026-09-27)", () => {
+  const coverageModel = () => buildForm("coverage", () => undefined, new Map([["coverage_basic.claim_name", entered("사망보험금")]]));
+
+  it("폼 하나뿐이면 fieldset · legend · 폼 제목 없이 필드 행이 바로 선다", () => {
+    const html = renderToStaticMarkup(<StructForm model={coverageModel()} embedded readOnly flat />);
+    expect(html).not.toContain("<fieldset");
+    expect(html).not.toContain("<legend");
+    expect(html).not.toContain("ts-form-card");
+    expect(html).not.toContain("ts-form-group-title");
+    expect(html).not.toContain(">담보 기본<");
+    expect(html).toContain('data-path="coverage_basic.claim_name"');
+    // 접근성 이름은 그대로 — 폼 묶음은 role=group + aria-label
+    expect(html).toContain('role="group"');
+    expect(html).toContain('aria-label="담보 기본"');
+  });
+
+  it("폼이 둘 이상 보이면 폼마다 작은 제목 한 줄 — 상자는 여전히 없다", () => {
+    const html = renderToStaticMarkup(<StructForm model={buildForm("plan", () => undefined, new Map())} embedded flat />);
+    expect(html).not.toContain("<fieldset");
+    expect(tagsWith(html, 'class="ts-form-group-title"')).toHaveLength(4);
+  });
+
+  it("flat 이 아니면 예전처럼 폼 카드(fieldset)", () => {
+    const html = renderToStaticMarkup(<StructForm model={coverageModel()} embedded readOnly />);
+    expect(html).toContain("<fieldset");
+  });
+});

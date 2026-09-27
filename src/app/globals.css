@@ -3712,9 +3712,24 @@ button.ts-ref-fold:hover {
   flex: 1 1 120px;
 }
 
-.ts-cov-card .ts-form-card {
-  padding: 4px 10px 2px;
-  margin: 0 0 6px;
+/* 카드 안 값 폼은 폼 상자가 없다(StructForm `flat`) — 폼이 둘 이상 보이면 작은 제목 한 줄로만 가른다 */
+.ts-form-group + .ts-form-group {
+  margin-top: 6px;
+}
+
+.ts-form-group-title {
+  margin: 0 0 2px;
+  color: var(--ts-ink-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ts-form-group-title .ts-iconbtn.ts-form-card-remove {
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  vertical-align: -4px;
+  color: var(--ts-error);
 }
 
 /* 경고 — 거부는 아니고 「그래도 저장은 된다」 (담보명의 담보속성 값, Q-C). */

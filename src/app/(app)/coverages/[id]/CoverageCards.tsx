@@ -4,6 +4,7 @@
  * 담보 상세의 구조 = 중첩 카드 (기능/담보 §3.6 · §4 「상세」) — 담보 카드 ⊃ 세부보장 카드(그리드) ⊃ 급부 카드.
  *
  * - 카드마다 **이름 + 그 노드 레벨의 마스터 값 폼**(StructForm). 담보명은 담보 카드의 이름이다. 필드가 없는 레벨은 이름만.
+ *   값 폼은 `flat` — 폼마다 상자를 두르지 않고 필드 행이 카드 본문에 바로 선다(「담보 기본」 상자 없음, 2026-09-27).
  * - **접지 않는다** (2026-09-27) — 모든 카드가 늘 보인다. 세부보장 카드는 담보 카드 안에서 반응형 그리드(넓으면 2열)로 서고,
  *   급부 카드는 제 세부보장 카드 안에 쌓인다.
  * - **편집 모드의 구조 조작** — 카드 머리 왼쪽 ⊖(빼기, 마지막 하나면 잠김 · 최소 구조) · 오른쪽 ↑ ↓(순서) · 이름 인라인.
@@ -138,6 +139,7 @@ export function CoverageCards({ coverageKey, formByNode, original, attributeValu
         key={formKeyOf(session, key)}
         model={form}
         embedded
+        flat
         readOnly={!editing}
         showCodes={showCodes}
         highlightPath={key === target ? highlightPath : undefined}

@@ -56,7 +56,7 @@ export default async function ProductCoverageDetailPage({ params }: { params: Pr
     if (model.fields.length === 0) return null;
     return (
       <div id={`own-${ownerId}-values`}>
-        <ValueForm model={model} action={writeSnapshotValuesAction.bind(null, pcId, { kind, id: ownerId })} />
+        <ValueForm model={model} flat action={writeSnapshotValuesAction.bind(null, pcId, { kind, id: ownerId })} />
       </div>
     );
   };

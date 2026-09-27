@@ -22,6 +22,7 @@ export function ValueForm({
   submitLabel,
   showCodes,
   highlightPath,
+  flat,
 }: {
   model: FormModel;
   /** 저장 서버 액션 — 실패하면 issues 를 실어 돌려준다. */
@@ -31,6 +32,8 @@ export function ValueForm({
   showCodes?: boolean;
   /** `?field=` 로 들어온 강조 경로 (StructForm 에 그대로 넘긴다). */
   highlightPath?: string;
+  /** 노드 카드 안에 얹힌 폼 — 폼 상자 없이 필드 행을 바로 (StructForm 에 그대로 넘긴다). */
+  flat?: boolean;
 }) {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [pending, startTransition] = useTransition();
@@ -44,6 +47,7 @@ export function ValueForm({
       submitLabel={submitLabel}
       showCodes={showCodes}
       highlightPath={highlightPath}
+      flat={flat}
       onSubmit={(submission) => {
         startTransition(async () => {
           const r = await action(submission);
