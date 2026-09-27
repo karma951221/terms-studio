@@ -5,7 +5,7 @@
  * (와이어프레임 §20.2 A·B·C · 기능/상품 §4 「기본정보」).
  *
  * - 읽기로 시작한다. 편집·취소·저장 버튼은 헤더(`ProductHeadActions`)에 있고, 이 컴포넌트는 마운트 시
- *   제 begin · cancel · save 를 `ProductEditProvider` 에 등록한다. 저장 하나가 상품명 · 종목 정의 ·
+ *   제 begin · cancel · save · dirty 를 `ProductEditProvider` 에 등록한다. 저장 하나가 상품명 · 종목 정의 ·
  *   세목 값 · 사용할 조합을 함께 반영한다.
  * - 보험종목은 표다. 값 열은 표시되는 종목들의 세목유형 폼 필드의 합집합. 편집 중에는 셀 안에서 바로
  *   입력한다 — 필드 상태 전이는 StructForm 과 같은 `formReducer` 를 쓴다.
@@ -19,6 +19,7 @@ import type { EditOutcome } from "@/app/_lib/edit";
 import type { ProductBasicInput } from "@/services/product";
 
 import { saveProductBasicAction } from "../../actions";
+import { basicDraftDirty } from "../../lib";
 import { useProductEdit } from "./ProductEdit";
 
 type OptionDraft = Omit<ProductBasicInput["options"][number], "values">;
@@ -137,9 +138,15 @@ export function BasicTab(props: BasicTabProps) {
       return "stay";
     }
   };
+  /** 초안이 편집 시작(= 서버 값)과 달라졌나 — ✕ · 탭 링크 · 경로 링크의 「버립니까?」 판정 (점검 M21). */
+  const dirty = () =>
+    basicDraftDirty(
+      { name: productName, options: initialOptions(), product: initFormState(productForm), forms: initialForms(), combinations: initialCombinations() },
+      { name, options, product: productState, forms, combinations },
+    );
   // 매 렌더 등록 — 손잡이가 최신 초안을 닫아 두도록
   useEffect(() => {
-    register({ begin, cancel, save: submit });
+    register({ begin, cancel, save: submit, dirty });
     return () => register(null);
   });
 

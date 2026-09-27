@@ -1,8 +1,10 @@
 /** 상품 화면·서버 액션이 함께 쓰는 순수 함수 — 입력 파싱 · 탭 좌표 · 보통약관의 관 묶기 · 조 수. `*.test.ts` 로 검증. */
 import type { OmissionPairKind, OmissionRecord, RenderedDoc } from "@/domain/assembly";
 import { indexTree, type ArticleNode, type CondBlockNode, type DocumentNode, type Node, type NodeNumber } from "@/domain/document";
-import type { AttributeKind, AttributeSelection, ClauseOptionSelection } from "@/domain/product";
+import { planCombinationKey, type AttributeKind, type AttributeSelection, type ClauseOptionSelection } from "@/domain/product";
 import type { Code, Id, Issue } from "@/domain/types";
+import type { FormState } from "@/forms";
+import { isDirty } from "@/app/_lib/edit";
 
 export function str(fd: FormData, key: string): string {
   return String(fd.get(key) ?? "").trim();
@@ -51,6 +53,37 @@ export function productTabOf(value: string | undefined): ProductTab {
 /** 상품 상세 경로 (+ 탭). 화면의 링크와 액션의 redirect 가 같은 함수를 쓴다. */
 export function productDetailPath(id: string, tab?: ProductTab): string {
   return tab ? `/products/${id}?tab=${tab}` : `/products/${id}`;
+}
+
+// ───────────────────────────── 기본정보 탭의 초안 ─────────────────────────────
+
+/** 기본정보 탭의 편집 초안 — 상품명 · 상품 레벨 값 · 보험종목 정의 · 종목별 값 · 사용할 조합 (기능/상품 §4.3). */
+export interface BasicDraft {
+  name: string;
+  options: readonly unknown[];
+  product: Pick<FormState, "fields" | "open">;
+  forms: Readonly<Record<string, Pick<FormState, "fields" | "open">>>;
+  combinations: readonly (readonly Id[])[];
+}
+
+/** 비교할 모양 — 값 칸은 입력 원문(draft)과 여는 폼만 본다(모델 · 파싱 결과는 거기서 파생). 조합은 순서가 뜻이 없다. */
+function basicDraftShape(draft: BasicDraft) {
+  const form = (state: Pick<FormState, "fields" | "open">) => ({ open: state.open, drafts: Object.fromEntries(Object.entries(state.fields).map(([path, field]) => [path, field.draft])) });
+  return {
+    name: draft.name,
+    options: draft.options,
+    product: form(draft.product),
+    forms: Object.fromEntries(Object.entries(draft.forms).map(([id, state]) => [id, form(state)])),
+    combinations: draft.combinations.map(planCombinationKey).sort(),
+  };
+}
+
+/**
+ * 기본정보 초안이 편집 시작(= 서버 값)과 달라졌나 — 편집 중 ✕ 취소 · 탭 링크 · 경로 링크의 「고친 내용을 버립니까?」 판정 (점검 M21).
+ * 입력했다 되돌리면 바뀐 것이 아니다 — 필드의 「손댔나」 표식이 아니라 내용을 비교한다.
+ */
+export function basicDraftDirty(baseline: BasicDraft, draft: BasicDraft): boolean {
+  return isDirty(basicDraftShape(baseline), basicDraftShape(draft));
 }
 
 // ───────────────────────────── 보통약관 탭의 「관」 ─────────────────────────────
