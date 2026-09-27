@@ -5,5 +5,5 @@ export function str(fd: FormData, key: string): string {
   return String(fd.get(key) ?? "").trim();
 }
 
-/** 삭제가 섞인 저장을 편집자가 시도했을 때의 배너 문장 (기능/담보 §4 「상세」 조작 · ADR-0052) — 상세 · 「구조 편집」 두 액션이 같은 문장. */
+/** 삭제가 섞인 저장을 편집자가 시도했을 때의 배너 문장 (기능/담보 §3.2 · ADR-0075). */
 export const REMOVE_FORBIDDEN = "세부보장 · 급부 삭제는 관리자만 할 수 있다";

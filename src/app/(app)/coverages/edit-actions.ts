@@ -1,16 +1,16 @@
 "use server";
 
 /**
- * 담보 상세의 편집 흐름 서버 액션 — 「저장 하나」가 담보명 · 설명 · 구조(세부보장 · 급부) · 네 탭의 값을 다 담는다
- * (기능/담보 §4 「상세」 조작 · 디자인원칙 §2 L2).
+ * 담보 상세의 편집 흐름 서버 액션 — 「저장 하나」가 담보명 · 구조(세부보장 · 급부) · 모든 카드의 값을 다 담는다
+ * (기능/담보 §4 「상세」 조작 · 디자인원칙 §2 L2). 주석(description)은 화면에 없지만 초안에 실려 와 저장값을 그대로 지킨다.
  *
- * 구조(추가 · 이름 · 순서 · 삭제)는 ADR-0052 결정 1 — 미탑재 담보의 초안 `structure` 를 서비스 `applyStructurePlan` 이
- * 한 트랜잭션에 적용한다 (최종 트리로 검사 · 결과 트리 한 번 저장 — 순서는 도메인 `applyStructurePlanTo`). 「구조 편집」 화면(결정 2)과 같은 경로다.
- * 삭제가 섞이면 아무것도 저장하기 전에 `previewStructurePlan` 으로 영향을 모아 `ok:"confirm"`, 편집자면 서버가 거부한다
+ * 구조(추가 · 이름 · 순서 · 삭제)는 탑재 여부와 상관없이 이 경로 하나다 (ADR-0075) — 초안 `structure` 를 서비스 `applyStructurePlan` 이
+ * 한 트랜잭션에 적용한다 (최종 트리로 검사 · 결과 트리 한 번 저장 · 탑재 상품담보 스냅샷 동기화 — 순서는 도메인 `applyStructurePlanTo`).
+ * **영향 확인** — 삭제가 섞이거나 탑재된 담보의 구조(추가 · 삭제 · 순서)가 바뀌면 아무것도 저장하기 전에 `previewStructurePlan` 으로
+ * 영향(마스터 값 행 · 깨질 참조 · 연쇄 · 탑재 상품담보별 스냅샷 소실 행)을 모아 `ok:"confirm"`. 삭제가 섞였으면 편집자는 서버가 거부한다
  * (ADR-0019 — 화면 숨김이 아니라 서버 거부). 담보명 · 주석 · 구조 · 값은 서비스 호출 각각이지만 쓰기 전체가 한 트랜잭션이라
  * (`saveOnce`, 점검 2026-09-27 H1) 어느 단계가 거부돼도 남는 것이 없다. `dryRunStructurePlan` 은 구조 거부를 쓰기 전에 낸다. 확인의 **판정은 서비스**가 트랜잭션 안에서 다시 한다 —
  * 호출자의 `confirm` 을 그대로 넘긴다.
- * 탑재된 담보(탑재 상품담보 ≥ 1)의 구조 변경은 여기서 거부한다 — 그 경로는 별도 「구조 편집」 화면(`/coverages/[id]/structure`)이다.
  */
 import { describeRejection } from "@/app/_lib/rejection";
 import type { EditOutcome } from "@/app/_lib/edit";
@@ -31,6 +31,7 @@ function failed<T>(result: Result<T>, token: string): EditOutcome | undefined {
 }
 
 const CONFIRM_TITLE = "구조를 바꾸면 저장된 값이 사라질 수 있다";
+const CONFIRM_TITLE_MOUNTED = "구조를 바꾸면 탑재된 상품담보가 따라 바뀐다";
 
 /**
  * 구조 계획의 거부 → 화면 문구. 삭제 역할 거부는 기능/담보 §3.2 의 거부 문장 그대로. 서비스가 낸 `needsConfirmation` 은 그대로 confirm
@@ -51,11 +52,8 @@ export async function saveCoverageEditAction(id: Id, input: CoverageEditData, co
 
   const plan = structurePlan(current, input.structure);
 
-  // 탑재된 담보의 구조는 여기서 못 고친다 — 화면이 조작을 숨기지만 서버가 다시 가른다 (탑재 수는 page 와 같은 셈).
-  if (hasStructuralChange(plan)) {
-    const mounted = usagesOf(await services.refs.graph(), { kind: "coverageNode", level: "coverage", id }, { via: ["mount"] }).length > 0;
-    if (mounted) return { ok: false, message: "탑재된 담보의 구조는 여기서 고칠 수 없다" };
-  }
+  // 탑재 수 — 구조(추가 · 삭제 · 순서)가 바뀔 때만 센다 (page 의 배지와 같은 셈). 탑재됐으면 삭제가 없어도 영향을 먼저 보인다.
+  const mounted = hasStructuralChange(plan) && usagesOf(await services.refs.graph(), { kind: "coverageNode", level: "coverage", id }, { via: ["mount"] }).length > 0;
 
   // 도메인 규칙 사전 검증 — 담보명을 저장하기 전에 계획 전체를 메모리에서 돌려 첫 거부를 낸다 (부분 저장 방지).
   const dry = dryRunStructurePlan(current, plan);
@@ -70,16 +68,17 @@ export async function saveCoverageEditAction(id: Id, input: CoverageEditData, co
   });
   for (const { submission } of liveValues) if (submission.issues.length > 0) return { ok: false, message: submission.issues[0]!.message };
 
-  // 삭제 영향 확인 — 다른 변경(이름 · 값)보다 먼저 두어 확인 전엔 아무것도 저장하지 않는다. 편집자는 여기서 거부된다.
-  if (hasRemoves(plan) && !confirm) {
+  // 영향 확인 — 다른 변경(이름 · 값)보다 먼저 두어 확인 전엔 아무것도 저장하지 않는다. 삭제가 섞였으면 편집자는 여기서 거부된다.
+  // 탑재된 담보의 추가 · 순서만의 변경은 비파괴라 편집자도 확인 뒤 저장한다 (서비스는 삭제가 없으면 confirm 을 보지 않는다).
+  if ((hasRemoves(plan) || mounted) && !confirm) {
     const preview = await services.coverage.previewStructurePlan(actor, id, input.structure);
     if (!preview.ok) return structureFailed(preview)!;
     return {
       ok: "confirm",
       impact: preview.value,
       token: "structure",
-      title: CONFIRM_TITLE,
-      actionLabel: `세부보장·급부 ${plan.removes.length}개 삭제하고 저장`,
+      title: hasRemoves(plan) ? CONFIRM_TITLE : CONFIRM_TITLE_MOUNTED,
+      actionLabel: hasRemoves(plan) ? `세부보장·급부 ${plan.removes.length}개 삭제하고 저장` : "구조 바꾸고 저장",
     };
   }
 

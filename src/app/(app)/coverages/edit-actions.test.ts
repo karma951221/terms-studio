@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { createTestDb, type TestDb } from "@/db/test-utils";
 import { structureDraftOf, type StructureDraftSub } from "@/domain/coverage";
-import type { Actor } from "@/domain/types";
+import type { Actor, Id } from "@/domain/types";
 import { createServices, type Services } from "@/services/container";
 
 /**
@@ -119,15 +119,11 @@ describe("saveCoverageEditAction — 삭제가 섞인 저장", () => {
     expect(await s.coverage.get(tree.id)).toEqual(tree);
   });
 
-  it("탑재된 담보: 구조 변경은 거부 · 이름만 바꾼 저장은 applyStructurePlan 을 거쳐 탑재 스냅샷 이름까지 같은 트랜잭션에서 따라온다", async () => {
+  it("탑재된 담보: 이름만 바꾼 저장은 확인 없이 — applyStructurePlan 을 거쳐 탑재 스냅샷 이름까지 같은 트랜잭션에서 따라온다", async () => {
     actor = editor;
     const tree = unwrap(await s.coverage.create(editor, { name: "입원비", subCoverageName: "질병입원", benefitName: "입원일당" }));
     const product = unwrap(await s.product.createProduct(editor, { name: "입원 상품" }));
     const pc = unwrap(await s.product.mount(editor, product.id, tree.id, []));
-
-    const structural: StructureDraftSub[] = structureDraftOf(tree);
-    structural[0]!.benefits.push({ key: "new:1", name: "간병일당" });
-    expect(await saveCoverageEditAction(tree.id, { label: "입원비", description: "", structure: structural, values: {} })).toEqual({ ok: false, message: "탑재된 담보의 구조는 여기서 고칠 수 없다" });
 
     const renamed: StructureDraftSub[] = structureDraftOf(tree);
     renamed[0]!.name = "질병 입원";
@@ -136,6 +132,91 @@ describe("saveCoverageEditAction — 삭제가 섞인 저장", () => {
     // getSnapshot 은 동기화하지 않는다 — 여기 보이는 이름은 저장이 같은 트랜잭션에서 맞춘 것
     const snap = unwrap(await s.product.getSnapshot(pc.id));
     expect(snap.subCoverages.map((sub) => [sub.name, sub.benefits.map((b) => b.name)])).toEqual([["질병 입원", ["질병 입원일당"]]]);
+  });
+
+  describe("탑재된 담보의 구조 변경 — 상세 저장 하나 (ADR-0075)", () => {
+    let coverageId: Id;
+    let pcId: Id;
+
+    beforeAll(async () => {
+      const tree = unwrap(await s.coverage.create(editor, { name: "상해수술", subCoverageName: "1종수술", benefitName: "수술보험금" }));
+      coverageId = tree.id;
+      const product = unwrap(await s.product.createProduct(editor, { name: "상품 P" }));
+      pcId = unwrap(await s.product.mount(editor, product.id, coverageId, [])).id;
+    });
+    const shape = (tree: { subCoverages: { name: string; benefits: { name: string }[] }[] }) => tree.subCoverages.map((sub) => [sub.name, sub.benefits.map((b) => b.name)]);
+
+    it("편집자: 추가 · 순서는 1차에 영향(탑재 상품담보)만 보이고 저장하지 않는다 → confirm 이면 담보명 · 구조 · 탑재 스냅샷이 한 번에", async () => {
+      actor = editor;
+      const tree = (await s.coverage.get(coverageId))!;
+      const draft: StructureDraftSub[] = structureDraftOf(tree);
+      draft[0]!.benefits.push({ key: "new:1", name: "입원보험금" });
+      draft.unshift({ key: "new:2", name: "0종수술", benefits: [{ key: "new:3", name: "특수수술보험금" }] });
+
+      const first = await saveCoverageEditAction(coverageId, { label: "상해수술Ⅱ", description: "", structure: draft, values: {} });
+      expect(first.ok).toBe("confirm");
+      if (first.ok === "confirm") {
+        expect(first.actionLabel).toBe("구조 바꾸고 저장");
+        expect(first.impact.mounts).toEqual([{ productId: expect.any(String), productName: "상품 P", productCoverageId: pcId, productCoverageName: "상해수술", snapshotValueRows: 0, snapshotValueRowsLost: 0 }]);
+      }
+      expect(await s.coverage.get(coverageId)).toEqual(tree); // 확인 전엔 담보명도 그대로
+
+      expect(await saveCoverageEditAction(coverageId, { label: "상해수술Ⅱ", description: "", structure: draft, values: {} }, true)).toEqual({ ok: true });
+      const saved = (await s.coverage.get(coverageId))!;
+      expect(saved.name).toBe("상해수술Ⅱ");
+      expect(shape(saved)).toEqual([["0종수술", ["특수수술보험금"]], ["1종수술", ["수술보험금", "입원보험금"]]]);
+      expect(shape(unwrap(await s.product.getSnapshot(pcId)))).toEqual([["0종수술", ["특수수술보험금"]], ["1종수술", ["수술보험금", "입원보험금"]]]);
+    });
+
+    it("편집자가 삭제를 섞으면 confirm 을 위조해도 배너 문장으로 거부 · 무변경", async () => {
+      actor = editor;
+      const tree = (await s.coverage.get(coverageId))!;
+      const draft: StructureDraftSub[] = structureDraftOf(tree).filter((sub) => sub.name !== "0종수술");
+      for (const confirm of [false, true]) {
+        expect(await saveCoverageEditAction(coverageId, { label: tree.name, description: "", structure: draft, values: {} }, confirm)).toEqual({ ok: false, message: "세부보장 · 급부 삭제는 관리자만 할 수 있다" });
+      }
+      expect(await s.coverage.get(coverageId)).toEqual(tree);
+    });
+
+    it("관리자: 삭제는 1차에 영향(스냅샷 소실 행 포함)만 → confirm 이면 삭제까지 한 번에, 스냅샷 노드도 사라진다", async () => {
+      actor = admin;
+      const tree = (await s.coverage.get(coverageId))!;
+      const draft: StructureDraftSub[] = structureDraftOf(tree).filter((sub) => sub.name !== "0종수술");
+      const first = await saveCoverageEditAction(coverageId, { label: tree.name, description: "", structure: draft, values: {} });
+      expect(first.ok).toBe("confirm");
+      if (first.ok === "confirm") {
+        expect(first.actionLabel).toBe("세부보장·급부 1개 삭제하고 저장");
+        expect(first.impact.mounts?.map((m) => m.productCoverageId)).toEqual([pcId]);
+      }
+      expect(await s.coverage.get(coverageId)).toEqual(tree);
+
+      expect(await saveCoverageEditAction(coverageId, { label: tree.name, description: "", structure: draft, values: {} }, true)).toEqual({ ok: true });
+      expect((await s.coverage.get(coverageId))!.subCoverages.map((sub) => sub.name)).toEqual(["1종수술"]);
+      expect(unwrap(await s.product.getSnapshot(pcId)).subCoverages.map((sub) => sub.name)).toEqual(["1종수술"]);
+    });
+
+    it("롤백 — 확인한 구조 변경 뒤 값 쓰기가 거부되면 담보명 · 구조 · 탑재 스냅샷 모두 그대로", async () => {
+      actor = editor;
+      const tree = (await s.coverage.get(coverageId))!;
+      const snapBefore = shape(unwrap(await s.product.getSnapshot(pcId)));
+      const draft: StructureDraftSub[] = structureDraftOf(tree);
+      draft[0]!.benefits.push({ key: "new:1", name: "통원보험금" });
+      const r = await saveCoverageEditAction(
+        coverageId,
+        { label: "상해수술Ⅲ", description: "", structure: draft, values: { [`coverage:${coverageId}`]: { issues: [], values: [{ path: "coverage_basic.claim_name", value: true }] } } },
+        true,
+      );
+      expect(r.ok).toBe(false);
+      expect(await s.coverage.get(coverageId)).toEqual(tree);
+      expect(shape(unwrap(await s.product.getSnapshot(pcId)))).toEqual(snapBefore);
+    });
+
+    it("주석은 화면에 없어도 초안에 실린 저장값이 그대로 남는다", async () => {
+      actor = editor;
+      const tree = unwrap(await s.coverage.setDescription(editor, coverageId, "보존할 주석"));
+      expect(await saveCoverageEditAction(coverageId, { label: tree.name, description: tree.description, structure: structureDraftOf(tree), values: {} })).toEqual({ ok: true });
+      expect((await s.coverage.get(coverageId))!.description).toBe("보존할 주석");
+    });
   });
 
   it("경쟁: 액션의 사전 계획엔 삭제가 없는데 트랜잭션 안 계획에 삭제가 있으면 — 서비스의 needsConfirmation 이 confirm 대화상자로 돌아오고(적용 없음), confirm=true 에 적용된다", async () => {
