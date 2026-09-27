@@ -50,6 +50,17 @@ export default async function ProductCoverageDetailPage({ params }: { params: Pr
   /** 값 자리 하나로 가는 앵커 — 미입력 목록의 「고치러 가기」. */
   const slotAnchor = (ownerId: string) => `#own-${ownerId}-values`;
 
+  /** 노드 하나의 값 폼 — 앵커 자리 포함. 필드가 없는 레벨(지금 세부보장)은 폼 자리 없이 이름만. */
+  const valueForm = (level: "coverage" | "subCoverage" | "benefit", ownerId: string, kind: "productCoverage" | "productSubCoverage" | "productBenefit", masterLabel: string) => {
+    const model = buildForm(level, enumLookup, values.get(ownerId) ?? new Map(), snapshotContextOf(ownerId, masterLabel));
+    if (model.fields.length === 0) return null;
+    return (
+      <div id={`own-${ownerId}-values`}>
+        <ValueForm model={model} action={writeSnapshotValuesAction.bind(null, pcId, { kind, id: ownerId })} />
+      </div>
+    );
+  };
+
   return (
     <div>
       <div className="ts-page-head">
@@ -72,38 +83,40 @@ export default async function ProductCoverageDetailPage({ params }: { params: Pr
         </section>
       )}
 
-      <section className="ts-section">
-        <h2 className="ts-section-title">담보 레벨 값</h2>
-        <div id={`own-${pc.id}-values`}>
-          <ValueForm
-            model={buildForm("coverage", enumLookup, values.get(pc.id) ?? new Map(), snapshotContextOf(pc.id, `${pc.coverageName} (마스터)`))}
-            action={writeSnapshotValuesAction.bind(null, pcId, { kind: "productCoverage", id: pc.id })}
-          />
+      {/* 담보 ⊃ 세부보장(그리드) ⊃ 급부 — 담보 상세와 같은 중첩 카드 (기능/담보 §3.6). 값 폼은 카드마다 제 저장 버튼이다. */}
+      <section className="ts-cov-card" data-level="coverage" aria-label={`담보 ${pc.name}`}>
+        <div className="ts-cov-card-head">
+          <span className="ts-cov-card-level">담보</span>
+          <span className="ts-cov-card-name">{pc.name}</span>
+        </div>
+        <div className="ts-cov-card-body">
+          {valueForm("coverage", pc.id, "productCoverage", `${pc.coverageName} (마스터)`)}
+          <div className="ts-cov-grid">
+            {pc.subCoverages.map((s, subIndex) => (
+              <section key={s.id} className="ts-cov-card" data-level="subCoverage" aria-label={`세부보장 ${s.name}`}>
+                <div className="ts-cov-card-head">
+                  <span className="ts-cov-card-level">세부보장 {subIndex + 1}</span>
+                  <span className="ts-cov-card-name">{s.name}</span>
+                </div>
+                <div className="ts-cov-card-body">
+                  {valueForm("subCoverage", s.id, "productSubCoverage", `${s.name} (마스터)`)}
+                  <div className="ts-cov-benefits">
+                    {s.benefits.map((b, benefitIndex) => (
+                      <section key={b.id} className="ts-cov-card" data-level="benefit" aria-label={`급부 ${b.name}`}>
+                        <div className="ts-cov-card-head">
+                          <span className="ts-cov-card-level">급부 {benefitIndex + 1}</span>
+                          <span className="ts-cov-card-name">{b.name}</span>
+                        </div>
+                        <div className="ts-cov-card-body">{valueForm("benefit", b.id, "productBenefit", `${b.name} (마스터)`)}</div>
+                      </section>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            ))}
+          </div>
         </div>
       </section>
-
-      {pc.subCoverages.map((s) => (
-        <section key={s.id} className="ts-section">
-          <h2 className="ts-section-title">세부보장 — {s.name}</h2>
-          <div id={`own-${s.id}-values`}>
-            <ValueForm
-              model={buildForm("subCoverage", enumLookup, values.get(s.id) ?? new Map(), snapshotContextOf(s.id, `${s.name} (마스터)`))}
-              action={writeSnapshotValuesAction.bind(null, pcId, { kind: "productSubCoverage", id: s.id })}
-            />
-          </div>
-          {s.benefits.map((b) => (
-            <div key={b.id} style={{ paddingLeft: 16 }}>
-              <h3 className="ts-form-title">급부 — {b.name}</h3>
-              <div id={`own-${b.id}-values`}>
-                <ValueForm
-                  model={buildForm("benefit", enumLookup, values.get(b.id) ?? new Map(), snapshotContextOf(b.id, `${b.name} (마스터)`))}
-                  action={writeSnapshotValuesAction.bind(null, pcId, { kind: "productBenefit", id: b.id })}
-                />
-              </div>
-            </div>
-          ))}
-        </section>
-      ))}
 
       <section className="ts-section">
         <h2 className="ts-section-title">
