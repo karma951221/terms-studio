@@ -98,7 +98,7 @@ export function ListPage<T>({
     <div className="ts-list-head">
       {headingKind === "page" ? <h1 className="ts-h1">{title}</h1> : <h2 className={headingKind === "section" ? "ts-h2" : "ts-list-title"}>{title}</h2>}
       {create && "menu" in create ? (
-        <MoreMenu label={create.label} items={create.menu} trigger={<IconPlus />} buttonClassName="ts-iconbtn" align="start" />
+        <MoreMenu label={create.label} items={create.menu} trigger={<IconPlus />} buttonClassName="ts-iconbtn" />
       ) : create ? (
         <Link href={create.href} className="ts-iconbtn" title={create.label} aria-label={create.label}>
           <IconPlus />

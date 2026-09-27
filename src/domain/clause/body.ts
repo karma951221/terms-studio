@@ -88,6 +88,11 @@ export function allNodeIds(body: ClauseBody): Id[] {
   return ids;
 }
 
+/** inline 본문인지 (모드 판별을 호출부가 다시 하지 않게). 빈 본문은 inline 으로 본다. */
+export function isInlineBody(body: ClauseBody): body is Inline[] {
+  return body.every((node: Inline | Block) => node.kind !== "paragraph" && node.kind !== "condBlock");
+}
+
 function isBlockKind(kind: string): boolean {
   return (BLOCK_KINDS as readonly string[]).includes(kind);
 }
