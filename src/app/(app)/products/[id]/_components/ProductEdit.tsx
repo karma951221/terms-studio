@@ -5,8 +5,11 @@
  * (와이어프레임 §20.2 「화면 전체의 저장 버튼 하나」).
  *
  * 서버 컴포넌트인 page.tsx 는 `ProductEditProvider` 로 본문을 감싸기만 한다. 본문(BasicTab)이 마운트되며
- * 제 begin · cancel · save 를 등록하고, 헤더의 `ProductHeadActions` 가 그것을 부른다. 저장이 끝나면
+ * 제 begin · cancel · save · dirty 를 등록하고, 헤더의 `ProductHeadActions` 가 그것을 부른다. 저장이 끝나면
  * 여기서 읽기로 돌아가고 `router.refresh()` 로 서버 값을 다시 받는다.
+ *
+ * 편집 중 떠나는 조작 — ✕ 취소 · 하위 탭 링크(`ProductTabs`) · 경로 링크(`ProductPath`) — 은 고친 것이 있으면
+ * EditShell 과 같은 `DiscardDialog`(「고친 내용을 버립니까?」)를 거친다 (디자인원칙 §1.7 · 점검 M21).
  */
 import { createContext, useCallback, useContext, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -16,11 +19,15 @@ import { DiscardDialog } from "@/app/_components/EditShell";
 import { MoreMenu, type MoreMenuItem } from "@/app/_components/MoreMenu";
 import { ENTITY_LABEL } from "@/app/_lib/labels";
 
-/** 본문이 등록하는 손잡이. `save` 는 저장이 끝나 읽기로 돌아가도 되면 `"done"`, 입력을 유지해야 하면 `"stay"`. */
+/**
+ * 본문이 등록하는 손잡이. `save` 는 저장이 끝나 읽기로 돌아가도 되면 `"done"`, 입력을 유지해야 하면 `"stay"`.
+ * `dirty` 는 지금 초안이 편집 시작과 달라졌는가 — 떠나는 조작의 「버립니까?」 판정에 쓴다.
+ */
 export interface ProductEditHandlers {
   begin(): void;
   cancel(): void;
   save(confirmed: boolean): Promise<"done" | "stay">;
+  dirty(): boolean;
 }
 
 interface ProductEditContextValue {
@@ -29,8 +36,11 @@ interface ProductEditContextValue {
   /** 이 탭에 편집할 것이 있는가 — 기본정보 탭만 (보통약관·특별약관의 편집 흐름 통합은 후속 범위). */
   canEdit: boolean;
   begin(): void;
+  /** ✕ — 고친 것이 있으면 「버립니까?」 뒤에, 없으면 바로 읽기로. */
   cancel(): void;
   save(confirmed?: boolean): void;
+  /** 이 편집 화면을 떠나는 조작(탭 링크 · 경로 링크) — 고친 것이 있으면 「버립니까?」 뒤에, 없으면 바로 `go`. */
+  leave(go: () => void): void;
   register(handlers: ProductEditHandlers | null): void;
 }
 
@@ -42,11 +52,26 @@ export function useProductEdit(): ProductEditContextValue {
   return ctx;
 }
 
+/**
+ * 편집 중 떠나는 조작(✕ 취소 · 탭 링크 · 경로 링크)이 「고친 내용을 버립니까?」를 거치는가 (점검 M21 · 디자인원칙 §1.7).
+ * EditShell 의 `leave` 와 같은 규칙 — 편집 중이고 고친 것이 있을 때만 묻는다.
+ */
+export function leaveNeedsConfirm({ editing, dirty }: { editing: boolean; dirty: boolean }): boolean {
+  return editing && dirty;
+}
+
 export function ProductEditProvider({ canEdit, children }: { canEdit: boolean; children: ReactNode }) {
-  const [editing, setEditing] = useState(false);
+  const [editingState, setEditing] = useState(false);
+  /** 「버립니까?」 확인 — 버리면 그 조작의 `go` 로. */
+  const [discard, setDiscard] = useState<{ go: () => void }>();
   const [pending, startTransition] = useTransition();
   const handlers = useRef<ProductEditHandlers | null>(null);
   const router = useRouter();
+
+  // 편집할 것이 없는 탭으로 옮겨 오면(탭은 URL 이라 이 Provider 는 남는다) 편집을 푼다 —
+  // 헤더가 본문 없는 `[취소] [저장]` 로 남지 않게 (점검 M21).
+  if (editingState && !canEdit) setEditing(false);
+  const editing = editingState && canEdit;
 
   const register = useCallback((h: ProductEditHandlers | null) => {
     handlers.current = h;
@@ -55,10 +80,18 @@ export function ProductEditProvider({ canEdit, children }: { canEdit: boolean; c
     handlers.current?.begin();
     setEditing(true);
   }, []);
-  const cancel = useCallback(() => {
-    handlers.current?.cancel();
-    setEditing(false);
-  }, []);
+  const leave = useCallback(
+    (go: () => void) => (leaveNeedsConfirm({ editing, dirty: handlers.current?.dirty() ?? false }) ? setDiscard({ go }) : go()),
+    [editing],
+  );
+  const cancel = useCallback(
+    () =>
+      leave(() => {
+        handlers.current?.cancel();
+        setEditing(false);
+      }),
+    [leave],
+  );
   const save = useCallback(
     (confirmed = false) => {
       const h = handlers.current;
@@ -74,25 +107,32 @@ export function ProductEditProvider({ canEdit, children }: { canEdit: boolean; c
   );
 
   const value = useMemo<ProductEditContextValue>(
-    () => ({ editing, pending, canEdit, begin, cancel, save, register }),
-    [editing, pending, canEdit, begin, cancel, save, register],
+    () => ({ editing, pending, canEdit, begin, cancel, save, leave, register }),
+    [editing, pending, canEdit, begin, cancel, save, leave, register],
   );
-  return <ProductEditContext.Provider value={value}>{children}</ProductEditContext.Provider>;
+  return (
+    <ProductEditContext.Provider value={value}>
+      {children}
+      {discard ? (
+        <DiscardDialog
+          onStay={() => setDiscard(undefined)}
+          onDiscard={() => {
+            const { go } = discard;
+            setDiscard(undefined);
+            go();
+          }}
+        />
+      ) : null}
+    </ProductEditContext.Provider>
+  );
 }
 
 /**
- * 상품 상세의 경로 「상품 › {상품명}」 (디자인원칙 §1.7) — 편집 중이면 상위로 가는 링크가 「버립니까?」 확인을 거친다.
- * 이 화면의 편집 상태는 변경 여부(dirty)를 아직 모르니 편집 중이기만 하면 묻는다 — 저장 단위 정리(기능/상품 §3.8 · M12)에서 dirty 로 좁힌다.
+ * 상품 상세의 경로 「상품 › {상품명}」 (디자인원칙 §1.7) — 편집 중 고친 것이 있으면 상위로 가는 링크가 「버립니까?」 확인을 거친다.
  */
 export function ProductPath({ name }: { name: string }) {
-  const { editing } = useProductEdit();
-  const [discard, setDiscard] = useState<{ go: () => void }>();
-  return (
-    <>
-      <Breadcrumb items={[{ label: ENTITY_LABEL.product, href: "/products" }, { label: name }]} guard={(go) => (editing ? setDiscard({ go }) : go())} />
-      {discard ? <DiscardDialog onStay={() => setDiscard(undefined)} onDiscard={() => { const { go } = discard; setDiscard(undefined); go(); }} /> : null}
-    </>
-  );
+  const { leave } = useProductEdit();
+  return <Breadcrumb items={[{ label: ENTITY_LABEL.product, href: "/products" }, { label: name }]} guard={leave} />;
 }
 
 /**

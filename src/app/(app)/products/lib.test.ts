@@ -4,9 +4,13 @@ import type { ErrorNode, OmissionRecord, RenderedArticle, RenderedDoc, RenderedS
 import type { ArticleNode, CondBlockNode, DocumentNode, NodeNumber, SectionNode } from "@/domain/document";
 import type { AttributeKind } from "@/domain/product";
 import type { Issue } from "@/domain/types";
+import type { MasterForm } from "@/domain/master";
+import { buildForm, formReducer, initFormState } from "@/forms";
 
 import {
   articleCount,
+  basicDraftDirty,
+  type BasicDraft,
   currentGeneralArticle,
   excludedClauseLabel,
   generalArticlePath,
@@ -323,5 +327,38 @@ describe("products lib — 조립 미리보기의 조연결 판정 절 (기능/�
     expect(excludedClauseLabel(tree, "g-clause", () => undefined)).toBe("공용조항 C0003");
     expect(excludedClauseLabel(tree, "g-a", labelOf)).toBe("g-a");
     expect(excludedClauseLabel(undefined, "g-clause", labelOf)).toBe("g-clause");
+  });
+});
+
+describe("products lib — 기본정보 초안의 변경 여부 (basicDraftDirty · 점검 M21)", () => {
+  const master: MasterForm[] = [{ key: "pay", label: "보험금지급", level: "benefit", fields: [{ key: "rate", label: "지급률", type: { kind: "number" } }] }];
+  const model = buildForm("benefit", () => undefined, new Map(), undefined, master);
+  const path = model.fields[0].path;
+  const baseline = (): BasicDraft => ({
+    name: "무배당 암보험",
+    options: [{ id: "o1", isNew: false, axis: "type", number: 1, name: "일반형", planTypeCode: "P1" }],
+    product: initFormState(model),
+    forms: { o1: initFormState(model) },
+    combinations: [["o1", "o2"], ["o3"]],
+  });
+
+  it("편집을 막 시작한 초안(= 서버 값)은 바뀐 것이 없다", () => {
+    expect(basicDraftDirty(baseline(), baseline())).toBe(false);
+  });
+
+  it("상품명 · 보험종목 · 값 칸 · 조합 중 하나라도 바뀌면 바뀐 것이다", () => {
+    expect(basicDraftDirty(baseline(), { ...baseline(), name: "무배당 암보험Ⅱ" })).toBe(true);
+    expect(basicDraftDirty(baseline(), { ...baseline(), options: [] })).toBe(true);
+    const typed = formReducer(initFormState(model), { type: "edit", path, draft: "80" });
+    expect(basicDraftDirty(baseline(), { ...baseline(), forms: { o1: typed } })).toBe(true);
+    expect(basicDraftDirty(baseline(), { ...baseline(), product: typed })).toBe(true);
+    expect(basicDraftDirty(baseline(), { ...baseline(), combinations: [["o1", "o2"]] })).toBe(true);
+  });
+
+  it("입력했다 되돌리거나 조합을 껐다 켜 순서만 바뀌면 바뀐 것이 아니다", () => {
+    const typed = formReducer(initFormState(model), { type: "edit", path, draft: "80" });
+    const reverted = formReducer(typed, { type: "edit", path, draft: "" });
+    expect(basicDraftDirty(baseline(), { ...baseline(), forms: { o1: reverted } })).toBe(false);
+    expect(basicDraftDirty(baseline(), { ...baseline(), combinations: [["o3"], ["o2", "o1"]] })).toBe(false);
   });
 });
