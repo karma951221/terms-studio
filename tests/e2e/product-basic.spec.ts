@@ -43,11 +43,15 @@ test(
       await page.keyboard.press("Escape");
       await expect(page.getByRole("menu")).toHaveCount(0);
 
-      // ── 편집 → 취소: 초안을 버린다. 편집 중에는 더보기가 없다.
+      // ── 편집 → 취소: 고친 것이 있으면 「버립니까?」 — 계속 편집은 초안 유지, 버리기는 초안을 버린다. 편집 중에는 더보기가 없다.
       await page.getByRole("button", { name: "편집", exact: true }).click();
       await expect(page.getByRole("button", { name: "더보기" })).toHaveCount(0);
       await name.fill("취소할 이름");
       await page.getByRole("button", { name: "취소", exact: true }).click();
+      await page.getByRole("button", { name: "계속 편집" }).click();
+      await expect(name).toHaveValue("취소할 이름");
+      await page.getByRole("button", { name: "취소", exact: true }).click();
+      await page.getByRole("button", { name: "버리기" }).click();
       await expect(name).toHaveValue(originalName);
       await expect(name).toHaveAttribute("readonly", "");
 
