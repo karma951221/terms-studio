@@ -8,9 +8,13 @@
  */
 import Link from "next/link";
 
+import { coordinateHref } from "@/app/_components/coordinateHref";
+import { IssueList, type IssueLink } from "@/app/_components/IssueList";
+import type { RecheckEntry } from "@/domain/clause";
 import { formatCoordinate } from "@/domain/coordinate";
 import { describeKey, nodeKey, type EdgeVia, type RefEdge, type RefGraph, type RefNodeKey, type RefNodeKind, type RefStats, type RelationView } from "@/domain/refs";
 import { ENTITY_LABEL, FIELD_LABEL, NODE_LEVEL_LABEL } from "@/app/_lib/labels";
+import type { Issue } from "@/domain/types";
 import { getServices } from "@/lib/services";
 
 import { GraphPanel } from "./GraphPanel";
@@ -125,6 +129,49 @@ function GraphSection({ target, plot, options, stats }: { target: RefNodeKey; pl
   );
 }
 
+const USAGE_OWNER_LABEL: Record<string, string> = { coverage: "담보약관", general: "보통약관" };
+
+/**
+ * 검사 ② 이슈의 「사용처 문서에서 보기」 — 참조가 놓인 문서의 그 노드로.
+ * 이슈의 `at`(usageCoordinate) 은 소유 실체 좌표지만 참조가 놓인 문서를 `documentId` 에 싣고 있어
+ * `coordinateHref` 가 그 문서의 그 노드(`?node=`)로 보낸다.
+ */
+function usageLink(issue: Issue): IssueLink | undefined {
+  const href = coordinateHref(issue.at);
+  return href ? { href, label: "사용처 문서에서 보기" } : undefined;
+}
+
+/**
+ * 공용조항의 검사 ② 재검사 목록 (기능/공용조항 §3.4 · §4.4) — 공용조항을 고친 뒤 사용처마다 요구 구분자 존재 · 옵션 선택을
+ * 다시 본 결과. 공용조항 화면에는 두지 않고 여기서만 본다 (사용처 · 영향 반경은 관계정보의 질문이다).
+ */
+function ClauseRecheck({ entries, usageCount, documentTitle }: { entries: readonly RecheckEntry[]; usageCount: number; documentTitle: ReadonlyMap<string, string> }) {
+  return (
+    <section className="ts-section">
+      <h2 className="ts-section-title">
+        검사 ② 사용처 문맥 — 재검사{" "}
+        <span className="ts-count">
+          문제 <b>{entries.length}</b> / 사용처 {usageCount}건
+        </span>
+      </h2>
+      <p className="ts-muted">공용조항을 고친 뒤 사용처마다 다시 검사한다 — 요구 구분자가 지금 있는가 · 고른 옵션이 유효 선택지인가. 저장은 막지 않는다.</p>
+      {entries.length === 0 ? (
+        <p className="ts-ok">사용처 {usageCount}건 모두 문제 없음.</p>
+      ) : (
+        entries.map((entry, i) => (
+          <div key={i}>
+            <p>
+              <Link href={`/documents/${entry.usage.documentId}`}>{documentTitle.get(entry.usage.documentId) ?? entry.usage.ownerName ?? entry.usage.ownerId}</Link>(
+              {USAGE_OWNER_LABEL[entry.usage.ownerKind] ?? entry.usage.ownerKind})
+            </p>
+            <IssueList issues={entry.issues} linkFor={usageLink} />
+          </div>
+        ))
+      )}
+    </section>
+  );
+}
+
 function RelationResult({ target, view, graph }: { target: RefNodeKey; view: RelationView; graph: RefGraph }) {
   return (
     <>
@@ -200,6 +247,10 @@ export default async function RelationsPage({ searchParams }: { searchParams: Pr
   const plotOptions = parsePlotOptions(q);
   const plot = target ? plotNeighborhood(graph, target, plotOptions) : undefined;
   const serializedOptions = serializePlotOptions(plotOptions);
+  const clauseCode = target?.kind === "clause" ? target.code : undefined;
+  const [recheck, usages, documents] = clauseCode
+    ? await Promise.all([services.clause.recheck(clauseCode), services.clause.usages(clauseCode), services.document.list()])
+    : [undefined, [], []];
 
   return (
     <div>
@@ -269,6 +320,8 @@ export default async function RelationsPage({ searchParams }: { searchParams: Pr
       {target && plot && <GraphSection target={target} plot={plot} options={plotOptions} stats={stats} />}
 
       {target && relation && <RelationResult target={target} view={relation} graph={graph} />}
+
+      {recheck?.ok && <ClauseRecheck entries={recheck.value} usageCount={usages.length} documentTitle={new Map(documents.map((d) => [d.id, d.title] as const))} />}
 
       <section className="ts-section">
         <h2 className="ts-section-title">

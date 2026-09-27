@@ -3,8 +3,7 @@
 /**
  * 공용조항 상세 (L2) — 보러 오는 것은 **이름 · 기재내용 · 옵션** 셋뿐이다.
  *
- * 그래서 화면을 둘로만 가른다 — 왼쪽이 본문, 오른쪽이 옵션. 사용처 · 재검사처럼
- * 「가끔 확인하는 것」은 헤더의 버튼에서 모달로 연다(상시로 펼치면 고칠 것보다 자리를 더 먹는다).
+ * 그래서 화면을 둘로만 가른다 — 왼쪽이 본문, 오른쪽이 옵션. 사용처 · 재검사는 관계정보(`/relations?kind=clause&code=…`)가 맡는다.
  *
  * 읽기 모드의 본문은 **문서 세계(명조)로 읽힌다** (§1.1 · 리뷰 #65). 편집 모드에서만 노드 트리가
  * 드러난다 — 원시 JSON 은 1급 표면이 아니라 구조 편집기(ADR-0012)가 붙기 전까지의 통로다.
@@ -12,7 +11,6 @@
 import { useRef, useState, type ReactNode } from "react";
 
 import { EditShell, Field, useEditField } from "@/app/_components/EditShell";
-import { UsageDialog } from "@/app/_components/UsageDialog";
 import { IconButton, IconChevron, IconClose, IconPlus } from "@/app/_components/icons";
 import { RadioGroup } from "@/app/_components/RadioGroup";
 import { ENTITY_LABEL, MODE_OPTIONS, NAME_LABEL } from "@/app/_lib/labels";
@@ -227,21 +225,15 @@ function OptionsPane() {
 export function ClauseEditor({
   clause,
   rendered,
-  usage,
-  usageCount,
 }: {
   clause: Clause;
   /** 조판된 본문 — 서버에서 그려 넘긴다 (문서 세계는 앱 스킨을 입지 않는다). */
   rendered: ReactNode;
-  /** 사용처 · 재검사 — 모달 안에 들어간다. */
-  usage: ReactNode;
-  usageCount: number;
 }) {
   return (
     <EditShell
       initial={initialData(clause)}
       title={clause.label}
-      extraActions={<UsageDialog count={usageCount}>{usage}</UsageDialog>}
       path={[{ label: ENTITY_LABEL.clause, href: "/clauses" }]}
       saveAction={saveClauseEditAction.bind(null, clause.code)}
       deleteAction={removeClauseEditAction.bind(null, clause.code)}
