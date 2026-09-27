@@ -3,7 +3,7 @@
  *
  * - `buildForm`     : 레벨 + enum 조회 + 저장소 값 (+ 스냅샷 문맥) → 폼 모델 (직렬화 가능한 데이터만).
  * - `formReducer`   : 편집 상태 전이 — 문자열 입력을 타입에 맞게 파싱, 오류는 필드 단위.
- * - `toSubmission`  : 저장할 값 목록. 빈 자리는 제출하지 않고, 읽기 전용 출처(const·derived)는 아예 빠진다.
+ * - `toSubmission`  : 저장할 값 목록. 빈 자리와 손대지 않은 저장 값 자리(변경 없음)는 제출하지 않는다.
  * - `formProgress`  : 「값 자리 N 중 M 입력」 — 저장소 기준 카운트 (디자인원칙 §9.2 · §9.6).
  * - `zodSchemaFor`  : 서버 액션 입력 검증용 zod 스키마.
  *
@@ -419,7 +419,10 @@ export interface SubmissionEntry {
 }
 
 export interface Submission {
-  /** 폼 순서대로. 빈 칸은 없다 — 저장돼 있던 값을 비운 경우만 undefined 로 실린다. */
+  /**
+   * 폼 순서대로. 사람이 손댄 칸과 프리필 제안 칸만 실린다 — 저장 값 그대로인 칸은 변경 없음이라 빠진다
+   * (점검 H3 · D3 (c)). 빈 칸도 없다 — 저장돼 있던 값을 사람이 비운 경우만 undefined 로 실린다.
+   */
   values: SubmissionEntry[];
   /** 파싱 오류·깨진 enum 참조. 하나라도 있으면 저장하면 안 된다. */
   issues: Issue[];
@@ -432,9 +435,14 @@ export function toSubmission(state: FormState): Submission {
   for (const view of state.model.fields) {
     const f = state.fields[view.path];
     if (!f) continue;
+    // 저장 값 그대로인 칸 — 사람이 손대지 않았으면 변경 없음이다. 제출하지 않는다 (점검 H3 · D3 (c)).
+    // 명시적 빈 목록 `[]` 은 초안이 빈 배열이라 「미입력」처럼 보이지만, 손대지 않았으니 지우지 않는다.
+    // 프리필 칸(저장 값 없음)은 여기 해당하지 않는다 — 보인 제안을 그대로 두고 저장하면 싣는다 (ADR-0004 · 시나리오 1).
+    // 디자인원칙 §9.1 「선택 수락」과 갈리는 점은 기능/마스터 §5 미결.
+    const unchanged = !f.dirty && view.state === "entered";
     if (!f.entered) {
-      // 저장소에 있던 값을 지웠을 때만 「값 지우기」로 제출한다
-      if (view.state === "entered") values.push({ path: view.path, value: undefined });
+      // 저장소에 있던 값을 사람이 지웠을 때만 「값 지우기」로 제출한다
+      if (view.state === "entered" && !unchanged) values.push({ path: view.path, value: undefined });
       continue;
     }
     if (f.issue !== undefined || f.value === undefined) {
@@ -452,6 +460,8 @@ export function toSubmission(state: FormState): Submission {
       issues.push(...found);
       continue;
     }
+    // 검증은 손대지 않은 칸도 한다 — 저장소의 깨진 참조(지워진 enum 값 등)가 숨지 않게.
+    if (unchanged) continue;
     values.push({ path: view.path, value: f.value });
   }
   return { values, issues };

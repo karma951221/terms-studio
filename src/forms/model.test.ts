@@ -417,9 +417,40 @@ describe("toSubmission — 저장할 값 목록 (자동 유입 없음 · 사람�
     expect(toSubmission(s).values).toEqual([]);
   });
 
-  it("저장 값이 있고 손대지 않은 필드도 제출된다 (사람이 보고 저장한 값)", () => {
+  it("D3 (c) — 저장 값 그대로인 칸(손대지 않음)은 제출하지 않는다: 변경 없음", () => {
     const s = formReducer(stateOf(new Map([["pay.note", entered("메모")]])), { type: "clear", path: "pay.rate" });
+    expect(toSubmission(s).values).toEqual([]);
+  });
+
+  it("D3 (c) — 손댄 칸은 저장 값과 같게 되돌렸어도 제출된다 (사람이 보고 저장한 값)", () => {
+    let s = formReducer(stateOf(new Map([["pay.note", entered("메모")]])), { type: "clear", path: "pay.rate" });
+    s = formReducer(s, { type: "edit", path: "pay.note", draft: "메모" });
     expect(toSubmission(s).values).toEqual([{ path: "pay.note", value: "메모" }]);
+  });
+
+  it("H3 · T1 — 명시적 빈 목록 [] 은 값 폼을 한 번 거쳐도 지워지지 않는다 (ADR-0004 · 미입력과 다른 상태)", () => {
+    const s = stateOf(new Map([["pay.applied", entered([])]]));
+    // 손대지 않았으니 「값 지우기」(value 없음)가 실리면 안 된다 — 프리필 제안값 지급률만 실린다(시나리오 1)
+    expect(toSubmission(s).values).toEqual([{ path: "pay.rate", value: 100 }]);
+  });
+
+  it("H3 — 명시적 빈 목록에서 사람이 고르면 그 값으로 · 다 끄면 미입력으로 (「(선택 없음)」 입력은 미결 D3 (a))", () => {
+    const base = formReducer(stateOf(new Map([["pay.applied", entered([])]])), { type: "clear", path: "pay.rate" });
+    expect(toSubmission(formReducer(base, { type: "edit", path: "pay.applied", draft: ["V01"] })).values).toEqual([
+      { path: "pay.applied", value: ["V01"] },
+    ]);
+    expect(toSubmission(formReducer(base, { type: "edit", path: "pay.applied", draft: [] })).values).toEqual([
+      { path: "pay.applied", value: undefined },
+    ]);
+  });
+
+  it("H4 ③ — 노드를 보기만 하면: 저장 값뿐인 칸은 제출이 비고, 프리필 칸은 시나리오 1 대로 제출된다", () => {
+    // 저장 값만 있는 노드 — 손대지 않으면 제출할 것이 없다
+    const stored = stateOf(new Map([["pay.rate", entered(80)], ["pay.exempt", entered(false)], ["pay.applied", entered([])]]));
+    expect(toSubmission(stored).values).toEqual([]);
+    // 프리필 칸은 「보이는 제안을 그대로 두고 저장하면 명시 값」(ADR-0004 · 시나리오 1)이라 제출에 실린다 —
+    // 「보기만 해도 저장」은 폼 모델이 아니라 embedded onChange(사람이 고쳤을 때만 올림) 쪽에서 막는다 (H4)
+    expect(toSubmission(stateOf()).values).toEqual([{ path: "pay.rate", value: 100 }]);
   });
 
   it("파싱 오류가 있는 필드는 Issue(typeMismatch + refPath) 로 보고되고 값은 빠진다", () => {
