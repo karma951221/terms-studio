@@ -137,6 +137,53 @@ export function reorderAttributeValues(kind: AttributeKind, order: readonly Code
   return ok({ ...kind, values: order.map((c, i) => ({ ...byCode.get(c)!, order: i })) });
 }
 
+/** 편집 화면 한 벌 — 종류명 · **최종** 유효값 목록. 배열 순서 = 저장 순서, `code` 가 없으면 새 값, 목록에 없는 기존 값은 빠진다. */
+export interface AttributeKindRevision {
+  label: string;
+  values: readonly { code?: Code; label: string; fragment: string }[];
+}
+
+export interface RevisedAttributeKind {
+  kind: AttributeKind;
+  /** 빠진 기존 유효값 코드 (원래 순서) — 파괴적 흐름(영향 확인 · 관리자)은 서비스 몫. */
+  removed: Code[];
+}
+
+/**
+ * 담보속성 편집 저장 (점검 2026-09-27 D1 · D2) — 한 단계씩 고치면 유효값 이름 맞바꾸기가 중간 상태에서 「중복」으로 거부된다.
+ * 여기서는 **최종 상태만** 한 번에 본다 — 종류명 · 유효값 이름 비움 · 중복 · 모르는 코드 · 같은 코드 두 번.
+ * 채번은 검사를 다 통과한 뒤 (거부된 입력이 순번을 태우지 않게).
+ */
+export async function reviseAttributeKind(
+  kind: AttributeKind,
+  existing: readonly AttributeKind[],
+  revision: AttributeKindRevision,
+  nextSeq: AttributeSeq,
+): Promise<Result<RevisedAttributeKind>> {
+  const renamed = renameAttributeKind(kind, revision.label, existing);
+  if (!renamed.ok) return renamed as Result<RevisedAttributeKind>;
+  const known = new Map(kind.values.map((v) => [v.code, v]));
+  const kept = new Set<Code>();
+  const labels = new Set<string>();
+  for (const v of revision.values) {
+    const label = cleanLabel(v.label);
+    if (!label) return invalid("담보속성 유효값 표시명은 비울 수 없습니다", v.code ? `${kind.code}.${v.code}` : kind.code);
+    if (v.code !== undefined) {
+      if (!known.has(v.code)) return reject({ reason: "notFound", what: `담보속성 유효값 ${v.code}` });
+      if (kept.has(v.code)) return invalid(`담보속성 유효값 ${v.code} 이(가) 두 번 있습니다`, kind.code);
+      kept.add(v.code);
+    }
+    if (labels.has(label)) return reject({ reason: "duplicate", what: `담보속성 유효값 표시명 ${label}` });
+    labels.add(label);
+  }
+  const values: AttributeValue[] = [];
+  for (const [order, v] of revision.values.entries()) {
+    const code = v.code ?? formatAttributeValueCode(await nextSeq("attributeValue", kind.code));
+    values.push({ code, label: cleanLabel(v.label)!, order, fragment: normalizeNamingFragment(v.fragment) });
+  }
+  return ok({ kind: { ...renamed.value, values }, removed: kind.values.filter((v) => !kept.has(v.code)).map((v) => v.code) });
+}
+
 /** 유효값 삭제 (정의 변경만 — 파괴적 흐름은 서비스). */
 export function removeAttributeValue(kind: AttributeKind, valueCode: Code): Result<AttributeKind> {
   if (!kind.values.some((v) => v.code === valueCode)) return reject({ reason: "notFound", what: `담보속성 유효값 ${valueCode}` });

@@ -395,3 +395,52 @@ describe("catalog 서비스 (PGlite)", () => {
     });
   });
 });
+
+describe("catalog.reviseEnum — 열거형변수 편집 한 벌 저장 (점검 2026-09-27 H2 ① · D1 · D2)", () => {
+  let t: TestDb;
+  let svc: CatalogService;
+  const store = fakeValueStore({
+    [JSON.stringify({ kind: "enumValue", enumCode: "E0001", valueCode: "V01" })]: 2,
+    [JSON.stringify({ kind: "enumValue", enumCode: "E0001", valueCode: "V02" })]: 5,
+  });
+
+  beforeAll(async () => {
+    t = await createTestDb();
+    svc = createCatalogService(t.db, { impact: store.source });
+    unwrap(await svc.createEnum(editor, { label: "고지유형", values: [{ label: "일반" }, { label: "간편" }, { label: "건강" }] }));
+  });
+  afterAll(async () => {
+    await t.close();
+  });
+
+  it("편집자: 이름 A↔B 맞바꾸기 + 새 값 + 순서가 한 번에 저장된다", async () => {
+    const r = unwrap(
+      await svc.reviseEnum(editor, "E0001", {
+        label: "고지 유형",
+        description: "메모",
+        values: [{ label: "기타" }, { code: "V02", label: "일반" }, { code: "V01", label: "간편" }, { code: "V03", label: "건강" }],
+      }),
+    );
+    expect(r.values.map((v) => [v.code, v.label])).toEqual([["V04", "기타"], ["V02", "일반"], ["V01", "간편"], ["V03", "건강"]]);
+    expect(await svc.getEnum("E0001")).toEqual(r);
+  });
+
+  it("값을 빼면 — 편집자 forbidden · 관리자 1차는 빠진 값 전부의 영향을 합쳐 묻고 아무것도 안 바뀐다 · 순번도 안 탄다", async () => {
+    const before = await svc.getEnum("E0001");
+    const revision = { label: "고지유형2", description: "", values: [{ label: "새값" }, { code: "V03", label: "건강" }, { code: "V04", label: "기타" }] };
+    expect(await svc.reviseEnum(editor, "E0001", revision)).toEqual({ ok: false, rejection: { reason: "forbidden", role: "editor", action: "enum.deleteValue" } });
+    const first = await svc.reviseEnum(admin, "E0001", revision);
+    if (first.ok || first.rejection.reason !== "needsConfirmation") throw new Error("needsConfirmation 기대");
+    expect(first.rejection.impact.valueRowsLost).toBe(7); // V01 2 + V02 5
+    expect(await svc.getEnum("E0001")).toEqual(before);
+    expect(store.purged).toEqual([]);
+
+    const done = unwrap(await svc.reviseEnum(admin, "E0001", revision, { confirm: true }));
+    expect(done.label).toBe("고지유형2");
+    expect(done.values.map((v) => [v.code, v.label])).toEqual([["V05", "새값"], ["V03", "건강"], ["V04", "기타"]]); // 1차가 V05 를 태우지 않았다
+    expect(store.purged).toEqual([
+      { kind: "enumValue", enumCode: "E0001", valueCode: "V02" },
+      { kind: "enumValue", enumCode: "E0001", valueCode: "V01" },
+    ]);
+  });
+});

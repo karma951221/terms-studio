@@ -11,6 +11,7 @@ import {
   renameEnum,
   renameEnumValue,
   reorderEnumValues,
+  reviseEnum,
   setDescription,
   setExpression,
   setResultType,
@@ -395,5 +396,64 @@ describe("enum 정의 (D-P1-7 · D-P1-8)", () => {
     expect(unwrap(removeEnumValue(고지유형, "V01")).values).toEqual([
       { code: "V02", label: "간편심사", order: 0 },
     ]);
+  });
+});
+
+describe("reviseEnum — 편집 화면 한 벌을 최종 상태로 한 번에 검사 (점검 2026-09-27 H2 ① · D1)", () => {
+  /** 기존 값 V01 · V02 다음부터 — 저장소 순번처럼 3 부터 준다. */
+  const seqFrom3: NextSeq = (() => {
+    let n = 2;
+    return () => ++n;
+  })();
+  const revise = (values: { code?: string; label: string }[], label = "고지유형") =>
+    reviseEnum(고지유형, { label, description: "", values }, { existingEnumLabels: ["고지유형", "직업급수"], nextSeq: seqFrom3 });
+
+  it("값 이름 A↔B 맞바꾸기 — 한 단계씩이면 중복이지만 최종 상태는 유효하다", async () => {
+    const r = unwrap(await revise([{ code: "V01", label: "간편심사" }, { code: "V02", label: "일반심사" }]));
+    expect(r.def.values).toEqual([
+      { code: "V01", label: "간편심사", order: 0 },
+      { code: "V02", label: "일반심사", order: 1 },
+    ]);
+    expect(r.removed).toEqual([]);
+  });
+
+  it("다른 값이 비우는 이름을 받는다 — 개명으로 비우든 빼서 비우든", async () => {
+    const renamed = unwrap(await revise([{ code: "V01", label: "건강고지" }, { code: "V02", label: "일반심사" }]));
+    expect(renamed.def.values.map((v) => v.label)).toEqual(["건강고지", "일반심사"]);
+    const removed = unwrap(await revise([{ code: "V02", label: "간편" }, { label: "일반심사" }]));
+    expect(removed.removed).toEqual(["V01"]);
+    expect(removed.def.values.map((v) => [v.label, v.order])).toEqual([["간편", 0], ["일반심사", 1]]);
+    expect(removed.def.values[1]!.code).not.toBe("V01"); // 빠진 값의 코드를 다시 쓰지 않는다 — 새 값은 새로 채번
+  });
+
+  it("새 값은 제출 순서대로 채번 · 배열 순서가 곧 order", async () => {
+    const r = unwrap(await revise([{ label: "C" }, { code: "V01", label: "일반심사" }, { label: "D" }, { code: "V02", label: "간편심사" }]));
+    expect(r.def.values.map((v) => v.label)).toEqual(["C", "일반심사", "D", "간편심사"]);
+    expect(r.def.values.map((v) => v.order)).toEqual([0, 1, 2, 3]);
+    expect(new Set(r.def.values.map((v) => v.code)).size).toBe(4);
+  });
+
+  it("최종 상태에서 겹치면 duplicate · 빈 이름은 invalid · 모르는 코드는 notFound · 열거형변수명 중복은 duplicate", async () => {
+    expect(rejection(await revise([{ code: "V01", label: "간편심사" }, { code: "V02", label: " 간편심사 " }]))).toBe("duplicate");
+    expect(rejection(await revise([{ code: "V01", label: "일반심사" }, { label: "일반심사" }]))).toBe("duplicate");
+    expect(rejection(await revise([{ code: "V01", label: " " }]))).toBe("invalid");
+    expect(rejection(await revise([{ code: "V09", label: "x" }]))).toBe("notFound");
+    expect(rejection(await revise([{ code: "V01", label: "a" }, { code: "V01", label: "b" }]))).toBe("invalid");
+    expect(rejection(await revise([], "직업급수"))).toBe("duplicate");
+    expect(rejection(await revise([], " "))).toBe("invalid");
+  });
+
+  it("거부된 입력은 순번을 태우지 않는다 — 검사를 다 통과한 뒤에 채번", async () => {
+    let calls = 0;
+    const counting: NextSeq = () => ++calls + 10;
+    const r = await reviseEnum(고지유형, { label: "고지유형", description: "", values: [{ label: "새값" }, { code: "V01", label: "" }] }, { existingEnumLabels: [], nextSeq: counting });
+    expect(r.ok).toBe(false);
+    expect(calls).toBe(0);
+  });
+
+  it("주석도 같이 — 빠진 값 목록은 원래 순서대로", async () => {
+    const r = unwrap(await reviseEnum(고지유형, { label: "고지유형", description: "메모", values: [] }, { existingEnumLabels: [], nextSeq: memorySeq() }));
+    expect(r.def.description).toBe("메모");
+    expect(r.removed).toEqual(["V01", "V02"]);
   });
 });

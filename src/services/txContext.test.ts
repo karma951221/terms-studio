@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { Db } from "@/db/repo/types";
 import { createTestDb, type TestDb } from "@/db/test-utils";
-import { contextualDb } from "./txContext";
+import { contextualDb, rollbackUnless } from "./txContext";
 
 /** 프록시로 센다 — tx 안이면 tx, 밖이면 root 로 간다. */
 async function count(db: Db): Promise<number> {
@@ -51,5 +51,52 @@ describe("contextualDb — 트랜잭션 안에서 주입 소스가 같은 tx 를
       return await count(db);
     });
     expect(n).toBe(2);
+  });
+
+  it("rollbackUnless — 결과가 keep 을 통과하면 커밋, 아니면 앞 단계 쓰기까지 롤백하고 결과는 그대로 돌려준다 (저장 한 번 = 한 트랜잭션)", async () => {
+    const db = contextualDb(t.db);
+    const before = await count(db);
+    // 서비스 호출처럼 안쪽에서 다시 transaction 을 연다 (세이브포인트) — 첫 단계는 성공, 둘째 단계가 거부
+    const rejected = await rollbackUnless(
+      db,
+      async () => {
+        await db.transaction(async (tx) => {
+          await tx.execute(sql`insert into probe values (10)`);
+        });
+        return { ok: false as const, message: "둘째 단계 거부" };
+      },
+      (r) => r.ok,
+    );
+    expect(rejected).toEqual({ ok: false, message: "둘째 단계 거부" });
+    expect(await count(db)).toBe(before);
+
+    const kept = await rollbackUnless(
+      db,
+      async () => {
+        await db.transaction(async (tx) => {
+          await tx.execute(sql`insert into probe values (11)`);
+        });
+        return { ok: true as const };
+      },
+      (r) => r.ok,
+    );
+    expect(kept).toEqual({ ok: true });
+    expect(await count(db)).toBe(before + 1);
+  });
+
+  it("rollbackUnless — 안에서 던진 예외는 롤백 뒤 그대로 올라간다", async () => {
+    const db = contextualDb(t.db);
+    const before = await count(db);
+    await expect(
+      rollbackUnless(
+        db,
+        async () => {
+          await db.execute(sql`insert into probe values (12)`);
+          throw new Error("boom");
+        },
+        () => true,
+      ),
+    ).rejects.toThrow("boom");
+    expect(await count(db)).toBe(before);
   });
 });

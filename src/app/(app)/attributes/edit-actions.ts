@@ -2,6 +2,7 @@
 
 import type { EditOutcome } from "@/app/_lib/edit";
 import { describeRejection } from "@/app/_lib/rejection";
+import { saveOnce } from "@/app/_lib/saveOnce";
 import type { Result } from "@/domain/types";
 import { currentActor, getServices } from "@/lib/services";
 
@@ -13,49 +14,35 @@ function failed<T>(result: Result<T>, token: string): EditOutcome | undefined {
   return { ok: false, message: describeRejection(result.rejection).message };
 }
 
-export async function saveAttributeEditAction(code: string, input: AttributeEditData): Promise<EditOutcome> {
+const isNew = (code: string) => code.startsWith("new:");
+
+/**
+ * 담보속성 상세의 저장 — 종류명 · 유효값 행(추가 · 이름 · 조각 · 순서 · **삭제**)이 저장 한 번이다 (디자인원칙 §2 L2).
+ *
+ * 값 표는 최종 목록 한 벌로 서비스 `reviseAttributeKind` 에 넘긴다 — 한 단계씩 고치면 이름 맞바꾸기가 중간 상태에서 거부되고,
+ * 앞 단계는 이미 커밋돼 있었다 (점검 2026-09-27 H1). 표에서 ✕ 로 뺀 저장된 값은 여기서 빠지고, 확인은 **저장 시점**에 한 번 —
+ * 빠진 값 전부의 사용처를 합친 대화상자다 (D2). 전체가 한 트랜잭션이라 거부 · 확인 대기 중엔 아무것도 남지 않는다.
+ */
+export async function saveAttributeEditAction(code: string, input: AttributeEditData, confirm = false): Promise<EditOutcome> {
   const actor = await currentActor();
   const services = getServices();
-  const current = await services.product.getAttributeKind(code);
-  if (!current) return { ok: false, message: `담보속성을 찾을 수 없습니다 — ${code}` };
-
-  let error: EditOutcome | undefined;
-  if (input.label !== current.label) {
-    error = failed(await services.product.renameAttributeKind(actor, code, input.label), "label");
-    if (error) return error;
-  }
-
-  const existing = new Set(current.values.map((value) => value.code));
-  const order: string[] = [];
-  for (const value of input.values) {
-    if (existing.has(value.code)) {
-      const before = current.values.find((item) => item.code === value.code)!;
-      if (value.label !== before.label) {
-        error = failed(await services.product.renameAttributeValue(actor, code, value.code, value.label), value.code);
-        if (error) return error;
-      }
-      if (value.fragment !== before.fragment) {
-        error = failed(await services.product.setNamingFragment(actor, code, value.code, value.fragment), value.code);
-        if (error) return error;
-      }
-      order.push(value.code);
-    } else {
-      const added = await services.product.addAttributeValue(actor, code, { label: value.label, fragment: value.fragment });
-      error = failed(added, value.code);
-      if (error) return error;
-      if (added.ok) order.push(added.value.values.at(-1)!.code);
+  return saveOnce(services, async () => {
+    const current = await services.product.getAttributeKind(code);
+    if (!current) return { ok: false, message: `담보속성을 찾을 수 없습니다 — ${code}` };
+    const values = input.values.map(({ code: valueCode, label, fragment }) => (isNew(valueCode) ? { label, fragment } : { code: valueCode, label, fragment }));
+    const result = await services.product.reviseAttributeKind(actor, code, { label: input.label, values }, { confirm });
+    if (result.ok) return { ok: true };
+    if (result.rejection.reason === "needsConfirmation") {
+      const kept = new Set(input.values.map((value) => value.code));
+      const removed = current.values.filter((value) => !kept.has(value.code)).length;
+      return { ok: "confirm", impact: result.rejection.impact, token: "values", title: "값을 빼면 그 값을 쓰는 곳이 깨질 수 있다", actionLabel: `값 ${removed}개 삭제하고 저장` };
     }
-  }
-  error = failed(await services.product.reorderAttributeValues(actor, code, order), "order");
-  return error ?? { ok: true };
+    return failed(result, "values")!;
+  });
 }
 
 export async function removeAttributeEditAction(code: string, confirm = false): Promise<EditOutcome> {
   return failed(await getServices().product.removeAttributeKind(await currentActor(), code, { confirm }), "delete") ?? { ok: true };
-}
-
-export async function removeAttributeValueEditAction(code: string, valueCode: string, confirm = false): Promise<EditOutcome> {
-  return failed(await getServices().product.removeAttributeValue(await currentActor(), code, valueCode, { confirm }), valueCode) ?? { ok: true };
 }
 
 export async function saveNamingTemplateEditAction(input: NamingTemplateEditData): Promise<EditOutcome> {

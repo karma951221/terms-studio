@@ -306,7 +306,7 @@ describe("coverage 서비스 (PGlite)", () => {
 
 /**
  * 구조 계획 적용 (ADR-0052 결정 2 · M04-b) — 조립 루트로 묶어 탑재 상품담보까지 실제로 둔다.
- * 계획 하나가 한 트랜잭션에서 ① 이름 → ② 추가 → ③ 삭제 → ④ 순서 로 적용되고, 탑재 상품담보 스냅샷이 같은 트랜잭션에서 따라온다.
+ * 계획 하나가 한 트랜잭션에서 (최종 트리로 검사해) 적용되고, 탑재 상품담보 스냅샷이 같은 트랜잭션에서 따라온다.
  */
 describe("coverage 서비스 — applyStructurePlan · previewStructurePlan (조립 루트 · 탑재 상품담보 포함)", () => {
   let t: TestDb;
@@ -440,9 +440,10 @@ describe("coverage 서비스 — applyStructurePlan · previewStructurePlan (조
     expect((await snapshotShape(pcP)).map((row) => row[0])).toEqual(["0종수술", "1종수술"]);
   });
 
-  it("드라이런 거부(✕ 한 형제의 이름을 새 급부에 재사용 → duplicate) — 관리자 · confirm 이어도 무변경", async () => {
+  it("드라이런 거부(최종 트리에서 남는 형제와 같은 이름의 새 급부 → duplicate) — 관리자 · confirm 이어도 무변경", async () => {
+    // ✕ 한 형제의 이름을 새 급부에 다시 쓰는 것은 이제 허용이다 — 최종 상태로 검사 (점검 2026-09-27 H2 ③, plan.test)
     const draft = deep(surgery);
-    draft[1]!.benefits = [draft[1]!.benefits[0]!, { key: "new:1", name: "통원보험금" }];
+    draft[1]!.benefits = [...draft[1]!.benefits, { key: "new:1", name: draft[1]!.benefits[0]!.name }];
     expect(rejection(await s.coverage.applyStructurePlan(admin, surgery.id, draft, { confirm: true })).reason).toBe("duplicate");
     expect(rejection(await s.coverage.applyStructurePlan(admin, surgery.id, [], { confirm: true })).reason).toBe("minimumStructure");
     expect(await s.coverage.get(surgery.id)).toEqual(surgery);

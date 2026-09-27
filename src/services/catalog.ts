@@ -29,6 +29,7 @@ import {
   renameEnum,
   renameEnumValue,
   reorderEnumValues,
+  reviseEnum,
   setDescription,
   setExpression,
   setResultType,
@@ -37,6 +38,7 @@ import {
   type DiscriminatorResultType,
   type DiscriminatorSummary,
   type EnumDef,
+  type EnumRevision,
   type ImpactSource,
   type ImpactTarget,
   type Inspection,
@@ -48,10 +50,12 @@ import { formatCoordinate } from "@/domain/coordinate";
 import type { ExprType } from "@/domain/expression";
 import { transitiveUsages, type RefGraph } from "@/domain/refs";
 import type { Actor, AttachLevel, Code, Coordinate, FieldType, Issue, Result } from "@/domain/types";
-import { ok, reject } from "@/domain/types";
+import { mergeImpacts, ok, reject } from "@/domain/types";
 
 import * as repo from "@/db/repo/catalog";
 import type { Db } from "@/db/repo/types";
+
+import { rollbackUnless } from "./txContext";
 
 export interface CatalogServiceDeps {
   /** 값 행 수 · 깨질 참조 · 값 행 삭제. 기본 NO_VALUE_STORE. */
@@ -118,6 +122,13 @@ export interface CatalogService {
   addEnumValue(actor: Actor, code: Code, input: NewEnumValue): Promise<Result<EnumDef>>;
   renameEnumValue(actor: Actor, code: Code, valueCode: Code, label: string): Promise<Result<EnumDef>>;
   reorderEnumValues(actor: Actor, code: Code, order: Code[]): Promise<Result<EnumDef>>;
+  /**
+   * 열거형변수 편집 화면 한 벌 저장 — 이름 · 주석 · 최종 값 목록을 **최종 상태로 한 번에** 검사해 한 번 저장한다
+   * (점검 2026-09-27 H2 ① · D1 — 맞바꾸기 · 비운 이름 받기). 빠진 값이 있으면 `enum.deleteValue` 2단(편집자 forbidden ·
+   * 관리자 1차 needsConfirmation — 빠진 값 전부의 영향을 합쳐서 · confirm 이면 저장 + 값 행 purge, D2).
+   * 거부 · 확인 필요면 트랜잭션을 롤백한다 — 채번한 순번도 타지 않는다.
+   */
+  reviseEnum(actor: Actor, code: Code, revision: EnumRevision, opts?: Confirmable): Promise<Result<EnumDef>>;
 
   // enum — 파괴적 (admin · 2단)
   removeEnumValue(actor: Actor, code: Code, valueCode: Code, opts?: Confirmable): Promise<Result<EnumDef>>;
@@ -325,6 +336,32 @@ export function createCatalogService(db: Db, deps: CatalogServiceDeps = {}): Cat
     addEnumValue: (actor, code, input) => editEnum(actor, code, (def, ctx) => addEnumValue(def, input, ctx.nextSeq)),
     renameEnumValue: (actor, code, valueCode, label) => editEnum(actor, code, (def) => renameEnumValue(def, valueCode, label)),
     reorderEnumValues: (actor, code, order) => editEnum(actor, code, (def) => reorderEnumValues(def, order)),
+    reviseEnum: (actor, code, revision, opts = {}) =>
+      rollbackUnless(
+        db,
+        (tx) =>
+          withEnum(tx, code, async (def) => {
+            const ctx = await context(tx);
+            const revised = await reviseEnum(def, revision, { existingEnumLabels: ctx.existingEnumLabels ?? [], nextSeq: ctx.nextSeq });
+            if (!revised.ok) return revised as Result<EnumDef>;
+            const { def: next, removed } = revised.value;
+            const targets = removed.map((valueCode): ImpactTarget => ({ kind: "enumValue", enumCode: code, valueCode }));
+            const save = async (): Promise<Result<EnumDef>> => {
+              await repo.saveEnum(tx, next, actor.userId);
+              for (const target of targets) await impact.purgeValueRows(target);
+              return ok(next);
+            };
+            if (targets.length === 0) return save();
+            return destructive<EnumDef>({
+              actor,
+              action: "enum.deleteValue",
+              confirm: opts.confirm,
+              computeImpact: async () => mergeImpacts(await Promise.all(targets.map((target) => computeImpact(target, impact)))),
+              execute: save,
+            });
+          }),
+        (r) => r.ok,
+      ),
 
     removeEnumValue: (actor, code, valueCode, opts = {}) =>
       db.transaction(async (tx) => {

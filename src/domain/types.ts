@@ -234,6 +234,17 @@ export interface Impact {
   mounts?: MountImpact[];
 }
 
+/** 여러 삭제 대상의 영향을 확인 한 번으로 — 저장 한 번에 값 행 여럿을 뺄 때 (점검 2026-09-27 D2). */
+export function mergeImpacts(impacts: readonly Impact[]): Impact {
+  const mounts = impacts.flatMap((i) => i.mounts ?? []);
+  return {
+    valueRowsLost: impacts.reduce((n, i) => n + i.valueRowsLost, 0),
+    brokenRefs: impacts.flatMap((i) => i.brokenRefs),
+    cascade: impacts.flatMap((i) => i.cascade),
+    ...(mounts.length > 0 ? { mounts } : {}),
+  };
+}
+
 export type Result<T> = { ok: true; value: T } | { ok: false; rejection: Rejection };
 
 export function ok<T>(value: T): Result<T> {

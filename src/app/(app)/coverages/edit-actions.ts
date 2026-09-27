@@ -5,15 +5,16 @@
  * (기능/담보 §4 「상세」 조작 · 디자인원칙 §2 L2).
  *
  * 구조(추가 · 이름 · 순서 · 삭제)는 ADR-0052 결정 1 — 미탑재 담보의 초안 `structure` 를 서비스 `applyStructurePlan` 이
- * 한 트랜잭션에 적용한다 (① 이름 → ② 추가 → ③ 삭제 → ④ 순서 · 결과 트리 한 번 저장). 「구조 편집」 화면(결정 2)과 같은 경로다.
+ * 한 트랜잭션에 적용한다 (최종 트리로 검사 · 결과 트리 한 번 저장 — 순서는 도메인 `applyStructurePlanTo`). 「구조 편집」 화면(결정 2)과 같은 경로다.
  * 삭제가 섞이면 아무것도 저장하기 전에 `previewStructurePlan` 으로 영향을 모아 `ok:"confirm"`, 편집자면 서버가 거부한다
- * (ADR-0019 — 화면 숨김이 아니라 서버 거부). 담보명 · 주석 · 값은 서비스 호출 각각이라, 먼저 `dryRunStructurePlan` 으로
- * 계획을 메모리에서 끝까지 돌려 구조 거부를 담보명 저장보다 앞에 낸다. 확인의 **판정은 서비스**가 트랜잭션 안에서 다시 한다 —
+ * (ADR-0019 — 화면 숨김이 아니라 서버 거부). 담보명 · 주석 · 구조 · 값은 서비스 호출 각각이지만 쓰기 전체가 한 트랜잭션이라
+ * (`saveOnce`, 점검 2026-09-27 H1) 어느 단계가 거부돼도 남는 것이 없다. `dryRunStructurePlan` 은 구조 거부를 쓰기 전에 낸다. 확인의 **판정은 서비스**가 트랜잭션 안에서 다시 한다 —
  * 호출자의 `confirm` 을 그대로 넘긴다.
  * 탑재된 담보(탑재 상품담보 ≥ 1)의 구조 변경은 여기서 거부한다 — 그 경로는 별도 「구조 편집」 화면(`/coverages/[id]/structure`)이다.
  */
 import { describeRejection } from "@/app/_lib/rejection";
 import type { EditOutcome } from "@/app/_lib/edit";
+import { saveOnce } from "@/app/_lib/saveOnce";
 import { assertCan } from "@/domain/auth";
 import { decodeNodeKey, dryRunStructurePlan, hasRemoves, hasStructuralChange, isEmptyPlan, structurePlan, type CoverageNodeRef } from "@/domain/coverage";
 import { usagesOf } from "@/domain/refs";
@@ -86,36 +87,39 @@ export async function saveCoverageEditAction(id: Id, input: CoverageEditData, co
   // 「확인 전엔 아무것도 저장하지 않는다」 가 깨진다 (화면은 편집자에게 confirm 을 안 주지만 액션은 직접 부를 수 있다).
   if (hasRemoves(plan) && !assertCan(actor, "coverage.deleteNode").ok) return { ok: false, message: REMOVE_FORBIDDEN };
 
-  if (input.label !== current.name) {
-    const error = failed(await services.coverage.rename(actor, id, input.label), "label");
-    if (error) return error;
-  }
-  if (input.description !== current.description) {
-    const error = failed(await services.coverage.setDescription(actor, id, input.description), "description");
-    if (error) return error;
-  }
-
-  // 구조 — 계획 전체를 한 트랜잭션에. 위 사전 확인은 문구(삭제 수 · 편집자 배너)를 위한 것이고 **판정은 서비스가 한다** — 호출자의
-  // `confirm` 을 그대로 넘겨, 사전 계획엔 없던 삭제가 트랜잭션 안 계획에 있으면(그 사이 트리가 바뀜) 서비스의 needsConfirmation 이
-  // 대화상자로 돌아온다. 탑재 스냅샷의 이름 · 순서도 같은 트랜잭션에서 따라온다.
-  if (!isEmptyPlan(plan)) {
-    const applied = structureFailed(await services.coverage.applyStructurePlan(actor, id, input.structure, { confirm }));
-    if (applied) return applied;
-  }
-
-  // 값 — 손댄 노드만 (issue 는 위에서 이미 걸렀다).
-  for (const { key, owner, submission } of liveValues) {
-    for (const entry of submission.values) {
-      const result =
-        entry.value === undefined
-          ? await services.coverage.clearValue(actor, owner, entry.path)
-          : await services.coverage.writeValue(actor, owner, entry.path, entry.value);
-      const error = failed(result, key);
+  // 여기부터 쓰기 — 한 트랜잭션 (`saveOnce`, 점검 2026-09-27 H1 · D1). 담보명 · 주석 · 구조를 저장한 뒤 값 쓰기가 거부되면 전부 롤백된다.
+  return saveOnce(services, async () => {
+    if (input.label !== current.name) {
+      const error = failed(await services.coverage.rename(actor, id, input.label), "label");
       if (error) return error;
     }
-  }
+    if (input.description !== current.description) {
+      const error = failed(await services.coverage.setDescription(actor, id, input.description), "description");
+      if (error) return error;
+    }
 
-  return { ok: true };
+    // 구조 — 계획 전체를 한 트랜잭션에. 위 사전 확인은 문구(삭제 수 · 편집자 배너)를 위한 것이고 **판정은 서비스가 한다** — 호출자의
+    // `confirm` 을 그대로 넘겨, 사전 계획엔 없던 삭제가 트랜잭션 안 계획에 있으면(그 사이 트리가 바뀜) 서비스의 needsConfirmation 이
+    // 대화상자로 돌아온다. 탑재 스냅샷의 이름 · 순서도 같은 트랜잭션에서 따라온다.
+    if (!isEmptyPlan(plan)) {
+      const applied = structureFailed(await services.coverage.applyStructurePlan(actor, id, input.structure, { confirm }));
+      if (applied) return applied;
+    }
+
+    // 값 — 손댄 노드만 (issue 는 위에서 이미 걸렀다).
+    for (const { key, owner, submission } of liveValues) {
+      for (const entry of submission.values) {
+        const result =
+          entry.value === undefined
+            ? await services.coverage.clearValue(actor, owner, entry.path)
+            : await services.coverage.writeValue(actor, owner, entry.path, entry.value);
+        const error = failed(result, key);
+        if (error) return error;
+      }
+    }
+
+    return { ok: true };
+  });
 }
 
 export async function removeCoverageEditAction(id: Id, confirm = false): Promise<EditOutcome> {

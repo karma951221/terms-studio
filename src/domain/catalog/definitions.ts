@@ -379,6 +379,57 @@ export function renameEnumValue(def: EnumDef, valueCode: Code, label: string): R
   return ok({ ...def, values: def.values.map((x) => (x.code === valueCode ? { ...x, label } : x)) });
 }
 
+/** 편집 화면 한 벌 — 이름 · 주석 · **최종** 값 목록. 배열 순서 = 저장 순서, `code` 가 없으면 새 값, 목록에 없는 기존 값은 빠진다. */
+export interface EnumRevision {
+  label: string;
+  description: string;
+  values: readonly { code?: Code; label: string }[];
+}
+
+export interface RevisedEnum {
+  def: EnumDef;
+  /** 빠진 기존 값 코드 (원래 순서) — 값 행 purge · 영향 확인은 서비스 몫. */
+  removed: Code[];
+}
+
+/**
+ * 열거형변수 편집 저장 (점검 2026-09-27 H2 ① · D1) — 한 단계씩(개명 → 추가 → 삭제) 검사하면 값 이름 A↔B 맞바꾸기나
+ * 다른 값이 비우는 이름 받기가 중간 상태에서 「중복」으로 거부된다. 여기서는 **최종 상태만** 한 번에 본다 —
+ * 이름 비움 · 중복(`enumValueLabelKey`) · 모르는 코드 · 같은 코드 두 번. 채번은 검사를 다 통과한 뒤 (거부된 입력이 순번을 태우지 않게).
+ */
+export async function reviseEnum(
+  def: EnumDef,
+  revision: EnumRevision,
+  ctx: { existingEnumLabels: readonly string[]; nextSeq: NextSeq },
+): Promise<Result<RevisedEnum>> {
+  const labelOk = checkEnumLabel(revision.label, ctx.existingEnumLabels, def.label);
+  if (!labelOk.ok) return labelOk as Result<RevisedEnum>;
+  const known = new Map(def.values.map((v) => [v.code, v]));
+  const kept = new Set<Code>();
+  const labels = new Set<string>();
+  for (const v of revision.values) {
+    const issues = checkLabel(v.label, "enum 값");
+    if (issues.length > 0) return invalid(issues);
+    if (v.code !== undefined) {
+      if (!known.has(v.code)) return reject({ reason: "notFound", what: `enum 값 ${v.code}` });
+      if (kept.has(v.code)) return invalid([issue("typeMismatch", `enum 값 ${v.code} 이(가) 두 번 있습니다`)]);
+      kept.add(v.code);
+    }
+    const key = enumValueLabelKey(v.label);
+    if (labels.has(key)) return reject({ reason: "duplicate", what: `enum 값 표시명 「${v.label}」` });
+    labels.add(key);
+  }
+  const values: EnumValueDef[] = [];
+  for (const [order, v] of revision.values.entries()) {
+    const code = v.code ?? (await allocateCode("enumValue", def.code, ctx.nextSeq));
+    values.push({ ...known.get(code), code, label: v.label, order });
+  }
+  return ok({
+    def: { ...def, label: revision.label, description: revision.description, values },
+    removed: def.values.filter((v) => !kept.has(v.code)).map((v) => v.code),
+  });
+}
+
 /** 값 순서 변경 (D-P1-8) — 전체 값 코드를 새 순서로. */
 export function reorderEnumValues(def: EnumDef, order: readonly Code[]): Result<EnumDef> {
   const have = def.values.map((v) => v.code).sort();
