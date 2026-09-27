@@ -129,8 +129,11 @@ export function caretFromPoint(x: number, y: number): { node: globalThis.Node; o
   return range ? { node: range.startContainer, offset: range.startOffset } : undefined;
 }
 
-/** 편집기 DOM → 조각 목록. 칩은 `data-chip`, 그 밖의 요소는 속 글만 읽는다. `caret` 을 주면 그 자리에 커서 조각. */
-export function tokensOf(root: HTMLElement, caret?: { node: globalThis.Node; offset: number }): Token[] {
+/**
+ * 편집기 DOM → 조각 목록. 칩은 `data-chip`, 그 밖의 요소는 속 글만 읽는다. `caret` 을 주면 그 자리에 커서 조각.
+ * `cutTo` 를 주면(같은 글자 노드 안의 끝 자리) 커서부터 거기까지의 글을 빼고 읽는다 — 고른 글을 칩으로 바꿀 때.
+ */
+export function tokensOf(root: HTMLElement, caret?: { node: globalThis.Node; offset: number }, cutTo?: number): Token[] {
   const out: Token[] = [];
   let placed = false;
   const put = () => {
@@ -147,7 +150,7 @@ export function tokensOf(root: HTMLElement, caret?: { node: globalThis.Node; off
         if (caret && caret.node === child) {
           out.push({ text: text.slice(0, caret.offset) });
           put();
-          out.push({ text: text.slice(caret.offset) });
+          out.push({ text: text.slice(cutTo !== undefined && cutTo > caret.offset ? cutTo : caret.offset) });
         } else out.push({ text });
         return;
       }
@@ -268,7 +271,7 @@ function InlineEditor({ at, nodes, ctx, owner, focusKey, placeholder }: { at: In
             data-chip={node.id}
             data-node={node.id}
             className={`${className} ts-chip-inline${state.includes("notTaken") ? " has-dim" : ""}${ctx.flashId === node.id ? " is-flash" : ""}`}
-            title={`${what ?? CHIP_WHAT[node.kind] ?? node.kind} — 눌러서 고치기 · 오른쪽 클릭으로 풀기 · 삭제 (${title})`}
+            title={`${what ?? CHIP_WHAT[node.kind] ?? node.kind} — 눌러서 고치기 · 풀기 · 삭제는 툴바 (${title})`}
             onClick={(event) => {
               event.preventDefault();
               if (node.kind !== "structKey" && node.kind !== "inlineFor") edit.popup({ kind: "editChip", nodeId: node.id }, anchorOf(event.currentTarget));

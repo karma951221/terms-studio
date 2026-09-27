@@ -28,10 +28,11 @@ export interface GeneralTabProps {
   baseCoverages: ProductCoverage[];
   /** 기본계약 지정 select 는 상품담보 전부를 고를 수 있다. */
   productCoverages: ProductCoverage[];
-  coverages: { id: Id; name: string }[];
+  coverages: { id: Id; code?: string; name: string }[];
   attributeKinds: AttributeKind[];
   plans: ProductPlan[];
-  coverageName: Map<Id, string>;
+  /** 탑재 표의 「담보 검색」 `?mq=` · 페이지 `?mpage=`. */
+  mountSearch: { query?: string; page?: string };
   wouldBeName: (pc: ProductCoverage) => string;
   baseCheck: Result<BaseContractCheck[]>;
   overrides: ClauseOptionOverride[];
@@ -68,7 +69,7 @@ export function GeneralTab({
   coverages,
   attributeKinds,
   plans,
-  coverageName,
+  mountSearch,
   wouldBeName,
   baseCheck,
   overrides,
@@ -137,7 +138,8 @@ export function GeneralTab({
         coverages={coverages}
         attributeKinds={attributeKinds}
         plans={plans}
-        coverageName={coverageName}
+        query={mountSearch.query}
+        page={mountSearch.page}
         wouldBeName={wouldBeName}
         mountBlockedHint={baseCoverages.length > 0 ? "변경하려면 먼저 해제하세요 — 기본계약은 하나만 지정할 수 있다 (MVP)" : undefined}
         confirm={confirm}

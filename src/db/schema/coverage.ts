@@ -4,6 +4,7 @@
  * - 실체는 뼈대만: id · 관계(FK) · 순서(order) · 이름. 그 외 입력값은 공용 값 저장소(entity_values)에
  *   owner_kind = coverage | subCoverage | benefit 로 산다. 부착 관계도 entity_attachments.
  * - 형제 간 이름 중복 금지는 UQ(부모, name). 담보명은 마스터 전역 유일 (D-P2-2).
+ * - 담보코드 `COV000001` 은 시스템 채번(code_sequences kind `coverage`) · 불변 · 유일 (기능/담보 §3.1, 2026-09-27).
  * - 순서는 데이터 — order 0부터. 순서 변경은 트리 편집 액션이 전체를 다시 매긴다.
  * - 하위 삭제는 FK cascade. 값 행 연쇄 삭제는 서비스가 한다 (값 저장소에 FK 없음).
  * - 문면(담보약관 마스터)은 B3 document 영역 소유 — document_id 자리만 두고 FK 는 걸지 않는다.
@@ -22,6 +23,8 @@ const audit = {
 
 export const coverages = pgTable("coverages", {
   id: uuid("id").primaryKey().defaultRandom(),
+  /** 담보코드 `COV000001` … — 시스템 채번 · 등록 후 불변 · 유일. 마이그레이션 0015 가 기존 행을 생성 순으로 채웠다. */
+  code: text("code").notNull().unique(),
   /** 담보명 — 마스터 전역 유일. 뼈대 속성(스냅샷 비대상). */
   name: text("name").notNull().unique(),
   description: text("description").notNull().default(""),

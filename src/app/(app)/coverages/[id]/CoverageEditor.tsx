@@ -21,6 +21,8 @@ import { CoverageCards } from "./CoverageCards";
 
 export interface CoverageEditorProps {
   id: string;
+  /** 담보코드 `COV000001` — 시스템 채번 · 불변이라 편집 대상이 아니다. 머리 줄 메타에 보인다 (기능/담보 §4). */
+  code?: string;
   initial: CoverageEditData;
   /** 노드 키 → 그 레벨 마스터 값 폼 (ADR-0037: 레벨 하나에 폼 하나). */
   formByNode: Record<string, FormModel>;
@@ -36,7 +38,7 @@ export interface CoverageEditorProps {
 }
 
 export function CoverageEditor(props: CoverageEditorProps) {
-  const { id, initial, usageCount } = props;
+  const { id, code, initial, usageCount } = props;
   return (
     <EditShell
       initial={initial}
@@ -48,7 +50,16 @@ export function CoverageEditor(props: CoverageEditorProps) {
       deleteLabel={`${initial.label} 삭제`}
       deleteTooltip={`담보 ${initial.label} 삭제`}
       deleteSuccessHref="/coverages"
-      headerMeta={<span className="ts-count">탑재 상품담보 <b>{usageCount}</b></span>}
+      headerMeta={
+        <span className="ts-count">
+          {code && (
+            <>
+              <code title="담보코드 — 시스템 채번 · 바뀌지 않는다">{code}</code> ·{" "}
+            </>
+          )}
+          탑재 상품담보 <b>{usageCount}</b>
+        </span>
+      }
     >
       <CoverageCards
         coverageKey={encodeNodeKey("coverage", id)}

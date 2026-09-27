@@ -6,7 +6,7 @@
  * - 가운데는 **조 하나**다(`ArticleBody`) — 조 위에 소속 관 머리 줄, 조를 감싼 블록 조건이 있으면 그 띠와 머리 줄.
  *   약관 전체를 이어 읽는 것(`DocBody`)은 더보기 › 미리보기와 사전평가 결과 조문만 쓴다.
  * - 읽기 모드에는 조작이 없다. 편집 모드에서는 **그 자리가 편집기**다 — 제목 · 문장은 그 자리에서 치고, 칩 · 조건 머리는 누르면
- *   바로 아래에 팝업, 넣기 · 이동 · 복제 · 삭제는 오른쪽 클릭 메뉴(자리는 `data-*` 로 읽는다). 블록마다 붙던 버튼 줄은 없다.
+ *   바로 아래에 팝업, 넣기 · 이동 · 복제 · 삭제 · 조건식은 본문 위 툴바(자리는 `data-*` 로 읽는다, 오른쪽 클릭 메뉴는 지름길). 블록마다 붙던 버튼 줄은 없다.
  * - 조건 분기는 배경색 없이 왼쪽 띠 + 머리 줄(IF / ELIF / ELSE)로만 표시한다.
  * - 노드 id·8자리 접두를 화면에 내보내지 않는다 (리뷰 #25).
  */
@@ -42,7 +42,7 @@ function CondHead({ ctx, branch, label }: { ctx: DocCtx; branch: BlockBranch; la
       type="button"
       className="ts-doc-cond-head ts-doc-cond-btn"
       data-cond-head={branch.id}
-      title={`조건 고치기 — ${full} · 오른쪽 클릭으로 가지 추가 · 풀기 · 삭제`}
+      title={`조건 고치기 — ${full} · 가지 추가 · 풀기 · 삭제는 툴바`}
       onClick={(e) => edit.popup({ kind: "when", branchId: branch.id }, anchorOf(e.currentTarget))}
     >
       {body}
@@ -164,7 +164,7 @@ function CondBlock({ node, ctx, as }: { node: Node & { kind: "condBlock" }; ctx:
 }
 
 /**
- * 항·호·목·조건 블록 — 자리에 맞는 태그로. `data-block` 은 오른쪽 클릭 메뉴가 자리를 읽는 표지다.
+ * 항·호·목·조건 블록 — 자리에 맞는 태그로. `data-block` 은 툴바 · 오른쪽 클릭 메뉴가 자리를 읽는 표지다(`place.ts`).
  * 공용조항 화면도 이것으로 본문(항 목록)을 그린다 — 조 머리 없이 (기능/공용조항 §4.3).
  */
 export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: DocCtx; inList?: boolean }): ReactNode {
@@ -316,7 +316,7 @@ function Article({ node, ctx }: { node: ArticleNode; ctx: DocCtx }) {
         {label}(<EditableText value={node.title} editing={!!ctx.edit} label="조 제목" onCommit={(title) => ctx.edit?.setTitle(node.id, title)} />)
       </h3>
       {node.children.length === 0 && ctx.edit ? (
-        <p className="ts-muted ts-doc-hint">항이 없다 — 조 제목을 오른쪽 클릭해 「항 추가」.</p>
+        <p className="ts-muted ts-doc-hint">항이 없다 — 툴바의 「항」으로 넣는다.</p>
       ) : (
         <Block nodes={node.children} ctx={ctx} />
       )}

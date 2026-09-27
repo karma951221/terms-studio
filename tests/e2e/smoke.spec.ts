@@ -46,7 +46,7 @@ test(
     for (const name of ["기본정보", "보통약관", "특별약관"]) await expect(tabs.getByRole("link", { name })).toBeVisible();
     await tabs.getByRole("link", { name: "특별약관" }).click();
     await expect(page).toHaveURL(/\?tab=special$/);
-    await expect(page.getByRole("heading", { name: /^특약 담보 \d+건$/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "특별약관", exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "더보기", exact: true }).click();
     await page.getByRole("menuitem", { name: "미리보기", exact: true }).click();

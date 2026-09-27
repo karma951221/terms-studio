@@ -8,6 +8,9 @@ import type { MasterForm } from "@/domain/master";
 import { buildForm, formReducer, initFormState } from "@/forms";
 
 import {
+  attributeComboLabel,
+  filterMountRows,
+  mountRows,
   articleCount,
   basicDraftDirty,
   type BasicDraft,
@@ -360,5 +363,36 @@ describe("products lib — 기본정보 초안의 변경 여부 (basicDraftDirty
     const reverted = formReducer(typed, { type: "edit", path, draft: "" });
     expect(basicDraftDirty(baseline(), { ...baseline(), forms: { o1: reverted } })).toBe(false);
     expect(basicDraftDirty(baseline(), { ...baseline(), combinations: [["o3"], ["o2", "o1"]] })).toBe(false);
+  });
+});
+
+describe("탑재 표 — 담보속성 조합 · 담보 검색 (기능/상품 §4.6)", () => {
+  const kinds = [
+    { code: "A0001", label: "갱신유형", order: 0, values: [{ code: "V02", label: "갱신형", order: 1, fragment: "갱신형" }] },
+    { code: "A0002", label: "부가유형", order: 1, values: [{ code: "V02", label: "추가", order: 1, fragment: "추가" }] },
+  ] as AttributeKind[];
+
+  it("attributeComboLabel — 종류 order 순 `종류=값` · 없으면 —", () => {
+    expect(attributeComboLabel([{ kindCode: "A0002", valueCode: "V02" }, { kindCode: "A0001", valueCode: "V02" }], kinds)).toBe("갱신유형=갱신형 · 부가유형=추가");
+    expect(attributeComboLabel([], kinds)).toBe("—");
+    // 없어진 종류 · 값은 코드 그대로 (지어내지 않는다)
+    expect(attributeComboLabel([{ kindCode: "A0009", valueCode: "V09" }], kinds)).toBe("A0009=V09");
+  });
+
+  it("mountRows · filterMountRows — 코드 · 상품담보명 · 담보명 · 속성, 「—」는 검색 대상이 아니다", () => {
+    const rows = mountRows(
+      [
+        { id: "pc1", productId: "p", coverageId: "c1", name: "사망 추가", attributes: [{ kindCode: "A0002", valueCode: "V02" }] },
+        { id: "pc2", productId: "p", coverageId: "gone", name: "고아", attributes: [] },
+      ],
+      [{ id: "c1", code: "COV000001", name: "일반상해사망보장" }],
+      kinds,
+    );
+    expect(rows.map((r) => [r.coverageCode, r.attributes])).toEqual([["COV000001", "부가유형=추가"], [undefined, "—"]]);
+    expect(filterMountRows(rows, "").map((r) => r.pc.id)).toEqual(["pc1", "pc2"]);
+    expect(filterMountRows(rows, "COV000001").map((r) => r.pc.id)).toEqual(["pc1"]);
+    expect(filterMountRows(rows, "일반상해").map((r) => r.pc.id)).toEqual(["pc1"]);
+    expect(filterMountRows(rows, "부가유형").map((r) => r.pc.id)).toEqual(["pc1"]);
+    expect(filterMountRows(rows, "—")).toEqual([]);
   });
 });

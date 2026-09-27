@@ -119,10 +119,10 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
       });
 
       // 탑재 — 기본계약 섹션 1 + 특약 섹션 4 (같은 담보 2벌은 부가유형으로 구별)
-      const mount = async (step: number, section: "기본계약 담보" | "특약 담보", coverage: string, addon?: "기본" | "추가") =>
+      const mount = async (step: number, section: "보통약관 기본계약" | "특별약관", coverage: string, addon?: "기본" | "추가") =>
         ev.action(`실물재현#1.${step}`, `${section}에 ${coverage}${addon ? `(${addon})` : ""} 를 탑재한다`, async () => {
           // 기본계약 절은 보통약관 탭, 특약 절은 특별약관 탭에 산다 (기능/상품 §3.8)
-          await page.goto(`${productUrl}?tab=${section === "기본계약 담보" ? "general" : "special"}`);
+          await page.goto(`${productUrl}?tab=${section === "보통약관 기본계약" ? "general" : "special"}`);
           const form = page.locator("form", { has: page.getByRole("button", { name: `${section}에 탑재` }) });
           await form.getByLabel("담보").selectOption({ label: coverage });
           if (addon) await form.getByLabel("부가유형").selectOption({ label: addon });
@@ -130,16 +130,17 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
           // 탑재는 새 상품담보의 값 화면으로 간다 — 다음 단계가 제 탭을 다시 연다
           await page.waitForURL(/\/coverages\/[0-9a-f-]+$/);
         });
-      await mount(7, "기본계약 담보", "일반상해80%이상후유장해");
-      await mount(8, "특약 담보", "일반상해사망보장", "기본");
-      await mount(9, "특약 담보", "일반상해사망보장", "추가");
-      await mount(10, "특약 담보", "일반상해80%이상후유장해 생활자금보장");
-      await mount(11, "특약 담보", "골절(치아파절 제외)진단비Ⅱ보장");
+      await mount(7, "보통약관 기본계약", "일반상해80%이상후유장해");
+      await mount(8, "특별약관", "일반상해사망보장", "기본");
+      await mount(9, "특별약관", "일반상해사망보장", "추가");
+      await mount(10, "특별약관", "일반상해80%이상후유장해 생활자금보장");
+      await mount(11, "특별약관", "골절(치아파절 제외)진단비Ⅱ보장");
       // 기본계약 섹션에 탑재하면 곧 기본계약 지정이다 — 담보명 값은 스냅샷으로 복사돼 있다
+      // 탑재 표는 상품담보 한 건 = 한 행 · 개수는 페이저 「총 N건」 (기능/상품 §4.6)
       await page.goto(`${productUrl}?tab=general`);
-      await expect(page.getByRole("heading", { name: "기본계약 담보 1건" })).toBeVisible();
+      await expect(page.getByRole("region", { name: "보통약관 기본계약", exact: true }).locator("tbody tr")).toHaveCount(1);
       await page.goto(`${productUrl}?tab=special`);
-      await expect(page.getByRole("heading", { name: "특약 담보 4건" })).toBeVisible();
+      await expect(page.getByRole("region", { name: "특별약관", exact: true }).locator("tbody tr")).toHaveCount(4);
 
       await ev.action("실물재현#1.12", "특약 그룹을 만든다 — 특별약관 탭", async () => {
         // 그룹 제목은 입력칸 값이라 hasText 로는 못 찾는다: 배치 버튼의 접근성 이름으로 폼을 잡는다

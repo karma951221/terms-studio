@@ -347,11 +347,11 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
               <>
                 <div className="ts-form-row">
                   <span className="ts-form-label">조건식</span>
-                  <ConditionEditor name="when" context={env.condition} />
+                  <ConditionEditor name="when" context={env.condition} startOpen />
                 </div>
                 <div className="ts-form-row">
                   <label htmlFor="pop-then">참일 때</label>
-                  <input id="pop-then" type="text" name="thenText" placeholder="조건이 맞을 때 문장" />
+                  <input id="pop-then" type="text" name="thenText" placeholder="조건이 맞을 때 문장" defaultValue={spec.prefill} />
                 </div>
                 <div className="ts-form-row">
                   <label htmlFor="pop-else">아닐 때</label>

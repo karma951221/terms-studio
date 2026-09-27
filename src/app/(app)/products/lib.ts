@@ -1,10 +1,11 @@
 /** 상품 화면·서버 액션이 함께 쓰는 순수 함수 — 입력 파싱 · 탭 좌표 · 보통약관의 관 묶기 · 조 수. `*.test.ts` 로 검증. */
 import type { OmissionPairKind, OmissionRecord, RenderedDoc } from "@/domain/assembly";
 import { indexTree, type ArticleNode, type CondBlockNode, type DocumentNode, type Node, type NodeNumber } from "@/domain/document";
-import { planCombinationKey, type AttributeKind, type AttributeSelection, type ClauseOptionSelection } from "@/domain/product";
+import { findAttributeValue, normalizeSelections, planCombinationKey, type AttributeKind, type AttributeSelection, type ClauseOptionSelection, type ProductCoverage } from "@/domain/product";
 import type { Code, Id, Issue } from "@/domain/types";
 import type { FormState } from "@/forms";
 import { isDirty } from "@/app/_lib/edit";
+import { includesQuery } from "@/app/_lib/list";
 
 export function str(fd: FormData, key: string): string {
   return String(fd.get(key) ?? "").trim();
@@ -331,4 +332,49 @@ export function excludedClauseLabel(tree: DocumentNode | undefined, nodeId: Id, 
   if (!node || node.kind !== "clauseBlockRef") return nodeId;
   const label = clauseLabelOf(node.clauseCode);
   return `공용조항 ${node.clauseCode}${label ? `(${label})` : ""}`;
+}
+
+// ───────────────────────────── 탑재 표 — 보통약관 기본계약 · 특별약관 (기능/상품 §4.6) ─────────────────────────────
+
+/**
+ * 담보속성 조합의 표시 — `갱신유형=갱신형 · 부가유형=추가` (종류 order 순). 붙인 속성이 없으면 「—」.
+ * 없어진 종류 · 유효값은 코드를 그대로 보인다 — 화면이 이름을 지어내지 않는다.
+ */
+export function attributeComboLabel(selections: readonly AttributeSelection[], kinds: readonly AttributeKind[]): string {
+  const parts = normalizeSelections(selections, kinds).map((s) => {
+    const kind = kinds.find((k) => k.code === s.kindCode);
+    const value = findAttributeValue(kinds, s.kindCode, s.valueCode);
+    return `${kind?.label ?? s.kindCode}=${value?.label ?? s.valueCode}`;
+  });
+  return parts.length > 0 ? parts.join(" · ") : "—";
+}
+
+/** 탑재 표의 한 행 = 상품담보 하나 — 담보코드 · 담보속성 조합 · 상품담보명. */
+export interface MountRow {
+  pc: ProductCoverage;
+  /** 담보코드 `COV000001` — 담보가 없어졌으면 undefined. */
+  coverageCode?: string;
+  /** 담보 마스터 이름 — 담보가 없어졌으면 undefined. */
+  coverageName?: string;
+  /** `attributeComboLabel` 결과. */
+  attributes: string;
+}
+
+export function mountRows(
+  items: readonly ProductCoverage[],
+  coverages: readonly { id: Id; code?: string; name: string }[],
+  kinds: readonly AttributeKind[],
+): MountRow[] {
+  const byId = new Map(coverages.map((c) => [c.id, c]));
+  return items.map((pc) => {
+    const coverage = byId.get(pc.coverageId);
+    return { pc, coverageCode: coverage?.code, coverageName: coverage?.name, attributes: attributeComboLabel(pc.attributes, kinds) };
+  });
+}
+
+/** 「담보 검색」 — 담보코드 · 상품담보명 · 담보명 · 담보속성 값(「갱신유형=갱신형」의 어느 조각이든). 빈 검색어면 전부. */
+export function filterMountRows(rows: readonly MountRow[], query: string): MountRow[] {
+  return rows.filter((row) =>
+    includesQuery(query, [row.coverageCode ?? "", row.pc.name, row.coverageName ?? "", row.attributes === "—" ? "" : row.attributes]),
+  );
 }

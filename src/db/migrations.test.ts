@@ -165,3 +165,43 @@ describe("0013_discriminator_description_doc_refs", () => {
     expect(await read()).toEqual(after);
   });
 });
+
+describe("0015_coverage_code", () => {
+  const upTo14 = async () => {
+    for (let idx = 6; idx <= 14; idx++) for (const s of statementsOf(tagOf(idx))) await client.exec(s);
+  };
+  const apply0015 = async () =>
+    client.transaction(async (tx) => {
+      for (const s of statementsOf(tagOf(15))) await tx.exec(s);
+    });
+  const putCoverage = (id: string, name: string, createdAt: string) =>
+    client.query(`INSERT INTO coverages (id, name, created_at) VALUES ($1, $2, $3)`, [id, name, createdAt]);
+
+  it("기존 담보를 만든 순서대로 COV000001 부터 채우고, 순번은 그 다음에서 잇는다 (이름 · id 순이 아니다)", async () => {
+    await upTo14();
+    // 이름 가나다순 · id 순과 만든 순서를 일부러 어긋나게 둔다.
+    await putCoverage("33333333-3333-4333-8333-333333333333", "가 담보", "2026-09-03T00:00:00Z");
+    await putCoverage("11111111-1111-4111-8111-111111111111", "다 담보", "2026-09-01T00:00:00Z");
+    await putCoverage("22222222-2222-4222-8222-222222222222", "나 담보", "2026-09-02T00:00:00Z");
+    await apply0015();
+
+    const rows = (await client.query<{ name: string; code: string }>(`SELECT name, code FROM coverages ORDER BY code`)).rows;
+    expect(rows).toEqual([
+      { name: "다 담보", code: "COV000001" },
+      { name: "나 담보", code: "COV000002" },
+      { name: "가 담보", code: "COV000003" },
+    ]);
+    const seq = await client.query<{ next: number }>(`SELECT next FROM code_sequences WHERE kind = 'coverage' AND scope = ''`);
+    expect(seq.rows[0].next).toBe(4);
+  });
+
+  it("빈 DB 에도 적용되고 순번은 1 에서 시작한다 · 코드는 NOT NULL · 유일", async () => {
+    await upTo14();
+    await apply0015();
+    const seq = await client.query<{ next: number }>(`SELECT next FROM code_sequences WHERE kind = 'coverage'`);
+    expect(seq.rows[0].next).toBe(1);
+    await expect(client.query(`INSERT INTO coverages (name) VALUES ('코드 없음')`)).rejects.toThrow();
+    await client.query(`INSERT INTO coverages (name, code) VALUES ('하나', 'COV000001')`);
+    await expect(client.query(`INSERT INTO coverages (name, code) VALUES ('둘', 'COV000001')`)).rejects.toThrow();
+  });
+});

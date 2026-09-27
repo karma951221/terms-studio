@@ -13,7 +13,8 @@
  * 가운데 = 그 자리 편집 (2026-09-27):
  * - 가운데에는 **조 하나**만 보인다 — 목차에서 고른 조, 처음은 제1조. 약관 전체 이어 읽기는 더보기 › 미리보기.
  * - 조 제목 · 관 제목 · 문장은 그 자리에서 고치고, 초점이 떠나면 편집본에 들어간다(「적용」 단계 없음).
- * - 칩 · 조건 머리는 누르면 바로 아래에 팝업. 넣기 · 이동 · 복제 · 삭제는 **오른쪽 클릭 메뉴**가 유일한 입구다(편집 모드만).
+ * - 칩 · 조건 머리는 누르면 바로 아래에 팝업. 넣기 · 이동 · 복제 · 삭제 · 조건식은 본문 위 **툴바**가 입구다 — 가운데서 마지막으로
+ *   누르거나 초점이 간 자리(`place`)로 버튼이 켜지고 꺼진다. 오른쪽 클릭 메뉴는 같은 목록의 지름길(조건 넣기는 툴바에만).
  * - 화면은 100vh 에 고정되고 목차 · 가운데 · 우측 패널이 각자 스크롤한다.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type MouseEvent, type ReactNode } from "react";
@@ -51,7 +52,6 @@ import {
   type DraftState,
   type EditEnv,
   type EditOp,
-  type InlineAt,
   type ReferenceTarget,
 } from "@/domain/document";
 import type { Code, Coordinate, Id, Impact, Issue } from "@/domain/types";
@@ -60,12 +60,15 @@ import { loadGeneralForEditAction, saveDocumentEditAction, startDocumentEditActi
 import { docListHref } from "../../lib";
 import { refLabelOf } from "./condition/display";
 import type { ConditionContext } from "./condition/types";
-import { decodeAt, type Anchor, type CellAt, type DocCtx, type DocMode, type EditHandlers } from "./ctx";
+import { anchorOf, type Anchor, type CellAt, type DocCtx, type DocMode, type EditHandlers } from "./ctx";
 import { ArticleBody, DocBody } from "./DocBody";
 import { afterOf, emptyNode, inlineListAt, pasteGridOps } from "./editOps";
 import { caretFromPoint, tokensOf } from "./Inline";
 import { identityRuns, runsFromTokens, sameRuns, type Token } from "./inlineRuns";
-import { articleMenu, blockMenu, chipMenu, condMenu, documentMenu, inlineInsertItems, sectionMenu, type MenuEnv, type MenuItem, type MenuSections, type PopupSpec } from "./menus";
+import { placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
+import { placeOf, readInline } from "./place";
+import { EditorToolbar } from "./EditorToolbar";
+import { DOCUMENT_TOOLS, allTools, condItem, itemsFor, type ToolId } from "./tools";
 import { PopupHost, type PopupEnv } from "./Popups";
 import { ContextMenu, Popover } from "./Popover";
 import { RemoveCard } from "./RemoveCard";
@@ -175,6 +178,8 @@ export function DocumentEditor(props: EditorProps) {
   const [art, setArt] = useState<Id | undefined>(() => (props.initialNode ? articleOfNode(doc.tree, props.initialNode) : undefined));
   const [flashId, setFlashId] = useState<Id | undefined>(props.initialNode);
   const [menu, setMenu] = useState<{ x: number; y: number; sections: MenuSections }>();
+  /** 툴바 · 오른쪽 클릭이 짓는 자리 — 가운데서 마지막으로 누르거나 초점이 간 곳. 없거나 지워졌으면 지금 조. */
+  const [place, setPlace] = useState<Place>();
   const [pop, setPop] = useState<{ spec: PopupSpec; anchor: Anchor }>();
   const [removing, setRemoving] = useState<{ nodeId: Id; anchor: Anchor }>();
   const [activeCell, setActiveCell] = useState<CellAt>();
@@ -448,22 +453,16 @@ export function DocumentEditor(props: EditorProps) {
     }
   };
 
-  // ── 오른쪽 클릭 메뉴 — 누른 자리(data-*)로 메뉴를 짓는다 ──
+  // ── 툴바 · 오른쪽 클릭 메뉴 — 자리(data-*)로 목록을 짓는다 (menus.ts `placeMenu`) ──
   const menuEnv = (): MenuEnv => {
     const t = latest();
     return { tree: t, ix: indexTree(t), docKind: doc.kind, newId: randomIds };
   };
 
-  const inlineSections = (env: MenuEnv, at: InlineAt, tokens: Token[]): MenuSections => {
-    if ("tableId" in at) {
-      const t = env.ix.nodes.get(at.tableId)?.node;
-      const template = t?.kind === "table" && t.repeat !== undefined && !t.rows[at.row]?.header ? repeatLevels(t) : undefined;
-      return [inlineInsertItems(at, tokens, { inInlineCond: false, ...(template ? { structLevels: template } : {}) }), ...blockMenu(env, at.tableId)];
-    }
-    const branch = env.ix.branches.get(at.parentId);
-    if (branch) return [inlineInsertItems(at, tokens, { inInlineCond: env.ix.nodes.get(branch.ownerId)?.node.kind === "inlineCond" })];
-    const owner = env.ix.nodes.get(at.parentId);
-    return [inlineInsertItems(at, tokens, { inInlineCond: owner?.inInlineCond ?? false }), ...(owner ? blockMenu(env, at.parentId) : [])];
+  /** 지금 자리 — 고른 자리가 없거나 편집본에서 사라졌으면 가운데 조(없으면 문서). */
+  const placeIn = (ix: MenuEnv["ix"]): Place => {
+    if (place && placeExists(ix, place)) return place;
+    return currentArticleId && ix.nodes.has(currentArticleId) ? { kind: "article", id: currentArticleId } : { kind: "document" };
   };
 
   const onContextMenu = (event: MouseEvent<HTMLElement>) => {
@@ -472,39 +471,87 @@ export function DocumentEditor(props: EditorProps) {
     event.stopPropagation();
     const target = event.target as HTMLElement;
     const env = menuEnv();
-    const data = (selector: string, key: string): string | undefined => (target.closest(selector) as HTMLElement | null)?.dataset[key];
-    let sections: MenuSections;
-    const chip = data("[data-chip]", "chip");
-    const head = data("[data-cond-head]", "condHead");
-    const articleTitle = data("[data-article-title]", "articleTitle");
-    const sectionTitle = data("[data-section-title]", "sectionTitle");
-    const inline = target.closest("[data-inline]") as HTMLElement | null;
-    const block = data("[data-block]", "block");
-    const article = data("[data-article]", "article");
-    if (chip) sections = chipMenu(env, chip);
-    else if (head) sections = condMenu(env, head);
-    else if (articleTitle) sections = articleMenu(env, articleTitle);
-    else if (sectionTitle) sections = sectionMenu(env, sectionTitle);
-    else if (inline?.dataset.inline) {
-      const at = decodeAt(inline.dataset.inline);
+    const at = placeOf(target) ?? { kind: "document" as const };
+    let tokens: Token[] = [];
+    if (at.kind === "inline") {
+      const inline = target.closest("[data-inline]") as HTMLElement;
       const caret = caretFromPoint(event.clientX, event.clientY);
-      const tokens = tokensOf(inline, caret && inline.contains(caret.node) ? caret : undefined);
-      sections = at ? inlineSections(env, at, tokens) : [];
-    } else if (block) sections = blockMenu(env, block);
-    else if (article) sections = articleMenu(env, article);
-    else sections = documentMenu(env);
+      tokens = tokensOf(inline, caret && inline.contains(caret.node) ? caret : undefined);
+    }
+    if (at.kind !== "document") setPlace(at);
     menuAt.current = { x: event.clientX, y: event.clientY + 4, top: event.clientY };
-    setMenu({ x: event.clientX, y: event.clientY, sections });
+    setMenu({ x: event.clientX, y: event.clientY, sections: placeMenu(env, at, tokens) });
   };
 
-  const runMenu = (item: MenuItem) => {
+  /** 툴바 버튼 — 누르는 순간의 편집본 · 문장 칸 조각(커서 · 고른 글)으로 목록을 다시 짓고 그 버튼의 항목을 돌린다. */
+  const runTool = (toolId: ToolId, button: HTMLElement) => {
+    const env = menuEnv();
+    let at = placeIn(env.ix);
+    let tokens: Token[] = [];
+    let cut: string | undefined;
+    if (at.kind === "inline") {
+      const read = bodyRef.current ? readInline(bodyRef.current, at) : undefined;
+      if (read) ({ tokens, cut } = read);
+      // 문장 칸이 화면에 없으면 그 주인 블록 자리로 — 조각 없이 문장에 넣으면 문장이 지워진다
+      else at = "tableId" in at.at ? { kind: "block", id: at.at.tableId } : env.ix.nodes.has(at.at.parentId) ? { kind: "block", id: at.at.parentId } : { kind: "head", id: at.at.parentId };
+    }
+    const sections = placeMenu(env, at, tokens);
+    const anchor = anchorOf(button);
+    menuAt.current = anchor;
+    if (toolId === "cond") {
+      const item = condItem(sections, cut !== undefined);
+      if (!item) return;
+      const a = item.action;
+      runMenu(a.do === "popup" && a.popup.kind === "insertInline" && cut !== undefined ? { ...item, action: { do: "popup", popup: { ...a.popup, prefill: cut } } } : item, anchor);
+      return;
+    }
+    const tool = allTools(DOCUMENT_TOOLS).find((t) => t.id === toolId);
+    const items = tool ? itemsFor(tool, sections).filter((i) => !i.disabled && !i.refusal) : [];
+    if (items.length === 0) return;
+    if (tool?.multi && items.length > 1) {
+      setMenu({ x: anchor.x, y: anchor.y, sections: [items] });
+      return;
+    }
+    // 바로 적용하는 조작은 쓰던 문장을 먼저 편집본에 넣는다(초점이 떠나며 적용) — 복제 · 이동이 쓰던 글을 두고 가지 않게
+    if (items[0].action.do !== "popup") (document.activeElement as HTMLElement | null)?.blur?.();
+    runMenu(items[0], anchor);
+  };
+
+  /** 툴바 끝의 「자리 — …」 글자. */
+  const placeWords = (p: Place): string => {
+    const num = (id: Id) => numbers.get(id)?.label;
+    switch (p.kind) {
+      case "document":
+        return "문서";
+      case "chip":
+        return "칩";
+      case "head":
+        return "조건 가지";
+      case "article":
+      case "articleTitle":
+        return num(p.id) ?? "조";
+      case "sectionTitle":
+        return num(p.id) ?? "관";
+      case "block": {
+        const kind = index.nodes.get(p.id)?.node.kind;
+        return `${["paragraph", "item", "subitem"].includes(kind ?? "") ? `${num(p.id) ?? ""} ` : ""}${NODE_WHAT[kind ?? ""] ?? "블록"}`.trim();
+      }
+      case "inline": {
+        if ("tableId" in p.at) return `표 ${p.at.row + 1}행 ${p.at.col + 1}열`;
+        const kind = index.nodes.get(p.at.parentId)?.node.kind;
+        return kind ? `${num(p.at.parentId) ?? ""} ${NODE_WHAT[kind] ?? ""} 문장`.trim() : "조건 가지 문장";
+      }
+    }
+  };
+
+  const runMenu = (item: MenuItem, anchor: Anchor = menuAt.current) => {
     const a = item.action;
     if (a.do === "popup") {
-      setPop({ spec: a.popup, anchor: menuAt.current });
+      setPop({ spec: a.popup, anchor });
       return;
     }
     if (a.do === "remove") {
-      setRemoving({ nodeId: a.nodeId, anchor: menuAt.current });
+      setRemoving({ nodeId: a.nodeId, anchor });
       return;
     }
     const ops = typeof a.ops === "function" ? a.ops(latest()) : a.ops;
@@ -512,7 +559,10 @@ export function DocumentEditor(props: EditorProps) {
     const recorded = applyRecorded(ops);
     if (!recorded) return;
     if (a.focus) setFocusRequest(a.focus);
-    if (a.goArticle) setArt(a.goArticle);
+    if (a.goArticle) {
+      setArt(a.goArticle);
+      setPlace({ kind: "article", id: a.goArticle });
+    }
     if (a.goDuplicate) {
       const dup = recorded.find((op) => op.type === "duplicate");
       const copyId = dup && dup.type === "duplicate" ? dup.ids?.[0] : undefined;
@@ -652,6 +702,9 @@ export function DocumentEditor(props: EditorProps) {
     go,
   };
 
+  const toolbarPlace = placeIn(index);
+  const toolbarSections = mode === "edit" ? placeMenu({ tree, ix: index, docKind: doc.kind, newId: randomIds }, toolbarPlace) : [];
+
   const popAt = (rect: DOMRect): Anchor => ({ x: rect.left, y: rect.bottom, top: rect.top });
   const moreItems: MoreMenuItem[] =
     mode === "edit"
@@ -716,7 +769,6 @@ export function DocumentEditor(props: EditorProps) {
                 "편집 중"
               )}
             </span>
-            <span className="ts-l3-hint">오른쪽 클릭으로 추가 · 이동</span>
           </>
         )}
         <span className="ts-l3-bar-actions">
@@ -761,6 +813,7 @@ export function DocumentEditor(props: EditorProps) {
         {...(currentArticleId ? { currentArticleId } : {})}
         onPick={(id) => {
           setArt(id);
+          setPlace({ kind: "article", id });
           setFlashId(undefined);
           setActiveCell(undefined);
         }}
@@ -771,10 +824,20 @@ export function DocumentEditor(props: EditorProps) {
         ref={bodyRef}
         onContextMenu={onContextMenu}
         onPointerDown={(e) => {
+          const target = e.target as HTMLElement;
+          // 툴바 · 셀 조작 줄은 자리를 바꾸지 않는다
+          if (target.closest(".ts-doc-toolbar, .ts-cell-bar")) return;
           // 표 밖을 누르면 셀 조작 줄을 닫는다
-          if (activeCell && !(e.target as HTMLElement).closest(".ts-doc-table, .ts-cell-bar")) setActiveCell(undefined);
+          if (activeCell && !target.closest(".ts-doc-table")) setActiveCell(undefined);
+          if (mode === "edit") setPlace(placeOf(target));
+        }}
+        onFocus={(e) => {
+          if (mode !== "edit") return;
+          const at = placeOf(e.target as HTMLElement);
+          if (at) setPlace(at);
         }}
       >
+        {mode === "edit" && <EditorToolbar groups={DOCUMENT_TOOLS} sections={toolbarSections} editing onRun={runTool} where={placeWords(toolbarPlace)} />}
         {conflict && (
           <div className="ts-error-banner" role="alert">
             <p>{conflict}</p>
@@ -808,7 +871,7 @@ export function DocumentEditor(props: EditorProps) {
             <p className="ts-empty-what">아직 조가 하나도 없다 — 이 템플릿은 조립해도 아무것도 만들지 않는다.</p>
             <p className="ts-empty-example">예: 제1조(보험금의 지급사유) · 제2조(보험금을 지급하지 않는 사유)</p>
             <p className="ts-empty-action">
-              {mode === "edit" ? "여기를 오른쪽 클릭해 「조 추가」 · 「관 추가」로 시작한다. 다 쓰면 「저장」." : "위 바의 「편집」을 누르고, 본문을 오른쪽 클릭해 조를 넣는다. 다 쓰면 「저장」."}
+              {mode === "edit" ? "툴바의 「조」 · 「관」으로 시작한다. 다 쓰면 「저장」." : "위 바의 「편집」을 누르고, 툴바의 「조」로 조를 넣는다. 다 쓰면 「저장」."}
             </p>
           </div>
         )}

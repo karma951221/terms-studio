@@ -18,10 +18,11 @@ export interface SpecialTabProps {
   productId: Id;
   /** 특약 절의 상품담보 — 탑재 표 · 탑재 폼. */
   specialCoverages: ProductCoverage[];
-  coverages: { id: Id; name: string }[];
+  coverages: { id: Id; code?: string; name: string }[];
   attributeKinds: AttributeKind[];
   plans: ProductPlan[];
-  coverageName: Map<Id, string>;
+  /** 탑재 표의 「담보 검색」 `?mq=` · 페이지 `?mpage=`. */
+  mountSearch: { query?: string; page?: string };
   wouldBeName: (pc: ProductCoverage) => string;
   groups: SpecialGroupView[];
   unplaced: ProductCoverage[];
@@ -38,7 +39,7 @@ export interface SpecialTabProps {
  *
  * 미리보기는 탑재 표의 「미리보기」가 고른 한 건이다 (`?tab=special&pc=…`) — **보통약관 + 준용까지 계산된** 문면.
  */
-export function SpecialTab({ productId, specialCoverages, coverages, attributeKinds, plans, coverageName, wouldBeName, groups, unplaced, selected, preview, confirm, confirmNode }: SpecialTabProps) {
+export function SpecialTab({ productId, specialCoverages, coverages, attributeKinds, plans, mountSearch, wouldBeName, groups, unplaced, selected, preview, confirm, confirmNode }: SpecialTabProps) {
   const errorCount = preview?.ok ? preview.value.issues.filter((i) => i.severity !== "warning").length : 0;
 
   return (
@@ -50,7 +51,8 @@ export function SpecialTab({ productId, specialCoverages, coverages, attributeKi
         coverages={coverages}
         attributeKinds={attributeKinds}
         plans={plans}
-        coverageName={coverageName}
+        query={mountSearch.query}
+        page={mountSearch.page}
         wouldBeName={wouldBeName}
         previewPath={(pcId) => specialPreviewPath(productId, pcId)}
         selectedId={selected?.id}

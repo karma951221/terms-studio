@@ -2,7 +2,7 @@ import { eq, notInArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { discriminatorResultType } from "@/domain/catalog";
-import { planTypeOptions } from "@/domain/product";
+import { planCombinationLabel, planTypeOptions } from "@/domain/product";
 import type { Actor } from "@/domain/types";
 
 import { createTestDb, type TestDb } from "@/db/test-utils";
@@ -67,13 +67,27 @@ describe("seedAlphaPlus — 알파Plus 실물 시드 (PGlite)", () => {
     expect((await services.catalog.getEnum("E0001"))?.values.map((v) => v.label)).toEqual(["질병", "상해"]);
     expect((await services.catalog.getEnum("E0002"))?.values.map((v) => v.label)).toEqual(["해약환급금지급형", "해약환급금미지급형", "해약환급금미지급형(납입후50%)"]);
 
+    // 세목 — 종 2(납입면제) · 형 2(무저해지 E0002) · 조합 4 = 종 × 형 전부 (실물 상품, 2026-09-27)
     const options = await services.product.listPlanOptions(r.productId);
-    expect(options.map((option) => [option.axis, option.number, option.name, option.planTypeCode])).toEqual([
-      ["type", 1, "보험료 납입면제 미적용형", "waiver"],
-      ["type", 2, "보험료 납입면제형", "waiver"],
+    const byAxis = (axis: string) => options.filter((option) => option.axis === axis).map((option) => [option.number, option.name, option.planTypeCode]);
+    expect(byAxis("type")).toEqual([
+      [1, "보험료 납입면제 미적용형", "waiver"],
+      [2, "보험료 납입면제형", "waiver"],
     ]);
-    expect(await services.product.listPlans(r.productId)).toHaveLength(2);
-    expect(Object.fromEntries(await services.product.getPlanOptionValues(options[1].id))).toEqual({ "waiver.applies": { entered: true, value: true }, "waiver.reasons": { entered: true, value: ["V01", "V02"] } });
+    expect(byAxis("form")).toEqual([
+      [1, "해약환급금 지급형", "no_surrender"],
+      [2, "해약환급금미지급형(납입후50%)", "no_surrender"],
+    ]);
+    const plans = await services.product.listPlans(r.productId);
+    expect(plans.map((plan) => planCombinationLabel(plan.options))).toEqual(["(제1종, 제1형)", "(제1종, 제2형)", "(제2종, 제1형)", "(제2종, 제2형)"]);
+    const option = (axis: string, number: number) => options.find((o) => o.axis === axis && o.number === number)!;
+    expect(Object.fromEntries(await services.product.getPlanOptionValues(option("type", 2).id))).toEqual({ "waiver.applies": { entered: true, value: true }, "waiver.reasons": { entered: true, value: ["V01", "V02"] } });
+    expect(Object.fromEntries(await services.product.getPlanOptionValues(option("form", 1).id))).toEqual({ "no_surrender.type": { entered: true, value: "V01" } });
+    expect(Object.fromEntries(await services.product.getPlanOptionValues(option("form", 2).id))).toEqual({ "no_surrender.type": { entered: true, value: "V03" } });
+
+    // 담보코드 — JSON 순서대로 시스템 채번 (기능/담보 §3.1)
+    expect((await services.coverage.listSummaries()).find((c) => c.name === "일반상해80%이상후유장해")?.code).toBe("COV000001");
+    expect((await services.coverage.listSummaries()).find((c) => c.name === "신화상치료비보장")?.code).toBe("COV000009");
   });
 
   it("수술비(1-7종) — 세부보장 7 · 각 급부 1, 이름은 「N종 상해수술비(연간3회한)」", async () => {

@@ -1,6 +1,7 @@
 [
   {
-    "code": "base-disability80",
+    "key": "base-disability80",
+    "code": "COV000001",
     "name": "일반상해80%이상후유장해",
     "benefitName": "일반상해80%이상후유장해보험금",
     "coverageValues": [
@@ -12,7 +13,8 @@
     "benefitValues": []
   },
   {
-    "code": "death",
+    "key": "death",
+    "code": "COV000002",
     "name": "일반상해사망보장",
     "benefitName": "사망보험금",
     "coverageValues": [
@@ -24,7 +26,8 @@
     "benefitValues": []
   },
   {
-    "code": "living80",
+    "key": "living80",
+    "code": "COV000003",
     "name": "일반상해80%이상후유장해 생활자금보장",
     "benefitName": "생활자금",
     "coverageValues": [
@@ -36,7 +39,8 @@
     "benefitValues": []
   },
   {
-    "code": "fracture",
+    "key": "fracture",
+    "code": "COV000004",
     "name": "골절(치아파절 제외)진단비Ⅱ보장",
     "benefitName": "골절진단비",
     "coverageValues": [
@@ -48,7 +52,8 @@
     "benefitValues": []
   },
   {
-    "code": "living50",
+    "key": "living50",
+    "code": "COV000005",
     "name": "일반상해50%이상후유장해 생활자금보장",
     "benefitName": "생활자금",
     "coverageValues": [
@@ -60,7 +65,8 @@
     "benefitValues": []
   },
   {
-    "code": "fracture-surgery",
+    "key": "fracture-surgery",
+    "code": "COV000006",
     "name": "골절수술비Ⅱ보장",
     "benefitName": "골절수술비",
     "coverageValues": [
@@ -72,7 +78,8 @@
     "benefitValues": []
   },
   {
-    "code": "major-injury-surgery",
+    "key": "major-injury-surgery",
+    "code": "COV000007",
     "name": "중대한특정상해수술비보장",
     "benefitName": "중대한특정상해수술비",
     "coverageValues": [
@@ -84,7 +91,8 @@
     "benefitValues": []
   },
   {
-    "code": "surgery17",
+    "key": "surgery17",
+    "code": "COV000008",
     "name": "수술비(1-7종, 연간3회한)[상해]보장",
     "benefitName": "1종 상해수술비(연간3회한)",
     "subCoverages": [
@@ -126,7 +134,8 @@
     "benefitValues": []
   },
   {
-    "code": "burn",
+    "key": "burn",
+    "code": "COV000009",
     "name": "신화상치료비보장",
     "benefitName": "화상진단비",
     "subCoverages": [

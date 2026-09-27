@@ -23,6 +23,7 @@ describe("공용조항 에디터 메뉴 — 문면 메뉴를 공용조항 자리
     const sections = clauseInlineMenu(e, { parentId: "p1" }, [{ text: "항" }, { caret: true }]);
     expect(labels(sections)).toEqual(expect.arrayContaining(["치환 슬롯…", "조 참조…", "별표 참조…", "문장 안 조건…", "옵션 자리 — 기일", "아래에 항 추가", "호 추가"]));
     const clauseRef = find(sections, "공용조항(문장 안)…")!;
+    expect(clauseRef.refusal).toBe(REFUSE.clauseRef); // 툴바는 잠그고 이 사유를 tooltip 으로
     expect(clauseRef.action.do).toBe("ops");
     if (clauseRef.action.do === "ops" && typeof clauseRef.action.ops === "function") expect(clauseRef.action.ops(e.tree)).toEqual([]);
     expect(onRefuse).toHaveBeenCalledWith(REFUSE.clauseRef);

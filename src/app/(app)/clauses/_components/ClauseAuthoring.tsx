@@ -3,13 +3,13 @@
 /**
  * 공용조항 에디터 — `/clauses/new`(생성) · `/clauses/<code>`(상세) 한 벌 (기능/공용조항 §4.2 · §4.3).
  *
- * 세 단: 가운데 약관 에디터 · 인스펙터 · 옵션 목록.
- * - 가운데는 **문면 저작 에디터를 그대로 쓴다**(§6.2) — 본문을 편집 트리(문서 › 조 하나)로 싸서(`clauseBodyToTree`) 문면의 편집 명령
- *   (`applyEdit`) · 렌더러(`Block` · `InlineSlot`) · 오른쪽 클릭 메뉴 · 팝업을 쓰고, 저장 때 공용조항 본문으로 되돌린다(`treeToClauseBody`).
- *   다른 점은 자리뿐이다 — 조 · 관 · 공용조항 참조는 거부 배너, 조 참조는 보통약관 대상만, 옵션 자리 넣기가 더해진다(`clauseMenus`).
- *   「문구」 유형은 문장 한 줄(항 · 호 · 목 없음).
- * - 인스펙터: 선택이 없으면 「공용조항 전체」(공용조항명 · 유형 · 요구 구분자), 가운데서 자리를 고르면 그 자리의 조작(오른쪽 클릭 메뉴와 같은 것).
- * - 옵션 목록: 늘 보이는 셋째 단(`OptionsPane`).
+ * 한 화면 두 단 — 왼쪽은 위에서 아래로 「공용조항명 · 유형」 → 「본문」(툴바 + 약관 에디터), 오른쪽은 옵션 목록. 좁으면 옵션이 아래로 내려간다.
+ * - 본문은 **문면 저작 에디터를 그대로 쓴다**(§6.2) — 본문을 편집 트리(문서 › 조 하나)로 싸서(`clauseBodyToTree`) 문면의 편집 명령
+ *   (`applyEdit`) · 렌더러(`Block` · `InlineSlot`) · 툴바 · 팝업을 쓰고, 저장 때 공용조항 본문으로 되돌린다(`treeToClauseBody`).
+ *   다른 점은 자리뿐이다 — 조 · 관 · 공용조항 참조는 툴바에서 잠기고(사유 tooltip), 조 참조는 보통약관 대상만, 옵션 자리 넣기가 더해진다(`clauseMenus`).
+ *   「문구」 유형은 문장 한 줄(항 · 호 · 목 없음), 「항」 유형은 빈 항 하나에서 시작한다 — 어디에 쓰는지가 처음부터 보인다.
+ * - 유형은 생성 화면에서만 고른다(본문이 비어 있을 때) — 목록 `+` 메뉴의 고름은 처음 값일 뿐이다.
+ * - 옵션 목록: 본문 옆에 늘 보이는 단(`OptionsPane`).
  *
  * 저장 한 번: 상세는 읽기로 시작 → `편집` → 가운데 · 인스펙터 · 옵션 목록을 함께 고치고 → `저장` 한 번이 한 트랜잭션(`saveClauseEditAction`).
  * 생성은 처음부터 편집 중이고, 저장하는 순간 검사 ① 을 통과해야 만들어진다(`createClauseAction`) — 실패면 아무것도 만들지 않고 오류 배너.
@@ -20,17 +20,20 @@ import { useRouter } from "next/navigation";
 import { Breadcrumb } from "@/app/_components/Breadcrumb";
 import { DiscardDialog } from "@/app/_components/EditShell";
 import { IconButton, IconClose, IconTrash } from "@/app/_components/icons";
-import { ENTITY_LABEL, MODE_LABEL, NAME_LABEL, newLabel } from "@/app/_lib/labels";
+import { ENTITY_LABEL, MODE_LABEL, MODE_OPTIONS, NAME_LABEL, newLabel } from "@/app/_lib/labels";
 import { refLabelOf } from "@/app/(app)/documents/[id]/_components/condition/display";
-import { decodeAt, type Anchor, type DocCtx, type EditHandlers } from "@/app/(app)/documents/[id]/_components/ctx";
+import { anchorOf, type Anchor, type DocCtx, type EditHandlers } from "@/app/(app)/documents/[id]/_components/ctx";
 import { Block } from "@/app/(app)/documents/[id]/_components/DocBody";
+import { EditorToolbar } from "@/app/(app)/documents/[id]/_components/EditorToolbar";
 import { afterOf, emptyNode, inlineAtOf, inlineListAt } from "@/app/(app)/documents/[id]/_components/editOps";
 import { InlineSlot, caretFromPoint, tokensOf } from "@/app/(app)/documents/[id]/_components/Inline";
-import { identityRuns, runsFromTokens, runsReplacing, sameRuns } from "@/app/(app)/documents/[id]/_components/inlineRuns";
-import type { MenuItem, MenuSections, PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
+import { identityRuns, runsFromTokens, runsReplacing, sameRuns, type Token } from "@/app/(app)/documents/[id]/_components/inlineRuns";
+import { placeExists, type MenuItem, type MenuSections, type Place, type PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
+import { placeOf, readInline } from "@/app/(app)/documents/[id]/_components/place";
 import { PopupHost, type PopupEnv } from "@/app/(app)/documents/[id]/_components/Popups";
 import { ContextMenu, PopActions, Popover } from "@/app/(app)/documents/[id]/_components/Popover";
 import { DraftIssues } from "@/app/(app)/documents/[id]/_components/SidePanel";
+import { CLAUSE_LINE_TOOLS, CLAUSE_TOOLS, allTools, condItem, itemsFor, type ToolId } from "@/app/(app)/documents/[id]/_components/tools";
 import type { ClauseBody, ClauseMode, RequiredRefs } from "@/domain/clause";
 import { formatCoordinate } from "@/domain/coordinate";
 import {
@@ -59,7 +62,7 @@ import { createClauseAction } from "../actions";
 import { removeClauseEditAction, saveClauseEditAction } from "../edit-actions";
 import type { ClauseEditOption } from "../edit-types";
 import type { ClauseEditorData } from "../editorData";
-import { clauseBlockMenu, clauseBodyMenu, clauseChipMenu, clauseCondMenu, clauseInlineMenu, type ClauseMenuEnv } from "./clauseMenus";
+import { clauseDefaultPlace, clausePlaceMenu, withClauseRefusals, type ClauseMenuEnv } from "./clauseMenus";
 import { OptionsPane } from "./OptionsPane";
 
 export interface ClauseAuthoringProps {
@@ -71,6 +74,8 @@ export interface ClauseAuthoringProps {
   options: ClauseEditOption[];
   required?: RequiredRefs;
   data: ClauseEditorData;
+  /** 생성 화면 — 「항」 유형의 첫 빈 항 id. 서버가 정해 넘긴다(서버 · 브라우저 렌더가 같은 id 를 써야 한다). */
+  startId?: string;
 }
 
 type Banner = { message: string; issues?: readonly Issue[] };
@@ -78,18 +83,20 @@ type Banner = { message: string; issues?: readonly Issue[] };
 /** 편집 트리의 대응 보통약관 자리 — 공용조항의 조 참조는 보통약관 마스터 전체가 대상이다 (§3.5 · 기능/문면 `scope: "general"`). */
 const GENERALS = "clause-generals";
 
-const NODE_WHAT: Record<string, string> = {
-  paragraph: "항",
-  item: "호",
-  subitem: "목",
-  condBlock: "조건 블록",
-  text: "문장",
-  slot: "값 슬롯",
-  articleRef: "조 참조",
-  appendixRef: "별표 참조",
-  inlineCond: "문장 안 조건",
-  clauseInlineRef: "옵션 자리",
-};
+/** 새 공용조항의 첫 본문 — 「항」은 빈 항 하나에서 시작해 쓸 자리가 처음부터 보인다. */
+function startBody(mode: ClauseMode, id: string = randomIds()): ClauseBody {
+  return mode === "block" ? [{ id, kind: "paragraph", children: [] }] : [];
+}
+
+/** 쓴 것이 없는 본문 — 빈 항(글 · 칩 · 호 없음)만 있거나 아무것도 없다. 유형을 바꿔도 잃을 것이 없다. 빈 항은 저장하지 않는다. */
+export function blankBody(body: ClauseBody): boolean {
+  return body.every((node) => {
+    if (node.kind === "text") return node.text.trim() === "";
+    if (node.kind !== "paragraph") return false;
+    const items = (node as { items?: unknown[] }).items ?? [];
+    return items.length === 0 && node.children.every((c) => c.kind === "text" && c.text.trim() === "");
+  });
+}
 
 function unionRefs(generals: ClauseEditorData["generals"]): GeneralRefs {
   const articleIds = new Set<Id>();
@@ -126,17 +133,22 @@ function generalTargets(generals: ClauseEditorData["generals"], code: string | u
 }
 
 export function ClauseAuthoring(props: ClauseAuthoringProps) {
-  const { code, mode: clauseMode, data } = props;
+  const { code, data } = props;
   const isNew = code === undefined;
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  /** 유형 — 생성 화면에서는 본문이 비어 있는 동안 바꿀 수 있다, 상세는 고정 (§3.1). */
+  const [clauseMode, setClauseMode] = useState<ClauseMode>(props.mode);
 
   // ── 원본 (읽기 모드가 보이는 것) ──
-  const originalTree = useMemo(() => clauseBodyToTree(clauseMode, props.body, props.label), [clauseMode, props.body, props.label]);
+  const originalTree = useMemo(() => clauseBodyToTree(props.mode, props.body, props.label), [props.mode, props.body, props.label]);
 
   // ── 편집본 — 생성 화면은 처음부터 편집 중 ──
   const [editing, setEditing] = useState(isNew);
-  const [draft, setDraftState] = useState<{ state: DraftState; ops: number }>(() => ({ state: { tree: originalTree, generalDocumentId: GENERALS }, ops: 0 }));
+  const [draft, setDraftState] = useState<{ state: DraftState; ops: number }>(() => ({
+    state: { tree: isNew ? clauseBodyToTree(props.mode, startBody(props.mode, props.startId), props.label) : originalTree, generalDocumentId: GENERALS },
+    ops: 0,
+  }));
   const draftRef = useRef(draft);
   const setDraft = (next: typeof draft) => {
     draftRef.current = next;
@@ -152,7 +164,8 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   const nextCode = useRef(1);
   const newCode = () => `new:${nextCode.current++}`;
 
-  const [selected, setSelected] = useState<Id>();
+  /** 툴바 · 오른쪽 클릭이 짓는 자리 — 본문에서 마지막으로 누르거나 초점이 간 곳. */
+  const [place, setPlace] = useState<Place>();
   const [menu, setMenu] = useState<{ x: number; y: number; sections: MenuSections }>();
   const [pop, setPop] = useState<{ spec: PopupSpec; anchor: Anchor }>();
   const [focusRequest, setFocusRequest] = useState<Id>();
@@ -245,14 +258,8 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   /** 누르는 순간의 편집본으로 — 메뉴를 연 뒤 문장 칸이 초점을 잃으며 글이 먼저 적용될 수 있다. */
   const menuEnv = (): ClauseMenuEnv => envOf(latest(), optionsRef.current);
 
-  /** 자리 하나의 조작 — 오른쪽 클릭 메뉴와 인스펙터가 같은 것을 쓴다. */
-  const sectionsFor = (env: ClauseMenuEnv, nodeId: Id): MenuSections => {
-    if (env.ix.branches.has(nodeId)) return clauseCondMenu(env, nodeId);
-    const kind = env.ix.nodes.get(nodeId)?.node.kind;
-    if (kind === "paragraph" || kind === "item" || kind === "subitem" || kind === "condBlock") return nodeId === CLAUSE_LINE_ID ? [] : clauseBlockMenu(env, nodeId);
-    if (kind && kind !== "text" && kind !== "article" && kind !== "document") return clauseChipMenu(env, nodeId);
-    return [];
-  };
+  /** 지금 자리 — 고른 자리가 없거나 지워졌으면 유형의 기본 자리. */
+  const placeIn = (ix: ReturnType<typeof indexTree>): Place => (place && placeExists(ix, place) ? place : clauseDefaultPlace(clauseMode));
 
   const onContextMenu = (event: MouseEvent<HTMLElement>) => {
     if (!editing) return;
@@ -260,23 +267,56 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     event.stopPropagation();
     const target = event.target as HTMLElement;
     const env = menuEnv();
-    const attr = (selector: string, key: string): string | undefined => (target.closest(selector) as HTMLElement | null)?.dataset[key];
-    const chip = attr("[data-chip]", "chip");
-    const head = attr("[data-cond-head]", "condHead");
-    const inline = target.closest("[data-inline]") as HTMLElement | null;
-    const block = attr("[data-block]", "block");
-    let sections: MenuSections;
-    if (chip) sections = clauseChipMenu(env, chip);
-    else if (head) sections = clauseCondMenu(env, head);
-    else if (inline?.dataset.inline) {
-      const at = decodeAt(inline.dataset.inline);
+    const at = placeOf(target) ?? clauseDefaultPlace(clauseMode);
+    let tokens: Token[] = [];
+    if (at.kind === "inline") {
+      const inline = target.closest("[data-inline]") as HTMLElement | null;
       const caret = caretFromPoint(event.clientX, event.clientY);
-      sections = at ? clauseInlineMenu(env, at, tokensOf(inline, caret && inline.contains(caret.node) ? caret : undefined)) : [];
-    } else if (block) sections = clauseBlockMenu(env, block);
-    else sections = clauseBodyMenu(env);
+      if (inline) tokens = tokensOf(inline, caret && inline.contains(caret.node) ? caret : undefined);
+      else {
+        const read = bodyRef.current ? readInline(bodyRef.current, at) : undefined;
+        if (!read) return;
+        tokens = read.tokens;
+      }
+    }
+    const sections = clausePlaceMenu(env, at, tokens);
     if (sections.length === 0) return;
+    setPlace(at);
     menuAt.current = { x: event.clientX, y: event.clientY + 4, top: event.clientY };
     setMenu({ x: event.clientX, y: event.clientY, sections });
+  };
+
+  /** 툴바 버튼 — 누르는 순간의 편집본 · 문장 칸 조각(커서 · 고른 글)으로 목록을 다시 짓고 그 버튼의 항목을 돌린다. */
+  const runTool = (toolId: ToolId, button: HTMLElement) => {
+    const env = menuEnv();
+    const at = placeIn(env.ix);
+    let tokens: Token[] = [];
+    let cut: string | undefined;
+    if (at.kind === "inline") {
+      const read = bodyRef.current ? readInline(bodyRef.current, at) : undefined;
+      if (!read) return;
+      ({ tokens, cut } = read);
+    }
+    const sections = clausePlaceMenu(env, at, tokens);
+    const anchor = anchorOf(button);
+    menuAt.current = anchor;
+    if (toolId === "cond") {
+      const item = condItem(sections, cut !== undefined);
+      if (!item) return;
+      const a = item.action;
+      runMenu(a.do === "popup" && a.popup.kind === "insertInline" && cut !== undefined ? { ...item, action: { do: "popup", popup: { ...a.popup, prefill: cut } } } : item, anchor);
+      return;
+    }
+    const tool = allTools(CLAUSE_TOOLS).find((t) => t.id === toolId);
+    const items = tool ? itemsFor(tool, sections).filter((i) => !i.disabled && !i.refusal) : [];
+    if (items.length === 0) return;
+    if (tool?.multi && items.length > 1) {
+      setMenu({ x: anchor.x, y: anchor.y, sections: [items] });
+      return;
+    }
+    // 바로 적용하는 조작은 쓰던 문장을 먼저 편집본에 넣는다(초점이 떠나며 적용) — 복제 · 이동이 쓰던 글을 두고 가지 않게
+    if (items[0].action.do !== "popup") (document.activeElement as HTMLElement | null)?.blur?.();
+    runMenu(items[0], anchor);
   };
 
   const runMenu = (item: MenuItem, anchor: Anchor = menuAt.current) => {
@@ -286,7 +326,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
       return;
     }
     if (a.do === "remove") {
-      if (apply([{ type: "remove", nodeId: a.nodeId }]) && selected === a.nodeId) setSelected(undefined);
+      apply([{ type: "remove", nodeId: a.nodeId }]);
       return;
     }
     const ops = typeof a.ops === "function" ? a.ops(latest()) : a.ops;
@@ -365,6 +405,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
 
   // ── 편집 시작 · 끝 · 저장 · 삭제 ──
   const startEdit = () => {
+    setPlace(undefined);
     setDraft({ state: { tree: originalTree, generalDocumentId: GENERALS }, ops: 0 });
     setLabel(props.label);
     setOptions(props.options);
@@ -374,7 +415,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
 
   const endEdit = () => {
     setEditing(false);
-    setSelected(undefined);
+    setPlace(undefined);
     setMenu(undefined);
     setPop(undefined);
     setBanner(undefined);
@@ -387,7 +428,8 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
       setBanner({ message: `저장하지 못했다 — ${body.rejection.reason === "invalid" ? body.rejection.issues[0]?.message : body.rejection.reason}` });
       return;
     }
-    const payload = { label: label.trim(), body: body.value, options: optionsRef.current };
+    // 쓴 것이 없는 본문(처음 빈 항 하나)은 빈 본문으로 — 빈 항을 저장하지 않는다
+    const payload = { label: label.trim(), body: blankBody(body.value) ? [] : body.value, options: optionsRef.current };
     startTransition(async () => {
       const out = code === undefined ? await createClauseAction({ ...payload, mode: clauseMode }) : await saveClauseEditAction(code, payload);
       if (!out.ok) {
@@ -455,40 +497,52 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     return () => document.removeEventListener("click", onClick, true);
   }, [dirty, router]);
 
-  // ── 인스펙터 — 선택 없음 = 「공용조항 전체」, 선택 = 그 자리의 조작 ──
-  const selectedEntry = selected ? (index.nodes.get(selected) ?? index.branches.get(selected)) : undefined;
-  const selectedWhat = selected
-    ? index.branches.has(selected)
-      ? "조건 가지"
-      : (() => {
-          const node = index.nodes.get(selected)?.node;
-          if (!node) return undefined;
-          const num = numbers.get(node.id);
-          return `${num?.label && ["paragraph", "item", "subitem"].includes(node.kind) ? `${num.label} ` : ""}${NODE_WHAT[node.kind] ?? node.kind}`;
-        })()
-    : undefined;
-  const inspectorSections = editing && selected && selectedEntry ? sectionsFor(envOf(tree, options), selected) : [];
+  // ── 유형 고르기 (생성 화면만) — 본문이 비어 있을 때만. 바꾸면 그 유형의 빈 본문에서 다시 시작한다 ──
+  const draftBody = editing ? treeToClauseBody(clauseMode, tree) : undefined;
+  const modeLocked = draftBody !== undefined && !(draftBody.ok && blankBody(draftBody.value));
+  const changeMode = (next: ClauseMode) => {
+    if (next === clauseMode || modeLocked) return;
+    setClauseMode(next);
+    setPlace(undefined);
+    setBanner(undefined);
+    setDraft({ state: { tree: clauseBodyToTree(next, startBody(next), label), generalDocumentId: GENERALS }, ops: 0 });
+  };
 
-  const clauseName = isNew ? newLabel(ENTITY_LABEL.clause) : props.label;
-  const empty = clauseMode === "block" ? (tree.children[0]?.kind === "article" ? tree.children[0].children.length === 0 : true) : false;
-  const line = clauseMode === "inline" && tree.children[0]?.kind === "article" ? tree.children[0].children[0] : undefined;
+  const toolbarPlace = placeIn(index);
+  const toolbarEnv = envOf(tree, options);
+  const toolbarSections = editing ? withClauseRefusals(toolbarEnv, clausePlaceMenu(toolbarEnv, toolbarPlace)) : [];
+  const placeWords = (p: Place): string => {
+    if (p.kind === "chip") return "칩";
+    if (p.kind === "head") return "조건 가지";
+    if (p.kind === "document") return "본문";
+    const id = p.kind === "inline" ? ("tableId" in p.at ? undefined : p.at.parentId) : p.id;
+    if (!id || id === CLAUSE_LINE_ID) return "문구";
+    const node = index.nodes.get(id)?.node;
+    if (!node) return "조건 가지 문장";
+    const word = node.kind === "paragraph" ? "항" : node.kind === "item" ? "호" : node.kind === "subitem" ? "목" : node.kind === "condBlock" ? "조건 블록" : "블록";
+    return `${numbers.get(id)?.label ?? ""} ${word}${p.kind === "inline" ? " 문장" : ""}`.trim();
+  };
+
+  const clauseName = isNew ? label.trim() || newLabel(ENTITY_LABEL.clause) : props.label;
+  const blockNodes = tree.children[0]?.kind === "article" ? tree.children[0].children : [];
+  const line = clauseMode === "inline" ? blockNodes[0] : undefined;
   const lineNodes = line?.kind === "paragraph" ? line.children : [];
+  const readEmpty = !editing && (clauseMode === "inline" ? lineNodes.length === 0 : blockNodes.length === 0);
+  const modeHint = MODE_OPTIONS.find((o) => o.value === clauseMode)?.hint;
 
   return (
     <div className="ts-l3 is-clause" aria-busy={pending || undefined}>
       <div className="ts-l3-bar">
         <Breadcrumb items={[{ label: ENTITY_LABEL.clause, href: "/clauses" }, { label: clauseName }]} guard={editing ? leave : undefined} />
-        <span className="ts-count">{MODE_LABEL[clauseMode]}</span>
-        {editing && (
-          <>
-            <span className="ts-l3-dirty">{isNew ? "새 공용조항 — 저장하는 순간 만들어진다" : dirty ? "편집 중 · 저장해야 반영" : "편집 중"}</span>
-            <span className="ts-l3-hint">오른쪽 클릭으로 넣기 · 이동</span>
-          </>
-        )}
+        {editing && <span className="ts-l3-dirty">{isNew ? "새 공용조항 — 저장하면 만들어진다" : dirty ? "편집 중 · 저장해야 반영" : "편집 중"}</span>}
         <span className="ts-l3-bar-actions">
           {editing ? (
             <>
-              {!isNew && <IconButton icon={<IconClose />} label="편집 취소 — 고친 내용을 버리고 읽기 모드로" disabled={pending} onClick={() => leave(endEdit)} />}
+              {isNew ? (
+                <IconButton icon={<IconClose />} label="만들기 취소 — 공용조항 목록으로" disabled={pending} onClick={() => leave(() => router.push("/clauses"))} />
+              ) : (
+                <IconButton icon={<IconClose />} label="편집 취소 — 고친 내용을 버리고 읽기 모드로" disabled={pending} onClick={() => leave(endEdit)} />
+              )}
               <button type="button" className="primary" disabled={pending || (!isNew && !dirty)} onClick={save}>
                 {pending ? "저장 중…" : "저장"}
               </button>
@@ -510,16 +564,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
         </span>
       </div>
 
-      <div
-        className="ts-l3-body"
-        ref={bodyRef}
-        onContextMenu={onContextMenu}
-        onPointerDown={(e) => {
-          if (!editing) return;
-          const hit = (e.target as HTMLElement).closest("[data-node]") as HTMLElement | null;
-          setSelected(hit?.dataset.node);
-        }}
-      >
+      <div className="ts-l3-body ts-clause-page" ref={bodyRef}>
         {banner && (
           <div className="ts-error-banner" role="alert">
             <p>{banner.message}</p>
@@ -533,92 +578,106 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
             </option>
           ))}
         </datalist>
-        <article className="ts-doc">
-          {clauseMode === "inline" ? (
-            <div className="ts-doc-paragraph">
-              {editing || lineNodes.length > 0 ? (
-                <InlineSlot at={{ parentId: CLAUSE_LINE_ID }} nodes={lineNodes} ctx={ctx} placeholder="문구 — 문장 한 줄을 쓴다" />
-              ) : (
-                <EmptyBody mode={clauseMode} />
-              )}
-            </div>
-          ) : empty ? (
-            <EmptyBody mode={clauseMode} editing={editing} />
-          ) : (
-            <Block nodes={tree.children[0]?.kind === "article" ? tree.children[0].children : []} ctx={ctx} />
-          )}
-        </article>
-      </div>
-
-      <aside className="ts-l3-side" aria-label="인스펙터">
-        {editing && selected && selectedWhat ? (
-          <>
-            <p className="ts-l2-side-title">선택 — {selectedWhat}</p>
-            {inspectorSections.length === 0 ? (
-              <p className="ts-muted">이 자리에는 조작이 없다 — 문장은 가운데서 그 자리에서 고친다.</p>
-            ) : (
-              inspectorSections.map((section, i) => (
-                <div key={i} className="ts-inspector-actions">
-                  {section.map((item) => (
-                    <button
-                      key={item.label}
-                      type="button"
-                      className={item.danger ? "danger" : undefined}
-                      disabled={item.disabled}
-                      onClick={(e) => {
-                        const r = e.currentTarget.getBoundingClientRect();
-                        runMenu(item, { x: r.left, y: r.bottom, top: r.top });
-                      }}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              ))
-            )}
-            <button type="button" className="ts-doc-pick" onClick={() => setSelected(undefined)}>
-              선택 해제 — 공용조항 전체
-            </button>
-          </>
-        ) : (
-          <>
-            <p className="ts-l2-side-title">공용조항 전체</p>
-            <dl className="ts-side-facts">
-              {!isNew && (
-                <>
-                  <dt>코드</dt>
-                  <dd className="ts-mono">{code}</dd>
-                </>
-              )}
-              <dt>
+        <div className="ts-clause-grid">
+          <div className="ts-clause-main">
+            <section className="ts-clause-meta" aria-label="공용조항 정보">
+              <div className="ts-form-row">
                 <label htmlFor="clause-label">{NAME_LABEL.clause}</label>
-              </dt>
-              <dd>
                 {editing ? (
                   <input id="clause-label" className="ts-field-direct" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="예: 특별약관의 소멸" autoFocus={isNew} />
                 ) : (
-                  props.label
+                  <span className="ts-clause-meta-value">{props.label}</span>
                 )}
-              </dd>
-              <dt>유형</dt>
-              <dd title="유형은 생성 때 정하고 그 뒤 바꾸지 않는다">{MODE_LABEL[clauseMode]}</dd>
+              </div>
+              <div className="ts-form-row">
+                <span className="ts-form-label" id="clause-mode-label">
+                  유형
+                </span>
+                {isNew ? (
+                  <div className="ts-clause-mode" role="radiogroup" aria-labelledby="clause-mode-label">
+                    {MODE_OPTIONS.map((o) => (
+                      <label key={o.value} className={`ts-clause-mode-option${clauseMode === o.value ? " is-on" : ""}`}>
+                        <input type="radio" name="clause-mode" value={o.value} checked={clauseMode === o.value} disabled={modeLocked && clauseMode !== o.value} onChange={() => changeMode(o.value)} />
+                        <span className="ts-clause-mode-name">{o.label}</span>
+                        <span className="ts-clause-mode-hint">{o.hint}</span>
+                      </label>
+                    ))}
+                    {modeLocked ? <p className="ts-muted ts-clause-sec-note">본문을 쓰기 시작해서 유형이 잠겼다 — 바꾸려면 본문을 비운다.</p> : null}
+                  </div>
+                ) : (
+                  <span className="ts-clause-meta-value" title="유형은 생성 때 정하고 그 뒤 바꾸지 않는다">
+                    {MODE_LABEL[clauseMode]} <span className="ts-muted">— {modeHint}</span>
+                  </span>
+                )}
+              </div>
               {!isNew && (
                 <>
-                  <dt>요구 구분자</dt>
-                  <dd className="ts-mono">{props.required && props.required.discriminators.length > 0 ? props.required.discriminators.join(" · ") : <span className="ts-muted">없음 — 저장 때 식에서 뽑는다</span>}</dd>
+                  <div className="ts-form-row">
+                    <span className="ts-form-label">코드</span>
+                    <span className="ts-clause-meta-value ts-mono">{code}</span>
+                  </div>
+                  <div className="ts-form-row">
+                    <span className="ts-form-label">요구 구분자</span>
+                    <span className="ts-clause-meta-value ts-mono">
+                      {props.required && props.required.discriminators.length > 0 ? props.required.discriminators.join(" · ") : <span className="ts-muted">없음 — 저장 때 식에서 뽑는다</span>}
+                    </span>
+                  </div>
+                  <div className="ts-form-row">
+                    <span className="ts-form-label">사용처</span>
+                    <span className="ts-clause-meta-value">
+                      <a href={`/relations?kind=clause&code=${code}`}>관계정보에서 보기</a>
+                    </span>
+                  </div>
                 </>
               )}
-            </dl>
-            {!isNew && (
-              <p className="ts-muted">
-                사용처 · 재검사 목록은 <a href={`/relations?kind=clause&code=${code}`}>관계정보</a>에서 본다.
-              </p>
-            )}
-          </>
-        )}
-      </aside>
+            </section>
 
-      <OptionsPane options={shownOptions} editing={editing} used={used} onChange={setOptions} newCode={newCode} />
+            <section className="ts-clause-body-sec" aria-label="본문">
+              <h2 className="ts-clause-sec">본문</h2>
+              <p className="ts-muted ts-clause-sec-note">
+                {clauseMode === "inline"
+                  ? "사용처 문장 중간에 들어갈 문구 한 줄을 쓴다. 조건 · 슬롯 · 옵션 자리는 커서를 두고 툴바에서 넣는다."
+                  : "사용처 조 안에 들어갈 항을 쓴다. Enter 로 다음 항, 호 · 목 · 조건은 툴바에서 넣는다."}
+              </p>
+              <div
+                className={`ts-clause-editor${editing ? " is-editing" : ""}`}
+                onContextMenu={onContextMenu}
+                onPointerDown={(e) => {
+                  if (!editing) return;
+                  const target = e.target as HTMLElement;
+                  if (target.closest(".ts-doc-toolbar")) return;
+                  setPlace(placeOf(target));
+                }}
+                onFocus={(e) => {
+                  if (!editing) return;
+                  const at = placeOf(e.target as HTMLElement);
+                  if (at) setPlace(at);
+                }}
+              >
+                {editing && <EditorToolbar groups={clauseMode === "inline" ? CLAUSE_LINE_TOOLS : CLAUSE_TOOLS} sections={toolbarSections} editing onRun={runTool} where={placeWords(toolbarPlace)} />}
+                <article className="ts-doc">
+                  {readEmpty ? (
+                    <EmptyBody mode={clauseMode} />
+                  ) : clauseMode === "inline" ? (
+                    <div className="ts-doc-paragraph is-line">
+                      <InlineSlot at={{ parentId: CLAUSE_LINE_ID }} nodes={lineNodes} ctx={ctx} placeholder="여기에 문구를 쓴다 — 예: 보험금을 지급하지 않습니다" />
+                    </div>
+                  ) : blockNodes.length === 0 ? (
+                    <div className="ts-empty">
+                      <p className="ts-empty-what">항이 없다.</p>
+                      <p className="ts-empty-action">툴바의 「항」으로 첫 항을 넣는다.</p>
+                    </div>
+                  ) : (
+                    <Block nodes={blockNodes} ctx={ctx} />
+                  )}
+                </article>
+              </div>
+            </section>
+          </div>
+
+          <OptionsPane options={shownOptions} editing={editing} used={used} onChange={setOptions} newCode={newCode} />
+        </div>
+      </div>
 
       {menu && <ContextMenu x={menu.x} y={menu.y} sections={menu.sections} onPick={(item) => runMenu(item)} onClose={() => setMenu(undefined)} />}
       {pop && editing && (optionChip(pop.spec, index) ? <OptionSlotPopup env={popupEnv} nodeId={optionChip(pop.spec, index)!} options={options} anchor={pop.anchor} onClose={() => setPop(undefined)} /> : <PopupHost env={popupEnv} spec={pop.spec} anchor={pop.anchor} onClose={() => setPop(undefined)} />)}
@@ -695,7 +754,7 @@ function OptionSlotPopup({ env, nodeId, options, anchor, onClose }: { env: Popup
             ))}
           </select>
         </div>
-        <p className="ts-muted">사용처가 고른 선택지의 문구가 이 자리에 들어간다. 선택지는 오른쪽 옵션 목록에서 고친다.</p>
+        <p className="ts-muted">사용처가 고른 선택지의 문구가 이 자리에 들어간다. 선택지는 옵션 목록에서 고친다.</p>
         <PopActions onCancel={onClose} />
       </form>
     </Popover>
@@ -707,7 +766,7 @@ function EmptyBody({ mode, editing }: { mode: ClauseMode; editing?: boolean }) {
     <div className="ts-empty">
       <p className="ts-empty-what">본문이 비어 있다 — 참조해도 아무 조문도 나오지 않는다.</p>
       <p className="ts-empty-example">예: {mode === "block" ? "① 이 특별약관은 보험계약자의 청약과 보험회사의 승낙으로 이루어집니다." : "보험금을 지급하지 않습니다"}</p>
-      <p className="ts-empty-action">{editing ? "여기를 오른쪽 클릭해 「항 추가」로 시작한다. 다 쓰면 「저장」." : "「편집」을 눌러 본문을 쓴다."}</p>
+      <p className="ts-empty-action">{editing ? "툴바의 「항」으로 시작한다. 다 쓰면 「저장」." : "「편집」을 눌러 본문을 쓴다."}</p>
     </div>
   );
 }

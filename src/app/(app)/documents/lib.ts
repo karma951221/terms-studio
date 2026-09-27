@@ -14,6 +14,20 @@ export function docListHref(kind: "general" | "special" | DocListKind): string {
   return `/documents?kind=${kind === "special" || kind === "coverage" ? "coverage" : "general"}`;
 }
 
+/**
+ * 담보약관 템플릿을 새로 만들 수 있는 담보 — 아직 제 담보약관 템플릿(owner = 그 담보인 special 문서)이 없는 것.
+ * 담보 하나가 템플릿 한 벌을 소유한다(서비스 `createSpecial` 이 두 번째를 거부). 담보코드 순.
+ */
+export function coveragesWithoutTemplate<T extends { id: Id; code: string }>(coverages: readonly T[], specials: readonly { ownerId?: Id | null }[]): T[] {
+  const owned = new Set(specials.map((d) => d.ownerId).filter((id): id is Id => Boolean(id)));
+  return coverages.filter((c) => !owned.has(c.id)).sort((a, b) => a.code.localeCompare(b.code));
+}
+
+/** 담보약관 템플릿의 기본 제목 — 「{담보명} 특별약관」. 제목은 문면에서 고친다. */
+export function defaultSpecialTitle(coverageName: string): string {
+  return `${coverageName} 특별약관`;
+}
+
 export function str(fd: FormData, key: string): string {
   return String(fd.get(key) ?? "").trim();
 }

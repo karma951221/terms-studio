@@ -40,6 +40,8 @@ describe("coverage repo — 담보 · 세부보장 · 급부 (PGlite)", () => {
     surgery = unwrap(addSubCoverage(surgery, { name: "2종수술", benefitName: "수술보험금" }, newId));
     surgery = unwrap(addBenefit(surgery, surgery.subCoverages[1].id, "입원보험금", newId));
     await insertCoverage(t.db, surgery, who);
+    // 코드 없는 트리는 저장소가 순번을 받아 채운다 — 첫 담보라 COV000001 (기능/담보 §3.1)
+    surgery = { ...surgery, code: "COV000001" };
     expect(await loadCoverage(t.db, surgery.id)).toEqual(surgery);
   });
 
@@ -51,9 +53,10 @@ describe("coverage repo — 담보 · 세부보장 · 급부 (PGlite)", () => {
     expect(await listCoverageNames(t.db)).toEqual(["수술비", "일반상해사망"]);
   });
 
-  it("L1 목록 요약 — 트리 없이 이름·최종수정만 (WP2, 리뷰 #38/#48)", async () => {
+  it("L1 목록 요약 — 트리 없이 코드·이름·최종수정만 (WP2, 리뷰 #38/#48)", async () => {
     const summaries = await listCoverageSummaries(t.db);
     expect(summaries.map((s) => s.name)).toEqual(["수술비", "일반상해사망"]);
+    expect(summaries.map((s) => s.code)).toEqual(["COV000001", "COV000002"]);
     for (const s of summaries) {
       expect(s.id).toBeTruthy();
       expect(s.updatedAt).toBeInstanceOf(Date);
@@ -65,7 +68,8 @@ describe("coverage repo — 담보 · 세부보장 · 급부 (PGlite)", () => {
     const [one, two] = surgery.subCoverages.map((s) => s.id);
     let next = unwrap(reorderSubCoverages(surgery, [two, one]));
     next = { ...next, name: "수술비특약", documentId: newId() };
-    await saveCoverage(t.db, next, who);
+    await saveCoverage(t.db, { ...next, code: "COV999999" }, who);
+    // 저장은 코드를 쓰지 않는다 — 트리에 다른 코드가 실려 와도 그대로 (불변)
     expect(await loadCoverage(t.db, surgery.id)).toEqual(next);
 
     const removed = unwrap(removeSubCoverage(next, one));

@@ -1156,49 +1156,143 @@ button.danger:focus-visible {
   padding: 4px 0 10px 20px;
 }
 
-/* ── 공용조항 에디터 — 가운데 약관 에디터 · 인스펙터 · 옵션 목록, 셋이 각자 스크롤 (기능/공용조항 §4.3) ──
- * 가운데는 문면 저작 에디터 그대로(.ts-l3-body), 인스펙터 · 옵션 목록은 L3 우측 패널(.ts-l3-side) 두 장.
+/* ── 공용조항 에디터 — 한 화면 두 단: 왼쪽 「공용조항명 · 유형 → 본문(툴바 + 에디터)」, 오른쪽 옵션 (기능/공용조항 §4.2 · §4.3) ──
+ * 문면 저작의 L3 셸(바 + 100vh)만 빌리고 목차 · 우측 패널은 없다 — 본문 칸 하나가 스크롤한다. 좁으면 옵션이 아래로 내려간다.
  */
 .ts-l3.is-clause {
-  grid-template-columns: minmax(0, 1fr) 280px 320px;
+  grid-template-columns: minmax(0, 1fr);
 }
 
-.ts-inspector-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--ts-rule);
+.ts-l3-body.ts-clause-page {
+  padding: 16px 24px 40px;
 }
 
-.ts-option-values > li.ts-option-value {
+.ts-clause-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 2px 6px;
-  padding: 4px 0;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 24px;
+  align-items: start;
+  max-width: 1280px;
 }
 
-.ts-option-value > .ts-option-text {
+.ts-clause-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ts-clause-sec {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ts-clause-sec-note {
+  margin: 0 0 8px;
+  font-size: 12px;
+}
+
+.ts-clause-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ts-clause-meta .ts-form-row {
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+}
+
+.ts-clause-meta input.ts-field-direct {
+  max-width: 420px;
+  width: 100%;
+}
+
+.ts-clause-meta-value {
+  padding: 3px 0;
+}
+
+/* 유형 — 두 칸 카드 라디오, 이름 + 뜻풀이 */
+.ts-clause-mode {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 260px));
+  gap: 8px;
+}
+
+.ts-clause-mode > .ts-clause-sec-note {
   grid-column: 1 / -1;
 }
 
-/* 이름 하나를 더하는 칸 — 입력과 「더하기」가 한 덩어리로 붙는다. */
-.ts-add-input {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex: 1;
-  min-width: 0;
+.ts-clause-mode-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 4px;
+  cursor: pointer;
 }
 
-.ts-add-input > input {
-  flex: 1;
-  min-width: 0;
+.ts-clause-mode-option.is-on {
+  border-color: var(--ts-mark);
 }
 
-/* 옵션 하나 — 이름 한 줄과 그 아래 선택지들. 카드로 싸지 않는다 (§5). */
+.ts-clause-mode-option:has(input:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ts-clause-mode-name {
+  font-weight: 700;
+}
+
+.ts-clause-mode-hint {
+  grid-column: 2;
+  font-size: 12px;
+  color: var(--ts-ink-3);
+}
+
+/* 본문 상자 — 툴바가 머리에 붙은 한 덩어리. 편집 중이면 쓰는 칸임이 보이게 테두리가 선다. */
+.ts-clause-editor {
+  border: 1px solid var(--ts-rule);
+  border-radius: 4px;
+  background: var(--ts-surface);
+}
+
+.ts-clause-editor.is-editing {
+  border-color: var(--ts-rule-strong);
+}
+
+.ts-clause-editor > .ts-doc-toolbar {
+  border-radius: 4px 4px 0 0;
+}
+
+.ts-clause-editor > .ts-doc {
+  min-height: 120px;
+  padding: 16px 20px;
+}
+
+.ts-clause-editor .ts-inl:empty {
+  display: inline-block;
+  min-width: 60%;
+}
+
+/* 「문구」의 한 줄 — 번호가 없으니 항의 내어쓰기를 푼다 */
+.ts-clause-editor .ts-doc-paragraph.is-line {
+  padding-left: 0;
+  text-indent: 0;
+}
+
+/* 옵션 — 본문 옆 단. 옵션 하나 = 이름 한 줄 + 번호 붙은 선택지(이름 · 문구). 카드로 싸지 않는다. */
+.ts-clause-options {
+  min-width: 0;
+  padding-left: 16px;
+  border-left: 1px solid var(--ts-rule);
+}
+
 .ts-option {
-  padding: 8px 0;
+  padding: 10px 0;
   border-top: 1px solid var(--ts-rule);
 }
 
@@ -1211,6 +1305,7 @@ button.danger:focus-visible {
 .ts-option-head > input {
   flex: 1;
   min-width: 0;
+  font-weight: 700;
 }
 
 .ts-option-name {
@@ -1218,38 +1313,117 @@ button.danger:focus-visible {
 }
 
 .ts-option-values {
-  list-style: none;
-  margin: 4px 0 0;
-  padding: 0 0 0 12px;
+  margin: 6px 0 4px;
+  padding: 0 0 0 22px;
+  list-style: decimal outside;
+  color: var(--ts-ink-3);
   border-left: 1px solid var(--ts-rule);
 }
 
-.ts-option-values > li {
+.ts-option-values > li.ts-option-value {
+  display: list-item;
+  color: var(--ts-ink);
+}
+
+.ts-option-values > li.ts-option-value::marker {
+  color: var(--ts-ink-3);
+  font-size: 11px;
+}
+
+.ts-option-values > li.ts-option-value > .ts-option-value-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 6px;
+  padding: 4px 0;
+}
+
+.ts-option-value-grid > input {
+  min-width: 0;
+}
+
+.ts-option-value-grid > .ts-option-text {
+  grid-column: 1 / -1;
+}
+
+.ts-option-value-name {
+  font-weight: 700;
+}
+
+.ts-cov-add-tile.ts-option-add {
+  width: 100%;
+  min-height: 36px;
+  margin: 10px 0 6px;
+}
+
+@container l3 (max-width: 899px) {
+  .ts-clause-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ts-clause-options {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+/* ── 약관 에디터 툴바 — 본문 칸 머리에 붙어 스크롤해도 선다. 버튼은 한 크기 · 한 테두리 · 한 모서리 (기능/문면 §4.3) ── */
+.ts-doc-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 4px 2px;
+  padding: 6px 8px;
+  background: var(--ts-surface-2);
+  border-bottom: 1px solid var(--ts-rule);
+}
+
+/* 문면 저작 — 본문 칸의 안쪽 여백을 넘어 칸 폭 전체에 붙는다 */
+.ts-l3-body > .ts-doc-toolbar {
+  top: -12px;
+  margin: -12px -24px 12px;
+  padding: 6px 24px;
+}
+
+/* 묶음은 줄을 차지하지 않는다 — 버튼이 한 흐름으로 줄바꿈하고, 묶음 사이만 넓게 띄운다(좁은 폭에서 줄 수를 아낀다) */
+.ts-tool-group {
+  display: contents;
+}
+
+.ts-tool-group + .ts-tool-group > .ts-tool:first-child {
+  margin-left: 10px;
+}
+
+.ts-doc-toolbar .ts-tool {
+  height: 24px;
   min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+  font-size: 12px;
+  line-height: 22px;
+  white-space: nowrap;
 }
 
-.ts-option-values > li > input {
-  flex: 1;
-  min-width: 0;
+.ts-doc-toolbar .ts-tool.is-cond:not(:disabled) {
+  border-color: var(--ts-mark);
+  color: var(--ts-mark);
+  font-weight: 700;
 }
 
-.ts-clause-options .ts-add-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 0 0;
-  border-bottom: 0;
-  border-top: 1px solid var(--ts-rule);
+.ts-doc-toolbar .ts-tool:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
-.ts-clause-options .ts-add-row > input {
-  flex: 1;
-  min-width: 0;
+.ts-tool-where {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ts-ink-3);
+  white-space: nowrap;
 }
-
 
 .ts-l2-split {
   display: grid;
@@ -1281,254 +1455,7 @@ button.danger:focus-visible {
 }
 
 @media (max-width: 1023px) {
-  /* ── 공용조항 본문 구조 에디터 ────────────────────────────────────────────
- * 툴바에는 구조를 만드는 도구만 선다. 넣는 일(옵션 자리)은 본문 우클릭이 맡는다.
- * 깊이는 들여쓰기와 왼쪽 괘선으로만 말한다 — 카드도 얼룩무늬도 쓰지 않는다 (§5).
- */
-.ts-be-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0 8px;
-  border-bottom: 1px solid var(--ts-rule);
-  margin-bottom: 8px;
-}
-
-.ts-be-toolbar-spacer {
-  flex: 1;
-}
-
-.ts-be-toolbar button {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.ts-be-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.ts-be-line > .ts-be-list {
-  margin-left: 14px;
-  padding-left: 10px;
-  border-left: 1px solid var(--ts-rule);
-}
-
-.ts-be-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 28px;
-}
-
-.ts-be-row > input {
-  flex: 1;
-  min-width: 0;
-}
-
-/* 조작은 그 줄에 머무를 때만 눈에 든다 — 줄마다 아이콘 셋이 늘 켜져 있으면 본문이 안 읽힌다. */
-.ts-be-actions {
-  display: flex;
-  gap: 2px;
-  opacity: 0;
-}
-
-.ts-be-line:hover > .ts-be-row > .ts-be-actions,
-.ts-be-row:focus-within > .ts-be-actions {
-  opacity: 1;
-}
-
-.ts-be-add > button {
-  border: 0;
-  background: none;
-  color: var(--ts-ink-3);
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.ts-be-add > button:hover {
-  color: var(--ts-mark);
-}
-
-/* 그 줄에 박힌 옵션 자리 — 문면에서와 같은 〔 〕 표기 (§9.4 실체는 표시명으로). */
-.ts-be-slots {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin: 2px 0 0 4px;
-  font-size: 11px;
-}
-
-.ts-be-inline > textarea {
-  width: 100%;
-}
-
-/* 우클릭 넣기 메뉴 — 클릭한 자리에 뜬다. */
-.ts-ctxmenu {
-  position: fixed;
-  z-index: 20;
-  min-width: 180px;
-  padding: 4px;
-  border: 1px solid var(--ts-rule-strong);
-  border-radius: 3px;
-  background: var(--ts-surface);
-}
-
-.ts-ctxmenu-title {
-  margin: 2px 6px 4px;
-  font-size: 11px;
-  color: var(--ts-ink-3);
-}
-
-.ts-ctxmenu-empty {
-  margin: 2px 6px 4px;
-  font-size: 11px;
-  color: var(--ts-ink-2);
-  max-width: 220px;
-}
-
-.ts-ctxmenu > button {
-  display: block;
-  width: 100%;
-  text-align: left;
-  border: 0;
-  background: none;
-}
-
-.ts-ctxmenu > button {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.ts-ctxmenu > button:disabled {
-  color: var(--ts-ink-3);
-}
-
-.ts-ctxmenu-why {
-  font-size: 11px;
-  color: var(--ts-ink-3);
-}
-
-.ts-ctxmenu > button:hover {
-  background: var(--ts-surface-2);
-  color: var(--ts-mark);
-}
-
-/* 접히는 기본 정보 — 접힌 줄이 곧 펼침 단추다. 카드로 싸지 않고 아래 괘선 하나로 가른다 (§5). */
-.ts-basics {
-  border-bottom: 1px solid var(--ts-rule);
-}
-
-.ts-basics-head {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  width: 100%;
-  padding: 4px 0;
-  border: 0;
-  border-radius: 3px;
-  background: none;
-  text-align: left;
-  min-height: 28px;
-}
-
-.ts-basics-head:hover {
-  color: var(--ts-mark);
-}
-
-.ts-basics-head > .ts-icon {
-  align-self: center;
-  transition: transform 120ms ease;
-}
-
-.ts-basics-head > .ts-icon.is-open {
-  transform: rotate(90deg);
-}
-
-.ts-basics-name {
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.ts-basics-body {
-  padding: 4px 0 10px 20px;
-}
-
-/* 이름 하나를 더하는 칸 — 입력과 「더하기」가 한 덩어리로 붙는다. */
-.ts-add-input {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex: 1;
-  min-width: 0;
-}
-
-.ts-add-input > input {
-  flex: 1;
-  min-width: 0;
-}
-
-/* 옵션 하나 — 이름 한 줄과 그 아래 선택지들. 카드로 싸지 않는다 (§5). */
-.ts-option {
-  padding: 8px 0;
-  border-top: 1px solid var(--ts-rule);
-}
-
-.ts-option-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.ts-option-head > input {
-  flex: 1;
-  min-width: 0;
-}
-
-.ts-option-name {
-  font-weight: 700;
-}
-
-.ts-option-values {
-  list-style: none;
-  margin: 4px 0 0;
-  padding: 0 0 0 12px;
-  border-left: 1px solid var(--ts-rule);
-}
-
-.ts-option-values > li {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 24px;
-}
-
-.ts-option-values > li > input {
-  flex: 1;
-  min-width: 0;
-}
-
-.ts-clause-options .ts-add-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 0 0;
-  border-bottom: 0;
-  border-top: 1px solid var(--ts-rule);
-}
-
-.ts-clause-options .ts-add-row > input {
-  flex: 1;
-  min-width: 0;
-}
-
-
-.ts-l2-split {
+  .ts-l2-split {
     grid-template-columns: 1fr;
   }
 
@@ -4218,6 +4145,15 @@ button.ts-ref-fold:hover {
 /* 값 노드 페이저는 본문 안에서만 뜬다 — 화면 하단에 붙지 않는다 */
 .ts-master-detail .ts-pager {
   position: static;
+}
+
+/* 상품 탑재 표(기능/상품 §4.6) — 탭 안의 한 절이라 검색 · 페이저가 화면에 붙지 않는다. 기준일 · 미확정은 목록 화면 몫 */
+.ts-mount-section .ts-filterbar,
+.ts-mount-section .ts-pager {
+  position: static;
+}
+.ts-mount-section .ts-filter-locked {
+  display: none;
 }
 
 /* ── 15. 보통약관 약관 섹션 — 목차 · 원문 · 미리보기 세 패널 (기능/상품 §4.5) ── */

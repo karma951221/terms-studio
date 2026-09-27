@@ -4,7 +4,7 @@ import { expect, test } from "./_lib/fixtures";
 
 /**
  * 행 반복 표 — 담보 약관 문면 편집기 (ADR-0070 결정 6 · 설계 2026-09-22 §3.1 · §4).
- * 새 담보 → 담보 약관 템플릿 → (오른쪽 클릭) 조 · 항 · 표 → 셀 조작 줄 「이 행 반복…」 세부보장마다 → 템플릿 셀 오른쪽 클릭 「구조 표기」 →
+ * 새 담보 → 담보약관 템플릿 목록의 `+` 로 그 담보의 템플릿 생성(2026-09-27 입구) → (오른쪽 클릭) 조 · 항 · 표 → 셀 조작 줄 「이 행 반복…」 세부보장마다 → 템플릿 셀 오른쪽 클릭 「구조 표기」 →
  * 미리보기에서 세부보장 수만큼 펼침 →
  * 담보에 세부보장을 하나 더하면 미리보기 행도 하나 는다.
  * 시드 담보 · 문서는 건드리지 않는다 (실물재현 E2E 가 같은 DB 를 대조한다).
@@ -30,9 +30,6 @@ test(
   "행 반복 표: 표 → 행 반복 → 구조 표기 → 미리보기 펼침 · 세부보장 추가 후 행 증가",
   { annotation: { type: "좌표없음", description: "ADR-0070 반복 표 — 설계 2026-09-22 §4 E2E" } },
   async ({ page, ev }) => {
-    // 담보 상세의 담보약관 띠(「만들기」)가 빠졌다 (2026-09-27, 기능/담보 §6.2) — 새 담보에 담보약관 템플릿을 만드는 화면 입구가 없다.
-    // 담보약관 템플릿 메뉴에 만들기가 생기면 반복표#3 을 그 입구로 고쳐 되살린다.
-    test.fixme(true, "담보약관 템플릿 만들기 입구 없음 — 반복표#3");
     test.setTimeout(120_000);
     await ev.action("반복표#1", "관리자로 로그인한다", () => login(page));
 
@@ -46,14 +43,28 @@ test(
       return page.url();
     });
 
-    const docUrl = await ev.action("반복표#3", "담보 약관 템플릿을 만든다 — 입구 없음(위 fixme)", async () => {
-      await expect(page.locator(".ts-cov-band")).toContainText("없음");
-      await page.getByRole("button", { name: "만들기", exact: true }).click();
+    const docUrl = await ev.action("반복표#3", "담보약관 템플릿 목록의 + → 템플릿 없는 담보에서 새 담보를 골라 만든다 → 조문 편집기로", async () => {
+      await page.goto("/documents?kind=coverage");
+      await page.getByRole("link", { name: "새 담보약관 템플릿", exact: true }).click();
+      await page.waitForURL((url) => url.pathname === "/documents/new" && url.searchParams.get("kind") === "coverage");
+      // 선택지는 「COV… 담보명」 — 새 담보의 코드는 실행마다 같지만 여기서는 이름으로 찾는다
+      const option = page.locator("#doc-coverage option", { hasText: COVERAGE });
+      await expect(option).toHaveCount(1);
+      await page.locator("#doc-coverage").selectOption((await option.getAttribute("value"))!);
+      await page.getByRole("button", { name: "생성", exact: true }).click();
       await page.waitForURL(/\/documents\/[0-9a-f-]+$/);
+      await expect(page.getByText(`${COVERAGE} 특별약관`).first()).toBeVisible();
       return page.url();
     });
 
-    // 가운데 그 자리 편집 (기능/문면 §4.3) — 넣기 · 조작은 오른쪽 클릭 메뉴, 셀은 누르면 조작 줄. 전부 편집본에만 들어가고 저장은 바의 「저장」 한 번.
+    await ev.action("반복표#3a", "만든 담보는 다시 고를 수 없다 — 담보 하나가 템플릿 한 벌", async () => {
+      const back = page.url();
+      await page.goto("/documents/new?kind=coverage");
+      await expect(page.locator("#doc-coverage option", { hasText: COVERAGE })).toHaveCount(0);
+      await page.goto(back);
+    });
+
+    // 가운데 그 자리 편집 (기능/문면 §4.3) — 넣기 · 조작은 툴바(오른쪽 클릭 메뉴는 같은 목록의 지름길), 셀은 누르면 조작 줄. 전부 편집본에만 들어가고 저장은 바의 「저장」 한 번.
     const menu = async (target: Locator, item: string) => {
       await target.click({ button: "right" });
       await page.getByRole("menuitem", { name: item, exact: true }).click();
@@ -61,11 +72,13 @@ test(
     const body = page.locator(".ts-l3-body");
     const cell = (name: string) => body.getByRole("textbox", { name, exact: true });
 
-    await ev.action("반복표#4", "편집을 누르고 빈 본문을 오른쪽 클릭해 조를 넣고, 항 아래에 머리글 1행 · 템플릿 1행 표를 넣는다", async () => {
+    await ev.action("반복표#4", "편집을 누르고 툴바 「조」로 조를 넣고, 항 아래에 머리글 1행 · 템플릿 1행 표를 넣는다", async () => {
       await page.getByRole("button", { name: "편집", exact: true }).click();
       await expect(page.getByRole("button", { name: "저장", exact: true })).toBeVisible();
-      await expect(page.getByText("오른쪽 클릭으로 추가 · 이동")).toBeVisible();
-      await menu(body.locator("[data-doc-empty]"), "조 추가");
+      // 넣기 · 조작의 입구는 본문 위 툴바 (기능/문면 §4.3, 2026-09-27) — 오른쪽 클릭 메뉴는 지름길
+      const toolbar = page.getByRole("toolbar", { name: "약관 편집 도구" });
+      await expect(toolbar).toBeVisible();
+      await toolbar.getByRole("button", { name: "조", exact: true }).click();
       const title = body.getByRole("textbox", { name: "조 제목" });
       await title.fill("감액 지급");
       await title.press("Enter");

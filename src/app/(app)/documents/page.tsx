@@ -3,7 +3,8 @@
  * 한 표로 합치지 않고, 사이드바 항목도 둘이다. 종류는 쿼리(`?kind=general|coverage`)로 가른다 —
  * 라우트는 `/documents` 하나라 상세·생성 링크가 깨지지 않는다. `kind` 가 없으면 보통약관으로 보낸다.
  *
- * 담보약관 템플릿에는 `+` 가 없다 — 담보 하나가 소유하는 문서라 담보 상세에서 생긴다.
+ * 두 종류 모두 제목 줄 오른쪽 `+` 로 만든다. 담보약관 템플릿의 `+` 는 **템플릿이 없는 담보**를 고르는 생성 화면
+ * (`/documents/new?kind=coverage`)으로 간다 — 담보 상세의 「만들기」 띠가 빠진 뒤의 유일한 입구 (2026-09-27, 기능/문면 §4).
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -65,7 +66,11 @@ export default async function DocumentsPage({
   return (
     <ListPage
       title={title}
-      {...(kind === "general" ? { create: { href: "/documents/new", label: newLabel(ENTITY_LABEL.generalTemplate) } } : {})}
+      create={
+        kind === "general"
+          ? { href: "/documents/new", label: newLabel(ENTITY_LABEL.generalTemplate) }
+          : { href: "/documents/new?kind=coverage", label: newLabel(ENTITY_LABEL.coverageTemplate) }
+      }
       search={{ placeholder: "제목" }}
       columns={columns}
       rows={slice.rows}
@@ -88,10 +93,10 @@ export default async function DocumentsPage({
           />
         ) : (
           <EmptyState
-            what="담보약관 템플릿은 담보 하나가 소유하는 특별약관 문서다 — 여기서 직접 만들지 않는다."
+            what="담보약관 템플릿은 담보 하나가 소유하는 특별약관 문서다 — 템플릿이 없는 담보를 골라 만든다."
             example="일반상해사망 특별약관"
-            actionHref="/coverages"
-            actionLabel="담보약관 템플릿은 담보 상세 화면에서 생성하세요 — 담보 목록으로"
+            actionHref="/documents/new?kind=coverage"
+            actionLabel={`${newLabel(ENTITY_LABEL.coverageTemplate)} 만들기`}
           />
         )
       }

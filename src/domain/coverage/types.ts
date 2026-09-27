@@ -6,7 +6,7 @@
  * - 순서(order)는 데이터다 — 형제 배열의 순서 = 문면 수록 순서 = 반복·집계 순회 순서. 0부터 빈틈 없이.
  * - 문면(담보약관) 문서는 B3 document 영역 소유 — 여기에는 `documentId` 자리만 둔다.
  */
-import type { Id } from "../types";
+import type { Code, Id } from "../types";
 
 export interface Benefit {
   id: Id;
@@ -24,6 +24,11 @@ export interface SubCoverage {
 
 export interface Coverage {
   id: Id;
+  /**
+   * 담보코드 `COV000001` … — 시스템 채번 · 불변 · 유일 (기능/담보 §3.1, 2026-09-27 · `code.ts`).
+   * 저장된 담보는 늘 갖는다. 도메인이 막 지은 트리(`createCoverageTree` · 테스트 픽스처)에는 아직 없다 — 채번은 저장 직전이다.
+   */
+  code?: Code;
   /** 담보 마스터 전역 유일 (D-P2-2). */
   name: string;
   description: string;

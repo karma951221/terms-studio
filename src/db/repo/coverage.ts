@@ -6,10 +6,11 @@
  */
 import { and, asc, eq, inArray, notInArray, sql } from "drizzle-orm";
 
+import { formatCoverageCode } from "@/domain/coverage/code";
 import type { Coverage, CoverageNodeRef, SubCoverage } from "@/domain/coverage/types";
-import type { Id } from "@/domain/types";
+import type { Code, Id } from "@/domain/types";
 
-import { benefits, coverages, subCoverages } from "../schema";
+import { benefits, codeSequences, coverages, subCoverages } from "../schema";
 import type { Db } from "./types";
 
 type CoverageRow = typeof coverages.$inferSelect;
@@ -25,6 +26,7 @@ function toCoverage(row: CoverageRow, subs: SubRow[], bens: BenefitRow[]): Cover
   }
   return {
     id: row.id,
+    code: row.code,
     name: row.name,
     description: row.description,
     ...(row.documentId ? { documentId: row.documentId } : {}),
@@ -84,18 +86,20 @@ export async function listCoverages(db: Db): Promise<Coverage[]> {
 /** 담보 조회(L1) 목록 행 — 트리를 전부 안 읽고 최종수정만 얹는다 (리뷰 #38/#48, WP2). */
 export interface CoverageSummary {
   id: Id;
+  /** 담보코드 `COV000001` (기능/담보 §3.1). */
+  code: Code;
   name: string;
   documentId?: Id;
   updatedAt: Date;
 }
 
-/** 이름순 목록 — 담보 마스터에는 코드·상태·담보분류가 아직 없다(디자인원칙 §2 L1 은 미구현 상태, §10). */
+/** 이름순 목록 — 담보 마스터에는 상태 · 담보분류가 아직 없다(디자인원칙 §2 L1 은 미구현 상태, §10). 코드는 있다 (2026-09-27). */
 export async function listCoverageSummaries(db: Db): Promise<CoverageSummary[]> {
   const rows = await db
-    .select({ id: coverages.id, name: coverages.name, documentId: coverages.documentId, updatedAt: coverages.updatedAt })
+    .select({ id: coverages.id, code: coverages.code, name: coverages.name, documentId: coverages.documentId, updatedAt: coverages.updatedAt })
     .from(coverages)
     .orderBy(asc(coverages.name));
-  return rows.map((r) => ({ id: r.id, name: r.name, updatedAt: r.updatedAt, ...(r.documentId ? { documentId: r.documentId } : {}) }));
+  return rows.map((r) => ({ id: r.id, code: r.code, name: r.name, updatedAt: r.updatedAt, ...(r.documentId ? { documentId: r.documentId } : {}) }));
 }
 
 /** 담보명 전부 — 전역 중복 검사용. */
@@ -139,10 +143,30 @@ export async function coverageAudit(db: Db, id: Id) {
 
 // ───────────────────────────── 쓰기 ─────────────────────────────
 
-/** 새 담보 트리 저장 (담보 + 세부보장 + 급부). id 는 도메인이 발급한 것을 그대로 쓴다. */
+/**
+ * 담보코드 순번 — 카탈로그 · 공용조항 · 별표와 같은 code_sequences 를 쓰되 kind 는 `coverage` (scope 전역 "").
+ * 한 문장의 upsert 라 동시 호출에도 안전하고, 삭제된 순번은 재사용하지 않는다.
+ */
+export async function nextCoverageSeq(db: Db): Promise<number> {
+  const [row] = await db
+    .insert(codeSequences)
+    .values({ kind: "coverage", scope: "", next: 2 })
+    .onConflictDoUpdate({
+      target: [codeSequences.kind, codeSequences.scope],
+      set: { next: sql`${codeSequences.next} + 1` },
+    })
+    .returning({ next: codeSequences.next });
+  return row.next - 1;
+}
+
+/**
+ * 새 담보 트리 저장 (담보 + 세부보장 + 급부). id 는 도메인이 발급한 것을 그대로 쓴다.
+ * 코드는 서비스가 채번해 트리에 실어 온다(`createCoverage`). 코드 없는 트리(저장소 테스트 픽스처)는 여기서 순번을 받는다.
+ */
 export async function insertCoverage(db: Db, tree: Coverage, who: Id): Promise<void> {
   await db.insert(coverages).values({
     id: tree.id,
+    code: tree.code ?? formatCoverageCode(await nextCoverageSeq(db)),
     name: tree.name,
     description: tree.description,
     documentId: tree.documentId ?? null,
@@ -153,7 +177,7 @@ export async function insertCoverage(db: Db, tree: Coverage, who: Id): Promise<v
 }
 
 /**
- * 기존 트리 덮어쓰기 — 트리에서 빠진 세부보장·급부 삭제 → 남는 노드의 이름을 자리표로 비움 → 노드 upsert.
+ * 기존 트리 덮어쓰기 — 코드는 쓰지 않는다(불변). 트리에서 빠진 세부보장·급부 삭제 → 남는 노드의 이름을 자리표로 비움 → 노드 upsert.
  * 형제 이름은 유일 인덱스(`sub_coverages_sibling_name` · `benefits_sibling_name`)라, 이름 A↔B 맞바꾸기를 한 행씩 쓰면
  * 첫 행에서 걸린다. 도메인은 최종 트리로 검사하므로(점검 2026-09-27 H2 ③) 저장도 최종 이름만 인덱스에 닿게 한다.
  */

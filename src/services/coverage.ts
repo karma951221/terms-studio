@@ -21,7 +21,7 @@ import {
   applyStructurePlanTo,
   checkValueWrite,
   completeness,
-  createCoverageTree,
+  createCoverage,
   descendants,
   dryRunStructurePlan,
   findBenefit,
@@ -415,7 +415,8 @@ export function createCoverageService(db: Db, deps: CoverageServiceDeps = {}): C
 
     create: (actor, input) =>
       db.transaction(async (tx) => {
-        const r = createCoverageTree(input, newId, await repo.listCoverageNames(tx));
+        // 이름 검사 뒤에만 채번한다 — 거절된 생성이 순번을 태우지 않게 (기능/담보 §3.1 담보코드).
+        const r = await createCoverage(input, newId, await repo.listCoverageNames(tx), () => repo.nextCoverageSeq(tx));
         if (!r.ok) return r;
         await repo.insertCoverage(tx, r.value, actor.userId);
         return r;

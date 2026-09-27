@@ -42,14 +42,50 @@
             ]
           }
         ]
+      },
+      {
+        "code": "form-1",
+        "axis": "form",
+        "number": 1,
+        "name": "해약환급금 지급형",
+        "planTypeCode": "no_surrender",
+        "values": [
+          {
+            "path": "no_surrender.type",
+            "value": "V01"
+          }
+        ]
+      },
+      {
+        "code": "form-2",
+        "axis": "form",
+        "number": 2,
+        "name": "해약환급금미지급형(납입후50%)",
+        "planTypeCode": "no_surrender",
+        "values": [
+          {
+            "path": "no_surrender.type",
+            "value": "V03"
+          }
+        ]
       }
     ],
     "plans": [
       [
-        "type-1"
+        "type-1",
+        "form-1"
       ],
       [
-        "type-2"
+        "type-1",
+        "form-2"
+      ],
+      [
+        "type-2",
+        "form-1"
+      ],
+      [
+        "type-2",
+        "form-2"
       ]
     ],
     "groups": [

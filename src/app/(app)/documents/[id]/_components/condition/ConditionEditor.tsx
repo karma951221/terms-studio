@@ -16,14 +16,17 @@ export function ConditionEditor({
   initial,
   context,
   autoSubmit,
+  startOpen,
 }: {
   name: string;
   initial?: string;
   context: ConditionContext;
   autoSubmit?: boolean;
+  /** 칸이 서자마자 조건 팝업을 연다 — 툴바 「조건식」으로 문장 안 조건을 넣을 때 식부터 만든다. */
+  startOpen?: boolean;
 }) {
   const [source, setSource] = useState(initial ?? "");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(Boolean(startOpen));
   const hidden = useRef<HTMLInputElement>(null);
   const display = useMemo(() => chipDisplay(source, context), [source, context]);
   return (

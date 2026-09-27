@@ -75,6 +75,7 @@ export default async function CoverageDetailPage({
       <CoverageEditor
         key={signature}
         id={tree.id}
+        code={tree.code}
         initial={{ label: tree.name, description: tree.description, structure: structureDraftOf(tree), values: {} }}
         formByNode={formByNode}
         usageCount={usageCount}

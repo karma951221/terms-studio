@@ -4,13 +4,14 @@
  * 그 자리 팝업 · 오른쪽 클릭 메뉴 (기능/문면 §4.3).
  *
  * - `Popover` — 누른 자리 **바로 아래**에 뜨는 모달 `<dialog>`. 아래가 모자라면 위로 올린다. Esc · 바깥 클릭으로 닫힌다.
- * - `ContextMenu` — 브라우저 기본 메뉴 대신 뜨는 앱 메뉴. 팝업 안에서 열면 그 팝업 안에 그린다(모달 밖은 눌리지 않는다).
+ * - `ContextMenu` — 브라우저 기본 메뉴 대신 뜨는 앱 메뉴(툴바의 지름길). 팝업 안에서 열면 그 팝업 안에 그린다(모달 밖은 눌리지 않는다).
+ *   툴바의 여러 갈래 버튼(옵션 자리 ▾)도 이 메뉴로 고른다.
  */
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import type { Anchor } from "./ctx";
-import type { MenuItem, MenuSections } from "./menus";
+import { forContextMenu, type MenuItem, type MenuSections } from "./menus";
 
 /** 떠 있는 요소를 자리 바로 아래에 — 화면 밖으로 나가지 않게 당긴다. */
 export function placeAt(el: HTMLElement, anchor: Anchor): void {
@@ -80,7 +81,8 @@ function topModal(): HTMLElement {
 export function ContextMenu({ x, y, sections, onPick, onClose }: { x: number; y: number; sections: MenuSections; onPick: (item: MenuItem) => void; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [host] = useState<HTMLElement>(() => topModal());
-  const shown = sections.filter((s) => s.length > 0);
+  // 툴바 전용(조건 넣기)은 오른쪽 클릭 메뉴에 싣지 않는다 (기능/문면 §4.3)
+  const shown = forContextMenu(sections);
 
   useLayoutEffect(() => {
     const el = ref.current;

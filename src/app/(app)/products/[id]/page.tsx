@@ -37,7 +37,7 @@ export default async function ProductDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; error?: string; confirm?: string; option?: string; field?: string; art?: string; pc?: string }>;
+  searchParams: Promise<{ tab?: string; error?: string; confirm?: string; option?: string; field?: string; art?: string; pc?: string; mq?: string; mpage?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
@@ -264,7 +264,7 @@ export default async function ProductDetailPage({
           coverages={coverages}
           attributeKinds={attributeKinds}
           plans={plans}
-          coverageName={coverageName}
+          mountSearch={{ query: sp.mq, page: sp.mpage }}
           wouldBeName={wouldBeName}
           baseCheck={baseCheck}
           overrides={overrides}
@@ -288,7 +288,7 @@ export default async function ProductDetailPage({
           coverages={coverages}
           attributeKinds={attributeKinds}
           plans={plans}
-          coverageName={coverageName}
+          mountSearch={{ query: sp.mq, page: sp.mpage }}
           wouldBeName={wouldBeName}
           groups={groups}
           unplaced={unplaced}

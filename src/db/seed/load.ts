@@ -81,6 +81,9 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
   }
 
   interface CoverageSpec {
+    /** 시드 안의 참조 키 — 상품 탑재(`mounts[].coverage`) · 담보약관(`ownerCoverage`)이 이것으로 담보를 가리킨다. */
+    key: string;
+    /** 기대 담보코드 — 코드는 시스템 채번(COV000001…)이라 JSON 순서가 곧 코드다. 어긋나지 않았는지 대조용 (기능/담보 §3.1). */
     code: string;
     name: string;
     benefitName: string;
@@ -99,8 +102,9 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
         benefitName: first?.benefitName ?? specification.benefitName,
       }),
     );
+    expectCode(tree.code ?? "", specification.code);
     for (const sub of rest) tree = unwrap(await services.coverage.addSubCoverage(actor, tree.id, sub));
-    coverageIds.set(specification.code, tree.id);
+    coverageIds.set(specification.key, tree.id);
     const benefitId = tree.subCoverages[0].benefits[0].id;
     for (const entry of specification.coverageValues) unwrap(await services.coverage.writeValue(actor, { level: "coverage", id: tree.id }, entry.path, entry.value as Value));
     for (const entry of specification.benefitValues) unwrap(await services.coverage.writeValue(actor, { level: "benefit", id: benefitId }, entry.path, entry.value as Value));
