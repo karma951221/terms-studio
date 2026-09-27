@@ -3001,7 +3001,7 @@ button.ts-doc-pick.ts-doc-cond-head[aria-current="true"] {
   color: var(--ts-mark);
 }
 
-/* ── 12. L3 저작 셸 — 화면 높이 고정 · 목차 220 · 가운데 · 우측 340, 셋이 각자 스크롤 (기능/문면 §4.3) ── */
+/* ── 12. L3 저작 셸 — 화면 높이 고정 · 목차 220 · 가운데 · 우측 340, 셋이 각자 스크롤 (기능/문면 §4.3). 좁은 폭은 .ts-l3-bar 아래 @container l3 ── */
 
 .ts-l3 {
   display: grid;
@@ -3454,6 +3454,83 @@ button.ts-ref-fold:hover {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+/* 바는 한 줄이다 — 조각은 줄바꿈하지 않고, 넘치면 경로만 말줄임으로 준다 */
+.ts-l3-bar > * {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.ts-l3-bar > .ts-path {
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+}
+
+/* 우측 패널 열기 버튼 — 좁은 폭(아래 @container l3)에서만 선다 */
+.ts-l3-side-toggle {
+  display: none;
+}
+
+/*
+ * 좁은 폭 — 가운데 본문 폭이 먼저다. 기준은 창이 아니라 L3 가 받은 폭(내비를 뺀 .ts-main)이다.
+ * 1100 미만: 우측 패널을 접고 바의 패널 버튼으로 본문 위에 연다(두 칸 목차 200 · 본문). 안내 문구는 숨긴다.
+ * 700 미만: 목차를 160 으로. 바의 노드 수를 숨긴다.
+ */
+.ts-main:has(> .ts-l3) {
+  container: l3 / inline-size;
+}
+
+.ts-l3 {
+  position: relative;
+}
+
+@container l3 (max-width: 1099px) {
+  .ts-l3 {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+
+  .ts-l3-side {
+    display: none;
+  }
+
+  .ts-l3.is-side-open .ts-l3-side {
+    display: block;
+    position: absolute;
+    grid-row: 2;
+    grid-column: 1 / -1;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(340px, 85%);
+    z-index: 5;
+  }
+
+  .ts-l3-side-toggle {
+    display: inline-flex;
+  }
+
+  .ts-l3-side-toggle[aria-expanded="true"] {
+    background: var(--ts-surface);
+    color: var(--ts-ink);
+  }
+
+  .ts-l3-hint,
+  .ts-l3-dirty-tail {
+    display: none;
+  }
+}
+
+@container l3 (max-width: 699px) {
+  .ts-l3 {
+    grid-template-columns: 160px minmax(0, 1fr);
+  }
+
+  .ts-count-nodes {
+    display: none;
+  }
 }
 
 /* ── 12-1. 조건 팝업 — 두 칸(줄 · 트리) · 담보 구분자 트리 (ADR-0066 §4~§7) ── */
@@ -4322,6 +4399,8 @@ button.ts-ref-fold:hover {
 .ts-basic-table td { padding-block: 5px; }
 .ts-basic-table .ts-basic-col-select { width: 44px; text-align: center; }
 .ts-basic-table .ts-basic-col-name { min-width: 200px; }
+/* 좁은 폭(내비 포함 820 안팎) — 이름 칸을 줄여 시드 규모의 표(세목유형 폼 하나)가 가로 스크롤 없이 들어오게. 폼이 더 붙으면 표는 감싼 칸 안에서 가로로 민다 */
+@media (max-width: 1023px) { .ts-basic-table .ts-basic-col-name { min-width: 150px; } }
 .ts-basic-table input[type="text"],
 .ts-basic-table input[type="number"],
 .ts-basic-table input[type="date"],

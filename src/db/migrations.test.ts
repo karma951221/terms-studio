@@ -132,3 +132,36 @@ describe("0006_master_form_paths", () => {
     expect(await snapshot()).toEqual(before);
   });
 });
+
+describe("0013_discriminator_description_doc_refs", () => {
+  it("시드 원문 그대로인 설명에서만 문서 번호를 빼고, 사용자가 고친 설명은 두며, 두 번째 적용은 아무것도 바꾸지 않는다", async () => {
+    for (let idx = 6; idx <= 12; idx++) for (const s of statementsOf(tagOf(idx))) await client.exec(s);
+    const put = (code: string, description: string) =>
+      client.query(
+        `INSERT INTO discriminators (code, label, level, expression, description) VALUES ($1, $1, 'benefit', 'true', $2)`,
+        [code, description],
+      );
+    await put("D0001", "문면이 담보 이름을 그대로 찍는 자리의 값 — 담보 레벨 마스터 필드의 투영 (ADR-0036 §2)");
+    await put("D0002", "감액 폼을 열었나 — 급부 시드 폼 `reduction` 의 투영 (ADR-0065 §5)");
+    await put("D0003", "사용자가 고친 설명 (ADR-0065 §5)");
+    const read = async () =>
+      Object.fromEntries(
+        (await client.query<{ code: string; description: string }>(`SELECT code, description FROM discriminators ORDER BY code`)).rows.map(
+          (r) => [r.code, r.description],
+        ),
+      );
+    const apply0013 = async () => {
+      for (const s of statementsOf(tagOf(13))) await client.exec(s);
+    };
+
+    await apply0013();
+    const after = await read();
+    expect(after).toEqual({
+      D0001: "문면이 담보 이름을 그대로 찍는 자리의 값 — 담보 레벨 마스터 필드의 투영",
+      D0002: "감액 폼을 열었나 — 급부 폼 「감액」의 투영",
+      D0003: "사용자가 고친 설명 (ADR-0065 §5)",
+    });
+    await apply0013();
+    expect(await read()).toEqual(after);
+  });
+});

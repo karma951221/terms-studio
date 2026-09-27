@@ -91,7 +91,7 @@ export default async function CatalogListPage({ searchParams }: { searchParams: 
       empty={defs.length === 0 ? (
         <EmptyState
           what="구분자는 조문이 묻는 개념 하나에 이름을 붙인 식이다 — 입력 항목에 연산을 걸어 조문에 내보낸다."
-          example="담보명 = 담보.담보명 · 면책구분 = any(급부.보험금지급.면책여부)"
+          example="보험금명 = 담보.담보 기본.보험금명 · 면책구분 = any(급부.보험금지급.면책여부)"
           actionHref="/catalog/new"
           actionLabel="새 구분자 만들기"
         />

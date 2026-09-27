@@ -22,7 +22,7 @@ import { useRouter } from "next/navigation";
 import { Breadcrumb } from "@/app/_components/Breadcrumb";
 import { coordinateHref } from "@/app/_components/coordinateHref";
 import { DiscardDialog } from "@/app/_components/EditShell";
-import { IconButton, IconClose } from "@/app/_components/icons";
+import { IconButton, IconClose, IconPanel } from "@/app/_components/icons";
 import { MoreMenu, type MoreMenuItem } from "@/app/_components/MoreMenu";
 import { DOC_TEMPLATE_LABEL } from "@/app/_lib/labels";
 import { describeRejection } from "@/app/_lib/rejection";
@@ -162,6 +162,8 @@ export function DocumentEditor(props: EditorProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [mode, setMode] = useState<DocMode>("read");
+  /** 좁은 폭에서만 뜻이 있다 — 우측 패널을 본문 위에 연다. 넓은 폭에서는 패널이 늘 서 있고 이 버튼도 숨는다. */
+  const [sideOpen, setSideOpen] = useState(false);
   const [draft, setDraftState] = useState<Draft>();
   const draftRef = useRef<Draft | undefined>(undefined);
   const setDraft = (next: Draft | undefined) => {
@@ -695,21 +697,37 @@ export function DocumentEditor(props: EditorProps) {
   return (
     // 화면 높이에 고정 — 바는 위에, 목차 · 가운데 · 우측 패널은 각자 스크롤한다 (globals.css .ts-l3).
     // L3 는 전폭 화면이다 — `.ts-main:has(> .ts-l3)`(globals.css)가 공통 레이아웃의 최대폭·패딩을 여기서만 푼다.
-    <div className="ts-l3" aria-busy={pending || undefined}>
+    // 좁은 폭(globals.css `@container l3`)에서는 우측 패널이 접히고 바의 패널 버튼으로 본문 위에 연다 — 가운데 본문 폭이 먼저다.
+    <div className={sideOpen ? "ts-l3 is-side-open" : "ts-l3"} aria-busy={pending || undefined}>
       <div className="ts-l3-bar">
         <Breadcrumb items={[{ label: DOC_TEMPLATE_LABEL[doc.kind], href: docListHref(doc.kind) }, { label: tree.title }]} guard={mode === "edit" ? leave : undefined} />
         <span className="ts-count" title="이 템플릿의 규모와, 저장 검증이 잡은 문제 수">
-          조 <b>{articles.length}</b> · 검증 오류 <b>{errorCount}</b> / 노드 {index.nodes.size}
+          조 <b>{articles.length}</b> · 검증 오류 <b>{errorCount}</b>
+          <span className="ts-count-nodes"> / 노드 {index.nodes.size}</span>
         </span>
         {mode === "edit" && (
           <>
             <span className="ts-l3-dirty" title="편집본에 넣은 명령 수 — 저장해야 원본에 반영된다">
-              {dirty ? `편집 중 · 고친 것 ${draft!.ops.length}건 — 저장해야 반영` : "편집 중"}
+              {dirty ? (
+                <>
+                  편집 중 · 고친 것 {draft!.ops.length}건<span className="ts-l3-dirty-tail"> — 저장해야 반영</span>
+                </>
+              ) : (
+                "편집 중"
+              )}
             </span>
             <span className="ts-l3-hint">오른쪽 클릭으로 추가 · 이동</span>
           </>
         )}
         <span className="ts-l3-bar-actions">
+          <IconButton
+            className="ts-l3-side-toggle"
+            icon={<IconPanel />}
+            label={sideOpen ? "우측 패널 닫기 — 검증 목록 · 사전평가" : "우측 패널 열기 — 검증 목록 · 사전평가"}
+            aria-expanded={sideOpen}
+            aria-controls="ts-l3-side"
+            onClick={() => setSideOpen((open) => !open)}
+          />
           <MoreMenu items={moreItems} />
           {mode === "edit" ? (
             <>

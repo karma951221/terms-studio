@@ -6,7 +6,7 @@
  * 레벨 배치의 근거:
  * - 납입면제 · 무저해지 · 계약전환 · 영위업종적용은 **세목(plan)** — 값을 갖는 것이 세목 선택지라
  *   상품 레벨로 올리면 종 · 형 축이 성립하지 않는다.
- * - 담보 기본{담보명}은 **담보(coverage)** — 문면 값 슬롯이 투영 구분자로 이 자리를 찍는다.
+ * - 담보 기본{보험금명}은 **담보(coverage)** — 문면 값 슬롯이 투영 구분자로 이 자리를 찍는다.
  *   갱신유형은 담보속성(A0001)이라 마스터에 없다 (기능/담보 §4 「상세」 — 담보속성은 어느 탭에도 없다).
  * - 보험금지급{면책여부 · 지급률 · 최초1회한}은 **급부(benefit)** — 기능/구분자 §3.2 가 집계의 본보기로 드는 자리
  *   (`면책구분 = any(pay.exempt)`). 하위 레벨 자리가 하나도 없으면 집계 규칙이 죽은 길이 된다.
@@ -52,9 +52,9 @@ export const MASTER: readonly MasterForm[] = [
     fields: [
       {
         key: "claim_name",
-        label: "담보명",
+        label: "보험금명",
         type: { kind: "string" },
-        description: "조문이 담보 이름을 그대로 찍는 자리의 값 (예: 「…을 [담보명]으로 지급합니다」)",
+        description: "조문의 지급 문장에 찍히는 보험금 이름 — 담보명과 다를 수 있다 (예: 「보험가입금액을 사망보험금으로 지급합니다」)",
       },
     ],
   },
@@ -80,7 +80,7 @@ export const MASTER: readonly MasterForm[] = [
     level: "benefit",
     optional: true,
     system: true,
-    description: "급부의 감액 구간 — 보장개시 후 n개월 미만은 지급률을 낮춘다. 폼을 열지 않으면 감액 없음 (ADR-0065)",
+    description: "급부의 감액 구간 — 보장개시 후 n개월 미만은 지급률을 낮춘다. 폼을 열지 않으면 감액 없음",
     fields: [
       {
         key: "periods",
@@ -113,7 +113,7 @@ export const MASTER: readonly MasterForm[] = [
     level: "benefit",
     optional: true,
     system: true,
-    description: "급부의 면책 기간 — 보장개시 후 n개월은 지급하지 않는다. 폼을 열지 않으면 면책 없음 (ADR-0065 §6)",
+    description: "급부의 면책 기간 — 보장개시 후 n개월은 지급하지 않는다. 폼을 열지 않으면 면책 없음",
     fields: [
       { key: "months", label: "기간", system: true, type: { kind: "number" }, description: "개월 수. 화면은 3M · 1Y 로 받는다" },
       { key: "age15_only", label: "15세 이상만 적용", system: true, type: { kind: "boolean" }, defaultValue: false },
