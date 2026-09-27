@@ -80,7 +80,7 @@ export const MASTER: readonly MasterForm[] = [
     level: "benefit",
     optional: true,
     system: true,
-    description: "급부의 감액 구간 — 보장개시 후 n개월 미만은 지급률을 낮춘다. 폼을 열지 않으면 감액 없음 (ADR-0065)",
+    description: "급부의 감액 구간 — 보장개시 후 n개월 미만은 지급률을 낮춘다. 폼을 열지 않으면 감액 없음",
     fields: [
       {
         key: "periods",
@@ -113,7 +113,7 @@ export const MASTER: readonly MasterForm[] = [
     level: "benefit",
     optional: true,
     system: true,
-    description: "급부의 면책 기간 — 보장개시 후 n개월은 지급하지 않는다. 폼을 열지 않으면 면책 없음 (ADR-0065 §6)",
+    description: "급부의 면책 기간 — 보장개시 후 n개월은 지급하지 않는다. 폼을 열지 않으면 면책 없음",
     fields: [
       { key: "months", label: "기간", system: true, type: { kind: "number" }, description: "개월 수. 화면은 3M · 1Y 로 받는다" },
       { key: "age15_only", label: "15세 이상만 적용", system: true, type: { kind: "boolean" }, defaultValue: false },

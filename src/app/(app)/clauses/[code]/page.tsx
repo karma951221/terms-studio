@@ -237,7 +237,7 @@ export default async function ClauseDetailPage({ params }: { params: Promise<{ c
       {clause.required.discriminators.length > 0 ? (
         <p className="ts-mono">{clause.required.discriminators.join(" · ")}</p>
       ) : (
-        <p className="ts-muted">요구 구분자 없음 — 본문의 식에서 자동 추출된다 (ADR-0010)</p>
+        <p className="ts-muted">요구 구분자 없음 — 본문의 식에서 자동 추출된다</p>
       )}
 
       <p className="ts-l2-side-title">

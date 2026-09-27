@@ -2,7 +2,7 @@
   {
     "code": "D0001",
     "label": "담보명",
-    "description": "문면이 담보 이름을 그대로 찍는 자리의 값 — 담보 레벨 마스터 필드의 투영 (ADR-0036 §2)",
+    "description": "문면이 담보 이름을 그대로 찍는 자리의 값 — 담보 레벨 마스터 필드의 투영",
     "level": "coverage",
     "expression": "coverage_basic.claim_name",
     "resultType": { "kind": "string" }
@@ -10,7 +10,7 @@
   {
     "code": "D0002",
     "label": "감액여부",
-    "description": "감액 폼을 열었나 — 급부 시드 폼 `reduction` 의 투영 (ADR-0065 §5)",
+    "description": "감액 폼을 열었나 — 급부 폼 「감액」의 투영",
     "level": "benefit",
     "expression": "exist(reduction.periods)",
     "resultType": { "kind": "boolean" }

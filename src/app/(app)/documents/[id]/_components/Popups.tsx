@@ -554,7 +554,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
                 <option value="2">{REPEAT_DEPTH_LABEL[2].option}</option>
               </select>
             </div>
-            <p className="ts-muted">머리글이 아닌 행이 템플릿이 되어 담보의 세부보장(› 급부)마다 복제된다 (§3.7).</p>
+            <p className="ts-muted">머리글이 아닌 행이 템플릿이 되어 담보의 세부보장(› 급부)마다 복제된다.</p>
             <PopActions onCancel={onClose} />
           </PopForm>
         </Popover>
