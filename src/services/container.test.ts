@@ -84,7 +84,6 @@ describe("container — createServices 관통 (PGlite)", () => {
     const benefit = death.subCoverages[0].benefits[0];
     unwrap(await s.coverage.writeValue(editor, { level: "benefit", id: benefit.id }, "pay.exempt", false));
     unwrap(await s.coverage.writeValue(editor, { level: "benefit", id: benefit.id }, "pay.rate", 100));
-    unwrap(await s.coverage.writeValue(editor, { level: "benefit", id: benefit.id }, "pay.first_only", false));
     expect(unwrap(await s.coverage.completeness(death.id))).toEqual([]);
   });
 
@@ -200,7 +199,7 @@ describe("container — createServices 관통 (PGlite)", () => {
       { document: "special", ownerId: death.id, ownerName: "일반상해사망 특별약관" },
       { document: "special", ownerId: pcId, ownerName: "갱신형 일반상해사망" },
     ]);
-    expect(cov.valueRowsLost).toBe(4); // 담보명 + 급부 면책여부·지급률·최초1회한
+    expect(cov.valueRowsLost).toBe(3); // 담보명 + 급부 면책여부·지급률
     // 급부 삭제는 최소 구조 위반 — 관리자도 거부
     expect(rejection(await s.coverage.removeBenefit(admin, death.subCoverages[0].benefits[0].id)).reason).toBe("minimumStructure");
     // 공용조항 삭제 → 참조 문서 (참조 노드 좌표)

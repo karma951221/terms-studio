@@ -205,3 +205,34 @@ describe("0015_coverage_code", () => {
     await expect(client.query(`INSERT INTO coverages (name, code) VALUES ('둘', 'COV000001')`)).rejects.toThrow();
   });
 });
+
+describe("0016_drop_pay_first_only", () => {
+  const upTo15 = async () => {
+    for (let idx = 6; idx <= 15; idx++) for (const s of statementsOf(tagOf(idx))) await client.exec(s);
+  };
+  const apply0016 = async () =>
+    client.transaction(async (tx) => {
+      for (const s of statementsOf(tagOf(16))) await tx.exec(s);
+    });
+  const put = (ownerKind: string, owner: string, fieldPath: string, value: string) =>
+    client.query(`INSERT INTO entity_values (owner_kind, owner_id, field_path, value) VALUES ($1, $2, $3, $4::jsonb)`, [ownerKind, owner, fieldPath, value]);
+  const rows = async () =>
+    (await client.query<{ owner_kind: string; field_path: string }>(`SELECT owner_kind, field_path FROM entity_values ORDER BY owner_kind, field_path`)).rows;
+
+  it("담보 마스터 · 상품담보 스냅샷의 pay.first_only 값 행만 지운다 — 다른 경로는 그대로 · 두 번 돌려도 같다", async () => {
+    await upTo15();
+    const other = "22222222-2222-4222-8222-222222222222";
+    await put("benefit", OWNER, "pay.first_only", "false");
+    await put("benefit", OWNER, "pay.rate", "80");
+    await put("productBenefit", other, "pay.first_only", "true");
+    await put("productBenefit", other, "pay.exempt", "true");
+    await apply0016();
+    const after = await rows();
+    expect(after).toEqual([
+      { owner_kind: "benefit", field_path: "pay.rate" },
+      { owner_kind: "productBenefit", field_path: "pay.exempt" },
+    ]);
+    await apply0016();
+    expect(await rows()).toEqual(after);
+  });
+});

@@ -77,7 +77,6 @@ describe("값 자리 — 노드 × 마스터 필드 (ADR-0037)", () => {
     expect(valueSlotsOf("benefit")).toEqual([
       "pay.exempt",
       "pay.rate",
-      "pay.first_only",
       "reduction.periods",
       "reduction.after_rate",
       "reduction.new_only",

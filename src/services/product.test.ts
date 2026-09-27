@@ -352,15 +352,17 @@ describe("product 서비스 (PGlite)", () => {
       expect(snap.subCoverages.map((s) => s.name)).toEqual(["1종수술", "2종수술"]);
       const newBen = snap.subCoverages[1].benefits[0];
       expect((await svc.getSnapshotValues(pcSurgery)).get(newBen.id)?.size ?? 0).toBe(0); // 빈 값
-      // 완결성: 급부마다 최초1회한 — 면책여부 · 지급률은 선택 필드라 값이 없으면 세지 않는다 (1종수술급부 지급률은 입력함)
+      // 완결성: 새 급부는 선택 필드뿐이라 미입력이 없다. 새 급부에 면책 폼을 열면(신규만) 그 폼의 빈 자리가 잡힌다
+      expect(await svc.coverageMissing(pcSurgery)).toEqual([]);
+      await writeSlot(t.db, { kind: "productBenefit", id: newBen.id }, "exemption.new_only", true);
       const missing = await svc.coverageMissing(pcSurgery);
       expect(missing.map((m) => `${m.ownerName}:${m.path}`).sort()).toEqual([
-        "1종수술급부:pay.first_only",
-        "2종수술급부:pay.first_only",
+        "2종수술급부:exemption.age15_only",
+        "2종수술급부:exemption.months",
       ]);
-      // 분모: 담보명 1 + 1종수술급부(입력한 지급률 + 최초1회한) 2 + 2종수술급부 최초1회한 1 = 4
+      // 분모: 담보명 1 + 1종수술급부 입력한 지급률 1 + 2종수술급부 연 면책 폼 3 = 5 (값 없는 선택 필드는 세지 않는다)
       const summary = await svc.coverageCompleteness(pcSurgery);
-      expect(summary.total).toBe(4);
+      expect(summary.total).toBe(5);
       expect(summary.missing).toHaveLength(2);
 
       await writeSlot(t.db, { kind: "productBenefit", id: newBen.id }, "pay.exempt", true);

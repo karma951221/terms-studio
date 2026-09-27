@@ -26,23 +26,25 @@ describe("마스터 경로 — 폼키.필드키", () => {
     expect(masterPath("waiver", "applies")).toBe("waiver.applies");
   });
 
-  it("MVP 정본 — 폼 8벌 · 필드 15자리, 선언 순서", () => {
+  it("MVP 정본 — 폼 8벌 · 필드 14자리, 선언 순서", () => {
     expect(MASTER.map((f) => f.key)).toEqual([
       "waiver", "no_surrender", "conversion", "business_type", "coverage_basic", "pay", "reduction", "exemption",
     ]);
     expect(allMasterFields().map((r) => r.path)).toEqual([
       "waiver.applies", "waiver.reasons", "no_surrender.type", "conversion.converts", "business_type.applies",
-      "coverage_basic.claim_name", "pay.exempt", "pay.rate", "pay.first_only",
+      "coverage_basic.claim_name", "pay.exempt", "pay.rate",
       "reduction.periods", "reduction.after_rate", "reduction.new_only",
       "exemption.months", "exemption.age15_only", "exemption.new_only",
     ]);
   });
 
-  it("pay.first_only — 최초1회한 (실물 재현 2차 §6): boolean · 급부 레벨", () => {
-    const ref = findMasterField("pay.first_only");
-    expect(ref?.level).toBe("benefit");
-    expect(ref?.field).toMatchObject({ key: "first_only", label: "최초1회한", type: { kind: "boolean" } });
-    expect(ref?.field.description).toBeTruthy();
+  it("pay.first_only(최초1회한)는 없다 — 2026-09-27 삭제 (기능/마스터 §6.2)", () => {
+    expect(findMasterField("pay.first_only")).toBeUndefined();
+  });
+
+  it("보험금지급의 면책여부 · 지급률은 선택 필드다 (2026-09-27)", () => {
+    expect(findMasterField("pay.exempt")?.field.optional).toBe(true);
+    expect(findMasterField("pay.rate")?.field.optional).toBe(true);
   });
 
   it("폼키는 전역 유일 · 필드키는 폼 안에서 유일", () => {
@@ -58,7 +60,7 @@ describe("마스터 경로 — 폼키.필드키", () => {
     expect(formsOfLevel("plan").map((f) => f.key)).toEqual(["waiver", "no_surrender", "conversion", "business_type"]);
     expect(formsOfLevel("product")).toEqual([]);
     expect(fieldsOfLevel("benefit").map((r) => r.path)).toEqual([
-      "pay.exempt", "pay.rate", "pay.first_only",
+      "pay.exempt", "pay.rate",
       "reduction.periods", "reduction.after_rate", "reduction.new_only",
       "exemption.months", "exemption.age15_only", "exemption.new_only",
     ]);

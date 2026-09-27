@@ -77,11 +77,11 @@ describe("entity_values — 실체 × 마스터 필드 값 자리 (공용 값 �
     await writeSlot(t.db, b, "pay.rate", 30);
     await writeSlot(t.db, b, "pay.exempt", true);
     await writeSlot(t.db, a, "pay.rate", 50);
-    await writeSlot(t.db, a, "pay.first_only", false);
+    await writeSlot(t.db, a, "exemption.months", 3);
     await writeSlot(t.db, a, "pay.exempt", false);
     const many = await readSlotsMany(t.db, "productBenefit", [b.id, a.id]);
     expect([...many.keys()]).toEqual([b.id, a.id]);
-    expect([...many.get(a.id)!.keys()]).toEqual(["pay.exempt", "pay.first_only", "pay.rate"]);
+    expect([...many.get(a.id)!.keys()]).toEqual(["exemption.months", "pay.exempt", "pay.rate"]);
     expect([...many.get(b.id)!.keys()]).toEqual(["pay.exempt", "pay.rate"]);
     expect(many.get(a.id)!.get("pay.rate")).toEqual({ entered: true, value: 50 });
   });

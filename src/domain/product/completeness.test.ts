@@ -6,25 +6,29 @@ import { BASE_CONTRACT_REF, baseContractCountIssue, baseContractDesignationIssue
 describe("완결성 — 값 자리는 레벨의 마스터 필드 전부다 (ADR-0037)", () => {
   it("레벨만 알면 자리 수가 정해진다 — 부착을 묻지 않는다", () => {
     expect(slotCountOf("coverage")).toBe(1);
-    expect(slotCountOf("benefit")).toBe(9); // pay 3 + 여는 폼 reduction 3 · exemption 3 (연 폼도 포함한 raw 카운트 — ADR-0065 §4)
+    expect(slotCountOf("benefit")).toBe(8); // pay 2(선택 필드) + 여는 폼 reduction 3 · exemption 3 (연 폼도 포함한 raw 카운트 — ADR-0065 §4)
     expect(slotCountOf("subCoverage")).toBe(0);
   });
 });
 
 describe("폼입력 S3 · 담보값입력 S3 — 상품담보 완결성 (스냅샷 실체 기준)", () => {
-  it("급부 스냅샷의 지급률만 입력됐으면 최초1회한이 미입력 — 선택 필드 면책여부는 값이 없으면 세지 않는다", () => {
+  it("급부 스냅샷의 지급률만 입력됐으면 미입력이 없다 — 선택 필드 면책여부는 값이 없으면 세지 않는다", () => {
     const slots = new Map([["pay.rate", entered(50)]]);
+    expect(missingSlotsOf({ kind: "productBenefit", id: "n2" }, "1종수술급부", "benefit", (p) => slots.get(p))).toEqual([]);
+  });
+
+  it("면책 폼을 열고(신규만) 기간을 비워 두면 그 자리가 미입력으로 잡힌다", () => {
+    const slots = new Map([["exemption.new_only", entered(true)]]);
     const missing = missingSlotsOf({ kind: "productBenefit", id: "n2" }, "1종수술급부", "benefit", (p) =>
       slots.get(p),
     );
-    expect(missing).toEqual([
-      {
-        owner: { kind: "productBenefit", id: "n2" },
-        ownerName: "1종수술급부",
-        level: "benefit",
-        path: "pay.first_only",
-      },
-    ]);
+    expect(missing.map((m) => m.path)).toEqual(["exemption.months", "exemption.age15_only"]);
+    expect(missing[0]).toEqual({
+      owner: { kind: "productBenefit", id: "n2" },
+      ownerName: "1종수술급부",
+      level: "benefit",
+      path: "exemption.months",
+    });
   });
 
   it("전부 입력되면 빈 목록", () => {

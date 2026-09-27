@@ -96,7 +96,6 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
     unwrap(await coverage.writeValue(editor, { level: "coverage", id: covDeath }, "coverage_basic.claim_name", "24개월"));
     unwrap(await coverage.writeValue(editor, { level: "benefit", id: ben.id }, "pay.exempt", true));
     unwrap(await coverage.writeValue(editor, { level: "benefit", id: ben.id }, "pay.rate", 100));
-    unwrap(await coverage.writeValue(editor, { level: "benefit", id: ben.id }, "pay.first_only", false));
 
     const baseTree = unwrap(await coverage.create(editor, { name: "상해사망(기본계약)", benefitName: "사망보험금" }));
     covBase = baseTree.id;

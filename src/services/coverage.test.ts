@@ -128,10 +128,10 @@ describe("coverage 서비스 (PGlite)", () => {
       }
     });
 
-    it("급부 레벨은 보험금지급 세 자리 + 여는 폼(감액·면책) 여섯 자리 — 폼 정의는 열림 여부와 무관하게 전부 뜬다", async () => {
+    it("급부 레벨은 보험금지급 두 자리 + 여는 폼(감액·면책) 여섯 자리 — 폼 정의는 열림 여부와 무관하게 전부 뜬다", async () => {
       const b: CoverageNodeRef = { level: "benefit", id: accident.subCoverages[0].benefits[0].id };
       expect(unwrap(await svc.form(b)).fields.map((f) => f.path)).toEqual([
-        "pay.exempt", "pay.rate", "pay.first_only",
+        "pay.exempt", "pay.rate",
         "reduction.periods", "reduction.after_rate", "reduction.new_only",
         "exemption.months", "exemption.age15_only", "exemption.new_only",
       ]);
@@ -181,32 +181,37 @@ describe("coverage 서비스 (PGlite)", () => {
   });
 
   describe("담보값입력 S3 — 완결성 조회는 마스터 자리 전부가 대상", () => {
-    it("일반상해사망: 담보명 + 급부 자리 미입력. 선택 필드(면책여부 · 지급률)는 값이 없으면 세지 않는다", async () => {
+    // 아래에서 연 면책 폼(exemption.new_only)은 이 묶음 밖의 값 행 수 셈에 새지 않게 걷는다
+    afterAll(async () => {
+      unwrap(await svc.clearValue(editor, { level: "benefit", id: accident.subCoverages[0].benefits[0].id }, "exemption.new_only"));
+    });
+    it("일반상해사망: 담보명 + 연 면책 폼의 빈 자리가 미입력. 선택 필드(면책여부 · 지급률)는 값이 없으면 세지 않는다", async () => {
+      const b: CoverageNodeRef = { level: "benefit", id: accident.subCoverages[0].benefits[0].id };
+      unwrap(await svc.writeValue(editor, b, "exemption.new_only", true)); // 면책 폼을 연다 — 기간 · 15세 이상은 비워 둔다
       const missing = unwrap(await svc.completeness(accident.id));
       expect(missing.map((m) => [m.owner.level, m.path])).toEqual([
         ["coverage", "coverage_basic.claim_name"],
-        ["benefit", "pay.first_only"], // 첫 급부: exempt 입력됨 · rate 는 선택 필드
-        ["benefit", "pay.first_only"], // 두 번째 세부보장(1종수술)의 급부
+        ["benefit", "exemption.months"], // 첫 급부: exempt 입력됨 · rate 는 선택 필드
+        ["benefit", "exemption.age15_only"],
+        // 두 번째 세부보장(1종수술)의 급부 — 선택 필드뿐이라 셀 자리가 없다
       ]);
     });
 
-    it("수술비: 담보명이 입력돼 급부 자리만 남는다 (7 세부보장 · 급부 8개 × 최초1회한 — 선택 필드는 세지 않는다)", async () => {
-      const missing = unwrap(await svc.completeness(surgery.id));
-      expect(missing.filter((m) => m.owner.level === "coverage")).toEqual([]);
-      expect(missing).toHaveLength(8);
+    it("수술비: 담보명이 입력되고 급부는 값 없는 선택 필드뿐이라 미입력이 없다", async () => {
+      expect(unwrap(await svc.completeness(surgery.id))).toEqual([]);
     });
 
     it("완결성 요약은 분모를 함께 준다 — 「값 자리 N 중 M 입력」 (디자인원칙 §9.2·§9.6)", async () => {
       const summary = unwrap(await svc.completenessSummary(accident.id));
-      // 담보명 1 + 첫 급부(입력한 면책여부 + 최초1회한) 2 + 둘째 급부 최초1회한 1 = 4 (세부보장 레벨 마스터는 비어 있다 · 값 없는 선택 필드는 세지 않는다)
-      expect(summary.total).toBe(4);
+      // 담보명 1 + 첫 급부(입력한 면책여부 + 연 면책 폼 3) 4 = 5 (세부보장 레벨 마스터는 비어 있다 · 값 없는 선택 필드는 세지 않는다)
+      expect(summary.total).toBe(5);
       expect(summary.missing).toEqual(unwrap(await svc.completeness(accident.id)));
-      expect(summary.total - summary.missing.length).toBe(1); // 첫 급부의 면책여부만 입력돼 있다
+      expect(summary.total - summary.missing.length).toBe(2); // 첫 급부의 면책여부 · 면책 신규만
     });
 
     it("실행 기반 필터를 주입하면 그 결과가 조회 결과다", async () => {
       const filtered = createCoverageService(t.db, { usage, completenessFilter: (items) => items.slice(0, 1) });
-      expect(unwrap(await filtered.completeness(surgery.id))).toHaveLength(1);
+      expect(unwrap(await filtered.completeness(accident.id))).toHaveLength(1);
     });
   });
 
@@ -341,7 +346,7 @@ describe("coverage 서비스 — applyStructurePlan · previewStructurePlan (조
     pcP = unwrap(await s.product.mount(editor, p.id, surgery.id, [])).id;
     pcQ = unwrap(await s.product.mount(editor, q.id, surgery.id, [])).id;
     const stayQ = unwrap(await s.product.getSnapshot(pcQ)).subCoverages[0]!.benefits.find((b) => b.name === "입원보험금")!;
-    unwrap(await s.product.setSnapshotValue(editor, pcQ, { kind: "productBenefit", id: stayQ.id }, "pay.first_only", true));
+    unwrap(await s.product.setSnapshotValue(editor, pcQ, { kind: "productBenefit", id: stayQ.id }, "exemption.months", 3));
     expect(await snapshotRows(pcP)).toBe(3);
     expect(await snapshotRows(pcQ)).toBe(4);
   });

@@ -81,17 +81,19 @@ describe("담보값입력 S3 — 완결성 조회는 마스터 자리 전부가 
   it("트리 순서 · 레벨별 마스터 자리 순서로 보고된다 — 부착 여부를 묻지 않는다", () => {
     const { accident } = fixture();
     const b = accident.subCoverages[0].benefits[0];
-    expect(completeness(accident, values()).map((m) => [m.owner.level, m.ownerName, m.path])).toEqual([
+    // 급부는 면책 폼을 연(신규만 입력) 상태 — 선택 필드(면책여부 · 지급률)는 값이 없으면 세지 않는다 (2026-09-27)
+    const opened = values({ [b.id]: { "exemption.new_only": entered(true) } });
+    expect(completeness(accident, opened).map((m) => [m.owner.level, m.ownerName, m.path])).toEqual([
       ["coverage", "일반상해사망", "coverage_basic.claim_name"],
-      // 선택 필드(면책여부 · 지급률)는 값이 없으면 세지 않는다 (2026-09-27)
-      ["benefit", "일반상해사망 > 일반상해사망 > 일반상해사망보험금", "pay.first_only"],
+      ["benefit", "일반상해사망 > 일반상해사망 > 일반상해사망보험금", "exemption.months"],
+      ["benefit", "일반상해사망 > 일반상해사망 > 일반상해사망보험금", "exemption.age15_only"],
     ]);
-    expect(completeness(accident, values())[0]).toMatchObject({
+    expect(completeness(accident, opened)[0]).toMatchObject({
       label: "담보 기본 › 보험금명",
       owner: { id: accident.id },
     });
-    expect(completeness(accident, values())[1]).toMatchObject({
-      label: "보험금지급 › 최초1회한",
+    expect(completeness(accident, opened)[1]).toMatchObject({
+      label: "면책 › 기간",
       owner: { id: b.id },
     });
   });
@@ -103,17 +105,19 @@ describe("담보값입력 S3 — 완결성 조회는 마스터 자리 전부가 
       surgery,
       values({
         [surgery.id]: { "coverage_basic.claim_name": entered("수술비") },
-        [b.id]: { "pay.exempt": entered(false), "pay.rate": entered(100), "pay.first_only": entered(false) },
+        [b.id]: { "pay.exempt": entered(false), "pay.rate": entered(100), "exemption.months": entered(3), "exemption.age15_only": entered(false), "exemption.new_only": entered(true) },
+        [surgery.subCoverages[1].benefits[0].id]: { "exemption.new_only": entered(true) },
       }),
     );
     const other = surgery.subCoverages[1].benefits[0].id;
-    expect(missing.map((m) => m.owner.id)).toEqual([other]);
+    expect(missing.map((m) => m.owner.id)).toEqual([other, other]);
   });
 
   it("실행 기반 필터(CompletenessFilter)를 얹으면 그 결과가 조회 결과다 — C2 가 실제 타는 분기로 좁힌다", () => {
     const { surgery } = fixture();
-    const all = completeness(surgery, values());
-    const filtered = completeness(surgery, values(), (items) => items.filter((m) => m.owner.level === "coverage"));
+    const opened = values({ [surgery.subCoverages[0].benefits[0].id]: { "exemption.new_only": entered(true) } });
+    const all = completeness(surgery, opened);
+    const filtered = completeness(surgery, opened, (items) => items.filter((m) => m.owner.level === "coverage"));
     expect(all.length).toBeGreaterThan(filtered.length);
     expect(filtered.every((m) => m.owner.level === "coverage")).toBe(true);
   });
@@ -137,7 +141,7 @@ describe("완결성 결과의 좌표", () => {
     seq = 0;
     const surgery = unwrap(createCoverageTree({ name: "수술비", subCoverageName: "1종수술", benefitName: "수술보험금" }, newId, []));
     const benefit = surgery.subCoverages[0].benefits[0];
-    const m = completeness(surgery, values()).find((x) => x.owner.id === benefit.id)!;
+    const m = completeness(surgery, values({ [benefit.id]: { "exemption.new_only": entered(true) } })).find((x) => x.owner.id === benefit.id)!;
     expect(m.at).toMatchObject({ document: "coverageMaster", ownerId: surgery.id, node: { level: "benefit", id: benefit.id } });
   });
 });
