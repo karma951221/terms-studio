@@ -93,3 +93,23 @@ describe("조건 머리 줄 — 줄 ⇄ 식 (기능/문면 §4.3, 2026-09-28)", 
     expect(refOfKey("")).toBeUndefined();
   });
 });
+
+describe("담보속성 줄 (2026-09-28) — 목록 끝 「담보속성」 묶음 · attr. 키 · 있음/= 두 줄", () => {
+  const ctx = buildConditionContext({ discriminators: defs, enums: [], attributes: [{ code: "A0001", label: "갱신유형", values: [{ code: "1", label: "비갱신형" }, { code: "2", label: "갱신형" }] }] });
+  it("변수 목록 끝에 담보속성 묶음", () => {
+    const groups = pickerGroups(ctx);
+    expect(groups.at(-1)).toEqual({ label: "담보속성", options: [{ key: "attr.A0001", label: "갱신유형" }] });
+  });
+  it("attr. 키 왕복 · 담보속성을 고르면 연산자는 = 부터", () => {
+    expect(refOfKey("attr.A0001")).toEqual({ kind: "attr", code: "A0001" });
+    expect(refKey({ kind: "attr", code: "A0001" })).toBe("attr.A0001");
+    const rows = setLeft(emptyRows(), 0, refOfKey("attr.A0001"), () => undefined);
+    expect(rows.rows[0]).toEqual({ left: { kind: "attr", code: "A0001" }, op: "=" });
+  });
+  it("「갱신형이면」 식이 줄로 풀려 그대로 묶인다", () => {
+    const source = "exist(attr.A0001) and attr.A0001 = '2'";
+    const head = headOf(source);
+    expect(head.kind).toBe("rows");
+    expect(sourceOf(head)).toBe(source);
+  });
+});

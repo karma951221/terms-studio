@@ -90,3 +90,31 @@ describe("operatorsFor / rowIssues", () => {
     expect(rowIssues(rows, typeOf)).toEqual([]);
   });
 });
+
+describe("담보속성 줄 (2026-09-28, 기능/문면 §3.3) — 있음 · 없음 · = · ≠", () => {
+  const src = "exist(attr.A0001) and attr.A0001 = '2'";
+  it("「갱신형이면」 두 줄로 풀리고 다시 같은 식으로 묶인다", () => {
+    const rows = toRows(ok(src))!;
+    expect(rows.rows).toEqual([
+      { left: { kind: "attr", code: "A0001" }, op: "exist" },
+      { left: { kind: "attr", code: "A0001" }, op: "=", right: { kind: "literal", literal: { type: "string", value: "2" } } },
+    ]);
+    expect(rows.joins).toEqual(["and"]);
+    expect(toSource(rows)).toBe(src);
+  });
+  it("없음 · ≠ 도 왕복한다", () => {
+    const s2 = "notexist(attr.A0002) or attr.A0002 ≠ '1'";
+    expect(toSource(toRows(ok(s2))!)).toBe(s2);
+  });
+  it("담보속성의 크기 비교 · 우변 없는 = 는 줄이 아니다", () => {
+    expect(toExpr({ rows: [{ left: { kind: "attr", code: "A0001" }, op: "=" }], joins: [] })).toBeUndefined();
+  });
+  it("검사 — 없는 속성 · 유효값 밖 · 구분자에 있음", () => {
+    const valuesOf = (code: string) => (code === "A0001" ? ["1", "2"] : undefined);
+    const typeOf = () => ({ kind: "boolean" }) as FieldType;
+    expect(rowIssues(toRows(ok(src))!, typeOf, valuesOf)).toEqual([]);
+    expect(rowIssues(toRows(ok("attr.A0001 = '9'"))!, typeOf, valuesOf)[0]).toMatch(/유효값이 아니다/);
+    expect(rowIssues(toRows(ok("exist(attr.A0009)"))!, typeOf, valuesOf)[0]).toMatch(/찾을 수 없다/);
+    expect(rowIssues({ rows: [{ left: { kind: "discriminator", code: "D0009" }, op: "exist" }], joins: [] }, typeOf, valuesOf)[0]).toMatch(/쓸 수 없다/);
+  });
+});

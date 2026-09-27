@@ -6,25 +6,32 @@
  * - 줄로 풀 수 없는 식(괄호 중첩 · not · 집계 직접 사용)은 원문(`raw`) 읽기 전용 + 「줄로 다시 만들기」 (ADR-0066 결정 8).
  * - 변수 고르기는 목록 하나 — 담보약관이면 문맥 담보 트리의 노드마다 그 레벨 구분자(`@노드`), 반복 표 셀이면 「현재 행」,
  *   담보 문맥이 없으면(보통약관 · 공용조항) 레벨별 한정자 없는 구분자, 그 밖(상품 · 세목 레벨)은 「구분자」 묶음.
- *   값은 `코드` 또는 `코드@노드id` 글자다.
+ *   값은 `코드` 또는 `코드@노드id` 글자다. 끝에 「담보속성」 묶음(값 `attr.코드`) — 있음 · 없음 · = · ≠ (2026-09-28).
  */
 import { COVERAGE_NODE_LEVELS } from "@/domain/coverage";
-import { emptyRows, operatorsFor, toRows, toSource, type ConditionRows, type Join } from "@/domain/document";
-import { parse, type CompareOp, type DiscriminatorRef } from "@/domain/expression";
+import { ATTRIBUTE_OPS, emptyRows, operatorsFor, toRows, toSource, type ConditionRows, type Join, type RowOp } from "@/domain/document";
+import { parse, type AttributeRef, type DiscriminatorRef } from "@/domain/expression";
 import { ATTACH_LEVEL_LABEL } from "@/domain/types";
 
 import type { ConditionContext, CtxDiscriminator } from "./types";
 
 const TREE_LEVELS = new Set<string>(COVERAGE_NODE_LEVELS);
 
+/** 줄 좌변 — 구분자 또는 담보속성. */
+export type LeftRef = DiscriminatorRef | AttributeRef;
+
+const ATTR_KEY = "attr.";
+
 /** 참조 → 목록 값. */
-export function refKey(ref: DiscriminatorRef): string {
+export function refKey(ref: LeftRef): string {
+  if (ref.kind === "attr") return `${ATTR_KEY}${ref.code}`;
   return ref.node ? `${ref.code}@${ref.node.id}` : ref.code;
 }
 
 /** 목록 값 → 참조. 빈 값이면 undefined. */
-export function refOfKey(key: string): DiscriminatorRef | undefined {
+export function refOfKey(key: string): LeftRef | undefined {
   if (key === "") return undefined;
+  if (key.startsWith(ATTR_KEY)) return { kind: "attr", code: key.slice(ATTR_KEY.length) };
   const at = key.indexOf("@");
   return at < 0 ? { kind: "discriminator", code: key } : { kind: "discriminator", code: key.slice(0, at), node: { id: key.slice(at + 1) } };
 }
@@ -68,6 +75,8 @@ export function pickerGroups(context: ConditionContext): PickerGroup[] {
   }
   const flat = context.discriminators.filter((d) => !TREE_LEVELS.has(d.level));
   if (flat.length > 0) groups.push({ label: "구분자", options: flat.map((d) => at(d)) });
+  const attributes = context.attributes ?? [];
+  if (attributes.length > 0) groups.push({ label: "담보속성", options: attributes.map((a) => ({ key: `${ATTR_KEY}${a.code}`, label: a.label })) });
   return groups;
 }
 
@@ -118,13 +127,25 @@ export function removeRow(rows: ConditionRows, i: number): ConditionRows {
   return { rows: rows.rows.filter((_r, idx) => idx !== i), joins: rows.joins.filter((_j, idx) => idx !== Math.max(0, i - 1)) };
 }
 
-/** 좌변을 바꾼다 — 타입이 같으면 연산자 · 우변을 두고, 다르면 첫 연산자 · 빈 우변. */
-export function setLeft(rows: ConditionRows, i: number, ref: DiscriminatorRef | undefined, typeOf: (ref: DiscriminatorRef) => CtxDiscriminator["type"]): ConditionRows {
+/** 좌변의 연산자 목록 — 담보속성이면 = · ≠ · 있음 · 없음, 구분자면 타입대로. */
+export function opsOf(ref: LeftRef | undefined, typeOf: (ref: DiscriminatorRef) => CtxDiscriminator["type"]): readonly RowOp[] {
+  if (!ref) return [];
+  if (ref.kind === "attr") return ATTRIBUTE_OPS;
+  const t = typeOf(ref);
+  return t ? operatorsFor(t.kind) : [];
+}
+
+/** 좌변을 바꾼다 — 타입이 같으면 연산자 · 우변을 두고, 다르면 첫 연산자 · 빈 우변. 담보속성은 속성이 바뀌면 늘 새로. */
+export function setLeft(rows: ConditionRows, i: number, ref: LeftRef | undefined, typeOf: (ref: DiscriminatorRef) => CtxDiscriminator["type"]): ConditionRows {
   return {
     ...rows,
     rows: rows.rows.map((r, idx) => {
       if (idx !== i) return r;
       if (!ref) return {};
+      if (ref.kind === "attr" || r.left?.kind === "attr") {
+        const ops = opsOf(ref, typeOf);
+        return { left: ref, ...(ops[0] ? { op: ops[0] } : {}) };
+      }
       const before = r.left ? typeOf(r.left)?.kind : undefined;
       const after = typeOf(ref)?.kind;
       if (before !== undefined && before === after) return { ...r, left: ref };
@@ -134,8 +155,8 @@ export function setLeft(rows: ConditionRows, i: number, ref: DiscriminatorRef | 
   };
 }
 
-/** 연산자 표시 — 옛 화면처럼 「일치(=)」. */
-export const OP_LABEL: Record<CompareOp, string> = { "=": "일치(=)", "≠": "불일치(≠)", "<": "미만(<)", "<=": "이하(≤)", ">": "초과(>)", ">=": "이상(≥)" };
+/** 연산자 표시 — 옛 화면처럼 「일치(=)」. 있음 · 없음은 담보속성 전용. */
+export const OP_LABEL: Record<RowOp, string> = { "=": "일치(=)", "≠": "불일치(≠)", "<": "미만(<)", "<=": "이하(≤)", ">": "초과(>)", ">=": "이상(≥)", exist: "있음", notexist: "없음" };
 
 /** 머리 줄의 짧은 표시 — 읽기 모드 · 칩. 빈 식이면 「조건 없음」. */
 export function headLabel(label: string, when: string | undefined, text: string): string {

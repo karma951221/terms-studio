@@ -68,7 +68,9 @@ export default async function DocumentDetailPage({ params, searchParams }: { par
   const special = doc.kind === "special" && doc.ownerId !== undefined;
   const mv = special ? await services.coverage.masterValues(doc.ownerId!) : undefined;
   const evalNote = !special ? "보통약관은 담보 레벨 문맥이 없어 여기서 평가하지 않는다." : mv && !mv.ok ? "담보 마스터 값을 읽지 못했다." : undefined;
-  const condition = buildConditionContext(mv?.ok ? { coverage: mv.value.tree, values: mv.value.values, discriminators, enums } : { discriminators, enums });
+  const condition = buildConditionContext(
+    mv?.ok ? { coverage: mv.value.tree, values: mv.value.values, discriminators, enums, attributes: attributeKinds } : { discriminators, enums, attributes: attributeKinds },
+  );
 
   const generalDocument = doc.kind === "special" && doc.generalDocumentId ? await services.document.get(doc.generalDocumentId) : undefined;
 

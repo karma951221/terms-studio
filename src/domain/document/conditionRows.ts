@@ -4,17 +4,32 @@
  * 줄 = 좌변(구분자 참조) · 연산자 · 우변(리터럴 또는 구분자 참조). 줄 사이는 and/or, 괄호 없음, **왼쪽부터 결합**.
  * 저장은 기존 AST — 새 노드 종류가 없다. 팝업이 열 수 없는 식(중첩 괄호 · not · 집계 직접 · 마스터 참조)은
  * `toRows` 가 undefined 를 돌려주고 화면은 원문 읽기 전용 + 「다시 만들기」로 간다.
+ *
+ * 담보속성 줄 (2026-09-28, 기능/문면 §3.3) — 좌변이 담보속성(`attr.X`)이면 연산자는 `=` · `≠`(우변은 그 속성의 유효값 코드)
+ * 또는 `있음` · `없음`(우변 없음 — `exist(attr.X)` · `notexist(attr.X)`). 식 언어가 담보속성에 허용하는 모양 그대로다(ADR-0015).
+ * 「갱신형이면」은 두 줄 `있음 그리고 = '2'` — 쓰지 않는 상품담보에서 `=` 는 평가 오류라 있음 줄이 앞에서 막는다.
  */
 import { COMPARE_OPS, format } from "../expression";
-import type { CompareOp, DiscriminatorRef, Expr, Literal } from "../expression";
+import type { AttributeRef, CompareOp, DiscriminatorRef, Expr, Literal } from "../expression";
 import type { FieldType, FieldTypeKind } from "../types";
 
 export type RowRight = { kind: "literal"; literal: Literal } | { kind: "ref"; ref: DiscriminatorRef };
 
+/** 줄의 연산자 — 비교, 또는 담보속성의 있음 · 없음(우변 없음). */
+export type RowOp = CompareOp | "exist" | "notexist";
+
+/** 담보속성 좌변의 연산자 — 식 언어가 허용하는 것만 (ADR-0015). */
+export const ATTRIBUTE_OPS: readonly RowOp[] = ["=", "≠", "exist", "notexist"];
+
 export interface ConditionRow {
-  left?: DiscriminatorRef;
-  op?: CompareOp;
+  left?: DiscriminatorRef | AttributeRef;
+  op?: RowOp;
   right?: RowRight;
+}
+
+/** 우변이 없는 연산자(있음 · 없음)인가. */
+export function isUnaryOp(op: RowOp | undefined): op is "exist" | "notexist" {
+  return op === "exist" || op === "notexist";
 }
 
 export type Join = "and" | "or";
@@ -30,7 +45,12 @@ export function emptyRows(): ConditionRows {
 }
 
 function rowOf(e: Expr): ConditionRow | undefined {
+  if (e.kind === "aggregate" && (e.op === "exist" || e.op === "notexist") && e.ref.kind === "attr") return { left: e.ref, op: e.op };
   if (e.kind !== "compare") return undefined;
+  if (e.left.kind === "ref" && e.left.ref.kind === "attr") {
+    if (e.right.kind !== "literal" || e.right.literal.type !== "string" || (e.op !== "=" && e.op !== "≠")) return undefined;
+    return { left: e.left.ref, op: e.op, right: { kind: "literal", literal: e.right.literal } };
+  }
   if (e.left.kind !== "ref" || e.left.ref.kind !== "discriminator") return undefined;
   let right: RowRight;
   if (e.right.kind === "literal") right = { kind: "literal", literal: e.right.literal };
@@ -60,7 +80,8 @@ export function toRows(expr: Expr): ConditionRows | undefined {
 }
 
 function exprOf(row: ConditionRow): Expr | undefined {
-  if (!row.left || !row.op || !row.right) return undefined;
+  if (row.left?.kind === "attr" && isUnaryOp(row.op)) return { kind: "aggregate", op: row.op, ref: row.left };
+  if (!row.left || !row.op || !row.right || isUnaryOp(row.op)) return undefined;
   const right: Expr = row.right.kind === "literal" ? { kind: "literal", literal: row.right.literal } : { kind: "ref", ref: row.right.ref };
   return { kind: "compare", op: row.op, left: { kind: "ref", ref: row.left }, right };
 }
@@ -105,13 +126,26 @@ function literalKind(lit: Literal): FieldTypeKind {
   return lit.type;
 }
 
-/** 줄 단위 검사 — 화면의 「n번 줄: …」 문구. 통과면 빈 배열. */
-export function rowIssues(rows: ConditionRows, typeOf: (ref: DiscriminatorRef) => FieldType | undefined): string[] {
+/** 줄 단위 검사 — 화면의 「n번 줄: …」 문구. 통과면 빈 배열. `valuesOf` 는 담보속성 코드 → 유효값 코드(없는 속성이면 undefined). */
+export function rowIssues(
+  rows: ConditionRows,
+  typeOf: (ref: DiscriminatorRef) => FieldType | undefined,
+  valuesOf: (attributeCode: string) => readonly string[] | undefined = () => undefined,
+): string[] {
   const out: string[] = [];
   rows.rows.forEach((row, i) => {
     const n = `${i + 1}번 줄`;
     if (!row.left) {
       out.push(`${n}: 좌변이 비어 있다`);
+      return;
+    }
+    if (row.left.kind === "attr") {
+      const values = valuesOf(row.left.code);
+      if (!values) out.push(`${n}: 담보속성 ${row.left.code} 를 찾을 수 없다`);
+      else if (!row.op || !ATTRIBUTE_OPS.includes(row.op)) out.push(`${n}: 연산자를 고르지 않았다`);
+      else if (isUnaryOp(row.op)) return;
+      else if (!row.right || row.right.kind !== "literal" || row.right.literal.type !== "string") out.push(`${n}: 우변이 비어 있다`);
+      else if (!values.includes(row.right.literal.value)) out.push(`${n}: '${row.right.literal.value}' 는 담보속성 ${row.left.code} 의 유효값이 아니다`);
       return;
     }
     const lt = typeOf(row.left);
@@ -123,7 +157,7 @@ export function rowIssues(rows: ConditionRows, typeOf: (ref: DiscriminatorRef) =
       out.push(`${n}: 연산자를 고르지 않았다`);
       return;
     }
-    if (!operatorsFor(lt.kind).includes(row.op)) {
+    if (isUnaryOp(row.op) || !operatorsFor(lt.kind).includes(row.op)) {
       out.push(`${n}: ${lt.kind} 에는 '${row.op}' 를 쓸 수 없다`);
       return;
     }

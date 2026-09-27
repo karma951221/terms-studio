@@ -10,7 +10,7 @@ import { extractRefs, parse } from "@/domain/expression";
 import { findMasterField, formsOfLevel, MASTER, type MasterTree } from "@/domain/master";
 import type { Code } from "@/domain/types";
 
-import type { ConditionContext, CtxDiscriminator } from "./types";
+import type { ConditionContext, CtxAttribute, CtxDiscriminator } from "./types";
 
 /** 구분자가 (구분자 참조를 타고) 읽는 폼 키. 순환은 visiting 으로 끊는다. */
 function formsRead(def: Discriminator, byCode: ReadonlyMap<Code, Discriminator>, master: MasterTree, visiting: ReadonlySet<Code> = new Set()): Set<Code> {
@@ -35,6 +35,8 @@ export function buildConditionContext(input: {
   values?: MasterValues;
   discriminators: readonly Discriminator[];
   enums: readonly EnumDef[];
+  /** 담보속성 — 조건 머리 줄의 `attr.X` 후보 (기능/문면 §3.3). */
+  attributes?: readonly CtxAttribute[];
   master?: MasterTree;
 }): ConditionContext {
   const master = input.master ?? MASTER;
@@ -72,7 +74,7 @@ export function buildConditionContext(input: {
     .filter((d) => d.level === "coverage" && d.type?.kind === "boolean" && d.forms.length > 0 && d.forms.every((f) => optionalForms.has(f)))
     .map((d) => ({ label: `${d.label} = 참`, source: `${d.code} = true` }));
 
-  const ctx: ConditionContext = { discriminators, openedForms, quick };
+  const ctx: ConditionContext = { discriminators, openedForms, quick, ...(input.attributes && input.attributes.length > 0 ? { attributes: input.attributes.map((a) => ({ code: a.code, label: a.label, values: a.values.map((v) => ({ code: v.code, label: v.label })) })) } : {}) };
   if (input.coverage) {
     const nodes = nodesOf(input.coverage).map((n) => ({
       id: n.id,

@@ -27,6 +27,14 @@ export interface CtxDiscriminator {
   forms: Code[];
 }
 
+/** 담보속성 하나 — 조건 머리 줄의 「담보속성」 묶음 (`attr.X` — 있음 · 없음 · = · ≠, 기능/문면 §3.3). */
+export interface CtxAttribute {
+  code: Code;
+  label: string;
+  /** 유효값 — 코드(식에 쓰는 값) · 이름(화면). */
+  values: { code: Code; label: string }[];
+}
+
 /** 빠른 조건 — 트리를 뒤지지 않고 한 번에 넣는 자주 쓰는 식. */
 export interface QuickCondition {
   label: string;
@@ -37,6 +45,8 @@ export interface ConditionContext {
   /** 담보 약관이면 문맥 담보. 보통약관은 없음 → 트리 탭 없음. */
   coverage?: { id: Id; name: string; nodes: CtxNode[] };
   discriminators: CtxDiscriminator[];
+  /** 담보속성 — 조건식의 `attr.X` 좌변 후보. 없으면 묶음이 없다. */
+  attributes?: CtxAttribute[];
   /** 노드 id → 자신 또는 후손에 값이 든(열린) 여는 폼 키 — 배지 · 「항상 거짓」 경고. */
   openedForms: Record<Id, Code[]>;
   quick: QuickCondition[];

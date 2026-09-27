@@ -12,17 +12,18 @@
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from "react";
 
 import { IconButton, IconMinusCircle, IconPlusCircle } from "@/app/_components/icons";
-import { emptyRows, operatorsFor, rowIssues, type ConditionRow, type ConditionRows, type Join } from "@/domain/document";
-import type { CompareOp, DiscriminatorRef, Literal } from "@/domain/expression";
+import { emptyRows, isUnaryOp, rowIssues, type ConditionRow, type ConditionRows, type Join, type RowOp } from "@/domain/document";
+import type { DiscriminatorRef, Literal } from "@/domain/expression";
 
-import { OP_LABEL, addRow, headOf, pickerGroups, refKey, refOfKey, removeRow, setLeft, sourceOf, type HeadModel } from "./rows";
-import type { ConditionContext, CtxDiscriminator } from "./types";
+import { OP_LABEL, addRow, headOf, opsOf, pickerGroups, refKey, refOfKey, removeRow, setLeft, sourceOf, type HeadModel } from "./rows";
+import type { ConditionContext, CtxAttribute, CtxDiscriminator } from "./types";
 
-/** 값 칸 — 좌변 타입대로. 우변이 구분자 참조면 칩 + 비우기. */
+/** 값 칸 — 좌변 타입대로. 우변이 구분자 참조면 칩 + 비우기. 담보속성이면 유효값 목록(있음 · 없음은 값 없음). */
 function ValueInput({
   row,
   name,
   def,
+  attribute,
   refText,
   onChange,
   onDone,
@@ -30,11 +31,26 @@ function ValueInput({
   row: ConditionRow;
   name: string;
   def?: CtxDiscriminator;
+  attribute?: CtxAttribute;
   refText: (ref: DiscriminatorRef) => string;
   onChange: (right: ConditionRow["right"], commit: boolean) => void;
   onDone: () => void;
 }) {
   const label = `${name} 값`;
+  if (row.left?.kind === "attr") {
+    if (isUnaryOp(row.op)) return <span className="ts-cond-value ts-muted" aria-label={label}>—</span>;
+    const chosen = row.right?.kind === "literal" && row.right.literal.type === "string" ? row.right.literal.value : "";
+    return (
+      <select className="ts-cond-value" aria-label={label} value={chosen} onChange={(e) => onChange(e.target.value === "" ? undefined : { kind: "literal", literal: { type: "string", value: e.target.value } }, true)}>
+        <option value="">값</option>
+        {(attribute?.values ?? []).map((v) => (
+          <option key={v.code} value={v.code}>
+            {v.label}
+          </option>
+        ))}
+      </select>
+    );
+  }
   if (row.right?.kind === "ref") {
     return (
       <span className="ts-cond-value-ref">
@@ -148,6 +164,8 @@ export function CondRows({
   const defOf = (ref: DiscriminatorRef): CtxDiscriminator | undefined => context.discriminators.find((d) => d.code === ref.code);
   const nodeName = (id: string) => context.coverage?.nodes.find((n) => n.id === id)?.name;
   const refText = (ref: DiscriminatorRef) => `${defOf(ref)?.label ?? ref.code}${ref.node ? ` @${nodeName(ref.node.id) ?? "끊어진 노드"}` : ""}`;
+  const attributeOf = (code: string): CtxAttribute | undefined => context.attributes?.find((a) => a.code === code);
+  const leftText = (ref: NonNullable<ConditionRow["left"]>) => (ref.kind === "attr" ? (attributeOf(ref.code)?.label ?? `attr.${ref.code}`) : refText(ref));
   const groups = pickerGroups(context);
   const known = new Set(groups.flatMap((g) => g.options.map((o) => o.key)));
 
@@ -187,18 +205,19 @@ export function CondRows({
   const rows = model.rows;
   const setRows = (next: ConditionRows, commit = true) => update({ kind: "rows", rows: next }, commit);
   const typeOf = (ref: DiscriminatorRef) => defOf(ref)?.type;
-  const issues = rowIssues(rows, typeOf);
+  const issues = rowIssues(rows, typeOf, (code) => attributeOf(code)?.values.map((v) => v.code));
 
   return (
     <div className="ts-cond-rows">
       {rows.rows.map((row, i) => {
         const name = `${label} ${i + 1}번 줄`;
-        const def = row.left ? defOf(row.left) : undefined;
-        const ops = def?.type ? operatorsFor(def.type.kind) : [];
+        const discriminator = row.left?.kind === "discriminator" ? row.left : undefined;
+        const def = discriminator ? defOf(discriminator) : undefined;
+        const ops = opsOf(row.left, typeOf);
         const key = row.left ? refKey(row.left) : "";
         const issue = row.left ? issues.find((m) => m.startsWith(`${i + 1}번 줄:`)) : undefined;
-        const opened = row.left?.node ? (context.openedForms[row.left.node.id] ?? []) : [];
-        const alwaysFalse = row.left?.node && def && def.forms.length > 0 && !def.forms.some((f) => opened.includes(f));
+        const opened = discriminator?.node ? (context.openedForms[discriminator.node.id] ?? []) : [];
+        const alwaysFalse = discriminator?.node && def && def.forms.length > 0 && !def.forms.some((f) => opened.includes(f));
         return (
           <div key={i} className="ts-cond-line">
             {i === 0 ? (
@@ -222,7 +241,7 @@ export function CondRows({
               onChange={(e) => setRows(setLeft(rows, i, refOfKey(e.target.value), typeOf))}
             >
               <option value="">변수 · 구분자 고르기</option>
-              {row.left && !known.has(key) && <option value={key}>{refText(row.left)} (목록에 없음)</option>}
+              {row.left && !known.has(key) && <option value={key}>{leftText(row.left)} (목록에 없음)</option>}
               {groups.map((g) => (
                 <optgroup key={g.label} label={g.label}>
                   {g.options.map((o) => (
@@ -238,7 +257,11 @@ export function CondRows({
               aria-label={`${name} 연산자`}
               value={row.op ?? ""}
               disabled={!row.left}
-              onChange={(e) => setRows({ ...rows, rows: rows.rows.map((r, idx) => (idx === i ? { ...r, op: e.target.value as CompareOp } : r)) })}
+              onChange={(e) => {
+                const op = e.target.value as RowOp;
+                // 있음 · 없음은 우변이 없다 — 고르면 값을 비운다
+                setRows({ ...rows, rows: rows.rows.map((r, idx) => (idx === i ? (isUnaryOp(op) ? { left: r.left, op } : { ...r, op }) : r)) });
+              }}
             >
               {!row.op && <option value="">연산자</option>}
               {row.op && !ops.includes(row.op) && <option value={row.op}>{OP_LABEL[row.op]}</option>}
@@ -252,6 +275,7 @@ export function CondRows({
               row={row}
               name={name}
               def={def}
+              attribute={row.left?.kind === "attr" ? attributeOf(row.left.code) : undefined}
               refText={refText}
               onChange={(right, commit) => setRows({ ...rows, rows: rows.rows.map((r, idx) => (idx === i ? { ...r, ...(right ? { right } : { right: undefined }) } : r)) }, commit)}
               onDone={done}

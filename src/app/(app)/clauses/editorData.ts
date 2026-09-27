@@ -21,11 +21,12 @@ export interface ClauseEditorData {
 
 export async function loadClauseEditorData(): Promise<ClauseEditorData> {
   const services = getServices();
-  const [appendices, discriminators, enums, generalSummaries] = await Promise.all([
+  const [appendices, discriminators, enums, generalSummaries, attributes] = await Promise.all([
     services.document.listAppendices(),
     services.catalog.list(),
     services.catalog.listEnums(),
     services.document.list("general"),
+    services.product.listAttributeKinds(),
   ]);
   // 값 슬롯은 구분자만 찍고, 결과 타입이 string · enum 인 것만 (기능/문면 §3.4 · 기능/공용조항 §3.3)
   const catalog = new Map(discriminators.map((d) => [d.code, d]));
@@ -38,5 +39,5 @@ export async function loadClauseEditorData(): Promise<ClauseEditorData> {
     const doc = await services.document.get(summary.id);
     if (doc && doc.kind === "general") generals.push({ id: doc.id, title: doc.title, tree: doc.tree });
   }
-  return { appendices, condition: buildConditionContext({ discriminators, enums }), slotCandidates, generals };
+  return { appendices, condition: buildConditionContext({ discriminators, enums, attributes }), slotCandidates, generals };
 }
