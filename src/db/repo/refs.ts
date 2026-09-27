@@ -39,17 +39,28 @@ export async function countEnumValueRows(db: Db, slots: readonly EnumSlot[], val
 
 /**
  * 그 enum 값을 고른 값 행 연쇄 삭제 — scalar 자리는 행 삭제, list<enum> 자리는 배열에서 원소 제거
- * (빈 배열이 되면 행 삭제 — 「미입력」으로 되돌린다).
+ * (원소를 뺀 행이 빈 배열이 되면 행 삭제 — 「미입력」으로 되돌린다).
+ * 원래부터 빈 배열이던 행(명시적 「(선택 없음)」)은 그 값을 담은 적이 없으니 건드리지 않는다 (점검 M17 · ADR-0004).
  */
 export async function purgeEnumValueRows(db: Db, slots: readonly EnumSlot[], valueCode: Code): Promise<void> {
   const scalar = slots.filter((s) => !s.list);
   const list = slots.filter((s) => s.list);
   if (scalar.length > 0) await db.delete(entityValues).where(and(inSlots(scalar), hasValue(valueCode)));
   if (list.length > 0) {
-    await db
+    const touched = await db
       .update(entityValues)
       .set({ value: sql`${entityValues.value} - ${valueCode}`, updatedAt: sql`now()` })
-      .where(and(inSlots(list), hasValue(valueCode)));
-    await db.delete(entityValues).where(and(inSlots(list), sql`${entityValues.value} = '[]'::jsonb`));
+      .where(and(inSlots(list), hasValue(valueCode)))
+      .returning({ id: entityValues.id });
+    if (touched.length === 0) return;
+    await db.delete(entityValues).where(
+      and(
+        inArray(
+          entityValues.id,
+          touched.map((r) => r.id),
+        ),
+        sql`${entityValues.value} = '[]'::jsonb`,
+      ),
+    );
   }
 }
