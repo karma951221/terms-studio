@@ -1,19 +1,20 @@
 "use client";
 
 /**
- * 담보 상세의 구조 = 중첩 카드 (기능/담보 §3.6 · §4 「상세」) — 담보 카드 ⊃ 세부보장 카드 ⊃ 급부 카드.
+ * 담보 상세의 구조 = 중첩 카드 (기능/담보 §3.6 · §4 「상세」) — 담보 카드 ⊃ 세부보장 카드(그리드) ⊃ 급부 카드.
  *
  * - 카드마다 **이름 + 그 노드 레벨의 마스터 값 폼**(StructForm). 담보명은 담보 카드의 이름이다. 필드가 없는 레벨은 이름만.
- * - **접기** — 담보 카드는 늘 펼침. 세부보장 · 급부 카드는 (화면을 연 때의) 형제가 둘 이하면 펼침, 셋 이상이면 접힘. 접힌 카드는 이름만 —
- *   미입력 개수 · 입력률 카운트를 두지 않는다. 접어도 폼은 내리지 않는다(`hidden`) — 미저장 입력이 그대로 남아 저장 한 번에 실린다.
- * - **편집 모드의 구조 조작** — 카드 라벨 옆 ⊕(자식 추가) · ↑ ↓(순서) · ✕(빼기) · 이름 인라인. 마지막 하나의 ✕ 는 잠긴다(최소 구조).
- *   빈 이름 · 형제 중복은 이름 옆에. 새 카드는 값 폼이 없다 — 저장 뒤에야 값 자리가 생긴다. ✕ 로 뺀 기존 노드는 초안에서 사라진다(되돌리려면 편집 취소).
- * - **진입 좌표** — `target` 카드와 그 부모를 펼쳐 두고, 필드 좌표가 있으면 그 행을(StructForm), 없으면 카드를 스크롤 · 강조한다.
+ * - **접지 않는다** (2026-09-27) — 모든 카드가 늘 보인다. 세부보장 카드는 담보 카드 안에서 반응형 그리드(넓으면 2열)로 서고,
+ *   급부 카드는 제 세부보장 카드 안에 쌓인다.
+ * - **편집 모드의 구조 조작** — 카드 머리 왼쪽 ⊖(빼기, 마지막 하나면 잠김 · 최소 구조) · 오른쪽 ↑ ↓(순서) · 이름 인라인.
+ *   「+ 세부보장」은 그리드 마지막 칸의 점선 타일, 「+ 급부」는 세부보장 카드 맨 아래 작은 버튼. 읽기 모드에는 구조 조작이 하나도 없다.
+ *   빈 이름 · 형제 중복은 이름 옆에. 새 카드는 값 폼이 없다 — 저장 뒤에야 값 자리가 생긴다. ⊖ 로 뺀 기존 노드는 초안에서 사라진다(되돌리려면 편집 취소).
+ * - **진입 좌표** — 필드 좌표가 있으면 그 행을(StructForm), 없으면 `target` 카드를 스크롤 · 강조한다.
  */
-import { useEffect, useReducer, useRef, useState, type ReactNode } from "react";
+import { useEffect, useReducer, useRef, type ReactNode } from "react";
 
 import { useEditField } from "@/app/_components/EditShell";
-import { IconButton, IconClose, IconDown, IconPlus, IconUp } from "@/app/_components/icons";
+import { IconButton, IconDown, IconMinusCircle, IconPlus, IconUp } from "@/app/_components/icons";
 import { NAME_LABEL } from "@/app/_lib/labels";
 import { structureIssues, structureRemovals, type StructureDraftBenefit, type StructureDraftSub, type StructureSavedSub } from "@/domain/coverage";
 import { StructForm, type FormModel, type Submission } from "@/forms";
@@ -33,18 +34,6 @@ function moved<T>(items: readonly T[], index: number, delta: number): T[] {
   return next;
 }
 
-/** 처음 접어 둘 카드 — 형제가 셋 이상인 세부보장 · 급부. 진입 좌표의 카드와 그 부모는 편다. */
-function initialCollapsed(structure: readonly StructureDraftSub[], target: string | undefined): Set<string> {
-  const out = new Set<string>();
-  for (const sub of structure) {
-    if (structure.length >= 3) out.add(sub.key);
-    for (const benefit of sub.benefits) if (sub.benefits.length >= 3) out.add(benefit.key);
-    if (target && (sub.key === target || sub.benefits.some((b) => b.key === target))) out.delete(sub.key);
-  }
-  if (target) out.delete(target);
-  return out;
-}
-
 interface SiblingControls {
   index: number;
   count: number;
@@ -52,18 +41,13 @@ interface SiblingControls {
   onRemove: () => void;
 }
 
-function Card({ editing, level, nodeKey, name, onName, issue, collapsed, onToggle, addLabel, onAdd, sibling, isTarget, scrollToCard, children, body }: {
+function Card({ editing, level, nodeKey, name, onName, issue, sibling, isTarget, scrollToCard, children, body }: {
   editing: boolean;
   level: Level;
   nodeKey: string;
   name: string;
   onName: (value: string) => void;
   issue?: string;
-  /** 접을 수 없는 카드(담보)는 undefined. */
-  collapsed?: boolean;
-  onToggle?: () => void;
-  addLabel?: string;
-  onAdd?: () => void;
   sibling?: SiblingControls;
   isTarget: boolean;
   scrollToCard: boolean;
@@ -83,10 +67,8 @@ function Card({ editing, level, nodeKey, name, onName, issue, collapsed, onToggl
   return (
     <section ref={ref} className={`ts-cov-card${isTarget ? " is-target" : ""}`} data-level={level} data-node={nodeKey} aria-label={`${what} ${shown}`}>
       <div className="ts-cov-card-head">
-        {onToggle ? (
-          <button type="button" className="ts-cov-fold" aria-expanded={!collapsed} aria-label={`${shown} ${collapsed ? "펼치기" : "접기"}`} onClick={onToggle}>
-            {collapsed ? "▸" : "▾"}
-          </button>
+        {editing && sibling ? (
+          <IconButton className="ts-cov-remove" icon={<IconMinusCircle />} label={sibling.count <= 1 ? MIN_STRUCTURE : `${shown} 빼기`} danger disabled={sibling.count <= 1} onClick={sibling.onRemove} />
         ) : null}
         <span className="ts-cov-card-level">{sibling ? `${what} ${sibling.index + 1}` : what}</span>
         {editing ? (
@@ -95,19 +77,15 @@ function Card({ editing, level, nodeKey, name, onName, issue, collapsed, onToggl
           <span className="ts-cov-card-name">{name}</span>
         )}
         {editing && issue ? <span className="ts-form-error ts-tree-issue">{issue}</span> : null}
-        {editing && onAdd && addLabel ? (
-          <button type="button" className="ts-linklike ts-tree-add" onClick={onAdd}><IconPlus /> {addLabel}</button>
-        ) : null}
-        {editing && sibling ? (
+        {editing && sibling && sibling.count > 1 ? (
           <span className="ts-row-actions">
             <IconButton icon={<IconUp />} label={`${shown} 위로`} disabled={sibling.index === 0} onClick={() => sibling.onMove(-1)} />
             <IconButton icon={<IconDown />} label={`${shown} 아래로`} disabled={sibling.index === sibling.count - 1} onClick={() => sibling.onMove(1)} />
-            <IconButton icon={<IconClose />} label={sibling.count <= 1 ? MIN_STRUCTURE : `${shown} 빼기`} danger disabled={sibling.count <= 1} onClick={sibling.onRemove} />
           </span>
         ) : null}
       </div>
       {children}
-      <div className="ts-cov-card-body" hidden={collapsed}>{body}</div>
+      <div className="ts-cov-card-body">{body}</div>
     </section>
   );
 }
@@ -131,13 +109,6 @@ export function CoverageCards({ coverageKey, formByNode, original, attributeValu
   // 폼 인스턴스 세대 — 취소하면 모든 폼을 새로 띄워 저장값을 보인다 (`value-drafts.ts`). 렌더 중 상태 조정 (StructForm 의 지문 reset 과 같은 패턴).
   const [session, dispatchSession] = useReducer(formSessionReducer, values.mode, initFormSession);
   if (session.mode !== values.mode) dispatchSession({ mode: values.mode, values: values.value });
-
-  const [collapsed, setCollapsed] = useState(() => initialCollapsed(structure.value, target));
-  const toggle = (key: string) => setCollapsed((current) => {
-    const next = new Set(current);
-    if (next.has(key)) next.delete(key); else next.add(key);
-    return next;
-  });
 
   const nextKey = useRef(0);
   const fresh = (prefix: string) => `new:${prefix}${nextKey.current++}`;
@@ -177,6 +148,53 @@ export function CoverageCards({ coverageKey, formByNode, original, attributeValu
 
   const scrollToCard = !highlightPath;
 
+  const benefitCard = (sub: StructureDraftSub, benefit: StructureDraftBenefit, benefitIndex: number) => (
+    <Card
+      key={benefit.key}
+      editing={editing}
+      level="benefit"
+      nodeKey={benefit.key}
+      name={benefit.name}
+      onName={(name) => updateSub(sub.key, (s) => ({ ...s, benefits: s.benefits.map((b) => (b.key === benefit.key ? { ...b, name } : b)) }))}
+      issue={issueOf(benefit.key)}
+      sibling={{
+        index: benefitIndex,
+        count: sub.benefits.length,
+        onMove: (delta) => updateSub(sub.key, (s) => ({ ...s, benefits: moved(s.benefits, benefitIndex, delta) })),
+        onRemove: () => updateSub(sub.key, (s) => ({ ...s, benefits: s.benefits.filter((b) => b.key !== benefit.key) })),
+      }}
+      isTarget={benefit.key === target}
+      scrollToCard={scrollToCard}
+      body={formOf(benefit.key, !benefit.id)}
+    />
+  );
+
+  const subCard = (sub: StructureDraftSub, subIndex: number) => (
+    <Card
+      key={sub.key}
+      editing={editing}
+      level="subCoverage"
+      nodeKey={sub.key}
+      name={sub.name}
+      onName={(name) => updateSub(sub.key, (s) => ({ ...s, name }))}
+      issue={issueOf(sub.key)}
+      sibling={{ index: subIndex, count: subs.length, onMove: (delta) => update(moved(subs, subIndex, delta)), onRemove: () => update(subs.filter((s) => s.key !== sub.key)) }}
+      isTarget={sub.key === target}
+      scrollToCard={scrollToCard}
+      body={
+        <>
+          {formOf(sub.key, !sub.id)}
+          <div className="ts-cov-benefits">{sub.benefits.map((benefit, benefitIndex) => benefitCard(sub, benefit, benefitIndex))}</div>
+          {editing ? (
+            <button type="button" className="ts-linklike ts-cov-add" aria-label={`${sub.name.trim() || "세부보장"}에 급부 추가`} onClick={() => addBenefit(sub.key)}>
+              <IconPlus /> 급부
+            </button>
+          ) : null}
+        </>
+      }
+    />
+  );
+
   return (
     <Card
       editing={editing}
@@ -184,58 +202,20 @@ export function CoverageCards({ coverageKey, formByNode, original, attributeValu
       nodeKey={coverageKey}
       name={label.value}
       onName={label.setValue}
-      addLabel="세부보장"
-      onAdd={addSub}
       isTarget={coverageKey === target}
       scrollToCard={scrollToCard}
       body={
         <>
           {formOf(coverageKey, false)}
-          {subs.map((sub, subIndex) => (
-            <Card
-              key={sub.key}
-              editing={editing}
-              level="subCoverage"
-              nodeKey={sub.key}
-              name={sub.name}
-              onName={(name) => updateSub(sub.key, (s) => ({ ...s, name }))}
-              issue={issueOf(sub.key)}
-              collapsed={collapsed.has(sub.key)}
-              onToggle={() => toggle(sub.key)}
-              addLabel="급부"
-              onAdd={() => addBenefit(sub.key)}
-              sibling={{ index: subIndex, count: subs.length, onMove: (delta) => update(moved(subs, subIndex, delta)), onRemove: () => update(subs.filter((s) => s.key !== sub.key)) }}
-              isTarget={sub.key === target}
-              scrollToCard={scrollToCard}
-              body={
-                <>
-                  {formOf(sub.key, !sub.id)}
-                  {sub.benefits.map((benefit: StructureDraftBenefit, benefitIndex) => (
-                    <Card
-                      key={benefit.key}
-                      editing={editing}
-                      level="benefit"
-                      nodeKey={benefit.key}
-                      name={benefit.name}
-                      onName={(name) => updateSub(sub.key, (s) => ({ ...s, benefits: s.benefits.map((b) => (b.key === benefit.key ? { ...b, name } : b)) }))}
-                      issue={issueOf(benefit.key)}
-                      collapsed={collapsed.has(benefit.key)}
-                      onToggle={() => toggle(benefit.key)}
-                      sibling={{
-                        index: benefitIndex,
-                        count: sub.benefits.length,
-                        onMove: (delta) => updateSub(sub.key, (s) => ({ ...s, benefits: moved(s.benefits, benefitIndex, delta) })),
-                        onRemove: () => updateSub(sub.key, (s) => ({ ...s, benefits: s.benefits.filter((b) => b.key !== benefit.key) })),
-                      }}
-                      isTarget={benefit.key === target}
-                      scrollToCard={scrollToCard}
-                      body={formOf(benefit.key, !benefit.id)}
-                    />
-                  ))}
-                </>
-              }
-            />
-          ))}
+          <div className="ts-cov-grid">
+            {subs.map(subCard)}
+            {editing ? (
+              // 그리드 마지막 칸 — 점선 타일 (편집 모드만)
+              <button type="button" className="ts-cov-add-tile" aria-label="세부보장 추가" onClick={addSub}>
+                <IconPlus /> 세부보장
+              </button>
+            ) : null}
+          </div>
         </>
       }
     >

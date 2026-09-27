@@ -3594,7 +3594,7 @@ button.ts-ref-fold:hover {
 
 
 
-/* 링크처럼 보이는 버튼 · 카드 머리의 ⊕ 추가 · 이름 옆 인라인 이슈 */
+/* 링크처럼 보이는 버튼 · 세부보장 카드의 「+ 급부」 · 이름 옆 인라인 이슈 */
 .ts-linklike {
   padding: 0;
   border: 0;
@@ -3612,16 +3612,12 @@ button.ts-ref-fold:hover {
   white-space: nowrap;
 }
 
-.ts-tree-add {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.ts-cov-add {
   color: var(--ts-ink-2);
-  font-size: 12px;
   text-decoration: none;
 }
 
-.ts-tree-add:hover {
+.ts-cov-add:hover {
   color: var(--ts-ink);
 }
 
@@ -3632,7 +3628,7 @@ button.ts-ref-fold:hover {
 
 /* ── 담보 상세 — 한 화면: 중첩 카드 (기능/담보 §4 「상세」) ─────────────── */
 
-/* 카드 — 담보 ⊃ 세부보장 ⊃ 급부. 안쪽 카드는 들여 쌓는다 */
+/* 카드 — 담보 ⊃ 세부보장(그리드) ⊃ 급부. 접지 않는다 — 모든 카드가 늘 보인다 */
 .ts-cov-card {
   min-width: 0;
   border: 1px solid var(--ts-rule);
@@ -3642,8 +3638,10 @@ button.ts-ref-fold:hover {
   margin: 0 0 10px;
 }
 
+/* 안쪽 카드는 촘촘하게 — 머리 한 줄 + 폼 */
 .ts-cov-card .ts-cov-card {
-  margin-left: 4px;
+  padding: 6px 10px;
+  margin: 0;
 }
 
 .ts-cov-card.is-target {
@@ -3655,27 +3653,21 @@ button.ts-ref-fold:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 8px;
-  min-height: 28px;
+  gap: 4px 6px;
+  min-height: 24px;
 }
 
 .ts-cov-card-body {
   margin-top: 6px;
 }
 
-.ts-cov-fold {
-  width: 20px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--ts-ink-2);
-  font: inherit;
-  cursor: pointer;
+.ts-cov-card-body:empty {
+  display: none;
 }
 
 .ts-cov-card-level {
   color: var(--ts-ink-3);
-  font-size: 12px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -3684,9 +3676,13 @@ button.ts-ref-fold:hover {
   font-weight: 600;
 }
 
+.ts-cov-card .ts-cov-card .ts-cov-card-name {
+  font-size: 13px;
+}
+
 .ts-cov-card-input {
   min-width: 0;
-  flex: 0 1 260px;
+  flex: 0 1 240px;
 }
 
 .ts-cov-card-input[aria-invalid="true"] {
@@ -3694,11 +3690,73 @@ button.ts-ref-fold:hover {
 }
 
 .ts-cov-card-head .ts-row-actions {
+  display: inline-flex;
   margin-left: auto;
 }
 
+/* ⊖ 빼기 — 카드 머리 맨 왼쪽. 평소에도 danger 색으로 「빼는 자리」를 말한다 (잠기면 옅게) */
+.ts-iconbtn.danger.ts-cov-remove {
+  width: 18px;
+  height: 18px;
+  margin-left: -4px;
+  color: var(--ts-error);
+}
+
+.ts-iconbtn.danger.ts-cov-remove[disabled] {
+  color: var(--ts-ink-3);
+}
+
+/* 세부보장 그리드 — 넓으면 2열, 좁으면 1열. 급부는 세부보장 카드 안에 쌓는다 */
+.ts-cov-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
+.ts-cov-benefits {
+  display: grid;
+  gap: 8px;
+}
+
+/* 「+ 세부보장」 — 그리드 마지막 칸의 점선 타일 (편집 모드만) */
+.ts-cov-add-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 64px;
+  border: 1px dashed var(--ts-rule-strong);
+  border-radius: 8px;
+  background: none;
+  color: var(--ts-ink-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ts-cov-add-tile:hover {
+  color: var(--ts-ink);
+  background: var(--ts-surface-2);
+}
+
+/* 「+ 급부」 — 세부보장 카드 맨 아래 작은 링크 버튼 */
+.ts-cov-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.ts-cov-add .ts-icon,
+.ts-cov-add-tile .ts-icon {
+  width: 12px;
+  height: 12px;
+}
+
 .ts-cov-card-note {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   font-size: 12px;
 }
 
@@ -3709,7 +3767,27 @@ button.ts-ref-fold:hover {
 
 .ts-cov-card .ts-form {
   border-top: 0;
-  margin: 0 0 8px;
+  margin: 0 0 6px;
+  padding: 0;
+}
+
+/* 카드 안 값 폼은 좁다 — 라벨 열을 줄이고 입력칸이 칸 폭을 따른다 */
+.ts-cov-card .ts-form-row {
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 6px;
+  min-height: 26px;
+}
+
+.ts-cov-card .ts-form-control > input[type="text"],
+.ts-cov-card .ts-form-control > input[type="number"],
+.ts-cov-card .ts-form-control > select {
+  min-width: 0;
+  flex: 1 1 120px;
+}
+
+.ts-cov-card .ts-form-card {
+  padding: 4px 10px 2px;
+  margin: 0 0 6px;
 }
 
 /* 경고 — 거부는 아니고 「그래도 저장은 된다」 (담보명의 담보속성 값, Q-C). */

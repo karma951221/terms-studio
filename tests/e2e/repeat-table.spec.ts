@@ -140,7 +140,7 @@ test(
     await ev.action("반복표#9", "담보에 세부보장을 하나 더한다", async () => {
       await page.goto(coverageUrl);
       await page.getByRole("button", { name: "편집", exact: true }).click();
-      await page.locator("button.ts-tree-add", { hasText: "세부보장" }).click();
+      await page.getByRole("button", { name: "세부보장 추가", exact: true }).click();
       await page.getByRole("textbox", { name: /^세부보장명/ }).last().fill(SUB_2);
       await page.getByRole("textbox", { name: /^급부명/ }).last().fill("둘째급부");
       await page.getByRole("button", { name: "저장", exact: true }).click();

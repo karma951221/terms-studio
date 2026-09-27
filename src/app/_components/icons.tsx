@@ -107,6 +107,27 @@ export function IconPlus(props: IconProps) {
   );
 }
 
+/** 원 안의 + — 선택 자리(여는 폼 · 구조)를 더한다. */
+export function IconPlusCircle(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="8" cy="8" r="6" />
+      <path d="M8 5.4v5.2" />
+      <path d="M5.4 8h5.2" />
+    </Svg>
+  );
+}
+
+/** 원 안의 − — 카드 · 선택 자리를 뺀다 (편집 모드, danger). */
+export function IconMinusCircle(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="8" cy="8" r="6" />
+      <path d="M5.4 8h5.2" />
+    </Svg>
+  );
+}
+
 export function IconEdit(props: IconProps) {
   return (
     <Svg {...props}>
