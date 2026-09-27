@@ -205,6 +205,16 @@ export function IconInfo(props: IconProps) {
   );
 }
 
+/** 우측 패널 — 창 오른쪽에 세로 칸이 선 사각. 저작 화면(L3) 좁은 폭의 패널 열기 · 닫기. */
+export function IconPanel(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="2" y="3" width="12" height="10" rx="1" />
+      <path d="M10 3v10" />
+    </Svg>
+  );
+}
+
 /* ── 담보 상태 글리프 (7px) — 디자인원칙 §2 L1 ─────────────────────────── */
 
 type GlyphProps = { className?: string; title?: string };

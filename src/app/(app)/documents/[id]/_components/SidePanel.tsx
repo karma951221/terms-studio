@@ -142,14 +142,14 @@ function EvalSection({ ctx, data }: { ctx: DocCtx; data: PanelData }) {
 export function SidePanel({ ctx, data }: { ctx: DocCtx; data: PanelData }) {
   if (ctx.mode === "read") {
     return (
-      <aside className="ts-l3-side">
+      <aside className="ts-l3-side" id="ts-l3-side">
         <EvalSection ctx={ctx} data={data} />
       </aside>
     );
   }
   const errors = data.issues.filter((i) => i.severity !== "warning").length;
   return (
-    <aside className="ts-l3-side">
+    <aside className="ts-l3-side" id="ts-l3-side">
       <h3 className="ts-form-title">템플릿</h3>
       <dl className="ts-side-facts">
         <dt>이름</dt>
