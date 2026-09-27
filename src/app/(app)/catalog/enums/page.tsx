@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function LegacyEnumsPage() {
-  redirect("/master/enums");
+  redirect("/enums");
 }

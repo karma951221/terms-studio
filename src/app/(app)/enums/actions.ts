@@ -6,9 +6,9 @@ import { describeRejection, errorRedirectPath } from "@/app/_lib/rejection";
 import { currentActor, getServices } from "@/lib/services";
 import type { Code } from "@/domain/types";
 
-import { str } from "../../catalog/lib";
+import { str } from "../catalog/lib";
 
-const enumPath = (code?: Code) => code ? `/master/enums/${code}` : "/master/enums";
+const enumPath = (code?: Code) => code ? `/enums/${code}` : "/enums";
 const message = (rejection: Parameters<typeof describeRejection>[0]) => describeRejection(rejection).message;
 
 export async function createTypeEnumAction(formData: FormData): Promise<void> {
@@ -18,7 +18,7 @@ export async function createTypeEnumAction(formData: FormData): Promise<void> {
     description: str(formData, "description"),
     values,
   });
-  if (!result.ok) redirect(errorRedirectPath("/master/enums/new", message(result.rejection)));
+  if (!result.ok) redirect(errorRedirectPath("/enums/new", message(result.rejection)));
   redirect(enumPath(result.value.code));
 }
 

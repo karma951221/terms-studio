@@ -48,7 +48,7 @@ export function TypeText({ type, enumLabels }: { type: FieldType; enumLabels: En
   if (type.kind !== "enum" && type.kind !== "list<enum>") return <>{TYPE_LABEL[type.kind]}</>;
   return (
     <>
-      {TYPE_LABEL[type.kind]} ▸ <Link href={`/master/enums/${encodeURIComponent(type.enumCode)}`}>{enumLabels.get(type.enumCode) ?? type.enumCode}</Link>
+      {TYPE_LABEL[type.kind]} ▸ <Link href={`/enums/${encodeURIComponent(type.enumCode)}`}>{enumLabels.get(type.enumCode) ?? type.enumCode}</Link>
     </>
   );
 }

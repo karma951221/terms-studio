@@ -15,12 +15,12 @@
  */
 import { useState, type ReactNode } from "react";
 
-import { basicsCrumb } from "@/app/_components/BasicsTabs";
 import { CreateHead, FormRow } from "@/app/_components/FormRow";
 import { NoteField } from "@/app/_components/NoteField";
 import { RadioGroup } from "@/app/_components/RadioGroup";
 import { Toggle } from "@/app/_components/Toggle";
 import { ENTITY_LABEL, FIELD_LABEL, LEVEL_OPTIONS, NAME_LABEL, newLabel, TYPE_LABEL } from "@/app/_lib/labels";
+import { DISCRIMINATORS_MENU, menuCrumb } from "@/app/_lib/menu";
 import type { EnumDef } from "@/domain/catalog/types";
 import type { AttachLevel } from "@/domain/types";
 
@@ -63,7 +63,7 @@ export function CreateForm({
       <CreateHead
         title={newLabel(ENTITY_LABEL.discriminator)}
         formId={FORM_ID}
-        path={[basicsCrumb("discriminators")]}
+        path={[menuCrumb(DISCRIMINATORS_MENU)]}
         banner={banner}
         actions={<InspectButton input={inspectInput} onResult={setInspection} />}
       />

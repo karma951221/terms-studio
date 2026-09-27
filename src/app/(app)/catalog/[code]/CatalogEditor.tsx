@@ -11,11 +11,11 @@
  */
 import { useCallback, useEffect, useState } from "react";
 
-import { basicsCrumb } from "@/app/_components/BasicsTabs";
 import { EditShell, Field, useEditField } from "@/app/_components/EditShell";
 import { InfoTip } from "@/app/_components/InfoTip";
 import { UsageDialog } from "@/app/_components/UsageDialog";
 import { ENTITY_LABEL, FIELD_LABEL, LEVEL_LABEL, TYPE_LABEL } from "@/app/_lib/labels";
+import { DISCRIMINATORS_MENU, menuCrumb } from "@/app/_lib/menu";
 import type { Discriminator, EnumDef } from "@/domain/catalog";
 import type { ExprType } from "@/domain/expression";
 import type { AttachLevel, Code, Issue } from "@/domain/types";
@@ -172,7 +172,7 @@ export function CatalogEditor({
       extraActions={<UsageDialog count={usageCount}>{usage}</UsageDialog>}
       editActions={<EditInspectButton code={def.code} level={def.level} onResult={setInspection} />}
       readBadges={badges.map((b) => <span key={b.label} className="ts-badge warning" title={b.title}>{b.label}</span>)}
-      path={[basicsCrumb("discriminators")]}
+      path={[menuCrumb(DISCRIMINATORS_MENU)]}
       saveAction={saveDiscriminatorEditAction.bind(null, def.code)}
       deleteAction={removeDiscriminatorEditAction.bind(null, def.code)}
       deleteLabel={`${def.label} 삭제`}

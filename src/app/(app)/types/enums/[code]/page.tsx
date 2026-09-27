@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-/** 옛 주소 — 열거형변수 상세는 `/master/enums/<code>` (기능/마스터 §4.4 ~ §4.6). */
+/** 옛 주소 — 열거형변수 상세는 `/enums/<code>` (기능/열거형 §4). */
 export default async function LegacyTypeEnumPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  redirect(`/master/enums/${encodeURIComponent(code)}`);
+  redirect(`/enums/${encodeURIComponent(code)}`);
 }

@@ -97,10 +97,16 @@ test(
     await page.getByRole("button", { name: /admin/ }).click();
     await page.waitForURL((url) => !url.pathname.startsWith("/login"));
 
-    // L1 목록 — 필드 표 전폭, 경로 없음 (2026-09-27 두 칸 → 목록 + 상세). 제목은 메뉴 「기본정보」, 탭 `열거형 | 폼 | 구분자`.
+    // 내비 그룹 「기본정보」 = 메뉴 셋, 참조 순서(열거형 → 폼 → 구분자). 열거형은 제 화면 `/enums`.
+    await page.goto("/enums");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("열거형");
+    const basicsGroup = page.locator(".ts-nav-group", { has: page.locator(".ts-nav-group-title", { hasText: /^기본정보$/ }) });
+    await expect(basicsGroup.getByRole("link")).toHaveText(["열거형", "폼", "구분자"]);
+    await expect(basicsGroup.getByRole("link", { name: "열거형" })).toHaveAttribute("aria-current", "page");
+
+    // L1 목록 — 필드 표 전폭, 경로 없음 (2026-09-27 두 칸 → 목록 + 상세). 제목은 메뉴 이름 「폼」.
     await page.goto("/master");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("기본정보");
-    await expect(page.getByRole("navigation", { name: "기본정보 하위 탭" }).getByRole("link")).toHaveText(["열거형", "폼", "구분자"]);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("폼");
     const waiverLeaf = page.locator('a[href="/master/waiver.applies"]').first();
     const rateLeaf = page.locator('a[href="/master/pay.rate"]').first();
     await expect(waiverLeaf).toBeVisible();
@@ -120,8 +126,8 @@ test(
     await expect(page).toHaveURL(/\/master\/waiver\.applies$/);
     await expect(page.locator(".ts-crumb-current")).toHaveText("적용여부");
     await expect(page.locator('a.ts-crumb[href="/master/waiver"]')).toBeVisible();
-    // 경로 첫 마디는 메뉴 「기본정보」 — 폼 탭(/master)으로 돌아간다 (기능/마스터 §4).
-    await expect(page.locator('a.ts-crumb[href="/master"]')).toHaveText("기본정보");
+    // 경로 첫 마디는 메뉴 이름 「폼」 — 폼 조회(/master)로 돌아간다 (기능/마스터 §4).
+    await expect(page.locator('a.ts-crumb[href="/master"]')).toHaveText("폼");
 
     // 시드 상품의 세목 선택지 둘이 값 노드로 잡힌다 — 「입력 화면 →」가 선택지 좌표(?option=)를 싣는다.
     // (실물 재현 E2E 가 같은 DB 에 상품을 하나 더 만드므로 시드 상품 행만 센다.)

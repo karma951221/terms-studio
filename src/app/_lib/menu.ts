@@ -1,38 +1,28 @@
 /**
  * 메뉴 구성 — 작업 순서대로 묶은 네 단계(기본정보 → 담보 설계 → 약관 조문 → 상품) + 점검.
  * 좌측 내비(단계 제목 아래 항목)와 홈(네 열 + 점검 띠)이 같은 구성을 쓴다 — 한쪽만 바꾸지 않게 여기 둔다.
- *
- * 메뉴 항목 하나가 기능 여럿을 탭으로 묶을 수 있다 (ADR-0073) — 「기본정보」 = 열거형 · 폼 · 구분자.
- * 기능(주소 · domain 폴더 · 문서)은 그대로 따로이고, 묶음은 탭 줄(`BasicsTabs`) · 내비 항목 하나 · 홈 카드 셋으로만 보인다.
+ * 항목 하나 = 기능 하나 = route 하나 (ADR-0073). 상세 · 생성 화면의 경로 첫 마디도 여기 이름을 쓴다(`menuCrumb`).
  */
 import { ENTITY_LABEL } from "@/app/_lib/labels";
 
-/** 홈 카드 하나 = 이름 + 한 줄 설명 + 갈 곳. */
-export type MenuLink = { href: string; label: string; desc: string };
-/**
- * 내비 항목 하나. 탭으로 기능 여럿을 묶은 항목(`tabs`)은 홈에서 탭마다 카드 하나로 펼쳐진다.
- * `activePaths` — 내비가 현재 위치로 칠 경로 접두(기본은 `href` 의 경로). 탭 묶음은 주소가 기능마다 달라 따로 적는다.
- */
-export type MenuItem = { href: string; label: string; activePaths?: readonly string[] } & ({ desc: string } | { tabs: readonly MenuLink[] });
+export type MenuItem = { href: string; label: string; desc: string };
 export type MenuGroup = { title: string; items: MenuItem[] };
 
-export type BasicsTab = "enums" | "forms" | "discriminators";
+/** 「기본정보」 그룹의 셋 — 순서가 곧 참조 방향이다: 폼 필드가 열거형을, 구분자 식이 폼 필드를 참조한다. */
+export const ENUMS_MENU = { href: "/enums", label: "열거형", desc: "선택지 목록 — 목록값 타입이 고르는 값" } as const satisfies MenuItem;
+export const FORMS_MENU = { href: "/master", label: "폼", desc: "약관이 참조하는 코드 폼과 필드" } as const satisfies MenuItem;
+export const DISCRIMINATORS_MENU = { href: "/catalog", label: ENTITY_LABEL.discriminator, desc: "마스터 필드에 건 식 — 조문을 가르는 조건" } as const satisfies MenuItem;
 
-/** 「기본정보」의 탭 — 순서가 곧 참조 방향이다: 폼 필드가 열거형을, 구분자 식이 폼 필드를 참조한다. 탭은 URL. */
-export const BASICS_TABS = [
-  { tab: "enums", href: "/master/enums", label: "열거형", desc: "선택지 목록 — 목록값 타입이 고르는 값" },
-  { tab: "forms", href: "/master", label: "폼", desc: "약관이 참조하는 코드 폼과 필드" },
-  { tab: "discriminators", href: "/catalog", label: ENTITY_LABEL.discriminator, desc: "마스터 필드에 건 식 — 조문을 가르는 조건" },
-] as const satisfies readonly (MenuLink & { tab: BasicsTab })[];
-
-export const BASICS_TITLE = "기본정보";
+/** 상세 · 생성 화면의 경로 첫 마디 — 메뉴 이름이 그 조회 화면으로 돌아간다. */
+export function menuCrumb(item: MenuItem): { label: string; href: string } {
+  return { label: item.label, href: item.href };
+}
 
 /** 앞 단계가 뒤 단계의 재료가 되는 흐름. 홈은 이 순서로 열을 세우고 사이에 화살표를 놓는다. */
 export const MENU_FLOW: MenuGroup[] = [
   {
-    title: BASICS_TITLE,
-    // 내비 항목은 하나(첫 탭으로 간다) — 「상품」 단계처럼 단계 제목과 항목 이름이 같다.
-    items: [{ href: BASICS_TABS[0].href, label: BASICS_TITLE, activePaths: ["/master", "/catalog"], tabs: BASICS_TABS }],
+    title: "기본정보",
+    items: [ENUMS_MENU, FORMS_MENU, DISCRIMINATORS_MENU],
   },
   {
     title: "담보 설계",

@@ -50,7 +50,6 @@ export function ListPage<T>({
   title,
   heading: headingKind = "page",
   create,
-  tabs,
   search,
   filters = [],
   columns,
@@ -74,8 +73,6 @@ export function ListPage<T>({
   heading?: "page" | "section" | "sub";
   /** 제목 줄 오른쪽 `+` 아이콘 버튼. 없으면 안 그린다. */
   create?: { href: string; label: string };
-  /** 제목 줄 아래 하위 탭 줄 — 탭이 둘 이상일 때만 준다 (기본정보 `열거형 | 폼 | 구분자`). */
-  tabs?: ReactNode;
   /** 검색창 안내 문구. 없으면 필터바 자체를 안 그린다. */
   search?: { placeholder: string; queryKey?: string };
   filters?: readonly ColumnFilterSpec[];
@@ -109,7 +106,6 @@ export function ListPage<T>({
       <ErrorBanner message={error} />
       <ListShell
         heading={heading}
-        {...(tabs ? { toolbar: tabs } : {})}
         {...(search
           ? {
               filters: (
