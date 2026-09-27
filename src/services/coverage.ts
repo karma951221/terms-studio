@@ -6,7 +6,7 @@
  * - 파괴적(노드 삭제 `coverage.deleteNode`)은 `destructive()` 2단:
  *   editor → forbidden · admin 1차 → needsConfirmation(Impact) · `{ confirm: true }` → 실행 + 값 행 연쇄 삭제.
  *   최소 구조 위반은 precheck 에서 admin 도 거부.
- * - 구조 계획(`applyStructurePlan`, ADR-0052)은 초안 하나를 ① 이름 → ② 추가 → ③ 삭제 → ④ 순서 로 **한 트랜잭션에서 한 번 저장**.
+ * - 구조 계획(`applyStructurePlan`, ADR-0052)은 초안 하나를 최종 트리로 검사해(`applyStructurePlanTo` — 형제 이름 맞바꾸기 · 지운 이름 재사용 허용) **한 트랜잭션에서 한 번 저장**.
  *   삭제가 섞이면 같은 2단(편집자 forbidden · 관리자 needsConfirmation) — 영향에 탑재 상품담보 · 스냅샷 소실 행(`Impact.mounts`)이
  *   실린다. 저장 뒤 탑재 상품담보 스냅샷을 같은 트랜잭션에서 맞춘다 (`MountSync`, 조립 루트가 product 를 잇는다).
  * - 사용처(문면 조건식·슬롯 · 요구 공용조항 · 파생식)는 `UsageSource` 로 주입 (C1 refs). 기본 NO_USAGE.
@@ -158,7 +158,7 @@ export interface CoverageService {
 
   // 구조 계획 — 초안 하나를 한 트랜잭션에 (ADR-0052)
   /**
-   * 초안 → 계획(① 이름 → ② 추가 → ③ 삭제 → ④ 순서) → 드라이런(첫 거부면 무변경) → 삭제가 섞이면 2단
+   * 초안 → 계획(최종 트리로 검사) → 드라이런(첫 거부면 무변경) → 삭제가 섞이면 2단
    * (편집자 forbidden · 관리자 1차 needsConfirmation — 마스터 값 행 · 깨질 참조 · 연쇄 + `mounts`) → 결과 트리 한 번 저장 ·
    * 삭제 노드 값 행 정리 → 탑재 상품담보 스냅샷 동기화, 전부 한 트랜잭션. 삭제가 없으면 confirm 무관하게 바로 적용(비파괴 — 편집자 가능).
    * 반환은 새 트리.

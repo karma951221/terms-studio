@@ -74,16 +74,49 @@ describe("saveCoverageEditAction — 삭제가 섞인 저장", () => {
     ]);
   });
 
-  it("✕ 한 급부의 이름을 새 급부에 다시 쓰면 도메인 dry-run 이 서비스 호출 전에 거부한다", async () => {
+  it("✕ 한 급부의 이름을 새 급부에 다시 쓸 수 있다 — 최종 상태로 검사 · 화면 검사(structureIssues)와 같은 규칙 (점검 2026-09-27 H2 ③)", async () => {
     actor = admin;
     const tree = unwrap(await s.coverage.create(editor, { name: "골절", subCoverageName: "골절", benefitName: "진단금" }));
     const withTwo = unwrap(await s.coverage.addBenefit(editor, tree.subCoverages[0]!.id, "수술금"));
+    const oldId = withTwo.subCoverages[0]!.benefits[1]!.id;
     const draft: StructureDraftSub[] = structureDraftOf(withTwo);
     draft[0]!.benefits = [draft[0]!.benefits[0]!, { key: "new:1", name: "수술금" }];
-    const r = await saveCoverageEditAction(withTwo.id, { label: "화상진단2", description: "", structure: draft, values: {} }, true);
+    expect(await saveCoverageEditAction(withTwo.id, { label: "골절", description: "", structure: draft, values: {} }, true)).toEqual({ ok: true });
+    const saved = (await s.coverage.get(withTwo.id))!.subCoverages[0]!.benefits;
+    expect(saved.map((b) => b.name)).toEqual(["진단금", "수술금"]);
+    expect(saved[1]!.id).not.toBe(oldId); // 같은 이름의 새 노드 — 지운 노드의 값은 따라오지 않는다
+  });
+
+  it("형제 이름 A↔B 맞바꾸기가 저장된다 — 세부보장 · 급부 둘 다 (점검 2026-09-27 H2 ③)", async () => {
+    actor = editor;
+    const tree = unwrap(await s.coverage.create(editor, { name: "질병수술", subCoverageName: "1종", benefitName: "수술비" }));
+    const a = unwrap(await s.coverage.addSubCoverage(editor, tree.id, { name: "2종", benefitName: "수술비" }));
+    const b = unwrap(await s.coverage.addBenefit(editor, a.subCoverages[0]!.id, "위로금"));
+    const draft: StructureDraftSub[] = structureDraftOf(b);
+    [draft[0]!.name, draft[1]!.name] = [draft[1]!.name, draft[0]!.name];
+    [draft[0]!.benefits[0]!.name, draft[0]!.benefits[1]!.name] = [draft[0]!.benefits[1]!.name, draft[0]!.benefits[0]!.name];
+    expect(await saveCoverageEditAction(b.id, { label: "질병수술", description: "", structure: draft, values: {} })).toEqual({ ok: true });
+    const saved = (await s.coverage.get(b.id))!;
+    expect(saved.subCoverages.map((sub) => [sub.id, sub.name, sub.benefits.map((x) => x.name)])).toEqual([
+      [b.subCoverages[0]!.id, "2종", ["위로금", "수술비"]],
+      [b.subCoverages[1]!.id, "1종", ["수술비"]],
+    ]);
+  });
+
+  it("부분 저장 없음 — 담보명 · 주석 · 구조를 저장한 뒤 값 쓰기가 거부되면 전부 롤백된다 (점검 2026-09-27 H1)", async () => {
+    actor = editor;
+    const tree = unwrap(await s.coverage.create(editor, { name: "화상수술", subCoverageName: "화상", benefitName: "수술비" }));
+    const draft: StructureDraftSub[] = structureDraftOf(tree);
+    draft[0]!.name = "중증화상";
+    draft[0]!.benefits.push({ key: "new:1", name: "치료비" });
+    const r = await saveCoverageEditAction(tree.id, {
+      label: "화상수술2",
+      description: "주석",
+      structure: draft,
+      values: { [`coverage:${tree.id}`]: { issues: [], values: [{ path: "coverage_basic.claim_name", value: true }] } },
+    });
     expect(r.ok).toBe(false);
-    if (r.ok === false) expect(r.message).toContain("수술금");
-    expect(await s.coverage.get(withTwo.id)).toEqual(withTwo);
+    expect(await s.coverage.get(tree.id)).toEqual(tree);
   });
 
   it("탑재된 담보: 구조 변경은 거부 · 이름만 바꾼 저장은 applyStructurePlan 을 거쳐 탑재 스냅샷 이름까지 같은 트랜잭션에서 따라온다", async () => {

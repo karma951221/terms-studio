@@ -156,19 +156,50 @@ describe("dryRunStructurePlan — 서비스 호출 전 메모리 검증", () => 
     expect(r.ok && r.value).toEqual(tree);
   });
 
-  it("✕ 한 형제의 이름을 새 급부에 다시 쓰면 duplicate — 추가가 삭제보다 앞이라 (structureIssues 는 통과하는 경우)", () => {
+  // 점검 2026-09-27 H2 ③ · D1 — 전에는 ①이름 → ②추가 → ③삭제 를 한 단계씩 검사해, 최종 상태가 유효해도 중간 상태의 이름 충돌로
+  // 거부했다(「지운 형제 이름 재사용 = 거부」). 화면 검사(structureIssues)는 최종 상태만 봐서 저장 버튼이 켜진 채 서버가 거부했다.
+  // 이제 둘 다 최종 상태 규칙 하나다 — 형제 이름은 저장 뒤 트리에서 겹치지 않으면 된다 (기능/담보 §3.2).
+  it("✕ 한 형제의 이름을 새 급부에 다시 쓸 수 있다 — 같은 이름의 새 노드 (structureIssues 와 같은 판정)", () => {
     const draft = draftOf();
     draft[0]!.benefits = [draft[0]!.benefits[0]!, { key: "new:1", name: "위로금" }]; // b2 「위로금」 빼고 같은 이름의 새 급부
     expect(structureIssues(draft)).toEqual([]);
     const r = dryRunStructurePlan(tree, structurePlan(tree, draft));
-    expect(!r.ok && r.rejection.reason).toBe("duplicate");
+    if (!r.ok) throw new Error(JSON.stringify(r.rejection));
+    expect(r.value.subCoverages[0]!.benefits.map((b) => [b.name, b.id === "b2"])).toEqual([["수술급여금", false], ["위로금", false]]);
   });
 
-  it("삭제될 형제의 이름으로 개명해도 duplicate (이름이 삭제보다 앞)", () => {
+  it("삭제될 형제의 이름으로 개명할 수 있다", () => {
     const draft = draftOf();
     draft[0]!.benefits = [{ ...draft[0]!.benefits[0]!, name: "위로금" }];
+    expect(structureIssues(draft)).toEqual([]);
     const r = dryRunStructurePlan(tree, structurePlan(tree, draft));
+    expect(r.ok && r.value.subCoverages[0]!.benefits).toEqual([{ id: "b1", name: "위로금", order: 0 }]);
+  });
+
+  it("형제 이름 A↔B 맞바꾸기 — 세부보장 · 급부 모두", () => {
+    const draft = draftOf();
+    [draft[0]!.name, draft[1]!.name] = ["2종수술", "1종수술"];
+    [draft[0]!.benefits[0]!.name, draft[0]!.benefits[1]!.name] = ["위로금", "수술급여금"];
+    expect(structureIssues(draft)).toEqual([]);
+    const r = dryRunStructurePlan(tree, structurePlan(tree, draft));
+    if (!r.ok) throw new Error(JSON.stringify(r.rejection));
+    expect(r.value.subCoverages.map((sub) => [sub.id, sub.name, sub.benefits.map((b) => [b.id, b.name])])).toEqual([
+      ["s1", "2종수술", [["b1", "위로금"], ["b2", "수술급여금"]]],
+      ["s2", "1종수술", [["b3", "수술급여금"]]],
+    ]);
+  });
+
+  it("최종 상태에서 겹치면 여전히 duplicate — 남는 형제와 같은 이름으로 개명 · 새 노드", () => {
+    const renamed = draftOf();
+    renamed[0]!.benefits[0]!.name = "위로금"; // b2 「위로금」이 그대로 남는다
+    expect(structureIssues(renamed)).not.toEqual([]);
+    const r = dryRunStructurePlan(tree, structurePlan(tree, renamed));
     expect(!r.ok && r.rejection.reason).toBe("duplicate");
+
+    const added = draftOf();
+    added[1]!.benefits.push({ key: "new:1", name: "수술급여금" });
+    const r2 = dryRunStructurePlan(tree, structurePlan(tree, added));
+    expect(!r2.ok && r2.rejection.reason).toBe("duplicate");
   });
 
   it("마지막 급부를 새 급부로 갈아끼움 — 추가가 먼저라 최소 구조에 안 걸린다", () => {

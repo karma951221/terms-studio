@@ -4,7 +4,7 @@
  * 도메인 객체(Coverage 트리) ↔ 행 3테이블 매핑. 저장은 id 기준 upsert — 트리에 남은 노드는 갱신,
  * 없어진 노드는 삭제 (급부는 세부보장 FK cascade). 값 행·부착 관계는 repo/values 가 소유한다.
  */
-import { and, asc, eq, inArray, notInArray } from "drizzle-orm";
+import { and, asc, eq, inArray, notInArray, sql } from "drizzle-orm";
 
 import type { Coverage, CoverageNodeRef, SubCoverage } from "@/domain/coverage/types";
 import type { Id } from "@/domain/types";
@@ -152,7 +152,11 @@ export async function insertCoverage(db: Db, tree: Coverage, who: Id): Promise<v
   await upsertChildren(db, tree, who, new Date());
 }
 
-/** 기존 트리 덮어쓰기 — 노드 upsert + 트리에서 빠진 세부보장·급부 삭제. */
+/**
+ * 기존 트리 덮어쓰기 — 트리에서 빠진 세부보장·급부 삭제 → 남는 노드의 이름을 자리표로 비움 → 노드 upsert.
+ * 형제 이름은 유일 인덱스(`sub_coverages_sibling_name` · `benefits_sibling_name`)라, 이름 A↔B 맞바꾸기를 한 행씩 쓰면
+ * 첫 행에서 걸린다. 도메인은 최종 트리로 검사하므로(점검 2026-09-27 H2 ③) 저장도 최종 이름만 인덱스에 닿게 한다.
+ */
 export async function saveCoverage(db: Db, tree: Coverage, who: Id): Promise<void> {
   const now = new Date();
   const [row] = await db
@@ -179,6 +183,11 @@ export async function saveCoverage(db: Db, tree: Coverage, who: Id): Promise<voi
           ? eq(benefits.subCoverageId, s.id)
           : and(eq(benefits.subCoverageId, s.id), notInArray(benefits.id, keepBens)),
       );
+  }
+  // 이름 비우기 — 남는 기존 노드만 (새 노드는 아직 없다). 자리표는 id 라 서로 겹치지 않고, 아래 upsert 가 곧 최종 이름으로 덮는다.
+  if (keepSubs.length > 0) {
+    await db.update(subCoverages).set({ name: sql`chr(1) || ${subCoverages.id}::text` }).where(eq(subCoverages.coverageId, tree.id));
+    await db.update(benefits).set({ name: sql`chr(1) || ${benefits.id}::text` }).where(inArray(benefits.subCoverageId, keepSubs));
   }
   await upsertChildren(db, tree, who, now);
 }

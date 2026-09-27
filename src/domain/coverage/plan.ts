@@ -2,8 +2,9 @@
  * 담보 구조 초안 · 저장 계획 (순수) — ADR-0052.
  *
  * 화면이 세부보장 · 급부의 추가 · 이름 · 순서 · 삭제를 초안 하나(`StructureDraftSub[]`)에 담고, 서비스가 그 초안을
- * `structurePlan` 으로 풀어 ①이름 → ②추가 → ③삭제 → ④순서 순으로 적용한다 (`services/coverage` `applyStructurePlan`).
- * `dryRunStructurePlan` 은 같은 순서를 트리 편집 규칙(tree.ts)으로 메모리에서 끝까지 돌려 첫 거부를 찾는다 —
+ * `structurePlan` 으로 풀어 적용한다 (`services/coverage` `applyStructurePlan` · 순서는 `applyStructurePlanTo`).
+ * 검사는 **최종 상태** 기준이다 — 화면의 `structureIssues` 와 같은 규칙 (점검 2026-09-27 H2 ③).
+ * `dryRunStructurePlan` 은 같은 적용을 트리 편집 규칙(tree.ts)으로 메모리에서 끝까지 돌려 첫 거부를 찾는다 —
  * 저장 전에 계획 전체가 통과하는지 보는 것이라 부분 저장이 없다.
  *
  * 미탑재 담보(결정 1)는 상세 화면 저장 하나에, 탑재된 담보(결정 2)는 별도 「구조 편집」 화면에 — 둘 다 같은 계획을 쓴다.
@@ -83,8 +84,8 @@ export const STRUCTURE_ROOT_KEY = "coverage";
 
 /**
  * 초안이 도메인 규칙에 걸리는 곳 — 빈 이름 · 형제 중복(도메인과 같은 trim 비교) · 세부보장 0개 · 급부 0개인 세부보장.
- * 화면이 행 옆에 인라인으로 보이고, 하나라도 있으면 저장을 막는다. 서버는 이 검사를 반복하지 않는다 — 같은 규칙을
- * `dryRunStructurePlan` 이 트리 편집 함수로 돌려 잡는다 (순서 때문에 걸리는 거부까지).
+ * 화면이 행 옆에 인라인으로 보이고, 하나라도 있으면 저장을 막는다. 서버는 이 검사를 반복하지 않는다 — 같은 최종 상태 규칙을
+ * `dryRunStructurePlan` 이 트리 편집 함수로 돌려 잡는다 (중간 상태의 이름 충돌은 거부하지 않는다 — `applyStructurePlanTo`).
  */
 export function structureIssues(draft: readonly StructureDraftSub[]): StructureIssue[] {
   const issues: StructureIssue[] = [];
@@ -124,9 +125,8 @@ export interface StructureRemoval {
 }
 
 /**
- * 저장 계획 — 실행 순서가 목적이다:
- * ① renames → ② newSubCoverages(첫 급부와 함께 · 나머지 급부 덧붙임) · newBenefits → ③ removes(confirm) → ④ reorders.
- * 추가를 삭제보다 먼저 하는 것은 유일한 급부를 교체할 때 최소 구조 거부를 피하기 위해서다.
+ * 저장 계획 — 무엇을 바꾸는지의 목록. 적용 순서는 `applyStructurePlanTo` 가 정한다
+ * (⓪ 이름 비워 두기 → 추가 → 삭제(confirm) → 새 이름 → 순서).
  */
 export interface StructurePlan {
   renames: { level: StructureLevel; id: Id; name: string }[];
@@ -214,10 +214,31 @@ export function resolveOrder(siblings: readonly { id: Id; name: string }[], orde
   return ids.every((v): v is Id => v !== undefined) ? ids : undefined;
 }
 
+/** 이름 비워 두기용 자리표 — 사람이 적을 수 없는 이름(앞 제어문자 U+0001 · id). 적용 도중에만 있고 결과 트리에는 남지 않는다. */
+function vacantName(id: Id): string {
+  return `\u0001${id}`;
+}
+
+/** 검사 없이 노드 이름만 바꾼다 — ⓪ 비워 두기 전용. */
+function withNodeName(tree: Coverage, level: StructureLevel, id: Id, name: string): Coverage {
+  return {
+    ...tree,
+    subCoverages: tree.subCoverages.map((sub) =>
+      level === "subCoverage"
+        ? sub.id === id ? { ...sub, name } : sub
+        : { ...sub, benefits: sub.benefits.map((b) => (b.id === id ? { ...b, name } : b)) },
+    ),
+  };
+}
+
 /**
- * 계획을 트리 편집 함수로 메모리에서 ①→②→③→④ 순서 그대로 적용한다 — 서비스는 이 결과를 한 번 저장한다.
- * 「✕ 한 형제의 이름을 새 노드에 다시 쓰는」 것처럼 순서 때문에 걸리는 거부(추가가 삭제보다 앞이라 duplicate)도
- * 여기서 잡힌다. 첫 거부에서 멈추고, 통과하면 결과 트리 하나 — 부분 저장이 없다.
+ * 계획을 트리 편집 함수로 메모리에서 적용한다 — 서비스는 이 결과를 한 번 저장한다. 첫 거부에서 멈추고, 통과하면 결과 트리 하나.
+ *
+ * **최종 상태로 검사한다** (점검 2026-09-27 H2 ③ · D1). 형제 이름은 저장 뒤 트리에서 겹치지 않으면 된다 — 화면 검사
+ * `structureIssues` 와 같은 규칙이다. 그래서 적용 순서는
+ * ⓪ 이름이 바뀌거나 지워질 노드의 이름을 자리표로 비워 두고 → ① 추가 → ② 삭제 → ③ 새 이름 → ④ 순서.
+ * ⓪ 덕분에 형제 이름 A↔B 맞바꾸기 · 지운 형제의 이름을 새 노드나 개명에 다시 쓰기가 중간 상태에서 걸리지 않고,
+ * ①③ 의 중복 거부는 최종 트리에서도 겹치는 경우뿐이다. 추가를 삭제보다 앞에 두는 것은 유일한 급부를 교체할 때 최소 구조 거부를 피하려고다.
  * `newId` 가 새 세부보장 · 급부의 id 를 발급한다.
  */
 export function applyStructurePlanTo(original: Coverage, plan: StructurePlan, newId: NewId): Result<Coverage> {
@@ -229,12 +250,7 @@ export function applyStructurePlanTo(original: Coverage, plan: StructurePlan, ne
   };
   const notFound = (what: string): Result<Coverage> => reject({ reason: "notFound", what });
 
-  for (const rename of plan.renames) {
-    const hit = rename.level === "benefit" ? findBenefit(tree, rename.id) : undefined;
-    const r = rename.level === "subCoverage" ? renameSubCoverage(tree, rename.id, rename.name) : hit ? renameBenefit(tree, hit.subCoverage.id, rename.id, rename.name) : notFound(`급부 ${rename.id}`);
-    const bad = step(r);
-    if (bad) return bad;
-  }
+  for (const target of [...plan.renames, ...plan.removes]) tree = withNodeName(tree, target.level, target.id, vacantName(target.id));
   for (const sub of plan.newSubCoverages) {
     const [first, ...rest] = sub.benefitNames;
     if (first === undefined) return reject({ reason: "invalid", issues: [{ kind: "typeMismatch", message: `세부보장 「${sub.name}」에 급부가 하나는 있어야 합니다`, at: {} }] });
@@ -253,6 +269,12 @@ export function applyStructurePlanTo(original: Coverage, plan: StructurePlan, ne
   }
   for (const target of plan.removes) {
     const bad = step(removeNode(tree, { level: target.level, id: target.id }));
+    if (bad) return bad;
+  }
+  for (const rename of plan.renames) {
+    const hit = rename.level === "benefit" ? findBenefit(tree, rename.id) : undefined;
+    const r = rename.level === "subCoverage" ? renameSubCoverage(tree, rename.id, rename.name) : hit ? renameBenefit(tree, hit.subCoverage.id, rename.id, rename.name) : notFound(`급부 ${rename.id}`);
+    const bad = step(r);
     if (bad) return bad;
   }
   for (const reorder of plan.reorders) {
