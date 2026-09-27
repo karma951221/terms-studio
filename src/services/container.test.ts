@@ -113,7 +113,7 @@ describe("container — createServices 관통 (PGlite)", () => {
     unwrap(await s.coverage.setDocument(editor, death.id, special.id));
     special = unwrap(await s.document.apply(editor, special.id, [{ type: "insert", node: artPay, at: { parentId: special.tree.id } }]));
     // 담보속성 카탈로그가 없으면 attr.A0001 은 깨진 참조 → 저장 거부
-    const badAttr = b.article("x", [b.paragraph([b.inlineCond([b.inlineBranch("attr.A0001 = 'V01'", [b.text("갱신형")])])])]);
+    const badAttr = b.article("x", [b.paragraph([b.inlineCond([b.inlineBranch("attr.A0001 = '1'", [b.text("갱신형")])])])]);
     expect(rejection(await s.document.apply(editor, special.id, [{ type: "insert", node: badAttr, at: { parentId: special.tree.id } }])).reason).toBe("invalid");
   });
 
@@ -138,17 +138,17 @@ describe("container — createServices 관통 (PGlite)", () => {
     unwrap(await s.product.addAttributeValue(editor, kind.code, { label: "갱신형", fragment: "갱신형 " }));
     unwrap(await s.product.addAttributeValue(editor, kind.code, { label: "비갱신형" }));
     unwrap(await s.product.setNamingTemplate(editor, "[A0001] [담보명]"));
-    // 이제 attr.A0001 = 'V01' 은 통과, 유효값 밖 'V99' 는 거부 — TypeResolver 가 담보속성 카탈로그를 본다
-    const okAttr = b.article("갱신 문구", [b.paragraph([b.inlineCond([b.inlineBranch("attr.A0001 = 'V01'", [b.text("갱신형")])])])]);
+    // 이제 attr.A0001 = '1' 은 통과, 유효값 밖 'V99' 는 거부 — TypeResolver 가 담보속성 카탈로그를 본다
+    const okAttr = b.article("갱신 문구", [b.paragraph([b.inlineCond([b.inlineBranch("attr.A0001 = '1'", [b.text("갱신형")])])])]);
     special = unwrap(await s.document.apply(editor, special.id, [{ type: "insert", node: okAttr, at: { parentId: special.tree.id } }]));
-    const badValue = b.article("z", [b.paragraph([b.inlineCond([b.inlineBranch("attr.A0001 = 'V99'", [b.text("?")])])])]);
+    const badValue = b.article("z", [b.paragraph([b.inlineCond([b.inlineBranch("attr.A0001 = '99'", [b.text("?")])])])]);
     expect((await s.document.apply(editor, special.id, [{ type: "insert", node: badValue, at: { parentId: special.tree.id } }])).ok).toBe(false);
 
     const product = unwrap(await s.product.createProduct(editor, { name: "알파Plus(축약)" }));
     productId = product.id;
     expect(rejection(await s.product.setGeneralDocument(editor, productId, special.id)).reason).toBe("notFound"); // 담보약관은 템플릿이 아니다 (게이트)
     unwrap(await s.product.setGeneralDocument(editor, productId, general.id));
-    const pc = unwrap(await s.product.mount(editor, productId, death.id, [{ kindCode: "A0001", valueCode: "V01" }]));
+    const pc = unwrap(await s.product.mount(editor, productId, death.id, [{ kindCode: "A0001", valueCode: "1" }]));
     pcId = pc.id;
     expect(pc.name).toBe("갱신형 일반상해사망");
     const snap = unwrap(await s.product.getSnapshot(pcId));
@@ -214,7 +214,7 @@ describe("container — createServices 관통 (PGlite)", () => {
     // 보통약관을 지우면 그 문서의 공용조항 자리에 매달린 상품 오버라이드도 함께 깨진다 → product 둘
     expect(doc.brokenRefs.map((c: Coordinate) => c.document)).toEqual(["special", "product", "product"]);
     // 담보속성 유효값 삭제 → 조합(상품 서비스) + 식 참조(refs)
-    const attr = impactOf(await s.product.removeAttributeValue(admin, "A0001", "V01"));
+    const attr = impactOf(await s.product.removeAttributeValue(admin, "A0001", "1"));
     expect(attr.brokenRefs.map((c: Coordinate) => [c.document, c.refPath])).toEqual([
       ["special", undefined],
       ["special", "attr.A0001"],

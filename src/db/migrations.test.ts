@@ -236,3 +236,103 @@ describe("0016_drop_pay_first_only", () => {
     expect(await rows()).toEqual(after);
   });
 });
+
+describe("0017_attribute_value_numeric_code", () => {
+  const upTo16 = async () => {
+    for (let idx = 6; idx <= 16; idx++) for (const s of statementsOf(tagOf(idx))) await client.exec(s);
+  };
+  const apply0017 = async () =>
+    client.transaction(async (tx) => {
+      for (const s of statementsOf(tagOf(17))) await tx.exec(s);
+    });
+  const KIND = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const PRODUCT = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const PC = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+  const COVERAGE = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+  const ENUM = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+  const tree = (when: string) =>
+    JSON.stringify({ id: "root", kind: "document", title: "t", children: [{ id: "c", kind: "condBlock", branches: [{ id: "b", when, children: [] }] }] });
+
+  async function seedOld() {
+    await client.query(`INSERT INTO attribute_kinds (id, code, label, "order") VALUES ($1, 'A0001', '갱신유형', 0)`, [KIND]);
+    await client.query(
+      `INSERT INTO attribute_values (kind_id, code, label, "order", fragment) VALUES ($1, 'V01', '비갱신형', 1, ''), ($1, 'V02', '갱신형', 0, '갱신형'), ($1, 'V10', '혼합형', 2, '')`,
+      [KIND],
+    );
+    await client.query(`INSERT INTO products (id, name) VALUES ($1, '상품')`, [PRODUCT]);
+    await client.query(
+      `INSERT INTO product_coverages (id, product_id, coverage_id, coverage_name, name, combination_key) VALUES ($1, $2, $3, '수술비', '갱신형 수술비', $4)`,
+      [PC, PRODUCT, COVERAGE, `${COVERAGE}|A0001=V02`],
+    );
+    await client.query(`INSERT INTO product_coverage_attributes (product_coverage_id, kind_code, value_code) VALUES ($1, 'A0001', 'V02')`, [PC]);
+    await insertDiscriminator("D0001", "exist(attr.A0001) and attr.A0001 = 'V02'");
+    await insertDiscriminator("D0002", "attr.A0001 ≠ 'V10' or 'V01' = attr.A0001");
+    // enum 값 비교 · 공용조항 옵션 선택 코드는 다른 기능 — 그대로
+    await insertDiscriminator("D0003", "D0009 = 'V02'");
+    await client.query(`INSERT INTO enums (id, code, label) VALUES ($1, 'E0001', '고지유형')`, [ENUM]);
+    await client.query(`INSERT INTO enum_values (enum_id, code, label, "order") VALUES ($1, 'V01', '일반심사', 0)`, [ENUM]);
+    await client.query(`INSERT INTO documents (kind, title, tree) VALUES ('general', '보통', $1::jsonb)`, [tree("attr.A0001 = 'V02' and D0003 = 'V01'")]);
+    await client.query(
+      `INSERT INTO clauses (code, label, mode, body, options, required_discriminators, required_attributes) VALUES ('C0001', '조항', 'block', $1::jsonb, $2::jsonb, '[]', '["A0001"]')`,
+      [
+        JSON.stringify([{ id: "cb", kind: "condBlock", branches: [{ id: "b", when: "attr.A0001 != 'V01'", children: [] }] }]),
+        JSON.stringify([{ code: "O01", label: "사유", values: [{ code: "V02", label: "사망", body: [{ id: "x", kind: "inlineCond", branches: [{ id: "y", when: "attr.A0001 = 'V02'", children: [] }] }] }] }]),
+      ],
+    );
+  }
+
+  async function read() {
+    const q = async <T,>(sql: string) => (await client.query<T>(sql)).rows;
+    return {
+      values: await q<{ code: string; label: string }>(`SELECT code, label FROM attribute_values ORDER BY label`),
+      mounts: await q<{ value_code: string }>(`SELECT value_code FROM product_coverage_attributes`),
+      keys: await q<{ combination_key: string }>(`SELECT combination_key FROM product_coverages`),
+      discs: Object.fromEntries((await q<{ code: string; expression: string }>(`SELECT code, expression FROM discriminators`)).map((r) => [r.code, r.expression])),
+      enumValues: await q<{ code: string }>(`SELECT code FROM enum_values`),
+      docWhen: (await q<{ w: string }>(`SELECT tree #>> '{children,0,branches,0,when}' AS w FROM documents`))[0]!.w,
+      clauseWhen: (await q<{ w: string }>(`SELECT body #>> '{0,branches,0,when}' AS w FROM clauses`))[0]!.w,
+      optionValueCode: (await q<{ c: string }>(`SELECT options #>> '{0,values,0,code}' AS c FROM clauses`))[0]!.c,
+      optionWhen: (await q<{ w: string }>(`SELECT options #>> '{0,values,0,body,0,branches,0,when}' AS w FROM clauses`))[0]!.w,
+    };
+  }
+
+  it("유효값 코드 V0n → n 을 값 · 상품담보 조합 · 조합 키 · attr 식(구분자 · 문서 · 공용조항 본문 · 옵션)에서 함께 바꾸고, enum 값 · 옵션 선택지 코드는 두며, 순서 컬럼을 지운다 · 두 번 돌려도 같다", async () => {
+    await upTo16();
+    await seedOld();
+    await apply0017();
+    const after = await read();
+    expect(after).toEqual({
+      values: [
+        { code: "2", label: "갱신형" },
+        { code: "1", label: "비갱신형" },
+        { code: "10", label: "혼합형" },
+      ],
+      mounts: [{ value_code: "2" }],
+      keys: [{ combination_key: `${COVERAGE}|A0001=2` }],
+      discs: {
+        D0001: "exist(attr.A0001) and attr.A0001 = '2'",
+        D0002: "attr.A0001 ≠ '10' or '1' = attr.A0001",
+        D0003: "D0009 = 'V02'",
+      },
+      enumValues: [{ code: "V01" }],
+      docWhen: "attr.A0001 = '2' and D0003 = 'V01'",
+      clauseWhen: "attr.A0001 != '1'",
+      optionValueCode: "V02",
+      optionWhen: "attr.A0001 = '2'",
+    });
+    const cols = await client.query<{ column_name: string }>(`SELECT column_name FROM information_schema.columns WHERE table_name = 'attribute_values'`);
+    expect(cols.rows.map((r) => r.column_name)).not.toContain("order");
+
+    await apply0017();
+    expect(await read()).toEqual(after);
+  });
+
+  it("바꾼 뒤 같은 유형에 같은 코드가 둘이 되면(V1 · V01) 예외를 내고 아무것도 바꾸지 않는다", async () => {
+    await upTo16();
+    await client.query(`INSERT INTO attribute_kinds (id, code, label, "order") VALUES ($1, 'A0001', '갱신유형', 0)`, [KIND]);
+    await client.query(`INSERT INTO attribute_values (kind_id, code, label, "order") VALUES ($1, 'V1', '가', 0), ($1, 'V01', '나', 1)`, [KIND]);
+    await expect(apply0017()).rejects.toThrow(/0017/);
+    const codes = await client.query<{ code: string }>(`SELECT code FROM attribute_values ORDER BY code`);
+    expect(codes.rows.map((r) => r.code)).toEqual(["V01", "V1"]);
+  });
+});

@@ -23,7 +23,7 @@ describe("product repo (PGlite) — 스키마 · 채번 · 매핑", () => {
     expect(await repo.nextAttributeSeq(t.db, "attributeValue", "A0002")).toBe(1);
   });
 
-  it("담보속성 종류 + 유효값(작명 규칙) 저장 → 도메인 객체로 읽힌다 (order 순)", async () => {
+  it("담보속성 종류 + 유효값(상품담보명 표기) 저장 → 도메인 객체로 읽힌다 (값은 코드 숫자 순 — 10 은 9 뒤)", async () => {
     await repo.insertAttributeKind(t.db, { code: "A0001", label: "갱신유형", order: 0, values: [] }, who);
     await repo.saveAttributeKind(
       t.db,
@@ -32,8 +32,9 @@ describe("product repo (PGlite) — 스키마 · 채번 · 매핑", () => {
         label: "갱신유형",
         order: 0,
         values: [
-          { code: "V02", label: "갱신형", order: 0, fragment: "갱신형" },
-          { code: "V01", label: "비갱신형", order: 1, fragment: "" },
+          { code: "10", label: "혼합형", fragment: "" },
+          { code: "2", label: "갱신형", fragment: "갱신형" },
+          { code: "1", label: "비갱신형", fragment: "" },
         ],
       },
       who,
@@ -45,14 +46,15 @@ describe("product repo (PGlite) — 스키마 · 채번 · 매핑", () => {
         label: "갱신유형",
         order: 0,
         values: [
-          { code: "V02", label: "갱신형", order: 0, fragment: "갱신형" },
-          { code: "V01", label: "비갱신형", order: 1, fragment: "" },
+          { code: "1", label: "비갱신형", fragment: "" },
+          { code: "2", label: "갱신형", fragment: "갱신형" },
+          { code: "10", label: "혼합형", fragment: "" },
         ],
       },
     ]);
     // 값 삭제 반영
-    await repo.saveAttributeKind(t.db, { ...kinds[0], values: [kinds[0].values[0]] }, who);
-    expect((await repo.loadAttributeKind(t.db, "A0001"))?.values.map((v) => v.code)).toEqual(["V02"]);
+    await repo.saveAttributeKind(t.db, { ...kinds[0], values: [kinds[0].values[1]] }, who);
+    expect((await repo.loadAttributeKind(t.db, "A0001"))?.values.map((v) => v.code)).toEqual(["2"]);
   });
 
   it("전역 명명 템플릿은 행이 없으면 [담보명]이고 수정값을 왕복한다", async () => {
@@ -67,13 +69,13 @@ describe("product repo (PGlite) — 스키마 · 채번 · 매핑", () => {
     const cov = "11111111-1111-4111-8111-111111111111";
     const pc = await repo.insertProductCoverage(
       t.db,
-      { productId: product.id, coverageId: cov, coverageName: "일반상해사망", name: "일반상해사망 추가", attributes: [{ kindCode: "A0001", valueCode: "V02" }], combinationKey: `${cov}|A0001=V02` },
+      { productId: product.id, coverageId: cov, coverageName: "일반상해사망", name: "일반상해사망 추가", attributes: [{ kindCode: "A0001", valueCode: "2" }], combinationKey: `${cov}|A0001=2` },
       who,
     );
     const sub = await repo.insertNode(t.db, { productCoverageId: pc.id, kind: "sub", masterNodeId: "22222222-2222-4222-8222-222222222222", name: "세부보장", order: 0 }, who);
     await repo.insertNode(t.db, { productCoverageId: pc.id, kind: "benefit", masterNodeId: "33333333-3333-4333-8333-333333333333", parentId: sub.id, name: "급부", order: 0 }, who);
     const loaded = await repo.loadProductCoverage(t.db, pc.id);
-    expect(loaded).toEqual({ id: pc.id, productId: product.id, coverageId: cov, name: "일반상해사망 추가", attributes: [{ kindCode: "A0001", valueCode: "V02" }] });
+    expect(loaded).toEqual({ id: pc.id, productId: product.id, coverageId: cov, name: "일반상해사망 추가", attributes: [{ kindCode: "A0001", valueCode: "2" }] });
     const nodes = await repo.listNodes(t.db, pc.id);
     expect(nodes.map((n) => [n.kind, n.name, n.parentId === sub.id])).toEqual([
       ["sub", "세부보장", false],

@@ -232,10 +232,10 @@ describe("규칙 4 — 파서 · 타입 검사", () => {
   });
 
   it("담보속성 유효값을 주면 리터럴을 그 목록으로 검사한다", () => {
-    const attributeValues = (code: string) => (code === "A0001" ? ["V01", "V02"] : undefined);
-    const bad = checkDiscriminatorExpression("attr.A0001 = 'V09'", "coverage", { attributeValues });
+    const attributeValues = (code: string) => (code === "A0001" ? ["1", "2"] : undefined);
+    const bad = checkDiscriminatorExpression("attr.A0001 = '9'", "coverage", { attributeValues });
     expect(bad.ok).toBe(false);
-    const good = checkDiscriminatorExpression("attr.A0001 = 'V02'", "coverage", { attributeValues });
+    const good = checkDiscriminatorExpression("attr.A0001 = '2'", "coverage", { attributeValues });
     expect(good.ok).toBe(true);
   });
 

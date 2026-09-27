@@ -141,8 +141,8 @@ export const alphaAttributeKinds: AttributeKind[] = [
     label: "갱신유형",
     order: 0,
     values: [
-      { code: "V01", label: "비갱신형", order: 0, fragment: "" },
-      { code: "V02", label: "갱신형", order: 1, fragment: "갱신형" },
+      { code: "1", label: "비갱신형", fragment: "" },
+      { code: "2", label: "갱신형", fragment: "갱신형" },
     ],
   },
   {
@@ -150,8 +150,8 @@ export const alphaAttributeKinds: AttributeKind[] = [
     label: "부가유형",
     order: 1,
     values: [
-      { code: "V01", label: "기본", order: 0, fragment: "" },
-      { code: "V02", label: "추가", order: 1, fragment: "추가" },
+      { code: "1", label: "기본", fragment: "" },
+      { code: "2", label: "추가", fragment: "추가" },
     ],
   },
 ];
@@ -308,7 +308,7 @@ export function alphaDeathDocumentLegacy(): DocumentNode {
                 id: "s-inl-renew",
                 kind: "inlineCond",
                 branches: [
-                  { id: "s-inl-renew-if", when: "exist(attr.A0001) and attr.A0001 = 'V02'", children: [{ id: "s-txt-pay-2", kind: "text", text: "최초계약일" }] },
+                  { id: "s-inl-renew-if", when: "exist(attr.A0001) and attr.A0001 = '2'", children: [{ id: "s-txt-pay-2", kind: "text", text: "최초계약일" }] },
                   { id: "s-inl-renew-else", children: [{ id: "s-txt-pay-3", kind: "text", text: "계약일" }] },
                 ],
               },
@@ -476,7 +476,7 @@ export function alphaDeathDocument(): DocumentNode {
             kind: "paragraph",
             children: [
               { id: "s-txt-pay-1", kind: "text", text: "회사는 피보험자가 " },
-              { id: "s-inl-renew", kind: "inlineCond", branches: [{ id: "s-inl-renew-if", when: "exist(attr.A0001) and attr.A0001 = 'V02'", children: [{ id: "s-txt-pay-2", kind: "text", text: "최초계약일" }] }, { id: "s-inl-renew-else", children: [{ id: "s-txt-pay-3", kind: "text", text: "계약일" }] }] },
+              { id: "s-inl-renew", kind: "inlineCond", branches: [{ id: "s-inl-renew-if", when: "exist(attr.A0001) and attr.A0001 = '2'", children: [{ id: "s-txt-pay-2", kind: "text", text: "최초계약일" }] }, { id: "s-inl-renew-else", children: [{ id: "s-txt-pay-3", kind: "text", text: "계약일" }] }] },
               { id: "s-txt-pay-4", kind: "text", text: " 이후 상해로 사망한 경우 사망보험금을 지급합니다. 평균공시이율 " },
               { id: "s-slot-rate", kind: "slot", ref: "D0004" },
               { id: "s-txt-pay-5", kind: "text", text: "를 적용합니다." },
@@ -616,8 +616,8 @@ export function alphaPlusFixture(): AssemblyInput {
     },
     coverages: [
       baseDeathCoverage(),
-      deathCoverage("pc-basic", "일반상해사망", [{ kindCode: "A0002", valueCode: "V01" }], "grp-injury"),
-      deathCoverage("pc-addon", "일반상해사망 추가", [{ kindCode: "A0002", valueCode: "V02" }], "grp-injury"),
+      deathCoverage("pc-basic", "일반상해사망", [{ kindCode: "A0002", valueCode: "1" }], "grp-injury"),
+      deathCoverage("pc-addon", "일반상해사망 추가", [{ kindCode: "A0002", valueCode: "2" }], "grp-injury"),
     ],
     generalDocuments: new Map([["g-doc", alphaGeneralDocument()]]),
     specialDocuments: new Map([["cov-base-death", alphaBaseDocument()], ["cov-death", alphaDeathDocument()]]),

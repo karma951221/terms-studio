@@ -164,10 +164,10 @@ describe("catalog 서비스 (PGlite)", () => {
     it("담보속성 유효값을 주입하면 리터럴을 그 목록으로 검사한다", async () => {
       const strict = createCatalogService(t.db, {
         impact: store.source,
-        attributeValues: async () => (code) => (code === "A0001" ? ["V01"] : undefined),
+        attributeValues: async () => (code) => (code === "A0001" ? ["1"] : undefined),
       });
-      expect((await strict.create(editor, { label: "갱신", level: "coverage", expression: "attr.A0001 = 'V09'" })).ok).toBe(false);
-      expect((await strict.checkExpression("attr.A0001 = 'V01'", "coverage")).ok).toBe(true);
+      expect((await strict.create(editor, { label: "갱신", level: "coverage", expression: "attr.A0001 = '9'" })).ok).toBe(false);
+      expect((await strict.checkExpression("attr.A0001 = '1'", "coverage")).ok).toBe(true);
     });
   });
 

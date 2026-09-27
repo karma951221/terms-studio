@@ -41,7 +41,7 @@ describe("saveAttributeEditAction", () => {
     await t.close();
   });
 
-  it("부분 저장 없음 — 종류명을 바꾸고 새 값이 기존 값과 겹치면 종류명 · 조각도 저장되지 않는다 (점검 H1)", async () => {
+  it("부분 저장 없음 — 종류명을 바꾸고 새 값이 기존 값과 겹치면 종류명 · 상품담보명 표기도 저장되지 않는다 (점검 H1)", async () => {
     actor = editor;
     const kind = await kindWith("갱신유형", ["갱신형", "비갱신형"]);
     const [a, b] = kind.values;
@@ -74,7 +74,23 @@ describe("saveAttributeEditAction", () => {
     expect(await saveAttributeEditAction(kind.code, input, true)).toEqual({ ok: true });
     const saved = await s.product.getAttributeKind(kind.code);
     expect(saved?.label).toBe("보장 유형");
-    expect(saved?.values.map((v) => v.label)).toEqual(["확장형", "표준형", "고급형"]);
+    // 순서 = 코드 순 — 표에 넘긴 차례가 아니다. 새 값은 지운 3 을 다시 쓰지 않고 4.
+    expect(saved?.values.map((v) => [v.code, v.label])).toEqual([["1", "표준형"], ["2", "확장형"], ["4", "고급형"]]);
+  });
+
+  it("「+ 값 추가」로 만들고 비워 둔 새 행은 저장에서 빠진다 — 빈 이름 오류로 막지 않는다", async () => {
+    actor = editor;
+    const kind = await kindWith("심사유형", ["일반심사"]);
+    const [a] = kind.values;
+    const r = await saveAttributeEditAction(kind.code, {
+      label: "심사유형",
+      values: [{ code: a!.code, label: "일반심사", fragment: "" }, { code: "new:1", label: "간편심사", fragment: "간편" }, { code: "new:2", label: " ", fragment: "" }],
+    });
+    expect(r).toEqual({ ok: true });
+    expect((await s.product.getAttributeKind(kind.code))?.values).toEqual([
+      { code: "1", label: "일반심사", fragment: "" },
+      { code: "2", label: "간편심사", fragment: "간편" },
+    ]);
   });
 
   it("편집자가 값 행을 빼고 저장하면 역할로 거부 — 나머지 변경도 저장되지 않는다", async () => {

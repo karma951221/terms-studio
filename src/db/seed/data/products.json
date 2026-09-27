@@ -108,7 +108,7 @@
         "attributes": [
           {
             "kindCode": "A0002",
-            "valueCode": "V01"
+            "valueCode": "1"
           }
         ],
         "group": "injury"
@@ -120,7 +120,7 @@
         "attributes": [
           {
             "kindCode": "A0002",
-            "valueCode": "V02"
+            "valueCode": "2"
           }
         ],
         "group": "injury"
@@ -167,7 +167,7 @@
         "attributes": [
           {
             "kindCode": "A0001",
-            "valueCode": "V01"
+            "valueCode": "1"
           }
         ],
         "group": "injury"
@@ -179,7 +179,7 @@
         "attributes": [
           {
             "kindCode": "A0001",
-            "valueCode": "V02"
+            "valueCode": "2"
           }
         ],
         "group": "injury"

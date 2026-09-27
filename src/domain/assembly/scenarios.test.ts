@@ -204,10 +204,10 @@ describe("조립오류 S3 — 미사용 담보속성 참조 (exist 가드 없음
       },
     ],
   });
-  const coverages = () => [surgeryCoverage("pc-surgery", "수술비", { renew: false }), surgeryCoverage("pc-renew", "갱신형 수술비", { renew: true, attributes: [{ kindCode: "A0001", valueCode: "V02" }] })];
+  const coverages = () => [surgeryCoverage("pc-surgery", "수술비", { renew: false }), surgeryCoverage("pc-renew", "갱신형 수술비", { renew: true, attributes: [{ kindCode: "A0001", valueCode: "2" }] })];
 
-  it("가드 없는 `attr.A0001 = 'V02'` — 「갱신형 수술비」는 true, 「수술비」(미사용)는 unusedAttribute 오류 + 좌표", () => {
-    const { booklet, doc } = docsOf(withSurgery(coverages(), {}, attrDoc("attr.A0001 = 'V02'")));
+  it("가드 없는 `attr.A0001 = '2'` — 「갱신형 수술비」는 true, 「수술비」(미사용)는 unusedAttribute 오류 + 좌표", () => {
+    const { booklet, doc } = docsOf(withSurgery(coverages(), {}, attrDoc("attr.A0001 = '2'")));
     expect(lines(doc("pc-renew"))[1]).toBe("   회사는 최초계약일 이후 수술을 보장합니다.");
     expect(lines(doc("pc-surgery"))[1]).toBe("   회사는 ⟦unusedAttribute⟧ 이후 수술을 보장합니다.");
     expect(booklet.issues).toHaveLength(1);
@@ -217,8 +217,8 @@ describe("조립오류 S3 — 미사용 담보속성 참조 (exist 가드 없음
     expect(booklet.complete).toBe(false);
   });
 
-  it("`exist(attr.A0001) and attr.A0001 = 'V02'` 로 고치면 「수술비」는 분기를 건너뛰고 오류 없음", () => {
-    const { booklet, doc } = docsOf(withSurgery(coverages(), {}, attrDoc("exist(attr.A0001) and attr.A0001 = 'V02'")));
+  it("`exist(attr.A0001) and attr.A0001 = '2'` 로 고치면 「수술비」는 분기를 건너뛰고 오류 없음", () => {
+    const { booklet, doc } = docsOf(withSurgery(coverages(), {}, attrDoc("exist(attr.A0001) and attr.A0001 = '2'")));
     expect(lines(doc("pc-surgery"))[1]).toBe("   회사는 계약일 이후 수술을 보장합니다.");
     expect(lines(doc("pc-renew"))[1]).toBe("   회사는 최초계약일 이후 수술을 보장합니다.");
     expect(booklet.issues).toEqual([]);
@@ -389,10 +389,10 @@ describe("그룹핑별표 S1·S2 — 그룹 타이틀 · 그룹 순서 · 그룹
     specialDocuments: new Map([...base.specialDocuments, ["cov-surgery", tinyDoc("t-surgery", "수술비", "수술을 보장합니다.")]]),
     coverages: [
       baseDeathCoverage(),
-      surgeryCoverage("pc-renew", "갱신형 수술비", { renew: true, attributes: [{ kindCode: "A0001", valueCode: "V02" }], groupId: "grp-surgery" }),
-      deathCoverage("pc-addon", "일반상해사망보장 추가", [{ kindCode: "A0002", valueCode: "V02" }], "grp-surgery"),
-      surgeryCoverage("pc-surgery", "수술비", { renew: false, attributes: [{ kindCode: "A0001", valueCode: "V01" }], groupId: "grp-surgery" }),
-      deathCoverage("pc-basic", "일반상해사망보장", [{ kindCode: "A0002", valueCode: "V01" }], "grp-injury"),
+      surgeryCoverage("pc-renew", "갱신형 수술비", { renew: true, attributes: [{ kindCode: "A0001", valueCode: "2" }], groupId: "grp-surgery" }),
+      deathCoverage("pc-addon", "일반상해사망보장 추가", [{ kindCode: "A0002", valueCode: "2" }], "grp-surgery"),
+      surgeryCoverage("pc-surgery", "수술비", { renew: false, attributes: [{ kindCode: "A0001", valueCode: "1" }], groupId: "grp-surgery" }),
+      deathCoverage("pc-basic", "일반상해사망보장", [{ kindCode: "A0002", valueCode: "1" }], "grp-injury"),
     ],
   };
   const booklet = assembleInput(input);

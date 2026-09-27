@@ -58,7 +58,7 @@ describe("document 서비스 (PGlite)", () => {
     // 카탈로그 — 구분자는 전부 식 하나다 (ADR-0037). 결과 타입은 식에서 추론된다.
     // D0001 갱신여부(boolean) · D0002 지급률(number) · D0003 면책구분(boolean) · D0004 평균공시이율(string 리터럴)
     const cat = createCatalogService(t.db);
-    unwrap(await cat.create(editor, { label: "갱신여부", level: "coverage", expression: "attr.A0001 = 'V02'" }));
+    unwrap(await cat.create(editor, { label: "갱신여부", level: "coverage", expression: "attr.A0001 = '2'" }));
     unwrap(await cat.create(editor, { label: "지급률", level: "benefit", expression: "pay.rate" }));
     unwrap(await cat.create(editor, { label: "면책구분", level: "coverage", expression: "any(pay.exempt)" }));
     unwrap(await cat.create(editor, { label: "평균공시이율", level: "product", expression: "'2.5%'" }));

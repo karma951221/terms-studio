@@ -5,7 +5,7 @@ import { validateTree } from "../../src/domain/document/nodes";
 
 import { applyArticleConds, applyInlineConds, type NumberOf } from "./overlay";
 
-const WHEN = "exist(attr.A0001) and attr.A0001 = 'V02'";
+const WHEN = "exist(attr.A0001) and attr.A0001 = '2'";
 
 /** 변환 1차(구조) 직후 모양 — 항·표 셀의 본문은 아직 평문 텍스트 노드 하나다. */
 function tree(): DocumentNode {

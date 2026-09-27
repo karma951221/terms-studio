@@ -7,15 +7,15 @@ const renewal: AttributeKind = {
   code: "A0001",
   label: "갱신유형",
   order: 1,
-  values: [{ code: "V01", label: "갱신형", order: 0, fragment: "갱신형" }],
+  values: [{ code: "1", label: "갱신형", fragment: "갱신형" }],
 };
 const addon: AttributeKind = {
   code: "A0002",
   label: "부가유형",
   order: 0,
   values: [
-    { code: "V01", label: "기본", order: 0, fragment: "" },
-    { code: "V02", label: "추가", order: 1, fragment: "추가" },
+    { code: "1", label: "기본", fragment: "" },
+    { code: "2", label: "추가", fragment: "추가" },
   ],
 };
 const kinds = [renewal, addon];
@@ -24,30 +24,30 @@ describe("담보속성탑재 S2 — 상품담보 = 담보 × 담보속성 값 �
   it("선택은 종류 order 순으로 정규화된다 — 조합 키는 순서와 무관하게 같다", () => {
     const a = normalizeSelections(
       [
-        { kindCode: "A0001", valueCode: "V01" },
-        { kindCode: "A0002", valueCode: "V02" },
+        { kindCode: "A0001", valueCode: "1" },
+        { kindCode: "A0002", valueCode: "2" },
       ],
       kinds,
     );
     expect(a.map((s) => s.kindCode)).toEqual(["A0002", "A0001"]);
     expect(combinationKey("cov1", a)).toBe(
       combinationKey("cov1", [
-        { kindCode: "A0002", valueCode: "V02" },
-        { kindCode: "A0001", valueCode: "V01" },
+        { kindCode: "A0002", valueCode: "2" },
+        { kindCode: "A0001", valueCode: "1" },
       ]),
     );
     expect(combinationKey("cov1", [])).toBe("cov1|");
-    expect(combinationKey("cov1", [])).not.toBe(combinationKey("cov1", [{ kindCode: "A0002", valueCode: "V02" }]));
+    expect(combinationKey("cov1", [])).not.toBe(combinationKey("cov1", [{ kindCode: "A0002", valueCode: "2" }]));
   });
 
   it("없는 종류 · 없는 값 · 같은 종류 두 번 → invalid", () => {
-    expect(validateSelections([{ kindCode: "A0009", valueCode: "V01" }], kinds).map((i) => i.kind)).toEqual(["brokenRef"]);
-    expect(validateSelections([{ kindCode: "A0001", valueCode: "V09" }], kinds).map((i) => i.kind)).toEqual(["brokenRef"]);
+    expect(validateSelections([{ kindCode: "A0009", valueCode: "1" }], kinds).map((i) => i.kind)).toEqual(["brokenRef"]);
+    expect(validateSelections([{ kindCode: "A0001", valueCode: "9" }], kinds).map((i) => i.kind)).toEqual(["brokenRef"]);
     expect(
       validateSelections(
         [
-          { kindCode: "A0002", valueCode: "V01" },
-          { kindCode: "A0002", valueCode: "V02" },
+          { kindCode: "A0002", valueCode: "1" },
+          { kindCode: "A0002", valueCode: "2" },
         ],
         kinds,
       ),

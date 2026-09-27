@@ -26,7 +26,7 @@ export function normalizeSelections(selections: readonly AttributeSelection[], k
     });
 }
 
-/** 유일성 키 — `담보id|A0001=V02,A0002=V01` (종류 코드 순, 순서 무관). */
+/** 유일성 키 — `담보id|A0001=2,A0002=1` (종류 코드 순, 순서 무관). */
 export function combinationKey(coverageId: Id, selections: readonly AttributeSelection[]): string {
   const parts = [...selections].map((s) => `${s.kindCode}=${s.valueCode}`).sort();
   return `${coverageId}|${parts.join(",")}`;

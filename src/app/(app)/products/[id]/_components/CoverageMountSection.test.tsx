@@ -22,8 +22,8 @@ import type { AttributeKind, ProductCoverage } from "@/domain/product";
 import { CoverageMountSection } from "./CoverageMountSection";
 
 const kinds: AttributeKind[] = [
-  { code: "A0001", label: "갱신유형", order: 0, values: [{ code: "V01", label: "비갱신형", order: 0, fragment: "" }, { code: "V02", label: "갱신형", order: 1, fragment: "갱신형" }] },
-  { code: "A0002", label: "부가유형", order: 1, values: [{ code: "V01", label: "기본", order: 0, fragment: "" }, { code: "V02", label: "추가", order: 1, fragment: "추가" }] },
+  { code: "A0001", label: "갱신유형", order: 0, values: [{ code: "1", label: "비갱신형", fragment: "" }, { code: "2", label: "갱신형", fragment: "갱신형" }] },
+  { code: "A0002", label: "부가유형", order: 1, values: [{ code: "1", label: "기본", fragment: "" }, { code: "2", label: "추가", fragment: "추가" }] },
 ] as AttributeKind[];
 
 const coverages = [
@@ -31,9 +31,9 @@ const coverages = [
   { id: "c-surgery", code: "COV000008", name: "수술비" },
 ];
 const items: ProductCoverage[] = [
-  { id: "pc1", productId: "p1", coverageId: "c-death", name: "일반상해사망보장", attributes: [{ kindCode: "A0002", valueCode: "V01" }] },
+  { id: "pc1", productId: "p1", coverageId: "c-death", name: "일반상해사망보장", attributes: [{ kindCode: "A0002", valueCode: "1" }] },
   // 저장 순서가 종류 order 와 달라도 표시는 종류 순
-  { id: "pc2", productId: "p1", coverageId: "c-death", name: "일반상해사망보장 추가", attributes: [{ kindCode: "A0002", valueCode: "V02" }, { kindCode: "A0001", valueCode: "V02" }] },
+  { id: "pc2", productId: "p1", coverageId: "c-death", name: "일반상해사망보장 추가", attributes: [{ kindCode: "A0002", valueCode: "2" }, { kindCode: "A0001", valueCode: "2" }] },
   { id: "pc3", productId: "p1", coverageId: "c-surgery", name: "수술비", attributes: [] },
 ];
 

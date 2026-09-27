@@ -47,7 +47,7 @@ describe("relations lib — 쿼리스트링 → RefNodeKey (순수)", () => {
       { kind: "appendix", code: "A1" },
       { kind: "coverageNode", level: "benefit", id: "ben" },
       { kind: "attribute", code: "AT1" },
-      { kind: "attributeValue", code: "AT1", valueCode: "V1" },
+      { kind: "attributeValue", code: "AT1", valueCode: "1" },
       { kind: "product", id: "p" },
       { kind: "productCoverage", id: "pc" },
       { kind: "entity", entityKind: "snapshot", id: "e" },

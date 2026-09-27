@@ -120,6 +120,13 @@
       "when": 1790521357310,
       "tag": "0016_drop_pay_first_only",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790522288467,
+      "tag": "0017_attribute_value_numeric_code",
+      "breakpoints": true
     }
   ]
 }

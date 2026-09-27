@@ -5,7 +5,7 @@
  */
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 
-import type { AttributeCodeKind, AttributeSeq } from "@/domain/product/attributes";
+import { type AttributeCodeKind, type AttributeSeq, sortAttributeValues } from "@/domain/product/attributes";
 import type {
   AttributeKind,
   AttributeSelection,
@@ -67,16 +67,16 @@ type KindRow = typeof attributeKinds.$inferSelect;
 type ValueRow = typeof attributeValues.$inferSelect;
 
 function toValue(r: ValueRow): AttributeValue {
-  return { code: r.code, label: r.label, order: r.order, fragment: r.fragment };
+  return { code: r.code, label: r.label, fragment: r.fragment };
 }
 
 function toKind(r: KindRow, values: ValueRow[]): AttributeKind {
-  return { code: r.code, label: r.label, order: r.order, values: values.map(toValue) };
+  return { code: r.code, label: r.label, order: r.order, values: sortAttributeValues(values.map(toValue)) };
 }
 
 export async function listAttributeKinds(db: Db): Promise<AttributeKind[]> {
   const rows = await db.select().from(attributeKinds).orderBy(asc(attributeKinds.order), asc(attributeKinds.code));
-  const vals = await db.select().from(attributeValues).orderBy(asc(attributeValues.order), asc(attributeValues.code));
+  const vals = await db.select().from(attributeValues);
   const byKind = new Map<Id, ValueRow[]>();
   for (const v of vals) byKind.set(v.kindId, [...(byKind.get(v.kindId) ?? []), v]);
   return rows.map((r) => toKind(r, byKind.get(r.id) ?? []));
@@ -85,7 +85,7 @@ export async function listAttributeKinds(db: Db): Promise<AttributeKind[]> {
 export async function loadAttributeKind(db: Db, code: Code): Promise<AttributeKind | undefined> {
   const [row] = await db.select().from(attributeKinds).where(eq(attributeKinds.code, code)).limit(1);
   if (!row) return undefined;
-  const vals = await db.select().from(attributeValues).where(eq(attributeValues.kindId, row.id)).orderBy(asc(attributeValues.order), asc(attributeValues.code));
+  const vals = await db.select().from(attributeValues).where(eq(attributeValues.kindId, row.id));
   return toKind(row, vals);
 }
 
@@ -100,7 +100,7 @@ async function upsertValues(db: Db, kindId: Id, values: AttributeValue[], who: I
   if (keep.length === 0) await db.delete(attributeValues).where(eq(attributeValues.kindId, kindId));
   else await db.delete(attributeValues).where(and(eq(attributeValues.kindId, kindId), sql`${attributeValues.code} not in ${keep}`));
   for (const v of values) {
-    const data = { label: v.label, order: v.order, fragment: v.fragment };
+    const data = { label: v.label, fragment: v.fragment };
     await db
       .insert(attributeValues)
       .values({ kindId, code: v.code, ...data, createdBy: who, updatedBy: who })

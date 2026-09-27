@@ -143,21 +143,21 @@ describe("product 서비스 (PGlite)", () => {
   });
 
   describe("담보속성탑재 S1 — 담보속성 카탈로그", () => {
-    it("종류 「갱신유형」 A0001 · 「부가유형」 A0002 채번, 유효값·명명 조각·순서 저장", async () => {
+    it("종류 「갱신유형」 A0001 · 「부가유형」 A0002 채번, 유효값(코드 1 · 2 …)·상품담보명 표기·종류 순서 저장", async () => {
       const renewal = unwrap(await svc.createAttributeKind(editor, { label: "갱신유형" }));
       expect(renewal.code).toBe("A0001");
       const r2 = unwrap(await svc.addAttributeValue(editor, "A0001", { label: "갱신형", fragment: "갱신형 " }));
-      expect(r2.values[0]).toMatchObject({ code: "V01", fragment: "갱신형" });
+      expect(r2.values[0]).toMatchObject({ code: "1", fragment: "갱신형" });
       const addon = unwrap(await svc.createAttributeKind(editor, { label: "부가유형" }));
       expect(addon).toMatchObject({ code: "A0002", order: 1 });
       unwrap(await svc.addAttributeValue(editor, "A0002", { label: "기본" }));
       unwrap(await svc.addAttributeValue(editor, "A0002", { label: "추가" }));
-      unwrap(await svc.setNamingFragment(editor, "A0002", "V02", " 추가"));
+      unwrap(await svc.setNamingFragment(editor, "A0002", "2", " 추가"));
       expect((await svc.getAttributeKind("A0002"))?.values[1].fragment).toBe("추가");
       expect(await svc.getNamingTemplate()).toBe("[담보명]");
       unwrap(await svc.setNamingTemplate(editor, "[A0001] [담보명] [A0002]"));
       expect(await svc.getNamingTemplate()).toBe("[A0001] [담보명] [A0002]");
-      // 적용 순서와 명명 템플릿의 칩 순서는 독립이다.
+      // 적용 순서와 상품담보명 규칙의 칩 순서는 독립이다.
       unwrap(await svc.reorderAttributeKinds(editor, ["A0002", "A0001"]));
       expect((await svc.listAttributeKinds()).map((k) => k.code)).toEqual(["A0002", "A0001"]);
       unwrap(await svc.reorderAttributeKinds(editor, ["A0001", "A0002"]));
@@ -165,7 +165,7 @@ describe("product 서비스 (PGlite)", () => {
 
     it("종류명 중복 거부 · 표시명 변경은 편집자 자유", async () => {
       expect(reason(await svc.createAttributeKind(editor, { label: "갱신유형" }))).toBe("duplicate");
-      unwrap(await svc.renameAttributeValue(editor, "A0001", "V01", "갱신형"));
+      unwrap(await svc.renameAttributeValue(editor, "A0001", "1", "갱신형"));
       unwrap(await svc.renameAttributeKind(editor, "A0001", "갱신유형"));
     });
   });
@@ -283,16 +283,16 @@ describe("product 서비스 (PGlite)", () => {
       const a = unwrap(await svc.mount(editor, productId, DEATH, []));
       pcBasic = a.id;
       expect(a.name).toBe("일반상해사망");
-      const b = unwrap(await svc.mount(editor, productId, DEATH, [{ kindCode: "A0002", valueCode: "V02" }]));
+      const b = unwrap(await svc.mount(editor, productId, DEATH, [{ kindCode: "A0002", valueCode: "2" }]));
       pcAddon = b.id;
       expect(b.name).toBe("일반상해사망 추가");
-      expect(reason(await svc.mount(editor, productId, DEATH, [{ kindCode: "A0002", valueCode: "V02" }]))).toBe("duplicate");
+      expect(reason(await svc.mount(editor, productId, DEATH, [{ kindCode: "A0002", valueCode: "2" }]))).toBe("duplicate");
       expect(reason(await svc.mount(editor, productId, "aaaaaaaa-0000-4000-8000-000000000099", []))).toBe("notFound");
-      expect(reason(await svc.mount(editor, productId, DEATH, [{ kindCode: "A0009", valueCode: "V01" }]))).toBe("invalid");
+      expect(reason(await svc.mount(editor, productId, DEATH, [{ kindCode: "A0009", valueCode: "1" }]))).toBe("invalid");
     });
 
     it("수술비 × 갱신형 → 「갱신형 수술비」 · 스냅샷: 담보·급부 값 복사 + 마스터 부착(감액기간) 복사", async () => {
-      const s = unwrap(await svc.mount(editor, productId, SURGERY, [{ kindCode: "A0001", valueCode: "V01" }]));
+      const s = unwrap(await svc.mount(editor, productId, SURGERY, [{ kindCode: "A0001", valueCode: "1" }]));
       pcSurgery = s.id;
       expect(s.name).toBe("갱신형 수술비");
       const snap = unwrap(await svc.getSnapshot(pcSurgery));
@@ -319,7 +319,7 @@ describe("product 서비스 (PGlite)", () => {
       // 다른 상품담보의 노드는 거부
       expect(reason(await svc.setSnapshotValue(editor, pcBasic, { kind: "productBenefit", id: ben.id }, "pay.rate", 1))).toBe("notFound");
 
-      const again = unwrap(await svc.mount(editor, productId, SURGERY, [{ kindCode: "A0002", valueCode: "V02" }]));
+      const again = unwrap(await svc.mount(editor, productId, SURGERY, [{ kindCode: "A0002", valueCode: "2" }]));
       const snap2 = unwrap(await svc.getSnapshot(again.id));
       expect((await svc.getSnapshotValues(again.id)).get(snap2.subCoverages[0].benefits[0].id)?.get("pay.rate")).toEqual({ entered: true, value: 60 });
       unwrap(await svc.unmount(admin, again.id, { confirm: true }));
@@ -331,10 +331,10 @@ describe("product 서비스 (PGlite)", () => {
       expect(reason(await svc.renameProductCoverage(editor, pcSurgery, " "))).toBe("invalid");
       expect(unwrap(await svc.regenerateName(editor, pcSurgery)).name).toBe("갱신형 수술비");
       expect(reason(await svc.setAttributes(editor, pcAddon, []))).toBe("duplicate"); // 「일반상해사망」과 같은 조합
-      const changed = unwrap(await svc.setAttributes(editor, pcAddon, [{ kindCode: "A0002", valueCode: "V02" }, { kindCode: "A0001", valueCode: "V01" }], { regenerateName: true }));
+      const changed = unwrap(await svc.setAttributes(editor, pcAddon, [{ kindCode: "A0002", valueCode: "2" }, { kindCode: "A0001", valueCode: "1" }], { regenerateName: true }));
       expect(changed.name).toBe("갱신형 일반상해사망 추가");
       expect(changed.attributes.map((a) => a.kindCode)).toEqual(["A0001", "A0002"]);
-      unwrap(await svc.setAttributes(editor, pcAddon, [{ kindCode: "A0002", valueCode: "V02" }], { regenerateName: true }));
+      unwrap(await svc.setAttributes(editor, pcAddon, [{ kindCode: "A0002", valueCode: "2" }], { regenerateName: true }));
     });
 
     it("syncStructure — 마스터에 세부보장이 추가되면 빈 대응 노드, 사라지면 값 행과 함께 삭제", async () => {
@@ -444,7 +444,7 @@ describe("product 서비스 (PGlite)", () => {
       expect(await svc.listBaseContractIds(productId)).toEqual([pcBasic]);
       // 탑재하면서 기본계약으로 넣는 경로(mount section:"base")도 같은 규칙 — 상품담보도 만들어지지 않는다
       const countBefore = (await svc.listProductCoverages(productId)).length;
-      const mounted = await svc.mount(editor, productId, SURGERY, [{ kindCode: "A0002", valueCode: "V01" }], "base");
+      const mounted = await svc.mount(editor, productId, SURGERY, [{ kindCode: "A0002", valueCode: "1" }], "base");
       expect(reason(mounted)).toBe("invalid");
       if (!mounted.ok && mounted.rejection.reason === "invalid") expect(mounted.rejection.issues[0].kind).toBe("unsupported");
       expect((await svc.listProductCoverages(productId)).length).toBe(countBefore);
@@ -684,22 +684,22 @@ describe("product 서비스 (PGlite)", () => {
     });
 
     it("담보속성 유효값 삭제: 사용 중인 상품담보를 깨질 참조로 보여준다 · 종류 삭제도 같은 결 (사용처는 남아 깨진 참조가 된다)", async () => {
-      const first = await svc.removeAttributeValue(admin, "A0002", "V02");
+      const first = await svc.removeAttributeValue(admin, "A0002", "2");
       expect(first.ok).toBe(false);
       if (!first.ok && first.rejection.reason === "needsConfirmation") {
         expect(first.rejection.impact.brokenRefs).toEqual([{ document: "special", ownerId: pcAddon, ownerName: "일반상해사망 추가" }]);
       }
-      expect(reason(await svc.removeAttributeValue(editor, "A0002", "V02"))).toBe("forbidden");
-      unwrap(await svc.removeAttributeValue(admin, "A0002", "V01", { confirm: true }));
-      expect((await svc.getAttributeKind("A0002"))?.values.map((v) => v.code)).toEqual(["V02"]);
+      expect(reason(await svc.removeAttributeValue(editor, "A0002", "2"))).toBe("forbidden");
+      unwrap(await svc.removeAttributeValue(admin, "A0002", "1", { confirm: true }));
+      expect((await svc.getAttributeKind("A0002"))?.values.map((v) => v.code)).toEqual(["2"]);
       const kindFirst = await svc.removeAttributeKind(admin, "A0002");
       if (!kindFirst.ok && kindFirst.rejection.reason === "needsConfirmation") {
-        expect(kindFirst.rejection.impact.cascade).toEqual(["값 추가(V02)"]);
+        expect(kindFirst.rejection.impact.cascade).toEqual(["값 추가(2)"]);
         expect(kindFirst.rejection.impact.brokenRefs).toHaveLength(1);
       }
       unwrap(await svc.removeAttributeKind(admin, "A0002", { confirm: true }));
       expect(await svc.getAttributeKind("A0002")).toBeUndefined();
-      expect((await svc.getProductCoverage(pcAddon))?.attributes).toEqual([{ kindCode: "A0002", valueCode: "V02" }]); // 깨진 참조로 남는다
+      expect((await svc.getProductCoverage(pcAddon))?.attributes).toEqual([{ kindCode: "A0002", valueCode: "2" }]); // 깨진 참조로 남는다
     });
 
     it("세목 선택지 삭제(파괴적): 조합·값 연쇄 · 상품 삭제: 상품담보·스냅샷 값·세목·그룹·오버라이드 전부 연쇄", async () => {

@@ -5,15 +5,13 @@
     "order": 0,
     "values": [
       {
-        "code": "V01",
+        "code": "1",
         "label": "비갱신형",
-        "order": 0,
         "fragment": ""
       },
       {
-        "code": "V02",
+        "code": "2",
         "label": "갱신형",
-        "order": 1,
         "fragment": "갱신형"
       }
     ]
@@ -24,15 +22,13 @@
     "order": 1,
     "values": [
       {
-        "code": "V01",
+        "code": "1",
         "label": "기본",
-        "order": 0,
         "fragment": ""
       },
       {
-        "code": "V02",
+        "code": "2",
         "label": "추가",
-        "order": 1,
         "fragment": "추가"
       }
     ]

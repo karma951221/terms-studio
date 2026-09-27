@@ -46,14 +46,14 @@ const 준용: Clause = {
   label: "준용규정",
   mode: "inline",
   body: [
-    { id: "c2-cond", kind: "inlineCond", branches: [{ id: "c2-b1", when: "D0001 = true and attr.A0001 = 'V01'", children: [{ id: "c2-t1", kind: "text", text: "갱신형" }] }] },
+    { id: "c2-cond", kind: "inlineCond", branches: [{ id: "c2-b1", when: "D0001 = true and attr.A0001 = '1'", children: [{ id: "c2-t1", kind: "text", text: "갱신형" }] }] },
     { id: "c2-apx", kind: "appendixRef", appendixCode: "APX_BURN" },
   ],
   options: [],
   required: { discriminators: ["D0001"], attributes: ["A0001"] },
 };
 
-const 갱신유형: AttributeKind = { code: "A0001", label: "갱신유형", order: 0, values: [{ code: "V01", label: "갱신형", order: 0, fragment: "" }, { code: "V02", label: "비갱신형", order: 1, fragment: "" }] };
+const 갱신유형: AttributeKind = { code: "A0001", label: "갱신유형", order: 0, values: [{ code: "1", label: "갱신형", fragment: "" }, { code: "2", label: "비갱신형", fragment: "" }] };
 
 const fx = surgeryFixture();
 const 수술비: Coverage = { id: fx.coverageId, name: "수술비", description: "", documentId: "doc-s", subCoverages: [{ id: "sub-1", name: "1종수술", order: 0, benefits: [{ id: "ben-1", name: "수술보험금", order: 0 }] }] };
@@ -63,7 +63,7 @@ const 상품: ProductInput = {
   id: "prod-1",
   name: "알파Plus",
   generalDocumentId: "doc-g",
-  coverages: [{ id: "pc-1", productId: "prod-1", coverageId: fx.coverageId, name: "갱신형 수술비", attributes: [{ kindCode: "A0001", valueCode: "V01" }] }],
+  coverages: [{ id: "pc-1", productId: "prod-1", coverageId: fx.coverageId, name: "갱신형 수술비", attributes: [{ kindCode: "A0001", valueCode: "1" }] }],
   overrides: [{ id: "ov-1", scope: { kind: "product", id: "prod-1" }, nodeId: "s-clause-lapse", clauseCode: "C001", options: { O01: "lapse" } }],
 };
 
@@ -101,7 +101,7 @@ describe("refs 그래프 — buildGraph (기능/관계정보 §3 「참조 그�
       "coverageNode:coverage/cov-surgery",
       "coverageNode:benefit/ben-1",
       "attribute:A0001",
-      "attributeValue:A0001/V01",
+      "attributeValue:A0001/1",
       "product:prod-1",
       "productCoverage:pc-1",
     ]) {
@@ -152,7 +152,7 @@ describe("refs 그래프 — buildGraph (기능/관계정보 §3 「참조 그�
     const clauseWhen = edgesTo(g, "discriminator:D0001").find((e) => e.from.kind === "clause");
     expect(clauseWhen).toMatchObject({ via: "when", at: { document: "clause", ownerId: "C002", ownerName: "준용규정", nodePath: ["c2-cond", "c2-b1"], refPath: "D0001" } });
     expect(edgesTo(g, "attribute:A0001")[0]?.from).toEqual({ kind: "clause", code: "C002" });
-    expect(edgesTo(g, "attributeValue:A0001/V01").map((e) => e.via).sort()).toEqual(["combination", "when"]);
+    expect(edgesTo(g, "attributeValue:A0001/1").map((e) => e.via).sort()).toEqual(["combination", "when"]);
     expect(edgesTo(g, "enum:E0001")).toEqual([
       expect.objectContaining({ from: { kind: "masterField", path: "product_basic.notice" }, via: "type", at: { refPath: "product_basic.notice", ownerName: "상품 · 상품 기본 › 고지유형" } }),
     ]);

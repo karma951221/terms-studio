@@ -8,8 +8,8 @@ const renewal: AttributeKind = {
   label: "갱신유형",
   order: 1,
   values: [
-    { code: "V01", label: "비갱신형", order: 0, fragment: "" },
-    { code: "V02", label: "갱신형", order: 1, fragment: "갱신형" },
+    { code: "1", label: "비갱신형", fragment: "" },
+    { code: "2", label: "갱신형", fragment: "갱신형" },
   ],
 };
 const addon: AttributeKind = {
@@ -17,8 +17,8 @@ const addon: AttributeKind = {
   label: "부가유형",
   order: 0,
   values: [
-    { code: "V01", label: "기본", order: 0, fragment: "" },
-    { code: "V02", label: "추가", order: 1, fragment: "추가" },
+    { code: "1", label: "기본", fragment: "" },
+    { code: "2", label: "추가", fragment: "추가" },
   ],
 };
 const kinds = [renewal, addon];
@@ -30,9 +30,9 @@ function pc(id: string, coverageId: string, name: string, attributes: ProductCov
 describe("기능/상품 §3 특약 그룹 — 그룹 안 자동 정렬", () => {
   it("담보 → 담보속성 종류(order) → 유효값(order) 오름차순. 같은 담보의 탑재분은 뭉친다", () => {
     const members = [
-      pc("c", "cov-surgery", "갱신형 수술비", [{ kindCode: "A0001", valueCode: "V02" }]),
-      pc("b", "cov-death", "일반상해사망 추가", [{ kindCode: "A0002", valueCode: "V02" }]),
-      pc("d", "cov-death", "갱신형 일반상해사망", [{ kindCode: "A0001", valueCode: "V02" }]),
+      pc("c", "cov-surgery", "갱신형 수술비", [{ kindCode: "A0001", valueCode: "2" }]),
+      pc("b", "cov-death", "일반상해사망 추가", [{ kindCode: "A0002", valueCode: "2" }]),
+      pc("d", "cov-death", "갱신형 일반상해사망", [{ kindCode: "A0001", valueCode: "2" }]),
       pc("a", "cov-death", "일반상해사망", []),
       pc("e", "cov-surgery", "수술비", []),
     ];
@@ -53,7 +53,7 @@ describe("기능/상품 §3 특약 그룹 — 그룹 안 자동 정렬", () => {
   });
 
   it("미사용 속성은 사용한 것보다 앞 — 「일반상해사망」이 「일반상해사망 추가」보다 먼저", () => {
-    const members = [pc("b", "cov", "일반상해사망 추가", [{ kindCode: "A0002", valueCode: "V02" }]), pc("a", "cov", "일반상해사망", [])];
+    const members = [pc("b", "cov", "일반상해사망 추가", [{ kindCode: "A0002", valueCode: "2" }]), pc("a", "cov", "일반상해사망", [])];
     expect(sortInGroup(members, kinds).map((m) => m.id)).toEqual(["a", "b"]);
   });
 });

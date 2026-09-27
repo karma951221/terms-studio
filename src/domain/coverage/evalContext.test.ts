@@ -174,7 +174,7 @@ describe("masterEvalContext — 담보 마스터 값으로 만든 평가 문맥"
     );
     expect(run("waiver.applies", ctx)).toEqual({ kind: "undetermined", reason: "waiver.applies" });
     expect(run("D0003", ctx)).toEqual({ kind: "undetermined", reason: "D0003" });
-    expect(run("attr.A0001 = 'V02'", ctx)).toEqual({ kind: "undetermined", reason: "attr.A0001" });
+    expect(run("attr.A0001 = '2'", ctx)).toEqual({ kind: "undetermined", reason: "attr.A0001" });
     expect(run("exist(attr.A0001)", ctx)).toEqual({ kind: "undetermined", reason: "attr.A0001" });
     // 미결 가드 관용구 — 왼쪽이 결정되면 오른쪽은 평가하지 않는다
     expect(run("coverage_basic.claim_name = '수술비' or D0003", ctx)).toEqual(value(true));

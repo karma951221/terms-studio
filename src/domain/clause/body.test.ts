@@ -48,7 +48,7 @@ describe("공용조항 S1 — 본문 노드 규칙 (inline)", () => {
     const body: Inline[] = [
       { id: "t1", kind: "text", text: "이 특별약관은 " },
       { id: "c1", kind: "inlineCond", branches: [
-        { id: "b1", when: "attr.A0001 = 'V02'", children: [{ id: "t2", kind: "text", text: "최초계약일" }] },
+        { id: "b1", when: "attr.A0001 = '2'", children: [{ id: "t2", kind: "text", text: "최초계약일" }] },
         { id: "b2", children: [{ id: "t3", kind: "text", text: "계약일" }] },
       ] },
       { id: "s1", kind: "slot", ref: "D0001" },

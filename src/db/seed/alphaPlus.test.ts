@@ -88,6 +88,15 @@ describe("seedAlphaPlus — 알파Plus 실물 시드 (PGlite)", () => {
     // 담보코드 — JSON 순서대로 시스템 채번 (기능/담보 §3.1)
     expect((await services.coverage.listSummaries()).find((c) => c.name === "일반상해80%이상후유장해")?.code).toBe("COV000001");
     expect((await services.coverage.listSummaries()).find((c) => c.name === "신화상치료비보장")?.code).toBe("COV000009");
+
+    // 담보속성 유효값 코드 — 유형 안 순번 1 · 2 (V01 아님), 코드 순이 곧 순서 (기능/담보속성 §3.1, 2026-09-28)
+    expect((await services.product.listAttributeKinds()).map((k) => [k.code, k.values.map((v) => [v.code, v.label, v.fragment])])).toEqual([
+      ["A0001", [["1", "비갱신형", ""], ["2", "갱신형", "갱신형"]]],
+      ["A0002", [["1", "기본", ""], ["2", "추가", "추가"]]],
+    ]);
+    const mounts = await services.product.listProductCoverages(r.productId);
+    expect(mounts.find((pc) => pc.name === "일반상해사망보장 추가")?.attributes).toEqual([{ kindCode: "A0002", valueCode: "2" }]);
+    expect(mounts.find((pc) => pc.name === "갱신형 수술비(1-7종, 연간3회한)[상해]보장")?.attributes).toEqual([{ kindCode: "A0001", valueCode: "2" }]);
   });
 
   it("수술비(1-7종) — 세부보장 7 · 각 급부 1, 이름은 「N종 상해수술비(연간3회한)」", async () => {

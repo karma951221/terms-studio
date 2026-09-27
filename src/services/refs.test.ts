@@ -36,7 +36,7 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
   const artPay = b.article("보험금의 지급사유", [
     b.paragraph([
       b.text("회사는 피보험자가 "),
-      b.inlineCond([b.inlineBranch("D0001 = true and attr.A0001 = 'V01'", [b.text("최초계약일")]), b.inlineBranch(undefined, [b.text("계약일")])]),
+      b.inlineCond([b.inlineBranch("D0001 = true and attr.A0001 = '1'", [b.text("최초계약일")]), b.inlineBranch(undefined, [b.text("계약일")])]),
       b.text(" 이후 평균공시이율 "),
       b.slot("D0004"),
     ]),
@@ -99,10 +99,10 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
     special = await insertDocument(db, { kind: "special", ownerId: surgery.id, title: "수술비 특별약관", generalDocumentId: general.id, tree: b.document("수술비 특별약관", [artPay, exemptBlock, artLapse, artApply]) }, editor.userId);
     unwrap(await coverage.setDocument(editor, surgery.id, special.id));
 
-    await insertAttributeKind(db, { code: "A0001", label: "갱신유형", order: 0, values: [{ code: "V01", label: "갱신형", order: 0, fragment: "" }, { code: "V02", label: "비갱신형", order: 1, fragment: "" }] }, editor.userId);
+    await insertAttributeKind(db, { code: "A0001", label: "갱신유형", order: 0, values: [{ code: "1", label: "갱신형", fragment: "" }, { code: "2", label: "비갱신형", fragment: "" }] }, editor.userId);
     const product = await insertProduct(db, { name: "알파Plus", generalDocumentId: general.id }, editor.userId);
     productId = product.id;
-    const pc = await insertProductCoverage(db, { productId, coverageId: surgery.id, coverageName: "수술비", name: "갱신형 수술비", attributes: [{ kindCode: "A0001", valueCode: "V01" }], combinationKey: "k" }, editor.userId);
+    const pc = await insertProductCoverage(db, { productId, coverageId: surgery.id, coverageName: "수술비", name: "갱신형 수술비", attributes: [{ kindCode: "A0001", valueCode: "1" }], combinationKey: "k" }, editor.userId);
     pcId = pc.id;
     await upsertOverride(db, { kind: "product", id: productId }, clauseBlock.id, "C001", { O01: "lapse" }, editor.userId);
     await writeSlot(db, { kind: "plan", id: productId }, "no_surrender.type", "V02");
@@ -268,8 +268,8 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
       const src = attributeRefSource(contextualDb(t.db));
       const kind = await src.findExpressionRefs("A0001");
       expect(kind).toEqual([expect.objectContaining({ document: "special", articleTitle: "보험금의 지급사유", refPath: "attr.A0001" })]);
-      expect(await src.findExpressionRefs("A0001", "V01")).toHaveLength(1);
-      expect(await src.findExpressionRefs("A0001", "V02")).toEqual([]);
+      expect(await src.findExpressionRefs("A0001", "1")).toHaveLength(1);
+      expect(await src.findExpressionRefs("A0001", "2")).toEqual([]);
     });
   });
 });

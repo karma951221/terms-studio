@@ -199,7 +199,7 @@ describe("여는 폼(optional) — 급부의 감액 폼을 안 열면 exist 가 
       name: "일반상해사망",
       coverageId: "cov-death",
       coverageName: "일반상해사망",
-      attributes: [{ kindCode: "A0002", valueCode: "V01" }],
+      attributes: [{ kindCode: "A0002", valueCode: "1" }],
       subCoverages: [{ id: "pc-basic-sub", masterNodeId: "sub-death", name: "일반상해사망", benefits: [{ id: "pc-basic-ben", masterNodeId: "ben-death", name: "사망보험금" }] }],
       values: {
         "pc-basic": { "coverage_basic.renewal": false, "coverage_basic.reduction_months": 24, "coverage_basic.reduction_text": "24개월" },

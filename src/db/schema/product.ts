@@ -8,7 +8,7 @@
  *   owner id = 각각 products.id · plan_options.id · product_coverages.id · product_coverage_nodes.id.
  * - 다른 영역(담보 마스터 · 문서)의 id 는 uuid 로 담되 FK 는 걸지 않는다 (영역 결합 회피). 상품 영역 안의
  *   FK 는 cascade — 값 행의 연쇄 삭제는 서비스가 한다 (값 저장소에 FK 없음).
- * - 코드(`A0001` · `V01`)는 카탈로그와 같은 `code_sequences` 테이블에 kind `attribute` / `attributeValue` 로 채번.
+ * - 코드(`A0001` · 유효값 `1`)는 카탈로그와 같은 `code_sequences` 테이블에 kind `attribute` / `attributeValue` 로 채번.
  *
  * 표준 Postgres 만 쓴다 (PGlite 전용 기능 금지).
  */
@@ -38,7 +38,10 @@ export const attributeKinds = pgTable("attribute_kinds", {
   ...audit,
 });
 
-/** 담보속성 유효값. 코드 `V01` 은 종류 안에서 유일. 명명 조각은 빈 문자열 = 문구 없음. */
+/**
+ * 담보속성 유효값. 코드 `1` · `2` … 는 종류 안에서 유일 · 불변이고 코드 순이 곧 표시 순서다 (순서 컬럼 없음 — 0017).
+ * `fragment` = 상품담보명 표기, 빈 문자열 = 아무것도 붙지 않음.
+ */
 export const attributeValues = pgTable(
   "attribute_values",
   {
@@ -48,7 +51,6 @@ export const attributeValues = pgTable(
       .references(() => attributeKinds.id, { onDelete: "cascade" }),
     code: text("code").notNull(),
     label: text("label").notNull(),
-    order: integer("order").notNull(),
     fragment: text("fragment").notNull().default(""),
     ...audit,
   },

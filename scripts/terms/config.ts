@@ -49,7 +49,7 @@ export interface SlotOverlay {
  * (항·호·목 본문과 표 셀). 원문 **한 벌**에서 탑재분별로 갈리는 여러 벌을 낸다 (ADR-0003 「조 단위 on/off + 인라인 조건」).
  *
  * 식(`when`)은 데이터로 두고 변환기는 노드만 만든다. 담보속성 참조는 **가드를 붙여** 쓴다 —
- * `exist(attr.A0001) and attr.A0001 = 'V02'`. 가드 없는 `attr.X = '값'` 은 그 속성을 쓰지 않는
+ * `exist(attr.A0001) and attr.A0001 = '2'`. 가드 없는 `attr.X = '값'` 은 그 속성을 쓰지 않는
  * 탑재분에서 `unusedAttribute` 조립오류가 된다 (식언어 §6 · `assembly/scenarios.test.ts` S3).
  */
 export interface InlineCondOverlay {
@@ -98,7 +98,7 @@ export interface SpecialSpec {
 }
 
 /** 갱신형 탑재분인가 — 담보속성 A0001(갱신유형) = V02. `exist` 가드는 속성을 쓰지 않는 탑재분을 위해 (식언어 §6). */
-const RENEWAL = "exist(attr.A0001) and attr.A0001 = 'V02'";
+const RENEWAL = "exist(attr.A0001) and attr.A0001 = '2'";
 
 export const GENERAL: GeneralSpec = { code: "alpha-general", file: "보통약관.md", idPrefix: "g", emptyArticles: [] };
 

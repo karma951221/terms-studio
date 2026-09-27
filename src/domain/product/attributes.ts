@@ -1,8 +1,9 @@
 /**
  * 담보속성 카탈로그 규칙 (ADR-0015 · 담보속성탑재 S1) — 순수.
  *
- * - 종류 코드 `A0001`(전역) · 유효값 코드 `V01`(종류 안) — 시스템 채번 · 불변. 순번은 저장소가 준다
- *   (`AttributeSeq` 주입 — 카탈로그와 같은 시퀀스 테이블을 kind `attribute` / `attributeValue` 로 공유).
+ * - 종류 코드 `A0001`(전역) · 유효값 코드 `1` · `2` …(종류 안) — 시스템 채번 · 불변 · 지운 번호는 다시 쓰지 않는다.
+ *   순번은 저장소가 준다 (`AttributeSeq` 주입 — 카탈로그와 같은 시퀀스 테이블을 kind `attribute` / `attributeValue` 로 공유).
+ * - 유효값 순서 = 코드 순서 (기능/담보속성 §3.1, 2026-09-28) — 따로 순서 값을 두지 않는다.
  * - 종류·유효값 표시명은 언제든 변경. 종류 표시명은 카탈로그 전역, 유효값 표시명은 종류 안에서 유일.
  * - 적용 순서(order)는 카탈로그 전역 하나 (D-P5-4) — 작명 적용 순서 = 그룹 안 정렬 2차 키.
  * - 삭제(종류·유효값)는 파괴적 — 서비스가 `destructive()` 로 처리한다. 여기엔 없음.
@@ -18,7 +19,8 @@ export type AttributeCodeKind = "attribute" | "attributeValue";
 export type AttributeSeq = (kind: AttributeCodeKind, scope: string) => Promise<number> | number;
 
 export const ATTRIBUTE_CODE_PATTERN = /^A\d{4,}$/;
-export const ATTRIBUTE_VALUE_CODE_PATTERN = /^V\d{2,}$/;
+/** 유효값 코드 — 1부터의 순번 그대로 (`1` · `2` …). */
+export const ATTRIBUTE_VALUE_CODE_PATTERN = /^[1-9]\d*$/;
 
 export function formatAttributeCode(seq: number): Code {
   if (!Number.isInteger(seq) || seq < 1) throw new RangeError(`코드 순번은 1 이상의 정수여야 합니다: ${seq}`);
@@ -27,7 +29,22 @@ export function formatAttributeCode(seq: number): Code {
 
 export function formatAttributeValueCode(seq: number): Code {
   if (!Number.isInteger(seq) || seq < 1) throw new RangeError(`코드 순번은 1 이상의 정수여야 합니다: ${seq}`);
-  return "V" + String(seq).padStart(2, "0");
+  return String(seq);
+}
+
+/** 유효값 코드의 순위 — 코드가 곧 순서다. 숫자가 아닌 코드(깨진 값)는 맨 뒤. */
+export function attributeValueRank(code: Code): number {
+  return ATTRIBUTE_VALUE_CODE_PATTERN.test(code) ? Number(code) : Number.MAX_SAFE_INTEGER;
+}
+
+/** 유효값 정렬 — 코드 순. */
+export function compareAttributeValueCodes(a: Code, b: Code): number {
+  return attributeValueRank(a) - attributeValueRank(b) || a.localeCompare(b);
+}
+
+/** 유효값을 코드 순으로 (표시 · 그룹 안 정렬 3차 키 순서). */
+export function sortAttributeValues<T extends { code: Code }>(values: readonly T[]): T[] {
+  return [...values].sort((a, b) => compareAttributeValueCodes(a.code, b.code));
 }
 
 // ───────────────────────────── 공통 ─────────────────────────────
@@ -43,13 +60,9 @@ function cleanLabel(label: unknown): string | undefined {
   return t.length > 0 ? t : undefined;
 }
 
-/** 명명 조각 정리 — 저장 시 앞뒤 공백을 제거한다. */
+/** 상품담보명 표기(`fragment`) 정리 — 저장 시 앞뒤 공백을 제거한다. */
 export function normalizeNamingFragment(fragment: string | undefined): string {
   return fragment?.trim() ?? "";
-}
-
-function sortedValues(values: readonly AttributeValue[]): AttributeValue[] {
-  return [...values].sort((a, b) => a.order - b.order || a.code.localeCompare(b.code));
 }
 
 // ───────────────────────────── 종류 ─────────────────────────────
@@ -101,9 +114,8 @@ export async function addAttributeValue(
   if (!label) return invalid("담보속성 유효값 표시명은 비울 수 없습니다", kind.code);
   if (kind.values.some((v) => v.label === label)) return reject({ reason: "duplicate", what: `담보속성 유효값 표시명 ${label}` });
   const code = formatAttributeValueCode(await nextSeq("attributeValue", kind.code));
-  const order = kind.values.reduce((m, v) => Math.max(m, v.order + 1), 0);
-  const value: AttributeValue = { code, label, order, fragment: normalizeNamingFragment(input.fragment) };
-  return ok({ ...kind, values: [...kind.values, value] });
+  const value: AttributeValue = { code, label, fragment: normalizeNamingFragment(input.fragment) };
+  return ok({ ...kind, values: sortAttributeValues([...kind.values, value]) });
 }
 
 function withValue(kind: AttributeKind, valueCode: Code, fn: (v: AttributeValue) => Result<AttributeValue>): Result<AttributeKind> {
@@ -123,21 +135,15 @@ export function renameAttributeValue(kind: AttributeKind, valueCode: Code, label
   return withValue(kind, valueCode, (v) => ok({ ...v, label: clean }));
 }
 
-/** 담보명 조각 등록·수정. */
+/** 상품담보명 표기 등록·수정. */
 export function setNamingFragment(kind: AttributeKind, valueCode: Code, fragment: string): Result<AttributeKind> {
   return withValue(kind, valueCode, (v) => ok({ ...v, fragment: normalizeNamingFragment(fragment) }));
 }
 
-export function reorderAttributeValues(kind: AttributeKind, order: readonly Code[]): Result<AttributeKind> {
-  const codes = new Set(kind.values.map((v) => v.code));
-  if (order.length !== codes.size || new Set(order).size !== order.length || order.some((c) => !codes.has(c))) {
-    return invalid("유효값 순서는 종류의 모든 유효값 코드를 한 번씩 담아야 합니다", kind.code);
-  }
-  const byCode = new Map(kind.values.map((v) => [v.code, v]));
-  return ok({ ...kind, values: order.map((c, i) => ({ ...byCode.get(c)!, order: i })) });
-}
-
-/** 편집 화면 한 벌 — 종류명 · **최종** 유효값 목록. 배열 순서 = 저장 순서, `code` 가 없으면 새 값, 목록에 없는 기존 값은 빠진다. */
+/**
+ * 편집 화면 한 벌 — 종류명 · **최종** 유효값 목록. `code` 가 없으면 새 값(배열에 나온 차례로 다음 번호), 목록에 없는 기존 값은 빠진다.
+ * 배열 순서는 저장 순서가 아니다 — 순서는 코드 순이다.
+ */
 export interface AttributeKindRevision {
   label: string;
   values: readonly { code?: Code; label: string; fragment: string }[];
@@ -177,17 +183,17 @@ export async function reviseAttributeKind(
     labels.add(label);
   }
   const values: AttributeValue[] = [];
-  for (const [order, v] of revision.values.entries()) {
+  for (const v of revision.values) {
     const code = v.code ?? formatAttributeValueCode(await nextSeq("attributeValue", kind.code));
-    values.push({ code, label: cleanLabel(v.label)!, order, fragment: normalizeNamingFragment(v.fragment) });
+    values.push({ code, label: cleanLabel(v.label)!, fragment: normalizeNamingFragment(v.fragment) });
   }
-  return ok({ kind: { ...renamed.value, values }, removed: kind.values.filter((v) => !kept.has(v.code)).map((v) => v.code) });
+  return ok({ kind: { ...renamed.value, values: sortAttributeValues(values) }, removed: sortAttributeValues(kind.values.filter((v) => !kept.has(v.code))).map((v) => v.code) });
 }
 
 /** 유효값 삭제 (정의 변경만 — 파괴적 흐름은 서비스). */
 export function removeAttributeValue(kind: AttributeKind, valueCode: Code): Result<AttributeKind> {
   if (!kind.values.some((v) => v.code === valueCode)) return reject({ reason: "notFound", what: `담보속성 유효값 ${valueCode}` });
-  return ok({ ...kind, values: sortedValues(kind.values.filter((v) => v.code !== valueCode)).map((v, i) => ({ ...v, order: i })) });
+  return ok({ ...kind, values: kind.values.filter((v) => v.code !== valueCode) });
 }
 
 /** 종류 안에서 유효값 찾기. */

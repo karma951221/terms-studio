@@ -2767,7 +2767,7 @@
                   "branches": [
                     {
                       "id": "s7-a1-c1-t",
-                      "when": "exist(attr.A0001) and attr.A0001 = 'V02'",
+                      "when": "exist(attr.A0001) and attr.A0001 = '2'",
                       "children": [
                         {
                           "id": "s7-a1-c1-t-x1",
@@ -3164,7 +3164,7 @@
                         "branches": [
                           {
                             "id": "s7-a1-c2-t",
-                            "when": "exist(attr.A0001) and attr.A0001 = 'V02'",
+                            "when": "exist(attr.A0001) and attr.A0001 = '2'",
                             "children": [
                               {
                                 "id": "s7-a1-c2-t-x1",
@@ -3531,7 +3531,7 @@
                         "branches": [
                           {
                             "id": "s7-a1-c3-t",
-                            "when": "exist(attr.A0001) and attr.A0001 = 'V02'",
+                            "when": "exist(attr.A0001) and attr.A0001 = '2'",
                             "children": [
                               {
                                 "id": "s7-a1-c3-t-x1",
@@ -4258,7 +4258,7 @@
           "branches": [
             {
               "id": "s7-a6-c-t",
-              "when": "exist(attr.A0001) and attr.A0001 = 'V02'",
+              "when": "exist(attr.A0001) and attr.A0001 = '2'",
               "children": [
                 {
                   "id": "s7-a6",
@@ -4320,7 +4320,7 @@
                   "branches": [
                     {
                       "id": "s7-a8-c1-t",
-                      "when": "exist(attr.A0001) and attr.A0001 = 'V02'",
+                      "when": "exist(attr.A0001) and attr.A0001 = '2'",
                       "children": [
                         {
                           "id": "s7-a8-c1-t-x1",

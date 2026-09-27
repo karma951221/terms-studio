@@ -200,7 +200,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
                 kind: "paragraph",
                 children: [
                   { id: "s-txt-pay-1", kind: "text", text: "회사는 피보험자가 " },
-                  { id: "s-inl-renew", kind: "inlineCond", branches: [{ id: "s-inl-renew-if", when: "exist(attr.A0001) and attr.A0001 = 'V02'", children: [{ id: "s-txt-pay-2", kind: "text", text: "최초계약일" }] }, { id: "s-inl-renew-else", children: [{ id: "s-txt-pay-3", kind: "text", text: "계약일" }] }] },
+                  { id: "s-inl-renew", kind: "inlineCond", branches: [{ id: "s-inl-renew-if", when: "exist(attr.A0001) and attr.A0001 = '2'", children: [{ id: "s-txt-pay-2", kind: "text", text: "최초계약일" }] }, { id: "s-inl-renew-else", children: [{ id: "s-txt-pay-3", kind: "text", text: "계약일" }] }] },
                   { id: "s-txt-pay-4", kind: "text", text: " 이후 상해로 사망한 경우 사망보험금을 지급합니다." },
                 ],
               },
@@ -229,8 +229,8 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
     unwrap(await product.setNamingTemplate(editor, "[A0001] [담보명] [A0002]"));
     productId = unwrap(await product.createProduct(editor, { name: "알파Plus(축약)", generalDocumentId: g.id })).id;
     pcBase = unwrap(await product.mount(editor, productId, covBase, [], "base")).id;
-    pcBasic = unwrap(await product.mount(editor, productId, covDeath, [{ kindCode: "A0002", valueCode: "V01" }])).id;
-    pcAddon = unwrap(await product.mount(editor, productId, covDeath, [{ kindCode: "A0002", valueCode: "V02" }])).id;
+    pcBasic = unwrap(await product.mount(editor, productId, covDeath, [{ kindCode: "A0002", valueCode: "1" }])).id;
+    pcAddon = unwrap(await product.mount(editor, productId, covDeath, [{ kindCode: "A0002", valueCode: "2" }])).id;
     const group = unwrap(await product.createGroup(editor, productId, { title: "상해 관련 특별약관" }));
     unwrap(await product.placeInGroup(editor, group.id, pcBasic));
     unwrap(await product.placeInGroup(editor, group.id, pcAddon));
@@ -485,7 +485,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
     it("재료 재사용 — assembleMany 로 상품 2개를 돌리면 마스터 적재 쿼리는 한 번만 (≈ m + 2p)", async () => {
       const other = unwrap(await product.createProduct(editor, { name: "베타", generalDocumentId: (await product.getProduct(productId))!.generalDocumentId })).id;
       unwrap(await product.mount(editor, other, covBase, [], "base"));
-      unwrap(await product.mount(editor, other, covDeath, [{ kindCode: "A0002", valueCode: "V01" }]));
+      unwrap(await product.mount(editor, other, covDeath, [{ kindCode: "A0002", valueCode: "1" }]));
       const m = await count(() => svc.loadMaster());
       const runA = await count(() => svc.run(editor, productId));
       const runB = await count(() => svc.run(editor, other));

@@ -32,7 +32,6 @@ import {
   renameAttributeKind,
   renameAttributeValue,
   reorderAttributeKinds,
-  reorderAttributeValues,
   reviseAttributeKind,
   setNamingFragment,
   sortInGroup,
@@ -153,7 +152,6 @@ export interface ProductService {
   addAttributeValue(actor: Actor, code: Code, input: NewAttributeValue): Promise<Result<AttributeKind>>;
   renameAttributeValue(actor: Actor, code: Code, valueCode: Code, label: string): Promise<Result<AttributeKind>>;
   setNamingFragment(actor: Actor, code: Code, valueCode: Code, fragment: string): Promise<Result<AttributeKind>>;
-  reorderAttributeValues(actor: Actor, code: Code, order: Code[]): Promise<Result<AttributeKind>>;
   removeAttributeValue(actor: Actor, code: Code, valueCode: Code, opts?: Confirmable): Promise<Result<AttributeKind>>;
   /**
    * 담보속성 편집 화면 한 벌 저장 — 종류명 · 최종 유효값 목록(이름 · 조각 · 순서 · 새 값)을 최종 상태로 한 번에 검사해 한 번 저장한다
@@ -686,7 +684,6 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
     addAttributeValue: (actor, code, input) => editKind(actor, code, (k, _all, tx) => addAttributeValue(k, input, repo.attributeSeqSource(tx))),
     renameAttributeValue: (actor, code, valueCode, label) => editKind(actor, code, (k) => renameAttributeValue(k, valueCode, label)),
     setNamingFragment: (actor, code, valueCode, fragment) => editKind(actor, code, (k) => setNamingFragment(k, valueCode, fragment)),
-    reorderAttributeValues: (actor, code, order) => editKind(actor, code, (k) => reorderAttributeValues(k, order)),
     removeAttributeValue: (actor, code, valueCode, opts = {}) =>
       attributeDestructive(actor, "attribute.deleteValue", opts, code, valueCode, async (tx, kind) => {
         const r = removeAttributeValue(kind, valueCode);

@@ -36,8 +36,8 @@ import {
 } from "./lib";
 
 const kinds: AttributeKind[] = [
-  { code: "A0001", label: "갱신유형", order: 0, values: [{ code: "V01", label: "갱신형", order: 0, fragment: "" }] },
-  { code: "A0002", label: "부가유형", order: 1, values: [{ code: "V01", label: "기본", order: 0, fragment: "" }] },
+  { code: "A0001", label: "갱신유형", order: 0, values: [{ code: "1", label: "갱신형", fragment: "" }] },
+  { code: "A0002", label: "부가유형", order: 1, values: [{ code: "1", label: "기본", fragment: "" }] },
 ];
 
 describe("products lib — 순수 파싱", () => {
@@ -49,9 +49,9 @@ describe("products lib — 순수 파싱", () => {
 
   it("parseSelections — attr:<kindCode> 이름의 값만 골라 담는다, 비어있으면 제외", () => {
     const fd = new FormData();
-    fd.set("attr:A0001", "V01");
+    fd.set("attr:A0001", "1");
     fd.set("attr:A0002", "");
-    expect(parseSelections(fd, kinds)).toEqual([{ kindCode: "A0001", valueCode: "V01" }]);
+    expect(parseSelections(fd, kinds)).toEqual([{ kindCode: "A0001", valueCode: "1" }]);
   });
 
   it("parseOptionSelection — 객체 JSON 은 그대로, 아니면 빈 객체", () => {
@@ -368,21 +368,21 @@ describe("products lib — 기본정보 초안의 변경 여부 (basicDraftDirty
 
 describe("탑재 표 — 담보속성 조합 · 담보 검색 (기능/상품 §4.6)", () => {
   const kinds = [
-    { code: "A0001", label: "갱신유형", order: 0, values: [{ code: "V02", label: "갱신형", order: 1, fragment: "갱신형" }] },
-    { code: "A0002", label: "부가유형", order: 1, values: [{ code: "V02", label: "추가", order: 1, fragment: "추가" }] },
+    { code: "A0001", label: "갱신유형", order: 0, values: [{ code: "2", label: "갱신형", fragment: "갱신형" }] },
+    { code: "A0002", label: "부가유형", order: 1, values: [{ code: "2", label: "추가", fragment: "추가" }] },
   ] as AttributeKind[];
 
   it("attributeComboLabel — 종류 order 순 `종류=값` · 없으면 —", () => {
-    expect(attributeComboLabel([{ kindCode: "A0002", valueCode: "V02" }, { kindCode: "A0001", valueCode: "V02" }], kinds)).toBe("갱신유형=갱신형 · 부가유형=추가");
+    expect(attributeComboLabel([{ kindCode: "A0002", valueCode: "2" }, { kindCode: "A0001", valueCode: "2" }], kinds)).toBe("갱신유형=갱신형 · 부가유형=추가");
     expect(attributeComboLabel([], kinds)).toBe("—");
     // 없어진 종류 · 값은 코드 그대로 (지어내지 않는다)
-    expect(attributeComboLabel([{ kindCode: "A0009", valueCode: "V09" }], kinds)).toBe("A0009=V09");
+    expect(attributeComboLabel([{ kindCode: "A0009", valueCode: "9" }], kinds)).toBe("A0009=9");
   });
 
   it("mountRows · filterMountRows — 코드 · 상품담보명 · 담보명 · 속성, 「—」는 검색 대상이 아니다", () => {
     const rows = mountRows(
       [
-        { id: "pc1", productId: "p", coverageId: "c1", name: "사망 추가", attributes: [{ kindCode: "A0002", valueCode: "V02" }] },
+        { id: "pc1", productId: "p", coverageId: "c1", name: "사망 추가", attributes: [{ kindCode: "A0002", valueCode: "2" }] },
         { id: "pc2", productId: "p", coverageId: "gone", name: "고아", attributes: [] },
       ],
       [{ id: "c1", code: "COV000001", name: "일반상해사망보장" }],

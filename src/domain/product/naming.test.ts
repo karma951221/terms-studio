@@ -8,8 +8,8 @@ const renewal: AttributeKind = {
   label: "갱신유형",
   order: 9,
   values: [
-    { code: "V01", label: "비갱신형", order: 0, fragment: "" },
-    { code: "V02", label: "갱신형", order: 1, fragment: "갱신형" },
+    { code: "1", label: "비갱신형", fragment: "" },
+    { code: "2", label: "갱신형", fragment: "갱신형" },
   ],
 };
 const addon: AttributeKind = {
@@ -17,8 +17,8 @@ const addon: AttributeKind = {
   label: "부가유형",
   order: 0,
   values: [
-    { code: "V01", label: "기본", order: 0, fragment: "" },
-    { code: "V02", label: "추가", order: 1, fragment: "추가" },
+    { code: "1", label: "기본", fragment: "" },
+    { code: "2", label: "추가", fragment: "추가" },
   ],
 };
 const kinds = [renewal, addon];
@@ -30,8 +30,8 @@ describe("3차 S2 — 전역 명명 템플릿", () => {
     const name = defaultCoverageName(
       "일반상해사망",
       [
-        { kindCode: "A0002", valueCode: "V02" },
-        { kindCode: "A0001", valueCode: "V02" },
+        { kindCode: "A0002", valueCode: "2" },
+        { kindCode: "A0001", valueCode: "2" },
       ],
       kinds,
       template,
@@ -45,8 +45,8 @@ describe("3차 S2 — 전역 명명 템플릿", () => {
       defaultCoverageName(
         "일반상해사망",
         [
-          { kindCode: "A0001", valueCode: "V01" },
-          { kindCode: "A0002", valueCode: "V01" },
+          { kindCode: "A0001", valueCode: "1" },
+          { kindCode: "A0002", valueCode: "1" },
         ],
         kinds,
         template,
@@ -58,8 +58,8 @@ describe("3차 S2 — 전역 명명 템플릿", () => {
     const name = defaultCoverageName(
       "골절수술비Ⅱ보장",
       [
-        { kindCode: "A0001", valueCode: "V02" },
-        { kindCode: "A0002", valueCode: "V02" },
+        { kindCode: "A0001", valueCode: "2" },
+        { kindCode: "A0002", valueCode: "2" },
       ],
       kinds,
       "[담보명][A0002] / [A0001]",
@@ -68,8 +68,8 @@ describe("3차 S2 — 전역 명명 템플릿", () => {
   });
 
   it("미사용 종류·카탈로그에 없는 종류와 값은 빈 문자열로 치환한다", () => {
-    expect(defaultCoverageName(" 일반상해사망 ", [{ kindCode: "A0009", valueCode: "V01" }], kinds, template)).toBe("일반상해사망");
-    expect(defaultCoverageName("일반상해사망", [{ kindCode: "A0001", valueCode: "V09" }], kinds, template)).toBe("일반상해사망");
+    expect(defaultCoverageName(" 일반상해사망 ", [{ kindCode: "A0009", valueCode: "1" }], kinds, template)).toBe("일반상해사망");
+    expect(defaultCoverageName("일반상해사망", [{ kindCode: "A0001", valueCode: "9" }], kinds, template)).toBe("일반상해사망");
   });
 
   it("템플릿에 칩이 없는 속성 종류를 찾는다", () => {
