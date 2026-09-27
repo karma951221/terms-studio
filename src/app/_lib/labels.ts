@@ -64,7 +64,9 @@ export const FIELD_LABEL = {
   currentName: "지금 이름",
   availableTokens: "쓸 수 있는 칩",
   missingTypes: "템플릿에 없는 유형",
-  namingFragment: "명명 조각",
+  namingFragment: "상품담보명 표기",
+  attributeCode: "담보속성 코드",
+  valueCode: "값 코드",
   order: "순서",
   actions: "조작",
   subCoverageName: "세부보장명",
@@ -73,6 +75,9 @@ export const FIELD_LABEL = {
   suggested: "제안",
   listType: "list 타입",
 } as const;
+
+/** 「상품담보명 표기」 옆 ⓘ — 명명 규칙 용어 대신 무엇이 어디에 들어가는지로 말한다 (기능/담보속성 §3.4). */
+export const NAMING_FRAGMENT_TIP = "상품담보명에 이 값 대신 들어갈 말 — 비우면 붙지 않는다";
 
 export const ACTION_LABEL = {
   create: "생성",

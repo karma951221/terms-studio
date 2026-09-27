@@ -17,7 +17,8 @@ function failed<T>(result: Result<T>, token: string): EditOutcome | undefined {
 const isNew = (code: string) => code.startsWith("new:");
 
 /**
- * 담보속성 상세의 저장 — 종류명 · 유효값 행(추가 · 이름 · 조각 · 순서 · **삭제**)이 저장 한 번이다 (디자인원칙 §2 L2).
+ * 담보속성 상세의 저장 — 종류명 · 유효값 행(추가 · 이름 · 상품담보명 표기 · **삭제**)이 저장 한 번이다 (디자인원칙 §2 L2).
+ * 「+ 값 추가」로 만들고 아무것도 적지 않은 새 행은 저장에서 뺀다 — 빈 이름 오류로 막지 않는다.
  *
  * 값 표는 최종 목록 한 벌로 서비스 `reviseAttributeKind` 에 넘긴다 — 한 단계씩 고치면 이름 맞바꾸기가 중간 상태에서 거부되고,
  * 앞 단계는 이미 커밋돼 있었다 (점검 2026-09-27 H1). 표에서 ✕ 로 뺀 저장된 값은 여기서 빠지고, 확인은 **저장 시점**에 한 번 —
@@ -29,7 +30,9 @@ export async function saveAttributeEditAction(code: string, input: AttributeEdit
   return saveOnce(services, async () => {
     const current = await services.product.getAttributeKind(code);
     if (!current) return { ok: false, message: `담보속성을 찾을 수 없습니다 — ${code}` };
-    const values = input.values.map(({ code: valueCode, label, fragment }) => (isNew(valueCode) ? { label, fragment } : { code: valueCode, label, fragment }));
+    const values = input.values
+      .filter((value) => !(isNew(value.code) && !value.label.trim() && !value.fragment.trim()))
+      .map(({ code: valueCode, label, fragment }) => (isNew(valueCode) ? { label, fragment } : { code: valueCode, label, fragment }));
     const result = await services.product.reviseAttributeKind(actor, code, { label: input.label, values }, { confirm });
     if (result.ok) return { ok: true };
     if (result.rejection.reason === "needsConfirmation") {

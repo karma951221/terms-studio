@@ -16,8 +16,7 @@ export default async function AttributeDetailPage({ params }: { params: Promise<
   if (!item) return <div><Breadcrumb items={[{ label: ENTITY_LABEL.attribute, href: "/attributes" }, { label: code }]} /><p className="ts-error-banner">찾을 수 없습니다.</p></div>;
 
   const usages = usagesOf(graph, { kind: "attribute", code });
-  const valueUsage = Object.fromEntries(item.values.map((value) => [value.code, usagesOf(graph, { kind: "attributeValue", code, valueCode: value.code }).length]));
   const usage = <UsageList usages={usages} totalRefs={refStats(graph).edges} empty="아무 상품담보 · 식도 이 담보속성을 쓰지 않는다." />;
   const signature = item.values.map((value) => value.code).join(":");
-  return <AttributeEditor key={`${code}:${signature}`} item={item} usage={usage} usageCount={usages.length} valueUsage={valueUsage} />;
+  return <AttributeEditor key={`${code}:${signature}`} item={item} usage={usage} usageCount={usages.length} />;
 }

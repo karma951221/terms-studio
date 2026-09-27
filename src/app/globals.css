@@ -1499,22 +1499,24 @@ button.danger:focus-visible {
   margin: 0;
 }
 
-.ts-add-row {
-  display: grid;
-  grid-template-columns: 104px minmax(180px, 1fr) auto;
-  gap: 8px;
-  align-items: center;
-  padding: 8px;
-  border-bottom: 1px solid var(--ts-rule);
+/* 담보속성 유효값 표 (기능/담보속성 §4 상세) — 입력칸은 칸을 꽉 채우고, 편집 모드의 「+ 값 추가」는 표 끝 한 줄. */
+.ts-attr-values th.col-fragment,
+.ts-attr-values td.col-fragment {
+  width: 280px;
+  min-width: 200px;
 }
 
-.ts-add-row label {
-  font-size: 11px;
-  color: var(--ts-ink-3);
+.ts-attr-values td > input {
+  width: 100%;
+}
+
+.ts-table-add td {
+  padding: 6px 8px;
+  border-bottom: 0;
 }
 
 /*
- * 필드 추가 줄 — 라벨 없이 입력칸부터, 표 위 (값 추가 줄과 같은 규칙).
+ * 필드 추가 줄 — 라벨 없이 입력칸부터, 표 위.
  * 타입이 목록값이면 칸이 셋 더 붙으므로 고정 열 대신 flex 로 흐르게 한다 — 버튼이 세로로 찌그러지지 않게.
  */
 .ts-field-add-row {
