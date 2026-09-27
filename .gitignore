@@ -1,0 +1,52 @@
+# 백업(번복된 결정·옛 기획)과 실약관 텍스트는 리포에 올리지 않는다 — 어느 깊이의 _archive 든
+_archive/
+docs/_자료/
+
+.DS_Store
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# next.js
+/.next/
+/out/
+/build
+
+# 개발 DB (PGlite)
+/.data/
+
+# testing
+/coverage
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+# 브라우저 MCP(playwright-mcp)가 남기는 콘솔 로그 · 스크린샷
+/.playwright-mcp/
+# 에이전트 세션의 git worktree (안에 .next · node_modules 가 생긴다)
+/.claude/worktrees/
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+
+# git worktrees
+.worktrees/
+
+# superpowers SDD scratch
+.superpowers/

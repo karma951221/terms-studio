@@ -1,0 +1,4059 @@
+/* ════════════════════════════════════════════════════════════════════════════
+ * terms-studio 전역 스타일 — docs/공통/화면/디자인원칙.md 구현본
+ *
+ * 규칙 요약 (문서가 정본, 여기는 구현):
+ *  §1.1 두 개의 타이포 세계 — 도구는 고딕 13/1.6, 문서는 명조 15/1.9. 경계는 패널 경계
+ *  §1.2 출처는 형태가 말한다 — 직접값 실선 / 파생 ƒ+옅은 바탕 / const 자물쇠 / 스냅샷 되돌리기
+ *  §1.3 색은 강조·현재 위치만. 액센트는 --ts-mark 하나. 파란색 없음
+ *  §1.4 도구 세계 밀도 — 행 28px
+ *  §1.6 조작은 22×22 아이콘 버튼. 글리프는 SVG 로 그린다(icons.tsx)
+ *  §5   반경 3px · 그림자 없음 · 카드 없음(섹션은 괘선+제목) · 얼룩무늬 없음
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. 토큰 ──────────────────────────────────────────────────────────────── */
+
+:root {
+  /* 색 — 디자인원칙 §4 */
+  --ts-paper: #f6f4ef;
+  --ts-surface: #ffffff;
+  --ts-surface-2: #f1eee7;
+  --ts-ink: #1a1815;
+  --ts-ink-2: #57534b;
+  --ts-ink-3: #77726a;
+  --ts-rule: #e4e0d8;
+  --ts-rule-strong: #cfc9be;
+  --ts-mark: #b4432b;
+  --ts-mark-bg: #fbf0ec;
+  --ts-derived: #4c6a63;
+  --ts-error: #a02617;
+  --ts-error-bg: #fbf0ec;
+  --ts-warn: #8a6410;
+  --ts-ok: #3f6b3a;
+  /* 관계정보 그래프 전용 — 종류는 모양+이 흙빛 테두리로 이중 부호화한다 (기능/관계정보 §3.3). */
+  --ts-graph-1: #6f5b45;
+  --ts-graph-2: #596b49;
+  --ts-graph-3: #3f6b65;
+  --ts-graph-4: #75556a;
+  --ts-graph-5: #4f6475;
+  --ts-graph-6: #7a6038;
+  --ts-graph-7: #6a5f78;
+  --ts-graph-8: #476b55;
+
+  /* 글꼴 — 디자인원칙 §3. 맑은 고딕은 시스템 설치본만 부른다(웹폰트 배포 불가) */
+  --sans: "Malgun Gothic", "맑은 고딕", AppleSDGothicNeo-Regular, "Apple SD Gothic Neo",
+    "Segoe UI", sans-serif;
+  --serif: "Noto Serif KR", "Nanum Myeongjo", "Apple Myungjo", serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace, var(--sans);
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ts-paper: #1e1c19;
+    --ts-surface: #26241f;
+    --ts-surface-2: #2c2a25;
+    --ts-ink: #e8e3d9;
+    --ts-ink-2: #c9c2b4;
+    --ts-ink-3: #9c968a;
+    --ts-rule: #3a362f;
+    --ts-rule-strong: #4a453c;
+    --ts-mark: #d4694e;
+    --ts-mark-bg: #34231e;
+    --ts-derived: #86ada4;
+    --ts-error: #d9584a;
+    --ts-error-bg: #3a201c;
+    --ts-warn: #c79a3a;
+    --ts-ok: #7fae77;
+    --ts-graph-1: #bca487;
+    --ts-graph-2: #9eae82;
+    --ts-graph-3: #80aaa2;
+    --ts-graph-4: #b997ac;
+    --ts-graph-5: #8fa7b8;
+    --ts-graph-6: #c0a06a;
+    --ts-graph-7: #aaa0bd;
+    --ts-graph-8: #88ad93;
+
+    color-scheme: dark;
+  }
+}
+
+/* ── 관계정보 이웃 그래프 (기능/관계정보 §3.3) ───────────────────────────────────── */
+
+.ts-graph-section > .ts-section-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ts-graph-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px 20px;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--ts-rule);
+}
+
+.ts-graph-controls fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.ts-graph-controls fieldset.is-wide {
+  flex-basis: 100%;
+}
+
+.ts-graph-controls legend {
+  float: left;
+  margin-right: 10px;
+  color: var(--ts-ink-3);
+  font-weight: 700;
+}
+
+.ts-graph-controls label {
+  white-space: nowrap;
+}
+
+.ts-graph-panel {
+  position: relative;
+}
+
+.ts-graph-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+}
+
+.ts-graph-canvas {
+  display: block;
+  width: 100%;
+  height: min(62vh, 620px);
+  min-height: 380px;
+  border: 1px solid var(--ts-rule-strong);
+  background: var(--ts-surface);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.ts-graph-canvas:active {
+  cursor: grabbing;
+}
+
+.ts-graph-edge,
+.ts-graph-nodes > a {
+  transition: opacity 120ms ease-out;
+}
+
+.ts-graph-edge path {
+  fill: none;
+  stroke: var(--ts-ink-2);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.ts-graph-edge.is-dashed path {
+  stroke-dasharray: 7 5;
+}
+
+.ts-graph-edge.is-dotted path {
+  stroke-dasharray: 2 5;
+  stroke-linecap: round;
+}
+
+.ts-graph-edge.is-containment path {
+  stroke: var(--ts-rule-strong);
+  stroke-width: 1;
+}
+
+.ts-graph-edge.is-broken path {
+  stroke: var(--ts-error);
+}
+
+.ts-graph-edge text {
+  fill: var(--ts-ink-2);
+  stroke: var(--ts-surface);
+  stroke-width: 3px;
+  paint-order: stroke fill;
+  font-family: var(--sans);
+  font-size: 10px;
+  pointer-events: none;
+}
+
+.ts-graph-node > circle,
+.ts-graph-node > rect,
+.ts-graph-node > path {
+  fill: var(--ts-surface);
+  stroke: var(--ts-node-color);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.ts-graph-node.is-current > circle,
+.ts-graph-node.is-current > rect,
+.ts-graph-node.is-current > path {
+  fill: var(--ts-mark);
+}
+
+.ts-graph-node.is-missing > circle,
+.ts-graph-node.is-missing > rect,
+.ts-graph-node.is-missing > path {
+  fill: var(--ts-error-bg);
+  stroke: var(--ts-error);
+  stroke-dasharray: 2 3;
+}
+
+.ts-graph-node text {
+  fill: var(--ts-ink);
+  stroke: var(--ts-surface);
+  stroke-width: 3px;
+  paint-order: stroke fill;
+  font-family: var(--sans);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.ts-graph-nodes > a:focus-visible {
+  outline: none;
+}
+
+.ts-graph-nodes > a:focus-visible .ts-graph-node > circle,
+.ts-graph-nodes > a:focus-visible .ts-graph-node > rect,
+.ts-graph-nodes > a:focus-visible .ts-graph-node > path {
+  stroke: var(--ts-mark);
+  stroke-width: 4;
+}
+
+.ts-graph-empty {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  margin: 44px 0 0;
+  transform: translateX(-50%);
+}
+
+.ts-graph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 12px;
+  padding: 8px 0 0;
+  color: var(--ts-ink-2);
+}
+
+.ts-graph-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.ts-graph-legend-shape {
+  width: 20px;
+  height: 20px;
+  fill: var(--ts-surface);
+  stroke: var(--ts-graph-1);
+  stroke-width: 1.5;
+}
+
+.ts-graph-legend-line {
+  width: 34px;
+  height: 12px;
+  stroke: var(--ts-ink-2);
+  stroke-width: 1.5;
+}
+
+.ts-graph-legend-line .is-dashed {
+  stroke-dasharray: 7 5;
+}
+
+.ts-graph-legend-line .is-dotted {
+  stroke-dasharray: 2 4;
+  stroke-linecap: round;
+}
+
+.ts-graph-legend-line .is-containment {
+  stroke: var(--ts-rule-strong);
+  stroke-width: 1;
+}
+
+.ts-graph-legend-separator {
+  align-self: stretch;
+  width: 1px;
+  background: var(--ts-rule);
+}
+
+.ts-graph-too-large {
+  padding: 24px 0;
+}
+
+.ts-graph-too-large p {
+  margin-top: 0;
+}
+
+@media (max-width: 720px) {
+  .ts-graph-section > .ts-section-title {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .ts-graph-canvas {
+    height: 460px;
+    min-height: 0;
+  }
+}
+
+/* ── 2. 바탕 ──────────────────────────────────────────────────────────────── */
+
+* {
+  box-sizing: border-box;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--ts-paper);
+  color: var(--ts-ink);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+}
+
+a:hover {
+  color: var(--ts-mark);
+}
+
+/* 행 안에서 바로 고치는 칸(별표의 이름·설명) — 인라인 style 로 흩어져 있던 것을 여기 모은다. */
+.ts-cell-form {
+  display: flex;
+  gap: 4px;
+}
+
+.ts-cell-form input {
+  min-width: 0;
+  flex: 1;
+}
+
+/* 표 안의 링크는 밑줄을 긋지 않는다 — 행마다 이름이 링크라 밑줄이 다 그어지면 괘선과 싸운다.
+   누를 수 있다는 것은 hover 의 주칠이 말한다 (§1.3). 산문 속 링크는 밑줄을 유지한다. */
+.ts-table a {
+  text-decoration: none;
+}
+
+/* 포커스·선택은 주칠 하나로. 파란 액센트를 쓰지 않는다 (§1.3) */
+:focus-visible {
+  outline: 2px solid var(--ts-mark);
+  outline-offset: 1px;
+}
+
+input,
+select,
+textarea,
+button {
+  accent-color: var(--ts-mark);
+}
+
+::selection {
+  background: var(--ts-mark-bg);
+}
+
+/* ── 3. 입력 · 버튼 ───────────────────────────────────────────────────────── */
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 3px 6px;
+  min-height: 24px;
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+  background: var(--ts-surface);
+  color: var(--ts-ink);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  margin: 0 4px 0 0;
+  vertical-align: -1px;
+}
+
+textarea {
+  line-height: 1.6;
+}
+
+textarea.ts-json {
+  width: 100%;
+  min-height: 200px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+/* 생성 폼 안에서도 JSON 칸은 높이를 지킨다 — .ts-create-field 의 34px 이 뒤에서 덮어 3줄로 눌린다. */
+.ts-create-field > textarea.ts-json {
+  min-height: 200px;
+}
+
+button,
+a.primary {
+  display: inline-block;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 3px 10px;
+  min-height: 24px;
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+  background: var(--ts-surface);
+  color: var(--ts-ink);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+button:hover,
+a.primary:hover {
+  background: var(--ts-surface-2);
+}
+
+button[disabled] {
+  color: var(--ts-ink-3);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* 패널 주 행동 — 채우지 않는다. 주칠 테두리 + 주칠 글자 (§1.3 · §8). <a class="primary"> 도 같은 문법 (링크형 주 행동). */
+button.primary,
+a.primary {
+  border-color: var(--ts-mark);
+  color: var(--ts-mark);
+  font-weight: 700;
+}
+
+button.primary:hover,
+a.primary:hover {
+  background: var(--ts-mark-bg);
+}
+
+/* 파괴적 텍스트 버튼 — 평소엔 뉴트럴, hover/focus 에서만 error 로 물든다 (§1.6, 발견 #36) */
+button.danger {
+  border-color: var(--ts-rule-strong);
+  color: var(--ts-ink-2);
+}
+
+button.danger:hover,
+button.danger:focus-visible {
+  border-color: var(--ts-error);
+  color: var(--ts-error);
+  background: var(--ts-error-bg);
+}
+
+/* ── 4. 아이콘 · 아이콘 버튼 (§1.6) ───────────────────────────────────────── */
+
+.ts-icon {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.ts-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--ts-ink-2);
+  cursor: pointer;
+  transition: color 120ms ease-out, background 120ms ease-out;
+}
+
+.ts-iconbtn:hover {
+  background: var(--ts-surface-2);
+  color: var(--ts-ink);
+}
+
+.ts-iconbtn.danger {
+  color: var(--ts-ink-2);
+}
+
+.ts-iconbtn.danger:hover,
+.ts-iconbtn.danger:focus-visible {
+  color: var(--ts-error);
+  background: var(--ts-error-bg);
+}
+
+.ts-iconbtn[disabled] {
+  color: var(--ts-ink-3);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* 담보 상태 글리프 — 색이 아니라 형태가 상태를 말한다 (§2 L1) */
+.ts-glyph {
+  display: inline-block;
+  vertical-align: -1px;
+  margin-right: 4px;
+}
+
+.ts-glyph-unused {
+  color: var(--ts-ink-3);
+}
+
+.ts-glyph-applied {
+  color: var(--ts-ink-2);
+}
+
+.ts-glyph-locked {
+  color: var(--ts-ink);
+  vertical-align: -2px;
+}
+
+/* ── 5. 레이아웃 셸 ───────────────────────────────────────────────────────── */
+
+.ts-app {
+  display: flex;
+  min-height: 100vh;
+  background: var(--ts-paper);
+  color: var(--ts-ink);
+}
+
+.ts-nav {
+  flex: 0 0 168px;
+  width: 168px;
+  background: var(--ts-surface);
+  border-right: 1px solid var(--ts-rule);
+  padding: 16px 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* 제목 = 홈 링크. 내비 항목 스타일(.ts-nav a)을 받지 않게 한 단계 더 구체적으로 */
+.ts-nav a.ts-nav-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 0 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ts-ink);
+}
+
+.ts-nav a.ts-nav-title:hover {
+  color: var(--ts-mark);
+}
+
+.ts-nav a.ts-nav-home {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0;
+  border: 0;
+}
+
+/* 접기 — 제목 줄 오른쪽 버튼. 접히면 레일만 남는다 */
+.ts-nav-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.ts-nav-toggle .ts-icon {
+  transform: rotate(180deg);
+}
+
+.ts-nav[data-collapsed] {
+  flex-basis: 36px;
+  width: 36px;
+  padding: 12px 4px;
+}
+
+.ts-nav[data-collapsed] .ts-nav-head {
+  justify-content: center;
+}
+
+.ts-nav[data-collapsed] .ts-nav-toggle .ts-icon {
+  transform: none;
+}
+
+/* 단계 묶음 — 홈의 열과 같은 구성. 제목은 작게, 묶음 사이는 여백으로만 가른다 */
+.ts-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 12px;
+}
+
+.ts-nav-group-title {
+  margin: 0 0 2px 8px;
+  font-size: 11px;
+  color: var(--ts-ink-3);
+}
+
+.ts-nav a {
+  display: block;
+  padding: 4px 8px;
+  border-left: 2px solid transparent;
+  font-size: 13px;
+  text-decoration: none;
+  color: var(--ts-ink-2);
+}
+
+.ts-nav a:hover {
+  background: var(--ts-surface-2);
+  color: var(--ts-ink);
+}
+
+/* 현재 위치 — 주칠 + 좌측 괘선 (§1.3, 발견 #61) */
+.ts-nav a[aria-current="page"] {
+  color: var(--ts-mark);
+  border-left-color: var(--ts-mark);
+  background: var(--ts-mark-bg);
+  font-weight: 700;
+}
+
+.ts-nav-user {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--ts-rule);
+  font-size: 11px;
+  color: var(--ts-ink-3);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ts-nav-user button {
+  font-size: 12px;
+  padding: 2px 8px;
+  align-self: flex-start;
+}
+
+/* ── 홈 — 작업 순서 네 열 + 점검 띠 ── */
+.ts-home-flow {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 28px;
+}
+
+.ts-home-col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ts-home-arrow {
+  position: absolute;
+  top: 2px;
+  right: -21px;
+  color: var(--ts-ink-3);
+}
+
+.ts-home-col-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ts-ink-2);
+}
+
+.ts-home-step {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--ts-rule);
+  border-radius: 50%;
+  font-size: 10px;
+  color: var(--ts-ink-3);
+}
+
+.ts-home-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--ts-rule);
+  border-radius: 4px;
+  background: var(--ts-surface);
+  color: var(--ts-ink);
+  text-decoration: none;
+}
+
+.ts-home-card:hover {
+  border-color: var(--ts-mark);
+}
+
+.ts-home-card-label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ts-home-card-desc {
+  font-size: 12px;
+  color: var(--ts-ink-3);
+}
+
+.ts-home-check {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ts-rule);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: calc((100% - 84px) / 4);
+}
+
+@media (max-width: 720px) {
+  .ts-home-flow {
+    grid-template-columns: 1fr;
+  }
+  .ts-home-arrow {
+    display: none;
+  }
+  .ts-home-check {
+    max-width: none;
+  }
+}
+
+.ts-main {
+  flex: 1;
+  min-width: 0;
+  padding: 20px 24px 32px;
+  max-width: 1160px;
+}
+
+/* L3 등 전폭 화면은 패딩을 스스로 관리한다 */
+.ts-main:has(> .ts-l3),
+.ts-main.is-full {
+  max-width: none;
+  padding: 0;
+}
+
+/* 로그인 — 좌상단 정렬. 가운데 정렬 도배 금지 (§8, 발견 #56) */
+.ts-login {
+  padding: 32px 24px;
+  max-width: 420px;
+}
+
+.ts-login-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ts-login-list button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  text-align: left;
+}
+
+/* ── 6. 제목 · 섹션 (카드 없음 — 괘선 + 제목) ─────────────────────────────── */
+
+.ts-h1 {
+  font-size: 19px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.ts-page-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.ts-section,
+.ts-form,
+.ts-panel {
+  display: block;
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--ts-rule-strong);
+  border-radius: 0;
+  padding: 0;
+  margin: 20px 0 0;
+}
+
+.ts-form {
+  max-width: 720px;
+}
+
+/* 섹션 안에 중첩된 폼·패널은 옅은 괘선으로 — 구획 괘선은 섹션 하나당 하나다 */
+.ts-section .ts-form,
+.ts-section .ts-panel,
+.ts-panel .ts-form,
+.ts-panel .ts-panel,
+.ts-form .ts-form {
+  border-top-color: var(--ts-rule);
+  margin-top: 12px;
+}
+
+.ts-section > .ts-form:first-child,
+.ts-panel > .ts-form:first-child,
+.ts-section > .ts-section:first-child,
+.ts-panel > .ts-panel:first-child {
+  border-top: 0;
+  margin-top: 0;
+}
+
+.ts-section-title,
+.ts-form-title,
+.ts-h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ts-ink);
+  margin: 16px 0 8px;
+  padding: 0;
+  border: 0;
+}
+
+.ts-section-title .ts-count,
+.ts-form-title .ts-count,
+.ts-h2 .ts-count {
+  margin-left: auto;
+}
+
+/* 구획 제목 오른쪽의 명령 링크 — 탑재된 담보의 「구조 편집 →」 (ADR-0052 결정 2). 카운트와 같은 자리 · 같은 크기. */
+.ts-h2 .ts-h2-action {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* 단독으로 쓰인 .ts-h2 는 스스로 구획 괘선을 갖는다 */
+.ts-h2 {
+  border-top: 1px solid var(--ts-rule-strong);
+  padding-top: 16px;
+  margin-top: 24px;
+}
+
+.ts-section > .ts-h2:first-child,
+.ts-panel > .ts-h2:first-child,
+.ts-form > .ts-h2:first-child {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+/* 제목 줄(제목 + 「새로 만들기」) 안에 들어가면 괘선은 줄 전체가 긋는다 —
+   .ts-h2 가 flex 아이템이라 스스로 그으면 제목 폭만큼 토막난다. */
+.ts-list-head:has(> .ts-h2) {
+  border-top: 1px solid var(--ts-rule-strong);
+  padding-top: 16px;
+  margin-top: 24px;
+}
+
+.ts-list-head > .ts-h2 {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.ts-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0 12px;
+  flex-wrap: wrap;
+}
+
+.ts-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.ts-list-head .ts-h1 {
+  margin-bottom: 0;
+}
+
+.ts-list-title {
+  margin: 0;
+  font-size: 15px;
+}
+
+.ts-types-head {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  margin-bottom: 8px;
+}
+
+.ts-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  margin-bottom: 10px;
+}
+
+.ts-edit-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  margin-bottom: 10px;
+}
+
+.ts-edit-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+}
+
+.ts-edit-fields {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* 읽기 모드의 값 — 「지금은」 못 고치는 것. 편집을 누르면 이 자리가 입력칸이 된다. */
+.ts-field-locked {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  min-width: 200px;
+  padding: 2px 7px;
+  border: 0;
+  border-radius: 3px;
+  background: var(--ts-surface-2);
+  color: var(--ts-ink-2);
+}
+
+/* 여기서 아예 못 고치는 값(코드 · 유형 · 레벨) — 칠을 벗겨 글자로 둔다.
+   읽기 모드의 값과 같은 옷을 입히면 편집을 눌러도 안 바뀌는 칸이 왜 그대로인지 설명이 없다. */
+.ts-field-static {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 0;
+  color: var(--ts-ink);
+}
+
+/* ── 공용조항 본문 구조 에디터 ────────────────────────────────────────────
+ * 툴바에는 구조를 만드는 도구만 선다. 넣는 일(옵션 자리)은 본문 우클릭이 맡는다.
+ * 깊이는 들여쓰기와 왼쪽 괘선으로만 말한다 — 카드도 얼룩무늬도 쓰지 않는다 (§5).
+ */
+.ts-be-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0 8px;
+  border-bottom: 1px solid var(--ts-rule);
+  margin-bottom: 8px;
+}
+
+.ts-be-toolbar-spacer {
+  flex: 1;
+}
+
+.ts-be-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ts-be-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ts-be-line > .ts-be-list {
+  margin-left: 14px;
+  padding-left: 10px;
+  border-left: 1px solid var(--ts-rule);
+}
+
+.ts-be-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+}
+
+.ts-be-row > input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 조작은 그 줄에 머무를 때만 눈에 든다 — 줄마다 아이콘 셋이 늘 켜져 있으면 본문이 안 읽힌다. */
+.ts-be-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+}
+
+.ts-be-line:hover > .ts-be-row > .ts-be-actions,
+.ts-be-row:focus-within > .ts-be-actions {
+  opacity: 1;
+}
+
+.ts-be-add > button {
+  border: 0;
+  background: none;
+  color: var(--ts-ink-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ts-be-add > button:hover {
+  color: var(--ts-mark);
+}
+
+/* 그 줄에 박힌 옵션 자리 — 문면에서와 같은 〔 〕 표기 (§9.4 실체는 표시명으로). */
+.ts-be-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 2px 0 0 4px;
+  font-size: 11px;
+}
+
+.ts-be-inline > textarea {
+  width: 100%;
+}
+
+/* 우클릭 넣기 메뉴 — 클릭한 자리에 뜬다. */
+.ts-ctxmenu {
+  position: fixed;
+  z-index: 20;
+  min-width: 180px;
+  padding: 4px;
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+  background: var(--ts-surface);
+}
+
+.ts-ctxmenu-title {
+  margin: 2px 6px 4px;
+  font-size: 11px;
+  color: var(--ts-ink-3);
+}
+
+.ts-ctxmenu-empty {
+  margin: 2px 6px 4px;
+  font-size: 11px;
+  color: var(--ts-ink-2);
+  max-width: 220px;
+}
+
+.ts-ctxmenu > button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+}
+
+.ts-ctxmenu > button {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ts-ctxmenu > button:disabled {
+  color: var(--ts-ink-3);
+}
+
+.ts-ctxmenu-why {
+  font-size: 11px;
+  color: var(--ts-ink-3);
+}
+
+.ts-ctxmenu > button:hover {
+  background: var(--ts-surface-2);
+  color: var(--ts-mark);
+}
+
+/* 접히는 기본 정보 — 접힌 줄이 곧 펼침 단추다. 카드로 싸지 않고 아래 괘선 하나로 가른다 (§5). */
+.ts-basics {
+  border-bottom: 1px solid var(--ts-rule);
+}
+
+.ts-basics-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  text-align: left;
+  min-height: 28px;
+}
+
+.ts-basics-head:hover {
+  color: var(--ts-mark);
+}
+
+.ts-basics-head > .ts-icon {
+  align-self: center;
+  transition: transform 120ms ease;
+}
+
+.ts-basics-head > .ts-icon.is-open {
+  transform: rotate(90deg);
+}
+
+.ts-basics-name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ts-basics-body {
+  padding: 4px 0 10px 20px;
+}
+
+/* ── 공용조항 상세 — 왼쪽 기재내용 · 오른쪽 옵션 ──────────────────────────
+ * 이 화면에서 보러 오는 것은 본문과 옵션 둘뿐이라 단을 둘로만 가른다. 본문이 주(主)이므로
+ * 남는 폭을 본문이 먹고, 옵션은 읽을 만한 최소폭을 지킨다. 좁아지면 세로로 쌓는다.
+ */
+.ts-clause-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 34%);
+  gap: 24px;
+  align-items: start;
+  margin-top: 16px;
+}
+
+.ts-clause-body,
+.ts-clause-options {
+  min-width: 0;
+}
+
+.ts-clause-options {
+  border-left: 1px solid var(--ts-rule-strong);
+  padding-left: 16px;
+}
+
+.ts-clause-body > textarea.ts-json {
+  width: 100%;
+  min-height: 320px;
+}
+
+/* 이름 하나를 더하는 칸 — 입력과 「더하기」가 한 덩어리로 붙는다. */
+.ts-add-input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ts-add-input > input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 옵션 하나 — 이름 한 줄과 그 아래 선택지들. 카드로 싸지 않는다 (§5). */
+.ts-option {
+  padding: 8px 0;
+  border-top: 1px solid var(--ts-rule);
+}
+
+.ts-option-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ts-option-head > input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ts-option-name {
+  font-weight: 700;
+}
+
+.ts-option-values {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0 0 0 12px;
+  border-left: 1px solid var(--ts-rule);
+}
+
+.ts-option-values > li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+}
+
+.ts-option-values > li > input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ts-clause-options .ts-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 0;
+  border-bottom: 0;
+  border-top: 1px solid var(--ts-rule);
+}
+
+.ts-clause-options .ts-add-row > input {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .ts-clause-split {
+    grid-template-columns: 1fr;
+  }
+
+  .ts-clause-options {
+    border-left: 0;
+    padding-left: 0;
+    border-top: 1px solid var(--ts-rule-strong);
+    padding-top: 16px;
+  }
+}
+
+.ts-l2-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 40%);
+  gap: 24px;
+  align-items: start;
+}
+
+.ts-l2-main,
+.ts-l2-side {
+  min-width: 0;
+}
+
+.ts-l2-side {
+  border-left: 1px solid var(--ts-rule-strong);
+  padding-left: 16px;
+}
+
+.ts-l2-side-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-weight: 700;
+}
+
+.ts-struct-readonly {
+  margin-top: 12px;
+}
+
+@media (max-width: 1023px) {
+  /* ── 공용조항 본문 구조 에디터 ────────────────────────────────────────────
+ * 툴바에는 구조를 만드는 도구만 선다. 넣는 일(옵션 자리)은 본문 우클릭이 맡는다.
+ * 깊이는 들여쓰기와 왼쪽 괘선으로만 말한다 — 카드도 얼룩무늬도 쓰지 않는다 (§5).
+ */
+.ts-be-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0 8px;
+  border-bottom: 1px solid var(--ts-rule);
+  margin-bottom: 8px;
+}
+
+.ts-be-toolbar-spacer {
+  flex: 1;
+}
+
+.ts-be-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ts-be-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ts-be-line > .ts-be-list {
+  margin-left: 14px;
+  padding-left: 10px;
+  border-left: 1px solid var(--ts-rule);
+}
+
+.ts-be-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+}
+
+.ts-be-row > input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 조작은 그 줄에 머무를 때만 눈에 든다 — 줄마다 아이콘 셋이 늘 켜져 있으면 본문이 안 읽힌다. */
+.ts-be-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+}
+
+.ts-be-line:hover > .ts-be-row > .ts-be-actions,
+.ts-be-row:focus-within > .ts-be-actions {
+  opacity: 1;
+}
+
+.ts-be-add > button {
+  border: 0;
+  background: none;
+  color: var(--ts-ink-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ts-be-add > button:hover {
+  color: var(--ts-mark);
+}
+
+/* 그 줄에 박힌 옵션 자리 — 문면에서와 같은 〔 〕 표기 (§9.4 실체는 표시명으로). */
+.ts-be-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 2px 0 0 4px;
+  font-size: 11px;
+}
+
+.ts-be-inline > textarea {
+  width: 100%;
+}
+
+/* 우클릭 넣기 메뉴 — 클릭한 자리에 뜬다. */
+.ts-ctxmenu {
+  position: fixed;
+  z-index: 20;
+  min-width: 180px;
+  padding: 4px;
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+  background: var(--ts-surface);
+}
+
+.ts-ctxmenu-title {
+  margin: 2px 6px 4px;
+  font-size: 11px;
+  color: var(--ts-ink-3);
+}
+
+.ts-ctxmenu-empty {
+  margin: 2px 6px 4px;
+  font-size: 11px;
+  color: var(--ts-ink-2);
+  max-width: 220px;
+}
+
+.ts-ctxmenu > button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+}
+
+.ts-ctxmenu > button {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ts-ctxmenu > button:disabled {
+  color: var(--ts-ink-3);
+}
+
+.ts-ctxmenu-why {
+  font-size: 11px;
+  color: var(--ts-ink-3);
+}
+
+.ts-ctxmenu > button:hover {
+  background: var(--ts-surface-2);
+  color: var(--ts-mark);
+}
+
+/* 접히는 기본 정보 — 접힌 줄이 곧 펼침 단추다. 카드로 싸지 않고 아래 괘선 하나로 가른다 (§5). */
+.ts-basics {
+  border-bottom: 1px solid var(--ts-rule);
+}
+
+.ts-basics-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  text-align: left;
+  min-height: 28px;
+}
+
+.ts-basics-head:hover {
+  color: var(--ts-mark);
+}
+
+.ts-basics-head > .ts-icon {
+  align-self: center;
+  transition: transform 120ms ease;
+}
+
+.ts-basics-head > .ts-icon.is-open {
+  transform: rotate(90deg);
+}
+
+.ts-basics-name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ts-basics-body {
+  padding: 4px 0 10px 20px;
+}
+
+/* ── 공용조항 상세 — 왼쪽 기재내용 · 오른쪽 옵션 ──────────────────────────
+ * 이 화면에서 보러 오는 것은 본문과 옵션 둘뿐이라 단을 둘로만 가른다. 본문이 주(主)이므로
+ * 남는 폭을 본문이 먹고, 옵션은 읽을 만한 최소폭을 지킨다. 좁아지면 세로로 쌓는다.
+ */
+.ts-clause-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 34%);
+  gap: 24px;
+  align-items: start;
+  margin-top: 16px;
+}
+
+.ts-clause-body,
+.ts-clause-options {
+  min-width: 0;
+}
+
+.ts-clause-options {
+  border-left: 1px solid var(--ts-rule-strong);
+  padding-left: 16px;
+}
+
+.ts-clause-body > textarea.ts-json {
+  width: 100%;
+  min-height: 320px;
+}
+
+/* 이름 하나를 더하는 칸 — 입력과 「더하기」가 한 덩어리로 붙는다. */
+.ts-add-input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ts-add-input > input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 옵션 하나 — 이름 한 줄과 그 아래 선택지들. 카드로 싸지 않는다 (§5). */
+.ts-option {
+  padding: 8px 0;
+  border-top: 1px solid var(--ts-rule);
+}
+
+.ts-option-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ts-option-head > input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ts-option-name {
+  font-weight: 700;
+}
+
+.ts-option-values {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0 0 0 12px;
+  border-left: 1px solid var(--ts-rule);
+}
+
+.ts-option-values > li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+}
+
+.ts-option-values > li > input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ts-clause-options .ts-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 0;
+  border-bottom: 0;
+  border-top: 1px solid var(--ts-rule);
+}
+
+.ts-clause-options .ts-add-row > input {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .ts-clause-split {
+    grid-template-columns: 1fr;
+  }
+
+  .ts-clause-options {
+    border-left: 0;
+    padding-left: 0;
+    border-top: 1px solid var(--ts-rule-strong);
+    padding-top: 16px;
+  }
+}
+
+.ts-l2-split {
+    grid-template-columns: 1fr;
+  }
+
+  .ts-l2-side {
+    border-left: 0;
+    border-top: 1px solid var(--ts-rule-strong);
+    padding: 12px 0 0;
+  }
+}
+
+.ts-infotip,
+.ts-native-tip {
+  display: inline-flex;
+  margin-left: 3px;
+  vertical-align: -2px;
+  color: var(--ts-ink-3);
+}
+
+.ts-infotip .ts-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.ts-detail-head > .ts-iconbtn:last-child {
+  margin-left: auto;
+}
+
+.ts-inline-edit,
+.ts-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ts-inline-edit input {
+  min-width: 220px;
+}
+
+.ts-row-actions form {
+  display: inline-flex;
+  margin: 0;
+}
+
+.ts-add-row {
+  display: grid;
+  grid-template-columns: 104px minmax(180px, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid var(--ts-rule);
+}
+
+.ts-add-row label {
+  font-size: 11px;
+  color: var(--ts-ink-3);
+}
+
+/*
+ * 필드 추가 줄 — 라벨 없이 입력칸부터, 표 위 (값 추가 줄과 같은 규칙).
+ * 타입이 목록값이면 칸이 셋 더 붙으므로 고정 열 대신 flex 로 흐르게 한다 — 버튼이 세로로 찌그러지지 않게.
+ */
+.ts-field-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 0 0 8px;
+  border-bottom: 0;
+}
+
+.ts-field-add-row > input {
+  flex: 1 1 160px;
+}
+
+.ts-type-change {
+  display: flex;
+  gap: 4px;
+  margin-top: 3px;
+}
+
+.ts-type-change select {
+  max-width: 110px;
+}
+
+.ts-dialog {
+  width: min(560px, calc(100vw - 32px));
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+  background: var(--ts-surface);
+  color: var(--ts-ink);
+}
+
+.ts-dialog::backdrop {
+  background: rgb(0 0 0 / 28%);
+}
+
+/* 사용처처럼 좌표 문자열이 긴 표를 담는 모달 — 넘치면 표만 가로로 흐른다 */
+.ts-dialog-wide {
+  width: min(880px, calc(100vw - 32px));
+}
+
+.ts-dialog-body {
+  max-height: min(60vh, 520px);
+  overflow: auto;
+}
+
+.ts-dialog-body + .ts-confirm-actions {
+  margin-top: 12px;
+}
+
+/*
+ * 경로 = 제목 줄 (디자인원칙 §1.7) — 「담보 › 골절진단비Ⅱ › 구조 편집」. 앞 마디는 옅은 링크, 마지막 마디(현재 화면)만 진하다.
+ * 돌아가는 길을 제목 위 별도 줄로 빼면 줄 하나가 통째로 링크 하나에 쓰이고 제목과 조작 버튼이 서로 다른 줄에 흩어진다.
+ */
+.ts-path {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ts-crumb {
+  font-weight: 400;
+  color: var(--ts-ink-3);
+}
+
+.ts-crumb-sep {
+  margin: 0 7px;
+  font-weight: 400;
+  color: var(--ts-ink-3);
+}
+
+.ts-crumb-current {
+  font-weight: 700;
+}
+
+/* 저작(L3) 바 안의 경로는 바의 글자 규격을 따른다 — 제목 크기로 바를 키우지 않는다 */
+.ts-l3-bar .ts-path {
+  font-size: 13px;
+}
+
+.ts-l3-bar .ts-crumb-current {
+  color: var(--ts-ink);
+}
+
+.ts-subtabs {
+  display: flex;
+  gap: 12px;
+}
+
+.ts-subtabs a,
+.ts-subtabs button {
+  padding: 2px 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--ts-ink-2);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.ts-subtabs a[aria-current="page"],
+.ts-subtabs button[aria-current="page"] {
+  border-bottom-color: var(--ts-mark);
+  color: var(--ts-mark);
+  font-weight: 700;
+}
+
+/* 변경이 있는 탭 표시 (기능/담보 §4 「상세」) — 색이 아니라 점으로. */
+.ts-subtabs .ts-dot {
+  margin-left: 3px;
+}
+
+/* ── 7. L1 조회 ───────────────────────────────────────────────────────────── */
+
+.ts-l1 {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* 필터바는 스크롤해도 안 사라진다 (§2 L1) */
+.ts-filterbar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--ts-surface-2);
+  border-bottom: 1px solid var(--ts-rule-strong);
+}
+
+.ts-filterbar-stack {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--ts-surface-2);
+  border-bottom: 1px solid var(--ts-rule-strong);
+}
+
+.ts-filterbar-stack .ts-filterbar {
+  position: static;
+  border-bottom: 0;
+}
+
+.ts-searchbox {
+  color: var(--ts-ink-2) !important;
+}
+
+.ts-searchbox input {
+  width: min(320px, 32vw);
+}
+
+/* 이력 기능 전까지의 기준일·미확정 — 잠긴 표시. 테두리를 지워 「고를 수 있는 것」에서 빼고,
+   값은 남겨 무엇으로 조회 중인지 읽히게 한다 (§1.2 — 잠김은 형태가 말한다). */
+.ts-filter-locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ts-ink-3);
+  cursor: default;
+  user-select: none;
+}
+
+.ts-filter-locked .ts-icon {
+  opacity: 0.7;
+}
+
+.ts-filter-clear {
+  min-height: 22px;
+  padding: 1px 6px;
+  border: 0;
+  background: none;
+  color: var(--ts-ink-2);
+  font-size: 12px;
+}
+
+.ts-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 6px;
+}
+
+.ts-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 22px;
+  padding: 1px 4px 1px 7px;
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+  background: var(--ts-surface);
+  color: var(--ts-ink-2);
+  font-size: 12px;
+}
+
+.ts-chip button {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.ts-colfilter {
+  position: relative;
+}
+
+.ts-colfilter summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--ts-ink-3);
+}
+
+.ts-colfilter summary::-webkit-details-marker {
+  display: none;
+}
+
+.ts-colfilter-popover {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  z-index: 5;
+  min-width: 112px;
+  padding: 4px;
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+  background: var(--ts-surface);
+}
+
+.ts-colfilter-popover button {
+  display: block;
+  width: 100%;
+  border: 0;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ts-colfilter-popover button[aria-pressed="true"] {
+  color: var(--ts-mark);
+  font-weight: 700;
+}
+
+.ts-filterbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--ts-ink-3);
+}
+
+.ts-filterbar input,
+.ts-filterbar select {
+  min-height: 22px;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+.ts-filterbar .ts-filterbar-spacer {
+  margin-left: auto;
+}
+
+table.ts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+/* 행 28px — 얼룩무늬 없이 괘선 하나 (§1.4 · §5, 발견 #54) */
+.ts-table th,
+.ts-table td {
+  text-align: left;
+  vertical-align: middle;
+  height: 28px;
+  padding: 3px 8px;
+  line-height: 1.4;
+  border-bottom: 1px solid var(--ts-rule);
+}
+
+.ts-table th {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ts-ink-3);
+  white-space: nowrap;
+  border-bottom-color: var(--ts-rule-strong);
+}
+
+.ts-table tr:hover td {
+  background: var(--ts-surface-2);
+}
+
+.ts-table code,
+.ts-table .ts-mono {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+/* 컬럼 폭 — 남는 폭은 .col-flex 한 컬럼만 먹는다 (§2 L1, 발견 #49).
+ * th·td 양쪽에 폭을 박아야 auto 레이아웃이 나머지 컬럼을 벌리지 않는다. */
+.ts-table th.col-code,
+.ts-table td.col-code,
+th.col-code,
+td.col-code {
+  width: 104px;
+  min-width: 104px;
+  max-width: 104px;
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ts-table th.col-flex,
+.ts-table td.col-flex,
+th.col-flex,
+td.col-flex {
+  width: 100%;
+}
+
+th.col-fixed-sm,
+td.col-fixed-sm {
+  width: 82px;
+  min-width: 82px;
+}
+
+th.col-fixed-md,
+td.col-fixed-md {
+  width: 120px;
+  min-width: 120px;
+}
+
+th.col-num,
+td.col-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  width: 82px;
+  min-width: 82px;
+}
+
+th.col-values,
+td.col-values {
+  width: 320px;
+  min-width: 240px;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+th.col-act,
+td.col-act {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* 「총 N건 · 1/1」 + 앞뒤 이동 (§2 L1 — 무한 스크롤을 쓰지 않는다) */
+.ts-pager {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px;
+  background: var(--ts-paper);
+  border-top: 1px solid var(--ts-rule-strong);
+  font-size: 12px;
+  color: var(--ts-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.ts-pager-nav {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── 8. L2 폼 ─────────────────────────────────────────────────────────────── */
+
+/*
+ * 편집 모드는 값이 전부 테두리 있는 입력칸이라, 읽기 모드와 같은 행간이면 칸끼리 맞닿아 답답하다.
+ * 글자 줄일 때는 붙어 있어도 목록으로 읽히지만 상자끼리는 그렇지 않다.
+ */
+.ts-edit-fields .ts-form-row {
+  padding: 4px 0;
+}
+
+/*
+ * 2열 필드 그리드 — 라벨 좌측 고정 120px (§2 L2). 라벨을 값 위에 두지 않는다.
+ * 라벨은 행의 위쪽에 맞춘다 (2026-09-12) — 값이 표 · 여러 줄이면 가운데 정렬은 라벨을 값 중간에 띄운다.
+ * 한 줄 입력칸(24px) 옆에서도 첫 줄과 나란하도록 라벨에 그만큼의 위 여백을 준다.
+ */
+.ts-form-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 8px;
+  align-items: start;
+  min-height: 28px;
+  padding: 2px 0;
+  border: 0;
+}
+
+.ts-form-row > label,
+.ts-form-label {
+  font-size: 11px;
+  color: var(--ts-ink-3);
+  text-align: left;
+  padding: 5px 0 0;
+  line-height: 1.4;
+}
+
+/* list<T> 표 필드와 긴 텍스트만 전폭 */
+.ts-form-full {
+  grid-column: 1 / -1;
+}
+
+.ts-form-control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.ts-form-control > input[type="text"],
+.ts-form-control > input[type="number"],
+.ts-form-control > select {
+  min-width: 200px;
+}
+
+.ts-form-badge {
+  font-size: 11px;
+  color: var(--ts-ink-3);
+  background: var(--ts-surface-2);
+  border-radius: 3px;
+  padding: 0 5px;
+}
+
+.ts-form-error {
+  color: var(--ts-error);
+  font-size: 12px;
+  flex-basis: 100%;
+}
+
+.ts-form-issues {
+  color: var(--ts-error);
+  font-size: 12px;
+}
+
+.ts-form-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.ts-form-empty {
+  font-size: 12px;
+  color: var(--ts-ink-3);
+  margin: 8px 0;
+}
+
+.ts-form-radios,
+.ts-form-checks {
+  display: inline-flex;
+  flex-wrap: wrap;
+  /* 12px 였을 때는 선택지 덩어리가 한 줄로 뭉쳐 보였다 — 원소 경계가 간격으로 먼저 보여야 한다 */
+  gap: 20px;
+  align-items: center;
+}
+
+/* 라디오 묶음과 고른 값의 뜻풀이를 한 덩어리로 — ts-form-control 은 가로 flex 라 감싸 줘야 아래로 놓인다. */
+.ts-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ts-form-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ts-ink-3);
+}
+
+.ts-form-radio,
+.ts-form-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--ts-ink-2);
+  white-space: nowrap;
+}
+
+/*
+ * 고른 것은 굵기와 색으로도 말한다 — 라디오 동그라미 하나에만 기대면
+ * 선택지가 여럿 늘어섰을 때 어느 것이 켜졌는지 훑어서 안 보인다 (§1.3 주칠 하나).
+ */
+.ts-form-radio:has(input:checked),
+.ts-form-check:has(input:checked) {
+  font-weight: 600;
+  color: var(--ts-ink);
+}
+
+.ts-form-prefill,
+.ts-form-clear {
+  font-size: 12px;
+  padding: 1px 8px;
+  min-height: 22px;
+  color: var(--ts-ink-2);
+}
+
+/* 값의 출처 문법 — §1.2. 색을 주지 않는다. 형태가 말한다 */
+.ts-field-direct,
+input.ts-field-direct,
+select.ts-field-direct,
+textarea.ts-field-direct {
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+  background: var(--ts-surface);
+}
+
+.ts-field-derived,
+.ts-field-const,
+.ts-field-derived input,
+.ts-field-derived select,
+.ts-field-derived textarea,
+.ts-field-const input,
+.ts-field-const select,
+.ts-field-const textarea {
+  border: 0;
+  border-radius: 3px;
+  background: var(--ts-surface-2);
+  color: var(--ts-ink-2);
+}
+
+.ts-field-derived,
+.ts-field-const {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 2px 6px;
+  font-size: 13px;
+}
+
+/* 좌측 ƒ 표식 · 자물쇠 — icons.tsx 의 IconFx · IconLock 을 담는다 */
+.ts-src-mark {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ts-derived);
+  flex: 0 0 auto;
+}
+
+.ts-src-lock {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ts-ink-3);
+  flex: 0 0 auto;
+}
+
+.ts-field-derived .ts-expr,
+.ts-field-const .ts-master-link {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ts-ink-3);
+}
+
+/* 스냅샷 · 변경됨 — 입력 필드 오른쪽 끝에 되돌리기 아이콘 버튼 (§1.2) */
+.ts-field-snapshot {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ts-field-snapshot > input,
+.ts-field-snapshot > select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ts-revert {
+  flex: 0 0 auto;
+}
+
+/* 이전 화면들이 쓰던 라벨-위-값 필드도 2열 그리드로 (발견 #51) */
+label.ts-field {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 8px;
+  align-items: center;
+  min-height: 28px;
+  margin: 0;
+  padding: 2px 0;
+  font-size: 13px;
+}
+
+label.ts-field > span {
+  display: block;
+  color: var(--ts-ink-3);
+  font-size: 11px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+label.ts-field > textarea {
+  min-height: 80px;
+}
+
+/* 값 목록 (ValueList) */
+.ts-values {
+  margin: 8px 0 0;
+}
+
+.ts-values-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.ts-values-summary {
+  font-size: 12px;
+  color: var(--ts-ink-3);
+  font-variant-numeric: tabular-nums;
+  margin: 0 0 4px;
+}
+
+.ts-values-summary.has-missing {
+  color: var(--ts-ink-2);
+}
+
+.ts-values-list {
+  margin: 0;
+}
+
+.ts-values-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 8px;
+  align-items: center;
+  min-height: 28px;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--ts-rule);
+}
+
+.ts-values-label {
+  font-size: 11px;
+  color: var(--ts-ink-3);
+  margin: 0;
+}
+
+.ts-values-value {
+  font-size: 13px;
+  margin: 0;
+  min-width: 0;
+}
+
+.ts-values-row.is-not-entered .ts-values-value {
+  color: var(--ts-ink-3);
+}
+
+/* ── 8-1. 생성 폼 ─────────────────────────────────────────────────────────── */
+
+/*
+ * 생성도 수정과 같은 2열 그리드다 (§2 L2) — 라벨 좌측, 값 우측. 세로로 늘이지 않아야
+ * 만들 것 전체가 한 화면에 들어온다. 유형도 다른 칸과 같은 한 줄이다 — 그것만 카드로
+ * 싸면 서식이 튀어서, 중요하다는 신호가 아니라 딴 데서 온 조각처럼 보인다.
+ * 폭은 내용 영역의 절반 (2026-09-12) — 고정 px 는 넓은 화면에서 왼쪽 구석에 뭉친다.
+ */
+.ts-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 50%;
+  min-width: 480px;
+  max-width: 100%;
+}
+
+/* 입력칸은 값 칸 폭을 다 쓴다 — 칸마다 폭이 다르면 오른쪽 끝이 들쭉날쭉해 한 폼으로 안 읽힌다 (2026-09-12) */
+.ts-create-form .ts-form-control > input:not([type="checkbox"]):not([type="radio"]),
+.ts-create-form .ts-form-control > select,
+.ts-create-form .ts-form-control > textarea {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+/*
+ * 어떤 선택지를 골라서 나타난 칸들 — 고른 것 바로 아래에 한 덩어리로 묶는다.
+ * 흩어 놓으면 「이게 왜 생겼나」가 안 보인다. 값 칸과 같은 열에서 시작한다.
+ */
+.ts-field-card {
+  flex-basis: 100%;
+  min-width: 0;
+  margin-top: 8px;
+  padding: 10px 14px 12px;
+  border: 1px solid var(--ts-rule);
+  border-left: 2px solid var(--ts-rule-strong);
+  border-radius: 4px;
+  background: var(--ts-surface-2);
+}
+
+.ts-field-card .ts-form-row {
+  grid-template-columns: 88px 1fr;
+}
+
+/* ── 검색되는 선택 상자 ─────────────────────────────────────────────────── */
+
+.ts-combo {
+  position: relative;
+  min-width: 240px;
+}
+
+.ts-combo > input[type="text"] {
+  width: 100%;
+}
+
+/* 코드가 비었을 때 제출을 막는 용도로만 있는 칸 — 보이지 않지만 focus 는 가야 한다 */
+.ts-combo-guard {
+  position: absolute;
+  left: 8px;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  pointer-events: none;
+}
+
+.ts-combo-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow: auto;
+  margin: 0;
+  padding: 3px;
+  list-style: none;
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+  background: var(--ts-surface);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
+}
+
+.ts-combo-list button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  min-height: 0;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+}
+
+.ts-combo-list button.is-active {
+  background: var(--ts-mark-bg);
+  color: var(--ts-mark);
+}
+
+.ts-combo-empty {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--ts-ink-3);
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+  background: var(--ts-surface);
+}
+
+/* ── 9. 배지 · 카운트 · 진행 · 빈 상태 ────────────────────────────────────── */
+
+.ts-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 5px;
+  border: 1px solid var(--ts-rule);
+  border-radius: 3px;
+  background: none;
+  color: var(--ts-ink-2);
+  white-space: nowrap;
+}
+
+.ts-badge.missing {
+  border-style: dashed;
+  color: var(--ts-ink-3);
+}
+
+.ts-badge.proposed {
+  border-color: var(--ts-mark);
+  background: var(--ts-mark-bg);
+  color: var(--ts-mark);
+}
+
+.ts-badge.locked {
+  color: var(--ts-ink);
+  border-color: var(--ts-ink-3);
+}
+
+.ts-badge.undetermined {
+  color: var(--ts-ink-3);
+  font-style: italic;
+}
+
+/* 경고 배지 — 저장은 됐지만 남은 결정이 있다 (담보약관의 미결정 옵션, 기능/담보 §3.5). 링크로도 쓴다 */
+.ts-badge.warning {
+  border-color: var(--ts-warn);
+  color: var(--ts-warn);
+  text-decoration: none;
+}
+
+/* 카운트는 분모와 같이 산다 (§9.6). 강조가 분모를 대신하지 않는다 */
+.ts-count {
+  font-size: 12px;
+  color: var(--ts-ink-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ts-count b {
+  color: var(--ts-mark);
+  font-weight: 700;
+}
+
+/* 진행 괘선 — `style={{ "--value": 78 }}` (퍼센트 숫자) */
+.ts-progress {
+  display: inline-block;
+  vertical-align: middle;
+  width: 96px;
+  height: 3px;
+  background: var(--ts-rule);
+  position: relative;
+  overflow: hidden;
+}
+
+.ts-progress::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--value, 0) * 1%);
+  background: var(--ts-mark);
+}
+
+/* 빈 화면에 다음 행동을 준다 (§9.3) */
+.ts-empty {
+  padding: 12px 0;
+  max-width: 44em;
+}
+
+.ts-empty-what {
+  font-size: 13px;
+  color: var(--ts-ink-2);
+  margin: 0 0 2px;
+}
+
+.ts-empty-example {
+  font-size: 12px;
+  color: var(--ts-ink-3);
+  margin: 0 0 6px;
+}
+
+.ts-empty-action {
+  font-size: 13px;
+  margin: 0;
+}
+
+.ts-empty-action a {
+  color: var(--ts-mark);
+}
+
+.ts-muted {
+  color: var(--ts-ink-3);
+}
+
+.ts-ok {
+  color: var(--ts-ok);
+}
+
+.ts-error {
+  color: var(--ts-error);
+}
+
+.ts-dim {
+  opacity: 0.5;
+}
+
+.ts-mono {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+/* ── 10. 오류 · 이슈 · 확인 ───────────────────────────────────────────────── */
+
+/* error 는 색만으로 말하지 않는다 — 아이콘 + 문구를 동반한다 (§4) */
+.ts-error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  background: var(--ts-error-bg);
+  color: var(--ts-error);
+  border: 1px solid var(--ts-error);
+  border-radius: 3px;
+  padding: 6px 10px;
+  margin: 8px 0 12px;
+  font-size: 13px;
+}
+
+.ts-issues {
+  color: var(--ts-error);
+  font-size: 12px;
+  padding-left: 16px;
+  margin: 4px 0;
+}
+
+.ts-issues li {
+  margin: 2px 0;
+}
+
+.ts-issue-warning {
+  color: var(--ts-warn);
+}
+
+.ts-issue-kind,
+.ts-issue-path,
+.ts-issue-at {
+  color: var(--ts-ink-3);
+}
+
+/* 구분자 「검사 결과」 블록 — 폼 아래 괘선 블록. 오류(빨강) · 경고(노랑)는 .ts-issues 색을 그대로 쓴다 (기능/구분자 §3.3) */
+.ts-inspection {
+  border-top: 1px solid var(--ts-rule-strong);
+  margin-top: 12px;
+  padding-top: 10px;
+}
+
+.ts-inspection .ts-issues a {
+  color: inherit;
+}
+
+/* 검사한 뒤 식 · 타입을 바꾸면 — 결과는 남기고 오래됐다고만 알린다 (타이핑 중 자동 검사 없음) */
+.ts-inspection-stale {
+  color: var(--ts-warn);
+}
+
+/* 읽기 모드 제목 옆 경고 배지 묶음 — 헤더 줄 안, 조작 버튼 앞 */
+.ts-edit-badges {
+  display: inline-flex;
+  gap: 4px;
+}
+
+/* ── 구분자 넣기 패널 (기능/구분자 §4.3) ──────────────────────────────────────
+ * 생성 · 수정 화면 오른쪽에 상시. 항목은 버튼이지만 괘선 없는 한 줄 — 더블클릭으로 식의 커서 자리에 들어간다.
+ * 상위 레벨 폼은 흐리게(부를 수 없다). 긴 목록은 패널 안에서만 스크롤한다.
+ */
+.ts-insert-body {
+  max-height: 60vh;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+
+.ts-insert-tree,
+.ts-insert-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ts-insert-tree > li + li {
+  margin-top: 8px;
+}
+
+.ts-insert-form {
+  margin: 0 0 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ts-ink-2);
+}
+
+.ts-insert-upper .ts-insert-form {
+  color: var(--ts-ink-3);
+  font-weight: 400;
+}
+
+.ts-insert-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  min-height: 28px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  text-align: left;
+  font-size: 13px;
+  user-select: none;
+}
+
+.ts-insert-item:hover:not([disabled]),
+.ts-insert-item:focus-visible {
+  background: var(--ts-surface-2);
+}
+
+.ts-insert-item[disabled] {
+  opacity: 0.5;
+}
+
+.ts-insert-detail {
+  font-size: 11px;
+  color: var(--ts-ink-3);
+}
+
+.ts-insert-operators {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+}
+
+/* 파괴적 확인 — 카드가 아니라 괘선 블록. 잃는 것을 이름과 개수로 (§9.5) */
+.ts-confirm {
+  background: none;
+  border: 1px solid var(--ts-rule-strong);
+  border-left: 2px solid var(--ts-error);
+  border-radius: 3px;
+  padding: 10px 12px;
+  margin: 12px 0;
+  max-width: 44em;
+}
+
+.ts-confirm-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ts-ink);
+  margin: 0 0 6px;
+}
+
+.ts-confirm-body {
+  font-size: 13px;
+  color: var(--ts-ink-2);
+  margin: 0 0 8px;
+}
+
+.ts-confirm-loss {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: 12px;
+  color: var(--ts-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.ts-confirm-loss li {
+  padding: 1px 0;
+}
+
+.ts-confirm-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── 11. 문서 세계 — 명조 15/1.9 · 측정폭 44em (§1.1) ─────────────────────── */
+
+.ts-doc {
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1.9;
+  color: var(--ts-ink);
+  background: var(--ts-paper);
+  max-width: 44em;
+  padding: 8px 0 16px;
+  margin-bottom: 16px;
+}
+
+.ts-doc-title {
+  font-family: var(--serif);
+  font-size: 17px;
+  font-weight: 700;
+  text-align: center;
+  margin: 8px 0 20px;
+}
+
+.ts-doc-article {
+  margin: 0 0 20px;
+}
+
+.ts-doc-article-title,
+.ts-doc-title-line {
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 700;
+  margin: 20px 0 4px;
+}
+
+/* 항 ①②③ — 라벨 뒤로 매달리는 들여쓰기 */
+.ts-doc-paragraph {
+  margin: 0 0 4px;
+  padding-left: 1.5em;
+  text-indent: -1.5em;
+}
+
+.ts-doc-num {
+  color: var(--ts-ink-2);
+}
+
+/* 호 1.2.3. — 한 단계 1.5em */
+.ts-doc-items {
+  list-style: none;
+  counter-reset: ts-doc-item;
+  margin: 2px 0;
+  padding-left: 1.5em;
+}
+
+.ts-doc-item {
+  counter-increment: ts-doc-item;
+  padding-left: 1.6em;
+  text-indent: -1.6em;
+}
+
+.ts-doc-item::before {
+  content: counter(ts-doc-item) ". ";
+  color: var(--ts-ink-2);
+}
+
+/* 목 가.나.다. */
+.ts-doc-subitems {
+  list-style: none;
+  counter-reset: ts-doc-subitem;
+  margin: 2px 0;
+  padding-left: 1.5em;
+  text-indent: 0;
+}
+
+.ts-doc-subitem {
+  counter-increment: ts-doc-subitem;
+  padding-left: 1.6em;
+  text-indent: -1.6em;
+}
+
+.ts-doc-subitem::before {
+  content: counter(ts-doc-subitem, hangul) ". ";
+  color: var(--ts-ink-2);
+}
+
+/* 관 · 정적 표 · 박스 (기능/문면 §3.2) */
+.ts-doc-section-title {
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  margin: 28px 0 8px;
+}
+
+.ts-doc-static-item {
+  list-style: none;
+  padding-left: 0;
+  text-indent: 0;
+}
+
+.ts-doc-static-item::before {
+  content: none;
+}
+
+.ts-doc-table-wrap {
+  margin: 8px 0 12px 1.5em;
+  text-indent: 0;
+}
+
+.ts-doc-table-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.ts-doc-table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.ts-doc-table th,
+.ts-doc-table td {
+  border: 1px solid var(--ts-rule-strong);
+  padding: 5px 8px;
+  vertical-align: top;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  text-indent: 0;
+}
+
+.ts-doc-table th {
+  background: var(--ts-surface-2);
+  font-weight: 700;
+  text-align: center;
+}
+
+.ts-doc-box {
+  margin: 8px 0 12px 1.5em;
+  padding: 8px 12px;
+  border: 1px solid var(--ts-rule-strong);
+  background: var(--ts-surface);
+  font-size: 14px;
+  line-height: 1.7;
+  text-indent: 0;
+}
+
+.ts-doc-box-title {
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.ts-doc-box-line {
+  margin: 0;
+}
+
+.ts-doc-group {
+  margin: 0 0 24px;
+}
+
+.ts-doc-group-title {
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 700;
+  margin: 24px 0 8px;
+}
+
+/* 참조는 주칠 밑줄, 치환 슬롯은 derived + 밑줄 (§2 L3) */
+.ts-doc-ref {
+  color: var(--ts-mark);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+
+.ts-doc-slot {
+  color: var(--ts-derived);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* 오류 자리 — 색만으로 말하지 않는다. 아이콘 + 문구 (§4) */
+.ts-doc-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--ts-error);
+  background: var(--ts-error-bg);
+  border: 1px solid var(--ts-error);
+  border-radius: 3px;
+  padding: 0 4px;
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.5;
+  text-indent: 0;
+}
+
+/* 조건 분기 — 배경색을 쓰지 않는다. 괘선이 자기 열을 차지한다 (§2 L3) */
+.ts-doc-cond {
+  border-left: 2px solid var(--ts-ink-3);
+  padding-left: 10px;
+  margin: 4px 0;
+}
+
+.ts-doc-cond.is-alt {
+  border-left-style: dashed;
+}
+
+/* 문장 안 조건 — 배경 없이 밑줄만. 첫 가지는 점선, 뒤 가지(elif · else)는 파선 (§2 L3). */
+.ts-doc-inline-cond {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  margin-inline: 1px;
+}
+
+.ts-doc-inline-cond.is-alt {
+  text-decoration-style: dashed;
+}
+
+.ts-doc-inline-cond.ts-dim {
+  text-decoration-line: underline line-through;
+}
+
+.ts-doc-cond-head {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ts-ink-3);
+  line-height: 1.6;
+}
+
+/* 문서 세계 안의 「누르는 자리」 — 편집 모드의 인라인 글자 · 조건 칩 · 셀 ＋ (ADR-0074: 쿼리 링크가 아니라 편집본 선택).
+   버튼이지만 글자처럼 보인다 — 점선 밑줄이 「여기 고칠 수 있다」를 말하고, 고른 자리는 실선 주칠 밑줄. */
+button.ts-doc-pick {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  text-decoration: underline dotted var(--ts-rule-strong);
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+
+button.ts-doc-pick:hover {
+  background: none;
+  text-decoration-color: var(--ts-ink-2);
+}
+
+button.ts-doc-pick[aria-current="true"] {
+  text-decoration: underline solid var(--ts-mark);
+}
+
+button.ts-doc-pick.ts-doc-cond-head {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ts-ink-3);
+  text-decoration: none;
+}
+
+button.ts-doc-pick.ts-doc-cond-head[aria-current="true"] {
+  text-decoration: underline solid var(--ts-mark);
+}
+
+button.ts-doc-cell-add {
+  display: inline-flex;
+  min-height: 0;
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ts-ink-3);
+  vertical-align: middle;
+}
+
+button.ts-doc-cell-add[aria-current="true"] {
+  color: var(--ts-mark);
+}
+
+/* 저장 중 — 본문 · 패널은 잠긴다 (디자인원칙 §2 L2 「저장 중에는 전부 disabled」) */
+.ts-l3[aria-busy="true"] .ts-l3-body,
+.ts-l3[aria-busy="true"] .ts-l3-side {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* 편집 중 표시 — 바의 「편집 중 · 고친 것 N건」 */
+.ts-l3-dirty {
+  font-size: 12px;
+  color: var(--ts-mark);
+}
+
+/* ── 12. L3 저작 셸 — 목차 196 · 본문 · 우측 360 (§2 L3) ──────────────────── */
+
+.ts-l3 {
+  display: grid;
+  grid-template-columns: 196px minmax(0, 1fr) 360px;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-items: stretch;
+  min-height: calc(100vh - 1px);
+}
+
+.ts-l3-toc {
+  border-right: 1px solid var(--ts-rule);
+  padding: 12px 8px;
+  overflow: auto;
+  font-size: 13px;
+}
+
+.ts-l3-toc a {
+  display: block;
+  padding: 2px 6px;
+  border-left: 2px solid transparent;
+  color: var(--ts-ink-2);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ts-l3-toc a:hover {
+  background: var(--ts-surface-2);
+  color: var(--ts-ink);
+}
+
+.ts-l3-toc a[aria-current="true"],
+.ts-l3-toc a[aria-current="page"] {
+  color: var(--ts-mark);
+  border-left-color: var(--ts-mark);
+}
+
+.ts-l3-body {
+  min-width: 0;
+  padding: 12px 24px 32px;
+  overflow: auto;
+}
+
+.ts-l3-side {
+  border-left: 1px solid var(--ts-rule);
+  background: var(--ts-surface);
+  padding: 12px;
+  overflow: auto;
+  font-size: 13px;
+}
+
+.ts-l3-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px 12px;
+  background: var(--ts-surface-2);
+  border-bottom: 1px solid var(--ts-rule-strong);
+  font-size: 12px;
+  color: var(--ts-ink-2);
+}
+
+.ts-l3-bar .ts-l3-bar-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── 12-1. 조건 팝업 — 두 칸(줄 · 트리) · 담보 구분자 트리 (ADR-0066 §4~§7) ── */
+
+.ts-cond-editor {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ts-cond-chip-edit {
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+  background: var(--ts-surface);
+  padding: 1px 7px;
+  color: var(--ts-ink);
+  text-align: left;
+}
+
+.ts-cond-dialog .ts-dialog-body {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 12px;
+}
+
+.ts-cond-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.ts-chip.is-focus {
+  outline: 2px solid var(--ts-mark);
+}
+
+.ts-chip-broken {
+  color: var(--ts-error);
+}
+
+.ts-cond-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.ts-cond-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.ts-cond-tree ul {
+  list-style: none;
+  padding-left: 12px;
+  margin: 0;
+}
+
+.ts-cond-tree-root {
+  padding-left: 0 !important;
+}
+
+.ts-cond-tree-node {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+}
+
+.ts-cond-tree-leaves {
+  padding-left: 20px !important;
+}
+
+.ts-cond-tree-leaf {
+  border: 0;
+  background: none;
+  padding: 1px 4px;
+  color: var(--ts-ink-2);
+  cursor: pointer;
+}
+
+.ts-cond-tree-leaf:hover {
+  color: var(--ts-mark);
+}
+
+/* ── 13. 트리 · 문면 구조 편집기 ─────────────────────────────────────────── */
+
+.ts-tree {
+  list-style: none;
+  padding-left: 16px;
+  margin: 0;
+}
+
+.ts-tree > li {
+  margin: 1px 0;
+}
+
+.ts-tree-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 28px;
+}
+
+.ts-derived-mark {
+  color: var(--ts-derived);
+  margin-right: 2px;
+}
+
+.ts-insert-menu {
+  margin: 4px 0;
+  font-size: 12px;
+}
+
+.ts-insert-menu summary {
+  cursor: pointer;
+  color: var(--ts-ink-3);
+}
+
+.ts-cond,
+.ts-cond-inline {
+  border-left: 2px solid var(--ts-ink-3);
+  padding-left: 10px;
+  margin: 4px 0;
+}
+
+.ts-cond-branch {
+  margin: 4px 0;
+  padding-left: 4px;
+}
+
+.ts-node-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 4px;
+}
+
+.ts-doc-actions {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 8px;
+  align-items: center;
+  /* 문서 세계의 매달림 들여쓰기(text-indent) 밖으로 빼야 아이콘이 겹치지 않는다. */
+  float: right;
+  font-family: var(--sans);
+  text-indent: 0;
+}
+
+.ts-doc-actions button {
+  padding: 1px 6px;
+}
+
+.ts-doc-actions .ts-iconbtn {
+  padding: 0;
+}
+
+
+/* ── 담보 상세 — 탭 + 구조 트리 + 노드 목록 (기능/담보 §4 「상세」) ─────────────── */
+
+/* 기본 탭: 왼쪽 폼 그리드 + 오른쪽 사용처 · 문면. 트리는 아래 전폭. */
+.ts-detail-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 260px);
+  gap: 12px 32px;
+  align-items: start;
+}
+
+.ts-detail-main {
+  min-width: 0;
+}
+
+.ts-detail-side {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 4px 8px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.ts-detail-side dt {
+  color: var(--ts-ink-2);
+}
+
+.ts-detail-side dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.ts-detail-full {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.ts-inline-form {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.ts-inline-form input {
+  min-width: 0;
+  flex: 1;
+}
+
+.ts-tree-block {
+  margin-top: 8px;
+}
+
+/* 구조는 들여쓰기 + 순번으로 읽는다 — 세 층이 한눈에. */
+.ts-tree-num {
+  display: inline-block;
+  min-width: 14px;
+  color: var(--ts-ink-2);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.ts-tree-name {
+  min-width: 0;
+}
+
+.ts-tree-input {
+  min-width: 0;
+  flex: 0 1 260px;
+}
+
+.ts-linklike {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* 구조 편집기 (미탑재 담보, ADR-0052) — 행의 ↑ ↓ ✕ 는 값 표와 같은 아이콘 버튼, 「+ 세부보장」·「+ 급부」 는 트리 끝의 조용한 링크. */
+.ts-tree-input[aria-invalid="true"] {
+  border-color: var(--ts-error);
+}
+
+.ts-tree-issue {
+  flex-basis: auto;
+  white-space: nowrap;
+}
+
+.ts-tree-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ts-ink-2);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.ts-tree-add:hover {
+  color: var(--ts-ink);
+}
+
+/* 값 탭: 왼쪽 그 층의 노드 목록(입력 n / 부착 m) + 오른쪽 선택한 노드의 값 폼. */
+.ts-node-split {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.ts-node-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ts-node-list button {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-height: 28px;
+  padding: 2px 6px;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ts-node-list button[aria-current="true"] {
+  border-left-color: var(--ts-mark);
+  background: var(--ts-surface-2);
+}
+
+.ts-node-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ts-node-list .ts-count {
+  font-variant-numeric: tabular-nums;
+}
+
+.ts-value-block {
+  margin-bottom: 12px;
+}
+
+.ts-detach {
+  margin: 2px 0 0;
+}
+
+/* 경고 — 거부는 아니고 「그래도 저장은 된다」 (담보명의 담보속성 값, Q-C). */
+.ts-warn {
+  margin: 2px 0 6px;
+  color: var(--ts-warn);
+  font-size: 12px;
+}
+
+/*
+ * 값 폼의 읽기 모드 (EditShell 안에 얹힌 embedded StructForm) — 입력칸을 잠긴 칸으로 보인다.
+ * 「테두리가 없으면 못 고친다」(디자인원칙 §1.2)를 폼 전체에도 그대로 적용한다.
+ */
+.ts-form-read input.ts-field-direct,
+.ts-form-read select.ts-field-direct,
+.ts-form-read textarea.ts-field-direct {
+  border-color: transparent;
+  background: var(--ts-surface-2);
+  color: var(--ts-ink-2);
+}
+
+/* 읽기 모드에서는 「비우기」·되돌리기 같은 행 조작과 제안 배지를 걷는다. */
+.ts-form-read .ts-badge.proposed,
+.ts-form-read .ts-iconbtn {
+  display: none;
+}
+
+/* 생성 폼의 값 표 — 값 칸 폭 전체를 쓰고, 「값 추가」 줄은 표 바로 아래 붙는다 */
+.ts-values-input {
+  flex-basis: 100%;
+  min-width: 0;
+}
+
+/* 값 표 머리 — 행 수 + 「+」(빈 행 추가). 표 위 오른쪽 끝, 표와 같은 폭 */
+.ts-values-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 0 4px;
+}
+
+.ts-table tr.is-error > td {
+  background: var(--ts-error-bg);
+}
+
+.ts-table td.ts-empty-cell {
+  padding: 18px 8px;
+  color: var(--ts-ink-3);
+  text-align: center;
+}
+
+.ts-values-input .col-flex > input {
+  width: 100%;
+}
+
+/* 필드 표의 타입 셀 — 셀렉트 + 복수 체크박스를 한 줄에 */
+.ts-type-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+/* ── 토글 스위치 ──────────────────────────────────────────────────────────── */
+
+.ts-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ts-ink-2);
+}
+
+.ts-toggle > input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+}
+
+.ts-toggle-track {
+  position: relative;
+  width: 30px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--ts-rule-strong);
+  transition: background 120ms;
+  flex: 0 0 auto;
+}
+
+.ts-toggle-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ts-surface);
+  transition: transform 120ms;
+}
+
+.ts-toggle > input:checked + .ts-toggle-track {
+  background: var(--ts-mark);
+}
+
+.ts-toggle > input:checked + .ts-toggle-track::after {
+  transform: translateX(14px);
+}
+
+.ts-toggle > input:focus-visible + .ts-toggle-track {
+  outline: 2px solid var(--ts-mark);
+  outline-offset: 2px;
+}
+
+.ts-toggle > input:checked ~ .ts-toggle-label {
+  font-weight: 600;
+  color: var(--ts-ink);
+}
+
+.ts-toggle > input:disabled ~ * {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* 목록의 값 칩 — 앞 몇 개만 칩으로, 넘치면 「+N」. 칸 폭을 넘는 칩은 잘린다 (현행 약관시스템 조회 화면 준용, 2026-09-12) */
+.ts-chips {
+  display: inline-flex;
+  gap: 4px;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.ts-chips > .ts-chip {
+  flex: 0 1 auto;
+  max-width: 140px;
+  min-height: 20px;
+  padding: 0 7px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  line-height: 20px;
+}
+
+.ts-chip-more {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-height: 20px;
+  padding: 0 7px;
+  border-radius: 3px;
+  background: var(--ts-surface-2);
+  color: var(--ts-ink-3);
+  font-size: 12px;
+}
+
+/* 목록에서 상세로 들어가는 이름은 굵게 — 훑을 때 눈이 걸리는 열이 이름이다 */
+.ts-table td.col-flex > a {
+  font-weight: 600;
+}
+
+/*
+ * 값 폼 — 폼 하나가 카드 하나 (기능/마스터 §3.5). 카드 목록 = 마스터의 폼 목록.
+ * 카드는 fieldset 이다 — 접근성 이름은 aria-label(폼 표시명), 제목은 legend.
+ */
+.ts-form-card {
+  min-width: 0;
+  border: 1px solid var(--ts-rule);
+  border-radius: 6px;
+  padding: 8px 12px 4px;
+  margin: 0 0 12px;
+}
+
+.ts-form-card-title {
+  font-weight: 600;
+  padding: 0 4px;
+}
+
+/* 라벨 칸 — 라벨과 코드 칩이 나란히, 좁으면 칩이 다음 줄로 */
+.ts-form-label-cell {
+  min-width: 0;
+}
+
+/* 코드 칩 — `폼키.필드키`. 관리자에게만 보이며 마스터 화면의 그 필드로 이어진다 */
+.ts-chip-code {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px solid var(--ts-rule);
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--ts-ink-3);
+  text-decoration: none;
+}
+
+.ts-chip-code:hover {
+  color: var(--ts-ink);
+  border-color: var(--ts-rule-strong);
+}
+
+/* 강조 행 — 마스터 사용처에서 건너온 자리. 테두리(형태)로 말한다 */
+.ts-field-highlight {
+  outline: 2px solid var(--ts-mark);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── 14. 마스터 — L1 필드 표 + 상세 화면(`/master/[key]`), 편집 없음 (기능/마스터 §4 · 2026-09-27 두 칸 → 목록 + 상세) ── */
+
+/* 목록 — 필드 표 (읽기 전용, L1 셸 재사용) */
+.ts-master-list {
+  min-width: 0;
+}
+
+/* 좁아지면 표가 제자리에서 가로로 흐른다 */
+.ts-master-scroll {
+  overflow-x: auto;
+}
+
+.ts-master-list .ts-table td {
+  white-space: nowrap;
+}
+
+.ts-master-type {
+  font-size: 12px;
+  color: var(--ts-ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+/* 폼 칸 — 여러 필드 행에 걸친 한 칸. 위에서부터 읽히게 위 정렬 + 필드 칸과 세로 괘선으로 가른다 */
+.ts-master-list td.ts-master-form {
+  vertical-align: top;
+  border-right: 1px solid var(--ts-rule);
+}
+
+/* 행 어디를 눌러도 필드 상세, 폼 칸은 폼 상세 (RowLink) — 가리키는 칸만 강조한다:
+   폼 칸 위에서는 그 칸만, 필드 칸 위에서는 그 행의 필드 칸들만 (폼 칸은 여러 행의 것이라 빼 둔다). */
+.ts-master-row {
+  cursor: pointer;
+}
+
+.ts-master-list tr.ts-master-row:hover td.ts-master-form {
+  background: transparent;
+}
+
+.ts-master-list tr.ts-master-row:has(td.ts-master-form:hover) td:not(.ts-master-form) {
+  background: transparent;
+}
+
+.ts-master-list tr.ts-master-row td.ts-master-form:hover {
+  background: var(--ts-surface-2);
+}
+
+.ts-master-empty {
+  margin: 8px 6px;
+  font-size: 13px;
+  color: var(--ts-ink-3);
+}
+
+/* 상세 안의 구획 제목(「사용처」) — 위 괘선으로 정체와 가른다 */
+.ts-master-section {
+  margin: 16px 0 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ts-rule-strong);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ts-master-nowrap {
+  white-space: nowrap;
+}
+
+.ts-master-ident {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 2px 8px;
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+.ts-master-ident dt {
+  font-size: 11px;
+  color: var(--ts-ink-3);
+  line-height: 26px;
+}
+
+.ts-master-ident dd {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  min-height: 26px;
+}
+
+.ts-copy {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ts-copy-toast {
+  position: absolute;
+  left: calc(100% + 6px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 1px 6px;
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+  background: var(--ts-surface);
+  font-size: 11px;
+  color: var(--ts-ink-2);
+  white-space: nowrap;
+}
+
+/* 라이브 영역은 늘 DOM 에 있다 (CopyButton) — 글자가 없을 때만 테두리 상자를 숨긴다. */
+.ts-copy-toast:empty {
+  visibility: hidden;
+}
+
+.ts-master-subtitle {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 12px 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ts-master-section + .ts-master-subtitle {
+  margin-top: 4px;
+}
+
+.ts-master-usage {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+}
+
+.ts-master-usage > li {
+  padding: 6px 0;
+  border-top: 1px solid var(--ts-rule);
+}
+
+.ts-master-usage-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ts-master-usage-head .ts-mono {
+  color: var(--ts-ink-2);
+}
+
+.ts-master-usage-sub {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 2px 0 0 12px;
+  font-size: 12px;
+}
+
+.ts-master-usage-sub ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ts-master-stand {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0;
+  font-size: 13px;
+}
+
+/* 값 노드 페이저는 본문 안에서만 뜬다 — 화면 하단에 붙지 않는다 */
+.ts-master-detail .ts-pager {
+  position: static;
+}
+
+/* ── 15. 보통약관 약관 섹션 — 목차 · 원문 · 미리보기 세 패널 (기능/상품 §4.5) ── */
+
+.ts-terms-panels {
+  display: grid;
+  grid-template-columns: minmax(200px, 1.1fr) 2fr 2fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.ts-terms-panel {
+  border: 1px solid var(--ts-rule);
+  border-radius: 3px;
+  padding: 8px 12px;
+  max-height: 72vh;
+  overflow: auto;
+  min-width: 0;
+}
+
+.ts-terms-panel-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ts-ink-2);
+}
+
+/* 패널 안의 문서 세계는 패널 폭을 넘지 않는다 — 측정폭 44em 은 여기서 상한이 아니다 */
+.ts-terms-panel .ts-doc {
+  max-width: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* 목차 — 관 제목 + 조 행(체크박스 = 노출여부) */
+.ts-terms-toc {
+  font-size: 13px;
+}
+
+.ts-toc-section {
+  margin: 10px 0 2px;
+  font-weight: 600;
+  color: var(--ts-ink);
+}
+
+.ts-terms-toc > div:first-child > .ts-toc-section {
+  margin-top: 0;
+}
+
+.ts-toc-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-left: 4px;
+}
+
+/* 조 노출 저장 실패 — 체크박스 옆(좁으면 아랫줄)에 이유 한 줄 (코덱스 리뷰 2026-09-15 Minor-2) */
+.ts-toc-error {
+  flex-basis: 100%;
+  padding-left: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ts-toc-row a {
+  display: block;
+  padding: 2px 6px;
+  border-left: 2px solid transparent;
+  color: var(--ts-ink-2);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ts-toc-row a:hover {
+  background: var(--ts-surface-2);
+  color: var(--ts-ink);
+}
+
+.ts-toc-row a[aria-current="true"] {
+  color: var(--ts-mark);
+  border-left-color: var(--ts-mark);
+}
+
+/* 끈 조 — 목차는 취소선, 원문은 자리에 남되 흐리게 (§2 「목차(좌)」 · 「약관(가운데)」) */
+.is-hidden-article {
+  opacity: 0.55;
+}
+
+.ts-toc-row.is-hidden-article a {
+  text-decoration: line-through;
+}
+
+/* 공용조항 자리 — 문면 안의 괘선 박스. 안쪽은 고딕(조작이 사는 자리다) */
+.ts-doc-clause-box {
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+  padding: 6px 8px;
+  margin: 6px 0;
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.6;
+  text-indent: 0;
+}
+
+.ts-doc-clause-box > p,
+.ts-doc-clause-box > .ts-clause-box-row {
+  margin: 0 0 2px;
+}
+
+.ts-clause-box-head {
+  font-weight: 600;
+}
+
+.ts-doc-clause-box .ts-form {
+  margin: 4px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+@media (max-width: 1100px) {
+  .ts-terms-panels {
+    grid-template-columns: 1fr;
+  }
+
+  .ts-terms-panel {
+    max-height: 60vh;
+  }
+}
+
+/* ── 상품 상세 — 경로 · 편집/더보기 · 기본정보 표 (와이어프레임 §19A · §20.2) ─────────────
+ * 버튼 규격은 이 범위 안에서만 통일한다: 높이 32 · 모서리 4 · 글자 13 · 같은 테두리와 좌우 여백.
+ * 주 행동(저장)은 강조색만 다르다. 전역 button 규칙은 건드리지 않는다. */
+.ts-product-head { align-items: center; }
+.ts-product-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+.ts-product-actions > button,
+.ts-product-actions > a,
+.ts-more-button,
+.ts-more-menu-item,
+.ts-basic-toolbar button,
+.ts-basic-confirm-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 4px;
+  background: var(--ts-surface);
+  color: var(--ts-ink);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.ts-product-actions > button.primary,
+.ts-basic-confirm-actions button.primary { border-color: var(--ts-mark); color: var(--ts-mark); font-weight: 700; }
+.ts-product-actions > button.primary:hover { background: var(--ts-mark-bg); }
+
+/* 더보기 — 버튼 하나 뒤의 텍스트 메뉴. 항목은 같은 높이·정렬 (§20.2 버튼 원칙). */
+.ts-more { position: relative; }
+.ts-more-caret { font-size: 11px; color: var(--ts-ink-3); }
+.ts-more-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+  padding: 4px;
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 4px;
+  background: var(--ts-surface);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+.ts-more-menu-item { justify-content: flex-start; border-color: transparent; background: transparent; }
+.ts-more-menu-item:hover,
+.ts-more-menu-item:focus-visible { background: var(--ts-surface-2); }
+.ts-more-menu-item.danger:hover,
+.ts-more-menu-item.danger:focus-visible { color: var(--ts-error); background: var(--ts-error-bg); }
+
+/* 기본정보 본문 */
+.ts-basic-editor { max-width: 1040px; padding-top: 20px; }
+.ts-basic-editor > .ts-error-banner,
+.ts-basic-editor > .ts-confirm { margin-bottom: 16px; }
+.ts-basic-body { border: 0; padding: 0; margin: 0; min-width: 0; }
+.ts-basic-name { display: grid; grid-template-columns: 100px minmax(0, 1fr); align-items: start; gap: 20px; margin-bottom: 32px; }
+.ts-basic-name > span:first-child { font-weight: 600; line-height: 32px; }
+.ts-basic-name-control { display: grid; gap: 4px; }
+.ts-basic-name input { width: 100%; min-height: 32px; box-sizing: border-box; }
+.ts-basic-name input[readonly] { background: var(--ts-surface-2); border-color: var(--ts-rule); color: var(--ts-ink); }
+.ts-basic-product-values { margin-bottom: 32px; }
+.ts-basic-product-values > h3,
+.ts-basic-plans > h3 { font-size: 15px; margin: 0 0 12px; }
+.ts-basic-tabs { display: flex; gap: 24px; border-bottom: 1px solid var(--ts-rule-strong); }
+.ts-basic-tabs button { border: 0; border-radius: 0; border-bottom: 2px solid transparent; padding: 10px 0; margin-bottom: -1px; background: transparent; color: var(--ts-ink-3); font-size: 13px; }
+.ts-basic-tabs button:hover { background: transparent; color: var(--ts-ink); }
+.ts-basic-tabs button[aria-selected="true"] { border-bottom-color: var(--ts-ink); color: var(--ts-ink); font-weight: 700; }
+.ts-basic-toolbar { display: flex; justify-content: flex-end; gap: 8px; margin: 12px 0; }
+.ts-basic-toolbar button.danger:hover,
+.ts-basic-toolbar button.danger:focus-visible { border-color: var(--ts-error); color: var(--ts-error); background: var(--ts-error-bg); }
+.ts-basic-empty { color: var(--ts-ink-3); padding: 24px 0; margin: 0; }
+
+/* 표 — 가로가 넘치면 표 상자 안에서만 스크롤한다 (모바일). */
+.ts-basic-table-wrap { overflow-x: auto; margin-top: 12px; }
+.ts-basic-toolbar + .ts-basic-table-wrap { margin-top: 0; }
+.ts-basic-table { min-width: 100%; }
+.ts-basic-table th,
+.ts-basic-table td { vertical-align: middle; }
+.ts-basic-table tbody th { font-size: 13px; font-weight: 400; color: var(--ts-ink-2); white-space: nowrap; }
+.ts-basic-table td { padding-block: 5px; }
+.ts-basic-table .ts-basic-col-select { width: 44px; text-align: center; }
+.ts-basic-table .ts-basic-col-name { min-width: 200px; }
+.ts-basic-table input[type="text"],
+.ts-basic-table input[type="number"],
+.ts-basic-table input[type="date"],
+.ts-basic-table select { min-height: 28px; box-sizing: border-box; }
+.ts-basic-table input[type="text"] { width: 100%; }
+.ts-basic-table input.ts-basic-number { width: 64px; }
+.ts-basic-table input[aria-invalid="true"] { border-color: var(--ts-error); }
+.ts-basic-table .ts-form-error { display: block; margin-top: 2px; }
+.ts-basic-table .ts-form-radios,
+.ts-basic-table .ts-form-checks { gap: 12px; }
+.ts-basic-table tr.is-highlighted > td,
+.ts-basic-table tr.is-highlighted > th,
+.ts-basic-table td.is-highlighted { background: var(--ts-mark-bg); box-shadow: inset 0 0 0 1px var(--ts-mark); }
+
+@media (max-width: 680px) {
+  .ts-basic-name { grid-template-columns: 1fr; gap: 6px; }
+  .ts-basic-name > span:first-child { line-height: 1.4; }
+  .ts-product-actions { margin-left: 0; }
+}
+
+/* 표 입력 (기능/담보 §3.4) — table 필드 편집: 머리글 · 셀 · 붙여넣기 힌트. */
+.ts-table-input table { border-collapse: collapse; }
+.ts-table-input td,
+.ts-table-input th { border: 1px solid var(--ts-rule); padding: 2px 6px; }
+.ts-table-input input { width: 6em; }
+.ts-table-hint { margin-left: 4px; font-size: 0.85em; }
+
+/* 여는 폼 카드 머리 열기/닫기 버튼 (ADR-0065 §4) */
+.ts-form-card-toggle { margin-left: 8px; font-size: 0.85em; }

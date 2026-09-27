@@ -1,0 +1,1 @@
+ALTER TABLE "clause_option_overrides" ALTER COLUMN "node_id" SET DATA TYPE text;

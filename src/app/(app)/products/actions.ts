@@ -1,0 +1,332 @@
+"use server";
+
+import { z } from "zod";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+
+import type { ActionOutcome } from "@/app/_components/ValueForm";
+import { str } from "@/app/_lib/formData";
+import { describeRejection, errorRedirectPath } from "@/app/_lib/rejection";
+import type { ProductBasicInput, OverrideScope, SnapshotOwner } from "@/services/product";
+import type { Code, Id, Result } from "@/domain/types";
+import type { Submission } from "@/forms";
+import { currentActor, getServices } from "@/lib/services";
+
+import { generalReturnPath, parseOptionSelection, parseSelections, productDetailPath, type ProductTab } from "./lib";
+
+const basicValue = z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]);
+const basicSlots = z.array(z.object({ path: z.string(), value: basicValue.optional() }).transform((entry) => ({ path: entry.path, value: entry.value })));
+const basicSchema = z.object({
+  name: z.string(), values: basicSlots,
+  options: z.array(z.object({ id: z.string().uuid(), isNew: z.boolean(), axis: z.enum(["type", "form"]), number: z.number().int().positive(), name: z.string(), planTypeCode: z.string(), values: basicSlots })),
+  combinations: z.array(z.array(z.string().uuid())),
+});
+
+export async function saveProductBasicAction(id: Id, input: ProductBasicInput, confirm = false): Promise<import("@/app/_lib/edit").EditOutcome> {
+  const actor = await currentActor();
+  const parsed = basicSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: "입력 내용을 확인해 주세요. 종·형 번호는 1 이상의 정수여야 합니다." };
+  const result = await getServices().product.saveBasic(actor, id, parsed.data, { confirm });
+  if (!result.ok) {
+    if (result.rejection.reason === "needsConfirmation") return { ok: "confirm", impact: result.rejection.impact, token: "basic" };
+    return { ok: false, message: msg(result.rejection) };
+  }
+  revalidatePath(BASE);
+  revalidatePath(detailPath(id));
+  return { ok: true };
+}
+
+const BASE = "/products";
+
+function msg(r: Parameters<typeof describeRejection>[0]): string {
+  return describeRejection(r).message;
+}
+/** 되돌아갈 자리 — 섹션이 사는 탭까지 (기능/상품 §3.8). 탭을 안 주면 기본정보다. */
+function detailPath(id: Id, tab?: ProductTab): string {
+  return productDetailPath(id, tab);
+}
+
+// ───────────────────────────── 상품 ─────────────────────────────
+
+export async function createProductAction(formData: FormData): Promise<void> {
+  const actor = await currentActor();
+  const r = await getServices().product.createProduct(actor, { name: str(formData, "name") });
+  if (!r.ok) redirect(errorRedirectPath(`${BASE}/new`, msg(r.rejection)));
+  redirect(detailPath(r.value.id));
+}
+
+export async function renameProductAction(id: Id, formData: FormData): Promise<void> {
+  const actor = await currentActor();
+  const r = await getServices().product.renameProduct(actor, id, str(formData, "name"));
+  if (!r.ok) redirect(errorRedirectPath(detailPath(id, "basic"), msg(r.rejection)));
+  redirect(detailPath(id, "basic"));
+}
+
+/**
+ * 보통약관 템플릿 선택·교체·해제. 교체로 조 노출·오버라이드를 잃으면 서비스가
+ * `needsConfirmation` 으로 거부한다 — 그때는 **확인 카드가 뜰 자리**로 보낸다
+ * (`?tab=general&confirm=template:<새 템플릿 id>`, 해제는 빈 id). 카드의 실행 버튼이
+ * 같은 액션을 `confirm=1` 로 다시 부른다 (코덱스 리뷰 2026-09-15 Important-6).
+ */
+export async function setProductGeneralDocumentAction(id: Id, formData: FormData): Promise<void> {
+  const actor = await currentActor();
+  const generalDocumentId = str(formData, "generalDocumentId") || undefined;
+  const r = await getServices().product.setGeneralDocument(actor, id, generalDocumentId, { confirm: formData.get("confirm") === "1" });
+  if (!r.ok && r.rejection.reason === "needsConfirmation") redirect(`${detailPath(id, "general")}&confirm=template:${encodeURIComponent(generalDocumentId ?? "")}`);
+  if (!r.ok) redirect(errorRedirectPath(detailPath(id, "general"), msg(r.rejection)));
+  redirect(detailPath(id, "general"));
+}
+
+/** 확인 카드의 실행 버튼 — 같은 교체를 `confirm` 으로 다시 부른다 (폼에는 필드가 없어 여기서 짠다). */
+export async function confirmProductGeneralDocumentAction(id: Id, generalDocumentId: Id | undefined): Promise<void> {
+  const fd = new FormData();
+  if (generalDocumentId) fd.set("generalDocumentId", generalDocumentId);
+  fd.set("confirm", "1");
+  await setProductGeneralDocumentAction(id, fd);
+}
+
+export async function deleteProductAction(id: Id): Promise<void> {
+  const actor = await currentActor();
+  const r = await getServices().product.deleteProduct(actor, id, { confirm: true });
+  if (!r.ok) redirect(errorRedirectPath(detailPath(id), msg(r.rejection)));
+  redirect(BASE);
+}
+
+export async function writeProductValuesAction(productId: Id, submission: Submission): Promise<ActionOutcome> {
+  const actor = await currentActor();
+  const services = getServices();
+  return outcome(await services.product.setProductValues(actor, productId, submission.values));
+}
+
+/**
+ * 보통약관 조 노출 토글 (기능/상품 §3.6) — redirect 하지 않는다 (체크박스가 `startTransition` 으로 부른다).
+ * 성공하면 상품 상세를 무효화해 서버 컴포넌트가 새 숨김 목록으로 다시 그리게 한다.
+ */
+export async function setArticleHiddenAction(productId: Id, articleId: Id, hidden: boolean): Promise<ActionOutcome> {
+  const actor = await currentActor();
+  const r = await getServices().product.setArticleHidden(actor, productId, articleId, hidden);
+  if (r.ok) revalidatePath(detailPath(productId));
+  return outcome(r);
+}
+
+// ───────────────────────────── 조립 미리보기 ─────────────────────────────
+
+/**
+ * 미리보기 「실행」 · 「다시 실행」 (기능/조립산출 §3.6) — 지금 입력으로 조립해 산출본을 저장한다(상품당 1행 덮어쓰기).
+ * 편집자 가능 · 비파괴. 자동 재실행은 없다 — 이 버튼만이 산출본을 바꾼다.
+ * 거부(없는 상품 등)면 `?error=` 로 같은 화면에 돌아온다.
+ */
+export async function runPreviewAction(id: Id): Promise<void> {
+  const actor = await currentActor();
+  const path = previewPath(id);
+  const r = await getServices().assembly.run(actor, id);
+  if (!r.ok) redirect(errorRedirectPath(path, msg(r.rejection)));
+  revalidatePath(path);
+  redirect(path);
+}
+
+function previewPath(id: Id): string {
+  return `${BASE}/${id}/preview`;
+}
+
+/** 서비스 Result → 폼 결과. 제출은 한 트랜잭션이라 거부되면 아무 값도 안 바뀌어 있다. */
+function outcome(r: Result<void>): ActionOutcome {
+  if (r.ok) return { ok: true };
+  return { ok: false, issues: r.rejection.reason === "invalid" ? r.rejection.issues : [{ kind: "typeMismatch", message: msg(r.rejection), at: {} }] };
+}
+
+// ───────────────────────────── 세목 ─────────────────────────────
+
+export async function addPlanOptionAction(productId: Id, formData: FormData): Promise<void> {
+  const actor = await currentActor();
+  const r = await getServices().product.addPlanOption(actor, productId, {
+    axis: str(formData, "axis") as "type" | "form",
+    number: Number(str(formData, "number")),
+    name: str(formData, "name"),
+    planTypeCode: str(formData, "planTypeCode"),
+  });
+  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "basic"), msg(r.rejection)));
+  redirect(detailPath(productId, "basic"));
+}
+
+/**
+ * 세목 선택지 값 저장 — 선택지의 세목유형 폼 하나가 대상. 서비스가 폼 소속(같은 레벨 · 다른 폼 거부)과 타입을 본다.
+ * 선택지가 이 상품 것이 아니면 저장하지 않는다 — URL 의 좌표를 믿지 않는다.
+ */
+export async function writePlanOptionValuesAction(productId: Id, optionId: Id, submission: Submission): Promise<ActionOutcome> {
+  const actor = await currentActor();
+  const services = getServices();
+  const options = await services.product.listPlanOptions(productId);
+  if (!options.some((o) => o.id === optionId)) {
+    return { ok: false, issues: [{ kind: "brokenRef", message: "이 상품의 세목 선택지가 아닙니다", at: { ownerId: optionId } }] };
+  }
+  return outcome(await services.product.setPlanOptionValues(actor, optionId, submission.values));
+}
+
+export async function removePlanOptionAction(productId: Id, optionId: Id): Promise<void> {
+  const actor = await currentActor();
+  const r = await getServices().product.removePlanOption(actor, optionId, { confirm: true });
+  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "basic"), msg(r.rejection)));
+  redirect(detailPath(productId, "basic"));
+}
+
+export async function registerPlanAction(productId: Id, formData: FormData): Promise<void> {
+  const actor = await currentActor();
+  const optionIds = formData.getAll("optionIds").map(String);
+  const r = await getServices().product.registerPlan(actor, productId, optionIds);
+  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "basic"), msg(r.rejection)));
+  redirect(detailPath(productId, "basic"));
+}
+
+export async function removePlanAction(productId: Id, planId: Id): Promise<void> {
+  const actor = await currentActor();
+  const r = await getServices().product.removePlan(actor, planId, { confirm: true });
+  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "basic"), msg(r.rejection)));
+  redirect(detailPath(productId, "basic"));
+}
+
+// ───────────────────────────── 상품담보 = 탑재 ─────────────────────────────
+
+export async function mountAction(productId: Id, formData: FormData): Promise<void> {
+  const actor = await currentActor();
+  const services = getServices();
+  const kinds = await services.product.listAttributeKinds();
+  const coverageId = str(formData, "coverageId");
+  const section = str(formData, "section") === "base" ? "base" : "special";
+  const r = await services.product.mount(actor, productId, coverageId, parseSelections(formData, kinds), section);
+  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, section === "base" ? "general" : "special"), msg(r.rejection)));
+  redirect(`${detailPath(productId)}/coverages/${r.value.id}`);
+}
+
+export async function renameProductCoverageAction(productId: Id, tab: ProductTab, pcId: Id, formData: FormData): Promise<void> {
+  const actor = await currentActor();
+  const r = await getServices().product.renameProductCoverage(actor, pcId, str(formData, "name"));
+  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, tab), msg(r.rejection)));
+  redirect(detailPath(productId, tab));
+}
+
+export async function regenerateNameAction(productId: Id, tab: ProductTab, pcId: Id): Promise<void> {
+  const actor = await currentActor();
+  const r = await getServices().product.regenerateName(actor, pcId);
+  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, tab), msg(r.rejection)));
+  redirect(detailPath(productId, tab));
+}
+
+export async function setAttributesAction(productId: Id, pcId: Id, formData: FormData): Promise<void> {
+  const actor = await currentActor();
+  const services = getServices();
+  const kinds = await services.product.listAttributeKinds();
+  const r = await services.product.setAttributes(actor, pcId, parseSelections(formData, kinds), { regenerateName: formData.get("regenerateName") === "on" });
+  if (!r.ok) redirect(errorRedirectPath(detailPath(productId), msg(r.rejection)));
+  redirect(detailPath(productId));
+}
+
+export async function unmountAction(productId: Id, tab: ProductTab, pcId: Id): Promise<void> {
+  const actor = await currentActor();
+  const r = await getServices().product.unmount(actor, pcId, { confirm: true });
+  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, tab), msg(r.rejection)));
+  redirect(detailPath(productId, tab));
+}
+
+export async function attachPlanAction(productId: Id, tab: ProductTab, pcId: Id, formData: FormData): Promise<void> {
+  const actor = await currentActor();
+  const r = await getServices().product.attachPlan(actor, pcId, str(formData, "planId"));
+  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, tab), msg(r.rejection)));
+  redirect(detailPath(productId, tab));
+}
+
+export async function detachPlanAction(productId: Id, tab: ProductTab, pcId: Id, planId: Id): Promise<void> {
+  const actor = await currentActor();
+  const r = await getServices().product.detachPlan(actor, pcId, planId, { confirm: true });
+  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, tab), msg(r.rejection)));
+  redirect(detailPath(productId, tab));
+}
+
+export async function writeSnapshotValuesAction(pcId: Id, owner: SnapshotOwner, submission: Submission): Promise<ActionOutcome> {
+  const actor = await currentActor();
+  const services = getServices();
+  return outcome(await services.product.setSnapshotValues(actor, pcId, owner, submission.values));
+}
+
+// ───────────────────────────── 기본계약 ─────────────────────────────
+
+export async function designateBaseContractAction(productId: Id, formData: FormData): Promise<void> {
+  const actor = await currentActor();
+  const r = await getServices().product.designateBaseContract(actor, productId, str(formData, "productCoverageId"));
+  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "general"), msg(r.rejection)));
+  redirect(detailPath(productId, "general"));
+}
+
+export async function releaseBaseContractAction(productId: Id, pcId: Id): Promise<void> {
+  const actor = await currentActor();
+  const r = await getServices().product.releaseBaseContract(actor, productId, pcId);
+  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "general"), msg(r.rejection)));
+  redirect(detailPath(productId, "general"));
+}
+
+// ───────────────────────────── 특약 그룹 ─────────────────────────────
+
+export async function createGroupAction(productId: Id, formData: FormData): Promise<void> {
+  const actor = await currentActor();
+  const r = await getServices().product.createGroup(actor, productId, { title: str(formData, "title") });
+  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "special"), msg(r.rejection)));
+  redirect(detailPath(productId, "special"));
+}
+
+export async function renameGroupAction(productId: Id, groupId: Id, formData: FormData): Promise<void> {
+  const actor = await currentActor();
+  const r = await getServices().product.renameGroup(actor, groupId, str(formData, "title"));
+  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "special"), msg(r.rejection)));
+  redirect(detailPath(productId, "special"));
+}
+
+export async function reorderGroupsAction(productId: Id, order: Id[]): Promise<void> {
+  const actor = await currentActor();
+  const r = await getServices().product.reorderGroups(actor, productId, order);
+  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "special"), msg(r.rejection)));
+  redirect(detailPath(productId, "special"));
+}
+
+export async function deleteGroupAction(productId: Id, groupId: Id): Promise<void> {
+  const actor = await currentActor();
+  const r = await getServices().product.deleteGroup(actor, groupId);
+  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "special"), msg(r.rejection)));
+  redirect(detailPath(productId, "special"));
+}
+
+export async function placeInGroupAction(productId: Id, groupId: Id, formData: FormData): Promise<void> {
+  const actor = await currentActor();
+  const r = await getServices().product.placeInGroup(actor, groupId, str(formData, "productCoverageId"));
+  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "special"), msg(r.rejection)));
+  redirect(detailPath(productId, "special"));
+}
+
+export async function removeFromGroupAction(productId: Id, pcId: Id): Promise<void> {
+  const actor = await currentActor();
+  const r = await getServices().product.removeFromGroup(actor, pcId);
+  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "special"), msg(r.rejection)));
+  redirect(detailPath(productId, "special"));
+}
+
+// ───────────────────────────── 옵션 오버라이드 ─────────────────────────────
+
+/** nodeId·clauseCode 는 폼 입력(사용처 화면의 문면에서 복사한 참조 노드 id) — bind 는 productId·scope 만. */
+/** 옵션은 문면의 그 자리에서 고친다 — 저장 뒤에도 **고르고 있던 조**로 돌아온다 (`art` · 기능/상품 §3.6). */
+export async function setOptionOverrideAction(productId: Id, scope: OverrideScope, formData: FormData): Promise<void> {
+  const actor = await currentActor();
+  const nodeId = str(formData, "nodeId");
+  const clauseCode = str(formData, "clauseCode");
+  const back = generalReturnPath(productId, str(formData, "art") || undefined);
+  const r = await getServices().product.setOptionOverride(actor, scope, nodeId, clauseCode, parseOptionSelection(str(formData, "options")));
+  if (!r.ok) redirect(errorRedirectPath(back, msg(r.rejection)));
+  redirect(back);
+}
+
+export async function removeOptionOverrideAction(productId: Id, scope: OverrideScope, nodeId: Id, clauseCode: Code, articleId?: Id): Promise<void> {
+  const actor = await currentActor();
+  const back = generalReturnPath(productId, articleId);
+  const r = await getServices().product.removeOptionOverride(actor, scope, nodeId, clauseCode);
+  if (!r.ok) redirect(errorRedirectPath(back, msg(r.rejection)));
+  redirect(back);
+}

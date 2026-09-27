@@ -1,0 +1,110 @@
+[
+  {
+    "code": "base-disability80",
+    "name": "일반상해80%이상후유장해",
+    "benefitName": "일반상해80%이상후유장해보험금",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "일반상해80%이상후유장해보험금"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "code": "death",
+    "name": "일반상해사망보장",
+    "benefitName": "사망보험금",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "사망보험금"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "code": "living80",
+    "name": "일반상해80%이상후유장해 생활자금보장",
+    "benefitName": "생활자금",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "일반상해80%이상후유장해 생활자금"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "code": "fracture",
+    "name": "골절(치아파절 제외)진단비Ⅱ보장",
+    "benefitName": "골절진단비",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "골절(치아파절 제외)진단비"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "code": "living50",
+    "name": "일반상해50%이상후유장해 생활자금보장",
+    "benefitName": "생활자금",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "일반상해50%이상후유장해 생활자금"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "code": "fracture-surgery",
+    "name": "골절수술비Ⅱ보장",
+    "benefitName": "골절수술비",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "골절수술비"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "code": "major-injury-surgery",
+    "name": "중대한특정상해수술비보장",
+    "benefitName": "중대한특정상해수술비",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "중대한특정상해수술비"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "code": "surgery17",
+    "name": "수술비(1-7종, 연간3회한)[상해]보장",
+    "benefitName": "수술비",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "수술비"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "code": "burn",
+    "name": "신화상치료비보장",
+    "benefitName": "화상진단비",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "화상진단비"
+      }
+    ],
+    "benefitValues": []
+  }
+]

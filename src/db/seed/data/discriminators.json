@@ -1,0 +1,82 @@
+[
+  {
+    "code": "D0001",
+    "label": "담보명",
+    "description": "문면이 담보 이름을 그대로 찍는 자리의 값 — 담보 레벨 마스터 필드의 투영 (ADR-0036 §2)",
+    "level": "coverage",
+    "expression": "coverage_basic.claim_name",
+    "resultType": { "kind": "string" }
+  },
+  {
+    "code": "D0002",
+    "label": "감액여부",
+    "description": "감액 폼을 열었나 — 급부 시드 폼 `reduction` 의 투영 (ADR-0065 §5)",
+    "level": "benefit",
+    "expression": "exist(reduction.periods)",
+    "resultType": { "kind": "boolean" }
+  },
+  {
+    "code": "D0003",
+    "label": "감액신규만",
+    "description": "감액이 신규계약에만 적용되나",
+    "level": "benefit",
+    "expression": "reduction.new_only",
+    "resultType": { "kind": "boolean" }
+  },
+  {
+    "code": "D0004",
+    "label": "면책여부",
+    "description": "면책 폼을 열었나",
+    "level": "benefit",
+    "expression": "exist(exemption.months)",
+    "resultType": { "kind": "boolean" }
+  },
+  {
+    "code": "D0005",
+    "label": "면책기간",
+    "description": "면책 기간(개월)",
+    "level": "benefit",
+    "expression": "exemption.months",
+    "resultType": { "kind": "number" }
+  },
+  {
+    "code": "D0006",
+    "label": "면책15세이상",
+    "description": "15세 이상만 면책을 적용하나",
+    "level": "benefit",
+    "expression": "exemption.age15_only",
+    "resultType": { "kind": "boolean" }
+  },
+  {
+    "code": "D0007",
+    "label": "감액여부",
+    "description": "세부보장 아래 급부 중 감액 있는 것이 하나라도",
+    "level": "subCoverage",
+    "expression": "any(D0002)",
+    "resultType": { "kind": "boolean" }
+  },
+  {
+    "code": "D0008",
+    "label": "면책여부",
+    "description": "세부보장 아래 급부 중 면책 있는 것이 하나라도",
+    "level": "subCoverage",
+    "expression": "any(D0004)",
+    "resultType": { "kind": "boolean" }
+  },
+  {
+    "code": "D0009",
+    "label": "감액여부",
+    "description": "담보 아래 급부 중 감액 있는 것이 하나라도 — 「감액 있으면」 조건의 기본",
+    "level": "coverage",
+    "expression": "any(D0002)",
+    "resultType": { "kind": "boolean" }
+  },
+  {
+    "code": "D0010",
+    "label": "면책여부",
+    "description": "담보 아래 급부 중 면책 있는 것이 하나라도",
+    "level": "coverage",
+    "expression": "any(D0004)",
+    "resultType": { "kind": "boolean" }
+  }
+]

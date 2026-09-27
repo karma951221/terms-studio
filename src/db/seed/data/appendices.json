@@ -1,0 +1,107 @@
+[
+  {
+    "code": "AX000001",
+    "name": "보험금을 지급할 때의 적립이율 계산",
+    "description": ""
+  },
+  {
+    "code": "AX000002",
+    "name": "장해분류표",
+    "description": ""
+  },
+  {
+    "code": "AX000003",
+    "name": "1-7종 수술분류표",
+    "description": ""
+  },
+  {
+    "code": "AX000004",
+    "name": "악성신생물(암) 분류표",
+    "description": ""
+  },
+  {
+    "code": "AX000005",
+    "name": "(미확인 별표 5)",
+    "description": ""
+  },
+  {
+    "code": "AX000006",
+    "name": "(미확인 별표 6)",
+    "description": ""
+  },
+  {
+    "code": "AX000007",
+    "name": "뇌졸중대상질병 분류표",
+    "description": ""
+  },
+  {
+    "code": "AX000008",
+    "name": "급성심근경색증대상질병 분류표",
+    "description": ""
+  },
+  {
+    "code": "AX000009",
+    "name": "(미확인 별표 9)",
+    "description": ""
+  },
+  {
+    "code": "AX000010",
+    "name": "말기폐질환",
+    "description": ""
+  },
+  {
+    "code": "AX000011",
+    "name": "말기간경화",
+    "description": ""
+  },
+  {
+    "code": "AX000012",
+    "name": "만성당뇨합병증 분류표",
+    "description": ""
+  },
+  {
+    "code": "AX000013",
+    "name": "화상 분류표",
+    "description": ""
+  },
+  {
+    "code": "AX000014",
+    "name": "골절(치아파절 제외)분류표 Ⅱ",
+    "description": ""
+  },
+  {
+    "code": "AX000015",
+    "name": "중대한 특정상해 분류표",
+    "description": ""
+  },
+  {
+    "code": "AX000016",
+    "name": "(미확인 별표 16)",
+    "description": ""
+  },
+  {
+    "code": "AX000017",
+    "name": "(미확인 별표 17)",
+    "description": ""
+  },
+  {
+    "code": "AX000018",
+    "name": "(미확인 별표 18)",
+    "description": ""
+  },
+  {
+    "code": "AX000019",
+    "name": "(미확인 별표 19)",
+    "description": ""
+  },
+  {
+    "code": "AX000020",
+    "name": "양성 뇌종양(경계성종양제외) 대상질병 분류표",
+    "description": ""
+  },
+  {
+    "code": "AX000021",
+    "name": "골절분류표 Ⅱ",
+    "description": ""
+  }
+]

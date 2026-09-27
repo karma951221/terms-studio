@@ -1,0 +1,362 @@
+/**
+ * 참조 그래프 서비스 — DB 재료로 `buildGraph` 하고, 각 영역이 주입받는 「사용처·영향」 소스를 그래프 위에서 구현한다.
+ *
+ * - `createRefsService(db)` : usages(역방향) · relation(관계정보 뷰) · integrity(고아·순환·깨진 참조).
+ * - 주입 소스 (각 영역 서비스의 deps 에 꽂는다 — container.ts):
+ *   - `catalogImpactSource(db)`   : catalog `ImpactSource` = 값 저장소(`valuesImpactSource`) + 그래프 역조회.
+ *     enum·enum 값 타깃은 정의로 자리를 구해 discriminator/field 로 바꿔 값 행을 세고 지운다 (enum 값은 그 값을 고른 행만).
+ *   - `coverageUsageSource(db)`   : coverage `UsageSource.findUsages` — 부착 해제·노드 삭제가 깨뜨릴 문면 사용처.
+ *   - `clauseUsageSource(db)`     : clause `UsageSource.documentsReferencing` — 참조 문서(ownerKind coverage/general) + 옵션 선택.
+ *   - `documentUsageSource(db)`   : document `UsageSource` — 문서 서비스가 스스로 못 보는 외부 사용처(상품 템플릿 · 담보 문서 연결 ·
+ *     옵션 오버라이드 · 공용조항 본문의 별표 참조).
+ *   - `attributeRefSource(db)`    : product `AttributeRefSource.findExpressionRefs` — 식이 읽는 담보속성(유효값) 사용처.
+ * - 「참조 추가 시점 검증」은 각 영역이 한다. 여기는 조회·영향뿐이다.
+ *
+ * 트랜잭션: 서비스들은 이 소스를 tx 안에서 부르면서 tx 를 넘기지 않는다. 그래서 `db` 에는 `contextualDb()` 프록시를
+ * 넘겨야 한다 (container.ts) — 그러면 그래프 로딩이 같은 tx 위에서 돈다. document 의 소스만 tx 를 직접 받는다.
+ */
+import type { ImpactSource, ImpactTarget } from "@/domain/catalog";
+import { enumReferences } from "@/domain/catalog";
+import type { Usage, UsageOwnerKind } from "@/domain/clause";
+import type { UsageQuery, UsageSource as CoverageUsageSource } from "@/domain/coverage";
+import type { AttributeRefSource } from "@/domain/product";
+import {
+  ancestorKeys,
+  brokenEdges,
+  brokenIssues,
+  buildGraph,
+  cycles,
+  nodeKey,
+  orphans,
+  referencesFrom,
+  refStats,
+  relationView,
+  usagesOf,
+  type EdgeVia,
+  type ProductInput,
+  type RefCycle,
+  type RefEdge,
+  type RefGraph,
+  type RefNodeInfo,
+  type RefNodeKey,
+  type RefStats,
+  type RelationView,
+  type UsageOptions,
+} from "@/domain/refs";
+import type { Code, Coordinate, Id, Issue } from "@/domain/types";
+
+import * as catalogRepo from "@/db/repo/catalog";
+import * as clauseRepo from "@/db/repo/clause";
+import * as coverageRepo from "@/db/repo/coverage";
+import * as documentRepo from "@/db/repo/document";
+import * as productRepo from "@/db/repo/product";
+import * as refsRepo from "@/db/repo/refs";
+import type { Db } from "@/db/repo/types";
+import * as valuesRepo from "@/db/repo/values";
+import { valuesImpactSource } from "@/db/repo/values";
+
+import { findMasterField } from "@/domain/master";
+
+import type { UsageSource as ClauseUsageSource } from "./clause";
+import type { UsageSource as DocumentUsageSource } from "./document";
+
+// ───────────────────────────── 그래프 로딩 ─────────────────────────────
+
+/** DB 전체를 재료로 그래프를 만든다. 주어진 핸들(db 또는 tx)로만 읽는다. */
+export async function loadGraph(db: Db): Promise<RefGraph> {
+  const [discriminators, enums, clauses, documents, appendices, coverages, attributeKinds, productRows] = await Promise.all([
+    catalogRepo.listDiscriminators(db),
+    catalogRepo.listEnums(db),
+    clauseRepo.listClauses(db),
+    documentRepo.listDocumentRecords(db),
+    documentRepo.listAppendices(db),
+    coverageRepo.listCoverages(db),
+    productRepo.listAttributeKinds(db),
+    productRepo.listProducts(db),
+  ]);
+  const products: ProductInput[] = [];
+  for (const p of productRows) {
+    const pcs = await productRepo.listProductCoverages(db, p.id);
+    const overrides = await productRepo.listOverrides(db, { kind: "product", id: p.id });
+    products.push({ id: p.id, name: p.name, ...(p.generalDocumentId ? { generalDocumentId: p.generalDocumentId } : {}), coverages: pcs, overrides });
+  }
+  return buildGraph({
+    discriminators,
+    enums,
+    clauses,
+    documents: documents.map((d) => ({ id: d.id, kind: d.kind, ...(d.ownerId ? { ownerId: d.ownerId } : {}), title: d.title, ...(d.generalDocumentId ? { generalDocumentId: d.generalDocumentId } : {}), tree: d.tree })),
+    appendices,
+    coverages,
+    attributeKinds,
+    products,
+  });
+}
+
+// ───────────────────────────── 서비스 ─────────────────────────────
+
+export interface IntegrityReport {
+  orphans: RefNodeInfo[];
+  cycles: RefCycle[];
+  broken: RefEdge[];
+  /** broken 의 Issue 표기 (조립 오류 패널과 같은 좌표 체계). */
+  issues: Issue[];
+  /** 분모 — 「참조 노드 N 개 중 고아 M」 (디자인원칙 §9.6). */
+  stats: RefStats;
+}
+
+/** 관계정보 화면 한 판. 그래프를 한 번만 읽어 무결성·규모·(조회 대상이 있으면) 관계 뷰를 함께 낸다. */
+export interface RelationsOverview {
+  /** 표시명 표기(`describeKey(key, graph)`)에 그래프가 필요하다 — 화면이 좌표를 이름으로 부른다 (기능/조립산출 §3.4). */
+  graph: RefGraph;
+  integrity: IntegrityReport;
+  relation?: RelationView;
+}
+
+export interface RefsService {
+  graph(): Promise<RefGraph>;
+  /** 역방향 — 이 실체(와 하위)를 쓰는 곳. */
+  usages(target: RefNodeKey, opts?: UsageOptions): Promise<RefEdge[]>;
+  /** 관계정보 뷰 — 정방향 · 역방향 · 옵션 오버라이드 사용처. */
+  relation(target: RefNodeKey): Promise<RelationView>;
+  integrity(): Promise<IntegrityReport>;
+  /** 관계정보 화면용 — 그래프 로딩 한 번으로 끝낸다. */
+  overview(target?: RefNodeKey): Promise<RelationsOverview>;
+}
+
+function integrityOf(g: RefGraph): IntegrityReport {
+  return { orphans: orphans(g), cycles: cycles(g), broken: brokenEdges(g), issues: brokenIssues(g), stats: refStats(g) };
+}
+
+export function createRefsService(db: Db): RefsService {
+  return {
+    graph: () => loadGraph(db),
+    usages: async (target, opts) => usagesOf(await loadGraph(db), target, opts),
+    relation: async (target) => relationView(await loadGraph(db), target),
+    integrity: async () => integrityOf(await loadGraph(db)),
+    overview: async (target) => {
+      const g = await loadGraph(db);
+      return { graph: g, integrity: integrityOf(g), ...(target ? { relation: relationView(g, target) } : {}) };
+    },
+  };
+}
+
+// ───────────────────────────── 공통 — 문서가 읽는 자리 ─────────────────────────────
+
+/** 「참조」로 치는 형태 — 부착·타입·탑재·조합은 뺀다. */
+const REFERENCE_VIAS: readonly EdgeVia[] = ["when", "slot", "expression"];
+
+/** 문서가 읽는 값 자리 하나 — 직접 또는 공용조항·파생을 거쳐서. 좌표는 문서 쪽 자리다. */
+interface DocumentRead {
+  target: RefNodeKey;
+  at: Coordinate;
+}
+
+/**
+ * 문서(와 조)가 읽는 구분자·필드·담보속성 자리 전부. 공용조항 참조는 그 본문의 참조로, 파생 참조는 그 식의 참조로 펼친다
+ * (ADR-0010 늦은 바인딩 — 공용조항의 식은 사용처 문맥에서 해소되므로 사용처의 값 자리를 읽는 것이다).
+ */
+function documentReads(graph: RefGraph, doc: RefNodeKey): DocumentRead[] {
+  const out: DocumentRead[] = [];
+  const expand = (edge: RefEdge, at: Coordinate, visited: Set<string>): void => {
+    const key = nodeKey(edge.to);
+    const here: Coordinate = { ...at, ...(edge.at.refPath !== undefined ? { refPath: edge.at.refPath } : {}) };
+    out.push({ target: edge.to, at: here });
+    if (visited.has(key)) return;
+    visited.add(key);
+    // 파생 구분자면 그 식이 읽는 자리도 이 문서가 읽는 것이다
+    if (edge.to.kind === "discriminator" && graph.nodes.get(key)?.detail === "derived") {
+      for (const e of referencesFrom(graph, edge.to, { via: ["expression"] })) expand(e, at, visited);
+    }
+  };
+  for (const e of referencesFrom(graph, doc)) {
+    if (e.via === "when" || e.via === "slot") expand(e, e.at, new Set());
+    else if (e.via === "clauseRef") {
+      for (const ce of referencesFrom(graph, e.to, { via: ["when", "slot"] })) expand(ce, e.at, new Set());
+    }
+  }
+  return out;
+}
+
+/** 담보의 문서 노드들 (담보 1 : 문서 1 이지만 구조상 목록). */
+function documentsOfCoverage(graph: RefGraph, coverageId: Id): RefNodeKey[] {
+  const out: RefNodeKey[] = [];
+  for (const n of graph.nodes.values()) if (n.key.kind === "document" && n.detail === "special" && n.ownerId === coverageId) out.push(n.key);
+  return out;
+}
+
+function documentIdOf(key: RefNodeKey): Id | undefined {
+  if (key.kind === "document") return key.id;
+  if (key.kind === "article") return key.documentId;
+  return undefined;
+}
+
+// ───────────────────────────── catalog: ImpactSource ─────────────────────────────
+
+function impactKey(target: ImpactTarget): RefNodeKey {
+  switch (target.kind) {
+    case "discriminator":
+      return { kind: "discriminator", code: target.code };
+    case "enum":
+      return { kind: "enum", enumCode: target.enumCode };
+    case "enumValue":
+      return { kind: "enumValue", enumCode: target.enumCode, valueCode: target.valueCode };
+  }
+}
+
+export function catalogImpactSource(db: Db): ImpactSource {
+  const values = valuesImpactSource(db);
+
+  /** enum 을 타입으로 쓰는 마스터 자리 — `enumReferences` 의 경로에 list 여부를 얹는다. */
+  function enumSlots(enumCode: Code): refsRepo.EnumSlot[] {
+    return enumReferences(enumCode).map((c) => {
+      const path = c.refPath ?? "";
+      return { path, list: findMasterField(path)?.field.type.kind === "list<enum>" };
+    });
+  }
+
+  return {
+    async countValueRows(target) {
+      switch (target.kind) {
+        case "discriminator":
+          return values.countValueRows(target); // 구분자는 값 행이 없다 — 늘 0
+        case "enum":
+          return valuesRepo.countPathRows(db, enumSlots(target.enumCode).map((s) => s.path));
+        case "enumValue":
+          return refsRepo.countEnumValueRows(db, enumSlots(target.enumCode), target.valueCode);
+      }
+    },
+    async findBrokenRefs(target) {
+      const graph = await loadGraph(db);
+      return usagesOf(graph, impactKey(target), { via: REFERENCE_VIAS }).map((e) => e.at);
+    },
+    async purgeValueRows(target) {
+      switch (target.kind) {
+        case "discriminator":
+          return values.purgeValueRows(target);
+        case "enum":
+          return valuesRepo.purgePathRows(db, enumSlots(target.enumCode).map((s) => s.path));
+        case "enumValue":
+          return refsRepo.purgeEnumValueRows(db, enumSlots(target.enumCode), target.valueCode);
+      }
+    },
+  };
+}
+
+// ───────────────────────────── coverage: UsageSource ─────────────────────────────
+
+const LEVELS_BELOW: Record<"coverage" | "subCoverage" | "benefit", readonly string[]> = {
+  coverage: ["coverage", "subCoverage", "benefit"],
+  subCoverage: ["subCoverage", "benefit"],
+  benefit: ["benefit"],
+};
+
+export function coverageUsageSource(db: Db): CoverageUsageSource {
+  return {
+    async findUsages(query: UsageQuery): Promise<Coordinate[]> {
+      const graph = await loadGraph(db);
+      const docs = documentsOfCoverage(graph, query.coverageId);
+      if (query.node.level === "coverage") {
+        // 담보 자체가 사라지면 그 문면 문서는 소유자를 잃고, 탑재한 상품담보는 마스터를 잃는다
+        const out: Coordinate[] = docs.map((d) => {
+          const info = graph.nodes.get(nodeKey(d))!;
+          return { document: "special", ownerId: query.coverageId, ownerName: info.label };
+        });
+        for (const e of usagesOf(graph, { kind: "coverageNode", level: "coverage", id: query.coverageId }, { via: ["mount"] })) out.push(e.at);
+        return out;
+      }
+      // 세부보장·급부 삭제 — 그 레벨(이하) 값 자리를 읽는 곳 (담보 문맥의 집계·조건식·슬롯).
+      // 노드 한정자 `D@노드`(ADR-0066)는 그 노드 문맥에서만 평가하므로, 가리킨 노드가 지우는 노드(또는 그 하위)일 때만 사용처다.
+      const levels = LEVELS_BELOW[query.node.level];
+      const deleted = nodeKey({ kind: "coverageNode", level: query.node.level, id: query.node.id });
+      /** 한정 참조 경로(`D@노드`) → 그래프가 정한 담보 노드 키. 간선이 없으면(노드·구분자 둘 다 미상) 사용처로 치지 않는다. */
+      const qualifierTargets = new Map<string, RefNodeKey>();
+      for (const e of graph.edges) if (e.via === "nodeQualifier" && e.at.refPath !== undefined) qualifierTargets.set(e.at.refPath, e.to);
+      const isQualified = (refPath: string | undefined) => refPath !== undefined && refPath.includes("@");
+      return docs.flatMap((d) =>
+        documentReads(graph, d)
+          .filter((r) => {
+            if (isQualified(r.at.refPath)) {
+              const target = qualifierTargets.get(r.at.refPath!);
+              return target !== undefined && ancestorKeys(graph, target).includes(deleted);
+            }
+            const level = graph.nodes.get(nodeKey(r.target))?.level;
+            return level !== undefined && levels.includes(level);
+          })
+          .map((r) => r.at),
+      );
+    },
+  };
+}
+
+// ───────────────────────────── clause: UsageSource ─────────────────────────────
+
+export function clauseUsageSource(db: Db): ClauseUsageSource {
+  return {
+    async documentsReferencing(clauseCode: Code): Promise<Usage[]> {
+      const graph = await loadGraph(db);
+      const out: Usage[] = [];
+      for (const e of usagesOf(graph, { kind: "clause", code: clauseCode }, { via: ["clauseRef"] })) {
+        const documentId = documentIdOf(e.from);
+        if (documentId === undefined) continue;
+        const info = graph.nodes.get(nodeKey({ kind: "document", id: documentId }));
+        const ownerKind: UsageOwnerKind = info?.detail === "special" ? "coverage" : "general";
+        const refNodeId = e.at.nodePath?.at(-1);
+        out.push({
+          documentId,
+          ownerKind,
+          ownerId: info?.ownerId ?? documentId,
+          ...(e.at.ownerName !== undefined ? { ownerName: e.at.ownerName } : {}),
+          ...(refNodeId !== undefined ? { refNodeId } : {}),
+          selection: e.options ?? {},
+        });
+      }
+      return out;
+    },
+  };
+}
+
+// ───────────────────────────── document: UsageSource ─────────────────────────────
+
+export function documentUsageSource(): DocumentUsageSource {
+  return {
+    async documentUsages(tx, documentId) {
+      const graph = await loadGraph(tx);
+      const out: Coordinate[] = [];
+      for (const e of usagesOf(graph, { kind: "document", id: documentId })) {
+        // 문서끼리의 참조(대응 보통약관 · 조연결 · 조 참조)는 문서 서비스가 스스로 훑는다 — 여기서는 다른 영역 것만
+        if (e.from.kind === "product" || e.from.kind === "coverageNode") out.push(e.at);
+      }
+      for (const e of graph.edges) {
+        if (e.via === "override" && e.through !== undefined && documentIdOf(e.through) === documentId) out.push(e.at);
+      }
+      return out;
+    },
+    async appendixUsages(tx, code) {
+      const graph = await loadGraph(tx);
+      return usagesOf(graph, { kind: "appendix", code }, { via: ["appendixRef"] })
+        .filter((e) => e.from.kind === "clause")
+        .map((e) => e.at);
+    },
+  };
+}
+
+// ───────────────────────────── product: AttributeRefSource ─────────────────────────────
+
+export function attributeRefSource(db: Db): AttributeRefSource {
+  return {
+    async findExpressionRefs(kindCode, valueCode) {
+      const graph = await loadGraph(db);
+      const target: RefNodeKey = valueCode === undefined ? { kind: "attribute", code: kindCode } : { kind: "attributeValue", code: kindCode, valueCode };
+      // 같은 식이 종류(attr.X)와 유효값(= 'V') 간선을 둘 다 내므로 좌표 기준으로 한 번만
+      const seen = new Set<string>();
+      return usagesOf(graph, target, { via: REFERENCE_VIAS })
+        .map((e) => e.at)
+        .filter((at) => {
+          const k = JSON.stringify(at);
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+    },
+  };
+}

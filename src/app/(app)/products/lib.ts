@@ -1,0 +1,301 @@
+/** 상품 화면·서버 액션이 함께 쓰는 순수 함수 — 입력 파싱 · 탭 좌표 · 보통약관의 관 묶기 · 조 수. `*.test.ts` 로 검증. */
+import type { OmissionPairKind, OmissionRecord, RenderedDoc } from "@/domain/assembly";
+import { indexTree, type ArticleNode, type CondBlockNode, type DocumentNode, type Node, type NodeNumber } from "@/domain/document";
+import type { AttributeKind, AttributeSelection, ClauseOptionSelection } from "@/domain/product";
+import type { Code, Id, Issue } from "@/domain/types";
+
+export function str(fd: FormData, key: string): string {
+  return String(fd.get(key) ?? "").trim();
+}
+
+/** `attr:<kindCode>` 이름의 select 들 → 선택된 것만 AttributeSelection[]. */
+export function parseSelections(fd: FormData, kinds: readonly AttributeKind[]): AttributeSelection[] {
+  const out: AttributeSelection[] = [];
+  for (const k of kinds) {
+    const v = str(fd, `attr:${k.code}`);
+    if (v) out.push({ kindCode: k.code, valueCode: v });
+  }
+  return out;
+}
+
+/** `{"O01":"V01"}` 형태의 JSON — 실패하면 빈 객체. */
+export function parseOptionSelection(json: string): ClauseOptionSelection {
+  const trimmed = json.trim();
+  if (trimmed === "") return {};
+  try {
+    const parsed: unknown = JSON.parse(trimmed);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as ClauseOptionSelection) : {};
+  } catch {
+    return {};
+  }
+}
+
+// ───────────────────────────── 상세의 세 탭 ─────────────────────────────
+
+/**
+ * 상품 상세는 **만드는 순서대로** 세 탭이다 — 구조(기본정보) → 보통약관 → 특약
+ * (기능/상품 §3.8 저장 단위 · 화면 공통). 탭은 URL(`?tab=`)에 산다: 서버가 그대로 렌더하고,
+ * 새로고침 · 북마크 · 서버 액션의 redirect 가 같은 자리를 가리킨다.
+ */
+export type ProductTab = "basic" | "general" | "special";
+
+export const PRODUCT_TAB_LABEL: Record<ProductTab, string> = { basic: "기본정보", general: "보통약관", special: "특별약관" };
+
+export const PRODUCT_TABS: readonly ProductTab[] = ["basic", "general", "special"];
+
+/** 없는 값 · 모르는 값은 기본정보로 — URL 의 좌표를 믿지 않는다. */
+export function productTabOf(value: string | undefined): ProductTab {
+  return value === "general" || value === "special" ? value : "basic";
+}
+
+/** 상품 상세 경로 (+ 탭). 화면의 링크와 액션의 redirect 가 같은 함수를 쓴다. */
+export function productDetailPath(id: string, tab?: ProductTab): string {
+  return tab ? `/products/${id}?tab=${tab}` : `/products/${id}`;
+}
+
+// ───────────────────────────── 보통약관 탭의 「관」 ─────────────────────────────
+
+/**
+ * 약관 세 패널이 한 번에 보는 단위 = **관**(款) (기능/상품 §4.5 세 패널).
+ * 관은 템플릿 최상위 `section` 노드다. 관 없이 문서 바로 아래 선 조들은 한 묶음으로 친다
+ * (관이 하나도 없는 템플릿이면 문서 전체가 한 관이다).
+ */
+export interface GeneralSection {
+  /** 관 노드 id — 관 밖의 조 묶음이면 undefined. */
+  id?: Id;
+  title?: string;
+  /** 목차·좌표가 쓰는 **편 목록** — 조건 블록 안의 조까지 한 줄로 (`articlesIn`). */
+  articles: ArticleNode[];
+  /**
+   * 원문 패널이 쓰는 **최상위 노드 그대로** — 조를 감싼 조건 블록을 벗기지 않는다.
+   * 목차는 평탄화가 맞지만(조는 어디 있든 한 줄), 원문에서 조상 조건식을 잃으면
+   * 왼쪽·가운데는 무조건 있는 것처럼 보이는데 오른쪽에서만 조가 빠진다 (코덱스 리뷰 2026-09-15 Important-3).
+   */
+  nodes: (ArticleNode | CondBlockNode)[];
+}
+
+/** 조건 블록은 투명하게 편다 — 문면 편집기 목차(`articlesOf`)와 같은 규칙. */
+function articlesIn(nodes: readonly Node[]): ArticleNode[] {
+  const out: ArticleNode[] = [];
+  for (const n of nodes) {
+    if (n.kind === "article") out.push(n);
+    else if (n.kind === "section") out.push(...articlesIn(n.children));
+    else if (n.kind === "condBlock") for (const br of n.branches) out.push(...articlesIn(br.children));
+  }
+  return out;
+}
+
+/** 템플릿 트리 → 문서 순서대로의 관 목록. 조가 하나도 없는 관도 자리를 지킨다(목차에 제목이 선다). */
+export function generalSections(tree: DocumentNode): GeneralSection[] {
+  const out: GeneralSection[] = [];
+  let loose: GeneralSection | undefined;
+  for (const child of tree.children) {
+    if (child.kind === "section") {
+      out.push({ id: child.id, title: child.title, articles: articlesIn(child.children), nodes: [...child.children] });
+      loose = undefined;
+      continue;
+    }
+    const articles = articlesIn([child]);
+    if (articles.length === 0) continue;
+    if (!loose) {
+      loose = { articles: [], nodes: [] };
+      out.push(loose);
+    }
+    loose.articles.push(...articles);
+    loose.nodes.push(child);
+  }
+  return out;
+}
+
+/**
+ * 오른쪽 미리보기를 **가운데와 같은 관**으로 자른다 (기능/상품 §4.5 · 코덱스 리뷰 2026-09-15 Minor-4).
+ *
+ * 예전 필터는 「관이면 고른 관만, 관 밖 자식은 모두 남긴다」였다 — `관 밖 A → 관 B → 관 밖 C` 처럼
+ * 섞인 문서에서 A 를 고르면 가운데는 A 만인데 오른쪽은 A·B·C 가 다 보였다. 묶음의 **조 id 집합**으로
+ * 자르면 관이든 관 밖이든 같은 기준이 된다 (조립은 조건 블록을 이미 풀어 조만 남기므로 조 id 로 맞는다).
+ * 관이 하나도 없는 문서는 조 전부가 한 묶음이라 결과도 문서 전체다.
+ *
+ * 오류 마커는 남긴다 — 어느 관의 자리인지 모르는 오류를 조용히 지우지 않는다.
+ */
+export function sectionPreviewDoc(doc: RenderedDoc | undefined, section: GeneralSection | undefined): RenderedDoc | undefined {
+  if (!doc || !section) return doc;
+  const articleIds = new Set(section.articles.map((a) => a.id));
+  return { ...doc, children: doc.children.filter((c) => (c.kind === "section" ? c.id === section.id : c.kind === "article" ? articleIds.has(c.id) : true)) };
+}
+
+/**
+ * 세 패널의 제목에 쓰는 묶음 이름 (코덱스 리뷰 후속).
+ *
+ * 관이 하나도 없는 문서는 조 전부가 한 묶음이라 「전체」가 맞다. 관이 섞인 문서의 **관 밖 묶음**까지
+ * 「전체」라고 부르면 옆 관이 안 보이고 있다는 사실을 제목이 덮는다 — 그 자리는 「관 밖 조」로,
+ * 템플릿 번호를 알면 조 범위(`제1조 ~ 제3조`)까지 붙여 어디를 보고 있는지 말한다.
+ */
+export function generalSectionLabel(sections: readonly GeneralSection[], section: GeneralSection | undefined, numbers: ReadonlyMap<Id, NodeNumber>): string {
+  if (section?.id) return `${numbers.get(section.id)?.label ?? "관"} ${section.title}`;
+  if (!sections.some((s) => s.id)) return "전체";
+  const labels = (section?.articles ?? []).map((a) => numbers.get(a.id)?.label).filter((l): l is string => !!l);
+  if (labels.length === 0) return "관 밖 조";
+  return labels.length === 1 ? `관 밖 조 ${labels[0]}` : `관 밖 조 ${labels[0]} ~ ${labels[labels.length - 1]}`;
+}
+
+/** 고른 조가 속한 관. 좌표가 없거나 이 템플릿의 조가 아니면 **첫 조가 있는 관** (URL 의 좌표를 믿지 않는다). */
+export function sectionOfArticle(sections: readonly GeneralSection[], articleId: Id | undefined): GeneralSection | undefined {
+  const found = articleId ? sections.find((s) => s.articles.some((a) => a.id === articleId)) : undefined;
+  return found ?? sections.find((s) => s.articles.length > 0) ?? sections[0];
+}
+
+/** 지금 고른 조 — 좌표가 없거나 없는 조면 첫 조. */
+export function currentGeneralArticle(sections: readonly GeneralSection[], articleId: Id | undefined): Id | undefined {
+  const found = articleId ? sections.flatMap((s) => s.articles).find((a) => a.id === articleId) : undefined;
+  return (found ?? sections.find((s) => s.articles.length > 0)?.articles[0])?.id;
+}
+
+/** 목차 링크의 좌표 — 탭을 잃지 않는다(`?tab=general&art=<조 id>`). */
+export function generalArticlePath(productId: Id, articleId: Id): string {
+  return `${productDetailPath(productId, "general")}&art=${articleId}`;
+}
+
+/**
+ * 약관 세 패널에서 부른 서버 액션이 **돌아갈 자리** — 고르고 있던 조까지.
+ * 조를 잃으면 저장 직후 첫 관으로 튕겨 방금 고친 자리가 화면 밖으로 나간다 (§조작과 상태 전이).
+ */
+export function generalReturnPath(productId: Id, articleId: string | undefined): string {
+  return articleId ? generalArticlePath(productId, articleId) : productDetailPath(productId, "general");
+}
+
+/**
+ * 보통약관 탭이 보는 오류 (기능/상품 §4.5 세 패널 · 상태).
+ *
+ * 조 노출을 끄면 그 조를 가리키던 곳이 깨진다. 그런데 **깨졌다고 말하는 자리는 보통약관이 아니다**:
+ * 준용(`omission`)·기본계약 연결(`base`)이 내는 `articleHidden` 오류의 결과 좌표는 그 특약
+ * (`at.document === "special"`)이다. `document === "general"` 만 걸러 보면 조를 끈 바로 그 탭에서
+ * 「오류 0」이 뜬다 — 토글이 부른 오류를 토글한 화면이 못 보는 셈이라, `articleHidden` 은 문서를
+ * 가리지 않고 모두 싣는다 (결과 좌표에 상품담보명이 찍히므로 어디가 깨졌는지는 목록에서 읽힌다).
+ *
+ * 관 단위 필터도 `articleHidden` 에는 걸지 않는다 — 특약 조 id 는 어느 관에도 속하지 않아 전부 사라진다.
+ */
+export function generalTabIssues(
+  issues: readonly Issue[],
+  sectionArticleIds: ReadonlySet<Id>,
+): { section: Issue[]; errorCount: number } {
+  const general = issues.filter((i) => i.at.document === "general");
+  const hiddenElsewhere = issues.filter((i) => i.kind === "articleHidden" && i.at.document !== "general");
+  return {
+    section: [...general.filter((i) => !i.at.articleId || sectionArticleIds.has(i.at.articleId)), ...hiddenElsewhere],
+    errorCount: general.filter((i) => i.severity !== "warning").length + hiddenElsewhere.length,
+  };
+}
+
+/**
+ * 보통약관 탭 오류 목록의 **결과 쪽 이동 링크** — 도착할 수 있는 자리만 건다
+ * (코덱스 리뷰 2026-09-15 Minor-5. `IssueList` 의 `linkFor`).
+ *
+ * 이 패널은 특약에서 난 `articleHidden` 까지 싣는데(위 `generalTabIssues`), 그 노드는 여기 그린
+ * 보통약관에 없다 — 예전에는 그 자리에도 `#node-…` 앵커가 붙어 아무 데도 가지 않았다.
+ * 특약 오류는 그 상품담보의 미리보기로 보내고(결과 좌표의 `ownerId` = 상품담보 id — `specialCoordinate`),
+ * 보통약관 오류는 **지금 그린 결과에 그 노드가 있을 때만** 앵커를 건다.
+ *
+ * 특약 절의 상품담보는 특별약관 탭의 미리보기(`?tab=special&pc=…`)가 제자리다. 그런데 `articleHidden` 을
+ * 가장 많이 내는 것은 **기본계약** 상품담보이고, 그 탭의 `?pc=` 는 특약 절만 믿는다(URL 의 좌표를 믿지
+ * 않는다) — 기본계약 id 로 보내면 아무것도 고르지 않은 탭이 열린다. 그래서 기본계약은 제 상품담보 화면
+ * (조립된 문면과 같은 오류가 그 자리에 선다)으로 보낸다. 되돌아갈 탭의 분기(`tabOfCoverage`)와 같은 기준이다.
+ */
+export function generalIssueLink(
+  productId: Id,
+  previewNodeIds: ReadonlySet<Id>,
+  baseCoverageIds: ReadonlySet<Id>,
+  issue: Issue,
+): { href: string; label: string } | undefined {
+  if (issue.at.document !== "general") {
+    const owner = issue.at.ownerId;
+    if (!owner) return undefined;
+    const href = baseCoverageIds.has(owner) ? productCoveragePath(productId, owner) : specialPreviewPath(productId, owner);
+    return { href, label: `${issue.at.ownerName ?? "특약"} 에서 보기` };
+  }
+  const nodeId = issue.at.nodePath?.at(-1);
+  return nodeId !== undefined && previewNodeIds.has(nodeId) ? { href: `#node-${nodeId}`, label: "미리보기에서 보기" } : undefined;
+}
+
+// ───────────────────────────── 특별약관 탭의 미리보기 ─────────────────────────────
+
+/**
+ * 고른 상품담보의 미리보기 좌표 (`?tab=special&pc=<상품담보 id>`) — 탭을 잃지 않는다
+ * (기능/상품 §4.6). 탑재 표의 「미리보기」가 이 자리를 가리킨다.
+ */
+export function specialPreviewPath(productId: Id, productCoverageId: Id): string {
+  return `${productDetailPath(productId, "special")}&pc=${productCoverageId}`;
+}
+
+/**
+ * 조립 결과가 **앵커(`#node-<id>`)를 심은 노드 id 전부** — 오류 목록의 「미리보기에서 보기」가
+ * 도착할 수 있는 자리 (`RenderedDoc.tsx` 가 id 를 다는 자리와 짝). 관을 잘라 그린 결과에 이 함수를
+ * 물으면 「지금 화면에 있는가」를 알 수 있다 (코덱스 리뷰 2026-09-15 Minor-5).
+ */
+interface AnchoredNode {
+  id: Id;
+  children?: readonly AnchoredNode[];
+  items?: readonly AnchoredNode[];
+  subitems?: readonly AnchoredNode[];
+  rows?: readonly { cells: readonly (readonly AnchoredNode[])[] }[];
+}
+
+export function renderedNodeIds(doc: RenderedDoc | undefined): Set<Id> {
+  const out = new Set<Id>();
+  const walk = (node: AnchoredNode) => {
+    out.add(node.id);
+    for (const slot of [node.children, node.items, node.subitems]) for (const child of slot ?? []) walk(child);
+    for (const row of node.rows ?? []) for (const cell of row.cells) for (const inline of cell) walk(inline);
+  };
+  for (const c of (doc?.children ?? []) as readonly AnchoredNode[]) walk(c);
+  return out;
+}
+
+/** 상품담보 한 건의 화면 (값 · 조립된 문면 미리보기) — 기본계약이든 특약이든 같은 자리. */
+export function productCoveragePath(productId: Id, productCoverageId: Id): string {
+  return `${productDetailPath(productId)}/coverages/${productCoverageId}`;
+}
+
+/** 조 수 — 관 안의 조까지 세고, 오류 마커 노드는 조가 아니므로 뺀다 (조립 미리보기 · 특약 미리보기 공용). */
+export function articleCount(doc: RenderedDoc | undefined): number {
+  if (!doc) return 0;
+  let n = 0;
+  for (const c of doc.children) {
+    if (c.kind === "article") n += 1;
+    else if (c.kind === "section") n += c.children.filter((a) => a.kind === "article").length;
+  }
+  return n;
+}
+
+// ───────────────────────────── 조립 미리보기 — 조연결 판정 절 (기능/조립산출 §4.1) ─────────────────────────────
+
+/** 판정별 건수 — 「생략 n」 은 `disposition === "omitted"` 만 센다 (준용·통째는 본문에 남는다). */
+export function omissionCounts(records: readonly OmissionRecord[]): Record<OmissionRecord["disposition"], number> {
+  const out = { omitted: 0, applied: 0, full: 0 };
+  for (const record of records) out[record.disposition] += 1;
+  return out;
+}
+
+/** 항 대조 한 칸의 이름 — 항이면 렌더 항 번호 「제N항」, 표 · 박스 · 오류 노드는 항 번호를 먹지 않으니 종류로 (`OmissionPair` 서수 규칙). */
+export function omissionPairLabel(n: number, kind?: OmissionPairKind): string {
+  switch (kind) {
+    case "table":
+      return `표 ${n}`;
+    case "box":
+      return `박스 ${n}`;
+    case "error":
+      return `오류 노드 ${n}`;
+    default:
+      return `제${n}항`;
+  }
+}
+
+/**
+ * 비교에서 뺀 block 공용조항 참조 노드의 화면 이름 — 보통약관 템플릿 트리에서 그 노드를 찾아 「공용조항 C0003(라벨)」.
+ * 트리에 없거나 공용조항 참조가 아니면(템플릿이 바뀐 뒤의 저장본) 노드 id 를 그대로 보인다 — 숨기지 않는다.
+ */
+export function excludedClauseLabel(tree: DocumentNode | undefined, nodeId: Id, clauseLabelOf: (code: Code) => string | undefined): string {
+  const node = tree ? indexTree(tree).nodes.get(nodeId)?.node : undefined;
+  if (!node || node.kind !== "clauseBlockRef") return nodeId;
+  const label = clauseLabelOf(node.clauseCode);
+  return `공용조항 ${node.clauseCode}${label ? `(${label})` : ""}`;
+}

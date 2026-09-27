@@ -1,0 +1,160 @@
+[
+  {
+    "code": "alpha-plus",
+    "name": "알파Plus보장보험",
+    "general": "alpha-general",
+    "namingTemplate": "[A0001] [담보명] [A0002]",
+    "values": [],
+    "planOptions": [
+      {
+        "code": "type-1",
+        "axis": "type",
+        "number": 1,
+        "name": "보험료 납입면제 미적용형",
+        "planTypeCode": "waiver",
+        "values": [
+          {
+            "path": "waiver.applies",
+            "value": false
+          },
+          {
+            "path": "waiver.reasons",
+            "value": []
+          }
+        ]
+      },
+      {
+        "code": "type-2",
+        "axis": "type",
+        "number": 2,
+        "name": "보험료 납입면제형",
+        "planTypeCode": "waiver",
+        "values": [
+          {
+            "path": "waiver.applies",
+            "value": true
+          },
+          {
+            "path": "waiver.reasons",
+            "value": [
+              "V01",
+              "V02"
+            ]
+          }
+        ]
+      }
+    ],
+    "plans": [
+      [
+        "type-1"
+      ],
+      [
+        "type-2"
+      ]
+    ],
+    "groups": [
+      {
+        "code": "injury",
+        "title": "상해 관련 특별약관"
+      }
+    ],
+    "mounts": [
+      {
+        "code": "base",
+        "coverage": "base-disability80",
+        "section": "base",
+        "attributes": []
+      },
+      {
+        "code": "death-basic",
+        "coverage": "death",
+        "section": "special",
+        "attributes": [
+          {
+            "kindCode": "A0002",
+            "valueCode": "V01"
+          }
+        ],
+        "group": "injury"
+      },
+      {
+        "code": "death-addon",
+        "coverage": "death",
+        "section": "special",
+        "attributes": [
+          {
+            "kindCode": "A0002",
+            "valueCode": "V02"
+          }
+        ],
+        "group": "injury"
+      },
+      {
+        "code": "living80",
+        "coverage": "living80",
+        "section": "special",
+        "attributes": [],
+        "group": "injury"
+      },
+      {
+        "code": "fracture",
+        "coverage": "fracture",
+        "section": "special",
+        "attributes": [],
+        "group": "injury"
+      },
+      {
+        "code": "living50",
+        "coverage": "living50",
+        "section": "special",
+        "attributes": [],
+        "group": "injury"
+      },
+      {
+        "code": "fracture-surgery",
+        "coverage": "fracture-surgery",
+        "section": "special",
+        "attributes": [],
+        "group": "injury"
+      },
+      {
+        "code": "major-injury-surgery",
+        "coverage": "major-injury-surgery",
+        "section": "special",
+        "attributes": [],
+        "group": "injury"
+      },
+      {
+        "code": "surgery17",
+        "coverage": "surgery17",
+        "section": "special",
+        "attributes": [
+          {
+            "kindCode": "A0001",
+            "valueCode": "V01"
+          }
+        ],
+        "group": "injury"
+      },
+      {
+        "code": "surgery17-renew",
+        "coverage": "surgery17",
+        "section": "special",
+        "attributes": [
+          {
+            "kindCode": "A0001",
+            "valueCode": "V02"
+          }
+        ],
+        "group": "injury"
+      },
+      {
+        "code": "burn",
+        "coverage": "burn",
+        "section": "special",
+        "attributes": [],
+        "group": "injury"
+      }
+    ]
+  }
+]

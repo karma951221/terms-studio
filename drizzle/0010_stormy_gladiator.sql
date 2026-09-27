@@ -1,0 +1,1 @@
+ALTER TABLE "discriminators" ADD COLUMN "result_type" jsonb;
