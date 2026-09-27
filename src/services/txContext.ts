@@ -37,3 +37,32 @@ export function contextualDb(root: Db): Db {
     },
   });
 }
+
+/** `rollbackUnless` 가 롤백하려고 던지는 신호 — 결과를 싣고 트랜잭션 밖에서 풀린다. */
+class Rollback<T> extends Error {
+  constructor(readonly result: T) {
+    super("rollback");
+  }
+}
+
+/**
+ * 여러 서비스 호출을 **한 트랜잭션**으로 묶는다 — 화면의 「저장 한 번」(디자인원칙 §2 L2 「폼 한 제출 = 한 트랜잭션」).
+ *
+ * `run` 안의 서비스 호출은 저마다 `db.transaction` 을 열지만, 프록시가 문맥의 tx 를 타므로 세이브포인트가 된다.
+ * `keep(result)` 가 거짓이면(거부 · 확인 필요) 신호를 던져 **앞 단계 쓰기까지 전부 롤백**하고 결과는 그대로 돌려준다.
+ * `run` 이 던진 예외도 롤백 뒤 그대로 올라간다. 서비스 여럿을 묶을 때는 `db` 가 `contextualDb()` 프록시여야 한다
+ * (서비스 묶음의 `services.db` — 안쪽 서비스의 트랜잭션이 세이브포인트가 된다). 서비스 한 메서드 안에서 쓸 때는
+ * `run` 이 받는 `tx` 로 repo 를 부른다 (날 핸들을 받은 서비스에서 안쪽 transaction 을 다시 열면 PGlite 가 교착한다).
+ */
+export async function rollbackUnless<T>(db: Db, run: (tx: Db) => Promise<T>, keep: (result: T) => boolean): Promise<T> {
+  try {
+    return await db.transaction(async (tx) => {
+      const result = await run(tx);
+      if (!keep(result)) throw new Rollback(result);
+      return result;
+    });
+  } catch (error) {
+    if (error instanceof Rollback) return error.result as T;
+    throw error;
+  }
+}
