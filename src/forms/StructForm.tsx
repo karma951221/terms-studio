@@ -10,14 +10,19 @@
  *   손댄 스냅샷은 입력칸 오른쪽 끝에 되돌리기 버튼 (마스터 값은 tooltip 으로만). 색은 쓰지 않는다.
  * - **프리필은 보이는 제안 (ADR-0004 · 리뷰 #3)**: 기본값이 처음부터 칸에 들어가 있고 「미입력」 +
  *   「제안값 · 저장해야 확정」 배지가 함께 선다. 저장해야 명시 값이 된다. 폼마다 「비우기」 하나.
- * - **폼 하나가 카드 하나 (기능/마스터 §3.5)**: 카드 목록 = 마스터의 폼 목록. `showCodes`(관리자)면 필드 옆에
- *   `폼키.필드키` 칩이 마스터 화면으로 이어지고, `highlightPath` 면 그 행을 강조하고 스크롤한다.
+ *   읽기 모드(`readOnly`)에는 「미입력」 배지를 달지 않는다 — 빈 칸은 빈 칸으로 보인다 (2026-09-27).
+ * - **폼 하나가 카드 하나 (기능/마스터 §3.5)**: 카드 목록 = 마스터의 폼 목록. 카드 제목은 폼 표시명뿐 — 설명은 옆 ⓘ(InfoTip).
+ *   `showCodes`(관리자)면 필드 라벨 옆 작은 ⓘ 링크가 tooltip 으로 `폼키.필드키` 를 보이고 마스터 화면으로 이어진다.
+ *   `highlightPath` 면 그 행을 강조하고 스크롤한다.
+ * - **선택 폼(감액 · 면책, `optional`)은 더하기 전엔 자리가 없다 (ADR-0065 §4 · 2026-09-27)**: 닫힌 선택 폼은 읽기 모드에서
+ *   아무것도 그리지 않고, 편집 모드에서는 폼 맨 아래 한 줄 「⊕ 감액 · ⊕ 면책」 으로만 선다. 연 폼은 제목 옆 ⊖ 로 닫는다(값을 지운다).
  *
  * 상호작용 로직은 전부 `formReducer`(순수)에 있다. 여기는 이벤트 → 액션 변환과 마크업뿐.
  */
 import { useEffect, useId, useReducer, useRef, useState, type FormEvent, type ReactNode } from "react";
 
-import { IconButton, IconRevert } from "@/app/_components/icons";
+import { InfoTip } from "@/app/_components/InfoTip";
+import { IconButton, IconInfo, IconMinusCircle, IconPlusCircle, IconRevert } from "@/app/_components/icons";
 import { EXEMPTION_MONTHS } from "@/domain/coverage";
 import { formatPeriod } from "@/domain/master";
 import type { Issue } from "@/domain/types";
@@ -67,7 +72,7 @@ export interface StructFormProps {
   pending?: boolean;
   /** 폼 바깥에서 온 오류(서버 거부 등)를 필드 아래·폼 아래에 함께 보여준다. */
   issues?: Issue[];
-  /** 관리자 — 필드 라벨 옆에 `폼키.필드키` 코드 칩. 칩은 마스터 화면의 그 필드로 이어진다. */
+  /** 관리자 — 필드 라벨 옆에 작은 ⓘ 링크. tooltip 이 `폼키.필드키` 이고 마스터 화면의 그 필드로 이어진다. */
   showCodes?: boolean;
   /** 이 경로의 행을 강조하고 마운트 시 화면 가운데로 스크롤한다 (마스터 → 사용처에서 건너왔을 때). */
   highlightPath?: string;
@@ -226,13 +231,15 @@ interface FieldRowProps {
   externalIssues: Issue[];
   onEdit: (draft: Draft) => void;
   onRevert: () => void;
-  /** 라벨 옆 코드 칩. */
+  /** 라벨 옆 코드 ⓘ 링크. */
   showCode?: boolean;
+  /** 읽기 모드 — 입력칸을 잠그고(inert) 「미입력」 배지를 달지 않는다. */
+  readOnly?: boolean;
   /** 강조 행 — 클래스 + 마운트 시 스크롤. */
   highlighted?: boolean;
 }
 
-function FieldRow({ idBase, field, externalIssues, onEdit, onRevert, showCode, highlighted }: FieldRowProps) {
+function FieldRow({ idBase, field, externalIssues, onEdit, onRevert, showCode, readOnly, highlighted }: FieldRowProps) {
   const { view } = field;
   const [askRevert, setAskRevert] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
@@ -272,16 +279,17 @@ function FieldRow({ idBase, field, externalIssues, onEdit, onRevert, showCode, h
           {view.label}
         </label>
         {showCode && (
-          // 코드 칩은 라벨의 형제다 — 입력의 접근성 이름에 코드가 섞이지 않게
-          <a className="ts-chip-code ts-mono" href={`/master/${view.path}`}>
-            {view.path}
+          // 코드 링크는 라벨의 형제다 — 입력의 접근성 이름에 코드가 섞이지 않게. 코드는 tooltip 으로만 (라벨이 두 번 보이지 않게)
+          <a className="ts-field-code" href={`/master/${view.path}`} title={view.path} aria-label={view.path}>
+            <IconInfo />
           </a>
         )}
       </span>
-      <div className="ts-form-control">
+      {/* 읽기 모드는 입력만 잠근다 — 라벨 옆 ⓘ 의 tooltip · 링크는 살아 있어야 한다 */}
+      <div className="ts-form-control" inert={readOnly}>
         {control}
         {monthsHint && <span className="ts-muted">{monthsHint}</span>}
-        {notEntered && <span className="ts-badge missing">미입력</span>}
+        {notEntered && !readOnly && <span className="ts-badge missing">미입력</span>}
         {field.proposed && <span className="ts-badge proposed">제안값 · 저장해야 확정</span>}
         {field.error !== undefined && (
           <span className="ts-form-error" role="alert">
@@ -384,63 +392,74 @@ export function StructForm({
   const allIssues = [...submitIssues, ...issues];
   const issuesAt = (path: string) => allIssues.filter((i) => i.at.refPath === path);
   const unplaced = allIssues.filter((i) => !i.at.refPath || !live.fields[i.at.refPath]);
+  // 선택 폼은 열렸을 때만 카드로 선다 — 닫힌 것은 편집 모드에서 폼 아래 「⊕ {폼}」 한 줄로만.
+  const shownCards = model.cards.filter((card) => !card.optional || live.open[card.key]);
+  const closedCards = model.cards.filter((card) => card.optional && !live.open[card.key]);
 
   return (
-    <form className={readOnly ? "ts-form ts-form-read" : "ts-form"} data-level={model.level} onSubmit={handleSubmit} inert={readOnly}>
+    <form className={readOnly ? "ts-form ts-form-read" : "ts-form"} data-level={model.level} onSubmit={handleSubmit}>
       <h2 className="ts-form-title">{model.label}</h2>
       {model.cards.length === 0 && <p className="ts-form-empty">입력할 값 자리가 없습니다.</p>}
-      {model.cards.map((card) => (
+      {shownCards.map((card) => (
         // 폼 하나 = 카드 하나 (기능/마스터 §3.5). fieldset 의 aria-label 이 카드의 접근성 이름이다
         <fieldset key={card.key} className="ts-form-card" aria-label={card.label}>
           <legend className="ts-form-card-title">
             {card.label}
+            {card.description && <InfoTip text={card.description} />}
             {card.optional && !readOnly && (
-              // 여는 폼 — 값 행이 하나도 없으면 자리 자체가 없다(ADR-0065 §4). 열기/닫기는 그 자리를 만들고 지운다.
-              live.open[card.key] ? (
-                <button
-                  type="button"
-                  className="ts-form-card-toggle"
-                  onClick={() => dispatch({ type: "closeForm", form: card.key })}
-                  title={`${card.label} 없음으로 — 값을 지운다`}
-                >
-                  ⊖ 닫기
-                </button>
-              ) : (
-                <button type="button" className="ts-form-card-toggle" onClick={() => dispatch({ type: "openForm", form: card.key })}>
-                  ⊕ 열기
-                </button>
-              )
+              // 연 선택 폼 — ⊖ 는 그 자리를 지운다(값도). 다시 더하려면 폼 아래 「⊕ {폼}」 (ADR-0065 §4)
+              <IconButton
+                className="ts-form-card-remove"
+                danger
+                icon={<IconMinusCircle />}
+                label={`${card.label} 없음으로 — 값을 지운다`}
+                onClick={() => dispatch({ type: "closeForm", form: card.key })}
+              />
             )}
-            {card.optional && !live.open[card.key] && <span className="ts-muted"> · 없음</span>}
-            {card.description && <span className="ts-muted"> · {card.description}</span>}
           </legend>
-          {(!card.optional || live.open[card.key]) &&
-            card.fields.map((view) =>
-              // 기본 숨김 — 기본값 그대로면 칸 대신 작은 링크 하나. 읽기 모드는 아무것도 안 보인다.
-              // 오류가 걸렸거나 강조로 건너온 자리는 숨기지 않는다 (기능/담보 §3.4).
-              isFieldHidden(live, view.path) && issuesAt(view.path).length === 0 && highlightPath !== view.path ? (
-                !readOnly && (
-                  <p key={view.path} className="ts-form-reveal-row" data-path={view.path}>
-                    <button type="button" className="ts-linklike ts-form-reveal" onClick={() => dispatch({ type: "reveal", path: view.path })}>
-                      {view.label} 바꾸기
-                    </button>
-                  </p>
-                )
-              ) : (
-                <FieldRow
-                  key={view.path}
-                  idBase={idBase}
-                  field={live.fields[view.path]}
-                  externalIssues={issuesAt(view.path)}
-                  onEdit={(draft) => dispatch({ type: "edit", path: view.path, draft })}
-                  onRevert={() => dispatch({ type: "revertToMaster", path: view.path })}
-                  showCode={showCodes}
-                  highlighted={highlightPath === view.path}
-                />
-              ),
-            )}
+          {card.fields.map((view) =>
+            // 기본 숨김 — 기본값 그대로면 칸 대신 작은 링크 하나. 읽기 모드는 아무것도 안 보인다.
+            // 오류가 걸렸거나 강조로 건너온 자리는 숨기지 않는다 (기능/담보 §3.4).
+            isFieldHidden(live, view.path) && issuesAt(view.path).length === 0 && highlightPath !== view.path ? (
+              !readOnly && (
+                <p key={view.path} className="ts-form-reveal-row" data-path={view.path}>
+                  <button type="button" className="ts-linklike ts-form-reveal" onClick={() => dispatch({ type: "reveal", path: view.path })}>
+                    {view.label} 바꾸기
+                  </button>
+                </p>
+              )
+            ) : (
+              <FieldRow
+                key={view.path}
+                idBase={idBase}
+                field={live.fields[view.path]}
+                externalIssues={issuesAt(view.path)}
+                onEdit={(draft) => dispatch({ type: "edit", path: view.path, draft })}
+                onRevert={() => dispatch({ type: "revertToMaster", path: view.path })}
+                showCode={showCodes}
+                readOnly={readOnly}
+                highlighted={highlightPath === view.path}
+              />
+            ),
+          )}
         </fieldset>
       ))}
+      {!readOnly && closedCards.length > 0 && (
+        // 닫힌 선택 폼 — 자리 대신 폼 맨 아래 한 줄의 작은 더하기 버튼 (ADR-0065 §4)
+        <p className="ts-form-optional-add">
+          {closedCards.map((card) => (
+            <button
+              key={card.key}
+              type="button"
+              className="ts-form-optional-btn"
+              title={`${card.label} 추가`}
+              onClick={() => dispatch({ type: "openForm", form: card.key })}
+            >
+              <IconPlusCircle /> {card.label}
+            </button>
+          ))}
+        </p>
+      )}
       {unplaced.length > 0 && (
         <ul className="ts-form-issues" role="alert">
           {unplaced.map((issue, i) => (

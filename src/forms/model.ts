@@ -74,7 +74,7 @@ export interface SnapshotContext {
   masterValues: Map<SlotPath, ValueSlot>;
 }
 
-/** 필드가 속한 폼의 이름표 — 카드 머리와 코드 칩(`폼키.필드키`)의 폼 쪽 절반. */
+/** 필드가 속한 폼의 이름표 — 카드 머리와 코드(`폼키.필드키`)의 폼 쪽 절반. */
 export interface FormRef {
   key: Code;
   label: string;

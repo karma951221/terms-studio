@@ -27,7 +27,7 @@ export function ValueForm({
   /** 저장 서버 액션 — 실패하면 issues 를 실어 돌려준다. */
   action: (submission: Submission) => Promise<ActionOutcome>;
   submitLabel?: string;
-  /** 관리자 — 필드 옆 `폼키.필드키` 코드 칩 (StructForm 에 그대로 넘긴다). */
+  /** 관리자 — 필드 라벨 옆 ⓘ 코드 링크(tooltip `폼키.필드키`, StructForm 에 그대로 넘긴다). */
   showCodes?: boolean;
   /** `?field=` 로 들어온 강조 경로 (StructForm 에 그대로 넘긴다). */
   highlightPath?: string;

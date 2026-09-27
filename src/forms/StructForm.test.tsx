@@ -98,6 +98,12 @@ describe("StructForm — 미입력 · 보이는 제안값 · 비우기 (ADR-0004
     expect(badges.length).toBe(6);
   });
 
+  it("읽기 모드에는 「미입력」 배지가 없다 — 빈 칸은 빈 칸으로 보인다", () => {
+    const model = buildForm("benefit", enums, new Map(), undefined, master);
+    const html = renderToStaticMarkup(<StructForm model={model} embedded readOnly />);
+    expect(html).not.toContain("미입력");
+  });
+
   it("저장 값이 있는 필드에는 배지가 없고 값이 채워져 있다", () => {
     const html = render(new Map([["pay.note", entered("메모")]]));
     expect((html.match(/미입력/g) ?? []).length).toBe(5);
@@ -200,7 +206,7 @@ describe("StructForm — 2열 그리드 (디자인원칙 §2 L2, 리뷰 #51)", (
   });
 });
 
-describe("StructForm — 폼 하나가 카드 하나 · 코드 칩 · 필드 강조 (기능/마스터 §3.5)", () => {
+describe("StructForm — 폼 하나가 카드 하나 · 코드 ⓘ · 필드 강조 (기능/마스터 §3.5)", () => {
   /** 정본 마스터(MASTER)의 세목 레벨 — 폼 4개. */
   const planModel = () => buildForm("plan", () => undefined, new Map());
 
@@ -224,17 +230,19 @@ describe("StructForm — 폼 하나가 카드 하나 · 코드 칩 · 필드 강
     ]);
   });
 
-  it("showCodes 면 필드 옆에 코드 칩 — 마스터 화면 링크", () => {
+  it("showCodes 면 필드 라벨 옆에 ⓘ 링크 — 코드는 tooltip 으로만, 마스터 화면으로 이어진다", () => {
     const html = renderToStaticMarkup(<StructForm model={planModel()} showCodes />);
-    const chip = tagsWith(html, 'class="ts-chip-code ts-mono"')[0];
-    expect(chip).toBeDefined();
-    expect(chip).toContain('href="/master/waiver.applies"');
-    expect(html).toContain(">waiver.applies</a>");
+    const link = tagsWith(html, 'class="ts-field-code"')[0];
+    expect(link).toBeDefined();
+    expect(link).toContain('href="/master/waiver.applies"');
+    expect(link).toContain('title="waiver.applies"');
+    // 코드를 글자로 늘어놓지 않는다 — 필드 이름이 두 번 보이지 않게
+    expect(html).not.toContain(">waiver.applies<");
   });
 
-  it("showCodes 가 없으면 칩이 없다", () => {
+  it("showCodes 가 없으면 코드 링크가 없다", () => {
     const html = renderToStaticMarkup(<StructForm model={planModel()} />);
-    expect(html).not.toContain("ts-chip-code");
+    expect(html).not.toContain("ts-field-code");
     expect(html).not.toContain('href="/master/');
   });
 
@@ -274,12 +282,12 @@ describe("StructForm — 여는 폼 카드 (ADR-0065 §4)", () => {
     },
   ];
 
-  it("닫힌 채 렌더되면 「열기」 버튼과 폼 라벨만 있고 입력칸이 없다", () => {
+  it("닫힌 채 렌더되면 카드 없이 폼 아래 「⊕ 감액」 더하기 버튼만 — 입력칸이 없다", () => {
     const model = buildForm("benefit", enums, new Map(), undefined, openableMaster);
     const html = renderToStaticMarkup(<StructForm model={model} onSubmit={() => {}} />);
-    expect(html).toContain("감액");
-    expect(html).toContain("열기");
-    expect(html).not.toContain("닫기");
+    expect(tagsWith(html, 'title="감액 추가"')).toHaveLength(1);
+    expect(html).not.toContain("<fieldset");
+    expect(html).not.toContain("없음으로");
     expect(html).not.toContain("<table");
     expect(html).not.toContain('name="reduction.periods');
   });
@@ -294,15 +302,28 @@ describe("StructForm — 여는 폼 카드 (ADR-0065 §4)", () => {
     );
     const html = renderToStaticMarkup(<StructForm model={model} onSubmit={() => {}} />);
     expect(html).toContain("<table");
-    expect(html).toContain("닫기");
-    expect(html).not.toContain("열기");
+    expect(html).toContain('aria-label="감액 없음으로 — 값을 지운다"');
+    expect(html).not.toContain("감액 추가");
   });
 
-  it("읽기 전용이면 열기·닫기 버튼이 없다", () => {
+  it("읽기 전용이면 닫힌 선택 폼은 아무것도 그리지 않는다 — 더하기 · 빼기 버튼도 없다", () => {
     const model = buildForm("benefit", enums, new Map(), undefined, openableMaster);
     const html = renderToStaticMarkup(<StructForm model={model} embedded readOnly />);
-    expect(html).not.toContain("열기");
-    expect(html).not.toContain("닫기");
+    expect(html).not.toContain("감액");
+    expect(html).not.toContain("없음으로");
+  });
+
+  it("읽기 전용이면 연 선택 폼은 그대로 보이고 ⊖ 가 없다", () => {
+    const model = buildForm(
+      "benefit",
+      enums,
+      new Map<string, ValueSlot>([["reduction.periods", entered([{ end: 12, rate: 50 }])]]),
+      undefined,
+      openableMaster,
+    );
+    const html = renderToStaticMarkup(<StructForm model={model} embedded readOnly />);
+    expect(html).toContain('aria-label="감액"');
+    expect(html).not.toContain("없음으로");
   });
 });
 

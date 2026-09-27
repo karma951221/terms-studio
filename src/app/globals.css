@@ -3969,31 +3969,71 @@ button.ts-ref-fold:hover {
 }
 
 .ts-form-card-title {
+  font-size: 12px;
   font-weight: 600;
   padding: 0 4px;
 }
 
-/* 라벨 칸 — 라벨과 코드 칩이 나란히, 좁으면 칩이 다음 줄로 */
+/* 라벨 칸 — 라벨과 코드 ⓘ 가 나란히 */
 .ts-form-label-cell {
   min-width: 0;
 }
 
-/* 코드 칩 — `폼키.필드키`. 관리자에게만 보이며 마스터 화면의 그 필드로 이어진다 */
-.ts-chip-code {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 0 6px;
-  border: 1px solid var(--ts-rule);
-  border-radius: 999px;
-  font-size: 11px;
-  line-height: 16px;
+/* 코드 ⓘ — tooltip 이 `폼키.필드키`. 관리자에게만 보이며 마스터 화면의 그 필드로 이어진다 */
+.ts-field-code {
+  display: inline-flex;
+  margin-left: 3px;
+  vertical-align: -2px;
   color: var(--ts-ink-3);
-  text-decoration: none;
 }
 
-.ts-chip-code:hover {
+.ts-field-code .ts-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.ts-field-code:hover {
   color: var(--ts-ink);
-  border-color: var(--ts-rule-strong);
+}
+
+/* 연 선택 폼의 ⊖ — 제목 옆, 평소에도 danger 색 */
+.ts-form-card-title .ts-iconbtn.ts-form-card-remove {
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  vertical-align: -4px;
+  color: var(--ts-error);
+}
+
+/* 닫힌 선택 폼 — 폼 맨 아래 한 줄 「⊕ 감액 ⊕ 면책」 (편집 모드만) */
+.ts-form-optional-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0 0 6px;
+}
+
+.ts-form-optional-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ts-ink-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ts-form-optional-btn:hover {
+  color: var(--ts-ink);
+}
+
+.ts-form-optional-btn .ts-icon {
+  width: 12px;
+  height: 12px;
 }
 
 /* 강조 행 — 마스터 사용처에서 건너온 자리. 테두리(형태)로 말한다 */
@@ -4432,8 +4472,6 @@ button.ts-ref-fold:hover {
 .ts-table-input input { width: 6em; }
 .ts-table-hint { margin-left: 4px; font-size: 0.85em; }
 
-/* 여는 폼 카드 머리 열기/닫기 버튼 (ADR-0065 §4) */
-.ts-form-card-toggle { margin-left: 8px; font-size: 0.85em; }
 
 /* 기본 숨김 필드를 펴는 작은 링크 (기능/담보 §3.4 — 감액 「이후 지급률 바꾸기」) */
 .ts-form-reveal-row { margin: 4px 0 0; }
