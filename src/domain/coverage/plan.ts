@@ -1,5 +1,5 @@
 /**
- * 담보 구조 초안 · 저장 계획 (순수) — ADR-0052.
+ * 담보 구조 초안 · 저장 계획 (순수) — ADR-0075.
  *
  * 화면이 세부보장 · 급부의 추가 · 이름 · 순서 · 삭제를 초안 하나(`StructureDraftSub[]`)에 담고, 서비스가 그 초안을
  * `structurePlan` 으로 풀어 적용한다 (`services/coverage` `applyStructurePlan` · 순서는 `applyStructurePlanTo`).
@@ -7,7 +7,7 @@
  * `dryRunStructurePlan` 은 같은 적용을 트리 편집 규칙(tree.ts)으로 메모리에서 끝까지 돌려 첫 거부를 찾는다 —
  * 저장 전에 계획 전체가 통과하는지 보는 것이라 부분 저장이 없다.
  *
- * 미탑재 담보(결정 1)는 상세 화면 저장 하나에, 탑재된 담보(결정 2)는 별도 「구조 편집」 화면에 — 둘 다 같은 계획을 쓴다.
+ * 탑재 여부와 상관없이 담보 상세 저장 하나가 이 계획을 쓴다 (ADR-0075 결정 1) — 탑재된 담보는 저장이 먼저 영향을 확인시킨다(결정 2).
  */
 import { ok, reject, type Id, type Result } from "../types";
 import {
@@ -35,7 +35,7 @@ export function decodeNodeKey(key: string | undefined): { level: CoverageNodeLev
   return { level, id };
 }
 
-// ───────────────────────────── 구조 초안 (ADR-0052 결정 1) ─────────────────────────────
+// ───────────────────────────── 구조 초안 (ADR-0075 결정 1) ─────────────────────────────
 //
 // 미탑재 담보의 상세 화면이 세부보장 · 급부의 추가 · 이름 · 순서 · 삭제를 초안 하나에 담고 저장 한 번에 반영한다.
 // `key` 는 클라이언트 임시 키 — 기존 노드는 `encodeNodeKey`, 새 노드는 `new:<n>`. `id` 가 없으면 새 노드.
@@ -203,7 +203,7 @@ export function hasRemoves(plan: StructurePlan): boolean {
   return plan.removes.length > 0;
 }
 
-/** 이름 말고 구조(추가 · 삭제 · 순서)가 바뀌는가 — 탑재된 담보는 이름만 여기서 고친다 (ADR-0052 결정 2 는 별도 화면). */
+/** 이름 말고 구조(추가 · 삭제 · 순서)가 바뀌는가 — 탑재된 담보면 저장 전에 영향(탑재 상품담보)을 확인시킨다 (ADR-0075 결정 2). */
 export function hasStructuralChange(plan: StructurePlan): boolean {
   return plan.newSubCoverages.length > 0 || plan.newBenefits.length > 0 || plan.removes.length > 0 || plan.reorders.length > 0;
 }

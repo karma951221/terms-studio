@@ -6,7 +6,7 @@
  * - 파괴적(노드 삭제 `coverage.deleteNode`)은 `destructive()` 2단:
  *   editor → forbidden · admin 1차 → needsConfirmation(Impact) · `{ confirm: true }` → 실행 + 값 행 연쇄 삭제.
  *   최소 구조 위반은 precheck 에서 admin 도 거부.
- * - 구조 계획(`applyStructurePlan`, ADR-0052)은 초안 하나를 최종 트리로 검사해(`applyStructurePlanTo` — 형제 이름 맞바꾸기 · 지운 이름 재사용 허용) **한 트랜잭션에서 한 번 저장**.
+ * - 구조 계획(`applyStructurePlan`, ADR-0075)은 초안 하나를 최종 트리로 검사해(`applyStructurePlanTo` — 형제 이름 맞바꾸기 · 지운 이름 재사용 허용) **한 트랜잭션에서 한 번 저장**.
  *   삭제가 섞이면 같은 2단(편집자 forbidden · 관리자 needsConfirmation) — 영향에 탑재 상품담보 · 스냅샷 소실 행(`Impact.mounts`)이
  *   실린다. 저장 뒤 탑재 상품담보 스냅샷을 같은 트랜잭션에서 맞춘다 (`MountSync`, 조립 루트가 product 를 잇는다).
  * - 사용처(문면 조건식·슬롯 · 요구 공용조항 · 파생식)는 `UsageSource` 로 주입 (C1 refs). 기본 NO_USAGE.
@@ -79,7 +79,7 @@ export interface CoverageServiceDeps {
   completenessFilter?: CompletenessFilter;
   /** id 발급. 기본 crypto.randomUUID. */
   newId?: NewId;
-  /** 구조 정정 뒤 탑재 스냅샷 동기화 (ADR-0052 결정 2). 없으면 동기화하지 않는다 — 조회 · 조립 전 `product.syncStructure` 가 잡는다. */
+  /** 구조 정정 뒤 탑재 스냅샷 동기화 (ADR-0075 결정 2). 없으면 동기화하지 않는다 — 조회 · 조립 전 `product.syncStructure` 가 잡는다. */
   mountSync?: MountSync;
 }
 
@@ -150,13 +150,13 @@ export interface CoverageService {
   removeBenefit(actor: Actor, benefitId: Id, opts?: Confirmable): Promise<Result<Coverage>>;
   remove(actor: Actor, coverageId: Id, opts?: Confirmable): Promise<Result<void>>;
   /**
-   * 노드 삭제의 영향만 — 여러 삭제를 한 번에 확인시키는 저장 화면용 (ADR-0052 결정 1). 역할 검사는 삭제와 같다
+   * 노드 삭제의 영향만 — 여러 삭제를 한 번에 확인시키는 저장 화면용 (ADR-0075 결정 1). 역할 검사는 삭제와 같다
    * (편집자 → forbidden). 최소 구조 precheck 는 하지 않는다 — 추가가 삭제보다 먼저 실행되는 계획에서는 지금 트리의
    * 마지막 형제여도 지울 수 있기 때문이다. 아무것도 바꾸지 않는다.
    */
   nodeDeleteImpact(actor: Actor, node: CoverageNodeRef): Promise<Result<Impact>>;
 
-  // 구조 계획 — 초안 하나를 한 트랜잭션에 (ADR-0052)
+  // 구조 계획 — 초안 하나를 한 트랜잭션에 (ADR-0075)
   /**
    * 초안 → 계획(최종 트리로 검사) → 드라이런(첫 거부면 무변경) → 삭제가 섞이면 2단
    * (편집자 forbidden · 관리자 1차 needsConfirmation — 마스터 값 행 · 깨질 참조 · 연쇄 + `mounts`) → 결과 트리 한 번 저장 ·
@@ -166,7 +166,7 @@ export interface CoverageService {
   applyStructurePlan(actor: Actor, coverageId: Id, draft: readonly StructureDraftSub[], opts?: Confirmable): Promise<Result<Coverage>>;
   /**
    * 같은 계획의 영향만 — 아무것도 바꾸지 않는다. 삭제가 없어도 `mounts`(탑재 상품담보 · 스냅샷 값 행 전체 · 소실 0)를 준다 —
-   * 「구조 편집」 화면이 순서 변경의 영향 목록(ADR 결정 2)과 지금 탑재 상황을 보이는 데 쓴다. 역할 검사는 삭제와 같다(삭제가 섞이면 편집자 forbidden).
+   * 담보 상세 저장이 탑재된 담보의 구조 변경(추가 · 순서 포함)을 확인시키는 데 쓴다 (ADR-0075 결정 2). 역할 검사는 삭제와 같다(삭제가 섞이면 편집자 forbidden).
    */
   previewStructurePlan(actor: Actor, coverageId: Id, draft: readonly StructureDraftSub[]): Promise<Result<Impact>>;
 
@@ -473,7 +473,7 @@ export function createCoverageService(db: Db, deps: CoverageServiceDeps = {}): C
         if (!next.ok) return next; // 드라이런과 같은 규칙이라 여기서 거부될 일은 없다 — 방어
         for (const n of removedNodes(tree, plan)) await values.clearOwner(tx, { kind: n.level, id: n.id });
         await repo.saveCoverage(tx, next.value, actor.userId);
-        // 탑재 상품담보 — 추가 노드는 빈 값 자리 · 삭제 노드는 값 행 연쇄 · 이름 · 순서 갱신, 같은 트랜잭션에서 (ADR-0052 결정 2)
+        // 탑재 상품담보 — 추가 노드는 빈 값 자리 · 삭제 노드는 값 행 연쇄 · 이름 · 순서 갱신, 같은 트랜잭션에서 (ADR-0075 결정 2)
         if (deps.mountSync) {
           for (const pc of await productRepo.listProductCoveragesOfCoverage(tx, coverageId)) {
             const synced = await deps.mountSync.syncStructure(tx, pc.id, actor.userId);

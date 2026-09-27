@@ -8,7 +8,7 @@
  * - tree.ts        : 트리 편집 규칙 (최소 구조 · 형제 이름 · 순서) · 열거 헬퍼(nodesOf · descendants · cascadeNames)
  * - values.ts      : MasterValues · 값 쓰기 검사 · 폼 프리필 · 완결성(CompletenessFilter 주입)
  * - impact.ts      : UsageSource(주입) · 노드 삭제 영향
- * - plan.ts        : 구조 초안(StructureDraft*) · 저장 계획(structurePlan) · 메모리 드라이런 (ADR-0052)
+ * - plan.ts        : 구조 초안(StructureDraft*) · 저장 계획(structurePlan) · 메모리 드라이런 (ADR-0075)
  * - evalContext.ts : masterEvalContext · nodeEvalContext — 식 언어 EvalContext 구성
  * - traits.ts      : 급부 특성(감액 · 면책) 값 규칙 · validateSlotValue · 동적 표 창구 reductionPeriods
  * - fixture.ts     : 관통 축약 픽스처 — surgery() (evalContext.test · 문면 조건 팝업 test 공유)

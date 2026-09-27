@@ -233,7 +233,7 @@ export interface ProductService {
   syncStructure(id: Id): Promise<Result<SyncResult>>;
   /**
    * 같은 동기화를 **호출자의 트랜잭션 안에서** — 담보 마스터의 구조 정정(`coverage.applyStructurePlan`)이 저장 직후
-   * 탑재 상품담보를 맞출 때 쓴다 (ADR-0052 결정 2). 마스터 트리는 그 tx 위에서 읽힌다 (contextualDb).
+   * 탑재 상품담보를 맞출 때 쓴다 (ADR-0075 결정 2). 마스터 트리는 그 tx 위에서 읽힌다 (contextualDb).
    */
   syncStructureIn(tx: Db, productCoverageId: Id, who: Id): Promise<Result<SyncResult>>;
   unmount(actor: Actor, id: Id, opts?: Confirmable): Promise<Result<void>>;

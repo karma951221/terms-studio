@@ -210,7 +210,7 @@ export type Rejection =
   | { reason: "conflict"; what: string }
   | { reason: "failed"; message: string }; // 건별 실행 실패 — 다중 산출에서 한 건의 예외를 그 건의 거부로 (ADR-0034 결정 7). 검증 거부가 아니다
 
-/** 탑재 상품담보 하나 — 구조 정정이 미치는 상품 (ADR-0052 결정 2). */
+/** 탑재 상품담보 하나 — 구조 정정이 미치는 상품 (ADR-0075 결정 2). */
 export interface MountImpact {
   productId: Id;
   productName: string;
@@ -230,7 +230,7 @@ export interface Impact {
   brokenRefs: Coordinate[];
   /** 함께 삭제될 하위 실체 (이름) */
   cascade: string[];
-  /** 탑재 상품담보 — 구조 정정이 미치는 상품 (ADR-0052 결정 2). 담보 구조 계획의 영향에만 실린다. */
+  /** 탑재 상품담보 — 구조 정정이 미치는 상품 (ADR-0075 결정 2). 담보 구조 계획의 영향에만 실린다. */
   mounts?: MountImpact[];
 }
 

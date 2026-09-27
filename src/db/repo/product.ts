@@ -358,7 +358,7 @@ export async function listProductCoverages(db: Db, productId: Id): Promise<Produ
   return rows.map((r) => toCoverage(r, attrs.get(r.id) ?? []));
 }
 
-/** 이 담보 마스터를 탑재한 상품담보 전부 — 상품명까지 (구조 정정의 영향 목록 · 스냅샷 동기화 대상, ADR-0052 결정 2). 상품명 · 상품담보명 순. */
+/** 이 담보 마스터를 탑재한 상품담보 전부 — 상품명까지 (구조 정정의 영향 목록 · 스냅샷 동기화 대상, ADR-0075 결정 2). 상품명 · 상품담보명 순. */
 export async function listProductCoveragesOfCoverage(db: Db, coverageId: Id): Promise<{ id: Id; name: string; productId: Id; productName: string }[]> {
   return db
     .select({ id: productCoverages.id, name: productCoverages.name, productId: productCoverages.productId, productName: products.name })
