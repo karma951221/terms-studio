@@ -32,6 +32,7 @@ import {
   type FieldState,
   type FieldView,
   type FormModel,
+  type FormState,
   type Submission,
 } from "./model";
 import { TableInput } from "./TableInput";
@@ -47,8 +48,16 @@ export interface StructFormProps {
    * 「저장 하나가 화면의 변경을 다 담는다」(디자인원칙 §2 L2)를 값 폼에도 적용하기 위한 자리.
    */
   embedded?: boolean;
-  /** `embedded` 일 때 초안이 바뀔 때마다. 바깥이 모아서 한 번에 저장한다. */
-  onChange?: (submission: Submission) => void;
+  /**
+   * `embedded` 일 때 초안이 바뀔 때마다. 바깥이 모아서 한 번에 저장한다.
+   * 둘째 인자는 편집 상태 그대로 — 바깥이 보관했다가 `initialState` 로 되돌려주면 인스턴스가 새로 떠도 초안이 남는다.
+   */
+  onChange?: (submission: Submission, state: FormState) => void;
+  /**
+   * 이 인스턴스가 처음 뜰 때의 편집 상태 — 노드를 오가며 인스턴스를 새로 띄우는 화면(담보 값 탭)이 그 노드의 초안을 복원하는 자리 (점검 H4).
+   * 초안이 만들어진 뒤 저장값이 바뀌었으면(모델 지문이 다르면) 버리고 새 저장값에서 시작한다. 이후 바뀌어도 다시 읽지 않는다.
+   */
+  initialState?: FormState;
   /** `embedded` 읽기 모드 — 입력칸을 잠근다. */
   readOnly?: boolean;
   /** 제출 버튼 문구. 기본 「저장」. */
@@ -335,10 +344,12 @@ export function StructForm({
   readOnly,
   showCodes,
   highlightPath,
+  initialState,
 }: StructFormProps) {
-  const [state, dispatch] = useReducer(formReducer, model, initFormState);
+  const [state, dispatch] = useReducer(formReducer, initialState, (restored) => restored ?? initFormState(model));
   const [submitIssues, setSubmitIssues] = useState<Issue[]>([]);
-  const [signature, setSignature] = useState(() => savedSignature(model));
+  // 복원한 초안은 그것을 만든 모델의 지문으로 시작한다 — 지금 모델과 다르면 아래에서 바로 새 저장값으로 다시 세운다.
+  const [signature, setSignature] = useState(() => savedSignature(initialState?.model ?? model));
   const idBase = useId();
 
   // 저장이 끝나 서버 값이 바뀌면 초안을 새 진실로 다시 세운다 (배지·카운트가 옛 상태로 남지 않게).
@@ -353,7 +364,7 @@ export function StructForm({
   // embedded: 초안이 바뀔 때마다 바깥(EditShell)으로 올린다. 저장은 바깥이 한 번에 한다.
   // 읽기 모드에서는 올리지 않는다 — 안 고쳤는데 「변경됨」으로 잡히면 안 된다.
   useEffect(() => {
-    if (embedded && onChange && !readOnly) onChange(toSubmission(live));
+    if (embedded && onChange && !readOnly) onChange(toSubmission(live), live);
     // onChange 는 매 렌더 새 함수일 수 있어 의존성에서 뺀다 — 초안(live)이 바뀔 때만 올린다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [embedded, live]);
