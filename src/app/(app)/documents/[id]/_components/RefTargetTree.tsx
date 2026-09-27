@@ -20,7 +20,18 @@ export interface RefTargetScope {
   index: ReadonlyMap<Id, ReferenceTarget>;
 }
 
-export function RefTargetTree({ id, scopes, defaultSelected }: { id: string; scopes: readonly RefTargetScope[]; defaultSelected: readonly Id[] }) {
+export function RefTargetTree({
+  id,
+  scopes,
+  defaultSelected,
+  onCountChange,
+}: {
+  id: string;
+  scopes: readonly RefTargetScope[];
+  defaultSelected: readonly Id[];
+  /** 고른 개수가 바뀔 때 — 연결어 라디오를 켜고 끈다. */
+  onCountChange?: (count: number) => void;
+}) {
   const [selected, setSelected] = useState<ReadonlySet<Id>>(() => new Set(defaultSelected));
   const [open, setOpen] = useState<ReadonlySet<Id>>(() => new Set(scopes.flatMap((s) => [...referenceAncestorIds(s.index, defaultSelected)])));
   const outlines = useMemo(() => scopes.map((s) => ({ ...s, groups: referenceOutline(s.index) })), [scopes]);
@@ -34,13 +45,13 @@ export function RefTargetTree({ id, scopes, defaultSelected }: { id: string; sco
       else out.delete(nodeId);
       return out;
     });
-  const toggleSelected = (nodeId: Id) =>
-    setSelected((prev) => {
-      const out = new Set(prev);
-      if (out.has(nodeId)) out.delete(nodeId);
-      else out.add(nodeId);
-      return out;
-    });
+  const toggleSelected = (nodeId: Id) => {
+    const out = new Set(selected);
+    if (out.has(nodeId)) out.delete(nodeId);
+    else out.add(nodeId);
+    setSelected(out);
+    onCountChange?.(out.size);
+  };
 
   /** 접힌 줄 아래에 고른 것이 몇 개 숨어 있나 — 접어도 고른 사실이 보이게. */
   const hiddenPicked = (n: ReferenceOutlineNode): number => n.children.reduce((sum, c) => sum + (selected.has(c.id) ? 1 : 0) + hiddenPicked(c), 0);

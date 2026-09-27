@@ -83,6 +83,10 @@ function PopForm({ env, onClose, build, children }: { env: PopupEnv; onClose: ()
 
 /** 조 참조 칸 — 범위 · 대상(여럿) · 연결어. 넣기와 고치기가 같이 쓴다. */
 function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode }) {
+  const [count, setCount] = useState(node?.targets.length ?? 0);
+  // 고른 연결어 — 대상이 하나로 줄었다 다시 늘어도 기억한다 (고치기면 저장된 값에서 시작)
+  const [connector, setConnector] = useState<ReferenceConnector>(node?.connector ?? "및");
+  const joins = count >= 2;
   return (
     <>
       {ctx.docKind === "special" && (
@@ -99,6 +103,7 @@ function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode })
         <RefTargetTree
           id="pop-ref-targets"
           defaultSelected={node?.targets.map((t) => t.nodeId) ?? []}
+          onCountChange={setCount}
           scopes={
             ctx.docKind === "special"
               ? [
@@ -112,15 +117,19 @@ function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode })
       <div className="ts-form-row">
         <span className="ts-form-label">연결어</span>
         <div>
-          <div className="ts-radio-group" role="radiogroup" aria-label="연결어">
+          <div className="ts-radio-group" role="radiogroup" aria-label="연결어" aria-disabled={!joins}>
             {REFERENCE_CONNECTORS.map((c) => (
               <label key={c} className="ts-form-radio">
-                <input type="radio" name="connector" value={c} defaultChecked={(node?.connector ?? "및") === c} />
+                <input type="radio" name="connector" value={c} disabled={!joins} checked={joins && connector === c} onChange={() => setConnector(c)} />
                 {c}
               </label>
             ))}
           </div>
-          <p className="ts-form-hint">대상이 여럿일 때 마지막 앞에 붙는다. 번호가 잇달아 셋 이상이면 「제3조부터 제5조까지」로 묶이고, 분기로 빠진 대상은 산출 때 제외된다.</p>
+          <p className="ts-form-hint">
+            {joins
+              ? "마지막 대상 앞에 붙는다. 번호가 잇달아 셋 이상이면 「제3조부터 제5조까지」로 묶이고, 분기로 빠진 대상은 산출 때 제외된다."
+              : "대상을 둘 이상 고르면 고를 수 있다."}
+          </p>
         </div>
       </div>
     </>
@@ -133,7 +142,8 @@ function articleRefOf(fd: FormData): { targets: { nodeId: Id }[]; connector: Ref
     .map((v) => String(v).trim())
     .filter(Boolean)
     .map((nodeId) => ({ nodeId }));
-  const connector = str(fd, "connector");
+  // 대상이 하나 이하면 라디오가 꺼져 값이 오지 않는다 — 도메인 기본값 「및」(표기에 안 나온다)을 둔다
+  const connector = targets.length >= 2 ? str(fd, "connector") : "";
   return { targets, connector: isReferenceConnector(connector) ? (connector as ReferenceConnector) : "및", scope: str(fd, "scope") === "general" ? "general" : "self" };
 }
 
