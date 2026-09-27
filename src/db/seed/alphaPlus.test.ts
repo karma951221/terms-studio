@@ -1,7 +1,6 @@
-import { eq, notInArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { discriminatorResultType } from "@/domain/catalog";
 import { planCombinationLabel, planTypeOptions } from "@/domain/product";
 import type { Actor } from "@/domain/types";
 
@@ -113,16 +112,9 @@ describe("seedAlphaPlus — 알파Plus 실물 시드 (PGlite)", () => {
     expect(burn.subCoverages.map((s) => s.benefits.map((b) => b.name))).toEqual(names.map((n) => [n]));
   });
 
-  it("급부 특성 시드 구분자 — 감액여부(3레벨) · 면책 넷 (ADR-0065 §5)", async () => {
+  it("시드 구분자는 원문 모델링이 쓰는 담보명(D0001) 하나뿐 — 감액 · 면책 · 최초1회 같은 특성 구분자는 두지 않는다 (알파플러스_모델명세 §2)", async () => {
     const defs = await services.catalog.list();
-    const byLabel = (label: string, level: string) => defs.find((d) => d.label === label && d.level === level);
-    expect(byLabel("감액여부", "benefit")?.expression).toBe("exist(reduction.periods)");
-    expect(byLabel("감액여부", "subCoverage")?.expression).toMatch(/^any\(D\d{4}\)$/);
-    expect(byLabel("감액여부", "coverage")?.expression).toMatch(/^any\(D\d{4}\)$/);
-    expect(byLabel("면책기간", "benefit")?.expression).toBe("exemption.months");
-    expect(byLabel("면책15세이상", "benefit")?.expression).toBe("exemption.age15_only");
-    const catalog = new Map(defs.map((d) => [d.code, d]));
-    expect(discriminatorResultType(byLabel("감액여부", "coverage")!, undefined, catalog)).toEqual({ kind: "boolean" });
+    expect(defs.map((d) => [d.code, d.label, d.level])).toEqual([["D0001", "담보명", "coverage"]]);
   });
 
   it("공용조항 11건 — 원문이 되풀이하는 문구 (알파플러스_모델명세 §3)", async () => {
@@ -160,27 +152,14 @@ describe("seedAlphaPlus — 알파Plus 실물 시드 (PGlite)", () => {
     expect(products.filter((p) => p.name === ALPHA_PLUS_PRODUCT_NAME)).toHaveLength(1);
   });
 
-  it("기존 DB에 빠진 특성만 보충하고 사용자 코드·상품을 보존하며 재실행해도 중복되지 않는다", async () => {
+  it("기존 DB 재실행은 카탈로그를 건드리지 않는다 — 사용자가 고친 구분자 · 새로 만든 구분자가 그대로다", async () => {
     const product = (await services.product.listProducts()).find((p) => p.name === ALPHA_PLUS_PRODUCT_NAME)!;
-    // 이전 버전: D0001만 시드였고 D0002는 사용자가 이미 사용 중이다.
-    await t.db.delete(discriminators).where(notInArray(discriminators.code, ["D0001", "D0002"]));
-    await t.db.update(discriminators).set({ label: "사용자 지급률", expression: "pay.rate" }).where(eq(discriminators.code, "D0002"));
-    const before = await services.catalog.get("D0002");
+    await t.db.update(discriminators).set({ label: "사용자 담보명" }).where(eq(discriminators.code, "D0001"));
+    const before = await services.catalog.list();
     const result = await seedAlphaPlus(services, admin);
     expect(result).toEqual({ created: false, productId: product.id });
-    expect(await services.catalog.get("D0002")).toEqual(before);
-    const defs = await services.catalog.list();
-    expect(defs).toHaveLength(11);
-    const reduction = defs.find((d) => d.level === "benefit" && d.expression === "exist(reduction.periods)")!;
-    expect(reduction.code).not.toBe("D0002");
-    for (const level of ["coverage", "subCoverage"]) {
-      expect(defs.find((d) => d.level === level && d.label === "감액여부")?.expression).toBe(`any(${reduction.code})`);
-    }
-    const renamed = await services.catalog.rename(admin, reduction.code, "사용자 감액 이름");
-    expect(renamed.ok).toBe(true);
-    await seedAlphaPlus(services, admin);
-    expect(await services.catalog.list()).toHaveLength(11);
-    expect((await services.catalog.get(reduction.code))?.label).toBe("사용자 감액 이름");
+    expect(await services.catalog.list()).toEqual(before);
+    await t.db.update(discriminators).set({ label: "담보명" }).where(eq(discriminators.code, "D0001"));
   });
 
   it("두 번째 기본계약 지정은 거부되고(기능/상품 §3 「기본계약」 · MVP 정확히 1개), 기존 상품은 시드 재실행으로 바뀌지 않는다", async () => {

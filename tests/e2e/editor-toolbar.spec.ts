@@ -93,9 +93,12 @@ test(
 
     await ev.action("툴바#8", "머리 줄에서 변수 · 연산자 · 값을 고른다 — 가지 조작이 켜지고, 저장 한 번 · 새로 읽으면 초록 상자 안 IF 한 줄", async () => {
       const head = body.locator("[data-cond-head]");
-      await head.getByRole("combobox", { name: "IF 1번 줄 변수" }).selectOption("D0009");
+      // 시드 구분자는 원문 모델링이 쓰는 담보명(D0001, string) 하나뿐이다 — 값은 글자 칸 (알파플러스_모델명세 §2)
+      await head.getByRole("combobox", { name: "IF 1번 줄 변수" }).selectOption("D0001");
       await expect(head.getByRole("combobox", { name: "IF 1번 줄 연산자" })).toHaveValue("=");
-      await head.getByRole("combobox", { name: "IF 1번 줄 값" }).selectOption("true");
+      const value = head.getByRole("textbox", { name: "IF 1번 줄 값" });
+      await value.fill("사망보험금");
+      await value.press("Enter");
       await expect(tool("ELSE")).toBeEnabled();
       await submit(page, page.getByRole("button", { name: "저장", exact: true }));
       await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
@@ -104,7 +107,7 @@ test(
       await expect(body.locator("[data-cond-head]")).toHaveCount(0);
       await expect(body.locator(".ts-doc-cond .ts-doc-cond-head")).toHaveCount(1);
       await expect(body.locator(".ts-doc-cond .ts-doc-cond-head")).toContainText("IF");
-      await expect(body.locator(".ts-doc-cond .ts-doc-cond-head")).toContainText("= true");
+      await expect(body.locator(".ts-doc-cond .ts-doc-cond-head")).toContainText("사망보험금");
       await expect(body.locator(".ts-doc-cond select")).toHaveCount(0);
     });
   },
@@ -168,8 +171,10 @@ test(
       const head = editor.locator("[data-cond-head]");
       await expect(head).toHaveCount(1);
       await expect(head.getByRole("combobox", { name: "IF 1번 줄 변수" })).toBeFocused();
-      await head.getByRole("combobox", { name: "IF 1번 줄 변수" }).selectOption("D0009");
-      await head.getByRole("combobox", { name: "IF 1번 줄 값" }).selectOption("true");
+      await head.getByRole("combobox", { name: "IF 1번 줄 변수" }).selectOption("D0001");
+      const value = head.getByRole("textbox", { name: "IF 1번 줄 값" });
+      await value.fill("사망보험금");
+      await value.press("Enter");
       await expect(editor.locator(".ts-doc-cond")).toContainText("〔제한 사유〕");
     });
 

@@ -1,7 +1,6 @@
 import type { NewDiscriminator, NewEnum } from "@/domain/catalog";
 import type { NewClause } from "@/domain/clause";
 import type { DocumentNode } from "@/domain/document";
-import { format, parse, refPath } from "@/domain/expression";
 import type { Actor, Code, Id, Result, Value } from "@/domain/types";
 import type { Services } from "@/services/container";
 
@@ -41,31 +40,11 @@ async function assertAssembles(services: Services, productId: Id): Promise<void>
   if (!result.value.complete) throw new Error(`[seed:alphaPlus] 실물 조립 검증 실패: ${JSON.stringify(result.value.issues)}`);
 }
 
-/** 기존 시드 DB의 급부 특성을 보충한다. 사용자 코드는 보존하고 집계 참조는 실제 발급 코드로 바꾼다. */
-async function ensureBenefitTraits(services: Services, actor: Actor): Promise<void> {
-  const existing = await services.catalog.list();
-  const codes = new Map<Code, Code>();
-  // D0001(담보명)은 기존 시드의 문면에서 이미 참조한다. 추가된 특성 정의만 보충한다.
-  for (const raw of discriminators.filter((d) => d.code !== "D0001")) {
-    const parsed = unwrap(parse(raw.expression));
-    const expression = format(parsed, (ref) => ref.kind === "discriminator" ? codes.get(ref.code) ?? refPath(ref) : refPath(ref));
-    const found = existing.find((d) => {
-      if (d.level !== raw.level) return false;
-      const current = parse(d.expression);
-      return current.ok && format(current.value) === expression;
-    });
-    const definition = found ?? unwrap(await services.catalog.create(actor, { ...omit(raw, ["code"]), expression } as unknown as NewDiscriminator));
-    codes.set(raw.code, definition.code);
-    if (!found) existing.push(definition);
-  }
-}
-
 /** JSON 정본을 서비스 API로 적재한다. JSON의 의미 코드는 참조 키로만 쓰고 UUID는 서비스가 발급한다. */
 export async function loadAlphaPlus(services: Services, actor: Actor): Promise<SeedResult> {
   const existing = (await services.product.listProducts()).find((product) => product.name === ALPHA_PLUS_PRODUCT_NAME);
   if (existing) {
-    await ensureBenefitTraits(services, actor);
-    // 기존 상품은 사용자가 편집 중일 수 있다. 조립 완결성 검사는 새 시드 생성 때만 한다.
+    // 기존 상품 · 카탈로그는 사용자가 편집 중일 수 있다 — 아무것도 보충하지 않는다. 조립 완결성 검사는 새 시드 생성 때만 한다.
     return { created: false, productId: existing.id };
   }
 
