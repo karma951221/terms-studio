@@ -20,9 +20,9 @@ const PREFILL: Record<ClauseMode, string> = {
   block: JSON.stringify([{ id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text: "예시 문구." }] }], null, 2),
 };
 
-export function ModeBody({ children }: { children?: ReactNode }) {
-  const [mode, setMode] = useState<ClauseMode>("inline");
-  const [body, setBody] = useState(PREFILL.inline);
+export function ModeBody({ initial = "inline", children }: { initial?: ClauseMode; children?: ReactNode }) {
+  const [mode, setMode] = useState<ClauseMode>(initial);
+  const [body, setBody] = useState(PREFILL[initial]);
   const [touched, setTouched] = useState(false);
 
   function onModeChange(next: ClauseMode) {

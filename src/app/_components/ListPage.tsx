@@ -16,6 +16,7 @@ import { ErrorBanner } from "./ErrorBanner";
 import { ColumnFilter, ListFilterBar, type ColumnFilterSpec } from "./ListFilters";
 import { ListShell } from "./ListShell";
 import { IconPlus } from "./icons";
+import { MoreMenu, type MoreMenuItem } from "./MoreMenu";
 import { formatDate, todayInSeoul } from "../_lib/list";
 import { FIELD_LABEL } from "../_lib/labels";
 
@@ -72,8 +73,8 @@ export function ListPage<T>({
    * 구획을 만든다(문면). 탭이 이미 구획을 만든 자리는 `sub` — 괘선 없이 작은 제목만(유형).
    */
   heading?: "page" | "section" | "sub";
-  /** 제목 줄 오른쪽 `+` 아이콘 버튼. 없으면 안 그린다. */
-  create?: { href: string; label: string };
+  /** 제목 줄 오른쪽 `+` 아이콘 버튼. 없으면 안 그린다. `menu` 를 주면 누를 때 고를 것(유형 등)을 작은 메뉴로 띄운다. */
+  create?: { href: string; label: string } | { label: string; menu: MoreMenuItem[] };
   /** 제목 줄 아래 하위 탭 줄 — 탭이 둘 이상일 때만 준다 (기본정보 `열거형 | 폼 | 구분자`). */
   tabs?: ReactNode;
   /** 검색창 안내 문구. 없으면 필터바 자체를 안 그린다. */
@@ -96,7 +97,9 @@ export function ListPage<T>({
   const heading = (
     <div className="ts-list-head">
       {headingKind === "page" ? <h1 className="ts-h1">{title}</h1> : <h2 className={headingKind === "section" ? "ts-h2" : "ts-list-title"}>{title}</h2>}
-      {create ? (
+      {create && "menu" in create ? (
+        <MoreMenu label={create.label} items={create.menu} trigger={<IconPlus />} buttonClassName="ts-iconbtn" align="start" />
+      ) : create ? (
         <Link href={create.href} className="ts-iconbtn" title={create.label} aria-label={create.label}>
           <IconPlus />
         </Link>

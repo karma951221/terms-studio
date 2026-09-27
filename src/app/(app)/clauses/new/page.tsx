@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic";
 
 const FORM_ID = "create-clause";
 
-export default async function NewClausePage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { error } = await searchParams;
+export default async function NewClausePage({ searchParams }: { searchParams: Promise<{ error?: string; type?: string }> }) {
+  const { error, type } = await searchParams;
   return (
     <div>
       <CreateHead title={newLabel(ENTITY_LABEL.clause)} formId={FORM_ID} path={[{ label: ENTITY_LABEL.clause, href: "/clauses" }]} banner={<ErrorBanner message={error} />} />
@@ -19,7 +19,7 @@ export default async function NewClausePage({ searchParams }: { searchParams: Pr
         <FormRow label={NAME_LABEL.clause} htmlFor="clause-label">
           <input id="clause-label" type="text" name="label" required autoFocus />
         </FormRow>
-        <ModeBody />
+        <ModeBody initial={type === "block" ? "block" : "inline"} />
       </form>
     </div>
   );
