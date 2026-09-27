@@ -13,9 +13,10 @@ import { runsFromTokens, type Token } from "@/app/(app)/documents/[id]/_componen
 import { CLAUSE_ARTICLE_ID, optionCarrier, type EditOp, type IdSource, type InlineAt } from "@/domain/document";
 import type { Id } from "@/domain/types";
 
+/** 거절 안내 — 화면에 그대로 보이므로 문서 번호를 넣지 않는다 (규칙: 기능/공용조항 §3.1). */
 export const REFUSE = {
-  article: "공용조항에는 조 · 관을 둘 수 없다 — 조는 늘 사용처(약관 템플릿) 소유다 (기능/공용조항 §3.1).",
-  clauseRef: "공용조항 안에 공용조항 참조를 둘 수 없다 — 중첩 금지 (기능/공용조항 §3.1).",
+  article: "공용조항에는 조 · 관을 둘 수 없다 — 조는 늘 사용처(약관 템플릿) 소유다.",
+  clauseRef: "공용조항 안에 공용조항 참조를 둘 수 없다 — 중첩 금지.",
 } as const;
 
 /** 누르면 거부 배너만 띄우는 도구 자리 — 명령은 없다. */
