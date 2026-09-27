@@ -27,6 +27,7 @@ import {
   formatValue,
   formReducer,
   initFormState,
+  isFieldHidden,
   toSubmission,
   type Draft,
   type FieldState,
@@ -414,18 +415,30 @@ export function StructForm({
             {card.description && <span className="ts-muted"> · {card.description}</span>}
           </legend>
           {(!card.optional || live.open[card.key]) &&
-            card.fields.map((view) => (
-              <FieldRow
-                key={view.path}
-                idBase={idBase}
-                field={live.fields[view.path]}
-                externalIssues={issuesAt(view.path)}
-                onEdit={(draft) => dispatch({ type: "edit", path: view.path, draft })}
-                onRevert={() => dispatch({ type: "revertToMaster", path: view.path })}
-                showCode={showCodes}
-                highlighted={highlightPath === view.path}
-              />
-            ))}
+            card.fields.map((view) =>
+              // 기본 숨김 — 기본값 그대로면 칸 대신 작은 링크 하나. 읽기 모드는 아무것도 안 보인다.
+              // 오류가 걸렸거나 강조로 건너온 자리는 숨기지 않는다 (기능/담보 §3.4).
+              isFieldHidden(live, view.path) && issuesAt(view.path).length === 0 && highlightPath !== view.path ? (
+                !readOnly && (
+                  <p key={view.path} className="ts-form-reveal-row" data-path={view.path}>
+                    <button type="button" className="ts-linklike ts-form-reveal" onClick={() => dispatch({ type: "reveal", path: view.path })}>
+                      {view.label} 바꾸기
+                    </button>
+                  </p>
+                )
+              ) : (
+                <FieldRow
+                  key={view.path}
+                  idBase={idBase}
+                  field={live.fields[view.path]}
+                  externalIssues={issuesAt(view.path)}
+                  onEdit={(draft) => dispatch({ type: "edit", path: view.path, draft })}
+                  onRevert={() => dispatch({ type: "revertToMaster", path: view.path })}
+                  showCode={showCodes}
+                  highlighted={highlightPath === view.path}
+                />
+              ),
+            )}
         </fieldset>
       ))}
       {unplaced.length > 0 && (

@@ -4053,3 +4053,7 @@ button.ts-doc-cell-add[aria-current="true"] {
 
 /* 여는 폼 카드 머리 열기/닫기 버튼 (ADR-0065 §4) */
 .ts-form-card-toggle { margin-left: 8px; font-size: 0.85em; }
+
+/* 기본 숨김 필드를 펴는 작은 링크 (기능/담보 §3.4 — 감액 「이후 지급률 바꾸기」) */
+.ts-form-reveal-row { margin: 4px 0 0; }
+.ts-form-reveal { font-size: 0.85em; }

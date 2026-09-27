@@ -59,6 +59,8 @@ export interface FieldView {
   masterValue?: Value;
   /** snapshot 만 — 마스터의 이름 「표시명 (코드)」 (ADR-0005 · §9.4). */
   masterLabel?: string;
+  /** 기본 숨김 — 값이 기본값 그대로면 칸을 감춘다 (`isFieldHidden`, 기능/담보 §3.4). */
+  hiddenByDefault?: true;
 }
 
 /**
@@ -119,6 +121,7 @@ function fieldView(
   label: string,
   type: FieldType,
   defaultValue: Value | undefined,
+  hiddenByDefault: boolean,
   form: FormRef,
   enums: EnumLookup,
   current: Map<SlotPath, ValueSlot>,
@@ -133,6 +136,7 @@ function fieldView(
     view.value = slot.value;
   }
   if (defaultValue !== undefined) view.prefill = defaultValue;
+  if (hiddenByDefault) view.hiddenByDefault = true;
   // 탑재 스냅샷을 손댄 자리만 「스냅샷 · 변경됨」 — 마스터와 같으면 평범한 직접값이다 (§1.2)
   const master = snapshot?.masterValues.get(path);
   if (snapshot && master?.entered && !valueEquals(master.value, view.value)) {
@@ -161,7 +165,7 @@ export function buildForm(
     const card: FormCard = {
       ...ref,
       fields: fieldsOfForm(form).map((r) =>
-        fieldView(r.path, r.field.label, r.field.type, r.field.defaultValue, ref, enums, current, snapshot),
+        fieldView(r.path, r.field.label, r.field.type, r.field.defaultValue, r.field.hiddenByDefault === true, ref, enums, current, snapshot),
       ),
     };
     if (form.description !== undefined) card.description = form.description;
@@ -243,6 +247,8 @@ export interface FormState {
   fields: Record<SlotPath, FieldState>;
   /** 여는 폼 카드가 지금 열려 있나 — 카드 키 기준 (ADR-0065 §4). */
   open: Record<Code, boolean>;
+  /** 기본 숨김 필드 중 「바꾸기」로 편 자리. 다시 접지 않는다 — 저장 후 새 모델이 오면 초기화. */
+  revealed: Record<SlotPath, boolean>;
 }
 
 export type FormAction =
@@ -257,7 +263,9 @@ export type FormAction =
   /** 여는 폼 카드를 연다 — 그 카드 필드를 저장값 → 프리필 → 빈 규칙으로 다시 세운다. */
   | { type: "openForm"; form: Code }
   /** 여는 폼 카드를 닫는다 — 「없음」, 그 카드 필드는 전부 빈 초안이 된다. */
-  | { type: "closeForm"; form: Code };
+  | { type: "closeForm"; form: Code }
+  /** 기본 숨김 필드를 편다 (「{라벨} 바꾸기」). 값은 건드리지 않는다. */
+  | { type: "reveal"; path: SlotPath };
 
 function emptyDraft(type: FieldType): Draft {
   if (type.kind === "table") return [];
@@ -368,11 +376,12 @@ export function initFormState(model: FormModel): FormState {
   for (const view of model.fields) {
     fields[view.path] = initFieldState(view, open[view.form.key] ?? true);
   }
-  return { model, fields, open };
+  return { model, fields, open, revealed: {} };
 }
 
 export function formReducer(state: FormState, action: FormAction): FormState {
   if (action.type === "reset") return initFormState(action.model);
+  if (action.type === "reveal") return { ...state, revealed: { ...state.revealed, [action.path]: true } };
   if (action.type === "openForm" || action.type === "closeForm") {
     const isOpen = action.type === "openForm";
     const open = { ...state.open, [action.form]: isOpen };
@@ -408,6 +417,17 @@ export function formReducer(state: FormState, action: FormAction): FormState {
       break;
   }
   return { ...state, fields: { ...state.fields, [action.path]: next } };
+}
+
+/**
+ * 기본 숨김 필드를 지금 감추나 — 펴지 않았고, 칸의 값이 기본값 그대로이고, 오류가 없을 때만.
+ * 저장된 값이 기본값과 다르면(또는 사람이 비웠으면) 숨기지 않는다 — 숨은 곳에 다른 값이 있으면 안 된다.
+ * 숨겨도 편집 상태는 그대로라 프리필 제안은 저장에 실린다 (§9.1 「저장이 곧 확인」).
+ */
+export function isFieldHidden(state: FormState, path: SlotPath): boolean {
+  const f = state.fields[path];
+  if (!f?.view.hiddenByDefault || state.revealed?.[path]) return false;
+  return f.entered && f.error === undefined && f.view.prefill !== undefined && valueEquals(f.value, f.view.prefill);
 }
 
 // ───────────────────────────── 제출 ─────────────────────────────

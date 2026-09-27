@@ -325,3 +325,51 @@ describe("StructForm — 노드별 초안 복원 (점검 H4 ②)", () => {
     expect(tagsWith(html, 'name="pay.rate"')[0]).toContain('value="80"');
   });
 });
+
+describe("StructForm — 기본 숨김 필드 (감액 「이후 지급률」, 기능/담보 §3.4)", () => {
+  const reductionMaster: MasterForm[] = [
+    {
+      key: "reduction",
+      label: "감액",
+      level: "benefit",
+      optional: true,
+      fields: [
+        {
+          key: "periods",
+          label: "구간",
+          type: { kind: "table", columns: [{ key: "end", label: "기간", type: "period" }, { key: "rate", label: "지급률", type: "percent" }] },
+        },
+        { key: "after_rate", label: "이후 지급률", type: { kind: "number" }, defaultValue: 100, hiddenByDefault: true },
+      ],
+    },
+  ];
+  const periods: [string, ValueSlot] = ["reduction.periods", entered([{ end: 12, rate: 50 }])];
+  const modelOf = (...slots: [string, ValueSlot][]) => buildForm("benefit", enums, new Map(slots), undefined, reductionMaster);
+
+  it("값이 100 이면 칸 대신 작은 링크 「이후 지급률 바꾸기」만 있다", () => {
+    const html = renderToStaticMarkup(<StructForm model={modelOf(periods, ["reduction.after_rate", entered(100)])} onSubmit={() => {}} />);
+    expect(html).not.toContain('name="reduction.after_rate"');
+    expect(html).toContain("이후 지급률 바꾸기");
+  });
+
+  it("저장된 값이 100 이 아니면 칸이 보이고 링크는 없다", () => {
+    const html = renderToStaticMarkup(<StructForm model={modelOf(periods, ["reduction.after_rate", entered(80)])} onSubmit={() => {}} />);
+    expect(tagsWith(html, 'name="reduction.after_rate"')[0]).toContain('value="80"');
+    expect(html).not.toContain("이후 지급률 바꾸기");
+  });
+
+  it("펼친 초안이면 칸이 보인다", () => {
+    const model = modelOf(periods, ["reduction.after_rate", entered(100)]);
+    const revealed = formReducer(initFormState(model), { type: "reveal", path: "reduction.after_rate" });
+    const html = renderToStaticMarkup(<StructForm model={model} embedded initialState={revealed} />);
+    expect(tagsWith(html, 'name="reduction.after_rate"')[0]).toContain('value="100"');
+    expect(html).not.toContain("이후 지급률 바꾸기");
+  });
+
+  it("읽기 모드 — 100 이면 표시하지 않고(링크도 없다), 다르면 보인다", () => {
+    const hidden = renderToStaticMarkup(<StructForm model={modelOf(periods, ["reduction.after_rate", entered(100)])} embedded readOnly />);
+    expect(hidden).not.toContain("이후 지급률");
+    const shown = renderToStaticMarkup(<StructForm model={modelOf(periods, ["reduction.after_rate", entered(70)])} embedded readOnly />);
+    expect(tagsWith(shown, 'name="reduction.after_rate"')[0]).toContain('value="70"');
+  });
+});

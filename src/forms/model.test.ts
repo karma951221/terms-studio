@@ -11,6 +11,7 @@ import {
   formReducer,
   formSlotsOf,
   initFormState,
+  isFieldHidden,
   toSubmission,
   zodSchemaFor,
   zodValueSchema,
@@ -626,5 +627,48 @@ describe("table 필드 · 여는 폼", () => {
   it("formatValue 는 표를 「n행」으로", () => {
     const view = buildForm("benefit", enums, new Map([["reduction.periods", entered([{ end: 12, rate: 50 }])]]), undefined, master).fields[0];
     expect(formatValue(view)).toBe("1행");
+  });
+});
+
+describe("기본 숨김 필드 (hiddenByDefault) — 감액 「이후 지급률」 (기능/담보 §3.4)", () => {
+  const master: MasterForm[] = [
+    {
+      key: "reduction", label: "감액", level: "benefit", optional: true,
+      fields: [
+        { key: "periods", label: "구간", type: { kind: "table", columns: [{ key: "end", label: "기간", type: "period" }, { key: "rate", label: "지급률", type: "percent" }] } },
+        { key: "after_rate", label: "이후 지급률", type: { kind: "number" }, defaultValue: 100, hiddenByDefault: true },
+        { key: "new_only", label: "신규계약만", type: { kind: "boolean" }, defaultValue: true },
+      ],
+    },
+  ];
+  const enums: EnumLookup = () => undefined;
+  const periods = ["reduction.periods", entered([{ end: 12, rate: 50 }])] as const;
+  const stateWith = (...slots: (readonly [string, ValueSlot])[]) =>
+    initFormState(buildForm("benefit", enums, new Map(slots), undefined, master));
+
+  it("폼 모델이 필드 속성을 옮긴다 — 붙인 필드만", () => {
+    const model = buildForm("benefit", enums, new Map(), undefined, master);
+    expect(model.fields.find((f) => f.path === "reduction.after_rate")?.hiddenByDefault).toBe(true);
+    expect(model.fields.find((f) => f.path === "reduction.new_only")?.hiddenByDefault).toBeUndefined();
+  });
+
+  it("프리필 제안(100) 그대로면 숨긴다 · 숨긴 채 저장하면 100 이 명시 값으로 실린다", () => {
+    let s = stateWith();
+    s = formReducer(s, { type: "openForm", form: "reduction" });
+    expect(isFieldHidden(s, "reduction.after_rate")).toBe(true);
+    expect(isFieldHidden(s, "reduction.new_only")).toBe(false);
+    expect(toSubmission(s).values).toContainEqual({ path: "reduction.after_rate", value: 100 });
+  });
+
+  it("저장된 값이 100 이면 숨김 유지 · 100 이 아니면 보인다", () => {
+    expect(isFieldHidden(stateWith(periods, ["reduction.after_rate", entered(100)]), "reduction.after_rate")).toBe(true);
+    expect(isFieldHidden(stateWith(periods, ["reduction.after_rate", entered(80)]), "reduction.after_rate")).toBe(false);
+  });
+
+  it("펼치면(reveal) 보인다 — 제출은 바뀌지 않는다", () => {
+    const s = stateWith(periods, ["reduction.after_rate", entered(100)]);
+    const revealed = formReducer(s, { type: "reveal", path: "reduction.after_rate" });
+    expect(isFieldHidden(revealed, "reduction.after_rate")).toBe(false);
+    expect(toSubmission(revealed)).toEqual(toSubmission(s));
   });
 });
