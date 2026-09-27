@@ -88,7 +88,7 @@ describe("담보값입력 S3 — 완결성 조회는 마스터 자리 전부가 
       ["benefit", "일반상해사망 > 일반상해사망 > 일반상해사망보험금", "pay.first_only"],
     ]);
     expect(completeness(accident, values())[0]).toMatchObject({
-      label: "담보 기본 › 담보명",
+      label: "담보 기본 › 보험금명",
       owner: { id: accident.id },
     });
     expect(completeness(accident, values())[1]).toMatchObject({
