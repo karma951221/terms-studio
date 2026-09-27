@@ -69,10 +69,17 @@ export interface ReferencePart {
 /** 참조 대상의 계산 번호와 상위 구조. `kind` 아래 단계까지만 값이 있다. */
 export interface ReferenceTarget {
   kind: NumberKind;
+  /** 조를 품은 관 — 표기에는 쓰지 않고, 대상 고르기 트리의 묶음 머리로만 쓴다. */
+  section?: ReferencePart & { title: string };
   article: ReferencePart & { title: string };
   paragraph?: ReferencePart;
   item?: ReferencePart;
   subitem?: ReferencePart;
+}
+
+/** 목 참조 표기 — 「가목」…「하목」 (법령 인용 꼴), 그 너머는 「제N목」. */
+export function subitemRefLabel(n: number): string {
+  return n >= 1 && n <= HANGUL.length ? `${HANGUL[n - 1]}목` : `제${n}목`;
 }
 
 /** 첫 대상은 전체 경로, 다음 대상은 직전 대상과 같은 상위 경로를 생략한 실물 표기를 만든다. */
@@ -84,7 +91,7 @@ export function referenceTargetLabel(target: ReferenceTarget, previous?: Referen
   if (target.kind === "article" || !sameArticle) parts.push(articleRefLabel(target.article.n, target.article.title));
   if (target.paragraph && (target.kind === "paragraph" || !sameParagraph)) parts.push(`제${target.paragraph.n}항`);
   if (target.item && (target.kind === "item" || !sameItem)) parts.push(`제${target.item.n}호`);
-  if (target.subitem) parts.push(`제${target.subitem.n}목`);
+  if (target.subitem) parts.push(subitemRefLabel(target.subitem.n));
   return parts.join(" ");
 }
 
@@ -159,42 +166,110 @@ export function referenceChunkLabel(targets: readonly ReferenceTarget[], connect
   return `${segments.slice(0, -1).join(", ")} ${connector} ${segments.at(-1)}`;
 }
 
-/** 편집기용: 현재 계산 번호를 붙여 문서 안의 조·항·호·목을 참조 대상 id로 색인한다. */
+/** 편집기용: 현재 계산 번호를 붙여 문서 안의 조·항·호·목을 참조 대상 id로 색인한다. 문서 순서(전위)대로. */
 export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id, NodeNumber>): Map<Id, ReferenceTarget> {
   const out = new Map<Id, ReferenceTarget>();
-  const visit = (node: Node, parent?: ReferenceTarget): void => {
+  type Section = ReferenceTarget["section"];
+  const visit = (node: Node, parent: ReferenceTarget | undefined, section: Section): void => {
     if (node.kind === "condBlock") {
-      for (const branch of node.branches) for (const child of branch.children) visit(child, parent);
-      return;
-    }
-    if (node.kind === "section") {
-      for (const child of node.children) visit(child, parent);
+      for (const branch of node.branches) for (const child of branch.children) visit(child, parent, section);
       return;
     }
     const number = numbers.get(node.id);
-    if (node.kind === "article" && number) {
-      const target: ReferenceTarget = { kind: "article", article: { id: node.id, n: number.n, title: node.title } };
-      out.set(node.id, target);
-      for (const child of node.children) visit(child, target);
+    if (node.kind === "section") {
+      const here = number ? { id: node.id, n: number.n, title: node.title } : section;
+      for (const child of node.children) visit(child, parent, here);
       return;
     }
-    if (node.kind === "paragraph" && number && parent) {
-      const target: ReferenceTarget = { kind: "paragraph", article: parent.article, paragraph: { id: node.id, n: number.n } };
+    if (node.kind === "article" && number) {
+      const target: ReferenceTarget = { kind: "article", ...(section ? { section } : {}), article: { id: node.id, n: number.n, title: node.title } };
       out.set(node.id, target);
-      for (const item of node.items ?? []) visit(item, target);
+      for (const child of node.children) visit(child, target, section);
+      return;
+    }
+    const up = parent?.section ? { section: parent.section } : {};
+    if (node.kind === "paragraph" && number && parent) {
+      const target: ReferenceTarget = { kind: "paragraph", ...up, article: parent.article, paragraph: { id: node.id, n: number.n } };
+      out.set(node.id, target);
+      for (const item of node.items ?? []) visit(item, target, section);
       return;
     }
     if (node.kind === "item" && number && parent?.paragraph) {
-      const target: ReferenceTarget = { kind: "item", article: parent.article, paragraph: parent.paragraph, item: { id: node.id, n: number.n } };
+      const target: ReferenceTarget = { kind: "item", ...up, article: parent.article, paragraph: parent.paragraph, item: { id: node.id, n: number.n } };
       out.set(node.id, target);
-      for (const subitem of node.subitems ?? []) visit(subitem, target);
+      for (const subitem of node.subitems ?? []) visit(subitem, target, section);
       return;
     }
     if (node.kind === "subitem" && number && parent?.paragraph && parent.item) {
-      out.set(node.id, { kind: "subitem", article: parent.article, paragraph: parent.paragraph, item: parent.item, subitem: { id: node.id, n: number.n } });
+      out.set(node.id, { kind: "subitem", ...up, article: parent.article, paragraph: parent.paragraph, item: parent.item, subitem: { id: node.id, n: number.n } });
     }
   };
-  for (const node of doc.children) visit(node);
+  for (const node of doc.children) visit(node, undefined, undefined);
+  return out;
+}
+
+/** 대상 고르기 트리의 한 줄 — 조 › 항 › 호 › 목. `label` 은 자기 단계 표기만(「제10조(…)」·「제1항」·「제2호」·「가목」). */
+export interface ReferenceOutlineNode {
+  id: Id;
+  target: ReferenceTarget;
+  label: string;
+  children: ReferenceOutlineNode[];
+}
+
+/** 관 묶음 — 관 밖 조는 `section` 없는 묶음에 선다. 문서 순서대로, 관이 바뀔 때마다 새 묶음. */
+export interface ReferenceOutlineGroup {
+  section?: ReferencePart & { title: string };
+  label?: string;
+  rows: ReferenceOutlineNode[];
+}
+
+function parentIdOf(t: ReferenceTarget): Id | undefined {
+  switch (t.kind) {
+    case "paragraph":
+      return t.article.id;
+    case "item":
+      return t.paragraph?.id;
+    case "subitem":
+      return t.item?.id;
+    default:
+      return undefined;
+  }
+}
+
+/** `referenceTargetIndex` 의 평평한 색인 → 관 › 조 › 항 › 호 › 목 트리 (조 참조 팝업의 대상 고르기). 상위가 색인에 없는 대상은 버린다. */
+export function referenceOutline(index: ReadonlyMap<Id, ReferenceTarget>): ReferenceOutlineGroup[] {
+  const groups: ReferenceOutlineGroup[] = [];
+  const nodes = new Map<Id, ReferenceOutlineNode>();
+  for (const [id, target] of index) {
+    const parentId = parentIdOf(target);
+    const parent = parentId === undefined ? undefined : nodes.get(parentId);
+    const label = parent ? referenceTargetLabel(target, parent.target) : referenceTargetLabel(target);
+    const node: ReferenceOutlineNode = { id, target, label, children: [] };
+    if (target.kind === "article") {
+      let group = groups.at(-1);
+      if (!group || group.section?.id !== target.section?.id) {
+        group = target.section ? { section: target.section, label: `${sectionLabel(target.section.n)} ${target.section.title}`, rows: [] } : { rows: [] };
+        groups.push(group);
+      }
+      group.rows.push(node);
+    } else if (parent) {
+      parent.children.push(node);
+    } else continue;
+    nodes.set(id, node);
+  }
+  return groups;
+}
+
+/** 고른 대상들의 조상 id — 기존 참조를 고칠 때 이 줄들을 펴 둔다. */
+export function referenceAncestorIds(index: ReadonlyMap<Id, ReferenceTarget>, ids: Iterable<Id>): Set<Id> {
+  const out = new Set<Id>();
+  for (const id of ids) {
+    const t = index.get(id);
+    if (!t) continue;
+    if (t.kind !== "article") out.add(t.article.id);
+    if ((t.kind === "item" || t.kind === "subitem") && t.paragraph) out.add(t.paragraph.id);
+    if (t.kind === "subitem" && t.item) out.add(t.item.id);
+  }
   return out;
 }
 

@@ -9,10 +9,13 @@ import {
   itemLabel,
   numberTree,
   paragraphLabel,
-  referenceTargetIndex,
+  referenceAncestorIds,
   referenceChunkLabel,
+  referenceOutline,
+  referenceTargetIndex,
   referenceTargetLabel,
   subitemLabel,
+  subitemRefLabel,
 } from "./numbering";
 
 describe("번호 표기 (임시 규칙 — 실물 조사 후 확정)", () => {
@@ -39,7 +42,8 @@ describe("번호 표기 (임시 규칙 — 실물 조사 후 확정)", () => {
     expect(referenceTargetLabel(paragraph1)).toBe("제6조(해약환급금) 제1항");
     expect(referenceTargetLabel(paragraph2, paragraph1)).toBe("제2항");
     expect(referenceTargetLabel({ kind: "item", article, paragraph: { id: "p1", n: 1 }, item: { id: "i2", n: 2 } }, paragraph1)).toBe("제2호");
-    expect(referenceTargetLabel({ kind: "subitem", article, paragraph: { id: "p1", n: 1 }, item: { id: "i2", n: 2 }, subitem: { id: "s1", n: 1 } })).toBe("제6조(해약환급금) 제1항 제2호 제1목");
+    expect(referenceTargetLabel({ kind: "subitem", article, paragraph: { id: "p1", n: 1 }, item: { id: "i2", n: 2 }, subitem: { id: "s1", n: 1 } })).toBe("제6조(해약환급금) 제1항 제2호 가목");
+    expect(referenceTargetLabel({ kind: "subitem", article, paragraph: { id: "p1", n: 1 }, item: { id: "i2", n: 2 }, subitem: { id: "s2", n: 2 } }, { kind: "subitem", article, paragraph: { id: "p1", n: 1 }, item: { id: "i2", n: 2 }, subitem: { id: "s1", n: 1 } })).toBe("나목");
   });
 
   describe("다중 참조 덩어리 표기 (기능/문면 §3.5) — 연속 3개 이상은 「부터 … 까지」, 나머지는 쉼표 + 연결어", () => {
@@ -92,7 +96,45 @@ describe("번호 표기 (임시 규칙 — 실물 조사 후 확정)", () => {
     const b = nodeBuilders(sequentialIds("r"));
     const doc = b.document("d", [b.article("a", [b.paragraph([], [b.item([], [b.subitem([])])])])]);
     const index = referenceTargetIndex(doc, numberTree(doc));
-    expect([...index.values()].map((target) => referenceTargetLabel(target))).toEqual(["제1조(a)", "제1조(a) 제1항", "제1조(a) 제1항 제1호", "제1조(a) 제1항 제1호 제1목"]);
+    expect([...index.values()].map((target) => referenceTargetLabel(target))).toEqual(["제1조(a)", "제1조(a) 제1항", "제1조(a) 제1항 제1호", "제1조(a) 제1항 제1호 가목"]);
+  });
+});
+
+describe("조 참조 대상 고르기 트리 — 관 › 조 › 항 › 호 › 목 (기능/문면 §4.3)", () => {
+  const build = () => {
+    const b = nodeBuilders(sequentialIds("r"));
+    const doc = b.document("d", [
+      b.article("앞", [b.paragraph([])]),
+      b.section("총칙", [b.article("목적", [b.paragraph([], [b.item([], [b.subitem([]), b.subitem([])])]), b.paragraph([])]), b.article("정의", [b.paragraph([])])]),
+      b.section("지급", [b.article("지급사유", [b.paragraph([])])]),
+    ]);
+    return referenceTargetIndex(doc, numberTree(doc));
+  };
+
+  it("목 참조 표기는 「가목」…「하목」, 그 너머는 「제N목」", () => {
+    expect(subitemRefLabel(1)).toBe("가목");
+    expect(subitemRefLabel(14)).toBe("하목");
+    expect(subitemRefLabel(15)).toBe("제15목");
+  });
+
+  it("관마다 묶고, 조 아래 항 · 호 · 목을 자기 단계 표기로 품는다", () => {
+    const groups = referenceOutline(build());
+    expect(groups.map((g) => g.label)).toEqual([undefined, "제1관 총칙", "제2관 지급"]);
+    expect(groups.map((g) => g.rows.map((r) => r.label))).toEqual([["제1조(앞)"], ["제2조(목적)", "제3조(정의)"], ["제4조(지급사유)"]]);
+    const purpose = groups[1].rows[0];
+    expect(purpose.children.map((c) => c.label)).toEqual(["제1항", "제2항"]);
+    expect(purpose.children[0].children.map((c) => c.label)).toEqual(["제1호"]);
+    expect(purpose.children[0].children[0].children.map((c) => c.label)).toEqual(["가목", "나목"]);
+    // 표기는 여전히 전체 경로 — 관은 표기에 들지 않는다
+    expect(referenceTargetLabel(purpose.children[0].children[0].children[1].target)).toBe("제2조(목적) 제1항 제1호 나목");
+  });
+
+  it("고른 대상의 조상(조 · 항 · 호)을 펴 둘 id 로 준다", () => {
+    const index = build();
+    const [, total] = referenceOutline(index);
+    const subitem = total.rows[0].children[0].children[0].children[1];
+    const article = total.rows[1];
+    expect([...referenceAncestorIds(index, [subitem.id, article.id, "없는 id"])]).toEqual([total.rows[0].id, total.rows[0].children[0].id, total.rows[0].children[0].children[0].id]);
   });
 });
 
@@ -167,11 +209,12 @@ describe("관 · 단항 조 (기능/문면 §3.2)", () => {
     expect(n.get(p2.id)?.label).toBe("②");
   });
 
-  it("참조 색인은 관 안의 조도 찾는다", () => {
+  it("참조 색인은 관 안의 조도 찾고, 품은 관을 함께 든다", () => {
     const b = nodeBuilders(sequentialIds("n"));
     const a = b.article("A", [b.paragraph([b.text("x")])]);
-    const doc = b.document("D", [b.section("관", [a])]);
+    const s = b.section("관", [a]);
+    const doc = b.document("D", [s]);
     const index = referenceTargetIndex(doc, numberTree(doc));
-    expect(index.get(a.id)).toEqual({ kind: "article", article: { id: a.id, n: 1, title: "A" } });
+    expect(index.get(a.id)).toEqual({ kind: "article", section: { id: s.id, n: 1, title: "관" }, article: { id: a.id, n: 1, title: "A" } });
   });
 });
