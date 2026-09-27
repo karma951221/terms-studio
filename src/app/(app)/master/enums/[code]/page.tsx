@@ -4,7 +4,7 @@ import { UsageList } from "@/app/_components/UsageList";
 import { refStats, usagesOf } from "@/domain/refs";
 import { getServices } from "@/lib/services";
 
-import { ENUMS_CRUMB } from "../../MasterTabs";
+import { basicsCrumb } from "@/app/_components/BasicsTabs";
 import { EnumEditor } from "./EnumEditor";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ export default async function EnumDetailPage({ params }: { params: Promise<{ cod
   const { code } = await params;
   const services = getServices();
   const [item, graph] = await Promise.all([services.catalog.getEnum(code), services.refs.graph()]);
-  if (!item) return <div><Breadcrumb items={[{ label: ENUMS_CRUMB.label, href: ENUMS_CRUMB.href }, { label: code }]} /><p className="ts-error-banner">찾을 수 없습니다.</p></div>;
+  if (!item) return <div><Breadcrumb items={[basicsCrumb("enums"), { label: code }]} /><p className="ts-error-banner">찾을 수 없습니다.</p></div>;
   const usages = usagesOf(graph, { kind: "enum", enumCode: code }, { via: ["type"] });
   const valueUsage = Object.fromEntries(item.values.map((value) => [value.code, usagesOf(graph, { kind: "enumValue", enumCode: code, valueCode: value.code }).length]));
   const signature = item.values.map((value) => value.code).join(":");

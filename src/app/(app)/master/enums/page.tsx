@@ -1,17 +1,17 @@
 /**
- * 열거형변수 조회 (L1) — 마스터의 둘째 탭 `/master/enums` (기능/마스터 §4.4). 조립은 ListPage 가 한다.
- * 제목은 탭과 무관하게 「마스터」, `+`(새 열거형변수)는 이 탭에만 선다 — 폼은 코드에 살아 만들 것이 없다.
+ * 열거형변수 조회 (L1) — 메뉴 「기본정보」의 첫 탭 `/master/enums` (기능/마스터 §4.4). 조립은 ListPage 가 한다.
+ * 제목은 탭과 무관하게 「기본정보」, `+`(새 열거형변수)는 이 탭과 구분자 탭에 선다 — 폼은 코드에 살아 만들 것이 없다.
  */
+import { BasicsTabs } from "@/app/_components/BasicsTabs";
 import { EmptyState } from "@/app/_components/EmptyState";
 import type { ColumnFilterSpec } from "@/app/_components/ListFilters";
 import { ListPage, codeCol, nameCol, type ListColumn } from "@/app/_components/ListPage";
 import { formatDate, includesQuery, paginate } from "@/app/_lib/list";
 import { ENTITY_LABEL, FIELD_LABEL, NAME_LABEL, newLabel, searchPlaceholder } from "@/app/_lib/labels";
+import { BASICS_TITLE } from "@/app/_lib/menu";
 import type { EnumDef } from "@/domain/catalog";
 import { usagesOf } from "@/domain/refs";
 import { getServices } from "@/lib/services";
-
-import { MasterTabs } from "../MasterTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -66,8 +66,8 @@ export default async function EnumListPage({ searchParams }: { searchParams: Pro
 
   return (
     <ListPage
-      title="마스터"
-      tabs={<MasterTabs current="enums" />}
+      title={BASICS_TITLE}
+      tabs={<BasicsTabs current="enums" />}
       create={{ href: q ? `/master/enums/new?q=${encodeURIComponent(q)}` : "/master/enums/new", label: newLabel(ENTITY_LABEL.enum) }}
       search={{ placeholder: searchPlaceholder(FIELD_LABEL.code, NAME_LABEL.enum, FIELD_LABEL.value) }}
       filters={FILTERS}

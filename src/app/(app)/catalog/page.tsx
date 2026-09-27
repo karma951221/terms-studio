@@ -8,12 +8,16 @@
  *
  * 2026-09-27 — 5층 모양 트리(ADR-0070 결정 8)를 같은 날 다시 평면 표로 되돌렸다 — 가지가 다섯 겹이라 훑기 어렵다(UI 검토).
  * 레벨은 맨 앞 컬럼이고 헤더가 곧 필터다(다른 목록과 같은 문법). 행은 레벨 깊이(상품 → 급부) 순, 같은 레벨 안은 코드 순.
+ *
+ * 2026-09-27 — 메뉴 「기본정보」의 셋째 탭이 됐다 (`열거형 | 폼 | 구분자`, BasicsTabs). 제목은 「기본정보」, 주소는 그대로 `/catalog`.
  */
+import { BasicsTabs } from "@/app/_components/BasicsTabs";
 import { EmptyState } from "@/app/_components/EmptyState";
 import type { ColumnFilterSpec } from "@/app/_components/ListFilters";
 import { ListPage, codeCol, nameCol, type ListColumn } from "@/app/_components/ListPage";
 import { ENTITY_LABEL, FIELD_LABEL, LEVEL_LABEL, NAME_LABEL, newLabel, searchPlaceholder } from "@/app/_lib/labels";
 import { formatDate, includesQuery, paginate } from "@/app/_lib/list";
+import { BASICS_TITLE } from "@/app/_lib/menu";
 import type { Discriminator } from "@/domain/catalog/types";
 import { levelDepth } from "@/domain/master";
 import { ATTACH_LEVELS } from "@/domain/types";
@@ -74,7 +78,8 @@ export default async function CatalogListPage({ searchParams }: { searchParams: 
 
   return (
     <ListPage
-      title={ENTITY_LABEL.discriminator}
+      title={BASICS_TITLE}
+      tabs={<BasicsTabs current="discriminators" />}
       create={{ href: `/catalog/new${createParams.size ? `?${createParams}` : ""}`, label: newLabel(ENTITY_LABEL.discriminator) }}
       search={{ placeholder: searchPlaceholder(FIELD_LABEL.code, NAME_LABEL.discriminator) }}
       filters={FILTERS}

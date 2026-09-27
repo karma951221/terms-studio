@@ -15,6 +15,7 @@
  */
 import { useState, type ReactNode } from "react";
 
+import { basicsCrumb } from "@/app/_components/BasicsTabs";
 import { CreateHead, FormRow } from "@/app/_components/FormRow";
 import { NoteField } from "@/app/_components/NoteField";
 import { RadioGroup } from "@/app/_components/RadioGroup";
@@ -62,7 +63,7 @@ export function CreateForm({
       <CreateHead
         title={newLabel(ENTITY_LABEL.discriminator)}
         formId={FORM_ID}
-        path={[{ label: ENTITY_LABEL.discriminator, href: "/catalog" }]}
+        path={[basicsCrumb("discriminators")]}
         banner={banner}
         actions={<InspectButton input={inspectInput} onResult={setInspection} />}
       />
