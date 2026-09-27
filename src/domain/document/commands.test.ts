@@ -396,3 +396,98 @@ describe("setTableRepeat · insertCell — 행 반복 표 (ADR-0070 결정 6)", 
     expect(rejection(applyCommand(doc, { type: "insertCell", tableId: table.id, row: 0, col: 0, node: b.paragraph() as never })).reason).toBe("invalid");
   });
 });
+
+describe("setInlines — 가운데 본문의 그 자리 편집 (기능/문면 §3.8 · §4.3)", () => {
+  function paragraphDoc() {
+    const b = make();
+    // text n1 · slot n2 · text n3 · paragraph n4 · article n5 · document n6
+    const doc = b.document("D", [b.article("가", [b.paragraph([b.text("계약일부터 "), b.slot("D0001"), b.text(" 이내")])])]);
+    return { b, doc };
+  }
+  const para = (doc: DocumentNode) => indexTree(doc).nodes.get("n4")!.node as ParagraphNode;
+
+  it("문장을 고치고 칩을 그대로 둔다 — 같은 id 의 문장은 고치고 빈 문장은 버린다", () => {
+    const { doc } = paragraphDoc();
+    const next = unwrap(applyCommand(doc, { type: "setInlines", at: { parentId: "n4" }, runs: [{ id: "n1", text: "계약일로부터 " }, { keep: "n2" }, { id: "n3", text: "" }] }));
+    expect(para(next).children).toEqual([{ id: "n1", kind: "text", text: "계약일로부터 " }, { id: "n2", kind: "slot", ref: "D0001" }]);
+  });
+
+  it("빠진 칩은 지워지고, 커서 자리에 새 칩이 들어간다", () => {
+    const { b, doc } = paragraphDoc();
+    const removed = unwrap(applyCommand(doc, { type: "setInlines", at: { parentId: "n4" }, runs: [{ id: "n1", text: "계약일부터  이내" }] }));
+    expect(para(removed).children.map((c) => c.id)).toEqual(["n1"]);
+    const slot = b.slot("D0002"); // n7
+    const inserted = unwrap(
+      applyCommand(removed, { type: "setInlines", at: { parentId: "n4" }, runs: [{ id: "n1", text: "계약일" }, { node: slot }, { id: "t-new", text: "부터 이내" }] }),
+    );
+    expect(para(inserted).children.map((c) => `${c.kind}:${c.id}`)).toEqual(["text:n1", "slot:n7", "text:t-new"]);
+  });
+
+  it("목록에 없는 노드를 두라거나 id 가 겹치면 거부 — 트리 불변", () => {
+    const { b, doc } = paragraphDoc();
+    expect(rejection(applyCommand(doc, { type: "setInlines", at: { parentId: "n4" }, runs: [{ keep: "n5" }] })).reason).toBe("invalid");
+    expect(rejection(applyCommand(doc, { type: "setInlines", at: { parentId: "n4" }, runs: [{ id: "n2", text: "슬롯 id" }] })).reason).toBe("invalid");
+    expect(rejection(applyCommand(doc, { type: "setInlines", at: { parentId: "n4" }, runs: [{ id: "n5", text: "조와 같은 id" }] })).reason).toBe("invalid");
+    // 블록 자리(조)는 문장 자리가 아니다
+    expect(rejection(applyCommand(doc, { type: "setInlines", at: { parentId: "n5" }, runs: [{ id: "x", text: "a" }] })).reason).toBe("invalid");
+    void b;
+  });
+
+  it("문장 안 조건 가지 안에 문장 안 조건은 넣을 수 없다 (§3.2 중첩)", () => {
+    const b = make();
+    const cond = b.inlineCond([b.inlineBranch("D0001 = true", [b.text("참")]), b.inlineBranch(undefined, [])]); // text n1 · br n2 · br n3 · cond n4
+    const doc = b.document("D", [b.article("가", [b.paragraph([cond])])]);
+    const inner = b.inlineCond([b.inlineBranch("D0002 = true", [])]);
+    expect(rejection(applyCommand(doc, { type: "setInlines", at: { parentId: "n2" }, runs: [{ keep: "n1" }, { node: inner }] })).reason).toBe("invalid");
+    const ok2 = unwrap(applyCommand(doc, { type: "setInlines", at: { parentId: "n2" }, runs: [{ id: "n1", text: "참일 때" }] }));
+    expect(((indexTree(ok2).branches.get("n2")!.branch.children[0]) as { text: string }).text).toBe("참일 때");
+  });
+
+  it("표 셀 — 빈 셀에 문장을 쓴다", () => {
+    const b = make();
+    const table = b.table({ columns: [{}, {}], rows: [{ cells: [[], []] }] });
+    const doc = b.document("D", [b.article("가", [table])]);
+    const next = unwrap(applyCommand(doc, { type: "setInlines", at: { tableId: table.id, row: 0, col: 1 }, runs: [{ id: "c1", text: "셀" }] }));
+    const t = indexTree(next).nodes.get(table.id)!.node as { rows: { cells: { id: string }[][] }[] };
+    expect(t.rows[0].cells[1].map((c) => c.id)).toEqual(["c1"]);
+    expect(rejection(applyCommand(doc, { type: "setInlines", at: { tableId: table.id, row: 3, col: 0 }, runs: [] })).reason).toBe("invalid");
+  });
+});
+
+describe("표 행 · 열 넣기 · 빼기 · 제목줄 (셀 조작 줄)", () => {
+  function tableDoc() {
+    const b = make();
+    const table = b.textTable({ columns: [{ width: 30 }, { width: 70 }], rows: [{ header: true, cells: ["용어", "정의"] }, { cells: ["계약자", "…"] }] });
+    const doc = b.document("D", [b.article("가", [table])]);
+    return { doc, id: table.id };
+  }
+  const shape = (doc: DocumentNode, id: string) => {
+    const t = indexTree(doc).nodes.get(id)!.node as { columns: unknown[]; rows: { header?: boolean; cells: unknown[][] }[] };
+    return { cols: t.columns.length, rows: t.rows.map((r) => `${r.header ? "H" : "-"}${r.cells.map((c) => c.length).join("")}`) };
+  };
+
+  it("행 · 열을 넣으면 빈 셀이 생기고 셀 수 = 열 수가 지켜진다", () => {
+    const { doc, id } = tableDoc();
+    const next = unwrap(
+      applyCommands(doc, [
+        { type: "insertTableRow", tableId: id, index: 1 },
+        { type: "insertTableColumn", tableId: id, index: 0 },
+      ]),
+    );
+    expect(shape(next, id)).toEqual({ cols: 3, rows: ["H011", "-000", "-011"] });
+  });
+
+  it("행 · 열 삭제와 제목줄 — 마지막 행 · 열은 지울 수 없다", () => {
+    const { doc, id } = tableDoc();
+    const next = unwrap(
+      applyCommands(doc, [
+        { type: "removeTableColumn", tableId: id, index: 1 },
+        { type: "removeTableRow", tableId: id, index: 0 },
+        { type: "setTableRowHeader", tableId: id, index: 0, header: true },
+      ]),
+    );
+    expect(shape(next, id)).toEqual({ cols: 1, rows: ["H1"] });
+    expect(rejection(applyCommand(next, { type: "removeTableColumn", tableId: id, index: 0 })).reason).toBe("invalid");
+    expect(rejection(applyCommand(next, { type: "removeTableRow", tableId: id, index: 0 })).reason).toBe("invalid");
+  });
+});

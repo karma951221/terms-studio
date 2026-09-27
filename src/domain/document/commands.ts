@@ -46,6 +46,17 @@ import {
 
 // ───────────────────────────── 커맨드 ─────────────────────────────
 
+/** 인라인 목록의 자리 — 문장 자리(항 · 호 · 목 · 문장 안 조건 가지)이거나 표 셀. */
+export type InlineAt = { parentId: Id } | { tableId: Id; row: number; col: number };
+
+/**
+ * 인라인 목록을 새로 짤 때의 한 조각 (`setInlines`).
+ * - `{ id, text }` — 문장. 그 목록에 같은 id 의 문장이 있으면 그것을 고치고, 없으면 그 id 로 새 문장. 빈 문장은 버린다.
+ * - `{ keep }` — 그 목록에 이미 있는 칩(슬롯 · 참조 · 문장 안 조건 …)을 그대로 둔다. 목록에 없으면 거부.
+ * - `{ node }` — 새로 넣는 인라인 노드(칩을 그 자리에 넣기 · 조건 풀기로 가지 내용을 꺼내기).
+ */
+export type InlineRun = { id: Id; text: string } | { keep: Id } | { node: InlineNode };
+
 /** 삽입 자리 — 부모(노드 id 또는 가지 id) · 목록 자리 · 위치(없으면 끝). */
 export interface Position {
   parentId: Id;
@@ -64,6 +75,11 @@ export type Command =
    */
   | { type: "duplicate"; nodeId: Id; at?: Position; ids?: readonly Id[] }
   | { type: "setText"; nodeId: Id; text: string }
+  /**
+   * 인라인 목록 하나를 통째로 다시 짠다 — 가운데 본문의 그 자리 편집(문장 입력 · 칩 삭제 · 커서 자리에 칩 넣기)이 한 명령으로 온다.
+   * 목록에서 빠진 노드는 지워진다(인라인 노드는 참조 대상이 아니라 깨질 참조가 없다). 새 노드는 자리 규칙 · 참조 대상을 검사한다.
+   */
+  | { type: "setInlines"; at: InlineAt; runs: readonly InlineRun[] }
   /** 조 명 또는 문서 제목. */
   | { type: "setTitle"; nodeId: Id; title: string }
   | { type: "setSlotRef"; nodeId: Id; ref: string }
@@ -73,6 +89,13 @@ export type Command =
   | { type: "setBox"; nodeId: Id; title: string; lines: string[] }
   /** 표의 행 반복 — `repeat` 만 바꾸고 행은 그대로 (ADR-0070 결정 6). undefined = 반복 없음. */
   | { type: "setTableRepeat"; nodeId: Id; repeat?: { depth: 1 | 2 } }
+  /** 표의 행 · 열 넣기 · 빼기 — 새 셀은 빈 셀. 열이나 행을 하나도 남기지 않는 삭제는 거부. */
+  | { type: "insertTableRow"; tableId: Id; index: number; header?: boolean }
+  | { type: "removeTableRow"; tableId: Id; index: number }
+  | { type: "insertTableColumn"; tableId: Id; index: number }
+  | { type: "removeTableColumn"; tableId: Id; index: number }
+  /** 행 하나의 제목줄 여부. */
+  | { type: "setTableRowHeader"; tableId: Id; index: number; header: boolean }
   /** 표 셀(행 · 열)에 인라인 노드를 넣는다 — 구조 표기 · 슬롯 등. `index` 없으면 끝. */
   | { type: "insertCell"; tableId: Id; row: number; col: number; node: InlineNode; index?: number }
   | { type: "setArticleRef"; nodeId: Id; targets: { nodeId: Id }[]; connector: ArticleRefNode["connector"]; scope: ArticleRefNode["scope"] }
@@ -399,6 +422,101 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       const node = structuredClone(cmd.node);
       cell.splice(clampIndex(cmd.index, cell.length), 0, node);
       return verifyPlaced(work, node, env);
+    }
+
+    case "insertTableRow":
+    case "removeTableRow":
+    case "insertTableColumn":
+    case "removeTableColumn":
+    case "setTableRowHeader": {
+      const e = entryOf(ix, cmd.tableId);
+      if (!e.ok) return e;
+      if (e.value.node.kind !== "table") return structure("표가 아닙니다", e.value.path);
+      const node = e.value.node as TableNode;
+      const width = node.columns.length;
+      if (cmd.type === "insertTableRow") {
+        node.rows.splice(clampIndex(cmd.index, node.rows.length), 0, { ...(cmd.header ? { header: true } : {}), cells: Array.from({ length: width }, () => []) });
+      } else if (cmd.type === "removeTableRow") {
+        if (!node.rows[cmd.index]) return structure(`표에 ${cmd.index + 1}행이 없습니다`, e.value.path);
+        if (node.rows.length <= 1) return structure("표에는 행이 하나 이상 있어야 합니다 — 표를 지우세요", e.value.path);
+        node.rows.splice(cmd.index, 1);
+      } else if (cmd.type === "insertTableColumn") {
+        const at = clampIndex(cmd.index, width);
+        node.columns.splice(at, 0, {});
+        for (const row of node.rows) row.cells.splice(at, 0, []);
+      } else if (cmd.type === "removeTableColumn") {
+        if (cmd.index < 0 || cmd.index >= width) return structure(`표에 ${cmd.index + 1}열이 없습니다`, e.value.path);
+        if (width <= 1) return structure("표에는 열이 하나 이상 있어야 합니다 — 표를 지우세요", e.value.path);
+        node.columns.splice(cmd.index, 1);
+        for (const row of node.rows) row.cells.splice(cmd.index, 1);
+      } else {
+        const row = node.rows[cmd.index];
+        if (!row) return structure(`표에 ${cmd.index + 1}행이 없습니다`, e.value.path);
+        if (cmd.header) row.header = true;
+        else delete row.header;
+      }
+      const issues = tableIssues(node);
+      return issues.length > 0 ? structure(issues[0], e.value.path) : ok(work);
+    }
+
+    case "setInlines": {
+      let list: Node[];
+      let allowed: readonly Node["kind"][];
+      let path: Id[];
+      if ("tableId" in cmd.at) {
+        const e = entryOf(ix, cmd.at.tableId);
+        if (!e.ok) return e;
+        if (e.value.node.kind !== "table") return structure("표가 아닙니다", e.value.path);
+        const cell = (e.value.node as TableNode).rows[cmd.at.row]?.cells[cmd.at.col];
+        if (!cell) return structure(`표에 ${cmd.at.row + 1}행 ${cmd.at.col + 1}열 셀이 없습니다`, e.value.path);
+        list = cell;
+        allowed = allowedChildren.paragraph;
+        path = e.value.path;
+      } else {
+        const c = containerOf(ix, { parentId: cmd.at.parentId });
+        if (!c.ok) return c;
+        if (!c.value.allowed.includes("text")) return structure("문장 자리가 아닙니다", c.value.path);
+        list = c.value.list;
+        allowed = c.value.allowed;
+        path = c.value.path;
+      }
+      const current = new Map(list.map((n) => [n.id, n] as const));
+      const used = new Set<Id>();
+      const next: Node[] = [];
+      const added: Node[] = [];
+      for (const run of cmd.runs) {
+        if ("keep" in run) {
+          const n = current.get(run.keep);
+          if (!n || used.has(run.keep)) return structure(`이 자리에 노드 ${run.keep} 가 없습니다`, path);
+          used.add(run.keep);
+          next.push(n);
+        } else if ("text" in run) {
+          if (run.text === "") continue;
+          const n = current.get(run.id);
+          if (n && (n.kind !== "text" || used.has(run.id))) return structure(`노드 ${run.id} 는 이 자리의 문장이 아닙니다`, path);
+          if (n) {
+            used.add(run.id);
+            (n as { text: string }).text = run.text;
+            next.push(n);
+          } else {
+            const t: Node = { id: run.id, kind: "text", text: run.text };
+            next.push(t);
+            added.push(t);
+          }
+        } else {
+          if (!allowed.includes(run.node.kind)) return structure(`이 자리에 ${run.node.kind} 은(는) 올 수 없습니다 (허용: ${allowed.join(" · ")})`, path);
+          const n = structuredClone(run.node);
+          next.push(n);
+          added.push(n);
+        }
+      }
+      list.splice(0, list.length, ...next);
+      const after = indexTree(work, env.coordinate);
+      const ids = new Set<Id>();
+      for (const n of added) idsIn(n).forEach((id) => ids.add(id));
+      const issues = issuesTouching(after, ids);
+      for (const n of added) issues.push(...refIssuesIn(after, n, env));
+      return issues.length > 0 ? invalid(issues) : ok(work);
     }
 
     case "setBox": {
