@@ -127,15 +127,14 @@ test(
     const href = await enter.first().getAttribute("href");
     expect(href).toMatch(/^\/products\/[^?]+\?option=[^&]+&field=waiver\.applies$/);
 
-    // 값 노드 링크 → 상품 화면의 그 선택지 폼에서 그 행이 강조된다 (기능/마스터 §4.3 「입력 화면 →」).
+    // 값 노드 링크 → 상품 기본정보의 보험종목 표에서 그 선택지 행의 그 필드 칸이 강조된다 (기능/마스터 §4.3 「입력 화면 →」).
+    // 관리자 코드 칩은 담보 상세 값 폼에만 선다(기능/마스터 §3.5) — 세목 표 칸에는 칩이 없어 마스터로의 왕복은 여기서 보지 않는다.
     await enter.first().click();
     await expect(page).toHaveURL(/\/products\/.+\?option=.+&field=waiver\.applies/);
-    const highlighted = page.locator(".ts-field-highlight");
+    const highlighted = page.locator("td.is-highlighted[data-path]");
     await expect(highlighted).toHaveCount(1);
     await expect(highlighted).toHaveAttribute("data-path", "waiver.applies");
     await expect(highlighted).toBeInViewport();
-    // 관리자 코드 칩이 마스터로 되돌아간다 — 추적의 왕복.
-    await expect(highlighted.locator('a.ts-chip-code[href="/master/waiver.applies"]')).toBeVisible();
 
     // 옛 주소는 새 상세 경로로 돌려보낸다 (북마크 · 옛 링크). 폼 상세 · 없는 코드.
     await page.goto("/master?field=pay.rate");
