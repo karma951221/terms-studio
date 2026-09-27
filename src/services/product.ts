@@ -33,6 +33,7 @@ import {
   renameAttributeValue,
   reorderAttributeKinds,
   reorderAttributeValues,
+  reviseAttributeKind,
   setNamingFragment,
   sortInGroup,
   validateGroupTemplate,
@@ -41,6 +42,7 @@ import {
   validatePlanType,
   validateSelections,
   type AttributeKind,
+  type AttributeKindRevision,
   type AttributeRefSource,
   type AttributeSelection,
   type BaseContractCheck,
@@ -66,12 +68,14 @@ import {
 } from "@/domain/product";
 import { findForm, findMasterField, type MasterForm } from "@/domain/master";
 import type { Actor, AttachLevel, Code, Coordinate, Id, Impact, Issue, Result, Value, ValueSlot } from "@/domain/types";
-import { ok, reject } from "@/domain/types";
+import { mergeImpacts, ok, reject } from "@/domain/types";
 
 import * as catalog from "@/db/repo/catalog";
 import * as repo from "@/db/repo/product";
 import type { Db } from "@/db/repo/types";
 import { clearOwner, copySlots, readSlots, writeSlot, type ValueOwner } from "@/db/repo/values";
+
+import { rollbackUnless } from "./txContext";
 
 // ───────────────────────────── 계약 ─────────────────────────────
 
@@ -151,6 +155,12 @@ export interface ProductService {
   setNamingFragment(actor: Actor, code: Code, valueCode: Code, fragment: string): Promise<Result<AttributeKind>>;
   reorderAttributeValues(actor: Actor, code: Code, order: Code[]): Promise<Result<AttributeKind>>;
   removeAttributeValue(actor: Actor, code: Code, valueCode: Code, opts?: Confirmable): Promise<Result<AttributeKind>>;
+  /**
+   * 담보속성 편집 화면 한 벌 저장 — 종류명 · 최종 유효값 목록(이름 · 조각 · 순서 · 새 값)을 최종 상태로 한 번에 검사해 한 번 저장한다
+   * (점검 2026-09-27 D1). 빠진 유효값이 있으면 `attribute.deleteValue` 2단 — 편집자 forbidden · 관리자 1차는 빠진 값 전부의
+   * 사용처를 합쳐 needsConfirmation · confirm 이면 저장 (D2). 거부 · 확인 필요면 롤백한다 — 순번도 타지 않는다.
+   */
+  reviseAttributeKind(actor: Actor, code: Code, revision: AttributeKindRevision, opts?: Confirmable): Promise<Result<AttributeKind>>;
   removeAttributeKind(actor: Actor, code: Code, opts?: Confirmable): Promise<Result<void>>;
   /** 사용처 — 이 속성(값)을 조합에 쓰는 상품담보 + 식 참조. */
   attributeUsage(code: Code, valueCode?: Code): Promise<Coordinate[]>;
@@ -683,6 +693,29 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
         if (r.ok) await repo.saveAttributeKind(tx, r.value, actor.userId);
         return r;
       }),
+    reviseAttributeKind: (actor, code, revision, opts = {}) =>
+      rollbackUnless(
+        db,
+        (tx) =>
+          withKind(tx, code, async (kind, all) => {
+            const revised = await reviseAttributeKind(kind, all, revision, repo.attributeSeqSource(tx));
+            if (!revised.ok) return revised as Result<AttributeKind>;
+            const { kind: next, removed } = revised.value;
+            const save = async (): Promise<Result<AttributeKind>> => {
+              await repo.saveAttributeKind(tx, next, actor.userId);
+              return ok(next);
+            };
+            if (removed.length === 0) return save();
+            return destructive<AttributeKind>({
+              actor,
+              action: "attribute.deleteValue",
+              confirm: opts.confirm,
+              computeImpact: async () => mergeImpacts(await Promise.all(removed.map(async (valueCode) => ({ valueRowsLost: 0, brokenRefs: await usage(tx, code, valueCode), cascade: [] })))),
+              execute: save,
+            });
+          }),
+        (r) => r.ok,
+      ),
     removeAttributeKind: (actor, code, opts = {}) =>
       attributeDestructive(actor, "attribute.delete", opts, code, undefined, async (tx) => {
         await repo.deleteAttributeKind(tx, code); // 상품담보의 조합 행은 남아 깨진 참조가 된다 (오류화)

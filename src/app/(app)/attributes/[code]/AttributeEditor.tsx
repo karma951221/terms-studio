@@ -2,14 +2,13 @@
 
 import { useRef, useState, type ReactNode } from "react";
 
-import { ConfirmActionButton } from "@/app/_components/ConfirmActionButton";
 import { EditShell, Field, useEditField } from "@/app/_components/EditShell";
 import { IconButton, IconClose, IconDown, IconUp } from "@/app/_components/icons";
 import { UsageDialog } from "@/app/_components/UsageDialog";
 import { ACTION_LABEL, ENTITY_LABEL, FIELD_LABEL, NAME_LABEL, addLabel, newLabel } from "@/app/_lib/labels";
 import type { AttributeKind } from "@/domain/product";
 
-import { removeAttributeEditAction, removeAttributeValueEditAction, saveAttributeEditAction } from "../edit-actions";
+import { removeAttributeEditAction, saveAttributeEditAction } from "../edit-actions";
 import type { AttributeEditData, AttributeEditValue } from "../edit-types";
 
 function NewValueComposer({ add }: { add: (value: AttributeEditValue) => void }) {
@@ -32,7 +31,8 @@ function NewValueComposer({ add }: { add: (value: AttributeEditValue) => void })
   );
 }
 
-function ValuesEditor({ code, usage }: { code: string; usage: Record<string, number> }) {
+/** 저장된 값 행도 ✕ 로 초안에서 뺀다 — 서버 삭제 · 사용처 확인은 저장 때 한 번 (디자인원칙 §2 L2 · 점검 2026-09-27 D2). */
+function ValuesEditor({ usage }: { usage: Record<string, number> }) {
   const field = useEditField<AttributeEditValue[]>("values");
   const move = (index: number, delta: number) => {
     const values = [...field.value];
@@ -56,7 +56,7 @@ function ValuesEditor({ code, usage }: { code: string; usage: Record<string, num
               <td>{field.mode === "read" ? <span className="ts-field-locked">{value.label}</span> : <input value={value.label} onChange={(event) => patch(value.code, { label: event.target.value })} />}</td>
               <td>{field.mode === "read" ? <span className="ts-field-locked ts-mono">{value.fragment || "없음"}</span> : <input value={value.fragment} onChange={(event) => patch(value.code, { fragment: event.target.value })} className="ts-mono" />}</td>
               <td className="col-num">{saved ? usage[value.code] || "—" : "—"}</td>
-              {field.mode === "edit" ? <td className="col-act"><span className="ts-row-actions"><IconButton icon={<IconUp />} label={`${value.label} 위로`} disabled={field.pending || index === 0} onClick={() => move(index, -1)} /><IconButton icon={<IconDown />} label={`${value.label} 아래로`} disabled={field.pending || index === field.value.length - 1} onClick={() => move(index, 1)} />{saved ? <ConfirmActionButton label={`${value.label}(${value.code}) 삭제`} action={removeAttributeValueEditAction.bind(null, code, value.code)} /> : <IconButton icon={<IconClose />} label={`${value.label || newLabel(FIELD_LABEL.value)} 추가 취소`} onClick={() => field.setValue(field.value.filter((item) => item.code !== value.code))} />}</span></td> : null}
+              {field.mode === "edit" ? <td className="col-act"><span className="ts-row-actions"><IconButton icon={<IconUp />} label={`${value.label} 위로`} disabled={field.pending || index === 0} onClick={() => move(index, -1)} /><IconButton icon={<IconDown />} label={`${value.label} 아래로`} disabled={field.pending || index === field.value.length - 1} onClick={() => move(index, 1)} /><IconButton icon={<IconClose />} label={saved ? `${value.label}(${value.code}) 빼기 — 저장할 때 삭제` : `${value.label || newLabel(FIELD_LABEL.value)} 추가 취소`} disabled={field.pending} onClick={() => field.setValue(field.value.filter((item) => item.code !== value.code))} /></span></td> : null}
             </tr>;
           })}</tbody>
         </table>
@@ -73,7 +73,7 @@ export function AttributeEditor({ item, usage, usageCount, valueUsage }: { item:
       <div className="ts-l2-main">
         <div className="ts-form-row"><label>{FIELD_LABEL.code}</label><div className="ts-form-control"><span className="ts-field-static ts-mono">{item.code}</span></div></div>
         <Field name="label" label={NAME_LABEL.attribute} />
-        <ValuesEditor code={item.code} usage={valueUsage} />
+        <ValuesEditor usage={valueUsage} />
       </div>
     </EditShell>
   );

@@ -9,6 +9,7 @@ import {
   renameAttributeValue,
   reorderAttributeKinds,
   reorderAttributeValues,
+  reviseAttributeKind,
   setNamingFragment,
 } from "./attributes";
 import type { AttributeKind } from "./types";
@@ -119,5 +120,52 @@ describe("담보속성탑재 S1 — 담보속성 카탈로그 편집 (ADR-0015)"
       ["V02", 0],
       ["V01", 1],
     ]);
+  });
+});
+
+describe("reviseAttributeKind — 담보속성 편집 화면 한 벌을 최종 상태로 (점검 2026-09-27 D1 · D2)", () => {
+  const kind: AttributeKind = {
+    code: "A0001",
+    label: "갱신유형",
+    order: 0,
+    values: [
+      { code: "V01", label: "갱신형", order: 0, fragment: "(갱신형)" },
+      { code: "V02", label: "비갱신형", order: 1, fragment: "" },
+    ],
+  };
+  const other: AttributeKind = { code: "A0002", label: "부가유형", order: 1, values: [] };
+  const from3 = () => {
+    let n = 2;
+    return async () => ++n;
+  };
+
+  it("이름 A↔B 맞바꾸기 · 조각 · 새 값 · 순서가 한 번에 — 빠진 값은 removed 로", async () => {
+    const r = unwrap(
+      await reviseAttributeKind(kind, [kind, other], { label: "갱신 유형", values: [{ code: "V02", label: "갱신형", fragment: " (갱신) " }, { label: "혼합형", fragment: "" }] }, from3()),
+    );
+    expect(r.kind).toEqual({
+      code: "A0001",
+      label: "갱신 유형",
+      order: 0,
+      values: [
+        { code: "V02", label: "갱신형", order: 0, fragment: "(갱신)" },
+        { code: "V03", label: "혼합형", order: 1, fragment: "" },
+      ],
+    });
+    expect(r.removed).toEqual(["V01"]);
+  });
+
+  it("최종 상태에서 겹치면 duplicate · 빈 이름 invalid · 모르는 코드 notFound · 종류명 중복 duplicate — 거부면 채번하지 않는다", async () => {
+    let calls = 0;
+    const counting = async () => ++calls + 10;
+    const reason = async (label: string, values: { code?: string; label: string; fragment: string }[]) => {
+      const r = await reviseAttributeKind(kind, [kind, other], { label, values }, counting);
+      return r.ok ? "ok" : r.rejection.reason;
+    };
+    expect(await reason("갱신유형", [{ code: "V01", label: "비갱신형", fragment: "" }, { code: "V02", label: "비갱신형", fragment: "" }])).toBe("duplicate");
+    expect(await reason("갱신유형", [{ label: "새값", fragment: "" }, { code: "V01", label: " ", fragment: "" }])).toBe("invalid");
+    expect(await reason("갱신유형", [{ code: "V09", label: "x", fragment: "" }])).toBe("notFound");
+    expect(await reason("부가유형", [])).toBe("duplicate");
+    expect(calls).toBe(0);
   });
 });
