@@ -159,9 +159,15 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
       await expect(page.getByText(/^미배치 상품담보: 일반상해80%이상후유장해$/)).toBeVisible();
 
       await ev.action("실물재현#1.17", "조립 미리보기를 연다 — 완성본이어야 한다 · 별표는 참조된 것만 등장 순으로 (ADR-0063)", async () => {
-        await page.getByRole("link", { name: "미리보기", exact: true }).first().click();
+        // 미리보기는 헤더 [더보기 ▾] 메뉴 항목이다 (기능/상품 §4)
+        await page.getByRole("button", { name: "더보기", exact: true }).click();
+        await page.getByRole("menuitem", { name: "미리보기", exact: true }).click();
         await expect(page).toHaveURL(/\/products\/.+\/preview/);
-        await expect(page.getByRole("heading", { name: /^오류 0 \/ 조 \d+$/ })).toBeVisible();
+        // 저장본이 없으면 「실행」을 눌러 조립해 저장한다 → 조립 검사 한 줄 + 「조립 검사 결과」 패널 (기능/조립산출 §4.1)
+        await page.getByRole("button", { name: "실행", exact: true }).click();
+        await expect(page.getByRole("heading", { name: "조립 검사 결과" })).toBeVisible();
+        await expect(page.getByText(/^조립 검사: 오류 0 · /)).toBeVisible();
+        await expect(page.getByText("오류 없음.")).toBeVisible();
         await expect(page.getByText(/완성본 아님/)).toHaveCount(0);
         // 별표 마스터 21건 중 이 책자의 문면이 참조한 것만 실린다 · 1번은 보통약관에서 처음 만나는 장해분류표
         await expect(page.getByRole("heading", { name: /^별표 10건$/ })).toBeVisible();

@@ -41,23 +41,27 @@ test(
     await expect(product).toBeVisible();
     await product.click();
 
-    // 상세는 세 탭이다 (기능/상품 §3.8) — 탭을 옮겨도 헤더(미리보기 · 삭제)는 그대로 선다.
+    // 상세는 세 탭이다 (기능/상품 §3.8) — 탭을 옮겨도 헤더의 [더보기 ▾](미리보기 · 상품 삭제)는 그대로 선다 (기능/상품 §4).
     const tabs = page.locator("nav.ts-subtabs");
     for (const name of ["기본정보", "보통약관", "특별약관"]) await expect(tabs.getByRole("link", { name })).toBeVisible();
     await tabs.getByRole("link", { name: "특별약관" }).click();
     await expect(page).toHaveURL(/\?tab=special$/);
     await expect(page.getByRole("heading", { name: /^특약 담보 \d+건$/ })).toBeVisible();
 
-    await page.getByRole("link", { name: "미리보기", exact: true }).first().click();
+    await page.getByRole("button", { name: "더보기", exact: true }).click();
+    await page.getByRole("menuitem", { name: "미리보기", exact: true }).click();
     await expect(page).toHaveURL(/\/products\/.+\/preview/);
-    // 실물 보통약관(기본계약 대치된 제3조) + 특약 4벌 + 참조된 별표 10건(등장 순 자동 번호 — ADR-0063), 오류 없음
+    // 저장본이 없으면 「실행」을 눌러 조립해 저장한다 (기능/조립산출 §4.1)
+    await page.getByRole("button", { name: "실행", exact: true }).click();
+    // 실물 보통약관(기본계약 대치된 제3조) + 특약 10벌 + 참조된 별표 14건(등장 순 자동 번호 — ADR-0063), 오류 없음 — 시드 정본은 src/db/seed/alphaPlus.test.ts
     await expect(page.getByRole("heading", { name: /무배당 알파Plus보장보험2604 보통약관/ })).toBeVisible();
     await expect(page.getByText(/장해지급률이 80% 이상에 해당하는 장해상태가 되었을 때에는 보험수익자에게 최초1회에 한하여/).first()).toBeVisible();
     await expect(page.getByRole("heading", { name: /^일반상해사망보장 특별약관/ })).toBeVisible();
     await expect(page.getByRole("heading", { name: /일반상해사망보장 추가 특별약관/ })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /^별표 10건$/ })).toBeVisible();
-    // 오류 패널 제목은 분모를 함께 갖는다 — 「오류 0 / 조 N」 (디자인원칙 §9.6)
-    await expect(page.getByRole("heading", { name: /^오류 0 \/ 조 \d+$/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^별표 14건$/ })).toBeVisible();
+    // 조립 검사 한 줄 + 「조립 검사 결과」 오류 패널 (기능/조립산출 §4.1)
+    await expect(page.getByText(/^조립 검사: 오류 0 · /)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "조립 검사 결과" })).toBeVisible();
     await expect(page.getByText("오류 없음.")).toBeVisible();
     await expect(page.getByText(/완성본 아님/)).toHaveCount(0);
   },
