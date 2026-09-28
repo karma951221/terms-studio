@@ -15,6 +15,7 @@ import generals from "./data/generals.json";
 import products from "./data/products.json";
 
 export const ALPHA_PLUS_PRODUCT_NAME = "알파Plus보장보험";
+export const MERITZ_PRODUCT_NAME = "메리츠 통합간편건강보험(연만기형)";
 
 export interface SeedResult {
   created: boolean;
@@ -40,17 +41,38 @@ async function assertAssembles(services: Services, productId: Id): Promise<void>
   if (!result.value.complete) throw new Error(`[seed:alphaPlus] 실물 조립 검증 실패: ${JSON.stringify(result.value.issues)}`);
 }
 
-/**
- * 별표 21 + 보통약관 템플릿 — 보통약관 트리가 별표를 참조하므로 별표가 먼저다. 보통약관 시드 코드 → 문서 id.
- * 실물 화면 E2E 의 바탕 DB(`loadRealBase`)도 이것만 넣는다.
- */
-async function loadAppendicesAndGenerals(services: Services, actor: Actor): Promise<Map<string, Id>> {
+type ClauseRaw = Record<string, unknown> & { code: Code; options: Array<Record<string, unknown>> };
+
+/** 보통약관 문면이 쓰는 공용조항 코드 — 보통약관 가져오기 전에 있어야 한다 (문면 저장 검사가 공용조항 존재를 본다). */
+export function clausesUsedByGenerals(): Set<Code> {
+  return new Set((generals as unknown as Array<{ tree: DocumentNode }>).flatMap((g) => [...JSON.stringify(g.tree).matchAll(/"clauseCode":"(C\d+)"/g)].map((m) => m[1])));
+}
+
+/** 보통약관 조를 가리키는 공용조항인가 — 그 조가 있어야 정의 검사 ① 을 통과하므로 보통약관 뒤에 만든다 (기능/공용조항 §3.4). */
+function refsGeneral(raw: ClauseRaw): boolean {
+  return JSON.stringify(raw).includes('"kind":"articleRef"');
+}
+
+async function createClause(services: Services, actor: Actor, raw: ClauseRaw): Promise<void> {
+  const definition = omit(raw, ["code", "description", "required"]);
+  definition.options = raw.options.map((option) => ({
+    ...omit(option, ["code", "order", "values"]),
+    values: (option.values as Array<Record<string, unknown>>).map((value) => omit(value, ["code", "order"])),
+  }));
+  const created = unwrap(await services.clause.create(actor, definition as unknown as NewClause));
+  expectCode(created.code, raw.code);
+}
+
+async function loadAppendices(services: Services, actor: Actor): Promise<void> {
   // 코드는 시스템 채번(AX000001…) — JSON 의 code 는 채번 순서가 어긋나지 않았는지 대조용 (기능/별표 §3.1).
   for (const appendix of appendices) {
     const created = unwrap(await services.document.createAppendix(actor, { name: appendix.name, description: appendix.description }));
     expectCode(created.code, appendix.code);
   }
+}
 
+/** 보통약관 템플릿 전부 — 보통약관 시드 코드 → 문서 id. 별표와 보통약관이 쓰는 공용조항이 먼저 있어야 한다. */
+async function loadGenerals(services: Services, actor: Actor): Promise<Map<string, Id>> {
   const generalIds = new Map<string, Id>();
   for (const specification of generals as unknown as Array<{ code: string; tree: DocumentNode }>) {
     const document = unwrap(await services.document.createGeneral(actor, specification.tree.title));
@@ -61,16 +83,31 @@ async function loadAppendicesAndGenerals(services: Services, actor: Actor): Prom
 }
 
 /**
- * 실물 화면 E2E 의 바탕 — 별표 21 과 보통약관(1,085줄)만 넣는다 (docs/QA/시나리오/실물재현_E2E_시나리오.md §4).
- * 나머지(열거형 · 구분자 · 담보속성 · 담보 · 공용조항 · 담보약관 · 상품)는 E2E 가 화면으로 넣는다.
- * 보통약관은 가져오기 화면이 없어 시드로 넣고, 별표는 보통약관이 참조해 그보다 먼저 있어야 해서 함께 넣는다.
+ * 공용조항 전부 + 그 사이에 보통약관 — 코드는 시스템 채번이라 JSON 순서대로 만든다. 보통약관 조를 가리키는 첫 공용조항 앞에서 보통약관을 넣는다
+ * (보통약관이 쓰는 공용조항은 그보다 앞 코드다 — 변환기가 검사한다). `upTo` 가 있으면 그 개수까지만 만든다.
+ */
+async function loadClausesAndGenerals(services: Services, actor: Actor, upTo?: number): Promise<Map<string, Id>> {
+  let generalIds: Map<string, Id> | undefined;
+  for (const raw of (clauses as unknown as ClauseRaw[]).slice(0, upTo)) {
+    if (!generalIds && refsGeneral(raw)) generalIds = await loadGenerals(services, actor);
+    await createClause(services, actor, raw);
+  }
+  return generalIds ?? (await loadGenerals(services, actor));
+}
+
+/**
+ * 실물 화면 E2E 의 바탕 — 별표 · 보통약관 두 벌과 **보통약관이 쓰는 공용조항**만 넣는다 (docs/QA/시나리오/실물재현_E2E_시나리오.md §4).
+ * 나머지(열거형 · 구분자 · 담보속성 · 담보 · 나머지 공용조항 · 담보약관 · 상품)는 E2E 가 화면으로 넣는다.
+ * 보통약관은 가져오기 화면이 없어 시드로 넣고, 별표 · 보통약관이 쓰는 공용조항은 보통약관이 참조해 그보다 먼저 있어야 해서 함께 넣는다
+ * (보통약관이 쓰는 공용조항은 C0001 부터의 앞 코드다 — 화면 E2E 는 그 뒤 코드부터 친다).
  * 이미 보통약관이 있으면 아무것도 하지 않는다.
  */
 export async function loadRealBase(services: Services, actor: Actor): Promise<{ created: boolean }> {
   const titles = (generals as unknown as Array<{ tree: DocumentNode }>).map((g) => g.tree.title);
   const existing = await services.document.list("general");
   if (existing.some((d) => titles.includes(d.title))) return { created: false };
-  await loadAppendicesAndGenerals(services, actor);
+  await loadAppendices(services, actor);
+  await loadClausesAndGenerals(services, actor, clausesUsedByGenerals().size);
   return { created: true };
 }
 
@@ -132,19 +169,9 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
     }
   }
 
-  const generalIds = await loadAppendicesAndGenerals(services, actor);
-
-  // 공용조항은 보통약관 조 · 별표를 참조하므로 그 뒤에 만든다 (정의 검사 ① 이 대상 존재를 본다 — 기능/공용조항 §3.4).
-  for (const raw of clauses as unknown as Array<Record<string, unknown> & { code: Code; options: Array<Record<string, unknown>> }>) {
-    const code = raw.code;
-    const definition = omit(raw, ["code", "description", "required"]);
-    definition.options = raw.options.map((option) => ({
-      ...omit(option, ["code", "order", "values"]),
-      values: (option.values as Array<Record<string, unknown>>).map((value) => omit(value, ["code", "order"])),
-    }));
-    const created = unwrap(await services.clause.create(actor, definition as unknown as NewClause));
-    expectCode(created.code, code);
-  }
+  // 별표 → 공용조항(보통약관이 쓰는 것 · 조 참조 없는 것) → 보통약관 → 보통약관 조를 가리키는 공용조항 (기능/공용조항 §3.4)
+  await loadAppendices(services, actor);
+  const generalIds = await loadClausesAndGenerals(services, actor);
 
   const documentIds = new Map<string, Id>();
   for (const specification of documents as unknown as Array<{ code: string; ownerCoverage: string; general: string; tree: DocumentNode }>) {
@@ -158,12 +185,14 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
   }
 
   let seededProductId: Id | undefined;
+  const productIds: Id[] = [];
   for (const specification of products) {
     const generalId = generalIds.get(specification.general);
     if (!generalId) throw new Error(`[seed:alphaPlus] 보통약관 참조를 찾을 수 없음: ${specification.general}`);
     unwrap(await services.product.setNamingTemplate(actor, specification.namingTemplate));
     const productId = unwrap(await services.product.createProduct(actor, { name: specification.name, generalDocumentId: generalId })).id;
     seededProductId ??= productId;
+    productIds.push(productId);
     for (const entry of specification.values as { path: string; value: unknown }[]) unwrap(await services.product.setProductValue(actor, productId, entry.path, entry.value as Value));
 
     const optionIds = new Map<string, Id>();
@@ -195,6 +224,6 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
   }
 
   if (!seededProductId) throw new Error("[seed:alphaPlus] 상품 JSON이 비어 있습니다");
-  await assertAssembles(services, seededProductId);
+  for (const productId of productIds) await assertAssembles(services, productId);
   return { created: true, productId: seededProductId };
 }

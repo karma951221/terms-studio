@@ -79,4 +79,36 @@ describe("공용조항 오버레이 — 원문 자리를 참조로", () => {
     expect(replaceInlineRun(owner, [..."가나다"], r)).toBe(true);
     expect(owner.children).toEqual([text("t", "앞말 "), r, text("tr", " 뒷말")]);
   });
+
+  it("「항」 — 본문 항 여럿(호 · 목 포함)을 잇닿은 항들과 대조해 참조 하나로 바꾼다", () => {
+    const para = (id: string, t: string, items: string[] = []) => ({
+      id,
+      kind: "paragraph" as const,
+      children: [text(`${id}-x`, t)],
+      ...(items.length ? { items: items.map((it, i) => ({ id: `${id}-i${i + 1}`, kind: "item" as const, children: [text(`${id}-i${i + 1}-x`, it)] })) } : {}),
+    });
+    const block: ClauseRecord = { ...INLINE, code: "C0003", mode: "block", options: [], body: [para("c-p1", "가.", ["하나", "둘"]), para("c-p2", "나.")] as ClauseRecord["body"] };
+    const a: ArticleNode = { id: "g-a14", kind: "article", title: "대표자의 지정", children: [para("g-a14-p1", "가.", ["하나", "둘"]), para("g-a14-p2", "나."), { id: "g-a14-b1", kind: "box", title: "연대", lines: ["…"] }] };
+    const report: string[] = [];
+    expect(applyClauseUse({ article: "14", paragraph: 1, clause: "g" }, block, () => a, "[t]", report)).toBe(true);
+    expect(report).toEqual([]);
+    expect(a.children.map((c) => c.kind)).toEqual(["clauseBlockRef", "box"]);
+    // 호가 하나라도 다르면 바꾸지 않는다
+    const b: ArticleNode = { ...a, children: [para("g-a14-p1", "가.", ["하나", "셋"]), para("g-a14-p2", "나.")] };
+    expect(applyClauseUse({ article: "14", paragraph: 1, clause: "g" }, block, () => b, "[t]", report)).toBe(false);
+    expect(report[0]).toMatch(/제2호가 다름/);
+  });
+
+  it("「문구」 — 호 자리(`item`)면 그 호 문장에서 찾는다", () => {
+    const a: ArticleNode = {
+      id: "s-a4",
+      kind: "article",
+      title: "보험금을 지급하지 않는 사유",
+      children: [{ id: "s-a4-p1", kind: "paragraph", children: [text("p", "다음:")], items: [{ id: "s-a4-p1-i1", kind: "item", children: [text("i", "이 특별약관이 소멸된 경우에는 지급하지 않습니다.")] }] }],
+    };
+    expect(applyClauseUse({ article: "4", paragraph: 1, item: 1, clause: "C0004", options: { O01: "V01" } }, INLINE, () => a, "[t]", [])).toBe(true);
+    const p = a.children[0];
+    if (p.kind !== "paragraph" || p.items?.[0].kind !== "item") throw new Error("구조");
+    expect(p.items[0].children).toEqual([{ id: "s-a4-p1-i1-k1", kind: "clauseInlineRef", clauseCode: "C0004", options: { O01: "V01" } }]);
+  });
 });

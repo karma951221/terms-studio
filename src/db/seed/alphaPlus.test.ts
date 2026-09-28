@@ -9,14 +9,15 @@ import { discriminators } from "@/db/schema";
 import { createServices, type Services } from "@/services/container";
 
 import { ALPHA_PLUS_PRODUCT_NAME, seedAlphaPlus } from "./alphaPlus";
+import { MERITZ_PRODUCT_NAME } from "./load";
 
 const admin: Actor = { userId: "00000000-0000-4000-8000-000000000001", role: "admin" };
 
 /**
- * 시드가 실물 알파Plus 재료(카탈로그 · 담보 9 · 공용조항 11 · 상품 · 별표 21 · 탑재 11)를 실제 서비스로 끝까지 만들고, 재실행에 안전한지.
+ * 시드가 실물 재료 두 상품(카탈로그 · 담보 9 + 9 · 공용조항 36 · 상품 2 · 별표 21 · 보통약관 2 · 탑재 11 + 9)을 실제 서비스로 끝까지 만들고, 재실행에 안전한지.
  * 원문과의 대조는 `real.test.ts` 몫.
  */
-describe("seedAlphaPlus — 알파Plus 실물 시드 (PGlite)", () => {
+describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (PGlite)", () => {
   let t: TestDb;
   let services: Services;
 
@@ -117,25 +118,81 @@ describe("seedAlphaPlus — 알파Plus 실물 시드 (PGlite)", () => {
     expect(defs.map((d) => [d.code, d.label, d.level])).toEqual([["D0001", "담보명", "coverage"]]);
   });
 
-  it("공용조항 11건 — 원문이 되풀이하는 문구 (알파플러스_모델명세 §3)", async () => {
+  it("공용조항 36건 — 두 상품 원문이 되풀이하는 문구 (알파플러스_모델명세 §4 · 메리츠_모델명세 §4)", async () => {
     const list = await services.clause.list();
     expect(list.map((c) => [c.code, c.label, c.mode])).toEqual([
-      ["C0001", "제3자 판정", "inline"],
-      ["C0002", "준용규정", "block"],
-      ["C0003", "사망 시 소멸", "inline"],
-      ["C0004", "소멸 시 해약환급금 미지급", "inline"],
-      ["C0005", "지급사유 발생 시 소멸", "inline"],
-      ["C0006", "수술의 정의", "inline"],
-      ["C0007", "수술의 장소", "inline"],
-      ["C0008", "신의료기술 수술", "inline"],
-      ["C0009", "장해지급률 확정 시기", "inline"],
-      ["C0010", "분류표 외 후유장해", "inline"],
-      ["C0011", "후유장해 합산", "block"],
+      // 보통약관 두 벌이 조째 같은 조 · 낱말만 다른 항 — 보통약관보다 먼저 만든다(C0001~)
+      ["C0001", "목적", "block"],
+      ["C0002", "보험수익자의 지정", "block"],
+      ["C0003", "대표자의 지정", "block"],
+      ["C0004", "계약 전 알릴 의무", "block"],
+      ["C0005", "제2회 이후 보험료의 납입", "block"],
+      ["C0006", "배당금의 지급", "block"],
+      ["C0007", "분쟁의 조정", "block"],
+      ["C0008", "관할법원", "block"],
+      ["C0009", "소멸시효", "block"],
+      ["C0010", "약관의 해석 ①", "block"],
+      ["C0011", "약관의 해석 ②③", "block"],
+      ["C0012", "설명서 교부 및 보험안내자료 등의 효력", "block"],
+      ["C0013", "개인정보보호", "block"],
+      ["C0014", "준거법", "block"],
+      ["C0015", "예금보험에 의한 지급보장", "block"],
+      ["C0016", "계약내용 변경 신청", "inline"],
+      ["C0017", "사망에 따른 계약 소멸", "block"],
+      ["C0018", "부활 시 암보장개시일", "block"],
+      ["C0019", "신체부위별 판정기준", "inline"],
+      // 담보약관
+      ["C0020", "제3자 판정", "inline"],
+      ["C0021", "사망 시 소멸", "inline"],
+      ["C0022", "소멸 시 해약환급금 미지급", "inline"],
+      ["C0023", "지급사유 발생 시 소멸", "inline"],
+      ["C0024", "수술의 정의", "inline"],
+      ["C0025", "수술의 장소", "inline"],
+      ["C0026", "신의료기술 수술", "inline"],
+      ["C0027", "장해지급률 확정 시기", "inline"],
+      ["C0028", "장해판정시기 별도", "inline"],
+      ["C0029", "분류표 외 후유장해", "inline"],
+      ["C0030", "후유장해 합산", "inline"],
+      ["C0031", "1-7종 수술의 정의", "inline"],
+      ["C0032", "1-7종 동시 수술", "inline"],
+      ["C0033", "수술분류표 주2) 면책", "block"],
+      ["C0034", "다른 원인 수술 면책", "block"],
+      // 보통약관 조를 가리키는 준용규정 — 상품마다 한 벌, 보통약관 뒤에 만든다
+      ["C0035", "준용규정(알파Plus)", "block"],
+      ["C0036", "준용규정(메리츠)", "block"],
     ]);
-    // 준용규정은 담보속성(갱신유형)을 읽는다 — 요구 참조는 저장 때 식에서 뽑는다 (ADR-0010)
-    expect((await services.clause.get("C0002"))?.required).toEqual({ discriminators: [], attributes: ["A0001"] });
-    // 쓰임 수 = 참조하는 문서 수 — 사망 시 소멸은 특약 8벌(사망 · 생활자금 둘 · 골절진단 · 골절수술 · 중대한특정상해 · 수술비 · 신화상)
-    expect((await services.clause.summaries()).find((c) => c.code === "C0003")?.usageCount).toBe(8);
+    // 알파Plus 준용규정은 담보속성(갱신유형)을 읽는다 — 요구 참조는 저장 때 식에서 뽑는다 (ADR-0010)
+    expect((await services.clause.get("C0035"))?.required).toEqual({ discriminators: [], attributes: ["A0001"] });
+    // 쓰임 수 = 참조 자리 수 — 사망 시 소멸은 두 상품 특약 16벌(알파Plus 8 · 메리츠 8) 한 자리씩, 보통약관 조째 공용조항은 보통약관 두 벌,
+    // 신체부위별 판정기준은 합산 · 가중 두 항씩 7벌(보통약관 2 · 알파Plus 기본계약 · 생활자금 2 · 메리츠 후유장해 2)
+    const summaries = await services.clause.summaries();
+    expect(summaries.find((c) => c.code === "C0021")?.usageCount).toBe(16);
+    expect(summaries.find((c) => c.code === "C0015")?.usageCount).toBe(2);
+    expect(summaries.find((c) => c.code === "C0019")?.usageCount).toBe(14);
+  });
+
+  it("메리츠 — 보통약관 · 기본계약(일반상해사망) · 특약 8(전부 갱신형) · 세목 종 3 × 형 2 · 담보 COV000010~18", async () => {
+    const product = (await services.product.listProducts()).find((p) => p.name === MERITZ_PRODUCT_NAME)!;
+    expect(product).toBeDefined();
+    const preview = await services.assembly.preview(product.id);
+    if (!preview.ok) throw new Error(JSON.stringify(preview.rejection));
+    expect(preview.value.issues).toEqual([]);
+    expect(preview.value.baseContracts.map((b) => b.name)).toEqual(["일반상해사망"]);
+    expect(preview.value.specials.map((g) => [g.title, g.docs.length])).toEqual([
+      ["상해 관련 특별약관", 5],
+      ["질병 관련 특별약관", 3],
+    ]);
+    const options = await services.product.listPlanOptions(product.id);
+    expect(options.filter((o) => o.axis === "type").map((o) => o.name)).toEqual(["보험료 납입면제 미적용형", "보험료 납입면제 1형", "보험료 납입면제 2형"]);
+    expect(options.filter((o) => o.axis === "form").map((o) => o.name)).toEqual(["해약환급금 지급형", "해약환급금미지급형"]);
+    expect(await services.product.listPlans(product.id)).toHaveLength(6);
+    const mounts = await services.product.listProductCoverages(product.id);
+    expect(mounts.filter((m) => m.attributes.some((a) => a.kindCode === "A0001" && a.valueCode === "2"))).toHaveLength(8);
+    const summaries = await services.coverage.listSummaries();
+    expect(summaries.find((c) => c.name === "일반상해사망")?.code).toBe("COV000010");
+    expect(summaries.find((c) => c.name === "수술비(1-7종, 연간3회한)[질병](통합간편가입)보장")?.code).toBe("COV000018");
+    // 별표 마스터는 두 상품이 이름으로 함께 쓴다 — 메리츠 원문 별표14(장해분류표)도 AX000002
+    expect(preview.value.appendices[0]).toMatchObject({ code: "AX000002", number: 1, name: "장해분류표" });
   });
 
   it("두 번째 호출 — no-op (상품명으로 이미 있음을 판단), 상품 id 동일 · 여전히 complete=true", async () => {

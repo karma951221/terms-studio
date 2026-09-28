@@ -192,5 +192,237 @@
         "group": "injury"
       }
     ]
+  },
+  {
+    "code": "meritz",
+    "name": "메리츠 통합간편건강보험(연만기형)",
+    "general": "meritz-general",
+    "namingTemplate": "[A0001] [담보명] [A0002]",
+    "values": [],
+    "planOptions": [
+      {
+        "code": "type-1",
+        "axis": "type",
+        "number": 1,
+        "name": "보험료 납입면제 미적용형",
+        "planTypeCode": "waiver",
+        "values": [
+          {
+            "path": "waiver.applies",
+            "value": false
+          },
+          {
+            "path": "waiver.reasons",
+            "value": []
+          }
+        ]
+      },
+      {
+        "code": "type-2",
+        "axis": "type",
+        "number": 2,
+        "name": "보험료 납입면제 1형",
+        "planTypeCode": "waiver",
+        "values": [
+          {
+            "path": "waiver.applies",
+            "value": true
+          },
+          {
+            "path": "waiver.reasons",
+            "value": [
+              "V01",
+              "V02"
+            ]
+          }
+        ]
+      },
+      {
+        "code": "type-3",
+        "axis": "type",
+        "number": 3,
+        "name": "보험료 납입면제 2형",
+        "planTypeCode": "waiver",
+        "values": [
+          {
+            "path": "waiver.applies",
+            "value": true
+          },
+          {
+            "path": "waiver.reasons",
+            "value": [
+              "V01",
+              "V02"
+            ]
+          }
+        ]
+      },
+      {
+        "code": "form-1",
+        "axis": "form",
+        "number": 1,
+        "name": "해약환급금 지급형",
+        "planTypeCode": "no_surrender",
+        "values": [
+          {
+            "path": "no_surrender.type",
+            "value": "V01"
+          }
+        ]
+      },
+      {
+        "code": "form-2",
+        "axis": "form",
+        "number": 2,
+        "name": "해약환급금미지급형",
+        "planTypeCode": "no_surrender",
+        "values": [
+          {
+            "path": "no_surrender.type",
+            "value": "V02"
+          }
+        ]
+      }
+    ],
+    "plans": [
+      [
+        "type-1",
+        "form-1"
+      ],
+      [
+        "type-1",
+        "form-2"
+      ],
+      [
+        "type-2",
+        "form-1"
+      ],
+      [
+        "type-2",
+        "form-2"
+      ],
+      [
+        "type-3",
+        "form-1"
+      ],
+      [
+        "type-3",
+        "form-2"
+      ]
+    ],
+    "groups": [
+      {
+        "code": "injury",
+        "title": "상해 관련 특별약관"
+      },
+      {
+        "code": "disease",
+        "title": "질병 관련 특별약관"
+      }
+    ],
+    "mounts": [
+      {
+        "code": "base",
+        "coverage": "m-base-death",
+        "section": "base",
+        "attributes": []
+      },
+      {
+        "code": "m-disability80",
+        "coverage": "m-disability80",
+        "section": "special",
+        "attributes": [
+          {
+            "kindCode": "A0001",
+            "valueCode": "2"
+          }
+        ],
+        "group": "injury"
+      },
+      {
+        "code": "m-surgery17",
+        "coverage": "m-surgery17",
+        "section": "special",
+        "attributes": [
+          {
+            "kindCode": "A0001",
+            "valueCode": "2"
+          }
+        ],
+        "group": "injury"
+      },
+      {
+        "code": "m-fracture",
+        "coverage": "m-fracture",
+        "section": "special",
+        "attributes": [
+          {
+            "kindCode": "A0001",
+            "valueCode": "2"
+          }
+        ],
+        "group": "injury"
+      },
+      {
+        "code": "m-burn",
+        "coverage": "m-burn",
+        "section": "special",
+        "attributes": [
+          {
+            "kindCode": "A0001",
+            "valueCode": "2"
+          }
+        ],
+        "group": "injury"
+      },
+      {
+        "code": "m-fracture-surgery",
+        "coverage": "m-fracture-surgery",
+        "section": "special",
+        "attributes": [
+          {
+            "kindCode": "A0001",
+            "valueCode": "2"
+          }
+        ],
+        "group": "injury"
+      },
+      {
+        "code": "m-disease-death",
+        "coverage": "m-disease-death",
+        "section": "special",
+        "attributes": [
+          {
+            "kindCode": "A0001",
+            "valueCode": "2"
+          }
+        ],
+        "group": "disease"
+      },
+      {
+        "code": "m-disease-disability80",
+        "coverage": "m-disease-disability80",
+        "section": "special",
+        "attributes": [
+          {
+            "kindCode": "A0001",
+            "valueCode": "2"
+          }
+        ],
+        "group": "disease"
+      },
+      {
+        "code": "m-disease-surgery17",
+        "coverage": "m-disease-surgery17",
+        "section": "special",
+        "attributes": [
+          {
+            "kindCode": "A0001",
+            "valueCode": "2"
+          }
+        ],
+        "group": "disease"
+      }
+    ]
   }
 ]

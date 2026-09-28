@@ -130,18 +130,27 @@ export function reId<T>(nodes: T, prefix: string): T {
   return nodes;
 }
 
-/** 공용조항 한 건의 본문을 고른 옵션으로 펼친 가능한 렌더 — inline 은 인라인 원자열, block 은 항 하나의 원자열. */
-export function clauseRenderings(clause: ClauseRecord, selection: Record<string, string>): string[][] {
-  const bodies: OptionBodies = (code) => {
+/** 옵션 선택 → 선택지 본문 조회. */
+function bodiesOf(clause: ClauseRecord, selection: Record<string, string>): OptionBodies {
+  return (code) => {
     const option = clause.options.find((o) => o.code === code);
     const value = option?.values.find((v) => v.code === selection[code]);
     if (!value) throw new Error(`${clause.code} 옵션 ${code} 선택 없음`);
     return value.body;
   };
-  if (clause.mode === "inline") return renderings(clause.body as Inline[], bodies);
-  const paragraphs = (clause.body as Block[]).filter((b): b is ClauseParagraph => b.kind === "paragraph");
-  if (paragraphs.length !== 1 || paragraphs[0].items?.length) throw new Error(`${clause.code}: 항 공용조항 오버레이는 호 없는 항 하나만 다룬다`);
-  return renderings(paragraphs[0].children, bodies);
+}
+
+/** 「문구」 공용조항 한 건의 본문을 고른 옵션으로 펼친 가능한 렌더(인라인 원자열). */
+export function clauseRenderings(clause: ClauseRecord, selection: Record<string, string>): string[][] {
+  if (clause.mode !== "inline") throw new Error(`${clause.code}: 「항」 공용조항은 clauseParagraphs 로 본다`);
+  return renderings(clause.body as Inline[], bodiesOf(clause, selection));
+}
+
+/** 「항」 공용조항 본문의 항 목록 — 조건 블록은 오버레이가 다루지 않는다(실물 쓰임새에 없다). */
+function clauseParagraphs(clause: ClauseRecord): ClauseParagraph[] {
+  const blocks = clause.body as Block[];
+  if (blocks.some((b) => b.kind !== "paragraph")) throw new Error(`${clause.code}: 항 공용조항 오버레이는 조건 블록 없는 항 목록만 다룬다`);
+  return blocks as ClauseParagraph[];
 }
 
 // ───────────────────────────── 사용처 자리 바꾸기 ─────────────────────────────
@@ -192,6 +201,68 @@ export function replaceInlineRun(owner: { id: Id; children: InlineNode[] }, atom
   return true;
 }
 
+/** 인라인 목록의 렌더가 모두 허용 렌더 안에 있는가 — 없으면 처음 어긋난 렌더. */
+function missingRendering(mine: readonly AnyInline[], allowed: readonly AnyInline[], bodies: OptionBodies): string | undefined {
+  const ok = new Set(renderings(allowed, bodies).map(keyOf));
+  const miss = renderings(mine).find((r) => !ok.has(keyOf(r)));
+  return miss ? miss.join("").slice(0, 60) : undefined;
+}
+
+/**
+ * 「항」 공용조항 — 본문의 항 N 개를 사용처의 **잇닿은** 항 N 개(첫 항 = `use.paragraph`)와 대조해 통째로 참조 하나로 바꾼다.
+ * 항마다 문장 · 호 · 목의 가능한 렌더가 모두 공용조항 렌더 안에 있어야 하고, 호 목록에 표 · 박스가 끼면 바꾸지 않는다(공용조항 본문에 둘 수 없다).
+ */
+function applyBlockUse(
+  use: ClauseUse,
+  clause: ClauseRecord,
+  article: ArticleNode,
+  first: ParagraphNode,
+  selection: Record<string, string>,
+  label: string,
+  report: string[],
+): boolean {
+  const where = `${label} 공용조항 ${clause.code}: 조 ${use.article} 제${use.paragraph}항`;
+  const bodies = bodiesOf(clause, selection);
+  const theirs = clauseParagraphs(clause);
+  const at = article.children.indexOf(first);
+  const mine = article.children.slice(at, at + theirs.length);
+  if (mine.length !== theirs.length || mine.some((c) => c.kind !== "paragraph")) {
+    report.push(`${where}부터 잇닿은 항 ${theirs.length}개가 없음`);
+    return false;
+  }
+  for (const [k, node] of mine.entries()) {
+    const p = node as ParagraphNode;
+    const c = theirs[k];
+    const miss = missingRendering(p.children, c.children, bodies);
+    if (miss !== undefined) {
+      report.push(`${where}(+${k})이 공용조항 렌더와 다름 — ${miss}…`);
+      return false;
+    }
+    const items = p.items ?? [];
+    const citems = c.items ?? [];
+    if (items.some((it) => it.kind !== "item") || items.length !== citems.length) {
+      report.push(`${where}(+${k}) 호 목록이 다름 (표 · 박스가 끼었거나 개수가 다르다)`);
+      return false;
+    }
+    for (const [i, it] of items.entries()) {
+      if (it.kind !== "item") return false;
+      const cit = citems[i];
+      const subs = it.subitems ?? [];
+      const csubs = cit.subitems ?? [];
+      const bad =
+        missingRendering(it.children, cit.children, bodies) ??
+        (subs.length !== csubs.length || subs.some((u) => u.kind !== "subitem") ? "목 목록" : undefined) ??
+        subs.map((u, j) => (u.kind === "subitem" ? missingRendering(u.children, csubs[j].children, bodies) : "목")).find((m) => m !== undefined);
+      if (bad !== undefined) {
+        report.push(`${where}(+${k}) 제${i + 1}호가 다름 — ${bad}…`);
+        return false;
+      }
+    }
+  }
+  article.children.splice(at, theirs.length, { id: `${first.id}-k`, kind: "clauseBlockRef", clauseCode: clause.code, options: { ...selection } });
+  return true;
+}
+
 /**
  * 사용처 자리 하나를 공용조항 참조로 바꾼다. 성공하면 true, 못 찾으면 보고하고 false.
  * `articleOf` 는 원문 조 번호 → 조.
@@ -210,28 +281,20 @@ export function applyClauseUse(
     return false;
   }
   const selection = use.options ?? {};
+  if (clause.mode === "block") return applyBlockUse(use, clause, article, paragraph, selection, label, report);
   const alternatives = clauseRenderings(clause, selection);
-  if (clause.mode === "block") {
-    if (paragraph.items?.length) {
-      report.push(`${label} 공용조항 ${clause.code}: 조 ${use.article} 제${use.paragraph}항에 호가 있어 항 공용조항으로 바꿀 수 없음`);
-      return false;
-    }
-    const allowed = new Set(alternatives.map(keyOf));
-    const mine = renderings(paragraph.children);
-    const missing = mine.filter((r) => !allowed.has(keyOf(r)));
-    if (missing.length > 0) {
-      report.push(`${label} 공용조항 ${clause.code}: 조 ${use.article} 제${use.paragraph}항이 공용조항 렌더와 다름 — ${missing[0].join("").slice(0, 60)}…`);
-      return false;
-    }
-    const at = article.children.indexOf(paragraph);
-    article.children.splice(at, 1, { id: `${paragraph.id}-k`, kind: "clauseBlockRef", clauseCode: clause.code, options: { ...selection } });
-    return true;
-  }
   if (alternatives.length !== 1) throw new Error(`${clause.code}: 조건 있는 「문구」 공용조항은 자리 대조를 하지 않는다`);
-  const seq = paragraph.children.filter((c) => c.kind === "clauseInlineRef").length + 1;
-  const ref: InlineNode = { id: `${paragraph.id}-k${seq}`, kind: "clauseInlineRef", clauseCode: clause.code, options: { ...selection } };
-  if (!replaceInlineRun(paragraph, alternatives[0], ref)) {
-    report.push(`${label} 공용조항 ${clause.code}: 조 ${use.article} 제${use.paragraph}항에서 문구를 찾지 못함 — ${alternatives[0].join("").slice(0, 40)}…`);
+  // 호 자리(`use.item`)면 그 호의 문장에서 찾는다
+  const item = use.item === undefined ? undefined : paragraph.items?.filter((n) => n.kind === "item")[use.item - 1];
+  if (use.item !== undefined && (!item || item.kind !== "item")) {
+    report.push(`${label} 공용조항 ${clause.code}: 조 ${use.article} 제${use.paragraph}항 제${use.item}호 없음`);
+    return false;
+  }
+  const owner: { id: Id; children: InlineNode[] } = item && item.kind === "item" ? item : paragraph;
+  const seq = owner.children.filter((c) => c.kind === "clauseInlineRef").length + 1;
+  const ref: InlineNode = { id: `${owner.id}-k${seq}`, kind: "clauseInlineRef", clauseCode: clause.code, options: { ...selection } };
+  if (!replaceInlineRun(owner, alternatives[0], ref)) {
+    report.push(`${label} 공용조항 ${clause.code}: 조 ${use.article} 제${use.paragraph}항${use.item ? ` 제${use.item}호` : ""}에서 문구를 찾지 못함 — ${alternatives[0].join("").slice(0, 40)}…`);
     return false;
   }
   return true;

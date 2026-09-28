@@ -53,7 +53,7 @@ interface Piece {
 
 /** 참조 토큰 — 조(문맥을 세운다) · 항 · 호. */
 type Token =
-  | { kind: "article"; general: boolean; number: string; title: string; paragraph?: string; item?: string; end: number }
+  | { kind: "article"; general: boolean; number: string; title: string; paragraph?: string; item?: string; end: number; skipTo?: number }
   | { kind: "paragraph"; paragraph: string; item?: string; end: number }
   | { kind: "item"; item: string; end: number };
 
@@ -87,14 +87,18 @@ function tokenAt(text: string, pos: number): Token | undefined {
   ARTICLE.lastIndex = pos;
   const a = ARTICLE.exec(text);
   if (a) {
+    // 항 없이 호만 붙은 조(실물 「제22조(계약의 무효) 제2호」) — 표기가 「제N조 제K항 제L호」로만 나므로 조까지만 참조로 읽고 호는 평문으로 남긴다
+    const orphanItem = a[5] === undefined && a[6] !== undefined;
+    const end = orphanItem ? pos + a[0].length - /\s*제\d+호$/.exec(a[0])![0].length : pos + a[0].length;
     return {
       kind: "article",
       general: Boolean(a[1]),
       number: a[3] ? `${a[2]}의${a[3]}` : a[2],
       title: a[4],
       ...(a[5] !== undefined ? { paragraph: a[5] } : {}),
-      ...(a[6] !== undefined ? { item: a[6] } : {}),
-      end: pos + a[0].length,
+      ...(a[6] !== undefined && !orphanItem ? { item: a[6] } : {}),
+      end,
+      ...(orphanItem ? { skipTo: pos + a[0].length } : {}),
     };
   }
   PARAGRAPH.lastIndex = pos;
@@ -168,6 +172,8 @@ function resolveItem(paragraphId: Id, item: string, context: RefContext, env: Re
 interface Chunk {
   /** 덩어리가 끝난 자리 — 실패해도 여기까지는 다시 읽지 않는다. */
   end: number;
+  /** 참조로 읽지 않고 평문으로 남길 뒤따르는 구간의 끝 (항 없는 호 · 연결어가 바뀐 뒤의 나열). */
+  skipTo?: number;
   targets?: { nodeId: Id }[];
   connector?: ReferenceConnector;
   scope?: "self" | "general";
@@ -193,23 +199,42 @@ function readChunk(text: string, start: number, env: RefEnv): Chunk {
   let token: Token | undefined = first;
   let end = first.end;
 
+  let skipTo: number | undefined;
   while (token) {
     const nodeId = resolve(token, context, env, text.slice(start, token.end));
     if (nodeId === undefined) return { end: token.end };
     targets.push({ nodeId });
     end = token.end;
+    if (token.kind === "article" && token.skipTo !== undefined) {
+      env.report.push(`항 없는 호 — 조까지만 참조, 호는 평문: ${text.slice(start, token.skipTo)}`);
+      skipTo = token.skipTo;
+      break;
+    }
 
     const join = JOIN.exec(text.slice(end));
     if (!join) break;
     const next = tokenAt(text, end + join[0].length);
     // 접두를 새로 단 조는 새 덩어리다 (기능/문면 §3.5 — 접두는 덩어리당 한 번)
     if (!next || (next.kind === "article" && next.general)) break;
-    if (join[1] !== ", ") connectorWord = join[1].trim();
+    const word = join[1] !== ", " ? join[1].trim() : undefined;
+    // 연결어가 바뀌면(「제4호 및 제5호 또는 제2항 …」) 한 슬롯의 연결어 하나로 표기할 수 없다 — 앞 연결어까지만 참조, 뒤 나열은 평문 (보고)
+    if (word && connectorWord && word !== connectorWord) {
+      let tail = next.end;
+      for (let more = JOIN.exec(text.slice(tail)); more; more = JOIN.exec(text.slice(tail))) {
+        const t = tokenAt(text, tail + more[0].length);
+        if (!t) break;
+        tail = t.end;
+      }
+      env.report.push(`연결어가 섞인 나열 — 「${connectorWord}」까지만 참조, 뒤는 평문: ${text.slice(start, tail)}`);
+      skipTo = tail;
+      break;
+    }
+    if (word) connectorWord = word;
     token = next;
   }
   // 쉼표로만 이어진 덩어리도 「및」 — 연결어는 둘뿐이다 (기능/문면 §3.5). 대상이 하나면 연결어는 쓰이지 않는다.
   const connector: ReferenceConnector = connectorWord === "또는" ? "또는" : "및";
-  return { end, targets, connector, scope: context.scope };
+  return { end, targets, connector, scope: context.scope, ...(skipTo !== undefined ? { skipTo } : {}) };
 }
 
 export function inlinesFromText(text: string, env: RefEnv, newId: () => Id): InlineNode[] {
@@ -244,7 +269,7 @@ export function inlinesFromText(text: string, env: RefEnv, newId: () => Id): Inl
         node: { id: newId(), kind: "articleRef", targets: chunk.targets, connector: chunk.connector ?? "및", scope: chunk.scope ?? "self" },
       });
     }
-    cursor = Math.max(chunk.end, probe.index + 1);
+    cursor = Math.max(chunk.skipTo ?? chunk.end, probe.index + 1);
   }
 
   pieces.sort((a, b) => a.start - b.start);

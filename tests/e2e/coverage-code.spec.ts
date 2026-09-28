@@ -38,11 +38,11 @@ test(
   async ({ page, ev }) => {
     await ev.action("담보코드#1", "관리자로 로그인한다", () => login(page));
 
-    await ev.action("담보코드#2", "담보 조회 — 1열 헤더가 「코드」이고 시드 담보 9건이 COV000001~COV000009 를 갖는다", async () => {
+    await ev.action("담보코드#2", "담보 조회 — 1열 헤더가 「코드」이고 시드 담보 18건(알파Plus 9 · 메리츠 9)이 COV000001~COV000018 을 갖는다", async () => {
       await page.goto("/coverages");
       await expect(page.locator("table.ts-table thead th").first()).toHaveText("코드");
       const codes = await page.locator("table.ts-table tbody td.col-code code").allInnerTexts();
-      expect([...codes].sort()).toEqual(Array.from({ length: 9 }, (_, i) => `COV00000${i + 1}`));
+      expect([...codes].sort()).toEqual(Array.from({ length: 18 }, (_, i) => `COV${String(i + 1).padStart(6, "0")}`));
       const row = page.locator("tbody tr", { has: page.getByRole("link", { name: "일반상해사망보장", exact: true }) });
       await expect(row.locator("td.col-code")).toHaveText("COV000002");
     });

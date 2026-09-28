@@ -136,4 +136,22 @@ describe("현재 항 문맥 — 조 없는 단독 호 참조", () => {
     expect(out[0]).toMatchObject({ kind: "articleRef", connector: "및", targets: [{ nodeId: "a1p1i3" }, { nodeId: "a1p1i4" }] });
     expect(e.report).toEqual([]);
   });
+
+  it("항 없이 호만 붙은 조(「제1조(…) 제2호」)는 조까지만 참조 — 호는 평문으로 남기고 보고한다 (조 참조 표기가 「제N항 제L호」로만 나서)", () => {
+    const e = env({ currentArticleId: "a9" });
+    const out = inlinesFromText("다만, 제1조(보험금의 지급사유) 제2호의 경우에는", e, newId);
+    expect(out.map((x) => x.kind)).toEqual(["text", "articleRef", "text"]);
+    expect(out[1]).toMatchObject({ targets: [{ nodeId: "a1" }] });
+    expect(out[2]).toMatchObject({ text: " 제2호의 경우에는" });
+    expect(e.report[0]).toMatch(/항 없는 호/);
+  });
+
+  it("연결어가 섞인 나열(「A 및 B 또는 C」)은 앞 연결어까지만 한 슬롯 — 뒤 나열은 평문 (슬롯의 연결어는 하나)", () => {
+    const e = env({ currentArticleId: "a9" });
+    const out = inlinesFromText("제1조(보험금의 지급사유) 제1항 제1호 및 제2호 또는 제2항에서", e, newId);
+    expect(out.map((x) => x.kind)).toEqual(["articleRef", "text"]);
+    expect(out[0]).toMatchObject({ connector: "및", targets: [{ nodeId: "a1p1i1" }, { nodeId: "a1p1i2" }] });
+    expect(out[1]).toMatchObject({ text: " 또는 제2항에서" });
+    expect(e.report[0]).toMatch(/연결어가 섞인 나열/);
+  });
 });
