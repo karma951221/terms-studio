@@ -160,16 +160,10 @@
               ]
             },
             {
-              "id": "b-a4-b1",
-              "kind": "box",
-              "title": "의료법 제3조(의료기관)",
-              "lines": [
-                "- 의료기관은 다음 각 호와 같이 구분한다.",
-                "- 의원급 의료기관: 의원, 치과의원, 한의원",
-                "- 조산원",
-                "- 병원급 의료기관: 병원, 치과병원, 한방병원,",
-                "요양병원, 정신병원, 종합병원"
-              ]
+              "id": "b-a4-b1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0023",
+              "options": {}
             },
             {
               "id": "b-a4-p5",
@@ -323,15 +317,10 @@
                   ]
                 },
                 {
-                  "id": "s1-a2-b1",
-                  "kind": "box",
-                  "title": "민법 제27조(실종의 선고)",
-                  "lines": [
-                    "- 부재자의 생사가 5년간 분명하지 아니한 때에는",
-                    "법원은 이해관계인이나 검사의 청구에 의하여 실종선고를 하여야 한다.",
-                    "- 전지에 임한 자, 침몰한 선박 중에 있던 자, 추락",
-                    "한 항공기 중에 있던 자 기타 사망의 원인이 될위난을 당한 자의 생사가 전쟁종지후 또는 선박의 침몰, 항공기의 추락 기타 위난이 종료한 후 1년간 분명하지 아니한 때에도 제1항과 같다."
-                  ]
+                  "id": "s1-a2-b1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0114",
+                  "options": {}
                 }
               ]
             },
@@ -399,7 +388,7 @@
             {
               "id": "s1-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0030",
+              "clauseCode": "C0111",
               "options": {
                 "O01": "V01",
                 "O02": "V01"
@@ -415,7 +404,7 @@
             {
               "id": "s1-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0033",
+              "clauseCode": "C0132",
               "options": {}
             }
           ]
@@ -516,12 +505,10 @@
               ]
             },
             {
-              "id": "s2-a1-b2",
-              "kind": "box",
-              "title": "보험금 지급일 예시",
-              "lines": [
-                "보험금 지급사유 발생해당일 : 2023년 1월 31일⇒ 보험금 지급일 : 2023년 2월 28일"
-              ]
+              "id": "s2-a1-b2-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0115",
+              "options": {}
             },
             {
               "id": "s2-a1-p2",
@@ -555,7 +542,7 @@
             {
               "id": "s2-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0025",
+              "clauseCode": "C0106",
               "options": {
                 "O01": "V01"
               }
@@ -570,7 +557,7 @@
             {
               "id": "s2-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0031",
+              "clauseCode": "C0112",
               "options": {
                 "O01": "V01"
               }
@@ -585,7 +572,7 @@
             {
               "id": "s2-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0033",
+              "clauseCode": "C0132",
               "options": {}
             }
           ]
@@ -610,7 +597,7 @@
             {
               "id": "s3-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0021",
+              "clauseCode": "C0102",
               "options": {}
             }
           ]
@@ -623,7 +610,7 @@
             {
               "id": "s3-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0023",
+              "clauseCode": "C0104",
               "options": {}
             }
           ]
@@ -713,7 +700,7 @@
             {
               "id": "s3-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0028",
+              "clauseCode": "C0109",
               "options": {}
             }
           ]
@@ -726,7 +713,7 @@
             {
               "id": "s3-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0033",
+              "clauseCode": "C0132",
               "options": {}
             }
           ]
@@ -827,12 +814,10 @@
               ]
             },
             {
-              "id": "s4-a1-b2",
-              "kind": "box",
-              "title": "보험금 지급일 예시",
-              "lines": [
-                "보험금 지급사유 발생해당일 : 2023년 1월 31일⇒ 보험금 지급일 : 2023년 2월 28일"
-              ]
+              "id": "s4-a1-b2-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0115",
+              "options": {}
             },
             {
               "id": "s4-a1-p2",
@@ -866,7 +851,7 @@
             {
               "id": "s4-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0025",
+              "clauseCode": "C0106",
               "options": {
                 "O01": "V02"
               }
@@ -881,7 +866,7 @@
             {
               "id": "s4-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0031",
+              "clauseCode": "C0112",
               "options": {
                 "O01": "V02"
               }
@@ -896,7 +881,7 @@
             {
               "id": "s4-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0033",
+              "clauseCode": "C0132",
               "options": {}
             }
           ]
@@ -921,7 +906,7 @@
             {
               "id": "s5-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0022",
+              "clauseCode": "C0103",
               "options": {}
             }
           ]
@@ -934,7 +919,7 @@
             {
               "id": "s5-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0024",
+              "clauseCode": "C0105",
               "options": {}
             }
           ]
@@ -1000,12 +985,10 @@
               ]
             },
             {
-              "id": "s5-a3-b1",
-              "kind": "box",
-              "title": "신의료기술평가위원회",
-              "lines": [
-                "의료법 제54조(신의료기술평가위원회의 설치 등)에 의거 설치된 위원회로서 신의료기술에 관한 최고의 심의기구를 말합니다."
-              ]
+              "id": "s5-a3-b1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0116",
+              "options": {}
             },
             {
               "id": "s5-a3-p4",
@@ -1176,7 +1159,7 @@
             {
               "id": "s5-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0028",
+              "clauseCode": "C0109",
               "options": {}
             }
           ]
@@ -1189,7 +1172,7 @@
             {
               "id": "s5-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0033",
+              "clauseCode": "C0132",
               "options": {}
             }
           ]
@@ -1461,12 +1444,10 @@
               ]
             },
             {
-              "id": "s6-a3-b1",
-              "kind": "box",
-              "title": "신의료기술평가위원회",
-              "lines": [
-                "의료법 제54조(신의료기술평가위원회의 설치 등)에 의거 설치된 위원회로서 신의료기술에 관한 최고의 심의기구를 말합니다."
-              ]
+              "id": "s6-a3-b1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0116",
+              "options": {}
             },
             {
               "id": "s6-a3-p7",
@@ -1579,7 +1560,7 @@
             {
               "id": "s6-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0029",
+              "clauseCode": "C0110",
               "options": {
                 "O01": "V01"
               }
@@ -1594,7 +1575,7 @@
             {
               "id": "s6-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0033",
+              "clauseCode": "C0132",
               "options": {}
             }
           ]
@@ -2726,14 +2707,10 @@
               ]
             },
             {
-              "id": "s7-a2-b1",
-              "kind": "box",
-              "title": "진단명기준환자군(DRG)",
-              "lines": [
-                "환자의 주진단명 및 기타진단명, 수술처치명, 연령, 성별, 진료결과 등에 따라 진료내용이 유사한 그룹으로 분류하는 것을 말하며, 이 특별약관의 진단명기준 환자군(DRG) 분류체계는 건강보험심사평가원에서 개발∙관리하는 KDRG 버전4.4(2021.1.1 시행)의 ADRG 분류체계를 입원 여부와 관계없이 적용합니다.",
-                "【ADRG(Adjacent DRG)】",
-                "환자의 주진단 범주(Major Diagnostic Category,MDC)와 수술을 받았는지 여부에 따라“외과계 그룹”과 “내과계 그룹”으로 분류한 후 의료행위주1)와 진단명주2)에 따라 세부적으로 분류한 것을 말합니다. 주1) 의료행위 의료행위란 보건복지부에서 고시하는“건강보험 행위 급여∙비급여 목록 및 급여 상대가치점수”에서 정한 수가코드를 말합니다. 주2) 진단명 진단명이란 통계청에서 고시하는“한국표준질병∙사인분류”상의 분류번호를 말합니다."
-              ]
+              "id": "s7-a2-b1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0117",
+              "options": {}
             },
             {
               "id": "s7-a2-p4",
@@ -2758,17 +2735,10 @@
               ]
             },
             {
-              "id": "s7-a2-b2",
-              "kind": "box",
-              "title": "설명",
-              "lines": [
-                "- (예시) 이 특별약관 체결시점에 간이식에 해당하는",
-                "수술코드는 A010이었으나, 피보험자가 간이식수술을 받은 시점의 수술코드가 A080으로 변경된 경우에도 A010에 해당하는 수술비를 지급합니다.",
-                "- 회사는 피보험자가 수술받은 시점의 주진단범주",
-                "(MDC)와 의료행위를 이 특별약관 체결시점의 진단명기준환자군(DRG) 기준에 적용합니다",
-                "- 신의료수술 도입 등의 이유로 급여항목이 신규 추",
-                "가되고 피보험자가 그 수술을 받은 경우 회사는 주 진단범주(MDC)와 의료행위를 확인한 후 이 특별약관 체결시점에 정한 수술코드를 기준으로 수술비를 지급합니다."
-              ]
+              "id": "s7-a2-b2-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0118",
+              "options": {}
             },
             {
               "id": "s7-a2-p5",
@@ -2818,12 +2788,10 @@
               ]
             },
             {
-              "id": "s7-a2-b3",
-              "kind": "box",
-              "title": "",
-              "lines": [
-                "「건강보험 행위 급여∙비급여 목록 및 급여 상대가치 점수」는 보건복지부가 고시한 바에 따릅니다."
-              ]
+              "id": "s7-a2-b3-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0119",
+              "options": {}
             }
           ]
         },
@@ -2844,12 +2812,10 @@
               ]
             },
             {
-              "id": "s7-a3-b1",
-              "kind": "box",
-              "title": "",
-              "lines": [
-                "ADGR는 1회의 입원 또는 1회의 통원에 대하여 2가지 이상의 수술을 받더라도 진단명기준환자군(DRG)에서 정한 외과적 우선순위에 따라 하나만 생성이 됩니다.(예시) 피보험자가 입원을 하고“치료적 자궁소파술(N141)”과 “복강경을 이용한 주요 자궁절제술(악성종양 제외)(N021)”을 동시에 받은 후 퇴원할 경우 외과적 우선순위에 따라 생성되는 ADRG는“복강경을 이용한 주요 자궁절제술(악성종양 제외)(N021)”입니다."
-              ]
+              "id": "s7-a3-b1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0120",
+              "options": {}
             },
             {
               "id": "s7-a3-p2",
@@ -3258,12 +3224,10 @@
                   ]
                 },
                 {
-                  "id": "s7-a5-b1",
-                  "kind": "box",
-                  "title": "급여수가코드",
-                  "lines": [
-                    "급여수가코드는「건강보험 행위 급여·비급여 목록표 및 급여 상대가치점수(보건복지부 고시)」에서 정한 처치 및 수술료, 검사료, 방사선 치료료 등을 포함한 코드를 말합니다."
-                  ]
+                  "id": "s7-a5-b1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0121",
+                  "options": {}
                 },
                 {
                   "id": "s7-a5-p1-i3",
@@ -3351,7 +3315,7 @@
             {
               "id": "s7-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0028",
+              "clauseCode": "C0109",
               "options": {}
             }
           ]
@@ -3364,7 +3328,7 @@
             {
               "id": "s7-a8-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0033",
+              "clauseCode": "C0132",
               "options": {}
             }
           ]
@@ -3389,18 +3353,18 @@
             {
               "id": "s9-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0020",
+              "clauseCode": "C0101",
               "options": {}
             },
             {
-              "id": "s9-a1-b1",
-              "kind": "box",
-              "title": "",
-              "lines": [
-                "- 화상진단비보장",
-                "- 화상수술비보장",
-                "- 중증화상및부식진단비보장"
-              ]
+              "id": "s9-a1-b1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0122",
+              "options": {
+                "O01": "V01",
+                "O02": "V01",
+                "O03": "V01"
+              }
             }
           ]
         },
@@ -3736,12 +3700,10 @@
               ]
             },
             {
-              "id": "s9-a5-b1",
-              "kind": "box",
-              "title": "신의료기술평가위원회",
-              "lines": [
-                "의료법 제54조(신의료기술평가위원회의 설치 등)에 의거 설치된 위원회로서 신의료기술에 관한 최고의 심의기구를 말합니다."
-              ]
+              "id": "s9-a5-b1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0116",
+              "options": {}
             },
             {
               "id": "s9-a5-p4",
@@ -3854,7 +3816,7 @@
             {
               "id": "s9-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0027",
+              "clauseCode": "C0108",
               "options": {
                 "O01": "V01",
                 "O02": "V01"
@@ -3870,7 +3832,7 @@
             {
               "id": "s9-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0032",
+              "clauseCode": "C0113",
               "options": {}
             }
           ]
@@ -3883,7 +3845,7 @@
             {
               "id": "s9-a8-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0033",
+              "clauseCode": "C0132",
               "options": {}
             }
           ]
@@ -3969,13 +3931,10 @@
                   ]
                 },
                 {
-                  "id": "mb-a4-b1",
-                  "kind": "box",
-                  "title": "민법 제27조(실종의 선고)",
-                  "lines": [
-                    "① 부재자의 생사가 5년간 분명하지 아니한 때에는 법원은 이해관계인이나 검사의 청구에 의하여 실종선고를 하여야 한다.",
-                    "② 전지에 임한 자, 침몰한 선박 중에 있던 자, 추락한 항공기 중에 있던 자 기타 사망의 원인이 될 위난을 당한 자의 생사가 전쟁종지후 또는 선박의 침몰, 항공기의 추락 기타 위난이 종료한 후 1년간 분명하지 아니한 때에도 제1항과 같다."
-                  ]
+                  "id": "mb-a4-b1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0073",
+                  "options": {}
                 }
               ]
             },
@@ -4034,15 +3993,10 @@
               ]
             },
             {
-              "id": "mb-a4-b2",
-              "kind": "box",
-              "title": "의료법 제3조(의료기관)",
-              "lines": [
-                "② 의료기관은 다음 각 호와 같이 구분한다.",
-                "1. 의원급 의료기관: 의원, 치과의원, 한의원",
-                "2. 조산원",
-                "3. 병원급 의료기관: 병원, 치과병원, 한방병원, 요양병원, 정신병원, 종합병원"
-              ]
+              "id": "mb-a4-b2-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0074",
+              "options": {}
             }
           ],
           "linkedArticleId": "m-a4"
@@ -4105,7 +4059,7 @@
             {
               "id": "m1-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0026",
+              "clauseCode": "C0107",
               "options": {
                 "O01": "V01",
                 "O02": "V01",
@@ -4122,7 +4076,7 @@
             {
               "id": "m1-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0029",
+              "clauseCode": "C0110",
               "options": {
                 "O01": "V02"
               }
@@ -4137,7 +4091,7 @@
             {
               "id": "m1-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0034",
+              "clauseCode": "C0133",
               "options": {}
             }
           ]
@@ -4730,20 +4684,10 @@
               ]
             },
             {
-              "id": "m2-a1-b3",
-              "kind": "box",
-              "title": "",
-              "lines": [
-                "※ 설명",
-                "① : A수술에 해당하는 보험금 지급(연간 첫 번째 A수술)",
-                "② : 보험금 미지급",
-                "(직전 보험금이 지급된 수술이 행해진 입원의 퇴원일[24.4.15]부터 동일수술이 행해진 입원의 입원일[24.5.1]까지의 기간(16일)이 30일이내이므로 보험금 미지급)",
-                "③ : A수술에 해당하는 보험금 지급(연간 두 번째 A수술)",
-                "④ : A수술에 해당하는 보험금 지급(연간 세 번째 A수술)",
-                "⑤ : 보험금 미지급",
-                "(A수술, 연간 지급 횟수(3회) 초과되었으므로 보험금 미지급)",
-                "⑥ : A수술에 해당하는 보험금 지급(연간 첫 번째 A수술)"
-              ]
+              "id": "m2-a1-b3-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0123",
+              "options": {}
             },
             {
               "id": "m2-a1-t4",
@@ -5038,20 +4982,10 @@
               ]
             },
             {
-              "id": "m2-a1-b5",
-              "kind": "box",
-              "title": "",
-              "lines": [
-                "주) 2가지 수술코드가 부여되었으나, 수술종류가 A수술이 높은 경우",
-                "※ 설명",
-                "① : A수술에 해당하는 보험금 지급(연간 첫 번째 A수술)",
-                "(수술종류가 높은 A수술에 해당하는 보험금 지급)",
-                "② : B수술에 해당하는 보험금 지급(연간 첫 번째 B수술)",
-                "③ : B수술에 해당하는 보험금 지급(연간 두 번째 B수술)",
-                "④ : B수술에 해당하는 보험금 지급(연간 세 번째 B수술)",
-                "⑤ : B수술에 해당하는 보험금 지급(연간 첫 번째 B수술)",
-                "(직전 보험금이 지급된 수술이 행해진 입원의 퇴원일[25.4.3]부터 동일수술이 행해진 입원의 입원일[25.4.13]까지의 기간(10일)이 30일이내이지만 새로운 연간에 해당되므로 보험금 지급)"
-              ]
+              "id": "m2-a1-b5-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0124",
+              "options": {}
             }
           ]
         },
@@ -5126,18 +5060,10 @@
               ]
             },
             {
-              "id": "m2-a2-b1",
-              "kind": "box",
-              "title": "진단명기준환자군(DRG)",
-              "lines": [
-                "환자의 주진단명 및 기타진단명, 수술처치명, 연령, 성별, 진료결과 등에 따라 진료내용이 유사한 그룹으로 분류하는 것을 말하며, 이 특별약관의 진단명기준환자군(DRG) 분류체계는 건강보험심사평가원에서 개발∙관리하는 KDRG 버전 4.4(2021.1.1 시행)의 ADRG 분류체계를 입원 여부와 관계없이 적용합니다.",
-                "【ADRG(Adjacent DRG)】",
-                "환자의 주진단 범주(Major Diagnostic Category, MDC)와 수술을 받았는지 여부에 따라“외과계 그룹”과 “내과계 그룹”으로 분류한 후 의료행위주1)와 진단명주2)에 따라 세부적으로 분류한 것을 말합니다.",
-                "주1) 의료행위",
-                "의료행위란 보건복지부에서 고시하는“건강보험 행위 급여∙비급여 목록 및 급여 상대가치점수”에서 정한 수가코드를 말합니다.",
-                "주2) 진단명",
-                "진단명이란 통계청에서 고시하는“한국표준질병∙사인분류”상의 분류번호를 말합니다."
-              ]
+              "id": "m2-a2-b1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0125",
+              "options": {}
             },
             {
               "id": "m2-a2-p4",
@@ -5162,14 +5088,10 @@
               ]
             },
             {
-              "id": "m2-a2-b2",
-              "kind": "box",
-              "title": "설명",
-              "lines": [
-                "- (예시) 이 특별약관 체결시점에 간이식에 해당하는 수술코드는 A010이었으나, 피보험자가 간이식수술을 받은 시점의 수술코드가 A080으로 변경된 경우에도 A010에 해당하는 수술비를 지급합니다.",
-                "- 회사는 피보험자가 수술받은 시점의 주진단범주(MDC)와 의료행위를 이 특별약관 체결시점의 진단명기준환자군(DRG) 기준에 적용합니다",
-                "- 신의료수술 도입 등의 이유로 급여항목이 신규 추가되고 피보험자가 그 수술을 받은 경우 회사는 주진단범주(MDC)와 의료행위를 확인한 후 이 특별약관 체결시점에 정한 수술코드를 기준으로 수술비를 지급합니다."
-              ]
+              "id": "m2-a2-b2-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0126",
+              "options": {}
             },
             {
               "id": "m2-a2-p5",
@@ -5219,12 +5141,10 @@
               ]
             },
             {
-              "id": "m2-a2-b3",
-              "kind": "box",
-              "title": "",
-              "lines": [
-                "「건강보험 행위 급여∙비급여 목록 및 급여 상대가치점수」는 보건복지부가 고시한 바에 따릅니다."
-              ]
+              "id": "m2-a2-b3-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0127",
+              "options": {}
             }
           ]
         },
@@ -5245,13 +5165,10 @@
               ]
             },
             {
-              "id": "m2-a3-b1",
-              "kind": "box",
-              "title": "",
-              "lines": [
-                "ADRG는 1회의 입원 또는 1회의 통원에 대하여 2가지 이상의 수술을 받더라도 진단명기준환자군(DRG)에서 정한 외과적 우선순위에 따라 하나만 생성이 됩니다.",
-                "(예시) 피보험자가 입원을 하고“치료적 자궁소파술(N141)”과 “복강경을 이용한 주요 자궁절제술(악성종양 제외)(N021)”을 동시에 받은 후 퇴원할 경우 외과적 우선순위에 따라 생성되는 ADRG는“복강경을 이용한 주요 자궁절제술(악성종양 제외)(N021)”입니다."
-              ]
+              "id": "m2-a3-b1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0128",
+              "options": {}
             },
             {
               "id": "m2-a3-p2",
@@ -5660,12 +5577,10 @@
                   ]
                 },
                 {
-                  "id": "m2-a5-b1",
-                  "kind": "box",
-                  "title": "급여수가코드",
-                  "lines": [
-                    "급여수가코드는「건강보험 행위 급여·비급여 목록표 및 급여 상대가치점수(보건복지부 고시)」에서 정한 처치 및 수술료, 검사료, 방사선 치료료 등을 포함한 코드를 말합니다."
-                  ]
+                  "id": "m2-a5-b1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0121",
+                  "options": {}
                 },
                 {
                   "id": "m2-a5-p1-i3",
@@ -5723,7 +5638,7 @@
             {
               "id": "m2-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0028",
+              "clauseCode": "C0109",
               "options": {}
             }
           ]
@@ -5736,7 +5651,7 @@
             {
               "id": "m2-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0034",
+              "clauseCode": "C0133",
               "options": {}
             }
           ]
@@ -5761,7 +5676,7 @@
             {
               "id": "m3-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0021",
+              "clauseCode": "C0102",
               "options": {}
             }
           ]
@@ -5774,7 +5689,7 @@
             {
               "id": "m3-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0023",
+              "clauseCode": "C0104",
               "options": {}
             }
           ]
@@ -5864,7 +5779,7 @@
             {
               "id": "m3-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0028",
+              "clauseCode": "C0109",
               "options": {}
             }
           ]
@@ -5877,7 +5792,7 @@
             {
               "id": "m3-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0034",
+              "clauseCode": "C0133",
               "options": {}
             }
           ]
@@ -5902,18 +5817,18 @@
             {
               "id": "m4-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0020",
+              "clauseCode": "C0101",
               "options": {}
             },
             {
-              "id": "m4-a1-b1",
-              "kind": "box",
-              "title": "",
-              "lines": [
-                "· 화상진단비(통합간편가입)",
-                "· 화상수술비(통합간편가입)",
-                "· 중증화상및부식진단비(통합간편가입)"
-              ]
+              "id": "m4-a1-b1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0122",
+              "options": {
+                "O01": "V02",
+                "O02": "V02",
+                "O03": "V02"
+              }
             }
           ]
         },
@@ -6175,12 +6090,10 @@
               ]
             },
             {
-              "id": "m4-a4-b1",
-              "kind": "box",
-              "title": "신의료기술평가위원회",
-              "lines": [
-                "의료법 제54조(신의료기술평가위원회의 설치 등)에 의거 설치된 위원회로서 신의료기술에 관한 최고의 심의기구를 말합니다."
-              ]
+              "id": "m4-a4-b1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0116",
+              "options": {}
             },
             {
               "id": "m4-a4-p4",
@@ -6367,7 +6280,7 @@
             {
               "id": "m4-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0027",
+              "clauseCode": "C0108",
               "options": {
                 "O01": "V02",
                 "O02": "V02"
@@ -6383,7 +6296,7 @@
             {
               "id": "m4-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0032",
+              "clauseCode": "C0113",
               "options": {}
             }
           ]
@@ -6396,7 +6309,7 @@
             {
               "id": "m4-a8-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0034",
+              "clauseCode": "C0133",
               "options": {}
             }
           ]
@@ -6421,7 +6334,7 @@
             {
               "id": "m5-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0022",
+              "clauseCode": "C0103",
               "options": {}
             }
           ]
@@ -6434,7 +6347,7 @@
             {
               "id": "m5-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0024",
+              "clauseCode": "C0105",
               "options": {}
             }
           ]
@@ -6500,12 +6413,10 @@
               ]
             },
             {
-              "id": "m5-a3-b1",
-              "kind": "box",
-              "title": "신의료기술평가위원회",
-              "lines": [
-                "의료법 제54조(신의료기술평가위원회의 설치 등)에 의거 설치된 위원회로서 신의료기술에 관한 최고의 심의기구를 말합니다."
-              ]
+              "id": "m5-a3-b1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0116",
+              "options": {}
             },
             {
               "id": "m5-a3-p4",
@@ -6676,7 +6587,7 @@
             {
               "id": "m5-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0028",
+              "clauseCode": "C0109",
               "options": {}
             }
           ]
@@ -6689,7 +6600,7 @@
             {
               "id": "m5-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0034",
+              "clauseCode": "C0133",
               "options": {}
             }
           ]
@@ -6820,12 +6731,10 @@
               ]
             },
             {
-              "id": "m6-a1-b2",
-              "kind": "box",
-              "title": "그림",
-              "lines": [
-                "【질병사망보험금[예시]】 2023.4.10 최초계약일(보장개시일)부터 2023.7.9. 최초계약일부터 90일경과시점 전까지는 보험가입금액의 10%, 그 이후는 보험가입금액의 100%로 표시한 시간선"
-              ]
+              "id": "m6-a1-b2-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0129",
+              "options": {}
             },
             {
               "id": "m6-a1-p2",
@@ -6983,7 +6892,7 @@
             {
               "id": "m6-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0030",
+              "clauseCode": "C0111",
               "options": {
                 "O01": "V02",
                 "O02": "V02"
@@ -7189,12 +7098,10 @@
               ]
             },
             {
-              "id": "m7-a1-b2",
-              "kind": "box",
-              "title": "그림",
-              "lines": [
-                "【질병80%이상후유장해보험금[예시]】 2023.4.10 최초계약일(보장개시일)부터 2024.4.10. 최초계약일부터 1년경과시점 전까지는 보험가입금액의 50%, 그 이후는 보험가입금액의 100%로 표시한 시간선"
-              ]
+              "id": "m7-a1-b2-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0130",
+              "options": {}
             },
             {
               "id": "m7-a1-p2",
@@ -7307,7 +7214,7 @@
             {
               "id": "m7-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0026",
+              "clauseCode": "C0107",
               "options": {
                 "O01": "V02",
                 "O02": "V02",
@@ -7324,7 +7231,7 @@
             {
               "id": "m7-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0029",
+              "clauseCode": "C0110",
               "options": {
                 "O01": "V02"
               }
@@ -7339,7 +7246,7 @@
             {
               "id": "m7-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0034",
+              "clauseCode": "C0133",
               "options": {}
             }
           ]
@@ -8284,20 +8191,10 @@
               ]
             },
             {
-              "id": "m8-a1-b4",
-              "kind": "box",
-              "title": "",
-              "lines": [
-                "※ 설명",
-                "① : A수술에 해당하는 보험금 지급(연간 첫 번째 A수술)",
-                "② : 보험금 미지급",
-                "(직전 보험금이 지급된 수술이 행해진 입원의 퇴원일[24.4.15]부터 동일수술이 행해진 입원의 입원일[24.5.1]까지의 기간(16일)이 30일이내이므로 보험금 미지급)",
-                "③ : A수술에 해당하는 보험금 지급(연간 두 번째 A수술)",
-                "④ : A수술에 해당하는 보험금 지급(연간 세 번째 A수술)",
-                "⑤ : 보험금 미지급",
-                "(A수술, 연간 지급횟수(3회) 초과되었으므로 보험금 미지급)",
-                "⑥ : A수술에 해당하는 보험금 지급(연간 첫 번째 A수술)"
-              ]
+              "id": "m8-a1-b4-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0131",
+              "options": {}
             },
             {
               "id": "m8-a1-t5",
@@ -8592,20 +8489,10 @@
               ]
             },
             {
-              "id": "m8-a1-b6",
-              "kind": "box",
-              "title": "",
-              "lines": [
-                "주) 2가지 수술코드가 부여되었으나, 수술종류가 A수술이 높은 경우",
-                "※ 설명",
-                "① : A수술에 해당하는 보험금 지급(연간 첫 번째 A수술)",
-                "(수술종류가 높은 A수술에 해당하는 보험금 지급)",
-                "② : B수술에 해당하는 보험금 지급(연간 첫 번째 B수술)",
-                "③ : B수술에 해당하는 보험금 지급(연간 두 번째 B수술)",
-                "④ : B수술에 해당하는 보험금 지급(연간 세 번째 B수술)",
-                "⑤ : B수술에 해당하는 보험금 지급(연간 첫 번째 B수술)",
-                "(직전 보험금이 지급된 수술이 행해진 입원의 퇴원일[25.4.3]부터 동일수술이 행해진 입원의 입원일[25.4.13]까지의 기간(10일)이 30일이내이지만 새로운 연간에 해당되므로 보험금 지급)"
-              ]
+              "id": "m8-a1-b6-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0124",
+              "options": {}
             }
           ]
         },
@@ -8680,18 +8567,10 @@
               ]
             },
             {
-              "id": "m8-a2-b1",
-              "kind": "box",
-              "title": "진단명기준환자군(DRG)",
-              "lines": [
-                "환자의 주진단명 및 기타진단명, 수술처치명, 연령, 성별, 진료결과 등에 따라 진료내용이 유사한 그룹으로 분류하는 것을 말하며, 이 특별약관의 진단명기준환자군(DRG) 분류체계는 건강보험심사평가원에서 개발∙관리하는 KDRG 버전 4.4(2021.1.1 시행)의 ADRG 분류체계를 입원 여부와 관계없이 적용합니다.",
-                "【ADRG(Adjacent DRG)】",
-                "환자의 주진단 범주(Major Diagnostic Category, MDC)와 수술을 받았는지 여부에 따라“외과계 그룹”과 “내과계 그룹”으로 분류한 후 의료행위주1)와 진단명주2)에 따라 세부적으로 분류한 것을 말합니다.",
-                "주1) 의료행위",
-                "의료행위란 보건복지부에서 고시하는“건강보험 행위 급여∙비급여 목록 및 급여 상대가치점수”에서 정한 수가코드를 말합니다.",
-                "주2) 진단명",
-                "진단명이란 통계청에서 고시하는“한국표준질병∙사인분류”상의 분류번호를 말합니다."
-              ]
+              "id": "m8-a2-b1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0125",
+              "options": {}
             },
             {
               "id": "m8-a2-p4",
@@ -8716,14 +8595,10 @@
               ]
             },
             {
-              "id": "m8-a2-b2",
-              "kind": "box",
-              "title": "설명",
-              "lines": [
-                "- (예시) 이 특별약관 체결시점에 간이식에 해당하는 수술코드는 A010이었으나, 피보험자가 간이식수술을 받은 시점의 수술코드가 A080으로 변경된 경우에도 A010에 해당하는 수술비를 지급합니다.",
-                "- 회사는 피보험자가 수술받은 시점의 주진단범주(MDC)와 의료행위를 이 특별약관 체결시점의 진단명기준환자군(DRG) 기준에 적용합니다",
-                "- 신의료수술 도입 등의 이유로 급여항목이 신규 추가되고 피보험자가 그 수술을 받은 경우 회사는 주진단범주(MDC)와 의료행위를 확인한 후 이 특별약관 체결시점에 정한 수술코드를 기준으로 수술비를 지급합니다."
-              ]
+              "id": "m8-a2-b2-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0126",
+              "options": {}
             },
             {
               "id": "m8-a2-p5",
@@ -8773,12 +8648,10 @@
               ]
             },
             {
-              "id": "m8-a2-b3",
-              "kind": "box",
-              "title": "",
-              "lines": [
-                "「건강보험 행위 급여∙비급여 목록 및 급여 상대가치점수」는 보건복지부가 고시한 바에 따릅니다."
-              ]
+              "id": "m8-a2-b3-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0127",
+              "options": {}
             }
           ]
         },
@@ -8799,13 +8672,10 @@
               ]
             },
             {
-              "id": "m8-a3-b1",
-              "kind": "box",
-              "title": "",
-              "lines": [
-                "ADRG는 1회의 입원 또는 1회의 통원에 대하여 2가지 이상의 수술을 받더라도 진단명기준환자군(DRG)에서 정한 외과적 우선순위에 따라 하나만 생성이 됩니다.",
-                "(예시) 피보험자가 입원을 하고“치료적 자궁소파술(N141)”과 “복강경을 이용한 주요 자궁절제술(악성종양 제외)(N021)”을 동시에 받은 후 퇴원할 경우 외과적 우선순위에 따라 생성되는 ADRG는“복강경을 이용한 주요 자궁절제술(악성종양 제외)(N021)”입니다."
-              ]
+              "id": "m8-a3-b1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0128",
+              "options": {}
             },
             {
               "id": "m8-a3-p2",
@@ -9147,12 +9017,10 @@
                   ]
                 },
                 {
-                  "id": "m8-a4-b1",
-                  "kind": "box",
-                  "title": "심신상실",
-                  "lines": [
-                    "정신병, 정신박약, 심한 의식장애 등의 심신장애로 인하여 사물 변별 능력 또는 의사 결정 능력이 없는 상태를 말합니다."
-                  ]
+                  "id": "m8-a4-b1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0024",
+                  "options": {}
                 }
               ]
             },
@@ -9223,12 +9091,10 @@
                   ]
                 },
                 {
-                  "id": "m8-a4-b2",
-                  "kind": "box",
-                  "title": "습관성 유산, 불임 및 인공수정",
-                  "lines": [
-                    "한국표준질병·사인분류상의 N96~N98에 해당하는 질병을 말합니다."
-                  ]
+                  "id": "m8-a4-b2-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0025",
+                  "options": {}
                 }
               ]
             },
@@ -9326,12 +9192,10 @@
                   ]
                 },
                 {
-                  "id": "m8-a5-b1",
-                  "kind": "box",
-                  "title": "급여수가코드",
-                  "lines": [
-                    "급여수가코드는「건강보험 행위 급여·비급여 목록표 및 급여 상대가치점수(보건복지부 고시)」에서 정한 처치 및 수술료, 검사료, 방사선 치료료 등을 포함한 코드를 말합니다."
-                  ]
+                  "id": "m8-a5-b1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0121",
+                  "options": {}
                 },
                 {
                   "id": "m8-a5-p1-i3",
@@ -9389,7 +9253,7 @@
             {
               "id": "m8-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0028",
+              "clauseCode": "C0109",
               "options": {}
             }
           ]
@@ -9402,7 +9266,7 @@
             {
               "id": "m8-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0034",
+              "clauseCode": "C0133",
               "options": {}
             }
           ]

@@ -13,7 +13,7 @@
  *   - 「문구」(inline) : 항 안의 첫 등장 구간을 `clauseInlineRef` 하나로 (제품 기능 — 실물 데이터는 쓰지 않는다, 2026-09-28).
  * - 노드 id 는 결정적이다: 공용조항 본문 `c<번호>-…` · 사용처 참조 `<항 id>-k<순번>` (block 은 `<항 id>-k`).
  */
-import type { ArticleRefNode as ClauseArticleRef, Block, Inline, ParagraphNode as ClauseParagraph } from "../../src/domain/clause/nodes";
+import type { ArticleRefNode as ClauseArticleRef, Block, BoxNode, Inline, ParagraphNode as ClauseParagraph } from "../../src/domain/clause/nodes";
 import { hostLocator } from "../../src/domain/assembly/resolve";
 import type { ArticleNode, DocumentNode, InlineNode, ParagraphNode } from "../../src/domain/document/nodes";
 import type { Id } from "../../src/domain/types";
@@ -24,9 +24,9 @@ import type { ClauseSpec, ClauseUse } from "./config";
 export interface ClauseRecord {
   code: string;
   label: string;
-  mode: "inline" | "block";
+  mode: "inline" | "block" | "box";
   description: string;
-  body: Inline[] | Block[];
+  body: Inline[] | Block[] | BoxNode[];
   options: { code: string; label: string; order: number; values: { code: string; label: string; order: number; body: Inline[] }[] }[];
 }
 

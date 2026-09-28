@@ -74,14 +74,13 @@ export interface ArticleCondOverlay {
 }
 
 /**
- * 공용조항 정의 — 여러 문서가 되풀이하는 **조 · 여러 항 단위** (기능/공용조항 §3.1 · §6.2). 코드는 시스템 채번(`C0001`…)이라 배열 순서가 곧 코드다.
+ * 공용조항 정의 — 여러 문서가 되풀이하는 **조 · 여러 항 단위** (기능/공용조항 §3.1 · §6.2). 코드는 시스템 채번(`C0001`…) — 변환기가 적재 순서로 매긴다(`CLAUSES`).
  * 본문은 원문 한 자리(`from`, 조건 오버레이가 얹힌 뒤)에서 딴다 — 항 수를 안 주면 그 항부터 조 끝까지(조째). 평문(`text`)도 된다.
  * 원문 자리의 자기 조 참조는 딴 항 안이면 「이 공용조항」, 밖이면 「사용처」 위치가 된다 (§3.5).
  */
 export interface ClauseSpec {
-  /** 설정 안의 이름 — 쓰임(`ClauseUse.clause`)이 이것으로 가리킨다. 코드(`C0001`…)는 배열 순서로 매겨진다(시스템 채번과 같게). */
+  /** 설정 안의 이름 — 쓰임(`ClauseUse.clause`)이 이것으로 가리킨다. 코드(`C0001`…)는 변환기가 적재 순서로 매긴다(시스템 채번과 같게). */
   key: string;
-  code: string;
   label: string;
   mode: "inline" | "block";
   description: string;
@@ -154,8 +153,9 @@ export interface SpecialSpec {
  * - 사이에 박스 · 표가 낀 조는 조째 딸 수 없다 — 박스 앞뒤의 잇닿은 여러 항만(약관의 해석 ②③), 항 하나만 남거나 남은 항을 조의
  *   다른 항이 가리키면(제1회 보험료 ③ → 제2항) 따지 않는다. 호 목록에 박스가 낀 항(보험금을 지급하지 않는 사유)도 딸 수 없다.
  *
- * 순서가 곧 코드다. **보통약관이 쓰는 공용조항이 맨 앞**(C0001~) — 시드 · 화면 E2E 바탕은 보통약관을 가져오기 전에 이것들을 만든다.
- * 보통약관 조를 가리키는 공용조항(준용규정 두 벌)은 맨 뒤 — 보통약관이 있어야 정의 검사 ① 을 통과한다. 변환기가 순서를 검사한다.
+ * 코드는 적재 순서다. **보통약관이 쓰는 공용조항이 맨 앞**(C0001~, 박스 공용조항 포함) — 시드 · 화면 E2E 바탕은 보통약관을 가져오기 전에 이것들을 만든다.
+ * 보통약관 조를 가리키는 공용조항(준용규정 두 벌)은 맨 뒤 — 보통약관이 있어야 정의 검사 ① 을 통과한다. 변환기가 매기고 검사한다.
+ * 박스는 여기 적지 않는다 — 원문의 박스는 모두 「박스」 공용조항이 된다(`boxes.ts`, 한 곳만 써도 — 박스를 만드는 유일한 길이라서).
  *
  * 「특별약관의 소멸」은 담보 구조별로 조째 공용조항이 갈린다 (§3.1):
  *   사망            : ① 사망 시 소멸 (항 하나 — 조째)
@@ -164,7 +164,7 @@ export interface SpecialSpec {
  *   생활자금         : ① 이 「제1조 제1항에서 정한 … 생활자금」 (보험금명이 담보 값과 띄어쓰기가 달라 슬롯이 아니다)
  *   중증화상및부식    : ① 사망 시 소멸 ②③ 세부보장 하나의 소멸 · 해약환급금 미지급
  */
-type ClauseDraft = Omit<ClauseSpec, "code">;
+type ClauseDraft = ClauseSpec;
 
 /** 보통약관끼리 조째 같은 조 — 「항」 공용조항 한 건 = 그 조의 항 전부(또는 첫 항부터 잇닿은 항). 본문은 메리츠 원문 자리에서 딴다 (두 원문이 같다). */
 const generalArticle = (key: string, label: string, meritz: string, paragraph = 1): ClauseDraft => ({
@@ -282,8 +282,11 @@ const CLAUSE_DRAFTS: ClauseDraft[] = [
   },
 ];
 
-const pad4 = (n: number) => String(n).padStart(4, "0");
-export const CLAUSES: ClauseSpec[] = CLAUSE_DRAFTS.map((c, i) => ({ ...c, code: `C${pad4(i + 1)}` }));
+/**
+ * 조 · 여러 항 공용조항 — 코드는 변환기가 박스 공용조항과 함께 적재 순서로 매긴다: 보통약관이 쓰는 것(이 배열 순 → 박스) →
+ * 담보약관만 쓰는 것(이 배열 순 → 박스) → 보통약관 조를 가리키는 것(준용규정, 이 배열 순).
+ */
+export const CLAUSES: readonly ClauseSpec[] = CLAUSE_DRAFTS;
 
 /** 쓰임 줄임말 — 원문 조 · 첫 항 → 공용조항 key (옵션 선택은 `{ O01: "V02" }` 또는 O01 하나면 선택지 코드 문자열). */
 const at = (article: string, paragraph: number, clause: string, options?: string | Record<string, string>): ClauseUse => ({
