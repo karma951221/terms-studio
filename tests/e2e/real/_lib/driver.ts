@@ -30,8 +30,10 @@ export interface RefScopes {
   selfPaths: Map<string, string[]>;
   /** 보통약관 대상 id → 펴야 할 조상 id. */
   generalAncestors: Map<string, string[]>;
-  /** 조 참조 팝업에 범위 고르기가 있는가 (담보약관) — 공용조항은 보통약관 고정. */
+  /** 조 참조 팝업에 범위 고르기가 있는가 (담보약관 · 공용조항). */
   hasScopeSelect: boolean;
+  /** 공용조항 에디터인가 — 범위가 보통약관 · 이 공용조항 · 사용처 셋이다 (기능/공용조항 §3.5). 「이 템플릿」 자리에 「이 공용조항」. */
+  clauseEditor?: boolean;
 }
 
 /** 에디터 한 벌 — 문면(`/documents/<id>`)과 공용조항(`/clauses/new`)이 같은 에디터 부품을 쓴다. */
@@ -148,16 +150,25 @@ export class Editor {
     }
   }
 
-  /** 조 참조 팝업 — 범위 · 대상(트리에서 펴고 고르기) · 연결어. */
+  /**
+   * 조 참조 팝업 — 범위 · 대상(트리에서 펴고 고르기) · 연결어.
+   * 공용조항 본문의 조 참조는 범위가 셋이다: 없음 = 보통약관 · `clause` = 이 공용조항(항 줄 표기로 찾는다) · `host` = 사용처 위치(줄 id `host:2.1.3`).
+   */
   private async pickTargets(d: Locator, node: Extract<InlineNode, { kind: "articleRef" }>): Promise<void> {
-    // 공용조항은 보통약관 조만 가리킨다 — 시드에 범위가 없다
-    const general = node.scope === "general" || !this.refs.hasScopeSelect;
-    if (this.refs.hasScopeSelect) await d.locator("#pop-ref-scope").selectOption(general ? "general" : "self");
+    const scope = (node as { scope?: string }).scope;
+    const choice = this.refs.clauseEditor ? (scope === "clause" ? "self" : scope === "host" ? "host" : "general") : scope === "general" ? "general" : "self";
+    const general = choice === "general";
+    if (this.refs.hasScopeSelect) await d.locator("#pop-ref-scope").selectOption(choice);
     for (const { nodeId } of node.targets) {
       let rowId: string;
       if (general) {
         for (const up of this.refs.generalAncestors.get(nodeId) ?? []) await this.expandRow(d, up);
         rowId = nodeId;
+      } else if (choice === "host") {
+        // 사용처 위치 줄 — 조 · 항 순으로 편다
+        const parts = nodeId.split(".");
+        for (let k = 1; k < parts.length; k++) await this.expandRow(d, `host:${parts.slice(0, k).join(".")}`);
+        rowId = `host:${nodeId}`;
       } else {
         const labels = this.refs.selfPaths.get(nodeId);
         if (!labels) throw new Error(`조 참조 대상 ${nodeId} 가 이 문서 고르기 트리에 없다`);
@@ -180,7 +191,7 @@ export class Editor {
     for (let guard = 0; guard < labels.length + 2; guard++) {
       const found = await d.evaluate((dialog, path) => {
         const scopes = [...dialog.querySelectorAll(".ts-ref-tree > div[role=none]")];
-        const self = scopes.find((s) => s.querySelector(":scope > .ts-ref-scope")?.textContent === "이 템플릿") ?? scopes[0];
+        const self = scopes.find((s) => ["이 템플릿", "이 공용조항"].includes(s.querySelector(":scope > .ts-ref-scope")?.textContent ?? "")) ?? scopes[0];
         if (!self) return { missing: -1 };
         let lis = [...self.querySelectorAll(":scope > div[role=none] > ul > li")];
         let row: HTMLElement | null = null;
@@ -578,7 +589,7 @@ export class ClauseAuthoringDriver {
     readonly page: Page,
     generalAncestors: Map<string, string[]>,
   ) {
-    this.editor = new Editor(page, page.locator(".ts-clause-editor"), { selfPaths: new Map(), generalAncestors, hasScopeSelect: false });
+    this.editor = new Editor(page, page.locator(".ts-clause-editor"), { selfPaths: new Map(), generalAncestors, hasScopeSelect: true, clauseEditor: true });
   }
 
   async open(mode: "inline" | "block", label: string): Promise<void> {
@@ -609,6 +620,10 @@ export class ClauseAuthoringDriver {
       await this.editor.fillInline(root.getByRole("textbox", { name: "문구", exact: true }), body as SeedInline[]);
       return;
     }
+    // 「이 공용조항」 조 참조의 줄 표기 — 본문 k 번째 항 = 「제k항」 (고르기 트리는 조 줄 없이 항부터)
+    const selfPaths = this.editor.refs.selfPaths;
+    selfPaths.clear();
+    (body as Node[]).forEach((node, k) => selfPaths.set(node.id, [`제${k + 1}항`]));
     for (const [i, node] of (body as Node[]).entries()) {
       if (node.kind !== "paragraph" || (node.items ?? []).length > 0) throw new Error("이 E2E 의 「항」 공용조항은 호 없는 항뿐이다");
       if (i > 0) {
