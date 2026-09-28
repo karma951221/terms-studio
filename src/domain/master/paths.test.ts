@@ -26,11 +26,13 @@ describe("마스터 경로 — 폼키.필드키", () => {
     expect(masterPath("waiver", "applies")).toBe("waiver.applies");
   });
 
-  it("MVP 정본 — 폼 8벌 · 필드 14자리, 선언 순서", () => {
+  it("MVP 정본 — 폼 10벌 · 필드 20자리, 선언 순서", () => {
     expect(MASTER.map((f) => f.key)).toEqual([
-      "waiver", "no_surrender", "conversion", "business_type", "coverage_basic", "pay", "reduction", "exemption",
+      "disclosure", "feature", "waiver", "no_surrender", "conversion", "business_type", "coverage_basic", "pay", "reduction", "exemption",
     ]);
     expect(allMasterFields().map((r) => r.path)).toEqual([
+      "disclosure.avg_rate",
+      "feature.renewable", "feature.fetal", "feature.group_contract", "feature.review_type", "feature.notice_type",
       "waiver.applies", "waiver.reasons", "no_surrender.type", "conversion.converts", "business_type.applies",
       "coverage_basic.claim_name", "pay.exempt", "pay.rate",
       "reduction.periods", "reduction.after_rate", "reduction.new_only",
@@ -58,7 +60,9 @@ describe("마스터 경로 — 폼키.필드키", () => {
 
   it("레벨별 폼 · 레벨별 필드", () => {
     expect(formsOfLevel("plan").map((f) => f.key)).toEqual(["waiver", "no_surrender", "conversion", "business_type"]);
-    expect(formsOfLevel("product")).toEqual([]);
+    // 상품 레벨 — 공시이율 · 상품특성 (기본정보 › 상품정보, 2026-09-28)
+    expect(formsOfLevel("product").map((f) => f.key)).toEqual(["disclosure", "feature"]);
+    expect(formsOfLevel("subCoverage")).toEqual([]);
     expect(fieldsOfLevel("benefit").map((r) => r.path)).toEqual([
       "pay.exempt", "pay.rate",
       "reduction.periods", "reduction.after_rate", "reduction.new_only",

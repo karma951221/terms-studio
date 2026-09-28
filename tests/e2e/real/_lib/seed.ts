@@ -54,6 +54,8 @@ export interface ProductSpec {
   name: string;
   general: string;
   namingTemplate: string;
+  /** 상품 레벨 값 — 상품정보(공시이율 · 상품특성, 2026-09-28). */
+  values: { path: string; value: unknown }[];
   planOptions: { code: string; axis: "type" | "form"; number: number; name: string; planTypeCode: string; values: { path: string; value: unknown }[] }[];
   plans: string[][];
   groups: { code: string; title: string }[];

@@ -182,13 +182,19 @@ describe("product 서비스 (PGlite)", () => {
       expect(reason(await svc.setGeneralDocument(editor, productId, "dddddddd-0000-4000-8000-000000000099"))).toBe("notFound");
     });
 
-    it("상품 레벨 마스터가 비어 있어 값 자리가 없다 — 다른 레벨 자리는 거부된다 (ADR-0037)", async () => {
+    it("상품 레벨 값 자리는 공시이율 · 상품특성 두 폼 — 다른 레벨 자리는 거부된다 (ADR-0037 · 2026-09-28)", async () => {
       expect(reason(await svc.setProductValue(editor, productId, "coverage_basic.claim_name", "x"))).toBe("invalid"); // 담보 레벨 자리
       expect(reason(await svc.setProductValue(editor, productId, "product.nope", "x"))).toBe("invalid");
-      expect((await svc.getProductValues(productId)).size).toBe(0);
-      expect(await svc.productMissing(productId)).toEqual([]);
-      // 완결성은 분모를 함께 준다 — 상품 레벨 마스터가 비어 있으니 0 (디자인원칙 §9.6)
-      expect(await svc.productCompleteness(productId)).toMatchObject({ total: 0, missing: [] });
+      expect(reason(await svc.setProductValue(editor, productId, "feature.renewable", "예"))).toBe("invalid"); // 타입 불일치
+      // 완결성은 분모를 함께 준다 — 상품 레벨 6자리 (디자인원칙 §9.6)
+      expect(await svc.productCompleteness(productId)).toMatchObject({ total: 6 });
+      unwrap(await svc.setProductValue(editor, productId, "disclosure.avg_rate", 2.5));
+      unwrap(await svc.setProductValue(editor, productId, "feature.renewable", true));
+      expect((await svc.getProductValues(productId)).get("disclosure.avg_rate")).toEqual({ entered: true, value: 2.5 });
+      expect((await svc.productMissing(productId)).map((m) => m.path)).toEqual(["feature.fetal", "feature.group_contract", "feature.review_type", "feature.notice_type"]);
+      // 뒤 세목 검사가 세목 자리만 보도록 되돌린다(미입력으로)
+      unwrap(await svc.setProductValue(editor, productId, "disclosure.avg_rate", undefined));
+      unwrap(await svc.setProductValue(editor, productId, "feature.renewable", undefined));
     });
   });
 
@@ -242,9 +248,10 @@ describe("product 서비스 (PGlite)", () => {
       expect(reason(await svc.setProductValues(editor, productId, [{ path: "nope.x", value: 1 }]))).toBe("invalid");
     });
     it("상품 완결성이 세목 선택지 자리를 센다 — 선택지마다 제 폼의 필드만 (코덱스 리뷰 T2 ④)", async () => {
-      // 상품 레벨 마스터는 비어 있다. 선택지 4개: waiver(2자리) × 2 + no_surrender(1자리) × 2 = 6
-      const summary = await svc.productCompleteness(productId);
-      expect(summary.total).toBe(6);
+      // 상품 레벨 6자리(전부 미입력) + 선택지 4개: waiver(2자리) × 2 + no_surrender(1자리) × 2 = 6
+      const all = await svc.productCompleteness(productId);
+      expect(all.total).toBe(12);
+      const summary = { ...all, missing: all.missing.filter((m) => m.level === "plan") };
       // 입력됨: t2 waiver.reasons · f1 no_surrender.type → 미입력 4. 순서는 선택지 목록 순(축 · 번호).
       expect(summary.missing.map((m) => [m.owner.kind, m.ownerName, m.path])).toEqual([
         ["plan", "제2형(해약환급금미지급형)", "no_surrender.type"],
@@ -252,8 +259,8 @@ describe("product 서비스 (PGlite)", () => {
         ["plan", "제1종(보험료 납입면제 미적용형)", "waiver.reasons"],
         ["plan", "제2종(보험료 납입면제형)", "waiver.applies"],
       ]);
-      expect(summary.missing.every((m) => m.level === "plan")).toBe(true);
-      expect(await svc.productMissing(productId)).toEqual(summary.missing);
+      expect(all.missing.filter((m) => m.level === "product")).toHaveLength(6);
+      expect(await svc.productMissing(productId)).toEqual(all.missing);
     });
     it("마스터에 없는 그룹은 세목유형이 아니다 · 한 유형은 한 축에만 · 번호 중복 거부", async () => {
       expect(reason(await svc.addPlanOption(editor, productId, { axis: "type", number: 3, name: "x", planTypeCode: "nope" }))).toBe("invalid");

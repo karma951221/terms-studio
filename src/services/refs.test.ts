@@ -60,6 +60,8 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
     // MVP 마스터가 가리키는 열거형변수 둘을 그대로 만든다 — 없으면 마스터 필드의 타입 간선이 깨진 참조가 된다
     unwrap(await catalog.createEnum(editor, { label: "납입면제사유", values: [{ label: "질병" }, { label: "상해" }] })); // E0001
     unwrap(await catalog.createEnum(editor, { label: "해약환급금유형", values: [{ label: "지급형" }, { label: "미지급형" }] })); // E0002 V01 V02
+    unwrap(await catalog.createEnum(editor, { label: "간편심사유형", values: [{ label: "단일심사구분" }, { label: "통합간편심사" }] })); // E0003 — 상품특성
+    unwrap(await catalog.createEnum(editor, { label: "건강고지유형", values: [{ label: "일반고지" }, { label: "간편고지(3.5.5)" }] })); // E0004 — 상품특성
     unwrap(await catalog.create(editor, { label: "갱신여부", level: "coverage", expression: "coverage_basic.claim_name = '갱신'" })); // D0001
     unwrap(await catalog.create(editor, { label: "무저해지유형", level: "plan", expression: "no_surrender.type" })); // D0002
     unwrap(await catalog.create(editor, { label: "지급률", level: "benefit", expression: "pay.rate" })); // D0003

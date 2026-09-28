@@ -35,5 +35,47 @@
         "order": 2
       }
     ]
+  },
+  {
+    "code": "E0003",
+    "label": "간편심사유형",
+    "values": [
+      {
+        "code": "V01",
+        "label": "단일심사구분",
+        "order": 0
+      },
+      {
+        "code": "V02",
+        "label": "통합간편심사",
+        "order": 1
+      },
+      {
+        "code": "V03",
+        "label": "건강가입",
+        "order": 2
+      }
+    ]
+  },
+  {
+    "code": "E0004",
+    "label": "건강고지유형",
+    "values": [
+      {
+        "code": "V01",
+        "label": "일반고지",
+        "order": 0
+      },
+      {
+        "code": "V02",
+        "label": "간편고지(3.5.5)",
+        "order": 1
+      },
+      {
+        "code": "V03",
+        "label": "간편고지(3.10.5)",
+        "order": 2
+      }
+    ]
   }
 ]

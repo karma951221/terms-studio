@@ -258,7 +258,7 @@ describe("StructForm — 폼 하나가 카드 하나 · 코드 ⓘ · 필드 강
   });
 
   it("폼이 없는 레벨은 빈 안내 하나 · 카드 0", () => {
-    const html = renderToStaticMarkup(<StructForm model={buildForm("product", () => undefined, new Map())} />);
+    const html = renderToStaticMarkup(<StructForm model={buildForm("subCoverage", () => undefined, new Map())} />);
     expect(html).toContain("입력할 값 자리가 없습니다.");
     expect(html).not.toContain("<fieldset");
   });

@@ -4,7 +4,12 @@
     "name": "알파Plus보장보험",
     "general": "alpha-general",
     "namingTemplate": "[A0001] [담보명] [A0002]",
-    "values": [],
+    "values": [
+      {
+        "path": "disclosure.avg_rate",
+        "value": 2.5
+      }
+    ],
     "planOptions": [
       {
         "code": "type-1",
@@ -198,7 +203,20 @@
     "name": "메리츠 통합간편건강보험(연만기형)",
     "general": "meritz-general",
     "namingTemplate": "[A0001] [담보명] [A0002]",
-    "values": [],
+    "values": [
+      {
+        "path": "disclosure.avg_rate",
+        "value": 2.5
+      },
+      {
+        "path": "feature.renewable",
+        "value": true
+      },
+      {
+        "path": "feature.review_type",
+        "value": "V02"
+      }
+    ],
     "planOptions": [
       {
         "code": "type-1",

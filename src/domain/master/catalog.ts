@@ -4,6 +4,9 @@
  * 여기 있는 것이 전부다 — 시드가 실제로 쓰는 폼만 옮겼다. 폼을 더하는 것은 배포 + 마이그레이션이다.
  *
  * 레벨 배치의 근거:
+ * - 공시이율{평균공시이율} · 상품특성{갱신형여부 · 태아보장여부 · 단체계약여부 · 간편심사유형 · 건강고지유형}은 **상품(product)** —
+ *   상품 한 권에 하나인 사실이라 세목 축을 타지 않는다. 기본정보 탭의 상품정보에서 상품명과 함께 편집 한 번 · 저장 한 번 (2026-09-28).
+ *   고지유형을 상품 레벨 enum 으로 둔 결정(ADR-0006)의 구현이다. 간편심사유형 E0003 · 건강고지유형 E0004 는 열거형(데이터)이다.
  * - 납입면제 · 무저해지 · 계약전환 · 영위업종적용은 **세목(plan)** — 값을 갖는 것이 세목 선택지라
  *   상품 레벨로 올리면 종 · 형 축이 성립하지 않는다.
  * - 담보 기본{보험금명}은 **담보(coverage)** — 문면 값 슬롯이 투영 구분자로 이 자리를 찍는다.
@@ -17,6 +20,24 @@
 import type { MasterForm } from "./types";
 
 export const MASTER: readonly MasterForm[] = [
+  {
+    key: "disclosure",
+    label: "공시이율",
+    level: "product",
+    fields: [{ key: "avg_rate", label: "평균공시이율", type: { kind: "number" }, description: "% — 이 계약 체결 시점의 평균공시이율 (예: 2.5 = 2.50%)" }],
+  },
+  {
+    key: "feature",
+    label: "상품특성",
+    level: "product",
+    fields: [
+      { key: "renewable", label: "갱신형여부", type: { kind: "boolean" } },
+      { key: "fetal", label: "태아보장여부", type: { kind: "boolean" } },
+      { key: "group_contract", label: "단체계약여부", type: { kind: "boolean" } },
+      { key: "review_type", label: "간편심사유형", type: { kind: "enum", enumCode: "E0003" } },
+      { key: "notice_type", label: "건강고지유형", type: { kind: "enum", enumCode: "E0004" } },
+    ],
+  },
   {
     key: "waiver",
     label: "납입면제",

@@ -103,7 +103,7 @@ describe("buildForm — 마스터 메타만으로 폼 모델이 만들어진다 
   });
 
   it("buildForm — 폼이 없는 레벨은 카드 0 · 필드 0", () => {
-    const model = buildForm("product", () => undefined, new Map());
+    const model = buildForm("subCoverage", () => undefined, new Map());
     expect(model.cards).toEqual([]);
     expect(model.fields).toEqual([]);
   });
