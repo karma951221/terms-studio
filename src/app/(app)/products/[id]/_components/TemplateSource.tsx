@@ -39,8 +39,6 @@ export interface TemplateSourceProps {
   appendices?: readonly { code: Code; name: string }[];
   /** 구분자 코드 → 표시명 — 조건식 · 슬롯 칩을 한글로. 없으면 식 원문. */
   discriminators?: readonly { code: Code; label: string }[];
-  /** 조 밖(관 머리)에서 쓰는 기본 복귀 조 — 조 안의 상자는 제 조로 돌아온다. */
-  articleId?: Id;
 }
 
 interface Ctx {
@@ -445,13 +443,13 @@ function ArticleNodes({ nodes, ctx }: { nodes: readonly Node[]; ctx: Ctx }) {
   });
 }
 
-export function TemplateSource({ productId, nodes, numbers, hidden, references, clauses, overrides, overrideTargets, appendices = [], discriminators = [], articleId }: TemplateSourceProps) {
+export function TemplateSource({ productId, nodes, numbers, hidden, references, clauses, overrides, overrideTargets, appendices = [], discriminators = [] }: TemplateSourceProps) {
   const clauseByCode = new Map(clauses.map((c) => [c.code, c] as const));
   const appendixByCode = new Map(appendices.map((a) => [a.code, a.name] as const));
   const labelOf = new Map(discriminators.map((d) => [d.code, d.label] as const));
   const ctx: Ctx = {
     productId,
-    articleId,
+    articleId: undefined,
     appendixName: (code) => appendixByCode.get(code),
     exprText: (source) => exprDisplay(source, labelOf),
     numbers,

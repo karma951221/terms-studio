@@ -13,11 +13,11 @@ import type { AttributeKind, BaseContractCheck, ClauseOptionOverride, ProductCov
 import type { Id, Result } from "@/domain/types";
 
 import { designateBaseContractAction, releaseBaseContractAction, setProductGeneralDocumentAction } from "../../actions";
-import { currentGeneralArticle, generalIssueLink, generalSections, generalSectionLabel, generalTabIssues, renderedNodeIds, sectionOfArticle, sectionPreviewDoc } from "../../lib";
+import { currentGeneralArticle, generalIssueLink, generalSections, generalSectionLabel, generalTabIssues, renderedNodeIds, sectionPreviewDoc } from "../../lib";
 import { CoverageMountSection } from "./CoverageMountSection";
-import { GeneralToc } from "./GeneralToc";
+import { GeneralPanels, type GeneralPane } from "./GeneralPanels";
+import type { TocSection } from "./GeneralToc";
 import { type OverrideTarget } from "./OptionOverrideForm";
-import { PanelScrollSync } from "./PanelScrollSync";
 import { TemplateSource } from "./TemplateSource";
 
 export interface GeneralTabProps {
@@ -37,8 +37,11 @@ export interface GeneralTabProps {
   baseCheck: Result<BaseContractCheck[]>;
   overrides: ClauseOptionOverride[];
   overrideTargets: OverrideTarget[];
-  /** 공용조항 정의 — 박스의 옵션 이름·선택지 이름. */
+  /** 공용조항 정의 — 상자 안의 모델 · 옵션 이름 · 선택지 이름. */
   clauses: Clause[];
+  /** 별표 · 구분자 표시명 — 원문 모델의 칩을 한글로. */
+  appendices: { code: string; name: string }[];
+  discriminators: { code: string; label: string }[];
   /** 보통약관 템플릿 트리 — 미지정이면 undefined (약관 섹션 대신 한 줄 안내). */
   generalTree: DocumentNode | undefined;
   /** 템플릿 번호 (원천 노드 id 키) — 목차·원문이 쓰는 「끄기 전」 번호. */
@@ -75,6 +78,8 @@ export function GeneralTab({
   overrides,
   overrideTargets,
   clauses,
+  appendices,
+  discriminators,
   generalTree,
   generalNumbers,
   hiddenArticles,
@@ -91,20 +96,51 @@ export function GeneralTab({
   const articleTotal = allArticles.length;
   const shownCount = allArticles.filter((a) => !hidden.has(a.id)).length;
   const currentArticleId = currentGeneralArticle(sections, articleId);
-  const section = sectionOfArticle(sections, currentArticleId);
-  const sectionLabel = generalSectionLabel(sections, section, generalNumbers);
   const references = generalTree ? referenceTargetIndex(generalTree, generalNumbers) : new Map();
-
-  // ── 오른쪽 패널 — 조립 결과를 같은 관으로 자른다 (묶음의 조 id 기준 · Minor-4) ──
-  const previewDoc = sectionPreviewDoc(booklet?.general, section);
-  const sectionArticleIds = new Set(section?.articles.map((a) => a.id) ?? []);
-  // 조를 끄면 준용·기본계약 쪽에서 오류가 난다 — 그 결과 좌표는 특약이라 여기서 문서로 거르면 안 된다 (generalTabIssues 주석)
-  const { section: sectionIssues, errorCount } = generalTabIssues(booklet?.issues ?? [], sectionArticleIds);
+  const { errorCount } = generalTabIssues(booklet?.issues ?? [], new Set());
   const appendixCount = booklet?.appendices.length ?? 0;
-
-  // 오류 링크는 도착할 수 있는 자리만 — 특약 오류는 그 상품담보 미리보기로 (Minor-5, `generalIssueLink`).
-  const previewNodeIds = renderedNodeIds(previewDoc);
   const baseCoverageIds = new Set(baseCoverages.map((pc) => pc.id));
+
+  // ── 목차 — 관 제목 · 조(템플릿 번호 + 제목 · 노출) ─────────────────────────
+  const toc: TocSection[] = sections.map((s, i) => ({
+    key: s.id ?? `loose-${i}`,
+    ...(s.id ? { label: `${generalNumbers.get(s.id)?.label ?? "관"} ${s.title}` } : {}),
+    articles: s.articles.map((a) => ({ id: a.id, label: `${generalNumbers.get(a.id)?.label ?? "조"}(${a.title})`, hidden: hidden.has(a.id) })),
+  }));
+
+  // ── 관마다 가운데(원문 모델) · 오른쪽(조립 결과를 같은 관으로 자른 것 · Minor-4) — 목차는 서버 없이 관을 바꾼다 ──
+  const panes: GeneralPane[] = sections.map((section, i) => {
+    const previewDoc = sectionPreviewDoc(booklet?.general, section);
+    // 조를 끄면 준용·기본계약 쪽에서 오류가 난다 — 그 결과 좌표는 특약이라 여기서 문서로 거르면 안 된다 (generalTabIssues 주석)
+    const { section: sectionIssues } = generalTabIssues(booklet?.issues ?? [], new Set(section.articles.map((a) => a.id)));
+    // 오류 링크는 도착할 수 있는 자리만 — 특약 오류는 그 상품담보 미리보기로 (Minor-5, `generalIssueLink`).
+    const previewNodeIds = renderedNodeIds(previewDoc);
+    return {
+      key: section.id ?? `loose-${i}`,
+      label: generalSectionLabel(sections, section, generalNumbers),
+      articleIds: section.articles.map((a) => a.id),
+      center: (
+        <TemplateSource
+          productId={productId}
+          nodes={section.nodes}
+          numbers={generalNumbers}
+          hidden={hidden}
+          references={references}
+          clauses={clauses}
+          overrides={overrides}
+          overrideTargets={overrideTargets}
+          appendices={appendices}
+          discriminators={discriminators}
+        />
+      ),
+      right: (
+        <>
+          <IssueList issues={sectionIssues} linkFor={(issue) => generalIssueLink(productId, previewNodeIds, baseCoverageIds, issue)} />
+          {previewDoc ? <RenderedDoc doc={previewDoc} /> : <p className="ts-muted">{bookletNote ?? "조립 결과가 없다 — 보통약관이 조립되지 않았다."}</p>}
+        </>
+      ),
+    };
+  });
 
   return (
     <>
@@ -201,32 +237,7 @@ export function GeneralTab({
         {generalTree === undefined ? (
           <p className="ts-muted">보통약관 템플릿을 고르면 여기에 선다.</p>
         ) : (
-          <div className="ts-terms-panels">
-            <div className="ts-terms-panel">
-              <h3 className="ts-terms-panel-title">목차</h3>
-              <GeneralToc productId={productId} sections={sections} numbers={generalNumbers} hidden={hidden} currentArticleId={currentArticleId} />
-            </div>
-            <div className="ts-terms-panel">
-              <h3 className="ts-terms-panel-title">약관 — {sectionLabel} (원문)</h3>
-              <TemplateSource
-                productId={productId}
-                nodes={section?.nodes ?? []}
-                numbers={generalNumbers}
-                hidden={hidden}
-                references={references}
-                clauses={clauses}
-                overrides={overrides}
-                overrideTargets={overrideTargets}
-                articleId={currentArticleId}
-              />
-            </div>
-            <div className="ts-terms-panel">
-              <h3 className="ts-terms-panel-title">미리보기 — {sectionLabel} (평가)</h3>
-              <IssueList issues={sectionIssues} linkFor={(issue) => generalIssueLink(productId, previewNodeIds, baseCoverageIds, issue)} />
-              {previewDoc ? <RenderedDoc doc={previewDoc} /> : <p className="ts-muted">{bookletNote ?? "조립 결과가 없다 — 보통약관이 조립되지 않았다."}</p>}
-            </div>
-            <PanelScrollSync articleId={currentArticleId} />
-          </div>
+          <GeneralPanels productId={productId} toc={toc} panes={panes} initialArticleId={currentArticleId} />
         )}
       </section>
 
