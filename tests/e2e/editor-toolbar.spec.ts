@@ -53,7 +53,9 @@ test(
       await page.getByRole("button", { name: "편집", exact: true }).click();
       await expect(page.getByRole("button", { name: "저장", exact: true })).toBeVisible();
       await expect(toolbar).toBeVisible();
-      for (const name of ["조", "관", "항", "호", "목", "표", "박스", "슬롯", "조 참조", "별표 참조", "조건식", "문장 안 조건", "위로", "아래로", "복제", "삭제"]) await expect(tool(name)).toBeVisible();
+      for (const name of ["조", "관", "항", "호", "목", "표", "글머리 목록", "슬롯", "조 참조", "별표 참조", "조건식", "문장 안 조건", "위로", "아래로", "복제", "삭제"]) await expect(tool(name)).toBeVisible();
+      // 박스는 툴바로 넣지 않는다 — 「박스」 공용조항을 「공용조항」으로 (2026-09-28)
+      await expect(tool("박스")).toHaveCount(0);
     });
 
     await ev.action("툴바#4", "툴바 「조」로 첫 조를 넣고 제목을 쓴다", async () => {
@@ -176,7 +178,7 @@ test(
     test.setTimeout(120_000);
     await ev.action("공용조항생성#1", "관리자로 로그인한다", () => login(page));
 
-    await ev.action("공용조항생성#2", "생성 화면(?type=inline)에 들어간다 — 이름 칸 · 유형 두 칸(문구 선택) · 본문 툴바 · 쓸 자리가 보인다", async () => {
+    await ev.action("공용조항생성#2", "생성 화면(?type=inline)에 들어간다 — 이름 칸 · 유형 세 칸(문구 선택) · 본문 툴바 · 쓸 자리가 보인다", async () => {
       await page.goto("/clauses/new?type=inline");
       await expect(page.getByLabel("공용조항명")).toBeVisible();
       await expect(page.getByRole("radio", { name: /^문구/ })).toBeChecked();
