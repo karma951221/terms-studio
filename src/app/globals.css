@@ -2256,7 +2256,8 @@ label.ts-field > textarea {
 }
 
 .ts-combo::after {
-  content: "▾";
+  /* 대체 글 "" — 장식이다. <label> 안에서 칸 이름(「담보」)에 「▾」가 섞이지 않게 */
+  content: "▾" / "";
   position: absolute;
   right: 7px;
   top: 50%;

@@ -251,8 +251,9 @@ test(
       return page.url();
     });
 
-    await ev.action("공용조항생성#8", "공용조항 목록에 새 공용조항이 있고, 누르면 그 상세로 간다", async () => {
-      await page.goto("/clauses");
+    await ev.action("공용조항생성#8", "공용조항 목록에서 이름으로 찾으면 새 공용조항이 있고, 누르면 그 상세로 간다", async () => {
+      // 실물 공용조항이 133건이라 한 쪽(50건)에 다 안 선다 — 검색으로 좁힌다
+      await page.goto(`/clauses?q=${encodeURIComponent(CLAUSE_NAME)}`);
       const link = page.getByRole("link", { name: CLAUSE_NAME, exact: true });
       await expect(link).toBeVisible();
       await link.click();

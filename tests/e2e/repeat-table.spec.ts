@@ -59,7 +59,10 @@ test(
     await ev.action("반복표#3a", "만든 담보는 다시 고를 수 없다 — 담보 하나가 템플릿 한 벌", async () => {
       const back = page.url();
       await page.goto("/documents/new?kind=coverage");
-      expect(await comboOptionCount(page.locator("#doc-coverage"), COVERAGE)).toBe(0);
+      // 시드 담보는 모두 템플릿이 있다 — 방금 만든 담보까지 쓰였으면 고를 칸 대신 「없는 담보가 없다」 안내, 칸이 있으면 그 담보는 목록에 없다
+      const input = page.locator("#doc-coverage");
+      if ((await input.count()) === 0) await expect(page.getByText("담보약관 템플릿이 없는 담보가 없다")).toBeVisible();
+      else expect(await comboOptionCount(input, COVERAGE)).toBe(0);
       await page.goto(back);
     });
 
