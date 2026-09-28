@@ -197,3 +197,29 @@ export function comboKey(state: { open: boolean; active: number; typing: boolean
       return undefined;
   }
 }
+
+/** 서버 조회 응답 한 벌 — 조회 route 가 돌려주고 `urlLoad` 가 받는다. */
+export interface LookupResponse {
+  options: ComboOption[];
+  /** 한도를 넘어 잘렸다 — 더 쳐서 좁히라고 알린다. */
+  more: boolean;
+}
+
+/** 조회 route 한 곳에서 한도만큼 — 서버가 같은 거르기를 쓴다. */
+export function lookupResponse(options: readonly ComboOption[], query: string, limit: number): LookupResponse {
+  const hits = filterOptions(options, query);
+  return { options: hits.slice(0, limit), more: hits.length > limit };
+}
+
+/** 잘렸다는 표시 줄 — 고를 수 없다. */
+export const MORE_OPTION: ComboOption = { value: "", label: "더 있다 — 더 쳐서 좁힌다", disabled: true };
+
+/** 조회 route(GET `?q=`)를 부르는 `load` — 서버 컴포넌트는 함수를 못 넘기므로 주소만 넘기고 여기서 만든다. */
+export function urlLoad(url: string): ComboLoad {
+  return async (query, signal) => {
+    const res = await fetch(`${url}?q=${encodeURIComponent(query)}`, { signal, headers: { accept: "application/json" } });
+    if (!res.ok) throw new Error(`조회 실패 ${res.status}`);
+    const body = (await res.json()) as LookupResponse;
+    return body.more ? [...body.options, MORE_OPTION] : body.options;
+  };
+}

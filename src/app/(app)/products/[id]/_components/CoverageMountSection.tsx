@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { Combobox } from "@/app/_components/Combobox";
 import { ListFilterBar } from "@/app/_components/ListFilters";
 import { ListShell } from "@/app/_components/ListShell";
 import { IconButton, IconCheck, IconPlus, IconRevert, IconTrash } from "@/app/_components/icons";
@@ -26,7 +27,7 @@ export interface CoverageMountSectionProps {
   productId: Id;
   section: keyof typeof SECTION_TITLE;
   items: ProductCoverage[];
-  /** 담보 마스터 — 탑재 폼의 선택지이자 행의 담보코드 · 담보명 출처. */
+  /** 담보 마스터 — 행의 담보코드 · 담보명 출처. 탑재 폼의 담보는 서버 조회(`/api/lookup/coverages`)로 찾는다. */
   coverages: { id: Id; code?: string; name: string }[];
   attributeKinds: AttributeKind[];
   plans: ProductPlan[];
@@ -167,13 +168,8 @@ export function CoverageMountSection({ productId, section, items, coverages, att
             <input type="hidden" name="section" value={section} />
             <label className="ts-field">
               <span>담보</span>
-              <select name="coverageId" required>
-                {coverages.map((cov) => (
-                  <option key={cov.id} value={cov.id}>
-                    {cov.name}
-                  </option>
-                ))}
-              </select>
+              {/* 담보 마스터는 상품을 가리지 않고 는다 — 전부 싣지 않고 친 글로 서버에서 찾는다 (디자인원칙 §2.6) */}
+              <Combobox name="coverageId" required lookupUrl="/api/lookup/coverages" placeholder="담보 이름 · 코드로 찾기" />
             </label>
             {attributeKinds.map((k) => (
               <label key={k.code} className="ts-field">

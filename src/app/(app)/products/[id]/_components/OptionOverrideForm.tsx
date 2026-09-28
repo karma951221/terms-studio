@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * 옵션 오버라이드 설정 폼 — 노드 id·공용조항 코드·옵션 JSON 을 사람이 옮겨 적던 자리를 select 로 바꾼다
+ * 옵션 오버라이드 설정 폼 — 노드 id·공용조항 코드·옵션 JSON 을 사람이 옮겨 적던 자리를 고르기로 바꾼다
  * (리뷰 #7 · #65 · 디자인원칙 §9.1). 고르는 것은 둘뿐이다:
- *   ① 보통약관 문면의 공용조항 참조 자리 (「제4조(…) › 공용조항 …」)
+ *   ① 보통약관 문면의 공용조항 참조 자리 (「제4조(…) › 공용조항 …」) — 검색 입력(콤보박스, 디자인원칙 §2.6)
  *   ② 그 공용조항이 가진 옵션마다의 선택지
  * 서버 액션은 그대로 `nodeId` · `clauseCode` · `options`(JSON) 를 받으므로 hidden 으로 조립해 넘긴다.
  *
@@ -13,6 +13,8 @@
  * (`resolveOptions` = `{...master, ...override}`).
  */
 import { useState } from "react";
+
+import { Combobox } from "@/app/_components/Combobox";
 
 export interface OverrideOptionValue {
   code: string;
@@ -64,19 +66,15 @@ export function OptionOverrideForm({
 
       <label className="ts-field">
         <span>공용조항 자리</span>
-        <select
+        <Combobox
           value={target.nodeId}
-          onChange={(e) => {
-            setNodeId(e.target.value);
+          onChange={(next) => {
+            setNodeId(next);
             setSelection({});
           }}
-        >
-          {targets.map((t) => (
-            <option key={t.nodeId} value={t.nodeId}>
-              {t.label}
-            </option>
-          ))}
-        </select>
+          placeholder="조 번호 · 공용조항 이름으로 찾기"
+          options={targets.map((t) => ({ value: t.nodeId, label: t.label, hint: t.clauseCode }))}
+        />
       </label>
 
       {target.options.length === 0 ? (

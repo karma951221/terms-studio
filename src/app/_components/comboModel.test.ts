@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { comboKey, createLookup, filterOptions, groupOptions, highlightParts, initialActive, matchOption, moveActive, type ComboOption, type LookupState } from "./comboModel";
+import { MORE_OPTION, comboKey, createLookup, filterOptions, groupOptions, highlightParts, initialActive, lookupResponse, matchOption, moveActive, urlLoad, type ComboOption, type LookupState } from "./comboModel";
 
 const OPTS: ComboOption[] = [
   { value: "c1", label: "일반상해사망보장", hint: "COV000002" },
@@ -185,5 +185,25 @@ describe("키보드 규칙 (comboKey)", () => {
   it("Tab — 닫고 되돌리되 초점 이동은 막지 않는다", () => {
     expect(comboKey(opened, OPTS, "Tab")).toEqual({ prevent: false, open: false, revert: true });
     expect(comboKey(closed, OPTS, "Tab")).toBeUndefined();
+  });
+});
+
+describe("조회 route 응답 · urlLoad", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("lookupResponse — 같은 거르기, 한도 넘으면 more", () => {
+    expect(lookupResponse(OPTS, "사망", 1)).toEqual({ options: [OPTS[0]], more: true });
+    expect(lookupResponse(OPTS, "수술", 5)).toEqual({ options: [OPTS[1]], more: false });
+  });
+
+  it("urlLoad — ?q= 로 부르고 신호를 넘긴다, 잘렸으면 고를 수 없는 「더 있다」 줄을 붙인다, 실패는 throw", async () => {
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async () => new Response(JSON.stringify({ options: [OPTS[0]], more: true })));
+    vi.stubGlobal("fetch", fetchMock);
+    const signal = new AbortController().signal;
+    expect(await urlLoad("/api/lookup/coverages")("상해 사망", signal)).toEqual([OPTS[0], MORE_OPTION]);
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/lookup/coverages?q=%EC%83%81%ED%95%B4%20%EC%82%AC%EB%A7%9D");
+    expect(fetchMock.mock.calls[0][1]?.signal).toBe(signal);
+    fetchMock.mockResolvedValueOnce(new Response("{}", { status: 401 }));
+    await expect(urlLoad("/x")("", signal)).rejects.toThrow("401");
   });
 });

@@ -117,14 +117,14 @@ function ResultTypeFields({ enums, inferred }: { enums: readonly EnumDef[]; infe
     const explicit = resultTypeFromForm(kind.value, multi.value, enumCode.value);
     return explicit ? resultTypeLabel(explicit, enumLabel) : `미지정 (추론: ${inferredLabel(inferred, enumLabel)})`;
   };
-  const enumOptions = [{ value: "", label: "선택" }, ...enums.map((e) => ({ value: e.code, label: e.label }))];
+  const enumOptions = enums.map((e) => ({ value: e.code, label: e.label, hint: e.code }));
   return (
     <>
       <Field name="resultTypeKind" label={FIELD_LABEL.resultType} type="select" options={RESULT_TYPE_OPTIONS} readValue={readValue} info={RESULT_TYPE_HINT} />
       {kind.mode === "edit" && kind.value === "enum" ? (
         <>
           <Field name="resultTypeMulti" label="복수" type="toggle" toggle={{ label: "복수", hintOn: `여러 값을 한꺼번에 담는다 (${TYPE_LABEL["list<enum>"]}).`, hintOff: `값 하나를 담는다 (${TYPE_LABEL.enum}).` }} />
-          <Field name="resultTypeEnum" label={ENTITY_LABEL.enum} type="select" options={enumOptions} />
+          <Field name="resultTypeEnum" label={ENTITY_LABEL.enum} type="combo" options={enumOptions} />
         </>
       ) : null}
     </>

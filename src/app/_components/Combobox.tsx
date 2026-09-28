@@ -10,10 +10,10 @@
  * - 키보드: ↑ ↓ 줄 이동(끝에서 돌아감) · Home End 처음 · 끝 · Enter 고르기 · Esc 닫기(닫혀 있으면 친 글 되돌림) · Tab 닫고 다음 칸.
  * - 고르기 전에는 값이 바뀌지 않는다 — 친 글만 남기고 떠나면 원래 고른 이름으로 돌아온다.
  * - 두 쓰임: 값 고르기(`value` + `onChange`) · 폼 칸(`name` → 숨은 칸에 값, `defaultValue`). 둘을 섞어도 된다.
- * - 후보 출처: `options`(정적, 여기서 거른다) 또는 `load(query, signal)`(서버 조회 — 250ms 기다렸다 부르고 앞 요청은 취소).
+ * - 후보 출처: `options`(정적, 여기서 거른다) 또는 `load(query, signal)` · `lookupUrl`(서버 조회 — 250ms 기다렸다 부르고 앞 요청은 취소).
  * - ARIA 1.2 combobox — 입력칸 role=combobox · aria-activedescendant, 목록 role=listbox · option, 묶음 role=group.
  */
-import { useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type Ref } from "react";
+import { useEffect, useId, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type Ref } from "react";
 
 import {
   comboKey,
@@ -24,6 +24,7 @@ import {
   initialActive,
   isEnabled,
   moveActive,
+  urlLoad,
   type ComboLoad,
   type ComboOption,
   type LookupState,
@@ -41,6 +42,8 @@ export interface ComboboxProps {
   options?: readonly ComboOption[];
   /** 서버 조회 — 주면 `options` 대신 이것으로 후보를 찾는다. */
   load?: ComboLoad;
+  /** 서버 조회 route 주소(GET `?q=`) — 함수를 넘길 수 없는 서버 컴포넌트가 `load` 대신 준다. */
+  lookupUrl?: string;
   debounceMs?: number;
   /** 주면 제어형 — 바뀐 값은 `onChange` 로 받는다. */
   value?: string;
@@ -192,7 +195,8 @@ export function Combobox({
   id,
   name,
   options,
-  load,
+  load: loadProp,
+  lookupUrl,
   debounceMs = 250,
   value: controlled,
   defaultValue = "",
@@ -207,6 +211,7 @@ export function Combobox({
   emptyText,
   autoFocus,
 }: ComboboxProps) {
+  const load = useMemo(() => loadProp ?? (lookupUrl ? urlLoad(lookupUrl) : undefined), [loadProp, lookupUrl]);
   const [own, setOwn] = useState(defaultValue);
   const value = controlled ?? own;
   /** 치는 중인 글 — `null` 이면 고른 이름을 보인다. */

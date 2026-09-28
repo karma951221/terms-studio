@@ -15,6 +15,7 @@
  */
 import { useState, type ReactNode } from "react";
 
+import { Combobox } from "@/app/_components/Combobox";
 import { CreateHead, FormRow } from "@/app/_components/FormRow";
 import { NoteField } from "@/app/_components/NoteField";
 import { RadioGroup } from "@/app/_components/RadioGroup";
@@ -101,10 +102,14 @@ export function CreateForm({
                     hintOn={`여러 값을 한꺼번에 담는다 (${TYPE_LABEL["list<enum>"]}).`}
                     hintOff={`값 하나를 담는다 (${TYPE_LABEL.enum}).`}
                   />
-                  <select name="resultTypeEnum" value={resultTypeEnum} onChange={(event) => setResultTypeEnum(event.target.value)} aria-label={ENTITY_LABEL.enum}>
-                    <option value="">선택</option>
-                    {enums.map((e) => <option key={e.code} value={e.code}>{e.label}</option>)}
-                  </select>
+                  <Combobox
+                    name="resultTypeEnum"
+                    value={resultTypeEnum}
+                    onChange={setResultTypeEnum}
+                    ariaLabel={ENTITY_LABEL.enum}
+                    placeholder="열거형 이름 · 코드로 찾기"
+                    options={enums.map((e) => ({ value: e.code, label: e.label, hint: e.code }))}
+                  />
                 </>
               ) : null}
               <p className="ts-form-hint">{RESULT_TYPE_HINT}</p>

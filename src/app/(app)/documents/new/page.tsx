@@ -9,6 +9,7 @@
 import Link from "next/link";
 
 import { Breadcrumb } from "@/app/_components/Breadcrumb";
+import { Combobox } from "@/app/_components/Combobox";
 import { CreateHead, FormRow } from "@/app/_components/FormRow";
 import { ErrorBanner } from "@/app/_components/ErrorBanner";
 import { ENTITY_LABEL, FIELD_LABEL, newLabel } from "@/app/_lib/labels";
@@ -64,16 +65,14 @@ async function newSpecial(error: string | undefined, preselect: string | undefin
       <CreateHead title={title} formId={SPECIAL_FORM_ID} path={path} banner={<ErrorBanner message={error} />} />
       <form id={SPECIAL_FORM_ID} action={createSpecialAction} className="ts-create-form">
         <FormRow label={ENTITY_LABEL.coverage} htmlFor="doc-coverage">
-          <select id="doc-coverage" name="coverageId" required defaultValue={candidates.some((c) => c.id === preselect) ? preselect : ""}>
-            <option value="" disabled>
-              담보를 고르세요
-            </option>
-            {candidates.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.code} {c.name}
-              </option>
-            ))}
-          </select>
+          <Combobox
+            id="doc-coverage"
+            name="coverageId"
+            required
+            defaultValue={candidates.some((c) => c.id === preselect) ? preselect : ""}
+            placeholder="담보 이름 · 코드로 찾기"
+            options={candidates.map((c) => ({ value: c.id, label: c.name, hint: c.code }))}
+          />
           <p className="ts-form-hint">아직 담보약관 템플릿이 없는 담보만 고를 수 있다 — 담보 하나가 한 벌을 소유한다</p>
         </FormRow>
         <FormRow label={FIELD_LABEL.title} htmlFor="doc-title">

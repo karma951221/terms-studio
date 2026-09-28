@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { Combobox } from "@/app/_components/Combobox";
 import { IssueList } from "@/app/_components/IssueList";
 import { RenderedDoc } from "@/app/_components/RenderedDoc";
 import type { Booklet } from "@/domain/assembly";
@@ -126,14 +127,12 @@ export function GeneralTab({
       <form action={setProductGeneralDocumentAction.bind(null, productId)} className="ts-terms-template">
         <label>
           <span>보통약관 템플릿</span>
-          <select name="generalDocumentId" defaultValue={generalDocumentId ?? ""}>
-            <option value="">— 미지정 —</option>
-            {generals.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.title}
-              </option>
-            ))}
-          </select>
+          <Combobox
+            name="generalDocumentId"
+            defaultValue={generalDocumentId ?? ""}
+            placeholder="— 미지정 — (이름으로 찾기)"
+            options={[{ value: "", label: "미지정" }, ...generals.map((g) => ({ value: g.id, label: g.title }))]}
+          />
         </label>
         <button type="submit">템플릿 저장</button>
         {generalTree && (

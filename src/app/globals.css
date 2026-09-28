@@ -2266,10 +2266,13 @@ label.ts-field > textarea {
   pointer-events: none;
 }
 
+/* 폼 칸 안에서는 칸 너비 그대로 — label.ts-field > span(칸 이름 글씨)이 이 상자에 번지지 않게 되돌린다 */
 .ts-form-row .ts-combo,
 .ts-field .ts-combo {
   display: block;
   width: 100%;
+  color: var(--ts-ink);
+  font-size: 13px;
 }
 
 /* 떠 있는 목록 — 좌표는 입력칸에서 잰 fixed (팝업 dialog 의 스크롤에 잘리지 않게) */
@@ -4707,6 +4710,7 @@ button.ts-ref-fold:hover {
 .ts-terms-template { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; }
 .ts-terms-template label { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
 .ts-terms-template select { min-width: 280px; }
+.ts-terms-template .ts-combo { width: 280px; font-weight: 400; }
 .ts-terms-template-count { margin-left: auto; font-size: 12px; }
 .ts-terms-focus .ts-terms-panel { height: calc(100vh - 230px); min-height: 420px; max-height: none; }
 .ts-special-preview { display: grid; grid-template-columns: minmax(200px, 1fr) 3fr; gap: 12px; align-items: start; }

@@ -2,6 +2,7 @@
  * 담보약관 템플릿 만들기 입구 (2026-09-27) — 목록 `+` → `/documents/new?kind=coverage` → 템플릿 없는 담보만 고른다.
  * 서버 컴포넌트를 서비스 흉내로 그려 문자열로 본다. 생성 → 편집기 이동은 E2E(repeat-table 반복표#3) 몫.
  */
+import { isValidElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -23,11 +24,24 @@ vi.mock("@/lib/services", () => ({
   }),
 }));
 
+import { Combobox, type ComboOption } from "@/app/_components/Combobox";
+
 import { coveragesWithoutTemplate, defaultSpecialTitle } from "../lib";
 import NewDocumentPage from "./page";
 
 async function render(sp: Record<string, string>) {
   return renderToStaticMarkup(await NewDocumentPage({ searchParams: Promise.resolve(sp) }));
+}
+
+/** 담보 검색 입력의 후보 — 목록은 열려야 그려지므로 요소 트리에서 props 를 읽는다. */
+async function coverageOptions(sp: Record<string, string>): Promise<readonly ComboOption[]> {
+  const find = (node: ReactNode): readonly ComboOption[] | undefined => {
+    if (Array.isArray(node)) return node.map(find).find(Boolean);
+    if (!isValidElement<{ children?: ReactNode; options?: readonly ComboOption[] }>(node)) return undefined;
+    if (node.type === Combobox) return node.props.options;
+    return find(node.props.children);
+  };
+  return find(await NewDocumentPage({ searchParams: Promise.resolve(sp) })) ?? [];
 }
 
 describe("coveragesWithoutTemplate", () => {
@@ -38,20 +52,24 @@ describe("coveragesWithoutTemplate", () => {
 });
 
 describe("새 담보약관 템플릿 화면", () => {
-  it("경로 「담보약관 템플릿 › 새 담보약관 템플릿」 · 템플릿 없는 담보만 「코드 담보명」으로 · 제목 칸 · 생성", async () => {
+  it("경로 「담보약관 템플릿 › 새 담보약관 템플릿」 · 템플릿 없는 담보만 검색 입력으로(이름 + 코드) · 제목 칸 · 생성", async () => {
     const html = await render({ kind: "coverage" });
     expect(html).toContain('href="/documents?kind=coverage"');
     expect(html).toContain("새 담보약관 템플릿");
-    expect(html).toContain(">COV000001 일반상해사망보장</option>");
-    expect(html).toContain(">COV000003 골절진단비</option>");
-    expect(html).not.toContain("수술비</option>");
+    expect(html).toMatch(/<input[^>]*id="doc-coverage"[^>]*role="combobox"[^>]*required=""/);
+    expect(await coverageOptions({ kind: "coverage" })).toEqual([
+      { value: "c1", label: "일반상해사망보장", hint: "COV000001" },
+      { value: "c3", label: "골절진단비", hint: "COV000003" },
+    ]);
     expect(html).toContain('name="title"');
     expect(html).toContain('form="create-special"');
   });
 
   it("`?coverage=` 로 오면 그 담보를 미리 고른다 (템플릿 없는 담보일 때만)", async () => {
-    expect(await render({ kind: "coverage", coverage: "c3" })).toMatch(/<option value="c3" selected="">/);
-    expect(await render({ kind: "coverage", coverage: "c2" })).not.toContain('selected=""><');
+    const picked = await render({ kind: "coverage", coverage: "c3" });
+    expect(picked).toContain('<input type="hidden" name="coverageId" value="c3"/>');
+    expect(picked).toContain('value="골절진단비"');
+    expect(await render({ kind: "coverage", coverage: "c2" })).toContain('<input type="hidden" name="coverageId" value=""/>');
   });
 
   it("고를 담보가 없으면 생성 버튼 없이 안내 + 새 담보 링크", async () => {

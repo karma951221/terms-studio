@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { Combobox } from "@/app/_components/Combobox";
 import { ErrorBanner } from "@/app/_components/ErrorBanner";
 import { IconButton, IconCheck, IconClose, IconLink, IconPlus, IconTrash } from "@/app/_components/icons";
 import { IssueList } from "@/app/_components/IssueList";
@@ -88,13 +89,7 @@ export function CoveragesTab({ productId, baseCoverages, specialCoverages, produ
           <form action={designateBaseContractAction.bind(null, productId)} className="ts-form">
             <label className="ts-field">
               <span>기본계약으로 지정</span>
-              <select name="productCoverageId" required>
-                {productCoverages.map((pc) => (
-                  <option key={pc.id} value={pc.id}>
-                    {pc.name}
-                  </option>
-                ))}
-              </select>
+              <Combobox name="productCoverageId" required placeholder="상품담보 이름으로 찾기" options={productCoverages.map((pc) => ({ value: pc.id, label: pc.name }))} />
             </label>
             <div className="ts-form-actions">
               <button type="submit">기본계약 지정</button>
@@ -152,13 +147,14 @@ export function CoveragesTab({ productId, baseCoverages, specialCoverages, produ
               {g.members.length === 0 && <li className="ts-muted">배치된 상품담보 없음</li>}
             </ul>
             <form action={placeInGroupAction.bind(null, productId, g.id)} style={{ display: "flex", gap: 4, alignItems: "center" }}>
-              <select name="productCoverageId">
-                {unplaced.map((pc) => (
-                  <option key={pc.id} value={pc.id}>
-                    {pc.name}
-                  </option>
-                ))}
-              </select>
+              <Combobox
+                name="productCoverageId"
+                required
+                ariaLabel={`배치할 상품담보 · ${g.title}`}
+                placeholder={unplaced.length === 0 ? "미배치 상품담보 없음" : "미배치 상품담보 찾기"}
+                disabled={unplaced.length === 0}
+                options={unplaced.map((pc) => ({ value: pc.id, label: pc.name }))}
+              />
               <IconButton type="submit" label={`배치 · ${g.title} 에`} icon={<IconPlus />} disabled={unplaced.length === 0} />
             </form>
           </div>
