@@ -5,10 +5,10 @@
  * (`placeMenu` — 오른쪽 클릭 메뉴와 같은 목록)에서 이름이 맞는 항목을 찾아 그대로 돌리는 것이다 — 규칙은 목록이 들고 있다.
  * 목록의 모든 항목은 버튼 하나에 대응한다(`toolFor` — 테스트가 지킨다).
  *
- * 「조건식」은 하나의 버튼이 자리대로 넣는다 — 팝업 없이 곧바로 선다(2026-09-28). 문장에서 글을 골랐으면 그 글을 문장 안 조건으로,
- * 아니면 지금 블록(항 · 조 제목 · 관 …)을 조건 블록으로 감싸고, 고른 블록이 없는 자리(조 본문 · 공용조항 본문)면 빈 항을 든 새 조건 블록.
- * 어느 쪽이든 빈 IF 줄 하나가 서고 첫 칸에 초점이 간다 — 식은 그 머리 줄에서 고른다. 감쌀 블록도 넣을 자리도 없으면(「문구」 공용조항 ·
- * 문장 안 조건 가지) 커서 자리에 문장 안 조건.
+ * 「조건식」은 **블록 조건**을 넣는다 — 팝업 없이 곧바로 선다(2026-09-28, 무엇을 넣을지 묻지 않는다). 글을 골랐으면(드래그) 그 선택이 걸친
+ * 블록을 다 덮는 가장 작은 잇닿은 형제 블록들을 감싸고, 고른 글이 없으면 커서가 선 블록 바로 뒤에 빈 조건 블록 (`menus.condInsertItem`).
+ * 어느 쪽이든 빈 IF 줄 하나가 서고 첫 칸에 초점이 간다 — 식은 그 머리 줄에서 고른다. 조건 블록을 둘 자리가 없으면(「문구」 공용조항)
+ * 문장 안 조건. 문장 안 조건은 따로 「문장 안 조건」 버튼이 넣는다.
  */
 import type { MenuItem, MenuSections } from "./menus";
 
@@ -28,6 +28,7 @@ export type ToolId =
   | "structKey"
   | "optionSlot"
   | "cond"
+  | "inlineCond"
   | "elif"
   | "else"
   | "unwrap"
@@ -94,7 +95,8 @@ export const DOC_TOOLS: ToolGroup[] = [
   {
     name: "조건",
     tools: [
-      { id: "cond", label: "조건식", title: "조건식 블록 넣기 — 지금 블록을 감싸거나(없으면 새 블록) 빈 IF 줄이 선다. 글을 골랐으면 문장 안 조건", match: COND_INSERT },
+      { id: "cond", label: "조건식", title: "조건 블록 — 글을 골랐으면 그 글이 걸친 블록을 감싸고, 아니면 커서 자리 뒤에 빈 조건 블록", match: COND_INSERT },
+      { id: "inlineCond", label: "문장 안 조건", title: "문장 안 조건 — 커서 자리(고른 글이 있으면 그 글을 IF 가지 문장으로)", match: oneOf("문장 안 조건") },
       { id: "elif", label: "가지 추가", title: "가지 추가(ELIF) — 고른 조건 블록에", match: oneOf("가지 추가(ELIF)") },
       { id: "else", label: "ELSE", title: "ELSE 가지 추가 — 고른 조건 블록에", match: oneOf("ELSE 가지 추가") },
       { id: "unwrap", label: "조건 풀기", title: "조건 풀기 — 고른 가지(문장 안 조건은 첫 가지) 내용만 남긴다", match: (l) => l.startsWith("조건 풀기") },
@@ -147,15 +149,12 @@ export function itemsFor(tool: Tool, sections: MenuSections): MenuItem[] {
 }
 
 /**
- * 「조건식」이 넣을 항목 — 글을 골랐으면(`selected`) 문장 안 조건, 아니면 감싸기, 감쌀 블록이 없으면 새 조건 블록, 그것도 없으면 문장 안 조건.
+ * 「조건식」 버튼이 켜지는가를 정하는 항목 — 자리의 목록에서 감싸기 · 새 조건 블록 · (그것도 없으면) 문장 안 조건.
+ * 누를 때 실제로 넣는 것은 선택 · 커서까지 보는 `menus.condInsertItem` 이 정한다.
  */
-export function condItem(sections: MenuSections, selected: boolean): MenuItem | undefined {
+export function condItem(sections: MenuSections): MenuItem | undefined {
   const items = sections.flat().filter((i) => !i.refusal);
-  const inline = items.find((i) => i.label === "문장 안 조건");
-  const wrap = items.find((i) => i.label === "조건으로 감싸기");
-  const block = items.find((i) => i.label === "조건 블록 넣기");
-  if (selected && inline) return inline;
-  return wrap ?? block ?? inline;
+  return items.find((i) => i.label === "조건으로 감싸기") ?? items.find((i) => i.label === "조건 블록 넣기") ?? items.find((i) => i.label === "문장 안 조건");
 }
 
 export interface ToolState {
@@ -169,7 +168,7 @@ export interface ToolState {
 
 /** 버튼 하나의 켜짐 — 맞는 항목이 있고 잠기지 않았으면 켜진다. 막힌 도구(`refusal`)는 잠그고 사유를 보인다. */
 export function toolState(tool: Tool, sections: MenuSections): ToolState {
-  const items = tool.id === "cond" ? [condItem(sections, false)].filter((i): i is MenuItem => i !== undefined) : itemsFor(tool, sections);
+  const items = tool.id === "cond" ? [condItem(sections)].filter((i): i is MenuItem => i !== undefined) : itemsFor(tool, sections);
   const refused = items.find((i) => i.refusal);
   const usable = items.filter((i) => !i.disabled && !i.refusal);
   if (refused && usable.length === 0) return { tool, items: [], disabled: true, title: `${tool.label} 잠김 — ${refused.refusal}` };

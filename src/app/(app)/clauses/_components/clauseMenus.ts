@@ -12,7 +12,7 @@
 import { blockMenu, chipMenu, condBlockItem, condMenu, inlineInsertItems, type MenuEnv, type MenuItem, type MenuSections, type Place } from "@/app/(app)/documents/[id]/_components/menus";
 import { emptyNode, inlineListAt } from "@/app/(app)/documents/[id]/_components/editOps";
 import { runsFromTokens, type Token } from "@/app/(app)/documents/[id]/_components/inlineRuns";
-import { CLAUSE_ARTICLE_ID, CLAUSE_LINE_ID, optionCarrier, type EditOp, type IdSource, type InlineAt } from "@/domain/document";
+import { CLAUSE_ARTICLE_ID, CLAUSE_LINE_ID, optionCarrier, type EditOp, type IdSource, type InlineAt, type TreeIndex } from "@/domain/document";
 import type { Id } from "@/domain/types";
 
 /** 거절 안내 — 화면에 그대로 보이므로 문서 번호를 넣지 않는다 (규칙: 기능/공용조항 §3.1). */
@@ -152,4 +152,16 @@ export function withClauseRefusals(env: ClauseMenuEnv, sections: MenuSections): 
     refusing("공용조항(문장 안)…", REFUSE.clauseRef, env.onRefuse),
   ].filter((i) => !labels.has(i.label) && !(i.label === "공용조항 참조 추가…" && labels.has("아래에 공용조항 참조 추가…")));
   return extra.length > 0 ? [...sections, extra] : sections;
+}
+
+/**
+ * 공용조항 본문에서 조건 블록이 설 수 있는 자리 — 「항」 유형의 항 · 조건 블록 자리뿐(호 · 목 목록에는 없다, clause/nodes.ts).
+ * 「문구」 유형은 없다 — 조건식은 문장 안 조건이 된다. 툴바 「조건식」(`condInsertItem`)이 쓴다.
+ */
+export function clauseCanHold(ix: TreeIndex, mode: ClauseMenuEnv["mode"]) {
+  return (nodeId: Id): boolean => {
+    if (mode === "inline" || nodeId === CLAUSE_LINE_ID) return false;
+    const kind = ix.nodes.get(nodeId)?.node.kind;
+    return kind === "paragraph" || kind === "condBlock";
+  };
 }

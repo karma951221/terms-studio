@@ -1,7 +1,7 @@
 /**
  * 약관 에디터 운전 — 시드 트리 한 벌을 **화면 조작으로** 다시 친다 (문면 저작 · 공용조항 본문 공용).
  *
- * 사람이 하는 것과 같은 길만 쓴다: 툴바 버튼 · 그 자리 팝업 · 문장 칸에 글 치기 · 커서 끝으로 가기 · 글 골라 「조건식」.
+ * 사람이 하는 것과 같은 길만 쓴다: 툴바 버튼 · 그 자리 팝업 · 문장 칸에 글 치기 · 커서 끝으로 가기 · 글 골라 「조건식」 · 「문장 안 조건」.
  * 편집본을 직접 만지거나 서버 액션을 부르지 않는다.
  *
  * 두 단계로 친다 (조 참조가 뒤 조 · 항을 가리킬 수 있어서 — 고르기 트리는 이미 있는 대상만 보인다):
@@ -243,14 +243,14 @@ export class Editor {
   }
 
   /**
-   * 문장 안 조건 — 사람이 하는 대로: 자리표시 글자를 치고 **그 글을 골라** 「조건식」(글을 골랐으면 문장 안 조건이 선다).
+   * 문장 안 조건 — 사람이 하는 대로: 자리표시 글자를 치고 **그 글을 골라** 「문장 안 조건」(고른 글이 IF 가지 문장이 된다 — 「조건식」은 블록 조건).
    * 팝업(「문장 안 조건」)에서 가지마다 머리 줄 · 문장을 채운다. 가지 문장에 칩이 있으면 그 가지 칸에서 오른쪽 클릭 › 넣기.
    */
   private async insertInlineCond(slot: Locator, node: Extract<InlineNode, { kind: "inlineCond" }>): Promise<void> {
     const PLACEHOLDER = "※";
     await this.page.keyboard.insertText(PLACEHOLDER);
     await this.page.keyboard.press("Shift+ArrowLeft");
-    await this.runTool("조건식");
+    await this.runTool("문장 안 조건");
     const branches = node.branches as Branch[];
     const popup = this.dialog("문장 안 조건");
     await expect(popup).toBeVisible();
@@ -445,7 +445,9 @@ export class DocumentAuthoring {
     for (const [i, { wrap }] of articles.entries()) {
       if (wrap === undefined) continue;
       await this.openArticle(i);
+      // 조 제목의 글을 골라 「조건식」 — 선택이 걸친 블록(조)을 감싼다. 커서만이면 조 맨 앞에 빈 조건 블록이 선다
       await this.article.locator("h3 [role=textbox]").focus();
+      await this.page.keyboard.press(SELECT_ALL);
       await this.editor.runTool("조건식");
       const head = this.body.locator("[data-cond-head]").first();
       await expect(head).toBeVisible();

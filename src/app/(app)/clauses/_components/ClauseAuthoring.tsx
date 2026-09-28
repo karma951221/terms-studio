@@ -28,12 +28,12 @@ import { EditorToolbar } from "@/app/(app)/documents/[id]/_components/EditorTool
 import { afterOf, emptyNode, inlineAtOf, inlineListAt } from "@/app/(app)/documents/[id]/_components/editOps";
 import { InlineSlot, caretFromPoint, tokensOf } from "@/app/(app)/documents/[id]/_components/Inline";
 import { identityRuns, runsFromTokens, runsReplacing, sameRuns, type Token } from "@/app/(app)/documents/[id]/_components/inlineRuns";
-import { inlineCondItem, placeExists, type MenuItem, type MenuSections, type Place, type PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
-import { placeOf, readInline } from "@/app/(app)/documents/[id]/_components/place";
+import { condInsertItem, inlineCondItem, placeExists, type MenuItem, type MenuSections, type Place, type PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
+import { condInput, placeOf, readInline } from "@/app/(app)/documents/[id]/_components/place";
 import { PopupHost, type PopupEnv } from "@/app/(app)/documents/[id]/_components/Popups";
 import { ContextMenu, PopActions, Popover } from "@/app/(app)/documents/[id]/_components/Popover";
 import { DraftIssues } from "@/app/(app)/documents/[id]/_components/SidePanel";
-import { CLAUSE_LINE_TOOLS, CLAUSE_TOOLS, allTools, condItem, itemsFor, type ToolId } from "@/app/(app)/documents/[id]/_components/tools";
+import { CLAUSE_LINE_TOOLS, CLAUSE_TOOLS, allTools, itemsFor, type ToolId } from "@/app/(app)/documents/[id]/_components/tools";
 import type { ClauseBody, ClauseMode, RequiredRefs } from "@/domain/clause";
 import { formatCoordinate } from "@/domain/coordinate";
 import {
@@ -62,7 +62,7 @@ import { createClauseAction } from "../actions";
 import { removeClauseEditAction, saveClauseEditAction } from "../edit-actions";
 import type { ClauseEditOption } from "../edit-types";
 import type { ClauseEditorData } from "../editorData";
-import { clauseCondMenu, clauseDefaultPlace, clausePlaceMenu, withClauseRefusals, type ClauseMenuEnv } from "./clauseMenus";
+import { clauseCanHold, clauseCondMenu, clauseDefaultPlace, clausePlaceMenu, withClauseRefusals, type ClauseMenuEnv } from "./clauseMenus";
 import { OptionsPane } from "./OptionsPane";
 
 export interface ClauseAuthoringProps {
@@ -300,13 +300,13 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     const sections = clausePlaceMenu(env, at, tokens);
     const anchor = anchorOf(button);
     menuAt.current = anchor;
-    if (toolId === "cond") {
-      const item = condItem(sections, cut !== undefined);
+    if (toolId === "cond" || toolId === "inlineCond") {
+      const inline = at.kind === "inline" ? { at: at.at, tokens, ...(cut !== undefined ? { cut } : {}) } : undefined;
+      const item =
+        toolId === "inlineCond" ? inline && inlineCondItem(inline.at, inline.tokens, randomIds, inline.cut) : condInsertItem(env, sections, condInput(bodyRef.current, at, inline), clauseCanHold(env.ix, clauseMode));
       if (!item) return;
-      // 고른 글은 문장 안 조건의 IF 가지 문장이 된다 — 조각에서는 이미 빠져 있다
-      const chosen = item.label === "문장 안 조건" && cut !== undefined && at.kind === "inline" ? inlineCondItem(at.at, tokens, randomIds, cut) : item;
-      if (chosen.label !== "문장 안 조건") (document.activeElement as HTMLElement | null)?.blur?.();
-      runMenu(chosen, anchor);
+      if (item.label !== "문장 안 조건") (document.activeElement as HTMLElement | null)?.blur?.();
+      runMenu(item, anchor);
       return;
     }
     const tool = allTools(CLAUSE_TOOLS).find((t) => t.id === toolId);

@@ -5,8 +5,9 @@ import { expect, test } from "./_lib/fixtures";
 /**
  * 약관 에디터 툴바 · 공용조항 생성 (기능/문면 §4.3 · 기능/공용조항 §4.2, 2026-09-27).
  *
- * 1. 문면 저작 — 편집을 누르면 본문 위에 툴바가 선다. 툴바 「조」 · 「항」으로 쓰고, 항을 고른 채 「조건식」을 누르면
- *    팝업 없이 그 항이 조건 블록 안에 서고 빈 IF 줄에 초점이 간다. 변수 · 연산자 · 값을 머리 줄에서 고르고 저장 → 읽기 모드의 IF 한 줄.
+ * 1. 문면 저작 — 편집을 누르면 본문 위에 툴바가 선다. 툴바 「조」 · 「항」으로 쓰고, 「조건식」은 블록 조건이다(팝업 없음):
+ *    커서만 있으면 그 항 뒤에 빈 조건 블록, 글을 고르면 그 선택이 걸친 항(여럿이면 여럿)을 감싸고 빈 IF 줄에 초점이 간다.
+ *    변수 · 연산자 · 값을 머리 줄에서 고르고 저장 → 읽기 모드의 IF 한 줄.
  *    오른쪽 클릭 메뉴에는 조건 넣기가 없다. (기능/문면 §4.3 · §6.2 「조건식 = 블록 삽입 + 머리 줄 인라인 편집」, 2026-09-28)
  * 2. 공용조항 생성 — `/clauses/new` 에서 유형(항) · 공용조항명 · 본문 · 옵션을 쓰고 툴바로 옵션 자리를 넣고, 「조건식」으로 그 항을
  *    조건 블록으로 감싸 머리 줄을 채운 뒤 저장 한 번 → 상세(읽기 모드 IF 줄) · 목록.
@@ -51,7 +52,7 @@ test(
       await page.getByRole("button", { name: "편집", exact: true }).click();
       await expect(page.getByRole("button", { name: "저장", exact: true })).toBeVisible();
       await expect(toolbar).toBeVisible();
-      for (const name of ["조", "관", "항", "호", "목", "표", "박스", "슬롯", "조 참조", "별표 참조", "조건식", "위로", "아래로", "복제", "삭제"]) await expect(tool(name)).toBeVisible();
+      for (const name of ["조", "관", "항", "호", "목", "표", "박스", "슬롯", "조 참조", "별표 참조", "조건식", "문장 안 조건", "위로", "아래로", "복제", "삭제"]) await expect(tool(name)).toBeVisible();
     });
 
     await ev.action("툴바#4", "툴바 「조」로 첫 조를 넣고 제목을 쓴다", async () => {
@@ -69,8 +70,19 @@ test(
       await paragraph.fill("회사는 피보험자가 보험기간 중 상해로 사망한 경우 보험금을 지급합니다.");
     });
 
+    await ev.action("툴바#5b", "Enter 로 둘째 항을 넣고 쓴다", async () => {
+      const first = body.getByRole("textbox", { name: "항", exact: true });
+      await first.press("End");
+      await first.press("Enter");
+      const second = body.getByRole("textbox", { name: "항", exact: true }).nth(1);
+      await expect(second).toBeFocused();
+      await second.fill("다만, 고의로 인한 경우에는 지급하지 않습니다.");
+    });
+
+    const paragraphs = body.getByRole("textbox", { name: "항", exact: true });
+
     await ev.action("툴바#6", "오른쪽 클릭 메뉴에는 조건 넣기(조건으로 감싸기 · 문장 안 조건)가 없다", async () => {
-      await body.getByRole("textbox", { name: "항", exact: true }).click({ button: "right" });
+      await paragraphs.first().click({ button: "right" });
       await expect(page.getByRole("menuitem", { name: "치환 슬롯…" })).toBeVisible();
       await expect(page.getByRole("menuitem", { name: "조건으로 감싸기…" })).toHaveCount(0);
       await expect(page.getByRole("menuitem", { name: "문장 안 조건…" })).toHaveCount(0);
@@ -78,8 +90,9 @@ test(
       await expect(page.getByRole("menu")).toHaveCount(0);
     });
 
-    await ev.action("툴바#7", "항을 고른 채 「조건식」 — 팝업 없이 항이 조건 블록 안에 서고, 빈 IF 줄 첫 칸에 초점이 간다", async () => {
-      await body.getByRole("textbox", { name: "항", exact: true }).click();
+    await ev.action("툴바#7", "고른 글 없이 커서만 두고 「조건식」 — 팝업 없이 그 항 바로 뒤에 빈 조건 블록(빈 IF 줄 + 빈 항), 두 항은 제자리", async () => {
+      await paragraphs.first().click();
+      await paragraphs.first().press("End");
       await expect(toolbar).toContainText("자리 — ");
       await expect(tool("조건식")).toBeEnabled();
       await tool("조건식").click();
@@ -88,7 +101,48 @@ test(
       await expect(head).toHaveCount(1);
       await expect(head.locator(".ts-cond-badge")).toHaveText("IF");
       await expect(head.getByRole("combobox", { name: "IF 1번 줄 변수" })).toBeFocused();
-      await expect(body.getByRole("textbox", { name: "항", exact: true })).toHaveText("회사는 피보험자가 보험기간 중 상해로 사망한 경우 보험금을 지급합니다.");
+      const inside = body.locator(".ts-doc-cond").getByRole("textbox", { name: "항", exact: true });
+      await expect(inside).toHaveCount(1);
+      await expect(inside).toHaveText("");
+      await expect(paragraphs).toHaveCount(3);
+      await expect(paragraphs.nth(0)).toHaveText("회사는 피보험자가 보험기간 중 상해로 사망한 경우 보험금을 지급합니다.");
+      await expect(paragraphs.nth(2)).toHaveText("다만, 고의로 인한 경우에는 지급하지 않습니다.");
+    });
+
+    await ev.action("툴바#7b", "빈 조건 블록을 🗑 로 지운다 — 확인 카드에서 삭제", async () => {
+      await body.locator("[data-cond-head]").getByRole("button", { name: "조건 블록 삭제" }).click();
+      await page.locator("dialog[open]").getByRole("button", { name: /삭제$/ }).click();
+      await expect(body.locator("[data-cond-head]")).toHaveCount(0);
+      await expect(paragraphs).toHaveCount(2);
+    });
+
+    await ev.action("툴바#7c", "첫 항 문장 일부만 드래그로 고르고 「조건식」 — 문장 안 조건이 아니라 그 항 전체가 조건 블록 안으로", async () => {
+      await paragraphs.first().click();
+      await paragraphs.first().press("Home");
+      for (let i = 0; i < 3; i++) await paragraphs.first().press("Shift+ArrowRight");
+      await tool("조건식").click();
+      await expect(page.locator("dialog[open]")).toHaveCount(0);
+      await expect(body.locator("[data-cond-head]")).toHaveCount(1);
+      await expect(body.locator(".ts-doc-cond").getByRole("textbox", { name: "항", exact: true })).toHaveText(["회사는 피보험자가 보험기간 중 상해로 사망한 경우 보험금을 지급합니다."]);
+      await expect(body.locator(".ts-doc-cond [data-chip]")).toHaveCount(0);
+    });
+
+    await ev.action("툴바#7d", "감쌌던 조건을 풀고, 두 항에 걸쳐 고른 뒤 「조건식」 — 두 항이 한 조건 블록의 한 가지에", async () => {
+      await body.locator("[data-cond-head]").getByRole("button", { name: "풀기" }).click();
+      await expect(body.locator("[data-cond-head]")).toHaveCount(0);
+      // 문장 칸 둘에 걸친 선택 — 사람은 첫 항 앞 여백에서 둘째 항까지 끌어 고른다
+      await page.evaluate(() => {
+        const boxes = document.querySelectorAll<HTMLElement>('.ts-l3-body [role="textbox"][aria-label="항"]');
+        const range = document.createRange();
+        range.setStart(boxes[0].firstChild ?? boxes[0], 2);
+        range.setEnd(boxes[1].firstChild ?? boxes[1], 3);
+        const sel = window.getSelection()!;
+        sel.removeAllRanges();
+        sel.addRange(range);
+      });
+      await tool("조건식").click();
+      await expect(body.locator("[data-cond-head]")).toHaveCount(1);
+      await expect(body.locator(".ts-doc-cond").getByRole("textbox", { name: "항", exact: true })).toHaveCount(2);
     });
 
     await ev.action("툴바#8", "머리 줄에서 변수 · 연산자 · 값을 고른다 — 가지 조작이 켜지고, 저장 한 번 · 새로 읽으면 초록 상자 안 IF 한 줄", async () => {
@@ -108,6 +162,7 @@ test(
       await expect(body.locator(".ts-doc-cond .ts-doc-cond-head")).toHaveCount(1);
       await expect(body.locator(".ts-doc-cond .ts-doc-cond-head")).toContainText("IF");
       await expect(body.locator(".ts-doc-cond .ts-doc-cond-head")).toContainText("사망보험금");
+      await expect(body.locator(".ts-doc-cond .ts-doc-paragraph")).toHaveCount(2);
       await expect(body.locator(".ts-doc-cond select")).toHaveCount(0);
     });
   },
@@ -163,9 +218,12 @@ test(
       await expect(page.locator(".ts-clause-editor")).toContainText("〔제한 사유〕");
     });
 
-    await ev.action("공용조항생성#6b", "항을 고른 채 「조건식」 — 팝업 없이 항이 조건 블록 안에 서고, 머리 줄에서 조건을 고른다", async () => {
+    await ev.action("공용조항생성#6b", "항 문장을 고른 채 「조건식」 — 팝업 없이 항이 조건 블록 안에 서고, 머리 줄에서 조건을 고른다", async () => {
       const editor = page.locator(".ts-clause-editor");
-      await editor.getByRole("textbox", { name: "항", exact: true }).click();
+      const paragraph = editor.getByRole("textbox", { name: "항", exact: true });
+      await paragraph.click();
+      await paragraph.press("Home");
+      await paragraph.press("Shift+End");
       await tool("조건식").click();
       await expect(page.locator("dialog[open]")).toHaveCount(0);
       const head = editor.locator("[data-cond-head]");

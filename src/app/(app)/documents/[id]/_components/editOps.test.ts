@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { indexTree, nodeBuilders, replayEdits, sequentialIds, type DocumentNode, type EditOp, type ParagraphNode } from "@/domain/document";
 
-import { inlineAtOf, moveOps, newTable, pasteGridOps, removeChipOps, unwrapOps, wrapOps } from "./editOps";
+import { inlineAtOf, moveOps, newTable, pasteGridOps, removeChipOps, selectionRange, unwrapOps, wrapOps, wrapRangeOps } from "./editOps";
 
 /** 편집본에 명령 목록을 적용한 트리 — 거부면 던진다. */
 function run(tree: DocumentNode, ops: readonly EditOp[]): DocumentNode {
@@ -63,5 +63,66 @@ describe("가운데 편집기 조작 → 편집 명령", () => {
       ["계약자", "회사와…"],
     ]);
     expect(pasteGridOps(t, 0, 0, "한 칸", sequentialIds("c"))).toBeUndefined();
+  });
+});
+
+/**
+ * 조 둘 — 가(제1항[호 1 · 2] · 제2항 · 제3항) · 나(제1항).
+ * ids: 호 i1 i2 · 항 p1 p2 p3 · 조 a1 · 항 q1 · 조 a2 · 문서 d (글자 노드는 t*).
+ */
+function multi(): DocumentNode {
+  let t = 0;
+  const b = nodeBuilders(() => `t${++t}`);
+  const with_ = <T extends { id: string }>(n: T, id: string): T => ({ ...n, id });
+  const i1 = with_(b.item([b.text("호1")]), "i1");
+  const i2 = with_(b.item([b.text("호2")]), "i2");
+  const p1 = with_(b.paragraph([b.text("항1")], [i1, i2]), "p1");
+  const p2 = with_(b.paragraph([b.text("항2")]), "p2");
+  const p3 = with_(b.paragraph([b.text("항3")]), "p3");
+  const q1 = with_(b.paragraph([b.text("나1")]), "q1");
+  return with_(b.document("D", [with_(b.article("가", [p1, p2, p3]), "a1"), with_(b.article("나", [q1]), "a2")]), "d");
+}
+
+
+describe("선택 범위 → 잇닿은 형제 블록 (조건식 · 끌어 옮기기, 2026-09-28)", () => {
+  const d = multi();
+  const ix = indexTree(d);
+  it("한 항 안의 선택 → 그 항", () => {
+    expect(selectionRange(ix, "p1", "p1")?.ids).toEqual(["p1"]);
+  });
+  it("제1항과 그 제2호에 걸친 선택 → 제1항 하나(호를 품은 채)", () => {
+    expect(selectionRange(ix, "p1", "i2")?.ids).toEqual(["p1"]);
+    expect(selectionRange(ix, "i2", "p1")?.ids).toEqual(["p1"]);
+  });
+  it("제1항의 호에서 제3항까지 → 제1항~제3항", () => {
+    expect(selectionRange(ix, "i1", "p3")).toEqual({ parentId: "a1", slot: "children", ids: ["p1", "p2", "p3"] });
+  });
+  it("같은 항의 호 둘 → 호 둘", () => {
+    expect(selectionRange(ix, "i2", "i1")?.ids).toEqual(["i1", "i2"]);
+  });
+  it("조를 넘는 선택 → 조 둘", () => {
+    expect(selectionRange(ix, "p2", "q1")?.ids).toEqual(["a1", "a2"]);
+  });
+  it("담을 수 없는 자리면 부모 블록으로 — 공용조항 본문의 호는 조건 블록을 못 품는다", () => {
+    const onlyParagraphs = (id: string) => ix.nodes.get(id)?.node.kind === "paragraph";
+    expect(selectionRange(ix, "i1", "i2", onlyParagraphs)?.ids).toEqual(["p1"]);
+  });
+  it("서로 다른 조건 가지에 걸치면 그 조건 블록 하나", () => {
+    const b = nodeBuilders(sequentialIds("c"));
+    const x = b.paragraph([b.text("x")]);
+    const y = b.paragraph([b.text("y")]);
+    const cond = b.condBlock([b.branch("D0001 = true", [x]), b.branch(undefined, [y])]);
+    const t = b.document("D", [b.article("가", [cond])]);
+    expect(selectionRange(indexTree(t), x.id, y.id)?.ids).toEqual([cond.id]);
+  });
+});
+
+describe("여러 블록 감싸기", () => {
+  it("제1항~제2항을 조건 블록 하나로 — 순서 그대로 가지 안에", () => {
+    const d = multi();
+    const out = run(d, wrapRangeOps(d, ["p1", "p2"], "", sequentialIds("w")));
+    const kids = (indexTree(out).nodes.get("a1")!.node as { children: { kind: string; id: string; branches?: { children: { id: string }[] }[] }[] }).children;
+    expect(kids.map((k) => k.kind)).toEqual(["condBlock", "paragraph"]);
+    expect(kids[0].branches![0].children.map((c) => c.id)).toEqual(["p1", "p2"]);
   });
 });

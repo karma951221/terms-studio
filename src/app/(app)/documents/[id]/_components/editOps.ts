@@ -168,3 +168,87 @@ export function pasteGridOps(table: TableNode, row: number, col: number, text: s
   );
   return ops;
 }
+
+// ───────────────────────────── 여러 블록 — 선택 범위 · 감싸기 · 옮기기 (2026-09-28) ─────────────────────────────
+
+/** 잇닿은 형제 블록 범위 — 같은 부모 · 같은 목록, 순서대로. */
+export interface SiblingRange {
+  parentId: Id;
+  slot: Position["slot"];
+  ids: Id[];
+}
+
+/** 노드 하나의 범위. 루트면 undefined. */
+function rangeOf(ix: TreeIndex, ids: readonly Id[]): SiblingRange | undefined {
+  const first = ix.nodes.get(ids[0]);
+  if (!first || first.parentId === undefined) return undefined;
+  return { parentId: first.parentId, slot: first.slot, ids: [...ids] };
+}
+
+/** 같은 부모 · 목록의 형제 id — 자리 순서대로. */
+function siblingsOf(ix: TreeIndex, parentId: Id, slot: Position["slot"]): Id[] {
+  return [...ix.nodes.values()]
+    .filter((e) => e.parentId === parentId && e.slot === slot)
+    .sort((a, b) => a.index - b.index)
+    .map((e) => e.node.id);
+}
+
+/**
+ * 선택이 걸친 블록 → 그것을 다 덮는 **가장 작은 잇닿은 형제 범위** (기능/문면 §4.3 「조건식」 · 끌어 옮기기).
+ * - 한 블록 안이면 그 블록. 한쪽이 다른 쪽의 조상이면(항과 그 항의 호) 조상 하나 — 호만 떼어 낼 수 없다.
+ * - 아니면 공통 조상 바로 아래의 두 가지 사이 형제 전부. 서로 다른 조건 가지에 걸치면 그 조건 블록 하나.
+ * - `canHold(nodeId)` 가 거짓인 자리(그 목록에 조건 블록이 설 수 없음 등)면 부모 블록으로 올라간다. 끝내 없으면 undefined.
+ */
+export function selectionRange(ix: TreeIndex, startId: Id, endId: Id, canHold: (nodeId: Id) => boolean = () => true): SiblingRange | undefined {
+  const pathOf = (id: Id) => ix.nodes.get(id)?.path ?? ix.branches.get(id)?.path;
+  const pa = pathOf(startId);
+  const pb = pathOf(endId);
+  if (!pa || !pb) return undefined;
+  let k = 0;
+  while (k < pa.length && k < pb.length && pa[k] === pb[k]) k++;
+  let ids: Id[];
+  if (k === pa.length || k === pb.length) {
+    // 한쪽이 다른 쪽의 조상(또는 같은 블록) — 짧은 쪽의 끝
+    ids = [(k === pa.length ? pa : pb)[k - 1]];
+  } else {
+    const a = pa[k];
+    const b = pb[k];
+    const ea = ix.nodes.get(a);
+    const eb = ix.nodes.get(b);
+    if (!ea || !eb || ea.parentId !== eb.parentId || ea.slot !== eb.slot) {
+      // 서로 다른 가지(조건 블록 아래) — 조건 블록 하나로
+      ids = [pa[k - 1]];
+    } else {
+      const [lo, hi] = ea.index <= eb.index ? [ea.index, eb.index] : [eb.index, ea.index];
+      ids = siblingsOf(ix, ea.parentId!, ea.slot).slice(lo, hi + 1);
+    }
+  }
+  // 가지 id 면 그 조건 블록으로, 담을 수 없는 자리면 부모 블록으로
+  for (;;) {
+    if (ids.length === 1) {
+      const br = ix.branches.get(ids[0]);
+      if (br) ids = [br.ownerId];
+    }
+    if (ids.every((id) => ix.nodes.has(id) && canHold(id))) return rangeOf(ix, ids);
+    const parent = ix.nodes.get(ids[0])?.parentId;
+    if (parent === undefined) return undefined;
+    ids = [parent];
+  }
+}
+
+/**
+ * 잇닿은 형제 블록들을 조건 블록 하나(가지 하나)로 감싼다 — 첫 블록 자리에 조건 블록을 세우고 블록들을 순서대로 가지 안으로.
+ * 블록 하나면 `wrapOps` 와 같다.
+ */
+export function wrapRangeOps(tree: DocumentNode, ids: readonly Id[], when: string, newId: IdSource, branchId?: Id): EditOp[] {
+  const ix = indexTree(tree);
+  const first = ix.nodes.get(ids[0]);
+  if (!first || first.parentId === undefined || ids.length === 0) return [];
+  const b = nodeBuilders(newId);
+  const branch = { ...b.branch(when, []), ...(branchId ? { id: branchId } : {}) };
+  const cond = b.condBlock([branch]);
+  return [
+    { type: "insert", node: cond, at: { parentId: first.parentId, slot: first.slot, index: first.index } },
+    ...ids.map((nodeId, i): EditOp => ({ type: "move", nodeId, to: { parentId: branch.id, index: i } })),
+  ];
+}

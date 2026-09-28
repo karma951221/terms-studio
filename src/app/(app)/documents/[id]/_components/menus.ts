@@ -12,9 +12,9 @@
 import type { DocumentNode, EditOp, IdSource, InlineAt, NodeKind, Position, TreeIndex } from "@/domain/document";
 import type { AttachLevel, Id } from "@/domain/types";
 
-import { nodeBuilders, repeatLevels as repeatLevelsOf } from "@/domain/document";
+import { allowedIn, nodeBuilders, repeatLevels as repeatLevelsOf } from "@/domain/document";
 
-import { afterOf, emptyNode, inlineListAt, moveOps, removeChipOps, siblingPlace, unwrapOps, wrapOps } from "./editOps";
+import { afterOf, emptyNode, inlineListAt, moveOps, removeChipOps, selectionRange, siblingPlace, unwrapOps, wrapOps, wrapRangeOps } from "./editOps";
 import { runsFromTokens, type Token } from "./inlineRuns";
 
 /** 문장 안에 팝업으로 넣는 칩 종류 (문장 안 조건은 팝업 없이 곧바로 선다 — `inlineCondItem`). */
@@ -374,4 +374,50 @@ export function placeMenu(env: MenuEnv, place: Place, tokens: Token[] = []): Men
     case "document":
       return documentMenu(env);
   }
+}
+
+/**
+ * 툴바 「조건식」을 누른 순간 — 무엇을 넣나 (기능/문면 §4.3 「조건식」, 2026-09-28). **기본은 블록 조건**이다.
+ * - `selection`(드래그로 고른 글의 두 끝 블록) — 그 선택이 걸친 블록을 다 덮는 가장 작은 잇닿은 형제 블록들을 조건 블록 하나로 감싼다
+ *   (제1항 일부 → 제1항 · 제1항과 그 호 → 호를 품은 제1항 · 제1항~제2항 → 둘 다). 조 제목의 글을 골랐으면 그 조를 감싼다.
+ * - `caret`(고른 글 없이 커서가 선 블록) — 그 블록 **바로 뒤**에 빈 조건 블록(빈 IF 줄 + 그 자리의 빈 항 · 호 · 목). 조 제목이면 그 조 맨 앞.
+ * - 둘 다 없으면(본문 빈 자리 · 블록을 누른 자리) 자리의 목록대로 — 고른 블록 감싸기 · 조 끝에 새 블록.
+ * - 조건 블록을 둘 수 없는 자리뿐이면(「문구」 공용조항의 한 줄) 문장 안 조건 — `inline` 이 그 입구(고른 글이 IF 가지 문장).
+ * 새 블록 · 감싼 블록의 IF 줄에 초점이 간다. 팝업은 없다 — 무엇을 넣을지 묻지 않는다.
+ * `canHold(nodeId)` — 그 노드 자리(형제 목록)에 조건 블록이 설 수 있는가 (공용조항은 항 자리뿐).
+ */
+export interface CondInput {
+  selection?: { start: Id; end: Id };
+  caret?: Id;
+  inline?: { at: InlineAt; tokens: Token[]; cut?: string };
+}
+
+export function condInsertItem(env: MenuEnv, sections: MenuSections, input: CondInput, canHold: (nodeId: Id) => boolean): MenuItem | undefined {
+  const { ix } = env;
+  const inlineFallback = (): MenuItem | undefined => {
+    if (!input.inline) return undefined;
+    const allowed = sections.flat().some((i) => i.label === "문장 안 조건" && !i.refusal);
+    return allowed ? inlineCondItem(input.inline.at, input.inline.tokens, env.newId, input.inline.cut) : undefined;
+  };
+  if (input.selection) {
+    const range = selectionRange(ix, input.selection.start, input.selection.end, canHold);
+    if (!range) return inlineFallback();
+    const branchId = env.newId();
+    return { label: "조건으로 감싸기", toolbarOnly: true, action: { do: "ops", ops: (t) => wrapRangeOps(t, range.ids, "", env.newId, branchId), focus: branchId } };
+  }
+  if (input.caret !== undefined) {
+    const e = ix.nodes.get(input.caret);
+    if (e?.node.kind === "article") {
+      const allowed = allowedIn("article", "children") ?? [];
+      return allowed.includes("condBlock") ? condBlockItem(env, { parentId: e.node.id, slot: "children", index: 0 }, allowed) : inlineFallback();
+    }
+    // 커서가 선 블록에서 위로 — 조건 블록이 설 수 있는 첫 자리의 바로 뒤
+    let id: Id | undefined = input.caret;
+    while (id !== undefined && ix.nodes.has(id) && !canHold(id)) id = ix.nodes.get(id)?.parentId;
+    const owner = id !== undefined ? ix.nodes.get(id) : undefined;
+    const at = owner ? afterOf(ix, owner.node.id) : undefined;
+    return owner && at ? condBlockItem(env, at, owner.allowed) : inlineFallback();
+  }
+  const items = sections.flat().filter((i) => !i.refusal);
+  return items.find((i) => i.label === "조건으로 감싸기") ?? items.find((i) => i.label === "조건 블록 넣기") ?? inlineFallback() ?? items.find((i) => i.label === "문장 안 조건");
 }

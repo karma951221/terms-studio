@@ -66,10 +66,10 @@ import { ArticleBody, DocBody } from "./DocBody";
 import { afterOf, emptyNode, inlineListAt, pasteGridOps } from "./editOps";
 import { caretFromPoint, tokensOf } from "./Inline";
 import { identityRuns, runsFromTokens, sameRuns, type Token } from "./inlineRuns";
-import { clausePickItems, condMenu, inlineCondItem, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
-import { placeOf, readInline } from "./place";
+import { clausePickItems, condInsertItem, condMenu, inlineCondItem, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
+import { condInput, placeOf, readInline } from "./place";
 import { EditorToolbar } from "./EditorToolbar";
-import { DOCUMENT_TOOLS, allTools, condItem, itemsFor, type ToolId } from "./tools";
+import { DOCUMENT_TOOLS, allTools, itemsFor, type ToolId } from "./tools";
 import { PopupHost, type PopupEnv } from "./Popups";
 import { ContextMenu, Popover } from "./Popover";
 import { RemoveCard } from "./RemoveCard";
@@ -499,14 +499,16 @@ export function DocumentEditor(props: EditorProps) {
     const sections = placeMenu(env, at, tokens);
     const anchor = anchorOf(button);
     menuAt.current = anchor;
-    if (toolId === "cond") {
-      const item = condItem(sections, cut !== undefined);
+    if (toolId === "cond" || toolId === "inlineCond") {
+      const inline = at.kind === "inline" ? { at: at.at, tokens, ...(cut !== undefined ? { cut } : {}) } : undefined;
+      const item =
+        toolId === "inlineCond"
+          ? inline && inlineCondItem(inline.at, inline.tokens, randomIds, inline.cut)
+          : condInsertItem(env, sections, condInput(bodyRef.current, at, inline), (id) => env.ix.nodes.get(id)?.allowed.includes("condBlock") ?? false);
       if (!item) return;
-      // 고른 글은 문장 안 조건의 IF 가지 문장이 된다 — 조각에서는 이미 빠져 있다
-      const chosen = item.label === "문장 안 조건" && cut !== undefined && at.kind === "inline" ? inlineCondItem(at.at, tokens, randomIds, cut) : item;
       // 넣기 전에 쓰던 문장을 편집본에 넣는다(초점이 떠나며 적용) — 감싸는 블록이 쓰던 글을 두고 가지 않게
-      if (chosen.label !== "문장 안 조건") (document.activeElement as HTMLElement | null)?.blur?.();
-      runMenu(chosen, anchor);
+      if (item.label !== "문장 안 조건") (document.activeElement as HTMLElement | null)?.blur?.();
+      runMenu(item, anchor);
       return;
     }
     const tool = allTools(DOCUMENT_TOOLS).find((t) => t.id === toolId);
