@@ -1,6 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { MORE_OPTION, comboKey, createLookup, filterOptions, groupOptions, highlightParts, initialActive, lookupResponse, matchOption, moveActive, urlLoad, type ComboOption, type LookupState } from "./comboModel";
+import {
+  MORE_OPTION,
+  comboKey,
+  createLookup,
+  filterOptions,
+  groupOptions,
+  highlightParts,
+  initialActive,
+  lookupResponse,
+  matchOption,
+  moveActive,
+  urlLoad,
+  type ComboOption,
+  type LookupState,
+} from "./comboModel";
 
 const OPTS: ComboOption[] = [
   { value: "c1", label: "일반상해사망보장", hint: "COV000002" },

@@ -12,23 +12,13 @@
  * - 두 쓰임: 값 고르기(`value` + `onChange`) · 폼 칸(`name` → 숨은 칸에 값, `defaultValue`). 둘을 섞어도 된다.
  * - 후보 출처: `options`(정적, 여기서 거른다) 또는 `load(query, signal)` · `lookupUrl`(서버 조회 — 250ms 기다렸다 부르고 앞 요청은 취소).
  * - ARIA 1.2 combobox — 입력칸 role=combobox · aria-activedescendant, 목록 role=listbox · option, 묶음 role=group.
+ * - 목록은 가장 가까운 <dialog>(없으면 body)에 포털로 띄운다 — <label> 안에 놓여도 목록 글자가 칸 이름에 섞이지 않고,
+ *   누름이 label 을 거쳐 입력칸 클릭으로 번지지 않으며, 모달 dialog 밖(inert)으로 나가지도 않는다.
  */
 import { useEffect, useId, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type Ref } from "react";
+import { createPortal } from "react-dom";
 
-import {
-  comboKey,
-  createLookup,
-  filterOptions,
-  groupOptions,
-  highlightParts,
-  initialActive,
-  isEnabled,
-  moveActive,
-  urlLoad,
-  type ComboLoad,
-  type ComboOption,
-  type LookupState,
-} from "./comboModel";
+import { comboKey, createLookup, filterOptions, groupOptions, highlightParts, initialActive, isEnabled, moveActive, urlLoad, type ComboLoad, type ComboOption, type LookupState } from "./comboModel";
 
 export type { ComboLoad, ComboOption } from "./comboModel";
 
@@ -144,6 +134,8 @@ export function ComboList({
       style={style}
       // 목록을 눌러도 초점은 입력칸에 — 떠나면 닫히므로
       onMouseDown={(e) => e.preventDefault()}
+      // <label> 안에 놓여도 누름이 입력칸 클릭으로 번져 목록이 다시 열리지 않게
+      onClick={(e) => e.preventDefault()}
     >
       <ul id={id} role="listbox" aria-label={label} className="ts-combo-list">
         {groups.map((g, gi) =>
@@ -222,6 +214,7 @@ export function Combobox({
   /** 마지막으로 고른 항목 — 서버 조회라 후보가 바뀌어도 이름을 잃지 않게. */
   const [chosen, setChosen] = useState<ComboOption>();
   const [place, setPlace] = useState<CSSProperties>();
+  const [host, setHost] = useState<HTMLElement>();
   const inputEl = useRef<HTMLInputElement | null>(null);
   const listId = useId();
 
@@ -282,9 +275,16 @@ export function Combobox({
     document.getElementById(`${listId}-o${active}`)?.scrollIntoView?.({ block: "nearest" });
   }, [open, active, listId]);
 
+  /** 열기 직전 — 자리를 재고 띄울 곳(가까운 dialog · body)을 정한다. */
+  const prepare = () => {
+    const el = inputEl.current;
+    if (!el) return;
+    setPlace(placeUnder(el));
+    setHost(el.closest("dialog") ?? document.body);
+  };
   const openList = () => {
     if (disabled || open) return;
-    if (inputEl.current) setPlace(placeUnder(inputEl.current));
+    prepare();
     setOpen(true);
     setActive(initialActive(items, value));
   };
@@ -341,7 +341,7 @@ export function Combobox({
           const next = event.target.value;
           setQuery(next);
           if (!open) {
-            if (inputEl.current) setPlace(placeUnder(inputEl.current));
+            prepare();
             setOpen(true);
           }
           setActive(load ? -1 : moveActive(filterOptions(options ?? [], next), -1, "first"));
@@ -354,21 +354,12 @@ export function Combobox({
         }}
       />
       {name !== undefined && <input type="hidden" name={name} value={value} />}
-      {open && (
-        <ComboList
-          id={listId}
-          label={ariaLabel}
-          items={items}
-          active={active}
-          value={value}
-          query={text}
-          status={status}
-          emptyText={emptyText}
-          style={place}
-          onPick={pick}
-          onHover={setActive}
-        />
-      )}
+      {open &&
+        host &&
+        createPortal(
+          <ComboList id={listId} label={ariaLabel} items={items} active={active} value={value} query={text} status={status} emptyText={emptyText} style={place} onPick={pick} onHover={setActive} />,
+          host,
+        )}
     </span>
   );
 }
