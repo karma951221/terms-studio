@@ -1,5 +1,5 @@
 /**
- * 검색 입력(콤보박스) 고르기 — 참조 고르기는 모두 이 부품이다 (디자인원칙 §2.6, `src/app/_components/Combobox.tsx`).
+ * 검색 입력(콤보박스) 고르기 — 참조 고르기는 모두 이 부품이다 (디자인원칙 §1.8, `src/app/_components/Combobox.tsx`).
  *
  * 사람이 하는 대로: 입력칸을 누르고 → 글을 쳐 좁히고 → 목록에서 그 줄을 누른다. `<select>` 의 `selectOption` 대신 쓴다.
  * - `value` — 줄의 `data-value`(코드 · id)로 찾는다. 친 글(`query`)이 없으면 전체 목록에서.
