@@ -11,7 +11,7 @@
 import type { Discriminator } from "../catalog/types";
 import { ok, reject } from "../types";
 import type { Code, Coordinate, Id, Issue, Result } from "../types";
-import type { Block, BlockBranch, BoxNode, Inline, InlineBranch, ItemNode, SubitemNode } from "./nodes";
+import type { Block, BlockBranch, BoxNode, BulletListNode, Inline, InlineBranch, ItemNode, SubitemNode } from "./nodes";
 import type { Clause, ClauseBody, OptionSelection } from "./types";
 
 // ───────────────────────────── 카탈로그 조회 ─────────────────────────────
@@ -148,9 +148,11 @@ export function expandClause(clause: Clause, selection: OptionSelection, refNode
     children: inlines(it.children),
     ...(it.subitems ? { subitems: it.subitems.map(subitem) } : {}),
   });
+  const bullets = (l: BulletListNode): BulletListNode => ({ ...l, id: nid(l.id), children: l.children.map((x) => ({ ...x, id: nid(x.id), children: inlines(x.children) })) });
   const block = (b: Block): Block => {
+    if (b.kind === "bulletList") return bullets(b);
     if (b.kind === "paragraph") {
-      return { ...b, id: nid(b.id), children: inlines(b.children), ...(b.items ? { items: b.items.map(item) } : {}) };
+      return { ...b, id: nid(b.id), children: inlines(b.children), ...(b.items ? { items: b.items.map((it) => (it.kind === "bulletList" ? bullets(it) : item(it))) } : {}) };
     }
     return { ...b, id: nid(b.id), branches: b.branches.map((br): BlockBranch => ({ ...br, id: nid(br.id), children: br.children.map(block) })) };
   };

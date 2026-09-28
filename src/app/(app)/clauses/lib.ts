@@ -4,7 +4,7 @@
  * - 선택지 문구는 평문만 받는다(기능/공용조항 §6.2) — 화면은 글 한 줄, 저장은 텍스트 노드 하나.
  * - 새 옵션은 저장 전까지 `new:*` 코드라, 본문의 옵션 자리를 저장 때 실제 코드로 바꾼다.
  */
-import { isInlineBody, type Block, type ClauseBody, type Inline } from "@/domain/clause";
+import { isInlineBody, type Block, type BulletListNode, type ClauseBody, type Inline } from "@/domain/clause";
 import type { Id } from "@/domain/types";
 
 export const isNewCode = (code: string) => code.startsWith("new:");
@@ -20,15 +20,17 @@ export function textBody(text: string, id: Id): Inline[] {
 }
 
 function mapInlines(body: ClauseBody, fn: (nodes: readonly Inline[]) => Inline[]): ClauseBody {
+  const bullets = (list: BulletListNode): BulletListNode => ({ ...list, children: list.children.map((b) => ({ ...b, children: fn(b.children) })) });
   const blocks = (nodes: readonly Block[]): Block[] =>
     nodes.map((node) => {
       if (node.kind === "condBlock") return { ...node, branches: node.branches.map((branch) => ({ ...branch, children: blocks(branch.children) })) };
+      if (node.kind === "bulletList") return bullets(node);
       return {
         ...node,
         children: fn(node.children),
         ...(node.items
           ? {
-              items: node.items.map((item) => ({
+              items: node.items.map((item) => item.kind === "bulletList" ? bullets(item) : ({
                 ...item,
                 children: fn(item.children),
                 ...(item.subitems ? { subitems: item.subitems.map((sub) => ({ ...sub, children: fn(sub.children) })) } : {}),

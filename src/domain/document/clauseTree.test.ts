@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import type * as C from "../clause/nodes";
 import type { Block, Inline } from "../clause/nodes";
 import { CLAUSE_ARTICLE_ID, CLAUSE_LINE_ID, HOST_TARGET_PREFIX, boxLineFromText, clauseBodyToTree, clausePositions, clauseScopedRefLabel, optionCarrier, optionCodeOf, treeToClauseBody } from "./clauseTree";
+import { analyzeBody, structuralIds } from "../clause/body";
+import { expandClause } from "../clause/reference";
 import { applyEdit, generalRefsOf, type EditEnv } from "./edit";
 import type { DocumentNode, InlineNode } from "./nodes";
 
@@ -132,5 +134,49 @@ describe("「박스」 공용조항 — 편집 트리는 문면 박스 하나(�
     (tree.children[0] as { children: { lines: string[] }[] }).children[0].lines = ["〔없는 옵션〕", "  "];
     const r = treeToClauseBody("box", tree, options);
     expect(r.ok).toBe(false);
+  });
+});
+
+describe("공용조항 「항」 본문의 글머리 목록 (2026-09-28)", () => {
+  const withBullets: Block[] = [
+    {
+      id: "p1",
+      kind: "paragraph",
+      children: [{ id: "t1", kind: "text", text: "다음과 같습니다." }],
+      items: [
+        { id: "i1", kind: "item", children: [{ id: "t2", kind: "text", text: "호" }] },
+        { id: "L1", kind: "bulletList", children: [{ id: "b1", kind: "bullet", children: [{ id: "t3", kind: "text", text: "호 뒤 항목" }] }] },
+      ],
+    },
+    { id: "L2", kind: "bulletList", children: [{ id: "b2", kind: "bullet", children: [{ id: "o1", kind: "optionSlot", optionCode: "O01" }] }] },
+  ];
+
+  it("편집 트리로 싸고 되돌리면 그대로 — 항 자리 · 호 뒤 목록, 항목 안 옵션 자리도", () => {
+    const tree = clauseBodyToTree("block", withBullets, "나열");
+    expect(treeToClauseBody("block", tree)).toEqual({ ok: true, value: withBullets });
+  });
+
+  it("검사 ① — 항목 없는 목록은 거부, 글머리 목록은 번호가 없어 「이 공용조항」 조 참조 대상이 아니다", () => {
+    const options = [{ code: "O01", label: "사유", values: [], order: 1 }];
+    expect(analyzeBody("block", withBullets, options).ok).toBe(true);
+    const empty: Block[] = [{ id: "L", kind: "bulletList", children: [] }];
+    expect(analyzeBody("block", empty, []).ok).toBe(false);
+    expect(structuralIds(withBullets)).toEqual(["p1", "i1"]);
+  });
+
+  it("펼치기 — 목록 · 항목 id 도 참조 노드 id 로 유일화하고 옵션 자리는 고른 선택지로", () => {
+    const clause = {
+      code: "C9001",
+      label: "나열",
+      mode: "block" as const,
+      options: [{ code: "O01", label: "사유", order: 1, values: [{ code: "V01", label: "사망", order: 1, body: [{ id: "v1", kind: "text" as const, text: "사망" }] }] }],
+      required: { discriminators: [], attributes: [] },
+      body: withBullets,
+    };
+    const out = expandClause(clause, { O01: "V01" }, "ref");
+    if (!out.ok) throw new Error("펼치기 실패");
+    const list = (out.value as Block[])[1] as C.BulletListNode;
+    expect(list.id).toBe("ref/L2");
+    expect(list.children[0].children.map((c) => (c.kind === "text" ? c.text : c.kind))).toEqual(["사망"]);
   });
 });

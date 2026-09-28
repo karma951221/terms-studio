@@ -8,7 +8,8 @@
  * - 인라인 종류: `text · slot · inlineCond · articleRef · appendixRef · optionSlot`.
  *   **공용조항 참조(clauseInlineRef · clauseBlockRef)는 없다** — 중첩 금지(MVP, 기능/공용조항 §3.1).
  *   반복(forBlock · inlineFor)도 MVP 이후라 없다.
- * - 블록 종류: `paragraph(항) · condBlock(조건 블록)`. 조(article)는 항상 사용처 소유라 없다.
+ * - 블록 종류: `paragraph(항) · condBlock(조건 블록) · bulletList(글머리 목록)`. 조(article)는 항상 사용처 소유라 없다.
+ *   글머리 목록은 항 자리와 항의 호 목록 자리(호 뒤)에 선다 — 항목(bullet)은 한 줄 문장, 목록 안 조건 블록은 없다(문면보다 좁다).
  * - 호(item)·목(subitem)은 항의 하위 목록으로 매달린다.
  * - 인라인 조건의 중첩은 금지, 블록 조건의 중첩은 허용 (기능/문면 §3.2).
  * - 식(`slot.ref` · `when`)은 코드 기반 소스 문자열 — 파싱·추출은 expression 모듈.
@@ -114,12 +115,26 @@ export interface ItemNode {
   subitems?: SubitemNode[];
 }
 
-/** 항. */
+/** 글머리 목록의 항목 — 번호 없는 한 줄 문장. */
+export interface BulletNode {
+  id: Id;
+  kind: "bullet";
+  children: Inline[];
+}
+
+/** 글머리 목록 — 번호 없는 「-」 나열 (문면 §3.2 와 같은 노드). 항 · 호 번호에 들지 않는다. */
+export interface BulletListNode {
+  id: Id;
+  kind: "bulletList";
+  children: BulletNode[];
+}
+
+/** 항. 호 목록 자리에 글머리 목록도 선다(호 뒤). */
 export interface ParagraphNode {
   id: Id;
   kind: "paragraph";
   children: Inline[];
-  items?: ItemNode[];
+  items?: (ItemNode | BulletListNode)[];
 }
 
 /** 블록 조건의 가지. `when` 이 없으면 else 가지 (마지막 가지에만 허용). */
@@ -137,7 +152,7 @@ export interface CondBlockNode {
   branches: BlockBranch[];
 }
 
-export type Block = ParagraphNode | CondBlockNode;
+export type Block = ParagraphNode | CondBlockNode | BulletListNode;
 
 export type BlockKind = Block["kind"];
 
@@ -165,7 +180,7 @@ export interface BoxNode {
 export const BOX_LINE_KINDS: readonly InlineKind[] = ["text", "slot", "optionSlot"];
 
 /** 공용조항 안에 나타날 수 있는 모든 노드. */
-export type ClauseNode = Inline | Block | ItemNode | SubitemNode | BoxNode | BoxLineNode;
+export type ClauseNode = Inline | Block | ItemNode | SubitemNode | BulletNode | BoxNode | BoxLineNode;
 
 export type ClauseNodeKind = ClauseNode["kind"];
 
@@ -178,4 +193,4 @@ export const INLINE_KINDS: readonly InlineKind[] = [
   "optionSlot",
 ];
 
-export const BLOCK_KINDS: readonly BlockKind[] = ["paragraph", "condBlock"];
+export const BLOCK_KINDS: readonly BlockKind[] = ["paragraph", "condBlock", "bulletList"];

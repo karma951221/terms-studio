@@ -37,7 +37,7 @@ export function refusing(label: string, message: string, onRefuse: (message: str
 }
 
 const DROPPED_POPUPS = new Set(["newTable", "tableProps", "repeat", "link", "docTitle", "general"]);
-const DROPPED_NODES = new Set(["table", "box", "bulletList", "bullet", "article", "section", "forBlock"]);
+const DROPPED_NODES = new Set(["table", "box", "article", "section", "forBlock"]);
 
 /** 문면 메뉴 항목 하나를 공용조항 자리로 — 그대로 · 거부 자리로 바꿈 · 뺌(undefined). */
 function adapt(item: MenuItem, env: MenuEnv, onRefuse: (message: string) => void): MenuItem | undefined {
@@ -53,9 +53,17 @@ function adapt(item: MenuItem, env: MenuEnv, onRefuse: (message: string) => void
   // 조건 블록은 항 자리에만 선다 — 공용조항의 호 · 목 목록에는 조건 블록이 없다 (clause/nodes.ts)
   if (item.wrapTarget !== undefined) {
     const kind = env.ix.nodes.get(item.wrapTarget)?.node.kind;
-    return kind === "paragraph" || kind === "condBlock" ? item : undefined;
+    const slot = env.ix.nodes.get(item.wrapTarget)?.slot;
+    return kind === "paragraph" || kind === "condBlock" || (kind === "bulletList" && slot !== "items") ? item : undefined;
   }
   if (a.do === "ops" && Array.isArray(a.ops) && a.ops.some((op) => op.type === "insert" && DROPPED_NODES.has(op.node.kind))) return undefined;
+  // 글머리 목록은 항 자리 · 호 뒤(항의 호 목록)에만 — 목 뒤(호의 목 목록) · 조건 가지 안 항목은 공용조항 본문에 없다 (clause/nodes.ts)
+  if (
+    a.do === "ops" &&
+    Array.isArray(a.ops) &&
+    a.ops.some((op) => op.type === "insert" && ((op.node.kind === "bulletList" && op.at.slot === "subitems") || (op.node.kind === "bullet" && env.ix.branches.has(op.at.parentId))))
+  )
+    return undefined;
   return item;
 }
 
@@ -161,8 +169,10 @@ export function withClauseRefusals(env: ClauseMenuEnv, sections: MenuSections): 
  */
 export function clauseCanHold(ix: TreeIndex, mode: ClauseMenuEnv["mode"]) {
   return (nodeId: Id): boolean => {
-    if (mode === "inline" || nodeId === CLAUSE_LINE_ID) return false;
-    const kind = ix.nodes.get(nodeId)?.node.kind;
-    return kind === "paragraph" || kind === "condBlock";
+    if (mode !== "block" || nodeId === CLAUSE_LINE_ID) return false;
+    const e = ix.nodes.get(nodeId);
+    const kind = e?.node.kind;
+    // 글머리 목록은 항 자리에 선 것만(호 뒤 목록은 조건 블록으로 감쌀 수 없다)
+    return kind === "paragraph" || kind === "condBlock" || (kind === "bulletList" && e?.slot !== "items");
   };
 }

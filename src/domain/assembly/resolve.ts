@@ -19,6 +19,8 @@
 
 import type {
   Block as ClauseBlock,
+  BulletListNode as ClauseBulletListNode,
+  BulletNode as ClauseBulletNode,
   BoxNode as ClauseBoxNode,
   CondBlockNode as ClauseCondBlockNode,
   Inline as ClauseInline,
@@ -59,7 +61,7 @@ type AnySubitem = ClauseSubitemNode | SubitemNode;
 type AnyItem = ItemNode | ClauseItemNode;
 type AnyParagraph = ParagraphNode | ClauseParagraphNode;
 type AnyBlock = AnyParagraph | AnyCond | ClauseBlockRefNode | ForBlockNode | ClauseBlock | ItemNode | SubitemNode | ArticleNode | SectionNode | TableNode | BoxNode | BulletListNode | BulletNode;
-type AnyStatic = TableNode | BoxNode | BulletListNode;
+type AnyStatic = TableNode | BoxNode | BulletListNode | ClauseBulletListNode;
 /** 가지 — 블록·인라인·공용조항 쪽 모두 이 모양이다. children 은 자리에 맞게 캐스팅한다. */
 interface Branch {
   id: Id;
@@ -266,7 +268,7 @@ class Walker {
     if (n.kind === "bulletList") {
       const inner = { ...f, path: [...f.path, n.id] };
       const errors: ErrorNode[] = [];
-      const bullets = (list: readonly (BulletNode | AnyCond)[], g: Frame): { id: Id; children: RInline[] }[] =>
+      const bullets = (list: readonly (BulletNode | ClauseBulletNode | AnyCond)[], g: Frame): { id: Id; children: RInline[] }[] =>
         list.flatMap((b) => {
           if (b.kind === "bullet") return [{ id: b.id, children: this.inlines(b.children, { ...g, path: [...g.path, b.id] }) }];
           const r = this.select(b.branches, g, b.id);
@@ -275,7 +277,7 @@ class Walker {
             return [];
           }
           if (r.kind === "none") return [];
-          return bullets(r.branch.children as (BulletNode | AnyCond)[], { ...g, path: [...g.path, b.id, r.branch.id] });
+          return bullets(r.branch.children as (BulletNode | ClauseBulletNode | AnyCond)[], { ...g, path: [...g.path, b.id, r.branch.id] });
         });
       const items = bullets(n.children, inner);
       return [...(items.length > 0 ? [{ kind: "bulletList" as const, id: n.id, items }] : []), ...errors];

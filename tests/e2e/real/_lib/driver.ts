@@ -603,7 +603,7 @@ export class ClauseAuthoringDriver {
       const title = root.getByRole("textbox", { name: "박스 제목" });
       await title.fill(box.title);
       await title.press("Enter");
-      const lines = root.getByRole("textbox", { name: "박스 줄 — 한 줄씩" });
+      const lines = root.getByRole("textbox", { name: "박스 줄" });
       await lines.focus();
       for (const [i, line] of box.lines.entries()) {
         if (i > 0) await this.page.keyboard.press("Enter");

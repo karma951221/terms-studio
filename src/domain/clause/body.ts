@@ -18,7 +18,7 @@ import type { Expr, TypeResolver } from "../expression";
 import { isReferenceConnector, ok, reject } from "../types";
 import type { Code, Coordinate, Id, Issue, Result } from "../types";
 import { BLOCK_KINDS, BOX_LINE_KINDS, HOST_PATH, INLINE_KINDS } from "./nodes";
-import type { Block, BoxNode, ClauseNode, Inline, InlineBranch, BlockBranch } from "./nodes";
+import type { Block, BoxNode, BulletListNode, ClauseNode, Inline, InlineBranch, BlockBranch } from "./nodes";
 import type { ClauseBody, ClauseMode, OptionDef, RequiredRefs } from "./types";
 
 // ───────────────────────────── 식 수집 ─────────────────────────────
@@ -46,11 +46,20 @@ export function collectExpressions(body: ClauseBody, basePath: Id[] = []): Colle
       }
     }
   };
+  const walkBullets = (list: BulletListNode, path: Id[]) => {
+    const lp = [...path, list.id];
+    for (const b of list.children ?? []) for (const c of b.children ?? []) walkInline(c, [...lp, b.id]);
+  };
   const walkBlock = (node: Block, path: Id[]) => {
     const here = [...path, node.id];
+    if (node.kind === "bulletList") return walkBullets(node, path);
     if (node.kind === "paragraph") {
       for (const c of node.children) walkInline(c, here);
       for (const it of node.items ?? []) {
+        if (it.kind === "bulletList") {
+          walkBullets(it, here);
+          continue;
+        }
         const ip = [...here, it.id];
         for (const c of it.children) walkInline(c, ip);
         for (const si of it.subitems ?? []) {
@@ -99,8 +108,10 @@ export function structuralIds(body: readonly Block[]): Id[] {
       for (const br of b.branches ?? []) for (const c of br.children ?? []) block(c);
       return;
     }
+    if (b.kind === "bulletList") return; // 글머리 목록은 번호가 없어 가리킬 수 없다
     out.push(b.id);
     for (const it of b.items ?? []) {
+      if (it.kind !== "item") continue;
       out.push(it.id);
       for (const si of it.subitems ?? []) out.push(si.id);
     }
@@ -274,13 +285,31 @@ export function analyzeBody(
     for (const c of list ?? []) checkInline(c, path, false);
   };
 
+  /** 글머리 목록 — 항목(한 줄 문장)이 하나 이상. 목록 안 조건 블록은 없다. */
+  const checkBullets = (node: BulletListNode, path: Id[]) => {
+    const here = [...path, node.id];
+    if (!Array.isArray(node.children) || node.children.length === 0) report("structure", "글머리 목록에는 항목이 하나 이상 있어야 합니다", here);
+    for (const b of node.children ?? []) {
+      if (b?.kind !== "bullet") {
+        kindError(b ?? {}, here, "글머리 항목");
+        continue;
+      }
+      checkInlines(b.children, [...here, b.id]);
+    }
+  };
+
   const checkBlock = (node: Block, path: Id[]) => {
     const here = [...path, node.id];
     if (!isBlockKind(String(node.kind))) return kindError(node, path, "블록(항)");
+    if (node.kind === "bulletList") return checkBullets(node, path);
     if (node.kind === "paragraph") {
       checkInlines(node.children, here);
       for (const it of node.items ?? []) {
         const ip = [...here, it.id];
+        if (it.kind === "bulletList") {
+          checkBullets(it, here);
+          continue;
+        }
         if (it.kind !== "item") {
           kindError(it, here, "호");
           continue;

@@ -25,7 +25,7 @@
 import type { Discriminator } from "../catalog/types";
 import { discriminatorResultType } from "../catalog/expression";
 import { allMasterFields, masterFieldFullLabel, type MasterTree } from "../master";
-import type { Block, BoxNode, ClauseNode, Inline } from "../clause/nodes";
+import type { Block, BoxNode, BulletListNode, ClauseNode, Inline } from "../clause/nodes";
 import { collectExpressions } from "../clause/body";
 import type { Clause } from "../clause/types";
 import { nodesOf } from "../coverage/tree";
@@ -263,12 +263,25 @@ function walkClauseNodes(body: readonly (Inline | Block | BoxNode)[], basePath: 
     visit(n, here);
     if (n.kind === "inlineCond") for (const br of n.branches) for (const c of br.children) inline(c, [...here, br.id]);
   };
+  const bullets = (n: BulletListNode, path: Id[]) => {
+    const here = [...path, n.id];
+    visit(n, here);
+    for (const b of n.children) {
+      visit(b, [...here, b.id]);
+      for (const c of b.children) inline(c, [...here, b.id]);
+    }
+  };
   const block = (n: Block, path: Id[]) => {
+    if (n.kind === "bulletList") return bullets(n, path);
     const here = [...path, n.id];
     visit(n, here);
     if (n.kind === "paragraph") {
       for (const c of n.children) inline(c, here);
       for (const it of n.items ?? []) {
+        if (it.kind === "bulletList") {
+          bullets(it, here);
+          continue;
+        }
         const ip = [...here, it.id];
         visit(it, ip);
         for (const c of it.children) inline(c, ip);
@@ -286,7 +299,7 @@ function walkClauseNodes(body: readonly (Inline | Block | BoxNode)[], basePath: 
     if (n.kind === "box") {
       visit(n, [...basePath, n.id]);
       for (const l of n.lines) for (const c of l.children) inline(c, [...basePath, n.id, l.id]);
-    } else if (n.kind === "paragraph" || n.kind === "condBlock") block(n, basePath);
+    } else if (n.kind === "paragraph" || n.kind === "condBlock" || n.kind === "bulletList") block(n, basePath);
     else inline(n, basePath);
   }
 }

@@ -261,10 +261,12 @@ export function placeOptions(body: Block[], placements: readonly OptionPlacement
       });
     const block = (b: Block): Block => {
       if (b.kind === "condBlock") return { ...b, branches: b.branches.map((br) => ({ ...br, children: br.children.map(block) })) };
+      // 실물 공용조항 본문에는 글머리 목록이 없다 — 옵션 자리 찾기는 항 · 호 · 목만
+      if (b.kind === "bulletList") return b;
       return {
         ...b,
         children: visit(b.children),
-        ...(b.items ? { items: b.items.map((it) => ({ ...it, children: visit(it.children), ...(it.subitems ? { subitems: it.subitems.map((u) => ({ ...u, children: visit(u.children) })) } : {}) })) } : {}),
+        ...(b.items ? { items: b.items.map((it) => (it.kind === "bulletList" ? it : { ...it, children: visit(it.children), ...(it.subitems ? { subitems: it.subitems.map((u) => ({ ...u, children: visit(u.children) })) } : {}) })) } : {}),
       };
     };
     body.splice(0, body.length, ...body.map(block));
@@ -365,9 +367,9 @@ export function localizeClause(theirs: readonly ClauseParagraph[], mine: readonl
     if (!m) return;
     map.set(c.id, m.id);
     const mItems = (m.items ?? []).filter((x) => x.kind === "item");
-    (c.items ?? []).forEach((it, i) => {
+    (c.items ?? []).filter((x) => x.kind === "item").forEach((it, i) => {
       const mi = mItems[i];
-      if (!mi || mi.kind !== "item") return;
+      if (!mi || mi.kind !== "item" || it.kind !== "item") return;
       map.set(it.id, mi.id);
       const mSubs = (mi.subitems ?? []).filter((x) => x.kind === "subitem");
       (it.subitems ?? []).forEach((u, j) => {
@@ -427,8 +429,8 @@ function applyBlockUse(
       return false;
     }
     for (const [i, it] of items.entries()) {
-      if (it.kind !== "item") return false;
       const cit = citems[i];
+      if (it.kind !== "item" || cit.kind !== "item") return false;
       const subs = it.subitems ?? [];
       const csubs = cit.subitems ?? [];
       const bad =

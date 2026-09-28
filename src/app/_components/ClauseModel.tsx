@@ -13,7 +13,7 @@
  */
 import { Fragment, type ReactNode } from "react";
 
-import type { ArticleRefNode, Block, Clause, Inline, ItemNode, SubitemNode } from "@/domain/clause";
+import type { ArticleRefNode, Block, BulletListNode, Clause, Inline, ItemNode, SubitemNode } from "@/domain/clause";
 import { clauseBodyToTree, clauseInlineToTree, clausePositions, clauseScopedRefLabel, numberTree, referenceChunkLabel, type NodeNumber, type ReferenceTarget } from "@/domain/document";
 import type { Code, Id } from "@/domain/types";
 
@@ -135,15 +135,34 @@ function Num({ id, ctx }: { id: Id; ctx: Ctx }) {
   return label ? <span className="ts-doc-num">{label} </span> : null;
 }
 
-function Items({ nodes, ctx }: { nodes: readonly ItemNode[]; ctx: Ctx }) {
+/** 글머리 목록 — 번호 없는 「-」 항목. */
+function Bullets({ node, ctx }: { node: BulletListNode; ctx: Ctx }) {
+  return (
+    <ul className="ts-doc-bullets">
+      {node.children.map((b) => (
+        <li key={b.id} className="ts-doc-bullet">
+          <Inlines nodes={b.children} ctx={ctx} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Items({ nodes, ctx }: { nodes: readonly (ItemNode | BulletListNode)[]; ctx: Ctx }) {
   return (
     <ol className="ts-doc-items">
-      {nodes.map((item) => (
+      {nodes.map((item) =>
+        item.kind === "bulletList" ? (
+          <li key={item.id} className="ts-doc-static-item">
+            <Bullets node={item} ctx={ctx} />
+          </li>
+        ) : (
         <li key={item.id} className="ts-doc-item">
           <Inlines nodes={item.children} ctx={ctx} />
           {(item.subitems ?? []).length > 0 && <Subitems nodes={item.subitems ?? []} ctx={ctx} />}
         </li>
-      ))}
+        ),
+      )}
     </ol>
   );
 }
@@ -162,6 +181,7 @@ function Subitems({ nodes, ctx }: { nodes: readonly SubitemNode[]; ctx: Ctx }) {
 
 function Blocks({ nodes, ctx }: { nodes: readonly Block[]; ctx: Ctx }): ReactNode {
   return nodes.map((node) => {
+    if (node.kind === "bulletList") return <Bullets key={node.id} node={node} ctx={ctx} />;
     if (node.kind === "paragraph") {
       return (
         <div key={node.id} className={ctx.numbers.get(node.id)?.label ? "ts-doc-paragraph" : "ts-doc-paragraph is-bare"}>

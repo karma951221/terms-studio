@@ -129,7 +129,7 @@ export const DOC_TOOLS: ToolGroup[] = [
 ];
 
 /** 공용조항 본문에 없는 도구 — 공용조항 툴바에서 빠진다 (기능/공용조항 §4.3). 조 · 관 · 공용조항은 남고 잠긴다(사유 tooltip). */
-const CLAUSE_HIDDEN = new Set<ToolId>(["table", "bulletList", "structKey", "tableProps", "repeat", "link"]);
+const CLAUSE_HIDDEN = new Set<ToolId>(["table", "structKey", "tableProps", "repeat", "link"]);
 
 export const CLAUSE_TOOLS: ToolGroup[] = DOC_TOOLS.map((g) => ({ ...g, tools: g.tools.filter((t) => !CLAUSE_HIDDEN.has(t.id)) })).filter((g) => g.tools.length > 0);
 
