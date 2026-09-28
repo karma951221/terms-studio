@@ -190,7 +190,7 @@ export function InlineSlot({
   ctx,
   owner,
   focusKey,
-  placeholder = "문장을 쓴다",
+  placeholder = "문장",
 }: {
   at: InlineAt;
   nodes: readonly InlineNode[];

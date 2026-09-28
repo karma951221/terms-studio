@@ -64,13 +64,13 @@ test(
 
     await ev.action("툴바#5", "툴바 「항」으로 항을 넣고 문장을 쓴다 — 커서가 새 항으로 간다", async () => {
       await tool("항").click();
-      const paragraph = body.getByRole("textbox", { name: "항 — 문장을 쓴다" });
+      const paragraph = body.getByRole("textbox", { name: "항", exact: true });
       await expect(paragraph).toBeFocused();
       await paragraph.fill("회사는 피보험자가 보험기간 중 상해로 사망한 경우 보험금을 지급합니다.");
     });
 
     await ev.action("툴바#6", "오른쪽 클릭 메뉴에는 조건 넣기(조건으로 감싸기 · 문장 안 조건)가 없다", async () => {
-      await body.getByRole("textbox", { name: "항 — 문장을 쓴다" }).click({ button: "right" });
+      await body.getByRole("textbox", { name: "항", exact: true }).click({ button: "right" });
       await expect(page.getByRole("menuitem", { name: "치환 슬롯…" })).toBeVisible();
       await expect(page.getByRole("menuitem", { name: "조건으로 감싸기…" })).toHaveCount(0);
       await expect(page.getByRole("menuitem", { name: "문장 안 조건…" })).toHaveCount(0);
@@ -79,7 +79,7 @@ test(
     });
 
     await ev.action("툴바#7", "항을 고른 채 「조건식」 — 팝업 없이 항이 조건 블록 안에 서고, 빈 IF 줄 첫 칸에 초점이 간다", async () => {
-      await body.getByRole("textbox", { name: "항 — 문장을 쓴다" }).click();
+      await body.getByRole("textbox", { name: "항", exact: true }).click();
       await expect(toolbar).toContainText("자리 — ");
       await expect(tool("조건식")).toBeEnabled();
       await tool("조건식").click();
@@ -88,7 +88,7 @@ test(
       await expect(head).toHaveCount(1);
       await expect(head.locator(".ts-cond-badge")).toHaveText("IF");
       await expect(head.getByRole("combobox", { name: "IF 1번 줄 변수" })).toBeFocused();
-      await expect(body.getByRole("textbox", { name: "항 — 문장을 쓴다" })).toHaveText("회사는 피보험자가 보험기간 중 상해로 사망한 경우 보험금을 지급합니다.");
+      await expect(body.getByRole("textbox", { name: "항", exact: true })).toHaveText("회사는 피보험자가 보험기간 중 상해로 사망한 경우 보험금을 지급합니다.");
     });
 
     await ev.action("툴바#8", "머리 줄에서 변수 · 연산자 · 값을 고른다 — 가지 조작이 켜지고, 저장 한 번 · 새로 읽으면 초록 상자 안 IF 한 줄", async () => {
@@ -125,7 +125,7 @@ test(
       await expect(page.getByLabel("공용조항명")).toBeVisible();
       await expect(page.getByRole("radio", { name: /^문구/ })).toBeChecked();
       await expect(page.getByRole("toolbar", { name: "약관 편집 도구" })).toBeVisible();
-      await expect(page.getByRole("textbox", { name: /여기에 문구를 쓴다/ })).toBeVisible();
+      await expect(page.getByRole("textbox", { name: "문구", exact: true })).toBeVisible();
     });
 
     const toolbar = page.getByRole("toolbar", { name: "약관 편집 도구" });
@@ -134,12 +134,12 @@ test(
     await ev.action("공용조항생성#3", "본문을 쓰기 전이라 유형을 「항」으로 바꿀 수 있다 — 빈 항 하나가 쓸 자리로 선다", async () => {
       await page.getByRole("radio", { name: /^항/ }).check();
       await expect(page.getByRole("radio", { name: /^항/ })).toBeChecked();
-      await expect(page.locator(".ts-clause-editor").getByRole("textbox", { name: "항 — 문장을 쓴다" })).toHaveCount(1);
+      await expect(page.locator(".ts-clause-editor").getByRole("textbox", { name: "항", exact: true })).toHaveCount(1);
     });
 
     await ev.action("공용조항생성#4", "공용조항명과 항 문장을 쓴다 — 쓰기 시작하면 유형이 잠긴다", async () => {
       await page.getByLabel("공용조항명").fill(CLAUSE_NAME);
-      const paragraph = page.locator(".ts-clause-editor").getByRole("textbox", { name: "항 — 문장을 쓴다" });
+      const paragraph = page.locator(".ts-clause-editor").getByRole("textbox", { name: "항", exact: true });
       await paragraph.click();
       await paragraph.fill("다음의 경우에는 보험금을 지급하지 않습니다. 사유: ");
       await paragraph.press("Tab");
@@ -156,7 +156,7 @@ test(
     });
 
     await ev.action("공용조항생성#6", "항 문장 끝에 커서를 두고 툴바 「옵션 자리」 — 〔제한 사유〕 칩이 선다", async () => {
-      const paragraph = page.locator(".ts-clause-editor").getByRole("textbox", { name: "항 — 문장을 쓴다" });
+      const paragraph = page.locator(".ts-clause-editor").getByRole("textbox", { name: "항", exact: true });
       await paragraph.click();
       await paragraph.press("End");
       await tool("옵션 자리").click();
@@ -165,7 +165,7 @@ test(
 
     await ev.action("공용조항생성#6b", "항을 고른 채 「조건식」 — 팝업 없이 항이 조건 블록 안에 서고, 머리 줄에서 조건을 고른다", async () => {
       const editor = page.locator(".ts-clause-editor");
-      await editor.getByRole("textbox", { name: "항 — 문장을 쓴다" }).click();
+      await editor.getByRole("textbox", { name: "항", exact: true }).click();
       await tool("조건식").click();
       await expect(page.locator("dialog[open]")).toHaveCount(0);
       const head = editor.locator("[data-cond-head]");

@@ -238,10 +238,10 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
       });
       await ev.action("실물재현#2.5", "조 제목을 오른쪽 클릭해 항을 넣는다 — 커서가 새 항으로 간다", async () => {
         await menu(page.getByRole("heading", { name: "제1조(목적)" }), "항 추가");
-        await expect(body.getByRole("textbox", { name: "항 — 문장을 쓴다" })).toBeFocused();
+        await expect(body.getByRole("textbox", { name: "항", exact: true })).toBeFocused();
       });
       await ev.action("실물재현#2.6", "항에 본문을 그 자리에서 쓴다", async () => {
-        const paragraph = body.getByRole("textbox", { name: "항 — 문장을 쓴다" });
+        const paragraph = body.getByRole("textbox", { name: "항", exact: true });
         await paragraph.fill(
           "이 보험계약(이하 「계약」이라 합니다)은 보험계약자(이하 「계약자」라 합니다)와 보험회사(이하 「회사」라 합니다) 사이에 피보험자의 상해에 대한 위험을 보장하기 위하여 체결됩니다.",
         );

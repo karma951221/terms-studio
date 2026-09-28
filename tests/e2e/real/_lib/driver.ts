@@ -523,13 +523,13 @@ export class DocumentAuthoring {
 
   /** 막 넣은 빈 박스(제목 · 줄이 빈 것)를 채운다. */
   private async fillBox(node: Node & { kind: "box" }): Promise<void> {
-    const empty = () => this.article.locator("aside.ts-doc-box").filter({ has: this.page.locator('[aria-label="박스 줄 — 한 줄씩"]:empty') });
+    const empty = () => this.article.locator("aside.ts-doc-box").filter({ has: this.page.locator('[aria-label="박스 줄"]:empty') });
     await expect(empty()).toHaveCount(1);
     // 새 박스는 제목 「용어풀이」로 선다 — 원문 제목(없으면 빈 제목)으로 고친다
     const title = empty().getByRole("textbox", { name: "박스 제목" });
     await title.fill(node.title);
     await title.press("Enter");
-    const lines = empty().getByRole("textbox", { name: "박스 줄 — 한 줄씩" });
+    const lines = empty().getByRole("textbox", { name: "박스 줄" });
     await lines.focus();
     for (const [i, line] of node.lines.entries()) {
       if (i > 0) await this.page.keyboard.press("Enter");
@@ -602,16 +602,16 @@ export class ClauseAuthoringDriver {
   async body(mode: "inline" | "block", body: readonly unknown[]): Promise<void> {
     const root = this.editor.root;
     if (mode === "inline") {
-      await this.editor.fillInline(root.getByRole("textbox", { name: /여기에 문구를 쓴다/ }), body as SeedInline[]);
+      await this.editor.fillInline(root.getByRole("textbox", { name: "문구", exact: true }), body as SeedInline[]);
       return;
     }
     for (const [i, node] of (body as Node[]).entries()) {
       if (node.kind !== "paragraph" || (node.items ?? []).length > 0) throw new Error("이 E2E 의 「항」 공용조항은 호 없는 항뿐이다");
       if (i > 0) {
-        await root.getByRole("textbox", { name: "항 — 문장을 쓴다" }).nth(i - 1).focus();
+        await root.getByRole("textbox", { name: "항", exact: true }).nth(i - 1).focus();
         await this.editor.runTool("항");
       }
-      await this.editor.fillInline(root.getByRole("textbox", { name: "항 — 문장을 쓴다" }).nth(i), node.children as SeedInline[]);
+      await this.editor.fillInline(root.getByRole("textbox", { name: "항", exact: true }).nth(i), node.children as SeedInline[]);
     }
   }
 

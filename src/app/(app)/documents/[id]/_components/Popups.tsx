@@ -258,7 +258,7 @@ function InlineCondPopup({ env, nodeId, anchor, onClose }: { env: PopupEnv; node
                 />
               )}
               <div className="ts-pop-branch-body ts-doc">
-                <InlineSlot at={{ parentId: br.id }} nodes={br.children} ctx={env.ctx} placeholder={br.when === undefined ? "그 밖의 경우 문장" : "참일 때 문장"} />
+                <InlineSlot at={{ parentId: br.id }} nodes={br.children} ctx={env.ctx} placeholder={br.when === undefined ? "그 밖의 경우" : "참일 때"} />
               </div>
             </div>
           );

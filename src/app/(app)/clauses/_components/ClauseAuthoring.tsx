@@ -667,7 +667,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
                     <EmptyBody mode={clauseMode} />
                   ) : clauseMode === "inline" ? (
                     <div className="ts-doc-paragraph is-line">
-                      <InlineSlot at={{ parentId: CLAUSE_LINE_ID }} nodes={lineNodes} ctx={ctx} placeholder="여기에 문구를 쓴다 — 예: 보험금을 지급하지 않습니다" />
+                      <InlineSlot at={{ parentId: CLAUSE_LINE_ID }} nodes={lineNodes} ctx={ctx} placeholder="문구" />
                     </div>
                   ) : blockNodes.length === 0 ? (
                     <div className="ts-empty">

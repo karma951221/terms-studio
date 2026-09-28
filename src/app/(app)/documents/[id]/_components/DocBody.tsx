@@ -206,7 +206,7 @@ function Box({ node, ctx }: { node: Node & { kind: "box" }; ctx: DocCtx }) {
         【<EditableText value={node.title} editing={!!edit} label="박스 제목" onCommit={(title) => edit?.setBox(node.id, title, node.lines)} />】
       </p>
       {edit ? (
-        <EditableText value={node.lines.join("\n")} editing multiline label="박스 줄 — 한 줄씩" className="ts-doc-box-line" onCommit={(text) => edit.setBox(node.id, node.title, parseLines(text))} />
+        <EditableText value={node.lines.join("\n")} editing multiline label="박스 줄" className="ts-doc-box-line" onCommit={(text) => edit.setBox(node.id, node.title, parseLines(text))} />
       ) : (
         node.lines.map((l, i) => (
           <p key={i} className="ts-doc-box-line">
@@ -330,7 +330,7 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
         const num = ctx.numbers.get(node.id);
         return (
           <div key={node.id} className={`ts-doc-paragraph${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
-            {num?.label ? <span className="ts-doc-num">{num.label}</span> : null} <InlineSlot at={{ parentId: node.id }} nodes={node.children} ctx={ctx} owner={node.id} placeholder="항 — 문장을 쓴다" />
+            {num?.label ? <span className="ts-doc-num">{num.label}</span> : null} <InlineSlot at={{ parentId: node.id }} nodes={node.children} ctx={ctx} owner={node.id} placeholder="항" />
             {(node.items ?? []).length > 0 && (
               <ol className="ts-doc-items">
                 <Block nodes={node.items ?? []} ctx={ctx} inList />
@@ -343,7 +343,7 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
       case "item":
         return (
           <li key={node.id} className={`ts-doc-item${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
-            <InlineSlot at={{ parentId: node.id }} nodes={node.children} ctx={ctx} owner={node.id} placeholder="호 — 문장을 쓴다" />
+            <InlineSlot at={{ parentId: node.id }} nodes={node.children} ctx={ctx} owner={node.id} placeholder="호" />
             {(node.subitems ?? []).length > 0 && (
               <ol className="ts-doc-subitems">
                 <Block nodes={node.subitems ?? []} ctx={ctx} inList />
@@ -355,7 +355,7 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
       case "subitem":
         return (
           <li key={node.id} className={`ts-doc-subitem${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
-            <InlineSlot at={{ parentId: node.id }} nodes={node.children} ctx={ctx} owner={node.id} placeholder="목 — 문장을 쓴다" />
+            <InlineSlot at={{ parentId: node.id }} nodes={node.children} ctx={ctx} owner={node.id} placeholder="목" />
           </li>
         );
 
