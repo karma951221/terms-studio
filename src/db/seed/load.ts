@@ -48,9 +48,19 @@ export function clausesUsedByGenerals(): Set<Code> {
   return new Set((generals as unknown as Array<{ tree: DocumentNode }>).flatMap((g) => [...JSON.stringify(g.tree).matchAll(/"clauseCode":"(C\d+)"/g)].map((m) => m[1])));
 }
 
-/** 보통약관 조를 가리키는 공용조항인가 — 그 조가 있어야 정의 검사 ① 을 통과하므로 보통약관 뒤에 만든다 (기능/공용조항 §3.4). */
-function refsGeneral(raw: ClauseRaw): boolean {
-  return JSON.stringify(raw).includes('"kind":"articleRef"');
+/**
+ * 보통약관 조를 가리키는 공용조항인가 — 그 조가 있어야 정의 검사 ① 을 통과하므로 보통약관 뒤에 만든다 (기능/공용조항 §3.4).
+ * 범위 있는 조 참조(제 항 · 사용처 위치)는 보통약관이 없어도 성립한다.
+ */
+export function refsGeneral(raw: unknown): boolean {
+  const visit = (n: unknown): boolean => {
+    if (Array.isArray(n)) return n.some(visit);
+    if (!n || typeof n !== "object") return false;
+    const node = n as Record<string, unknown>;
+    if (node.kind === "articleRef" && node.scope === undefined) return true;
+    return Object.values(node).some(visit);
+  };
+  return visit(raw);
 }
 
 async function createClause(services: Services, actor: Actor, raw: ClauseRaw): Promise<void> {

@@ -5,7 +5,7 @@
  *   2026-09-12 이후 부착(노출여부)이 없어 「값 자리가 없어서 미부착」인 경우가 사라졌다 (ADR-0037) —
  *   남는 것은 **카탈로그에 없는 구분자**(깨진 참조)뿐이다. `missing` 은 항상 비어 있고 자리만 남겨 둔다.
  * - `validateOptionSelection` · `resolveOptions` : 옵션 선택 검증 · 오버라이드 해소 (기능/공용조항 §3.2 · 기능/상품 §3.6).
- * - `expandClause` : 인라인화 — 옵션 자리를 선택지 본문으로 치환한 노드 배열. 조건은 해소하지 않는다.
+ * - `expandClause` : 인라인화 — 옵션 자리를 선택지 본문으로 치환한 노드 배열 · 제 항 / 사용처 조 참조를 사용처 노드 id 로. 조건은 해소하지 않는다.
  * - `recheckUsages` : 정의 수정 후 사용처 전부 재검사 (ADR-0010 결정 5 · 기능/공용조항 §3.2).
  */
 import type { Discriminator } from "../catalog/types";
@@ -101,11 +101,20 @@ export function resolveOptions(
 
 // ───────────────────────────── 인라인화 ─────────────────────────────
 
+/** 사용처 위치 경로(`"2.1.3"`) → 사용처 문서의 노드 id. 못 찾으면 undefined — 조립이 사용처 트리로 만든다. */
+export type HostLocator = (path: string) => Id | undefined;
+
+/** 풀지 못한 사용처 위치의 표식 — 렌더가 대상을 못 찾아 `articleGone` 이 된다(좌표의 refPath 로 보인다). */
+export const UNRESOLVED_HOST_PREFIX = "host:";
+
 /**
  * 옵션 자리를 선택지 본문으로 치환한 새 노드 배열. 모든 노드 id 는 `${refNodeId}/${원노드id}`.
+ * 조 참조의 대상도 사용처 좌표로 바꾼다 (기능/공용조항 §3.5) — 「이 공용조항」(`scope: "clause"`) 대상은 펼친 노드 id 로,
+ * 「사용처」(`scope: "host"`) 위치는 `host` 가 푼 사용처 노드 id 로(못 풀면 `host:<경로>`). 범위 표시는 남는다 — 펼친 뒤에는
+ * 둘 다 사용처 문서 안의 대상이다(조립은 문서 자기 참조로 렌더한다).
  * 조건은 해소하지 않는다 — 문맥은 사용처(조립·사전평가) 몫.
  */
-export function expandClause(clause: Clause, selection: OptionSelection, refNodeId: Id): Result<ClauseBody> {
+export function expandClause(clause: Clause, selection: OptionSelection, refNodeId: Id, host?: HostLocator): Result<ClauseBody> {
   const issues = validateOptionSelection(clause, selection);
   if (issues.length > 0) return reject({ reason: "invalid", issues });
 
@@ -124,6 +133,10 @@ export function expandClause(clause: Clause, selection: OptionSelection, refNode
         return inlines(valueBody(n.optionCode), `${scope}${n.id}/`);
       case "inlineCond":
         return [{ ...n, id: nid(scope + n.id), branches: n.branches.map((b): InlineBranch => ({ ...b, id: nid(scope + b.id), children: inlines(b.children, scope) })) }];
+      case "articleRef":
+        if (n.scope === "clause") return [{ ...n, id: nid(scope + n.id), targets: n.targets.map((t) => ({ nodeId: nid(t.nodeId) })) }];
+        if (n.scope === "host") return [{ ...n, id: nid(scope + n.id), targets: n.targets.map((t) => ({ nodeId: host?.(t.nodeId) ?? `${UNRESOLVED_HOST_PREFIX}${t.nodeId}` })) }];
+        return [{ ...n, id: nid(scope + n.id) }];
       default:
         return [{ ...n, id: nid(scope + n.id) }];
     }

@@ -58,7 +58,8 @@ export function subitemLabel(n: number): string {
 
 /** 조 참조 슬롯 표기 — 「제N조(조 명)」. */
 export function articleRefLabel(n: number, title: string): string {
-  return `${articleLabel(n)}(${title})`;
+  // 제목 없는 조(공용조항 에디터의 「사용처」 위치 후보)는 번호만
+  return title === "" ? articleLabel(n) : `${articleLabel(n)}(${title})`;
 }
 
 export interface ReferencePart {

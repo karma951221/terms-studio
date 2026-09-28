@@ -229,3 +229,32 @@ describe("공용조항 S3 — 수정 시 기존 사용처 재검사", () => {
     expect(recheckUsages(준용규정, noSel, lookup)).toEqual([]);
   });
 });
+
+describe("expandClause — 제 항 · 사용처 위치 조 참조를 사용처 노드 id 로 (§3.5)", () => {
+  const 소멸: BlockClause = {
+    code: "C0009",
+    label: "특별약관의 소멸",
+    mode: "block",
+    options: [],
+    required: { discriminators: [], attributes: [] },
+    body: [
+      { id: "p1", kind: "paragraph", children: [{ id: "r1", kind: "articleRef", targets: [{ nodeId: "1" }], connector: "및", scope: "host" }] },
+      { id: "p2", kind: "paragraph", children: [{ id: "r2", kind: "articleRef", targets: [{ nodeId: "p1" }], connector: "및", scope: "clause" }] },
+      { id: "p3", kind: "paragraph", children: [{ id: "r3", kind: "articleRef", targets: [{ nodeId: "g-a5" }], connector: "및" }] },
+    ],
+  };
+
+  it("제 항 대상은 펼친 노드 id · 사용처 위치는 사용처가 푼 id · 보통약관 대상은 그대로", () => {
+    const body = unwrap(expandClause(소멸, {}, "ref", (path) => (path === "1" ? "s-a1" : undefined))) as Block[];
+    const refOf = (b: Block) => (b.kind === "paragraph" ? b.children[0] : undefined);
+    expect(refOf(body[0])).toMatchObject({ id: "ref/r1", scope: "host", targets: [{ nodeId: "s-a1" }] });
+    expect(refOf(body[1])).toMatchObject({ id: "ref/r2", scope: "clause", targets: [{ nodeId: "ref/p1" }] });
+    expect(body[1].kind === "paragraph" && body[0].id).toBe("ref/p1");
+    expect(refOf(body[2])).toEqual({ id: "ref/r3", kind: "articleRef", targets: [{ nodeId: "g-a5" }], connector: "및" });
+  });
+
+  it("사용처가 위치를 못 풀면 `host:<경로>` — 조립 렌더가 사라진 대상(articleGone)으로 알린다", () => {
+    const body = unwrap(expandClause(소멸, {}, "ref")) as Block[];
+    expect(body[0].kind === "paragraph" && body[0].children[0]).toMatchObject({ targets: [{ nodeId: "host:1" }] });
+  });
+});

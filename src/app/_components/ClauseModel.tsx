@@ -14,14 +14,14 @@
 import { Fragment, type ReactNode } from "react";
 
 import type { ArticleRefNode, Block, Clause, Inline, ItemNode, SubitemNode } from "@/domain/clause";
-import { clauseBodyToTree, numberTree, referenceChunkLabel, type NodeNumber, type ReferenceTarget } from "@/domain/document";
+import { clauseBodyToTree, clauseInlineToTree, clausePositions, clauseScopedRefLabel, numberTree, referenceChunkLabel, type NodeNumber, type ReferenceTarget } from "@/domain/document";
 import type { Code, Id } from "@/domain/types";
 
 export interface ClauseModelProps {
   clause: Clause;
   /** 이 사용처가 고른 선택지 — 옵션 코드 → 선택지 코드 (마스터 기본 위에 오버라이드를 얹은 결과). */
   selected: Readonly<Record<Code, Code>>;
-  /** 조 참조 대상 — 공용조항은 보통약관 조만 가리킨다 (기능/공용조항 §3.5). 노드 id → 번호가 매겨진 대상. */
+  /** 보통약관 조 참조 대상 — 노드 id → 번호가 매겨진 대상. 제 항 · 사용처 위치 참조는 본문 순번으로 적는다 (기능/공용조항 §3.5). */
   references: ReadonlyMap<Id, ReferenceTarget>;
   /** 별표 코드 → 이름. 모르면 코드만. */
   appendixName?: (code: Code) => string | undefined;
@@ -31,11 +31,15 @@ export interface ClauseModelProps {
 
 interface Ctx extends ClauseModelProps {
   numbers: ReadonlyMap<Id, NodeNumber>;
+  positions: ReadonlyMap<Id, number[]>;
 }
 
 const expr = (ctx: Ctx, source: string) => (ctx.exprText ? ctx.exprText(source) : source);
 
 function articleRefText(node: ArticleRefNode, ctx: Ctx): string {
+  // 제 항 · 사용처 위치 참조 — 본문 안 순번으로 (사용처에서는 펼친 자리의 계산 번호로 찍힌다)
+  const scoped = clauseScopedRefLabel(clauseInlineToTree(node), ctx.positions);
+  if (scoped !== undefined) return scoped;
   const alive: ReferenceTarget[] = [];
   let broken = 0;
   for (const { nodeId } of node.targets) {
@@ -181,7 +185,8 @@ function Blocks({ nodes, ctx }: { nodes: readonly Block[]; ctx: Ctx }): ReactNod
 
 export function ClauseModel(props: ClauseModelProps) {
   const { clause } = props;
-  const ctx: Ctx = { ...props, numbers: numberTree(clauseBodyToTree(clause.mode, clause.body, clause.label)) };
+  const tree = clauseBodyToTree(clause.mode, clause.body, clause.label);
+  const ctx: Ctx = { ...props, numbers: numberTree(tree), positions: clausePositions(tree) };
   if (clause.body.length === 0) return <p className="ts-muted">본문이 비어 있다.</p>;
   return (
     <div className="ts-clause-model" aria-label={`공용조항 ${clause.label} 모델`}>

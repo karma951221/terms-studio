@@ -14,6 +14,7 @@ import { IconButton, IconTrash } from "@/app/_components/icons";
 import { DOC_KIND_LABEL, REPEAT_DEPTH_LABEL, STRUCT_KEY_CHIP } from "@/app/_lib/labels";
 import type { Clause } from "@/domain/clause";
 import {
+  HOST_TARGET_PREFIX,
   indexTree,
   nodeBuilders,
   referenceTargetLabel,
@@ -88,12 +89,33 @@ function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode })
   // 고른 연결어 — 대상이 하나로 줄었다 다시 늘어도 기억한다 (고치기면 저장된 값에서 시작)
   const [connector, setConnector] = useState<ReferenceConnector>(node?.connector ?? "및");
   const joins = count >= 2;
-  // 범위가 고정이면(공용조항 — 보통약관 조만) 범위 고르기 · 이 템플릿 후보가 없다
-  const fixed = ctx.articleRefScope;
+  // 범위를 화면이 정하면(공용조항 — 보통약관 · 이 공용조항 · 사용처) 그 목록이 범위 고르기, 고른 범위의 후보만 선다
+  const choices = ctx.articleRefChoices;
+  const [choice, setChoice] = useState(() => initialChoice(choices, node));
+  const picked = choices?.find((c) => c.value === choice);
   return (
     <>
-      {fixed && <input type="hidden" name="scope" value={fixed} />}
-      {!fixed && ctx.docKind === "special" && (
+      {choices && (
+        <div className="ts-form-row">
+          <label htmlFor="pop-ref-scope">범위</label>
+          <select
+            id="pop-ref-scope"
+            name="scope"
+            value={choice}
+            onChange={(e) => {
+              setChoice(e.target.value);
+              setCount(0);
+            }}
+          >
+            {choices.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      {!choices && ctx.docKind === "special" && (
         <div className="ts-form-row">
           <label htmlFor="pop-ref-scope">범위</label>
           <select id="pop-ref-scope" name="scope" defaultValue={node?.scope ?? "self"}>
@@ -105,12 +127,13 @@ function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode })
       <div className="ts-form-row ts-form-full">
         <label htmlFor="pop-ref-targets">참조 대상 (여럿 고를 수 있다)</label>
         <RefTargetTree
+          key={choice}
           id="pop-ref-targets"
-          defaultSelected={node?.targets.map((t) => t.nodeId) ?? []}
+          defaultSelected={node && initialChoice(choices, node) === choice ? node.targets.map((t) => t.nodeId) : []}
           onCountChange={setCount}
           scopes={
-            fixed
-              ? [{ key: "general", label: "보통약관", index: ctx.references.general }]
+            picked
+              ? [{ key: picked.value, label: picked.label, index: picked.index, ...(picked.rootless ? { rootless: true } : {}) }]
               : ctx.docKind === "special"
                 ? [
                     { key: "self", label: "이 템플릿", index: ctx.references.self },
@@ -142,6 +165,15 @@ function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode })
   );
 }
 
+/** 범위 목록이 있을 때 처음 고른 범위 — 고치기면 그 참조의 범위(`host:` 대상이면 사용처), 넣기면 첫 범위. */
+function initialChoice(choices: DocCtx["articleRefChoices"], node?: ArticleRefNode): string {
+  if (!choices || choices.length === 0) return "";
+  if (!node) return choices[0].value;
+  const host = node.targets.length > 0 && node.targets.every((t) => t.nodeId.startsWith(HOST_TARGET_PREFIX));
+  const want = node.scope === "self" ? "self" : host ? "host" : "general";
+  return choices.some((c) => c.value === want) ? want : choices[0].value;
+}
+
 function articleRefOf(fd: FormData): { targets: { nodeId: Id }[]; connector: ReferenceConnector; scope: ArticleRefNode["scope"] } {
   const targets = fd
     .getAll("targets")
@@ -150,7 +182,9 @@ function articleRefOf(fd: FormData): { targets: { nodeId: Id }[]; connector: Ref
     .map((nodeId) => ({ nodeId }));
   // 대상이 하나 이하면 라디오가 꺼져 값이 오지 않는다 — 도메인 기본값 「및」(표기에 안 나온다)을 둔다
   const connector = targets.length >= 2 ? str(fd, "connector") : "";
-  return { targets, connector: isReferenceConnector(connector) ? (connector as ReferenceConnector) : "및", scope: str(fd, "scope") === "general" ? "general" : "self" };
+  // 사용처 위치(`host`)는 편집 트리에서 보통약관 참조 자리로 운반한다 (clauseTree)
+  const scope = str(fd, "scope");
+  return { targets, connector: isReferenceConnector(connector) ? (connector as ReferenceConnector) : "및", scope: scope === "general" || scope === "host" ? "general" : "self" };
 }
 
 /** 공용조항 칸 — 공용조항을 고르면 그 옵션마다 선택지. 옵션 선택은 사용처(이 문서) 소유다 (기능/공용조항 §3.2). */

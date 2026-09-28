@@ -250,3 +250,34 @@ describe("공용조항 S1 — 조 참조 · 별표 참조 검사 (기능/공용�
     expect(issues.map((i) => i.kind)).toEqual(["brokenRef"]);
   });
 });
+
+describe("공용조항 조 참조 범위 — 제 항 · 사용처 위치 (§3.5)", () => {
+  const 소멸: Block[] = [
+    { id: "p1", kind: "paragraph", children: [
+      { id: "r1", kind: "articleRef", targets: [{ nodeId: "1" }], connector: "및", scope: "host" },
+      { id: "t1", kind: "text", text: "에서 정한 지급사유가 발생한 경우에는 소멸됩니다." },
+    ] },
+    { id: "p2", kind: "paragraph", children: [
+      { id: "r2", kind: "articleRef", targets: [{ nodeId: "p1" }], connector: "및", scope: "clause" },
+      { id: "t2", kind: "text", text: "에 따라 소멸된 경우에는 해약환급금을 지급하지 않습니다." },
+    ] },
+  ];
+
+  it("제 항(`clause`)과 사용처 위치(`host`)를 가리키는 조 참조는 보통약관 대상 검사를 받지 않고 통과한다", () => {
+    unwrap(analyzeBody("block", 소멸, [], { generalReferenceIds: new Set(["g-a1"]) }));
+  });
+
+  it("제 항 참조는 본문의 항 · 호 · 목만 — 없는 id · 선택지 문구 안은 거부", () => {
+    const bad: Block[] = [{ ...소멸[1], children: [{ id: "r2", kind: "articleRef", targets: [{ nodeId: "p9" }], connector: "및", scope: "clause" }] } as Block];
+    expect(issuesOf(analyzeBody("block", bad, [])).map((i) => i.kind)).toEqual(["brokenRef"]);
+    const inline: Inline[] = [{ id: "r", kind: "articleRef", targets: [{ nodeId: "p1" }], connector: "및", scope: "clause" }];
+    expect(issuesOf(analyzeBody("inline", inline, [])).map((i) => i.kind)).toEqual(["brokenRef"]);
+  });
+
+  it("사용처 위치는 「조[.항[.호[.목]]]」 순번 경로여야 한다", () => {
+    const bad: Block[] = [{ id: "p", kind: "paragraph", children: [{ id: "r", kind: "articleRef", targets: [{ nodeId: "0.1" }], connector: "및", scope: "host" }] }];
+    expect(issuesOf(analyzeBody("block", bad, [])).map((i) => i.kind)).toEqual(["structure"]);
+    const ok: Block[] = [{ id: "p", kind: "paragraph", children: [{ id: "r", kind: "articleRef", targets: [{ nodeId: "2.1.3" }], connector: "및", scope: "host" }] }];
+    unwrap(analyzeBody("block", ok, []));
+  });
+});

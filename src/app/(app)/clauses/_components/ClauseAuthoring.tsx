@@ -22,7 +22,7 @@ import { DiscardDialog } from "@/app/_components/EditShell";
 import { IconButton, IconClose, IconTrash } from "@/app/_components/icons";
 import { ENTITY_LABEL, MODE_LABEL, MODE_OPTIONS, NAME_LABEL, newLabel } from "@/app/_lib/labels";
 import { refLabelOf } from "@/app/(app)/documents/[id]/_components/condition/display";
-import { anchorOf, type Anchor, type DocCtx, type EditHandlers } from "@/app/(app)/documents/[id]/_components/ctx";
+import { anchorOf, type Anchor, type ArticleRefChoice, type DocCtx, type EditHandlers } from "@/app/(app)/documents/[id]/_components/ctx";
 import { Block } from "@/app/(app)/documents/[id]/_components/DocBody";
 import { EditorToolbar } from "@/app/(app)/documents/[id]/_components/EditorToolbar";
 import { backspaceOps, enterOps, inlineAtOf, inlineListAt, moveSelectionOps } from "@/app/(app)/documents/[id]/_components/editOps";
@@ -41,6 +41,9 @@ import {
   CLAUSE_LINE_ID,
   applyEdit,
   clauseBodyToTree,
+  clausePositions,
+  clauseScopedRefLabel,
+  hostTargetIndex,
   indexTree,
   numberTree,
   optionCarrier,
@@ -99,9 +102,12 @@ export function blankBody(body: ClauseBody): boolean {
   });
 }
 
+/** 「사용처」 위치 후보 — 편집 트리에서 보통약관 참조 자리로 운반되므로(clauseTree) 편집 검사의 보통약관 대상 집합에도 넣는다. */
+const HOST_TARGETS = hostTargetIndex();
+
 function unionRefs(generals: ClauseEditorData["generals"]): GeneralRefs {
   const articleIds = new Set<Id>();
-  const referenceIds = new Set<Id>();
+  const referenceIds = new Set<Id>(HOST_TARGETS.keys());
   for (const g of generals) {
     for (const e of indexTree(g.tree).nodes.values()) {
       if (e.node.kind === "article") articleIds.add(e.node.id);
@@ -203,6 +209,15 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   const index = useMemo(() => indexTree(tree), [tree]);
   const numbers = useMemo(() => numberTree(tree), [tree]);
   const general = useMemo(() => generalTargets(data.generals, code), [data.generals, code]);
+  // 조 참조 범위 — 보통약관 · 이 공용조항(「항」 유형만 — 본문의 항 · 호 · 목) · 사용처 위치 (§3.5)
+  const refChoices = useMemo((): ArticleRefChoice[] => {
+    const own = referenceTargetIndex(tree, numbers);
+    return [
+      { value: "general", label: "보통약관", index: general },
+      ...(clauseMode === "block" ? [{ value: "self" as const, label: "이 공용조항", index: own, rootless: true }] : []),
+      { value: "host", label: "사용처", index: HOST_TARGETS },
+    ];
+  }, [general, tree, numbers, clauseMode]);
   const appendixName = useMemo(() => new Map(data.appendices.map((a) => [a.code, a.name] as const)), [data.appendices]);
   const refLabel = useMemo(() => refLabelOf(data.condition), [data.condition]);
   const used = useMemo(() => {
@@ -213,8 +228,12 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     }
     return out;
   }, [index]);
+  const positions = useMemo(() => clausePositions(tree), [tree]);
   const chipOverride = useCallback(
     (node: InlineNode) => {
+      // 이 공용조항의 항 · 사용처 위치 조 참조 — 본문 안 순번으로 적는다 (§3.5)
+      const scoped = clauseScopedRefLabel(node, positions);
+      if (scoped !== undefined) return { className: "ts-doc-ref", what: "조 참조", title: "조 참조 — 사용처에 펼치면 그 자리의 계산 번호로 찍힌다", body: scoped };
       const optionCode = optionCodeOf(node);
       if (optionCode === undefined) return undefined;
       const option = shownOptions.find((o) => o.code === optionCode);
@@ -226,7 +245,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
         body: `〔${option ? option.label || "이름 없는 옵션" : `${optionCode}(없는 옵션)`}〕`,
       };
     },
-    [shownOptions],
+    [shownOptions, positions],
   );
 
   useEffect(() => {
@@ -396,7 +415,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     references: { self: new Map(), general },
     refLabel,
     chipOverride,
-    articleRefScope: "general",
+    articleRefChoices: refChoices,
     conditionFor: () => data.condition,
     ...(flashId ? { flashId } : {}),
     ...(editing ? { edit } : {}),

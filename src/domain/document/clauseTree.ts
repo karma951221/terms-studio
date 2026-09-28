@@ -10,7 +10,9 @@
  * | 「문구」(inline) 본문 `Inline[]` | 그 조의 항 하나(`CLAUSE_LINE_ID`)의 문장 — 문장 한 줄 |
  * | 「항」(block) 본문 `Block[]` | 그 조의 자식(항 · 조건 블록) |
  * | `optionSlot` | `clauseInlineRef`(코드 `OPTION_REF_PREFIX + 옵션 코드`) — 옵션 자리 운반체. 공용조항 참조와 같은 「다른 곳의 문구가 들어오는 자리」라 문면 규칙(허용 자리 · 인라인 조건 안 허용)이 같다 |
- * | `articleRef` (늘 보통약관 대상) | `articleRef` + `scope: "general"` |
+ * | `articleRef` 보통약관 대상(범위 없음) | `articleRef` + `scope: "general"` |
+ * | `articleRef` 제 항 · 호 · 목(`scope: "clause"`) | `articleRef` + `scope: "self"` — 편집 트리의 항 id 가 곧 본문 노드 id |
+ * | `articleRef` 사용처 위치(`scope: "host"`, `"2.1.3"`) | `articleRef` + `scope: "general"` + 대상 `host:2.1.3`(`HOST_TARGET_PREFIX`) — 에디터의 「사용처」 후보 줄 id. 이 문서 밖 대상이라 보통약관 참조처럼 후보 집합(`generalRefs`)으로 검사한다 |
  *
  * 되돌릴 때 공용조항에 없는 것(조 · 관 · 표 · 박스 · 반복 · 구조 표기 · 진짜 공용조항 참조 · 호/목 자리의 조건 블록)이 있으면 거부한다 —
  * 에디터 메뉴가 애초에 싣지 않지만, 저장 직전의 마지막 관문이다. 노드 id 는 그대로 옮긴다(오류 좌표 · 「고칠 자리로」가 같은 id 를 쓴다).
@@ -21,6 +23,7 @@ import type * as C from "../clause/nodes";
 import type { ClauseBody, ClauseMode } from "../clause/types";
 import { ok, reject, type Code, type Result } from "../types";
 import type { ArticleNode, BlockNode, ClauseInlineRefNode, DocumentNode, InlineNode, ItemNode, ParagraphNode, SubitemNode } from "./nodes";
+import { subitemRefLabel, type ReferenceTarget } from "./numbering";
 
 export const CLAUSE_DOCUMENT_ID = "clause-document";
 export const CLAUSE_ARTICLE_ID = "clause-article";
@@ -34,6 +37,9 @@ export function optionCodeOf(node: InlineNode): Code | undefined {
   return node.kind === "clauseInlineRef" && node.clauseCode.startsWith(OPTION_REF_PREFIX) ? node.clauseCode.slice(OPTION_REF_PREFIX.length) : undefined;
 }
 
+/** 사용처 위치 대상의 편집 트리 id 접두 — 「사용처」 후보 줄(`host:1` · `host:2.1.3`)과 같다. */
+export const HOST_TARGET_PREFIX = "host:";
+
 export function optionCarrier(id: string, optionCode: Code): ClauseInlineRefNode {
   return { id, kind: "clauseInlineRef", clauseCode: `${OPTION_REF_PREFIX}${optionCode}`, options: {} };
 }
@@ -44,8 +50,11 @@ function inlineToTree(node: C.Inline): InlineNode {
   switch (node.kind) {
     case "optionSlot":
       return optionCarrier(node.id, node.optionCode);
-    case "articleRef":
-      return { ...node, scope: "general" };
+    case "articleRef": {
+      const { scope, ...rest } = node;
+      if (scope === "host") return { ...rest, targets: rest.targets.map((t) => ({ nodeId: `${HOST_TARGET_PREFIX}${t.nodeId}` })), scope: "general" };
+      return { ...rest, scope: scope === "clause" ? "self" : "general" };
+    }
     case "inlineCond":
       return { ...node, branches: node.branches.map((br) => ({ ...br, children: br.children.map(inlineToTree) })) };
     default:
@@ -109,8 +118,12 @@ function inlineFromTree(node: InlineNode): C.Inline {
       return node;
     case "articleRef": {
       const { scope, ...rest } = node;
-      if (scope !== "general") throw new NotClause("공용조항의 조 참조는 보통약관의 조 · 항 · 호 · 목만 가리킵니다");
-      return rest;
+      if (scope === "self") return { ...rest, scope: "clause" };
+      // 보통약관 조 또는 사용처 위치 — 한 참조가 둘을 섞지 않는다
+      const host = rest.targets.filter((t) => t.nodeId.startsWith(HOST_TARGET_PREFIX));
+      if (host.length === 0) return rest;
+      if (host.length !== rest.targets.length) throw new NotClause("조 참조 하나에 보통약관 조와 사용처 위치를 섞을 수 없습니다");
+      return { ...rest, targets: host.map((t) => ({ nodeId: t.nodeId.slice(HOST_TARGET_PREFIX.length) })), scope: "host" };
     }
     case "clauseInlineRef": {
       const code = optionCodeOf(node);
@@ -159,3 +172,82 @@ export function treeToClauseBody(mode: ClauseMode, tree: DocumentNode): Result<C
     throw error;
   }
 }
+
+// ───────────────────────────── 제 항 · 사용처 조 참조 표기 ─────────────────────────────
+
+/** 위치 순번 → 「제1항 제2호 가목」 (첫 단계가 조면 「제2조 제1항 …」). */
+function positionText(parts: readonly number[], fromArticle: boolean): string {
+  const units = fromArticle ? ["조", "항", "호"] : ["항", "호"];
+  return parts.map((n, i) => (i < units.length ? `제${n}${units[i]}` : subitemRefLabel(n))).join(" ");
+}
+
+/** 편집 트리(공용조항 본문을 싼 트리)의 항 · 호 · 목 id → 본문 안 순번 `[항, 호?, 목?]`. 조건 블록 안도 차례로 센다. */
+export function clausePositions(tree: DocumentNode): Map<string, number[]> {
+  const out = new Map<string, number[]>();
+  const article = tree.children[0];
+  if (!article || article.kind !== "article") return out;
+  let p = 0;
+  const block = (n: BlockNode) => {
+    if (n.kind === "condBlock") {
+      for (const br of n.branches) for (const c of br.children) block(c as BlockNode);
+      return;
+    }
+    if (n.kind !== "paragraph") return;
+    const pp = ++p;
+    out.set(n.id, [pp]);
+    let i = 0;
+    for (const it of n.items ?? []) {
+      if (it.kind !== "item") continue;
+      const ii = ++i;
+      out.set(it.id, [pp, ii]);
+      let u = 0;
+      for (const s of it.subitems ?? []) if (s.kind === "subitem") out.set(s.id, [pp, ii, ++u]);
+    }
+  };
+  for (const c of article.children) block(c);
+  return out;
+}
+
+/**
+ * 공용조항의 제 항 · 사용처 조 참조 표기 (기능/공용조항 §3.5) — 「이 공용조항 제1항」 · 「사용처 제2조 제1항 제3호」.
+ * 번호는 본문 안 순번이다(사용처에서는 펼친 자리의 계산 번호로 찍힌다). 편집 트리 노드를 받는다 — 보통약관 참조면 undefined.
+ */
+export function clauseScopedRefLabel(node: InlineNode, positions: ReadonlyMap<string, number[]>): string | undefined {
+  if (node.kind !== "articleRef") return undefined;
+  const host = node.scope === "general" && node.targets.length > 0 && node.targets.every((t) => t.nodeId.startsWith(HOST_TARGET_PREFIX));
+  if (node.scope !== "self" && !host) return undefined;
+  const labels = node.targets.map((t) => {
+    if (host) return positionText(t.nodeId.slice(HOST_TARGET_PREFIX.length).split(".").map(Number), true);
+    const at = positions.get(t.nodeId);
+    return at ? positionText(at, false) : "없는 항(연결 끊김)";
+  });
+  const joined = labels.length <= 1 ? (labels[0] ?? "") : `${labels.slice(0, -1).join(", ")} ${node.connector} ${labels.at(-1)}`;
+  return `${host ? "사용처" : "이 공용조항"} ${joined}`;
+}
+
+/** 공용조항 본문 노드 → 편집 트리 노드 (모델 표시가 `clauseScopedRefLabel` 을 쓰게). */
+export function clauseInlineToTree(node: C.Inline): InlineNode {
+  return inlineToTree(node);
+}
+
+/**
+ * 「사용처」 후보 — 사용처 문서의 위치(조 · 항 · 호 순번) 줄 목록. 공용조항 에디터의 조 참조 고르기 트리가 쓴다 (기능/공용조항 §3.5).
+ * 사용처는 여럿이라 실제 조 제목은 모른다 — 줄은 번호만(「제1조」 · 「제1항」 · 「제3호」).
+ */
+export function hostTargetIndex(articles = 20, paragraphs = 10, items = 10): Map<string, ReferenceTarget> {
+  const out = new Map<string, ReferenceTarget>();
+  for (let a = 1; a <= articles; a++) {
+    const article = { id: `${HOST_TARGET_PREFIX}${a}`, n: a, title: "" };
+    out.set(article.id, { kind: "article", article });
+    for (let p = 1; p <= paragraphs; p++) {
+      const paragraph = { id: `${article.id}.${p}`, n: p };
+      out.set(paragraph.id, { kind: "paragraph", article, paragraph });
+      for (let i = 1; i <= items; i++) {
+        const item = { id: `${paragraph.id}.${i}`, n: i };
+        out.set(item.id, { kind: "item", article, paragraph, item });
+      }
+    }
+  }
+  return out;
+}
+

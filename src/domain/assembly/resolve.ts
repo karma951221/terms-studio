@@ -74,11 +74,46 @@ interface Frame {
   row?: StructNodeRef;
 }
 
+/**
+ * 조 참조의 범위 → 조립 범위. 문면 참조는 제 범위 그대로, 공용조항의 보통약관 참조(범위 없음)는 `general`,
+ * 제 항 · 사용처 참조(`clause` · `host`)는 펼칠 때 사용처 노드 id 가 됐으므로 `self` (기능/공용조항 §3.5).
+ */
+function refScope(scope: "self" | "general" | "clause" | "host" | undefined): "self" | "general" {
+  return scope === "self" || scope === "clause" || scope === "host" ? "self" : "general";
+}
+
+/**
+ * 사용처 위치 경로(`"2.1.3"` = n번째 조 · m번째 항 · k번째 호 · 목) → 사용처 노드 id (기능/공용조항 §3.5).
+ * 순번은 **원본 트리의 문서 순**이다 — 관은 투명하고 조건 블록은 모든 가지를 차례로 센다(값에 따라 번호가 바뀌어도 가리키는 노드는 같다).
+ * 공용조항 블록이 펼친 항은 세지 않는다 — 사용처가 소유한 노드만 가리킬 수 있다.
+ */
+export function hostLocator(doc: DocumentNode): (path: string) => Id | undefined {
+  const flat = <T extends { kind: string }>(list: readonly unknown[], want: string): T[] =>
+    (list as { kind: string; branches?: { children: unknown[] }[]; children?: unknown[] }[]).flatMap((n): T[] => {
+      if (n.kind === want) return [n as unknown as T];
+      if (n.kind === "condBlock") return (n.branches ?? []).flatMap((b) => flat<T>(b.children, want));
+      if (n.kind === "section" && want === "article") return flat<T>(n.children ?? [], want);
+      return [];
+    });
+  const articles = flat<ArticleNode>(doc.children, "article");
+  return (path) => {
+    const [a, p, i, u] = path.split(".").map(Number);
+    const article = articles[a - 1];
+    if (!article || p === undefined) return article?.id;
+    const paragraph = flat<ParagraphNode>(article.children, "paragraph")[p - 1];
+    if (!paragraph || i === undefined) return paragraph?.id;
+    const item = flat<ItemNode>(paragraph.items ?? [], "item")[i - 1];
+    if (!item || u === undefined) return item?.id;
+    return flat<SubitemNode>(item.subitems ?? [], "subitem")[u - 1]?.id;
+  };
+}
+
 class Walker {
   readonly issues: Issue[] = [];
   constructor(
     private readonly ctx: AssemblyContext,
     private readonly env: ResolveEnv,
+    private readonly host?: (path: string) => Id | undefined,
   ) {}
 
   at(f: Frame, id: Id): Coordinate {
@@ -140,7 +175,7 @@ class Walker {
       this.issues.push(...issues);
       return { ok: false, marker: { kind: "error", id: node.id, issue: issues[0] } };
     }
-    const expanded = expandClause(clause, selection, node.id);
+    const expanded = expandClause(clause, selection, node.id, this.host);
     if (!expanded.ok) {
       const issue: Issue = expanded.rejection.reason === "invalid" ? expanded.rejection.issues[0] : { kind: "optionInvalid", message: "공용조항을 펼칠 수 없습니다", at };
       return { ok: false, marker: this.error(node.id, { ...issue, at: { ...at, ...issue.at } }) };
@@ -163,7 +198,7 @@ class Walker {
       case "slot":
         return [{ kind: "slot", id: n.id, ref: n.ref, at, ...(f.row ? { row: f.row } : {}) }];
       case "articleRef":
-        return [{ kind: "articleRef", id: n.id, targets: n.targets.map((target) => ({ ...target })), connector: n.connector, scope: "scope" in n ? n.scope : "general", at }];
+        return [{ kind: "articleRef", id: n.id, targets: n.targets.map((target) => ({ ...target })), connector: n.connector, scope: refScope(n.scope), at }];
       case "appendixRef":
         return [{ kind: "appendixRef", id: n.id, appendixCode: n.appendixCode, at }];
       case "inlineCond": {
@@ -374,7 +409,7 @@ class Walker {
 
 /** 문서 한 벌을 문맥으로 실행 — 조건 해소 + 공용조항 인라인화. 슬롯·참조는 남는다. */
 export function resolveDocument(doc: DocumentNode, ctx: AssemblyContext, env: ResolveEnv): ResolveOutcome {
-  const w = new Walker(ctx, env);
+  const w = new Walker(ctx, env, hostLocator(doc));
   const children = w.articles(doc.children, { path: [doc.id] });
   return { doc: { kind: "document", id: doc.id, title: doc.title, children }, issues: w.issues };
 }

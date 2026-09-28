@@ -51,13 +51,27 @@ export interface InlineCondNode {
   branches: InlineBranch[];
 }
 
-/** 조 참조 슬롯 — 조 id 를 저장하고 렌더 시 계산된 번호를 찍는다. */
+/**
+ * 조 참조 슬롯 — 대상을 저장하고 렌더 시 계산된 번호를 찍는다. 대상이 어디 있는지는 `scope` 가 정한다 (기능/공용조항 §3.5):
+ * - 없음 : 보통약관 마스터의 조 · 항 · 호 · 목 (`nodeId` = 그 노드 id). 문맥과 무관하게 고정된다.
+ * - `"clause"` : **이 공용조항 본문 안의** 항 · 호 · 목 (`nodeId` = 본문 노드 id) — 「제1항에 따라」처럼 조째 공용조항이 제 항을 가리킨다.
+ *   펼칠 때(`expandClause`) 펼친 노드 id 로 바뀌어 사용처 번호로 찍힌다.
+ * - `"host"` : **사용처 문서의** 위치 (`nodeId` = 위치 경로 `"1"` · `"2.1"` · `"2.1.3"` — 사용처의 n번째 조 · 그 조의 m번째 항 · k번째 호).
+ *   「제1조(보험금의 지급사유)에서 정한」처럼 조째 공용조항이 사용처의 지급사유 조를 가리킨다. 조립이 사용처 트리에서 노드 id 로 푼다.
+ */
 export interface ArticleRefNode {
   id: Id;
   kind: "articleRef";
   targets: { nodeId: Id }[];
   connector: ReferenceConnector;
+  scope?: ClauseRefScope;
 }
+
+/** 공용조항 조 참조의 범위 — 없으면 보통약관 마스터. */
+export type ClauseRefScope = "clause" | "host";
+
+/** 사용처 위치 경로 — `조[.항[.호[.목]]]` 순번(1부터). */
+export const HOST_PATH = /^[1-9]\d*(\.[1-9]\d*){0,3}$/;
 
 /** 별표 참조 슬롯 — 별표 불변 코드. 번호는 책자별 계산값. */
 export interface AppendixRefNode {

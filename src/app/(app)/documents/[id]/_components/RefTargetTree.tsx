@@ -23,6 +23,8 @@ export interface RefTargetScope {
   /** 묶음 머리 — 범위가 하나뿐이면 생략. */
   label?: string;
   index: ReadonlyMap<Id, ReferenceTarget>;
+  /** 조 줄을 그리지 않고 그 아래(항 · 호 · 목)부터 — 공용조항 에디터의 「이 공용조항」(조는 사용처 소유라 고를 조가 없다). */
+  rootless?: boolean;
 }
 
 export function RefTargetTree({
@@ -40,7 +42,14 @@ export function RefTargetTree({
   const [selected, setSelected] = useState<ReadonlySet<Id>>(() => new Set(defaultSelected));
   const [open, setOpen] = useState<ReadonlySet<Id>>(() => new Set(scopes.flatMap((s) => [...referenceAncestorIds(s.index, defaultSelected)])));
   const [query, setQuery] = useState("");
-  const outlines = useMemo(() => scopes.map((s) => ({ ...s, groups: referenceOutline(s.index) })), [scopes]);
+  const outlines = useMemo(
+    () =>
+      scopes.map((s) => {
+        const groups = referenceOutline(s.index);
+        return { ...s, groups: s.rootless ? [{ rows: groups.flatMap((g) => g.rows.flatMap((r) => r.children)) }] : groups };
+      }),
+    [scopes],
+  );
   const searching = tokensOf(query).length > 0;
   const byId = useMemo(() => {
     const out = new Map<Id, ReferenceOutlineNode>();

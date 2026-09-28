@@ -8,15 +8,16 @@
  *   else 가지는 마지막에만 · 가지 없는 조건 불가 · 옵션 자리는 정의된 옵션만 · 노드 id 유일.
  * - 식 검사: `slot.ref` 는 참조 하나(경로)여야 하고, `when` 은 파싱한다. 참조 존재·boolean 여부는
  *   타입 조회(`resolveType`)가 있을 때만 검사한다 — 없으면 건너뛴다 (카탈로그 없이도 순수 검사가 되게).
- * - 조 참조·별표 참조 (기능/공용조항 §3.5): 공용조항의 조 참조는 **보통약관 마스터의 조·항·호·목**만 가리킨다
- *   (조립기가 scope=general 로 취급). 구조(대상 ≥1 · 연결어 · 별표 코드)는 항상 검사하고, 대상 존재는
+ * - 조 참조·별표 참조 (기능/공용조항 §3.5): 공용조항의 조 참조는 셋 중 하나다 — 보통약관 마스터의 조·항·호·목(범위 없음) ·
+ *   이 공용조항 본문의 항·호·목(`scope: "clause"`, 본문에 있어야) · 사용처의 위치(`scope: "host"`, 순번 경로).
+ *   구조(대상 ≥1 · 연결어 · 별표 코드 · 위치 경로 모양)는 항상 검사하고, 보통약관 · 별표 대상 존재는
  *   `generalReferenceIds` · `appendixExists` 를 줬을 때만 검사한다 — 문서 쪽 `validateTree` 와 같은 관례.
  */
 import { checkCondition, checkTypes, extractRefs, parse } from "../expression";
 import type { Expr, TypeResolver } from "../expression";
 import { isReferenceConnector, ok, reject } from "../types";
 import type { Code, Coordinate, Id, Issue, Result } from "../types";
-import { BLOCK_KINDS, INLINE_KINDS } from "./nodes";
+import { BLOCK_KINDS, HOST_PATH, INLINE_KINDS } from "./nodes";
 import type { Block, ClauseNode, Inline, InlineBranch, BlockBranch } from "./nodes";
 import type { ClauseBody, ClauseMode, OptionDef, RequiredRefs } from "./types";
 
@@ -88,6 +89,24 @@ export function allNodeIds(body: ClauseBody): Id[] {
   return ids;
 }
 
+/** 「항」 본문의 항 · 호 · 목 id (조건 블록 안 포함) — 등장 순. 「이 공용조항」 조 참조가 가리킬 수 있는 노드. */
+export function structuralIds(body: readonly Block[]): Id[] {
+  const out: Id[] = [];
+  const block = (b: Block) => {
+    if (b.kind === "condBlock") {
+      for (const br of b.branches ?? []) for (const c of br.children ?? []) block(c);
+      return;
+    }
+    out.push(b.id);
+    for (const it of b.items ?? []) {
+      out.push(it.id);
+      for (const si of it.subitems ?? []) out.push(si.id);
+    }
+  };
+  for (const b of body ?? []) if (b && typeof b === "object") block(b);
+  return out;
+}
+
 /** inline 본문인지 (모드 판별을 호출부가 다시 하지 않게). 빈 본문은 inline 으로 본다. */
 export function isInlineBody(body: ClauseBody): body is Inline[] {
   return body.every((node: Inline | Block) => node.kind !== "paragraph" && node.kind !== "condBlock");
@@ -130,6 +149,8 @@ export function analyzeBody(
   const issues: Issue[] = [];
   const base = opts.coordinate ?? {};
   const optionCodes = new Set(options.map((o) => o.code));
+  /** 본문의 항 · 호 · 목 id — 「이 공용조항」 조 참조의 대상 후보. 선택지 문구에는 구조가 없다. */
+  const structIds = new Set(mode === "block" ? structuralIds(body as Block[]) : []);
   const exprs: { expr: Expr; role: "slot" | "condition"; path: Id[] }[] = [];
 
   const report = (kind: Issue["kind"], message: string, path: Id[], refPath?: string) => {
@@ -193,6 +214,23 @@ export function analyzeBody(
         }
         if (!isReferenceConnector(node.connector)) {
           report("structure", `조 참조 연결어는 「및」·「또는」 중 하나여야 합니다: ${String(node.connector)}`, here);
+        }
+        if (node.scope === "clause") {
+          // 제 항 · 호 · 목 — 본문(선택지 문구 아님)에 있어야 한다. 펼치면 사용처 번호로 찍힌다
+          for (const { nodeId } of node.targets) {
+            if (!structIds.has(nodeId)) report("brokenRef", `이 공용조항 본문에 참조 대상 ${nodeId} 가 없습니다 — 제 항 · 호 · 목만 가리킨다`, here, nodeId);
+          }
+          return;
+        }
+        if (node.scope === "host") {
+          for (const { nodeId } of node.targets) {
+            if (!HOST_PATH.test(nodeId)) report("structure", `사용처 위치는 「조[.항[.호[.목]]]」 순번이어야 합니다: ${nodeId}`, here, nodeId);
+          }
+          return;
+        }
+        if (node.scope !== undefined) {
+          report("structure", `조 참조 범위를 알 수 없습니다: ${String(node.scope)}`, here);
+          return;
         }
         if (opts.generalReferenceIds) {
           for (const { nodeId } of node.targets) {

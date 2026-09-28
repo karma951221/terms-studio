@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import type * as C from "../clause/nodes";
 import type { Block, Inline } from "../clause/nodes";
-import { CLAUSE_ARTICLE_ID, CLAUSE_LINE_ID, clauseBodyToTree, optionCarrier, optionCodeOf, treeToClauseBody } from "./clauseTree";
+import { CLAUSE_ARTICLE_ID, CLAUSE_LINE_ID, HOST_TARGET_PREFIX, clauseBodyToTree, clausePositions, clauseScopedRefLabel, optionCarrier, optionCodeOf, treeToClauseBody } from "./clauseTree";
 import { applyEdit, generalRefsOf, type EditEnv } from "./edit";
-import type { DocumentNode } from "./nodes";
+import type { DocumentNode, InlineNode } from "./nodes";
 
 const block: Block[] = [
   {
@@ -74,5 +75,36 @@ describe("공용조항 본문 ↔ 편집 트리", () => {
     expect(back?.ok && (back.value as Block[]).map((b) => b.id)).toEqual(["p1", "c1", "p3"]);
     const broken = applyEdit(state, { type: "setArticleRef", nodeId: "r1", targets: [{ nodeId: "없는조" }], connector: "및", scope: "general" }, env);
     expect(broken.ok).toBe(false);
+  });
+});
+
+describe("공용조항 조 참조 범위 — 편집 트리 운반 · 표기 (§3.5)", () => {
+  const body: C.Block[] = [
+    { id: "p1", kind: "paragraph", children: [{ id: "r1", kind: "articleRef", targets: [{ nodeId: "2.1.3" }], connector: "및", scope: "host" }], items: [{ id: "i1", kind: "item", children: [] }] },
+    { id: "p2", kind: "paragraph", children: [{ id: "r2", kind: "articleRef", targets: [{ nodeId: "p1" }, { nodeId: "i1" }], connector: "및", scope: "clause" }] },
+  ];
+
+  it("제 항은 `self`, 사용처 위치는 `general` + `host:` 대상으로 싸고 되돌리면 같은 본문이다", () => {
+    const tree = clauseBodyToTree("block", body);
+    const [p1, p2] = (tree.children[0] as { children: { children: unknown[] }[] }).children;
+    expect(p1.children[0]).toMatchObject({ scope: "general", targets: [{ nodeId: `${HOST_TARGET_PREFIX}2.1.3` }] });
+    expect(p2.children[0]).toMatchObject({ scope: "self", targets: [{ nodeId: "p1" }, { nodeId: "i1" }] });
+    expect(treeToClauseBody("block", tree)).toEqual({ ok: true, value: body });
+  });
+
+  it("표기 — 「사용처 제2조 제1항 제3호」 · 「이 공용조항 제1항 및 제1항 제1호」, 보통약관 참조는 undefined", () => {
+    const tree = clauseBodyToTree("block", body);
+    const positions = clausePositions(tree);
+    const [p1, p2] = (tree.children[0] as { children: { children: InlineNode[] }[] }).children;
+    expect(clauseScopedRefLabel(p1.children[0], positions)).toBe("사용처 제2조 제1항 제3호");
+    expect(clauseScopedRefLabel(p2.children[0], positions)).toBe("이 공용조항 제1항 및 제1항 제1호");
+    expect(clauseScopedRefLabel({ id: "g", kind: "articleRef", targets: [{ nodeId: "g-a1" }], connector: "및", scope: "general" }, positions)).toBeUndefined();
+  });
+
+  it("한 참조에 보통약관 조와 사용처 위치를 섞으면 되돌리기를 거부한다", () => {
+    const tree = clauseBodyToTree("block", body);
+    const p1 = (tree.children[0] as { children: { children: InlineNode[] }[] }).children[0];
+    p1.children[0] = { id: "r1", kind: "articleRef", targets: [{ nodeId: "g-a1" }, { nodeId: `${HOST_TARGET_PREFIX}1` }], connector: "및", scope: "general" };
+    expect(treeToClauseBody("block", tree).ok).toBe(false);
   });
 });

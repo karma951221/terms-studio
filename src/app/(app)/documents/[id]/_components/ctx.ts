@@ -70,8 +70,11 @@ export interface DocCtx {
    * undefined 를 돌려주면 기본 모양. `what` 은 편집 모드 tooltip 의 칩 이름.
    */
   chipOverride?: (node: InlineNode) => { className: string; title: string; body: ReactNode; what: string } | undefined;
-  /** 조 참조의 범위를 고정한다 — 공용조항은 보통약관 조만 가리킨다(기능/공용조항 §3.5). 있으면 조 참조 팝업에 범위 고르기가 없다. */
-  articleRefScope?: "general";
+  /**
+   * 조 참조 팝업의 범위를 화면이 정한다 — 공용조항 에디터: 보통약관 · 이 공용조항 · 사용처(기능/공용조항 §3.5).
+   * 있으면 이 목록이 범위 고르기가 되고, 고른 범위의 후보만 트리에 선다. 없으면 문면 규칙(담보약관: 이 템플릿 · 대응 보통약관).
+   */
+  articleRefChoices?: readonly ArticleRefChoice[];
   /** 조건 머리 줄의 변수 목록 문맥 — 노드(가지 · 조건 블록) 자리대로(반복 표 안이면 「현재 행」). 편집 모드에서만 쓴다. */
   conditionFor?: (nodeId: Id) => ConditionContext;
   /** 공용조항 블록이 본문을 그리는 재료 — 코드로 찾는다. 없으면 이름만. */
@@ -143,4 +146,13 @@ export function decodeAt(raw: string): InlineAt | undefined {
   if (kind === "node" && id) return { parentId: id };
   if (kind === "cell" && id && row !== undefined && col !== undefined) return { tableId: id, row: Number(row), col: Number(col) };
   return undefined;
+}
+
+/** 조 참조 범위 하나 — 폼 값(`scope`)이 `host` 면 노드 범위는 `general`(대상 id 가 `host:` 로 시작한다 — clauseTree 의 운반 규칙). */
+export interface ArticleRefChoice {
+  value: "general" | "self" | "host";
+  label: string;
+  index: ReadonlyMap<Id, ReferenceTarget>;
+  /** 조 줄 없이 항부터 (이 공용조항). */
+  rootless?: boolean;
 }

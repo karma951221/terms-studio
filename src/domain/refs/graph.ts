@@ -321,8 +321,8 @@ function addClause(b: Builder, clause: Clause): void {
     }
     walkClauseNodes(body, path, (n, nodePath) => {
       if (n.kind === "appendixRef") b.edge({ from: key, to: { kind: "appendix", code: n.appendixCode }, via: "appendixRef", at: { ...base, nodePath } });
-      else if (n.kind === "articleRef") {
-        // 공용조항의 조 참조는 scope 가 없다 — 항상 보통약관 마스터를 가리킨다(기능/공용조항 §3.5). 대상이 항·호·목이면
+      else if (n.kind === "articleRef" && n.scope === undefined) {
+        // 범위 없는 공용조항 조 참조는 보통약관 마스터를 가리킨다(기능/공용조항 §3.5 — 제 항 · 사용처 위치 참조는 사용처마다 대상이 달라 간선이 없다). 대상이 항·호·목이면
         // indexGeneralArticles 로 속한 조로 올리고, 인덱스에 없으면(대상이 사라졌거나 보통약관이 안 들어옴)
         // documentId 없는 키로 내 깨진 간선으로 남긴다 (문서 쪽 generalOf 와 같은 모양).
         for (const target of n.targets) {
