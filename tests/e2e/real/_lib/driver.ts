@@ -5,7 +5,8 @@
  * 편집본을 직접 만지거나 서버 액션을 부르지 않는다.
  *
  * 두 단계로 친다 (조 참조가 뒤 조 · 항을 가리킬 수 있어서 — 고르기 트리는 이미 있는 대상만 보인다):
- * 1. 뼈대 — 조 · 제목 · 항 · 호 · 목 · 표 · 박스 · 공용조항 블록 · 조연결 · 조 자리 조건 (문장은 비워 둔다)
+ * 1. 뼈대 — 조 · 제목 · 항 · 호 · 목 · 표 · 공용조항 블록(항 · 박스) · 조연결 · 조 자리 조건 (문장은 비워 둔다)
+ *    박스는 툴바 「박스」가 없다 — 「박스」 공용조항을 「공용조항」으로 넣는다(항 · 호 뒤면 박스 공용조항만 고르기에 선다, 2026-09-28)
  * 2. 문장 — 조마다 문장 칸(항 · 호 · 목 · 표 셀)을 차례로 채운다: 글 · 슬롯 · 조 참조 · 별표 참조 · 공용조항(문장) · 문장 안 조건
  *
  * 화면 자리 ↔ 시드 노드는 **순서**로 맞춘다 — 가운데는 조 하나를 그리고, 그 안의 `[data-block]` · `[data-inline]` 은
@@ -383,7 +384,7 @@ function articlesOf(tree: DocumentNode): { article: Node; wrap?: string }[] {
   return out;
 }
 
-const BLOCK_TOOL: Partial<Record<Node["kind"], string>> = { paragraph: "항", item: "호", subitem: "목", table: "표", box: "박스", clauseBlockRef: "공용조항" };
+const BLOCK_TOOL: Partial<Record<Node["kind"], string>> = { paragraph: "항", item: "호", subitem: "목", table: "표", clauseBlockRef: "공용조항" };
 
 /** 문면 저작 화면 운전 — 담보약관 템플릿 한 벌. */
 export class DocumentAuthoring {
@@ -482,7 +483,7 @@ export class DocumentAuthoring {
     }
   }
 
-  /** 자리 고르기 — -1 이면 조 제목, 아니면 k 번째 블록(문장 칸 · 표 첫 셀 · 박스 제목 · 공용조항 머리). */
+  /** 자리 고르기 — -1 이면 조 제목, 아니면 k 번째 블록(문장 칸 · 표 첫 셀 · 공용조항 머리). */
   private async select(index: number): Promise<void> {
     if (index < 0) {
       await this.article.locator("h3 [role=textbox]").blur();
@@ -493,10 +494,6 @@ export class DocumentAuthoring {
     const inline = block.locator("[data-inline]").first();
     if ((await block.getAttribute("data-clause-ref")) !== null) {
       await block.locator(".ts-doc-clause-name").click();
-      return;
-    }
-    if ((await block.locator(":scope > aside.ts-doc-box").count()) > 0) {
-      await block.getByRole("textbox", { name: "박스 제목" }).focus();
       return;
     }
     // 이미 초점이 있으면 focus 가 자리를 다시 알리지 않는다 — 한 번 놓았다가 잡는다
@@ -532,27 +529,6 @@ export class DocumentAuthoring {
       return;
     }
     await this.editor.runTool(tool);
-    // 새 박스는 비어 있다 — 제목 · 줄을 그 자리에서 친다
-    if (node.kind === "box") await this.fillBox(node);
-  }
-
-  /** 막 넣은 빈 박스(제목 · 줄이 빈 것)를 채운다. */
-  private async fillBox(node: Node & { kind: "box" }): Promise<void> {
-    const empty = () => this.article.locator("aside.ts-doc-box").filter({ has: this.page.locator('[aria-label="박스 줄"]:empty') });
-    await expect(empty()).toHaveCount(1);
-    // 새 박스는 제목 「용어풀이」로 선다 — 원문 제목(없으면 빈 제목)으로 고친다
-    const title = empty().getByRole("textbox", { name: "박스 제목" });
-    await title.fill(node.title);
-    await title.press("Enter");
-    const lines = empty().getByRole("textbox", { name: "박스 줄" });
-    await lines.focus();
-    for (const [i, line] of node.lines.entries()) {
-      if (i > 0) await this.page.keyboard.press("Enter");
-      await this.page.keyboard.insertText(line);
-    }
-    // 줄이 차면 「빈 박스」가 아니다(locator 로 다시 못 찾는다) — Tab 으로 칸을 떠나 편집본에 넣는다
-    await this.page.keyboard.press("Tab");
-    await this.editor.noBanner();
   }
 
   /** 2단계 — 조마다 문장 칸을 차례로 채운다. */
@@ -580,6 +556,9 @@ export class DocumentAuthoring {
 // ───────────────────────────── 공용조항 ─────────────────────────────
 
 type ClauseOption = { code: string; label: string; values: { label: string; body: { kind: string; text?: string }[] }[] };
+type ClauseMode = "inline" | "block" | "box";
+/** 「박스」 본문 — 제목 + 줄(글 · 값 슬롯 · 옵션 자리). */
+type SeedBox = { kind: "box"; title: string; lines: { children: ({ kind: "text"; text: string } | { kind: "slot"; ref: string } | { kind: "optionSlot"; optionCode: string })[] }[] };
 
 /** 공용조항 생성 화면 운전 — 이름 · 유형 · 옵션 · 본문 (기능/공용조항 §4.2). */
 export class ClauseAuthoringDriver {
@@ -592,10 +571,10 @@ export class ClauseAuthoringDriver {
     this.editor = new Editor(page, page.locator(".ts-clause-editor"), { selfPaths: new Map(), generalAncestors, hasScopeSelect: true, clauseEditor: true });
   }
 
-  async open(mode: "inline" | "block", label: string): Promise<void> {
+  async open(mode: ClauseMode, label: string): Promise<void> {
     await this.page.goto(`/clauses/new?type=${mode}`);
     await this.page.waitForLoadState("networkidle");
-    await expect(this.page.getByRole("radio", { name: mode === "inline" ? /^문구/ : /^항/ })).toBeChecked();
+    await expect(this.page.getByRole("radio", { name: mode === "inline" ? /^문구/ : mode === "box" ? /^박스/ : /^항/ })).toBeChecked();
     await this.page.getByLabel("공용조항명").fill(label);
   }
 
@@ -613,9 +592,31 @@ export class ClauseAuthoringDriver {
     }
   }
 
-  /** 본문 — 문구면 문장 한 줄, 항이면 항마다 (처음 빈 항 하나가 서 있다 · 다음 항은 툴바 「항」). */
-  async body(mode: "inline" | "block", body: readonly unknown[]): Promise<void> {
+  /**
+   * 본문 — 문구면 문장 한 줄, 항이면 항마다 (처음 빈 항 하나가 서 있다 · 다음 항은 툴바 「항」),
+   * 박스면 빈 박스의 제목 칸 · 줄 칸(한 줄씩 — 옵션 자리는 〔옵션명〕, 값 슬롯은 〔값 참조〕 표기).
+   */
+  async body(mode: ClauseMode, body: readonly unknown[]): Promise<void> {
     const root = this.editor.root;
+    if (mode === "box") {
+      const [box] = body as SeedBox[];
+      const title = root.getByRole("textbox", { name: "박스 제목" });
+      await title.fill(box.title);
+      await title.press("Enter");
+      const lines = root.getByRole("textbox", { name: "박스 줄 — 한 줄씩" });
+      await lines.focus();
+      for (const [i, line] of box.lines.entries()) {
+        if (i > 0) await this.page.keyboard.press("Enter");
+        const text = line.children
+          .map((n) => (n.kind === "text" ? n.text : n.kind === "slot" ? `〔값 ${n.ref}〕` : `〔${this.editor.optionLabels.get(n.optionCode) ?? n.optionCode}〕`))
+          .join("");
+        await this.page.keyboard.insertText(text);
+      }
+      // 칸을 떠나야 편집본에 들어간다
+      await this.page.keyboard.press("Tab");
+      await this.editor.noBanner();
+      return;
+    }
     if (mode === "inline") {
       await this.editor.fillInline(root.getByRole("textbox", { name: "문구", exact: true }), body as SeedInline[]);
       return;

@@ -39,7 +39,7 @@ export interface CoverageSpec {
 export interface ClauseSpec {
   code: string;
   label: string;
-  mode: "inline" | "block";
+  mode: "inline" | "block" | "box";
   body: (Node | InlineNode | { id: string; kind: "optionSlot"; optionCode: string })[];
   options: { code: string; label: string; values: { code: string; label: string; body: { kind: string; text?: string }[] }[] }[];
 }
