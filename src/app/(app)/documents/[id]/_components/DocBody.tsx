@@ -9,7 +9,8 @@
  *   바로 아래에 팝업, 넣기 · 이동 · 복제 · 삭제 · 조건식은 본문 위 툴바(자리는 `data-*` 로 읽는다, 오른쪽 클릭 메뉴는 지름길). 블록마다 붙던 버튼 줄은 없다.
  * - 조건 블록은 테두리 상자(배경 없음)다 — 가지마다 머리 줄(IF / ELIF / ELSE) + 그 아래 내용. 편집 모드의 머리 줄은 늘 열린 조건식 줄
  *   (`CondRows` — 변수 · 연산자 · 값, ⊕ ⊖)과 끝의 작은 버튼(ELIF · ELSE · 풀기 · 삭제)이다. 팝업 없음 (2026-09-28).
- * - 공용조항(조 단위)은 머리 띠 「공용조항 (이름)」 + 🗑 · 그 아래 공용조항 본문(읽기 전용)을 든 상자다.
+ * - 공용조항(조 단위)은 머리 띠 「공용조항 (이름)」 + 🗑 · 그 아래 공용조항의 **모델**(슬롯 · 옵션 자리 · 조건 · 참조, 읽기 전용)을 든 상자다.
+ *   미리보기(`clauseView: "text"`)만 고른 선택지를 끼운 문장으로 그린다 — 가운데 = 모델, 오른쪽 = 결과 (2026-09-28).
  * - 노드 id·8자리 접두를 화면에 내보내지 않는다 (리뷰 #25).
  */
 import type { MouseEvent, ReactNode } from "react";
@@ -33,6 +34,8 @@ import {
   type TreeIndex,
 } from "@/domain/document";
 import type { Id } from "@/domain/types";
+
+import { ClauseModel, clauseEditHref } from "@/app/_components/ClauseModel";
 
 import { parseLines } from "../../lib";
 import { CondRows } from "./condition/CondRows";
@@ -233,7 +236,8 @@ function optionChip(clause: { options: readonly { code: string; label: string; v
 }
 
 /**
- * 공용조항(조 단위) 블록 — 머리 띠 「공용조항 (이름)」 · 옵션 선택(편집이면 눌러서 고치기) · 🗑, 그 아래 공용조항 본문(읽기 전용).
+ * 공용조항(조 단위) 블록 — 머리 띠 「공용조항 (이름)」 · 옵션 선택(편집이면 눌러서 고치기) · 「공용조항에서 고치기 →」 · 🗑,
+ * 그 아래 공용조항의 모델(`ClauseModel` — 읽기 전용). 미리보기(`clauseView: "text"`)는 고른 선택지를 끼운 문장이다.
  * 본문 안은 이 문서의 자리가 아니다 — `data-clause-ref` 가 누른 자리를 이 블록으로 모은다(`place.ts`).
  */
 function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
@@ -242,13 +246,26 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
   const label = ctx.clauseLabel.get(node.clauseCode) ?? clause?.label;
   const options = ctx.optionText(node.clauseCode, node.options);
   const hasOptions = !clause || clause.options.length > 0;
+  const asText = ctx.clauseView === "text";
   let body: ReactNode = <p className="ts-muted">{label ? "본문을 불러오지 않았다." : `${node.clauseCode} — 없는 공용조항이다(깨진 참조).`}</p>;
-  if (clause) {
+  if (clause && asText) {
+    // 미리보기 — 고른 선택지 문구를 끼운 문장 (조립 결과와 같은 읽기)
     const tree = clauseBodyToTree(clause.mode, clause.body, clause.label);
     const nodes = tree.children[0]?.kind === "article" ? tree.children[0].children : [];
     const inner: DocCtx = { ...ctx, mode: "read", edit: undefined, numbers: numberTree(tree), branchEval: undefined, flashId: undefined, chipOverride: optionChip(clause, node.options) };
     const line = clause.mode === "inline" ? nodes.find((n) => n.id === CLAUSE_LINE_ID) : undefined;
     body = nodes.length === 0 ? <p className="ts-muted">본문이 비어 있다.</p> : line && line.kind === "paragraph" ? <p className="ts-doc-paragraph is-line"><InlineSlot at={{ parentId: line.id }} nodes={line.children} ctx={inner} /></p> : <Block nodes={nodes} ctx={inner} />;
+  } else if (clause) {
+    // 가운데(모델) — 공용조항이 어떻게 짜였는지: 슬롯 · 옵션 자리(선택지 전부 + 고른 것) · 조건 · 참조 (2026-09-28)
+    body = (
+      <ClauseModel
+        clause={clause}
+        selected={node.options}
+        references={ctx.docKind === "general" ? ctx.references.self : ctx.references.general}
+        appendixName={(code) => ctx.appendixName.get(code)}
+        exprText={(source) => chipText(source, "edit", ctx.refLabel).full}
+      />
+    );
   }
   return (
     <div className={`ts-doc-clause${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id} data-clause-ref={node.id}>
@@ -264,6 +281,11 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
           ) : (
             <span className="ts-doc-clause-opt">{options}</span>
           ))}
+        {clause && !asText && (
+          <a className="ts-doc-clause-link" href={clauseEditHref(clause.code)} target="_blank" rel="noopener" title="공용조항 화면을 새 탭으로 연다 — 본문 · 옵션은 거기서 고친다">
+            공용조항에서 고치기 →
+          </a>
+        )}
         {edit && (
           <IconButton
             className="ts-doc-clause-del"

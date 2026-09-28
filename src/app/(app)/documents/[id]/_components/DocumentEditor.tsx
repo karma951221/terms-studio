@@ -708,7 +708,7 @@ export function DocumentEditor(props: EditorProps) {
     evalRan: evaluation !== undefined,
     evalAvailable,
     ...(props.evalNote ? { evalNote: props.evalNote } : {}),
-    ...(evaluation && mode === "read" ? { rendered: <DocBody tree={tree} ctx={{ ...ctx, tables: evaluation.tables }} /> } : {}),
+    ...(evaluation && mode === "read" ? { rendered: <DocBody tree={tree} ctx={{ ...ctx, tables: evaluation.tables, clauseView: "text" }} /> } : {}),
     toggleEval,
     go,
   };
@@ -895,7 +895,7 @@ export function DocumentEditor(props: EditorProps) {
       {removeCard}
       {fullView && (
         <FullPreview onClose={() => setFullView(false)}>
-          <DocBody tree={tree} ctx={ctx} />
+          <DocBody tree={tree} ctx={{ ...ctx, clauseView: "text" }} />
         </FullPreview>
       )}
 

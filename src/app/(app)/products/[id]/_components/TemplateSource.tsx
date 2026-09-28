@@ -3,18 +3,20 @@
  *
  * - 읽기 표기는 문면 편집기 읽기 모드(`documents/[id]/_components/DocBody.tsx`)를 따른다 — 다만 `DocCtx`(편집·평가 문맥)에
  *   기대지 않고 이 컴포넌트가 직접 그린다. 조작은 하나도 없다.
- * - **유일한 입력은 공용조항 박스 안의 옵션 선택**이다 (기능/공용조항 §3.2 · 기능/상품 §3.6). 마스터 기본값을 옆에 보이고,
- *   다르면 「오버라이드」 배지 + 되돌리기(↺).
+ * - **유일한 입력은 공용조항 상자 안의 옵션 선택**이다 (기능/공용조항 §3.2 · 기능/상품 §3.6). 마스터 기본값을 옆에 보이고,
+ *   다르면 「오버라이드」 배지 + 되돌리기(↺). 상자 안에는 그 공용조항의 **모델**(`ClauseModel` — 슬롯 · 옵션 자리 · 조건 · 참조)이 선다.
  * - 끈 조는 자리에 남되 흐리게 + 「노출 끔」 (다시 켜는 것은 목차에서).
  * - **조를 감싼 조건 블록도 그대로 그린다** — 목차는 조건 블록을 펴지만(조는 어디 있든 한 줄),
  *   원문에서 조상 조건식을 잃으면 조건부인 조가 무조건 있는 것처럼 보인다 (코덱스 리뷰 2026-09-15 Important-3).
  * - 앵커는 `art-<조 id>` — 오른쪽 조립 결과의 `node-<조 id>` 와 짝이다 (`PanelScrollSync`).
  *   표·박스에는 id 를 심지 않는다 — 오른쪽 패널의 `node-<id>` 와 겹쳐 오류 패널의 이동이 엉킨다.
  */
+import { ClauseModel, clauseEditHref } from "@/app/_components/ClauseModel";
 import { IconButton, IconRevert } from "@/app/_components/icons";
 import { STRUCT_KEY_CHIP } from "@/app/_lib/labels";
 import type { Clause } from "@/domain/clause";
 import { referenceChunkLabel, type ArticleNode, type CondBlockNode, type InlineNode, type Node, type NodeNumber, type ReferenceTarget, type TableNode } from "@/domain/document";
+import { format, parse, refPath } from "@/domain/expression";
 import type { ClauseOptionOverride } from "@/domain/product";
 import type { Code, Id } from "@/domain/types";
 
@@ -33,13 +35,20 @@ export interface TemplateSourceProps {
   overrides: readonly ClauseOptionOverride[];
   /** page.tsx 가 `document.refs` 로 만든 공용조항 자리 — 노드 id 로 찾는다. */
   overrideTargets: readonly OverrideTarget[];
-  /** 지금 고른 조 — 옵션을 저장해도 이 자리로 돌아온다. */
-  articleId: Id | undefined;
+  /** 별표 코드 → 이름 — 별표 참조 칩. 없으면 코드. */
+  appendices?: readonly { code: Code; name: string }[];
+  /** 구분자 코드 → 표시명 — 조건식 · 슬롯 칩을 한글로. 없으면 식 원문. */
+  discriminators?: readonly { code: Code; label: string }[];
+  /** 조 밖(관 머리)에서 쓰는 기본 복귀 조 — 조 안의 상자는 제 조로 돌아온다. */
+  articleId?: Id;
 }
 
 interface Ctx {
   productId: Id;
+  /** 지금 그리는 조 — 그 조 안의 옵션 저장은 이 조로 돌아온다 (`ArticleNodes` 가 조마다 채운다). */
   articleId: Id | undefined;
+  appendixName: (code: Code) => string | undefined;
+  exprText: (source: string) => string;
   numbers: ReadonlyMap<Id, NodeNumber>;
   hidden: ReadonlySet<Id>;
   references: ReadonlyMap<Id, ReferenceTarget>;
@@ -64,6 +73,13 @@ function optionTextOf(clauseByCode: ReadonlyMap<Code, Clause>, clauseCode: Code,
     .join(" · ");
 }
 
+/** 식 → 표시 — 구분자 코드를 표시명으로 (문면 편집기 `refLabelOf` 의 노드 없는 판). 파싱 실패면 원문. */
+function exprDisplay(source: string, labelOf: ReadonlyMap<Code, string>): string {
+  const parsed = parse(source);
+  if (!parsed.ok) return source;
+  return format(parsed.value, (ref) => (ref.kind === "discriminator" ? (labelOf.get(ref.code) ?? ref.code) : refPath(ref)));
+}
+
 // ───────────────────────────── 인라인 ─────────────────────────────
 
 function Inline({ node, ctx }: { node: InlineNode; ctx: Ctx }) {
@@ -81,7 +97,7 @@ function Inline({ node, ctx }: { node: InlineNode; ctx: Ctx }) {
     case "slot":
       return (
         <span className="ts-doc-slot" title={`치환 슬롯 · ${node.ref}`}>
-          〔{node.ref}〕
+          〔{ctx.exprText(node.ref)}〕
         </span>
       );
 
@@ -107,7 +123,7 @@ function Inline({ node, ctx }: { node: InlineNode; ctx: Ctx }) {
     case "appendixRef":
       return (
         <span className="ts-doc-ref" title={`별표 참조 · ${node.appendixCode}`}>
-          【별표 참조】
+          【별표 {ctx.appendixName(node.appendixCode) ?? node.appendixCode}】
         </span>
       );
 
@@ -122,7 +138,7 @@ function Inline({ node, ctx }: { node: InlineNode; ctx: Ctx }) {
       return (
         <>
           {node.branches.map((br, i) => (
-            <span key={br.id} className={i === 0 ? "ts-doc-inline-cond" : "ts-doc-inline-cond is-alt"} title={`문장 안 조건 — ${br.when ?? "그 밖의 경우 (else)"}`}>
+            <span key={br.id} className={i === 0 ? "ts-doc-inline-cond" : "ts-doc-inline-cond is-alt"} title={`문장 안 조건 — ${br.when === undefined ? "그 밖의 경우 (else)" : ctx.exprText(br.when)}`}>
               <Inlines nodes={br.children} ctx={ctx} />
             </span>
           ))}
@@ -184,6 +200,11 @@ function dedupeRefs(refs: readonly ClauseInlineRef[]): ClauseInlineRef[] {
 
 // ───────────────────────────── 공용조항 박스 ─────────────────────────────
 
+/**
+ * 공용조항 자리 — 문면 편집기와 같은 상자(머리 띠 「공용조항 (이름)」)에 **그 공용조항의 모델**을 편다 (2026-09-28).
+ * 가운데는 모델(슬롯 · 옵션 자리 · 조건 · 참조), 오른쪽은 조립 결과 — 둘을 나란히 대조한다. 공용조항 자체는 공용조항 화면에서 고친다.
+ * 모델 아래에 이 자리의 옵션 선택(마스터 기본 · 이 상품 오버라이드)이 선다 — 옵션이 없는 공용조항이면 선택 줄도 없다.
+ */
 function ClauseBox({ nodeId, clauseCode, baseOptions, ctx }: { nodeId: Id; clauseCode: Code; baseOptions: Record<Code, Code>; ctx: Ctx }) {
   const clause = ctx.clauseByCode.get(clauseCode);
   const label = clause?.label ?? `${clauseCode}(없는 공용조항)`;
@@ -192,35 +213,55 @@ function ClauseBox({ nodeId, clauseCode, baseOptions, ctx }: { nodeId: Id; claus
   const effective = override ? { ...baseOptions, ...override.options } : baseOptions;
   // 미선택 = 마스터 기본도 상품 선택도 없는 옵션 — 저장 오류가 되기 전에 여기서 말한다 (기능/공용조항 §3.2).
   const unresolved = (clause?.options ?? []).filter((o) => effective[o.code] === undefined).map((o) => o.label);
+  const hasOptions = !clause || clause.options.length > 0;
   const scope = { kind: "product", id: ctx.productId } as const;
   return (
-    <div className="ts-doc-clause-box">
-      <p className="ts-clause-box-head">
-        공용조항 · {label} {override && <span className="ts-badge">오버라이드</span>}
-      </p>
-      <p className="ts-muted">마스터 기본 — {ctx.optionText(clauseCode, baseOptions)}</p>
-      {/* 폼은 <p> 안에 둘 수 없다 — 파서가 <p> 를 닫아 서버 DOM 과 React 트리가 어긋난다. */}
-      {override && (
-        <div className="ts-clause-box-row">
-          <span>이 상품 — {ctx.optionText(clauseCode, effective)}</span>{" "}
-          <form action={removeOptionOverrideAction.bind(null, ctx.productId, scope, nodeId, clauseCode, ctx.articleId)} style={{ display: "inline" }}>
-            <IconButton type="submit" label={`마스터 기본으로 되돌리기 · ${label}`} icon={<IconRevert />} />
-          </form>
-        </div>
-      )}
-      {unresolved.length > 0 && <p className="ts-warn">옵션 미선택 — {unresolved.join(" · ")} (고르지 않으면 조립이 막힌다)</p>}
-      {target ? (
-        // 저장된 선택이 바뀌면 폼도 새로 연다 — `useState` 의 시작값은 다시 읽히지 않는다.
-        <OptionOverrideForm
-          key={JSON.stringify(override?.options ?? {})}
-          targets={[target]}
-          action={setOptionOverrideAction.bind(null, ctx.productId, scope)}
-          current={override?.options}
-          articleId={ctx.articleId}
-        />
-      ) : (
-        <p className="ts-muted">이 자리는 고를 옵션이 없다.</p>
-      )}
+    <div className="ts-doc-clause" data-clause-box={nodeId}>
+      <div className="ts-doc-clause-head">
+        <span className="ts-doc-clause-name" title={`공용조항 · ${clauseCode}`}>
+          공용조항 ({label})
+        </span>
+        {override && <span className="ts-badge">오버라이드</span>}
+        {clause && (
+          <a className="ts-doc-clause-link" href={clauseEditHref(clause.code)} target="_blank" rel="noopener" title="공용조항 화면을 새 탭으로 연다 — 본문 · 옵션은 거기서 고친다">
+            공용조항에서 고치기 →
+          </a>
+        )}
+      </div>
+      <div className="ts-doc-clause-body">
+        {clause ? (
+          <ClauseModel clause={clause} selected={effective} references={ctx.references} appendixName={ctx.appendixName} exprText={ctx.exprText} />
+        ) : (
+          <p className="ts-muted">{clauseCode} — 없는 공용조항이다(깨진 참조).</p>
+        )}
+        {hasOptions && (
+          <div className="ts-clause-use">
+            <p className="ts-muted">마스터 기본 — {ctx.optionText(clauseCode, baseOptions)}</p>
+            {/* 폼은 <p> 안에 둘 수 없다 — 파서가 <p> 를 닫아 서버 DOM 과 React 트리가 어긋난다. */}
+            {override && (
+              <div className="ts-clause-box-row">
+                <span>이 상품 — {ctx.optionText(clauseCode, effective)}</span>{" "}
+                <form action={removeOptionOverrideAction.bind(null, ctx.productId, scope, nodeId, clauseCode, ctx.articleId)} style={{ display: "inline" }}>
+                  <IconButton type="submit" label={`마스터 기본으로 되돌리기 · ${label}`} icon={<IconRevert />} />
+                </form>
+              </div>
+            )}
+            {unresolved.length > 0 && <p className="ts-warn">옵션 미선택 — {unresolved.join(" · ")} (고르지 않으면 조립이 막힌다)</p>}
+            {target ? (
+              // 저장된 선택이 바뀌면 폼도 새로 연다 — `useState` 의 시작값은 다시 읽히지 않는다.
+              <OptionOverrideForm
+                key={JSON.stringify(override?.options ?? {})}
+                targets={[target]}
+                action={setOptionOverrideAction.bind(null, ctx.productId, scope)}
+                current={override?.options}
+                articleId={ctx.articleId}
+              />
+            ) : (
+              <p className="ts-muted">이 자리는 고를 옵션이 없다.</p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -299,10 +340,7 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
       case "clauseBlockRef":
         return (
           <div key={node.id} className="ts-doc-paragraph">
-            <span className="ts-doc-num">{ctx.numbers.get(node.id)?.label}</span>{" "}
-            <span className="ts-doc-ref" title={`공용조항(조 단위) · ${node.clauseCode}`}>
-              〔{ctx.clauseByCode.get(node.clauseCode)?.label ?? `${node.clauseCode}(없는 공용조항)`}〕
-            </span>
+            {ctx.numbers.get(node.id)?.label ? <span className="ts-doc-num">{ctx.numbers.get(node.id)?.label}</span> : null}
             <ClauseBox nodeId={node.id} clauseCode={node.clauseCode} baseOptions={node.options} ctx={ctx} />
           </div>
         );
@@ -311,7 +349,7 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
         return node.branches.map((br, i) => {
           const body = (
             <>
-              <span className="ts-doc-cond-head">{br.when ?? "그 밖의 경우 (else)"}</span>
+              <span className="ts-doc-cond-head">{br.when === undefined ? "그 밖의 경우 (else)" : ctx.exprText(br.when)}</span>
               <Block nodes={br.children} ctx={ctx} inList={inList} gathered={gathered} />
             </>
           );
@@ -391,14 +429,15 @@ function ArticleNodes({ nodes, ctx }: { nodes: readonly Node[]; ctx: Ctx }) {
           <h4 className="ts-doc-article-title">
             {label} {isHidden && <span className="ts-dim">— 노출 끔</span>}
           </h4>
-          <Block nodes={node.children} ctx={ctx} />
+          {/* 이 조 안의 옵션 저장은 이 조로 돌아온다 — 목차가 클라이언트에서 관을 바꿔도 좌표가 어긋나지 않는다 */}
+          <Block nodes={node.children} ctx={{ ...ctx, articleId: node.id }} />
         </section>
       );
     }
     if (node.kind === "condBlock")
       return node.branches.map((br, i) => (
         <div key={br.id} className={i === 0 ? "ts-doc-cond" : "ts-doc-cond is-alt"}>
-          <span className="ts-doc-cond-head">{br.when ?? "그 밖의 경우 (else)"}</span>
+          <span className="ts-doc-cond-head">{br.when === undefined ? "그 밖의 경우 (else)" : ctx.exprText(br.when)}</span>
           <ArticleNodes nodes={br.children} ctx={ctx} />
         </div>
       ));
@@ -406,11 +445,15 @@ function ArticleNodes({ nodes, ctx }: { nodes: readonly Node[]; ctx: Ctx }) {
   });
 }
 
-export function TemplateSource({ productId, nodes, numbers, hidden, references, clauses, overrides, overrideTargets, articleId }: TemplateSourceProps) {
+export function TemplateSource({ productId, nodes, numbers, hidden, references, clauses, overrides, overrideTargets, appendices = [], discriminators = [], articleId }: TemplateSourceProps) {
   const clauseByCode = new Map(clauses.map((c) => [c.code, c] as const));
+  const appendixByCode = new Map(appendices.map((a) => [a.code, a.name] as const));
+  const labelOf = new Map(discriminators.map((d) => [d.code, d.label] as const));
   const ctx: Ctx = {
     productId,
     articleId,
+    appendixName: (code) => appendixByCode.get(code),
+    exprText: (source) => exprDisplay(source, labelOf),
     numbers,
     hidden,
     references,

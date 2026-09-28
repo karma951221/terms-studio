@@ -77,7 +77,7 @@ const numbers = new Map<Id, NodeNumber>([
 ]);
 
 function boxCount(html: string): number {
-  return html.split('class="ts-doc-clause-box"').length - 1;
+  return html.split("data-clause-box=").length - 1;
 }
 
 describe("TemplateSource — 공용조항 옵션 박스 (Important-2)", () => {
@@ -92,13 +92,66 @@ describe("TemplateSource — 공용조항 옵션 박스 (Important-2)", () => {
         clauses={clauses}
         overrides={[]}
         overrideTargets={targets}
-        articleId="A1"
       />,
     );
     expect(boxCount(html)).toBe(4);
     // 자리마다 제 노드 id 로 저장 폼이 선다 — 박스가 있어도 target 을 못 찾으면 고를 수 없다.
     for (const nodeId of ["R-para", "R-item", "R-subitem", "R-cell"]) expect(html).toContain(`value="${nodeId}"`);
     expect(html).not.toContain("이 자리는 고를 옵션이 없다");
+    // 옵션을 저장하면 그 상자가 든 조로 돌아온다 — 목차가 클라이언트에서 관을 바꿔도 좌표가 맞다
+    expect(html).toContain('name="art" value="A1"');
+  });
+});
+
+describe("TemplateSource — 공용조항 상자 안에 모델을 편다 (2026-09-28)", () => {
+  const blockClause: Clause = {
+    mode: "block",
+    code: "C0002",
+    label: "대표자의 지정",
+    required: { discriminators: [], attributes: [] },
+    options: [
+      {
+        code: "O01",
+        label: "지정 주체",
+        order: 0,
+        values: [
+          { code: "V01", label: "계약자", body: [], order: 0 },
+          { code: "V02", label: "피보험자", body: [], order: 1 },
+        ],
+      },
+    ],
+    body: [
+      { id: "cp1", kind: "paragraph", children: [{ id: "o", kind: "optionSlot", optionCode: "O01" }, { id: "ct", kind: "text", text: " 대표자를 지정합니다 " }, { id: "s", kind: "slot", ref: "D0001" }] },
+      { id: "cc", kind: "condBlock", branches: [{ id: "cb", when: "D0001 = '입원'", children: [{ id: "cp2", kind: "paragraph", children: [{ id: "ct2", kind: "text", text: "입원 조건 항" }] }] }] },
+    ],
+  };
+  const host: ArticleNode = { id: "A1", kind: "article", title: "대표자", children: [{ id: "R1", kind: "clauseBlockRef", clauseCode: "C0002", options: { O01: "V01" } }] };
+
+  it("머리 띠 「공용조항 (이름)」 · 공용조항에서 고치기 · 슬롯 · 옵션 자리(고른 것 ✓) · 조건 · 오버라이드가 모델에 반영", () => {
+    const html = renderToStaticMarkup(
+      <TemplateSource
+        productId="p1"
+        nodes={[host]}
+        numbers={numbers}
+        hidden={new Set()}
+        references={new Map()}
+        clauses={[blockClause]}
+        overrides={[{ id: "ov1", scope: { kind: "product", id: "p1" }, nodeId: "R1", clauseCode: "C0002", options: { O01: "V02" } }]}
+        overrideTargets={[]}
+        discriminators={[{ code: "D0001", label: "담보명" }]}
+      />,
+    );
+    expect(html).toContain('class="ts-doc-clause-head"');
+    expect(html).toContain("공용조항 (대표자의 지정)");
+    expect(html).toContain('href="/clauses/C0002"');
+    expect(html).toContain("공용조항에서 고치기");
+    expect(html).toContain("대표자를 지정합니다");
+    expect(html).toContain("〔담보명〕");
+    expect(html).toContain('<span class="ts-cond-badge">IF</span> 담보명 = &#x27;입원&#x27;');
+    // 이 상품의 오버라이드(피보험자)가 모델의 고른 선택지다
+    expect(html).toContain("✓피보험자");
+    expect(html).toContain("오버라이드");
+    expect(html).toContain("마스터 기본 — 지정 주체: 계약자");
   });
 });
 
@@ -124,7 +177,6 @@ describe("TemplateSource — 조를 감싼 조건 블록 (Important-3)", () => {
         clauses={clauses}
         overrides={[]}
         overrideTargets={[]}
-        articleId="A1"
       />,
     );
   }

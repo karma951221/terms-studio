@@ -2869,6 +2869,54 @@ button.ts-doc-clause-opt {
   padding: 4px 10px 6px;
 }
 
+/* 머리 띠 오른쪽 — 공용조항 화면(새 탭)으로. 🗑 가 있으면 그 앞 */
+.ts-doc-clause-link {
+  margin-left: auto;
+  color: inherit;
+  font-size: 11px;
+  opacity: 0.9;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.ts-doc-clause-link + .ts-doc-clause-del {
+  margin-left: 0;
+}
+
+/* 공용조항 모델 — 상자 안의 구조(가운데 = 모델, 오른쪽 = 결과 · 2026-09-28). 칩은 문면 편집기와 같은 색 */
+.ts-clause-model .ts-doc-cond {
+  margin: 4px 0;
+}
+
+.ts-clause-model-opt {
+  border: 1px dotted var(--ts-clause-line);
+  border-radius: 3px;
+  padding: 0 3px;
+  margin-inline: 1px;
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--ts-ink-2);
+}
+
+.ts-clause-model-opt-name {
+  color: var(--ts-clause-line);
+  font-weight: 600;
+}
+
+.ts-clause-model-opt-value.is-chosen {
+  color: var(--ts-ink);
+}
+
+.ts-clause-model-opt-sep,
+.ts-clause-model-opt-missing {
+  color: var(--ts-ink-3);
+}
+
+.ts-clause-model-opt.is-broken {
+  color: var(--ts-error);
+  border-color: var(--ts-error);
+}
+
 /* 문장 안 조건 — 배경 없이 밑줄만. 첫 가지는 점선, 뒤 가지(elif · else)는 파선 (§2 L3). */
 .ts-doc-inline-cond {
   text-decoration: underline dotted;
@@ -4414,31 +4462,29 @@ button.ts-ref-fold:hover {
   text-decoration: line-through;
 }
 
-/* 공용조항 자리 — 문면 안의 괘선 박스. 안쪽은 고딕(조작이 사는 자리다) */
-.ts-doc-clause-box {
-  border: 1px solid var(--ts-rule-strong);
-  border-radius: 3px;
-  padding: 6px 8px;
-  margin: 6px 0;
+/* 공용조항 자리의 옵션 선택 — 모델 아래 한 칸(상품 보통약관 원문 패널). 안쪽은 고딕(조작이 사는 자리다) */
+.ts-clause-use {
+  border-top: 1px dashed var(--ts-rule-strong);
+  margin-top: 6px;
+  padding-top: 4px;
   font-family: var(--sans);
   font-size: 13px;
   line-height: 1.6;
-  text-indent: 0;
 }
 
-.ts-doc-clause-box > p,
-.ts-doc-clause-box > .ts-clause-box-row {
+.ts-clause-use > p,
+.ts-clause-use > .ts-clause-box-row {
   margin: 0 0 2px;
 }
 
-.ts-clause-box-head {
-  font-weight: 600;
-}
-
-.ts-doc-clause-box .ts-form {
+.ts-clause-use .ts-form {
   margin: 4px 0 0;
   padding: 0;
   border: 0;
+}
+
+.ts-doc-clause-head .ts-badge {
+  color: inherit;
 }
 
 @media (max-width: 1100px) {
