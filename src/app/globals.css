@@ -3309,6 +3309,9 @@ button.ts-doc-cond-btn:hover {
   position: fixed;
   z-index: 1000;
   min-width: 220px;
+  /* 공용조항이 수십 건이면(두 상품 36건, 2026-09-28) 메뉴가 화면 밖으로 넘친다 — 화면 안에서 스크롤 */
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
   padding: 4px 0;
   background: var(--ts-surface);
   border: 1px solid var(--ts-rule-strong);
