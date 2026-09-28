@@ -41,12 +41,21 @@ test(
     await expect(product).toBeVisible();
     await product.click();
 
-    // 상세는 세 탭이다 (기능/상품 §3.8) — 탭을 옮겨도 헤더의 [더보기 ▾](미리보기 · 상품 삭제)는 그대로 선다 (기능/상품 §4).
-    const tabs = page.locator("nav.ts-subtabs");
-    for (const name of ["기본정보", "보통약관", "특별약관"]) await expect(tabs.getByRole("link", { name })).toBeVisible();
-    await tabs.getByRole("link", { name: "특별약관" }).click();
-    await expect(page).toHaveURL(/\?tab=special$/);
+    // 상세는 탭 셋 — 기본정보 · 상품담보 · 약관 (기능/상품 §3.8, 2026-09-28 「안 2」) — 탭을 옮겨도 헤더의 [더보기 ▾](미리보기 · 상품 삭제)는 그대로 선다.
+    const tabs = page.getByRole("navigation", { name: "상품 하위 탭" });
+    for (const name of ["기본정보", "상품담보", "약관"]) await expect(tabs.getByRole("link", { name, exact: true })).toBeVisible();
+    await tabs.getByRole("link", { name: "상품담보", exact: true }).click();
+    await expect(page).toHaveURL(/\?tab=coverages$/);
     await expect(page.getByRole("heading", { name: "특별약관", exact: true })).toBeVisible();
+    // 약관 — 둘째 줄 하위 탭 보통약관 작성 · 담보별 미리보기
+    await tabs.getByRole("link", { name: "약관", exact: true }).click();
+    await expect(page).toHaveURL(/\?tab=terms$/);
+    const sub = page.getByRole("navigation", { name: "약관 하위 탭" });
+    await expect(sub.getByRole("link", { name: "보통약관 작성" })).toHaveAttribute("aria-current", "page");
+    await expect(sub.getByRole("link", { name: "담보별 미리보기" })).toBeVisible();
+    // 옛 주소(?tab=special)는 새 자리로 (북마크 · 옛 링크)
+    await page.goto(`${new URL(page.url()).pathname}?tab=special`);
+    await expect(page).toHaveURL(/\?tab=coverages$/);
 
     await page.getByRole("button", { name: "더보기", exact: true }).click();
     await page.getByRole("menuitem", { name: "미리보기", exact: true }).click();

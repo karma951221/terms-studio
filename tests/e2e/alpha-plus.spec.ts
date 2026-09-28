@@ -33,9 +33,9 @@ async function submit(page: Page, button: Locator): Promise<void> {
   await page.waitForLoadState("networkidle");
 }
 
-/** 상세는 세 탭이다 (기능/상품 §3.8) — 섹션을 만지기 전에 그 탭을 먼저 연다. */
-async function openTab(page: Page, name: "기본정보" | "보통약관" | "특별약관"): Promise<void> {
-  await page.locator("nav.ts-subtabs").getByRole("link", { name }).click();
+/** 상세는 탭 셋 — 기본정보 · 상품담보 · 약관(기능/상품 §3.8, 2026-09-28) — 섹션을 만지기 전에 그 탭을 먼저 연다. 약관은 보통약관 작성으로 열린다. */
+async function openTab(page: Page, name: "기본정보" | "상품담보" | "약관"): Promise<void> {
+  await page.getByRole("navigation", { name: "상품 하위 탭" }).getByRole("link", { name, exact: true }).click();
   await page.waitForLoadState("networkidle");
 }
 
@@ -89,8 +89,8 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
         return page.url();
       });
 
-      await ev.action("실물재현#1.3", "보통약관 템플릿을 고른다 — 보통약관 탭", async () => {
-        await openTab(page, "보통약관");
+      await ev.action("실물재현#1.3", "보통약관 템플릿을 고른다 — 약관 › 보통약관 작성", async () => {
+        await openTab(page, "약관");
         await page.getByLabel("보통약관 템플릿").selectOption({ label: "무배당 알파Plus보장보험2604 보통약관" });
         await submit(page, page.getByRole("button", { name: "템플릿 저장" }));
       });
@@ -121,8 +121,8 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
       // 탑재 — 기본계약 섹션 1 + 특약 섹션 4 (같은 담보 2벌은 부가유형으로 구별)
       const mount = async (step: number, section: "보통약관 기본계약" | "특별약관", coverage: string, addon?: "기본" | "추가") =>
         ev.action(`실물재현#1.${step}`, `${section}에 ${coverage}${addon ? `(${addon})` : ""} 를 탑재한다`, async () => {
-          // 기본계약 절은 보통약관 탭, 특약 절은 특별약관 탭에 산다 (기능/상품 §3.8)
-          await page.goto(`${productUrl}?tab=${section === "보통약관 기본계약" ? "general" : "special"}`);
+          // 기본계약 · 특약 두 절 모두 상품담보 탭에 산다 (기능/상품 §3.8, 2026-09-28)
+          await page.goto(`${productUrl}?tab=coverages`);
           const form = page.locator("form", { has: page.getByRole("button", { name: `${section}에 탑재` }) });
           await form.getByLabel("담보").selectOption({ label: coverage });
           if (addon) await form.getByLabel("부가유형").selectOption({ label: addon });
@@ -137,12 +137,11 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
       await mount(11, "특별약관", "골절(치아파절 제외)진단비Ⅱ보장");
       // 기본계약 섹션에 탑재하면 곧 기본계약 지정이다 — 담보명 값은 스냅샷으로 복사돼 있다
       // 탑재 표는 상품담보 한 건 = 한 행 · 개수는 페이저 「총 N건」 (기능/상품 §4.6)
-      await page.goto(`${productUrl}?tab=general`);
+      await page.goto(`${productUrl}?tab=coverages`);
       await expect(page.getByRole("region", { name: "보통약관 기본계약", exact: true }).locator("tbody tr")).toHaveCount(1);
-      await page.goto(`${productUrl}?tab=special`);
       await expect(page.getByRole("region", { name: "특별약관", exact: true }).locator("tbody tr")).toHaveCount(4);
 
-      await ev.action("실물재현#1.12", "특약 그룹을 만든다 — 특별약관 탭", async () => {
+      await ev.action("실물재현#1.12", "특약 그룹을 만든다 — 상품담보 탭", async () => {
         // 그룹 제목은 입력칸 값이라 hasText 로는 못 찾는다: 배치 버튼의 접근성 이름으로 폼을 잡는다
         await page.getByLabel("새 그룹 제목").fill("상해 관련 특별약관");
         await submit(page, page.getByRole("button", { name: "그룹 추가" }));

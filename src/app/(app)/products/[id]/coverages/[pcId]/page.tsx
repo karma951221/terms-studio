@@ -29,17 +29,16 @@ export default async function ProductCoverageDetailPage({ params }: { params: Pr
     );
   }
   const pc = snap.value;
-  const [product, values, enumsList, preview, completeness, masterValues, baseContractIds] = await Promise.all([
+  const [product, values, enumsList, preview, completeness, masterValues] = await Promise.all([
     services.product.getProduct(id),
     services.product.getSnapshotValues(pcId),
     services.catalog.listEnums(),
     services.assembly.previewSpecial(id, pcId),
     services.product.coverageCompleteness(pcId),
     services.product.getSnapshotMasterValues(pcId),
-    services.product.listBaseContractIds(id),
   ]);
-  /** 돌아갈 탭 — 이 상품담보가 사는 절이다: 기본계약은 보통약관, 나머지는 특별약관 (기능/상품 §3.8). */
-  const backTab: ProductTab = baseContractIds.includes(pcId) ? "general" : "special";
+  /** 돌아갈 탭 — 기본계약이든 특약이든 상품담보 탭이다 (기능/상품 §3.8 · 2026-09-28). */
+  const backTab: ProductTab = "coverages";
   const enumLookup = (code: string) => enumsList.find((e) => e.code === code);
   /** owner 하나의 스냅샷 문맥 — 마스터 값을 못 얻으면(빈 맵) undefined 로 빠져 direct 로 보인다. */
   const snapshotContextOf = (ownerId: string, masterLabel: string): SnapshotContext | undefined => {

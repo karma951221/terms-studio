@@ -28,6 +28,10 @@ import {
   parseSelections,
   productDetailPath,
   productTabOf,
+  legacyProductTabRedirect,
+  termsPath,
+  termsSubOf,
+  withGroupStarts,
   renderedNodeIds,
   sectionOfArticle,
   sectionPreviewDoc,
@@ -62,17 +66,37 @@ describe("products lib — 순수 파싱", () => {
 });
 
 describe("products lib — 상세 탭 좌표", () => {
-  it("productTabOf — 아는 탭만 믿고 나머지는 기본정보", () => {
-    expect(productTabOf("general")).toBe("general");
-    expect(productTabOf("special")).toBe("special");
+  it("productTabOf — 아는 탭(기본정보 · 상품담보 · 약관)만 믿고 나머지는 기본정보", () => {
+    expect(productTabOf("coverages")).toBe("coverages");
+    expect(productTabOf("terms")).toBe("terms");
     expect(productTabOf("basic")).toBe("basic");
     expect(productTabOf(undefined)).toBe("basic");
     expect(productTabOf("없는탭")).toBe("basic");
   });
 
-  it("productDetailPath — 탭이 있으면 ?tab= 을 싣는다", () => {
+  it("termsSubOf — 약관 하위 탭은 보통약관 작성 · 담보별 미리보기, 모르면 보통약관 작성", () => {
+    expect(termsSubOf("special")).toBe("special");
+    expect(termsSubOf("general")).toBe("general");
+    expect(termsSubOf(undefined)).toBe("general");
+    expect(termsSubOf("없음")).toBe("general");
+  });
+
+  it("productDetailPath · termsPath — 탭이 있으면 ?tab= · ?sub= 을 싣는다", () => {
     expect(productDetailPath("p1")).toBe("/products/p1");
-    expect(productDetailPath("p1", "general")).toBe("/products/p1?tab=general");
+    expect(productDetailPath("p1", "coverages")).toBe("/products/p1?tab=coverages");
+    expect(termsPath("p1", "general")).toBe("/products/p1?tab=terms&sub=general");
+  });
+
+  it("legacyProductTabRedirect — 옛 ?tab=general|special 은 지금 사는 자리로 (나머지 쿼리는 싣는다)", () => {
+    expect(legacyProductTabRedirect("p1", { tab: "basic" })).toBeUndefined();
+    expect(legacyProductTabRedirect("p1", {})).toBeUndefined();
+    expect(legacyProductTabRedirect("p1", { tab: "general", art: "A1" })).toBe("/products/p1?tab=terms&sub=general&art=A1");
+    expect(legacyProductTabRedirect("p1", { tab: "general", confirm: "template:g2" })).toBe("/products/p1?tab=terms&sub=general&confirm=template%3Ag2");
+    // 탑재 표 · 그룹 · 기본계약의 확인 카드는 상품담보 탭에 산다
+    expect(legacyProductTabRedirect("p1", { tab: "general", confirm: "pc:x" })).toBe("/products/p1?tab=coverages&confirm=pc%3Ax");
+    expect(legacyProductTabRedirect("p1", { tab: "special", confirm: "group:g" })).toBe("/products/p1?tab=coverages&confirm=group%3Ag");
+    expect(legacyProductTabRedirect("p1", { tab: "special", mq: "수술" })).toBe(`/products/p1?tab=coverages&mq=${encodeURIComponent("수술")}`);
+    expect(legacyProductTabRedirect("p1", { tab: "special", pc: "pc1" })).toBe("/products/p1?tab=terms&sub=special&pc=pc1");
   });
 });
 
@@ -150,12 +174,12 @@ describe("products lib — 보통약관의 관", () => {
   });
 
   it("generalArticlePath — 탭을 잃지 않는다", () => {
-    expect(generalArticlePath("p1", "A1")).toBe("/products/p1?tab=general&art=A1");
+    expect(generalArticlePath("p1", "A1")).toBe("/products/p1?tab=terms&sub=general&art=A1");
   });
 
   it("generalReturnPath — 옵션을 저장해도 고르던 조로 돌아온다 (조가 없으면 탭만)", () => {
-    expect(generalReturnPath("p1", "A1")).toBe("/products/p1?tab=general&art=A1");
-    expect(generalReturnPath("p1", undefined)).toBe("/products/p1?tab=general");
+    expect(generalReturnPath("p1", "A1")).toBe("/products/p1?tab=terms&sub=general&art=A1");
+    expect(generalReturnPath("p1", undefined)).toBe("/products/p1?tab=terms&sub=general");
   });
 });
 
@@ -259,7 +283,7 @@ describe("products lib — 오류의 이동 링크 (generalIssueLink)", () => {
 
   it("특약 절의 상품담보는 특별약관 탭의 미리보기로 — 도착 못 하는 #node 앵커를 걸지 않는다", () => {
     const link = generalIssueLink("p1", nodes, base, issue({ document: "special", ownerId: "pc1", ownerName: "일반상해사망", nodePath: ["x"] }));
-    expect(link).toEqual({ href: "/products/p1?tab=special&pc=pc1", label: "일반상해사망 에서 보기" });
+    expect(link).toEqual({ href: "/products/p1?tab=terms&sub=special&pc=pc1", label: "일반상해사망 에서 보기" });
     expect(generalIssueLink("p1", nodes, base, issue({ document: "special", nodePath: ["x"] }))).toBeUndefined();
   });
 
@@ -283,7 +307,7 @@ const rDoc = (children: RenderedDoc["children"]): RenderedDoc => ({ kind: "docum
 
 describe("products lib — 특별약관 탭의 미리보기", () => {
   it("specialPreviewPath — 탭을 잃지 않는다", () => {
-    expect(specialPreviewPath("p1", "pc1")).toBe("/products/p1?tab=special&pc=pc1");
+    expect(specialPreviewPath("p1", "pc1")).toBe("/products/p1?tab=terms&sub=special&pc=pc1");
   });
 
   it("articleCount — 관 안의 조까지 세고 오류 마커는 빼고 센다", () => {
@@ -394,5 +418,23 @@ describe("탑재 표 — 담보속성 조합 · 담보 검색 (기능/상품 §4
     expect(filterMountRows(rows, "일반상해").map((r) => r.pc.id)).toEqual(["pc1"]);
     expect(filterMountRows(rows, "부가유형").map((r) => r.pc.id)).toEqual(["pc1"]);
     expect(filterMountRows(rows, "—")).toEqual([]);
+  });
+  it("mountRows — 담보 : 상품담보 = 1 : N, 같은 담보의 상품담보를 이어 놓는다(처음 나온 담보 순 · 묶음 안은 탑재 순)", () => {
+    const rows = mountRows(
+      [
+        { id: "a1", productId: "p", coverageId: "cA", name: "A 기본", attributes: [] },
+        { id: "b1", productId: "p", coverageId: "cB", name: "B", attributes: [] },
+        { id: "a2", productId: "p", coverageId: "cA", name: "A 추가", attributes: [] },
+      ],
+      [
+        { id: "cA", code: "COV000001", name: "A" },
+        { id: "cB", code: "COV000002", name: "B" },
+      ],
+      kinds,
+    );
+    expect(rows.map((r) => r.pc.id)).toEqual(["a1", "a2", "b1"]);
+    // 코드 · 담보명은 묶음 첫 행에만 — 걸러져 묶음 가운데부터 보여도 보이는 첫 행은 찍힌다
+    expect(withGroupStarts(rows).map((r) => r.groupStart)).toEqual([true, false, true]);
+    expect(withGroupStarts(rows.slice(1)).map((r) => r.groupStart)).toEqual([true, true]);
   });
 });

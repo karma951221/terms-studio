@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, replace: () => {}, refresh: () => {} }) }));
 
 import { leaveNeedsConfirm, ProductEditProvider, ProductHeadActions } from "./ProductEdit";
-import { ProductTabs } from "./ProductTabs";
+import { ProductTabs, TermsSubTabs } from "./ProductTabs";
 
 describe("ProductEdit — 떠나는 조작의 판정 (M21)", () => {
   it("편집 중이고 고친 것이 있을 때만 「고친 내용을 버립니까?」", () => {
@@ -27,20 +27,30 @@ describe("ProductEdit — 떠나는 조작의 판정 (M21)", () => {
 describe("ProductTabs — 편집 상태 안에서 그려진다", () => {
   const html = renderToStaticMarkup(
     <ProductEditProvider canEdit={false}>
-      <ProductTabs productId="p1" current="general" />
+      <ProductTabs productId="p1" current="terms" />
     </ProductEditProvider>,
   );
 
-  it("탭은 URL — 세 탭 링크와 현재 탭 표시", () => {
+  it("탭은 URL — 기본정보 · 상품담보 · 약관 세 링크와 현재 탭 표시 (2026-09-28 「안 2」)", () => {
+    const labels = [...html.matchAll(/<a[^>]*>([^<]*)<\/a>/g)].map((m) => m[1]);
+    expect(labels).toEqual(["기본정보", "상품담보", "약관"]);
     expect(html).toContain('href="/products/p1?tab=basic"');
-    expect(html).toContain('href="/products/p1?tab=special"');
+    expect(html).toContain('href="/products/p1?tab=coverages"');
     const current = html.match(/<a[^>]*aria-current="page"[^>]*>/)?.[0];
-    expect(current).toContain('href="/products/p1?tab=general"');
+    expect(current).toContain('href="/products/p1?tab=terms"');
+  });
+
+  it("약관 둘째 줄 — 보통약관 작성 · 담보별 미리보기 (`?sub=`)", () => {
+    const sub = renderToStaticMarkup(<TermsSubTabs productId="p1" current="special" />);
+    const labels = [...sub.matchAll(/<a[^>]*>([^<]*)<\/a>/g)].map((m) => m[1]);
+    expect(labels).toEqual(["보통약관 작성", "담보별 미리보기"]);
+    expect(sub).toContain('href="/products/p1?tab=terms&amp;sub=general"');
+    expect(sub.match(/<a[^>]*aria-current="page"[^>]*>/)?.[0]).toContain("sub=special");
   });
 });
 
 describe("ProductHeadActions — 편집할 것이 없는 탭", () => {
-  it("보통약관 · 특별약관 탭에는 편집이 없고 더보기만 선다", () => {
+  it("상품담보 · 약관 탭에는 편집이 없고 더보기만 선다", () => {
     const html = renderToStaticMarkup(
       <ProductEditProvider canEdit={false}>
         <ProductHeadActions menu={[]} />

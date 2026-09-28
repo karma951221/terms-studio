@@ -32,8 +32,8 @@ export function coordinateHref(coordinate: Coordinate | undefined): string | und
   if (coordinate.document === "product") {
     const coverageId = coordinate.nodePath?.[0];
     if (coverageId) return `/products/${coordinate.ownerId}/coverages/${coverageId}`;
-    // 기본계약 0 · 2+ 오류 — 고치는 자리는 보통약관 탭(`?tab=general`)의 기본계약 블록이다 (상품 첫 화면이 아니라)
-    if (coordinate.refPath === BASE_CONTRACT_REF) return `/products/${coordinate.ownerId}?tab=general#base-contract`;
+    // 기본계약 0 · 2+ 오류 — 고치는 자리는 상품담보 탭(`?tab=coverages`)의 기본계약 블록이다 (상품 첫 화면이 아니라)
+    if (coordinate.refPath === BASE_CONTRACT_REF) return `/products/${coordinate.ownerId}?tab=coverages#base-contract`;
     return `/products/${coordinate.ownerId}`;
   }
   return undefined;

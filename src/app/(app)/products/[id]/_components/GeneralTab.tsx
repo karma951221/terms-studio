@@ -1,20 +1,15 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { ErrorBanner } from "@/app/_components/ErrorBanner";
-import { IconButton, IconLink } from "@/app/_components/icons";
 import { IssueList } from "@/app/_components/IssueList";
 import { RenderedDoc } from "@/app/_components/RenderedDoc";
-import { rejectionMessage } from "@/app/_lib/rejection";
 import type { Booklet } from "@/domain/assembly";
 import type { Clause } from "@/domain/clause";
 import { referenceTargetIndex, type DocumentNode, type NodeNumber } from "@/domain/document";
-import type { AttributeKind, BaseContractCheck, ClauseOptionOverride, ProductCoverage, ProductPlan } from "@/domain/product";
-import type { Id, Result } from "@/domain/types";
+import type { ClauseOptionOverride, ProductCoverage } from "@/domain/product";
+import type { Id } from "@/domain/types";
 
-import { designateBaseContractAction, releaseBaseContractAction, setProductGeneralDocumentAction } from "../../actions";
+import { setProductGeneralDocumentAction } from "../../actions";
 import { currentGeneralArticle, generalIssueLink, generalSections, generalSectionLabel, generalTabIssues, renderedNodeIds, sectionPreviewDoc } from "../../lib";
-import { CoverageMountSection } from "./CoverageMountSection";
 import { GeneralPanels, type GeneralPane } from "./GeneralPanels";
 import type { TocSection } from "./GeneralToc";
 import { type OverrideTarget } from "./OptionOverrideForm";
@@ -24,17 +19,8 @@ export interface GeneralTabProps {
   productId: Id;
   generalDocumentId: Id | undefined;
   generals: { id: Id; title: string }[];
-  /** 기본계약 절의 상품담보 — 탑재 표 · 탑재 폼. */
+  /** 기본계약 상품담보 — 오류 링크의 행선(기본계약은 제 상품담보 화면으로 · `generalIssueLink`). */
   baseCoverages: ProductCoverage[];
-  /** 기본계약 지정 select 는 상품담보 전부를 고를 수 있다. */
-  productCoverages: ProductCoverage[];
-  coverages: { id: Id; code?: string; name: string }[];
-  attributeKinds: AttributeKind[];
-  plans: ProductPlan[];
-  /** 탑재 표의 「담보 검색」 `?mq=` · 페이지 `?mpage=`. */
-  mountSearch: { query?: string; page?: string };
-  wouldBeName: (pc: ProductCoverage) => string;
-  baseCheck: Result<BaseContractCheck[]>;
   overrides: ClauseOptionOverride[];
   overrideTargets: OverrideTarget[];
   /** 공용조항 정의 — 상자 안의 모델 · 옵션 이름 · 선택지 이름. */
@@ -42,7 +28,7 @@ export interface GeneralTabProps {
   /** 별표 · 구분자 표시명 — 원문 모델의 칩을 한글로. */
   appendices: { code: string; name: string }[];
   discriminators: { code: string; label: string }[];
-  /** 보통약관 템플릿 트리 — 미지정이면 undefined (약관 섹션 대신 한 줄 안내). */
+  /** 보통약관 템플릿 트리 — 미지정이면 undefined (세 패널 대신 한 줄 안내). */
   generalTree: DocumentNode | undefined;
   /** 템플릿 번호 (원천 노드 id 키) — 목차·원문이 쓰는 「끄기 전」 번호. */
   generalNumbers: ReadonlyMap<Id, NodeNumber>;
@@ -58,23 +44,16 @@ export interface GeneralTabProps {
 }
 
 /**
- * 보통약관 탭 — 기본계약을 완성한다 (기능/상품 §4 「보통약관」): 템플릿 · 기본계약 상품담보 · 기본계약 지정 · 약관 세 패널.
+ * 약관 › 보통약관 작성 — 보통약관 본문에만 집중한다 (기능/상품 §4.6, 2026-09-28 「안 2」).
  *
- * 약관 섹션은 **한 관**을 셋으로 나눠 본다 — 목차(조 노출 토글) · 원문(공용조항 옵션만 편집) · 조립 결과(기능/상품 §4.5).
- * 옵션 오버라이드는 별도 섹션을 두지 않는다: 문면의 그 자리에서 고친다 (기능/상품 §3.6).
+ * 위는 템플릿 선택 한 줄(선택 + 저장)뿐, 아래는 화면 높이를 채우는 세 패널 — 목차(조 노출 토글) · 원문 모델(공용조항 옵션만 편집) ·
+ * 조립 결과. 기본계약 · 탑재 표는 상품담보 탭에 산다. 옵션 오버라이드는 별도 섹션 없이 문면의 그 자리에서 고친다 (기능/상품 §3.6).
  */
 export function GeneralTab({
   productId,
   generalDocumentId,
   generals,
   baseCoverages,
-  productCoverages,
-  coverages,
-  attributeKinds,
-  plans,
-  mountSearch,
-  wouldBeName,
-  baseCheck,
   overrides,
   overrideTargets,
   clauses,
@@ -143,104 +122,33 @@ export function GeneralTab({
   });
 
   return (
-    <>
-      <section className="ts-section">
-        <h2 className="ts-section-title">보통약관 템플릿</h2>
-        <form action={setProductGeneralDocumentAction.bind(null, productId)} className="ts-form">
-          <label className="ts-field">
-            <span>보통약관 템플릿</span>
-            <select name="generalDocumentId" defaultValue={generalDocumentId ?? ""}>
-              <option value="">— 미지정 —</option>
-              {generals.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.title}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="ts-form-actions">
-            <button type="submit">템플릿 저장</button>
-            <Link href="/attributes">담보속성 카탈로그 →</Link>
-          </div>
-        </form>
-        {/* 교체로 조 노출·오버라이드를 잃으면 액션이 `?confirm=template:<새 id>` 로 보낸다 (코덱스 리뷰 Important-6). */}
-        {confirm?.startsWith("template:") && confirmNode}
-      </section>
-
-      <CoverageMountSection
-        productId={productId}
-        section="base"
-        items={baseCoverages}
-        coverages={coverages}
-        attributeKinds={attributeKinds}
-        plans={plans}
-        query={mountSearch.query}
-        page={mountSearch.page}
-        wouldBeName={wouldBeName}
-        mountBlockedHint={baseCoverages.length > 0 ? "변경하려면 먼저 해제하세요 — 기본계약은 하나만 지정할 수 있다 (MVP)" : undefined}
-        confirm={confirm}
-        confirmNode={confirmNode}
-      />
-
-      {/* 오류 좌표(refPath baseContract)의 「고치러 가기」가 `#base-contract` 로 여기에 닿는다 (coordinateHref). */}
-      <section className="ts-section" id="base-contract">
-        <h2 className="ts-section-title">기본계약</h2>
-        {baseCoverages.length === 0 ? (
-          <p className="ts-muted">기본계약을 하나 지정하세요 — 보통약관이 담보 레벨 값을 읽는 자리는 기본계약에서 온다</p>
-        ) : (
-          <>
-            {/* 2개 이상(기존 데이터) — 읽기 검사 문구 「하나만 남기고 해제하세요」 를 오류 배너로 · 1개인데 검사가 거부되면(템플릿 미선택 등) 그 사유 */}
-            {!baseCheck.ok && <ErrorBanner message={rejectionMessage(baseCheck)} />}
-            <ul>
-              {baseCoverages.map((pc) => (
-                <li key={pc.id}>
-                  {pc.name}{" "}
-                  <form action={releaseBaseContractAction.bind(null, productId, pc.id)} style={{ display: "inline" }}>
-                    <IconButton type="submit" danger label={`기본계약 해제 · ${pc.name}`} icon={<IconLink />} />
-                  </form>
-                  {baseCheck.ok && <IssueList issues={baseCheck.value.find((chk) => chk.productCoverageId === pc.id)?.issues ?? []} />}
-                </li>
-              ))}
-            </ul>
-            {/* 1개 이상이면 지정 폼은 숨긴다 — 두 번째 지정은 서비스가 거부한다 (MVP 정확히 1개) */}
-            {baseCoverages.length === 1 && <p className="ts-muted">변경하려면 먼저 해제하세요 — 기본계약은 하나만 지정할 수 있다 (MVP)</p>}
-          </>
+    <div className="ts-terms-focus">
+      <form action={setProductGeneralDocumentAction.bind(null, productId)} className="ts-terms-template">
+        <label>
+          <span>보통약관 템플릿</span>
+          <select name="generalDocumentId" defaultValue={generalDocumentId ?? ""}>
+            <option value="">— 미지정 —</option>
+            {generals.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="submit">템플릿 저장</button>
+        {generalTree && (
+          <span className="ts-count ts-terms-template-count">
+            <b>{articleTotal}</b>조 중 <b>{shownCount}</b> 노출 · 오버라이드 {overrides.length} · 오류 {errorCount} · 별표 {appendixCount}(자동)
+          </span>
         )}
-        {baseCoverages.length === 0 && (
-          <form action={designateBaseContractAction.bind(null, productId)} className="ts-form">
-            <label className="ts-field">
-              <span>기본계약으로 지정</span>
-              <select name="productCoverageId" required>
-                {productCoverages.map((pc) => (
-                  <option key={pc.id} value={pc.id}>
-                    {pc.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="ts-form-actions">
-              <button type="submit">기본계약 지정</button>
-            </div>
-          </form>
-        )}
-      </section>
-
-      <section className="ts-section">
-        <h2 className="ts-section-title">
-          약관{" "}
-          {generalTree && (
-            <span className="ts-count">
-              <b>{articleTotal}</b>조 중 <b>{shownCount}</b> 노출 · 오버라이드 {overrides.length} · 오류 {errorCount} · 별표 {appendixCount}(자동)
-            </span>
-          )}
-        </h2>
-        {generalTree === undefined ? (
-          <p className="ts-muted">보통약관 템플릿을 고르면 여기에 선다.</p>
-        ) : (
-          <GeneralPanels productId={productId} toc={toc} panes={panes} initialArticleId={currentArticleId} />
-        )}
-      </section>
-
-    </>
+      </form>
+      {/* 교체로 조 노출·오버라이드를 잃으면 액션이 `?confirm=template:<새 id>` 로 보낸다 (코덱스 리뷰 Important-6). */}
+      {confirm?.startsWith("template:") && confirmNode}
+      {generalTree === undefined ? (
+        <p className="ts-muted">보통약관 템플릿을 고르면 여기에 목차 · 원문 · 미리보기가 선다.</p>
+      ) : (
+        <GeneralPanels productId={productId} toc={toc} panes={panes} initialArticleId={currentArticleId} />
+      )}
+    </div>
   );
 }

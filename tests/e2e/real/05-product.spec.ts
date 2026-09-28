@@ -37,10 +37,11 @@ function describeDiff(d: UnorderedDiff): string {
   return `${show("원문에만", d.missing)}${show("조립에만", d.extra)}${d.sections ? `\n── 관 순서: ${JSON.stringify(d.sections)}` : ""}`;
 }
 
-/** 세목 값 칸 — 참거짓은 예/아니오 라디오, 목록값(복수)은 체크, 목록값은 선택. */
+/** 세목 · 상품정보 값 칸 — 참거짓은 예/아니오 라디오, 목록값(복수)은 체크, 목록값은 선택, 수는 입력. */
 async function setPlanValue(row: import("@playwright/test").Locator, path: string, value: unknown): Promise<void> {
-  const cell = row.locator(`td[data-path="${path}"]`);
-  if (typeof value === "boolean") await cell.getByRole("radio", { name: value ? "예" : "아니오", exact: true }).check();
+  const cell = row.locator(`[data-path="${path}"]`).last();
+  if (typeof value === "number") await cell.locator("input").fill(String(value));
+  else if (typeof value === "boolean") await cell.getByRole("radio", { name: value ? "예" : "아니오", exact: true }).check();
   else if (Array.isArray(value)) for (const code of value) await cell.locator(`input[type=checkbox][value="${code}"]`).check();
   else await cell.locator("select").selectOption(String(value));
 }
@@ -63,17 +64,20 @@ for (const product of SEED.products) {
         return page.url();
       });
 
-      await ev.action("실물화면#5.3", `보통약관 탭 — 보통약관 템플릿 「${general.title}」을 고른다`, async () => {
-        await open(page, `${productUrl}?tab=general`);
+      await ev.action("실물화면#5.3", `약관 › 보통약관 작성 — 보통약관 템플릿 「${general.title}」을 고른다`, async () => {
+        await open(page, `${productUrl}?tab=terms&sub=general`);
         await page.getByLabel("보통약관 템플릿").selectOption({ label: general.title });
         await submit(page, page.getByRole("button", { name: "템플릿 저장" }));
       });
 
       const types = product.planOptions.filter((o) => o.axis === "type").length;
       const forms = product.planOptions.length - types;
-      await ev.action("실물화면#5.4", `기본정보 — 보험종목 정의 종 ${types} · 형 ${forms}(세목유형 · 값)`, async () => {
+      await ev.action("실물화면#5.4", `기본정보 — 상품정보 값 ${product.values.length} · 보험종목 정의 종 ${types} · 형 ${forms}(세목유형 · 값)`, async () => {
         await open(page, `${productUrl}?tab=basic`);
         await page.getByRole("button", { name: "편집", exact: true }).click();
+        // 상품정보 — 평균공시이율 · 상품특성 (원문이 밝힌 것만 시드에 있다)
+        const info = page.getByRole("region", { name: "상품정보" });
+        for (const v of product.values) await setPlanValue(info, v.path, v.value);
         for (const [i, option] of product.planOptions.entries()) {
           await page.getByRole("button", { name: "보험종목 추가" }).click();
           const row = page.locator("#definitions-panel tbody tr").nth(i);
@@ -98,13 +102,16 @@ for (const product of SEED.products) {
         await page.getByRole("button", { name: "저장", exact: true }).click();
         await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
         await expect(page.locator("#combinations-panel tbody tr")).toHaveCount(product.plans.length);
+        // 상품정보가 저장본으로 읽힌다 — 수는 그대로, enum 은 값 이름
+        for (const v of product.values.filter((x) => typeof x.value === "number")) await expect(page.locator(`tr[data-path="${v.path}"] td`)).toHaveText(String(v.value));
       });
 
       for (const [i, mount] of product.mounts.entries()) {
         const section = mount.section === "base" ? "보통약관 기본계약" : "특별약관";
         const name = mountName(mount);
         await ev.action(`실물화면#5.6.${i + 1}`, `${section}에 「${name}」 탑재`, async () => {
-          await open(page, `${productUrl}?tab=${mount.section === "base" ? "general" : "special"}`);
+          // 기본계약 · 특약 두 절 모두 상품담보 탭 (기능/상품 §4.5)
+          await open(page, `${productUrl}?tab=coverages`);
           const form = page.locator("form", { has: page.getByRole("button", { name: `${section}에 탑재` }) });
           await form.getByLabel("담보").selectOption({ label: coverageOf(mount.coverage).name });
           for (const a of mount.attributes) await form.getByLabel(attributeOf(a.kindCode).label).selectOption(a.valueCode);
@@ -114,7 +121,7 @@ for (const product of SEED.products) {
       }
 
       await ev.action("실물화면#5.7", `특약 그룹 ${product.groups.map((g) => `「${g.title}」`).join(" · ")}을 만들고 특약 ${specials.length} 을 배치한다`, async () => {
-        await open(page, `${productUrl}?tab=special`);
+        await open(page, `${productUrl}?tab=coverages`);
         await expect(page.getByRole("region", { name: "특별약관", exact: true }).locator("tbody tr")).toHaveCount(specials.length);
         for (const group of product.groups) {
           await page.getByLabel("새 그룹 제목").fill(group.title);

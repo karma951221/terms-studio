@@ -1,8 +1,8 @@
 import { expect, test } from "./_lib/fixtures";
 
 /**
- * 상품 기본정보 — 와이어프레임 §20.2 (읽기 · 편집 · 종·형 조합).
- * 헤더의 편집/더보기 ↔ 취소/저장, 보험종목 표의 추가 · 선택 삭제 · 인라인 값, 조합 체크, 저장 하나.
+ * 상품 기본정보 — 와이어프레임 §20.2 (읽기 · 편집 · 종·형 조합) + 상품정보(평균공시이율 · 상품특성, 2026-09-28).
+ * 헤더의 편집/더보기 ↔ 취소/저장, 상품정보 칸 · 보험종목 표의 추가 · 선택 삭제 · 인라인 값, 조합 체크, 저장 하나.
  */
 test(
   "기본정보: 읽기 → 편집 → 단일 저장, 종목·조합과 취소",
@@ -58,6 +58,12 @@ test(
       // ── 편집: 이름 · 보험종목 두 행(인라인 값) · 선택 삭제 · 조합 체크 → 저장 하나
       await page.getByRole("button", { name: "편집", exact: true }).click();
       await name.fill(`${originalName} 수정`);
+      // 상품정보 — 평균공시이율 · 상품특성(갱신형여부 · 간편심사유형)도 같은 저장 하나에 실린다
+      const info = page.getByRole("region", { name: "상품정보" });
+      await expect(info.locator("th[scope=row]")).toHaveText(["상품명", "평균공시이율", "갱신형여부", "태아보장여부", "단체계약여부", "간편심사유형", "건강고지유형"]);
+      await info.locator('tr[data-path="disclosure.avg_rate"] input').fill("2.5");
+      await info.locator('tr[data-path="feature.renewable"]').getByRole("radio", { name: "예", exact: true }).check();
+      await info.locator('tr[data-path="feature.review_type"] select').selectOption({ label: "통합간편심사" });
       await expect(page.getByRole("button", { name: "선택 삭제" })).toHaveCount(0);
       await page.getByRole("button", { name: "보험종목 추가" }).click();
       const rows = page.locator("#definitions-panel tbody tr");
@@ -94,6 +100,10 @@ test(
       await expect(page.getByRole("cell", { name: "제1종", exact: true })).toBeVisible();
       await expect(page.getByRole("cell", { name: "보험료납입면제미적용형", exact: true })).toBeVisible();
       await expect(page.getByRole("cell", { name: "아니오", exact: true })).toBeVisible();
+      await expect(info.locator('tr[data-path="disclosure.avg_rate"] td')).toHaveText("2.5");
+      await expect(info.locator('tr[data-path="feature.renewable"] td')).toHaveText("예");
+      await expect(info.locator('tr[data-path="feature.review_type"] td')).toHaveText("통합간편심사");
+      await expect(info.locator('tr[data-path="feature.fetal"] td')).toHaveText("—");
       await page.reload();
       await expect(name).toHaveValue(`${originalName} 수정`);
       await expect(page.getByRole("heading", { level: 1 })).toContainText(`${originalName} 수정`);

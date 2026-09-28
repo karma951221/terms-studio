@@ -12,7 +12,7 @@ describe("coordinateHref — 상품 좌표", () => {
   });
 
   it("refPath baseContract — 고치는 자리인 보통약관 탭의 기본계약 블록으로 (0개·2개 이상 둘 다)", () => {
-    expect(coordinateHref({ document: "product", ownerId: "p1", ownerName: "알파플러스", refPath: "baseContract" })).toBe("/products/p1?tab=general#base-contract");
+    expect(coordinateHref({ document: "product", ownerId: "p1", ownerName: "알파플러스", refPath: "baseContract" })).toBe("/products/p1?tab=coverages#base-contract");
   });
 
   it("ownerId 를 모르면 링크 없음", () => {

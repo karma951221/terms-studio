@@ -1,17 +1,17 @@
 "use client";
 
 /**
- * 기본정보 탭 — 상품명 · (상품 레벨 값) · 세목 두 탭(보험종목 정의 · 종·형 조합)
- * (와이어프레임 §20.2 A·B·C · 기능/상품 §4 「기본정보」).
+ * 기본정보 탭 — 상품정보(상품명 · 평균공시이율 · 상품특성) · 세목 두 탭(보험종목 정의 · 종·형 조합)
+ * (와이어프레임 §20.2 A·B·C · 기능/상품 §4.4, 2026-09-28 「안 2」).
  *
  * - 읽기로 시작한다. 편집·취소·저장 버튼은 헤더(`ProductHeadActions`)에 있고, 이 컴포넌트는 마운트 시
- *   제 begin · cancel · save · dirty 를 `ProductEditProvider` 에 등록한다. 저장 하나가 상품명 · 종목 정의 ·
+ *   제 begin · cancel · save · dirty 를 `ProductEditProvider` 에 등록한다. 저장 하나가 상품명 · 상품 레벨 값 · 종목 정의 ·
  *   세목 값 · 사용할 조합을 함께 반영한다.
  * - 보험종목은 표다. 값 열은 표시되는 종목들의 세목유형 폼 필드의 합집합. 편집 중에는 셀 안에서 바로
  *   입력한다 — 필드 상태 전이는 StructForm 과 같은 `formReducer` 를 쓴다.
  * - 조합은 체크만 한다. 두 세목 탭을 오가도 초안은 유지된다.
  */
-import { useEffect, useId, useState } from "react";
+import { Fragment, useEffect, useId, useState } from "react";
 
 import { PLAN_AXIS_LABEL, planCombinationKey, planOptionLabel, type PlanAxis, type PlanOption, type ProductPlan } from "@/domain/product";
 import { FieldInput, formatValue, formReducer, initFormState, toSubmission, type FieldView, type FormAction, type FormModel, type FormState } from "@/forms";
@@ -196,6 +196,13 @@ export function BasicTab(props: BasicTabProps) {
     ? candidates
     : shownCombinations.map((ids) => ids.map((id) => shownOptions.find((o) => o.id === id)).filter((o): o is OptionDraft => !!o)).filter((items) => items.length > 0);
   const showPlanType = editing && planTypeForms.length > 1;
+  /** 상품 레벨 필드를 폼(공시이율 · 상품특성)별로 — 선언 순서 그대로. */
+  const productGroups = productForm.fields.reduce<{ key: string; label: string; fields: FieldView[] }[]>((groups, field) => {
+    const last = groups.at(-1);
+    if (last && last.key === field.form.key) last.fields.push(field);
+    else groups.push({ key: field.form.key, label: field.form.label, fields: [field] });
+    return groups;
+  }, []);
   const nameMissing = attempted && !name.trim();
 
   // ── 값 셀 ────────────────────────────────────────────────────────────────
@@ -270,51 +277,57 @@ export function BasicTab(props: BasicTabProps) {
         </section>
       )}
       <fieldset className="ts-basic-body" disabled={pending || !!confirmation}>
-        <label className="ts-basic-name">
-          <span>상품명</span>
-          <span className="ts-basic-name-control">
-            <input
-              aria-label="상품명"
-              type="text"
-              value={editing ? name : productName}
-              readOnly={!editing}
-              required
-              aria-invalid={nameMissing || undefined}
-              onChange={(e) => setName(e.target.value)}
-            />
-            {nameMissing && (
-              <span className="ts-form-error" role="alert">
-                상품명은 비울 수 없습니다
-              </span>
-            )}
-          </span>
-        </label>
-
-        {productForm.fields.length > 0 && (
-          <section className="ts-basic-product-values" id="product-values">
-            <h3>상품 값</h3>
-            <div className="ts-basic-table-wrap">
-              <table className="ts-table ts-basic-table">
-                <thead>
-                  <tr>
-                    <th scope="col">항목</th>
-                    <th scope="col" className="col-flex">
-                      값
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {productForm.fields.map((field) => (
-                    <tr key={field.path} className={field.path === productHighlight ? "is-highlighted" : undefined} data-path={field.path}>
-                      <th scope="row">{field.label}</th>
-                      <td className="col-flex">{editing ? productCell(field.path, field.label) : formatValue(field) || "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
+        <section className="ts-basic-product-values" id="product-values" aria-label="상품정보">
+          <h3>상품정보</h3>
+          <div className="ts-basic-table-wrap">
+            <table className="ts-table ts-basic-table ts-basic-info">
+              <tbody>
+                <tr>
+                  <th scope="row">
+                    <label htmlFor={`${idBase}-name`}>상품명</label>
+                  </th>
+                  <td className="col-flex">
+                    <span className="ts-basic-name-control">
+                      <input
+                        id={`${idBase}-name`}
+                        aria-label="상품명"
+                        type="text"
+                        value={editing ? name : productName}
+                        readOnly={!editing}
+                        required
+                        aria-invalid={nameMissing || undefined}
+                        onChange={(e) => setName(e.target.value)}
+                      />
+                      {nameMissing && (
+                        <span className="ts-form-error" role="alert">
+                          상품명은 비울 수 없습니다
+                        </span>
+                      )}
+                    </span>
+                  </td>
+                </tr>
+                {/* 상품 레벨 마스터 폼마다 — 공시이율 · 상품특성 (기능/상품 §3.1 · 2026-09-28). 폼이 둘 이상이면 폼 이름 줄을 끼운다 */}
+                {productGroups.map((group) => (
+                  <Fragment key={group.key}>
+                    {productGroups.length > 1 && group.fields.length > 1 && (
+                      <tr className="ts-basic-group">
+                        <th scope="rowgroup" colSpan={2}>
+                          {group.label}
+                        </th>
+                      </tr>
+                    )}
+                    {group.fields.map((field) => (
+                      <tr key={field.path} className={field.path === productHighlight ? "is-highlighted" : undefined} data-path={field.path}>
+                        <th scope="row">{field.label}</th>
+                        <td className="col-flex">{editing ? productCell(field.path, field.label) : formatValue(field) || "—"}</td>
+                      </tr>
+                    ))}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         <section className="ts-basic-plans">
           <h3>세목</h3>

@@ -1,4 +1,4 @@
-import { type Page } from "@playwright/test";
+import { type Locator, type Page } from "@playwright/test";
 
 import { expect, test } from "./_lib/fixtures";
 
@@ -6,7 +6,8 @@ import { expect, test } from "./_lib/fixtures";
  * 담보코드 · 상품모델링 탑재 표 · 세목 형 (2026-09-27) — 시드 알파Plus 를 읽기만 한다 (실물재현 E2E 가 같은 DB 를 대조한다).
  *
  * - 담보 조회: 1열 담보코드(COV000001…, 시스템 채번 · 시드 JSON 순서) · 코드로 검색 · 상세 머리 줄에 코드 (기능/담보 §4)
- * - 상품 상세: 「보통약관 기본계약」 · 「특별약관」 표 — 한 행 = 상품담보 하나, 담보코드 · 담보속성 조합 · 상품담보명 · 「담보 검색」 (기능/상품 §4.6)
+ * - 상품 상세 › 상품담보 탭: 「보통약관 기본계약」 · 「특별약관」 표 — 한 행 = 상품담보 하나, 담보코드 · 담보명 · 담보속성 · 상품담보명 ·
+ *   같은 담보는 이어 놓고 코드 · 담보명은 묶음 첫 행에만 · 표마다 「담보 검색」 (기능/상품 §4.5)
  * - 기본정보: 세목 종 2 · 형 2 · 조합 4 (기능/상품 §4.4)
  */
 
@@ -19,8 +20,9 @@ async function login(page: Page): Promise<void> {
 }
 
 /** 검색창에 쳐서 URL 쿼리가 바뀔 때까지 — 입력은 300ms 뒤 `router.replace` 로 간다. */
-async function search(page: Page, key: string, value: string): Promise<void> {
-  await page.getByRole("searchbox").fill(value);
+/** 검색창이 여럿인 화면(상품담보 탭의 두 표)은 `scope` 로 그 표의 것을 고른다. */
+async function search(page: Page, key: string, value: string, scope: Page | Locator = page): Promise<void> {
+  await scope.getByRole("searchbox").fill(value);
   await page.waitForURL((url) => url.searchParams.get(key) === value);
   await page.waitForLoadState("networkidle");
 }
@@ -63,56 +65,63 @@ test(
 );
 
 test(
-  "상품모델링 — 기본계약 · 특별약관 표(담보코드 · 담보속성 조합 · 상품담보명) · 담보 검색",
-  { annotation: { type: "좌표없음", description: "기능/상품 §4.6 탑재 표 (2026-09-27)" } },
+  "상품모델링 — 상품담보 탭의 기본계약 · 특별약관 표(담보코드 · 담보명 · 담보속성 · 상품담보명) · 담보 검색",
+  { annotation: { type: "좌표없음", description: "기능/상품 §4.5 탑재 표 (2026-09-27 · 2026-09-28 상품담보 탭 · 담보 묶음)" } },
   async ({ page, ev }) => {
     await ev.action("탑재표#1", "관리자로 로그인한다", () => login(page));
     const productPath = await ev.action("탑재표#2", "시드 상품을 연다", () => openProduct(page));
 
-    await ev.action("탑재표#3", "보통약관 탭 「보통약관 기본계약」 — 한 행 COV000001 · 속성 — · 상품담보명", async () => {
-      await page.goto(`${productPath}?tab=general`);
+    await ev.action("탑재표#3", "상품담보 탭 「보통약관 기본계약」 — 한 행 COV000001 · 담보명 · 속성 — · 상품담보명", async () => {
+      await page.goto(`${productPath}?tab=coverages`);
       const section = page.getByRole("region", { name: "보통약관 기본계약", exact: true });
       await expect(section.getByRole("heading", { name: "보통약관 기본계약" })).toBeVisible();
-      await expect(section.locator("thead th")).toHaveText(["담보코드", "담보속성 조합", "상품담보명", "세목 부착", "조작"]);
+      await expect(section.locator("thead th")).toHaveText(["담보코드", "담보명", "담보속성", "상품담보명", "세목 부착", "조작"]);
       const rows = section.locator("tbody tr");
       await expect(rows).toHaveCount(1);
       await expect(rows.first().locator("td").nth(0)).toHaveText("COV000001");
-      await expect(rows.first().locator("td").nth(1)).toHaveText("—");
+      await expect(rows.first().locator("td").nth(1)).toHaveText("일반상해80%이상후유장해");
+      await expect(rows.first().locator("td").nth(2)).toHaveText("—");
       await expect(rows.first().getByRole("textbox", { name: /^상품담보명/ })).toHaveValue("일반상해80%이상후유장해");
     });
 
     const section = page.getByRole("region", { name: "특별약관", exact: true });
+    const searchSpecial = (value: string) => search(page, "mq", value, section);
     const rowOf = (name: string) => section.locator("tbody tr", { has: page.getByRole("textbox", { name: `상품담보명 · ${name}`, exact: true }) });
 
-    await ev.action("탑재표#4", "특별약관 탭 — 상품담보 10행, 같은 담보의 두 벌은 담보속성 조합으로 갈린다", async () => {
-      await page.goto(`${productPath}?tab=special`);
+    await ev.action("탑재표#4", "특별약관 표 — 상품담보 10행, 같은 담보의 두 벌은 이어 놓고 코드 · 담보명은 묶음 첫 행에만", async () => {
       await expect(section.locator("tbody tr")).toHaveCount(10);
       await expect(section.getByText(/총\s*10\s*건/)).toBeVisible();
       await expect(rowOf("일반상해사망보장").locator("td").nth(0)).toHaveText("COV000002");
-      await expect(rowOf("일반상해사망보장").locator("td").nth(1)).toHaveText("부가유형=기본");
-      await expect(rowOf("일반상해사망보장 추가").locator("td").nth(0)).toHaveText("COV000002");
-      await expect(rowOf("일반상해사망보장 추가").locator("td").nth(1)).toHaveText("부가유형=추가");
-      await expect(rowOf("갱신형 수술비(1-7종, 연간3회한)[상해]보장").locator("td").nth(1)).toHaveText("갱신유형=갱신형");
+      await expect(rowOf("일반상해사망보장").locator("td").nth(1)).toHaveText("일반상해사망보장");
+      await expect(rowOf("일반상해사망보장").locator("td").nth(2)).toHaveText("부가유형=기본");
+      await expect(rowOf("일반상해사망보장 추가").locator("td").nth(0)).toHaveText("");
+      await expect(rowOf("일반상해사망보장 추가").locator("td").nth(1)).toHaveText("");
+      await expect(rowOf("일반상해사망보장 추가").locator("td").nth(2)).toHaveText("부가유형=추가");
+      await expect(section.getByText("COV000002", { exact: true })).toHaveCount(1);
+      await expect(rowOf("갱신형 수술비(1-7종, 연간3회한)[상해]보장").locator("td").nth(2)).toHaveText("갱신유형=갱신형");
     });
 
-    await ev.action("탑재표#5", "담보 검색 — 코드 COV000002 면 사망보장 두 벌만", async () => {
-      await search(page, "mq", "COV000002");
+    await ev.action("탑재표#5", "담보 검색 — 코드 COV000002 면 사망보장 두 벌만 (묶음이라 코드는 첫 행에만)", async () => {
+      await searchSpecial("COV000002");
       await expect(section.locator("tbody tr")).toHaveCount(2);
+      await expect(section.getByText("COV000002", { exact: true })).toHaveCount(1);
       await expect(rowOf("일반상해사망보장")).toBeVisible();
       await expect(rowOf("일반상해사망보장 추가")).toBeVisible();
     });
 
     await ev.action("탑재표#6", "담보 검색 — 속성 조합 「갱신유형=갱신형」이면 갱신형 수술비만 (비갱신형 한 벌은 빠진다)", async () => {
-      await search(page, "mq", "갱신유형=갱신형");
+      await searchSpecial("갱신유형=갱신형");
       await expect(section.locator("tbody tr")).toHaveCount(1);
       await expect(rowOf("갱신형 수술비(1-7종, 연간3회한)[상해]보장")).toBeVisible();
     });
 
     await ev.action("탑재표#7", "담보 검색 — 상품담보명 「추가」 · 없는 말이면 안내 한 줄", async () => {
-      await search(page, "mq", "추가");
+      await searchSpecial("추가");
       await expect(section.locator("tbody tr")).toHaveCount(1);
       await expect(rowOf("일반상해사망보장 추가")).toBeVisible();
-      await search(page, "mq", "없는담보");
+      // 걸러져 묶음 둘째 행만 남으면 그 행이 코드를 찍는다
+      await expect(rowOf("일반상해사망보장 추가").locator("td").nth(0)).toHaveText("COV000002");
+      await searchSpecial("없는담보");
       await expect(section.getByText("「없는담보」에 맞는 상품담보가 없습니다.")).toBeVisible();
     });
   },

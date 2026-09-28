@@ -4631,3 +4631,30 @@ button.ts-ref-fold:hover {
 .ts-pop .ts-cond-value {
   width: 110px;
 }
+
+/* ── 상품 상세 「안 2」 (2026-09-28) — 기본정보 › 상품정보 표 · 상품담보 표 묶음 · 약관 하위 탭 · 보통약관 작성 ── */
+.ts-basic-info th[scope="row"] { width: 160px; font-weight: 600; text-align: left; }
+.ts-basic-info input[type="text"] { width: 100%; min-height: 32px; box-sizing: border-box; }
+.ts-basic-info input[readonly] { background: var(--ts-surface-2); border-color: var(--ts-rule); color: var(--ts-ink); }
+.ts-basic-group th { padding-top: 12px; font-size: 12px; color: var(--ts-ink-3); font-weight: 600; text-align: left; }
+
+/* 같은 담보의 둘째 상품담보부터 — 코드 · 담보명 칸이 비고 윗줄 괘선을 흐리게 해 한 묶음으로 읽힌다 */
+.ts-mount-section tr.is-group-cont > td { border-top-color: transparent; }
+
+.ts-subtabs-second { margin: -4px 0 12px; font-size: 13px; }
+
+/* 보통약관 작성 · 담보별 미리보기 — 위 한 줄 뒤 화면 높이를 채우는 패널 */
+.ts-terms-template { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; }
+.ts-terms-template label { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+.ts-terms-template select { min-width: 280px; }
+.ts-terms-template-count { margin-left: auto; font-size: 12px; }
+.ts-terms-focus .ts-terms-panel { height: calc(100vh - 230px); min-height: 420px; max-height: none; }
+.ts-special-preview { display: grid; grid-template-columns: minmax(200px, 1fr) 3fr; gap: 12px; align-items: start; }
+.ts-special-list ul { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.ts-special-list li a { display: block; padding: 3px 4px; color: var(--ts-ink-2); text-decoration: none; }
+.ts-special-list li a[aria-current="page"] { color: var(--ts-mark); font-weight: 700; }
+
+@media (max-width: 1100px) {
+  .ts-terms-focus .ts-terms-panel { height: auto; max-height: 60vh; min-height: 0; }
+  .ts-special-preview { grid-template-columns: 1fr; }
+}

@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { redirect } from "next/navigation";
+
 import { Breadcrumb } from "@/app/_components/Breadcrumb";
 import { Confirm } from "@/app/_components/Confirm";
 import { ErrorBanner } from "@/app/_components/ErrorBanner";
@@ -13,18 +15,20 @@ import { buildForm } from "@/forms";
 import { currentActor, getServices } from "@/lib/services";
 
 import { BasicTab } from "./_components/BasicTab";
+import { CoveragesTab } from "./_components/CoveragesTab";
 import { GeneralTab } from "./_components/GeneralTab";
 import { type OverrideTarget } from "./_components/OptionOverrideForm";
 import { ProductEditProvider, ProductHeadActions, ProductPath } from "./_components/ProductEdit";
-import { ProductTabs } from "./_components/ProductTabs";
-import { SpecialTab } from "./_components/SpecialTab";
+import { ProductTabs, TermsSubTabs } from "./_components/ProductTabs";
+import { SpecialPreviewTab } from "./_components/SpecialPreviewTab";
 import { confirmProductGeneralDocumentAction, deleteGroupAction, deleteProductAction, detachPlanAction, removePlanAction, removePlanOptionAction, unmountAction } from "../actions";
-import { productTabOf, type ProductTab } from "../lib";
+import { legacyProductTabRedirect, productTabOf, termsPath, termsSubOf } from "../lib";
 
 export const dynamic = "force-dynamic";
 
 /**
- * 상품 상세 — 헤더(경로 「상품 › 상품명」 · 편집 · 더보기) + 세 탭 (기능/상품 §3.8 · §4.3 · 와이어프레임 §20.2).
+ * 상품 상세 — 헤더(경로 「상품 › 상품명」 · 편집 · 더보기) + 탭 셋 기본정보 · 상품담보 · 약관(하위 탭 보통약관 작성 · 담보별 미리보기)
+ * (기능/상품 §3.8 · §4.3, 2026-09-28 「안 2」). 옛 `?tab=general|special` 주소는 새 자리로 redirect 한다.
  *
  * 헤더의 편집 · 취소 · 저장은 클라이언트 `ProductEditProvider` 가 기본정보 탭과 나눠 쓴다 — 서버 컴포넌트인
  * 이 파일은 Provider 로 본문을 감싸기만 한다. 목록 이동은 경로의 「상품」 링크 하나, 미리보기 · 삭제는 더보기 안이다.
@@ -37,11 +41,14 @@ export default async function ProductDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; error?: string; confirm?: string; option?: string; field?: string; art?: string; pc?: string; mq?: string; mpage?: string }>;
+  searchParams: Promise<{ tab?: string; sub?: string; error?: string; confirm?: string; option?: string; field?: string; art?: string; pc?: string; mq?: string; mpage?: string; bq?: string; bpage?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
+  const legacy = legacyProductTabRedirect(id, sp);
+  if (legacy) redirect(legacy);
   const tab = productTabOf(sp.tab);
+  const sub = tab === "terms" ? termsSubOf(sp.sub) : undefined;
   const services = getServices();
   const product = await services.product.getProduct(id);
   if (!product) {
@@ -89,15 +96,13 @@ export default async function ProductDetailPage({
   const coverageName = new Map(coverages.map((c) => [c.id, c.name]));
   const baseCoverages = productCoverages.filter((coverage) => baseContractSet.has(coverage.id));
   const specialCoverages = productCoverages.filter((coverage) => !baseContractSet.has(coverage.id));
-  /** 상품담보 행 조작이 되돌아갈 탭 — 기본계약은 보통약관, 나머지는 특별약관 (기능/상품 §3.8). */
-  const tabOfCoverage = (pcId: string): ProductTab => (baseContractSet.has(pcId) ? "general" : "special");
 
   /** 작명 규칙이 지금 지어 줄 이름 — 누르기 전에 결과를 보여준다 (리뷰 #27 · §9.3). */
   const wouldBeName = (pc: ProductCoverage) => defaultCoverageName(coverageName.get(pc.coverageId) ?? "", pc.attributes, attributeKinds, namingTemplate);
 
-  // ── 보통약관 탭의 약관 섹션 재료 (기능/상품 §4.5) ───────────────────────
-  // 템플릿 트리 · 템플릿 번호 · 숨긴 조 · 조립 결과. 그 탭을 열었을 때만 읽는다 — 조립은 매번 재계산이라 싸지 않다.
-  const gid = tab === "general" ? product.generalDocumentId : undefined;
+  // ── 약관 › 보통약관 작성의 재료 (기능/상품 §4.6) ───────────────────────
+  // 템플릿 트리 · 템플릿 번호 · 숨긴 조 · 조립 결과. 그 하위 탭을 열었을 때만 읽는다 — 조립은 매번 재계산이라 싸지 않다.
+  const gid = sub === "general" ? product.generalDocumentId : undefined;
   const [generalDoc, generalNumbers, hiddenArticles, bookletResult, appendices, discriminators] = gid
     ? await Promise.all([
         services.document.get(gid),
@@ -133,9 +138,9 @@ export default async function ProductDetailPage({
     }
   }
 
-  // ── 특별약관 탭의 미리보기 재료 (기능/상품 §4.6) ─────────────────────────
+  // ── 약관 › 담보별 미리보기 재료 (기능/상품 §4.7) ─────────────────────────
   // `?pc=` 는 **특약 절의 상품담보**일 때만 믿는다 — 없는 id · 기본계약이면 안 고른 것으로 친다 (URL 의 좌표를 믿지 않는다).
-  const selectedSpecial = tab === "special" && sp.pc ? specialCoverages.find((pc) => pc.id === sp.pc) : undefined;
+  const selectedSpecial = sub === "special" && sp.pc ? specialCoverages.find((pc) => pc.id === sp.pc) : undefined;
   const specialPreview = selectedSpecial ? await services.assembly.previewSpecial(id, selectedSpecial.id) : undefined;
 
   let confirmNode: ReactNode = null;
@@ -154,7 +159,7 @@ export default async function ProductDetailPage({
     const outcome = previewOutcome(await services.product.unmount(actor, pcId));
     confirmNode =
       outcome.kind === "confirm" ? (
-        <Confirm impact={outcome.impact} action={unmountAction.bind(null, id, tabOfCoverage(pcId), pcId)} targetLabel={`상품담보 ${pc?.name ?? pcId}`} actionLabel={`${pc?.name ?? "상품담보"} 탑재 해제`} />
+        <Confirm impact={outcome.impact} action={unmountAction.bind(null, id, "coverages", pcId)} targetLabel={`상품담보 ${pc?.name ?? pcId}`} actionLabel={`${pc?.name ?? "상품담보"} 탑재 해제`} />
       ) : outcome.kind === "error" ? (
         <p className="ts-error-banner">{outcome.message}</p>
       ) : null;
@@ -190,7 +195,7 @@ export default async function ProductDetailPage({
     const outcome = previewOutcome(await services.product.detachPlan(actor, pcId, planId));
     confirmNode =
       outcome.kind === "confirm" ? (
-        <Confirm impact={outcome.impact} action={detachPlanAction.bind(null, id, tabOfCoverage(pcId), pcId, planId)} targetLabel={`${pc?.name ?? pcId} 의 세목 부착`} actionLabel="세목 부착 해제" />
+        <Confirm impact={outcome.impact} action={detachPlanAction.bind(null, id, "coverages", pcId, planId)} targetLabel={`${pc?.name ?? pcId} 의 세목 부착`} actionLabel="세목 부착 해제" />
       ) : outcome.kind === "error" ? (
         <p className="ts-error-banner">{outcome.message}</p>
       ) : null;
@@ -208,7 +213,7 @@ export default async function ProductDetailPage({
           action={confirmProductGeneralDocumentAction.bind(null, id, newId)}
           title={newId ? `템플릿을 「${title}」로 바꾸면 아래 설정이 초기화된다` : "보통약관 템플릿을 해제하면 아래 설정이 초기화된다"}
           actionLabel={newId ? `「${title}」로 교체` : "템플릿 해제"}
-          cancelHref={`?tab=general`}
+          cancelHref={termsPath(id, "general")}
         />
       ) : outcome.kind === "error" ? (
         <p className="ts-error-banner">{outcome.message}</p>
@@ -237,7 +242,7 @@ export default async function ProductDetailPage({
         <ProductHeadActions
           menu={[
             { label: "미리보기", href: `/products/${id}/preview` },
-            { label: "상품 삭제", href: `?tab=${tab}&confirm=product`, danger: true },
+            { label: "상품 삭제", href: `?tab=${tab}${sub ? `&sub=${sub}` : ""}&confirm=product`, danger: true },
           ]}
         />
       </div>
@@ -261,19 +266,33 @@ export default async function ProductDetailPage({
         />
       )}
 
-      {tab === "general" && (
+      {tab === "coverages" && (
+        <CoveragesTab
+          productId={id}
+          baseCoverages={baseCoverages}
+          specialCoverages={specialCoverages}
+          productCoverages={productCoverages}
+          coverages={coverages}
+          attributeKinds={attributeKinds}
+          plans={plans}
+          mountSearch={{ base: { query: sp.bq, page: sp.bpage }, special: { query: sp.mq, page: sp.mpage } }}
+          wouldBeName={wouldBeName}
+          baseCheck={baseCheck}
+          groups={groups}
+          unplaced={unplaced}
+          confirm={c}
+          confirmNode={confirmNode}
+        />
+      )}
+
+      {sub && <TermsSubTabs productId={id} current={sub} />}
+
+      {sub === "general" && (
         <GeneralTab
           productId={id}
           generalDocumentId={product.generalDocumentId}
           generals={generals}
           baseCoverages={baseCoverages}
-          productCoverages={productCoverages}
-          coverages={coverages}
-          attributeKinds={attributeKinds}
-          plans={plans}
-          mountSearch={{ query: sp.mq, page: sp.mpage }}
-          wouldBeName={wouldBeName}
-          baseCheck={baseCheck}
           overrides={overrides}
           overrideTargets={overrideTargets}
           clauses={clauses}
@@ -290,23 +309,7 @@ export default async function ProductDetailPage({
         />
       )}
 
-      {tab === "special" && (
-        <SpecialTab
-          productId={id}
-          specialCoverages={specialCoverages}
-          coverages={coverages}
-          attributeKinds={attributeKinds}
-          plans={plans}
-          mountSearch={{ query: sp.mq, page: sp.mpage }}
-          wouldBeName={wouldBeName}
-          groups={groups}
-          unplaced={unplaced}
-          selected={selectedSpecial}
-          preview={specialPreview}
-          confirm={c}
-          confirmNode={confirmNode}
-        />
-      )}
+      {sub === "special" && <SpecialPreviewTab productId={id} specialCoverages={specialCoverages} selected={selectedSpecial} preview={specialPreview} />}
     </ProductEditProvider>
   );
 }
