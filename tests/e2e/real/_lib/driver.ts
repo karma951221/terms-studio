@@ -41,6 +41,9 @@ export class Editor {
     readonly refs: RefScopes,
   ) {}
 
+  /** 공용조항 본문의 옵션 코드 → 옵션명 — 「옵션 자리」 메뉴의 줄 이름(「옵션 자리 — <옵션명>」)으로 고른다. */
+  optionLabels: ReadonlyMap<string, string> = new Map();
+
   get toolbar(): Locator {
     return this.root.getByRole("toolbar", { name: "약관 편집 도구" });
   }
@@ -131,8 +134,9 @@ export class Editor {
       case "optionSlot": {
         // 공용조항 본문 — 옵션이 하나면 곧바로, 여럿이면 버튼 아래 메뉴에서 그 옵션
         await this.runTool("옵션 자리");
-        const item = this.page.getByRole("menuitem", { name: new RegExp(`^옵션 자리 — `) });
-        if ((await item.count()) > 0) await item.filter({ hasText: node.optionCode }).first().click();
+        const label = this.optionLabels.get(node.optionCode) ?? node.optionCode;
+        const item = this.page.getByRole("menuitem", { name: `옵션 자리 — ${label}`, exact: true });
+        if ((await this.page.getByRole("menuitem", { name: /^옵션 자리 — / }).count()) > 0) await item.click();
         return;
       }
       case "inlineCond":
@@ -502,7 +506,14 @@ export class DocumentAuthoring {
     if (node.kind === "clauseBlockRef") {
       await this.editor.runTool(tool);
       await this.page.getByRole("menuitem", { name: `${this.clauseLabels.get(node.clauseCode)}(${node.clauseCode})`, exact: true }).click();
-      if (Object.keys(node.options).length > 0) throw new Error("옵션 있는 공용조항 블록은 이 E2E 에 없다");
+      if (Object.keys(node.options).length > 0) {
+        // 블록 머리의 옵션 단추 → 「공용조항 옵션」 팝업에서 옵션마다 선택지
+        const block = this.article.locator("[data-clause-ref]").filter({ hasText: `공용조항 (${this.clauseLabels.get(node.clauseCode)})` }).last();
+        await block.locator(".ts-doc-clause-opt").click();
+        const d = this.editor.dialog("공용조항 옵션");
+        for (const [option, value] of Object.entries(node.options)) await d.locator(`#pop-opt-${option}`).selectOption(value);
+        await this.editor.confirm(d, "확인");
+      }
       return;
     }
     await this.editor.runTool(tool);
@@ -575,6 +586,7 @@ export class ClauseAuthoringDriver {
 
   /** 옵션 목록 — 옵션마다 이름, 선택지마다 이름 · 문구. 새 옵션은 빈 선택지 둘을 품고 온다. */
   async options(options: readonly ClauseOption[]): Promise<void> {
+    this.editor.optionLabels = new Map(options.map((o) => [o.code, o.label]));
     for (const option of options) {
       await this.page.getByRole("button", { name: "옵션 추가" }).click();
       await this.page.getByLabel("옵션명").last().fill(option.label);

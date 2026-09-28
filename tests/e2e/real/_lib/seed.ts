@@ -50,7 +50,9 @@ export interface DocumentSpec {
   tree: DocumentNode;
 }
 export interface ProductSpec {
+  code: string;
   name: string;
+  general: string;
   namingTemplate: string;
   planOptions: { code: string; axis: "type" | "form"; number: number; name: string; planTypeCode: string; values: { path: string; value: unknown }[] }[];
   plans: string[][];
@@ -96,5 +98,56 @@ export function generalAncestors(tree: DocumentNode): Map<string, string[]> {
   return out;
 }
 
-export const GENERAL_TREE = SEED.generals[0].tree;
-export const GENERAL_TITLE = GENERAL_TREE.title;
+/** 보통약관 시드 코드 → 트리 (알파Plus · 메리츠 두 벌 — 바탕 DB 에 시드로 들어 있다). */
+export const GENERALS = new Map(SEED.generals.map((g) => [g.code, g.tree]));
+
+export function generalTreeOf(code: string): DocumentNode {
+  const tree = GENERALS.get(code);
+  if (!tree) throw new Error(`보통약관 ${code} 없음`);
+  return tree;
+}
+
+/** 보통약관 두 벌의 참조 대상 조상 — 노드 id 가 벌마다 다르다(`g-…` · `m-…`) — 공용조항 조 참조는 보통약관 전부가 후보다. */
+export const ALL_GENERAL_ANCESTORS = new Map(SEED.generals.flatMap((g) => [...generalAncestors(g.tree)]));
+
+/**
+ * 보통약관이 쓰는 공용조항 — 바탕 DB(`SEED_PROFILE=base`)가 보통약관과 함께 시드로 넣는다(C0001~, 보통약관 가져오기 전에 있어야 한다).
+ * 화면 E2E 는 이것들을 치지 않는다.
+ */
+export const BASE_CLAUSE_CODES = new Set(SEED.generals.flatMap((g) => [...JSON.stringify(g.tree).matchAll(/"clauseCode":"(C\d+)"/g)].map((m) => m[1])));
+
+/** 상품마다 원문 대조 짝 — 픽스처 폴더 · 특약(책자 제목 → 픽스처) · 미리보기 별표 수와 1번 (real.test.ts 와 같은 짝). */
+export const REAL_FIXTURES: Record<string, { dir: string; appendices: number; firstAppendix: string; specials: [string, string][] }> = {
+  "alpha-plus": {
+    dir: "",
+    appendices: 14,
+    firstAppendix: "장해분류표",
+    specials: [
+      ["일반상해사망보장 특별약관", "일반상해사망보장.md"],
+      ["일반상해사망보장 추가 특별약관", "일반상해사망보장_추가.md"],
+      ["일반상해80%이상후유장해 생활자금보장 특별약관", "일반상해80%이상후유장해_생활자금보장.md"],
+      ["골절(치아파절 제외)진단비Ⅱ보장 특별약관", "골절(치아파절_제외)진단비Ⅱ보장.md"],
+      ["일반상해50%이상후유장해 생활자금보장 특별약관", "일반상해50%이상후유장해_생활자금보장.md"],
+      ["골절수술비Ⅱ보장 특별약관", "골절수술비Ⅱ보장.md"],
+      ["중대한특정상해수술비보장 특별약관", "중대한특정상해수술비보장.md"],
+      ["수술비(1-7종, 연간3회한)[상해]보장 특별약관", "수술비(1-7종,_연간3회한)[상해]보장.md"],
+      ["갱신형 수술비(1-7종, 연간3회한)[상해]보장 특별약관", "갱신형_수술비(1-7종,_연간3회한)[상해]보장.md"],
+      ["신화상치료비보장 특별약관", "신화상치료비보장.md"],
+    ],
+  },
+  meritz: {
+    dir: "메리츠",
+    appendices: 9,
+    firstAppendix: "장해분류표",
+    specials: [
+      ["갱신형 일반상해80%이상후유장해(통합간편가입)보장 특별약관", "갱신형_일반상해80%이상후유장해(통합간편가입)보장.md"],
+      ["갱신형 수술비(1-7종, 연간3회한)[상해](통합간편가입)보장 특별약관", "갱신형_수술비(1-7종,_연간3회한)[상해](통합간편가입)보장.md"],
+      ["갱신형 골절(치아파절 제외)진단비Ⅱ(통합간편가입)보장 특별약관", "갱신형_골절(치아파절_제외)진단비Ⅱ(통합간편가입)보장.md"],
+      ["갱신형 신화상치료비(통합간편가입)보장 특별약관", "갱신형_신화상치료비(통합간편가입)보장.md"],
+      ["갱신형 골절수술비Ⅱ(통합간편가입)보장 특별약관", "갱신형_골절수술비Ⅱ(통합간편가입)보장.md"],
+      ["갱신형 질병사망(통합간편가입)보장 특별약관", "갱신형_질병사망(통합간편가입)보장.md"],
+      ["갱신형 질병80%이상후유장해(통합간편가입)보장 특별약관", "갱신형_질병80%이상후유장해(통합간편가입)보장.md"],
+      ["갱신형 수술비(1-7종, 연간3회한)[질병](통합간편가입)보장 특별약관", "갱신형_수술비(1-7종,_연간3회한)[질병](통합간편가입)보장.md"],
+    ],
+  },
+};

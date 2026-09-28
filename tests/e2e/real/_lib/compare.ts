@@ -17,8 +17,9 @@ import { sourceToLines } from "../../../../src/domain/assembly/compare";
 
 const FIXTURES = path.join(process.cwd(), "tests/fixtures/terms");
 
-export function sourceLines(file: string): string[] {
-  return sourceToLines(readFileSync(path.join(FIXTURES, file), "utf8"));
+/** 원문 픽스처 → 파싱양식 줄 — `dir` 은 상품 폴더(알파Plus 는 뿌리 「」 · 메리츠 「메리츠」). */
+export function sourceLines(file: string, dir = ""): string[] {
+  return sourceToLines(readFileSync(path.join(FIXTURES, dir, file), "utf8"));
 }
 
 /** 미리보기의 문서 하나(`article.ts-doc`) → 파싱양식 줄. 브라우저 안에서 DOM 을 걷는다. */
