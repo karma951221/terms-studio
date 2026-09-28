@@ -2649,6 +2649,12 @@ label.ts-field > textarea {
   text-indent: -1.5em;
 }
 
+/* 항 번호(①)를 생략한 항 — 조에 항이 하나뿐이면 번호가 없다. 매달 번호가 없으니 내어쓰기 없이 번호 자리부터 쓴다 (2026-09-28) */
+.ts-doc-paragraph.is-bare {
+  padding-left: 0;
+  text-indent: 0;
+}
+
 .ts-doc-num {
   color: var(--ts-ink-2);
 }

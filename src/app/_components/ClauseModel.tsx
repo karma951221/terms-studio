@@ -160,7 +160,7 @@ function Blocks({ nodes, ctx }: { nodes: readonly Block[]; ctx: Ctx }): ReactNod
   return nodes.map((node) => {
     if (node.kind === "paragraph") {
       return (
-        <div key={node.id} className="ts-doc-paragraph">
+        <div key={node.id} className={ctx.numbers.get(node.id)?.label ? "ts-doc-paragraph" : "ts-doc-paragraph is-bare"}>
           <Num id={node.id} ctx={ctx} />
           <Inlines nodes={node.children} ctx={ctx} />
           {(node.items ?? []).length > 0 && <Items nodes={node.items ?? []} ctx={ctx} />}

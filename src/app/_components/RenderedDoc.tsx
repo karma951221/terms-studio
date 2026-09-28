@@ -130,12 +130,12 @@ function Paragraph({ node }: { node: RenderedParagraph | RenderedStatic | ErrorN
   );
   if (items.length === 0)
     return (
-      <p id={`node-${node.id}`} className="ts-doc-paragraph">
+      <p id={`node-${node.id}`} className={node.label ? "ts-doc-paragraph" : "ts-doc-paragraph is-bare"}>
         {body}
       </p>
     );
   return (
-    <div id={`node-${node.id}`} className="ts-doc-paragraph">
+    <div id={`node-${node.id}`} className={node.label ? "ts-doc-paragraph" : "ts-doc-paragraph is-bare"}>
       {body}
       <ol className="ts-doc-items">
         {items.map((it, i) => (

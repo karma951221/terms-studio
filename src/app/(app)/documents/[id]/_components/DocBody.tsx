@@ -329,7 +329,7 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
       case "paragraph": {
         const num = ctx.numbers.get(node.id);
         return (
-          <div key={node.id} className={`ts-doc-paragraph${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
+          <div key={node.id} className={`ts-doc-paragraph${num?.label ? "" : " is-bare"}${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
             {num?.label ? <span className="ts-doc-num">{num.label}</span> : null} <InlineSlot at={{ parentId: node.id }} nodes={node.children} ctx={ctx} owner={node.id} placeholder="항" />
             {(node.items ?? []).length > 0 && (
               <ol className="ts-doc-items">

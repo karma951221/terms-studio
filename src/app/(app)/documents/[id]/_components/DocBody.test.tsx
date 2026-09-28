@@ -189,3 +189,25 @@ describe("공용조항 블록 안 — 가운데는 모델, 미리보기는 문�
     expect(html).not.toContain("공용조항에서 고치기");
   });
 });
+
+describe("항 번호를 생략한 항 — 편집기도 내어쓰기 없음 (기능/문면 §3.2, 2026-09-28)", () => {
+  const b = nodeBuilders(sequentialIds("h"));
+  it("조에 항이 하나면 번호도 is-bare 도 — 둘이면 번호 ①② 와 매달린 들여쓰기", () => {
+    const one = b.document("D", [b.article("가", [b.paragraph([b.text("하나뿐인 항")])])]);
+    const html1 = renderToStaticMarkup(<Block nodes={(one.children[0] as { children: DocumentNode["children"] }).children} ctx={ctxOf(one, true)} />);
+    expect(html1).toMatch(/class="ts-doc-paragraph is-bare"/);
+    const two = b.document("D", [b.article("가", [b.paragraph([b.text("첫")]), b.paragraph([b.text("둘")])])]);
+    const html2 = renderToStaticMarkup(<Block nodes={(two.children[0] as { children: DocumentNode["children"] }).children} ctx={ctxOf(two, false)} />);
+    expect(html2).not.toContain("is-bare");
+    expect(html2).toContain("①");
+  });
+
+  it("빈 항 · 호 · 목의 자리 글은 단계 이름 한 낱말 — 「문장을 쓴다」 류 없음", () => {
+    const t = b.document("D", [b.article("가", [b.paragraph([], [b.item([], [b.subitem([])])])])]);
+    const html = renderToStaticMarkup(<Block nodes={(t.children[0] as { children: DocumentNode["children"] }).children} ctx={ctxOf(t, true)} />);
+    expect(html).toContain('data-placeholder="항"');
+    expect(html).toContain('data-placeholder="호"');
+    expect(html).toContain('data-placeholder="목"');
+    expect(html).not.toContain("쓴다");
+  });
+});
