@@ -19,6 +19,7 @@
 
 import type {
   Block as ClauseBlock,
+  BoxNode as ClauseBoxNode,
   CondBlockNode as ClauseCondBlockNode,
   Inline as ClauseInline,
   ItemNode as ClauseItemNode,
@@ -26,7 +27,7 @@ import type {
   SubitemNode as ClauseSubitemNode,
 } from "../clause/nodes";
 import { expandClause, resolveOptions } from "../clause/reference";
-import type { Clause, OptionSelection } from "../clause/types";
+import type { Clause, ClauseMode, OptionSelection } from "../clause/types";
 import type { ArticleNode, BoxNode, BulletListNode, BulletNode, ClauseBlockRefNode, CondBlockNode, DocumentNode, ForBlockNode, InlineNode, ItemNode, ParagraphNode, SectionNode, SubitemNode, TableNode } from "../document/nodes";
 import { evaluate, parse, type EvalContext } from "../expression";
 import { expandRepeatTable } from "../document/repeat";
@@ -164,11 +165,15 @@ class Walker {
   }
 
   /** 공용조항 참조 → 펼친 본문 (옵션 해소 포함). 실패면 오류 마커. */
-  expand(node: { id: Id; clauseCode: Code; options: OptionSelection }, mode: "inline" | "block", at: Coordinate): { ok: true; body: (ClauseInline | ClauseBlock)[] } | { ok: false; marker: ErrorNode } {
+  expand(
+    node: { id: Id; clauseCode: Code; options: OptionSelection },
+    modes: readonly ClauseMode[],
+    at: Coordinate,
+  ): { ok: true; mode: ClauseMode; body: (ClauseInline | ClauseBlock | ClauseBoxNode)[] } | { ok: false; marker: ErrorNode } {
     const clause = this.env.clauses.get(node.clauseCode);
     if (!clause) return { ok: false, marker: this.error(node.id, { kind: "brokenRef", message: `공용조항 ${node.clauseCode} 이(가) 없습니다`, at }) };
-    if (clause.mode !== mode) {
-      return { ok: false, marker: this.error(node.id, { kind: "structure", message: `공용조항 ${node.clauseCode} 은(는) ${clause.mode} 모드라 ${mode} 자리에 올 수 없습니다`, at }) };
+    if (!modes.includes(clause.mode)) {
+      return { ok: false, marker: this.error(node.id, { kind: "structure", message: `공용조항 ${node.clauseCode} 은(는) ${clause.mode} 모드라 ${modes.join(" · ")} 자리에 올 수 없습니다`, at }) };
     }
     const { selection, issues } = resolveOptions(clause, node.options, this.env.overrides.get(node.id), at);
     if (issues.length > 0) {
@@ -180,7 +185,13 @@ class Walker {
       const issue: Issue = expanded.rejection.reason === "invalid" ? expanded.rejection.issues[0] : { kind: "optionInvalid", message: "공용조항을 펼칠 수 없습니다", at };
       return { ok: false, marker: this.error(node.id, { ...issue, at: { ...at, ...issue.at } }) };
     }
-    return { ok: true, body: expanded.value as (ClauseInline | ClauseBlock)[] };
+    return { ok: true, mode: clause.mode, body: expanded.value as (ClauseInline | ClauseBlock | ClauseBoxNode)[] };
+  }
+
+  /** 「박스」 공용조항을 펼친 박스 — 줄의 슬롯은 사용처 문맥으로 치환 단계에 넘긴다. */
+  clauseBox(n: ClauseBoxNode, f: Frame): RStatic<RInline> {
+    const inner = { ...f, path: [...f.path, n.id] };
+    return { kind: "box", id: n.id, title: n.title, lines: n.lines.map((l) => this.inlines(l.children, { ...inner, path: [...inner.path, l.id] })) };
   }
 
   inlines(list: readonly AnyInline[], f: Frame): RInline[] {
@@ -210,7 +221,7 @@ class Walker {
       case "inlineFor":
         return [this.error(n.id, { kind: "structure", message: "인라인 반복은 아직 조립하지 않습니다 (P7)", at })];
       case "clauseInlineRef": {
-        const r = this.expand(n, "inline", at);
+        const r = this.expand(n, ["inline"], at);
         if (!r.ok) return [r.marker];
         return this.inlines(r.body as ClauseInline[], { ...f, path: [...f.path, n.id] });
       }
@@ -246,11 +257,12 @@ class Walker {
   }
 
   /**
-   * 정적 표·박스 · 글머리 목록 — 박스는 그대로, 표는 셀의 인라인까지, 글머리 목록은 항목(조건 블록은 택한 가지)의 인라인까지 해소한다
+   * 정적 표·박스 · 글머리 목록 — 표는 셀의 인라인까지, 글머리 목록은 항목(조건 블록은 택한 가지)의 인라인까지 해소한다
    * (기능/문면 §3.2). 반복 표는 펼치고, 조합 0 이면 빈 목록. 글머리 목록은 항목이 모두 빠지면 목록째 없다.
    */
   static(n: AnyStatic, f: Frame): (RStatic<RInline> | ErrorNode)[] {
-    if (n.kind === "box") return [{ kind: "box", id: n.id, title: n.title, lines: n.lines }];
+    // 옛 문면 박스(글 줄) — 하위호환으로 읽는다. 새 박스는 「박스」 공용조항이다 (기능/공용조항 §3.1)
+    if (n.kind === "box") return [{ kind: "box", id: n.id, title: n.title, lines: n.lines.map((text, i) => [{ kind: "text", id: `${n.id}/l${i + 1}`, text }]) }];
     if (n.kind === "bulletList") {
       const inner = { ...f, path: [...f.path, n.id] };
       const errors: ErrorNode[] = [];
@@ -315,14 +327,20 @@ class Walker {
     ];
   }
 
-  items(list: readonly (AnyItem | AnyCond | AnyStatic)[], f: Frame): (RItem<RInline> | RStatic<RInline> | ErrorNode)[] {
+  items(list: readonly (AnyItem | AnyCond | AnyStatic | ClauseBlockRefNode)[], f: Frame): (RItem<RInline> | RStatic<RInline> | ErrorNode)[] {
     return list.flatMap((n): (RItem<RInline> | RStatic<RInline> | ErrorNode)[] => {
       if (n.kind === "item") return [this.item(n, f)];
       if (n.kind === "table" || n.kind === "box" || n.kind === "bulletList") return this.static(n, f);
+      if (n.kind === "clauseBlockRef") {
+        // 호 목록 자리의 공용조항은 「박스」뿐 — 항 · 호 뒤의 박스 자리
+        const r = this.expand(n, ["box"], this.at(f, n.id));
+        if (!r.ok) return [r.marker];
+        return (r.body as ClauseBoxNode[]).map((b) => this.clauseBox(b, { ...f, path: [...f.path, n.id] }));
+      }
       const r = this.select(n.branches, f, n.id);
       if (r.kind === "error") return [this.error(n.id, r.issue)];
       if (r.kind === "none") return [];
-      return this.items(r.branch.children as (AnyItem | AnyCond | AnyStatic)[], { ...f, path: [...f.path, n.id, r.branch.id] });
+      return this.items(r.branch.children as (AnyItem | AnyCond | AnyStatic | ClauseBlockRefNode)[], { ...f, path: [...f.path, n.id, r.branch.id] });
     });
   }
 
@@ -355,8 +373,9 @@ class Walker {
           return this.blocks(r.branch.children as AnyBlock[], { ...f, path: [...f.path, n.id, r.branch.id] }, excludeFromComparison);
         }
         case "clauseBlockRef": {
-          const r = this.expand(n, "block", at);
+          const r = this.expand(n, ["block", "box"], at);
           if (!r.ok) return [r.marker];
+          if (r.mode === "box") return (r.body as ClauseBoxNode[]).map((b) => this.clauseBox(b, { ...f, path: [...f.path, n.id] }));
           return this.blocks(
             r.body as ClauseBlock[],
             { ...f, path: [...f.path, n.id] },

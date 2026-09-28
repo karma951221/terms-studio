@@ -37,7 +37,7 @@ import type { Anchor, DocCtx } from "./ctx";
 import { inlineListAt, newTable } from "./editOps";
 import { InlineSlot } from "./Inline";
 import { runsFromTokens } from "./inlineRuns";
-import type { PopupSpec } from "./menus";
+import { clausesFitting, type PopupSpec } from "./menus";
 import { PopActions, Popover } from "./Popover";
 import { RefTargetTree } from "./RefTargetTree";
 
@@ -473,7 +473,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
               return code ? [{ type: "insert", node: b.clauseBlock(code, optionsOf(fd)), at: spec.at }] : "공용조항을 고른다.";
             }}
           >
-            <ClauseFields clauses={env.clauses} />
+            <ClauseFields clauses={clausesFitting(env.clauses, spec.at)} />
             <PopActions onCancel={onClose} confirmLabel="넣기" />
           </PopForm>
         </Popover>

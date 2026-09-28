@@ -139,8 +139,8 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
   }
   if (after && e.allowed.includes("table")) add.push({ label: "아래에 표 추가…", action: { do: "popup", popup: { kind: "newTable", at: after } } });
   if (after && e.allowed.includes("bulletList")) add.push(bulletListItem("아래에 글머리 목록 추가", after, env.newId));
-  if (after && e.allowed.includes("box")) add.push({ label: "아래에 박스 추가", action: { do: "ops", ops: [{ type: "insert", node: emptyNode("box", env.newId), at: after }] } });
-  if (after && e.allowed.includes("clauseBlockRef")) add.push({ label: "아래에 공용조항(조 단위) 추가…", action: { do: "popup", popup: { kind: "clauseBlock", at: after } } });
+  // 박스는 「박스」 공용조항으로만 넣는다 — 호 목록 자리(항 · 호 뒤)면 박스 공용조항, 조 자리면 항 · 박스 공용조항 (2026-09-28)
+  if (after && e.allowed.includes("clauseBlockRef")) add.push({ label: after.slot === "items" ? "아래에 박스 공용조항 추가…" : "아래에 공용조항(조 단위) 추가…", action: { do: "popup", popup: { kind: "clauseBlock", at: after } } });
 
   const own: MenuItem[] = [];
   if (e.node.kind === "table") {
@@ -157,9 +157,17 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
  * 툴바 「공용조항」의 고르기 목록 — 버튼 아래 작은 메뉴에 공용조항마다 한 줄, 고르면 그 자리에 공용조항 블록(옵션은 블록 머리 띠에서 고른다).
  * 모달 없이 고른다 (2026-09-28). 오른쪽 클릭 메뉴의 「…추가…」는 옵션까지 한 번에 고르는 그 자리 팝업 그대로.
  */
-export function clausePickItems(clauses: readonly { code: string; label: string }[], at: Position, newId: IdSource): MenuItem[] {
+export function clausePickItems(clauses: readonly { code: string; label: string; mode?: string }[], at: Position, newId: IdSource): MenuItem[] {
   const b = nodeBuilders(newId);
-  return clauses.map((c) => ({ label: `${c.label}(${c.code})`, action: { do: "ops", ops: [{ type: "insert", node: b.clauseBlock(c.code, {}), at }] } }));
+  return clausesFitting(clauses, at).map((c) => ({ label: `${c.label}(${c.code})`, action: { do: "ops", ops: [{ type: "insert", node: b.clauseBlock(c.code, {}), at }] } }));
+}
+
+/**
+ * 그 자리에 설 수 있는 공용조항 — 호 목록 자리(항 · 호 뒤)는 「박스」만, 조 자리는 「항」 · 「박스」 (기능/공용조항 §3.1).
+ * 박스는 툴바 「박스」가 아니라 「박스」 공용조항으로만 넣는다 (2026-09-28). 유형을 모르면(옛 호출) 조 자리 공용조항으로 본다.
+ */
+export function clausesFitting<C extends { mode?: string }>(clauses: readonly C[], at: Position): C[] {
+  return clauses.filter((c) => (at.slot === "items" ? c.mode === "box" : c.mode !== "inline"));
 }
 
 /**

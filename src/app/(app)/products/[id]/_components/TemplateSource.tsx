@@ -339,7 +339,12 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
         );
 
       case "clauseBlockRef":
-        return (
+        // 호 목록 자리(항 · 호 뒤)의 공용조항은 「박스」 — 목록 안이면 <li>
+        return inList ? (
+          <li key={node.id} className="ts-doc-static-item">
+            <ClauseBox nodeId={node.id} clauseCode={node.clauseCode} baseOptions={node.options} ctx={ctx} />
+          </li>
+        ) : (
           <div key={node.id} className={ctx.numbers.get(node.id)?.label ? "ts-doc-paragraph" : "ts-doc-paragraph is-bare"}>
             {ctx.numbers.get(node.id)?.label ? <span className="ts-doc-num">{ctx.numbers.get(node.id)?.label}</span> : null}
             <ClauseBox nodeId={node.id} clauseCode={node.clauseCode} baseOptions={node.options} ctx={ctx} />

@@ -243,6 +243,13 @@ function Box({ node, ctx }: { node: Node & { kind: "box" }; ctx: DocCtx }) {
   );
 }
 
+/** 옵션 하나의 고른 선택지 문구 — 안 골랐으면 〔옵션명〕. */
+function optionValueText(clause: { options: readonly { code: string; label: string; values: readonly { code: string; label: string; body: readonly { kind: string; text?: string }[] }[] }[] }, chosen: Record<string, string>, code: string): string {
+  const option = clause.options.find((o) => o.code === code);
+  const value = option?.values.find((v) => v.code === chosen[code]);
+  return value ? value.body.map((n) => n.text ?? "").join("") || value.label : `〔${option?.label ?? code}〕`;
+}
+
 /** 공용조항 옵션 자리(운반체) → 사용처가 고른 선택지 문구. 안 골랐으면 〔옵션명〕. */
 function optionChip(clause: { options: readonly { code: string; label: string; values: readonly { code: string; label: string; body: readonly { kind: string; text?: string }[] }[] }[] }, chosen: Record<string, string>) {
   return (node: InlineNode) => {
@@ -273,7 +280,19 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
   const hasOptions = !clause || clause.options.length > 0;
   const asText = ctx.clauseView === "text";
   let body: ReactNode = <p className="ts-muted">{label ? "본문을 불러오지 않았다." : `${node.clauseCode} — 없는 공용조항이다(깨진 참조).`}</p>;
-  if (clause && asText) {
+  if (clause && asText && clause.mode === "box") {
+    // 미리보기 — 박스 줄에 고른 선택지 문구를 끼운다 (값 슬롯은 표기 그대로 — 값은 조립 결과에서)
+    body = clause.body.map((box) => (
+      <aside key={box.id} className="ts-doc-box">
+        <p className="ts-doc-box-title">【{box.title}】</p>
+        {box.lines.map((l) => (
+          <p key={l.id} className="ts-doc-box-line">
+            {l.children.map((n) => (n.kind === "text" ? n.text : n.kind === "optionSlot" ? optionValueText(clause, node.options, n.optionCode) : n.kind === "slot" ? `〔${n.ref}〕` : "")).join("")}
+          </p>
+        ))}
+      </aside>
+    ));
+  } else if (clause && asText) {
     // 미리보기 — 고른 선택지 문구를 끼운 문장 (조립 결과와 같은 읽기)
     const tree = clauseBodyToTree(clause.mode, clause.body, clause.label);
     const nodes = tree.children[0]?.kind === "article" ? tree.children[0].children : [];
@@ -424,7 +443,14 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
       }
 
       case "clauseBlockRef":
-        return <ClauseBlock key={node.id} node={node} ctx={ctx} />;
+        // 호 목록 자리(항 · 호 뒤)의 공용조항은 「박스」 — 목록 안이면 <li> 로 감싼다
+        return inList ? (
+          <li key={node.id} className="ts-doc-static-item">
+            <ClauseBlock node={node} ctx={ctx} />
+          </li>
+        ) : (
+          <ClauseBlock key={node.id} node={node} ctx={ctx} />
+        );
 
       case "condBlock":
         return <CondBlock key={node.id} node={node} ctx={ctx} as={inList ? "li" : "div"} />;

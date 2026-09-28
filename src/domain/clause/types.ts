@@ -9,9 +9,10 @@
  * - 요구 구분자(`required`)는 저장할 때 식에서 계산해 함께 둔다 (선언 아님).
  */
 import type { Code, Id } from "../types";
-import type { Block, Inline } from "./nodes";
+import type { Block, BoxNode, Inline } from "./nodes";
 
-export type ClauseMode = "inline" | "block";
+/** 유형 — 문구(문장 안) · 항(항 목록) · 박스(【용어풀이】 류 박스 하나, 2026-09-28). */
+export type ClauseMode = "inline" | "block" | "box";
 
 /** 옵션 자리의 선택지 — 문구 수준의 대안 (기능/공용조항 §3.1 「옵션은 문구 수준」). */
 export interface OptionValue {
@@ -59,12 +60,18 @@ export interface BlockClause extends ClauseBase {
   body: Block[];
 }
 
-export type Clause = InlineClause | BlockClause;
+export interface BoxClause extends ClauseBase {
+  mode: "box";
+  /** 박스 하나 — 빈 본문(`[]`)은 저장 전 생성 화면에서만. */
+  body: BoxNode[];
+}
+
+export type Clause = InlineClause | BlockClause | BoxClause;
 
 /** 모드에 따른 본문 타입. */
-export type BodyOf<M extends ClauseMode> = M extends "inline" ? Inline[] : Block[];
+export type BodyOf<M extends ClauseMode> = M extends "inline" ? Inline[] : M extends "box" ? BoxNode[] : Block[];
 
-export type ClauseBody = Inline[] | Block[];
+export type ClauseBody = Inline[] | Block[] | BoxNode[];
 
 /** 사용처의 옵션 선택 — 옵션 코드 → 선택지 코드. */
 export type OptionSelection = Record<Code, Code>;

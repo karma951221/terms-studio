@@ -54,6 +54,7 @@ export function clauseGateFrom(clauses: readonly Clause[], catalogCodes: Iterabl
   const catalog = new Set(catalogCodes);
   return {
     clauseExists: (code) => byCode.has(code),
+    clauseMode: (code) => byCode.get(code)?.mode,
     requiredCodes: (code) => byCode.get(code)?.required.discriminators ?? [],
     missingRequired: (code) => (byCode.get(code)?.required.discriminators ?? []).filter((d) => !catalog.has(d)),
     validateOptions: (code, options) => {

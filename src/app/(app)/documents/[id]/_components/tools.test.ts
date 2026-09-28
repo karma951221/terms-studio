@@ -75,9 +75,11 @@ describe("약관 에디터 툴바 (기능/문면 §4.3)", () => {
     const ids = allTools(DOCUMENT_TOOLS).map((t) => t.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(allTools(DOCUMENT_TOOLS).map((t) => t.label)).toEqual(
-      expect.arrayContaining(["조", "관", "항", "호", "목", "표", "박스", "글머리 목록", "공용조항", "슬롯", "조 참조", "별표 참조", "조건식", "위로", "아래로", "복제", "삭제"]),
+      expect.arrayContaining(["조", "관", "항", "호", "목", "표", "글머리 목록", "공용조항", "슬롯", "조 참조", "별표 참조", "조건식", "위로", "아래로", "복제", "삭제"]),
     );
     expect(ids).not.toContain("optionSlot");
+    // 박스는 툴바로 직접 넣지 않는다 — 「박스」 공용조항을 「공용조항」으로 (기능/공용조항 §3.1, 2026-09-28)
+    expect(allTools(DOCUMENT_TOOLS).map((t) => t.label)).not.toContain("박스");
   });
 
   it("버튼 켜짐은 자리를 따른다 — 항이면 항 · 호 · 조건식이 켜지고 조건 가지 조작은 잠긴다", () => {
@@ -86,7 +88,7 @@ describe("약관 에디터 툴바 (기능/문면 §4.3)", () => {
     const on = allTools(DOCUMENT_TOOLS)
       .filter((t) => !toolState(t, sections).disabled)
       .map((t) => t.id);
-    expect(on).toEqual(expect.arrayContaining(["paragraph", "item", "table", "box", "clauseBlock", "cond", "duplicate", "remove"]));
+    expect(on).toEqual(expect.arrayContaining(["paragraph", "item", "table", "clauseBlock", "cond", "duplicate", "remove"]));
     expect(on).not.toContain("elif");
     expect(on).not.toContain("up"); // 맨 위 항
     const head = placeMenu(env(s.tree), { kind: "head", id: s.cond.branches[0].id });

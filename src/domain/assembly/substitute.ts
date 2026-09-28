@@ -134,9 +134,9 @@ class Substituter {
     return { ...n, items: n.items.map((b) => ({ id: b.id, children: this.inlines(b.children) })) };
   }
 
-  /** 표 셀 · 글머리 목록 항목 안의 슬롯도 치환한다 — 박스는 텍스트뿐이라 그대로. */
+  /** 표 셀 · 박스 줄 · 글머리 목록 항목 안의 슬롯도 치환한다. */
   static(n: RStatic<RInline>): RStatic<SInline> {
-    if (n.kind === "box") return n;
+    if (n.kind === "box") return { ...n, lines: n.lines.map((line) => this.inlines(line)) };
     if (n.kind === "bulletList") return this.bullets(n);
     return { ...n, rows: n.rows.map((row) => ({ ...row, cells: row.cells.map((cell) => this.inlines(cell)) })) };
   }

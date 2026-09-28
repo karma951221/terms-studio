@@ -64,7 +64,8 @@ function adaptAll(sections: MenuSections, env: MenuEnv, onRefuse: (message: stri
 }
 
 export interface ClauseMenuEnv extends MenuEnv {
-  mode: "inline" | "block";
+  /** 「박스」는 제목 칸 · 줄 칸만 — 툴바 · 오른쪽 클릭 목록이 없다. */
+  mode: "inline" | "block" | "box";
   /** 옵션 목록 단의 옵션 — 옵션 자리 넣기 항목이 옵션마다 한 줄. */
   options: readonly { code: string; label: string }[];
   onRefuse: (message: string) => void;
@@ -110,7 +111,7 @@ export function clauseInlineMenu(env: ClauseMenuEnv, at: InlineAt, tokens: Token
 
 /** 본문 빈 자리(「항」 유형) — 항 추가 · 조건 블록 넣기(빈 항을 든 조건 블록을 끝에) + 막힌 도구(조 · 관). */
 export function clauseBodyMenu(env: ClauseMenuEnv): MenuSections {
-  if (env.mode === "inline") return [];
+  if (env.mode !== "block") return [];
   const paragraph = emptyNode("paragraph", env.newId);
   return [
     [{ label: "항 추가", action: { do: "ops", ops: [{ type: "insert", node: paragraph, at: { parentId: CLAUSE_ARTICLE_ID } }], focus: paragraph.id } }],

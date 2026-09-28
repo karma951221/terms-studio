@@ -178,6 +178,19 @@ export function locateIssues(issues: readonly Issue[], numbered: NumberedDoc): I
   });
 }
 
+/** 박스 줄의 렌더된 인라인 → 글. 오류는 그 자리 표식. */
+function boxText(n: RenderedInline): string {
+  switch (n.kind) {
+    case "text":
+      return n.text;
+    case "articleRef":
+    case "appendixRef":
+      return n.label;
+    default:
+      return "〔오류〕";
+  }
+}
+
 class Renderer {
   readonly issues: Issue[] = [];
   private readonly self: Map<Id, ReferenceTarget>;
@@ -293,9 +306,9 @@ class Renderer {
     return { ...n, items: n.items.map((b) => ({ id: b.id, children: b.children.map((c) => this.inline(c, source)) })) };
   }
 
-  /** 표 셀 · 글머리 목록 항목의 조·별표 참조도 계산 번호로 찍는다. 박스는 텍스트뿐이라 그대로. */
+  /** 표 셀 · 글머리 목록 항목의 조·별표 참조도 계산 번호로 찍는다. 박스 줄은 글 하나로 접는다(슬롯은 치환됐다). */
   static(n: RStatic<SInline>, source: ReferenceTarget): RenderedStatic {
-    if (n.kind === "box") return n;
+    if (n.kind === "box") return { kind: "box", id: n.id, title: n.title, lines: n.lines.map((line) => line.map((c) => boxText(this.inline(c, source))).join("")) };
     if (n.kind === "bulletList") return this.bullets(n, source);
     return { ...n, rows: n.rows.map((row) => ({ ...row, cells: row.cells.map((cell) => cell.map((c) => this.inline(c, source))) })) };
   }

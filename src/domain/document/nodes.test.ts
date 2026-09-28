@@ -31,7 +31,7 @@ describe("허용 자식 규칙 테이블 (ADR-0012 — 문서>조>항>호>목, �
   });
 
   it("호는 항의 items 에, 목은 호의 subitems 에 선다 (조건 블록도 그 자리에 설 수 있다)", () => {
-    expect(allowedListChildren["paragraph.items"]).toEqual(["item", "condBlock", "table", "box", "bulletList"]);
+    expect(allowedListChildren["paragraph.items"]).toEqual(["item", "condBlock", "table", "box", "clauseBlockRef", "bulletList"]);
     expect(allowedListChildren["item.subitems"]).toEqual(["subitem", "condBlock", "bulletList"]);
   });
 
@@ -320,7 +320,7 @@ describe("실물 재현 노드 (기능/문면 §3.2) — 관 · 정적 표 · �
     expect(allowedChildren.section).toEqual(["article", "condBlock"]);
     expect(allowedChildren.article).toContain("table");
     expect(allowedChildren.article).toContain("box");
-    expect(allowedIn("paragraph", "items")).toEqual(["item", "condBlock", "table", "box", "bulletList"]);
+    expect(allowedIn("paragraph", "items")).toEqual(["item", "condBlock", "table", "box", "clauseBlockRef", "bulletList"]);
     expect(allowedIn("item", "subitems")).toEqual(["subitem", "condBlock", "bulletList"]);
     expect(slotsOf("table")).toEqual([]);
     expect(slotsOf("box")).toEqual([]);

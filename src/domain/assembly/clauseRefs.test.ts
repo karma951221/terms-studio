@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { BlockClause } from "../clause/types";
+import type { BlockClause, BoxClause } from "../clause/types";
 import type { DocumentNode } from "../document/nodes";
 import { specialContext } from "./context";
 import { alphaPlusFixture } from "./fixture";
@@ -61,5 +61,52 @@ describe("조째 공용조항의 조 참조 — 사용처 위치 · 제 항", ()
     if (lapse.kind !== "article") throw new Error("조 아님");
     const labels = lapse.children.flatMap((p) => (p.kind === "paragraph" ? p.children.filter((c) => c.kind === "articleRef").map((c) => (c as { label: string }).label) : []));
     expect(labels).toEqual(["제1조(보험금의 지급사유)", "제1항", "제2조(세부규정) 제1항"]);
+  });
+});
+
+describe("「박스」 공용조항 — 조 자리 · 호 목록 자리(항 · 호 뒤)에 박스로 펼친다", () => {
+  const 박스: BoxClause = {
+    code: "C0100",
+    label: "【보장개시일】",
+    mode: "box",
+    required: { discriminators: [], attributes: [] },
+    options: [{ code: "O01", label: "1째 줄", order: 0, values: [{ code: "V01", label: "개시", order: 0, body: [{ id: "v1", kind: "text", text: "보장을 개시하는" }] }, { code: "V02", label: "시작", order: 1, body: [{ id: "v2", kind: "text", text: "보장을 시작하는" }] }] }],
+    body: [{ id: "b", kind: "box", title: "보장개시일", lines: [{ id: "l1", kind: "line", children: [{ id: "t", kind: "text", text: "회사가 " }, { id: "o", kind: "optionSlot", optionCode: "O01" }, { id: "u", kind: "text", text: " 날" }] }] }],
+  };
+  const tree: DocumentNode = {
+    kind: "document",
+    id: "s",
+    title: "특약",
+    children: [
+      {
+        kind: "article",
+        id: "a1",
+        title: "보장",
+        children: [
+          { kind: "paragraph", id: "p1", children: [{ kind: "text", id: "t1", text: "다음과 같다." }], items: [{ kind: "item", id: "i1", children: [{ kind: "text", id: "t2", text: "하나" }] }, { kind: "clauseBlockRef", id: "k1", clauseCode: "C0100", options: { O01: "V01" } }] },
+          { kind: "clauseBlockRef", id: "k2", clauseCode: "C0100", options: { O01: "V02" } },
+        ],
+      },
+    ],
+  };
+
+  it("박스는 번호를 먹지 않고, 줄은 고른 선택지 문구로 렌더된다", () => {
+    const input = alphaPlusFixture();
+    const ctx = specialContext(input, input.coverages[0]);
+    const resolved = resolveDocument(tree, ctx, { clauses: new Map([["C0100", 박스]]), overrides: new Map(), coordinate: { document: "special", ownerId: "pc" } });
+    expect(resolved.issues).toEqual([]);
+    const result = renderDocument(numberDocument(resolved.doc as unknown as SubstitutedDoc), { document: "special", ownerId: "pc", appendices: [] });
+    const article = result.doc.children[0];
+    if (article.kind !== "article" || article.children[0].kind !== "paragraph") throw new Error("구조");
+    expect(article.children[0].label).toBe("");
+    expect(article.children[0].items?.[1]).toEqual({ kind: "box", id: "k1/b", title: "보장개시일", lines: ["회사가 보장을 개시하는 날"] });
+    expect(article.children[1]).toEqual({ kind: "box", id: "k2/b", title: "보장개시일", lines: ["회사가 보장을 시작하는 날"] });
+  });
+
+  it("호 목록 자리에 「항」 공용조항이 오면 조립 오류(자리 유형)", () => {
+    const input = alphaPlusFixture();
+    const ctx = specialContext(input, input.coverages[0]);
+    const wrong = resolveDocument(tree, ctx, { clauses: new Map([["C0100", { ...소멸, code: "C0100" }]]), overrides: new Map(), coordinate: { document: "special", ownerId: "pc" } });
+    expect(wrong.issues.map((i) => i.kind)).toContain("structure");
   });
 });

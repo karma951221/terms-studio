@@ -191,7 +191,7 @@ export interface ParagraphNode {
   id: Id;
   kind: "paragraph";
   children: InlineNode[];
-  items?: (ItemNode | CondBlockNode | TableNode | BoxNode | BulletListNode)[];
+  items?: (ItemNode | CondBlockNode | TableNode | BoxNode | ClauseBlockRefNode | BulletListNode)[];
 }
 
 /** 블록 조건의 가지. */
@@ -308,7 +308,8 @@ export const allowedChildren: Record<NodeKind, readonly NodeKind[]> = {
 
 /** 두 번째 목록 자리 — 항의 호 목록 · 호의 목 목록. 조건 블록도 그 자리에 설 수 있다. */
 export const allowedListChildren = {
-  "paragraph.items": ["item", "condBlock", "table", "box", "bulletList"],
+  // 호 목록 자리의 공용조항 참조는 「박스」 공용조항만 (항 · 호 뒤의 박스 자리 — 유형은 게이트가 본다)
+  "paragraph.items": ["item", "condBlock", "table", "box", "clauseBlockRef", "bulletList"],
   "item.subitems": ["subitem", "condBlock", "bulletList"],
 } as const satisfies Record<string, readonly NodeKind[]>;
 
@@ -551,6 +552,8 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
  */
 export interface ClauseGate {
   clauseExists(code: Code): boolean;
+  /** 공용조항 유형 — 있으면 참조 자리를 유형별로 본다(문구 = 문장 안 · 항 = 조 자리 · 박스 = 조 자리와 호 목록 자리). */
+  clauseMode?(code: Code): "inline" | "block" | "box" | undefined;
   requiredCodes(code: Code): Code[];
   missingRequired(code: Code): Code[];
   validateOptions(code: Code, options: Record<Code, Code>): Issue[];
@@ -641,10 +644,21 @@ export function checkNodeRefs(e: NodeEntry, ix: TreeIndex, env: TreeEnv, atSave:
       return env.appendixExists && !env.appendixExists(n.appendixCode) ? one("brokenRef", `별표 ${n.appendixCode} 가 별표 마스터에 없습니다`) : [];
     case "clauseBlockRef":
     case "clauseInlineRef":
-      return checkClauseRef(n, gate, at, atSave);
+      return [...clausePlacement(n, e.slot, gate, at), ...checkClauseRef(n, gate, at, atSave)];
     default:
       return [];
   }
+}
+
+/** 공용조항 참조의 자리 — 유형별 (기능/공용조항 §3.1): 문구는 문장 안, 항은 조 자리, 박스는 조 자리 · 호 목록 자리(항 · 호 뒤). */
+function clausePlacement(node: ClauseBlockRefNode | ClauseInlineRefNode, slot: SlotName, gate: ClauseGate, at: Coordinate): Issue[] {
+  const mode = gate.clauseMode?.(node.clauseCode);
+  if (mode === undefined) return [];
+  const wrong = (message: string): Issue[] => [{ kind: "structure", message: `공용조항 ${node.clauseCode} — ${message}`, at }];
+  if (node.kind === "clauseInlineRef") return mode === "inline" ? [] : wrong("문장 안에는 「문구」 공용조항만 둘 수 있습니다");
+  if (mode === "inline") return wrong("「문구」 공용조항은 문장 안에만 둘 수 있습니다");
+  if (slot === "items" && mode !== "box") return wrong("호 목록 자리에는 「박스」 공용조항만 둘 수 있습니다");
+  return [];
 }
 
 /**

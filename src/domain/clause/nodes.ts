@@ -4,7 +4,7 @@
  * 공용조항 본문은 문면과 같은 노드 모델을 쓰되, 공용조항 안에서 쓸 수 있는 종류만 여기 둔다.
  * B3(document)·C2(assembly) 통합 시 노드 타입을 하나로 합칠 수 있도록 **타입은 이 파일 한 곳**에만 둔다.
  *
- * - inline 본문 = `Inline[]` (문장 안 문구).  block 본문 = `Block[]` (항 또는 항 목록).
+ * - inline 본문 = `Inline[]` (문장 안 문구).  block 본문 = `Block[]` (항 또는 항 목록).  box 본문 = `[BoxNode]` (박스 하나 — 제목 + 줄).
  * - 인라인 종류: `text · slot · inlineCond · articleRef · appendixRef · optionSlot`.
  *   **공용조항 참조(clauseInlineRef · clauseBlockRef)는 없다** — 중첩 금지(MVP, 기능/공용조항 §3.1).
  *   반복(forBlock · inlineFor)도 MVP 이후라 없다.
@@ -141,8 +141,31 @@ export type Block = ParagraphNode | CondBlockNode;
 
 export type BlockKind = Block["kind"];
 
+// ───────────────────────────── 박스 ─────────────────────────────
+
+/** 박스 줄 — 글 · 값 슬롯 · 옵션 자리만 (조건 · 참조는 없다). */
+export interface BoxLineNode {
+  id: Id;
+  kind: "line";
+  children: Inline[];
+}
+
+/**
+ * 【용어풀이】 류 박스 — 「박스」 공용조항의 본문(이 노드 하나). 제목 + 줄 목록, 번호 없음 (기능/공용조항 §3.1).
+ * 사용처는 문면의 박스 자리(항 · 호 뒤 · 조 직속)에 공용조항 참조(`clauseBlockRef`)로 세운다.
+ */
+export interface BoxNode {
+  id: Id;
+  kind: "box";
+  title: string;
+  lines: BoxLineNode[];
+}
+
+/** 박스 줄에 올 수 있는 인라인. */
+export const BOX_LINE_KINDS: readonly InlineKind[] = ["text", "slot", "optionSlot"];
+
 /** 공용조항 안에 나타날 수 있는 모든 노드. */
-export type ClauseNode = Inline | Block | ItemNode | SubitemNode;
+export type ClauseNode = Inline | Block | ItemNode | SubitemNode | BoxNode | BoxLineNode;
 
 export type ClauseNodeKind = ClauseNode["kind"];
 

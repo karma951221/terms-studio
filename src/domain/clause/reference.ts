@@ -11,7 +11,7 @@
 import type { Discriminator } from "../catalog/types";
 import { ok, reject } from "../types";
 import type { Code, Coordinate, Id, Issue, Result } from "../types";
-import type { Block, BlockBranch, Inline, InlineBranch, ItemNode, SubitemNode } from "./nodes";
+import type { Block, BlockBranch, BoxNode, Inline, InlineBranch, ItemNode, SubitemNode } from "./nodes";
 import type { Clause, ClauseBody, OptionSelection } from "./types";
 
 // ───────────────────────────── 카탈로그 조회 ─────────────────────────────
@@ -156,6 +156,9 @@ export function expandClause(clause: Clause, selection: OptionSelection, refNode
   };
 
   if (clause.mode === "inline") return ok(inlines(clause.body));
+  if (clause.mode === "box") {
+    return ok(clause.body.map((b): BoxNode => ({ ...b, id: nid(b.id), lines: b.lines.map((l) => ({ ...l, id: nid(l.id), children: inlines(l.children) })) })));
+  }
   return ok(clause.body.map(block));
 }
 

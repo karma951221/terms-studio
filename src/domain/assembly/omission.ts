@@ -51,7 +51,7 @@ function serializer(refInsensitive: boolean) {
   function stat(n: RStatic<SInline>): string {
     if (n.kind === "table") return `표[${n.title ?? ""}|${n.columns.map((c) => c.width ?? "-").join("·")}|${n.rows.map((r) => `${r.header ? "h" : ""}${r.cells.map(inlines).join("¦")}`).join("‖")}]`;
     if (n.kind === "bulletList") return `글머리[${n.items.map((b) => inlines(b.children)).join("‖")}]`;
-    return `박스[${n.title}|${n.lines.join("‖")}]`;
+    return `박스[${n.title}|${n.lines.map(inlines).join("‖")}]`;
   }
   const item = (n: RItem<SInline> | RStatic<SInline> | ErrorNode) => (n.kind === "error" ? err(n) : n.kind !== "item" ? stat(n) : `호[${inlines(n.children)}${(n.subitems ?? []).map(subitem).join("")}]`);
   const paragraph = (n: Compared) => (n.kind === "error" ? err(n) : n.kind !== "paragraph" ? stat(n) : `항[${inlines(n.children)}${(n.items ?? []).map(item).join("")}]`);

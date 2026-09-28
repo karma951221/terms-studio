@@ -174,12 +174,15 @@ export interface RTable<I> {
   /** `spans` = 셀별 rowSpan (반복 표 바깥 key 병합, 0 = 위 셀에 병합됨 — ADR-0070). 없으면 병합 없음. */
   rows: { header?: boolean; cells: I[][]; spans?: number[] }[];
 }
-/** 【용어풀이】 박스 — 조립 단계를 그대로 통과한다. */
-export interface RBox {
+/**
+ * 【용어풀이】 박스 — 줄은 인라인 목록이라 「박스」 공용조항의 값 슬롯이 단계마다 해소된다(옛 문면 박스 노드는 글 한 조각씩).
+ * 렌더 결과(`RenderedBox`)에서는 줄마다 글 하나다.
+ */
+export interface RBox<I> {
   kind: "box";
   id: Id;
   title: string;
-  lines: string[];
+  lines: I[][];
 }
 /** 글머리 목록 — 번호 없는 항목 나열. 항목 문장은 인라인이라 슬롯 · 참조가 단계마다 함께 해소된다. 조건으로 빠진 항목은 없다. */
 export interface RBulletList<I> {
@@ -187,7 +190,7 @@ export interface RBulletList<I> {
   id: Id;
   items: { id: Id; children: I[] }[];
 }
-export type RStatic<I> = RTable<I> | RBox | RBulletList<I>;
+export type RStatic<I> = RTable<I> | RBox<I> | RBulletList<I>;
 
 export interface RSubitem<I> {
   kind: "subitem";
@@ -289,8 +292,15 @@ export interface RenderedItem {
   children: RenderedInline[];
   subitems?: (RenderedSubitem | RBulletList<RenderedInline> | ErrorNode)[];
 }
-/** 정적 표·박스는 렌더 결과에서도 같은 모양이다. */
-export type RenderedStatic = RStatic<RenderedInline>;
+/** 렌더된 박스 — 줄마다 글 하나. */
+export interface RenderedBox {
+  kind: "box";
+  id: Id;
+  title: string;
+  lines: string[];
+}
+/** 정적 표·박스 — 표는 셀이 렌더된 인라인, 박스는 줄 글. */
+export type RenderedStatic = RTable<RenderedInline> | RenderedBox | RBulletList<RenderedInline>;
 export interface RenderedParagraph {
   kind: "paragraph";
   id: Id;

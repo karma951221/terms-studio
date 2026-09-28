@@ -17,13 +17,12 @@ function tree(): DocumentNode {
 }
 
 describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 §3.2 · §4.3)", () => {
-  it("항 — 아래에 항 · 호 추가 · 표 · 박스 · 공용조항(조 단위) · 감싸기 · 이동(맨 위 · 맨 아래 잠김) · 복제 · 삭제", () => {
+  it("항 — 아래에 항 · 호 추가 · 표 · 공용조항(조 단위) · 감싸기 · 이동(맨 위 · 맨 아래 잠김) · 복제 · 삭제 — 박스는 공용조항으로만(박스 추가 없음)", () => {
     expect(labels(blockMenu(env(tree()), "n3"))).toEqual([
       "아래에 항 추가",
       "호 추가",
       "아래에 표 추가…",
       "아래에 글머리 목록 추가",
-      "아래에 박스 추가",
       "아래에 공용조항(조 단위) 추가…",
       "조건으로 감싸기",
       "위로(잠김)",
@@ -33,9 +32,8 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
     ]);
   });
 
-  it("호 — 항 목록 자리라 호 · 표 · 박스, 공용조항(조 단위)은 없다 · 목은 목만", () => {
-    expect(labels(blockMenu(env(tree()), "n2")).slice(0, 4)).toEqual(["아래에 호 추가", "목 추가", "아래에 표 추가…", "아래에 글머리 목록 추가"]);
-    // 목 뒤에도 글머리 목록이 선다(표 · 박스는 없다)
+  it("호 — 항 목록 자리라 호 · 표 · 글머리 목록 · 박스 공용조항, 공용조항(조 단위)은 없다 · 목 뒤는 목 · 글머리 목록", () => {
+    expect(labels(blockMenu(env(tree()), "n2")).slice(0, 5)).toEqual(["아래에 호 추가", "목 추가", "아래에 표 추가…", "아래에 글머리 목록 추가", "아래에 박스 공용조항 추가…"]);
     expect(labels(blockMenu(env(tree()), "n1")).slice(0, 3)).toEqual(["아래에 목 추가", "아래에 글머리 목록 추가", "조건으로 감싸기"]);
   });
 
@@ -86,5 +84,16 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
     const items = clausePickItems([{ code: "C0001", label: "보험기간" }], { parentId: "n4", index: 1 }, sequentialIds("k"));
     expect(items.map((i) => i.label)).toEqual(["보험기간(C0001)"]);
     expect(items[0].action).toMatchObject({ do: "ops", ops: [{ type: "insert", node: { kind: "clauseBlockRef", clauseCode: "C0001", options: {} }, at: { parentId: "n4", index: 1 } }] });
+  });
+
+  it("공용조항 고르기는 자리를 따른다 — 호 목록 자리는 「박스」만, 조 자리는 「항」 · 「박스」(「문구」는 없다)", () => {
+    const clauses = [
+      { code: "C0001", label: "소멸", mode: "block" },
+      { code: "C0002", label: "용어풀이", mode: "box" },
+      { code: "C0003", label: "제3자", mode: "inline" },
+    ];
+    const at = (slot?: "items") => clausePickItems(clauses, { parentId: "p", ...(slot ? { slot } : {}) }, sequentialIds("k")).map((i) => i.label);
+    expect(at()).toEqual(["소멸(C0001)", "용어풀이(C0002)"]);
+    expect(at("items")).toEqual(["용어풀이(C0002)"]);
   });
 });

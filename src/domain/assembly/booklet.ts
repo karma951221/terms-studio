@@ -37,11 +37,13 @@ import { articlesOf } from "./walk";
  * 마스터에 조건 블록·공용조항 참조·표가 있거나 개수가 다르면 어느 항이 어느 항인지 알 수 없으므로 별칭을 만들지 않는다 —
  * 그 참조는 `articleGone` 오류로 드러난다 (조용한 오연결보다 낫다).
  */
-function positionAliases(master: ArticleNode, base: RArticle<SInline>): [Id, Id][] {
-  // 마스터에 동적 노드(조건 블록 · 공용조항 참조 · 반복)가 있으면 항이 몇 개로 펼쳐질지 알 수 없다 — 별칭을 만들지 않는다
-  const dynamic = (kind: string) => kind === "condBlock" || kind === "clauseBlockRef" || kind === "forBlock";
+function positionAliases(master: ArticleNode, base: RArticle<SInline>, isBox: (code: string) => boolean = () => false): [Id, Id][] {
+  // 마스터에 동적 노드(조건 블록 · 공용조항 참조 · 반복)가 있으면 항이 몇 개로 펼쳐질지 알 수 없다 — 별칭을 만들지 않는다.
+  // 「박스」 공용조항 참조는 항을 펼치지 않는다 — 정적 박스와 같다 (기능/공용조항 §3.1)
+  const dynamicNode = (c: { kind: string; clauseCode?: string }) =>
+    c.kind === "condBlock" || c.kind === "forBlock" || (c.kind === "clauseBlockRef" && !isBox(c.clauseCode ?? ""));
   const masterParagraphs = master.children.filter((c) => c.kind === "paragraph");
-  if (master.children.some((c) => dynamic(c.kind))) return [];
+  if (master.children.some((c) => dynamicNode(c))) return [];
   // 정적 표·박스는 대응에 영향을 주지 않는다. 오류 마커가 있으면 신뢰할 수 없다.
   const baseParagraphs = base.children.filter((c) => c.kind === "paragraph");
   if (base.children.some((c) => c.kind === "error")) return [];
@@ -50,7 +52,7 @@ function positionAliases(master: ArticleNode, base: RArticle<SInline>): [Id, Id]
   const out: [Id, Id][] = [];
   for (const [i, mp] of masterParagraphs.entries()) {
     const bp = baseParagraphs[i];
-    if ((mp.items ?? []).some((c) => dynamic(c.kind))) return [];
+    if ((mp.items ?? []).some((c) => dynamicNode(c))) return [];
     if ((bp.items ?? []).some((c) => c.kind === "error")) return [];
     const masterItems = (mp.items ?? []).filter((c) => c.kind === "item");
     const baseItems = (bp.items ?? []).filter((c) => c.kind === "item");
@@ -58,7 +60,7 @@ function positionAliases(master: ArticleNode, base: RArticle<SInline>): [Id, Id]
     out.push([mp.id, bp.id]);
     for (const [j, mi] of masterItems.entries()) {
       const bi = baseItems[j];
-      if ((mi.subitems ?? []).some((c) => dynamic(c.kind))) return [];
+      if ((mi.subitems ?? []).some((c) => dynamicNode(c))) return [];
       if ((bi.subitems ?? []).some((c) => c.kind === "error")) return [];
       const masterSubitems = (mi.subitems ?? []).filter((c) => c.kind === "subitem");
       const baseSubitems = (bi.subitems ?? []).filter((c) => c.kind === "subitem");
@@ -220,7 +222,7 @@ function buildGeneral(input: AssemblyInput, contexts: AssemblyContexts, s: Share
       const originals = masterArticles(g);
       for (const baseArticle of articlesOf(basePrepared.doc)) {
         const original = baseArticle.linkedArticleId ? originals.get(baseArticle.linkedArticleId) : undefined;
-        if (original) for (const [from, to] of positionAliases(original, baseArticle)) replaced.aliases.set(from, to);
+        if (original) for (const [from, to] of positionAliases(original, baseArticle, (code) => s.clauses.get(code)?.mode === "box")) replaced.aliases.set(from, to);
       }
       const replacementIssues = replaced.issues.map((issue) => ({ ...issue, source: { document: "coverageMaster" as const, ownerId: base.snapshot.coverageId, documentId: doc.id, ownerName: base.snapshot.coverageName, articleId: issue.at.articleId, articleTitle: issue.at.articleTitle, nodePath: issue.at.articleId ? [doc.id, issue.at.articleId] : undefined } }));
       return { numbered: numberDocument(replaced.doc), issues: [...generalPrepared.issues, ...basePrepared.issues, ...replacementIssues], omitted: [], aliases: replaced.aliases, ...(hidden ? { hidden } : {}) };
