@@ -60,27 +60,17 @@
                 {
                   "id": "b-a4-p1-x3",
                   "kind": "text",
-                  "text": "에서 "
+                  "text": "에서 장해지급률이 상해 발생일부터 180일 이내에 확정되지 않는 경우에는 상해 발생일부터 180일이 되는 날의 의사 진단에 기초하여 고정될 것으로 인정되는 상태를 장해지급률로 결정합니다. 다만, "
                 },
                 {
-                  "id": "b-a4-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0027",
-                  "options": {
-                    "O01": "V01",
-                    "O02": "V01"
-                  }
+                  "id": "b-a4-p1-x1",
+                  "kind": "appendixRef",
+                  "appendixCode": "AX000002"
                 },
                 {
-                  "id": "b-a4-p1-x3r",
+                  "id": "b-a4-p1-x4",
                   "kind": "text",
-                  "text": " 다만, "
-                },
-                {
-                  "id": "b-a4-p1-k2",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0028",
-                  "options": {}
+                  "text": "에 장해판정시기를 별도로 정한 경우에는 그에 따릅니다."
                 }
               ]
             },
@@ -111,17 +101,24 @@
               "kind": "paragraph",
               "children": [
                 {
-                  "id": "b-a4-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0029",
-                  "options": {
-                    "O01": "V01"
-                  }
+                  "id": "b-a4-p3-x1",
+                  "kind": "appendixRef",
+                  "appendixCode": "AX000002"
                 },
                 {
-                  "id": "b-a4-p3-x5r",
+                  "id": "b-a4-p3-x4",
                   "kind": "text",
-                  "text": " 다만, "
+                  "text": "에 해당되지 않는 후유장해는 피보험자의 직업, 연령, 신분 또는 성별 등에 관계없이 신체의 장해정도에 따라"
+                },
+                {
+                  "id": "b-a4-p3-x2",
+                  "kind": "appendixRef",
+                  "appendixCode": "AX000002"
+                },
+                {
+                  "id": "b-a4-p3-x5",
+                  "kind": "text",
+                  "text": "의 구분에 준하여 지급액을 결정합니다. 다만, "
                 },
                 {
                   "id": "b-a4-p3-x3",
@@ -158,13 +155,7 @@
                 {
                   "id": "b-a4-p4-x3",
                   "kind": "text",
-                  "text": "의 "
-                },
-                {
-                  "id": "b-a4-p4-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0020",
-                  "options": {}
+                  "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
               ]
             },
@@ -185,25 +176,19 @@
               "kind": "paragraph",
               "children": [
                 {
-                  "id": "b-a4-p5-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0030",
-                  "options": {
-                    "O01": "V01"
-                  }
-                },
-                {
-                  "id": "b-a4-p5-x2r",
+                  "id": "b-a4-p5-x2",
                   "kind": "text",
-                  "text": " 다만, "
+                  "text": "같은 상해로 두 가지 이상의 후유장해가 생긴 경우에는 후유장해 지급률을 합산하여 지급합니다. 다만, "
                 },
                 {
-                  "id": "b-a4-p5-k2",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0019",
-                  "options": {
-                    "O01": "V01"
-                  }
+                  "id": "b-a4-p5-x1",
+                  "kind": "appendixRef",
+                  "appendixCode": "AX000002"
+                },
+                {
+                  "id": "b-a4-p5-x3",
+                  "kind": "text",
+                  "text": "의 각 신체부위별 판정기준에 별도로 정한 경우에는 그 기준에 따릅니다."
                 }
               ]
             },
@@ -217,12 +202,14 @@
                   "text": "다른 상해로 후유장해가 2회 이상 발생하였을 경우에는 그 때마다 이에 해당하는 후유장해지급률을 결정합니다. 그러나 그 후유장해가 이미 후유장해보험금을 지급받은 동일한 부위에 가중된 때에는 최종 장해상태에 해당하는 후유장해보험금에서 이미 지급받은 후유장해보험금을 차감하여 지급합니다. 다만, "
                 },
                 {
-                  "id": "b-a4-p6-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0019",
-                  "options": {
-                    "O01": "V02"
-                  }
+                  "id": "b-a4-p6-x1",
+                  "kind": "appendixRef",
+                  "appendixCode": "AX000002"
+                },
+                {
+                  "id": "b-a4-p6-x3",
+                  "kind": "text",
+                  "text": "의 각 신체부위별 판정기준에서 별도로 정한 경우에는 그 기준에 따릅니다."
                 }
               ]
             },
@@ -398,13 +385,7 @@
                 {
                   "id": "s1-a2-p3-x3",
                   "kind": "text",
-                  "text": "의 "
-                },
-                {
-                  "id": "s1-a2-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0020",
-                  "options": {}
+                  "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
               ]
             }
@@ -416,107 +397,13 @@
           "title": "특별약관의 소멸",
           "children": [
             {
-              "id": "s1-a3-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s1-a3-p1-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s1-a1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s1-a3-p1-x2a",
-                  "kind": "text",
-                  "text": "에서 정한 "
-                },
-                {
-                  "id": "s1-a3-p1-x2s",
-                  "kind": "slot",
-                  "ref": "D0001"
-                },
-                {
-                  "id": "s1-a3-p1-x2b",
-                  "kind": "text",
-                  "text": " "
-                },
-                {
-                  "id": "s1-a3-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0023",
-                  "options": {
-                    "O01": "V01"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "s1-a3-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s1-a3-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s1-a3-p1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s1-a3-p2-x2",
-                  "kind": "text",
-                  "text": "에 따라 "
-                },
-                {
-                  "id": "s1-a3-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0022",
-                  "options": {
-                    "O01": "V02"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "s1-a3-p3",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s1-a3-p3-x2",
-                  "kind": "text",
-                  "text": "이 특별약관의 피보험자가 "
-                },
-                {
-                  "id": "s1-a3-p3-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s1-a3-p1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s1-a3-p3-x3",
-                  "kind": "text",
-                  "text": " 이외의 사유로 "
-                },
-                {
-                  "id": "s1-a3-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0021",
-                  "options": {}
-                }
-              ]
+              "id": "s1-a3-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0030",
+              "options": {
+                "O01": "V01",
+                "O02": "V01"
+              }
             }
           ]
         },
@@ -528,7 +415,7 @@
             {
               "id": "s1-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0035",
+              "clauseCode": "C0033",
               "options": {}
             }
           ]
@@ -666,188 +553,12 @@
           "title": "보험금 지급에 관한 세부규정",
           "children": [
             {
-              "id": "s2-a2-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s2-a2-p1-x2",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s2-a1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s2-a2-p1-x3",
-                  "kind": "text",
-                  "text": "에서 "
-                },
-                {
-                  "id": "s2-a2-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0027",
-                  "options": {
-                    "O01": "V01",
-                    "O02": "V01"
-                  }
-                },
-                {
-                  "id": "s2-a2-p1-x3r",
-                  "kind": "text",
-                  "text": " 다만, "
-                },
-                {
-                  "id": "s2-a2-p1-k2",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0028",
-                  "options": {}
-                }
-              ]
-            },
-            {
-              "id": "s2-a2-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s2-a2-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s2-a2-p1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s2-a2-p2-x2",
-                  "kind": "text",
-                  "text": "에 따라 장해지급률이 결정되었으나 그 이후 보장받을 수 있는 기간(특별약관의 효력이 없어진 경우에는 보험기간이 10년 이상인 특별약관은 상해 발생일부터 2년 이내로 하고, 보험기간이 10년 미만인 특별약관은 상해 발생일부터 1년 이내)에 장해상태가 더 악화된 때에는 그 악화된 장해상태를 기준으로 장해지급률을 결정합니다."
-                }
-              ]
-            },
-            {
-              "id": "s2-a2-p3",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s2-a2-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0029",
-                  "options": {
-                    "O01": "V01"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "s2-a2-p4",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s2-a2-p4-x2",
-                  "kind": "text",
-                  "text": "보험수익자와 회사가 "
-                },
-                {
-                  "id": "s2-a2-p4-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s2-a1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s2-a2-p4-x3",
-                  "kind": "text",
-                  "text": "의 "
-                },
-                {
-                  "id": "s2-a2-p4-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0020",
-                  "options": {}
-                }
-              ]
-            },
-            {
-              "id": "s2-a2-p5",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s2-a2-p5-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0030",
-                  "options": {
-                    "O01": "V01"
-                  }
-                },
-                {
-                  "id": "s2-a2-p5-x2r",
-                  "kind": "text",
-                  "text": " 다만, "
-                },
-                {
-                  "id": "s2-a2-p5-k2",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0019",
-                  "options": {
-                    "O01": "V01"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "s2-a2-p6",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s2-a2-p6-x2",
-                  "kind": "text",
-                  "text": "다른 상해로 후유장해가 2회 이상 발생하였을 경우에는 그 때마다 이에 해당하는 후유장해지급률을 결정합니다. 그러나 그 후유장해가 이미 생활자금을 지급받은 동일한 부위에 가중된 때에는 최종 장해상태에 해당하는 생활자금에서 이미 지급받은 생활자금을 차감하여 지급합니다. 다만, "
-                },
-                {
-                  "id": "s2-a2-p6-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0019",
-                  "options": {
-                    "O01": "V02"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "s2-a2-p7",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s2-a2-p7-x2",
-                  "kind": "text",
-                  "text": "이미 이 특별약관에서 생활자금 지급사유에 해당되지 않았거나(보장개시 이전의 원인에 의하거나 또는 그 이전에 발생한 후유장해를 포함합니다), 생활자금이 지급되지 않았던 피보험자에게 그 신체의 동일 부위에 또다시 "
-                },
-                {
-                  "id": "s2-a2-p7-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s2-a2-p6"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s2-a2-p7-x3",
-                  "kind": "text",
-                  "text": "에 규정하는 후유장해상태가 발생하였을 경우에는 직전까지의 후유장해에 대한 생활자금이 지급된 것으로 보고 최종 후유장해 상태에 해당되는 생활자금에서 이를 차감하여 지급합니다."
-                }
-              ]
+              "id": "s2-a2-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0025",
+              "options": {
+                "O01": "V01"
+              }
             }
           ]
         },
@@ -857,81 +568,12 @@
           "title": "특별약관의 소멸",
           "children": [
             {
-              "id": "s2-a3-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s2-a3-p1-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s2-a1-p1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s2-a3-p1-x2",
-                  "kind": "text",
-                  "text": "에서 정한 일반상해 80%이상후유장해 생활자금 "
-                },
-                {
-                  "id": "s2-a3-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0023",
-                  "options": {
-                    "O01": "V01"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "s2-a3-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s2-a3-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s2-a3-p1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s2-a3-p2-x2",
-                  "kind": "text",
-                  "text": "에 따라 "
-                },
-                {
-                  "id": "s2-a3-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0022",
-                  "options": {
-                    "O01": "V01"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "s2-a3-p3",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s2-a3-p3-x1",
-                  "kind": "text",
-                  "text": "이 특별약관의 피보험자가 "
-                },
-                {
-                  "id": "s2-a3-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0021",
-                  "options": {}
-                }
-              ]
+              "id": "s2-a3-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0031",
+              "options": {
+                "O01": "V01"
+              }
             }
           ]
         },
@@ -943,7 +585,7 @@
             {
               "id": "s2-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0035",
+              "clauseCode": "C0033",
               "options": {}
             }
           ]
@@ -966,35 +608,10 @@
           "title": "보험금의 지급사유",
           "children": [
             {
-              "id": "s3-a1-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s3-a1-p1-x2",
-                  "kind": "text",
-                  "text": "회사는 보험증권에 기재된 피보험자가 이 특별약관의 보험기간 중에 상해로"
-                },
-                {
-                  "id": "s3-a1-p1-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000014"
-                },
-                {
-                  "id": "s3-a1-p1-x3a",
-                  "kind": "text",
-                  "text": "에서 정하는 골절로 진단확정시 보험수익자에게 1사고당 이 특별약관의 보험가입금액을 "
-                },
-                {
-                  "id": "s3-a1-p1-x3s",
-                  "kind": "slot",
-                  "ref": "D0001"
-                },
-                {
-                  "id": "s3-a1-p1-x3b",
-                  "kind": "text",
-                  "text": "로 지급합니다."
-                }
-              ]
+              "id": "s3-a1-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0021",
+              "options": {}
             }
           ]
         },
@@ -1004,48 +621,10 @@
           "title": "보험금 지급에 관한 세부규정",
           "children": [
             {
-              "id": "s3-a2-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s3-a2-p1-x1",
-                  "kind": "text",
-                  "text": "피보험자가 동일한 상해로 2가지 이상의 골절(치아파절 제외) 상태가 발생한 경우에는 1회에 한하여 지급합니다."
-                }
-              ]
-            },
-            {
-              "id": "s3-a2-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s3-a2-p2-x2",
-                  "kind": "text",
-                  "text": "보험수익자와 회사가 "
-                },
-                {
-                  "id": "s3-a2-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s3-a1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s3-a2-p2-x3",
-                  "kind": "text",
-                  "text": "의 "
-                },
-                {
-                  "id": "s3-a2-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0020",
-                  "options": {}
-                }
-              ]
+              "id": "s3-a2-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0023",
+              "options": {}
             }
           ]
         },
@@ -1132,21 +711,10 @@
           "title": "특별약관의 소멸",
           "children": [
             {
-              "id": "s3-a4-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s3-a4-p1-x1",
-                  "kind": "text",
-                  "text": "이 특별약관의 피보험자가 "
-                },
-                {
-                  "id": "s3-a4-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0021",
-                  "options": {}
-                }
-              ]
+              "id": "s3-a4-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0028",
+              "options": {}
             }
           ]
         },
@@ -1158,7 +726,7 @@
             {
               "id": "s3-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0035",
+              "clauseCode": "C0033",
               "options": {}
             }
           ]
@@ -1296,188 +864,12 @@
           "title": "보험금 지급에 관한 세부규정",
           "children": [
             {
-              "id": "s4-a2-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s4-a2-p1-x2",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s4-a1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s4-a2-p1-x3",
-                  "kind": "text",
-                  "text": "에서 "
-                },
-                {
-                  "id": "s4-a2-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0027",
-                  "options": {
-                    "O01": "V01",
-                    "O02": "V01"
-                  }
-                },
-                {
-                  "id": "s4-a2-p1-x3r",
-                  "kind": "text",
-                  "text": " 다만, "
-                },
-                {
-                  "id": "s4-a2-p1-k2",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0028",
-                  "options": {}
-                }
-              ]
-            },
-            {
-              "id": "s4-a2-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s4-a2-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s4-a2-p1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s4-a2-p2-x2",
-                  "kind": "text",
-                  "text": "에 따라 장해지급률이 결정되었으나 그 이후 보장받을 수 있는 기간(특별약관의 효력이 없어진 경우에는 보험기간이 10년 이상인 특별약관은 상해 발생일부터 2년 이내로 하고, 보험기간이 10년 미만인 특별약관은 상해 발생일부터 1년 이내)에 장해상태가 더 악화된 때에는 그 악화된 장해상태를 기준으로 장해지급률을 결정합니다."
-                }
-              ]
-            },
-            {
-              "id": "s4-a2-p3",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s4-a2-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0029",
-                  "options": {
-                    "O01": "V02"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "s4-a2-p4",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s4-a2-p4-x2",
-                  "kind": "text",
-                  "text": "보험수익자와 회사가 "
-                },
-                {
-                  "id": "s4-a2-p4-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s4-a1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s4-a2-p4-x3",
-                  "kind": "text",
-                  "text": "의 "
-                },
-                {
-                  "id": "s4-a2-p4-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0020",
-                  "options": {}
-                }
-              ]
-            },
-            {
-              "id": "s4-a2-p5",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s4-a2-p5-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0030",
-                  "options": {
-                    "O01": "V01"
-                  }
-                },
-                {
-                  "id": "s4-a2-p5-x2r",
-                  "kind": "text",
-                  "text": " 다만, "
-                },
-                {
-                  "id": "s4-a2-p5-k2",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0019",
-                  "options": {
-                    "O01": "V01"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "s4-a2-p6",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s4-a2-p6-x2",
-                  "kind": "text",
-                  "text": "다른 상해로 후유장해가 2회 이상 발생하였을 경우에는 그 때마다 이에 해당하는 후유장해지급률을 결정합니다. 그러나 그 후유장해가 이미 생활자금을 지급받은 동일한 부위에 가중된 때에는 최종 장해상태에 해당하는 생활자금에서 이미 지급받은 생활자금을 차감하여 지급합니다. 다만, "
-                },
-                {
-                  "id": "s4-a2-p6-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0019",
-                  "options": {
-                    "O01": "V02"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "s4-a2-p7",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s4-a2-p7-x2",
-                  "kind": "text",
-                  "text": "이미 이 특별약관에서 생활자금 지급사유에 해당되지 않았거나(보장개시 이전의 원인에 의하거나 또는 그 이전에 발생한 후유장해를 포함합니다), 생활자금이 지급되지 않았던 피보험자에게 그 신체의 동일 부위에 또다시 "
-                },
-                {
-                  "id": "s4-a2-p7-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s4-a2-p6"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s4-a2-p7-x3",
-                  "kind": "text",
-                  "text": "에 규정하는 후유장해상태가 발생하였을 경우에는 직전까지의 후유장해에 대한 생활자금이 지급된 것으로 보고 최종 후유장해 상태에 해당되는 생활자금에서 이를 차감하여 지급합니다."
-                }
-              ]
+              "id": "s4-a2-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0025",
+              "options": {
+                "O01": "V02"
+              }
             }
           ]
         },
@@ -1487,81 +879,12 @@
           "title": "특별약관의 소멸",
           "children": [
             {
-              "id": "s4-a3-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s4-a3-p1-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s4-a1-p1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s4-a3-p1-x2",
-                  "kind": "text",
-                  "text": "에서 정한 일반상해 50%이상후유장해 생활자금 "
-                },
-                {
-                  "id": "s4-a3-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0023",
-                  "options": {
-                    "O01": "V01"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "s4-a3-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s4-a3-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s4-a3-p1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s4-a3-p2-x2",
-                  "kind": "text",
-                  "text": "에 따라 "
-                },
-                {
-                  "id": "s4-a3-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0022",
-                  "options": {
-                    "O01": "V01"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "s4-a3-p3",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s4-a3-p3-x1",
-                  "kind": "text",
-                  "text": "이 특별약관의 피보험자가 "
-                },
-                {
-                  "id": "s4-a3-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0021",
-                  "options": {}
-                }
-              ]
+              "id": "s4-a3-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0031",
+              "options": {
+                "O01": "V02"
+              }
             }
           ]
         },
@@ -1573,7 +896,7 @@
             {
               "id": "s4-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0035",
+              "clauseCode": "C0033",
               "options": {}
             }
           ]
@@ -1596,35 +919,10 @@
           "title": "보험금의 지급사유",
           "children": [
             {
-              "id": "s5-a1-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s5-a1-p1-x2",
-                  "kind": "text",
-                  "text": "회사는 보험증권에 기재된 피보험자가 이 특별약관의 보험기간 중에 상해의 직접결과로써"
-                },
-                {
-                  "id": "s5-a1-p1-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000021"
-                },
-                {
-                  "id": "s5-a1-p1-x3a",
-                  "kind": "text",
-                  "text": "에서 정하는 골절을 입고 그 치료를 직접적인 목적으로 수술을 받은 경우 보험증권에 기재된 이 특별약관의 보험가입금액을 "
-                },
-                {
-                  "id": "s5-a1-p1-x3s",
-                  "kind": "slot",
-                  "ref": "D0001"
-                },
-                {
-                  "id": "s5-a1-p1-x3b",
-                  "kind": "text",
-                  "text": "로 보험수익자에게 지급합니다."
-                }
-              ]
+              "id": "s5-a1-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0022",
+              "options": {}
             }
           ]
         },
@@ -1634,48 +932,10 @@
           "title": "보험금 지급에 관한 세부규정",
           "children": [
             {
-              "id": "s5-a2-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s5-a2-p1-x1",
-                  "kind": "text",
-                  "text": "하나의 상해로 두 종류 이상의 골절 수술을 받거나 같은 종류의 골절 수술을 2회 이상 받은 경우에는 하나의 골절수술비만을 지급합니다."
-                }
-              ]
-            },
-            {
-              "id": "s5-a2-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s5-a2-p2-x2",
-                  "kind": "text",
-                  "text": "보험수익자와 회사가 "
-                },
-                {
-                  "id": "s5-a2-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s5-a1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s5-a2-p2-x3",
-                  "kind": "text",
-                  "text": "의 "
-                },
-                {
-                  "id": "s5-a2-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0020",
-                  "options": {}
-                }
-              ]
+              "id": "s5-a2-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0024",
+              "options": {}
             }
           ]
         },
@@ -1689,12 +949,9 @@
               "kind": "paragraph",
               "children": [
                 {
-                  "id": "s5-a3-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0024",
-                  "options": {
-                    "O01": "V01"
-                  }
+                  "id": "s5-a3-p1-x1",
+                  "kind": "text",
+                  "text": "이 특별약관에서「수술」이라 함은 의사, 치과의사 또는 한의사의 면허를 가진 자(이하「의사」라 합니다)가 치료가 필요하다고 인정한 경우로서 의사의 관리하에 치료를 직접적인 목적으로 기구를 사용하여 생체(生體)에 절단(切斷, 특정부위를 잘라 내는 것), 절제(切除, 특정부위를 잘라 없애는 것) 등의 조작을 가하는 것을 말합니다."
                 }
               ]
             },
@@ -1716,13 +973,7 @@
                 {
                   "id": "s5-a3-p2-x2",
                   "kind": "text",
-                  "text": "의"
-                },
-                {
-                  "id": "s5-a3-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0025",
-                  "options": {}
+                  "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
                 }
               ]
             },
@@ -1744,13 +995,7 @@
                 {
                   "id": "s5-a3-p3-x2",
                   "kind": "text",
-                  "text": "의"
-                },
-                {
-                  "id": "s5-a3-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0026",
-                  "options": {}
+                  "text": "의「수술」에는 보건복지부 산하 신의료기술평가위원회 또는 이에 준하는 기관으로부터 안전성과 치료효과를 인정받은 최신 수술기법으로 생체에 절단, 절제 등의 조작을 가하는 수술도 포함됩니다."
                 }
               ]
             },
@@ -1929,21 +1174,10 @@
           "title": "특별약관의 소멸",
           "children": [
             {
-              "id": "s5-a5-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s5-a5-p1-x1",
-                  "kind": "text",
-                  "text": "이 특별약관의 피보험자가 "
-                },
-                {
-                  "id": "s5-a5-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0021",
-                  "options": {}
-                }
-              ]
+              "id": "s5-a5-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0028",
+              "options": {}
             }
           ]
         },
@@ -1955,7 +1189,7 @@
             {
               "id": "s5-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0035",
+              "clauseCode": "C0033",
               "options": {}
             }
           ]
@@ -2039,13 +1273,7 @@
                 {
                   "id": "s6-a2-p2-x3",
                   "kind": "text",
-                  "text": "의 "
-                },
-                {
-                  "id": "s6-a2-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0020",
-                  "options": {}
+                  "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
               ]
             }
@@ -2182,12 +1410,9 @@
               "kind": "paragraph",
               "children": [
                 {
-                  "id": "s6-a3-p4-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0024",
-                  "options": {
-                    "O01": "V01"
-                  }
+                  "id": "s6-a3-p4-x1",
+                  "kind": "text",
+                  "text": "이 특별약관에서「수술」이라 함은 의사, 치과의사 또는 한의사의 면허를 가진 자(이하「의사」라 합니다)가 치료가 필요하다고 인정한 경우로서 의사의 관리하에 치료를 직접적인 목적으로 기구를 사용하여 생체(生體)에 절단(切斷, 특정부위를 잘라 내는 것), 절제(切除, 특정부위를 잘라 없애는 것) 등의 조작을 가하는 것을 말합니다."
                 }
               ]
             },
@@ -2209,13 +1434,7 @@
                 {
                   "id": "s6-a3-p5-x2",
                   "kind": "text",
-                  "text": "의"
-                },
-                {
-                  "id": "s6-a3-p5-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0025",
-                  "options": {}
+                  "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
                 }
               ]
             },
@@ -2237,13 +1456,7 @@
                 {
                   "id": "s6-a3-p6-x2",
                   "kind": "text",
-                  "text": "의"
-                },
-                {
-                  "id": "s6-a3-p6-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0026",
-                  "options": {}
+                  "text": "의「수술」에는 보건복지부 산하 신의료기술평가위원회 또는 이에 준하는 기관으로부터 안전성과 치료효과를 인정받은 최신 수술기법으로 생체에 절단, 절제 등의 조작을 가하는 수술도 포함됩니다."
                 }
               ]
             },
@@ -2364,91 +1577,12 @@
           "title": "특별약관의 소멸",
           "children": [
             {
-              "id": "s6-a4-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s6-a4-p1-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s6-a1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s6-a4-p1-x2a",
-                  "kind": "text",
-                  "text": "에서 정한 "
-                },
-                {
-                  "id": "s6-a4-p1-x2s",
-                  "kind": "slot",
-                  "ref": "D0001"
-                },
-                {
-                  "id": "s6-a4-p1-x2b",
-                  "kind": "text",
-                  "text": " "
-                },
-                {
-                  "id": "s6-a4-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0023",
-                  "options": {
-                    "O01": "V01"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "s6-a4-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s6-a4-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s6-a4-p1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s6-a4-p2-x2",
-                  "kind": "text",
-                  "text": "에 따라 "
-                },
-                {
-                  "id": "s6-a4-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0022",
-                  "options": {
-                    "O01": "V01"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "s6-a4-p3",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s6-a4-p3-x1",
-                  "kind": "text",
-                  "text": "이 특별약관의 피보험자가 "
-                },
-                {
-                  "id": "s6-a4-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0021",
-                  "options": {}
-                }
-              ]
+              "id": "s6-a4-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0029",
+              "options": {
+                "O01": "V01"
+              }
             }
           ]
         },
@@ -2460,7 +1594,7 @@
             {
               "id": "s6-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0035",
+              "clauseCode": "C0033",
               "options": {}
             }
           ]
@@ -3531,12 +2665,19 @@
               "kind": "paragraph",
               "children": [
                 {
-                  "id": "s7-a2-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0031",
-                  "options": {
-                    "O01": "V01"
-                  }
+                  "id": "s7-a2-p1-x2",
+                  "kind": "text",
+                  "text": "이 특별약관에서「수술」이라 함은 의사 또는 치과의사의 면허를 가진 자(이하「의사」라 합니다)가 피보험자의 상해로 인한 치료를 직접적인 목적으로 필요하다고 인정한 경우로서 의료기관에서 의사의 관리하에 "
+                },
+                {
+                  "id": "s7-a2-p1-x1",
+                  "kind": "appendixRef",
+                  "appendixCode": "AX000003"
+                },
+                {
+                  "id": "s7-a2-p1-x3",
+                  "kind": "text",
+                  "text": "에서 정한 수술코드(이하「수술코드」라 합니다.)에 해당하는 의료행위를 하는 것을 말합니다."
                 }
               ]
             },
@@ -3558,13 +2699,7 @@
                 {
                   "id": "s7-a2-p2-x2",
                   "kind": "text",
-                  "text": "의"
-                },
-                {
-                  "id": "s7-a2-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0025",
-                  "options": {}
+                  "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
                 }
               ]
             },
@@ -3702,10 +2837,9 @@
               "kind": "paragraph",
               "children": [
                 {
-                  "id": "s7-a3-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0032",
-                  "options": {}
+                  "id": "s7-a3-p1-x1",
+                  "kind": "text",
+                  "text": "피보험자가 1회의 입원 또는 1회의 통원 중에 2가지 이상의 수술을 받은 경우 퇴원일 또는 통원일을 기준으로 진단서 및 진료비 세부내역서 등에서 확인되는 하나의 수술코드에 한하여 수술비를 지급합니다."
                 }
               ]
             },
@@ -3924,13 +3058,7 @@
                 {
                   "id": "s7-a3-p8-x3",
                   "kind": "text",
-                  "text": "의 "
-                },
-                {
-                  "id": "s7-a3-p8-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0020",
-                  "options": {}
+                  "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
               ]
             }
@@ -4037,10 +3165,25 @@
               ]
             },
             {
-              "id": "s7-a4-p3-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0033",
-              "options": {}
+              "id": "s7-a4-p3",
+              "kind": "paragraph",
+              "children": [
+                {
+                  "id": "s7-a4-p3-x2",
+                  "kind": "text",
+                  "text": "회사는"
+                },
+                {
+                  "id": "s7-a4-p3-x1",
+                  "kind": "appendixRef",
+                  "appendixCode": "AX000003"
+                },
+                {
+                  "id": "s7-a4-p3-x3",
+                  "kind": "text",
+                  "text": "의 주2)에 해당하는 사항은 보상하지 않습니다."
+                }
+              ]
             },
             {
               "id": "s7-a4-p4",
@@ -4054,12 +3197,25 @@
               ]
             },
             {
-              "id": "s7-a4-p5-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0034",
-              "options": {
-                "O01": "V01"
-              }
+              "id": "s7-a4-p5",
+              "kind": "paragraph",
+              "children": [
+                {
+                  "id": "s7-a4-p5-x2",
+                  "kind": "text",
+                  "text": "질병을 원인으로 수술을 하여"
+                },
+                {
+                  "id": "s7-a4-p5-x1",
+                  "kind": "appendixRef",
+                  "appendixCode": "AX000003"
+                },
+                {
+                  "id": "s7-a4-p5-x3",
+                  "kind": "text",
+                  "text": "에서 정한 수술코드를 받은 경우에는 보상하지 않습니다."
+                }
+              ]
             }
           ]
         },
@@ -4193,21 +3349,10 @@
           "title": "특별약관의 소멸",
           "children": [
             {
-              "id": "s7-a7-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s7-a7-p1-x1",
-                  "kind": "text",
-                  "text": "이 특별약관의 피보험자가 "
-                },
-                {
-                  "id": "s7-a7-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0021",
-                  "options": {}
-                }
-              ]
+              "id": "s7-a7-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0028",
+              "options": {}
             }
           ]
         },
@@ -4219,7 +3364,7 @@
             {
               "id": "s7-a8-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0035",
+              "clauseCode": "C0033",
               "options": {}
             }
           ]
@@ -4242,15 +3387,10 @@
           "title": "보장의 범위",
           "children": [
             {
-              "id": "s9-a1-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s9-a1-p1-x1",
-                  "kind": "text",
-                  "text": "이 특별약관은 아래의 총 3개의 세부보장으로 구성되어 있습니다."
-                }
-              ]
+              "id": "s9-a1-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0020",
+              "options": {}
             },
             {
               "id": "s9-a1-b1",
@@ -4455,13 +3595,7 @@
                 {
                   "id": "s9-a3-p3-x3",
                   "kind": "text",
-                  "text": "의 "
-                },
-                {
-                  "id": "s9-a3-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0020",
-                  "options": {}
+                  "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
               ]
             }
@@ -4551,12 +3685,9 @@
               "kind": "paragraph",
               "children": [
                 {
-                  "id": "s9-a5-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0024",
-                  "options": {
-                    "O01": "V01"
-                  }
+                  "id": "s9-a5-p1-x1",
+                  "kind": "text",
+                  "text": "이 특별약관에서「수술」이라 함은 의사, 치과의사 또는 한의사의 면허를 가진 자(이하「의사」라 합니다)가 치료가 필요하다고 인정한 경우로서 의사의 관리하에 치료를 직접적인 목적으로 기구를 사용하여 생체(生體)에 절단(切斷, 특정부위를 잘라 내는 것), 절제(切除, 특정부위를 잘라 없애는 것) 등의 조작을 가하는 것을 말합니다."
                 }
               ]
             },
@@ -4578,13 +3709,7 @@
                 {
                   "id": "s9-a5-p2-x2",
                   "kind": "text",
-                  "text": "의"
-                },
-                {
-                  "id": "s9-a5-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0025",
-                  "options": {}
+                  "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
                 }
               ]
             },
@@ -4606,13 +3731,7 @@
                 {
                   "id": "s9-a5-p3-x2",
                   "kind": "text",
-                  "text": "의"
-                },
-                {
-                  "id": "s9-a5-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0026",
-                  "options": {}
+                  "text": "의「수술」에는 보건복지부 산하 신의료기술평가위원회 또는 이에 준하는 기관으로부터 안전성과 치료효과를 인정받은 최신 수술기법으로 생체에 절단, 절제 등의 조작을 가하는 수술도 포함됩니다."
                 }
               ]
             },
@@ -4733,26 +3852,13 @@
           "title": "중증화상및부식진단의 정의 및 진단확정",
           "children": [
             {
-              "id": "s9-a6-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s9-a6-p1-x1",
-                  "kind": "text",
-                  "text": "이 특별약관에서「중증화상및부식(화학약품 등에 의한 피부 손상)」이라 함은「9의 법칙(Rule of 9's)」또는「룬드와 브라우더 신체 표면적 차트(Lund & Browder chart)」에 의해 측정된 신체표면적으로 최소 20% 이상의 3도 화상 또는 부식(화학약품 등에 의한 피부 손상)을 입은 경우를 말합니다. 다만,「9의 법칙」또는「룬드와 브라우더 신체 표면적 차트」측정법처럼 표준화되고 임상학적으로 받아들여지는 다른 신체 표면적 차트를 이용하여 유사한 결과가 나온 것도 인정합니다."
-                }
-              ]
-            },
-            {
-              "id": "s9-a6-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s9-a6-p2-x1",
-                  "kind": "text",
-                  "text": "「중증화상및부식(화학약품 등에 의한 피부 손상)」의 진단확정은 의료법 제3조에 규정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관의 의사(한의사, 치과의사는 제외합니다) 면허를 가진 자가 작성한 문서화된 기록 또는 검사결과를 기초로 하여 내려져야 합니다. 또한, 회사가「중증화상및부식」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
-                }
-              ]
+              "id": "s9-a6-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0027",
+              "options": {
+                "O01": "V01",
+                "O02": "V01"
+              }
             }
           ]
         },
@@ -4762,81 +3868,10 @@
           "title": "특별약관의 소멸",
           "children": [
             {
-              "id": "s9-a7-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s9-a7-p1-x1",
-                  "kind": "text",
-                  "text": "이 특별약관의 피보험자가 "
-                },
-                {
-                  "id": "s9-a7-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0021",
-                  "options": {}
-                }
-              ]
-            },
-            {
-              "id": "s9-a7-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s9-a7-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s9-a7-p1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s9-a7-p2-x3",
-                  "kind": "text",
-                  "text": "에도 불구하고 "
-                },
-                {
-                  "id": "s9-a7-p2-x2",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s9-a2-p1-i3"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s9-a7-p2-x4",
-                  "kind": "text",
-                  "text": "에서 정한 중증화상및부식진단비 지급사유가 발생한 경우 중증화상및부식진단비보장은 소멸됩니다."
-                }
-              ]
-            },
-            {
-              "id": "s9-a7-p3",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "s9-a7-p3-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "s9-a7-p2"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "s9-a7-p3-x2",
-                  "kind": "text",
-                  "text": "에 따라 중증화상및부식진단비보장이 소멸된 경우에는 회사는 해당 보장의 해약환급금을 지급하지 않습니다."
-                }
-              ]
+              "id": "s9-a7-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0032",
+              "options": {}
             }
           ]
         },
@@ -4848,7 +3883,7 @@
             {
               "id": "s9-a8-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0035",
+              "clauseCode": "C0033",
               "options": {}
             }
           ]
@@ -4994,13 +4029,7 @@
                 {
                   "id": "mb-a4-p3-x3",
                   "kind": "text",
-                  "text": "의 "
-                },
-                {
-                  "id": "mb-a4-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0020",
-                  "options": {}
+                  "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
               ]
             },
@@ -5074,188 +4103,14 @@
           "title": "보험금 지급에 관한 세부규정",
           "children": [
             {
-              "id": "m1-a2-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m1-a2-p1-x2",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m1-a1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m1-a2-p1-x3",
-                  "kind": "text",
-                  "text": "에서 "
-                },
-                {
-                  "id": "m1-a2-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0027",
-                  "options": {
-                    "O01": "V01",
-                    "O02": "V02"
-                  }
-                },
-                {
-                  "id": "m1-a2-p1-x3r",
-                  "kind": "text",
-                  "text": " 다만,"
-                },
-                {
-                  "id": "m1-a2-p1-k2",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0028",
-                  "options": {}
-                }
-              ]
-            },
-            {
-              "id": "m1-a2-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m1-a2-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m1-a2-p1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m1-a2-p2-x2",
-                  "kind": "text",
-                  "text": "에 따라 장해지급률이 결정되었으나 그 이후 보장을 받을 수 있는 기간(특별약관의 효력이 없어진 경우에는 보험기간이 10년 이상인 특별약관은 상해 발생일부터 2년 이내로 하고, 보험기간이 10년 미만인 특별약관은 상해 발생일부터 1년 이내)에 장해상태가 더 악화된 때에는 그 악화된 장해상태를 기준으로 장해지급률을 결정합니다."
-                }
-              ]
-            },
-            {
-              "id": "m1-a2-p3",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m1-a2-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0029",
-                  "options": {
-                    "O01": "V02"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "m1-a2-p4",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m1-a2-p4-x2",
-                  "kind": "text",
-                  "text": "보험수익자와 회사가 "
-                },
-                {
-                  "id": "m1-a2-p4-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m1-a1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m1-a2-p4-x3",
-                  "kind": "text",
-                  "text": "의 "
-                },
-                {
-                  "id": "m1-a2-p4-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0020",
-                  "options": {}
-                }
-              ]
-            },
-            {
-              "id": "m1-a2-p5",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m1-a2-p5-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0030",
-                  "options": {
-                    "O01": "V01"
-                  }
-                },
-                {
-                  "id": "m1-a2-p5-x2r",
-                  "kind": "text",
-                  "text": " 다만,"
-                },
-                {
-                  "id": "m1-a2-p5-k2",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0019",
-                  "options": {
-                    "O01": "V01"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "m1-a2-p6",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m1-a2-p6-x2",
-                  "kind": "text",
-                  "text": "다른 상해로 인하여 후유장해가 2회 이상 발생하였을 경우에는 그 때마다 이에 해당하는 후유장해지급률을 결정합니다. 그러나 그 후유장해가 이미 후유장해보험금을 지급받은 동일한 부위에 가중된 때에는 최종 장해상태에 해당하는 후유장해보험금에서 이미 지급받은 후유장해보험금을 차감하여 지급합니다. 다만,"
-                },
-                {
-                  "id": "m1-a2-p6-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0019",
-                  "options": {
-                    "O01": "V02"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "m1-a2-p7",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m1-a2-p7-x2",
-                  "kind": "text",
-                  "text": "이미 이 특별약관에서 후유장해보험금 지급사유에 해당되지 않았거나(보장개시 이전의 원인에 의하거나 또는 그 이전에 발생한 후유장해를 포함합니다), 후유장해보험금이 지급되지 않았던 피보험자에게 그 신체의 동일 부위에 또다시 "
-                },
-                {
-                  "id": "m1-a2-p7-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m1-a2-p6"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m1-a2-p7-x3",
-                  "kind": "text",
-                  "text": "에 규정하는 후유장해상태가 발생하였을 경우에는 직전까지의 후유장해에 대한 후유장해보험금이 지급된 것으로 보고 최종 후유장해 상태에 해당되는 후유장해보험금에서 이를 차감하여 지급합니다."
-                }
-              ]
+              "id": "m1-a2-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0026",
+              "options": {
+                "O01": "V01",
+                "O02": "V01",
+                "O03": "V02"
+              }
             }
           ]
         },
@@ -5265,91 +4120,12 @@
           "title": "특별약관의 소멸",
           "children": [
             {
-              "id": "m1-a3-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m1-a3-p1-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m1-a1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m1-a3-p1-x2a",
-                  "kind": "text",
-                  "text": "에서 정한 "
-                },
-                {
-                  "id": "m1-a3-p1-x2s",
-                  "kind": "slot",
-                  "ref": "D0001"
-                },
-                {
-                  "id": "m1-a3-p1-x2b",
-                  "kind": "text",
-                  "text": " "
-                },
-                {
-                  "id": "m1-a3-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0023",
-                  "options": {
-                    "O01": "V02"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "m1-a3-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m1-a3-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m1-a3-p1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m1-a3-p2-x2",
-                  "kind": "text",
-                  "text": "에 따라 "
-                },
-                {
-                  "id": "m1-a3-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0022",
-                  "options": {
-                    "O01": "V01"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "m1-a3-p3",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m1-a3-p3-x1",
-                  "kind": "text",
-                  "text": "이 특별약관의 피보험자가 "
-                },
-                {
-                  "id": "m1-a3-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0021",
-                  "options": {}
-                }
-              ]
+              "id": "m1-a3-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0029",
+              "options": {
+                "O01": "V02"
+              }
             }
           ]
         },
@@ -5361,7 +4137,7 @@
             {
               "id": "m1-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0036",
+              "clauseCode": "C0034",
               "options": {}
             }
           ]
@@ -6289,12 +5065,19 @@
               "kind": "paragraph",
               "children": [
                 {
-                  "id": "m2-a2-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0031",
-                  "options": {
-                    "O01": "V01"
-                  }
+                  "id": "m2-a2-p1-x2",
+                  "kind": "text",
+                  "text": "이 특별약관에서「수술」이라 함은 의사 또는 치과의사의 면허를 가진 자(이하「의사」라 합니다)가 피보험자의 상해로 인한 치료를 직접적인 목적으로 필요하다고 인정한 경우로서 의료기관에서 의사의 관리하에 "
+                },
+                {
+                  "id": "m2-a2-p1-x1",
+                  "kind": "appendixRef",
+                  "appendixCode": "AX000003"
+                },
+                {
+                  "id": "m2-a2-p1-x3",
+                  "kind": "text",
+                  "text": "에서 정한 수술코드(이하「수술코드」라 합니다.)에 해당하는 의료행위를 하는 것을 말합니다."
                 }
               ]
             },
@@ -6316,13 +5099,7 @@
                 {
                   "id": "m2-a2-p2-x2",
                   "kind": "text",
-                  "text": "의"
-                },
-                {
-                  "id": "m2-a2-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0025",
-                  "options": {}
+                  "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
                 }
               ]
             },
@@ -6461,10 +5238,9 @@
               "kind": "paragraph",
               "children": [
                 {
-                  "id": "m2-a3-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0032",
-                  "options": {}
+                  "id": "m2-a3-p1-x1",
+                  "kind": "text",
+                  "text": "피보험자가 1회의 입원 또는 1회의 통원 중에 2가지 이상의 수술을 받은 경우 퇴원일 또는 통원일을 기준으로 진단서 및 진료비 세부내역서 등에서 확인되는 하나의 수술코드에 한하여 수술비를 지급합니다."
                 }
               ]
             },
@@ -6684,13 +5460,7 @@
                 {
                   "id": "m2-a3-p8-x3",
                   "kind": "text",
-                  "text": "의 "
-                },
-                {
-                  "id": "m2-a3-p8-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0020",
-                  "options": {}
+                  "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
               ]
             }
@@ -6797,10 +5567,25 @@
               ]
             },
             {
-              "id": "m2-a4-p3-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0033",
-              "options": {}
+              "id": "m2-a4-p3",
+              "kind": "paragraph",
+              "children": [
+                {
+                  "id": "m2-a4-p3-x2",
+                  "kind": "text",
+                  "text": "회사는"
+                },
+                {
+                  "id": "m2-a4-p3-x1",
+                  "kind": "appendixRef",
+                  "appendixCode": "AX000003"
+                },
+                {
+                  "id": "m2-a4-p3-x3",
+                  "kind": "text",
+                  "text": "의 주2)에 해당하는 사항은 보상하지 않습니다."
+                }
+              ]
             },
             {
               "id": "m2-a4-p4",
@@ -6814,12 +5599,25 @@
               ]
             },
             {
-              "id": "m2-a4-p5-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0034",
-              "options": {
-                "O01": "V01"
-              }
+              "id": "m2-a4-p5",
+              "kind": "paragraph",
+              "children": [
+                {
+                  "id": "m2-a4-p5-x2",
+                  "kind": "text",
+                  "text": "질병을 원인으로 수술을 하여"
+                },
+                {
+                  "id": "m2-a4-p5-x1",
+                  "kind": "appendixRef",
+                  "appendixCode": "AX000003"
+                },
+                {
+                  "id": "m2-a4-p5-x3",
+                  "kind": "text",
+                  "text": "에서 정한 수술코드를 받은 경우에는 보상하지 않습니다."
+                }
+              ]
             }
           ]
         },
@@ -6923,21 +5721,10 @@
           "title": "특별약관의 소멸",
           "children": [
             {
-              "id": "m2-a6-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m2-a6-p1-x1",
-                  "kind": "text",
-                  "text": "이 특별약관의 피보험자가 "
-                },
-                {
-                  "id": "m2-a6-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0021",
-                  "options": {}
-                }
-              ]
+              "id": "m2-a6-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0028",
+              "options": {}
             }
           ]
         },
@@ -6949,7 +5736,7 @@
             {
               "id": "m2-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0036",
+              "clauseCode": "C0034",
               "options": {}
             }
           ]
@@ -6972,35 +5759,10 @@
           "title": "보험금의 지급사유",
           "children": [
             {
-              "id": "m3-a1-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m3-a1-p1-x2",
-                  "kind": "text",
-                  "text": "회사는 보험증권에 기재된 피보험자가 이 특별약관의 보험기간 중에 상해로"
-                },
-                {
-                  "id": "m3-a1-p1-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000014"
-                },
-                {
-                  "id": "m3-a1-p1-x3a",
-                  "kind": "text",
-                  "text": "에서 정하는 골절로 진단확정시 보험수익자에게 1사고당 이 특별약관의 보험가입금액을 "
-                },
-                {
-                  "id": "m3-a1-p1-x3s",
-                  "kind": "slot",
-                  "ref": "D0001"
-                },
-                {
-                  "id": "m3-a1-p1-x3b",
-                  "kind": "text",
-                  "text": "로 지급합니다."
-                }
-              ]
+              "id": "m3-a1-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0021",
+              "options": {}
             }
           ]
         },
@@ -7010,48 +5772,10 @@
           "title": "보험금 지급에 관한 세부규정",
           "children": [
             {
-              "id": "m3-a2-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m3-a2-p1-x1",
-                  "kind": "text",
-                  "text": "피보험자가 동일한 상해로 2가지 이상의 골절(치아파절 제외) 상태가 발생한 경우에는 1회에 한하여 지급합니다."
-                }
-              ]
-            },
-            {
-              "id": "m3-a2-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m3-a2-p2-x2",
-                  "kind": "text",
-                  "text": "보험수익자와 회사가 "
-                },
-                {
-                  "id": "m3-a2-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m3-a1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m3-a2-p2-x3",
-                  "kind": "text",
-                  "text": "의 "
-                },
-                {
-                  "id": "m3-a2-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0020",
-                  "options": {}
-                }
-              ]
+              "id": "m3-a2-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0023",
+              "options": {}
             }
           ]
         },
@@ -7138,21 +5862,10 @@
           "title": "특별약관의 소멸",
           "children": [
             {
-              "id": "m3-a4-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m3-a4-p1-x1",
-                  "kind": "text",
-                  "text": "이 특별약관의 피보험자가 "
-                },
-                {
-                  "id": "m3-a4-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0021",
-                  "options": {}
-                }
-              ]
+              "id": "m3-a4-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0028",
+              "options": {}
             }
           ]
         },
@@ -7164,7 +5877,7 @@
             {
               "id": "m3-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0036",
+              "clauseCode": "C0034",
               "options": {}
             }
           ]
@@ -7187,15 +5900,10 @@
           "title": "보장의 범위",
           "children": [
             {
-              "id": "m4-a1-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m4-a1-p1-x1",
-                  "kind": "text",
-                  "text": "이 특별약관은 아래의 총 3개의 세부보장으로 구성되어 있습니다."
-                }
-              ]
+              "id": "m4-a1-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0020",
+              "options": {}
             },
             {
               "id": "m4-a1-b1",
@@ -7400,13 +6108,7 @@
                 {
                   "id": "m4-a3-p3-x3",
                   "kind": "text",
-                  "text": "의 "
-                },
-                {
-                  "id": "m4-a3-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0020",
-                  "options": {}
+                  "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
               ]
             }
@@ -7422,12 +6124,9 @@
               "kind": "paragraph",
               "children": [
                 {
-                  "id": "m4-a4-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0024",
-                  "options": {
-                    "O01": "V02"
-                  }
+                  "id": "m4-a4-p1-x1",
+                  "kind": "text",
+                  "text": "이 특별약관에 있어서「수술」이라 함은 의사, 치과의사 또는 한의사의 면허를 가진 자(이하「의사」라 합니다)가 치료가 필요하다고 인정한 경우로서 의사의 관리하에 치료를 직접적인 목적으로 기구를 사용하여 생체(生體)에 절단(切斷, 특정부위를 잘라 내는 것), 절제(切除, 특정부위를 잘라 없애는 것) 등의 조작을 가하는 것을 말합니다."
                 }
               ]
             },
@@ -7449,13 +6148,7 @@
                 {
                   "id": "m4-a4-p2-x2",
                   "kind": "text",
-                  "text": "의"
-                },
-                {
-                  "id": "m4-a4-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0025",
-                  "options": {}
+                  "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
                 }
               ]
             },
@@ -7477,13 +6170,7 @@
                 {
                   "id": "m4-a4-p3-x2",
                   "kind": "text",
-                  "text": "의"
-                },
-                {
-                  "id": "m4-a4-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0026",
-                  "options": {}
+                  "text": "의「수술」에는 보건복지부 산하 신의료기술평가위원회 또는 이에 준하는 기관으로부터 안전성과 치료효과를 인정받은 최신 수술기법으로 생체에 절단, 절제 등의 조작을 가하는 수술도 포함됩니다."
                 }
               ]
             },
@@ -7678,26 +6365,13 @@
           "title": "중증화상및부식진단의 정의 및 진단확정",
           "children": [
             {
-              "id": "m4-a6-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m4-a6-p1-x1",
-                  "kind": "text",
-                  "text": "이 특별약관에 있어「중증화상및부식(화학약품 등에 의한 피부 손상)」이라 함은「9의 법칙(Rule of 9's)」또는「룬드와 브라우더 신체 표면적 차트(Lund & Browder chart)」에 의해 측정된 신체표면적으로 최소 20% 이상의 3도 화상 또는 부식(화학약품 등에 의한 피부 손상)을 입은 경우를 말합니다. 다만,「9의 법칙」또는「룬드와 브라우더 신체 표면적 차트」측정법처럼 표준화되고 임상학적으로 받아들여지는 다른 신체 표면적 차트를 이용하여 유사한 결과가 나온 것도 인정합니다."
-                }
-              ]
-            },
-            {
-              "id": "m4-a6-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m4-a6-p2-x1",
-                  "kind": "text",
-                  "text": "「중증화상및부식(화학약품 등에 의한 피부 손상)」의 진단확정은 의료법 제3조에서 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관의 의사(한의사, 치과의사는 제외합니다) 면허를 가진 자가 작성한 문서화된 기록 또는 검사결과를 기초로 하여 내려져야 합니다. 또한, 회사가「중증화상및부식」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
-                }
-              ]
+              "id": "m4-a6-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0027",
+              "options": {
+                "O01": "V02",
+                "O02": "V02"
+              }
             }
           ]
         },
@@ -7707,81 +6381,10 @@
           "title": "특별약관의 소멸",
           "children": [
             {
-              "id": "m4-a7-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m4-a7-p1-x1",
-                  "kind": "text",
-                  "text": "이 특별약관의 피보험자가 "
-                },
-                {
-                  "id": "m4-a7-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0021",
-                  "options": {}
-                }
-              ]
-            },
-            {
-              "id": "m4-a7-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m4-a7-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m4-a7-p1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m4-a7-p2-x3",
-                  "kind": "text",
-                  "text": "에도 불구하고 "
-                },
-                {
-                  "id": "m4-a7-p2-x2",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m4-a2-p1-i3"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m4-a7-p2-x4",
-                  "kind": "text",
-                  "text": "에서 정한 중증화상및부식진단비 지급사유가 발생한 경우 중증화상및부식진단비보장은 소멸됩니다."
-                }
-              ]
-            },
-            {
-              "id": "m4-a7-p3",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m4-a7-p3-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m4-a7-p2"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m4-a7-p3-x2",
-                  "kind": "text",
-                  "text": "에 따라 중증화상및부식진단비보장이 소멸된 경우에는 회사는 해당 보장의 해약환급금을 지급하지 않습니다."
-                }
-              ]
+              "id": "m4-a7-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0032",
+              "options": {}
             }
           ]
         },
@@ -7793,7 +6396,7 @@
             {
               "id": "m4-a8-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0036",
+              "clauseCode": "C0034",
               "options": {}
             }
           ]
@@ -7816,35 +6419,10 @@
           "title": "보험금의 지급사유",
           "children": [
             {
-              "id": "m5-a1-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m5-a1-p1-x2",
-                  "kind": "text",
-                  "text": "회사는 보험증권에 기재된 피보험자가 이 특별약관의 보험기간 중에 상해의 직접결과로써"
-                },
-                {
-                  "id": "m5-a1-p1-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000021"
-                },
-                {
-                  "id": "m5-a1-p1-x3a",
-                  "kind": "text",
-                  "text": "에서 정하는 골절을 입고 그 치료를 직접적인 목적으로 수술을 받은 경우 보험증권에 기재된 이 특별약관의 보험가입금액을 "
-                },
-                {
-                  "id": "m5-a1-p1-x3s",
-                  "kind": "slot",
-                  "ref": "D0001"
-                },
-                {
-                  "id": "m5-a1-p1-x3b",
-                  "kind": "text",
-                  "text": "로 보험수익자에게 지급합니다."
-                }
-              ]
+              "id": "m5-a1-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0022",
+              "options": {}
             }
           ]
         },
@@ -7854,48 +6432,10 @@
           "title": "보험금 지급에 관한 세부규정",
           "children": [
             {
-              "id": "m5-a2-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m5-a2-p1-x1",
-                  "kind": "text",
-                  "text": "하나의 상해로 두 종류 이상의 골절 수술을 받거나 같은 종류의 골절 수술을 2회 이상 받은 경우에는 하나의 골절수술비만을 지급합니다."
-                }
-              ]
-            },
-            {
-              "id": "m5-a2-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m5-a2-p2-x2",
-                  "kind": "text",
-                  "text": "보험수익자와 회사가 "
-                },
-                {
-                  "id": "m5-a2-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m5-a1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m5-a2-p2-x3",
-                  "kind": "text",
-                  "text": "의 "
-                },
-                {
-                  "id": "m5-a2-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0020",
-                  "options": {}
-                }
-              ]
+              "id": "m5-a2-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0024",
+              "options": {}
             }
           ]
         },
@@ -7909,12 +6449,9 @@
               "kind": "paragraph",
               "children": [
                 {
-                  "id": "m5-a3-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0024",
-                  "options": {
-                    "O01": "V02"
-                  }
+                  "id": "m5-a3-p1-x1",
+                  "kind": "text",
+                  "text": "이 특별약관에 있어서「수술」이라 함은 의사, 치과의사 또는 한의사의 면허를 가진 자(이하「의사」라 합니다)가 치료가 필요하다고 인정한 경우로서 의사의 관리하에 치료를 직접적인 목적으로 기구를 사용하여 생체(生體)에 절단(切斷, 특정부위를 잘라 내는 것), 절제(切除, 특정부위를 잘라 없애는 것) 등의 조작을 가하는 것을 말합니다."
                 }
               ]
             },
@@ -7936,13 +6473,7 @@
                 {
                   "id": "m5-a3-p2-x2",
                   "kind": "text",
-                  "text": "의"
-                },
-                {
-                  "id": "m5-a3-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0025",
-                  "options": {}
+                  "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
                 }
               ]
             },
@@ -7964,13 +6495,7 @@
                 {
                   "id": "m5-a3-p3-x2",
                   "kind": "text",
-                  "text": "의"
-                },
-                {
-                  "id": "m5-a3-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0026",
-                  "options": {}
+                  "text": "의「수술」에는 보건복지부 산하 신의료기술평가위원회 또는 이에 준하는 기관으로부터 안전성과 치료효과를 인정받은 최신 수술기법으로 생체에 절단, 절제 등의 조작을 가하는 수술도 포함됩니다."
                 }
               ]
             },
@@ -8149,21 +6674,10 @@
           "title": "특별약관의 소멸",
           "children": [
             {
-              "id": "m5-a5-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m5-a5-p1-x1",
-                  "kind": "text",
-                  "text": "이 특별약관의 피보험자가 "
-                },
-                {
-                  "id": "m5-a5-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0021",
-                  "options": {}
-                }
-              ]
+              "id": "m5-a5-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0028",
+              "options": {}
             }
           ]
         },
@@ -8175,7 +6689,7 @@
             {
               "id": "m5-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0036",
+              "clauseCode": "C0034",
               "options": {}
             }
           ]
@@ -8455,13 +6969,7 @@
                 {
                   "id": "m6-a2-p2-x3",
                   "kind": "text",
-                  "text": "의 "
-                },
-                {
-                  "id": "m6-a2-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0020",
-                  "options": {}
+                  "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
               ]
             }
@@ -8473,107 +6981,13 @@
           "title": "특별약관의 소멸",
           "children": [
             {
-              "id": "m6-a3-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m6-a3-p1-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m6-a1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m6-a3-p1-x2a",
-                  "kind": "text",
-                  "text": "에서 정한 "
-                },
-                {
-                  "id": "m6-a3-p1-x2s",
-                  "kind": "slot",
-                  "ref": "D0001"
-                },
-                {
-                  "id": "m6-a3-p1-x2b",
-                  "kind": "text",
-                  "text": " "
-                },
-                {
-                  "id": "m6-a3-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0023",
-                  "options": {
-                    "O01": "V02"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "m6-a3-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m6-a3-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m6-a3-p1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m6-a3-p2-x2",
-                  "kind": "text",
-                  "text": "에 따라 "
-                },
-                {
-                  "id": "m6-a3-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0022",
-                  "options": {
-                    "O01": "V01"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "m6-a3-p3",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m6-a3-p3-x2",
-                  "kind": "text",
-                  "text": "이 특별약관의 피보험자가 "
-                },
-                {
-                  "id": "m6-a3-p3-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m6-a3-p1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m6-a3-p3-x3",
-                  "kind": "text",
-                  "text": " 이외의 사유로 "
-                },
-                {
-                  "id": "m6-a3-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0021",
-                  "options": {}
-                }
-              ]
+              "id": "m6-a3-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0030",
+              "options": {
+                "O01": "V02",
+                "O02": "V02"
+              }
             }
           ]
         },
@@ -8891,188 +7305,14 @@
           "title": "보험금 지급에 관한 세부규정",
           "children": [
             {
-              "id": "m7-a2-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m7-a2-p1-x2",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m7-a1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m7-a2-p1-x3",
-                  "kind": "text",
-                  "text": "에서 "
-                },
-                {
-                  "id": "m7-a2-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0027",
-                  "options": {
-                    "O01": "V02",
-                    "O02": "V02"
-                  }
-                },
-                {
-                  "id": "m7-a2-p1-x3r",
-                  "kind": "text",
-                  "text": " 다만,"
-                },
-                {
-                  "id": "m7-a2-p1-k2",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0028",
-                  "options": {}
-                }
-              ]
-            },
-            {
-              "id": "m7-a2-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m7-a2-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m7-a2-p1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m7-a2-p2-x2",
-                  "kind": "text",
-                  "text": "에 따라 장해지급률이 결정되었으나 그 이후 보장을 받을 수 있는 기간(특별약관의 효력이 없어진 경우에는 보험기간이 10년 이상인 특별약관은 질병의 진단확정일부터 2년 이내로 하고, 보험기간이 10년 미만인 특별약관은 질병의 진단확정일부터 1년 이내)에 장해상태가 더 악화된 때에는 그 악화된 장해상태를 기준으로 장해지급률을 결정합니다."
-                }
-              ]
-            },
-            {
-              "id": "m7-a2-p3",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m7-a2-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0029",
-                  "options": {
-                    "O01": "V01"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "m7-a2-p4",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m7-a2-p4-x2",
-                  "kind": "text",
-                  "text": "보험수익자와 회사가 "
-                },
-                {
-                  "id": "m7-a2-p4-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m7-a1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m7-a2-p4-x3",
-                  "kind": "text",
-                  "text": "의 "
-                },
-                {
-                  "id": "m7-a2-p4-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0020",
-                  "options": {}
-                }
-              ]
-            },
-            {
-              "id": "m7-a2-p5",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m7-a2-p5-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0030",
-                  "options": {
-                    "O01": "V02"
-                  }
-                },
-                {
-                  "id": "m7-a2-p5-x2r",
-                  "kind": "text",
-                  "text": " 다만,"
-                },
-                {
-                  "id": "m7-a2-p5-k2",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0019",
-                  "options": {
-                    "O01": "V01"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "m7-a2-p6",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m7-a2-p6-x2",
-                  "kind": "text",
-                  "text": "다른 질병으로 인하여 후유장해가 2회 이상 발생하였을 경우에는 그 때마다 이에 해당하는 후유장해지급률을 결정합니다. 그러나 그 후유장해가 이미 후유장해보험금을 지급받은 동일한 부위에 가중된 때에는 최종 장해상태에 해당하는 후유장해보험금에서 이미 지급받은 후유장해보험금을 차감하여 지급합니다. 다만,"
-                },
-                {
-                  "id": "m7-a2-p6-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0019",
-                  "options": {
-                    "O01": "V02"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "m7-a2-p7",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m7-a2-p7-x2",
-                  "kind": "text",
-                  "text": "이미 이 특별약관에서 후유장해보험금 지급사유에 해당되지 않았거나(보장개시 이전의 원인에 의하거나 또는 그 이전에 발생한 후유장해를 포함합니다), 후유장해보험금이 지급되지 않았던 피보험자에게 그 신체의 동일 부위에 또다시 "
-                },
-                {
-                  "id": "m7-a2-p7-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m7-a2-p6"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m7-a2-p7-x3",
-                  "kind": "text",
-                  "text": "에 규정하는 후유장해상태가 발생하였을 경우에는 직전까지의 후유장해에 대한 후유장해보험금이 지급된 것으로 보고 최종 후유장해 상태에 해당되는 후유장해보험금에서 이를 차감하여 지급합니다."
-                }
-              ]
+              "id": "m7-a2-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0026",
+              "options": {
+                "O01": "V02",
+                "O02": "V02",
+                "O03": "V01"
+              }
             }
           ]
         },
@@ -9082,91 +7322,12 @@
           "title": "특별약관의 소멸",
           "children": [
             {
-              "id": "m7-a3-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m7-a3-p1-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m7-a1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m7-a3-p1-x2a",
-                  "kind": "text",
-                  "text": "에서 정한 "
-                },
-                {
-                  "id": "m7-a3-p1-x2s",
-                  "kind": "slot",
-                  "ref": "D0001"
-                },
-                {
-                  "id": "m7-a3-p1-x2b",
-                  "kind": "text",
-                  "text": " "
-                },
-                {
-                  "id": "m7-a3-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0023",
-                  "options": {
-                    "O01": "V02"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "m7-a3-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m7-a3-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "nodeId": "m7-a3-p1"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "m7-a3-p2-x2",
-                  "kind": "text",
-                  "text": "에 따라 "
-                },
-                {
-                  "id": "m7-a3-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0022",
-                  "options": {
-                    "O01": "V01"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "m7-a3-p3",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m7-a3-p3-x1",
-                  "kind": "text",
-                  "text": "이 특별약관의 피보험자가 "
-                },
-                {
-                  "id": "m7-a3-p3-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0021",
-                  "options": {}
-                }
-              ]
+              "id": "m7-a3-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0029",
+              "options": {
+                "O01": "V02"
+              }
             }
           ]
         },
@@ -9178,7 +7339,7 @@
             {
               "id": "m7-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0036",
+              "clauseCode": "C0034",
               "options": {}
             }
           ]
@@ -10458,12 +8619,19 @@
               "kind": "paragraph",
               "children": [
                 {
-                  "id": "m8-a2-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0031",
-                  "options": {
-                    "O01": "V02"
-                  }
+                  "id": "m8-a2-p1-x2",
+                  "kind": "text",
+                  "text": "이 특별약관에서「수술」이라 함은 의사 또는 치과의사의 면허를 가진 자(이하「의사」라 합니다)가 피보험자의 질병으로 인한 치료를 직접적인 목적으로 필요하다고 인정한 경우로서 의료기관에서 의사의 관리하에 "
+                },
+                {
+                  "id": "m8-a2-p1-x1",
+                  "kind": "appendixRef",
+                  "appendixCode": "AX000003"
+                },
+                {
+                  "id": "m8-a2-p1-x3",
+                  "kind": "text",
+                  "text": "에서 정한 수술코드(이하「수술코드」라 합니다.)에 해당하는 의료행위를 하는 것을 말합니다."
                 }
               ]
             },
@@ -10485,13 +8653,7 @@
                 {
                   "id": "m8-a2-p2-x2",
                   "kind": "text",
-                  "text": "의"
-                },
-                {
-                  "id": "m8-a2-p2-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0025",
-                  "options": {}
+                  "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
                 }
               ]
             },
@@ -10630,10 +8792,9 @@
               "kind": "paragraph",
               "children": [
                 {
-                  "id": "m8-a3-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0032",
-                  "options": {}
+                  "id": "m8-a3-p1-x1",
+                  "kind": "text",
+                  "text": "피보험자가 1회의 입원 또는 1회의 통원 중에 2가지 이상의 수술을 받은 경우 퇴원일 또는 통원일을 기준으로 진단서 및 진료비 세부내역서 등에서 확인되는 하나의 수술코드에 한하여 수술비를 지급합니다."
                 }
               ]
             },
@@ -10853,13 +9014,7 @@
                 {
                   "id": "m8-a3-p8-x3",
                   "kind": "text",
-                  "text": "의 "
-                },
-                {
-                  "id": "m8-a3-p8-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0020",
-                  "options": {}
+                  "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
               ]
             }
@@ -11078,10 +9233,25 @@
               ]
             },
             {
-              "id": "m8-a4-p3-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0033",
-              "options": {}
+              "id": "m8-a4-p3",
+              "kind": "paragraph",
+              "children": [
+                {
+                  "id": "m8-a4-p3-x2",
+                  "kind": "text",
+                  "text": "회사는"
+                },
+                {
+                  "id": "m8-a4-p3-x1",
+                  "kind": "appendixRef",
+                  "appendixCode": "AX000003"
+                },
+                {
+                  "id": "m8-a4-p3-x3",
+                  "kind": "text",
+                  "text": "의 주2)에 해당하는 사항은 보상하지 않습니다."
+                }
+              ]
             },
             {
               "id": "m8-a4-p4",
@@ -11095,12 +9265,25 @@
               ]
             },
             {
-              "id": "m8-a4-p5-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0034",
-              "options": {
-                "O01": "V02"
-              }
+              "id": "m8-a4-p5",
+              "kind": "paragraph",
+              "children": [
+                {
+                  "id": "m8-a4-p5-x2",
+                  "kind": "text",
+                  "text": "상해를 원인으로 수술을 하여"
+                },
+                {
+                  "id": "m8-a4-p5-x1",
+                  "kind": "appendixRef",
+                  "appendixCode": "AX000003"
+                },
+                {
+                  "id": "m8-a4-p5-x3",
+                  "kind": "text",
+                  "text": "에서 정한 수술코드를 받은 경우에는 보상하지 않습니다."
+                }
+              ]
             }
           ]
         },
@@ -11204,21 +9387,10 @@
           "title": "특별약관의 소멸",
           "children": [
             {
-              "id": "m8-a6-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "m8-a6-p1-x1",
-                  "kind": "text",
-                  "text": "이 특별약관의 피보험자가 "
-                },
-                {
-                  "id": "m8-a6-p1-k1",
-                  "kind": "clauseInlineRef",
-                  "clauseCode": "C0021",
-                  "options": {}
-                }
-              ]
+              "id": "m8-a6-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0028",
+              "options": {}
             }
           ]
         },
@@ -11230,7 +9402,7 @@
             {
               "id": "m8-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0036",
+              "clauseCode": "C0034",
               "options": {}
             }
           ]

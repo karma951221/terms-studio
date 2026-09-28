@@ -1137,83 +1137,10 @@
               "title": "보험금 등의 청구",
               "children": [
                 {
-                  "id": "g-a7-p1",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a7-p1-x1",
-                      "kind": "text",
-                      "text": "보험수익자는 다음의 서류를 제출하고 보험금 또는 보험료 납입면제를 청구하여야 합니다."
-                    }
-                  ],
-                  "items": [
-                    {
-                      "id": "g-a7-p1-i1",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "g-a7-p1-i1-x1",
-                          "kind": "text",
-                          "text": "청구서(회사양식)"
-                        }
-                      ]
-                    },
-                    {
-                      "id": "g-a7-p1-i2",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "g-a7-p1-i2-x1",
-                          "kind": "text",
-                          "text": "사고증명서(진단서, 진료비계산서, 사망진단서, 장해진단서, 입원치료확인서, 의사처방전(처방조제비) 등)"
-                        }
-                      ]
-                    },
-                    {
-                      "id": "g-a7-p1-i3",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "g-a7-p1-i3-x1",
-                          "kind": "text",
-                          "text": "신분증(주민등록증이나 운전면허증 등 사진이 붙은 정부기관발행 신분증, 본인이 아닌 경우에는 본인의 인감증명서, 본인서명사실확인서 또는 안전성과 신뢰성이 확보된 전자적 수단을 활용한 보험수익자 의사표시의 확인방법 포함)"
-                        }
-                      ]
-                    },
-                    {
-                      "id": "g-a7-p1-i4",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "g-a7-p1-i4-x1",
-                          "kind": "text",
-                          "text": "기타 보험수익자가 보험금의 수령 또는 보험료 납입면제 청구에 필요하여 제출하는 서류"
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "id": "g-a7-p2",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a7-p2-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "nodeId": "g-a7-p1-i2"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "g-a7-p2-x2",
-                      "kind": "text",
-                      "text": "의 사고증명서는 의료법 제3조(의료기관)에서 규정한 국내의 병원이나 의원 또는 국외의 의료관련법에서 정한 의료기관에서 발급한 것이어야 합니다."
-                    }
-                  ]
+                  "id": "g-a7-p1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0002",
+                  "options": {}
                 }
               ]
             },
@@ -1921,37 +1848,10 @@
               "title": "주소변경통지",
               "children": [
                 {
-                  "id": "g-a12-p1",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a12-p1-x1",
-                      "kind": "text",
-                      "text": "계약자(보험수익자가 계약자와 다른 경우 보험수익자를 포함합니다)는 주소 또는 연락처가 변경된 경우에는 지체없이 그 변경내용을 회사에 알려야 합니다."
-                    }
-                  ]
-                },
-                {
-                  "id": "g-a12-p2",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a12-p2-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "nodeId": "g-a12-p1"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "g-a12-p2-x2",
-                      "kind": "text",
-                      "text": "에서 정한대로 계약자 또는 보험수익자가 변경내용을 알리지 않은 경우에는 계약자 또는 보험수익자가 회사에 알린 최종의 주소 또는 연락처로 등기우편 등 우편물에 대한 기록이 남는 방법으로 회사가 알린 사항은 일반적으로 도달에 필요한 기간이 지난 때에 계약자 또는 보험수익자에게 도달된 것으로 봅니다."
-                    }
-                  ]
+                  "id": "g-a12-p1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0003",
+                  "options": {}
                 }
               ]
             },
@@ -1963,7 +1863,7 @@
                 {
                   "id": "g-a13-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0002",
+                  "clauseCode": "C0004",
                   "options": {}
                 },
                 {
@@ -1984,7 +1884,7 @@
                 {
                   "id": "g-a14-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0003",
+                  "clauseCode": "C0005",
                   "options": {}
                 },
                 {
@@ -2014,7 +1914,7 @@
                 {
                   "id": "g-a15-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0004",
+                  "clauseCode": "C0006",
                   "options": {}
                 },
                 {
@@ -2667,64 +2567,10 @@
               "title": "사기에 의한 계약",
               "children": [
                 {
-                  "id": "g-a18-p1",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a18-p1-x1",
-                      "kind": "text",
-                      "text": "계약자 또는 피보험자가 대리진단, 약물사용을 수단으로 진단절차를 통과하거나 진단서 위·변조 또는 청약일 이전에 암 또는 인간면역결핍바이러스(HIV) 감염의 진단 확정을 받은 후 이를 숨기고 가입하는 등 사기에 의하여 계약이 성립되었음을 회사가 증명하는 경우에는 계약일부터 5년 이내(사기사실을 안 날부터 1개월 이내)에 계약을 취소할 수 있습니다."
-                    }
-                  ]
-                },
-                {
-                  "id": "g-a18-p2",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a18-p2-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "nodeId": "g-a18-p1"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "g-a18-p2-x2",
-                      "kind": "text",
-                      "text": "에 따라 계약이 취소된 경우에는 회사는 이미 납입한 보험료를 계약자에게 돌려 드립니다."
-                    }
-                  ]
-                },
-                {
-                  "id": "g-a18-p3",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a18-p3-x2",
-                      "kind": "text",
-                      "text": "보험료 납입이 면제된 경우 "
-                    },
-                    {
-                      "id": "g-a18-p3-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "nodeId": "g-a18-p2"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "g-a18-p3-x3",
-                      "kind": "text",
-                      "text": "의「이미 납입한 보험료」는 계약자가 실제로 납입한 보험료로 합니다."
-                    }
-                  ]
+                  "id": "g-a18-p1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0007",
+                  "options": {}
                 }
               ]
             }
@@ -3420,12 +3266,9 @@
                   "kind": "paragraph",
                   "children": [
                     {
-                      "id": "g-a23-p1-k1",
-                      "kind": "clauseInlineRef",
-                      "clauseCode": "C0016",
-                      "options": {
-                        "O01": "V01"
-                      }
+                      "id": "g-a23-p1-x1",
+                      "kind": "text",
+                      "text": "계약자는 회사의 승낙을 얻어 다음의 사항을 변경할 수 있습니다. 이 경우 승낙을 서면 등으로 알리거나 보험증권의 뒷면에 기재하여 드립니다. 다만, 2형(해약환급금 미지급형(납입후50%))의 경우 보험기간, 보험료 납입기간, 피보험자의 변경 및 보험가입금액의 증액은 신청할 수 없습니다."
                     }
                   ],
                   "items": [
@@ -3744,12 +3587,15 @@
                   ]
                 },
                 {
-                  "id": "g-a25-p3-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0017",
-                  "options": {
-                    "O01": "V01"
-                  }
+                  "id": "g-a25-p3",
+                  "kind": "paragraph",
+                  "children": [
+                    {
+                      "id": "g-a25-p3-x1",
+                      "kind": "text",
+                      "text": "피보험자가 사망한 경우에는 이 계약은 소멸되며, 이 경우 회사는 그 때까지「보험료 및 해약환급금 산출방법서」에서 정한 사망 당시 계약자적립액(중도인출이 있는 경우 중도인출 원금과 이자를 차감하고 적립한 금액을 말합니다) 및 미경과보험료를 계약자에게 지급합니다."
+                    }
+                  ]
                 },
                 {
                   "id": "g-a25-b1",
@@ -3897,7 +3743,7 @@
                 {
                   "id": "g-a27-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0005",
+                  "clauseCode": "C0008",
                   "options": {}
                 },
                 {
@@ -4467,12 +4313,14 @@
                       "text": "같은 상해 또는 질병으로 두 가지 이상의 후유장해가 생긴 경우에는 장해지급률을 합산하여 결정합니다. 다만, "
                     },
                     {
-                      "id": "g-a27_2-p8-k1",
-                      "kind": "clauseInlineRef",
-                      "clauseCode": "C0019",
-                      "options": {
-                        "O01": "V01"
-                      }
+                      "id": "g-a27_2-p8-x1",
+                      "kind": "appendixRef",
+                      "appendixCode": "AX000002"
+                    },
+                    {
+                      "id": "g-a27_2-p8-x3",
+                      "kind": "text",
+                      "text": "의 각 신체부위별 판정기준에 별도로 정한 경우에는 그 기준에 따릅니다."
                     }
                   ]
                 },
@@ -4486,12 +4334,14 @@
                       "text": "다른 상해 또는 질병으로 인하여 후유장해가 2회 이상 발생하였을 경우에는 그 때마다 이에 해당하는 장해지급률을 결정합니다. 그러나 그 후유장해가 이미 장해지급률이 결정된 동일한 부위에 가중된 때에는 최종 장해상태에 해당하는 장해지급률에서 이미 결정된 장해지급률을 차감하여 결정합니다. 다만, "
                     },
                     {
-                      "id": "g-a27_2-p9-k1",
-                      "kind": "clauseInlineRef",
-                      "clauseCode": "C0019",
-                      "options": {
-                        "O01": "V02"
-                      }
+                      "id": "g-a27_2-p9-x1",
+                      "kind": "appendixRef",
+                      "appendixCode": "AX000002"
+                    },
+                    {
+                      "id": "g-a27_2-p9-x3",
+                      "kind": "text",
+                      "text": "의 각 신체부위별 판정기준에서 별도로 정한 경우에는 그 기준에 따릅니다."
                     }
                   ]
                 },
@@ -5689,12 +5539,15 @@
                   ]
                 },
                 {
-                  "id": "g-a30-p4-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0018",
-                  "options": {
-                    "O01": "V01"
-                  }
+                  "id": "g-a30-p4",
+                  "kind": "paragraph",
+                  "children": [
+                    {
+                      "id": "g-a30-p4-x1",
+                      "kind": "text",
+                      "text": "부활(효력회복)시 부활(효력회복)일을 계약일로 하여 암보장개시일을 적용합니다."
+                    }
+                  ]
                 }
               ]
             },
@@ -6469,7 +6322,7 @@
                 {
                   "id": "g-a37-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0006",
+                  "clauseCode": "C0009",
                   "options": {}
                 }
               ]
@@ -6567,7 +6420,7 @@
                 {
                   "id": "g-a39-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0007",
+                  "clauseCode": "C0010",
                   "options": {}
                 }
               ]
@@ -6580,7 +6433,7 @@
                 {
                   "id": "g-a40-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0008",
+                  "clauseCode": "C0011",
                   "options": {}
                 }
               ]
@@ -6593,7 +6446,7 @@
                 {
                   "id": "g-a41-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0009",
+                  "clauseCode": "C0012",
                   "options": {}
                 },
                 {
@@ -6612,10 +6465,15 @@
               "title": "약관의 해석",
               "children": [
                 {
-                  "id": "g-a42-p1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0010",
-                  "options": {}
+                  "id": "g-a42-p1",
+                  "kind": "paragraph",
+                  "children": [
+                    {
+                      "id": "g-a42-p1-x1",
+                      "kind": "text",
+                      "text": "회사는 신의성실의 원칙에 따라 공정하게 약관을 해석하여야 하며 계약자에 따라 다르게 해석하지 않습니다."
+                    }
+                  ]
                 },
                 {
                   "id": "g-a42-b1",
@@ -6631,7 +6489,7 @@
                 {
                   "id": "g-a42-p2-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0011",
+                  "clauseCode": "C0013",
                   "options": {}
                 }
               ]
@@ -6644,7 +6502,7 @@
                 {
                   "id": "g-a43-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0012",
+                  "clauseCode": "C0014",
                   "options": {}
                 },
                 {
@@ -6663,154 +6521,10 @@
               "title": "법령 등의 개정에 따른 계약내용의 변경",
               "children": [
                 {
-                  "id": "g-a44-p1",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a44-p1-x1",
-                      "kind": "text",
-                      "text": "회사는 보험금 지급사유 관련 법률이 개정된 경우에는 변경된 내용을 적용합니다."
-                    }
-                  ]
-                },
-                {
-                  "id": "g-a44-p2",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a44-p2-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "nodeId": "g-a44-p1"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "g-a44-p2-x2",
-                      "kind": "text",
-                      "text": "에도 불구하고 다음 각 호 중 어느 한 가지에 해당되는 경우에는 회사는 객관적이고 합리적인 범위내에서 기존 계약내용에 상응하는 새로운 보장내용으로 계약내용을 변경할 수 있습니다."
-                    }
-                  ],
-                  "items": [
-                    {
-                      "id": "g-a44-p2-i1",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "g-a44-p2-i1-x1",
-                          "kind": "text",
-                          "text": "관련 법률의 개정 또는 폐지 등에 따라 약관에서 정한 보험금 지급사유 판정기준이 변경되는 경우"
-                        }
-                      ]
-                    },
-                    {
-                      "id": "g-a44-p2-i2",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "g-a44-p2-i2-x1",
-                          "kind": "text",
-                          "text": "관련 법률의 개정 또는 폐지 등에 따라 약관에서 정한 보험금 지급사유의 판정이 불가능한 경우"
-                        }
-                      ]
-                    },
-                    {
-                      "id": "g-a44-p2-i3",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "g-a44-p2-i3-x1",
-                          "kind": "text",
-                          "text": "관련 법률의 개정 또는 폐지 등에 따라 계약유지 필요가 없어지는 경우"
-                        }
-                      ]
-                    },
-                    {
-                      "id": "g-a44-p2-i4",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "g-a44-p2-i4-x1",
-                          "kind": "text",
-                          "text": "기타 금융위원회 등의 명령이 있는 경우"
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "id": "g-a44-p3",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a44-p3-x2",
-                      "kind": "text",
-                      "text": "회사는 "
-                    },
-                    {
-                      "id": "g-a44-p3-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "nodeId": "g-a44-p2"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "g-a44-p3-x3",
-                      "kind": "text",
-                      "text": "에 따라 계약이 변경되는 경우 계약내용 변경일의 15일 이전까지 서면(등기우편 등), 전화(음성녹취) 또는 전자문서 등으로 보장내용 및 가입금액, 보험료 변경내역 및 변경 절차 등을 계약자에게 알립니다."
-                    }
-                  ]
-                },
-                {
-                  "id": "g-a44-p4",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a44-p4-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "nodeId": "g-a44-p2"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "g-a44-p4-x2",
-                      "kind": "text",
-                      "text": "에 따라 계약내용을 변경하는 경우에는 보장내용, 가입금액 및 납입보험료가 변경될 수 있으며, 계약내용 변경 시점 이후 잔여보험기간의 보장을 위한 재원인 계약자적립액 및 미경과보험료 정산으로 계약자가 추가로 납입하여야 할(또는 반환받을) 금액이 발생할 수 있습니다."
-                    }
-                  ]
-                },
-                {
-                  "id": "g-a44-p5",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a44-p5-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "nodeId": "g-a44-p2"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "g-a44-p5-x2",
-                      "kind": "text",
-                      "text": "에도 불구하고 계약자가 계약내용 변경을 원하지 않거나, 새로운 보장내용으로 계약내용을 변경하는 것이 불가능한 경우, 회사는 계약자에게 이 계약의「보험료 및 해약환급금 산출방법서」에서 정하는 바에 따라 계약내용 변경시점의 계약자적립액 및 미경과보험료를 지급하고, 이 계약은 더 이상 효력을 가지지 않습니다."
-                    }
-                  ]
+                  "id": "g-a44-p1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0015",
+                  "options": {}
                 }
               ]
             },
@@ -6820,53 +6534,10 @@
               "title": "회사의 손해배상책임",
               "children": [
                 {
-                  "id": "g-a45-p1",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a45-p1-x1",
-                      "kind": "text",
-                      "text": "회사는 계약과 관련하여 임직원, 보험설계사 및 대리점의 책임있는 사유로 계약자, 피보험자 및 보험수익자에게 발생된 손해에 대하여 관계 법령 등에 따라 손해배상의 책임을 집니다."
-                    }
-                  ]
-                },
-                {
-                  "id": "g-a45-p2",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a45-p2-x1",
-                      "kind": "text",
-                      "text": "회사는 보험금 지급 거절 및 지연지급의 사유가 없음을 알았거나 알 수 있었는데도 소를 제기하여 계약자, 피보험자 또는 보험수익자에게 손해를 가한 경우에는 그에 따른 손해를 배상할 책임을 집니다."
-                    }
-                  ]
-                },
-                {
-                  "id": "g-a45-p3",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a45-p3-x2",
-                      "kind": "text",
-                      "text": "회사가 보험금 지급여부 및 지급금액에 관하여 현저하게 공정을 잃은 합의로 보험수익자에게 손해를 가한 경우에도 회사는 "
-                    },
-                    {
-                      "id": "g-a45-p3-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "nodeId": "g-a45-p2"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "g-a45-p3-x3",
-                      "kind": "text",
-                      "text": "에 따라 손해를 배상할 책임을 집니다."
-                    }
-                  ]
+                  "id": "g-a45-p1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0016",
+                  "options": {}
                 },
                 {
                   "id": "g-a45-b1",
@@ -6886,7 +6557,7 @@
                 {
                   "id": "g-a46-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0013",
+                  "clauseCode": "C0017",
                   "options": {}
                 }
               ]
@@ -6899,7 +6570,7 @@
                 {
                   "id": "g-a47-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0014",
+                  "clauseCode": "C0018",
                   "options": {}
                 }
               ]
@@ -6912,7 +6583,7 @@
                 {
                   "id": "g-a48-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0015",
+                  "clauseCode": "C0019",
                   "options": {}
                 },
                 {
@@ -8025,83 +7696,10 @@
               "title": "보험금 등의 청구",
               "children": [
                 {
-                  "id": "m-a7-p1",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a7-p1-x1",
-                      "kind": "text",
-                      "text": "보험수익자는 다음의 서류를 제출하고 보험금 또는 보험료 납입면제를 청구하여야 합니다."
-                    }
-                  ],
-                  "items": [
-                    {
-                      "id": "m-a7-p1-i1",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a7-p1-i1-x1",
-                          "kind": "text",
-                          "text": "청구서(회사양식)"
-                        }
-                      ]
-                    },
-                    {
-                      "id": "m-a7-p1-i2",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a7-p1-i2-x1",
-                          "kind": "text",
-                          "text": "사고증명서(진단서, 진료비계산서, 사망진단서, 장해진단서, 입원치료확인서, 의사처방전(처방조제비) 등)"
-                        }
-                      ]
-                    },
-                    {
-                      "id": "m-a7-p1-i3",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a7-p1-i3-x1",
-                          "kind": "text",
-                          "text": "신분증(주민등록증이나 운전면허증 등 사진이 붙은 정부기관발행 신분증, 본인이 아닌 경우에는 본인의 인감증명서, 본인서명사실확인서 또는 안전성과 신뢰성이 확보된 전자적 수단을 활용한 보험수익자 의사표시의 확인방법 포함)"
-                        }
-                      ]
-                    },
-                    {
-                      "id": "m-a7-p1-i4",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a7-p1-i4-x1",
-                          "kind": "text",
-                          "text": "기타 보험수익자가 보험금의 수령 또는 보험료 납입면제 청구에 필요하여 제출하는 서류"
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "id": "m-a7-p2",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a7-p2-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "nodeId": "m-a7-p1-i2"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a7-p2-x2",
-                      "kind": "text",
-                      "text": "의 사고증명서는 의료법 제3조(의료기관)에서 규정한 국내의 병원이나 의원 또는 국외의 의료관련법에서 정한 의료기관에서 발급한 것이어야 합니다."
-                    }
-                  ]
+                  "id": "m-a7-p1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0002",
+                  "options": {}
                 }
               ]
             },
@@ -8792,37 +8390,10 @@
               "title": "주소변경통지",
               "children": [
                 {
-                  "id": "m-a12-p1",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a12-p1-x1",
-                      "kind": "text",
-                      "text": "계약자(보험수익자가 계약자와 다른 경우 보험수익자를 포함합니다)는 주소 또는 연락처가 변경된 경우에는 지체없이 그 변경내용을 회사에 알려야 합니다."
-                    }
-                  ]
-                },
-                {
-                  "id": "m-a12-p2",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a12-p2-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "nodeId": "m-a12-p1"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a12-p2-x2",
-                      "kind": "text",
-                      "text": "에서 정한대로 계약자 또는 보험수익자가 변경내용을 알리지 않은 경우에는 계약자 또는 보험수익자가 회사에 알린 최종의 주소 또는 연락처로 등기우편 등 우편물에 대한 기록이 남는 방법으로 회사가 알린 사항은 일반적으로 도달에 필요한 기간이 지난 때에 계약자 또는 보험수익자에게 도달된 것으로 봅니다."
-                    }
-                  ]
+                  "id": "m-a12-p1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0003",
+                  "options": {}
                 }
               ]
             },
@@ -8834,7 +8405,7 @@
                 {
                   "id": "m-a13-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0002",
+                  "clauseCode": "C0004",
                   "options": {}
                 },
                 {
@@ -8855,7 +8426,7 @@
                 {
                   "id": "m-a14-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0003",
+                  "clauseCode": "C0005",
                   "options": {}
                 },
                 {
@@ -8885,7 +8456,7 @@
                 {
                   "id": "m-a15-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0004",
+                  "clauseCode": "C0006",
                   "options": {}
                 },
                 {
@@ -9537,64 +9108,10 @@
               "title": "사기에 의한 계약",
               "children": [
                 {
-                  "id": "m-a18-p1",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a18-p1-x1",
-                      "kind": "text",
-                      "text": "계약자 또는 피보험자가 대리진단, 약물사용을 수단으로 진단절차를 통과하거나 진단서 위·변조 또는 청약일 이전에 암 또는 인간면역결핍바이러스(HIV) 감염의 진단 확정을 받은 후 이를 숨기고 가입하는 등 사기에 의하여 계약이 성립되었음을 회사가 증명하는 경우에는 계약일부터 5년 이내(사기사실을 안 날부터 1개월 이내)에 계약을 취소할 수 있습니다."
-                    }
-                  ]
-                },
-                {
-                  "id": "m-a18-p2",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a18-p2-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "nodeId": "m-a18-p1"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a18-p2-x2",
-                      "kind": "text",
-                      "text": "에 따라 계약이 취소된 경우에는 회사는 이미 납입한 보험료를 계약자에게 돌려 드립니다."
-                    }
-                  ]
-                },
-                {
-                  "id": "m-a18-p3",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a18-p3-x2",
-                      "kind": "text",
-                      "text": "보험료 납입이 면제된 경우 "
-                    },
-                    {
-                      "id": "m-a18-p3-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "nodeId": "m-a18-p2"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a18-p3-x3",
-                      "kind": "text",
-                      "text": "의「이미 납입한 보험료」는 계약자가 실제로 납입한 보험료로 합니다."
-                    }
-                  ]
+                  "id": "m-a18-p1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0007",
+                  "options": {}
                 }
               ]
             }
@@ -10277,12 +9794,9 @@
                   "kind": "paragraph",
                   "children": [
                     {
-                      "id": "m-a23-p1-k1",
-                      "kind": "clauseInlineRef",
-                      "clauseCode": "C0016",
-                      "options": {
-                        "O01": "V02"
-                      }
+                      "id": "m-a23-p1-x1",
+                      "kind": "text",
+                      "text": "계약자는 회사의 승낙을 얻어 다음의 사항을 변경할 수 있습니다. 이 경우 승낙을 서면 등으로 알리거나 보험증권의 뒷면에 기재하여 드립니다. 다만, 2형(해약환급금미지급형)의 경우 보험기간, 보험료 납입기간, 피보험자의 변경 및 보험가입금액의 증액은 신청할 수 없습니다."
                     }
                   ],
                   "items": [
@@ -10780,12 +10294,15 @@
                   ]
                 },
                 {
-                  "id": "m-a26-p3-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0017",
-                  "options": {
-                    "O01": "V02"
-                  }
+                  "id": "m-a26-p3",
+                  "kind": "paragraph",
+                  "children": [
+                    {
+                      "id": "m-a26-p3-x1",
+                      "kind": "text",
+                      "text": "피보험자가 상해 이외의 사유로 사망한 경우에는 이 계약은 소멸되며, 이 경우 회사는 그 때까지「보험료 및 해약환급금 산출방법서」에서 정한 사망 당시 계약자적립액(중도인출이 있는 경우 중도인출 원금과 이자를 차감하고 적립한 금액을 말합니다) 및 미경과보험료를 계약자에게 지급합니다."
+                    }
+                  ]
                 },
                 {
                   "id": "m-a26-b1",
@@ -10933,7 +10450,7 @@
                 {
                   "id": "m-a28-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0005",
+                  "clauseCode": "C0008",
                   "options": {}
                 },
                 {
@@ -11805,12 +11322,14 @@
                       "text": "같은 상해 또는 질병으로 두 가지 이상의 후유장해가 생긴 경우에는 장해지급률을 합산하여 결정합니다. 다만,"
                     },
                     {
-                      "id": "m-a31-p8-k1",
-                      "kind": "clauseInlineRef",
-                      "clauseCode": "C0019",
-                      "options": {
-                        "O01": "V01"
-                      }
+                      "id": "m-a31-p8-x1",
+                      "kind": "appendixRef",
+                      "appendixCode": "AX000002"
+                    },
+                    {
+                      "id": "m-a31-p8-x3",
+                      "kind": "text",
+                      "text": "의 각 신체부위별 판정기준에 별도로 정한 경우에는 그 기준에 따릅니다."
                     }
                   ]
                 },
@@ -11824,12 +11343,14 @@
                       "text": "다른 상해 또는 질병으로 인하여 후유장해가 2회 이상 발생하였을 경우에는 그 때마다 이에 해당하는 장해지급률을 결정합니다. 그러나 그 후유장해가 이미 장해지급률이 결정된 동일한 부위에 가중된 때에는 최종 장해상태에 해당하는 장해지급률에서 이미 결정된 장해지급률을 차감하여 결정합니다. 다만,"
                     },
                     {
-                      "id": "m-a31-p9-k1",
-                      "kind": "clauseInlineRef",
-                      "clauseCode": "C0019",
-                      "options": {
-                        "O01": "V02"
-                      }
+                      "id": "m-a31-p9-x1",
+                      "kind": "appendixRef",
+                      "appendixCode": "AX000002"
+                    },
+                    {
+                      "id": "m-a31-p9-x3",
+                      "kind": "text",
+                      "text": "의 각 신체부위별 판정기준에서 별도로 정한 경우에는 그 기준에 따릅니다."
                     }
                   ]
                 },
@@ -12611,12 +12132,15 @@
                   ]
                 },
                 {
-                  "id": "m-a35-p4-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0018",
-                  "options": {
-                    "O01": "V02"
-                  }
+                  "id": "m-a35-p4",
+                  "kind": "paragraph",
+                  "children": [
+                    {
+                      "id": "m-a35-p4-x1",
+                      "kind": "text",
+                      "text": "부활(효력회복)시 부활(효력회복)일을 최초계약일로 하여 암보장개시일을 적용합니다."
+                    }
+                  ]
                 },
                 {
                   "id": "m-a35-b1",
@@ -13398,7 +12922,7 @@
                 {
                   "id": "m-a42-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0006",
+                  "clauseCode": "C0009",
                   "options": {}
                 }
               ]
@@ -13497,7 +13021,7 @@
                 {
                   "id": "m-a44-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0007",
+                  "clauseCode": "C0010",
                   "options": {}
                 }
               ]
@@ -13510,7 +13034,7 @@
                 {
                   "id": "m-a45-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0008",
+                  "clauseCode": "C0011",
                   "options": {}
                 }
               ]
@@ -13523,7 +13047,7 @@
                 {
                   "id": "m-a46-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0009",
+                  "clauseCode": "C0012",
                   "options": {}
                 },
                 {
@@ -13542,10 +13066,15 @@
               "title": "약관의 해석",
               "children": [
                 {
-                  "id": "m-a47-p1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0010",
-                  "options": {}
+                  "id": "m-a47-p1",
+                  "kind": "paragraph",
+                  "children": [
+                    {
+                      "id": "m-a47-p1-x1",
+                      "kind": "text",
+                      "text": "회사는 신의성실의 원칙에 따라 공정하게 약관을 해석하여야 하며 계약자에 따라 다르게 해석하지 않습니다."
+                    }
+                  ]
                 },
                 {
                   "id": "m-a47-b1",
@@ -13560,7 +13089,7 @@
                 {
                   "id": "m-a47-p2-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0011",
+                  "clauseCode": "C0013",
                   "options": {}
                 }
               ]
@@ -13573,7 +13102,7 @@
                 {
                   "id": "m-a48-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0012",
+                  "clauseCode": "C0014",
                   "options": {}
                 },
                 {
@@ -13592,154 +13121,10 @@
               "title": "법령 등의 개정에 따른 계약내용의 변경",
               "children": [
                 {
-                  "id": "m-a49-p1",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a49-p1-x1",
-                      "kind": "text",
-                      "text": "회사는 보험금 지급사유 관련 법률이 개정된 경우에는 변경된 내용을 적용합니다."
-                    }
-                  ]
-                },
-                {
-                  "id": "m-a49-p2",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a49-p2-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "nodeId": "m-a49-p1"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a49-p2-x2",
-                      "kind": "text",
-                      "text": "에도 불구하고 다음 각 호 중 어느 한 가지에 해당되는 경우에는 회사는 객관적이고 합리적인 범위내에서 기존 계약내용에 상응하는 새로운 보장내용으로 계약내용을 변경할 수 있습니다."
-                    }
-                  ],
-                  "items": [
-                    {
-                      "id": "m-a49-p2-i1",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a49-p2-i1-x1",
-                          "kind": "text",
-                          "text": "관련 법률의 개정 또는 폐지 등에 따라 약관에서 정한 보험금 지급사유 판정기준이 변경되는 경우"
-                        }
-                      ]
-                    },
-                    {
-                      "id": "m-a49-p2-i2",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a49-p2-i2-x1",
-                          "kind": "text",
-                          "text": "관련 법률의 개정 또는 폐지 등에 따라 약관에서 정한 보험금 지급사유의 판정이 불가능한 경우"
-                        }
-                      ]
-                    },
-                    {
-                      "id": "m-a49-p2-i3",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a49-p2-i3-x1",
-                          "kind": "text",
-                          "text": "관련 법률의 개정 또는 폐지 등에 따라 계약유지 필요가 없어지는 경우"
-                        }
-                      ]
-                    },
-                    {
-                      "id": "m-a49-p2-i4",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a49-p2-i4-x1",
-                          "kind": "text",
-                          "text": "기타 금융위원회 등의 명령이 있는 경우"
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "id": "m-a49-p3",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a49-p3-x2",
-                      "kind": "text",
-                      "text": "회사는 "
-                    },
-                    {
-                      "id": "m-a49-p3-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "nodeId": "m-a49-p2"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a49-p3-x3",
-                      "kind": "text",
-                      "text": "에 따라 계약이 변경되는 경우 계약내용 변경일의 15일 이전까지 서면(등기우편 등), 전화(음성녹취) 또는 전자문서 등으로 보장내용 및 가입금액, 보험료 변경내역 및 변경 절차 등을 계약자에게 알립니다."
-                    }
-                  ]
-                },
-                {
-                  "id": "m-a49-p4",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a49-p4-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "nodeId": "m-a49-p2"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a49-p4-x2",
-                      "kind": "text",
-                      "text": "에 따라 계약내용을 변경하는 경우에는 보장내용, 가입금액 및 납입보험료가 변경될 수 있으며, 계약내용 변경 시점 이후 잔여보험기간의 보장을 위한 재원인 계약자적립액 및 미경과보험료 정산으로 계약자가 추가로 납입하여야 할(또는 반환받을) 금액이 발생할 수 있습니다."
-                    }
-                  ]
-                },
-                {
-                  "id": "m-a49-p5",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a49-p5-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "nodeId": "m-a49-p2"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a49-p5-x2",
-                      "kind": "text",
-                      "text": "에도 불구하고 계약자가 계약내용 변경을 원하지 않거나, 새로운 보장내용으로 계약내용을 변경하는 것이 불가능한 경우, 회사는 계약자에게 이 계약의「보험료 및 해약환급금 산출방법서」에서 정하는 바에 따라 계약내용 변경시점의 계약자적립액 및 미경과보험료를 지급하고, 이 계약은 더 이상 효력을 가지지 않습니다."
-                    }
-                  ]
+                  "id": "m-a49-p1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0015",
+                  "options": {}
                 }
               ]
             },
@@ -13749,53 +13134,10 @@
               "title": "회사의 손해배상책임",
               "children": [
                 {
-                  "id": "m-a50-p1",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a50-p1-x1",
-                      "kind": "text",
-                      "text": "회사는 계약과 관련하여 임직원, 보험설계사 및 대리점의 책임있는 사유로 계약자, 피보험자 및 보험수익자에게 발생된 손해에 대하여 관계 법령 등에 따라 손해배상의 책임을 집니다."
-                    }
-                  ]
-                },
-                {
-                  "id": "m-a50-p2",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a50-p2-x1",
-                      "kind": "text",
-                      "text": "회사는 보험금 지급 거절 및 지연지급의 사유가 없음을 알았거나 알 수 있었는데도 소를 제기하여 계약자, 피보험자 또는 보험수익자에게 손해를 가한 경우에는 그에 따른 손해를 배상할 책임을 집니다."
-                    }
-                  ]
-                },
-                {
-                  "id": "m-a50-p3",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a50-p3-x2",
-                      "kind": "text",
-                      "text": "회사가 보험금 지급여부 및 지급금액에 관하여 현저하게 공정을 잃은 합의로 보험수익자에게 손해를 가한 경우에도 회사는 "
-                    },
-                    {
-                      "id": "m-a50-p3-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "nodeId": "m-a50-p2"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a50-p3-x3",
-                      "kind": "text",
-                      "text": "에 따라 손해를 배상할 책임을 집니다."
-                    }
-                  ]
+                  "id": "m-a50-p1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0016",
+                  "options": {}
                 },
                 {
                   "id": "m-a50-b1",
@@ -13815,7 +13157,7 @@
                 {
                   "id": "m-a51-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0013",
+                  "clauseCode": "C0017",
                   "options": {}
                 }
               ]
@@ -13828,7 +13170,7 @@
                 {
                   "id": "m-a52-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0014",
+                  "clauseCode": "C0018",
                   "options": {}
                 }
               ]
@@ -13841,7 +13183,7 @@
                 {
                   "id": "m-a53-p1-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0015",
+                  "clauseCode": "C0019",
                   "options": {}
                 },
                 {

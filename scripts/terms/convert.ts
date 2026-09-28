@@ -9,7 +9,7 @@
  *    참조 슬롯으로 바꾼다 — 조건 가지 안의 참조도 같이 풀린다.
  * 4. 보통약관의 기본계약 대치 조는 제목만 남기고, 기본계약 문면은 그 조들을 뽑아 조연결한다.
  * 5. 슬롯 오버레이(담보명 등)를 얹는다.
- * 6. 공용조항(`CLAUSES`)을 만들고 — 평문에서, 또는 원문 한 자리(`from`)에서 — 담보약관의 쓰임 자리를 참조로 바꾼다 (`clauses.ts`).
+ * 6. 공용조항(`CLAUSES`)을 만들고 — 원문 한 자리(`from`, 조째 · 잇닿은 여러 항)에서, 또는 평문에서 — 보통약관 · 담보약관의 쓰임 자리를 참조로 바꾼다 (`clauses.ts`).
  * 7. 조 자리 조건 오버레이(`articleConds`)를 얹고 `validateTree` 로 검증한 뒤 `src/db/seed/data/{generals,documents,appendices,clauses}.json` 을 쓴다.
  *
  * 변환하지 못한 참조는 `[report]` 로 stdout 에 남긴다 — 사람이 본다 (법령 인용은 의도된 미변환).
@@ -21,8 +21,7 @@ import { pathToFileURL } from "node:url";
 import type { ArticleNode, BlockNode, BoxNode, DocumentNode, InlineNode, ParagraphNode, SectionNode, TableNode } from "../../src/domain/document/nodes";
 import { indexTree, validateTree } from "../../src/domain/document/nodes";
 import type { Id } from "../../src/domain/types";
-import type { Block as ClauseBlock } from "../../src/domain/clause/nodes";
-import { applyClauseUse, inlineBody, optionCode, reId, toClauseInline, valueCode, type ClauseRecord } from "./clauses";
+import { applyClauseUse, clauseFromSource, inlineBody, optionCode, placeOptions, reId, valueCode, type ClauseRecord } from "./clauses";
 import { APPENDICES, CLAUSES, PRODUCTS, SEED_DIR, type ClauseUse, type ProductTerms, type SlotOverlay, type SpecialSpec } from "./config";
 import { parseTerms, type ParsedArticle, type ParsedDoc } from "./parse";
 import { applyArticleConds, applyInlineConds, articlesOf } from "./overlay";
@@ -280,7 +279,7 @@ function main(): void {
     for (const u of uses) {
       const clause = clauseByKey.get(u.clause);
       if (!clause) throw new Error(`${label}: 공용조항 ${u.clause} 정의 없음`);
-      applyClauseUse(u, clause, articleOf, `[${label}]`, report);
+      applyClauseUse(u, clause, articleOf, `[${label}]`, report, b.tree);
     }
   };
   for (const p of products) {
@@ -325,6 +324,18 @@ function main(): void {
   if (issues.length > 0) process.exit(1);
 }
 
+/** 보통약관 조를 가리키는 공용조항인가 — 범위 없는 조 참조가 있다 (제 항 · 사용처 위치 참조는 보통약관 없이도 성립한다). */
+function refsGeneralArticle(clause: ClauseRecord): boolean {
+  const visit = (n: unknown): boolean => {
+    if (Array.isArray(n)) return n.some(visit);
+    if (!n || typeof n !== "object") return false;
+    const node = n as Record<string, unknown>;
+    if (node.kind === "articleRef" && node.scope === undefined) return true;
+    return Object.values(node).some(visit);
+  };
+  return visit(clause.body) || visit(clause.options);
+}
+
 /**
  * 시드 적재 순서 검사 — 공용조항 코드는 시스템 채번(배열 순서)이고, 적재는 「보통약관이 쓰는 공용조항 → 보통약관 → 보통약관 조를 가리키는 공용조항」 순이다
  * (보통약관 가져오기는 쓰는 공용조항이 있어야 · 보통약관 조를 가리키는 공용조항은 그 조가 있어야 검사 ① 을 통과한다).
@@ -332,7 +343,7 @@ function main(): void {
  */
 function checkClauseOrder(clauses: readonly ClauseRecord[], generals: readonly { tree: DocumentNode }[]): void {
   const usedByGeneral = new Set(generals.flatMap((g) => [...JSON.stringify(g.tree).matchAll(/"clauseCode":"(C\d+)"/g)].map((m) => m[1])));
-  const firstGeneralRef = clauses.findIndex((c) => JSON.stringify(c).includes('"kind":"articleRef"'));
+  const firstGeneralRef = clauses.findIndex(refsGeneralArticle);
   if (firstGeneralRef < 0) return;
   // 화면 E2E 바탕(SEED_PROFILE=base)은 보통약관이 쓰는 공용조항을 앞에서부터 그 개수만큼 만든다 — 앞 코드에 모여 있어야 한다
   const prefix = clauses.slice(0, usedByGeneral.size).map((c) => c.code);
@@ -343,8 +354,9 @@ function checkClauseOrder(clauses: readonly ClauseRecord[], generals: readonly {
 
 
 /**
- * 공용조항 한 건 — 평문(`text`)을 변환하거나 원문 자리(`from`)의 항 본문(호 · 목 포함, 잇닿은 항 여럿)을 딴다. 조 참조는 보통약관 마스터만.
- * 평문의 참조는 `product` 상품의 별표 번호 · 보통약관 색인으로 푼다.
+ * 공용조항 한 건 — 원문 자리(`from`)의 항 본문(호 · 목 포함, 잇닿은 항 여럿)을 따거나 평문(`text`)을 변환한다.
+ * 원문 자리의 자기 조 참조는 제 항 · 사용처 위치가 되고(`clauseFromSource`), 낱말 옵션은 `place` 자리에 선다.
+ * 평문 · 선택지 문구의 참조는 `product` 상품의 별표 번호 · 보통약관 색인으로 푼다.
  */
 function buildClause(spec: (typeof CLAUSES)[number], built: Map<string, Built>, products: readonly BuiltProduct[], report: string[]): ClauseRecord {
   const prefix = `c${Number(spec.code.slice(1))}`;
@@ -361,31 +373,22 @@ function buildClause(spec: (typeof CLAUSES)[number], built: Map<string, Built>, 
   }));
   let body: ClauseRecord["body"];
   if (spec.from) {
-    const { spec: source, article, paragraph, paragraphs = 1 } = spec.from;
+    const { spec: source, article, paragraph = 1 } = spec.from;
     const b = built.get(source);
     const a = b && [...articlesOf(b.tree)].find((x) => b.numberOf.get(x.id) === article);
     const at = a ? a.children.findIndex((c) => c.kind === "paragraph" && c.id === `${a.id}-p${paragraph}`) : -1;
+    // 항 수를 안 주면 그 항부터 조의 끝까지의 항 전부 — 조째 공용조항
+    const paragraphs = spec.from.paragraphs ?? (a ? a.children.slice(Math.max(at, 0)).filter((c) => c.kind === "paragraph").length : 0);
     const taken = a && at >= 0 ? a.children.slice(at, at + paragraphs) : [];
-    if (taken.length !== paragraphs || taken.some((c) => c.kind !== "paragraph")) throw new Error(`${spec.code}: 원문 자리 ${source} 조 ${article} 제${paragraph}항부터 ${paragraphs}항 없음`);
-    body = reId((taken as ParagraphNode[]).map((p) => toClauseParagraph(p, spec.code)), prefix);
+    if (!b || taken.length !== paragraphs || taken.some((c) => c.kind !== "paragraph")) throw new Error(`${spec.code}: 원문 자리 ${source} 조 ${article} 제${paragraph}항부터 잇닿은 항 ${paragraphs}개 없음 (사이에 표 · 박스가 끼면 조째 딸 수 없다)`);
+    const blocks = clauseFromSource(b.tree, taken as ParagraphNode[], spec.code);
+    placeOptions(blocks, spec.place ?? [], spec.code);
+    body = reId(blocks, prefix);
   } else {
     const inline = inlineBody(spec.text!, prefix, convert);
     body = spec.mode === "inline" ? inline : [{ id: `${prefix}-p1`, kind: "paragraph", children: inline }];
   }
   return { code: spec.code, label: spec.label, mode: spec.mode, description: spec.description, body, options };
-}
-
-/** 문면 항 → 공용조항 항 (호 · 목 포함). 호 목록에 표 · 박스가 있으면 공용조항 본문이 될 수 없다. */
-function toClauseParagraph(p: ParagraphNode, code: string): ClauseBlock {
-  const items = (p.items ?? []).map((it) => {
-    if (it.kind !== "item") throw new Error(`${code}: 호 목록에 ${it.kind} 이 있는 항은 공용조항 본문이 될 수 없다`);
-    const subitems = (it.subitems ?? []).map((u) => {
-      if (u.kind !== "subitem") throw new Error(`${code}: 목 목록에 ${u.kind} 이 있다`);
-      return { id: u.id, kind: "subitem" as const, children: structuredClone(u.children).map(toClauseInline) };
-    });
-    return { id: it.id, kind: "item" as const, children: structuredClone(it.children).map(toClauseInline), ...(subitems.length ? { subitems } : {}) };
-  });
-  return { id: p.id, kind: "paragraph", children: structuredClone(p.children).map(toClauseInline), ...(items.length ? { items } : {}) };
 }
 
 function buildSpecial(spec: SpecialSpec, product: ProductTerms, generalParsed: ParsedDoc, general: Built, report: string[]): Built {
