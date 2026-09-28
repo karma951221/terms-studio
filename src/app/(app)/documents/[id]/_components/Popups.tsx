@@ -9,6 +9,7 @@
  */
 import { useState, type FormEvent, type ReactNode } from "react";
 
+import { Combobox, type ComboOption } from "@/app/_components/Combobox";
 import { IconButton, IconTrash } from "@/app/_components/icons";
 import { DOC_KIND_LABEL, REPEAT_DEPTH_LABEL, STRUCT_KEY_CHIP } from "@/app/_lib/labels";
 import type { Clause } from "@/domain/clause";
@@ -154,21 +155,22 @@ function articleRefOf(fd: FormData): { targets: { nodeId: Id }[]; connector: Ref
 
 /** 공용조항 칸 — 공용조항을 고르면 그 옵션마다 선택지. 옵션 선택은 사용처(이 문서) 소유다 (기능/공용조항 §3.2). */
 function ClauseFields({ clauses, code, options }: { clauses: readonly Clause[]; code?: Code; options?: Record<Code, Code> }) {
-  const [picked, setPicked] = useState<Code>(code ?? clauses[0]?.code ?? "");
+  const [picked, setPicked] = useState<Code>(code ?? "");
   const clause = clauses.find((c) => c.code === picked);
   return (
     <>
       {code === undefined ? (
         <div className="ts-form-row">
           <label htmlFor="pop-clause">공용조항</label>
-          <select id="pop-clause" name="clauseCode" value={picked} onChange={(e) => setPicked(e.target.value)}>
-            {clauses.length === 0 && <option value="">공용조항 없음</option>}
-            {clauses.map((c) => (
-              <option key={c.code} value={c.code}>
-                {c.label}({c.code})
-              </option>
-            ))}
-          </select>
+          <Combobox
+            id="pop-clause"
+            name="clauseCode"
+            value={picked}
+            onChange={setPicked}
+            options={clauses.map((c) => ({ value: c.code, label: c.label, hint: c.code }))}
+            placeholder={clauses.length === 0 ? "공용조항 없음" : "이름 · 코드로 찾기"}
+            disabled={clauses.length === 0}
+          />
         </div>
       ) : (
         !clause && <p className="ts-error-banner">공용조항 {code} 이(가) 없다 — 깨진 참조다.</p>
@@ -201,18 +203,19 @@ function optionsOf(fd: FormData): Record<Code, Code> {
   return out;
 }
 
+/** 별표 고르기 — 이름 · 코드로 찾는다. 고치기로 열었는데 그 별표가 없어졌으면 코드 그대로 보인다. */
 function AppendixSelect({ appendices, value }: { appendices: readonly Appendix[]; value?: Code }) {
   return (
     <div className="ts-form-row">
       <label htmlFor="pop-appendix">별표</label>
-      <select id="pop-appendix" name="appendixCode" defaultValue={value ?? appendices[0]?.code ?? ""}>
-        {appendices.length === 0 && <option value="">별표 없음</option>}
-        {appendices.map((a) => (
-          <option key={a.code} value={a.code}>
-            {a.name}({a.code})
-          </option>
-        ))}
-      </select>
+      <Combobox
+        id="pop-appendix"
+        name="appendixCode"
+        defaultValue={value ?? ""}
+        options={appendices.map((a) => ({ value: a.code, label: a.name, hint: a.code }))}
+        placeholder={appendices.length === 0 ? "별표 없음" : "이름 · 코드로 찾기"}
+        disabled={appendices.length === 0}
+      />
     </div>
   );
 }
@@ -515,16 +518,16 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
           >
             <div className="ts-form-row">
               <label htmlFor="pop-link">보통약관의 조</label>
-              <select id="pop-link" name="linkedArticleId" defaultValue={a.linkedArticleId ?? ""}>
-                <option value="">— 연결 없음 —</option>
-                {[...ctx.references.general]
-                  .filter(([, t]) => t.kind === "article")
-                  .map(([nodeId, target]) => (
-                    <option key={nodeId} value={nodeId}>
-                      {referenceTargetLabel(target)}
-                    </option>
-                  ))}
-              </select>
+              <Combobox
+                id="pop-link"
+                name="linkedArticleId"
+                defaultValue={a.linkedArticleId ?? ""}
+                placeholder="— 연결 없음 — (조 번호 · 제목으로 찾기)"
+                options={[
+                  { value: "", label: "연결 없음" },
+                  ...[...ctx.references.general].filter(([, t]) => t.kind === "article").map(([nodeId, target]): ComboOption => ({ value: nodeId, label: referenceTargetLabel(target) })),
+                ]}
+              />
             </div>
             {ctx.references.general.size === 0 && <p className="ts-muted">대응 보통약관을 먼저 고른다 — 더보기 › 대응 보통약관.</p>}
             <PopActions onCancel={onClose} />
@@ -561,14 +564,13 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             <div className="ts-form-row">
               <label htmlFor="pop-general">대응 보통약관</label>
               <span className="ts-form-control">
-                <select id="pop-general" name="generalDocumentId" defaultValue={env.generalDocumentId ?? env.suggestedGeneralId ?? ""}>
-                  <option value="">— 해제 —</option>
-                  {env.generals.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.title}({DOC_KIND_LABEL.general})
-                    </option>
-                  ))}
-                </select>
+                <Combobox
+                  id="pop-general"
+                  name="generalDocumentId"
+                  defaultValue={env.generalDocumentId ?? env.suggestedGeneralId ?? ""}
+                  placeholder="— 해제 — (이름으로 찾기)"
+                  options={[{ value: "", label: "해제" }, ...env.generals.map((g) => ({ value: g.id, label: g.title, hint: DOC_KIND_LABEL.general }))]}
+                />
                 {proposed && <span className="ts-badge proposed">제안값 — 확인하고 저장해야 확정</span>}
               </span>
             </div>

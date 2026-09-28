@@ -9,12 +9,12 @@
  * 편집본 밖의 조작(문서 삭제 `?del=1` · 복제 `?dup=1`)은 읽기 모드 더보기 메뉴에서 오고, 확인 카드는 여기서 그린다.
  */
 import { Breadcrumb } from "@/app/_components/Breadcrumb";
+import { Combobox } from "@/app/_components/Combobox";
 import { Confirm } from "@/app/_components/Confirm";
 import { ErrorBanner } from "@/app/_components/ErrorBanner";
 import { NavHint } from "@/app/_components/NavLink";
 import { DOC_TEMPLATE_LABEL, ENTITY_LABEL } from "@/app/_lib/labels";
 import { previewOutcome } from "@/app/_lib/rejection";
-import { discriminatorResultType } from "@/domain/catalog";
 import type { Id } from "@/domain/types";
 import { currentActor, getServices } from "@/lib/services";
 
@@ -56,13 +56,6 @@ export default async function DocumentDetailPage({ params, searchParams }: { par
     services.document.list("general"),
     services.product.listAttributeKinds(),
   ]);
-
-  // 슬롯이 찍을 수 있는 것은 구분자뿐이고(ADR-0037), 결과 타입이 string·enum 인 것만 (기능/문면 §3.4).
-  const catalog = new Map(discriminators.map((d) => [d.code, d]));
-  const slotCandidates = discriminators.flatMap((def) => {
-    const type = discriminatorResultType(def, undefined, catalog);
-    return type && (type.kind === "string" || type.kind === "enum") ? [{ path: def.code, label: def.label }] : [];
-  });
 
   // ── 담보 마스터 값 — 사전평가와 조건 팝업 문맥이 함께 쓴다 (한 번만 부른다) ──
   const special = doc.kind === "special" && doc.ownerId !== undefined;
@@ -139,13 +132,7 @@ export default async function DocumentDetailPage({ params, searchParams }: { par
           <form action={duplicateSpecialAction.bind(null, id)}>
             <div className="ts-form-row">
               <label htmlFor="dup-coverage">담보</label>
-              <select id="dup-coverage" name="coverageId" defaultValue={freeCoverages[0].id}>
-                {freeCoverages.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+              <Combobox id="dup-coverage" name="coverageId" required placeholder="담보 이름 · 코드로 찾기" options={freeCoverages.map((c) => ({ value: c.id, label: c.name, hint: c.code }))} />
             </div>
             <div className="ts-form-row">
               <label htmlFor="dup-title">이름</label>
@@ -191,7 +178,6 @@ export default async function DocumentDetailPage({ params, searchParams }: { par
         {...(special && mv?.ok ? { master: { tree: mv.value.tree, values: mv.value.values } } : {})}
         {...(evalNote ? { evalNote } : {})}
         condition={condition}
-        slotCandidates={slotCandidates}
         {...(sp.node ? { initialNode: sp.node } : {})}
         initialEval={sp.view === "eval"}
         notice={

@@ -88,14 +88,15 @@ describe("조건 블록 — 머리 줄은 그 자리 편집, 팝업 없음 (기�
     expect(html).toContain("풀기");
     expect(html).toContain('aria-label="조건 블록 삭제"');
     expect(html).not.toContain("<dialog");
-    // 변수 목록 — 보통약관이라 담보 트리 레벨 구분자가 없어 비어 있다(고르기 자리만)
-    expect(html).toContain("변수 · 구분자 고르기");
+    // 변수는 검색 입력(콤보박스) — 빈 줄이면 값 없이 찾기 안내만
+    expect(html).toMatch(/<input[^>]*role="combobox"[^>]*aria-label="IF 1번 줄 변수"[^>]*placeholder="변수 · 구분자 찾기"[^>]*value=""/);
   });
 
   it("저장된 식은 줄로 풀려 칸에 선다 — AND 줄은 결합 칸", () => {
     const html = render("D0009 = true and D0001 = '수술비'", true);
     expect(html).toContain('aria-label="IF 2번 줄 결합"');
-    expect(html).toMatch(/<option value="D0009" selected="">감액여부/);
+    // 고른 변수는 검색 입력에 이름으로 선다
+    expect(html).toMatch(/aria-label="IF 1번 줄 변수"[^>]*value="감액여부"/);
     expect(html).toContain('value="수술비"');
   });
 

@@ -592,13 +592,6 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
             {banner.issues && banner.issues.length > 0 && <DraftIssues go={setFlashId} issues={banner.issues} />}
           </div>
         )}
-        <datalist id="slot-candidates">
-          {data.slotCandidates.map((candidate) => (
-            <option key={candidate.path} value={candidate.path}>
-              {candidate.label}
-            </option>
-          ))}
-        </datalist>
         <div className="ts-clause-grid">
           <div className="ts-clause-main">
             <section className="ts-clause-meta" aria-label="공용조항 정보">

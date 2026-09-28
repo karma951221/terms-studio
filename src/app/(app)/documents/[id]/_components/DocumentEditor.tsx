@@ -105,7 +105,6 @@ export interface EditorProps {
   evalNote?: string;
   /** 조건 팝업 문맥(반복 표 「현재 행」 없이) — 담보 트리 · 구분자 · 열린 폼 · 빠른 조건. */
   condition: ConditionContext;
-  slotCandidates: readonly { path: string; label: string }[];
   /** 좌표 링크(`?node=`)로 들어왔을 때 열 자리 — 그 조를 열고 그 자리를 강조한다. */
   initialNode?: Id;
   /** `?view=eval` — 미리보기를 켠 채로. */
@@ -888,13 +887,6 @@ export function DocumentEditor(props: EditorProps) {
           </div>
         )}
         {props.notice}
-        <datalist id="slot-candidates">
-          {props.slotCandidates.map((candidate) => (
-            <option key={candidate.path} value={candidate.path}>
-              {candidate.label}
-            </option>
-          ))}
-        </datalist>
         {currentArticleId ? (
           <ArticleBody index={index} articleId={currentArticleId} ctx={ctx} />
         ) : (

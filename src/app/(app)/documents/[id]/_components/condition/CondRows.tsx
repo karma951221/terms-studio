@@ -3,7 +3,8 @@
 /**
  * 조건 블록 머리 줄 — 그 자리에서 늘 고치는 조건식 (기능/문면 §4.3, 2026-09-28). 팝업 없음.
  *
- * `IF` 배지 + [변수 ▾] [연산자 ▾] [값] + ⊕(뒤에 줄) ⊖(줄 빼기). 둘째 줄부터는 [AND ▾ / OR] 결합.
+ * `IF` 배지 + [변수 검색] [연산자 ▾] [값] + ⊕(뒤에 줄) ⊖(줄 빼기). 둘째 줄부터는 [AND ▾ / OR] 결합.
+ * 변수는 검색 입력(콤보박스) — 이름 · 코드로 좁히고, 묶음(현재 행 · 노드마다 · 담보속성)은 목록 머리로 (디자인원칙 §2.6).
  * 고른 것은 곧바로 식 소스로 묶여 `onCommit` — 선택 칸은 바꾸는 순간, 값 칸은 칸을 떠날 때(Enter 포함).
  * 줄이 다 차지 않았으면 빈 식을 넘긴다(저장 검증이 그 가지를 오류로 안내한다). 줄로 풀 수 없는 식은 원문 읽기 전용 + 「줄로 다시 만들기」
  * (텍스트 식 입력은 없다 — ADR-0066 결정 7 · 8).
@@ -11,6 +12,7 @@
  */
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from "react";
 
+import { Combobox, type ComboOption } from "@/app/_components/Combobox";
 import { IconButton, IconMinusCircle, IconPlusCircle } from "@/app/_components/icons";
 import { emptyRows, isUnaryOp, rowIssues, type ConditionRow, type ConditionRows, type Join, type RowOp } from "@/domain/document";
 import type { DiscriminatorRef, Literal } from "@/domain/expression";
@@ -151,7 +153,7 @@ export function CondRows({
     setModel(next);
   }
 
-  const firstVar = useRef<HTMLSelectElement>(null);
+  const firstVar = useRef<HTMLInputElement>(null);
   const rawInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const el = firstVar.current ?? rawInput.current;
@@ -168,6 +170,8 @@ export function CondRows({
   const leftText = (ref: NonNullable<ConditionRow["left"]>) => (ref.kind === "attr" ? (attributeOf(ref.code)?.label ?? `attr.${ref.code}`) : refText(ref));
   const groups = pickerGroups(context);
   const known = new Set(groups.flatMap((g) => g.options.map((o) => o.key)));
+  // 변수 후보 — 묶음 머리 그대로, 보조 글자는 코드(한정자 앞)
+  const varOptions: ComboOption[] = groups.flatMap((g) => g.options.map((o) => ({ value: o.key, label: o.label, hint: o.key.replace(/^attr\./, "").split("@")[0], group: g.label })));
 
   const update = (next: HeadModel, commit: boolean) => {
     setModel(next);
@@ -233,25 +237,16 @@ export function CondRows({
                 <option value="or">OR</option>
               </select>
             )}
-            <select
-              ref={i === 0 ? firstVar : undefined}
+            <Combobox
+              inputRef={i === 0 ? firstVar : undefined}
               className="ts-cond-var"
-              aria-label={`${name} 변수`}
+              ariaLabel={`${name} 변수`}
               value={key}
-              onChange={(e) => setRows(setLeft(rows, i, refOfKey(e.target.value), typeOf))}
-            >
-              <option value="">변수 · 구분자 고르기</option>
-              {row.left && !known.has(key) && <option value={key}>{leftText(row.left)} (목록에 없음)</option>}
-              {groups.map((g) => (
-                <optgroup key={g.label} label={g.label}>
-                  {g.options.map((o) => (
-                    <option key={o.key} value={o.key}>
-                      {o.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+              onChange={(next) => setRows(setLeft(rows, i, refOfKey(next), typeOf))}
+              options={varOptions}
+              valueLabel={row.left && !known.has(key) ? `${leftText(row.left)} (목록에 없음)` : undefined}
+              placeholder="변수 · 구분자 찾기"
+            />
             <select
               className="ts-cond-op"
               aria-label={`${name} 연산자`}
