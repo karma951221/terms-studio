@@ -256,8 +256,14 @@ export function referenceNumberIssues(lines: readonly string[], general?: Readon
     if (Number(m[1]) !== expectedNumber) issues.push(`조 번호가 조립 순서와 다름: ${l} (기대 제${expectedNumber}조)`);
     expectedNumber += 1;
   }
+  // 박스(```용어풀이 … ```)는 참조를 품지 못하는 정적 줄이다 — 원문 조 번호가 그대로 남아 번호 정합을 보지 않는다 (허용 차이 ⑦)
+  let inBox = false;
   for (const l of lines) {
-    if (HEADING.test(l)) continue;
+    if (l.startsWith("```")) {
+      inBox = l.startsWith("```용어풀이") || l.startsWith("```그림");
+      continue;
+    }
+    if (inBox || HEADING.test(l)) continue;
     for (const m of l.matchAll(ARTICLE_REF)) {
       if (LAW_CITATION.test(l.slice(0, m.index))) continue;
       const n = Number(m[1]);
