@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { indexTree, nodeBuilders, replayEdits, sequentialIds, type DocumentNode, type EditOp, type ParagraphNode } from "@/domain/document";
 
-import { inlineAtOf, moveOps, newTable, pasteGridOps, removeChipOps, selectionRange, unwrapOps, wrapOps, wrapRangeOps } from "./editOps";
+import { inlineAtOf, moveOps, moveRangeOps, newTable, pasteGridOps, removeChipOps, selectionRange, unwrapOps, wrapOps, wrapRangeOps } from "./editOps";
 
 /** 편집본에 명령 목록을 적용한 트리 — 거부면 던진다. */
 function run(tree: DocumentNode, ops: readonly EditOp[]): DocumentNode {
@@ -83,6 +83,7 @@ function multi(): DocumentNode {
   return with_(b.document("D", [with_(b.article("가", [p1, p2, p3]), "a1"), with_(b.article("나", [q1]), "a2")]), "d");
 }
 
+const childIds = (tree: DocumentNode, id: string) => ((indexTree(tree).nodes.get(id)!.node as { children: { id: string }[] }).children ?? []).map((c) => c.id);
 
 describe("선택 범위 → 잇닿은 형제 블록 (조건식 · 끌어 옮기기, 2026-09-28)", () => {
   const d = multi();
@@ -117,12 +118,40 @@ describe("선택 범위 → 잇닿은 형제 블록 (조건식 · 끌어 옮기�
   });
 });
 
-describe("여러 블록 감싸기", () => {
+describe("여러 블록 감싸기 · 옮기기", () => {
   it("제1항~제2항을 조건 블록 하나로 — 순서 그대로 가지 안에", () => {
     const d = multi();
     const out = run(d, wrapRangeOps(d, ["p1", "p2"], "", sequentialIds("w")));
     const kids = (indexTree(out).nodes.get("a1")!.node as { children: { kind: string; id: string; branches?: { children: { id: string }[] }[] }[] }).children;
     expect(kids.map((k) => k.kind)).toEqual(["condBlock", "paragraph"]);
     expect(kids[0].branches![0].children.map((c) => c.id)).toEqual(["p1", "p2"]);
+  });
+
+  it("아래로 — 제1·2항을 제3항 뒤로", () => {
+    const d = multi();
+    expect(childIds(run(d, moveRangeOps(d, ["p1", "p2"], { parentId: "a1", slot: "children", index: 3 })), "a1")).toEqual(["p3", "p1", "p2"]);
+  });
+
+  it("위로 — 제2·3항을 맨 앞으로", () => {
+    const d = multi();
+    expect(childIds(run(d, moveRangeOps(d, ["p2", "p3"], { parentId: "a1", slot: "children", index: 0 })), "a1")).toEqual(["p2", "p3", "p1"]);
+  });
+
+  it("제자리(범위 안 · 바로 뒤)면 명령 없음", () => {
+    const d = multi();
+    expect(moveRangeOps(d, ["p1", "p2"], { parentId: "a1", slot: "children", index: 1 })).toEqual([]);
+    expect(moveRangeOps(d, ["p1", "p2"], { parentId: "a1", slot: "children", index: 2 })).toEqual([]);
+  });
+
+  it("다른 조로 — 제2·3항을 조 나의 제1항 앞으로", () => {
+    const d = multi();
+    const out = run(d, moveRangeOps(d, ["p2", "p3"], { parentId: "a2", slot: "children", index: 0 }));
+    expect(childIds(out, "a2")).toEqual(["p2", "p3", "q1"]);
+    expect(childIds(out, "a1")).toEqual(["p1"]);
+  });
+
+  it("조 둘 — 문서 목록 안에서 순서를 바꾼다", () => {
+    const d = multi();
+    expect(childIds(run(d, moveRangeOps(d, ["a2"], { parentId: "d", slot: "children", index: 0 })), "d")).toEqual(["a2", "a1"]);
   });
 });

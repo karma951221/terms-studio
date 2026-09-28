@@ -63,13 +63,14 @@ import { refLabelOf } from "./condition/display";
 import type { ConditionContext } from "./condition/types";
 import { anchorOf, type Anchor, type CellAt, type DocCtx, type DocMode, type EditHandlers } from "./ctx";
 import { ArticleBody, DocBody } from "./DocBody";
-import { afterOf, emptyNode, inlineListAt, pasteGridOps } from "./editOps";
+import { afterOf, emptyNode, inlineListAt, moveSelectionOps, pasteGridOps } from "./editOps";
 import { caretFromPoint, tokensOf } from "./Inline";
 import { identityRuns, runsFromTokens, sameRuns, type Token } from "./inlineRuns";
 import { clausePickItems, condInsertItem, condMenu, inlineCondItem, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
 import { condInput, placeOf, readInline } from "./place";
 import { EditorToolbar } from "./EditorToolbar";
 import { DOCUMENT_TOOLS, allTools, itemsFor, type ToolId } from "./tools";
+import { useBlockDrag } from "./useBlockDrag";
 import { PopupHost, type PopupEnv } from "./Popups";
 import { ContextMenu, Popover } from "./Popover";
 import { RemoveCard } from "./RemoveCard";
@@ -328,6 +329,7 @@ export function DocumentEditor(props: EditorProps) {
     return recorded;
   };
   const apply = (ops: readonly EditOp[]): boolean => applyRecorded(ops) !== undefined;
+  const drag = useBlockDrag({ latest, apply, enabled: mode === "edit" });
 
   const setGeneral = (generalDocumentId: Id | undefined) => {
     if (generalDocumentId === undefined || generalRef.current[generalDocumentId]) {
@@ -374,6 +376,7 @@ export function DocumentEditor(props: EditorProps) {
   };
 
   const endEdit = () => {
+    drag.clearSel();
     setMode("read");
     setDraft(undefined);
     setBanner(undefined);
@@ -511,6 +514,15 @@ export function DocumentEditor(props: EditorProps) {
       runMenu(item, anchor);
       return;
     }
+    // 여러 블록을 골랐으면 위로 · 아래로는 고른 것 전부를 한 칸
+    if ((toolId === "up" || toolId === "down") && drag.blockSel.length > 1) {
+      const ops = moveSelectionOps(latest(), drag.blockSel, toolId === "up" ? -1 : 1);
+      if (ops.length > 0) {
+        (document.activeElement as HTMLElement | null)?.blur?.();
+        apply(ops);
+      }
+      return;
+    }
     const tool = allTools(DOCUMENT_TOOLS).find((t) => t.id === toolId);
     const items = tool ? itemsFor(tool, sections).filter((i) => !i.disabled && !i.refusal) : [];
     if (items.length === 0) return;
@@ -636,6 +648,8 @@ export function DocumentEditor(props: EditorProps) {
     contextMenu: onContextMenu,
     headItems: (branchId) => condMenu(menuEnv(), branchId).flat(),
     run: (item, anchor) => runMenu(item, anchor),
+    blockSel: drag.blockSel,
+    selectBlock: drag.selectBlock,
   };
 
   // 조건 머리 줄 · 팝업의 조건 · 슬롯 문맥 — 반복 표 템플릿 셀 안이면 「현재 행」 가지 (ADR-0070 · 설계 §3.1). 담보약관만.
@@ -823,6 +837,7 @@ export function DocumentEditor(props: EditorProps) {
       <Toc
         tree={tree}
         numbers={numbers}
+        {...(mode === "edit" ? { drag } : {})}
         {...(currentArticleId ? { currentArticleId } : {})}
         onPick={(id) => {
           setArt(id);
@@ -836,8 +851,11 @@ export function DocumentEditor(props: EditorProps) {
         className="ts-l3-body"
         ref={bodyRef}
         onContextMenu={onContextMenu}
+        {...(mode === "edit" ? drag.props : {})}
         onPointerDown={(e) => {
           const target = e.target as HTMLElement;
+          // 블록 손잡이 밖을 누르면 고른 블록을 푼다(Shift 는 늘리기)
+          if (!e.shiftKey && !target.closest("[data-drag], .ts-doc-toolbar")) drag.clearSel();
           // 툴바 · 셀 조작 줄은 자리를 바꾸지 않는다
           if (target.closest(".ts-doc-toolbar, .ts-cell-bar")) return;
           // 표 밖을 누르면 셀 조작 줄을 닫는다

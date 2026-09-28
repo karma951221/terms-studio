@@ -114,6 +114,10 @@ export interface EditHandlers {
   headItems: (branchId: Id) => MenuItem[];
   /** 목록 항목 하나를 돌린다 — 툴바 · 오른쪽 클릭 메뉴와 같은 길. 공용조항 블록의 🗑 도 이 길(삭제 확인). */
   run: (item: MenuItem, anchor: Anchor) => void;
+  /** 고른 잇닿은 형제 블록(끌어 옮기기 · 위로/아래로가 한꺼번에 옮긴다). 없으면 블록 손잡이도 없다 (`useBlockDrag`). */
+  blockSel?: readonly Id[];
+  /** 블록 손잡이를 눌렀다 — Shift 면 잇닿은 형제까지 늘린다. */
+  selectBlock?: (id: Id, extend: boolean) => void;
 }
 
 /** 조건식 칩 글자 — 읽기 모드는 길면 자르고 전체는 tooltip 으로 준다 (디자인원칙 §2 L3). */

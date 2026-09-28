@@ -25,7 +25,7 @@ import { refLabelOf } from "@/app/(app)/documents/[id]/_components/condition/dis
 import { anchorOf, type Anchor, type DocCtx, type EditHandlers } from "@/app/(app)/documents/[id]/_components/ctx";
 import { Block } from "@/app/(app)/documents/[id]/_components/DocBody";
 import { EditorToolbar } from "@/app/(app)/documents/[id]/_components/EditorToolbar";
-import { afterOf, emptyNode, inlineAtOf, inlineListAt } from "@/app/(app)/documents/[id]/_components/editOps";
+import { afterOf, emptyNode, inlineAtOf, inlineListAt, moveSelectionOps } from "@/app/(app)/documents/[id]/_components/editOps";
 import { InlineSlot, caretFromPoint, tokensOf } from "@/app/(app)/documents/[id]/_components/Inline";
 import { identityRuns, runsFromTokens, runsReplacing, sameRuns, type Token } from "@/app/(app)/documents/[id]/_components/inlineRuns";
 import { condInsertItem, inlineCondItem, placeExists, type MenuItem, type MenuSections, type Place, type PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
@@ -34,6 +34,7 @@ import { PopupHost, type PopupEnv } from "@/app/(app)/documents/[id]/_components
 import { ContextMenu, PopActions, Popover } from "@/app/(app)/documents/[id]/_components/Popover";
 import { DraftIssues } from "@/app/(app)/documents/[id]/_components/SidePanel";
 import { CLAUSE_LINE_TOOLS, CLAUSE_TOOLS, allTools, itemsFor, type ToolId } from "@/app/(app)/documents/[id]/_components/tools";
+import { useBlockDrag } from "@/app/(app)/documents/[id]/_components/useBlockDrag";
 import type { ClauseBody, ClauseMode, RequiredRefs } from "@/domain/clause";
 import { formatCoordinate } from "@/domain/coordinate";
 import {
@@ -252,6 +253,8 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     return true;
   };
 
+  const drag = useBlockDrag({ latest, apply, enabled: editing && clauseMode === "block" });
+
   const refuse = (message: string) => setBanner({ message: `넣을 수 없다 — ${message}` });
 
   const envOf = (t: DocumentNode, opts: readonly ClauseEditOption[]): ClauseMenuEnv => ({ tree: t, ix: indexTree(t), docKind: "special", newId: randomIds, mode: clauseMode, options: opts, onRefuse: refuse });
@@ -307,6 +310,15 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
       if (!item) return;
       if (item.label !== "문장 안 조건") (document.activeElement as HTMLElement | null)?.blur?.();
       runMenu(item, anchor);
+      return;
+    }
+    // 여러 항을 골랐으면 위로 · 아래로는 고른 것 전부를 한 칸
+    if ((toolId === "up" || toolId === "down") && drag.blockSel.length > 1) {
+      const ops = moveSelectionOps(latest(), drag.blockSel, toolId === "up" ? -1 : 1);
+      if (ops.length > 0) {
+        (document.activeElement as HTMLElement | null)?.blur?.();
+        apply(ops);
+      }
       return;
     }
     const tool = allTools(CLAUSE_TOOLS).find((t) => t.id === toolId);
@@ -378,6 +390,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     contextMenu: onContextMenu,
     headItems: (branchId) => clauseCondMenu(menuEnv(), branchId).flat(),
     run: (item, anchor) => runMenu(item, anchor),
+    ...(clauseMode === "block" ? { blockSel: drag.blockSel, selectBlock: drag.selectBlock } : {}),
   };
 
   const ctx: DocCtx = {
@@ -421,6 +434,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   };
 
   const endEdit = () => {
+    drag.clearSel();
     setEditing(false);
     setPlace(undefined);
     setMenu(undefined);
@@ -649,9 +663,11 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
               <div
                 className={`ts-clause-editor${editing ? " is-editing" : ""}`}
                 onContextMenu={onContextMenu}
+                {...(editing && clauseMode === "block" ? drag.props : {})}
                 onPointerDown={(e) => {
                   if (!editing) return;
                   const target = e.target as HTMLElement;
+                  if (!e.shiftKey && !target.closest("[data-drag], .ts-doc-toolbar")) drag.clearSel();
                   if (target.closest(".ts-doc-toolbar")) return;
                   setPlace(placeOf(target));
                 }}

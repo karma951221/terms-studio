@@ -252,3 +252,48 @@ export function wrapRangeOps(tree: DocumentNode, ids: readonly Id[], when: strin
     ...ids.map((nodeId, i): EditOp => ({ type: "move", nodeId, to: { parentId: branch.id, index: i } })),
   ];
 }
+
+/**
+ * 잇닿은 형제 블록들을 한 자리로 옮긴다 — `to` 는 **옮기기 전** 트리의 자리(그 목록의 몇 번째 앞). 순서는 그대로.
+ * 제자리(범위 안 · 바로 뒤)면 명령 없음. 규칙(허용 자식 · 자기 하위로 옮기기)은 도메인 `move` 가 다시 본다.
+ * 뒤에서부터 「바로 뒤에 올 것」 앞으로 넣는다 — 명령이 차례로 적용되며 자리가 밀려도 순서가 어긋나지 않는다.
+ */
+export function moveRangeOps(tree: DocumentNode, ids: readonly Id[], to: Position): EditOp[] {
+  const ix = indexTree(tree);
+  const range = ids.length > 0 ? rangeOf(ix, ids) : undefined;
+  if (!range) return [];
+  const moving = new Set(ids);
+  const slot = to.slot ?? "children";
+  const target = siblingsOf(ix, to.parentId, slot);
+  const at = Math.max(0, Math.min(to.index ?? target.length, target.length));
+  const same = range.parentId === to.parentId && range.slot === slot;
+  if (same) {
+    const first = target.indexOf(ids[0]);
+    if (at >= first && at <= first + ids.length) return [];
+  }
+  // 바로 뒤에 올 것 — 목표 자리부터 옮기지 않는 첫 형제 (없으면 끝)
+  let anchor: Id | undefined = target.slice(at).find((id) => !moving.has(id));
+  const list = [...target];
+  const ops: EditOp[] = [];
+  for (const nodeId of [...ids].reverse()) {
+    const cur = list.indexOf(nodeId);
+    if (cur >= 0) list.splice(cur, 1);
+    const index = anchor === undefined ? list.length : list.indexOf(anchor);
+    ops.push({ type: "move", nodeId, to: { parentId: to.parentId, slot, index } });
+    list.splice(index, 0, nodeId);
+    anchor = nodeId;
+  }
+  return ops;
+}
+
+/** 고른 잇닿은 블록들을 한 칸 위 · 아래로 (툴바 위로 · 아래로 — 여럿을 골랐을 때). 끝이면 명령 없음. */
+export function moveSelectionOps(tree: DocumentNode, ids: readonly Id[], dir: -1 | 1): EditOp[] {
+  const ix = indexTree(tree);
+  const first = ix.nodes.get(ids[0]);
+  const last = ix.nodes.get(ids[ids.length - 1]);
+  if (!first || !last || first.parentId === undefined) return [];
+  const count = siblingsOf(ix, first.parentId, first.slot).length;
+  const index = dir < 0 ? first.index - 1 : last.index + 2;
+  if (index < 0 || index > count) return [];
+  return moveRangeOps(tree, ids, { parentId: first.parentId, slot: first.slot, index });
+}

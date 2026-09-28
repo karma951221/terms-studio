@@ -257,3 +257,76 @@ test(
     });
   },
 );
+
+test(
+  "블록 끌어 옮기기 — 항 하나 · 고른 항 여럿 · 목차의 조",
+  { annotation: { type: "좌표없음", description: "기능/문면 §4.3 「끌어 옮기기」 (2026-09-28)" } },
+  async ({ page, ev }) => {
+    test.setTimeout(120_000);
+    await ev.action("끌기#1", "관리자로 로그인하고 보통약관 템플릿을 새로 만들어 편집에 들어간다", async () => {
+      await login(page);
+      await page.goto("/documents/new");
+      await page.getByLabel("제목").fill("끌기검증 보통약관");
+      await page.getByRole("button", { name: "생성" }).first().click();
+      await page.waitForURL(/\/documents\/[0-9a-f-]+$/);
+      await page.getByRole("button", { name: "편집", exact: true }).click();
+    });
+
+    const body = page.locator(".ts-l3-body");
+    const toolbar = page.getByRole("toolbar", { name: "약관 편집 도구" });
+    const tool = (name: string) => toolbar.getByRole("button", { name, exact: true });
+    const paragraphs = body.getByRole("textbox", { name: "항", exact: true });
+    const handle = (n: number) => body.getByRole("button", { name: `제${n}항 끌어 옮기기` });
+    const block = (n: number) => body.locator(".ts-doc-paragraph").nth(n - 1);
+
+    await ev.action("끌기#2", "조 하나에 항 넷(가 · 나 · 다 · 라)을 쓴다", async () => {
+      await tool("조").click();
+      const title = body.getByRole("textbox", { name: "조 제목" });
+      await title.fill("순서");
+      await title.press("Enter");
+      await tool("항").click();
+      for (const [i, text] of ["가", "나", "다", "라"].entries()) {
+        if (i > 0) await paragraphs.nth(i - 1).press("Enter");
+        await paragraphs.nth(i).fill(text);
+      }
+      await expect(paragraphs).toHaveText(["가", "나", "다", "라"]);
+    });
+
+    await ev.action("끌기#3", "제4항 손잡이를 제1항 위쪽에 놓는다 — 맨 앞으로, 번호가 다시 매겨진다", async () => {
+      await block(4).hover();
+      await handle(4).dragTo(block(1), { targetPosition: { x: 40, y: 2 } });
+      await expect(paragraphs).toHaveText(["라", "가", "나", "다"]);
+    });
+
+    await ev.action("끌기#4", "제1항 손잡이를 누르고 Shift+제2항 손잡이 — 두 항이 골리고, 하나를 끌어 맨 끝 항 아래에 놓으면 둘 다 간다", async () => {
+      await block(1).hover();
+      await handle(1).click();
+      await block(2).hover();
+      await handle(2).click({ modifiers: ["Shift"] });
+      await expect(body.locator(".ts-doc-paragraph.is-block-sel")).toHaveCount(2);
+      const last = block(4);
+      const box = (await last.boundingBox())!;
+      await handle(2).dragTo(last, { targetPosition: { x: 40, y: box.height - 2 } });
+      await expect(paragraphs).toHaveText(["나", "다", "라", "가"]);
+    });
+
+    await ev.action("끌기#5", "고른 둘을 툴바 「위로」 — 한 칸 위로 함께", async () => {
+      await expect(body.locator(".ts-doc-paragraph.is-block-sel")).toHaveCount(2);
+      await tool("위로").click();
+      await expect(paragraphs).toHaveText(["나", "라", "가", "다"]);
+    });
+
+    await ev.action("끌기#6", "목차 — 둘째 조를 만들고, 목차에서 제2조 줄을 제1조 줄 위에 놓으면 조 순서가 바뀐다", async () => {
+      await body.getByRole("textbox", { name: "조 제목" }).click();
+      await tool("조").click();
+      await expect(body.getByRole("textbox", { name: "조 제목" })).toHaveText("새 조");
+      const title = body.getByRole("textbox", { name: "조 제목" });
+      await title.fill("둘째");
+      await title.press("Enter");
+      const toc = page.getByRole("navigation", { name: "관 · 조 목차" });
+      await toc.getByRole("button", { name: "제2조(둘째)" }).dragTo(toc.getByRole("button", { name: "제1조(순서)" }), { targetPosition: { x: 20, y: 2 } });
+      await expect(toc.getByRole("button", { name: /^제\d조/ })).toHaveText(["제1조(둘째)", "제2조(순서)"]);
+      await expect(page.locator(".ts-error-banner")).toHaveCount(0);
+    });
+  },
+);

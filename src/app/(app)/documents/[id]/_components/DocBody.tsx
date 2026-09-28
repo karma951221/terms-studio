@@ -43,7 +43,32 @@ import { anchorOf, chipText, type DocCtx } from "./ctx";
 import { EditableText, InlineSlot } from "./Inline";
 import type { MenuItem } from "./menus";
 
-const flash = (ctx: DocCtx, id: Id) => (ctx.flashId === id ? " is-flash" : "");
+const flash = (ctx: DocCtx, id: Id) => `${ctx.flashId === id ? " is-flash" : ""}${ctx.edit?.blockSel?.includes(id) ? " is-block-sel" : ""}`;
+
+/**
+ * 블록 손잡이(⠿) — 편집 모드에서 블록 왼쪽 여백에 선다. 끌면 옮기고(`useBlockDrag`), 누르면 그 블록을 고른다 · Shift 면 잇닿은 형제까지.
+ * 글자 칸 밖이라 문장 편집(커서 · 선택)과 겹치지 않는다.
+ */
+function DragHandle({ id, what, ctx }: { id: Id; what: string; ctx: DocCtx }) {
+  const select = ctx.edit?.selectBlock;
+  if (!select) return null;
+  return (
+    <span
+      className="ts-drag"
+      draggable
+      data-drag={id}
+      role="button"
+      aria-label={`${what} 끌어 옮기기`}
+      title="끌어 옮기기 — 누르면 고르기 · Shift 로 여럿"
+      contentEditable={false}
+      onClick={(e) => select(id, e.shiftKey)}
+    >
+      <svg width="8" height="14" viewBox="0 0 8 14" aria-hidden="true" focusable="false">
+        {[2, 7, 12].flatMap((y) => [1.5, 6.5].map((x) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.2" fill="currentColor" />))}
+      </svg>
+    </span>
+  );
+}
 
 /** 머리 줄 끝의 작은 버튼 — 그 가지 자리의 목록(툴바와 같은 목록)에서 이름으로 고른다. */
 /** IF 머리 줄에만 — 가지 추가 · ELSE · 풀기. 뒤 가지(ELIF · ELSE) 머리 줄은 「이 가지 삭제」만. */
@@ -269,6 +294,7 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
   }
   return (
     <div className={`ts-doc-clause${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id} data-clause-ref={node.id}>
+      <DragHandle id={node.id} what="공용조항" ctx={ctx} />
       <div className="ts-doc-clause-head">
         <span className="ts-doc-clause-name" title={`공용조항(조 단위) · ${node.clauseCode}`}>
           공용조항 ({label ?? `${node.clauseCode} — 없는 공용조항`})
@@ -309,7 +335,14 @@ function CondBlock({ node, ctx, as }: { node: Node & { kind: "condBlock" }; ctx:
       {node.branches.map((br, i) => {
         const dim = ctx.branchEval?.get(br.id)?.state === "notTaken";
         return (
-          <Tag key={br.id} data-node={br.id} className={`ts-doc-cond${i === 0 ? "" : " is-alt"}${dim ? " ts-dim" : ""}${flash(ctx, br.id)}`} style={dim ? { textDecoration: "line-through" } : undefined}>
+          <Tag
+            key={br.id}
+            data-node={br.id}
+            data-drop-block={node.id}
+            className={`ts-doc-cond${i === 0 ? "" : " is-alt"}${dim ? " ts-dim" : ""}${flash(ctx, br.id)}${ctx.edit?.blockSel?.includes(node.id) ? " is-block-sel" : ""}`}
+            style={dim ? { textDecoration: "line-through" } : undefined}
+          >
+            {i === 0 && <DragHandle id={node.id} what="조건 블록" ctx={ctx} />}
             <CondHead ctx={ctx} branch={br} label={branchLabel(node.branches, i)} first={i === 0} />
             <Block nodes={br.children} ctx={ctx} inList={as === "li"} />
           </Tag>
@@ -330,6 +363,7 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
         const num = ctx.numbers.get(node.id);
         return (
           <div key={node.id} className={`ts-doc-paragraph${num?.label ? "" : " is-bare"}${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
+            <DragHandle id={node.id} what={num ? `제${num.n}항` : "항"} ctx={ctx} />
             {num?.label ? <span className="ts-doc-num">{num.label}</span> : null} <InlineSlot at={{ parentId: node.id }} nodes={node.children} ctx={ctx} owner={node.id} placeholder="항" />
             {(node.items ?? []).length > 0 && (
               <ol className="ts-doc-items">
@@ -343,6 +377,7 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
       case "item":
         return (
           <li key={node.id} className={`ts-doc-item${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
+            <DragHandle id={node.id} what="호" ctx={ctx} />
             <InlineSlot at={{ parentId: node.id }} nodes={node.children} ctx={ctx} owner={node.id} placeholder="호" />
             {(node.subitems ?? []).length > 0 && (
               <ol className="ts-doc-subitems">
@@ -355,6 +390,7 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
       case "subitem":
         return (
           <li key={node.id} className={`ts-doc-subitem${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
+            <DragHandle id={node.id} what="목" ctx={ctx} />
             <InlineSlot at={{ parentId: node.id }} nodes={node.children} ctx={ctx} owner={node.id} placeholder="목" />
           </li>
         );
@@ -370,10 +406,12 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
         const body = <Table node={node} ctx={ctx} />;
         return inList ? (
           <li key={node.id} className={`ts-doc-static-item${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
+            <DragHandle id={node.id} what="표" ctx={ctx} />
             {body}
           </li>
         ) : (
-          <div key={node.id} className={flash(ctx, node.id).trim() || undefined} data-block={node.id} data-node={node.id}>
+          <div key={node.id} className={`ts-doc-static${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
+            <DragHandle id={node.id} what="표" ctx={ctx} />
             {body}
           </div>
         );
@@ -381,11 +419,13 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
       case "box": {
         const body = <Box node={node} ctx={ctx} />;
         return inList ? (
-          <li key={node.id} className="ts-doc-static-item" data-block={node.id} data-node={node.id}>
+          <li key={node.id} className={`ts-doc-static-item${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
+            <DragHandle id={node.id} what="박스" ctx={ctx} />
             {body}
           </li>
         ) : (
-          <div key={node.id} data-block={node.id} data-node={node.id}>
+          <div key={node.id} className={`ts-doc-static${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
+            <DragHandle id={node.id} what="박스" ctx={ctx} />
             {body}
           </div>
         );

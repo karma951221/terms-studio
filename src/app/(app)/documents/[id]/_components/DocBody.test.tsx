@@ -211,3 +211,18 @@ describe("항 번호를 생략한 항 — 편집기도 내어쓰기 없음 (기�
     expect(html).not.toContain("쓴다");
   });
 });
+
+describe("블록 손잡이 — 편집 모드에서 끌어 옮기기 · 고르기 (기능/문면 §4.3, 2026-09-28)", () => {
+  const b = nodeBuilders(sequentialIds("g"));
+  const t = b.document("D", [b.article("가", [b.paragraph([b.text("첫")]), b.paragraph([b.text("둘")])])]);
+  const nodes = (t.children[0] as { children: DocumentNode["children"] }).children;
+  it("손잡이는 편집 모드(고르기 입구가 있을 때)만 — 읽기에는 없다", () => {
+    expect(renderToStaticMarkup(<Block nodes={nodes} ctx={ctxOf(t, false)} />)).not.toContain("data-drag");
+    const base = ctxOf(t, true);
+    const ctx = { ...base, edit: { ...base.edit!, blockSel: [nodes[1].id], selectBlock: () => undefined } };
+    const html = renderToStaticMarkup(<Block nodes={nodes} ctx={ctx} />);
+    expect(html.match(/data-drag=/g)).toHaveLength(2);
+    expect(html).toContain('aria-label="제1항 끌어 옮기기"');
+    expect(html).toMatch(/class="ts-doc-paragraph is-block-sel"/);
+  });
+});
