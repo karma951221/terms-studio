@@ -2238,77 +2238,131 @@ label.ts-field > textarea {
   grid-template-columns: 88px 1fr;
 }
 
-/* ── 검색되는 선택 상자 ─────────────────────────────────────────────────── */
+/* ── 검색 입력(콤보박스) — 참조 고르기는 이것 하나 (디자인원칙 §2.6) ──────────────── */
 
+/* 크기 · 테두리 · 모서리는 input · select 와 같다(§3 입력) — 같은 조작군. 오른쪽 ▾ 만 더한다 */
 .ts-combo {
   position: relative;
-  min-width: 240px;
+  display: inline-block;
+  width: 240px;
+  max-width: 100%;
+  vertical-align: middle;
 }
 
-.ts-combo > input[type="text"] {
+.ts-combo > input[role="combobox"] {
   width: 100%;
+  padding-right: 20px;
+  text-overflow: ellipsis;
 }
 
-/* 코드가 비었을 때 제출을 막는 용도로만 있는 칸 — 보이지 않지만 focus 는 가야 한다 */
-.ts-combo-guard {
+.ts-combo::after {
+  content: "▾";
   position: absolute;
-  left: 8px;
-  bottom: 0;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: transparent;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--ts-ink-3);
   pointer-events: none;
 }
 
-.ts-combo-list {
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 2px);
-  left: 0;
-  right: 0;
-  max-height: 220px;
-  overflow: auto;
-  margin: 0;
-  padding: 3px;
-  list-style: none;
+.ts-form-row .ts-combo,
+.ts-field .ts-combo {
+  display: block;
+  width: 100%;
+}
+
+/* 떠 있는 목록 — 좌표는 입력칸에서 잰 fixed (팝업 dialog 의 스크롤에 잘리지 않게) */
+.ts-combo-pop {
+  position: fixed;
+  z-index: 60;
+  max-width: min(560px, calc(100vw - 16px));
   border: 1px solid var(--ts-rule-strong);
   border-radius: 3px;
   background: var(--ts-surface);
   box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
 }
 
-.ts-combo-list button {
-  display: block;
-  width: 100%;
-  text-align: left;
-  min-height: 0;
-  padding: 4px 8px;
-  border: 0;
-  border-radius: 2px;
-  background: transparent;
+.ts-combo-list,
+.ts-combo-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.ts-combo-list button.is-active {
+.ts-combo-list {
+  max-height: 260px;
+  overflow: auto;
+  padding: 3px;
+}
+
+.ts-combo-list [role="option"] {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 2px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ts-combo-list [role="option"].is-active {
   background: var(--ts-mark-bg);
   color: var(--ts-mark);
 }
 
-.ts-combo-empty {
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 2px);
-  left: 0;
-  right: 0;
+.ts-combo-list [role="option"].is-current .ts-combo-label {
+  font-weight: 600;
+}
+
+.ts-combo-list [role="option"].is-disabled {
+  color: var(--ts-ink-3);
+  cursor: not-allowed;
+}
+
+.ts-combo-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ts-combo-hint {
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ts-ink-3);
+}
+
+.ts-combo-reason {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--ts-ink-3);
+}
+
+.ts-combo-mark {
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--ts-mark);
+  text-underline-offset: 2px;
+}
+
+.ts-combo-group {
+  padding: 6px 8px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ts-ink-3);
+}
+
+.ts-combo-status {
   margin: 0;
-  padding: 6px 8px;
+  padding: 6px 10px;
   font-size: 12px;
   color: var(--ts-ink-3);
-  border: 1px solid var(--ts-rule-strong);
-  border-radius: 3px;
-  background: var(--ts-surface);
+}
+
+.ts-combo-list:empty {
+  display: none;
 }
 
 /* ── 9. 배지 · 카운트 · 진행 · 빈 상태 ────────────────────────────────────── */
