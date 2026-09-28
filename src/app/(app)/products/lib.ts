@@ -346,6 +346,8 @@ export function omissionPairLabel(n: number, kind?: OmissionPairKind): string {
       return `표 ${n}`;
     case "box":
       return `박스 ${n}`;
+    case "bulletList":
+      return `글머리 목록 ${n}`;
     case "error":
       return `오류 노드 ${n}`;
     default:

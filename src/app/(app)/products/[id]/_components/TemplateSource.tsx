@@ -173,7 +173,10 @@ function blockClauseRefs(nodes: readonly Node[]): ClauseInlineRef[] {
       case "item":
         return [...inlineClauseRefs(n.children), ...blockClauseRefs(n.subitems ?? [])];
       case "subitem":
+      case "bullet":
         return inlineClauseRefs(n.children);
+      case "bulletList":
+        return blockClauseRefs(n.children);
       case "table":
         return tableClauseRefs(n);
       case "condBlock":
@@ -393,6 +396,29 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
               </p>
             ))}
           </aside>
+        );
+        return inList ? (
+          <li key={node.id} className="ts-doc-static-item">
+            {body}
+          </li>
+        ) : (
+          <div key={node.id}>{body}</div>
+        );
+      }
+
+      // 글머리 목록 — 번호 없는 「-」 항목 (항목 문장의 공용조항 박스는 목록 뒤)
+      case "bullet":
+        return (
+          <li key={node.id} className="ts-doc-bullet">
+            <Inlines nodes={node.children} ctx={ctx} />
+          </li>
+        );
+
+      case "bulletList": {
+        const body = (
+          <ul className="ts-doc-bullets">
+            <Block nodes={node.children} ctx={ctx} inList gathered={gathered} />
+          </ul>
         );
         return inList ? (
           <li key={node.id} className="ts-doc-static-item">

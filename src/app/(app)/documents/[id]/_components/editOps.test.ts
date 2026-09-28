@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { indexTree, nodeBuilders, replayEdits, sequentialIds, type DocumentNode, type EditOp, type ParagraphNode } from "@/domain/document";
 
-import { inlineAtOf, moveOps, moveRangeOps, newTable, pasteGridOps, removeChipOps, selectionRange, unwrapOps, wrapOps, wrapRangeOps } from "./editOps";
+import { backspaceOps, enterOps, inlineAtOf, moveOps, moveRangeOps, newTable, pasteGridOps, removeChipOps, selectionRange, unwrapOps, wrapOps, wrapRangeOps } from "./editOps";
 
 /** 편집본에 명령 목록을 적용한 트리 — 거부면 던진다. */
 function run(tree: DocumentNode, ops: readonly EditOp[]): DocumentNode {
@@ -153,5 +153,50 @@ describe("여러 블록 감싸기 · 옮기기", () => {
   it("조 둘 — 문서 목록 안에서 순서를 바꾼다", () => {
     const d = multi();
     expect(childIds(run(d, moveRangeOps(d, ["a2"], { parentId: "d", slot: "children", index: 0 })), "d")).toEqual(["a2", "a1"]);
+  });
+});
+
+describe("글머리 목록 — Enter · Backspace (기능/문면 §4.3, 2026-09-28)", () => {
+  /** 조 가: 항 p1 · 목록 L[항목 b1 「가」 · b2 빈 항목]. */
+  function listDoc(): DocumentNode {
+    let n = 0;
+    const b = nodeBuilders(() => `z${++n}`);
+    const as = <T extends { id: string }>(node: T, id: string): T => ({ ...node, id });
+    return as(b.document("D", [as(b.article("가", [as(b.paragraph([b.text("항")]), "p1"), as(b.bulletList([as(b.bullet([b.text("가")]), "b1"), as(b.bullet([]), "b2")]), "L")]), "a1")]), "d");
+  }
+  const kinds = (tree: DocumentNode, id: string) => (indexTree(tree).nodes.get(id)!.node as { children: { kind: string }[] }).children.map((c) => c.kind);
+
+  it("글이 있는 항목에서 Enter — 바로 뒤에 빈 항목, 커서는 거기", () => {
+    const d = listDoc();
+    const k = enterOps(d, "b1", sequentialIds("e"))!;
+    const out = run(d, k.ops);
+    expect(kinds(out, "L")).toEqual(["bullet", "bullet", "bullet"]);
+    expect(indexTree(out).nodes.get(k.focus!)?.node.kind).toBe("bullet");
+  });
+
+  it("빈 항목에서 Enter — 목록을 끝낸다: 그 항목을 빼고 목록 뒤에 목록 앞과 같은 단계(항)의 빈 칸", () => {
+    const d = listDoc();
+    const k = enterOps(d, "b2", sequentialIds("e"))!;
+    const out = run(d, k.ops);
+    expect(kinds(out, "L")).toEqual(["bullet"]);
+    expect(kinds(out, "a1")).toEqual(["paragraph", "bulletList", "paragraph"]);
+    expect(indexTree(out).nodes.get(k.focus!)?.index).toBe(2);
+  });
+
+  it("빈 항목에서 Backspace — 그 항목을 지우고 앞 항목으로, 마지막 항목이면 목록째", () => {
+    const d = listDoc();
+    const k = backspaceOps(d, "b2")!;
+    expect(k.focus).toBe("b1");
+    const out = run(d, k.ops);
+    expect(kinds(out, "L")).toEqual(["bullet"]);
+    const k2 = backspaceOps(out, "b1")!;
+    expect(k2.ops).toEqual([{ type: "remove", nodeId: "L" }]);
+    expect(k2.focus).toBe("p1");
+  });
+
+  it("항 · 호 · 목의 Enter 는 그대로 — 같은 종류를 아래에", () => {
+    const d = listDoc();
+    const out = run(d, enterOps(d, "p1", sequentialIds("e"))!.ops);
+    expect(kinds(out, "a1")).toEqual(["paragraph", "paragraph", "bulletList"]);
   });
 });

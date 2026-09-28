@@ -14,7 +14,7 @@ import { evaluate, parse, refPath, type ValueRef } from "../expression";
 import { findMasterField, type MasterTree } from "../master";
 import type { Code, Coordinate, FieldType, Issue, Value } from "../types";
 import type { AssemblyContext } from "./context";
-import type { ErrorNode, RArticle, RInline, RItem, RParagraph, ResolvedDoc, RStatic, RSubitem, SInline, SubstitutedDoc } from "./types";
+import type { ErrorNode, RArticle, RBulletList, RInline, RItem, RParagraph, ResolvedDoc, RStatic, RSubitem, SInline, SubstitutedDoc } from "./types";
 import { mapArticles } from "./walk";
 
 export interface SubstituteEnv {
@@ -126,13 +126,18 @@ class Substituter {
       kind: "item",
       id: n.id,
       children: this.inlines(n.children),
-      ...(n.subitems ? { subitems: n.subitems.map((s) => (s.kind === "error" ? s : this.subitem(s))) } : {}),
+      ...(n.subitems ? { subitems: n.subitems.map((s) => (s.kind === "error" ? s : s.kind === "bulletList" ? this.bullets(s) : this.subitem(s))) } : {}),
     };
   }
 
-  /** 표 셀 안의 슬롯도 치환한다 — 박스는 텍스트뿐이라 그대로. */
+  bullets(n: RBulletList<RInline>): RBulletList<SInline> {
+    return { ...n, items: n.items.map((b) => ({ id: b.id, children: this.inlines(b.children) })) };
+  }
+
+  /** 표 셀 · 글머리 목록 항목 안의 슬롯도 치환한다 — 박스는 텍스트뿐이라 그대로. */
   static(n: RStatic<RInline>): RStatic<SInline> {
     if (n.kind === "box") return n;
+    if (n.kind === "bulletList") return this.bullets(n);
     return { ...n, rows: n.rows.map((row) => ({ ...row, cells: row.cells.map((cell) => this.inlines(cell)) })) };
   }
 

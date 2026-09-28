@@ -329,5 +329,29 @@ test(
       await expect(toc.getByRole("button", { name: /^제\d조/ })).toHaveText(["제1조(둘째)", "제2조(순서)"]);
       await expect(page.locator(".ts-error-banner")).toHaveCount(0);
     });
+
+    await ev.action("끌기#7", "글머리 목록 — 항 뒤에 넣고 Enter 로 다음 항목, 빈 항목에서 Enter 면 목록이 끝나고 새 항", async () => {
+      await body.getByRole("textbox", { name: "조 제목" }).click();
+      await tool("항").click();
+      await paragraphs.first().fill("다음과 같습니다.");
+      await tool("글머리 목록").click();
+      const bullets = body.getByRole("textbox", { name: "항목", exact: true });
+      await expect(bullets.first()).toBeFocused();
+      await bullets.first().fill("화상진단비보장");
+      await bullets.first().press("Enter");
+      await expect(bullets.nth(1)).toBeFocused();
+      await bullets.nth(1).fill("화상수술비보장");
+      await bullets.nth(1).press("End");
+      await bullets.nth(1).press("Enter");
+      await expect(bullets).toHaveCount(3);
+      await bullets.nth(2).press("Enter");
+      await expect(bullets).toHaveCount(2);
+      await expect(paragraphs).toHaveCount(2);
+      await expect(paragraphs.nth(1)).toBeFocused();
+      await expect(body.locator(".ts-doc-bullets .ts-doc-bullet")).toHaveText(["화상진단비보장", "화상수술비보장"]);
+      // 항 번호는 글머리 목록을 세지 않는다 — ① 다음 항은 ②
+      await expect(body.locator(".ts-doc-paragraph .ts-doc-num").nth(1)).toHaveText("②");
+      await expect(page.locator(".ts-error-banner")).toHaveCount(0);
+    });
   },
 );

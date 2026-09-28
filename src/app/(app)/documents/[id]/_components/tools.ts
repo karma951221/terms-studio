@@ -20,6 +20,7 @@ export type ToolId =
   | "subitem"
   | "table"
   | "box"
+  | "bulletList"
   | "clauseBlock"
   | "slot"
   | "articleRef"
@@ -78,6 +79,12 @@ export const DOC_TOOLS: ToolGroup[] = [
       { id: "subitem", label: "목", title: "목 추가 — 지금 목 아래(호면 그 호 안)", match: oneOf("아래에 목 추가", "목 추가", "이 가지에 목 추가") },
       { id: "table", label: "표", title: "표 추가 — 지금 블록 아래", match: oneOf("아래에 표 추가…", "이 가지에 표 추가…") },
       { id: "box", label: "박스", title: "박스 추가 — 지금 블록 아래", match: oneOf("아래에 박스 추가") },
+      {
+        id: "bulletList",
+        label: "글머리 목록",
+        title: "글머리 목록 — 지금 블록 아래(조 제목이면 그 조 끝)에 번호 없는 「-」 목록, 목록 안이면 아래에 항목",
+        match: oneOf("아래에 글머리 목록 추가", "글머리 목록 추가", "이 가지에 글머리 목록 추가", "아래에 항목 추가", "이 가지에 항목 추가"),
+      },
       { id: "clauseBlock", label: "공용조항", title: "공용조항(조 단위) 추가 — 지금 항 아래", match: oneOf("아래에 공용조항(조 단위) 추가…", "아래에 공용조항 참조 추가…", "공용조항 참조 추가…") },
     ],
   },
@@ -124,7 +131,7 @@ export const DOC_TOOLS: ToolGroup[] = [
 ];
 
 /** 공용조항 본문에 없는 도구 — 공용조항 툴바에서 빠진다 (기능/공용조항 §4.3). 조 · 관 · 공용조항은 남고 잠긴다(사유 tooltip). */
-const CLAUSE_HIDDEN = new Set<ToolId>(["table", "box", "structKey", "tableProps", "repeat", "link"]);
+const CLAUSE_HIDDEN = new Set<ToolId>(["table", "box", "bulletList", "structKey", "tableProps", "repeat", "link"]);
 
 export const CLAUSE_TOOLS: ToolGroup[] = DOC_TOOLS.map((g) => ({ ...g, tools: g.tools.filter((t) => !CLAUSE_HIDDEN.has(t.id)) })).filter((g) => g.tools.length > 0);
 

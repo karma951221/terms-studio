@@ -4784,3 +4784,21 @@ button.ts-ref-fold:hover {
   outline: 2px dashed var(--ts-mark);
   outline-offset: 1px;
 }
+
+/* 글머리 목록 — 번호 없는 항목, 마커 「-」(원문 관례). 호 · 목처럼 마커 뒤로 매달린 들여쓰기 (2026-09-28) */
+.ts-doc-bullets {
+  list-style: none;
+  margin: 2px 0;
+  padding-left: 1.5em;
+  text-indent: 0;
+}
+
+.ts-doc-bullet {
+  padding-left: 1em;
+  text-indent: -1em;
+}
+
+.ts-doc-bullet::before {
+  content: "- ";
+  color: var(--ts-ink-2);
+}

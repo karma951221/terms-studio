@@ -15,7 +15,7 @@
  */
 
 import type { Id, Issue } from "../types";
-import type { ErrorNode, OmissionPair, OmissionPairKind, OmissionRecord, RArticle, RItem, RParagraph, RStatic, RSubitem, SInline, SubstitutedDoc } from "./types";
+import type { ErrorNode, OmissionPair, OmissionPairKind, OmissionRecord, RArticle, RBulletList, RItem, RParagraph, RStatic, RSubitem, SInline, SubstitutedDoc } from "./types";
 import { articlesOf, mapArticles } from "./walk";
 
 // ───────────────────────────── 직렬화 ─────────────────────────────
@@ -43,15 +43,16 @@ function serializer(refInsensitive: boolean) {
   };
   const inlines = (list: readonly SInline[]) => list.map(inline).join("");
   const err = (n: ErrorNode) => `e(${n.id})`;
-  const subitem = (n: RSubitem<SInline> | ErrorNode) => (n.kind === "error" ? err(n) : `목[${inlines(n.children)}]`);
+  const subitem = (n: RSubitem<SInline> | RBulletList<SInline> | ErrorNode) => (n.kind === "error" ? err(n) : n.kind === "bulletList" ? stat(n) : `목[${inlines(n.children)}]`);
   /**
-   * 정적 표·박스 — 항과 같은 한 단위로 비교한다 (기능/문면 §3.2).
-   * 표는 **열 수·너비까지** 포함한다 — 같은 글자라도 서식이 다르면 다른 조다 (2026-09-08 리뷰 6).
+   * 정적 표·박스 · 글머리 목록 — 항과 같은 한 단위로 비교한다 (기능/문면 §3.2).
+   * 표는 **열 수·너비까지** 포함한다 — 같은 글자라도 서식이 다르면 다른 조다 (2026-09-08 리뷰 6). 글머리 목록은 항목 문장 순서대로.
    */
-  const stat = (n: RStatic<SInline>) =>
-    n.kind === "table"
-      ? `표[${n.title ?? ""}|${n.columns.map((c) => c.width ?? "-").join("·")}|${n.rows.map((r) => `${r.header ? "h" : ""}${r.cells.map(inlines).join("¦")}`).join("‖")}]`
-      : `박스[${n.title}|${n.lines.join("‖")}]`;
+  function stat(n: RStatic<SInline>): string {
+    if (n.kind === "table") return `표[${n.title ?? ""}|${n.columns.map((c) => c.width ?? "-").join("·")}|${n.rows.map((r) => `${r.header ? "h" : ""}${r.cells.map(inlines).join("¦")}`).join("‖")}]`;
+    if (n.kind === "bulletList") return `글머리[${n.items.map((b) => inlines(b.children)).join("‖")}]`;
+    return `박스[${n.title}|${n.lines.join("‖")}]`;
+  }
   const item = (n: RItem<SInline> | RStatic<SInline> | ErrorNode) => (n.kind === "error" ? err(n) : n.kind !== "item" ? stat(n) : `호[${inlines(n.children)}${(n.subitems ?? []).map(subitem).join("")}]`);
   const paragraph = (n: Compared) => (n.kind === "error" ? err(n) : n.kind !== "paragraph" ? stat(n) : `항[${inlines(n.children)}${(n.items ?? []).map(item).join("")}]`);
   return paragraph;
@@ -104,7 +105,7 @@ interface ComparedParagraph {
 /** 비교 대상 항 — 보통약관 쪽은 block 공용조항의 비교 제외 항을 뺀다 (ADR-0020 결정 2). 빈 조는 빈 항 하나로 본다. */
 function comparedParagraphs(a: RArticle<SInline>, excludeMarked: boolean): ComparedParagraph[] {
   const out: ComparedParagraph[] = [];
-  const counts = { paragraph: 0, table: 0, box: 0, error: 0 };
+  const counts = { paragraph: 0, table: 0, box: 0, bulletList: 0, error: 0 };
   a.children.forEach((node, index) => {
     const position = ++counts[node.kind];
     if (node.kind === "paragraph" && excludeMarked && node.excludeFromComparison) return;
@@ -183,7 +184,11 @@ function articleNodeIds(a: RArticle<SInline>): Set<Id> {
 /** 항 안의 인라인을 전부 훑는다 — 항 본문 · 호 · 목 · 표 셀. */
 function eachInline(list: readonly Compared[], fn: (n: SInline) => void, onTable: () => void): void {
   const inlinesOf = (nodes: readonly SInline[]) => nodes.forEach(fn);
-  const staticOf = (n: RStatic<SInline>) => {
+  const staticOf = (n: RStatic<SInline> | RBulletList<SInline>) => {
+    if (n.kind === "bulletList") {
+      n.items.forEach((b) => inlinesOf(b.children));
+      return;
+    }
     if (n.kind !== "table") return;
     onTable();
     n.rows.forEach((r) => r.cells.forEach(inlinesOf));
@@ -202,7 +207,10 @@ function eachInline(list: readonly Compared[], fn: (n: SInline) => void, onTable
         continue;
       }
       inlinesOf(it.children);
-      for (const s of it.subitems ?? []) if (s.kind === "subitem") inlinesOf(s.children);
+      for (const s of it.subitems ?? []) {
+        if (s.kind === "subitem") inlinesOf(s.children);
+        else if (s.kind === "bulletList") staticOf(s);
+      }
     }
   }
 }

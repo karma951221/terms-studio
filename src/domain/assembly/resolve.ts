@@ -27,13 +27,13 @@ import type {
 } from "../clause/nodes";
 import { expandClause, resolveOptions } from "../clause/reference";
 import type { Clause, OptionSelection } from "../clause/types";
-import type { ArticleNode, BoxNode, ClauseBlockRefNode, CondBlockNode, DocumentNode, ForBlockNode, InlineNode, ItemNode, ParagraphNode, SectionNode, SubitemNode, TableNode } from "../document/nodes";
+import type { ArticleNode, BoxNode, BulletListNode, BulletNode, ClauseBlockRefNode, CondBlockNode, DocumentNode, ForBlockNode, InlineNode, ItemNode, ParagraphNode, SectionNode, SubitemNode, TableNode } from "../document/nodes";
 import { evaluate, parse, type EvalContext } from "../expression";
 import { expandRepeatTable } from "../document/repeat";
 import { descend, enumerateRows, type StructNodeRef } from "../structure";
 import type { Code, Coordinate, Id, Issue } from "../types";
 import type { AssemblyContext } from "./context";
-import type { ErrorNode, RArticle, RInline, RItem, RParagraph, ResolvedDoc, RSection, RStatic, RSubitem } from "./types";
+import type { ErrorNode, RArticle, RBulletList, RInline, RItem, RParagraph, ResolvedDoc, RSection, RStatic, RSubitem } from "./types";
 
 export interface ResolveEnv {
   clauses: ReadonlyMap<Code, Clause>;
@@ -57,7 +57,8 @@ type AnyCond = CondBlockNode | ClauseCondBlockNode;
 type AnySubitem = ClauseSubitemNode | SubitemNode;
 type AnyItem = ItemNode | ClauseItemNode;
 type AnyParagraph = ParagraphNode | ClauseParagraphNode;
-type AnyBlock = AnyParagraph | AnyCond | ClauseBlockRefNode | ForBlockNode | ClauseBlock | ItemNode | SubitemNode | ArticleNode | SectionNode | TableNode | BoxNode;
+type AnyBlock = AnyParagraph | AnyCond | ClauseBlockRefNode | ForBlockNode | ClauseBlock | ItemNode | SubitemNode | ArticleNode | SectionNode | TableNode | BoxNode | BulletListNode | BulletNode;
+type AnyStatic = TableNode | BoxNode | BulletListNode;
 /** 가지 — 블록·인라인·공용조항 쪽 모두 이 모양이다. children 은 자리에 맞게 캐스팅한다. */
 interface Branch {
   id: Id;
@@ -188,13 +189,14 @@ class Walker {
     return { kind: "subitem", id: n.id, children: this.inlines(n.children, { ...f, path: [...f.path, n.id] }) };
   }
 
-  subitems(list: readonly (AnySubitem | AnyCond)[], f: Frame): (RSubitem<RInline> | ErrorNode)[] {
-    return list.flatMap((n) => {
+  subitems(list: readonly (AnySubitem | AnyCond | BulletListNode)[], f: Frame): (RSubitem<RInline> | RBulletList<RInline> | ErrorNode)[] {
+    return list.flatMap((n): (RSubitem<RInline> | RBulletList<RInline> | ErrorNode)[] => {
       if (n.kind === "subitem") return [this.subitem(n, f)];
+      if (n.kind === "bulletList") return this.static(n, f) as (RBulletList<RInline> | ErrorNode)[];
       const r = this.select(n.branches, f, n.id);
       if (r.kind === "error") return [this.error(n.id, r.issue)];
       if (r.kind === "none") return [];
-      return this.subitems(r.branch.children as (AnySubitem | AnyCond)[], { ...f, path: [...f.path, n.id, r.branch.id] });
+      return this.subitems(r.branch.children as (AnySubitem | AnyCond | BulletListNode)[], { ...f, path: [...f.path, n.id, r.branch.id] });
     });
   }
 
@@ -208,9 +210,29 @@ class Walker {
     };
   }
 
-  /** 정적 표·박스 — 박스는 그대로, 표는 셀의 인라인까지 해소한다 (기능/문면 §3.2). 반복 표는 펼치고, 조합 0 이면 빈 목록. */
-  static(n: TableNode | BoxNode, f: Frame): (RStatic<RInline> | ErrorNode)[] {
+  /**
+   * 정적 표·박스 · 글머리 목록 — 박스는 그대로, 표는 셀의 인라인까지, 글머리 목록은 항목(조건 블록은 택한 가지)의 인라인까지 해소한다
+   * (기능/문면 §3.2). 반복 표는 펼치고, 조합 0 이면 빈 목록. 글머리 목록은 항목이 모두 빠지면 목록째 없다.
+   */
+  static(n: AnyStatic, f: Frame): (RStatic<RInline> | ErrorNode)[] {
     if (n.kind === "box") return [{ kind: "box", id: n.id, title: n.title, lines: n.lines }];
+    if (n.kind === "bulletList") {
+      const inner = { ...f, path: [...f.path, n.id] };
+      const errors: ErrorNode[] = [];
+      const bullets = (list: readonly (BulletNode | AnyCond)[], g: Frame): { id: Id; children: RInline[] }[] =>
+        list.flatMap((b) => {
+          if (b.kind === "bullet") return [{ id: b.id, children: this.inlines(b.children, { ...g, path: [...g.path, b.id] }) }];
+          const r = this.select(b.branches, g, b.id);
+          if (r.kind === "error") {
+            errors.push(this.error(b.id, r.issue));
+            return [];
+          }
+          if (r.kind === "none") return [];
+          return bullets(r.branch.children as (BulletNode | AnyCond)[], { ...g, path: [...g.path, b.id, r.branch.id] });
+        });
+      const items = bullets(n.children, inner);
+      return [...(items.length > 0 ? [{ kind: "bulletList" as const, id: n.id, items }] : []), ...errors];
+    }
     if (n.repeat) return this.repeatTable(n as TableNode & { repeat: { depth: 1 | 2 } }, f);
     const inner = { ...f, path: [...f.path, n.id] };
     return [
@@ -258,14 +280,14 @@ class Walker {
     ];
   }
 
-  items(list: readonly (AnyItem | AnyCond | TableNode | BoxNode)[], f: Frame): (RItem<RInline> | RStatic<RInline> | ErrorNode)[] {
+  items(list: readonly (AnyItem | AnyCond | AnyStatic)[], f: Frame): (RItem<RInline> | RStatic<RInline> | ErrorNode)[] {
     return list.flatMap((n): (RItem<RInline> | RStatic<RInline> | ErrorNode)[] => {
       if (n.kind === "item") return [this.item(n, f)];
-      if (n.kind === "table" || n.kind === "box") return this.static(n, f);
+      if (n.kind === "table" || n.kind === "box" || n.kind === "bulletList") return this.static(n, f);
       const r = this.select(n.branches, f, n.id);
       if (r.kind === "error") return [this.error(n.id, r.issue)];
       if (r.kind === "none") return [];
-      return this.items(r.branch.children as (AnyItem | AnyCond | TableNode | BoxNode)[], { ...f, path: [...f.path, n.id, r.branch.id] });
+      return this.items(r.branch.children as (AnyItem | AnyCond | AnyStatic)[], { ...f, path: [...f.path, n.id, r.branch.id] });
     });
   }
 
@@ -289,6 +311,7 @@ class Walker {
           return [this.paragraph(n, f, excludeFromComparison)];
         case "table":
         case "box":
+        case "bulletList":
           return this.static(n, f);
         case "condBlock": {
           const r = this.select(n.branches, f, n.id);

@@ -44,8 +44,8 @@ export function moveOps(tree: DocumentNode, nodeId: Id, dir: -1 | 1): EditOp[] {
   return to ? [{ type: "move", nodeId, to }] : [];
 }
 
-/** 빈 항 · 호 · 목 · 조 · 관(첫 조 하나를 품는다 — 조 없는 관은 목차에서 고를 수 없어 비워 두지 않는다). */
-export function emptyNode(kind: "paragraph" | "item" | "subitem" | "article" | "section" | "box", newId: IdSource): BlockNode {
+/** 빈 항 · 호 · 목 · 조 · 관(첫 조 하나를 품는다 — 조 없는 관은 목차에서 고를 수 없어 비워 두지 않는다) · 글머리 목록(빈 항목 하나) · 항목. */
+export function emptyNode(kind: "paragraph" | "item" | "subitem" | "article" | "section" | "box" | "bulletList" | "bullet", newId: IdSource): BlockNode {
   const b = nodeBuilders(newId);
   switch (kind) {
     case "paragraph":
@@ -60,6 +60,10 @@ export function emptyNode(kind: "paragraph" | "item" | "subitem" | "article" | "
       return b.section("새 관", [b.article("새 조", [])]);
     case "box":
       return b.box("용어풀이", []);
+    case "bullet":
+      return b.bullet([]);
+    case "bulletList":
+      return b.bulletList([b.bullet([])]);
   }
 }
 
@@ -296,4 +300,70 @@ export function moveSelectionOps(tree: DocumentNode, ids: readonly Id[], dir: -1
   const index = dir < 0 ? first.index - 1 : last.index + 2;
   if (index < 0 || index > count) return [];
   return moveRangeOps(tree, ids, { parentId: first.parentId, slot: first.slot, index });
+}
+
+// ───────────────────────────── 문장 칸의 Enter · Backspace ─────────────────────────────
+
+/** 문장 칸 키보드가 만드는 명령과 그 뒤 커서를 둘 노드. */
+export interface KeyOps {
+  ops: EditOp[];
+  focus?: Id;
+}
+
+const LINE_KINDS = ["paragraph", "item", "subitem", "bullet"] as const;
+type LineKind = (typeof LINE_KINDS)[number];
+const isLine = (kind: string | undefined): kind is LineKind => (LINE_KINDS as readonly string[]).includes(kind ?? "");
+
+/** 글머리 목록 항목의 주인 목록 — 항목이 목록 바로 아래에 있을 때만(조건 블록 안 항목은 없음). */
+function bulletListOf(ix: TreeIndex, bulletId: Id) {
+  const e = ix.nodes.get(bulletId);
+  const list = e?.parentId !== undefined ? ix.nodes.get(e.parentId) : undefined;
+  return e && list?.node.kind === "bulletList" ? { e, list } : undefined;
+}
+
+/**
+ * Enter — 항 · 호 · 목 · 글머리 항목 아래에 같은 종류를 새로 넣는다. **빈 글머리 항목에서 Enter 는 목록을 끝낸다** —
+ * 그 항목을 빼고(마지막 항목이면 목록째) 목록 바로 뒤에 목록 앞 블록과 같은 단계의 빈 항 · 호 · 목을 세워 커서를 옮긴다 (2026-09-28).
+ */
+export function enterOps(tree: DocumentNode, ownerId: Id, newId: IdSource): KeyOps | undefined {
+  const ix = indexTree(tree);
+  const e = ix.nodes.get(ownerId);
+  const kind = e?.node.kind;
+  if (!e || !isLine(kind)) return undefined;
+  const bullet = kind === "bullet" ? bulletListOf(ix, ownerId) : undefined;
+  if (bullet && (e.node as { children: unknown[] }).children.length === 0) {
+    const { list } = bullet;
+    const count = siblingsOf(ix, list.node.id, "children").length;
+    const ops: EditOp[] = [{ type: "remove", nodeId: count > 1 ? ownerId : list.node.id }];
+    if (list.parentId === undefined) return { ops };
+    const prev = siblingsOf(ix, list.parentId, list.slot)[list.index - 1];
+    const prevKind = prev !== undefined ? ix.nodes.get(prev)?.node.kind : undefined;
+    const next = (isLine(prevKind) && prevKind !== "bullet" && list.allowed.includes(prevKind) ? prevKind : (["paragraph", "item", "subitem"] as const).find((k) => list.allowed.includes(k)));
+    if (!next) return { ops };
+    const node = emptyNode(next, newId);
+    ops.push({ type: "insert", node, at: { parentId: list.parentId, slot: list.slot, index: count > 1 ? list.index + 1 : list.index } });
+    return { ops, focus: node.id };
+  }
+  const after = afterOf(ix, ownerId);
+  if (!after) return undefined;
+  const node = emptyNode(kind, newId);
+  return { ops: [{ type: "insert", node, at: after }], focus: node.id };
+}
+
+/**
+ * 빈 문장 칸의 Backspace — 그 항 · 호 · 목 · 글머리 항목을 지운다(하위가 없을 때만). 글머리 목록의 마지막 항목이면 목록째 지운다.
+ * 커서는 앞 형제(문장 칸이 있는 것)로. 지울 수 없으면 undefined.
+ */
+export function backspaceOps(tree: DocumentNode, ownerId: Id): KeyOps | undefined {
+  const ix = indexTree(tree);
+  const e = ix.nodes.get(ownerId);
+  if (!e || e.parentId === undefined) return undefined;
+  const n = e.node as { items?: unknown[]; subitems?: unknown[] };
+  if ((n.items?.length ?? 0) > 0 || (n.subitems?.length ?? 0) > 0) return undefined;
+  const bullet = e.node.kind === "bullet" ? bulletListOf(ix, ownerId) : undefined;
+  const lastBullet = bullet !== undefined && siblingsOf(ix, bullet.list.node.id, "children").length === 1;
+  const gone = lastBullet ? bullet!.list : e;
+  const prevId = gone.parentId !== undefined ? siblingsOf(ix, gone.parentId, gone.slot)[gone.index - 1] : undefined;
+  const prev = prevId !== undefined ? ix.nodes.get(prevId) : undefined;
+  return { ops: [{ type: "remove", nodeId: gone.node.id }], ...(prev && isLine(prev.node.kind) ? { focus: prev.node.id } : {}) };
 }

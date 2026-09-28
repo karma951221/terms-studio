@@ -75,7 +75,7 @@ describe("약관 에디터 툴바 (기능/문면 §4.3)", () => {
     const ids = allTools(DOCUMENT_TOOLS).map((t) => t.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(allTools(DOCUMENT_TOOLS).map((t) => t.label)).toEqual(
-      expect.arrayContaining(["조", "관", "항", "호", "목", "표", "박스", "공용조항", "슬롯", "조 참조", "별표 참조", "조건식", "위로", "아래로", "복제", "삭제"]),
+      expect.arrayContaining(["조", "관", "항", "호", "목", "표", "박스", "글머리 목록", "공용조항", "슬롯", "조 참조", "별표 참조", "조건식", "위로", "아래로", "복제", "삭제"]),
     );
     expect(ids).not.toContain("optionSlot");
   });

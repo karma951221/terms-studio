@@ -395,6 +395,34 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
           </li>
         );
 
+      // 글머리 목록 — 번호 없는 「-」 항목(번호 계산에 들지 않는다). 항목마다 그 자리 편집기, Enter 로 다음 항목 (2026-09-28)
+      case "bullet":
+        return (
+          <li key={node.id} className={`ts-doc-bullet${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
+            <DragHandle id={node.id} what="항목" ctx={ctx} />
+            <InlineSlot at={{ parentId: node.id }} nodes={node.children} ctx={ctx} owner={node.id} placeholder="항목" />
+          </li>
+        );
+
+      case "bulletList": {
+        const body = (
+          <ul className="ts-doc-bullets">
+            <Block nodes={node.children} ctx={ctx} inList />
+          </ul>
+        );
+        return inList ? (
+          <li key={node.id} className={`ts-doc-static-item${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
+            <DragHandle id={node.id} what="글머리 목록" ctx={ctx} />
+            {body}
+          </li>
+        ) : (
+          <div key={node.id} className={`ts-doc-static${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
+            <DragHandle id={node.id} what="글머리 목록" ctx={ctx} />
+            {body}
+          </div>
+        );
+      }
+
       case "clauseBlockRef":
         return <ClauseBlock key={node.id} node={node} ctx={ctx} />;
 

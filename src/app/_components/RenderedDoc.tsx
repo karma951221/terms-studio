@@ -18,11 +18,21 @@ import type {
   RenderedSubitem,
 } from "@/domain/assembly";
 
-import { StaticBox, StaticTable } from "./StaticNodes";
+import { StaticBox, StaticBullets, StaticTable } from "./StaticNodes";
 
 /** 정적 표·박스 (기능/문면 §3.2) — 편집기와 같은 컴포넌트. 표 셀의 참조도 계산 번호로 찍힌다. */
 function Static({ node }: { node: RenderedStatic }) {
   if (node.kind === "box") return <StaticBox node={node} />;
+  if (node.kind === "bulletList")
+    return (
+      <StaticBullets
+        id={node.id}
+        items={node.items.map((b) => ({
+          id: b.id,
+          body: b.children.map((c, j) => <Inline key={j} node={c} />),
+        }))}
+      />
+    );
   const shape = {
     ...node,
     rows: node.rows.map((row) => ({
@@ -80,8 +90,9 @@ function Inline({ node }: { node: RenderedInline }) {
   }
 }
 
-function Subitem({ node }: { node: RenderedSubitem | ErrorNode }) {
+function Subitem({ node }: { node: RenderedSubitem | RenderedStatic | ErrorNode }) {
   if (node.kind === "error") return <li><ErrorMark node={node} /></li>;
+  if (node.kind !== "subitem") return <li className="ts-doc-static-item"><Static node={node} /></li>;
   return (
     <li id={`node-${node.id}`} className="ts-doc-subitem">
       {node.children.map((c, i) => (

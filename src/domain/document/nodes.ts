@@ -150,6 +150,25 @@ export interface BoxNode {
   lines: string[];
 }
 
+/**
+ * 글머리 목록의 항목 하나 — 번호 없는 한 줄 문장(인라인: 글 · 슬롯 · 참조 · 문장 안 조건). 항 · 호 · 목 번호 계산에 들지 않는다.
+ */
+export interface BulletNode {
+  id: Id;
+  kind: "bullet";
+  children: InlineNode[];
+}
+
+/**
+ * 글머리 목록 — 번호 없는 「- 」 나열 (2026-09-28). 표 · 박스처럼 항 · 호 · 목 뒤와 조 직속에 서는 번호 없는 블록이다.
+ * 항목 자리에 조건 블록도 설 수 있다(항목 하나를 조건으로 감싸기). 항목이 하나 이상이어야 한다.
+ */
+export interface BulletListNode {
+  id: Id;
+  kind: "bulletList";
+  children: (BulletNode | CondBlockNode)[];
+}
+
 // ───────────────────────────── 블록 ─────────────────────────────
 
 /** 목. */
@@ -164,7 +183,7 @@ export interface ItemNode {
   id: Id;
   kind: "item";
   children: InlineNode[];
-  subitems?: (SubitemNode | CondBlockNode)[];
+  subitems?: (SubitemNode | CondBlockNode | BulletListNode)[];
 }
 
 /** 항. 호는 `items` 목록에. */
@@ -172,7 +191,7 @@ export interface ParagraphNode {
   id: Id;
   kind: "paragraph";
   children: InlineNode[];
-  items?: (ItemNode | CondBlockNode | TableNode | BoxNode)[];
+  items?: (ItemNode | CondBlockNode | TableNode | BoxNode | BulletListNode)[];
 }
 
 /** 블록 조건의 가지. */
@@ -234,6 +253,8 @@ export type BlockNode =
   | ArticleNode
   | TableNode
   | BoxNode
+  | BulletListNode
+  | BulletNode
   | ParagraphNode
   | ItemNode
   | SubitemNode
@@ -264,9 +285,11 @@ const INLINE: readonly NodeKind[] = ["text", "structKey", "slot", "inlineCond", 
 export const allowedChildren: Record<NodeKind, readonly NodeKind[]> = {
   document: ["article", "section", "condBlock"],
   section: ["article", "condBlock"],
-  article: ["paragraph", "condBlock", "clauseBlockRef", "forBlock", "table", "box"],
+  article: ["paragraph", "condBlock", "clauseBlockRef", "forBlock", "table", "box", "bulletList"],
   table: [],
   box: [],
+  bulletList: ["bullet", "condBlock"],
+  bullet: INLINE,
   paragraph: INLINE,
   item: INLINE,
   subitem: INLINE,
@@ -285,8 +308,8 @@ export const allowedChildren: Record<NodeKind, readonly NodeKind[]> = {
 
 /** 두 번째 목록 자리 — 항의 호 목록 · 호의 목 목록. 조건 블록도 그 자리에 설 수 있다. */
 export const allowedListChildren = {
-  "paragraph.items": ["item", "condBlock", "table", "box"],
-  "item.subitems": ["subitem", "condBlock"],
+  "paragraph.items": ["item", "condBlock", "table", "box", "bulletList"],
+  "item.subitems": ["subitem", "condBlock", "bulletList"],
 } as const satisfies Record<string, readonly NodeKind[]>;
 
 export type SlotName = "children" | "items" | "subitems";
@@ -470,6 +493,7 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
     const inInlineCond = f.inInlineCond || node.kind === "inlineCond";
     const inFor = f.inFor || node.kind === "forBlock" || node.kind === "inlineFor";
 
+    if (node.kind === "bulletList" && node.children.length === 0) structure("글머리 목록에는 항목이 하나 이상 있어야 합니다", path, articleId);
     if (node.kind === "table") {
       // 표 불변식 — 열이 하나 이상, 행마다 셀 수 = 열 수, 너비는 1~100 정수 (setTable · importTree 공통)
       for (const message of tableIssues(node)) structure(message, path, articleId);

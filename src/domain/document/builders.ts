@@ -11,6 +11,8 @@ import type {
   BlockBranch,
   BlockNode,
   BoxNode,
+  BulletListNode,
+  BulletNode,
   ClauseBlockRefNode,
   ClauseInlineRefNode,
   CondBlockNode,
@@ -83,6 +85,9 @@ export function nodeBuilders(newId: IdSource = randomIds) {
       ...(subitems !== undefined ? { subitems } : {}),
     }),
     subitem: (children: InlineNode[] = []): SubitemNode => ({ id: newId(), kind: "subitem", children }),
+    /** 글머리 목록 — 항목(또는 항목을 감싼 조건 블록) 목록. */
+    bulletList: (children: BulletListNode["children"]): BulletListNode => ({ id: newId(), kind: "bulletList", children }),
+    bullet: (children: InlineNode[] = []): BulletNode => ({ id: newId(), kind: "bullet", children }),
     text: (text: string): TextNode => ({ id: newId(), kind: "text", text }),
     slot: (ref: string): SlotNode => ({ id: newId(), kind: "slot", ref }),
     /** 구조 표기 칩 — 반복 표 행의 key (ADR-0070). */

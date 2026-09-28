@@ -181,7 +181,13 @@ export interface RBox {
   title: string;
   lines: string[];
 }
-export type RStatic<I> = RTable<I> | RBox;
+/** 글머리 목록 — 번호 없는 항목 나열. 항목 문장은 인라인이라 슬롯 · 참조가 단계마다 함께 해소된다. 조건으로 빠진 항목은 없다. */
+export interface RBulletList<I> {
+  kind: "bulletList";
+  id: Id;
+  items: { id: Id; children: I[] }[];
+}
+export type RStatic<I> = RTable<I> | RBox | RBulletList<I>;
 
 export interface RSubitem<I> {
   kind: "subitem";
@@ -192,7 +198,7 @@ export interface RItem<I> {
   kind: "item";
   id: Id;
   children: I[];
-  subitems?: (RSubitem<I> | ErrorNode)[];
+  subitems?: (RSubitem<I> | RBulletList<I> | ErrorNode)[];
 }
 export interface RParagraph<I> {
   kind: "paragraph";
@@ -281,7 +287,7 @@ export interface RenderedItem {
   number: number;
   label: string;
   children: RenderedInline[];
-  subitems?: (RenderedSubitem | ErrorNode)[];
+  subitems?: (RenderedSubitem | RBulletList<RenderedInline> | ErrorNode)[];
 }
 /** 정적 표·박스는 렌더 결과에서도 같은 모양이다. */
 export type RenderedStatic = RStatic<RenderedInline>;
@@ -339,7 +345,7 @@ export interface BookletAppendix {
 }
 
 /** 항이 아닌 비교 단위 — 표 · 박스(기능/문면 §3.2 「항과 같은 한 단위로 비교」) · 오류 노드. 항이면 없음. */
-export type OmissionPairKind = "table" | "box" | "error";
+export type OmissionPairKind = "table" | "box" | "bulletList" | "error";
 
 /**
  * 판정 근거의 항 대조 한 줄 — 담보 항 ↔ 보통약관 항 (기능/조립산출 §4.1).

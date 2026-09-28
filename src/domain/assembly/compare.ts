@@ -4,7 +4,8 @@
  * 기준 (2026-09-07 실물 재현 설계):
  * - 가지번호를 쓰지 않으므로(기능/문면 §3.2) 조·관 번호 참조는 조 명 기준으로 정규화한다 — 「제27조의1(」 도 「제28조(」 도 「제§조(」.
  * - PDF 추출 공백 잡음을 피하려 공백을 전부 지운다. 별표 번호는 지운다 — 등장 순 자동 번호라 실물과 다를 수 있다 (ADR-0063 허용 차이).
- * - 단항 조는 `= `, 다항 조는 `@ `. 표·박스는 파싱양식의 fenced 블록 그대로.
+ * - 단항 조는 `= `, 다항 조는 `@ `. 표·박스는 파싱양식의 fenced 블록 그대로. 글머리 목록은 항목마다 `* `(조 직속) ·
+ *   `  * `(항의 호 목록 자리) · `    * `(호의 목 목록 자리) — 파싱양식의 `- ` 는 호 · 목이라 글머리는 `*` 로 가른다.
  *
  * DB·React import 금지 (순수층). Node `fs` 도 쓰지 않는다 — 파일 읽기는 호출자 몫.
  */
@@ -14,7 +15,8 @@ import type { RenderedArticle, RenderedDoc, RenderedInline, RenderedParagraph, R
 const inlineText = (list: readonly RenderedInline[]): string =>
   list.map((n) => (n.kind === "text" ? n.text : n.kind === "error" ? `⟦${n.issue.kind}⟧` : n.label)).join("");
 
-function staticLines(n: RenderedStatic): string[] {
+function staticLines(n: RenderedStatic, indent = ""): string[] {
+  if (n.kind === "bulletList") return n.items.map((b) => `${indent}* ${inlineText(b.children)}`);
   // 파싱양식 대칭: 그림은 ```그림 + 「설명: 」, 제목 없는 박스는 【】 줄 없이
   if (n.kind === "box" && n.title === "그림") return ["```그림", ...n.lines.map((l) => `설명: ${l}`), "```"];
   if (n.kind === "box") return ["```용어풀이", ...(n.title ? [`【${n.title}】`] : []), ...n.lines, "```"];
@@ -55,11 +57,14 @@ function articleLines(a: RenderedArticle): string[] {
         continue;
       }
       if (it.kind !== "item") {
-        out.push(...staticLines(it));
+        out.push(...staticLines(it, "  "));
         continue;
       }
       out.push(`  - ${inlineText(it.children)}`);
-      for (const s of it.subitems ?? []) out.push(s.kind === "subitem" ? `    - ${inlineText(s.children)}` : `    - ⟦${s.issue.kind}⟧`);
+      for (const s of it.subitems ?? []) {
+        if (s.kind === "bulletList") out.push(...staticLines(s, "    "));
+        else out.push(s.kind === "subitem" ? `    - ${inlineText(s.children)}` : `    - ⟦${s.issue.kind}⟧`);
+      }
     }
   }
   return out;

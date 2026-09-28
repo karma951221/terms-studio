@@ -62,7 +62,7 @@ export function forContextMenu(sections: MenuSections): MenuSections {
 /** 메뉴는 구획(구분선으로 나뉜 묶음)의 목록이다. 빈 구획은 그리지 않는다. */
 export type MenuSections = MenuItem[][];
 
-const KIND_WORD: Partial<Record<NodeKind, string>> = { paragraph: "항", item: "호", subitem: "목", article: "조", section: "관", table: "표", box: "박스", clauseBlockRef: "공용조항" };
+const KIND_WORD: Partial<Record<NodeKind, string>> = { paragraph: "항", item: "호", subitem: "목", bullet: "항목", bulletList: "글머리 목록", article: "조", section: "관", table: "표", box: "박스", clauseBlockRef: "공용조항" };
 
 /**
  * 위로 · 아래로 · 복제 · 삭제 — 모든 블록이 같은 네 줄을 쓴다.
@@ -79,10 +79,17 @@ function arrangeItems(ix: TreeIndex, nodeId: Id): MenuItem[] {
   ];
 }
 
-/** 새 가지 · 새 조건 블록 안의 첫 칸 — 그 자리에 설 수 있는 항 · 호 · 목 중 먼저 것(없으면 빈 가지). */
+/** 새 가지 · 새 조건 블록 안의 첫 칸 — 그 자리에 설 수 있는 항 · 호 · 목 · 글머리 항목 중 먼저 것(없으면 빈 가지). */
 function firstChild(allowed: readonly NodeKind[], newId: IdSource) {
-  const kind = (["paragraph", "item", "subitem"] as const).find((k) => allowed.includes(k));
+  const kind = (["paragraph", "item", "subitem", "bullet"] as const).find((k) => allowed.includes(k));
   return kind ? [emptyNode(kind, newId)] : [];
+}
+
+/** 글머리 목록 넣기 — 빈 항목 하나를 든 목록을 그 자리에, 커서는 그 항목으로 (Enter 로 다음 항목, 빈 항목에서 Enter 면 목록 끝). */
+function bulletListItem(label: string, at: Position, newId: IdSource): MenuItem {
+  const b = nodeBuilders(newId);
+  const bullet = b.bullet([]);
+  return { label, action: { do: "ops", ops: [{ type: "insert", node: b.bulletList([bullet]), at }], focus: bullet.id } };
 }
 
 /**
@@ -116,7 +123,7 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
   const after = afterOf(ix, nodeId);
   const add: MenuItem[] = [];
   if (after) {
-    for (const k of ["paragraph", "item", "subitem"] as const) {
+    for (const k of ["paragraph", "item", "subitem", "bullet"] as const) {
       if (!e.allowed.includes(k)) continue;
       const node = emptyNode(k, env.newId);
       add.push({ label: `아래에 ${KIND_WORD[k]} 추가`, action: { do: "ops", ops: [{ type: "insert", node, at: after }], focus: node.id } });
@@ -131,6 +138,7 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
     add.push({ label: "목 추가", action: { do: "ops", ops: [{ type: "insert", node, at: { parentId: nodeId, slot: "subitems" } }], focus: node.id } });
   }
   if (after && e.allowed.includes("table")) add.push({ label: "아래에 표 추가…", action: { do: "popup", popup: { kind: "newTable", at: after } } });
+  if (after && e.allowed.includes("bulletList")) add.push(bulletListItem("아래에 글머리 목록 추가", after, env.newId));
   if (after && e.allowed.includes("box")) add.push({ label: "아래에 박스 추가", action: { do: "ops", ops: [{ type: "insert", node: emptyNode("box", env.newId), at: after }] } });
   if (after && e.allowed.includes("clauseBlockRef")) add.push({ label: "아래에 공용조항(조 단위) 추가…", action: { do: "popup", popup: { kind: "clauseBlock", at: after } } });
 
@@ -176,6 +184,7 @@ export function articleMenu(env: MenuEnv, articleId: Id, title = true): MenuSect
   add.push({ label: "항 추가", action: { do: "ops", ops: [{ type: "insert", node: paragraph, at: { parentId: articleId } }], focus: paragraph.id } });
   // 조 끝에 공용조항(조 단위) — 조의 첫 자리가 공용조항인 조(「준용규정」 = 〔항 공용조항〕 하나)를 항 없이 세운다 (2026-09-28, 실물재현 E2E)
   add.push({ label: "공용조항 참조 추가…", action: { do: "popup", popup: { kind: "clauseBlock", at: { parentId: articleId } } } });
+  add.push(bulletListItem("글머리 목록 추가", { parentId: articleId }, env.newId));
 
   const own: MenuItem[] = [];
   if (env.docKind === "special") own.push({ label: "조연결…", action: { do: "popup", popup: { kind: "link", articleId } } });
@@ -242,11 +251,12 @@ export function condMenu(env: MenuEnv, branchId: Id): MenuSections {
   const into: MenuItem[] = [];
   if (owner.node.kind === "condBlock") {
     const at: Position = { parentId: branchId };
-    for (const k of ["paragraph", "item", "subitem"] as const) {
+    for (const k of ["paragraph", "item", "subitem", "bullet"] as const) {
       if (!br.allowed.includes(k)) continue;
       const node = emptyNode(k, env.newId);
       into.push({ label: `이 가지에 ${KIND_WORD[k]} 추가`, action: { do: "ops", ops: [{ type: "insert", node, at }], focus: node.id } });
     }
+    if (br.allowed.includes("bulletList")) into.push(bulletListItem("이 가지에 글머리 목록 추가", at, env.newId));
     if (br.allowed.includes("article")) {
       const article = emptyNode("article", env.newId);
       into.push({ label: "이 가지에 조 추가", action: { do: "ops", ops: [{ type: "insert", node: article, at }], goArticle: article.id } });

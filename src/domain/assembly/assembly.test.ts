@@ -33,7 +33,7 @@ function lines(doc: RenderedDoc): string[] {
       for (const it of p.items ?? []) {
         if (it.kind !== "item") continue;
         out.push(`    ${it.label} ${inline(it.children)}`);
-        for (const s of it.subitems ?? []) if (s.kind !== "error") out.push(`      ${s.label} ${inline(s.children)}`);
+        for (const s of it.subitems ?? []) if (s.kind === "subitem") out.push(`      ${s.label} ${inline(s.children)}`);
       }
     }
   }

@@ -4,6 +4,7 @@ import { nodeBuilders, sequentialIds } from "../document/builders";
 import type { ArticleNode, ParagraphNode } from "../document/nodes";
 import { assemble } from "./booklet";
 import { alphaPlusFixture } from "./fixture";
+import { renderedToLines } from "./compare";
 import type { AssemblyInput, RenderedArticle, RenderedArticleRef, RenderedParagraph, RenderedSection } from "./types";
 
 /** 픽스처를 한 객체로 다루는 테스트 진입 — 조립 서명 `assemble(master, product)` 에 같은 객체를 두 번 넘긴다 (AssemblyInput = MasterBundle & ProductInput). */
@@ -64,6 +65,35 @@ describe("관·표·박스가 조립을 통과한다 (기능/문면 §3.2)", () 
     const ref = (detailArticle.children[0] as RenderedParagraph).children[0] as RenderedArticleRef;
     expect(ref.kind).toBe("articleRef");
     expect(ref.label).toBe("제2조(보험금의 지급사유)");
+  });
+});
+
+describe("글머리 목록이 조립을 통과한다 (기능/문면 §3.2, 2026-09-28)", () => {
+  it("조 직속 · 호 뒤 · 목 뒤의 글머리 목록 — 번호를 먹지 않고, 조건으로 빠진 항목은 없고, 대조 양식은 `* `", () => {
+    const input = alphaPlusFixture();
+    const b = nodeBuilders(sequentialIds("u"));
+    const general = input.generalDocuments.get("g-doc")!;
+    const first = general.children[0] as ArticleNode;
+    const paragraph = first.children[0] as ParagraphNode;
+    const off = b.condBlock([b.branch("1 = 2", [b.bullet([b.text("빠지는 항목")])])]);
+    const sub = b.bulletList([b.bullet([b.text("목 뒤 항목")])]);
+    paragraph.items = [b.item([b.text("첫 호")], [b.subitem([b.text("첫 목")]), sub]), b.bulletList([b.bullet([b.text("호 뒤 항목")])]), b.item([b.text("둘째 호")])];
+    first.children = [...first.children, b.bulletList([b.bullet([b.text("가")]), off, b.bullet([b.text("나")])])];
+    const booklet = assembleInput(input);
+    expect(booklet.issues).toEqual([]);
+    const a1 = booklet.general!.children[0] as RenderedArticle;
+    expect(a1.children.map((c) => c.kind)).toEqual(["paragraph", "bulletList"]);
+    const list = a1.children[1] as Extract<(typeof a1.children)[number], { kind: "bulletList" }>;
+    expect(list.items.map((i) => i.children.map((c) => (c.kind === "text" ? c.text : c.kind)).join(""))).toEqual(["가", "나"]);
+    const p = a1.children[0] as RenderedParagraph;
+    expect(p.label).toBe("");
+    expect(p.items?.map((i) => i.kind)).toEqual(["item", "bulletList", "item"]);
+    // 글머리 목록은 호 번호를 먹지 않는다 — 둘째 호는 2.
+    expect((p.items![2] as { label: string }).label).toBe("2.");
+    const item = p.items![0] as { subitems: { kind: string; label?: string }[] };
+    expect(item.subitems.map((x) => x.kind)).toEqual(["subitem", "bulletList"]);
+    const lines = renderedToLines(booklet.general!);
+    expect(lines).toEqual(expect.arrayContaining(["  * 호 뒤 항목", "    * 목 뒤 항목", "* 가", "* 나"]));
   });
 });
 

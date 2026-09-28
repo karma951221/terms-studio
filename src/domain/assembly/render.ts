@@ -24,6 +24,7 @@ import type {
   RenderedStatic,
   RenderedSubitem,
   RArticle,
+  RBulletList,
   RStatic,
   RItem,
   RParagraph,
@@ -53,7 +54,7 @@ export function numberDocument(doc: SubstitutedDoc): NumberedDoc {
         numbers.set(it.id, { n: ++item, label: itemLabel(item) });
         let subitem = 0;
         for (const s of it.subitems ?? []) {
-          if (s.kind === "error") continue;
+          if (s.kind !== "subitem") continue;
           numbers.set(s.id, { n: ++subitem, label: subitemLabel(subitem) });
         }
       }
@@ -130,7 +131,7 @@ function targetIndex(d: NumberedDoc | undefined): Map<Id, ReferenceTarget> {
         const item = { id: it.id, n: itemNumber.n };
         out.set(it.id, { kind: "item", article, paragraph, item });
         for (const sub of it.subitems ?? []) {
-          if (sub.kind === "error") continue;
+          if (sub.kind !== "subitem") continue;
           const subitemNumber = d!.numbers.get(sub.id);
           if (subitemNumber) out.set(sub.id, { kind: "subitem", article, paragraph, item, subitem: { id: sub.id, n: subitemNumber.n } });
         }
@@ -284,13 +285,18 @@ class Renderer {
       id: n.id,
       ...this.number(n.id),
       children: n.children.map((c) => this.inline(c, this.self.get(n.id)!)),
-      ...(n.subitems ? { subitems: n.subitems.map((s) => (s.kind === "error" ? s : this.subitem(s))) } : {}),
+      ...(n.subitems ? { subitems: n.subitems.map((s) => (s.kind === "error" ? s : s.kind === "bulletList" ? this.bullets(s, this.self.get(n.id)!) : this.subitem(s))) } : {}),
     };
   }
 
-  /** 표 셀의 조·별표 참조도 계산 번호로 찍는다. 박스는 텍스트뿐이라 그대로. */
+  bullets(n: RBulletList<SInline>, source: ReferenceTarget): RBulletList<RenderedInline> {
+    return { ...n, items: n.items.map((b) => ({ id: b.id, children: b.children.map((c) => this.inline(c, source)) })) };
+  }
+
+  /** 표 셀 · 글머리 목록 항목의 조·별표 참조도 계산 번호로 찍는다. 박스는 텍스트뿐이라 그대로. */
   static(n: RStatic<SInline>, source: ReferenceTarget): RenderedStatic {
     if (n.kind === "box") return n;
+    if (n.kind === "bulletList") return this.bullets(n, source);
     return { ...n, rows: n.rows.map((row) => ({ ...row, cells: row.cells.map((cell) => cell.map((c) => this.inline(c, source))) })) };
   }
 

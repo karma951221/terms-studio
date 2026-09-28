@@ -63,7 +63,7 @@ import { refLabelOf } from "./condition/display";
 import type { ConditionContext } from "./condition/types";
 import { anchorOf, type Anchor, type CellAt, type DocCtx, type DocMode, type EditHandlers } from "./ctx";
 import { ArticleBody, DocBody } from "./DocBody";
-import { afterOf, emptyNode, inlineListAt, moveSelectionOps, pasteGridOps } from "./editOps";
+import { backspaceOps, enterOps, inlineListAt, moveSelectionOps, pasteGridOps } from "./editOps";
 import { caretFromPoint, tokensOf } from "./Inline";
 import { identityRuns, runsFromTokens, sameRuns, type Token } from "./inlineRuns";
 import { clausePickItems, condInsertItem, condMenu, inlineCondItem, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
@@ -605,23 +605,13 @@ export function DocumentEditor(props: EditorProps) {
       apply([{ type: "setInlines", at, runs }]);
     },
     enter: (ownerId) => {
-      const t = latest();
-      const ix = indexTree(t);
-      const kind = ix.nodes.get(ownerId)?.node.kind;
-      const after = afterOf(ix, ownerId);
-      if (!after || (kind !== "paragraph" && kind !== "item" && kind !== "subitem")) return;
-      const node = emptyNode(kind, randomIds);
-      if (apply([{ type: "insert", node, at: after }])) setFocusRequest(node.id);
+      const k = enterOps(latest(), ownerId, randomIds);
+      if (k && apply(k.ops) && k.focus) setFocusRequest(k.focus);
     },
     removeEmpty: (ownerId) => {
-      const ix = indexTree(latest());
-      const e = ix.nodes.get(ownerId);
-      if (!e) return false;
-      const n = e.node as { items?: unknown[]; subitems?: unknown[] };
-      if ((n.items?.length ?? 0) > 0 || (n.subitems?.length ?? 0) > 0) return false;
-      const prev = [...ix.nodes.values()].find((o) => o.parentId === e.parentId && o.slot === e.slot && o.index === e.index - 1);
-      if (!apply([{ type: "remove", nodeId: ownerId }])) return false;
-      if (prev && (prev.node.kind === "paragraph" || prev.node.kind === "item" || prev.node.kind === "subitem")) setFocusRequest(prev.node.id);
+      const k = backspaceOps(latest(), ownerId);
+      if (!k || !apply(k.ops)) return false;
+      if (k.focus) setFocusRequest(k.focus);
       return true;
     },
     pasteGrid: (cell, text) => {

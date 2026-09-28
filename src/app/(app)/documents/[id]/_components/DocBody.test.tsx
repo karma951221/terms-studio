@@ -227,3 +227,16 @@ describe("블록 손잡이 — 편집 모드에서 끌어 옮기기 · 고르기
     expect(html).toMatch(/class="ts-doc-paragraph is-block-sel"/);
   });
 });
+
+describe("글머리 목록 — 편집기 (기능/문면 §3.2 · §4.3, 2026-09-28)", () => {
+  const b = nodeBuilders(sequentialIds("l"));
+  const t = b.document("D", [b.article("가", [b.paragraph([b.text("다음과 같습니다.")]), b.bulletList([b.bullet([b.text("가")]), b.bullet([])])])]);
+  const nodes = (t.children[0] as { children: DocumentNode["children"] }).children;
+  it("번호 없는 「-」 목록 — 항목마다 문장 칸(자리 글 「항목」), 항 번호는 세지 않는다(항 하나면 번호 없음)", () => {
+    const html = renderToStaticMarkup(<Block nodes={nodes} ctx={ctxOf(t, true)} />);
+    expect(html).toContain('class="ts-doc-bullets"');
+    expect(html.match(/class="ts-doc-bullet"/g)).toHaveLength(2);
+    expect(html).toContain('data-placeholder="항목"');
+    expect(html).toContain("is-bare");
+  });
+});
