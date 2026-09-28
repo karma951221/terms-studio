@@ -1,3 +1,4 @@
+import { pickCombo } from "../_lib/combo";
 import { expect, test } from "../_lib/fixtures";
 import { NO_COORD, arrive, login, open } from "./_lib/app";
 import { DocumentAuthoring } from "./_lib/driver";
@@ -24,7 +25,7 @@ test.describe.serial("실물 재현(화면) ④ 담보약관 템플릿", () => {
         await open(page, "/documents?kind=coverage");
         await page.getByRole("link", { name: /^\+|새 담보약관 템플릿/ }).first().click();
         await arrive(page, /\/documents\/new\?kind=coverage/);
-        await page.getByLabel("담보", { exact: true }).selectOption({ label: `${coverage.code} ${coverage.name}` }, { timeout: 10_000 });
+        await pickCombo(page.getByRole("combobox", { name: "담보", exact: true }), { label: coverage.name, query: coverage.code });
         await page.getByLabel("제목").fill(spec.tree.title);
         await page.getByRole("button", { name: "생성" }).first().click();
         await arrive(page, /\/documents\/[0-9a-f-]{36}$/);

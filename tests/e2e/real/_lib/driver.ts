@@ -13,6 +13,8 @@
  */
 import { expect, type Locator, type Page } from "@playwright/test";
 
+import { pickCombo } from "../../_lib/combo";
+
 import { parse } from "../../../../src/domain/expression";
 import { toRows, type ConditionRow, type DocumentNode, type InlineNode, type Node } from "../../../../src/domain/document";
 
@@ -109,19 +111,19 @@ export class Editor {
       case "appendixRef": {
         await this.runTool("별표 참조");
         const d = this.dialog("별표 참조 넣기");
-        await d.locator("#pop-appendix").selectOption(node.appendixCode);
+        await pickCombo(d.locator("#pop-appendix"), { value: node.appendixCode });
         return this.confirm(d, "넣기");
       }
       case "slot": {
         await this.runTool("슬롯");
         const d = this.dialog("치환 슬롯 넣기");
-        await d.locator("#pop-slot").fill(node.ref);
+        await pickCombo(d.locator("#pop-slot"), { value: node.ref });
         return this.confirm(d, "넣기");
       }
       case "clauseInlineRef": {
         await this.runTool("공용조항(문장)");
         const d = this.dialog("공용조항(문장 안) 넣기");
-        await d.locator("#pop-clause").selectOption(node.clauseCode);
+        await pickCombo(d.locator("#pop-clause"), { value: node.clauseCode });
         for (const [option, value] of Object.entries(node.options)) await d.locator(`#pop-opt-${option}`).selectOption(value);
         return this.confirm(d, "넣기");
       }
@@ -228,7 +230,7 @@ export class Editor {
   private async fillRow(head: Locator, name: string, row: ConditionRow): Promise<void> {
     const left = row.left!;
     const key = left.kind === "attr" ? `attr.${left.code}` : left.node ? `${left.code}@${left.node.id}` : left.code;
-    await head.getByRole("combobox", { name: `${name} 변수`, exact: true }).selectOption(key);
+    await pickCombo(head.getByRole("combobox", { name: `${name} 변수`, exact: true }), { value: key });
     await head.getByRole("combobox", { name: `${name} 연산자`, exact: true }).selectOption(row.op!);
     const right = row.right;
     if (!right) return;
@@ -315,9 +317,9 @@ export class Editor {
     const title = { "조 참조…": "조 참조 넣기", "별표 참조…": "별표 참조 넣기", "치환 슬롯…": "치환 슬롯 넣기", "공용조항(문장 안)…": "공용조항(문장 안) 넣기" }[label];
     const d = this.dialog(title);
     if (node.kind === "articleRef") await this.pickTargets(d, node);
-    else if (node.kind === "appendixRef") await d.locator("#pop-appendix").selectOption(node.appendixCode);
-    else if (node.kind === "slot") await d.locator("#pop-slot").fill(node.ref);
-    else if (node.kind === "clauseInlineRef") await d.locator("#pop-clause").selectOption(node.clauseCode);
+    else if (node.kind === "appendixRef") await pickCombo(d.locator("#pop-appendix"), { value: node.appendixCode });
+    else if (node.kind === "slot") await pickCombo(d.locator("#pop-slot"), { value: node.ref });
+    else if (node.kind === "clauseInlineRef") await pickCombo(d.locator("#pop-clause"), { value: node.clauseCode });
     await this.confirm(d, "넣기");
   }
 }
@@ -415,7 +417,7 @@ export class DocumentAuthoring {
     await this.page.getByRole("button", { name: "더보기", exact: true }).click();
     await this.page.getByRole("menuitem", { name: "대응 보통약관…", exact: true }).click();
     const d = this.editor.dialog("대응 보통약관");
-    await d.locator("#pop-general").selectOption({ label: `${generalTitle}(보통약관)` });
+    await pickCombo(d.locator("#pop-general"), { label: generalTitle });
     await this.editor.confirm(d, "확인");
   }
 
@@ -438,7 +440,7 @@ export class DocumentAuthoring {
         await this.article.locator("h3 [role=textbox]").focus();
         await this.editor.runTool("조연결");
         const d = this.editor.dialog("조연결");
-        await d.locator("#pop-link").selectOption(linked);
+        await pickCombo(d.locator("#pop-link"), { value: linked });
         await this.editor.confirm(d, "확인");
       }
     }

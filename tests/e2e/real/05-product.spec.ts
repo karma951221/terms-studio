@@ -2,6 +2,7 @@ import { writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { articleTitles, diffArticlesUnordered, referenceNumberIssues, type UnorderedDiff } from "../../../src/domain/assembly/compare";
+import { pickCombo } from "../_lib/combo";
 import { expect, test } from "../_lib/fixtures";
 import { NO_COORD, arrive, login, open, submit } from "./_lib/app";
 import { renderedLines, sourceLines } from "./_lib/compare";
@@ -66,7 +67,7 @@ for (const product of SEED.products) {
 
       await ev.action("실물화면#5.3", `약관 › 보통약관 작성 — 보통약관 템플릿 「${general.title}」을 고른다`, async () => {
         await open(page, `${productUrl}?tab=terms&sub=general`);
-        await page.getByLabel("보통약관 템플릿").selectOption({ label: general.title });
+        await pickCombo(page.getByRole("combobox", { name: "보통약관 템플릿" }), { label: general.title });
         await submit(page, page.getByRole("button", { name: "템플릿 저장" }));
       });
 
@@ -113,7 +114,8 @@ for (const product of SEED.products) {
           // 기본계약 · 특약 두 절 모두 상품담보 탭 (기능/상품 §4.5)
           await open(page, `${productUrl}?tab=coverages`);
           const form = page.locator("form", { has: page.getByRole("button", { name: `${section}에 탑재` }) });
-          await form.getByLabel("담보").selectOption({ label: coverageOf(mount.coverage).name });
+          // 담보는 서버 조회 검색 입력 — 이름을 쳐서 그 줄을 누른다
+          await pickCombo(form.getByRole("combobox", { name: "담보", exact: true }), { label: coverageOf(mount.coverage).name });
           for (const a of mount.attributes) await form.getByLabel(attributeOf(a.kindCode).label).selectOption(a.valueCode);
           await submit(page, form.getByRole("button", { name: `${section}에 탑재` }));
           await arrive(page, /\/coverages\/[0-9a-f-]+$/);
@@ -130,7 +132,7 @@ for (const product of SEED.products) {
         for (const mount of product.mounts.filter((m) => m.group)) {
           const group = product.groups.find((g) => g.code === mount.group)!;
           const place = page.getByRole("button", { name: `배치 · ${group.title} 에` });
-          await page.locator("form", { has: place }).locator("select[name=productCoverageId]").selectOption({ label: mountName(mount) });
+          await pickCombo(page.locator("form", { has: place }).getByRole("combobox"), { label: mountName(mount) });
           await submit(page, place);
         }
         await expect(page.getByText(`미배치 상품담보: ${mountName(product.mounts[0])}`, { exact: true })).toBeVisible();

@@ -1,5 +1,6 @@
 import { type Locator, type Page } from "@playwright/test";
 
+import { pickCombo } from "./_lib/combo";
 import { expect, test } from "./_lib/fixtures";
 import { actualArticle, expectedArticles, type ArticleText } from "./_lib/terms";
 
@@ -91,7 +92,7 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
 
       await ev.action("실물재현#1.3", "보통약관 템플릿을 고른다 — 약관 › 보통약관 작성", async () => {
         await openTab(page, "약관");
-        await page.getByLabel("보통약관 템플릿").selectOption({ label: "무배당 알파Plus보장보험2604 보통약관" });
+        await pickCombo(page.getByRole("combobox", { name: "보통약관 템플릿" }), { label: "무배당 알파Plus보장보험2604 보통약관" });
         await submit(page, page.getByRole("button", { name: "템플릿 저장" }));
       });
 
@@ -124,7 +125,7 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
           // 기본계약 · 특약 두 절 모두 상품담보 탭에 산다 (기능/상품 §3.8, 2026-09-28)
           await page.goto(`${productUrl}?tab=coverages`);
           const form = page.locator("form", { has: page.getByRole("button", { name: `${section}에 탑재` }) });
-          await form.getByLabel("담보").selectOption({ label: coverage });
+          await pickCombo(form.getByRole("combobox", { name: "담보", exact: true }), { label: coverage });
           if (addon) await form.getByLabel("부가유형").selectOption({ label: addon });
           await submit(page, form.getByRole("button", { name: `${section}에 탑재` }));
           // 탑재는 새 상품담보의 값 화면으로 간다 — 다음 단계가 제 탭을 다시 연다
@@ -151,7 +152,7 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
       for (const [i, name] of 특약들.entries()) {
         await ev.action(`실물재현#1.${13 + i}`, `${name} 을 그룹에 배치한다`, async () => {
           const place = page.getByRole("button", { name: "배치 · 상해 관련 특별약관 에" });
-          await page.locator("form", { has: place }).locator("select[name=productCoverageId]").selectOption({ label: name });
+          await pickCombo(page.locator("form", { has: place }).getByRole("combobox"), { label: name });
           await submit(page, place);
         });
       }

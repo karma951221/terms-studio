@@ -1,5 +1,6 @@
 import { type Locator, type Page } from "@playwright/test";
 
+import { comboOptionCount, pickCombo } from "./_lib/combo";
 import { expect, test } from "./_lib/fixtures";
 
 /**
@@ -47,10 +48,8 @@ test(
       await page.goto("/documents?kind=coverage");
       await page.getByRole("link", { name: "새 담보약관 템플릿", exact: true }).click();
       await page.waitForURL((url) => url.pathname === "/documents/new" && url.searchParams.get("kind") === "coverage");
-      // 선택지는 「COV… 담보명」 — 새 담보의 코드는 실행마다 같지만 여기서는 이름으로 찾는다
-      const option = page.locator("#doc-coverage option", { hasText: COVERAGE });
-      await expect(option).toHaveCount(1);
-      await page.locator("#doc-coverage").selectOption((await option.getAttribute("value"))!);
+      // 담보는 검색 입력 — 이름으로 쳐서 그 줄을 누른다 (새 담보의 코드는 실행마다 같지만 여기서는 이름으로 찾는다)
+      await pickCombo(page.locator("#doc-coverage"), { label: COVERAGE });
       await page.getByRole("button", { name: "생성", exact: true }).click();
       await page.waitForURL(/\/documents\/[0-9a-f-]+$/);
       await expect(page.getByText(`${COVERAGE} 특별약관`).first()).toBeVisible();
@@ -60,7 +59,7 @@ test(
     await ev.action("반복표#3a", "만든 담보는 다시 고를 수 없다 — 담보 하나가 템플릿 한 벌", async () => {
       const back = page.url();
       await page.goto("/documents/new?kind=coverage");
-      await expect(page.locator("#doc-coverage option", { hasText: COVERAGE })).toHaveCount(0);
+      expect(await comboOptionCount(page.locator("#doc-coverage"), COVERAGE)).toBe(0);
       await page.goto(back);
     });
 

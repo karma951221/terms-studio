@@ -1,5 +1,6 @@
 import { type Locator, type Page } from "@playwright/test";
 
+import { pickCombo } from "./_lib/combo";
 import { expect, test } from "./_lib/fixtures";
 
 /**
@@ -148,7 +149,7 @@ test(
     await ev.action("툴바#8", "머리 줄에서 변수 · 연산자 · 값을 고른다 — 가지 조작이 켜지고, 저장 한 번 · 새로 읽으면 초록 상자 안 IF 한 줄", async () => {
       const head = body.locator("[data-cond-head]");
       // 시드 구분자는 원문 모델링이 쓰는 담보명(D0001, string) 하나뿐이다 — 값은 글자 칸 (알파플러스_모델명세 §2)
-      await head.getByRole("combobox", { name: "IF 1번 줄 변수" }).selectOption("D0001");
+      await pickCombo(head.getByRole("combobox", { name: "IF 1번 줄 변수" }), { value: "D0001" });
       await expect(head.getByRole("combobox", { name: "IF 1번 줄 연산자" })).toHaveValue("=");
       const value = head.getByRole("textbox", { name: "IF 1번 줄 값" });
       await value.fill("사망보험금");
@@ -229,7 +230,7 @@ test(
       const head = editor.locator("[data-cond-head]");
       await expect(head).toHaveCount(1);
       await expect(head.getByRole("combobox", { name: "IF 1번 줄 변수" })).toBeFocused();
-      await head.getByRole("combobox", { name: "IF 1번 줄 변수" }).selectOption("D0001");
+      await pickCombo(head.getByRole("combobox", { name: "IF 1번 줄 변수" }), { value: "D0001" });
       const value = head.getByRole("textbox", { name: "IF 1번 줄 값" });
       await value.fill("사망보험금");
       await value.press("Enter");
