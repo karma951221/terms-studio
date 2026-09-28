@@ -452,7 +452,7 @@ exports[`★ 관통 1 — 알파Plus(축약): 보통약관 + 일반상해사망�
                       "text": "이 특별약관은 ",
                     },
                     {
-                      "id": "s-clause-lapse/c1-o-death",
+                      "id": "s-clause-lapse/c1-opt/c1-o-death",
                       "kind": "text",
                       "text": "피보험자가 사망한 때",
                     },
@@ -642,7 +642,7 @@ exports[`★ 관통 1 — 알파Plus(축약): 보통약관 + 일반상해사망�
                       "text": "이 특별약관은 ",
                     },
                     {
-                      "id": "s-clause-lapse/c1-o-death",
+                      "id": "s-clause-lapse/c1-opt/c1-o-death",
                       "kind": "text",
                       "text": "피보험자가 사망한 때",
                     },

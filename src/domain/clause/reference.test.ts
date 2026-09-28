@@ -111,13 +111,13 @@ describe("공용조항 S5 · S7 — 옵션 선택 검증과 오버라이드 해�
 });
 
 describe("공용조항 S6 — 인라인화 헬퍼 expandClause", () => {
-  it("block: 옵션 자리를 선택지 본문으로 치환하고 모든 id 를 `${참조노드id}/${원노드id}` 로 유일화. 조건은 해소하지 않는다", () => {
+  it("block: 옵션 자리를 선택지 본문으로 치환하고 모든 id 를 `${참조노드id}/${원노드id}` 로 유일화(선택지 본문은 `${참조노드id}/${옵션 자리 id}/${원노드id}`). 조건은 해소하지 않는다", () => {
     const out = unwrap(expandClause(준용규정, { O01: "V02" }, "ref-1")) as Block[];
     expect(out).toEqual([
       { id: "ref-1/p1", kind: "paragraph", children: [
         { id: "ref-1/t1", kind: "text", text: "이 특별약관에서 정하지 않은 사항은 " },
-        { id: "ref-1/v2", kind: "text", text: "기본계약 " },
-        { id: "ref-1/v2s", kind: "slot", ref: "D0005" },
+        { id: "ref-1/o1/v2", kind: "text", text: "기본계약 " },
+        { id: "ref-1/o1/v2s", kind: "slot", ref: "D0005" },
         { id: "ref-1/t2", kind: "text", text: "을 따릅니다." },
       ] },
       { id: "ref-1/cb", kind: "condBlock", branches: [
@@ -142,8 +142,22 @@ describe("공용조항 S6 — 인라인화 헬퍼 expandClause", () => {
     };
     const out = unwrap(expandClause(clause, { O01: "V01" }, "r")) as Inline[];
     expect(out).toEqual([
-      { id: "r/c", kind: "inlineCond", branches: [{ id: "r/b", when: "D0001", children: [{ id: "r/v1", kind: "text", text: "보통약관" }] }] },
+      { id: "r/c", kind: "inlineCond", branches: [{ id: "r/b", when: "D0001", children: [{ id: "r/o/v1", kind: "text", text: "보통약관" }] }] },
     ]);
+  });
+
+  it("같은 옵션 자리를 본문에 두 번 두어도 펼친 노드 id 가 겹치지 않는다 (옵션 자리 id 가 앞에 붙는다)", () => {
+    const clause: InlineClause = {
+      ...준용규정,
+      mode: "inline",
+      body: [
+        { id: "o1", kind: "optionSlot", optionCode: "O01" },
+        { id: "t", kind: "text", text: "부터 … " },
+        { id: "o2", kind: "optionSlot", optionCode: "O01" },
+      ],
+    };
+    const out = unwrap(expandClause(clause, { O01: "V01" }, "r")) as Inline[];
+    expect(out.map((n) => n.id)).toEqual(["r/o1/v1", "r/t", "r/o2/v1"]);
   });
 
   it("미선택·유효 집합 밖 선택이면 거부 (invalid · optionUnselected / optionInvalid)", () => {

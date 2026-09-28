@@ -115,15 +115,17 @@ export function expandClause(clause: Clause, selection: OptionSelection, refNode
     return opt.values.find((v) => v.code === selection[optionCode])!.body;
   };
 
-  const inlines = (list: Inline[]): Inline[] => list.flatMap(inline);
-  const inline = (n: Inline): Inline[] => {
+  // 옵션 자리는 자리 id 를 앞에 붙여 펼친다 — 같은 옵션을 본문에 두 번 두어도 펼친 노드 id 가 겹치지 않는다
+  // (예: 「{기산일}부터 180일 … {기산일}부터 180일이 되는 날」 — 2026-09-28 메리츠 공용조항 재편)
+  const inlines = (list: Inline[], scope = ""): Inline[] => list.flatMap((n) => inline(n, scope));
+  const inline = (n: Inline, scope: string): Inline[] => {
     switch (n.kind) {
       case "optionSlot":
-        return inlines(valueBody(n.optionCode));
+        return inlines(valueBody(n.optionCode), `${scope}${n.id}/`);
       case "inlineCond":
-        return [{ ...n, id: nid(n.id), branches: n.branches.map((b): InlineBranch => ({ ...b, id: nid(b.id), children: inlines(b.children) })) }];
+        return [{ ...n, id: nid(scope + n.id), branches: n.branches.map((b): InlineBranch => ({ ...b, id: nid(scope + b.id), children: inlines(b.children, scope) })) }];
       default:
-        return [{ ...n, id: nid(n.id) }];
+        return [{ ...n, id: nid(scope + n.id) }];
     }
   };
   const subitem = (s: SubitemNode): SubitemNode => ({ ...s, id: nid(s.id), children: inlines(s.children) });
