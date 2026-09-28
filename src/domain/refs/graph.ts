@@ -18,7 +18,7 @@
  *
  * 조 참조(articleRef)의 대상은 조뿐 아니라 항·호·목도 될 수 있지만(문서 모델), 문서에는 **조만** `article:` 노드로
  * 선언된다 — 그래서 대상 노드 id 를 그대로 키로 쓰지 않고 **속한 조 id** 로 올려서 간선을 낸다. 공용조항의 조
- * 참조는 scope 가 없이 항상 보통약관 마스터를 가리킨다(기능/공용조항 §3.5) — 공용조항을 넣기 전에 보통약관 문서들의
+ * 참조 중 범위 없는 것은 보통약관 마스터를 가리킨다(기능/공용조항 §3.5 — 제 항 · 사용처 위치는 간선이 없다) — 공용조항을 넣기 전에 보통약관 문서들의
  * 노드 id → 속한 조 인덱스(`generalNodeArticles`)를 만들어 둔다. 대상이 사라졌으면 깨진 간선으로 남기고,
  * 아예 모르면(보통약관이 안 들어옴) 마찬가지로 깨진 간선으로 남긴다 — 간선을 안 내지는 않는다.
  */
@@ -290,7 +290,7 @@ function walkClauseNodes(body: readonly (Inline | Block)[], basePath: Id[], visi
 
 /**
  * 보통약관 문서들의 노드 id → 속한 조 인덱스 (`Builder.generalNodeArticles`). 공용조항을 넣기 전에 채운다 —
- * 공용조항의 조 참조는 항상 보통약관 마스터를 가리키고(기능/공용조항 §3.5), 공용조항은 어느 문서인지 모른다.
+ * 공용조항의 범위 없는 조 참조는 보통약관 마스터를 가리키고(기능/공용조항 §3.5), 공용조항은 어느 문서인지 모른다.
  */
 function indexGeneralArticles(b: Builder, documents: readonly DocumentInput[]): void {
   for (const doc of documents) {

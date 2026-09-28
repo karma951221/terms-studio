@@ -84,7 +84,7 @@ export interface ClauseAuthoringProps {
 
 type Banner = { message: string; issues?: readonly Issue[] };
 
-/** 편집 트리의 대응 보통약관 자리 — 공용조항의 조 참조는 보통약관 마스터 전체가 대상이다 (§3.5 · 기능/문면 `scope: "general"`). */
+/** 편집 트리의 대응 보통약관 자리 — 보통약관 범위 조 참조는 보통약관 마스터 전체가 대상이다(사용처 위치 후보도 이 자리로 운반한다, §3.5 · 기능/문면 `scope: "general"`). */
 const GENERALS = "clause-generals";
 
 /** 새 공용조항의 첫 본문 — 「항」은 빈 항 하나에서 시작해 쓸 자리가 처음부터 보인다. */
@@ -118,7 +118,8 @@ function unionRefs(generals: ClauseEditorData["generals"]): GeneralRefs {
 }
 
 /**
- * 조 참조 후보 — 보통약관의 조 · 항 · 호 · 목. 이 공용조항이 실려 있는 사용처 자신의 조(와 그 아래)는 뺀다 (§3.5 — 문맥 의존 참조 금지).
+ * 보통약관 범위 조 참조 후보 — 보통약관의 조 · 항 · 호 · 목. 이 공용조항이 실려 있는 보통약관의 그 조(와 그 아래)는 뺀다 —
+ * 제 조 안은 「이 공용조항」 범위로 가리킨다 (§3.5).
  */
 function generalTargets(generals: ClauseEditorData["generals"], code: string | undefined): Map<Id, ReferenceTarget> {
   const out = new Map<Id, ReferenceTarget>();
