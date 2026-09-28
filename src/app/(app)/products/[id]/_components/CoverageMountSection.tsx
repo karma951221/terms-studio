@@ -168,7 +168,7 @@ export function CoverageMountSection({ productId, section, items, coverages, att
             <input type="hidden" name="section" value={section} />
             <label className="ts-field">
               <span>담보</span>
-              {/* 담보 마스터는 상품을 가리지 않고 는다 — 전부 싣지 않고 친 글로 서버에서 찾는다 (디자인원칙 §2.6) */}
+              {/* 담보 마스터는 상품을 가리지 않고 는다 — 전부 싣지 않고 친 글로 서버에서 찾는다 (디자인원칙 §1.8) */}
               <Combobox name="coverageId" required lookupUrl="/api/lookup/coverages" placeholder="담보 이름 · 코드로 찾기" />
             </label>
             {attributeKinds.map((k) => (
