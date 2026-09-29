@@ -16,7 +16,7 @@ export interface NodeQualifier {
 
 /**
  * 구분자 참조 — `<구분자코드>` 한 마디. 구분자는 식 하나라 필드가 없다 (ADR-0037).
- * 요구 구분자 추출(ADR-0010)의 단위가 이것이다. **문면(조건식·반복·슬롯)이 쓰는 유일한 값 참조**다.
+ * 요구 구분자의 단위가 이것이다. **문면(조건식·반복·슬롯)이 쓰는 유일한 값 참조**다.
  */
 export interface DiscriminatorRef {
   kind: "discriminator";

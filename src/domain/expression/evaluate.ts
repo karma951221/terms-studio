@@ -2,7 +2,7 @@
  * 평가기 — 문맥(EvalContext)은 언어 밖에서 주입된다 (ADR-0013).
  *
  * 세 가지 결과: 값 · 미결(문맥이 그 자리를 모름 — 사전평가용) · 오류(Issue + 좌표).
- * 규칙 (ADR-0004 · ADR-0010 · ADR-0015):
+ * 규칙 (ADR-0004 · ADR-0015 · ADR-0076 — 인자는 펼칠 때 연결로 바뀐다):
  *   - 미입력 참조 → error notEntered. 조용한 false 는 없다.
  *   - 값 자리 자체가 없음(미부착·삭제) → error notAttached / brokenRef.
  *   - 미사용 담보속성의 = ≠ → error unusedAttribute. exist(attr.X) 는 unused 면 false.

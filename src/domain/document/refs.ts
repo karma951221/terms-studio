@@ -97,7 +97,7 @@ export function collectRefs(doc: DocumentNode, base: Coordinate = {}): DocRef[] 
 }
 
 /**
- * 요구 구분자 (ADR-0010) — 문서 자체가 읽는 구분자 + 참조한 공용조항의 요구 구분자(게이트). 등장 순 · 중복 없이.
+ * 요구 구분자 — 문서 자체가 읽는 구분자 + 참조한 함수조항이 그 자리 연결로 읽는 구분자(게이트, 기능/함수조항 §3.3). 등장 순 · 중복 없이.
  * B1 이 담보 부착 검사에 쓴다.
  */
 export function requiredDiscriminators(doc: DocumentNode, gate?: ClauseGate): Code[] {

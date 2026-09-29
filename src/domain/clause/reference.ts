@@ -1,12 +1,12 @@
 /**
  * 공용조항 참조 — 사용처 쪽 규칙 (순수).
  *
- * - `checkAttachmentForReference` : 참조 추가 시 요구 구분자 존재 검사 (ADR-0010 결정 4).
+ * - `checkAttachmentForReference` : 참조 추가 시 요구 구분자 존재 검사 (기능/함수조항 §3.4 ②).
  *   2026-09-12 이후 부착(노출여부)이 없어 「값 자리가 없어서 미부착」인 경우가 사라졌다 (ADR-0037) —
  *   남는 것은 **카탈로그에 없는 구분자**(깨진 참조)뿐이다. `missing` 은 항상 비어 있고 자리만 남겨 둔다.
  * - `validateOptionSelection` · `resolveOptions` : 옵션 선택 검증 · 오버라이드 해소 (기능/함수조항 §3.2 · 기능/상품 §3.6).
  * - `expandClause` : 인라인화 — 옵션 자리를 선택지 본문으로 치환한 노드 배열 · 제 항 / 사용처 조 참조를 사용처 노드 id 로. 조건은 해소하지 않는다.
- * - `recheckUsages` : 정의 수정 후 사용처 전부 재검사 (ADR-0010 결정 5 · 기능/함수조항 §3.2).
+ * - `recheckUsages` : 정의 수정 후 사용처 전부 재검사 — 옵션 · 인자 연결 · 연결한 구분자 (기능/함수조항 §3.2 · §3.4 · ADR-0076).
  */
 import type { Discriminator } from "../catalog/types";
 import { ok, reject } from "../types";

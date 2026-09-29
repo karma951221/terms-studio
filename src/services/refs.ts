@@ -155,7 +155,7 @@ interface DocumentRead {
 
 /**
  * 문서(와 조)가 읽는 구분자·필드·담보속성 자리 전부. 공용조항 참조는 그 본문의 참조로, 파생 참조는 그 식의 참조로 펼친다
- * (ADR-0010 늦은 바인딩 — 공용조항의 식은 사용처 문맥에서 해소되므로 사용처의 값 자리를 읽는 것이다).
+ * (함수조항 인자에 연결한 구분자는 사용처 문맥에서 해소되므로 사용처의 값 자리를 읽는 것이다 — 사용처 연결 · 기본 연결, ADR-0076).
  */
 function documentReads(graph: RefGraph, doc: RefNodeKey): DocumentRead[] {
   const out: DocumentRead[] = [];
