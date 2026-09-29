@@ -11,7 +11,7 @@
  */
 import { ok, reject } from "../types";
 import type { Code, Issue, Result } from "../types";
-import { analyzeBody, allNodeIds } from "./body";
+import { analyzeBody, allNodeIds, orderSwitchCases } from "./body";
 import type { AnalyzeOptions } from "./body";
 import { allocateClauseCode, optionValueScope, type ClauseNextSeq } from "./codes";
 import type { Block, Inline } from "./nodes";
@@ -83,6 +83,8 @@ function withAnalysis(base: Omit<Clause, "required">, analyze?: AnalyzeOptions):
   if (!r.ok) return r as Result<Clause>;
   // 빈 인자 · 내부 변수 목록은 싣지 않는다 — 0개 = 키 없음(옛 정의 · 스냅샷 무변동)
   const { params, locals, ...rest } = base;
+  // 값별 분기의 칸 순서 = 열거형 순서 — 저장할 때 맞춘다 (최종 결정 5)
+  rest.body = orderSwitchCases(base.body, params ?? [], locals ?? [], analyze ?? {}) as typeof rest.body;
   return ok({ ...rest, ...(params && params.length > 0 ? { params } : {}), ...(locals && locals.length > 0 ? { locals } : {}), required: r.value } as Clause);
 }
 

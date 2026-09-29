@@ -137,6 +137,9 @@ export function expandClause(clause: Clause, selection: OptionSelection, refNode
         return inlines(valueBody(n.optionCode), `${scope}${n.id}/`);
       case "inlineCond":
         return [{ ...n, id: nid(scope + n.id), branches: n.branches.map((b): InlineBranch => ({ ...b, id: nid(scope + b.id), children: inlines(b.children, scope) })) }];
+      case "inlineSwitch":
+        // 값별 분기는 칸째 두고(고르는 것은 사용처 문맥) id 만 유일화한다
+        return [{ ...n, id: nid(scope + n.id), cases: n.cases.map((k) => ({ ...k, id: nid(scope + k.id), children: inlines(k.children, scope) })) }];
       case "articleRef":
         if (n.scope === "clause") return [{ ...n, id: nid(scope + n.id), targets: n.targets.map((t) => ({ nodeId: nid(t.nodeId) })) }];
         if (n.scope === "host") return [{ ...n, id: nid(scope + n.id), targets: n.targets.map((t) => ({ nodeId: host?.(t.nodeId) ?? `${UNRESOLVED_HOST_PREFIX}${t.nodeId}` })) }];
@@ -160,18 +163,22 @@ export function expandClause(clause: Clause, selection: OptionSelection, refNode
     if (b.kind === "paragraph") {
       return { ...b, id: nid(b.id), children: inlines(b.children), ...(b.items ? { items: b.items.map((it) => (it.kind === "bulletList" ? bullets(it) : it.kind === "boxRef" ? { ...it, id: nid(it.id) } : item(it))) } : {}) };
     }
+    if (b.kind === "switchBlock") return { ...b, id: nid(b.id), cases: b.cases.map((k) => ({ ...k, id: nid(k.id), children: k.children.map(block) })) };
     return { ...b, id: nid(b.id), branches: b.branches.map((br): BlockBranch => ({ ...br, id: nid(br.id), children: br.children.map(block) })) };
   };
 
   // 호 · 목 유형 — 목록 자리의 조건 블록은 가지째 두고(해소는 사용처 문맥) id 만 유일화한다
   const itemBody = (n: ItemBodyNode): ItemBodyNode => {
+    if (n.kind === "switchBlock") return { ...n, id: nid(n.id), cases: n.cases.map((k) => ({ ...k, id: nid(k.id), children: k.children.map(itemBody) })) };
     if (n.kind === "condBlock") return { ...n, id: nid(n.id), branches: n.branches.map((br) => ({ ...br, id: nid(br.id), children: br.children.map(itemBody) })) };
     if (n.kind === "bulletList") return bullets(n);
     if (n.kind === "boxRef") return { ...n, id: nid(n.id) };
     return item(n);
   };
   const subitemBody = (n: SubitemBodyNode): SubitemBodyNode =>
-    n.kind === "condBlock" ? { ...n, id: nid(n.id), branches: n.branches.map((br) => ({ ...br, id: nid(br.id), children: br.children.map(subitemBody) })) } : subitem(n);
+    n.kind === "switchBlock"
+      ? { ...n, id: nid(n.id), cases: n.cases.map((k) => ({ ...k, id: nid(k.id), children: k.children.map(subitemBody) })) }
+      : n.kind === "condBlock" ? { ...n, id: nid(n.id), branches: n.branches.map((br) => ({ ...br, id: nid(br.id), children: br.children.map(subitemBody) })) } : subitem(n);
 
   switch (clause.mode) {
     case "inline":

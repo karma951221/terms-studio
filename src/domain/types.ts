@@ -182,6 +182,7 @@ export type IssueKind =
   | "optionUnselected" // 공용조항 옵션 미선택
   | "optionInvalid" // 유효 옵션 집합 밖 선택/오버라이드
   | "argUnbound" // 함수조항 인자 연결 누락 — 사용처 연결도 기본 연결도 없음 (최종 결정 2)
+  | "unassignedValue" // 값별 분기(switch)에 칸이 없는 값 — 함수조항 저장 오류 · 조립에서는 그 값이 실제로 닿을 때만 (최종 결정 5)
   | "noBaseContract" // 기본계약 미지정
   | "noPlan" // 세목 선택지는 있는데 유효 조합이 없다 — 집계 범위가 비어 조건부 조문이 조용히 빠진다
   | "notAttached" // 요구 구분자 미부착 (값 자리 없음)

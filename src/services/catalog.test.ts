@@ -507,6 +507,24 @@ describe("열거값 삭제 = 「없는 값」 · 열거값 추가 = 재검사 �
     expect(recheck.map((e) => [e.via, e.at.document, e.at.refPath])).toEqual([["local", "clause", "var.뇌있음"]]);
   });
 
+  it("열거값을 추가하면 그 열거형 값별 분기(switch)가 미배정으로 재검사 목록에 — 열거값 저장은 성공 (최종 결정 5)", async () => {
+    const def = (await s.catalog.getEnum("E0001"))!;
+    const values = def.values.map((v) => ({ code: v.code, label: v.label }));
+    const item = (id: string) => ({ id, kind: "item" as const, children: [{ id: `${id}t`, kind: "text" as const, text: "호" }] });
+    unwrap(
+      await s.clause.create(editor, {
+        label: "납입면제 호",
+        mode: "item",
+        params: [{ name: "사유", type: { kind: "enum", enumCode: "E0001" } }],
+        body: [{ id: "sw", kind: "switchBlock", on: "arg.사유", cases: [{ id: "k1", values: values.map((v) => v.code), children: [item("i1")] }] }],
+      }),
+    );
+    unwrap(await s.catalog.reviseEnum(editor, "E0001", { label: def.label, description: "", values: [...values, { label: "새 사유" }] }));
+    const recheck = await s.catalog.enumValueRecheck("E0001");
+    // 앞 시나리오의 내부 변수(.있음)도 같은 목록에 있다 — 분기만 본다
+    expect(recheck.filter((e) => e.via === "switchCase").map((e) => [e.at.document, e.at.ownerName, e.at.nodePath])).toEqual([["clause", "납입면제 호", ["sw"]]]);
+  });
+
   it("필드를 지우면 그 필드를 읽는 함수조항이 재검사 목록에 — 저장은 관리자 확인 뒤 성공 (최종 결정 18)", async () => {
     const def = (await s.catalog.getEnum("E0001"))!;
     const values = def.values.map((v) => ({ code: v.code, label: v.label }));

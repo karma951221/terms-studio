@@ -473,3 +473,37 @@ describe("함수조항 인자 · 내부 변수의 열거값 읽기 — 값 나�
     expect(usagesOf(graph(), { kind: "masterField", path: "waiver.reasons" }).map((e) => [e.via, nodeKey(e.from)])).toEqual([["local", "clause:C0001"]]);
   });
 });
+
+describe("값별 분기(switch) 칸의 값 — switchCase 간선 (최종 결정 5 · 20 · 21)", () => {
+  const 사유: EnumDef = { code: "E0001", label: "납입면제사유", values: [{ code: "V01", label: "암", order: 0 }, { code: "V02", label: "뇌졸중", order: 1 }] };
+  const 면제호: Clause = {
+    code: "C0001",
+    label: "납입면제 호",
+    mode: "item",
+    options: [],
+    params: [{ name: "사유", type: { kind: "enum", enumCode: "E0001" } }],
+    body: [
+      {
+        id: "sw",
+        kind: "switchBlock",
+        on: "arg.사유",
+        cases: [
+          { id: "k1", values: ["V01"], children: [{ id: "i1", kind: "item", children: [] }] },
+          { id: "k2", values: ["V02", "V09"], empty: true, children: [] },
+        ],
+      },
+    ],
+    required: { discriminators: [], attributes: [] },
+  } as Clause;
+  const graph = () => buildGraph({ enums: [사유], clauses: [면제호] });
+
+  it("분기 하나가 열거값 추가 재검사 목록에 한 번 선다 — 새 값은 그 분기에서 미배정이다", () => {
+    expect(enumValueListers(graph(), "E0001").map((e) => [e.via, nodeKey(e.from), e.at.nodePath?.join("/"), e.at.refPath])).toEqual([["switchCase", "clause:C0001", "sw", "arg.사유"]]);
+  });
+
+  it("칸에 남은 지운 값(V09)은 깨진 참조 — 값 삭제 영향 · 「없는 값」 의 재료", () => {
+    const g = graph();
+    expect(usagesOf(g, { kind: "enumValue", enumCode: "E0001", valueCode: "V02" }).map((e) => e.via)).toEqual(["switchCase"]);
+    expect(brokenEdges(g).some((e) => nodeKey(e.to) === "enumValue:E0001/V09")).toBe(true);
+  });
+});

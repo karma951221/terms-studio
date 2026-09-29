@@ -268,7 +268,7 @@ export function placeOptions(body: Block[], placements: readonly OptionPlacement
     const block = (b: Block): Block => {
       if (b.kind === "condBlock") return { ...b, branches: b.branches.map((br) => ({ ...br, children: br.children.map(block) })) };
       // 실물 공용조항 본문에는 글머리 목록이 없다 — 옵션 자리 찾기는 항 · 호 · 목만
-      if (b.kind === "bulletList" || b.kind === "boxRef") return b;
+      if (b.kind === "bulletList" || b.kind === "boxRef" || b.kind === "switchBlock") return b;
       return {
         ...b,
         children: visit(b.children),

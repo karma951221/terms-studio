@@ -26,7 +26,7 @@ import type { Discriminator } from "../catalog/types";
 import { discriminatorResultType } from "../catalog/expression";
 import { allMasterFields, findMasterField, masterFieldFullLabel, type MasterTree } from "../master";
 import type { ClauseNode } from "../clause/nodes";
-import { collectExpressions } from "../clause/body";
+import { collectExpressions, switchEnumCode } from "../clause/body";
 import type { Clause, ClauseBody } from "../clause/types";
 import { nodesOf } from "../coverage/tree";
 import type { Coverage, CoverageNodeLevel } from "../coverage/types";
@@ -275,6 +275,10 @@ function walkClauseNodes(body: readonly ClauseNode[], basePath: Id[], visit: (no
       case "condBlock":
         for (const br of n.branches as { id: Id; children: ClauseNode[] }[]) for (const c of br.children) walk(c, [...here, br.id]);
         return;
+      case "inlineSwitch":
+      case "switchBlock":
+        for (const k of n.cases as { id: Id; children: ClauseNode[] }[]) for (const c of k.children) walk(c, [...here, k.id]);
+        return;
       case "bulletList":
       case "subitem":
       case "bullet":
@@ -378,6 +382,11 @@ function addClause(b: Builder, clause: Clause, master?: MasterTree): void {
     walkClauseNodes(body, path, (n, nodePath) => {
       if (n.kind === "appendixRef") b.edge({ from: key, to: { kind: "appendix", code: n.appendixCode }, via: "appendixRef", at: { ...base, nodePath } });
       else if (n.kind === "boxRef") b.edge({ from: key, to: { kind: "box", code: n.boxCode }, via: "boxRef", at: { ...base, nodePath } });
+      else if (n.kind === "switchBlock" || n.kind === "inlineSwitch") {
+        // 값별 분기의 칸 값 → 열거값 (최종 결정 5) — 좌표는 분기 노드(칸마다가 아니라) · refPath 대상 식: 열거값 추가 재검사가 분기 하나를 한 번 세운다
+        const enumCode = switchEnumCode(n.on, clause.params ?? [], (name) => types.locals?.(name));
+        if (enumCode) for (const k of n.cases) for (const valueCode of k.values ?? []) b.edge({ from: key, to: { kind: "enumValue", enumCode, valueCode }, via: "switchCase", at: { ...base, nodePath, refPath: n.on } });
+      }
       else if (n.kind === "articleRef" && n.scope === undefined) {
         // 범위 없는 공용조항 조 참조는 보통약관 마스터를 가리킨다(기능/함수조항 §3.5 — 제 항 · 사용처 위치 참조는 사용처마다 대상이 달라 간선이 없다). 대상이 항·호·목이면
         // indexGeneralArticles 로 속한 조로 올리고, 인덱스에 없으면(대상이 사라졌거나 보통약관이 안 들어옴)

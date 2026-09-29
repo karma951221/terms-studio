@@ -190,3 +190,51 @@ describe("호 · 목 유형 본문 ↔ 편집 트리 (최종 결정 4)", () => {
     expect(clauseScopedRefLabel({ ...ref, targets: [{ nodeId: "s2" }] }, clausePositions(subTree))).toBe("이 함수조항 나목");
   });
 });
+
+describe("값별 분기 — 편집 트리 운반 (최종 결정 5)", () => {
+  const p = (id: string): Block => ({ id, kind: "paragraph", children: [{ id: `${id}t`, kind: "text", text: id }] });
+  const sw: Block[] = [
+    {
+      id: "sw",
+      kind: "switchBlock",
+      on: "arg.사유",
+      cases: [
+        { id: "k1", values: ["V01", "V02"], children: [p("p1")] },
+        { id: "k2", values: ["V03"], empty: true, children: [] },
+      ],
+    },
+  ];
+  const line: Inline[] = [{ id: "is", kind: "inlineSwitch", on: "arg.사유", cases: [{ id: "a", values: ["V01"], children: [{ id: "ta", kind: "text", text: "진단" }] }] }];
+
+  it("분기는 조건 블록 + switchOn(칸 = 값 · 문구 없음 가지)으로 싸고 되돌리면 같은 본문이다 — 블록 · 문장 안 · 호 목록", () => {
+    const tree = clauseBodyToTree("block", sw);
+    const wrapped = (tree.children[0] as { children: { kind: string; switchOn?: string; branches: { values?: string[]; empty?: true; when?: string }[] }[] }).children[0];
+    expect(wrapped).toMatchObject({ kind: "condBlock", switchOn: "arg.사유", branches: [{ values: ["V01", "V02"] }, { values: ["V03"], empty: true }] });
+    expect(treeToClauseBody("block", tree)).toEqual({ ok: true, value: sw });
+    expect(treeToClauseBody("inline", clauseBodyToTree("inline", line))).toEqual({ ok: true, value: line });
+    const items: C.ItemBodyNode[] = [{ id: "sw", kind: "switchBlock", on: "arg.사유", cases: [{ id: "k1", values: ["V01"], children: [{ id: "i1", kind: "item", children: [] }] }] }];
+    expect(treeToClauseBody("item", clauseBodyToTree("item", items))).toEqual({ ok: true, value: items });
+  });
+
+  it("편집 명령 — 칸의 값 · 「문구 없음」 · 대상 바꾸기, 칸 추가(else 규칙 없음). 「문구 없음」은 본문이 없을 때만", () => {
+    const env: EditEnv = { env: { kind: "special", switches: true }, generalRefs: () => undefined };
+    let state = { tree: clauseBodyToTree("block", sw) };
+    const step = (op: Parameters<typeof applyEdit>[1]) => {
+      const r = applyEdit(state, op, env);
+      if (!r.ok) throw new Error(JSON.stringify(r.rejection));
+      state = r.value.state;
+    };
+    step({ type: "setCase", branchId: "k1", values: ["V01"] });
+    step({ type: "addBranch", condId: "sw", branch: { id: "k3", values: ["V02"], children: [p("p3") as never] } });
+    step({ type: "setSwitch", nodeId: "sw", on: "var.대표" });
+    const back = treeToClauseBody("block", state.tree);
+    expect(back.ok && back.value[0]).toMatchObject({ on: "var.대표", cases: [{ id: "k1", values: ["V01"] }, { id: "k2", empty: true }, { id: "k3", values: ["V02"] }] });
+    expect(applyEdit(state, { type: "setCase", branchId: "k1", values: ["V01"], empty: true }, env).ok).toBe(false);
+  });
+
+  it("문면(템플릿)에서는 값별 분기를 거부한다 — 지금은 함수조항 안에서만", () => {
+    const env: EditEnv = { env: { kind: "special" }, generalRefs: () => undefined };
+    const r = applyEdit({ tree: clauseBodyToTree("block", []) }, { type: "insert", node: clauseBodyToTree("block", sw).children[0].kind === "article" ? (clauseBodyToTree("block", sw).children[0] as { children: never[] }).children[0] : (undefined as never), at: { parentId: CLAUSE_ARTICLE_ID } }, env);
+    expect(r.ok).toBe(false);
+  });
+});

@@ -12,6 +12,7 @@
  * | `optionSlot` | `clauseInlineRef`(코드 `OPTION_REF_PREFIX + 옵션 코드`) — 옵션 자리 운반체. 공용조항 참조와 같은 「다른 곳의 문구가 들어오는 자리」라 문면 규칙(허용 자리 · 인라인 조건 안 허용)이 같다 |
  * | `articleRef` 보통약관 대상(범위 없음) | `articleRef` + `scope: "general"` |
  * | `articleRef` 제 항 · 호 · 목(`scope: "clause"`) | `articleRef` + `scope: "self"` — 편집 트리의 항 id 가 곧 본문 노드 id |
+ * | `switchBlock` · `inlineSwitch`(값별 분기) | `condBlock` · `inlineCond` + `switchOn`(대상 식) — 가지 = 칸(`values` · `empty`, `when` 없음). 조건 가지와 같은 투명 · 자리 · 중첩 규칙을 물려받는다(document/nodes.ts `SwitchCaseMark`) |
  * | `articleRef` 사용처 위치(`scope: "host"`, `"2.1.3"`) | `articleRef` + `scope: "general"` + 대상 `host:2.1.3`(`HOST_TARGET_PREFIX`) — 에디터의 「사용처」 후보 줄 id. 이 문서 밖 대상이라 보통약관 참조처럼 후보 집합(`generalRefs`)으로 검사한다 |
  *
  * 되돌릴 때 공용조항에 없는 것(조 · 관 · 표 · 박스 · 반복 · 구조 표기 · 진짜 공용조항 참조 · 호/목 자리의 조건 블록)이 있으면 거부한다 —
@@ -50,6 +51,16 @@ export function optionCarrier(id: string, optionCode: Code): ClauseInlineRefNode
 
 // ───────────────────────────── 본문 → 트리 ─────────────────────────────
 
+/** 값별 분기 칸 → 운반 가지 (값 · 「문구 없음」 · 본문). */
+function caseToBranch<C, T>(k: C.SwitchCase<C>, child: (c: C) => T): { id: string; values: Code[]; empty?: true; children: T[] } {
+  return { id: k.id, values: [...(k.values ?? [])], ...(k.empty ? { empty: true as const } : {}), children: (k.children ?? []).map(child) };
+}
+
+/** 운반 가지 → 값별 분기 칸. */
+function branchToCase<T, C>(br: { id: string; values?: Code[]; empty?: true; children: readonly T[] }, child: (t: T) => C): C.SwitchCase<C> {
+  return { id: br.id, values: [...(br.values ?? [])], ...(br.empty ? { empty: true as const } : {}), children: br.children.map(child) };
+}
+
 function inlineToTree(node: C.Inline): InlineNode {
   switch (node.kind) {
     case "optionSlot":
@@ -61,6 +72,8 @@ function inlineToTree(node: C.Inline): InlineNode {
     }
     case "inlineCond":
       return { ...node, branches: node.branches.map((br) => ({ ...br, children: br.children.map(inlineToTree) })) };
+    case "inlineSwitch":
+      return { id: node.id, kind: "inlineCond", switchOn: node.on, branches: node.cases.map((k) => caseToBranch(k, inlineToTree)) };
     default:
       return node;
   }
@@ -80,6 +93,7 @@ function bulletsToTree(node: C.BulletListNode): BulletListNode {
 }
 
 function blockToTree(node: C.Block): BlockNode {
+  if (node.kind === "switchBlock") return { id: node.id, kind: "condBlock", switchOn: node.on, branches: node.cases.map((k) => caseToBranch(k, blockToTree)) };
   if (node.kind === "condBlock") return { ...node, branches: node.branches.map((br) => ({ ...br, children: br.children.map(blockToTree) })) };
   if (node.kind === "bulletList") return bulletsToTree(node);
   if (node.kind === "boxRef") return node;
@@ -88,6 +102,7 @@ function blockToTree(node: C.Block): BlockNode {
 }
 
 function itemBodyToTree(node: C.ItemBodyNode): NonNullable<ParagraphNode["items"]>[number] {
+  if (node.kind === "switchBlock") return { id: node.id, kind: "condBlock", switchOn: node.on, branches: node.cases.map((k) => caseToBranch(k, itemBodyToTree) as { id: string; children: BlockNode[] }) };
   if (node.kind === "condBlock") return { ...node, branches: node.branches.map((br) => ({ ...br, children: br.children.map(itemBodyToTree) as BlockNode[] })) };
   if (node.kind === "bulletList") return bulletsToTree(node);
   if (node.kind === "boxRef") return node;
@@ -95,6 +110,7 @@ function itemBodyToTree(node: C.ItemBodyNode): NonNullable<ParagraphNode["items"
 }
 
 function subitemBodyToTree(node: C.SubitemBodyNode): NonNullable<ItemNode["subitems"]>[number] {
+  if (node.kind === "switchBlock") return { id: node.id, kind: "condBlock", switchOn: node.on, branches: node.cases.map((k) => caseToBranch(k, subitemBodyToTree) as { id: string; children: BlockNode[] }) };
   if (node.kind === "condBlock") return { ...node, branches: node.branches.map((br) => ({ ...br, children: br.children.map(subitemBodyToTree) as BlockNode[] })) };
   return subitemToTree(node);
 }
@@ -171,6 +187,7 @@ function inlineFromTree(node: InlineNode): C.Inline {
       return { id: node.id, kind: "optionSlot", optionCode: code };
     }
     case "inlineCond":
+      if (node.switchOn !== undefined) return { id: node.id, kind: "inlineSwitch", on: node.switchOn, cases: node.branches.map((br) => branchToCase(br, inlineFromTree)) };
       return { ...node, branches: node.branches.map((br) => ({ ...br, children: br.children.map(inlineFromTree) })) };
     default:
       return refuse(node.kind, "문장 안");
@@ -201,6 +218,7 @@ function itemFromTree(node: NonNullable<ParagraphNode["items"]>[number]): C.Item
 }
 
 function blockFromTree(node: BlockNode): C.Block {
+  if (node.kind === "condBlock" && node.switchOn !== undefined) return { id: node.id, kind: "switchBlock", on: node.switchOn, cases: node.branches.map((br) => branchToCase(br, blockFromTree)) };
   if (node.kind === "condBlock") return { ...node, branches: node.branches.map((br) => ({ ...br, children: br.children.map(blockFromTree) })) };
   if (node.kind === "bulletList") return bulletsFromTree(node);
   if (node.kind === "boxRef") return node;
@@ -210,11 +228,15 @@ function blockFromTree(node: BlockNode): C.Block {
 }
 
 function itemBodyFromTree(node: NonNullable<ParagraphNode["items"]>[number]): C.ItemBodyNode {
+  if (node.kind === "condBlock" && node.switchOn !== undefined)
+    return { id: node.id, kind: "switchBlock", on: node.switchOn, cases: node.branches.map((br) => branchToCase(br as { id: string; values?: Code[]; empty?: true; children: NonNullable<ParagraphNode["items"]> }, itemBodyFromTree)) };
   if (node.kind === "condBlock") return { ...node, branches: node.branches.map((br) => ({ ...br, children: (br.children as NonNullable<ParagraphNode["items"]>).map(itemBodyFromTree) })) };
   return itemFromTree(node);
 }
 
 function subitemBodyFromTree(node: NonNullable<ItemNode["subitems"]>[number]): C.SubitemBodyNode {
+  if (node.kind === "condBlock" && node.switchOn !== undefined)
+    return { id: node.id, kind: "switchBlock", on: node.switchOn, cases: node.branches.map((br) => branchToCase(br as { id: string; values?: Code[]; empty?: true; children: NonNullable<ItemNode["subitems"]> }, subitemBodyFromTree)) };
   if (node.kind === "condBlock") return { ...node, branches: node.branches.map((br) => ({ ...br, children: (br.children as NonNullable<ItemNode["subitems"]>).map(subitemBodyFromTree) })) };
   return subitemFromTree(node);
 }

@@ -14,6 +14,10 @@
  *   글머리 목록은 항 자리와 항의 호 목록 자리(호 뒤)에 선다 — 항목(bullet)은 한 줄 문장, 목록 안 조건 블록은 없다(문면보다 좁다).
  * - 호(item)·목(subitem)은 항의 하위 목록으로 매달린다.
  * - 인라인 조건의 중첩은 금지, 블록 조건의 중첩은 허용 (기능/문면 §3.2).
+ * - **값별 분기(switch, 최종 결정 5)** — 대상(인자 · 내부 변수 하나, 목록값) 값마다 칸. 칸은 값 여러 개 또는 「문구 없음」(`empty`).
+ *   모든 값이 정확히 한 칸 · default 칸 없음 · 칸 순서 = 열거형 순서(저장 때 맞춘다). 블록(`switchBlock` — 서 있는 자리의 목록: 항 · 호 · 목)과
+ *   문장 안(`inlineSwitch` — 문장 안 조건과 같은 제약: 문장 안 조건 · 분기 안에 또 두지 못한다) 둘 다. 칸은 가지처럼 투명하다.
+ *   지금은 함수조항 안에서만 연다 — 모양은 문면 노드에도 그대로 옮길 수 있게 가지(조건)와 같은 틀이다.
  * - 식(`slot.ref` · `when`)은 코드 기반 소스 문자열 — 파싱·추출은 expression 모듈.
  * - 노드 id 는 공용조항 하나 안(본문 + 모든 옵션 선택지 본문)에서 유일해야 한다 —
  *   인라인화(`expandClause`)가 `${참조노드id}/${원노드id}` 로 유일화하기 때문.
@@ -91,10 +95,31 @@ export interface OptionSlotNode {
   optionCode: Code;
 }
 
+/**
+ * 값별 분기의 칸 — 값 코드 여러 개(열거형 순서), 또는 「문구 없음」(`empty` — 본문 없음을 명시). 본문은 서 있는 자리의 목록이다(투명).
+ * 지운 열거값 코드는 칸에 남아 「없는 값」 오류가 된다(조용히 지우지 않는다 — ADR-0078 결정 5).
+ */
+export interface SwitchCase<C> {
+  id: Id;
+  values: Code[];
+  empty?: true;
+  children: C[];
+}
+
+/** 문장 안 값별 분기 — 칸 본문은 문장 조각. 문장 안 조건 · 분기 안에 둘 수 없고, 칸 안에도 그것들을 둘 수 없다. */
+export interface InlineSwitchNode {
+  id: Id;
+  kind: "inlineSwitch";
+  /** 대상 식 — 인자 · 내부 변수 하나(`arg.사유` · `var.X`), 목록값(enum) 타입. */
+  on: string;
+  cases: SwitchCase<Inline>[];
+}
+
 export type Inline =
   | TextNode
   | SlotNode
   | InlineCondNode
+  | InlineSwitchNode
   | ArticleRefNode
   | AppendixRefNode
   | OptionSlotNode;
@@ -162,7 +187,15 @@ export interface CondBlockNode {
   branches: BlockBranch[];
 }
 
-export type Block = ParagraphNode | CondBlockNode | BulletListNode | BoxRefNode;
+/** 값별 분기 (블록) — 항 자리에 선다. 칸 본문은 항 목록(투명). 조건 블록 · 분기와 서로 중첩할 수 있다. */
+export interface SwitchBlockNode {
+  id: Id;
+  kind: "switchBlock";
+  on: string;
+  cases: SwitchCase<Block>[];
+}
+
+export type Block = ParagraphNode | CondBlockNode | SwitchBlockNode | BulletListNode | BoxRefNode;
 
 export type BlockKind = Block["kind"];
 
@@ -184,8 +217,16 @@ export interface ItemBranch {
   children: ItemBodyNode[];
 }
 
+/** 호 목록 자리의 값별 분기 — 칸 본문도 호 목록이다. */
+export interface ItemSwitchBlockNode {
+  id: Id;
+  kind: "switchBlock";
+  on: string;
+  cases: SwitchCase<ItemBodyNode>[];
+}
+
 /** 「호」 유형 본문의 한 자리 — 호 목록(list<호>). 사용처 항의 호 목록 자리에 펼쳐지고 번호는 사용처에서 이어 매긴다. */
-export type ItemBodyNode = ItemListNode | ItemCondBlockNode;
+export type ItemBodyNode = ItemListNode | ItemCondBlockNode | ItemSwitchBlockNode;
 
 /** 목 목록 자리의 조건 블록 — 가지 안도 목 목록이다. 중첩 허용. */
 export interface SubitemCondBlockNode {
@@ -200,11 +241,22 @@ export interface SubitemBranch {
   children: SubitemBodyNode[];
 }
 
+/** 목 목록 자리의 값별 분기 — 칸 본문도 목 목록이다. */
+export interface SubitemSwitchBlockNode {
+  id: Id;
+  kind: "switchBlock";
+  on: string;
+  cases: SwitchCase<SubitemBodyNode>[];
+}
+
 /** 「목」 유형 본문의 한 자리 — 목 목록(list<목>). 사용처 호의 목 목록 자리에 펼쳐진다. */
-export type SubitemBodyNode = SubitemNode | SubitemCondBlockNode;
+export type SubitemBodyNode = SubitemNode | SubitemCondBlockNode | SubitemSwitchBlockNode;
 
 /** 공용조항 안에 나타날 수 있는 모든 노드. */
-export type ClauseNode = Inline | Block | ItemNode | SubitemNode | BulletNode | ItemCondBlockNode | SubitemCondBlockNode;
+export type ClauseNode = Inline | Block | ItemNode | SubitemNode | BulletNode | ItemCondBlockNode | SubitemCondBlockNode | ItemSwitchBlockNode | SubitemSwitchBlockNode;
+
+/** 값별 분기 노드(블록 · 문장 안) — 모양이 같아 걷는 쪽이 한 벌로 다룬다. */
+export type AnySwitchNode = InlineSwitchNode | SwitchBlockNode | ItemSwitchBlockNode | SubitemSwitchBlockNode;
 
 export type ClauseNodeKind = ClauseNode["kind"];
 
@@ -212,9 +264,10 @@ export const INLINE_KINDS: readonly InlineKind[] = [
   "text",
   "slot",
   "inlineCond",
+  "inlineSwitch",
   "articleRef",
   "appendixRef",
   "optionSlot",
 ];
 
-export const BLOCK_KINDS: readonly BlockKind[] = ["paragraph", "condBlock", "bulletList", "boxRef"];
+export const BLOCK_KINDS: readonly BlockKind[] = ["paragraph", "condBlock", "switchBlock", "bulletList", "boxRef"];

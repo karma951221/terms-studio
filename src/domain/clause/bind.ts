@@ -127,13 +127,16 @@ export function applyBindings(clause: Clause, bindings: Bindings | undefined, fo
   };
 
   /** 노드 하나 — 모양을 몰라도 걷는다(가지 · 글 · 호 목록 · 목 목록). 슬롯과 가지 조건만 바꾼다. */
-  type Loose = { kind: string; children?: unknown[]; items?: unknown[]; subitems?: unknown[]; branches?: { when?: string; children: unknown[] }[] };
+  type Loose = { kind: string; on?: string; children?: unknown[]; items?: unknown[]; subitems?: unknown[]; branches?: { when?: string; children: unknown[] }[]; cases?: { children: unknown[] }[] };
   const node = (n: ClauseNode): ClauseNode => {
     if (n.kind === "slot") return slot(n);
     const any = n as unknown as Loose;
     const walk = (list: unknown[]) => list.map((c) => node(c as ClauseNode));
     let out: Loose = any;
     if (any.branches) out = { ...out, branches: any.branches.map((br) => ({ ...br, ...(br.when !== undefined ? { when: rewrite(br.when) } : {}), children: walk(br.children) })) };
+    // 값별 분기 — 대상(arg.X · var.X)도 조건처럼 사용처 연결로 바꿔 쓴다(구분자 코드 · 값 리터럴). 칸은 가지처럼 걷는다
+    if (typeof any.on === "string") out = { ...out, on: rewrite(any.on) };
+    if (any.cases) out = { ...out, cases: any.cases.map((k) => ({ ...k, children: walk(k.children) })) };
     if (any.children) out = { ...out, children: walk(any.children) };
     if (any.items) out = { ...out, items: walk(any.items) };
     if (any.subitems) out = { ...out, subitems: walk(any.subitems) };

@@ -46,6 +46,7 @@ export const ALL_EDGE_VIAS = [
   "defaultBinding",
   "binding",
   "local",
+  "switchCase",
   "generalDocument",
   "document",
   "override",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { analyzeBody, collectExpressions, allNodeIds } from "./body";
+import { analyzeBody, collectExpressions, allNodeIds, orderSwitchCases } from "./body";
 import type { Block, Inline } from "./nodes";
 import type { OptionDef } from "./types";
 
@@ -377,5 +377,118 @@ describe("검사 ① — 인자 (최종 결정 2 · 기능/함수조항 §3.7)",
   it("인자 표의 잘못(기본 연결 구분자가 없음)도 검사 ① 이다", () => {
     const bad = [{ name: "담보명", type: { kind: "string" as const }, default: { kind: "discriminator" as const, code: "D0099" } }];
     expect(issuesOf(analyzeBody("inline", [], [], { resolveType }, bad))).toEqual([expect.objectContaining({ kind: "brokenRef", at: expect.objectContaining({ refPath: "D0099" }) })]);
+  });
+});
+
+describe("검사 ① — 값별 분기(switch) (최종 결정 5 · 기능/함수조항 §3.7)", () => {
+  const params = [
+    { name: "사유", type: { kind: "enum" as const, enumCode: "E0001" } },
+    { name: "사유들", type: { kind: "list<enum>" as const, enumCode: "E0001" } },
+    { name: "갱신형", type: { kind: "boolean" as const } },
+  ];
+  const enums = (code: string) => (code === "E0001" ? { values: ["V01", "V02", "V03"], fields: [] } : undefined);
+  const resolveType = () => undefined;
+  const opts = { resolveType, enums };
+  const p = (id: string, text: string): Block => ({ id, kind: "paragraph", children: [{ id: `${id}t`, kind: "text", text }] });
+  const sw = (cases: { id: string; values: string[]; empty?: true; children: Block[] }[], on = "arg.사유"): Block => ({ id: "sw", kind: "switchBlock", on, cases }) as Block;
+
+  it("모든 값이 한 칸 — 통과, 대상 인자의 기본 연결도 요구 참조에 든다", () => {
+    const body = [sw([{ id: "k1", values: ["V01", "V02"], children: [p("p1", "암")] }, { id: "k2", values: ["V03"], empty: true, children: [] }])];
+    expect(unwrap(analyzeBody("block", body, [], opts, params))).toEqual({ discriminators: [], attributes: [] });
+  });
+
+  it("미배정 값 = 오류 (unassignedValue · refPath = 값 코드)", () => {
+    const body = [sw([{ id: "k1", values: ["V01"], children: [p("p1", "암")] }, { id: "k2", values: ["V03"], empty: true, children: [] }])];
+    expect(issuesOf(analyzeBody("block", body, [], opts, params))).toEqual([
+      expect.objectContaining({ kind: "unassignedValue", message: expect.stringContaining("V02"), at: expect.objectContaining({ nodePath: ["sw"], refPath: "V02" }) }),
+    ]);
+  });
+
+  it("두 칸에 같은 값 = 오류", () => {
+    const body = [sw([{ id: "k1", values: ["V01", "V02"], children: [p("p1", "암")] }, { id: "k2", values: ["V02", "V03"], children: [p("p2", "장해")] }])];
+    const issues = issuesOf(analyzeBody("block", body, [], opts, params));
+    expect(issues).toEqual([expect.objectContaining({ kind: "structure", message: expect.stringContaining("두 칸"), at: expect.objectContaining({ nodePath: ["sw", "k2"], refPath: "V02" }) })]);
+  });
+
+  it("지운 열거값 코드가 칸에 남으면 「없는 값」 오류 (brokenRef)", () => {
+    const body = [sw([{ id: "k1", values: ["V01", "V02", "V09"], children: [p("p1", "암")] }, { id: "k2", values: ["V03"], empty: true, children: [] }])];
+    expect(issuesOf(analyzeBody("block", body, [], opts, params))).toEqual([
+      expect.objectContaining({ kind: "brokenRef", message: expect.stringContaining("없는 값 V09"), at: expect.objectContaining({ nodePath: ["sw", "k1"], refPath: "V09" }) }),
+    ]);
+  });
+
+  it("목록값(복수) 대상 = 오류 — 목록은 내부 변수 + 조건으로", () => {
+    const body = [sw([{ id: "k1", values: ["V01", "V02", "V03"], children: [p("p1", "암")] }], "arg.사유들")];
+    expect(issuesOf(analyzeBody("block", body, [], opts, params))).toEqual([expect.objectContaining({ kind: "typeMismatch", message: expect.stringContaining("목록값(복수)") })]);
+  });
+
+  it("대상이 목록값이 아니거나 인자 · 내부 변수 하나가 아니면 오류", () => {
+    const notEnum = [sw([{ id: "k1", values: ["V01"], children: [p("p1", "암")] }], "arg.갱신형")];
+    expect(issuesOf(analyzeBody("block", notEnum, [], opts, params)).map((i) => i.kind)).toEqual(["typeMismatch"]);
+    const expr = [sw([{ id: "k1", values: ["V01"], children: [p("p1", "암")] }], "arg.사유 = 'V01'")];
+    expect(issuesOf(analyzeBody("block", expr, [], opts, params))).toEqual([expect.objectContaining({ message: expect.stringContaining("인자 · 내부 변수 하나") })]);
+  });
+
+  it("문구 없음 칸은 본문을 가질 수 없고, 문구 없음이 아닌 칸은 본문이 있어야 한다 · 값 없는 칸도 오류", () => {
+    const body = [
+      sw([
+        { id: "k1", values: ["V01"], empty: true, children: [p("p1", "암")] },
+        { id: "k2", values: ["V02"], children: [] },
+        { id: "k3", values: [], children: [p("p3", "기타")] },
+        { id: "k4", values: ["V03"], children: [p("p4", "질병")] },
+      ]),
+    ];
+    const messages = issuesOf(analyzeBody("block", body, [], opts, params)).map((i) => i.message);
+    expect(messages).toEqual([expect.stringContaining("「문구 없음」 칸은 본문을"), expect.stringContaining("본문을 쓰거나 「문구 없음」"), expect.stringContaining("값이 없는 칸")]);
+  });
+
+  it("문장 안 switch 안에 문장 안 조건 = 오류, 문장 안 조건 안에 문장 안 switch 도 오류", () => {
+    const inner: Inline = { id: "c1", kind: "inlineCond", branches: [{ id: "b1", when: "arg.갱신형", children: [{ id: "t1", kind: "text", text: "갱신" }] }] };
+    const body: Inline[] = [{ id: "s1", kind: "inlineSwitch", on: "arg.사유", cases: [{ id: "k1", values: ["V01", "V02", "V03"], children: [inner] }] }];
+    expect(issuesOf(analyzeBody("inline", body, [], opts, params))).toEqual([expect.objectContaining({ message: expect.stringContaining("중첩 금지"), at: expect.objectContaining({ nodePath: ["s1", "k1", "c1"] }) })]);
+    const reverse: Inline[] = [{ id: "c1", kind: "inlineCond", branches: [{ id: "b1", when: "arg.갱신형", children: [{ id: "s1", kind: "inlineSwitch", on: "arg.사유", cases: [{ id: "k1", values: ["V01", "V02", "V03"], children: [] , empty: true }] }] }] }];
+    expect(issuesOf(analyzeBody("inline", reverse, [], opts, params)).map((i) => i.message)).toEqual([expect.stringContaining("중첩 금지")]);
+  });
+
+  it("호 · 목 유형 본문의 목록 자리에도 switch 가 선다 — 칸 본문도 그 목록", () => {
+    const item = (id: string) => ({ id, kind: "item" as const, children: [{ id: `${id}t`, kind: "text" as const, text: "호" }] });
+    const body = [{ id: "sw", kind: "switchBlock" as const, on: "arg.사유", cases: [{ id: "k1", values: ["V01", "V02"], children: [item("i1"), item("i2")] }, { id: "k2", values: ["V03"], children: [item("i3")] }] }];
+    expect(analyzeBody("item", body, [], opts, params).ok).toBe(true);
+    const bad = [{ ...body[0], cases: [{ id: "k1", values: ["V01", "V02", "V03"], children: [p("p1", "항")] }] }];
+    expect(analyzeBody("item", bad as never, [], opts, params).ok).toBe(false);
+  });
+
+  it("식 수집 · id 수집 · 제 항 대상이 칸 안까지 걷는다", () => {
+    const body = [sw([{ id: "k1", values: ["V01", "V02"], children: [p("p1", "암")] }, { id: "k2", values: ["V03"], children: [p("p2", "질병")] }])];
+    expect(collectExpressions(body)).toEqual([{ source: "arg.사유", role: "switch", nodePath: ["sw"] }]);
+    expect(allNodeIds(body)).toEqual(["sw", "k1", "p1", "p1t", "k2", "p2", "p2t"]);
+  });
+
+  it("타입 조회가 없으면 대상 타입 · 값 배정 검사는 건너뛴다(구조만)", () => {
+    const body = [sw([{ id: "k1", values: ["V01"], children: [p("p1", "암")] }])];
+    expect(analyzeBody("block", body, [], {}, params).ok).toBe(true);
+  });
+});
+
+describe("칸 순서 = 열거형 순서 — 저장 때 맞춘다 (최종 결정 5)", () => {
+  const params = [{ name: "사유", type: { kind: "enum" as const, enumCode: "E0001" } }];
+  const enums = (code: string) => (code === "E0001" ? { values: ["V01", "V02", "V03"], fields: [] } : undefined);
+  it("칸은 첫 값 기준 열거형 순서로, 칸 안 값도 열거형 순서로", () => {
+    const body: Block[] = [
+      {
+        id: "sw",
+        kind: "switchBlock",
+        on: "arg.사유",
+        cases: [
+          { id: "k2", values: ["V03", "V02"], children: [{ id: "p2", kind: "paragraph", children: [] }] },
+          { id: "k1", values: ["V01"], empty: true, children: [] },
+        ],
+      },
+    ];
+    const out = orderSwitchCases(body, params, [], { resolveType: () => undefined, enums }) as Block[];
+    expect((out[0] as { cases: { id: string; values: string[] }[] }).cases.map((k) => [k.id, k.values])).toEqual([
+      ["k1", ["V01"]],
+      ["k2", ["V02", "V03"]],
+    ]);
   });
 });

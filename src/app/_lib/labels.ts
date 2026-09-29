@@ -184,11 +184,15 @@ export const LEVEL_OPTIONS = ATTACH_LEVELS.map((value) => ({ value, label: LEVEL
 
 export const ROLE_LABEL = { admin: "관리자", editor: "편집자" } as const;
 
+/** 값별 분기(switch) 화면 단어 (화면단어 — 「switch」 · 「케이스」 · 「default」는 쓰지 않는다). */
+export const SWITCH_WORD = { switch: "값별 분기", inlineSwitch: "문장 안 값별 분기", case: "칸", empty: "문구 없음", unassigned: "칸 없는 값" } as const;
+
 export const REFERENCE_VIA_LABEL = {
   when: "조건식",
   slot: "치환 슬롯",
   expression: "파생식",
   local: "내부 변수",
+  switchCase: "값별 분기",
   nodeQualifier: "노드 한정자",
   clauseRef: "함수조항 참조",
   optionSelect: "옵션 선택",

@@ -25,6 +25,7 @@ import {
   checkNodeRefs,
   coordinateOf,
   indexTree,
+  isSwitchCarrier,
   listOf,
   slotsOf,
   tableIssues,
@@ -108,6 +109,10 @@ export type Command =
   /** `when` 없음 = else 로 바꾼다. */
   | { type: "setWhen"; branchId: Id; when?: string }
   | { type: "removeBranch"; branchId: Id }
+  /** 값별 분기 운반체의 대상 식 (함수조항 편집기 — 최종 결정 5). */
+  | { type: "setSwitch"; nodeId: Id; on: string }
+  /** 값별 분기 칸의 값 · 「문구 없음」 — 「문구 없음」은 본문이 없을 때만. */
+  | { type: "setCase"; branchId: Id; values: readonly Code[]; empty?: boolean }
   | { type: "moveBranch"; branchId: Id; index: number }
   /** 조연결 설정(`linkedArticleId`) 또는 해제(undefined). */
   | { type: "link"; articleId: Id; linkedArticleId?: Id };
@@ -236,7 +241,9 @@ function danglingRefs(ix: TreeIndex, removed: ReadonlySet<Id>, env: TreeEnv): Is
 }
 
 /** else 는 마지막에 최대 1개 (D-P4-11). */
-function elseRule(branches: (BlockBranch | InlineBranch)[], path: Id[]): Result<void> {
+function elseRule(branches: (BlockBranch | InlineBranch)[], path: Id[], owner?: Node): Result<void> {
+  // 값별 분기 운반체의 칸은 `when` 이 없다 — else 규칙이 아니라 값 배정 규칙(함수조항 저장 검사)을 따른다
+  if (owner && isSwitchCarrier(owner)) return ok(undefined);
   const elseAt = branches.findIndex((b) => b.when === undefined);
   if (elseAt !== -1 && elseAt !== branches.length - 1) return structure("else 가지는 마지막에만 올 수 있습니다", path);
   if (branches.filter((b) => b.when === undefined).length > 1) return structure("else 가지는 하나만 둘 수 있습니다", path);
@@ -584,7 +591,7 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       if (!brs) return structure("조건 노드가 아닙니다", e.value.path);
       const branch = structuredClone(cmd.branch);
       brs.splice(clampIndex(cmd.index, brs.length), 0, branch as BlockBranch & InlineBranch);
-      const rule = elseRule(brs, e.value.path);
+      const rule = elseRule(brs, e.value.path, e.value.node);
       if (!rule.ok) return rule;
       const after = indexTree(work, env.coordinate);
       const ids = new Set<Id>([branch.id]);
@@ -600,8 +607,29 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       if (cmd.when === undefined) delete b.branch.when;
       else b.branch.when = cmd.when;
       const owner = ix.nodes.get(b.ownerId)!;
-      const rule = elseRule(branchesOf(owner.node)!, owner.path);
+      const rule = elseRule(branchesOf(owner.node)!, owner.path, owner.node);
       return rule.ok ? ok(work) : rule;
+    }
+
+    case "setSwitch": {
+      const e = entryOf(ix, cmd.nodeId);
+      if (!e.ok) return e;
+      const n = e.value.node;
+      if (!isSwitchCarrier(n) || (n.kind !== "condBlock" && n.kind !== "inlineCond")) return structure("값별 분기가 아닙니다", e.value.path);
+      n.switchOn = cmd.on;
+      return ok(work);
+    }
+
+    case "setCase": {
+      const b = ix.branches.get(cmd.branchId);
+      if (!b) return notFound(`칸 ${cmd.branchId}`);
+      const owner = ix.nodes.get(b.ownerId)!;
+      if (!isSwitchCarrier(owner.node)) return structure("값별 분기의 칸이 아닙니다", owner.path);
+      if (cmd.empty && b.branch.children.length > 0) return structure("「문구 없음」 칸은 본문이 없어야 합니다 — 본문을 먼저 지운다", b.path);
+      b.branch.values = [...cmd.values];
+      if (cmd.empty) b.branch.empty = true;
+      else delete b.branch.empty;
+      return ok(work);
     }
 
     case "removeBranch": {
@@ -625,7 +653,7 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       const brs = branchesOf(owner.node)!;
       brs.splice(b.index, 1);
       brs.splice(clampIndex(cmd.index, brs.length), 0, b.branch as BlockBranch & InlineBranch);
-      const rule = elseRule(brs, owner.path);
+      const rule = elseRule(brs, owner.path, owner.node);
       return rule.ok ? ok(work) : rule;
     }
 

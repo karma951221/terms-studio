@@ -95,6 +95,7 @@ export const EDGE_STYLE = {
   defaultBinding: "solid",
   binding: "solid",
   local: "solid",
+  switchCase: "solid",
   generalDocument: "dashed",
   document: "dashed",
   override: "dashed",

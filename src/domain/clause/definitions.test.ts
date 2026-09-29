@@ -184,6 +184,23 @@ describe("함수조항 — 표시명 · 설명 · 본문 · 모드 수정", () =
     expect(shrunk.required.discriminators).toEqual([]);
   });
 
+  it("값별 분기의 칸은 저장할 때 열거형 순서로 맞춘다 (최종 결정 5)", async () => {
+    const enums = (code: string) => (code === "E0001" ? { values: ["V01", "V02"], fields: [] } : undefined);
+    const body: Block[] = [
+      {
+        id: "sw",
+        kind: "switchBlock",
+        on: "arg.사유",
+        cases: [
+          { id: "k2", values: ["V02"], children: [{ id: "p2", kind: "paragraph", children: [{ id: "t2", kind: "text", text: "장해" }] }] },
+          { id: "k1", values: ["V01"], empty: true, children: [] },
+        ],
+      },
+    ];
+    const made = unwrap(await createClause({ params: [{ name: "사유", type: { kind: "enum", enumCode: "E0001" } }], label: "정의", mode: "block", body }, ctx({ analyze: { enums } }))) as BlockClause;
+    expect((made.body[0] as { cases: { id: string }[] }).cases.map((k) => k.id)).toEqual(["k1", "k2"]);
+  });
+
   it("본문 수정도 모드와 어긋나면 거부", () => {
     expect(reasonOf(setBody(clause, [{ id: "t", kind: "text", text: "x" }] as Inline[]))).toBe("invalid");
   });

@@ -15,11 +15,11 @@
  *   `generalReferenceIds` · `appendixExists` 를 줬을 때만 검사한다 — 문서 쪽 `validateTree` 와 같은 관례.
  */
 import { checkTypes, extractRefs, parse } from "../expression";
-import type { EnumInfo, Expr, TypeResolver } from "../expression";
+import type { EnumInfo, Expr, ExprType, Ref, TypeResolver } from "../expression";
 import { CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, ok, reject } from "../types";
 import type { Code, Coordinate, Id, Issue, Result } from "../types";
 import { BLOCK_KINDS, HOST_PATH, INLINE_KINDS } from "./nodes";
-import type { Block, BoxRefNode, BulletListNode, ClauseNode, Inline, InlineBranch, BlockBranch, ItemBodyNode, ItemNode, SubitemBodyNode } from "./nodes";
+import type { AnySwitchNode, Block, BoxRefNode, BulletListNode, ClauseNode, Inline, InlineBranch, BlockBranch, ItemBodyNode, ItemNode, SubitemBodyNode, SwitchCase } from "./nodes";
 import { checkLocals, planFieldType, type LocalDef } from "./locals";
 import { checkParams, type ParamDef } from "./params";
 import type { ClauseBody, ClauseMode, OptionDef, RequiredRefs } from "./types";
@@ -29,8 +29,8 @@ import type { ClauseBody, ClauseMode, OptionDef, RequiredRefs } from "./types";
 export interface CollectedExpression {
   /** 식 원문. */
   source: string;
-  /** 쓰임 — 슬롯 치환 또는 조건. */
-  role: "slot" | "condition";
+  /** 쓰임 — 슬롯 치환 · 조건 · 값별 분기의 대상. */
+  role: "slot" | "condition" | "switch";
   /** 루트에서 이 식이 달린 노드(가지 포함)까지의 id 경로. */
   nodePath: Id[];
 }
@@ -54,6 +54,11 @@ export function collectExpressions(body: ClauseBody, basePath: Id[] = []): Colle
           if (br.when !== undefined) out.push({ source: br.when, role: "condition", nodePath: bp });
           for (const c of br.children) walk(c, bp);
         }
+        return;
+      case "inlineSwitch":
+      case "switchBlock":
+        out.push({ source: node.on, role: "switch", nodePath: here });
+        for (const k of node.cases as { id: Id; children: ClauseNode[] }[]) for (const c of k.children ?? []) walk(c, [...here, k.id]);
         return;
       case "bulletList":
         // 글머리 목록은 번호가 없어 좌표에 목록 id 만 끼운다 — 항목 문장은 [..., 목록, 항목] 아래
@@ -84,9 +89,9 @@ export function allNodeIds(body: ClauseBody): Id[] {
   const ids: Id[] = [];
   const visit = (node: unknown) => {
     if (!node || typeof node !== "object") return;
-    const n = node as { id?: Id; children?: unknown[]; items?: unknown[]; subitems?: unknown[]; branches?: unknown[] };
+    const n = node as { id?: Id; children?: unknown[]; items?: unknown[]; subitems?: unknown[]; branches?: unknown[]; cases?: unknown[] };
     if (typeof n.id === "string") ids.push(n.id);
-    for (const key of ["children", "items", "subitems", "branches"] as const) {
+    for (const key of ["children", "items", "subitems", "branches", "cases"] as const) {
       const list = n[key];
       if (Array.isArray(list)) for (const c of list) visit(c);
     }
@@ -100,9 +105,13 @@ export function structuralIds(body: ClauseBody): Id[] {
   const out: Id[] = [];
   const visit = (n: unknown) => {
     if (!n || typeof n !== "object") return;
-    const node = n as { id?: Id; kind?: string; branches?: { children?: unknown[] }[]; items?: unknown[]; subitems?: unknown[] };
+    const node = n as { id?: Id; kind?: string; branches?: { children?: unknown[] }[]; cases?: { children?: unknown[] }[]; items?: unknown[]; subitems?: unknown[] };
     if (node.kind === "condBlock") {
       for (const br of node.branches ?? []) for (const c of br.children ?? []) visit(c);
+      return;
+    }
+    if (node.kind === "switchBlock") {
+      for (const k of node.cases ?? []) for (const c of k.children ?? []) visit(c);
       return;
     }
     // 글머리 목록 · 박스는 번호가 없어 가리킬 수 없다
@@ -167,7 +176,9 @@ export function analyzeBody(
   const optionCodes = new Set(options.map((o) => o.code));
   /** 본문의 항 · 호 · 목 id — 「이 공용조항」 조 참조의 대상 후보. 선택지 문구에는 구조가 없다. */
   const structIds = new Set(mode === "inline" ? [] : structuralIds(body));
-  const exprs: { expr: Expr; role: "slot" | "condition"; path: Id[] }[] = [];
+  const exprs: { expr: Expr; role: "slot" | "condition" | "switch"; path: Id[] }[] = [];
+  /** 값별 분기 — 대상 참조(인자 · 내부 변수)가 읽혔으면 타입 · 값 배정 검사를 뒤(인자 · 내부 변수 표 뒤)에서 한다. */
+  const switches: { node: AnySwitchNode; ref: Ref & { kind: "param" | "local" }; path: Id[]; expr: (typeof exprs)[number] }[] = [];
 
   const report = (kind: Issue["kind"], message: string, path: Id[], refPath?: string) => {
     issues.push({ kind, message, at: { ...base, nodePath: path, ...(refPath ? { refPath } : {}) } });
@@ -183,7 +194,7 @@ export function analyzeBody(
     report("typeMismatch", why, [...path, String(node.id ?? "?")]);
   };
 
-  const checkExpr = (source: string, role: "slot" | "condition", path: Id[]) => {
+  const checkExpr = (source: string, role: "slot" | "condition" | "switch", path: Id[]) => {
     const parsed = parse(source, { ...base, nodePath: path });
     if (!parsed.ok) {
       if (parsed.rejection.reason === "invalid") issues.push(...parsed.rejection.issues);
@@ -195,6 +206,39 @@ export function analyzeBody(
       return;
     }
     exprs.push({ expr: parsed.value, role, path });
+  };
+
+  /**
+   * 값별 분기의 모양 (최종 결정 5) — 칸이 하나 이상 · 대상은 인자 · 내부 변수 하나 · 칸마다 값 하나 이상 ·
+   * 「문구 없음」 칸은 본문 없음, 아닌 칸은 본문 있음(빈 칸을 말없이 두지 않는다). 칸 본문은 서 있는 자리의 규칙(`each`)으로.
+   */
+  const checkSwitch = <C>(node: { id: Id; on?: unknown; cases?: SwitchCase<C>[] }, path: Id[], each: (children: C[], cp: Id[]) => void) => {
+    const here = [...path, node.id];
+    if (typeof node.on !== "string" || node.on.trim() === "") report("structure", "값별 분기에는 대상(인자 · 내부 변수)이 있어야 합니다", here);
+    else {
+      const parsed = parse(node.on, { ...base, nodePath: here });
+      if (!parsed.ok) {
+        if (parsed.rejection.reason === "invalid") issues.push(...parsed.rejection.issues);
+      } else if (parsed.value.kind !== "ref" || (parsed.value.ref.kind !== "param" && parsed.value.ref.kind !== "local")) {
+        report("typeMismatch", `값별 분기의 대상은 인자 · 내부 변수 하나여야 합니다: ${node.on}`, here, node.on);
+      } else {
+        const expr = { expr: parsed.value, role: "switch" as const, path: here };
+        exprs.push(expr);
+        switches.push({ node: node as unknown as AnySwitchNode, ref: parsed.value.ref as Ref & { kind: "param" | "local" }, path: here, expr });
+      }
+    }
+    if (!Array.isArray(node.cases) || node.cases.length === 0) {
+      report("structure", "값별 분기에는 칸이 하나 이상 있어야 합니다", here);
+      return;
+    }
+    for (const k of node.cases) {
+      const cp = [...here, String(k?.id ?? "?")];
+      const children = Array.isArray(k?.children) ? k.children : [];
+      if (k?.empty && children.length > 0) report("structure", "「문구 없음」 칸은 본문을 가질 수 없습니다 — 본문을 지우거나 「문구 없음」을 끈다", cp);
+      if (!k?.empty && children.length === 0) report("structure", "칸이 비었습니다 — 본문을 쓰거나 「문구 없음」으로 둡니다", cp);
+      if (!Array.isArray(k?.values) || k.values.length === 0) report("structure", "값이 없는 칸입니다 — 값을 하나 이상 고른다", cp);
+      each(children, cp);
+    }
   };
 
   const checkBranches = <B extends { id: Id; when?: string }>(branches: B[], path: Id[], each: (br: B, bp: Id[]) => void) => {
@@ -280,6 +324,16 @@ export function analyzeBody(
           for (const c of (br as InlineBranch).children ?? []) checkInline(c, bp, true);
         });
         return;
+      case "inlineSwitch":
+        // 문장 안 분기는 문장 안 조건과 같은 제약 — 서로 안에 두지 못한다 (최종 결정 5)
+        if (insideCond) {
+          report("typeMismatch", "문장 안 조건 · 분기 안에 문장 안 분기를 둘 수 없습니다 (중첩 금지)", here);
+          return;
+        }
+        checkSwitch(node, path, (children, cp) => {
+          for (const c of children) checkInline(c, cp, true);
+        });
+        return;
     }
   };
 
@@ -315,6 +369,10 @@ export function analyzeBody(
         checkBranches(si.branches, here, (br, bp) => checkSubitemList(br.children ?? [], bp, true));
         continue;
       }
+      if (si?.kind === "switchBlock" && allowCond) {
+        checkSwitch(si, path, (children, cp) => checkSubitemList(children, cp, true));
+        continue;
+      }
       if (si?.kind !== "subitem") {
         kindError(si ?? {}, path, "목");
         continue;
@@ -344,6 +402,10 @@ export function analyzeBody(
         checkBranches(it.branches, [...path, it.id], (br, bp) => checkItemList(br.children ?? [], bp, true));
         continue;
       }
+      if (it?.kind === "switchBlock" && allowCond) {
+        checkSwitch(it, path, (children, cp) => checkItemList(children, cp, true));
+        continue;
+      }
       if (it?.kind !== "item") {
         kindError(it ?? {}, path, "호");
         continue;
@@ -360,6 +422,12 @@ export function analyzeBody(
     if (node.kind === "paragraph") {
       checkInlines(node.children, here);
       checkItemList(node.items ?? [], here, false);
+      return;
+    }
+    if (node.kind === "switchBlock") {
+      checkSwitch(node, path, (children, cp) => {
+        for (const c of children) checkBlock(c, cp);
+      });
       return;
     }
     checkBranches(node.branches, here, (br, bp) => {
@@ -430,11 +498,33 @@ export function analyzeBody(
       if (tainted.has(e)) continue;
       const at = { ...base, nodePath: e.path };
       const r = checkTypes(e.expr, resolveType, { coordinate: at, ...clauseCtx, ...(e.role === "condition" ? { expect: "boolean" as const } : {}) });
-      if (!r.ok && r.rejection.reason === "invalid") issues.push(...r.rejection.issues);
-      else if (e.role === "slot" && r.ok && r.value.kind !== "string" && r.value.kind !== "enum") {
+      if (!r.ok && r.rejection.reason === "invalid") {
+        issues.push(...r.rejection.issues);
+        if (e.role === "switch") tainted.add(e);
+      } else if (e.role === "slot" && r.ok && r.value.kind !== "string" && r.value.kind !== "enum") {
         report("typeMismatch", `값 슬롯은 string·enum 만 허용합니다 (${r.value.kind} 불가)`, e.path, e.expr.kind === "ref" ? undefined : "");
       }
     }
+  }
+
+  // 5b. 값별 분기 — 대상 타입(목록값 하나) · 값마다 정확히 한 칸 · 지운 값(「없는 값」). 대상 타입을 모르면 건너뛴다(선언 없음은 위가 잡는다)
+  const typeOf = (ref: Ref & { kind: "param" | "local" }) => (ref.kind === "param" ? declared.get(ref.name) : lc.failed.has(ref.name) ? undefined : lc.types.get(ref.name));
+  for (const s of switches) {
+    if (tainted.has(s.expr)) continue;
+    const t = typeOf(s.ref) as ExprType | undefined;
+    if (!t) continue;
+    const where = s.ref.kind === "param" ? `arg.${s.ref.name}` : `var.${s.ref.name}`;
+    if (t.kind === "list<enum>") {
+      report("typeMismatch", `목록값(복수)은 값별 분기의 대상이 될 수 없습니다: ${where} — 목록은 내부 변수(있음 · 거르기) + 조건으로 나눈다`, s.path, where);
+      continue;
+    }
+    if (t.kind !== "enum") {
+      report("typeMismatch", `값별 분기의 대상은 목록값(enum)이어야 합니다: ${where} (${t.kind})`, s.path, where);
+      continue;
+    }
+    const values = enumValuesOf(opts, t.enumCode);
+    if (!values) continue;
+    for (const issue of switchValueIssues(s.node, values, t.enumCode, { ...base, nodePath: s.path })) issues.push(issue);
   }
 
   if (issues.length > 0) return reject({ reason: "invalid", issues });
@@ -456,4 +546,84 @@ export function analyzeBody(
     }
   }
   return ok({ discriminators, attributes });
+}
+
+// ───────────────────────────── 값별 분기 (최종 결정 5) ─────────────────────────────
+
+function enumValuesOf(opts: Pick<AnalyzeOptions, "enums" | "enumValues">, enumCode: Code): readonly Code[] | undefined {
+  return opts.enums?.(enumCode)?.values ?? opts.enumValues?.(enumCode);
+}
+
+/**
+ * 값별 분기의 값 배정 — 값마다 정확히 한 칸 (최종 결정 5).
+ * - 두 칸에 같은 값 = structure(좌표 = 뒤 칸 · refPath 값) · 열거형에 없는 값(지운 값) = 「없는 값」 brokenRef(좌표 = 그 칸) ·
+ *   칸이 없는 값 = `unassignedValue`(좌표 = 분기 · refPath 값, 값마다 하나).
+ * 함수조항 저장(검사 ①)이 쓴다 — 열거값 추가로 생긴 미배정은 저장을 막지 않고 재검사 목록으로 드러난다(열거형 저장은 함수조항을 다시 검사하지 않는다).
+ */
+export function switchValueIssues(node: { cases: readonly { id: Id; values: readonly Code[] }[] }, values: readonly Code[], enumCode: Code, at: Coordinate): Issue[] {
+  const out: Issue[] = [];
+  const known = new Set(values);
+  const seen = new Map<Code, Id>();
+  const path = at.nodePath ?? [];
+  for (const k of node.cases) {
+    const cp: Coordinate = { ...at, nodePath: [...path, k.id] };
+    for (const v of k.values ?? []) {
+      if (!known.has(v)) {
+        out.push({ kind: "brokenRef", message: `없는 값 ${v} — ${enumCode}에서 지워진 값입니다. 칸에서 빼거나 다른 값으로 바꾼다`, at: { ...cp, refPath: v } });
+        continue;
+      }
+      if (seen.has(v)) {
+        out.push({ kind: "structure", message: `값 ${v} 이(가) 두 칸에 있습니다 — 값마다 칸 하나`, at: { ...cp, refPath: v } });
+        continue;
+      }
+      seen.set(v, k.id);
+    }
+  }
+  for (const v of values) {
+    if (!seen.has(v)) out.push({ kind: "unassignedValue", message: `값별 분기에 칸이 없는 값: ${v} — 칸에 배정하거나 「문구 없음」 칸에 넣는다`, at: { ...at, refPath: v } });
+  }
+  return out;
+}
+
+/** 값별 분기 대상의 열거형 코드 — 인자 선언 타입 · 내부 변수 타입으로. 목록값 하나가 아니면 undefined. */
+export function switchEnumCode(on: string, params: readonly ParamDef[], localTypes: (name: string) => ExprType | undefined): Code | undefined {
+  const parsed = parse(on);
+  if (!parsed.ok || parsed.value.kind !== "ref") return undefined;
+  const ref = parsed.value.ref;
+  const t = ref.kind === "param" ? params.find((p) => p.name === ref.name)?.type : ref.kind === "local" ? localTypes(ref.name) : undefined;
+  return t?.kind === "enum" ? t.enumCode : undefined;
+}
+
+/**
+ * 칸 순서 = 열거형 순서 — 저장할 때 맞춘다(첫 값 기준, 칸 안 값도 열거형 순서). 대상 타입 · 열거형을 모르면 그대로.
+ * 본문 모양(유형)을 몰라도 걷는다 — 칸 안의 분기도 맞춘다.
+ */
+export function orderSwitchCases(body: ClauseBody, params: readonly ParamDef[], locals: readonly LocalDef[], opts: AnalyzeOptions = {}): ClauseBody {
+  const lc = checkLocals(locals, params, { ...(opts.resolveType ? { resolveType: opts.resolveType } : {}), ...(opts.enums ? { enums: opts.enums } : {}) });
+  const rank = (order: readonly Code[]) => (v: Code | undefined) => {
+    const i = v === undefined ? -1 : order.indexOf(v);
+    return i < 0 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  type Loose = { kind?: string; on?: string; cases?: { values: Code[]; children: unknown[] }[]; [key: string]: unknown };
+  const visit = (n: unknown): unknown => {
+    if (!n || typeof n !== "object") return n;
+    let node = n as Loose;
+    for (const key of ["children", "items", "subitems", "branches"] as const) {
+      const list = node[key];
+      if (Array.isArray(list)) node = { ...node, [key]: list.map(visit) };
+    }
+    if ((node.kind === "switchBlock" || node.kind === "inlineSwitch") && Array.isArray(node.cases)) {
+      const code = typeof node.on === "string" ? switchEnumCode(node.on, params, (name) => (lc.failed.has(name) ? undefined : lc.types.get(name))) : undefined;
+      const order = code ? enumValuesOf(opts, code) : undefined;
+      const cases = node.cases.map((k) => ({ ...k, children: Array.isArray(k.children) ? k.children.map(visit) : k.children }));
+      if (order) {
+        const r = rank(order);
+        for (const k of cases) if (Array.isArray(k.values)) k.values = [...k.values].sort((a, b) => r(a) - r(b));
+        cases.sort((a, b) => r(a.values?.[0]) - r(b.values?.[0]));
+      }
+      node = { ...node, cases };
+    }
+    return node;
+  };
+  return (body as unknown[]).map(visit) as ClauseBody;
 }

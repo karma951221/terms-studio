@@ -24,6 +24,7 @@ function mapInlines(body: ClauseBody, fn: (nodes: readonly Inline[]) => Inline[]
   const blocks = (nodes: readonly Block[]): Block[] =>
     nodes.map((node) => {
       if (node.kind === "condBlock") return { ...node, branches: node.branches.map((branch) => ({ ...branch, children: blocks(branch.children) })) };
+      if (node.kind === "switchBlock") return { ...node, cases: node.cases.map((k) => ({ ...k, children: blocks(k.children) })) };
       if (node.kind === "bulletList") return bullets(node);
       if (node.kind === "boxRef") return node;
       return {
@@ -53,6 +54,7 @@ export function remapOptionSlots(body: ClauseBody, codes: ReadonlyMap<string, st
         return next ? { ...node, optionCode: next } : node;
       }
       if (node.kind === "inlineCond") return { ...node, branches: node.branches.map((branch) => ({ ...branch, children: remap(branch.children) })) };
+      if (node.kind === "inlineSwitch") return { ...node, cases: node.cases.map((k) => ({ ...k, children: remap(k.children) })) };
       return node;
     });
   return mapInlines(body, remap);
@@ -65,6 +67,7 @@ export function usedOptionCodes(body: ClauseBody): Set<string> {
     for (const node of nodes) {
       if (node.kind === "optionSlot") out.add(node.optionCode);
       if (node.kind === "inlineCond") for (const branch of node.branches) walk(branch.children);
+      if (node.kind === "inlineSwitch") for (const k of node.cases) walk(k.children);
     }
     return [...nodes];
   };

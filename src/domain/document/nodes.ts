@@ -35,18 +35,30 @@ export interface SlotNode {
   ref: string;
 }
 
-/** 인라인 조건의 가지. `when` 없음 = else (마지막 가지에만, 최대 1개 — D-P4-11). */
-export interface InlineBranch {
+/** 인라인 조건의 가지. `when` 없음 = else (마지막 가지에만, 최대 1개 — D-P4-11). 값별 분기 운반체면 칸(`values` · `empty`). */
+export interface InlineBranch extends SwitchCaseMark {
   id: Id;
   when?: string;
   children: InlineNode[];
 }
 
-/** 인라인 조건 (문장 중간 if/elif/else). 중첩 금지 (기능/문면 §3.2). */
+/**
+ * 값별 분기(switch, 최종 결정 5)의 편집 트리 운반 — 조건 노드(블록 · 문장 안)에 `switchOn`(대상 식)을 달면 값별 분기이고, 가지가 칸이다.
+ * 칸은 `when` 없이 값 코드(`values`) · 「문구 없음」(`empty`)을 든다. 가지 규칙(투명 · 자리 · 문장 안 중첩 금지)을 그대로 물려받아
+ * 편집 명령 · 색인 · 렌더러를 한 벌로 쓴다. 모델은 함수조항 본문의 `switchBlock` · `inlineSwitch`(clause/nodes.ts) — 어댑터(clauseTree.ts)가 옮긴다.
+ * **지금은 함수조항 편집기만 싣는다** — 저장 검사는 `TreeEnv.switches` 가 없으면 거부한다(템플릿에서 열 때 이 표지만 켠다).
+ */
+export interface SwitchCaseMark {
+  values?: Code[];
+  empty?: true;
+}
+
+/** 인라인 조건 (문장 중간 if/elif/else). 중첩 금지 (기능/문면 §3.2). `switchOn` 이 있으면 문장 안 값별 분기 운반체. */
 export interface InlineCondNode {
   id: Id;
   kind: "inlineCond";
   branches: InlineBranch[];
+  switchOn?: string;
 }
 
 /** 인라인 반복 — 자리만 (구현 P7). `source` 는 순회 소스(`subCoverage` · `benefit`), `separator` 는 원소 구분 문자열 (D-P4-17). */
@@ -202,7 +214,7 @@ export interface ParagraphNode {
 }
 
 /** 블록 조건의 가지. */
-export interface BlockBranch {
+export interface BlockBranch extends SwitchCaseMark {
   id: Id;
   when?: string;
   children: BlockNode[];
@@ -216,6 +228,13 @@ export interface CondBlockNode {
   id: Id;
   kind: "condBlock";
   branches: BlockBranch[];
+  /** 있으면 값별 분기 운반체(`SwitchCaseMark`) — 대상 식. */
+  switchOn?: string;
+}
+
+/** 조건 노드가 값별 분기 운반체인가. */
+export function isSwitchCarrier(node: Node): boolean {
+  return (node.kind === "condBlock" || node.kind === "inlineCond") && node.switchOn !== undefined;
 }
 
 /** 블록 반복 — 자리만 (P7). 항 이하 구조 노드를 품는다. 중첩 금지 (D-P4-16). */
@@ -539,7 +558,7 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
       brs.forEach((br, i) => {
         const bpath = [...path, br.id];
         if (seen(br.id, bpath, articleId)) return;
-        if (br.when === undefined && i !== brs.length - 1) {
+        if (br.when === undefined && i !== brs.length - 1 && !isSwitchCarrier(node)) {
           structure("else 가지는 마지막에만 올 수 있습니다", path, articleId);
         }
         branches.set(br.id, { branch: br, ownerId: node.id, index: i, path: bpath, articleId, allowed: f.allowed });
@@ -606,6 +625,8 @@ export interface TreeEnv {
   /** 정적 마스터 박스 존재 — 없는 박스를 가리키는 박스 참조는 brokenRef. */
   boxExists?: (code: Code) => boolean;
   clauseGate?: ClauseGate;
+  /** 값별 분기(switch) 운반체를 싣는가 — 지금은 함수조항 편집기만 켠다(최종 결정 5 「지금은 함수조항 안에서만」). 없으면 저장 · 넣기 거부. */
+  switches?: boolean;
   /** 이슈 좌표의 기본값 (document · ownerId 등). */
   coordinate?: Coordinate;
 }
@@ -679,6 +700,9 @@ export function checkNodeRefs(e: NodeEntry, ix: TreeIndex, env: TreeEnv, atSave:
     case "clauseBlockRef":
     case "clauseInlineRef":
       return [...clausePlacement(n, e.allowed, gate, at), ...checkClauseRef(n, gate, at, atSave)];
+    case "condBlock":
+    case "inlineCond":
+      return n.switchOn !== undefined && !env.switches ? one("structure", "값별 분기는 지금 함수조항 안에서만 쓸 수 있습니다") : [];
     default:
       return [];
   }

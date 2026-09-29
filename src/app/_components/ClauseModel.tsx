@@ -3,7 +3,7 @@
  * 그 공용조항이 어떻게 짜였는지를 읽기 전용으로 편다 (기능/함수조항 §4.4 · 2026-09-28 사용자 요청).
  *
  * 가운데 = 모델(구조), 오른쪽 = 조립 결과(문장). 둘을 나란히 대조하려면 가운데가 접힌 이름표여서는 안 된다 —
- * 글 · 슬롯 칩 · **옵션 자리(선택지 전부 + 이 사용처가 고른 것)** · 문장 안 조건(IF 머리) · 블록 조건(IF 상자) ·
+ * 글 · 슬롯 칩 · **옵션 자리(선택지 전부 + 이 사용처가 고른 것)** · 문장 안 조건(IF 머리) · 블록 조건(IF 상자) · 값별 분기(칸 머리 = 값 · 「문구 없음」) ·
  * 조 참조 · 별표 참조 칩을 그 자리에 그린다.
  *
  * - 조작이 없다. 공용조항 자체는 공용조항 화면에서 고친다(상자 머리의 「공용조항에서 고치기 →」는 호출부가 단다).
@@ -17,6 +17,8 @@ import type { ArticleRefNode, Block, BulletListNode, Clause, Inline, ItemBodyNod
 import { clauseBodyToTree, clauseInlineToTree, clausePositions, clauseScopedRefLabel, numberTree, referenceChunkLabel, type NodeNumber, type ReferenceTarget } from "@/domain/document";
 import type { Box } from "@/domain/document/box";
 import type { Code, Id } from "@/domain/types";
+
+import { SWITCH_WORD } from "@/app/_lib/labels";
 
 import { BoxView } from "./BoxView";
 
@@ -32,6 +34,8 @@ export interface ClauseModelProps {
   boxOf?: (code: Code) => Box | undefined;
   /** 식(조건 · 슬롯) 표시 — 구분자 코드를 표시명으로. 없으면 원문. */
   exprText?: (source: string) => string;
+  /** 값별 분기 칸의 값 표시 — 값 코드 → 표시명. 없으면 코드. */
+  valueLabel?: (code: Code) => string | undefined;
 }
 
 interface Ctx extends ClauseModelProps {
@@ -40,6 +44,30 @@ interface Ctx extends ClauseModelProps {
 }
 
 const expr = (ctx: Ctx, source: string) => (ctx.exprText ? ctx.exprText(source) : source);
+
+/** 값별 분기 칸 머리 — 「V01 · V02」 또는 「문구 없음」 (화면단어). */
+function caseHead(ctx: Ctx, k: { values: readonly Code[]; empty?: true }): string {
+  const values = k.values.map((v) => ctx.valueLabel?.(v) ?? v).join(" · ");
+  return k.empty ? `${values} — ${SWITCH_WORD.empty}` : values;
+}
+
+/** 값별 분기 (블록 · 목록 자리) — 첫 칸 위에 대상 줄, 칸마다 머리 줄(값) + 그 칸 내용. 편집기 읽기 모드와 같은 상자. */
+function SwitchBox({ node, ctx, as, children }: { node: { on: string; cases: readonly { id: Id; values: readonly Code[]; empty?: true }[] }; ctx: Ctx; as: "div" | "li"; children: (caseIndex: number) => ReactNode }) {
+  const Tag = as;
+  return node.cases.map((k, i) => (
+    <Tag key={k.id} className={i === 0 ? "ts-doc-cond is-switch" : "ts-doc-cond is-switch is-alt"}>
+      {i === 0 && (
+        <p className="ts-doc-cond-head ts-switch-on">
+          <span className="ts-cond-badge">{SWITCH_WORD.switch}</span> {expr(ctx, node.on)}
+        </p>
+      )}
+      <p className="ts-doc-cond-head">
+        <span className="ts-cond-badge">{SWITCH_WORD.case}</span> {caseHead(ctx, k)}
+      </p>
+      {!k.empty && children(i)}
+    </Tag>
+  ));
+}
 
 function articleRefText(node: ArticleRefNode, ctx: Ctx): string {
   // 제 항 · 사용처 위치 참조 — 본문 안 순번으로 (사용처에서는 펼친 자리의 계산 번호로 찍힌다)
@@ -115,6 +143,21 @@ function Inlines({ nodes, ctx }: { nodes: readonly Inline[]; ctx: Ctx }): ReactN
         );
       case "optionSlot":
         return <OptionPlace key={node.id} optionCode={node.optionCode} ctx={ctx} />;
+      case "inlineSwitch":
+        // 문장 안 값별 분기 — 칸마다 머리(값) + 그 칸 문장
+        return (
+          <span key={node.id} className="ts-doc-inline-chip is-switch" title={`문장 안 ${SWITCH_WORD.switch}`}>
+            <span className="ts-doc-inline-head">
+              {SWITCH_WORD.switch} {expr(ctx, node.on)}
+            </span>
+            {node.cases.map((k) => (
+              <Fragment key={k.id}>
+                <span className="ts-doc-inline-sep"> │ </span>
+                <span className="ts-doc-inline-head">{caseHead(ctx, k)}</span> {!k.empty && <Inlines nodes={k.children} ctx={ctx} />}
+              </Fragment>
+            ))}
+          </span>
+        );
       case "inlineCond":
         // 문장 안 조건 — 가지마다 머리(IF 식 / ELIF 식 / ELSE) + 그 가지 문장. 편집기의 칩과 같은 모양
         return (
@@ -173,6 +216,10 @@ function Items({ nodes, ctx }: { nodes: readonly ItemBodyNode[]; ctx: Ctx }) {
           <ListCond key={item.id} node={item} ctx={ctx}>
             {(i) => <Items nodes={item.branches[i].children} ctx={ctx} />}
           </ListCond>
+        ) : item.kind === "switchBlock" ? (
+          <SwitchBox key={item.id} node={item} ctx={ctx} as="li">
+            {(i) => <Items nodes={item.cases[i].children} ctx={ctx} />}
+          </SwitchBox>
         ) : item.kind === "boxRef" ? (
           <li key={item.id} className="ts-doc-static-item">
             <BoxView code={item.boxCode} box={ctx.boxOf?.(item.boxCode)} />
@@ -200,6 +247,10 @@ function Subitems({ nodes, ctx }: { nodes: readonly SubitemBodyNode[]; ctx: Ctx 
           <ListCond key={s.id} node={s} ctx={ctx}>
             {(i) => <Subitems nodes={s.branches[i].children} ctx={ctx} />}
           </ListCond>
+        ) : s.kind === "switchBlock" ? (
+          <SwitchBox key={s.id} node={s} ctx={ctx} as="li">
+            {(i) => <Subitems nodes={s.cases[i].children} ctx={ctx} />}
+          </SwitchBox>
         ) : (
           <li key={s.id} className="ts-doc-subitem">
             <Inlines nodes={s.children} ctx={ctx} />
@@ -221,6 +272,13 @@ function Blocks({ nodes, ctx }: { nodes: readonly Block[]; ctx: Ctx }): ReactNod
           <Inlines nodes={node.children} ctx={ctx} />
           {(node.items ?? []).length > 0 && <Items nodes={node.items ?? []} ctx={ctx} />}
         </div>
+      );
+    }
+    if (node.kind === "switchBlock") {
+      return (
+        <SwitchBox key={node.id} node={node} ctx={ctx} as="div">
+          {(i) => <Blocks nodes={node.cases[i].children} ctx={ctx} />}
+        </SwitchBox>
       );
     }
     // 블록 조건 — 문면 편집기 읽기 모드와 같은 상자: 가지마다 머리 줄(IF / ELIF / ELSE 배지 + 식) + 내용

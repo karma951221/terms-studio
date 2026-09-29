@@ -7,6 +7,9 @@
  * - 함수조항 참조는 `applyBindings`(인자 → 사용처 연결 · 없으면 기본 연결 · 내부 변수와 필드 읽기 · 연산은 사용처 문맥에서 값으로, 최종 결정 2) + `resolveOptions`(오버라이드 > 마스터, 기능/상품 §3.6)
  *   + `expandClause` 로 본문을 그 자리에 펼치고, 펼친 본문의 조건·슬롯은 **사용처 문맥**으로 계속 해소한다(연결한 구분자는 사용처 문맥에서 푼다).
  *   연결 누락 · 옵션 미선택·무효 · 없는 함수조항은 오류 마커.
+ * - **값별 분기**(switchBlock · inlineSwitch, 최종 결정 5)는 대상 값(사용처 연결로 바꿔 쓴 식)을 사용처 문맥에서 평가해 그 값의 칸을 펼친다 —
+ *   「문구 없음」 칸은 비운다. 칸이 없는 값(열거값 추가로 생긴 미배정)은 **그 값이 실제로 닿은 자리만** `unassignedValue` 오류 마커다
+ *   (좌표 = 분기 노드 · refPath 값, 문구에 함수조항 코드 — 그 값을 안 쓰는 상품 · 사용처는 영향 없음).
  * - 반복(forBlock · inlineFor)은 MVP 자리만 — 만나면 `structure` 오류 마커 (구현 P7).
  * - **행 반복 표**(ADR-0070 결정 6)는 특약 문맥의 행 원천(`ctx.rows` — 상품담보 스냅샷)으로 펼친다:
  *   key 조합마다 템플릿 행 복제 · 구조 표기 → key 표기 · 바깥 key 세로 병합(spans). 조합이 0 이면 표를 생략한다.
@@ -25,6 +28,10 @@ import type {
   BulletNode as ClauseBulletNode,
   CondBlockNode as ClauseCondBlockNode,
   Inline as ClauseInline,
+  InlineSwitchNode as ClauseInlineSwitchNode,
+  ItemSwitchBlockNode as ClauseItemSwitchBlockNode,
+  SubitemSwitchBlockNode as ClauseSubitemSwitchBlockNode,
+  SwitchBlockNode as ClauseSwitchBlockNode,
   ItemCondBlockNode as ClauseItemCondBlockNode,
   ItemNode as ClauseItemNode,
   ParagraphNode as ClauseParagraphNode,
@@ -74,22 +81,29 @@ export interface ResolveOutcome {
 const MODE_WORD: Record<ClauseMode, string> = { inline: "문구", block: "항", item: "호", subitem: "목" };
 
 /** 문면 노드와 공용조항 노드(부분집합 — articleRef 에 scope 없음)를 함께 다룬다. */
-type AnyInline = InlineNode | ClauseInline;
+type AnyInline = InlineNode | ClauseInline | ClauseInlineSwitchNode;
 type AnyCond = CondBlockNode | ClauseCondBlockNode;
 type AnySubitem = ClauseSubitemNode | SubitemNode;
 type AnyItem = ItemNode | ClauseItemNode;
 type AnyParagraph = ParagraphNode | ClauseParagraphNode;
-type AnyBlock = AnyParagraph | AnyCond | ClauseBlockRefNode | ForBlockNode | ClauseBlock | ItemNode | SubitemNode | ArticleNode | SectionNode | TableNode | BoxNode | BulletListNode | BulletNode | BoxRefNode;
+type AnyBlock = AnyParagraph | AnyCond | ClauseSwitchBlockNode | ClauseBlockRefNode | ForBlockNode | ClauseBlock | ItemNode | SubitemNode | ArticleNode | SectionNode | TableNode | BoxNode | BulletListNode | BulletNode | BoxRefNode;
 type AnyStatic = TableNode | BoxNode | BulletListNode | ClauseBulletListNode;
 /** 호 목록 자리 — 호 · 조건 블록 · 정적 블록 · 박스 참조 · 「호」 함수조항 참조 (펼친 호 유형 본문도 같은 자리). */
-type AnyItemSlot = AnyItem | AnyCond | AnyStatic | BoxRefNode | ClauseBlockRefNode | ClauseItemCondBlockNode;
+type AnyItemSlot = AnyItem | AnyCond | AnyStatic | BoxRefNode | ClauseBlockRefNode | ClauseItemCondBlockNode | ClauseItemSwitchBlockNode;
 /** 목 목록 자리 — 목 · 조건 블록 · 글머리 목록 · 「목」 함수조항 참조 (펼친 목 유형 본문도 같은 자리). */
-type AnySubitemSlot = AnySubitem | AnyCond | BulletListNode | ClauseBlockRefNode | ClauseSubitemCondBlockNode;
+type AnySubitemSlot = AnySubitem | AnyCond | BulletListNode | ClauseBlockRefNode | ClauseSubitemCondBlockNode | ClauseSubitemSwitchBlockNode;
 /** 가지 — 블록·인라인·공용조항 쪽 모두 이 모양이다. children 은 자리에 맞게 캐스팅한다. */
 interface Branch {
   id: Id;
   when?: string;
   children: readonly unknown[];
+}
+
+/** 값별 분기 — 블록 · 문장 안 모두 이 모양이다(칸 본문은 자리에 맞게 캐스팅한다). */
+interface SwitchLike {
+  id: Id;
+  on: string;
+  cases: readonly { id: Id; values: readonly Code[]; empty?: true; children: readonly unknown[] }[];
 }
 
 interface Frame {
@@ -98,6 +112,8 @@ interface Frame {
   articleTitle?: string;
   /** 반복 표 행 안이면 행 노드 — 조건 · 슬롯이 그 노드 문맥에서 평가된다. */
   row?: StructNodeRef;
+  /** 펼친 함수조항 본문 안이면 그 함수조항 코드 — 값별 분기 미배정 오류 문구가 고칠 곳을 말한다. */
+  clause?: Code;
 }
 
 /**
@@ -189,6 +205,40 @@ class Walker {
     return { kind: "none" };
   }
 
+  /**
+   * 값별 분기의 칸 고르기 (최종 결정 5) — 대상 값을 사용처 문맥에서 평가해 그 값이 든 칸. 칸이 없는 값이면 `unassignedValue`
+   * (그 값이 실제로 닿은 이 자리만 — 저장 때 미배정은 막혔으므로 여기 오는 것은 열거값 추가로 생긴 미배정이다). 밟지 않은 칸은 보지 않는다.
+   */
+  choose(n: SwitchLike, f: Frame): { kind: "case"; case: SwitchLike["cases"][number] } | { kind: "error"; issue: Issue } {
+    const at = this.at(f, n.id);
+    const base = this.evalOf(f);
+    if (!base) return { kind: "error", issue: { kind: "brokenRef", message: "반복 표 행 노드의 문맥을 만들 수 없습니다", at } };
+    const parsed = parse(n.on, at);
+    if (!parsed.ok) {
+      const issue: Issue = parsed.rejection.reason === "invalid" && parsed.rejection.issues[0] ? parsed.rejection.issues[0] : { kind: "syntax", message: "식을 읽을 수 없습니다", at };
+      return { kind: "error", issue };
+    }
+    const r = evaluate(parsed.value, { ...base, coordinate: at });
+    if (r.kind === "error") return { kind: "error", issue: r.issue };
+    if (r.kind === "undetermined") return { kind: "error", issue: this.ctx.explainUndetermined(r.reason, at) };
+    if (typeof r.value !== "string") return { kind: "error", issue: { kind: "typeMismatch", message: `값별 분기의 대상 값이 목록값 코드가 아닙니다 (${typeof r.value})`, at } };
+    const value = r.value;
+    const k = n.cases.find((c) => c.values.includes(value));
+    if (!k) {
+      const where = f.clause ? `함수조항 ${f.clause} 의 값별 분기` : "값별 분기";
+      return { kind: "error", issue: { kind: "unassignedValue", message: `${where}에 값 ${value} 의 칸이 없습니다 — 그 값을 칸에 배정한다`, at: { ...at, refPath: value } } };
+    }
+    return { kind: "case", case: k };
+  }
+
+  /** 값별 분기 → 고른 칸의 본문(「문구 없음」이면 빈 목록) 을 자리 규칙(`each`)으로. 오류면 마커 하나. */
+  switchOf<T>(n: SwitchLike, f: Frame, each: (children: readonly unknown[], g: Frame) => T[]): (T | ErrorNode)[] {
+    const r = this.choose(n, f);
+    if (r.kind === "error") return [this.error(n.id, r.issue)];
+    if (r.case.empty) return [];
+    return each(r.case.children, { ...f, path: [...f.path, n.id, r.case.id] });
+  }
+
   /** 공용조항 참조 → 펼친 본문 (옵션 해소 포함). 실패면 오류 마커. */
   expand(
     node: { id: Id; clauseCode: Code; options: OptionSelection; bindings?: Bindings },
@@ -263,12 +313,14 @@ class Walker {
         if (r.kind === "none") return [];
         return this.inlines(r.branch.children as AnyInline[], { ...f, path: [...f.path, n.id, r.branch.id] });
       }
+      case "inlineSwitch":
+        return this.switchOf(n, f, (children, g) => this.inlines(children as AnyInline[], g));
       case "inlineFor":
         return [this.error(n.id, { kind: "structure", message: "인라인 반복은 아직 조립하지 않습니다 (P7)", at })];
       case "clauseInlineRef": {
         const r = this.expand(n, ["inline"], at, f);
         if (!r.ok) return [r.marker];
-        return this.inlines(r.body as ClauseInline[], { ...f, path: [...f.path, n.id] });
+        return this.inlines(r.body as ClauseInline[], { ...f, path: [...f.path, n.id], clause: n.clauseCode });
       }
       case "optionSlot":
         // expandClause 가 이미 치환했으므로 여기 오면 정의 오류다
@@ -288,8 +340,9 @@ class Walker {
         // 「목」 함수조항 — 목 목록을 이 자리에 펴고 번호는 사용처에서 이어 매긴다 (최종 결정 4)
         const r = this.expand(n, ["subitem"], this.at(f, n.id), f);
         if (!r.ok) return [r.marker];
-        return this.subitems(r.body as unknown as AnySubitemSlot[], { ...f, path: [...f.path, n.id] });
+        return this.subitems(r.body as unknown as AnySubitemSlot[], { ...f, path: [...f.path, n.id], clause: n.clauseCode });
       }
+      if (n.kind === "switchBlock") return this.switchOf(n, f, (children, g) => this.subitems(children as AnySubitemSlot[], g));
       const r = this.select(n.branches, f, n.id);
       if (r.kind === "error") return [this.error(n.id, r.issue)];
       if (r.kind === "none") return [];
@@ -388,8 +441,9 @@ class Walker {
         // 다른 유형이면(저장 검사를 거치지 않은 트리) expand 가 자리 유형 오류 마커를 낸다
         const r = this.expand(n, ["item"], this.at(f, n.id), f);
         if (!r.ok) return [r.marker];
-        return this.items(r.body as unknown as AnyItemSlot[], { ...f, path: [...f.path, n.id] });
+        return this.items(r.body as unknown as AnyItemSlot[], { ...f, path: [...f.path, n.id], clause: n.clauseCode });
       }
+      if (n.kind === "switchBlock") return this.switchOf(n, f, (children, g) => this.items(children as AnyItemSlot[], g));
       const r = this.select(n.branches, f, n.id);
       if (r.kind === "error") return [this.error(n.id, r.issue)];
       if (r.kind === "none") return [];
@@ -427,12 +481,14 @@ class Walker {
           if (r.kind === "none") return [];
           return this.blocks(r.branch.children as AnyBlock[], { ...f, path: [...f.path, n.id, r.branch.id] }, excludeFromComparison);
         }
+        case "switchBlock":
+          return this.switchOf(n, f, (children, g) => this.blocks(children as AnyBlock[], g, excludeFromComparison));
         case "clauseBlockRef": {
           const r = this.expand(n, ["block"], at, f);
           if (!r.ok) return [r.marker];
           return this.blocks(
             r.body as ClauseBlock[],
-            { ...f, path: [...f.path, n.id] },
+            { ...f, path: [...f.path, n.id], clause: n.clauseCode },
             excludeFromComparison || (this.env.coordinate.document === "general" && n.excludeFromComparison === true),
           );
         }

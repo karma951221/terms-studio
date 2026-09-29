@@ -5,6 +5,7 @@ import type { Clause } from "../clause/types";
 import type { DocumentNode } from "../document/nodes";
 import type { Code } from "../types";
 import { assemble } from "./booklet";
+import { authoredEmptyArticleIds, dropEmptyArticles } from "./emptyArticle";
 import { buildContexts, specialContext } from "./context";
 import { alphaPlusFixture, coverageEntry } from "./fixture";
 import { collectAppendices, numberDocument, renderDocument } from "./render";
@@ -339,6 +340,109 @@ describe("참조 슬롯 렌더", () => {
 
     it("암은 적용 안 되는 종(2종)에만 있으면 거름에 걸려 없음 가지", () => {
       expect(run({ "opt-type-1": ["V02"], "opt-type-2": ["V01"] }).lines).toEqual(["없음", "뇌졸중(뇌출혈 포함)"]);
+    });
+  });
+
+  describe("값별 분기(switch) — 인자 값의 칸을 펼친다 (최종 결정 5 · 기능/함수조항 §3.7)", () => {
+    const item = (id: string, value: string) => ({ id, kind: "item" as const, children: [text(`${id}t`, value)] });
+    /** 납입면제 호(사유) — 호 유형. V01 암 호 하나 · V02 「문구 없음」 · V03 상해 · 질병 호 둘. V04 는 칸이 없다(열거값 추가로 생긴 미배정). */
+    const 면제호: Clause = {
+      code: "C0300",
+      label: "납입면제 호",
+      mode: "item",
+      body: [
+        {
+          id: "sw",
+          kind: "switchBlock",
+          on: "arg.사유",
+          cases: [
+            { id: "k1", values: ["V01"], children: [item("i1", "암으로 진단확정")] },
+            { id: "k2", values: ["V02"], empty: true, children: [] },
+            { id: "k3", values: ["V03"], children: [item("i3a", "상해로 80% 이상 장해"), item("i3b", "질병으로 80% 이상 장해")] },
+          ],
+        },
+      ],
+      options: [],
+      params: [{ name: "사유", type: { kind: "enum", enumCode: "E0009" } }],
+      required: { discriminators: [], attributes: [] },
+    };
+    /** 문구 유형 — 문장 안 분기. */
+    const 사유말: Clause = {
+      code: "C0301",
+      label: "사유 말",
+      mode: "inline",
+      body: [
+        { id: "is", kind: "inlineSwitch", on: "arg.사유", cases: [{ id: "a", values: ["V01", "V02"], children: [text("ta", "진단")] }, { id: "b", values: ["V03"], children: [text("tb", "장해")] }] },
+        text("tz", "시"),
+      ],
+      options: [],
+      params: [{ name: "사유", type: { kind: "enum", enumCode: "E0009" } }],
+      required: { discriminators: [], attributes: [] },
+    };
+    function run(reasons: readonly string[], build: (r: string, i: number) => DocumentNode["children"][number]) {
+      const input = alphaPlusFixture();
+      const ctx = buildContexts(input).general;
+      const doc: DocumentNode = { kind: "document", id: "g", title: "보통약관", children: reasons.map(build) };
+      const resolved = resolveDocument(doc, ctx, { clauses: new Map([["C0300", 면제호], ["C0301", 사유말]]), overrides: new Map(), coordinate: at });
+      return resolved;
+    }
+    const withItems = (r: string, i: number): DocumentNode["children"][number] => ({
+      kind: "article",
+      id: `a${i}`,
+      title: "조",
+      children: [{ kind: "paragraph", id: `p${i}`, children: [text(`t${i}`, "다음의 경우")], items: [{ kind: "clauseBlockRef", id: `r${i}`, clauseCode: "C0300", options: {}, bindings: { 사유: { kind: "const", value: r } } }] as never }],
+    });
+    const itemTexts = (doc: ReturnType<typeof run>["doc"]) =>
+      doc.children.map((a) => (a.kind === "article" && a.children[0]?.kind === "paragraph" ? (a.children[0].items ?? []).map((x) => (x.kind === "item" ? x.children.map((c) => (c.kind === "text" ? c.text : "?")).join("") : x.kind)) : []));
+
+    it("인자 사유 = V03 이면 V03 칸의 호 둘 · V01 이면 암 호 하나", () => {
+      const r = run(["V03", "V01"], withItems);
+      expect(r.issues).toEqual([]);
+      expect(itemTexts(r.doc)).toEqual([["상해로 80% 이상 장해", "질병으로 80% 이상 장해"], ["암으로 진단확정"]]);
+    });
+
+    it("「문구 없음」 칸 = 호 0개", () => {
+      const r = run(["V02"], withItems);
+      expect(r.issues).toEqual([]);
+      expect(itemTexts(r.doc)).toEqual([[]]);
+    });
+
+    it("미배정 값이 조립에 닿으면 오류(좌표 = 분기 · 값 · 함수조항) · 안 닿는 사용처는 영향 없음", () => {
+      const r = run(["V01", "V04"], withItems);
+      expect(r.issues).toEqual([
+        expect.objectContaining({
+          kind: "unassignedValue",
+          message: expect.stringContaining("C0300"),
+          at: expect.objectContaining({ articleId: "a1", nodePath: ["g", "a1", "p1", "r1", "r1/sw"], refPath: "V04" }),
+        }),
+      ]);
+      expect(itemTexts(r.doc)[0]).toEqual(["암으로 진단확정"]);
+    });
+
+    it("문장 안 분기 — 값의 칸 조각을 문장에 끼운다", () => {
+      const r = run(["V02", "V03"], (v, i) => ({
+        kind: "article",
+        id: `a${i}`,
+        title: "조",
+        children: [{ kind: "paragraph", id: `p${i}`, children: [{ kind: "clauseInlineRef", id: `r${i}`, clauseCode: "C0301", options: {}, bindings: { 사유: { kind: "const", value: v } } }] }],
+      }));
+      expect(r.issues).toEqual([]);
+      expect(r.doc.children.map((a) => (a.kind === "article" && a.children[0]?.kind === "paragraph" ? a.children[0].children.map((c) => (c.kind === "text" ? c.text : "?")).join("") : ""))).toEqual(["진단시", "장해시"]);
+    });
+
+    it("분기가 조의 본문을 모두 비우면 빈 조 빼기가 조째 뺀다 (결정 15)", () => {
+      const 항분기: Clause = {
+        ...면제호,
+        code: "C0302",
+        mode: "block",
+        body: [{ id: "sw", kind: "switchBlock", on: "arg.사유", cases: [{ id: "k1", values: ["V01", "V02", "V03", "V04"], empty: true, children: [] }] }],
+      };
+      const input = alphaPlusFixture();
+      const ctx = buildContexts(input).general;
+      const doc: DocumentNode = { kind: "document", id: "g", title: "보통약관", children: [{ kind: "article", id: "a", title: "조", children: [{ kind: "clauseBlockRef", id: "r", clauseCode: "C0302", options: {}, bindings: { 사유: { kind: "const", value: "V01" } } }] }] };
+      const resolved = resolveDocument(doc, ctx, { clauses: new Map([["C0302", 항분기]]), overrides: new Map(), coordinate: at });
+      expect(resolved.issues).toEqual([]);
+      expect(dropEmptyArticles(resolved.doc as unknown as SubstitutedDoc, authoredEmptyArticleIds(doc)).dropped).toEqual(["a"]);
     });
   });
 

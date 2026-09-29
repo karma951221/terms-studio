@@ -55,12 +55,13 @@ export function referencesFrom(graph: RefGraph, source: RefNodeKey, opts: UsageO
   return graph.edges.filter((e) => (!via || via.has(e.via)) && underOrSelf(graph, e.from, s));
 }
 
-/** 값을 나열해 비교하는 참조의 형태 — 조건식 · 슬롯 · 구분자 식 · 함수조항 내부 변수. */
-const VALUE_LISTING_VIAS: readonly EdgeVia[] = ["when", "slot", "expression", "local"];
+/** 값을 나열해 비교하는 참조의 형태 — 조건식 · 슬롯 · 구분자 식 · 함수조항 내부 변수 · 값별 분기 칸(새 값은 미배정). */
+const VALUE_LISTING_VIAS: readonly EdgeVia[] = ["when", "slot", "expression", "local", "switchCase"];
 
 /**
  * 열거값 추가의 재검사 목록 — 그 열거형의 값 코드와 비교하는(`= 'V02'` · `.있음('V02')`) 조건식 · 슬롯 · 구분자 식 · 함수조항 내부 변수 간선
  * (ADR-0078 결정 4 · 최종 결정 20).
+ * 값별 분기(switchCase)는 새 값이 그 분기에서 미배정이 된다 — 분기 하나에 한 번(좌표 = 분기 노드) 선다 (최종 결정 5).
  * 값을 나열한 곳은 새 값을 조용히 놓치므로 사람이 다시 본다. 지운 값을 비교하는 간선(깨진 참조)도 든다.
  * 한 자리가 값을 여럿 비교하면(`D = 'V01' or D = 'V02'`) 좌표 하나로 모은다. 등장 순.
  */
