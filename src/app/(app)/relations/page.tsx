@@ -142,7 +142,7 @@ function usageLink(issue: Issue): IssueLink | undefined {
 }
 
 /**
- * 공용조항의 검사 ② 재검사 목록 (기능/공용조항 §3.4 · §4.4) — 공용조항을 고친 뒤 사용처마다 요구 구분자 존재 · 옵션 선택을
+ * 공용조항의 검사 ② 재검사 목록 (기능/함수조항 §3.4 · §4.4) — 공용조항을 고친 뒤 사용처마다 요구 구분자 존재 · 옵션 선택을
  * 다시 본 결과. 공용조항 화면에는 두지 않고 여기서만 본다 (사용처 · 영향 반경은 관계정보의 질문이다).
  */
 function ClauseRecheck({ entries, usageCount, documentTitle }: { entries: readonly RecheckEntry[]; usageCount: number; documentTitle: ReadonlyMap<string, string> }) {

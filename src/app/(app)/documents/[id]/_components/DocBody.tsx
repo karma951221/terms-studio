@@ -356,7 +356,7 @@ function CondBlock({ node, ctx, as }: { node: Node & { kind: "condBlock" }; ctx:
 
 /**
  * 항·호·목·조건 블록 — 자리에 맞는 태그로. `data-block` 은 툴바 · 오른쪽 클릭 메뉴가 자리를 읽는 표지다(`place.ts`).
- * 공용조항 화면도 이것으로 본문(항 목록)을 그린다 — 조 머리 없이 (기능/공용조항 §4.3).
+ * 공용조항 화면도 이것으로 본문(항 목록)을 그린다 — 조 머리 없이 (기능/함수조항 §4.3).
  */
 export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: DocCtx; inList?: boolean }): ReactNode {
   return nodes.map((node) => {

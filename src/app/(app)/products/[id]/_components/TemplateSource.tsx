@@ -3,7 +3,7 @@
  *
  * - 읽기 표기는 문면 편집기 읽기 모드(`documents/[id]/_components/DocBody.tsx`)를 따른다 — 다만 `DocCtx`(편집·평가 문맥)에
  *   기대지 않고 이 컴포넌트가 직접 그린다. 조작은 하나도 없다.
- * - **유일한 입력은 공용조항 상자 안의 옵션 선택**이다 (기능/공용조항 §3.2 · 기능/상품 §3.6). 마스터 기본값을 옆에 보이고,
+ * - **유일한 입력은 공용조항 상자 안의 옵션 선택**이다 (기능/함수조항 §3.2 · 기능/상품 §3.6). 마스터 기본값을 옆에 보이고,
  *   다르면 「오버라이드」 배지 + 되돌리기(↺). 상자 안에는 그 공용조항의 **모델**(`ClauseModel` — 슬롯 · 옵션 자리 · 조건 · 참조)이 선다.
  * - 끈 조는 자리에 남되 흐리게 + 「노출 끔」 (다시 켜는 것은 목차에서).
  * - **조를 감싼 조건 블록도 그대로 그린다** — 목차는 조건 블록을 펴지만(조는 어디 있든 한 줄),
@@ -216,7 +216,7 @@ function ClauseBox({ nodeId, clauseCode, baseOptions, ctx }: { nodeId: Id; claus
   const override = ctx.overrideByNode.get(nodeId);
   const target = ctx.targetByNode.get(nodeId);
   const effective = override ? { ...baseOptions, ...override.options } : baseOptions;
-  // 미선택 = 마스터 기본도 상품 선택도 없는 옵션 — 저장 오류가 되기 전에 여기서 말한다 (기능/공용조항 §3.2).
+  // 미선택 = 마스터 기본도 상품 선택도 없는 옵션 — 저장 오류가 되기 전에 여기서 말한다 (기능/함수조항 §3.2).
   const unresolved = (clause?.options ?? []).filter((o) => effective[o.code] === undefined).map((o) => o.label);
   const hasOptions = !clause || clause.options.length > 0;
   const scope = { kind: "product", id: ctx.productId } as const;

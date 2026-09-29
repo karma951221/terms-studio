@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * 공용조항 상세의 저장 · 삭제 — 화면 하나에 저장은 하나다 (디자인원칙 §2 L2 · 기능/공용조항 §4.3).
+ * 공용조항 상세의 저장 · 삭제 — 화면 하나에 저장은 하나다 (디자인원칙 §2 L2 · 기능/함수조항 §4.3).
  *
  * 서비스에는 rename · setBody · addOption … 처럼 잘게 나뉜 API 만 있다. 그 사이의 간극은
  * 여기서 메운다 — 저장된 정의와 화면이 들고 온 값을 견줘 **달라진 것만** 골라 부른다.
@@ -46,7 +46,7 @@ export async function saveClauseEditAction(code: string, input: ClauseEditData):
       }
 
       /*
-       * 순서가 중요하다 (기능/공용조항 §4.3 「저장」). 본문이 「방금 만든 옵션」을 가리킬 수 있어서다 —
+       * 순서가 중요하다 (기능/함수조항 §4.3 「저장」). 본문이 「방금 만든 옵션」을 가리킬 수 있어서다 —
        *  ① 옵션을 먼저 만들어 실제 코드를 받고(`new:1` → `O01`),
        *  ② 그 코드로 본문의 옵션 자리를 고쳐 저장하고,
        *  ③ 남은 옵션의 이름 · 선택지를 맞추고, 뺀 옵션은 마지막에 지운다(본문이 이미 안 가리키므로 안전하다).
@@ -143,7 +143,7 @@ async function syncOptions(actor: Actor, services: Services, code: string, befor
   return undefined;
 }
 
-/** 🗑 — 편집자는 거부, 관리자는 깨질 사용처 확인(`confirm`) 뒤 삭제 (기능/공용조항 §4.3). */
+/** 🗑 — 편집자는 거부, 관리자는 깨질 사용처 확인(`confirm`) 뒤 삭제 (기능/함수조항 §4.3). */
 export async function removeClauseEditAction(code: string, confirm = false): Promise<EditOutcome> {
   const result = await getServices().clause.remove(await currentActor(), code, { confirm });
   if (result.ok) return { ok: true };

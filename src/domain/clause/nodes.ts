@@ -6,7 +6,7 @@
  *
  * - inline 본문 = `Inline[]` (문장 안 문구).  block 본문 = `Block[]` (항 또는 항 목록).
  * - 인라인 종류: `text · slot · inlineCond · articleRef · appendixRef · optionSlot`.
- *   **공용조항 참조(clauseInlineRef · clauseBlockRef)는 없다** — 중첩 금지(MVP, 기능/공용조항 §3.1).
+ *   **공용조항 참조(clauseInlineRef · clauseBlockRef)는 없다** — 중첩 금지(MVP, 기능/함수조항 §3.1).
  *   반복(forBlock · inlineFor)도 MVP 이후라 없다.
  * - 블록 종류: `paragraph(항) · condBlock(조건 블록) · bulletList(글머리 목록) · boxRef(정적 마스터 박스 참조)`. 조(article)는 항상 사용처 소유라 없다.
  *   박스 참조는 잎이라 중첩 금지에 걸리지 않는다 — 항 자리와 항의 호 목록 자리(호 뒤)에 선다 (최종 결정 6 · 9).
@@ -54,7 +54,7 @@ export interface InlineCondNode {
 }
 
 /**
- * 조 참조 슬롯 — 대상을 저장하고 렌더 시 계산된 번호를 찍는다. 대상이 어디 있는지는 `scope` 가 정한다 (기능/공용조항 §3.5):
+ * 조 참조 슬롯 — 대상을 저장하고 렌더 시 계산된 번호를 찍는다. 대상이 어디 있는지는 `scope` 가 정한다 (기능/함수조항 §3.5):
  * - 없음 : 보통약관 마스터의 조 · 항 · 호 · 목 (`nodeId` = 그 노드 id). 문맥과 무관하게 고정된다.
  * - `"clause"` : **이 공용조항 본문 안의** 항 · 호 · 목 (`nodeId` = 본문 노드 id) — 「제1항에 따라」처럼 조째 공용조항이 제 항을 가리킨다.
  *   펼칠 때(`expandClause`) 펼친 노드 id 로 바뀌어 사용처 번호로 찍힌다.
@@ -83,7 +83,7 @@ export interface AppendixRefNode {
   appendixCode: Code;
 }
 
-/** 옵션 자리 — 사용처가 고른 선택지(OptionValue)의 본문이 이 자리에 들어간다 (기능/공용조항 §3.2). */
+/** 옵션 자리 — 사용처가 고른 선택지(OptionValue)의 본문이 이 자리에 들어간다 (기능/함수조항 §3.2). */
 export interface OptionSlotNode {
   id: Id;
   kind: "optionSlot";

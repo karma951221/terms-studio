@@ -72,7 +72,7 @@ export interface DocCtx {
    */
   chipOverride?: (node: InlineNode) => { className: string; title: string; body: ReactNode; what: string } | undefined;
   /**
-   * 조 참조 팝업의 범위를 화면이 정한다 — 공용조항 에디터: 보통약관 · 이 공용조항 · 사용처(기능/공용조항 §3.5).
+   * 조 참조 팝업의 범위를 화면이 정한다 — 공용조항 에디터: 보통약관 · 이 공용조항 · 사용처(기능/함수조항 §3.5).
    * 있으면 이 목록이 범위 고르기가 되고, 고른 범위의 후보만 트리에 선다. 없으면 문면 규칙(담보약관: 이 템플릿 · 대응 보통약관).
    */
   articleRefChoices?: readonly ArticleRefChoice[];

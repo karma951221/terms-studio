@@ -81,7 +81,7 @@ export interface AppendixRefNode {
   appendixCode: Code;
 }
 
-/** 공용조항 inline 참조 — 옵션 선택은 사용처(이 문서) 소유 (기능/공용조항 §3.2). */
+/** 공용조항 inline 참조 — 옵션 선택은 사용처(이 문서) 소유 (기능/함수조항 §3.2). */
 export interface ClauseInlineRefNode {
   id: Id;
   kind: "clauseInlineRef";
@@ -562,9 +562,9 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
  * 공용조항 게이트 — B2(clause) 가 구현해 주입한다. 없으면 전부 통과.
  * - clauseExists    : 코드가 정의돼 있는가 (없으면 참조 추가 실패 → brokenRef)
  * - requiredCodes   : 그 공용조항이 읽는 요구 구분자 (문서의 요구 구분자 합산 재료 — refs.ts `requiredDiscriminators`)
- * - missingRequired : 요구 구분자 중 **카탈로그에 없는** 코드 — 검사 ② (a) 「요구 구분자가 지금 존재하는가」(기능/공용조항 §3.4).
+ * - missingRequired : 요구 구분자 중 **카탈로그에 없는** 코드 — 검사 ② (a) 「요구 구분자가 지금 존재하는가」(기능/함수조항 §3.4).
  *                     비어 있지 않으면 참조 추가 미성립 · 저장 거부 (brokenRef)
- * - validateOptions : 선택 옵션 검사 — 미선택 `optionUnselected`(저장 시점만 거부, 기능/공용조항 §3.2) · 집합 밖 `optionInvalid`
+ * - validateOptions : 선택 옵션 검사 — 미선택 `optionUnselected`(저장 시점만 거부, 기능/함수조항 §3.2) · 집합 밖 `optionInvalid`
  */
 export interface ClauseGate {
   clauseExists(code: Code): boolean;
@@ -672,7 +672,7 @@ export function checkNodeRefs(e: NodeEntry, ix: TreeIndex, env: TreeEnv, atSave:
   }
 }
 
-/** 공용조항 참조의 자리 — 유형별 (기능/공용조항 §3.1): 문구는 문장 안, 항은 조 자리. */
+/** 공용조항 참조의 자리 — 유형별 (기능/함수조항 §3.1): 문구는 문장 안, 항은 조 자리. */
 function clausePlacement(node: ClauseBlockRefNode | ClauseInlineRefNode, slot: SlotName, gate: ClauseGate, at: Coordinate): Issue[] {
   const mode = gate.clauseMode?.(node.clauseCode);
   if (mode === undefined) return [];
@@ -683,11 +683,11 @@ function clausePlacement(node: ClauseBlockRefNode | ClauseInlineRefNode, slot: S
 }
 
 /**
- * 공용조항 참조 검사 — 검사 ② 「사용처 문맥」(기능/공용조항 §3.4).
+ * 공용조항 참조 검사 — 검사 ② 「사용처 문맥」(기능/함수조항 §3.4).
  * - (a) 요구 구분자 존재: 카탈로그에 없는 요구 구분자가 있으면 참조 추가 시점(`atSave=false`)·저장 시점 둘 다 brokenRef.
- *   없는 구분자를 삽입해 두고 조립에서야 아는 것은 「붙이는 순간이 가장 싼 발견 시점」에 어긋난다 (기능/공용조항 §3.4).
+ *   없는 구분자를 삽입해 두고 조립에서야 아는 것은 「붙이는 순간이 가장 싼 발견 시점」에 어긋난다 (기능/함수조항 §3.4).
  *   미입력은 검사하지 않는다 — 그것은 ③ 조립 몫이다.
- * - 옵션: `atSave` 가 false 면(참조 추가 시점) 옵션 미선택은 거르지 않는다 (기능/공용조항 §3.2).
+ * - 옵션: `atSave` 가 false 면(참조 추가 시점) 옵션 미선택은 거르지 않는다 (기능/함수조항 §3.2).
  */
 export function checkClauseRef(
   node: ClauseBlockRefNode | ClauseInlineRefNode,

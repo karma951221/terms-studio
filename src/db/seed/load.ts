@@ -50,7 +50,7 @@ export function clausesUsedByGenerals(): Set<Code> {
 }
 
 /**
- * 보통약관 조를 가리키는 공용조항인가 — 그 조가 있어야 정의 검사 ① 을 통과하므로 보통약관 뒤에 만든다 (기능/공용조항 §3.4).
+ * 보통약관 조를 가리키는 공용조항인가 — 그 조가 있어야 정의 검사 ① 을 통과하므로 보통약관 뒤에 만든다 (기능/함수조항 §3.4).
  * 범위 있는 조 참조(제 항 · 사용처 위치)는 보통약관이 없어도 성립한다.
  */
 export function refsGeneral(raw: unknown): boolean {
@@ -197,7 +197,7 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
     }
   }
 
-  // 별표 · 박스 → 공용조항(보통약관이 쓰는 것 · 조 참조 없는 것) → 보통약관 → 보통약관 조를 가리키는 공용조항 (기능/공용조항 §3.4)
+  // 별표 · 박스 → 공용조항(보통약관이 쓰는 것 · 조 참조 없는 것) → 보통약관 → 보통약관 조를 가리키는 공용조항 (기능/함수조항 §3.4)
   await loadAppendices(services, actor);
   await loadBoxes(services, actor);
   const generalIds = await loadClausesAndGenerals(services, actor);

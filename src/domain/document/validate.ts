@@ -46,8 +46,8 @@ export function catalogTypeResolver(defs: readonly Discriminator[], attributeVal
 }
 
 /**
- * 공용조항 게이트 — 정의 존재 · 요구 구분자 · 옵션 선택 검증 (ADR-0010 · 기능/공용조항 §3.2).
- * `missingRequired` 는 요구 구분자를 카탈로그 코드와 대조한다 (기능/공용조항 §3.4).
+ * 공용조항 게이트 — 정의 존재 · 요구 구분자 · 옵션 선택 검증 (ADR-0010 · 기능/함수조항 §3.2).
+ * `missingRequired` 는 요구 구분자를 카탈로그 코드와 대조한다 (기능/함수조항 §3.4).
  */
 export function clauseGateFrom(clauses: readonly Clause[], catalogCodes: Iterable<Code>): ClauseGate {
   const byCode = new Map(clauses.map((c) => [c.code, c]));

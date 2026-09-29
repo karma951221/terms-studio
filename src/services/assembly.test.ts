@@ -145,7 +145,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
         ]),
       ),
     );
-    // 공용조항 C0002 준용 inline — 조 참조(g-art-def)는 보통약관 마스터에 있어야 저장된다 (기능/공용조항 §3.5) → 트리 적재 뒤에 만든다
+    // 공용조항 C0002 준용 inline — 조 참조(g-art-def)는 보통약관 마스터에 있어야 저장된다 (기능/함수조항 §3.5) → 트리 적재 뒤에 만든다
     unwrap(
       await clause.create(editor, {
         label: "준용 문구",

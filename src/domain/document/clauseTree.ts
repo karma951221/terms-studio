@@ -1,5 +1,5 @@
 /**
- * 공용조항 본문 ↔ 문면 편집 트리 (순수) — 공용조항 화면이 문면 저작 에디터를 그대로 쓰게 하는 어댑터 (기능/공용조항 §4.3 · §6.2).
+ * 공용조항 본문 ↔ 문면 편집 트리 (순수) — 공용조항 화면이 문면 저작 에디터를 그대로 쓰게 하는 어댑터 (기능/함수조항 §4.3 · §6.2).
  *
  * 공용조항 본문 노드(`../clause/nodes`)는 문면 노드의 부분집합이다. 다른 점은 셋뿐이라, 편집하는 동안만 문면 트리로 싸서
  * 문면의 편집 명령(`applyEdit`) · 렌더러 · 메뉴를 그대로 쓰고, 저장할 때 공용조항 본문으로 되돌린다.
@@ -229,7 +229,7 @@ export function clausePositions(tree: DocumentNode): Map<string, number[]> {
 }
 
 /**
- * 공용조항의 제 항 · 사용처 조 참조 표기 (기능/공용조항 §3.5) — 「이 공용조항 제1항」 · 「사용처 제2조 제1항 제3호」.
+ * 공용조항의 제 항 · 사용처 조 참조 표기 (기능/함수조항 §3.5) — 「이 공용조항 제1항」 · 「사용처 제2조 제1항 제3호」.
  * 번호는 본문 안 순번이다(사용처에서는 펼친 자리의 계산 번호로 찍힌다). 편집 트리 노드를 받는다 — 보통약관 참조면 undefined.
  */
 export function clauseScopedRefLabel(node: InlineNode, positions: ReadonlyMap<string, number[]>): string | undefined {
@@ -251,7 +251,7 @@ export function clauseInlineToTree(node: C.Inline): InlineNode {
 }
 
 /**
- * 「사용처」 후보 — 사용처 문서의 위치(조 · 항 · 호 순번) 줄 목록. 공용조항 에디터의 조 참조 고르기 트리가 쓴다 (기능/공용조항 §3.5).
+ * 「사용처」 후보 — 사용처 문서의 위치(조 · 항 · 호 순번) 줄 목록. 공용조항 에디터의 조 참조 고르기 트리가 쓴다 (기능/함수조항 §3.5).
  * 사용처는 여럿이라 실제 조 제목은 모른다 — 줄은 번호만(「제1조」 · 「제1항」 · 「제3호」).
  */
 export function hostTargetIndex(articles = 20, paragraphs = 10, items = 10): Map<string, ReferenceTarget> {

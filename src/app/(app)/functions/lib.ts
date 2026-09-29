@@ -1,7 +1,7 @@
 /**
  * 공용조항 에디터 · 저장 액션이 같이 쓰는 순수 함수 (`lib.test.ts`).
  *
- * - 선택지 문구는 평문만 받는다(기능/공용조항 §6.2) — 화면은 글 한 줄, 저장은 텍스트 노드 하나.
+ * - 선택지 문구는 평문만 받는다(기능/함수조항 §6.2) — 화면은 글 한 줄, 저장은 텍스트 노드 하나.
  * - 새 옵션은 저장 전까지 `new:*` 코드라, 본문의 옵션 자리를 저장 때 실제 코드로 바꾼다.
  */
 import { isInlineBody, type Block, type BulletListNode, type ClauseBody, type Inline } from "@/domain/clause";
@@ -58,7 +58,7 @@ export function remapOptionSlots(body: ClauseBody, codes: ReadonlyMap<string, st
   return mapInlines(body, remap);
 }
 
-/** 본문이 쓰는 옵션 코드 — 쓰이는 옵션은 뺄 수 없다(기능/공용조항 §3.2). */
+/** 본문이 쓰는 옵션 코드 — 쓰이는 옵션은 뺄 수 없다(기능/함수조항 §3.2). */
 export function usedOptionCodes(body: ClauseBody): Set<string> {
   const out = new Set<string>();
   const walk = (nodes: readonly Inline[]): Inline[] => {

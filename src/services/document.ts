@@ -107,7 +107,7 @@ export interface DocumentService {
   validate(id: Id): Promise<Issue[]>;
   /**
    * 미결정 공용조항 옵션 수 — 저장 검사와 **같은** 검증(`validate`)의 `optionUnselected` 만 센다 (기능/담보 §3.5).
-   * 저장은 미선택을 거부하므로(기능/공용조항 §3.2) 0 이 아닌 값은 「저장 뒤 정의에 옵션이 늘었다」는 뜻이다.
+   * 저장은 미선택을 거부하므로(기능/함수조항 §3.2) 0 이 아닌 값은 「저장 뒤 정의에 옵션이 늘었다」는 뜻이다.
    * 담보약관은 담보 마스터 안에서 옵션이 다 정해져야 해서, 담보 상세가 이 수를 경고로 띄운다.
    */
   unresolvedOptionCount(id: Id): Promise<number>;

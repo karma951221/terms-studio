@@ -16,7 +16,7 @@ const FILTERS = [
   { key: "mode", label: "유형", options: MODES.map((value) => ({ value, label: MODE_LABEL[value] })) },
 ] as const satisfies readonly ColumnFilterSpec[];
 
-/** `+` 의 유형 메뉴 — 유형은 생성 때 정하고 그 뒤 바꾸지 않아서(기능/공용조항 §3.1) 누를 때 먼저 고른다 (§4.1). */
+/** `+` 의 유형 메뉴 — 유형은 생성 때 정하고 그 뒤 바꾸지 않아서(기능/함수조항 §3.1) 누를 때 먼저 고른다 (§4.1). */
 const CREATE_MENU = MODE_OPTIONS.map((o) => ({ label: o.label, hint: o.hint, href: `/functions/new?type=${o.value}` }));
 
 interface SearchParams {

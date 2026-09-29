@@ -2,7 +2,7 @@
  * 공용조항 에디터의 툴바 · 오른쪽 클릭 메뉴 목록 — 문면 저작 메뉴(`documents/[id]/_components/menus.ts`)를 그대로 짓고
  * 공용조항 자리에 맞게 거른다 (순수 — React 없음. `clauseMenus.test.ts`).
  *
- * 기능/공용조항 §4.3 「에디터 도구」:
+ * 기능/함수조항 §4.3 「에디터 도구」:
  * - 같은 도구 — 조건 블록 · 인라인 조건 · 값 슬롯 · 참조 슬롯(별표 · 보통약관 조 · 항 · 호 · 목) + **옵션 자리 넣기**(옵션 목록 단의 옵션마다 한 줄).
  *   「조건식」은 문면과 같다 — 항을 골랐으면 감싸고, 본문 빈 자리면 빈 항을 든 조건 블록을 끝에, 「문구」면 문장 안 조건 (2026-09-28).
  * - 막는 것 — 조 · 관 추가(조는 사용처 소유) · 공용조항 참조 넣기(중첩 금지). 그 도구 자리는 남는다 — 툴바는 잠그고 사유를 tooltip 으로,
@@ -16,7 +16,7 @@ import { runsFromTokens, type Token } from "@/app/(app)/documents/[id]/_componen
 import { CLAUSE_ARTICLE_ID, CLAUSE_LINE_ID, optionCarrier, type EditOp, type IdSource, type InlineAt, type TreeIndex } from "@/domain/document";
 import type { Id } from "@/domain/types";
 
-/** 거절 안내 — 화면에 그대로 보이므로 문서 번호를 넣지 않는다 (규칙: 기능/공용조항 §3.1). */
+/** 거절 안내 — 화면에 그대로 보이므로 문서 번호를 넣지 않는다 (규칙: 기능/함수조항 §3.1). */
 export const REFUSE = {
   article: "함수조항에는 조 · 관을 둘 수 없다 — 조는 늘 사용처(약관 템플릿) 소유다.",
   clauseRef: "함수조항 안에 함수조항 참조를 둘 수 없다 — 중첩 금지.",

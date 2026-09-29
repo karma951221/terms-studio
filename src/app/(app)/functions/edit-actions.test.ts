@@ -7,7 +7,7 @@ import { createServices, type Services } from "@/services/container";
 
 /**
  * 공용조항 에디터의 저장 · 생성 액션 — 저장 한 번 = 한 트랜잭션 (점검 2026-09-27 H1 · D1) · 선택지 교체 (H2 ②) ·
- * 선택지 문구(평문) · 저장하는 순간 생성 (기능/공용조항 §4.2 · §4.3).
+ * 선택지 문구(평문) · 저장하는 순간 생성 (기능/함수조항 §4.2 · §4.3).
  */
 const editor: Actor = { userId: "00000000-0000-4000-8000-000000000002", role: "editor" };
 let t: TestDb;

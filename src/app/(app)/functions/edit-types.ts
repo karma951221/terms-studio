@@ -6,7 +6,7 @@ export interface ClauseEditValue {
   /** 저장된 선택지는 실제 코드, 아직 안 만든 것은 `new:1` — 저장 때 갈린다. */
   code: string;
   label: string;
-  /** 선택지 문구 — 평문만 (슬롯 · 인라인 조건 불가, 기능/공용조항 §6.2). */
+  /** 선택지 문구 — 평문만 (슬롯 · 인라인 조건 불가, 기능/함수조항 §6.2). */
   text: string;
 }
 

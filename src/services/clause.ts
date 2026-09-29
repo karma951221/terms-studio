@@ -6,7 +6,7 @@
  *   저장 자체는 미부착이 생겨도 차단하지 않는다 (D-P3-8).
  * - 파괴적 액션은 `clause.delete` 하나 — `destructive()` 2단: editor → forbidden ·
  *   admin 1차 → needsConfirmation(Impact: brokenRefs = 사용처) · `{ confirm: true }` → 삭제.
- *   (옵션·선택지 삭제는 정의 수정으로 두고 깨진 선택은 재검사 목록이 드러낸다 — 기능/공용조항 §3.2.)
+ *   (옵션·선택지 삭제는 정의 수정으로 두고 깨진 선택은 재검사 목록이 드러낸다 — 기능/함수조항 §3.2.)
  * - 사용처 역인덱스(`UsageSource`)는 C1/B3 몫 — 주입한다. 부착은 없다 (ADR-0037).
  *   기본값: 사용처 없음 · 부착기 없음(수락 거부).
  * - 카탈로그(구분자 정의)는 catalog repo 에서 읽어 조건식 타입 검사·부착 검사에 쓴다.
@@ -161,8 +161,8 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
   }
 
   /**
-   * 조 참조 대상 집합 — 보통약관 마스터의 조·항·호·목 id (기능/공용조항 §3.5). 보통약관이 여러 벌이면 합집합
-   * (MVP 는 1벌 — 2벌 이상은 기능/공용조항 §5 미결). 문서 서비스 `envOf` 의 `generalReferenceIds` 와 같은 기준.
+   * 조 참조 대상 집합 — 보통약관 마스터의 조·항·호·목 id (기능/함수조항 §3.5). 보통약관이 여러 벌이면 합집합
+   * (MVP 는 1벌 — 2벌 이상은 기능/함수조항 §5 미결). 문서 서비스 `envOf` 의 `generalReferenceIds` 와 같은 기준.
    */
   async function generalReferenceIdsOf(tx: Db): Promise<ReadonlySet<Id>> {
     const ids = new Set<Id>();

@@ -113,7 +113,7 @@ describe("공용조항 오버레이 — 원문 자리를 참조로", () => {
     expect(p.items[0].children).toEqual([{ id: "s-a4-p1-i1-k1", kind: "clauseInlineRef", clauseCode: "C0004", options: { O01: "V01" } }]);
   });
 
-  describe("조째 공용조항 — 자기 조 참조는 제 항 · 사용처 위치로 (기능/공용조항 §3.5)", () => {
+  describe("조째 공용조항 — 자기 조 참조는 제 항 · 사용처 위치로 (기능/함수조항 §3.5)", () => {
     /** 특약 — 제1조 지급사유 · 제2조 세부규정 · 제3조 소멸(① 제1조 참조 · ② 제1항 참조 · ③ 사망). */
     function special(prefix: string, lapse: string): DocumentNode {
       const p = (id: string, children: InlineNode[]): ParagraphNode => ({ id, kind: "paragraph", children });

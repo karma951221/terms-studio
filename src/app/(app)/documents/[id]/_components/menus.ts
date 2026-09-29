@@ -175,7 +175,7 @@ export function boxPickItems(boxes: readonly { code: string; name: string }[], a
   return boxes.map((x) => ({ label: `${x.name}(${x.code})`, action: { do: "ops", ops: [{ type: "insert", node: b.boxRef(x.code), at }] } }));
 }
 
-/** 그 자리에 설 수 있는 공용조항 — 조 자리의 「항」 공용조항 (기능/공용조항 §3.1). 유형을 모르면(옛 호출) 조 자리 공용조항으로 본다. */
+/** 그 자리에 설 수 있는 공용조항 — 조 자리의 「항」 공용조항 (기능/함수조항 §3.1). 유형을 모르면(옛 호출) 조 자리 공용조항으로 본다. */
 export function clausesFitting<C extends { mode?: string }>(clauses: readonly C[]): C[] {
   return clauses.filter((c) => c.mode !== "inline");
 }

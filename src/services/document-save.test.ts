@@ -22,7 +22,7 @@ function rejection<T>(r: Result<T>) {
   return r.rejection;
 }
 
-/** C001 만 있고 옵션 tone 이 필수 — 추가는 통과, 저장 검증은 미선택을 거부한다 (기능/공용조항 §3.2). */
+/** C001 만 있고 옵션 tone 이 필수 — 추가는 통과, 저장 검증은 미선택을 거부한다 (기능/함수조항 §3.2). */
 const gate: ClauseGate = {
   clauseExists: (c) => c === "C001",
   requiredCodes: () => [],

@@ -66,8 +66,8 @@ export interface ContainerOptions {
 // ───────────────────────────── 주입 구현 ─────────────────────────────
 
 /**
- * 문서 검증용 공용조항 게이트 — 정의 존재 · 요구 구분자 · 옵션 선택 검증 (ADR-0010 · 기능/공용조항 §3.2).
- * `missingRequired` 는 검사 ② (a) 의 재료 — 요구 구분자를 카탈로그 목록과 대조한다 (기능/공용조항 §3.4).
+ * 문서 검증용 공용조항 게이트 — 정의 존재 · 요구 구분자 · 옵션 선택 검증 (ADR-0010 · 기능/함수조항 §3.2).
+ * `missingRequired` 는 검사 ② (a) 의 재료 — 요구 구분자를 카탈로그 목록과 대조한다 (기능/함수조항 §3.4).
  */
 async function clauseGateOf(tx: Db): Promise<ClauseGate> {
   const [clauses, defs] = await Promise.all([clauseRepo.listClauses(tx), catalogRepo.listDiscriminators(tx)]);

@@ -33,7 +33,7 @@ export interface RefScopes {
   generalAncestors: Map<string, string[]>;
   /** 조 참조 팝업에 범위 고르기가 있는가 (담보약관 · 공용조항). */
   hasScopeSelect: boolean;
-  /** 공용조항 에디터인가 — 범위가 보통약관 · 이 공용조항 · 사용처 셋이다 (기능/공용조항 §3.5). 「이 템플릿」 자리에 「이 공용조항」. */
+  /** 공용조항 에디터인가 — 범위가 보통약관 · 이 공용조항 · 사용처 셋이다 (기능/함수조항 §3.5). 「이 템플릿」 자리에 「이 공용조항」. */
   clauseEditor?: boolean;
 }
 
@@ -572,7 +572,7 @@ export class DocumentAuthoring {
 type ClauseOption = { code: string; label: string; values: { label: string; body: { kind: string; text?: string }[] }[] };
 type ClauseMode = "inline" | "block";
 
-/** 공용조항 생성 화면 운전 — 이름 · 유형 · 옵션 · 본문 (기능/공용조항 §4.2). */
+/** 공용조항 생성 화면 운전 — 이름 · 유형 · 옵션 · 본문 (기능/함수조항 §4.2). */
 export class ClauseAuthoringDriver {
   readonly editor: Editor;
 

@@ -126,7 +126,7 @@ describe("container — createServices 관통 (PGlite)", () => {
     expect(check.broken).toEqual([]);
     expect(unwrap(await s.coverage.form({ level: "coverage", id: death.id })).fields.map((f) => f.path)).toEqual(["coverage_basic.claim_name"]);
     unwrap(await s.coverage.writeValue(editor, { level: "coverage", id: death.id }, "coverage_basic.claim_name", "기준A"));
-    // 옵션 미선택 참조는 저장 시점에 거부된다 (기능/공용조항 §3.2) — 게이트가 공용조항 정의로 검사
+    // 옵션 미선택 참조는 저장 시점에 거부된다 (기능/함수조항 §3.2) — 게이트가 공용조항 정의로 검사
     const unselected = b.article("y", [b.clauseBlock("C0001", {})]);
     const r = await s.document.apply(editor, special.id, [{ type: "insert", node: unselected, at: { parentId: special.tree.id } }]);
     const rj = rejection(r);

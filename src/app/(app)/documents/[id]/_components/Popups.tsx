@@ -193,7 +193,7 @@ function articleRefOf(fd: FormData): { targets: { nodeId: Id }[]; connector: Ref
   return { targets, connector: isReferenceConnector(connector) ? (connector as ReferenceConnector) : undefined, scope: scope === "general" || scope === "host" ? "general" : "self" };
 }
 
-/** 공용조항 칸 — 공용조항을 고르면 그 옵션마다 선택지. 옵션 선택은 사용처(이 문서) 소유다 (기능/공용조항 §3.2). */
+/** 공용조항 칸 — 공용조항을 고르면 그 옵션마다 선택지. 옵션 선택은 사용처(이 문서) 소유다 (기능/함수조항 §3.2). */
 function ClauseFields({ clauses, code, options }: { clauses: readonly Clause[]; code?: Code; options?: Record<Code, Code> }) {
   const [picked, setPicked] = useState<Code>(code ?? "");
   const clause = clauses.find((c) => c.code === picked);
