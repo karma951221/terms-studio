@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { parse } from "../expression";
 import type { FieldType } from "../types";
-import { emptyRows, operatorsFor, rowIssues, toExpr, toRows, toSource, type ConditionRows } from "./conditionRows";
+import { emptyRows, joinParens, operatorsFor, rowIssues, toExpr, toRows, toSource, type ConditionRows } from "./conditionRows";
 
 const ok = (src: string) => { const r = parse(src); if (!r.ok) throw new Error(src); return r.value; };
 
@@ -116,5 +116,29 @@ describe("담보속성 줄 (2026-09-28, 기능/문면 §3.3) — 있음 · 없�
     expect(rowIssues(toRows(ok("attr.A0001 = '9'"))!, typeOf, valuesOf)[0]).toMatch(/유효값이 아니다/);
     expect(rowIssues(toRows(ok("exist(attr.A0009)"))!, typeOf, valuesOf)[0]).toMatch(/찾을 수 없다/);
     expect(rowIssues({ rows: [{ left: { kind: "discriminator", code: "D0009" }, op: "exist" }], joins: [] }, typeOf, valuesOf)[0]).toMatch(/쓸 수 없다/);
+  });
+});
+
+describe("joinParens — 결합이 섞였을 때만 화면 괄호 (기능/문면 §3.3, 2026-09-30)", () => {
+  const show = (names: string[], joins: ("and" | "or")[]) => {
+    const p = joinParens(joins);
+    return names.map((n, i) => `${"( ".repeat(p[i].open)}${i > 0 ? `${joins[i - 1]} ` : ""}${n}${" )".repeat(p[i].close)}`).join(" ");
+  };
+  it("줄 하나 · 둘은 괄호 없음", () => {
+    expect(joinParens([])).toEqual([{ open: 0, close: 0 }]);
+    expect(joinParens(["or"])).toEqual([{ open: 0, close: 0 }, { open: 0, close: 0 }]);
+  });
+  it("모두 and · 모두 or 면 괄호 없음", () => {
+    expect(show(["A", "B", "C"], ["and", "and"])).toBe("A and B and C");
+    expect(show(["A", "B", "C"], ["or", "or"])).toBe("A or B or C");
+  });
+  it("A or B and C → ( A or B ) and C", () => {
+    expect(show(["A", "B", "C"], ["or", "and"])).toBe("( A or B ) and C");
+  });
+  it("A or B and C or D → ( ( A or B ) and C ) or D", () => {
+    expect(show(["A", "B", "C", "D"], ["or", "and", "or"])).toBe("( ( A or B ) and C ) or D");
+  });
+  it("A or B or C and D → ( A or B or C ) and D", () => {
+    expect(show(["A", "B", "C", "D"], ["or", "or", "and"])).toBe("( A or B or C ) and D");
   });
 });

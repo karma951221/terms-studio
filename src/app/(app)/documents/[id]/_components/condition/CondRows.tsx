@@ -8,13 +8,15 @@
  * 고른 것은 곧바로 식 소스로 묶여 `onCommit` — 선택 칸은 바꾸는 순간, 값 칸은 칸을 떠날 때(Enter 포함).
  * 줄이 다 차지 않았으면 빈 식을 넘긴다(저장 검증이 그 가지를 오류로 안내한다). 줄로 풀 수 없는 식은 원문 읽기 전용 + 「줄로 다시 만들기」
  * (텍스트 식 입력은 없다 — ADR-0066 결정 7 · 8).
+ * 결합이 섞였으면(AND · OR 둘 다) 왼쪽부터 묶이는 순서를 괄호로 보인다 — 첫 줄 변수 앞 `(`, 묶음 끝 줄 값 뒤 `)` (`joinParens`, 2026-09-30).
+ * 표시 전용 — 저장 식은 그대로다.
  * 문장 안 조건의 가지 머리(칩 팝업)도 같은 줄을 쓴다.
  */
-import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 
 import { Combobox, type ComboOption } from "@/app/_components/Combobox";
 import { IconButton, IconMinusCircle, IconPlusCircle } from "@/app/_components/icons";
-import { emptyRows, isUnaryOp, rowIssues, type ConditionRow, type ConditionRows, type Join, type RowOp } from "@/domain/document";
+import { emptyRows, isUnaryOp, joinParens, rowIssues, type ConditionRow, type ConditionRows, type Join, type RowOp } from "@/domain/document";
 import type { DiscriminatorRef, Literal } from "@/domain/expression";
 
 import { OP_LABEL, addRow, headOf, opsOf, pickerGroups, refKey, refOfKey, removeRow, setLeft, sourceOf, type HeadModel } from "./rows";
@@ -210,9 +212,14 @@ export function CondRows({
   const setRows = (next: ConditionRows, commit = true) => update({ kind: "rows", rows: next }, commit);
   const typeOf = (ref: DiscriminatorRef) => defOf(ref)?.type;
   const issues = rowIssues(rows, typeOf, (code) => attributeOf(code)?.values.map((v) => v.code));
+  const parens = joinParens(rows.joins);
+  // 괄호 자리는 괄호가 있을 때만, 모든 줄에 같은 폭으로 — 줄끼리 칸이 어긋나지 않고, 그만큼(자리 폭 + 칸 사이 4px 둘) 변수 칸을 줄여 한 줄에 둔다
+  const maxOpen = parens[0]?.open ?? 0;
+  const maxClose = Math.max(0, ...parens.map((p) => p.close));
+  const parenStyle = maxOpen > 0 ? ({ "--ts-paren-open": maxOpen, "--ts-paren-close": maxClose, "--ts-paren-room": `${(maxOpen + maxClose) * 8 + 8}px` } as CSSProperties) : undefined;
 
   return (
-    <div className="ts-cond-rows">
+    <div className="ts-cond-rows" style={parenStyle}>
       {rows.rows.map((row, i) => {
         const name = `${label} ${i + 1}번 줄`;
         const discriminator = row.left?.kind === "discriminator" ? row.left : undefined;
@@ -236,6 +243,11 @@ export function CondRows({
                 <option value="and">AND</option>
                 <option value="or">OR</option>
               </select>
+            )}
+            {maxOpen > 0 && (
+              <span className="ts-cond-paren ts-cond-paren-open" aria-hidden="true">
+                {"(".repeat(parens[i].open)}
+              </span>
             )}
             <Combobox
               inputRef={i === 0 ? firstVar : undefined}
@@ -275,6 +287,11 @@ export function CondRows({
               onChange={(right, commit) => setRows({ ...rows, rows: rows.rows.map((r, idx) => (idx === i ? { ...r, ...(right ? { right } : { right: undefined }) } : r)) }, commit)}
               onDone={done}
             />
+            {maxOpen > 0 && (
+              <span className="ts-cond-paren ts-cond-paren-close" aria-hidden="true">
+                {")".repeat(parens[i].close)}
+              </span>
+            )}
             <IconButton className="ts-cond-rowbtn" icon={<IconPlusCircle />} label={`${name} 뒤에 조건 줄 추가`} onClick={() => setRows(addRow(rows, i))} />
             <IconButton className="ts-cond-rowbtn" icon={<IconMinusCircle />} label={`${name} 빼기`} disabled={rows.rows.length <= 1} onClick={() => setRows(removeRow(rows, i))} />
             {issue && (
