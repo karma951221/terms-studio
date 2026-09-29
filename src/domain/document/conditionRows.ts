@@ -2,6 +2,7 @@
  * 조건 팝업의 줄 모델 ↔ 식 AST (ADR-0066 §5 · §8).
  *
  * 줄 = 좌변(구분자 참조) · 연산자 · 우변(리터럴 또는 구분자 참조). 줄 사이는 and/or, 괄호 없음, **왼쪽부터 결합**.
+ * 화면 괄호 (2026-09-30, 기능/문면 §3.3) — 결합이 섞였을 때만 `joinParens` 가 줄마다 여는 · 닫는 괄호 수를 준다. 표시 전용, 저장 식은 그대로.
  * 저장은 기존 AST — 새 노드 종류가 없다. 팝업이 열 수 없는 식(중첩 괄호 · not · 집계 직접 · 마스터 참조)은
  * `toRows` 가 undefined 를 돌려주고 화면은 원문 읽기 전용 + 「다시 만들기」로 간다.
  *
@@ -38,6 +39,27 @@ export interface ConditionRows {
   rows: ConditionRow[];
   /** `rows.length - 1` 개. i 번째는 i 와 i+1 사이. */
   joins: Join[];
+}
+
+/** 줄 하나의 화면 괄호 — 줄 앞에 여는 수 · 줄 뒤에 닫는 수. */
+export interface RowParens {
+  open: number;
+  close: number;
+}
+
+/**
+ * 왼쪽부터 묶기를 화면에 보이는 괄호 (2026-09-30, 기능/문면 §3.3) — 표시 전용, 저장 식은 바뀌지 않는다.
+ * 줄 i(≥2) 앞 결합이 줄 i-1 앞 결합과 다르면 줄 0..i-1 이 한 묶음 — 줄 0 앞에 `(`, 줄 i-1 뒤에 `)`.
+ * 결합이 모두 같으면(모두 and · 모두 or) 괄호 없음. `a or b and c` → `( a or b ) and c`.
+ */
+export function joinParens(joins: readonly Join[]): RowParens[] {
+  const out: RowParens[] = Array.from({ length: joins.length + 1 }, () => ({ open: 0, close: 0 }));
+  for (let i = 2; i < out.length; i += 1) {
+    if (joins[i - 1] === joins[i - 2]) continue;
+    out[0].open += 1;
+    out[i - 1].close += 1;
+  }
+  return out;
 }
 
 export function emptyRows(): ConditionRows {

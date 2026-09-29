@@ -3058,6 +3058,12 @@ p.ts-doc-cond-head {
   font-weight: 700;
 }
 
+.ts-cond-paren {
+  color: var(--ts-ink-3);
+  font: 700 13px/1 var(--mono);
+  letter-spacing: 1px;
+}
+
 .ts-cond-var {
   width: 220px;
   max-width: 100%;
