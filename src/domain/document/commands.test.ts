@@ -101,57 +101,74 @@ describe("문면작성 S2 — 인라인 조건 삽입", () => {
   });
 });
 
-describe("문면작성 S3 — 조 자리의 조건 블록과 가지 편집", () => {
-  it("조 자리에 조건 블록(if) 추가 후 가지 안에 조 작성 · elif · else 추가", () => {
+describe("문면작성 S3 — 조건 블록과 가지 편집", () => {
+  it("조 자리에 조건 블록(if) 추가 후 가지 안에 조 작성 — 조 자리는 켜고 끄기만이라 ELIF · ELSE 는 거부 (ADR-0072 결정 2b)", () => {
     const { b, doc } = twoArticles();
     const cond = b.condBlock([b.branch("D0001 = true", [])]); // 가지 n6 · 블록 n7
     const steps: Command[] = [
       { type: "insert", node: cond, at: { parentId: "n5", index: 1 } },
       { type: "insert", node: b.article("보험기간(갱신형)", []), at: { parentId: "n6" } }, // n8
-      { type: "addBranch", condId: "n7", branch: b.branch("D0002 = 'V01'", []) }, // n9
-      { type: "addBranch", condId: "n7", branch: b.branch(undefined, [b.article("그 외", [])]) }, // article n10 · 가지 n11
     ];
     const next = unwrap(applyCommands(doc, steps));
     const c = next.children[1] as CondBlockNode;
-    expect(c.branches.map((br) => [br.id, br.when])).toEqual([
-      ["n6", "D0001 = true"],
-      ["n9", "D0002 = 'V01'"],
-      ["n11", undefined],
-    ]);
+    expect(c.branches.map((br) => [br.id, br.when])).toEqual([["n6", "D0001 = true"]]);
+    expect(rejection(applyCommand(next, { type: "addBranch", condId: "n7", branch: b.branch("D0002 = 'V01'", []) })).reason).toBe("invalid");
+    expect(rejection(applyCommand(next, { type: "addBranch", condId: "n7", branch: b.branch(undefined, [b.article("그 외", [])]) })).reason).toBe("invalid");
     expect(next).toMatchSnapshot();
+  });
+
+  /** 항 자리(조 안)의 조건 블록 — IF · ELIF · ELSE 가지 편집. 제1조(n3)의 항 n2 뒤에 선다. */
+  const condIn = (d: DocumentNode) => (d.children[0] as ArticleNode).children[1] as CondBlockNode;
+
+  it("항 자리 — elif · else 추가, 가지 안에 항 작성", () => {
+    const { b, doc } = twoArticles();
+    const cond = b.condBlock([b.branch("D0001 = true", [])]); // 가지 n6 · 블록 n7
+    const next = unwrap(
+      applyCommands(doc, [
+        { type: "insert", node: cond, at: { parentId: "n3" } },
+        { type: "insert", node: b.paragraph([b.text("갱신형")]), at: { parentId: "n6" } }, // text n8 · paragraph n9
+        { type: "addBranch", condId: "n7", branch: b.branch("D0002 = 'V01'", []) }, // n10
+        { type: "addBranch", condId: "n7", branch: b.branch(undefined, [b.paragraph([b.text("그 외")])]) }, // text n11 · paragraph n12 · 가지 n13
+      ]),
+    );
+    expect(condIn(next).branches.map((br) => [br.id, br.when])).toEqual([
+      ["n6", "D0001 = true"],
+      ["n10", "D0002 = 'V01'"],
+      ["n13", undefined],
+    ]);
   });
 
   it("else 뒤에 가지 추가 · else 를 마지막 밖으로 이동 · 이중 else → 거부 (D-P4-11)", () => {
     const { b, doc } = twoArticles();
     const cond = b.condBlock([b.branch("D0001", []), b.branch(undefined, [])]); // 가지 n6 n7 · 블록 n8
-    const base = unwrap(applyCommand(doc, { type: "insert", node: cond, at: { parentId: "n5" } }));
+    const base = unwrap(applyCommand(doc, { type: "insert", node: cond, at: { parentId: "n3" } }));
     expect(rejection(applyCommand(base, { type: "addBranch", condId: "n8", branch: b.branch("D0002 = 'V01'", []) })).reason).toBe("invalid");
     expect(rejection(applyCommand(base, { type: "addBranch", condId: "n8", branch: b.branch(undefined, []) })).reason).toBe("invalid");
     expect(rejection(applyCommand(base, { type: "moveBranch", branchId: "n7", index: 0 })).reason).toBe("invalid");
     // elif 는 else 앞에 끼어들 수 있다
     const ok = unwrap(applyCommand(base, { type: "addBranch", condId: "n8", branch: b.branch("D0002 = 'V01'", []), index: 1 }));
-    expect((ok.children[2] as CondBlockNode).branches.map((br) => br.when)).toEqual(["D0001", "D0002 = 'V01'", undefined]);
+    expect(condIn(ok).branches.map((br) => br.when)).toEqual(["D0001", "D0002 = 'V01'", undefined]);
   });
 
   it("조건식 수정(setWhen) — else 로 바꾸면 마지막 가지여야 한다", () => {
     const { b, doc } = twoArticles();
     const cond = b.condBlock([b.branch("D0001", []), b.branch("D0002 = 'V01'", [])]); // 가지 n6 n7 · 블록 n8
-    const base = unwrap(applyCommand(doc, { type: "insert", node: cond, at: { parentId: "n5" } }));
+    const base = unwrap(applyCommand(doc, { type: "insert", node: cond, at: { parentId: "n3" } }));
     const changed = unwrap(applyCommand(base, { type: "setWhen", branchId: "n6", when: "D0001 = false" }));
-    expect((changed.children[2] as CondBlockNode).branches[0].when).toBe("D0001 = false");
+    expect(condIn(changed).branches[0].when).toBe("D0001 = false");
     expect(rejection(applyCommand(base, { type: "setWhen", branchId: "n6", when: undefined })).reason).toBe("invalid");
-    expect((unwrap(applyCommand(base, { type: "setWhen", branchId: "n7", when: undefined })).children[2] as CondBlockNode).branches[1].when).toBeUndefined();
+    expect(condIn(unwrap(applyCommand(base, { type: "setWhen", branchId: "n7", when: undefined }))).branches[1].when).toBeUndefined();
   });
 
   it("가지 삭제 — 마지막 남은 가지는 삭제 불가 (D-P4-12), 가지 순서 변경은 평가 순서 변경", () => {
     const { b, doc } = twoArticles();
     const cond = b.condBlock([b.branch("D0001", []), b.branch("D0002 = 'V01'", []), b.branch("D0002 = 'V02'", [])]); // 가지 n6 n7 n8 · 블록 n9
-    const base = unwrap(applyCommand(doc, { type: "insert", node: cond, at: { parentId: "n5" } }));
+    const base = unwrap(applyCommand(doc, { type: "insert", node: cond, at: { parentId: "n3" } }));
     const moved = unwrap(applyCommand(base, { type: "moveBranch", branchId: "n8", index: 0 }));
-    expect((moved.children[2] as CondBlockNode).branches.map((br) => br.id)).toEqual(["n8", "n6", "n7"]);
+    expect(condIn(moved).branches.map((br) => br.id)).toEqual(["n8", "n6", "n7"]);
     let cur = unwrap(applyCommand(moved, { type: "removeBranch", branchId: "n6" }));
     cur = unwrap(applyCommand(cur, { type: "removeBranch", branchId: "n7" }));
-    expect((cur.children[2] as CondBlockNode).branches.map((br) => br.id)).toEqual(["n8"]);
+    expect(condIn(cur).branches.map((br) => br.id)).toEqual(["n8"]);
     const rej = rejection(applyCommand(cur, { type: "removeBranch", branchId: "n8" }));
     expect(rej.reason).toBe("minimumStructure");
   });

@@ -231,3 +231,31 @@ describe("함수조항 본문 — 조건 가지 · switch 칸은 코드를 공�
     ]);
   });
 });
+
+describe("수용 기준 7 — 조 자리 조건 블록은 IF 하나(켜고 끄기)만 (ADR-0072 결정 2b)", () => {
+  function articleSiteCond() {
+    const b = nodeBuilders(sequentialIds("z"));
+    const cond = b.condBlock([b.branch("D0001", [b.article("켜고 끄는 조", [])])]);
+    const doc = b.document("문서", [b.article("앞 조", []), cond]);
+    return { b, doc, cond };
+  }
+
+  it("IF 가지 하나는 저장된다", () => {
+    expect(validateTree(articleSiteCond().doc)).toEqual([]);
+  });
+
+  it("ELIF · ELSE 가지를 더하면 거부 — 조 둘이 한 자리를 번갈아 차지하면 조 uuid 참조 문제가 조 단위에서 되살아난다", () => {
+    const { b, doc, cond } = articleSiteCond();
+    for (const branch of [b.branch("D0002", [b.article("다른 조", [])]), b.branch(undefined, [])]) {
+      expect(rejectedMessage(applyCommand(doc, { type: "addBranch", condId: cond.id, branch }))).toContain("IF 하나");
+    }
+  });
+
+  it("저장 검사도 조 자리의 ELSE 를 거부한다 — 항 자리 조건 블록은 그대로 ELIF · ELSE 를 쓴다", () => {
+    const { b, doc, cond } = articleSiteCond();
+    cond.branches.push(b.branch(undefined, []));
+    expect(validateTree(doc).map((i) => i.message)).toEqual([expect.stringContaining("IF 하나")]);
+    const inside = b.document("문서", [b.article("조", [b.condBlock([b.branch("D0001", [b.paragraph()]), b.branch(undefined, [b.paragraph()])])])]);
+    expect(validateTree(inside)).toEqual([]);
+  });
+});

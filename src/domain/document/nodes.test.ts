@@ -136,19 +136,17 @@ describe("문면작성 S2 경계 — 인라인 조건 중첩 금지", () => {
 });
 
 describe("조건 가지 규칙 (D-P4-11 · D-P4-12)", () => {
-  it("else 는 마지막에 최대 1개 — 중간 else · 이중 else 는 structure", () => {
+  it("else 는 마지막에 최대 1개 — 중간 else · 이중 else 는 structure (항 자리 블록 · 문장 안)", () => {
     const b = make();
-    const doc = b.document("d", [
-      b.condBlock([b.branch(undefined, [b.article("x", [])]), b.branch("D0001", [b.article("y", [])])]),
-      b.article("a", [
-        b.paragraph([
-          b.inlineCond([b.inlineBranch(undefined, [b.text("a")]), b.inlineBranch(undefined, [b.text("b")])]),
-        ]),
-      ]),
+    const cond = b.condBlock([b.branch(undefined, [b.paragraph()]), b.branch("D0001", [b.paragraph()])]);
+    const article = b.article("a", [
+      cond,
+      b.paragraph([b.inlineCond([b.inlineBranch(undefined, [b.text("a")]), b.inlineBranch(undefined, [b.text("b")])])]),
     ]);
+    const doc = b.document("d", [article]);
     const issues = validateTree(doc);
     expect(kinds(issues)).toEqual(["structure", "structure"]);
-    expect(issues[0].at.nodePath).toEqual(["n13", "n5"]); // document n13 · condBlock n5
+    expect(issues[0].at.nodePath).toEqual([doc.id, article.id, cond.id]);
   });
 
   it("가지가 하나도 없는 조건 노드는 structure", () => {

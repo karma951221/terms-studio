@@ -580,6 +580,10 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
         if (br.when === undefined && i !== brs.length - 1 && !isSwitchCarrier(node)) {
           structure("else 가지는 마지막에만 올 수 있습니다", path, articleId);
         }
+        // 조 자리 조건 블록은 IF 하나(켜고 끄기)만 — 조 둘이 한 자리를 번갈아 차지하면 조 uuid 참조 문제가 조 단위에서 되살아난다 (ADR-0072 결정 2b)
+        if (node.kind === "condBlock" && f.allowed.includes("article") && (i > 0 || br.when === undefined)) {
+          structure("조 자리의 조건 블록은 IF 하나(켜고 끄기)만 둘 수 있습니다 — ELIF · ELSE 는 조 안(항 자리)에 둔다", bpath, articleId);
+        }
         branches.set(br.id, { branch: br, ownerId: node.id, index: i, path: bpath, articleId, allowed: f.allowed });
         // 가지 안의 허용 집합 = 조건 노드가 서 있는 자리의 허용 집합 (투명)
         (br.children as Node[]).forEach((child, ci) =>
