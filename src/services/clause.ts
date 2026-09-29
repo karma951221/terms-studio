@@ -190,7 +190,7 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
   }
 
   function notFound<T>(code: Code): Result<T> {
-    return reject({ reason: "notFound", what: `공용조항 ${code}` });
+    return reject({ reason: "notFound", what: `함수조항 ${code}` });
   }
 
   async function withClause<T>(tx: Db, code: Code, fn: (def: Clause) => Promise<Result<T>> | Result<T>): Promise<Result<T>> {

@@ -247,7 +247,7 @@ describe("텍스트 · 조 명 · 슬롯 · 참조 대상 · 옵션 수정", () 
     expect(rejection(applyCommand(base, { type: "setArticleRef", nodeId: "n8", targets: [{ nodeId: "ghost" }], connector: "및", scope: "self" })).reason).toBe("invalid");
   });
 
-  it("공용조항 참조 — 게이트가 코드를 모르면 삽입 실패 · 옵션 미선택은 삽입 시 통과(기능/공용조항 §3.2) · 옵션 변경", () => {
+  it("함수조항 참조 — 게이트가 코드를 모르면 삽입 실패 · 옵션 미선택은 삽입 시 통과(기능/함수조항 §3.2) · 옵션 변경", () => {
     const { b, doc } = twoArticles();
     const gate = {
       clauseExists: (c: string) => c === "C001",

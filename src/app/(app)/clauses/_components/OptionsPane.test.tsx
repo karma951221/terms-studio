@@ -8,7 +8,7 @@ import { OptionsPane } from "./OptionsPane";
 
 const option = { code: "O01", label: "소멸 사유", values: [{ code: "V1", label: "사망", text: "사망한 경우" }, { code: "V2", label: "해지", text: "" }] };
 
-describe("옵션 목록 (기능/공용조항 §4.3)", () => {
+describe("옵션 목록 (기능/함수조항 §4.3)", () => {
   it("편집 — 옵션명 · 선택지 이름 · 문구 칸, 빼기는 ⊖, 더하기는 「+ 선택지」 · 「+ 옵션 추가」", () => {
     const html = renderToStaticMarkup(<OptionsPane options={[option]} editing used={new Set()} onChange={() => undefined} newCode={() => "new:1"} />);
     expect(html).toContain('aria-label="옵션명"');
@@ -44,7 +44,7 @@ describe("생성 화면 — 쓴 것이 없는 본문 (유형 잠금 · 빈 항�
   });
 });
 
-describe("유형 (기능/공용조항 §3.1)", () => {
+describe("유형 (기능/함수조항 §3.1)", () => {
   it("생성 화면 유형 라디오 · 목록 필터 · `+` 메뉴는 문구 · 항 둘 — 박스는 정적 마스터에서 만든다", () => {
     expect(MODE_OPTIONS.map((o) => o.label)).toEqual(["문구", "항"]);
   });

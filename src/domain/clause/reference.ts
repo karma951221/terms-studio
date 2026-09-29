@@ -54,7 +54,7 @@ export function checkAttachmentForReference(
     broken.push(code);
     issues.push({
       kind: "brokenRef",
-      message: `공용조항 ${clause.code} 이(가) 읽는 구분자가 없습니다: ${code}`,
+      message: `함수조항 ${clause.code} 이(가) 읽는 구분자가 없습니다: ${code}`,
       at: { ...coordinate, refPath: code },
       source: { document: "clause", ownerId: clause.code, ownerName: clause.label, refPath: code },
     });
@@ -82,7 +82,7 @@ export function validateOptionSelection(clause: Clause, selection: OptionSelecti
   const known = new Set(clause.options.map((o) => o.code));
   for (const code of Object.keys(selection)) {
     if (!known.has(code)) {
-      issues.push({ kind: "optionInvalid", message: `공용조항 ${clause.code} 에 없는 옵션입니다: ${code}`, at: { ...coordinate, refPath: code } });
+      issues.push({ kind: "optionInvalid", message: `함수조항 ${clause.code} 에 없는 옵션입니다: ${code}`, at: { ...coordinate, refPath: code } });
     }
   }
   return issues;

@@ -1240,10 +1240,10 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
         if (!p.generalDocumentId) return notFound(`상품 ${scope.id} 의 보통약관 템플릿`);
         // 오버라이드는 「그 자리의 마스터 선택에 얹는 차이」다 — 자리를 먼저 찾아 마스터를 읽는다.
         const ref = await gate.clauseRef(p.generalDocumentId, nodeId);
-        if (!ref) return notFound(`보통약관 템플릿 ${p.generalDocumentId} 의 공용조항 참조 ${nodeId}`);
+        if (!ref) return notFound(`보통약관 템플릿 ${p.generalDocumentId} 의 함수조항 참조 ${nodeId}`);
         // 그 자리의 공용조항과 **다른 코드**로 온 행은 받지 않는다 — 조립은 오버라이드를 `nodeId` 로만 얹으므로
         // (`domain/assembly/booklet.ts`) 어긋난 코드로 저장된 선택이 그 자리에 조용히 적용된다 (코덱스 리뷰 후속).
-        if (ref.clauseCode !== clauseCode) return notFound(`보통약관 템플릿 ${p.generalDocumentId} 의 자리 ${nodeId} 에 걸린 공용조항 ${clauseCode}`);
+        if (ref.clauseCode !== clauseCode) return notFound(`보통약관 템플릿 ${p.generalDocumentId} 의 자리 ${nodeId} 에 걸린 함수조항 ${clauseCode}`);
         // 검사는 **합친 결과**로 한다 — 부분 선택(한 옵션만 바꾸기)이 미선택으로 거부되지 않도록 (Important-1).
         // clauseCode 자체의 유효성(없는 공용조항)은 검증기가 본다.
         const merged = { ...ref.options, ...options };

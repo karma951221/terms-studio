@@ -67,10 +67,10 @@ export default async function ClausesPage({ searchParams }: { searchParams: Prom
       empty={
         summaries.length === 0 ? (
           <div className="ts-empty">
-            <p className="ts-empty-what">공용조항은 여러 약관 템플릿이 공통으로 참조해 쓰는 문구 템플릿이다.</p>
+            <p className="ts-empty-what">함수조항은 여러 약관 템플릿이 공통으로 참조해 쓰는 문구 템플릿이다.</p>
             <p className="ts-empty-example">예: 특별약관의 소멸, 준용규정</p>
             <p className="ts-empty-action">
-              새 공용조항 만들기 —{" "}
+              새 함수조항 만들기 —{" "}
               {CREATE_MENU.map((item, i) => (
                 <span key={item.href}>
                   {i > 0 ? " · " : null}
@@ -82,7 +82,7 @@ export default async function ClausesPage({ searchParams }: { searchParams: Prom
             </p>
           </div>
         ) : (
-          <p className="ts-empty-what">이 조건에 맞는 공용조항이 없습니다.</p>
+          <p className="ts-empty-what">이 조건에 맞는 함수조항이 없습니다.</p>
         )
       }
     />

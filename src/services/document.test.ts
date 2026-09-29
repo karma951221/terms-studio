@@ -189,8 +189,8 @@ describe("document 서비스 (PGlite)", () => {
     });
   });
 
-  describe("문면작성 S5 — 공용조항 참조 (게이트 주입 · 옵션 미선택은 저장 오류 · 기능/공용조항 §3.2)", () => {
-    it("없는 공용조항 → 삽입 실패 · 옵션 미선택 → optionUnselected 저장 오류 · 선택하면 저장", async () => {
+  describe("문면작성 S5 — 함수조항 참조 (게이트 주입 · 옵션 미선택은 저장 오류 · 기능/함수조항 §3.2)", () => {
+    it("없는 함수조항 → 삽입 실패 · 옵션 미선택 → optionUnselected 저장 오류 · 선택하면 저장", async () => {
       const root = (await svc.get(specialId))!.tree.id;
       const lapse = b.article("특별약관의 소멸", [b.clauseBlock("C001", {})]);
       expect(rejection(await svc.apply(editor, specialId, [{ type: "insert", node: b.article("x", [b.clauseBlock("C999", {})]), at: { parentId: root } }])).reason).toBe("invalid");
@@ -209,7 +209,7 @@ describe("document 서비스 (PGlite)", () => {
     });
   });
 
-  describe("검사 ② (a) — 요구 구분자가 카탈로그에 없으면 참조 추가 미성립 (기능/공용조항 §3.4)", () => {
+  describe("검사 ② (a) — 요구 구분자가 카탈로그에 없으면 참조 추가 미성립 (기능/함수조항 §3.4)", () => {
     it("게이트가 없는 요구 구분자를 보고하면 옵션을 다 골랐어도 삽입이 brokenRef 로 거부된다 · 문서는 그대로", async () => {
       // C001 이 읽는 D0099 가 카탈로그에서 사라진 상황을 게이트로 흉내 낸다 (구분자 삭제 뒤 참조 추가 시도).
       const dangling: ClauseGate = { ...gate, missingRequired: (c) => (c === "C001" ? ["D0099"] : []) };
@@ -218,7 +218,7 @@ describe("document 서비스 (PGlite)", () => {
       const rej = rejection(await strict.apply(editor, specialId, [{ type: "insert", node: b.article("x", [b.clauseBlock("C001", { tone: "death" })]), at: { parentId: before.id } }]));
       if (rej.reason !== "invalid") throw new Error("invalid 기대");
       expect(rej.issues.map((i) => i.kind)).toEqual(["brokenRef"]);
-      expect(rej.issues[0].message).toBe("공용조항 C001 의 요구 구분자 D0099 이(가) 카탈로그에 없습니다 — 참조 추가 미성립");
+      expect(rej.issues[0].message).toBe("함수조항 C001 의 요구 구분자 D0099 이(가) 카탈로그에 없습니다 — 참조 추가 미성립");
       expect(rej.issues[0].at).toMatchObject({ document: "special", ownerId: covSurgery, refPath: "D0099" });
       expect((await svc.get(specialId))!.tree).toEqual(before);
     });

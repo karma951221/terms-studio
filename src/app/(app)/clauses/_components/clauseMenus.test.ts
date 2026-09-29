@@ -16,13 +16,13 @@ function env(mode: "inline" | "block", onRefuse = vi.fn()): ClauseMenuEnv {
   return { tree, ix: indexTree(tree), docKind: "special", newId: sequentialIds("n"), mode, options: [{ code: "O01", label: "기일" }], onRefuse };
 }
 
-describe("공용조항 에디터 메뉴 — 문면 메뉴를 공용조항 자리로 거른다 (기능/공용조항 §4.3)", () => {
-  it("문장 속: 문면의 넣기 도구 + 옵션 자리, 공용조항 참조는 누르면 거부 배너", () => {
+describe("함수조항 에디터 메뉴 — 문면 메뉴를 함수조항 자리로 거른다 (기능/함수조항 §4.3)", () => {
+  it("문장 속: 문면의 넣기 도구 + 옵션 자리, 함수조항 참조는 누르면 거부 배너", () => {
     const onRefuse = vi.fn();
     const e = env("block", onRefuse);
     const sections = clauseInlineMenu(e, { parentId: "p1" }, [{ text: "항" }, { caret: true }]);
     expect(labels(sections)).toEqual(expect.arrayContaining(["치환 슬롯…", "조 참조…", "별표 참조…", "문장 안 조건", "옵션 자리 — 기일", "아래에 항 추가", "호 추가"]));
-    const clauseRef = find(sections, "공용조항(문장 안)…")!;
+    const clauseRef = find(sections, "함수조항(문장 안)…")!;
     expect(clauseRef.refusal).toBe(REFUSE.clauseRef); // 툴바는 잠그고 이 사유를 tooltip 으로
     expect(clauseRef.action.do).toBe("ops");
     if (clauseRef.action.do === "ops" && typeof clauseRef.action.ops === "function") expect(clauseRef.action.ops(e.tree)).toEqual([]);
@@ -42,11 +42,11 @@ describe("공용조항 에디터 메뉴 — 문면 메뉴를 공용조항 자리
     expect(clauseBodyMenu(env("inline"))).toEqual([]);
   });
 
-  it("블록 메뉴: 표 · 공용조항(조 단위)은 싣지 않거나 거부, 정적 마스터 박스는 넣는다(잎), 호에는 조건으로 감싸기가 없다", () => {
+  it("블록 메뉴: 표 · 함수조항(조 단위)은 싣지 않거나 거부, 정적 마스터 박스는 넣는다(잎), 호에는 조건으로 감싸기가 없다", () => {
     const e = env("block");
     const paragraph = labels(clauseBlockMenu(e, "p1"));
     expect(paragraph).toContain("조건으로 감싸기");
-    expect(paragraph.some((l) => l.includes("표") || l.includes("박스 공용조항"))).toBe(false);
+    expect(paragraph.some((l) => l.includes("표") || l.includes("박스 함수조항"))).toBe(false);
     expect(paragraph).toContain("아래에 박스 추가…");
     expect(labels(clauseBlockMenu(e, "i1"))).toContain("아래에 박스 추가…");
     expect(labels(clauseBlockMenu(e, "i1"))).not.toContain("조건으로 감싸기");
@@ -56,7 +56,7 @@ describe("공용조항 에디터 메뉴 — 문면 메뉴를 공용조항 자리
     const onRefuse = vi.fn();
     const e = env("block", onRefuse);
     const sections = clauseBodyMenu(e);
-    expect(labels(sections)).toEqual(["항 추가", "박스 추가…", "조건 블록 넣기", "조 추가", "관 추가", "공용조항 참조 추가…"]);
+    expect(labels(sections)).toEqual(["항 추가", "박스 추가…", "조건 블록 넣기", "조 추가", "관 추가", "함수조항 참조 추가…"]);
     const article = find(sections, "조 추가")!;
     if (article.action.do === "ops" && typeof article.action.ops === "function") article.action.ops(e.tree);
     expect(onRefuse).toHaveBeenCalledWith(REFUSE.article);

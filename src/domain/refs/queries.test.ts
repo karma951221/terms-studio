@@ -43,7 +43,7 @@ function surgeryGraph() {
 }
 
 describe("usagesOf — 역방향 조회 (구분자정의 S6 · 관계정보 뷰)", () => {
-  it("구분자 사용처 = 문면 조건식·슬롯·공용조항 식 — 좌표 목록으로", () => {
+  it("구분자 사용처 = 문면 조건식·슬롯·함수조항 식 — 좌표 목록으로", () => {
     const g = surgeryGraph();
     const u = usagesOf(g, { kind: "discriminator", code: "D0001" });
     expect(u.map((e) => e.via)).toEqual(["when", "when"]); // 인라인 조건(제1조) · 조 자리 조건 블록
@@ -66,7 +66,7 @@ describe("usagesOf — 역방향 조회 (구분자정의 S6 · 관계정보 뷰)
     expect(usagesOf(g, { kind: "discriminator", code: "D0099" }, { via: ["when", "slot", "expression"] })).toEqual([]);
   });
 
-  it("공용조항·조·별표 사용처", () => {
+  it("함수조항·조·별표 사용처", () => {
     const g = surgeryGraph();
     expect(usagesOf(g, { kind: "clause", code: "C001" }).map((e) => [e.via, e.at.articleTitle])).toEqual([
       ["clauseRef", "특별약관의 소멸"],
@@ -78,8 +78,8 @@ describe("usagesOf — 역방향 조회 (구분자정의 S6 · 관계정보 뷰)
   });
 });
 
-describe("orphans — 어디서도 참조되지 않는 구분자·공용조항·별표", () => {
-  it("식·문면이 읽지 않는 구분자, 참조 없는 공용조항·별표가 고아다", () => {
+describe("orphans — 어디서도 참조되지 않는 구분자·함수조항·별표", () => {
+  it("식·문면이 읽지 않는 구분자, 참조 없는 함수조항·별표가 고아다", () => {
     const g = surgeryGraph();
     expect(orphans(g).map((n) => nodeKey(n.key))).toEqual(["discriminator:D0099", "clause:C003", "appendix:APX_ORPHAN"]);
   });
@@ -141,7 +141,7 @@ describe("brokenEdges — 대상이 없는 참조 (삭제 후 남은 오류 상�
 });
 
 describe("relationView — 관계정보 뷰 (정방향 · 역방향 · 옵션 오버라이드 사용처)", () => {
-  it("공용조항: 정방향(본문이 읽는 것) · 역방향(참조 문서) · 오버라이드(기능/공용조항 §3.2) · 깨진 것", () => {
+  it("함수조항: 정방향(본문이 읽는 것) · 역방향(참조 문서) · 오버라이드(기능/함수조항 §3.2) · 깨진 것", () => {
     const g = buildGraph({
       discriminators: [D("D0001")],
       master,
@@ -207,13 +207,13 @@ describe("describeKey — 표시명 표기 (기능/조립산출 §3.4 · 리뷰 
 
   it("선언되지 않은 대상(깨진 참조)은 상위 이름 아래 「…(없음)」으로, 상위도 없으면 id 표기로 돌아간다", () => {
     const g = surgeryGraph();
-    expect(describeKey({ kind: "clause", code: "C999" }, g)).toBe("공용조항 C999");
+    expect(describeKey({ kind: "clause", code: "C999" }, g)).toBe("함수조항 C999");
     expect(describeKey({ kind: "article", documentId: "doc-g", articleId: "g-gone" }, g)).toBe(`${fx.general.title} › 조 g-gone(없음)`);
   });
 });
 
 describe("refStats — 문제 개수에 붙일 분모 (§9.6)", () => {
-  it("고아 분모는 고아가 될 수 있는 종류(구분자·공용조항·별표)만 센다", () => {
+  it("고아 분모는 고아가 될 수 있는 종류(구분자·함수조항·별표)만 센다", () => {
     const g = surgeryGraph();
     const s = refStats(g);
     expect(s.edges).toBe(g.edges.length);
@@ -305,7 +305,7 @@ describe("transitiveUsages — 이 구분자와 의존 구분자들의 문면 �
 });
 
 describe("affectedProducts — 사용처 문면이 들어가는 상품 (ADR-0049 §3 「영향 받는 상품 m건」)", () => {
-  it("담보약관 경로 · 보통약관 직접 · 공용조항 경유 각 1건 — 상품별로 한 번, 대표 경로 하나", () => {
+  it("담보약관 경로 · 보통약관 직접 · 함수조항 경유 각 1건 — 상품별로 한 번, 대표 경로 하나", () => {
     const g = chainGraph();
     const a = affectedProducts(g, "D1");
     expect(a.map((x) => [nodeKey(x.product), x.productName])).toEqual([
@@ -329,15 +329,15 @@ describe("affectedProducts — 사용처 문면이 들어가는 상품 (ADR-0049
     expect(affectedProducts(g, { kind: "discriminator", code: "D1" })).toEqual(affectedProducts(g, "D1"));
   });
 
-  describe("공용조항 → 사용처 문서 → 상품 (기능/공용조항 §3.4 검사 ③ 「영향 받는 상품」 · ADR-0049 §3)", () => {
-    it("공용조항 → 담보약관 → 담보 → 상품담보 → 상품 · through 는 사용처 조부터", () => {
+  describe("함수조항 → 사용처 문서 → 상품 (기능/함수조항 §3.4 검사 ③ 「영향 받는 상품」 · ADR-0049 §3)", () => {
+    it("함수조항 → 담보약관 → 담보 → 상품담보 → 상품 · through 는 사용처 조부터", () => {
       const g = chainGraph();
       const a = affectedProducts(g, { kind: "clause", code: "C001" });
       expect(a.map((x) => [nodeKey(x.product), x.productName])).toEqual([["product:p3", "상품 3"]]);
       expect(a[0].through.map(nodeKey)).toEqual(["article:doc-s2/s2", "document:doc-s2", "coverageNode:coverage/cov-2", "productCoverage:pc3"]);
     });
 
-    it("공용조항 → 보통약관 → 상품(직접) · 보통약관 → 담보약관 → 상품 — 상품별 한 번", () => {
+    it("함수조항 → 보통약관 → 상품(직접) · 보통약관 → 담보약관 → 상품 — 상품별 한 번", () => {
       const g = buildGraph({
         clauses: [clause("C002", "공용 문구", [{ id: "c2-p", kind: "paragraph", children: [{ id: "c2-t", kind: "text", text: "문구" }] }])],
         documents: [
@@ -356,7 +356,7 @@ describe("affectedProducts — 사용처 문면이 들어가는 상품 (ADR-0049
       expect(a[1].through.map(nodeKey)).toEqual(["article:doc-g/g1", "document:doc-g"]);
     });
 
-    it("아무 문서도 참조하지 않는 공용조항 · 선언되지 않은 공용조항은 빈 목록", () => {
+    it("아무 문서도 참조하지 않는 함수조항 · 선언되지 않은 함수조항은 빈 목록", () => {
       const g = chainGraph();
       expect(affectedProducts(g, { kind: "clause", code: "C999" })).toEqual([]);
     });

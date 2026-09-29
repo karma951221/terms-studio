@@ -104,7 +104,7 @@ describe("선택 범위 → 잇닿은 형제 블록 (조건식 · 끌어 옮기�
   it("조를 넘는 선택 → 조 둘", () => {
     expect(selectionRange(ix, "p2", "q1")?.ids).toEqual(["a1", "a2"]);
   });
-  it("담을 수 없는 자리면 부모 블록으로 — 공용조항 본문의 호는 조건 블록을 못 품는다", () => {
+  it("담을 수 없는 자리면 부모 블록으로 — 함수조항 본문의 호는 조건 블록을 못 품는다", () => {
     const onlyParagraphs = (id: string) => ix.nodes.get(id)?.node.kind === "paragraph";
     expect(selectionRange(ix, "i1", "i2", onlyParagraphs)?.ids).toEqual(["p1"]);
   });

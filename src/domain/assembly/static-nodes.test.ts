@@ -176,7 +176,7 @@ describe("정적 마스터 박스 참조가 조립에서 박스 내용으로 펼
     expect((a1.children[0] as RenderedParagraph).items?.map((i) => i.kind)).toEqual(["item", "box"]);
   });
 
-  it("공용조항 본문 안의 boxRef도 사용처 자리에서 박스로 펼쳐진다 (박스는 잎 — 중첩 금지에 걸리지 않는다)", () => {
+  it("함수조항 본문 안의 boxRef도 사용처 자리에서 박스로 펼쳐진다 (박스는 잎 — 중첩 금지에 걸리지 않는다)", () => {
     const input = alphaPlusFixture();
     const b = nodeBuilders(sequentialIds("y"));
     const clause = { code: "C0900", label: "암 정의", mode: "block" as const, options: [], required: { discriminators: [], attributes: [] }, body: [{ id: "p1", kind: "paragraph" as const, children: [{ id: "t1", kind: "text" as const, text: "암이란" }] }, { id: "bx", kind: "boxRef" as const, boxCode: "BX000001" }] };

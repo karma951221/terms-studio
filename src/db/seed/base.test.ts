@@ -25,7 +25,7 @@ describe("loadRealBase — 화면 E2E 바탕", () => {
     await t.close();
   });
 
-  it("별표 21 · 보통약관이 쓰는 박스 84 · 공용조항 19(앞 코드 — 조째) · 보통약관 2 — 담보 · 상품은 없다", async () => {
+  it("별표 21 · 보통약관이 쓰는 박스 84 · 함수조항 19(앞 코드 — 조째) · 보통약관 2 — 담보 · 상품은 없다", async () => {
     expect(await loadRealBase(services, admin)).toEqual({ created: true });
     expect(await services.document.listAppendices()).toHaveLength(21);
     const clauses = (await services.clause.list()).map((c) => c.code);

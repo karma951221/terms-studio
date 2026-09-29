@@ -342,7 +342,7 @@ describe("products lib — 조립 미리보기의 조연결 판정 절 (기능/�
     expect(omissionPairLabel(1, "error")).toBe("오류 노드 1");
   });
 
-  it("excludedClauseLabel — 보통약관 트리의 block 공용조항 참조 노드면 「공용조항 코드(라벨)」, 못 찾으면 노드 id", () => {
+  it("excludedClauseLabel — 보통약관 트리의 block 함수조항 참조 노드면 「함수조항 코드(라벨)」, 못 찾으면 노드 id", () => {
     const tree: DocumentNode = {
       id: "g",
       kind: "document",
@@ -350,8 +350,8 @@ describe("products lib — 조립 미리보기의 조연결 판정 절 (기능/�
       children: [{ id: "g-a", kind: "article", title: "조", children: [{ id: "g-clause", kind: "clauseBlockRef", clauseCode: "C0003", options: {}, excludeFromComparison: true }] }],
     };
     const labelOf = (code: string) => (code === "C0003" ? "면책 추가" : undefined);
-    expect(excludedClauseLabel(tree, "g-clause", labelOf)).toBe("공용조항 C0003(면책 추가)");
-    expect(excludedClauseLabel(tree, "g-clause", () => undefined)).toBe("공용조항 C0003");
+    expect(excludedClauseLabel(tree, "g-clause", labelOf)).toBe("함수조항 C0003(면책 추가)");
+    expect(excludedClauseLabel(tree, "g-clause", () => undefined)).toBe("함수조항 C0003");
     expect(excludedClauseLabel(tree, "g-a", labelOf)).toBe("g-a");
     expect(excludedClauseLabel(undefined, "g-clause", labelOf)).toBe("g-clause");
   });

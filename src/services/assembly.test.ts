@@ -389,7 +389,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
       expect((await svc.latest(productId))!.stale).toBe(false);
     });
 
-    it("공유 마스터 변경(공용조항 이름 · 구분자 설명)도 stale:true — 어느 마스터든 바뀌면 전 상품 오래됨", async () => {
+    it("공유 마스터 변경(함수조항 이름 · 구분자 설명)도 stale:true — 어느 마스터든 바뀌면 전 상품 오래됨", async () => {
       unwrap(await clause.rename(editor, "C0002", "준용 문구(개정)"));
       expect((await svc.latest(productId))!.stale).toBe(true);
       unwrap(await svc.run(editor, productId));

@@ -36,7 +36,7 @@ const CHIP_WHAT: Record<string, string> = {
   slot: "치환 슬롯",
   articleRef: "조 참조",
   appendixRef: "별표 참조",
-  clauseInlineRef: "공용조항(문장 안)",
+  clauseInlineRef: "함수조항(문장 안)",
   inlineCond: "문장 안 조건",
   inlineFor: "문장 안 반복",
   structKey: "구조 표기",
@@ -60,8 +60,8 @@ function chipParts(node: InlineNode, ctx: DocCtx): { className: string; title: s
     case "clauseInlineRef":
       return {
         className: "ts-doc-ref",
-        title: `공용조항(문장 안) · ${node.clauseCode} · ${ctx.optionText(node.clauseCode, node.options)}`,
-        body: `〔${ctx.clauseLabel.get(node.clauseCode) ?? `${node.clauseCode}(없는 공용조항)`}〕`,
+        title: `함수조항(문장 안) · ${node.clauseCode} · ${ctx.optionText(node.clauseCode, node.options)}`,
+        body: `〔${ctx.clauseLabel.get(node.clauseCode) ?? `${node.clauseCode}(없는 함수조항)`}〕`,
       };
     case "structKey":
       return { className: "ts-doc-ref", title: "구조 표기 — 행마다 그 행의 노드 이름이 찍힌다", body: STRUCT_KEY_CHIP[node.level] };

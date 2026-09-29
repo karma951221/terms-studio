@@ -676,9 +676,9 @@ export function checkNodeRefs(e: NodeEntry, ix: TreeIndex, env: TreeEnv, atSave:
 function clausePlacement(node: ClauseBlockRefNode | ClauseInlineRefNode, slot: SlotName, gate: ClauseGate, at: Coordinate): Issue[] {
   const mode = gate.clauseMode?.(node.clauseCode);
   if (mode === undefined) return [];
-  const wrong = (message: string): Issue[] => [{ kind: "structure", message: `공용조항 ${node.clauseCode} — ${message}`, at }];
-  if (node.kind === "clauseInlineRef") return mode === "inline" ? [] : wrong("문장 안에는 「문구」 공용조항만 둘 수 있습니다");
-  if (mode === "inline") return wrong("「문구」 공용조항은 문장 안에만 둘 수 있습니다");
+  const wrong = (message: string): Issue[] => [{ kind: "structure", message: `함수조항 ${node.clauseCode} — ${message}`, at }];
+  if (node.kind === "clauseInlineRef") return mode === "inline" ? [] : wrong("문장 안에는 「문구」 함수조항만 둘 수 있습니다");
+  if (mode === "inline") return wrong("「문구」 함수조항은 문장 안에만 둘 수 있습니다");
   return [];
 }
 
@@ -696,13 +696,13 @@ export function checkClauseRef(
   atSave: boolean,
 ): Issue[] {
   if (!gate.clauseExists(node.clauseCode)) {
-    return [{ kind: "brokenRef", message: `공용조항 ${node.clauseCode} 가 없습니다`, at }];
+    return [{ kind: "brokenRef", message: `함수조항 ${node.clauseCode} 가 없습니다`, at }];
   }
   const issues: Issue[] = [];
   const missing = gate.missingRequired(node.clauseCode);
   if (missing.length > 0) {
     const codes = missing.join(" · ");
-    const message = `공용조항 ${node.clauseCode} 의 요구 구분자 ${codes} 이(가) 카탈로그에 없습니다${atSave ? "" : " — 참조 추가 미성립"}`;
+    const message = `함수조항 ${node.clauseCode} 의 요구 구분자 ${codes} 이(가) 카탈로그에 없습니다${atSave ? "" : " — 참조 추가 미성립"}`;
     issues.push({ kind: "brokenRef", message, at: { ...at, refPath: codes } });
   }
   for (const i of gate.validateOptions(node.clauseCode, node.options)) {

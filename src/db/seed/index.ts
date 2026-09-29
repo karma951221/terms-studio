@@ -41,7 +41,7 @@ async function seed() {
 
   if (process.env.SEED_PROFILE === "base") {
     const base = await loadRealBase(services, actor);
-    console.log(`[seed] 바탕(별표 · 보통약관 · 보통약관이 쓰는 공용조항) ${base.created ? "생성" : "이미 있음(건너뜀)"}`);
+    console.log(`[seed] 바탕(별표 · 보통약관 · 보통약관이 쓰는 함수조항) ${base.created ? "생성" : "이미 있음(건너뜀)"}`);
     return;
   }
 

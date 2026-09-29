@@ -296,7 +296,7 @@ describe("0017_attribute_value_numeric_code", () => {
     };
   }
 
-  it("유효값 코드 V0n → n 을 값 · 상품담보 조합 · 조합 키 · attr 식(구분자 · 문서 · 공용조항 본문 · 옵션)에서 함께 바꾸고, enum 값 · 옵션 선택지 코드는 두며, 순서 컬럼을 지운다 · 두 번 돌려도 같다", async () => {
+  it("유효값 코드 V0n → n 을 값 · 상품담보 조합 · 조합 키 · attr 식(구분자 · 문서 · 함수조항 본문 · 옵션)에서 함께 바꾸고, enum 값 · 옵션 선택지 코드는 두며, 순서 컬럼을 지운다 · 두 번 돌려도 같다", async () => {
     await upTo16();
     await seedOld();
     await apply0017();

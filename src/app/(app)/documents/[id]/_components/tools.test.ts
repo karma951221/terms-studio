@@ -75,7 +75,7 @@ describe("약관 에디터 툴바 (기능/문면 §4.3)", () => {
     const ids = allTools(DOCUMENT_TOOLS).map((t) => t.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(allTools(DOCUMENT_TOOLS).map((t) => t.label)).toEqual(
-      expect.arrayContaining(["조", "관", "항", "호", "목", "표", "글머리 목록", "공용조항", "슬롯", "조 참조", "별표 참조", "조건식", "위로", "아래로", "복제", "삭제"]),
+      expect.arrayContaining(["조", "관", "항", "호", "목", "표", "글머리 목록", "함수조항", "슬롯", "조 참조", "별표 참조", "조건식", "위로", "아래로", "복제", "삭제"]),
     );
     expect(ids).not.toContain("optionSlot");
     // 박스는 정적 마스터 박스를 고른다 — 「박스」 버튼 (기능/박스 §4.4). 옛 문면 박스(사본)를 넣는 길은 없다
@@ -210,7 +210,7 @@ describe("약관 에디터 툴바 (기능/문면 §4.3)", () => {
       expect(top.children.map((c) => c.kind)).toEqual(["condBlock", "paragraph"]);
     });
 
-    it("공용조항 「항」 — 호의 선택 · 커서는 항 단위로 올라간다(호 목록에는 조건 블록이 없다), 「문구」는 문장 안 조건", () => {
+    it("함수조항 「항」 — 호의 선택 · 커서는 항 단위로 올라간다(호 목록에는 조건 블록이 없다), 「문구」는 문장 안 조건", () => {
       const tree = clauseBodyToTree("block", [{ id: "p1", kind: "paragraph", children: [{ id: "t", kind: "text", text: "항" }], items: [{ id: "i1", kind: "item", children: [] }] }]);
       const ce: MenuEnv = { tree, ix: indexTree(tree), docKind: "special", newId: sequentialIds("c") };
       const wrap = condInsertItem(ce, [], { selection: { start: "i1", end: "i1" } }, clauseCanHold(ce.ix, "block"))!;
@@ -256,7 +256,7 @@ describe("약관 에디터 툴바 (기능/문면 §4.3)", () => {
   });
 });
 
-describe("공용조항 툴바 (기능/공용조항 §4.3)", () => {
+describe("함수조항 툴바 (기능/함수조항 §4.3)", () => {
   function clauseEnv(mode: "inline" | "block"): ClauseMenuEnv {
     const tree =
       mode === "block"
@@ -276,13 +276,13 @@ describe("공용조항 툴바 (기능/공용조항 §4.3)", () => {
     expect(allTools(CLAUSE_TOOLS).map((t) => t.id)).not.toContain("table");
   });
 
-  it("조 · 관 · 공용조항 참조는 어느 자리에서든 잠기고 사유를 보인다", () => {
+  it("조 · 관 · 함수조항 참조는 어느 자리에서든 잠기고 사유를 보인다", () => {
     const e = clauseEnv("block");
     const sections = withClauseRefusals(e, clausePlaceMenu(e, { kind: "inline", at: { parentId: "p1" } }));
     for (const id of ["article", "section", "clauseBlock", "clauseInline"] as const) {
       const state = toolState(allTools(CLAUSE_TOOLS).find((t) => t.id === id)!, sections);
       expect(state.disabled, id).toBe(true);
-      expect(state.title).toMatch(/잠김 — 공용조항/);
+      expect(state.title).toMatch(/잠김 — 함수조항/);
     }
     expect(toolState(allTools(CLAUSE_TOOLS).find((t) => t.id === "cond")!, sections).disabled).toBe(false);
   });

@@ -133,7 +133,7 @@ export default async function ProductDetailPage({
       overrideTargets.push({
         nodeId,
         clauseCode: ref.clauseCode,
-        label: `${where} › 공용조항 ${clause?.label ?? ref.clauseCode}(${ref.clauseCode})`,
+        label: `${where} › 함수조항 ${clause?.label ?? ref.clauseCode}(${ref.clauseCode})`,
         options: (clause?.options ?? []).map((o) => ({ code: o.code, label: o.label, values: o.values.map((v) => ({ code: v.code, label: v.label })) })),
       });
     }

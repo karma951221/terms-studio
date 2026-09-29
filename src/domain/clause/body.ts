@@ -175,9 +175,9 @@ export function analyzeBody(
   const kindError = (node: { id?: Id; kind?: string }, path: Id[], expected: string) => {
     const kind = String(node.kind);
     const why = CLAUSE_REF_KINDS.has(kind)
-      ? "공용조항 안에 공용조항 참조를 둘 수 없습니다 (중첩 금지)"
+      ? "함수조항 안에 함수조항 참조를 둘 수 없습니다 (중첩 금지)"
       : kind === "article"
-        ? "조(article)는 항상 사용처 소유입니다 — 공용조항 본문에 둘 수 없습니다"
+        ? "조(article)는 항상 사용처 소유입니다 — 함수조항 본문에 둘 수 없습니다"
         : `${expected} 자리에 올 수 없는 노드입니다: ${kind}`;
     report("typeMismatch", why, [...path, String(node.id ?? "?")]);
   };
@@ -235,7 +235,7 @@ export function analyzeBody(
         if (node.scope === "clause") {
           // 제 항 · 호 · 목 — 본문(선택지 문구 아님)에 있어야 한다. 펼치면 사용처 번호로 찍힌다
           for (const { nodeId } of node.targets) {
-            if (!structIds.has(nodeId)) report("brokenRef", `이 공용조항 본문에 참조 대상 ${nodeId} 가 없습니다 — 제 항 · 호 · 목만 가리킨다`, here, nodeId);
+            if (!structIds.has(nodeId)) report("brokenRef", `이 함수조항 본문에 참조 대상 ${nodeId} 가 없습니다 — 제 항 · 호 · 목만 가리킨다`, here, nodeId);
           }
           return;
         }

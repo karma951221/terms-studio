@@ -423,7 +423,7 @@ export function describeKey(key: RefNodeKey, graph?: RefGraph): string {
     case "enumField":
       return `enum 필드 ${key.enumCode}/${key.key}`;
     case "clause":
-      return `공용조항 ${key.code}`;
+      return `함수조항 ${key.code}`;
     case "clauseOption":
       return `옵션 ${key.clauseCode}.${key.optionCode}`;
     case "clauseOptionValue":

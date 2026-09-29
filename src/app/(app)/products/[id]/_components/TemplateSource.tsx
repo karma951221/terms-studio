@@ -131,8 +131,8 @@ function Inline({ node, ctx }: { node: InlineNode; ctx: Ctx }) {
 
     case "clauseInlineRef":
       return (
-        <span className="ts-doc-ref" title={`공용조항(문장 안) · ${node.clauseCode} · ${ctx.optionText(node.clauseCode, node.options)}`}>
-          〔{ctx.clauseByCode.get(node.clauseCode)?.label ?? `${node.clauseCode}(없는 공용조항)`}〕
+        <span className="ts-doc-ref" title={`함수조항(문장 안) · ${node.clauseCode} · ${ctx.optionText(node.clauseCode, node.options)}`}>
+          〔{ctx.clauseByCode.get(node.clauseCode)?.label ?? `${node.clauseCode}(없는 함수조항)`}〕
         </span>
       );
 
@@ -212,7 +212,7 @@ function dedupeRefs(refs: readonly ClauseInlineRef[]): ClauseInlineRef[] {
  */
 function ClauseBox({ nodeId, clauseCode, baseOptions, ctx }: { nodeId: Id; clauseCode: Code; baseOptions: Record<Code, Code>; ctx: Ctx }) {
   const clause = ctx.clauseByCode.get(clauseCode);
-  const label = clause?.label ?? `${clauseCode}(없는 공용조항)`;
+  const label = clause?.label ?? `${clauseCode}(없는 함수조항)`;
   const override = ctx.overrideByNode.get(nodeId);
   const target = ctx.targetByNode.get(nodeId);
   const effective = override ? { ...baseOptions, ...override.options } : baseOptions;
@@ -223,13 +223,13 @@ function ClauseBox({ nodeId, clauseCode, baseOptions, ctx }: { nodeId: Id; claus
   return (
     <div className="ts-doc-clause" data-clause-box={nodeId}>
       <div className="ts-doc-clause-head">
-        <span className="ts-doc-clause-name" title={`공용조항 · ${clauseCode}`}>
-          공용조항 ({label})
+        <span className="ts-doc-clause-name" title={`함수조항 · ${clauseCode}`}>
+          함수조항 ({label})
         </span>
         {override && <span className="ts-badge">오버라이드</span>}
         {clause && (
-          <a className="ts-doc-clause-link" href={clauseEditHref(clause.code)} target="_blank" rel="noopener" title="공용조항 화면을 새 탭으로 연다 — 본문 · 옵션은 거기서 고친다">
-            공용조항에서 고치기 →
+          <a className="ts-doc-clause-link" href={clauseEditHref(clause.code)} target="_blank" rel="noopener" title="함수조항 화면을 새 탭으로 연다 — 본문 · 옵션은 거기서 고친다">
+            함수조항에서 고치기 →
           </a>
         )}
       </div>
@@ -237,7 +237,7 @@ function ClauseBox({ nodeId, clauseCode, baseOptions, ctx }: { nodeId: Id; claus
         {clause ? (
           <ClauseModel clause={clause} selected={effective} references={ctx.references} appendixName={ctx.appendixName} boxOf={ctx.boxOf} exprText={ctx.exprText} />
         ) : (
-          <p className="ts-muted">{clauseCode} — 없는 공용조항이다(깨진 참조).</p>
+          <p className="ts-muted">{clauseCode} — 없는 함수조항이다(깨진 참조).</p>
         )}
         {hasOptions && (
           <div className="ts-clause-use">

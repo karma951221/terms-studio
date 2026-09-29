@@ -67,7 +67,7 @@ const article: ArticleNode = {
 const targets: OverrideTarget[] = ["R-para", "R-item", "R-subitem", "R-cell"].map((nodeId) => ({
   nodeId,
   clauseCode: "C0001",
-  label: `제1조(지급사유) › 공용조항 소멸(C0001)`,
+  label: `제1조(지급사유) › 함수조항 소멸(C0001)`,
   options: [{ code: "O01", label: "어조", values: [{ code: "V01", label: "일반" }, { code: "V02", label: "사망" }] }],
 }));
 
@@ -80,7 +80,7 @@ function boxCount(html: string): number {
   return html.split("data-clause-box=").length - 1;
 }
 
-describe("TemplateSource — 공용조항 옵션 박스 (Important-2)", () => {
+describe("TemplateSource — 함수조항 옵션 박스 (Important-2)", () => {
   it("항·호·목·표 셀의 참조 넷 모두 옵션 박스를 얻는다 (같은 자리를 두 번 그리지 않는다)", () => {
     const html = renderToStaticMarkup(
       <TemplateSource
@@ -103,7 +103,7 @@ describe("TemplateSource — 공용조항 옵션 박스 (Important-2)", () => {
   });
 });
 
-describe("TemplateSource — 공용조항 상자 안에 모델을 편다 (2026-09-28)", () => {
+describe("TemplateSource — 함수조항 상자 안에 모델을 편다 (2026-09-28)", () => {
   const blockClause: Clause = {
     mode: "block",
     code: "C0002",
@@ -127,7 +127,7 @@ describe("TemplateSource — 공용조항 상자 안에 모델을 편다 (2026-0
   };
   const host: ArticleNode = { id: "A1", kind: "article", title: "대표자", children: [{ id: "R1", kind: "clauseBlockRef", clauseCode: "C0002", options: { O01: "V01" } }] };
 
-  it("머리 띠 「공용조항 (이름)」 · 공용조항에서 고치기 · 슬롯 · 옵션 자리(고른 것 ✓) · 조건 · 오버라이드가 모델에 반영", () => {
+  it("머리 띠 「함수조항 (이름)」 · 함수조항에서 고치기 · 슬롯 · 옵션 자리(고른 것 ✓) · 조건 · 오버라이드가 모델에 반영", () => {
     const html = renderToStaticMarkup(
       <TemplateSource
         productId="p1"
@@ -142,9 +142,9 @@ describe("TemplateSource — 공용조항 상자 안에 모델을 편다 (2026-0
       />,
     );
     expect(html).toContain('class="ts-doc-clause-head"');
-    expect(html).toContain("공용조항 (대표자의 지정)");
+    expect(html).toContain("함수조항 (대표자의 지정)");
     expect(html).toContain('href="/clauses/C0002"');
-    expect(html).toContain("공용조항에서 고치기");
+    expect(html).toContain("함수조항에서 고치기");
     expect(html).toContain("대표자를 지정합니다");
     expect(html).toContain("〔담보명〕");
     expect(html).toContain('<span class="ts-cond-badge">IF</span> 담보명 = &#x27;입원&#x27;');

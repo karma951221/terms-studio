@@ -52,7 +52,7 @@ const 준용규정: BlockClause = {
   required: { discriminators: ["D0002", "D0005"], attributes: [] },
 };
 
-describe("공용조항 S2 — 참조 추가 시 요구 구분자 존재 검사", () => {
+describe("함수조항 S2 — 참조 추가 시 요구 구분자 존재 검사", () => {
   it("요구 구분자가 전부 카탈로그에 있으면 문제 없다 — 부착이 없어 미부착도 없다 (ADR-0037)", () => {
     const r = checkAttachmentForReference(준용규정, lookup);
     expect(r.missing).toEqual([]);
@@ -71,7 +71,7 @@ describe("공용조항 S2 — 참조 추가 시 요구 구분자 존재 검사",
     expect(checkAttachmentForReference(clause, lookup).issues).toEqual([]);
   });
 
-  it("카탈로그에 없는 구분자는 깨진 참조로 보고한다 — at 은 사용처, source 는 공용조항 본문(고치면 사라지는 곳 · ADR-0049 §4)", () => {
+  it("카탈로그에 없는 구분자는 깨진 참조로 보고한다 — at 은 사용처, source 는 함수조항 본문(고치면 사라지는 곳 · ADR-0049 §4)", () => {
     const clause: InlineClause = { ...준용규정, mode: "inline", body: [], options: [], required: { discriminators: ["D0099"], attributes: [] } };
     const r = checkAttachmentForReference(clause, lookup, { document: "coverageMaster", ownerId: "cov-1", nodePath: ["ref-1"] });
     expect(r.missing).toEqual([]);
@@ -79,7 +79,7 @@ describe("공용조항 S2 — 참조 추가 시 요구 구분자 존재 검사",
     expect(r.issues).toEqual([
       {
         kind: "brokenRef",
-        message: "공용조항 C0001 이(가) 읽는 구분자가 없습니다: D0099",
+        message: "함수조항 C0001 이(가) 읽는 구분자가 없습니다: D0099",
         at: { document: "coverageMaster", ownerId: "cov-1", nodePath: ["ref-1"], refPath: "D0099" },
         source: { document: "clause", ownerId: "C0001", ownerName: "준용규정", refPath: "D0099" },
       },
@@ -87,7 +87,7 @@ describe("공용조항 S2 — 참조 추가 시 요구 구분자 존재 검사",
   });
 });
 
-describe("공용조항 S5 · S7 — 옵션 선택 검증과 오버라이드 해소 (기능/공용조항 §3.2 · 기능/상품 §3.6)", () => {
+describe("함수조항 S5 · S7 — 옵션 선택 검증과 오버라이드 해소 (기능/함수조항 §3.2 · 기능/상품 §3.6)", () => {
   it("미선택 옵션은 optionUnselected, 유효 집합 밖 선택은 optionInvalid", () => {
     expect(validateOptionSelection(준용규정, {})).toMatchObject([{ kind: "optionUnselected", at: { refPath: "O01" } }]);
     expect(validateOptionSelection(준용규정, { O01: "V09" })).toMatchObject([{ kind: "optionInvalid" }]);
@@ -110,7 +110,7 @@ describe("공용조항 S5 · S7 — 옵션 선택 검증과 오버라이드 해�
   });
 });
 
-describe("공용조항 S6 — 인라인화 헬퍼 expandClause", () => {
+describe("함수조항 S6 — 인라인화 헬퍼 expandClause", () => {
   it("block: 옵션 자리를 선택지 본문으로 치환하고 모든 id 를 `${참조노드id}/${원노드id}` 로 유일화(선택지 본문은 `${참조노드id}/${옵션 자리 id}/${원노드id}`). 조건은 해소하지 않는다", () => {
     const out = unwrap(expandClause(준용규정, { O01: "V02" }, "ref-1")) as Block[];
     expect(out).toEqual([
@@ -168,7 +168,7 @@ describe("공용조항 S6 — 인라인화 헬퍼 expandClause", () => {
     if (!r2.ok && r2.rejection.reason === "invalid") expect(r2.rejection.issues[0].kind).toBe("optionInvalid");
   });
 
-  it("같은 공용조항을 두 자리에서 참조해도 참조 노드 id 가 다르면 전개 결과의 id 가 겹치지 않는다 (D-P3-10)", () => {
+  it("같은 함수조항을 두 자리에서 참조해도 참조 노드 id 가 다르면 전개 결과의 id 가 겹치지 않는다 (D-P3-10)", () => {
     const a = unwrap(expandClause(준용규정, { O01: "V01" }, "ref-a")) as Block[];
     const b = unwrap(expandClause(준용규정, { O01: "V01" }, "ref-b")) as Block[];
     expect(a[0].id).toBe("ref-a/p1");
@@ -176,7 +176,7 @@ describe("공용조항 S6 — 인라인화 헬퍼 expandClause", () => {
   });
 });
 
-describe("공용조항 S3 — 수정 시 기존 사용처 재검사", () => {
+describe("함수조항 S3 — 수정 시 기존 사용처 재검사", () => {
   const usages: Usage[] = [
     { documentId: "doc-1", ownerKind: "coverage", ownerId: "cov-수술비", ownerName: "수술비", selection: { O01: "V01" } },
     { documentId: "doc-2", ownerKind: "coverage", ownerId: "cov-상해사망", ownerName: "일반상해사망", selection: { O01: "V01" } },

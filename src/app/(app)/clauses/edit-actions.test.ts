@@ -94,7 +94,7 @@ describe("createClauseAction — 저장하는 순간 생성", () => {
 
   it("검사 ① 실패면 아무것도 만들지 않고 사유와 고칠 자리를 돌려준다", async () => {
     const before = (await s.clause.list()).length;
-    const r = await createClauseAction({ label: "깨진 공용조항", mode: "inline", body: [{ id: "x", kind: "optionSlot", optionCode: "O09" }], options: [] });
+    const r = await createClauseAction({ label: "깨진 함수조항", mode: "inline", body: [{ id: "x", kind: "optionSlot", optionCode: "O09" }], options: [] });
     expect(r.ok).toBe(false);
     expect(!r.ok && r.issues?.[0]?.at.nodePath).toEqual(["x"]);
     expect((await s.clause.list()).length).toBe(before);

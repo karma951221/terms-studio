@@ -108,7 +108,7 @@ export default async function DocumentDetailPage({ params, searchParams }: { par
         <p className="ts-confirm-title">
           {DOC_TEMPLATE_LABEL[doc.kind]} {doc.title} 복제
         </p>
-        <p className="ts-muted">문서 안 조 참조는 사본의 조를 가리키고, 보통약관 조 참조 · 조연결 · 공용조항 · 별표 · 구분자는 그대로 둔다. 원본은 바뀌지 않는다.</p>
+        <p className="ts-muted">문서 안 조 참조는 사본의 조를 가리키고, 보통약관 조 참조 · 조연결 · 함수조항 · 별표 · 구분자는 그대로 둔다. 원본은 바뀌지 않는다.</p>
         {doc.kind === "general" ? (
           <form action={duplicateGeneralAction.bind(null, id)}>
             <div className="ts-form-row">

@@ -17,7 +17,7 @@ describe("허용 자식 규칙 테이블 (ADR-0012 — 문서>조>항>호>목, �
     expect(allowedChildren.document).toEqual(["article", "section", "condBlock"]);
   });
 
-  it("조 아래에는 항 · 조건 블록 · 공용조항 block 참조 · 반복 블록이 선다 (조는 반복 본문에 못 들어간다)", () => {
+  it("조 아래에는 항 · 조건 블록 · 함수조항 block 참조 · 반복 블록이 선다 (조는 반복 본문에 못 들어간다)", () => {
     expect(allowedChildren.article).toEqual(["paragraph", "condBlock", "clauseBlockRef", "forBlock", "table", "box", "bulletList", "boxRef"]);
     expect(allowedChildren.forBlock).not.toContain("article");
     expect(allowedChildren.forBlock).not.toContain("forBlock");
@@ -270,7 +270,7 @@ describe("문면작성 S4·S6 — 참조 대상 존재 검증", () => {
   });
 });
 
-describe("문면작성 S5 — 공용조항 게이트 (ClauseGate 주입)", () => {
+describe("문면작성 S5 — 함수조항 게이트 (ClauseGate 주입)", () => {
   const gate: ClauseGate = {
     clauseExists: (code: string) => code === "C001",
     requiredCodes: () => ["D0001"],
@@ -281,7 +281,7 @@ describe("문면작성 S5 — 공용조항 게이트 (ClauseGate 주입)", () =>
         : [],
   };
 
-  it("없는 공용조항 코드 → brokenRef · 옵션 미선택은 저장 검증에서 optionUnselected (기능/공용조항 §3.2)", () => {
+  it("없는 함수조항 코드 → brokenRef · 옵션 미선택은 저장 검증에서 optionUnselected (기능/함수조항 §3.2)", () => {
     const b = make();
     const doc = b.document("d", [
       b.article("소멸", [b.clauseBlock("C001", {}), b.clauseBlock("C999", { tone: "a" })]),
@@ -293,13 +293,13 @@ describe("문면작성 S5 — 공용조항 게이트 (ClauseGate 주입)", () =>
     expect(issues[0].at.articleTitle).toBe("소멸");
   });
 
-  it("게이트가 없으면 공용조항 참조는 통과한다 (기본 통과)", () => {
+  it("게이트가 없으면 함수조항 참조는 통과한다 (기본 통과)", () => {
     const b = make();
     const doc: DocumentNode = b.document("d", [b.article("소멸", [b.clauseBlock("C999", {})])]);
     expect(validateTree(doc)).toEqual([]);
   });
 
-  describe("검사 ② (a) — 요구 구분자가 카탈로그에 없으면 참조 추가 미성립 (기능/공용조항 §3.4)", () => {
+  describe("검사 ② (a) — 요구 구분자가 카탈로그에 없으면 참조 추가 미성립 (기능/함수조항 §3.4)", () => {
     const b = make();
     const node = b.clauseBlock("C001", { tone: "a" });
     const at = { document: "special" as const, ownerId: "cov-1", nodePath: [node.id] };
@@ -308,14 +308,14 @@ describe("문면작성 S5 — 공용조항 게이트 (ClauseGate 주입)", () =>
     it("삽입 시점(atSave=false) — brokenRef · 「참조 추가 미성립」 · 좌표는 참조 자리 · refPath 는 없는 구분자", () => {
       const issues = checkClauseRef(node, missing, at, false);
       expect(kinds(issues)).toEqual(["brokenRef"]);
-      expect(issues[0].message).toBe("공용조항 C001 의 요구 구분자 D0099 · D0098 이(가) 카탈로그에 없습니다 — 참조 추가 미성립");
+      expect(issues[0].message).toBe("함수조항 C001 의 요구 구분자 D0099 · D0098 이(가) 카탈로그에 없습니다 — 참조 추가 미성립");
       expect(issues[0].at).toEqual({ ...at, refPath: "D0099 · D0098" });
     });
 
     it("저장 시점(atSave=true) — 같은 brokenRef, 문구는 「없습니다」로 끝난다 · 옵션 검사도 함께 돈다", () => {
       const issues = checkClauseRef(b.clauseBlock("C001", {}), missing, at, true);
       expect(kinds(issues)).toEqual(["brokenRef", "optionUnselected"]);
-      expect(issues[0].message).toBe("공용조항 C001 의 요구 구분자 D0099 · D0098 이(가) 카탈로그에 없습니다");
+      expect(issues[0].message).toBe("함수조항 C001 의 요구 구분자 D0099 · D0098 이(가) 카탈로그에 없습니다");
     });
 
     it("비어 있으면 통과 · 기본 게이트(PERMISSIVE_GATE)도 통과", () => {
@@ -324,12 +324,12 @@ describe("문면작성 S5 — 공용조항 게이트 (ClauseGate 주입)", () =>
       expect(PERMISSIVE_GATE.missingRequired("C001")).toEqual([]);
     });
 
-    it("validateTree(저장) 도 같은 게이트로 걸린다 — 없는 공용조항 검사(clauseExists) 가 먼저", () => {
+    it("validateTree(저장) 도 같은 게이트로 걸린다 — 없는 함수조항 검사(clauseExists) 가 먼저", () => {
       const doc = b.document("d", [b.article("소멸", [b.clauseBlock("C001", { tone: "a" }), b.clauseBlock("C999", { tone: "a" })])]);
       const issues = validateTree(doc, { clauseGate: missing });
       expect(kinds(issues)).toEqual(["brokenRef", "brokenRef"]);
       expect(issues[0].message).toContain("D0099");
-      expect(issues[1].message).toBe("공용조항 C999 가 없습니다");
+      expect(issues[1].message).toBe("함수조항 C999 가 없습니다");
     });
   });
 });

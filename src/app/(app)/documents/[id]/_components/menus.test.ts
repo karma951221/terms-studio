@@ -17,13 +17,13 @@ function tree(): DocumentNode {
 }
 
 describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 §3.2 · §4.3)", () => {
-  it("항 — 아래에 항 · 호 추가 · 표 · 공용조항(조 단위) · 박스(정적 마스터) · 감싸기 · 이동(맨 위 · 맨 아래 잠김) · 복제 · 삭제", () => {
+  it("항 — 아래에 항 · 호 추가 · 표 · 함수조항(조 단위) · 박스(정적 마스터) · 감싸기 · 이동(맨 위 · 맨 아래 잠김) · 복제 · 삭제", () => {
     expect(labels(blockMenu(env(tree()), "n3"))).toEqual([
       "아래에 항 추가",
       "호 추가",
       "아래에 표 추가…",
       "아래에 글머리 목록 추가",
-      "아래에 공용조항(조 단위) 추가…",
+      "아래에 함수조항(조 단위) 추가…",
       "아래에 박스 추가…",
       "조건으로 감싸기",
       "위로(잠김)",
@@ -33,7 +33,7 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
     ]);
   });
 
-  it("호 — 항 목록 자리라 호 · 표 · 글머리 목록 · 박스, 공용조항은 없다 · 목 뒤는 목 · 글머리 목록(박스 없음)", () => {
+  it("호 — 항 목록 자리라 호 · 표 · 글머리 목록 · 박스, 함수조항은 없다 · 목 뒤는 목 · 글머리 목록(박스 없음)", () => {
     expect(labels(blockMenu(env(tree()), "n2")).slice(0, 6)).toEqual(["아래에 호 추가", "목 추가", "아래에 표 추가…", "아래에 글머리 목록 추가", "아래에 박스 추가…", "조건으로 감싸기"]);
     expect(labels(blockMenu(env(tree()), "n1")).slice(0, 3)).toEqual(["아래에 목 추가", "아래에 글머리 목록 추가", "조건으로 감싸기"]);
   });
@@ -50,11 +50,11 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
     expect(labels(articleMenu(env(tree(), "special"), "n4"))).toContain("조연결…");
     const b = nodeBuilders(sequentialIds("n"));
     const top = b.document("D", [b.article("가", [])]);
-    expect(labels(articleMenu(env(top), top.children[0].id)).slice(0, 5)).toEqual(["아래에 조 추가", "아래에 관 추가", "항 추가", "공용조항 참조 추가…", "박스 추가…"]);
+    expect(labels(articleMenu(env(top), top.children[0].id)).slice(0, 5)).toEqual(["아래에 조 추가", "아래에 관 추가", "항 추가", "함수조항 참조 추가…", "박스 추가…"]);
   });
 
-  it("조 제목 — 조 끝에 공용조항(조 단위)을 넣는 팝업 (첫 자리가 공용조항인 조 · 2026-09-28)", () => {
-    const item = articleMenu(env(tree(), "special"), "n4").flat().find((i) => i.label === "공용조항 참조 추가…");
+  it("조 제목 — 조 끝에 함수조항(조 단위)을 넣는 팝업 (첫 자리가 함수조항인 조 · 2026-09-28)", () => {
+    const item = articleMenu(env(tree(), "special"), "n4").flat().find((i) => i.label === "함수조항 참조 추가…");
     expect(item?.action).toEqual({ do: "popup", popup: { kind: "clauseBlock", at: { parentId: "n4" } } });
   });
 
@@ -78,17 +78,17 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
     const top = b.condBlock([b.branch("D0001 = true", [b.article("나", [])])]);
     const d2 = b.document("D", [top]);
     expect(labels(condMenu(env(d2), top.branches[0].id)).slice(0, 3)).toEqual(["이 가지 삭제(잠김)", "이 가지에 조 추가", "조건 풀기 — 이 가지 내용만 남긴다"]);
-    expect(inlineInsertItems({ parentId: "n2" }, [], { inInlineCond: true, newId: sequentialIds("x") }).map((i) => i.label)).toEqual(["치환 슬롯…", "조 참조…", "별표 참조…", "공용조항(문장 안)…"]);
+    expect(inlineInsertItems({ parentId: "n2" }, [], { inInlineCond: true, newId: sequentialIds("x") }).map((i) => i.label)).toEqual(["치환 슬롯…", "조 참조…", "별표 참조…", "함수조항(문장 안)…"]);
     expect(inlineInsertItems({ tableId: "t", row: 1, col: 0 }, [], { inInlineCond: false, newId: sequentialIds("x"), structLevels: ["subCoverage"] }).map((i) => i.label)).toContain("구조 표기…");
   });
 
-  it("툴바 「공용조항」 — 공용조항마다 한 줄, 고르면 그 자리에 공용조항 블록(옵션 없음)을 곧바로 넣는다", () => {
+  it("툴바 「함수조항」 — 함수조항마다 한 줄, 고르면 그 자리에 함수조항 블록(옵션 없음)을 곧바로 넣는다", () => {
     const items = clausePickItems([{ code: "C0001", label: "보험기간" }], { parentId: "n4", index: 1 }, sequentialIds("k"));
     expect(items.map((i) => i.label)).toEqual(["보험기간(C0001)"]);
     expect(items[0].action).toMatchObject({ do: "ops", ops: [{ type: "insert", node: { kind: "clauseBlockRef", clauseCode: "C0001", options: {} }, at: { parentId: "n4", index: 1 } }] });
   });
 
-  it("공용조항 고르기는 조 자리의 「항」 공용조항만 (「문구」는 없다)", () => {
+  it("함수조항 고르기는 조 자리의 「항」 함수조항만 (「문구」는 없다)", () => {
     const clauses = [
       { code: "C0001", label: "소멸", mode: "block" },
       { code: "C0003", label: "제3자", mode: "inline" },

@@ -57,7 +57,7 @@ function render(selected: Record<string, string>) {
   );
 }
 
-describe("ClauseModel — 공용조항 본문의 모델을 편다", () => {
+describe("ClauseModel — 함수조항 본문의 모델을 편다", () => {
   it("글 · 슬롯 칩 · 문장 안 조건(IF/ELSE 머리) · 조 참조 · 별표 참조 · 블록 조건(IF 상자)", () => {
     const html = render({ O01: "V02" });
     expect(html).toContain("대표자를 지정하여");

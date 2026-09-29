@@ -62,7 +62,7 @@ const 준용_본문: Block[] = [
 ];
 
 describe("코드 채번 — C0001 · O01 · V01", () => {
-  it("공용조항 C + 4자리, 옵션 O + 2자리, 선택지 V + 2자리. 자리수를 넘으면 자연 확장", () => {
+  it("함수조항 C + 4자리, 옵션 O + 2자리, 선택지 V + 2자리. 자리수를 넘으면 자연 확장", () => {
     expect(formatClauseCode("clause", 1)).toBe("C0001");
     expect(formatClauseCode("option", 3)).toBe("O03");
     expect(formatClauseCode("optionValue", 120)).toBe("V120");
@@ -70,7 +70,7 @@ describe("코드 채번 — C0001 · O01 · V01", () => {
   });
 });
 
-describe("공용조항 S1 — 정의와 요구 구분자 자동 추출", () => {
+describe("함수조항 S1 — 정의와 요구 구분자 자동 추출", () => {
   it("block 「특별약관의 소멸」: 항 목록 본문으로 채번되고 (식이 없어) 요구 구분자는 빈 목록", async () => {
     const c = unwrap(await createClause({ label: "특별약관의 소멸", mode: "block", body: 소멸_본문 }, ctx()));
     expect(c).toEqual({
@@ -88,7 +88,7 @@ describe("공용조항 S1 — 정의와 요구 구분자 자동 추출", () => {
     expect(c.required).toEqual({ discriminators: ["D0003"], attributes: [] });
   });
 
-  it("inline 공용조항: 인라인 노드 열이 본문이다 · 본문 생략은 빈 본문", async () => {
+  it("inline 함수조항: 인라인 노드 열이 본문이다 · 본문 생략은 빈 본문", async () => {
     const body: Inline[] = [{ id: "t", kind: "text", text: "「보험금 지급사유」" }];
     const c = unwrap(await createClause({ label: "지급사유 문구", mode: "inline", body }, ctx()));
     expect(c.mode).toBe("inline");
@@ -103,7 +103,7 @@ describe("공용조항 S1 — 정의와 요구 구분자 자동 추출", () => {
     expect(reasonOf(await createClause({ label: "  ", mode: "inline" }, ctx()))).toBe("invalid");
   });
 
-  it("표시명이 이미 있으면 duplicate (다른 공용조항과 표시명 중복 금지)", async () => {
+  it("표시명이 이미 있으면 duplicate (다른 함수조항과 표시명 중복 금지)", async () => {
     const c = ctx({ existing: [{ code: "C0001", label: "준용규정" }] });
     expect(reasonOf(await createClause({ label: "준용규정", mode: "block" }, c))).toBe("duplicate");
   });
@@ -152,7 +152,7 @@ describe("공용조항 S1 — 정의와 요구 구분자 자동 추출", () => {
   });
 });
 
-describe("공용조항 — 표시명 · 설명 · 본문 · 모드 수정", () => {
+describe("함수조항 — 표시명 · 설명 · 본문 · 모드 수정", () => {
   let clause: BlockClause;
   const c = ctx();
 
@@ -198,11 +198,11 @@ describe("공용조항 — 표시명 · 설명 · 본문 · 모드 수정", () =
   });
 });
 
-describe("공용조항 옵션 — 추가 · 수정 · 삭제 · 순서 (D-P3-4 · D-P3-6 · D-P3-7)", () => {
+describe("함수조항 옵션 — 추가 · 수정 · 삭제 · 순서 (D-P3-4 · D-P3-6 · D-P3-7)", () => {
   let clause: Clause;
   const c = ctx();
 
-  it("준비: inline 공용조항", async () => {
+  it("준비: inline 함수조항", async () => {
     clause = unwrap(await createClause({ label: "소멸 사유", mode: "inline", body: [{ id: "t", kind: "text", text: "고정" }] }, c));
   });
 
@@ -275,7 +275,7 @@ describe("공용조항 옵션 — 추가 · 수정 · 삭제 · 순서 (D-P3-4 �
   });
 });
 
-describe("공용조항 복제 (D-P3-3)", () => {
+describe("함수조항 복제 (D-P3-3)", () => {
   it("본문·옵션을 복사한 새 정의 — 새 코드, 표시명 「(복제)」 접미, 이미 있으면 「(복제2)」", async () => {
     const c = ctx();
     const origin = unwrap(await createClause({ label: "특별약관의 소멸", mode: "block", body: 소멸_본문, options: [

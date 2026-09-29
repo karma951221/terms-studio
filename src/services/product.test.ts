@@ -546,7 +546,7 @@ describe("product 서비스 (PGlite)", () => {
     });
   });
 
-  describe("기능/상품 §3.6 — 공용조항 옵션 오버라이드", () => {
+  describe("기능/상품 §3.6 — 함수조항 옵션 오버라이드", () => {
     const scope = () => ({ kind: "product", id: productId }) as const;
 
     it("오버라이드는 보통약관 자리(상품 스코프)만 — 유효 집합 밖은 거부 · 없는 상품은 notFound (기능/상품 §3.6)", async () => {
@@ -591,7 +591,7 @@ describe("product 서비스 (PGlite)", () => {
       expect(await svc.listOptionOverrides(scope())).toEqual([]);
     });
 
-    it("자리의 공용조항과 다른 clauseCode 는 notFound — 행을 남기지 않는다 (코덱스 리뷰 후속)", async () => {
+    it("자리의 함수조항과 다른 clauseCode 는 notFound — 행을 남기지 않는다 (코덱스 리뷰 후속)", async () => {
       // 조립은 오버라이드를 nodeId 로만 얹는다 — 어긋난 코드가 저장되면 그 자리에 조용히 적용된다.
       expect(reason(await svc.setOptionOverride(editor, scope(), NODE, "C9999", { style: "B" }))).toBe("notFound");
       expect(await svc.listOptionOverrides(scope())).toEqual([]);

@@ -65,20 +65,20 @@ export function OptionOverrideForm({
       {articleId && <input type="hidden" name="art" value={articleId} />}
 
       <label className="ts-field">
-        <span>공용조항 자리</span>
+        <span>함수조항 자리</span>
         <Combobox
           value={target.nodeId}
           onChange={(next) => {
             setNodeId(next);
             setSelection({});
           }}
-          placeholder="조 번호 · 공용조항 이름으로 찾기"
+          placeholder="조 번호 · 함수조항 이름으로 찾기"
           options={targets.map((t) => ({ value: t.nodeId, label: t.label, hint: t.clauseCode }))}
         />
       </label>
 
       {target.options.length === 0 ? (
-        <p className="ts-form-empty">이 공용조항에는 고를 옵션이 없다.</p>
+        <p className="ts-form-empty">이 함수조항에는 고를 옵션이 없다.</p>
       ) : (
         target.options.map((o) => (
           <label key={o.code} className="ts-field">

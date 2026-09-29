@@ -160,7 +160,7 @@ for (const product of SEED.products) {
         await expect(appendixList.getByRole("listitem").first()).toHaveText(`【별표1(${fixtures.firstAppendix})】`);
       });
 
-      const generalLines = await ev.action("실물화면#5.9", `보통약관 「${general.title}」(기본계약 대치 · 공용조항 펼침)을 원문과 대조한다`, async () => {
+      const generalLines = await ev.action("실물화면#5.9", `보통약관 「${general.title}」(기본계약 대치 · 함수조항 펼침)을 원문과 대조한다`, async () => {
         const lines = await renderedLines(page.locator("article.ts-doc").first());
         dump(`${product.code}-보통약관`, lines);
         const diff = diffArticlesUnordered(sourceLines("보통약관.md", fixtures.dir), lines);

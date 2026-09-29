@@ -553,7 +553,7 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
         if (n.kind !== "appendixRef") return structure("별표 참조 슬롯이 아닙니다", e.value.path);
         n.appendixCode = cmd.appendixCode;
       } else {
-        if (n.kind !== "clauseBlockRef" && n.kind !== "clauseInlineRef") return structure("공용조항 참조가 아닙니다", e.value.path);
+        if (n.kind !== "clauseBlockRef" && n.kind !== "clauseInlineRef") return structure("함수조항 참조가 아닙니다", e.value.path);
         n.options = { ...cmd.options };
       }
       const issues = checkNodeRefs(e.value, ix, env, false);

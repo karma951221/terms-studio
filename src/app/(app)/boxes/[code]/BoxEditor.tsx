@@ -45,7 +45,7 @@ export function BoxEditor({ box, usage, usageCount }: { box: Box; usage: React.R
       saveAction={saveBoxEditAction.bind(null, box.code)}
       deleteAction={removeBoxEditAction.bind(null, box.code)}
       deleteLabel={`${box.name} 삭제`}
-      deleteTooltip={`박스 ${box.name}(${box.code}) 삭제 — 템플릿 · 공용조항이 놓고 있으면 그 참조가 깨진다`}
+      deleteTooltip={`박스 ${box.name}(${box.code}) 삭제 — 템플릿 · 함수조항이 놓고 있으면 그 참조가 깨진다`}
       deleteSuccessHref="/boxes"
     >
       <div className="ts-l2-main">

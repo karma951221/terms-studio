@@ -90,7 +90,7 @@ describe("container — createServices 관통 (PGlite)", () => {
     expect(unwrap(await s.coverage.completeness(death.id))).toEqual([]);
   });
 
-  it("공용조항 S1 — 「특별약관의 소멸」 C0001: 옵션(어조) + 구분자 D0002 를 읽는 조건 → 요구 구분자 자동 추출", async () => {
+  it("함수조항 S1 — 「특별약관의 소멸」 C0001: 옵션(어조) + 구분자 D0002 를 읽는 조건 → 요구 구분자 자동 추출", async () => {
     const c = unwrap(
       await s.clause.create(editor, {
         label: "특별약관의 소멸",
@@ -120,7 +120,7 @@ describe("container — createServices 관통 (PGlite)", () => {
     expect(rejection(await s.document.apply(editor, special.id, [{ type: "insert", node: badAttr, at: { parentId: special.tree.id } }])).reason).toBe("invalid");
   });
 
-  it("공용조항 S2 — 참조 추가 시 요구 구분자 존재 검사: 부착이 없어 값 자리를 묻지 않는다 (ADR-0037)", async () => {
+  it("함수조항 S2 — 참조 추가 시 요구 구분자 존재 검사: 부착이 없어 값 자리를 묻지 않는다 (ADR-0037)", async () => {
     const check = unwrap(await s.clause.checkReference("C0001", { kind: "coverage", id: death.id }));
     expect(check.missing).toEqual([]);
     expect(check.broken).toEqual([]);
@@ -195,7 +195,7 @@ describe("container — createServices 관통 (PGlite)", () => {
     expect(impact.brokenRefs[0]).toMatchObject({ ownerId: "C0001", nodePath: ["c-cb", "c-br"], refPath: "D0002" });
   });
 
-  it("역할권한 S3 — 다른 영역의 파괴적 액션 영향에도 그래프 사용처가 실린다: 담보 삭제 · 공용조항 삭제 · 보통약관 삭제 · 담보속성 유효값 삭제", async () => {
+  it("역할권한 S3 — 다른 영역의 파괴적 액션 영향에도 그래프 사용처가 실린다: 담보 삭제 · 함수조항 삭제 · 보통약관 삭제 · 담보속성 유효값 삭제", async () => {
     // 담보 삭제 → 문면 문서 · 탑재한 상품담보
     const cov = impactOf(await s.coverage.remove(admin, death.id));
     expect(cov.brokenRefs).toEqual([

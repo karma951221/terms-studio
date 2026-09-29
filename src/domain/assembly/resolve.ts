@@ -177,9 +177,9 @@ class Walker {
     at: Coordinate,
   ): { ok: true; mode: ClauseMode; body: (ClauseInline | ClauseBlock)[] } | { ok: false; marker: ErrorNode } {
     const clause = this.env.clauses.get(node.clauseCode);
-    if (!clause) return { ok: false, marker: this.error(node.id, { kind: "brokenRef", message: `공용조항 ${node.clauseCode} 이(가) 없습니다`, at }) };
+    if (!clause) return { ok: false, marker: this.error(node.id, { kind: "brokenRef", message: `함수조항 ${node.clauseCode} 이(가) 없습니다`, at }) };
     if (!modes.includes(clause.mode)) {
-      return { ok: false, marker: this.error(node.id, { kind: "structure", message: `공용조항 ${node.clauseCode} 은(는) ${clause.mode} 모드라 ${modes.join(" · ")} 자리에 올 수 없습니다`, at }) };
+      return { ok: false, marker: this.error(node.id, { kind: "structure", message: `함수조항 ${node.clauseCode} 은(는) ${clause.mode} 모드라 ${modes.join(" · ")} 자리에 올 수 없습니다`, at }) };
     }
     const { selection, issues } = resolveOptions(clause, node.options, this.env.overrides.get(node.id), at);
     if (issues.length > 0) {
@@ -188,7 +188,7 @@ class Walker {
     }
     const expanded = expandClause(clause, selection, node.id, this.host);
     if (!expanded.ok) {
-      const issue: Issue = expanded.rejection.reason === "invalid" ? expanded.rejection.issues[0] : { kind: "optionInvalid", message: "공용조항을 펼칠 수 없습니다", at };
+      const issue: Issue = expanded.rejection.reason === "invalid" ? expanded.rejection.issues[0] : { kind: "optionInvalid", message: "함수조항을 펼칠 수 없습니다", at };
       return { ok: false, marker: this.error(node.id, { ...issue, at: { ...at, ...issue.at } }) };
     }
     return { ok: true, mode: clause.mode, body: expanded.value as (ClauseInline | ClauseBlock)[] };
@@ -342,7 +342,7 @@ class Walker {
       if (n.kind !== "condBlock") {
         // 저장 검사를 거치지 않은 트리 — 호 목록 자리의 공용조항 참조 등
         const bad = n as { kind: string; id: Id };
-        return [this.error(bad.id, { kind: "structure", message: `호 목록 자리에는 ${bad.kind} 을(를) 둘 수 없습니다 — 공용조항은 조 자리에만, 박스는 박스 참조로`, at: this.at(f, bad.id) })];
+        return [this.error(bad.id, { kind: "structure", message: `호 목록 자리에는 ${bad.kind} 을(를) 둘 수 없습니다 — 함수조항은 조 자리에만, 박스는 박스 참조로`, at: this.at(f, bad.id) })];
       }
       const r = this.select(n.branches, f, n.id);
       if (r.kind === "error") return [this.error(n.id, r.issue)];

@@ -123,7 +123,7 @@ describe("3차 S4 — 항 단위 생략·준용·통째 판정 (기능/조립산
     expect(out.issues).toEqual([]);
   });
 
-  it("보통약관 block 공용조항의 비교 제외 항은 판정 집합에서 빼고 참조 노드 id 를 기록한다", () => {
+  it("보통약관 block 함수조항의 비교 제외 항은 판정 집합에서 빼고 참조 노드 id 를 기록한다", () => {
     const general = doc("g", [article("g-a", "일반 조", [paragraph("g-1", "공통"), paragraph("g-clause/g-x", "제외", true)])]);
     const special = doc("s", [article("s-a", "특약 조", [paragraph("s-1", "공통")], "g-a")]);
     const out = judgeOmission(special, general, owner);

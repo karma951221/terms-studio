@@ -154,7 +154,7 @@ function ClauseRecheck({ entries, usageCount, documentTitle }: { entries: readon
           문제 <b>{entries.length}</b> / 사용처 {usageCount}건
         </span>
       </h2>
-      <p className="ts-muted">공용조항을 고친 뒤 사용처마다 다시 검사한다 — 요구 구분자가 지금 있는가 · 고른 옵션이 유효 선택지인가. 저장은 막지 않는다.</p>
+      <p className="ts-muted">함수조항을 고친 뒤 사용처마다 다시 검사한다 — 요구 구분자가 지금 있는가 · 고른 옵션이 유효 선택지인가. 저장은 막지 않는다.</p>
       {entries.length === 0 ? (
         <p className="ts-ok">사용처 {usageCount}건 모두 문제 없음.</p>
       ) : (
@@ -262,7 +262,7 @@ export default async function RelationsPage({ searchParams }: { searchParams: Pr
         <b>{integrity.broken.length}</b> · 순환 <b>{integrity.cycles.length}</b>
       </p>
       <p className="ts-muted" style={{ fontSize: 11 }}>
-        고아 분모는 고아가 될 수 있는 {FIELD_LABEL.type}(구분자 · 공용조항 · 별표) {stats.orphanCandidates}개, 깨짐 분모는 그래프의 참조 {stats.edges}건이다.
+        고아 분모는 고아가 될 수 있는 {FIELD_LABEL.type}(구분자 · 함수조항 · 별표) {stats.orphanCandidates}개, 깨짐 분모는 그래프의 참조 {stats.edges}건이다.
       </p>
 
       <section className="ts-section">

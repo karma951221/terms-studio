@@ -214,7 +214,7 @@ describe("clause 서비스 (PGlite)", () => {
       expect(reasonOf(await svc.remove(admin, "C0003"))).toBe("notFound");
     });
   });
-  describe("S1 — 조 참조 · 별표 참조 대상 존재 (기능/공용조항 §3.5)", () => {
+  describe("S1 — 조 참조 · 별표 참조 대상 존재 (기능/함수조항 §3.5)", () => {
     const b = nodeBuilders();
     const 조참조 = (nodeId: string): Inline => ({ id: "a1", kind: "articleRef", targets: [{ nodeId }], connector: "및" });
     /** 보통약관 마스터의 조 하나 — 공용조항 조 참조가 가리킬 수 있는 유일한 종류의 대상. */

@@ -27,8 +27,8 @@ const 옵션: OptionDef[] = [
   },
 ];
 
-describe("공용조항 S1 — 본문 노드 규칙 (inline)", () => {
-  it("공용조항 값 슬롯도 string·enum 외 타입은 거부한다", () => {
+describe("함수조항 S1 — 본문 노드 규칙 (inline)", () => {
+  it("함수조항 값 슬롯도 string·enum 외 타입은 거부한다", () => {
     const resolveType = (ref: { kind: string; code?: string }) =>
       ref.kind === "discriminator" && ref.code === "D_TEXT"
         ? ({ kind: "string" } as const)
@@ -65,7 +65,7 @@ describe("공용조항 S1 — 본문 노드 규칙 (inline)", () => {
     expect(issues[0]?.kind).toBe("typeMismatch");
   });
 
-  it("공용조항 안의 공용조항 참조(clauseInlineRef)는 거부한다 — 중첩 금지(MVP)", () => {
+  it("함수조항 안의 함수조항 참조(clauseInlineRef)는 거부한다 — 중첩 금지(MVP)", () => {
     const body = [{ id: "r1", kind: "clauseInlineRef", clauseCode: "C0002" }] as unknown as Inline[];
     const issues = issuesOf(analyzeBody("inline", body, []));
     expect(issues[0]?.kind).toBe("typeMismatch");
@@ -143,7 +143,7 @@ describe("공용조항 S1 — 본문 노드 규칙 (inline)", () => {
   });
 });
 
-describe("공용조항 S1 — 본문 노드 규칙 (block)", () => {
+describe("함수조항 S1 — 본문 노드 규칙 (block)", () => {
   const 준용규정: Block[] = [
     { id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text: "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다." }] },
     { id: "cb", kind: "condBlock", branches: [
@@ -172,7 +172,7 @@ describe("공용조항 S1 — 본문 노드 규칙 (block)", () => {
     expect(issuesOf(analyzeBody("block", body, [])).length).toBe(1);
   });
 
-  it("공용조항 block 참조(clauseBlockRef)는 거부한다 — 중첩 금지(MVP)", () => {
+  it("함수조항 block 참조(clauseBlockRef)는 거부한다 — 중첩 금지(MVP)", () => {
     const body = [{ id: "r1", kind: "clauseBlockRef", clauseCode: "C0002" }] as unknown as Block[];
     expect(issuesOf(analyzeBody("block", body, []))[0]?.message).toContain("중첩");
   });
@@ -190,7 +190,7 @@ describe("공용조항 S1 — 본문 노드 규칙 (block)", () => {
   });
 });
 
-describe("공용조항 S1 — 조 참조 · 별표 참조 검사 (기능/공용조항 §3.5)", () => {
+describe("함수조항 S1 — 조 참조 · 별표 참조 검사 (기능/함수조항 §3.5)", () => {
   /** connector `null` = 연결어 안 고름. */
   const 조참조 = (targets: { nodeId: string }[], connector: string | null = "및"): Inline =>
     ({ id: "a1", kind: "articleRef", targets, ...(connector === null ? {} : { connector }) } as Inline);
@@ -262,7 +262,7 @@ describe("공용조항 S1 — 조 참조 · 별표 참조 검사 (기능/공용�
   });
 });
 
-describe("공용조항 조 참조 범위 — 제 항 · 사용처 위치 (§3.5)", () => {
+describe("함수조항 조 참조 범위 — 제 항 · 사용처 위치 (§3.5)", () => {
   const 소멸: Block[] = [
     { id: "p1", kind: "paragraph", children: [
       { id: "r1", kind: "articleRef", targets: [{ nodeId: "1" }], connector: "및", scope: "host" },
@@ -293,10 +293,10 @@ describe("공용조항 조 참조 범위 — 제 항 · 사용처 위치 (§3.5)
   });
 });
 
-describe("박스 참조 — 정적 마스터 박스는 잎이라 공용조항 본문에도 놓는다 (최종 결정 6 · 9)", () => {
+describe("박스 참조 — 정적 마스터 박스는 잎이라 함수조항 본문에도 놓는다 (최종 결정 6 · 9)", () => {
   const paragraph = (items?: unknown[]): Block => ({ id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text: "본문" }], ...(items ? { items } : {}) }) as Block;
 
-  it("함수조항 본문에 boxRef를 둘 수 있다 — 항 자리 · 호 뒤 자리 · 조건 가지 안, 공용조항 참조 중첩 금지에 걸리지 않는다", () => {
+  it("함수조항 본문에 boxRef를 둘 수 있다 — 항 자리 · 호 뒤 자리 · 조건 가지 안, 함수조항 참조 중첩 금지에 걸리지 않는다", () => {
     const body = [
       paragraph([{ id: "i1", kind: "item", children: [{ id: "t2", kind: "text", text: "호" }] }, { id: "bx1", kind: "boxRef", boxCode: "BX000002" }]),
       { id: "bx2", kind: "boxRef", boxCode: "BX000001" },

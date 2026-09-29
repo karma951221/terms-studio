@@ -135,7 +135,7 @@ const NODE_WHAT: Record<string, string> = {
   item: "호",
   subitem: "목",
   condBlock: "조건 블록",
-  clauseBlockRef: "공용조항 참조",
+  clauseBlockRef: "함수조항 참조",
   forBlock: "반복 블록",
   boxRef: "박스",
 };

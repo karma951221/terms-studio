@@ -149,7 +149,7 @@ export function createServices(root: Db, opts: ContainerOptions = {}): Services 
     optionValidator: {
       validate: async (clauseCode, options) => {
         const def = await services.clause.get(clauseCode);
-        if (!def) return [{ kind: "brokenRef", message: `공용조항 ${clauseCode} 가 없습니다`, at: { refPath: clauseCode } }];
+        if (!def) return [{ kind: "brokenRef", message: `함수조항 ${clauseCode} 가 없습니다`, at: { refPath: clauseCode } }];
         return validateOptionSelection(def, options, { refPath: clauseCode });
       },
     },

@@ -363,7 +363,7 @@ export function excludedClauseLabel(tree: DocumentNode | undefined, nodeId: Id, 
   const node = tree ? indexTree(tree).nodes.get(nodeId)?.node : undefined;
   if (!node || node.kind !== "clauseBlockRef") return nodeId;
   const label = clauseLabelOf(node.clauseCode);
-  return `공용조항 ${node.clauseCode}${label ? `(${label})` : ""}`;
+  return `함수조항 ${node.clauseCode}${label ? `(${label})` : ""}`;
 }
 
 // ───────────────────────────── 탑재 표 — 보통약관 기본계약 · 특별약관 (기능/상품 §4.6) ─────────────────────────────

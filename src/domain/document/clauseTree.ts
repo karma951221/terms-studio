@@ -105,15 +105,15 @@ const WHAT: Record<string, string> = {
   forBlock: "반복 블록",
   inlineFor: "문장 안 반복",
   structKey: "구조 표기",
-  clauseInlineRef: "공용조항 참조",
-  clauseBlockRef: "공용조항 참조",
+  clauseInlineRef: "함수조항 참조",
+  clauseBlockRef: "함수조항 참조",
   condBlock: "조건 블록",
 };
 
 function refuse(kind: string, where: string): never {
   const what = WHAT[kind] ?? kind;
   const why = kind === "clauseInlineRef" || kind === "clauseBlockRef" ? " (중첩 금지)" : kind === "article" || kind === "section" ? " (조는 사용처 소유)" : "";
-  throw new NotClause(`공용조항 ${where}에는 ${what}을(를) 둘 수 없습니다${why}`);
+  throw new NotClause(`함수조항 ${where}에는 ${what}을(를) 둘 수 없습니다${why}`);
 }
 
 function inlineFromTree(node: InlineNode): C.Inline {
@@ -185,7 +185,7 @@ export function treeToClauseBody(mode: ClauseMode, tree: DocumentNode): Result<C
     if (mode === "block") return ok(article.children.map(blockFromTree));
     const [line, ...more] = article.children;
     if (!line) return ok([]);
-    if (line.kind !== "paragraph" || more.length > 0 || (line.items?.length ?? 0) > 0) throw new NotClause("「문구」 공용조항은 문장 한 줄입니다 — 항 · 호 · 목을 둘 수 없습니다");
+    if (line.kind !== "paragraph" || more.length > 0 || (line.items?.length ?? 0) > 0) throw new NotClause("「문구」 함수조항은 문장 한 줄입니다 — 항 · 호 · 목을 둘 수 없습니다");
     return ok(line.children.map(inlineFromTree));
   } catch (error) {
     if (error instanceof NotClause) return reject({ reason: "invalid", issues: [{ kind: "structure", message: error.message, at: {} }] });
@@ -242,7 +242,7 @@ export function clauseScopedRefLabel(node: InlineNode, positions: ReadonlyMap<st
     return at ? positionText(at, false) : "없는 항(연결 끊김)";
   });
   const joined = labels.length <= 1 ? (labels[0] ?? "") : `${labels.slice(0, -1).join(", ")} ${node.connector ?? CONNECTOR_PLACEHOLDER} ${labels.at(-1)}`;
-  return `${host ? "사용처" : "이 공용조항"} ${joined}`;
+  return `${host ? "사용처" : "이 함수조항"} ${joined}`;
 }
 
 /** 공용조항 본문 노드 → 편집 트리 노드 (모델 표시가 `clauseScopedRefLabel` 을 쓰게). */

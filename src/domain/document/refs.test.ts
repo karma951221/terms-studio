@@ -27,7 +27,7 @@ describe("기능/관계정보 §3 참조 그래프 — collectRefs 는 문서가
     ]);
   });
 
-  it("구분자(식 안·슬롯) · 담보속성 · 공용조항 · 조(자기·보통약관) · 별표 · 조연결", () => {
+  it("구분자(식 안·슬롯) · 담보속성 · 함수조항 · 조(자기·보통약관) · 별표 · 조연결", () => {
     const { special } = surgeryFixture();
     const refs = collectRefs(special, { document: "special", ownerId: "cov-surgery" });
     const summary = refs.map((r) => {
@@ -61,7 +61,7 @@ describe("기능/관계정보 §3 참조 그래프 — collectRefs 는 문서가
     expect(collectRefs(doc)).toEqual([]);
   });
 
-  it("요구 구분자 = 문서 자체 참조 + 공용조항의 요구 구분자(게이트) — 중복 없이 등장 순", () => {
+  it("요구 구분자 = 문서 자체 참조 + 함수조항의 요구 구분자(게이트) — 중복 없이 등장 순", () => {
     const { special } = surgeryFixture();
     const own = requiredDiscriminators(special);
     expect(own).toEqual(["D0001", "D0004", "D0005", "D0003"]);

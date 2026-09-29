@@ -35,7 +35,7 @@ export async function saveClauseEditAction(code: string, input: ClauseEditData):
   const actor = await currentActor();
   const services = getServices();
   const before = await services.clause.get(code);
-  if (!before) return { ok: false, message: `찾을 수 없습니다 — 공용조항 ${code}` };
+  if (!before) return { ok: false, message: `찾을 수 없습니다 — 함수조항 ${code}` };
 
   return rollbackUnless<ClauseSaveOutcome>(
     services.db,

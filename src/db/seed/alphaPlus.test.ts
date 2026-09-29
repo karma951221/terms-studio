@@ -118,7 +118,7 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     expect(defs.map((d) => [d.code, d.label, d.level])).toEqual([["D0001", "담보명", "coverage"]]);
   });
 
-  it("공용조항 34건 — 조 · 여러 항(두 곳 이상이 되풀이) · 박스는 공용조항이 아니라 정적 마스터 103 (알파플러스_모델명세 §4 · 메리츠_모델명세 §4)", async () => {
+  it("함수조항 34건 — 조 · 여러 항(두 곳 이상이 되풀이) · 박스는 함수조항이 아니라 정적 마스터 103 (알파플러스_모델명세 §4 · 메리츠_모델명세 §4)", async () => {
     const list = await services.clause.list();
     expect(list).toHaveLength(34);
     // 조 · 여러 항 — 보통약관이 쓰는 조째 19(C0001~) · 담보약관 조 13 · 준용규정 두 벌(보통약관 조를 가리켜 맨 뒤)

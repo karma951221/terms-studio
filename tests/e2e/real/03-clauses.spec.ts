@@ -35,7 +35,7 @@ test.describe.serial("실물 재현(화면) ③ 정적 마스터 박스", () => 
   }
 });
 
-test.describe.serial("실물 재현(화면) ③ 공용조항", () => {
+test.describe.serial("실물 재현(화면) ③ 함수조항", () => {
   for (const spec of SEED.clauses.filter((c) => !BASE_CLAUSE_CODES.has(c.code))) {
     test(`${spec.code} ${spec.label}`, NO_COORD, async ({ page, ev }) => {
       test.setTimeout(180_000);

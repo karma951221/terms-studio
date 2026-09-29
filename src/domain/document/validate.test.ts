@@ -20,7 +20,7 @@ const 준용규정: BlockClause = {
   required: { discriminators: ["D0001", "D0009"], attributes: [] },
 };
 
-describe("clauseGateFrom — 공용조항 정의로 만든 게이트 (서버 · 브라우저 공용)", () => {
+describe("clauseGateFrom — 함수조항 정의로 만든 게이트 (서버 · 브라우저 공용)", () => {
   it("존재 · 카탈로그에 없는 요구 구분자 · 옵션 미선택", () => {
     const gate = clauseGateFrom([준용규정], ["D0001"]);
     expect(gate.clauseExists("C0001")).toBe(true);
@@ -55,8 +55,8 @@ describe("validateDocument — 저장 검증 한 벌", () => {
   });
 });
 
-describe("공용조항 참조 자리 — 유형별 (기능/공용조항 §3.1)", () => {
-  it("호 목록 자리에는 공용조항 참조가 서지 않고(박스는 박스 참조), 문장 안은 「문구」만, 조 자리에 「문구」는 없다", () => {
+describe("함수조항 참조 자리 — 유형별 (기능/함수조항 §3.1)", () => {
+  it("호 목록 자리에는 함수조항 참조가 서지 않고(박스는 박스 참조), 문장 안은 「문구」만, 조 자리에 「문구」는 없다", () => {
     const b = nodeBuilders(sequentialIds("v"));
     const modes: Record<string, "inline" | "block"> = { C1: "inline", C2: "block" };
     const gate = { ...PERMISSIVE_GATE, clauseMode: (code: string) => modes[code] };
@@ -70,8 +70,8 @@ describe("공용조항 참조 자리 — 유형별 (기능/공용조항 §3.1)",
     const messages = validateTree(tree, { clauseGate: gate }).map((i) => i.message);
     expect(messages).toEqual([
       "paragraph 의 items 자리에 clauseBlockRef 은(는) 올 수 없습니다",
-      "공용조항 C2 — 문장 안에는 「문구」 공용조항만 둘 수 있습니다",
-      "공용조항 C1 — 「문구」 공용조항은 문장 안에만 둘 수 있습니다",
+      "함수조항 C2 — 문장 안에는 「문구」 함수조항만 둘 수 있습니다",
+      "함수조항 C1 — 「문구」 함수조항은 문장 안에만 둘 수 있습니다",
     ]);
   });
 });

@@ -120,7 +120,7 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
       expect(u[0].at).toMatchObject({ document: "special", ownerId: surgery.id, ownerName: "수술비 특별약관", articleId: artPay.id, articleTitle: "보험금의 지급사유", refPath: "D0001" });
     });
 
-    it("공용조항 관계정보 — 역방향(참조 문서·옵션 선택) · 옵션별 오버라이드 사용처 (기능/공용조항 §3.2)", async () => {
+    it("함수조항 관계정보 — 역방향(참조 문서·옵션 선택) · 옵션별 오버라이드 사용처 (기능/함수조항 §3.2)", async () => {
       const v = await refs.relation({ kind: "clause", code: "C001" });
       expect(v.node?.label).toBe("특별약관의 소멸");
       expect(v.incoming.map((e) => [e.via, e.at.articleTitle])).toEqual([["clauseRef", "특별약관의 소멸"], ["optionSelect", "특별약관의 소멸"]]);
@@ -150,7 +150,7 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
   });
 
   describe("catalogImpactSource — 구분자 삭제·enum 값 삭제의 영향 (기능/구분자 §3.4)", () => {
-    it("구분자의 깨질 참조 = 그 구분자를 읽는 문면 · 공용조항 식 (부착은 없다)", async () => {
+    it("구분자의 깨질 참조 = 그 구분자를 읽는 문면 · 함수조항 식 (부착은 없다)", async () => {
       const src = catalogImpactSource(contextualDb(t.db));
       expect(await src.findBrokenRefs({ kind: "discriminator", code: "D0006" })).toEqual([
         expect.objectContaining({ document: "clause", ownerId: "C002", ownerName: "준용규정", nodePath: ["c2-c", "c2-b"], refPath: "D0006" }),
@@ -253,7 +253,7 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
   });
 
   describe("documentUsageSource — 문서 서비스가 못 보는 외부 사용처", () => {
-    it("보통약관: 상품 템플릿 선택 · 담보약관: 담보 문서 연결 + 옵션 오버라이드 · 별표: 공용조항 본문 참조", async () => {
+    it("보통약관: 상품 템플릿 선택 · 담보약관: 담보 문서 연결 + 옵션 오버라이드 · 별표: 함수조항 본문 참조", async () => {
       const src = documentUsageSource();
       expect(await src.documentUsages(t.db, general.id)).toEqual([{ document: "product", ownerId: productId, ownerName: "알파Plus" }]);
       expect(await src.documentUsages(t.db, special.id)).toEqual([

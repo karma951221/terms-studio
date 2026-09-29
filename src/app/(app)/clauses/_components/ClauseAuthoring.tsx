@@ -216,7 +216,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     const own = referenceTargetIndex(tree, numbers);
     return [
       { value: "general", label: "보통약관", index: general },
-      ...(clauseMode === "block" ? [{ value: "self" as const, label: "이 공용조항", index: own, rootless: true }] : []),
+      ...(clauseMode === "block" ? [{ value: "self" as const, label: "이 함수조항", index: own, rootless: true }] : []),
       { value: "host", label: "사용처", index: HOST_TARGETS },
     ];
   }, [general, tree, numbers, clauseMode]);
@@ -577,12 +577,12 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     <div className="ts-l3 is-clause" aria-busy={pending || undefined}>
       <div className="ts-l3-bar">
         <Breadcrumb items={[{ label: ENTITY_LABEL.clause, href: "/clauses" }, { label: clauseName }]} guard={editing ? leave : undefined} />
-        {editing && <span className="ts-l3-dirty">{isNew ? "새 공용조항 — 저장하면 만들어진다" : dirty ? "편집 중 · 저장해야 반영" : "편집 중"}</span>}
+        {editing && <span className="ts-l3-dirty">{isNew ? "새 함수조항 — 저장하면 만들어진다" : dirty ? "편집 중 · 저장해야 반영" : "편집 중"}</span>}
         <span className="ts-l3-bar-actions">
           {editing ? (
             <>
               {isNew ? (
-                <IconButton icon={<IconClose />} label="만들기 취소 — 공용조항 목록으로" disabled={pending} onClick={() => leave(() => router.push("/clauses"))} />
+                <IconButton icon={<IconClose />} label="만들기 취소 — 함수조항 목록으로" disabled={pending} onClick={() => leave(() => router.push("/clauses"))} />
               ) : (
                 <IconButton icon={<IconClose />} label="편집 취소 — 고친 내용을 버리고 읽기 모드로" disabled={pending} onClick={() => leave(endEdit)} />
               )}
@@ -599,7 +599,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
             <IconButton
               icon={<IconTrash />}
               danger
-              label={editing ? "저장하거나 취소한 뒤 실행" : `공용조항 ${props.label}(${code}) 삭제`}
+              label={editing ? "저장하거나 취소한 뒤 실행" : `함수조항 ${props.label}(${code}) 삭제`}
               disabled={editing || pending}
               onClick={() => remove(false)}
             />
@@ -616,7 +616,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
         )}
         <div className="ts-clause-grid">
           <div className="ts-clause-main">
-            <section className="ts-clause-meta" aria-label="공용조항 정보">
+            <section className="ts-clause-meta" aria-label="함수조항 정보">
               <div className="ts-form-row">
                 <label htmlFor="clause-label">{NAME_LABEL.clause}</label>
                 {editing ? (

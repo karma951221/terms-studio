@@ -27,7 +27,7 @@ const inline: Inline[] = [
   { id: "q1", kind: "inlineCond", branches: [{ id: "qb", when: "D0001 = true", children: [{ id: "o1", kind: "optionSlot", optionCode: "O02" }] }] },
 ];
 
-describe("공용조항 본문 ↔ 편집 트리", () => {
+describe("함수조항 본문 ↔ 편집 트리", () => {
   it("「항」 본문은 조 하나의 자식으로 싸이고, 되돌리면 그대로다 — 옵션 자리는 운반체, 조 참조는 보통약관 범위", () => {
     const tree = clauseBodyToTree("block", block, "특별약관의 소멸");
     const article = tree.children[0];
@@ -46,12 +46,12 @@ describe("공용조항 본문 ↔ 편집 트리", () => {
     expect(treeToClauseBody("inline", clauseBodyToTree("inline", []))).toEqual({ ok: true, value: [] });
   });
 
-  it("옵션 운반체는 옵션 코드를 알아보고, 진짜 공용조항 참조는 운반체가 아니다", () => {
+  it("옵션 운반체는 옵션 코드를 알아보고, 진짜 함수조항 참조는 운반체가 아니다", () => {
     expect(optionCodeOf(optionCarrier("x", "O03"))).toBe("O03");
     expect(optionCodeOf({ id: "x", kind: "clauseInlineRef", clauseCode: "C0001", options: {} })).toBeUndefined();
   });
 
-  it("공용조항에 없는 노드(표 · 공용조항 참조 · 둘째 조)는 되돌릴 때 거부한다", () => {
+  it("함수조항에 없는 노드(표 · 함수조항 참조 · 둘째 조)는 되돌릴 때 거부한다", () => {
     const base = clauseBodyToTree("block", block);
     const withTable: DocumentNode = {
       ...base,
@@ -80,7 +80,7 @@ describe("공용조항 본문 ↔ 편집 트리", () => {
   });
 });
 
-describe("공용조항 조 참조 범위 — 편집 트리 운반 · 표기 (§3.5)", () => {
+describe("함수조항 조 참조 범위 — 편집 트리 운반 · 표기 (§3.5)", () => {
   const body: C.Block[] = [
     { id: "p1", kind: "paragraph", children: [{ id: "r1", kind: "articleRef", targets: [{ nodeId: "2.1.3" }], connector: "및", scope: "host" }], items: [{ id: "i1", kind: "item", children: [] }] },
     { id: "p2", kind: "paragraph", children: [{ id: "r2", kind: "articleRef", targets: [{ nodeId: "p1" }, { nodeId: "i1" }], connector: "및", scope: "clause" }] },
@@ -94,12 +94,12 @@ describe("공용조항 조 참조 범위 — 편집 트리 운반 · 표기 (§3
     expect(treeToClauseBody("block", tree)).toEqual({ ok: true, value: body });
   });
 
-  it("표기 — 「사용처 제2조 제1항 제3호」 · 「이 공용조항 제1항 및 제1항 제1호」, 보통약관 참조는 undefined", () => {
+  it("표기 — 「사용처 제2조 제1항 제3호」 · 「이 함수조항 제1항 및 제1항 제1호」, 보통약관 참조는 undefined", () => {
     const tree = clauseBodyToTree("block", body);
     const positions = clausePositions(tree);
     const [p1, p2] = (tree.children[0] as { children: { children: InlineNode[] }[] }).children;
     expect(clauseScopedRefLabel(p1.children[0], positions)).toBe("사용처 제2조 제1항 제3호");
-    expect(clauseScopedRefLabel(p2.children[0], positions)).toBe("이 공용조항 제1항 및 제1항 제1호");
+    expect(clauseScopedRefLabel(p2.children[0], positions)).toBe("이 함수조항 제1항 및 제1항 제1호");
     expect(clauseScopedRefLabel({ id: "g", kind: "articleRef", targets: [{ nodeId: "g-a1" }], connector: "및", scope: "general" }, positions)).toBeUndefined();
   });
 
@@ -111,7 +111,7 @@ describe("공용조항 조 참조 범위 — 편집 트리 운반 · 표기 (§3
   });
 });
 
-describe("공용조항 「항」 본문의 글머리 목록 (2026-09-28)", () => {
+describe("함수조항 「항」 본문의 글머리 목록 (2026-09-28)", () => {
   const withBullets: Block[] = [
     {
       id: "p1",
@@ -130,7 +130,7 @@ describe("공용조항 「항」 본문의 글머리 목록 (2026-09-28)", () =>
     expect(treeToClauseBody("block", tree)).toEqual({ ok: true, value: withBullets });
   });
 
-  it("검사 ① — 항목 없는 목록은 거부, 글머리 목록은 번호가 없어 「이 공용조항」 조 참조 대상이 아니다", () => {
+  it("검사 ① — 항목 없는 목록은 거부, 글머리 목록은 번호가 없어 「이 함수조항」 조 참조 대상이 아니다", () => {
     const options = [{ code: "O01", label: "사유", values: [], order: 1 }];
     expect(analyzeBody("block", withBullets, options).ok).toBe(true);
     const empty: Block[] = [{ id: "L", kind: "bulletList", children: [] }];

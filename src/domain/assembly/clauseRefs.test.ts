@@ -44,8 +44,8 @@ function doc(): DocumentNode {
   };
 }
 
-describe("조째 공용조항의 조 참조 — 사용처 위치 · 제 항", () => {
-  it("hostLocator — n번째 조 · m번째 항 (공용조항 블록이 펼칠 항은 세지 않는다)", () => {
+describe("조째 함수조항의 조 참조 — 사용처 위치 · 제 항", () => {
+  it("hostLocator — n번째 조 · m번째 항 (함수조항 블록이 펼칠 항은 세지 않는다)", () => {
     const find = hostLocator(doc());
     expect([find("1"), find("2.2"), find("3"), find("3.1"), find("9")]).toEqual(["a1", "a2-q", "a3", undefined, undefined]);
   });
@@ -64,7 +64,7 @@ describe("조째 공용조항의 조 참조 — 사용처 위치 · 제 항", ()
   });
 });
 
-describe("호 목록 자리(항 · 호 뒤)의 공용조항 참조 — 박스는 정적 마스터 박스 참조라 공용조항은 조 자리에만 (기능/박스 §3.2)", () => {
+describe("호 목록 자리(항 · 호 뒤)의 함수조항 참조 — 박스는 정적 마스터 박스 참조라 함수조항은 조 자리에만 (기능/박스 §3.2)", () => {
   const tree = {
     kind: "document",
     id: "s",
@@ -79,7 +79,7 @@ describe("호 목록 자리(항 · 호 뒤)의 공용조항 참조 — 박스는
     ],
   } as unknown as DocumentNode;
 
-  it("호 목록 자리에 공용조항 참조가 오면 조립 오류(자리 유형)", () => {
+  it("호 목록 자리에 함수조항 참조가 오면 조립 오류(자리 유형)", () => {
     const input = alphaPlusFixture();
     const ctx = specialContext(input, input.coverages[0]);
     const wrong = resolveDocument(tree, ctx, { clauses: new Map([["C0100", { ...소멸, code: "C0100" }]]), overrides: new Map(), coordinate: { document: "special", ownerId: "pc" } });

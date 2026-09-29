@@ -201,21 +201,21 @@ function ClauseFields({ clauses, code, options }: { clauses: readonly Clause[]; 
     <>
       {code === undefined ? (
         <div className="ts-form-row">
-          <label htmlFor="pop-clause">공용조항</label>
+          <label htmlFor="pop-clause">함수조항</label>
           <Combobox
             id="pop-clause"
             name="clauseCode"
             value={picked}
             onChange={setPicked}
             options={clauses.map((c) => ({ value: c.code, label: c.label, hint: c.code }))}
-            placeholder={clauses.length === 0 ? "공용조항 없음" : "이름 · 코드로 찾기"}
+            placeholder={clauses.length === 0 ? "함수조항 없음" : "이름 · 코드로 찾기"}
             disabled={clauses.length === 0}
           />
         </div>
       ) : (
-        !clause && <p className="ts-error-banner">공용조항 {code} 이(가) 없다 — 깨진 참조다.</p>
+        !clause && <p className="ts-error-banner">함수조항 {code} 이(가) 없다 — 깨진 참조다.</p>
       )}
-      {clause && clause.options.length === 0 && <p className="ts-muted">고를 옵션이 없는 공용조항이다.</p>}
+      {clause && clause.options.length === 0 && <p className="ts-muted">고를 옵션이 없는 함수조항이다.</p>}
       {clause?.options.map((o) => (
         <div key={`${clause.code}-${o.code}`} className="ts-form-row">
           <label htmlFor={`pop-opt-${o.code}`}>{o.label}</label>
@@ -260,7 +260,7 @@ function AppendixSelect({ appendices, value }: { appendices: readonly Appendix[]
   );
 }
 
-const INSERT_TITLE = { slot: "치환 슬롯 넣기", articleRef: "조 참조 넣기", appendixRef: "별표 참조 넣기", clauseInlineRef: "공용조항(문장 안) 넣기", structKey: "구조 표기 넣기" } as const;
+const INSERT_TITLE = { slot: "치환 슬롯 넣기", articleRef: "조 참조 넣기", appendixRef: "별표 참조 넣기", clauseInlineRef: "함수조항(문장 안) 넣기", structKey: "구조 표기 넣기" } as const;
 
 /**
  * 문장 안 조건 — 가지마다 머리 줄(`CondRows`, 그 자리에서 고친다) · 그 가지 문장(그 자리 편집기) · 가지 삭제, 아래에 가지 추가.
@@ -351,7 +351,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
           }
           case "clauseInlineRef": {
             const code = str(fd, "clauseCode");
-            return code ? b.clauseInline(code, optionsOf(fd)) : "공용조항을 고른다.";
+            return code ? b.clauseInline(code, optionsOf(fd)) : "함수조항을 고른다.";
           }
           case "structKey": {
             const level = str(fd, "structLevel");
@@ -404,7 +404,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
       if (!node) return null;
       if (node.kind === "inlineCond") return <InlineCondPopup env={env} nodeId={node.id} anchor={anchor} onClose={onClose} />;
       const title =
-        node.kind === "slot" ? "치환 슬롯" : node.kind === "articleRef" ? "조 참조" : node.kind === "appendixRef" ? "별표 참조" : node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef" ? "공용조항 옵션" : "고치기";
+        node.kind === "slot" ? "치환 슬롯" : node.kind === "articleRef" ? "조 참조" : node.kind === "appendixRef" ? "별표 참조" : node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef" ? "함수조항 옵션" : "고치기";
       return (
         <Popover anchor={anchor} label={title} onClose={onClose} wide={node.kind === "articleRef"}>
           <PopForm
@@ -474,13 +474,13 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
 
     case "clauseBlock":
       return (
-        <Popover anchor={anchor} label="공용조항(조 단위) 넣기" onClose={onClose}>
+        <Popover anchor={anchor} label="함수조항(조 단위) 넣기" onClose={onClose}>
           <PopForm
             env={env}
             onClose={onClose}
             build={(fd) => {
               const code = str(fd, "clauseCode");
-              return code ? [{ type: "insert", node: b.clauseBlock(code, optionsOf(fd)), at: spec.at }] : "공용조항을 고른다.";
+              return code ? [{ type: "insert", node: b.clauseBlock(code, optionsOf(fd)), at: spec.at }] : "함수조항을 고른다.";
             }}
           >
             <ClauseFields clauses={clausesFitting(env.clauses)} />

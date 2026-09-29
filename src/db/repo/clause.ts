@@ -95,7 +95,7 @@ export async function saveClause(db: Db, def: Clause, who: Id): Promise<void> {
     .set({ ...toRow(def), updatedAt: new Date(), updatedBy: who })
     .where(eq(clauses.code, def.code))
     .returning({ id: clauses.id });
-  if (rows.length === 0) throw new Error(`저장 대상 공용조항이 없습니다: ${def.code}`);
+  if (rows.length === 0) throw new Error(`저장 대상 함수조항이 없습니다: ${def.code}`);
 }
 
 export async function deleteClause(db: Db, code: Code): Promise<void> {

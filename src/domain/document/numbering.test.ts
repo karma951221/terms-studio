@@ -186,7 +186,7 @@ describe("문면작성 S1·S3 — 번호는 저장하지 않고 현재 트리에
     expect(undetermined.get("s-art-term")?.label).toBe("제2조");
   });
 
-  it("공용조항 block 참조는 항 1개로 센다 (임시 — 실제 항 수는 조립이 안다)", () => {
+  it("함수조항 block 참조는 항 1개로 센다 (임시 — 실제 항 수는 조립이 안다)", () => {
     const b = nodeBuilders(sequentialIds("n"));
     const doc = b.document("d", [b.article("a", [b.paragraph([]), b.clauseBlock("C001", {}), b.paragraph([])])]);
     const numbers = numberTree(doc);

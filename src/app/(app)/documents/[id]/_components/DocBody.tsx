@@ -273,7 +273,7 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
   const options = ctx.optionText(node.clauseCode, node.options);
   const hasOptions = !clause || clause.options.length > 0;
   const asText = ctx.clauseView === "text";
-  let body: ReactNode = <p className="ts-muted">{label ? "본문을 불러오지 않았다." : `${node.clauseCode} — 없는 공용조항이다(깨진 참조).`}</p>;
+  let body: ReactNode = <p className="ts-muted">{label ? "본문을 불러오지 않았다." : `${node.clauseCode} — 없는 함수조항이다(깨진 참조).`}</p>;
   if (clause && asText) {
     // 미리보기 — 고른 선택지 문구를 끼운 문장 (조립 결과와 같은 읽기)
     const tree = clauseBodyToTree(clause.mode, clause.body, clause.label);
@@ -296,10 +296,10 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
   }
   return (
     <div className={`ts-doc-clause${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id} data-clause-ref={node.id}>
-      <DragHandle id={node.id} what="공용조항" ctx={ctx} />
+      <DragHandle id={node.id} what="함수조항" ctx={ctx} />
       <div className="ts-doc-clause-head">
-        <span className="ts-doc-clause-name" title={`공용조항(조 단위) · ${node.clauseCode}`}>
-          공용조항 ({label ?? `${node.clauseCode} — 없는 공용조항`})
+        <span className="ts-doc-clause-name" title={`함수조항(조 단위) · ${node.clauseCode}`}>
+          함수조항 ({label ?? `${node.clauseCode} — 없는 함수조항`})
         </span>
         {hasOptions &&
           (edit ? (
@@ -310,8 +310,8 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
             <span className="ts-doc-clause-opt">{options}</span>
           ))}
         {clause && !asText && (
-          <a className="ts-doc-clause-link" href={clauseEditHref(clause.code)} target="_blank" rel="noopener" title="공용조항 화면을 새 탭으로 연다 — 본문 · 옵션은 거기서 고친다">
-            공용조항에서 고치기 →
+          <a className="ts-doc-clause-link" href={clauseEditHref(clause.code)} target="_blank" rel="noopener" title="함수조항 화면을 새 탭으로 연다 — 본문 · 옵션은 거기서 고친다">
+            함수조항에서 고치기 →
           </a>
         )}
         {edit && (
@@ -319,7 +319,7 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
             className="ts-doc-clause-del"
             icon={<IconTrash />}
             danger
-            label={`공용조항 ${label ?? node.clauseCode} 삭제`}
+            label={`함수조항 ${label ?? node.clauseCode} 삭제`}
             onClick={(e) => edit.run({ label: "삭제", action: { do: "remove", nodeId: node.id } }, anchorOf(e.currentTarget))}
           />
         )}

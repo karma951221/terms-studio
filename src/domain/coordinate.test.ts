@@ -30,7 +30,7 @@ describe("오류 좌표 표시", () => {
         { document: "special", ownerName: "일반상해사망 특별약관", articleTitle: "특별약관의 소멸", nodeKind: "clauseRef" },
         { source: true, omitOwner: true, omitArticle: true },
       ),
-    ).toBe("공용조항 참조");
+    ).toBe("함수조항 참조");
   });
 
   it("값 원천은 상품과 상품담보 이름 뒤에 참조 경로를 표시한다", () => {

@@ -124,8 +124,8 @@ export class Editor {
         return this.confirm(d, "넣기");
       }
       case "clauseInlineRef": {
-        await this.runTool("공용조항(문장)");
-        const d = this.dialog("공용조항(문장 안) 넣기");
+        await this.runTool("함수조항(문장)");
+        const d = this.dialog("함수조항(문장 안) 넣기");
         await pickCombo(d.locator("#pop-clause"), { value: node.clauseCode });
         for (const [option, value] of Object.entries(node.options)) await d.locator(`#pop-opt-${option}`).selectOption(value);
         return this.confirm(d, "넣기");
@@ -192,7 +192,7 @@ export class Editor {
     for (let guard = 0; guard < labels.length + 2; guard++) {
       const found = await d.evaluate((dialog, path) => {
         const scopes = [...dialog.querySelectorAll(".ts-ref-tree > div[role=none]")];
-        const self = scopes.find((s) => ["이 템플릿", "이 공용조항"].includes(s.querySelector(":scope > .ts-ref-scope")?.textContent ?? "")) ?? scopes[0];
+        const self = scopes.find((s) => ["이 템플릿", "이 함수조항"].includes(s.querySelector(":scope > .ts-ref-scope")?.textContent ?? "")) ?? scopes[0];
         if (!self) return { missing: -1 };
         let lis = [...self.querySelectorAll(":scope > div[role=none] > ul > li")];
         let row: HTMLElement | null = null;
@@ -323,10 +323,10 @@ export class Editor {
     });
     await this.page.mouse.click(point.x, point.y, { button: "right" });
     const menu = this.page.getByRole("menu", { name: "편집 메뉴" });
-    const label = node.kind === "articleRef" ? "조 참조…" : node.kind === "appendixRef" ? "별표 참조…" : node.kind === "slot" ? "치환 슬롯…" : node.kind === "clauseInlineRef" ? "공용조항(문장 안)…" : undefined;
+    const label = node.kind === "articleRef" ? "조 참조…" : node.kind === "appendixRef" ? "별표 참조…" : node.kind === "slot" ? "치환 슬롯…" : node.kind === "clauseInlineRef" ? "함수조항(문장 안)…" : undefined;
     if (!label) throw new Error(`가지 문장에 넣을 수 없는 칩: ${node.kind}`);
     await menu.getByRole("menuitem", { name: label, exact: true }).click();
-    const title = { "조 참조…": "조 참조 넣기", "별표 참조…": "별표 참조 넣기", "치환 슬롯…": "치환 슬롯 넣기", "공용조항(문장 안)…": "공용조항(문장 안) 넣기" }[label];
+    const title = { "조 참조…": "조 참조 넣기", "별표 참조…": "별표 참조 넣기", "치환 슬롯…": "치환 슬롯 넣기", "함수조항(문장 안)…": "함수조항(문장 안) 넣기" }[label];
     const d = this.dialog(title);
     if (node.kind === "articleRef") await this.pickTargets(d, node);
     else if (node.kind === "appendixRef") await pickCombo(d.locator("#pop-appendix"), { value: node.appendixCode });
@@ -384,7 +384,7 @@ function articlesOf(tree: DocumentNode): { article: Node; wrap?: string }[] {
   return out;
 }
 
-const BLOCK_TOOL: Partial<Record<Node["kind"], string>> = { paragraph: "항", item: "호", subitem: "목", table: "표", clauseBlockRef: "공용조항", boxRef: "박스" };
+const BLOCK_TOOL: Partial<Record<Node["kind"], string>> = { paragraph: "항", item: "호", subitem: "목", table: "표", clauseBlockRef: "함수조항", boxRef: "박스" };
 
 /** 문면 저작 화면 운전 — 담보약관 템플릿 한 벌. */
 export class DocumentAuthoring {
@@ -534,9 +534,9 @@ export class DocumentAuthoring {
       await this.page.getByRole("menuitem", { name: `${this.clauseLabels.get(node.clauseCode)}(${node.clauseCode})`, exact: true }).click();
       if (Object.keys(node.options).length > 0) {
         // 블록 머리의 옵션 단추 → 「공용조항 옵션」 팝업에서 옵션마다 선택지
-        const block = this.article.locator("[data-clause-ref]").filter({ hasText: `공용조항 (${this.clauseLabels.get(node.clauseCode)})` }).last();
+        const block = this.article.locator("[data-clause-ref]").filter({ hasText: `함수조항 (${this.clauseLabels.get(node.clauseCode)})` }).last();
         await block.locator(".ts-doc-clause-opt").click();
-        const d = this.editor.dialog("공용조항 옵션");
+        const d = this.editor.dialog("함수조항 옵션");
         for (const [option, value] of Object.entries(node.options)) await d.locator(`#pop-opt-${option}`).selectOption(value);
         await this.editor.confirm(d, "확인");
       }
@@ -587,7 +587,7 @@ export class ClauseAuthoringDriver {
     await this.page.goto(`/clauses/new?type=${mode}`);
     await this.page.waitForLoadState("networkidle");
     await expect(this.page.getByRole("radio", { name: mode === "inline" ? /^문구/ : /^항/ })).toBeChecked();
-    await this.page.getByLabel("공용조항명").fill(label);
+    await this.page.getByLabel("함수조항명").fill(label);
   }
 
   /** 옵션 목록 — 옵션마다 이름, 선택지마다 이름 · 문구. 새 옵션은 빈 선택지 둘을 품고 온다. */
@@ -618,7 +618,7 @@ export class ClauseAuthoringDriver {
     selfPaths.clear();
     (body as Node[]).forEach((node, k) => selfPaths.set(node.id, [`제${k + 1}항`]));
     for (const [i, node] of (body as Node[]).entries()) {
-      if (node.kind !== "paragraph" || (node.items ?? []).length > 0) throw new Error("이 E2E 의 「항」 공용조항은 호 없는 항뿐이다");
+      if (node.kind !== "paragraph" || (node.items ?? []).length > 0) throw new Error("이 E2E 의 「항」 함수조항은 호 없는 항뿐이다");
       if (i > 0) {
         await root.getByRole("textbox", { name: "항", exact: true }).nth(i - 1).focus();
         await this.editor.runTool("항");

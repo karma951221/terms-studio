@@ -84,7 +84,7 @@ export const DOC_TOOLS: ToolGroup[] = [
         title: "글머리 목록 — 지금 블록 아래(조 제목이면 그 조 끝)에 번호 없는 「-」 목록, 목록 안이면 아래에 항목",
         match: oneOf("아래에 글머리 목록 추가", "글머리 목록 추가", "이 가지에 글머리 목록 추가", "아래에 항목 추가", "이 가지에 항목 추가"),
       },
-      { id: "clauseBlock", label: "공용조항", title: "공용조항 추가 — 지금 항 아래(조 제목이면 그 조 끝)", match: oneOf("아래에 공용조항(조 단위) 추가…", "아래에 공용조항 참조 추가…", "공용조항 참조 추가…") },
+      { id: "clauseBlock", label: "함수조항", title: "함수조항 추가 — 지금 항 아래(조 제목이면 그 조 끝)", match: oneOf("아래에 함수조항(조 단위) 추가…", "아래에 함수조항 참조 추가…", "함수조항 참조 추가…") },
       { id: "box", label: "박스", title: "박스 — 정적 마스터 박스를 골라 지금 블록 아래(조 제목이면 그 조 끝)에", match: oneOf("아래에 박스 추가…", "박스 추가…", "이 가지에 박스 추가…") },
     ],
   },
@@ -94,7 +94,7 @@ export const DOC_TOOLS: ToolGroup[] = [
       { id: "slot", label: "슬롯", title: "치환 슬롯 — 커서 자리에", match: oneOf("치환 슬롯…") },
       { id: "articleRef", label: "조 참조", title: "조 참조 — 커서 자리에", match: oneOf("조 참조…") },
       { id: "appendixRef", label: "별표 참조", title: "별표 참조 — 커서 자리에", match: oneOf("별표 참조…") },
-      { id: "clauseInline", label: "공용조항(문장)", title: "공용조항(문장 안) — 커서 자리에", match: oneOf("공용조항(문장 안)…") },
+      { id: "clauseInline", label: "함수조항(문장)", title: "함수조항(문장 안) — 커서 자리에", match: oneOf("함수조항(문장 안)…") },
       { id: "structKey", label: "구조 표기", title: "구조 표기 — 반복 표 템플릿 셀의 커서 자리에", match: oneOf("구조 표기…") },
       { id: "optionSlot", label: "옵션 자리", title: "옵션 자리 — 커서 자리에 옵션 하나의 자리", match: (l) => l.startsWith("옵션 자리 — "), multi: true },
     ],
@@ -113,7 +113,7 @@ export const DOC_TOOLS: ToolGroup[] = [
   {
     name: "속성",
     tools: [
-      { id: "edit", label: "고치기", title: "고치기 — 고른 칩 · 공용조항 참조의 속성", match: oneOf("고치기…", "옵션 고치기…") },
+      { id: "edit", label: "고치기", title: "고치기 — 고른 칩 · 함수조항 참조의 속성", match: oneOf("고치기…", "옵션 고치기…") },
       { id: "tableProps", label: "표 속성", title: "표 속성 — 고른 표", match: oneOf("표 속성…") },
       { id: "repeat", label: "행 반복", title: "행 반복 — 고른 표(담보약관)", match: oneOf("행 반복…") },
       { id: "link", label: "조연결", title: "조연결 — 고른 조(담보약관)", match: oneOf("조연결…") },

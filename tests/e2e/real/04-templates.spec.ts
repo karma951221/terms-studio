@@ -32,7 +32,7 @@ test.describe.serial("실물 재현(화면) ④ 담보약관 템플릿", () => {
         await arrive(page, /\/documents\/[0-9a-f-]{36}$/);
       });
       await ev.action("실물화면#4.3", `편집 → 대응 보통약관 「${general.title}」을 고른다`, () => authoring.startEdit(general.title));
-      await ev.action("실물화면#4.4", "뼈대 — 조 · 항 · 호 · 표 · 박스 · 공용조항 블록 · 조연결 · 조 자리 조건", () => authoring.buildSkeleton());
+      await ev.action("실물화면#4.4", "뼈대 — 조 · 항 · 호 · 표 · 박스 · 함수조항 블록 · 조연결 · 조 자리 조건", () => authoring.buildSkeleton());
       await ev.action("실물화면#4.5", "문장 — 글 · 칩 · 문장 안 조건", () => authoring.fillSentences());
       await ev.action("실물화면#4.6", "저장 한 번 — 검증 오류 0", async () => {
         await authoring.save();

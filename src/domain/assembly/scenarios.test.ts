@@ -299,7 +299,7 @@ describe("조립오류 S6 — 생략 자동 판정: 리터럴 비교 · 탑재�
   const coverages = [surgeryCoverage("pc-surgery", "수술비", { renew: false }), surgeryCoverage("pc-renew", "갱신형 수술비", { renew: true })];
   const build = (body: ParagraphNode["children"]) => docsOf(withSurgery(coverages, { generalDocuments: new Map([["g6", general]]), product: { ...alphaPlusFixture().product, generalDocumentId: "g6", baseContractIds: ["pc-base"] } }, special(body)));
 
-  it("같은 공용조항을 참조 → 「수술비」는 보통약관 조와 동일해 생략, 「갱신형 수술비」는 갱신 문구가 붙어 유지 (탑재분별 판정)", () => {
+  it("같은 함수조항을 참조 → 「수술비」는 보통약관 조와 동일해 생략, 「갱신형 수술비」는 갱신 문구가 붙어 유지 (탑재분별 판정)", () => {
     const { booklet, doc } = build(viaClause);
     expect(lines(doc("pc-surgery")).map((l) => l.split("(")[0])).toEqual(["제1조", "   수술을 보장합니다."]);
     expect(lines(doc("pc-renew"))).toEqual(["제1조(보험금의 지급사유)", "   수술을 보장합니다.", "제2조(준용규정)", "   이 약관에서 정하지 않은 사항은 보통약관을 따릅니다. 갱신형 계약은 갱신 특칙을 우선합니다."]);
@@ -544,7 +544,7 @@ describe("기본계약 대치 — 대치될 보통약관 본문은 실행하지 
   });
 });
 
-describe("기능/상품 §3.6 — 공용조항 옵션 해소: 오버라이드 > 마스터, 미선택·무효는 오류 마커", () => {
+describe("기능/상품 §3.6 — 함수조항 옵션 해소: 오버라이드 > 마스터, 미선택·무효는 오류 마커", () => {
   /** 특약 소멸 조의 공용조항 참조 마스터 선택만 바꾼다 — 담보약관에는 오버라이드가 없다 (기능/상품 §3.6). */
   const withMaster = (options: Record<string, string>) => {
     const input = alphaPlusFixture();
@@ -591,7 +591,7 @@ describe("기능/상품 §3.6 — 공용조항 옵션 해소: 오버라이드 > 
     expect(invalid.issues[0].at).toMatchObject({ document: "general", ownerId: "g-doc", articleId: "g-art-exempt", refPath: "O01" });
   });
 
-  it("없는 공용조항 참조는 brokenRef 마커", () => {
+  it("없는 함수조항 참조는 brokenRef 마커", () => {
     const input = alphaPlusFixture();
     const b = assembleInput({ ...input, clauses: input.clauses.filter((c) => c.code !== "C0001") });
     expect(kinds(b.issues)).toEqual(["brokenRef", "brokenRef"]);

@@ -219,7 +219,7 @@ export function ClauseModel(props: ClauseModelProps) {
   const ctx: Ctx = { ...props, numbers: numberTree(tree), positions: clausePositions(tree) };
   if (clause.body.length === 0) return <p className="ts-muted">본문이 비어 있다.</p>;
   return (
-    <div className="ts-clause-model" aria-label={`공용조항 ${clause.label} 모델`}>
+    <div className="ts-clause-model" aria-label={`함수조항 ${clause.label} 모델`}>
       {clause.mode === "inline" ? (
         <p className="ts-doc-paragraph is-line">
           <Inlines nodes={clause.body} ctx={ctx} />
