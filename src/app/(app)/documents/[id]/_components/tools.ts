@@ -30,6 +30,8 @@ export type ToolId =
   | "optionSlot"
   | "cond"
   | "inlineCond"
+  | "switch"
+  | "switchCase"
   | "elif"
   | "else"
   | "unwrap"
@@ -107,7 +109,10 @@ export const DOC_TOOLS: ToolGroup[] = [
       { id: "elif", label: "가지 추가", title: "가지 추가(ELIF) — 고른 조건 블록에", match: oneOf("가지 추가(ELIF)") },
       { id: "else", label: "ELSE", title: "ELSE 가지 추가 — 고른 조건 블록에", match: oneOf("ELSE 가지 추가") },
       { id: "unwrap", label: "조건 풀기", title: "조건 풀기 — 고른 가지(문장 안 조건은 첫 가지) 내용만 남긴다", match: (l) => l.startsWith("조건 풀기") },
-      { id: "removeBranch", label: "가지 삭제", title: "이 가지 삭제 — 가지가 하나면 잠긴다", match: oneOf("이 가지 삭제") },
+      { id: "removeBranch", label: "가지 삭제", title: "이 가지(값별 분기면 이 칸) 삭제 — 하나면 잠긴다", match: oneOf("이 가지 삭제", "이 칸 삭제") },
+      // 값별 분기(최종 결정 5) — 지금은 함수조항 편집기만(문면 툴바에서 빠진다)
+      { id: "switch", label: "값별 분기", title: "값별 분기 — 목록값 인자 · 내부 변수의 값마다 칸(모든 값이 한 칸 · 「문구 없음」은 칸에서 켠다). 지금 블록 뒤, 본문 빈 자리면 끝에", match: oneOf("값별 분기 넣기") },
+      { id: "switchCase", label: "칸 추가", title: "칸 추가 — 고른 값별 분기에 칸 없는 값 첫째를 든 칸", match: oneOf("칸 추가") },
     ],
   },
   {
@@ -125,7 +130,7 @@ export const DOC_TOOLS: ToolGroup[] = [
       { id: "up", label: "위로", title: "위로 — 같은 부모 안에서 한 칸", match: oneOf("위로") },
       { id: "down", label: "아래로", title: "아래로 — 같은 부모 안에서 한 칸", match: oneOf("아래로") },
       { id: "duplicate", label: "복제", title: "복제 — 바로 뒤에 사본", match: oneOf("복제") },
-      { id: "remove", label: "삭제", title: "삭제 — 고른 자리(조건 머리면 조건 블록)", match: oneOf("삭제", "조건 블록 삭제") },
+      { id: "remove", label: "삭제", title: "삭제 — 고른 자리(조건 머리면 조건 블록 · 칸 머리면 값별 분기)", match: oneOf("삭제", "조건 블록 삭제", "값별 분기 삭제") },
     ],
   },
 ];
@@ -138,8 +143,9 @@ export const CLAUSE_TOOLS: ToolGroup[] = DOC_TOOLS.map((g) => ({ ...g, tools: g.
 /** 「문구」 공용조항 — 문장 한 줄뿐이라 구조 넣기 묶음이 없다. */
 export const CLAUSE_LINE_TOOLS: ToolGroup[] = CLAUSE_TOOLS.filter((g) => g.name !== "구조 넣기");
 
-/** 문면 툴바에는 옵션 자리가 없다(공용조항만). */
-export const DOCUMENT_TOOLS: ToolGroup[] = DOC_TOOLS.map((g) => ({ ...g, tools: g.tools.filter((t) => t.id !== "optionSlot") }));
+/** 문면 툴바에는 옵션 자리 · 값별 분기가 없다(함수조항만 — 값별 분기는 「지금은 함수조항 안에서만」, 최종 결정 5). */
+const CLAUSE_ONLY = new Set<ToolId>(["optionSlot", "switch", "switchCase"]);
+export const DOCUMENT_TOOLS: ToolGroup[] = DOC_TOOLS.map((g) => ({ ...g, tools: g.tools.filter((t) => !CLAUSE_ONLY.has(t.id)) }));
 
 export function allTools(groups: readonly ToolGroup[]): Tool[] {
   return groups.flatMap((g) => g.tools);

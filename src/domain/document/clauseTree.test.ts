@@ -234,7 +234,8 @@ describe("값별 분기 — 편집 트리 운반 (최종 결정 5)", () => {
 
   it("문면(템플릿)에서는 값별 분기를 거부한다 — 지금은 함수조항 안에서만", () => {
     const env: EditEnv = { env: { kind: "special" }, generalRefs: () => undefined };
-    const r = applyEdit({ tree: clauseBodyToTree("block", []) }, { type: "insert", node: clauseBodyToTree("block", sw).children[0].kind === "article" ? (clauseBodyToTree("block", sw).children[0] as { children: never[] }).children[0] : (undefined as never), at: { parentId: CLAUSE_ARTICLE_ID } }, env);
+    const carrier = (clauseBodyToTree("block", sw).children[0] as unknown as { children: never[] }).children[0];
+    const r = applyEdit({ tree: clauseBodyToTree("block", []) }, { type: "insert", node: carrier, at: { parentId: CLAUSE_ARTICLE_ID } }, env);
     expect(r.ok).toBe(false);
   });
 });

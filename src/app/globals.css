@@ -4880,3 +4880,59 @@ button.ts-ref-fold:hover {
   align-items: center;
   gap: 6px;
 }
+
+/* 값별 분기(switch, 최종 결정 5) — 조건 블록과 같은 상자. 대상 줄 · 칸 머리(값 칩 · 값 더하기 · 「문구 없음」) */
+.ts-switch-on,
+.ts-switch-case {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--sans);
+}
+
+.ts-switch-on {
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  border-bottom: 1px dashed var(--ts-rule);
+}
+
+.ts-switch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 22px;
+  padding: 0 4px 0 8px;
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.ts-switch-chip.is-missing {
+  border-color: var(--ts-error);
+  color: var(--ts-error);
+}
+
+.ts-switch-chip-x {
+  height: 18px;
+  min-height: 18px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.ts-switch-empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.ts-switch-on select,
+.ts-switch-case select {
+  height: 22px;
+  min-height: 22px;
+  font-size: 12px;
+}

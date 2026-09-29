@@ -34,6 +34,7 @@ import { PopupHost, type PopupEnv } from "@/app/(app)/documents/[id]/_components
 import { ContextMenu, PopActions, Popover } from "@/app/(app)/documents/[id]/_components/Popover";
 import { DraftIssues } from "@/app/(app)/documents/[id]/_components/SidePanel";
 import { CLAUSE_LINE_TOOLS, CLAUSE_TOOLS, allTools, itemsFor, type ToolId } from "@/app/(app)/documents/[id]/_components/tools";
+import { switchSubjectsOf } from "@/app/(app)/documents/[id]/_components/switchCases";
 import { useBlockDrag } from "@/app/(app)/documents/[id]/_components/useBlockDrag";
 import type { ClauseBody, ClauseMode, LocalDef, ParamDef, RequiredRefs } from "@/domain/clause";
 import { formatCoordinate } from "@/domain/coordinate";
@@ -246,6 +247,8 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     () => ({ ...data.condition, discriminators: [...paramEntries(shownParams, data.enums), ...localEntries(shownParams, localsForSave(shownParams, shownLocals, data.enums), data.enums)], quick: [] }),
     [data.condition, data.enums, shownParams, shownLocals],
   );
+  /** 값별 분기 대상 후보 — 목록값 인자 · 내부 변수(최종 결정 5). 칸 머리 · 「값별 분기 넣기」가 쓴다. */
+  const switchSubjects = useMemo(() => switchSubjectsOf(condition.discriminators), [condition]);
   const latest = useCallback((): DocumentNode => draftRef.current.state.tree, []);
   const dirty =
     editing &&
@@ -271,7 +274,8 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
       missingRequired: () => [],
       validateOptions: () => [],
     };
-    return { env: { kind: "special", appendixExists: (c) => appendixCodes.has(c), boxExists: (c) => boxByCode.has(c), clauseGate: gate }, generalRefs: (id) => (id === GENERALS ? refs : undefined) };
+    // 값별 분기는 지금 함수조항 안에서만 연다(최종 결정 5) — 이 편집기만 표지를 켠다
+    return { env: { kind: "special", appendixExists: (c) => appendixCodes.has(c), boxExists: (c) => boxByCode.has(c), clauseGate: gate, switches: true }, generalRefs: (id) => (id === GENERALS ? refs : undefined) };
   }, [appendixCodes, boxByCode, refs]);
 
   // ── 표기 ──
@@ -345,7 +349,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
 
   const refuse = (message: string) => setBanner({ message: `넣을 수 없다 — ${message}` });
 
-  const envOf = (t: DocumentNode, opts: readonly ClauseEditOption[]): ClauseMenuEnv => ({ tree: t, ix: indexTree(t), docKind: "special", newId: randomIds, mode: clauseMode, options: opts, onRefuse: refuse });
+  const envOf = (t: DocumentNode, opts: readonly ClauseEditOption[]): ClauseMenuEnv => ({ tree: t, ix: indexTree(t), docKind: "special", newId: randomIds, mode: clauseMode, options: opts, switchSubjects, onRefuse: refuse });
   /** 누르는 순간의 편집본으로 — 메뉴를 연 뒤 문장 칸이 초점을 잃으며 글이 먼저 적용될 수 있다. */
   const menuEnv = (): ClauseMenuEnv => envOf(latest(), optionsRef.current);
 
@@ -493,6 +497,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     chipOverride,
     articleRefChoices: refChoices,
     conditionFor: () => condition,
+    switchSubjects,
     boxOf: (c) => boxByCode.get(c),
     ...(flashId ? { flashId } : {}),
     ...(editing ? { edit } : {}),
@@ -626,14 +631,18 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   const toolbarSections = editing ? withClauseRefusals(toolbarEnv, clausePlaceMenu(toolbarEnv, toolbarPlace)) : [];
   const placeWords = (p: Place): string => {
     if (p.kind === "chip") return "칩";
-    if (p.kind === "head") return "조건 가지";
+    if (p.kind === "head") {
+      const owner = index.branches.get(p.id)?.ownerId;
+      const n = owner ? index.nodes.get(owner)?.node : undefined;
+      return n?.kind === "condBlock" && n.switchOn !== undefined ? "값별 분기 칸" : "조건 가지";
+    }
     if (p.kind === "document") return "본문";
     const id = p.kind === "inline" ? ("tableId" in p.at ? undefined : p.at.parentId) : p.id;
     if (id === CLAUSE_HOST_PARAGRAPH_ID || id === CLAUSE_HOST_ITEM_ID) return "본문";
     if (!id || id === CLAUSE_LINE_ID) return "문구";
     const node = index.nodes.get(id)?.node;
     if (!node) return "조건 가지 문장";
-    const word = node.kind === "paragraph" ? "항" : node.kind === "item" ? "호" : node.kind === "subitem" ? "목" : node.kind === "condBlock" ? "조건 블록" : "블록";
+    const word = node.kind === "paragraph" ? "항" : node.kind === "item" ? "호" : node.kind === "subitem" ? "목" : node.kind === "condBlock" ? (node.switchOn !== undefined ? "값별 분기" : "조건 블록") : "블록";
     return `${numbers.get(id)?.label ?? ""} ${word}${p.kind === "inline" ? " 문장" : ""}`.trim();
   };
 

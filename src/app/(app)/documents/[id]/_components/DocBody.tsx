@@ -9,6 +9,8 @@
  *   바로 아래에 팝업, 넣기 · 이동 · 복제 · 삭제 · 조건식은 본문 위 툴바(자리는 `data-*` 로 읽는다, 오른쪽 클릭 메뉴는 지름길). 블록마다 붙던 버튼 줄은 없다.
  * - 조건 블록은 테두리 상자(배경 없음)다 — 가지마다 머리 줄(IF / ELIF / ELSE) + 그 아래 내용. 편집 모드의 머리 줄은 늘 열린 조건식 줄
  *   (`CondRows` — 변수 · 연산자 · 값, ⊕ ⊖)과 끝의 작은 버튼(ELIF · ELSE · 풀기 · 삭제)이다. 팝업 없음 (2026-09-28).
+ * - 값별 분기(함수조항 편집기만, 최종 결정 5)는 조건 블록과 같은 상자 — 첫 칸 위에 대상 줄(대상 고르기 · 칸 없는 값 · 칸 추가 · 삭제),
+ *   칸마다 머리 줄(값 칩 · 값 더하기 · 「문구 없음」 · 칸 삭제) + 그 칸 내용. 칸 머리는 조건 머리처럼 자리(`data-cond-head`)라 툴바가 그 칸을 본다.
  * - 공용조항(조 단위)은 머리 띠 「공용조항 (이름)」 + 🗑 · 그 아래 공용조항의 **모델**(슬롯 · 옵션 자리 · 조건 · 참조, 읽기 전용)을 든 상자다.
  *   미리보기(`clauseView: "text"`)만 고른 선택지를 끼운 문장으로 그린다 — 가운데 = 모델, 오른쪽 = 결과 (2026-09-28).
  * - 노드 id·8자리 접두를 화면에 내보내지 않는다 (리뷰 #25).
@@ -17,7 +19,7 @@ import type { MouseEvent, ReactNode } from "react";
 
 import { IconButton, IconTrash } from "@/app/_components/icons";
 import { StaticTable } from "@/app/_components/StaticNodes";
-import { REPEAT_DEPTH_LABEL } from "@/app/_lib/labels";
+import { REPEAT_DEPTH_LABEL, SWITCH_WORD } from "@/app/_lib/labels";
 import {
   CLAUSE_HOST_ITEM_ID,
   CLAUSE_HOST_PARAGRAPH_ID,
@@ -48,6 +50,7 @@ import { CondRows } from "./condition/CondRows";
 import { anchorOf, chipText, type DocCtx } from "./ctx";
 import { EditableText, InlineSlot } from "./Inline";
 import type { MenuItem } from "./menus";
+import { sortValues, switchValueLabel, unassignedValues, type SwitchSubject } from "./switchCases";
 
 const flash = (ctx: DocCtx, id: Id) => `${ctx.flashId === id ? " is-flash" : ""}${ctx.edit?.blockSel?.includes(id) ? " is-block-sel" : ""}`;
 
@@ -365,8 +368,134 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
   );
 }
 
+/** 값별 분기의 대상 줄 — 읽기: 「값별 분기 대상」 + 칸 없는 값. 편집: 대상 고르기 · 칸 없는 값 · 칸 추가 · 분기 삭제. */
+function SwitchHead({ node, ctx, subject }: { node: Node & { kind: "condBlock" }; ctx: DocCtx; subject: SwitchSubject | undefined }) {
+  const edit = ctx.edit;
+  const missing = unassignedValues(subject, node.branches);
+  const firstBranch = node.branches[0];
+  const items = edit && firstBranch ? edit.headItems(firstBranch.id) : [];
+  const add = items.find((i) => i.label === "칸 추가");
+  const remove = items.find((i) => i.label === "값별 분기 삭제");
+  const run = (item: MenuItem | undefined) => (e: MouseEvent<HTMLElement>) => item && edit?.run(item, anchorOf(e.currentTarget));
+  const subjects = ctx.switchSubjects ?? [];
+  const onSubject = (code: string) => {
+    const next = subjects.find((s) => s.code === code);
+    if (!edit || !next) return;
+    // 다른 열거형으로 바꾸면 그 열거형에 없는 값은 칸에서 뺀다(같은 열거형이면 그대로)
+    const keep = new Set(next.values.map((v) => v.code));
+    edit.apply([{ type: "setSwitch", nodeId: node.id, on: code }, ...node.branches.map((br) => ({ type: "setCase" as const, branchId: br.id, values: (br.values ?? []).filter((v) => keep.has(v)), empty: br.empty === true }))]);
+  };
+  const missingLine = missing.length > 0 && (
+    <span className="ts-cond-issue ts-switch-missing" role="note">
+      {SWITCH_WORD.unassigned}: {missing.map((v) => v.label).join(" · ")}
+    </span>
+  );
+  return (
+    <div className={`ts-doc-cond-head ts-switch-on${edit ? " is-edit" : ""}`}>
+      <span className="ts-cond-badge">{SWITCH_WORD.switch}</span>{" "}
+      {edit ? (
+        <select aria-label="값별 분기 대상" value={node.switchOn} onChange={(e) => onSubject(e.target.value)}>
+          {!subject && <option value={node.switchOn}>{node.switchOn} (없는 대상)</option>}
+          {subjects.map((s) => (
+            <option key={s.code} value={s.code}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <span>{subject?.label ?? node.switchOn}</span>
+      )}{" "}
+      {missingLine}
+      {edit && (
+        <span className="ts-cond-tools">
+          {add && (
+            <button type="button" className="ts-cond-mini" title="칸 추가 — 칸 없는 값 첫째를 든 칸" onClick={run(add)}>
+              +{SWITCH_WORD.case}
+            </button>
+          )}
+          {remove && <IconButton className="ts-cond-rowbtn" icon={<IconTrash />} danger label="값별 분기 삭제" onClick={run(remove)} />}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** 값별 분기 칸의 머리 줄 — 읽기: 「칸 값 · 값」(「문구 없음」). 편집: 값 칩(× 빼기) · 값 더하기 · 「문구 없음」 · 칸 삭제. */
+function CaseHead({ ctx, node, branch, subject }: { ctx: DocCtx; node: Node & { kind: "condBlock" }; branch: BlockBranch; subject: SwitchSubject | undefined }) {
+  const edit = ctx.edit;
+  const values = branch.values ?? [];
+  const known = new Set((subject?.values ?? []).map((v) => v.code));
+  const label = (code: string) => (subject && !known.has(code) ? `없는 값 ${code}` : switchValueLabel(subject, code));
+  if (!edit) {
+    return (
+      <p className="ts-doc-cond-head">
+        <span className="ts-cond-badge">{SWITCH_WORD.case}</span> {values.map(label).join(" · ") || "값 없음"}
+        {branch.empty ? ` — ${SWITCH_WORD.empty}` : ""}
+      </p>
+    );
+  }
+  const set = (next: readonly string[], empty = branch.empty === true) => edit.apply([{ type: "setCase", branchId: branch.id, values: sortValues(subject, next), empty }]);
+  const free = unassignedValues(subject, node.branches);
+  const items = edit.headItems(branch.id);
+  const removeCase = items.find((i) => i.label === "이 칸 삭제" && !i.disabled);
+  const hasBody = branch.children.length > 0;
+  return (
+    <div className="ts-doc-cond-head is-edit ts-switch-case" data-cond-head={branch.id}>
+      <span className="ts-cond-badge">{SWITCH_WORD.case}</span>
+      {values.map((v) => (
+        <span key={v} className={`ts-switch-chip${subject && !known.has(v) ? " is-missing" : ""}`}>
+          {label(v)}
+          <button type="button" className="ts-switch-chip-x" aria-label={`값 ${label(v)} 빼기`} onClick={() => set(values.filter((x) => x !== v))}>
+            ×
+          </button>
+        </span>
+      ))}
+      {values.length === 0 && <span className="ts-cond-issue">값 없음 — 값을 고른다</span>}
+      {free.length > 0 && (
+        <select aria-label="칸에 값 더하기" value="" onChange={(e) => e.target.value && set([...values, e.target.value])}>
+          <option value="">+ 값</option>
+          {free.map((v) => (
+            <option key={v.code} value={v.code}>
+              {v.label}
+            </option>
+          ))}
+        </select>
+      )}
+      <label className="ts-switch-empty" title={hasBody && !branch.empty ? "본문을 지운 뒤 켠다 — 「문구 없음」 칸은 본문이 없다" : "이 칸은 아무것도 내지 않는다"}>
+        <input type="checkbox" checked={branch.empty === true} disabled={hasBody && !branch.empty} onChange={(e) => set(values, e.target.checked)} /> {SWITCH_WORD.empty}
+      </label>
+      {!branch.empty && !hasBody && <span className="ts-cond-issue">칸이 비었다 — 본문을 쓰거나 「{SWITCH_WORD.empty}」</span>}
+      <span className="ts-cond-tools">{removeCase && <IconButton className="ts-cond-rowbtn" icon={<IconTrash />} danger label="이 칸 삭제" onClick={(e) => edit.run(removeCase, anchorOf(e.currentTarget))} />}</span>
+    </div>
+  );
+}
+
+/** 값별 분기 — 조건 블록과 같은 상자: 첫 칸 위에 대상 줄, 칸마다 머리 줄 + 그 칸 내용(「문구 없음」 칸은 내용 없음). */
+function SwitchBlock({ node, ctx, as }: { node: Node & { kind: "condBlock" }; ctx: DocCtx; as: "div" | "li" }) {
+  const Tag = as;
+  const subject = ctx.switchSubjects?.find((s) => s.code === node.switchOn);
+  return (
+    <>
+      {node.branches.map((br, i) => (
+        <Tag
+          key={br.id}
+          data-node={br.id}
+          data-drop-block={node.id}
+          className={`ts-doc-cond is-switch${i === 0 ? "" : " is-alt"}${flash(ctx, br.id)}${ctx.edit?.blockSel?.includes(node.id) ? " is-block-sel" : ""}`}
+        >
+          {i === 0 && <DragHandle id={node.id} what={SWITCH_WORD.switch} ctx={ctx} />}
+          {i === 0 && <SwitchHead node={node} ctx={ctx} subject={subject} />}
+          <CaseHead ctx={ctx} node={node} branch={br} subject={subject} />
+          {!br.empty && <Block nodes={br.children} ctx={ctx} inList={as === "li"} />}
+        </Tag>
+      ))}
+    </>
+  );
+}
+
 /** 블록 조건 — 가지마다 테두리 상자 + 머리 줄. 첫 가지는 실선(IF), 나머지는 파선(ELIF · ELSE). */
 function CondBlock({ node, ctx, as }: { node: Node & { kind: "condBlock" }; ctx: DocCtx; as: "div" | "li" }) {
+  if (node.switchOn !== undefined) return <SwitchBlock node={node} ctx={ctx} as={as} />;
   const Tag = as;
   return (
     <>

@@ -18,6 +18,7 @@ import type { Code, Id } from "@/domain/types";
 import type { ConditionContext } from "./condition/types";
 import type { Token } from "./inlineRuns";
 import type { MenuItem, PopupSpec } from "./menus";
+import type { SwitchSubject } from "./switchCases";
 
 export type DocMode = "read" | "edit";
 
@@ -89,6 +90,8 @@ export interface DocCtx {
    * `"text"` 는 고른 선택지 문구를 끼운 문장(미리보기 · 사전평가 결과). 가운데 = 모델, 오른쪽 = 결과 (2026-09-28).
    */
   clauseView?: "model" | "text";
+  /** 값별 분기 대상 후보(목록값 인자 · 내부 변수와 그 값) — 칸 머리가 값 이름 · 칸 없는 값을 그린다. 함수조항 편집기만 준다. */
+  switchSubjects?: readonly SwitchSubject[];
 }
 
 /** 가운데 편집기의 조작 — 편집 모드에서만 준다. */

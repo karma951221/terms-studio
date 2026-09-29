@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { MenuItem, MenuSections } from "@/app/(app)/documents/[id]/_components/menus";
 import { CLAUSE_HOST_ITEM_ID, CLAUSE_HOST_PARAGRAPH_ID, CLAUSE_LINE_ID, clauseBodyToTree, indexTree, sequentialIds } from "@/domain/document";
 
-import { REFUSE, clauseBlockMenu, clauseBodyMenu, clauseCanHold, clauseInlineMenu, type ClauseMenuEnv } from "./clauseMenus";
+import { REFUSE, clauseBlockMenu, clauseBodyMenu, clauseCanHold, clauseCondMenu, clauseInlineMenu, type ClauseMenuEnv } from "./clauseMenus";
+import { applyEdit, treeToClauseBody } from "@/domain/document";
 
 const labels = (sections: MenuSections) => sections.flat().map((item) => item.label);
 const find = (sections: MenuSections, label: string): MenuItem | undefined => sections.flat().find((item) => item.label === label);
@@ -56,7 +57,7 @@ describe("함수조항 에디터 메뉴 — 문면 메뉴를 함수조항 자리
     const onRefuse = vi.fn();
     const e = env("block", onRefuse);
     const sections = clauseBodyMenu(e);
-    expect(labels(sections)).toEqual(["항 추가", "박스 추가…", "조건 블록 넣기", "조 추가", "관 추가", "함수조항 참조 추가…"]);
+    expect(labels(sections)).toEqual(["항 추가", "박스 추가…", "조건 블록 넣기", "값별 분기 넣기", "조 추가", "관 추가", "함수조항 참조 추가…"]);
     const article = find(sections, "조 추가")!;
     if (article.action.do === "ops" && typeof article.action.ops === "function") article.action.ops(e.tree);
     expect(onRefuse).toHaveBeenCalledWith(REFUSE.article);
@@ -95,5 +96,53 @@ describe("호 · 목 유형 에디터 메뉴 — 유형의 목록 자리에 넣�
   it("호 · 목 자리의 함수조항 넣기는 거부 자리 하나로 — 같은 도구가 둘로 늘지 않는다", () => {
     const e = listEnv("item");
     expect(labels(clauseBlockMenu(e, "i1")).filter((l) => l.includes("함수조항"))).toEqual([]);
+  });
+});
+
+describe("값별 분기 메뉴 — 넣기 · 칸 머리 (최종 결정 5)", () => {
+  const 사유 = { code: "arg.사유", label: "사유(인자)", values: [{ code: "V01", label: "암" }, { code: "V02", label: "뇌졸중" }] };
+  const itemsOf = (sections: MenuSections, label: string) => {
+    const item = find(sections, label);
+    if (!item || item.action.do !== "ops") throw new Error(`${label} 없음`);
+    return typeof item.action.ops === "function" ? item.action.ops(e0().tree) : item.action.ops;
+  };
+  const e0 = (): ClauseMenuEnv => ({ ...env("block"), switchSubjects: [사유] });
+  const apply = (tree: ClauseMenuEnv["tree"], ops: ReturnType<typeof itemsOf>) => {
+    let state = { tree };
+    for (const op of ops) {
+      const r = applyEdit(state, op, { env: { kind: "special", switches: true }, generalRefs: () => undefined });
+      if (!r.ok) throw new Error(JSON.stringify(r.rejection));
+      state = r.value.state;
+    }
+    return state.tree;
+  };
+
+  it("대상 후보가 없으면 거부 자리(사유 = 인자 표에 목록값 인자를 먼저)", () => {
+    const item = find(clauseBodyMenu(env("block")), "값별 분기 넣기")!;
+    expect(item.refusal).toBe(REFUSE.switchSubject);
+  });
+
+  it("본문 끝에 넣으면 대상 = 후보 첫째, 칸 = 값마다 하나(빈 항을 든) — 되돌리면 switchBlock", () => {
+    const tree = apply(e0().tree, itemsOf(clauseBodyMenu(e0()), "값별 분기 넣기"));
+    const back = treeToClauseBody("block", tree);
+    expect(back.ok && back.value[1]).toMatchObject({ kind: "switchBlock", on: "arg.사유", cases: [{ values: ["V01"], children: [{ kind: "paragraph" }] }, { values: ["V02"], children: [{ kind: "paragraph" }] }] });
+  });
+
+  it("블록 뒤에도 넣는다 — 호 뒤(조건으로 감쌀 수 없는 자리)에는 없다", () => {
+    expect(labels(clauseBlockMenu(e0(), "p1"))).toContain("값별 분기 넣기");
+    expect(labels(clauseBlockMenu(e0(), "i1"))).not.toContain("값별 분기 넣기");
+  });
+
+  it("칸 머리 목록 — 칸 추가(칸 없는 값을 든) · 이 칸 삭제 · 이 칸에 넣기 · 분기 삭제, ELIF · ELSE · 풀기는 없다", () => {
+    const e = e0();
+    const tree = apply(e.tree, itemsOf(clauseBodyMenu(e), "값별 분기 넣기"));
+    const ix = indexTree(tree);
+    const sw = [...ix.nodes.values()].find((n) => n.node.kind === "condBlock")!.node as { id: string; branches: { id: string }[] };
+    const env2: ClauseMenuEnv = { ...e, tree, ix };
+    const menu = clauseCondMenu(env2, sw.branches[0].id);
+    expect(labels(menu)).toEqual(["칸 추가", "이 칸 삭제", "이 가지에 항 추가", "이 가지에 글머리 목록 추가", "이 가지에 박스 추가…", "값별 분기 삭제"]);
+    // 칸이 없는 값이 없으면 새 칸은 값 없이 선다
+    const added = find(menu, "칸 추가")!;
+    expect(added.action.do === "ops" && Array.isArray(added.action.ops) && added.action.ops[0]).toMatchObject({ type: "addBranch", branch: { values: [] } });
   });
 });
