@@ -13,7 +13,8 @@
 import { blockMenu, chipMenu, condBlockItem, condMenu, inlineInsertItems, type MenuEnv, type MenuItem, type MenuSections, type Place } from "@/app/(app)/documents/[id]/_components/menus";
 import { emptyNode, inlineListAt } from "@/app/(app)/documents/[id]/_components/editOps";
 import { runsFromTokens, type Token } from "@/app/(app)/documents/[id]/_components/inlineRuns";
-import { CLAUSE_ARTICLE_ID, CLAUSE_LINE_ID, optionCarrier, type EditOp, type IdSource, type InlineAt, type TreeIndex } from "@/domain/document";
+import type { ClauseMode } from "@/domain/clause";
+import { CLAUSE_ARTICLE_ID, CLAUSE_HOST_ITEM_ID, CLAUSE_HOST_PARAGRAPH_ID, CLAUSE_LINE_ID, optionCarrier, type EditOp, type IdSource, type InlineAt, type TreeIndex } from "@/domain/document";
 import type { Id } from "@/domain/types";
 
 /** 거절 안내 — 화면에 그대로 보이므로 문서 번호를 넣지 않는다 (규칙: 기능/함수조항 §3.1). */
@@ -41,22 +42,19 @@ const DROPPED_POPUPS = new Set(["newTable", "tableProps", "repeat", "link", "doc
 const DROPPED_NODES = new Set(["table", "box", "article", "section", "forBlock"]);
 
 /** 문면 메뉴 항목 하나를 공용조항 자리로 — 그대로 · 거부 자리로 바꿈 · 뺌(undefined). */
-function adapt(item: MenuItem, env: MenuEnv, onRefuse: (message: string) => void): MenuItem | undefined {
+function adapt(item: MenuItem, env: ClauseMenuEnv, onRefuse: (message: string) => void): MenuItem | undefined {
   const a = item.action;
   if (a.do === "popup") {
     const p = a.popup;
     if (DROPPED_POPUPS.has(p.kind)) return undefined;
-    if (p.kind === "clauseBlock") return refusing(item.label.replace("(조 단위) ", " 참조 "), REFUSE.clauseRef, onRefuse);
+    // 함수조항 넣기는 거부 자리 하나로 — 호 · 목 자리의 같은 도구(「함수조항(호) 추가…」 등)는 뺀다(거부 사유가 같다)
+    if (p.kind === "clauseBlock") return p.fit ? undefined : refusing(item.label.replace(/\((조 단위|호|목)\) /, " 참조 "), REFUSE.clauseRef, onRefuse);
     if (p.kind === "insertInline" && p.what === "clauseInlineRef") return refusing(item.label, REFUSE.clauseRef, onRefuse);
     if (p.kind === "insertInline" && p.what === "structKey") return undefined;
     return item;
   }
-  // 조건 블록은 항 자리에만 선다 — 공용조항의 호 · 목 목록에는 조건 블록이 없다 (clause/nodes.ts)
-  if (item.wrapTarget !== undefined) {
-    const kind = env.ix.nodes.get(item.wrapTarget)?.node.kind;
-    const slot = env.ix.nodes.get(item.wrapTarget)?.slot;
-    return kind === "paragraph" || kind === "condBlock" || (kind === "bulletList" && slot !== "items") ? item : undefined;
-  }
+  // 조건 블록은 유형의 목록 자리에만 선다 — 「항」은 항 자리, 「호」는 호 목록, 「목」은 목 목록 (clause/nodes.ts)
+  if (item.wrapTarget !== undefined) return clauseCanHold(env.ix, env.mode)(item.wrapTarget) ? item : undefined;
   if (a.do === "ops" && Array.isArray(a.ops) && a.ops.some((op) => op.type === "insert" && DROPPED_NODES.has(op.node.kind))) return undefined;
   // 글머리 목록은 항 자리 · 호 뒤(항의 호 목록)에만 — 목 뒤(호의 목 목록) · 조건 가지 안 항목은 공용조항 본문에 없다 (clause/nodes.ts)
   if (
@@ -68,12 +66,12 @@ function adapt(item: MenuItem, env: MenuEnv, onRefuse: (message: string) => void
   return item;
 }
 
-function adaptAll(sections: MenuSections, env: MenuEnv, onRefuse: (message: string) => void): MenuSections {
+function adaptAll(sections: MenuSections, env: ClauseMenuEnv, onRefuse: (message: string) => void): MenuSections {
   return sections.map((section) => section.flatMap((item) => adapt(item, env, onRefuse) ?? [])).filter((section) => section.length > 0);
 }
 
 export interface ClauseMenuEnv extends MenuEnv {
-  mode: "inline" | "block";
+  mode: ClauseMode;
   /** 옵션 목록 단의 옵션 — 옵션 자리 넣기 항목이 옵션마다 한 줄. */
   options: readonly { code: string; label: string }[];
   onRefuse: (message: string) => void;
@@ -113,13 +111,34 @@ export function clauseInlineMenu(env: ClauseMenuEnv, at: InlineAt, tokens: Token
   const inInlineCond = branch ? env.ix.nodes.get(branch.ownerId)?.node.kind === "inlineCond" : (owner?.inInlineCond ?? false);
   const insert = adaptAll([inlineInsertItems(at, tokens, { inInlineCond, newId: env.newId })], env, env.onRefuse);
   const options = optionInsertItems(at, tokens, env.options, env.newId);
-  const block = env.mode === "block" && owner ? clauseBlockMenu(env, at.parentId) : [];
+  const block = env.mode !== "inline" && owner ? clauseBlockMenu(env, at.parentId) : [];
   return [...insert, ...(options.length > 0 ? [options] : []), ...block];
 }
 
-/** 본문 빈 자리(「항」 유형) — 항 추가 · 박스 추가 · 조건 블록 넣기(빈 항을 든 조건 블록을 끝에) + 막힌 도구(조 · 관). */
+/**
+ * 본문 빈 자리 — 유형의 목록 끝에 넣기: 「항」은 항 추가 · 박스 추가 · 조건 블록(빈 항을 든), 「호」는 자리 항의 호 목록에 호 · 박스 · 조건 블록(빈 호를 든),
+ * 「목」은 자리 호의 목 목록에 목 · 조건 블록(빈 목을 든). 막힌 도구(조 · 관 · 함수조항 참조)는 늘 붙는다.
+ */
 export function clauseBodyMenu(env: ClauseMenuEnv): MenuSections {
-  if (env.mode !== "block") return [];
+  if (env.mode === "inline") return [];
+  const refused = [refusing("조 추가", REFUSE.article, env.onRefuse), refusing("관 추가", REFUSE.article, env.onRefuse), refusing("함수조항 참조 추가…", REFUSE.clauseRef, env.onRefuse)];
+  if (env.mode === "item") {
+    const at = { parentId: CLAUSE_HOST_PARAGRAPH_ID, slot: "items" } as const;
+    const item = emptyNode("item", env.newId);
+    return [
+      [
+        { label: "호 추가", action: { do: "ops", ops: [{ type: "insert", node: item, at }], focus: item.id } },
+        { label: "박스 추가…", action: { do: "popup", popup: { kind: "boxPick", at } } },
+      ],
+      [condBlockItem(env, at, ["item"])],
+      refused,
+    ];
+  }
+  if (env.mode === "subitem") {
+    const at = { parentId: CLAUSE_HOST_ITEM_ID, slot: "subitems" } as const;
+    const subitem = emptyNode("subitem", env.newId);
+    return [[{ label: "목 추가", action: { do: "ops", ops: [{ type: "insert", node: subitem, at }], focus: subitem.id } }], [condBlockItem(env, at, ["subitem"])], refused];
+  }
   const paragraph = emptyNode("paragraph", env.newId);
   return [
     [
@@ -128,11 +147,11 @@ export function clauseBodyMenu(env: ClauseMenuEnv): MenuSections {
       { label: "박스 추가…", action: { do: "popup", popup: { kind: "boxPick", at: { parentId: CLAUSE_ARTICLE_ID } } } },
     ],
     [condBlockItem(env, { parentId: CLAUSE_ARTICLE_ID }, ["paragraph"])],
-    [refusing("조 추가", REFUSE.article, env.onRefuse), refusing("관 추가", REFUSE.article, env.onRefuse), refusing("함수조항 참조 추가…", REFUSE.clauseRef, env.onRefuse)],
+    refused,
   ];
 }
 
-/** 자리의 기본값 — 「문구」는 그 한 줄 문장(넣으면 끝에), 「항」은 본문 빈 자리(항 추가). */
+/** 자리의 기본값 — 「문구」는 그 한 줄 문장(넣으면 끝에), 나머지는 본문 빈 자리(그 유형의 목록 끝에 넣기). */
 export function clauseDefaultPlace(mode: ClauseMenuEnv["mode"]): Place {
   return mode === "inline" ? { kind: "inline", at: { parentId: CLAUSE_LINE_ID } } : { kind: "document" };
 }
@@ -147,6 +166,7 @@ export function clausePlaceMenu(env: ClauseMenuEnv, place: Place, tokens: Token[
     case "inline":
       return clauseInlineMenu(env, place.at, tokens);
     case "block":
+      if (place.id === CLAUSE_HOST_PARAGRAPH_ID || place.id === CLAUSE_HOST_ITEM_ID) return clauseBodyMenu(env);
       return place.id === CLAUSE_LINE_ID ? [] : clauseBlockMenu(env, place.id);
     default:
       return clauseBodyMenu(env);
@@ -168,15 +188,19 @@ export function withClauseRefusals(env: ClauseMenuEnv, sections: MenuSections): 
 }
 
 /**
- * 공용조항 본문에서 조건 블록이 설 수 있는 자리 — 「항」 유형의 항 · 조건 블록 자리뿐(호 · 목 목록에는 없다, clause/nodes.ts).
+ * 공용조항 본문에서 조건 블록이 설 수 있는 자리 — 유형의 목록 자리뿐(clause/nodes.ts): 「항」은 항 자리(항의 호 · 목 목록에는 없다),
+ * 「호」는 호 목록(호 · 글머리 목록 · 박스 · 조건 블록 — 호 안의 목 목록에는 없다), 「목」은 목 목록.
  * 「문구」 유형은 없다 — 조건식은 문장 안 조건이 된다. 툴바 「조건식」(`condInsertItem`)이 쓴다.
  */
 export function clauseCanHold(ix: TreeIndex, mode: ClauseMenuEnv["mode"]) {
   return (nodeId: Id): boolean => {
-    if (mode !== "block" || nodeId === CLAUSE_LINE_ID) return false;
+    if (mode === "inline" || nodeId === CLAUSE_LINE_ID || nodeId === CLAUSE_HOST_PARAGRAPH_ID || nodeId === CLAUSE_HOST_ITEM_ID) return false;
     const e = ix.nodes.get(nodeId);
     const kind = e?.node.kind;
+    if (!e || !kind) return false;
+    if (mode === "item") return e.allowed.includes("item") && ["item", "condBlock", "bulletList", "boxRef"].includes(kind);
+    if (mode === "subitem") return e.allowed.includes("subitem") && (kind === "subitem" || kind === "condBlock");
     // 글머리 목록은 항 자리에 선 것만(호 뒤 목록은 조건 블록으로 감쌀 수 없다)
-    return kind === "paragraph" || kind === "condBlock" || (kind === "bulletList" && e?.slot !== "items");
+    return kind === "paragraph" || kind === "condBlock" || (kind === "bulletList" && e.slot !== "items");
   };
 }

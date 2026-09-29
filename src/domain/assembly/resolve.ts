@@ -25,8 +25,10 @@ import type {
   BulletNode as ClauseBulletNode,
   CondBlockNode as ClauseCondBlockNode,
   Inline as ClauseInline,
+  ItemCondBlockNode as ClauseItemCondBlockNode,
   ItemNode as ClauseItemNode,
   ParagraphNode as ClauseParagraphNode,
+  SubitemCondBlockNode as ClauseSubitemCondBlockNode,
   SubitemNode as ClauseSubitemNode,
 } from "../clause/nodes";
 import { expandClause, resolveOptions } from "../clause/reference";
@@ -58,6 +60,9 @@ export interface ResolveOutcome {
 
 // ───────────────────────────── 내부 ─────────────────────────────
 
+/** 유형(출력 모양)의 화면 말 — 자리 유형 오류 문구용. */
+const MODE_WORD: Record<ClauseMode, string> = { inline: "문구", block: "항", item: "호", subitem: "목" };
+
 /** 문면 노드와 공용조항 노드(부분집합 — articleRef 에 scope 없음)를 함께 다룬다. */
 type AnyInline = InlineNode | ClauseInline;
 type AnyCond = CondBlockNode | ClauseCondBlockNode;
@@ -66,6 +71,10 @@ type AnyItem = ItemNode | ClauseItemNode;
 type AnyParagraph = ParagraphNode | ClauseParagraphNode;
 type AnyBlock = AnyParagraph | AnyCond | ClauseBlockRefNode | ForBlockNode | ClauseBlock | ItemNode | SubitemNode | ArticleNode | SectionNode | TableNode | BoxNode | BulletListNode | BulletNode | BoxRefNode;
 type AnyStatic = TableNode | BoxNode | BulletListNode | ClauseBulletListNode;
+/** 호 목록 자리 — 호 · 조건 블록 · 정적 블록 · 박스 참조 · 「호」 함수조항 참조 (펼친 호 유형 본문도 같은 자리). */
+type AnyItemSlot = AnyItem | AnyCond | AnyStatic | BoxRefNode | ClauseBlockRefNode | ClauseItemCondBlockNode;
+/** 목 목록 자리 — 목 · 조건 블록 · 글머리 목록 · 「목」 함수조항 참조 (펼친 목 유형 본문도 같은 자리). */
+type AnySubitemSlot = AnySubitem | AnyCond | BulletListNode | ClauseBlockRefNode | ClauseSubitemCondBlockNode;
 /** 가지 — 블록·인라인·공용조항 쪽 모두 이 모양이다. children 은 자리에 맞게 캐스팅한다. */
 interface Branch {
   id: Id;
@@ -179,7 +188,7 @@ class Walker {
     const clause = this.env.clauses.get(node.clauseCode);
     if (!clause) return { ok: false, marker: this.error(node.id, { kind: "brokenRef", message: `함수조항 ${node.clauseCode} 이(가) 없습니다`, at }) };
     if (!modes.includes(clause.mode)) {
-      return { ok: false, marker: this.error(node.id, { kind: "structure", message: `함수조항 ${node.clauseCode} 은(는) ${clause.mode} 모드라 ${modes.join(" · ")} 자리에 올 수 없습니다`, at }) };
+      return { ok: false, marker: this.error(node.id, { kind: "structure", message: `함수조항 ${node.clauseCode} 은(는) 「${MODE_WORD[clause.mode]}」 유형이라 ${modes.map((m) => `「${MODE_WORD[m]}」`).join(" · ")} 자리에 올 수 없습니다`, at }) };
     }
     const { selection, issues } = resolveOptions(clause, node.options, this.env.overrides.get(node.id), at);
     if (issues.length > 0) {
@@ -242,14 +251,20 @@ class Walker {
     return { kind: "subitem", id: n.id, children: this.inlines(n.children, { ...f, path: [...f.path, n.id] }) };
   }
 
-  subitems(list: readonly (AnySubitem | AnyCond | BulletListNode)[], f: Frame): (RSubitem<RInline> | RBulletList<RInline> | ErrorNode)[] {
+  subitems(list: readonly AnySubitemSlot[], f: Frame): (RSubitem<RInline> | RBulletList<RInline> | ErrorNode)[] {
     return list.flatMap((n): (RSubitem<RInline> | RBulletList<RInline> | ErrorNode)[] => {
       if (n.kind === "subitem") return [this.subitem(n, f)];
       if (n.kind === "bulletList") return this.static(n, f) as (RBulletList<RInline> | ErrorNode)[];
+      if (n.kind === "clauseBlockRef") {
+        // 「목」 함수조항 — 목 목록을 이 자리에 펴고 번호는 사용처에서 이어 매긴다 (최종 결정 4)
+        const r = this.expand(n, ["subitem"], this.at(f, n.id));
+        if (!r.ok) return [r.marker];
+        return this.subitems(r.body as unknown as AnySubitemSlot[], { ...f, path: [...f.path, n.id] });
+      }
       const r = this.select(n.branches, f, n.id);
       if (r.kind === "error") return [this.error(n.id, r.issue)];
       if (r.kind === "none") return [];
-      return this.subitems(r.branch.children as (AnySubitem | AnyCond | BulletListNode)[], { ...f, path: [...f.path, n.id, r.branch.id] });
+      return this.subitems(r.branch.children as AnySubitemSlot[], { ...f, path: [...f.path, n.id, r.branch.id] });
     });
   }
 
@@ -334,20 +349,22 @@ class Walker {
     ];
   }
 
-  items(list: readonly (AnyItem | AnyCond | AnyStatic | BoxRefNode)[], f: Frame): (RItem<RInline> | RStatic<RInline> | ErrorNode)[] {
+  items(list: readonly AnyItemSlot[], f: Frame): (RItem<RInline> | RStatic<RInline> | ErrorNode)[] {
     return list.flatMap((n): (RItem<RInline> | RStatic<RInline> | ErrorNode)[] => {
       if (n.kind === "item") return [this.item(n, f)];
       if (n.kind === "boxRef") return [this.boxRef(n, f)];
       if (n.kind === "table" || n.kind === "box" || n.kind === "bulletList") return this.static(n, f);
-      if (n.kind !== "condBlock") {
-        // 저장 검사를 거치지 않은 트리 — 호 목록 자리의 공용조항 참조 등
-        const bad = n as { kind: string; id: Id };
-        return [this.error(bad.id, { kind: "structure", message: `호 목록 자리에는 ${bad.kind} 을(를) 둘 수 없습니다 — 함수조항은 조 자리에만, 박스는 박스 참조로`, at: this.at(f, bad.id) })];
+      if (n.kind === "clauseBlockRef") {
+        // 「호」 함수조항 — 호 목록(빈 목록 · 여러 호 가능)을 이 자리에 펴고 번호는 사용처에서 이어 매긴다 (최종 결정 4).
+        // 다른 유형이면(저장 검사를 거치지 않은 트리) expand 가 자리 유형 오류 마커를 낸다
+        const r = this.expand(n, ["item"], this.at(f, n.id));
+        if (!r.ok) return [r.marker];
+        return this.items(r.body as unknown as AnyItemSlot[], { ...f, path: [...f.path, n.id] });
       }
       const r = this.select(n.branches, f, n.id);
       if (r.kind === "error") return [this.error(n.id, r.issue)];
       if (r.kind === "none") return [];
-      return this.items(r.branch.children as (AnyItem | AnyCond | AnyStatic | BoxRefNode)[], { ...f, path: [...f.path, n.id, r.branch.id] });
+      return this.items(r.branch.children as AnyItemSlot[], { ...f, path: [...f.path, n.id, r.branch.id] });
     });
   }
 

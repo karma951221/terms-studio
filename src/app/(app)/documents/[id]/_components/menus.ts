@@ -25,7 +25,8 @@ export type PopupSpec =
   | { kind: "insertInline"; what: InlineInsertKind; at: InlineAt; tokens: Token[]; structLevels?: readonly Exclude<AttachLevel, "product">[] }
   | { kind: "editChip"; nodeId: Id }
   | { kind: "newTable"; at: Position }
-  | { kind: "clauseBlock"; at: Position }
+  /** 함수조항 넣기 — `fit` 은 그 자리에 맞는 유형(항 = 조 자리 · 호 = 호 목록 · 목 = 목 목록). 없으면 항. */
+  | { kind: "clauseBlock"; at: Position; fit?: ClauseFit }
   /** 정적 마스터 박스 고르기 — 고르면 그 자리에 박스 참조 (기능/박스 §4.4). */
   | { kind: "boxPick"; at: Position }
   | { kind: "tableProps"; tableId: Id }
@@ -135,14 +136,19 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
     const node = emptyNode("item", env.newId);
     add.push({ label: "호 추가", action: { do: "ops", ops: [{ type: "insert", node, at: { parentId: nodeId, slot: "items" } }], focus: node.id } });
   }
+  if (e.node.kind === "paragraph") add.push({ label: "함수조항(호) 추가…", action: { do: "popup", popup: { kind: "clauseBlock", at: { parentId: nodeId, slot: "items" }, fit: "item" } } });
   if (e.node.kind === "item") {
     const node = emptyNode("subitem", env.newId);
     add.push({ label: "목 추가", action: { do: "ops", ops: [{ type: "insert", node, at: { parentId: nodeId, slot: "subitems" } }], focus: node.id } });
+    add.push({ label: "함수조항(목) 추가…", action: { do: "popup", popup: { kind: "clauseBlock", at: { parentId: nodeId, slot: "subitems" }, fit: "subitem" } } });
   }
   if (after && e.allowed.includes("table")) add.push({ label: "아래에 표 추가…", action: { do: "popup", popup: { kind: "newTable", at: after } } });
   if (after && e.allowed.includes("bulletList")) add.push(bulletListItem("아래에 글머리 목록 추가", after, env.newId));
-  // 공용조항(조 단위)은 조 자리에만 — 호 목록 자리(항 · 호 뒤)는 공용조항 참조를 받지 않는다(박스는 정적 마스터 박스, 기능/박스 §3.2)
-  if (after && e.allowed.includes("clauseBlockRef")) add.push({ label: "아래에 함수조항(조 단위) 추가…", action: { do: "popup", popup: { kind: "clauseBlock", at: after } } });
+  // 함수조항 — 그 자리에 맞는 유형만(유형 = 출력 모양, 최종 결정 4): 조 자리는 「항」, 호 목록은 「호」, 목 목록은 「목」
+  if (after && e.allowed.includes("clauseBlockRef")) {
+    const fit = fitOf(e.allowed);
+    add.push({ label: `아래에 함수조항(${FIT_WORD[fit]}) 추가…`, action: { do: "popup", popup: { kind: "clauseBlock", at: after, ...(fit === "block" ? {} : { fit }) } } });
+  }
   // 정적 마스터 박스 — 조 자리 · 항 · 호 뒤(호 목록 자리). 박스는 잎이라 공용조항 본문에서도 같다 (기능/박스 §3.2)
   if (after && e.allowed.includes("boxRef")) add.push({ label: "아래에 박스 추가…", action: { do: "popup", popup: { kind: "boxPick", at: after } } });
 
@@ -161,9 +167,9 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
  * 툴바 「공용조항」의 고르기 목록 — 버튼 아래 작은 메뉴에 공용조항마다 한 줄, 고르면 그 자리에 공용조항 블록(옵션은 블록 머리 띠에서 고른다).
  * 모달 없이 고른다 (2026-09-28). 오른쪽 클릭 메뉴의 「…추가…」는 옵션까지 한 번에 고르는 그 자리 팝업 그대로.
  */
-export function clausePickItems(clauses: readonly { code: string; label: string; mode?: string }[], at: Position, newId: IdSource): MenuItem[] {
+export function clausePickItems(clauses: readonly { code: string; label: string; mode?: string }[], at: Position, newId: IdSource, fit: ClauseFit = "block"): MenuItem[] {
   const b = nodeBuilders(newId);
-  return clausesFitting(clauses).map((c) => ({ label: `${c.label}(${c.code})`, action: { do: "ops", ops: [{ type: "insert", node: b.clauseBlock(c.code, {}), at }] } }));
+  return clausesFitting(clauses, fit).map((c) => ({ label: `${c.label}(${c.code})`, action: { do: "ops", ops: [{ type: "insert", node: b.clauseBlock(c.code, {}), at }] } }));
 }
 
 /**
@@ -175,9 +181,24 @@ export function boxPickItems(boxes: readonly { code: string; name: string }[], a
   return boxes.map((x) => ({ label: `${x.name}(${x.code})`, action: { do: "ops", ops: [{ type: "insert", node: b.boxRef(x.code), at }] } }));
 }
 
-/** 그 자리에 설 수 있는 공용조항 — 조 자리의 「항」 공용조항 (기능/함수조항 §3.1). 유형을 모르면(옛 호출) 조 자리 공용조항으로 본다. */
-export function clausesFitting<C extends { mode?: string }>(clauses: readonly C[]): C[] {
-  return clauses.filter((c) => c.mode !== "inline");
+/** 블록 자리에 넣는 함수조항 유형 — 조 자리 「항」 · 호 목록 「호」 · 목 목록 「목」. */
+export type ClauseFit = "block" | "item" | "subitem";
+
+const FIT_WORD: Record<ClauseFit, string> = { block: "조 단위", item: "호", subitem: "목" };
+
+/** 자리(허용 집합)에 맞는 유형 — 조건 가지는 서 있는 자리를 물려받는다 (문서 `clausePlacement` 와 같은 판정). */
+export function fitOf(allowed: readonly NodeKind[]): ClauseFit {
+  if (allowed.includes("item")) return "item";
+  if (allowed.includes("subitem")) return "subitem";
+  return "block";
+}
+
+/**
+ * 그 자리에 설 수 있는 함수조항 — 유형 = 출력 모양 (기능/함수조항 §3.1): 조 자리는 「항」, 호 목록은 「호」, 목 목록은 「목」.
+ * 유형을 모르면(옛 호출) 조 자리 함수조항으로 본다.
+ */
+export function clausesFitting<C extends { mode?: string }>(clauses: readonly C[], fit: ClauseFit = "block"): C[] {
+  return clauses.filter((c) => (c.mode ?? "block") === fit);
 }
 
 /**

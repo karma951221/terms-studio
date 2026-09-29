@@ -154,3 +154,39 @@ describe("함수조항 「항」 본문의 글머리 목록 (2026-09-28)", () =>
     expect(list.children[0].children.map((c) => (c.kind === "text" ? c.text : c.kind))).toEqual(["사망"]);
   });
 });
+
+describe("호 · 목 유형 본문 ↔ 편집 트리 (최종 결정 4)", () => {
+  const items: C.ItemBodyNode[] = [
+    { id: "i1", kind: "item", children: [{ id: "t1", kind: "text", text: "암" }] },
+    { id: "c1", kind: "condBlock", branches: [{ id: "b1", when: "D0001 = 1", children: [{ id: "i2", kind: "item", children: [{ id: "r1", kind: "articleRef", targets: [{ nodeId: "i1" }], scope: "clause" }] }] }] },
+  ];
+  const subitems: C.SubitemBodyNode[] = [
+    { id: "s1", kind: "subitem", children: [] },
+    { id: "c1", kind: "condBlock", branches: [{ id: "b1", when: "D0001 = 1", children: [{ id: "s2", kind: "subitem", children: [] }] }] },
+  ];
+
+  it("호 유형은 자리 항의 호 목록으로 싸고 되돌리면 같다 — 조건 블록 가지 안의 호도", () => {
+    const back = treeToClauseBody("item", clauseBodyToTree("item", items));
+    expect(back.ok && back.value).toEqual(items);
+  });
+
+  it("목 유형은 자리 항 › 자리 호의 목 목록으로 싸고 되돌리면 같다", () => {
+    const back = treeToClauseBody("subitem", clauseBodyToTree("subitem", subitems));
+    expect(back.ok && back.value).toEqual(subitems);
+  });
+
+  it("호 유형에 항 · 문장이 끼면 거부한다", () => {
+    const tree = clauseBodyToTree("item", items);
+    const article = tree.children[0] as { children: unknown[] };
+    article.children.push({ id: "p9", kind: "paragraph", children: [] });
+    expect(treeToClauseBody("item", tree).ok).toBe(false);
+  });
+
+  it("제 호 참조는 「이 함수조항 제1호」 — 자리 항은 번호 단계가 아니다", () => {
+    const tree = clauseBodyToTree("item", items);
+    const ref: InlineNode = { id: "r1", kind: "articleRef", targets: [{ nodeId: "i1" }], scope: "self" };
+    expect(clauseScopedRefLabel(ref, clausePositions(tree))).toBe("이 함수조항 제1호");
+    const subTree = clauseBodyToTree("subitem", subitems);
+    expect(clauseScopedRefLabel({ ...ref, targets: [{ nodeId: "s2" }] }, clausePositions(subTree))).toBe("이 함수조항 나목");
+  });
+});

@@ -320,3 +320,22 @@ describe("박스 참조 — 정적 마스터 박스는 잎이라 함수조항 �
     expect(issues.map((i) => i.kind)).toEqual(["typeMismatch"]);
   });
 });
+
+describe("호 · 목 유형 본문 — 목록 자리 규칙 · 식 수집 · 제 호 참조 (최종 결정 4)", () => {
+  const 호 = (id: string, children: Inline[] = []) => ({ id, kind: "item" as const, children });
+
+  it("호 목록의 조건 가지 식 · 슬롯을 모으고, 제 호를 「이 함수조항」 참조로 가리킬 수 있다", () => {
+    const body = [
+      호("i1", [{ id: "s1", kind: "slot", ref: "D0001" }]),
+      { id: "c1", kind: "condBlock" as const, branches: [{ id: "b1", when: "D0003 = 'V02'", children: [호("i2", [{ id: "r1", kind: "articleRef", targets: [{ nodeId: "i1" }], scope: "clause" }])] }] },
+    ];
+    expect(collectExpressions(body).map((e) => e.source)).toEqual(["D0001", "D0003 = 'V02'"]);
+    const r = analyzeBody("item", body, []);
+    expect(r.ok && r.value.discriminators).toEqual(["D0001", "D0003"]);
+  });
+
+  it("목 목록 자리에 호 · 인라인 노드가 오면 거부", () => {
+    const r = analyzeBody("subitem", [호("i1") as never, { id: "t1", kind: "text", text: "글" } as never], []);
+    expect(r.ok).toBe(false);
+  });
+});

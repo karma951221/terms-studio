@@ -3,7 +3,8 @@
  *
  * - `analyzeBody(mode, body, options)` : 허용 노드 규칙 검사 + 모든 식 파싱 + 요구 참조 추출.
  *   하나라도 어긋나면 `invalid` (저장 거부). 통과하면 `RequiredRefs`.
- * - 허용 규칙 (nodes.ts 머리말): inline 본문은 Inline 만 · block 본문은 paragraph/condBlock 만 ·
+ * - 허용 규칙 (nodes.ts 머리말): inline 본문은 Inline 만 · block 본문은 항 자리 노드만 · item 본문은 호 목록(조건 블록 가지 안도) ·
+ *   subitem 본문은 목 목록(조건 블록 가지 안도) ·
  *   조(article)·공용조항 참조(clause*Ref)·반복은 없다 · 인라인 조건 중첩 금지 · 블록 조건 중첩 허용 ·
  *   else 가지는 마지막에만 · 가지 없는 조건 불가 · 옵션 자리는 정의된 옵션만 · 노드 id 유일.
  * - 식 검사: `slot.ref` 는 참조 하나(경로)여야 하고, `when` 은 파싱한다. 참조 존재·boolean 여부는
@@ -18,7 +19,7 @@ import type { Expr, TypeResolver } from "../expression";
 import { CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, ok, reject } from "../types";
 import type { Code, Coordinate, Id, Issue, Result } from "../types";
 import { BLOCK_KINDS, HOST_PATH, INLINE_KINDS } from "./nodes";
-import type { Block, BoxRefNode, BulletListNode, ClauseNode, Inline, InlineBranch, BlockBranch } from "./nodes";
+import type { Block, BoxRefNode, BulletListNode, ClauseNode, Inline, InlineBranch, BlockBranch, ItemBodyNode, ItemNode, SubitemBodyNode } from "./nodes";
 import type { ClauseBody, ClauseMode, OptionDef, RequiredRefs } from "./types";
 
 // ───────────────────────────── 식 수집 ─────────────────────────────
@@ -32,55 +33,47 @@ export interface CollectedExpression {
   nodePath: Id[];
 }
 
-/** 본문(Inline[] 또는 Block[])의 모든 식을 등장 순서대로. */
+/**
+ * 본문(유형 넷 어느 것이든)의 모든 식을 등장 순서대로. 노드 종류가 서로 달라(inlineCond · condBlock · 항 · 호 · 목 …) 유형을 몰라도 걷는다.
+ * 박스는 고정 글이라 식이 없다.
+ */
 export function collectExpressions(body: ClauseBody, basePath: Id[] = []): CollectedExpression[] {
   const out: CollectedExpression[] = [];
-  const walkInline = (node: Inline, path: Id[]) => {
+  const walk = (node: ClauseNode, path: Id[]) => {
     const here = [...path, node.id];
-    if (node.kind === "slot") out.push({ source: node.ref, role: "slot", nodePath: here });
-    if (node.kind === "inlineCond") {
-      for (const br of node.branches) {
-        const bp = [...here, br.id];
-        if (br.when !== undefined) out.push({ source: br.when, role: "condition", nodePath: bp });
-        for (const c of br.children) walkInline(c, bp);
-      }
+    switch (node.kind) {
+      case "slot":
+        out.push({ source: node.ref, role: "slot", nodePath: here });
+        return;
+      case "inlineCond":
+      case "condBlock":
+        for (const br of node.branches as { id: Id; when?: string; children: ClauseNode[] }[]) {
+          const bp = [...here, br.id];
+          if (br.when !== undefined) out.push({ source: br.when, role: "condition", nodePath: bp });
+          for (const c of br.children) walk(c, bp);
+        }
+        return;
+      case "bulletList":
+        // 글머리 목록은 번호가 없어 좌표에 목록 id 만 끼운다 — 항목 문장은 [..., 목록, 항목] 아래
+        for (const b of node.children ?? []) for (const c of b.children ?? []) walk(c, [...here, b.id]);
+        return;
+      case "paragraph":
+        for (const c of node.children) walk(c, here);
+        for (const it of node.items ?? []) walk(it, here);
+        return;
+      case "item":
+        for (const c of node.children) walk(c, here);
+        for (const si of node.subitems ?? []) walk(si, here);
+        return;
+      case "subitem":
+      case "bullet":
+        for (const c of node.children) walk(c, here);
+        return;
+      default:
+        return;
     }
   };
-  const walkBullets = (list: BulletListNode, path: Id[]) => {
-    const lp = [...path, list.id];
-    for (const b of list.children ?? []) for (const c of b.children ?? []) walkInline(c, [...lp, b.id]);
-  };
-  const walkBlock = (node: Block, path: Id[]) => {
-    const here = [...path, node.id];
-    if (node.kind === "boxRef") return; // 박스는 고정 글 — 식이 없다
-    if (node.kind === "bulletList") return walkBullets(node, path);
-    if (node.kind === "paragraph") {
-      for (const c of node.children) walkInline(c, here);
-      for (const it of node.items ?? []) {
-        if (it.kind === "boxRef") continue;
-        if (it.kind === "bulletList") {
-          walkBullets(it, here);
-          continue;
-        }
-        const ip = [...here, it.id];
-        for (const c of it.children) walkInline(c, ip);
-        for (const si of it.subitems ?? []) {
-          const sp = [...ip, si.id];
-          for (const c of si.children) walkInline(c, sp);
-        }
-      }
-    } else {
-      for (const br of node.branches) {
-        const bp = [...here, br.id];
-        if (br.when !== undefined) out.push({ source: br.when, role: "condition", nodePath: bp });
-        for (const c of br.children) walkBlock(c, bp);
-      }
-    }
-  };
-  for (const n of body as ClauseNode[]) {
-    if (isBlockKind(n.kind)) walkBlock(n as Block, basePath);
-    else walkInline(n as Inline, basePath);
-  }
+  for (const n of body as ClauseNode[]) walk(n, basePath);
   return out;
 }
 
@@ -100,29 +93,29 @@ export function allNodeIds(body: ClauseBody): Id[] {
   return ids;
 }
 
-/** 「항」 본문의 항 · 호 · 목 id (조건 블록 안 포함) — 등장 순. 「이 공용조항」 조 참조가 가리킬 수 있는 노드. */
-export function structuralIds(body: readonly Block[]): Id[] {
+/** 본문의 항 · 호 · 목 id (조건 블록 안 포함) — 등장 순. 「이 공용조항」 조 참조가 가리킬 수 있는 노드. 유형 넷 모두. */
+export function structuralIds(body: ClauseBody): Id[] {
   const out: Id[] = [];
-  const block = (b: Block) => {
-    if (b.kind === "condBlock") {
-      for (const br of b.branches ?? []) for (const c of br.children ?? []) block(c);
+  const visit = (n: unknown) => {
+    if (!n || typeof n !== "object") return;
+    const node = n as { id?: Id; kind?: string; branches?: { children?: unknown[] }[]; items?: unknown[]; subitems?: unknown[] };
+    if (node.kind === "condBlock") {
+      for (const br of node.branches ?? []) for (const c of br.children ?? []) visit(c);
       return;
     }
-    if (b.kind === "bulletList" || b.kind === "boxRef") return; // 글머리 목록 · 박스는 번호가 없어 가리킬 수 없다
-    out.push(b.id);
-    for (const it of b.items ?? []) {
-      if (it.kind !== "item") continue;
-      out.push(it.id);
-      for (const si of it.subitems ?? []) out.push(si.id);
-    }
+    // 글머리 목록 · 박스는 번호가 없어 가리킬 수 없다
+    if (node.kind !== "paragraph" && node.kind !== "item" && node.kind !== "subitem") return;
+    if (typeof node.id === "string") out.push(node.id);
+    for (const c of node.items ?? []) visit(c);
+    for (const c of node.subitems ?? []) visit(c);
   };
-  for (const b of body ?? []) if (b && typeof b === "object") block(b);
+  for (const b of body ?? []) visit(b);
   return out;
 }
 
 /** inline 본문인지 (모드 판별을 호출부가 다시 하지 않게). 빈 본문은 inline 으로 본다. */
 export function isInlineBody(body: ClauseBody): body is Inline[] {
-  return (body as (Inline | Block)[]).every((node) => node.kind !== "paragraph" && node.kind !== "condBlock" && node.kind !== "boxRef");
+  return (body as ClauseNode[]).every((node) => isInlineKind(node.kind));
 }
 
 function isBlockKind(kind: string): boolean {
@@ -165,7 +158,7 @@ export function analyzeBody(
   const base = opts.coordinate ?? {};
   const optionCodes = new Set(options.map((o) => o.code));
   /** 본문의 항 · 호 · 목 id — 「이 공용조항」 조 참조의 대상 후보. 선택지 문구에는 구조가 없다. */
-  const structIds = new Set(mode === "block" ? structuralIds(body as Block[]) : []);
+  const structIds = new Set(mode === "inline" ? [] : structuralIds(body));
   const exprs: { expr: Expr; role: "slot" | "condition"; path: Id[] }[] = [];
 
   const report = (kind: Issue["kind"], message: string, path: Id[], refPath?: string) => {
@@ -195,11 +188,7 @@ export function analyzeBody(
     exprs.push({ expr: parsed.value, role, path });
   };
 
-  const checkBranches = (
-    branches: (InlineBranch | BlockBranch)[],
-    path: Id[],
-    each: (br: InlineBranch | BlockBranch, bp: Id[]) => void,
-  ) => {
+  const checkBranches = <B extends { id: Id; when?: string }>(branches: B[], path: Id[], each: (br: B, bp: Id[]) => void) => {
     if (!Array.isArray(branches) || branches.length === 0) {
       report("typeMismatch", "조건에는 가지가 하나 이상 있어야 합니다", path);
       return;
@@ -309,6 +298,51 @@ export function analyzeBody(
     if (opts.boxExists && !opts.boxExists(node.boxCode)) report("brokenRef", `박스 ${node.boxCode} 가 정적 마스터에 없습니다`, here, node.boxCode);
   };
 
+  /** 목 목록 — 목(과 목 유형 본문이면 조건 블록 — 가지 안도 목 목록). */
+  const checkSubitemList = (list: readonly SubitemBodyNode[], path: Id[], allowCond: boolean) => {
+    for (const si of list ?? []) {
+      if (si?.kind === "condBlock" && allowCond) {
+        const here = [...path, si.id];
+        checkBranches(si.branches, here, (br, bp) => checkSubitemList(br.children ?? [], bp, true));
+        continue;
+      }
+      if (si?.kind !== "subitem") {
+        kindError(si ?? {}, path, "목");
+        continue;
+      }
+      checkInlines(si.children, [...path, si.id]);
+    }
+  };
+
+  const checkItem = (it: ItemNode, path: Id[]) => {
+    const ip = [...path, it.id];
+    checkInlines(it.children, ip);
+    checkSubitemList(it.subitems ?? [], ip, false);
+  };
+
+  /** 호 목록 — 호 · 글머리 목록 · 박스 참조(와 호 유형 본문이면 조건 블록 — 가지 안도 호 목록). 항의 호 목록에는 조건 블록이 없다. */
+  const checkItemList = (list: readonly ItemBodyNode[], path: Id[], allowCond: boolean) => {
+    for (const it of list ?? []) {
+      if (it?.kind === "boxRef") {
+        checkBoxRef(it, path);
+        continue;
+      }
+      if (it?.kind === "bulletList") {
+        checkBullets(it, path);
+        continue;
+      }
+      if (it?.kind === "condBlock" && allowCond) {
+        checkBranches(it.branches, [...path, it.id], (br, bp) => checkItemList(br.children ?? [], bp, true));
+        continue;
+      }
+      if (it?.kind !== "item") {
+        kindError(it ?? {}, path, "호");
+        continue;
+      }
+      checkItem(it, path);
+    }
+  };
+
   const checkBlock = (node: Block, path: Id[]) => {
     const here = [...path, node.id];
     if (!isBlockKind(String(node.kind))) return kindError(node, path, "블록(항)");
@@ -316,29 +350,7 @@ export function analyzeBody(
     if (node.kind === "bulletList") return checkBullets(node, path);
     if (node.kind === "paragraph") {
       checkInlines(node.children, here);
-      for (const it of node.items ?? []) {
-        const ip = [...here, it.id];
-        if (it.kind === "boxRef") {
-          checkBoxRef(it, here);
-          continue;
-        }
-        if (it.kind === "bulletList") {
-          checkBullets(it, here);
-          continue;
-        }
-        if (it.kind !== "item") {
-          kindError(it, here, "호");
-          continue;
-        }
-        checkInlines(it.children, ip);
-        for (const si of it.subitems ?? []) {
-          if (si.kind !== "subitem") {
-            kindError(si, ip, "목");
-            continue;
-          }
-          checkInlines(si.children, [...ip, si.id]);
-        }
-      }
+      checkItemList(node.items ?? [], here, false);
       return;
     }
     checkBranches(node.branches, here, (br, bp) => {
@@ -346,9 +358,21 @@ export function analyzeBody(
     });
   };
 
-  // 1. 본문
-  if (mode === "inline") checkInlines(body as Inline[], []);
-  else for (const b of body as Block[]) checkBlock(b, []);
+  // 1. 본문 — 유형(출력 모양)마다 그 목록 규칙
+  switch (mode) {
+    case "inline":
+      checkInlines(body as Inline[], []);
+      break;
+    case "block":
+      for (const b of body as Block[]) checkBlock(b, []);
+      break;
+    case "item":
+      checkItemList(body as ItemBodyNode[], [], true);
+      break;
+    case "subitem":
+      checkSubitemList(body as SubitemBodyNode[], [], true);
+      break;
+  }
 
   // 2. 옵션 선택지 본문 — 인라인 규칙
   for (const o of options) {

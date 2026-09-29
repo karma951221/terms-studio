@@ -474,7 +474,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
 
     case "clauseBlock":
       return (
-        <Popover anchor={anchor} label="함수조항(조 단위) 넣기" onClose={onClose}>
+        <Popover anchor={anchor} label={`함수조항(${spec.fit === "item" ? "호" : spec.fit === "subitem" ? "목" : "조 단위"}) 넣기`} onClose={onClose}>
           <PopForm
             env={env}
             onClose={onClose}
@@ -483,7 +483,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
               return code ? [{ type: "insert", node: b.clauseBlock(code, optionsOf(fd)), at: spec.at }] : "함수조항을 고른다.";
             }}
           >
-            <ClauseFields clauses={clausesFitting(env.clauses)} />
+            <ClauseFields clauses={clausesFitting(env.clauses, spec.fit)} />
             <PopActions onCancel={onClose} confirmLabel="넣기" />
           </PopForm>
         </Popover>

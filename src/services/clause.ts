@@ -200,8 +200,7 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
   }
 
   /** 사용처 재검사 — 요구 구분자 존재 + 옵션 선택 (부착은 없다 — ADR-0037). */
-  async function recheckOf(clause: Clause, lookup: DiscriminatorLookup): Promise<RecheckEntry[]> {
-    const usages = await usage.documentsReferencing(clause.code);
+  function recheckOf(clause: Clause, usages: readonly Usage[], lookup: DiscriminatorLookup): RecheckEntry[] {
     if (usages.length === 0) return [];
     return recheckUsages(clause, usages, lookup);
   }
@@ -238,7 +237,8 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
       }),
     );
     if (!saved.ok) return saved as Result<SaveOutcome>;
-    return ok({ clause: saved.value, recheck: await recheckOf(saved.value, lookupIn(catalog!)) });
+    const usages = await usage.documentsReferencing(saved.value.code);
+    return ok({ clause: saved.value, recheck: recheckOf(saved.value, usages, lookupIn(catalog!)) });
   }
 
   return {
@@ -329,6 +329,6 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
         ok(checkAttachmentForReference(def, await lookupOf(db), { ownerId: owner.id })),
       ),
 
-    recheck: (code) => withClause(db, code, async (def) => ok(await recheckOf(def, await lookupOf(db)))),
+    recheck: (code) => withClause(db, code, async (def) => ok(recheckOf(def, await usage.documentsReferencing(code), await lookupOf(db)))),
   };
 }

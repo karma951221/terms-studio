@@ -149,6 +149,8 @@ export const TYPE_OPTIONS = SELECTABLE_TYPE_KINDS.map((kind) => ({ value: kind, 
 export const MODE_LABEL = {
   inline: "문구",
   block: "항",
+  item: "호",
+  subitem: "목",
 } as const satisfies Record<ClauseMode, string>;
 
 export const DOC_KIND_LABEL = {
@@ -169,11 +171,13 @@ export const DOC_TEMPLATE_LABEL = {
   special: ENTITY_LABEL.coverageTemplate,
 } as const satisfies Record<keyof typeof DOC_KIND_LABEL, string>;
 
-/** 공용조항 모드 — 두 값의 차이가 「어디에 서느냐」라서, 고를 때 읽을 뜻풀이를 붙인다. */
+/** 함수조항 유형 = 출력 모양 — 넷의 차이가 「어디에 서느냐」라서, 고를 때 읽을 뜻풀이를 붙인다. */
 export const MODE_OPTIONS = [
   { value: "inline", label: MODE_LABEL.inline, hint: "조 안 문장 중간에 끼어 들어간다 — 문장 조각 하나." },
   { value: "block", label: MODE_LABEL.block, hint: "조 안 항 자리에 선다 — 항 하나 또는 항 목록(호 · 목 포함)." },
-] as const;
+  { value: "item", label: MODE_LABEL.item, hint: "항의 호 목록 자리에 선다 — 호 목록, 번호는 쓰는 곳에서 이어 매긴다." },
+  { value: "subitem", label: MODE_LABEL.subitem, hint: "호의 목 목록 자리에 선다 — 목 목록, 번호는 쓰는 곳에서 이어 매긴다." },
+] as const satisfies readonly { value: ClauseMode; label: string; hint: string }[];
 
 /** 부착 레벨 2지선다가 아니라 5지선다 — 라디오로 늘어놓는다 (선택지가 짧고 개수가 고정이다). */
 export const LEVEL_OPTIONS = ATTACH_LEVELS.map((value) => ({ value, label: LEVEL_LABEL[value] }));

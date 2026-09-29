@@ -534,11 +534,16 @@ export function DocumentEditor(props: EditorProps) {
       setMenu({ x: anchor.x, y: anchor.y, sections: [items] });
       return;
     }
-    // 「공용조항」 — 버튼 아래 작은 메뉴에서 공용조항을 고른다(모달 없음). 공용조항이 없으면 그 사유를 보이는 팝업
+    // 「함수조항」 — 버튼 아래 작은 메뉴에서 함수조항을 고른다(모달 없음). 자리마다(아래에 · 호 목록 · 목 목록) 그 유형의 함수조항을 한 묶음씩,
+    // 「아래에」(같은 자리) 묶음이 먼저. 맞는 함수조항이 하나도 없으면 그 사유를 보이는 팝업
     const first = items[0].action;
-    if (toolId === "clauseBlock" && first.do === "popup" && first.popup.kind === "clauseBlock" && props.clauses.length > 0) {
-      setMenu({ x: anchor.x, y: anchor.y, sections: [clausePickItems(props.clauses, first.popup.at, randomIds)] });
-      return;
+    if (toolId === "clauseBlock") {
+      const ordered = [...items.filter((i) => i.label.startsWith("아래에")), ...items.filter((i) => !i.label.startsWith("아래에"))];
+      const groups = ordered.flatMap((i) => (i.action.do === "popup" && i.action.popup.kind === "clauseBlock" ? [clausePickItems(props.clauses, i.action.popup.at, randomIds, i.action.popup.fit)] : [])).filter((g) => g.length > 0);
+      if (groups.length > 0) {
+        setMenu({ x: anchor.x, y: anchor.y, sections: groups });
+        return;
+      }
     }
     // 「박스」 — 버튼 아래 작은 메뉴에서 정적 마스터 박스를 고른다. 박스가 없으면 그 사유를 보이는 팝업 (기능/박스 §4.4)
     if (toolId === "box" && first.do === "popup" && first.popup.kind === "boxPick" && props.boxes.length > 0) {

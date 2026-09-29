@@ -252,4 +252,12 @@ describe("clause 서비스 (PGlite)", () => {
       if (!r.ok && r.rejection.reason === "invalid") expect(r.rejection.issues.map((i) => i.kind)).toEqual(["brokenRef"]);
     });
   });
+
+  describe("유형 넷 (최종 결정 4)", () => {
+    it("호 유형을 만들어 다시 읽으면 호 유형 · 호 목록 본문 그대로", async () => {
+      const body = [{ id: "i1", kind: "item" as const, children: [{ id: "t1", kind: "text" as const, text: "암으로 진단확정된 경우" }] }];
+      const c = unwrap(await svc.create(editor, { label: "납입면제 호", mode: "item", body }));
+      expect(await svc.get(c.code)).toEqual(c);
+    });
+  });
 });

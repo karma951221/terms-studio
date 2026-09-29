@@ -4,7 +4,8 @@
  * 공용조항 본문은 문면과 같은 노드 모델을 쓰되, 공용조항 안에서 쓸 수 있는 종류만 여기 둔다.
  * B3(document)·C2(assembly) 통합 시 노드 타입을 하나로 합칠 수 있도록 **타입은 이 파일 한 곳**에만 둔다.
  *
- * - inline 본문 = `Inline[]` (문장 안 문구).  block 본문 = `Block[]` (항 또는 항 목록).
+ * - 유형 = 출력 모양 (최종 결정 4): inline 본문 = `Inline[]` (문장 안 문구) · block 본문 = `Block[]` (항 목록) ·
+ *   item 본문 = `ItemBodyNode[]` (호 목록 — 조건 블록 가지 안도 호 목록) · subitem 본문 = `SubitemBodyNode[]` (목 목록). 빈 목록도 된다.
  * - 인라인 종류: `text · slot · inlineCond · articleRef · appendixRef · optionSlot`.
  *   **공용조항 참조(clauseInlineRef · clauseBlockRef)는 없다** — 중첩 금지(MVP, 기능/함수조항 §3.1).
  *   반복(forBlock · inlineFor)도 MVP 이후라 없다.
@@ -165,8 +166,45 @@ export type Block = ParagraphNode | CondBlockNode | BulletListNode | BoxRefNode;
 
 export type BlockKind = Block["kind"];
 
+// ───────────────────────────── 호 · 목 유형 본문 (최종 결정 4) ─────────────────────────────
+
+/** 항의 호 목록 한 자리 — 호 · 글머리 목록 · 박스 참조 (항 `items` 와 같다). */
+export type ItemListNode = ItemNode | BulletListNode | BoxRefNode;
+
+/** 호 목록 자리의 조건 블록 — 가지 안도 호 목록이다(서 있는 자리를 따른다). 중첩 허용. */
+export interface ItemCondBlockNode {
+  id: Id;
+  kind: "condBlock";
+  branches: ItemBranch[];
+}
+
+export interface ItemBranch {
+  id: Id;
+  when?: string;
+  children: ItemBodyNode[];
+}
+
+/** 「호」 유형 본문의 한 자리 — 호 목록(list<호>). 사용처 항의 호 목록 자리에 펼쳐지고 번호는 사용처에서 이어 매긴다. */
+export type ItemBodyNode = ItemListNode | ItemCondBlockNode;
+
+/** 목 목록 자리의 조건 블록 — 가지 안도 목 목록이다. 중첩 허용. */
+export interface SubitemCondBlockNode {
+  id: Id;
+  kind: "condBlock";
+  branches: SubitemBranch[];
+}
+
+export interface SubitemBranch {
+  id: Id;
+  when?: string;
+  children: SubitemBodyNode[];
+}
+
+/** 「목」 유형 본문의 한 자리 — 목 목록(list<목>). 사용처 호의 목 목록 자리에 펼쳐진다. */
+export type SubitemBodyNode = SubitemNode | SubitemCondBlockNode;
+
 /** 공용조항 안에 나타날 수 있는 모든 노드. */
-export type ClauseNode = Inline | Block | ItemNode | SubitemNode | BulletNode;
+export type ClauseNode = Inline | Block | ItemNode | SubitemNode | BulletNode | ItemCondBlockNode | SubitemCondBlockNode;
 
 export type ClauseNodeKind = ClauseNode["kind"];
 

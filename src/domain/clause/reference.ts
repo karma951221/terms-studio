@@ -11,7 +11,7 @@
 import type { Discriminator } from "../catalog/types";
 import { ok, reject } from "../types";
 import type { Code, Coordinate, Id, Issue, Result } from "../types";
-import type { Block, BlockBranch, BulletListNode, Inline, InlineBranch, ItemNode, SubitemNode } from "./nodes";
+import type { Block, BlockBranch, BulletListNode, Inline, InlineBranch, ItemBodyNode, ItemNode, SubitemBodyNode, SubitemNode } from "./nodes";
 import type { Clause, ClauseBody, OptionSelection } from "./types";
 
 // ───────────────────────────── 카탈로그 조회 ─────────────────────────────
@@ -159,8 +159,26 @@ export function expandClause(clause: Clause, selection: OptionSelection, refNode
     return { ...b, id: nid(b.id), branches: b.branches.map((br): BlockBranch => ({ ...br, id: nid(br.id), children: br.children.map(block) })) };
   };
 
-  if (clause.mode === "inline") return ok(inlines(clause.body));
-  return ok(clause.body.map(block));
+  // 호 · 목 유형 — 목록 자리의 조건 블록은 가지째 두고(해소는 사용처 문맥) id 만 유일화한다
+  const itemBody = (n: ItemBodyNode): ItemBodyNode => {
+    if (n.kind === "condBlock") return { ...n, id: nid(n.id), branches: n.branches.map((br) => ({ ...br, id: nid(br.id), children: br.children.map(itemBody) })) };
+    if (n.kind === "bulletList") return bullets(n);
+    if (n.kind === "boxRef") return { ...n, id: nid(n.id) };
+    return item(n);
+  };
+  const subitemBody = (n: SubitemBodyNode): SubitemBodyNode =>
+    n.kind === "condBlock" ? { ...n, id: nid(n.id), branches: n.branches.map((br) => ({ ...br, id: nid(br.id), children: br.children.map(subitemBody) })) } : subitem(n);
+
+  switch (clause.mode) {
+    case "inline":
+      return ok(inlines(clause.body));
+    case "block":
+      return ok(clause.body.map(block));
+    case "item":
+      return ok(clause.body.map(itemBody));
+    case "subitem":
+      return ok(clause.body.map(subitemBody));
+  }
 }
 
 // ───────────────────────────── 사용처 재검사 ─────────────────────────────

@@ -1216,7 +1216,7 @@ button.danger:focus-visible {
   padding: 3px 0;
 }
 
-/* 유형 — 두 칸 카드 라디오, 이름 + 뜻풀이 */
+/* 유형 — 카드 라디오(두 칸씩 — 문구 · 항 / 호 · 목), 이름 + 뜻풀이 */
 .ts-clause-mode {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 260px));

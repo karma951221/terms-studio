@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { BlockClause } from "../clause/types";
+import type { BlockClause, ItemClause } from "../clause/types";
 import type { DocumentNode } from "../document/nodes";
 import { specialContext } from "./context";
 import { alphaPlusFixture } from "./fixture";
@@ -84,5 +84,64 @@ describe("호 목록 자리(항 · 호 뒤)의 함수조항 참조 — 박스는
     const ctx = specialContext(input, input.coverages[0]);
     const wrong = resolveDocument(tree, ctx, { clauses: new Map([["C0100", { ...소멸, code: "C0100" }]]), overrides: new Map(), coordinate: { document: "special", ownerId: "pc" } });
     expect(wrong.issues.map((i) => i.kind)).toContain("structure");
+  });
+});
+
+describe("호 유형 함수조항 — 항의 호 목록 자리에서 펼쳐 사용처 번호로 (최종 결정 4 · 기능/함수조항 §3.1)", () => {
+  const 호 = (id: string, text: string) => ({ id, kind: "item" as const, children: [{ id: `${id}t`, kind: "text" as const, text }] });
+  const 사유호: ItemClause = {
+    code: "C0200",
+    label: "납입면제 호",
+    mode: "item",
+    options: [],
+    required: { discriminators: [], attributes: [] },
+    body: [
+      호("i1", "암으로 진단확정된 경우"),
+      { id: "c1", kind: "condBlock", branches: [{ id: "b1", when: "1 = 1", children: [호("i2", "뇌졸중으로 진단확정된 경우")] }] },
+      { id: "c2", kind: "condBlock", branches: [{ id: "b2", when: "1 = 2", children: [호("i3", "나오지 않는 호")] }] },
+    ],
+  };
+  const 빈호: ItemClause = { ...사유호, code: "C0201", label: "빈 호", body: [{ id: "c9", kind: "condBlock", branches: [{ id: "b9", when: "1 = 2", children: [호("i9", "나오지 않는 호")] }] }] };
+
+  const tree = (clauseCode: string): DocumentNode =>
+    ({
+      kind: "document",
+      id: "s",
+      title: "특약",
+      children: [
+        {
+          kind: "article",
+          id: "a1",
+          title: "납입면제",
+          children: [
+            {
+              kind: "paragraph",
+              id: "p1",
+              children: [{ kind: "text", id: "t1", text: "다음 중 어느 하나에 해당하는 경우 납입을 면제합니다." }],
+              items: [호("h1", "사망한 경우"), { kind: "clauseBlockRef", id: "k1", clauseCode, options: {} }, 호("h2", "장해를 입은 경우")],
+            },
+          ],
+        },
+      ],
+    }) as unknown as DocumentNode;
+
+  const render = (clauseCode: string) => {
+    const input = alphaPlusFixture();
+    const ctx = specialContext(input, input.coverages[0]);
+    const resolved = resolveDocument(tree(clauseCode), ctx, { clauses: new Map([["C0200", 사유호], ["C0201", 빈호]]), overrides: new Map(), coordinate: { document: "special", ownerId: "pc" } });
+    expect(resolved.issues).toEqual([]);
+    const result = renderDocument(numberDocument(resolved.doc as unknown as SubstitutedDoc), { document: "special", ownerId: "pc", appendices: [] });
+    expect(result.issues).toEqual([]);
+    const article = result.doc.children[0];
+    if (article.kind !== "article" || article.children[0].kind !== "paragraph") throw new Error("조 · 항 아님");
+    return (article.children[0].items ?? []).map((it) => (it.kind === "item" ? `${it.label} ${it.children.map((c) => (c as { text?: string }).text ?? "").join("")}` : it.kind));
+  };
+
+  it("호 유형이 호 둘을 내면 사용처 번호로 이어서 매긴다", () => {
+    expect(render("C0200")).toEqual(["1. 사망한 경우", "2. 암으로 진단확정된 경우", "3. 뇌졸중으로 진단확정된 경우", "4. 장해를 입은 경우"]);
+  });
+
+  it("IF 로 호 0개 → 그 자리 없음", () => {
+    expect(render("C0201")).toEqual(["1. 사망한 경우", "2. 장해를 입은 경우"]);
   });
 });

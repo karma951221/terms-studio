@@ -18,7 +18,7 @@ import {
   setOptionValueBody,
   type ClauseContext,
 } from "./definitions";
-import type { Block, Inline } from "./nodes";
+import type { Block, Inline, ItemBodyNode, SubitemBodyNode } from "./nodes";
 import type { BlockClause, Clause, InlineClause } from "./types";
 
 function memorySeq(): ClauseNextSeq {
@@ -299,7 +299,7 @@ describe("함수조항 복제 (D-P3-3)", () => {
   });
 });
 
-describe("유형은 문구 · 항 둘 — 박스는 정적 마스터다 (최종 결정 9 · 기능/박스)", () => {
+describe("유형은 출력 모양 넷 — 박스는 유형이 아니다, 정적 마스터다 (최종 결정 4 · 9 · 기능/박스)", () => {
   it("유형 box 로 만들면 거부한다", async () => {
     const r = await createClause({ label: "【용어풀이】", mode: "box", body: [], options: [] } as never, ctx());
     expect(reasonOf(r)).toBe("invalid");
@@ -310,3 +310,40 @@ describe("유형은 문구 · 항 둘 — 박스는 정적 마스터다 (최종 
     expect(reasonOf(setMode(clause, "box" as never, []))).toBe("invalid");
   });
 });
+
+describe("유형 = 출력 모양 — 호 · 목 유형 (최종 결정 4 · 기능/함수조항 §3.1)", () => {
+  const 호 = (id: string, text: string) => ({ id, kind: "item" as const, children: [{ id: `${id}t`, kind: "text" as const, text }] });
+  const 목 = (id: string, text: string) => ({ id, kind: "subitem" as const, children: [{ id: `${id}t`, kind: "text" as const, text }] });
+
+  it("호 유형 본문은 호 목록 — IF 가지 안에 호, 한 가지가 호 둘을 낸다", async () => {
+    const body: ItemBodyNode[] = [
+      호("i1", "암으로 진단확정된 경우"),
+      { id: "c1", kind: "condBlock", branches: [
+        { id: "b1", when: "D0003 = 'V02'", children: [호("i2", "뇌졸중으로 진단확정된 경우"), 호("i3", "급성심근경색증으로 진단확정된 경우")] },
+        { id: "b2", children: [] },
+      ] },
+    ];
+    const clause = unwrap(await createClause({ label: "납입면제 호", mode: "item", body }, ctx()));
+    expect(clause.mode).toBe("item");
+    expect(clause.required.discriminators).toEqual(["D0003"]);
+  });
+
+  it("빈 호 목록도 된다 — 모든 가지가 비어도 저장한다", async () => {
+    expect(unwrap(await createClause({ label: "빈 호", mode: "item", body: [] }, ctx())).body).toEqual([]);
+  });
+
+  it("호 유형 본문에 항은 올 수 없다", async () => {
+    const r = await createClause({ label: "잘못", mode: "item", body: 소멸_본문 as never }, ctx());
+    expect(reasonOf(r)).toBe("invalid");
+  });
+
+  it("목 유형 본문은 목 목록 — IF 가지 안에 목, 호는 올 수 없다", async () => {
+    const body: SubitemBodyNode[] = [
+      목("s1", "상해"),
+      { id: "c1", kind: "condBlock", branches: [{ id: "b1", when: "D0003 = 'V02'", children: [목("s2", "질병")] }] },
+    ];
+    expect(unwrap(await createClause({ label: "목", mode: "subitem", body }, ctx())).mode).toBe("subitem");
+    expect(reasonOf(await createClause({ label: "목2", mode: "subitem", body: [호("i1", "호") as never] }, ctx()))).toBe("invalid");
+  });
+});
+

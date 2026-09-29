@@ -338,11 +338,12 @@ export function numberTree(doc: DocumentNode, opts: NumberingOptions = {}): Map<
         paragraphs.next(n.id);
         const items = new Counter("item", out);
         each(n.items ?? [], (it) => {
+          if (it.kind === "clauseBlockRef") return items.next(it.id); // 임시 — 「호」 함수조항을 호 1개로 센다(펼친 수는 조립에서)
           if (it.kind !== "item") return;
           items.next(it.id);
           const subitems = new Counter("subitem", out);
           each(it.subitems ?? [], (s) => {
-            if (s.kind === "subitem") subitems.next(s.id);
+            if (s.kind === "subitem" || s.kind === "clauseBlockRef") subitems.next(s.id);
           });
         });
       } else if (n.kind === "clauseBlockRef") {

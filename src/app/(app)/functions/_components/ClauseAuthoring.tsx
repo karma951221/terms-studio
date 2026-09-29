@@ -38,6 +38,8 @@ import { useBlockDrag } from "@/app/(app)/documents/[id]/_components/useBlockDra
 import type { ClauseBody, ClauseMode, RequiredRefs } from "@/domain/clause";
 import { formatCoordinate } from "@/domain/coordinate";
 import {
+  CLAUSE_HOST_ITEM_ID,
+  CLAUSE_HOST_PARAGRAPH_ID,
   CLAUSE_LINE_ID,
   applyEdit,
   clauseBodyToTree,
@@ -84,21 +86,47 @@ export interface ClauseAuthoringProps {
 
 type Banner = { message: string; issues?: readonly Issue[] };
 
+/** 본문 칸 위 안내 한 줄 — 유형마다 어디에 들어가는 글인가. */
+const BODY_NOTE: Record<ClauseMode, string> = {
+  inline: "사용처 문장 중간에 들어갈 문구 한 줄을 쓴다. 조건 · 슬롯 · 옵션 자리는 커서를 두고 툴바에서 넣는다.",
+  block: "사용처 조 안에 들어갈 항을 쓴다. Enter 로 다음 항, 호 · 목 · 조건은 툴바에서 넣는다.",
+  item: "사용처 항의 호 목록에 들어갈 호를 쓴다. Enter 로 다음 호, 조건은 툴바에서 — 번호는 쓰는 곳에서 이어 매긴다.",
+  subitem: "사용처 호의 목 목록에 들어갈 목을 쓴다. Enter 로 다음 목, 조건은 툴바에서 — 번호는 쓰는 곳에서 이어 매긴다.",
+};
+
+const START_TOOL: Record<ClauseMode, string> = { inline: "문구 칸에 써서", block: "툴바의 「항」으로", item: "툴바의 「호」로", subitem: "툴바의 「목」으로" };
+
+const EMPTY_EXAMPLE: Record<ClauseMode, string> = {
+  inline: "보험금을 지급하지 않습니다",
+  block: "① 이 특별약관은 보험계약자의 청약과 보험회사의 승낙으로 이루어집니다.",
+  item: "1. 암으로 진단확정된 경우",
+  subitem: "가. 상해",
+};
+
 /** 편집 트리의 대응 보통약관 자리 — 보통약관 범위 조 참조는 보통약관 마스터 전체가 대상이다(사용처 위치 후보도 이 자리로 운반한다, §3.5 · 기능/문면 `scope: "general"`). */
 const GENERALS = "clause-generals";
 
-/** 새 공용조항의 첫 본문 — 「항」은 빈 항 하나에서 시작해 쓸 자리가 처음부터 보인다. */
+/** 새 함수조항의 첫 본문 — 「항」 · 「호」 · 「목」은 그 빈 자리 하나에서 시작해 쓸 자리가 처음부터 보인다. */
 function startBody(mode: ClauseMode, id: string = randomIds()): ClauseBody {
-  return mode === "block" ? [{ id, kind: "paragraph", children: [] }] : [];
+  switch (mode) {
+    case "block":
+      return [{ id, kind: "paragraph", children: [] }];
+    case "item":
+      return [{ id, kind: "item", children: [] }];
+    case "subitem":
+      return [{ id, kind: "subitem", children: [] }];
+    default:
+      return [];
+  }
 }
 
-/** 쓴 것이 없는 본문 — 빈 항(글 · 칩 · 호 없음)만 있거나 아무것도 없다. 유형을 바꿔도 잃을 것이 없다. 빈 항은 저장하지 않는다. */
+/** 쓴 것이 없는 본문 — 빈 항 · 호 · 목(글 · 칩 · 하위 목록 없음)만 있거나 아무것도 없다. 유형을 바꿔도 잃을 것이 없다. 빈 자리는 저장하지 않는다. */
 export function blankBody(body: ClauseBody): boolean {
   return (body as ClauseBody[number][]).every((node) => {
     if (node.kind === "text") return node.text.trim() === "";
-    if (node.kind !== "paragraph") return false;
-    const items = (node as { items?: unknown[] }).items ?? [];
-    return items.length === 0 && node.children.every((c) => c.kind === "text" && c.text.trim() === "");
+    if (node.kind !== "paragraph" && node.kind !== "item" && node.kind !== "subitem") return false;
+    const below = (node as { items?: unknown[]; subitems?: unknown[] }).items ?? (node as { subitems?: unknown[] }).subitems ?? [];
+    return below.length === 0 && node.children.every((c) => c.kind === "text" && c.text.trim() === "");
   });
 }
 
@@ -216,7 +244,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     const own = referenceTargetIndex(tree, numbers);
     return [
       { value: "general", label: "보통약관", index: general },
-      ...(clauseMode === "block" ? [{ value: "self" as const, label: "이 함수조항", index: own, rootless: true }] : []),
+      ...(clauseMode !== "inline" ? [{ value: "self" as const, label: "이 함수조항", index: own, rootless: true }] : []),
       { value: "host", label: "사용처", index: HOST_TARGETS },
     ];
   }, [general, tree, numbers, clauseMode]);
@@ -559,6 +587,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     if (p.kind === "head") return "조건 가지";
     if (p.kind === "document") return "본문";
     const id = p.kind === "inline" ? ("tableId" in p.at ? undefined : p.at.parentId) : p.id;
+    if (id === CLAUSE_HOST_PARAGRAPH_ID || id === CLAUSE_HOST_ITEM_ID) return "본문";
     if (!id || id === CLAUSE_LINE_ID) return "문구";
     const node = index.nodes.get(id)?.node;
     if (!node) return "조건 가지 문장";
@@ -570,7 +599,12 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   const blockNodes = tree.children[0]?.kind === "article" ? tree.children[0].children : [];
   const line = clauseMode === "inline" ? blockNodes[0] : undefined;
   const lineNodes = line?.kind === "paragraph" ? line.children : [];
-  const readEmpty = !editing && (clauseMode === "inline" ? lineNodes.length === 0 : blockNodes.length === 0);
+  // 「호」 · 「목」 — 자리 항(과 자리 호)의 목록만 그린다. 자리 자체는 번호 단계가 아니다
+  const host = clauseMode === "item" || clauseMode === "subitem" ? blockNodes.find((n) => n.id === CLAUSE_HOST_PARAGRAPH_ID) : undefined;
+  const hostItems = host?.kind === "paragraph" ? (host.items ?? []) : [];
+  const hostItem = clauseMode === "subitem" ? hostItems.find((n) => n.id === CLAUSE_HOST_ITEM_ID) : undefined;
+  const listNodes = clauseMode === "item" ? hostItems : hostItem?.kind === "item" ? (hostItem.subitems ?? []) : [];
+  const readEmpty = !editing && (clauseMode === "inline" ? lineNodes.length === 0 : clauseMode === "block" ? blockNodes.length === 0 : listNodes.length === 0);
   const modeHint = MODE_OPTIONS.find((o) => o.value === clauseMode)?.hint;
 
   return (
@@ -671,9 +705,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
             <section className="ts-clause-body-sec" aria-label="본문">
               <h2 className="ts-clause-sec">본문</h2>
               <p className="ts-muted ts-clause-sec-note">
-                {clauseMode === "inline"
-                  ? "사용처 문장 중간에 들어갈 문구 한 줄을 쓴다. 조건 · 슬롯 · 옵션 자리는 커서를 두고 툴바에서 넣는다."
-                  : "사용처 조 안에 들어갈 항을 쓴다. Enter 로 다음 항, 호 · 목 · 조건은 툴바에서 넣는다."}
+                {BODY_NOTE[clauseMode]}
               </p>
               <div
                 className={`ts-clause-editor${editing ? " is-editing" : ""}`}
@@ -700,6 +732,17 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
                     <div className="ts-doc-paragraph is-line">
                       <InlineSlot at={{ parentId: CLAUSE_LINE_ID }} nodes={lineNodes} ctx={ctx} placeholder="문구" />
                     </div>
+                  ) : clauseMode === "item" || clauseMode === "subitem" ? (
+                    listNodes.length === 0 ? (
+                      <div className="ts-empty">
+                        <p className="ts-empty-what">{clauseMode === "item" ? "호가" : "목이"} 없다 — 이대로 두면 쓰는 곳에 아무것도 나오지 않는다.</p>
+                        <p className="ts-empty-action">{clauseMode === "item" ? "툴바의 「호」로 첫 호를 넣는다." : "툴바의 「목」으로 첫 목을 넣는다."}</p>
+                      </div>
+                    ) : (
+                      <ol className={clauseMode === "item" ? "ts-doc-items" : "ts-doc-subitems"}>
+                        <Block nodes={listNodes} ctx={ctx} inList />
+                      </ol>
+                    )
                   ) : blockNodes.length === 0 ? (
                     <div className="ts-empty">
                       <p className="ts-empty-what">항이 없다.</p>
@@ -804,9 +847,9 @@ function EmptyBody({ mode, editing }: { mode: ClauseMode; editing?: boolean }) {
     <div className="ts-empty">
       <p className="ts-empty-what">본문이 비어 있다 — 참조해도 아무 조문도 나오지 않는다.</p>
       <p className="ts-empty-example">
-        예: {mode === "block" ? "① 이 특별약관은 보험계약자의 청약과 보험회사의 승낙으로 이루어집니다." : "보험금을 지급하지 않습니다"}
+        예: {EMPTY_EXAMPLE[mode]}
       </p>
-      <p className="ts-empty-action">{editing ? "툴바의 「항」으로 시작한다. 다 쓰면 「저장」." : "「편집」을 눌러 본문을 쓴다."}</p>
+      <p className="ts-empty-action">{editing ? `${START_TOOL[mode]} 시작한다. 다 쓰면 「저장」.` : "「편집」을 눌러 본문을 쓴다."}</p>
     </div>
   );
 }

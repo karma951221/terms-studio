@@ -258,3 +258,26 @@ describe("expandClause — 제 항 · 사용처 위치 조 참조를 사용처 �
     expect(body[0].kind === "paragraph" && body[0].children[0]).toMatchObject({ targets: [{ nodeId: "host:1" }] });
   });
 });
+
+describe("expandClause — 호 · 목 유형 (최종 결정 4)", () => {
+  it("호 유형은 호 목록을 조건째 펼치고 id 를 사용처 자리로 유일화한다", () => {
+    const clause = {
+      code: "C0300",
+      label: "호",
+      mode: "item" as const,
+      options: [],
+      required: { discriminators: [], attributes: [] },
+      body: [
+        { id: "i1", kind: "item" as const, children: [{ id: "t1", kind: "text" as const, text: "하나" }], subitems: [{ id: "s1", kind: "subitem" as const, children: [] }] },
+        { id: "c1", kind: "condBlock" as const, branches: [{ id: "b1", when: "D0001 = 1", children: [{ id: "i2", kind: "item" as const, children: [] }] }] },
+      ],
+    };
+    const r = expandClause(clause, {}, "k");
+    expect(r.ok && JSON.stringify(r.value)).toBe(
+      JSON.stringify([
+        { id: "k/i1", kind: "item", children: [{ id: "k/t1", kind: "text", text: "하나" }], subitems: [{ id: "k/s1", kind: "subitem", children: [] }] },
+        { id: "k/c1", kind: "condBlock", branches: [{ id: "k/b1", when: "D0001 = 1", children: [{ id: "k/i2", kind: "item", children: [] }] }] },
+      ]),
+    );
+  });
+});

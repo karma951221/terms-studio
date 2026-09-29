@@ -7,7 +7,7 @@
 import { asc, eq, sql } from "drizzle-orm";
 
 import type { ClauseCodeKind, ClauseNextSeq } from "@/domain/clause/codes";
-import type { Block, Inline } from "@/domain/clause/nodes";
+import type { Block, Inline, ItemBodyNode, SubitemBodyNode } from "@/domain/clause/nodes";
 import type { Clause } from "@/domain/clause/types";
 import type { Code, Id } from "@/domain/types";
 
@@ -50,8 +50,16 @@ function toClause(row: ClauseRow): Clause {
     options: row.options,
     required: { discriminators: row.requiredDiscriminators, attributes: row.requiredAttributes },
   };
-  if (row.mode === "inline") return { ...base, mode: "inline", body: row.body as Inline[] };
-  return { ...base, mode: "block", body: row.body as Block[] };
+  switch (row.mode) {
+    case "inline":
+      return { ...base, mode: "inline", body: row.body as Inline[] };
+    case "item":
+      return { ...base, mode: "item", body: row.body as ItemBodyNode[] };
+    case "subitem":
+      return { ...base, mode: "subitem", body: row.body as SubitemBodyNode[] };
+    default:
+      return { ...base, mode: "block", body: row.body as Block[] };
+  }
 }
 
 function toRow(def: Clause) {

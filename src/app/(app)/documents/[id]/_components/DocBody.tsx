@@ -19,6 +19,8 @@ import { IconButton, IconTrash } from "@/app/_components/icons";
 import { StaticTable } from "@/app/_components/StaticNodes";
 import { REPEAT_DEPTH_LABEL } from "@/app/_lib/labels";
 import {
+  CLAUSE_HOST_ITEM_ID,
+  CLAUSE_HOST_PARAGRAPH_ID,
   CLAUSE_LINE_ID,
   clauseBodyToTree,
   numberTree,
@@ -280,7 +282,25 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
     const nodes = tree.children[0]?.kind === "article" ? tree.children[0].children : [];
     const inner: DocCtx = { ...ctx, mode: "read", edit: undefined, numbers: numberTree(tree), branchEval: undefined, flashId: undefined, chipOverride: optionChip(clause, node.options) };
     const line = clause.mode === "inline" ? nodes.find((n) => n.id === CLAUSE_LINE_ID) : undefined;
-    body = nodes.length === 0 ? <p className="ts-muted">본문이 비어 있다.</p> : line && line.kind === "paragraph" ? <p className="ts-doc-paragraph is-line"><InlineSlot at={{ parentId: line.id }} nodes={line.children} ctx={inner} /></p> : <Block nodes={nodes} ctx={inner} />;
+    // 「호」 · 「목」 — 자리 항(· 자리 호)은 번호 단계가 아니라 그 목록만 그린다
+    const host = nodes.find((n) => n.id === CLAUSE_HOST_PARAGRAPH_ID);
+    const hostItems = host?.kind === "paragraph" ? (host.items ?? []) : [];
+    const hostItem = hostItems.find((n) => n.id === CLAUSE_HOST_ITEM_ID);
+    const list = clause.mode === "item" ? hostItems : clause.mode === "subitem" && hostItem?.kind === "item" ? (hostItem.subitems ?? []) : undefined;
+    body =
+      clause.body.length === 0 ? (
+        <p className="ts-muted">본문이 비어 있다.</p>
+      ) : line && line.kind === "paragraph" ? (
+        <p className="ts-doc-paragraph is-line">
+          <InlineSlot at={{ parentId: line.id }} nodes={line.children} ctx={inner} />
+        </p>
+      ) : list ? (
+        <ol className={clause.mode === "item" ? "ts-doc-items" : "ts-doc-subitems"}>
+          <Block nodes={list} ctx={inner} inList />
+        </ol>
+      ) : (
+        <Block nodes={nodes} ctx={inner} />
+      );
   } else if (clause) {
     // 가운데(모델) — 공용조항이 어떻게 짜였는지: 슬롯 · 옵션 자리(선택지 전부 + 고른 것) · 조건 · 참조 (2026-09-28)
     body = (

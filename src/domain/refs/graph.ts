@@ -25,9 +25,9 @@
 import type { Discriminator } from "../catalog/types";
 import { discriminatorResultType } from "../catalog/expression";
 import { allMasterFields, masterFieldFullLabel, type MasterTree } from "../master";
-import type { Block, BulletListNode, ClauseNode, Inline } from "../clause/nodes";
+import type { ClauseNode } from "../clause/nodes";
 import { collectExpressions } from "../clause/body";
-import type { Clause } from "../clause/types";
+import type { Clause, ClauseBody } from "../clause/types";
 import { nodesOf } from "../coverage/tree";
 import type { Coverage, CoverageNodeLevel } from "../coverage/types";
 import { coordinateOf, indexTree } from "../document/nodes";
@@ -262,54 +262,37 @@ function addExpression(b: Builder, def: Discriminator): void {
   b.expression({ kind: "discriminator", code: def.code }, def.expression, "expression", { ownerId: def.code, ownerName: def.label });
 }
 
-/** 공용조항 본문 노드 전부 (경로 포함) — 별표 · 박스 참조 수집용. 식은 collectExpressions 가 따로 본다. */
-function walkClauseNodes(body: readonly (Inline | Block)[], basePath: Id[], visit: (node: ClauseNode, path: Id[]) => void): void {
-  const inline = (n: Inline, path: Id[]) => {
+/**
+ * 함수조항 본문 노드 전부 (경로 포함) — 별표 · 박스 참조 수집용. 식은 collectExpressions 가 따로 본다.
+ * 노드 종류가 서로 달라 유형(문구 · 항 · 호 · 목)을 몰라도 걷는다. 경로: 노드마다 제 id 를 얹고, 조건 가지는 가지 id 를 얹는다.
+ */
+function walkClauseNodes(body: readonly ClauseNode[], basePath: Id[], visit: (node: ClauseNode, path: Id[]) => void): void {
+  const walk = (n: ClauseNode, path: Id[]) => {
     const here = [...path, n.id];
     visit(n, here);
-    if (n.kind === "inlineCond") for (const br of n.branches) for (const c of br.children) inline(c, [...here, br.id]);
-  };
-  const bullets = (n: BulletListNode, path: Id[]) => {
-    const here = [...path, n.id];
-    visit(n, here);
-    for (const b of n.children) {
-      visit(b, [...here, b.id]);
-      for (const c of b.children) inline(c, [...here, b.id]);
+    switch (n.kind) {
+      case "inlineCond":
+      case "condBlock":
+        for (const br of n.branches as { id: Id; children: ClauseNode[] }[]) for (const c of br.children) walk(c, [...here, br.id]);
+        return;
+      case "bulletList":
+      case "subitem":
+      case "bullet":
+        for (const c of n.children) walk(c, here);
+        return;
+      case "paragraph":
+        for (const c of n.children) walk(c, here);
+        for (const it of n.items ?? []) walk(it, here);
+        return;
+      case "item":
+        for (const c of n.children) walk(c, here);
+        for (const si of n.subitems ?? []) walk(si, here);
+        return;
+      default:
+        return;
     }
   };
-  const block = (n: Block, path: Id[]) => {
-    if (n.kind === "bulletList") return bullets(n, path);
-    const here = [...path, n.id];
-    visit(n, here);
-    if (n.kind === "boxRef") return;
-    if (n.kind === "paragraph") {
-      for (const c of n.children) inline(c, here);
-      for (const it of n.items ?? []) {
-        if (it.kind === "bulletList") {
-          bullets(it, here);
-          continue;
-        }
-        if (it.kind === "boxRef") {
-          visit(it, [...here, it.id]);
-          continue;
-        }
-        const ip = [...here, it.id];
-        visit(it, ip);
-        for (const c of it.children) inline(c, ip);
-        for (const si of it.subitems ?? []) {
-          const sp = [...ip, si.id];
-          visit(si, sp);
-          for (const c of si.children) inline(c, sp);
-        }
-      }
-    } else {
-      for (const br of n.branches) for (const c of br.children) block(c, [...here, br.id]);
-    }
-  };
-  for (const n of body) {
-    if (n.kind === "paragraph" || n.kind === "condBlock" || n.kind === "bulletList" || n.kind === "boxRef") block(n, basePath);
-    else inline(n, basePath);
-  }
+  for (const n of body) walk(n, basePath);
 }
 
 /**
@@ -335,12 +318,12 @@ function addClause(b: Builder, clause: Clause): void {
     for (const v of o.values) b.node({ key: { kind: "clauseOptionValue", clauseCode: clause.code, optionCode: o.code, valueCode: v.code }, label: v.label, parent: okey });
   }
   const base: Coordinate = { document: "clause", ownerId: clause.code, ownerName: clause.label };
-  const bodies: { body: readonly (Inline | Block)[]; path: Id[] }[] = [
+  const bodies: { body: readonly ClauseNode[]; path: Id[] }[] = [
     { body: clause.body, path: [] },
     ...clause.options.flatMap((o) => o.values.map((v) => ({ body: v.body, path: [o.code, v.code] }))),
   ];
   for (const { body, path } of bodies) {
-    for (const e of collectExpressions(body as Inline[] | Block[], path)) {
+    for (const e of collectExpressions(body as ClauseBody, path)) {
       b.expression(key, e.source, e.role === "slot" ? "slot" : "when", { ...base, nodePath: e.nodePath }, { slotOnly: e.role === "slot" });
     }
     walkClauseNodes(body, path, (n, nodePath) => {

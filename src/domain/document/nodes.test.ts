@@ -30,9 +30,9 @@ describe("허용 자식 규칙 테이블 (ADR-0012 — 문서>조>항>호>목, �
     expect(allowedChildren.inlineFor).not.toContain("inlineFor");
   });
 
-  it("호는 항의 items 에, 목은 호의 subitems 에 선다 (조건 블록도 그 자리에 설 수 있다)", () => {
-    expect(allowedListChildren["paragraph.items"]).toEqual(["item", "condBlock", "table", "box", "bulletList", "boxRef"]);
-    expect(allowedListChildren["item.subitems"]).toEqual(["subitem", "condBlock", "bulletList"]);
+  it("호는 항의 items 에, 목은 호의 subitems 에 선다 (조건 블록 · 호 · 목 유형 함수조항 참조도 그 자리에 설 수 있다)", () => {
+    expect(allowedListChildren["paragraph.items"]).toEqual(["item", "condBlock", "table", "box", "bulletList", "boxRef", "clauseBlockRef"]);
+    expect(allowedListChildren["item.subitems"]).toEqual(["subitem", "condBlock", "bulletList", "clauseBlockRef"]);
   });
 
   it("잎 노드(텍스트·슬롯·참조)는 자식이 없다", () => {
@@ -340,8 +340,8 @@ describe("실물 재현 노드 (기능/문면 §3.2) — 관 · 정적 표 · �
     expect(allowedChildren.section).toEqual(["article", "condBlock"]);
     expect(allowedChildren.article).toContain("table");
     expect(allowedChildren.article).toContain("box");
-    expect(allowedIn("paragraph", "items")).toEqual(["item", "condBlock", "table", "box", "bulletList", "boxRef"]);
-    expect(allowedIn("item", "subitems")).toEqual(["subitem", "condBlock", "bulletList"]);
+    expect(allowedIn("paragraph", "items")).toEqual(["item", "condBlock", "table", "box", "bulletList", "boxRef", "clauseBlockRef"]);
+    expect(allowedIn("item", "subitems")).toEqual(["subitem", "condBlock", "bulletList", "clauseBlockRef"]);
     expect(slotsOf("table")).toEqual([]);
     expect(slotsOf("box")).toEqual([]);
     expect(slotsOf("section")).toEqual(["children"]);

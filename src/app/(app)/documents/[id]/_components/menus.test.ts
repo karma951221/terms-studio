@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { indexTree, nodeBuilders, sequentialIds, type DocumentNode } from "@/domain/document";
 
-import { articleMenu, blockMenu, boxPickItems, chipMenu, clausePickItems, condMenu, inlineInsertItems, type MenuSections } from "./menus";
+import { articleMenu, blockMenu, boxPickItems, chipMenu, clausePickItems, clausesFitting, condMenu, inlineInsertItems, type MenuSections } from "./menus";
 
 const labels = (s: MenuSections) => s.flat().map((i) => `${i.label}${i.disabled ? "(잠김)" : ""}`);
 
@@ -21,6 +21,7 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
     expect(labels(blockMenu(env(tree()), "n3"))).toEqual([
       "아래에 항 추가",
       "호 추가",
+      "함수조항(호) 추가…",
       "아래에 표 추가…",
       "아래에 글머리 목록 추가",
       "아래에 함수조항(조 단위) 추가…",
@@ -33,9 +34,18 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
     ]);
   });
 
-  it("호 — 항 목록 자리라 호 · 표 · 글머리 목록 · 박스, 함수조항은 없다 · 목 뒤는 목 · 글머리 목록(박스 없음)", () => {
-    expect(labels(blockMenu(env(tree()), "n2")).slice(0, 6)).toEqual(["아래에 호 추가", "목 추가", "아래에 표 추가…", "아래에 글머리 목록 추가", "아래에 박스 추가…", "조건으로 감싸기"]);
-    expect(labels(blockMenu(env(tree()), "n1")).slice(0, 3)).toEqual(["아래에 목 추가", "아래에 글머리 목록 추가", "조건으로 감싸기"]);
+  it("호 — 항 목록 자리라 호 · 표 · 글머리 목록 · 박스 · 「호」 함수조항 · 목 뒤는 목 · 글머리 목록 · 「목」 함수조항(박스 없음)", () => {
+    expect(labels(blockMenu(env(tree()), "n2")).slice(0, 8)).toEqual([
+      "아래에 호 추가",
+      "목 추가",
+      "함수조항(목) 추가…",
+      "아래에 표 추가…",
+      "아래에 글머리 목록 추가",
+      "아래에 함수조항(호) 추가…",
+      "아래에 박스 추가…",
+      "조건으로 감싸기",
+    ]);
+    expect(labels(blockMenu(env(tree()), "n1")).slice(0, 4)).toEqual(["아래에 목 추가", "아래에 글머리 목록 추가", "아래에 함수조항(목) 추가…", "조건으로 감싸기"]);
   });
 
   it("조 제목이면 그 조를 감싸고, 조 본문(고른 블록 없음)이면 새 조건 블록을 넣는다", () => {
@@ -102,5 +112,25 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
     expect(items[0].action).toMatchObject({ do: "ops", ops: [{ type: "insert", node: { kind: "boxRef", boxCode: "BX000001" }, at: { parentId: "n3", slot: "items", index: 1 } }] });
     const item = articleMenu(env(tree()), "n4").flat().find((i) => i.label === "박스 추가…");
     expect(item?.action).toEqual({ do: "popup", popup: { kind: "boxPick", at: { parentId: "n4" } } });
+  });
+});
+
+describe("함수조항 넣기는 자리 유형대로 — 조 자리 「항」 · 호 목록 「호」 · 목 목록 「목」 (최종 결정 4)", () => {
+  const clauses = [
+    { code: "C1", label: "문구", mode: "inline" },
+    { code: "C2", label: "항", mode: "block" },
+    { code: "C3", label: "호", mode: "item" },
+    { code: "C4", label: "목", mode: "subitem" },
+    { code: "C5", label: "옛 호출" },
+  ];
+  it("clausesFitting 은 자리 유형만 남긴다 — 유형을 모르면 조 자리", () => {
+    expect(clausesFitting(clauses).map((c) => c.code)).toEqual(["C2", "C5"]);
+    expect(clausesFitting(clauses, "item").map((c) => c.code)).toEqual(["C3"]);
+    expect(clausesFitting(clauses, "subitem").map((c) => c.code)).toEqual(["C4"]);
+  });
+
+  it("항의 「함수조항(호) 추가…」는 그 항의 호 목록 자리 팝업", () => {
+    const item = blockMenu(env(tree()), "n3").flat().find((i) => i.label === "함수조항(호) 추가…");
+    expect(item?.action).toEqual({ do: "popup", popup: { kind: "clauseBlock", at: { parentId: "n3", slot: "items" }, fit: "item" } });
   });
 });

@@ -5,13 +5,13 @@ import { ListPage, codeCol, dateCol, nameCol, userCol, type ListColumn } from "@
 import type { ColumnFilterSpec } from "@/app/_components/ListFilters";
 import { ENTITY_LABEL, FIELD_LABEL, MODE_LABEL, MODE_OPTIONS, NAME_LABEL, newLabel, searchPlaceholder } from "@/app/_lib/labels";
 import { includesQuery, paginate } from "@/app/_lib/list";
-import type { ClauseMode, ClauseSummary } from "@/domain/clause/types";
+import { CLAUSE_MODES, type ClauseMode, type ClauseSummary } from "@/domain/clause/types";
 import { getServices } from "@/lib/services";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 50;
-const MODES: readonly ClauseMode[] = ["inline", "block"];
+const MODES: readonly ClauseMode[] = CLAUSE_MODES;
 const FILTERS = [
   { key: "mode", label: "유형", options: MODES.map((value) => ({ value, label: MODE_LABEL[value] })) },
 ] as const satisfies readonly ColumnFilterSpec[];

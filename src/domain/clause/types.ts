@@ -1,18 +1,23 @@
 /**
  * 공용조항 도메인 타입.
  *
- * 근거: docs/기능/함수조항/함수조항.md §3.1 (참조 + 옵션 + inline/block) ·
+ * 근거: docs/기능/함수조항/함수조항.md §3.1 (참조 + 옵션 + 유형 = 출력 모양 넷) ·
  * ADR-0010 (요구 구분자 자동 추출) · §3.2 (옵션 선택·오버라이드).
  *
  * - 코드는 시스템 채번·불변 (`C0001`). 옵션 `O01`, 선택지 `V01` 은 소속 안에서 유일.
- * - 본문은 모드에 따라 `Inline[]` 또는 `Block[]` — 판별 합집합으로 타입이 갈린다.
+ * - 본문은 유형에 따라 `Inline[]` · `Block[]` · `ItemBodyNode[]` · `SubitemBodyNode[]` — 판별 합집합으로 타입이 갈린다.
  * - 요구 구분자(`required`)는 저장할 때 식에서 계산해 함께 둔다 (선언 아님).
  */
 import type { Code, Id } from "../types";
-import type { Block, Inline } from "./nodes";
+import type { Block, Inline, ItemBodyNode, SubitemBodyNode } from "./nodes";
 
-/** 유형 — 문구(문장 안) · 항(항 목록). 박스는 공용조항이 아니라 정적 마스터다(최종 결정 9 · 기능/박스). */
-export type ClauseMode = "inline" | "block";
+/**
+ * 유형 = 출력 모양 (최종 결정 4) — 문구(문장 조각) · 항(항 목록) · 호(호 목록) · 목(목 목록). 유형과 넣는 자리가 맞아야 넣는다.
+ * 박스는 유형이 아니라 정적 마스터다(최종 결정 9 · 기능/박스).
+ */
+export type ClauseMode = "inline" | "block" | "item" | "subitem";
+
+export const CLAUSE_MODES: readonly ClauseMode[] = ["inline", "block", "item", "subitem"];
 
 /** 옵션 자리의 선택지 — 문구 수준의 대안 (기능/함수조항 §3.1 「옵션은 문구 수준」). */
 export interface OptionValue {
@@ -60,12 +65,22 @@ export interface BlockClause extends ClauseBase {
   body: Block[];
 }
 
-export type Clause = InlineClause | BlockClause;
+export interface ItemClause extends ClauseBase {
+  mode: "item";
+  body: ItemBodyNode[];
+}
+
+export interface SubitemClause extends ClauseBase {
+  mode: "subitem";
+  body: SubitemBodyNode[];
+}
+
+export type Clause = InlineClause | BlockClause | ItemClause | SubitemClause;
 
 /** 모드에 따른 본문 타입. */
-export type BodyOf<M extends ClauseMode> = M extends "inline" ? Inline[] : Block[];
+export type BodyOf<M extends ClauseMode> = M extends "inline" ? Inline[] : M extends "block" ? Block[] : M extends "item" ? ItemBodyNode[] : SubitemBodyNode[];
 
-export type ClauseBody = Inline[] | Block[];
+export type ClauseBody = Inline[] | Block[] | ItemBodyNode[] | SubitemBodyNode[];
 
 /** 사용처의 옵션 선택 — 옵션 코드 → 선택지 코드. */
 export type OptionSelection = Record<Code, Code>;

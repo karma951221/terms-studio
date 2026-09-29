@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { MenuItem, MenuSections } from "@/app/(app)/documents/[id]/_components/menus";
-import { CLAUSE_LINE_ID, clauseBodyToTree, indexTree, sequentialIds } from "@/domain/document";
+import { CLAUSE_HOST_ITEM_ID, CLAUSE_HOST_PARAGRAPH_ID, CLAUSE_LINE_ID, clauseBodyToTree, indexTree, sequentialIds } from "@/domain/document";
 
-import { REFUSE, clauseBlockMenu, clauseBodyMenu, clauseInlineMenu, type ClauseMenuEnv } from "./clauseMenus";
+import { REFUSE, clauseBlockMenu, clauseBodyMenu, clauseCanHold, clauseInlineMenu, type ClauseMenuEnv } from "./clauseMenus";
 
 const labels = (sections: MenuSections) => sections.flat().map((item) => item.label);
 const find = (sections: MenuSections, label: string): MenuItem | undefined => sections.flat().find((item) => item.label === label);
@@ -60,5 +60,40 @@ describe("함수조항 에디터 메뉴 — 문면 메뉴를 함수조항 자리
     const article = find(sections, "조 추가")!;
     if (article.action.do === "ops" && typeof article.action.ops === "function") article.action.ops(e.tree);
     expect(onRefuse).toHaveBeenCalledWith(REFUSE.article);
+  });
+});
+
+describe("호 · 목 유형 에디터 메뉴 — 유형의 목록 자리에 넣고 조건으로 감싼다 (최종 결정 4)", () => {
+  function listEnv(mode: "item" | "subitem"): ClauseMenuEnv {
+    const tree =
+      mode === "item"
+        ? clauseBodyToTree("item", [{ id: "i1", kind: "item", children: [], subitems: [{ id: "s1", kind: "subitem", children: [] }] }])
+        : clauseBodyToTree("subitem", [{ id: "s1", kind: "subitem", children: [] }]);
+    return { tree, ix: indexTree(tree), docKind: "special", newId: sequentialIds("n"), mode, options: [], onRefuse: vi.fn() };
+  }
+
+  it("본문 빈 자리 — 「호」는 호 · 박스 · 조건 블록, 「목」은 목 · 조건 블록을 자리 목록 끝에", () => {
+    const item = clauseBodyMenu(listEnv("item"));
+    expect(labels(item).slice(0, 3)).toEqual(["호 추가", "박스 추가…", "조건 블록 넣기"]);
+    expect(find(item, "호 추가")?.action).toMatchObject({ do: "ops", ops: [{ type: "insert", at: { parentId: CLAUSE_HOST_PARAGRAPH_ID, slot: "items" } }] });
+    const sub = clauseBodyMenu(listEnv("subitem"));
+    expect(labels(sub).slice(0, 2)).toEqual(["목 추가", "조건 블록 넣기"]);
+    expect(find(sub, "목 추가")?.action).toMatchObject({ do: "ops", ops: [{ type: "insert", at: { parentId: CLAUSE_HOST_ITEM_ID, slot: "subitems" } }] });
+  });
+
+  it("조건으로 감싸기 — 「호」의 호는 되고 그 호의 목은 안 된다, 「목」의 목은 된다", () => {
+    const e = listEnv("item");
+    expect(clauseCanHold(e.ix, "item")("i1")).toBe(true);
+    expect(clauseCanHold(e.ix, "item")("s1")).toBe(false);
+    expect(clauseCanHold(e.ix, "item")(CLAUSE_HOST_PARAGRAPH_ID)).toBe(false);
+    const s = listEnv("subitem");
+    expect(clauseCanHold(s.ix, "subitem")("s1")).toBe(true);
+    expect(labels(clauseBlockMenu(e, "i1"))).toContain("조건으로 감싸기");
+    expect(labels(clauseBlockMenu(e, "s1"))).not.toContain("조건으로 감싸기");
+  });
+
+  it("호 · 목 자리의 함수조항 넣기는 거부 자리 하나로 — 같은 도구가 둘로 늘지 않는다", () => {
+    const e = listEnv("item");
+    expect(labels(clauseBlockMenu(e, "i1")).filter((l) => l.includes("함수조항"))).toEqual([]);
   });
 });

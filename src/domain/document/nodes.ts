@@ -4,7 +4,7 @@
  * 문서 = 일반 노드 트리. 깊이·종류를 스키마에 고정하지 않고 **노드 종류별 허용 자식을 규칙 테이블**로 건다.
  * 노드는 세 부류다:
  *   - 구조   : document · article(조) · paragraph(항) · item(호) · subitem(목)
- *   - 블록 동적: condBlock(if/elif/else) · forBlock(자리만, 평가 P7) · clauseBlockRef(공용조항 block 참조) · boxRef(정적 마스터 박스 참조)
+ *   - 블록 동적: condBlock(if/elif/else) · forBlock(자리만, 평가 P7) · clauseBlockRef(함수조항 블록 참조 — 항 · 호 · 목 유형) · boxRef(정적 마스터 박스 참조)
  *   - 인라인  : text · slot · inlineCond · inlineFor(자리만) · articleRef · appendixRef · clauseInlineRef
  *
  * - 조의 메타는 조 명 · 조연결(`linkedArticleId`) 뿐. 번호는 저장하지 않는다 (계산값 — numbering.ts).
@@ -16,6 +16,7 @@
  */
 
 import { CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, type AttachLevel, type Code, type Coordinate, type Id, type Issue, type ReferenceConnector } from "../types";
+import type { ClauseMode } from "../clause/types";
 
 // ───────────────────────────── 인라인 ─────────────────────────────
 
@@ -223,7 +224,10 @@ export interface ForBlockNode {
   children: BlockNode[];
 }
 
-/** 공용조항 block 참조 — 항 자리에 선다 (항 또는 항 목록). 조 제목 포함 block 은 없다. */
+/**
+ * 함수조항 블록 참조 — 유형에 맞는 자리에 선다: 「항」은 조 자리(항 목록을 편다), 「호」는 항의 호 목록, 「목」은 호의 목 목록 (최종 결정 4).
+ * 조 제목을 품은 함수조항은 없다.
+ */
 export interface ClauseBlockRefNode {
   id: Id;
   kind: "clauseBlockRef";
@@ -323,9 +327,9 @@ export const allowedChildren: Record<NodeKind, readonly NodeKind[]> = {
 
 /** 두 번째 목록 자리 — 항의 호 목록 · 호의 목 목록. 조건 블록도 그 자리에 설 수 있다. */
 export const allowedListChildren = {
-  // 호 목록 자리(항 · 호 뒤)에 공용조항 참조는 서지 않는다 — 박스는 정적 마스터 박스 참조(boxRef)로 (기능/박스 §3.2)
-  "paragraph.items": ["item", "condBlock", "table", "box", "bulletList", "boxRef"],
-  "item.subitems": ["subitem", "condBlock", "bulletList"],
+  // 목록 자리에도 함수조항 참조가 선다 — 「호」 유형은 호 목록, 「목」 유형은 목 목록 (유형 = 출력 모양, 최종 결정 4 · clausePlacement)
+  "paragraph.items": ["item", "condBlock", "table", "box", "bulletList", "boxRef", "clauseBlockRef"],
+  "item.subitems": ["subitem", "condBlock", "bulletList", "clauseBlockRef"],
 } as const satisfies Record<string, readonly NodeKind[]>;
 
 export type SlotName = "children" | "items" | "subitems";
@@ -568,8 +572,8 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
  */
 export interface ClauseGate {
   clauseExists(code: Code): boolean;
-  /** 공용조항 유형 — 있으면 참조 자리를 유형별로 본다(문구 = 문장 안 · 항 = 조 자리). */
-  clauseMode?(code: Code): "inline" | "block" | undefined;
+  /** 함수조항 유형 — 있으면 참조 자리를 유형별로 본다(문구 = 문장 안 · 항 = 조 자리 · 호 = 호 목록 · 목 = 목 목록). */
+  clauseMode?(code: Code): ClauseMode | undefined;
   requiredCodes(code: Code): Code[];
   missingRequired(code: Code): Code[];
   validateOptions(code: Code, options: Record<Code, Code>): Issue[];
@@ -666,20 +670,36 @@ export function checkNodeRefs(e: NodeEntry, ix: TreeIndex, env: TreeEnv, atSave:
       return env.boxExists && !env.boxExists(n.boxCode) ? one("brokenRef", `박스 ${n.boxCode} 가 정적 마스터에 없습니다`) : [];
     case "clauseBlockRef":
     case "clauseInlineRef":
-      return [...clausePlacement(n, e.slot, gate, at), ...checkClauseRef(n, gate, at, atSave)];
+      return [...clausePlacement(n, e.allowed, gate, at), ...checkClauseRef(n, gate, at, atSave)];
     default:
       return [];
   }
 }
 
-/** 공용조항 참조의 자리 — 유형별 (기능/함수조항 §3.1): 문구는 문장 안, 항은 조 자리. */
-function clausePlacement(node: ClauseBlockRefNode | ClauseInlineRefNode, slot: SlotName, gate: ClauseGate, at: Coordinate): Issue[] {
+/** 블록 참조가 선 자리 — 그 자리의 허용 집합으로 안다(조건 블록 가지는 서 있는 자리를 물려받는다). */
+function blockSiteOf(allowed: readonly NodeKind[]): Exclude<ClauseMode, "inline"> {
+  if (allowed.includes("item")) return "item";
+  if (allowed.includes("subitem")) return "subitem";
+  return "block";
+}
+
+const SITE_RULE: Record<ClauseMode, string> = {
+  inline: "「문구」 함수조항은 문장 안에만 둘 수 있습니다",
+  block: "「항」 함수조항은 조 자리(항 사이)에만 둘 수 있습니다",
+  item: "「호」 함수조항은 항의 호 목록 자리에만 둘 수 있습니다",
+  subitem: "「목」 함수조항은 호의 목 목록 자리에만 둘 수 있습니다",
+};
+
+/**
+ * 함수조항 참조의 자리 — 유형 = 출력 모양 (기능/함수조항 §3.1 · 최종 결정 4): 문구는 문장 안, 항은 조 자리(조 · 반복 블록 · 그 조건 가지),
+ * 호는 항의 호 목록, 목은 호의 목 목록. 어긋나면 유형이 요구하는 자리를 말한다.
+ */
+function clausePlacement(node: ClauseBlockRefNode | ClauseInlineRefNode, allowed: readonly NodeKind[], gate: ClauseGate, at: Coordinate): Issue[] {
   const mode = gate.clauseMode?.(node.clauseCode);
   if (mode === undefined) return [];
   const wrong = (message: string): Issue[] => [{ kind: "structure", message: `함수조항 ${node.clauseCode} — ${message}`, at }];
   if (node.kind === "clauseInlineRef") return mode === "inline" ? [] : wrong("문장 안에는 「문구」 함수조항만 둘 수 있습니다");
-  if (mode === "inline") return wrong("「문구」 함수조항은 문장 안에만 둘 수 있습니다");
-  return [];
+  return mode === blockSiteOf(allowed) ? [] : wrong(SITE_RULE[mode]);
 }
 
 /**

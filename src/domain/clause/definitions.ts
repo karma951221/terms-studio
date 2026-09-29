@@ -15,6 +15,7 @@ import { analyzeBody, allNodeIds } from "./body";
 import type { AnalyzeOptions } from "./body";
 import { allocateClauseCode, optionValueScope, type ClauseNextSeq } from "./codes";
 import type { Block, Inline } from "./nodes";
+import { CLAUSE_MODES } from "./types";
 import type {
   Clause,
   ClauseBody,
@@ -42,7 +43,8 @@ export interface ClauseContext {
   analyze?: AnalyzeOptions;
 }
 
-const MODES: readonly ClauseMode[] = ["inline", "block"];
+const MODES: readonly ClauseMode[] = CLAUSE_MODES;
+const MODE_REFUSAL = "유형은 문구 · 항 · 호 · 목 중 하나여야 합니다 — 박스는 정적 마스터에서 만든다";
 
 // ───────────────────────────── 헬퍼 ─────────────────────────────
 
@@ -127,7 +129,7 @@ async function buildOption(clauseCode: Code, input: NewOption, order: number, ne
  * 순번 범위는 비어 있으므로 검사 단계의 임시 코드(O01… · V01…)와 실제 채번 결과가 같다.
  */
 export async function createClause(input: NewClause, ctx: ClauseContext): Promise<Result<Clause>> {
-  if (!MODES.includes(input.mode)) return invalid("typeMismatch", `유형은 문구(inline) · 항(block) 중 하나여야 합니다 — 박스는 정적 마스터에서 만든다: ${String(input.mode)}`);
+  if (!MODES.includes(input.mode)) return invalid("typeMismatch", `${MODE_REFUSAL}: ${String(input.mode)}`);
   const label = checkLabel(input.label, ctx.existing);
   if (!label.ok) return label as Result<Clause>;
 
@@ -192,7 +194,7 @@ export function setBody(clause: Clause, body: ClauseBody, analyze?: AnalyzeOptio
  * (사용처의 참조 노드 종류가 어긋나는 문제는 사용처 재검사·관계정보 뷰가 드러낸다 — D-P3-1 참고.)
  */
 export function setMode(clause: Clause, mode: ClauseMode, body: ClauseBody, analyze?: AnalyzeOptions): Result<Clause> {
-  if (!MODES.includes(mode)) return invalid("typeMismatch", `유형은 문구(inline) · 항(block) 중 하나여야 합니다 — 박스는 정적 마스터에서 만든다: ${String(mode)}`);
+  if (!MODES.includes(mode)) return invalid("typeMismatch", `${MODE_REFUSAL}: ${String(mode)}`);
   return withAnalysis({ ...clause, mode, body } as Omit<Clause, "required">, analyze);
 }
 
@@ -360,3 +362,4 @@ function remapOptionSlots<B extends ClauseBody>(body: B, codeMap: Map<Code, Code
 export function clauseNodeIds(clause: Clause): Code[] {
   return [...allNodeIds(clause.body), ...clause.options.flatMap((o) => o.values.flatMap((v) => allNodeIds(v.body)))];
 }
+

@@ -55,23 +55,42 @@ describe("validateDocument — 저장 검증 한 벌", () => {
   });
 });
 
-describe("함수조항 참조 자리 — 유형별 (기능/함수조항 §3.1)", () => {
-  it("호 목록 자리에는 함수조항 참조가 서지 않고(박스는 박스 참조), 문장 안은 「문구」만, 조 자리에 「문구」는 없다", () => {
+describe("함수조항 참조 자리 — 유형 = 출력 모양 (최종 결정 4 · 기능/함수조항 §3.1)", () => {
+  const modes: Record<string, "inline" | "block" | "item" | "subitem"> = { C1: "inline", C2: "block", C3: "item", C4: "subitem" };
+  const gate = { ...PERMISSIVE_GATE, clauseMode: (code: string) => modes[code] };
+
+  it("문장 안은 「문구」만, 조 자리에 「문구」는 없다", () => {
     const b = nodeBuilders(sequentialIds("v"));
-    const modes: Record<string, "inline" | "block"> = { C1: "inline", C2: "block" };
-    const gate = { ...PERMISSIVE_GATE, clauseMode: (code: string) => modes[code] };
-    const tree = b.document("D", [
-      b.article("가", [
-        b.paragraph([b.clauseInline("C2", {})], [b.item([]), b.clauseBlock("C2", {}) as never]),
-        b.clauseBlock("C1", {}),
-        b.clauseBlock("C2", {}),
-      ]),
-    ]);
-    const messages = validateTree(tree, { clauseGate: gate }).map((i) => i.message);
-    expect(messages).toEqual([
-      "paragraph 의 items 자리에 clauseBlockRef 은(는) 올 수 없습니다",
+    const tree = b.document("D", [b.article("가", [b.paragraph([b.clauseInline("C2", {})]), b.clauseBlock("C1", {}), b.clauseBlock("C2", {})])]);
+    expect(validateTree(tree, { clauseGate: gate }).map((i) => i.message)).toEqual([
       "함수조항 C2 — 문장 안에는 「문구」 함수조항만 둘 수 있습니다",
       "함수조항 C1 — 「문구」 함수조항은 문장 안에만 둘 수 있습니다",
+    ]);
+  });
+
+  it("호 유형 함수조항은 항의 호 목록 자리에만 — 조건 가지 안(투명)도 그 자리다", () => {
+    const b = nodeBuilders(sequentialIds("i"));
+    const tree = b.document("D", [
+      b.article("가", [
+        b.paragraph([], [b.item([]), b.clauseBlock("C3", {}) as never, b.condBlock([b.branch("D0001 = 1", [b.clauseBlock("C3", {})])]) as never]),
+        b.clauseBlock("C3", {}),
+      ]),
+    ]);
+    expect(validateTree(tree, { clauseGate: gate }).map((i) => i.message)).toEqual(["함수조항 C3 — 「호」 함수조항은 항의 호 목록 자리에만 둘 수 있습니다"]);
+  });
+
+  it("목 유형은 호의 목 목록 자리에만 — 호 목록 자리에 두면 오류", () => {
+    const b = nodeBuilders(sequentialIds("s"));
+    const tree = b.document("D", [b.article("가", [b.paragraph([], [b.item([], [b.clauseBlock("C4", {}) as never]), b.clauseBlock("C4", {}) as never])])]);
+    expect(validateTree(tree, { clauseGate: gate }).map((i) => i.message)).toEqual(["함수조항 C4 — 「목」 함수조항은 호의 목 목록 자리에만 둘 수 있습니다"]);
+  });
+
+  it("항 유형을 호 · 목 자리에 두면 오류", () => {
+    const b = nodeBuilders(sequentialIds("p"));
+    const tree = b.document("D", [b.article("가", [b.paragraph([], [b.clauseBlock("C2", {}) as never, b.item([], [b.clauseBlock("C2", {}) as never])])])]);
+    expect(validateTree(tree, { clauseGate: gate }).map((i) => i.message)).toEqual([
+      "함수조항 C2 — 「항」 함수조항은 조 자리(항 사이)에만 둘 수 있습니다",
+      "함수조항 C2 — 「항」 함수조항은 조 자리(항 사이)에만 둘 수 있습니다",
     ]);
   });
 });

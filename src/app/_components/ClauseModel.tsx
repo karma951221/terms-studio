@@ -13,7 +13,7 @@
  */
 import { Fragment, type ReactNode } from "react";
 
-import type { ArticleRefNode, Block, BoxRefNode, BulletListNode, Clause, Inline, ItemNode, SubitemNode } from "@/domain/clause";
+import type { ArticleRefNode, Block, BulletListNode, Clause, Inline, ItemBodyNode, SubitemBodyNode } from "@/domain/clause";
 import { clauseBodyToTree, clauseInlineToTree, clausePositions, clauseScopedRefLabel, numberTree, referenceChunkLabel, type NodeNumber, type ReferenceTarget } from "@/domain/document";
 import type { Box } from "@/domain/document/box";
 import type { Code, Id } from "@/domain/types";
@@ -153,11 +153,27 @@ function Bullets({ node, ctx }: { node: BulletListNode; ctx: Ctx }) {
   );
 }
 
-function Items({ nodes, ctx }: { nodes: readonly (ItemNode | BulletListNode | BoxRefNode)[]; ctx: Ctx }) {
+/** 목록 자리의 조건 블록 — 가지마다 머리 줄 + 그 자리 목록(호 · 목 유형 본문). */
+function ListCond({ node, ctx, children }: { node: { branches: readonly { id: Id; when?: string }[] }; ctx: Ctx; children: (branchIndex: number) => ReactNode }) {
+  return node.branches.map((br, i) => (
+    <li key={br.id} className={i === 0 ? "ts-doc-cond" : "ts-doc-cond is-alt"}>
+      <p className="ts-doc-cond-head">
+        <span className="ts-cond-badge">{i === 0 ? "IF" : br.when === undefined ? "ELSE" : "ELIF"}</span> {br.when === undefined ? "그 밖의 경우" : expr(ctx, br.when)}
+      </p>
+      {children(i)}
+    </li>
+  ));
+}
+
+function Items({ nodes, ctx }: { nodes: readonly ItemBodyNode[]; ctx: Ctx }) {
   return (
     <ol className="ts-doc-items">
       {nodes.map((item) =>
-        item.kind === "boxRef" ? (
+        item.kind === "condBlock" ? (
+          <ListCond key={item.id} node={item} ctx={ctx}>
+            {(i) => <Items nodes={item.branches[i].children} ctx={ctx} />}
+          </ListCond>
+        ) : item.kind === "boxRef" ? (
           <li key={item.id} className="ts-doc-static-item">
             <BoxView code={item.boxCode} box={ctx.boxOf?.(item.boxCode)} />
           </li>
@@ -176,14 +192,20 @@ function Items({ nodes, ctx }: { nodes: readonly (ItemNode | BulletListNode | Bo
   );
 }
 
-function Subitems({ nodes, ctx }: { nodes: readonly SubitemNode[]; ctx: Ctx }) {
+function Subitems({ nodes, ctx }: { nodes: readonly SubitemBodyNode[]; ctx: Ctx }) {
   return (
     <ol className="ts-doc-subitems">
-      {nodes.map((s) => (
-        <li key={s.id} className="ts-doc-subitem">
-          <Inlines nodes={s.children} ctx={ctx} />
-        </li>
-      ))}
+      {nodes.map((s) =>
+        s.kind === "condBlock" ? (
+          <ListCond key={s.id} node={s} ctx={ctx}>
+            {(i) => <Subitems nodes={s.branches[i].children} ctx={ctx} />}
+          </ListCond>
+        ) : (
+          <li key={s.id} className="ts-doc-subitem">
+            <Inlines nodes={s.children} ctx={ctx} />
+          </li>
+        ),
+      )}
     </ol>
   );
 }
@@ -224,6 +246,10 @@ export function ClauseModel(props: ClauseModelProps) {
         <p className="ts-doc-paragraph is-line">
           <Inlines nodes={clause.body} ctx={ctx} />
         </p>
+      ) : clause.mode === "item" ? (
+        <Items nodes={clause.body} ctx={ctx} />
+      ) : clause.mode === "subitem" ? (
+        <Subitems nodes={clause.body} ctx={ctx} />
       ) : (
         <Blocks nodes={clause.body} ctx={ctx} />
       )}

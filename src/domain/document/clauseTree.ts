@@ -29,6 +29,10 @@ export const CLAUSE_DOCUMENT_ID = "clause-document";
 export const CLAUSE_ARTICLE_ID = "clause-article";
 /** 「문구」 본문을 담는 항 — 문장 한 줄. */
 export const CLAUSE_LINE_ID = "clause-line";
+/** 「호」 · 「목」 본문을 담는 항 — 문장 없이 호 목록만 쓰는 자리(화면에는 그 항의 호 목록만 그린다). */
+export const CLAUSE_HOST_PARAGRAPH_ID = "clause-host-paragraph";
+/** 「목」 본문을 담는 호 — 문장 없이 목 목록만 쓰는 자리. */
+export const CLAUSE_HOST_ITEM_ID = "clause-host-item";
 /** 옵션 자리 운반체의 코드 접두 — 공용조항 코드(`C0001`)와 겹치지 않는다. */
 export const OPTION_REF_PREFIX = "option:";
 
@@ -83,12 +87,42 @@ function blockToTree(node: C.Block): BlockNode {
   return { ...rest, children: node.children.map(inlineToTree), ...(items && items.length > 0 ? { items: items.map((it) => (it.kind === "bulletList" ? bulletsToTree(it) : it.kind === "boxRef" ? it : itemToTree(it))) } : {}) };
 }
 
+function itemBodyToTree(node: C.ItemBodyNode): NonNullable<ParagraphNode["items"]>[number] {
+  if (node.kind === "condBlock") return { ...node, branches: node.branches.map((br) => ({ ...br, children: br.children.map(itemBodyToTree) as BlockNode[] })) };
+  if (node.kind === "bulletList") return bulletsToTree(node);
+  if (node.kind === "boxRef") return node;
+  return itemToTree(node);
+}
+
+function subitemBodyToTree(node: C.SubitemBodyNode): NonNullable<ItemNode["subitems"]>[number] {
+  if (node.kind === "condBlock") return { ...node, branches: node.branches.map((br) => ({ ...br, children: br.children.map(subitemBodyToTree) as BlockNode[] })) };
+  return subitemToTree(node);
+}
+
+/** 본문 → 조 자식 — 유형마다 자리가 다르다(문구 = 항 한 줄의 문장 · 항 = 조 자식 · 호 = 자리 항의 호 목록 · 목 = 자리 호의 목 목록). */
+function articleChildrenOf(mode: ClauseMode, body: ClauseBody): BlockNode[] {
+  switch (mode) {
+    case "inline":
+      return [{ id: CLAUSE_LINE_ID, kind: "paragraph", children: (body as C.Inline[]).map(inlineToTree) } satisfies ParagraphNode];
+    case "block":
+      return (body as C.Block[]).map(blockToTree);
+    case "item":
+      return [{ id: CLAUSE_HOST_PARAGRAPH_ID, kind: "paragraph", children: [], items: (body as C.ItemBodyNode[]).map(itemBodyToTree) } satisfies ParagraphNode];
+    case "subitem":
+      return [
+        {
+          id: CLAUSE_HOST_PARAGRAPH_ID,
+          kind: "paragraph",
+          children: [],
+          items: [{ id: CLAUSE_HOST_ITEM_ID, kind: "item", children: [], subitems: (body as C.SubitemBodyNode[]).map(subitemBodyToTree) }],
+        } satisfies ParagraphNode,
+      ];
+  }
+}
+
 /** 공용조항 본문을 편집 트리로 — 제목은 공용조항명(화면에는 그리지 않는다). */
 export function clauseBodyToTree(mode: ClauseMode, body: ClauseBody, title = ""): DocumentNode {
-  const children: BlockNode[] =
-    mode === "inline"
-      ? [{ id: CLAUSE_LINE_ID, kind: "paragraph", children: (body as C.Inline[]).map(inlineToTree) } satisfies ParagraphNode]
-      : (body as C.Block[]).map(blockToTree);
+  const children = articleChildrenOf(mode, body);
   const article: ArticleNode = { id: CLAUSE_ARTICLE_ID, kind: "article", title: "", children };
   return { id: CLAUSE_DOCUMENT_ID, kind: "document", title, children: [article] };
 }
@@ -175,6 +209,24 @@ function blockFromTree(node: BlockNode): C.Block {
   return { ...rest, children: node.children.map(inlineFromTree), ...(items && items.length > 0 ? { items: items.map(itemFromTree) } : {}) };
 }
 
+function itemBodyFromTree(node: NonNullable<ParagraphNode["items"]>[number]): C.ItemBodyNode {
+  if (node.kind === "condBlock") return { ...node, branches: node.branches.map((br) => ({ ...br, children: (br.children as NonNullable<ParagraphNode["items"]>).map(itemBodyFromTree) })) };
+  return itemFromTree(node);
+}
+
+function subitemBodyFromTree(node: NonNullable<ItemNode["subitems"]>[number]): C.SubitemBodyNode {
+  if (node.kind === "condBlock") return { ...node, branches: node.branches.map((br) => ({ ...br, children: (br.children as NonNullable<ItemNode["subitems"]>).map(subitemBodyFromTree) })) };
+  return subitemFromTree(node);
+}
+
+/** 「호」 · 「목」 본문의 자리 항 — 조에 그 항 하나뿐이고 문장이 없어야 한다. 없으면(빈 본문) undefined. */
+function hostParagraph(children: readonly BlockNode[], what: string): ParagraphNode | undefined {
+  const [host, ...more] = children;
+  if (!host) return undefined;
+  if (host.kind !== "paragraph" || more.length > 0 || host.children.length > 0) throw new NotClause(`「${what}」 함수조항은 ${what} 목록입니다 — 항 · 문장을 둘 수 없습니다`);
+  return host;
+}
+
 /** 편집 트리를 공용조항 본문으로 — 공용조항에 없는 노드가 있으면 거부(그 사유 한 줄). */
 export function treeToClauseBody(mode: ClauseMode, tree: DocumentNode): Result<ClauseBody> {
   try {
@@ -183,6 +235,14 @@ export function treeToClauseBody(mode: ClauseMode, tree: DocumentNode): Result<C
     if (article.kind !== "article") return refuse(article.kind, "본문");
     if (rest.length > 0) return refuse(rest[0]!.kind, "본문");
     if (mode === "block") return ok(article.children.map(blockFromTree));
+    if (mode === "item") return ok((hostParagraph(article.children, "호")?.items ?? []).map(itemBodyFromTree));
+    if (mode === "subitem") {
+      const host = hostParagraph(article.children, "목");
+      const [item, ...more] = host?.items ?? [];
+      if (!item) return ok([]);
+      if (item.kind !== "item" || more.length > 0 || item.children.length > 0) throw new NotClause("「목」 함수조항은 목 목록입니다 — 호 · 문장을 둘 수 없습니다");
+      return ok((item.subitems ?? []).map(subitemBodyFromTree));
+    }
     const [line, ...more] = article.children;
     if (!line) return ok([]);
     if (line.kind !== "paragraph" || more.length > 0 || (line.items?.length ?? 0) > 0) throw new NotClause("「문구」 함수조항은 문장 한 줄입니다 — 항 · 호 · 목을 둘 수 없습니다");
@@ -195,10 +255,13 @@ export function treeToClauseBody(mode: ClauseMode, tree: DocumentNode): Result<C
 
 // ───────────────────────────── 제 항 · 사용처 조 참조 표기 ─────────────────────────────
 
-/** 위치 순번 → 「제1항 제2호 가목」 (첫 단계가 조면 「제2조 제1항 …」). */
+/** 위치 순번 → 「제1항 제2호 가목」 (첫 단계가 조면 「제2조 제1항 …」). 0 은 자리만 있는 단계(호 · 목 유형의 자리 항 · 호)라 적지 않는다. */
 function positionText(parts: readonly number[], fromArticle: boolean): string {
   const units = fromArticle ? ["조", "항", "호"] : ["항", "호"];
-  return parts.map((n, i) => (i < units.length ? `제${n}${units[i]}` : subitemRefLabel(n))).join(" ");
+  return parts
+    .map((n, i) => (n === 0 ? undefined : i < units.length ? `제${n}${units[i]}` : subitemRefLabel(n)))
+    .filter((t) => t !== undefined)
+    .join(" ");
 }
 
 /** 편집 트리(공용조항 본문을 싼 트리)의 항 · 호 · 목 id → 본문 안 순번 `[항, 호?, 목?]`. 조건 블록 안도 차례로 센다. */
@@ -213,16 +276,30 @@ export function clausePositions(tree: DocumentNode): Map<string, number[]> {
       return;
     }
     if (n.kind !== "paragraph") return;
-    const pp = ++p;
-    out.set(n.id, [pp]);
+    // 호 · 목 유형의 자리 항 · 호는 번호 단계가 아니다 — 0 으로 두어 「제2호」 · 「나목」만 적는다
+    const pp = n.id === CLAUSE_HOST_PARAGRAPH_ID ? 0 : ++p;
+    if (pp > 0) out.set(n.id, [pp]);
     let i = 0;
-    for (const it of n.items ?? []) {
-      if (it.kind !== "item") continue;
-      const ii = ++i;
-      out.set(it.id, [pp, ii]);
-      let u = 0;
-      for (const s of it.subitems ?? []) if (s.kind === "subitem") out.set(s.id, [pp, ii, ++u]);
-    }
+    const items = (list: readonly NonNullable<ParagraphNode["items"]>[number][]) => {
+      for (const it of list) {
+        if (it.kind === "condBlock") {
+          for (const br of it.branches) items(br.children as NonNullable<ParagraphNode["items"]>);
+          continue;
+        }
+        if (it.kind !== "item") continue;
+        const ii = it.id === CLAUSE_HOST_ITEM_ID ? 0 : ++i;
+        if (ii > 0) out.set(it.id, [pp, ii]);
+        let u = 0;
+        const subitems = (sl: readonly NonNullable<ItemNode["subitems"]>[number][]) => {
+          for (const s of sl) {
+            if (s.kind === "condBlock") for (const br of s.branches) subitems(br.children as NonNullable<ItemNode["subitems"]>);
+            else if (s.kind === "subitem") out.set(s.id, [pp, ii, ++u]);
+          }
+        };
+        subitems(it.subitems ?? []);
+      }
+    };
+    items(n.items ?? []);
   };
   for (const c of article.children) block(c);
   return out;
