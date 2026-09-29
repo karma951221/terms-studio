@@ -116,4 +116,34 @@ describe("saveEnumEditAction", () => {
     expect(r.recheck?.map((e) => [e.via, nodeKey(e.from), nodeKey(e.to)])).toEqual([["expression", "discriminator:D0001", "enumValue:E0003/V01"]]);
     expect(await saveEnumEditAction("E0003", { label: "납입 주기", description: "", values: [...values, { code: "V05", label: "분기납" }] })).toEqual({ ok: true });
   });
+  it("필드를 더하고 값에 넣어 저장 — 새 필드는 new: 키로 가리키고 저장 뒤 F 코드를 받는다 · 빈 새 필드 행은 버린다 (ADR-0078 결정 2)", async () => {
+    actor = editor;
+    const def = unwrap(await s.catalog.createEnum(editor, { label: "면제사유", values: [{ label: "암" }, { label: "뇌졸중" }] }));
+    const [a, b] = def.values.map((v) => v.code);
+    const r = await saveEnumEditAction(def.code, {
+      label: "면제사유",
+      description: "",
+      fields: [{ key: "new:1", label: "면책여부", type: "boolean" }, { key: "new:2", label: " ", type: "string" }],
+      values: [{ code: a!, label: "암", fields: { "new:1": true } }, { code: b!, label: "뇌졸중", fields: {} }],
+    });
+    expect(r).toEqual({ ok: true });
+    const saved = await s.catalog.getEnum(def.code);
+    expect(saved?.fields).toEqual([{ key: "F01", label: "면책여부", type: "boolean", order: 0 }]);
+    expect(saved?.values.map((v) => v.fields)).toEqual([{ F01: true }, undefined]);
+  });
+
+  it("필드를 빼고 저장 — 관리자 1차는 필드 문구의 확인창(값 행 줄 대신 필드 입력 손실) · 확인하면 저장", async () => {
+    actor = admin;
+    const def = unwrap(await s.catalog.createEnum(editor, { label: "면제사유2", values: [{ label: "암" }] }));
+    const [a] = def.values.map((v) => v.code);
+    unwrap(await s.catalog.reviseEnum(editor, def.code, { label: "면제사유2", description: "", fields: [{ ref: "n", label: "약관표시명", type: "string" }], values: [{ code: a!, label: "암", fields: { n: "암(유사암제외)" } }] }));
+    const input = { label: "면제사유2", description: "", fields: [], values: [{ code: a!, label: "암", fields: {} }] };
+    const first = await saveEnumEditAction(def.code, input);
+    if (first.ok !== "confirm") throw new Error("확인 기대");
+    expect(first.title).toBe("필드를 빼거나 타입을 바꾸면 값마다 넣은 입력이 지워진다");
+    expect(first.actionLabel).toBe("필드 1개 바꾸고 저장");
+    expect(first.valueRowsLine).toBe("필드 「약관표시명」 — 값 1개의 입력이 지워진다");
+    expect(await saveEnumEditAction(def.code, input, true)).toEqual({ ok: true });
+    expect((await s.catalog.getEnum(def.code))?.fields).toBeUndefined();
+  });
 });

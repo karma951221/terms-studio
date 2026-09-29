@@ -4050,6 +4050,14 @@ button.ts-ref-fold:hover {
   padding: 0 0 4px;
 }
 
+/* 열거형 필드 표 — 제목 「필드」 는 왼쪽, 「+」 는 오른쪽. 값 표와 사이를 띄운다 (ADR-0078 결정 2) */
+.ts-enum-fields {
+  margin: 0 0 16px;
+}
+.ts-enum-fields > .ts-values-head {
+  justify-content: space-between;
+}
+
 .ts-table tr.is-error > td {
   background: var(--ts-error-bg);
 }
