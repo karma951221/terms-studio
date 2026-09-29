@@ -168,6 +168,32 @@ test(
       await expect(body.locator(".ts-doc-cond .ts-doc-paragraph")).toHaveCount(2);
       await expect(body.locator(".ts-doc-cond select")).toHaveCount(0);
     });
+
+    await ev.action("툴바#9", "머리 줄을 셋으로 늘려 결합을 섞으면 왼쪽부터 묶이는 괄호가 보이고, 같게 바꾸면 사라진다 (기능/문면 §3.3)", async () => {
+      await page.getByRole("button", { name: "편집", exact: true }).click();
+      const head = body.locator("[data-cond-head]");
+      for (const [n, value] of [[2, "암"], [3, "수술비"]] as const) {
+        await head.getByRole("button", { name: `IF ${n - 1}번 줄 뒤에 조건 줄 추가` }).click();
+        await pickCombo(head.getByRole("combobox", { name: `IF ${n}번 줄 변수` }), { value: "D0001" });
+        const input = head.getByRole("textbox", { name: `IF ${n}번 줄 값` });
+        await input.fill(value);
+        await input.press("Enter");
+      }
+      // 괄호가 있으면 모든 줄이 여는 자리(변수 앞) · 닫는 자리(값 뒤)를 갖는다 — 빈 글자일 수 있다
+      const opens = head.locator(".ts-cond-paren-open");
+      const closes = head.locator(".ts-cond-paren-close");
+      // 모두 AND — 괄호 자리 없음
+      await expect(head.locator(".ts-cond-paren")).toHaveCount(0);
+      // A or B and C → ( A or B ) and C — 첫 줄 변수 앞 「(」, 둘째 줄 값 뒤 「)」
+      await head.getByRole("combobox", { name: "IF 2번 줄 결합" }).selectOption("or");
+      await expect(opens).toHaveText(["(", "", ""]);
+      await expect(closes).toHaveText(["", ")", ""]);
+      await expect(head.locator(".ts-cond-paren-open + .ts-cond-var")).toHaveCount(3);
+      await expect(head.locator(".ts-cond-value + .ts-cond-paren-close")).toHaveCount(3);
+      // 모두 OR 로 — 괄호가 사라진다
+      await head.getByRole("combobox", { name: "IF 3번 줄 결합" }).selectOption("or");
+      await expect(head.locator(".ts-cond-paren")).toHaveCount(0);
+    });
   },
 );
 
