@@ -4,7 +4,7 @@
  * - 조건은 **밟은 자리만** 평가한다 (ADR-0016): 가지를 앞에서부터 보다 true 인 첫 가지(또는 else)를 택하고,
  *   택하지 않은 가지 안쪽은 들여다보지 않는다. 오류·미결이면 조건 노드 전체가 오류 마커가 된다 — 조립 문맥에
  *   미결이 남았다는 것은 값이 없다는 뜻이므로 원인에 맞는 Issue 로 바꾼다 (`explainUndetermined`).
- * - 함수조항 참조는 `applyBindings`(인자 → 사용처 연결 · 없으면 기본 연결, 최종 결정 2) + `resolveOptions`(오버라이드 > 마스터, 기능/상품 §3.6)
+ * - 함수조항 참조는 `applyBindings`(인자 → 사용처 연결 · 없으면 기본 연결 · 내부 변수와 필드 읽기 · 연산은 사용처 문맥에서 값으로, 최종 결정 2) + `resolveOptions`(오버라이드 > 마스터, 기능/상품 §3.6)
  *   + `expandClause` 로 본문을 그 자리에 펼치고, 펼친 본문의 조건·슬롯은 **사용처 문맥**으로 계속 해소한다(연결한 구분자는 사용처 문맥에서 푼다).
  *   연결 누락 · 옵션 미선택·무효 · 없는 함수조항은 오류 마커.
  * - 반복(forBlock · inlineFor)은 MVP 자리만 — 만나면 `structure` 오류 마커 (구현 P7).
@@ -32,11 +32,13 @@ import type {
   SubitemNode as ClauseSubitemNode,
 } from "../clause/nodes";
 import { applyBindings } from "../clause/bind";
+import type { LocalEnv } from "../clause/locals";
 import type { Bindings } from "../clause/params";
 import { expandClause, resolveOptions } from "../clause/reference";
 import type { Clause, ClauseMode, OptionSelection } from "../clause/types";
 import type { EnumDef } from "../catalog/types";
 import type { Box } from "../document/box";
+import type { MasterTree } from "../master";
 import type { ArticleNode, BoxNode, BoxRefNode, BulletListNode, BulletNode, ClauseBlockRefNode, CondBlockNode, DocumentNode, ForBlockNode, InlineNode, ItemNode, ParagraphNode, SectionNode, SubitemNode, TableNode } from "../document/nodes";
 import { evaluate, parse, type EvalContext } from "../expression";
 import { expandRepeatTable } from "../document/repeat";
@@ -56,6 +58,8 @@ export interface ResolveEnv {
   coordinate: Coordinate;
   /** 열거형 — 함수조항 인자의 enum 상수 연결을 슬롯에 찍을 때 표시명으로 (없으면 코드). */
   enums?: ReadonlyMap<Code, EnumDef>;
+  /** 마스터 트리 — 함수조항 원천 인자(세목 폼) · 합치기 필드 타입. 없으면 MVP 정본. */
+  master?: MasterTree;
 }
 
 export interface ResolveOutcome {
@@ -190,11 +194,16 @@ class Walker {
     node: { id: Id; clauseCode: Code; options: OptionSelection; bindings?: Bindings },
     modes: readonly ClauseMode[],
     at: Coordinate,
+    f: Frame,
   ): { ok: true; mode: ClauseMode; body: (ClauseInline | ClauseBlock)[] } | { ok: false; marker: ErrorNode } {
     const defined = this.env.clauses.get(node.clauseCode);
     if (!defined) return { ok: false, marker: this.error(node.id, { kind: "brokenRef", message: `함수조항 ${node.clauseCode} 이(가) 없습니다`, at }) };
-    // 인자 연결 — 펼치기 전에 arg.X 를 사용처 연결(없으면 기본 연결)로 바꿔 쓴다
-    const bound = applyBindings(defined, node.bindings, (value, param) => this.constText(value, param.type), at);
+    // 인자 연결 — 펼치기 전에 arg.X 를 사용처 연결(없으면 기본 연결)로 바꿔 쓰고, 내부 변수 · 필드 읽기 · 연산은 사용처 문맥에서 값으로 푼다
+    const usage = this.evalOf(f);
+    const locals: LocalEnv | undefined = usage
+      ? { ctx: usage, enums: this.env.enums ?? new Map(), ...(this.env.master ? { master: this.env.master } : {}), explain: (reason, where) => this.ctx.explainUndetermined(reason, where), text: (value, type) => this.constText(value, type) }
+      : undefined;
+    const bound = applyBindings(defined, node.bindings, (value, param) => this.constText(value, param.type), at, locals);
     if (!bound.ok) {
       const issues = bound.rejection.reason === "invalid" ? bound.rejection.issues : [{ kind: "argUnbound" as const, message: `함수조항 ${node.clauseCode} 의 인자를 연결할 수 없습니다`, at }];
       this.issues.push(...issues);
@@ -257,7 +266,7 @@ class Walker {
       case "inlineFor":
         return [this.error(n.id, { kind: "structure", message: "인라인 반복은 아직 조립하지 않습니다 (P7)", at })];
       case "clauseInlineRef": {
-        const r = this.expand(n, ["inline"], at);
+        const r = this.expand(n, ["inline"], at, f);
         if (!r.ok) return [r.marker];
         return this.inlines(r.body as ClauseInline[], { ...f, path: [...f.path, n.id] });
       }
@@ -277,7 +286,7 @@ class Walker {
       if (n.kind === "bulletList") return this.static(n, f) as (RBulletList<RInline> | ErrorNode)[];
       if (n.kind === "clauseBlockRef") {
         // 「목」 함수조항 — 목 목록을 이 자리에 펴고 번호는 사용처에서 이어 매긴다 (최종 결정 4)
-        const r = this.expand(n, ["subitem"], this.at(f, n.id));
+        const r = this.expand(n, ["subitem"], this.at(f, n.id), f);
         if (!r.ok) return [r.marker];
         return this.subitems(r.body as unknown as AnySubitemSlot[], { ...f, path: [...f.path, n.id] });
       }
@@ -377,7 +386,7 @@ class Walker {
       if (n.kind === "clauseBlockRef") {
         // 「호」 함수조항 — 호 목록(빈 목록 · 여러 호 가능)을 이 자리에 펴고 번호는 사용처에서 이어 매긴다 (최종 결정 4).
         // 다른 유형이면(저장 검사를 거치지 않은 트리) expand 가 자리 유형 오류 마커를 낸다
-        const r = this.expand(n, ["item"], this.at(f, n.id));
+        const r = this.expand(n, ["item"], this.at(f, n.id), f);
         if (!r.ok) return [r.marker];
         return this.items(r.body as unknown as AnyItemSlot[], { ...f, path: [...f.path, n.id] });
       }
@@ -419,7 +428,7 @@ class Walker {
           return this.blocks(r.branch.children as AnyBlock[], { ...f, path: [...f.path, n.id, r.branch.id] }, excludeFromComparison);
         }
         case "clauseBlockRef": {
-          const r = this.expand(n, ["block"], at);
+          const r = this.expand(n, ["block"], at, f);
           if (!r.ok) return [r.marker];
           return this.blocks(
             r.body as ClauseBlock[],

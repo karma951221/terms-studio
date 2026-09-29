@@ -3,8 +3,10 @@
  *
  * - 구분자 연결: `arg.X` → 그 구분자 코드. 펼친 본문은 사용처 문맥에서 평가되므로 늦은 바인딩과 같은 결과다(사용처마다 다른 구분자).
  * - 상수 연결: 조건 · 비교 안의 `arg.X` → 리터럴, 슬롯 `arg.X` → 그 값의 글(`formatConst` — 조립의 값 표기 규칙).
- * - 원천 · 반복의 현재 원소: P7 본문은 읽을 수 없다(목록 연산은 P8, 반복은 P11) — 식에 닿으면 `unsupported`.
- * - 인자를 읽지 않는 식은 손대지 않는다(소스 그대로 — 스냅샷 무변동). 인자가 없는 함수조항은 그대로 돌려준다.
+ * - 함수조항 전용 식(내부 변수 · 열거값 필드 읽기 · 연산 · 원천 인자, P8): 평가 재료(`LocalEnv` — 사용처 문맥)를 주면 그 자리에서
+ *   값으로 바꾼다(조건 · 비교 안 = 리터럴, 슬롯 = 글, locals.ts `localScope`). 재료가 없으면(편집기 미리보기) 그 부분은 손대지 않는다.
+ * - 반복의 현재 원소: 반복 블록(P11)과 함께 연다 — 식에 닿으면 `unsupported`.
+ * - 인자 · 내부 변수를 읽지 않는 식은 손대지 않는다(소스 그대로 — 스냅샷 무변동). 인자 · 내부 변수가 없는 함수조항은 그대로 돌려준다.
  *
  * 계획은 「평가 문맥(EvalContext) 래퍼」를 적었으나, 슬롯은 치환 단계(substitute)가 따로 평가하므로 펼칠 때 소스를 바꿔 쓰는 편이
  * 조립 파이프 뒤쪽(치환 · 렌더 · 원문 대조)을 건드리지 않는다 — 결과는 같다.
@@ -12,6 +14,7 @@
 import { format, parse, refPath, type Expr, type Literal, type Ref } from "../expression";
 import { ok, reject } from "../types";
 import type { Coordinate, Issue, Result, ScalarValue } from "../types";
+import { hasClauseOnly, localScope, type LocalEnv } from "./locals";
 import type { ClauseNode, Inline } from "./nodes";
 import { effectiveBindings, type Binding, type Bindings, type ParamDef } from "./params";
 import type { Clause, ClauseBody } from "./types";
@@ -28,11 +31,14 @@ function literalOf(value: ScalarValue, param: ParamDef): Literal {
   return { type: "string", value };
 }
 
-export function applyBindings(clause: Clause, bindings: Bindings | undefined, formatConst: ConstFormatter, at: Coordinate = {}): Result<Clause> {
+export function applyBindings(clause: Clause, bindings: Bindings | undefined, formatConst: ConstFormatter, at: Coordinate = {}, env?: LocalEnv): Result<Clause> {
   const params = clause.params ?? [];
-  if (params.length === 0) return ok(clause);
+  const locals = clause.locals ?? [];
+  if (params.length === 0 && locals.length === 0) return ok(clause);
   const byName = new Map(params.map((p) => [p.name, p] as const));
   const bound = effectiveBindings(clause, bindings);
+  const scope = env ? localScope(params, locals, bound, env, at) : undefined;
+  const isSource = (name: string) => bound[name]?.kind === "source";
   const issues: Issue[] = [];
   const reported = new Set<string>();
   const fail = (issue: Issue) => {
@@ -60,13 +66,17 @@ export function applyBindings(clause: Clause, bindings: Bindings | undefined, fo
         return { kind: "ref", ref: { kind: "discriminator", code: b.code } };
       case "const":
         return { kind: "literal", literal: literalOf(b.value, param) };
-      default:
-        fail({ kind: "unsupported", message: `함수조항 ${clause.code} 의 인자 ${ref.name} — ${b.kind === "source" ? "원천(세목 선택지 목록)" : "반복의 현재 원소"} 연결은 본문 식이 아직 읽지 못합니다`, at: here });
+      case "source":
+        return undefined; // 원천은 값으로만 읽힌다 — 평가 재료가 있으면 localScope 가, 없으면(미리보기) 그대로 둔다
+      case "current":
+        fail({ kind: "unsupported", message: `함수조항 ${clause.code} 의 인자 ${ref.name} — 반복의 현재 원소 연결은 본문 식이 아직 읽지 못합니다`, at: here });
         return undefined;
     }
   };
 
+  /** 평가 재료 없이 바꿔 쓰기 — 함수조항 전용 부분(필드 읽기 · 연산 · 내부 변수)은 그대로 둔다(안의 인자를 구분자 코드로 바꾸면 모양이 깨진다). */
   const rewriteExpr = (e: Expr): Expr => {
+    if (hasClauseOnly(e, isSource) && (e.kind === "member" || e.kind === "call" || e.kind === "ref")) return e;
     switch (e.kind) {
       case "ref":
         return e.ref.kind === "param" ? (replacement(e.ref) ?? e) : e;
@@ -81,19 +91,34 @@ export function applyBindings(clause: Clause, bindings: Bindings | undefined, fo
     }
   };
 
-  /** 식 소스 → 바꾼 소스. 인자를 안 읽으면(또는 문법 오류면) 그대로. */
+  const readsArgs = (src: string) => src.includes("arg.") || src.includes("var.");
+
+  /** 식 소스 → 바꾼 소스. 인자 · 내부 변수를 안 읽으면(또는 문법 오류면) 그대로. */
   const rewrite = (src: string): string => {
-    if (!src.includes("arg.")) return src;
+    if (!readsArgs(src)) return src;
     const parsed = parse(src);
     if (!parsed.ok) return src;
+    if (scope) {
+      const r = scope.reduce(parsed.value);
+      if (r.ok) return format(r.value);
+      fail(r.issue);
+      return src;
+    }
     return format(rewriteExpr(parsed.value));
   };
 
-  /** 슬롯 — 상수 연결이면 글로, 구분자 연결이면 코드로. */
+  /** 슬롯 — 함수조항 전용 식(필드 읽기 등)이면 값 글로, 상수 연결이면 글로, 구분자 연결이면 코드로. */
   const slot = (n: Inline & { kind: "slot" }): Inline => {
-    if (!n.ref.includes("arg.")) return n;
+    if (!readsArgs(n.ref)) return n;
     const parsed = parse(n.ref);
-    if (!parsed.ok || parsed.value.kind !== "ref" || parsed.value.ref.kind !== "param") return n;
+    if (!parsed.ok) return n;
+    if (scope && hasClauseOnly(parsed.value, isSource)) {
+      const t = scope.slotText(parsed.value);
+      if (t.ok && t.value !== undefined) return { id: n.id, kind: "text", text: t.value };
+      if (!t.ok) fail(t.issue);
+      return n;
+    }
+    if (parsed.value.kind !== "ref" || parsed.value.ref.kind !== "param") return n;
     const param = byName.get(parsed.value.ref.name);
     const b = bound[parsed.value.ref.name];
     if (param && b?.kind === "const") return { id: n.id, kind: "text", text: formatConst(b.value, param) };

@@ -15,6 +15,7 @@ import { analyzeBody, allNodeIds } from "./body";
 import type { AnalyzeOptions } from "./body";
 import { allocateClauseCode, optionValueScope, type ClauseNextSeq } from "./codes";
 import type { Block, Inline } from "./nodes";
+import type { LocalDef } from "./locals";
 import type { ParamDef } from "./params";
 import { CLAUSE_MODES } from "./types";
 import type {
@@ -77,11 +78,12 @@ function withAnalysis(base: Omit<Clause, "required">, analyze?: AnalyzeOptions):
       coordinate: { document: "clause", ownerName: base.label, ...analyze?.coordinate },
     },
     base.params ?? [],
+    base.locals ?? [],
   );
   if (!r.ok) return r as Result<Clause>;
-  // 빈 인자 목록은 싣지 않는다 — 인자 0개 = 키 없음(옛 정의 · 스냅샷 무변동)
-  const { params, ...rest } = base;
-  return ok({ ...rest, ...(params && params.length > 0 ? { params } : {}), required: r.value } as Clause);
+  // 빈 인자 · 내부 변수 목록은 싣지 않는다 — 0개 = 키 없음(옛 정의 · 스냅샷 무변동)
+  const { params, locals, ...rest } = base;
+  return ok({ ...rest, ...(params && params.length > 0 ? { params } : {}), ...(locals && locals.length > 0 ? { locals } : {}), required: r.value } as Clause);
 }
 
 function findOption(clause: Clause, optionCode: Code): OptionDef | undefined {
@@ -159,6 +161,7 @@ export async function createClause(input: NewClause, ctx: ClauseContext): Promis
       body: (input.body ?? []) as Inline[] & Block[],
       options,
       params: input.params ?? [],
+      locals: input.locals ?? [],
     } as Omit<Clause, "required">,
     ctx.analyze,
   );
@@ -204,8 +207,11 @@ export function setBody(clause: Clause, body: ClauseBody, analyze?: AnalyzeOptio
  * 인자 표 교체 (최종 결정 2) — 본문도 함께 받을 수 있다(인자를 더하며 본문이 그 인자를 읽게 고친 저장 한 번 — 따로 저장하면 중간 상태가 거부된다).
  * 본문이 지운 인자를 아직 읽으면 거부된다(검사 ①). 사용처 영향(연결 누락 · 없는 인자 연결)은 서비스의 재검사 목록이 드러낸다.
  */
-export function setParams(clause: Clause, params: readonly ParamDef[], body?: ClauseBody, analyze?: AnalyzeOptions): Result<Clause> {
-  return withAnalysis({ ...clause, params: deepCopy([...params]), ...(body !== undefined ? { body } : {}) } as Omit<Clause, "required">, analyze);
+export function setParams(clause: Clause, params: readonly ParamDef[], body?: ClauseBody, analyze?: AnalyzeOptions, locals?: readonly LocalDef[]): Result<Clause> {
+  return withAnalysis(
+    { ...clause, params: deepCopy([...params]), ...(locals !== undefined ? { locals: deepCopy([...locals]) } : {}), ...(body !== undefined ? { body } : {}) } as Omit<Clause, "required">,
+    analyze,
+  );
 }
 
 /**
@@ -358,7 +364,7 @@ export async function duplicateClause(origin: Clause, ctx: ClauseContext): Promi
   const body = remapOptionSlots(deepCopy(origin.body), codeMap);
 
   return withAnalysis(
-    { code, label, mode: origin.mode, body, options, ...(origin.params?.length ? { params: deepCopy(origin.params) } : {}) } as Omit<Clause, "required">,
+    { code, label, mode: origin.mode, body, options, ...(origin.params?.length ? { params: deepCopy(origin.params) } : {}), ...(origin.locals?.length ? { locals: deepCopy(origin.locals) } : {}) } as Omit<Clause, "required">,
     ctx.analyze,
   );
 }

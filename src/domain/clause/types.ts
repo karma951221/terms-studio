@@ -10,6 +10,7 @@
  */
 import type { Code, Id } from "../types";
 import type { Block, Inline, ItemBodyNode, SubitemBodyNode } from "./nodes";
+import type { LocalDef } from "./locals";
 import type { ParamDef } from "./params";
 
 /**
@@ -58,6 +59,8 @@ interface ClauseBase {
   options: OptionDef[];
   /** 인자 — 본문이 `arg.<이름>` 으로 읽는 입력 선언 (최종 결정 2 · 기능/함수조항 §3.7). 없거나 빈 목록 = 인자 0개(고정 문장). */
   params?: ParamDef[];
+  /** 내부 변수 — 인자를 가공한 값에 붙인 이름, 본문이 `var.<이름>` 으로 읽는다 (최종 결정 2). 앞 이름만 읽는다. 없거나 빈 목록 = 내부 변수 0개. */
+  locals?: LocalDef[];
   required: RequiredRefs;
 }
 
@@ -109,6 +112,7 @@ export interface NewClause {
   body?: ClauseBody;
   options?: NewOption[];
   params?: ParamDef[];
+  locals?: LocalDef[];
 }
 
 /** 목록 화면용 요약 — 코드 · 표시명 · 모드 · 사용처 수 · 최종수정(언제 · 누가). */

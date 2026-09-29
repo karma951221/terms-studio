@@ -14,12 +14,13 @@
  *   구조(대상 ≥1 · 연결어 · 별표 코드 · 위치 경로 모양)는 항상 검사하고, 보통약관 · 별표 대상 존재는
  *   `generalReferenceIds` · `appendixExists` 를 줬을 때만 검사한다 — 문서 쪽 `validateTree` 와 같은 관례.
  */
-import { checkCondition, checkTypes, extractRefs, parse } from "../expression";
-import type { Expr, TypeResolver } from "../expression";
+import { checkTypes, extractRefs, parse } from "../expression";
+import type { EnumInfo, Expr, TypeResolver } from "../expression";
 import { CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, ok, reject } from "../types";
 import type { Code, Coordinate, Id, Issue, Result } from "../types";
 import { BLOCK_KINDS, HOST_PATH, INLINE_KINDS } from "./nodes";
 import type { Block, BoxRefNode, BulletListNode, ClauseNode, Inline, InlineBranch, BlockBranch, ItemBodyNode, ItemNode, SubitemBodyNode } from "./nodes";
+import { checkLocals, planFieldType, type LocalDef } from "./locals";
 import { checkParams, type ParamDef } from "./params";
 import type { ClauseBody, ClauseMode, OptionDef, RequiredRefs } from "./types";
 
@@ -142,6 +143,8 @@ export interface AnalyzeOptions {
   boxExists?: (code: Code) => boolean;
   /** 열거형 값 조회 — 있으면 인자 기본 연결의 enum 상수를 그 열거형 값으로 검사한다. */
   enumValues?: (enumCode: Code) => readonly Code[] | undefined;
+  /** 열거형 모양(값 · 유저 정의 필드) — 있으면 필드 읽기 · 있음 · 거르기를 검사한다(타입 조회와 함께). */
+  enums?: EnumInfo;
 }
 
 /** 공용조항 참조 노드 종류 — 본문 안에 나타나면 중첩이라 거부. */
@@ -157,6 +160,7 @@ export function analyzeBody(
   options: readonly OptionDef[],
   opts: AnalyzeOptions = {},
   params: readonly ParamDef[] = [],
+  locals: readonly LocalDef[] = [],
 ): Result<RequiredRefs> {
   const issues: Issue[] = [];
   const base = opts.coordinate ?? {};
@@ -185,7 +189,8 @@ export function analyzeBody(
       if (parsed.rejection.reason === "invalid") issues.push(...parsed.rejection.issues);
       return;
     }
-    if (role === "slot" && parsed.value.kind !== "ref") {
+    // 슬롯 = 참조 하나, 또는 열거값 필드 읽기(`arg.사유.F01` — 함수조항 전용)
+    if (role === "slot" && parsed.value.kind !== "ref" && parsed.value.kind !== "member") {
       report("typeMismatch", `슬롯의 참조는 경로 하나여야 합니다: ${source}`, path, source);
       return;
     }
@@ -398,10 +403,18 @@ export function analyzeBody(
   );
   const declared = new Map(params.map((p) => [p.name, p.type] as const));
   const paramTypes = (name: string) => declared.get(name);
+  // 4b. 내부 변수 표 (최종 결정 2) — 이름 · 앞 이름만 · 직접 읽기 금지 · 타입(개수 연산 없음)
+  const lc = checkLocals(locals, params, { coordinate: base, ...(resolveType ? { resolveType } : {}), ...(opts.enums ? { enums: opts.enums } : {}) });
+  issues.push(...lc.issues);
+  const localNames = new Set(locals.map((l) => l.name));
   let direct = false;
+  /** 오류 난 내부 변수를 읽는 식 — 타입 검사를 건너뛴다(연쇄 오류 방지). */
+  const tainted = new Set<(typeof exprs)[number]>();
   for (const e of exprs) {
     for (const { ref, path } of extractRefs(e.expr)) {
       if (ref.kind === "param" && !resolveType && !declared.has(ref.name)) report("brokenRef", `선언되지 않은 인자입니다: ${path} — 함수조항의 인자 표에 먼저 선언한다`, e.path, path);
+      if (ref.kind === "local" && !resolveType && !localNames.has(ref.name)) report("brokenRef", `선언되지 않은 내부 변수입니다: ${path} — 내부 변수 표에 먼저 선언한다`, e.path, path);
+      if (ref.kind === "local" && lc.failed.has(ref.name)) tainted.add(e);
       // 함수조항은 구분자를 직접 읽지 않고 인자만 읽는다 (최종 결정 2) — 인자를 선언하고 기본 연결로 그 구분자를 댄다
       if (ref.kind === "discriminator") {
         direct = true;
@@ -412,9 +425,11 @@ export function analyzeBody(
 
   // 5. 참조 존재·타입 (조회가 있을 때만 — 구분자 직접 읽기가 있으면 그 오류가 먼저다) — 조건은 boolean 이어야, 슬롯은 참조가 존재해야 한다. 인자는 선언 타입으로(문맥 플래그)
   if (resolveType && !direct) {
+    const clauseCtx = { params: paramTypes, locals: (n: string) => lc.types.get(n), ...(opts.enums ? { enums: opts.enums } : {}), planField: planFieldType() };
     for (const e of exprs) {
+      if (tainted.has(e)) continue;
       const at = { ...base, nodePath: e.path };
-      const r = e.role === "condition" ? checkCondition(e.expr, resolveType, at, paramTypes) : checkTypes(e.expr, resolveType, { coordinate: at, params: paramTypes });
+      const r = checkTypes(e.expr, resolveType, { coordinate: at, ...clauseCtx, ...(e.role === "condition" ? { expect: "boolean" as const } : {}) });
       if (!r.ok && r.rejection.reason === "invalid") issues.push(...r.rejection.issues);
       else if (e.role === "slot" && r.ok && r.value.kind !== "string" && r.value.kind !== "enum") {
         report("typeMismatch", `값 슬롯은 string·enum 만 허용합니다 (${r.value.kind} 불가)`, e.path, e.expr.kind === "ref" ? undefined : "");
@@ -429,8 +444,12 @@ export function analyzeBody(
   const discriminators: Code[] = [];
   const attributes: Code[] = [];
   const defaultOf = new Map(params.flatMap((p) => (p.default?.kind === "discriminator" ? [[p.name, p.default.code] as const] : [])));
-  for (const e of exprs) {
-    for (const { ref } of extractRefs(e.expr)) {
+  const localExprs = locals.flatMap((l) => {
+    const p = typeof l.expr === "string" ? parse(l.expr) : undefined;
+    return p?.ok ? [p.value] : [];
+  });
+  for (const expr of [...exprs.map((e) => e.expr), ...localExprs]) {
+    for (const { ref } of extractRefs(expr)) {
       const code = ref.kind === "param" ? defaultOf.get(ref.name) : undefined;
       if (code !== undefined && !discriminators.includes(code)) discriminators.push(code);
       if (ref.kind === "attr" && !attributes.includes(ref.code)) attributes.push(ref.code);

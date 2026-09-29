@@ -144,7 +144,7 @@ function prepare(
   s: Shared,
   opts: { coordinate: ReturnType<typeof specialCoordinate>; overrides?: readonly ClauseOptionOverride[]; source: Coordinate; valueSource: Coordinate; title?: string },
 ): Prepared {
-  const resolved = resolveDocument({ ...doc, ...(opts.title !== undefined ? { title: opts.title } : {}) }, ctx, { clauses: s.clauses, boxes: s.boxes, overrides: overrideMap(opts.overrides ?? []), coordinate: opts.coordinate, enums: s.enums });
+  const resolved = resolveDocument({ ...doc, ...(opts.title !== undefined ? { title: opts.title } : {}) }, ctx, { clauses: s.clauses, boxes: s.boxes, overrides: overrideMap(opts.overrides ?? []), coordinate: opts.coordinate, enums: s.enums, ...(s.master ? { master: s.master } : {}) });
   const substituted = substituteSlots(resolved.doc, ctx, { catalog: s.catalog, enums: s.enums, master: s.master });
   const issues = [...resolved.issues, ...substituted.issues].map((issue): Issue => {
     if (issue.source) return issue;

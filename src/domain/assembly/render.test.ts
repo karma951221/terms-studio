@@ -281,6 +281,67 @@ describe("참조 슬롯 렌더", () => {
     });
   });
 
+  describe("함수조항 내부 변수 — 원천(적용 납입면제종)의 사유 합치기로 가지를 고른다 (최종 결정 2 · 기능/함수조항 §3.7)", () => {
+    /** 종들(원천: 적용여부 = 예) → 모든사유 = 종들.합치기(waiver.reasons) → 암있음 = 모든사유.있음('V01'). 암있음이면 암 항, 뒤에 첫 사유 표시명(필드). */
+    const 부가항: Clause = {
+      code: "C0200",
+      label: "면제 부가항",
+      mode: "block",
+      body: [
+        { id: "p", kind: "paragraph", children: [{ id: "c", kind: "inlineCond", branches: [{ id: "c-if", when: "var.암있음", children: [text("t1", "암보장개시일")] }, { id: "c-else", children: [text("t2", "없음")] }] }] },
+        { id: "q", kind: "paragraph", children: [{ id: "s", kind: "slot", ref: "arg.대표사유.F01" }] },
+      ],
+      options: [],
+      params: [
+        { name: "종들", type: { kind: "planOptions", form: "waiver" }, default: { kind: "source", source: { form: "waiver", filter: "waiver.applies = true" } } },
+        { name: "대표사유", type: { kind: "enum", enumCode: "E0009" }, default: { kind: "const", value: "V02" } },
+      ],
+      locals: [
+        { name: "모든사유", expr: "arg.종들.합치기(waiver.reasons)" },
+        { name: "암있음", expr: "var.모든사유.있음('V01')" },
+      ],
+      required: { discriminators: [], attributes: [] },
+    };
+    function run(reasons: Record<string, string[]>): { lines: string[]; issues: unknown[] } {
+      const base = alphaPlusFixture();
+      const input: AssemblyInput = {
+        ...base,
+        master: base.master!.map((f) => (f.key === "waiver" ? { ...f, fields: [...f.fields, { key: "reasons", label: "사유", type: { kind: "list<enum>", enumCode: "E0009" } }] } : f)),
+        enums: [
+          ...base.enums,
+          {
+            code: "E0009",
+            label: "사유",
+            fields: [{ key: "F01", label: "약관표시명", type: "string", order: 1 }],
+            values: [
+              { code: "V01", label: "암", order: 0, fields: { F01: "암" } },
+              { code: "V02", label: "뇌졸중", order: 1, fields: { F01: "뇌졸중(뇌출혈 포함)" } },
+            ],
+          },
+        ],
+        product: {
+          ...base.product,
+          planOptions: base.product.planOptions.map((o) => (reasons[o.id] ? { ...o, values: new Map([...o.values, ["waiver.reasons", { entered: true as const, value: reasons[o.id] }]]) } : o)),
+        },
+      };
+      const ctx = buildContexts(input).general;
+      const doc: DocumentNode = { kind: "document", id: "g", title: "보통약관", children: [{ kind: "article", id: "a", title: "조", children: [{ kind: "clauseBlockRef", id: "r", clauseCode: "C0200", options: {} }] }] };
+      const enums = new Map(input.enums.map((e) => [e.code, e]));
+      const resolved = resolveDocument(doc, ctx, { clauses: new Map([["C0200", 부가항]]), overrides: new Map(), coordinate: at, enums, master: input.master });
+      const article = resolved.doc.children[0];
+      if (article.kind !== "article") return { lines: [], issues: resolved.issues };
+      return { lines: article.children.map((p) => (p.kind === "paragraph" ? p.children.map((c) => (c.kind === "text" ? c.text : "?")).join("") : "?")), issues: resolved.issues };
+    }
+
+    it("적용 종(1종)의 사유에 암이 있으면 암 가지 · 필드 슬롯은 대표 사유의 약관표시명", () => {
+      expect(run({ "opt-type-1": ["V02", "V01"], "opt-type-2": [] })).toEqual({ lines: ["암보장개시일", "뇌졸중(뇌출혈 포함)"], issues: [] });
+    });
+
+    it("암은 적용 안 되는 종(2종)에만 있으면 거름에 걸려 없음 가지", () => {
+      expect(run({ "opt-type-1": ["V02"], "opt-type-2": ["V01"] }).lines).toEqual(["없음", "뇌졸중(뇌출혈 포함)"]);
+    });
+  });
+
   it("생략된 특약 조 참조는 연결된 보통약관 조로 해소한다", () => {
     const doc: SubstitutedDoc = {
       kind: "document",

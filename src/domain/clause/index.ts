@@ -9,11 +9,13 @@
  * - reference.ts   : 부착 검사 · 옵션 선택 검증 · 오버라이드 해소 · expandClause · 사용처 재검사
  * - params.ts      : 인자 · 인자 연결 · 기본 연결 (검사 ① 인자 표 · 검사 ② 사용처 연결)
  * - bind.ts        : applyBindings — 펼치기 전에 arg.X 를 연결로 바꿔 쓴다
+ * - locals.ts      : 내부 변수 (검사 ① 내부 변수 표 · 펼칠 때 사용처 문맥 평가 localScope)
  */
 export * from "./bind";
 export * from "./body";
 export * from "./codes";
 export * from "./definitions";
+export * from "./locals";
 export * from "./nodes";
 export * from "./params";
 export * from "./reference";

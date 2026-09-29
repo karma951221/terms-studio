@@ -15,6 +15,7 @@
  */
 import { jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
+import type { LocalDef } from "@/domain/clause/locals";
 import type { ParamDef } from "@/domain/clause/params";
 import type { ClauseBody, ClauseMode, OptionDef } from "@/domain/clause/types";
 import type { Code } from "@/domain/types";
@@ -32,6 +33,8 @@ export const clauses = pgTable("clauses", {
   options: jsonb("options").$type<OptionDef[]>().notNull(),
   /** 인자 선언 목록 (ParamDef[] — 이름 · 타입 · 기본 연결, 최종 결정 2). 빈 목록 = 인자 0개. */
   params: jsonb("params").$type<ParamDef[]>().notNull().default([]),
+  /** 내부 변수 목록 (LocalDef[] — 이름 · 식, 최종 결정 2). 빈 목록 = 내부 변수 0개. */
+  locals: jsonb("locals").$type<LocalDef[]>().notNull().default([]),
   /** 요구 구분자 코드 (식에서 자동 추출). */
   requiredDiscriminators: jsonb("required_discriminators").$type<Code[]>().notNull(),
   /** 요구 담보속성 종류 코드. */
