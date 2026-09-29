@@ -4,7 +4,7 @@
  * - 선택지 문구는 평문만 받는다(기능/공용조항 §6.2) — 화면은 글 한 줄, 저장은 텍스트 노드 하나.
  * - 새 옵션은 저장 전까지 `new:*` 코드라, 본문의 옵션 자리를 저장 때 실제 코드로 바꾼다.
  */
-import { isInlineBody, type Block, type BoxNode, type BulletListNode, type ClauseBody, type Inline } from "@/domain/clause";
+import { isInlineBody, type Block, type BulletListNode, type ClauseBody, type Inline } from "@/domain/clause";
 import type { Id } from "@/domain/types";
 
 export const isNewCode = (code: string) => code.startsWith("new:");
@@ -41,9 +41,6 @@ function mapInlines(body: ClauseBody, fn: (nodes: readonly Inline[]) => Inline[]
       };
     });
   if (isInlineBody(body)) return fn(body);
-  // 「박스」 본문 — 박스 하나의 줄마다 (옵션 자리 · 슬롯은 줄 안에 있다)
-  if ((body as { kind: string }[]).some((n) => n.kind === "box"))
-    return (body as BoxNode[]).map((box) => ({ ...box, lines: box.lines.map((line) => ({ ...line, children: fn(line.children) })) }));
   return blocks(body as Block[]);
 }
 

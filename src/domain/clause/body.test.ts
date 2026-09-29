@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { analyzeBody, collectExpressions, allNodeIds } from "./body";
-import type { Block, BoxNode, Inline } from "./nodes";
+import type { Block, Inline } from "./nodes";
 import type { OptionDef } from "./types";
 
 function unwrap<T>(r: { ok: true; value: T } | { ok: false; rejection: unknown }): T {
@@ -290,22 +290,6 @@ describe("공용조항 조 참조 범위 — 제 항 · 사용처 위치 (§3.5)
     expect(issuesOf(analyzeBody("block", bad, [])).map((i) => i.kind)).toEqual(["structure"]);
     const ok: Block[] = [{ id: "p", kind: "paragraph", children: [{ id: "r", kind: "articleRef", targets: [{ nodeId: "2.1.3" }], connector: "및", scope: "host" }] }];
     unwrap(analyzeBody("block", ok, []));
-  });
-});
-
-describe("「박스」 공용조항 — 제목 + 줄, 줄에는 글 · 값 슬롯 · 옵션 자리만 (§3.1)", () => {
-  const box = (children: Inline[]): BoxNode[] => [{ id: "b", kind: "box", title: "용어풀이", lines: [{ id: "l1", kind: "line", children }] }];
-
-  it("글 · 값 슬롯 · 옵션 자리로 된 줄은 통과하고 요구 구분자가 추출된다", () => {
-    const r = unwrap(analyzeBody("box", box([{ id: "t", kind: "text", text: "보장개시일 — " }, { id: "s", kind: "slot", ref: "D0001" }, { id: "o", kind: "optionSlot", optionCode: "O01" }]), 옵션));
-    expect(r.discriminators).toEqual(["D0001"]);
-  });
-
-  it("줄에 조건 · 조 참조는 둘 수 없고, 박스는 하나뿐이다", () => {
-    const cond: Inline = { id: "c", kind: "inlineCond", branches: [{ id: "b1", when: "D0001 = 'x'", children: [] }] };
-    expect(issuesOf(analyzeBody("box", box([cond]), [])).map((i) => i.kind)).toEqual(["structure"]);
-    const two: BoxNode[] = [...box([]), { id: "b2", kind: "box", title: "둘째", lines: [] }];
-    expect(issuesOf(analyzeBody("box", two, [])).map((i) => i.kind)).toEqual(["structure"]);
   });
 });
 

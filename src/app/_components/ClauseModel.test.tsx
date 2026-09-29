@@ -85,20 +85,3 @@ describe("ClauseModel — 공용조항 본문의 모델을 편다", () => {
     expect(render({})).toContain("· 미선택");
   });
 });
-
-describe("「박스」 공용조항 모델 — 문면 박스와 같은 상자, 줄의 옵션 자리 · 슬롯은 칩", () => {
-  it("제목 【…】 · 줄마다 한 줄, 옵션 자리는 선택지 전부 + 고른 것", () => {
-    const box: Clause = {
-      code: "C0100",
-      label: "【계약 전 알릴 의무】",
-      mode: "box",
-      required: { discriminators: [], attributes: [] },
-      options: [{ code: "O01", label: "1째 줄", order: 0, values: [{ code: "V01", label: "청약서에서", order: 0, body: [{ id: "v1", kind: "text", text: "청약서에서" }] }, { code: "V02", label: "서면으로", order: 1, body: [{ id: "v2", kind: "text", text: "서면으로" }] }] }],
-      body: [{ id: "b", kind: "box", title: "계약 전 알릴 의무", lines: [{ id: "l1", kind: "line", children: [{ id: "t", kind: "text", text: "회사가 " }, { id: "o", kind: "optionSlot", optionCode: "O01" }] }] }],
-    };
-    const html = renderToStaticMarkup(<ClauseModel clause={box} selected={{ O01: "V02" }} references={new Map()} />);
-    expect(html).toContain("ts-doc-box");
-    expect(html).toContain("【계약 전 알릴 의무】");
-    expect(html).toContain("✓서면으로");
-  });
-});

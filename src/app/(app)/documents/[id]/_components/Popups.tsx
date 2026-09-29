@@ -483,7 +483,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
               return code ? [{ type: "insert", node: b.clauseBlock(code, optionsOf(fd)), at: spec.at }] : "공용조항을 고른다.";
             }}
           >
-            <ClauseFields clauses={clausesFitting(env.clauses, spec.at)} />
+            <ClauseFields clauses={clausesFitting(env.clauses)} />
             <PopActions onCancel={onClose} confirmLabel="넣기" />
           </PopForm>
         </Popover>

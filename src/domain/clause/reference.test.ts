@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Discriminator } from "../catalog/types";
-import type { Block, BoxNode, Inline } from "./nodes";
+import type { Block, Inline } from "./nodes";
 import {
   checkAttachmentForReference,
   expandClause,
@@ -11,7 +11,7 @@ import {
   validateOptionSelection,
   type Usage,
 } from "./reference";
-import type { BlockClause, BoxClause, InlineClause } from "./types";
+import type { BlockClause, InlineClause } from "./types";
 
 function unwrap<T>(r: { ok: true; value: T } | { ok: false; rejection: unknown }): T {
   if (!r.ok) throw new Error(`기대: ok, 실제: ${JSON.stringify(r.rejection)}`);
@@ -256,22 +256,5 @@ describe("expandClause — 제 항 · 사용처 위치 조 참조를 사용처 �
   it("사용처가 위치를 못 풀면 `host:<경로>` — 조립 렌더가 사라진 대상(articleGone)으로 알린다", () => {
     const body = unwrap(expandClause(소멸, {}, "ref")) as Block[];
     expect(body[0].kind === "paragraph" && body[0].children[0]).toMatchObject({ targets: [{ nodeId: "host:1" }] });
-  });
-});
-
-describe("expandClause — 「박스」 공용조항은 줄의 옵션 자리를 선택지 문구로", () => {
-  it("박스 · 줄 id 도 사용처 참조 id 로 유일화된다", () => {
-    const clause: BoxClause = {
-      code: "C0100",
-      label: "【계약 전 알릴 의무】",
-      mode: "box",
-      required: { discriminators: [], attributes: [] },
-      options: [{ code: "O01", label: "1째 줄", order: 0, values: [{ code: "V01", label: "청약서", order: 0, body: [{ id: "v1", kind: "text", text: "청약서에서" }] }, { code: "V02", label: "서면", order: 1, body: [{ id: "v2", kind: "text", text: "서면으로" }] }] }],
-      body: [{ id: "b", kind: "box", title: "계약 전 알릴 의무", lines: [{ id: "l1", kind: "line", children: [{ id: "t", kind: "text", text: "회사가 " }, { id: "o", kind: "optionSlot", optionCode: "O01" }, { id: "u", kind: "text", text: " 질문한" }] }] }],
-    };
-    const [box] = unwrap(expandClause(clause, { O01: "V02" }, "k")) as BoxNode[];
-    expect(box.id).toBe("k/b");
-    expect(box.lines[0].id).toBe("k/l1");
-    expect(box.lines[0].children.map((n) => (n.kind === "text" ? n.text : n.kind))).toEqual(["회사가 ", "서면으로", " 질문한"]);
   });
 });

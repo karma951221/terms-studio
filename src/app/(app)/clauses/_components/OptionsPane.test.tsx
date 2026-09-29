@@ -44,13 +44,8 @@ describe("생성 화면 — 쓴 것이 없는 본문 (유형 잠금 · 빈 항�
   });
 });
 
-describe("「박스」 유형 (기능/공용조항 §3.1 · §4.2)", () => {
-  it("생성 화면 유형 라디오 · 목록 필터 · `+` 메뉴는 문구 · 항 · 박스 셋", () => {
-    expect(MODE_OPTIONS.map((o) => o.label)).toEqual(["문구", "항", "박스"]);
-  });
-
-  it("제목 · 줄이 없는 빈 박스는 비었다, 제목이나 줄이 있으면 아니다", () => {
-    expect(blankBody([{ id: "b", kind: "box", title: "", lines: [] }])).toBe(true);
-    expect(blankBody([{ id: "b", kind: "box", title: "용어풀이", lines: [] }])).toBe(false);
+describe("유형 (기능/공용조항 §3.1)", () => {
+  it("생성 화면 유형 라디오 · 목록 필터 · `+` 메뉴는 문구 · 항 둘 — 박스는 정적 마스터에서 만든다", () => {
+    expect(MODE_OPTIONS.map((o) => o.label)).toEqual(["문구", "항"]);
   });
 });

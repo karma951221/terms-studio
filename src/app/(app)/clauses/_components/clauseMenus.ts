@@ -73,8 +73,7 @@ function adaptAll(sections: MenuSections, env: MenuEnv, onRefuse: (message: stri
 }
 
 export interface ClauseMenuEnv extends MenuEnv {
-  /** 「박스」는 제목 칸 · 줄 칸만 — 툴바 · 오른쪽 클릭 목록이 없다. */
-  mode: "inline" | "block" | "box";
+  mode: "inline" | "block";
   /** 옵션 목록 단의 옵션 — 옵션 자리 넣기 항목이 옵션마다 한 줄. */
   options: readonly { code: string; label: string }[];
   onRefuse: (message: string) => void;

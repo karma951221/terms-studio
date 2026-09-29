@@ -87,9 +87,8 @@ type Banner = { message: string; issues?: readonly Issue[] };
 /** 편집 트리의 대응 보통약관 자리 — 보통약관 범위 조 참조는 보통약관 마스터 전체가 대상이다(사용처 위치 후보도 이 자리로 운반한다, §3.5 · 기능/문면 `scope: "general"`). */
 const GENERALS = "clause-generals";
 
-/** 새 공용조항의 첫 본문 — 「항」은 빈 항 하나, 「박스」는 빈 박스 하나에서 시작해 쓸 자리가 처음부터 보인다. */
+/** 새 공용조항의 첫 본문 — 「항」은 빈 항 하나에서 시작해 쓸 자리가 처음부터 보인다. */
 function startBody(mode: ClauseMode, id: string = randomIds()): ClauseBody {
-  if (mode === "box") return [{ id, kind: "box", title: "", lines: [] }];
   return mode === "block" ? [{ id, kind: "paragraph", children: [] }] : [];
 }
 
@@ -97,7 +96,6 @@ function startBody(mode: ClauseMode, id: string = randomIds()): ClauseBody {
 export function blankBody(body: ClauseBody): boolean {
   return (body as ClauseBody[number][]).every((node) => {
     if (node.kind === "text") return node.text.trim() === "";
-    if (node.kind === "box") return node.title.trim() === "" && node.lines.length === 0;
     if (node.kind !== "paragraph") return false;
     const items = (node as { items?: unknown[] }).items ?? [];
     return items.length === 0 && node.children.every((c) => c.kind === "text" && c.text.trim() === "");
@@ -151,12 +149,12 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   const [clauseMode, setClauseMode] = useState<ClauseMode>(props.mode);
 
   // ── 원본 (읽기 모드가 보이는 것) ──
-  const originalTree = useMemo(() => clauseBodyToTree(props.mode, props.body, props.label, props.options), [props.mode, props.body, props.label, props.options]);
+  const originalTree = useMemo(() => clauseBodyToTree(props.mode, props.body, props.label), [props.mode, props.body, props.label]);
 
   // ── 편집본 — 생성 화면은 처음부터 편집 중 ──
   const [editing, setEditing] = useState(isNew);
   const [draft, setDraftState] = useState<{ state: DraftState; ops: number }>(() => ({
-    state: { tree: isNew ? clauseBodyToTree(props.mode, startBody(props.mode, props.startId), props.label, props.options) : originalTree, generalDocumentId: GENERALS },
+    state: { tree: isNew ? clauseBodyToTree(props.mode, startBody(props.mode, props.startId), props.label) : originalTree, generalDocumentId: GENERALS },
     ops: 0,
   }));
   const draftRef = useRef(draft);
@@ -229,11 +227,9 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     for (const e of index.nodes.values()) {
       const optionCode = e.node.kind === "clauseInlineRef" ? optionCodeOf(e.node) : undefined;
       if (optionCode) out.add(optionCode);
-      // 「박스」 줄의 옵션 자리 표기 〔옵션명〕
-      if (e.node.kind === "box") for (const o of shownOptions) if (e.node.lines.some((l) => l.includes(`〔${o.label}〕`))) out.add(o.code);
     }
     return out;
-  }, [index, shownOptions]);
+  }, [index]);
   const positions = useMemo(() => clausePositions(tree), [tree]);
   const chipOverride = useCallback(
     (node: InlineNode) => {
@@ -404,10 +400,8 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     },
     pasteGrid: () => false,
     setTitle: () => undefined,
-    // 「박스」 유형 — 문면 박스 편집(제목 칸 · 줄 칸) 그대로. 줄의 옵션 자리 · 값 슬롯은 표기(〔옵션명〕 · 〔값 D0001〕)로 쓴다
-    setBox: (nodeId, title, lines) => {
-      apply([{ type: "setBox", nodeId, title: title.trim(), lines }]);
-    },
+    // 공용조항 본문에는 옛 문면 박스 노드가 없다 — 박스는 정적 마스터 박스 참조(기능/박스)
+    setBox: () => undefined,
     popup: (spec, anchor) => setPop({ spec, anchor }),
     focusInline: () => undefined,
     setActiveCell: () => undefined,
@@ -472,7 +466,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
 
   const save = () => {
     (document.activeElement as HTMLElement | null)?.blur?.();
-    const body = treeToClauseBody(clauseMode, latest(), optionsRef.current);
+    const body = treeToClauseBody(clauseMode, latest());
     if (!body.ok) {
       setBanner({ message: `저장하지 못했다 — ${body.rejection.reason === "invalid" ? body.rejection.issues[0]?.message : body.rejection.reason}` });
       return;
@@ -547,7 +541,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   }, [dirty, router]);
 
   // ── 유형 고르기 (생성 화면만) — 본문이 비어 있을 때만. 바꾸면 그 유형의 빈 본문에서 다시 시작한다 ──
-  const draftBody = editing ? treeToClauseBody(clauseMode, tree, options) : undefined;
+  const draftBody = editing ? treeToClauseBody(clauseMode, tree) : undefined;
   const modeLocked = draftBody !== undefined && !(draftBody.ok && blankBody(draftBody.value));
   const changeMode = (next: ClauseMode) => {
     if (next === clauseMode || modeLocked) return;
@@ -679,9 +673,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
               <p className="ts-muted ts-clause-sec-note">
                 {clauseMode === "inline"
                   ? "사용처 문장 중간에 들어갈 문구 한 줄을 쓴다. 조건 · 슬롯 · 옵션 자리는 커서를 두고 툴바에서 넣는다."
-                  : clauseMode === "box"
-                    ? "사용처의 항 · 호 뒤에 붙는 【박스】를 쓴다 — 제목과 줄(한 줄씩). 옵션 자리는 〔옵션명〕, 값 슬롯은 〔값 D0001〕로 줄 안에 쓴다."
-                    : "사용처 조 안에 들어갈 항을 쓴다. Enter 로 다음 항, 호 · 목 · 조건은 툴바에서 넣는다."}
+                  : "사용처 조 안에 들어갈 항을 쓴다. Enter 로 다음 항, 호 · 목 · 조건은 툴바에서 넣는다."}
               </p>
               <div
                 className={`ts-clause-editor${editing ? " is-editing" : ""}`}
@@ -700,7 +692,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
                   if (at) setPlace(at);
                 }}
               >
-                {editing && clauseMode !== "box" && <EditorToolbar groups={clauseMode === "inline" ? CLAUSE_LINE_TOOLS : CLAUSE_TOOLS} sections={toolbarSections} editing onRun={runTool} where={placeWords(toolbarPlace)} />}
+                {editing && <EditorToolbar groups={clauseMode === "inline" ? CLAUSE_LINE_TOOLS : CLAUSE_TOOLS} sections={toolbarSections} editing onRun={runTool} where={placeWords(toolbarPlace)} />}
                 <article className="ts-doc">
                   {readEmpty ? (
                     <EmptyBody mode={clauseMode} />
@@ -812,9 +804,9 @@ function EmptyBody({ mode, editing }: { mode: ClauseMode; editing?: boolean }) {
     <div className="ts-empty">
       <p className="ts-empty-what">본문이 비어 있다 — 참조해도 아무 조문도 나오지 않는다.</p>
       <p className="ts-empty-example">
-        예: {mode === "block" ? "① 이 특별약관은 보험계약자의 청약과 보험회사의 승낙으로 이루어집니다." : mode === "box" ? "【용어풀이】 보장개시일 — 회사가 보장을 개시하는 날" : "보험금을 지급하지 않습니다"}
+        예: {mode === "block" ? "① 이 특별약관은 보험계약자의 청약과 보험회사의 승낙으로 이루어집니다." : "보험금을 지급하지 않습니다"}
       </p>
-      <p className="ts-empty-action">{editing ? (mode === "box" ? "박스 제목과 줄을 쓴다. 다 쓰면 「저장」." : "툴바의 「항」으로 시작한다. 다 쓰면 「저장」.") : "「편집」을 눌러 본문을 쓴다."}</p>
+      <p className="ts-empty-action">{editing ? "툴바의 「항」으로 시작한다. 다 쓰면 「저장」." : "「편집」을 눌러 본문을 쓴다."}</p>
     </div>
   );
 }

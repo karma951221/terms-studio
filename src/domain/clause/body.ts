@@ -17,8 +17,8 @@ import { checkCondition, checkTypes, extractRefs, parse } from "../expression";
 import type { Expr, TypeResolver } from "../expression";
 import { CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, ok, reject } from "../types";
 import type { Code, Coordinate, Id, Issue, Result } from "../types";
-import { BLOCK_KINDS, BOX_LINE_KINDS, HOST_PATH, INLINE_KINDS } from "./nodes";
-import type { Block, BoxNode, BoxRefNode, BulletListNode, ClauseNode, Inline, InlineBranch, BlockBranch } from "./nodes";
+import { BLOCK_KINDS, HOST_PATH, INLINE_KINDS } from "./nodes";
+import type { Block, BoxRefNode, BulletListNode, ClauseNode, Inline, InlineBranch, BlockBranch } from "./nodes";
 import type { ClauseBody, ClauseMode, OptionDef, RequiredRefs } from "./types";
 
 // ───────────────────────────── 식 수집 ─────────────────────────────
@@ -78,9 +78,7 @@ export function collectExpressions(body: ClauseBody, basePath: Id[] = []): Colle
     }
   };
   for (const n of body as ClauseNode[]) {
-    if (n.kind === "box") {
-      for (const line of n.lines ?? []) for (const c of line.children ?? []) walkInline(c, [...basePath, n.id, line.id]);
-    } else if (isBlockKind(n.kind)) walkBlock(n as Block, basePath);
+    if (isBlockKind(n.kind)) walkBlock(n as Block, basePath);
     else walkInline(n as Inline, basePath);
   }
   return out;
@@ -91,9 +89,9 @@ export function allNodeIds(body: ClauseBody): Id[] {
   const ids: Id[] = [];
   const visit = (node: unknown) => {
     if (!node || typeof node !== "object") return;
-    const n = node as { id?: Id; children?: unknown[]; items?: unknown[]; subitems?: unknown[]; branches?: unknown[]; lines?: unknown[] };
+    const n = node as { id?: Id; children?: unknown[]; items?: unknown[]; subitems?: unknown[]; branches?: unknown[] };
     if (typeof n.id === "string") ids.push(n.id);
-    for (const key of ["children", "items", "subitems", "branches", "lines"] as const) {
+    for (const key of ["children", "items", "subitems", "branches"] as const) {
       const list = n[key];
       if (Array.isArray(list)) for (const c of list) visit(c);
     }
@@ -124,7 +122,7 @@ export function structuralIds(body: readonly Block[]): Id[] {
 
 /** inline 본문인지 (모드 판별을 호출부가 다시 하지 않게). 빈 본문은 inline 으로 본다. */
 export function isInlineBody(body: ClauseBody): body is Inline[] {
-  return (body as (Inline | Block | BoxNode)[]).every((node) => node.kind !== "paragraph" && node.kind !== "condBlock" && node.kind !== "box" && node.kind !== "boxRef");
+  return (body as (Inline | Block)[]).every((node) => node.kind !== "paragraph" && node.kind !== "condBlock" && node.kind !== "boxRef");
 }
 
 function isBlockKind(kind: string): boolean {
@@ -348,36 +346,8 @@ export function analyzeBody(
     });
   };
 
-  /** 「박스」 본문 — 박스 하나(제목 + 줄). 줄에는 글 · 값 슬롯 · 옵션 자리만. 빈 본문은 생성 전 화면의 상태라 통과. */
-  function checkBox(list: BoxNode[]) {
-    if (!Array.isArray(list)) return report("structure", "박스 본문은 박스 하나입니다", []);
-    if (list.length > 1) report("structure", "박스 공용조항의 본문은 박스 하나입니다", [String(list[1]?.id ?? "?")]);
-    for (const box of list.slice(0, 1)) {
-      if (!box || box.kind !== "box") {
-        kindError(box ?? {}, [], "박스");
-        continue;
-      }
-      if (typeof box.title !== "string") report("structure", "박스 제목은 글이어야 합니다", [box.id]);
-      for (const line of box.lines ?? []) {
-        const lp = [box.id, line.id];
-        if (line.kind !== "line") {
-          kindError(line, [box.id], "박스 줄");
-          continue;
-        }
-        for (const c of line.children ?? []) {
-          if (!(BOX_LINE_KINDS as readonly string[]).includes(String(c.kind))) {
-            report("structure", `박스 줄에는 글 · 값 슬롯 · 옵션 자리만 둘 수 있습니다: ${String(c.kind)}`, [...lp, c.id]);
-            continue;
-          }
-          checkInline(c, lp, false);
-        }
-      }
-    }
-  }
-
   // 1. 본문
   if (mode === "inline") checkInlines(body as Inline[], []);
-  else if (mode === "box") checkBox(body as BoxNode[]);
   else for (const b of body as Block[]) checkBlock(b, []);
 
   // 2. 옵션 선택지 본문 — 인라인 규칙

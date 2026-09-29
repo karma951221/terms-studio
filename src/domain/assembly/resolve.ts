@@ -23,7 +23,6 @@ import type {
   Block as ClauseBlock,
   BulletListNode as ClauseBulletListNode,
   BulletNode as ClauseBulletNode,
-  BoxNode as ClauseBoxNode,
   CondBlockNode as ClauseCondBlockNode,
   Inline as ClauseInline,
   ItemNode as ClauseItemNode,
@@ -176,7 +175,7 @@ class Walker {
     node: { id: Id; clauseCode: Code; options: OptionSelection },
     modes: readonly ClauseMode[],
     at: Coordinate,
-  ): { ok: true; mode: ClauseMode; body: (ClauseInline | ClauseBlock | ClauseBoxNode)[] } | { ok: false; marker: ErrorNode } {
+  ): { ok: true; mode: ClauseMode; body: (ClauseInline | ClauseBlock)[] } | { ok: false; marker: ErrorNode } {
     const clause = this.env.clauses.get(node.clauseCode);
     if (!clause) return { ok: false, marker: this.error(node.id, { kind: "brokenRef", message: `공용조항 ${node.clauseCode} 이(가) 없습니다`, at }) };
     if (!modes.includes(clause.mode)) {
@@ -192,7 +191,7 @@ class Walker {
       const issue: Issue = expanded.rejection.reason === "invalid" ? expanded.rejection.issues[0] : { kind: "optionInvalid", message: "공용조항을 펼칠 수 없습니다", at };
       return { ok: false, marker: this.error(node.id, { ...issue, at: { ...at, ...issue.at } }) };
     }
-    return { ok: true, mode: clause.mode, body: expanded.value as (ClauseInline | ClauseBlock | ClauseBoxNode)[] };
+    return { ok: true, mode: clause.mode, body: expanded.value as (ClauseInline | ClauseBlock)[] };
   }
 
   /** 정적 마스터 박스 참조 → 박스(제목 + 고정 글 줄). 줄 id 는 `${참조노드id}/l${n}` (옛 문면 박스와 같은 모양). */
@@ -200,12 +199,6 @@ class Walker {
     const box = this.env.boxes?.get(n.boxCode);
     if (!box) return this.error(n.id, { kind: "brokenRef", message: `박스 ${n.boxCode} 이(가) 정적 마스터에 없습니다`, at: this.at(f, n.id) });
     return { kind: "box", id: n.id, title: box.title, lines: box.lines.map((text, i) => [{ kind: "text", id: `${n.id}/l${i + 1}`, text }]) };
-  }
-
-  /** 「박스」 공용조항을 펼친 박스 — 줄의 슬롯은 사용처 문맥으로 치환 단계에 넘긴다. */
-  clauseBox(n: ClauseBoxNode, f: Frame): RStatic<RInline> {
-    const inner = { ...f, path: [...f.path, n.id] };
-    return { kind: "box", id: n.id, title: n.title, lines: n.lines.map((l) => this.inlines(l.children, { ...inner, path: [...inner.path, l.id] })) };
   }
 
   inlines(list: readonly AnyInline[], f: Frame): RInline[] {
@@ -275,7 +268,7 @@ class Walker {
    * (기능/문면 §3.2). 반복 표는 펼치고, 조합 0 이면 빈 목록. 글머리 목록은 항목이 모두 빠지면 목록째 없다.
    */
   static(n: AnyStatic, f: Frame): (RStatic<RInline> | ErrorNode)[] {
-    // 옛 문면 박스(글 줄) — 하위호환으로 읽는다. 새 박스는 「박스」 공용조항이다 (기능/공용조항 §3.1)
+    // 옛 문면 박스(글 줄 사본) — 하위호환으로 읽는다. 새 박스는 정적 마스터 박스 참조다 (기능/박스 §3.2)
     if (n.kind === "box") return [{ kind: "box", id: n.id, title: n.title, lines: n.lines.map((text, i) => [{ kind: "text", id: `${n.id}/l${i + 1}`, text }]) }];
     if (n.kind === "bulletList") {
       const inner = { ...f, path: [...f.path, n.id] };
@@ -341,21 +334,20 @@ class Walker {
     ];
   }
 
-  items(list: readonly (AnyItem | AnyCond | AnyStatic | ClauseBlockRefNode | BoxRefNode)[], f: Frame): (RItem<RInline> | RStatic<RInline> | ErrorNode)[] {
+  items(list: readonly (AnyItem | AnyCond | AnyStatic | BoxRefNode)[], f: Frame): (RItem<RInline> | RStatic<RInline> | ErrorNode)[] {
     return list.flatMap((n): (RItem<RInline> | RStatic<RInline> | ErrorNode)[] => {
       if (n.kind === "item") return [this.item(n, f)];
       if (n.kind === "boxRef") return [this.boxRef(n, f)];
       if (n.kind === "table" || n.kind === "box" || n.kind === "bulletList") return this.static(n, f);
-      if (n.kind === "clauseBlockRef") {
-        // 호 목록 자리의 공용조항은 「박스」뿐 — 항 · 호 뒤의 박스 자리
-        const r = this.expand(n, ["box"], this.at(f, n.id));
-        if (!r.ok) return [r.marker];
-        return (r.body as ClauseBoxNode[]).map((b) => this.clauseBox(b, { ...f, path: [...f.path, n.id] }));
+      if (n.kind !== "condBlock") {
+        // 저장 검사를 거치지 않은 트리 — 호 목록 자리의 공용조항 참조 등
+        const bad = n as { kind: string; id: Id };
+        return [this.error(bad.id, { kind: "structure", message: `호 목록 자리에는 ${bad.kind} 을(를) 둘 수 없습니다 — 공용조항은 조 자리에만, 박스는 박스 참조로`, at: this.at(f, bad.id) })];
       }
       const r = this.select(n.branches, f, n.id);
       if (r.kind === "error") return [this.error(n.id, r.issue)];
       if (r.kind === "none") return [];
-      return this.items(r.branch.children as (AnyItem | AnyCond | AnyStatic | ClauseBlockRefNode | BoxRefNode)[], { ...f, path: [...f.path, n.id, r.branch.id] });
+      return this.items(r.branch.children as (AnyItem | AnyCond | AnyStatic | BoxRefNode)[], { ...f, path: [...f.path, n.id, r.branch.id] });
     });
   }
 
@@ -390,9 +382,8 @@ class Walker {
           return this.blocks(r.branch.children as AnyBlock[], { ...f, path: [...f.path, n.id, r.branch.id] }, excludeFromComparison);
         }
         case "clauseBlockRef": {
-          const r = this.expand(n, ["block", "box"], at);
+          const r = this.expand(n, ["block"], at);
           if (!r.ok) return [r.marker];
-          if (r.mode === "box") return (r.body as ClauseBoxNode[]).map((b) => this.clauseBox(b, { ...f, path: [...f.path, n.id] }));
           return this.blocks(
             r.body as ClauseBlock[],
             { ...f, path: [...f.path, n.id] },

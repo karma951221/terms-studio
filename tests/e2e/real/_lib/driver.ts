@@ -570,9 +570,7 @@ export class DocumentAuthoring {
 // ───────────────────────────── 공용조항 ─────────────────────────────
 
 type ClauseOption = { code: string; label: string; values: { label: string; body: { kind: string; text?: string }[] }[] };
-type ClauseMode = "inline" | "block" | "box";
-/** 「박스」 본문 — 제목 + 줄(글 · 값 슬롯 · 옵션 자리). */
-type SeedBox = { kind: "box"; title: string; lines: { children: ({ kind: "text"; text: string } | { kind: "slot"; ref: string } | { kind: "optionSlot"; optionCode: string })[] }[] };
+type ClauseMode = "inline" | "block";
 
 /** 공용조항 생성 화면 운전 — 이름 · 유형 · 옵션 · 본문 (기능/공용조항 §4.2). */
 export class ClauseAuthoringDriver {
@@ -588,7 +586,7 @@ export class ClauseAuthoringDriver {
   async open(mode: ClauseMode, label: string): Promise<void> {
     await this.page.goto(`/clauses/new?type=${mode}`);
     await this.page.waitForLoadState("networkidle");
-    await expect(this.page.getByRole("radio", { name: mode === "inline" ? /^문구/ : mode === "box" ? /^박스/ : /^항/ })).toBeChecked();
+    await expect(this.page.getByRole("radio", { name: mode === "inline" ? /^문구/ : /^항/ })).toBeChecked();
     await this.page.getByLabel("공용조항명").fill(label);
   }
 
@@ -607,30 +605,10 @@ export class ClauseAuthoringDriver {
   }
 
   /**
-   * 본문 — 문구면 문장 한 줄, 항이면 항마다 (처음 빈 항 하나가 서 있다 · 다음 항은 툴바 「항」),
-   * 박스면 빈 박스의 제목 칸 · 줄 칸(한 줄씩 — 옵션 자리는 〔옵션명〕, 값 슬롯은 〔값 참조〕 표기).
+   * 본문 — 문구면 문장 한 줄, 항이면 항마다 (처음 빈 항 하나가 서 있다 · 다음 항은 툴바 「항」).
    */
   async body(mode: ClauseMode, body: readonly unknown[]): Promise<void> {
     const root = this.editor.root;
-    if (mode === "box") {
-      const [box] = body as SeedBox[];
-      const title = root.getByRole("textbox", { name: "박스 제목" });
-      await title.fill(box.title);
-      await title.press("Enter");
-      const lines = root.getByRole("textbox", { name: "박스 줄" });
-      await lines.focus();
-      for (const [i, line] of box.lines.entries()) {
-        if (i > 0) await this.page.keyboard.press("Enter");
-        const text = line.children
-          .map((n) => (n.kind === "text" ? n.text : n.kind === "slot" ? `〔값 ${n.ref}〕` : `〔${this.editor.optionLabels.get(n.optionCode) ?? n.optionCode}〕`))
-          .join("");
-        await this.page.keyboard.insertText(text);
-      }
-      // 칸을 떠나야 편집본에 들어간다
-      await this.page.keyboard.press("Tab");
-      await this.editor.noBanner();
-      return;
-    }
     if (mode === "inline") {
       await this.editor.fillInline(root.getByRole("textbox", { name: "문구", exact: true }), body as SeedInline[]);
       return;

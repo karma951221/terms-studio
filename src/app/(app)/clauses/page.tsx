@@ -11,7 +11,7 @@ import { getServices } from "@/lib/services";
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 50;
-const MODES: readonly ClauseMode[] = ["inline", "block", "box"];
+const MODES: readonly ClauseMode[] = ["inline", "block"];
 const FILTERS = [
   { key: "mode", label: "유형", options: MODES.map((value) => ({ value, label: MODE_LABEL[value] })) },
 ] as const satisfies readonly ColumnFilterSpec[];

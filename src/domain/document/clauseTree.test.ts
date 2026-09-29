@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type * as C from "../clause/nodes";
 import type { Block, Inline } from "../clause/nodes";
-import { CLAUSE_ARTICLE_ID, CLAUSE_LINE_ID, HOST_TARGET_PREFIX, boxLineFromText, clauseBodyToTree, clausePositions, clauseScopedRefLabel, optionCarrier, optionCodeOf, treeToClauseBody } from "./clauseTree";
+import { CLAUSE_ARTICLE_ID, CLAUSE_LINE_ID, HOST_TARGET_PREFIX, clauseBodyToTree, clausePositions, clauseScopedRefLabel, optionCarrier, optionCodeOf, treeToClauseBody } from "./clauseTree";
 import { analyzeBody, structuralIds } from "../clause/body";
 import { expandClause } from "../clause/reference";
 import { applyEdit, generalRefsOf, type EditEnv } from "./edit";
@@ -108,32 +108,6 @@ describe("공용조항 조 참조 범위 — 편집 트리 운반 · 표기 (§3
     const p1 = (tree.children[0] as { children: { children: InlineNode[] }[] }).children[0];
     p1.children[0] = { id: "r1", kind: "articleRef", targets: [{ nodeId: "g-a1" }, { nodeId: `${HOST_TARGET_PREFIX}1` }], connector: "및", scope: "general" };
     expect(treeToClauseBody("block", tree).ok).toBe(false);
-  });
-});
-
-describe("「박스」 공용조항 — 편집 트리는 문면 박스 하나(줄은 표기 글)", () => {
-  const options = [{ code: "O01", label: "질문 방식" }];
-  const box: C.BoxNode[] = [
-    {
-      id: "b",
-      kind: "box",
-      title: "계약 전 알릴 의무",
-      lines: [{ id: "b-l1", kind: "line", children: [{ id: "b-l1-1", kind: "text", text: "회사가 " }, { id: "b-l1-2", kind: "optionSlot", optionCode: "O01" }, { id: "b-l1-3", kind: "text", text: " 질문한 " }, { id: "b-l1-4", kind: "slot", ref: "D0001" }] }],
-    },
-  ];
-
-  it("옵션 자리는 〔옵션명〕, 값 슬롯은 〔값 참조〕로 싸고, 되돌리면 같은 본문이다", () => {
-    const tree = clauseBodyToTree("box", box, "", options);
-    expect(tree.children[0]).toMatchObject({ children: [{ kind: "box", title: "계약 전 알릴 의무", lines: ["회사가 〔질문 방식〕 질문한 〔값 D0001〕"] }] });
-    expect(treeToClauseBody("box", tree, options)).toEqual({ ok: true, value: box });
-  });
-
-  it("모르는 옵션 이름은 되돌리기를 거부한다 — 빈 줄은 싣지 않는다", () => {
-    expect(boxLineFromText("그냥 글", "x").children).toEqual([{ id: "x-1", kind: "text", text: "그냥 글" }]);
-    const tree = clauseBodyToTree("box", [{ ...box[0], lines: [] }], "", options);
-    (tree.children[0] as { children: { lines: string[] }[] }).children[0].lines = ["〔없는 옵션〕", "  "];
-    const r = treeToClauseBody("box", tree, options);
-    expect(r.ok).toBe(false);
   });
 });
 

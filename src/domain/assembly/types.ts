@@ -178,7 +178,7 @@ export interface RTable<I> {
   rows: { header?: boolean; cells: I[][]; spans?: number[] }[];
 }
 /**
- * 【용어풀이】 박스 — 줄은 인라인 목록이라 「박스」 공용조항의 값 슬롯이 단계마다 해소된다(옛 문면 박스 노드는 글 한 조각씩).
+ * 【용어풀이】 박스 — 줄은 인라인 목록(박스 참조 · 옛 문면 박스 노드는 줄마다 글 한 조각).
  * 렌더 결과(`RenderedBox`)에서는 줄마다 글 하나다.
  */
 export interface RBox<I> {

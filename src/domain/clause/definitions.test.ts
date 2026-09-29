@@ -298,3 +298,15 @@ describe("공용조항 복제 (D-P3-3)", () => {
     expect(again.label).toBe("특별약관의 소멸(복제2)");
   });
 });
+
+describe("유형은 문구 · 항 둘 — 박스는 정적 마스터다 (최종 결정 9 · 기능/박스)", () => {
+  it("유형 box 로 만들면 거부한다", async () => {
+    const r = await createClause({ label: "【용어풀이】", mode: "box", body: [], options: [] } as never, ctx());
+    expect(reasonOf(r)).toBe("invalid");
+  });
+
+  it("유형을 box 로 바꾸면 거부한다", async () => {
+    const clause = unwrap(await createClause({ label: "소멸", mode: "block", body: 소멸_본문, options: [] }, ctx()));
+    expect(reasonOf(setMode(clause, "box" as never, []))).toBe("invalid");
+  });
+});

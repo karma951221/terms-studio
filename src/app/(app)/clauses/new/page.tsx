@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 export default async function NewClausePage({ searchParams }: { searchParams: Promise<{ type?: string }> }) {
   const { type } = await searchParams;
-  const mode = type === "block" || type === "box" ? type : "inline";
+  const mode = type === "block" ? type : "inline";
   const data = await loadClauseEditorData();
   return <ClauseAuthoring key={mode} label="" mode={mode} body={[]} options={[]} data={data} startId={randomUUID()} />;
 }

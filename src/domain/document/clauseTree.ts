@@ -83,59 +83,12 @@ function blockToTree(node: C.Block): BlockNode {
   return { ...rest, children: node.children.map(inlineToTree), ...(items && items.length > 0 ? { items: items.map((it) => (it.kind === "bulletList" ? bulletsToTree(it) : it.kind === "boxRef" ? it : itemToTree(it))) } : {}) };
 }
 
-/** 옵션 코드 · 이름 — 박스 줄의 옵션 자리 표기(「〔옵션명〕」)를 풀고 짓는다. */
-export type OptionNames = readonly { code: Code; label: string }[];
-
-/** 박스 줄의 값 슬롯 표기 머리 — 「〔값 D0001〕」. */
-export const BOX_SLOT_MARK = "값 ";
-
-/**
- * 박스 줄(글 · 값 슬롯 · 옵션 자리) → 편집 트리 박스의 한 줄 글. 옵션 자리는 「〔옵션명〕」, 값 슬롯은 「〔값 참조〕」 —
- * 문면의 박스 편집(제목 칸 + 줄 칸)을 그대로 쓰려고 칩 대신 표기로 싣는다 (기능/공용조항 §4.3).
- */
-export function boxLineText(line: C.BoxLineNode, options: OptionNames = []): string {
-  return line.children
-    .map((n) => {
-      if (n.kind === "text") return n.text;
-      if (n.kind === "optionSlot") return `〔${options.find((o) => o.code === n.optionCode)?.label ?? n.optionCode}〕`;
-      if (n.kind === "slot") return `〔${BOX_SLOT_MARK}${n.ref}〕`;
-      return "";
-    })
-    .join("");
-}
-
-/** 편집 트리 박스의 한 줄 글 → 박스 줄. 「〔…〕」는 옵션 이름이면 옵션 자리, 「〔값 …〕」이면 값 슬롯 — 모르는 이름은 거부. */
-export function boxLineFromText(text: string, id: string, options: OptionNames = []): C.BoxLineNode {
-  const children: C.Inline[] = [];
-  let k = 0;
-  const nid = () => `${id}-${++k}`;
-  for (const part of text.split(/(〔[^〔〕]*〕)/)) {
-    if (part === "") continue;
-    const m = /^〔([^〔〕]*)〕$/.exec(part);
-    if (!m) {
-      children.push({ id: nid(), kind: "text", text: part });
-      continue;
-    }
-    const name = m[1].trim();
-    if (name.startsWith(BOX_SLOT_MARK.trim()) && name.length > BOX_SLOT_MARK.trim().length) {
-      children.push({ id: nid(), kind: "slot", ref: name.slice(BOX_SLOT_MARK.trim().length).trim() });
-      continue;
-    }
-    const option = options.find((o) => o.label === name);
-    if (!option) throw new NotClause(`박스 줄의 「〔${name}〕」 — 그런 이름의 옵션이 없습니다 (옵션 자리는 〔옵션명〕, 값 슬롯은 〔값 D0001〕)`);
-    children.push({ id: nid(), kind: "optionSlot", optionCode: option.code });
-  }
-  return { id, kind: "line", children };
-}
-
-/** 공용조항 본문을 편집 트리로 — 제목은 공용조항명(화면에는 그리지 않는다). 박스는 문면 박스 하나(줄은 표기 글, `boxLineText`). */
-export function clauseBodyToTree(mode: ClauseMode, body: ClauseBody, title = "", options: OptionNames = []): DocumentNode {
+/** 공용조항 본문을 편집 트리로 — 제목은 공용조항명(화면에는 그리지 않는다). */
+export function clauseBodyToTree(mode: ClauseMode, body: ClauseBody, title = ""): DocumentNode {
   const children: BlockNode[] =
     mode === "inline"
       ? [{ id: CLAUSE_LINE_ID, kind: "paragraph", children: (body as C.Inline[]).map(inlineToTree) } satisfies ParagraphNode]
-      : mode === "box"
-        ? (body as C.BoxNode[]).map((b): BlockNode => ({ id: b.id, kind: "box", title: b.title, lines: b.lines.map((l) => boxLineText(l, options)) }))
-        : (body as C.Block[]).map(blockToTree);
+      : (body as C.Block[]).map(blockToTree);
   const article: ArticleNode = { id: CLAUSE_ARTICLE_ID, kind: "article", title: "", children };
   return { id: CLAUSE_DOCUMENT_ID, kind: "document", title, children: [article] };
 }
@@ -222,24 +175,14 @@ function blockFromTree(node: BlockNode): C.Block {
   return { ...rest, children: node.children.map(inlineFromTree), ...(items && items.length > 0 ? { items: items.map(itemFromTree) } : {}) };
 }
 
-/** 편집 트리를 공용조항 본문으로 — 공용조항에 없는 노드가 있으면 거부(그 사유 한 줄). 박스 줄의 옵션 표기는 `options` 이름으로 푼다. */
-export function treeToClauseBody(mode: ClauseMode, tree: DocumentNode, options: OptionNames = []): Result<ClauseBody> {
+/** 편집 트리를 공용조항 본문으로 — 공용조항에 없는 노드가 있으면 거부(그 사유 한 줄). */
+export function treeToClauseBody(mode: ClauseMode, tree: DocumentNode): Result<ClauseBody> {
   try {
     const [article, ...rest] = tree.children;
     if (!article) return ok([]);
     if (article.kind !== "article") return refuse(article.kind, "본문");
     if (rest.length > 0) return refuse(rest[0]!.kind, "본문");
     if (mode === "block") return ok(article.children.map(blockFromTree));
-    if (mode === "box") {
-      if (article.children.length > 1) throw new NotClause("「박스」 공용조항은 박스 하나입니다");
-      return ok(
-        article.children.map((b): C.BoxNode => {
-          if (b.kind !== "box") return refuse(b.kind, "박스 본문");
-          // 빈 줄은 싣지 않는다 — 줄 칸의 끝 빈 줄
-          return { id: b.id, kind: "box", title: b.title, lines: b.lines.filter((l) => l.trim() !== "").map((l, i) => boxLineFromText(l, `${b.id}-l${i + 1}`, options)) };
-        }),
-      );
-    }
     const [line, ...more] = article.children;
     if (!line) return ok([]);
     if (line.kind !== "paragraph" || more.length > 0 || (line.items?.length ?? 0) > 0) throw new NotClause("「문구」 공용조항은 문장 한 줄입니다 — 항 · 호 · 목을 둘 수 없습니다");

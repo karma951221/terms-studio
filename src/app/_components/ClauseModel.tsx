@@ -215,7 +215,7 @@ function Blocks({ nodes, ctx }: { nodes: readonly Block[]; ctx: Ctx }): ReactNod
 
 export function ClauseModel(props: ClauseModelProps) {
   const { clause } = props;
-  const tree = clauseBodyToTree(clause.mode, clause.body, clause.label, clause.options);
+  const tree = clauseBodyToTree(clause.mode, clause.body, clause.label);
   const ctx: Ctx = { ...props, numbers: numberTree(tree), positions: clausePositions(tree) };
   if (clause.body.length === 0) return <p className="ts-muted">본문이 비어 있다.</p>;
   return (
@@ -224,18 +224,6 @@ export function ClauseModel(props: ClauseModelProps) {
         <p className="ts-doc-paragraph is-line">
           <Inlines nodes={clause.body} ctx={ctx} />
         </p>
-      ) : clause.mode === "box" ? (
-        clause.body.map((box) => (
-          // 박스 — 문면 박스와 같은 상자(제목 + 줄), 줄 안의 슬롯 · 옵션 자리는 칩
-          <aside key={box.id} className="ts-doc-box">
-            <p className="ts-doc-box-title">【{box.title}】</p>
-            {box.lines.map((line) => (
-              <p key={line.id} className="ts-doc-box-line">
-                <Inlines nodes={line.children} ctx={ctx} />
-              </p>
-            ))}
-          </aside>
-        ))
       ) : (
         <Blocks nodes={clause.body} ctx={ctx} />
       )}

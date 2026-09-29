@@ -32,12 +32,3 @@ describe("clauses lib — 순수", () => {
     expect(isNewCode("O01")).toBe(false);
   });
 });
-
-describe("박스 본문 — 옵션 자리 코드 바꾸기 · 쓰는 옵션 (2026-09-28)", () => {
-  const box = [{ id: "b", kind: "box" as const, title: "용어풀이", lines: [{ id: "l1", kind: "line" as const, children: [{ id: "t", kind: "text" as const, text: "가 " }, { id: "o", kind: "optionSlot" as const, optionCode: "tmp1" }] }] }];
-  it("박스 줄의 옵션 자리도 새 코드로 바뀌고, 쓰는 옵션으로 잡힌다(생성 저장이 던지지 않는다)", () => {
-    const out = remapOptionSlots(box, new Map([["tmp1", "O01"]])) as typeof box;
-    expect(out[0].lines[0].children[1]).toMatchObject({ kind: "optionSlot", optionCode: "O01" });
-    expect([...usedOptionCodes(out)]).toEqual(["O01"]);
-  });
-});

@@ -23,7 +23,7 @@ export const clauses = pgTable("clauses", {
   /** 자동 채번 코드 `C0001` … (불변). */
   code: text("code").notNull().unique(),
   label: text("label").notNull(),
-  /** "inline" | "block" | "box" */
+  /** "inline" | "block" — 박스는 공용조항이 아니라 정적 마스터(boxes 테이블) */
   mode: text("mode").$type<ClauseMode>().notNull(),
   /** 본문 — inline 이면 Inline[], block 이면 Block[] (nodes.ts). */
   body: jsonb("body").$type<ClauseBody>().notNull(),

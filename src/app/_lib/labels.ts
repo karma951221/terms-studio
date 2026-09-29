@@ -149,7 +149,6 @@ export const TYPE_OPTIONS = SELECTABLE_TYPE_KINDS.map((kind) => ({ value: kind, 
 export const MODE_LABEL = {
   inline: "문구",
   block: "항",
-  box: "박스",
 } as const satisfies Record<ClauseMode, string>;
 
 export const DOC_KIND_LABEL = {
@@ -174,7 +173,6 @@ export const DOC_TEMPLATE_LABEL = {
 export const MODE_OPTIONS = [
   { value: "inline", label: MODE_LABEL.inline, hint: "조 안 문장 중간에 끼어 들어간다 — 문장 조각 하나." },
   { value: "block", label: MODE_LABEL.block, hint: "조 안 항 자리에 선다 — 항 하나 또는 항 목록(호 · 목 포함)." },
-  { value: "box", label: MODE_LABEL.box, hint: "항 · 호 뒤에 붙는 【용어풀이】 류 박스 — 제목 + 줄. 박스는 이것으로만 만든다." },
 ] as const;
 
 /** 부착 레벨 2지선다가 아니라 5지선다 — 라디오로 늘어놓는다 (선택지가 짧고 개수가 고정이다). */
