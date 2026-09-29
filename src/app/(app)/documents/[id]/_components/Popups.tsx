@@ -27,6 +27,7 @@ import {
   type InlineNode,
   type Node,
 } from "@/domain/document";
+import type { Box } from "@/domain/document/box";
 import { ATTACH_LEVEL_LABEL, REFERENCE_CONNECTORS, isReferenceConnector, type Code, type Id, type ReferenceConnector } from "@/domain/types";
 
 import { str } from "../../lib";
@@ -50,6 +51,8 @@ export interface PopupEnv {
   apply: (ops: readonly EditOp[]) => boolean;
   newId: IdSource;
   appendices: readonly Appendix[];
+  /** 정적 마스터 박스 — 「박스」 고르기 팝업. */
+  boxes: readonly Box[];
   clauses: readonly Clause[];
   generals: readonly { id: Id; title: string }[];
   generalDocumentId?: Id;
@@ -481,6 +484,30 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             }}
           >
             <ClauseFields clauses={clausesFitting(env.clauses, spec.at)} />
+            <PopActions onCancel={onClose} confirmLabel="넣기" />
+          </PopForm>
+        </Popover>
+      );
+
+    case "boxPick":
+      return (
+        <Popover anchor={anchor} label="박스 넣기" onClose={onClose}>
+          <PopForm
+            env={env}
+            onClose={onClose}
+            build={(fd) => {
+              const code = str(fd, "boxCode");
+              return code ? [{ type: "insert", node: b.boxRef(code), at: spec.at }] : "박스를 고른다.";
+            }}
+          >
+            {env.boxes.length === 0 ? (
+              <p className="ts-muted">박스가 없다 — 정적 마스터 › 박스에서 만든다.</p>
+            ) : (
+              <div className="ts-form-row">
+                <label htmlFor="pop-box">박스</label>
+                <Combobox id="pop-box" name="boxCode" defaultValue="" options={env.boxes.map((x) => ({ value: x.code, label: x.name, hint: x.code }))} placeholder="이름 · 코드로 찾기" />
+              </div>
+            )}
             <PopActions onCancel={onClose} confirmLabel="넣기" />
           </PopForm>
         </Popover>

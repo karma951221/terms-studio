@@ -22,6 +22,7 @@ const KIND_LABEL: Record<string, string> = {
   clauseInlineRef: "공용조항 참조(문장 안)",
   articleRef: "조 참조",
   appendixRef: "별표 참조",
+  boxRef: "박스 참조",
   forBlock: "반복 블록",
   inlineFor: "문장 안 반복",
 };

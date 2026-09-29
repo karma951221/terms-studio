@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { indexTree, nodeBuilders, sequentialIds, type DocumentNode } from "@/domain/document";
 
-import { articleMenu, blockMenu, chipMenu, clausePickItems, condMenu, inlineInsertItems, type MenuSections } from "./menus";
+import { articleMenu, blockMenu, boxPickItems, chipMenu, clausePickItems, condMenu, inlineInsertItems, type MenuSections } from "./menus";
 
 const labels = (s: MenuSections) => s.flat().map((i) => `${i.label}${i.disabled ? "(잠김)" : ""}`);
 
@@ -17,13 +17,14 @@ function tree(): DocumentNode {
 }
 
 describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 §3.2 · §4.3)", () => {
-  it("항 — 아래에 항 · 호 추가 · 표 · 공용조항(조 단위) · 감싸기 · 이동(맨 위 · 맨 아래 잠김) · 복제 · 삭제 — 박스는 공용조항으로만(박스 추가 없음)", () => {
+  it("항 — 아래에 항 · 호 추가 · 표 · 공용조항(조 단위) · 박스(정적 마스터) · 감싸기 · 이동(맨 위 · 맨 아래 잠김) · 복제 · 삭제", () => {
     expect(labels(blockMenu(env(tree()), "n3"))).toEqual([
       "아래에 항 추가",
       "호 추가",
       "아래에 표 추가…",
       "아래에 글머리 목록 추가",
       "아래에 공용조항(조 단위) 추가…",
+      "아래에 박스 추가…",
       "조건으로 감싸기",
       "위로(잠김)",
       "아래로(잠김)",
@@ -32,8 +33,8 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
     ]);
   });
 
-  it("호 — 항 목록 자리라 호 · 표 · 글머리 목록 · 박스 공용조항, 공용조항(조 단위)은 없다 · 목 뒤는 목 · 글머리 목록", () => {
-    expect(labels(blockMenu(env(tree()), "n2")).slice(0, 5)).toEqual(["아래에 호 추가", "목 추가", "아래에 표 추가…", "아래에 글머리 목록 추가", "아래에 박스 공용조항 추가…"]);
+  it("호 — 항 목록 자리라 호 · 표 · 글머리 목록 · 박스 공용조항 · 박스, 공용조항(조 단위)은 없다 · 목 뒤는 목 · 글머리 목록(박스 없음)", () => {
+    expect(labels(blockMenu(env(tree()), "n2")).slice(0, 6)).toEqual(["아래에 호 추가", "목 추가", "아래에 표 추가…", "아래에 글머리 목록 추가", "아래에 박스 공용조항 추가…", "아래에 박스 추가…"]);
     expect(labels(blockMenu(env(tree()), "n1")).slice(0, 3)).toEqual(["아래에 목 추가", "아래에 글머리 목록 추가", "조건으로 감싸기"]);
   });
 
@@ -49,7 +50,7 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
     expect(labels(articleMenu(env(tree(), "special"), "n4"))).toContain("조연결…");
     const b = nodeBuilders(sequentialIds("n"));
     const top = b.document("D", [b.article("가", [])]);
-    expect(labels(articleMenu(env(top), top.children[0].id)).slice(0, 4)).toEqual(["아래에 조 추가", "아래에 관 추가", "항 추가", "공용조항 참조 추가…"]);
+    expect(labels(articleMenu(env(top), top.children[0].id)).slice(0, 5)).toEqual(["아래에 조 추가", "아래에 관 추가", "항 추가", "공용조항 참조 추가…", "박스 추가…"]);
   });
 
   it("조 제목 — 조 끝에 공용조항(조 단위)을 넣는 팝업 (첫 자리가 공용조항인 조 · 2026-09-28)", () => {
@@ -68,6 +69,7 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
       "이 가지에 항 추가",
       "이 가지에 글머리 목록 추가",
       "이 가지에 표 추가…",
+      "이 가지에 박스 추가…",
       "조건 풀기 — 이 가지 내용만 남긴다",
       "조건 블록 삭제",
     ]);
@@ -95,5 +97,13 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
     const at = (slot?: "items") => clausePickItems(clauses, { parentId: "p", ...(slot ? { slot } : {}) }, sequentialIds("k")).map((i) => i.label);
     expect(at()).toEqual(["소멸(C0001)", "용어풀이(C0002)"]);
     expect(at("items")).toEqual(["용어풀이(C0002)"]);
+  });
+
+  it("툴바 「박스」 — 정적 마스터 박스마다 한 줄, 고르면 그 자리에 박스 참조를 곧바로 넣는다 · 조 제목의 「박스 추가…」는 조 끝 고르기 팝업", () => {
+    const items = boxPickItems([{ code: "BX000001", name: "보험연도" }], { parentId: "n3", slot: "items", index: 1 }, sequentialIds("k"));
+    expect(items.map((i) => i.label)).toEqual(["보험연도(BX000001)"]);
+    expect(items[0].action).toMatchObject({ do: "ops", ops: [{ type: "insert", node: { kind: "boxRef", boxCode: "BX000001" }, at: { parentId: "n3", slot: "items", index: 1 } }] });
+    const item = articleMenu(env(tree()), "n4").flat().find((i) => i.label === "박스 추가…");
+    expect(item?.action).toEqual({ do: "popup", popup: { kind: "boxPick", at: { parentId: "n4" } } });
   });
 });

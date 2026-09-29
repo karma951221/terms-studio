@@ -55,6 +55,7 @@ import {
   type EditOp,
   type ReferenceTarget,
 } from "@/domain/document";
+import type { Box } from "@/domain/document/box";
 import type { Code, Coordinate, Id, Impact, Issue } from "@/domain/types";
 
 import { loadGeneralForEditAction, saveDocumentEditAction, startDocumentEditAction, type GeneralForEdit } from "../../edit-actions";
@@ -66,7 +67,7 @@ import { ArticleBody, DocBody } from "./DocBody";
 import { backspaceOps, enterOps, inlineListAt, moveSelectionOps, pasteGridOps } from "./editOps";
 import { caretFromPoint, tokensOf } from "./Inline";
 import { identityRuns, runsFromTokens, sameRuns, type Token } from "./inlineRuns";
-import { clausePickItems, condInsertItem, condMenu, inlineCondItem, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
+import { boxPickItems, clausePickItems, condInsertItem, condMenu, inlineCondItem, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
 import { condInput, placeOf, readInline } from "./place";
 import { EditorToolbar } from "./EditorToolbar";
 import { DOCUMENT_TOOLS, allTools, itemsFor, type ToolId } from "./tools";
@@ -94,6 +95,8 @@ export interface EditorProps {
   generals: readonly { id: Id; title: string }[];
   suggestedGeneralId?: Id;
   appendices: readonly Appendix[];
+  /** 정적 마스터 박스 — 박스 참조 검사 · 그리기 · 「박스」 고르기 (기능/박스 §4.4). */
+  boxes: readonly Box[];
   clauses: readonly Clause[];
   discriminators: readonly Discriminator[];
   /** 담보속성 코드 → 유효값 코드 (식 타입 검사). */
@@ -134,6 +137,7 @@ const NODE_WHAT: Record<string, string> = {
   condBlock: "조건 블록",
   clauseBlockRef: "공용조항 참조",
   forBlock: "반복 블록",
+  boxRef: "박스",
 };
 
 /** 노드가 든 조 — 조면 자기, 관이면 그 첫 조. */
@@ -205,16 +209,17 @@ export function DocumentEditor(props: EditorProps) {
   const coordinate: Coordinate = useMemo(() => ({ document: doc.kind, ownerId: doc.ownerId ?? doc.id, documentId: doc.id, ownerName: doc.title }), [doc.kind, doc.ownerId, doc.id, doc.title]);
   const gate = useMemo(() => clauseGateFrom(props.clauses, props.discriminators.map((d) => d.code)), [props.clauses, props.discriminators]);
   const appendixCodes = useMemo(() => new Set(props.appendices.map((a) => a.code)), [props.appendices]);
+  const boxByCode = useMemo(() => new Map(props.boxes.map((x) => [x.code, x] as const)), [props.boxes]);
   /** 보통약관 캐시 → 편집 환경. 렌더는 상태의 캐시로, 명령 적용은 방금 받은 것까지 든 ref 의 캐시로 만든다. */
   const makeEditEnv = useCallback(
     (cache: Readonly<Record<Id, GeneralForEdit>>): EditEnv => ({
-      env: { kind: doc.kind, appendixExists: (c: Code) => appendixCodes.has(c), clauseGate: gate, coordinate },
+      env: { kind: doc.kind, appendixExists: (c: Code) => appendixCodes.has(c), boxExists: (c: Code) => boxByCode.has(c), clauseGate: gate, coordinate },
       generalRefs: (id: Id) => {
         const g = cache[id];
         return g ? generalRefsOf(g.tree) : undefined;
       },
     }),
-    [doc.kind, appendixCodes, gate, coordinate],
+    [doc.kind, appendixCodes, boxByCode, gate, coordinate],
   );
   // 읽기 모드는 서버가 방금 넘긴 대응 보통약관이 기준이다 (편집 중에는 편집 시작 때 받은 것 · 새로 고른 것)
   const renderCache = useMemo(() => (mode === "read" && props.general ? { ...generalCache, [props.general.id]: props.general } : generalCache), [mode, props.general, generalCache]);
@@ -535,6 +540,11 @@ export function DocumentEditor(props: EditorProps) {
       setMenu({ x: anchor.x, y: anchor.y, sections: [clausePickItems(props.clauses, first.popup.at, randomIds)] });
       return;
     }
+    // 「박스」 — 버튼 아래 작은 메뉴에서 정적 마스터 박스를 고른다. 박스가 없으면 그 사유를 보이는 팝업 (기능/박스 §4.4)
+    if (toolId === "box" && first.do === "popup" && first.popup.kind === "boxPick" && props.boxes.length > 0) {
+      setMenu({ x: anchor.x, y: anchor.y, sections: [boxPickItems(props.boxes, first.popup.at, randomIds)] });
+      return;
+    }
     // 바로 적용하는 조작은 쓰던 문장을 먼저 편집본에 넣는다(초점이 떠나며 적용) — 복제 · 이동이 쓰던 글을 두고 가지 않게
     if (items[0].action.do !== "popup") (document.activeElement as HTMLElement | null)?.blur?.();
     runMenu(items[0], anchor);
@@ -661,6 +671,7 @@ export function DocumentEditor(props: EditorProps) {
     references,
     refLabel,
     clauses: props.clauses,
+    boxOf: (code) => boxByCode.get(code),
     conditionFor: (nodeId) => withRow(scopeOf(nodeId)),
     ...(flashId ? { flashId } : {}),
     ...(mode === "edit" ? { edit } : {}),
@@ -689,6 +700,7 @@ export function DocumentEditor(props: EditorProps) {
     apply,
     newId: randomIds,
     appendices: props.appendices,
+    boxes: props.boxes,
     clauses: props.clauses,
     generals: props.generals,
     ...(current.generalDocumentId ? { generalDocumentId: current.generalDocumentId } : {}),

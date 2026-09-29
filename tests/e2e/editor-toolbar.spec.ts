@@ -54,8 +54,8 @@ test(
       await expect(page.getByRole("button", { name: "저장", exact: true })).toBeVisible();
       await expect(toolbar).toBeVisible();
       for (const name of ["조", "관", "항", "호", "목", "표", "글머리 목록", "슬롯", "조 참조", "별표 참조", "조건식", "문장 안 조건", "위로", "아래로", "복제", "삭제"]) await expect(tool(name)).toBeVisible();
-      // 박스는 툴바로 넣지 않는다 — 「박스」 공용조항을 「공용조항」으로 (2026-09-28)
-      await expect(tool("박스")).toHaveCount(0);
+      // 「박스」는 정적 마스터 박스를 고른다 (기능/박스 §4.4) — 박스 공용조항은 여전히 「공용조항」으로 (이관 전 공존)
+      await expect(tool("박스")).toBeVisible();
     });
 
     await ev.action("툴바#4", "툴바 「조」로 첫 조를 넣고 제목을 쓴다", async () => {

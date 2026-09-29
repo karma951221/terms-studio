@@ -5,7 +5,7 @@ import { IssueList } from "@/app/_components/IssueList";
 import { RenderedDoc } from "@/app/_components/RenderedDoc";
 import type { Booklet } from "@/domain/assembly";
 import type { Clause } from "@/domain/clause";
-import { referenceTargetIndex, type DocumentNode, type NodeNumber } from "@/domain/document";
+import { referenceTargetIndex, type Box, type DocumentNode, type NodeNumber } from "@/domain/document";
 import type { ClauseOptionOverride, ProductCoverage } from "@/domain/product";
 import type { Id } from "@/domain/types";
 
@@ -28,6 +28,8 @@ export interface GeneralTabProps {
   clauses: Clause[];
   /** 별표 · 구분자 표시명 — 원문 모델의 칩을 한글로. */
   appendices: { code: string; name: string }[];
+  /** 정적 마스터 박스 — 원문 모델의 박스 참조를 내용째. */
+  boxes: Box[];
   discriminators: { code: string; label: string }[];
   /** 보통약관 템플릿 트리 — 미지정이면 undefined (세 패널 대신 한 줄 안내). */
   generalTree: DocumentNode | undefined;
@@ -59,6 +61,7 @@ export function GeneralTab({
   overrideTargets,
   clauses,
   appendices,
+  boxes,
   discriminators,
   generalTree,
   generalNumbers,
@@ -110,6 +113,7 @@ export function GeneralTab({
           overrides={overrides}
           overrideTargets={overrideTargets}
           appendices={appendices}
+          boxes={boxes}
           discriminators={discriminators}
         />
       ),

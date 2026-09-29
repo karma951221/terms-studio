@@ -26,6 +26,8 @@ export type PopupSpec =
   | { kind: "editChip"; nodeId: Id }
   | { kind: "newTable"; at: Position }
   | { kind: "clauseBlock"; at: Position }
+  /** 정적 마스터 박스 고르기 — 고르면 그 자리에 박스 참조 (기능/박스 §4.4). */
+  | { kind: "boxPick"; at: Position }
   | { kind: "tableProps"; tableId: Id }
   | { kind: "repeat"; tableId: Id }
   | { kind: "link"; articleId: Id }
@@ -62,7 +64,7 @@ export function forContextMenu(sections: MenuSections): MenuSections {
 /** 메뉴는 구획(구분선으로 나뉜 묶음)의 목록이다. 빈 구획은 그리지 않는다. */
 export type MenuSections = MenuItem[][];
 
-const KIND_WORD: Partial<Record<NodeKind, string>> = { paragraph: "항", item: "호", subitem: "목", bullet: "항목", bulletList: "글머리 목록", article: "조", section: "관", table: "표", box: "박스", clauseBlockRef: "공용조항" };
+const KIND_WORD: Partial<Record<NodeKind, string>> = { paragraph: "항", item: "호", subitem: "목", bullet: "항목", bulletList: "글머리 목록", article: "조", section: "관", table: "표", box: "박스", clauseBlockRef: "공용조항", boxRef: "박스" };
 
 /**
  * 위로 · 아래로 · 복제 · 삭제 — 모든 블록이 같은 네 줄을 쓴다.
@@ -115,7 +117,7 @@ export interface MenuEnv {
   newId: IdSource;
 }
 
-/** 항 · 호 · 목 · 표 · 박스 · 공용조항(조 단위) 블록의 메뉴. */
+/** 항 · 호 · 목 · 표 · 박스 · 공용조항(조 단위) · 박스 참조 블록의 메뉴. */
 export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
   const { ix } = env;
   const e = ix.nodes.get(nodeId);
@@ -141,6 +143,8 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
   if (after && e.allowed.includes("bulletList")) add.push(bulletListItem("아래에 글머리 목록 추가", after, env.newId));
   // 박스는 「박스」 공용조항으로만 넣는다 — 호 목록 자리(항 · 호 뒤)면 박스 공용조항, 조 자리면 항 · 박스 공용조항 (2026-09-28)
   if (after && e.allowed.includes("clauseBlockRef")) add.push({ label: after.slot === "items" ? "아래에 박스 공용조항 추가…" : "아래에 공용조항(조 단위) 추가…", action: { do: "popup", popup: { kind: "clauseBlock", at: after } } });
+  // 정적 마스터 박스 — 조 자리 · 항 · 호 뒤(호 목록 자리). 박스는 잎이라 공용조항 본문에서도 같다 (기능/박스 §3.2)
+  if (after && e.allowed.includes("boxRef")) add.push({ label: "아래에 박스 추가…", action: { do: "popup", popup: { kind: "boxPick", at: after } } });
 
   const own: MenuItem[] = [];
   if (e.node.kind === "table") {
@@ -160,6 +164,15 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
 export function clausePickItems(clauses: readonly { code: string; label: string; mode?: string }[], at: Position, newId: IdSource): MenuItem[] {
   const b = nodeBuilders(newId);
   return clausesFitting(clauses, at).map((c) => ({ label: `${c.label}(${c.code})`, action: { do: "ops", ops: [{ type: "insert", node: b.clauseBlock(c.code, {}), at }] } }));
+}
+
+/**
+ * 툴바 「박스」의 고르기 목록 — 정적 마스터 박스마다 한 줄(「이름(코드)」), 고르면 그 자리에 박스 참조를 곧바로 넣는다 (기능/박스 §4.4).
+ * 박스는 조 자리 · 호 목록 자리 어디서나 같아 자리로 거르지 않는다.
+ */
+export function boxPickItems(boxes: readonly { code: string; name: string }[], at: Position, newId: IdSource): MenuItem[] {
+  const b = nodeBuilders(newId);
+  return boxes.map((x) => ({ label: `${x.name}(${x.code})`, action: { do: "ops", ops: [{ type: "insert", node: b.boxRef(x.code), at }] } }));
 }
 
 /**
@@ -192,6 +205,7 @@ export function articleMenu(env: MenuEnv, articleId: Id, title = true): MenuSect
   add.push({ label: "항 추가", action: { do: "ops", ops: [{ type: "insert", node: paragraph, at: { parentId: articleId } }], focus: paragraph.id } });
   // 조 끝에 공용조항(조 단위) — 조의 첫 자리가 공용조항인 조(「준용규정」 = 〔항 공용조항〕 하나)를 항 없이 세운다 (2026-09-28, 실물재현 E2E)
   add.push({ label: "공용조항 참조 추가…", action: { do: "popup", popup: { kind: "clauseBlock", at: { parentId: articleId } } } });
+  add.push({ label: "박스 추가…", action: { do: "popup", popup: { kind: "boxPick", at: { parentId: articleId } } } });
   add.push(bulletListItem("글머리 목록 추가", { parentId: articleId }, env.newId));
 
   const own: MenuItem[] = [];
@@ -270,6 +284,7 @@ export function condMenu(env: MenuEnv, branchId: Id): MenuSections {
       into.push({ label: "이 가지에 조 추가", action: { do: "ops", ops: [{ type: "insert", node: article, at }], goArticle: article.id } });
     }
     if (br.allowed.includes("table")) into.push({ label: "이 가지에 표 추가…", action: { do: "popup", popup: { kind: "newTable", at } } });
+    if (br.allowed.includes("boxRef")) into.push({ label: "이 가지에 박스 추가…", action: { do: "popup", popup: { kind: "boxPick", at } } });
   }
   return [
     branch,

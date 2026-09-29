@@ -7,7 +7,8 @@
  *   「조건식」은 문면과 같다 — 항을 골랐으면 감싸고, 본문 빈 자리면 빈 항을 든 조건 블록을 끝에, 「문구」면 문장 안 조건 (2026-09-28).
  * - 막는 것 — 조 · 관 추가(조는 사용처 소유) · 공용조항 참조 넣기(중첩 금지). 그 도구 자리는 남는다 — 툴바는 잠그고 사유를 tooltip 으로,
  *   오른쪽 클릭 메뉴는 누르면 거부 배너(`refusing`).
- * - 공용조항 본문에 없는 것(표 · 박스 · 행 반복 · 조연결 · 구조 표기 · 호/목 자리의 조건 블록)은 싣지 않는다.
+ * - 공용조항 본문에 없는 것(표 · 옛 문면 박스 · 행 반복 · 조연결 · 구조 표기 · 호/목 자리의 조건 블록)은 싣지 않는다.
+ *   정적 마스터 박스(박스 참조)는 잎이라 싣는다 — 항 자리 · 호 뒤 (기능/박스 §3.2).
  */
 import { blockMenu, chipMenu, condBlockItem, condMenu, inlineInsertItems, type MenuEnv, type MenuItem, type MenuSections, type Place } from "@/app/(app)/documents/[id]/_components/menus";
 import { emptyNode, inlineListAt } from "@/app/(app)/documents/[id]/_components/editOps";
@@ -117,12 +118,16 @@ export function clauseInlineMenu(env: ClauseMenuEnv, at: InlineAt, tokens: Token
   return [...insert, ...(options.length > 0 ? [options] : []), ...block];
 }
 
-/** 본문 빈 자리(「항」 유형) — 항 추가 · 조건 블록 넣기(빈 항을 든 조건 블록을 끝에) + 막힌 도구(조 · 관). */
+/** 본문 빈 자리(「항」 유형) — 항 추가 · 박스 추가 · 조건 블록 넣기(빈 항을 든 조건 블록을 끝에) + 막힌 도구(조 · 관). */
 export function clauseBodyMenu(env: ClauseMenuEnv): MenuSections {
   if (env.mode !== "block") return [];
   const paragraph = emptyNode("paragraph", env.newId);
   return [
-    [{ label: "항 추가", action: { do: "ops", ops: [{ type: "insert", node: paragraph, at: { parentId: CLAUSE_ARTICLE_ID } }], focus: paragraph.id } }],
+    [
+      { label: "항 추가", action: { do: "ops", ops: [{ type: "insert", node: paragraph, at: { parentId: CLAUSE_ARTICLE_ID } }], focus: paragraph.id } },
+      // 정적 마스터 박스는 잎이라 공용조항 본문에도 놓는다 (기능/박스 §3.2)
+      { label: "박스 추가…", action: { do: "popup", popup: { kind: "boxPick", at: { parentId: CLAUSE_ARTICLE_ID } } } },
+    ],
     [condBlockItem(env, { parentId: CLAUSE_ARTICLE_ID }, ["paragraph"])],
     [refusing("조 추가", REFUSE.article, env.onRefuse), refusing("관 추가", REFUSE.article, env.onRefuse), refusing("공용조항 참조 추가…", REFUSE.clauseRef, env.onRefuse)],
   ];

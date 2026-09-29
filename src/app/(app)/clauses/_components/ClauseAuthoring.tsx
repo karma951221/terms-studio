@@ -28,7 +28,7 @@ import { EditorToolbar } from "@/app/(app)/documents/[id]/_components/EditorTool
 import { backspaceOps, enterOps, inlineAtOf, inlineListAt, moveSelectionOps } from "@/app/(app)/documents/[id]/_components/editOps";
 import { InlineSlot, caretFromPoint, tokensOf } from "@/app/(app)/documents/[id]/_components/Inline";
 import { identityRuns, runsFromTokens, runsReplacing, sameRuns, type Token } from "@/app/(app)/documents/[id]/_components/inlineRuns";
-import { condInsertItem, inlineCondItem, placeExists, type MenuItem, type MenuSections, type Place, type PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
+import { boxPickItems, condInsertItem, inlineCondItem, placeExists, type MenuItem, type MenuSections, type Place, type PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
 import { condInput, placeOf, readInline } from "@/app/(app)/documents/[id]/_components/place";
 import { PopupHost, type PopupEnv } from "@/app/(app)/documents/[id]/_components/Popups";
 import { ContextMenu, PopActions, Popover } from "@/app/(app)/documents/[id]/_components/Popover";
@@ -194,6 +194,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
 
   // ── 편집 환경 — 문면 저작과 같은 명령 검사. 공용조항 참조 자리는 옵션 운반체만 통과한다(진짜 참조는 중첩 금지) ──
   const appendixCodes = useMemo(() => new Set(data.appendices.map((a) => a.code)), [data.appendices]);
+  const boxByCode = useMemo(() => new Map(data.boxes.map((x) => [x.code, x] as const)), [data.boxes]);
   const refs = useMemo(() => unionRefs(data.generals), [data.generals]);
   const editEnv = useMemo((): EditEnv => {
     const gate: ClauseGate = {
@@ -205,8 +206,8 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
       missingRequired: () => [],
       validateOptions: () => [],
     };
-    return { env: { kind: "special", appendixExists: (c) => appendixCodes.has(c), clauseGate: gate }, generalRefs: (id) => (id === GENERALS ? refs : undefined) };
-  }, [appendixCodes, refs]);
+    return { env: { kind: "special", appendixExists: (c) => appendixCodes.has(c), boxExists: (c) => boxByCode.has(c), clauseGate: gate }, generalRefs: (id) => (id === GENERALS ? refs : undefined) };
+  }, [appendixCodes, boxByCode, refs]);
 
   // ── 표기 ──
   const index = useMemo(() => indexTree(tree), [tree]);
@@ -352,6 +353,12 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
       setMenu({ x: anchor.x, y: anchor.y, sections: [items] });
       return;
     }
+    // 「박스」 — 버튼 아래 작은 메뉴에서 정적 마스터 박스를 고른다(문면 편집기와 같다). 박스가 없으면 사유를 보이는 팝업
+    const first = items[0].action;
+    if (toolId === "box" && first.do === "popup" && first.popup.kind === "boxPick" && data.boxes.length > 0) {
+      setMenu({ x: anchor.x, y: anchor.y, sections: [boxPickItems(data.boxes, first.popup.at, randomIds)] });
+      return;
+    }
     // 바로 적용하는 조작은 쓰던 문장을 먼저 편집본에 넣는다(초점이 떠나며 적용) — 복제 · 이동이 쓰던 글을 두고 가지 않게
     if (items[0].action.do !== "popup") (document.activeElement as HTMLElement | null)?.blur?.();
     runMenu(items[0], anchor);
@@ -425,6 +432,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     chipOverride,
     articleRefChoices: refChoices,
     conditionFor: () => data.condition,
+    boxOf: (c) => boxByCode.get(c),
     ...(flashId ? { flashId } : {}),
     ...(editing ? { edit } : {}),
   };
@@ -436,6 +444,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     apply,
     newId: randomIds,
     appendices: data.appendices,
+    boxes: data.boxes,
     clauses: [],
     generals: [],
     setGeneral: () => undefined,

@@ -35,6 +35,7 @@ import {
 } from "@/domain/document";
 import type { Id } from "@/domain/types";
 
+import { BoxView } from "@/app/_components/BoxView";
 import { ClauseModel, clauseEditHref } from "@/app/_components/ClauseModel";
 
 import { parseLines } from "../../lib";
@@ -307,6 +308,7 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
         selected={node.options}
         references={ctx.docKind === "general" ? ctx.references.self : ctx.references.general}
         appendixName={(code) => ctx.appendixName.get(code)}
+        boxOf={ctx.boxOf}
         exprText={(source) => chipText(source, "edit", ctx.refLabel).full}
       />
     );
@@ -472,6 +474,22 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
       }
       case "box": {
         const body = <Box node={node} ctx={ctx} />;
+        return inList ? (
+          <li key={node.id} className={`ts-doc-static-item${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
+            <DragHandle id={node.id} what="박스" ctx={ctx} />
+            {body}
+          </li>
+        ) : (
+          <div key={node.id} className={`ts-doc-static${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
+            <DragHandle id={node.id} what="박스" ctx={ctx} />
+            {body}
+          </div>
+        );
+      }
+
+      // 정적 마스터 박스 참조 — 박스 마스터의 내용을 그대로 그린다(여기서 고치지 않는다 — 박스 화면에서, 기능/박스 §4.4)
+      case "boxRef": {
+        const body = <BoxView code={node.boxCode} box={ctx.boxOf?.(node.boxCode)} />;
         return inList ? (
           <li key={node.id} className={`ts-doc-static-item${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
             <DragHandle id={node.id} what="박스" ctx={ctx} />

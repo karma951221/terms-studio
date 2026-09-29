@@ -48,8 +48,9 @@ export default async function DocumentDetailPage({ params, searchParams }: { par
   }
   const actor = await currentActor();
 
-  const [appendices, clauses, discriminators, enums, generalSummaries, attributeKinds] = await Promise.all([
+  const [appendices, boxes, clauses, discriminators, enums, generalSummaries, attributeKinds] = await Promise.all([
     services.document.listAppendices(),
+    services.document.listBoxes(),
     services.clause.list(),
     services.catalog.list(),
     services.catalog.listEnums(),
@@ -171,6 +172,7 @@ export default async function DocumentDetailPage({ params, searchParams }: { par
         generals={generalSummaries.filter((g) => g.id !== id).map((g) => ({ id: g.id, title: g.title }))}
         {...(suggestedGeneralId ? { suggestedGeneralId } : {})}
         appendices={appendices}
+        boxes={boxes}
         clauses={clauses}
         discriminators={discriminators}
         attributeValues={Object.fromEntries(attributeKinds.map((k) => [k.code, k.values.map((v) => v.code)]))}

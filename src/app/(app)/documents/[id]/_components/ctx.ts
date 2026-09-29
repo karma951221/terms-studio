@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import type { Clause } from "@/domain/clause";
 import type { BranchEvaluation, EditOp, InlineAt, InlineNode, NodeNumber, ReferenceTarget, SlotEvaluation, TableEvaluation } from "@/domain/document";
 import { format, parse, type DisplayName } from "@/domain/expression";
+import type { Box } from "@/domain/document/box";
 import type { Code, Id } from "@/domain/types";
 
 import type { ConditionContext } from "./condition/types";
@@ -79,6 +80,8 @@ export interface DocCtx {
   conditionFor?: (nodeId: Id) => ConditionContext;
   /** 공용조항 블록이 본문을 그리는 재료 — 코드로 찾는다. 없으면 이름만. */
   clauses?: readonly Clause[];
+  /** 정적 마스터 박스 조회 — 박스 참조를 내용째 그린다(공용조항 블록 안도). 없으면 코드만. */
+  boxOf?: (code: Code) => Box | undefined;
   /**
    * 공용조항 블록 안을 무엇으로 그리나 — 기본은 **모델**(슬롯 · 옵션 자리 · 조건 · 참조, `ClauseModel`),
    * `"text"` 는 고른 선택지 문구를 끼운 문장(미리보기 · 사전평가 결과). 가운데 = 모델, 오른쪽 = 결과 (2026-09-28).

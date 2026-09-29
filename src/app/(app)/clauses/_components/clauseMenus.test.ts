@@ -42,11 +42,13 @@ describe("공용조항 에디터 메뉴 — 문면 메뉴를 공용조항 자리
     expect(clauseBodyMenu(env("inline"))).toEqual([]);
   });
 
-  it("블록 메뉴: 표 · 박스 · 공용조항(조 단위)은 싣지 않거나 거부, 호에는 조건으로 감싸기가 없다", () => {
+  it("블록 메뉴: 표 · 공용조항(조 단위)은 싣지 않거나 거부, 정적 마스터 박스는 넣는다(잎), 호에는 조건으로 감싸기가 없다", () => {
     const e = env("block");
     const paragraph = labels(clauseBlockMenu(e, "p1"));
     expect(paragraph).toContain("조건으로 감싸기");
-    expect(paragraph.some((l) => l.includes("표") || l.includes("박스"))).toBe(false);
+    expect(paragraph.some((l) => l.includes("표") || l.includes("박스 공용조항"))).toBe(false);
+    expect(paragraph).toContain("아래에 박스 추가…");
+    expect(labels(clauseBlockMenu(e, "i1"))).toContain("아래에 박스 추가…");
     expect(labels(clauseBlockMenu(e, "i1"))).not.toContain("조건으로 감싸기");
   });
 
@@ -54,7 +56,7 @@ describe("공용조항 에디터 메뉴 — 문면 메뉴를 공용조항 자리
     const onRefuse = vi.fn();
     const e = env("block", onRefuse);
     const sections = clauseBodyMenu(e);
-    expect(labels(sections)).toEqual(["항 추가", "조건 블록 넣기", "조 추가", "관 추가", "공용조항 참조 추가…"]);
+    expect(labels(sections)).toEqual(["항 추가", "박스 추가…", "조건 블록 넣기", "조 추가", "관 추가", "공용조항 참조 추가…"]);
     const article = find(sections, "조 추가")!;
     if (article.action.do === "ops" && typeof article.action.ops === "function") article.action.ops(e.tree);
     expect(onRefuse).toHaveBeenCalledWith(REFUSE.article);

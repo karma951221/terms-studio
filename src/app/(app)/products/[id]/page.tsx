@@ -103,7 +103,7 @@ export default async function ProductDetailPage({
   // ── 약관 › 보통약관 작성의 재료 (기능/상품 §4.6) ───────────────────────
   // 템플릿 트리 · 템플릿 번호 · 숨긴 조 · 조립 결과. 그 하위 탭을 열었을 때만 읽는다 — 조립은 매번 재계산이라 싸지 않다.
   const gid = sub === "general" ? product.generalDocumentId : undefined;
-  const [generalDoc, generalNumbers, hiddenArticles, bookletResult, appendices, discriminators] = gid
+  const [generalDoc, generalNumbers, hiddenArticles, bookletResult, appendices, discriminators, boxes] = gid
     ? await Promise.all([
         services.document.get(gid),
         services.document.numbering(gid),
@@ -111,8 +111,9 @@ export default async function ProductDetailPage({
         services.assembly.preview(id),
         services.document.listAppendices(),
         services.catalog.list(),
+        services.document.listBoxes(),
       ])
-    : [undefined, new Map<Id, NodeNumber>(), [] as Id[], undefined, [], []];
+    : [undefined, new Map<Id, NodeNumber>(), [] as Id[], undefined, [], [], []];
   const booklet = bookletResult?.ok ? bookletResult.value : undefined;
   const bookletNote = bookletResult && !bookletResult.ok ? `조립할 수 없다 — ${rejectionMessage(bookletResult)}` : undefined;
 
@@ -297,6 +298,7 @@ export default async function ProductDetailPage({
           overrideTargets={overrideTargets}
           clauses={clauses}
           appendices={appendices.map((a) => ({ code: a.code, name: a.name }))}
+          boxes={boxes}
           discriminators={discriminators.map((d) => ({ code: d.code, label: d.label }))}
           generalTree={generalDoc?.tree}
           generalNumbers={generalNumbers}

@@ -78,8 +78,8 @@ describe("약관 에디터 툴바 (기능/문면 §4.3)", () => {
       expect.arrayContaining(["조", "관", "항", "호", "목", "표", "글머리 목록", "공용조항", "슬롯", "조 참조", "별표 참조", "조건식", "위로", "아래로", "복제", "삭제"]),
     );
     expect(ids).not.toContain("optionSlot");
-    // 박스는 툴바로 직접 넣지 않는다 — 「박스」 공용조항을 「공용조항」으로 (기능/공용조항 §3.1, 2026-09-28)
-    expect(allTools(DOCUMENT_TOOLS).map((t) => t.label)).not.toContain("박스");
+    // 박스는 정적 마스터 박스를 고른다 — 「박스」 버튼 (기능/박스 §4.4). 옛 문면 박스(사본)를 넣는 길은 없다
+    expect(allTools(DOCUMENT_TOOLS).find((t) => t.id === "box")?.label).toBe("박스");
   });
 
   it("버튼 켜짐은 자리를 따른다 — 항이면 항 · 호 · 조건식이 켜지고 조건 가지 조작은 잠긴다", () => {

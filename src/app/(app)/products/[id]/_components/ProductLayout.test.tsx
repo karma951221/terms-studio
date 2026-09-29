@@ -135,6 +135,7 @@ describe("약관 › 보통약관 작성 — 템플릿 한 줄 + 세 패널, 다
         overrideTargets={[]}
         clauses={[]}
         appendices={[]}
+        boxes={[]}
         discriminators={[]}
         generalTree={tree}
         generalNumbers={new Map<string, NodeNumber>([["A1", { n: 1, label: "제1조" } as NodeNumber]])}

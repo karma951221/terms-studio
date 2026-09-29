@@ -11,11 +11,12 @@
  * - 앵커는 `art-<조 id>` — 오른쪽 조립 결과의 `node-<조 id>` 와 짝이다 (`PanelScrollSync`).
  *   표·박스에는 id 를 심지 않는다 — 오른쪽 패널의 `node-<id>` 와 겹쳐 오류 패널의 이동이 엉킨다.
  */
+import { BoxView } from "@/app/_components/BoxView";
 import { ClauseModel, clauseEditHref } from "@/app/_components/ClauseModel";
 import { IconButton, IconRevert } from "@/app/_components/icons";
 import { STRUCT_KEY_CHIP } from "@/app/_lib/labels";
 import type { Clause } from "@/domain/clause";
-import { referenceChunkLabel, type ArticleNode, type CondBlockNode, type InlineNode, type Node, type NodeNumber, type ReferenceTarget, type TableNode } from "@/domain/document";
+import { referenceChunkLabel, type ArticleNode, type Box, type CondBlockNode, type InlineNode, type Node, type NodeNumber, type ReferenceTarget, type TableNode } from "@/domain/document";
 import { format, parse, refPath } from "@/domain/expression";
 import type { ClauseOptionOverride } from "@/domain/product";
 import type { Code, Id } from "@/domain/types";
@@ -39,6 +40,8 @@ export interface TemplateSourceProps {
   appendices?: readonly { code: Code; name: string }[];
   /** 구분자 코드 → 표시명 — 조건식 · 슬롯 칩을 한글로. 없으면 식 원문. */
   discriminators?: readonly { code: Code; label: string }[];
+  /** 정적 마스터 박스 — 박스 참조를 내용째 그린다. 없으면 코드만. */
+  boxes?: readonly Box[];
 }
 
 interface Ctx {
@@ -46,6 +49,7 @@ interface Ctx {
   /** 지금 그리는 조 — 그 조 안의 옵션 저장은 이 조로 돌아온다 (`ArticleNodes` 가 조마다 채운다). */
   articleId: Id | undefined;
   appendixName: (code: Code) => string | undefined;
+  boxOf: (code: Code) => Box | undefined;
   exprText: (source: string) => string;
   numbers: ReadonlyMap<Id, NodeNumber>;
   hidden: ReadonlySet<Id>;
@@ -231,7 +235,7 @@ function ClauseBox({ nodeId, clauseCode, baseOptions, ctx }: { nodeId: Id; claus
       </div>
       <div className="ts-doc-clause-body">
         {clause ? (
-          <ClauseModel clause={clause} selected={effective} references={ctx.references} appendixName={ctx.appendixName} exprText={ctx.exprText} />
+          <ClauseModel clause={clause} selected={effective} references={ctx.references} appendixName={ctx.appendixName} boxOf={ctx.boxOf} exprText={ctx.exprText} />
         ) : (
           <p className="ts-muted">{clauseCode} — 없는 공용조항이다(깨진 참조).</p>
         )}
@@ -411,6 +415,18 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
         );
       }
 
+      // 정적 마스터 박스 참조 — 박스 마스터 내용 그대로 (기능/박스 §3.2)
+      case "boxRef": {
+        const body = <BoxView code={node.boxCode} box={ctx.boxOf(node.boxCode)} />;
+        return inList ? (
+          <li key={node.id} className="ts-doc-static-item">
+            {body}
+          </li>
+        ) : (
+          <div key={node.id}>{body}</div>
+        );
+      }
+
       // 글머리 목록 — 번호 없는 「-」 항목 (항목 문장의 공용조항 박스는 목록 뒤)
       case "bullet":
         return (
@@ -474,7 +490,8 @@ function ArticleNodes({ nodes, ctx }: { nodes: readonly Node[]; ctx: Ctx }) {
   });
 }
 
-export function TemplateSource({ productId, nodes, numbers, hidden, references, clauses, overrides, overrideTargets, appendices = [], discriminators = [] }: TemplateSourceProps) {
+export function TemplateSource({ productId, nodes, numbers, hidden, references, clauses, overrides, overrideTargets, appendices = [], discriminators = [], boxes = [] }: TemplateSourceProps) {
+  const boxByCode = new Map(boxes.map((x) => [x.code, x] as const));
   const clauseByCode = new Map(clauses.map((c) => [c.code, c] as const));
   const appendixByCode = new Map(appendices.map((a) => [a.code, a.name] as const));
   const labelOf = new Map(discriminators.map((d) => [d.code, d.label] as const));
@@ -482,6 +499,7 @@ export function TemplateSource({ productId, nodes, numbers, hidden, references, 
     productId,
     articleId: undefined,
     appendixName: (code) => appendixByCode.get(code),
+    boxOf: (code) => boxByCode.get(code),
     exprText: (source) => exprDisplay(source, labelOf),
     numbers,
     hidden,
