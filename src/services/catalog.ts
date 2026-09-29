@@ -48,7 +48,7 @@ import {
 } from "@/domain/catalog";
 import { formatCoordinate } from "@/domain/coordinate";
 import type { ExprType } from "@/domain/expression";
-import { transitiveUsages, type RefGraph } from "@/domain/refs";
+import { enumValueListers, transitiveUsages, type RefEdge, type RefGraph } from "@/domain/refs";
 import type { Actor, AttachLevel, Code, Coordinate, FieldType, Issue, Result } from "@/domain/types";
 import { mergeImpacts, ok, reject } from "@/domain/types";
 
@@ -130,6 +130,12 @@ export interface CatalogService {
    * 거부 · 확인 필요면 트랜잭션을 롤백한다 — 채번한 순번도 타지 않는다.
    */
   reviseEnum(actor: Actor, code: Code, revision: EnumRevision, opts?: Confirmable): Promise<Result<EnumDef>>;
+
+  /**
+   * 열거값 추가의 재검사 목록 — 그 열거형 값 코드와 비교하는 조건식 · 슬롯 · 구분자 식 (ADR-0078 결정 4).
+   * 값 저장은 막지 않는다 — 저장 뒤 화면이 「재검사 N건」으로 보인다. 그래프가 주입되지 않으면 빈 목록.
+   */
+  enumValueRecheck(code: Code): Promise<RefEdge[]>;
 
   // enum — 파괴적 (admin · 2단) — 값 삭제는 값 행을 남긴다 (「없는 값」, ADR-0078 결정 5)
   removeEnumValue(actor: Actor, code: Code, valueCode: Code, opts?: Confirmable): Promise<Result<EnumDef>>;
@@ -337,6 +343,7 @@ export function createCatalogService(db: Db, deps: CatalogServiceDeps = {}): Cat
     addEnumValue: (actor, code, input) => editEnum(actor, code, (def, ctx) => addEnumValue(def, input, ctx.nextSeq)),
     renameEnumValue: (actor, code, valueCode, label) => editEnum(actor, code, (def) => renameEnumValue(def, valueCode, label)),
     reorderEnumValues: (actor, code, order) => editEnum(actor, code, (def) => reorderEnumValues(def, order)),
+    enumValueRecheck: async (code) => (deps.graph ? enumValueListers(await deps.graph(), code) : []),
     reviseEnum: (actor, code, revision, opts = {}) =>
       rollbackUnless(
         db,

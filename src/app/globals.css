@@ -4830,3 +4830,13 @@ button.ts-ref-fold:hover {
   color: var(--ts-ink-2);
 }
 
+/* 열거값 추가의 재검사 목록 — 저장 뒤 편집 본문 아래 (ADR-0078 결정 4) */
+.ts-recheck {
+  margin-top: 16px;
+}
+
+.ts-recheck .ts-l2-side-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}

@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { createTestDb, type TestDb } from "@/db/test-utils";
+import { nodeKey } from "@/domain/refs";
 import type { Actor } from "@/domain/types";
 import { createServices, type Services } from "@/services/container";
 
@@ -103,5 +104,16 @@ describe("saveEnumEditAction", () => {
     const r = await saveEnumEditAction(def.code, { label: "가입 형태", description: "", values: [{ code: a!, label: "개인" }, { code: "new:1", label: "법인" }] }, true);
     expect(r.ok).toBe(false);
     expect(await s.catalog.getEnum(def.code)).toEqual(def);
+  });
+
+  it("새 값을 더해 저장하면 그 열거형 값을 비교하는 식이 재검사 목록으로 결과에 실린다 · 값을 더하지 않으면 목록이 없다 (ADR-0078 결정 4)", async () => {
+    actor = editor;
+    const e3 = (await s.catalog.getEnum("E0003"))!; // 납입주기 — 마스터 feature.review_type 이 E0003 을 쓴다
+    unwrap(await s.catalog.create(editor, { label: "첫값여부", level: "product", expression: "feature.review_type = 'V01'" }));
+    const values = [...e3.values].sort((a, b) => a.order - b.order).map((v) => ({ code: v.code, label: v.label }));
+    const r = await saveEnumEditAction("E0003", { label: e3.label, description: "", values: [...values, { code: "new:1", label: "분기납" }] });
+    if (r.ok !== true) throw new Error("저장 기대");
+    expect(r.recheck?.map((e) => [e.via, nodeKey(e.from), nodeKey(e.to)])).toEqual([["expression", "discriminator:D0001", "enumValue:E0003/V01"]]);
+    expect(await saveEnumEditAction("E0003", { label: "납입 주기", description: "", values: [...values, { code: "V05", label: "분기납" }] })).toEqual({ ok: true });
   });
 });

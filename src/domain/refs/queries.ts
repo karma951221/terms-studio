@@ -55,6 +55,27 @@ export function referencesFrom(graph: RefGraph, source: RefNodeKey, opts: UsageO
   return graph.edges.filter((e) => (!via || via.has(e.via)) && underOrSelf(graph, e.from, s));
 }
 
+/** 값을 나열해 비교하는 참조의 형태 — 조건식 · 슬롯 · 구분자 식. */
+const VALUE_LISTING_VIAS: readonly EdgeVia[] = ["when", "slot", "expression"];
+
+/**
+ * 열거값 추가의 재검사 목록 — 그 열거형의 값 코드와 비교하는(`= 'V02'`) 조건식 · 슬롯 · 구분자 식 간선 (ADR-0078 결정 4).
+ * 값을 나열한 곳은 새 값을 조용히 놓치므로 사람이 다시 본다. 지운 값을 비교하는 간선(깨진 참조)도 든다.
+ * 한 자리가 값을 여럿 비교하면(`D = 'V01' or D = 'V02'`) 좌표 하나로 모은다. 등장 순.
+ */
+export function enumValueListers(graph: RefGraph, enumCode: Code): RefEdge[] {
+  const seen = new Set<string>();
+  const out: RefEdge[] = [];
+  for (const e of graph.edges) {
+    if (e.to.kind !== "enumValue" || e.to.enumCode !== enumCode || !VALUE_LISTING_VIAS.includes(e.via)) continue;
+    const key = `${e.via}|${nodeKey(e.from)}|${JSON.stringify(e.at)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(e);
+  }
+  return out;
+}
+
 // ───────────────────────────── 다단 사용처 ─────────────────────────────
 
 /**

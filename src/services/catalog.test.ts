@@ -446,7 +446,7 @@ describe("catalog.reviseEnum — 열거형변수 편집 한 벌 저장 (점검 2
   });
 });
 
-describe("열거값 삭제 = 「없는 값」 (ADR-0078 결정 5, 실제 주입)", () => {
+describe("열거값 삭제 = 「없는 값」 · 열거값 추가 = 재검사 목록 (ADR-0078 결정 4 · 5, 실제 주입)", () => {
   let t: TestDb;
   let s: Services;
   const P1 = "11111111-1111-4111-8111-111111111111";
@@ -479,5 +479,14 @@ describe("열거값 삭제 = 「없는 값」 (ADR-0078 결정 5, 실제 주입)
     const enums = new Map((await s.catalog.listEnums()).map((e) => [e.code, e]));
     const form = initFormState(buildForm("plan", (c) => enums.get(c), slots));
     expect(toSubmission(form).issues).toEqual([expect.objectContaining({ kind: "brokenRef", message: "없는 값 V01 — 납입면제사유(E0001)에서 지워진 값입니다", at: { refPath: "waiver.reasons" } })]);
+  });
+
+  it("열거값을 추가하면 그 열거형 값을 비교하는 조건식이 재검사 목록에 오른다", async () => {
+    unwrap(await s.catalog.create(editor, { label: "해약환급금유형", level: "plan", expression: "no_surrender.type" })); // D0001
+    const b = nodeBuilders();
+    await insertDocument(t.db, { kind: "general", title: "보통약관", tree: b.document("보통약관", [b.condBlock([b.branch("D0001 = 'V01' or D0001 = 'V02'", [b.article("지급형 특칙", [b.paragraph([b.text("지급")])])])])]) }, editor.userId);
+    const recheck = await s.catalog.enumValueRecheck("E0002");
+    expect(recheck.map((e) => [e.via, e.at.document, e.at.refPath])).toEqual([["when", "general", "D0001"]]);
+    expect(await s.catalog.enumValueRecheck("E0001")).toEqual([]);
   });
 });

@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import type { Discriminator } from "../catalog";
+import type { Discriminator, EnumDef } from "../catalog";
 import type { Clause } from "../clause";
 import type { MasterForm } from "../master";
 import { surgeryFixture } from "../document";
 import { buildGraph, nodeKey, type DocumentInput } from "./graph";
-import { affectedProducts, brokenEdges, cycles, dependentDiscriminators, describeKey, orphans, refStats, relationView, transitiveUsages, usagesOf } from "./queries";
+import { affectedProducts, brokenEdges, cycles, dependentDiscriminators, describeKey, enumValueListers, orphans, refStats, relationView, transitiveUsages, usagesOf } from "./queries";
 
 /** 픽스처 마스터 — 담보 기본{갱신여부} · 급부 보험금지급{면책여부 · 지급률}. 경로는 `폼키.필드키`. */
 const master: MasterForm[] = [
@@ -360,5 +360,61 @@ describe("affectedProducts — 사용처 문면이 들어가는 상품 (ADR-0049
       const g = chainGraph();
       expect(affectedProducts(g, { kind: "clause", code: "C999" })).toEqual([]);
     });
+  });
+});
+
+describe("enumValueListers — 열거값 추가의 재검사 목록 (ADR-0078 결정 4)", () => {
+  const enumMaster: MasterForm[] = [
+    { key: "product_basic", label: "상품 기본", level: "product", fields: [{ key: "notice", label: "고지유형", type: { kind: "enum", enumCode: "E0001" } }] },
+    { key: "no_surrender", label: "무저해지", level: "plan", fields: [{ key: "type", label: "유형", type: { kind: "enum", enumCode: "E0002" } }] },
+  ];
+  const enums: EnumDef[] = [
+    { code: "E0001", label: "고지유형", values: [{ code: "V01", label: "일반심사", order: 0 }, { code: "V02", label: "간편심사", order: 1 }] },
+    { code: "E0002", label: "무저해지유형", values: [{ code: "V01", label: "지급형", order: 0 }, { code: "V02", label: "무저해지형", order: 1 }] },
+  ];
+  const 고지유형: Discriminator = { code: "D0002", label: "고지유형", description: "", level: "product", expression: "product_basic.notice" };
+  const 간편여부: Discriminator = { code: "D0010", label: "간편여부", description: "", level: "product", expression: "product_basic.notice = 'V02'" };
+  const 무저해지: Discriminator = { code: "D0009", label: "무저해지형", description: "", level: "plan", expression: "no_surrender.type = 'V02'" };
+
+  function graph() {
+    return buildGraph({
+      discriminators: [고지유형, 간편여부, 무저해지],
+      enums,
+      documents: [
+        {
+          id: "d",
+          kind: "general",
+          title: "g",
+          tree: {
+            id: "root",
+            kind: "document",
+            title: "g",
+            children: [
+              { id: "cb", kind: "condBlock", branches: [{ id: "b1", when: "D0002 = 'V01'", children: [] }, { id: "b2", when: "any(D0009)", children: [] }] },
+            ],
+          },
+        },
+      ],
+      master: enumMaster,
+    });
+  }
+
+  it("그 열거형 값 코드와 비교하는 조건식 · 구분자 식 간선만 — 다른 열거형 · 값을 비교하지 않는 참조는 뺀다", () => {
+    const edges = enumValueListers(graph(), "E0001");
+    expect(edges.map((e) => [e.via, nodeKey(e.from), nodeKey(e.to)])).toEqual([
+      ["expression", "discriminator:D0010", "enumValue:E0001/V02"],
+      ["when", "document:d", "enumValue:E0001/V01"],
+    ]);
+    expect(enumValueListers(graph(), "E0002").map((e) => nodeKey(e.from))).toEqual(["discriminator:D0009"]);
+  });
+
+  it("같은 자리가 값을 여럿 비교해도 좌표 하나로 모은다", () => {
+    const g = buildGraph({
+      discriminators: [고지유형],
+      enums,
+      documents: [{ id: "d", kind: "general", title: "g", tree: { id: "root", kind: "document", title: "g", children: [{ id: "cb", kind: "condBlock", branches: [{ id: "b1", when: "D0002 = 'V01' or D0002 = 'V02'", children: [] }] }] } }],
+      master: enumMaster,
+    });
+    expect(enumValueListers(g, "E0001")).toHaveLength(1);
   });
 });

@@ -22,7 +22,7 @@ const isNew = (code: string) => code.startsWith("new:");
  * 값 표는 최종 목록 한 벌로 서비스 `reviseEnum` 에 넘긴다 — 한 단계씩 고치면 값 이름 A↔B 맞바꾸기가 중간 상태에서
  * 「중복」으로 거부됐다 (점검 2026-09-27 H2 ①). 표에서 ✕ 로 뺀 저장된 값은 여기서 빠지고, 확인은 **저장 시점**에 한 번 —
  * 빠진 값 전부의 영향(값 행 · 사용처)을 합친 대화상자다 (D2). 전체가 한 트랜잭션이라 거부 · 확인 대기 중엔 아무것도 남지 않는다 (H1).
- * 뺀 값을 고른 값 행은 지우지 않고 「없는 값」 오류로 남긴다 (ADR-0078 결정 5).
+ * 뺀 값을 고른 값 행은 지우지 않고 「없는 값」 오류로 남긴다 (ADR-0078 결정 5). 새 값을 더하면 재검사 목록을 싣는다 (결정 4).
  */
 export async function saveEnumEditAction(code: string, input: EnumEditData, confirm = false): Promise<EditOutcome> {
   const actor = await currentActor();
@@ -32,7 +32,12 @@ export async function saveEnumEditAction(code: string, input: EnumEditData, conf
     if (!current) return { ok: false, message: "열거형변수를 찾을 수 없습니다." };
     const values = input.values.map((value) => (isNew(value.code) ? { label: value.label } : { code: value.code, label: value.label }));
     const result = await services.catalog.reviseEnum(actor, code, { label: input.label, description: input.description, values }, { confirm });
-    if (result.ok) return { ok: true };
+    if (result.ok) {
+      // 값을 더했으면 그 열거형 값을 나열해 비교하는 곳을 재검사 목록으로 돌려준다 — 저장은 막지 않는다 (ADR-0078 결정 4)
+      if (!input.values.some((value) => isNew(value.code))) return { ok: true };
+      const recheck = await services.catalog.enumValueRecheck(code);
+      return recheck.length > 0 ? { ok: true, recheck } : { ok: true };
+    }
     if (result.rejection.reason === "needsConfirmation") {
       const kept = new Set(input.values.map((value) => value.code));
       const removed = current.values.filter((value) => !kept.has(value.code)).length;

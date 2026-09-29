@@ -1,7 +1,9 @@
+import type { RefEdge } from "@/domain/refs";
 import type { Impact } from "@/domain/types";
 
 export type EditOutcome =
-  | { ok: true }
+  /** `recheck` — 저장은 됐지만 사람이 다시 볼 사용처 (열거값 추가의 재검사 목록, ADR-0078 결정 4). 화면이 `onSaved` 로 받는다. */
+  | { ok: true; recheck?: RefEdge[] }
   | { ok: false; message: string }
   /**
    * 파괴적 변경 — 영향 대화상자 뒤 `confirm=true` 로 재호출. `title` · `actionLabel` 은 화면별 문구 (없으면 EditShell 기본).

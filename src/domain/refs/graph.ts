@@ -215,7 +215,8 @@ class Builder {
       const path = refPath(ref);
       if (ref.kind === "attr") {
         this.edge({ from, to: { kind: "attributeValue", code: ref.code, valueCode: literal }, via, at: { ...at, refPath: path } });
-      } else if (ref.kind === "discriminator") {
+      } else if (ref.kind === "discriminator" || ref.kind === "master") {
+        // 구분자 식은 마스터 필드를 직접 비교한다(`product_basic.notice = 'V02'`) — enum 타입 필드면 그 값 간선 (ADR-0078 결정 4 재검사 · 결정 5 삭제 영향)
         const enumCode = this.enumSlots.get(path);
         if (enumCode !== undefined) this.edge({ from, to: { kind: "enumValue", enumCode, valueCode: literal }, via, at: { ...at, refPath: path } });
       }

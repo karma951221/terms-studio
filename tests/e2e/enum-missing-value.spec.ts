@@ -3,8 +3,8 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "./_lib/fixtures";
 
 /**
- * 열거값 삭제 = 「없는 값」 오류 (기능/열거형 §3.2, ADR-0078 결정 5).
- * 시드를 건드리지 않게 이 테스트가 더한 값 · 상품만 지운다 (한 실행이 DB 하나를 나눠 쓴다).
+ * 열거값 삭제 = 「없는 값」 오류 · 열거값 추가 = 재검사 목록 (기능/열거형 §3.2 · §3.3, ADR-0078 결정 4 · 5).
+ * 시드를 건드리지 않게 이 테스트가 더한 값 · 구분자 · 상품만 지우고 되돌린다 (한 실행이 DB 하나를 나눠 쓴다).
  */
 
 async function login(page: Page) {
@@ -37,11 +37,11 @@ async function removeEnumValue(page: Page, code: string, label: string, confirmL
 }
 
 test(
-  "열거값: 지우면 세목 값에 「없는 값」 칩이 남고 빼기로 고친다",
+  "열거값: 추가하면 재검사 목록, 지우면 세목 값에 「없는 값」 칩이 남고 빼기로 고친다",
   {
     annotation: {
       type: "좌표없음",
-      description: "기능/열거형 §3.2 (ADR-0078 결정 5) — 구분자정의 시나리오 2 의 값 삭제 문장은 옛 「값 행 연쇄 삭제」라 좌표를 달지 않는다",
+      description: "기능/열거형 §3.2 · §3.3 (ADR-0078 결정 4 · 5) — 구분자정의 시나리오 2 의 값 삭제 문장은 옛 「값 행 연쇄 삭제」라 좌표를 달지 않는다",
     },
   },
   async ({ page }) => {
@@ -49,8 +49,23 @@ test(
     await login(page);
     const stamp = Date.now();
     const reason = `임시사유${stamp}`;
+    const reviewType = `임시심사${stamp}`;
     let productUrl: string | undefined;
+    let discriminatorUrl: string | undefined;
     try {
+      // ── 추가 = 재검사: 상품 레벨 구분자가 간편심사유형(E0003) 값을 비교한다 → E0003 에 값을 더하면 그 식이 목록에 오른다
+      await page.goto("/catalog/new");
+      await page.getByLabel("구분자명").fill(`재검사확인${stamp}`);
+      await page.getByRole("radiogroup", { name: "레벨" }).getByRole("radio", { name: "상품", exact: true }).check();
+      await page.getByLabel("식", { exact: true }).fill("feature.review_type = 'V01'");
+      await page.getByRole("button", { name: "생성", exact: true }).click();
+      await page.waitForURL(/\/catalog\/D\d{4}$/);
+      discriminatorUrl = page.url();
+      await addEnumValue(page, "E0003", reviewType);
+      const recheck = page.getByRole("status", { name: "재검사 목록" });
+      await expect(recheck).toContainText("재검사 1건");
+      await expect(recheck).toContainText(`재검사확인${stamp}`);
+
       // ── 삭제 = 없는 값: 납입면제사유(E0001)에 값을 더해 상품 세목이 고르게 한 뒤 그 값을 지운다
       await addEnumValue(page, "E0001", reason);
       await page.goto("/products/new");
@@ -96,6 +111,14 @@ test(
         await page.locator('.ts-confirm button[type="submit"]').click();
         await page.waitForURL(/\/products$/);
       }
+      if (discriminatorUrl) {
+        await page.goto(discriminatorUrl);
+        await page.getByRole("button", { name: /^구분자 재검사확인\d+\(D\d{4}\) 삭제/ }).click();
+        await page.locator("dialog.ts-dialog").getByRole("button", { name: /삭제$/ }).click();
+        await page.waitForURL((url) => !url.pathname.startsWith("/catalog/D"));
+      }
+      // E0003 에 더한 값은 아무도 고르지 않았다 — 되돌린다
+      await removeEnumValue(page, "E0003", reviewType).catch(() => undefined);
     }
   },
 );

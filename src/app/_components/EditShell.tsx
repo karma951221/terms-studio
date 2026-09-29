@@ -86,6 +86,7 @@ export function EditShell<T extends EditData>({
   initialMode = "read",
   cancelHref,
   saveSuccessHref,
+  onSaved,
   children,
 }: {
   initial: T;
@@ -124,6 +125,8 @@ export function EditShell<T extends EditData>({
   initialMode?: "read" | "edit";
   cancelHref?: string;
   saveSuccessHref?: string;
+  /** 저장이 끝난 뒤 — 결과에 실린 후속 안내(열거값 추가의 재검사 목록 등)를 화면이 받는다. */
+  onSaved?: (outcome: Extract<EditOutcome, { ok: true }>) => void;
   children: ReactNode;
 }) {
   const [mode, setMode] = useState<"read" | "edit">(initialMode);
@@ -168,6 +171,7 @@ export function EditShell<T extends EditData>({
         router.replace(deleteSuccessHref ?? "/");
         return;
       }
+      onSaved?.(outcome);
       if (saveSuccessHref) {
         router.replace(saveSuccessHref);
         return;
