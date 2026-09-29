@@ -193,7 +193,7 @@ export const alphaClauses: Clause[] = [
     mode: "inline",
     body: [
       { id: "c2-t1", kind: "text", text: "이 약관에서 정하지 않은 사항은 " },
-      { id: "c2-ref", kind: "articleRef", targets: [{ nodeId: "g-art-def" }], connector: "및" },
+      { id: "c2-ref", kind: "articleRef", targets: [{ articleId: "g-art-def" }], connector: "및" },
       { id: "c2-t2", kind: "text", text: " 및 관계 법령을 따릅니다." },
     ],
     options: [],
@@ -425,8 +425,8 @@ export function alphaGeneralDocument(): DocumentNode {
         kind: "article",
         title: "해약환급금",
         children: [
-          { id: "g-par-refund-1", kind: "paragraph", children: [{ id: "g-txt-refund-1", kind: "text", text: "계약이 해지된 경우 해약환급금을 지급합니다." }] },
-          { id: "g-par-refund-2", kind: "paragraph", children: [{ id: "g-txt-refund-2", kind: "text", text: "해약환급금은 산출방법서에 따라 계산합니다." }] },
+          { id: "g-par-refund-1", kind: "paragraph", code: "P0100", children: [{ id: "g-txt-refund-1", kind: "text", text: "계약이 해지된 경우 해약환급금을 지급합니다." }] },
+          { id: "g-par-refund-2", kind: "paragraph", code: "P0200", children: [{ id: "g-txt-refund-2", kind: "text", text: "해약환급금은 산출방법서에 따라 계산합니다." }] },
         ],
       },
     ],
@@ -504,7 +504,7 @@ export function alphaDeathDocument(): DocumentNode {
               { id: "s-txt-reduce-1", kind: "text", text: "계약일부터 " },
               { id: "s-slot-reduce", kind: "slot", ref: "D0007" },
               { id: "s-txt-reduce-2", kind: "text", text: " 이내에는 감액 지급하며, " },
-              { id: "s-ref-refund", kind: "articleRef", scope: "general", targets: [{ nodeId: "g-par-refund-1" }, { nodeId: "g-par-refund-2" }], connector: "및" },
+              { id: "s-ref-refund", kind: "articleRef", scope: "general", targets: [{ articleId: "g-art-refund", code: "P0100" }, { articleId: "g-art-refund", code: "P0200" }], connector: "및" },
               { id: "s-txt-reduce-3", kind: "text", text: "을 확인합니다." },
             ],
           },

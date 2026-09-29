@@ -30,8 +30,8 @@ function general(): SubstitutedDoc {
         id: "g-a",
         title: "해약환급금",
         children: [
-          { kind: "paragraph", id: "g-p1", children: [text("g-t1", "첫째")] },
-          { kind: "paragraph", id: "g-p2", children: [text("g-t2", "둘째")] },
+          { kind: "paragraph", id: "g-p1", key: "P0100", children: [text("g-t1", "첫째")] },
+          { kind: "paragraph", id: "g-p2", key: "P0200", children: [text("g-t2", "둘째")] },
         ],
       },
     ],
@@ -44,7 +44,7 @@ describe("참조 슬롯 렌더", () => {
       kind: "document",
       id: "s",
       title: "특약",
-      children: [{ kind: "article", id: "s-a", title: "준용", children: [{ kind: "paragraph", id: "s-p", children: [{ kind: "articleRef", id: "ref", targets: [{ nodeId: "g-p1" }, { nodeId: "g-p2" }], connector: "및", scope: "general", at }] }] }],
+      children: [{ kind: "article", id: "s-a", title: "준용", children: [{ kind: "paragraph", id: "s-p", children: [{ kind: "articleRef", id: "ref", targets: [{ articleId: "g-a", code: "P0100" }, { articleId: "g-a", code: "P0200" }], connector: "및", scope: "general", at }] }] }],
     };
     const result = renderDocument(numberDocument(doc), { document: "special", ownerId: "pc", general: numberDocument(general()), appendices: [] });
     const article = result.doc.children[0];
@@ -63,11 +63,11 @@ describe("참조 슬롯 렌더", () => {
           id: "a1",
           title: "첫 조",
           children: [
-            { kind: "paragraph", id: "p1", children: [{ kind: "articleRef", id: "ref", targets: [{ nodeId: "i2" }, { nodeId: "p2" }, { nodeId: "p3" }], connector: "또는", scope: "self", at }], items: [{ kind: "item", id: "i1", children: [] }, { kind: "item", id: "i2", children: [] }] },
-            { kind: "paragraph", id: "p2", children: [] },
+            { kind: "paragraph", id: "p1", key: "P0100", children: [{ kind: "articleRef", id: "ref", targets: [{ articleId: "a1", code: "P0400" }, { articleId: "a1", code: "P0200" }, { articleId: "a2", code: "P0100" }], connector: "또는", scope: "self", at }], items: [{ kind: "item", id: "i1", key: "P0300", children: [] }, { kind: "item", id: "i2", key: "P0400", children: [] }] },
+            { kind: "paragraph", id: "p2", key: "P0200", children: [] },
           ],
         },
-        { kind: "article", id: "a2", title: "둘째 조", children: [{ kind: "paragraph", id: "p3", children: [] }] },
+        { kind: "article", id: "a2", title: "둘째 조", children: [{ kind: "paragraph", id: "p3", key: "P0100", children: [] }] },
       ],
     };
     const result = renderDocument(numberDocument(doc), { document: "special", ownerId: "pc", appendices: [] });
@@ -81,10 +81,10 @@ describe("참조 슬롯 렌더", () => {
       kind: "document",
       id: "s",
       title: "특약",
-      children: [{ kind: "article", id: "a", title: "조", children: [{ kind: "paragraph", id: "p", children: [{ kind: "articleRef", id: "ref", targets: [{ nodeId: "gone-1" }, { nodeId: "gone-2" }], connector: "및", scope: "self", at }] }] }],
+      children: [{ kind: "article", id: "a", title: "조", children: [{ kind: "paragraph", id: "p", children: [{ kind: "articleRef", id: "ref", targets: [{ articleId: "gone-1" }, { articleId: "gone-2" }], connector: "및", scope: "self", at }] }] }],
     };
     const result = renderDocument(numberDocument(doc), { document: "special", ownerId: "pc", appendices: [] });
-    expect(result.issues.map((issue) => [issue.kind, issue.at.refPath])).toEqual([["articleGone", "gone-1"], ["articleGone", "gone-2"]]);
+    expect(result.issues.map((issue) => [issue.kind, issue.at.refPath])).toEqual([["articleGone", "gone-1"], ["articleGone", "gone-2"]]); // refPath = 대상 열쇠
     const article = result.doc.children[0];
     if (article.kind !== "article" || article.children[0].kind !== "paragraph") throw new Error("unexpected structural error");
     expect(article.children[0].children).toHaveLength(1);
@@ -102,7 +102,7 @@ describe("참조 슬롯 렌더", () => {
           kind: "article" as const,
           id,
           title: `조${id.slice(1)}`,
-          children: [{ kind: "paragraph" as const, id: `${id}-p`, children: i === 0 ? [{ kind: "articleRef" as const, id: "ref", targets: targets.map((nodeId) => ({ nodeId })), connector, scope: "self" as const, at }] : [] }],
+          children: [{ kind: "paragraph" as const, id: `${id}-p`, children: i === 0 ? [{ kind: "articleRef" as const, id: "ref", targets: targets.map((articleId) => ({ articleId })), connector, scope: "self" as const, at }] : [] }],
         })),
       };
     }
@@ -146,9 +146,9 @@ describe("참조 슬롯 렌더", () => {
             id: "a1",
             title: "조",
             children: [
-              { kind: "paragraph", id: "p1", children: [] },
-              { kind: "paragraph", id: "p3", children: [] },
-              { kind: "paragraph", id: "p4", children: [{ kind: "articleRef", id: "ref", targets: [{ nodeId: "p1" }, { nodeId: "p2" }, { nodeId: "p3" }], connector: "및", scope: "self", at }] },
+              { kind: "paragraph", id: "p1", key: "P0100", children: [] },
+              { kind: "paragraph", id: "p3", key: "P0300", children: [] },
+              { kind: "paragraph", id: "p4", key: "P0400", children: [{ kind: "articleRef", id: "ref", targets: [{ articleId: "a1", code: "P0100" }, { articleId: "a1", code: "P0200" }, { articleId: "a1", code: "P0300" }], connector: "및", scope: "self", at }] },
             ],
           },
         ],
@@ -156,7 +156,7 @@ describe("참조 슬롯 렌더", () => {
       const result = renderDocument(numberDocument(doc), { document: "special", ownerId: "pc", appendices: [] });
       const article = result.doc.children[0];
       if (article.kind !== "article" || article.children[2].kind !== "paragraph") throw new Error("unexpected error");
-      expect(article.children[2].children[0]).toMatchObject({ label: "제1항 및 제2항", dropped: ["p2"] });
+      expect(article.children[2].children[0]).toMatchObject({ label: "제1항 및 제2항", dropped: ["a1#P0200"] });
     });
   });
 
@@ -169,7 +169,7 @@ describe("참조 슬롯 렌더", () => {
         id: "s",
         title: "특약",
         children: [
-          { kind: "article", id: "a1", title: "준용", children: [{ kind: "paragraph", id: "a1-p", children: [{ kind: "articleRef", id: "ref", targets: [{ nodeId: "a2" }, { nodeId: "a3" }, { nodeId: "a4" }, { nodeId: "a5" }], connector: "및", scope: "self" }] }] },
+          { kind: "article", id: "a1", title: "준용", children: [{ kind: "paragraph", id: "a1-p", children: [{ kind: "articleRef", id: "ref", targets: [{ articleId: "a2" }, { articleId: "a3" }, { articleId: "a4" }, { articleId: "a5" }], connector: "및", scope: "self" }] }] },
           article("a2", "둘"),
           { kind: "condBlock", id: "cond", branches: [{ id: "cond-if", when: "D0005 = true", children: [article("a3", "면책")] }] },
           article("a4", "넷"),
@@ -451,7 +451,7 @@ describe("참조 슬롯 렌더", () => {
       kind: "document",
       id: "s",
       title: "특약",
-      children: [{ kind: "article", id: "a", title: "조", children: [{ kind: "paragraph", id: "p", children: [{ kind: "articleRef", id: "ref", targets: [{ nodeId: "omitted" }], connector: "및", scope: "self", at }] }] }],
+      children: [{ kind: "article", id: "a", title: "조", children: [{ kind: "paragraph", id: "p", children: [{ kind: "articleRef", id: "ref", targets: [{ articleId: "omitted" }], connector: "및", scope: "self", at }] }] }],
     };
     const result = renderDocument(numberDocument(doc), { document: "special", ownerId: "pc", general: numberDocument(general()), aliases: new Map([["omitted", "g-a"]]), appendices: [] });
     const article = result.doc.children[0];

@@ -192,10 +192,10 @@
                             "kind": "articleRef",
                             "targets": [
                               {
-                                "nodeId": "g-a27_1"
+                                "articleId": "g-a27_1"
                               },
                               {
-                                "nodeId": "g-a27_2"
+                                "articleId": "g-a27_2"
                               }
                             ],
                             "connector": "및",
@@ -224,10 +224,10 @@
                             "kind": "articleRef",
                             "targets": [
                               {
-                                "nodeId": "g-a27_1"
+                                "articleId": "g-a27_1"
                               },
                               {
-                                "nodeId": "g-a27_2"
+                                "articleId": "g-a27_2"
                               }
                             ],
                             "connector": "및",
@@ -731,7 +731,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a3"
+                          "articleId": "g-a3"
                         }
                       ],
                       "connector": "및",
@@ -764,7 +764,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a4-p1"
+                          "articleId": "g-a4",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -829,7 +830,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a3"
+                          "articleId": "g-a3"
                         }
                       ],
                       "connector": "및",
@@ -906,7 +907,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a4-p6"
+                          "articleId": "g-a4",
+                          "code": "P0700"
                         }
                       ],
                       "connector": "및",
@@ -1025,7 +1027,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a3"
+                          "articleId": "g-a3"
                         }
                       ],
                       "connector": "및",
@@ -1098,7 +1100,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a3"
+                          "articleId": "g-a3"
                         }
                       ],
                       "connector": "및",
@@ -1114,7 +1116,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_1"
+                          "articleId": "g-a27_1"
                         }
                       ],
                       "connector": "및",
@@ -1163,7 +1165,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a7"
+                          "articleId": "g-a7"
                         }
                       ],
                       "connector": "및",
@@ -1191,7 +1193,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a8-p1"
+                          "articleId": "g-a8",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -1207,7 +1210,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a7"
+                          "articleId": "g-a7"
                         }
                       ],
                       "connector": "및",
@@ -1277,7 +1280,8 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "g-a8-p6"
+                              "articleId": "g-a8",
+                              "code": "P0700"
                             }
                           ],
                           "connector": "및",
@@ -1300,7 +1304,8 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "g-a4-p4"
+                              "articleId": "g-a4",
+                              "code": "P0400"
                             }
                           ],
                           "connector": "및",
@@ -1331,7 +1336,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a8-p2"
+                          "articleId": "g-a8",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -1354,7 +1360,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a8-p2"
+                          "articleId": "g-a8",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -1387,7 +1394,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a8-p1"
+                          "articleId": "g-a8",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -1403,7 +1411,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a8-p2"
+                          "articleId": "g-a8",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -1441,10 +1450,11 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a17"
+                          "articleId": "g-a17"
                         },
                         {
-                          "nodeId": "g-a17-p2"
+                          "articleId": "g-a17",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -1472,7 +1482,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a8-p6"
+                          "articleId": "g-a8",
+                          "code": "P0700"
                         }
                       ],
                       "connector": "및",
@@ -1555,7 +1566,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a9-p1"
+                          "articleId": "g-a9",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -1571,7 +1583,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a9-p3"
+                          "articleId": "g-a9",
+                          "code": "P0300"
                         }
                       ],
                       "connector": "및",
@@ -1706,7 +1719,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a10-p1"
+                          "articleId": "g-a10",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -1734,7 +1748,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a10-p1"
+                          "articleId": "g-a10",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -1772,7 +1787,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a2"
+                          "articleId": "g-a2"
                         }
                       ],
                       "connector": "및",
@@ -1788,7 +1803,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a10-p1"
+                          "articleId": "g-a10",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -1835,7 +1851,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a11-p1"
+                          "articleId": "g-a11",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -2058,7 +2075,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a16-p1"
+                          "articleId": "g-a16",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -2074,7 +2092,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a23"
+                          "articleId": "g-a23"
                         }
                       ],
                       "connector": "및",
@@ -2107,7 +2125,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a16-p2"
+                          "articleId": "g-a16",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -2135,7 +2154,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a16-p1"
+                          "articleId": "g-a16",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -2168,7 +2188,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a16-p1"
+                          "articleId": "g-a16",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -2184,7 +2205,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a16-p4"
+                          "articleId": "g-a16",
+                          "code": "P0600"
                         }
                       ],
                       "connector": "및",
@@ -2235,7 +2257,7 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "g-a15"
+                              "articleId": "g-a15"
                             }
                           ],
                           "connector": "및",
@@ -2263,7 +2285,8 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "g-a16-p1"
+                              "articleId": "g-a16",
+                              "code": "P0100"
                             }
                           ],
                           "connector": "및",
@@ -2289,7 +2312,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a17-p1-i1"
+                          "articleId": "g-a17",
+                          "code": "P0900"
                         }
                       ],
                       "connector": "및",
@@ -2374,7 +2398,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a17-p1"
+                          "articleId": "g-a17",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -2390,7 +2415,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a35-p1"
+                          "articleId": "g-a35",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -2413,7 +2439,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a17-p1-i1"
+                          "articleId": "g-a17",
+                          "code": "P0900"
                         }
                       ],
                       "connector": "및",
@@ -2436,7 +2463,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a17-p1-i2"
+                          "articleId": "g-a17",
+                          "code": "P1000"
                         }
                       ],
                       "connector": "및",
@@ -2452,10 +2480,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a16-p4"
+                          "articleId": "g-a16",
+                          "code": "P0600"
                         },
                         {
-                          "nodeId": "g-a16-p5"
+                          "articleId": "g-a16",
+                          "code": "P0800"
                         }
                       ],
                       "connector": "또는",
@@ -2478,7 +2508,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a17-p1"
+                          "articleId": "g-a17",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -2494,10 +2525,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a17-p4"
+                          "articleId": "g-a17",
+                          "code": "P0400"
                         },
                         {
-                          "nodeId": "g-a17-p5"
+                          "articleId": "g-a17",
+                          "code": "P0500"
                         }
                       ],
                       "connector": "및",
@@ -2532,7 +2565,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a30"
+                          "articleId": "g-a30"
                         }
                       ],
                       "connector": "및",
@@ -2548,7 +2581,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a17-p2"
+                          "articleId": "g-a17",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -2662,7 +2696,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a19-p2"
+                          "articleId": "g-a19",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -2685,7 +2720,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a19-p5"
+                          "articleId": "g-a19",
+                          "code": "P0700"
                         }
                       ],
                       "connector": "및",
@@ -2701,7 +2737,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a29"
+                          "articleId": "g-a29"
                         }
                       ],
                       "connector": "및",
@@ -2724,7 +2760,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a30"
+                          "articleId": "g-a30"
                         }
                       ],
                       "connector": "및",
@@ -2740,7 +2776,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a19-p5"
+                          "articleId": "g-a19",
+                          "code": "P0700"
                         }
                       ],
                       "connector": "및",
@@ -2787,7 +2824,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a20-p1"
+                          "articleId": "g-a20",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -2846,7 +2884,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a20-p1"
+                          "articleId": "g-a20",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -2931,7 +2970,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a21-p1"
+                          "articleId": "g-a21",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -2978,7 +3018,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a21-p1"
+                          "articleId": "g-a21",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -3006,7 +3047,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a21-p3"
+                          "articleId": "g-a21",
+                          "code": "P0300"
                         }
                       ],
                       "connector": "및",
@@ -3022,7 +3064,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a21-p2"
+                          "articleId": "g-a21",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -3071,7 +3114,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a21-p3"
+                          "articleId": "g-a21",
+                          "code": "P0300"
                         }
                       ],
                       "connector": "및",
@@ -3099,7 +3143,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a21-p5"
+                          "articleId": "g-a21",
+                          "code": "P0600"
                         }
                       ],
                       "connector": "및",
@@ -3174,7 +3219,8 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "g-a22-p1-i2"
+                              "articleId": "g-a22",
+                              "code": "P0400"
                             }
                           ],
                           "connector": "및",
@@ -3220,7 +3266,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a22-p1"
+                          "articleId": "g-a22",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -3334,7 +3381,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a23-p1-i4"
+                          "articleId": "g-a23",
+                          "code": "P0900"
                         }
                       ],
                       "connector": "및",
@@ -3350,7 +3398,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a35-p1"
+                          "articleId": "g-a35",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -3383,7 +3432,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a23-p2"
+                          "articleId": "g-a23",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -3411,7 +3461,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a23-p1"
+                          "articleId": "g-a23",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -3446,7 +3497,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a22-p1-i2"
+                          "articleId": "g-a22",
+                          "code": "P0400"
                         }
                       ],
                       "connector": "및",
@@ -3469,7 +3521,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a24-p1"
+                          "articleId": "g-a24",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -3516,7 +3569,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a3"
+                          "articleId": "g-a3"
                         }
                       ],
                       "connector": "및",
@@ -3539,7 +3592,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a25-p1"
+                          "articleId": "g-a25",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -3555,7 +3609,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a3"
+                          "articleId": "g-a3"
                         }
                       ],
                       "connector": "및",
@@ -3643,7 +3697,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a26-p2"
+                          "articleId": "g-a26",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -3665,7 +3720,7 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "g-a15"
+                              "articleId": "g-a15"
                             }
                           ],
                           "connector": "및",
@@ -3688,7 +3743,7 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "g-a17"
+                              "articleId": "g-a17"
                             }
                           ],
                           "connector": "및",
@@ -3918,7 +3973,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_1-p1-i1"
+                          "articleId": "g-a27_1",
+                          "code": "P0300"
                         }
                       ],
                       "connector": "및",
@@ -3946,7 +4002,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_1-p1"
+                          "articleId": "g-a27_1",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -3979,7 +4036,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_1-p1"
+                          "articleId": "g-a27_1",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -4002,7 +4060,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_1-p1"
+                          "articleId": "g-a27_1",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -4018,7 +4077,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_1-p4"
+                          "articleId": "g-a27_1",
+                          "code": "P0600"
                         }
                       ],
                       "connector": "및",
@@ -4034,7 +4094,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a29"
+                          "articleId": "g-a29"
                         }
                       ],
                       "connector": "및",
@@ -4064,7 +4124,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_1-p1-i1"
+                          "articleId": "g-a27_1",
+                          "code": "P0300"
                         }
                       ],
                       "connector": "및",
@@ -4080,7 +4141,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_1-p1-i1"
+                          "articleId": "g-a27_1",
+                          "code": "P0300"
                         }
                       ],
                       "connector": "및",
@@ -4096,7 +4158,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_1-p1-i1"
+                          "articleId": "g-a27_1",
+                          "code": "P0300"
                         }
                       ],
                       "connector": "및",
@@ -4119,7 +4182,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_2-p1"
+                          "articleId": "g-a27_2",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -4135,7 +4199,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a29"
+                          "articleId": "g-a29"
                         }
                       ],
                       "connector": "및",
@@ -4158,7 +4222,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a30"
+                          "articleId": "g-a30"
                         }
                       ],
                       "connector": "및",
@@ -4174,7 +4238,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_2-p1"
+                          "articleId": "g-a27_2",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -4197,10 +4262,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_1-p1-i10"
+                          "articleId": "g-a27_1",
+                          "code": "P1500"
                         },
                         {
-                          "nodeId": "g-a27_1-p1-i11"
+                          "articleId": "g-a27_1",
+                          "code": "P1600"
                         }
                       ],
                       "connector": "및",
@@ -4233,7 +4300,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_2-p4"
+                          "articleId": "g-a27_2",
+                          "code": "P0400"
                         }
                       ],
                       "connector": "및",
@@ -4288,7 +4356,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_1-p1"
+                          "articleId": "g-a27_1",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -4360,7 +4429,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_2-p9"
+                          "articleId": "g-a27_2",
+                          "code": "P0900"
                         }
                       ],
                       "connector": "및",
@@ -4388,10 +4458,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_1-p1-i10"
+                          "articleId": "g-a27_1",
+                          "code": "P1500"
                         },
                         {
-                          "nodeId": "g-a27_1-p1-i11"
+                          "articleId": "g-a27_1",
+                          "code": "P1600"
                         }
                       ],
                       "connector": "또는",
@@ -4407,7 +4479,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_1-p1"
+                          "articleId": "g-a27_1",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -4497,7 +4570,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_1-p1"
+                          "articleId": "g-a27_1",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -4599,7 +4673,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_3-p2"
+                          "articleId": "g-a27_3",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -4826,7 +4901,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_3-p15"
+                          "articleId": "g-a27_3",
+                          "code": "P1700"
                         }
                       ],
                       "connector": "및",
@@ -4921,7 +4997,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a27_3-p18"
+                          "articleId": "g-a27_3",
+                          "code": "P2000"
                         }
                       ],
                       "connector": "및",
@@ -5006,7 +5083,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a29"
+                          "articleId": "g-a29"
                         }
                       ],
                       "connector": "및",
@@ -5022,7 +5099,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a36-p1"
+                          "articleId": "g-a36",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5045,7 +5123,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a28-p1"
+                          "articleId": "g-a28",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5068,10 +5147,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a28-p1"
+                          "articleId": "g-a28",
+                          "code": "P0100"
                         },
                         {
-                          "nodeId": "g-a28-p2"
+                          "articleId": "g-a28",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -5087,7 +5168,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a28-p1"
+                          "articleId": "g-a28",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5115,7 +5197,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a35-p1"
+                          "articleId": "g-a35",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5210,7 +5293,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a29-p1"
+                          "articleId": "g-a29",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5226,7 +5310,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a29-p1"
+                          "articleId": "g-a29",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5254,7 +5339,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a29-p1"
+                          "articleId": "g-a29",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5270,7 +5356,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a29-p3"
+                          "articleId": "g-a29",
+                          "code": "P0300"
                         }
                       ],
                       "connector": "및",
@@ -5297,7 +5384,8 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "g-a29-p1"
+                              "articleId": "g-a29",
+                              "code": "P0100"
                             }
                           ],
                           "connector": "및",
@@ -5337,7 +5425,8 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "g-a29-p1"
+                              "articleId": "g-a29",
+                              "code": "P0100"
                             }
                           ],
                           "connector": "및",
@@ -5372,10 +5461,12 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "g-a29-p3-i3"
+                              "articleId": "g-a29",
+                              "code": "P0900"
                             },
                             {
-                              "nodeId": "g-a29-p3-i4"
+                              "articleId": "g-a29",
+                              "code": "P1000"
                             }
                           ],
                           "connector": "및",
@@ -5401,7 +5492,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a29-p1"
+                          "articleId": "g-a29",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5417,7 +5509,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a35-p1"
+                          "articleId": "g-a35",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5447,7 +5540,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a29"
+                          "articleId": "g-a29"
                         }
                       ],
                       "connector": "및",
@@ -5475,7 +5568,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a30-p1"
+                          "articleId": "g-a30",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5491,19 +5585,19 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a15"
+                          "articleId": "g-a15"
                         },
                         {
-                          "nodeId": "g-a17"
+                          "articleId": "g-a17"
                         },
                         {
-                          "nodeId": "g-a18"
+                          "articleId": "g-a18"
                         },
                         {
-                          "nodeId": "g-a19"
+                          "articleId": "g-a19"
                         },
                         {
-                          "nodeId": "g-a26"
+                          "articleId": "g-a26"
                         }
                       ],
                       "connector": "및",
@@ -5526,7 +5620,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a30-p1"
+                          "articleId": "g-a30",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5542,7 +5637,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a15"
+                          "articleId": "g-a15"
                         }
                       ],
                       "connector": "및",
@@ -5558,7 +5653,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a17"
+                          "articleId": "g-a17"
                         }
                       ],
                       "connector": "및",
@@ -5605,7 +5700,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a23-p1"
+                          "articleId": "g-a23",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5633,7 +5729,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a31-p1"
+                          "articleId": "g-a31",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5661,7 +5758,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a31-p1"
+                          "articleId": "g-a31",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5677,7 +5775,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a31-p1"
+                          "articleId": "g-a31",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5705,7 +5804,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a31-p1"
+                          "articleId": "g-a31",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5733,7 +5833,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a31-p3"
+                          "articleId": "g-a31",
+                          "code": "P0300"
                         }
                       ],
                       "connector": "및",
@@ -5749,7 +5850,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a31-p1"
+                          "articleId": "g-a31",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5796,7 +5898,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a35-p1"
+                          "articleId": "g-a35",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5819,7 +5922,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a22"
+                          "articleId": "g-a22"
                         }
                       ],
                       "connector": "및",
@@ -5835,7 +5938,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a35-p1"
+                          "articleId": "g-a35",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5894,7 +5998,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a32_1-p1"
+                          "articleId": "g-a32_1",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -5917,10 +6022,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a32_1-p1"
+                          "articleId": "g-a32_1",
+                          "code": "P0100"
                         },
                         {
-                          "nodeId": "g-a32_1-p3"
+                          "articleId": "g-a32_1",
+                          "code": "P0300"
                         }
                       ],
                       "connector": "및",
@@ -5936,7 +6043,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a35-p4"
+                          "articleId": "g-a35",
+                          "code": "P0500"
                         }
                       ],
                       "connector": "및",
@@ -5964,7 +6072,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a32_1-p1"
+                          "articleId": "g-a32_1",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -6047,7 +6156,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a33-p1"
+                          "articleId": "g-a33",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -6063,7 +6173,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a35-p1"
+                          "articleId": "g-a35",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -6105,7 +6216,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a34-p1"
+                          "articleId": "g-a34",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -6128,7 +6240,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a34-p1"
+                          "articleId": "g-a34",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -6144,7 +6257,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a34-p2"
+                          "articleId": "g-a34",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -6160,7 +6274,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a35-p1"
+                          "articleId": "g-a35",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -6241,7 +6356,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a32_1"
+                          "articleId": "g-a32_1"
                         }
                       ],
                       "connector": "및",
@@ -6288,7 +6403,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a36-p1"
+                          "articleId": "g-a36",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -6311,7 +6427,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a36-p2"
+                          "articleId": "g-a36",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -6327,7 +6444,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a29"
+                          "articleId": "g-a29"
                         }
                       ],
                       "connector": "및",
@@ -6395,7 +6512,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a38-p1"
+                          "articleId": "g-a38",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -6418,7 +6536,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "g-a38-p1"
+                          "articleId": "g-a38",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -6808,10 +6927,10 @@
                             "kind": "articleRef",
                             "targets": [
                               {
-                                "nodeId": "m-a29"
+                                "articleId": "m-a29"
                               },
                               {
-                                "nodeId": "m-a31"
+                                "articleId": "m-a31"
                               }
                             ],
                             "connector": "및",
@@ -6840,7 +6959,8 @@
                             "kind": "articleRef",
                             "targets": [
                               {
-                                "nodeId": "m-a29-p1"
+                                "articleId": "m-a29",
+                                "code": "P0100"
                               }
                             ],
                             "connector": "및",
@@ -6856,7 +6976,8 @@
                             "kind": "articleRef",
                             "targets": [
                               {
-                                "nodeId": "m-a29-p4"
+                                "articleId": "m-a29",
+                                "code": "P0500"
                               }
                             ],
                             "connector": "및",
@@ -6885,7 +7006,8 @@
                             "kind": "articleRef",
                             "targets": [
                               {
-                                "nodeId": "m-a29-p2"
+                                "articleId": "m-a29",
+                                "code": "P0200"
                               }
                             ],
                             "connector": "및",
@@ -6901,7 +7023,8 @@
                             "kind": "articleRef",
                             "targets": [
                               {
-                                "nodeId": "m-a29-p4"
+                                "articleId": "m-a29",
+                                "code": "P0500"
                               }
                             ],
                             "connector": "및",
@@ -7395,7 +7518,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a3"
+                          "articleId": "m-a3"
                         }
                       ],
                       "connector": "및",
@@ -7454,7 +7577,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a3"
+                          "articleId": "m-a3"
                         }
                       ],
                       "connector": "및",
@@ -7482,7 +7605,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a3"
+                          "articleId": "m-a3"
                         }
                       ],
                       "connector": "및",
@@ -7606,7 +7729,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a3"
+                          "articleId": "m-a3"
                         }
                       ],
                       "connector": "및",
@@ -7679,7 +7802,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a3"
+                          "articleId": "m-a3"
                         }
                       ],
                       "connector": "및",
@@ -7695,7 +7818,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a29"
+                          "articleId": "m-a29"
                         }
                       ],
                       "connector": "및",
@@ -7744,7 +7867,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a7"
+                          "articleId": "m-a7"
                         }
                       ],
                       "connector": "및",
@@ -7772,7 +7895,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a8-p1"
+                          "articleId": "m-a8",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -7788,7 +7912,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a7"
+                          "articleId": "m-a7"
                         }
                       ],
                       "connector": "및",
@@ -7858,7 +7982,8 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "m-a8-p6"
+                              "articleId": "m-a8",
+                              "code": "P0700"
                             }
                           ],
                           "connector": "및",
@@ -7881,7 +8006,8 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "m-a4-p3"
+                              "articleId": "m-a4",
+                              "code": "P0300"
                             }
                           ],
                           "connector": "및",
@@ -7912,7 +8038,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a8-p2"
+                          "articleId": "m-a8",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -7935,7 +8062,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a8-p2"
+                          "articleId": "m-a8",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -7968,7 +8096,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a8-p1"
+                          "articleId": "m-a8",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -7984,7 +8113,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a8-p2"
+                          "articleId": "m-a8",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -8022,10 +8152,11 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a17"
+                          "articleId": "m-a17"
                         },
                         {
-                          "nodeId": "m-a17-p2"
+                          "articleId": "m-a17",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -8053,7 +8184,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a8-p6"
+                          "articleId": "m-a8",
+                          "code": "P0700"
                         }
                       ],
                       "connector": "및",
@@ -8136,7 +8268,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a9-p1"
+                          "articleId": "m-a9",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -8152,7 +8285,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a9-p3"
+                          "articleId": "m-a9",
+                          "code": "P0300"
                         }
                       ],
                       "connector": "및",
@@ -8243,7 +8377,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a10-p1"
+                          "articleId": "m-a10",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -8271,7 +8406,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a10-p1"
+                          "articleId": "m-a10",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -8309,7 +8445,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a2"
+                          "articleId": "m-a2"
                         }
                       ],
                       "connector": "및",
@@ -8325,7 +8461,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a10-p1"
+                          "articleId": "m-a10",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -8372,7 +8509,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a11-p1"
+                          "articleId": "m-a11",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -8595,7 +8733,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a16-p1"
+                          "articleId": "m-a16",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -8611,7 +8750,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a23"
+                          "articleId": "m-a23"
                         }
                       ],
                       "connector": "및",
@@ -8644,7 +8783,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a16-p2"
+                          "articleId": "m-a16",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -8672,7 +8812,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a16-p1"
+                          "articleId": "m-a16",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -8705,7 +8846,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a16-p1"
+                          "articleId": "m-a16",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -8721,7 +8863,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a16-p4"
+                          "articleId": "m-a16",
+                          "code": "P0600"
                         }
                       ],
                       "connector": "및",
@@ -8772,7 +8915,7 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "m-a15"
+                              "articleId": "m-a15"
                             }
                           ],
                           "connector": "및",
@@ -8800,7 +8943,8 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "m-a16-p1"
+                              "articleId": "m-a16",
+                              "code": "P0100"
                             }
                           ],
                           "connector": "및",
@@ -8826,7 +8970,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a17-p1-i1"
+                          "articleId": "m-a17",
+                          "code": "P0900"
                         }
                       ],
                       "connector": "및",
@@ -8911,7 +9056,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a17-p1"
+                          "articleId": "m-a17",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -8927,7 +9073,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a40-p1"
+                          "articleId": "m-a40",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -8950,7 +9097,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a17-p1-i1"
+                          "articleId": "m-a17",
+                          "code": "P0900"
                         }
                       ],
                       "connector": "및",
@@ -8973,7 +9121,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a17-p1-i2"
+                          "articleId": "m-a17",
+                          "code": "P1000"
                         }
                       ],
                       "connector": "및",
@@ -8989,10 +9138,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a16-p4"
+                          "articleId": "m-a16",
+                          "code": "P0600"
                         },
                         {
-                          "nodeId": "m-a16-p5"
+                          "articleId": "m-a16",
+                          "code": "P0800"
                         }
                       ],
                       "connector": "또는",
@@ -9015,7 +9166,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a17-p1"
+                          "articleId": "m-a17",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -9031,10 +9183,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a17-p4"
+                          "articleId": "m-a17",
+                          "code": "P0400"
                         },
                         {
-                          "nodeId": "m-a17-p5"
+                          "articleId": "m-a17",
+                          "code": "P0500"
                         }
                       ],
                       "connector": "및",
@@ -9069,7 +9223,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a35"
+                          "articleId": "m-a35"
                         }
                       ],
                       "connector": "및",
@@ -9085,7 +9239,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a17-p2"
+                          "articleId": "m-a17",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -9194,7 +9349,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a19-p2"
+                          "articleId": "m-a19",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -9217,7 +9373,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a19-p5"
+                          "articleId": "m-a19",
+                          "code": "P0600"
                         }
                       ],
                       "connector": "및",
@@ -9233,7 +9390,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a34"
+                          "articleId": "m-a34"
                         }
                       ],
                       "connector": "및",
@@ -9256,7 +9413,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a35"
+                          "articleId": "m-a35"
                         }
                       ],
                       "connector": "및",
@@ -9272,7 +9429,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a19-p5"
+                          "articleId": "m-a19",
+                          "code": "P0600"
                         }
                       ],
                       "connector": "및",
@@ -9319,7 +9477,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a20-p1"
+                          "articleId": "m-a20",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -9378,7 +9537,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a20-p1"
+                          "articleId": "m-a20",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -9463,7 +9623,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a21-p1"
+                          "articleId": "m-a21",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -9510,7 +9671,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a21-p1"
+                          "articleId": "m-a21",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -9538,7 +9700,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a21-p3"
+                          "articleId": "m-a21",
+                          "code": "P0300"
                         }
                       ],
                       "connector": "및",
@@ -9554,7 +9717,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a21-p2"
+                          "articleId": "m-a21",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -9603,7 +9767,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a21-p3"
+                          "articleId": "m-a21",
+                          "code": "P0300"
                         }
                       ],
                       "connector": "및",
@@ -9636,7 +9801,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a21-p5"
+                          "articleId": "m-a21",
+                          "code": "P0600"
                         }
                       ],
                       "connector": "및",
@@ -9706,7 +9872,8 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "m-a22-p1-i2"
+                              "articleId": "m-a22",
+                              "code": "P0400"
                             }
                           ],
                           "connector": "및",
@@ -9747,7 +9914,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a22-p1"
+                          "articleId": "m-a22",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -9861,7 +10029,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a23-p1-i4"
+                          "articleId": "m-a23",
+                          "code": "P0900"
                         }
                       ],
                       "connector": "및",
@@ -9877,7 +10046,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a40-p1"
+                          "articleId": "m-a40",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -9910,7 +10080,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a23-p2"
+                          "articleId": "m-a23",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -9938,7 +10109,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a23-p1"
+                          "articleId": "m-a23",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -9973,7 +10145,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a22"
+                          "articleId": "m-a22"
                         }
                       ],
                       "connector": "및",
@@ -9996,7 +10168,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a24-p1"
+                          "articleId": "m-a24",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -10134,7 +10307,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a25-p1"
+                          "articleId": "m-a25",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -10150,7 +10324,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a25-p3"
+                          "articleId": "m-a25",
+                          "code": "P0300"
                         }
                       ],
                       "connector": "및",
@@ -10173,10 +10348,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a25-p3"
+                          "articleId": "m-a25",
+                          "code": "P0300"
                         },
                         {
-                          "nodeId": "m-a25-p4"
+                          "articleId": "m-a25",
+                          "code": "P0400"
                         }
                       ],
                       "connector": "및",
@@ -10199,7 +10376,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a25-p5"
+                          "articleId": "m-a25",
+                          "code": "P0500"
                         }
                       ],
                       "connector": "및",
@@ -10229,7 +10407,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a3"
+                          "articleId": "m-a3"
                         }
                       ],
                       "connector": "및",
@@ -10252,7 +10430,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a26-p1"
+                          "articleId": "m-a26",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -10268,7 +10447,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a3"
+                          "articleId": "m-a3"
                         }
                       ],
                       "connector": "및",
@@ -10356,7 +10535,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a27-p2"
+                          "articleId": "m-a27",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -10378,7 +10558,7 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "m-a15"
+                              "articleId": "m-a15"
                             }
                           ],
                           "connector": "및",
@@ -10401,7 +10581,7 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "m-a17"
+                              "articleId": "m-a17"
                             }
                           ],
                           "connector": "및",
@@ -10665,10 +10845,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a29-p1-i1"
+                          "articleId": "m-a29",
+                          "code": "P0400"
                         },
                         {
-                          "nodeId": "m-a29-p2-i1"
+                          "articleId": "m-a29",
+                          "code": "P1300"
                         }
                       ],
                       "connector": "및",
@@ -10684,7 +10866,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a25"
+                          "articleId": "m-a25"
                         }
                       ],
                       "connector": "및",
@@ -10712,10 +10894,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a29-p1"
+                          "articleId": "m-a29",
+                          "code": "P0100"
                         },
                         {
-                          "nodeId": "m-a29-p2"
+                          "articleId": "m-a29",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "또는",
@@ -10748,10 +10932,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a29-p1"
+                          "articleId": "m-a29",
+                          "code": "P0100"
                         },
                         {
-                          "nodeId": "m-a29-p2"
+                          "articleId": "m-a29",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "또는",
@@ -10774,7 +10960,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a29-p1"
+                          "articleId": "m-a29",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -10790,7 +10977,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a29-p4"
+                          "articleId": "m-a29",
+                          "code": "P0500"
                         }
                       ],
                       "connector": "및",
@@ -10806,7 +10994,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a34"
+                          "articleId": "m-a34"
                         }
                       ],
                       "connector": "및",
@@ -10829,7 +11017,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a29-p1"
+                          "articleId": "m-a29",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -10845,7 +11034,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a29-p4"
+                          "articleId": "m-a29",
+                          "code": "P0500"
                         }
                       ],
                       "connector": "및",
@@ -10861,7 +11051,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a25"
+                          "articleId": "m-a25"
                         }
                       ],
                       "connector": "및",
@@ -10925,7 +11115,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a30-p2"
+                          "articleId": "m-a30",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -11069,10 +11260,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a29-p1-i1"
+                          "articleId": "m-a29",
+                          "code": "P0400"
                         },
                         {
-                          "nodeId": "m-a29-p2-i1"
+                          "articleId": "m-a29",
+                          "code": "P1300"
                         }
                       ],
                       "connector": "또는",
@@ -11088,10 +11281,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a29-p1-i1"
+                          "articleId": "m-a29",
+                          "code": "P0400"
                         },
                         {
-                          "nodeId": "m-a29-p2-i1"
+                          "articleId": "m-a29",
+                          "code": "P1300"
                         }
                       ],
                       "connector": "또는",
@@ -11107,10 +11302,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a29-p1-i1"
+                          "articleId": "m-a29",
+                          "code": "P0400"
                         },
                         {
-                          "nodeId": "m-a29-p2-i1"
+                          "articleId": "m-a29",
+                          "code": "P1300"
                         }
                       ],
                       "connector": "또는",
@@ -11133,7 +11330,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a31-p1"
+                          "articleId": "m-a31",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -11149,7 +11347,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a34"
+                          "articleId": "m-a34"
                         }
                       ],
                       "connector": "및",
@@ -11172,7 +11370,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a35"
+                          "articleId": "m-a35"
                         }
                       ],
                       "connector": "및",
@@ -11188,7 +11386,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a31-p1"
+                          "articleId": "m-a31",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -11211,10 +11410,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a29-p1-i4"
+                          "articleId": "m-a29",
+                          "code": "P1100"
                         },
                         {
-                          "nodeId": "m-a29-p1-i5"
+                          "articleId": "m-a29",
+                          "code": "P1200"
                         }
                       ],
                       "connector": "및",
@@ -11247,7 +11448,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a31-p4"
+                          "articleId": "m-a31",
+                          "code": "P0400"
                         }
                       ],
                       "connector": "및",
@@ -11302,10 +11504,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a29-p1"
+                          "articleId": "m-a29",
+                          "code": "P0100"
                         },
                         {
-                          "nodeId": "m-a29-p2"
+                          "articleId": "m-a29",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "또는",
@@ -11377,7 +11581,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a31-p9"
+                          "articleId": "m-a31",
+                          "code": "P0900"
                         }
                       ],
                       "connector": "및",
@@ -11405,10 +11610,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a29-p1-i4"
+                          "articleId": "m-a29",
+                          "code": "P1100"
                         },
                         {
-                          "nodeId": "m-a29-p1-i5"
+                          "articleId": "m-a29",
+                          "code": "P1200"
                         }
                       ],
                       "connector": "및",
@@ -11498,10 +11705,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a29-p1-i4"
+                          "articleId": "m-a29",
+                          "code": "P1100"
                         },
                         {
-                          "nodeId": "m-a29-p2-i4"
+                          "articleId": "m-a29",
+                          "code": "P1600"
                         }
                       ],
                       "connector": "또는",
@@ -11574,7 +11783,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a34"
+                          "articleId": "m-a34"
                         }
                       ],
                       "connector": "및",
@@ -11590,7 +11799,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a41-p1"
+                          "articleId": "m-a41",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -11613,7 +11823,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a32-p1"
+                          "articleId": "m-a32",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -11636,10 +11847,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a32-p1"
+                          "articleId": "m-a32",
+                          "code": "P0100"
                         },
                         {
-                          "nodeId": "m-a32-p2"
+                          "articleId": "m-a32",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -11655,7 +11868,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a32-p1"
+                          "articleId": "m-a32",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -11683,7 +11897,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a40-p1"
+                          "articleId": "m-a40",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -11804,7 +12019,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a34-p1"
+                          "articleId": "m-a34",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -11820,7 +12036,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a34-p1"
+                          "articleId": "m-a34",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -11848,7 +12065,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a34-p1"
+                          "articleId": "m-a34",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -11864,7 +12082,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a34-p3"
+                          "articleId": "m-a34",
+                          "code": "P0300"
                         }
                       ],
                       "connector": "및",
@@ -11891,7 +12110,8 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "m-a34-p1"
+                              "articleId": "m-a34",
+                              "code": "P0100"
                             }
                           ],
                           "connector": "및",
@@ -11931,7 +12151,8 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "m-a34-p1"
+                              "articleId": "m-a34",
+                              "code": "P0100"
                             }
                           ],
                           "connector": "및",
@@ -11966,10 +12187,12 @@
                           "kind": "articleRef",
                           "targets": [
                             {
-                              "nodeId": "m-a34-p3-i3"
+                              "articleId": "m-a34",
+                              "code": "P0900"
                             },
                             {
-                              "nodeId": "m-a34-p3-i4"
+                              "articleId": "m-a34",
+                              "code": "P1000"
                             }
                           ],
                           "connector": "및",
@@ -11995,7 +12218,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a34-p1"
+                          "articleId": "m-a34",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12011,7 +12235,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a40-p1"
+                          "articleId": "m-a40",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12046,7 +12271,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a34"
+                          "articleId": "m-a34"
                         }
                       ],
                       "connector": "및",
@@ -12069,7 +12294,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a35-p1"
+                          "articleId": "m-a35",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12085,19 +12311,19 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a15"
+                          "articleId": "m-a15"
                         },
                         {
-                          "nodeId": "m-a17"
+                          "articleId": "m-a17"
                         },
                         {
-                          "nodeId": "m-a18"
+                          "articleId": "m-a18"
                         },
                         {
-                          "nodeId": "m-a19"
+                          "articleId": "m-a19"
                         },
                         {
-                          "nodeId": "m-a27"
+                          "articleId": "m-a27"
                         }
                       ],
                       "connector": "및",
@@ -12120,7 +12346,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a35-p1"
+                          "articleId": "m-a35",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12136,7 +12363,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a15"
+                          "articleId": "m-a15"
                         }
                       ],
                       "connector": "및",
@@ -12152,7 +12379,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a17"
+                          "articleId": "m-a17"
                         }
                       ],
                       "connector": "및",
@@ -12204,7 +12431,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a23-p1"
+                          "articleId": "m-a23",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12232,7 +12460,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a36-p1"
+                          "articleId": "m-a36",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12260,7 +12489,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a36-p1"
+                          "articleId": "m-a36",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12276,7 +12506,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a36-p1"
+                          "articleId": "m-a36",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12304,7 +12535,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a36-p1"
+                          "articleId": "m-a36",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12332,7 +12564,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a36-p3"
+                          "articleId": "m-a36",
+                          "code": "P0300"
                         }
                       ],
                       "connector": "및",
@@ -12348,7 +12581,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a36-p1"
+                          "articleId": "m-a36",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12395,7 +12629,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a40-p1"
+                          "articleId": "m-a40",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12418,7 +12653,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a22"
+                          "articleId": "m-a22"
                         }
                       ],
                       "connector": "및",
@@ -12434,7 +12669,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a40-p1"
+                          "articleId": "m-a40",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12493,7 +12729,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a37_1-p1"
+                          "articleId": "m-a37_1",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12516,10 +12753,12 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a37_1-p1"
+                          "articleId": "m-a37_1",
+                          "code": "P0100"
                         },
                         {
-                          "nodeId": "m-a37_1-p3"
+                          "articleId": "m-a37_1",
+                          "code": "P0300"
                         }
                       ],
                       "connector": "및",
@@ -12535,7 +12774,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a40-p4"
+                          "articleId": "m-a40",
+                          "code": "P0500"
                         }
                       ],
                       "connector": "및",
@@ -12563,7 +12803,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a37_1-p1"
+                          "articleId": "m-a37_1",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12646,7 +12887,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a38-p1"
+                          "articleId": "m-a38",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12662,7 +12904,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a40-p1"
+                          "articleId": "m-a40",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12704,7 +12947,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a39-p1"
+                          "articleId": "m-a39",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12727,7 +12971,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a39-p1"
+                          "articleId": "m-a39",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12743,7 +12988,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a39-p2"
+                          "articleId": "m-a39",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -12759,7 +13005,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a40-p1"
+                          "articleId": "m-a40",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12840,7 +13087,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a37_1"
+                          "articleId": "m-a37_1"
                         }
                       ],
                       "connector": "및",
@@ -12887,7 +13134,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a41-p1"
+                          "articleId": "m-a41",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -12910,7 +13158,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a41-p2"
+                          "articleId": "m-a41",
+                          "code": "P0200"
                         }
                       ],
                       "connector": "및",
@@ -12926,7 +13175,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a34"
+                          "articleId": "m-a34"
                         }
                       ],
                       "connector": "및",
@@ -12994,7 +13243,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a43-p1"
+                          "articleId": "m-a43",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",
@@ -13017,7 +13267,8 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m-a43-p1"
+                          "articleId": "m-a43",
+                          "code": "P0100"
                         }
                       ],
                       "connector": "및",

@@ -124,9 +124,9 @@ export function surgeryFixture(): SurgeryFixture {
             kind: "paragraph",
             children: [
               { id: "s-txt-13", kind: "text", text: "이 특별약관에서 정하지 않은 사항은 " },
-              { id: "s-aref-general", kind: "articleRef", targets: [{ nodeId: "g-art-pay" }], connector: "및", scope: "general" },
+              { id: "s-aref-general", kind: "articleRef", targets: [{ articleId: "g-art-pay" }], connector: "및", scope: "general" },
               { id: "s-txt-14", kind: "text", text: " 및 이 특별약관 " },
-              { id: "s-aref-self", kind: "articleRef", targets: [{ nodeId: "s-art-pay" }], connector: "및", scope: "self" },
+              { id: "s-aref-self", kind: "articleRef", targets: [{ articleId: "s-art-pay" }], connector: "및", scope: "self" },
               { id: "s-txt-15", kind: "text", text: " · " },
               { id: "s-apx-burn", kind: "appendixRef", appendixCode: "APX_BURN" },
               { id: "s-txt-16", kind: "text", text: " 을 따릅니다. " },
@@ -144,7 +144,7 @@ export function surgeryFixture(): SurgeryFixture {
     title: "알파Plus 보통약관",
     children: [
       { id: "g-art-def", kind: "article", title: "용어의 정의", children: [{ id: "g-par-def-1", kind: "paragraph", children: [{ id: "g-txt-1", kind: "text", text: "이 계약에서 사용하는 용어의 정의는 다음과 같습니다." }] }] },
-      { id: "g-art-pay", kind: "article", title: "보험금의 지급사유", children: [{ id: "g-par-pay-1", kind: "paragraph", children: [{ id: "g-txt-2", kind: "text", text: "회사는 기본계약의 지급사유에 따라 보험금을 지급합니다." }] }] },
+      { id: "g-art-pay", kind: "article", title: "보험금의 지급사유", children: [{ id: "g-par-pay-1", kind: "paragraph", code: "P0100", children: [{ id: "g-txt-2", kind: "text", text: "회사는 기본계약의 지급사유에 따라 보험금을 지급합니다." }] }] },
       {
         id: "g-art-disability",
         kind: "article",

@@ -38,6 +38,7 @@ import {
   type InlineNode,
   type Node,
   type NodeEntry,
+  type RefTarget,
   type SlotName,
   type TableColumn,
   type TableNode,
@@ -45,7 +46,7 @@ import {
   type TreeEnv,
   type TreeIndex,
 } from "./nodes";
-import { codeTreeInPlace, documentCodeIssues, isCodedKind, isPCode } from "./pcode";
+import { codeTreeInPlace, documentCodeIssues, isCodedKind, isPCode, lostRefKeys, refKey, refLabel } from "./pcode";
 
 // ───────────────────────────── 커맨드 ─────────────────────────────
 
@@ -101,7 +102,7 @@ export type Command =
   | { type: "setTableRowHeader"; tableId: Id; index: number; header: boolean }
   /** 표 셀(행 · 열)에 인라인 노드를 넣는다 — 구조 표기 · 슬롯 등. `index` 없으면 끝. */
   | { type: "insertCell"; tableId: Id; row: number; col: number; node: InlineNode; index?: number }
-  | { type: "setArticleRef"; nodeId: Id; targets: { nodeId: Id }[]; connector: ArticleRefNode["connector"]; scope: ArticleRefNode["scope"] }
+  | { type: "setArticleRef"; nodeId: Id; targets: RefTarget[]; connector: ArticleRefNode["connector"]; scope: ArticleRefNode["scope"] }
   | { type: "setAppendixRef"; nodeId: Id; appendixCode: Code }
   /** 함수조항 참조의 옵션 선택 · 인자 연결. `bindings` 없으면 연결은 그대로, 빈 맵이면 걷는다(모두 기본 연결, 최종 결정 2). */
   | { type: "setClauseOptions"; nodeId: Id; options: Record<Code, Code>; bindings?: Bindings }
@@ -228,18 +229,23 @@ function verifyPlaced(doc: DocumentNode, node: Node, env: TreeEnv): Result<Docum
   return issues.length > 0 ? invalid(issues) : ok(doc);
 }
 
-/** 삭제될 조를 밖에서 가리키는 조 참조 슬롯 (D-P4-7). */
+/**
+ * 삭제될 대상을 밖에서 가리키는 조 참조 슬롯 (D-P4-7). 대상은 열쇠(조 · 조#코드)로 본다 —
+ * 지우는 노드와 같은 코드의 분기 짝이 남으면 대상은 살아 있다 (ADR-0072 결정 4 · 9).
+ */
 function danglingRefs(ix: TreeIndex, removed: ReadonlySet<Id>, env: TreeEnv): Issue[] {
+  const lost = lostRefKeys(ix, removed);
   const out: Issue[] = [];
   for (const e of ix.nodes.values()) {
     const n = e.node;
     if (n.kind !== "articleRef" || n.scope !== "self" || removed.has(n.id)) continue;
     for (const target of n.targets) {
-      if (!removed.has(target.nodeId)) continue;
+      const key = refKey(target);
+      if (!lost.has(key)) continue;
       out.push({
         kind: "brokenRef",
-        message: `노드 ${target.nodeId} 를 가리키는 참조 슬롯이 남아 있습니다`,
-        at: { ...coordinateOf(ix, e, env.coordinate), refPath: target.nodeId },
+        message: `${refLabel(target)} 를 가리키는 참조 슬롯이 남아 있습니다`,
+        at: { ...coordinateOf(ix, e, env.coordinate), refPath: key },
       });
     }
   }
@@ -283,9 +289,10 @@ function cloneSubtree<T extends Node>(root: T, newId: IdSource): T {
     cellNodesOf(n).forEach(relabel);
   };
   relabel(copy);
+  // 사본 안의 조를 가리키는 자기 참조는 사본의 조로 — 코드는 조 안에서만 유일하므로 조째 복사한 사본은 코드가 그대로다
   for (const n of nodesIn(copy)) {
     if (n.kind === "articleRef" && n.scope === "self") {
-      n.targets = n.targets.map(({ nodeId }) => ({ nodeId: map.get(nodeId) ?? nodeId }));
+      n.targets = n.targets.map((t) => ({ ...t, articleId: map.get(t.articleId) ?? t.articleId }));
     }
   }
   return copy;
@@ -369,8 +376,8 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       if (!c.ok) return c;
       if (!c.value.allowed.includes(copy.kind)) return structure(`이 자리에 ${copy.kind} 은(는) 올 수 없습니다`, [...c.value.path]);
       c.value.list.splice(clampIndex(at.index, c.value.list.length), 0, copy);
-      // 붙여넣기(사본)는 항상 재채번 — 새로 생긴 노드라 가리키는 곳이 없다 (ADR-0072 결정 5)
-      numberNew(work, copy);
+      // 붙여넣기(사본)는 항상 재채번 — 새로 생긴 노드라 가리키는 곳이 없다 (ADR-0072 결정 5). 사본 안에서 사본을 가리키던 참조는 새 코드로 따라간다
+      followRenumbered(copy, e.value.articleId, numberNew(work, copy));
       return verifyPlaced(work, copy, env);
     }
 
@@ -689,10 +696,35 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
   }
 }
 
-/** 새로 놓인 하위 트리의 코드 자리를 새로 매긴다 — 가진 코드는 버린다(새 노드 · 사본, ADR-0072 결정 5). */
-function numberNew(doc: DocumentNode, root: Node): void {
-  const ids = new Set(nodesIn(root).filter((n) => isCodedKind(n.kind)).map((n) => n.id));
-  if (ids.size > 0) codeTreeInPlace(doc, { renumber: ids, only: ids });
+/**
+ * 새로 놓인 하위 트리의 코드 자리를 매긴다 (새 노드 · 사본, ADR-0072 결정 5). 이미 있던 조에 놓인 자리는 가진 코드를 버리고 새로 —
+ * 같은 조의 코드와 겹치지 않게. 함께 새로 생긴 조 안의 자리는 가진 코드를 둔다(범위가 새 조뿐이라 겹칠 것이 없다), 없으면 채운다.
+ * 돌려주는 것은 다시 매긴 자리의 옛 코드 → 새 대상(놓인 조 · 새 코드).
+ */
+function numberNew(doc: DocumentNode, root: Node): Map<Code, RefTarget> {
+  const ix = indexTree(doc);
+  const fresh = new Set(nodesIn(root).map((n) => n.id));
+  const coded = nodesIn(root).filter((n) => isCodedKind(n.kind));
+  const ids = new Set(coded.map((n) => n.id));
+  const renumber = new Set(coded.filter((n) => !fresh.has(ix.nodes.get(n.id)?.articleId ?? "")).map((n) => n.id));
+  const before = new Map(coded.map((n) => [n.id, (n as { code?: Code }).code] as const));
+  const moved = new Map<Code, RefTarget>();
+  if (ids.size === 0) return moved;
+  for (const [id, code] of codeTreeInPlace(doc, { renumber, only: ids })) {
+    const old = before.get(id);
+    const articleId = ix.nodes.get(id)?.articleId;
+    if (old !== undefined && articleId !== undefined) moved.set(old, { articleId, code });
+  }
+  return moved;
+}
+
+/** 사본 안의 자기 참조가 원본 조의 복사된 노드(옛 코드)를 가리켰으면 사본 노드(새 대상)로 옮긴다 — 사본 안 참조는 사본을 따라간다(D-P4-9). */
+function followRenumbered(copy: Node, sourceArticleId: Id | undefined, moved: ReadonlyMap<Code, RefTarget>): void {
+  if (moved.size === 0 || sourceArticleId === undefined) return;
+  for (const n of nodesIn(copy)) {
+    if (n.kind !== "articleRef" || n.scope !== "self") continue;
+    n.targets = n.targets.map((t) => (t.articleId === sourceArticleId && t.code !== undefined && moved.has(t.code) ? { ...moved.get(t.code)! } : t));
+  }
 }
 
 function clampIndex(index: number | undefined, length: number): number {

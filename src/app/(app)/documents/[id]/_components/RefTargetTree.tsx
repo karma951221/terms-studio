@@ -4,7 +4,7 @@
  * 조 참조 대상 고르기 — 관 › 조 › 항 › 호 › 목 트리 (기능/문면 §4.3).
  *
  * - 처음엔 조까지만 보이고(접힘), 줄 앞 ▸ 로 하위를 편다. 고치기로 열면 이미 고른 대상의 조상이 펴져 있다.
- * - 조 · 항 · 호 · 목 어느 단계든 고를 수 있고 여럿 고른다. 고른 값은 숨은 `targets` 칸으로 문서 순서대로 폼에 실린다.
+ * - 조 · 항 · 호 · 목 어느 단계든 고를 수 있고 여럿 고른다. 고른 값은 숨은 `targets` 칸에 참조 대상 열쇠(조 id · 조#P코드)로 문서 순서대로 실린다.
  * - 관은 묶음 머리(좌측 목차와 같은 「제N관 이름」)일 뿐 고를 수 없다.
  * - 키보드: ↑ ↓ 줄 이동 · → 펴기(펴져 있으면 첫 하위) · ← 접기(접혀 있으면 상위) · Space 고르기(체크박스 기본).
  * - 위 검색칸에 치면 번호 · 제목이 맞는 줄과 그 조상만 남고 조상은 펴진다. 맞은 글자는 검색 입력(콤보박스)과 같이 강조한다
@@ -15,7 +15,7 @@ import { useMemo, useState, type KeyboardEvent } from "react";
 import { COMBO_EMPTY_TEXT, Highlight } from "@/app/_components/Combobox";
 import { matchOption, tokensOf } from "@/app/_components/comboModel";
 
-import { referenceAncestorIds, referenceOutline, type ReferenceOutlineNode, type ReferenceTarget } from "@/domain/document";
+import { referenceAncestorIds, referenceOutline, refKey, refTargetOf, type ReferenceOutlineNode, type ReferenceTarget } from "@/domain/document";
 import type { Id } from "@/domain/types";
 
 export interface RefTargetScope {
@@ -191,8 +191,10 @@ export function RefTargetTree({
       )}
       <div id={id} className="ts-ref-tree" role="tree" aria-multiselectable="true" aria-label="참조 대상" onKeyDown={onKeyDown}>
         {outlines.map((s) =>
-          // 숨은 칸 — 문서 순서대로 (예전 다중 선택 목록과 같은 순서)
-          [...s.index.keys()].filter((nodeId) => selected.has(nodeId)).map((nodeId) => <input key={`${s.key}:v:${nodeId}`} type="hidden" name="targets" value={nodeId} />),
+          // 숨은 칸 — 문서 순서대로, 값은 참조 대상 열쇠(조 · 조#P코드, ADR-0072). 같은 코드의 분기 짝을 둘 다 골라도 대상은 하나다
+          [...new Set([...s.index].filter(([nodeId]) => selected.has(nodeId)).map(([, t]) => refKey(refTargetOf(t))))].map((key) => (
+            <input key={`${s.key}:v:${key}`} type="hidden" name="targets" value={key} />
+          )),
         )}
         {empty && <p className="ts-muted">고를 조가 없다.</p>}
         {searching && hits.size === 0 && <p className="ts-muted">{COMBO_EMPTY_TEXT}</p>}

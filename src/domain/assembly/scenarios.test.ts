@@ -229,7 +229,7 @@ describe("조립오류 S4 — 분기로 사라진 조를 가리키는 조 참조
   /** 제1조 ① 끝에 「보험기간」 조 참조 슬롯을 단다. */
   const special = surgeryFixture().special;
   const art = special.children[0] as ArticleNode;
-  (art.children[0] as ParagraphNode).children.push({ id: "s-txt-ref", kind: "text", text: " 보험기간은 " }, { id: "s-aref-term", kind: "articleRef", targets: [{ nodeId: "s-art-term" }], connector: "및", scope: "self" });
+  (art.children[0] as ParagraphNode).children.push({ id: "s-txt-ref", kind: "text", text: " 보험기간은 " }, { id: "s-aref-term", kind: "articleRef", targets: [{ articleId: "s-art-term" }], connector: "및", scope: "self" });
   const { booklet, doc } = docsOf(withSurgery([surgeryCoverage("pc-surgery", "수술비", { renew: false }), surgeryCoverage("pc-renew", "갱신형 수술비", { renew: true })], {}, special));
 
   it("「갱신형 수술비」 — 보험기간 조가 살아 제2조가 되고 참조는 「제2조(보험기간)」, 이후 조 번호가 밀린다", () => {
@@ -659,7 +659,7 @@ describe("조 노출 토글 (기능/상품 §3.6) — 숨긴 조는 빠지고 �
   it("숨긴 조를 조참조하는 조 → articleHidden 오류 · 메시지에 「노출을 껐습니다」 · 좌표는 보통약관", () => {
     const input = alphaPlusFixture();
     const def = input.generalDocuments.get("g-doc")!.children.find((c) => c.kind === "article" && c.id === "g-art-def") as ArticleNode;
-    (def.children[0] as ParagraphNode).children.push({ id: "g-aref-dis", kind: "articleRef", targets: [{ nodeId: "g-art-disability" }], connector: "및", scope: "self" });
+    (def.children[0] as ParagraphNode).children.push({ id: "g-aref-dis", kind: "articleRef", targets: [{ articleId: "g-art-disability" }], connector: "및", scope: "self" });
     const booklet = assembleInput({ ...input, product: { ...input.product, hiddenArticleIds: new Set(["g-art-disability"]) } });
     const issue = hiddenIssues(booklet)[0];
     expect(issue?.message).toBe("보통약관 조 「장해의 분류」 은(는) 상품에서 노출을 껐습니다");

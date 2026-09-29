@@ -150,7 +150,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
       await clause.create(editor, {
         label: "준용 문구",
         mode: "inline",
-        body: [{ id: "c2-t1", kind: "text", text: "이 약관에서 정하지 않은 사항은 " }, { id: "c2-ref", kind: "articleRef", targets: [{ nodeId: "g-art-def" }], connector: "및" }, { id: "c2-t2", kind: "text", text: " 및 관계 법령을 따릅니다." }],
+        body: [{ id: "c2-t1", kind: "text", text: "이 약관에서 정하지 않은 사항은 " }, { id: "c2-ref", kind: "articleRef", targets: [{ articleId: "g-art-def" }], connector: "및" }, { id: "c2-t2", kind: "text", text: " 및 관계 법령을 따릅니다." }],
       }),
     );
 

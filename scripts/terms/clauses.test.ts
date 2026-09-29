@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import { hostLocator } from "../../src/domain/assembly/resolve";
-import type { ArticleNode, DocumentNode, InlineNode, ParagraphNode } from "../../src/domain/document/nodes";
+import { indexTree, type ArticleNode, type DocumentNode, type InlineNode, type ParagraphNode } from "../../src/domain/document/nodes";
+import { targetOfNode, withCodes } from "../../src/domain/document/pcode";
 
 import { applyClauseUse, clauseFromSource, hostPaths, inlineBody, parameterize, placeOptions, reId, renderings, replaceInlineRun, toClauseInline, type ClauseRecord } from "./clauses";
 
 const text = (id: string, t: string): InlineNode => ({ id, kind: "text", text: t });
-const ref = (id: string, nodeId: string, scope: "self" | "general" = "self"): InlineNode => ({ id, kind: "articleRef", targets: [{ nodeId }], connector: "및", scope });
+/** 변환 중간 모양의 조 참조 — 대상 노드 id 를 `articleId` 자리에 싣는다(clauses.ts 머리 주석). */
+const ref = (id: string, nodeId: string, scope: "self" | "general" = "self"): InlineNode => ({ id, kind: "articleRef", targets: [{ articleId: nodeId }], connector: "및", scope });
 
 const INLINE: ClauseRecord = {
   code: "C0004",
@@ -39,7 +41,7 @@ describe("공용조항 오버레이 — 원문 자리를 참조로", () => {
   it("평문 → 공용조항 인라인: {O01} 은 옵션 자리 · 보통약관 조 참조는 scope 를 뗀다 · 자기 조 참조는 거부", () => {
     const body = inlineBody("가 {O01} 나", "c1", (t, newId) => [text(newId(), t)]);
     expect(body.map((n) => n.kind)).toEqual(["text", "optionSlot", "text"]);
-    expect(toClauseInline(ref("r", "g-a9", "general"))).toEqual({ id: "r", kind: "articleRef", targets: [{ nodeId: "g-a9" }], connector: "및" });
+    expect(toClauseInline(ref("r", "g-a9", "general"))).toEqual({ id: "r", kind: "articleRef", targets: [{ articleId: "g-a9" }], connector: "및" });
     expect(() => toClauseInline(ref("r", "s-a1"))).toThrow(/보통약관 마스터만/);
   });
 
@@ -138,10 +140,11 @@ describe("공용조항 오버레이 — 원문 자리를 참조로", () => {
     }
     const lapseOf = (d: DocumentNode) => d.children[2] as ArticleNode;
 
-    it("hostPaths 는 조립의 hostLocator 와 같은 셈이다", () => {
-      const d = special("s", "소멸됩니다");
+    it("hostPaths 는 조립의 hostLocator 와 같은 셈이다 — 같은 경로가 같은 노드(의 참조 대상)를 가리킨다", () => {
+      const d = withCodes(special("s", "소멸됩니다"));
       const find = hostLocator(d);
-      for (const [id, path] of hostPaths(d)) expect(find(path)).toBe(id);
+      const ix = indexTree(d);
+      for (const [id, path] of hostPaths(d)) expect(find(path)).toEqual(targetOfNode(ix, id));
     });
 
     it("원문 자리에서 딴 본문 — 딴 항 안은 「이 공용조항」, 밖은 「사용처」 위치 · 낱말은 옵션 자리 · id 는 다시 매겨도 제 항 대상이 따라간다", () => {
@@ -151,13 +154,13 @@ describe("공용조항 오버레이 — 원문 자리를 참조로", () => {
       reId(body, "c9");
       expect(body).toEqual([
         { id: "c9-n1", kind: "paragraph", children: [
-          { id: "c9-n2", kind: "articleRef", targets: [{ nodeId: "1" }], connector: "및", scope: "host" },
+          { id: "c9-n2", kind: "articleRef", targets: [{ articleId: "1" }], connector: "및", scope: "host" },
           { id: "c9-n3", kind: "text", text: "에서 정한 지급사유가 발생하면 " },
           { id: "c9-n4", kind: "optionSlot", optionCode: "O01" },
           { id: "c9-n5", kind: "text", text: "." },
         ] },
         { id: "c9-n6", kind: "paragraph", children: [
-          { id: "c9-n7", kind: "articleRef", targets: [{ nodeId: "c9-n1" }], connector: "및", scope: "clause" },
+          { id: "c9-n7", kind: "articleRef", targets: [{ articleId: "c9-n1" }], connector: "및", scope: "clause" },
           { id: "c9-n8", kind: "text", text: "에 따라 소멸되면 지급하지 않습니다." },
         ] },
       ]);
@@ -183,7 +186,7 @@ describe("공용조항 오버레이 — 원문 자리를 참조로", () => {
     it("한 참조가 딴 항 안팎을 함께 가리키면 딸 수 없다", () => {
       const d = special("s", "소멸됩니다");
       const p2 = lapseOf(d).children[1] as ParagraphNode;
-      p2.children[0] = { id: "mix", kind: "articleRef", targets: [{ nodeId: "s-a3-p1" }, { nodeId: "s-a1" }], connector: "및", scope: "self" };
+      p2.children[0] = { id: "mix", kind: "articleRef", targets: [{ articleId: "s-a3-p1" }, { articleId: "s-a1" }], connector: "및", scope: "self" };
       expect(() => clauseFromSource(d, lapseOf(d).children as ParagraphNode[], "C0009")).toThrow(/안팎/);
     });
   });

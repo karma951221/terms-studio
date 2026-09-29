@@ -61,17 +61,24 @@ export interface InlineCondNode {
 }
 
 /**
- * 조 참조 슬롯 — 대상을 저장하고 렌더 시 계산된 번호를 찍는다. 대상이 어디 있는지는 `scope` 가 정한다 (기능/함수조항 §3.5):
- * - 없음 : 보통약관 마스터의 조 · 항 · 호 · 목 (`nodeId` = 그 노드 id). 문맥과 무관하게 고정된다.
- * - `"clause"` : **이 공용조항 본문 안의** 항 · 호 · 목 (`nodeId` = 본문 노드 id) — 「제1항에 따라」처럼 조째 공용조항이 제 항을 가리킨다.
- *   펼칠 때(`expandClause`) 펼친 노드 id 로 바뀌어 사용처 번호로 찍힌다.
- * - `"host"` : **사용처 문서의** 위치 (`nodeId` = 위치 경로 `"1"` · `"2.1"` · `"2.1.3"` — 사용처의 n번째 조 · 그 조의 m번째 항 · k번째 호).
- *   「제1조(보험금의 지급사유)에서 정한」처럼 조째 공용조항이 사용처의 지급사유 조를 가리킨다. 조립이 사용처 트리에서 노드 id 로 푼다.
+ * 조 참조 슬롯의 대상 — 모양은 `scope` 가 정한다 (기능/함수조항 §3.5 · ADR-0072 결정 3):
+ * - 없음 : 보통약관 마스터의 조 `{ articleId }` · 그 조의 항 · 호 · 목 `{ articleId, code }`. 문맥과 무관하게 고정된다.
+ * - `"clause"` : **이 함수조항 본문 안의** 항 · 호 · 목 `{ code }` — 「제1항에 따라」처럼 조째 함수조항이 제 항을 가리킨다.
+ *   조건 가지 · 값별 분기 칸의 같은 자리는 코드를 공유해 어느 칸이 서든 산다. 펼치면 사용처 조의 (참조 노드 코드, 이 코드)로 바뀌어 사용처 번호로 찍힌다.
+ * - `"host"` : **사용처 문서의** 위치 `{ host: "2.1" }` (`"1"` · `"2.1"` · `"2.1.3"` — 사용처의 n번째 조 · 그 조의 m번째 항 · k번째 호).
+ *   「제1조(보험금의 지급사유)에서 정한」처럼 조째 함수조항이 사용처의 지급사유 조를 가리킨다. 조립이 사용처 트리에서 대상으로 푼다.
  */
+export interface ClauseRefTarget {
+  articleId?: Id;
+  code?: Code;
+  host?: string;
+}
+
+/** 조 참조 슬롯 — 대상을 저장하고 렌더 시 계산된 번호를 찍는다. */
 export interface ArticleRefNode {
   id: Id;
   kind: "articleRef";
-  targets: { nodeId: Id }[];
+  targets: ClauseRefTarget[];
   /** 기본값 없음 — 대상이 둘 이상이면 필수 (결정 14 · 문서의 `ArticleRefNode.connector` 와 같은 규칙). */
   connector?: ReferenceConnector;
   scope?: ClauseRefScope;

@@ -19,7 +19,7 @@
 import { CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, type AttachLevel, type Code, type Coordinate, type Id, type Issue, type ReferenceConnector } from "../types";
 import type { ClauseMode } from "../clause/types";
 import type { Bindings } from "../clause/params";
-import { documentCodeIssues } from "./pcode";
+import { documentCodeIssues, referenceKeys, refKey, refLabel } from "./pcode";
 
 // ───────────────────────────── 인라인 ─────────────────────────────
 
@@ -74,14 +74,23 @@ export interface InlineForNode {
 }
 
 /**
- * 조 참조 슬롯 — 조 id 를 저장하고 렌더 시 계산된 번호(+조 명)를 찍는다.
+ * 참조 대상 (ADR-0072 결정 3) — 조는 uuid 하나(`{ articleId }`), 항 · 호 · 목은 그 조의 P코드(`{ articleId, code }`).
+ * 단계(항/호/목)는 코드가 아니라 트리 위치다. 번호는 조립 때 살아남은 트리에서 계산한다 — 같은 코드를 공유한 분기 짝 중 살아남은 것.
+ */
+export interface RefTarget {
+  articleId: Id;
+  code?: Code;
+}
+
+/**
+ * 조 참조 슬롯 — 대상(조 · 조+코드)을 저장하고 렌더 시 계산된 번호(+조 명)를 찍는다.
  * `self` = 같은 문서의 조, `general` = 대응 보통약관(D-P4-5)의 조 (담보약관에서만 — D-P4-20).
  */
 export interface ArticleRefNode {
   id: Id;
   kind: "articleRef";
   /** 작성 순서 = 나열 순서. 연속 판정(「부터 … 까지」)은 렌더가 계산 번호로 한다 (기능/문면 §3.5). */
-  targets: { nodeId: Id }[];
+  targets: RefTarget[];
   /**
    * 마지막 대상(또는 마지막 구간) 앞 연결어 — 「및」·「또는」. **기본값이 없다**(결정 14): 대상이 둘 이상인데 비어 있으면 저장 오류,
    * 대상이 하나면 없어도 된다(표기에 안 나온다). 옛 문서에 저장된 「및」은 그대로 유효하다.
@@ -629,8 +638,8 @@ export interface TreeEnv {
   kind?: "special" | "general";
   /** 대응 보통약관(D-P4-5)의 조 id 집합. 조연결 대상 검증. */
   generalArticleIds?: ReadonlySet<Id>;
-  /** 대응 보통약관의 조·항·호·목 id 집합. `scope:'general'` 참조 대상 검증. */
-  generalReferenceIds?: ReadonlySet<Id>;
+  /** 대응 보통약관의 참조 대상 열쇠(`refKey` — 조 id · 조#코드) 집합. `scope:'general'` 참조 대상 검증. */
+  generalReferenceKeys?: ReadonlySet<string>;
   appendixExists?: (code: Code) => boolean;
   /** 정적 마스터 박스 존재 — 없는 박스를 가리키는 박스 참조는 brokenRef. */
   boxExists?: (code: Code) => boolean;
@@ -697,16 +706,16 @@ export function checkNodeRefs(e: NodeEntry, ix: TreeIndex, env: TreeEnv, atSave:
         if (n.targets.length >= 2) return one("structure", CONNECTOR_REQUIRED_MESSAGE);
       } else if (!isReferenceConnector(n.connector)) return one("structure", `조 참조 연결어는 「및」·「또는」 중 하나여야 합니다: ${String(n.connector)}`);
       if (n.scope === "general" && env.kind === "general") return one("structure", "보통약관 문서에서는 보통약관 조 참조를 쓸 수 없습니다");
-      return n.targets.flatMap(({ nodeId }) => {
-        const target = ix.nodes.get(nodeId)?.node;
+      return n.targets.flatMap((target) => {
+        const key = refKey(target);
         const exists = n.scope === "self"
-          ? target !== undefined && ["article", "paragraph", "item", "subitem"].includes(target.kind)
-          : !(env.generalReferenceIds ?? env.generalArticleIds) || (env.generalReferenceIds ?? env.generalArticleIds)!.has(nodeId);
+          ? referenceKeys(ix).has(key)
+          : env.generalReferenceKeys ? env.generalReferenceKeys.has(key) : !env.generalArticleIds || env.generalArticleIds.has(target.articleId);
         if (exists) return [];
         const message = n.scope === "self"
-          ? `참조 대상 ${nodeId} 가 이 문서에 없습니다`
-          : `보통약관 참조 대상 ${nodeId} 가 대응 보통약관에 없습니다`;
-        return [{ kind: "brokenRef" as const, message, at: { ...at, refPath: nodeId } }];
+          ? `참조 대상 ${refLabel(target)} 가 이 문서에 없습니다`
+          : `보통약관 참조 대상 ${refLabel(target)} 가 대응 보통약관에 없습니다`;
+        return [{ kind: "brokenRef" as const, message, at: { ...at, refPath: key } }];
       });
     case "appendixRef":
       return env.appendixExists && !env.appendixExists(n.appendixCode) ? one("brokenRef", `별표 ${n.appendixCode} 가 별표 마스터에 없습니다`) : [];

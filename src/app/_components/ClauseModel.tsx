@@ -14,7 +14,7 @@
 import { Fragment, type ReactNode } from "react";
 
 import type { ArticleRefNode, Block, BulletListNode, Clause, Inline, ItemBodyNode, SubitemBodyNode } from "@/domain/clause";
-import { clauseBodyToTree, clauseInlineToTree, clausePositions, clauseScopedRefLabel, numberTree, referenceChunkLabel, type NodeNumber, type ReferenceTarget } from "@/domain/document";
+import { clauseBodyToTree, clauseInlineToTree, clausePositions, clauseScopedRefLabel, numberTree, referenceChunkLabel, referenceKeyIndex, refKey, type NodeNumber, type ReferenceTarget } from "@/domain/document";
 import type { Box } from "@/domain/document/box";
 import type { Code, Id } from "@/domain/types";
 
@@ -75,9 +75,10 @@ function articleRefText(node: ArticleRefNode, ctx: Ctx): string {
   if (scoped !== undefined) return scoped;
   const alive: ReferenceTarget[] = [];
   let broken = 0;
-  for (const { nodeId } of node.targets) {
-    const target = ctx.references.get(nodeId);
-    if (target) alive.push(target);
+  const byKey = referenceKeyIndex(ctx.references);
+  for (const t of node.targets) {
+    const found = t.articleId !== undefined ? byKey.get(refKey({ articleId: t.articleId, ...(t.code !== undefined ? { code: t.code } : {}) })) : undefined;
+    if (found) alive.push(found.target);
     else broken += 1;
   }
   const joined = alive.length === 0 ? "없는 조(연결 끊김)" : referenceChunkLabel(alive, node.connector);

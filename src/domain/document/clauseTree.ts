@@ -66,9 +66,10 @@ function inlineToTree(node: C.Inline): InlineNode {
     case "optionSlot":
       return optionCarrier(node.id, node.optionCode);
     case "articleRef": {
-      const { scope, ...rest } = node;
-      if (scope === "host") return { ...rest, targets: rest.targets.map((t) => ({ nodeId: `${HOST_TARGET_PREFIX}${t.nodeId}` })), scope: "general" };
-      return { ...rest, scope: scope === "clause" ? "self" : "general" };
+      const { scope, targets, ...rest } = node;
+      if (scope === "host") return { ...rest, targets: targets.map((t) => ({ articleId: `${HOST_TARGET_PREFIX}${t.host ?? ""}` })), scope: "general" };
+      if (scope === "clause") return { ...rest, targets: targets.map((t) => ({ articleId: CLAUSE_ARTICLE_ID, ...(t.code !== undefined ? { code: t.code } : {}) })), scope: "self" };
+      return { ...rest, targets: targets.map((t) => ({ articleId: t.articleId ?? "", ...(t.code !== undefined ? { code: t.code } : {}) })), scope: "general" };
     }
     case "inlineCond":
       return { ...node, branches: node.branches.map((br) => ({ ...br, children: br.children.map(inlineToTree) })) };
@@ -173,13 +174,17 @@ function inlineFromTree(node: InlineNode): C.Inline {
     case "appendixRef":
       return node;
     case "articleRef": {
-      const { scope, ...rest } = node;
-      if (scope === "self") return { ...rest, scope: "clause" };
+      const { scope, targets, ...rest } = node;
+      if (scope === "self") {
+        // 제 항 · 호 · 목 — 코드만 남긴다(편집 트리의 조는 자리일 뿐). 조 자체를 가리킬 수는 없다
+        if (targets.some((t) => t.code === undefined)) throw new NotClause("「이 함수조항」 참조는 제 항 · 호 · 목만 가리킨다 — 조는 사용처 소유다");
+        return { ...rest, targets: targets.map((t) => ({ code: t.code })), scope: "clause" };
+      }
       // 보통약관 조 또는 사용처 위치 — 한 참조가 둘을 섞지 않는다
-      const host = rest.targets.filter((t) => t.nodeId.startsWith(HOST_TARGET_PREFIX));
-      if (host.length === 0) return rest;
-      if (host.length !== rest.targets.length) throw new NotClause("조 참조 하나에 보통약관 조와 사용처 위치를 섞을 수 없습니다");
-      return { ...rest, targets: host.map((t) => ({ nodeId: t.nodeId.slice(HOST_TARGET_PREFIX.length) })), scope: "host" };
+      const host = targets.filter((t) => t.articleId.startsWith(HOST_TARGET_PREFIX));
+      if (host.length === 0) return { ...rest, targets: targets.map((t) => ({ ...t })) };
+      if (host.length !== targets.length) throw new NotClause("조 참조 하나에 보통약관 조와 사용처 위치를 섞을 수 없습니다");
+      return { ...rest, targets: host.map((t) => ({ host: t.articleId.slice(HOST_TARGET_PREFIX.length) })), scope: "host" };
     }
     case "clauseInlineRef": {
       const code = optionCodeOf(node);
@@ -286,9 +291,16 @@ function positionText(parts: readonly number[], fromArticle: boolean): string {
     .join(" ");
 }
 
-/** 편집 트리(공용조항 본문을 싼 트리)의 항 · 호 · 목 id → 본문 안 순번 `[항, 호?, 목?]`. 조건 블록 안도 차례로 센다. */
+/**
+ * 편집 트리(함수조항 본문을 싼 트리)의 항 · 호 · 목 → 본문 안 순번 `[항, 호?, 목?]`. 조건 블록 안도 차례로 센다.
+ * 노드 id 와 P코드(`P0100` — 노드 id 와 겹치지 않는 꼴) 둘 다로 찾는다 — 「이 함수조항」 참조는 코드를 저장한다. 같은 코드의 분기 짝은 첫 노드.
+ */
 export function clausePositions(tree: DocumentNode): Map<string, number[]> {
   const out = new Map<string, number[]>();
+  const put = (node: { id: string; code?: Code }, at: number[]) => {
+    out.set(node.id, at);
+    if (node.code !== undefined && !out.has(node.code)) out.set(node.code, at);
+  };
   const article = tree.children[0];
   if (!article || article.kind !== "article") return out;
   let p = 0;
@@ -300,7 +312,7 @@ export function clausePositions(tree: DocumentNode): Map<string, number[]> {
     if (n.kind !== "paragraph") return;
     // 호 · 목 유형의 자리 항 · 호는 번호 단계가 아니다 — 0 으로 두어 「제2호」 · 「나목」만 적는다
     const pp = n.id === CLAUSE_HOST_PARAGRAPH_ID ? 0 : ++p;
-    if (pp > 0) out.set(n.id, [pp]);
+    if (pp > 0) put(n, [pp]);
     let i = 0;
     const items = (list: readonly NonNullable<ParagraphNode["items"]>[number][]) => {
       for (const it of list) {
@@ -310,12 +322,12 @@ export function clausePositions(tree: DocumentNode): Map<string, number[]> {
         }
         if (it.kind !== "item") continue;
         const ii = it.id === CLAUSE_HOST_ITEM_ID ? 0 : ++i;
-        if (ii > 0) out.set(it.id, [pp, ii]);
+        if (ii > 0) put(it, [pp, ii]);
         let u = 0;
         const subitems = (sl: readonly NonNullable<ItemNode["subitems"]>[number][]) => {
           for (const s of sl) {
             if (s.kind === "condBlock") for (const br of s.branches) subitems(br.children as NonNullable<ItemNode["subitems"]>);
-            else if (s.kind === "subitem") out.set(s.id, [pp, ii, ++u]);
+            else if (s.kind === "subitem") put(s, [pp, ii, ++u]);
           }
         };
         subitems(it.subitems ?? []);
@@ -333,11 +345,11 @@ export function clausePositions(tree: DocumentNode): Map<string, number[]> {
  */
 export function clauseScopedRefLabel(node: InlineNode, positions: ReadonlyMap<string, number[]>): string | undefined {
   if (node.kind !== "articleRef") return undefined;
-  const host = node.scope === "general" && node.targets.length > 0 && node.targets.every((t) => t.nodeId.startsWith(HOST_TARGET_PREFIX));
+  const host = node.scope === "general" && node.targets.length > 0 && node.targets.every((t) => t.articleId.startsWith(HOST_TARGET_PREFIX));
   if (node.scope !== "self" && !host) return undefined;
   const labels = node.targets.map((t) => {
-    if (host) return positionText(t.nodeId.slice(HOST_TARGET_PREFIX.length).split(".").map(Number), true);
-    const at = positions.get(t.nodeId);
+    if (host) return positionText(t.articleId.slice(HOST_TARGET_PREFIX.length).split(".").map(Number), true);
+    const at = t.code !== undefined ? positions.get(t.code) : undefined;
     return at ? positionText(at, false) : "없는 항(연결 끊김)";
   });
   const joined = labels.length <= 1 ? (labels[0] ?? "") : `${labels.slice(0, -1).join(", ")} ${node.connector ?? CONNECTOR_PLACEHOLDER} ${labels.at(-1)}`;

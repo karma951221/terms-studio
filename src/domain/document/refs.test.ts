@@ -13,7 +13,7 @@ describe("기능/관계정보 §3 참조 그래프 — collectRefs 는 문서가
           {
             id: "refs",
             kind: "articleRef",
-            targets: [{ nodeId: "g1" }, { nodeId: "g2" }],
+            targets: [{ articleId: "g1" }, { articleId: "g2" }],
             connector: "또는",
             scope: "general",
           },

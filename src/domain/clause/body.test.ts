@@ -53,7 +53,7 @@ describe("함수조항 S1 — 본문 노드 규칙 (inline)", () => {
         { id: "b2", children: [{ id: "t3", kind: "text", text: "계약일" }] },
       ] },
       { id: "s1", kind: "slot", ref: "arg.담보명" },
-      { id: "a1", kind: "articleRef", targets: [{ nodeId: "art-1" }], connector: "및" },
+      { id: "a1", kind: "articleRef", targets: [{ articleId: "art-1" }], connector: "및" },
       { id: "x1", kind: "appendixRef", appendixCode: "X0001" },
       { id: "o1", kind: "optionSlot", optionCode: "O01" },
     ];
@@ -198,7 +198,7 @@ describe("함수조항 S1 — 본문 노드 규칙 (block)", () => {
 
 describe("함수조항 S1 — 조 참조 · 별표 참조 검사 (기능/함수조항 §3.5)", () => {
   /** connector `null` = 연결어 안 고름. */
-  const 조참조 = (targets: { nodeId: string }[], connector: string | null = "및"): Inline =>
+  const 조참조 = (targets: { articleId: string; code?: string }[], connector: string | null = "및"): Inline =>
     ({ id: "a1", kind: "articleRef", targets, ...(connector === null ? {} : { connector }) } as Inline);
   const 별표참조 = (appendixCode: string): Inline => ({ id: "x1", kind: "appendixRef", appendixCode });
 
@@ -209,19 +209,19 @@ describe("함수조항 S1 — 조 참조 · 별표 참조 검사 (기능/함수�
   });
 
   it("조 참조 연결어가 「및」·「또는」이 아니면 거부한다 (structure)", () => {
-    const issues = issuesOf(analyzeBody("inline", [조참조([{ nodeId: "g-art-1" }], "그리고")], []));
+    const issues = issuesOf(analyzeBody("inline", [조참조([{ articleId: "g-art-1" }], "그리고")], []));
     expect(issues.map((i) => i.kind)).toEqual(["structure"]);
     expect(issues[0]!.message).toContain("연결어");
   });
 
   it("대상이 둘 이상인데 연결어가 없으면 거부한다 — 문서와 같은 규칙 (결정 14)", () => {
-    const issues = issuesOf(analyzeBody("inline", [조참조([{ nodeId: "g-art-1" }, { nodeId: "g-art-2" }], null)], []));
+    const issues = issuesOf(analyzeBody("inline", [조참조([{ articleId: "g-art-1" }, { articleId: "g-art-2" }], null)], []));
     expect(issues.map((i) => i.kind)).toEqual(["structure"]);
     expect(issues[0]!.message).toContain("연결어를 고르세요");
   });
 
   it("대상이 하나면 연결어가 없어도 통과한다", () => {
-    expect(analyzeBody("inline", [조참조([{ nodeId: "g-art-1" }], null)], []).ok).toBe(true);
+    expect(analyzeBody("inline", [조참조([{ articleId: "g-art-1" }], null)], []).ok).toBe(true);
   });
 
   it("별표 코드가 비어 있으면 거부한다 (structure)", () => {
@@ -230,15 +230,15 @@ describe("함수조항 S1 — 조 참조 · 별표 참조 검사 (기능/함수�
   });
 
   it("보통약관 조 집합·별표 조회를 주지 않으면 존재 검사는 건너뛴다", () => {
-    const body: Inline[] = [조참조([{ nodeId: "누구도-모르는-id" }]), 별표참조("X9999")];
+    const body: Inline[] = [조참조([{ articleId: "누구도-모르는-id" }]), 별표참조("X9999")];
     expect(unwrap(analyzeBody("inline", body, []))).toEqual({ discriminators: [], attributes: [] });
   });
 
   it("보통약관에 없는 조·항·호·목을 가리키면 거부한다 (brokenRef · refPath = 대상 id)", () => {
-    const generalReferenceIds = new Set(["g-art-1", "g-par-1"]);
-    const body: Inline[] = [조참조([{ nodeId: "g-art-1" }, { nodeId: "g-art-9" }])];
+    const generalReferenceKeys = new Set(["g-art-1", "g-par-1"]);
+    const body: Inline[] = [조참조([{ articleId: "g-art-1" }, { articleId: "g-art-9" }])];
 
-    const issues = issuesOf(analyzeBody("inline", body, [], { generalReferenceIds }));
+    const issues = issuesOf(analyzeBody("inline", body, [], { generalReferenceKeys }));
     expect(issues.map((i) => i.kind)).toEqual(["brokenRef"]);
     expect(issues[0]!.message).toContain("g-art-9");
     expect(issues[0]!.at).toEqual({ nodePath: ["a1"], refPath: "g-art-9" });
@@ -254,10 +254,10 @@ describe("함수조항 S1 — 조 참조 · 별표 참조 검사 (기능/함수�
   });
 
   it("존재하는 보통약관 조와 별표를 가리키면 통과한다 — block 본문의 항 안과 옵션 선택지 본문도 검사한다", () => {
-    const generalReferenceIds = new Set(["g-art-1"]);
+    const generalReferenceKeys = new Set(["g-art-1"]);
     const appendixExists = (code: string) => code === "X0001";
-    const block: Block[] = [{ id: "p1", kind: "paragraph", children: [조참조([{ nodeId: "g-art-1" }]), 별표참조("X0001")] }];
-    expect(unwrap(analyzeBody("block", block, [], { generalReferenceIds, appendixExists }))).toEqual({ discriminators: [], attributes: [] });
+    const block: Block[] = [{ id: "p1", kind: "paragraph", children: [조참조([{ articleId: "g-art-1" }]), 별표참조("X0001")] }];
+    expect(unwrap(analyzeBody("block", block, [], { generalReferenceKeys, appendixExists }))).toEqual({ discriminators: [], attributes: [] });
 
     const 깨진옵션: OptionDef[] = [{
       code: "O01", label: "별표", order: 0,
@@ -270,31 +270,33 @@ describe("함수조항 S1 — 조 참조 · 별표 참조 검사 (기능/함수�
 
 describe("함수조항 조 참조 범위 — 제 항 · 사용처 위치 (§3.5)", () => {
   const 소멸: Block[] = [
-    { id: "p1", kind: "paragraph", children: [
-      { id: "r1", kind: "articleRef", targets: [{ nodeId: "1" }], connector: "및", scope: "host" },
+    { id: "p1", kind: "paragraph", code: "P0100", children: [
+      { id: "r1", kind: "articleRef", targets: [{ host: "1" }], connector: "및", scope: "host" },
       { id: "t1", kind: "text", text: "에서 정한 지급사유가 발생한 경우에는 소멸됩니다." },
     ] },
-    { id: "p2", kind: "paragraph", children: [
-      { id: "r2", kind: "articleRef", targets: [{ nodeId: "p1" }], connector: "및", scope: "clause" },
+    { id: "p2", kind: "paragraph", code: "P0200", children: [
+      { id: "r2", kind: "articleRef", targets: [{ code: "P0100" }], connector: "및", scope: "clause" },
       { id: "t2", kind: "text", text: "에 따라 소멸된 경우에는 해약환급금을 지급하지 않습니다." },
     ] },
   ];
 
   it("제 항(`clause`)과 사용처 위치(`host`)를 가리키는 조 참조는 보통약관 대상 검사를 받지 않고 통과한다", () => {
-    unwrap(analyzeBody("block", 소멸, [], { generalReferenceIds: new Set(["g-a1"]) }));
+    unwrap(analyzeBody("block", 소멸, [], { generalReferenceKeys: new Set(["g-a1"]) }));
   });
 
-  it("제 항 참조는 본문의 항 · 호 · 목만 — 없는 id · 선택지 문구 안은 거부", () => {
-    const bad: Block[] = [{ ...소멸[1], children: [{ id: "r2", kind: "articleRef", targets: [{ nodeId: "p9" }], connector: "및", scope: "clause" }] } as Block];
+  it("제 항 참조는 본문의 항 · 호 · 목의 P코드만 — 없는 코드 · 선택지 문구 안은 거부, 코드가 아닌 대상은 구조 오류", () => {
+    const bad: Block[] = [{ ...소멸[1], children: [{ id: "r2", kind: "articleRef", targets: [{ code: "P0900" }], connector: "및", scope: "clause" }] } as Block];
     expect(issuesOf(analyzeBody("block", bad, [])).map((i) => i.kind)).toEqual(["brokenRef"]);
-    const inline: Inline[] = [{ id: "r", kind: "articleRef", targets: [{ nodeId: "p1" }], connector: "및", scope: "clause" }];
+    const shape: Block[] = [{ ...소멸[1], children: [{ id: "r2", kind: "articleRef", targets: [{ articleId: "p1" }], connector: "및", scope: "clause" }] } as Block];
+    expect(issuesOf(analyzeBody("block", shape, [])).map((i) => i.kind)).toEqual(["structure"]);
+    const inline: Inline[] = [{ id: "r", kind: "articleRef", targets: [{ code: "P0100" }], connector: "및", scope: "clause" }];
     expect(issuesOf(analyzeBody("inline", inline, [])).map((i) => i.kind)).toEqual(["brokenRef"]);
   });
 
   it("사용처 위치는 「조[.항[.호[.목]]]」 순번 경로여야 한다", () => {
-    const bad: Block[] = [{ id: "p", kind: "paragraph", children: [{ id: "r", kind: "articleRef", targets: [{ nodeId: "0.1" }], connector: "및", scope: "host" }] }];
+    const bad: Block[] = [{ id: "p", kind: "paragraph", children: [{ id: "r", kind: "articleRef", targets: [{ host: "0.1" }], connector: "및", scope: "host" }] }];
     expect(issuesOf(analyzeBody("block", bad, [])).map((i) => i.kind)).toEqual(["structure"]);
-    const ok: Block[] = [{ id: "p", kind: "paragraph", children: [{ id: "r", kind: "articleRef", targets: [{ nodeId: "2.1.3" }], connector: "및", scope: "host" }] }];
+    const ok: Block[] = [{ id: "p", kind: "paragraph", children: [{ id: "r", kind: "articleRef", targets: [{ host: "2.1.3" }], connector: "및", scope: "host" }] }];
     unwrap(analyzeBody("block", ok, []));
   });
 });
@@ -328,12 +330,12 @@ describe("박스 참조 — 정적 마스터 박스는 잎이라 함수조항 �
 });
 
 describe("호 · 목 유형 본문 — 목록 자리 규칙 · 식 수집 · 제 호 참조 (최종 결정 4)", () => {
-  const 호 = (id: string, children: Inline[] = []) => ({ id, kind: "item" as const, children });
+  const 호 = (id: string, children: Inline[] = [], code?: string) => ({ id, kind: "item" as const, ...(code ? { code } : {}), children });
 
-  it("호 목록의 조건 가지 식 · 슬롯을 모으고, 제 호를 「이 함수조항」 참조로 가리킬 수 있다", () => {
+  it("호 목록의 조건 가지 식 · 슬롯을 모으고, 제 호를 「이 함수조항」 참조(P코드)로 가리킬 수 있다", () => {
     const body = [
-      호("i1", [{ id: "s1", kind: "slot", ref: "arg.담보명" }]),
-      { id: "c1", kind: "condBlock" as const, branches: [{ id: "b1", when: "arg.유형 = 'V02'", children: [호("i2", [{ id: "r1", kind: "articleRef", targets: [{ nodeId: "i1" }], scope: "clause" }])] }] },
+      호("i1", [{ id: "s1", kind: "slot", ref: "arg.담보명" }], "P0100"),
+      { id: "c1", kind: "condBlock" as const, branches: [{ id: "b1", when: "arg.유형 = 'V02'", children: [호("i2", [{ id: "r1", kind: "articleRef", targets: [{ code: "P0100" }], scope: "clause" }])] }] },
     ];
     expect(collectExpressions(body).map((e) => e.source)).toEqual(["arg.담보명", "arg.유형 = 'V02'"]);
     const r = analyzeBody("item", body, [], {}, [담보명, 유형]);

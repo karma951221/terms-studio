@@ -84,7 +84,7 @@ describe("조립 — 조건으로 항이 전부 빠진 조는 조째 빠진다",
       kind: "article",
       id: "g-art-refer",
       title: "특칙의 준용",
-      children: [{ kind: "paragraph", id: "g-par-refer", children: [{ kind: "articleRef", id: "g-ref-empty", targets: [{ nodeId: "g-art-empty" }], scope: "self" }, { kind: "text", id: "g-txt-refer", text: "을 준용합니다." }] }],
+      children: [{ kind: "paragraph", id: "g-par-refer", children: [{ kind: "articleRef", id: "g-ref-empty", targets: [{ articleId: "g-art-empty" }], scope: "self" }, { kind: "text", id: "g-txt-refer", text: "을 준용합니다." }] }],
     };
     const doc: DocumentNode = { ...general, children: [empty, ...general.children, refer] as DocumentNode["children"] };
     return { ...input, generalDocuments: new Map([...input.generalDocuments, ["g-doc", doc]]) };

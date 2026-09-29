@@ -7,7 +7,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { numberTree, referenceOutline, referenceTargetIndex, type DocumentNode, type InlineNode, type Node } from "../../../../src/domain/document";
+import { numberTree, referenceOutline, referenceTargetIndex, refKey, refTargetOf, type DocumentNode, type InlineNode, type Node } from "../../../../src/domain/document";
 
 const DATA = path.join(process.cwd(), "src/db/seed/data");
 const read = <T>(file: string): T => JSON.parse(readFileSync(path.join(DATA, file), "utf8")) as T;
@@ -83,13 +83,17 @@ export const SEED = {
   products: read<ProductSpec[]>("products.json"),
 };
 
-/** 조 참조 고르기 트리의 줄 표기 경로 — 대상 id → [「제1조(…)」, 「제1항」, 「제2호」]. 화면(`RefTargetTree`)과 같은 도메인 함수로 짓는다. */
+/**
+ * 조 참조 고르기 트리의 줄 표기 경로 — 대상 열쇠(`refKey` — 조 id · 조#P코드) → [「제1조(…)」, 「제1항」, 「제2호」].
+ * 화면(`RefTargetTree`)과 같은 도메인 함수로 짓는다. 같은 코드의 분기 짝은 첫 줄.
+ */
 export function outlinePaths(tree: DocumentNode): Map<string, string[]> {
   const out = new Map<string, string[]>();
   const walk = (rows: ReturnType<typeof referenceOutline>[number]["rows"], prefix: string[]) => {
     for (const row of rows) {
       const p = [...prefix, row.label];
-      out.set(row.id, p);
+      const key = refKey(refTargetOf(row.target));
+      if (!out.has(key)) out.set(key, p);
       walk(row.children, p);
     }
   };
@@ -97,15 +101,22 @@ export function outlinePaths(tree: DocumentNode): Map<string, string[]> {
   return out;
 }
 
-/** 보통약관 참조 대상의 조상 id (펴야 할 줄) — 보통약관은 시드가 id 를 그대로 넣어 화면 줄 id 와 같다. */
-export function generalAncestors(tree: DocumentNode): Map<string, string[]> {
-  const out = new Map<string, string[]>();
+/** 보통약관 참조 대상 → 고를 줄 id · 펴야 할 조상 줄 id. */
+export interface GeneralRow {
+  row: string;
+  chain: string[];
+}
+
+/** 보통약관 참조 대상 열쇠(`refKey`) → 줄 · 조상 줄 — 보통약관은 시드가 id 를 그대로 넣어 화면 줄 id 와 같다. 같은 코드의 분기 짝은 첫 줄. */
+export function generalAncestors(tree: DocumentNode): Map<string, GeneralRow> {
+  const out = new Map<string, GeneralRow>();
   for (const [id, t] of referenceTargetIndex(tree, numberTree(tree))) {
     const chain: string[] = [];
     if (t.kind !== "article") chain.push(t.article.id);
     if ((t.kind === "item" || t.kind === "subitem") && t.paragraph) chain.push(t.paragraph.id);
     if (t.kind === "subitem" && t.item) chain.push(t.item.id);
-    out.set(id, chain);
+    const key = refKey(refTargetOf(t));
+    if (!out.has(key)) out.set(key, { row: id, chain });
   }
   return out;
 }
@@ -119,7 +130,7 @@ export function generalTreeOf(code: string): DocumentNode {
   return tree;
 }
 
-/** 보통약관 두 벌의 참조 대상 조상 — 노드 id 가 벌마다 다르다(`g-…` · `m-…`) — 공용조항 조 참조는 보통약관 전부가 후보다. */
+/** 보통약관 두 벌의 참조 대상 줄 — 조 id 가 벌마다 다르다(`g-…` · `m-…`) — 공용조항 조 참조는 보통약관 전부가 후보다. */
 export const ALL_GENERAL_ANCESTORS = new Map(SEED.generals.flatMap((g) => [...generalAncestors(g.tree)]));
 
 /**

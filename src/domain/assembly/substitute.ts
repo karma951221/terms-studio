@@ -125,6 +125,7 @@ class Substituter {
     return {
       kind: "item",
       id: n.id,
+      ...(n.key !== undefined ? { key: n.key } : {}),
       children: this.inlines(n.children),
       ...(n.subitems ? { subitems: n.subitems.map((s) => (s.kind === "error" ? s : s.kind === "bulletList" ? this.bullets(s) : this.subitem(s))) } : {}),
     };
@@ -145,6 +146,7 @@ class Substituter {
     return {
       kind: "paragraph",
       id: n.id,
+      ...(n.key !== undefined ? { key: n.key } : {}),
       children: this.inlines(n.children),
       ...(n.items ? { items: n.items.map((it) => (it.kind === "item" ? this.item(it) : it.kind === "error" ? it : this.static(it))) } : {}),
       ...(n.excludeFromComparison ? { excludeFromComparison: true } : {}),

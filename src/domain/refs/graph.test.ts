@@ -257,16 +257,16 @@ describe("refs 그래프 — 조 참조(articleRef)를 속한 조로 잇는다",
     code: "C010",
     label: "조 참조 문구",
     mode: "inline",
-    body: [{ id: "c10-aref", kind: "articleRef", targets: [{ nodeId: "g-art-pay" }], connector: "및" }],
+    body: [{ id: "c10-aref", kind: "articleRef", targets: [{ articleId: "g-art-pay" }], connector: "및" }],
     options: [],
     required: { discriminators: [], attributes: [] },
   };
-  /** 보통약관 조 g-art-pay **안의 항** g-par-pay-1 을 가리키는 인라인 공용조항 — 속한 조로 올라가야 한다. */
+  /** 보통약관 조 g-art-pay **안의 항** g-par-pay-1(P0100) 을 가리키는 인라인 공용조항 — 조로 간선이 난다(코드는 좌표 열쇠에). */
   const 공용_항참조: Clause = {
     code: "C011",
     label: "항 참조 문구",
     mode: "inline",
-    body: [{ id: "c11-aref", kind: "articleRef", targets: [{ nodeId: "g-par-pay-1" }], connector: "및" }],
+    body: [{ id: "c11-aref", kind: "articleRef", targets: [{ articleId: "g-art-pay", code: "P0100" }], connector: "및" }],
     options: [],
     required: { discriminators: [], attributes: [] },
   };
@@ -275,7 +275,7 @@ describe("refs 그래프 — 조 참조(articleRef)를 속한 조로 잇는다",
     code: "C012",
     label: "깨진 참조 문구",
     mode: "inline",
-    body: [{ id: "c12-aref", kind: "articleRef", targets: [{ nodeId: "no-such-node" }], connector: "및" }],
+    body: [{ id: "c12-aref", kind: "articleRef", targets: [{ articleId: "no-such-node" }], connector: "및" }],
     options: [],
     required: { discriminators: [], attributes: [] },
   };
@@ -290,7 +290,7 @@ describe("refs 그래프 — 조 참조(articleRef)를 속한 조로 잇는다",
     const g = buildGraph({ clauses: [공용_항참조], documents: [보통약관] });
     const es = edgesTo(g, "article:doc-g/g-art-pay");
     const e = es.find((x) => x.from.kind === "clause");
-    expect(e).toMatchObject({ via: "articleRef", from: { kind: "clause", code: "C011" }, at: { refPath: "g-par-pay-1" } });
+    expect(e).toMatchObject({ via: "articleRef", from: { kind: "clause", code: "C011" }, at: { refPath: "g-art-pay#P0100" } });
     expect(g.nodes.has("article:doc-g/g-art-pay")).toBe(true); // 깨진 간선이 아니다 — 대상 조가 선언돼 있다
   });
 
@@ -312,20 +312,28 @@ describe("refs 그래프 — 조 참조(articleRef)를 속한 조로 잇는다",
         kind: "document",
         title: "자기 항 참조 문서",
         children: [
-          { id: "sp-art-1", kind: "article", title: "1조", children: [{ id: "sp-par-1", kind: "paragraph", children: [{ id: "sp-txt-1", kind: "text", text: "본문" }] }] },
+          { id: "sp-art-1", kind: "article", title: "1조", children: [{ id: "sp-par-1", kind: "paragraph", code: "P0100", children: [{ id: "sp-txt-1", kind: "text", text: "본문" }] }] },
           {
             id: "sp-art-2",
             kind: "article",
             title: "2조",
-            children: [{ id: "sp-par-2", kind: "paragraph", children: [{ id: "sp-aref", kind: "articleRef", targets: [{ nodeId: "sp-par-1" }], connector: "및", scope: "self" }] }],
+            children: [{ id: "sp-par-2", kind: "paragraph", children: [{ id: "sp-aref", kind: "articleRef", targets: [{ articleId: "sp-art-1", code: "P0100" }], connector: "및", scope: "self" }] }],
           },
         ],
       },
     };
     const g = buildGraph({ documents: [자기항참조_문서] });
     const e = edgesTo(g, "article:doc-self-par/sp-art-1").find((x) => x.via === "articleRef");
-    expect(e).toMatchObject({ from: { kind: "article", documentId: "doc-self-par", articleId: "sp-art-2" }, at: { refPath: "sp-par-1" } });
+    expect(e).toMatchObject({ from: { kind: "article", documentId: "doc-self-par", articleId: "sp-art-2" }, at: { refPath: "sp-art-1#P0100" } });
     expect(brokenEdges(g).some((x) => x.via === "articleRef")).toBe(false);
+  });
+
+  it("조는 있어도 그 코드가 없으면 깨진 간선 — 대상 열쇠 그대로 (ADR-0072 결정 8)", () => {
+    const 없는코드: Clause = { ...공용_항참조, code: "C013", body: [{ id: "c13-aref", kind: "articleRef", targets: [{ articleId: "g-art-pay", code: "P0900" }], connector: "및" }] };
+    const g = buildGraph({ clauses: [없는코드], documents: [보통약관] });
+    const es = edgesTo(g, "article:/g-art-pay#P0900");
+    expect(es).toEqual([expect.objectContaining({ via: "articleRef", at: expect.objectContaining({ refPath: "g-art-pay#P0900" }) })]);
+    expect(brokenEdges(g)).toEqual(expect.arrayContaining(es));
   });
 
   it("문서 쪽 항 대상 (general) — 보통약관의 항을 가리키면 그 항이 속한 조로 올라간다", () => {
@@ -344,14 +352,14 @@ describe("refs 그래프 — 조 참조(articleRef)를 속한 조로 잇는다",
             id: "gp-art-1",
             kind: "article",
             title: "1조",
-            children: [{ id: "gp-par-1", kind: "paragraph", children: [{ id: "gp-aref", kind: "articleRef", targets: [{ nodeId: "g-par-pay-1" }], connector: "및", scope: "general" }] }],
+            children: [{ id: "gp-par-1", kind: "paragraph", children: [{ id: "gp-aref", kind: "articleRef", targets: [{ articleId: "g-art-pay", code: "P0100" }], connector: "및", scope: "general" }] }],
           },
         ],
       },
     };
     const g = buildGraph({ documents: [일반항참조_문서, 보통약관] });
     const e = edgesTo(g, "article:doc-g/g-art-pay").find((x) => x.from.kind === "article" && x.from.documentId === "doc-gen-par");
-    expect(e).toMatchObject({ via: "articleRef", at: { refPath: "g-par-pay-1" } });
+    expect(e).toMatchObject({ via: "articleRef", at: { refPath: "g-art-pay#P0100" } });
     expect(brokenEdges(g).some((x) => x.via === "articleRef")).toBe(false);
   });
 });

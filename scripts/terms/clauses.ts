@@ -12,9 +12,10 @@
  *   - 「항」(block)   : 잇닿은 항 N 개를 `clauseBlockRef` 하나로. 항의 가능한 렌더(조건 가지별)가 전부 공용조항의 렌더 안에 있어야 한다.
  *   - 「문구」(inline) : 항 안의 첫 등장 구간을 `clauseInlineRef` 하나로 (제품 기능 — 실물 데이터는 쓰지 않는다, 2026-09-28).
  * - 노드 id 는 결정적이다: 공용조항 본문 `c<번호>-…` · 사용처 참조 `<항 id>-k<순번>` (block 은 `<항 id>-k`).
+ * - **조 참조 대상의 변환 중간 모양** — 대상 노드 id(사용처 위치면 경로)를 `articleId` 자리에 싣는다(refs.ts 와 같다).
+ *   P코드는 출력 직전에야 매겨지므로 (조, P코드) · 제 코드 · `{ host }` 로 바꾸는 것은 convert.ts `codeTargets` · `codeClauseTargets` 다 (ADR-0072).
  */
 import type { ArticleRefNode as ClauseArticleRef, Block, Inline, ParagraphNode as ClauseParagraph } from "../../src/domain/clause/nodes";
-import { hostLocator } from "../../src/domain/assembly/resolve";
 import type { ArticleNode, DocumentNode, InlineNode, ParagraphNode } from "../../src/domain/document/nodes";
 import type { Id } from "../../src/domain/types";
 import { discriminatorResultType } from "../../src/domain/catalog/expression";
@@ -48,7 +49,7 @@ type AnyInline = InlineNode | Inline;
 function tokenOf(n: AnyInline): string {
   switch (n.kind) {
     case "articleRef":
-      return `〔조:${n.targets.map((t) => t.nodeId).join(",")}:${n.connector}〕`;
+      return `〔조:${n.targets.map((t) => t.articleId).join(",")}:${n.connector}〕`;
     case "appendixRef":
       return `〔별표:${n.appendixCode}〕`;
     case "slot":
@@ -117,7 +118,7 @@ export function toClauseInline(n: InlineNode, localize?: Localize): Inline {
   switch (n.kind) {
     case "articleRef": {
       if (n.scope === "general") return { id: n.id, kind: "articleRef", targets: n.targets.map((t) => ({ ...t })), connector: n.connector };
-      if (!localize) throw new Error(`평문 공용조항의 조 참조는 보통약관 마스터만 — 사용처 자신을 가리킨다: ${n.targets.map((t) => t.nodeId).join(",")}`);
+      if (!localize) throw new Error(`평문 공용조항의 조 참조는 보통약관 마스터만 — 사용처 자신을 가리킨다: ${n.targets.map((t) => t.articleId).join(",")}`);
       return localize(n);
     }
     case "inlineCond":
@@ -151,7 +152,7 @@ export function reId<T>(nodes: T, prefix: string): T {
     }
   };
   for (const n of nodes as unknown[]) visit(n);
-  for (const r of refs) r.targets = r.targets.map((t) => ({ nodeId: renamed.get(t.nodeId) ?? t.nodeId }));
+  for (const r of refs) r.targets = r.targets.map((t) => ({ articleId: renamed.get(t.articleId ?? "") ?? t.articleId }));
   return nodes;
 }
 
@@ -183,6 +184,12 @@ export function hostPaths(tree: DocumentNode): Map<Id, string> {
   return out;
 }
 
+/** 사용처 위치 경로 → 사용처 노드 id (`hostPaths` 의 역 — 변환 중간 모양의 대조용). */
+export function hostNodeIds(tree: DocumentNode): (path: string) => Id | undefined {
+  const byPath = new Map([...hostPaths(tree)].map(([id, path]) => [path, id] as const));
+  return (path) => byPath.get(path);
+}
+
 /** 항 목록의 항 · 호 · 목 id. */
 function structIdsOf(paragraphs: readonly ParagraphNode[]): Set<Id> {
   const out = new Set<Id>();
@@ -205,13 +212,13 @@ export function clauseFromSource(tree: DocumentNode, taken: readonly ParagraphNo
   const inside = structIdsOf(taken);
   const paths = hostPaths(tree);
   const localize: Localize = (n) => {
-    const own = n.targets.filter((t) => inside.has(t.nodeId));
+    const own = n.targets.filter((t) => inside.has(t.articleId));
     if (own.length === n.targets.length) return { id: n.id, kind: "articleRef", targets: n.targets.map((t) => ({ ...t })), connector: n.connector, scope: "clause" };
-    if (own.length > 0) throw new Error(`${code}: 조 참조 하나가 딴 항 안팎을 함께 가리킨다 — ${n.targets.map((t) => t.nodeId).join(",")}`);
+    if (own.length > 0) throw new Error(`${code}: 조 참조 하나가 딴 항 안팎을 함께 가리킨다 — ${n.targets.map((t) => t.articleId).join(",")}`);
     const targets = n.targets.map((t) => {
-      const path = paths.get(t.nodeId);
-      if (!path) throw new Error(`${code}: 사용처 위치를 모르는 조 참조 대상 ${t.nodeId}`);
-      return { nodeId: path };
+      const path = paths.get(t.articleId);
+      if (!path) throw new Error(`${code}: 사용처 위치를 모르는 조 참조 대상 ${t.articleId}`);
+      return { articleId: path };
     });
     return { id: n.id, kind: "articleRef", targets, connector: n.connector, scope: "host" };
   };
@@ -389,7 +396,7 @@ export function localizeClause(theirs: readonly ClauseParagraph[], mine: readonl
     const n = node as Record<string, unknown>;
     if (n.kind === "articleRef" && (n.scope === "clause" || n.scope === "host")) {
       const r = n as unknown as ClauseArticleRef;
-      r.targets = r.targets.map((t) => ({ nodeId: (r.scope === "clause" ? map.get(t.nodeId) : host(t.nodeId)) ?? `?${t.nodeId}` }));
+      r.targets = r.targets.map((t) => ({ articleId: (r.scope === "clause" ? map.get(t.articleId ?? "") : host(t.articleId ?? "")) ?? `?${t.articleId}` }));
     }
     for (const key of ["children", "items", "subitems", "branches"]) {
       const list = n[key];
@@ -419,7 +426,7 @@ function applyBlockUse(
     report.push(`${where}부터 잇닿은 항 ${count}개가 없음`);
     return false;
   }
-  const theirs = localizeClause(clauseParagraphs(clause), mine as ParagraphNode[], doc ? hostLocator(doc) : () => undefined);
+  const theirs = localizeClause(clauseParagraphs(clause), mine as ParagraphNode[], doc ? hostNodeIds(doc) : () => undefined);
   for (const [k, node] of mine.entries()) {
     const p = node as ParagraphNode;
     const c = theirs[k];

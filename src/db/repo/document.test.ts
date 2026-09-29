@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { surgeryFixture } from "@/domain/document/fixture";
+import { withCodes } from "@/domain/document/pcode";
 
 import { createTestDb, type TestDb } from "../test-utils";
 import {
@@ -35,7 +36,8 @@ describe("documents — 문서 1건 = 트리 jsonb 1건 (ADR-0012)", () => {
   it("보통약관·담보약관 행을 넣고 트리를 그대로 읽는다", async () => {
     const g = await insertDocument(t.db, { kind: "general", title: general.title, tree: general }, who);
     const s = await insertDocument(t.db, { kind: "special", ownerId: cov, title: special.title, tree: special, generalDocumentId: g.id }, who);
-    expect((await loadDocument(t.db, s.id))?.tree).toEqual(special);
+    // 코드 없는 옛 트리는 읽을 때 P코드를 채운다 (ADR-0072 결정 10) — 그 밖은 그대로
+    expect((await loadDocument(t.db, s.id))?.tree).toEqual(withCodes(special));
     const loadedG = (await loadDocument(t.db, g.id))!;
     expect(loadedG.kind).toBe("general");
     expect(loadedG.ownerId).toBeUndefined();

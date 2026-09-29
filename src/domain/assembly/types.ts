@@ -147,10 +147,11 @@ export interface RSlot {
   row?: StructNodeRef;
 }
 
+/** 해소 단계의 조 참조 — 대상 = 조 id + (항 · 호 · 목이면) 참조 열쇠(`Keyed.key` 와 같은 모양). */
 export interface RArticleRef {
   kind: "articleRef";
   id: Id;
-  targets: { nodeId: Id }[];
+  targets: { articleId: Id; code?: string }[];
   connector?: ReferenceConnector;
   scope: "self" | "general";
   at: Coordinate;
@@ -195,18 +196,25 @@ export interface RBulletList<I> {
 }
 export type RStatic<I> = RTable<I> | RBox<I> | RBulletList<I>;
 
-export interface RSubitem<I> {
+/**
+ * 참조 열쇠 — 조 안에서 이 노드를 가리키는 코드 (ADR-0072). 조가 직접 가진 노드는 제 P코드, 펼친 함수조항의 노드는
+ * `참조노드코드/안쪽코드`(결정 3 개정 — 펼친 코드가 사용처 조의 코드와 겹치지 않는다). 코드가 없으면 가리킬 수 없다.
+ */
+interface Keyed {
+  key?: string;
+}
+export interface RSubitem<I> extends Keyed {
   kind: "subitem";
   id: Id;
   children: I[];
 }
-export interface RItem<I> {
+export interface RItem<I> extends Keyed {
   kind: "item";
   id: Id;
   children: I[];
   subitems?: (RSubitem<I> | RBulletList<I> | ErrorNode)[];
 }
-export interface RParagraph<I> {
+export interface RParagraph<I> extends Keyed {
   kind: "paragraph";
   id: Id;
   children: I[];
@@ -260,7 +268,8 @@ export interface RenderedText {
 }
 /**
  * 조 참조 — 남은 대상과 계산된 표기 (「제3조(…)부터 제5조(…)까지 및 제7조(…)」 · 기능/문면 §3.5).
- * `targets` 는 조립 결과에 살아남은 대상만, `dropped` 는 분기·생략으로 빠진 대상 id (출처 추적용 · 오류 아님).
+ * `targets` 는 조립 결과에 살아남은 대상(해소된 노드 id — 코드를 공유한 분기 짝 중 살아남은 것)만,
+ * `dropped` 는 분기·생략으로 빠진 대상 열쇠(`refKey`, 출처 추적용 · 오류 아님).
  */
 export interface RenderedArticleRef {
   kind: "articleRef";

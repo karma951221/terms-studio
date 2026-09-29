@@ -97,7 +97,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "c-g-claim-n5"
+                "code": "P0400"
               }
             ],
             "connector": "및",
@@ -141,7 +141,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "c-g-address-n1"
+                "code": "P0100"
               }
             ],
             "connector": "및",
@@ -272,7 +272,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "c-g-fraud-n1"
+                "code": "P0100"
               }
             ],
             "connector": "및",
@@ -300,7 +300,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "c-g-fraud-n3"
+                "code": "P0200"
               }
             ],
             "connector": "및",
@@ -539,7 +539,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "c-g-law-change-n1"
+                "code": "P0100"
               }
             ],
             "connector": "및",
@@ -617,7 +617,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "c-g-law-change-n3"
+                "code": "P0200"
               }
             ],
             "connector": "및",
@@ -640,7 +640,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "c-g-law-change-n3"
+                "code": "P0200"
               }
             ],
             "connector": "및",
@@ -663,7 +663,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "c-g-law-change-n3"
+                "code": "P0200"
               }
             ],
             "connector": "및",
@@ -724,7 +724,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "c-g-liability-n3"
+                "code": "P0200"
               }
             ],
             "connector": "및",
@@ -975,7 +975,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "1"
+                "host": "1"
               }
             ],
             "connector": "및",
@@ -1024,7 +1024,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "1"
+                "host": "1"
               }
             ],
             "connector": "및",
@@ -1056,7 +1056,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "1"
+                "host": "1"
               }
             ],
             "connector": "및",
@@ -1089,7 +1089,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "c-living-detail-n1"
+                "code": "P0100"
               }
             ],
             "connector": "및",
@@ -1154,7 +1154,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "1"
+                "host": "1"
               }
             ],
             "connector": "및",
@@ -1226,7 +1226,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "c-living-detail-n24"
+                "code": "P0600"
               }
             ],
             "connector": "및",
@@ -1290,7 +1290,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "1"
+                "host": "1"
               }
             ],
             "connector": "및",
@@ -1343,7 +1343,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "c-disability-detail-n1"
+                "code": "P0100"
               }
             ],
             "connector": "및",
@@ -1428,7 +1428,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "1"
+                "host": "1"
               }
             ],
             "connector": "및",
@@ -1520,7 +1520,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "c-disability-detail-n34"
+                "code": "P0600"
               }
             ],
             "connector": "및",
@@ -1783,7 +1783,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "1"
+                "host": "1"
               }
             ],
             "connector": "및",
@@ -1826,7 +1826,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "c-lapse-claim-n1"
+                "code": "P0100"
               }
             ],
             "connector": "및",
@@ -1914,7 +1914,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "1"
+                "host": "1"
               }
             ],
             "connector": "및",
@@ -1957,7 +1957,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "c-lapse-claim-death-n1"
+                "code": "P0100"
               }
             ],
             "connector": "및",
@@ -1995,7 +1995,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "c-lapse-claim-death-n1"
+                "code": "P0100"
               }
             ],
             "connector": "및",
@@ -2102,7 +2102,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "1.1"
+                "host": "1.1"
               }
             ],
             "connector": "및",
@@ -2135,7 +2135,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "c-lapse-living-n1"
+                "code": "P0100"
               }
             ],
             "connector": "및",
@@ -2223,7 +2223,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "c-lapse-burn-n1"
+                "code": "P0100"
               }
             ],
             "connector": "및",
@@ -2239,7 +2239,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "2.1.3"
+                "host": "2.1.3"
               }
             ],
             "connector": "및",
@@ -2262,7 +2262,7 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "c-lapse-burn-n3"
+                "code": "P0200"
               }
             ],
             "connector": "및",
@@ -2307,19 +2307,19 @@
                     "kind": "articleRef",
                     "targets": [
                       {
-                        "nodeId": "g-a9"
+                        "articleId": "g-a9"
                       },
                       {
-                        "nodeId": "g-a10"
+                        "articleId": "g-a10"
                       },
                       {
-                        "nodeId": "g-a27_1"
+                        "articleId": "g-a27_1"
                       },
                       {
-                        "nodeId": "g-a27_2"
+                        "articleId": "g-a27_2"
                       },
                       {
-                        "nodeId": "g-a38"
+                        "articleId": "g-a38"
                       }
                     ],
                     "connector": "및"
@@ -2339,13 +2339,13 @@
                     "kind": "articleRef",
                     "targets": [
                       {
-                        "nodeId": "g-a9"
+                        "articleId": "g-a9"
                       },
                       {
-                        "nodeId": "g-a10"
+                        "articleId": "g-a10"
                       },
                       {
-                        "nodeId": "g-a38"
+                        "articleId": "g-a38"
                       }
                     ],
                     "connector": "및"
@@ -2360,10 +2360,10 @@
                     "kind": "articleRef",
                     "targets": [
                       {
-                        "nodeId": "g-a27_1"
+                        "articleId": "g-a27_1"
                       },
                       {
-                        "nodeId": "g-a27_2"
+                        "articleId": "g-a27_2"
                       }
                     ],
                     "connector": "및"
@@ -2403,13 +2403,13 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "m-a9"
+                "articleId": "m-a9"
               },
               {
-                "nodeId": "m-a10"
+                "articleId": "m-a10"
               },
               {
-                "nodeId": "m-a43"
+                "articleId": "m-a43"
               }
             ],
             "connector": "및"
@@ -2424,10 +2424,10 @@
             "kind": "articleRef",
             "targets": [
               {
-                "nodeId": "m-a29"
+                "articleId": "m-a29"
               },
               {
-                "nodeId": "m-a31"
+                "articleId": "m-a31"
               }
             ],
             "connector": "및"

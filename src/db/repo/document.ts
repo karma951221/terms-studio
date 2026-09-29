@@ -8,6 +8,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import type { Appendix } from "@/domain/document/appendix";
 import type { Box } from "@/domain/document/box";
 import type { DocumentNode } from "@/domain/document/nodes";
+import { withCodes } from "@/domain/document/pcode";
 import type { Code, Id } from "@/domain/types";
 
 import { appendices, boxes, codeSequences, documents } from "../schema";
@@ -60,7 +61,8 @@ function toSummary(r: Row): DocumentSummary {
 }
 
 function toRecord(r: Row): DocumentRecord {
-  return { ...toSummary(r), tree: r.tree };
+  // P코드 없는 옛 트리는 읽을 때 채운다 — 편집기의 참조 대상이 코드다 (ADR-0072 결정 10, 저장이 같은 규칙으로 채운다)
+  return { ...toSummary(r), tree: withCodes(r.tree) };
 }
 
 // ───────────────────────────── 문서 ─────────────────────────────

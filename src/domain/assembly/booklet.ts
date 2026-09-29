@@ -13,6 +13,7 @@
 
 import type { OptionSelection } from "../clause/types";
 import type { ArticleNode, BlockNode, DocumentNode, SectionNode } from "../document/nodes";
+import { refKey, withCodes } from "../document/pcode";
 import type { CompletenessFilter } from "../coverage/values";
 import { baseContractCountIssue } from "../product/completeness";
 import { sortInGroup } from "../product/groups";
@@ -21,7 +22,7 @@ import { type Coordinate, type Id, type Issue, ok, reject, type Result } from ".
 import { buildContexts, generalCoordinate, generalDocumentOf, specialCoordinate, type AssemblyContext, type AssemblyContexts } from "./context";
 import { ensureApplicationArticle } from "./application";
 import { authoredEmptyArticleIds, dropEmptyArticles } from "./emptyArticle";
-import { replaceGeneralWithBase } from "./base";
+import { baseKey, replaceGeneralWithBase } from "./base";
 import { judgeOmission } from "./omission";
 import { collectAppendices, locateIssues, numberDocument, renderDocument } from "./render";
 import { resolveDocument } from "./resolve";
@@ -38,7 +39,17 @@ import { articlesOf } from "./walk";
  * 마스터에 조건 블록·공용조항 참조·표가 있거나 개수가 다르면 어느 항이 어느 항인지 알 수 없으므로 별칭을 만들지 않는다 —
  * 그 참조는 `articleGone` 오류로 드러난다 (조용한 오연결보다 낫다).
  */
-function positionAliases(master: ArticleNode, base: RArticle<SInline>): [Id, Id][] {
+/**
+ * 대치된 보통약관 조의 항 · 호 · 목 → 기본계약 조의 같은 자리 — 참조 열쇠(`refKey`) 짝 (ADR-0072). 대치된 조는 보통약관 조 id 에
+ * 기본계약 본문을 담고 그 열쇠는 `기본계약조:코드`(base.ts `baseKey`)다. 코드 없는 자리는 짝이 없다.
+ */
+function positionAliases(master: ArticleNode, base: RArticle<SInline>): [string, string][] {
+  const keys = (pairs: [{ code?: string }, { key?: string }][]): [string, string][] =>
+    pairs.flatMap(([m, b]): [string, string][] => (m.code !== undefined && b.key !== undefined ? [[refKey({ articleId: master.id, code: m.code }), refKey({ articleId: master.id, code: baseKey(base.id, b.key) })]] : []));
+  return keys(positionPairs(master, base));
+}
+
+function positionPairs(master: ArticleNode, base: RArticle<SInline>): [{ code?: string }, { key?: string }][] {
   // 마스터에 동적 노드(조건 블록 · 공용조항 참조 · 반복)가 있으면 항이 몇 개로 펼쳐질지 알 수 없다 — 별칭을 만들지 않는다.
   // 박스 참조(boxRef)는 항을 펼치지 않는다 — 정적 박스와 같다 (기능/박스 §3.2)
   const dynamicNode = (c: { kind: string }) => c.kind === "condBlock" || c.kind === "forBlock" || c.kind === "clauseBlockRef";
@@ -49,7 +60,7 @@ function positionAliases(master: ArticleNode, base: RArticle<SInline>): [Id, Id]
   if (base.children.some((c) => c.kind === "error")) return [];
   if (masterParagraphs.length !== baseParagraphs.length) return [];
 
-  const out: [Id, Id][] = [];
+  const out: [{ code?: string }, { key?: string }][] = [];
   for (const [i, mp] of masterParagraphs.entries()) {
     const bp = baseParagraphs[i];
     if ((mp.items ?? []).some((c) => dynamicNode(c))) return [];
@@ -57,7 +68,7 @@ function positionAliases(master: ArticleNode, base: RArticle<SInline>): [Id, Id]
     const masterItems = (mp.items ?? []).filter((c) => c.kind === "item");
     const baseItems = (bp.items ?? []).filter((c) => c.kind === "item");
     if (masterItems.length !== baseItems.length) return [];
-    out.push([mp.id, bp.id]);
+    out.push([mp, bp]);
     for (const [j, mi] of masterItems.entries()) {
       const bi = baseItems[j];
       if ((mi.subitems ?? []).some((c) => dynamicNode(c))) return [];
@@ -65,8 +76,8 @@ function positionAliases(master: ArticleNode, base: RArticle<SInline>): [Id, Id]
       const masterSubitems = (mi.subitems ?? []).filter((c) => c.kind === "subitem");
       const baseSubitems = (bi.subitems ?? []).filter((c) => c.kind === "subitem");
       if (masterSubitems.length !== baseSubitems.length) return [];
-      out.push([mi.id, bi.id]);
-      for (const [k, mu] of masterSubitems.entries()) out.push([mu.id, baseSubitems[k].id]);
+      out.push([mi, bi]);
+      for (const [k, mu] of masterSubitems.entries()) out.push([mu, baseSubitems[k]]);
     }
   }
   return out;
@@ -123,8 +134,8 @@ interface Built {
   numbered: NumberedDoc;
   issues: Issue[];
   omitted: OmissionRecord[];
-  /** 보통약관: 대치된 기본계약 조 id → 보통약관 조 id (렌더의 자기 참조 해소). */
-  aliases?: ReadonlyMap<Id, Id>;
+  /** 보통약관: 대치된 기본계약 조 · 그 항 · 호 · 목 열쇠 → 보통약관 쪽 열쇠 (렌더의 자기 참조 해소, ADR-0072). */
+  aliases?: ReadonlyMap<string, string>;
   /** 상품이 노출을 끈 보통약관 조 id → 조 명 (기능/상품 §3.6). 참조·조연결이 가리키면 오류를 낸다. */
   hidden?: ReadonlyMap<Id, string>;
 }
@@ -134,7 +145,7 @@ interface Prepared {
   issues: Issue[];
 }
 
-function omissionAliases(records: readonly OmissionRecord[]): ReadonlyMap<Id, Id> {
+function omissionAliases(records: readonly OmissionRecord[]): ReadonlyMap<string, string> {
   return new Map(records.filter((record) => record.disposition === "omitted").map((record) => [record.articleId, record.linkedArticleId]));
 }
 
@@ -193,8 +204,10 @@ function hideArticles(doc: DocumentNode, hidden: ReadonlySet<Id>): DocumentNode 
 }
 
 function buildGeneral(input: AssemblyInput, contexts: AssemblyContexts, s: Shared): Built | undefined {
-  const master = generalDocumentOf(input);
-  if (!master) return undefined;
+  const stored = generalDocumentOf(input);
+  if (!stored) return undefined;
+  // 대치 별칭(positionAliases)이 조립과 같은 P코드를 보도록 코드 없는 옛 트리는 여기서 채운다 (resolveDocument 와 같은 결정적 채번)
+  const master = withCodes(stored);
   // 노출 끔 (기능/상품 §3.6) — **번호 계산 전에** 마스터에서 뺀다. 번호 순연은 numberDocument 의 귀결이다.
   // 뺀 조의 명은 남겨 둔다: 이 조를 가리키던 참조·조연결이 `articleHidden` 오류 메시지에 쓴다.
   const hiddenTitles = new Map<Id, string>();

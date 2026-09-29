@@ -12,7 +12,7 @@
  * - 조 참조·별표 참조 (기능/함수조항 §3.5): 공용조항의 조 참조는 셋 중 하나다 — 보통약관 마스터의 조·항·호·목(범위 없음) ·
  *   이 공용조항 본문의 항·호·목(`scope: "clause"`, 본문에 있어야) · 사용처의 위치(`scope: "host"`, 순번 경로).
  *   구조(대상 ≥1 · 연결어 · 별표 코드 · 위치 경로 모양)는 항상 검사하고, 보통약관 · 별표 대상 존재는
- *   `generalReferenceIds` · `appendixExists` 를 줬을 때만 검사한다 — 문서 쪽 `validateTree` 와 같은 관례.
+ *   `generalReferenceKeys` · `appendixExists` 를 줬을 때만 검사한다 — 문서 쪽 `validateTree` 와 같은 관례.
  */
 import { checkTypes, extractRefs, parse } from "../expression";
 import type { EnumInfo, Expr, ExprType, Ref, TypeResolver } from "../expression";
@@ -22,7 +22,8 @@ import { BLOCK_KINDS, HOST_PATH, INLINE_KINDS } from "./nodes";
 import type { AnySwitchNode, Block, BoxRefNode, BulletListNode, ClauseNode, Inline, InlineBranch, BlockBranch, ItemBodyNode, ItemNode, SubitemBodyNode, SwitchCase } from "./nodes";
 import { checkLocals, planFieldType, type LocalDef } from "./locals";
 import { checkParams, type ParamDef } from "./params";
-import { clauseCodeIssues } from "./pcode";
+import { clauseCodeEntries, clauseCodeIssues } from "./pcode";
+import { refKey } from "../document/pcode";
 import type { ClauseBody, ClauseMode, OptionDef, RequiredRefs } from "./types";
 
 // ───────────────────────────── 식 수집 ─────────────────────────────
@@ -145,8 +146,8 @@ export interface AnalyzeOptions {
   coordinate?: Coordinate;
   /** 참조 타입 조회 — 있으면 조건식이 boolean 인지까지 검사한다. */
   resolveType?: TypeResolver;
-  /** 보통약관 마스터의 조·항·호·목 id 집합 — 있으면 조 참조 대상 존재를 검사한다. */
-  generalReferenceIds?: ReadonlySet<Id>;
+  /** 보통약관 마스터의 참조 대상 열쇠(조 id · 조#코드, `refKey`) — 있으면 조 참조 대상 존재를 검사한다. */
+  generalReferenceKeys?: ReadonlySet<string>;
   /** 별표 존재 조회 — 있으면 별표 참조 대상 존재를 검사한다. */
   appendixExists?: (code: Code) => boolean;
   /** 정적 마스터 박스 존재 조회 — 있으면 박스 참조 대상 존재를 검사한다. */
@@ -175,8 +176,8 @@ export function analyzeBody(
   const issues: Issue[] = [];
   const base = opts.coordinate ?? {};
   const optionCodes = new Set(options.map((o) => o.code));
-  /** 본문의 항 · 호 · 목 id — 「이 공용조항」 조 참조의 대상 후보. 선택지 문구에는 구조가 없다. */
-  const structIds = new Set(mode === "inline" ? [] : structuralIds(body));
+  /** 본문의 항 · 호 · 목 코드 — 「이 함수조항」 조 참조의 대상 후보. 선택지 문구에는 구조가 없다. 코드 없는 자리는 저장 때 채워진다. */
+  const structCodes = new Set(mode === "inline" ? [] : clauseCodeEntries(body).entries.flatMap((e) => (e.code !== undefined ? [e.code] : [])));
   const exprs: { expr: Expr; role: "slot" | "condition" | "switch"; path: Id[] }[] = [];
   /** 값별 분기 — 대상 참조(인자 · 내부 변수)가 읽혔으면 타입 · 값 배정 검사를 뒤(인자 · 내부 변수 표 뒤)에서 한다. */
   const switches: { node: AnySwitchNode; ref: Ref & { kind: "param" | "local" }; path: Id[]; expr: (typeof exprs)[number] }[] = [];
@@ -276,15 +277,16 @@ export function analyzeBody(
           report("structure", `조 참조 연결어는 「및」·「또는」 중 하나여야 합니다: ${String(node.connector)}`, here);
         }
         if (node.scope === "clause") {
-          // 제 항 · 호 · 목 — 본문(선택지 문구 아님)에 있어야 한다. 펼치면 사용처 번호로 찍힌다
-          for (const { nodeId } of node.targets) {
-            if (!structIds.has(nodeId)) report("brokenRef", `이 함수조항 본문에 참조 대상 ${nodeId} 가 없습니다 — 제 항 · 호 · 목만 가리킨다`, here, nodeId);
+          // 제 항 · 호 · 목 — 본문(선택지 문구 아님)의 P코드 `{ code }`. 조건 가지 · 칸의 같은 자리는 코드를 공유한다(ADR-0072 결정 4). 펼치면 사용처 번호로 찍힌다
+          for (const t of node.targets) {
+            if (typeof t?.code !== "string" || t.articleId !== undefined || t.host !== undefined) report("structure", "「이 함수조항」 참조 대상은 제 항 · 호 · 목의 코드 하나여야 합니다", here);
+            else if (!structCodes.has(t.code)) report("brokenRef", `이 함수조항 본문에 참조 대상 ${t.code} 가 없습니다 — 제 항 · 호 · 목만 가리킨다`, here, t.code);
           }
           return;
         }
         if (node.scope === "host") {
-          for (const { nodeId } of node.targets) {
-            if (!HOST_PATH.test(nodeId)) report("structure", `사용처 위치는 「조[.항[.호[.목]]]」 순번이어야 합니다: ${nodeId}`, here, nodeId);
+          for (const t of node.targets) {
+            if (typeof t?.host !== "string" || !HOST_PATH.test(t.host)) report("structure", `사용처 위치는 「조[.항[.호[.목]]]」 순번이어야 합니다: ${String(t?.host)}`, here, t?.host);
           }
           return;
         }
@@ -292,12 +294,13 @@ export function analyzeBody(
           report("structure", `조 참조 범위를 알 수 없습니다: ${String(node.scope)}`, here);
           return;
         }
-        if (opts.generalReferenceIds) {
-          for (const { nodeId } of node.targets) {
-            if (!opts.generalReferenceIds.has(nodeId)) {
-              report("brokenRef", `보통약관 참조 대상 ${nodeId} 가 보통약관 마스터에 없습니다`, here, nodeId);
-            }
+        for (const t of node.targets) {
+          if (typeof t?.articleId !== "string" || t.host !== undefined) {
+            report("structure", "보통약관 참조 대상은 조(와 항 · 호 · 목의 코드)여야 합니다", here);
+            continue;
           }
+          const key = refKey({ articleId: t.articleId, ...(t.code !== undefined ? { code: t.code } : {}) });
+          if (opts.generalReferenceKeys && !opts.generalReferenceKeys.has(key)) report("brokenRef", `보통약관 참조 대상 ${key} 가 보통약관 마스터에 없습니다`, here, key);
         }
         return;
       case "appendixRef":

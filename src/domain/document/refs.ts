@@ -10,6 +10,7 @@ import { extractRefs, parse } from "../expression";
 import type { Bindings } from "../clause/params";
 import type { Code, Coordinate, Id } from "../types";
 import { coordinateOf, indexTree, type ClauseGate, type DocumentNode } from "./nodes";
+import { refKey } from "./pcode";
 
 export type DocRef =
   /** `node` = 노드 한정자 `D@노드` (ADR-0066) — 담보 마스터 노드 id. */
@@ -20,7 +21,8 @@ export type DocRef =
   | { kind: "builtin"; path: string; at: Coordinate }
   /** `bindings` = 사용처의 인자 연결(최종 결정 2) — 없으면 기본 연결. */
   | { kind: "clause"; clauseCode: Code; options: Record<Code, Code>; bindings?: Bindings; mode: "block" | "inline"; at: Coordinate }
-  | { kind: "article"; articleId: Id; scope: "self" | "general"; at: Coordinate }
+  /** 조 참조의 대상 하나 — 조 id · (항 · 호 · 목이면) P코드 (ADR-0072 결정 3). `at.refPath` = 대상 열쇠(`refKey`). */
+  | { kind: "article"; articleId: Id; code?: Code; scope: "self" | "general"; at: Coordinate }
   | { kind: "appendix"; appendixCode: Code; at: Coordinate }
   /** 정적 마스터 박스 참조 (최종 결정 9). */
   | { kind: "box"; boxCode: Code; at: Coordinate }
@@ -80,7 +82,7 @@ export function collectRefs(doc: DocumentNode, base: Coordinate = {}): DocRef[] 
         break;
       case "articleRef":
         for (const target of n.targets) {
-          out.push({ kind: "article", articleId: target.nodeId, scope: n.scope, at: { ...at, refPath: target.nodeId } });
+          out.push({ kind: "article", articleId: target.articleId, ...(target.code !== undefined ? { code: target.code } : {}), scope: n.scope, at: { ...at, refPath: refKey(target) } });
         }
         break;
       case "appendixRef":

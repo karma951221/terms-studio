@@ -15,10 +15,10 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
 import { pickCombo } from "../../_lib/combo";
-import type { ClauseSpec } from "./seed";
+import type { ClauseSpec, GeneralRow } from "./seed";
 
 import { parse } from "../../../../src/domain/expression";
-import { rowRefPath, toRows, type ConditionRow, type DocumentNode, type InlineNode, type Node } from "../../../../src/domain/document";
+import { refKey, rowRefPath, toRows, type ConditionRow, type DocumentNode, type InlineNode, type Node } from "../../../../src/domain/document";
 
 /** 문장 칸의 커서를 끝으로 — 칸이 여러 줄로 접혀도 맨 끝. */
 const END = process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End";
@@ -28,10 +28,10 @@ type SeedInline = InlineNode | { id: string; kind: "optionSlot"; optionCode: str
 type Branch = { id: string; when?: string; children: SeedInline[] };
 
 export interface RefScopes {
-  /** 이 문서의 참조 대상 id → 고르기 트리 줄 표기 경로. */
+  /** 이 문서의 참조 대상 열쇠(`refKey`, 함수조항 본문이면 P코드) → 고르기 트리 줄 표기 경로. */
   selfPaths: Map<string, string[]>;
-  /** 보통약관 대상 id → 펴야 할 조상 id. */
-  generalAncestors: Map<string, string[]>;
+  /** 보통약관 대상 열쇠 → 고를 줄 · 펴야 할 조상 줄. */
+  generalAncestors: Map<string, GeneralRow>;
   /** 조 참조 팝업에 범위 고르기가 있는가 (담보약관 · 공용조항). */
   hasScopeSelect: boolean;
   /** 공용조항 에디터인가 — 범위가 보통약관 · 이 공용조항 · 사용처 셋이다 (기능/함수조항 §3.5). 「이 템플릿」 자리에 「이 공용조항」. */
@@ -161,19 +161,24 @@ export class Editor {
     const choice = this.refs.clauseEditor ? (scope === "clause" ? "self" : scope === "host" ? "host" : "general") : scope === "general" ? "general" : "self";
     const general = choice === "general";
     if (this.refs.hasScopeSelect) await d.locator("#pop-ref-scope").selectOption(choice);
-    for (const { nodeId } of node.targets) {
+    // 대상 모양은 범위마다 — 조 · 조+P코드(보통약관 · 이 템플릿), P코드(이 함수조항), 위치 경로(사용처) (ADR-0072 결정 3)
+    for (const t of node.targets as { articleId?: string; code?: string; host?: string }[]) {
       let rowId: string;
       if (general) {
-        for (const up of this.refs.generalAncestors.get(nodeId) ?? []) await this.expandRow(d, up);
-        rowId = nodeId;
+        const key = refKey({ articleId: t.articleId ?? "", ...(t.code !== undefined ? { code: t.code } : {}) });
+        const row = this.refs.generalAncestors.get(key);
+        if (!row) throw new Error(`보통약관 참조 대상 ${key} 가 고르기 트리에 없다`);
+        for (const up of row.chain) await this.expandRow(d, up);
+        rowId = row.row;
       } else if (choice === "host") {
         // 사용처 위치 줄 — 조 · 항 순으로 편다
-        const parts = nodeId.split(".");
+        const parts = (t.host ?? "").split(".");
         for (let k = 1; k < parts.length; k++) await this.expandRow(d, `host:${parts.slice(0, k).join(".")}`);
-        rowId = `host:${nodeId}`;
+        rowId = `host:${t.host ?? ""}`;
       } else {
-        const labels = this.refs.selfPaths.get(nodeId);
-        if (!labels) throw new Error(`조 참조 대상 ${nodeId} 가 이 문서 고르기 트리에 없다`);
+        const key = this.refs.clauseEditor ? (t.code ?? "") : refKey({ articleId: t.articleId ?? "", ...(t.code !== undefined ? { code: t.code } : {}) });
+        const labels = this.refs.selfPaths.get(key);
+        if (!labels) throw new Error(`조 참조 대상 ${key} 가 이 문서 고르기 트리에 없다`);
         rowId = await this.resolveSelfRow(d, labels);
       }
       const box = d.locator(`[data-ref-row="${rowId}"]`).first().locator(":scope > .ts-ref-pick input[type=checkbox]");
@@ -579,7 +584,7 @@ export class ClauseAuthoringDriver {
 
   constructor(
     readonly page: Page,
-    generalAncestors: Map<string, string[]>,
+    generalAncestors: Map<string, GeneralRow>,
   ) {
     this.editor = new Editor(page, page.locator(".ts-clause-editor"), { selfPaths: new Map(), generalAncestors, hasScopeSelect: true, clauseEditor: true });
   }
@@ -625,10 +630,13 @@ export class ClauseAuthoringDriver {
       await this.editor.fillInline(root.getByRole("textbox", { name: "문구", exact: true }), body as SeedInline[]);
       return;
     }
-    // 「이 공용조항」 조 참조의 줄 표기 — 본문 k 번째 항 = 「제k항」 (고르기 트리는 조 줄 없이 항부터)
+    // 「이 함수조항」 조 참조의 줄 표기 — 본문 k 번째 항(P코드로 가리킨다) = 「제k항」 (고르기 트리는 조 줄 없이 항부터)
     const selfPaths = this.editor.refs.selfPaths;
     selfPaths.clear();
-    (body as Node[]).forEach((node, k) => selfPaths.set(node.id, [`제${k + 1}항`]));
+    (body as Node[]).forEach((node, k) => {
+      const code = (node as { code?: string }).code;
+      if (code !== undefined) selfPaths.set(code, [`제${k + 1}항`]);
+    });
     for (const [i, node] of (body as Node[]).entries()) {
       if (node.kind !== "paragraph" || (node.items ?? []).length > 0) throw new Error("이 E2E 의 「항」 함수조항은 호 없는 항뿐이다");
       if (i > 0) {

@@ -15,7 +15,7 @@ const block: Block[] = [
     children: [
       { id: "t1", kind: "text", text: "이 특별약관은 " },
       { id: "o1", kind: "optionSlot", optionCode: "O01" },
-      { id: "r1", kind: "articleRef", targets: [{ nodeId: "g-a1" }], connector: "및" },
+      { id: "r1", kind: "articleRef", targets: [{ articleId: "g-a1" }], connector: "및" },
     ],
     items: [{ id: "i1", kind: "item", children: [{ id: "t2", kind: "text", text: "호" }], subitems: [{ id: "s1", kind: "subitem", children: [] }] }],
   },
@@ -75,22 +75,22 @@ describe("함수조항 본문 ↔ 편집 트리", () => {
     expect(added.ok).toBe(true);
     const back = added.ok ? treeToClauseBody("block", added.value.state.tree) : undefined;
     expect(back?.ok && (back.value as Block[]).map((b) => b.id)).toEqual(["p1", "c1", "p3"]);
-    const broken = applyEdit(state, { type: "setArticleRef", nodeId: "r1", targets: [{ nodeId: "없는조" }], connector: "및", scope: "general" }, env);
+    const broken = applyEdit(state, { type: "setArticleRef", nodeId: "r1", targets: [{ articleId: "없는조" }], connector: "및", scope: "general" }, env);
     expect(broken.ok).toBe(false);
   });
 });
 
 describe("함수조항 조 참조 범위 — 편집 트리 운반 · 표기 (§3.5)", () => {
   const body: C.Block[] = [
-    { id: "p1", kind: "paragraph", children: [{ id: "r1", kind: "articleRef", targets: [{ nodeId: "2.1.3" }], connector: "및", scope: "host" }], items: [{ id: "i1", kind: "item", children: [] }] },
-    { id: "p2", kind: "paragraph", children: [{ id: "r2", kind: "articleRef", targets: [{ nodeId: "p1" }, { nodeId: "i1" }], connector: "및", scope: "clause" }] },
+    { id: "p1", kind: "paragraph", code: "P0100", children: [{ id: "r1", kind: "articleRef", targets: [{ host: "2.1.3" }], connector: "및", scope: "host" }], items: [{ id: "i1", kind: "item", code: "P0300", children: [] }] },
+    { id: "p2", kind: "paragraph", code: "P0200", children: [{ id: "r2", kind: "articleRef", targets: [{ code: "P0100" }, { code: "P0300" }], connector: "및", scope: "clause" }] },
   ];
 
-  it("제 항은 `self`, 사용처 위치는 `general` + `host:` 대상으로 싸고 되돌리면 같은 본문이다", () => {
+  it("제 항은 `self` + 자리 조 · P코드, 사용처 위치는 `general` + `host:` 대상으로 싸고 되돌리면 같은 본문이다", () => {
     const tree = clauseBodyToTree("block", body);
     const [p1, p2] = (tree.children[0] as { children: { children: unknown[] }[] }).children;
-    expect(p1.children[0]).toMatchObject({ scope: "general", targets: [{ nodeId: `${HOST_TARGET_PREFIX}2.1.3` }] });
-    expect(p2.children[0]).toMatchObject({ scope: "self", targets: [{ nodeId: "p1" }, { nodeId: "i1" }] });
+    expect(p1.children[0]).toMatchObject({ scope: "general", targets: [{ articleId: `${HOST_TARGET_PREFIX}2.1.3` }] });
+    expect(p2.children[0]).toMatchObject({ scope: "self", targets: [{ articleId: CLAUSE_ARTICLE_ID, code: "P0100" }, { articleId: CLAUSE_ARTICLE_ID, code: "P0300" }] });
     expect(treeToClauseBody("block", tree)).toEqual({ ok: true, value: body });
   });
 
@@ -100,13 +100,13 @@ describe("함수조항 조 참조 범위 — 편집 트리 운반 · 표기 (§3
     const [p1, p2] = (tree.children[0] as { children: { children: InlineNode[] }[] }).children;
     expect(clauseScopedRefLabel(p1.children[0], positions)).toBe("사용처 제2조 제1항 제3호");
     expect(clauseScopedRefLabel(p2.children[0], positions)).toBe("이 함수조항 제1항 및 제1항 제1호");
-    expect(clauseScopedRefLabel({ id: "g", kind: "articleRef", targets: [{ nodeId: "g-a1" }], connector: "및", scope: "general" }, positions)).toBeUndefined();
+    expect(clauseScopedRefLabel({ id: "g", kind: "articleRef", targets: [{ articleId: "g-a1" }], connector: "및", scope: "general" }, positions)).toBeUndefined();
   });
 
   it("한 참조에 보통약관 조와 사용처 위치를 섞으면 되돌리기를 거부한다", () => {
     const tree = clauseBodyToTree("block", body);
     const p1 = (tree.children[0] as { children: { children: InlineNode[] }[] }).children[0];
-    p1.children[0] = { id: "r1", kind: "articleRef", targets: [{ nodeId: "g-a1" }, { nodeId: `${HOST_TARGET_PREFIX}1` }], connector: "및", scope: "general" };
+    p1.children[0] = { id: "r1", kind: "articleRef", targets: [{ articleId: "g-a1" }, { articleId: `${HOST_TARGET_PREFIX}1` }], connector: "및", scope: "general" };
     expect(treeToClauseBody("block", tree).ok).toBe(false);
   });
 });
@@ -157,12 +157,12 @@ describe("함수조항 「항」 본문의 글머리 목록 (2026-09-28)", () =>
 
 describe("호 · 목 유형 본문 ↔ 편집 트리 (최종 결정 4)", () => {
   const items: C.ItemBodyNode[] = [
-    { id: "i1", kind: "item", children: [{ id: "t1", kind: "text", text: "암" }] },
-    { id: "c1", kind: "condBlock", branches: [{ id: "b1", when: "D0001 = 1", children: [{ id: "i2", kind: "item", children: [{ id: "r1", kind: "articleRef", targets: [{ nodeId: "i1" }], scope: "clause" }] }] }] },
+    { id: "i1", kind: "item", code: "P0100", children: [{ id: "t1", kind: "text", text: "암" }] },
+    { id: "c1", kind: "condBlock", branches: [{ id: "b1", when: "D0001 = 1", children: [{ id: "i2", kind: "item", code: "P0200", children: [{ id: "r1", kind: "articleRef", targets: [{ code: "P0100" }], scope: "clause" }] }] }] },
   ];
   const subitems: C.SubitemBodyNode[] = [
-    { id: "s1", kind: "subitem", children: [] },
-    { id: "c1", kind: "condBlock", branches: [{ id: "b1", when: "D0001 = 1", children: [{ id: "s2", kind: "subitem", children: [] }] }] },
+    { id: "s1", kind: "subitem", code: "P0100", children: [] },
+    { id: "c1", kind: "condBlock", branches: [{ id: "b1", when: "D0001 = 1", children: [{ id: "s2", kind: "subitem", code: "P0200", children: [] }] }] },
   ];
 
   it("호 유형은 자리 항의 호 목록으로 싸고 되돌리면 같다 — 조건 블록 가지 안의 호도", () => {
@@ -184,10 +184,10 @@ describe("호 · 목 유형 본문 ↔ 편집 트리 (최종 결정 4)", () => {
 
   it("제 호 참조는 「이 함수조항 제1호」 — 자리 항은 번호 단계가 아니다", () => {
     const tree = clauseBodyToTree("item", items);
-    const ref: InlineNode = { id: "r1", kind: "articleRef", targets: [{ nodeId: "i1" }], scope: "self" };
+    const ref: InlineNode = { id: "r1", kind: "articleRef", targets: [{ articleId: CLAUSE_ARTICLE_ID, code: "P0100" }], scope: "self" };
     expect(clauseScopedRefLabel(ref, clausePositions(tree))).toBe("이 함수조항 제1호");
     const subTree = clauseBodyToTree("subitem", subitems);
-    expect(clauseScopedRefLabel({ ...ref, targets: [{ nodeId: "s2" }] }, clausePositions(subTree))).toBe("이 함수조항 나목");
+    expect(clauseScopedRefLabel({ ...ref, targets: [{ articleId: CLAUSE_ARTICLE_ID, code: "P0200" }] }, clausePositions(subTree))).toBe("이 함수조항 나목");
   });
 });
 

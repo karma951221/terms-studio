@@ -18,7 +18,10 @@ import {
   HOST_TARGET_PREFIX,
   indexTree,
   nodeBuilders,
+  parseRefKey,
+  referenceKeyIndex,
   referenceTargetLabel,
+  refKey,
   type Appendix,
   type ArticleRefNode,
   type DocumentNode,
@@ -27,6 +30,8 @@ import {
   type InlineBranch,
   type InlineNode,
   type Node,
+  type ReferenceTarget,
+  type RefTarget,
 } from "@/domain/document";
 import type { Box } from "@/domain/document/box";
 import { ATTACH_LEVEL_LABEL, REFERENCE_CONNECTORS, isReferenceConnector, type Code, type Id, type ReferenceConnector } from "@/domain/types";
@@ -135,7 +140,7 @@ function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode })
         <RefTargetTree
           key={choice}
           id="pop-ref-targets"
-          defaultSelected={node && initialChoice(choices, node) === choice ? node.targets.map((t) => t.nodeId) : []}
+          defaultSelected={node && initialChoice(choices, node) === choice ? selectedIds(node, picked ? [picked.index] : ctx.docKind === "special" ? [ctx.references.self, ctx.references.general] : [ctx.references.self]) : []}
           onCountChange={setCount}
           scopes={
             picked
@@ -175,7 +180,7 @@ function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode })
 function initialChoice(choices: DocCtx["articleRefChoices"], node?: ArticleRefNode): string {
   if (!choices || choices.length === 0) return "";
   if (!node) return choices[0].value;
-  const host = node.targets.length > 0 && node.targets.every((t) => t.nodeId.startsWith(HOST_TARGET_PREFIX));
+  const host = node.targets.length > 0 && node.targets.every((t) => t.articleId.startsWith(HOST_TARGET_PREFIX));
   const want = node.scope === "self" ? "self" : host ? "host" : "general";
   return choices.some((c) => c.value === want) ? want : choices[0].value;
 }
@@ -183,12 +188,20 @@ function initialChoice(choices: DocCtx["articleRefChoices"], node?: ArticleRefNo
 /** 연결어 미선택 — 대상이 둘 이상이면 적용 전에 고른다 (결정 14 · 기능/문면 §3.5). */
 const CONNECTOR_PICK_MESSAGE = "대상이 둘 이상이면 연결어(및 · 또는)를 고른다.";
 
-function articleRefOf(fd: FormData): { targets: { nodeId: Id }[]; connector: ReferenceConnector | undefined; scope: ArticleRefNode["scope"] } {
-  const targets = fd
-    .getAll("targets")
-    .map((v) => String(v).trim())
-    .filter(Boolean)
-    .map((nodeId) => ({ nodeId }));
+/** 저장된 대상 → 고르기 트리의 줄 id (같은 코드의 분기 짝이면 문서 순 첫 줄). 범위의 색인들에서 찾는다. */
+function selectedIds(node: ArticleRefNode, indexes: readonly ReadonlyMap<Id, ReferenceTarget>[]): Id[] {
+  return node.targets.flatMap((t) => {
+    for (const index of indexes) {
+      const found = referenceKeyIndex(index).get(refKey(t));
+      if (found) return [found.id];
+    }
+    return [];
+  });
+}
+
+function articleRefOf(fd: FormData): { targets: RefTarget[]; connector: ReferenceConnector | undefined; scope: ArticleRefNode["scope"] } {
+  // 고르기 트리가 참조 대상 열쇠(조 id · 조#P코드)를 싣는다 (ADR-0072 결정 3)
+  const targets = [...new Set(fd.getAll("targets").map((v) => String(v).trim()).filter(Boolean))].map(parseRefKey);
   // 대상이 하나 이하면 라디오가 꺼져 값이 오지 않는다 — 연결어를 싣지 않는다(표기에 안 나온다, 결정 14)
   const connector = targets.length >= 2 ? str(fd, "connector") : "";
   // 사용처 위치(`host`)는 편집 트리에서 보통약관 참조 자리로 운반한다 (clauseTree)
@@ -447,7 +460,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             const r = articleRefOf(fd);
             if (r.targets.length === 0) return "참조할 대상을 하나 이상 고른다.";
             if (r.targets.length >= 2 && !r.connector) return CONNECTOR_PICK_MESSAGE;
-            return { ...b.articleRef(r.targets.map((t) => t.nodeId), r.scope, r.connector) };
+            return { ...b.articleRef(r.targets, r.scope, r.connector) };
           }
           case "appendixRef": {
             const code = str(fd, "appendixCode");

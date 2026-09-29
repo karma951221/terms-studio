@@ -20,13 +20,14 @@ const 소멸: BlockClause = {
   required: { discriminators: [], attributes: [] },
   body: [
     { id: "p1", kind: "paragraph", children: [
-      { id: "r1", kind: "articleRef", targets: [{ nodeId: "1" }], connector: "및", scope: "host" },
+      { id: "r1", kind: "articleRef", targets: [{ host: "1" }], connector: "및", scope: "host" },
       { id: "t1", kind: "text", text: "에서 정한 지급사유가 발생하면 소멸됩니다." },
     ] },
     { id: "p2", kind: "paragraph", children: [
-      { id: "r2", kind: "articleRef", targets: [{ nodeId: "p1" }], connector: "및", scope: "clause" },
+      // 제 항은 P코드 — 본문 첫 항은 저장(또는 펼칠 때)의 채번으로 P0100
+      { id: "r2", kind: "articleRef", targets: [{ code: "P0100" }], connector: "및", scope: "clause" },
       { id: "t2", kind: "text", text: "에 따라 소멸되면 해약환급금을 지급하지 않습니다." },
-      { id: "r3", kind: "articleRef", targets: [{ nodeId: "2.1" }], connector: "및", scope: "host" },
+      { id: "r3", kind: "articleRef", targets: [{ host: "2.1" }], connector: "및", scope: "host" },
     ] },
   ],
 };
@@ -38,16 +39,16 @@ function doc(): DocumentNode {
     title: "특약",
     children: [
       { kind: "article", id: "a1", title: "보험금의 지급사유", children: [{ kind: "paragraph", id: "a1-p", children: [{ kind: "text", id: "a1-t", text: "지급" }] }] },
-      { kind: "article", id: "a2", title: "세부규정", children: [{ kind: "paragraph", id: "a2-p", children: [{ kind: "text", id: "a2-t", text: "세부" }] }, { kind: "paragraph", id: "a2-q", children: [] }] },
+      { kind: "article", id: "a2", title: "세부규정", children: [{ kind: "paragraph", id: "a2-p", code: "P0100", children: [{ kind: "text", id: "a2-t", text: "세부" }] }, { kind: "paragraph", id: "a2-q", code: "P0200", children: [] }] },
       { kind: "article", id: "a3", title: "특별약관의 소멸", children: [{ kind: "clauseBlockRef", id: "k", clauseCode: "C0009", options: {} }] },
     ],
   };
 }
 
 describe("조째 함수조항의 조 참조 — 사용처 위치 · 제 항", () => {
-  it("hostLocator — n번째 조 · m번째 항 (함수조항 블록이 펼칠 항은 세지 않는다)", () => {
+  it("hostLocator — n번째 조 · m번째 항 → 참조 대상(조 · 조+P코드) (함수조항 블록이 펼칠 항은 세지 않는다)", () => {
     const find = hostLocator(doc());
-    expect([find("1"), find("2.2"), find("3"), find("3.1"), find("9")]).toEqual(["a1", "a2-q", "a3", undefined, undefined]);
+    expect([find("1"), find("2.2"), find("3"), find("3.1"), find("9")]).toEqual([{ articleId: "a1" }, { articleId: "a2", code: "P0200" }, { articleId: "a3" }, undefined, undefined]);
   });
 
   it("펼치면 사용처 자기 참조가 되어 「제1조(보험금의 지급사유)」 · 「제1항」 · 「제2조(세부규정) 제1항」으로 찍힌다", () => {

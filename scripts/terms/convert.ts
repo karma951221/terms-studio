@@ -22,8 +22,10 @@ import { pathToFileURL } from "node:url";
 
 import type { ArticleNode, BlockNode, BoxNode, DocumentNode, InlineNode, ParagraphNode, SectionNode, TableNode } from "../../src/domain/document/nodes";
 import { indexTree, validateTree } from "../../src/domain/document/nodes";
-import { withCodes } from "../../src/domain/document/pcode";
-import { withClauseCodes } from "../../src/domain/clause/pcode";
+import { referenceKeysOf, targetOfNode, withCodes } from "../../src/domain/document/pcode";
+import type { RefTarget } from "../../src/domain/document/nodes";
+import { clauseCodeEntries, withClauseCodes } from "../../src/domain/clause/pcode";
+import type { ArticleRefNode as ClauseArticleRef } from "../../src/domain/clause/nodes";
 import type { Id } from "../../src/domain/types";
 import { boxSites, planBoxes, replaceBox, type BoxPlan } from "./boxes";
 import type { Discriminator } from "../../src/domain/catalog/types";
@@ -231,19 +233,65 @@ function applySlots(built: Built, slots: SlotOverlay[], report: string[]): void 
 
 function validate(tree: DocumentNode, kind: "general" | "special", generalTree?: DocumentNode): string[] {
   const generalIds = new Set<Id>();
-  const generalRefs = new Set<Id>();
-  if (generalTree) {
-    for (const e of indexTree(generalTree).nodes.values()) {
-      if (e.node.kind === "article") generalIds.add(e.node.id);
-      if (["article", "paragraph", "item", "subitem"].includes(e.node.kind)) generalRefs.add(e.node.id);
-    }
-  }
+  if (generalTree) for (const e of indexTree(generalTree).nodes.values()) if (e.node.kind === "article") generalIds.add(e.node.id);
   const issues = validateTree(tree, {
     kind,
-    ...(kind === "special" ? { generalArticleIds: generalIds, generalReferenceIds: generalRefs } : {}),
+    ...(kind === "special" ? { generalArticleIds: generalIds, generalReferenceKeys: generalTree ? referenceKeysOf(generalTree) : new Set<string>() } : {}),
     appendixExists: (code) => APPENDICES.some((a) => a.code === code),
   });
   return issues.map((i) => `${i.kind}: ${i.message} @ ${(i.at.nodePath ?? []).join("/")}`);
+}
+
+/** 변환 중간 모양의 대상(노드 id) → 참조 대상(조 · 조+P코드). 코드가 매겨진 트리의 색인으로 푼다 (ADR-0072 결정 3). */
+function targetOfId(ix: ReturnType<typeof indexTree>, id: Id, where: string): RefTarget {
+  const t = targetOfNode(ix, id);
+  if (!t) throw new Error(`${where}: 조 참조 대상 ${id} 를 (조, P코드)로 풀 수 없다`);
+  return t;
+}
+
+/** 문면의 조 참조 대상을 (조, P코드)로 — 자기 참조는 이 트리, 보통약관 참조는 대응 보통약관. P코드를 매긴 뒤에 부른다. */
+function codeTargets(tree: DocumentNode, generalTree: DocumentNode | undefined, where: string): void {
+  const own = indexTree(tree);
+  const general = generalTree ? indexTree(generalTree) : undefined;
+  for (const e of own.nodes.values()) {
+    const n = e.node;
+    if (n.kind !== "articleRef") continue;
+    const ix = n.scope === "self" ? own : general;
+    if (!ix) throw new Error(`${where}: 대응 보통약관 없이 보통약관 참조가 있다`);
+    n.targets = n.targets.map((t) => targetOfId(ix, t.articleId, where));
+  }
+}
+
+/** 함수조항 본문의 조 참조 대상 — 보통약관(노드 id → 조 · P코드) · 이 함수조항(본문 노드 id → 제 코드) · 사용처(경로 → `{ host }`). */
+function codeClauseTargets(clause: ClauseRecord, generals: ReturnType<typeof indexTree>[]): ClauseRecord {
+  const body = withClauseCodes(clause.body);
+  const own = clauseCodeEntries(body).entries;
+  const visit = (node: unknown) => {
+    if (!node || typeof node !== "object") return;
+    const n = node as Record<string, unknown>;
+    if (n.kind === "articleRef") {
+      const r = n as unknown as ClauseArticleRef;
+      r.targets = r.targets.map((t) => {
+        const id = t.articleId ?? "";
+        if (r.scope === "host") return { host: id };
+        if (r.scope === "clause") {
+          const code = own.find((e) => e.id === id)?.code;
+          if (!code) throw new Error(`${clause.code}: 「이 함수조항」 참조 대상 ${id} 의 P코드가 없다`);
+          return { code };
+        }
+        const ix = generals.find((g) => g.nodes.has(id));
+        if (!ix) throw new Error(`${clause.code}: 보통약관 참조 대상 ${id} 가 보통약관에 없다`);
+        return targetOfId(ix, id, clause.code);
+      });
+    }
+    for (const key of ["children", "items", "subitems", "branches"]) {
+      const list = n[key];
+      if (Array.isArray(list)) list.forEach(visit);
+    }
+  };
+  (body as unknown[]).forEach(visit);
+  for (const o of clause.options) for (const v of o.values) (v.body as unknown[]).forEach(visit);
+  return { ...clause, body } as ClauseRecord;
 }
 
 /** 상품 한 벌의 보통약관 — 구조 · 참조. */
@@ -310,6 +358,11 @@ function main(): void {
     p.general.tree = withCodes(p.general.tree);
     for (const b of p.specials.values()) b.tree = withCodes(b.tree);
   }
+  // 조 참조 대상 — 변환 중간의 노드 id 를 (조, P코드)로 (ADR-0072 결정 3 · 10)
+  for (const p of products) {
+    codeTargets(p.general.tree, undefined, p.product.general.code);
+    for (const spec of p.product.specials) codeTargets(p.specials.get(spec.code)!.tree, p.general.tree, spec.code);
+  }
   for (const p of products) {
     issues.push(...validate(p.general.tree, "general").map((l) => `${p.product.general.code}: ${l}`));
     generals.push({ code: p.product.general.code, tree: p.general.tree });
@@ -332,7 +385,8 @@ function main(): void {
   // 함수조항은 구분자를 직접 읽지 않고 인자만 읽는다 (최종 결정 2) — 직접 읽기를 「인자 + 기본 연결 = 그 구분자」로 기계 변환한다.
   // 구분자 카탈로그는 손으로 적는 시드(discriminators.json)다. 사용처는 기본 연결을 쓰므로 조립 결과가 그대로다
   const catalog = JSON.parse(readFileSync(path.join(root, SEED_DIR, "discriminators.json"), "utf8")) as Discriminator[];
-  out("clauses.json", clauses.map((c) => parameterize(c, catalog)).map((c) => ({ ...c, body: withClauseCodes(c.body) })));
+  const generalIndexes = products.map((p) => indexTree(p.general.tree));
+  out("clauses.json", clauses.map((c) => codeClauseTargets(parameterize(c, catalog), generalIndexes)));
 
   const stats = (tree: DocumentNode) => {
     const ix = indexTree(tree);

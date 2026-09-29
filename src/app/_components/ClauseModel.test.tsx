@@ -37,7 +37,7 @@ const modelClause: Clause = {
         { id: "s1", kind: "slot", ref: "D0001" },
         { id: "t2", kind: "text", text: " 을 청구합니다. " },
         { id: "c1", kind: "inlineCond", branches: [{ id: "b1", when: "D0001 = '사망'", children: [{ id: "t3", kind: "text", text: "사망한 경우" }] }, { id: "b2", children: [{ id: "t4", kind: "text", text: "그 밖" }] }] },
-        { id: "r1", kind: "articleRef", targets: [{ nodeId: "A3" }], connector: "및" },
+        { id: "r1", kind: "articleRef", targets: [{ articleId: "A3" }], connector: "및" },
         { id: "x1", kind: "appendixRef", appendixCode: "AP01" },
       ],
     },

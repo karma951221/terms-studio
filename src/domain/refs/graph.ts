@@ -16,10 +16,10 @@
  * 노드 삭제 영향·끊어진 참조의 재료. 키의 레벨은 담보 트리에서 찾고, 노드가 사라졌으면 구분자 레벨로 둔다
  * (ADR-0066 §3: 둘은 같아야 한다).
  *
- * 조 참조(articleRef)의 대상은 조뿐 아니라 항·호·목도 될 수 있지만(문서 모델), 문서에는 **조만** `article:` 노드로
- * 선언된다 — 그래서 대상 노드 id 를 그대로 키로 쓰지 않고 **속한 조 id** 로 올려서 간선을 낸다. 공용조항의 조
+ * 조 참조(articleRef)의 대상은 조 또는 조 + 항·호·목의 P코드(ADR-0072 결정 3 · 8)이고, 문서에는 **조만** `article:` 노드로
+ * 선언된다 — 간선은 대상의 조로 낸다(코드는 좌표 refPath 의 열쇠에 실린다). 공용조항의 조
  * 참조 중 범위 없는 것은 보통약관 마스터를 가리킨다(기능/함수조항 §3.5 — 제 항 · 사용처 위치는 간선이 없다) — 공용조항을 넣기 전에 보통약관 문서들의
- * 노드 id → 속한 조 인덱스(`generalNodeArticles`)를 만들어 둔다. 대상이 사라졌으면 깨진 간선으로 남기고,
+ * 참조 열쇠 → 속한 조 인덱스(`generalTargets`)를 만들어 둔다. 대상(조 · 그 코드)이 사라졌으면 깨진 간선으로 남기고,
  * 아예 모르면(보통약관이 안 들어옴) 마찬가지로 깨진 간선으로 남긴다 — 간선을 안 내지는 않는다.
  */
 import type { Discriminator } from "../catalog/types";
@@ -33,6 +33,7 @@ import type { Coverage, CoverageNodeLevel } from "../coverage/types";
 import { coordinateOf, indexTree } from "../document/nodes";
 import { articleRefLabel, numberTree } from "../document/numbering";
 import { collectRefs } from "../document/refs";
+import { referenceKeys, refKey, targetOfNode } from "../document/pcode";
 import { enumReads, extractRefs, inferType, parse, refPath, type EnumReadTypes, type Expr, type ExprType, type Ref } from "../expression";
 import type { AttachLevel, Code, Coordinate, FieldType, Id } from "../types";
 import type { DocumentInput, EdgeVia, GraphInputs, ProductInput, RefEdge, RefGraph, RefNodeInfo, RefNodeKey } from "./types";
@@ -181,7 +182,8 @@ class Builder {
   /** 구분자 코드 → 레벨 (노드가 사라진 한정자의 키 폴백). */
   readonly discriminatorLevels = new Map<Code, AttachLevel>();
   /** 보통약관 노드 id → 속한 조(documentId·articleId) — 공용조항·문서의 조 참조가 항·호·목을 가리킬 때 조로 올리는 인덱스. 조 자신은 자기 id. */
-  readonly generalNodeArticles = new Map<Id, { documentId: Id; articleId: Id }>();
+  /** 보통약관 문서들의 참조 열쇠(`refKey` — 조 id · 조#코드) → 속한 문서 · 조. */
+  readonly generalTargets = new Map<string, { documentId: Id; articleId: Id }>();
 
   node(info: RefNodeInfo): void {
     this.nodes.set(nodeKey(info.key), info);
@@ -300,7 +302,7 @@ function walkClauseNodes(body: readonly ClauseNode[], basePath: Id[], visit: (no
 }
 
 /**
- * 보통약관 문서들의 노드 id → 속한 조 인덱스 (`Builder.generalNodeArticles`). 공용조항을 넣기 전에 채운다 —
+ * 보통약관 문서들의 참조 열쇠 → 속한 조 인덱스 (`Builder.generalTargets`). 공용조항을 넣기 전에 채운다 —
  * 공용조항의 범위 없는 조 참조는 보통약관 마스터를 가리키고(기능/함수조항 §3.5), 공용조항은 어느 문서인지 모른다.
  */
 function indexGeneralArticles(b: Builder, documents: readonly DocumentInput[]): void {
@@ -308,7 +310,8 @@ function indexGeneralArticles(b: Builder, documents: readonly DocumentInput[]): 
     if (doc.kind !== "general") continue;
     const ix = indexTree(doc.tree);
     for (const e of ix.nodes.values()) {
-      if (e.articleId !== undefined) b.generalNodeArticles.set(e.node.id, { documentId: doc.id, articleId: e.articleId });
+      const t = targetOfNode(ix, e.node.id);
+      if (t) b.generalTargets.set(refKey(t), { documentId: doc.id, articleId: t.articleId });
     }
   }
 }
@@ -392,9 +395,10 @@ function addClause(b: Builder, clause: Clause, master?: MasterTree): void {
         // indexGeneralArticles 로 속한 조로 올리고, 인덱스에 없으면(대상이 사라졌거나 보통약관이 안 들어옴)
         // documentId 없는 키로 내 깨진 간선으로 남긴다 (문서 쪽 generalOf 와 같은 모양).
         for (const target of n.targets) {
-          const found = b.generalNodeArticles.get(target.nodeId);
-          const to: RefNodeKey = found ? { kind: "article", documentId: found.documentId, articleId: found.articleId } : { kind: "article", documentId: "", articleId: target.nodeId };
-          b.edge({ from: key, to, via: "articleRef", at: { ...base, nodePath, refPath: target.nodeId } });
+          const refPath = refKey({ articleId: target.articleId ?? "", ...(target.code !== undefined ? { code: target.code } : {}) });
+          const found = b.generalTargets.get(refPath);
+          const to: RefNodeKey = found ? { kind: "article", documentId: found.documentId, articleId: found.articleId } : { kind: "article", documentId: "", articleId: refPath };
+          b.edge({ from: key, to, via: "articleRef", at: { ...base, nodePath, refPath } });
         }
       }
     });
@@ -454,15 +458,15 @@ function addDocument(b: Builder, doc: DocumentInput): Map<Id, RefNodeKey> {
         }
         break;
       case "article": {
-        // 대상 노드 id 를 속한 조 id 로 올린다 — 대상이 항·호·목이면 article: 노드가 선언되지 않아(조만 선언된다)
-        // 그대로 두면 깨진 간선으로 잘못 잡힌다. self 는 이 문서의 ix, general 은 indexGeneralArticles 로 찾는다.
-        // 인덱스에 없으면(대상이 사라짐) 기존처럼 대상 id 그대로 둔다 — 깨진 간선으로 남는다.
+        // 간선은 대상의 조로 — 대상(조 · 그 조의 코드)이 살아 있으면 조 노드, 사라졌으면 열쇠 그대로 둔 깨진 간선 (ADR-0072 결정 8).
+        // self 는 이 문서의 참조 열쇠, general 은 indexGeneralArticles 로 찾는다.
+        const k = refKey(r);
         let to: RefNodeKey;
         if (r.scope === "self") {
-          to = { kind: "article", documentId: doc.id, articleId: ix.nodes.get(r.articleId)?.articleId ?? r.articleId };
+          to = { kind: "article", documentId: doc.id, articleId: referenceKeys(ix).has(k) ? r.articleId : k };
         } else {
-          const found = b.generalNodeArticles.get(r.articleId);
-          to = found ? { kind: "article", documentId: found.documentId, articleId: found.articleId } : generalOf(r.articleId);
+          const found = b.generalTargets.get(k);
+          to = found ? { kind: "article", documentId: found.documentId, articleId: found.articleId } : generalOf(k);
         }
         b.edge({ from, to, via: "articleRef", at: r.at });
         break;

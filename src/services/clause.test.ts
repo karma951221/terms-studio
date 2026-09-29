@@ -223,7 +223,7 @@ describe("clause 서비스 (PGlite)", () => {
   });
   describe("S1 — 조 참조 · 별표 참조 대상 존재 (기능/함수조항 §3.5)", () => {
     const b = nodeBuilders();
-    const 조참조 = (nodeId: string): Inline => ({ id: "a1", kind: "articleRef", targets: [{ nodeId }], connector: "및" });
+    const 조참조 = (articleId: string, code?: string): Inline => ({ id: "a1", kind: "articleRef", targets: [{ articleId, ...(code ? { code } : {}) }], connector: "및" });
     /** 보통약관 마스터의 조 하나 — 공용조항 조 참조가 가리킬 수 있는 유일한 종류의 대상. */
     const 지급사유 = b.article("보험금의 지급사유", [b.paragraph([b.text("회사는 보험금을 지급합니다.")])]);
 
@@ -236,6 +236,14 @@ describe("clause 서비스 (PGlite)", () => {
       const body: Inline[] = [조참조(지급사유.id), { id: "x1", kind: "appendixRef", appendixCode: "AX000001" }];
       const c = unwrap(await svc.create(editor, { params: P, label: "참조 문구", mode: "inline", body }));
       expect(c.body).toEqual(body);
+    });
+
+    it("보통약관 조의 항은 (조, P코드)로 가리킨다 — 코드 없이 저장된 보통약관도 읽을 때 채운 코드로 (ADR-0072)", async () => {
+      const ok = await svc.create(editor, { params: P, label: "항 참조 문구", mode: "inline", body: [조참조(지급사유.id, "P0100")] });
+      expect(ok.ok).toBe(true);
+      const r = await svc.create(editor, { params: P, label: "없는 항 참조", mode: "inline", body: [조참조(지급사유.id, "P0900")] });
+      expect(reasonOf(r)).toBe("invalid");
+      if (!r.ok && r.rejection.reason === "invalid") expect(r.rejection.issues.map((i) => [i.kind, i.at.refPath])).toEqual([["brokenRef", `${지급사유.id}#P0900`]]);
     });
 
     it("보통약관 마스터에 없는 조를 가리키면 저장을 거부한다 (brokenRef)", async () => {

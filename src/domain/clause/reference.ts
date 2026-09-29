@@ -105,17 +105,17 @@ export function resolveOptions(
 
 // ───────────────────────────── 인라인화 ─────────────────────────────
 
-/** 사용처 위치 경로(`"2.1.3"`) → 사용처 문서의 노드 id. 못 찾으면 undefined — 조립이 사용처 트리로 만든다. */
-export type HostLocator = (path: string) => Id | undefined;
+/** 사용처 위치 경로(`"2.1.3"`) → 사용처 문서의 참조 대상(조 · 조+코드). 못 찾으면 undefined — 조립이 사용처 트리로 만든다. */
+export type HostLocator = (path: string) => { articleId: Id; code?: Code } | undefined;
 
 /** 풀지 못한 사용처 위치의 표식 — 렌더가 대상을 못 찾아 `articleGone` 이 된다(좌표의 refPath 로 보인다). */
 export const UNRESOLVED_HOST_PREFIX = "host:";
 
 /**
- * 옵션 자리를 선택지 본문으로 치환한 새 노드 배열. 모든 노드 id 는 `${refNodeId}/${원노드id}`.
- * 조 참조의 대상도 사용처 좌표로 바꾼다 (기능/함수조항 §3.5) — 「이 공용조항」(`scope: "clause"`) 대상은 펼친 노드 id 로,
- * 「사용처」(`scope: "host"`) 위치는 `host` 가 푼 사용처 노드 id 로(못 풀면 `host:<경로>`). 범위 표시는 남는다 — 펼친 뒤에는
- * 둘 다 사용처 문서 안의 대상이다(조립은 문서 자기 참조로 렌더한다).
+ * 옵션 자리를 선택지 본문으로 치환한 새 노드 배열. 모든 노드 id 는 `${refNodeId}/${원노드id}`. 항 · 호 · 목의 P코드는 그대로 둔다.
+ * 「사용처」(`scope: "host"`) 위치는 `host` 가 푼 사용처 대상으로 바꾼다(못 풀면 조 id 자리에 `host:<경로>`). 「이 함수조항」(`scope: "clause"`)
+ * 대상은 코드 그대로 둔다 — 사용처 조 · 참조 노드 코드와 짝지어 푸는 것은 조립이다(펼친 노드의 열쇠 = 참조 노드 코드 / 안쪽 코드, ADR-0072 결정 3 개정).
+ * 범위 표시는 남는다 — 펼친 뒤에는 둘 다 사용처 문서 안의 대상이다(조립은 문서 자기 참조로 렌더한다).
  * 조건은 해소하지 않는다 — 문맥은 사용처(조립·사전평가) 몫.
  */
 export function expandClause(clause: Clause, selection: OptionSelection, refNodeId: Id, host?: HostLocator): Result<ClauseBody> {
@@ -141,8 +141,7 @@ export function expandClause(clause: Clause, selection: OptionSelection, refNode
         // 값별 분기는 칸째 두고(고르는 것은 사용처 문맥) id 만 유일화한다
         return [{ ...n, id: nid(scope + n.id), cases: n.cases.map((k) => ({ ...k, id: nid(scope + k.id), children: inlines(k.children, scope) })) }];
       case "articleRef":
-        if (n.scope === "clause") return [{ ...n, id: nid(scope + n.id), targets: n.targets.map((t) => ({ nodeId: nid(t.nodeId) })) }];
-        if (n.scope === "host") return [{ ...n, id: nid(scope + n.id), targets: n.targets.map((t) => ({ nodeId: host?.(t.nodeId) ?? `${UNRESOLVED_HOST_PREFIX}${t.nodeId}` })) }];
+        if (n.scope === "host") return [{ ...n, id: nid(scope + n.id), targets: n.targets.map((t) => host?.(t.host ?? "") ?? { articleId: `${UNRESOLVED_HOST_PREFIX}${t.host ?? ""}` }) }];
         return [{ ...n, id: nid(scope + n.id) }];
       default:
         return [{ ...n, id: nid(scope + n.id) }];

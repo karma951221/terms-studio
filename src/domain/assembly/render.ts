@@ -8,6 +8,7 @@
  */
 
 import type { Appendix } from "../document/appendix";
+import { refKey } from "../document/pcode";
 import { appendixRefLabel, articleLabel, itemLabel, paragraphLabel, referenceChunkLabel, referenceTargetLabel, sectionLabel, subitemLabel, type ReferenceTarget } from "../document/numbering";
 import type { Code, Coordinate, Id, Issue } from "../types";
 import type {
@@ -99,8 +100,10 @@ export interface RenderEnv {
   ownerId: Id;
   /** 보통약관 (담보약관의 `scope:'general'` 조 참조 · 같은 문서에 없는 조 id 의 두 번째 탐색 대상). */
   general?: NumberedDoc;
-  /** 생략된 특약 조 id → 연결된 보통약관 조 id. */
-  aliases?: ReadonlyMap<Id, Id>;
+  /**
+   * 대상 열쇠(`refKey`) 별칭 — 생략된 특약 조 id → 연결된 보통약관 조 id, 대치된 기본계약 조 · 그 항 · 호 · 목(`조#코드`) → 이 문서의 대치 노드 열쇠.
+   */
+  aliases?: ReadonlyMap<string, string>;
   /** 상품이 노출을 끈 보통약관 조 id → 조 명 (기능/상품 §3.6). 사라진 참조 대상이 이 중에 있으면 `articleHidden` 오류다. */
   hiddenArticles?: ReadonlyMap<Id, string>;
   appendices: readonly BookletAppendix[];
@@ -111,34 +114,52 @@ export interface RenderOutcome {
   issues: Issue[];
 }
 
-function targetIndex(d: NumberedDoc | undefined): Map<Id, ReferenceTarget> {
-  const out = new Map<Id, ReferenceTarget>();
+/** 번호 붙은 조립 결과의 색인 — 노드 id → 대상(좌표 · 출처 표기용), 참조 열쇠(`refKey`) → 대상(참조 해소용, ADR-0072). */
+interface TargetIndex {
+  byId: Map<Id, ReferenceTarget>;
+  byKey: Map<string, ReferenceTarget>;
+}
+
+function targetIndex(d: NumberedDoc | undefined): TargetIndex {
+  const byId = new Map<Id, ReferenceTarget>();
+  const byKey = new Map<string, ReferenceTarget>();
+  const put = (id: Id, articleId: Id, key: string | undefined, t: ReferenceTarget) => {
+    byId.set(id, t);
+    // 같은 열쇠는 살아남은 트리에 하나다(배타 가지 짝은 하나만 산다) — 먼저 것을 둔다
+    if (key !== undefined && !byKey.has(refKey({ articleId, code: key }))) byKey.set(refKey({ articleId, code: key }), t);
+  };
   for (const a of d ? articlesOf(d.doc) : []) {
     const articleNumber = d!.numbers.get(a.id);
     if (!articleNumber) continue;
     const article = { id: a.id, n: articleNumber.n, title: a.title };
-    out.set(a.id, { kind: "article", article });
+    byId.set(a.id, { kind: "article", article });
+    byKey.set(a.id, { kind: "article", article });
     for (const p of a.children) {
       if (p.kind !== "paragraph") continue;
       const paragraphNumber = d!.numbers.get(p.id);
       if (!paragraphNumber) continue;
       const paragraph = { id: p.id, n: paragraphNumber.n };
-      out.set(p.id, { kind: "paragraph", article, paragraph });
+      put(p.id, a.id, p.key, { kind: "paragraph", article, paragraph });
       for (const it of p.items ?? []) {
         if (it.kind !== "item") continue;
         const itemNumber = d!.numbers.get(it.id);
         if (!itemNumber) continue;
         const item = { id: it.id, n: itemNumber.n };
-        out.set(it.id, { kind: "item", article, paragraph, item });
+        put(it.id, a.id, it.key, { kind: "item", article, paragraph, item });
         for (const sub of it.subitems ?? []) {
           if (sub.kind !== "subitem") continue;
           const subitemNumber = d!.numbers.get(sub.id);
-          if (subitemNumber) out.set(sub.id, { kind: "subitem", article, paragraph, item, subitem: { id: sub.id, n: subitemNumber.n } });
+          if (subitemNumber) put(sub.id, a.id, sub.key, { kind: "subitem", article, paragraph, item, subitem: { id: sub.id, n: subitemNumber.n } });
         }
       }
     }
   }
-  return out;
+  return { byId, byKey };
+}
+
+/** 해소된 대상의 노드 id — 가장 깊은 단계. */
+function nodeIdOf(t: ReferenceTarget): Id {
+  return t.subitem?.id ?? t.item?.id ?? t.paragraph?.id ?? t.article.id;
 }
 
 function issueNodeKind(issue: Issue): string | undefined {
@@ -152,7 +173,7 @@ function issueNodeKind(issue: Issue): string | undefined {
 
 /** 조립 후 계산 번호를 issue 결과·원천 좌표에 보탠다. */
 export function locateIssues(issues: readonly Issue[], numbered: NumberedDoc): Issue[] {
-  const index = targetIndex(numbered);
+  const index = targetIndex(numbered).byId;
   return issues.map((issue) => {
     const structural = [issue.at.articleId ?? "", ...(issue.at.nodePath ?? [])].reverse().map((id) => index.get(id)).find(Boolean);
     const numberedAt: Coordinate = structural
@@ -193,16 +214,21 @@ function boxText(n: RenderedInline): string {
 
 class Renderer {
   readonly issues: Issue[] = [];
+  /** 노드 id → 대상 (참조 자리의 출처 — 앞 경로 생략 기준). */
   private readonly self: Map<Id, ReferenceTarget>;
-  private readonly general: Map<Id, ReferenceTarget>;
+  /** 참조 열쇠 → 대상 — 이 문서 · 보통약관. */
+  private readonly selfKeys: Map<string, ReferenceTarget>;
+  private readonly generalKeys: Map<string, ReferenceTarget>;
   private readonly appendices: Map<Code, BookletAppendix>;
 
   constructor(
     private readonly numbered: NumberedDoc,
     private readonly env: RenderEnv,
   ) {
-    this.self = targetIndex(numbered);
-    this.general = targetIndex(env.general);
+    const own = targetIndex(numbered);
+    this.self = own.byId;
+    this.selfKeys = own.byKey;
+    this.generalKeys = targetIndex(env.general).byKey;
     this.appendices = new Map(env.appendices.map((a) => [a.code, a]));
   }
 
@@ -225,23 +251,25 @@ class Renderer {
         // 담보약관의 보통약관 참조인데 템플릿이 없으면 통째로 해소 불가 — 대상 단위 판단 이전의 문제다
         // (보통약관 문서 안의 scope general 참조 — 공용조항 본문 — 는 자기 문서에서 찾는다)
         if (n.scope === "general" && this.env.document !== "general" && !this.env.general) {
-          return this.error(n.id, { kind: "brokenRef", message: "보통약관 템플릿이 없어 보통약관 참조를 해소할 수 없습니다", at: { ...n.at, refPath: n.targets[0]?.nodeId } });
+          return this.error(n.id, { kind: "brokenRef", message: "보통약관 템플릿이 없어 보통약관 참조를 해소할 수 없습니다", at: { ...n.at, ...(n.targets[0] ? { refPath: refKey(n.targets[0]) } : {}) } });
         }
-        const alive: { nodeId: Id; info: ReferenceTarget }[] = [];
-        const dropped: Id[] = [];
+        // 사라짐 판정 = 「살아남은 트리에 그 조의 그 코드가 없다」 — 같은 코드를 공유한 분기 짝 중 살아남은 것으로 해소한다 (ADR-0072 결정 9)
+        const alive: ReferenceTarget[] = [];
+        const dropped: { key: string; articleId: Id }[] = [];
         let generalPrefix = n.scope === "general";
         let previous = n.scope === "self" ? source : undefined;
         for (const target of n.targets) {
-          let info = n.scope === "self" || this.env.document === "general" ? this.self.get(target.nodeId) : this.general.get(target.nodeId);
+          const key = refKey(target);
+          let info = n.scope === "self" || this.env.document === "general" ? this.selfKeys.get(key) : this.generalKeys.get(key);
           if (!info && n.scope === "self") {
-            // 별칭 — 생략된 특약 조(→ 보통약관 조) 또는 대치된 기본계약 조(→ 이 문서의 보통약관 조).
-            const alias = this.env.aliases?.get(target.nodeId);
+            // 별칭 — 생략된 특약 조(→ 보통약관 조) 또는 대치된 기본계약 조 · 그 항 · 호 · 목(→ 이 문서의 대치 노드).
+            const alias = this.env.aliases?.get(key);
             if (alias) {
-              const own = this.self.get(alias);
+              const own = this.selfKeys.get(alias);
               if (own) {
                 info = own;
               } else {
-                info = this.general.get(alias);
+                info = this.generalKeys.get(alias);
                 if (info) {
                   generalPrefix = true;
                   previous = undefined;
@@ -249,32 +277,32 @@ class Renderer {
               }
             }
           }
-          if (info) alive.push({ nodeId: target.nodeId, info });
-          else dropped.push(target.nodeId);
+          if (info) alive.push(info);
+          else dropped.push({ key, articleId: target.articleId });
         }
         if (alive.length === 0) {
           // 덩어리의 대상 전부가 사라졌다 — 가리킬 것이 없으니 오류. issue 는 대상마다, 마커는 자리에 하나 (기능/문면 §3.5).
-          for (const nodeId of dropped) {
-            // 상품이 노출을 끈 조를 가리켰다면 원인이 다르다 — 분기가 아니라 상품의 결정이다 (기능/상품 §3.6).
-            const hiddenTitle = this.env.hiddenArticles?.get(nodeId);
+          for (const { key, articleId } of dropped) {
+            // 상품이 노출을 끈 조(또는 그 조의 항 · 호 · 목)를 가리켰다면 원인이 다르다 — 분기가 아니라 상품의 결정이다 (기능/상품 §3.6).
+            const hiddenTitle = this.env.hiddenArticles?.get(articleId);
             this.issues.push(
               hiddenTitle !== undefined
-                ? { kind: "articleHidden", severity: "error", message: `보통약관 조 「${hiddenTitle}」 은(는) 상품에서 노출을 껐습니다`, at: { ...n.at, refPath: nodeId } }
-                : { kind: "articleGone", message: `참조 대상 ${nodeId} 이(가) 분기·생략으로 사라졌거나 없습니다`, at: { ...n.at, refPath: nodeId } },
+                ? { kind: "articleHidden", severity: "error", message: `보통약관 조 「${hiddenTitle}」 은(는) 상품에서 노출을 껐습니다`, at: { ...n.at, refPath: key } }
+                : { kind: "articleGone", message: `참조 대상 ${key} 이(가) 분기·생략으로 사라졌거나 없습니다`, at: { ...n.at, refPath: key } },
             );
           }
           return { kind: "error", id: n.id, issue: this.issues.at(-1)! };
         }
         // 일부만 사라졌으면 남은 대상으로 표기한다 — 그 상품에서는 그 조가 없는 것이 맞으므로 오류가 아니다 (기능/문면 §3.5).
-        const label = referenceChunkLabel(alive.map((t) => t.info), n.connector, previous);
-        const targets = alive.map((t, i) => ({ nodeId: t.nodeId, label: referenceTargetLabel(t.info, i === 0 ? previous : alive[i - 1].info) }));
+        const label = referenceChunkLabel(alive, n.connector, previous);
+        const targets = alive.map((t, i) => ({ nodeId: nodeIdOf(t), label: referenceTargetLabel(t, i === 0 ? previous : alive[i - 1]) }));
         return {
           kind: "articleRef",
           id: n.id,
           targets,
           ...(n.connector !== undefined ? { connector: n.connector } : {}),
           label: `${generalPrefix ? "보통약관 " : ""}${label}`,
-          ...(dropped.length > 0 ? { dropped } : {}),
+          ...(dropped.length > 0 ? { dropped: dropped.map((d) => d.key) } : {}),
         };
       }
       case "appendixRef": {

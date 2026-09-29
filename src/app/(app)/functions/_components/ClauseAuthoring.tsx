@@ -47,6 +47,7 @@ import {
   clausePositions,
   clauseScopedRefLabel,
   hostTargetIndex,
+  generalRefsOf,
   indexTree,
   numberTree,
   optionCarrier,
@@ -119,13 +120,14 @@ const GENERALS = "clause-generals";
 
 /** 새 함수조항의 첫 본문 — 「항」 · 「호」 · 「목」은 그 빈 자리 하나에서 시작해 쓸 자리가 처음부터 보인다. */
 function startBody(mode: ClauseMode, id: string = randomIds()): ClauseBody {
+  // 첫 자리도 P코드를 갖고 시작한다 — 「이 함수조항」 참조가 코드로 가리킨다 (ADR-0072 결정 5, 첫 자리 = P0100)
   switch (mode) {
     case "block":
-      return [{ id, kind: "paragraph", children: [] }];
+      return [{ id, kind: "paragraph", code: "P0100", children: [] }];
     case "item":
-      return [{ id, kind: "item", children: [] }];
+      return [{ id, kind: "item", code: "P0100", children: [] }];
     case "subitem":
-      return [{ id, kind: "subitem", children: [] }];
+      return [{ id, kind: "subitem", code: "P0100", children: [] }];
     default:
       return [];
   }
@@ -146,14 +148,14 @@ const HOST_TARGETS = hostTargetIndex();
 
 function unionRefs(generals: ClauseEditorData["generals"]): GeneralRefs {
   const articleIds = new Set<Id>();
-  const referenceIds = new Set<Id>(HOST_TARGETS.keys());
+  // 「사용처」 위치 줄은 코드 없는 줄이라 줄 id 가 곧 열쇠다(refTargetOf)
+  const referenceKeys = new Set<string>(HOST_TARGETS.keys());
   for (const g of generals) {
-    for (const e of indexTree(g.tree).nodes.values()) {
-      if (e.node.kind === "article") articleIds.add(e.node.id);
-      if (["article", "paragraph", "item", "subitem"].includes(e.node.kind)) referenceIds.add(e.node.id);
-    }
+    const refs = generalRefsOf(g.tree);
+    refs.articleIds.forEach((id) => articleIds.add(id));
+    refs.referenceKeys.forEach((k) => referenceKeys.add(k));
   }
-  return { articleIds, referenceIds };
+  return { articleIds, referenceKeys };
 }
 
 /**

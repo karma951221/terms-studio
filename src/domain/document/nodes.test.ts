@@ -179,7 +179,7 @@ describe("문면작성 S4·S6 — 참조 대상 존재 검증", () => {
           {
             id: "refs",
             kind: "articleRef",
-            targets: [{ nodeId: "missing-1" }, { nodeId: "missing-2" }],
+            targets: [{ articleId: "missing-1" }, { articleId: "missing-2" }],
             connector: "및",
             scope: "self",
           },
@@ -233,7 +233,7 @@ describe("문면작성 S4·S6 — 참조 대상 존재 검증", () => {
 
   it("옛 문서에 저장된 「및」은 그대로 유효하다 — 데이터를 고치지 않는다", () => {
     const b = make();
-    const doc = b.document("d", [b.article("a", [b.paragraph([b.articleRef(["n3", "n2"], "self", "및")])])]);
+    const doc = b.document("d", [b.article("a", [{ ...b.paragraph([b.articleRef(["n3", { articleId: "n3", code: "P0100" }], "self", "및")]), code: "P0100" }])]);
     expect(validateTree(doc)).toEqual([]);
   });
 

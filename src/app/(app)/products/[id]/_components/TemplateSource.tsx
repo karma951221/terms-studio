@@ -16,7 +16,7 @@ import { ClauseModel, clauseEditHref } from "@/app/_components/ClauseModel";
 import { IconButton, IconRevert } from "@/app/_components/icons";
 import { STRUCT_KEY_CHIP } from "@/app/_lib/labels";
 import type { Clause } from "@/domain/clause";
-import { referenceChunkLabel, type ArticleNode, type Box, type CondBlockNode, type InlineNode, type Node, type NodeNumber, type ReferenceTarget, type TableNode } from "@/domain/document";
+import { referenceChunkLabel, referenceKeyIndex, refKey, type ArticleNode, type Box, type CondBlockNode, type InlineNode, type Node, type NodeNumber, type ReferenceTarget, type TableNode } from "@/domain/document";
 import { format, parse, refPath } from "@/domain/expression";
 import type { ClauseOptionOverride } from "@/domain/product";
 import type { Code, Id } from "@/domain/types";
@@ -107,9 +107,10 @@ function Inline({ node, ctx }: { node: InlineNode; ctx: Ctx }) {
       // 표기 규칙(「제3조부터 제5조까지」 · 항까지)은 도메인이 안다 — 문면 편집기와 같은 덩어리 규칙 (기능/문면 §3.5).
       const alive: ReferenceTarget[] = [];
       let broken = 0;
-      for (const { nodeId } of node.targets) {
-        const target = ctx.references.get(nodeId);
-        if (target) alive.push(target);
+      const byKey = referenceKeyIndex(ctx.references);
+      for (const t of node.targets) {
+        const found = byKey.get(refKey(t));
+        if (found) alive.push(found.target);
         else broken += 1;
       }
       const joined = alive.length === 0 ? "없는 조(연결 끊김)" : referenceChunkLabel(alive, node.connector);

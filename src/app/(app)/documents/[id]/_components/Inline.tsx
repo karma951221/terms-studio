@@ -12,7 +12,7 @@
 import { Fragment, useEffect, useRef, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
 
 import { STRUCT_KEY_CHIP, SWITCH_WORD } from "@/app/_lib/labels";
-import { referenceChunkLabel, type ArticleRefNode, type InlineAt, type InlineNode, type ReferenceTarget } from "@/domain/document";
+import { referenceChunkLabel, referenceKeyIndex, refKey, type ArticleRefNode, type InlineAt, type InlineNode, type ReferenceTarget } from "@/domain/document";
 import type { Id } from "@/domain/types";
 
 import { anchorOf, chipText, encodeAt, type DocCtx } from "./ctx";
@@ -24,9 +24,10 @@ function articleRefText(node: ArticleRefNode, ctx: DocCtx): string {
   const index = node.scope === "general" ? ctx.references.general : ctx.references.self;
   const alive: ReferenceTarget[] = [];
   let broken = 0;
-  for (const { nodeId } of node.targets) {
-    const target = index.get(nodeId);
-    if (target) alive.push(target);
+  const byKey = referenceKeyIndex(index);
+  for (const t of node.targets) {
+    const found = byKey.get(refKey(t));
+    if (found) alive.push(found.target);
     else broken += 1;
   }
   const joined = alive.length === 0 ? (broken > 0 ? "없는 조(연결 끊김)" : "대상 없음") : referenceChunkLabel(alive, node.connector);

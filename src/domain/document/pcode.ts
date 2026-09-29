@@ -170,3 +170,84 @@ export function documentCodeIssues(doc: DocumentNode, ix: TreeIndex = indexTree(
   for (const c of codeConflicts(entries)) out.push({ id: c.entry.id, message: conflictMessage(c, suggestCode(entries, c.entry.id)) });
   return out;
 }
+
+// ───────────────────────────── 참조 대상 (결정 3 · 9) ─────────────────────────────
+
+/** 참조가 가리킬 수 있는 코드 자리 — 항 · 호 · 목. (함수조항 블록 참조의 코드는 펼친 안쪽 노드를 가리키는 바깥 마디다 — 반복 · 안쪽 참조와 함께.) */
+const REFERABLE_CODED: readonly NodeKind[] = ["paragraph", "item", "subitem"];
+
+/** 참조 대상의 열쇠 — 조면 조 id, 항 · 호 · 목이면 `조id#코드`. 대상 비교 · 존재 판정 · 해소 색인이 이 열쇠를 쓴다. */
+export function refKey(t: { articleId: Id; code?: Code }): string {
+  return t.code === undefined ? t.articleId : `${t.articleId}#${t.code}`;
+}
+
+/** 오류 문구용 대상 표기 — 조 id · `조id 의 P0100`. */
+export function refLabel(t: { articleId: Id; code?: Code }): string {
+  return t.code === undefined ? t.articleId : `${t.articleId} 의 ${t.code}`;
+}
+
+const keyCache = new WeakMap<TreeIndex, Set<string>>();
+
+/** 트리가 내놓는 참조 대상 열쇠 — 조 id 전부 + 코드 있는 항 · 호 · 목의 `조id#코드`. 같은 코드의 분기 짝은 한 열쇠다. */
+export function referenceKeys(ix: TreeIndex): Set<string> {
+  const cached = keyCache.get(ix);
+  if (cached) return cached;
+  const out = new Set<string>();
+  for (const e of ix.nodes.values()) {
+    const target = targetOfEntry(e.node, e.articleId);
+    if (target) out.add(refKey(target));
+  }
+  keyCache.set(ix, out);
+  return out;
+}
+
+/** 트리의 참조 대상 열쇠 (색인 없이). */
+export function referenceKeysOf(doc: DocumentNode): Set<string> {
+  return referenceKeys(indexTree(doc));
+}
+
+function targetOfEntry(node: Node, articleId: Id | undefined): { articleId: Id; code?: Code } | undefined {
+  if (node.kind === "article") return { articleId: node.id };
+  if (!REFERABLE_CODED.includes(node.kind) || articleId === undefined) return undefined;
+  const code = (node as { code?: Code }).code;
+  return code === undefined ? undefined : { articleId, code };
+}
+
+/** 노드 → 참조 대상 (조 · 코드 있는 항 · 호 · 목). 코드 없는 항 · 호 · 목은 가리킬 수 없다(저장이 채운다). */
+export function targetOfNode(ix: TreeIndex, id: Id): { articleId: Id; code?: Code } | undefined {
+  const e = ix.nodes.get(id);
+  return e ? targetOfEntry(e.node, e.articleId) : undefined;
+}
+
+/** 대상 → 그 열쇠를 가진 노드 id 들 (문서 순 — 분기 짝이면 여럿). 편집기 전체 뷰는 첫 노드로 번호를 보인다. */
+export function nodesOfTarget(ix: TreeIndex, target: { articleId: Id; code?: Code }): Id[] {
+  if (target.code === undefined) return ix.nodes.get(target.articleId)?.node.kind === "article" ? [target.articleId] : [];
+  const out: Id[] = [];
+  for (const e of ix.nodes.values()) {
+    if (e.articleId === target.articleId && REFERABLE_CODED.includes(e.node.kind) && (e.node as { code?: Code }).code === target.code) out.push(e.node.id);
+  }
+  return out;
+}
+
+/** 편집 전 · 후 트리에서 사라진 참조 대상 열쇠 — 노드를 지워도 같은 코드의 분기 짝이 남으면 대상은 산다 (결정 4 · 9). */
+export function removedRefKeys(before: DocumentNode, after: DocumentNode): Set<string> {
+  const kept = referenceKeysOf(after);
+  return new Set([...referenceKeysOf(before)].filter((k) => !kept.has(k)));
+}
+
+/** 노드들(과 그 하위 — `removed` 에 다 들어 있어야 한다)을 지우면 사라지는 참조 대상 열쇠 — 같은 코드의 분기 짝이 남으면 산다. */
+export function lostRefKeys(ix: TreeIndex, removed: ReadonlySet<Id>): Set<string> {
+  const kept = new Set<string>();
+  for (const e of ix.nodes.values()) {
+    if (removed.has(e.node.id)) continue;
+    const t = targetOfEntry(e.node, e.articleId);
+    if (t) kept.add(refKey(t));
+  }
+  return new Set([...referenceKeys(ix)].filter((k) => !kept.has(k)));
+}
+
+/** 열쇠 → 참조 대상 (`refKey` 의 역 — 조 id 에는 `#` 가 없다). 대상 고르기 폼이 열쇠를 싣는다. */
+export function parseRefKey(key: string): { articleId: Id; code?: Code } {
+  const at = key.lastIndexOf("#");
+  return at < 0 ? { articleId: key } : { articleId: key.slice(0, at), code: key.slice(at + 1) };
+}

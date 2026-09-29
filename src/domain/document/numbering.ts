@@ -10,8 +10,9 @@
  *   공용조항 block 참조는 항 1개로 센다 — 실제 항 수는 인라인화 뒤 조립이 안다.
  */
 
-import { CONNECTOR_PLACEHOLDER, type Id, type ReferenceConnector } from "../types";
-import type { ArticleNode, BlockNode, DocumentNode, Node } from "./nodes";
+import { CONNECTOR_PLACEHOLDER, type Code, type Id, type ReferenceConnector } from "../types";
+import type { ArticleNode, BlockNode, DocumentNode, Node, RefTarget } from "./nodes";
+import { refKey } from "./pcode";
 
 export type NumberKind = "section" | "article" | "paragraph" | "item" | "subitem";
 
@@ -65,6 +66,8 @@ export function articleRefLabel(n: number, title: string): string {
 export interface ReferencePart {
   id: Id;
   n: number;
+  /** P코드 — 항 · 호 · 목 (ADR-0072). 참조 대상으로 저장할 때 쓴다. */
+  code?: Code;
 }
 
 /** 참조 대상의 계산 번호와 상위 구조. `kind` 아래 단계까지만 값이 있다. */
@@ -189,25 +192,55 @@ export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id,
       return;
     }
     const up = parent?.section ? { section: parent.section } : {};
+    const code = (node as { code?: Code }).code;
+    const part = (n: number): ReferencePart => ({ id: node.id, n, ...(code !== undefined ? { code } : {}) });
     if (node.kind === "paragraph" && number && parent) {
-      const target: ReferenceTarget = { kind: "paragraph", ...up, article: parent.article, paragraph: { id: node.id, n: number.n } };
+      const target: ReferenceTarget = { kind: "paragraph", ...up, article: parent.article, paragraph: part(number.n) };
       out.set(node.id, target);
       for (const item of node.items ?? []) visit(item, target, section);
       return;
     }
     if (node.kind === "item" && number && parent?.paragraph) {
-      const target: ReferenceTarget = { kind: "item", ...up, article: parent.article, paragraph: parent.paragraph, item: { id: node.id, n: number.n } };
+      const target: ReferenceTarget = { kind: "item", ...up, article: parent.article, paragraph: parent.paragraph, item: part(number.n) };
       out.set(node.id, target);
       for (const subitem of node.subitems ?? []) visit(subitem, target, section);
       return;
     }
     if (node.kind === "subitem" && number && parent?.paragraph && parent.item) {
-      out.set(node.id, { kind: "subitem", ...up, article: parent.article, paragraph: parent.paragraph, item: parent.item, subitem: { id: node.id, n: number.n } });
+      out.set(node.id, { kind: "subitem", ...up, article: parent.article, paragraph: parent.paragraph, item: parent.item, subitem: part(number.n) });
     }
   };
   for (const node of doc.children) visit(node, undefined, undefined);
   return out;
 }
+
+/**
+ * 편집기 색인의 대상 → 저장할 참조 대상 (ADR-0072 결정 3) — 조면 `{ articleId }`, 항 · 호 · 목이면 `{ articleId, code }`.
+ * 코드가 없는 자리(함수조항 에디터의 「사용처」 위치 줄 `host:2.1` 등 — 번호만 있는 줄)는 그 줄 id 를 조 자리에 싣는다.
+ */
+export function refTargetOf(t: ReferenceTarget): RefTarget {
+  if (t.kind === "article" || t.kind === "section") return { articleId: t.article.id };
+  const part = t.subitem ?? t.item ?? t.paragraph;
+  return part?.code !== undefined ? { articleId: t.article.id, code: part.code } : { articleId: part?.id ?? t.article.id };
+}
+
+/**
+ * 참조 대상 → 편집기 색인의 노드 id · 대상 (문서 순 첫 노드 — 같은 코드의 분기 짝 중 앞의 것). 편집기 전체 뷰는 분기를 풀지 않아
+ * 짝 중 첫 노드의 번호로 보인다.
+ */
+export function referenceKeyIndex(index: ReadonlyMap<Id, ReferenceTarget>): ReadonlyMap<string, { id: Id; target: ReferenceTarget }> {
+  const cached = keyIndexCache.get(index);
+  if (cached) return cached;
+  const out = new Map<string, { id: Id; target: ReferenceTarget }>();
+  for (const [id, target] of index) {
+    const key = refKey(refTargetOf(target));
+    if (!out.has(key)) out.set(key, { id, target });
+  }
+  keyIndexCache.set(index, out);
+  return out;
+}
+
+const keyIndexCache = new WeakMap<ReadonlyMap<Id, ReferenceTarget>, Map<string, { id: Id; target: ReferenceTarget }>>();
 
 /** 대상 고르기 트리의 한 줄 — 조 › 항 › 호 › 목. `label` 은 자기 단계 표기만(「제10조(…)」·「제1항」·「제2호」·「가목」). */
 export interface ReferenceOutlineNode {

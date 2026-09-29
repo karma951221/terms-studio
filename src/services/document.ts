@@ -25,6 +25,8 @@ import {
   numberTree,
   preEvaluate,
   removedIds,
+  removedRefKeys,
+  refKey,
   renameAppendix,
   replayEdits,
   reviseBox,
@@ -216,7 +218,7 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
     const env = await baseEnvOf(tx, doc);
     if (doc.kind !== "special") return env;
     const refs = doc.generalDocumentId ? await generalRefsFor(tx, doc.generalDocumentId) : undefined;
-    return { ...env, generalArticleIds: refs?.articleIds ?? new Set(), generalReferenceIds: refs?.referenceIds ?? new Set() };
+    return { ...env, generalArticleIds: refs?.articleIds ?? new Set(), generalReferenceKeys: refs?.referenceKeys ?? new Set() };
   }
 
   /** 식 검사 재료 — 타입 조회 + 한정자 검사 문맥(담보 약관이면 문맥 담보 트리 · 구분자 레벨). */
@@ -235,15 +237,17 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
     return validateDocument(tree, { env, resolve, scope });
   }
 
-  /** `documentId` 에서 `removed` 노드를 가리키던 다른 문서의 조연결 · 보통약관 조 참조. */
-  async function brokenByRemoval(tx: Db, documentId: Id, removed: ReadonlySet<Id>): Promise<Coordinate[]> {
-    if (removed.size === 0) return [];
+  /**
+   * `documentId` 에서 사라진 것을 가리키던 다른 문서의 조연결(지운 조 id) · 보통약관 조 참조(사라진 대상 열쇠 — 같은 코드의 분기 짝이 남으면 산다, ADR-0072).
+   */
+  async function brokenByRemoval(tx: Db, documentId: Id, removed: ReadonlySet<Id>, removedKeys: ReadonlySet<string>): Promise<Coordinate[]> {
+    if (removed.size === 0 && removedKeys.size === 0) return [];
     const out: Coordinate[] = [];
     for (const d of await repo.listDocumentRecords(tx)) {
       if (d.id === documentId || d.generalDocumentId !== documentId) continue;
       for (const r of collectRefs(d.tree, coordinateOf(d))) {
         if (r.kind === "link" && removed.has(r.linkedArticleId)) out.push(r.at);
-        else if (r.kind === "article" && r.scope === "general" && removed.has(r.articleId)) out.push(r.at);
+        else if (r.kind === "article" && r.scope === "general" && removedKeys.has(refKey(r))) out.push(r.at);
       }
     }
     return out;
@@ -461,7 +465,7 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
           const errors = blockingIssues(await validateDoc(tx, next, tree));
           if (errors.length > 0) return invalid(errors);
           if (!input.confirm) {
-            const broken = await brokenByRemoval(tx, id, removedIds(doc.tree, tree));
+            const broken = await brokenByRemoval(tx, id, removedIds(doc.tree, tree), removedRefKeys(doc.tree, tree));
             if (broken.length > 0) return reject({ reason: "needsConfirmation", impact: { valueRowsLost: 0, cascade: [], brokenRefs: broken } });
           }
           const saved = await repo.saveDocumentAt(tx, id, input.baseVersion, { tree: withCodes(tree), title: tree.title, generalDocumentId: generalDocumentId ?? null }, actor.userId);
