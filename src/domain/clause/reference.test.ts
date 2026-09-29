@@ -281,3 +281,41 @@ describe("expandClause — 호 · 목 유형 (최종 결정 4)", () => {
     );
   });
 });
+
+describe("재검사 — 인자 · 기본 연결 (최종 결정 2 · 기능/함수조항 §3.7)", () => {
+  const 판정: BlockClause = {
+    code: "C0010",
+    label: "판정",
+    mode: "block",
+    body: [{ id: "p1", kind: "paragraph", children: [{ id: "c1", kind: "inlineCond", branches: [{ id: "b1", when: "arg.갱신형", children: [{ id: "t1", kind: "text", text: "갱신" }] }] }] }],
+    options: [],
+    params: [{ name: "갱신형", type: { kind: "boolean" }, default: { kind: "discriminator", code: "D0001" } }],
+    required: { discriminators: [], attributes: [] },
+  };
+  const usages: Usage[] = [
+    { documentId: "doc-1", ownerKind: "coverage", ownerId: "cov-1", ownerName: "수술비" },
+    { documentId: "doc-2", ownerKind: "coverage", ownerId: "cov-2", ownerName: "상해사망", bindings: { 갱신형: { kind: "discriminator", code: "D0006" } } },
+  ];
+
+  it("인자를 더하면(기본 연결 없음) 연결하지 않은 사용처가 재검사에 연결 누락으로 오른다", () => {
+    const added: BlockClause = { ...판정, params: [...판정.params!, { name: "면책", type: { kind: "boolean" } }] };
+    const entries = recheckUsages(added, usages, lookup);
+    expect(entries.map((e) => [e.usage.documentId, e.issues.map((i) => [i.kind, i.at.refPath])])).toEqual([
+      ["doc-1", [["argUnbound", "arg.면책"]]],
+      ["doc-2", [["argUnbound", "arg.면책"]]],
+    ]);
+  });
+
+  it("기본 연결 구분자를 지우면 정의가 기대는 구분자가 깨지고, 기본 연결을 쓰는 사용처만 재검사에 오른다", () => {
+    const shrunk = lookupFrom(catalog.filter((d) => d.code !== "D0001"));
+    const def = checkAttachmentForReference(판정, shrunk);
+    expect(def.broken).toEqual(["D0001"]);
+    const entries = recheckUsages(판정, usages, shrunk);
+    expect(entries.map((e) => [e.usage.documentId, e.issues.map((i) => i.kind)])).toEqual([["doc-1", ["brokenRef"]]]);
+  });
+
+  it("사용처 연결의 타입이 인자와 다르면(타입 조회를 주면) 재검사에 오른다", () => {
+    const typed = recheckUsages(판정, [{ ...usages[1], bindings: { 갱신형: { kind: "discriminator", code: "D0002" } } }], lookup, (code) => (code === "D0002" ? { kind: "string" } : { kind: "boolean" }));
+    expect(typed[0].issues.map((i) => i.kind)).toEqual(["typeMismatch"]);
+  });
+});

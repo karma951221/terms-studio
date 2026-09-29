@@ -48,6 +48,8 @@ function toClause(row: ClauseRow): Clause {
     code: row.code,
     label: row.label,
     options: row.options,
+    // 인자 0개는 키를 싣지 않는다 — 도메인이 만든 정의와 같은 모양(빈 목록 = 키 없음)
+    ...(row.params && row.params.length > 0 ? { params: row.params } : {}),
     required: { discriminators: row.requiredDiscriminators, attributes: row.requiredAttributes },
   };
   switch (row.mode) {
@@ -69,6 +71,7 @@ function toRow(def: Clause) {
     mode: def.mode,
     body: def.body,
     options: def.options,
+    params: def.params ?? [],
     requiredDiscriminators: def.required.discriminators,
     requiredAttributes: def.required.attributes,
   };

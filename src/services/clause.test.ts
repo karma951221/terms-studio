@@ -267,4 +267,29 @@ describe("clause 서비스 (PGlite)", () => {
       ]);
     });
   });
+
+  describe("인자 · 기본 연결 (최종 결정 2 · 기능/함수조항 §3.7)", () => {
+    const 슬롯본문: Block[] = [{ id: "p1", kind: "paragraph", children: [{ id: "s1", kind: "slot", ref: "arg.보험금명" }] }];
+    it("인자(기본 연결 D0002)와 그 인자를 읽는 본문을 한 번에 만들고 다시 읽으면 그대로 — 요구 구분자는 직접 읽기만", async () => {
+      const params = [{ name: "보험금명", type: { kind: "string" as const }, default: { kind: "discriminator" as const, code: "D0002" } }];
+      const c = unwrap(await svc.create(editor, { label: "지급사유(인자)", mode: "block", body: 슬롯본문, params }));
+      expect(c.params).toEqual(params);
+      expect(c.required.discriminators).toEqual([]);
+      expect(await svc.get(c.code)).toEqual(c);
+    });
+
+    it("본문이 선언되지 않은 인자를 읽으면 만들어지지 않는다(검사 ①)", async () => {
+      const r = await svc.create(editor, { label: "지급사유(인자 없음)", mode: "block", body: 슬롯본문 });
+      expect(reasonOf(r)).toBe("invalid");
+    });
+
+    it("기본 연결 없는 인자를 더하면 사용처 재검사에 연결 누락이 오른다 — 기본 연결 타입이 다르면 거부", async () => {
+      const c = unwrap(await svc.create(editor, { label: "판정(인자)", mode: "block", body: 준용_본문 }));
+      usages.set(c.code, [{ documentId: "doc-9", ownerKind: "general", ownerId: "gen-1", ownerName: "보통약관 A", refNodeId: "k9" }]);
+      const saved = unwrap(await svc.setParams(editor, c.code, [{ name: "갱신형", type: { kind: "boolean" } }]));
+      expect(saved.recheck.map((e) => e.issues.map((i) => [i.kind, i.at.refPath]))).toEqual([[["argUnbound", "arg.갱신형"]]]);
+      const wrong = await svc.setParams(editor, c.code, [{ name: "갱신형", type: { kind: "boolean" }, default: { kind: "discriminator", code: "D0002" } }]);
+      expect(reasonOf(wrong)).toBe("invalid");
+    });
+  });
 });

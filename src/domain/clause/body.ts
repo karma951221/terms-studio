@@ -20,6 +20,7 @@ import { CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, ok, reject } from "..
 import type { Code, Coordinate, Id, Issue, Result } from "../types";
 import { BLOCK_KINDS, HOST_PATH, INLINE_KINDS } from "./nodes";
 import type { Block, BoxRefNode, BulletListNode, ClauseNode, Inline, InlineBranch, BlockBranch, ItemBodyNode, ItemNode, SubitemBodyNode } from "./nodes";
+import { checkParams, type ParamDef } from "./params";
 import type { ClauseBody, ClauseMode, OptionDef, RequiredRefs } from "./types";
 
 // ───────────────────────────── 식 수집 ─────────────────────────────
@@ -139,6 +140,8 @@ export interface AnalyzeOptions {
   appendixExists?: (code: Code) => boolean;
   /** 정적 마스터 박스 존재 조회 — 있으면 박스 참조 대상 존재를 검사한다. */
   boxExists?: (code: Code) => boolean;
+  /** 열거형 값 조회 — 있으면 인자 기본 연결의 enum 상수를 그 열거형 값으로 검사한다. */
+  enumValues?: (enumCode: Code) => readonly Code[] | undefined;
 }
 
 /** 공용조항 참조 노드 종류 — 본문 안에 나타나면 중첩이라 거부. */
@@ -153,6 +156,7 @@ export function analyzeBody(
   body: ClauseBody,
   options: readonly OptionDef[],
   opts: AnalyzeOptions = {},
+  params: readonly ParamDef[] = [],
 ): Result<RequiredRefs> {
   const issues: Issue[] = [];
   const base = opts.coordinate ?? {};
@@ -387,11 +391,26 @@ export function analyzeBody(
     seen.add(id);
   }
 
-  // 4. 참조 존재·타입 (조회가 있을 때만) — 조건은 boolean 이어야, 슬롯은 참조가 존재해야 한다
-  if (opts.resolveType) {
+  // 4. 인자 (최종 결정 2) — 인자 표(이름 · 타입 · 기본 연결) + 본문이 읽는 인자는 선언돼 있어야 한다(타입 조회가 없어도)
+  const resolveType = opts.resolveType;
+  issues.push(
+    ...checkParams(params, { ...(resolveType ? { discriminatorType: (code: Code) => resolveType({ kind: "discriminator", code }) } : {}), ...(opts.enumValues ? { enumValues: opts.enumValues } : {}) }, base),
+  );
+  const declared = new Map(params.map((p) => [p.name, p.type] as const));
+  const paramTypes = (name: string) => declared.get(name);
+  if (!resolveType) {
+    for (const e of exprs) {
+      for (const { ref, path } of extractRefs(e.expr)) {
+        if (ref.kind === "param" && !declared.has(ref.name)) report("brokenRef", `선언되지 않은 인자입니다: ${path} — 함수조항의 인자 표에 먼저 선언한다`, e.path, path);
+      }
+    }
+  }
+
+  // 5. 참조 존재·타입 (조회가 있을 때만) — 조건은 boolean 이어야, 슬롯은 참조가 존재해야 한다. 인자는 선언 타입으로(문맥 플래그)
+  if (resolveType) {
     for (const e of exprs) {
       const at = { ...base, nodePath: e.path };
-      const r = e.role === "condition" ? checkCondition(e.expr, opts.resolveType, at) : checkTypes(e.expr, opts.resolveType, { coordinate: at });
+      const r = e.role === "condition" ? checkCondition(e.expr, resolveType, at, paramTypes) : checkTypes(e.expr, resolveType, { coordinate: at, params: paramTypes });
       if (!r.ok && r.rejection.reason === "invalid") issues.push(...r.rejection.issues);
       else if (e.role === "slot" && r.ok && r.value.kind !== "string" && r.value.kind !== "enum") {
         report("typeMismatch", `값 슬롯은 string·enum 만 허용합니다 (${r.value.kind} 불가)`, e.path, e.expr.kind === "ref" ? undefined : "");
@@ -401,7 +420,7 @@ export function analyzeBody(
 
   if (issues.length > 0) return reject({ reason: "invalid", issues });
 
-  // 5. 요구 참조 추출
+  // 6. 요구 참조 추출 — 본문이 직접 읽는 구분자 · 담보속성 (인자는 연결이 정한다)
   const discriminators: Code[] = [];
   const attributes: Code[] = [];
   for (const e of exprs) {

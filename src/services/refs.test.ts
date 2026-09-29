@@ -275,3 +275,52 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
     });
   });
 });
+
+describe("인자 연결 간선 — 기본 연결(함수조항 → 구분자) · 사용처 연결(문서 → 구분자) (최종 결정 2)", () => {
+  let t: TestDb;
+  let special: DocumentRecord;
+  const b = nodeBuilders();
+  const ref = { ...b.clauseBlock("C010"), bindings: { 갱신형: { kind: "discriminator" as const, code: "D0002" } } };
+
+  beforeAll(async () => {
+    t = await createTestDb();
+    const db = contextualDb(t.db);
+    const catalog = createCatalogService(db);
+    unwrap(await catalog.create(editor, { label: "갱신여부", level: "coverage", expression: "coverage_basic.claim_name = '갱신'" })); // D0001
+    unwrap(await catalog.create(editor, { label: "갱신여부2", level: "coverage", expression: "coverage_basic.claim_name = '갱신2'" })); // D0002
+    const clause: Clause = {
+      code: "C010",
+      label: "판정",
+      mode: "block",
+      body: [{ id: "p", kind: "paragraph", children: [{ id: "c", kind: "inlineCond", branches: [{ id: "c-if", when: "arg.갱신형 and arg.면책", children: [{ id: "t", kind: "text", text: "갱신" }] }] }] }],
+      options: [],
+      params: [
+        { name: "갱신형", type: { kind: "boolean" }, default: { kind: "discriminator", code: "D0001" } },
+        { name: "면책", type: { kind: "boolean" }, default: { kind: "discriminator", code: "D0001" } },
+      ],
+      required: { discriminators: [], attributes: [] },
+    };
+    await insertClause(db, clause, editor.userId);
+    const general = await insertDocument(db, { kind: "general", title: "보통약관", tree: b.document("보통약관", [b.article("조", [ref])]) }, editor.userId);
+    special = general;
+  });
+  afterAll(async () => {
+    await t.close();
+  });
+
+  it("기본 연결 구분자를 지우면 그 함수조항 정의가 깨질 참조에 오른다", async () => {
+    const src = catalogImpactSource(contextualDb(t.db));
+    const broken = await src.findBrokenRefs({ kind: "discriminator", code: "D0001" });
+    expect(broken).toEqual(expect.arrayContaining([expect.objectContaining({ document: "clause", ownerId: "C010", refPath: "arg.갱신형" }), expect.objectContaining({ document: "clause", ownerId: "C010", refPath: "arg.면책" })]));
+  });
+
+  it("사용처가 바꾼 연결 구분자를 지우면 그 사용처가 깨질 참조에 오른다", async () => {
+    const src = catalogImpactSource(contextualDb(t.db));
+    expect(await src.findBrokenRefs({ kind: "discriminator", code: "D0002" })).toEqual([expect.objectContaining({ document: "general", ownerId: special.id, refPath: "C010.arg.갱신형" })]);
+  });
+
+  it("사용처 목록에 인자 연결이 실린다 — 재검사가 그 연결로 본다", async () => {
+    const u = await clauseUsageSource(contextualDb(t.db)).documentsReferencing("C010");
+    expect(u[0].bindings).toEqual({ 갱신형: { kind: "discriminator", code: "D0002" } });
+  });
+});

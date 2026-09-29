@@ -12,6 +12,8 @@ import type { Discriminator } from "../catalog/types";
 import { ok, reject } from "../types";
 import type { Code, Coordinate, Id, Issue, Result } from "../types";
 import type { Block, BlockBranch, BulletListNode, Inline, InlineBranch, ItemBodyNode, ItemNode, SubitemBodyNode, SubitemNode } from "./nodes";
+import type { ExprType } from "../expression";
+import { boundDiscriminators, checkUsageBindings, definitionDiscriminators, type Bindings } from "./params";
 import type { Clause, ClauseBody, OptionSelection } from "./types";
 
 // ───────────────────────────── 카탈로그 조회 ─────────────────────────────
@@ -46,10 +48,12 @@ export function checkAttachmentForReference(
   clause: Clause,
   lookup: DiscriminatorLookup,
   coordinate: Coordinate = {},
+  /** 대조할 구분자 — 기본은 정의가 기대는 전부(본문 직접 읽기 + 기본 연결). 사용처 재검사는 그 사용처가 실제로 읽는 것(`boundDiscriminators`). */
+  codes: readonly Code[] = definitionDiscriminators(clause),
 ): AttachmentCheck {
   const broken: Code[] = [];
   const issues: Issue[] = [];
-  for (const code of clause.required.discriminators) {
+  for (const code of codes) {
     if (lookup(code)) continue;
     broken.push(code);
     issues.push({
@@ -196,6 +200,8 @@ export interface Usage {
   refNodeId?: Id;
   /** 그 참조의 마스터 옵션 선택. 없으면 옵션 검사는 건너뛴다. */
   selection?: OptionSelection;
+  /** 그 참조의 인자 연결 (최종 결정 2). 없으면 모든 인자가 기본 연결. */
+  bindings?: Bindings;
 }
 
 export interface RecheckEntry {
@@ -217,18 +223,24 @@ export function usageCoordinate(u: Usage): Coordinate {
   };
 }
 
-/** 사용처 전부를 훑어 문제가 있는 것만 돌려준다 — 요구 구분자 존재 + 옵션 선택. */
+/**
+ * 사용처 전부를 훑어 문제가 있는 것만 돌려준다 — 그 사용처가 읽는 구분자 존재(본문 직접 읽기 + 실제 연결) + 옵션 선택 + 인자 연결.
+ * 인자를 더하거나(연결 누락) 기본 연결을 바꾸면(구분자가 사라짐 · 타입) 여기서 사용처가 오른다 (최종 결정 2). `typeOf` 를 주면 연결 구분자의 타입까지 본다.
+ */
 export function recheckUsages(
   clause: Clause,
   usages: readonly Usage[],
   lookup: DiscriminatorLookup,
+  typeOf?: (code: Code) => ExprType | undefined,
 ): RecheckEntry[] {
   const out: RecheckEntry[] = [];
+  const env = typeOf ? { discriminatorType: typeOf, discriminatorExists: (code: Code) => lookup(code) !== undefined } : {};
   for (const usage of usages) {
     const at = usageCoordinate(usage);
-    const r = checkAttachmentForReference(clause, lookup, at);
+    const r = checkAttachmentForReference(clause, lookup, at, boundDiscriminators(clause, usage.bindings));
     const issues: Issue[] = [...r.issues];
     if (usage.selection) issues.push(...validateOptionSelection(clause, usage.selection, at));
+    issues.push(...checkUsageBindings(clause, usage.bindings, env, at));
     if (issues.length > 0) out.push({ usage, missing: r.missing, issues });
   }
   return out;

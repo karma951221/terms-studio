@@ -92,6 +92,8 @@ export const EDGE_STYLE = {
   link: "dashed",
   appendixRef: "dashed",
   boxRef: "dashed",
+  defaultBinding: "solid",
+  binding: "solid",
   generalDocument: "dashed",
   document: "dashed",
   override: "dashed",

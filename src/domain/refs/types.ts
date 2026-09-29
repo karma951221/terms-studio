@@ -11,6 +11,7 @@
  *
  * DB·React import 금지 (순수층).
  */
+import type { Bindings } from "../clause/params";
 import type { Discriminator, EnumDef } from "../catalog/types";
 import type { Clause } from "../clause/types";
 import type { CoverageNodeLevel, Coverage } from "../coverage/types";
@@ -90,6 +91,10 @@ export type EdgeVia =
   | "appendixRef"
   /** 박스 참조 — 정적 마스터 박스를 그 자리에 편다 */
   | "boxRef"
+  /** 함수조항 → 구분자 — 인자의 기본 연결 (최종 결정 2). 그 구분자를 지우면 정의가 깨진다 */
+  | "defaultBinding"
+  /** 문서(조) → 구분자 — 함수조항 참조 노드의 인자 연결 (사용처가 기본 연결을 바꿈) */
+  | "binding"
   /** 담보약관 → 대응 보통약관 · 상품 → 보통약관 템플릿 */
   | "generalDocument"
   /** 담보 마스터 → 담보약관 문서 */
@@ -111,6 +116,10 @@ export interface RefEdge {
   aggregate?: AggregateOp;
   /** clauseRef — 참조 노드의 옵션 선택. */
   options?: Record<Code, Code>;
+  /** clauseRef — 참조 노드의 인자 연결(없으면 기본 연결). binding · defaultBinding — 그 인자 이름은 `param`. */
+  bindings?: Bindings;
+  /** binding · defaultBinding — 연결한 인자 이름. */
+  param?: string;
   /** override — 오버라이드가 매달린 문서 쪽 노드(조 또는 문서). */
   through?: RefNodeKey;
 }

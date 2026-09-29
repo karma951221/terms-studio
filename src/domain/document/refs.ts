@@ -7,6 +7,7 @@
  */
 
 import { extractRefs, parse } from "../expression";
+import type { Bindings } from "../clause/params";
 import type { Code, Coordinate, Id } from "../types";
 import { coordinateOf, indexTree, type ClauseGate, type DocumentNode } from "./nodes";
 
@@ -17,7 +18,8 @@ export type DocRef =
   | { kind: "masterField"; path: string; via: "when" | "slot"; at: Coordinate }
   | { kind: "attribute"; code: Code; path: string; at: Coordinate }
   | { kind: "builtin"; path: string; at: Coordinate }
-  | { kind: "clause"; clauseCode: Code; options: Record<Code, Code>; mode: "block" | "inline"; at: Coordinate }
+  /** `bindings` = 사용처의 인자 연결(최종 결정 2) — 없으면 기본 연결. */
+  | { kind: "clause"; clauseCode: Code; options: Record<Code, Code>; bindings?: Bindings; mode: "block" | "inline"; at: Coordinate }
   | { kind: "article"; articleId: Id; scope: "self" | "general"; at: Coordinate }
   | { kind: "appendix"; appendixCode: Code; at: Coordinate }
   /** 정적 마스터 박스 참조 (최종 결정 9). */
@@ -71,10 +73,10 @@ export function collectRefs(doc: DocumentNode, base: Coordinate = {}): DocRef[] 
         exprRefs(n.ref, "slot", at);
         break;
       case "clauseBlockRef":
-        out.push({ kind: "clause", clauseCode: n.clauseCode, options: n.options, mode: "block", at });
+        out.push({ kind: "clause", clauseCode: n.clauseCode, options: n.options, ...(n.bindings ? { bindings: n.bindings } : {}), mode: "block", at });
         break;
       case "clauseInlineRef":
-        out.push({ kind: "clause", clauseCode: n.clauseCode, options: n.options, mode: "inline", at });
+        out.push({ kind: "clause", clauseCode: n.clauseCode, options: n.options, ...(n.bindings ? { bindings: n.bindings } : {}), mode: "inline", at });
         break;
       case "articleRef":
         for (const target of n.targets) {
@@ -105,7 +107,7 @@ export function requiredDiscriminators(doc: DocumentNode, gate?: ClauseGate): Co
   };
   for (const r of collectRefs(doc)) {
     if (r.kind === "discriminator") add(r.code);
-    else if (r.kind === "clause" && gate) gate.requiredCodes(r.clauseCode).forEach(add);
+    else if (r.kind === "clause" && gate) gate.requiredCodes(r.clauseCode, r.bindings).forEach(add);
   }
   return codes;
 }

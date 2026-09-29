@@ -10,6 +10,7 @@
  */
 import type { Code, Id } from "../types";
 import type { Block, Inline, ItemBodyNode, SubitemBodyNode } from "./nodes";
+import type { ParamDef } from "./params";
 
 /**
  * 유형 = 출력 모양 (최종 결정 4) — 문구(문장 조각) · 항(항 목록) · 호(호 목록) · 목(목 목록). 유형과 넣는 자리가 맞아야 넣는다.
@@ -40,9 +41,9 @@ export interface OptionDef {
   order: number;
 }
 
-/** 요구 참조 — 본문·선택지 본문의 모든 식에서 자동 추출 (ADR-0010). */
+/** 요구 참조 — 본문·선택지 본문의 모든 식에서 자동 추출. 인자(`arg.X`)는 여기 들지 않는다 — 인자가 읽는 구분자는 연결이 정한다(params.ts). */
 export interface RequiredRefs {
-  /** 구분자 코드 (등장 순, 중복 없음). 부착 검사의 단위. */
+  /** 본문이 **직접** 읽는 구분자 코드 (등장 순, 중복 없음). 기본 연결 구분자는 `definitionDiscriminators` 가 더한다. */
   discriminators: Code[];
   /** 담보속성 종류 코드 (ADR-0015). 탑재 문맥에서 확정된다. */
   attributes: Code[];
@@ -52,6 +53,8 @@ interface ClauseBase {
   code: Code;
   label: string;
   options: OptionDef[];
+  /** 인자 — 본문이 `arg.<이름>` 으로 읽는 입력 선언 (최종 결정 2 · 기능/함수조항 §3.7). 없거나 빈 목록 = 인자 0개(고정 문장). */
+  params?: ParamDef[];
   required: RequiredRefs;
 }
 
@@ -102,6 +105,7 @@ export interface NewClause {
   mode: ClauseMode;
   body?: ClauseBody;
   options?: NewOption[];
+  params?: ParamDef[];
 }
 
 /** 목록 화면용 요약 — 코드 · 표시명 · 모드 · 사용처 수 · 최종수정(언제 · 누가). */

@@ -31,6 +31,7 @@ import {
   setBody,
   setMode,
   setOptionValueBody,
+  setParams,
   unitWarnings,
   usageCoordinate,
   type AttachmentCheck,
@@ -43,6 +44,7 @@ import {
   type NewClause,
   type NewOption,
   type NewOptionValue,
+  type ParamDef,
   type RecheckEntry,
   type RequiredRefs,
   type Usage,
@@ -53,7 +55,7 @@ import type { TypeResolver } from "@/domain/expression";
 import type { Actor, Code, Id, Issue, Result } from "@/domain/types";
 import { ok, reject } from "@/domain/types";
 
-import { listDiscriminators } from "@/db/repo/catalog";
+import { listDiscriminators, listEnums } from "@/db/repo/catalog";
 import * as repo from "@/db/repo/clause";
 import * as documentRepo from "@/db/repo/document";
 import type { Db } from "@/db/repo/types";
@@ -99,6 +101,8 @@ export interface ClauseService {
   rename(actor: Actor, code: Code, label: string): Promise<Result<Clause>>;
   setBody(actor: Actor, code: Code, body: ClauseBody): Promise<Result<SaveOutcome>>;
   setMode(actor: Actor, code: Code, mode: ClauseMode, body: ClauseBody): Promise<Result<SaveOutcome>>;
+  /** 인자 표 교체 (최종 결정 2) — 본문도 함께(같은 저장). 인자 추가 · 기본 연결 변경은 사용처 재검사 목록으로 돌아온다. */
+  setParams(actor: Actor, code: Code, params: ParamDef[], body?: ClauseBody): Promise<Result<SaveOutcome>>;
   duplicate(actor: Actor, code: Code): Promise<Result<Clause>>;
 
   // 옵션 — 비파괴 (선택지·옵션 삭제의 사용처 영향은 recheck 로)
@@ -137,6 +141,7 @@ function typeResolverFrom(catalog: ReadonlyMap<Code, Discriminator>): TypeResolv
       case "builtin":
         return { kind: "string" }; // 뼈대 속성(이름) — MVP 는 문자열
       case "master":
+      case "param": // 인자는 타입 검사의 문맥 플래그(params)가 푼다 — 여기로 오지 않는다
         return undefined;
       case "discriminator": {
         const def = catalog.get(ref.code);
@@ -186,10 +191,17 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
     const generalReferenceIds = await generalReferenceIdsOf(tx);
     const appendixCodes = new Set((await documentRepo.listAppendices(tx)).map((a) => a.code));
     const boxCodes = new Set((await documentRepo.listBoxes(tx)).map((x) => x.code));
+    const enumValues = new Map((await listEnums(tx)).map((e) => [e.code, e.values.map((v) => v.code)]));
     return {
       nextSeq: repo.clauseSeqSource(tx),
       existing,
-      analyze: { resolveType: typeResolverFrom(cat), generalReferenceIds, appendixExists: (c) => appendixCodes.has(c), boxExists: (c) => boxCodes.has(c) },
+      analyze: {
+        resolveType: typeResolverFrom(cat),
+        generalReferenceIds,
+        appendixExists: (c) => appendixCodes.has(c),
+        boxExists: (c) => boxCodes.has(c),
+        enumValues: (c) => enumValues.get(c),
+      },
     };
   }
 
@@ -203,10 +215,14 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
     return fn(def);
   }
 
-  /** 사용처 재검사 — 요구 구분자 존재 + 옵션 선택 (부착은 없다 — ADR-0037). */
-  function recheckOf(clause: Clause, usages: readonly Usage[], lookup: DiscriminatorLookup): RecheckEntry[] {
+  /** 사용처 재검사 — 요구 구분자 존재 + 옵션 선택 + 인자 연결(누락 · 타입) (부착은 없다 — ADR-0037). */
+  function recheckOf(clause: Clause, usages: readonly Usage[], catalog: ReadonlyMap<Code, Discriminator>): RecheckEntry[] {
     if (usages.length === 0) return [];
-    return recheckUsages(clause, usages, lookup);
+    const typeOf = (code: Code) => {
+      const def = catalog.get(code);
+      return def ? discriminatorResultType(def, undefined, catalog) : undefined;
+    };
+    return recheckUsages(clause, usages, lookupIn(catalog), typeOf);
   }
 
   /** 비파괴 변경 (본문·옵션 무관) — 읽기 → 도메인 → 저장. */
@@ -242,7 +258,7 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
     );
     if (!saved.ok) return saved as Result<SaveOutcome>;
     const usages = await usage.documentsReferencing(saved.value.code);
-    return ok({ clause: saved.value, recheck: recheckOf(saved.value, usages, lookupIn(catalog!)), warnings: unitWarnings(saved.value, usages.length) });
+    return ok({ clause: saved.value, recheck: recheckOf(saved.value, usages, catalog!), warnings: unitWarnings(saved.value, usages.length) });
   }
 
   return {
@@ -283,6 +299,7 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
     rename: (actor, code, label) => edit(actor, code, (def, ctx) => renameClause(def, label, ctx.existing)),
     setBody: (actor, code, body) => editAndRecheck(actor, code, (def, ctx) => setBody(def, body, ctx.analyze)),
     setMode: (actor, code, mode, body) => editAndRecheck(actor, code, (def, ctx) => setMode(def, mode, body, ctx.analyze)),
+    setParams: (actor, code, params, body) => editAndRecheck(actor, code, (def, ctx) => setParams(def, params, body, ctx.analyze)),
     duplicate: (actor, code) =>
       db.transaction((tx) =>
         withClause(tx, code, async (def) => {
@@ -337,6 +354,6 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
         ok(checkAttachmentForReference(def, await lookupOf(db), { ownerId: owner.id })),
       ),
 
-    recheck: (code) => withClause(db, code, async (def) => ok(recheckOf(def, await usage.documentsReferencing(code), await lookupOf(db)))),
+    recheck: (code) => withClause(db, code, async (def) => ok(recheckOf(def, await usage.documentsReferencing(code), await catalogOf(db)))),
   };
 }

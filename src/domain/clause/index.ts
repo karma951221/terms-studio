@@ -7,10 +7,14 @@
  * - body.ts        : analyzeBody (허용 노드 규칙 · 식 파싱 · 요구 구분자 추출) · collectExpressions
  * - definitions.ts : 생성·변경·옵션·복제 규칙 (ClauseContext 주입)
  * - reference.ts   : 부착 검사 · 옵션 선택 검증 · 오버라이드 해소 · expandClause · 사용처 재검사
+ * - params.ts      : 인자 · 인자 연결 · 기본 연결 (검사 ① 인자 표 · 검사 ② 사용처 연결)
+ * - bind.ts        : applyBindings — 펼치기 전에 arg.X 를 연결로 바꿔 쓴다
  */
+export * from "./bind";
 export * from "./body";
 export * from "./codes";
 export * from "./definitions";
 export * from "./nodes";
+export * from "./params";
 export * from "./reference";
 export * from "./types";

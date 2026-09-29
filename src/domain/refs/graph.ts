@@ -318,6 +318,10 @@ function addClause(b: Builder, clause: Clause): void {
     for (const v of o.values) b.node({ key: { kind: "clauseOptionValue", clauseCode: clause.code, optionCode: o.code, valueCode: v.code }, label: v.label, parent: okey });
   }
   const base: Coordinate = { document: "clause", ownerId: clause.code, ownerName: clause.label };
+  // 인자의 기본 연결 → 구분자 (최종 결정 2) — 그 구분자를 지우면 정의가 깨진다(삭제 영향 · 사용처 읽기의 재료)
+  for (const p of clause.params ?? []) {
+    if (p.default?.kind === "discriminator") b.edge({ from: key, to: { kind: "discriminator", code: p.default.code }, via: "defaultBinding", at: { ...base, refPath: `arg.${p.name}` }, param: p.name });
+  }
   const bodies: { body: readonly ClauseNode[]; path: Id[] }[] = [
     { body: clause.body, path: [] },
     ...clause.options.flatMap((o) => o.values.map((v) => ({ body: v.body, path: [o.code, v.code] }))),
@@ -386,7 +390,11 @@ function addDocument(b: Builder, doc: DocumentInput): Map<Id, RefNodeKey> {
       case "builtin":
         break;
       case "clause":
-        b.edge({ from, to: { kind: "clause", code: r.clauseCode }, via: "clauseRef", at: r.at, options: r.options });
+        b.edge({ from, to: { kind: "clause", code: r.clauseCode }, via: "clauseRef", at: r.at, options: r.options, ...(r.bindings ? { bindings: r.bindings } : {}) });
+        // 사용처의 인자 연결 → 구분자 (기본 연결을 바꾼 것만 — 기본 연결은 함수조항의 defaultBinding 간선)
+        for (const [param, binding] of Object.entries(r.bindings ?? {})) {
+          if (binding.kind === "discriminator") b.edge({ from, to: { kind: "discriminator", code: binding.code }, via: "binding", at: { ...r.at, refPath: `${r.clauseCode}.arg.${param}` }, param });
+        }
         for (const [optionCode, valueCode] of Object.entries(r.options)) {
           b.edge({ from, to: { kind: "clauseOptionValue", clauseCode: r.clauseCode, optionCode, valueCode }, via: "optionSelect", at: { ...r.at, refPath: `${r.clauseCode}.${optionCode}` } });
         }

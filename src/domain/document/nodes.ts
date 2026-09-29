@@ -17,6 +17,7 @@
 
 import { CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, type AttachLevel, type Code, type Coordinate, type Id, type Issue, type ReferenceConnector } from "../types";
 import type { ClauseMode } from "../clause/types";
+import type { Bindings } from "../clause/params";
 
 // ───────────────────────────── 인라인 ─────────────────────────────
 
@@ -89,6 +90,8 @@ export interface ClauseInlineRefNode {
   clauseCode: Code;
   /** optionCode → 선택한 valueCode. 미선택 옵션은 키 없음. */
   options: Record<Code, Code>;
+  /** 인자 연결 — 인자 이름 → 연결 (최종 결정 2). 없는 인자는 기본 연결을 쓴다. 비면 키를 싣지 않는다. */
+  bindings?: Bindings;
 }
 
 /**
@@ -233,6 +236,8 @@ export interface ClauseBlockRefNode {
   kind: "clauseBlockRef";
   clauseCode: Code;
   options: Record<Code, Code>;
+  /** 인자 연결 — 인자 이름 → 연결 (최종 결정 2). 없는 인자는 기본 연결을 쓴다. 비면 키를 싣지 않는다. */
+  bindings?: Bindings;
   /** 보통약관의 항 단위 준용·생략 판정에서 이 block 참조가 만든 항을 뺀다. */
   excludeFromComparison?: boolean;
 }
@@ -569,14 +574,17 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
  * - missingRequired : 요구 구분자 중 **카탈로그에 없는** 코드 — 검사 ② (a) 「요구 구분자가 지금 존재하는가」(기능/함수조항 §3.4).
  *                     비어 있지 않으면 참조 추가 미성립 · 저장 거부 (brokenRef)
  * - validateOptions : 선택 옵션 검사 — 미선택 `optionUnselected`(저장 시점만 거부, 기능/함수조항 §3.2) · 집합 밖 `optionInvalid`
+ * - validateBindings: 인자 연결 검사 — 누락 `argUnbound`(저장 시점만 거부) · 타입 불일치 · 없는 인자 (최종 결정 2 · 기능/함수조항 §3.7)
+ * requiredCodes · missingRequired 는 사용처 연결(`bindings`)을 받는다 — 사용처가 읽는 구분자 = 본문 직접 읽기 + 실제 연결(사용처 연결 > 기본 연결).
  */
 export interface ClauseGate {
   clauseExists(code: Code): boolean;
   /** 함수조항 유형 — 있으면 참조 자리를 유형별로 본다(문구 = 문장 안 · 항 = 조 자리 · 호 = 호 목록 · 목 = 목 목록). */
   clauseMode?(code: Code): ClauseMode | undefined;
-  requiredCodes(code: Code): Code[];
-  missingRequired(code: Code): Code[];
+  requiredCodes(code: Code, bindings?: Bindings): Code[];
+  missingRequired(code: Code, bindings?: Bindings): Code[];
   validateOptions(code: Code, options: Record<Code, Code>): Issue[];
+  validateBindings?(code: Code, bindings: Bindings | undefined): Issue[];
 }
 
 export const PERMISSIVE_GATE: ClauseGate = {
@@ -719,7 +727,7 @@ export function checkClauseRef(
     return [{ kind: "brokenRef", message: `함수조항 ${node.clauseCode} 가 없습니다`, at }];
   }
   const issues: Issue[] = [];
-  const missing = gate.missingRequired(node.clauseCode);
+  const missing = gate.missingRequired(node.clauseCode, node.bindings);
   if (missing.length > 0) {
     const codes = missing.join(" · ");
     const message = `함수조항 ${node.clauseCode} 의 요구 구분자 ${codes} 이(가) 카탈로그에 없습니다${atSave ? "" : " — 참조 추가 미성립"}`;
@@ -727,6 +735,11 @@ export function checkClauseRef(
   }
   for (const i of gate.validateOptions(node.clauseCode, node.options)) {
     if (!atSave && i.kind === "optionUnselected") continue;
+    issues.push({ ...i, at: { ...at, ...i.at } });
+  }
+  // 인자 연결 (최종 결정 2) — 누락은 옵션 미선택처럼 저장 시점에만 거부한다(넣는 순간엔 아직 대지 않았다)
+  for (const i of gate.validateBindings?.(node.clauseCode, node.bindings) ?? []) {
+    if (!atSave && i.kind === "argUnbound") continue;
     issues.push({ ...i, at: { ...at, ...i.at } });
   }
   return issues;

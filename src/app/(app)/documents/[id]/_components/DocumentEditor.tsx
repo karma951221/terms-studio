@@ -207,7 +207,7 @@ export function DocumentEditor(props: EditorProps) {
 
   // ── 검증 재료 — 서버 저장 검증과 같은 한 벌(validateDocument)을 서버가 넘긴 정의로 짓는다 ──
   const coordinate: Coordinate = useMemo(() => ({ document: doc.kind, ownerId: doc.ownerId ?? doc.id, documentId: doc.id, ownerName: doc.title }), [doc.kind, doc.ownerId, doc.id, doc.title]);
-  const gate = useMemo(() => clauseGateFrom(props.clauses, props.discriminators.map((d) => d.code)), [props.clauses, props.discriminators]);
+  const gate = useMemo(() => clauseGateFrom(props.clauses, props.discriminators.map((d) => d.code), catalogTypeResolver(props.discriminators)), [props.clauses, props.discriminators]);
   const appendixCodes = useMemo(() => new Set(props.appendices.map((a) => a.code)), [props.appendices]);
   const boxByCode = useMemo(() => new Map(props.boxes.map((x) => [x.code, x] as const)), [props.boxes]);
   /** 보통약관 캐시 → 편집 환경. 렌더는 상태의 캐시로, 명령 적용은 방금 받은 것까지 든 ref 의 캐시로 만든다. */

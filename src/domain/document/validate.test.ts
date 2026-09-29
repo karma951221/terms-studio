@@ -4,7 +4,7 @@ import type { Discriminator } from "../catalog/types";
 import type { BlockClause } from "../clause/types";
 import type { Issue } from "../types";
 import { nodeBuilders, sequentialIds } from "./builders";
-import { PERMISSIVE_GATE, validateTree } from "./nodes";
+import { checkClauseRef, PERMISSIVE_GATE, validateTree } from "./nodes";
 import { blockingIssues, catalogTypeResolver, clauseGateFrom, validateDocument } from "./validate";
 
 const catalog: Discriminator[] = [
@@ -92,5 +92,52 @@ describe("함수조항 참조 자리 — 유형 = 출력 모양 (최종 결정 4
       "함수조항 C2 — 「항」 함수조항은 조 자리(항 사이)에만 둘 수 있습니다",
       "함수조항 C2 — 「항」 함수조항은 조 자리(항 사이)에만 둘 수 있습니다",
     ]);
+  });
+});
+
+describe("검사 ② — 함수조항 인자 연결 (최종 결정 2 · 기능/함수조항 §3.7)", () => {
+  const cat: Discriminator[] = [
+    ...catalog,
+    { code: "D0002", label: "담보명", description: "", level: "coverage", expression: "coverage_basic.claim_name", resultType: { kind: "string" } },
+    { code: "D0003", label: "갱신형(상품)", description: "", level: "coverage", expression: "coverage.renewal2", resultType: { kind: "boolean" } },
+  ];
+  const 지급사유: BlockClause = {
+    code: "C0002",
+    label: "지급사유",
+    mode: "block",
+    body: [{ id: "p1", kind: "paragraph", children: [{ id: "s1", kind: "slot", ref: "arg.담보명" }] }],
+    options: [],
+    params: [
+      { name: "담보명", type: { kind: "string" }, default: { kind: "discriminator", code: "D0002" } },
+      { name: "갱신형", type: { kind: "boolean" } },
+    ],
+    required: { discriminators: [], attributes: [] },
+  };
+  const gate = clauseGateFrom([지급사유], cat.map((d) => d.code), catalogTypeResolver(cat));
+  const b = nodeBuilders(sequentialIds("n"));
+  const docWith = (bindings?: Record<string, { kind: "discriminator"; code: string } | { kind: "const"; value: boolean }>) =>
+    b.document("D", [b.article("조", [{ ...b.clauseBlock("C0002"), ...(bindings ? { bindings } : {}) }])]);
+
+  it("기본 연결 없는 인자를 연결하지 않으면 저장 오류", () => {
+    expect(validateTree(docWith(), { clauseGate: gate }).map((i) => [i.kind, i.at.refPath])).toEqual([["argUnbound", "arg.갱신형"]]);
+  });
+
+  it("기본 연결이면 연결 없이 통과 — 다른 인자만 대면 된다", () => {
+    expect(validateTree(docWith({ 갱신형: { kind: "discriminator", code: "D0003" } }), { clauseGate: gate })).toEqual([]);
+  });
+
+  it("연결 구분자 타입이 다르면 오류", () => {
+    expect(validateTree(docWith({ 갱신형: { kind: "discriminator", code: "D0002" } }), { clauseGate: gate }).map((i) => i.kind)).toEqual(["typeMismatch"]);
+  });
+
+  it("사용처가 읽는 구분자 = 기본 연결 + 사용처 연결 — 카탈로그에 없는 연결 구분자는 요구 구분자 오류", () => {
+    expect(gate.requiredCodes("C0002", { 갱신형: { kind: "discriminator", code: "D0003" } })).toEqual(["D0002", "D0003"]);
+    const shrunk = clauseGateFrom([지급사유], ["D0001", "D0003"], catalogTypeResolver(cat));
+    expect(shrunk.missingRequired("C0002", { 갱신형: { kind: "const", value: true } })).toEqual(["D0002"]);
+  });
+
+  it("참조 추가 시점에는 연결 누락을 거르지 않는다 — 저장 때 잡는다", () => {
+    expect(checkClauseRef(b.clauseBlock("C0002"), gate, {}, false)).toEqual([]);
+    expect(checkClauseRef(b.clauseBlock("C0002"), gate, {}, true).map((i) => i.kind)).toEqual(["argUnbound"]);
   });
 });

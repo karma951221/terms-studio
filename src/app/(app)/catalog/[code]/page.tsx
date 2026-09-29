@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 const VIA_LABEL = {
   when: "조건식", slot: "치환 슬롯", expression: "파생식", nodeQualifier: "노드 한정자", clauseRef: "함수조항 참조", optionSelect: "옵션 선택",
-  override: "옵션 오버라이드", articleRef: "조 참조", link: "조연결", appendixRef: "별표 참조", boxRef: "박스 참조", generalDocument: "보통약관 연결",
+  override: "옵션 오버라이드", articleRef: "조 참조", link: "조연결", appendixRef: "별표 참조", boxRef: "박스 참조", defaultBinding: "인자 기본 연결", binding: "인자 연결", generalDocument: "보통약관 연결",
   document: "담보약관", type: "타입", mount: "탑재", combination: "조합",
 } as const satisfies Record<EdgeVia, string>;
 

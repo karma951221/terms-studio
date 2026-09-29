@@ -4,9 +4,9 @@
  * - 조건은 **밟은 자리만** 평가한다 (ADR-0016): 가지를 앞에서부터 보다 true 인 첫 가지(또는 else)를 택하고,
  *   택하지 않은 가지 안쪽은 들여다보지 않는다. 오류·미결이면 조건 노드 전체가 오류 마커가 된다 — 조립 문맥에
  *   미결이 남았다는 것은 값이 없다는 뜻이므로 원인에 맞는 Issue 로 바꾼다 (`explainUndetermined`).
- * - 공용조항 참조는 `resolveOptions`(오버라이드 > 마스터, 기능/상품 §3.6) + `expandClause` 로 본문을 그 자리에 펼치고,
- *   펼친 본문의 조건·슬롯은 **사용처 문맥**으로 계속 해소한다 (늦은 바인딩, ADR-0010).
- *   옵션 미선택·무효 · 없는 공용조항은 오류 마커.
+ * - 함수조항 참조는 `applyBindings`(인자 → 사용처 연결 · 없으면 기본 연결, 최종 결정 2) + `resolveOptions`(오버라이드 > 마스터, 기능/상품 §3.6)
+ *   + `expandClause` 로 본문을 그 자리에 펼치고, 펼친 본문의 조건·슬롯은 **사용처 문맥**으로 계속 해소한다(연결한 구분자는 사용처 문맥에서 푼다).
+ *   연결 누락 · 옵션 미선택·무효 · 없는 함수조항은 오류 마커.
  * - 반복(forBlock · inlineFor)은 MVP 자리만 — 만나면 `structure` 오류 마커 (구현 P7).
  * - **행 반복 표**(ADR-0070 결정 6)는 특약 문맥의 행 원천(`ctx.rows` — 상품담보 스냅샷)으로 펼친다:
  *   key 조합마다 템플릿 행 복제 · 구조 표기 → key 표기 · 바깥 key 세로 병합(spans). 조합이 0 이면 표를 생략한다.
@@ -31,8 +31,11 @@ import type {
   SubitemCondBlockNode as ClauseSubitemCondBlockNode,
   SubitemNode as ClauseSubitemNode,
 } from "../clause/nodes";
+import { applyBindings } from "../clause/bind";
+import type { Bindings } from "../clause/params";
 import { expandClause, resolveOptions } from "../clause/reference";
 import type { Clause, ClauseMode, OptionSelection } from "../clause/types";
+import type { EnumDef } from "../catalog/types";
 import type { Box } from "../document/box";
 import type { ArticleNode, BoxNode, BoxRefNode, BulletListNode, BulletNode, ClauseBlockRefNode, CondBlockNode, DocumentNode, ForBlockNode, InlineNode, ItemNode, ParagraphNode, SectionNode, SubitemNode, TableNode } from "../document/nodes";
 import { evaluate, parse, type EvalContext } from "../expression";
@@ -40,6 +43,7 @@ import { expandRepeatTable } from "../document/repeat";
 import { descend, enumerateRows, type StructNodeRef } from "../structure";
 import type { Code, Coordinate, Id, Issue } from "../types";
 import type { AssemblyContext } from "./context";
+import { formatValue } from "./substitute";
 import type { ErrorNode, RArticle, RBulletList, RInline, RItem, RParagraph, ResolvedDoc, RSection, RStatic, RSubitem } from "./types";
 
 export interface ResolveEnv {
@@ -50,6 +54,8 @@ export interface ResolveEnv {
   overrides: ReadonlyMap<Id, OptionSelection>;
   /** 문서 기본 좌표 (document · ownerId · ownerName). */
   coordinate: Coordinate;
+  /** 열거형 — 함수조항 인자의 enum 상수 연결을 슬롯에 찍을 때 표시명으로 (없으면 코드). */
+  enums?: ReadonlyMap<Code, EnumDef>;
 }
 
 export interface ResolveOutcome {
@@ -181,12 +187,20 @@ class Walker {
 
   /** 공용조항 참조 → 펼친 본문 (옵션 해소 포함). 실패면 오류 마커. */
   expand(
-    node: { id: Id; clauseCode: Code; options: OptionSelection },
+    node: { id: Id; clauseCode: Code; options: OptionSelection; bindings?: Bindings },
     modes: readonly ClauseMode[],
     at: Coordinate,
   ): { ok: true; mode: ClauseMode; body: (ClauseInline | ClauseBlock)[] } | { ok: false; marker: ErrorNode } {
-    const clause = this.env.clauses.get(node.clauseCode);
-    if (!clause) return { ok: false, marker: this.error(node.id, { kind: "brokenRef", message: `함수조항 ${node.clauseCode} 이(가) 없습니다`, at }) };
+    const defined = this.env.clauses.get(node.clauseCode);
+    if (!defined) return { ok: false, marker: this.error(node.id, { kind: "brokenRef", message: `함수조항 ${node.clauseCode} 이(가) 없습니다`, at }) };
+    // 인자 연결 — 펼치기 전에 arg.X 를 사용처 연결(없으면 기본 연결)로 바꿔 쓴다
+    const bound = applyBindings(defined, node.bindings, (value, param) => this.constText(value, param.type), at);
+    if (!bound.ok) {
+      const issues = bound.rejection.reason === "invalid" ? bound.rejection.issues : [{ kind: "argUnbound" as const, message: `함수조항 ${node.clauseCode} 의 인자를 연결할 수 없습니다`, at }];
+      this.issues.push(...issues);
+      return { ok: false, marker: { kind: "error", id: node.id, issue: issues[0] } };
+    }
+    const clause = bound.value;
     if (!modes.includes(clause.mode)) {
       return { ok: false, marker: this.error(node.id, { kind: "structure", message: `함수조항 ${node.clauseCode} 은(는) 「${MODE_WORD[clause.mode]}」 유형이라 ${modes.map((m) => `「${MODE_WORD[m]}」`).join(" · ")} 자리에 올 수 없습니다`, at }) };
     }
@@ -201,6 +215,12 @@ class Walker {
       return { ok: false, marker: this.error(node.id, { ...issue, at: { ...at, ...issue.at } }) };
     }
     return { ok: true, mode: clause.mode, body: expanded.value as (ClauseInline | ClauseBlock)[] };
+  }
+
+  /** 상수 연결의 슬롯 글 — 조립의 값 표기 규칙(substitute `formatValue`)을 그대로 쓴다. enum 은 표시명(열거형을 알 때). */
+  constText(value: string | number | boolean, type: { kind: string; enumCode?: Code }): string {
+    const f = formatValue(value, type.kind === "enum" && this.env.enums && type.enumCode ? { kind: "enum", enumCode: type.enumCode } : undefined, this.env.enums ?? new Map(), this.env.coordinate);
+    return f.ok ? f.text : String(value);
   }
 
   /** 정적 마스터 박스 참조 → 박스(제목 + 고정 글 줄). 줄 id 는 `${참조노드id}/l${n}` (옛 문면 박스와 같은 모양). */

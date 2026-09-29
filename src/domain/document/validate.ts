@@ -7,7 +7,7 @@
  * 검증 재료(공용조항 게이트 · 식 타입 조회)도 여기서 만든다 — 서버는 DB 에서 읽은 정의로, 브라우저는 서버가 넘긴 같은 정의로.
  */
 import { discriminatorResultType, type Discriminator } from "../catalog";
-import { validateOptionSelection, type Clause } from "../clause";
+import { boundDiscriminators, checkUsageBindings, validateOptionSelection, type Clause } from "../clause";
 import type { ExprType, TypeResolver } from "../expression";
 import type { Code, Issue } from "../types";
 import { validateExpressions, type ExpressionScope } from "./expressions";
@@ -46,20 +46,32 @@ export function catalogTypeResolver(defs: readonly Discriminator[], attributeVal
 }
 
 /**
- * 공용조항 게이트 — 정의 존재 · 요구 구분자 · 옵션 선택 검증 (ADR-0010 · 기능/함수조항 §3.2).
- * `missingRequired` 는 요구 구분자를 카탈로그 코드와 대조한다 (기능/함수조항 §3.4).
+ * 함수조항 게이트 — 정의 존재 · 요구 구분자 · 옵션 선택 · 인자 연결 검증 (기능/함수조항 §3.2 · §3.7).
+ * `missingRequired` 는 사용처가 읽는 구분자(본문 직접 읽기 + 실제 연결)를 카탈로그 코드와 대조한다 (기능/함수조항 §3.4).
+ * `resolve` 를 주면 연결 구분자의 타입까지 본다(없으면 누락 · 없는 인자만).
  */
-export function clauseGateFrom(clauses: readonly Clause[], catalogCodes: Iterable<Code>): ClauseGate {
+export function clauseGateFrom(clauses: readonly Clause[], catalogCodes: Iterable<Code>, resolve?: TypeResolver): ClauseGate {
   const byCode = new Map(clauses.map((c) => [c.code, c]));
   const catalog = new Set(catalogCodes);
+  const required = (code: Code, bindings?: Parameters<ClauseGate["requiredCodes"]>[1]) => {
+    const clause = byCode.get(code);
+    return clause ? boundDiscriminators(clause, bindings) : [];
+  };
   return {
     clauseExists: (code) => byCode.has(code),
     clauseMode: (code) => byCode.get(code)?.mode,
-    requiredCodes: (code) => byCode.get(code)?.required.discriminators ?? [],
-    missingRequired: (code) => (byCode.get(code)?.required.discriminators ?? []).filter((d) => !catalog.has(d)),
+    requiredCodes: required,
+    missingRequired: (code, bindings) => required(code, bindings).filter((d) => !catalog.has(d)),
     validateOptions: (code, options) => {
       const clause = byCode.get(code);
       return clause ? validateOptionSelection(clause, options) : [];
+    },
+    validateBindings: (code, bindings) => {
+      const clause = byCode.get(code);
+      if (!clause) return [];
+      // 카탈로그에 없는 연결 구분자는 missingRequired 가 낸다 — 여기서는 타입만
+      const env = resolve ? { discriminatorType: (c: Code) => resolve({ kind: "discriminator", code: c }), discriminatorExists: (c: Code) => catalog.has(c) } : {};
+      return checkUsageBindings(clause, bindings, env);
     },
   };
 }

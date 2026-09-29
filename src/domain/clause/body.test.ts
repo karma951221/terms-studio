@@ -339,3 +339,36 @@ describe("호 · 목 유형 본문 — 목록 자리 규칙 · 식 수집 · 제
     expect(r.ok).toBe(false);
   });
 });
+
+describe("검사 ① — 인자 (최종 결정 2 · 기능/함수조항 §3.7)", () => {
+  const params = [
+    { name: "갱신형", type: { kind: "boolean" as const } },
+    { name: "사유", type: { kind: "enum" as const, enumCode: "E0001" } },
+    { name: "담보명", type: { kind: "string" as const }, default: { kind: "discriminator" as const, code: "D0001" } },
+  ];
+  const resolveType = (ref: { kind: string; code?: string }) => (ref.kind === "discriminator" && ref.code === "D0001" ? ({ kind: "string" } as const) : undefined);
+
+  it("본문이 선언되지 않은 인자를 읽으면 오류 — 타입 조회가 없어도 잡는다", () => {
+    const body: Inline[] = [{ id: "s1", kind: "slot", ref: "arg.없는인자" }];
+    const issues = issuesOf(analyzeBody("inline", body, [], {}, params));
+    expect(issues).toEqual([expect.objectContaining({ kind: "brokenRef", message: expect.stringContaining("선언되지 않은 인자"), at: expect.objectContaining({ nodePath: ["s1"], refPath: "arg.없는인자" }) })]);
+  });
+
+  it("선언된 인자는 선언 타입으로 검사한다 — enum 인자와 코드 비교 · string 인자 슬롯", () => {
+    const body: Inline[] = [
+      { id: "c1", kind: "inlineCond", branches: [{ id: "b1", when: "arg.사유 = 'V01' and arg.갱신형", children: [{ id: "t1", kind: "text", text: "암" }] }] },
+      { id: "s1", kind: "slot", ref: "arg.담보명" },
+    ];
+    expect(unwrap(analyzeBody("inline", body, [], { resolveType }, params))).toEqual({ discriminators: [], attributes: [] });
+  });
+
+  it("boolean 인자를 슬롯에 찍으면 슬롯 타입 오류", () => {
+    const body: Inline[] = [{ id: "s1", kind: "slot", ref: "arg.갱신형" }];
+    expect(issuesOf(analyzeBody("inline", body, [], { resolveType }, params)).map((i) => i.kind)).toEqual(["typeMismatch"]);
+  });
+
+  it("인자 표의 잘못(기본 연결 구분자가 없음)도 검사 ① 이다", () => {
+    const bad = [{ name: "담보명", type: { kind: "string" as const }, default: { kind: "discriminator" as const, code: "D0099" } }];
+    expect(issuesOf(analyzeBody("inline", [], [], { resolveType }, bad))).toEqual([expect.objectContaining({ kind: "brokenRef", at: expect.objectContaining({ refPath: "D0099" }) })]);
+  });
+});

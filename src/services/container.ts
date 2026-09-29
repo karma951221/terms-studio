@@ -72,7 +72,7 @@ export interface ContainerOptions {
 async function clauseGateOf(tx: Db): Promise<ClauseGate> {
   const [clauses, defs] = await Promise.all([clauseRepo.listClauses(tx), catalogRepo.listDiscriminators(tx)]);
   // 브라우저 편집본도 같은 정의로 같은 게이트를 만든다 (ADR-0074) — 구성은 도메인 한 벌
-  return clauseGateFrom(clauses, defs.map((d) => d.code));
+  return clauseGateFrom(clauses, defs.map((d) => d.code), catalogTypeResolver(defs));
 }
 
 /** 식 타입 조회 — 카탈로그 정의 + 담보속성 카탈로그(`attr.X` 의 유효값). 없는 담보속성은 깨진 참조. */

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import type { Binding } from "../clause/params";
+import type { Clause } from "../clause/types";
 import type { DocumentNode } from "../document/nodes";
 import type { Code } from "../types";
 import { assemble } from "./booklet";
@@ -213,6 +215,69 @@ describe("참조 슬롯 렌더", () => {
       const article = result.doc.children[0];
       if (article.kind !== "article" || article.children[0].kind !== "paragraph") throw new Error("unexpected error");
       expect(article.children[0].children[0]).toMatchObject({ label: "제2조(둘)부터 제5조(다섯)까지" });
+    });
+  });
+
+  describe("함수조항 인자 연결 — 같은 함수조항을 사용처마다 다른 값으로 (최종 결정 2 · 기능/함수조항 §3.7)", () => {
+    /** 인자 조건(boolean) · 이름(string, 기본 연결 D0007 감액기간문구) — 조건이면 「참」 아니면 「거짓」, 뒤에 이름. */
+    const 판정: Clause = {
+      code: "C0100",
+      label: "판정",
+      mode: "block",
+      body: [
+        {
+          id: "p",
+          kind: "paragraph",
+          children: [
+            { id: "c", kind: "inlineCond", branches: [{ id: "c-if", when: "arg.조건", children: [text("t1", "참")] }, { id: "c-else", children: [text("t2", "거짓")] }] },
+            text("t3", " · "),
+            { id: "s", kind: "slot", ref: "arg.이름" },
+          ],
+        },
+      ],
+      options: [],
+      params: [
+        { name: "조건", type: { kind: "boolean" } },
+        { name: "이름", type: { kind: "string" }, default: { kind: "discriminator", code: "D0007" } },
+      ],
+      required: { discriminators: [], attributes: [] },
+    };
+    function lines(bindings: readonly Record<string, Binding>[]): string[] {
+      const input = alphaPlusFixture();
+      const coverage = coverageEntry({
+        id: "pc-z",
+        name: "pc-z",
+        coverageId: "cov-death",
+        coverageName: "일반상해사망",
+        attributes: [],
+        subCoverages: [{ id: "pc-z-sub", masterNodeId: "sub-death", name: "일반상해사망", benefits: [{ id: "pc-z-ben", masterNodeId: "ben-death", name: "사망보험금" }] }],
+        values: { "pc-z": { "coverage_basic.renewal": false, "coverage_basic.reduction_months": 24, "coverage_basic.reduction_text": "24개월" }, "pc-z-ben": { "pay.exempt": true, "pay.rate": 100 } },
+      });
+      const ctx = specialContext(input, coverage);
+      const doc: DocumentNode = { kind: "document", id: "s", title: "특약", children: [{ kind: "article", id: "a", title: "조", children: bindings.map((b, i) => ({ kind: "clauseBlockRef", id: `r${i}`, clauseCode: "C0100", options: {}, bindings: b })) }] };
+      const enums = new Map(input.enums.map((e) => [e.code, e]));
+      const resolved = resolveDocument(doc, ctx, { clauses: new Map([["C0100", 판정]]), overrides: new Map(), coordinate: at, enums });
+      const substituted = substituteSlots(resolved.doc, ctx, { catalog: new Map(input.catalog.map((d) => [d.code, d])), enums, master: input.master });
+      expect([...resolved.issues, ...substituted.issues]).toEqual([]);
+      const article = substituted.doc.children[0];
+      if (article.kind !== "article") throw new Error("unexpected");
+      return article.children.map((p) => (p.kind === "paragraph" ? p.children.map((c) => (c.kind === "text" ? c.text : "?")).join("") : "?"));
+    }
+
+    it("두 사용처가 다른 구분자로 연결하면 각자 값대로 — 갱신여부(거짓) · 면책여부합(참)", () => {
+      expect(lines([{ 조건: { kind: "discriminator", code: "D0001" } }, { 조건: { kind: "discriminator", code: "D0005" } }])).toEqual(["거짓 · 24개월", "참 · 24개월"]);
+    });
+
+    it("상수 연결 — 조건은 그 값으로, 이름은 그 글로(기본 연결을 바꾼다)", () => {
+      expect(lines([{ 조건: { kind: "const", value: true }, 이름: { kind: "const", value: "골절진단비" } }])).toEqual(["참 · 골절진단비"]);
+    });
+
+    it("연결이 빠지면 그 자리가 argUnbound 오류 마커다", () => {
+      const input = alphaPlusFixture();
+      const ctx = buildContexts(input).specials.get("pc-basic")!;
+      const doc: DocumentNode = { kind: "document", id: "s", title: "특약", children: [{ kind: "article", id: "a", title: "조", children: [{ kind: "clauseBlockRef", id: "r", clauseCode: "C0100", options: {} }] }] };
+      const resolved = resolveDocument(doc, ctx, { clauses: new Map([["C0100", 판정]]), overrides: new Map(), coordinate: at });
+      expect(resolved.issues.map((i) => [i.kind, i.at.refPath])).toEqual([["argUnbound", "arg.조건"]]);
     });
   });
 

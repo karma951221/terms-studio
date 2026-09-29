@@ -196,6 +196,8 @@ export const REFERENCE_VIA_LABEL = {
   link: "조연결",
   appendixRef: "별표 참조",
   boxRef: "박스 참조",
+  defaultBinding: "인자 기본 연결",
+  binding: "인자 연결",
   generalDocument: "대응 보통약관",
   document: "담보약관 연결",
   type: "타입",

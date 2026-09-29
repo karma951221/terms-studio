@@ -43,6 +43,8 @@ export const ALL_EDGE_VIAS = [
   "link",
   "appendixRef",
   "boxRef",
+  "defaultBinding",
+  "binding",
   "generalDocument",
   "document",
   "override",
