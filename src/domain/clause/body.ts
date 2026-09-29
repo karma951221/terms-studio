@@ -16,7 +16,7 @@
  */
 import { checkTypes, extractRefs, parse } from "../expression";
 import type { EnumInfo, Expr, ExprType, Ref, TypeResolver } from "../expression";
-import { CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, ok, reject } from "../types";
+import { CONNECTOR_REPEAT_MESSAGE, CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, ok, reject } from "../types";
 import type { Code, Coordinate, Id, Issue, Result } from "../types";
 import { BLOCK_KINDS, HOST_PATH, INLINE_KINDS } from "./nodes";
 import type { AnySwitchNode, Block, BoxRefNode, BulletListNode, ClauseNode, Inline, InlineBranch, BlockBranch, ItemBodyNode, ItemNode, SubitemBodyNode, SwitchCase } from "./nodes";
@@ -148,6 +148,8 @@ export interface AnalyzeOptions {
   resolveType?: TypeResolver;
   /** 보통약관 마스터의 참조 대상 열쇠(조 id · 조#코드, `refKey`) — 있으면 조 참조 대상 존재를 검사한다. */
   generalReferenceKeys?: ReadonlySet<string>;
+  /** 보통약관의 반복 블록 안 대상 열쇠 — 대상이 하나여도 연결어가 필요하다(결정 14 확장 · ADR-0077 결정 7). */
+  generalRepeatedKeys?: ReadonlySet<string>;
   /** 별표 존재 조회 — 있으면 별표 참조 대상 존재를 검사한다. */
   appendixExists?: (code: Code) => boolean;
   /** 정적 마스터 박스 존재 조회 — 있으면 박스 참조 대상 존재를 검사한다. */
@@ -294,6 +296,7 @@ export function analyzeBody(
           report("structure", `조 참조 범위를 알 수 없습니다: ${String(node.scope)}`, here);
           return;
         }
+        let repeated = false;
         for (const t of node.targets) {
           if (typeof t?.articleId !== "string" || t.host !== undefined) {
             report("structure", "보통약관 참조 대상은 조(와 항 · 호 · 목의 코드)여야 합니다", here);
@@ -301,7 +304,9 @@ export function analyzeBody(
           }
           const key = refKey({ articleId: t.articleId, ...(t.code !== undefined ? { code: t.code } : {}) });
           if (opts.generalReferenceKeys && !opts.generalReferenceKeys.has(key)) report("brokenRef", `보통약관 참조 대상 ${key} 가 보통약관 마스터에 없습니다`, here, key);
+          if (opts.generalRepeatedKeys?.has(key)) repeated = true;
         }
+        if (repeated && node.connector === undefined && node.targets.length < 2) report("structure", CONNECTOR_REPEAT_MESSAGE, here);
         return;
       case "appendixRef":
         if (typeof node.appendixCode !== "string" || node.appendixCode.length === 0) {

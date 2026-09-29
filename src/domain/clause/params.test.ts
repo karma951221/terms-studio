@@ -62,8 +62,15 @@ describe("검사 ① — 인자 표", () => {
     expect(notPlan[0].message).toContain("세목");
   });
 
-  it("반복의 현재 원소 연결은 아직 지원하지 않는다 (반복 블록과 함께 연다)", () => {
-    expect(checkParams([{ ...갱신형, default: { kind: "current", loop: "f1" } }], env)[0]).toMatchObject({ kind: "unsupported" });
+  it("기본 연결에는 반복의 현재 원소를 둘 수 없다 — 넣는 자리(반복 블록 안)에서 연결한다 (ADR-0077 결정 3)", () => {
+    expect(checkParams([{ ...갱신형, default: { kind: "current", loop: "f1" } }], env)[0]).toMatchObject({ kind: "structure", message: expect.stringContaining("기본 연결") });
+  });
+
+  it("사용처의 현재 원소 연결 — 자리를 모르면(loops 없음) 건너뛰고, 감싼 반복이 없으면 반복 밖 오류", () => {
+    const c = clause([갱신형]);
+    const bindings = { 갱신형: { kind: "current" as const, loop: "f1" } };
+    expect(checkUsageBindings(c, bindings, env)).toEqual([]);
+    expect(checkUsageBindings(c, bindings, { ...env, loops: new Map() })).toEqual([expect.objectContaining({ kind: "structure", message: expect.stringContaining("반복 밖") })]);
   });
 });
 

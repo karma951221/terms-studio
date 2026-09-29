@@ -4,7 +4,7 @@
  * 문서 = 일반 노드 트리. 깊이·종류를 스키마에 고정하지 않고 **노드 종류별 허용 자식을 규칙 테이블**로 건다.
  * 노드는 세 부류다:
  *   - 구조   : document · article(조) · paragraph(항) · item(호) · subitem(목)
- *   - 블록 동적: condBlock(if/elif/else) · forBlock(자리만, 평가 P7) · clauseBlockRef(함수조항 블록 참조 — 항 · 호 · 목 유형) · boxRef(정적 마스터 박스 참조)
+ *   - 블록 동적: condBlock(if/elif/else) · forBlock(블록 반복 — 원천 원소마다 복제, ADR-0077) · clauseBlockRef(함수조항 블록 참조 — 항 · 호 · 목 유형) · boxRef(정적 마스터 박스 참조)
  *   - 인라인  : text · slot · inlineCond · inlineFor(자리만) · articleRef · appendixRef · clauseInlineRef
  *
  * - 조의 메타는 조 명 · 조연결(`linkedArticleId`) 뿐. 번호는 저장하지 않는다 (계산값 — numbering.ts).
@@ -16,10 +16,15 @@
  * DB·React import 금지 (순수층).
  */
 
-import { CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, type AttachLevel, type Code, type Coordinate, type Id, type Issue, type ReferenceConnector } from "../types";
+import { CONNECTOR_REPEAT_MESSAGE, CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, type AttachLevel, type Code, type Coordinate, type Id, type Issue, type ReferenceConnector } from "../types";
 import type { ClauseMode } from "../clause/types";
 import type { Bindings } from "../clause/params";
 import { documentCodeIssues, referenceKeys, refKey, refLabel } from "./pcode";
+import { checkRepeatSource, enclosingLoops, loopTypesAt, REPEAT_MAX_DEPTH, repeatedKeys, type RepeatSource } from "./blockRepeat";
+import type { EnumDef } from "../catalog/types";
+import type { LoopElementType } from "../clause/params";
+import type { Clause } from "../clause/types";
+import type { MasterTree } from "../master";
 
 // ───────────────────────────── 인라인 ─────────────────────────────
 
@@ -227,7 +232,7 @@ export interface ParagraphNode {
   /** P코드 (ADR-0072). */
   code?: Code;
   children: InlineNode[];
-  items?: (ItemNode | CondBlockNode | TableNode | BoxNode | BulletListNode | BoxRefNode)[];
+  items?: (ItemNode | CondBlockNode | TableNode | BoxNode | BulletListNode | BoxRefNode | ClauseBlockRefNode | ForBlockNode)[];
 }
 
 /** 블록 조건의 가지. */
@@ -254,11 +259,15 @@ export function isSwitchCarrier(node: Node): boolean {
   return (node.kind === "condBlock" || node.kind === "inlineCond") && node.switchOn !== undefined;
 }
 
-/** 블록 반복 — 자리만 (P7). 항 이하 구조 노드를 품는다. 중첩 금지 (D-P4-16). */
+/**
+ * 블록 반복 (ADR-0077 · blockRepeat.ts) — 조 자리 · 항의 호 목록 자리에 서서 본문을 원천의 원소마다 복제한다.
+ * 본문 자리는 **투명**(조건 블록처럼 서 있는 자리의 허용 집합 — 표 · 옛 박스 제외). 반복 안 반복은 한 단계까지.
+ */
 export interface ForBlockNode {
   id: Id;
   kind: "forBlock";
-  source: string;
+  source: RepeatSource;
+  /** 화면 이름 — 없으면 원천에서 짓는다(`repeatLabel`: 「납입면제종마다」). */
   alias?: string;
   children: BlockNode[];
 }
@@ -340,8 +349,8 @@ const INLINE: readonly NodeKind[] = ["text", "structKey", "slot", "inlineCond", 
 
 /**
  * 종류별 `children` 자리의 허용 자식. 규칙의 확장(그룹 노드·표)은 여기만 고친다 (ADR-0012).
- * - condBlock 은 **투명** — 서 있는 자리의 허용 집합을 가지에 물려준다 (여기 값은 쓰이지 않는다).
- * - 인라인 조건 안에 인라인 조건 없음, 반복 안에 반복 없음 (인라인 반복 안에는 인라인 조건도 두지 않는다).
+ * - condBlock 은 **투명** — 서 있는 자리의 허용 집합을 가지에 물려준다 (여기 값은 쓰이지 않는다). forBlock 도 투명하되 표 · 옛 박스는 뺀다.
+ * - 인라인 조건 안에 인라인 조건 없음. 블록 반복 안에 블록 반복은 한 단계까지, 인라인 반복은 자리만(반복 안에 두지 않는다 · 인라인 반복 안에는 인라인 조건도 두지 않는다).
  */
 export const allowedChildren: Record<NodeKind, readonly NodeKind[]> = {
   document: ["article", "section", "condBlock"],
@@ -355,7 +364,7 @@ export const allowedChildren: Record<NodeKind, readonly NodeKind[]> = {
   item: INLINE,
   subitem: INLINE,
   condBlock: [],
-  forBlock: ["paragraph", "condBlock", "clauseBlockRef"],
+  forBlock: [], // 투명 — 서 있는 자리의 허용 집합에서 표 · 옛 박스를 뺀 것 (indexTree)
   clauseBlockRef: [],
   boxRef: [],
   text: [],
@@ -371,7 +380,7 @@ export const allowedChildren: Record<NodeKind, readonly NodeKind[]> = {
 /** 두 번째 목록 자리 — 항의 호 목록 · 호의 목 목록. 조건 블록도 그 자리에 설 수 있다. */
 export const allowedListChildren = {
   // 목록 자리에도 함수조항 참조가 선다 — 「호」 유형은 호 목록, 「목」 유형은 목 목록 (유형 = 출력 모양, 최종 결정 4 · clausePlacement)
-  "paragraph.items": ["item", "condBlock", "table", "box", "bulletList", "boxRef", "clauseBlockRef"],
+  "paragraph.items": ["item", "condBlock", "table", "box", "bulletList", "boxRef", "clauseBlockRef", "forBlock"],
   "item.subitems": ["subitem", "condBlock", "bulletList", "clauseBlockRef"],
 } as const satisfies Record<string, readonly NodeKind[]>;
 
@@ -407,6 +416,12 @@ export function allowedIn(parentKind: NodeKind, slot: SlotName): readonly NodeKi
   if (slot === "children") return slotsOf(parentKind).includes("children") ? allowedChildren[parentKind] : undefined;
   if (slot === "items") return parentKind === "paragraph" ? allowedListChildren["paragraph.items"] : undefined;
   return parentKind === "item" ? allowedListChildren["item.subitems"] : undefined;
+}
+
+/** 색인 항목(부모)의 목록 자리의 허용 집합 — 블록 반복은 투명(서 있는 자리에서 표 · 옛 박스를 뺀 것), 나머지는 규칙 테이블. */
+export function allowedAtSlot(parent: { node: Node; allowed: readonly NodeKind[] }, slot: SlotName): readonly NodeKind[] | undefined {
+  if (parent.node.kind === "forBlock") return slot === "children" ? forBodyAllowed(parent.allowed) : undefined;
+  return allowedIn(parent.node.kind, slot);
 }
 
 /** 노드의 목록 자리를 읽는다 (없으면 undefined). 가지는 별도. */
@@ -448,6 +463,8 @@ export interface NodeEntry {
   /** 조상 중 인라인 조건 · 반복이 있는가 (중첩 금지 검사용). */
   inInlineCond: boolean;
   inFor: boolean;
+  /** 조상 블록 반복 수 (자기 제외) — 한 단계 중첩 검사 · 반복 안 대상 판정. */
+  forDepth: number;
 }
 
 export interface BranchEntry {
@@ -478,6 +495,12 @@ interface Frame {
   allowed: readonly NodeKind[];
   inInlineCond: boolean;
   inFor: boolean;
+  forDepth: number;
+}
+
+/** 블록 반복 본문의 허용 집합 — 서 있는 자리의 집합에서 표 · 옛 박스를 뺀다(반복 표와 겹치는 문맥을 만들지 않는다). */
+export function forBodyAllowed(allowed: readonly NodeKind[]): readonly NodeKind[] {
+  return allowed.filter((k) => k !== "table" && k !== "box");
 }
 
 /**
@@ -538,8 +561,11 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
     if (node.kind === "inlineCond" && f.inInlineCond) {
       structure("인라인 조건 안에 인라인 조건을 둘 수 없습니다 — 항을 쪼개 블록 조건으로 푸세요", path, articleId);
     }
-    if ((node.kind === "forBlock" || node.kind === "inlineFor") && f.inFor) {
+    if (node.kind === "inlineFor" && f.inFor) {
       structure("반복 안에 반복을 둘 수 없습니다 (MVP)", path, articleId);
+    }
+    if (node.kind === "forBlock" && f.forDepth + 1 > REPEAT_MAX_DEPTH) {
+      structure("반복은 한 단계까지만 중첩합니다 — 반복 안에 반복 하나 (ADR-0077 결정 4)", path, articleId);
     }
 
     nodes.set(node.id, {
@@ -552,10 +578,12 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
       allowed: f.allowed,
       inInlineCond: f.inInlineCond,
       inFor: f.inFor,
+      forDepth: f.forDepth,
     });
 
     const inInlineCond = f.inInlineCond || node.kind === "inlineCond";
     const inFor = f.inFor || node.kind === "forBlock" || node.kind === "inlineFor";
+    const forDepth = f.forDepth + (node.kind === "forBlock" ? 1 : 0);
 
     if (node.kind === "bulletList" && node.children.length === 0) structure("글머리 목록에는 항목이 하나 이상 있어야 합니다", path, articleId);
     if (node.kind === "table") {
@@ -565,7 +593,7 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
       node.rows.forEach((row, ri) =>
         row.cells.forEach((cell, ci) =>
           cell.forEach((child, xi) =>
-            visit(child, { parentId: node.id, slot: "children", index: xi, path: [...path, `${node.id}-r${ri}c${ci}`], articleId, allowed: INLINE, inInlineCond, inFor }),
+            visit(child, { parentId: node.id, slot: "children", index: xi, path: [...path, `${node.id}-r${ri}c${ci}`], articleId, allowed: INLINE, inInlineCond, inFor, forDepth }),
           ),
         ),
       );
@@ -587,7 +615,7 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
         branches.set(br.id, { branch: br, ownerId: node.id, index: i, path: bpath, articleId, allowed: f.allowed });
         // 가지 안의 허용 집합 = 조건 노드가 서 있는 자리의 허용 집합 (투명)
         (br.children as Node[]).forEach((child, ci) =>
-          visit(child, { parentId: br.id, slot: "children", index: ci, path: bpath, articleId, allowed: f.allowed, inInlineCond, inFor }),
+          visit(child, { parentId: br.id, slot: "children", index: ci, path: bpath, articleId, allowed: f.allowed, inInlineCond, inFor, forDepth }),
         );
       });
       return;
@@ -596,14 +624,14 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
     for (const slot of slotsOf(node.kind)) {
       const list = listOf(node, slot);
       if (!list) continue;
-      const allowed = allowedIn(node.kind, slot) ?? [];
+      const allowed = node.kind === "forBlock" ? forBodyAllowed(f.allowed) : (allowedIn(node.kind, slot) ?? []);
       list.forEach((child, ci) =>
-        visit(child, { parentId: node.id, slot, index: ci, path, articleId, allowed, inInlineCond, inFor }),
+        visit(child, { parentId: node.id, slot, index: ci, path, articleId, allowed, inInlineCond, inFor, forDepth }),
       );
     }
   };
 
-  visit(doc, { slot: "children", index: 0, path: [], allowed: ["document"], inInlineCond: false, inFor: false });
+  visit(doc, { slot: "children", index: 0, path: [], allowed: ["document"], inInlineCond: false, inFor: false, forDepth: 0 });
   return { nodes, branches, duplicates, issues };
 }
 
@@ -626,7 +654,10 @@ export interface ClauseGate {
   requiredCodes(code: Code, bindings?: Bindings): Code[];
   missingRequired(code: Code, bindings?: Bindings): Code[];
   validateOptions(code: Code, options: Record<Code, Code>): Issue[];
-  validateBindings?(code: Code, bindings: Bindings | undefined): Issue[];
+  /** `loops` = 넣는 자리를 감싼 반복 블록 id → 현재 원소 타입(반복의 현재 원소 연결 검사 — ADR-0077 결정 3). 안 주면 그 검사를 건너뛴다. */
+  validateBindings?(code: Code, bindings: Bindings | undefined, loops?: ReadonlyMap<Id, LoopElementType>): Issue[];
+  /** 정의 본문 — 문서 전체 검사(정의 조 교차 검사, 결정 23)가 값별 분기 칸을 본다. */
+  clauseOf?(code: Code): Clause | undefined;
 }
 
 export const PERMISSIVE_GATE: ClauseGate = {
@@ -648,6 +679,12 @@ export interface TreeEnv {
   /** 정적 마스터 박스 존재 — 없는 박스를 가리키는 박스 참조는 brokenRef. */
   boxExists?: (code: Code) => boolean;
   clauseGate?: ClauseGate;
+  /** 대응 보통약관의 반복 블록 안 대상 열쇠 — 대상이 하나여도 여러 번호가 될 수 있어 연결어가 필요하다(결정 14 확장). */
+  generalRepeatedKeys?: ReadonlySet<string>;
+  /** 반복 원천 검사의 마스터 (기본 MVP 정본). */
+  master?: MasterTree;
+  /** 열거형 정의 — 합집합 거름 필드 · 정의 조 교차 검사. 없으면 그 검사를 건너뛴다. */
+  enumOf?: (code: Code) => EnumDef | undefined;
   /** 값별 분기(switch) 운반체를 싣는가 — 지금은 함수조항 편집기만 켠다(최종 결정 5 「지금은 함수조항 안에서만」). 없으면 저장 · 넣기 거부. */
   switches?: boolean;
   /** 이슈 좌표의 기본값 (document · ownerId 등). */
@@ -708,6 +745,9 @@ export function checkNodeRefs(e: NodeEntry, ix: TreeIndex, env: TreeEnv, atSave:
       if (n.targets.length === 0) return one("structure", "조 참조 슬롯에는 대상이 하나 이상 있어야 합니다");
       if (n.connector === undefined) {
         if (n.targets.length >= 2) return one("structure", CONNECTOR_REQUIRED_MESSAGE);
+        // 반복 블록 안 대상은 하나여도 여러 번호가 될 수 있다 (결정 14 확장 · ADR-0077 결정 7)
+        const repeated = n.scope === "self" ? repeatedKeys(ix) : env.generalRepeatedKeys;
+        if (repeated && n.targets.some((t) => repeated.has(refKey(t)))) return one("structure", CONNECTOR_REPEAT_MESSAGE);
       } else if (!isReferenceConnector(n.connector)) return one("structure", `조 참조 연결어는 「및」·「또는」 중 하나여야 합니다: ${String(n.connector)}`);
       if (n.scope === "general" && env.kind === "general") return one("structure", "보통약관 문서에서는 보통약관 조 참조를 쓸 수 없습니다");
       return n.targets.flatMap((target) => {
@@ -727,7 +767,9 @@ export function checkNodeRefs(e: NodeEntry, ix: TreeIndex, env: TreeEnv, atSave:
       return env.boxExists && !env.boxExists(n.boxCode) ? one("brokenRef", `박스 ${n.boxCode} 가 정적 마스터에 없습니다`) : [];
     case "clauseBlockRef":
     case "clauseInlineRef":
-      return [...clausePlacement(n, e.allowed, gate, at), ...checkClauseRef(n, gate, at, atSave)];
+      return [...clausePlacement(n, e.allowed, gate, at), ...checkClauseRef(n, gate, at, atSave, loopTypesAt(ix, e, env.master))];
+    case "forBlock":
+      return checkRepeatSource(n, enclosingLoops(ix, e), { ...(env.master ? { master: env.master } : {}), ...(env.enumOf ? { enumOf: env.enumOf } : {}) }, at);
     case "condBlock":
     case "inlineCond":
       return n.switchOn !== undefined && !env.switches ? one("structure", "값별 분기는 지금 함수조항 안에서만 쓸 수 있습니다") : [];
@@ -774,6 +816,7 @@ export function checkClauseRef(
   gate: ClauseGate,
   at: Coordinate,
   atSave: boolean,
+  loops?: ReadonlyMap<Id, LoopElementType>,
 ): Issue[] {
   if (!gate.clauseExists(node.clauseCode)) {
     return [{ kind: "brokenRef", message: `함수조항 ${node.clauseCode} 가 없습니다`, at }];
@@ -790,7 +833,7 @@ export function checkClauseRef(
     issues.push({ ...i, at: { ...at, ...i.at } });
   }
   // 인자 연결 (최종 결정 2) — 누락은 옵션 미선택처럼 저장 시점에만 거부한다(넣는 순간엔 아직 대지 않았다)
-  for (const i of gate.validateBindings?.(node.clauseCode, node.bindings) ?? []) {
+  for (const i of gate.validateBindings?.(node.clauseCode, node.bindings, loops) ?? []) {
     if (!atSave && i.kind === "argUnbound") continue;
     issues.push({ ...i, at: { ...at, ...i.at } });
   }

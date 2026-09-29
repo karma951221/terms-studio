@@ -224,6 +224,13 @@ describe("함수조항 S1 — 조 참조 · 별표 참조 검사 (기능/함수�
     expect(analyzeBody("inline", [조참조([{ articleId: "g-art-1" }], null)], []).ok).toBe(true);
   });
 
+  it("대상이 하나여도 보통약관의 반복 블록 안 노드면 연결어가 없을 때 거부한다 (결정 14 확장 · ADR-0077 결정 7)", () => {
+    const body = [조참조([{ articleId: "g-art-1", code: "P0100" }], null)];
+    expect(analyzeBody("inline", body, [], { generalRepeatedKeys: new Set(["g-art-1#P0100"]) }).ok).toBe(false);
+    expect(issuesOf(analyzeBody("inline", body, [], { generalRepeatedKeys: new Set(["g-art-1#P0100"]) }))[0]!.message).toContain("반복 블록 안 대상");
+    expect(analyzeBody("inline", [조참조([{ articleId: "g-art-1", code: "P0100" }], "및")], [], { generalRepeatedKeys: new Set(["g-art-1#P0100"]) }).ok).toBe(true);
+  });
+
   it("별표 코드가 비어 있으면 거부한다 (structure)", () => {
     const issues = issuesOf(analyzeBody("inline", [별표참조("")], []));
     expect(issues.map((i) => i.kind)).toEqual(["structure"]);

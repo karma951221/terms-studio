@@ -5,7 +5,7 @@
  * - 상수 연결: 조건 · 비교 안의 `arg.X` → 리터럴, 슬롯 `arg.X` → 그 값의 글(`formatConst` — 조립의 값 표기 규칙).
  * - 함수조항 전용 식(내부 변수 · 열거값 필드 읽기 · 연산 · 원천 인자, P8): 평가 재료(`LocalEnv` — 사용처 문맥)를 주면 그 자리에서
  *   값으로 바꾼다(조건 · 비교 안 = 리터럴, 슬롯 = 글, locals.ts `localScope`). 재료가 없으면(편집기 미리보기) 그 부분은 손대지 않는다.
- * - 반복의 현재 원소: 반복 블록(P11)과 함께 연다 — 식에 닿으면 `unsupported`.
+ * - 반복의 현재 원소(ADR-0077 결정 3): 원천처럼 값으로만 읽힌다 — 평가 재료의 `current`(조립이 넣는 자리를 감싼 반복의 원소)로 풀고, 재료가 없으면 그대로 둔다.
  * - 인자 · 내부 변수를 읽지 않는 식은 손대지 않는다(소스 그대로 — 스냅샷 무변동). 인자 · 내부 변수가 없는 함수조항은 그대로 돌려준다.
  *
  * 계획은 「평가 문맥(EvalContext) 래퍼」를 적었으나, 슬롯은 치환 단계(substitute)가 따로 평가하므로 펼칠 때 소스를 바꿔 쓰는 편이
@@ -38,7 +38,7 @@ export function applyBindings(clause: Clause, bindings: Bindings | undefined, fo
   const byName = new Map(params.map((p) => [p.name, p] as const));
   const bound = effectiveBindings(clause, bindings);
   const scope = env ? localScope(params, locals, bound, env, at) : undefined;
-  const isSource = (name: string) => bound[name]?.kind === "source";
+  const isSource = (name: string) => bound[name]?.kind === "source" || bound[name]?.kind === "current";
   const issues: Issue[] = [];
   const reported = new Set<string>();
   const fail = (issue: Issue) => {
@@ -69,8 +69,7 @@ export function applyBindings(clause: Clause, bindings: Bindings | undefined, fo
       case "source":
         return undefined; // 원천은 값으로만 읽힌다 — 평가 재료가 있으면 localScope 가, 없으면(미리보기) 그대로 둔다
       case "current":
-        fail({ kind: "unsupported", message: `함수조항 ${clause.code} 의 인자 ${ref.name} — 반복의 현재 원소 연결은 본문 식이 아직 읽지 못합니다`, at: here });
-        return undefined;
+        return undefined; // 현재 원소도 값으로만 읽힌다 — 조립(재료 있음)은 localScope 가 원소 값으로, 미리보기는 그대로 둔다
     }
   };
 

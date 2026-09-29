@@ -10,7 +10,10 @@
  * - **값별 분기**(switchBlock · inlineSwitch, 최종 결정 5)는 대상 값(사용처 연결로 바꿔 쓴 식)을 사용처 문맥에서 평가해 그 값의 칸을 펼친다 —
  *   「문구 없음」 칸은 비운다. 칸이 없는 값(열거값 추가로 생긴 미배정)은 **그 값이 실제로 닿은 자리만** `unassignedValue` 오류 마커다
  *   (좌표 = 분기 노드 · refPath 값, 문구에 함수조항 코드 — 그 값을 안 쓰는 상품 · 사용처는 영향 없음).
- * - 반복(forBlock · inlineFor)은 MVP 자리만 — 만나면 `structure` 오류 마커 (구현 P7).
+ * - **블록 반복**(forBlock, ADR-0077)은 원천을 원소로 풀어(`repeatElements` — 세목 선택지 · 바깥 현재 원소의 목록 · 합집합) 본문을 원소마다 복제한다
+ *   (`cloneForElement` — id · P코드 끝에 `@원소`, 중첩이면 바깥 → 안쪽 두 번, 함수조항 펼치기 `/` 는 그 뒤). 원소 0 이면 블록째 없다.
+ *   종 원소 안에서는 조건 · 슬롯 · 펼친 함수조항이 그 종을 커서로 세운 문맥에서 평가되고(`Frame.plan`), 인자의 현재 원소 연결은 `Frame.loops` 로 푼다.
+ *   원천 오류(미입력 목록값 · 없는 원천)는 반복 자리 오류 마커. 인라인 반복(inlineFor)은 MVP 자리만 — 만나면 `structure` 오류 마커.
  * - **행 반복 표**(ADR-0070 결정 6)는 특약 문맥의 행 원천(`ctx.rows` — 상품담보 스냅샷)으로 펼친다:
  *   key 조합마다 템플릿 행 복제 · 구조 표기 → key 표기 · 바깥 key 세로 병합(spans). 조합이 0 이면 표를 생략한다.
  *   행 안의 조건은 행 노드 문맥에서 해소하고, 슬롯은 행 노드(`RSlot.row`)를 달고 치환 단계로 넘긴다.
@@ -19,7 +22,8 @@
  *   펼친 공용조항 본문 안도 같다. 없는 박스는 brokenRef 오류 마커. 줄은 고정 글이라 더 해소할 것이 없다.
  * - 슬롯·조 참조·별표 참조는 그대로 둔다 (4·7단계).
  *
- * 좌표: 문서 기본 좌표 + 조(id·조 명) + 노드 경로. 펼친 공용조항 안의 노드 id 는 `${참조노드id}/${원노드id}`.
+ * 좌표: 문서 기본 좌표 + 조(id·조 명) + 노드 경로. 펼친 공용조항 안의 노드 id 는 `${참조노드id}/${원노드id}`, 반복 복제본은 `${원id}@${원소}`
+ * (둘이 섞이면 `참조id@종@사유/안쪽id` — 원 템플릿 노드는 `templateIdOf`).
  */
 
 import type {
@@ -39,7 +43,10 @@ import type {
   SubitemNode as ClauseSubitemNode,
 } from "../clause/nodes";
 import { applyBindings } from "../clause/bind";
-import type { LocalEnv } from "../clause/locals";
+import type { CurrentValue, LocalEnv } from "../clause/locals";
+import { cloneForElement } from "../document/blockRepeat";
+import { templateIdOf } from "../document/repeat";
+import { repeatElementId, repeatElements, type RepeatElement } from "./blockRepeat";
 import type { Bindings } from "../clause/params";
 import { expandClause, resolveOptions } from "../clause/reference";
 import type { Clause, ClauseMode, OptionSelection } from "../clause/types";
@@ -91,7 +98,7 @@ type AnyParagraph = ParagraphNode | ClauseParagraphNode;
 type AnyBlock = AnyParagraph | AnyCond | ClauseSwitchBlockNode | ClauseBlockRefNode | ForBlockNode | ClauseBlock | ItemNode | SubitemNode | ArticleNode | SectionNode | TableNode | BoxNode | BulletListNode | BulletNode | BoxRefNode;
 type AnyStatic = TableNode | BoxNode | BulletListNode | ClauseBulletListNode;
 /** 호 목록 자리 — 호 · 조건 블록 · 정적 블록 · 박스 참조 · 「호」 함수조항 참조 (펼친 호 유형 본문도 같은 자리). */
-type AnyItemSlot = AnyItem | AnyCond | AnyStatic | BoxRefNode | ClauseBlockRefNode | ClauseItemCondBlockNode | ClauseItemSwitchBlockNode;
+type AnyItemSlot = AnyItem | AnyCond | AnyStatic | BoxRefNode | ClauseBlockRefNode | ClauseItemCondBlockNode | ClauseItemSwitchBlockNode | ForBlockNode;
 /** 목 목록 자리 — 목 · 조건 블록 · 글머리 목록 · 「목」 함수조항 참조 (펼친 목 유형 본문도 같은 자리). */
 type AnySubitemSlot = AnySubitem | AnyCond | BulletListNode | ClauseBlockRefNode | ClauseSubitemCondBlockNode | ClauseSubitemSwitchBlockNode;
 /** 가지 — 블록·인라인·공용조항 쪽 모두 이 모양이다. children 은 자리에 맞게 캐스팅한다. */
@@ -118,6 +125,10 @@ interface Frame {
   clause?: Code;
   /** 펼친 함수조항 블록 본문 안이면 참조 열쇠 앞마디(`참조노드코드/`) — 펼친 노드의 열쇠 · 「이 함수조항」 참조가 쓴다 (ADR-0072 결정 3 개정). */
   via?: string;
+  /** 블록 반복(세목 선택지 원천) 안이면 현재 종(세목 선택지 id) — 조건 · 슬롯 · 함수조항 문맥이 그 종을 커서로 세운다 (ADR-0077). */
+  plan?: Id;
+  /** 감싼 블록 반복의 현재 원소 — 템플릿 반복 id(복제 접미사 앞) → 원소. 인자의 현재 원소 연결 · 안쪽 반복의 목록 원천이 읽는다. */
+  loops?: Readonly<Record<Id, RepeatElement>>;
 }
 
 /** 함수조항 블록 참조가 펼친 노드의 열쇠 앞마디 — 참조 노드의 P코드(없으면 노드 id, 가리킬 수 없는 임시 열쇠). */
@@ -187,9 +198,37 @@ class Walker {
     return { kind: "error", id, issue };
   }
 
-  /** 프레임의 평가 문맥 — 반복 표 행이면 행 노드 문맥, 아니면 문서 문맥. */
+  /** 프레임의 평가 문맥 — 반복 표 행이면 행 노드 문맥, 블록 반복의 종 안이면 그 종을 커서로 세운 문맥, 아니면 문서 문맥. */
   evalOf(f: Frame): EvalContext | undefined {
-    return f.row ? this.ctx.rows?.rowContext(f.row) : this.ctx.eval;
+    if (f.row) return this.ctx.rows?.rowContext(f.row);
+    if (f.plan !== undefined) return this.ctx.plans?.context(f.plan);
+    return this.ctx.eval;
+  }
+
+  /**
+   * 블록 반복 (ADR-0077) — 원소마다 본문 복제본을 자리 규칙(`each`)으로 편다. 원소 0 이면 빈 목록, 원천 오류면 마커 하나.
+   * 복제본 경로 = 반복 노드 id 다음에 복제 id(`원id@원소`). 종 원소면 프레임 커서를 그 종으로 바꾼다.
+   */
+  repeat<T>(n: ForBlockNode, f: Frame, each: (children: readonly unknown[], g: Frame) => T[]): (T | ErrorNode)[] {
+    const at = this.at(f, n.id);
+    const r = repeatElements(n.source, {
+      options: this.ctx.plans?.options ?? [],
+      optionContext: (id) => this.ctx.plans?.context(id),
+      current: (loop) => f.loops?.[loop],
+      enums: this.env.enums ?? new Map(),
+      ...(this.env.master ? { master: this.env.master } : {}),
+      explain: (reason, where) => this.ctx.explainUndetermined(reason, where),
+    }, at);
+    if (!r.ok) return [this.error(n.id, r.issue)];
+    const loop = templateIdOf(n.id);
+    return r.value.flatMap((element) =>
+      each(cloneForElement(n.children, repeatElementId(element)), {
+        ...f,
+        path: [...f.path, n.id],
+        loops: { ...f.loops, [loop]: element },
+        ...(element.kind === "planOption" ? { plan: element.id } : {}),
+      }),
+    );
   }
 
   /** 조건식 하나 — taken / notTaken / 오류. */
@@ -267,7 +306,7 @@ class Walker {
     // 인자 연결 — 펼치기 전에 arg.X 를 사용처 연결(없으면 기본 연결)로 바꿔 쓰고, 내부 변수 · 필드 읽기 · 연산은 사용처 문맥에서 값으로 푼다
     const usage = this.evalOf(f);
     const locals: LocalEnv | undefined = usage
-      ? { ctx: usage, enums: this.env.enums ?? new Map(), ...(this.env.master ? { master: this.env.master } : {}), explain: (reason, where) => this.ctx.explainUndetermined(reason, where), text: (value, type) => this.constText(value, type) }
+      ? { ctx: usage, enums: this.env.enums ?? new Map(), ...(this.env.master ? { master: this.env.master } : {}), explain: (reason, where) => this.ctx.explainUndetermined(reason, where), text: (value, type) => this.constText(value, type), current: (loop) => this.currentValue(f, loop) }
       : undefined;
     const bound = applyBindings(defined, node.bindings, (value, param) => this.constText(value, param.type), at, locals);
     if (!bound.ok) {
@@ -280,7 +319,8 @@ class Walker {
     if (!modes.includes(clause.mode)) {
       return { ok: false, marker: this.error(node.id, { kind: "structure", message: `함수조항 ${node.clauseCode} 은(는) 「${MODE_WORD[clause.mode]}」 유형이라 ${modes.map((m) => `「${MODE_WORD[m]}」`).join(" · ")} 자리에 올 수 없습니다`, at }) };
     }
-    const { selection, issues } = resolveOptions(clause, node.options, this.env.overrides.get(node.id), at);
+    // 옵션 오버라이드는 템플릿 노드 id 로 건다 — 반복 복제본도 원 참조 노드의 오버라이드를 쓴다
+    const { selection, issues } = resolveOptions(clause, node.options, this.env.overrides.get(templateIdOf(node.id)), at);
     if (issues.length > 0) {
       this.issues.push(...issues);
       return { ok: false, marker: { kind: "error", id: node.id, issue: issues[0] } };
@@ -291,6 +331,15 @@ class Walker {
       return { ok: false, marker: this.error(node.id, { ...issue, at: { ...at, ...issue.at } }) };
     }
     return { ok: true, mode: clause.mode, body: expanded.value as (ClauseInline | ClauseBlock)[] };
+  }
+
+  /** 인자의 현재 원소 연결 → 값 (열거값 코드 · 종 하나를 커서로 세운 문맥). 감싼 반복이 아니면 undefined. */
+  currentValue(f: Frame, loop: Id): CurrentValue | undefined {
+    const e = f.loops?.[loop];
+    if (!e) return undefined;
+    if (e.kind === "enumValue") return { kind: "enum", code: e.code };
+    const ctx = this.ctx.plans?.context(e.id);
+    return ctx ? { kind: "options", form: e.form, contexts: [ctx] } : undefined;
   }
 
   /** 상수 연결의 슬롯 글 — 조립의 값 표기 규칙(substitute `formatValue`)을 그대로 쓴다. enum 은 표시명(열거형을 알 때). */
@@ -319,7 +368,7 @@ class Walker {
         // 반복 표 행은 펼칠 때 텍스트로 바뀐다 — 여기 오면 반복 표 밖이다 (저장 검사가 막는 꼴)
         return [this.error(n.id, { kind: "structure", message: "구조 표기는 반복 표 안에서만 쓸 수 있습니다", at })];
       case "slot":
-        return [{ kind: "slot", id: n.id, ref: n.ref, at, ...(f.row ? { row: f.row } : {}) }];
+        return [{ kind: "slot", id: n.id, ref: n.ref, at, ...(f.row ? { row: f.row } : {}), ...(f.plan !== undefined ? { plan: f.plan } : {}) }];
       case "articleRef": {
         // 「이 함수조항」 대상(코드)은 사용처 조 + 참조 노드 코드로 짝짓는다 — 펼친 노드의 열쇠와 같은 모양 (ADR-0072 결정 3 개정)
         const targets = n.scope === "clause"
@@ -467,6 +516,8 @@ class Walker {
         return this.items(r.body as unknown as AnyItemSlot[], { ...f, path: [...f.path, n.id], clause: n.clauseCode, via: viaOf(n) });
       }
       if (n.kind === "switchBlock") return this.switchOf(n, f, (children, g) => this.items(children as AnyItemSlot[], g));
+      // 호 목록 자리의 블록 반복 — 원소마다 호 · 「호」 함수조항을 편다 (사유마다, ADR-0077)
+      if (n.kind === "forBlock") return this.repeat(n, f, (children, g) => this.items(children as AnyItemSlot[], g));
       const r = this.select(n.branches, f, n.id);
       if (r.kind === "error") return [this.error(n.id, r.issue)];
       if (r.kind === "none") return [];
@@ -517,7 +568,7 @@ class Walker {
           );
         }
         case "forBlock":
-          return [this.error(n.id, { kind: "structure", message: "블록 반복은 아직 조립하지 않습니다 (P7)", at })];
+          return this.repeat(n, f, (children, g) => this.blocks(children as AnyBlock[], g, excludeFromComparison));
         default: {
           const bad = n as { kind: string; id: Id };
           return [this.error(bad.id, { kind: "structure", message: `${bad.kind} 은(는) 조 안에 올 수 없습니다`, at })];

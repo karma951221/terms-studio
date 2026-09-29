@@ -19,8 +19,8 @@ describe("허용 자식 규칙 테이블 (ADR-0012 — 문서>조>항>호>목, �
 
   it("조 아래에는 항 · 조건 블록 · 함수조항 block 참조 · 반복 블록이 선다 (조는 반복 본문에 못 들어간다)", () => {
     expect(allowedChildren.article).toEqual(["paragraph", "condBlock", "clauseBlockRef", "forBlock", "table", "box", "bulletList", "boxRef"]);
-    expect(allowedChildren.forBlock).not.toContain("article");
-    expect(allowedChildren.forBlock).not.toContain("forBlock");
+    // 반복 블록은 투명 — 서 있는 자리의 허용 집합(표 · 옛 박스 제외)을 본문에 물려준다 (ADR-0077)
+    expect(allowedChildren.forBlock).toEqual([]);
   });
 
   it("항·호·목의 children 은 인라인 노드다 — 인라인 조건 안에는 인라인 조건이 없다", () => {
@@ -31,7 +31,7 @@ describe("허용 자식 규칙 테이블 (ADR-0012 — 문서>조>항>호>목, �
   });
 
   it("호는 항의 items 에, 목은 호의 subitems 에 선다 (조건 블록 · 호 · 목 유형 함수조항 참조도 그 자리에 설 수 있다)", () => {
-    expect(allowedListChildren["paragraph.items"]).toEqual(["item", "condBlock", "table", "box", "bulletList", "boxRef", "clauseBlockRef"]);
+    expect(allowedListChildren["paragraph.items"]).toEqual(["item", "condBlock", "table", "box", "bulletList", "boxRef", "clauseBlockRef", "forBlock"]);
     expect(allowedListChildren["item.subitems"]).toEqual(["subitem", "condBlock", "bulletList", "clauseBlockRef"]);
   });
 
@@ -122,10 +122,10 @@ describe("문면작성 S2 경계 — 인라인 조건 중첩 금지", () => {
     expect(issues[0].message).toContain("인라인 조건");
   });
 
-  it("반복 안의 반복 (블록·인라인) 은 거부 (D-P4-16)", () => {
+  it("블록 반복 안의 인라인 반복은 거부 (D-P4-16 — 인라인 반복은 자리만)", () => {
     const b = make();
     const doc = b.document("d", [
-      b.article("a", [b.forBlock("subCoverage", [b.condBlock([b.branch("D0001", [b.forBlock("benefit", [b.paragraph([b.text("x")])])])])])]),
+      b.article("a", [b.forBlock({ kind: "planOptions", form: "waiver" }, [b.condBlock([b.branch("D0001", [b.paragraph([b.inlineFor("benefit", [b.text("x")])])])])])]),
     ]);
     // 조건 블록을 거쳐도 조상에 반복이 있으면 거부 (허용 자식 테이블만으로는 못 잡는 경우)
     const issues = validateTree(doc);
@@ -338,7 +338,7 @@ describe("실물 재현 노드 (기능/문면 §3.2) — 관 · 정적 표 · �
     expect(allowedChildren.section).toEqual(["article", "condBlock"]);
     expect(allowedChildren.article).toContain("table");
     expect(allowedChildren.article).toContain("box");
-    expect(allowedIn("paragraph", "items")).toEqual(["item", "condBlock", "table", "box", "bulletList", "boxRef", "clauseBlockRef"]);
+    expect(allowedIn("paragraph", "items")).toEqual(["item", "condBlock", "table", "box", "bulletList", "boxRef", "clauseBlockRef", "forBlock"]);
     expect(allowedIn("item", "subitems")).toEqual(["subitem", "condBlock", "bulletList", "clauseBlockRef"]);
     expect(slotsOf("table")).toEqual([]);
     expect(slotsOf("box")).toEqual([]);

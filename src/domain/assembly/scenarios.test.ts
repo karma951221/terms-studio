@@ -8,7 +8,7 @@ import type { SpecialGroup } from "../product/types";
 import type { Code, Id, Issue } from "../types";
 import { formatCoordinate } from "../coordinate";
 import { assemble, assembleSpecial, executionBasedFilter } from "./booklet";
-import { alphaPlusFixture, alphaGeneralDocument, baseDeathCoverage, coverageEntry, deathCoverage } from "./fixture";
+import { alphaPlusFixture, alphaGeneralDocument, baseDeathCoverage, coverageEntry, deathCoverage, waiverFixture, waiverTemplate } from "./fixture";
 import type { AssemblyCoverage, AssemblyInput, RenderedDoc, RenderedInline } from "./types";
 
 /** 픽스처를 한 객체로 다루는 테스트 진입 — 조립 서명 `assemble(master, product)` 에 같은 객체를 두 번 넘긴다 (AssemblyInput = MasterBundle & ProductInput). */
@@ -598,14 +598,27 @@ describe("기능/상품 §3.6 — 함수조항 옵션 해소: 오버라이드 > 
   });
 });
 
-describe("반복 자리(P7) · 밟은 자리 원칙", () => {
-  it("forBlock 을 만나면 structure 마커 — 조립은 계속된다", () => {
+describe("블록 반복 · 밟은 자리 원칙", () => {
+  it("원천이 없는(옛 글자) 반복 블록은 structure 마커 — 조립은 계속된다", () => {
     const input = alphaPlusFixture();
     const doc = input.specialDocuments.get("cov-death")!;
-    (doc.children[0] as ArticleNode).children.push({ id: "s-for", kind: "forBlock", source: "subCoverage", children: [] });
+    (doc.children[0] as ArticleNode).children.push({ id: "s-for", kind: "forBlock", source: "subCoverage" as never, children: [] });
     const { booklet, doc: d } = docsOf(input);
     expect(lines(d("pc-basic"))[2]).toBe("  ⟦structure⟧");
-    expect(booklet.issues.map((i) => i.message)).toEqual(["블록 반복은 아직 조립하지 않습니다 (P7)", "블록 반복은 아직 조립하지 않습니다 (P7)"]);
+    expect(booklet.issues.map((i) => i.message)).toEqual(["반복 블록의 원천이 없습니다 — 편집기에서 원천을 고른다", "반복 블록의 원천이 없습니다 — 편집기에서 원천을 고른다"]);
+  });
+
+  it("납입면제 시나리오 — 2종 · 3사유: 납입면제종마다 항 › 사유마다 호 · 부가항 · 정의 조(합집합 ∩ 정의조대상) (결정 11 · 23)", () => {
+    const input = waiverFixture(waiverTemplate(), { "opt-type-1": { applies: true, reasons: ["V01", "V03"] }, "opt-type-2": { applies: true, reasons: ["V02", "V01"] } });
+    const booklet = assembleInput(input);
+    expect(booklet.issues.filter((i) => i.at.document === "general")).toEqual([]);
+    const inline = (list: RenderedInline[]) => list.map((n) => (n.kind === "text" ? n.text : n.kind === "error" ? `⟦${n.issue.kind}⟧` : n.label)).join("");
+    const out = booklet.general!.children.flatMap((a) =>
+      a.kind !== "article"
+        ? []
+        : [`${a.label}(${a.title})`, ...a.children.flatMap((p) => (p.kind !== "paragraph" ? [] : [`  ${p.label} ${inline(p.children)}`, ...(p.items ?? []).map((i) => (i.kind === "item" ? `    ${i.label} ${inline(i.children)}` : `    [${i.kind}]`))]))],
+    );
+    expect(out).toMatchSnapshot();
   });
 
   it("실행 기반 완결성 필터 — 책자가 실제로 읽은 자리의 미입력만 남긴다", () => {

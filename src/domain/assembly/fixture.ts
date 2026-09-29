@@ -19,7 +19,7 @@
 import type { Discriminator, EnumDef, SlotPath } from "../catalog/types";
 import type { Clause } from "../clause/types";
 import type { Appendix } from "../document/appendix";
-import type { DocumentNode } from "../document/nodes";
+import type { DocumentNode, ForBlockNode } from "../document/nodes";
 import type { MasterForm } from "../master";
 import type { AttributeKind, ProductCoverageSnapshot, SpecialGroup } from "../product/types";
 import type { PlanAxis } from "../product/types";
@@ -630,3 +630,147 @@ export function alphaPlusFixture(): AssemblyInput {
     master: alphaMaster,
   };
 }
+
+// ───────────────────────────── 납입면제 — 블록 반복 (ADR-0077) ─────────────────────────────
+
+/*
+ * 납입면제 축약 픽스처 (P11 — 최종 결정 11 · 23): 세목 waiver 폼에 사유 목록값(E0009 납입면제사유 — 약관표시명 · 정의조대상 필드)을 더하고,
+ * 역할 함수조항 셋(납입면제 호 · 정의 · 면제 부가항)과 제27조의1 · 의3 모양 보통약관 템플릿(납입면제종마다 › 사유마다 · 합집합 ∩ 정의조대상)을 둔다.
+ * 종 = 픽스처의 1종 · 2종 선택지. 값은 `waiverFixture(plans)` 가 채운다(없는 종은 값 없음).
+ */
+export const waiverReasonEnum: EnumDef = {
+  code: "E0009",
+  label: "납입면제사유",
+  fields: [
+    { key: "F01", label: "약관표시명", type: "string", order: 1 },
+    { key: "F03", label: "정의조대상", type: "boolean", order: 2 },
+  ],
+  values: [
+    { code: "V01", label: "암", order: 0, fields: { F01: "암(유사암제외)", F03: true } },
+    { code: "V02", label: "뇌졸중", order: 1, fields: { F01: "뇌졸중", F03: true } },
+    { code: "V03", label: "장해", order: 2, fields: { F01: "장해", F03: false } },
+    { code: "V04", label: "새 사유", order: 3, fields: { F01: "새 사유", F03: false } },
+  ],
+};
+
+const wText = (id: string, value: string) => ({ id, kind: "text" as const, text: value });
+const wItem = (id: string, ...children: object[]) => ({ id, kind: "item" as const, children: children as never[] });
+
+/** 납입면제 호(사유) — 호 유형. V01 은 약관표시명 필드를 찍는다, V03 은 호 둘, V04 는 칸이 없다(열거값 추가로 생긴 미배정). */
+const waiverItemClause: Clause = {
+  code: "C0300",
+  label: "납입면제 호",
+  mode: "item",
+  body: [
+    {
+      id: "sw",
+      kind: "switchBlock",
+      on: "arg.사유",
+      cases: [
+        { id: "k1", values: ["V01"], children: [wItem("i1", { id: "s1", kind: "slot", ref: "arg.사유.F01" }, wText("t1", "으로 진단확정"))] },
+        { id: "k2", values: ["V02"], children: [wItem("i2", wText("t2", "뇌졸중으로 진단확정"))] },
+        { id: "k3", values: ["V03"], children: [wItem("i3a", wText("t3a", "상해로 장해")), wItem("i3b", wText("t3b", "질병으로 장해"))] },
+      ],
+    },
+  ],
+  options: [],
+  params: [{ name: "사유", type: { kind: "enum", enumCode: "E0009" } }],
+  required: { discriminators: [], attributes: [] },
+};
+
+/** 정의(사유) — 항 유형. */
+const waiverDefinitionClause: Clause = {
+  code: "C0302",
+  label: "정의",
+  mode: "block",
+  body: [{ id: "d", kind: "paragraph", children: [{ id: "ds", kind: "slot", ref: "arg.사유.F01" }, wText("dt", "의 정의")] }],
+  options: [],
+  params: [{ name: "사유", type: { kind: "enum", enumCode: "E0009" } }],
+  required: { discriminators: [], attributes: [] },
+};
+
+/** 면제 부가항(종들) — 항 유형. 종들의 사유에 암이 있으면 「암보장개시일」, 없으면 「없음」. */
+const waiverAddendumClause: Clause = {
+  code: "C0301",
+  label: "면제 부가항",
+  mode: "block",
+  body: [{ id: "q", kind: "paragraph", children: [{ id: "c", kind: "inlineCond", branches: [{ id: "c-if", when: "var.암있음", children: [wText("q1", "암보장개시일")] }, { id: "c-else", children: [wText("q2", "없음")] }] }] }],
+  options: [],
+  params: [{ name: "종들", type: { kind: "planOptions", form: "waiver" } }],
+  locals: [
+    { name: "모든사유", expr: "arg.종들.합치기(waiver.reasons)" },
+    { name: "암있음", expr: "var.모든사유.있음('V01')" },
+  ],
+  required: { discriminators: [], attributes: [] },
+};
+
+/** 종 선택지 값 — 적용여부 · 사유. `undefined` 면 그 종은 값 없음. */
+export type WaiverPlan = { applies?: boolean; reasons?: string[] };
+
+export function waiverFixture(doc: DocumentNode, plans: Record<Id, WaiverPlan>): AssemblyInput {
+  const base = alphaPlusFixture();
+  return {
+    ...base,
+    master: base.master!.map((f) => (f.key === "waiver" ? { ...f, fields: [...f.fields, { key: "reasons", label: "납입면제사유", type: { kind: "list<enum>", enumCode: "E0009" } }] } : f)),
+    enums: [...base.enums, waiverReasonEnum],
+    clauses: [...base.clauses, waiverItemClause, waiverDefinitionClause, waiverAddendumClause],
+    generalDocuments: new Map([["g-doc", doc]]),
+    product: {
+      ...base.product,
+      planOptions: base.product.planOptions.map((o) => {
+        const p = plans[o.id];
+        if (!p) return o.planTypeCode === "waiver" ? { ...o, values: new Map() } : o;
+        const values = new Map<string, { entered: true; value: boolean | string[] }>();
+        if (p.applies !== undefined) values.set("waiver.applies", { entered: true, value: p.applies });
+        if (p.reasons !== undefined) values.set("waiver.reasons", { entered: true, value: p.reasons });
+        return { ...o, values };
+      }),
+    },
+  };
+}
+
+/** 제27조의1 · 제27조의3 모양 템플릿. id 는 읽기 쉬운 고정 문자열 — 복제 id 를 그대로 단언한다. */
+export function waiverTemplate(extra: DocumentNode["children"] = []): DocumentNode {
+  const inner: ForBlockNode = {
+    id: "fi",
+    kind: "forBlock",
+    source: { kind: "listOfCurrent", loop: "fo", field: "reasons" },
+    children: [{ id: "r", kind: "clauseBlockRef", code: "P0200", clauseCode: "C0300", options: {}, bindings: { 사유: { kind: "current", loop: "fi" } } }],
+  };
+  return {
+    id: "g",
+    kind: "document",
+    title: "보통약관",
+    children: [
+      {
+        id: "a",
+        kind: "article",
+        title: "보험료의 납입면제",
+        children: [
+          {
+            id: "fo",
+            kind: "forBlock",
+            source: { kind: "planOptions", form: "waiver", filter: "waiver.applies = true" },
+            children: [{ id: "p", kind: "paragraph", code: "P0100", children: [{ id: "ps", kind: "slot", ref: "builtin.plan.name" }, wText("pt", "으로 가입한 경우")], items: [inner] }],
+          },
+          { id: "b", kind: "clauseBlockRef", code: "P0300", clauseCode: "C0301", options: {}, bindings: { 종들: { kind: "source", source: { form: "waiver", filter: "waiver.applies = true" } } } },
+        ],
+      },
+      {
+        id: "d",
+        kind: "article",
+        title: "정의 및 진단확정",
+        children: [
+          {
+            id: "fu",
+            kind: "forBlock",
+            source: { kind: "union", form: "waiver", filter: "waiver.applies = true", field: "reasons", where: { field: "F03", value: true } },
+            children: [{ id: "rd", kind: "clauseBlockRef", code: "P0100", clauseCode: "C0302", options: {}, bindings: { 사유: { kind: "current", loop: "fu" } } }],
+          },
+        ],
+      },
+      ...extra,
+    ],
+  };
+}
+

@@ -70,9 +70,9 @@ export interface ContainerOptions {
  * `missingRequired` 는 검사 ② (a) 의 재료 — 요구 구분자를 카탈로그 목록과 대조한다 (기능/함수조항 §3.4).
  */
 async function clauseGateOf(tx: Db): Promise<ClauseGate> {
-  const [clauses, defs] = await Promise.all([clauseRepo.listClauses(tx), catalogRepo.listDiscriminators(tx)]);
+  const [clauses, defs, enums] = await Promise.all([clauseRepo.listClauses(tx), catalogRepo.listDiscriminators(tx), catalogRepo.listEnums(tx)]);
   // 브라우저 편집본도 같은 정의로 같은 게이트를 만든다 (ADR-0074) — 구성은 도메인 한 벌
-  return clauseGateFrom(clauses, defs.map((d) => d.code), catalogTypeResolver(defs));
+  return clauseGateFrom(clauses, defs.map((d) => d.code), catalogTypeResolver(defs), enums);
 }
 
 /** 식 타입 조회 — 카탈로그 정의 + 담보속성 카탈로그(`attr.X` 의 유효값). 없는 담보속성은 깨진 참조. */

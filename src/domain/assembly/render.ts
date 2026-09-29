@@ -118,13 +118,17 @@ export interface RenderOutcome {
 interface TargetIndex {
   byId: Map<Id, ReferenceTarget>;
   byKey: Map<string, ReferenceTarget>;
+  /** 반복 블록이 복제한 노드의 원 열쇠(`조id#코드` — 복제 접미사 `@원소` 앞) — 반복으로 생긴 노드를 가리키는 참조 판정 (ADR-0077 결정 7, 해소는 P12). */
+  repeated: Set<string>;
 }
 
 function targetIndex(d: NumberedDoc | undefined): TargetIndex {
   const byId = new Map<Id, ReferenceTarget>();
   const byKey = new Map<string, ReferenceTarget>();
+  const repeated = new Set<string>();
   const put = (id: Id, articleId: Id, key: string | undefined, t: ReferenceTarget) => {
     byId.set(id, t);
+    if (key !== undefined && key.includes("@")) repeated.add(refKey({ articleId, code: key.slice(0, key.indexOf("@")) }));
     // 같은 열쇠는 살아남은 트리에 하나다(배타 가지 짝은 하나만 산다) — 먼저 것을 둔다
     if (key !== undefined && !byKey.has(refKey({ articleId, code: key }))) byKey.set(refKey({ articleId, code: key }), t);
   };
@@ -154,7 +158,7 @@ function targetIndex(d: NumberedDoc | undefined): TargetIndex {
       }
     }
   }
-  return { byId, byKey };
+  return { byId, byKey, repeated };
 }
 
 /** 해소된 대상의 노드 id — 가장 깊은 단계. */
@@ -218,6 +222,8 @@ class Renderer {
   private readonly self: Map<Id, ReferenceTarget>;
   /** 참조 열쇠 → 대상 — 이 문서 · 보통약관. */
   private readonly selfKeys: Map<string, ReferenceTarget>;
+  private readonly selfRepeated: Set<string>;
+  private readonly generalRepeated: Set<string>;
   private readonly generalKeys: Map<string, ReferenceTarget>;
   private readonly appendices: Map<Code, BookletAppendix>;
 
@@ -228,7 +234,10 @@ class Renderer {
     const own = targetIndex(numbered);
     this.self = own.byId;
     this.selfKeys = own.byKey;
-    this.generalKeys = targetIndex(env.general).byKey;
+    this.selfRepeated = own.repeated;
+    const general = targetIndex(env.general);
+    this.generalKeys = general.byKey;
+    this.generalRepeated = general.repeated;
     this.appendices = new Map(env.appendices.map((a) => [a.code, a]));
   }
 
@@ -256,6 +265,7 @@ class Renderer {
         // 사라짐 판정 = 「살아남은 트리에 그 조의 그 코드가 없다」 — 같은 코드를 공유한 분기 짝 중 살아남은 것으로 해소한다 (ADR-0072 결정 9)
         const alive: ReferenceTarget[] = [];
         const dropped: { key: string; articleId: Id }[] = [];
+        const repeatedTargets: string[] = [];
         let generalPrefix = n.scope === "general";
         let previous = n.scope === "self" ? source : undefined;
         for (const target of n.targets) {
@@ -278,7 +288,15 @@ class Renderer {
             }
           }
           if (info) alive.push(info);
+          else if ((n.scope === "self" || this.env.document === "general" ? this.selfRepeated : this.generalRepeated).has(key)) repeatedTargets.push(key);
           else dropped.push({ key, articleId: target.articleId });
+        }
+        if (repeatedTargets.length > 0) {
+          // 반복 블록 안 노드 — 펼치면 원소마다 생겨 하나로 정할 수 없다. 조용히 첫 원소를 찍지 않는다 (반복 블록 · 값 한정 참조는 P12 — ADR-0077 결정 7)
+          for (const key of repeatedTargets) {
+            this.issues.push({ kind: "unsupported", message: `참조 대상 ${key} 은(는) 반복 블록 안 노드라 펼치면 원소마다 생깁니다 — 반복으로 생긴 노드를 가리키는 참조는 아직 조립하지 않습니다`, at: { ...n.at, refPath: key } });
+          }
+          return { kind: "error", id: n.id, issue: this.issues.at(-1)! };
         }
         if (alive.length === 0) {
           // 덩어리의 대상 전부가 사라졌다 — 가리킬 것이 없으니 오류. issue 는 대상마다, 마커는 자리에 하나 (기능/문면 §3.5).

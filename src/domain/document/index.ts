@@ -17,6 +17,7 @@
  * - conditionRows.ts : 조건 팝업의 줄 모델 ↔ 식 AST (ADR-0066 §5 §8)
  */
 export * from "./appendix";
+export * from "./blockRepeat";
 export * from "./box";
 export * from "./builders";
 export * from "./clauseTree";

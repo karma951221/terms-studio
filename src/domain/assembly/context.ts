@@ -44,6 +44,11 @@ export interface AssemblyContext {
    * 뿌리 = 상품담보 스냅샷, 자식 = 스냅샷 세부보장 · 급부, 행 문맥 = 그 스냅샷 노드 문맥 (같은 추적에 읽기가 실린다).
    */
   rows?: RowSource<EvalContext>;
+  /**
+   * 세목 커서 — 블록 반복(세목 선택지 원천, ADR-0077)의 원소 문맥. 선택지 = 상품의 세목 선택지(세목 범위), 문맥 = 그 선택지를 커서로 세운 문서 문맥
+   * (세목 레벨 구분자 · `builtin.plan.name` 이 그 종을 읽는다).
+   */
+  plans?: { options: readonly AssemblyPlanOption[]; context(optionId: Id): EvalContext | undefined };
 }
 
 export interface AssemblyContexts {
@@ -419,6 +424,13 @@ function contextOf(env: Env, coordinate: Coordinate, repeatable = false): Assemb
   const root = env.tree ? nodesOf(env.tree)[0] : undefined;
   return {
     eval: contextFor(env, root, coordinate),
+    plans: {
+      options: env.planOptions,
+      context: (optionId) => {
+        const option = env.planOptions.find((o) => o.id === optionId);
+        return option ? contextFor(env, root, coordinate, option) : undefined;
+      },
+    },
     explainUndetermined: (reason, at) => explain(env, reason, at),
     trace: env.trace,
     ...(repeatable && env.tree ? { rows: rowSourceOf(env, env.tree, coordinate) } : {}),

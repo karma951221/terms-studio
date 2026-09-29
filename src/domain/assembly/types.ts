@@ -145,6 +145,8 @@ export interface RSlot {
   at: Coordinate;
   /** 반복 표 행 안의 슬롯이면 행 노드 — 치환이 그 노드 문맥(`AssemblyContext.rows`)에서 평가한다 (ADR-0070). */
   row?: StructNodeRef;
+  /** 블록 반복(세목 선택지 원천) 안의 슬롯이면 그 종(세목 선택지 id) — 치환이 그 종을 커서로 세운 문맥(`AssemblyContext.plans`)에서 평가한다 (ADR-0077). */
+  plan?: Id;
 }
 
 /** 해소 단계의 조 참조 — 대상 = 조 id + (항 · 호 · 목이면) 참조 열쇠(`Keyed.key` 와 같은 모양). */

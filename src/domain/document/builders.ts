@@ -4,6 +4,7 @@
  */
 
 import type { Code, Id } from "../types";
+import type { RepeatSource } from "./blockRepeat";
 import type {
   AppendixRefNode,
   BoxRefNode,
@@ -106,7 +107,7 @@ export function nodeBuilders(newId: IdSource = randomIds) {
       ...(when !== undefined ? { when } : {}),
       children,
     }),
-    forBlock: (source: string, children: BlockNode[] = [], alias?: string): ForBlockNode => ({
+    forBlock: (source: RepeatSource, children: BlockNode[] = [], alias?: string): ForBlockNode => ({
       id: newId(),
       kind: "forBlock",
       source,

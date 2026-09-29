@@ -183,7 +183,12 @@ export interface LocalEnv {
   explain?: (reason: string, at: Coordinate) => Issue;
   /** 슬롯에 찍을 값 글 — 조립의 값 표기 규칙(열거값은 표시명). 없으면 글 그대로. */
   text?: (value: string | number | boolean, type: ExprType) => string;
+  /** 반복의 현재 원소 — 템플릿 반복 id → 열거값(enum 인자) · 종(세목 선택지 목록 인자 — 종 하나짜리). 넣는 자리를 감싼 반복만 (ADR-0077 결정 3). */
+  current?: (loop: string) => CurrentValue | undefined;
 }
+
+/** 반복의 현재 원소 값 — 열거값 코드 또는 종 하나를 커서로 세운 문맥. */
+export type CurrentValue = { kind: "enum"; code: Code } | { kind: "options"; form: Code; contexts: EvalContext[] };
 
 type Typed = { kind: "value"; value: Value; type: ExprType } | { kind: "options"; form: Code; contexts: EvalContext[] };
 type Outcome<T> = { ok: true; value: T } | { ok: false; issue: Issue };
@@ -206,7 +211,8 @@ export function localScope(params: readonly ParamDef[], locals: readonly LocalDe
   const localOf = new Map(locals.map((l) => [l.name, l] as const));
   const memo = new Map<string, Outcome<Typed>>();
   const master = env.master ?? MASTER;
-  const isSource = (name: string) => bound[name]?.kind === "source";
+  // 원천 · 현재 원소 연결은 값으로만 읽힌다 (구분자 코드로 바꿔 쓸 수 없다)
+  const isSource = (name: string) => bound[name]?.kind === "source" || bound[name]?.kind === "current";
 
   const fail = (kind: Issue["kind"], message: string, ref?: Ref): Outcome<never> => ({ ok: false, issue: { kind, message, at: { ...at, ...(ref ? { refPath: refPath(ref) } : {}) } } });
 
@@ -230,7 +236,10 @@ export function localScope(params: readonly ParamDef[], locals: readonly LocalDe
     const kept: EvalContext[] = [];
     for (const c of all) {
       const r = evaluate(parsed.value, { ...c, coordinate: at });
-      if (r.kind === "error") return { ok: false, issue: r.issue };
+      if (r.kind === "error") {
+        if (r.issue.kind === "notEntered") continue; // 세목 값 없는 종은 원소가 아니다 — 반복 원천과 같은 규칙 (assembly/blockRepeat.ts)
+        return { ok: false, issue: r.issue };
+      }
       if (r.kind === "undetermined") return fail("brokenRef", `원천 거름의 ${r.reason} 을(를) 해소할 수 없습니다`, ref);
       if (typeof r.value !== "boolean") return fail("typeMismatch", "원천 거름의 결과가 참거짓이 아닙니다", ref);
       if (r.value) kept.push(c);
@@ -250,8 +259,12 @@ export function localScope(params: readonly ParamDef[], locals: readonly LocalDe
         return okv({ kind: "value", value: b.value, type: p.type });
       case "source":
         return sourceOptions(b, ref);
-      case "current":
-        return fail("unsupported", `인자 ${ref.name} — 반복의 현재 원소 연결은 반복 블록과 함께 연다(아직 지원하지 않음)`, ref);
+      case "current": {
+        const cur = env.current?.(b.loop);
+        if (!cur) return fail("structure", `인자 ${ref.name} — 반복 밖에서 반복의 현재 원소를 읽습니다 — 그 반복 블록 안에서만 연결한다`, ref);
+        if (cur.kind === "enum") return p.type.kind === "enum" ? okv({ kind: "value", value: cur.code, type: p.type }) : fail("typeMismatch", `인자 ${ref.name} — 반복의 현재 원소(열거값)는 enum 인자에만 댄다`, ref);
+        return p.type.kind === "planOptions" ? okv({ kind: "options", form: cur.form, contexts: cur.contexts }) : fail("typeMismatch", `인자 ${ref.name} — 반복의 현재 종은 세목 선택지 목록 인자에만 댄다`, ref);
+      }
     }
   };
 

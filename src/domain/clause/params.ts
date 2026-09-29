@@ -7,7 +7,7 @@
  *   **없으면 기본 연결**을 쓴다 — 선언 때 정한 기본, 다를 때만 바꾼다. 둘 다 없으면 저장 오류(`argUnbound`).
  * - 원천(§7-2): 세목 선택지 목록 인자에 반복 **밖**에서 대는 연결 — 「세목 폼 + 거름(그 폼 필드의 참거짓 식)」. 반복 원천 선언과 같은 모양이다.
  *   (P7: 선언 · 검사만. 목록을 가공하는 연산은 내부 변수(P8)라 아직 본문이 읽을 수 없다.)
- * - 반복의 현재 원소 연결은 반복 블록(P11)과 함께 연다 — 지금은 `unsupported`.
+ * - 반복의 현재 원소: 넣는 자리를 감싼 반복 블록의 원소(종 · 열거값, ADR-0077 결정 3). 그 반복 안에서만 · 타입이 맞아야 하고(`BindingEnv.loops`), 기본 연결로는 둘 수 없다.
  * - 인자 이름은 저장되는 식에 그대로 들어간다(`arg.<이름>`) — 이름을 바꾸면 본문 · 사용처 연결도 함께 고쳐야 한다(기능/함수조항 §5).
  */
 import { masterTypeResolver } from "../catalog/expression";
@@ -33,7 +33,7 @@ export type Binding =
   | { kind: "discriminator"; code: Code }
   /** 상수 — 스칼라 인자만. enum 은 값 코드, date 는 `YYYY-MM-DD`. */
   | { kind: "const"; value: ScalarValue }
-  /** 반복의 현재 원소 — 반복 블록(P11)과 함께 연다. */
+  /** 반복의 현재 원소 — `loop` = 넣는 자리를 감싼 반복 블록(템플릿) id. 조립이 원소(열거값 코드 · 종)로 바꿔 댄다. */
   | { kind: "current"; loop: Id }
   /** 세목 선택지 원천 — 세목 선택지 목록 인자 전용 (§7-2). */
   | { kind: "source"; source: PlanOptionSource };
@@ -59,6 +59,18 @@ export interface BindingEnv {
   enumValues?: (enumCode: Code) => readonly Code[] | undefined;
   /** 원천 폼 · 거름 검사의 마스터. 기본 MVP 정본. */
   master?: MasterTree;
+  /**
+   * 넣는 자리를 감싼 반복 블록 id → 현재 원소 타입 (세목 선택지 목록<폼> = 종 · enum<E> = 열거값). 주면 반복의 현재 원소 연결을 검사한다
+   * — 없는 반복 = 반복 밖 오류 · 타입 불일치 오류. 안 주면 건너뛴다(자리를 모르는 검사 — 함수조항 재검사 등).
+   */
+  loops?: ReadonlyMap<Id, LoopElementType>;
+}
+
+/** 반복의 현재 원소 타입 — 세목 선택지 원천이면 종(세목 선택지 목록<폼> 인자에 댄다), 목록값 원천이면 열거값. */
+export type LoopElementType = { kind: "planOptions"; form: Code } | { kind: "enum"; enumCode: Code };
+
+function describeElement(t: LoopElementType): string {
+  return t.kind === "planOptions" ? `종(세목 선택지 ${t.form})` : `열거값 enum<${t.enumCode}>`;
 }
 
 const MODE_TYPES = new Set(["boolean", "string", "number", "date", "enum", "list<enum>", "planOptions"]);
@@ -131,8 +143,18 @@ export function checkBinding(param: ParamDef, binding: Binding, env: BindingEnv,
           return bad(`— 상수는 스칼라 인자에만 댈 수 있습니다 (${describeParamType(param.type)} 불가)`);
       }
     }
-    case "current":
-      return [{ kind: "unsupported", message: `${head} — 반복의 현재 원소 연결은 반복 블록과 함께 연다(아직 지원하지 않음)`, at: refAt(`arg.${param.name}`) }];
+    case "current": {
+      // 반복의 현재 원소 (ADR-0077 결정 3) — 넣는 자리를 감싼 반복 블록 안에서만, 원소 타입이 인자 타입과 같아야 한다.
+      // 종 원소는 세목 선택지 목록 인자에 「종 하나짜리 목록」으로 댄다. 자리를 모르는 검사(`loops` 없음)는 건너뛴다
+      if (!env.loops) return [];
+      const element = env.loops.get(binding.loop);
+      const here = refAt(`arg.${param.name}`);
+      if (!element) return [{ kind: "structure", message: `${head} — 반복 밖에서 반복의 현재 원소를 연결했습니다 — 그 반복 블록 안에서만 댈 수 있습니다`, at: here }];
+      if (!sameType(element, param.type)) {
+        return [{ kind: "typeMismatch", message: `${head} — 반복의 현재 원소는 ${describeElement(element)} 라 인자 타입 ${describeParamType(param.type)} 과 다릅니다`, at: here }];
+      }
+      return [];
+    }
     case "source":
       return checkSource(param, binding.source, env, at, head);
   }
@@ -143,12 +165,20 @@ function checkSource(param: ParamDef, source: PlanOptionSource, env: BindingEnv,
   const refAt: Coordinate = { ...at, refPath: source.form };
   if (param.type.kind !== "planOptions") return [{ kind: "typeMismatch", message: `${head} — 원천은 세목 선택지 목록 인자에만 댈 수 있습니다`, at: refAt }];
   if (source.form !== param.type.form) return [{ kind: "typeMismatch", message: `${head} — 원천 폼 ${source.form} 이(가) 인자 타입의 폼 ${param.type.form} 과 다릅니다`, at: refAt }];
+  return checkPlanOptionFilter(source, env.master, at, head);
+}
+
+/**
+ * 세목 선택지 거름 — 그 폼 필드만 읽는 참거짓 식(비면 폼의 선택지 전부). 인자의 원천 연결과 반복 블록의 원천(ADR-0077)이 같은 규칙을 쓴다.
+ * `head` 는 문구 머리(「인자 X 의 연결」 · 「반복 원천」).
+ */
+export function checkPlanOptionFilter(source: PlanOptionSource, master: MasterTree | undefined, at: Coordinate, head: string): Issue[] {
   if (source.filter === undefined || source.filter.trim() === "") return [];
   const parsed = parse(source.filter, at);
   if (!parsed.ok) return parsed.rejection.reason === "invalid" ? parsed.rejection.issues.map((i) => ({ ...i, message: `${head} — 거름: ${i.message}` })) : [];
   const stray = extractRefs(parsed.value).filter(({ ref }) => ref.kind !== "master" || ref.form !== source.form);
   if (stray.length > 0) return [{ kind: "typeMismatch", message: `${head} — 거름은 폼 ${source.form} 의 필드만 읽습니다: ${stray.map((s) => s.path).join(" · ")}`, at: { ...at, refPath: stray[0].path } }];
-  const checked = checkTypes(parsed.value, masterTypeResolver(undefined, env.master), { coordinate: at, expect: "boolean" });
+  const checked = checkTypes(parsed.value, masterTypeResolver(undefined, master), { coordinate: at, expect: "boolean" });
   return checked.ok || checked.rejection.reason !== "invalid" ? [] : checked.rejection.issues.map((i) => ({ ...i, message: `${head} — 거름: ${i.message}` }));
 }
 
@@ -185,6 +215,10 @@ export function checkParams(params: readonly ParamDef[], env: BindingEnv = {}, a
     }
     if (p.type.kind === "planOptions" && !planForms.has(p.type.form)) {
       issues.push({ kind: "typeMismatch", message: `인자 ${name} — ${p.type.form} 은(는) 세목 폼이 아닙니다`, at: here });
+      continue;
+    }
+    if (p.default?.kind === "current") {
+      issues.push({ kind: "structure", message: `인자 ${name} 의 기본 연결에는 반복의 현재 원소를 둘 수 없습니다 — 넣는 자리(반복 블록 안)에서 연결한다`, at: here });
       continue;
     }
     if (p.default) issues.push(...checkBinding(p, p.default, env, at, "기본 연결"));

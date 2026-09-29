@@ -204,8 +204,10 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
     const appendixCodes = new Set((await repo.listAppendices(tx)).map((a) => a.code));
     const boxCodes = new Set((await repo.listBoxes(tx)).map((x) => x.code));
     const clauseGate = deps.clauseGate ? await deps.clauseGate(tx) : undefined;
+    const enums = new Map((await catalogRepo.listEnums(tx)).map((e) => [e.code, e]));
     return {
       kind: doc.kind,
+      enumOf: (c) => enums.get(c),
       appendixExists: (c) => appendixCodes.has(c),
       boxExists: (c) => boxCodes.has(c),
       ...(clauseGate ? { clauseGate } : {}),
@@ -218,7 +220,7 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
     const env = await baseEnvOf(tx, doc);
     if (doc.kind !== "special") return env;
     const refs = doc.generalDocumentId ? await generalRefsFor(tx, doc.generalDocumentId) : undefined;
-    return { ...env, generalArticleIds: refs?.articleIds ?? new Set(), generalReferenceKeys: refs?.referenceKeys ?? new Set() };
+    return { ...env, generalArticleIds: refs?.articleIds ?? new Set(), generalReferenceKeys: refs?.referenceKeys ?? new Set(), ...(refs?.repeatedKeys ? { generalRepeatedKeys: refs.repeatedKeys } : {}) };
   }
 
   /** 식 검사 재료 — 타입 조회 + 한정자 검사 문맥(담보 약관이면 문맥 담보 트리 · 구분자 레벨). */

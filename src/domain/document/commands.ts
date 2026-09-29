@@ -18,8 +18,8 @@ import type { Code, Id, Issue, Result } from "../types";
 import type { IdSource } from "./builders";
 import { randomIds } from "./builders";
 import {
+  allowedAtSlot,
   allowedChildren,
-  allowedIn,
   branchesOf,
   cellNodesOf,
   checkNodeRefs,
@@ -46,6 +46,7 @@ import {
   type TreeEnv,
   type TreeIndex,
 } from "./nodes";
+import { isRepeatSource, type RepeatSource } from "./blockRepeat";
 import { codeTreeInPlace, documentCodeIssues, isCodedKind, isPCode, lostRefKeys, refKey, refLabel } from "./pcode";
 
 // ───────────────────────────── 커맨드 ─────────────────────────────
@@ -106,7 +107,8 @@ export type Command =
   | { type: "setAppendixRef"; nodeId: Id; appendixCode: Code }
   /** 함수조항 참조의 옵션 선택 · 인자 연결. `bindings` 없으면 연결은 그대로, 빈 맵이면 걷는다(모두 기본 연결, 최종 결정 2). */
   | { type: "setClauseOptions"; nodeId: Id; options: Record<Code, Code>; bindings?: Bindings }
-  | { type: "setFor"; nodeId: Id; source?: string; alias?: string; separator?: string }
+  /** 반복 원천 · 이름 — 블록 반복은 `RepeatSource`(ADR-0077), 인라인 반복(자리만)은 글자. 이름을 빈 글자로 주면 지운다(원천에서 짓는다). */
+  | { type: "setFor"; nodeId: Id; source?: RepeatSource | string; alias?: string; separator?: string }
   | { type: "addBranch"; condId: Id; branch: BlockBranch | InlineBranch; index?: number }
   /** `when` 없음 = else 로 바꾼다. */
   | { type: "setWhen"; branchId: Id; when?: string }
@@ -197,7 +199,7 @@ function containerOf(ix: TreeIndex, pos: Position): Result<Container> {
   }
   const e = ix.nodes.get(pos.parentId);
   if (!e) return notFound(`노드 ${pos.parentId}`);
-  const allowed = allowedIn(e.node.kind, slot);
+  const allowed = allowedAtSlot(e, slot);
   if (allowed === undefined) return structure(`${e.node.kind} 에는 ${slot} 자리가 없습니다`, e.path);
   let list = listOf(e.node, slot);
   if (!list) {
@@ -594,9 +596,27 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       if (!e.ok) return e;
       const n = e.value.node;
       if (n.kind !== "forBlock" && n.kind !== "inlineFor") return structure("반복 노드가 아닙니다", e.value.path);
-      if (cmd.source !== undefined) n.source = cmd.source;
-      if (cmd.alias !== undefined) n.alias = cmd.alias;
+      if (cmd.source !== undefined) {
+        if (n.kind === "forBlock") {
+          if (!isRepeatSource(cmd.source)) return structure("블록 반복의 원천을 고른다", e.value.path);
+          n.source = structuredClone(cmd.source);
+        } else {
+          if (typeof cmd.source !== "string") return structure("인라인 반복의 원천은 글자입니다", e.value.path);
+          n.source = cmd.source;
+        }
+      }
+      if (cmd.alias !== undefined) {
+        if (cmd.alias.trim() === "") delete n.alias;
+        else n.alias = cmd.alias;
+      }
       if (cmd.separator !== undefined && n.kind === "inlineFor") n.separator = cmd.separator;
+      if (n.kind === "forBlock") {
+        // 원천을 바꾸면 그 자리에서 바로 검사한다(안쪽 반복 · 현재 원소 연결이 기대는 원천) — 넣기와 같은 규칙
+        const wix = indexTree(work, env.coordinate);
+        const entry = wix.nodes.get(n.id);
+        const issues = entry ? checkNodeRefs(entry, wix, env, false) : [];
+        if (issues.length > 0) return invalid(issues);
+      }
       return ok(work);
     }
 

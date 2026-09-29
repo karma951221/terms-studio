@@ -103,8 +103,9 @@ class Substituter {
       return this.error(n.id, { kind: "typeMismatch", message: "슬롯은 값 참조 경로 하나여야 합니다 (식 · 담보속성 · 연결 안 된 인자 불가)", at });
     }
     // 반복 표 행 안의 슬롯은 행 노드 문맥에서 (한정자 없는 참조 = 행 노드의 자기-또는-조상 — ADR-0070)
-    const base = n.row ? this.ctx.rows?.rowContext(n.row) : this.ctx.eval;
-    if (!base) return this.error(n.id, { kind: "brokenRef", message: "반복 표 행 노드의 문맥을 만들 수 없습니다", at });
+    // 블록 반복 안(세목 선택지 원천)의 슬롯은 그 종을 커서로 세운 문맥에서 (ADR-0077 — 종형명 · 세목 레벨 구분자)
+    const base = n.row ? this.ctx.rows?.rowContext(n.row) : n.plan !== undefined ? this.ctx.plans?.context(n.plan) : this.ctx.eval;
+    if (!base) return this.error(n.id, { kind: "brokenRef", message: n.row ? "반복 표 행 노드의 문맥을 만들 수 없습니다" : "반복의 현재 종 문맥을 만들 수 없습니다", at });
     const r = evaluate(parsed.value, { ...base, coordinate: n.at });
     if (r.kind === "error") return this.error(n.id, r.issue);
     if (r.kind === "undetermined") return this.error(n.id, this.ctx.explainUndetermined(r.reason, n.at));

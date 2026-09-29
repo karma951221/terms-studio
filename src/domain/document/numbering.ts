@@ -179,6 +179,11 @@ export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id,
       for (const branch of node.branches) for (const child of branch.children) visit(child, parent, section);
       return;
     }
+    // 블록 반복은 투명 — 본문 한 벌을 원형으로 고른다(편집기 번호는 한 번만 센다, 실제 번호 · 해소는 조립 — ADR-0077)
+    if (node.kind === "forBlock") {
+      for (const child of node.children) visit(child, parent, section);
+      return;
+    }
     const number = numbers.get(node.id);
     if (node.kind === "section") {
       const here = number ? { id: node.id, n: number.n, title: node.title } : section;
