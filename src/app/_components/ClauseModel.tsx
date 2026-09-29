@@ -233,5 +233,5 @@ export function ClauseModel(props: ClauseModelProps) {
 
 /** 공용조항 화면 링크 — 공용조항 자체는 거기서 고친다. */
 export function clauseEditHref(code: Code): string {
-  return `/clauses/${code}`;
+  return `/functions/${code}`;
 }

@@ -175,7 +175,7 @@ describe("함수조항 블록 안 — 가운데는 모델, 미리보기는 문�
       expect(html).toContain("✓피보험자");
       expect(html).toContain("〔담보명〕");
       expect(html).toContain('<span class="ts-cond-badge">IF</span> 감액여부 = true');
-      expect(html).toContain('href="/clauses/C0002"');
+      expect(html).toContain('href="/functions/C0002"');
       // 모델은 이 문서의 자리가 아니다 — 문장 칸 · 블록 표지가 없다
       const body = html.slice(html.indexOf("ts-doc-clause-body"));
       expect(body).not.toContain("data-block");

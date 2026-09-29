@@ -1,4 +1,4 @@
-/** 공용조항 에디터(`/clauses/new` · `/clauses/<code>`)가 통째로 들고 있다가 저장 한 번에 보내는 것. */
+/** 공용조항 에디터(`/functions/new` · `/functions/<code>`)가 통째로 들고 있다가 저장 한 번에 보내는 것. */
 import type { ClauseBody, ClauseMode } from "@/domain/clause";
 import type { Issue } from "@/domain/types";
 

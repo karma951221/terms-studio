@@ -28,6 +28,14 @@ export function changedQuery(current: string, changes: Record<string, string | u
   return params.toString();
 }
 
+/** 페이지의 searchParams → `?a=1&b=2` (없으면 빈 문자열) — 옛 주소를 새 주소로 넘길 때 쿼리를 잃지 않게. */
+export function queryOf(params: Record<string, string | string[] | undefined>): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) for (const one of Array.isArray(v) ? v : v === undefined ? [] : [v]) q.append(k, one);
+  const s = q.toString();
+  return s ? `?${s}` : "";
+}
+
 /** 필터바의 「기준일」에 넣을 오늘(서울). 서버에서 계산해 넘긴다 — client 가 스스로 구하면 hydration 이 어긋난다. */
 export function todayInSeoul(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());

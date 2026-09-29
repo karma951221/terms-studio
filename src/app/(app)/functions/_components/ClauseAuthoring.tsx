@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * 공용조항 에디터 — `/clauses/new`(생성) · `/clauses/<code>`(상세) 한 벌 (기능/공용조항 §4.2 · §4.3).
+ * 공용조항 에디터 — `/functions/new`(생성) · `/functions/<code>`(상세) 한 벌 (기능/공용조항 §4.2 · §4.3).
  *
  * 한 화면 두 단 — 왼쪽은 위에서 아래로 「공용조항명 · 유형」 → 「본문」(툴바 + 약관 에디터), 오른쪽은 옵션 목록. 좁으면 옵션이 아래로 내려간다.
  * - 본문은 **문면 저작 에디터를 그대로 쓴다**(§6.2) — 본문을 편집 트리(문서 › 조 하나)로 싸서(`clauseBodyToTree`) 문면의 편집 명령
@@ -70,7 +70,7 @@ import { clauseCanHold, clauseCondMenu, clauseDefaultPlace, clausePlaceMenu, wit
 import { OptionsPane } from "./OptionsPane";
 
 export interface ClauseAuthoringProps {
-  /** 없으면 생성 화면(`/clauses/new`). */
+  /** 없으면 생성 화면(`/functions/new`). */
   code?: string;
   label: string;
   mode: ClauseMode;
@@ -484,7 +484,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
       if (isNew) {
         // 만들어진 공용조항의 상세(읽기)로 — 편집 중 표시를 먼저 내려 「버립니까?」가 뜨지 않게 한다
         setEditing(false);
-        router.push(`/clauses/${out.code}`);
+        router.push(`/functions/${out.code}`);
         return;
       }
       endEdit();
@@ -497,7 +497,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     startTransition(async () => {
       const out = await removeClauseEditAction(code, confirm);
       if (out.ok === true) {
-        router.push("/clauses");
+        router.push("/functions");
         return;
       }
       if (out.ok === "confirm") {
@@ -576,13 +576,13 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   return (
     <div className="ts-l3 is-clause" aria-busy={pending || undefined}>
       <div className="ts-l3-bar">
-        <Breadcrumb items={[{ label: ENTITY_LABEL.clause, href: "/clauses" }, { label: clauseName }]} guard={editing ? leave : undefined} />
+        <Breadcrumb items={[{ label: ENTITY_LABEL.clause, href: "/functions" }, { label: clauseName }]} guard={editing ? leave : undefined} />
         {editing && <span className="ts-l3-dirty">{isNew ? "새 함수조항 — 저장하면 만들어진다" : dirty ? "편집 중 · 저장해야 반영" : "편집 중"}</span>}
         <span className="ts-l3-bar-actions">
           {editing ? (
             <>
               {isNew ? (
-                <IconButton icon={<IconClose />} label="만들기 취소 — 함수조항 목록으로" disabled={pending} onClick={() => leave(() => router.push("/clauses"))} />
+                <IconButton icon={<IconClose />} label="만들기 취소 — 함수조항 목록으로" disabled={pending} onClick={() => leave(() => router.push("/functions"))} />
               ) : (
                 <IconButton icon={<IconClose />} label="편집 취소 — 고친 내용을 버리고 읽기 모드로" disabled={pending} onClick={() => leave(endEdit)} />
               )}

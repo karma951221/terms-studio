@@ -143,7 +143,7 @@ describe("TemplateSource — 함수조항 상자 안에 모델을 편다 (2026-0
     );
     expect(html).toContain('class="ts-doc-clause-head"');
     expect(html).toContain("함수조항 (대표자의 지정)");
-    expect(html).toContain('href="/clauses/C0002"');
+    expect(html).toContain('href="/functions/C0002"');
     expect(html).toContain("함수조항에서 고치기");
     expect(html).toContain("대표자를 지정합니다");
     expect(html).toContain("〔담보명〕");

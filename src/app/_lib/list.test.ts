@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { changedQuery, formatDateTime, includesQuery, paginate } from "./list";
+import { changedQuery, formatDateTime, includesQuery, paginate, queryOf } from "./list";
 
 describe("L1 목록 순수 함수", () => {
   it("검색은 공백을 없애고 대소문자와 한글을 부분 일치시킨다", () => {
@@ -25,5 +25,11 @@ describe("L1 목록 순수 함수", () => {
   it("생성 시각은 서울 시각 「YYYY-MM-DD HH:mm」 로 쓴다 — 서버 시간대와 무관", () => {
     expect(formatDateTime(new Date("2026-09-17T01:05:00Z"))).toBe("2026-09-17 10:05");
     expect(formatDateTime(new Date("2026-09-16T15:00:00Z"))).toBe("2026-09-17 00:00");
+  });
+
+  it("옛 주소 넘김은 쿼리를 그대로 옮긴다 — 여러 값 · 빈 쿼리", () => {
+    expect(queryOf({ q: "소멸", page: "2" })).toBe("?q=%EC%86%8C%EB%A9%B8&page=2");
+    expect(queryOf({ type: ["inline", "block"], none: undefined })).toBe("?type=inline&type=block");
+    expect(queryOf({})).toBe("");
   });
 });

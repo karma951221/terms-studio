@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { clauseCanHold, clauseDefaultPlace, clausePlaceMenu, withClauseRefusals, type ClauseMenuEnv } from "@/app/(app)/clauses/_components/clauseMenus";
+import { clauseCanHold, clauseDefaultPlace, clausePlaceMenu, withClauseRefusals, type ClauseMenuEnv } from "@/app/(app)/functions/_components/clauseMenus";
 import { CLAUSE_LINE_ID, clauseBodyToTree, indexTree, nodeBuilders, replayEdits, sequentialIds, type DocumentNode, type EditOp } from "@/domain/document";
 
 import { condInsertItem, forContextMenu, inlineCondItem, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place } from "./menus";

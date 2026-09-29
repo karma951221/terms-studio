@@ -37,7 +37,7 @@ export interface RefScopes {
   clauseEditor?: boolean;
 }
 
-/** 에디터 한 벌 — 문면(`/documents/<id>`)과 공용조항(`/clauses/new`)이 같은 에디터 부품을 쓴다. */
+/** 에디터 한 벌 — 문면(`/documents/<id>`)과 공용조항(`/functions/new`)이 같은 에디터 부품을 쓴다. */
 export class Editor {
   constructor(
     readonly page: Page,
@@ -584,7 +584,7 @@ export class ClauseAuthoringDriver {
   }
 
   async open(mode: ClauseMode, label: string): Promise<void> {
-    await this.page.goto(`/clauses/new?type=${mode}`);
+    await this.page.goto(`/functions/new?type=${mode}`);
     await this.page.waitForLoadState("networkidle");
     await expect(this.page.getByRole("radio", { name: mode === "inline" ? /^문구/ : /^항/ })).toBeChecked();
     await this.page.getByLabel("함수조항명").fill(label);
@@ -630,7 +630,7 @@ export class ClauseAuthoringDriver {
   /** 저장 한 번 — 만들어지고 상세(읽기)로 간다. 코드는 시스템 채번. */
   async save(code: string): Promise<void> {
     await this.page.getByRole("button", { name: "저장", exact: true }).click();
-    await this.page.waitForURL(new RegExp(`/clauses/${code}$`), { timeout: 30_000 });
+    await this.page.waitForURL(new RegExp(`/functions/${code}$`), { timeout: 30_000 });
     await expect(this.page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
   }
 }

@@ -10,7 +10,7 @@ import { expect, test } from "./_lib/fixtures";
  *    커서만 있으면 그 항 뒤에 빈 조건 블록, 글을 고르면 그 선택이 걸친 항(여럿이면 여럿)을 감싸고 빈 IF 줄에 초점이 간다.
  *    변수 · 연산자 · 값을 머리 줄에서 고르고 저장 → 읽기 모드의 IF 한 줄.
  *    오른쪽 클릭 메뉴에는 조건 넣기가 없다. (기능/문면 §4.3 · §6.2 「조건식 = 블록 삽입 + 머리 줄 인라인 편집」, 2026-09-28)
- * 2. 공용조항 생성 — `/clauses/new` 에서 유형(항) · 공용조항명 · 본문 · 옵션을 쓰고 툴바로 옵션 자리를 넣고, 「조건식」으로 그 항을
+ * 2. 공용조항 생성 — `/functions/new` 에서 유형(항) · 공용조항명 · 본문 · 옵션을 쓰고 툴바로 옵션 자리를 넣고, 「조건식」으로 그 항을
  *    조건 블록으로 감싸 머리 줄을 채운 뒤 저장 한 번 → 상세(읽기 모드 IF 줄) · 목록.
  * 시드 문서 · 공용조항은 건드리지 않는다 — 새로 만든 것만 쓴다.
  */
@@ -234,7 +234,7 @@ test(
     await ev.action("함수조항생성#1", "관리자로 로그인한다", () => login(page));
 
     await ev.action("함수조항생성#2", "생성 화면(?type=inline)에 들어간다 — 이름 칸 · 유형 세 칸(문구 선택) · 본문 툴바 · 쓸 자리가 보인다", async () => {
-      await page.goto("/clauses/new?type=inline");
+      await page.goto("/functions/new?type=inline");
       await expect(page.getByLabel("함수조항명")).toBeVisible();
       await expect(page.getByRole("radio", { name: /^문구/ })).toBeChecked();
       await expect(page.getByRole("toolbar", { name: "약관 편집 도구" })).toBeVisible();
@@ -296,7 +296,7 @@ test(
 
     const detailUrl = await ev.action("함수조항생성#7", "저장 한 번 — 만들어지고 상세(읽기)로 간다 · 조건 블록은 IF 한 줄", async () => {
       await page.getByRole("button", { name: "저장", exact: true }).click();
-      await page.waitForURL(/\/clauses\/C\d+$/);
+      await page.waitForURL(/\/functions\/C\d+$/);
       await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
       await expect(page.locator(".ts-l3-bar")).toContainText(CLAUSE_NAME);
       await expect(page.locator(".ts-clause-editor")).toContainText("다음의 경우에는 보험금을 지급하지 않습니다.");
@@ -308,7 +308,7 @@ test(
 
     await ev.action("함수조항생성#8", "함수조항 목록에서 이름으로 찾으면 새 함수조항이 있고, 누르면 그 상세로 간다", async () => {
       // 실물 공용조항이 133건이라 한 쪽(50건)에 다 안 선다 — 검색으로 좁힌다
-      await page.goto(`/clauses?q=${encodeURIComponent(CLAUSE_NAME)}`);
+      await page.goto(`/functions?q=${encodeURIComponent(CLAUSE_NAME)}`);
       const link = page.getByRole("link", { name: CLAUSE_NAME, exact: true });
       await expect(link).toBeVisible();
       await link.click();
