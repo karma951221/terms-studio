@@ -35,7 +35,7 @@ import { ContextMenu, PopActions, Popover } from "@/app/(app)/documents/[id]/_co
 import { DraftIssues } from "@/app/(app)/documents/[id]/_components/SidePanel";
 import { CLAUSE_LINE_TOOLS, CLAUSE_TOOLS, allTools, itemsFor, type ToolId } from "@/app/(app)/documents/[id]/_components/tools";
 import { useBlockDrag } from "@/app/(app)/documents/[id]/_components/useBlockDrag";
-import type { ClauseBody, ClauseMode, RequiredRefs } from "@/domain/clause";
+import type { ClauseBody, ClauseMode, ParamDef, RequiredRefs } from "@/domain/clause";
 import { formatCoordinate } from "@/domain/coordinate";
 import {
   CLAUSE_HOST_ITEM_ID,
@@ -70,6 +70,8 @@ import type { ClauseEditOption } from "../edit-types";
 import type { ClauseEditorData } from "../editorData";
 import { clauseCanHold, clauseCondMenu, clauseDefaultPlace, clausePlaceMenu, withClauseRefusals, type ClauseMenuEnv } from "./clauseMenus";
 import { OptionsPane } from "./OptionsPane";
+import { paramEntries } from "./params";
+import { ParamsPane } from "./ParamsPane";
 
 export interface ClauseAuthoringProps {
   /** 없으면 생성 화면(`/functions/new`). */
@@ -78,6 +80,8 @@ export interface ClauseAuthoringProps {
   mode: ClauseMode;
   body: ClauseBody;
   options: ClauseEditOption[];
+  /** 인자 표 (최종 결정 2). */
+  params: ParamDef[];
   required?: RequiredRefs;
   /** 단위 규칙 경고 — 조 · 여러 항 단위가 아님 · 한 곳에서만 씀. 저장은 막지 않고 정보 칸에 보인다 (기능/함수조항 §3.1). */
   warnings?: readonly string[];
@@ -199,6 +203,12 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     optionsRef.current = next;
     setOptionsState(next);
   };
+  const [params, setParamsState] = useState<ParamDef[]>(props.params);
+  const paramsRef = useRef(params);
+  const setParams = (next: ParamDef[]) => {
+    paramsRef.current = next;
+    setParamsState(next);
+  };
   const nextCode = useRef(1);
   const newCode = () => `new:${nextCode.current++}`;
 
@@ -216,9 +226,15 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
 
   const tree = editing ? draft.state.tree : originalTree;
   const shownOptions = editing ? options : props.options;
+  const shownParams = editing ? params : props.params;
+  /** 조건 · 슬롯 고르기 문맥 — 서버가 준 구분자 앞에 인자 칸(`arg.<이름>`)을 둔다. 본문은 인자만 읽는다 (최종 결정 2). */
+  const condition = useMemo(() => ({ ...data.condition, discriminators: [...paramEntries(shownParams, data.enums), ...data.condition.discriminators] }), [data.condition, data.enums, shownParams]);
   const latest = useCallback((): DocumentNode => draftRef.current.state.tree, []);
   const dirty =
-    editing && (isNew ? label.trim() !== "" || draft.ops > 0 || options.length > 0 : draft.ops > 0 || label !== props.label || JSON.stringify(options) !== JSON.stringify(props.options));
+    editing &&
+    (isNew
+      ? label.trim() !== "" || draft.ops > 0 || options.length > 0 || params.length > 0
+      : draft.ops > 0 || label !== props.label || JSON.stringify(options) !== JSON.stringify(props.options) || JSON.stringify(params) !== JSON.stringify(props.params));
 
   // ── 편집 환경 — 문면 저작과 같은 명령 검사. 공용조항 참조 자리는 옵션 운반체만 통과한다(진짜 참조는 중첩 금지) ──
   const appendixCodes = useMemo(() => new Set(data.appendices.map((a) => a.code)), [data.appendices]);
@@ -251,7 +267,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     ];
   }, [general, tree, numbers, clauseMode]);
   const appendixName = useMemo(() => new Map(data.appendices.map((a) => [a.code, a.name] as const)), [data.appendices]);
-  const refLabel = useMemo(() => refLabelOf(data.condition), [data.condition]);
+  const refLabel = useMemo(() => refLabelOf(condition), [condition]);
   const used = useMemo(() => {
     const out = new Set<string>();
     for (const e of index.nodes.values()) {
@@ -455,7 +471,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     refLabel,
     chipOverride,
     articleRefChoices: refChoices,
-    conditionFor: () => data.condition,
+    conditionFor: () => condition,
     boxOf: (c) => boxByCode.get(c),
     ...(flashId ? { flashId } : {}),
     ...(editing ? { edit } : {}),
@@ -472,7 +488,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     clauses: [],
     generals: [],
     setGeneral: () => undefined,
-    condition: data.condition,
+    condition,
   };
 
   // ── 편집 시작 · 끝 · 저장 · 삭제 ──
@@ -481,6 +497,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     setDraft({ state: { tree: originalTree, generalDocumentId: GENERALS }, ops: 0 });
     setLabel(props.label);
     setOptions(props.options);
+    setParams(props.params);
     setEditing(true);
     setBanner(undefined);
   };
@@ -502,7 +519,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
       return;
     }
     // 쓴 것이 없는 본문(처음 빈 항 하나)은 빈 본문으로 — 빈 항을 저장하지 않는다
-    const payload = { label: label.trim(), body: blankBody(body.value) ? [] : body.value, options: optionsRef.current };
+    const payload = { label: label.trim(), body: blankBody(body.value) ? [] : body.value, options: optionsRef.current, params: paramsRef.current.map((p) => ({ ...p, name: p.name.trim() })) };
     startTransition(async () => {
       const out = code === undefined ? await createClauseAction({ ...payload, mode: clauseMode }) : await saveClauseEditAction(code, payload);
       if (!out.ok) {
@@ -770,7 +787,14 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
             </section>
           </div>
 
-          <OptionsPane options={shownOptions} editing={editing} used={used} onChange={setOptions} newCode={newCode} />
+          <OptionsPane
+            before={<ParamsPane params={shownParams} editing={editing} onChange={setParams} discriminators={data.condition.discriminators} enums={data.enums} forms={data.planForms} />}
+            options={shownOptions}
+            editing={editing}
+            used={used}
+            onChange={setOptions}
+            newCode={newCode}
+          />
         </div>
       </div>
 

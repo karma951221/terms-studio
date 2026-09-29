@@ -9,29 +9,38 @@
  *   값은 `코드` 또는 `코드@노드id` 글자다. 끝에 「담보속성」 묶음(값 `attr.코드`) — 있음 · 없음 · = · ≠ (2026-09-28).
  */
 import { COVERAGE_NODE_LEVELS } from "@/domain/coverage";
-import { ATTRIBUTE_OPS, emptyRows, operatorsFor, toRows, toSource, type ConditionRows, type Join, type RowOp } from "@/domain/document";
-import { parse, type AttributeRef, type DiscriminatorRef } from "@/domain/expression";
+import { ATTRIBUTE_OPS, emptyRows, operatorsFor, toRows, toSource, type ConditionRows, type Join, type RowOp, type RowValueRef } from "@/domain/document";
+import { parse, type AttributeRef } from "@/domain/expression";
 import { ATTACH_LEVEL_LABEL } from "@/domain/types";
 
 import type { ConditionContext, CtxDiscriminator } from "./types";
 
 const TREE_LEVELS = new Set<string>(COVERAGE_NODE_LEVELS);
 
-/** 줄 좌변 — 구분자 또는 담보속성. */
-export type LeftRef = DiscriminatorRef | AttributeRef;
+/** 줄 좌변 — 구분자 · 담보속성 · 인자(함수조항 본문, 최종 결정 2). */
+export type LeftRef = RowValueRef | AttributeRef;
 
 const ATTR_KEY = "attr.";
+/** 인자 목록 값의 머리 — 조건 문맥의 인자 칸(`CtxDiscriminator.param`)은 코드가 `arg.<이름>` 이다. */
+export const ARG_KEY = "arg.";
 
 /** 참조 → 목록 값. */
 export function refKey(ref: LeftRef): string {
   if (ref.kind === "attr") return `${ATTR_KEY}${ref.code}`;
+  if (ref.kind === "param") return `${ARG_KEY}${ref.name}`;
   return ref.node ? `${ref.code}@${ref.node.id}` : ref.code;
+}
+
+/** 값 참조 → 조건 문맥의 칸 코드 — 구분자는 코드, 인자는 `arg.<이름>`. */
+export function ctxCodeOf(ref: RowValueRef): string {
+  return ref.kind === "param" ? `${ARG_KEY}${ref.name}` : ref.code;
 }
 
 /** 목록 값 → 참조. 빈 값이면 undefined. */
 export function refOfKey(key: string): LeftRef | undefined {
   if (key === "") return undefined;
   if (key.startsWith(ATTR_KEY)) return { kind: "attr", code: key.slice(ATTR_KEY.length) };
+  if (key.startsWith(ARG_KEY)) return { kind: "param", name: key.slice(ARG_KEY.length) };
   const at = key.indexOf("@");
   return at < 0 ? { kind: "discriminator", code: key } : { kind: "discriminator", code: key.slice(0, at), node: { id: key.slice(at + 1) } };
 }
@@ -45,6 +54,10 @@ export interface PickerGroup {
 export function pickerGroups(context: ConditionContext): PickerGroup[] {
   const groups: PickerGroup[] = [];
   const at = (d: CtxDiscriminator, node?: { id: string; name: string }) => ({ key: node ? `${d.code}@${node.id}` : d.code, label: node ? `${d.label} @${node.name}` : d.label });
+  // 함수조항 본문 — 인자가 맨 앞 묶음이다(본문은 인자만 읽는다, 최종 결정 2). 인자 칸은 아래 레벨 묶음에 섞지 않는다
+  const params = context.discriminators.filter((d) => d.param);
+  if (params.length > 0) groups.push({ label: "인자", options: params.map((d) => at(d)) });
+  context = { ...context, discriminators: context.discriminators.filter((d) => !d.param) };
   const row = context.row;
   if (row) {
     const readable = context.discriminators.filter((d) => TREE_LEVELS.has(d.level) && row.readable.includes(d.level));
@@ -128,7 +141,7 @@ export function removeRow(rows: ConditionRows, i: number): ConditionRows {
 }
 
 /** 좌변의 연산자 목록 — 담보속성이면 = · ≠ · 있음 · 없음, 구분자면 타입대로. */
-export function opsOf(ref: LeftRef | undefined, typeOf: (ref: DiscriminatorRef) => CtxDiscriminator["type"]): readonly RowOp[] {
+export function opsOf(ref: LeftRef | undefined, typeOf: (ref: RowValueRef) => CtxDiscriminator["type"]): readonly RowOp[] {
   if (!ref) return [];
   if (ref.kind === "attr") return ATTRIBUTE_OPS;
   const t = typeOf(ref);
@@ -136,7 +149,7 @@ export function opsOf(ref: LeftRef | undefined, typeOf: (ref: DiscriminatorRef) 
 }
 
 /** 좌변을 바꾼다 — 타입이 같으면 연산자 · 우변을 두고, 다르면 첫 연산자 · 빈 우변. 담보속성은 속성이 바뀌면 늘 새로. */
-export function setLeft(rows: ConditionRows, i: number, ref: LeftRef | undefined, typeOf: (ref: DiscriminatorRef) => CtxDiscriminator["type"]): ConditionRows {
+export function setLeft(rows: ConditionRows, i: number, ref: LeftRef | undefined, typeOf: (ref: RowValueRef) => CtxDiscriminator["type"]): ConditionRows {
   return {
     ...rows,
     rows: rows.rows.map((r, idx) => {

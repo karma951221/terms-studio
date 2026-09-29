@@ -1311,6 +1311,21 @@ button.danger:focus-visible {
   border-left: 1px solid var(--ts-rule);
 }
 
+/* 인자 표 — 옵션 위. 이름 · 타입 · 기본 연결 한 줄씩 */
+.ts-clause-params {
+  margin-bottom: 16px;
+}
+
+.ts-clause-params-table {
+  width: 100%;
+}
+
+.ts-clause-params-table select,
+.ts-clause-params-table input {
+  width: 100%;
+  min-width: 0;
+}
+
 .ts-option {
   padding: 10px 0;
   border-top: 1px solid var(--ts-rule);

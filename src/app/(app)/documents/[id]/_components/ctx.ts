@@ -48,6 +48,8 @@ export interface DocCtx {
   /** 사전평가 결과 — 있으면 안 탄 가지를 톤다운한다. */
   branchEval?: ReadonlyMap<Id, BranchEvaluation>;
   slotEval?: ReadonlyMap<Id, SlotEvaluation>;
+  /** 사전평가 문맥에서 슬롯 참조 하나를 평가 — 미리보기가 펼친 함수조항 본문의 슬롯(인자 연결을 적용한 뒤)을 찍는다. 평가를 켰을 때만. */
+  evalRef?: (ref: string) => SlotEvaluation;
   /**
    * 반복 표 펼침 결과 (ADR-0070 결정 6) — 미리보기(사전평가)의 결과 조문에서만 준다. 있으면 반복 표는 펼친 행으로,
    * 행 0 이면 「표 생략됨」 자리로 그린다. 없으면 템플릿(for 띠) 그대로.

@@ -12,7 +12,8 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { Combobox, type ComboOption } from "@/app/_components/Combobox";
 import { IconButton, IconTrash } from "@/app/_components/icons";
 import { DOC_KIND_LABEL, REPEAT_DEPTH_LABEL, STRUCT_KEY_CHIP } from "@/app/_lib/labels";
-import type { Clause } from "@/domain/clause";
+import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, planFormChoices } from "@/app/(app)/functions/_components/params";
+import type { Bindings, Clause } from "@/domain/clause";
 import {
   HOST_TARGET_PREFIX,
   indexTree,
@@ -193,10 +194,14 @@ function articleRefOf(fd: FormData): { targets: { nodeId: Id }[]; connector: Ref
   return { targets, connector: isReferenceConnector(connector) ? (connector as ReferenceConnector) : undefined, scope: scope === "general" || scope === "host" ? "general" : "self" };
 }
 
-/** 공용조항 칸 — 공용조항을 고르면 그 옵션마다 선택지. 옵션 선택은 사용처(이 문서) 소유다 (기능/함수조항 §3.2). */
-function ClauseFields({ clauses, code, options }: { clauses: readonly Clause[]; code?: Code; options?: Record<Code, Code> }) {
+/**
+ * 함수조항 칸 — 함수조항을 고르면 그 옵션마다 선택지 · 인자마다 연결. 옵션 선택 · 인자 연결은 사용처(이 문서) 소유다 (기능/함수조항 §3.2 · §3.7).
+ * 인자 연결 칸은 「기본 연결」(비움 — 선언의 기본을 쓴다)이 처음 값이다. 기본 연결이 없으면 골라야 저장된다(연결 누락 = 저장 오류).
+ */
+function ClauseFields({ clauses, code, options, bindings, condition }: { clauses: readonly Clause[]; code?: Code; options?: Record<Code, Code>; bindings?: Bindings; condition: ConditionContext }) {
   const [picked, setPicked] = useState<Code>(code ?? "");
   const clause = clauses.find((c) => c.code === picked);
+  const forms = planFormChoices();
   return (
     <>
       {code === undefined ? (
@@ -215,7 +220,20 @@ function ClauseFields({ clauses, code, options }: { clauses: readonly Clause[]; 
       ) : (
         !clause && <p className="ts-error-banner">함수조항 {code} 이(가) 없다 — 깨진 참조다.</p>
       )}
-      {clause && clause.options.length === 0 && <p className="ts-muted">고를 옵션이 없는 함수조항이다.</p>}
+      {clause && clause.options.length === 0 && (clause.params ?? []).length === 0 && <p className="ts-muted">고를 옵션 · 연결할 인자가 없는 함수조항이다.</p>}
+      {(clause?.params ?? []).map((p) => (
+        <div key={`${clause!.code}-arg-${p.name}`} className="ts-form-row">
+          <label htmlFor={`pop-arg-${p.name}`}>인자 {p.name}</label>
+          <select id={`pop-arg-${p.name}`} name={`arg:${p.name}`} defaultValue={bindingValue(bindings?.[p.name])}>
+            <option value="">{p.default ? `기본 연결 — ${bindingLabel(p.default, p.type, condition.discriminators, [], forms)}` : "— 연결 안 함(기본 연결 없음) —"}</option>
+            {bindingOptions(p.type, condition.discriminators, [], forms, true).map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      ))}
       {clause?.options.map((o) => (
         <div key={`${clause.code}-${o.code}`} className="ts-form-row">
           <label htmlFor={`pop-opt-${o.code}`}>{o.label}</label>
@@ -231,6 +249,25 @@ function ClauseFields({ clauses, code, options }: { clauses: readonly Clause[]; 
       ))}
     </>
   );
+}
+
+/** 인자 연결 칸 → 연결 맵. 비운 칸(기본 연결)은 싣지 않는다. */
+function bindingsOf(fd: FormData, clauses: readonly Clause[], code: Code = str(fd, "clauseCode")): Bindings {
+  const clause = clauses.find((c) => c.code === code);
+  const out: Bindings = {};
+  for (const [key, value] of fd.entries()) {
+    if (!key.startsWith("arg:")) continue;
+    const name = key.slice("arg:".length);
+    const param = clause?.params?.find((p) => p.name === name);
+    const b = param ? bindingOfValue(String(value), param.type) : undefined;
+    if (b) out[name] = b;
+  }
+  return out;
+}
+
+/** 연결 맵을 노드에 — 비었으면 키 없음. */
+function withBindings<T extends object>(node: T, bindings: Bindings): T {
+  return Object.keys(bindings).length > 0 ? { ...node, bindings } : node;
 }
 
 function optionsOf(fd: FormData): Record<Code, Code> {
@@ -351,7 +388,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
           }
           case "clauseInlineRef": {
             const code = str(fd, "clauseCode");
-            return code ? b.clauseInline(code, optionsOf(fd)) : "함수조항을 고른다.";
+            return code ? withBindings(b.clauseInline(code, optionsOf(fd)), bindingsOf(fd, env.clauses)) : "함수조항을 고른다.";
           }
           case "structKey": {
             const level = str(fd, "structLevel");
@@ -380,7 +417,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             )}
             {spec.what === "articleRef" && <ArticleRefFields ctx={ctx} />}
             {spec.what === "appendixRef" && <AppendixSelect appendices={env.appendices} />}
-            {spec.what === "clauseInlineRef" && <ClauseFields clauses={env.clauses} />}
+            {spec.what === "clauseInlineRef" && <ClauseFields clauses={env.clauses} condition={env.condition} />}
             {spec.what === "structKey" && (
               <div className="ts-form-row">
                 <label htmlFor="pop-struct">구조 표기</label>
@@ -404,7 +441,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
       if (!node) return null;
       if (node.kind === "inlineCond") return <InlineCondPopup env={env} nodeId={node.id} anchor={anchor} onClose={onClose} />;
       const title =
-        node.kind === "slot" ? "치환 슬롯" : node.kind === "articleRef" ? "조 참조" : node.kind === "appendixRef" ? "별표 참조" : node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef" ? "함수조항 옵션" : "고치기";
+        node.kind === "slot" ? "치환 슬롯" : node.kind === "articleRef" ? "조 참조" : node.kind === "appendixRef" ? "별표 참조" : node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef" ? "함수조항 옵션 · 인자" : "고치기";
       return (
         <Popover anchor={anchor} label={title} onClose={onClose} wide={node.kind === "articleRef"}>
           <PopForm
@@ -423,7 +460,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
                   return [{ type: "setAppendixRef", nodeId: node.id, appendixCode: str(fd, "appendixCode") }];
                 case "clauseInlineRef":
                 case "clauseBlockRef":
-                  return [{ type: "setClauseOptions", nodeId: node.id, options: optionsOf(fd) }];
+                  return [{ type: "setClauseOptions", nodeId: node.id, options: optionsOf(fd), bindings: bindingsOf(fd, env.clauses, node.clauseCode) }];
                 default:
                   return [];
               }
@@ -437,7 +474,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             )}
             {node.kind === "articleRef" && <ArticleRefFields ctx={ctx} node={node} />}
             {node.kind === "appendixRef" && <AppendixSelect appendices={env.appendices} value={node.appendixCode} />}
-            {(node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && <ClauseFields clauses={env.clauses} code={node.clauseCode} options={node.options} />}
+            {(node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && <ClauseFields clauses={env.clauses} code={node.clauseCode} options={node.options} {...(node.bindings ? { bindings: node.bindings } : {})} condition={env.condition} />}
             <PopActions onCancel={onClose} />
           </PopForm>
         </Popover>
@@ -480,10 +517,10 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             onClose={onClose}
             build={(fd) => {
               const code = str(fd, "clauseCode");
-              return code ? [{ type: "insert", node: b.clauseBlock(code, optionsOf(fd)), at: spec.at }] : "함수조항을 고른다.";
+              return code ? [{ type: "insert", node: withBindings(b.clauseBlock(code, optionsOf(fd)), bindingsOf(fd, env.clauses)), at: spec.at }] : "함수조항을 고른다.";
             }}
           >
-            <ClauseFields clauses={clausesFitting(env.clauses, spec.fit)} />
+            <ClauseFields clauses={clausesFitting(env.clauses, spec.fit)} condition={env.condition} />
             <PopActions onCancel={onClose} confirmLabel="넣기" />
           </PopForm>
         </Popover>

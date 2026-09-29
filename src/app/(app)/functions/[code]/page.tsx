@@ -37,6 +37,7 @@ export default async function ClauseDetailPage({ params }: { params: Promise<{ c
         label: option.label,
         values: option.values.map((value) => ({ code: value.code, label: value.label, text: valueText(value.body) })),
       }))}
+      params={clause.params ?? []}
       required={clause.required}
       warnings={warnings.map((w) => w.message)}
       data={data}

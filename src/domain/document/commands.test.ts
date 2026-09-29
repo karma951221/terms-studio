@@ -261,6 +261,11 @@ describe("텍스트 · 조 명 · 슬롯 · 참조 대상 · 옵션 수정", () 
     const next = unwrap(applyCommand(doc, { type: "insert", node: b.clauseBlock("C001", {}), at: { parentId: "n3" } }, { env })); // n7
     const opt = unwrap(applyCommand(next, { type: "setClauseOptions", nodeId: "n7", options: { tone: "a" } }, { env }));
     expect((opt.children[0] as ArticleNode).children[1]).toMatchObject({ clauseCode: "C001", options: { tone: "a" } });
+    // 인자 연결 (최종 결정 2) — 같은 명령이 연결도 고친다. 빈 연결이면 키를 걷는다(모두 기본 연결)
+    const bound = unwrap(applyCommand(opt, { type: "setClauseOptions", nodeId: "n7", options: { tone: "a" }, bindings: { 갱신형: { kind: "discriminator", code: "D0002" } } }, { env }));
+    expect((bound.children[0] as ArticleNode).children[1]).toMatchObject({ bindings: { 갱신형: { kind: "discriminator", code: "D0002" } } });
+    const cleared = unwrap(applyCommand(bound, { type: "setClauseOptions", nodeId: "n7", options: { tone: "a" }, bindings: {} }, { env }));
+    expect((cleared.children[0] as ArticleNode).children[1]).not.toHaveProperty("bindings");
   });
 
   it("반복 노드 속성(소스·별칭·구분 문자열) 은 자리만 저장한다 (P7)", () => {

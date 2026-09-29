@@ -13,6 +13,8 @@ export function refLabelOf(context: ConditionContext): DisplayName {
   const nodeName = (id: string) => context.coverage?.nodes.find((n) => n.id === id)?.name;
   const labelOf = (code: string) => context.discriminators.find((d) => d.code === code)?.label ?? code;
   return (ref: Ref) => {
+    // 함수조항 인자 — 편집기가 문맥에 `arg.<이름>` 칸으로 넣었으면 그 표시명(없으면 경로 그대로)
+    if (ref.kind === "param") return context.discriminators.find((d) => d.param && d.code === refPath(ref))?.label ?? refPath(ref);
     if (ref.kind !== "discriminator") return refPath(ref);
     const label = labelOf(ref.code);
     return ref.node ? `${label} @${nodeName(ref.node.id) ?? "끊어진 노드"}` : label;

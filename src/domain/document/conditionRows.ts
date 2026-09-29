@@ -9,12 +9,17 @@
  * 담보속성 줄 (2026-09-28, 기능/문면 §3.3) — 좌변이 담보속성(`attr.X`)이면 연산자는 `=` · `≠`(우변은 그 속성의 유효값 코드)
  * 또는 `있음` · `없음`(우변 없음 — `exist(attr.X)` · `notexist(attr.X)`). 식 언어가 담보속성에 허용하는 모양 그대로다(ADR-0015).
  * 「갱신형이면」은 두 줄 `있음 그리고 = '2'` — 쓰지 않는 상품담보에서 `=` 는 평가 오류라 있음 줄이 앞에서 막는다.
+ *
+ * 인자 줄 (2026-09-30, 최종 결정 2) — 함수조항 본문에서는 좌변 · 우변에 인자(`arg.X`)도 온다. 구분자 줄과 같은 규칙(타입대로 연산자)이다.
  */
 import { COMPARE_OPS, format } from "../expression";
-import type { AttributeRef, CompareOp, DiscriminatorRef, Expr, Literal } from "../expression";
+import type { AttributeRef, CompareOp, DiscriminatorRef, Expr, Literal, ParamRef } from "../expression";
 import type { FieldType, FieldTypeKind } from "../types";
 
-export type RowRight = { kind: "literal"; literal: Literal } | { kind: "ref"; ref: DiscriminatorRef };
+/** 값을 가진 좌변 · 우변 참조 — 구분자, 또는 함수조항 본문의 인자. */
+export type RowValueRef = DiscriminatorRef | ParamRef;
+
+export type RowRight = { kind: "literal"; literal: Literal } | { kind: "ref"; ref: RowValueRef };
 
 /** 줄의 연산자 — 비교, 또는 담보속성의 있음 · 없음(우변 없음). */
 export type RowOp = CompareOp | "exist" | "notexist";
@@ -23,7 +28,7 @@ export type RowOp = CompareOp | "exist" | "notexist";
 export const ATTRIBUTE_OPS: readonly RowOp[] = ["=", "≠", "exist", "notexist"];
 
 export interface ConditionRow {
-  left?: DiscriminatorRef | AttributeRef;
+  left?: RowValueRef | AttributeRef;
   op?: RowOp;
   right?: RowRight;
 }
@@ -73,10 +78,10 @@ function rowOf(e: Expr): ConditionRow | undefined {
     if (e.right.kind !== "literal" || e.right.literal.type !== "string" || (e.op !== "=" && e.op !== "≠")) return undefined;
     return { left: e.left.ref, op: e.op, right: { kind: "literal", literal: e.right.literal } };
   }
-  if (e.left.kind !== "ref" || e.left.ref.kind !== "discriminator") return undefined;
+  if (e.left.kind !== "ref" || (e.left.ref.kind !== "discriminator" && e.left.ref.kind !== "param")) return undefined;
   let right: RowRight;
   if (e.right.kind === "literal") right = { kind: "literal", literal: e.right.literal };
-  else if (e.right.kind === "ref" && e.right.ref.kind === "discriminator") right = { kind: "ref", ref: e.right.ref };
+  else if (e.right.kind === "ref" && (e.right.ref.kind === "discriminator" || e.right.ref.kind === "param")) right = { kind: "ref", ref: e.right.ref };
   else return undefined;
   return { left: e.left.ref, op: e.op, right };
 }
@@ -151,7 +156,7 @@ function literalKind(lit: Literal): FieldTypeKind {
 /** 줄 단위 검사 — 화면의 「n번 줄: …」 문구. 통과면 빈 배열. `valuesOf` 는 담보속성 코드 → 유효값 코드(없는 속성이면 undefined). */
 export function rowIssues(
   rows: ConditionRows,
-  typeOf: (ref: DiscriminatorRef) => FieldType | undefined,
+  typeOf: (ref: RowValueRef) => FieldType | undefined,
   valuesOf: (attributeCode: string) => readonly string[] | undefined = () => undefined,
 ): string[] {
   const out: string[] = [];
@@ -172,7 +177,7 @@ export function rowIssues(
     }
     const lt = typeOf(row.left);
     if (!lt) {
-      out.push(`${n}: 구분자 ${row.left.code} 를 찾을 수 없다`);
+      out.push(row.left.kind === "param" ? `${n}: 인자 ${row.left.name} 를 찾을 수 없다` : `${n}: 구분자 ${row.left.code} 를 찾을 수 없다`);
       return;
     }
     if (!row.op) {

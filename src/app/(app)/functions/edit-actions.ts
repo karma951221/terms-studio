@@ -56,7 +56,12 @@ export async function saveClauseEditAction(code: string, input: ClauseEditData):
       if (!("codes" in added)) return added;
 
       const body = added.codes.size > 0 ? remapOptionSlots(input.body, added.codes) : input.body;
-      if (JSON.stringify(body) !== JSON.stringify(before.body)) {
+      const bodyChanged = JSON.stringify(body) !== JSON.stringify(before.body);
+      // 인자가 바뀌면 본문과 한 번에 — 본문이 새 인자를 읽거나 뺀 인자를 더는 안 읽는 중간 상태는 검사 ① 이 거부한다
+      if (input.params !== undefined && JSON.stringify(input.params) !== JSON.stringify(before.params ?? [])) {
+        const error = failed(await services.clause.setParams(actor, code, input.params, bodyChanged ? body : undefined));
+        if (error) return error;
+      } else if (bodyChanged) {
         const error = failed(await services.clause.setBody(actor, code, body));
         if (error) return error;
       }

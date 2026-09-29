@@ -42,6 +42,7 @@ import {
   indexTree,
   numberTree,
   preEvaluate,
+  evaluateSlotRef,
   randomIds,
   referenceTargetIndex,
   repeatLevels,
@@ -238,7 +239,8 @@ export function DocumentEditor(props: EditorProps) {
     if (!evalOn || !props.master) return undefined;
     const mcat = masterCatalog(props.discriminators);
     const ctxEval = masterEvalContext(props.master.tree, props.master.values, mcat);
-    return preEvaluate(tree, ctxEval, { coordinate: { ...coordinate, ...(ctxEval.coordinate ?? {}) }, rows: coverageRowSource(props.master.tree, props.master.values, mcat) });
+    const at = { ...coordinate, ...(ctxEval.coordinate ?? {}) };
+    return { ...preEvaluate(tree, ctxEval, { coordinate: at, rows: coverageRowSource(props.master.tree, props.master.values, mcat) }), evalRef: (ref: string) => evaluateSlotRef(ref, ctxEval, at) };
   }, [evalOn, props.master, props.discriminators, tree, coordinate]);
 
   // ── 번호 · 참조 표기 ──
@@ -669,7 +671,7 @@ export function DocumentEditor(props: EditorProps) {
     docKind: doc.kind,
     mode,
     numbers,
-    ...(evaluation ? { branchEval: evaluation.branches, slotEval: evaluation.slots } : {}),
+    ...(evaluation ? { branchEval: evaluation.branches, slotEval: evaluation.slots, evalRef: evaluation.evalRef } : {}),
     appendixName,
     clauseLabel,
     optionText,

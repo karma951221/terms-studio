@@ -23,6 +23,7 @@ import {
   CLAUSE_HOST_PARAGRAPH_ID,
   CLAUSE_LINE_ID,
   clauseBodyToTree,
+  indexTree,
   numberTree,
   optionCodeOf,
   referenceTargetLabel,
@@ -39,6 +40,8 @@ import type { Id } from "@/domain/types";
 
 import { BoxView } from "@/app/_components/BoxView";
 import { ClauseModel, clauseEditHref } from "@/app/_components/ClauseModel";
+import { bindingLabel } from "@/app/(app)/functions/_components/params";
+import { applyBindings, plainConst } from "@/domain/clause";
 
 import { parseLines } from "../../lib";
 import { CondRows } from "./condition/CondRows";
@@ -272,15 +275,28 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
   const edit = ctx.edit;
   const clause = ctx.clauses?.find((c) => c.code === node.clauseCode);
   const label = ctx.clauseLabel.get(node.clauseCode) ?? clause?.label;
-  const options = ctx.optionText(node.clauseCode, node.options);
-  const hasOptions = !clause || clause.options.length > 0;
+  // 인자 연결 (최종 결정 2) — 「인자 ← 연결」, 사용처가 대지 않은 인자는 기본 연결
+  const params = clause?.params ?? [];
+  const discriminators = ctx.conditionFor?.(node.id).discriminators ?? [];
+  const args = params.map((p) => {
+    const own = node.bindings?.[p.name];
+    const b = own ?? p.default;
+    return `${p.name} ← ${b ? bindingLabel(b, p.type, discriminators, [], []) : "연결 없음"}${own || !b ? "" : "(기본)"}`;
+  });
+  const optionWords = clause && clause.options.length === 0 && params.length > 0 ? "" : ctx.optionText(node.clauseCode, node.options);
+  const options = [optionWords, args.length > 0 ? `인자: ${args.join(" · ")}` : ""].filter(Boolean).join(" · ");
+  const hasOptions = !clause || clause.options.length > 0 || params.length > 0;
   const asText = ctx.clauseView === "text";
   let body: ReactNode = <p className="ts-muted">{label ? "본문을 불러오지 않았다." : `${node.clauseCode} — 없는 함수조항이다(깨진 참조).`}</p>;
   if (clause && asText) {
-    // 미리보기 — 고른 선택지 문구를 끼운 문장 (조립 결과와 같은 읽기)
-    const tree = clauseBodyToTree(clause.mode, clause.body, clause.label);
+    // 미리보기 — 고른 선택지 문구를 끼운 문장 (조립 결과와 같은 읽기). 인자는 이 사용처의 연결로 바꿔 쓰고(조립과 같은 applyBindings),
+    // 사전평가를 켰으면 슬롯을 문서 문맥에서 찍는다 — 연결을 못 하면(연결 누락) 원래 본문 그대로
+    const bound = applyBindings(clause, node.bindings, plainConst);
+    const shown = bound.ok ? bound.value : clause;
+    const tree = clauseBodyToTree(shown.mode, shown.body, shown.label);
     const nodes = tree.children[0]?.kind === "article" ? tree.children[0].children : [];
-    const inner: DocCtx = { ...ctx, mode: "read", edit: undefined, numbers: numberTree(tree), branchEval: undefined, flashId: undefined, chipOverride: optionChip(clause, node.options) };
+    const slotEval = ctx.evalRef ? new Map([...indexTree(tree).nodes.values()].flatMap((e) => (e.node.kind === "slot" ? [[e.node.id, ctx.evalRef!(e.node.ref)] as const] : []))) : undefined;
+    const inner: DocCtx = { ...ctx, mode: "read", edit: undefined, numbers: numberTree(tree), branchEval: undefined, flashId: undefined, chipOverride: optionChip(clause, node.options), ...(slotEval ? { slotEval } : {}) };
     const line = clause.mode === "inline" ? nodes.find((n) => n.id === CLAUSE_LINE_ID) : undefined;
     // 「호」 · 「목」 — 자리 항(· 자리 호)은 번호 단계가 아니라 그 목록만 그린다
     const host = nodes.find((n) => n.id === CLAUSE_HOST_PARAGRAPH_ID);
@@ -323,7 +339,7 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
         </span>
         {hasOptions &&
           (edit ? (
-            <button type="button" className="ts-doc-clause-opt" title="옵션 고치기" onClick={(e) => edit.popup({ kind: "editChip", nodeId: node.id }, anchorOf(e.currentTarget))}>
+            <button type="button" className="ts-doc-clause-opt" title="옵션 · 인자 연결 고치기" onClick={(e) => edit.popup({ kind: "editChip", nodeId: node.id }, anchorOf(e.currentTarget))}>
               {options}
             </button>
           ) : (

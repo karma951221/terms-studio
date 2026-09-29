@@ -1,5 +1,5 @@
 /** 공용조항 에디터(`/functions/new` · `/functions/<code>`)가 통째로 들고 있다가 저장 한 번에 보내는 것. */
-import type { ClauseBody, ClauseMode } from "@/domain/clause";
+import type { ClauseBody, ClauseMode, ParamDef } from "@/domain/clause";
 import type { Issue } from "@/domain/types";
 
 export interface ClauseEditValue {
@@ -22,6 +22,8 @@ export interface ClauseEditData {
   /** 본문 노드 트리 — 약관 에디터의 편집본을 저장 직전에 공용조항 본문으로 되돌린 것. */
   body: ClauseBody;
   options: ClauseEditOption[];
+  /** 인자 표 (최종 결정 2) — 이름 · 타입 · 기본 연결. 없으면 인자를 건드리지 않는다(생성이면 인자 0개). */
+  params?: ParamDef[];
 }
 
 export interface ClauseCreateData extends ClauseEditData {

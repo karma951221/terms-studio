@@ -10,6 +10,8 @@ import type { Appendix, Box, DocumentNode } from "@/domain/document";
 import type { Id } from "@/domain/types";
 import { getServices } from "@/lib/services";
 
+import { planFormChoices, type EnumChoice, type PlanFormChoice } from "./_components/params";
+
 export interface ClauseEditorData {
   appendices: Appendix[];
   /** 정적 마스터 박스 — 「항」 본문에 박스 참조를 놓는다 (기능/박스 §3.2). */
@@ -17,6 +19,10 @@ export interface ClauseEditorData {
   condition: ConditionContext;
   /** 보통약관 템플릿 — 조 참조 대상(조 · 항 · 호 · 목)의 후보와 번호. MVP 는 한 벌 (기능/함수조항 §5). */
   generals: { id: Id; title: string; tree: DocumentNode }[];
+  /** 열거형 — 인자 타입(열거형 · 열거형 목록) 후보와 값(최종 결정 2). */
+  enums: EnumChoice[];
+  /** 세목 폼 — 세목 선택지 목록 인자 타입 · 원천 연결 후보(§7-2). */
+  planForms: PlanFormChoice[];
 }
 
 export async function loadClauseEditorData(): Promise<ClauseEditorData> {
@@ -34,5 +40,12 @@ export async function loadClauseEditorData(): Promise<ClauseEditorData> {
     const doc = await services.document.get(summary.id);
     if (doc && doc.kind === "general") generals.push({ id: doc.id, title: doc.title, tree: doc.tree });
   }
-  return { appendices, boxes, condition: buildConditionContext({ discriminators, enums, attributes }), generals };
+  return {
+    appendices,
+    boxes,
+    condition: buildConditionContext({ discriminators, enums, attributes }),
+    generals,
+    enums: enums.map((e) => ({ code: e.code, label: e.label, values: [...e.values].sort((a, b) => a.order - b.order).map((v) => ({ code: v.code, label: v.label })) })),
+    planForms: planFormChoices(),
+  };
 }

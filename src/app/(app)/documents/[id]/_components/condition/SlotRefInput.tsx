@@ -19,9 +19,14 @@ const slotable = (d: CtxDiscriminator) => d.type?.kind === "string" || d.type?.k
 
 /** 후보 — 구분자 코드 하나씩, 붙는 레벨 순으로 묶는다. */
 export function slotOptions(context: ConditionContext): ComboOption[] {
-  return ATTACH_LEVELS.flatMap((level) =>
-    context.discriminators.filter((d) => d.level === level && slotable(d)).map((d) => ({ value: d.code, label: d.label, hint: d.code, group: ATTACH_LEVEL_LABEL[level] })),
-  );
+  // 함수조항 본문 — 인자(`arg.<이름>`)가 맨 앞 묶음 (최종 결정 2)
+  const params = context.discriminators.filter((d) => d.param && slotable(d)).map((d) => ({ value: d.code, label: d.label, hint: d.code, group: "인자" }));
+  return [
+    ...params,
+    ...ATTACH_LEVELS.flatMap((level) =>
+      context.discriminators.filter((d) => !d.param && d.level === level && slotable(d)).map((d) => ({ value: d.code, label: d.label, hint: d.code, group: ATTACH_LEVEL_LABEL[level] })),
+    ),
+  ];
 }
 
 /** 후보에 없는 경로(트리에서 고른 `코드@노드`)의 이름 — 「이름 @노드이름」. 모르는 코드면 undefined(경로 그대로 보인다). */

@@ -241,7 +241,7 @@ export class Editor {
 
   private async fillRow(head: Locator, name: string, row: ConditionRow): Promise<void> {
     const left = row.left!;
-    const key = left.kind === "attr" ? `attr.${left.code}` : left.node ? `${left.code}@${left.node.id}` : left.code;
+    const key = left.kind === "attr" ? `attr.${left.code}` : left.kind === "param" ? `arg.${left.name}` : left.node ? `${left.code}@${left.node.id}` : left.code;
     await pickCombo(head.getByRole("combobox", { name: `${name} 변수`, exact: true }), { value: key });
     await head.getByRole("combobox", { name: `${name} 연산자`, exact: true }).selectOption(row.op!);
     const right = row.right;

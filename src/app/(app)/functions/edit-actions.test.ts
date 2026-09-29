@@ -36,6 +36,23 @@ afterAll(async () => {
   await t.close();
 });
 
+describe("saveClauseEditAction — 인자 표 (최종 결정 2)", () => {
+  it("인자를 더하며 본문이 그 인자를 읽게 고친 저장 한 번이 통과한다 — 인자 · 본문을 따로 저장하면 중간 상태가 거부된다", async () => {
+    const clause = unwrap(await s.clause.create(editor, { label: "갱신 문구", mode: "inline", body: [text("t", "계약일")] }));
+    const body: Inline[] = [{ id: "c", kind: "inlineCond", branches: [{ id: "c-if", when: "arg.갱신형 = true", children: [text("t1", "최초계약일")] }, { id: "c-else", children: [text("t2", "계약일")] }] }];
+    const params = [{ name: "갱신형", type: { kind: "boolean" as const } }];
+    expect(await saveClauseEditAction(clause.code, { label: clause.label, body, options: [], params })).toEqual({ ok: true, code: clause.code });
+    const saved = (await s.clause.get(clause.code))!;
+    expect(saved.params).toEqual(params);
+    expect(saved.body).toEqual(body);
+  });
+
+  it("생성 액션도 인자를 받는다", async () => {
+    const r = await createClauseAction({ label: "담보명 문구", mode: "inline", body: [{ id: "s", kind: "slot", ref: "arg.담보명" }], options: [], params: [{ name: "담보명", type: { kind: "string" } }] });
+    expect(r.ok).toBe(true);
+  });
+});
+
 describe("saveClauseEditAction", () => {
   it("부분 저장 없음 — 이름 · 새 옵션을 넣고 본문이 거부되면 이름 · 옵션도 남지 않고, 다시 저장해도 옵션 순번이 타지 않는다 (점검 H1)", async () => {
     const clause = unwrap(await s.clause.create(editor, { label: "청약철회", mode: "inline", body: [text("t", "철회할 수 있습니다.")] }));

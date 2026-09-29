@@ -12,6 +12,7 @@
  * - 참조되는 조는 삭제할 수 없다 — 참조처 좌표를 제시한다 (D-P4-7). 같이 지워지는 참조는 무관.
  */
 
+import type { Bindings } from "../clause/params";
 import { ok, reject } from "../types";
 import type { Code, Id, Issue, Result } from "../types";
 import type { IdSource } from "./builders";
@@ -100,7 +101,8 @@ export type Command =
   | { type: "insertCell"; tableId: Id; row: number; col: number; node: InlineNode; index?: number }
   | { type: "setArticleRef"; nodeId: Id; targets: { nodeId: Id }[]; connector: ArticleRefNode["connector"]; scope: ArticleRefNode["scope"] }
   | { type: "setAppendixRef"; nodeId: Id; appendixCode: Code }
-  | { type: "setClauseOptions"; nodeId: Id; options: Record<Code, Code> }
+  /** 함수조항 참조의 옵션 선택 · 인자 연결. `bindings` 없으면 연결은 그대로, 빈 맵이면 걷는다(모두 기본 연결, 최종 결정 2). */
+  | { type: "setClauseOptions"; nodeId: Id; options: Record<Code, Code>; bindings?: Bindings }
   | { type: "setFor"; nodeId: Id; source?: string; alias?: string; separator?: string }
   | { type: "addBranch"; condId: Id; branch: BlockBranch | InlineBranch; index?: number }
   /** `when` 없음 = else 로 바꾼다. */
@@ -555,6 +557,10 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       } else {
         if (n.kind !== "clauseBlockRef" && n.kind !== "clauseInlineRef") return structure("함수조항 참조가 아닙니다", e.value.path);
         n.options = { ...cmd.options };
+        if (cmd.bindings !== undefined) {
+          if (Object.keys(cmd.bindings).length === 0) delete n.bindings;
+          else n.bindings = structuredClone(cmd.bindings);
+        }
       }
       const issues = checkNodeRefs(e.value, ix, env, false);
       return issues.length > 0 ? invalid(issues) : ok(work);

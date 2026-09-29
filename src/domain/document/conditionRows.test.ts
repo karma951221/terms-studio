@@ -51,12 +51,15 @@ describe("toExpr / toSource — 왼쪽 결합 · 왕복", () => {
 });
 
 describe("operatorsFor / rowIssues", () => {
-  const typeOf = (ref: { code: string }): FieldType | undefined =>
-    ref.code === "D0009" ? { kind: "boolean" }
+  const typeOf = (r: { code: string } | { name: string }): FieldType | undefined => {
+    const ref = { code: "code" in r ? r.code : `arg.${r.name}` };
+    return ref.code === "D0009" ? { kind: "boolean" }
     : ref.code === "D0005" ? { kind: "number" }
     : ref.code === "D0011" ? { kind: "string" }
     : ref.code === "D0012" ? { kind: "enum", enumCode: "E0001" }
+    : ref.code === "arg.갱신형" ? { kind: "boolean" }
     : undefined;
+  };
   it("타입별 연산자", () => {
     expect(operatorsFor("boolean")).toEqual(["=", "≠"]);
     expect(operatorsFor("number")).toHaveLength(6);
@@ -81,6 +84,13 @@ describe("operatorsFor / rowIssues", () => {
     expect(issues[3]).toContain("4번 줄");
     expect(issues[4]).toContain("5번 줄");
     expect(rowIssues(toRows(ok("D0009 = true and D0005 >= 3"))!, typeOf)).toEqual([]);
+  });
+  it("함수조항 본문의 인자 줄 — arg.X 좌변도 줄로 풀리고 타입대로 검사한다 (최종 결정 2)", () => {
+    const rows = toRows(ok("arg.갱신형 = true and D0005 >= 3"))!;
+    expect(rows.rows[0].left).toEqual({ kind: "param", name: "갱신형" });
+    expect(rowIssues(rows, typeOf)).toEqual([]);
+    expect(toSource(rows)).toBe("arg.갱신형 = true and D0005 >= 3");
+    expect(rowIssues({ rows: [{ left: { kind: "param", name: "없음" }, op: "=" }], joins: [] }, typeOf)[0]).toContain("인자 없음");
   });
   it("string 좌변 · enum 우변도 대칭으로 같다고 본다 (expression/typecheck.ts 의 equatable 과 대칭)", () => {
     const rows: ConditionRows = {

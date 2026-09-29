@@ -60,7 +60,7 @@ describe("조건 머리 줄 — 줄 ⇄ 식 (기능/문면 §4.3, 2026-09-28)", 
 
   it("좌변을 바꾸면 타입이 같을 때만 연산자 · 값을 남긴다", () => {
     const ctx = buildConditionContext({ discriminators: defs, enums: [] });
-    const typeOf = (ref: { code: string }) => ctx.discriminators.find((d) => d.code === ref.code)?.type;
+    const typeOf = (ref: { code: string } | { name: string }) => ctx.discriminators.find((d) => d.code === ("code" in ref ? ref.code : `arg.${ref.name}`))?.type;
     const head = headOf("D0009 = true");
     if (head.kind !== "rows") throw new Error("rows");
     const same = setLeft(head.rows, 0, { kind: "discriminator", code: "D0007", node: { id: "x" } }, typeOf);
@@ -111,5 +111,19 @@ describe("담보속성 줄 (2026-09-28) — 목록 끝 「담보속성」 묶음
     const head = headOf(source);
     expect(head.kind).toBe("rows");
     expect(sourceOf(head)).toBe(source);
+  });
+});
+
+describe("인자 줄 (최종 결정 2) — 함수조항 편집기가 넣은 인자 칸은 맨 앞 「인자」 묶음 · arg. 키", () => {
+  it("인자 칸은 「인자」 묶음에만 서고, arg. 키는 인자 참조로 돌아온다", () => {
+    const base = buildConditionContext({ discriminators: defs, enums: [] });
+    const ctx = { ...base, discriminators: [{ code: "arg.갱신형", label: "갱신형", level: "coverage" as const, type: { kind: "boolean" as const }, forms: [], param: true as const }, ...base.discriminators] };
+    const groups = pickerGroups(ctx);
+    expect(groups[0]).toEqual({ label: "인자", options: [{ key: "arg.갱신형", label: "갱신형" }] });
+    expect(groups.slice(1).flatMap((g) => g.options.map((o) => o.key))).not.toContain("arg.갱신형");
+    expect(refOfKey("arg.갱신형")).toEqual({ kind: "param", name: "갱신형" });
+    expect(refKey({ kind: "param", name: "갱신형" })).toBe("arg.갱신형");
+    const head = headOf("arg.갱신형 = true");
+    expect(head.kind === "rows" && head.rows.rows[0].left).toEqual({ kind: "param", name: "갱신형" });
   });
 });

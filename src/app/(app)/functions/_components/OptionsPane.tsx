@@ -7,7 +7,7 @@
  * 옵션명 · 선택지 이름 · 선택지 문구(평문)를 한 자리에서 고치고, 더하기는 `+`, 빼기는 ⊖ — 앱의 다른 구조 편집과 같은 문법.
  * 새 옵션은 빈 선택지 둘을 품고 온다(옵션은 선택지 2개부터 성립). 본문에 옵션 자리를 넣는 것은 툴바 「옵션 자리 ▾」다.
  */
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { IconButton, IconMinusCircle, IconPlus } from "@/app/_components/icons";
 
@@ -19,7 +19,10 @@ export function OptionsPane({
   used,
   onChange,
   newCode,
+  before,
 }: {
+  /** 단 맨 위에 먼저 둘 것 — 인자 표(ParamsPane). 옵션과 같은 「본문 옆 전역 자원」 단을 쓴다. */
+  before?: ReactNode;
   options: readonly ClauseEditOption[];
   editing: boolean;
   /** 본문이 지금 쓰는 옵션 코드 — 쓰이는 옵션은 뺄 수 없다 (§3.2). */
@@ -57,7 +60,8 @@ export function OptionsPane({
   };
 
   return (
-    <aside className="ts-clause-options" aria-label="옵션">
+    <aside className="ts-clause-options" aria-label="인자 · 옵션">
+      {before}
       <h2 className="ts-clause-sec">옵션</h2>
       <p className="ts-muted ts-clause-sec-note">사용처마다 골라 쓰는 문구 — 본문의 옵션 자리에 고른 선택지 문구가 들어간다.</p>
       {options.length === 0 && !editing ? <p className="ts-muted">옵션 없음 — 사용처가 고를 것이 없다.</p> : null}
