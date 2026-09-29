@@ -36,6 +36,13 @@ export interface CoverageSpec {
   subCoverages?: { name: string; benefitName: string }[];
   coverageValues: { path: string; value: string }[];
 }
+/** 정적 마스터 박스 — 코드 · 이름 · 제목 · 줄 (기능/박스 §3.1). */
+export interface BoxSpec {
+  code: string;
+  name: string;
+  title: string;
+  lines: string[];
+}
 export interface ClauseSpec {
   code: string;
   label: string;
@@ -67,6 +74,7 @@ export const SEED = {
   discriminators: read<DiscriminatorSpec[]>("discriminators.json"),
   attributes: read<AttributeSpec[]>("attributes.json"),
   coverages: read<CoverageSpec[]>("coverages.json"),
+  boxes: read<BoxSpec[]>("boxes.json"),
   clauses: read<ClauseSpec[]>("clauses.json"),
   documents: read<DocumentSpec[]>("documents.json"),
   generals: read<{ code: string; tree: DocumentNode }[]>("generals.json"),
@@ -117,6 +125,9 @@ export const ALL_GENERAL_ANCESTORS = new Map(SEED.generals.flatMap((g) => [...ge
  * 화면 E2E 는 이것들을 치지 않는다.
  */
 export const BASE_CLAUSE_CODES = new Set(SEED.generals.flatMap((g) => [...JSON.stringify(g.tree).matchAll(/"clauseCode":"(C\d+)"/g)].map((m) => m[1])));
+
+/** 보통약관이 놓는 박스 — 바탕 DB 가 보통약관과 함께 시드로 넣는다(BX000001~). 화면 E2E 는 그 뒤 코드부터 박스 화면으로 친다. */
+export const BASE_BOX_CODES = new Set(SEED.generals.flatMap((g) => [...JSON.stringify(g.tree).matchAll(/"boxCode":"(BX\d+)"/g)].map((m) => m[1])));
 
 /** 상품마다 원문 대조 짝 — 픽스처 폴더 · 특약(책자 제목 → 픽스처) · 미리보기 별표 수와 1번 (real.test.ts 와 같은 짝). */
 export const REAL_FIXTURES: Record<string, { dir: string; appendices: number; firstAppendix: string; specials: [string, string][] }> = {

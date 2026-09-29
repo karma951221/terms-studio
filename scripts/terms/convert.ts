@@ -9,9 +9,10 @@
  *    참조 슬롯으로 바꾼다 — 조건 가지 안의 참조도 같이 풀린다.
  * 4. 보통약관의 기본계약 대치 조는 제목만 남기고, 기본계약 문면은 그 조들을 뽑아 조연결한다.
  * 5. 슬롯 오버레이(담보명 등)를 얹는다.
- * 6. 공용조항을 만든다 — 조 · 여러 항(`CLAUSES`, 원문 한 자리 `from` 에서 또는 평문에서, `clauses.ts`)과 박스(원문의 박스 전부,
- *    같은 박스는 하나 · 낱말만 다르면 옵션, `boxes.ts`). 적재 순서로 코드를 매기고, 박스 자리와 설정의 쓰임 자리를 참조로 바꾼다.
- * 7. 조 자리 조건 오버레이(`articleConds`)를 얹고 `validateTree` 로 검증한 뒤 `src/db/seed/data/{generals,documents,appendices,clauses}.json` 을 쓴다.
+ * 6. 공용조항 · 박스를 만든다 — 조 · 여러 항 공용조항(`CLAUSES`, 원문 한 자리 `from` 에서 또는 평문에서, `clauses.ts`)과
+ *    정적 마스터 박스(원문의 박스 전부, 같은 박스는 하나 · 낱말만 달라도 따로, `boxes.ts`). 적재 순서로 코드를 매기고,
+ *    박스 자리는 박스 참조로 · 설정의 쓰임 자리는 공용조항 참조로 바꾼다.
+ * 7. 조 자리 조건 오버레이(`articleConds`)를 얹고 `validateTree` 로 검증한 뒤 `src/db/seed/data/{generals,documents,appendices,boxes,clauses}.json` 을 쓴다.
  *
  * 변환하지 못한 참조는 `[report]` 로 stdout 에 남긴다 — 사람이 본다 (법령 인용은 의도된 미변환).
  */
@@ -22,7 +23,7 @@ import { pathToFileURL } from "node:url";
 import type { ArticleNode, BlockNode, BoxNode, DocumentNode, InlineNode, ParagraphNode, SectionNode, TableNode } from "../../src/domain/document/nodes";
 import { indexTree, validateTree } from "../../src/domain/document/nodes";
 import type { Id } from "../../src/domain/types";
-import { boxSites, planBoxClauses, replaceBox, type BoxPlan } from "./boxes";
+import { boxSites, planBoxes, replaceBox, type BoxPlan } from "./boxes";
 import { applyClauseUse, clauseFromSource, inlineBody, optionCode, placeOptions, reId, valueCode, type ClauseRecord } from "./clauses";
 import { APPENDICES, CLAUSES, PRODUCTS, SEED_DIR, type ClauseUse, type ProductTerms, type SlotOverlay, type SpecialSpec } from "./config";
 import { parseTerms, type ParsedArticle, type ParsedDoc } from "./parse";
@@ -273,17 +274,17 @@ function main(): void {
     for (const [code, b] of p.specials) built.set(code, b);
   }
 
-  // ── 공용조항 — 조 · 여러 항(설정)과 박스(원문의 박스 전부)의 본문을 만들고, 적재 순서로 코드를 매긴다
+  // ── 공용조항(조 · 여러 항, 설정)과 박스(원문의 박스 전부 → 정적 마스터)를 만들고, 적재 순서로 코드를 매긴다
   const configured = CLAUSES.map((c) => ({ key: c.key, record: buildClause(c, built, products, report) }));
   const sites = products.flatMap((p) => [
     ...boxSites(p.general.tree, { doc: p.product.general.code, product: p.product.code, general: true }),
     ...p.product.specials.flatMap((spec) => boxSites(p.specials.get(spec.code)!.tree, { doc: spec.code, product: p.product.code, general: false })),
   ]);
-  const boxes = planBoxClauses(sites);
-  const clauses = orderClauses(configured, boxes, new Set(products.flatMap((p) => (p.product.general.clauses ?? []).map((u) => u.clause))));
+  const boxes = orderBoxes(planBoxes(sites));
+  const clauses = orderClauses(configured, new Set(products.flatMap((p) => (p.product.general.clauses ?? []).map((u) => u.clause))));
   const clauseByKey = new Map(configured.map((c) => [c.key, c.record]));
-  // 박스 자리 → 박스 공용조항 참조 (같은 목록 자리)
-  for (const plan of boxes) for (const u of plan.uses) replaceBox(u.site, (plan.record as ClauseRecord).code, u.selection);
+  // 박스 자리 → 박스 참조 (같은 목록 자리)
+  for (const plan of boxes) for (const site of plan.sites) replaceBox(site, plan.record.code);
   const applyUses = (b: Built, uses: readonly ClauseUse[], label: string) => {
     const articleOf = (number: string) => [...articlesOf(b.tree)].find((x) => b.numberOf.get(x.id) === number);
     for (const u of uses) {
@@ -318,16 +319,18 @@ function main(): void {
   out("appendices.json", APPENDICES.map((a) => ({ code: a.code, name: a.name, description: "" })));
   out("generals.json", generals);
   out("documents.json", documents);
+  out("boxes.json", boxes.map((b) => b.record));
   out("clauses.json", clauses);
 
   const stats = (tree: DocumentNode) => {
     const ix = indexTree(tree);
     const count = (kind: string) => [...ix.nodes.values()].filter((e) => e.node.kind === kind).length;
-    return `관 ${count("section")} · 조 ${count("article")} · 항 ${count("paragraph")} · 호 ${count("item")} · 목 ${count("subitem")} · 표 ${count("table")} · 박스 ${count("box")} · 조참조 ${count("articleRef")} · 별표참조 ${count("appendixRef")} · 슬롯 ${count("slot")} · 조건 ${count("condBlock")}/${count("inlineCond")} · 공용조항 ${count("clauseInlineRef") + count("clauseBlockRef")}`;
+    return `관 ${count("section")} · 조 ${count("article")} · 항 ${count("paragraph")} · 호 ${count("item")} · 목 ${count("subitem")} · 표 ${count("table")} · 박스 ${count("boxRef")} · 조참조 ${count("articleRef")} · 별표참조 ${count("appendixRef")} · 슬롯 ${count("slot")} · 조건 ${count("condBlock")}/${count("inlineCond")} · 공용조항 ${count("clauseInlineRef") + count("clauseBlockRef")}`;
   };
   const all = [...generals, ...documents];
   for (const g of generals) console.log(`[general] ${g.tree.title}: ${stats(g.tree)}`);
   for (const d of documents) console.log(`[special] ${d.tree.title}: ${stats(d.tree)}`);
+  for (const b of boxes) console.log(`[box] ${b.record.code} ${b.record.name} — 쓰임 ${b.sites.length}`);
   for (const c of clauses) console.log(`[clause] ${c.code} ${c.label} (${c.mode}) — 쓰임 ${all.reduce((n, d) => n + JSON.stringify(d.tree).split(`"clauseCode":"${c.code}"`).length - 1, 0)}`);
   for (const line of report) console.log(`[report] ${line}`);
   for (const line of issues) console.log(`[invalid] ${line}`);
@@ -347,19 +350,27 @@ function refsGeneralArticle(clause: ClauseRecord): boolean {
 }
 
 /**
- * 적재 순서로 코드를 매긴다 — 보통약관이 쓰는 것(설정 순 → 박스) · 담보약관만 쓰는 것(설정 순 → 박스) · 보통약관 조를 가리키는 것(설정 순).
+ * 공용조항 코드를 적재 순서로 매긴다 — 보통약관이 쓰는 것 · 담보약관만 쓰는 것 · 보통약관 조를 가리키는 것 (각각 설정 순).
  * 보통약관 가져오기는 쓰는 공용조항이 있어야, 보통약관 조를 가리키는 공용조항은 그 조가 있어야 검사 ① 을 통과한다.
  */
-function orderClauses(configured: readonly { key: string; record: ClauseRecord }[], boxes: readonly BoxPlan[], generalKeys: ReadonlySet<string>): ClauseRecord[] {
-  const generalBox = (b: BoxPlan) => b.uses.some((u) => u.site.general);
+function orderClauses(configured: readonly { key: string; record: ClauseRecord }[], generalKeys: ReadonlySet<string>): ClauseRecord[] {
   const ordered: ClauseRecord[] = [
     ...configured.filter((c) => generalKeys.has(c.key)).map((c) => c.record),
-    ...boxes.filter(generalBox).map((b) => b.record as ClauseRecord),
     ...configured.filter((c) => !generalKeys.has(c.key) && !refsGeneralArticle(c.record)).map((c) => c.record),
-    ...boxes.filter((b) => !generalBox(b)).map((b) => b.record as ClauseRecord),
     ...configured.filter((c) => !generalKeys.has(c.key) && refsGeneralArticle(c.record)).map((c) => c.record),
   ];
   ordered.forEach((c, i) => (c.code = `C${String(i + 1).padStart(4, "0")}`));
+  return ordered;
+}
+
+/**
+ * 박스 코드를 적재 순서로 매긴다 — 보통약관이 쓰는 박스(첫 등장 순) → 담보약관만 쓰는 박스.
+ * 화면 E2E 바탕(`SEED_PROFILE=base`)은 보통약관이 쓰는 박스를 보통약관과 함께 시드로 넣고, 나머지는 화면으로 친다(BX 앞 코드부터).
+ */
+function orderBoxes(plans: readonly BoxPlan[]): BoxPlan[] {
+  const general = (b: BoxPlan) => b.sites.some((s) => s.general);
+  const ordered = [...plans.filter(general), ...plans.filter((b) => !general(b))];
+  ordered.forEach((b, i) => (b.record.code = `BX${String(i + 1).padStart(6, "0")}`));
   return ordered;
 }
 
@@ -386,7 +397,7 @@ function checkClauseOrder(clauses: readonly ClauseRecord[], generals: readonly {
  * 평문 · 선택지 문구의 참조는 `product` 상품의 별표 번호 · 보통약관 색인으로 푼다.
  */
 function buildClause(spec: (typeof CLAUSES)[number], built: Map<string, Built>, products: readonly BuiltProduct[], report: string[]): ClauseRecord {
-  // 노드 id 접두는 설정 이름에서 — 코드는 박스와 함께 나중에 매긴다(orderClauses)
+  // 노드 id 접두는 설정 이름에서 — 코드는 나중에 적재 순서로 매긴다(orderClauses)
   const prefix = `c-${spec.key}`;
   const owner = products.find((p) => p.product.code === (spec.product ?? "alpha"));
   if (!owner) throw new Error(`${spec.key}: 상품 ${spec.product} 없음`);

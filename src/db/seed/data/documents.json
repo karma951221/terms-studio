@@ -161,9 +161,8 @@
             },
             {
               "id": "b-a4-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0023",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000004"
             },
             {
               "id": "b-a4-p5",
@@ -318,9 +317,8 @@
                 },
                 {
                   "id": "s1-a2-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0114",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000085"
                 }
               ]
             },
@@ -388,7 +386,7 @@
             {
               "id": "s1-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0111",
+              "clauseCode": "C0030",
               "options": {
                 "O01": "V01",
                 "O02": "V01"
@@ -404,7 +402,7 @@
             {
               "id": "s1-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0132",
+              "clauseCode": "C0033",
               "options": {}
             }
           ]
@@ -506,9 +504,8 @@
             },
             {
               "id": "s2-a1-b2-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0115",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000086"
             },
             {
               "id": "s2-a1-p2",
@@ -542,7 +539,7 @@
             {
               "id": "s2-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0106",
+              "clauseCode": "C0025",
               "options": {
                 "O01": "V01"
               }
@@ -557,7 +554,7 @@
             {
               "id": "s2-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0112",
+              "clauseCode": "C0031",
               "options": {
                 "O01": "V01"
               }
@@ -572,7 +569,7 @@
             {
               "id": "s2-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0132",
+              "clauseCode": "C0033",
               "options": {}
             }
           ]
@@ -597,7 +594,7 @@
             {
               "id": "s3-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0102",
+              "clauseCode": "C0021",
               "options": {}
             }
           ]
@@ -610,7 +607,7 @@
             {
               "id": "s3-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0104",
+              "clauseCode": "C0023",
               "options": {}
             }
           ]
@@ -700,7 +697,7 @@
             {
               "id": "s3-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0109",
+              "clauseCode": "C0028",
               "options": {}
             }
           ]
@@ -713,7 +710,7 @@
             {
               "id": "s3-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0132",
+              "clauseCode": "C0033",
               "options": {}
             }
           ]
@@ -815,9 +812,8 @@
             },
             {
               "id": "s4-a1-b2-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0115",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000086"
             },
             {
               "id": "s4-a1-p2",
@@ -851,7 +847,7 @@
             {
               "id": "s4-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0106",
+              "clauseCode": "C0025",
               "options": {
                 "O01": "V02"
               }
@@ -866,7 +862,7 @@
             {
               "id": "s4-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0112",
+              "clauseCode": "C0031",
               "options": {
                 "O01": "V02"
               }
@@ -881,7 +877,7 @@
             {
               "id": "s4-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0132",
+              "clauseCode": "C0033",
               "options": {}
             }
           ]
@@ -906,7 +902,7 @@
             {
               "id": "s5-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0103",
+              "clauseCode": "C0022",
               "options": {}
             }
           ]
@@ -919,7 +915,7 @@
             {
               "id": "s5-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0105",
+              "clauseCode": "C0024",
               "options": {}
             }
           ]
@@ -986,9 +982,8 @@
             },
             {
               "id": "s5-a3-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0116",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000087"
             },
             {
               "id": "s5-a3-p4",
@@ -1159,7 +1154,7 @@
             {
               "id": "s5-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0109",
+              "clauseCode": "C0028",
               "options": {}
             }
           ]
@@ -1172,7 +1167,7 @@
             {
               "id": "s5-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0132",
+              "clauseCode": "C0033",
               "options": {}
             }
           ]
@@ -1445,9 +1440,8 @@
             },
             {
               "id": "s6-a3-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0116",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000087"
             },
             {
               "id": "s6-a3-p7",
@@ -1560,7 +1554,7 @@
             {
               "id": "s6-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0110",
+              "clauseCode": "C0029",
               "options": {
                 "O01": "V01"
               }
@@ -1575,7 +1569,7 @@
             {
               "id": "s6-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0132",
+              "clauseCode": "C0033",
               "options": {}
             }
           ]
@@ -2708,9 +2702,8 @@
             },
             {
               "id": "s7-a2-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0117",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000088"
             },
             {
               "id": "s7-a2-p4",
@@ -2736,9 +2729,8 @@
             },
             {
               "id": "s7-a2-b2-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0118",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000089"
             },
             {
               "id": "s7-a2-p5",
@@ -2789,9 +2781,8 @@
             },
             {
               "id": "s7-a2-b3-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0119",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000090"
             }
           ]
         },
@@ -2813,9 +2804,8 @@
             },
             {
               "id": "s7-a3-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0120",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000091"
             },
             {
               "id": "s7-a3-p2",
@@ -3225,9 +3215,8 @@
                 },
                 {
                   "id": "s7-a5-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0121",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000092"
                 },
                 {
                   "id": "s7-a5-p1-i3",
@@ -3315,7 +3304,7 @@
             {
               "id": "s7-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0109",
+              "clauseCode": "C0028",
               "options": {}
             }
           ]
@@ -3328,7 +3317,7 @@
             {
               "id": "s7-a8-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0132",
+              "clauseCode": "C0033",
               "options": {}
             }
           ]
@@ -3353,18 +3342,13 @@
             {
               "id": "s9-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0101",
+              "clauseCode": "C0020",
               "options": {}
             },
             {
               "id": "s9-a1-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0122",
-              "options": {
-                "O01": "V01",
-                "O02": "V01",
-                "O03": "V01"
-              }
+              "kind": "boxRef",
+              "boxCode": "BX000093"
             }
           ]
         },
@@ -3701,9 +3685,8 @@
             },
             {
               "id": "s9-a5-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0116",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000087"
             },
             {
               "id": "s9-a5-p4",
@@ -3816,7 +3799,7 @@
             {
               "id": "s9-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0108",
+              "clauseCode": "C0027",
               "options": {
                 "O01": "V01",
                 "O02": "V01"
@@ -3832,7 +3815,7 @@
             {
               "id": "s9-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0113",
+              "clauseCode": "C0032",
               "options": {}
             }
           ]
@@ -3845,7 +3828,7 @@
             {
               "id": "s9-a8-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0132",
+              "clauseCode": "C0033",
               "options": {}
             }
           ]
@@ -3932,9 +3915,8 @@
                 },
                 {
                   "id": "mb-a4-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0073",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000057"
                 }
               ]
             },
@@ -3994,9 +3976,8 @@
             },
             {
               "id": "mb-a4-b2-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0074",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000058"
             }
           ],
           "linkedArticleId": "m-a4"
@@ -4059,7 +4040,7 @@
             {
               "id": "m1-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0107",
+              "clauseCode": "C0026",
               "options": {
                 "O01": "V01",
                 "O02": "V01",
@@ -4076,7 +4057,7 @@
             {
               "id": "m1-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0110",
+              "clauseCode": "C0029",
               "options": {
                 "O01": "V02"
               }
@@ -4091,7 +4072,7 @@
             {
               "id": "m1-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0133",
+              "clauseCode": "C0034",
               "options": {}
             }
           ]
@@ -4685,9 +4666,8 @@
             },
             {
               "id": "m2-a1-b3-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0123",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000095"
             },
             {
               "id": "m2-a1-t4",
@@ -4983,9 +4963,8 @@
             },
             {
               "id": "m2-a1-b5-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0124",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000096"
             }
           ]
         },
@@ -5061,9 +5040,8 @@
             },
             {
               "id": "m2-a2-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0125",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000097"
             },
             {
               "id": "m2-a2-p4",
@@ -5089,9 +5067,8 @@
             },
             {
               "id": "m2-a2-b2-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0126",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000098"
             },
             {
               "id": "m2-a2-p5",
@@ -5142,9 +5119,8 @@
             },
             {
               "id": "m2-a2-b3-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0127",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000099"
             }
           ]
         },
@@ -5166,9 +5142,8 @@
             },
             {
               "id": "m2-a3-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0128",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000100"
             },
             {
               "id": "m2-a3-p2",
@@ -5578,9 +5553,8 @@
                 },
                 {
                   "id": "m2-a5-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0121",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000092"
                 },
                 {
                   "id": "m2-a5-p1-i3",
@@ -5638,7 +5612,7 @@
             {
               "id": "m2-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0109",
+              "clauseCode": "C0028",
               "options": {}
             }
           ]
@@ -5651,7 +5625,7 @@
             {
               "id": "m2-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0133",
+              "clauseCode": "C0034",
               "options": {}
             }
           ]
@@ -5676,7 +5650,7 @@
             {
               "id": "m3-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0102",
+              "clauseCode": "C0021",
               "options": {}
             }
           ]
@@ -5689,7 +5663,7 @@
             {
               "id": "m3-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0104",
+              "clauseCode": "C0023",
               "options": {}
             }
           ]
@@ -5779,7 +5753,7 @@
             {
               "id": "m3-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0109",
+              "clauseCode": "C0028",
               "options": {}
             }
           ]
@@ -5792,7 +5766,7 @@
             {
               "id": "m3-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0133",
+              "clauseCode": "C0034",
               "options": {}
             }
           ]
@@ -5817,18 +5791,13 @@
             {
               "id": "m4-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0101",
+              "clauseCode": "C0020",
               "options": {}
             },
             {
               "id": "m4-a1-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0122",
-              "options": {
-                "O01": "V02",
-                "O02": "V02",
-                "O03": "V02"
-              }
+              "kind": "boxRef",
+              "boxCode": "BX000094"
             }
           ]
         },
@@ -6091,9 +6060,8 @@
             },
             {
               "id": "m4-a4-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0116",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000087"
             },
             {
               "id": "m4-a4-p4",
@@ -6280,7 +6248,7 @@
             {
               "id": "m4-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0108",
+              "clauseCode": "C0027",
               "options": {
                 "O01": "V02",
                 "O02": "V02"
@@ -6296,7 +6264,7 @@
             {
               "id": "m4-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0113",
+              "clauseCode": "C0032",
               "options": {}
             }
           ]
@@ -6309,7 +6277,7 @@
             {
               "id": "m4-a8-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0133",
+              "clauseCode": "C0034",
               "options": {}
             }
           ]
@@ -6334,7 +6302,7 @@
             {
               "id": "m5-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0103",
+              "clauseCode": "C0022",
               "options": {}
             }
           ]
@@ -6347,7 +6315,7 @@
             {
               "id": "m5-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0105",
+              "clauseCode": "C0024",
               "options": {}
             }
           ]
@@ -6414,9 +6382,8 @@
             },
             {
               "id": "m5-a3-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0116",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000087"
             },
             {
               "id": "m5-a3-p4",
@@ -6587,7 +6554,7 @@
             {
               "id": "m5-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0109",
+              "clauseCode": "C0028",
               "options": {}
             }
           ]
@@ -6600,7 +6567,7 @@
             {
               "id": "m5-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0133",
+              "clauseCode": "C0034",
               "options": {}
             }
           ]
@@ -6732,9 +6699,8 @@
             },
             {
               "id": "m6-a1-b2-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0129",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000101"
             },
             {
               "id": "m6-a1-p2",
@@ -6892,7 +6858,7 @@
             {
               "id": "m6-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0111",
+              "clauseCode": "C0030",
               "options": {
                 "O01": "V02",
                 "O02": "V02"
@@ -7099,9 +7065,8 @@
             },
             {
               "id": "m7-a1-b2-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0130",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000102"
             },
             {
               "id": "m7-a1-p2",
@@ -7214,7 +7179,7 @@
             {
               "id": "m7-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0107",
+              "clauseCode": "C0026",
               "options": {
                 "O01": "V02",
                 "O02": "V02",
@@ -7231,7 +7196,7 @@
             {
               "id": "m7-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0110",
+              "clauseCode": "C0029",
               "options": {
                 "O01": "V02"
               }
@@ -7246,7 +7211,7 @@
             {
               "id": "m7-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0133",
+              "clauseCode": "C0034",
               "options": {}
             }
           ]
@@ -8192,9 +8157,8 @@
             },
             {
               "id": "m8-a1-b4-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0131",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000103"
             },
             {
               "id": "m8-a1-t5",
@@ -8490,9 +8454,8 @@
             },
             {
               "id": "m8-a1-b6-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0124",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000096"
             }
           ]
         },
@@ -8568,9 +8531,8 @@
             },
             {
               "id": "m8-a2-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0125",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000097"
             },
             {
               "id": "m8-a2-p4",
@@ -8596,9 +8558,8 @@
             },
             {
               "id": "m8-a2-b2-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0126",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000098"
             },
             {
               "id": "m8-a2-p5",
@@ -8649,9 +8610,8 @@
             },
             {
               "id": "m8-a2-b3-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0127",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000099"
             }
           ]
         },
@@ -8673,9 +8633,8 @@
             },
             {
               "id": "m8-a3-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0128",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000100"
             },
             {
               "id": "m8-a3-p2",
@@ -9018,9 +8977,8 @@
                 },
                 {
                   "id": "m8-a4-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0024",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000005"
                 }
               ]
             },
@@ -9092,9 +9050,8 @@
                 },
                 {
                   "id": "m8-a4-b2-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0025",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000006"
                 }
               ]
             },
@@ -9193,9 +9150,8 @@
                 },
                 {
                   "id": "m8-a5-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0121",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000092"
                 },
                 {
                   "id": "m8-a5-p1-i3",
@@ -9253,7 +9209,7 @@
             {
               "id": "m8-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0109",
+              "clauseCode": "C0028",
               "options": {}
             }
           ]
@@ -9266,7 +9222,7 @@
             {
               "id": "m8-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0133",
+              "clauseCode": "C0034",
               "options": {}
             }
           ]

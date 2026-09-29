@@ -378,9 +378,8 @@
                 },
                 {
                   "id": "g-a2-b3-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0020",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000001"
                 },
                 {
                   "id": "g-a2-p3",
@@ -496,9 +495,8 @@
                 },
                 {
                   "id": "g-a2-b5-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0021",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000002"
                 },
                 {
                   "id": "g-a2-p4",
@@ -672,9 +670,8 @@
                 },
                 {
                   "id": "g-a2-b8-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0022",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000003"
                 }
               ]
             }
@@ -837,9 +834,8 @@
                 },
                 {
                   "id": "g-a4-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0023",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000004"
                 },
                 {
                   "id": "g-a4-p5",
@@ -985,15 +981,13 @@
                     },
                     {
                       "id": "g-a5-b1-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0024",
-                      "options": {}
+                      "kind": "boxRef",
+                      "boxCode": "BX000005"
                     },
                     {
                       "id": "g-a5-b2-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0025",
-                      "options": {}
+                      "kind": "boxRef",
+                      "boxCode": "BX000006"
                     }
                   ]
                 },
@@ -1289,11 +1283,8 @@
                     },
                     {
                       "id": "g-a8-b1-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0026",
-                      "options": {
-                        "O01": "V01"
-                      }
+                      "kind": "boxRef",
+                      "boxCode": "BX000007"
                     }
                   ]
                 },
@@ -1343,9 +1334,8 @@
                 },
                 {
                   "id": "g-a8-b2-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0027",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000009"
                 },
                 {
                   "id": "g-a8-p5",
@@ -1809,9 +1799,8 @@
                 },
                 {
                   "id": "g-a11-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0028",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000010"
                 }
               ]
             },
@@ -1841,9 +1830,8 @@
                 },
                 {
                   "id": "g-a13-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0029",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000011"
                 }
               ]
             },
@@ -1860,9 +1848,8 @@
                 },
                 {
                   "id": "g-a14-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0030",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000012"
                 }
               ]
             }
@@ -1886,11 +1873,8 @@
                 },
                 {
                   "id": "g-a15-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0031",
-                  "options": {
-                    "O01": "V01"
-                  }
+                  "kind": "boxRef",
+                  "boxCode": "BX000013"
                 }
               ]
             },
@@ -1958,9 +1942,8 @@
                     },
                     {
                       "id": "g-a16-b1-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0032",
-                      "options": {}
+                      "kind": "boxRef",
+                      "boxCode": "BX000015"
                     },
                     {
                       "id": "g-a16-p1-i2",
@@ -2042,9 +2025,8 @@
                 },
                 {
                   "id": "g-a16-b2-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0033",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000016"
                 },
                 {
                   "id": "g-a16-p3",
@@ -2075,11 +2057,8 @@
                 },
                 {
                   "id": "g-a16-b3-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0034",
-                  "options": {
-                    "O01": "V01"
-                  }
+                  "kind": "boxRef",
+                  "boxCode": "BX000017"
                 },
                 {
                   "id": "g-a16-p4",
@@ -2105,9 +2084,8 @@
                 },
                 {
                   "id": "g-a16-b4-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0035",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000019"
                 },
                 {
                   "id": "g-a16-p5",
@@ -2154,9 +2132,8 @@
                 },
                 {
                   "id": "g-a16-b5-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0036",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000020"
                 }
               ]
             },
@@ -2553,15 +2530,13 @@
                 },
                 {
                   "id": "g-a19-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0037",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000021"
                 },
                 {
                   "id": "g-a19-b2-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0038",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000022"
                 },
                 {
                   "id": "g-a19-p3",
@@ -2708,9 +2683,8 @@
                 },
                 {
                   "id": "g-a20-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0039",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000023"
                 },
                 {
                   "id": "g-a20-p2",
@@ -2842,9 +2816,8 @@
                     },
                     {
                       "id": "g-a21-b1-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0040",
-                      "options": {}
+                      "kind": "boxRef",
+                      "boxCode": "BX000024"
                     }
                   ]
                 },
@@ -2883,9 +2856,8 @@
                     },
                     {
                       "id": "g-a21-b2-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0041",
-                      "options": {}
+                      "kind": "boxRef",
+                      "boxCode": "BX000025"
                     }
                   ]
                 },
@@ -2918,9 +2890,8 @@
                 },
                 {
                   "id": "g-a21-b3-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0042",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000026"
                 },
                 {
                   "id": "g-a21-p4",
@@ -3035,9 +3006,8 @@
                 },
                 {
                   "id": "g-a21-b4-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0043",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000027"
                 }
               ]
             },
@@ -3108,21 +3078,18 @@
                     },
                     {
                       "id": "g-a22-b1-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0044",
-                      "options": {}
+                      "kind": "boxRef",
+                      "boxCode": "BX000028"
                     },
                     {
                       "id": "g-a22-b2-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0045",
-                      "options": {}
+                      "kind": "boxRef",
+                      "boxCode": "BX000029"
                     },
                     {
                       "id": "g-a22-b3-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0046",
-                      "options": {}
+                      "kind": "boxRef",
+                      "boxCode": "BX000030"
                     }
                   ]
                 },
@@ -3230,9 +3197,8 @@
                 },
                 {
                   "id": "g-a23-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0047",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000031"
                 },
                 {
                   "id": "g-a23-p3",
@@ -3279,9 +3245,8 @@
                 },
                 {
                   "id": "g-a23-b2-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0048",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000032"
                 },
                 {
                   "id": "g-a23-p4",
@@ -3406,9 +3371,8 @@
                 },
                 {
                   "id": "g-a24-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0049",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000033"
                 }
               ]
             },
@@ -3490,9 +3454,8 @@
                 },
                 {
                   "id": "g-a25-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0050",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000034"
                 }
               ]
             }
@@ -3532,9 +3495,8 @@
                 },
                 {
                   "id": "g-a26-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0051",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000035"
                 },
                 {
                   "id": "g-a26-p3",
@@ -3635,9 +3597,8 @@
                 },
                 {
                   "id": "g-a27-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0052",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000036"
                 }
               ]
             },
@@ -3824,9 +3785,8 @@
                 },
                 {
                   "id": "g-a27_1-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0053",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000037"
                 },
                 {
                   "id": "g-a27_1-p3",
@@ -3852,9 +3812,8 @@
                 },
                 {
                   "id": "g-a27_1-b2-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0054",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000038"
                 },
                 {
                   "id": "g-a27_1-p4",
@@ -4481,9 +4440,8 @@
                 },
                 {
                   "id": "g-a27_3-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0055",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000039"
                 },
                 {
                   "id": "g-a27_3-p4",
@@ -4498,9 +4456,8 @@
                 },
                 {
                   "id": "g-a27_3-b2-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0056",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000040"
                 },
                 {
                   "id": "g-a27_3-p5",
@@ -4983,9 +4940,8 @@
                 },
                 {
                   "id": "g-a28-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0057",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000041"
                 }
               ]
             },
@@ -5029,9 +4985,8 @@
                     },
                     {
                       "id": "g-a29-b1-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0058",
-                      "options": {}
+                      "kind": "boxRef",
+                      "boxCode": "BX000042"
                     }
                   ]
                 },
@@ -5293,9 +5248,8 @@
                 },
                 {
                   "id": "g-a30-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0059",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000043"
                 },
                 {
                   "id": "g-a30-p2",
@@ -5588,9 +5542,8 @@
                 },
                 {
                   "id": "g-a31-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0060",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000044"
                 }
               ]
             }
@@ -5797,9 +5750,8 @@
                 },
                 {
                   "id": "g-a32_1-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0061",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000045"
                 }
               ]
             },
@@ -5843,9 +5795,8 @@
                     },
                     {
                       "id": "g-a33-b1-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0062",
-                      "options": {}
+                      "kind": "boxRef",
+                      "boxCode": "BX000046"
                     }
                   ]
                 },
@@ -6006,9 +5957,8 @@
                 },
                 {
                   "id": "g-a35-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0063",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000047"
                 },
                 {
                   "id": "g-a35-p2",
@@ -6235,15 +6185,13 @@
                 },
                 {
                   "id": "g-a38-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0064",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000048"
                 },
                 {
                   "id": "g-a38-b2-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0065",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000049"
                 }
               ]
             }
@@ -6293,9 +6241,8 @@
                 },
                 {
                   "id": "g-a41-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0066",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000050"
                 }
               ]
             },
@@ -6317,9 +6264,8 @@
                 },
                 {
                   "id": "g-a42-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0067",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000051"
                 },
                 {
                   "id": "g-a42-p2-k",
@@ -6342,9 +6288,8 @@
                 },
                 {
                   "id": "g-a43-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0068",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000052"
                 }
               ]
             },
@@ -6374,9 +6319,8 @@
                 },
                 {
                   "id": "g-a45-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0069",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000053"
                 }
               ]
             },
@@ -6419,9 +6363,8 @@
                 },
                 {
                   "id": "g-a48-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0070",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000054"
                 }
               ]
             }
@@ -6849,9 +6792,8 @@
                 },
                 {
                   "id": "m-a2-b3-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0020",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000001"
                 },
                 {
                   "id": "m-a2-p3",
@@ -6967,9 +6909,8 @@
                 },
                 {
                   "id": "m-a2-b5-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0071",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000055"
                 },
                 {
                   "id": "m-a2-p4",
@@ -7143,9 +7084,8 @@
                 },
                 {
                   "id": "m-a2-b8-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0072",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000056"
                 }
               ]
             }
@@ -7225,9 +7165,8 @@
                     },
                     {
                       "id": "m-a4-b1-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0073",
-                      "options": {}
+                      "kind": "boxRef",
+                      "boxCode": "BX000057"
                     }
                   ]
                 },
@@ -7287,9 +7226,8 @@
                 },
                 {
                   "id": "m-a4-b2-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0074",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000058"
                 }
               ]
             },
@@ -7366,15 +7304,13 @@
                     },
                     {
                       "id": "m-a5-b1-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0024",
-                      "options": {}
+                      "kind": "boxRef",
+                      "boxCode": "BX000005"
                     },
                     {
                       "id": "m-a5-b2-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0025",
-                      "options": {}
+                      "kind": "boxRef",
+                      "boxCode": "BX000006"
                     }
                   ]
                 },
@@ -7670,11 +7606,8 @@
                     },
                     {
                       "id": "m-a8-b1-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0026",
-                      "options": {
-                        "O01": "V02"
-                      }
+                      "kind": "boxRef",
+                      "boxCode": "BX000008"
                     }
                   ]
                 },
@@ -7724,9 +7657,8 @@
                 },
                 {
                   "id": "m-a8-b2-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0027",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000009"
                 },
                 {
                   "id": "m-a8-p5",
@@ -7956,27 +7888,23 @@
                 },
                 {
                   "id": "m-a9-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0075",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000059"
                 },
                 {
                   "id": "m-a9-b2-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0076",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000060"
                 },
                 {
                   "id": "m-a9-b3-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0077",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000061"
                 },
                 {
                   "id": "m-a9-b4-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0078",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000062"
                 }
               ]
             },
@@ -8150,9 +8078,8 @@
                 },
                 {
                   "id": "m-a11-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0079",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000063"
                 }
               ]
             },
@@ -8182,9 +8109,8 @@
                 },
                 {
                   "id": "m-a13-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0029",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000011"
                 }
               ]
             },
@@ -8201,9 +8127,8 @@
                 },
                 {
                   "id": "m-a14-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0030",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000012"
                 }
               ]
             }
@@ -8227,11 +8152,8 @@
                 },
                 {
                   "id": "m-a15-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0031",
-                  "options": {
-                    "O01": "V02"
-                  }
+                  "kind": "boxRef",
+                  "boxCode": "BX000014"
                 }
               ]
             },
@@ -8299,9 +8221,8 @@
                     },
                     {
                       "id": "m-a16-b1-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0080",
-                      "options": {}
+                      "kind": "boxRef",
+                      "boxCode": "BX000064"
                     },
                     {
                       "id": "m-a16-p1-i2",
@@ -8383,9 +8304,8 @@
                 },
                 {
                   "id": "m-a16-b2-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0081",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000065"
                 },
                 {
                   "id": "m-a16-p3",
@@ -8416,11 +8336,8 @@
                 },
                 {
                   "id": "m-a16-b3-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0034",
-                  "options": {
-                    "O01": "V02"
-                  }
+                  "kind": "boxRef",
+                  "boxCode": "BX000018"
                 },
                 {
                   "id": "m-a16-p4",
@@ -8446,9 +8363,8 @@
                 },
                 {
                   "id": "m-a16-b4-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0082",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000066"
                 },
                 {
                   "id": "m-a16-p5",
@@ -8495,9 +8411,8 @@
                 },
                 {
                   "id": "m-a16-b5-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0036",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000020"
                 }
               ]
             },
@@ -8894,9 +8809,8 @@
                 },
                 {
                   "id": "m-a19-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0083",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000067"
                 },
                 {
                   "id": "m-a19-p3",
@@ -9043,9 +8957,8 @@
                 },
                 {
                   "id": "m-a20-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0039",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000023"
                 },
                 {
                   "id": "m-a20-p2",
@@ -9177,9 +9090,8 @@
                     },
                     {
                       "id": "m-a21-b1-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0084",
-                      "options": {}
+                      "kind": "boxRef",
+                      "boxCode": "BX000068"
                     }
                   ]
                 },
@@ -9218,9 +9130,8 @@
                     },
                     {
                       "id": "m-a21-b2-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0041",
-                      "options": {}
+                      "kind": "boxRef",
+                      "boxCode": "BX000025"
                     }
                   ]
                 },
@@ -9253,9 +9164,8 @@
                 },
                 {
                   "id": "m-a21-b3-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0085",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000069"
                 },
                 {
                   "id": "m-a21-p4",
@@ -9343,9 +9253,8 @@
                 },
                 {
                   "id": "m-a21-b4-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0043",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000027"
                 },
                 {
                   "id": "m-a21-p6",
@@ -9443,15 +9352,13 @@
                     },
                     {
                       "id": "m-a22-b1-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0086",
-                      "options": {}
+                      "kind": "boxRef",
+                      "boxCode": "BX000070"
                     },
                     {
                       "id": "m-a22-b2-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0046",
-                      "options": {}
+                      "kind": "boxRef",
+                      "boxCode": "BX000030"
                     }
                   ]
                 },
@@ -9559,9 +9466,8 @@
                 },
                 {
                   "id": "m-a23-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0087",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000071"
                 },
                 {
                   "id": "m-a23-p3",
@@ -9608,9 +9514,8 @@
                 },
                 {
                   "id": "m-a23-b2-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0048",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000032"
                 },
                 {
                   "id": "m-a23-p4",
@@ -9735,9 +9640,8 @@
                 },
                 {
                   "id": "m-a24-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0088",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000072"
                 }
               ]
             },
@@ -9995,9 +9899,8 @@
                 },
                 {
                   "id": "m-a26-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0050",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000034"
                 }
               ]
             }
@@ -10037,9 +9940,8 @@
                 },
                 {
                   "id": "m-a27-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0051",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000035"
                 },
                 {
                   "id": "m-a27-p3",
@@ -10140,9 +10042,8 @@
                 },
                 {
                   "id": "m-a28-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0052",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000036"
                 }
               ]
             },
@@ -10381,9 +10282,8 @@
                 },
                 {
                   "id": "m-a29-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0089",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000073"
                 },
                 {
                   "id": "m-a29-p4",
@@ -10412,9 +10312,8 @@
                 },
                 {
                   "id": "m-a29-b2-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0090",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000074"
                 },
                 {
                   "id": "m-a29-p5",
@@ -10617,9 +10516,8 @@
                 },
                 {
                   "id": "m-a30-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0091",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000075"
                 },
                 {
                   "id": "m-a30-p4",
@@ -10634,9 +10532,8 @@
                 },
                 {
                   "id": "m-a30-b2-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0092",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000076"
                 },
                 {
                   "id": "m-a30-p5",
@@ -11357,9 +11254,8 @@
                 },
                 {
                   "id": "m-a32-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0093",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000077"
                 }
               ]
             },
@@ -11661,9 +11557,8 @@
                 },
                 {
                   "id": "m-a34-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0058",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000042"
                 }
               ]
             },
@@ -11811,9 +11706,8 @@
                 },
                 {
                   "id": "m-a35-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0059",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000043"
                 }
               ]
             },
@@ -11991,9 +11885,8 @@
                 },
                 {
                   "id": "m-a36-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0094",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000078"
                 }
               ]
             }
@@ -12200,9 +12093,8 @@
                 },
                 {
                   "id": "m-a37_1-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0095",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000079"
                 }
               ]
             },
@@ -12246,9 +12138,8 @@
                     },
                     {
                       "id": "m-a38-b1-k",
-                      "kind": "clauseBlockRef",
-                      "clauseCode": "C0062",
-                      "options": {}
+                      "kind": "boxRef",
+                      "boxCode": "BX000046"
                     }
                   ]
                 },
@@ -12409,9 +12300,8 @@
                 },
                 {
                   "id": "m-a40-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0096",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000080"
                 },
                 {
                   "id": "m-a40-p2",
@@ -12638,15 +12528,13 @@
                 },
                 {
                   "id": "m-a43-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0097",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000081"
                 },
                 {
                   "id": "m-a43-b2-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0098",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000082"
                 }
               ]
             }
@@ -12696,9 +12584,8 @@
                 },
                 {
                   "id": "m-a46-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0066",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000050"
                 }
               ]
             },
@@ -12720,9 +12607,8 @@
                 },
                 {
                   "id": "m-a47-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0099",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000083"
                 },
                 {
                   "id": "m-a47-p2-k",
@@ -12745,9 +12631,8 @@
                 },
                 {
                   "id": "m-a48-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0068",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000052"
                 }
               ]
             },
@@ -12777,9 +12662,8 @@
                 },
                 {
                   "id": "m-a50-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0069",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000053"
                 }
               ]
             },
@@ -12822,9 +12706,8 @@
                 },
                 {
                   "id": "m-a53-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0100",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000084"
                 }
               ]
             }

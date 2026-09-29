@@ -5,8 +5,8 @@
  * 편집본을 직접 만지거나 서버 액션을 부르지 않는다.
  *
  * 두 단계로 친다 (조 참조가 뒤 조 · 항을 가리킬 수 있어서 — 고르기 트리는 이미 있는 대상만 보인다):
- * 1. 뼈대 — 조 · 제목 · 항 · 호 · 목 · 표 · 공용조항 블록(항 · 박스) · 조연결 · 조 자리 조건 (문장은 비워 둔다)
- *    실물 박스는 아직 「박스」 공용조항이라 「공용조항」으로 넣는다(항 · 호 뒤면 박스 공용조항만 고르기에 선다). 툴바 「박스」는 정적 마스터 박스(기능/박스 §4.4)
+ * 1. 뼈대 — 조 · 제목 · 항 · 호 · 목 · 표 · 박스 · 공용조항 블록 · 조연결 · 조 자리 조건 (문장은 비워 둔다)
+ *    박스는 툴바 「박스」에서 정적 마스터 박스를 고른다(기능/박스 §4.4 — 박스 참조).
  * 2. 문장 — 조마다 문장 칸(항 · 호 · 목 · 표 셀)을 차례로 채운다: 글 · 슬롯 · 조 참조 · 별표 참조 · 공용조항(문장) · 문장 안 조건
  *
  * 화면 자리 ↔ 시드 노드는 **순서**로 맞춘다 — 가운데는 조 하나를 그리고, 그 안의 `[data-block]` · `[data-inline]` 은
@@ -384,7 +384,7 @@ function articlesOf(tree: DocumentNode): { article: Node; wrap?: string }[] {
   return out;
 }
 
-const BLOCK_TOOL: Partial<Record<Node["kind"], string>> = { paragraph: "항", item: "호", subitem: "목", table: "표", clauseBlockRef: "공용조항" };
+const BLOCK_TOOL: Partial<Record<Node["kind"], string>> = { paragraph: "항", item: "호", subitem: "목", table: "표", clauseBlockRef: "공용조항", boxRef: "박스" };
 
 /** 문면 저작 화면 운전 — 담보약관 템플릿 한 벌. */
 export class DocumentAuthoring {
@@ -397,6 +397,8 @@ export class DocumentAuthoring {
     refs: Omit<RefScopes, "hasScopeSelect">,
     /** 공용조항 코드 → 이름 (공용조항 블록 고르기 메뉴의 줄 이름). */
     private readonly clauseLabels: ReadonlyMap<string, string>,
+    /** 박스 코드 → 이름 (툴바 「박스」 고르기 메뉴의 줄 이름). */
+    private readonly boxNames: ReadonlyMap<string, string>,
   ) {
     this.body = page.locator(".ts-l3-body");
     this.editor = new Editor(page, this.body, { ...refs, hasScopeSelect: true });
@@ -496,6 +498,13 @@ export class DocumentAuthoring {
       await block.locator(".ts-doc-clause-name").click();
       return;
     }
+    // 박스 참조 — 글 칸이 없다. 박스 제목 · 첫 줄을 눌러 그 블록을 자리로 (머리 띠의 이름은 박스 화면 링크라 누르지 않는다).
+    // 블록 바로 아래의 박스만 — 항 블록은 호 목록 안에 박스를 품을 수 있다
+    const box = block.locator(":scope > aside.ts-doc-box");
+    if ((await box.count()) > 0) {
+      await box.locator(".ts-doc-box-title, .ts-doc-box-line").first().click();
+      return;
+    }
     // 이미 초점이 있으면 focus 가 자리를 다시 알리지 않는다 — 한 번 놓았다가 잡는다
     await inline.blur();
     await inline.focus();
@@ -513,6 +522,11 @@ export class DocumentAuthoring {
       else await header.uncheck();
       if (node.rows.slice(1).some((r) => r.header)) throw new Error("둘째 행 이후 제목줄은 이 E2E 가 치지 않는다");
       await this.editor.confirm(d, "표 만들기");
+      return;
+    }
+    if (node.kind === "boxRef") {
+      await this.editor.runTool(tool);
+      await this.page.getByRole("menuitem", { name: `${this.boxNames.get(node.boxCode)}(${node.boxCode})`, exact: true }).click();
       return;
     }
     if (node.kind === "clauseBlockRef") {
