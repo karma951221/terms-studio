@@ -366,15 +366,16 @@ export function createCatalogService(db: Db, deps: CatalogServiceDeps = {}): Cat
             const { def: next, removed, removedFields, retypedFields } = revised.value;
             const targets = removed.map((valueCode): ImpactTarget => ({ kind: "enumValue", enumCode: code, valueCode }));
             // 필드 삭제 · 타입 변경 — 그 필드를 읽는 곳(참조 그래프의 enumField 간선)이 깨질 참조, 값마다 넣은 입력이 함께 지워질 항목 (ADR-0078 결정 2)
-            const fieldImpacts = [...removedFields, ...retypedFields].map((key) =>
-              computeImpact({ kind: "enumField", enumCode: code, key }, impact, { cascade: [fieldLoss(def, next, key)] }),
-            );
+            // 영향은 1차 호출에서만 계산한다(destructive 가 computeImpact 를 부를 때) — 미리 만들면 confirm 경로에서 트랜잭션이 닫힌 뒤 돈다
+            const fieldKeys = [...removedFields, ...retypedFields];
+            const fieldImpacts = () =>
+              fieldKeys.map((key) => computeImpact({ kind: "enumField", enumCode: code, key }, impact, { cascade: [fieldLoss(def, next, key)] }));
             // 뺀 값을 고른 값 행은 지우지 않는다 — 코드가 남아 값 폼 · 조립에서 「없는 값」 오류가 된다 (ADR-0078 결정 5)
             const save = async (): Promise<Result<EnumDef>> => {
               await repo.saveEnum(tx, next, actor.userId);
               return ok(next);
             };
-            if (targets.length === 0 && fieldImpacts.length === 0) return save();
+            if (targets.length === 0 && fieldKeys.length === 0) return save();
             // 셋 모두 관리자 전용이라 판정은 같다 — 거부 사유에는 가장 앞선 변경을 싣는다(값 삭제 → 필드 삭제 → 타입 변경)
             const action = targets.length > 0 ? "enum.deleteValue" : removedFields.length > 0 ? "enum.deleteField" : "enum.changeFieldType";
             return destructive<EnumDef>({
@@ -382,7 +383,7 @@ export function createCatalogService(db: Db, deps: CatalogServiceDeps = {}): Cat
               action,
               confirm: opts.confirm,
               computeImpact: async () =>
-                mergeImpacts([...(await Promise.all(targets.map((target) => computeImpact(target, impact)))), ...(await Promise.all(fieldImpacts))]),
+                mergeImpacts([...(await Promise.all(targets.map((target) => computeImpact(target, impact)))), ...(await Promise.all(fieldImpacts()))]),
               execute: save,
             });
           }),
