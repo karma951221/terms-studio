@@ -13,9 +13,12 @@
  */
 import { Fragment, type ReactNode } from "react";
 
-import type { ArticleRefNode, Block, BulletListNode, Clause, Inline, ItemNode, SubitemNode } from "@/domain/clause";
+import type { ArticleRefNode, Block, BoxRefNode, BulletListNode, Clause, Inline, ItemNode, SubitemNode } from "@/domain/clause";
 import { clauseBodyToTree, clauseInlineToTree, clausePositions, clauseScopedRefLabel, numberTree, referenceChunkLabel, type NodeNumber, type ReferenceTarget } from "@/domain/document";
+import type { Box } from "@/domain/document/box";
 import type { Code, Id } from "@/domain/types";
+
+import { BoxView } from "./BoxView";
 
 export interface ClauseModelProps {
   clause: Clause;
@@ -25,6 +28,8 @@ export interface ClauseModelProps {
   references: ReadonlyMap<Id, ReferenceTarget>;
   /** 별표 코드 → 이름. 모르면 코드만. */
   appendixName?: (code: Code) => string | undefined;
+  /** 정적 마스터 박스 조회 — 박스 참조를 내용째 그린다. 모르면 코드만. */
+  boxOf?: (code: Code) => Box | undefined;
   /** 식(조건 · 슬롯) 표시 — 구분자 코드를 표시명으로. 없으면 원문. */
   exprText?: (source: string) => string;
 }
@@ -148,11 +153,15 @@ function Bullets({ node, ctx }: { node: BulletListNode; ctx: Ctx }) {
   );
 }
 
-function Items({ nodes, ctx }: { nodes: readonly (ItemNode | BulletListNode)[]; ctx: Ctx }) {
+function Items({ nodes, ctx }: { nodes: readonly (ItemNode | BulletListNode | BoxRefNode)[]; ctx: Ctx }) {
   return (
     <ol className="ts-doc-items">
       {nodes.map((item) =>
-        item.kind === "bulletList" ? (
+        item.kind === "boxRef" ? (
+          <li key={item.id} className="ts-doc-static-item">
+            <BoxView code={item.boxCode} box={ctx.boxOf?.(item.boxCode)} />
+          </li>
+        ) : item.kind === "bulletList" ? (
           <li key={item.id} className="ts-doc-static-item">
             <Bullets node={item} ctx={ctx} />
           </li>
@@ -182,6 +191,7 @@ function Subitems({ nodes, ctx }: { nodes: readonly SubitemNode[]; ctx: Ctx }) {
 function Blocks({ nodes, ctx }: { nodes: readonly Block[]; ctx: Ctx }): ReactNode {
   return nodes.map((node) => {
     if (node.kind === "bulletList") return <Bullets key={node.id} node={node} ctx={ctx} />;
+    if (node.kind === "boxRef") return <BoxView key={node.id} code={node.boxCode} box={ctx.boxOf?.(node.boxCode)} />;
     if (node.kind === "paragraph") {
       return (
         <div key={node.id} className={ctx.numbers.get(node.id)?.label ? "ts-doc-paragraph" : "ts-doc-paragraph is-bare"}>

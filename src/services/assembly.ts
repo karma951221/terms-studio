@@ -95,9 +95,10 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
   const { catalog, clause, document, product } = services;
 
   async function loadMaster(): Promise<MasterBundle> {
-    const [clauses, appendices, defs, enums, attributeKinds, docs] = await Promise.all([
+    const [clauses, appendices, boxes, defs, enums, attributeKinds, docs] = await Promise.all([
       clause.list(),
       document.listAppendices(),
+      document.listBoxes(),
       catalog.list(),
       catalog.listEnums(),
       product.listAttributeKinds(),
@@ -110,7 +111,7 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
       if (d.kind === "general") generalDocuments.set(d.id, d.tree);
       else if (d.ownerId) specialDocuments.set(d.ownerId, d.tree);
     }
-    return { catalog: defs, enums, attributeKinds, clauses, appendices, generalDocuments, specialDocuments };
+    return { catalog: defs, enums, attributeKinds, clauses, appendices, boxes, generalDocuments, specialDocuments };
   }
 
   /** 유효 조합에 등장하는 선택지 합집합 — 축 순(종 → 형) · 번호 순. 값은 한 번에 읽는다. */

@@ -28,6 +28,7 @@ import type { StructNodeRef } from "../structure";
 import type { Discriminator, EnumDef, SlotPath } from "../catalog/types";
 import type { Clause } from "../clause/types";
 import type { Appendix } from "../document/appendix";
+import type { Box } from "../document/box";
 import type { DocumentNode, TableColumn } from "../document/nodes";
 import type { AttributeKind, ClauseOptionOverride, PlanAxis, ProductCoverageSnapshot, ProductPlan, SpecialGroup } from "../product/types";
 import type { MasterTree } from "../master";
@@ -101,6 +102,8 @@ export interface MasterBundle {
   attributeKinds: readonly AttributeKind[];
   clauses: readonly Clause[];
   appendices: readonly Appendix[];
+  /** 정적 마스터 박스 — 박스 참조가 여기서 내용을 읽는다 (최종 결정 9). 없으면 박스 없음. */
+  boxes?: readonly Box[];
   /** 보통약관 문서 id → 문면. 상품은 `AssemblyProduct.generalDocumentId` 로 고른다. */
   generalDocuments: ReadonlyMap<Id, DocumentNode>;
   /** 담보 id → 담보약관 마스터 문서. 없는 담보의 탑재분은 문서를 내지 않는다 (오류 아님). */

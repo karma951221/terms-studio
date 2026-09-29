@@ -12,6 +12,8 @@
  *   key 조합마다 템플릿 행 복제 · 구조 표기 → key 표기 · 바깥 key 세로 병합(spans). 조합이 0 이면 표를 생략한다.
  *   행 안의 조건은 행 노드 문맥에서 해소하고, 슬롯은 행 노드(`RSlot.row`)를 달고 치환 단계로 넘긴다.
  *   행 원천이 없는 문맥(보통약관)의 반복 표는 오류 마커.
+ * - **박스 참조**(정적 마스터, 최종 결정 9)는 박스 마스터(`env.boxes`)에서 제목 · 줄을 읽어 정적 박스로 바꾼다 — 조 자리 · 호 목록 자리,
+ *   펼친 공용조항 본문 안도 같다. 없는 박스는 brokenRef 오류 마커. 줄은 고정 글이라 더 해소할 것이 없다.
  * - 슬롯·조 참조·별표 참조는 그대로 둔다 (4·7단계).
  *
  * 좌표: 문서 기본 좌표 + 조(id·조 명) + 노드 경로. 펼친 공용조항 안의 노드 id 는 `${참조노드id}/${원노드id}`.
@@ -30,7 +32,8 @@ import type {
 } from "../clause/nodes";
 import { expandClause, resolveOptions } from "../clause/reference";
 import type { Clause, ClauseMode, OptionSelection } from "../clause/types";
-import type { ArticleNode, BoxNode, BulletListNode, BulletNode, ClauseBlockRefNode, CondBlockNode, DocumentNode, ForBlockNode, InlineNode, ItemNode, ParagraphNode, SectionNode, SubitemNode, TableNode } from "../document/nodes";
+import type { Box } from "../document/box";
+import type { ArticleNode, BoxNode, BoxRefNode, BulletListNode, BulletNode, ClauseBlockRefNode, CondBlockNode, DocumentNode, ForBlockNode, InlineNode, ItemNode, ParagraphNode, SectionNode, SubitemNode, TableNode } from "../document/nodes";
 import { evaluate, parse, type EvalContext } from "../expression";
 import { expandRepeatTable } from "../document/repeat";
 import { descend, enumerateRows, type StructNodeRef } from "../structure";
@@ -40,6 +43,8 @@ import type { ErrorNode, RArticle, RBulletList, RInline, RItem, RParagraph, Reso
 
 export interface ResolveEnv {
   clauses: ReadonlyMap<Code, Clause>;
+  /** 정적 마스터 박스 — 코드 → 박스. 박스 참조를 여기서 편다 (없으면 모든 박스 참조가 brokenRef). */
+  boxes?: ReadonlyMap<Code, Box>;
   /** 공용조항 참조 노드 id → 옵션 오버라이드 (상품 스코프 — 보통약관 자리만, 기능/상품 §3.6). */
   overrides: ReadonlyMap<Id, OptionSelection>;
   /** 문서 기본 좌표 (document · ownerId · ownerName). */
@@ -60,7 +65,7 @@ type AnyCond = CondBlockNode | ClauseCondBlockNode;
 type AnySubitem = ClauseSubitemNode | SubitemNode;
 type AnyItem = ItemNode | ClauseItemNode;
 type AnyParagraph = ParagraphNode | ClauseParagraphNode;
-type AnyBlock = AnyParagraph | AnyCond | ClauseBlockRefNode | ForBlockNode | ClauseBlock | ItemNode | SubitemNode | ArticleNode | SectionNode | TableNode | BoxNode | BulletListNode | BulletNode;
+type AnyBlock = AnyParagraph | AnyCond | ClauseBlockRefNode | ForBlockNode | ClauseBlock | ItemNode | SubitemNode | ArticleNode | SectionNode | TableNode | BoxNode | BulletListNode | BulletNode | BoxRefNode;
 type AnyStatic = TableNode | BoxNode | BulletListNode | ClauseBulletListNode;
 /** 가지 — 블록·인라인·공용조항 쪽 모두 이 모양이다. children 은 자리에 맞게 캐스팅한다. */
 interface Branch {
@@ -188,6 +193,13 @@ class Walker {
       return { ok: false, marker: this.error(node.id, { ...issue, at: { ...at, ...issue.at } }) };
     }
     return { ok: true, mode: clause.mode, body: expanded.value as (ClauseInline | ClauseBlock | ClauseBoxNode)[] };
+  }
+
+  /** 정적 마스터 박스 참조 → 박스(제목 + 고정 글 줄). 줄 id 는 `${참조노드id}/l${n}` (옛 문면 박스와 같은 모양). */
+  boxRef(n: BoxRefNode, f: Frame): RStatic<RInline> | ErrorNode {
+    const box = this.env.boxes?.get(n.boxCode);
+    if (!box) return this.error(n.id, { kind: "brokenRef", message: `박스 ${n.boxCode} 이(가) 정적 마스터에 없습니다`, at: this.at(f, n.id) });
+    return { kind: "box", id: n.id, title: box.title, lines: box.lines.map((text, i) => [{ kind: "text", id: `${n.id}/l${i + 1}`, text }]) };
   }
 
   /** 「박스」 공용조항을 펼친 박스 — 줄의 슬롯은 사용처 문맥으로 치환 단계에 넘긴다. */
@@ -329,9 +341,10 @@ class Walker {
     ];
   }
 
-  items(list: readonly (AnyItem | AnyCond | AnyStatic | ClauseBlockRefNode)[], f: Frame): (RItem<RInline> | RStatic<RInline> | ErrorNode)[] {
+  items(list: readonly (AnyItem | AnyCond | AnyStatic | ClauseBlockRefNode | BoxRefNode)[], f: Frame): (RItem<RInline> | RStatic<RInline> | ErrorNode)[] {
     return list.flatMap((n): (RItem<RInline> | RStatic<RInline> | ErrorNode)[] => {
       if (n.kind === "item") return [this.item(n, f)];
+      if (n.kind === "boxRef") return [this.boxRef(n, f)];
       if (n.kind === "table" || n.kind === "box" || n.kind === "bulletList") return this.static(n, f);
       if (n.kind === "clauseBlockRef") {
         // 호 목록 자리의 공용조항은 「박스」뿐 — 항 · 호 뒤의 박스 자리
@@ -342,7 +355,7 @@ class Walker {
       const r = this.select(n.branches, f, n.id);
       if (r.kind === "error") return [this.error(n.id, r.issue)];
       if (r.kind === "none") return [];
-      return this.items(r.branch.children as (AnyItem | AnyCond | AnyStatic | ClauseBlockRefNode)[], { ...f, path: [...f.path, n.id, r.branch.id] });
+      return this.items(r.branch.children as (AnyItem | AnyCond | AnyStatic | ClauseBlockRefNode | BoxRefNode)[], { ...f, path: [...f.path, n.id, r.branch.id] });
     });
   }
 
@@ -368,6 +381,8 @@ class Walker {
         case "box":
         case "bulletList":
           return this.static(n, f);
+        case "boxRef":
+          return [this.boxRef(n, f)];
         case "condBlock": {
           const r = this.select(n.branches, f, n.id);
           if (r.kind === "error") return [this.error(n.id, r.issue)];

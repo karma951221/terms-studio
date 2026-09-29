@@ -32,6 +32,7 @@ export const DESTRUCTIVE_ACTIONS = [
   // document (B3)
   "document.delete", // 문면 마스터 삭제
   "appendix.delete", // 별표 마스터 삭제 — 참조 슬롯 오류화
+  "box.delete", // 정적 마스터 박스 삭제 — 박스 참조 오류화
   // product (B4)
   "product.delete", // 상품 삭제 — 상품담보·스냅샷 값 연쇄 삭제
   "product.unmount", // 상품담보 탑재 해제 — 스냅샷 값 삭제

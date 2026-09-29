@@ -4,7 +4,7 @@
  * 문서 = 일반 노드 트리. 깊이·종류를 스키마에 고정하지 않고 **노드 종류별 허용 자식을 규칙 테이블**로 건다.
  * 노드는 세 부류다:
  *   - 구조   : document · article(조) · paragraph(항) · item(호) · subitem(목)
- *   - 블록 동적: condBlock(if/elif/else) · forBlock(자리만, 평가 P7) · clauseBlockRef(공용조항 block 참조)
+ *   - 블록 동적: condBlock(if/elif/else) · forBlock(자리만, 평가 P7) · clauseBlockRef(공용조항 block 참조) · boxRef(정적 마스터 박스 참조)
  *   - 인라인  : text · slot · inlineCond · inlineFor(자리만) · articleRef · appendixRef · clauseInlineRef
  *
  * - 조의 메타는 조 명 · 조연결(`linkedArticleId`) 뿐. 번호는 저장하지 않는다 (계산값 — numbering.ts).
@@ -194,7 +194,7 @@ export interface ParagraphNode {
   id: Id;
   kind: "paragraph";
   children: InlineNode[];
-  items?: (ItemNode | CondBlockNode | TableNode | BoxNode | ClauseBlockRefNode | BulletListNode)[];
+  items?: (ItemNode | CondBlockNode | TableNode | BoxNode | ClauseBlockRefNode | BulletListNode | BoxRefNode)[];
 }
 
 /** 블록 조건의 가지. */
@@ -233,6 +233,16 @@ export interface ClauseBlockRefNode {
   excludeFromComparison?: boolean;
 }
 
+/**
+ * 박스 참조 — 정적 마스터 박스(기능/박스)의 불변 코드만 저장한다. 조립이 박스 마스터에서 제목 · 줄을 읽어 이 자리에 편다(직접참조).
+ * 박스는 잎이라 조 자리 · 항의 호 목록 자리(항 · 호 뒤)에 선다 — 표 · 옛 박스와 같은 자리. 최종 결정 9.
+ */
+export interface BoxRefNode {
+  id: Id;
+  kind: "boxRef";
+  boxCode: Code;
+}
+
 /** 관(款) — 제목 + 조 목록. 조 번호는 관을 넘어 문서 전역 연속이다 (기능/문면 §3.2). */
 export interface SectionNode {
   id: Id;
@@ -263,7 +273,8 @@ export type BlockNode =
   | SubitemNode
   | CondBlockNode
   | ForBlockNode
-  | ClauseBlockRefNode;
+  | ClauseBlockRefNode
+  | BoxRefNode;
 
 /** 문서 루트. 자식은 조 · 관 · 조 자리의 조건 블록. */
 export interface DocumentNode {
@@ -288,7 +299,7 @@ const INLINE: readonly NodeKind[] = ["text", "structKey", "slot", "inlineCond", 
 export const allowedChildren: Record<NodeKind, readonly NodeKind[]> = {
   document: ["article", "section", "condBlock"],
   section: ["article", "condBlock"],
-  article: ["paragraph", "condBlock", "clauseBlockRef", "forBlock", "table", "box", "bulletList"],
+  article: ["paragraph", "condBlock", "clauseBlockRef", "forBlock", "table", "box", "bulletList", "boxRef"],
   table: [],
   box: [],
   bulletList: ["bullet", "condBlock"],
@@ -299,6 +310,7 @@ export const allowedChildren: Record<NodeKind, readonly NodeKind[]> = {
   condBlock: [],
   forBlock: ["paragraph", "condBlock", "clauseBlockRef"],
   clauseBlockRef: [],
+  boxRef: [],
   text: [],
   structKey: [],
   slot: [],
@@ -312,7 +324,7 @@ export const allowedChildren: Record<NodeKind, readonly NodeKind[]> = {
 /** 두 번째 목록 자리 — 항의 호 목록 · 호의 목 목록. 조건 블록도 그 자리에 설 수 있다. */
 export const allowedListChildren = {
   // 호 목록 자리의 공용조항 참조는 「박스」 공용조항만 (항 · 호 뒤의 박스 자리 — 유형은 게이트가 본다)
-  "paragraph.items": ["item", "condBlock", "table", "box", "clauseBlockRef", "bulletList"],
+  "paragraph.items": ["item", "condBlock", "table", "box", "clauseBlockRef", "bulletList", "boxRef"],
   "item.subitems": ["subitem", "condBlock", "bulletList"],
 } as const satisfies Record<string, readonly NodeKind[]>;
 
@@ -336,6 +348,7 @@ export function slotsOf(kind: NodeKind): readonly SlotName[] {
     case "clauseInlineRef":
     case "table":
     case "box":
+    case "boxRef":
       return [];
     default:
       return ["children"];
@@ -578,6 +591,8 @@ export interface TreeEnv {
   /** 대응 보통약관의 조·항·호·목 id 집합. `scope:'general'` 참조 대상 검증. */
   generalReferenceIds?: ReadonlySet<Id>;
   appendixExists?: (code: Code) => boolean;
+  /** 정적 마스터 박스 존재 — 없는 박스를 가리키는 박스 참조는 brokenRef. */
+  boxExists?: (code: Code) => boolean;
   clauseGate?: ClauseGate;
   /** 이슈 좌표의 기본값 (document · ownerId 등). */
   coordinate?: Coordinate;
@@ -612,7 +627,7 @@ export function coordinateOf(ix: TreeIndex, e: { path: Id[]; articleId?: Id }, b
 }
 
 /**
- * 노드 하나의 참조 검사 — 조연결 · 조 참조 · 별표 참조 · 공용조항 참조.
+ * 노드 하나의 참조 검사 — 조연결 · 조 참조 · 별표 참조 · 박스 참조 · 공용조항 참조.
  * 참조 추가 시점(`atSave=false`)과 저장 시점(`atSave=true`) 이 같은 함수를 쓴다 (기능/문면 §3.5 — 두 번 검증).
  */
 export function checkNodeRefs(e: NodeEntry, ix: TreeIndex, env: TreeEnv, atSave: boolean): Issue[] {
@@ -647,6 +662,8 @@ export function checkNodeRefs(e: NodeEntry, ix: TreeIndex, env: TreeEnv, atSave:
       });
     case "appendixRef":
       return env.appendixExists && !env.appendixExists(n.appendixCode) ? one("brokenRef", `별표 ${n.appendixCode} 가 별표 마스터에 없습니다`) : [];
+    case "boxRef":
+      return env.boxExists && !env.boxExists(n.boxCode) ? one("brokenRef", `박스 ${n.boxCode} 가 정적 마스터에 없습니다`) : [];
     case "clauseBlockRef":
     case "clauseInlineRef":
       return [...clausePlacement(n, e.slot, gate, at), ...checkClauseRef(n, gate, at, atSave)];

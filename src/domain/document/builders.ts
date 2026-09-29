@@ -6,6 +6,7 @@
 import type { Code, Id } from "../types";
 import type {
   AppendixRefNode,
+  BoxRefNode,
   ArticleNode,
   ArticleRefNode,
   BlockBranch,
@@ -128,6 +129,8 @@ export function nodeBuilders(newId: IdSource = randomIds) {
       scope,
     }),
     appendixRef: (appendixCode: Code): AppendixRefNode => ({ id: newId(), kind: "appendixRef", appendixCode }),
+    /** 정적 마스터 박스 참조 — 코드만. */
+    boxRef: (boxCode: Code): BoxRefNode => ({ id: newId(), kind: "boxRef", boxCode }),
     clauseBlock: (clauseCode: Code, options: Record<Code, Code> = {}, excludeFromComparison?: boolean): ClauseBlockRefNode => ({
       id: newId(),
       kind: "clauseBlockRef",

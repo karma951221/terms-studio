@@ -262,11 +262,11 @@ export function placeOptions(body: Block[], placements: readonly OptionPlacement
     const block = (b: Block): Block => {
       if (b.kind === "condBlock") return { ...b, branches: b.branches.map((br) => ({ ...br, children: br.children.map(block) })) };
       // 실물 공용조항 본문에는 글머리 목록이 없다 — 옵션 자리 찾기는 항 · 호 · 목만
-      if (b.kind === "bulletList") return b;
+      if (b.kind === "bulletList" || b.kind === "boxRef") return b;
       return {
         ...b,
         children: visit(b.children),
-        ...(b.items ? { items: b.items.map((it) => (it.kind === "bulletList" ? it : { ...it, children: visit(it.children), ...(it.subitems ? { subitems: it.subitems.map((u) => ({ ...u, children: visit(u.children) })) } : {}) })) } : {}),
+        ...(b.items ? { items: b.items.map((it) => (it.kind === "bulletList" || it.kind === "boxRef" ? it : { ...it, children: visit(it.children), ...(it.subitems ? { subitems: it.subitems.map((u) => ({ ...u, children: visit(u.children) })) } : {}) })) } : {}),
       };
     };
     body.splice(0, body.length, ...body.map(block));

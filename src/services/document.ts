@@ -5,7 +5,7 @@
  *   트리 커맨드 적용(저장 시 `validateTree` + `validateExpressions`) · 복제(D-P4-4·9) · 사전평가(문맥 주입) · 별표 CRUD.
  * - 저작 화면의 저장은 `save` 하나다 (ADR-0074) — 편집을 시작한 판 + 브라우저 편집본의 명령 목록을 받아
  *   판 확인 · 원본에 재적용 · 전체 검증 · 한 트랜잭션 반영(판 +1). 판은 repo 가 모든 저장에서 올린다.
- * - 파괴적 액션(문서 삭제 `document.delete` · 별표 삭제 `appendix.delete`)은 `destructive()` 2단 프로토콜.
+ * - 파괴적 액션(문서 삭제 `document.delete` · 별표 삭제 `appendix.delete` · 박스 삭제 `box.delete`)은 `destructive()` 2단 프로토콜.
  *   영향의 「깨질 참조」 = 사용처 — 기본은 이 DB 의 문서들을 훑어 계산하고, 상품이 보통약관을 선택하는 사용처 등
  *   다른 영역(B4 · C1)의 것은 `UsageSource` 로 주입해 합친다.
  * - 공용조항 게이트(`ClauseGate`)는 B2 가, 담보 마스터 평가 문맥(`EvalContext`)은 B1 이 만든다 — 여기서는 주입만 받는다.
@@ -20,18 +20,22 @@ import {
   cloneTree,
   collectRefs,
   createAppendix,
+  createBox,
   generalRefsOf,
   numberTree,
   preEvaluate,
   removedIds,
   renameAppendix,
   replayEdits,
+  reviseBox,
   requiredDiscriminators,
   setAppendixDescription,
   validateDocument,
   validateExpressions,
   validateTree,
   type Appendix,
+  type Box,
+  type BoxRevision,
   type BranchEvaluation,
   type BranchState,
   type ClauseGate,
@@ -42,6 +46,7 @@ import {
   type ExpressionScope,
   type GeneralRefs,
   type NewAppendix,
+  type NewBox,
   type NodeNumber,
   type PreEvaluation,
   type TreeEnv,
@@ -65,6 +70,8 @@ export { catalogTypeResolver } from "@/domain/document";
 export interface UsageSource {
   documentUsages(tx: Db, documentId: Id): Promise<Coordinate[]>;
   appendixUsages(tx: Db, code: Code): Promise<Coordinate[]>;
+  /** 공용조항 본문의 박스 참조 등 — 문서 밖에서 박스를 쓰는 곳. 없으면 문서 안만 센다. */
+  boxUsages?(tx: Db, code: Code): Promise<Coordinate[]>;
 }
 
 export interface DocumentServiceDeps {
@@ -141,6 +148,16 @@ export interface DocumentService {
   renameAppendix(actor: Actor, code: Code, name: string): Promise<Result<Appendix>>;
   setAppendixDescription(actor: Actor, code: Code, description: string): Promise<Result<Appendix>>;
   removeAppendix(actor: Actor, code: Code, opts?: Confirmable): Promise<Result<void>>;
+
+  // 박스 (정적 마스터 — 기능/박스)
+  getBox(code: Code): Promise<Box | undefined>;
+  listBoxes(): Promise<Box[]>;
+  boxUsages(code: Code): Promise<Coordinate[]>;
+  boxAudits(): ReturnType<typeof repo.boxAudits>;
+  createBox(actor: Actor, input: NewBox): Promise<Result<Box>>;
+  /** 상세 저장 한 번 — 이름 · 제목 · 줄의 최종 상태를 한 트랜잭션에. */
+  saveBox(actor: Actor, code: Code, input: BoxRevision): Promise<Result<Box>>;
+  removeBox(actor: Actor, code: Code, opts?: Confirmable): Promise<Result<void>>;
 }
 
 // ───────────────────────────── 서비스 ─────────────────────────────
@@ -182,10 +199,12 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
   /** 대응 보통약관을 뺀 검증 환경 — 종류 · 별표 존재 · 공용조항 게이트 · 좌표. */
   async function baseEnvOf(tx: Db, doc: DocumentRecord): Promise<TreeEnv> {
     const appendixCodes = new Set((await repo.listAppendices(tx)).map((a) => a.code));
+    const boxCodes = new Set((await repo.listBoxes(tx)).map((x) => x.code));
     const clauseGate = deps.clauseGate ? await deps.clauseGate(tx) : undefined;
     return {
       kind: doc.kind,
       appendixExists: (c) => appendixCodes.has(c),
+      boxExists: (c) => boxCodes.has(c),
       ...(clauseGate ? { clauseGate } : {}),
       coordinate: coordinateOf(doc),
     };
@@ -260,6 +279,15 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
     return out;
   }
 
+  async function boxUsages(tx: Db, code: Code): Promise<Coordinate[]> {
+    const own: Coordinate[] = [];
+    for (const d of await repo.listDocumentRecords(tx)) {
+      for (const r of collectRefs(d.tree, coordinateOf(d))) if (r.kind === "box" && r.boxCode === code) own.push(r.at);
+    }
+    const external = deps.usages?.boxUsages ? await deps.usages.boxUsages(tx, code) : [];
+    return [...own, ...external];
+  }
+
   async function documentUsages(tx: Db, id: Id): Promise<Coordinate[]> {
     const own = await scanDocumentUsages(tx, id);
     const external = deps.usages ? await deps.usages.documentUsages(tx, id) : [];
@@ -289,6 +317,10 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
       await repo.saveAppendix(tx, r.value, actor.userId);
       return r;
     });
+  }
+
+  async function boxNames(tx: Db): Promise<string[]> {
+    return (await repo.listBoxes(tx)).map((x) => x.name);
   }
 
   return {
@@ -518,6 +550,44 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
           computeImpact: async (): Promise<Impact> => ({ valueRowsLost: 0, brokenRefs: await appendixUsages(tx, code), cascade: [] }),
           execute: async () => {
             await repo.deleteAppendix(tx, code);
+            return ok(undefined);
+          },
+        }),
+      ),
+
+    getBox: (code) => repo.loadBox(db, code),
+    listBoxes: () => repo.listBoxes(db),
+    boxUsages: (code) => db.transaction((tx) => boxUsages(tx, code)),
+    boxAudits: () => repo.boxAudits(db),
+
+    createBox: (actor, input) =>
+      db.transaction(async (tx) => {
+        // 코드는 시스템 채번 — 검사(이름 유일 · 줄 하나 이상)를 먼저 하고 순번을 받는다 (기능/박스 §3.1)
+        const r = await createBox(input, await boxNames(tx), () => repo.nextBoxSeq(tx));
+        if (!r.ok) return r;
+        await repo.insertBox(tx, r.value, actor.userId);
+        return r;
+      }),
+    saveBox: (actor, code, input) =>
+      db.transaction(async (tx) => {
+        const x = await repo.loadBox(tx, code);
+        if (!x) return notFound(`박스 ${code}`);
+        const r = reviseBox(x, input, await boxNames(tx));
+        if (!r.ok) return r;
+        await repo.saveBox(tx, r.value, actor.userId);
+        return r;
+      }),
+    removeBox: (actor, code, opts = {}) =>
+      db.transaction(async (tx) =>
+        destructive<void>({
+          actor,
+          action: "box.delete",
+          confirm: opts.confirm,
+          precheck: async () => ((await repo.loadBox(tx, code)) ? ok(undefined) : notFound(`박스 ${code}`)),
+          // 참조가 남아도 지운다 — 그 참조는 깨진 참조로 저장 검증 · 조립에서 드러난다 (별표와 같은 규칙)
+          computeImpact: async (): Promise<Impact> => ({ valueRowsLost: 0, brokenRefs: await boxUsages(tx, code), cascade: [] }),
+          execute: async () => {
+            await repo.deleteBox(tx, code);
             return ok(undefined);
           },
         }),

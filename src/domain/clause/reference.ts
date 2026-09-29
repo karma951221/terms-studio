@@ -149,10 +149,12 @@ export function expandClause(clause: Clause, selection: OptionSelection, refNode
     ...(it.subitems ? { subitems: it.subitems.map(subitem) } : {}),
   });
   const bullets = (l: BulletListNode): BulletListNode => ({ ...l, id: nid(l.id), children: l.children.map((x) => ({ ...x, id: nid(x.id), children: inlines(x.children) })) });
+  // 박스 참조는 잎 — id 만 유일화하고 코드는 그대로 (내용은 조립이 박스 마스터에서 읽는다)
   const block = (b: Block): Block => {
     if (b.kind === "bulletList") return bullets(b);
+    if (b.kind === "boxRef") return { ...b, id: nid(b.id) };
     if (b.kind === "paragraph") {
-      return { ...b, id: nid(b.id), children: inlines(b.children), ...(b.items ? { items: b.items.map((it) => (it.kind === "bulletList" ? bullets(it) : item(it))) } : {}) };
+      return { ...b, id: nid(b.id), children: inlines(b.children), ...(b.items ? { items: b.items.map((it) => (it.kind === "bulletList" ? bullets(it) : it.kind === "boxRef" ? { ...it, id: nid(it.id) } : item(it))) } : {}) };
     }
     return { ...b, id: nid(b.id), branches: b.branches.map((br): BlockBranch => ({ ...br, id: nid(br.id), children: br.children.map(block) })) };
   };

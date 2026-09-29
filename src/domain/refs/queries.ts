@@ -230,9 +230,9 @@ export function affectedProducts(graph: RefGraph, target: Code | RefNodeKey): Af
 
 // ───────────────────────────── 고아 ─────────────────────────────
 
-const ORPHAN_KINDS: readonly RefNodeKey["kind"][] = ["discriminator", "clause", "appendix"];
+const ORPHAN_KINDS: readonly RefNodeKey["kind"][] = ["discriminator", "clause", "appendix", "box"];
 
-/** 어디서도 참조되지 않는 구분자·공용조항·별표 (종류 순 · 선언 순). */
+/** 어디서도 참조되지 않는 구분자·공용조항·별표·박스 (종류 순 · 선언 순). */
 export function orphans(graph: RefGraph): RefNodeInfo[] {
   const referenced = new Set<string>();
   for (const e of graph.edges) {
@@ -343,6 +343,7 @@ function codeOf(key: RefNodeKey): string | undefined {
     case "discriminator":
     case "clause":
     case "appendix":
+    case "box":
     case "attribute":
       return key.code;
     case "enum":
@@ -433,6 +434,8 @@ export function describeKey(key: RefNodeKey, graph?: RefGraph): string {
       return `조 ${key.articleId} (문서 ${key.documentId || "?"})`;
     case "appendix":
       return `별표 ${key.code}`;
+    case "box":
+      return `박스 ${key.code}`;
     case "coverageNode":
       return `${key.level} ${key.id}`;
     case "attribute":

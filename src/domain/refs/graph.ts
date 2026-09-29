@@ -64,6 +64,8 @@ export function nodeKey(key: RefNodeKey): string {
       return `article:${key.documentId}/${key.articleId}`;
     case "appendix":
       return `appendix:${key.code}`;
+    case "box":
+      return `box:${key.code}`;
     case "coverageNode":
       return `coverageNode:${key.level}/${key.id}`;
     case "attribute":
@@ -260,7 +262,7 @@ function addExpression(b: Builder, def: Discriminator): void {
   b.expression({ kind: "discriminator", code: def.code }, def.expression, "expression", { ownerId: def.code, ownerName: def.label });
 }
 
-/** 공용조항 본문 노드 전부 (경로 포함) — 별표 참조 수집용. 식은 collectExpressions 가 따로 본다. */
+/** 공용조항 본문 노드 전부 (경로 포함) — 별표 · 박스 참조 수집용. 식은 collectExpressions 가 따로 본다. */
 function walkClauseNodes(body: readonly (Inline | Block | BoxNode)[], basePath: Id[], visit: (node: ClauseNode, path: Id[]) => void): void {
   const inline = (n: Inline, path: Id[]) => {
     const here = [...path, n.id];
@@ -279,11 +281,16 @@ function walkClauseNodes(body: readonly (Inline | Block | BoxNode)[], basePath: 
     if (n.kind === "bulletList") return bullets(n, path);
     const here = [...path, n.id];
     visit(n, here);
+    if (n.kind === "boxRef") return;
     if (n.kind === "paragraph") {
       for (const c of n.children) inline(c, here);
       for (const it of n.items ?? []) {
         if (it.kind === "bulletList") {
           bullets(it, here);
+          continue;
+        }
+        if (it.kind === "boxRef") {
+          visit(it, [...here, it.id]);
           continue;
         }
         const ip = [...here, it.id];
@@ -303,7 +310,7 @@ function walkClauseNodes(body: readonly (Inline | Block | BoxNode)[], basePath: 
     if (n.kind === "box") {
       visit(n, [...basePath, n.id]);
       for (const l of n.lines) for (const c of l.children) inline(c, [...basePath, n.id, l.id]);
-    } else if (n.kind === "paragraph" || n.kind === "condBlock" || n.kind === "bulletList") block(n, basePath);
+    } else if (n.kind === "paragraph" || n.kind === "condBlock" || n.kind === "bulletList" || n.kind === "boxRef") block(n, basePath);
     else inline(n, basePath);
   }
 }
@@ -341,6 +348,7 @@ function addClause(b: Builder, clause: Clause): void {
     }
     walkClauseNodes(body, path, (n, nodePath) => {
       if (n.kind === "appendixRef") b.edge({ from: key, to: { kind: "appendix", code: n.appendixCode }, via: "appendixRef", at: { ...base, nodePath } });
+      else if (n.kind === "boxRef") b.edge({ from: key, to: { kind: "box", code: n.boxCode }, via: "boxRef", at: { ...base, nodePath } });
       else if (n.kind === "articleRef" && n.scope === undefined) {
         // 범위 없는 공용조항 조 참조는 보통약관 마스터를 가리킨다(기능/공용조항 §3.5 — 제 항 · 사용처 위치 참조는 사용처마다 대상이 달라 간선이 없다). 대상이 항·호·목이면
         // indexGeneralArticles 로 속한 조로 올리고, 인덱스에 없으면(대상이 사라졌거나 보통약관이 안 들어옴)
@@ -419,6 +427,9 @@ function addDocument(b: Builder, doc: DocumentInput): Map<Id, RefNodeKey> {
       }
       case "appendix":
         b.edge({ from, to: { kind: "appendix", code: r.appendixCode }, via: "appendixRef", at: r.at });
+        break;
+      case "box":
+        b.edge({ from, to: { kind: "box", code: r.boxCode }, via: "boxRef", at: r.at });
         break;
       case "link":
         b.edge({ from, to: generalOf(r.linkedArticleId), via: "link", at: r.at });
@@ -500,6 +511,7 @@ export function buildGraph(inputs: GraphInputs): RefGraph {
     for (const f of e.fields ?? []) b.node({ key: { kind: "enumField", enumCode: e.code, key: f.key }, label: f.label, parent: key, detail: f.type });
   }
   for (const a of inputs.appendices ?? []) b.node({ key: { kind: "appendix", code: a.code }, label: a.name });
+  for (const x of inputs.boxes ?? []) b.node({ key: { kind: "box", code: x.code }, label: x.name });
   for (const k of inputs.attributeKinds ?? []) {
     const key: RefNodeKey = { kind: "attribute", code: k.code };
     b.node({ key, label: k.label });

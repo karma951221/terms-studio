@@ -308,3 +308,31 @@ describe("「박스」 공용조항 — 제목 + 줄, 줄에는 글 · 값 슬�
     expect(issuesOf(analyzeBody("box", two, [])).map((i) => i.kind)).toEqual(["structure"]);
   });
 });
+
+describe("박스 참조 — 정적 마스터 박스는 잎이라 공용조항 본문에도 놓는다 (최종 결정 6 · 9)", () => {
+  const paragraph = (items?: unknown[]): Block => ({ id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text: "본문" }], ...(items ? { items } : {}) }) as Block;
+
+  it("함수조항 본문에 boxRef를 둘 수 있다 — 항 자리 · 호 뒤 자리 · 조건 가지 안, 공용조항 참조 중첩 금지에 걸리지 않는다", () => {
+    const body = [
+      paragraph([{ id: "i1", kind: "item", children: [{ id: "t2", kind: "text", text: "호" }] }, { id: "bx1", kind: "boxRef", boxCode: "BX000002" }]),
+      { id: "bx2", kind: "boxRef", boxCode: "BX000001" },
+      { id: "c1", kind: "condBlock", branches: [{ id: "br1", when: "D0001", children: [{ id: "bx3", kind: "boxRef", boxCode: "BX000001" }] }] },
+    ] as Block[];
+    expect(unwrap(analyzeBody("block", body, []))).toEqual({ discriminators: ["D0001"], attributes: [] });
+    expect(allNodeIds(body)).toContain("bx1");
+  });
+
+  it("없는 박스면 brokenRef — 박스 조회를 줬을 때만 본다 · 코드가 비면 구조 오류", () => {
+    const body = [paragraph(), { id: "bx1", kind: "boxRef", boxCode: "BX000009" }, { id: "bx2", kind: "boxRef", boxCode: "" }] as Block[];
+    const issues = issuesOf(analyzeBody("block", body, [], { boxExists: (c) => c === "BX000001" }));
+    expect(issues.map((i) => [i.kind, i.at?.nodePath])).toEqual([
+      ["brokenRef", ["bx1"]],
+      ["structure", ["bx2"]],
+    ]);
+  });
+
+  it("문구(문장 안) 본문에는 boxRef를 둘 수 없다", () => {
+    const issues = issuesOf(analyzeBody("inline", [{ id: "bx1", kind: "boxRef", boxCode: "BX000001" }] as unknown as Inline[], []));
+    expect(issues.map((i) => i.kind)).toEqual(["typeMismatch"]);
+  });
+});

@@ -134,6 +134,13 @@
       "when": 1790702560347,
       "tag": "0018_enum_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790705518168,
+      "tag": "0019_static_master_boxes",
+      "breakpoints": true
     }
   ]
 }

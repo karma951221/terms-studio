@@ -1,7 +1,7 @@
 /**
  * 참조 추출 — 문서가 읽는 참조 전부를 좌표와 함께 (기능/관계정보 §3 「참조 그래프」).
  *
- * C1(refs) 역인덱스의 재료다: 구분자(식 안 · 슬롯) · 담보속성 · 내장 경로 · 공용조항 · 조(자기·보통약관) · 별표 · 조연결.
+ * C1(refs) 역인덱스의 재료다: 구분자(식 안 · 슬롯) · 담보속성 · 내장 경로 · 공용조항 · 조(자기·보통약관) · 별표 · 박스 · 조연결.
  * 문법이 깨진 식은 참조를 내지 않는다 (문법 오류는 `validateExpressions` 가 보고한다).
  * 참조 대상의 존재 검증은 `validateTree` (nodes.ts) 몫이다.
  */
@@ -20,6 +20,8 @@ export type DocRef =
   | { kind: "clause"; clauseCode: Code; options: Record<Code, Code>; mode: "block" | "inline"; at: Coordinate }
   | { kind: "article"; articleId: Id; scope: "self" | "general"; at: Coordinate }
   | { kind: "appendix"; appendixCode: Code; at: Coordinate }
+  /** 정적 마스터 박스 참조 (최종 결정 9). */
+  | { kind: "box"; boxCode: Code; at: Coordinate }
   /** 조연결 — `at.articleId` 의 조가 보통약관 조 `linkedArticleId` 를 가리킨다. */
   | { kind: "link"; linkedArticleId: Id; at: Coordinate };
 
@@ -81,6 +83,9 @@ export function collectRefs(doc: DocumentNode, base: Coordinate = {}): DocRef[] 
         break;
       case "appendixRef":
         out.push({ kind: "appendix", appendixCode: n.appendixCode, at });
+        break;
+      case "boxRef":
+        out.push({ kind: "box", boxCode: n.boxCode, at });
         break;
       default:
         break;

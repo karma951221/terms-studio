@@ -18,7 +18,7 @@ describe("허용 자식 규칙 테이블 (ADR-0012 — 문서>조>항>호>목, �
   });
 
   it("조 아래에는 항 · 조건 블록 · 공용조항 block 참조 · 반복 블록이 선다 (조는 반복 본문에 못 들어간다)", () => {
-    expect(allowedChildren.article).toEqual(["paragraph", "condBlock", "clauseBlockRef", "forBlock", "table", "box", "bulletList"]);
+    expect(allowedChildren.article).toEqual(["paragraph", "condBlock", "clauseBlockRef", "forBlock", "table", "box", "bulletList", "boxRef"]);
     expect(allowedChildren.forBlock).not.toContain("article");
     expect(allowedChildren.forBlock).not.toContain("forBlock");
   });
@@ -31,12 +31,12 @@ describe("허용 자식 규칙 테이블 (ADR-0012 — 문서>조>항>호>목, �
   });
 
   it("호는 항의 items 에, 목은 호의 subitems 에 선다 (조건 블록도 그 자리에 설 수 있다)", () => {
-    expect(allowedListChildren["paragraph.items"]).toEqual(["item", "condBlock", "table", "box", "clauseBlockRef", "bulletList"]);
+    expect(allowedListChildren["paragraph.items"]).toEqual(["item", "condBlock", "table", "box", "clauseBlockRef", "bulletList", "boxRef"]);
     expect(allowedListChildren["item.subitems"]).toEqual(["subitem", "condBlock", "bulletList"]);
   });
 
   it("잎 노드(텍스트·슬롯·참조)는 자식이 없다", () => {
-    for (const k of ["text", "slot", "articleRef", "appendixRef", "clauseInlineRef", "clauseBlockRef"] as const) {
+    for (const k of ["text", "slot", "articleRef", "appendixRef", "clauseInlineRef", "clauseBlockRef", "boxRef"] as const) {
       expect(allowedChildren[k]).toEqual([]);
     }
   });
@@ -340,7 +340,7 @@ describe("실물 재현 노드 (기능/문면 §3.2) — 관 · 정적 표 · �
     expect(allowedChildren.section).toEqual(["article", "condBlock"]);
     expect(allowedChildren.article).toContain("table");
     expect(allowedChildren.article).toContain("box");
-    expect(allowedIn("paragraph", "items")).toEqual(["item", "condBlock", "table", "box", "clauseBlockRef", "bulletList"]);
+    expect(allowedIn("paragraph", "items")).toEqual(["item", "condBlock", "table", "box", "clauseBlockRef", "bulletList", "boxRef"]);
     expect(allowedIn("item", "subitems")).toEqual(["subitem", "condBlock", "bulletList"]);
     expect(slotsOf("table")).toEqual([]);
     expect(slotsOf("box")).toEqual([]);
@@ -363,5 +363,36 @@ describe("실물 재현 노드 (기능/문면 §3.2) — 관 · 정적 표 · �
     const table = b.textTable({ columns: [{}], rows: [] });
     const doc = { ...b.document("D"), children: [table as unknown as ArticleNode] };
     expect(indexTree(doc).issues.map((i) => i.message)).toEqual(["document 의 children 자리에 table 은(는) 올 수 없습니다"]);
+  });
+});
+
+describe("박스 참조 (정적 마스터 — 최종 결정 9 · 기능/박스 §3.2)", () => {
+  it("boxRef는 조 자리 · 항 뒤 · 호 뒤에 선다 — 조 직속과 항의 호 목록 자리, 조건 블록 가지 안도 그 자리를 물려받는다", () => {
+    const b = make();
+    const inItems = b.boxRef("BX000002");
+    const afterParagraph = b.boxRef("BX000001");
+    const inBranch = b.boxRef("BX000003");
+    const doc = b.document("d", [
+      b.article("a", [b.paragraph([b.text("본문")], [b.item([b.text("호")]), inItems]), afterParagraph, b.condBlock([b.branch("D0001", [inBranch])])]),
+    ]);
+    const ix = indexTree(doc);
+    expect(ix.issues).toEqual([]);
+    expect(ix.nodes.get(inItems.id)?.slot).toBe("items");
+    expect(slotsOf("boxRef")).toEqual([]);
+  });
+
+  it("boxRef는 문장 안 · 목 목록 자리 · 문서 직속에는 설 수 없다", () => {
+    const b = make();
+    const doc = b.document("d", [b.article("a", [b.paragraph([b.text("x")], [b.item([b.text("호")], [b.boxRef("BX000001") as never])])])]);
+    expect(indexTree(doc).issues.map((i) => i.message)).toEqual(["item 의 subitems 자리에 boxRef 은(는) 올 수 없습니다"]);
+  });
+
+  it("없는 박스면 brokenRef — 박스 마스터 조회를 줬을 때만 본다", () => {
+    const b = make();
+    const doc = b.document("d", [b.article("a", [b.paragraph([b.text("x")]), b.boxRef("BX000001"), b.boxRef("BX000009")])]);
+    const issues = validateTree(doc, { boxExists: (c) => c === "BX000001" });
+    expect(kinds(issues)).toEqual(["brokenRef"]);
+    expect(issues[0].message).toContain("BX000009");
+    expect(validateTree(doc)).toEqual([]);
   });
 });

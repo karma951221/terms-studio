@@ -78,8 +78,9 @@ function bulletsToTree(node: C.BulletListNode): BulletListNode {
 function blockToTree(node: C.Block): BlockNode {
   if (node.kind === "condBlock") return { ...node, branches: node.branches.map((br) => ({ ...br, children: br.children.map(blockToTree) })) };
   if (node.kind === "bulletList") return bulletsToTree(node);
+  if (node.kind === "boxRef") return node;
   const { items, ...rest } = node;
-  return { ...rest, children: node.children.map(inlineToTree), ...(items && items.length > 0 ? { items: items.map((it) => (it.kind === "bulletList" ? bulletsToTree(it) : itemToTree(it))) } : {}) };
+  return { ...rest, children: node.children.map(inlineToTree), ...(items && items.length > 0 ? { items: items.map((it) => (it.kind === "bulletList" ? bulletsToTree(it) : it.kind === "boxRef" ? it : itemToTree(it))) } : {}) };
 }
 
 /** 옵션 코드 · 이름 — 박스 줄의 옵션 자리 표기(「〔옵션명〕」)를 풀고 짓는다. */
@@ -204,8 +205,9 @@ function bulletsFromTree(node: BulletListNode): C.BulletListNode {
   };
 }
 
-function itemFromTree(node: NonNullable<ParagraphNode["items"]>[number]): C.ItemNode | C.BulletListNode {
+function itemFromTree(node: NonNullable<ParagraphNode["items"]>[number]): C.ItemNode | C.BulletListNode | C.BoxRefNode {
   if (node.kind === "bulletList") return bulletsFromTree(node);
+  if (node.kind === "boxRef") return node;
   if (node.kind !== "item") return refuse(node.kind, "호 자리");
   const { subitems, ...rest } = node;
   return { ...rest, children: node.children.map(inlineFromTree), ...(subitems && subitems.length > 0 ? { subitems: subitems.map(subitemFromTree) } : {}) };
@@ -214,6 +216,7 @@ function itemFromTree(node: NonNullable<ParagraphNode["items"]>[number]): C.Item
 function blockFromTree(node: BlockNode): C.Block {
   if (node.kind === "condBlock") return { ...node, branches: node.branches.map((br) => ({ ...br, children: br.children.map(blockFromTree) })) };
   if (node.kind === "bulletList") return bulletsFromTree(node);
+  if (node.kind === "boxRef") return node;
   if (node.kind !== "paragraph") return refuse(node.kind, "본문");
   const { items, ...rest } = node;
   return { ...rest, children: node.children.map(inlineFromTree), ...(items && items.length > 0 ? { items: items.map(itemFromTree) } : {}) };

@@ -286,6 +286,22 @@ describe("document 서비스 (PGlite)", () => {
       expect(usages[0]).toMatchObject({ document: "special", ownerId: covSurgery, articleTitle: "별표 참조" });
     });
 
+    it("박스 생성(코드 시스템 채번 BX000001) · 이름 중복 거부 · 저장 한 번 · 박스 참조는 정적 마스터 코드로 검증", async () => {
+      expect(unwrap(await svc.createBox(editor, { name: "【용어풀이】 보험연도", title: "보험연도", lines: ["보험연도란 …"] })).code).toBe("BX000001");
+      expect(rejection(await svc.createBox(editor, { name: "【용어풀이】 보험연도", lines: ["x"] })).reason).toBe("invalid");
+      expect(rejection(await svc.createBox(editor, { name: "빈 박스", lines: [] })).reason).toBe("invalid");
+      unwrap(await svc.saveBox(editor, "BX000001", { name: "보험연도", title: "보험연도", lines: ["보험연도란", "계약일부터 1년"] }));
+      expect(await svc.getBox("BX000001")).toEqual({ code: "BX000001", name: "보험연도", title: "보험연도", lines: ["보험연도란", "계약일부터 1년"] });
+      expect((await svc.listBoxes()).map((x) => x.code)).toEqual(["BX000001"]);
+
+      const root = (await svc.get(specialId))!.tree.id;
+      expect(rejection(await svc.apply(editor, specialId, [{ type: "insert", node: b.article("x", [b.paragraph([b.text("x")]), b.boxRef("BX000099")]), at: { parentId: root } }])).reason).toBe("invalid");
+      unwrap(await svc.apply(editor, specialId, [{ type: "insert", node: b.article("박스 참조", [b.paragraph([b.text("본문")]), b.boxRef("BX000001")]), at: { parentId: root } }]));
+      const usages = await svc.boxUsages("BX000001");
+      expect(usages).toHaveLength(1);
+      expect(usages[0]).toMatchObject({ document: "special", ownerId: covSurgery, articleTitle: "박스 참조" });
+    });
+
     it("별표 삭제는 파괴적 — 편집자 forbidden · 관리자 1차 needsConfirmation(사용처) · confirm 후 삭제", async () => {
       expect(rejection(await svc.removeAppendix(editor, "AX000001")).reason).toBe("forbidden");
       const first = await svc.removeAppendix(admin, "AX000001");
@@ -296,6 +312,16 @@ describe("document 서비스 (PGlite)", () => {
       expect(await svc.getAppendix("AX000001")).toBeUndefined();
       // 깨진 참조는 오류 상태로 남는다 — 저장 검증이 드러낸다
       expect((await svc.validate(specialId)).map((i) => i.kind)).toEqual(["brokenRef"]);
+    });
+
+    it("박스 삭제는 파괴적 — 편집자 forbidden · 관리자 1차 needsConfirmation(사용처 목록) · confirm 후 삭제, 참조는 깨진 참조로 남는다", async () => {
+      expect(rejection(await svc.removeBox(editor, "BX000001")).reason).toBe("forbidden");
+      const rej = rejection(await svc.removeBox(admin, "BX000001"));
+      if (rej.reason !== "needsConfirmation") throw new Error("needsConfirmation 기대");
+      expect(rej.impact.brokenRefs.map((c) => c.articleTitle)).toEqual(["박스 참조"]);
+      unwrap(await svc.removeBox(admin, "BX000001", { confirm: true }));
+      expect(await svc.getBox("BX000001")).toBeUndefined();
+      expect((await svc.validate(specialId)).filter((i) => i.message.includes("BX000001")).map((i) => i.kind)).toEqual(["brokenRef"]);
     });
   });
 

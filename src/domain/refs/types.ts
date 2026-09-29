@@ -15,6 +15,7 @@ import type { Discriminator, EnumDef } from "../catalog/types";
 import type { Clause } from "../clause/types";
 import type { CoverageNodeLevel, Coverage } from "../coverage/types";
 import type { Appendix } from "../document/appendix";
+import type { Box } from "../document/box";
 import type { DocumentNode } from "../document/nodes";
 import type { AggregateOp } from "../expression";
 import type { MasterTree } from "../master";
@@ -37,6 +38,8 @@ export type RefNodeKey =
   | { kind: "document"; id: Id }
   | { kind: "article"; documentId: Id; articleId: Id }
   | { kind: "appendix"; code: Code }
+  /** 정적 마스터 박스 (최종 결정 9). */
+  | { kind: "box"; code: Code }
   | { kind: "coverageNode"; level: CoverageNodeLevel; id: Id }
   | { kind: "attribute"; code: Code }
   | { kind: "attributeValue"; code: Code; valueCode: Code }
@@ -85,6 +88,8 @@ export type EdgeVia =
   | "link"
   /** 별표 참조 슬롯 */
   | "appendixRef"
+  /** 박스 참조 — 정적 마스터 박스를 그 자리에 편다 */
+  | "boxRef"
   /** 담보약관 → 대응 보통약관 · 상품 → 보통약관 템플릿 */
   | "generalDocument"
   /** 담보 마스터 → 담보약관 문서 */
@@ -146,6 +151,7 @@ export interface GraphInputs {
   clauses?: readonly Clause[];
   documents?: readonly DocumentInput[];
   appendices?: readonly Appendix[];
+  boxes?: readonly Box[];
   coverages?: readonly Coverage[];
   attributeKinds?: readonly AttributeKind[];
   products?: readonly ProductInput[];

@@ -45,6 +45,8 @@ export function parseRefTarget(q: RelationQuery): RefNodeKey | undefined {
       return q.code && q.id ? { kind: "article", documentId: q.code, articleId: q.id } : undefined;
     case "appendix":
       return q.code ? { kind: "appendix", code: q.code } : undefined;
+    case "box":
+      return q.code ? { kind: "box", code: q.code } : undefined;
     case "coverageNode":
       return q.level && COVERAGE_LEVELS.includes(q.level) && q.id ? { kind: "coverageNode", level: q.level as CoverageNodeLevel, id: q.id } : undefined;
     case "attribute":
@@ -78,6 +80,7 @@ export const KIND_OPTIONS: readonly { value: string; label: string }[] = [
   { value: "clauseOptionValue", label: "옵션 선택지" },
   { value: "article", label: "조" },
   { value: "appendix", label: "별표" },
+  { value: "box", label: "박스" },
   { value: "coverageNode", label: "담보 노드" },
   { value: "attribute", label: "담보속성" },
   { value: "attributeValue", label: "담보속성 값" },
@@ -94,6 +97,7 @@ export function refTargetParams(key: RefNodeKey): Record<string, string> {
     case "discriminator":
     case "clause":
     case "appendix":
+    case "box":
     case "attribute":
       params.code = key.code;
       break;

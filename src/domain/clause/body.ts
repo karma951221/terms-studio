@@ -18,7 +18,7 @@ import type { Expr, TypeResolver } from "../expression";
 import { CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, ok, reject } from "../types";
 import type { Code, Coordinate, Id, Issue, Result } from "../types";
 import { BLOCK_KINDS, BOX_LINE_KINDS, HOST_PATH, INLINE_KINDS } from "./nodes";
-import type { Block, BoxNode, BulletListNode, ClauseNode, Inline, InlineBranch, BlockBranch } from "./nodes";
+import type { Block, BoxNode, BoxRefNode, BulletListNode, ClauseNode, Inline, InlineBranch, BlockBranch } from "./nodes";
 import type { ClauseBody, ClauseMode, OptionDef, RequiredRefs } from "./types";
 
 // ───────────────────────────── 식 수집 ─────────────────────────────
@@ -52,10 +52,12 @@ export function collectExpressions(body: ClauseBody, basePath: Id[] = []): Colle
   };
   const walkBlock = (node: Block, path: Id[]) => {
     const here = [...path, node.id];
+    if (node.kind === "boxRef") return; // 박스는 고정 글 — 식이 없다
     if (node.kind === "bulletList") return walkBullets(node, path);
     if (node.kind === "paragraph") {
       for (const c of node.children) walkInline(c, here);
       for (const it of node.items ?? []) {
+        if (it.kind === "boxRef") continue;
         if (it.kind === "bulletList") {
           walkBullets(it, here);
           continue;
@@ -108,7 +110,7 @@ export function structuralIds(body: readonly Block[]): Id[] {
       for (const br of b.branches ?? []) for (const c of br.children ?? []) block(c);
       return;
     }
-    if (b.kind === "bulletList") return; // 글머리 목록은 번호가 없어 가리킬 수 없다
+    if (b.kind === "bulletList" || b.kind === "boxRef") return; // 글머리 목록 · 박스는 번호가 없어 가리킬 수 없다
     out.push(b.id);
     for (const it of b.items ?? []) {
       if (it.kind !== "item") continue;
@@ -122,7 +124,7 @@ export function structuralIds(body: readonly Block[]): Id[] {
 
 /** inline 본문인지 (모드 판별을 호출부가 다시 하지 않게). 빈 본문은 inline 으로 본다. */
 export function isInlineBody(body: ClauseBody): body is Inline[] {
-  return (body as (Inline | Block | BoxNode)[]).every((node) => node.kind !== "paragraph" && node.kind !== "condBlock" && node.kind !== "box");
+  return (body as (Inline | Block | BoxNode)[]).every((node) => node.kind !== "paragraph" && node.kind !== "condBlock" && node.kind !== "box" && node.kind !== "boxRef");
 }
 
 function isBlockKind(kind: string): boolean {
@@ -144,6 +146,8 @@ export interface AnalyzeOptions {
   generalReferenceIds?: ReadonlySet<Id>;
   /** 별표 존재 조회 — 있으면 별표 참조 대상 존재를 검사한다. */
   appendixExists?: (code: Code) => boolean;
+  /** 정적 마스터 박스 존재 조회 — 있으면 박스 참조 대상 존재를 검사한다. */
+  boxExists?: (code: Code) => boolean;
 }
 
 /** 공용조항 참조 노드 종류 — 본문 안에 나타나면 중첩이라 거부. */
@@ -300,14 +304,26 @@ export function analyzeBody(
     }
   };
 
+  /** 박스 참조 — 코드가 있어야 하고, 조회를 줬으면 박스가 있어야 한다. */
+  const checkBoxRef = (node: BoxRefNode, path: Id[]) => {
+    const here = [...path, node.id];
+    if (typeof node.boxCode !== "string" || node.boxCode.length === 0) return report("structure", "박스 참조에는 박스 코드가 있어야 합니다", here);
+    if (opts.boxExists && !opts.boxExists(node.boxCode)) report("brokenRef", `박스 ${node.boxCode} 가 정적 마스터에 없습니다`, here, node.boxCode);
+  };
+
   const checkBlock = (node: Block, path: Id[]) => {
     const here = [...path, node.id];
     if (!isBlockKind(String(node.kind))) return kindError(node, path, "블록(항)");
+    if (node.kind === "boxRef") return checkBoxRef(node, path);
     if (node.kind === "bulletList") return checkBullets(node, path);
     if (node.kind === "paragraph") {
       checkInlines(node.children, here);
       for (const it of node.items ?? []) {
         const ip = [...here, it.id];
+        if (it.kind === "boxRef") {
+          checkBoxRef(it, here);
+          continue;
+        }
         if (it.kind === "bulletList") {
           checkBullets(it, here);
           continue;

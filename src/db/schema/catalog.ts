@@ -72,7 +72,7 @@ export const enumValues = pgTable(
 
 /**
  * 코드 채번 시퀀스. (kind, scope) 마다 다음 순번을 갖는다.
- * - kind: "discriminator" | "enum" | "clause" | "appendix" | "coverage" 는 scope "" (전역)
+ * - kind: "discriminator" | "enum" | "clause" | "appendix" | "box" | "coverage" 는 scope "" (전역)
  * - kind: "enumValue" 는 scope = enum 코드
  * 삭제된 코드의 순번은 재사용하지 않는다 — 순번은 오르기만 한다.
  */

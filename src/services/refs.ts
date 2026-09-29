@@ -64,12 +64,13 @@ import type { UsageSource as DocumentUsageSource } from "./document";
 
 /** DB 전체를 재료로 그래프를 만든다. 주어진 핸들(db 또는 tx)로만 읽는다. */
 export async function loadGraph(db: Db): Promise<RefGraph> {
-  const [discriminators, enums, clauses, documents, appendices, coverages, attributeKinds, productRows] = await Promise.all([
+  const [discriminators, enums, clauses, documents, appendices, boxes, coverages, attributeKinds, productRows] = await Promise.all([
     catalogRepo.listDiscriminators(db),
     catalogRepo.listEnums(db),
     clauseRepo.listClauses(db),
     documentRepo.listDocumentRecords(db),
     documentRepo.listAppendices(db),
+    documentRepo.listBoxes(db),
     coverageRepo.listCoverages(db),
     productRepo.listAttributeKinds(db),
     productRepo.listProducts(db),
@@ -86,6 +87,7 @@ export async function loadGraph(db: Db): Promise<RefGraph> {
     clauses,
     documents: documents.map((d) => ({ id: d.id, kind: d.kind, ...(d.ownerId ? { ownerId: d.ownerId } : {}), title: d.title, ...(d.generalDocumentId ? { generalDocumentId: d.generalDocumentId } : {}), tree: d.tree })),
     appendices,
+    boxes,
     coverages,
     attributeKinds,
     products,
@@ -342,6 +344,13 @@ export function documentUsageSource(): DocumentUsageSource {
     async appendixUsages(tx, code) {
       const graph = await loadGraph(tx);
       return usagesOf(graph, { kind: "appendix", code }, { via: ["appendixRef"] })
+        .filter((e) => e.from.kind === "clause")
+        .map((e) => e.at);
+    },
+    async boxUsages(tx, code) {
+      // 문서 안 박스 참조는 문서 서비스가 스스로 훑는다 — 여기서는 공용조항 본문의 것만
+      const graph = await loadGraph(tx);
+      return usagesOf(graph, { kind: "box", code }, { via: ["boxRef"] })
         .filter((e) => e.from.kind === "clause")
         .map((e) => e.at);
     },

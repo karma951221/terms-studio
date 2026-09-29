@@ -355,3 +355,39 @@ describe("refs 그래프 — 조 참조(articleRef)를 속한 조로 잇는다",
     expect(brokenEdges(g).some((x) => x.via === "articleRef")).toBe(false);
   });
 });
+
+describe("refs 그래프 — 정적 마스터 박스 (최종 결정 9)", () => {
+  const 박스조항: Clause = {
+    code: "C0900",
+    label: "암 정의",
+    mode: "block",
+    options: [],
+    required: { discriminators: [], attributes: [] },
+    body: [
+      { id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text: "암이란" }], items: [{ id: "bx-in", kind: "boxRef", boxCode: "BX000001" }] },
+      { id: "bx-top", kind: "boxRef", boxCode: "BX000002" },
+    ],
+  };
+  const doc: DocumentInput = {
+    id: "doc-b",
+    kind: "general",
+    title: "보통약관",
+    tree: { id: "root", kind: "document", title: "보통약관", children: [{ id: "a1", kind: "article", title: "용어", children: [{ id: "p", kind: "paragraph", children: [] }, { id: "bx-doc", kind: "boxRef", boxCode: "BX000001" }] }] },
+  };
+
+  it("박스는 선언된 실체(box:코드)이고, 문서 · 공용조항 본문의 박스 참조가 boxRef 간선을 낸다", () => {
+    const g = buildGraph({ boxes: [{ code: "BX000001", name: "암 정의 박스", title: "", lines: ["x"] }, { code: "BX000002", name: "예시", title: "", lines: ["y"] }], clauses: [박스조항], documents: [doc] });
+    expect(g.nodes.get("box:BX000001")?.label).toBe("암 정의 박스");
+    expect(edgesTo(g, "box:BX000001").map((e) => [e.from.kind, e.via, e.at.nodePath?.at(-1)])).toEqual([
+      ["clause", "boxRef", "bx-in"],
+      ["article", "boxRef", "bx-doc"],
+    ]);
+    expect(edgesTo(g, "box:BX000002")).toHaveLength(1);
+    expect(brokenEdges(g).filter((e) => e.via === "boxRef")).toEqual([]);
+  });
+
+  it("없는 박스를 가리키면 깨진 간선이다", () => {
+    const g = buildGraph({ boxes: [], documents: [doc] });
+    expect(brokenEdges(g).filter((e) => e.via === "boxRef").map((e) => nodeKey(e.to))).toEqual(["box:BX000001"]);
+  });
+});

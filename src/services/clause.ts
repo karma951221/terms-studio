@@ -181,10 +181,11 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
     const existing = (await repo.listClauses(tx)).map((c) => ({ code: c.code, label: c.label }));
     const generalReferenceIds = await generalReferenceIdsOf(tx);
     const appendixCodes = new Set((await documentRepo.listAppendices(tx)).map((a) => a.code));
+    const boxCodes = new Set((await documentRepo.listBoxes(tx)).map((x) => x.code));
     return {
       nextSeq: repo.clauseSeqSource(tx),
       existing,
-      analyze: { resolveType: typeResolverFrom(cat), generalReferenceIds, appendixExists: (c) => appendixCodes.has(c) },
+      analyze: { resolveType: typeResolverFrom(cat), generalReferenceIds, appendixExists: (c) => appendixCodes.has(c), boxExists: (c) => boxCodes.has(c) },
     };
   }
 

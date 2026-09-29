@@ -7,7 +7,7 @@
  *   처럼 행 수가 그대로인 변경을 잡기 위해서다.
  * - `count` 를 함께 두는 이유: 삭제만으로는 `max(updated_at)` 이 변하지 않는다.
  * - 상품 고유분은 그 상품 행으로 한정하고(FK 경로), 공유 마스터는 전체 — 기능/조립산출 §3.6 「입력 = 마스터(구분자 · 공용조항 ·
- *   문면 · 별표) + 상품 고유분(상품 값 · 세목 · 탑재 · 스냅샷 값 · 그룹 · 오버라이드 · 별표 순서) — 조립이 읽는 재료 전부」 ·
+ *   문면 · 별표 · 박스) + 상품 고유분(상품 값 · 세목 · 탑재 · 스냅샷 값 · 그룹 · 오버라이드 · 별표 순서) — 조립이 읽는 재료 전부」 ·
  *   열어 둔 것 「공유 마스터는 어느 것이든 바뀌면 전 상품이 오래됨」.
  * - 스탬프는 「같다/다르다」만 말한다. 무엇이 바뀌었는지는 판본(ADR-0026 · MVP 이후)의 몫.
  */
@@ -22,6 +22,7 @@ import {
   attributeKinds,
   attributeValues,
   benefits,
+  boxes,
   clauseOptionOverrides,
   clauses,
   coverages,
@@ -108,6 +109,7 @@ export const ASSEMBLY_STAMP_SOURCES: readonly StampSource[] = [
   { name: "attribute_kinds", table: attributeKinds, time: attributeKinds.updatedAt },
   { name: "attribute_values", table: attributeValues, time: attributeValues.updatedAt },
   { name: "benefits", table: benefits, time: benefits.updatedAt },
+  { name: "boxes", table: boxes, time: boxes.updatedAt },
   {
     name: "clause_option_overrides",
     table: clauseOptionOverrides,
