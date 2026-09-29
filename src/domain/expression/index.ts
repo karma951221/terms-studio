@@ -25,6 +25,7 @@ export type {
   Literal,
   MasterRef,
   NodeQualifier,
+  ParamRef,
   Ref,
   ValueRef,
 } from "./ast";
@@ -36,9 +37,9 @@ export type { DisplayName } from "./format";
 export { format, formatLiteral } from "./format";
 
 export type { ExtractedRef } from "./refs";
-export { extractRefs, masterFieldPaths, requiredDiscriminatorCodes } from "./refs";
+export { extractRefs, masterFieldPaths, paramNames, requiredDiscriminatorCodes } from "./refs";
 
-export type { CheckOptions, ExprType, TypeResolver } from "./typecheck";
+export type { CheckOptions, ExprType, ParamTypes, TypeResolver } from "./typecheck";
 export { checkCondition, checkTypes } from "./typecheck";
 
 export type { AttributeResult, EvalContext, EvalResult, LookupResult } from "./evaluate";

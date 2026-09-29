@@ -99,8 +99,8 @@ class Substituter {
       const issue: Issue = parsed.rejection.reason === "invalid" && parsed.rejection.issues[0] ? parsed.rejection.issues[0] : { kind: "syntax", message: "슬롯 참조를 읽을 수 없습니다", at };
       return this.error(n.id, issue);
     }
-    if (parsed.value.kind !== "ref" || parsed.value.ref.kind === "attr") {
-      return this.error(n.id, { kind: "typeMismatch", message: "슬롯은 값 참조 경로 하나여야 합니다 (식 · 담보속성 불가)", at });
+    if (parsed.value.kind !== "ref" || parsed.value.ref.kind === "attr" || parsed.value.ref.kind === "param") {
+      return this.error(n.id, { kind: "typeMismatch", message: "슬롯은 값 참조 경로 하나여야 합니다 (식 · 담보속성 · 연결 안 된 인자 불가)", at });
     }
     // 반복 표 행 안의 슬롯은 행 노드 문맥에서 (한정자 없는 참조 = 행 노드의 자기-또는-조상 — ADR-0070)
     const base = n.row ? this.ctx.rows?.rowContext(n.row) : this.ctx.eval;

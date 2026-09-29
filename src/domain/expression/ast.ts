@@ -53,10 +53,20 @@ export interface AttributeRef {
   code: Code;
 }
 
-/** 값 자리를 갖는 참조 (담보속성 제외). 문맥의 lookup/children 이 받는 것. */
+/**
+ * 인자 참조 — 소스 표기 `arg.<이름>` (최종 결정 2 · 기능/식언어 §인자). 함수조항 본문만 쓴다 — 조항이 선언한 입력을 이름으로 읽는다.
+ * 값은 사용처의 인자 연결(구분자 · 상수)이 정하고, 조립은 펼칠 때 연결로 바꿔 쓴다(`clause/bind.ts`) — 평가기는 인자를 모른다.
+ * 타입 검사는 문맥 플래그(`CheckOptions.params`)가 있을 때만 푼다 — 구분자 식 · 문면 식으로 새지 않게 (경계).
+ */
+export interface ParamRef {
+  kind: "param";
+  name: string;
+}
+
+/** 값 자리를 갖는 참조 (담보속성 · 인자 제외). 문맥의 lookup/children 이 받는 것. */
 export type ValueRef = DiscriminatorRef | MasterRef | BuiltinRef;
 
-export type Ref = ValueRef | AttributeRef;
+export type Ref = ValueRef | AttributeRef | ParamRef;
 
 // ───────────────────────────── 리터럴 ─────────────────────────────
 
@@ -116,6 +126,8 @@ export function refPath(ref: Ref): string {
       return `builtin.${ref.level}.${ref.prop}`;
     case "attr":
       return `attr.${ref.code}`;
+    case "param":
+      return `arg.${ref.name}`;
   }
 }
 

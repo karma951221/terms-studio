@@ -76,3 +76,12 @@ export function masterFieldPaths(expr: Expr): string[] {
   }
   return paths;
 }
+
+/** 식이 읽는 인자 이름 — 중복 없이, 등장 순서대로 (함수조항 본문 검사 ① · 연결). */
+export function paramNames(expr: Expr): string[] {
+  const names: string[] = [];
+  for (const { ref } of extractRefs(expr)) {
+    if (ref.kind === "param" && !names.includes(ref.name)) names.push(ref.name);
+  }
+  return names;
+}

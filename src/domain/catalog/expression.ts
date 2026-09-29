@@ -315,7 +315,7 @@ export function discriminatorResultType(
 ): FieldType | undefined {
   if (def.resultType) return def.resultType;
   const type = resultTypeOf(def, master, catalog, new Set());
-  return type === undefined || type.kind === "attribute" ? undefined : type;
+  return type === undefined || type.kind === "attribute" || type.kind === "planOptions" ? undefined : type;
 }
 
 // ───────────────────────────── 자기 참조 · 순환 ─────────────────────────────

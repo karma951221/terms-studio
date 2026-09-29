@@ -13,6 +13,7 @@
  *             | ident '.' ident                        — 마스터 필드 (폼키.필드키 · 구분자 식이 쓰는 참조)
  *             | 'builtin' '.' level '.' ident
  *             | 'attr' '.' ident
+ *             | 'arg' '.' ident                        — 인자 (함수조항 본문 전용 — 쓸 수 있는 자리는 타입 검사의 문맥 플래그가 가른다)
  *
  * 파서는 마스터를 **모른다** (기능/마스터 §3.2) — 머리가 attr · builtin 이 아닌 두 토막이면 마스터 참조로 모양만
  * 가른다. 존재 · 레벨은 검증기(catalog/expression `findMasterField`)와 문맥이 본다.
@@ -38,6 +39,7 @@ export const RESERVED_WORDS: readonly string[] = [
   ...AGGREGATE_OPS,
   "attr",
   "builtin",
+  "arg",
   // 부착 레벨 5개는 예약어가 아니다 — 마스터 경로의 머리가 폼키가 되면서(기능/마스터 §3.2) 레벨은 builtin 의 두 번째 토막에만 온다.
 ];
 
@@ -46,7 +48,7 @@ const AGGREGATES = new Set<string>(AGGREGATE_OPS);
 /** builtin.<레벨>.<속성> 의 레벨 검사에만 쓴다. */
 const LEVELS = new Set<string>(ATTACH_LEVELS);
 /** 예약어이면서 경로의 머리로는 쓸 수 있는 것 — 네임스페이스 둘. */
-const PATH_HEADS = new Set<string>(["attr", "builtin"]);
+const PATH_HEADS = new Set<string>(["attr", "builtin", "arg"]);
 
 // ───────────────────────────── 토큰 ─────────────────────────────
 
@@ -329,6 +331,9 @@ class Parser {
         );
       }
       this.next();
+      if (ref.kind === "param") {
+        throw new SyntaxFailure(`인자 arg.${ref.name} 는 집계할 수 없습니다 — 집계 범위는 사용처 구조라 인자가 아니다`, t.pos);
+      }
       if (ref.kind === "attr" && op !== "exist" && op !== "notexist") {
         throw new SyntaxFailure(
           `담보속성 attr.${ref.code} 는 exist·notexist 에만 쓸 수 있습니다 (${op} 불가)`,
@@ -407,6 +412,13 @@ function toRef(segments: string[], pos: number): Ref {
     }
     assertCode(segments[1], pos);
     return { kind: "attr", code: segments[1] };
+  }
+  if (head === "arg") {
+    if (segments.length !== 2) {
+      throw new SyntaxFailure("인자 경로는 arg.<이름> 두 단계입니다", pos);
+    }
+    assertCode(segments[1], pos);
+    return { kind: "param", name: segments[1] };
   }
   if (head === "builtin") {
     if (segments.length !== 3) {

@@ -37,7 +37,7 @@ function documentWithCondition(when: string): DocumentNode {
 const resolve: TypeResolver = (ref) => {
   if (ref.kind === "attr") return ref.code === "renew_type" ? { kind: "attribute", validValues: ["renew", "fixed"] } : undefined;
   if (ref.kind === "builtin") return { kind: "string" };
-  if (ref.kind === "master") return undefined; // 문면은 마스터를 직접 못 본다
+  if (ref.kind === "master" || ref.kind === "param") return undefined; // 문면은 마스터를 직접 못 본다
   const kinds: Record<string, ReturnType<TypeResolver>> = {
     D0001: { kind: "boolean" },
     D0002: { kind: "enum", enumCode: "E0001" },
@@ -56,6 +56,19 @@ describe("문면작성 S2 경계 — 조건식 자리는 문법 검사 + boolean
       b.article("y", [b.paragraph([b.inlineCond([b.inlineBranch("attr.renew_type = 'renew'", [b.text("a")]), b.inlineBranch(undefined, [b.text("b")])])])]),
     ]);
     expect(validateExpressions(doc, resolve)).toEqual([]);
+  });
+
+  it("문면 조건식·슬롯은 인자(arg.X)를 읽을 수 없다 — 인자는 함수조항 본문 문맥에서만 (경계, 최종 결정 2)", () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    const doc = b.document("d", [
+      b.condBlock([b.branch("arg.갱신형 = true", [b.article("x", [])])]),
+      b.article("y", [b.paragraph([b.slot("arg.담보명")])]),
+    ]);
+    const issues = validateExpressions(doc, resolve);
+    expect(issues.map((i) => [i.kind, i.at.refPath])).toEqual([
+      ["structure", "arg.갱신형"],
+      ["structure", "arg.담보명"],
+    ]);
   });
 
   it("문면 조건식·슬롯이 마스터 필드를 직접 부르면 거부한다 (ADR-0037 — 문면은 구분자만 본다)", () => {

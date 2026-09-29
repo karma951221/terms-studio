@@ -18,16 +18,28 @@ import type { CompareOp, Expr, Literal, Ref } from "./ast";
  * 담보속성은 값 타입이 아니라 「탑재의 좌표」라 별도 종류다 — `validValues` 를 알면
  * `attr.X = '값'` 의 리터럴을 유효값 목록으로 검사한다.
  */
-export type ExprType = FieldType | { kind: "attribute"; validValues?: Code[] };
+export type ExprType =
+  | FieldType
+  | { kind: "attribute"; validValues?: Code[] }
+  /** 세목 선택지 목록 — 함수조항 인자 타입 (최종 결정 2). 비교 · 조건 자리에 서지 않는다 — 가공은 내부 변수의 연산 몫. */
+  | { kind: "planOptions"; form: Code };
 
-/** 참조 → 타입. undefined 면 존재하지 않는 참조(brokenRef). */
+/** 참조 → 타입. undefined 면 존재하지 않는 참조(brokenRef). 인자(`arg.X`)는 여기로 오지 않는다 — `CheckOptions.params` 가 푼다. */
 export type TypeResolver = (ref: Ref) => ExprType | undefined;
+
+/** 인자 이름 → 선언 타입. undefined 면 선언되지 않은 인자. */
+export type ParamTypes = (name: string) => ExprType | undefined;
 
 export interface CheckOptions {
   /** 오류 좌표의 기본값. refPath 는 검사기가 얹는다. */
   coordinate?: Coordinate;
   /** 루트 식이 이 타입이어야 한다 (조건 자리면 boolean). */
   expect?: ExprType["kind"];
+  /**
+   * **문맥 플래그** — 함수조항 본문의 식일 때만 준다(선언된 인자 타입). 없으면 인자 참조(`arg.X`)는 structure 오류다 —
+   * 구분자 식 · 문면 식이 인자를 읽지 못하게 막는 경계 (계획 위험 3 · ADR-0013 한 벌).
+   */
+  params?: ParamTypes;
 }
 
 // ───────────────────────────── 검사 ─────────────────────────────
@@ -44,6 +56,8 @@ function describeType(t: ExprType): string {
     case "enum":
     case "list<enum>":
       return `${t.kind}<${t.enumCode}>`;
+    case "planOptions":
+      return `세목 선택지 목록<${t.form}>`;
     default:
       return t.kind;
   }
@@ -53,6 +67,7 @@ function describeType(t: ExprType): string {
 function equatable(a: ExprType, b: ExprType): boolean {
   if (a.kind === "list<enum>" || b.kind === "list<enum>" || a.kind === "table" || b.kind === "table") return false;
   if (a.kind === "attribute" || b.kind === "attribute") return false;
+  if (a.kind === "planOptions" || b.kind === "planOptions") return false;
   if (a.kind === "enum" && b.kind === "enum") return a.enumCode === b.enumCode;
   if (a.kind === "enum") return b.kind === "string";
   if (b.kind === "enum") return a.kind === "string";
@@ -86,6 +101,15 @@ export function checkTypes(
 
   /** 참조 타입 조회. 없으면 brokenRef 보고 후 undefined. */
   const typeOfRef = (ref: Ref): ExprType | undefined => {
+    if (ref.kind === "param") {
+      if (!options.params) {
+        report("structure", `인자 ${refPath(ref)} 는 함수조항 본문에서만 쓸 수 있습니다`, ref);
+        return undefined;
+      }
+      const pt = options.params(ref.name);
+      if (pt === undefined) report("brokenRef", `선언되지 않은 인자입니다: ${refPath(ref)} — 함수조항의 인자 표에 먼저 선언한다`, ref);
+      return pt;
+    }
     const t = resolve(ref);
     if (t === undefined) {
       report("brokenRef", `참조 ${refPath(ref)} 를 찾을 수 없습니다`, ref);
@@ -204,7 +228,7 @@ export function checkTypes(
             }
             return NUMBER;
           case "count":
-            if (t.kind === "list<enum>" || t.kind === "attribute" || t.kind === "table") {
+            if (t.kind === "list<enum>" || t.kind === "attribute" || t.kind === "table" || t.kind === "planOptions") {
               report("typeMismatch", `count 의 경로 ${refPath(e.ref)} 는 스칼라여야 하는데 ${describeType(t)} 입니다`, e.ref);
               return undefined;
             }
@@ -229,6 +253,7 @@ export function checkCondition(
   expr: Expr,
   resolve: TypeResolver,
   coordinate?: Coordinate,
+  params?: ParamTypes,
 ): Result<ExprType> {
-  return checkTypes(expr, resolve, { coordinate, expect: "boolean" });
+  return checkTypes(expr, resolve, { coordinate, expect: "boolean", ...(params ? { params } : {}) });
 }
