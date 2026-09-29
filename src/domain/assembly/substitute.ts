@@ -9,7 +9,7 @@
 
 import type { Discriminator, EnumDef } from "../catalog/types";
 import { discriminatorResultType } from "../catalog/expression";
-import { slotType } from "../catalog/values";
+import { missingValueMessage, slotType } from "../catalog/values";
 import { evaluate, parse, refPath, type ValueRef } from "../expression";
 import { findMasterField, type MasterTree } from "../master";
 import type { Code, Coordinate, FieldType, Issue, Value } from "../types";
@@ -37,7 +37,7 @@ function enumLabel(enums: ReadonlyMap<Code, EnumDef>, enumCode: Code, valueCode:
   const def = enums.get(enumCode);
   if (!def) return { ok: false, issue: { kind: "brokenRef", message: `enum ${enumCode} 이(가) 없습니다`, at } };
   const v = def.values.find((x) => x.code === valueCode);
-  if (!v) return { ok: false, issue: { kind: "brokenRef", message: `enum ${def.label}(${def.code}) 에 값 코드 ${String(valueCode)} 이(가) 없습니다`, at } };
+  if (!v) return { ok: false, issue: { kind: "brokenRef", message: missingValueMessage(def, [String(valueCode)]), at } };
   return { ok: true, text: v.label };
 }
 

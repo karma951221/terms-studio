@@ -29,7 +29,12 @@ export type LookupResult =
    * 정의·필드가 삭제된 경우 `brokenRef`. `source` 는 자리를 없앤 원인의 원천 좌표 — 구분자 식이 깨져서면
    * 그 구분자의 편집기 (ADR-0049 §4 「원천은 고치면 사라지는 곳」). 문맥이 알 때만 싣고 평가기는 오류에 그대로 옮긴다.
    */
-  | { kind: "missing"; issue?: "notAttached" | "brokenRef"; source?: Coordinate };
+  | { kind: "missing"; issue?: "notAttached" | "brokenRef"; source?: Coordinate }
+  /**
+   * 값 자리는 있고 입력도 됐지만 값이 정의와 어긋난다 — 지운 열거값 코드가 남은 자리(「없는 값」, ADR-0078 결정 5).
+   * 읽으면 늘 오류다(exist 도). `source` 는 그 값을 고치는 곳(상품 · 세목 선택지 · 담보 노드의 값 자리).
+   */
+  | { kind: "invalid"; issue: "brokenRef"; message: string; source?: Coordinate };
 
 /** 담보속성 조회 결과. */
 export type AttributeResult =
@@ -103,6 +108,8 @@ function readValue(ctx: EvalContext, ref: ValueRef): EvalResult {
           : `${refPath(ref)} 의 값 자리가 없습니다 (구분자 미부착)`;
       return error(ctx, kind, message, ref, r.source);
     }
+    case "invalid":
+      return error(ctx, r.issue, r.message, ref, r.source);
   }
 }
 
@@ -221,6 +228,7 @@ function aggregate(ctx: EvalContext, op: AggregateOp, ref: ValueRef): EvalResult
     for (const child of scope) {
       const r = child.lookup(ref);
       if (r.kind === "missing") continue;
+      if (r.kind === "invalid") return readValue(child, ref); // 「없는 값」 오류
       if (r.kind === "undetermined") {
         pending ??= undetermined(ref);
         continue;

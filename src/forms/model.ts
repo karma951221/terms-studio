@@ -45,6 +45,8 @@ export interface FieldView {
   type: FieldType;
   /** enum · list<enum> 만. 표시 순서(order)대로. 없는 enum 이면 빈 목록. */
   enumOptions?: EnumOption[];
+  /** enum · list<enum> 만 — 열거형변수 이름. 「없는 값」 오류 문구에 쓴다 (ADR-0078 결정 5). */
+  enumLabel?: string;
   /** 저장소 기준 — 기본값과 무관하다. */
   state: "entered" | "notEntered";
   /** state 가 entered 일 때만. */
@@ -134,6 +136,10 @@ function fieldView(
   const view: FieldView = { path, label, type, state: "notEntered", source: "direct", form };
   const options = enumOptionsOf(type, enums);
   if (options) view.enumOptions = options;
+  if (type.kind === "enum" || type.kind === "list<enum>") {
+    const enumLabel = enums(type.enumCode)?.label;
+    if (enumLabel !== undefined) view.enumLabel = enumLabel;
+  }
   if (slot?.entered) {
     view.state = "entered";
     view.value = slot.value;
@@ -198,6 +204,18 @@ export function formProgress(model: FormModel): { total: number; entered: number
 }
 
 // ───────────────────────────── 표시 ─────────────────────────────
+
+/**
+ * 저장 값의 열거값 코드 가운데 선택지에 없는 것 — 지운 열거값이 남은 「없는 값」 (ADR-0078 결정 5). enum · list<enum> 의 입력된 값만.
+ * 없는 열거형변수 자체(선택지 목록이 빈 경우)는 값 전부가 여기에 든다 — 그것도 고칠 자리다.
+ */
+export function missingEnumCodesOf(field: FieldView): string[] {
+  if (field.state !== "entered" || field.value === undefined) return [];
+  if (field.type.kind !== "enum" && field.type.kind !== "list<enum>") return [];
+  const known = new Set((field.enumOptions ?? []).map((o) => o.code));
+  const codes = Array.isArray(field.value) ? field.value : [field.value];
+  return codes.filter((c): c is string => typeof c === "string" && !known.has(c));
+}
 
 /** 읽기 전용 표시 문자열. enum 은 표시명(ADR-0005), boolean 은 예/아니오. 미입력이면 undefined. */
 export function formatValue(field: FieldView): string | undefined {
@@ -293,6 +311,18 @@ function isEmptyDraft(draft: Draft): boolean {
   return Array.isArray(draft) ? draft.length === 0 : draft.trim() === "";
 }
 
+/**
+ * 목록값(복수) 체크 하나를 켜고 끈다 — 선택지 순서를 유지하고, 선택지에 없는 코드(지운 열거값 — 「없는 값」)는 끝에 그대로 남긴다.
+ * 다른 체크를 만지다가 없는 값이 조용히 빠지면 오류가 말없이 사라진다 — 없는 값은 칩의 빼기로만 지운다 (ADR-0078 결정 5).
+ */
+export function toggleEnumCode(options: readonly string[], selected: readonly string[], code: string, on: boolean): string[] {
+  const next = new Set(selected);
+  if (on) next.add(code);
+  else next.delete(code);
+  const known = new Set(options);
+  return [...options.filter((c) => next.has(c)), ...selected.filter((c) => !known.has(c) && next.has(c))];
+}
+
 /** 선택지만으로 만든 enum 조회 — validateValue 를 그대로 재사용하기 위해. */
 function lookupFromView(view: FieldView): EnumLookup {
   return (code) => {
@@ -300,7 +330,7 @@ function lookupFromView(view: FieldView): EnumLookup {
     if ((t.kind !== "enum" && t.kind !== "list<enum>") || t.enumCode !== code) return undefined;
     return {
       code,
-      label: "",
+      label: view.enumLabel ?? "",
       values: (view.enumOptions ?? []).map((o, i) => ({ ...o, order: i })),
     };
   };

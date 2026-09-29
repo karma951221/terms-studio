@@ -1720,6 +1720,13 @@ button.danger:focus-visible {
   font-size: 12px;
 }
 
+/* 「없는 값 V03」 — 지운 열거값이 남은 값 자리 (ADR-0078 결정 5) */
+.ts-chip.is-error {
+  border-color: var(--ts-error);
+  background: var(--ts-error-bg);
+  color: var(--ts-error);
+}
+
 .ts-chip button {
   display: inline-flex;
   width: 18px;
@@ -4822,3 +4829,4 @@ button.ts-ref-fold:hover {
   content: "- ";
   color: var(--ts-ink-2);
 }
+

@@ -49,7 +49,7 @@ function ImpactLines({ outcome }: { outcome: Extract<EditOutcome, { ok: "confirm
   const { impact } = outcome;
   const mounts = impact.mounts ?? [];
   return <ul className="ts-confirm-loss">
-    <li>사람이 입력한 값 {impact.valueRowsLost}건이 사라진다</li>
+    <li>{outcome.valueRowsLine ?? `사람이 입력한 값 ${impact.valueRowsLost}건이 사라진다`}</li>
     {impact.cascade.length ? <li>함께 삭제되는 항목 {impact.cascade.length}건</li> : null}
     {impact.brokenRefs.length ? <li>깨질 참조 {impact.brokenRefs.length}건</li> : null}
     {/* 탑재 상품담보 — 구조 정정이 미치는 상품과 그 스냅샷에서 사라질 값 행 (ADR-0075) */}

@@ -5,8 +5,8 @@ import type { EnumDef, EnumLookup } from "@/domain/catalog/types";
 import type { MasterForm } from "@/domain/master";
 import { entered, type ValueSlot } from "@/domain/types";
 
-import { buildForm, formReducer, initFormState } from "./model";
-import { StructForm } from "./StructForm";
+import { buildForm, formReducer, initFormState, toggleEnumCode } from "./model";
+import { FieldReadValue, StructForm } from "./StructForm";
 
 const 고지유형: EnumDef = {
   code: "E0001",
@@ -143,6 +143,38 @@ describe("StructForm — 미입력 · 보이는 제안값 · 비우기 (ADR-0004
     const boxes = tagsWith(html, 'name="pay.applied"');
     expect(boxes.find((t) => t.includes('value="V02"'))).toContain("checked");
     expect(boxes.find((t) => t.includes('value="V01"'))).not.toContain("checked");
+  });
+
+  it("목록값(복수)에 지운 값 코드가 남았으면 「없는 값 V09」 오류 칩 + 빼기 버튼 — 조용히 숨기지 않는다 (ADR-0078 결정 5)", () => {
+    const html = render(new Map([["pay.applied", entered(["V01", "V09"])]]));
+    expect(html).toContain("없는 값 V09");
+    expect(html).toMatch(/class="ts-chip is-error"[^>]*role="alert"/);
+    expect(html).toContain('aria-label="없는 값 V09 빼기"');
+    // 남은 선택은 그대로 체크
+    expect(tagsWith(html, 'name="pay.applied"').find((t) => t.includes('value="V01"'))).toContain("checked");
+  });
+
+  it("목록값에 지운 값 코드가 남았으면 select 에 「없는 값 V09」 선택지가 선택된 채 보이고 오류 칩이 붙는다", () => {
+    const html = render(new Map([["pay.notice", entered("V09")]]));
+    expect(html).toContain('<option value="V09" disabled="" selected="">없는 값 V09</option>');
+    expect(html).toMatch(/class="ts-chip is-error"[^>]*role="alert"[^>]*>없는 값 V09/);
+  });
+
+  it("읽기 표시 — 남은 이름은 글로, 지운 코드는 「없는 값」 칩으로", () => {
+    const model = buildForm("benefit", enums, new Map([["pay.applied", entered(["V01", "V09"])]]), undefined, master);
+    const field = model.fields.find((f) => f.path === "pay.applied")!;
+    const html = renderToStaticMarkup(<FieldReadValue field={field} />);
+    expect(html).toContain("일반심사");
+    expect(html).toMatch(/class="ts-chip is-error"[^>]*role="alert"[^>]*>없는 값 V09/);
+    const plain = model.fields.find((f) => f.path === "pay.notice")!;
+    expect(renderToStaticMarkup(<FieldReadValue field={plain} />)).toBe("—");
+  });
+
+  it("다른 값을 켜고 꺼도 없는 값 코드는 남는다 — 빼기로만 지운다", () => {
+    const options = ["V01", "V02"];
+    expect(toggleEnumCode(options, ["V01", "V09"], "V02", true)).toEqual(["V01", "V02", "V09"]);
+    expect(toggleEnumCode(options, ["V01", "V09"], "V01", false)).toEqual(["V09"]);
+    expect(toggleEnumCode(options, ["V01", "V09"], "V09", false)).toEqual(["V01"]);
   });
 
   it("제출 버튼이 있다", () => {

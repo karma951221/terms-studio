@@ -236,7 +236,8 @@ export function catalogImpactSource(db: Db): ImpactSource {
         case "enum":
           return valuesRepo.purgePathRows(db, enumSlots(target.enumCode).map((s) => s.path));
         case "enumValue":
-          return refsRepo.purgeEnumValueRows(db, enumSlots(target.enumCode), target.valueCode);
+          // 값 삭제는 값 행을 남긴다 — 코드가 남아 「없는 값」 오류가 된다 (ADR-0078 결정 5). 서비스도 부르지 않는다.
+          return;
       }
     },
   };

@@ -14,7 +14,7 @@
 import { Fragment, useEffect, useId, useState } from "react";
 
 import { PLAN_AXIS_LABEL, planCombinationKey, planOptionLabel, type PlanAxis, type PlanOption, type ProductPlan } from "@/domain/product";
-import { FieldInput, formatValue, formReducer, initFormState, toSubmission, type FieldView, type FormAction, type FormModel, type FormState } from "@/forms";
+import { FieldInput, FieldReadValue, formReducer, initFormState, toSubmission, type FieldView, type FormAction, type FormModel, type FormState } from "@/forms";
 import type { EditOutcome } from "@/app/_lib/edit";
 import type { ProductBasicInput } from "@/services/product";
 
@@ -209,8 +209,8 @@ export function BasicTab(props: BasicTabProps) {
   const readCell = (model: FormModel, path: string) => {
     const field = model.fields.find((f) => f.path === path);
     if (!field) return null;
-    // 빈 list<enum> 은 "" 로 나온다 — 없는 값은 전부 「—」
-    return formatValue(field) || "—";
+    // 빈 list<enum> 은 "" 로 나온다 — 없는 값은 전부 「—」. 지운 열거값 코드는 「없는 값」 칩 (ADR-0078 결정 5)
+    return <FieldReadValue field={field} />;
   };
   const editCell = (ownerId: string, state: FormState | undefined, path: string, label: string) => {
     const field = state?.fields[path];
@@ -319,7 +319,7 @@ export function BasicTab(props: BasicTabProps) {
                     {group.fields.map((field) => (
                       <tr key={field.path} className={field.path === productHighlight ? "is-highlighted" : undefined} data-path={field.path}>
                         <th scope="row">{field.label}</th>
-                        <td className="col-flex">{editing ? productCell(field.path, field.label) : formatValue(field) || "—"}</td>
+                        <td className="col-flex">{editing ? productCell(field.path, field.label) : <FieldReadValue field={field} />}</td>
                       </tr>
                     ))}
                   </Fragment>

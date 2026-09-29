@@ -260,3 +260,39 @@ describe("노드 한정자 — 조립 문맥은 스냅샷 masterNodeId 역조회
     expect(value("D0007@master-sub-b", ctx)).toBe(false);
   });
 });
+
+describe("없는 값 — 지운 열거값 코드가 남은 값 자리 (ADR-0078 결정 5)", () => {
+  function withoutValue(enumCode: string, valueCode: string): AssemblyInput {
+    const input = alphaPlusFixture();
+    return { ...input, enums: input.enums.map((e) => (e.code === enumCode ? { ...e, values: e.values.filter((v) => v.code !== valueCode) } : e)) };
+  }
+
+  it("조립이 없는 값 코드를 읽으면 좌표를 단 오류 — 원천은 그 값을 고친 상품의 값 자리", () => {
+    const input = withoutValue("E0001", "V02"); // 상품 고지유형 = V02
+    const r = run("product_basic.notice = 'V01'", buildContexts(input).general.eval);
+    expect(r).toEqual({
+      kind: "error",
+      issue: expect.objectContaining({
+        kind: "brokenRef",
+        message: "없는 값 V02 — 고지유형(E0001)에서 지워진 값입니다",
+        at: expect.objectContaining({ refPath: "product_basic.notice" }),
+        source: { document: "product", ownerId: input.product.id, ownerName: input.product.name, refPath: "product_basic.notice" },
+      }),
+    });
+  });
+
+  it("세목 선택지 값이면 원천에 그 선택지 이름이 실린다 — 집계도 오류", () => {
+    const input = withoutValue("E0002", "V02"); // 2형 무저해지유형 = V02
+    const r = run("count(no_surrender.type)", buildContexts(input).general.eval);
+    expect(r).toMatchObject({
+      kind: "error",
+      issue: { kind: "brokenRef", message: "없는 값 V02 — 무저해지유형(E0002)에서 지워진 값입니다", source: { document: "product", ownerId: input.product.id, subjectName: "2형", refPath: "no_surrender.type" } },
+    });
+  });
+
+  it("정의에 있는 값만 고른 자리는 그대로 읽힌다", () => {
+    const input = withoutValue("E0002", "V02");
+    const ctx = buildContexts(input).general.eval;
+    expect(value("product_basic.notice = 'V02'", ctx)).toBe(true);
+  });
+});

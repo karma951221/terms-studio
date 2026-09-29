@@ -53,6 +53,17 @@ describe("값 규칙 — validateValue(fieldType, value, enums)", () => {
     expect(validateValue(t, ["V01", "V09"], enums)[0].kind).toBe("brokenRef");
   });
 
+  it("목록값(복수)에 정의에 없는 코드가 있으면 「없는 값」 오류 — 지운 코드만 짚는다 (ADR-0078 결정 5)", () => {
+    const t = { kind: "list<enum>", enumCode: "E0001" } as const;
+    const issues = validateValue(t, ["V01", "V09", "V08"], enums, { refPath: "waiver.reasons" });
+    expect(issues).toEqual([{ kind: "brokenRef", message: "없는 값 V09, V08 — 고지유형(E0001)에서 지워진 값입니다", at: { refPath: "waiver.reasons" } }]);
+  });
+
+  it("scalar enum 값이 없는 코드면 「없는 값」 오류", () => {
+    const issues = validateValue({ kind: "enum", enumCode: "E0001" }, "V09", enums);
+    expect(issues).toEqual([{ kind: "brokenRef", message: "없는 값 V09 — 고지유형(E0001)에서 지워진 값입니다", at: {} }]);
+  });
+
   it("좌표를 주면 Issue 에 실린다", () => {
     const issues = validateValue({ kind: "number" }, "x", enums, { refPath: "waiver.applies" });
     expect(issues[0].at.refPath).toBe("waiver.applies");

@@ -85,6 +85,9 @@ describe("saveEnumEditAction", () => {
     if (first.ok === "confirm") {
       expect(first.actionLabel).toBe("값 1개 삭제하고 저장");
       expect(first.impact.valueRowsLost).toBe(0);
+      // 값 행은 지우지 않는다 — 「없는 값」 오류로 남는다 (ADR-0078 결정 5)
+      expect(first.title).toBe("값을 빼면 그 값을 고른 자리가 「없는 값」 오류가 된다");
+      expect(first.valueRowsLine).toBe("그 값을 고른 저장 값 0건이 「없는 값」 오류로 남는다");
     }
     expect(await s.catalog.getEnum(def.code)).toEqual(def);
 

@@ -17,15 +17,15 @@
  */
 
 import { planFormScope, type PlanFormScope } from "../catalog/expression";
-import type { Discriminator, SlotPath } from "../catalog/types";
-import { isFormOpened } from "../catalog/values";
+import type { Discriminator, EnumDef, SlotPath } from "../catalog/types";
+import { isFormOpened, missingEnumCodes, missingValueMessage } from "../catalog/values";
 import { coverageChildrenProviders, coverageStructNode } from "../coverage/evalContext";
 import { descendants, findNode, findNodeById, nodeName, nodesOf } from "../coverage/tree";
 import type { Coverage, CoverageNode, CoverageNodeLevel } from "../coverage/types";
 import type { DocumentNode } from "../document/nodes";
 import type { EvalContext, LookupResult, ValueRef } from "../expression";
 import { evaluate, parse, refPath } from "../expression";
-import { findMasterField, isMasterPathShape, type MasterTree } from "../master";
+import { findMasterField, isMasterPathShape, type MasterFieldRef, type MasterTree } from "../master";
 import type { RowSource } from "../structure";
 import { type AttachLevel, type Code, type Coordinate, entered, type Id, type Issue, NOT_ENTERED, type Value, type ValueSlot } from "../types";
 import type { AssemblyCoverage, AssemblyInput, AssemblyPlanOption, AssemblyProduct, ContextTrace, ReadRecord } from "./types";
@@ -83,6 +83,8 @@ function slotOf(value: Value): LookupResult {
 interface Env {
   product: AssemblyProduct;
   catalog: ReadonlyMap<Code, Discriminator>;
+  /** 열거형변수 — 값 자리의 열거값 코드가 정의에 있는지 본다 (「없는 값」, ADR-0078 결정 5). */
+  enums: ReadonlyMap<Code, EnumDef>;
   /** 스냅샷을 담보 트리 모양으로 (id = 상품담보 id · 스냅샷 노드 id). 없으면 담보 레벨을 모른다 (기본계약 없는 보통약관). */
   tree?: Coverage;
   /** 세목 집계 범위 — 상품의 선택지 (= `product.planOptions`). */
@@ -184,10 +186,11 @@ function lookupDiscriminator(env: Env, node: CoverageNode | undefined, plan: Pla
 function lookupMaster(env: Env, node: CoverageNode | undefined, plan: PlanCursor, ref: ValueRef & { kind: "master" }): LookupResult {
   const field = findMasterField(refPath(ref), env.master);
   if (!field) return BROKEN;
-  if (field.level === "product") return readSlot(env, env.product.id, field.path);
+  const product = { document: "product" as const, ownerId: env.product.id, ownerName: env.product.name, refPath: field.path };
+  if (field.level === "product") return checkEnum(env, field, readSlot(env, env.product.id, field.path), product);
   if (field.level === "plan") {
     // 선택지는 유형(폼) 하나 — 다른 폼의 필드는 그 선택지에 자리가 없다. 커서 없음도 자리 없음.
-    return plan && plan.planTypeCode === field.form.key ? readSlot(env, plan.id, field.path) : MISSING;
+    return plan && plan.planTypeCode === field.form.key ? checkEnum(env, field, readSlot(env, plan.id, field.path), { ...product, subjectName: plan.name }) : MISSING;
   }
   if (!env.tree) return UNDETERMINED; // 기본계약 없음
   const target = ancestorOrSelf(env, node, field.level);
@@ -195,7 +198,23 @@ function lookupMaster(env: Env, node: CoverageNode | undefined, plan: PlanCursor
   const slots = env.values.get(target.id) ?? EMPTY_SLOTS;
   // 여는 폼: 값 행이 하나도 없으면 자리 없음 — exist 는 false, 직접 읽기는 notAttached (ADR-0065 §4)
   if (field.form.optional && !isFormOpened(field.form, (p) => slots.get(p))) return MISSING;
-  return readSlot(env, target.id, field.path);
+  const root = nodesOf(env.tree)[0];
+  return checkEnum(env, field, readSlot(env, target.id, field.path), { ...product, nodePath: root ? [root.id] : [], subjectName: nodeName(env.tree, target) });
+}
+
+/**
+ * 열거값 자리의 「없는 값」 — 지운 열거값 코드가 저장 값에 남았으면 읽는 곳마다 오류다 (ADR-0078 결정 5 · ADR-0049 〔D-P1-18〕).
+ * 조용히 빼고 읽으면 조건이 말없이 거짓이 된다. `source` = 그 값을 고치는 값 자리. 없는 열거형변수 자체는 여기서 보지 않는다 (치환 · 정의 검사 몫).
+ */
+function checkEnum(env: Env, field: MasterFieldRef, r: LookupResult, source: Coordinate): LookupResult {
+  const type = field.field.type;
+  if (r.kind !== "slot" || !r.slot.entered || (type.kind !== "enum" && type.kind !== "list<enum>")) return r;
+  const def = env.enums.get(type.enumCode);
+  if (!def) return r;
+  const value = r.slot.value;
+  const codes = Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : typeof value === "string" ? [value] : [];
+  const missing = missingEnumCodes(def, codes);
+  return missing.length === 0 ? r : { kind: "invalid", issue: "brokenRef", message: missingValueMessage(def, missing), source };
 }
 
 /** 참조가 사는 레벨. 없는 정의·없는 자리는 null. */
@@ -370,6 +389,7 @@ function envOf(input: AssemblyInput, catalog: ReadonlyMap<Code, Discriminator>, 
   return {
     product,
     catalog,
+    enums: new Map(input.enums.map((e) => [e.code, e])),
     master: input.master,
     tree: c ? snapshotTree(c) : undefined,
     planOptions: product.planOptions,

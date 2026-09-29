@@ -162,7 +162,7 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
       expect(await src.countValueRows({ kind: "discriminator", code: "D0003" })).toBe(0);
     });
 
-    it("enum 값 E0002/V02 — 리터럴로 비교하는 조건식이 깨질 참조, 그 값을 고른 값 행만 세고 지운다", async () => {
+    it("enum 값 E0002/V02 — 리터럴로 비교하는 조건식이 깨질 참조, 그 값을 고른 값 행만 센다 · 값 행은 지우지 않는다 (ADR-0078 결정 5)", async () => {
       const src = catalogImpactSource(contextualDb(t.db));
       expect(await src.findBrokenRefs({ kind: "enumValue", enumCode: "E0002", valueCode: "V02" })).toEqual([expect.objectContaining({ document: "general", ownerId: general.id, refPath: "D0002" })]);
       expect(await src.findBrokenRefs({ kind: "enumValue", enumCode: "E0002", valueCode: "V01" })).toEqual([]);
@@ -170,7 +170,7 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
       expect(await src.countValueRows({ kind: "enumValue", enumCode: "E0002", valueCode: "V01" })).toBe(0);
       expect(await src.countValueRows({ kind: "enum", enumCode: "E0002" })).toBe(1);
       await src.purgeValueRows({ kind: "enumValue", enumCode: "E0002", valueCode: "V02" });
-      expect((await readSlots(t.db, { kind: "plan", id: productId })).size).toBe(0);
+      expect((await readSlots(t.db, { kind: "plan", id: productId })).get("no_surrender.type")).toEqual({ entered: true, value: "V02" });
     });
 
     it("트랜잭션 안에서 불러도 교착하지 않는다 (contextualDb)", async () => {

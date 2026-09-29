@@ -125,12 +125,13 @@ export interface CatalogService {
   /**
    * 열거형변수 편집 화면 한 벌 저장 — 이름 · 주석 · 최종 값 목록을 **최종 상태로 한 번에** 검사해 한 번 저장한다
    * (점검 2026-09-27 H2 ① · D1 — 맞바꾸기 · 비운 이름 받기). 빠진 값이 있으면 `enum.deleteValue` 2단(편집자 forbidden ·
-   * 관리자 1차 needsConfirmation — 빠진 값 전부의 영향을 합쳐서 · confirm 이면 저장 + 값 행 purge, D2).
+   * 관리자 1차 needsConfirmation — 빠진 값 전부의 영향을 합쳐서 · confirm 이면 저장, D2). 뺀 값을 고른 값 행은 지우지 않는다 —
+   * 코드가 남아 「없는 값」 오류가 된다 (ADR-0078 결정 5).
    * 거부 · 확인 필요면 트랜잭션을 롤백한다 — 채번한 순번도 타지 않는다.
    */
   reviseEnum(actor: Actor, code: Code, revision: EnumRevision, opts?: Confirmable): Promise<Result<EnumDef>>;
 
-  // enum — 파괴적 (admin · 2단)
+  // enum — 파괴적 (admin · 2단) — 값 삭제는 값 행을 남긴다 (「없는 값」, ADR-0078 결정 5)
   removeEnumValue(actor: Actor, code: Code, valueCode: Code, opts?: Confirmable): Promise<Result<EnumDef>>;
   removeEnum(actor: Actor, code: Code, opts?: Confirmable): Promise<Result<void>>;
 }
@@ -346,9 +347,9 @@ export function createCatalogService(db: Db, deps: CatalogServiceDeps = {}): Cat
             if (!revised.ok) return revised as Result<EnumDef>;
             const { def: next, removed } = revised.value;
             const targets = removed.map((valueCode): ImpactTarget => ({ kind: "enumValue", enumCode: code, valueCode }));
+            // 뺀 값을 고른 값 행은 지우지 않는다 — 코드가 남아 값 폼 · 조립에서 「없는 값」 오류가 된다 (ADR-0078 결정 5)
             const save = async (): Promise<Result<EnumDef>> => {
               await repo.saveEnum(tx, next, actor.userId);
-              for (const target of targets) await impact.purgeValueRows(target);
               return ok(next);
             };
             if (targets.length === 0) return save();
@@ -379,8 +380,8 @@ export function createCatalogService(db: Db, deps: CatalogServiceDeps = {}): Cat
           computeImpact: () => computeImpact(target, impact),
           execute: async () => {
             if (!changed?.ok) throw new Error("precheck 없이 execute 호출");
+            // 값 행은 남긴다 — 「없는 값」 오류로 드러난다 (ADR-0078 결정 5)
             await repo.saveEnum(tx, changed.value, actor.userId);
-            await impact.purgeValueRows(target);
             return changed;
           },
         });
