@@ -94,6 +94,7 @@ export const EDGE_STYLE = {
   boxRef: "dashed",
   defaultBinding: "solid",
   binding: "solid",
+  local: "solid",
   generalDocument: "dashed",
   document: "dashed",
   override: "dashed",

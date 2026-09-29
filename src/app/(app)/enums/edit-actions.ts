@@ -40,9 +40,17 @@ export async function saveEnumEditAction(code: string, input: EnumEditData, conf
     });
     const result = await services.catalog.reviseEnum(actor, code, { label: input.label, description: input.description, ...(fields ? { fields } : {}), values }, { confirm });
     if (result.ok) {
-      // 값을 더했으면 그 열거형 값을 나열해 비교하는 곳을 재검사 목록으로 돌려준다 — 저장은 막지 않는다 (ADR-0078 결정 4)
-      if (!input.values.some((value) => isNew(value.code))) return { ok: true };
-      const recheck = await services.catalog.enumValueRecheck(code);
+      // 값을 더했으면 그 열거형 값을 나열해 비교하는 곳(조건식 · 구분자 식 · 함수조항 내부 변수)을 재검사 목록으로 돌려준다 — 저장은 막지 않는다 (ADR-0078 결정 4 · 최종 결정 20).
+      // 필드를 빼거나 타입을 바꿨으면 그 필드를 읽는 함수조항 식도 (결정 2 · 최종 결정 18)
+      const changedFields = fields
+        ? (current.fields ?? []).filter((field) => {
+            const next = fieldRows?.find((row) => row.key === field.key);
+            return !next || next.type !== field.type;
+          }).map((field) => field.key)
+        : [];
+      const valueRecheck = input.values.some((value) => isNew(value.code)) ? await services.catalog.enumValueRecheck(code) : [];
+      const fieldRecheck = await services.catalog.enumFieldRecheck(code, changedFields);
+      const recheck = [...valueRecheck, ...fieldRecheck.filter((e) => !valueRecheck.includes(e))];
       return recheck.length > 0 ? { ok: true, recheck } : { ok: true };
     }
     if (result.rejection.reason === "needsConfirmation") {

@@ -418,3 +418,58 @@ describe("enumValueListers — 열거값 추가의 재검사 목록 (ADR-0078 �
     expect(enumValueListers(g, "E0001")).toHaveLength(1);
   });
 });
+
+describe("함수조항 인자 · 내부 변수의 열거값 읽기 — 값 나열 · 필드 읽기 간선 (ADR-0078 결정 2 · 4 · 최종 결정 20)", () => {
+  const waiverMaster: MasterForm[] = [{ key: "waiver", label: "납입면제", level: "plan", fields: [{ key: "reasons", label: "사유", type: { kind: "list<enum>", enumCode: "E0001" } }] }];
+  const 사유: EnumDef = {
+    code: "E0001",
+    label: "납입면제사유",
+    fields: [{ key: "F01", label: "약관표시명", type: "string", order: 1 }],
+    values: [{ code: "V01", label: "암", order: 0 }, { code: "V02", label: "뇌졸중", order: 1 }],
+  };
+  const 부가항: Clause = {
+    code: "C0001",
+    label: "면제 부가항",
+    mode: "block",
+    options: [],
+    params: [
+      { name: "종들", type: { kind: "planOptions", form: "waiver" } },
+      { name: "사유", type: { kind: "enum", enumCode: "E0001" } },
+    ],
+    locals: [
+      { name: "모든사유", expr: "arg.종들.합치기(waiver.reasons)" },
+      { name: "암있음", expr: "var.모든사유.있음('V01')" },
+      { name: "표시명있음", expr: "var.모든사유.거르기(F02 = true).비었음" },
+    ],
+    body: [
+      {
+        id: "p",
+        kind: "paragraph",
+        children: [
+          { id: "c", kind: "inlineCond", branches: [{ id: "b1", when: "arg.사유 = 'V02'", children: [] }] },
+          { id: "s", kind: "slot", ref: "arg.사유.F01" },
+        ],
+      },
+    ],
+    required: { discriminators: [], attributes: [] },
+  } as Clause;
+  const graph = () => buildGraph({ enums: [사유], clauses: [부가항], master: waiverMaster });
+
+  it("있음(값…) 으로 나열한 내부 변수 · 인자 = 값 비교가 열거값 추가 재검사 목록에 오른다", () => {
+    expect(enumValueListers(graph(), "E0001").map((e) => [e.via, nodeKey(e.to), e.at.refPath ?? e.at.nodePath?.join("/")])).toEqual([
+      ["local", "enumValue:E0001/V01", "var.암있음"],
+      ["when", "enumValue:E0001/V02", "p/c/b1"],
+    ]);
+  });
+
+  it("필드 읽기(.필드 · 거르기) → enumField 간선 — 지운 필드(F02)를 읽는 곳은 깨진 참조로 남는다", () => {
+    const g = graph();
+    expect(usagesOf(g, { kind: "enumField", enumCode: "E0001", key: "F01" }).map((e) => e.via)).toEqual(["slot"]);
+    expect(usagesOf(g, { kind: "enumField", enumCode: "E0001", key: "F02" }).map((e) => [e.via, e.at.refPath])).toEqual([["local", "var.표시명있음"]]);
+    expect(brokenEdges(g).some((e) => nodeKey(e.to) === "enumField:E0001/F02")).toBe(true);
+  });
+
+  it("내부 변수의 합치기(폼.필드)는 그 마스터 필드를 읽는 간선이다", () => {
+    expect(usagesOf(graph(), { kind: "masterField", path: "waiver.reasons" }).map((e) => [e.via, nodeKey(e.from)])).toEqual([["local", "clause:C0001"]]);
+  });
+});

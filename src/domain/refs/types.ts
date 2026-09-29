@@ -31,7 +31,7 @@ export type RefNodeKey =
   | { kind: "masterField"; path: string }
   | { kind: "enum"; enumCode: Code }
   | { kind: "enumValue"; enumCode: Code; valueCode: Code }
-  /** 열거형 유저 정의 필드 (ADR-0078 결정 2). 읽는 간선(함수조항 내부 변수 · 슬롯)은 함수조항 인자 · 내부 변수가 들어올 때 붙는다 */
+  /** 열거형 유저 정의 필드 (ADR-0078 결정 2). 읽는 간선 = 함수조항 식의 `.필드` · `.거르기(필드 = …)` (when · slot · local) */
   | { kind: "enumField"; enumCode: Code; key: Code }
   | { kind: "clause"; code: Code }
   | { kind: "clauseOption"; clauseCode: Code; optionCode: Code }
@@ -73,6 +73,8 @@ export type EdgeVia =
   | "when"
   /** 슬롯(`slot.ref`) 참조 — 문서·공용조항 본문 */
   | "slot"
+  /** 함수조항 내부 변수 식 안의 참조 (최종 결정 2) — 열거값 나열 · 필드 읽기 · 합치기가 읽는 세목 필드 */
+  | "local"
   /** 구분자 식 안의 참조 (구분자 → 마스터 필드) */
   | "expression"
   /** 구분자 참조의 노드 한정자 `D@노드` → 담보 노드 (ADR-0066). 구분자 간선(when·slot·expression)과 나란히 난다 */

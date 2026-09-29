@@ -489,6 +489,45 @@ describe("열거값 삭제 = 「없는 값」 · 열거값 추가 = 재검사 �
     expect(recheck.map((e) => [e.via, e.at.document, e.at.refPath])).toEqual([["when", "general", "D0001"]]);
     expect(await s.catalog.enumValueRecheck("E0001")).toEqual([]);
   });
+
+  it("값을 추가하면 .있음(값…)으로 나열한 함수조항 내부 변수가 재검사 목록에 오른다 (최종 결정 20)", async () => {
+    unwrap(
+      await s.clause.create(editor, {
+        label: "면제 부가항",
+        mode: "block",
+        params: [{ name: "종들", type: { kind: "planOptions", form: "waiver" }, default: { kind: "source", source: { form: "waiver", filter: "waiver.applies = true" } } }],
+        locals: [
+          { name: "모든사유", expr: "arg.종들.합치기(waiver.reasons)" },
+          { name: "뇌있음", expr: "var.모든사유.있음('V02')" },
+        ],
+        body: [{ id: "p", kind: "paragraph", children: [{ id: "c", kind: "inlineCond", branches: [{ id: "b", when: "var.뇌있음", children: [{ id: "t", kind: "text", text: "뇌" }] }] }] }],
+      }),
+    );
+    const recheck = await s.catalog.enumValueRecheck("E0001");
+    expect(recheck.map((e) => [e.via, e.at.document, e.at.refPath])).toEqual([["local", "clause", "var.뇌있음"]]);
+  });
+
+  it("필드를 지우면 그 필드를 읽는 함수조항이 재검사 목록에 — 저장은 관리자 확인 뒤 성공 (최종 결정 18)", async () => {
+    const def = (await s.catalog.getEnum("E0001"))!;
+    const values = def.values.map((v) => ({ code: v.code, label: v.label }));
+    unwrap(await s.catalog.reviseEnum(editor, "E0001", { label: def.label, description: "", fields: [{ ref: "new:1", label: "약관표시명", type: "string" }], values }));
+    const key = (await s.catalog.getEnum("E0001"))!.fields![0].key;
+    unwrap(
+      await s.clause.create(editor, {
+        label: "사유 표시",
+        mode: "inline",
+        params: [{ name: "사유", type: { kind: "enum", enumCode: "E0001" }, default: { kind: "const", value: "V02" } }],
+        body: [{ id: "s", kind: "slot", ref: `arg.사유.${key}` }],
+      }),
+    );
+    // 필드 삭제 영향 — 읽는 곳이 깨질 참조로 선다(P2 에서는 읽는 간선이 없어 늘 0건이었다)
+    const first = await s.catalog.reviseEnum(admin, "E0001", { label: def.label, description: "", fields: [], values });
+    if (first.ok || first.rejection.reason !== "needsConfirmation") throw new Error("needsConfirmation 기대");
+    expect(first.rejection.impact.brokenRefs.map((c) => [c.document, c.ownerName])).toEqual([["clause", "사유 표시"]]);
+    unwrap(await s.catalog.reviseEnum(admin, "E0001", { label: def.label, description: "", fields: [], values }, { confirm: true }));
+    const recheck = await s.catalog.enumFieldRecheck("E0001", [key]);
+    expect(recheck.map((e) => [e.via, e.at.document, e.at.ownerName])).toEqual([["slot", "clause", "사유 표시"]]);
+  });
 });
 
 describe("열거형 유저 정의 필드 — 저장 · 권한 (ADR-0078 결정 2 · ADR-0019)", () => {

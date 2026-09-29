@@ -24,7 +24,7 @@
  */
 import type { Discriminator } from "../catalog/types";
 import { discriminatorResultType } from "../catalog/expression";
-import { allMasterFields, masterFieldFullLabel, type MasterTree } from "../master";
+import { allMasterFields, findMasterField, masterFieldFullLabel, type MasterTree } from "../master";
 import type { ClauseNode } from "../clause/nodes";
 import { collectExpressions } from "../clause/body";
 import type { Clause, ClauseBody } from "../clause/types";
@@ -33,7 +33,7 @@ import type { Coverage, CoverageNodeLevel } from "../coverage/types";
 import { coordinateOf, indexTree } from "../document/nodes";
 import { articleRefLabel, numberTree } from "../document/numbering";
 import { collectRefs } from "../document/refs";
-import { extractRefs, parse, refPath, type Expr, type Ref } from "../expression";
+import { enumReads, extractRefs, inferType, parse, refPath, type EnumReadTypes, type Expr, type ExprType, type Ref } from "../expression";
 import type { AttachLevel, Code, Coordinate, FieldType, Id } from "../types";
 import type { DocumentInput, EdgeVia, GraphInputs, ProductInput, RefEdge, RefGraph, RefNodeInfo, RefNodeKey } from "./types";
 
@@ -309,7 +309,37 @@ function indexGeneralArticles(b: Builder, documents: readonly DocumentInput[]): 
   }
 }
 
-function addClause(b: Builder, clause: Clause): void {
+/**
+ * 함수조항 식의 열거값 읽기 간선 — 인자 · 내부 변수 타입으로 `= '값'` · `.있음(값…)` → enumValue, `.필드` · `.거르기(필드 = …)` → enumField
+ * (ADR-0078 결정 2 · 4 · 최종 결정 20). 구분자 · 마스터 비교는 `Builder.expression` 이 이미 낸다.
+ */
+function clauseEnumReads(b: Builder, from: RefNodeKey, src: string, via: EdgeVia, at: Coordinate, types: EnumReadTypes): void {
+  const parsed = parse(src);
+  if (!parsed.ok) return;
+  for (const r of enumReads(parsed.value, types)) {
+    const to: RefNodeKey = r.kind === "value" ? { kind: "enumValue", enumCode: r.enumCode, valueCode: r.code } : { kind: "enumField", enumCode: r.enumCode, key: r.code };
+    b.edge({ from, to, via, at });
+  }
+}
+
+/** 함수조항의 식 타입 재료 — 인자 선언 타입 + 내부 변수 타입(앞에서부터 관대하게 추론) + 세목 폼 필드 타입. */
+function clauseTypes(clause: Clause, master?: MasterTree): EnumReadTypes {
+  const params = new Map((clause.params ?? []).map((p) => [p.name, p.type as ExprType] as const));
+  const planField = (form: Code, field: Code): ExprType | undefined => {
+    const f = findMasterField(`${form}.${field}`, master);
+    return f && f.level === "plan" ? f.field.type : undefined;
+  };
+  const locals = new Map<string, ExprType>();
+  const types: EnumReadTypes = { params: (n) => params.get(n), locals: (n) => locals.get(n), planField };
+  for (const l of clause.locals ?? []) {
+    const parsed = typeof l.expr === "string" ? parse(l.expr) : undefined;
+    const t = parsed?.ok ? inferType(parsed.value, types) : undefined;
+    if (t && !locals.has(l.name)) locals.set(l.name, t);
+  }
+  return types;
+}
+
+function addClause(b: Builder, clause: Clause, master?: MasterTree): void {
   const key: RefNodeKey = { kind: "clause", code: clause.code };
   b.node({ key, label: clause.label, detail: clause.mode });
   for (const o of clause.options) {
@@ -322,13 +352,28 @@ function addClause(b: Builder, clause: Clause): void {
   for (const p of clause.params ?? []) {
     if (p.default?.kind === "discriminator") b.edge({ from: key, to: { kind: "discriminator", code: p.default.code }, via: "defaultBinding", at: { ...base, refPath: `arg.${p.name}` }, param: p.name });
   }
+  const types = clauseTypes(clause, master);
+  // 내부 변수 (최종 결정 2) — 식의 참조(합치기가 읽는 세목 필드 등) · 열거값 나열 · 필드 읽기. 좌표 refPath = var.<이름>
+  for (const l of clause.locals ?? []) {
+    if (typeof l.expr !== "string") continue;
+    const at: Coordinate = { ...base, refPath: `var.${l.name}` };
+    const parsed = parse(l.expr);
+    if (!parsed.ok) continue;
+    for (const { ref } of extractRefs(parsed.value)) {
+      const to = refNodeKey(ref);
+      if (to) b.edge({ from: key, to, via: "local", at });
+    }
+    clauseEnumReads(b, key, l.expr, "local", at, types);
+  }
   const bodies: { body: readonly ClauseNode[]; path: Id[] }[] = [
     { body: clause.body, path: [] },
     ...clause.options.flatMap((o) => o.values.map((v) => ({ body: v.body, path: [o.code, v.code] }))),
   ];
   for (const { body, path } of bodies) {
     for (const e of collectExpressions(body as ClauseBody, path)) {
-      b.expression(key, e.source, e.role === "slot" ? "slot" : "when", { ...base, nodePath: e.nodePath }, { slotOnly: e.role === "slot" });
+      const via = e.role === "slot" ? "slot" : "when";
+      b.expression(key, e.source, via, { ...base, nodePath: e.nodePath }, { slotOnly: e.role === "slot" });
+      clauseEnumReads(b, key, e.source, via, { ...base, nodePath: e.nodePath }, types);
     }
     walkClauseNodes(body, path, (n, nodePath) => {
       if (n.kind === "appendixRef") b.edge({ from: key, to: { kind: "appendix", code: n.appendixCode }, via: "appendixRef", at: { ...base, nodePath } });
@@ -510,7 +555,7 @@ export function buildGraph(inputs: GraphInputs): RefGraph {
   // 간선은 노드 선언이 끝난 뒤 (enum 자리 · 소유자 이름을 알아야 한다)
   for (const d of defs) addExpression(b, d);
   indexGeneralArticles(b, inputs.documents ?? []);
-  for (const c of inputs.clauses ?? []) addClause(b, c);
+  for (const c of inputs.clauses ?? []) addClause(b, c, inputs.master);
   const anchors = new Map<Id, RefNodeKey>();
   for (const d of inputs.documents ?? []) for (const [id, key] of addDocument(b, d)) anchors.set(id, key);
   for (const p of inputs.products ?? []) addProduct(b, p, anchors);

@@ -188,6 +188,7 @@ export const REFERENCE_VIA_LABEL = {
   when: "조건식",
   slot: "치환 슬롯",
   expression: "파생식",
+  local: "내부 변수",
   nodeQualifier: "노드 한정자",
   clauseRef: "함수조항 참조",
   optionSelect: "옵션 선택",

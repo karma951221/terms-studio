@@ -45,6 +45,7 @@ export const ALL_EDGE_VIAS = [
   "boxRef",
   "defaultBinding",
   "binding",
+  "local",
   "generalDocument",
   "document",
   "override",

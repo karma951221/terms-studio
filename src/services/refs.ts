@@ -145,7 +145,7 @@ export function createRefsService(db: Db): RefsService {
 // ───────────────────────────── 공통 — 문서가 읽는 자리 ─────────────────────────────
 
 /** 「참조」로 치는 형태 — 부착·타입·탑재·조합은 뺀다. */
-const REFERENCE_VIAS: readonly EdgeVia[] = ["when", "slot", "expression", "binding", "defaultBinding"];
+const REFERENCE_VIAS: readonly EdgeVia[] = ["when", "slot", "expression", "local", "binding", "defaultBinding"];
 
 /** 문서가 읽는 값 자리 하나 — 직접 또는 공용조항·파생을 거쳐서. 좌표는 문서 쪽 자리다. */
 interface DocumentRead {
@@ -174,7 +174,7 @@ function documentReads(graph: RefGraph, doc: RefNodeKey): DocumentRead[] {
     // 사용처의 인자 연결(binding)도 문서가 읽는 구분자다 — 연결한 구분자는 사용처 문맥에서 풀린다 (최종 결정 2)
     if (e.via === "when" || e.via === "slot" || e.via === "binding") expand(e, e.at, new Set());
     else if (e.via === "clauseRef") {
-      for (const ce of referencesFrom(graph, e.to, { via: ["when", "slot"] })) expand(ce, e.at, new Set());
+      for (const ce of referencesFrom(graph, e.to, { via: ["when", "slot", "local"] })) expand(ce, e.at, new Set());
       // 사용처가 바꾸지 않은 인자는 기본 연결 구분자를 읽는다
       for (const ce of referencesFrom(graph, e.to, { via: ["defaultBinding"] })) if (ce.param === undefined || e.bindings?.[ce.param] === undefined) expand(ce, e.at, new Set());
     }
