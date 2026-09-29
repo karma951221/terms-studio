@@ -28,6 +28,7 @@ import {
   type CondBlockNode,
   type EditOp,
   type IdSource,
+  type InlineCondNode,
   type InlineAt,
   type NodeKind,
   type Position,
@@ -57,6 +58,25 @@ export function switchInsertItem(env: ClauseMenuEnv, at: Position, allowed: read
   const node: CondBlockNode = { id: env.newId(), kind: "condBlock", switchOn: subject.code, branches };
   const first = branches[0].children[0];
   return { label: "값별 분기 넣기", action: { do: "ops", ops: [{ type: "insert", node, at }], ...(first ? { focus: first.id } : {}) } };
+}
+
+/** 문장 안 값별 분기 — 커서 자리에 칩(대상 = 후보 첫째, 칸 = 값마다 하나 · 빈 문구), 곧바로 그 팝업을 연다. 문장 안 조건 · 분기 안이면 싣지 않는다. */
+export function inlineSwitchItem(env: ClauseMenuEnv, at: InlineAt, tokens: Token[]): MenuItem {
+  const subject = env.switchSubjects?.[0];
+  if (!subject) return refusing("문장 안 값별 분기", REFUSE.switchSubject, env.onRefuse);
+  const cases = subject.values.length > 0 ? subject.values.map((v) => [v.code]) : [[]];
+  const node: InlineCondNode = { id: env.newId(), kind: "inlineCond", switchOn: subject.code, branches: cases.map((values) => ({ id: env.newId(), values, children: [] })) };
+  return {
+    label: "문장 안 값별 분기",
+    action: {
+      do: "ops",
+      ops: (tree): EditOp[] => {
+        const list = inlineListAt(tree, at);
+        return list ? [{ type: "setInlines", at, runs: runsFromTokens(list, tokens, env.newId, node) }] : [];
+      },
+      openChip: node.id,
+    },
+  };
 }
 
 /** 값별 분기 칸 머리의 목록 — 칸 추가(칸 없는 값 첫째를 든) · 이 칸 삭제 · 이 칸에 넣기(조건 가지와 같은 항목) · 분기 삭제. */
@@ -182,6 +202,8 @@ export function clauseInlineMenu(env: ClauseMenuEnv, at: InlineAt, tokens: Token
   const owner = branch ? undefined : env.ix.nodes.get(at.parentId);
   const inInlineCond = branch ? env.ix.nodes.get(branch.ownerId)?.node.kind === "inlineCond" : (owner?.inInlineCond ?? false);
   const insert = adaptAll([inlineInsertItems(at, tokens, { inInlineCond, newId: env.newId })], env, env.onRefuse);
+  // 문장 안 값별 분기 — 문장 안 조건과 같은 제약(그 안에 두지 않는다, 최종 결정 5)
+  if (!inInlineCond) insert.push([inlineSwitchItem(env, at, tokens)]);
   const options = optionInsertItems(at, tokens, env.options, env.newId);
   const block = env.mode !== "inline" && owner ? clauseBlockMenu(env, at.parentId) : [];
   return [...insert, ...(options.length > 0 ? [options] : []), ...block];

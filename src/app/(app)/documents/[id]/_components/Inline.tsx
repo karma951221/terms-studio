@@ -11,12 +11,13 @@
  */
 import { Fragment, useEffect, useRef, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
 
-import { STRUCT_KEY_CHIP } from "@/app/_lib/labels";
+import { STRUCT_KEY_CHIP, SWITCH_WORD } from "@/app/_lib/labels";
 import { referenceChunkLabel, type ArticleRefNode, type InlineAt, type InlineNode, type ReferenceTarget } from "@/domain/document";
 import type { Id } from "@/domain/types";
 
 import { anchorOf, chipText, encodeAt, type DocCtx } from "./ctx";
 import type { Token } from "./inlineRuns";
+import { caseValueLabel } from "./SwitchControls";
 
 function articleRefText(node: ArticleRefNode, ctx: DocCtx): string {
   // 편집기 미리보기 — 조립과 같은 덩어리 규칙(기능/문면 §3.5). 전체 뷰 번호라 분기 결과는 반영되지 않는다.
@@ -68,6 +69,29 @@ function chipParts(node: InlineNode, ctx: DocCtx): { className: string; title: s
     case "inlineFor":
       return { className: "ts-muted", title: "문장 안 반복 — 아직 지원하지 않는다", body: "(문장 안 반복 — 아직 지원하지 않는다)" };
     case "inlineCond":
+      if (node.switchOn !== undefined) {
+        // 문장 안 값별 분기 — 칩 하나: 대상 + 칸마다 머리(값 · 문구 없음) + 그 칸 문장 (최종 결정 5)
+        const subject = ctx.switchSubjects?.find((s) => s.code === node.switchOn);
+        const head = (br: (typeof node.branches)[number]) => `${(br.values ?? []).map((v) => caseValueLabel(subject, v)).join(" · ") || "값 없음"}${br.empty ? ` — ${SWITCH_WORD.empty}` : ""}`;
+        return {
+          className: "ts-doc-inline-chip is-switch",
+          what: SWITCH_WORD.inlineSwitch,
+          title: `${SWITCH_WORD.inlineSwitch} — ${subject?.label ?? node.switchOn} │ ${node.branches.map(head).join(" │ ")}`,
+          body: (
+            <>
+              <span className="ts-doc-inline-head">
+                {SWITCH_WORD.switch} {subject?.label ?? node.switchOn}
+              </span>
+              {node.branches.map((br) => (
+                <Fragment key={br.id}>
+                  <span className="ts-doc-inline-sep"> │ </span>
+                  <span className="ts-doc-inline-head">{head(br)}</span> {!br.empty && <InlineView nodes={br.children} ctx={{ ...ctx, mode: "read", edit: undefined }} />}
+                </Fragment>
+              ))}
+            </>
+          ),
+        };
+      }
       // 편집 모드의 문장 안 조건은 칩 하나 — 가지마다 머리(IF … / ELSE) + 그 가지 문장 (§4.3)
       return {
         className: "ts-doc-inline-chip",
@@ -89,6 +113,19 @@ function chipParts(node: InlineNode, ctx: DocCtx): { className: string; title: s
 export function InlineView({ nodes, ctx }: { nodes: readonly InlineNode[]; ctx: DocCtx }): ReactNode {
   return nodes.map((node) => {
     if (node.kind === "text") return <Fragment key={node.id}>{node.text}</Fragment>;
+    if (node.kind === "inlineCond" && node.switchOn !== undefined) {
+      // 문장 안 값별 분기 읽기 — 칸마다 점선 밑줄 조각, 칸 머리(값)는 tooltip
+      const subject = ctx.switchSubjects?.find((s) => s.code === node.switchOn);
+      return (
+        <Fragment key={node.id}>
+          {node.branches.map((br, i) => (
+            <span key={br.id} data-node={br.id} className={`ts-doc-inline-cond${i === 0 ? "" : " is-alt"}${ctx.flashId === br.id ? " is-flash" : ""}`} title={`${SWITCH_WORD.inlineSwitch} — ${SWITCH_WORD.case} ${(br.values ?? []).map((v) => caseValueLabel(subject, v)).join(" · ")}${br.empty ? ` — ${SWITCH_WORD.empty}` : ""}`}>
+              {br.empty ? `〔${SWITCH_WORD.empty}〕` : <InlineView nodes={br.children} ctx={ctx} />}
+            </span>
+          ))}
+        </Fragment>
+      );
+    }
     if (node.kind === "inlineCond") {
       return (
         <Fragment key={node.id}>

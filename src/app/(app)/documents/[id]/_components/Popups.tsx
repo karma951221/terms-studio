@@ -11,7 +11,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 
 import { Combobox, type ComboOption } from "@/app/_components/Combobox";
 import { IconButton, IconTrash } from "@/app/_components/icons";
-import { DOC_KIND_LABEL, REPEAT_DEPTH_LABEL, STRUCT_KEY_CHIP } from "@/app/_lib/labels";
+import { DOC_KIND_LABEL, REPEAT_DEPTH_LABEL, STRUCT_KEY_CHIP, SWITCH_WORD } from "@/app/_lib/labels";
 import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, planFormChoices } from "@/app/(app)/functions/_components/params";
 import type { Bindings, Clause } from "@/domain/clause";
 import {
@@ -42,6 +42,8 @@ import { runsFromTokens } from "./inlineRuns";
 import { clausesFitting, type PopupSpec } from "./menus";
 import { PopActions, Popover } from "./Popover";
 import { RefTargetTree } from "./RefTargetTree";
+import { CaseControls } from "./SwitchControls";
+import { unassignedValues } from "./switchCases";
 
 export interface PopupEnv {
   ctx: DocCtx;
@@ -362,6 +364,71 @@ function InlineCondPopup({ env, nodeId, anchor, onClose }: { env: PopupEnv; node
   );
 }
 
+/**
+ * 문장 안 값별 분기 (최종 결정 5) — 대상 고르기 · 칸 없는 값, 칸마다 머리(값 칩 · + 값 · 「문구 없음」 · 칸 삭제) + 그 칸 문장(그 자리 편집기), 아래에 칸 추가.
+ * 모양은 블록 분기의 칸 머리와 같다(`CaseControls`).
+ */
+function InlineSwitchPopup({ env, nodeId, anchor, onClose }: { env: PopupEnv; nodeId: Id; anchor: Anchor; onClose: () => void }) {
+  const node = indexTree(env.tree).nodes.get(nodeId)?.node;
+  if (!node || node.kind !== "inlineCond" || node.switchOn === undefined) return null;
+  const subjects = env.ctx.switchSubjects ?? [];
+  const subject = subjects.find((s) => s.code === node.switchOn);
+  const missing = unassignedValues(subject, node.branches);
+  const onSubject = (code: string) => {
+    const next = subjects.find((s) => s.code === code);
+    if (!next) return;
+    const keep = new Set(next.values.map((v) => v.code));
+    env.apply([{ type: "setSwitch", nodeId: node.id, on: code }, ...node.branches.map((br) => ({ type: "setCase" as const, branchId: br.id, values: (br.values ?? []).filter((v) => keep.has(v)), empty: br.empty === true }))]);
+  };
+  return (
+    <Popover anchor={anchor} label={SWITCH_WORD.inlineSwitch} onClose={onClose} wide>
+      <div onContextMenu={env.ctx.edit?.contextMenu}>
+        <div className="ts-doc-cond-head ts-switch-on is-edit">
+          <span className="ts-cond-badge">{SWITCH_WORD.switch}</span>
+          <select aria-label="값별 분기 대상" value={node.switchOn} onChange={(e) => onSubject(e.target.value)}>
+            {!subject && <option value={node.switchOn}>{node.switchOn} (없는 대상)</option>}
+            {subjects.map((s) => (
+              <option key={s.code} value={s.code}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+          {missing.length > 0 && (
+            <span className="ts-cond-issue ts-switch-missing" role="note">
+              {SWITCH_WORD.unassigned}: {missing.map((v) => v.label).join(" · ")}
+            </span>
+          )}
+        </div>
+        {node.branches.map((br: InlineBranch) => (
+          <div key={br.id} className="ts-pop-branch">
+            <div className="ts-doc-cond-head is-edit ts-switch-case">
+              <span className="ts-cond-badge">{SWITCH_WORD.case}</span>
+              <CaseControls subject={subject} branch={br} branches={node.branches} apply={env.apply} />
+              <span className="ts-cond-tools">
+                <IconButton className="ts-cond-rowbtn" icon={<IconTrash />} danger label="이 칸 삭제" disabled={node.branches.length <= 1} onClick={() => env.apply([{ type: "removeBranch", branchId: br.id }])} />
+              </span>
+            </div>
+            {!br.empty && (
+              <div className="ts-pop-branch-body ts-doc">
+                <InlineSlot at={{ parentId: br.id }} nodes={br.children} ctx={env.ctx} placeholder="이 칸의 문구" />
+              </div>
+            )}
+          </div>
+        ))}
+        <div className="ts-form-actions">
+          <button type="button" onClick={() => env.apply([{ type: "addBranch", condId: node.id, branch: { id: env.newId(), values: missing[0] ? [missing[0].code] : [], children: [] } }])}>
+            칸 추가
+          </button>
+          <button type="button" className="primary" onClick={onClose}>
+            닫기
+          </button>
+        </div>
+        <p className="ts-muted">칸마다 값을 고르고 그 칸 문구를 그 자리에서 쓴다 — 모든 값이 한 칸에 서야 저장된다. 아무것도 내지 않는 칸은 「{SWITCH_WORD.empty}」를 켠다.</p>
+      </div>
+    </Popover>
+  );
+}
+
 /** 팝업 하나 — 종류대로. */
 export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec: PopupSpec; anchor: Anchor; onClose: () => void }) {
   const { ctx } = env;
@@ -439,6 +506,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
     case "editChip": {
       const node = ix.nodes.get(spec.nodeId)?.node as Node | undefined;
       if (!node) return null;
+      if (node.kind === "inlineCond" && node.switchOn !== undefined) return <InlineSwitchPopup env={env} nodeId={node.id} anchor={anchor} onClose={onClose} />;
       if (node.kind === "inlineCond") return <InlineCondPopup env={env} nodeId={node.id} anchor={anchor} onClose={onClose} />;
       const title =
         node.kind === "slot" ? "치환 슬롯" : node.kind === "articleRef" ? "조 참조" : node.kind === "appendixRef" ? "별표 참조" : node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef" ? (env.clauses.find((c) => c.code === node.clauseCode)?.params?.length ? "함수조항 옵션 · 인자" : "함수조항 옵션") : "고치기";

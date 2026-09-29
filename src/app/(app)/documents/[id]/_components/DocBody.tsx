@@ -50,7 +50,8 @@ import { CondRows } from "./condition/CondRows";
 import { anchorOf, chipText, type DocCtx } from "./ctx";
 import { EditableText, InlineSlot } from "./Inline";
 import type { MenuItem } from "./menus";
-import { sortValues, switchValueLabel, unassignedValues, type SwitchSubject } from "./switchCases";
+import { CaseControls, caseValueLabel } from "./SwitchControls";
+import { unassignedValues, type SwitchSubject } from "./switchCases";
 
 const flash = (ctx: DocCtx, id: Id) => `${ctx.flashId === id ? " is-flash" : ""}${ctx.edit?.blockSel?.includes(id) ? " is-block-sel" : ""}`;
 
@@ -424,47 +425,19 @@ function SwitchHead({ node, ctx, subject }: { node: Node & { kind: "condBlock" }
 function CaseHead({ ctx, node, branch, subject }: { ctx: DocCtx; node: Node & { kind: "condBlock" }; branch: BlockBranch; subject: SwitchSubject | undefined }) {
   const edit = ctx.edit;
   const values = branch.values ?? [];
-  const known = new Set((subject?.values ?? []).map((v) => v.code));
-  const label = (code: string) => (subject && !known.has(code) ? `없는 값 ${code}` : switchValueLabel(subject, code));
   if (!edit) {
     return (
       <p className="ts-doc-cond-head">
-        <span className="ts-cond-badge">{SWITCH_WORD.case}</span> {values.map(label).join(" · ") || "값 없음"}
+        <span className="ts-cond-badge">{SWITCH_WORD.case}</span> {values.map((v) => caseValueLabel(subject, v)).join(" · ") || "값 없음"}
         {branch.empty ? ` — ${SWITCH_WORD.empty}` : ""}
       </p>
     );
   }
-  const set = (next: readonly string[], empty = branch.empty === true) => edit.apply([{ type: "setCase", branchId: branch.id, values: sortValues(subject, next), empty }]);
-  const free = unassignedValues(subject, node.branches);
-  const items = edit.headItems(branch.id);
-  const removeCase = items.find((i) => i.label === "이 칸 삭제" && !i.disabled);
-  const hasBody = branch.children.length > 0;
+  const removeCase = edit.headItems(branch.id).find((i) => i.label === "이 칸 삭제" && !i.disabled);
   return (
     <div className="ts-doc-cond-head is-edit ts-switch-case" data-cond-head={branch.id}>
       <span className="ts-cond-badge">{SWITCH_WORD.case}</span>
-      {values.map((v) => (
-        <span key={v} className={`ts-switch-chip${subject && !known.has(v) ? " is-missing" : ""}`}>
-          {label(v)}
-          <button type="button" className="ts-switch-chip-x" aria-label={`값 ${label(v)} 빼기`} onClick={() => set(values.filter((x) => x !== v))}>
-            ×
-          </button>
-        </span>
-      ))}
-      {values.length === 0 && <span className="ts-cond-issue">값 없음 — 값을 고른다</span>}
-      {free.length > 0 && (
-        <select aria-label="칸에 값 더하기" value="" onChange={(e) => e.target.value && set([...values, e.target.value])}>
-          <option value="">+ 값</option>
-          {free.map((v) => (
-            <option key={v.code} value={v.code}>
-              {v.label}
-            </option>
-          ))}
-        </select>
-      )}
-      <label className="ts-switch-empty" title={hasBody && !branch.empty ? "본문을 지운 뒤 켠다 — 「문구 없음」 칸은 본문이 없다" : "이 칸은 아무것도 내지 않는다"}>
-        <input type="checkbox" checked={branch.empty === true} disabled={hasBody && !branch.empty} onChange={(e) => set(values, e.target.checked)} /> {SWITCH_WORD.empty}
-      </label>
-      {!branch.empty && !hasBody && <span className="ts-cond-issue">칸이 비었다 — 본문을 쓰거나 「{SWITCH_WORD.empty}」</span>}
+      <CaseControls subject={subject} branch={branch} branches={node.branches} apply={edit.apply} />
       <span className="ts-cond-tools">{removeCase && <IconButton className="ts-cond-rowbtn" icon={<IconTrash />} danger label="이 칸 삭제" onClick={(e) => edit.run(removeCase, anchorOf(e.currentTarget))} />}</span>
     </div>
   );

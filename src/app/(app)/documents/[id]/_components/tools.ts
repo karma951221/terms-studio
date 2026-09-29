@@ -32,6 +32,7 @@ export type ToolId =
   | "inlineCond"
   | "switch"
   | "switchCase"
+  | "inlineSwitch"
   | "elif"
   | "else"
   | "unwrap"
@@ -112,6 +113,7 @@ export const DOC_TOOLS: ToolGroup[] = [
       { id: "removeBranch", label: "가지 삭제", title: "이 가지(값별 분기면 이 칸) 삭제 — 하나면 잠긴다", match: oneOf("이 가지 삭제", "이 칸 삭제") },
       // 값별 분기(최종 결정 5) — 지금은 함수조항 편집기만(문면 툴바에서 빠진다)
       { id: "switch", label: "값별 분기", title: "값별 분기 — 목록값 인자 · 내부 변수의 값마다 칸(모든 값이 한 칸 · 「문구 없음」은 칸에서 켠다). 지금 블록 뒤, 본문 빈 자리면 끝에", match: oneOf("값별 분기 넣기") },
+      { id: "inlineSwitch", label: "문장 안 값별 분기", title: "문장 안 값별 분기 — 커서 자리에 값마다 칸을 둔 칩(칸 문구는 그 팝업에서)", match: oneOf("문장 안 값별 분기") },
       { id: "switchCase", label: "칸 추가", title: "칸 추가 — 고른 값별 분기에 칸 없는 값 첫째를 든 칸", match: oneOf("칸 추가") },
     ],
   },
@@ -144,7 +146,7 @@ export const CLAUSE_TOOLS: ToolGroup[] = DOC_TOOLS.map((g) => ({ ...g, tools: g.
 export const CLAUSE_LINE_TOOLS: ToolGroup[] = CLAUSE_TOOLS.filter((g) => g.name !== "구조 넣기");
 
 /** 문면 툴바에는 옵션 자리 · 값별 분기가 없다(함수조항만 — 값별 분기는 「지금은 함수조항 안에서만」, 최종 결정 5). */
-const CLAUSE_ONLY = new Set<ToolId>(["optionSlot", "switch", "switchCase"]);
+const CLAUSE_ONLY = new Set<ToolId>(["optionSlot", "switch", "switchCase", "inlineSwitch"]);
 export const DOCUMENT_TOOLS: ToolGroup[] = DOC_TOOLS.map((g) => ({ ...g, tools: g.tools.filter((t) => !CLAUSE_ONLY.has(t.id)) }));
 
 export function allTools(groups: readonly ToolGroup[]): Tool[] {

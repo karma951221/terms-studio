@@ -73,3 +73,42 @@ test(
     });
   },
 );
+
+test(
+  "문장 안 값별 분기 — 문구 유형에 칩을 넣고 팝업에서 칸 문구 · 「문구 없음」 → 저장하면 읽기에 칸 조각",
+  { annotation: { type: "좌표없음", description: "기능/함수조항 §3.7 값별 분기(문장 안) — 시나리오 파일에 값별 분기 시나리오가 아직 없다 (기능/함수조항 §7)" } },
+  async ({ page, ev }) => {
+    test.setTimeout(120_000);
+    const clauseName = `사유 말(${Date.now()})`;
+    await ev.action("문장분기#1", "관리자로 로그인한다", () => login(page));
+    const editor = page.locator(".ts-clause-editor");
+    const toolbar = page.getByRole("toolbar", { name: "약관 편집 도구" });
+
+    await ev.action("문장분기#2", "새 함수조항(문구) — 인자 「사유」 · 문장 끝에 툴바 「문장 안 값별 분기」 → 팝업(칸 질병 · 상해)", async () => {
+      await page.goto("/functions/new?type=inline");
+      await page.getByLabel("함수조항명").fill(clauseName);
+      await page.getByRole("button", { name: "인자 추가" }).click();
+      await page.getByLabel("인자 1 이름").fill("사유");
+      await page.getByLabel("인자 1 타입").selectOption("enum:E0001");
+      const line = editor.getByRole("textbox", { name: "문구", exact: true });
+      await line.click();
+      await line.fill("보험료 납입을 면제하는 사유: ");
+      await line.press("End");
+      await toolbar.getByRole("button", { name: "문장 안 값별 분기", exact: true }).click();
+      await expect(page.getByRole("dialog", { name: "문장 안 값별 분기" })).toBeVisible();
+    });
+
+    await ev.action("문장분기#3", "질병 칸에 문구 · 상해 칸은 「문구 없음」 → 닫고 저장 — 읽기에 질병 칸 문구", async () => {
+      const dialog = page.getByRole("dialog", { name: "문장 안 값별 분기" });
+      const branches = dialog.locator(".ts-pop-branch");
+      await expect(branches).toHaveCount(2);
+      await branches.nth(0).getByRole("textbox", { name: "이 칸의 문구" }).fill("질병 진단확정");
+      await branches.nth(1).getByLabel("문구 없음").check();
+      await dialog.getByRole("button", { name: "닫기", exact: true }).click();
+      await page.getByRole("button", { name: "저장", exact: true }).click();
+      await page.waitForURL(/\/functions\/C\d+$/);
+      await expect(editor).toContainText("질병 진단확정");
+      await expect(editor).toContainText("〔문구 없음〕");
+    });
+  },
+);

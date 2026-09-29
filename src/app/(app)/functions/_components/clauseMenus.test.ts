@@ -146,3 +146,19 @@ describe("값별 분기 메뉴 — 넣기 · 칸 머리 (최종 결정 5)", () =
     expect(added.action.do === "ops" && Array.isArray(added.action.ops) && added.action.ops[0]).toMatchObject({ type: "addBranch", branch: { values: [] } });
   });
 });
+
+describe("문장 안 값별 분기 메뉴 (최종 결정 5)", () => {
+  const 사유 = { code: "arg.사유", label: "사유(인자)", values: [{ code: "V01", label: "암" }, { code: "V02", label: "뇌졸중" }] };
+  it("커서 자리에 칩 — 칸 = 값마다 하나(빈 문구) · 되돌리면 inlineSwitch, 문장 안 조건 가지 안에서는 없다", () => {
+    const e: ClauseMenuEnv = { ...env("inline"), switchSubjects: [사유] };
+    const item = find(clauseInlineMenu(e, { parentId: CLAUSE_LINE_ID }, [{ text: "문구" }, { caret: true }]), "문장 안 값별 분기")!;
+    const ops = item.action.do === "ops" && typeof item.action.ops === "function" ? item.action.ops(e.tree) : [];
+    const r = applyEdit({ tree: e.tree }, ops[0], { env: { kind: "special", switches: true }, generalRefs: () => undefined });
+    if (!r.ok) throw new Error(JSON.stringify(r.rejection));
+    const back = treeToClauseBody("inline", r.value.state.tree);
+    expect(back.ok && back.value[1]).toMatchObject({ kind: "inlineSwitch", on: "arg.사유", cases: [{ values: ["V01"], children: [] }, { values: ["V02"], children: [] }] });
+    const ix = indexTree(r.value.state.tree);
+    const caseId = [...ix.branches.keys()][0];
+    expect(labels(clauseInlineMenu({ ...e, tree: r.value.state.tree, ix }, { parentId: caseId }, [{ caret: true }]))).not.toContain("문장 안 값별 분기");
+  });
+});
