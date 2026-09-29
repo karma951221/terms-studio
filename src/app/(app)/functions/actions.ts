@@ -24,6 +24,7 @@ export async function createClauseAction(input: ClauseCreateData): Promise<Claus
     mode: input.mode,
     body: remapOptionSlots(input.body, codes),
     params: input.params ?? [],
+    locals: input.locals ?? [],
     options: input.options.map((option) => ({
       label: option.label,
       values: option.values.map((value) => ({ label: value.label, body: textBody(value.text, randomUUID()) })),

@@ -11,7 +11,7 @@ import type { ReactNode } from "react";
 
 import type { Clause } from "@/domain/clause";
 import type { BranchEvaluation, EditOp, InlineAt, InlineNode, NodeNumber, ReferenceTarget, SlotEvaluation, TableEvaluation } from "@/domain/document";
-import { format, parse, type DisplayName } from "@/domain/expression";
+import { format, parse, type DisplayName, type MemberName } from "@/domain/expression";
 import type { Box } from "@/domain/document/box";
 import type { Code, Id } from "@/domain/types";
 
@@ -138,7 +138,8 @@ export function chipText(when: string | undefined, mode: DocMode, refLabel?: Dis
 function displayOf(when: string, refLabel: DisplayName | undefined): string {
   if (!refLabel) return when;
   const parsed = parse(when);
-  return parsed.ok ? format(parsed.value, refLabel) : when;
+  // 열거값 필드 읽기 표시 훅이 붙어 있으면(함수조항 편집기 — condition/display.ts refLabelOf) 필드 이름으로
+  return parsed.ok ? format(parsed.value, refLabel, (refLabel as DisplayName & { member?: MemberName }).member) : when;
 }
 
 /** 문장 자리 → DOM `data-inline` 값 (오른쪽 클릭이 자리를 되읽는다). */

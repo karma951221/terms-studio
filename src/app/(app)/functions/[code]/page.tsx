@@ -7,6 +7,7 @@ import { ENTITY_LABEL } from "@/app/_lib/labels";
 import { getServices } from "@/lib/services";
 
 import { ClauseAuthoring } from "../_components/ClauseAuthoring";
+import { localsForDisplay } from "../_components/locals";
 import { loadClauseEditorData } from "../editorData";
 import { valueText } from "../lib";
 
@@ -38,6 +39,7 @@ export default async function ClauseDetailPage({ params }: { params: Promise<{ c
         values: option.values.map((value) => ({ code: value.code, label: value.label, text: valueText(value.body) })),
       }))}
       params={clause.params ?? []}
+      locals={localsForDisplay(clause.params ?? [], clause.locals ?? [], data.enums)}
       required={clause.required}
       warnings={warnings.map((w) => w.message)}
       data={data}

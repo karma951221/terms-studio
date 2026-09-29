@@ -16,5 +16,5 @@ export default async function NewClausePage({ searchParams }: { searchParams: Pr
   const { type } = await searchParams;
   const mode: ClauseMode = CLAUSE_MODES.find((m) => m === type) ?? "inline";
   const data = await loadClauseEditorData();
-  return <ClauseAuthoring key={mode} label="" mode={mode} body={[]} options={[]} params={[]} data={data} startId={randomUUID()} />;
+  return <ClauseAuthoring key={mode} label="" mode={mode} body={[]} options={[]} params={[]} locals={[]} data={data} startId={randomUUID()} />;
 }

@@ -9,7 +9,7 @@
  *   값은 `코드` 또는 `코드@노드id` 글자다. 끝에 「담보속성」 묶음(값 `attr.코드`) — 있음 · 없음 · = · ≠ (2026-09-28).
  */
 import { COVERAGE_NODE_LEVELS } from "@/domain/coverage";
-import { ATTRIBUTE_OPS, emptyRows, operatorsFor, toRows, toSource, type ConditionRows, type Join, type RowOp, type RowValueRef } from "@/domain/document";
+import { ATTRIBUTE_OPS, emptyRows, operatorsFor, rowRefPath, toRows, toSource, type ConditionRows, type Join, type RowOp, type RowValueRef } from "@/domain/document";
 import { parse, type AttributeRef } from "@/domain/expression";
 import { ATTACH_LEVEL_LABEL } from "@/domain/types";
 
@@ -23,24 +23,30 @@ export type LeftRef = RowValueRef | AttributeRef;
 const ATTR_KEY = "attr.";
 /** 인자 목록 값의 머리 — 조건 문맥의 인자 칸(`CtxDiscriminator.param`)은 코드가 `arg.<이름>` 이다. */
 export const ARG_KEY = "arg.";
+/** 내부 변수 목록 값의 머리 — 조건 문맥의 내부 변수 칸(`CtxDiscriminator.local`)은 코드가 `var.<이름>` 이다. */
+export const VAR_KEY = "var.";
 
-/** 참조 → 목록 값. */
+/** 참조 → 목록 값. 함수조항 칸(인자 · 내부 변수 · 필드 읽기)은 경로 글 그대로(`arg.X` · `var.X` · `arg.X.F01`). */
 export function refKey(ref: LeftRef): string {
   if (ref.kind === "attr") return `${ATTR_KEY}${ref.code}`;
-  if (ref.kind === "param") return `${ARG_KEY}${ref.name}`;
+  if (ref.kind !== "discriminator") return rowRefPath(ref);
   return ref.node ? `${ref.code}@${ref.node.id}` : ref.code;
 }
 
-/** 값 참조 → 조건 문맥의 칸 코드 — 구분자는 코드, 인자는 `arg.<이름>`. */
+/** 값 참조 → 조건 문맥의 칸 코드 — 구분자는 코드, 함수조항 칸은 경로 글. */
 export function ctxCodeOf(ref: RowValueRef): string {
-  return ref.kind === "param" ? `${ARG_KEY}${ref.name}` : ref.code;
+  return ref.kind === "discriminator" ? ref.code : rowRefPath(ref);
 }
 
 /** 목록 값 → 참조. 빈 값이면 undefined. */
 export function refOfKey(key: string): LeftRef | undefined {
   if (key === "") return undefined;
   if (key.startsWith(ATTR_KEY)) return { kind: "attr", code: key.slice(ATTR_KEY.length) };
-  if (key.startsWith(ARG_KEY)) return { kind: "param", name: key.slice(ARG_KEY.length) };
+  if (key.startsWith(ARG_KEY) || key.startsWith(VAR_KEY)) {
+    const [head, name, field] = key.split(".");
+    const target = head === "arg" ? ({ kind: "param", name } as const) : ({ kind: "local", name } as const);
+    return field ? { kind: "field", target, field } : target;
+  }
   const at = key.indexOf("@");
   return at < 0 ? { kind: "discriminator", code: key } : { kind: "discriminator", code: key.slice(0, at), node: { id: key.slice(at + 1) } };
 }
@@ -57,7 +63,10 @@ export function pickerGroups(context: ConditionContext): PickerGroup[] {
   // 함수조항 본문 — 인자가 맨 앞 묶음이다(본문은 인자만 읽는다, 최종 결정 2). 인자 칸은 아래 레벨 묶음에 섞지 않는다
   const params = context.discriminators.filter((d) => d.param);
   if (params.length > 0) groups.push({ label: "인자", options: params.map((d) => at(d)) });
-  context = { ...context, discriminators: context.discriminators.filter((d) => !d.param) };
+  // 내부 변수(와 그 열거값 필드) — 인자 다음 묶음 (최종 결정 2)
+  const locals = context.discriminators.filter((d) => d.local);
+  if (locals.length > 0) groups.push({ label: "내부 변수", options: locals.map((d) => at(d)) });
+  context = { ...context, discriminators: context.discriminators.filter((d) => !d.param && !d.local) };
   const row = context.row;
   if (row) {
     const readable = context.discriminators.filter((d) => TREE_LEVELS.has(d.level) && row.readable.includes(d.level));

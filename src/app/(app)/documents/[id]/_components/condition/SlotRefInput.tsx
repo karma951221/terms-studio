@@ -19,12 +19,14 @@ const slotable = (d: CtxDiscriminator) => d.type?.kind === "string" || d.type?.k
 
 /** 후보 — 구분자 코드 하나씩, 붙는 레벨 순으로 묶는다. */
 export function slotOptions(context: ConditionContext): ComboOption[] {
-  // 함수조항 본문 — 인자(`arg.<이름>`)가 맨 앞 묶음 (최종 결정 2)
+  // 함수조항 본문 — 인자(`arg.<이름>` · 필드 `arg.<이름>.F01`) · 내부 변수(`var.<이름>`)가 맨 앞 묶음 (최종 결정 2 · 18)
   const params = context.discriminators.filter((d) => d.param && slotable(d)).map((d) => ({ value: d.code, label: d.label, hint: d.code, group: "인자" }));
+  const locals = context.discriminators.filter((d) => d.local && slotable(d)).map((d) => ({ value: d.code, label: d.label, hint: d.code, group: "내부 변수" }));
   return [
     ...params,
+    ...locals,
     ...ATTACH_LEVELS.flatMap((level) =>
-      context.discriminators.filter((d) => !d.param && d.level === level && slotable(d)).map((d) => ({ value: d.code, label: d.label, hint: d.code, group: ATTACH_LEVEL_LABEL[level] })),
+      context.discriminators.filter((d) => !d.param && !d.local && d.level === level && slotable(d)).map((d) => ({ value: d.code, label: d.label, hint: d.code, group: ATTACH_LEVEL_LABEL[level] })),
     ),
   ];
 }

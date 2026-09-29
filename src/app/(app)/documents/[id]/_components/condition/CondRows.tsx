@@ -167,7 +167,7 @@ export function CondRows({
 
   const defOf = (ref: RowValueRef): CtxDiscriminator | undefined => context.discriminators.find((d) => d.code === ctxCodeOf(ref));
   const nodeName = (id: string) => context.coverage?.nodes.find((n) => n.id === id)?.name;
-  const refText = (ref: RowValueRef) => (ref.kind === "param" ? (defOf(ref)?.label ?? `arg.${ref.name}`) : `${defOf(ref)?.label ?? ref.code}${ref.node ? ` @${nodeName(ref.node.id) ?? "끊어진 노드"}` : ""}`);
+  const refText = (ref: RowValueRef) => (ref.kind !== "discriminator" ? (defOf(ref)?.label ?? ctxCodeOf(ref)) : `${defOf(ref)?.label ?? ref.code}${ref.node ? ` @${nodeName(ref.node.id) ?? "끊어진 노드"}` : ""}`);
   const attributeOf = (code: string): CtxAttribute | undefined => context.attributes?.find((a) => a.code === code);
   const leftText = (ref: NonNullable<ConditionRow["left"]>) => (ref.kind === "attr" ? (attributeOf(ref.code)?.label ?? `attr.${ref.code}`) : refText(ref));
   const groups = pickerGroups(context);

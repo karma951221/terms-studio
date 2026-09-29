@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import type { Discriminator } from "@/domain/catalog";
 import { surgery } from "@/domain/coverage";
-import { emptyRows } from "@/domain/document";
+import { emptyRows, type RowValueRef } from "@/domain/document";
 
 import { buildConditionContext } from "./conditionContext";
-import { addRow, compact, headOf, pickerGroups, refKey, refOfKey, removeRow, setLeft, sourceOf } from "./rows";
+import { addRow, compact, ctxCodeOf, headOf, pickerGroups, refKey, refOfKey, removeRow, setLeft, sourceOf } from "./rows";
 
 const defs: Discriminator[] = [
   { code: "D0002", label: "감액여부", level: "benefit", expression: "exist(reduction.periods)", description: "" },
@@ -60,7 +60,7 @@ describe("조건 머리 줄 — 줄 ⇄ 식 (기능/문면 §4.3, 2026-09-28)", 
 
   it("좌변을 바꾸면 타입이 같을 때만 연산자 · 값을 남긴다", () => {
     const ctx = buildConditionContext({ discriminators: defs, enums: [] });
-    const typeOf = (ref: { code: string } | { name: string }) => ctx.discriminators.find((d) => d.code === ("code" in ref ? ref.code : `arg.${ref.name}`))?.type;
+    const typeOf = (ref: RowValueRef) => ctx.discriminators.find((d) => d.code === ctxCodeOf(ref))?.type;
     const head = headOf("D0009 = true");
     if (head.kind !== "rows") throw new Error("rows");
     const same = setLeft(head.rows, 0, { kind: "discriminator", code: "D0007", node: { id: "x" } }, typeOf);
@@ -125,5 +125,25 @@ describe("인자 줄 (최종 결정 2) — 함수조항 편집기가 넣은 인�
     expect(refKey({ kind: "param", name: "갱신형" })).toBe("arg.갱신형");
     const head = headOf("arg.갱신형 = true");
     expect(head.kind === "rows" && head.rows.rows[0].left).toEqual({ kind: "param", name: "갱신형" });
+  });
+
+  it("내부 변수 칸은 「내부 변수」 묶음 — var. 키 · 필드 키(arg.X.F01)는 내부 변수 · 필드 읽기 참조로 돌아온다 (최종 결정 2 · 18)", () => {
+    const base = buildConditionContext({ discriminators: defs, enums: [] });
+    const ctx = {
+      ...base,
+      discriminators: [
+        { code: "arg.사유.F02", label: "사유.면책여부", level: "product" as const, type: { kind: "boolean" as const }, forms: [], param: true as const },
+        { code: "var.암있음", label: "암있음", level: "product" as const, type: { kind: "boolean" as const }, forms: [], local: true as const },
+        ...base.discriminators,
+      ],
+    };
+    const groups = pickerGroups(ctx);
+    expect(groups.slice(0, 2)).toEqual([
+      { label: "인자", options: [{ key: "arg.사유.F02", label: "사유.면책여부" }] },
+      { label: "내부 변수", options: [{ key: "var.암있음", label: "암있음" }] },
+    ]);
+    expect(refOfKey("var.암있음")).toEqual({ kind: "local", name: "암있음" });
+    expect(refOfKey("arg.사유.F02")).toEqual({ kind: "field", target: { kind: "param", name: "사유" }, field: "F02" });
+    expect(refKey({ kind: "field", target: { kind: "local", name: "대표" }, field: "F01" })).toBe("var.대표.F01");
   });
 });

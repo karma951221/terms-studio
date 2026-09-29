@@ -18,7 +18,7 @@ import { pickCombo } from "../../_lib/combo";
 import type { ClauseSpec } from "./seed";
 
 import { parse } from "../../../../src/domain/expression";
-import { toRows, type ConditionRow, type DocumentNode, type InlineNode, type Node } from "../../../../src/domain/document";
+import { rowRefPath, toRows, type ConditionRow, type DocumentNode, type InlineNode, type Node } from "../../../../src/domain/document";
 
 /** 문장 칸의 커서를 끝으로 — 칸이 여러 줄로 접혀도 맨 끝. */
 const END = process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End";
@@ -242,7 +242,7 @@ export class Editor {
 
   private async fillRow(head: Locator, name: string, row: ConditionRow): Promise<void> {
     const left = row.left!;
-    const key = left.kind === "attr" ? `attr.${left.code}` : left.kind === "param" ? `arg.${left.name}` : left.node ? `${left.code}@${left.node.id}` : left.code;
+    const key = left.kind === "attr" ? `attr.${left.code}` : left.kind !== "discriminator" ? rowRefPath(left) : left.node ? `${left.code}@${left.node.id}` : left.code;
     await pickCombo(head.getByRole("combobox", { name: `${name} 변수`, exact: true }), { value: key });
     await head.getByRole("combobox", { name: `${name} 연산자`, exact: true }).selectOption(row.op!);
     const right = row.right;

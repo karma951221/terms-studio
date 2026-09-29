@@ -14,6 +14,14 @@ export interface EnumChoice {
   code: string;
   label: string;
   values: { code: string; label: string }[];
+  /** 유저 정의 필드(ADR-0078) — 필드 읽기 칸(`arg.사유.F01`) · 내부 변수 식의 이름 ⇄ 키. 없으면 빈 목록. */
+  fields?: { key: string; label: string; type: "string" | "boolean" }[];
+}
+
+/** 열거형 값의 필드 칸 — 인자 · 내부 변수(열거값)마다 `<경로>.<필드키>`, 이름 「<이름>.<필드 이름>」. */
+export function fieldEntries(path: string, name: string, enumCode: string, enums: readonly EnumChoice[], flag: "param" | "local"): CtxDiscriminator[] {
+  const fields = enums.find((e) => e.code === enumCode)?.fields ?? [];
+  return fields.map((f) => ({ code: `${path}.${f.key}`, label: `${name}.${f.label}`, level: "product" as const, forms: [], type: { kind: f.type }, ...(flag === "param" ? { param: true as const } : { local: true as const }) }));
 }
 
 /** 세목 폼 — 원천 연결 후보(폼 전체 · 참거짓 필드 = 예). */
@@ -142,13 +150,14 @@ export function bindingLabel(b: Binding | undefined, t: ParamType, discriminator
 export function paramEntries(params: readonly ParamDef[], enums: readonly EnumChoice[]): CtxDiscriminator[] {
   return params
     .filter((p) => p.name.trim() !== "")
-    .map((p) => {
+    .flatMap((p) => {
       const out: CtxDiscriminator = { code: `arg.${p.name}`, label: `${p.name}(인자)`, level: "product", forms: [], param: true };
       if (p.type.kind !== "planOptions") out.type = p.type;
       if (p.type.kind === "enum" || p.type.kind === "list<enum>") {
         const code = p.type.enumCode;
         out.enumOptions = (enums.find((e) => e.code === code)?.values ?? []).map((v) => ({ code: v.code, label: v.label }));
       }
-      return out;
+      // 열거값 인자는 필드 읽기 칸도 (최종 결정 18 — `arg.사유.약관표시명`)
+      return p.type.kind === "enum" ? [out, ...fieldEntries(`arg.${p.name}`, p.name, p.type.enumCode, enums, "param")] : [out];
     });
 }

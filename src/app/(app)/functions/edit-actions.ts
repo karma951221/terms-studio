@@ -57,9 +57,12 @@ export async function saveClauseEditAction(code: string, input: ClauseEditData):
 
       const body = added.codes.size > 0 ? remapOptionSlots(input.body, added.codes) : input.body;
       const bodyChanged = JSON.stringify(body) !== JSON.stringify(before.body);
-      // 인자가 바뀌면 본문과 한 번에 — 본문이 새 인자를 읽거나 뺀 인자를 더는 안 읽는 중간 상태는 검사 ① 이 거부한다
-      if (input.params !== undefined && JSON.stringify(input.params) !== JSON.stringify(before.params ?? [])) {
-        const error = failed(await services.clause.setParams(actor, code, input.params, bodyChanged ? body : undefined));
+      // 인자 · 내부 변수가 바뀌면 본문과 한 번에 — 본문이 새 인자를 읽거나 뺀 인자를 더는 안 읽는 중간 상태는 검사 ① 이 거부한다
+      // 내부 변수도 같은 저장 — 본문이 새 내부 변수를 읽는 중간 상태도 검사 ① 이 거부한다
+      const paramsChanged = input.params !== undefined && JSON.stringify(input.params) !== JSON.stringify(before.params ?? []);
+      const localsChanged = input.locals !== undefined && JSON.stringify(input.locals) !== JSON.stringify(before.locals ?? []);
+      if (paramsChanged || localsChanged) {
+        const error = failed(await services.clause.setParams(actor, code, input.params ?? before.params ?? [], bodyChanged ? body : undefined, localsChanged ? input.locals : undefined));
         if (error) return error;
       } else if (bodyChanged) {
         const error = failed(await services.clause.setBody(actor, code, body));

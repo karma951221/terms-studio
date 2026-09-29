@@ -35,7 +35,7 @@ import { ContextMenu, PopActions, Popover } from "@/app/(app)/documents/[id]/_co
 import { DraftIssues } from "@/app/(app)/documents/[id]/_components/SidePanel";
 import { CLAUSE_LINE_TOOLS, CLAUSE_TOOLS, allTools, itemsFor, type ToolId } from "@/app/(app)/documents/[id]/_components/tools";
 import { useBlockDrag } from "@/app/(app)/documents/[id]/_components/useBlockDrag";
-import type { ClauseBody, ClauseMode, ParamDef, RequiredRefs } from "@/domain/clause";
+import type { ClauseBody, ClauseMode, LocalDef, ParamDef, RequiredRefs } from "@/domain/clause";
 import { formatCoordinate } from "@/domain/coordinate";
 import {
   CLAUSE_HOST_ITEM_ID,
@@ -70,6 +70,8 @@ import type { ClauseEditOption } from "../edit-types";
 import type { ClauseEditorData } from "../editorData";
 import { clauseCanHold, clauseCondMenu, clauseDefaultPlace, clausePlaceMenu, withClauseRefusals, type ClauseMenuEnv } from "./clauseMenus";
 import { OptionsPane } from "./OptionsPane";
+import { localEntries, localsForSave } from "./locals";
+import { LocalsPane } from "./LocalsPane";
 import { paramEntries } from "./params";
 import { ParamsPane } from "./ParamsPane";
 
@@ -82,6 +84,8 @@ export interface ClauseAuthoringProps {
   options: ClauseEditOption[];
   /** 인자 표 (최종 결정 2). */
   params: ParamDef[];
+  /** 내부 변수 표 (최종 결정 2) — 화면 글(필드는 이름, `localsForDisplay`). */
+  locals: LocalDef[];
   required?: RequiredRefs;
   /** 단위 규칙 경고 — 조 · 여러 항 단위가 아님 · 한 곳에서만 씀. 저장은 막지 않고 정보 칸에 보인다 (기능/함수조항 §3.1). */
   warnings?: readonly string[];
@@ -209,6 +213,12 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     paramsRef.current = next;
     setParamsState(next);
   };
+  const [locals, setLocalsState] = useState<LocalDef[]>(props.locals);
+  const localsRef = useRef(locals);
+  const setLocals = (next: LocalDef[]) => {
+    localsRef.current = next;
+    setLocalsState(next);
+  };
   const nextCode = useRef(1);
   const newCode = () => `new:${nextCode.current++}`;
 
@@ -227,17 +237,25 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   const tree = editing ? draft.state.tree : originalTree;
   const shownOptions = editing ? options : props.options;
   const shownParams = editing ? params : props.params;
+  const shownLocals = editing ? locals : props.locals;
   /**
    * 조건 · 슬롯 고르기 문맥 — 변수는 인자 칸(`arg.<이름>`)과 담보속성뿐이다. 함수조항은 구분자를 직접 읽지 않는다(최종 결정 2 — 검사 ① 오류) —
    * 구분자는 인자 표의 기본 연결 · 넣는 자리의 연결에서 고른다.
    */
-  const condition = useMemo(() => ({ ...data.condition, discriminators: paramEntries(shownParams, data.enums), quick: [] }), [data.condition, data.enums, shownParams]);
+  const condition = useMemo(
+    () => ({ ...data.condition, discriminators: [...paramEntries(shownParams, data.enums), ...localEntries(shownParams, localsForSave(shownParams, shownLocals, data.enums), data.enums)], quick: [] }),
+    [data.condition, data.enums, shownParams, shownLocals],
+  );
   const latest = useCallback((): DocumentNode => draftRef.current.state.tree, []);
   const dirty =
     editing &&
     (isNew
-      ? label.trim() !== "" || draft.ops > 0 || options.length > 0 || params.length > 0
-      : draft.ops > 0 || label !== props.label || JSON.stringify(options) !== JSON.stringify(props.options) || JSON.stringify(params) !== JSON.stringify(props.params));
+      ? label.trim() !== "" || draft.ops > 0 || options.length > 0 || params.length > 0 || locals.length > 0
+      : draft.ops > 0 ||
+        label !== props.label ||
+        JSON.stringify(options) !== JSON.stringify(props.options) ||
+        JSON.stringify(params) !== JSON.stringify(props.params) ||
+        JSON.stringify(locals) !== JSON.stringify(props.locals));
 
   // ── 편집 환경 — 문면 저작과 같은 명령 검사. 공용조항 참조 자리는 옵션 운반체만 통과한다(진짜 참조는 중첩 금지) ──
   const appendixCodes = useMemo(() => new Set(data.appendices.map((a) => a.code)), [data.appendices]);
@@ -501,6 +519,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     setLabel(props.label);
     setOptions(props.options);
     setParams(props.params);
+    setLocals(props.locals);
     setEditing(true);
     setBanner(undefined);
   };
@@ -522,7 +541,8 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
       return;
     }
     // 쓴 것이 없는 본문(처음 빈 항 하나)은 빈 본문으로 — 빈 항을 저장하지 않는다
-    const payload = { label: label.trim(), body: blankBody(body.value) ? [] : body.value, options: optionsRef.current, params: paramsRef.current.map((p) => ({ ...p, name: p.name.trim() })) };
+    const params = paramsRef.current.map((p) => ({ ...p, name: p.name.trim() }));
+    const payload = { label: label.trim(), body: blankBody(body.value) ? [] : body.value, options: optionsRef.current, params, locals: localsForSave(params, localsRef.current, data.enums) };
     startTransition(async () => {
       const out = code === undefined ? await createClauseAction({ ...payload, mode: clauseMode }) : await saveClauseEditAction(code, payload);
       if (!out.ok) {
@@ -791,7 +811,12 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
           </div>
 
           <OptionsPane
-            before={<ParamsPane params={shownParams} editing={editing} onChange={setParams} discriminators={data.condition.discriminators} enums={data.enums} forms={data.planForms} />}
+            before={
+              <>
+                <ParamsPane params={shownParams} editing={editing} onChange={setParams} discriminators={data.condition.discriminators} enums={data.enums} forms={data.planForms} />
+                <LocalsPane locals={shownLocals} editing={editing} onChange={setLocals} />
+              </>
+            }
             options={shownOptions}
             editing={editing}
             used={used}

@@ -19,7 +19,7 @@ export interface ClauseEditorData {
   condition: ConditionContext;
   /** 보통약관 템플릿 — 조 참조 대상(조 · 항 · 호 · 목)의 후보와 번호. MVP 는 한 벌 (기능/함수조항 §5). */
   generals: { id: Id; title: string; tree: DocumentNode }[];
-  /** 열거형 — 인자 타입(열거형 · 열거형 목록) 후보와 값(최종 결정 2). */
+  /** 열거형 — 인자 타입(열거형 · 열거형 목록) 후보와 값 · 필드(최종 결정 2 · 18). */
   enums: EnumChoice[];
   /** 세목 폼 — 세목 선택지 목록 인자 타입 · 원천 연결 후보(§7-2). */
   planForms: PlanFormChoice[];
@@ -45,7 +45,13 @@ export async function loadClauseEditorData(): Promise<ClauseEditorData> {
     boxes,
     condition: buildConditionContext({ discriminators, enums, attributes }),
     generals,
-    enums: enums.map((e) => ({ code: e.code, label: e.label, values: [...e.values].sort((a, b) => a.order - b.order).map((v) => ({ code: v.code, label: v.label })) })),
+    enums: enums.map((e) => ({
+      code: e.code,
+      label: e.label,
+      values: [...e.values].sort((a, b) => a.order - b.order).map((v) => ({ code: v.code, label: v.label })),
+      // 유저 정의 필드 — 필드 읽기 칸 · 내부 변수 식의 이름 ⇄ 키 (ADR-0078)
+      fields: [...(e.fields ?? [])].sort((a, b) => a.order - b.order).map((f) => ({ key: f.key, label: f.label, type: f.type })),
+    })),
     planForms: planFormChoices(),
   };
 }
