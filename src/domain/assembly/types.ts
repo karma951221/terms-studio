@@ -148,7 +148,7 @@ export interface RArticleRef {
   kind: "articleRef";
   id: Id;
   targets: { nodeId: Id }[];
-  connector: ReferenceConnector;
+  connector?: ReferenceConnector;
   scope: "self" | "general";
   at: Coordinate;
 }
@@ -263,7 +263,7 @@ export interface RenderedArticleRef {
   kind: "articleRef";
   id: Id;
   targets: { nodeId: Id; label: string }[];
-  connector: ReferenceConnector;
+  connector?: ReferenceConnector;
   label: string;
   dropped?: Id[];
 }

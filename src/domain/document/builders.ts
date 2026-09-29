@@ -119,11 +119,12 @@ export function nodeBuilders(newId: IdSource = randomIds) {
       children,
       ...(opts.separator !== undefined ? { separator: opts.separator } : {}),
     }),
-    articleRef: (targets: Id | readonly Id[], scope: ArticleRefNode["scope"] = "self", connector: ArticleRefNode["connector"] = "및"): ArticleRefNode => ({
+    /** 연결어는 기본값이 없다 (결정 14) — 안 주면 싣지 않는다. 대상이 둘 이상이면 저장 전에 골라야 한다. */
+    articleRef: (targets: Id | readonly Id[], scope: ArticleRefNode["scope"] = "self", connector?: ArticleRefNode["connector"]): ArticleRefNode => ({
       id: newId(),
       kind: "articleRef",
       targets: (typeof targets === "string" ? [targets] : targets).map((nodeId) => ({ nodeId })),
-      connector,
+      ...(connector !== undefined ? { connector } : {}),
       scope,
     }),
     appendixRef: (appendixCode: Code): AppendixRefNode => ({ id: newId(), kind: "appendixRef", appendixCode }),

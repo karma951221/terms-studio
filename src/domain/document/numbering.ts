@@ -10,7 +10,7 @@
  *   공용조항 block 참조는 항 1개로 센다 — 실제 항 수는 인라인화 뒤 조립이 안다.
  */
 
-import type { Id, ReferenceConnector } from "../types";
+import { CONNECTOR_PLACEHOLDER, type Id, type ReferenceConnector } from "../types";
 import type { ArticleNode, BlockNode, DocumentNode, Node } from "./nodes";
 
 export type NumberKind = "section" | "article" | "paragraph" | "item" | "subitem";
@@ -140,7 +140,7 @@ export const RANGE_MIN = 3;
  * - 세그먼트를 쉼표로 잇고 마지막 앞에만 연결어. 각 대상의 상위 경로 생략은 `referenceTargetLabel` 규칙 그대로
  *   (첫 대상은 `source` = 슬롯이 놓인 자리, 다음은 직전 대상 기준). 구간 끝은 구간 시작 기준이라 자기 단계만 남는다.
  */
-export function referenceChunkLabel(targets: readonly ReferenceTarget[], connector: ReferenceConnector, source?: ReferenceTarget): string {
+export function referenceChunkLabel(targets: readonly ReferenceTarget[], connector: ReferenceConnector | undefined, source?: ReferenceTarget): string {
   const runs: ReferenceTarget[][] = [];
   for (const target of targets) {
     const run = runs.at(-1);
@@ -164,7 +164,7 @@ export function referenceChunkLabel(targets: readonly ReferenceTarget[], connect
     }
   }
   if (segments.length <= 1) return segments[0] ?? "";
-  return `${segments.slice(0, -1).join(", ")} ${connector} ${segments.at(-1)}`;
+  return `${segments.slice(0, -1).join(", ")} ${connector ?? CONNECTOR_PLACEHOLDER} ${segments.at(-1)}`;
 }
 
 /** 편집기용: 현재 계산 번호를 붙여 문서 안의 조·항·호·목을 참조 대상 id로 색인한다. 문서 순서(전위)대로. */

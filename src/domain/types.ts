@@ -19,6 +19,13 @@ export type Id = string;
 /** 조 참조 덩어리의 연결어 — 둘뿐이다 (기능/문면 §3.5). 「,」·자유 입력은 없다. */
 export const REFERENCE_CONNECTORS = ["및", "또는"] as const;
 export type ReferenceConnector = (typeof REFERENCE_CONNECTORS)[number];
+/**
+ * 연결어를 아직 안 고른 참조의 표기 자리 (결정 14 — 기본값 없음). 대상이 둘 이상이면 저장 오류라 산출에는 안 나온다 —
+ * 편집 중 표기 · 옛 조립 입력의 방어용이다.
+ */
+export const CONNECTOR_PLACEHOLDER = "〔연결어?〕";
+/** 연결어 미선택 저장 오류 문구 — 문서 · 공용조항 본문 검사가 같은 말을 쓴다 (기능/문면 §3.5). */
+export const CONNECTOR_REQUIRED_MESSAGE = "조 참조 대상이 둘 이상이면 연결어를 고르세요 (및 · 또는)";
 export function isReferenceConnector(value: unknown): value is ReferenceConnector {
   return (REFERENCE_CONNECTORS as readonly unknown[]).includes(value);
 }

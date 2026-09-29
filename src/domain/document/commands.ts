@@ -546,7 +546,8 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       if (cmd.type === "setArticleRef") {
         if (n.kind !== "articleRef") return structure("조 참조 슬롯이 아닙니다", e.value.path);
         n.targets = cmd.targets.map((target) => ({ ...target }));
-        n.connector = cmd.connector;
+        if (cmd.connector === undefined) delete n.connector;
+        else n.connector = cmd.connector;
         n.scope = cmd.scope;
       } else if (cmd.type === "setAppendixRef") {
         if (n.kind !== "appendixRef") return structure("별표 참조 슬롯이 아닙니다", e.value.path);

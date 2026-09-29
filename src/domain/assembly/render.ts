@@ -272,7 +272,7 @@ class Renderer {
           kind: "articleRef",
           id: n.id,
           targets,
-          connector: n.connector,
+          ...(n.connector !== undefined ? { connector: n.connector } : {}),
           label: `${generalPrefix ? "보통약관 " : ""}${label}`,
           ...(dropped.length > 0 ? { dropped } : {}),
         };

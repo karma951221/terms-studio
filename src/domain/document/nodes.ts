@@ -15,7 +15,7 @@
  * DB·React import 금지 (순수층).
  */
 
-import { isReferenceConnector, type AttachLevel, type Code, type Coordinate, type Id, type Issue, type ReferenceConnector } from "../types";
+import { CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, type AttachLevel, type Code, type Coordinate, type Id, type Issue, type ReferenceConnector } from "../types";
 
 // ───────────────────────────── 인라인 ─────────────────────────────
 
@@ -66,8 +66,11 @@ export interface ArticleRefNode {
   kind: "articleRef";
   /** 작성 순서 = 나열 순서. 연속 판정(「부터 … 까지」)은 렌더가 계산 번호로 한다 (기능/문면 §3.5). */
   targets: { nodeId: Id }[];
-  /** 마지막 대상(또는 마지막 구간) 앞 연결어 — 「및」·「또는」. */
-  connector: ReferenceConnector;
+  /**
+   * 마지막 대상(또는 마지막 구간) 앞 연결어 — 「및」·「또는」. **기본값이 없다**(결정 14): 대상이 둘 이상인데 비어 있으면 저장 오류,
+   * 대상이 하나면 없어도 된다(표기에 안 나온다). 옛 문서에 저장된 「및」은 그대로 유효하다.
+   */
+  connector?: ReferenceConnector;
   scope: "self" | "general";
 }
 
@@ -627,7 +630,9 @@ export function checkNodeRefs(e: NodeEntry, ix: TreeIndex, env: TreeEnv, atSave:
       return [];
     case "articleRef":
       if (n.targets.length === 0) return one("structure", "조 참조 슬롯에는 대상이 하나 이상 있어야 합니다");
-      if (!isReferenceConnector(n.connector)) return one("structure", `조 참조 연결어는 「및」·「또는」 중 하나여야 합니다: ${String(n.connector)}`);
+      if (n.connector === undefined) {
+        if (n.targets.length >= 2) return one("structure", CONNECTOR_REQUIRED_MESSAGE);
+      } else if (!isReferenceConnector(n.connector)) return one("structure", `조 참조 연결어는 「및」·「또는」 중 하나여야 합니다: ${String(n.connector)}`);
       if (n.scope === "general" && env.kind === "general") return one("structure", "보통약관 문서에서는 보통약관 조 참조를 쓸 수 없습니다");
       return n.targets.flatMap(({ nodeId }) => {
         const target = ix.nodes.get(nodeId)?.node;

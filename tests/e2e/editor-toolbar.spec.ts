@@ -194,6 +194,35 @@ test(
       await head.getByRole("combobox", { name: "IF 3번 줄 결합" }).selectOption("or");
       await expect(head.locator(".ts-cond-paren")).toHaveCount(0);
     });
+
+    await ev.action("툴바#10", "조 참조 — 대상 둘을 고르고 연결어를 안 고르면 적용이 거부된다, 「또는」을 고르면 「제1항 또는 제2항」 (결정 14 · 기능/문면 §3.5)", async () => {
+      const inside = body.locator(".ts-doc-cond").getByRole("textbox", { name: "항", exact: true });
+      await inside.first().click();
+      await inside.first().press("End");
+      await tool("조 참조").click();
+      const d = page.getByRole("dialog", { name: "조 참조 넣기" });
+      await expect(d).toBeVisible();
+      // 연결어는 기본값 없이 시작한다 — 대상이 하나 이하면 꺼져 있다
+      await expect(d.getByRole("radio", { name: "및", exact: true })).toBeDisabled();
+      await d.getByRole("button", { name: /펴기$/ }).first().click();
+      const paragraphsInTree = d.getByRole("treeitem", { level: 2 });
+      await paragraphsInTree.nth(0).getByRole("checkbox").check();
+      await paragraphsInTree.nth(1).getByRole("checkbox").check();
+      await expect(d.getByRole("radio", { name: "및", exact: true })).toBeEnabled();
+      await expect(d.getByRole("radio", { name: "및", exact: true })).not.toBeChecked();
+      await expect(d.getByRole("radio", { name: "또는", exact: true })).not.toBeChecked();
+      await d.getByRole("button", { name: "넣기", exact: true }).click();
+      await expect(d.getByRole("alert")).toHaveText("대상이 둘 이상이면 연결어(및 · 또는)를 고른다.");
+      await expect(d).toBeVisible();
+      await d.getByRole("radio", { name: "또는", exact: true }).check();
+      await d.getByRole("button", { name: "넣기", exact: true }).click();
+      await expect(d).toHaveCount(0);
+      await expect(body.locator(".ts-doc-cond [data-chip]")).toContainText(["제1항 또는 제2항"]);
+      await submit(page, page.getByRole("button", { name: "저장", exact: true }));
+      await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
+      await page.reload();
+      await expect(body.locator(".ts-doc-cond")).toContainText("제1항 또는 제2항");
+    });
   },
 );
 

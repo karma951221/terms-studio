@@ -217,6 +217,26 @@ describe("문면작성 S4·S6 — 참조 대상 존재 검증", () => {
     expect(issues[0].message).toMatch(/연결어/);
   });
 
+  it("연결어는 기본값이 없다 — 대상이 둘 이상인데 연결어가 없으면 저장 오류 「연결어를 고르세요」 (결정 14 · 기능/문면 §3.5)", () => {
+    const b = make();
+    const doc = b.document("d", [b.article("a", [b.paragraph([b.articleRef(["n3", "n2"], "self")])])]); // ref n1 · paragraph n2 · 조 n3
+    const issues = validateTree(doc);
+    expect(kinds(issues)).toEqual(["structure"]);
+    expect(issues[0].message).toContain("연결어를 고르세요");
+  });
+
+  it("대상이 하나면 연결어가 없어도 된다 — 표기에 연결어가 안 나온다", () => {
+    const b = make();
+    const doc = b.document("d", [b.article("a", [b.paragraph([b.articleRef(["n3"], "self")])])]);
+    expect(validateTree(doc)).toEqual([]);
+  });
+
+  it("옛 문서에 저장된 「및」은 그대로 유효하다 — 데이터를 고치지 않는다", () => {
+    const b = make();
+    const doc = b.document("d", [b.article("a", [b.paragraph([b.articleRef(["n3", "n2"], "self", "및")])])]);
+    expect(validateTree(doc)).toEqual([]);
+  });
+
   it("보통약관 조 참조·조연결은 대응 보통약관의 조 집합으로 검증한다 (D-P4-5) — 집합이 없으면 검사하지 않는다", () => {
     const b = make();
     const doc = b.document("d", [

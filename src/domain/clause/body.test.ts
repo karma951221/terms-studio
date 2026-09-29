@@ -191,8 +191,9 @@ describe("공용조항 S1 — 본문 노드 규칙 (block)", () => {
 });
 
 describe("공용조항 S1 — 조 참조 · 별표 참조 검사 (기능/공용조항 §3.5)", () => {
-  const 조참조 = (targets: { nodeId: string }[], connector: string = "및"): Inline =>
-    ({ id: "a1", kind: "articleRef", targets, connector } as Inline);
+  /** connector `null` = 연결어 안 고름. */
+  const 조참조 = (targets: { nodeId: string }[], connector: string | null = "및"): Inline =>
+    ({ id: "a1", kind: "articleRef", targets, ...(connector === null ? {} : { connector }) } as Inline);
   const 별표참조 = (appendixCode: string): Inline => ({ id: "x1", kind: "appendixRef", appendixCode });
 
   it("조 참조 슬롯에 대상이 없으면 거부한다 (structure)", () => {
@@ -205,6 +206,16 @@ describe("공용조항 S1 — 조 참조 · 별표 참조 검사 (기능/공용�
     const issues = issuesOf(analyzeBody("inline", [조참조([{ nodeId: "g-art-1" }], "그리고")], []));
     expect(issues.map((i) => i.kind)).toEqual(["structure"]);
     expect(issues[0]!.message).toContain("연결어");
+  });
+
+  it("대상이 둘 이상인데 연결어가 없으면 거부한다 — 문서와 같은 규칙 (결정 14)", () => {
+    const issues = issuesOf(analyzeBody("inline", [조참조([{ nodeId: "g-art-1" }, { nodeId: "g-art-2" }], null)], []));
+    expect(issues.map((i) => i.kind)).toEqual(["structure"]);
+    expect(issues[0]!.message).toContain("연결어를 고르세요");
+  });
+
+  it("대상이 하나면 연결어가 없어도 통과한다", () => {
+    expect(analyzeBody("inline", [조참조([{ nodeId: "g-art-1" }], null)], []).ok).toBe(true);
   });
 
   it("별표 코드가 비어 있으면 거부한다 (structure)", () => {

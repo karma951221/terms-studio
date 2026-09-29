@@ -21,7 +21,7 @@
  */
 import type * as C from "../clause/nodes";
 import type { ClauseBody, ClauseMode } from "../clause/types";
-import { ok, reject, type Code, type Result } from "../types";
+import { CONNECTOR_PLACEHOLDER, ok, reject, type Code, type Result } from "../types";
 import type { ArticleNode, BlockNode, BulletListNode, ClauseInlineRefNode, DocumentNode, InlineNode, ItemNode, ParagraphNode, SubitemNode } from "./nodes";
 import { subitemRefLabel, type ReferenceTarget } from "./numbering";
 
@@ -295,7 +295,7 @@ export function clauseScopedRefLabel(node: InlineNode, positions: ReadonlyMap<st
     const at = positions.get(t.nodeId);
     return at ? positionText(at, false) : "없는 항(연결 끊김)";
   });
-  const joined = labels.length <= 1 ? (labels[0] ?? "") : `${labels.slice(0, -1).join(", ")} ${node.connector} ${labels.at(-1)}`;
+  const joined = labels.length <= 1 ? (labels[0] ?? "") : `${labels.slice(0, -1).join(", ")} ${node.connector ?? CONNECTOR_PLACEHOLDER} ${labels.at(-1)}`;
   return `${host ? "사용처" : "이 공용조항"} ${joined}`;
 }
 

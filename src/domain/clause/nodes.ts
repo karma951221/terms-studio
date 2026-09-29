@@ -64,7 +64,8 @@ export interface ArticleRefNode {
   id: Id;
   kind: "articleRef";
   targets: { nodeId: Id }[];
-  connector: ReferenceConnector;
+  /** 기본값 없음 — 대상이 둘 이상이면 필수 (결정 14 · 문서의 `ArticleRefNode.connector` 와 같은 규칙). */
+  connector?: ReferenceConnector;
   scope?: ClauseRefScope;
 }
 

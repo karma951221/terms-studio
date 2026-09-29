@@ -15,7 +15,7 @@
  */
 import { checkCondition, checkTypes, extractRefs, parse } from "../expression";
 import type { Expr, TypeResolver } from "../expression";
-import { isReferenceConnector, ok, reject } from "../types";
+import { CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, ok, reject } from "../types";
 import type { Code, Coordinate, Id, Issue, Result } from "../types";
 import { BLOCK_KINDS, BOX_LINE_KINDS, HOST_PATH, INLINE_KINDS } from "./nodes";
 import type { Block, BoxNode, BulletListNode, ClauseNode, Inline, InlineBranch, BlockBranch } from "./nodes";
@@ -225,7 +225,9 @@ export function analyzeBody(
           report("structure", "조 참조 슬롯에는 대상이 하나 이상 있어야 합니다", here);
           return;
         }
-        if (!isReferenceConnector(node.connector)) {
+        if (node.connector === undefined) {
+          if (node.targets.length >= 2) report("structure", CONNECTOR_REQUIRED_MESSAGE, here);
+        } else if (!isReferenceConnector(node.connector)) {
           report("structure", `조 참조 연결어는 「및」·「또는」 중 하나여야 합니다: ${String(node.connector)}`, here);
         }
         if (node.scope === "clause") {

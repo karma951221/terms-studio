@@ -86,8 +86,8 @@ function PopForm({ env, onClose, build, children }: { env: PopupEnv; onClose: ()
 /** 조 참조 칸 — 범위 · 대상(여럿) · 연결어. 넣기와 고치기가 같이 쓴다. */
 function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode }) {
   const [count, setCount] = useState(node?.targets.length ?? 0);
-  // 고른 연결어 — 대상이 하나로 줄었다 다시 늘어도 기억한다 (고치기면 저장된 값에서 시작)
-  const [connector, setConnector] = useState<ReferenceConnector>(node?.connector ?? "및");
+  // 고른 연결어 — 기본값 없이 시작한다(결정 14). 대상이 하나로 줄었다 다시 늘어도 기억한다 (고치기면 저장된 값에서 시작)
+  const [connector, setConnector] = useState<ReferenceConnector | undefined>(node?.connector);
   const joins = count >= 2;
   // 범위를 화면이 정하면(공용조항 — 보통약관 · 이 공용조항 · 사용처) 그 목록이 범위 고르기, 고른 범위의 후보만 선다
   const choices = ctx.articleRefChoices;
@@ -156,7 +156,7 @@ function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode })
           </div>
           <p className="ts-form-hint">
             {joins
-              ? "마지막 대상 앞에 붙는다. 번호가 잇달아 셋 이상이면 「제3조부터 제5조까지」로 묶이고, 분기로 빠진 대상은 산출 때 제외된다."
+              ? "골라야 적용된다 — 기본값이 없다. 마지막 대상 앞에 붙는다. 번호가 잇달아 셋 이상이면 「제3조부터 제5조까지」로 묶이고, 분기로 빠진 대상은 산출 때 제외된다."
               : "대상을 둘 이상 고르면 고를 수 있다."}
           </p>
         </div>
@@ -174,17 +174,20 @@ function initialChoice(choices: DocCtx["articleRefChoices"], node?: ArticleRefNo
   return choices.some((c) => c.value === want) ? want : choices[0].value;
 }
 
-function articleRefOf(fd: FormData): { targets: { nodeId: Id }[]; connector: ReferenceConnector; scope: ArticleRefNode["scope"] } {
+/** 연결어 미선택 — 대상이 둘 이상이면 적용 전에 고른다 (결정 14 · 기능/문면 §3.5). */
+const CONNECTOR_PICK_MESSAGE = "대상이 둘 이상이면 연결어(및 · 또는)를 고른다.";
+
+function articleRefOf(fd: FormData): { targets: { nodeId: Id }[]; connector: ReferenceConnector | undefined; scope: ArticleRefNode["scope"] } {
   const targets = fd
     .getAll("targets")
     .map((v) => String(v).trim())
     .filter(Boolean)
     .map((nodeId) => ({ nodeId }));
-  // 대상이 하나 이하면 라디오가 꺼져 값이 오지 않는다 — 도메인 기본값 「및」(표기에 안 나온다)을 둔다
+  // 대상이 하나 이하면 라디오가 꺼져 값이 오지 않는다 — 연결어를 싣지 않는다(표기에 안 나온다, 결정 14)
   const connector = targets.length >= 2 ? str(fd, "connector") : "";
   // 사용처 위치(`host`)는 편집 트리에서 보통약관 참조 자리로 운반한다 (clauseTree)
   const scope = str(fd, "scope");
-  return { targets, connector: isReferenceConnector(connector) ? (connector as ReferenceConnector) : "및", scope: scope === "general" || scope === "host" ? "general" : "self" };
+  return { targets, connector: isReferenceConnector(connector) ? (connector as ReferenceConnector) : undefined, scope: scope === "general" || scope === "host" ? "general" : "self" };
 }
 
 /** 공용조항 칸 — 공용조항을 고르면 그 옵션마다 선택지. 옵션 선택은 사용처(이 문서) 소유다 (기능/공용조항 §3.2). */
@@ -336,6 +339,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
           case "articleRef": {
             const r = articleRefOf(fd);
             if (r.targets.length === 0) return "참조할 대상을 하나 이상 고른다.";
+            if (r.targets.length >= 2 && !r.connector) return CONNECTOR_PICK_MESSAGE;
             return { ...b.articleRef(r.targets.map((t) => t.nodeId), r.scope, r.connector) };
           }
           case "appendixRef": {
@@ -407,8 +411,11 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
               switch (node.kind) {
                 case "slot":
                   return [{ type: "setSlotRef", nodeId: node.id, ref: str(fd, "ref") }];
-                case "articleRef":
-                  return [{ type: "setArticleRef", nodeId: node.id, ...articleRefOf(fd) }];
+                case "articleRef": {
+                  const r = articleRefOf(fd);
+                  if (r.targets.length >= 2 && !r.connector) return CONNECTOR_PICK_MESSAGE;
+                  return [{ type: "setArticleRef", nodeId: node.id, ...r }];
+                }
                 case "appendixRef":
                   return [{ type: "setAppendixRef", nodeId: node.id, appendixCode: str(fd, "appendixCode") }];
                 case "clauseInlineRef":
