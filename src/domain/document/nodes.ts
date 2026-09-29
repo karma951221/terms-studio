@@ -10,6 +10,7 @@
  * - 조의 메타는 조 명 · 조연결(`linkedArticleId`) 뿐. 번호는 저장하지 않는다 (계산값 — numbering.ts).
  * - 식이 들어가는 자리(`when` · `slot.ref`)는 코드 기반 소스 문자열 — 파싱·검사는 expression 모듈.
  * - 노드 id 는 트리 안에서 유일 (조건 가지 id 포함).
+ * - 항 · 호 · 목 · 함수조항 블록 참조는 P코드(`code`)를 가진다 — 참조의 정체성, 조 안에서 공존하는 노드끼리 유일 (ADR-0072 · pcode.ts).
  * - B2 `src/domain/clause/nodes.ts` 와 같은 모양이다 (통합 시 하나로 합친다). 차이: articleRef 에 `scope`.
  *
  * DB·React import 금지 (순수층).
@@ -18,6 +19,7 @@
 import { CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, type AttachLevel, type Code, type Coordinate, type Id, type Issue, type ReferenceConnector } from "../types";
 import type { ClauseMode } from "../clause/types";
 import type { Bindings } from "../clause/params";
+import { documentCodeIssues } from "./pcode";
 
 // ───────────────────────────── 인라인 ─────────────────────────────
 
@@ -194,6 +196,8 @@ export interface BulletListNode {
 export interface SubitemNode {
   id: Id;
   kind: "subitem";
+  /** P코드 — 참조의 정체성, 조 안에서 공존하는 노드끼리 유일 (ADR-0072 · pcode.ts). 없으면 저장 때 채운다. */
+  code?: Code;
   children: InlineNode[];
 }
 
@@ -201,6 +205,8 @@ export interface SubitemNode {
 export interface ItemNode {
   id: Id;
   kind: "item";
+  /** P코드 (ADR-0072). */
+  code?: Code;
   children: InlineNode[];
   subitems?: (SubitemNode | CondBlockNode | BulletListNode)[];
 }
@@ -209,6 +215,8 @@ export interface ItemNode {
 export interface ParagraphNode {
   id: Id;
   kind: "paragraph";
+  /** P코드 (ADR-0072). */
+  code?: Code;
   children: InlineNode[];
   items?: (ItemNode | CondBlockNode | TableNode | BoxNode | BulletListNode | BoxRefNode)[];
 }
@@ -253,6 +261,8 @@ export interface ForBlockNode {
 export interface ClauseBlockRefNode {
   id: Id;
   kind: "clauseBlockRef";
+  /** P코드 — 펼친 함수조항 안 노드를 가리키는 참조의 바깥 마디 (ADR-0072 결정 3 개정 · 최종 결정 12). */
+  code?: Code;
   clauseCode: Code;
   options: Record<Code, Code>;
   /** 인자 연결 — 인자 이름 → 연결 (최종 결정 2). 없는 인자는 기본 연결을 쓴다. 비면 키를 싣지 않는다. */
@@ -645,6 +655,11 @@ export function validateTree(doc: DocumentNode, env: TreeEnv = {}): Issue[] {
   }
 
   for (const e of ix.nodes.values()) issues.push(...checkNodeRefs(e, ix, env, true));
+  // P코드 — 형식 · 공존 중복 (ADR-0072 결정 4 · 5). 코드 없는 자리는 저장 때 채운다(withCodes)
+  for (const { id, message } of documentCodeIssues(doc, ix)) {
+    const e = ix.nodes.get(id)!;
+    issues.push({ kind: "structure", message, at: coordinateOf(ix, e, base) });
+  }
   return issues;
 }
 

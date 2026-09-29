@@ -45,6 +45,7 @@ import {
   type TreeEnv,
   type TreeIndex,
 } from "./nodes";
+import { codeTreeInPlace, documentCodeIssues, isCodedKind, isPCode } from "./pcode";
 
 // ───────────────────────────── 커맨드 ─────────────────────────────
 
@@ -115,7 +116,12 @@ export type Command =
   | { type: "setCase"; branchId: Id; values: readonly Code[]; empty?: boolean }
   | { type: "moveBranch"; branchId: Id; index: number }
   /** 조연결 설정(`linkedArticleId`) 또는 해제(undefined). */
-  | { type: "link"; articleId: Id; linkedArticleId?: Id };
+  | { type: "link"; articleId: Id; linkedArticleId?: Id }
+  /**
+   * P코드 직접 수정 (ADR-0072 결정 5) — 형식(`P` + 숫자 4자리 이상)이 아니거나 공존하는 노드의 코드와 겹치면 거부.
+   * 참조는 따라가지 않는다(결정 6) — 같은 코드의 분기 짝이 있으면 그리로, 없으면 깨진다. 수정 창 · 영향 건수는 다음 작업.
+   */
+  | { type: "setCode"; nodeId: Id; code: Code };
 
 export interface ApplyOptions {
   env?: TreeEnv;
@@ -317,6 +323,7 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       }
       const node = structuredClone(cmd.node);
       c.value.list.splice(clampIndex(cmd.at.index, c.value.list.length), 0, node);
+      numberNew(work, node);
       return verifyPlaced(work, node, env);
     }
 
@@ -362,6 +369,8 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       if (!c.ok) return c;
       if (!c.value.allowed.includes(copy.kind)) return structure(`이 자리에 ${copy.kind} 은(는) 올 수 없습니다`, [...c.value.path]);
       c.value.list.splice(clampIndex(at.index, c.value.list.length), 0, copy);
+      // 붙여넣기(사본)는 항상 재채번 — 새로 생긴 노드라 가리키는 곳이 없다 (ADR-0072 결정 5)
+      numberNew(work, copy);
       return verifyPlaced(work, copy, env);
     }
 
@@ -593,6 +602,7 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       brs.splice(clampIndex(cmd.index, brs.length), 0, branch as BlockBranch & InlineBranch);
       const rule = elseRule(brs, e.value.path, e.value.node);
       if (!rule.ok) return rule;
+      for (const child of branch.children as Node[]) numberNew(work, child);
       const after = indexTree(work, env.coordinate);
       const ids = new Set<Id>([branch.id]);
       (branch.children as Node[]).forEach((c) => idsIn(c).forEach((id) => ids.add(id)));
@@ -657,6 +667,16 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       return rule.ok ? ok(work) : rule;
     }
 
+    case "setCode": {
+      const e = entryOf(ix, cmd.nodeId);
+      if (!e.ok) return e;
+      if (!isCodedKind(e.value.node.kind)) return structure("코드는 항 · 호 · 목 · 함수조항 블록 참조에만 둘 수 있습니다", e.value.path);
+      if (!isPCode(cmd.code)) return structure(`코드 ${cmd.code} 는 P코드 형식(P + 숫자 4자리 이상)이 아닙니다`, e.value.path);
+      (e.value.node as Node & { code?: Code }).code = cmd.code;
+      const clash = documentCodeIssues(work).find((i) => i.id === cmd.nodeId);
+      return clash ? structure(clash.message, e.value.path) : ok(work);
+    }
+
     case "link": {
       const e = entryOf(ix, cmd.articleId);
       if (!e.ok) return e;
@@ -667,6 +687,12 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       return issues.length > 0 ? invalid(issues) : ok(work);
     }
   }
+}
+
+/** 새로 놓인 하위 트리의 코드 자리를 새로 매긴다 — 가진 코드는 버린다(새 노드 · 사본, ADR-0072 결정 5). */
+function numberNew(doc: DocumentNode, root: Node): void {
+  const ids = new Set(nodesIn(root).filter((n) => isCodedKind(n.kind)).map((n) => n.id));
+  if (ids.size > 0) codeTreeInPlace(doc, { renumber: ids, only: ids });
 }
 
 function clampIndex(index: number | undefined, length: number): number {

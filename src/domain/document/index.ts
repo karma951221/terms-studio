@@ -28,6 +28,7 @@ export * from "./expressions";
 export * from "./fixture";
 export * from "./nodes";
 export * from "./numbering";
+export * from "./pcode";
 export * from "./refs";
 export * from "./repeat";
 export * from "./validate";

@@ -22,6 +22,8 @@ import { pathToFileURL } from "node:url";
 
 import type { ArticleNode, BlockNode, BoxNode, DocumentNode, InlineNode, ParagraphNode, SectionNode, TableNode } from "../../src/domain/document/nodes";
 import { indexTree, validateTree } from "../../src/domain/document/nodes";
+import { withCodes } from "../../src/domain/document/pcode";
+import { withClauseCodes } from "../../src/domain/clause/pcode";
 import type { Id } from "../../src/domain/types";
 import { boxSites, planBoxes, replaceBox, type BoxPlan } from "./boxes";
 import type { Discriminator } from "../../src/domain/catalog/types";
@@ -303,12 +305,18 @@ function main(): void {
   const generals: { code: string; tree: DocumentNode }[] = [];
   const documents: { code: string; ownerCoverage: string; general: string; tree: DocumentNode }[] = [];
   const issues: string[] = [];
+  // P코드 — 조마다 깊이 순 · 문서 순으로 매긴다(배타 가지의 같은 자리 항은 같은 코드, ADR-0072 결정 10). 적재가 코드를 그대로 쓴다
+  for (const p of products) {
+    p.general.tree = withCodes(p.general.tree);
+    for (const b of p.specials.values()) b.tree = withCodes(b.tree);
+  }
   for (const p of products) {
     issues.push(...validate(p.general.tree, "general").map((l) => `${p.product.general.code}: ${l}`));
     generals.push({ code: p.product.general.code, tree: p.general.tree });
     for (const spec of p.product.specials) {
       const b = p.specials.get(spec.code)!;
       applyArticleConds(b.tree, b.numberOf, spec.articleConds ?? [], report);
+      b.tree = withCodes(b.tree);
       issues.push(...validate(b.tree, "special", p.general.tree).map((l) => `${spec.code}: ${l}`));
       documents.push({ code: spec.code, ownerCoverage: spec.ownerCoverage, general: p.product.general.code, tree: b.tree });
     }
@@ -324,7 +332,7 @@ function main(): void {
   // 함수조항은 구분자를 직접 읽지 않고 인자만 읽는다 (최종 결정 2) — 직접 읽기를 「인자 + 기본 연결 = 그 구분자」로 기계 변환한다.
   // 구분자 카탈로그는 손으로 적는 시드(discriminators.json)다. 사용처는 기본 연결을 쓰므로 조립 결과가 그대로다
   const catalog = JSON.parse(readFileSync(path.join(root, SEED_DIR, "discriminators.json"), "utf8")) as Discriminator[];
-  out("clauses.json", clauses.map((c) => parameterize(c, catalog)));
+  out("clauses.json", clauses.map((c) => parameterize(c, catalog)).map((c) => ({ ...c, body: withClauseCodes(c.body) })));
 
   const stats = (tree: DocumentNode) => {
     const ix = indexTree(tree);

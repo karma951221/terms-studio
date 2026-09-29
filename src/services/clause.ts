@@ -19,6 +19,7 @@ import {
   addOptionValue,
   checkAttachmentForReference,
   createClause,
+  withClauseCodes,
   duplicateClause,
   recheckUsages,
   removeOption,
@@ -156,6 +157,11 @@ function typeResolverFrom(catalog: ReadonlyMap<Code, Discriminator>): TypeResolv
 
 // ───────────────────────────── 서비스 ─────────────────────────────
 
+/** 저장 직전 — 본문의 코드 없는 항 · 호 · 목에 P코드를 채운다 (ADR-0072 결정 10 · 최종 결정 12). */
+function coded(r: Result<Clause>): Result<Clause> {
+  return r.ok ? ok({ ...r.value, body: withClauseCodes(r.value.body) } as Clause) : r;
+}
+
 export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): ClauseService {
   const usage = deps.usage ?? NO_USAGES;
 
@@ -234,7 +240,7 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
   function edit(actor: Actor, code: Code, change: (def: Clause, ctx: ClauseContext) => Promise<Result<Clause>> | Result<Clause>): Promise<Result<Clause>> {
     return db.transaction((tx) =>
       withClause(tx, code, async (def) => {
-        const r = await change(def, await context(tx));
+        const r = coded(await change(def, await context(tx)));
         if (!r.ok) return r;
         await repo.saveClause(tx, r.value, actor.userId);
         return r;
@@ -255,7 +261,7 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
     const saved = await db.transaction((tx) =>
       withClause<Clause>(tx, code, async (def) => {
         catalog = await catalogOf(tx);
-        const r = await change(def, await context(tx, catalog));
+        const r = coded(await change(def, await context(tx, catalog)));
         if (!r.ok) return r;
         await repo.saveClause(tx, r.value, actor.userId);
         return r;
@@ -296,7 +302,7 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
 
     create: (actor, input) =>
       db.transaction(async (tx) => {
-        const r = await createClause(input, await context(tx));
+        const r = coded(await createClause(input, await context(tx)));
         if (!r.ok) return r;
         await repo.insertClause(tx, r.value, actor.userId);
         return r;
@@ -308,7 +314,7 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
     duplicate: (actor, code) =>
       db.transaction((tx) =>
         withClause(tx, code, async (def) => {
-          const r = await duplicateClause(def, await context(tx));
+          const r = coded(await duplicateClause(def, await context(tx)));
           if (!r.ok) return r;
           await repo.insertClause(tx, r.value, actor.userId);
           return r;

@@ -22,6 +22,7 @@ import { BLOCK_KINDS, HOST_PATH, INLINE_KINDS } from "./nodes";
 import type { AnySwitchNode, Block, BoxRefNode, BulletListNode, ClauseNode, Inline, InlineBranch, BlockBranch, ItemBodyNode, ItemNode, SubitemBodyNode, SwitchCase } from "./nodes";
 import { checkLocals, planFieldType, type LocalDef } from "./locals";
 import { checkParams, type ParamDef } from "./params";
+import { clauseCodeIssues } from "./pcode";
 import type { ClauseBody, ClauseMode, OptionDef, RequiredRefs } from "./types";
 
 // ───────────────────────────── 식 수집 ─────────────────────────────
@@ -463,6 +464,9 @@ export function analyzeBody(
     if (seen.has(id)) report("typeMismatch", `노드 id 가 중복됩니다: ${id}`, [id]);
     seen.add(id);
   }
+
+  // 3b. P코드 — 형식 · 공존 중복 (ADR-0072 결정 4 — 조건 가지 · switch 칸의 같은 자리만 같은 코드). 코드 없는 자리는 저장 때 채운다
+  if (mode !== "inline") for (const { path, message } of clauseCodeIssues(body)) report("structure", message, path);
 
   // 4. 인자 (최종 결정 2) — 인자 표(이름 · 타입 · 기본 연결) + 본문이 읽는 인자는 선언돼 있어야 한다(타입 조회가 없어도)
   const resolveType = opts.resolveType;

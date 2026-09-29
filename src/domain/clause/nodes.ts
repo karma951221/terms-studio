@@ -19,6 +19,8 @@
  *   문장 안(`inlineSwitch` — 문장 안 조건과 같은 제약: 문장 안 조건 · 분기 안에 또 두지 못한다) 둘 다. 칸은 가지처럼 투명하다.
  *   지금은 함수조항 안에서만 연다 — 모양은 문면 노드에도 그대로 옮길 수 있게 가지(조건)와 같은 틀이다.
  * - 식(`slot.ref` · `when`)은 코드 기반 소스 문자열 — 파싱·추출은 expression 모듈.
+ * - 항 · 호 · 목은 P코드(`code`)를 가진다 — 본문 안에서 공존하는 노드끼리 유일, 조건 가지 · switch 칸의 같은 자리는 코드를 공유한다
+ *   (ADR-0072 결정 4 · 최종 결정 12, clause/pcode.ts).
  * - 노드 id 는 공용조항 하나 안(본문 + 모든 옵션 선택지 본문)에서 유일해야 한다 —
  *   인라인화(`expandClause`)가 `${참조노드id}/${원노드id}` 로 유일화하기 때문.
  *
@@ -132,6 +134,8 @@ export type InlineKind = Inline["kind"];
 export interface SubitemNode {
   id: Id;
   kind: "subitem";
+  /** P코드 — 함수조항 본문 안에서 공존하는 노드끼리 유일 (ADR-0072 · clause/pcode.ts). 없으면 저장 때 채운다. */
+  code?: Code;
   children: Inline[];
 }
 
@@ -139,6 +143,8 @@ export interface SubitemNode {
 export interface ItemNode {
   id: Id;
   kind: "item";
+  /** P코드 (ADR-0072). */
+  code?: Code;
   children: Inline[];
   subitems?: SubitemNode[];
 }
@@ -168,6 +174,8 @@ export interface BoxRefNode {
 export interface ParagraphNode {
   id: Id;
   kind: "paragraph";
+  /** P코드 (ADR-0072). */
+  code?: Code;
   children: Inline[];
   items?: (ItemNode | BulletListNode | BoxRefNode)[];
 }

@@ -33,6 +33,7 @@ import {
   validateDocument,
   validateExpressions,
   validateTree,
+  withCodes,
   type Appendix,
   type Box,
   type BoxRevision,
@@ -305,7 +306,8 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
   }
 
   async function createDoc(tx: Db, actor: Actor, input: repo.NewDocumentRow): Promise<Result<DocumentRecord>> {
-    return ok(await repo.insertDocument(tx, input, actor.userId));
+    // 복제본은 원본의 P코드를 그대로 쓴다 — 코드 없는 옛 자리만 채운다 (ADR-0072 결정 10)
+    return ok(await repo.insertDocument(tx, { ...input, tree: withCodes(input.tree) }, actor.userId));
   }
 
   async function editAppendix(actor: Actor, code: Code, change: (a: Appendix) => Result<Appendix>): Promise<Result<Appendix>> {
@@ -426,7 +428,7 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
           const { resolve, scope } = await scopeOf(tx, doc);
           issues.push(...validateExpressions(tree, resolve, env.coordinate, scope));
           if (issues.length > 0) return invalid(issues);
-          await repo.saveDocument(tx, id, { tree, title: tree.title }, actor.userId);
+          await repo.saveDocument(tx, id, { tree: withCodes(tree), title: tree.title }, actor.userId);
           return ok((await repo.loadDocument(tx, id))!);
         }),
       ),
@@ -462,7 +464,7 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
             const broken = await brokenByRemoval(tx, id, removedIds(doc.tree, tree));
             if (broken.length > 0) return reject({ reason: "needsConfirmation", impact: { valueRowsLost: 0, cascade: [], brokenRefs: broken } });
           }
-          const saved = await repo.saveDocumentAt(tx, id, input.baseVersion, { tree, title: tree.title, generalDocumentId: generalDocumentId ?? null }, actor.userId);
+          const saved = await repo.saveDocumentAt(tx, id, input.baseVersion, { tree: withCodes(tree), title: tree.title, generalDocumentId: generalDocumentId ?? null }, actor.userId);
           if (!saved) return reject({ reason: "conflict", what: "저장하는 사이에 다른 저장이 먼저 반영됐다" });
           return ok((await repo.loadDocument(tx, id))!);
         }),
@@ -474,7 +476,7 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
           const tree: DocumentNode = { ...incoming, id: doc.tree.id, title: doc.title };
           const issues = await validateDoc(tx, doc, tree);
           if (issues.length > 0) return invalid(issues);
-          await repo.saveDocument(tx, id, { tree, title: doc.title }, actor.userId);
+          await repo.saveDocument(tx, id, { tree: withCodes(tree), title: doc.title }, actor.userId);
           return ok((await repo.loadDocument(tx, id))!);
         }),
       ),

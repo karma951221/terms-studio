@@ -18,5 +18,6 @@ export * from "./definitions";
 export * from "./locals";
 export * from "./nodes";
 export * from "./params";
+export * from "./pcode";
 export * from "./reference";
 export * from "./types";
