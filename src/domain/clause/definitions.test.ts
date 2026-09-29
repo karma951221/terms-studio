@@ -16,6 +16,7 @@ import {
   setBody,
   setMode,
   setOptionValueBody,
+  unitWarnings,
   type ClauseContext,
 } from "./definitions";
 import type { Block, Inline, ItemBodyNode, SubitemBodyNode } from "./nodes";
@@ -347,3 +348,29 @@ describe("유형 = 출력 모양 — 호 · 목 유형 (최종 결정 4 · 기�
   });
 });
 
+describe("단위 규칙은 경고 — 조 · 여러 항 단위, 두 곳 이상 (최종 결정 7 · 기능/함수조항 §3.1)", () => {
+  const messages = (clause: Clause, usages: number) => unitWarnings(clause, usages).map((i) => [i.severity, i.message]);
+
+  it("여러 항 · 두 곳 사용이면 경고가 없다", async () => {
+    const clause = unwrap(await createClause({ label: "소멸", mode: "block", body: 소멸_본문 }, ctx()));
+    expect(unitWarnings(clause, 2)).toEqual([]);
+  });
+
+  it("항 하나 · 한 곳 사용도 만들 수 있고 경고만 둘", async () => {
+    const clause = unwrap(await createClause({ label: "한 항", mode: "block", body: 소멸_본문.slice(0, 1) }, ctx()));
+    expect(messages(clause, 1)).toEqual([
+      ["warning", "항이 하나뿐입니다 — 조째(그 조의 항 전부)가 아니면 조 · 여러 항 단위가 아닙니다"],
+      ["warning", "한 곳에서만 씁니다 — 두 곳 이상에서 되풀이될 때 함수조항으로 딴다"],
+    ]);
+  });
+
+  it("문구 · 호 · 목 유형은 조 · 여러 항 단위가 아니라는 경고, 아직 쓰는 곳이 없으면 사용처 경고는 없다", async () => {
+    const clause = unwrap(await createClause({ label: "호", mode: "item", body: [{ id: "i1", kind: "item", children: [] }] }, ctx()));
+    expect(messages(clause, 0)).toEqual([["warning", "「호」 함수조항 — 조 · 여러 항 단위가 아닙니다"]]);
+  });
+
+  it("빈 본문에는 단위 경고를 내지 않는다", async () => {
+    const clause = unwrap(await createClause({ label: "빈", mode: "block", body: [] }, ctx()));
+    expect(unitWarnings(clause, 0)).toEqual([]);
+  });
+});

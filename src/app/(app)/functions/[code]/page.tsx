@@ -23,7 +23,7 @@ export default async function ClauseDetailPage({ params }: { params: Promise<{ c
       </div>
     );
   }
-  const data = await loadClauseEditorData();
+  const [data, warnings] = await Promise.all([loadClauseEditorData(), getServices().clause.unitWarnings(clause.code)]);
   return (
     <ClauseAuthoring
       // 저장 뒤 새로 받은 정의로 화면을 다시 짓는다 — 편집본은 편집을 시작할 때 원본에서 만든다
@@ -38,6 +38,7 @@ export default async function ClauseDetailPage({ params }: { params: Promise<{ c
         values: option.values.map((value) => ({ code: value.code, label: value.label, text: valueText(value.body) })),
       }))}
       required={clause.required}
+      warnings={warnings.map((w) => w.message)}
       data={data}
     />
   );

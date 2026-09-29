@@ -1216,6 +1216,17 @@ button.danger:focus-visible {
   padding: 3px 0;
 }
 
+/* 단위 규칙 경고 — 저장은 된다, 읽고 넘어갈 줄 (기능/함수조항 §3.1) */
+.ts-clause-warnings {
+  margin: 0;
+  padding: 3px 0;
+  list-style: none;
+}
+
+.ts-clause-warnings .ts-warn {
+  margin: 0 0 2px;
+}
+
 /* 유형 — 카드 라디오(두 칸씩 — 문구 · 항 / 호 · 목), 이름 + 뜻풀이 */
 .ts-clause-mode {
   display: grid;

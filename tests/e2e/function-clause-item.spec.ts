@@ -5,7 +5,7 @@ import { expect, test } from "./_lib/fixtures";
 
 /**
  * 함수조항 유형 「호」 (최종 결정 4 · 기능/함수조항 §3.1) — 호 목록을 내는 함수조항을 만들고, 담보약관 템플릿 항의 호 목록 자리(호 뒤)에 툴바 「함수조항」으로 넣으면
- * 미리보기(사전평가)에서 그 호들이 사용처 호 목록에 이어 선다.
+ * 미리보기(사전평가)에서 그 호들이 사용처 호 목록에 이어 선다. 단위 규칙(호 하나 · 한 곳 사용)은 경고만 — 만들 수 있다(최종 결정 7).
  * 시드 담보 · 문서는 건드리지 않는다 — 새 담보 · 새 템플릿 · 새 함수조항만 쓴다.
  */
 
@@ -42,7 +42,7 @@ test(
       await expect(editor.getByRole("textbox", { name: "항", exact: true })).toHaveCount(0);
     });
 
-    const code = await ev.action("호함수조항#3", "이름과 호 둘을 쓰고(Enter 로 다음 호) 저장 — 상세로 간다", async () => {
+    const code = await ev.action("호함수조항#3", "이름과 호 둘을 쓰고(Enter 로 다음 호) 저장 — 상세로 가고 단위 규칙은 경고만 보인다", async () => {
       await page.getByLabel("함수조항명").fill(CLAUSE_NAME);
       const first = editor.getByRole("textbox", { name: "호", exact: true });
       await first.click();
@@ -57,6 +57,7 @@ test(
       await page.waitForURL(/\/functions\/C\d+$/);
       await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
       await expect(page.locator(".ts-clause-meta")).toContainText("호 — 항의 호 목록 자리에 선다");
+      await expect(page.getByRole("list", { name: "단위 규칙 경고" })).toContainText("「호」 함수조항 — 조 · 여러 항 단위가 아닙니다");
       await expect(editor.locator("ol.ts-doc-items > li.ts-doc-item")).toHaveCount(2);
       return decodeURIComponent(page.url().split("/").at(-1)!);
     });
@@ -112,5 +113,9 @@ test(
       await expect(items).toHaveText(["사망한 경우", "암으로 진단확정된 경우", "뇌졸중으로 진단확정된 경우"]);
     });
 
+    await ev.action("호함수조항#8", "함수조항 상세 — 이제 한 곳에서 쓰므로 「한 곳에서만 씁니다」 경고가 더해진다", async () => {
+      await page.goto(`/functions/${code}`);
+      await expect(page.getByRole("list", { name: "단위 규칙 경고" })).toContainText("한 곳에서만 씁니다");
+    });
   },
 );

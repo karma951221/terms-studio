@@ -31,6 +31,7 @@ import {
   setBody,
   setMode,
   setOptionValueBody,
+  unitWarnings,
   usageCoordinate,
   type AttachmentCheck,
   type Clause,
@@ -49,7 +50,7 @@ import {
 import type { Inline } from "@/domain/clause/nodes";
 import { indexTree } from "@/domain/document";
 import type { TypeResolver } from "@/domain/expression";
-import type { Actor, Code, Id, Result } from "@/domain/types";
+import type { Actor, Code, Id, Issue, Result } from "@/domain/types";
 import { ok, reject } from "@/domain/types";
 
 import { listDiscriminators } from "@/db/repo/catalog";
@@ -75,10 +76,11 @@ export interface Confirmable {
   confirm?: boolean;
 }
 
-/** 본문·옵션이 바뀌는 저장의 결과 — 저장된 정의 + 사용처 재검사 목록. */
+/** 본문·옵션이 바뀌는 저장의 결과 — 저장된 정의 + 사용처 재검사 목록 + 단위 규칙 경고(저장은 막지 않는다, 최종 결정 7). */
 export interface SaveOutcome {
   clause: Clause;
   recheck: RecheckEntry[];
+  warnings: Issue[];
 }
 
 export interface ClauseService {
@@ -88,6 +90,8 @@ export interface ClauseService {
   summaries(): Promise<ClauseSummary[]>;
   required(code: Code): Promise<RequiredRefs | undefined>;
   usages(code: Code): Promise<Usage[]>;
+  /** 단위 규칙 경고 — 조 · 여러 항 단위가 아님 · 한 곳에서만 씀 (최종 결정 7 — 경고만, 상세 화면이 보인다). 없는 코드면 빈 목록. */
+  unitWarnings(code: Code): Promise<Issue[]>;
   audit(code: Code): ReturnType<typeof repo.clauseAudit>;
 
   // 정의 — 비파괴
@@ -238,7 +242,7 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
     );
     if (!saved.ok) return saved as Result<SaveOutcome>;
     const usages = await usage.documentsReferencing(saved.value.code);
-    return ok({ clause: saved.value, recheck: recheckOf(saved.value, usages, lookupIn(catalog!)) });
+    return ok({ clause: saved.value, recheck: recheckOf(saved.value, usages, lookupIn(catalog!)), warnings: unitWarnings(saved.value, usages.length) });
   }
 
   return {
@@ -263,6 +267,10 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
     },
     required: async (code) => (await repo.loadClause(db, code))?.required,
     usages: (code) => usage.documentsReferencing(code),
+    unitWarnings: async (code) => {
+      const clause = await repo.loadClause(db, code);
+      return clause ? unitWarnings(clause, (await usage.documentsReferencing(code)).length) : [];
+    },
     audit: (code) => repo.clauseAudit(db, code),
 
     create: (actor, input) =>

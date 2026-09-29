@@ -44,6 +44,7 @@ export interface ClauseContext {
 }
 
 const MODES: readonly ClauseMode[] = CLAUSE_MODES;
+const MODE_WORD: Record<ClauseMode, string> = { inline: "문구", block: "항", item: "호", subitem: "목" };
 const MODE_REFUSAL = "유형은 문구 · 항 · 호 · 목 중 하나여야 합니다 — 박스는 정적 마스터에서 만든다";
 
 // ───────────────────────────── 헬퍼 ─────────────────────────────
@@ -363,3 +364,34 @@ export function clauseNodeIds(clause: Clause): Code[] {
   return [...allNodeIds(clause.body), ...clause.options.flatMap((o) => o.values.flatMap((v) => allNodeIds(v.body)))];
 }
 
+// ───────────────────────────── 단위 규칙 — 경고 (최종 결정 7) ─────────────────────────────
+
+/**
+ * 단위 규칙 경고 — 함수조항은 「되풀이되는 조 · 여러 항, 두 곳 이상 사용」이 기본 단위다(기능/함수조항 §3.1). 벗어나도 **만들 수 있고**
+ * 경고만 한다(ADR-0076 결정 8) — 항 · 호 · 목 하나(역할 함수조항의 「납입면제 호」처럼), 한 곳 사용도 된다.
+ * - 문구 · 호 · 목 유형 → 조 · 여러 항 단위가 아니다.
+ * - 항 유형인데 항이 하나 → 조째(그 조의 항 전부)가 아니면 여러 항 단위가 아니다. 조째인지는 사용처에서만 알아 「아니면」으로 말한다.
+ * - 사용처가 딱 하나 → 두 곳 이상 규칙. 아직 쓰는 곳이 없으면(막 만든 조항) 말하지 않는다.
+ * 빈 본문은 단위를 따지지 않는다(빈 본문 안내가 따로 있다). 저장은 막지 않는다 — `severity: "warning"`.
+ */
+export function unitWarnings(clause: Clause, usageCount: number): Issue[] {
+  const at = { document: "clause" as const, ownerId: clause.code, ownerName: clause.label };
+  const warn = (message: string): Issue => ({ kind: "structure", message, at, severity: "warning" });
+  if (clause.body.length === 0) return [];
+  const out: Issue[] = [];
+  if (clause.mode !== "block") out.push(warn(`「${MODE_WORD[clause.mode]}」 함수조항 — 조 · 여러 항 단위가 아닙니다`));
+  else if (paragraphIds(clause.body).size <= 1) out.push(warn("항이 하나뿐입니다 — 조째(그 조의 항 전부)가 아니면 조 · 여러 항 단위가 아닙니다"));
+  if (usageCount === 1) out.push(warn("한 곳에서만 씁니다 — 두 곳 이상에서 되풀이될 때 함수조항으로 딴다"));
+  return out;
+}
+
+/** 항 유형 본문의 항 id (조건 블록 안 포함). */
+function paragraphIds(body: Block[]): Set<string> {
+  const out = new Set<string>();
+  const visit = (b: Block) => {
+    if (b.kind === "paragraph") out.add(b.id);
+    if (b.kind === "condBlock") for (const br of b.branches) br.children.forEach(visit);
+  };
+  body.forEach(visit);
+  return out;
+}

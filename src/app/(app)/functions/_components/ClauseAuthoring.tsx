@@ -79,6 +79,8 @@ export interface ClauseAuthoringProps {
   body: ClauseBody;
   options: ClauseEditOption[];
   required?: RequiredRefs;
+  /** 단위 규칙 경고 — 조 · 여러 항 단위가 아님 · 한 곳에서만 씀. 저장은 막지 않고 정보 칸에 보인다 (기능/함수조항 §3.1). */
+  warnings?: readonly string[];
   data: ClauseEditorData;
   /** 생성 화면 — 「항」 유형의 첫 빈 항 id. 서버가 정해 넘긴다(서버 · 브라우저 렌더가 같은 id 를 써야 한다). */
   startId?: string;
@@ -692,6 +694,18 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
                       {props.required && props.required.discriminators.length > 0 ? props.required.discriminators.join(" · ") : <span className="ts-muted">없음 — 저장 때 식에서 뽑는다</span>}
                     </span>
                   </div>
+                  {props.warnings && props.warnings.length > 0 && (
+                    <div className="ts-form-row">
+                      <span className="ts-form-label">단위</span>
+                      <ul className="ts-clause-meta-value ts-clause-warnings" aria-label="단위 규칙 경고">
+                        {props.warnings.map((w) => (
+                          <li key={w} className="ts-warn">
+                            {w}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   <div className="ts-form-row">
                     <span className="ts-form-label">사용처</span>
                     <span className="ts-clause-meta-value">

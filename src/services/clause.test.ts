@@ -253,11 +253,18 @@ describe("clause 서비스 (PGlite)", () => {
     });
   });
 
-  describe("유형 넷 (최종 결정 4)", () => {
-    it("호 유형을 만들어 다시 읽으면 호 유형 · 호 목록 본문 그대로", async () => {
+  describe("유형 넷 · 단위 규칙 경고 (최종 결정 4 · 7)", () => {
+    it("호 유형을 만들어 다시 읽으면 호 유형 · 호 목록 본문 그대로 — 한 곳 사용 · 호 하나는 경고만", async () => {
       const body = [{ id: "i1", kind: "item" as const, children: [{ id: "t1", kind: "text" as const, text: "암으로 진단확정된 경우" }] }];
       const c = unwrap(await svc.create(editor, { label: "납입면제 호", mode: "item", body }));
       expect(await svc.get(c.code)).toEqual(c);
+      expect((await svc.unitWarnings(c.code)).map((i) => i.message)).toEqual(["「호」 함수조항 — 조 · 여러 항 단위가 아닙니다"]);
+      usages.set(c.code, [{ documentId: "doc-1", ownerKind: "general", ownerId: "gen-1", ownerName: "보통약관 A", refNodeId: "k1" }]);
+      const saved = unwrap(await svc.setBody(editor, c.code, body));
+      expect(saved.warnings.map((i) => [i.severity, i.message])).toEqual([
+        ["warning", "「호」 함수조항 — 조 · 여러 항 단위가 아닙니다"],
+        ["warning", "한 곳에서만 씁니다 — 두 곳 이상에서 되풀이될 때 함수조항으로 딴다"],
+      ]);
     });
   });
 });
