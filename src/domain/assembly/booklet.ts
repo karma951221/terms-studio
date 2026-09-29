@@ -2,7 +2,7 @@
  * 조립 진입점 — 단계별 순수 변환을 이어 붙여 책자(Booklet)를 만든다. 매번 재계산, 저장 없음 (기능/조립산출 §3).
  *
  *   buildContexts → resolveDocument → substituteSlots → replaceGeneralWithBase → ensureApplicationArticle
- *   → judgeOmission → numberDocument → placeSpecials → collectAppendices → renderDocument
+ *   → judgeOmission → dropEmptyArticles → numberDocument → placeSpecials → collectAppendices → renderDocument
  *
  * - 부분 조립: 오류는 마커로 심고 끝까지 간다. `issues` 는 책자 등장 순 (D-P6-12). error가 있으면 `complete=false`, warning만 있으면 완성본이다.
  * - 미배치 상품담보(문면 있음)는 `unplaced` 오류 + 책자에서 제외 (D-P6-5). 그 문서의 오류도 뒤이어 보고한다.
@@ -20,6 +20,7 @@ import type { ClauseOptionOverride, ProductCoverage } from "../product/types";
 import { type Coordinate, type Id, type Issue, ok, reject, type Result } from "../types";
 import { buildContexts, generalCoordinate, generalDocumentOf, specialCoordinate, type AssemblyContext, type AssemblyContexts } from "./context";
 import { ensureApplicationArticle } from "./application";
+import { authoredEmptyArticleIds, dropEmptyArticles } from "./emptyArticle";
 import { replaceGeneralWithBase } from "./base";
 import { judgeOmission } from "./omission";
 import { collectAppendices, locateIssues, numberDocument, renderDocument } from "./render";
@@ -225,11 +226,11 @@ function buildGeneral(input: AssemblyInput, contexts: AssemblyContexts, s: Share
         if (original) for (const [from, to] of positionAliases(original, baseArticle, (code) => s.clauses.get(code)?.mode === "box")) replaced.aliases.set(from, to);
       }
       const replacementIssues = replaced.issues.map((issue) => ({ ...issue, source: { document: "coverageMaster" as const, ownerId: base.snapshot.coverageId, documentId: doc.id, ownerName: base.snapshot.coverageName, articleId: issue.at.articleId, articleTitle: issue.at.articleTitle, nodePath: issue.at.articleId ? [doc.id, issue.at.articleId] : undefined } }));
-      return { numbered: numberDocument(replaced.doc), issues: [...generalPrepared.issues, ...basePrepared.issues, ...replacementIssues], omitted: [], aliases: replaced.aliases, ...(hidden ? { hidden } : {}) };
+      return { numbered: numberDocument(dropEmptyArticles(replaced.doc, authoredEmptyArticleIds(g)).doc), issues: [...generalPrepared.issues, ...basePrepared.issues, ...replacementIssues], omitted: [], aliases: replaced.aliases, ...(hidden ? { hidden } : {}) };
     }
   }
   const prepared = prepare(g, contexts.general, s, { coordinate: generalCoordinate(input.product, master), overrides: input.product.overrides, ...prepareCoordinates(input, g) });
-  return { numbered: numberDocument(prepared.doc), issues: prepared.issues, omitted: [], ...(hidden ? { hidden } : {}) };
+  return { numbered: numberDocument(dropEmptyArticles(prepared.doc, authoredEmptyArticleIds(g)).doc), issues: prepared.issues, omitted: [], ...(hidden ? { hidden } : {}) };
 }
 
 function buildSpecial(input: AssemblyInput, contexts: AssemblyContexts, s: Shared, c: AssemblyCoverage, general: Built | undefined): Built | undefined {
@@ -243,7 +244,7 @@ function buildSpecial(input: AssemblyInput, contexts: AssemblyContexts, s: Share
   });
   const withApplication = ensureApplicationArticle(prepared.doc);
   const judged = judgeOmission(withApplication, general?.numbered.doc, { productCoverageId: c.snapshot.id, productCoverageName: c.snapshot.name }, general?.hidden);
-  return { numbered: numberDocument(judged.doc), issues: [...prepared.issues, ...judged.issues], omitted: judged.records };
+  return { numbered: numberDocument(dropEmptyArticles(judged.doc, authoredEmptyArticleIds(doc)).doc), issues: [...prepared.issues, ...judged.issues], omitted: judged.records };
 }
 
 // ───────────────────────────── 9. 특약 배치 ─────────────────────────────
