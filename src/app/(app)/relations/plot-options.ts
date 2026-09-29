@@ -16,6 +16,7 @@ export const ALL_NODE_KINDS = [
   "masterField",
   "enum",
   "enumValue",
+  "enumField",
   "attribute",
   "attributeValue",
   "document",

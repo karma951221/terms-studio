@@ -38,6 +38,9 @@ export const DESTRUCTIVE_ACTIONS = [
   "product.detachPlan", // 세목 조합 제거
   "attribute.delete", // 담보속성 종류 삭제 — 상품담보 조합 오류화
   "attribute.deleteValue", // 담보속성 유효값 삭제
+  // catalog — 열거형 유저 정의 필드 (ADR-0078 결정 2)
+  "enum.deleteField", // 열거형 필드 삭제 — 값마다 넣은 그 필드 값 · 읽는 곳 재검사
+  "enum.changeFieldType", // 열거형 필드 타입 변경 — 옛 타입 값 삭제 · 읽는 곳 재검사
 ] as const;
 
 export type DestructiveAction = (typeof DESTRUCTIVE_ACTIONS)[number];

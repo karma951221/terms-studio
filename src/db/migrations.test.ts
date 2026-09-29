@@ -336,3 +336,16 @@ describe("0017_attribute_value_numeric_code", () => {
     expect(codes.rows.map((r) => r.code)).toEqual(["V01", "V1"]);
   });
 });
+
+describe("0018_enum_fields", () => {
+  it("옛 열거형 · 열거값 행은 필드 없음(fields = [] · {})을 받는다", async () => {
+    for (let idx = 6; idx <= 17; idx++) for (const s of statementsOf(tagOf(idx))) await client.exec(s);
+    const [{ id }] = (await client.query<{ id: string }>(`INSERT INTO enums (code, label) VALUES ('E0001', '납입면제사유') RETURNING id`)).rows as [{ id: string }];
+    await client.query(`INSERT INTO enum_values (enum_id, code, label, "order") VALUES ($1, 'V01', '암', 0)`, [id]);
+    await client.transaction(async (tx) => {
+      for (const s of statementsOf(tagOf(18))) await tx.exec(s);
+    });
+    expect((await client.query<{ fields: unknown }>(`SELECT fields FROM enums`)).rows).toEqual([{ fields: [] }]);
+    expect((await client.query<{ fields: unknown }>(`SELECT fields FROM enum_values`)).rows).toEqual([{ fields: {} }]);
+  });
+});

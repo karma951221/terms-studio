@@ -50,6 +50,8 @@ export function nodeKey(key: RefNodeKey): string {
       return `enum:${key.enumCode}`;
     case "enumValue":
       return `enumValue:${key.enumCode}/${key.valueCode}`;
+    case "enumField":
+      return `enumField:${key.enumCode}/${key.key}`;
     case "clause":
       return `clause:${key.code}`;
     case "clauseOption":
@@ -81,6 +83,7 @@ export function nodeKey(key: RefNodeKey): string {
 export function structuralParent(key: RefNodeKey): RefNodeKey | undefined {
   switch (key.kind) {
     case "enumValue":
+    case "enumField":
       return { kind: "enum", enumCode: key.enumCode };
     case "clauseOption":
       return { kind: "clause", code: key.clauseCode };
@@ -493,6 +496,8 @@ export function buildGraph(inputs: GraphInputs): RefGraph {
     const key: RefNodeKey = { kind: "enum", enumCode: e.code };
     b.node({ key, label: e.label });
     for (const v of e.values) b.node({ key: { kind: "enumValue", enumCode: e.code, valueCode: v.code }, label: v.label, parent: key });
+    // 유저 정의 필드 (ADR-0078 결정 2) — 읽는 간선은 함수조항 내부 변수 · 슬롯이 들어올 때 붙는다. 선언해 둬야 그 간선이 깨진 참조가 아니다
+    for (const f of e.fields ?? []) b.node({ key: { kind: "enumField", enumCode: e.code, key: f.key }, label: f.label, parent: key, detail: f.type });
   }
   for (const a of inputs.appendices ?? []) b.node({ key: { kind: "appendix", code: a.code }, label: a.name });
   for (const k of inputs.attributeKinds ?? []) {

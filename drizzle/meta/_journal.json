@@ -127,6 +127,13 @@
       "when": 1790522288467,
       "tag": "0017_attribute_value_numeric_code",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790702560347,
+      "tag": "0018_enum_fields",
+      "breakpoints": true
     }
   ]
 }

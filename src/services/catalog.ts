@@ -21,6 +21,7 @@ import {
   createEnum,
   discriminatorResultType,
   discriminatorWarnings,
+  ENUM_FIELD_TYPE_LABEL,
   enumReferences,
   inspectExpression,
   NO_VALUE_STORE,
@@ -148,6 +149,16 @@ export function createCatalogService(db: Db, deps: CatalogServiceDeps = {}): Cat
 
   function catalogOf(defs: readonly Discriminator[]): ReadonlyMap<Code, Discriminator> {
     return new Map(defs.map((d) => [d.code, d]));
+  }
+
+  /** 필드 삭제 · 타입 변경의 확인창 한 줄 — 「필드 「면책여부」 — 값 2개의 입력이 지워진다」. 입력 수는 저장 전 정의에서 센다. */
+  function fieldLoss(before: EnumDef, after: EnumDef, key: Code): string {
+    const was = before.fields?.find((f) => f.key === key);
+    const now = after.fields?.find((f) => f.key === key);
+    const entered = before.values.filter((v) => v.fields?.[key] !== undefined).length;
+    const name = `필드 「${now?.label ?? was?.label ?? key}」`;
+    const change = now && was && now.type !== was.type ? ` 타입 ${ENUM_FIELD_TYPE_LABEL[was.type]} → ${ENUM_FIELD_TYPE_LABEL[now.type]}` : "";
+    return `${name}${change} — 값 ${entered}개의 입력이 지워진다`;
   }
 
   /** 저장 전 검사 — 구분자 참조를 풀려면 카탈로그가 필요하다 (기능/구분자 §3.2). */
@@ -352,19 +363,26 @@ export function createCatalogService(db: Db, deps: CatalogServiceDeps = {}): Cat
             const ctx = await context(tx);
             const revised = await reviseEnum(def, revision, { existingEnumLabels: ctx.existingEnumLabels ?? [], nextSeq: ctx.nextSeq });
             if (!revised.ok) return revised as Result<EnumDef>;
-            const { def: next, removed } = revised.value;
+            const { def: next, removed, removedFields, retypedFields } = revised.value;
             const targets = removed.map((valueCode): ImpactTarget => ({ kind: "enumValue", enumCode: code, valueCode }));
+            // 필드 삭제 · 타입 변경 — 그 필드를 읽는 곳(참조 그래프의 enumField 간선)이 깨질 참조, 값마다 넣은 입력이 함께 지워질 항목 (ADR-0078 결정 2)
+            const fieldImpacts = [...removedFields, ...retypedFields].map((key) =>
+              computeImpact({ kind: "enumField", enumCode: code, key }, impact, { cascade: [fieldLoss(def, next, key)] }),
+            );
             // 뺀 값을 고른 값 행은 지우지 않는다 — 코드가 남아 값 폼 · 조립에서 「없는 값」 오류가 된다 (ADR-0078 결정 5)
             const save = async (): Promise<Result<EnumDef>> => {
               await repo.saveEnum(tx, next, actor.userId);
               return ok(next);
             };
-            if (targets.length === 0) return save();
+            if (targets.length === 0 && fieldImpacts.length === 0) return save();
+            // 셋 모두 관리자 전용이라 판정은 같다 — 거부 사유에는 가장 앞선 변경을 싣는다(값 삭제 → 필드 삭제 → 타입 변경)
+            const action = targets.length > 0 ? "enum.deleteValue" : removedFields.length > 0 ? "enum.deleteField" : "enum.changeFieldType";
             return destructive<EnumDef>({
               actor,
-              action: "enum.deleteValue",
+              action,
               confirm: opts.confirm,
-              computeImpact: async () => mergeImpacts(await Promise.all(targets.map((target) => computeImpact(target, impact)))),
+              computeImpact: async () =>
+                mergeImpacts([...(await Promise.all(targets.map((target) => computeImpact(target, impact)))), ...(await Promise.all(fieldImpacts))]),
               execute: save,
             });
           }),

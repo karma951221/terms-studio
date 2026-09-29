@@ -38,6 +38,8 @@ describe("역할권한 S1 — 편집자: 파괴적 액션은 서버가 거부", 
       "appendix.delete",
       "attribute.delete",
       "attribute.deleteValue",
+      "enum.deleteField",
+      "enum.changeFieldType",
     ]) {
       expect(DESTRUCTIVE_ACTIONS).toContain(a);
       expect(isDestructiveAction(a)).toBe(true);

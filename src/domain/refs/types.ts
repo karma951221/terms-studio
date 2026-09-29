@@ -29,6 +29,8 @@ export type RefNodeKey =
   | { kind: "masterField"; path: string }
   | { kind: "enum"; enumCode: Code }
   | { kind: "enumValue"; enumCode: Code; valueCode: Code }
+  /** 열거형 유저 정의 필드 (ADR-0078 결정 2). 읽는 간선(함수조항 내부 변수 · 슬롯)은 함수조항 인자 · 내부 변수가 들어올 때 붙는다 */
+  | { kind: "enumField"; enumCode: Code; key: Code }
   | { kind: "clause"; code: Code }
   | { kind: "clauseOption"; clauseCode: Code; optionCode: Code }
   | { kind: "clauseOptionValue"; clauseCode: Code; optionCode: Code; valueCode: Code }

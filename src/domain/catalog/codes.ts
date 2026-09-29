@@ -6,6 +6,7 @@
  * | 구분자      | D    | 4           | 전역                 | D0001   |
  * | enum        | E    | 4           | 전역                 | E0001   |
  * | enum 값     | V    | 2           | 소속 enum 코드마다   | V01     |
+ * | enum 필드   | F    | 2           | 소속 enum 코드마다   | F01     |
  *
  * 마스터 필드 코드는 여기서 채번하지 않는다 — 코드(소스)에 사람이 적는다 (ADR-0037).
  *
@@ -17,31 +18,34 @@
  */
 import type { Code } from "../types";
 
-export type CodeKind = "discriminator" | "enum" | "enumValue";
+export type CodeKind = "discriminator" | "enum" | "enumValue" | "enumField";
 
 export const CODE_PREFIX: Record<CodeKind, string> = {
   discriminator: "D",
   enum: "E",
   enumValue: "V",
+  enumField: "F",
 };
 
 export const CODE_MIN_WIDTH: Record<CodeKind, number> = {
   discriminator: 4,
   enum: 4,
   enumValue: 2,
+  enumField: 2,
 };
 
 /** 유효한 코드 문자열의 모양. */
-export const CODE_PATTERN = /^([DEV])(\d+)$/;
+export const CODE_PATTERN = /^([DEVF])(\d+)$/;
 
 const PREFIX_TO_KIND: Record<string, CodeKind> = {
   D: "discriminator",
   E: "enum",
   V: "enumValue",
+  F: "enumField",
 };
 
 /**
- * 순번의 출처 — 저장소가 구현한다. scope 는 enumValue 면 소속 enum 코드, 그 외는 "" (전역).
+ * 순번의 출처 — 저장소가 구현한다. scope 는 enumValue · enumField 면 소속 enum 코드, 그 외는 "" (전역).
  * 호출마다 1 씩 오르는 정수를 돌려준다.
  */
 export type NextSeq = (kind: CodeKind, scope: string) => Promise<number> | number;

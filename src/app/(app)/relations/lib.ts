@@ -33,6 +33,8 @@ export function parseRefTarget(q: RelationQuery): RefNodeKey | undefined {
       return q.code ? { kind: "enum", enumCode: q.code } : undefined;
     case "enumValue":
       return q.code && q.valueCode ? { kind: "enumValue", enumCode: q.code, valueCode: q.valueCode } : undefined;
+    case "enumField":
+      return q.code && q.fieldCode ? { kind: "enumField", enumCode: q.code, key: q.fieldCode } : undefined;
     case "clause":
       return q.code ? { kind: "clause", code: q.code } : undefined;
     case "clauseOption":
@@ -70,6 +72,7 @@ export const KIND_OPTIONS: readonly { value: string; label: string }[] = [
   { value: "masterField", label: "구분자 필드" },
   { value: "enum", label: ENTITY_LABEL.enum },
   { value: "enumValue", label: "열거형변수 값" },
+  { value: "enumField", label: "열거형변수 필드" },
   { value: "clause", label: "공용조항" },
   { value: "clauseOption", label: "공용조항 옵션" },
   { value: "clauseOptionValue", label: "옵션 선택지" },
@@ -103,6 +106,10 @@ export function refTargetParams(key: RefNodeKey): Record<string, string> {
     case "enumValue":
       params.code = key.enumCode;
       params.valueCode = key.valueCode;
+      break;
+    case "enumField":
+      params.code = key.enumCode;
+      params.fieldCode = key.key;
       break;
     case "clauseOption":
       params.code = key.clauseCode;

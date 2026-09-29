@@ -357,6 +357,8 @@ function selfFragment(key: RefNodeKey): string {
   switch (key.kind) {
     case "enumValue":
       return `값 ${key.valueCode}`;
+    case "enumField":
+      return `필드 ${key.key}`;
     case "clauseOption":
       return `옵션 ${key.optionCode}`;
     case "clauseOptionValue":
@@ -417,6 +419,8 @@ export function describeKey(key: RefNodeKey, graph?: RefGraph): string {
       return `enum ${key.enumCode}`;
     case "enumValue":
       return `enum 값 ${key.enumCode}/${key.valueCode}`;
+    case "enumField":
+      return `enum 필드 ${key.enumCode}/${key.key}`;
     case "clause":
       return `공용조항 ${key.code}`;
     case "clauseOption":

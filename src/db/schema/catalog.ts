@@ -12,7 +12,7 @@
  */
 import { integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
-import type { DiscriminatorResultType } from "@/domain/catalog/types";
+import type { DiscriminatorResultType, EnumFieldDef, EnumFieldValue } from "@/domain/catalog/types";
 
 /** 감사 컬럼 — 모든 카탈로그 테이블 공통. */
 const audit = {
@@ -46,6 +46,8 @@ export const enums = pgTable("enums", {
   code: text("code").notNull().unique(),
   label: text("label").notNull(),
   description: text("description").notNull().default(""),
+  /** 유저 정의 필드 (ADR-0078 결정 2) — `[{ key: "F01", label, type: "string" | "boolean", order }]`. 빈 배열 = 필드 없음. */
+  fields: jsonb("fields").$type<EnumFieldDef[]>().notNull().default([]),
   ...audit,
 });
 
@@ -61,6 +63,8 @@ export const enumValues = pgTable(
     label: text("label").notNull(),
     /** 선택지 표시 순서 (D-P1-8). */
     order: integer("order").notNull(),
+    /** 필드 코드 → 값 (ADR-0078 결정 2). 키 없음 = 미입력. */
+    fields: jsonb("fields").$type<Record<string, EnumFieldValue>>().notNull().default({}),
     ...audit,
   },
   (t) => [uniqueIndex("enum_values_owner_code").on(t.enumId, t.code)],

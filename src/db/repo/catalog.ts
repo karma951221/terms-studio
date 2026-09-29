@@ -64,12 +64,19 @@ function toRow(def: Discriminator) {
   };
 }
 
+/** 필드가 없으면 키를 싣지 않는다 — 「없음 = 빈 목록」(ADR-0078 결정 2). 조립 스냅샷 · 시드 대조가 필드 없는 열거형에서 그대로다. */
 function toEnum(row: EnumRow, values: EnumValueRow[]): EnumDef {
   return {
     code: row.code,
     label: row.label,
     description: row.description,
-    values: values.map<EnumValueDef>((v) => ({ code: v.code, label: v.label, order: v.order })),
+    ...(row.fields.length > 0 ? { fields: row.fields } : {}),
+    values: values.map<EnumValueDef>((v) => ({
+      code: v.code,
+      label: v.label,
+      order: v.order,
+      ...(Object.keys(v.fields).length > 0 ? { fields: v.fields } : {}),
+    })),
   };
 }
 
@@ -161,11 +168,11 @@ export async function listEnums(db: Db): Promise<EnumDef[]> {
 export async function insertEnum(db: Db, def: EnumDef, who: Id): Promise<void> {
   const [row] = await db
     .insert(enums)
-    .values({ code: def.code, label: def.label, description: def.description ?? "", createdBy: who, updatedBy: who })
+    .values({ code: def.code, label: def.label, description: def.description ?? "", fields: def.fields ?? [], createdBy: who, updatedBy: who })
     .returning({ id: enums.id });
   if (def.values.length > 0) {
     await db.insert(enumValues).values(
-      def.values.map((v) => ({ enumId: row.id, code: v.code, label: v.label, order: v.order, createdBy: who, updatedBy: who })),
+      def.values.map((v) => ({ enumId: row.id, code: v.code, label: v.label, order: v.order, fields: v.fields ?? {}, createdBy: who, updatedBy: who })),
     );
   }
 }
@@ -174,7 +181,7 @@ export async function saveEnum(db: Db, def: EnumDef, who: Id): Promise<void> {
   const now = new Date();
   const [row] = await db
     .update(enums)
-    .set({ label: def.label, description: def.description ?? "", updatedAt: now, updatedBy: who })
+    .set({ label: def.label, description: def.description ?? "", fields: def.fields ?? [], updatedAt: now, updatedBy: who })
     .where(eq(enums.code, def.code))
     .returning({ id: enums.id });
   if (!row) throw new Error(`저장 대상 enum 이 없습니다: ${def.code}`);
@@ -188,10 +195,10 @@ export async function saveEnum(db: Db, def: EnumDef, who: Id): Promise<void> {
   for (const v of def.values) {
     await db
       .insert(enumValues)
-      .values({ enumId: row.id, code: v.code, label: v.label, order: v.order, createdBy: who, updatedBy: who })
+      .values({ enumId: row.id, code: v.code, label: v.label, order: v.order, fields: v.fields ?? {}, createdBy: who, updatedBy: who })
       .onConflictDoUpdate({
         target: [enumValues.enumId, enumValues.code],
-        set: { label: v.label, order: v.order, updatedAt: now, updatedBy: who },
+        set: { label: v.label, order: v.order, fields: v.fields ?? {}, updatedAt: now, updatedBy: who },
       });
   }
 }

@@ -200,6 +200,8 @@ function impactKey(target: ImpactTarget): RefNodeKey {
       return { kind: "enum", enumCode: target.enumCode };
     case "enumValue":
       return { kind: "enumValue", enumCode: target.enumCode, valueCode: target.valueCode };
+    case "enumField":
+      return { kind: "enumField", enumCode: target.enumCode, key: target.key };
   }
 }
 
@@ -223,6 +225,8 @@ export function catalogImpactSource(db: Db): ImpactSource {
           return valuesRepo.countPathRows(db, enumSlots(target.enumCode).map((s) => s.path));
         case "enumValue":
           return refsRepo.countEnumValueRows(db, enumSlots(target.enumCode), target.valueCode);
+        case "enumField":
+          return 0; // 필드 값은 열거형 정의 안에 산다 — 상품 · 세목 값 행이 아니다 (ADR-0078 결정 2)
       }
     },
     async findBrokenRefs(target) {
@@ -238,6 +242,9 @@ export function catalogImpactSource(db: Db): ImpactSource {
         case "enumValue":
           // 값 삭제는 값 행을 남긴다 — 코드가 남아 「없는 값」 오류가 된다 (ADR-0078 결정 5). 서비스도 부르지 않는다.
           return;
+        case "enumField":
+          return; // 값 행이 없다
+
       }
     },
   };
