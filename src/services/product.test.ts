@@ -126,6 +126,22 @@ describe("product 서비스 (PGlite)", () => {
       expect(await svc.listPlans(p.id)).toEqual([]);
     });
 
+    it("납입면제 적용여부 = 예인데 사유가 0개면 저장 거부 — 저장된 값 위에 이번 제출을 얹은 최종 상태로 본다 (결정 16)", async () => {
+      const p = unwrap(await svc.createProduct(editor, { name: "기본정보 납입면제 폼 검사" }));
+      const draftId = "bbbbbbbb-0000-4000-8000-000000000002";
+      const draft = { id: draftId, isNew: true, axis: "type" as const, number: 1, name: "보험료납입면제형", planTypeCode: "waiver" };
+      const r = await svc.saveBasic(editor, p.id, { name: p.name, values: [], options: [{ ...draft, values: [{ path: "waiver.applies", value: true }] }], combinations: [] });
+      expect(reason(r)).toBe("invalid");
+      if (!r.ok && r.rejection.reason === "invalid") expect(r.rejection.issues[0]).toMatchObject({ message: expect.stringContaining("납입면제사유"), at: { refPath: "waiver.reasons" } });
+      expect(await svc.listPlanOptions(p.id)).toEqual([]);
+      unwrap(await svc.saveBasic(editor, p.id, { name: p.name, values: [], options: [{ ...draft, values: [{ path: "waiver.applies", value: true }, { path: "waiver.reasons", value: ["V02"] }] }], combinations: [] }));
+      // 기존 종목 — 사유를 싣지 않은 제출은 저장된 사유를 본다(통과), 사유를 비우는 제출은 거부
+      const [o] = await svc.listPlanOptions(p.id);
+      unwrap(await svc.saveBasic(editor, p.id, { name: p.name, values: [], options: [{ ...o, isNew: false, values: [{ path: "waiver.applies", value: true }] }], combinations: [] }));
+      expect(reason(await svc.saveBasic(editor, p.id, { name: p.name, values: [], options: [{ ...o, isNew: false, values: [{ path: "waiver.reasons", value: [] }] }], combinations: [] }))).toBe("invalid");
+      expect((await svc.getPlanOptionValues(o.id)).get("waiver.reasons")).toEqual(entered(["V02"]));
+    });
+
     it("다른 상품의 종목을 거부하고 삭제는 권한·영향 확인 후에만 반영한다", async () => {
       const p = unwrap(await svc.createProduct(editor, { name: "기본정보 삭제" }));
       const other = unwrap(await svc.createProduct(editor, { name: "기본정보 다른 상품" }));
@@ -239,7 +255,11 @@ describe("product 서비스 (PGlite)", () => {
       expect(reason(r2)).toBe("invalid");
       expect((await svc.getPlanOptionValues(t1)).get("waiver.applies")).toEqual({ entered: true, value: false });
       // 전부 통하면 전부 쓴다
-      unwrap(await svc.setPlanOptionValues(editor, t1, [{ path: "waiver.applies", value: true }, { path: "waiver.reasons", value: [] }]));
+      // 적용여부 = 예 + 사유 0개는 폼 교차 규칙 위반 (결정 16) — 사유를 고른 제출만 통한다
+      expect(reason(await svc.setPlanOptionValues(editor, t1, [{ path: "waiver.applies", value: true }, { path: "waiver.reasons", value: [] }]))).toBe("invalid");
+      expect(reason(await svc.setPlanOptionValue(editor, t1, "waiver.applies", true))).toBe("invalid"); // 저장된 사유 없음 = 0개
+      expect((await svc.getPlanOptionValues(t1)).get("waiver.applies")).toEqual({ entered: true, value: false });
+      unwrap(await svc.setPlanOptionValues(editor, t1, [{ path: "waiver.applies", value: true }, { path: "waiver.reasons", value: ["V02"] }]));
       expect((await svc.getPlanOptionValues(t1)).get("waiver.applies")).toEqual({ entered: true, value: true });
       // 되돌리기도 한 제출로 — 다음 테스트(완결성)가 t1 미입력을 전제한다
       unwrap(await svc.setPlanOptionValues(editor, t1, [{ path: "waiver.applies", value: undefined }, { path: "waiver.reasons", value: undefined }]));

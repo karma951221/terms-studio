@@ -318,7 +318,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
     const type2 = unwrap(await product.addPlanOption(editor, productId, { axis: "type", number: 2, name: "2종", planTypeCode: "waiver" }));
     const form1 = unwrap(await product.addPlanOption(editor, productId, { axis: "form", number: 1, name: "1형", planTypeCode: "no_surrender" }));
     const form2 = unwrap(await product.addPlanOption(editor, productId, { axis: "form", number: 2, name: "2형", planTypeCode: "no_surrender" }));
-    unwrap(await product.setPlanOptionValue(editor, type1.id, "waiver.applies", true));
+    unwrap(await product.setPlanOptionValues(editor, type1.id, [{ path: "waiver.applies", value: true }, { path: "waiver.reasons", value: ["V01"] }])); // 예면 사유 1개 이상 (결정 16)
     unwrap(await product.setPlanOptionValue(editor, type2.id, "waiver.applies", false));
     unwrap(await product.setPlanOptionValue(editor, form1.id, "no_surrender.type", "V01"));
     unwrap(await product.setPlanOptionValue(editor, form2.id, "no_surrender.type", "V02"));
@@ -333,7 +333,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
       [form1.id, "form", 1, "1형", "no_surrender"],
     ]);
     expect(input.product.planOptions.map((o) => [...o.values.entries()])).toEqual([
-      [["waiver.applies", { entered: true, value: true }]],
+      [["waiver.applies", { entered: true, value: true }], ["waiver.reasons", { entered: true, value: ["V01"] }]],
       [["waiver.applies", { entered: true, value: false }]],
       [["no_surrender.type", { entered: true, value: "V01" }]],
     ]);
@@ -402,7 +402,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
     it("상품 값 행 삭제만으로도 stale:true — 최신 행이 아닌 것을 지워도 count 가 잡는다", async () => {
       const [newest, older] = (await product.listPlanOptions(productId)).filter((o) => o.axis === "type");
       // newest 의 값을 마지막으로 써 max(updated_at) 을 그 행에 둔다 → older 의 값 삭제는 max 를 바꾸지 않는다
-      unwrap(await product.setPlanOptionValue(editor, newest.id, "waiver.applies", true));
+      unwrap(await product.setPlanOptionValues(editor, newest.id, [{ path: "waiver.applies", value: true }, { path: "waiver.reasons", value: ["V01"] }]));
       unwrap(await svc.run(editor, productId));
       expect((await svc.latest(productId))!.stale).toBe(false);
       unwrap(await product.setPlanOptionValue(editor, older.id, "waiver.applies", undefined));
@@ -423,7 +423,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
     it("다른 상품의 고유분 변경은 이 상품을 오래되게 하지 않는다", async () => {
       const other = unwrap(await product.createProduct(editor, { name: "다른 상품" }));
       const opt = unwrap(await product.addPlanOption(editor, other.id, { axis: "type", number: 1, name: "1종", planTypeCode: "waiver" }));
-      unwrap(await product.setPlanOptionValue(editor, opt.id, "waiver.applies", true));
+      unwrap(await product.setPlanOptionValues(editor, opt.id, [{ path: "waiver.applies", value: true }, { path: "waiver.reasons", value: ["V01"] }]));
       unwrap(await product.setArticleHidden(editor, productId, "g-art-def", false)); // 멱등 — 아무것도 안 바뀐다
       expect((await svc.latest(productId))!.stale).toBe(false);
       expect(await svc.latest(other.id)).toBeUndefined();

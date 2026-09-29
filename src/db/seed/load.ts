@@ -209,7 +209,8 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
     for (const option of specification.planOptions) {
       const created = unwrap(await services.product.addPlanOption(actor, productId, { axis: option.axis as "type" | "form", number: option.number, name: option.name, planTypeCode: option.planTypeCode }));
       optionIds.set(option.code, created.id);
-      for (const entry of option.values) unwrap(await services.product.setPlanOptionValue(actor, created.id, entry.path, entry.value as Value));
+      // 한 제출로 — 폼 교차 규칙(적용여부 = 예면 사유 1개 이상)은 최종 상태로 본다
+      unwrap(await services.product.setPlanOptionValues(actor, created.id, option.values.map((entry) => ({ path: entry.path, value: entry.value as Value }))));
     }
     for (const combination of specification.plans) {
       const ids = combination.map((code) => optionIds.get(code));

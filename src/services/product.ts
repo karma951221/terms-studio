@@ -65,9 +65,9 @@ import {
   type SnapshotNode,
   type SpecialGroup,
 } from "@/domain/product";
-import { findForm, findMasterField, type MasterForm } from "@/domain/master";
+import { findForm, findMasterField, formRuleIssues, type MasterForm } from "@/domain/master";
 import type { Actor, AttachLevel, Code, Coordinate, Id, Impact, Issue, Result, Value, ValueSlot } from "@/domain/types";
-import { mergeImpacts, ok, reject } from "@/domain/types";
+import { entered, mergeImpacts, ok, reject } from "@/domain/types";
 
 import * as catalog from "@/db/repo/catalog";
 import * as repo from "@/db/repo/product";
@@ -355,6 +355,21 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
     return validateSlotValue(path, type, value, findEnum, { refPath: path });
   }
 
+  /**
+   * 폼 교차 규칙 (결정 16 — waiver 「적용여부 = 예면 사유 1개 이상」). 저장된 값 위에 이번 제출을 얹은 **최종 상태**로 본다 —
+   * 한 필드만 고치는 제출도 저장된 다른 필드와 함께 판정한다. `undefined` 제출은 미입력으로 되돌리기다.
+   */
+  async function formRulesOf(tx: Db, owner: ValueOwner | undefined, formKey: Code, entries: readonly SlotWrite[]): Promise<Issue[]> {
+    const form = findForm(formKey);
+    if (!form?.rules?.length) return [];
+    const next = new Map<SlotPath, ValueSlot>(owner ? await readSlots(tx, owner) : []);
+    for (const e of entries) {
+      if (e.value === undefined) next.delete(e.path);
+      else next.set(e.path, entered(e.value));
+    }
+    return formRuleIssues(form, (path) => next.get(path));
+  }
+
   /** 값 자리 하나 쓰기 (검증 포함). */
   async function writeChecked(tx: Db, actor: Actor, owner: ValueOwner, path: SlotPath, value: Value | undefined): Promise<Result<void>> {
     return writeAllChecked(tx, actor, owner, [{ path, value }]);
@@ -411,7 +426,12 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
           foreign.map((e) => issue("brokenRef", `세목 선택지 ${planOptionLabel(o)} 의 세목유형은 ${o.planTypeCode} 라 ${e.path} 자리가 없습니다`, { refPath: e.path })),
         );
       }
-      return writeAllChecked(tx, actor, { kind: "plan", id: optionId }, entries);
+      const owner: ValueOwner = { kind: "plan", id: optionId };
+      const issues: Issue[] = [];
+      for (const e of entries) issues.push(...(await checkSlot(tx, owner, e.path, e.value)));
+      if (issues.length === 0) issues.push(...(await formRulesOf(tx, owner, o.planTypeCode, entries)));
+      if (issues.length > 0) return invalid(issues);
+      return writeAllChecked(tx, actor, owner, entries);
     });
   }
 
@@ -555,6 +575,11 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
           const field = findMasterField(entry.path);
           if (!field || field.form.key !== option.planTypeCode) issues.push(issue("brokenRef", `보험종목의 입력 항목이 아닙니다: ${entry.path}`));
           issues.push(...await checkSlot(tx, { kind: "plan", id: option.id }, entry.path, entry.value));
+        }
+        if (!option.isNew && !existing) continue;
+        // 여러 종목을 한 번에 저장하니 어느 종목인지 문구에 싣는다 — 오류는 고칠 자리로 안내한다
+        for (const broken of await formRulesOf(tx, option.isNew ? undefined : { kind: "plan", id: option.id }, option.planTypeCode, option.values)) {
+          issues.push({ ...broken, message: `${planOptionLabel(option)} — ${broken.message}`, at: { ...broken.at, ownerId: option.id } });
         }
       }
       for (const entry of input.values) issues.push(...await checkSlot(tx, { kind: "product", id }, entry.path, entry.value));

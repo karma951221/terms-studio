@@ -12,7 +12,7 @@
  * 선택(`optional`)은 마스터 코드가 정한다 — 폼 단위(감액 · 면책)와 필드 단위(면책여부 · 지급률).
  * 미입력 상태로 태어나고 기본값은 프리필뿐이다 (ADR-0004).
  */
-import type { AttachLevel, Code, FieldType, Value } from "../types";
+import type { AttachLevel, Code, FieldType, Value, ValueSlot } from "../types";
 
 /** 마스터 필드 하나. 키는 폼 안에서 유일 · 불변. */
 export interface MasterField {
@@ -53,6 +53,21 @@ export interface MasterForm {
   optional?: true;
   /** 시스템 소유 폼 — 키 · 레벨 · 시스템 필드 잠금의 근거 (ADR-0065 §3). */
   system?: true;
+  /**
+   * 폼 교차 규칙 — 한 필드의 타입만으로는 안 보이는 필드 사이의 뜻(「적용여부 = 예면 사유 1개 이상」).
+   * 값 쓰기가 **최종 상태**(저장된 값 + 이번 제출)로 부르고, 어기면 저장 거부다 (`formRuleIssues`).
+   */
+  rules?: readonly FormRule[];
+}
+
+/** 폼 안 필드 키로 값 자리를 읽는다 — 자리를 모르면 undefined (= 미입력). */
+export type FormFieldReader = (fieldKey: Code) => ValueSlot | undefined;
+
+/** 폼 교차 규칙 하나. 어기면 `{ field, message }` — field 는 고치러 갈 필드 키. */
+export interface FormRule {
+  /** 규칙 한 줄 (마스터 화면 · 문서용). */
+  description: string;
+  check(read: FormFieldReader): { field: Code; message: string } | undefined;
 }
 
 /** 마스터 필드 경로 — `폼키.필드키`. 값 자리이자 식의 참조 경로. */
