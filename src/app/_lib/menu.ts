@@ -1,6 +1,6 @@
 /**
- * 메뉴 구성 — 작업 순서대로 묶은 네 단계(기본정보 → 담보 설계 → 약관 조문 → 상품) + 점검.
- * 좌측 내비(단계 제목 아래 항목)와 홈(네 열 + 점검 띠)이 같은 구성을 쓴다 — 한쪽만 바꾸지 않게 여기 둔다.
+ * 메뉴 구성 — 작업 순서대로 묶은 다섯 단계(기본정보 → 담보 설계 → 정적 마스터 → 약관 조문 → 상품) + 점검.
+ * 좌측 내비(단계 제목 아래 항목)와 홈(다섯 열 + 점검 띠)이 같은 구성을 쓴다 — 한쪽만 바꾸지 않게 여기 둔다.
  * 항목 하나 = 기능 하나 = route 하나 (ADR-0073). 상세 · 생성 화면의 경로 첫 마디도 여기 이름을 쓴다(`menuCrumb`).
  */
 import { ENTITY_LABEL } from "@/app/_lib/labels";
@@ -32,12 +32,19 @@ export const MENU_FLOW: MenuGroup[] = [
     ],
   },
   {
+    // 참조를 품지 않는 고정 내용 — 조문이 가리키거나(별표) 그 자리에 편다(박스). 조문의 재료라 약관 조문 앞 (최종 결정 9)
+    title: ENTITY_LABEL.staticMaster,
+    items: [
+      { href: "/appendices", label: ENTITY_LABEL.appendix, desc: "약관 끝에 싣는 표 — 조문은 가리키기만" },
+      { href: "/boxes", label: ENTITY_LABEL.box, desc: "놓인 자리에 그대로 들어가는 고정 글" },
+    ],
+  },
+  {
     title: "약관 조문",
     items: [
       { href: "/clauses", label: ENTITY_LABEL.clause, desc: "여러 약관이 함께 쓰는 조항" },
       { href: "/documents?kind=general", label: ENTITY_LABEL.generalTemplate, desc: "보통약관 조문 작성" },
       { href: "/documents?kind=coverage", label: ENTITY_LABEL.coverageTemplate, desc: "담보별 특별약관 조문 작성" },
-      { href: "/appendices", label: ENTITY_LABEL.appendix, desc: "약관에 붙는 표" },
     ],
   },
   {

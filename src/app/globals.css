@@ -667,13 +667,13 @@ button.danger:focus-visible {
   align-self: flex-start;
 }
 
-/* ── 홈 — 작업 순서 네 열 + 점검 띠 ── */
+/* ── 홈 — 작업 순서 다섯 열 + 점검 띠 ── */
 .ts-home-flow {
   list-style: none;
   margin: 16px 0 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 28px;
 }
 
@@ -2833,6 +2833,12 @@ label.ts-field > textarea {
 
 .ts-doc-box-line {
   margin: 0;
+}
+
+/* 정적 마스터 박스 참조의 머리 띠 — 어느 박스인지(내용은 박스 화면에서 고친다) */
+.ts-doc-box-ref {
+  margin: 0 0 4px;
+  font-size: 12px;
 }
 
 .ts-doc-group {
