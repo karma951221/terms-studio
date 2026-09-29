@@ -41,9 +41,12 @@ export interface OptionDef {
   order: number;
 }
 
-/** 요구 참조 — 본문·선택지 본문의 모든 식에서 자동 추출. 인자(`arg.X`)는 여기 들지 않는다 — 인자가 읽는 구분자는 연결이 정한다(params.ts). */
+/**
+ * 요구 참조 — 저장할 때 계산해 둔다. 함수조항은 구분자를 직접 읽지 않으므로(최종 결정 2) 구분자는 **인자의 기본 연결**이다 —
+ * 정의가 기대는 구분자(존재 검사 · 삭제 영향의 단위). 사용처가 실제로 읽는 구분자는 연결이 정한다(`boundDiscriminators`).
+ */
 export interface RequiredRefs {
-  /** 본문이 **직접** 읽는 구분자 코드 (등장 순, 중복 없음). 기본 연결 구분자는 `definitionDiscriminators` 가 더한다. */
+  /** 본문이 읽는 인자의 기본 연결 구분자 코드 (처음 읽는 순, 중복 없음). */
   discriminators: Code[];
   /** 담보속성 종류 코드 (ADR-0015). 탑재 문맥에서 확정된다. */
   attributes: Code[];

@@ -90,15 +90,17 @@ describe("container — createServices 관통 (PGlite)", () => {
     expect(unwrap(await s.coverage.completeness(death.id))).toEqual([]);
   });
 
-  it("함수조항 S1 — 「특별약관의 소멸」 C0001: 옵션(어조) + 구분자 D0002 를 읽는 조건 → 요구 구분자 자동 추출", async () => {
+  it("함수조항 S1 — 「특별약관의 소멸」 C0001: 옵션(어조) + 인자(기본 연결 D0002)를 읽는 조건 → 요구 구분자 = 그 기본 연결", async () => {
     const c = unwrap(
       await s.clause.create(editor, {
         label: "특별약관의 소멸",
         mode: "block",
         body: [
           { id: "c-p", kind: "paragraph", children: [{ id: "c-t", kind: "text", text: "소멸합니다. " }, { id: "c-o", kind: "optionSlot", optionCode: "O01" }] },
-          { id: "c-cb", kind: "condBlock", branches: [{ id: "c-br", when: "D0002 = '기준A'", children: [{ id: "c-p2", kind: "paragraph", children: [{ id: "c-t2", kind: "text", text: "기준A 특칙" }] }] }] },
+          { id: "c-cb", kind: "condBlock", branches: [{ id: "c-br", when: "arg.기준 = '기준A'", children: [{ id: "c-p2", kind: "paragraph", children: [{ id: "c-t2", kind: "text", text: "기준A 특칙" }] }] }] },
         ],
+        // 함수조항은 구분자를 직접 읽지 않고 인자만 읽는다 (최종 결정 2)
+        params: [{ name: "기준", type: { kind: "string" }, default: { kind: "discriminator", code: "D0002" } }],
         options: [{ label: "어조", values: [{ label: "사망", body: [{ id: "c-v1", kind: "text", text: "사망 시" }] }, { label: "해지", body: [{ id: "c-v2", kind: "text", text: "해지 시" }] }] }],
       }),
     );
@@ -179,7 +181,7 @@ describe("container — createServices 관통 (PGlite)", () => {
     // 참조 자리는 둘 — 보통약관(상품 오버라이드의 자리)과 담보약관
     expect(v.incoming.map((e) => e.via)).toEqual(["clauseRef", "optionSelect", "clauseRef", "optionSelect"]);
     expect(v.overrides.map((e) => [e.from.kind, e.at.ownerName, e.at.refPath])).toEqual([["product", "알파Plus(축약)", "C0001.O01"]]);
-    expect(v.outgoing.map((e) => e.at.refPath)).toEqual(["D0002"]);
+    expect(v.outgoing.map((e) => [e.via, e.at.refPath])).toEqual([["defaultBinding", "arg.기준"]]);
     const integrity = await s.refs.integrity();
     expect(integrity.broken).toEqual([]);
     expect(integrity.cycles).toEqual([]);
@@ -191,8 +193,8 @@ describe("container — createServices 관통 (PGlite)", () => {
     const impact = impactOf(await s.catalog.remove(admin, "D0002"));
     expect(impact.valueRowsLost).toBe(0); // 구분자는 식이라 값 행이 없다 (ADR-0037)
     const kinds = impact.brokenRefs.map((c: Coordinate) => [c.document, c.ownerName]);
-    expect(kinds).toEqual([["clause", "특별약관의 소멸"]]); // 공용조항 식이 이 구분자를 읽는다
-    expect(impact.brokenRefs[0]).toMatchObject({ ownerId: "C0001", nodePath: ["c-cb", "c-br"], refPath: "D0002" });
+    expect(kinds).toEqual([["clause", "특별약관의 소멸"]]); // 함수조항 인자의 기본 연결이 이 구분자다
+    expect(impact.brokenRefs[0]).toMatchObject({ ownerId: "C0001", refPath: "arg.기준" });
   });
 
   it("역할권한 S3 — 다른 영역의 파괴적 액션 영향에도 그래프 사용처가 실린다: 담보 삭제 · 함수조항 삭제 · 보통약관 삭제 · 담보속성 유효값 삭제", async () => {
@@ -230,8 +232,8 @@ describe("container — createServices 관통 (PGlite)", () => {
     // 값은 마스터 자리에 있으므로 구분자를 지워도 남는다 — 사라진 것은 문면이 부를 이름이다
     expect((await s.product.getSnapshotValues(pcId)).get(pcId)?.has("coverage_basic.claim_name")).toBe(true);
     const { broken, issues } = await s.refs.integrity();
-    expect(broken.map((e) => [e.via, e.at.ownerId])).toEqual([["when", "C0001"]]);
-    expect(issues[0]).toMatchObject({ kind: "brokenRef", at: { document: "clause", ownerId: "C0001", refPath: "D0002" } });
+    expect(broken.map((e) => [e.via, e.at.ownerId])).toEqual([["defaultBinding", "C0001"]]);
+    expect(issues[0]).toMatchObject({ kind: "brokenRef", at: { document: "clause", ownerId: "C0001", refPath: "arg.기준" } });
     // 공용조항 재검사도 같은 사실을 brokenRef 로 보고한다
     const recheck = unwrap(await s.clause.recheck("C0001"));
     expect(recheck[0].issues.map((i) => i.kind)).toEqual(["brokenRef"]);

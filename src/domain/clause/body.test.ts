@@ -15,6 +15,12 @@ function issuesOf(r: { ok: true } | { ok: false; rejection: { reason: string; is
   return r.rejection.issues ?? [];
 }
 
+/** 본문이 읽는 인자 — 함수조항은 구분자를 직접 읽지 않고 인자의 기본 연결로 댄다 (최종 결정 2). */
+const 갱신 = { name: "갱신", type: { kind: "boolean" as const }, default: { kind: "discriminator" as const, code: "D0001" } };
+const 담보명 = { name: "담보명", type: { kind: "string" as const }, default: { kind: "discriminator" as const, code: "D0001" } };
+const 고지 = { name: "고지", type: { kind: "string" as const }, default: { kind: "discriminator" as const, code: "D0002" } };
+const 유형 = { name: "유형", type: { kind: "string" as const }, default: { kind: "discriminator" as const, code: "D0003" } };
+
 const 옵션: OptionDef[] = [
   {
     code: "O01",
@@ -29,18 +35,13 @@ const 옵션: OptionDef[] = [
 
 describe("함수조항 S1 — 본문 노드 규칙 (inline)", () => {
   it("함수조항 값 슬롯도 string·enum 외 타입은 거부한다", () => {
-    const resolveType = (ref: { kind: string; code?: string }) =>
-      ref.kind === "discriminator" && ref.code === "D_TEXT"
-        ? ({ kind: "string" } as const)
-        : ref.kind === "discriminator" && ref.code === "D_NUMBER"
-          ? ({ kind: "number" } as const)
-          : undefined;
+    const resolveType = () => undefined;
     const body: Inline[] = [
-      { id: "s1", kind: "slot", ref: "D_TEXT" },
-      { id: "s2", kind: "slot", ref: "D_NUMBER" },
+      { id: "s1", kind: "slot", ref: "arg.문자" },
+      { id: "s2", kind: "slot", ref: "arg.숫자" },
     ];
 
-    const issues = issuesOf(analyzeBody("inline", body, [], { resolveType }));
+    const issues = issuesOf(analyzeBody("inline", body, [], { resolveType }, [{ name: "문자", type: { kind: "string" } }, { name: "숫자", type: { kind: "number" } }]));
     expect(issues.map((issue) => issue.kind)).toEqual(["typeMismatch"]);
   });
 
@@ -51,12 +52,12 @@ describe("함수조항 S1 — 본문 노드 규칙 (inline)", () => {
         { id: "b1", when: "attr.A0001 = '2'", children: [{ id: "t2", kind: "text", text: "최초계약일" }] },
         { id: "b2", children: [{ id: "t3", kind: "text", text: "계약일" }] },
       ] },
-      { id: "s1", kind: "slot", ref: "D0001" },
+      { id: "s1", kind: "slot", ref: "arg.담보명" },
       { id: "a1", kind: "articleRef", targets: [{ nodeId: "art-1" }], connector: "및" },
       { id: "x1", kind: "appendixRef", appendixCode: "X0001" },
       { id: "o1", kind: "optionSlot", optionCode: "O01" },
     ];
-    expect(unwrap(analyzeBody("inline", body, 옵션))).toEqual({ discriminators: ["D0001"], attributes: ["A0001"] });
+    expect(unwrap(analyzeBody("inline", body, 옵션, {}, [담보명]))).toEqual({ discriminators: ["D0001"], attributes: ["A0001"] });
   });
 
   it("inline 본문에 항(paragraph)이 오면 거부한다 — 항·조 노드는 inline 에 없다", () => {
@@ -75,12 +76,12 @@ describe("함수조항 S1 — 본문 노드 규칙 (inline)", () => {
   it("인라인 조건 안에 다시 인라인 조건을 두면 거부한다 — 인라인 중첩 금지", () => {
     const body: Inline[] = [
       { id: "c1", kind: "inlineCond", branches: [
-        { id: "b1", when: "D0001", children: [
+        { id: "b1", when: "arg.갱신", children: [
           { id: "c2", kind: "inlineCond", branches: [{ id: "b2", children: [] }] },
         ] },
       ] },
     ];
-    const issues = issuesOf(analyzeBody("inline", body, []));
+    const issues = issuesOf(analyzeBody("inline", body, [], {}, [갱신]));
     expect(issues.map((i) => i.kind)).toEqual(["typeMismatch"]);
   });
 
@@ -88,10 +89,10 @@ describe("함수조항 S1 — 본문 노드 규칙 (inline)", () => {
     const elseFirst: Inline[] = [
       { id: "c1", kind: "inlineCond", branches: [
         { id: "b1", children: [] },
-        { id: "b2", when: "D0001", children: [] },
+        { id: "b2", when: "arg.갱신", children: [] },
       ] },
     ];
-    expect(issuesOf(analyzeBody("inline", elseFirst, [])).length).toBe(1);
+    expect(issuesOf(analyzeBody("inline", elseFirst, [], {}, [갱신])).length).toBe(1);
     const empty: Inline[] = [{ id: "c1", kind: "inlineCond", branches: [] }];
     expect(issuesOf(analyzeBody("inline", empty, [])).length).toBe(1);
   });
@@ -126,15 +127,20 @@ describe("함수조항 S1 — 본문 노드 규칙 (inline)", () => {
     expect(issues[0]?.message).toContain("v1t");
   });
 
-  it("요구 구분자는 선택지 본문의 식에서도 추출된다 — 등장 순 · 중복 없이", () => {
+  it("요구 구분자(인자 기본 연결)는 선택지 본문이 읽는 인자에서도 — 등장 순 · 중복 없이", () => {
     const opts: OptionDef[] = [
       { code: "O01", label: "x", order: 0, values: [
-        { code: "V01", label: "a", order: 0, body: [{ id: "a", kind: "slot", ref: "D0002" }] },
-        { code: "V02", label: "b", order: 1, body: [{ id: "b", kind: "slot", ref: "D0003" }] },
+        { code: "V01", label: "a", order: 0, body: [{ id: "a", kind: "slot", ref: "arg.고지" }] },
+        { code: "V02", label: "b", order: 1, body: [{ id: "b", kind: "slot", ref: "arg.유형" }] },
       ] },
     ];
     const body: Inline[] = [{ id: "o", kind: "optionSlot", optionCode: "O01" }];
-    expect(unwrap(analyzeBody("inline", body, opts))).toEqual({ discriminators: ["D0002", "D0003"], attributes: [] });
+    expect(unwrap(analyzeBody("inline", body, opts, {}, [유형, 고지]))).toEqual({ discriminators: ["D0002", "D0003"], attributes: [] });
+  });
+
+  it("구분자를 직접 읽으면 검사 ① 오류 — 인자를 선언하고 기본 연결로 댄다 (최종 결정 2)", () => {
+    const body: Inline[] = [{ id: "s1", kind: "slot", ref: "D0001" }];
+    expect(issuesOf(analyzeBody("inline", body, []))).toEqual([expect.objectContaining({ kind: "typeMismatch", message: expect.stringContaining("직접 읽을 수 없습니다"), at: expect.objectContaining({ nodePath: ["s1"], refPath: "D0001" }) })]);
   });
 
   it("식이 없는 본문의 요구 구분자는 빈 목록이다", () => {
@@ -147,7 +153,7 @@ describe("함수조항 S1 — 본문 노드 규칙 (block)", () => {
   const 준용규정: Block[] = [
     { id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text: "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다." }] },
     { id: "cb", kind: "condBlock", branches: [
-      { id: "cb1", when: "D0003 = 'V02'", children: [
+      { id: "cb1", when: "arg.유형 = 'V02'", children: [
         { id: "p2", kind: "paragraph", children: [{ id: "t2", kind: "text", text: "최초계약일 기준 문구" }],
           items: [{ id: "i1", kind: "item", children: [{ id: "t3", kind: "text", text: "호" }],
             subitems: [{ id: "si1", kind: "subitem", children: [{ id: "t4", kind: "text", text: "목" }] }] }] },
@@ -158,7 +164,7 @@ describe("함수조항 S1 — 본문 노드 규칙 (block)", () => {
   ];
 
   it("항 목록 + 조건 블록(중첩 허용) + 호·목 으로 된 block 본문은 통과하고 요구 구분자가 추출된다", () => {
-    expect(unwrap(analyzeBody("block", 준용규정, []))).toEqual({ discriminators: ["D0003"], attributes: [] });
+    expect(unwrap(analyzeBody("block", 준용규정, [], {}, [유형]))).toEqual({ discriminators: ["D0003"], attributes: [] });
   });
 
   it("block 본문에 조(article) 노드가 오면 거부한다 — 조는 항상 사용처 소유", () => {
@@ -180,7 +186,7 @@ describe("함수조항 S1 — 본문 노드 규칙 (block)", () => {
   it("식 수집: 모든 slot ref · when 을 노드 경로와 함께 돌려준다", () => {
     const exprs = collectExpressions(준용규정);
     expect(exprs.map((e) => [e.source, e.nodePath.join("/")])).toEqual([
-      ["D0003 = 'V02'", "cb/cb1"],
+      ["arg.유형 = 'V02'", "cb/cb1"],
       ["any(pay.exempt)", "cb/cb1/cb-in/cb-in-1"],
     ]);
   });
@@ -300,9 +306,9 @@ describe("박스 참조 — 정적 마스터 박스는 잎이라 함수조항 �
     const body = [
       paragraph([{ id: "i1", kind: "item", children: [{ id: "t2", kind: "text", text: "호" }] }, { id: "bx1", kind: "boxRef", boxCode: "BX000002" }]),
       { id: "bx2", kind: "boxRef", boxCode: "BX000001" },
-      { id: "c1", kind: "condBlock", branches: [{ id: "br1", when: "D0001", children: [{ id: "bx3", kind: "boxRef", boxCode: "BX000001" }] }] },
+      { id: "c1", kind: "condBlock", branches: [{ id: "br1", when: "arg.갱신", children: [{ id: "bx3", kind: "boxRef", boxCode: "BX000001" }] }] },
     ] as Block[];
-    expect(unwrap(analyzeBody("block", body, []))).toEqual({ discriminators: ["D0001"], attributes: [] });
+    expect(unwrap(analyzeBody("block", body, [], {}, [갱신]))).toEqual({ discriminators: ["D0001"], attributes: [] });
     expect(allNodeIds(body)).toContain("bx1");
   });
 
@@ -326,11 +332,11 @@ describe("호 · 목 유형 본문 — 목록 자리 규칙 · 식 수집 · 제
 
   it("호 목록의 조건 가지 식 · 슬롯을 모으고, 제 호를 「이 함수조항」 참조로 가리킬 수 있다", () => {
     const body = [
-      호("i1", [{ id: "s1", kind: "slot", ref: "D0001" }]),
-      { id: "c1", kind: "condBlock" as const, branches: [{ id: "b1", when: "D0003 = 'V02'", children: [호("i2", [{ id: "r1", kind: "articleRef", targets: [{ nodeId: "i1" }], scope: "clause" }])] }] },
+      호("i1", [{ id: "s1", kind: "slot", ref: "arg.담보명" }]),
+      { id: "c1", kind: "condBlock" as const, branches: [{ id: "b1", when: "arg.유형 = 'V02'", children: [호("i2", [{ id: "r1", kind: "articleRef", targets: [{ nodeId: "i1" }], scope: "clause" }])] }] },
     ];
-    expect(collectExpressions(body).map((e) => e.source)).toEqual(["D0001", "D0003 = 'V02'"]);
-    const r = analyzeBody("item", body, []);
+    expect(collectExpressions(body).map((e) => e.source)).toEqual(["arg.담보명", "arg.유형 = 'V02'"]);
+    const r = analyzeBody("item", body, [], {}, [담보명, 유형]);
     expect(r.ok && r.value.discriminators).toEqual(["D0001", "D0003"]);
   });
 
@@ -359,7 +365,8 @@ describe("검사 ① — 인자 (최종 결정 2 · 기능/함수조항 §3.7)",
       { id: "c1", kind: "inlineCond", branches: [{ id: "b1", when: "arg.사유 = 'V01' and arg.갱신형", children: [{ id: "t1", kind: "text", text: "암" }] }] },
       { id: "s1", kind: "slot", ref: "arg.담보명" },
     ];
-    expect(unwrap(analyzeBody("inline", body, [], { resolveType }, params))).toEqual({ discriminators: [], attributes: [] });
+    // 요구 구분자 = 인자 기본 연결(담보명 → D0001)
+    expect(unwrap(analyzeBody("inline", body, [], { resolveType }, params))).toEqual({ discriminators: ["D0001"], attributes: [] });
   });
 
   it("boolean 인자를 슬롯에 찍으면 슬롯 타입 오류", () => {

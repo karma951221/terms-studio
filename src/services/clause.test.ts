@@ -26,11 +26,18 @@ function reasonOf(r: { ok: true } | { ok: false; rejection: { reason: string } }
   return r.rejection.reason;
 }
 
+/** 본문이 읽는 인자 — 함수조항은 구분자를 직접 읽지 않고 인자의 기본 연결로 댄다 (최종 결정 2). 이름 = 구분자 코드, 타입 = 그 구분자 결과 타입. */
+const P = [
+  { name: "D0001", type: { kind: "boolean" as const }, default: { kind: "discriminator" as const, code: "D0001" } },
+  { name: "D0002", type: { kind: "string" as const }, default: { kind: "discriminator" as const, code: "D0002" } },
+  { name: "D0003", type: { kind: "string" as const }, default: { kind: "discriminator" as const, code: "D0003" } },
+];
+
 const 준용_본문: Block[] = [
   { id: "p1", kind: "paragraph", children: [
     { id: "t1", kind: "text", text: "이 특별약관에서 정하지 않은 사항은 " },
     { id: "c1", kind: "inlineCond", branches: [
-      { id: "b1", when: "D0001", children: [{ id: "t2", kind: "text", text: "최초계약일" }] },
+      { id: "b1", when: "arg.D0001", children: [{ id: "t2", kind: "text", text: "최초계약일" }] },
       { id: "b2", children: [{ id: "t3", kind: "text", text: "계약일" }] },
     ] },
   ] },
@@ -57,29 +64,29 @@ describe("clause 서비스 (PGlite)", () => {
 
   describe("S1 — 정의 · 요구 구분자 · 목록", () => {
     it("편집자가 block 「준용규정」을 채번하면 C0001, 요구 구분자에 갱신여부(D0001)가 자동 추출된다", async () => {
-      const c = unwrap(await svc.create(editor, { label: "준용규정", mode: "block", body: 준용_본문 }));
+      const c = unwrap(await svc.create(editor, { params: P, label: "준용규정", mode: "block", body: 준용_본문 }));
       expect(c.code).toBe("C0001");
       expect(await svc.required("C0001")).toEqual({ discriminators: ["D0001"], attributes: [] });
       expect(await svc.get("C0001")).toEqual(c);
     });
 
     it("식이 없는 「특별약관의 소멸」의 요구 구분자는 빈 목록 · 표시명 중복은 duplicate", async () => {
-      const c = unwrap(await svc.create(editor, { label: "특별약관의 소멸", mode: "block", body: [{ id: "p", kind: "paragraph", children: [{ id: "t", kind: "text", text: "소멸합니다." }] }] }));
+      const c = unwrap(await svc.create(editor, { params: P, label: "특별약관의 소멸", mode: "block", body: [{ id: "p", kind: "paragraph", children: [{ id: "t", kind: "text", text: "소멸합니다." }] }] }));
       expect(c.code).toBe("C0002");
       expect(c.required.discriminators).toEqual([]);
-      expect(reasonOf(await svc.create(editor, { label: "준용규정", mode: "inline" }))).toBe("duplicate");
+      expect(reasonOf(await svc.create(editor, { params: P, label: "준용규정", mode: "inline" }))).toBe("duplicate");
     });
 
     it("조건식이 boolean 이 아니면 카탈로그 타입으로 잡아 거부한다 (typeMismatch)", async () => {
-      const body: Block[] = [{ id: "cb", kind: "condBlock", branches: [{ id: "b", when: "D0003", children: [] }] }];
-      const r = await svc.create(editor, { label: "x", mode: "block", body });
+      const body: Block[] = [{ id: "cb", kind: "condBlock", branches: [{ id: "b", when: "arg.D0003", children: [] }] }];
+      const r = await svc.create(editor, { params: P, label: "x", mode: "block", body });
       expect(reasonOf(r)).toBe("invalid");
       if (!r.ok && r.rejection.reason === "invalid") expect(r.rejection.issues[0].kind).toBe("typeMismatch");
     });
 
     it("없는 구분자를 읽는 식은 brokenRef 로 거부한다", async () => {
-      const body: Inline[] = [{ id: "s", kind: "slot", ref: "D0099" }];
-      const r = await svc.create(editor, { label: "x", mode: "inline", body });
+      const body: Inline[] = [{ id: "s", kind: "slot", ref: "arg.D0099" }];
+      const r = await svc.create(editor, { params: P, label: "x", mode: "inline", body });
       if (!r.ok && r.rejection.reason === "invalid") expect(r.rejection.issues[0].kind).toBe("brokenRef");
       expect(r.ok).toBe(false);
     });
@@ -107,7 +114,7 @@ describe("clause 서비스 (PGlite)", () => {
 
   describe("S2 — 참조 추가 시 요구 구분자 존재 검사 (ADR-0037: 부착이 없다)", () => {
     it("준용규정이 구분자를 하나 더 읽게 수정해도 사용처는 재검사 목록에 오르지 않는다 — 부착을 묻지 않아서", async () => {
-      const body: Block[] = [...준용_본문, { id: "cb", kind: "condBlock", branches: [{ id: "b", when: "D0002 = '기준A'", children: [] }] }];
+      const body: Block[] = [...준용_본문, { id: "cb", kind: "condBlock", branches: [{ id: "b", when: "arg.D0002 = '기준A'", children: [] }] }];
       const { clause, recheck } = unwrap(await svc.setBody(editor, "C0001", body));
       expect(clause.required.discriminators).toEqual(["D0001", "D0002"]);
       expect(recheck).toEqual([]);
@@ -139,7 +146,7 @@ describe("clause 서비스 (PGlite)", () => {
   describe("S5 · S7 — 옵션", () => {
     it("옵션 추가 → 기존 사용처(미선택)가 재검사 목록에 오른다 (optionUnselected)", async () => {
       const { clause, recheck } = unwrap(
-        await svc.addOption(editor, "C0001", { label: "준용 대상", values: [{ label: "보통약관" }, { label: "기본계약", body: [{ id: "v2", kind: "slot", ref: "D0003" }] }] }),
+        await svc.addOption(editor, "C0001", { label: "준용 대상", values: [{ label: "보통약관" }, { label: "기본계약", body: [{ id: "v2", kind: "slot", ref: "arg.D0003" }] }] }),
       );
       expect(clause.options[0].code).toBe("O01");
       expect(clause.required.discriminators).toEqual(["D0001", "D0002", "D0003"]);
@@ -181,7 +188,7 @@ describe("clause 서비스 (PGlite)", () => {
 
   describe("모드 변경 · 복제 · 삭제", () => {
     it("모드 변경은 새 본문과 함께 — 요구 구분자 재계산", async () => {
-      const { clause } = unwrap(await svc.setMode(editor, "C0002", "inline", [{ id: "s", kind: "slot", ref: "D0003" }]));
+      const { clause } = unwrap(await svc.setMode(editor, "C0002", "inline", [{ id: "s", kind: "slot", ref: "arg.D0003" }]));
       expect(clause.mode).toBe("inline");
       expect(clause.required.discriminators).toEqual(["D0003"]);
     });
@@ -227,18 +234,18 @@ describe("clause 서비스 (PGlite)", () => {
 
     it("보통약관 마스터에 있는 조와 별표 마스터에 있는 별표를 가리키는 본문은 저장된다", async () => {
       const body: Inline[] = [조참조(지급사유.id), { id: "x1", kind: "appendixRef", appendixCode: "AX000001" }];
-      const c = unwrap(await svc.create(editor, { label: "참조 문구", mode: "inline", body }));
+      const c = unwrap(await svc.create(editor, { params: P, label: "참조 문구", mode: "inline", body }));
       expect(c.body).toEqual(body);
     });
 
     it("보통약관 마스터에 없는 조를 가리키면 저장을 거부한다 (brokenRef)", async () => {
-      const r = await svc.create(editor, { label: "깨진 조 참조", mode: "inline", body: [조참조("00000000-0000-4000-8000-00000000dead")] });
+      const r = await svc.create(editor, { params: P, label: "깨진 조 참조", mode: "inline", body: [조참조("00000000-0000-4000-8000-00000000dead")] });
       expect(reasonOf(r)).toBe("invalid");
       if (!r.ok && r.rejection.reason === "invalid") expect(r.rejection.issues.map((i) => i.kind)).toEqual(["brokenRef"]);
     });
 
     it("별표 마스터에 없는 별표를 가리키면 저장을 거부한다 (brokenRef)", async () => {
-      const r = await svc.create(editor, { label: "깨진 별표 참조", mode: "inline", body: [{ id: "x1", kind: "appendixRef", appendixCode: "AX000099" }] });
+      const r = await svc.create(editor, { params: P, label: "깨진 별표 참조", mode: "inline", body: [{ id: "x1", kind: "appendixRef", appendixCode: "AX000099" }] });
       expect(reasonOf(r)).toBe("invalid");
       if (!r.ok && r.rejection.reason === "invalid") expect(r.rejection.issues.map((i) => i.kind)).toEqual(["brokenRef"]);
     });
@@ -246,8 +253,8 @@ describe("clause 서비스 (PGlite)", () => {
     it("정적 마스터에 있는 박스를 놓은 본문은 저장되고, 없는 박스면 거부한다 (brokenRef — 박스는 잎이라 중첩 금지에 걸리지 않는다)", async () => {
       await insertBox(t.db, { code: "BX000001", name: "암 정의 박스", title: "", lines: ["암이란 …"] }, admin.userId);
       const body: Block[] = [{ id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text: "정의" }] }, { id: "bx1", kind: "boxRef", boxCode: "BX000001" }];
-      expect(unwrap(await svc.create(editor, { label: "박스 놓은 항", mode: "block", body })).body).toEqual(body);
-      const r = await svc.create(editor, { label: "깨진 박스 참조", mode: "block", body: [{ id: "bx1", kind: "boxRef", boxCode: "BX000099" }] });
+      expect(unwrap(await svc.create(editor, { params: P, label: "박스 놓은 항", mode: "block", body })).body).toEqual(body);
+      const r = await svc.create(editor, { params: P, label: "깨진 박스 참조", mode: "block", body: [{ id: "bx1", kind: "boxRef", boxCode: "BX000099" }] });
       expect(reasonOf(r)).toBe("invalid");
       if (!r.ok && r.rejection.reason === "invalid") expect(r.rejection.issues.map((i) => i.kind)).toEqual(["brokenRef"]);
     });
@@ -256,7 +263,7 @@ describe("clause 서비스 (PGlite)", () => {
   describe("유형 넷 · 단위 규칙 경고 (최종 결정 4 · 7)", () => {
     it("호 유형을 만들어 다시 읽으면 호 유형 · 호 목록 본문 그대로 — 한 곳 사용 · 호 하나는 경고만", async () => {
       const body = [{ id: "i1", kind: "item" as const, children: [{ id: "t1", kind: "text" as const, text: "암으로 진단확정된 경우" }] }];
-      const c = unwrap(await svc.create(editor, { label: "납입면제 호", mode: "item", body }));
+      const c = unwrap(await svc.create(editor, { params: P, label: "납입면제 호", mode: "item", body }));
       expect(await svc.get(c.code)).toEqual(c);
       expect((await svc.unitWarnings(c.code)).map((i) => i.message)).toEqual(["「호」 함수조항 — 조 · 여러 항 단위가 아닙니다"]);
       usages.set(c.code, [{ documentId: "doc-1", ownerKind: "general", ownerId: "gen-1", ownerName: "보통약관 A", refNodeId: "k1" }]);
@@ -270,11 +277,11 @@ describe("clause 서비스 (PGlite)", () => {
 
   describe("인자 · 기본 연결 (최종 결정 2 · 기능/함수조항 §3.7)", () => {
     const 슬롯본문: Block[] = [{ id: "p1", kind: "paragraph", children: [{ id: "s1", kind: "slot", ref: "arg.보험금명" }] }];
-    it("인자(기본 연결 D0002)와 그 인자를 읽는 본문을 한 번에 만들고 다시 읽으면 그대로 — 요구 구분자는 직접 읽기만", async () => {
+    it("인자(기본 연결 D0002)와 그 인자를 읽는 본문을 한 번에 만들고 다시 읽으면 그대로 — 요구 구분자는 읽는 인자의 기본 연결", async () => {
       const params = [{ name: "보험금명", type: { kind: "string" as const }, default: { kind: "discriminator" as const, code: "D0002" } }];
       const c = unwrap(await svc.create(editor, { label: "지급사유(인자)", mode: "block", body: 슬롯본문, params }));
       expect(c.params).toEqual(params);
-      expect(c.required.discriminators).toEqual([]);
+      expect(c.required.discriminators).toEqual(["D0002"]);
       expect(await svc.get(c.code)).toEqual(c);
     });
 
@@ -284,11 +291,12 @@ describe("clause 서비스 (PGlite)", () => {
     });
 
     it("기본 연결 없는 인자를 더하면 사용처 재검사에 연결 누락이 오른다 — 기본 연결 타입이 다르면 거부", async () => {
-      const c = unwrap(await svc.create(editor, { label: "판정(인자)", mode: "block", body: 준용_본문 }));
+      const c = unwrap(await svc.create(editor, { params: P, label: "판정(인자)", mode: "block", body: 준용_본문 }));
       usages.set(c.code, [{ documentId: "doc-9", ownerKind: "general", ownerId: "gen-1", ownerName: "보통약관 A", refNodeId: "k9" }]);
-      const saved = unwrap(await svc.setParams(editor, c.code, [{ name: "갱신형", type: { kind: "boolean" } }]));
+      // 본문이 읽는 인자(D0001)는 두고 기본 연결 없는 인자를 더한다
+      const saved = unwrap(await svc.setParams(editor, c.code, [...P, { name: "갱신형", type: { kind: "boolean" } }]));
       expect(saved.recheck.map((e) => e.issues.map((i) => [i.kind, i.at.refPath]))).toEqual([[["argUnbound", "arg.갱신형"]]]);
-      const wrong = await svc.setParams(editor, c.code, [{ name: "갱신형", type: { kind: "boolean" }, default: { kind: "discriminator", code: "D0002" } }]);
+      const wrong = await svc.setParams(editor, c.code, [...P, { name: "갱신형", type: { kind: "boolean" }, default: { kind: "discriminator", code: "D0002" } }]);
       expect(reasonOf(wrong)).toBe("invalid");
     });
   });

@@ -398,16 +398,20 @@ export function analyzeBody(
   );
   const declared = new Map(params.map((p) => [p.name, p.type] as const));
   const paramTypes = (name: string) => declared.get(name);
-  if (!resolveType) {
-    for (const e of exprs) {
-      for (const { ref, path } of extractRefs(e.expr)) {
-        if (ref.kind === "param" && !declared.has(ref.name)) report("brokenRef", `선언되지 않은 인자입니다: ${path} — 함수조항의 인자 표에 먼저 선언한다`, e.path, path);
+  let direct = false;
+  for (const e of exprs) {
+    for (const { ref, path } of extractRefs(e.expr)) {
+      if (ref.kind === "param" && !resolveType && !declared.has(ref.name)) report("brokenRef", `선언되지 않은 인자입니다: ${path} — 함수조항의 인자 표에 먼저 선언한다`, e.path, path);
+      // 함수조항은 구분자를 직접 읽지 않고 인자만 읽는다 (최종 결정 2) — 인자를 선언하고 기본 연결로 그 구분자를 댄다
+      if (ref.kind === "discriminator") {
+        direct = true;
+        report("typeMismatch", `함수조항은 구분자 ${path} 를 직접 읽을 수 없습니다 — 인자를 선언하고 기본 연결로 ${ref.code} 를 댄 뒤 arg.<이름> 으로 읽는다`, e.path, path);
       }
     }
   }
 
-  // 5. 참조 존재·타입 (조회가 있을 때만) — 조건은 boolean 이어야, 슬롯은 참조가 존재해야 한다. 인자는 선언 타입으로(문맥 플래그)
-  if (resolveType) {
+  // 5. 참조 존재·타입 (조회가 있을 때만 — 구분자 직접 읽기가 있으면 그 오류가 먼저다) — 조건은 boolean 이어야, 슬롯은 참조가 존재해야 한다. 인자는 선언 타입으로(문맥 플래그)
+  if (resolveType && !direct) {
     for (const e of exprs) {
       const at = { ...base, nodePath: e.path };
       const r = e.role === "condition" ? checkCondition(e.expr, resolveType, at, paramTypes) : checkTypes(e.expr, resolveType, { coordinate: at, params: paramTypes });
@@ -420,12 +424,15 @@ export function analyzeBody(
 
   if (issues.length > 0) return reject({ reason: "invalid", issues });
 
-  // 6. 요구 참조 추출 — 본문이 직접 읽는 구분자 · 담보속성 (인자는 연결이 정한다)
+  // 6. 요구 참조 — 구분자는 본문이 읽는 인자의 기본 연결(처음 읽는 순) · 담보속성은 본문이 직접 읽는 것.
+  //    읽지 않는 인자의 기본 연결은 정의 쪽 검사(definitionDiscriminators · 인자 표 검사)가 따로 본다
   const discriminators: Code[] = [];
   const attributes: Code[] = [];
+  const defaultOf = new Map(params.flatMap((p) => (p.default?.kind === "discriminator" ? [[p.name, p.default.code] as const] : [])));
   for (const e of exprs) {
     for (const { ref } of extractRefs(e.expr)) {
-      if (ref.kind === "discriminator" && !discriminators.includes(ref.code)) discriminators.push(ref.code);
+      const code = ref.kind === "param" ? defaultOf.get(ref.name) : undefined;
+      if (code !== undefined && !discriminators.includes(code)) discriminators.push(code);
       if (ref.kind === "attr" && !attributes.includes(ref.code)) attributes.push(ref.code);
     }
   }

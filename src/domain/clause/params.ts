@@ -236,16 +236,16 @@ export function defaultBindingCodes(params: readonly ParamDef[] | undefined): Co
 }
 
 /**
- * 사용처가 읽는 구분자 — 본문 직접 읽기(`required.discriminators`) + 실제 연결(사용처 연결 > 기본 연결)의 구분자. 등장 순 · 중복 없이.
- * 사용처가 기본 연결을 다른 것으로 바꿨으면 기본 구분자는 그 사용처가 읽지 않는다.
+ * 사용처가 읽는 구분자 — 실제 연결(사용처 연결 > 기본 연결)의 구분자. 인자 순 · 중복 없이.
+ * 사용처가 기본 연결을 다른 것으로 바꿨으면 기본 구분자는 그 사용처가 읽지 않는다. 함수조항은 구분자를 직접 읽지 않는다(검사 ①).
  */
 export function boundDiscriminators(clause: Clause, bindings: Bindings | undefined): Code[] {
-  const out = [...clause.required.discriminators];
+  const out: Code[] = [];
   for (const b of Object.values(effectiveBindings(clause, bindings))) if (b.kind === "discriminator" && !out.includes(b.code)) out.push(b.code);
   return out;
 }
 
-/** 정의가 기대는 구분자 전부 — 본문 직접 읽기 + 기본 연결. 정의 쪽 존재 검사 · 삭제 영향의 단위. */
+/** 정의가 기대는 구분자 전부 — 기본 연결(`required.discriminators`, 저장 때 계산) + 지금 인자 표의 기본 연결. 정의 쪽 존재 검사 · 삭제 영향의 단위. */
 export function definitionDiscriminators(clause: Clause): Code[] {
   const out = [...clause.required.discriminators];
   for (const c of defaultBindingCodes(clause.params)) if (!out.includes(c)) out.push(c);

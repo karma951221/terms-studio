@@ -92,10 +92,10 @@ describe("검사 ② — 사용처 연결", () => {
     expect(checkUsageBindings(clause([]), { 없음: { kind: "const", value: true } }, env)[0]).toMatchObject({ kind: "brokenRef", at: { refPath: "arg.없음" } });
   });
 
-  it("사용처가 읽는 구분자 = 직접 읽기 + 실제 연결(사용처 연결 > 기본 연결)", () => {
-    const c = { ...clause([담보명, 갱신형]), required: { discriminators: ["D0009"], attributes: [] } };
-    expect(boundDiscriminators(c, { 갱신형: { kind: "discriminator", code: "D0003" } })).toEqual(["D0009", "D0001", "D0003"]);
-    expect(boundDiscriminators(c, { 담보명: { kind: "const", value: "골절" }, 갱신형: { kind: "const", value: true } })).toEqual(["D0009"]);
+  it("사용처가 읽는 구분자 = 실제 연결(사용처 연결 > 기본 연결)", () => {
+    const c = clause([담보명, 갱신형]);
+    expect(boundDiscriminators(c, { 갱신형: { kind: "discriminator", code: "D0003" } })).toEqual(["D0001", "D0003"]);
+    expect(boundDiscriminators(c, { 담보명: { kind: "const", value: "골절" }, 갱신형: { kind: "const", value: true } })).toEqual([]);
   });
 });
 

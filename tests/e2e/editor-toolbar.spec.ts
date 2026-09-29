@@ -276,7 +276,14 @@ test(
       await expect(page.locator(".ts-clause-editor")).toContainText("〔제한 사유〕");
     });
 
-    await ev.action("함수조항생성#6b", "항 문장을 고른 채 「조건식」 — 팝업 없이 항이 조건 블록 안에 서고, 머리 줄에서 조건을 고른다", async () => {
+    await ev.action("함수조항생성#6a", "「인자 추가」 — 인자 보험금명(문자 · 기본 연결 담보명 D0001). 함수조항은 구분자를 직접 읽지 않고 인자만 읽는다(기능/함수조항 §3.3)", async () => {
+      await page.getByRole("button", { name: "인자 추가" }).click();
+      await page.getByLabel("인자 1 이름").fill("보험금명");
+      await page.getByLabel("인자 1 타입").selectOption("string");
+      await page.getByLabel("인자 1 기본 연결").selectOption("d:D0001");
+    });
+
+    await ev.action("함수조항생성#6b", "항 문장을 고른 채 「조건식」 — 팝업 없이 항이 조건 블록 안에 서고, 머리 줄의 변수 「인자」 묶음에서 조건을 고른다", async () => {
       const editor = page.locator(".ts-clause-editor");
       const paragraph = editor.getByRole("textbox", { name: "항", exact: true });
       await paragraph.click();
@@ -287,7 +294,7 @@ test(
       const head = editor.locator("[data-cond-head]");
       await expect(head).toHaveCount(1);
       await expect(head.getByRole("combobox", { name: "IF 1번 줄 변수" })).toBeFocused();
-      await pickCombo(head.getByRole("combobox", { name: "IF 1번 줄 변수" }), { value: "D0001" });
+      await pickCombo(head.getByRole("combobox", { name: "IF 1번 줄 변수" }), { value: "arg.보험금명" });
       const value = head.getByRole("textbox", { name: "IF 1번 줄 값" });
       await value.fill("사망보험금");
       await value.press("Enter");

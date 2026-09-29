@@ -227,8 +227,11 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   const tree = editing ? draft.state.tree : originalTree;
   const shownOptions = editing ? options : props.options;
   const shownParams = editing ? params : props.params;
-  /** 조건 · 슬롯 고르기 문맥 — 서버가 준 구분자 앞에 인자 칸(`arg.<이름>`)을 둔다. 본문은 인자만 읽는다 (최종 결정 2). */
-  const condition = useMemo(() => ({ ...data.condition, discriminators: [...paramEntries(shownParams, data.enums), ...data.condition.discriminators] }), [data.condition, data.enums, shownParams]);
+  /**
+   * 조건 · 슬롯 고르기 문맥 — 변수는 인자 칸(`arg.<이름>`)과 담보속성뿐이다. 함수조항은 구분자를 직접 읽지 않는다(최종 결정 2 — 검사 ① 오류) —
+   * 구분자는 인자 표의 기본 연결 · 넣는 자리의 연결에서 고른다.
+   */
+  const condition = useMemo(() => ({ ...data.condition, discriminators: paramEntries(shownParams, data.enums), quick: [] }), [data.condition, data.enums, shownParams]);
   const latest = useCallback((): DocumentNode => draftRef.current.state.tree, []);
   const dirty =
     editing &&

@@ -40,14 +40,18 @@ const 준용규정: BlockClause = {
       { id: "t2", kind: "text", text: "을 따릅니다." },
     ] },
     { id: "cb", kind: "condBlock", branches: [
-      { id: "b1", when: "D0002 = '기준A'", children: [{ id: "p2", kind: "paragraph", children: [{ id: "t3", kind: "text", text: "기준A 문구" }] }] },
+      { id: "b1", when: "arg.기준 = '기준A'", children: [{ id: "p2", kind: "paragraph", children: [{ id: "t3", kind: "text", text: "기준A 문구" }] }] },
     ] },
   ],
   options: [
     { code: "O01", label: "준용 대상", order: 0, values: [
       { code: "V01", label: "보통약관", order: 0, body: [{ id: "v1", kind: "text", text: "보통약관" }] },
-      { code: "V02", label: "기본계약 약관", order: 1, body: [{ id: "v2", kind: "text", text: "기본계약 " }, { id: "v2s", kind: "slot", ref: "D0005" }] },
+      { code: "V02", label: "기본계약 약관", order: 1, body: [{ id: "v2", kind: "text", text: "기본계약 " }, { id: "v2s", kind: "slot", ref: "arg.이율" }] },
     ] },
+  ],
+  params: [
+    { name: "기준", type: { kind: "string" }, default: { kind: "discriminator", code: "D0002" } },
+    { name: "이율", type: { kind: "string" }, default: { kind: "discriminator", code: "D0005" } },
   ],
   required: { discriminators: ["D0002", "D0005"], attributes: [] },
 };
@@ -117,11 +121,11 @@ describe("함수조항 S6 — 인라인화 헬퍼 expandClause", () => {
       { id: "ref-1/p1", kind: "paragraph", children: [
         { id: "ref-1/t1", kind: "text", text: "이 특별약관에서 정하지 않은 사항은 " },
         { id: "ref-1/o1/v2", kind: "text", text: "기본계약 " },
-        { id: "ref-1/o1/v2s", kind: "slot", ref: "D0005" },
+        { id: "ref-1/o1/v2s", kind: "slot", ref: "arg.이율" },
         { id: "ref-1/t2", kind: "text", text: "을 따릅니다." },
       ] },
       { id: "ref-1/cb", kind: "condBlock", branches: [
-        { id: "ref-1/b1", when: "D0002 = '기준A'", children: [
+        { id: "ref-1/b1", when: "arg.기준 = '기준A'", children: [
           { id: "ref-1/p2", kind: "paragraph", children: [{ id: "ref-1/t3", kind: "text", text: "기준A 문구" }] },
         ] },
       ] },
@@ -183,7 +187,7 @@ describe("함수조항 S3 — 수정 시 기존 사용처 재검사", () => {
     { documentId: "doc-3", ownerKind: "general", ownerId: "gen-1", ownerName: "보통약관 A", selection: { O01: "V02" } },
   ];
   it("요구 구분자가 삭제된 코드를 가리키면 모든 사용처가 목록에 오른다", () => {
-    const broken: BlockClause = { ...준용규정, required: { discriminators: ["D0099"], attributes: [] } };
+    const broken: BlockClause = { ...준용규정, params: [{ name: "기준", type: { kind: "string" }, default: { kind: "discriminator", code: "D0099" } }], required: { discriminators: ["D0099"], attributes: [] } };
     const entries = recheckUsages(broken, usages, lookup);
     expect(entries).toHaveLength(3);
     expect(entries[0].issues[0]).toMatchObject({

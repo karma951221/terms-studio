@@ -17,6 +17,10 @@ const 준용규정: BlockClause = {
   mode: "block",
   body: [{ id: "p1", kind: "paragraph", children: [{ id: "o1", kind: "optionSlot", optionCode: "O01" }] }],
   options: [{ code: "O01", label: "준용 대상", order: 0, values: [{ code: "V01", label: "보통약관", order: 0, body: [] }] }],
+  params: [
+    { name: "갱신", type: { kind: "boolean" }, default: { kind: "discriminator", code: "D0001" } },
+    { name: "기타", type: { kind: "boolean" }, default: { kind: "discriminator", code: "D0009" } },
+  ],
   required: { discriminators: ["D0001", "D0009"], attributes: [] },
 };
 
