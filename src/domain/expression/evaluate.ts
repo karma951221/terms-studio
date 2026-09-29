@@ -182,6 +182,11 @@ function asBoolean(ctx: EvalContext, r: EvalResult, what: string, ref?: Ref): Ev
   return r;
 }
 
+/** 함수조항 전용 식(내부 변수 · 필드 읽기 · 연산)은 펼칠 때 값으로 풀린다(clause/locals.ts) — 평가기까지 오면 풀리지 않은 것이다. */
+function clauseOnly(ctx: EvalContext, what: string, ref?: Ref): EvalResult {
+  return error(ctx, "structure", `${what} 은(는) 함수조항을 펼칠 때 풀려야 하는데 평가에 닿았습니다`, ref);
+}
+
 function refOf(e: Expr): Ref | undefined {
   if (e.kind === "ref") return e.ref;
   if (e.kind === "aggregate") return e.ref;
@@ -303,6 +308,7 @@ export function evaluate(expr: Expr, ctx: EvalContext): EvalResult {
       if (expr.ref.kind === "attr") {
         return error(ctx, "typeMismatch", `담보속성 attr.${expr.ref.code} 는 exist · = · ≠ 로만 쓸 수 있습니다`, expr.ref);
       }
+      if (expr.ref.kind === "local") return clauseOnly(ctx, `내부 변수 ${refPath(expr.ref)}`, expr.ref);
       if (expr.ref.kind === "param") {
         // 인자는 함수조항을 펼칠 때 연결(구분자 · 상수)로 바뀐다(clause/bind.ts) — 평가까지 남았으면 연결이 빠진 것이다
         return error(ctx, "structure", `인자 ${refPath(expr.ref)} 가 연결되지 않은 채 평가에 닿았습니다`, expr.ref);
@@ -338,7 +344,12 @@ export function evaluate(expr: Expr, ctx: EvalContext): EvalResult {
 
     case "aggregate":
       if (expr.ref.kind === "attr") return aggregateAttribute(ctx, expr.op, expr.ref);
-      if (expr.ref.kind === "param") return error(ctx, "structure", `인자 ${refPath(expr.ref)} 는 집계할 수 없습니다`, expr.ref);
+      if (expr.ref.kind === "param" || expr.ref.kind === "local") return error(ctx, "structure", `${refPath(expr.ref)} 는 집계할 수 없습니다`, expr.ref);
       return aggregate(ctx, expr.op, expr.ref);
+
+    case "member":
+      return clauseOnly(ctx, `필드 읽기 .${expr.field}`);
+    case "call":
+      return clauseOnly(ctx, `연산 .${expr.op}`);
   }
 }

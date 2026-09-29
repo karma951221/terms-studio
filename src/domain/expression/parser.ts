@@ -14,6 +14,10 @@
  *             | 'builtin' '.' level '.' ident
  *             | 'attr' '.' ident
  *             | 'arg' '.' ident                        — 인자 (함수조항 본문 전용 — 쓸 수 있는 자리는 타입 검사의 문맥 플래그가 가른다)
+ *             | 'var' '.' ident                        — 내부 변수 (함수조항 전용)
+ *   postfix  := ('.' method | '.' fieldKey)*           — 인자 · 내부 변수 뒤에만 (함수조항 전용, 기능/식언어 §12)
+ *   method   := '합치기' '(' form '.' field ')' | '있음' '(' string (',' string)* ')'
+ *             | '거르기' '(' fieldKey '=' literal ')' | '비었음' ('(' ')')?
  *
  * 파서는 마스터를 **모른다** (기능/마스터 §3.2) — 머리가 attr · builtin 이 아닌 두 토막이면 마스터 참조로 모양만
  * 가른다. 존재 · 레벨은 검증기(catalog/expression `findMasterField`)와 문맥이 본다.
@@ -24,8 +28,8 @@
 
 import { ATTACH_LEVELS, reject, ok } from "../types";
 import type { AttachLevel, Coordinate, Issue, Result } from "../types";
-import { AGGREGATE_OPS, refPath } from "./ast";
-import type { AggregateOp, CompareOp, Expr, Ref } from "./ast";
+import { AGGREGATE_OPS, METHOD_OPS, refPath } from "./ast";
+import type { AggregateOp, CompareOp, Expr, Literal, Ref } from "./ast";
 
 // ───────────────────────────── 예약어 ─────────────────────────────
 
@@ -40,6 +44,7 @@ export const RESERVED_WORDS: readonly string[] = [
   "attr",
   "builtin",
   "arg",
+  "var",
   // 부착 레벨 5개는 예약어가 아니다 — 마스터 경로의 머리가 폼키가 되면서(기능/마스터 §3.2) 레벨은 builtin 의 두 번째 토막에만 온다.
 ];
 
@@ -48,7 +53,10 @@ const AGGREGATES = new Set<string>(AGGREGATE_OPS);
 /** builtin.<레벨>.<속성> 의 레벨 검사에만 쓴다. */
 const LEVELS = new Set<string>(ATTACH_LEVELS);
 /** 예약어이면서 경로의 머리로는 쓸 수 있는 것 — 네임스페이스 둘. */
-const PATH_HEADS = new Set<string>(["attr", "builtin", "arg"]);
+const PATH_HEADS = new Set<string>(["attr", "builtin", "arg", "var"]);
+/** 뒤에 필드 · 연산을 붙일 수 있는 머리 — 함수조항의 인자 · 내부 변수. */
+const POSTFIX_HEADS = new Set<string>(["arg", "var"]);
+const METHODS = new Set<string>(METHOD_OPS);
 
 // ───────────────────────────── 토큰 ─────────────────────────────
 
@@ -58,7 +66,7 @@ type Token =
   | { type: "number"; value: number; pos: number }
   | { type: "date"; value: string; pos: number }
   | { type: "op"; text: CompareOp; pos: number }
-  | { type: "punct"; text: "(" | ")" | "."; pos: number }
+  | { type: "punct"; text: "(" | ")" | "." | ","; pos: number }
   | { type: "node"; id: string; pos: number }
   | { type: "eof"; pos: number };
 
@@ -122,7 +130,7 @@ function tokenize(src: string): Token[] {
       i += 1;
       continue;
     }
-    if (ch === "(" || ch === ")" || ch === ".") {
+    if (ch === "(" || ch === ")" || ch === "." || ch === ",") {
       tokens.push({ type: "punct", text: ch, pos: i });
       i += 1;
       continue;
@@ -216,7 +224,12 @@ class Parser {
     return t.type === "ident" && t.text === word;
   }
 
-  private expectPunct(text: "(" | ")" | "."): void {
+  private isPunct(text: "(" | ")" | "." | ","): boolean {
+    const t = this.peek();
+    return t.type === "punct" && t.text === text;
+  }
+
+  private expectPunct(text: "(" | ")" | "." | ","): void {
     const t = this.next();
     if (t.type !== "punct" || t.text !== text) {
       throw new SyntaxFailure(`'${text}' 가 필요합니다`, t.pos);
@@ -331,8 +344,8 @@ class Parser {
         );
       }
       this.next();
-      if (ref.kind === "param") {
-        throw new SyntaxFailure(`인자 arg.${ref.name} 는 집계할 수 없습니다 — 집계 범위는 사용처 구조라 인자가 아니다`, t.pos);
+      if (ref.kind === "param" || ref.kind === "local") {
+        throw new SyntaxFailure(`${refPath(ref)} 는 집계할 수 없습니다 — 집계 범위는 사용처 구조라 인자 · 내부 변수가 아니다`, t.pos);
       }
       if (ref.kind === "attr" && op !== "exist" && op !== "notexist") {
         throw new SyntaxFailure(
@@ -347,7 +360,70 @@ class Parser {
     }
     this.idx -= 1;
     const ref = this.parsePath("참조 경로가 필요합니다");
-    return { kind: "ref", ref };
+    let expr: Expr = { kind: "ref", ref };
+    if (ref.kind !== "param" && ref.kind !== "local") return expr;
+    // 인자 · 내부 변수 뒤의 필드 읽기 · 연산 사슬 (함수조항 전용 — 쓸 수 있는 자리는 타입 검사의 문맥 플래그가 가른다)
+    while (this.isPunct(".")) {
+      this.next();
+      const name = this.next();
+      if (name.type !== "ident") throw new SyntaxFailure("'.' 뒤에는 필드 또는 연산 이름이 와야 합니다", name.pos);
+      expr = METHODS.has(name.text) ? this.parseMethod(expr, name) : { kind: "member", target: expr, field: fieldKey(name.text, name.pos) };
+    }
+    return expr;
+  }
+
+  /** 연산 하나의 인자 — 연산마다 모양이 정해져 있다 (식 일반이 아니다). */
+  private parseMethod(target: Expr, name: Token & { type: "ident" }): Expr {
+    const op = name.text;
+    const close = (what: string) => {
+      const t = this.next();
+      if (t.type !== "punct" || t.text !== ")") throw new SyntaxFailure(`${op} — ${what} 뒤에 ')' 가 필요합니다`, t.pos);
+    };
+    if (op === "비었음") {
+      if (this.isPunct("(")) {
+        this.next();
+        close("'('");
+      }
+      return { kind: "call", op, target };
+    }
+    const open = this.next();
+    if (open.type !== "punct" || open.text !== "(") throw new SyntaxFailure(`${op} 뒤에는 '(' 가 필요합니다`, open.pos);
+    if (op === "합치기") {
+      const at = this.peek().pos;
+      const ref = this.isPunct(")") ? undefined : this.parsePath("합치기의 인자는 폼.필드 하나입니다");
+      if (!ref || ref.kind !== "master") throw new SyntaxFailure("합치기의 인자는 폼.필드 하나입니다 (예: 합치기(waiver.reasons))", at);
+      close("폼.필드");
+      return { kind: "call", op, target, ref };
+    }
+    if (op === "있음") {
+      const values: string[] = [];
+      for (;;) {
+        const v = this.next();
+        if (v.type !== "string") throw new SyntaxFailure("있음의 인자는 열거값 코드 문자열 하나 이상입니다 (예: 있음('V01', 'V02'))", v.pos);
+        values.push(v.value);
+        if (!this.isPunct(",")) break;
+        this.next();
+      }
+      close("값");
+      return { kind: "call", op, target, values };
+    }
+    // 거르기(필드 = 값)
+    const f = this.next();
+    if (f.type !== "ident") throw new SyntaxFailure("거르기의 인자는 「필드 = 값」 입니다", f.pos);
+    const eq = this.next();
+    if (eq.type !== "op" || eq.text !== "=") throw new SyntaxFailure("거르기의 인자는 「필드 = 값」 입니다 — '=' 가 필요합니다", eq.pos);
+    const value = this.parseLiteral("거르기의 값은 리터럴이어야 합니다");
+    close("「필드 = 값」");
+    return { kind: "call", op: "거르기", target, field: fieldKey(f.text, f.pos), value };
+  }
+
+  private parseLiteral(what: string): Literal {
+    const t = this.next();
+    if (t.type === "string") return { type: "string", value: t.value };
+    if (t.type === "number") return { type: "number", value: t.value };
+    if (t.type === "date") return { type: "date", value: t.value };
+    if (t.type === "ident" && (t.text === "true" || t.text === "false")) return { type: "boolean", value: t.text === "true" };
+    throw new SyntaxFailure(what, t.pos);
   }
 
   /** ident ('.' ident)* 를 읽어 Ref 로. 세그먼트 수·네임스페이스 규칙은 여기서. */
@@ -363,7 +439,8 @@ class Parser {
       );
     }
     const segments: string[] = [first.text];
-    while (this.peek().type === "punct" && (this.peek() as { text: string }).text === ".") {
+    // 인자 · 내부 변수는 두 토막에서 멈춘다 — 뒤의 '.' 는 필드 읽기 · 연산 (parseIdentStart 의 사슬)
+    while (this.isPunct(".") && !(POSTFIX_HEADS.has(first.text) && segments.length === 2)) {
       this.next();
       const seg = this.next();
       if (seg.type !== "ident") {
@@ -420,6 +497,13 @@ function toRef(segments: string[], pos: number): Ref {
     assertCode(segments[1], pos);
     return { kind: "param", name: segments[1] };
   }
+  if (head === "var") {
+    if (segments.length !== 2) {
+      throw new SyntaxFailure("내부 변수 경로는 var.<이름> 두 단계입니다", pos);
+    }
+    assertCode(segments[1], pos);
+    return { kind: "local", name: segments[1] };
+  }
   if (head === "builtin") {
     if (segments.length !== 3) {
       throw new SyntaxFailure("내장 경로는 builtin.<레벨>.<속성> 세 단계입니다", pos);
@@ -445,6 +529,12 @@ function toRef(segments: string[], pos: number): Ref {
   }
   assertCode(segments[0], pos);
   return { kind: "discriminator", code: segments[0] };
+}
+
+/** 필드 키 — 예약어 · 연산 이름이 아닌 코드. */
+function fieldKey(text: string, pos: number): string {
+  assertCode(text, pos);
+  return text;
 }
 
 function assertCode(text: string, pos: number): void {

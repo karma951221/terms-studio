@@ -18,9 +18,14 @@ const PRECEDENCE: Record<Expr["kind"], number> = {
   literal: 5,
   ref: 5,
   aggregate: 5,
+  member: 5,
+  call: 5,
 };
 
 export type DisplayName = (ref: Ref) => string;
+
+/** 필드 읽기 표시 훅 — 열거값 필드 키(F01) 대신 필드 이름을 찍을 때. undefined 면 `대상.키` 그대로. */
+export type MemberName = (target: Expr, field: string) => string | undefined;
 
 export function formatLiteral(lit: Literal): string {
   switch (lit.type) {
@@ -35,7 +40,7 @@ export function formatLiteral(lit: Literal): string {
   }
 }
 
-export function format(expr: Expr, displayName: DisplayName = refPath): string {
+export function format(expr: Expr, displayName: DisplayName = refPath, memberName?: MemberName): string {
   const name = (ref: Ref) => displayName(ref);
 
   /** 자식을 찍되, 부모보다 약하게 묶이면 괄호. 같은 세기의 오른쪽 자식도 괄호 (좌결합 보존). */
@@ -58,6 +63,19 @@ export function format(expr: Expr, displayName: DisplayName = refPath): string {
         return name(e.ref);
       case "aggregate":
         return `${e.op}(${name(e.ref)})`;
+      case "member":
+        return memberName?.(e.target, e.field) ?? `${go(e.target)}.${e.field}`;
+      case "call":
+        switch (e.op) {
+          case "합치기":
+            return `${go(e.target)}.합치기(${name(e.ref)})`;
+          case "있음":
+            return `${go(e.target)}.있음(${e.values.map((v) => formatLiteral({ type: "string", value: v })).join(", ")})`;
+          case "거르기":
+            return `${go(e.target)}.거르기(${e.field} = ${formatLiteral(e.value)})`;
+          case "비었음":
+            return `${go(e.target)}.비었음`;
+        }
       case "not":
         return `not ${child(e.operand, e, "only")}`;
       case "compare":

@@ -37,7 +37,7 @@ function documentWithCondition(when: string): DocumentNode {
 const resolve: TypeResolver = (ref) => {
   if (ref.kind === "attr") return ref.code === "renew_type" ? { kind: "attribute", validValues: ["renew", "fixed"] } : undefined;
   if (ref.kind === "builtin") return { kind: "string" };
-  if (ref.kind === "master" || ref.kind === "param") return undefined; // 문면은 마스터를 직접 못 본다
+  if (ref.kind === "master" || ref.kind === "param" || ref.kind === "local") return undefined; // 문면은 마스터를 직접 못 본다
   const kinds: Record<string, ReturnType<TypeResolver>> = {
     D0001: { kind: "boolean" },
     D0002: { kind: "enum", enumCode: "E0001" },

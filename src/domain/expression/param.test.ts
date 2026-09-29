@@ -58,8 +58,8 @@ describe("arg.<이름> 파싱 · 표기", () => {
     expect(syntaxError("waiver.arg")).toMatch(/예약어/);
   });
 
-  it("arg.<이름> 은 두 토막 — arg.사유.약관표시명 은 아직 없다", () => {
-    expect(syntaxError("arg.사유.약관표시명")).toMatch(/arg\.<이름>/);
+  it("arg.<이름> 뒤 토막은 열거값 필드 읽기다 (P8 — 기능/식언어 §12)", () => {
+    expect(ast("arg.사유.F01")).toEqual({ kind: "member", target: { kind: "ref", ref: { kind: "param", name: "사유" } }, field: "F01" });
   });
 
   it("인자는 집계할 수 없다 — 집계 범위는 사용처 구조다", () => {

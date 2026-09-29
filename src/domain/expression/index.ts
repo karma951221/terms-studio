@@ -22,24 +22,27 @@ export type {
   DiscriminatorRef,
   Expr,
   ExprKind,
+  CallExpr,
   Literal,
+  LocalRef,
   MasterRef,
+  MethodOp,
   NodeQualifier,
   ParamRef,
   Ref,
   ValueRef,
 } from "./ast";
-export { AGGREGATE_OPS, COMPARE_OPS, refPath, sameRef } from "./ast";
+export { AGGREGATE_OPS, COMPARE_OPS, METHOD_OPS, refPath, sameRef } from "./ast";
 
 export { parse, RESERVED_WORDS } from "./parser";
 
-export type { DisplayName } from "./format";
+export type { DisplayName, MemberName } from "./format";
 export { format, formatLiteral } from "./format";
 
-export type { ExtractedRef } from "./refs";
-export { extractRefs, masterFieldPaths, paramNames, requiredDiscriminatorCodes } from "./refs";
+export type { EnumRead, EnumReadTypes, ExtractedRef } from "./refs";
+export { enumReads, extractRefs, inferType, localNames, masterFieldPaths, paramNames, requiredDiscriminatorCodes } from "./refs";
 
-export type { CheckOptions, ExprType, ParamTypes, TypeResolver } from "./typecheck";
+export type { CheckOptions, EnumInfo, ExprType, LocalTypes, ParamTypes, TypeResolver } from "./typecheck";
 export { checkCondition, checkTypes } from "./typecheck";
 
 export type { AttributeResult, EvalContext, EvalResult, LookupResult } from "./evaluate";
