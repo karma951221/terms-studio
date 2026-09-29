@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { hostLocator } from "../../src/domain/assembly/resolve";
 import type { ArticleNode, DocumentNode, InlineNode, ParagraphNode } from "../../src/domain/document/nodes";
 
-import { applyClauseUse, clauseFromSource, hostPaths, inlineBody, placeOptions, reId, renderings, replaceInlineRun, toClauseInline, type ClauseRecord } from "./clauses";
+import { applyClauseUse, clauseFromSource, hostPaths, inlineBody, parameterize, placeOptions, reId, renderings, replaceInlineRun, toClauseInline, type ClauseRecord } from "./clauses";
 
 const text = (id: string, t: string): InlineNode => ({ id, kind: "text", text: t });
 const ref = (id: string, nodeId: string, scope: "self" | "general" = "self"): InlineNode => ({ id, kind: "articleRef", targets: [{ nodeId }], connector: "및", scope });
@@ -186,5 +186,36 @@ describe("공용조항 오버레이 — 원문 자리를 참조로", () => {
       p2.children[0] = { id: "mix", kind: "articleRef", targets: [{ nodeId: "s-a3-p1" }, { nodeId: "s-a1" }], connector: "및", scope: "self" };
       expect(() => clauseFromSource(d, lapseOf(d).children as ParagraphNode[], "C0009")).toThrow(/안팎/);
     });
+  });
+});
+
+describe("구분자 직접 읽기 → 인자 + 기본 연결 (최종 결정 2 · C7 기계 변환)", () => {
+  const catalog = [{ code: "D0001", label: "담보명", description: "", level: "coverage" as const, expression: "coverage_basic.claim_name", resultType: { kind: "string" as const } }];
+  it("슬롯 · 조건의 구분자를 인자(이름 = 구분자 표시명, 기본 연결 = 그 구분자)로 바꾼다 — 담보속성은 그대로", () => {
+    const record: ClauseRecord = {
+      code: "C0021",
+      label: "지급사유",
+      mode: "block",
+      description: "",
+      body: [
+        {
+          id: "p",
+          kind: "paragraph",
+          children: [
+            { id: "s", kind: "slot", ref: "D0001" },
+            { id: "c", kind: "inlineCond", branches: [{ id: "b", when: "D0001 = '사망' and attr.A0001 = '2'", children: [] }] },
+          ],
+        },
+      ],
+      options: [],
+    };
+    const out = parameterize(record, catalog);
+    expect(out.params).toEqual([{ name: "담보명", type: { kind: "string" }, default: { kind: "discriminator", code: "D0001" } }]);
+    expect(JSON.stringify(out.body)).toContain('"ref":"arg.담보명"');
+    expect(JSON.stringify(out.body)).toContain(`"when":"arg.담보명 = '사망' and attr.A0001 = '2'"`);
+  });
+
+  it("구분자를 읽지 않으면 그대로(params 키 없음)", () => {
+    expect(parameterize(INLINE, catalog)).toEqual(INLINE);
   });
 });

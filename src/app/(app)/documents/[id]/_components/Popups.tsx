@@ -441,7 +441,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
       if (!node) return null;
       if (node.kind === "inlineCond") return <InlineCondPopup env={env} nodeId={node.id} anchor={anchor} onClose={onClose} />;
       const title =
-        node.kind === "slot" ? "치환 슬롯" : node.kind === "articleRef" ? "조 참조" : node.kind === "appendixRef" ? "별표 참조" : node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef" ? "함수조항 옵션 · 인자" : "고치기";
+        node.kind === "slot" ? "치환 슬롯" : node.kind === "articleRef" ? "조 참조" : node.kind === "appendixRef" ? "별표 참조" : node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef" ? (env.clauses.find((c) => c.code === node.clauseCode)?.params?.length ? "함수조항 옵션 · 인자" : "함수조항 옵션") : "고치기";
       return (
         <Popover anchor={anchor} label={title} onClose={onClose} wide={node.kind === "articleRef"}>
           <PopForm

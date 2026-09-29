@@ -820,7 +820,7 @@
           {
             "id": "c-fracture-cause-n5",
             "kind": "slot",
-            "ref": "D0001"
+            "ref": "arg.담보명"
           },
           {
             "id": "c-fracture-cause-n6",
@@ -830,7 +830,19 @@
         ]
       }
     ],
-    "options": []
+    "options": [],
+    "params": [
+      {
+        "name": "담보명",
+        "type": {
+          "kind": "string"
+        },
+        "default": {
+          "kind": "discriminator",
+          "code": "D0001"
+        }
+      }
+    ]
   },
   {
     "code": "C0022",
@@ -860,7 +872,7 @@
           {
             "id": "c-fracture-surgery-cause-n5",
             "kind": "slot",
-            "ref": "D0001"
+            "ref": "arg.담보명"
           },
           {
             "id": "c-fracture-surgery-cause-n6",
@@ -870,7 +882,19 @@
         ]
       }
     ],
-    "options": []
+    "options": [],
+    "params": [
+      {
+        "name": "담보명",
+        "type": {
+          "kind": "string"
+        },
+        "default": {
+          "kind": "discriminator",
+          "code": "D0001"
+        }
+      }
+    ]
   },
   {
     "code": "C0023",
@@ -1705,7 +1729,7 @@
           {
             "id": "c-lapse-claim-n4",
             "kind": "slot",
-            "ref": "D0001"
+            "ref": "arg.담보명"
           },
           {
             "id": "c-lapse-claim-n5",
@@ -1790,6 +1814,18 @@
           }
         ]
       }
+    ],
+    "params": [
+      {
+        "name": "담보명",
+        "type": {
+          "kind": "string"
+        },
+        "default": {
+          "kind": "discriminator",
+          "code": "D0001"
+        }
+      }
     ]
   },
   {
@@ -1821,7 +1857,7 @@
           {
             "id": "c-lapse-claim-death-n4",
             "kind": "slot",
-            "ref": "D0001"
+            "ref": "arg.담보명"
           },
           {
             "id": "c-lapse-claim-death-n5",
@@ -1962,6 +1998,18 @@
             ]
           }
         ]
+      }
+    ],
+    "params": [
+      {
+        "name": "담보명",
+        "type": {
+          "kind": "string"
+        },
+        "default": {
+          "kind": "discriminator",
+          "code": "D0001"
+        }
       }
     ]
   },

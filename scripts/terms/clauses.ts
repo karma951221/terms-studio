@@ -17,6 +17,10 @@ import type { ArticleRefNode as ClauseArticleRef, Block, Inline, ParagraphNode a
 import { hostLocator } from "../../src/domain/assembly/resolve";
 import type { ArticleNode, DocumentNode, InlineNode, ParagraphNode } from "../../src/domain/document/nodes";
 import type { Id } from "../../src/domain/types";
+import { discriminatorResultType } from "../../src/domain/catalog/expression";
+import type { Discriminator } from "../../src/domain/catalog/types";
+import type { ParamDef } from "../../src/domain/clause/params";
+import { format, parse, type Expr } from "../../src/domain/expression";
 
 import type { ClauseSpec, ClauseUse } from "./config";
 
@@ -28,6 +32,8 @@ export interface ClauseRecord {
   description: string;
   body: Inline[] | Block[];
   options: { code: string; label: string; order: number; values: { code: string; label: string; order: number; body: Inline[] }[] }[];
+  /** 인자 — 구분자 직접 읽기를 기계 변환한 것(`parameterize`). 없으면 인자 0개. */
+  params?: ParamDef[];
 }
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
@@ -499,3 +505,75 @@ export function* allArticles(tree: DocumentNode): Generator<ArticleNode> {
 }
 
 export type { ClauseSpec };
+
+// ───────────────────────────── 구분자 직접 읽기 → 인자 ─────────────────────────────
+
+/** 인자 이름 — 구분자 표시명에서 식에 못 쓰는 글자를 밑줄로. */
+function paramName(label: string): string {
+  const cleaned = label.replace(/[^A-Za-z0-9_ㄱ-ㆎ가-힣]/g, "_");
+  return /^[0-9]/.test(cleaned) ? `_${cleaned}` : cleaned;
+}
+
+/**
+ * 함수조항은 구분자를 직접 읽지 않고 인자만 읽는다 (최종 결정 2) — 원문에서 딴 본문 · 선택지 문구의 구분자 참조를
+ * 「인자(이름 = 구분자 표시명, 타입 = 구분자 결과 타입) + 기본 연결 = 그 구분자」로 바꾸고 식을 `arg.<이름>` 으로 고친다.
+ * 사용처는 기본 연결을 쓰므로 조립 결과가 그대로다(실물 대조). 담보속성(`attr.X`)은 구분자가 아니라 그대로 둔다.
+ */
+export function parameterize(record: ClauseRecord, catalog: readonly Discriminator[]): ClauseRecord {
+  const byCode = new Map(catalog.map((d) => [d.code, d]));
+  const params: ParamDef[] = [];
+  const nameOf = new Map<string, string>();
+  const paramFor = (code: string): string => {
+    const known = nameOf.get(code);
+    if (known) return known;
+    const def = byCode.get(code);
+    if (!def) throw new Error(`${record.code}: 모르는 구분자 ${code} — 인자로 바꿀 수 없다`);
+    const type = def.resultType ?? discriminatorResultType(def, undefined, byCode);
+    if (!type || type.kind === "table") throw new Error(`${record.code}: 구분자 ${code} 의 결과 타입을 알 수 없다`);
+    let name = paramName(def.label);
+    for (let n = 2; params.some((p) => p.name === name); n++) name = `${paramName(def.label)}${n}`;
+    params.push({ name, type, default: { kind: "discriminator", code } });
+    nameOf.set(code, name);
+    return name;
+  };
+  const rewriteExpr = (e: Expr): Expr => {
+    switch (e.kind) {
+      case "ref":
+        if (e.ref.kind !== "discriminator") return e;
+        if (e.ref.node) throw new Error(`${record.code}: 노드 한정자 ${e.ref.code}@${e.ref.node.id} 는 인자로 바꾸지 않는다`);
+        return { kind: "ref", ref: { kind: "param", name: paramFor(e.ref.code) } };
+      case "not":
+        return { ...e, operand: rewriteExpr(e.operand) };
+      case "and":
+      case "or":
+      case "compare":
+        return { ...e, left: rewriteExpr(e.left), right: rewriteExpr(e.right) };
+      default:
+        return e;
+    }
+  };
+  let changed = false;
+  const rewrite = (src: string): string => {
+    const parsed = parse(src);
+    if (!parsed.ok) return src;
+    const next = format(rewriteExpr(parsed.value));
+    if (next !== format(parsed.value)) changed = true;
+    return next === format(parsed.value) ? src : next;
+  };
+  const walk = (n: unknown): unknown => {
+    if (Array.isArray(n)) return n.map(walk);
+    if (!n || typeof n !== "object") return n;
+    const o = n as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(o)) {
+      if (k === "when" && typeof v === "string") out[k] = rewrite(v);
+      else if (k === "ref" && o.kind === "slot" && typeof v === "string") out[k] = rewrite(v);
+      else out[k] = walk(v);
+    }
+    return out;
+  };
+  const body = walk(record.body) as ClauseRecord["body"];
+  const options = walk(record.options) as ClauseRecord["options"];
+  if (!changed) return record;
+  return { ...record, body, options, params };
+}

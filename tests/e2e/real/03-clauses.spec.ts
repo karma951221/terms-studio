@@ -42,6 +42,7 @@ test.describe.serial("실물 재현(화면) ③ 함수조항", () => {
       const driver = new ClauseAuthoringDriver(page, ancestors);
       await ev.action("실물화면#3.1", "관리자로 로그인한다", () => login(page));
       await ev.action("실물화면#3.2", `생성 화면 — 유형 ${{ inline: "문구", block: "항" }[spec.mode]} · 이름 「${spec.label}」`, () => driver.open(spec.mode, spec.label));
+      if (spec.params && spec.params.length > 0) await ev.action("실물화면#3.3", `인자 ${spec.params.map((p) => p.name).join(" · ")} — 기본 연결 ${spec.params.map((p) => p.default?.code ?? "없음").join(" · ")}`, () => driver.params(spec.params!));
       if (spec.options.length > 0) await ev.action("실물화면#3.3", `옵션 ${spec.options.map((o) => o.label).join(" · ")}`, () => driver.options(spec.options));
       await ev.action("실물화면#3.4", "본문을 친다", () => driver.body(spec.mode, spec.body));
       await ev.action("실물화면#3.5", `저장 한 번 — ${spec.code} 로 만들어진다`, () => driver.save(spec.code));

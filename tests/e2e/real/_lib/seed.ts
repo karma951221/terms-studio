@@ -49,6 +49,8 @@ export interface ClauseSpec {
   mode: "inline" | "block";
   body: (Node | InlineNode | { id: string; kind: "optionSlot"; optionCode: string })[];
   options: { code: string; label: string; values: { code: string; label: string; body: { kind: string; text?: string }[] }[] }[];
+  /** 인자 — 구분자 직접 읽기를 기계 변환한 것(최종 결정 2). */
+  params?: { name: string; type: { kind: string; enumCode?: string; form?: string }; default?: { kind: "discriminator"; code: string } }[];
 }
 export interface DocumentSpec {
   code: string;

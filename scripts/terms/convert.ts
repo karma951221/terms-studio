@@ -24,7 +24,8 @@ import type { ArticleNode, BlockNode, BoxNode, DocumentNode, InlineNode, Paragra
 import { indexTree, validateTree } from "../../src/domain/document/nodes";
 import type { Id } from "../../src/domain/types";
 import { boxSites, planBoxes, replaceBox, type BoxPlan } from "./boxes";
-import { applyClauseUse, clauseFromSource, inlineBody, optionCode, placeOptions, reId, valueCode, type ClauseRecord } from "./clauses";
+import type { Discriminator } from "../../src/domain/catalog/types";
+import { applyClauseUse, clauseFromSource, inlineBody, optionCode, parameterize, placeOptions, reId, valueCode, type ClauseRecord } from "./clauses";
 import { APPENDICES, CLAUSES, PRODUCTS, SEED_DIR, type ClauseUse, type ProductTerms, type SlotOverlay, type SpecialSpec } from "./config";
 import { parseTerms, type ParsedArticle, type ParsedDoc } from "./parse";
 import { applyArticleConds, applyInlineConds, articlesOf } from "./overlay";
@@ -320,7 +321,10 @@ function main(): void {
   out("generals.json", generals);
   out("documents.json", documents);
   out("boxes.json", boxes.map((b) => b.record));
-  out("clauses.json", clauses);
+  // 함수조항은 구분자를 직접 읽지 않고 인자만 읽는다 (최종 결정 2) — 직접 읽기를 「인자 + 기본 연결 = 그 구분자」로 기계 변환한다.
+  // 구분자 카탈로그는 손으로 적는 시드(discriminators.json)다. 사용처는 기본 연결을 쓰므로 조립 결과가 그대로다
+  const catalog = JSON.parse(readFileSync(path.join(root, SEED_DIR, "discriminators.json"), "utf8")) as Discriminator[];
+  out("clauses.json", clauses.map((c) => parameterize(c, catalog)));
 
   const stats = (tree: DocumentNode) => {
     const ix = indexTree(tree);
