@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { indexTree, nodeBuilders, sequentialIds, type DocumentNode } from "@/domain/document";
 
+import { DOCUMENT_TOOLS, toolFor } from "./tools";
 import { articleMenu, blockMenu, boxPickItems, chipMenu, clausePickItems, clausesFitting, condMenu, inlineInsertItems, type MenuSections } from "./menus";
 
 const labels = (s: MenuSections) => s.flat().map((i) => `${i.label}${i.disabled ? "(잠김)" : ""}`);
@@ -26,6 +27,8 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
       "아래에 글머리 목록 추가",
       "아래에 함수조항(조 단위) 추가…",
       "아래에 박스 추가…",
+      "아래에 반복 블록 추가…",
+      "반복 블록(호) 추가…",
       "조건으로 감싸기",
       "위로(잠김)",
       "아래로(잠김)",
@@ -35,7 +38,7 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
   });
 
   it("호 — 항 목록 자리라 호 · 표 · 글머리 목록 · 박스 · 「호」 함수조항 · 목 뒤는 목 · 글머리 목록 · 「목」 함수조항(박스 없음)", () => {
-    expect(labels(blockMenu(env(tree()), "n2")).slice(0, 8)).toEqual([
+    expect(labels(blockMenu(env(tree()), "n2")).slice(0, 9)).toEqual([
       "아래에 호 추가",
       "목 추가",
       "함수조항(목) 추가…",
@@ -43,6 +46,7 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
       "아래에 글머리 목록 추가",
       "아래에 함수조항(호) 추가…",
       "아래에 박스 추가…",
+      "아래에 반복 블록 추가…",
       "조건으로 감싸기",
     ]);
     expect(labels(blockMenu(env(tree()), "n1")).slice(0, 4)).toEqual(["아래에 목 추가", "아래에 글머리 목록 추가", "아래에 함수조항(목) 추가…", "조건으로 감싸기"]);
@@ -132,5 +136,34 @@ describe("함수조항 넣기는 자리 유형대로 — 조 자리 「항」 ·
   it("항의 「함수조항(호) 추가…」는 그 항의 호 목록 자리 팝업", () => {
     const item = blockMenu(env(tree()), "n3").flat().find((i) => i.label === "함수조항(호) 추가…");
     expect(item?.action).toEqual({ do: "popup", popup: { kind: "clauseBlock", at: { parentId: "n3", slot: "items" }, fit: "item" } });
+  });
+});
+
+describe("블록 반복 메뉴 (ADR-0077 — 조 자리 · 호 목록, 한 단계 중첩)", () => {
+  /** 조 › 반복(종) › 항 › 호 목록 반복(사유) › 호. */
+  function repeatTree() {
+    const b = nodeBuilders(sequentialIds("r"));
+    const item = b.item([]);
+    const inner = b.forBlock({ kind: "listOfCurrent", loop: "?", field: "reasons" }, [item]);
+    const paragraph = b.paragraph([], [inner]);
+    const outer = b.forBlock({ kind: "planOptions", form: "waiver", filter: "waiver.applies = true" }, [paragraph]);
+    inner.source = { kind: "listOfCurrent", loop: outer.id, field: "reasons" };
+    const doc = b.document("D", [b.article("가", [outer])]);
+    return { doc, outer, inner, paragraph, item };
+  }
+
+  it("반복 블록 자리 — 이 반복에 항 · 함수조항 · 안쪽 반복 넣기 · 반복 원천, 모든 항목에 툴바 버튼", () => {
+    const { doc, outer } = repeatTree();
+    const got = labels(blockMenu(env(doc), outer.id));
+    expect(got).toEqual(expect.arrayContaining(["이 반복에 항 추가", "이 반복에 함수조항(조 단위) 추가…", "이 반복에 반복 블록 추가…", "반복 원천…"]));
+    for (const l of blockMenu(env(doc), outer.id).flat().map((i) => i.label)) expect(toolFor(DOCUMENT_TOOLS, l), l).toBeDefined();
+    expect(labels(articleMenu(env(doc), doc.children[0].id))).toContain("반복 블록 추가…");
+  });
+
+  it("두 단계 안에서는 반복을 더 넣지 않는다 — 안쪽 반복 · 그 안 호", () => {
+    const { doc, inner, item } = repeatTree();
+    expect(labels(blockMenu(env(doc), inner.id))).toEqual(expect.arrayContaining(["이 반복에 호 추가", "이 반복에 함수조항(호) 추가…"]));
+    expect(labels(blockMenu(env(doc), inner.id))).not.toContain("이 반복에 반복 블록 추가…");
+    expect(labels(blockMenu(env(doc), item.id))).not.toContain("아래에 반복 블록 추가…");
   });
 });

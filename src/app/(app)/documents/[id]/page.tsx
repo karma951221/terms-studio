@@ -175,6 +175,7 @@ export default async function DocumentDetailPage({ params, searchParams }: { par
         boxes={boxes}
         clauses={clauses}
         discriminators={discriminators}
+        enums={enums}
         attributeValues={Object.fromEntries(attributeKinds.map((k) => [k.code, k.values.map((v) => v.code)]))}
         {...(coverage ? { coverage } : {})}
         {...(special && mv?.ok ? { master: { tree: mv.value.tree, values: mv.value.values } } : {})}

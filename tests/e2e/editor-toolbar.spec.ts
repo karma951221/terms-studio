@@ -212,7 +212,7 @@ test(
       await expect(d.getByRole("radio", { name: "및", exact: true })).not.toBeChecked();
       await expect(d.getByRole("radio", { name: "또는", exact: true })).not.toBeChecked();
       await d.getByRole("button", { name: "넣기", exact: true }).click();
-      await expect(d.getByRole("alert")).toHaveText("대상이 둘 이상이면 연결어(및 · 또는)를 고른다.");
+      await expect(d.getByRole("alert")).toHaveText("대상이 둘 이상이거나 반복 블록 안이면 연결어(및 · 또는)를 고른다.");
       await expect(d).toBeVisible();
       await d.getByRole("radio", { name: "또는", exact: true }).check();
       await d.getByRole("button", { name: "넣기", exact: true }).click();

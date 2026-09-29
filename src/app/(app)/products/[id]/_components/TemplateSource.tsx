@@ -451,7 +451,7 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
         );
       }
 
-      // 반복은 자리만 잡혀 있다 (P7) — 자식을 그대로 낸다.
+      // 블록 반복 — 템플릿 원문은 본문 한 벌 그대로 낸다(원소마다 복제는 조립 · 미리보기가 한다, ADR-0077).
       case "forBlock":
         return <Block key={node.id} nodes={node.children} ctx={ctx} inList={inList} gathered={gathered} />;
 

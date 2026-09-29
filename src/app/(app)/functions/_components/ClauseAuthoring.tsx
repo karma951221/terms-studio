@@ -150,12 +150,14 @@ function unionRefs(generals: ClauseEditorData["generals"]): GeneralRefs {
   const articleIds = new Set<Id>();
   // 「사용처」 위치 줄은 코드 없는 줄이라 줄 id 가 곧 열쇠다(refTargetOf)
   const referenceKeys = new Set<string>(HOST_TARGETS.keys());
+  const repeatedKeys = new Set<string>();
   for (const g of generals) {
     const refs = generalRefsOf(g.tree);
     refs.articleIds.forEach((id) => articleIds.add(id));
     refs.referenceKeys.forEach((k) => referenceKeys.add(k));
+    refs.repeatedKeys?.forEach((k) => repeatedKeys.add(k)); // 반복 블록 안 대상 — 대상 하나여도 연결어 (결정 14 확장)
   }
-  return { articleIds, referenceKeys };
+  return { articleIds, referenceKeys, repeatedKeys };
 }
 
 /**
@@ -495,6 +497,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     clauseLabel: new Map(),
     optionText: () => "",
     references: { self: new Map(), general },
+    ...(refs.repeatedKeys ? { repeatedKeys: refs.repeatedKeys } : {}),
     refLabel,
     chipOverride,
     articleRefChoices: refChoices,

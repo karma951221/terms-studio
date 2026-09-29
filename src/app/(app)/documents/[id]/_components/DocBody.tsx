@@ -29,6 +29,7 @@ import {
   numberTree,
   optionCodeOf,
   referenceTargetLabel,
+  repeatLabel,
   type ArticleNode,
   type BlockBranch,
   type ClauseBlockRefNode,
@@ -285,7 +286,9 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
   const args = params.map((p) => {
     const own = node.bindings?.[p.name];
     const b = own ?? p.default;
-    return `${p.name} ← ${b ? bindingLabel(b, p.type, discriminators, [], []) : "연결 없음"}${own || !b ? "" : "(기본)"}`;
+    // 반복의 현재 원소 — 그 반복의 이름으로 「현재 ⟳ 납입면제사유마다」 (ADR-0077 결정 3)
+    const what = b?.kind === "current" ? `현재 ⟳ ${ctx.repeatLabelOf?.(b.loop) ?? "반복"}` : b ? bindingLabel(b, p.type, discriminators, [], []) : "연결 없음";
+    return `${p.name} ← ${what}${own || !b ? "" : "(기본)"}`;
   });
   const optionWords = clause && clause.options.length === 0 && params.length > 0 ? "" : ctx.optionText(node.clauseCode, node.options);
   const options = [optionWords, args.length > 0 ? `인자: ${args.join(" · ")}` : ""].filter(Boolean).join(" · ");
@@ -493,6 +496,38 @@ function CondBlock({ node, ctx, as }: { node: Node & { kind: "condBlock" }; ctx:
 }
 
 /**
+ * 블록 반복 (ADR-0077) — 상자 머리 줄에 반복 이름(「⟳ 납입면제종마다」), 그 아래 본문 한 벌. 편집기 번호는 본문을 한 번만 센다 — 실제 번호는 조립이 원소마다 매긴다.
+ * 머리 줄이 반복 블록의 자리(`data-block`)다 — 툴바 「반복 원천」 · 「이 반복에 … 추가」가 그 자리로 선다. 편집 중이면 누르면 원천 팝업.
+ */
+function RepeatBlock({ node, ctx, as }: { node: Node & { kind: "forBlock" }; ctx: DocCtx; as: "div" | "li" }) {
+  const Tag = as;
+  const label = ctx.repeatLabelOf?.(node.id) ?? node.alias ?? repeatLabel(node.source);
+  const edit = ctx.edit;
+  return (
+    <Tag className={`ts-doc-repeat${flash(ctx, node.id)}${edit?.blockSel?.includes(node.id) ? " is-block-sel" : ""}`} data-node={node.id} data-drop-block={node.id} data-repeat={node.id}>
+      <DragHandle id={node.id} what="반복 블록" ctx={ctx} />
+      <p className="ts-doc-cond-head" data-block={node.id} title="반복 블록 — 원천의 원소마다 본문을 복제한다(번호는 조립이 펼친 뒤 매긴다)">
+        {edit ? (
+          <button type="button" className="ts-doc-cond-btn" aria-label={`반복 원천 — ${label}`} onClick={(e) => edit.popup({ kind: "repeatBlock", nodeId: node.id }, anchorOf(e.currentTarget))}>
+            ⟳ {label}
+          </button>
+        ) : (
+          <>⟳ {label}</>
+        )}
+      </p>
+      {/* 호 목록 자리면 본문 호들을 제 목록으로 감싼다 — <li> 안에 <li> 를 바로 두지 않는다 */}
+      {as === "li" ? (
+        <ol className="ts-doc-items">
+          <Block nodes={node.children} ctx={ctx} inList />
+        </ol>
+      ) : (
+        <Block nodes={node.children} ctx={ctx} />
+      )}
+    </Tag>
+  );
+}
+
+/**
  * 항·호·목·조건 블록 — 자리에 맞는 태그로. `data-block` 은 툴바 · 오른쪽 클릭 메뉴가 자리를 읽는 표지다(`place.ts`).
  * 공용조항 화면도 이것으로 본문(항 목록)을 그린다 — 조 머리 없이 (기능/함수조항 §4.3).
  */
@@ -631,11 +666,7 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
         );
 
       case "forBlock":
-        return (
-          <div key={node.id} className="ts-muted" data-block={node.id} data-node={node.id}>
-            (반복 블록 — 아직 지원하지 않는다)
-          </div>
-        );
+        return <RepeatBlock key={node.id} node={node} ctx={ctx} as={inList ? "li" : "div"} />;
 
       case "article":
         return <Article key={node.id} node={node} ctx={ctx} />;

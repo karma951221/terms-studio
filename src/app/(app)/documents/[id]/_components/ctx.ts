@@ -63,6 +63,8 @@ export interface DocCtx {
   /** 공용조항 옵션 선택 → 「소멸 사유: 사망」. */
   optionText: (clauseCode: Code, options: Record<Code, Code>) => string;
   references: { self: ReadonlyMap<Id, ReferenceTarget>; general: ReadonlyMap<Id, ReferenceTarget> };
+  /** 반복 블록 안 참조 대상 열쇠(이 템플릿 · 대응 보통약관) — 대상이 하나여도 연결어를 고른다(결정 14 확장 · ADR-0077 결정 7). */
+  repeatedKeys?: ReadonlySet<string>;
   /** 조건식 칩이 구분자 코드 대신 표시명(`+@노드 이름`)을 찍게 하는 훅 — `condition/display.ts` 의 것과 같다. */
   refLabel?: DisplayName;
   /** 「고칠 자리로」 · 좌표 링크로 잠깐 강조할 노드. */
@@ -85,6 +87,8 @@ export interface DocCtx {
   clauses?: readonly Clause[];
   /** 정적 마스터 박스 조회 — 박스 참조를 내용째 그린다(공용조항 블록 안도). 없으면 코드만. */
   boxOf?: (code: Code) => Box | undefined;
+  /** 블록 반복의 머리 줄 이름 — 별칭 또는 원천에서 지은 이름(「납입면제종마다」 · 「납입면제사유마다」, ADR-0077). 없으면 원천만으로. */
+  repeatLabelOf?: (nodeId: Id) => string;
   /**
    * 공용조항 블록 안을 무엇으로 그리나 — 기본은 **모델**(슬롯 · 옵션 자리 · 조건 · 참조, `ClauseModel`),
    * `"text"` 는 고른 선택지 문구를 끼운 문장(미리보기 · 사전평가 결과). 가운데 = 모델, 오른쪽 = 결과 (2026-09-28).

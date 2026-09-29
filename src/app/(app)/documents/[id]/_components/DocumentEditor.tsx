@@ -28,7 +28,7 @@ import { IconButton, IconClose, IconPanel } from "@/app/_components/icons";
 import { MoreMenu, type MoreMenuItem } from "@/app/_components/MoreMenu";
 import { DOC_TEMPLATE_LABEL } from "@/app/_lib/labels";
 import { describeRejection } from "@/app/_lib/rejection";
-import type { Discriminator } from "@/domain/catalog";
+import type { Discriminator, EnumDef } from "@/domain/catalog";
 import type { Clause } from "@/domain/clause";
 import { formatCoordinate } from "@/domain/coordinate";
 import { coverageRowSource, masterCatalog, masterEvalContext, type Coverage, type MasterValues } from "@/domain/coverage";
@@ -40,11 +40,14 @@ import {
   envAt,
   generalRefsOf,
   indexTree,
+  isRepeatSource,
   numberTree,
   preEvaluate,
   evaluateSlotRef,
   randomIds,
   referenceTargetIndex,
+  repeatLabel,
+  repeatedKeys,
   repeatLevels,
   repeatScopeOf,
   rowReadableLevels,
@@ -74,6 +77,7 @@ import { EditorToolbar } from "./EditorToolbar";
 import { DOCUMENT_TOOLS, allTools, itemsFor, type ToolId } from "./tools";
 import { useBlockDrag } from "./useBlockDrag";
 import { PopupHost, type PopupEnv } from "./Popups";
+import { loopsAround } from "./repeatSources";
 import { ContextMenu, Popover } from "./Popover";
 import { RemoveCard } from "./RemoveCard";
 import { DraftIssues, SidePanel, type PanelData } from "./SidePanel";
@@ -100,6 +104,8 @@ export interface EditorProps {
   boxes: readonly Box[];
   clauses: readonly Clause[];
   discriminators: readonly Discriminator[];
+  /** 열거형 — 반복 원천 거름 필드 · 정의 조 교차 검사 · 반복 이름 · 현재 원소 연결 (ADR-0077). */
+  enums: readonly EnumDef[];
   /** 담보속성 코드 → 유효값 코드 (식 타입 검사). */
   attributeValues: Readonly<Record<Code, readonly Code[]>>;
   /** 담보약관의 문맥 담보 — `@노드` 식 검사 재료. */
@@ -208,19 +214,20 @@ export function DocumentEditor(props: EditorProps) {
 
   // ── 검증 재료 — 서버 저장 검증과 같은 한 벌(validateDocument)을 서버가 넘긴 정의로 짓는다 ──
   const coordinate: Coordinate = useMemo(() => ({ document: doc.kind, ownerId: doc.ownerId ?? doc.id, documentId: doc.id, ownerName: doc.title }), [doc.kind, doc.ownerId, doc.id, doc.title]);
-  const gate = useMemo(() => clauseGateFrom(props.clauses, props.discriminators.map((d) => d.code), catalogTypeResolver(props.discriminators)), [props.clauses, props.discriminators]);
+  const gate = useMemo(() => clauseGateFrom(props.clauses, props.discriminators.map((d) => d.code), catalogTypeResolver(props.discriminators), props.enums), [props.clauses, props.discriminators, props.enums]);
+  const enumByCode = useMemo(() => new Map(props.enums.map((e) => [e.code, e] as const)), [props.enums]);
   const appendixCodes = useMemo(() => new Set(props.appendices.map((a) => a.code)), [props.appendices]);
   const boxByCode = useMemo(() => new Map(props.boxes.map((x) => [x.code, x] as const)), [props.boxes]);
   /** 보통약관 캐시 → 편집 환경. 렌더는 상태의 캐시로, 명령 적용은 방금 받은 것까지 든 ref 의 캐시로 만든다. */
   const makeEditEnv = useCallback(
     (cache: Readonly<Record<Id, GeneralForEdit>>): EditEnv => ({
-      env: { kind: doc.kind, appendixExists: (c: Code) => appendixCodes.has(c), boxExists: (c: Code) => boxByCode.has(c), clauseGate: gate, coordinate },
+      env: { kind: doc.kind, appendixExists: (c: Code) => appendixCodes.has(c), boxExists: (c: Code) => boxByCode.has(c), clauseGate: gate, enumOf: (c: Code) => enumByCode.get(c), coordinate },
       generalRefs: (id: Id) => {
         const g = cache[id];
         return g ? generalRefsOf(g.tree) : undefined;
       },
     }),
-    [doc.kind, appendixCodes, boxByCode, gate, coordinate],
+    [doc.kind, appendixCodes, boxByCode, gate, enumByCode, coordinate],
   );
   // 읽기 모드는 서버가 방금 넘긴 대응 보통약관이 기준이다 (편집 중에는 편집 시작 때 받은 것 · 새로 고른 것)
   const renderCache = useMemo(() => (mode === "read" && props.general ? { ...generalCache, [props.general.id]: props.general } : generalCache), [mode, props.general, generalCache]);
@@ -251,6 +258,8 @@ export function DocumentEditor(props: EditorProps) {
   const currentGeneral = current.generalDocumentId ? renderCache[current.generalDocumentId] : undefined;
   const generalTargets = useMemo(() => (currentGeneral ? referenceTargetIndex(currentGeneral.tree, numberTree(currentGeneral.tree)) : new Map<Id, ReferenceTarget>()), [currentGeneral]);
   const references = useMemo(() => ({ self: referenceTargetIndex(tree, numbers), general: generalTargets }), [tree, numbers, generalTargets]);
+  // 반복 블록 안 대상 — 이 템플릿 · 대응 보통약관 (조 참조 연결어, ADR-0077 결정 7)
+  const repeated = useMemo(() => new Set([...repeatedKeys(indexTree(tree)), ...(currentGeneral ? repeatedKeys(indexTree(currentGeneral.tree)) : [])]), [tree, currentGeneral]);
 
   const appendixName = useMemo(() => new Map(props.appendices.map((a) => [a.code, a.name] as const)), [props.appendices]);
   const clauseLabel = useMemo(() => new Map(props.clauses.map((c) => [c.code, c.label] as const)), [props.clauses]);
@@ -666,6 +675,15 @@ export function DocumentEditor(props: EditorProps) {
     return repeatScopeOf(tree, owner)?.levels;
   };
 
+  // 블록 반복 이름 — 별칭 또는 원천(목록 원천은 바깥 반복의 폼을 읽는다, ADR-0077)
+  const repeatLabelOf = (nodeId: Id): string => {
+    const loops = loopsAround(index, nodeId);
+    const self = loops.at(-1);
+    if (!self || self.id !== nodeId) return "반복";
+    const outer = loops.at(-2)?.source;
+    return self.alias ?? repeatLabel(self.source, { ...(outer && isRepeatSource(outer) ? { outer } : {}), enumOf: (c) => enumByCode.get(c) });
+  };
+
   const ctx: DocCtx = {
     documentId: doc.id,
     docKind: doc.kind,
@@ -676,9 +694,11 @@ export function DocumentEditor(props: EditorProps) {
     clauseLabel,
     optionText,
     references,
+    repeatedKeys: repeated,
     refLabel,
     clauses: props.clauses,
     boxOf: (code) => boxByCode.get(code),
+    repeatLabelOf,
     conditionFor: (nodeId) => withRow(scopeOf(nodeId)),
     ...(flashId ? { flashId } : {}),
     ...(mode === "edit" ? { edit } : {}),
@@ -714,6 +734,7 @@ export function DocumentEditor(props: EditorProps) {
     ...(props.suggestedGeneralId ? { suggestedGeneralId: props.suggestedGeneralId } : {}),
     setGeneral,
     condition: pop ? conditionFor(pop.spec) : props.condition,
+    enumOf: (c) => enumByCode.get(c),
   };
 
   const generalTitle = current.generalDocumentId

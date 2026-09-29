@@ -115,7 +115,7 @@ export function refusing(label: string, message: string, onRefuse: (message: str
   };
 }
 
-const DROPPED_POPUPS = new Set(["newTable", "tableProps", "repeat", "link", "docTitle", "general"]);
+const DROPPED_POPUPS = new Set(["newTable", "tableProps", "repeat", "repeatBlock", "link", "docTitle", "general"]);
 const DROPPED_NODES = new Set(["table", "box", "article", "section", "forBlock"]);
 
 /** 문면 메뉴 항목 하나를 공용조항 자리로 — 그대로 · 거부 자리로 바꿈 · 뺌(undefined). */

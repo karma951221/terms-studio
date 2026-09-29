@@ -12,16 +12,19 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { Combobox, type ComboOption } from "@/app/_components/Combobox";
 import { IconButton, IconTrash } from "@/app/_components/icons";
 import { DOC_KIND_LABEL, REPEAT_DEPTH_LABEL, STRUCT_KEY_CHIP, SWITCH_WORD } from "@/app/_lib/labels";
-import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, planFormChoices } from "@/app/(app)/functions/_components/params";
+import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, planFormChoices, type LoopChoice } from "@/app/(app)/functions/_components/params";
+import type { EnumDef } from "@/domain/catalog";
 import type { Bindings, Clause } from "@/domain/clause";
 import {
   HOST_TARGET_PREFIX,
   indexTree,
+  isRepeatSource,
   nodeBuilders,
   parseRefKey,
   referenceKeyIndex,
   referenceTargetLabel,
   refKey,
+  refTargetOf,
   type Appendix,
   type ArticleRefNode,
   type DocumentNode,
@@ -41,12 +44,13 @@ import { CondRows } from "./condition/CondRows";
 import { SlotRefInput } from "./condition/SlotRefInput";
 import type { ConditionContext } from "./condition/types";
 import type { Anchor, DocCtx } from "./ctx";
-import { inlineListAt, newTable } from "./editOps";
+import { emptyNode, inlineListAt, newTable } from "./editOps";
 import { InlineSlot } from "./Inline";
 import { runsFromTokens } from "./inlineRuns";
 import { clausesFitting, type PopupSpec } from "./menus";
 import { PopActions, Popover } from "./Popover";
 import { RefTargetTree } from "./RefTargetTree";
+import { loopChoices, loopsAround, repeatChoices, sourceOfValue, sourceValue } from "./repeatSources";
 import { CaseControls } from "./SwitchControls";
 import { unassignedValues } from "./switchCases";
 
@@ -68,6 +72,8 @@ export interface PopupEnv {
   setGeneral: (generalDocumentId: Id | undefined) => void;
   /** 이 자리에서 여는 조건 팝업 · 슬롯 트리의 문맥 (반복 표 템플릿 셀이면 「현재 행」 가지). */
   condition: ConditionContext;
+  /** 열거형 — 반복 원천 이름(합집합 거름 필드) · 현재 원소 후보 이름. */
+  enumOf?: (code: Code) => EnumDef | undefined;
 }
 
 /** 확인이면 FormData → 명령, 적용되면 닫는다. 명령을 못 만들면(빈 칸) 그 사유를 팝업 안에 보인다. */
@@ -99,7 +105,23 @@ function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode })
   const [count, setCount] = useState(node?.targets.length ?? 0);
   // 고른 연결어 — 기본값 없이 시작한다(결정 14). 대상이 하나로 줄었다 다시 늘어도 기억한다 (고치기면 저장된 값에서 시작)
   const [connector, setConnector] = useState<ReferenceConnector | undefined>(node?.connector);
-  const joins = count >= 2;
+  // 반복 블록 안 대상은 하나여도 펼치면 여러 번호가 될 수 있다 — 연결어를 켠다 (결정 14 확장 · ADR-0077 결정 7)
+  const [repeatedPicked, setRepeatedPicked] = useState(() => (node ? node.targets.some((t) => ctx.repeatedKeys?.has(refKey(t)) ?? false) : false));
+  const keyOfRow = (rowId: Id): string | undefined => {
+    for (const index of [ctx.references.self, ctx.references.general, ...(ctx.articleRefChoices ?? []).map((c) => c.index)]) {
+      const t = index.get(rowId);
+      if (t) return refKey(refTargetOf(t));
+    }
+    return undefined;
+  };
+  const onPicked = (n: number, ids: readonly Id[]) => {
+    setCount(n);
+    setRepeatedPicked(ids.some((rowId) => {
+      const key = keyOfRow(rowId);
+      return key !== undefined && (ctx.repeatedKeys?.has(key) ?? false);
+    }));
+  };
+  const joins = count >= 2 || repeatedPicked;
   // 범위를 화면이 정하면(공용조항 — 보통약관 · 이 공용조항 · 사용처) 그 목록이 범위 고르기, 고른 범위의 후보만 선다
   const choices = ctx.articleRefChoices;
   const [choice, setChoice] = useState(() => initialChoice(choices, node));
@@ -141,7 +163,7 @@ function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode })
           key={choice}
           id="pop-ref-targets"
           defaultSelected={node && initialChoice(choices, node) === choice ? selectedIds(node, picked ? [picked.index] : ctx.docKind === "special" ? [ctx.references.self, ctx.references.general] : [ctx.references.self]) : []}
-          onCountChange={setCount}
+          onCountChange={onPicked}
           scopes={
             picked
               ? [{ key: picked.value, label: picked.label, index: picked.index, ...(picked.rootless ? { rootless: true } : {}) }]
@@ -167,8 +189,8 @@ function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode })
           </div>
           <p className="ts-form-hint">
             {joins
-              ? "골라야 적용된다 — 기본값이 없다. 마지막 대상 앞에 붙는다. 번호가 잇달아 셋 이상이면 「제3조부터 제5조까지」로 묶이고, 분기로 빠진 대상은 산출 때 제외된다."
-              : "대상을 둘 이상 고르면 고를 수 있다."}
+              ? `골라야 적용된다 — 기본값이 없다.${count < 2 ? " 반복 블록 안 대상이라 펼치면 여러 번호가 될 수 있다." : ""} 마지막 대상 앞에 붙는다. 번호가 잇달아 셋 이상이면 「제3조부터 제5조까지」로 묶이고, 분기로 빠진 대상은 산출 때 제외된다.`
+              : "대상을 둘 이상(또는 반복 블록 안 대상을) 고르면 고를 수 있다."}
           </p>
         </div>
       </div>
@@ -185,8 +207,13 @@ function initialChoice(choices: DocCtx["articleRefChoices"], node?: ArticleRefNo
   return choices.some((c) => c.value === want) ? want : choices[0].value;
 }
 
-/** 연결어 미선택 — 대상이 둘 이상이면 적용 전에 고른다 (결정 14 · 기능/문면 §3.5). */
-const CONNECTOR_PICK_MESSAGE = "대상이 둘 이상이면 연결어(및 · 또는)를 고른다.";
+/** 연결어 미선택 — 대상이 둘 이상이거나 반복 블록 안이면 적용 전에 고른다 (결정 14 · 기능/문면 §3.5). */
+const CONNECTOR_PICK_MESSAGE = "대상이 둘 이상이거나 반복 블록 안이면 연결어(및 · 또는)를 고른다.";
+
+/** 연결어가 필요한 대상인가 — 둘 이상 · 반복 블록 안 대상 하나 (문서 저장 검사와 같은 규칙). */
+function needsConnector(ctx: DocCtx, targets: readonly RefTarget[]): boolean {
+  return targets.length >= 2 || targets.some((t) => ctx.repeatedKeys?.has(refKey(t)) ?? false);
+}
 
 /** 저장된 대상 → 고르기 트리의 줄 id (같은 코드의 분기 짝이면 문서 순 첫 줄). 범위의 색인들에서 찾는다. */
 function selectedIds(node: ArticleRefNode, indexes: readonly ReadonlyMap<Id, ReferenceTarget>[]): Id[] {
@@ -202,8 +229,8 @@ function selectedIds(node: ArticleRefNode, indexes: readonly ReadonlyMap<Id, Ref
 function articleRefOf(fd: FormData): { targets: RefTarget[]; connector: ReferenceConnector | undefined; scope: ArticleRefNode["scope"] } {
   // 고르기 트리가 참조 대상 열쇠(조 id · 조#P코드)를 싣는다 (ADR-0072 결정 3)
   const targets = [...new Set(fd.getAll("targets").map((v) => String(v).trim()).filter(Boolean))].map(parseRefKey);
-  // 대상이 하나 이하면 라디오가 꺼져 값이 오지 않는다 — 연결어를 싣지 않는다(표기에 안 나온다, 결정 14)
-  const connector = targets.length >= 2 ? str(fd, "connector") : "";
+  // 라디오가 꺼져 있으면(대상 하나 · 반복 밖) 값이 오지 않는다 — 연결어를 싣지 않는다(표기에 안 나온다, 결정 14)
+  const connector = str(fd, "connector");
   // 사용처 위치(`host`)는 편집 트리에서 보통약관 참조 자리로 운반한다 (clauseTree)
   const scope = str(fd, "scope");
   return { targets, connector: isReferenceConnector(connector) ? (connector as ReferenceConnector) : undefined, scope: scope === "general" || scope === "host" ? "general" : "self" };
@@ -213,7 +240,7 @@ function articleRefOf(fd: FormData): { targets: RefTarget[]; connector: Referenc
  * 함수조항 칸 — 함수조항을 고르면 그 옵션마다 선택지 · 인자마다 연결. 옵션 선택 · 인자 연결은 사용처(이 문서) 소유다 (기능/함수조항 §3.2 · §3.7).
  * 인자 연결 칸은 「기본 연결」(비움 — 선언의 기본을 쓴다)이 처음 값이다. 기본 연결이 없으면 골라야 저장된다(연결 누락 = 저장 오류).
  */
-function ClauseFields({ clauses, code, options, bindings, condition }: { clauses: readonly Clause[]; code?: Code; options?: Record<Code, Code>; bindings?: Bindings; condition: ConditionContext }) {
+function ClauseFields({ clauses, code, options, bindings, condition, loops = [] }: { clauses: readonly Clause[]; code?: Code; options?: Record<Code, Code>; bindings?: Bindings; condition: ConditionContext; loops?: readonly LoopChoice[] }) {
   const [picked, setPicked] = useState<Code>(code ?? "");
   const clause = clauses.find((c) => c.code === picked);
   const forms = planFormChoices();
@@ -241,7 +268,7 @@ function ClauseFields({ clauses, code, options, bindings, condition }: { clauses
           <label htmlFor={`pop-arg-${p.name}`}>인자 {p.name}</label>
           <select id={`pop-arg-${p.name}`} name={`arg:${p.name}`} defaultValue={bindingValue(bindings?.[p.name])}>
             <option value="">{p.default ? `기본 연결 — ${bindingLabel(p.default, p.type, condition.discriminators, [], forms)}` : "— 연결 안 함(기본 연결 없음) —"}</option>
-            {bindingOptions(p.type, condition.discriminators, [], forms, true).map((o) => (
+            {bindingOptions(p.type, condition.discriminators, [], forms, true, loops).map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
@@ -442,13 +469,76 @@ function InlineSwitchPopup({ env, nodeId, anchor, onClose }: { env: PopupEnv; no
   );
 }
 
+/**
+ * 블록 반복 넣기 · 원천 고치기 (ADR-0077 · 기능/문면 §4.3) — 원천 칸(자리에 맞는 후보만: 반복 밖 = 세목 선택지 · 합집합, 종 반복 안 = 현재 종의 목록) + 이름(비우면 원천에서).
+ * 조 자리면 빈 항 하나를 든 반복, 호 목록 자리면 빈 반복이 선다(본문은 머리 줄 메뉴 「이 반복에 …」로).
+ */
+function RepeatBlockPopup({ env, spec, anchor, onClose }: { env: PopupEnv; spec: Extract<PopupSpec, { kind: "repeatBlock" }>; anchor: Anchor; onClose: () => void }) {
+  const ix = indexTree(env.tree);
+  const editing = spec.nodeId !== undefined ? ix.nodes.get(spec.nodeId)?.node : undefined;
+  const node = editing?.kind === "forBlock" ? editing : undefined;
+  const placeId = node ? node.id : spec.at?.parentId;
+  const around = placeId !== undefined ? loopsAround(ix, placeId).filter((l) => l.id !== node?.id) : [];
+  const choices = repeatChoices({ ...(around.at(-1) ? { outer: around.at(-1)! } : {}), depth: around.length, ...(env.enumOf ? { enumOf: env.enumOf } : {}) });
+  const current = node && isRepeatSource(node.source) ? sourceValue(node.source) : "";
+  const b = nodeBuilders(env.newId);
+  // 호 목록 자리인가 — 항의 호 목록 · 호 목록 자리의 반복 블록 · 가지 안
+  const parent = spec.at ? ix.nodes.get(spec.at.parentId) : undefined;
+  const inItems = spec.at?.slot === "items" || (parent?.node.kind === "forBlock" && parent.allowed.includes("item")) || (spec.at ? ix.branches.get(spec.at.parentId)?.allowed.includes("item") === true : false);
+  return (
+    <Popover anchor={anchor} label={node ? "반복 원천" : "반복 블록 넣기"} onClose={onClose}>
+      <PopForm
+        env={env}
+        onClose={onClose}
+        build={(fd) => {
+          const source = sourceOfValue(str(fd, "source"));
+          if (!source) return "반복 원천을 고른다.";
+          const alias = str(fd, "alias");
+          if (node) return [{ type: "setFor", nodeId: node.id, source, alias }];
+          if (!spec.at) return [];
+          // 조 자리 반복은 쓸 항 하나를 든 채, 호 목록 자리 반복은 빈 채로 선다 — 호 목록 반복의 본문은 대개 「호」 함수조항이라 머리 줄 메뉴 「이 반복에 함수조항(호) 추가…」로 넣는다
+          const children = inItems ? [] : [emptyNode("paragraph", env.newId) as never];
+          return [{ type: "insert", node: b.forBlock(source, children, alias || undefined), at: spec.at }];
+        }}
+      >
+        {choices.length === 0 ? (
+          <p className="ts-muted">이 자리에는 반복 원천이 없다 — 반복 안 반복은 한 단계까지(안쪽은 바깥 종의 목록만).</p>
+        ) : (
+          <div className="ts-form-row">
+            <label htmlFor="pop-repeat-source">반복 원천</label>
+            <select id="pop-repeat-source" name="source" defaultValue={choices.some((c) => c.value === current) ? current : ""}>
+              <option value="">— 고른다 —</option>
+              {choices.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        <div className="ts-form-row">
+          <label htmlFor="pop-repeat-alias">이름</label>
+          <input id="pop-repeat-alias" type="text" name="alias" defaultValue={node?.alias ?? ""} placeholder="비우면 원천에서 짓는다(예: 납입면제종마다)" />
+        </div>
+        <p className="ts-muted">원소마다 본문을 복제한다 — 원소가 0 이면 블록이 없다. 반복 안에서는 현재 원소만 읽는다(함수조항 인자에 「현재 종 · 현재 원소」로 연결).</p>
+        <PopActions onCancel={onClose} confirmLabel={node ? "적용" : "넣기"} />
+      </PopForm>
+    </Popover>
+  );
+}
+
 /** 팝업 하나 — 종류대로. */
 export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec: PopupSpec; anchor: Anchor; onClose: () => void }) {
   const { ctx } = env;
   const ix = indexTree(env.tree);
   const b = nodeBuilders(env.newId);
+  /** 자리를 감싼 반복 → 인자 연결 칸의 「반복의 현재 원소」 후보 (ADR-0077 결정 3). */
+  const loopsAt = (id: Id) => loopChoices(loopsAround(ix, id), env.enumOf ? { enumOf: env.enumOf } : {});
 
   switch (spec.kind) {
+    case "repeatBlock":
+      return <RepeatBlockPopup env={env} spec={spec} anchor={anchor} onClose={onClose} />;
+
     case "insertInline": {
       const make = (fd: FormData): InlineNode | string => {
         switch (spec.what) {
@@ -459,7 +549,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
           case "articleRef": {
             const r = articleRefOf(fd);
             if (r.targets.length === 0) return "참조할 대상을 하나 이상 고른다.";
-            if (r.targets.length >= 2 && !r.connector) return CONNECTOR_PICK_MESSAGE;
+            if (needsConnector(ctx, r.targets) && !r.connector) return CONNECTOR_PICK_MESSAGE;
             return { ...b.articleRef(r.targets, r.scope, r.connector) };
           }
           case "appendixRef": {
@@ -497,7 +587,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             )}
             {spec.what === "articleRef" && <ArticleRefFields ctx={ctx} />}
             {spec.what === "appendixRef" && <AppendixSelect appendices={env.appendices} />}
-            {spec.what === "clauseInlineRef" && <ClauseFields clauses={env.clauses} condition={env.condition} />}
+            {spec.what === "clauseInlineRef" && <ClauseFields clauses={env.clauses} condition={env.condition} loops={"tableId" in spec.at ? [] : loopsAt(spec.at.parentId)} />}
             {spec.what === "structKey" && (
               <div className="ts-form-row">
                 <label htmlFor="pop-struct">구조 표기</label>
@@ -534,7 +624,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
                   return [{ type: "setSlotRef", nodeId: node.id, ref: str(fd, "ref") }];
                 case "articleRef": {
                   const r = articleRefOf(fd);
-                  if (r.targets.length >= 2 && !r.connector) return CONNECTOR_PICK_MESSAGE;
+                  if (needsConnector(ctx, r.targets) && !r.connector) return CONNECTOR_PICK_MESSAGE;
                   return [{ type: "setArticleRef", nodeId: node.id, ...r }];
                 }
                 case "appendixRef":
@@ -555,7 +645,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             )}
             {node.kind === "articleRef" && <ArticleRefFields ctx={ctx} node={node} />}
             {node.kind === "appendixRef" && <AppendixSelect appendices={env.appendices} value={node.appendixCode} />}
-            {(node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && <ClauseFields clauses={env.clauses} code={node.clauseCode} options={node.options} {...(node.bindings ? { bindings: node.bindings } : {})} condition={env.condition} />}
+            {(node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && <ClauseFields clauses={env.clauses} code={node.clauseCode} options={node.options} {...(node.bindings ? { bindings: node.bindings } : {})} condition={env.condition} loops={loopsAt(node.id)} />}
             <PopActions onCancel={onClose} />
           </PopForm>
         </Popover>
@@ -601,7 +691,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
               return code ? [{ type: "insert", node: withBindings(b.clauseBlock(code, optionsOf(fd)), bindingsOf(fd, env.clauses)), at: spec.at }] : "함수조항을 고른다.";
             }}
           >
-            <ClauseFields clauses={clausesFitting(env.clauses, spec.fit)} condition={env.condition} />
+            <ClauseFields clauses={clausesFitting(env.clauses, spec.fit)} condition={env.condition} loops={loopsAt(spec.at.parentId)} />
             <PopActions onCancel={onClose} confirmLabel="넣기" />
           </PopForm>
         </Popover>

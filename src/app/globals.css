@@ -2922,6 +2922,15 @@ label.ts-field > textarea {
   margin-top: -2px;
 }
 
+/* 블록 반복 — 조건 블록과 같은 상자, 머리 줄 「⟳ 납입면제종마다」(점선 테두리 — 원소마다 복제되는 자리, ADR-0077) */
+.ts-doc-repeat {
+  border: 1px dotted var(--ts-cond-line);
+  border-radius: 3px;
+  padding: 2px 10px 6px;
+  margin: 6px 0;
+  text-indent: 0;
+}
+
 /* 공용조항(조 단위) 블록 — 머리 띠 「공용조항 (이름)」 · 옵션 · 🗑, 그 아래 공용조항 본문(읽기 전용) */
 .ts-doc-clause {
   border: 1px solid var(--ts-clause-line);

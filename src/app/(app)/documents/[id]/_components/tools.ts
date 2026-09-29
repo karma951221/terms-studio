@@ -22,6 +22,7 @@ export type ToolId =
   | "bulletList"
   | "clauseBlock"
   | "box"
+  | "forBlock"
   | "slot"
   | "articleRef"
   | "appendixRef"
@@ -40,6 +41,7 @@ export type ToolId =
   | "edit"
   | "tableProps"
   | "repeat"
+  | "repeatSource"
   | "link"
   | "up"
   | "down"
@@ -77,8 +79,8 @@ export const DOC_TOOLS: ToolGroup[] = [
     tools: [
       { id: "article", label: "조", title: "조 추가 — 지금 조 아래(관 머리면 그 관 끝)", match: oneOf("아래에 조 추가", "이 관에 조 추가", "조 추가", "이 가지에 조 추가") },
       { id: "section", label: "관", title: "관 추가 — 지금 조 · 관 아래", match: oneOf("아래에 관 추가", "관 추가") },
-      { id: "paragraph", label: "항", title: "항 추가 — 지금 항 아래(조 제목이면 그 조 끝)", match: oneOf("아래에 항 추가", "항 추가", "이 가지에 항 추가") },
-      { id: "item", label: "호", title: "호 추가 — 지금 호 아래(항이면 그 항 안)", match: oneOf("아래에 호 추가", "호 추가", "이 가지에 호 추가") },
+      { id: "paragraph", label: "항", title: "항 추가 — 지금 항 아래(조 제목이면 그 조 끝)", match: oneOf("아래에 항 추가", "항 추가", "이 가지에 항 추가", "이 반복에 항 추가") },
+      { id: "item", label: "호", title: "호 추가 — 지금 호 아래(항이면 그 항 안)", match: oneOf("아래에 호 추가", "호 추가", "이 가지에 호 추가", "이 반복에 호 추가") },
       { id: "subitem", label: "목", title: "목 추가 — 지금 목 아래(호면 그 호 안)", match: oneOf("아래에 목 추가", "목 추가", "이 가지에 목 추가") },
       { id: "table", label: "표", title: "표 추가 — 지금 블록 아래", match: oneOf("아래에 표 추가…", "이 가지에 표 추가…") },
       {
@@ -87,8 +89,15 @@ export const DOC_TOOLS: ToolGroup[] = [
         title: "글머리 목록 — 지금 블록 아래(조 제목이면 그 조 끝)에 번호 없는 「-」 목록, 목록 안이면 아래에 항목",
         match: oneOf("아래에 글머리 목록 추가", "글머리 목록 추가", "이 가지에 글머리 목록 추가", "아래에 항목 추가", "이 가지에 항목 추가"),
       },
-      { id: "clauseBlock", label: "함수조항", title: "함수조항 추가 — 지금 자리 아래에 그 자리 유형(항 · 호 · 목)으로(조 제목이면 그 조 끝)", match: oneOf("아래에 함수조항(조 단위) 추가…", "아래에 함수조항(호) 추가…", "아래에 함수조항(목) 추가…", "함수조항(호) 추가…", "함수조항(목) 추가…", "아래에 함수조항 참조 추가…", "함수조항 참조 추가…") },
+      { id: "clauseBlock", label: "함수조항", title: "함수조항 추가 — 지금 자리 아래에 그 자리 유형(항 · 호 · 목)으로(조 제목이면 그 조 끝)", match: oneOf("아래에 함수조항(조 단위) 추가…", "아래에 함수조항(호) 추가…", "아래에 함수조항(목) 추가…", "함수조항(호) 추가…", "함수조항(목) 추가…", "아래에 함수조항 참조 추가…", "함수조항 참조 추가…", "이 반복에 함수조항(조 단위) 추가…", "이 반복에 함수조항(호) 추가…") },
       { id: "box", label: "박스", title: "박스 — 정적 마스터 박스를 골라 지금 블록 아래(조 제목이면 그 조 끝)에", match: oneOf("아래에 박스 추가…", "박스 추가…", "이 가지에 박스 추가…") },
+      {
+        id: "forBlock",
+        label: "반복",
+        title: "반복 블록 — 원천(납입면제종마다 · 현재 종의 사유마다 · 합집합)을 골라 지금 블록 아래(조 제목이면 그 조 끝, 항이면 그 항의 호 목록)에. 반복 안 반복은 한 단계까지",
+        match: oneOf("아래에 반복 블록 추가…", "반복 블록 추가…", "반복 블록(호) 추가…", "이 반복에 반복 블록 추가…"),
+        multi: true,
+      },
     ],
   },
   {
@@ -123,6 +132,7 @@ export const DOC_TOOLS: ToolGroup[] = [
       { id: "edit", label: "고치기", title: "고치기 — 고른 칩 · 함수조항 참조의 속성", match: oneOf("고치기…", "옵션 고치기…") },
       { id: "tableProps", label: "표 속성", title: "표 속성 — 고른 표", match: oneOf("표 속성…") },
       { id: "repeat", label: "행 반복", title: "행 반복 — 고른 표(담보약관)", match: oneOf("행 반복…") },
+      { id: "repeatSource", label: "반복 원천", title: "반복 원천 — 고른 반복 블록의 원천 · 이름", match: oneOf("반복 원천…") },
       { id: "link", label: "조연결", title: "조연결 — 고른 조(담보약관)", match: oneOf("조연결…") },
     ],
   },
@@ -138,7 +148,7 @@ export const DOC_TOOLS: ToolGroup[] = [
 ];
 
 /** 공용조항 본문에 없는 도구 — 공용조항 툴바에서 빠진다 (기능/함수조항 §4.3). 조 · 관 · 공용조항은 남고 잠긴다(사유 tooltip). */
-const CLAUSE_HIDDEN = new Set<ToolId>(["table", "structKey", "tableProps", "repeat", "link"]);
+const CLAUSE_HIDDEN = new Set<ToolId>(["table", "structKey", "tableProps", "repeat", "link", "forBlock", "repeatSource"]);
 
 export const CLAUSE_TOOLS: ToolGroup[] = DOC_TOOLS.map((g) => ({ ...g, tools: g.tools.filter((t) => !CLAUSE_HIDDEN.has(t.id)) })).filter((g) => g.tools.length > 0);
 

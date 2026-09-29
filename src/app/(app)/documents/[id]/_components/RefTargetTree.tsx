@@ -36,8 +36,8 @@ export function RefTargetTree({
   id: string;
   scopes: readonly RefTargetScope[];
   defaultSelected: readonly Id[];
-  /** 고른 개수가 바뀔 때 — 연결어 라디오를 켜고 끈다. */
-  onCountChange?: (count: number) => void;
+  /** 고른 개수가 바뀔 때 — 연결어 라디오를 켜고 끈다. `ids` = 고른 줄(노드 id) — 반복 블록 안 대상이면 하나여도 연결어가 켜진다. */
+  onCountChange?: (count: number, ids: readonly Id[]) => void;
 }) {
   const [selected, setSelected] = useState<ReadonlySet<Id>>(() => new Set(defaultSelected));
   const [open, setOpen] = useState<ReadonlySet<Id>>(() => new Set(scopes.flatMap((s) => [...referenceAncestorIds(s.index, defaultSelected)])));
@@ -91,7 +91,7 @@ export function RefTargetTree({
     if (out.has(nodeId)) out.delete(nodeId);
     else out.add(nodeId);
     setSelected(out);
-    onCountChange?.(out.size);
+    onCountChange?.(out.size, [...out]);
   };
 
   /** 접힌 줄 아래에 고른 것이 몇 개 숨어 있나 — 접어도 고른 사실이 보이게. */

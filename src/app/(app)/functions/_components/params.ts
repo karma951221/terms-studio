@@ -2,9 +2,10 @@
  * 함수조항 인자 화면의 순수 재료 (최종 결정 2 · 기능/함수조항 §4.3) — 인자 표 칸 값 ⇄ 인자 선언, 조건 · 슬롯 고르기의 「인자」 칸, 사용처 연결 칸.
  *
  * 고르기 칸의 값은 글자 하나다 — 타입 `boolean` · `enum:E0001` · `list<enum>:E0001` · `planOptions:waiver`,
- * 연결 `""`(없음 · 기본 연결) · `d:D0001`(구분자) · `c:true` · `c:false` · `c:V01`(상수 — 참거짓 · 열거값) · `s:waiver` · `s:waiver:applies`(원천 — 폼 전체 · 참거짓 필드 = 예).
+ * 연결 `""`(없음 · 기본 연결) · `d:D0001`(구분자) · `c:true` · `c:false` · `c:V01`(상수 — 참거짓 · 열거값) · `s:waiver` · `s:waiver:applies`(원천 — 폼 전체 · 참거짓 필드 = 예) ·
+ * `r:<반복 블록 id>`(반복의 현재 원소 — 넣는 자리를 감싼 반복만, ADR-0077 결정 3).
  */
-import type { Binding, ParamDef, ParamType } from "@/domain/clause";
+import type { Binding, LoopElementType, ParamDef, ParamType } from "@/domain/clause";
 import { fieldsOfForm, formsOfLevel } from "@/domain/master";
 import type { FieldType } from "@/domain/types";
 
@@ -88,8 +89,15 @@ export function bindingValue(b: Binding | undefined): string {
       return m && m[1] === b.source.form ? `s:${b.source.form}:${m[2]}` : `s:${b.source.form}`;
     }
     case "current":
-      return "";
+      return `r:${b.loop}`;
   }
+}
+
+/** 넣는 자리를 감싼 반복 — 인자 연결 칸의 「반복의 현재 원소」 후보 (`repeatSources.loopChoices`). */
+export interface LoopChoice {
+  id: string;
+  label: string;
+  type: LoopElementType;
 }
 
 /** 칸 값 → 연결. 상수는 인자 타입으로 푼다(참거짓 · 열거값만 칸에서 고른다). */
@@ -99,6 +107,7 @@ export function bindingOfValue(value: string, type: ParamType): Binding | undefi
   const arg = rest.join(":");
   if (kind === "d") return { kind: "discriminator", code: arg };
   if (kind === "c") return { kind: "const", value: type.kind === "boolean" ? arg === "true" : type.kind === "number" ? Number(arg) : arg };
+  if (kind === "r" && arg) return { kind: "current", loop: arg };
   if (kind === "s") {
     const [form, field] = arg.split(":");
     return { kind: "source", source: field ? { form, filter: `${form}.${field} = true` } : { form } };
@@ -119,16 +128,22 @@ export function bindingOptions(
   enums: readonly EnumChoice[],
   forms: readonly PlanFormChoice[],
   withConst: boolean,
+  loops: readonly LoopChoice[] = [],
 ): { value: string; label: string; group: string }[] {
+  // 반복의 현재 원소 — 원소 타입이 인자 타입과 같은 감싼 반복만 (종 → 세목 선택지 목록<폼> · 열거값 → enum<E>)
+  const current = loops
+    .filter((l) => (l.type.kind === "planOptions" ? t.kind === "planOptions" && t.form === l.type.form : t.kind === "enum" && t.enumCode === l.type.enumCode))
+    .map((l) => ({ value: `r:${l.id}`, label: l.label, group: "반복" }));
   if (t.kind === "planOptions") {
     const form = forms.find((f) => f.key === t.form);
-    if (!form) return [];
+    if (!form) return current;
     return [
+      ...current,
       { value: `s:${form.key}`, label: `${form.label} — 모든 선택지`, group: "원천" },
       ...form.booleanFields.map((f) => ({ value: `s:${form.key}:${f.key}`, label: `${form.label} — ${f.label} = 예인 선택지`, group: "원천" })),
     ];
   }
-  const out = discriminators.filter((d) => !d.param && sameType(d.type, t)).map((d) => ({ value: `d:${d.code}`, label: `${d.label} (${d.code})`, group: "구분자" }));
+  const out = [...current, ...discriminators.filter((d) => !d.param && sameType(d.type, t)).map((d) => ({ value: `d:${d.code}`, label: `${d.label} (${d.code})`, group: "구분자" }))];
   if (!withConst) return out;
   if (t.kind === "boolean") out.push({ value: "c:true", label: "예(상수)", group: "상수" }, { value: "c:false", label: "아니오(상수)", group: "상수" });
   if (t.kind === "enum") for (const v of enums.find((e) => e.code === t.enumCode)?.values ?? []) out.push({ value: `c:${v.code}`, label: `${v.label}(상수)`, group: "상수" });
@@ -136,9 +151,9 @@ export function bindingOptions(
 }
 
 /** 연결 표시 — 「갱신여부(D0001)」 · 「예」 · 「납입면제 — 적용여부 = 예인 선택지」. */
-export function bindingLabel(b: Binding | undefined, t: ParamType, discriminators: readonly CtxDiscriminator[], enums: readonly EnumChoice[], forms: readonly PlanFormChoice[]): string {
+export function bindingLabel(b: Binding | undefined, t: ParamType, discriminators: readonly CtxDiscriminator[], enums: readonly EnumChoice[], forms: readonly PlanFormChoice[], loops: readonly LoopChoice[] = []): string {
   if (!b) return "없음";
-  const found = bindingOptions(t, discriminators, enums, forms, true).find((o) => o.value === bindingValue(b));
+  const found = bindingOptions(t, discriminators, enums, forms, true, loops).find((o) => o.value === bindingValue(b));
   if (found) return found.label;
   if (b.kind === "discriminator") return `${b.code}(없는 구분자)`;
   if (b.kind === "const") return String(b.value);

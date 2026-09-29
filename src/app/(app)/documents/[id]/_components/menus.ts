@@ -29,6 +29,8 @@ export type PopupSpec =
   | { kind: "clauseBlock"; at: Position; fit?: ClauseFit }
   /** 정적 마스터 박스 고르기 — 고르면 그 자리에 박스 참조 (기능/박스 §4.4). */
   | { kind: "boxPick"; at: Position }
+  /** 블록 반복 — `at` 이면 넣기(원천 고르기 → 빈 항 · 호 하나를 든 반복), `nodeId` 면 그 반복의 원천 · 이름 고치기 (ADR-0077). */
+  | { kind: "repeatBlock"; at?: Position; nodeId?: Id }
   | { kind: "tableProps"; tableId: Id }
   | { kind: "repeat"; tableId: Id }
   | { kind: "link"; articleId: Id }
@@ -65,7 +67,10 @@ export function forContextMenu(sections: MenuSections): MenuSections {
 /** 메뉴는 구획(구분선으로 나뉜 묶음)의 목록이다. 빈 구획은 그리지 않는다. */
 export type MenuSections = MenuItem[][];
 
-const KIND_WORD: Partial<Record<NodeKind, string>> = { paragraph: "항", item: "호", subitem: "목", bullet: "항목", bulletList: "글머리 목록", article: "조", section: "관", table: "표", box: "박스", clauseBlockRef: "함수조항", boxRef: "박스" };
+const KIND_WORD: Partial<Record<NodeKind, string>> = { paragraph: "항", item: "호", subitem: "목", bullet: "항목", bulletList: "글머리 목록", article: "조", section: "관", table: "표", box: "박스", clauseBlockRef: "함수조항", boxRef: "박스", forBlock: "반복 블록" };
+
+/** 반복 깊이 한도 — 반복 안 반복 하나 (ADR-0077 결정 4). 도메인 `REPEAT_MAX_DEPTH` 와 같다. */
+const MAX_REPEAT_DEPTH = 2;
 
 /**
  * 위로 · 아래로 · 복제 · 삭제 — 모든 블록이 같은 네 줄을 쓴다.
@@ -151,6 +156,10 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
   }
   // 정적 마스터 박스 — 조 자리 · 항 · 호 뒤(호 목록 자리). 박스는 잎이라 공용조항 본문에서도 같다 (기능/박스 §3.2)
   if (after && e.allowed.includes("boxRef")) add.push({ label: "아래에 박스 추가…", action: { do: "popup", popup: { kind: "boxPick", at: after } } });
+  // 블록 반복 — 조 자리 · 호 목록 자리, 반복 안 반복은 한 단계까지 (ADR-0077)
+  if (after && e.allowed.includes("forBlock") && e.forDepth < MAX_REPEAT_DEPTH) add.push({ label: "아래에 반복 블록 추가…", action: { do: "popup", popup: { kind: "repeatBlock", at: after } } });
+  if (e.node.kind === "paragraph" && e.forDepth < MAX_REPEAT_DEPTH) add.push({ label: "반복 블록(호) 추가…", action: { do: "popup", popup: { kind: "repeatBlock", at: { parentId: nodeId, slot: "items" } } } });
+  if (e.node.kind === "forBlock") add.push(...repeatIntoItems(env, nodeId, e.allowed, e.forDepth + 1));
 
   const own: MenuItem[] = [];
   if (e.node.kind === "table") {
@@ -158,9 +167,30 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
     if (env.docKind === "special") own.push({ label: "행 반복…", action: { do: "popup", popup: { kind: "repeat", tableId: nodeId } } });
   }
   if (e.node.kind === "clauseBlockRef") own.push({ label: "옵션 고치기…", action: { do: "popup", popup: { kind: "editChip", nodeId } } });
+  if (e.node.kind === "forBlock") own.push({ label: "반복 원천…", action: { do: "popup", popup: { kind: "repeatBlock", nodeId } } });
   if (e.allowed.includes("condBlock")) own.push(wrapItem(env, nodeId));
 
   return [add, own, arrangeItems(ix, nodeId)];
+}
+
+/**
+ * 반복 블록 안 끝에 넣기 — 본문 자리는 반복이 선 자리의 허용 집합(표 · 옛 박스 제외, 투명)이다. 빈 반복(원소 본문 없음)에 첫 내용을 넣는 입구.
+ * `depth` = 이 반복 자신까지의 깊이 — 한 단계 중첩 한도 안이면 안쪽 반복도 넣는다.
+ */
+function repeatIntoItems(env: MenuEnv, forId: Id, allowed: readonly NodeKind[], depth: number): MenuItem[] {
+  const at: Position = { parentId: forId };
+  const out: MenuItem[] = [];
+  for (const k of ["paragraph", "item"] as const) {
+    if (!allowed.includes(k)) continue;
+    const node = emptyNode(k, env.newId);
+    out.push({ label: `이 반복에 ${KIND_WORD[k]} 추가`, action: { do: "ops", ops: [{ type: "insert", node, at }], focus: node.id } });
+  }
+  if (allowed.includes("clauseBlockRef")) {
+    const fit = fitOf(allowed);
+    out.push({ label: `이 반복에 함수조항(${FIT_WORD[fit]}) 추가…`, action: { do: "popup", popup: { kind: "clauseBlock", at, ...(fit === "block" ? {} : { fit }) } } });
+  }
+  if (allowed.includes("forBlock") && depth < MAX_REPEAT_DEPTH) out.push({ label: "이 반복에 반복 블록 추가…", action: { do: "popup", popup: { kind: "repeatBlock", at } } });
+  return out;
 }
 
 /**
@@ -224,6 +254,7 @@ export function articleMenu(env: MenuEnv, articleId: Id, title = true): MenuSect
   // 조 끝에 공용조항(조 단위) — 조의 첫 자리가 공용조항인 조(「준용규정」 = 〔항 공용조항〕 하나)를 항 없이 세운다 (2026-09-28, 실물재현 E2E)
   add.push({ label: "함수조항 참조 추가…", action: { do: "popup", popup: { kind: "clauseBlock", at: { parentId: articleId } } } });
   add.push({ label: "박스 추가…", action: { do: "popup", popup: { kind: "boxPick", at: { parentId: articleId } } } });
+  add.push({ label: "반복 블록 추가…", action: { do: "popup", popup: { kind: "repeatBlock", at: { parentId: articleId } } } });
   add.push(bulletListItem("글머리 목록 추가", { parentId: articleId }, env.newId));
 
   const own: MenuItem[] = [];
