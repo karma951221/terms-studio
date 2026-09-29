@@ -12,7 +12,7 @@
  * 표시 전용 — 저장 식은 그대로다.
  * 문장 안 조건의 가지 머리(칩 팝업)도 같은 줄을 쓴다.
  */
-import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 
 import { Combobox, type ComboOption } from "@/app/_components/Combobox";
 import { IconButton, IconMinusCircle, IconPlusCircle } from "@/app/_components/icons";
@@ -213,9 +213,13 @@ export function CondRows({
   const typeOf = (ref: DiscriminatorRef) => defOf(ref)?.type;
   const issues = rowIssues(rows, typeOf, (code) => attributeOf(code)?.values.map((v) => v.code));
   const parens = joinParens(rows.joins);
+  // 괄호 자리는 괄호가 있을 때만, 모든 줄에 같은 폭으로 — 줄끼리 칸이 어긋나지 않고, 그만큼(자리 폭 + 칸 사이 4px 둘) 변수 칸을 줄여 한 줄에 둔다
+  const maxOpen = parens[0]?.open ?? 0;
+  const maxClose = Math.max(0, ...parens.map((p) => p.close));
+  const parenStyle = maxOpen > 0 ? ({ "--ts-paren-open": maxOpen, "--ts-paren-close": maxClose, "--ts-paren-room": `${(maxOpen + maxClose) * 8 + 8}px` } as CSSProperties) : undefined;
 
   return (
-    <div className="ts-cond-rows">
+    <div className="ts-cond-rows" style={parenStyle}>
       {rows.rows.map((row, i) => {
         const name = `${label} ${i + 1}번 줄`;
         const discriminator = row.left?.kind === "discriminator" ? row.left : undefined;
@@ -240,8 +244,8 @@ export function CondRows({
                 <option value="or">OR</option>
               </select>
             )}
-            {parens[i].open > 0 && (
-              <span className="ts-cond-paren" aria-hidden="true">
+            {maxOpen > 0 && (
+              <span className="ts-cond-paren ts-cond-paren-open" aria-hidden="true">
                 {"(".repeat(parens[i].open)}
               </span>
             )}
@@ -283,8 +287,8 @@ export function CondRows({
               onChange={(right, commit) => setRows({ ...rows, rows: rows.rows.map((r, idx) => (idx === i ? { ...r, ...(right ? { right } : { right: undefined }) } : r)) }, commit)}
               onDone={done}
             />
-            {parens[i].close > 0 && (
-              <span className="ts-cond-paren" aria-hidden="true">
+            {maxOpen > 0 && (
+              <span className="ts-cond-paren ts-cond-paren-close" aria-hidden="true">
                 {")".repeat(parens[i].close)}
               </span>
             )}
