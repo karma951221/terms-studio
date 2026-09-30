@@ -134,6 +134,8 @@ for (const product of SEED.products) {
           const place = page.getByRole("button", { name: `배치 · ${group.title} 에` });
           await pickCombo(page.locator("form", { has: place }).getByRole("combobox"), { label: mountName(mount) });
           await submit(page, place);
+          // 배치가 그려질 때까지 — 다음 고르기가 늦게 온 화면에 초점을 뺏기지 않게
+          await expect(page.getByRole("button", { name: `배치 해제 · ${mountName(mount)} 를 ${group.title} 에서`, exact: true })).toBeVisible();
         }
         await expect(page.getByText(`미배치 상품담보: ${mountName(product.mounts[0])}`, { exact: true })).toBeVisible();
       });

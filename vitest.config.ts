@@ -11,6 +11,9 @@ export default defineConfig({
     include: ["src/**/*.{test,spec}.{ts,tsx}", "scripts/**/*.test.ts"],
     exclude: ["node_modules/**", ".next/**", "tests/e2e/**"],
     environment: "node",
+    // PGlite 를 띄우는 테스트는 혼자 1~3초다 — E2E(dev 서버)와 함께 돌면 기본 5초를 넘겨 떨어졌다(2026-09-30).
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
   },
   resolve: {
     alias: {
