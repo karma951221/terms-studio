@@ -163,6 +163,9 @@ test(
       const clauseRow = d.locator("[data-ref-row]").filter({ hasText: `함수조항 「${clauseName}」` });
       // 조 › 반복 블록 › 항 › 안쪽 반복 블록을 차례로 편다 — 편집기는 반복 본문 한 벌을 원형으로 싣는다
       for (let i = 0; i < 4 && (await clauseRow.count()) === 0; i++) await d.getByRole("button", { name: /펴기$/ }).first().click();
+      // 안쪽 반복 줄 머리는 바깥 종의 폼 필드 이름으로 — 「reasons마다」(필드 키)가 아니다
+      await expect(d.locator("[data-ref-row]").filter({ hasText: "반복 — 납입면제사유마다" })).toHaveCount(1);
+      await expect(d).not.toContainText("reasons마다");
       await clauseRow.getByRole("checkbox").check();
       await d.getByLabel("값 한정").selectOption("values");
       await d.getByRole("checkbox", { name: "급성심근경색증", exact: true }).check();

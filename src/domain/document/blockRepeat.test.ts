@@ -347,6 +347,17 @@ describe("조 참조 고르기 색인 — 반복 블록 · 함수조항 참조 �
     expect(innerLoop.children[0].children.map((r) => r.label)).toEqual([expect.stringContaining("P0100")]);
     expect(referenceAncestorIds(index, [innerRow![0]])).toEqual(new Set([article, outer.id, paragraph.id, inner.id, ref.id]));
   });
+
+  it("반복 줄 머리는 바깥 반복을 알고 이름을 짓는다 — 안쪽 목록 반복은 「납입면제사유마다」(필드 키 「reasons마다」가 아니다)", () => {
+    const { doc, outer, inner, paragraph } = 납입면제조();
+    outer.code = "P0100";
+    paragraph.code = "P0200";
+    inner.code = "P0300";
+    const caption = (n: ForBlockNode, around?: ForBlockNode) => repeatLabel(n.source, around ? { outer: around.source } : {});
+    const index = referenceTargetIndex(doc, numberTree(doc), { repeatCaption: caption });
+    expect(index.get(outer.id)?.caption).toBe("반복 — 납입면제종마다");
+    expect(index.get(inner.id)?.caption).toBe("반복 — 납입면제사유마다");
+  });
 });
 
 describe("반복 · 펼친 함수조항 안 · 값 한정 참조 저장 검사 (결정 12 · 13 · ADR-0077 결정 6 · 7)", () => {
