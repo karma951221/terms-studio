@@ -29,7 +29,7 @@ import { MoreMenu, type MoreMenuItem } from "@/app/_components/MoreMenu";
 import { DOC_TEMPLATE_LABEL } from "@/app/_lib/labels";
 import { describeRejection } from "@/app/_lib/rejection";
 import type { Discriminator, EnumDef } from "@/domain/catalog";
-import type { Clause } from "@/domain/clause";
+import { switchValueLabeler, type Clause } from "@/domain/clause";
 import { formatCoordinate } from "@/domain/coordinate";
 import { coverageRowSource, masterCatalog, masterEvalContext, type Coverage, type MasterValues } from "@/domain/coverage";
 import {
@@ -218,6 +218,11 @@ export function DocumentEditor(props: EditorProps) {
   const coordinate: Coordinate = useMemo(() => ({ document: doc.kind, ownerId: doc.ownerId ?? doc.id, documentId: doc.id, ownerName: doc.title }), [doc.kind, doc.ownerId, doc.id, doc.title]);
   const gate = useMemo(() => clauseGateFrom(props.clauses, props.discriminators.map((d) => d.code), catalogTypeResolver(props.discriminators), props.enums), [props.clauses, props.discriminators, props.enums]);
   const enumByCode = useMemo(() => new Map(props.enums.map((e) => [e.code, e] as const)), [props.enums]);
+  // 함수조항 상자의 값별 분기 칸 머리(값 이름) — 함수조항마다 한 번 (최종 결정 8)
+  const switchLabelers = useMemo(
+    () => new Map((props.clauses ?? []).filter((c) => (c.params ?? []).length > 0).map((c) => [c.code, switchValueLabeler(c, props.enums)] as const)),
+    [props.clauses, props.enums],
+  );
   const appendixCodes = useMemo(() => new Set(props.appendices.map((a) => a.code)), [props.appendices]);
   const boxByCode = useMemo(() => new Map(props.boxes.map((x) => [x.code, x] as const)), [props.boxes]);
   /** 보통약관 캐시 → 편집 환경. 렌더는 상태의 캐시로, 명령 적용은 방금 받은 것까지 든 ref 의 캐시로 만든다. */
@@ -713,6 +718,8 @@ export function DocumentEditor(props: EditorProps) {
       }
       return undefined;
     },
+    enumOf: (c: Code) => enumByCode.get(c),
+    switchValueLabel: (clause, on, code) => switchLabelers.get(clause.code)?.(on, code),
     conditionFor: (nodeId) => withRow(scopeOf(nodeId)),
     ...(flashId ? { flashId } : {}),
     ...(mode === "edit" ? { edit } : {}),

@@ -4,6 +4,7 @@ import { Combobox } from "@/app/_components/Combobox";
 import { IssueList } from "@/app/_components/IssueList";
 import { RenderedDoc } from "@/app/_components/RenderedDoc";
 import type { Booklet } from "@/domain/assembly";
+import type { EnumDef } from "@/domain/catalog";
 import type { Clause } from "@/domain/clause";
 import { referenceTargetIndex, type Box, type DocumentNode, type NodeNumber } from "@/domain/document";
 import type { ClauseOptionOverride, ProductCoverage } from "@/domain/product";
@@ -30,6 +31,8 @@ export interface GeneralTabProps {
   appendices: { code: string; name: string }[];
   /** 정적 마스터 박스 — 원문 모델의 박스 참조를 내용째. */
   boxes: Box[];
+  /** 열거형 — 함수조항 상자의 값별 분기 칸 머리를 값 이름으로. */
+  enums?: readonly EnumDef[];
   discriminators: { code: string; label: string }[];
   /** 보통약관 템플릿 트리 — 미지정이면 undefined (세 패널 대신 한 줄 안내). */
   generalTree: DocumentNode | undefined;
@@ -62,6 +65,7 @@ export function GeneralTab({
   clauses,
   appendices,
   boxes,
+  enums,
   discriminators,
   generalTree,
   generalNumbers,
@@ -114,6 +118,7 @@ export function GeneralTab({
           overrideTargets={overrideTargets}
           appendices={appendices}
           boxes={boxes}
+          {...(enums ? { enums } : {})}
           discriminators={discriminators}
         />
       ),

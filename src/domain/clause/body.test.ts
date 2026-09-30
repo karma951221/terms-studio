@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { analyzeBody, collectExpressions, allNodeIds, orderSwitchCases } from "./body";
+import { analyzeBody, collectExpressions, allNodeIds, orderSwitchCases, switchValueLabeler } from "./body";
 import type { Block, Inline } from "./nodes";
 import type { OptionDef } from "./types";
 
@@ -511,5 +511,31 @@ describe("칸 순서 = 열거형 순서 — 저장 때 맞춘다 (최종 결정 
       ["k1", ["V01"]],
       ["k2", ["V02", "V03"]],
     ]);
+  });
+});
+
+describe("switchValueLabeler — 값별 분기 칸 머리의 값 이름 (최종 결정 8 · 사용처 상자)", () => {
+  const 사유 = { name: "사유", type: { kind: "enum" as const, enumCode: "E0001" } };
+  const 유형인자 = { name: "유형", type: { kind: "enum" as const, enumCode: "E0002" } };
+  const enums = [
+    { code: "E0001", label: "납입면제사유", values: [{ code: "V01", label: "질병", order: 0 }, { code: "V02", label: "상해", order: 1 }] },
+    { code: "E0002", label: "해약환급금유형", values: [{ code: "V01", label: "지급형", order: 0 }] },
+  ];
+
+  it("인자 대상 — 그 인자 열거형의 값 이름 (값 코드가 열거형마다 겹쳐도 대상의 열거형으로)", () => {
+    const label = switchValueLabeler({ params: [사유, 유형인자], locals: [] }, enums);
+    expect(label("arg.사유", "V01")).toBe("질병");
+    expect(label("arg.유형", "V01")).toBe("지급형");
+  });
+
+  it("내부 변수 대상 — 내부 변수 타입의 열거형으로", () => {
+    const label = switchValueLabeler({ params: [사유], locals: [{ name: "대표", expr: "arg.사유" }] }, enums);
+    expect(label("var.대표", "V02")).toBe("상해");
+  });
+
+  it("모르는 대상 · 없는 값 — undefined (호출부가 코드로 적는다)", () => {
+    const label = switchValueLabeler({ params: [사유], locals: [] }, enums);
+    expect(label("arg.없음", "V01")).toBeUndefined();
+    expect(label("arg.사유", "V09")).toBeUndefined();
   });
 });

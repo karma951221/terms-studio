@@ -9,6 +9,7 @@ import type { MouseEvent } from "react";
 
 import type { ReactNode } from "react";
 
+import type { EnumDef } from "@/domain/catalog";
 import type { Clause } from "@/domain/clause";
 import type { BranchEvaluation, EditOp, InlineAt, InlineNode, NodeNumber, ReferenceTarget, SlotEvaluation, TableEvaluation } from "@/domain/document";
 import { format, parse, type DisplayName, type MemberName } from "@/domain/expression";
@@ -91,6 +92,10 @@ export interface DocCtx {
   repeatLabelOf?: (nodeId: Id) => string;
   /** 반복 원소 열거값의 표시명 — 조 참조 칩의 값 한정(「⟨값 = 암⟩」) 표기. 없으면 코드. */
   enumValueLabel?: (code: Code) => string | undefined;
+  /** 함수조항 상자의 값별 분기 칸 머리 — (함수조항, 대상 식, 값 코드) → 값 이름 (최종 결정 8). 없으면 코드. */
+  switchValueLabel?: (clause: Clause, on: string, code: Code) => string | undefined;
+  /** 열거형 조회 — 함수조항 상자 머리의 목록값 상수 연결을 값 이름으로(「질병(상수)」). 없으면 코드. */
+  enumOf?: (code: Code) => EnumDef | undefined;
   /**
    * 공용조항 블록 안을 무엇으로 그리나 — 기본은 **모델**(슬롯 · 옵션 자리 · 조건 · 참조, `ClauseModel`),
    * `"text"` 는 고른 선택지 문구를 끼운 문장(미리보기 · 사전평가 결과). 가운데 = 모델, 오른쪽 = 결과 (2026-09-28).

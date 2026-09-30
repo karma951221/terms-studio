@@ -299,6 +299,7 @@ export default async function ProductDetailPage({
           clauses={clauses}
           appendices={appendices.map((a) => ({ code: a.code, name: a.name }))}
           boxes={boxes}
+          enums={enumsList}
           discriminators={discriminators.map((d) => ({ code: d.code, label: d.label }))}
           generalTree={generalDoc?.tree}
           generalNumbers={generalNumbers}

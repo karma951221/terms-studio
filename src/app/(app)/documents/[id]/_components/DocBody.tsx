@@ -39,7 +39,7 @@ import {
   type TableNode,
   type TreeIndex,
 } from "@/domain/document";
-import type { Id } from "@/domain/types";
+import type { Code, Id } from "@/domain/types";
 
 import { BoxView } from "@/app/_components/BoxView";
 import { ClauseModel, clauseEditHref } from "@/app/_components/ClauseModel";
@@ -283,11 +283,15 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
   // 인자 연결 (최종 결정 2) — 「인자 ← 연결」, 사용처가 대지 않은 인자는 기본 연결
   const params = clause?.params ?? [];
   const discriminators = ctx.conditionFor?.(node.id).discriminators ?? [];
+  const enumChoicesOf = (t: { kind: string; enumCode?: Code }) => {
+    const def = t.enumCode !== undefined ? ctx.enumOf?.(t.enumCode) : undefined;
+    return def ? [def] : [];
+  };
   const args = params.map((p) => {
     const own = node.bindings?.[p.name];
     const b = own ?? p.default;
     // 반복의 현재 원소 — 그 반복의 이름으로 「현재 ⟳ 납입면제사유마다」 (ADR-0077 결정 3)
-    const what = b?.kind === "current" ? `현재 ⟳ ${ctx.repeatLabelOf?.(b.loop) ?? "반복"}` : b ? bindingLabel(b, p.type, discriminators, [], []) : "연결 없음";
+    const what = b?.kind === "current" ? `현재 ⟳ ${ctx.repeatLabelOf?.(b.loop) ?? "반복"}` : b ? bindingLabel(b, p.type, discriminators, enumChoicesOf(p.type), []) : "연결 없음";
     return `${p.name} ← ${what}${own || !b ? "" : "(기본)"}`;
   });
   const optionWords = clause && clause.options.length === 0 && params.length > 0 ? "" : ctx.optionText(node.clauseCode, node.options);
@@ -334,6 +338,8 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
         appendixName={(code) => ctx.appendixName.get(code)}
         boxOf={ctx.boxOf}
         exprText={(source) => chipText(source, "edit", ctx.refLabel).full}
+        {...(ctx.switchValueLabel ? { valueLabel: (on: string, code: Code) => ctx.switchValueLabel!(clause, on, code) } : {})}
+        foldScope={node.id}
       />
     );
   }

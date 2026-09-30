@@ -85,3 +85,55 @@ describe("ClauseModel — 함수조항 본문의 모델을 편다", () => {
     expect(render({})).toContain("· 미선택");
   });
 });
+
+/** 인자를 가진 함수조항 — 공통 항 · 값별 분기(질병 칸 · 상해 「문구 없음」) · 조건 블록. */
+const foldClause: Clause = {
+  code: "C0100",
+  label: "납입면제 사유",
+  mode: "block",
+  required: { discriminators: [], attributes: [] },
+  options: [],
+  params: [{ name: "사유", type: { kind: "enum", enumCode: "E0001" } }],
+  body: [
+    { id: "p0", kind: "paragraph", children: [{ id: "t0", kind: "text", text: "공통 항" }] },
+    {
+      id: "sw",
+      kind: "switchBlock",
+      on: "arg.사유",
+      cases: [
+        { id: "k1", values: ["V01"], children: [{ id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text: "질병 칸 항" }] }, { id: "p1b", kind: "paragraph", children: [{ id: "t1b", kind: "text", text: "질병 칸 둘째 항" }] }] },
+        { id: "k2", values: ["V02"], empty: true, children: [] },
+      ],
+    },
+    { id: "cb", kind: "condBlock", branches: [{ id: "cb1", when: "arg.사유 = 'V01'", children: [{ id: "p2", kind: "paragraph", children: [{ id: "t2", kind: "text", text: "조건 칸 항" }] }] }] },
+  ],
+};
+
+function renderFold(scope?: string) {
+  return renderToStaticMarkup(
+    <ClauseModel clause={foldClause} selected={{}} references={references} {...(scope ? { foldScope: scope } : {})} valueLabel={(on, v) => (on === "arg.사유" ? ({ V01: "질병", V02: "상해" } as Record<string, string>)[v] : undefined)} />,
+  );
+}
+
+describe("ClauseModel — 인자 있는 함수조항은 접어 둔다 (최종 결정 8 · 기능/함수조항 §4.4)", () => {
+  it("인자 있는 조항은 칸 머리만 — 칸마다 접힌 <details>, 머리 = 배정 값 이름 · 문장 수", () => {
+    const html = renderFold();
+    expect(html.match(/<details/g)).toHaveLength(2); // 질병 칸 · IF 가지 (문구 없음 칸은 펼칠 것이 없다)
+    expect(html).not.toMatch(/<details[^>]* open/);
+    expect(html).toMatch(/<summary[^>]*>.*질병.*문장 2.*<\/summary>/);
+    expect(html).not.toContain(">V01<");
+    expect(html).toContain("상해 — 문구 없음");
+    expect(html).toContain("공통 항"); // 칸 밖 본문은 그대로
+  });
+
+  it("칸을 누르면 그 칸만 펼침 — 한 분기의 칸은 같은 묶음(name)이고, 묶음 이름은 상자마다 다르다", () => {
+    const html = renderFold("box-1");
+    const names = [...html.matchAll(/<details[^>]* name="([^"]+)"/g)].map((m) => m[1]);
+    expect(names).toEqual(["box-1:sw", "box-1:cb"]);
+    expect(renderFold("box-2")).toContain('name="box-2:sw"');
+  });
+
+  it("인자 0개 조항은 전체 — 접지 않는다", () => {
+    expect(render({ O01: "V01" })).not.toContain("<details");
+  });
+});

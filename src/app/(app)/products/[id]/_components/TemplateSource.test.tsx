@@ -197,3 +197,46 @@ describe("TemplateSource — 조를 감싼 조건 블록 (Important-3)", () => {
     expect(render([])).toContain("이 관에는 조가 없다");
   });
 });
+
+describe("TemplateSource — 인자 있는 함수조항 상자는 접힌다 (최종 결정 8)", () => {
+  const waiver: Clause = {
+    mode: "block",
+    code: "C0200",
+    label: "납입면제 사유",
+    required: { discriminators: [], attributes: [] },
+    options: [],
+    params: [{ name: "사유", type: { kind: "enum", enumCode: "E0001" }, default: { kind: "discriminator", code: "D0009" } }],
+    body: [
+      {
+        id: "sw",
+        kind: "switchBlock",
+        on: "arg.사유",
+        cases: [
+          { id: "k1", values: ["V01"], children: [{ id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text: "질병 항" }] }] },
+          { id: "k2", values: ["V02"], children: [{ id: "p2", kind: "paragraph", children: [{ id: "t2", kind: "text", text: "상해 항" }] }] },
+        ],
+      },
+    ],
+  };
+  const host: ArticleNode = { id: "A9", kind: "article", title: "납입면제", children: [{ id: "CB1", kind: "clauseBlockRef", clauseCode: "C0200", options: {} }] };
+
+  it("머리 줄 「인자 ← 연결(기본)」 · 칸 머리 = 값 이름 · 칸은 접힌 <details> (묶음 = 상자 id)", () => {
+    const html = renderToStaticMarkup(
+      <TemplateSource
+        productId="p1"
+        nodes={[host]}
+        numbers={numbers}
+        hidden={new Set()}
+        references={new Map()}
+        clauses={[waiver]}
+        overrides={[]}
+        overrideTargets={[]}
+        discriminators={[{ code: "D0009", label: "납입면제사유" }]}
+        enums={[{ code: "E0001", label: "납입면제사유", values: [{ code: "V01", label: "질병", order: 0 }, { code: "V02", label: "상해", order: 1 }] }]}
+      />,
+    );
+    expect(html).toContain("인자: 사유 ← 납입면제사유(기본)");
+    expect(html).toMatch(/<summary[^>]*>.*질병.*<\/summary>/);
+    expect(html).toContain('name="CB1:sw"');
+  });
+});

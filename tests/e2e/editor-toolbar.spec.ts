@@ -420,3 +420,81 @@ test(
     });
   },
 );
+
+test(
+  "함수조항 상자 접기 — 인자 있는 함수조항은 템플릿에서 칸 머리(값 이름)만, 누른 칸만 펼친다",
+  { annotation: { type: "좌표없음", description: "기능/함수조항 §4.4 「함수조항 상자는 접어 둔다」 (최종 결정 8)" } },
+  async ({ page, ev }) => {
+    test.setTimeout(150_000);
+    const stamp = Date.now();
+    const clauseName = `접기검증 사유(${stamp})`;
+    await ev.action("접기#1", "관리자로 로그인한다", () => login(page));
+
+    const toolbar = page.getByRole("toolbar", { name: "약관 편집 도구" });
+    const code = await ev.action("접기#2", "역할 함수조항 — 인자 「사유」(납입면제사유) · 값별 분기 칸마다 항(질병 둘 · 상해 하나)을 쓰고 저장", async () => {
+      await page.goto("/functions/new?type=block");
+      await page.getByLabel("함수조항명").fill(clauseName);
+      await page.getByRole("button", { name: "인자 추가" }).click();
+      await page.getByLabel("인자 1 이름").fill("사유");
+      await page.getByLabel("인자 1 타입").selectOption("enum:E0001");
+      const editor = page.locator(".ts-clause-editor");
+      await toolbar.getByRole("button", { name: "값별 분기", exact: true }).click();
+      const cases = editor.locator(".ts-doc-cond.is-switch");
+      await expect(cases).toHaveCount(2);
+      const first = cases.nth(0).getByRole("textbox", { name: "항", exact: true });
+      await first.fill("질병으로 진단확정된 경우");
+      await first.press("End");
+      await first.press("Enter");
+      await cases.nth(0).getByRole("textbox", { name: "항", exact: true }).nth(1).fill("질병으로 장해상태가 된 경우");
+      await cases.nth(1).getByRole("textbox", { name: "항", exact: true }).fill("상해로 장해상태가 된 경우");
+      await page.getByRole("button", { name: "저장", exact: true }).click();
+      await page.waitForURL(/\/functions\/C\d+$/);
+      return decodeURIComponent(page.url().split("/").at(-1)!);
+    });
+
+    const body = page.locator(".ts-l3-body");
+    await ev.action("접기#3", "새 보통약관 템플릿에 조를 쓰고 툴바 「함수조항」으로 넣고, 인자 「사유」를 상수 질병으로 연결해 저장", async () => {
+      await page.goto("/documents/new");
+      await page.getByLabel("제목").fill(`접기검증 보통약관 ${stamp}`);
+      await page.getByRole("button", { name: "생성" }).first().click();
+      await page.waitForURL(/\/documents\/[0-9a-f-]+$/);
+      await page.getByRole("button", { name: "편집", exact: true }).click();
+      await toolbar.getByRole("button", { name: "조", exact: true }).click();
+      const title = body.getByRole("textbox", { name: "조 제목" });
+      await title.fill("보험료 납입면제");
+      await title.press("Enter");
+      await toolbar.getByRole("button", { name: "함수조항", exact: true }).click();
+      await page.getByRole("menuitem", { name: `${clauseName}(${code})`, exact: true }).click();
+      await expect(body.locator("[data-clause-ref]")).toHaveCount(1);
+      await body.locator("[data-clause-ref] .ts-doc-clause-opt").click();
+      const dialog = page.getByRole("dialog", { name: "함수조항 옵션 · 인자", exact: true });
+      await dialog.getByLabel("인자 사유").selectOption("c:V01");
+      await dialog.getByRole("button", { name: "확인", exact: true }).click();
+      await expect(dialog).toHaveCount(0);
+      await submit(page, page.getByRole("button", { name: "저장", exact: true }));
+      await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
+    });
+
+    const box = body.locator("[data-clause-ref]");
+    const cells = box.locator("details.ts-clause-cell");
+    await ev.action("접기#4", "상자 머리 = 이름 + 「사유 ← 연결」, 칸은 머리(값 이름 · 문장 수)만 — 내용은 접혀 있다", async () => {
+      await expect(box.locator(".ts-doc-clause-head")).toContainText(`함수조항 (${clauseName})`);
+      await expect(box.locator(".ts-doc-clause-head")).toContainText("인자: 사유 ← 질병(상수)");
+      await expect(cells).toHaveCount(2);
+      await expect(cells.nth(0).locator("summary")).toContainText("질병");
+      await expect(cells.nth(0).locator("summary")).toContainText("문장 2");
+      await expect(cells.nth(1).locator("summary")).toContainText("상해");
+      await expect(box.getByText("질병으로 진단확정된 경우")).toBeHidden();
+      await expect(box.getByText("상해로 장해상태가 된 경우")).toBeHidden();
+    });
+
+    await ev.action("접기#5", "「질병」 칸 머리를 누르면 그 칸만 펼친다 · 「상해」를 누르면 질병 칸은 닫힌다", async () => {
+      await cells.nth(0).locator("summary").click();
+      await expect(box.getByText("질병으로 진단확정된 경우")).toBeVisible();
+      await expect(box.getByText("상해로 장해상태가 된 경우")).toBeHidden();
+      await cells.nth(1).locator("summary").click();
+      await expect(box.getByText("상해로 장해상태가 된 경우")).toBeVisible();
+      await expect(box.getByText("질병으로 진단확정된 경우")).toBeHidden();
+    });
+  },
+);

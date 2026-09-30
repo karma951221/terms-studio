@@ -15,7 +15,8 @@ import { BoxView } from "@/app/_components/BoxView";
 import { ClauseModel, clauseEditHref } from "@/app/_components/ClauseModel";
 import { IconButton, IconRevert } from "@/app/_components/icons";
 import { STRUCT_KEY_CHIP } from "@/app/_lib/labels";
-import type { Clause } from "@/domain/clause";
+import type { EnumDef } from "@/domain/catalog";
+import { switchValueLabeler, type Bindings, type Clause } from "@/domain/clause";
 import { referenceChunkLabel, referenceKeyIndex, refKey, type ArticleNode, type Box, type CondBlockNode, type InlineNode, type Node, type NodeNumber, type ReferenceTarget, type TableNode } from "@/domain/document";
 import { format, parse, refPath } from "@/domain/expression";
 import type { ClauseOptionOverride } from "@/domain/product";
@@ -42,6 +43,8 @@ export interface TemplateSourceProps {
   discriminators?: readonly { code: Code; label: string }[];
   /** 정적 마스터 박스 — 박스 참조를 내용째 그린다. 없으면 코드만. */
   boxes?: readonly Box[];
+  /** 열거형 — 함수조항 상자의 값별 분기 칸 머리를 값 이름으로(최종 결정 8). 없으면 값 코드. */
+  enums?: readonly EnumDef[];
 }
 
 interface Ctx {
@@ -58,6 +61,8 @@ interface Ctx {
   overrideByNode: ReadonlyMap<Id, ClauseOptionOverride>;
   targetByNode: ReadonlyMap<Id, OverrideTarget>;
   optionText: (clauseCode: Code, options: Record<Code, Code>) => string;
+  enums: readonly EnumDef[];
+  discriminatorLabel: (code: Code) => string | undefined;
 }
 
 /** 「소멸 사유: 사망 · 어조: 일반」 — 문면 편집기와 같은 문장 (미선택도 그대로 드러낸다). */
@@ -207,11 +212,34 @@ function dedupeRefs(refs: readonly ClauseInlineRef[]): ClauseInlineRef[] {
 // ───────────────────────────── 공용조항 박스 ─────────────────────────────
 
 /**
+ * 머리 줄의 인자 연결 — 「사유 ← 납입면제사유(기본)」 (최종 결정 8 · 문면 편집기 상자 머리와 같은 말). 사용처가 대지 않은 인자는 기본 연결에 「(기본)」.
+ * 반복의 현재 원소는 이 패널이 반복 이름을 모르므로 「현재 ⟳ 반복」.
+ */
+function argsText(clause: Clause, bindings: Bindings | undefined, ctx: Ctx): string {
+  return (clause.params ?? [])
+    .map((p) => {
+      const own = bindings?.[p.name];
+      const b = own ?? p.default;
+      const what = !b
+        ? "연결 없음"
+        : b.kind === "discriminator"
+          ? (ctx.discriminatorLabel(b.code) ?? `${b.code}(없는 구분자)`)
+          : b.kind === "const"
+            ? String(b.value)
+            : b.kind === "current"
+              ? "현재 ⟳ 반복"
+              : `${b.source.form}${b.source.filter ? ` — ${b.source.filter}` : ""}`;
+      return `${p.name} ← ${what}${own || !b ? "" : "(기본)"}`;
+    })
+    .join(" · ");
+}
+
+/**
  * 공용조항 자리 — 문면 편집기와 같은 상자(머리 띠 「공용조항 (이름)」)에 **그 공용조항의 모델**을 편다 (2026-09-28).
  * 가운데는 모델(슬롯 · 옵션 자리 · 조건 · 참조), 오른쪽은 조립 결과 — 둘을 나란히 대조한다. 공용조항 자체는 공용조항 화면에서 고친다.
  * 모델 아래에 이 자리의 옵션 선택(마스터 기본 · 이 상품 오버라이드)이 선다 — 옵션이 없는 공용조항이면 선택 줄도 없다.
  */
-function ClauseBox({ nodeId, clauseCode, baseOptions, ctx }: { nodeId: Id; clauseCode: Code; baseOptions: Record<Code, Code>; ctx: Ctx }) {
+function ClauseBox({ nodeId, clauseCode, baseOptions, bindings, ctx }: { nodeId: Id; clauseCode: Code; baseOptions: Record<Code, Code>; bindings: Bindings | undefined; ctx: Ctx }) {
   const clause = ctx.clauseByCode.get(clauseCode);
   const label = clause?.label ?? `${clauseCode}(없는 함수조항)`;
   const override = ctx.overrideByNode.get(nodeId);
@@ -227,6 +255,7 @@ function ClauseBox({ nodeId, clauseCode, baseOptions, ctx }: { nodeId: Id; claus
         <span className="ts-doc-clause-name" title={`함수조항 · ${clauseCode}`}>
           함수조항 ({label})
         </span>
+        {clause && (clause.params ?? []).length > 0 && <span className="ts-doc-clause-opt">인자: {argsText(clause, bindings, ctx)}</span>}
         {override && <span className="ts-badge">오버라이드</span>}
         {clause && (
           <a className="ts-doc-clause-link" href={clauseEditHref(clause.code)} target="_blank" rel="noopener" title="함수조항 화면을 새 탭으로 연다 — 본문 · 옵션은 거기서 고친다">
@@ -236,7 +265,7 @@ function ClauseBox({ nodeId, clauseCode, baseOptions, ctx }: { nodeId: Id; claus
       </div>
       <div className="ts-doc-clause-body">
         {clause ? (
-          <ClauseModel clause={clause} selected={effective} references={ctx.references} appendixName={ctx.appendixName} boxOf={ctx.boxOf} exprText={ctx.exprText} />
+          <ClauseModel clause={clause} selected={effective} references={ctx.references} appendixName={ctx.appendixName} boxOf={ctx.boxOf} exprText={ctx.exprText} valueLabel={switchValueLabeler(clause, ctx.enums)} foldScope={nodeId} />
         ) : (
           <p className="ts-muted">{clauseCode} — 없는 함수조항이다(깨진 참조).</p>
         )}
@@ -318,7 +347,7 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
               </ol>
             )}
             {boxes.map((b) => (
-              <ClauseBox key={b.id} nodeId={b.id} clauseCode={b.clauseCode} baseOptions={b.options} ctx={ctx} />
+              <ClauseBox key={b.id} nodeId={b.id} clauseCode={b.clauseCode} baseOptions={b.options} bindings={b.bindings} ctx={ctx} />
             ))}
           </div>
         );
@@ -347,12 +376,12 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
         // 호 목록 자리(항 · 호 뒤)의 공용조항은 「박스」 — 목록 안이면 <li>
         return inList ? (
           <li key={node.id} className="ts-doc-static-item">
-            <ClauseBox nodeId={node.id} clauseCode={node.clauseCode} baseOptions={node.options} ctx={ctx} />
+            <ClauseBox nodeId={node.id} clauseCode={node.clauseCode} baseOptions={node.options} bindings={node.bindings} ctx={ctx} />
           </li>
         ) : (
           <div key={node.id} className={ctx.numbers.get(node.id)?.label ? "ts-doc-paragraph" : "ts-doc-paragraph is-bare"}>
             {ctx.numbers.get(node.id)?.label ? <span className="ts-doc-num">{ctx.numbers.get(node.id)?.label}</span> : null}
-            <ClauseBox nodeId={node.id} clauseCode={node.clauseCode} baseOptions={node.options} ctx={ctx} />
+            <ClauseBox nodeId={node.id} clauseCode={node.clauseCode} baseOptions={node.options} bindings={node.bindings} ctx={ctx} />
           </div>
         );
 
@@ -383,7 +412,7 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
           <>
             <StaticTableView node={node} ctx={ctx} />
             {boxes.map((b) => (
-              <ClauseBox key={b.id} nodeId={b.id} clauseCode={b.clauseCode} baseOptions={b.options} ctx={ctx} />
+              <ClauseBox key={b.id} nodeId={b.id} clauseCode={b.clauseCode} baseOptions={b.options} bindings={b.bindings} ctx={ctx} />
             ))}
           </>
         );
@@ -491,7 +520,7 @@ function ArticleNodes({ nodes, ctx }: { nodes: readonly Node[]; ctx: Ctx }) {
   });
 }
 
-export function TemplateSource({ productId, nodes, numbers, hidden, references, clauses, overrides, overrideTargets, appendices = [], discriminators = [], boxes = [] }: TemplateSourceProps) {
+export function TemplateSource({ productId, nodes, numbers, hidden, references, clauses, overrides, overrideTargets, appendices = [], discriminators = [], boxes = [], enums = [] }: TemplateSourceProps) {
   const boxByCode = new Map(boxes.map((x) => [x.code, x] as const));
   const clauseByCode = new Map(clauses.map((c) => [c.code, c] as const));
   const appendixByCode = new Map(appendices.map((a) => [a.code, a.name] as const));
@@ -509,6 +538,8 @@ export function TemplateSource({ productId, nodes, numbers, hidden, references, 
     overrideByNode: new Map(overrides.map((o) => [o.nodeId, o] as const)),
     targetByNode: new Map(overrideTargets.map((t) => [t.nodeId, t] as const)),
     optionText: (clauseCode, options) => optionTextOf(clauseByCode, clauseCode, options),
+    enums,
+    discriminatorLabel: (code) => labelOf.get(code),
   };
   if (nodes.length === 0) return <p className="ts-muted">이 관에는 조가 없다.</p>;
   return (

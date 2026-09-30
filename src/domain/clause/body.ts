@@ -614,6 +614,28 @@ export function switchEnumCode(on: string, params: readonly ParamDef[], localTyp
 }
 
 /**
+ * 값별 분기 칸 머리의 값 이름 — 대상(`arg.X` · `var.X`)의 열거형에서 찾는다. 값 코드(V01)는 열거형마다 겹치므로
+ * 대상의 열거형을 먼저 안다. 대상 타입 · 값을 모르면 undefined — 호출부가 코드로 적는다 (사용처 상자, 최종 결정 8).
+ * 내부 변수 타입은 인자 선언만으로 매긴다(담보속성 · 세목 필드를 읽는 내부 변수는 모름).
+ */
+export function switchValueLabeler(
+  clause: { params?: readonly ParamDef[]; locals?: readonly LocalDef[] },
+  enums: readonly { code: Code; values: readonly { code: Code; label: string }[]; fields?: readonly { key: Code; type: "string" | "boolean" }[] }[],
+): (on: string, value: Code) => string | undefined {
+  const params = clause.params ?? [];
+  const byCode = new Map(enums.map((e) => [e.code, e] as const));
+  const enumInfo: EnumInfo = (code) => {
+    const def = byCode.get(code);
+    return def ? { values: def.values.map((v) => v.code), fields: def.fields ?? [] } : undefined;
+  };
+  const lc = checkLocals(clause.locals ?? [], params, { resolveType: () => undefined, enums: enumInfo });
+  return (on, value) => {
+    const code = switchEnumCode(on, params, (name) => (lc.failed.has(name) ? undefined : lc.types.get(name)));
+    return code ? byCode.get(code)?.values.find((v) => v.code === value)?.label : undefined;
+  };
+}
+
+/**
  * 칸 순서 = 열거형 순서 — 저장할 때 맞춘다(첫 값 기준, 칸 안 값도 열거형 순서). 대상 타입 · 열거형을 모르면 그대로.
  * 본문 모양(유형)을 몰라도 걷는다 — 칸 안의 분기도 맞춘다.
  */
