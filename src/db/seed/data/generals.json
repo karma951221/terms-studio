@@ -4450,7 +4450,9 @@
                   "id": "g-a30-p4-k",
                   "kind": "clauseBlockRef",
                   "clauseCode": "C0027",
-                  "options": {},
+                  "options": {
+                    "O01": "V01"
+                  },
                   "bindings": {
                     "종들": {
                       "kind": "source",
@@ -5739,15 +5741,8 @@
                         [
                           {
                             "id": "m-a2-t1-r7c1-x1",
-                            "kind": "articleRef",
-                            "targets": [
-                              {
-                                "articleId": "m-a29",
-                                "code": "P0100"
-                              }
-                            ],
-                            "connector": "및",
-                            "scope": "self"
+                            "kind": "text",
+                            "text": "제29조(보험료의 납입면제) 제1항"
                           },
                           {
                             "id": "m-a2-t1-r7c1-x3",
@@ -5760,7 +5755,7 @@
                             "targets": [
                               {
                                 "articleId": "m-a29",
-                                "code": "P0500"
+                                "code": "P0400"
                               }
                             ],
                             "connector": "및",
@@ -5786,15 +5781,8 @@
                         [
                           {
                             "id": "m-a2-t1-r8c1-x1",
-                            "kind": "articleRef",
-                            "targets": [
-                              {
-                                "articleId": "m-a29",
-                                "code": "P0200"
-                              }
-                            ],
-                            "connector": "및",
-                            "scope": "self"
+                            "kind": "text",
+                            "text": "제29조(보험료의 납입면제) 제2항"
                           },
                           {
                             "id": "m-a2-t1-r8c1-x3",
@@ -5807,7 +5795,7 @@
                             "targets": [
                               {
                                 "articleId": "m-a29",
-                                "code": "P0500"
+                                "code": "P0400"
                               }
                             ],
                             "connector": "및",
@@ -8484,7 +8472,7 @@
                           "text": "타인의 사망을 보험금 지급사유로 하는 계약에서 계약을 체결할 때까지 피보험자의 서면(「전자서명법」 제2조제2호에 따른 전자서명이 있는 경우로서 상법 시행령에 정하는 바에 따라 본인 확인 및 위조·변조 방지에 대한 신뢰성을 갖춘 전자문서를 포함)에 의한 동의를 얻지 않은 경우. 다만, 단체가 규약에 따라 구성원의 전부 또는 일부를 피보험자로 하는 계약을 체결하는 경우에는 이를 적용하지 않습니다. 이 때 단체보험의 보험수익자를 피보험자 또는 그 상속인이 아닌 자로 지정할 때에는 단체의 규약에서 명시적으로 정한 경우가 아니면 이를 적용합니다."
                         }
                       ],
-                      "code": "P0300"
+                      "code": "P0400"
                     },
                     {
                       "id": "m-a22-p1-i2",
@@ -8496,7 +8484,7 @@
                           "text": "만15세 미만자, 심신상실자 또는 심신박약자를 피보험자로 하여 사망을 보험금 지급사유로 한 경우. 다만, 심신박약자가 계약을 체결하거나 소속 단체의 규약에 따라 단체보험의 피보험자가 될 때에 의사능력이 있는 경우에는 계약이 유효합니다."
                         }
                       ],
-                      "code": "P0400"
+                      "code": "P0500"
                     },
                     {
                       "id": "m-a22-p1-i3",
@@ -8513,7 +8501,7 @@
                           "targets": [
                             {
                               "articleId": "m-a22",
-                              "code": "P0400"
+                              "code": "P0500"
                             }
                           ],
                           "connector": "및",
@@ -8525,7 +8513,7 @@
                           "text": "의 만15세 미만자에 관한 예외가 인정되는 것은 아닙니다."
                         }
                       ],
-                      "code": "P0500"
+                      "code": "P0600"
                     },
                     {
                       "id": "m-a22-b1-k",
@@ -8568,6 +8556,22 @@
                     }
                   ],
                   "code": "P0200"
+                },
+                {
+                  "id": "m-a22-p3-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0031",
+                  "options": {},
+                  "bindings": {
+                    "종들": {
+                      "kind": "source",
+                      "source": {
+                        "form": "waiver",
+                        "filter": "waiver.applies = true"
+                      }
+                    }
+                  },
+                  "code": "P0300"
                 }
               ]
             },
@@ -9161,1135 +9165,322 @@
               ]
             },
             {
-              "id": "m-a29",
-              "kind": "article",
-              "title": "보험료의 납입면제",
-              "children": [
+              "id": "m-a29-if-waiver",
+              "kind": "condBlock",
+              "branches": [
                 {
-                  "id": "m-a29-p1",
-                  "kind": "paragraph",
+                  "id": "m-a29-if-waiver-b",
+                  "when": "D0002",
                   "children": [
                     {
-                      "id": "m-a29-p1-x1",
-                      "kind": "text",
-                      "text": "회사는 2종(보험료 납입면제 1형)을 가입한 피보험자가 보험료 납입기간 중에 다음 중 어느 하나의 사유에 해당되고 계약이 소멸되지 않은 경우에는 차회 이후 보장보험료의 납입을 면제합니다."
-                    }
-                  ],
-                  "items": [
-                    {
-                      "id": "m-a29-p1-i1",
-                      "kind": "item",
+                      "id": "m-a29",
+                      "kind": "article",
+                      "title": "보험료의 납입면제",
                       "children": [
                         {
-                          "id": "m-a29-p1-i1-x1",
-                          "kind": "text",
-                          "text": "피보험자가 암보장개시일 이후「암(유사암제외)」으로 진단확정되었을 경우"
-                        }
-                      ],
-                      "code": "P0400"
-                    },
-                    {
-                      "id": "m-a29-p1-i2",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a29-p1-i2-x1",
-                          "kind": "text",
-                          "text": "피보험자가「뇌졸중」으로 진단확정되었을 경우"
-                        }
-                      ],
-                      "code": "P0600"
-                    },
-                    {
-                      "id": "m-a29-p1-i3",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a29-p1-i3-x1",
-                          "kind": "text",
-                          "text": "피보험자가「급성심근경색증」으로 진단확정되었을 경우"
-                        }
-                      ],
-                      "code": "P1000"
-                    },
-                    {
-                      "id": "m-a29-p1-i4",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a29-p1-i4-x2",
-                          "kind": "text",
-                          "text": "피보험자가 상해로"
+                          "id": "m-a29-for-plans",
+                          "kind": "forBlock",
+                          "source": {
+                            "kind": "planOptions",
+                            "form": "waiver",
+                            "filter": "waiver.applies = true"
+                          },
+                          "children": [
+                            {
+                              "id": "m-a29-p1",
+                              "kind": "paragraph",
+                              "children": [
+                                {
+                                  "id": "m-a29-p1-x1",
+                                  "kind": "text",
+                                  "text": "회사는 "
+                                },
+                                {
+                                  "id": "m-a29-p1-x2",
+                                  "kind": "slot",
+                                  "ref": "builtin.plan.number"
+                                },
+                                {
+                                  "id": "m-a29-p1-x3",
+                                  "kind": "text",
+                                  "text": "종("
+                                },
+                                {
+                                  "id": "m-a29-p1-x4",
+                                  "kind": "slot",
+                                  "ref": "builtin.plan.name"
+                                },
+                                {
+                                  "id": "m-a29-p1-x5",
+                                  "kind": "text",
+                                  "text": ")을 가입한 피보험자가 보험료 납입기간 중에 다음 중 어느 하나의 사유에 해당되고 계약이 소멸되지 않은 경우에는 차회 이후 보장보험료의 납입을 면제합니다."
+                                }
+                              ],
+                              "items": [
+                                {
+                                  "id": "m-a29-for-reasons",
+                                  "kind": "forBlock",
+                                  "source": {
+                                    "kind": "listOfCurrent",
+                                    "loop": "m-a29-for-plans",
+                                    "field": "reasons"
+                                  },
+                                  "children": [
+                                    {
+                                      "id": "m-a29-p1-k",
+                                      "kind": "clauseBlockRef",
+                                      "clauseCode": "C0022",
+                                      "options": {},
+                                      "bindings": {
+                                        "사유": {
+                                          "kind": "current",
+                                          "loop": "m-a29-for-reasons"
+                                        }
+                                      },
+                                      "code": "P0900"
+                                    }
+                                  ],
+                                  "code": "P0800"
+                                }
+                              ],
+                              "code": "P0200"
+                            }
+                          ],
+                          "code": "P0100"
                         },
                         {
-                          "id": "m-a29-p1-i4-x1",
-                          "kind": "appendixRef",
-                          "appendixCode": "AX000002"
+                          "id": "m-a29-p3-k",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0029",
+                          "options": {},
+                          "bindings": {
+                            "종들": {
+                              "kind": "source",
+                              "source": {
+                                "form": "waiver",
+                                "filter": "waiver.applies = true"
+                              }
+                            }
+                          },
+                          "code": "P0300"
                         },
                         {
-                          "id": "m-a29-p1-i4-x3",
-                          "kind": "text",
-                          "text": "에서 정한 장해지급률이 80% 이상에 해당하는 장해상태가 되었을 경우"
-                        }
-                      ],
-                      "code": "P1100"
-                    },
-                    {
-                      "id": "m-a29-p1-i5",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a29-p1-i5-x2",
-                          "kind": "text",
-                          "text": "피보험자가 진단 확정된 질병으로"
-                        },
-                        {
-                          "id": "m-a29-p1-i5-x1",
-                          "kind": "appendixRef",
-                          "appendixCode": "AX000002"
-                        },
-                        {
-                          "id": "m-a29-p1-i5-x3",
-                          "kind": "text",
-                          "text": "에서 정한 장해지급률이 80% 이상에 해당하는 장해상태가 되었을 경우"
-                        }
-                      ],
-                      "code": "P1200"
-                    }
-                  ],
-                  "code": "P0100"
-                },
-                {
-                  "id": "m-a29-p2",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a29-p2-x1",
-                      "kind": "text",
-                      "text": "회사는 3종(보험료 납입면제 2형)을 가입한 피보험자가 보험료 납입기간 중에 다음 중 어느 하나의 사유에 해당되고 계약이 소멸되지 않은 경우에는 차회 이후 보장보험료의 납입을 면제합니다."
-                    }
-                  ],
-                  "items": [
-                    {
-                      "id": "m-a29-p2-i1",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a29-p2-i1-x1",
-                          "kind": "text",
-                          "text": "피보험자가 암보장개시일 이후「암(유사암제외)」으로 진단확정되었을 경우"
-                        }
-                      ],
-                      "code": "P1300"
-                    },
-                    {
-                      "id": "m-a29-p2-i2",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a29-p2-i2-x1",
-                          "kind": "text",
-                          "text": "피보험자가「뇌졸중」으로 진단확정되었을 경우"
-                        }
-                      ],
-                      "code": "P1400"
-                    },
-                    {
-                      "id": "m-a29-p2-i3",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a29-p2-i3-x1",
-                          "kind": "text",
-                          "text": "피보험자가「급성심근경색증」으로 진단확정되었을 경우"
-                        }
-                      ],
-                      "code": "P1500"
-                    },
-                    {
-                      "id": "m-a29-p2-i4",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a29-p2-i4-x2",
-                          "kind": "text",
-                          "text": "피보험자가 상해로"
-                        },
-                        {
-                          "id": "m-a29-p2-i4-x1",
-                          "kind": "appendixRef",
-                          "appendixCode": "AX000002"
-                        },
-                        {
-                          "id": "m-a29-p2-i4-x3",
-                          "kind": "text",
-                          "text": "에서 정한 장해지급률이 80% 이상에 해당하는 장해상태가 되었을 경우"
-                        }
-                      ],
-                      "code": "P1600"
-                    },
-                    {
-                      "id": "m-a29-p2-i5",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a29-p2-i5-x2",
-                          "kind": "text",
-                          "text": "피보험자가 진단 확정된 질병으로"
-                        },
-                        {
-                          "id": "m-a29-p2-i5-x1",
-                          "kind": "appendixRef",
-                          "appendixCode": "AX000002"
-                        },
-                        {
-                          "id": "m-a29-p2-i5-x3",
-                          "kind": "text",
-                          "text": "에서 정한 장해지급률이 80% 이상에 해당하는 장해상태가 되었을 경우"
-                        }
-                      ],
-                      "code": "P1700"
-                    },
-                    {
-                      "id": "m-a29-p2-i6",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a29-p2-i6-x1",
-                          "kind": "text",
-                          "text": "피보험자가 「중증화상및부식」으로 진단확정되었을 경우"
-                        }
-                      ],
-                      "code": "P1800"
-                    }
-                  ],
-                  "code": "P0200"
-                },
-                {
-                  "id": "m-a29-p3",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a29-p3-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a29",
+                          "id": "m-a29-p4",
+                          "kind": "paragraph",
+                          "children": [
+                            {
+                              "id": "m-a29-p4-x1",
+                              "kind": "articleRef",
+                              "targets": [
+                                {
+                                  "articleId": "m-a29",
+                                  "code": "P0200"
+                                }
+                              ],
+                              "connector": "또는",
+                              "scope": "self"
+                            },
+                            {
+                              "id": "m-a29-p4-x2",
+                              "kind": "text",
+                              "text": "에도 불구하고 아래의 보험료 납입면제 제외대상 특별약관은 보장보험료의 납입을 면제하지 않습니다."
+                            }
+                          ],
                           "code": "P0400"
                         },
                         {
-                          "articleId": "m-a29",
-                          "code": "P1300"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a29-p3-x3",
-                      "kind": "text",
-                      "text": "의 암보장개시일이라 함은 최초계약일부터 그날을 포함하여 90일이 지난날의 다음날(이하「암보장개시일」이라 합니다)을 말합니다. 다만, "
-                    },
-                    {
-                      "id": "m-a29-p3-x2",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a25"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a29-p3-x4",
-                      "kind": "text",
-                      "text": "에 따라 보장이 자동갱신되는 경우에는 이 계약의 갱신일을 암보장개시일로 합니다."
-                    }
-                  ],
-                  "code": "P0300"
-                },
-                {
-                  "id": "m-a29-b1-k",
-                  "kind": "boxRef",
-                  "boxCode": "BX000073"
-                },
-                {
-                  "id": "m-a29-p4",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a29-p4-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a29",
-                          "code": "P0100"
+                          "id": "m-a29-b2-k",
+                          "kind": "boxRef",
+                          "boxCode": "BX000074"
                         },
                         {
-                          "articleId": "m-a29",
-                          "code": "P0200"
-                        }
-                      ],
-                      "connector": "또는",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a29-p4-x2",
-                      "kind": "text",
-                      "text": "에도 불구하고 아래의 보험료 납입면제 제외대상 특별약관은 보장보험료의 납입을 면제하지 않습니다."
-                    }
-                  ],
-                  "code": "P0500"
-                },
-                {
-                  "id": "m-a29-b2-k",
-                  "kind": "boxRef",
-                  "boxCode": "BX000074"
-                },
-                {
-                  "id": "m-a29-p5",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a29-p5-x2",
-                      "kind": "text",
-                      "text": "회사는 "
-                    },
-                    {
-                      "id": "m-a29-p5-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a29",
-                          "code": "P0100"
-                        },
-                        {
-                          "articleId": "m-a29",
-                          "code": "P0200"
-                        }
-                      ],
-                      "connector": "또는",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a29-p5-x3",
-                      "kind": "text",
-                      "text": "에 따라 보장보험료 납입면제가 된 경우에 차회 이후의 적립보험료 납입을 중지합니다."
-                    }
-                  ],
-                  "code": "P0700"
-                },
-                {
-                  "id": "m-a29-p6",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a29-p6-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a29",
-                          "code": "P0100"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a29-p6-x4",
-                      "kind": "text",
-                      "text": "부터 "
-                    },
-                    {
-                      "id": "m-a29-p6-x2",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a29",
+                          "id": "m-a29-p5",
+                          "kind": "paragraph",
+                          "children": [
+                            {
+                              "id": "m-a29-p5-x2",
+                              "kind": "text",
+                              "text": "회사는 "
+                            },
+                            {
+                              "id": "m-a29-p5-x1",
+                              "kind": "articleRef",
+                              "targets": [
+                                {
+                                  "articleId": "m-a29",
+                                  "code": "P0200"
+                                }
+                              ],
+                              "connector": "또는",
+                              "scope": "self"
+                            },
+                            {
+                              "id": "m-a29-p5-x3",
+                              "kind": "text",
+                              "text": "에 따라 보장보험료 납입면제가 된 경우에 차회 이후의 적립보험료 납입을 중지합니다."
+                            }
+                          ],
                           "code": "P0500"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a29-p6-x5",
-                      "kind": "text",
-                      "text": "까지의 규정에도 불구하고 보장보험료의 납입이 면제되기 이전에 보험료 납입 연체가 있는 경우에는 연체된 보험료를 납입하여야 하며, 납입하지 않은 경우 "
-                    },
-                    {
-                      "id": "m-a29-p6-x3",
-                      "kind": "articleRef",
-                      "targets": [
+                        },
                         {
-                          "articleId": "m-a34"
+                          "id": "m-a29-p6",
+                          "kind": "paragraph",
+                          "children": [
+                            {
+                              "id": "m-a29-p6-x1",
+                              "kind": "articleRef",
+                              "targets": [
+                                {
+                                  "articleId": "m-a29",
+                                  "code": "P0200"
+                                },
+                                {
+                                  "articleId": "m-a29",
+                                  "code": "P0300"
+                                },
+                                {
+                                  "articleId": "m-a29",
+                                  "code": "P0400"
+                                }
+                              ],
+                              "connector": "및",
+                              "scope": "self"
+                            },
+                            {
+                              "id": "m-a29-p6-x5",
+                              "kind": "text",
+                              "text": "의 규정에도 불구하고 보장보험료의 납입이 면제되기 이전에 보험료 납입 연체가 있는 경우에는 연체된 보험료를 납입하여야 하며, 납입하지 않은 경우 "
+                            },
+                            {
+                              "id": "m-a29-p6-x3",
+                              "kind": "articleRef",
+                              "targets": [
+                                {
+                                  "articleId": "m-a34"
+                                }
+                              ],
+                              "connector": "및",
+                              "scope": "self"
+                            },
+                            {
+                              "id": "m-a29-p6-x6",
+                              "kind": "text",
+                              "text": "에 따라 해지될 수 있습니다."
+                            }
+                          ],
+                          "code": "P0600"
+                        },
+                        {
+                          "id": "m-a29-p7",
+                          "kind": "paragraph",
+                          "children": [
+                            {
+                              "id": "m-a29-p7-x1",
+                              "kind": "articleRef",
+                              "targets": [
+                                {
+                                  "articleId": "m-a29",
+                                  "code": "P0200"
+                                },
+                                {
+                                  "articleId": "m-a29",
+                                  "code": "P0300"
+                                },
+                                {
+                                  "articleId": "m-a29",
+                                  "code": "P0400"
+                                }
+                              ],
+                              "connector": "및",
+                              "scope": "self"
+                            },
+                            {
+                              "id": "m-a29-p7-x5",
+                              "kind": "text",
+                              "text": "의 규정에도 불구하고 "
+                            },
+                            {
+                              "id": "m-a29-p7-x3",
+                              "kind": "articleRef",
+                              "targets": [
+                                {
+                                  "articleId": "m-a25"
+                                }
+                              ],
+                              "connector": "및",
+                              "scope": "self"
+                            },
+                            {
+                              "id": "m-a29-p7-x6",
+                              "kind": "text",
+                              "text": "에 의하여 계약이 갱신이 되는 경우에는 갱신전 보험사고로 인한 보험료 납입면제를 적용하지 않으며, 갱신계약의 보장보험료를 계속 납입하여야 합니다."
+                            }
+                          ],
+                          "code": "P0700"
                         }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
+                      ]
                     },
                     {
-                      "id": "m-a29-p6-x6",
-                      "kind": "text",
-                      "text": "에 따라 해지될 수 있습니다."
-                    }
-                  ],
-                  "code": "P0800"
-                },
-                {
-                  "id": "m-a29-p7",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a29-p7-x1",
-                      "kind": "articleRef",
-                      "targets": [
+                      "id": "m-a30",
+                      "kind": "article",
+                      "title": "암(유사암제외), 뇌졸중, 급성심근경색증, 중증화상및부식의 정의 및 진단확정",
+                      "children": [
                         {
-                          "articleId": "m-a29",
+                          "id": "m-a30-for-reasons",
+                          "kind": "forBlock",
+                          "source": {
+                            "kind": "union",
+                            "form": "waiver",
+                            "filter": "waiver.applies = true",
+                            "field": "reasons",
+                            "where": {
+                              "field": "F03",
+                              "value": true
+                            }
+                          },
+                          "children": [
+                            {
+                              "id": "m-a30-p1-k",
+                              "kind": "clauseBlockRef",
+                              "clauseCode": "C0028",
+                              "options": {},
+                              "bindings": {
+                                "사유": {
+                                  "kind": "current",
+                                  "loop": "m-a30-for-reasons"
+                                }
+                              },
+                              "code": "P0200"
+                            }
+                          ],
                           "code": "P0100"
                         }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
+                      ]
                     },
                     {
-                      "id": "m-a29-p7-x4",
-                      "kind": "text",
-                      "text": "부터 "
-                    },
-                    {
-                      "id": "m-a29-p7-x2",
-                      "kind": "articleRef",
-                      "targets": [
+                      "id": "m-a31",
+                      "kind": "article",
+                      "title": "납입면제에 관한 세부규정",
+                      "children": [
                         {
-                          "articleId": "m-a29",
-                          "code": "P0500"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a29-p7-x5",
-                      "kind": "text",
-                      "text": "까지의 규정에도 불구하고 "
-                    },
-                    {
-                      "id": "m-a29-p7-x3",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a25"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a29-p7-x6",
-                      "kind": "text",
-                      "text": "에 의하여 계약이 갱신이 되는 경우에는 갱신전 보험사고로 인한 보험료 납입면제를 적용하지 않으며, 갱신계약의 보장보험료를 계속 납입하여야 합니다."
-                    }
-                  ],
-                  "code": "P0900"
-                }
-              ]
-            },
-            {
-              "id": "m-a30",
-              "kind": "article",
-              "title": "암(유사암제외), 뇌졸중, 급성심근경색증, 중증화상및부식의 정의 및 진단확정",
-              "children": [
-                {
-                  "id": "m-a30-p1",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a30-p1-x2",
-                      "kind": "text",
-                      "text": "이 계약에 있어「암(유사암제외)」이라 함은 제9차 한국표준질병사인분류에 있어서 악성신생물(암)로 분류되는 질병("
-                    },
-                    {
-                      "id": "m-a30-p1-x1",
-                      "kind": "appendixRef",
-                      "appendixCode": "AX000004"
-                    },
-                    {
-                      "id": "m-a30-p1-x3",
-                      "kind": "text",
-                      "text": "참조) 중 C44(기타 피부의 악성신생물) 및 C73(갑상선의 악성신생물)을 제외한 질병을 말합니다. 또한, 전암(前癌)상태(암으로 변하기 이전 상태, Premalignant condition or condition with malignant potential)에 해당하는 질병도 제외합니다."
-                    }
-                  ],
-                  "code": "P0100"
-                },
-                {
-                  "id": "m-a30-p2",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a30-p2-x1",
-                      "kind": "text",
-                      "text": "「암(유사암제외)」의 진단확정은 병리 또는 진단검사의학의 전문의 자격증을 가진 자에 의하여 내려져야 하며, 이 진단은 조직(fixed tissue)검사, 미세바늘흡인검사(fine needle aspiration) 또는 혈액(hemic system)검사에 대한 현미경 소견을 기초로 하여야 하며, 이 경우「암(유사암제외)」의 진단확정 시점은 상기 검사에 의한 결과보고 시점으로 합니다. 또한, 회사가「암(유사암제외)」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
-                    }
-                  ],
-                  "code": "P0200"
-                },
-                {
-                  "id": "m-a30-p3",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a30-p3-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a30",
-                          "code": "P0200"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a30-p3-x2",
-                      "kind": "text",
-                      "text": "에 따른 진단이 가능하지 않을 때에는 피보험자가「암(유사암제외)」으로 진단 또는 치료를 받고 있음을 증명할 만한 문서화된 기록 또는 증거가 있어야 합니다."
-                    }
-                  ],
-                  "code": "P0300"
-                },
-                {
-                  "id": "m-a30-b1-k",
-                  "kind": "boxRef",
-                  "boxCode": "BX000075"
-                },
-                {
-                  "id": "m-a30-p4",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a30-p4-x1",
-                      "kind": "text",
-                      "text": "한국표준질병·사인분류 지침서의 \"사망 및 질병이환의 분류번호부여를 위한 선정준칙과 지침\"에 따라 C77~C80(불명확한, 이차성 및 상세불명 부위의 악성신생물)의 경우 일차성 악성신생물(암)이 확인되는 경우에는 원발부위(최초 발생한 부위)를 기준으로 분류합니다. 다만, 이 경우에도 원발암이 완치되었다면, 이차성 및 상세불명 부위의 악성신생물(암)(C77~C80)의 진단확정 시점은 원발암 진단확정 시점으로 변경되지 않습니다."
-                    }
-                  ],
-                  "code": "P0500"
-                },
-                {
-                  "id": "m-a30-b2-k",
-                  "kind": "boxRef",
-                  "boxCode": "BX000076"
-                },
-                {
-                  "id": "m-a30-p5",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a30-p5-x2",
-                      "kind": "text",
-                      "text": "이 계약에 있어「뇌졸중」이라 함은 제9차 한국표준질병사인분류에 있어서「뇌졸중」으로 분류되는 질병으로"
-                    },
-                    {
-                      "id": "m-a30-p5-x1",
-                      "kind": "appendixRef",
-                      "appendixCode": "AX000007"
-                    },
-                    {
-                      "id": "m-a30-p5-x3",
-                      "kind": "text",
-                      "text": "에서 정한 질병을 말합니다."
-                    }
-                  ],
-                  "code": "P0700"
-                },
-                {
-                  "id": "m-a30-p6",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a30-p6-x1",
-                      "kind": "text",
-                      "text": "「뇌졸중」의 진단확정은 의료법 제3조(의료기관)에서 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관의 의사(치과의사 제외) 면허를 가진 자에 의하여 내려져야 하며, 이 진단은 병력, 신경학적 검진과 함께 뇌전산화단층촬영(brain CT scan), 자기공명영상(MRI), 뇌혈관조영술, 양전자방출단층술(PET), 단일광자방출 전산화 단층술(SPECT), 뇌척수액검사 등을 기초로 하여야 합니다. 또한, 회사가「뇌졸중」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
-                    }
-                  ],
-                  "code": "P0800"
-                },
-                {
-                  "id": "m-a30-p7",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a30-p7-x2",
-                      "kind": "text",
-                      "text": "이 계약에 있어서「급성심근경색증」이라 함은 제9차 한국표준질병사인분류에 있어서「급성심근경색증」으로 분류되는 질병으로"
-                    },
-                    {
-                      "id": "m-a30-p7-x1",
-                      "kind": "appendixRef",
-                      "appendixCode": "AX000008"
-                    },
-                    {
-                      "id": "m-a30-p7-x3",
-                      "kind": "text",
-                      "text": "에서 정한 급성 심근경색증, 후속심근경색증, 급성 심근경색증 후 특정 현존 합병증을 말합니다."
-                    }
-                  ],
-                  "code": "P0900"
-                },
-                {
-                  "id": "m-a30-p8",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a30-p8-x1",
-                      "kind": "text",
-                      "text": "「급성심근경색증」의 진단확정은 의료법 제3조(의료기관)에서 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관의 의사(치과의사 제외) 면허를 가진 자에 의하여 내려져야 하며, 이 진단은 병력과 함께 심전도, 심장초음파, 관상동맥(심장동맥)촬영술, 혈액중 심장 효소검사 등을 기초로 하여야 합니다. 또한, 회사가「급성심근경색증」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
-                    }
-                  ],
-                  "code": "P1000"
-                },
-                {
-                  "id": "m-a30-p9",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a30-p9-x1",
-                      "kind": "text",
-                      "text": "이 계약에 있어「중증화상및부식(화학약품 등에 의한 피부 손상)」이라 함은「9의 법칙(Rule of 9's)」또는「룬드와 브라우더 신체 표면적 차트(Lund & Browder chart)」에 의해 측정된 신체표면적으로 최소 20% 이상의 3도 화상 또는 부식(화학약품 등에 의한 피부 손상)을 입은 경우를 말합니다. 다만,「9의 법칙」또는「룬드와 브라우더 신체 표면적 차트」측정법처럼 표준화되고 임상학적으로 받아들여지는 다른 신체 표면적 차트를 이용하여 유사한 결과가 나온 것도 인정합니다."
-                    }
-                  ],
-                  "code": "P1100"
-                },
-                {
-                  "id": "m-a30-p10",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a30-p10-x1",
-                      "kind": "text",
-                      "text": "「중증화상및부식(화학약품 등에 의한 피부 손상)」의 진단확정은 의료법 제3조에서 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관의 의사(한의사, 치과의사는 제외합니다) 면허를 가진 자가 작성한 문서화된 기록 또는 검사결과를 기초로 하여 내려져야 합니다. 또한, 회사가「중증화상및부식」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
-                    }
-                  ],
-                  "code": "P1200"
-                }
-              ]
-            },
-            {
-              "id": "m-a31",
-              "kind": "article",
-              "title": "납입면제에 관한 세부규정",
-              "children": [
-                {
-                  "id": "m-a31-p1",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a31-p1-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a29",
-                          "code": "P0400"
-                        },
-                        {
-                          "articleId": "m-a29",
-                          "code": "P1300"
-                        }
-                      ],
-                      "connector": "또는",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a31-p1-x4",
-                      "kind": "text",
-                      "text": "에도 불구하고 피보험자가 암보장개시일 전일 이전에 진단 확정된「암(유사암제외)」과 동일하거나 다른 신체기관에 재발 또는 전이되어 "
-                    },
-                    {
-                      "id": "m-a31-p1-x2",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a29",
-                          "code": "P0400"
-                        },
-                        {
-                          "articleId": "m-a29",
-                          "code": "P1300"
-                        }
-                      ],
-                      "connector": "또는",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a31-p1-x5",
-                      "kind": "text",
-                      "text": "에서 정한 보험료 납입면제사유가 발생한 경우 회사는 보장보험료의 납입을 면제하지 않습니다. 다만, 청약일부터 암보장개시일 전일 이전에「암(유사암제외)」으로 진단확정 받더라도 암보장개시일 이후 5년(갱신형 계약의 경우에는 최초 계약의 암보장개시일 이후 5년)이 지나는 동안 그「암(유사암제외)」으로 추가 진단(단순건강검진 제외) 또는 치료사실이 없을 경우, 암보장개시일부터 5년이 지난 이후에는 "
-                    },
-                    {
-                      "id": "m-a31-p1-x3",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a29",
-                          "code": "P0400"
-                        },
-                        {
-                          "articleId": "m-a29",
-                          "code": "P1300"
-                        }
-                      ],
-                      "connector": "또는",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a31-p1-x6",
-                      "kind": "text",
-                      "text": "에 따라 보장보험료의 납입을 면제합니다."
-                    }
-                  ],
-                  "code": "P0100"
-                },
-                {
-                  "id": "m-a31-p2",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a31-p2-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a31",
+                          "id": "m-a31-p1-k",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0030",
+                          "options": {},
+                          "bindings": {
+                            "종들": {
+                              "kind": "source",
+                              "source": {
+                                "form": "waiver",
+                                "filter": "waiver.applies = true"
+                              }
+                            }
+                          },
                           "code": "P0100"
                         }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a31-p2-x3",
-                      "kind": "text",
-                      "text": "의「암보장개시일 이후 5년이 지나는 동안」이라 함은 "
-                    },
-                    {
-                      "id": "m-a31-p2-x2",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a34"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a31-p2-x4",
-                      "kind": "text",
-                      "text": "에서 정한 계약의 해지가 발생하지 않은 경우를 말합니다."
+                      ]
                     }
-                  ],
-                  "code": "P0200"
-                },
-                {
-                  "id": "m-a31-p3",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a31-p3-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a35"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a31-p3-x3",
-                      "kind": "text",
-                      "text": "에서 정한 계약의 부활이 이루어진 경우 부활을 청약한 날을 "
-                    },
-                    {
-                      "id": "m-a31-p3-x2",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a31",
-                          "code": "P0100"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a31-p3-x4",
-                      "kind": "text",
-                      "text": "의 청약일로 하여 적용합니다."
-                    }
-                  ],
-                  "code": "P0300"
-                },
-                {
-                  "id": "m-a31-p4",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a31-p4-x2",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a29",
-                          "code": "P1100"
-                        },
-                        {
-                          "articleId": "m-a29",
-                          "code": "P1200"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a31-p4-x3",
-                      "kind": "text",
-                      "text": " 또는 제2항 제4호 및 제5호에서 장해지급률이 상해 발생일 또는 질병의 진단확정일부터 180일 이내에 확정되지 않는 경우에는 상해 발생일 또는 질병의 진단확정일부터 180일이 되는 날의 의사 진단에 기초하여 고정될 것으로 인정되는 상태를 장해지급률로 결정합니다. 다만,"
-                    },
-                    {
-                      "id": "m-a31-p4-x1",
-                      "kind": "appendixRef",
-                      "appendixCode": "AX000002"
-                    },
-                    {
-                      "id": "m-a31-p4-x4",
-                      "kind": "text",
-                      "text": "에 장해판정시기를 별도로 정한 경우에는 그에 따릅니다."
-                    }
-                  ],
-                  "code": "P0400"
-                },
-                {
-                  "id": "m-a31-p5",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a31-p5-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a31",
-                          "code": "P0400"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a31-p5-x2",
-                      "kind": "text",
-                      "text": "에 따라 장해지급률이 결정되었으나 그 이후 보험료 납입면제를 받을 수 있는 기간(계약의 효력이 없어진 경우에는 보험기간이 10년 이상인 계약은 상해 발생일 또는 질병의 진단확정일부터 2년 이내로 하고, 보험기간이 10년 미만인 계약은 상해 발생일 또는 질병의 진단확정일부터 1년 이내)에 장해상태가 더 악화된 때에는 그 악화된 장해상태를 기준으로 장해지급률을 결정합니다."
-                    }
-                  ],
-                  "code": "P0500"
-                },
-                {
-                  "id": "m-a31-p6",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a31-p6-x1",
-                      "kind": "appendixRef",
-                      "appendixCode": "AX000002"
-                    },
-                    {
-                      "id": "m-a31-p6-x3",
-                      "kind": "text",
-                      "text": "에 해당되지 않는 후유장해는 피보험자의 직업, 연령, 신분 또는 성별 등에 관계없이 신체의 장해정도에 따라"
-                    },
-                    {
-                      "id": "m-a31-p6-x2",
-                      "kind": "appendixRef",
-                      "appendixCode": "AX000002"
-                    },
-                    {
-                      "id": "m-a31-p6-x4",
-                      "kind": "text",
-                      "text": "의 구분에 준하여 지급률을 결정합니다."
-                    }
-                  ],
-                  "code": "P0600"
-                },
-                {
-                  "id": "m-a31-p7",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a31-p7-x2",
-                      "kind": "text",
-                      "text": "보험수익자와 회사가 "
-                    },
-                    {
-                      "id": "m-a31-p7-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a29",
-                          "code": "P0100"
-                        },
-                        {
-                          "articleId": "m-a29",
-                          "code": "P0200"
-                        }
-                      ],
-                      "connector": "또는",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a31-p7-x3",
-                      "kind": "text",
-                      "text": "의 보험료의 납입면제 사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험료 납입면제 사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
-                    }
-                  ],
-                  "code": "P0700"
-                },
-                {
-                  "id": "m-a31-p8",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a31-p8-x2",
-                      "kind": "text",
-                      "text": "같은 상해 또는 질병으로 두 가지 이상의 후유장해가 생긴 경우에는 장해지급률을 합산하여 결정합니다. 다만,"
-                    },
-                    {
-                      "id": "m-a31-p8-x1",
-                      "kind": "appendixRef",
-                      "appendixCode": "AX000002"
-                    },
-                    {
-                      "id": "m-a31-p8-x3",
-                      "kind": "text",
-                      "text": "의 각 신체부위별 판정기준에 별도로 정한 경우에는 그 기준에 따릅니다."
-                    }
-                  ],
-                  "code": "P0800"
-                },
-                {
-                  "id": "m-a31-p9",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a31-p9-x2",
-                      "kind": "text",
-                      "text": "다른 상해 또는 질병으로 인하여 후유장해가 2회 이상 발생하였을 경우에는 그 때마다 이에 해당하는 장해지급률을 결정합니다. 그러나 그 후유장해가 이미 장해지급률이 결정된 동일한 부위에 가중된 때에는 최종 장해상태에 해당하는 장해지급률에서 이미 결정된 장해지급률을 차감하여 결정합니다. 다만,"
-                    },
-                    {
-                      "id": "m-a31-p9-x1",
-                      "kind": "appendixRef",
-                      "appendixCode": "AX000002"
-                    },
-                    {
-                      "id": "m-a31-p9-x3",
-                      "kind": "text",
-                      "text": "의 각 신체부위별 판정기준에서 별도로 정한 경우에는 그 기준에 따릅니다."
-                    }
-                  ],
-                  "code": "P0900"
-                },
-                {
-                  "id": "m-a31-p10",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a31-p10-x2",
-                      "kind": "text",
-                      "text": "이미 이 계약에서 보험료의 납입면제 사유에 해당되지 않았거나(보장개시 이전의 원인에 의하거나 또는 그 이전에 발생한 후유장해를 포함합니다), 보험료의 납입면제가 적용되지 않았던 피보험자에게 그 신체의 동일 부위에 또다시 "
-                    },
-                    {
-                      "id": "m-a31-p10-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a31",
-                          "code": "P0900"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a31-p10-x3",
-                      "kind": "text",
-                      "text": "에 규정하는 후유장해상태가 발생하였을 경우에는 직전까지의 후유장해에 대한 후유장해지급률이 결정된 것으로 보고 최종 후유장해 상태에 해당되는 후유장해지급률에서 이를 차감하여 결정합니다."
-                    }
-                  ],
-                  "code": "P1000"
-                },
-                {
-                  "id": "m-a31-p11",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a31-p11-x2",
-                      "kind": "text",
-                      "text": "회사는 다음 중 어느 한 가지로 "
-                    },
-                    {
-                      "id": "m-a31-p11-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a29",
-                          "code": "P1100"
-                        },
-                        {
-                          "articleId": "m-a29",
-                          "code": "P1200"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a31-p11-x3",
-                      "kind": "text",
-                      "text": " 또는 제2항 제4호부터 제6호까지의 보험료 납입면제 사유가 발생한 때에는 보장보험료의 납입을 면제하지 않습니다."
-                    }
-                  ],
-                  "items": [
-                    {
-                      "id": "m-a31-p11-i1",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a31-p11-i1-x1",
-                          "kind": "text",
-                          "text": "피보험자가 고의로 자신을 해친 경우. 다만, 피보험자가 심신상실 등으로 자유로운 의사결정을 할 수 없는 상태에서 자신을 해친 경우에는 보험료의 납입을 면제합니다."
-                        }
-                      ],
-                      "code": "P1300"
-                    },
-                    {
-                      "id": "m-a31-p11-i2",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a31-p11-i2-x1",
-                          "kind": "text",
-                          "text": "보험수익자가 고의로 피보험자를 해친 경우"
-                        }
-                      ],
-                      "code": "P1400"
-                    },
-                    {
-                      "id": "m-a31-p11-i3",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a31-p11-i3-x1",
-                          "kind": "text",
-                          "text": "계약자가 고의로 피보험자를 해친 경우"
-                        }
-                      ],
-                      "code": "P1500"
-                    },
-                    {
-                      "id": "m-a31-p11-i4",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a31-p11-i4-x1",
-                          "kind": "text",
-                          "text": "피보험자의 임신, 출산(제왕절개를 포함합니다), 산후기. 그러나 회사가 보장하는 사유와 보장개시일부터 2년이 지난 후에 발생한 습관성 유산, 불임 및 인공수정 관련 합병증으로 인한 경우에는 보험료의 납입을 면제합니다."
-                        }
-                      ],
-                      "code": "P1600"
-                    },
-                    {
-                      "id": "m-a31-p11-i5",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a31-p11-i5-x1",
-                          "kind": "text",
-                          "text": "전쟁, 외국의 무력행사, 혁명, 내란, 사변, 폭동"
-                        }
-                      ],
-                      "code": "P1700"
-                    }
-                  ],
-                  "code": "P1100"
-                },
-                {
-                  "id": "m-a31-p12",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a31-p12-x2",
-                      "kind": "text",
-                      "text": "회사는 다른 약정이 없으면 피보험자가 직업, 직무 또는 동호회 활동목적으로 아래에 열거된 행위로 인하여 "
-                    },
-                    {
-                      "id": "m-a31-p12-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a29",
-                          "code": "P1100"
-                        },
-                        {
-                          "articleId": "m-a29",
-                          "code": "P1600"
-                        }
-                      ],
-                      "connector": "또는",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a31-p12-x3",
-                      "kind": "text",
-                      "text": " 및 제6호의 상해관련 보험료 납입면제 사유가 발생한 때에는 보장보험료의 납입을 면제하지 않습니다."
-                    }
-                  ],
-                  "items": [
-                    {
-                      "id": "m-a31-p12-i1",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a31-p12-i1-x1",
-                          "kind": "text",
-                          "text": "전문등반(전문적인 등산용구를 사용하여 암벽 또는 빙벽을 오르내리거나 특수한 기술, 경험, 사전훈련을 필요로 하는 등반을 말합니다), 글라이더 조종, 스카이다이빙, 스쿠버다이빙, 행글라이딩, 수상보트, 패러글라이딩"
-                        }
-                      ],
-                      "code": "P1800"
-                    },
-                    {
-                      "id": "m-a31-p12-i2",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a31-p12-i2-x1",
-                          "kind": "text",
-                          "text": "모터보트, 자동차 또는 오토바이에 의한 경기, 시범, 흥행(이를 위한 연습을 포함합니다) 또는 시운전(다만, 공용도로상에서 시운전을 하는 동안 납입면제 사유가 발생한 경우에는 납입면제 하여 드립니다)"
-                        }
-                      ],
-                      "code": "P1900"
-                    },
-                    {
-                      "id": "m-a31-p12-i3",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a31-p12-i3-x1",
-                          "kind": "text",
-                          "text": "선박에 탑승하는 것을 직무로 하는 사람이 직무상 선박에 탑승하고 있는 동안"
-                        }
-                      ],
-                      "code": "P2000"
-                    }
-                  ],
-                  "code": "P1200"
+                  ]
                 }
               ]
             },
@@ -10923,15 +10114,21 @@
                   "code": "P0300"
                 },
                 {
-                  "id": "m-a35-p4",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a35-p4-x1",
-                      "kind": "text",
-                      "text": "부활(효력회복)시 부활(효력회복)일을 최초계약일로 하여 암보장개시일을 적용합니다."
+                  "id": "m-a35-p4-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0027",
+                  "options": {
+                    "O01": "V02"
+                  },
+                  "bindings": {
+                    "종들": {
+                      "kind": "source",
+                      "source": {
+                        "form": "waiver",
+                        "filter": "waiver.applies = true"
+                      }
                     }
-                  ],
+                  },
                   "code": "P0400"
                 },
                 {

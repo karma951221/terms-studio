@@ -34,7 +34,7 @@ import { APPENDICES, CLAUSES, PRODUCTS, SEED_DIR, type ClauseUse, type ProductTe
 import { parseTerms, type ParsedArticle, type ParsedDoc } from "./parse";
 import { applyArticleConds, applyInlineConds, articlesOf } from "./overlay";
 import { inlinesFromText, leftoverReferences, type ArticleEntry, type ArticleIndex, type RefEnv } from "./refs";
-import { applyAlphaWaiver, resolveWaiverCodes } from "./waiver";
+import { applyAlphaWaiver, applyMeritzWaiver, resolveWaiverCodes } from "./waiver";
 
 const root = process.cwd();
 const read = (product: ProductTerms, file: string) => readFileSync(path.join(root, product.fixtureDir, file), "utf8");
@@ -282,8 +282,8 @@ function codeClauseTargets(clause: ClauseRecord, generals: ReturnType<typeof ind
         }
         const ix = generals.find((g) => g.nodes.has(id));
         if (!ix) throw new Error(`${clause.code}: 보통약관 참조 대상 ${id} 가 보통약관에 없다`);
-        // 값 한정(반복으로 생긴 호 — 역할 함수조항, ADR-0077 결정 7)은 그대로 싣는다
-        return { ...targetOfId(ix, id, clause.code), ...(t.restrict ? { restrict: t.restrict } : {}) };
+        // 값 한정(반복으로 생긴 호 — 역할 함수조항, ADR-0077 결정 7) · 펼친 함수조항 안쪽 코드(ADR-0077 결정 6)는 그대로 싣는다
+        return { ...targetOfId(ix, id, clause.code), ...(t.innerCode ? { innerCode: t.innerCode } : {}), ...(t.restrict ? { restrict: t.restrict } : {}) };
       });
     }
     for (const key of ["children", "items", "subitems", "branches", "cases"]) {
@@ -339,12 +339,14 @@ function main(): void {
   for (const plan of boxes) for (const site of plan.sites) replaceBox(site, plan.record.code);
   const configured = CLAUSES.map((c) => ({ key: c.key, record: buildClause(c, built, products, report) }));
   // 알파Plus 납입면제 — 역할 함수조항 여섯 + 반복 템플릿(waiver.ts). 박스 참조가 선 뒤에 옮긴다(암 정의 칸 · 그림 박스). 보통약관이 쓰는 함수조항이다
-  const waiver = applyAlphaWaiver(productOf("alpha").general, productOf("meritz").general);
+  const alphaWaiver = applyAlphaWaiver(productOf("alpha").general, productOf("meritz").general);
+  // 메리츠 납입면제 — 같은 모양으로. 호 · 부활 문구는 알파Plus 것을 함께 쓰고, 정의 · 부가항 · 세부규정 · 무효는 메리츠 전용(글 · 가리키는 조가 다르다)
+  const waiver = [...alphaWaiver, ...applyMeritzWaiver(productOf("meritz").general, alphaWaiver)];
   configured.push(...waiver);
   const generalKeys = new Set([...products.flatMap((p) => (p.product.general.clauses ?? []).map((u) => u.clause)), ...waiver.map((w) => w.key)]);
   const clauses = orderClauses(configured, generalKeys);
   const clauseByKey = new Map(configured.map((c) => [c.key, c.record]));
-  resolveWaiverCodes(productOf("alpha").general.tree, (key) => clauseByKey.get(key)?.code);
+  for (const code of ["alpha", "meritz"]) resolveWaiverCodes(productOf(code).general.tree, (key) => clauseByKey.get(key)?.code);
   const applyUses = (b: Built, uses: readonly ClauseUse[], label: string) => {
     const articleOf = (number: string) => [...articlesOf(b.tree)].find((x) => b.numberOf.get(x.id) === number);
     for (const u of uses) {

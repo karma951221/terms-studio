@@ -17,6 +17,7 @@ type Json = Record<string, unknown> & { id?: string; kind?: string; children?: J
 const generals = read<{ code: string; tree: Json }[]>("generals.json");
 const clauses = read<(Json & { code: string; label: string; params?: { name: string }[] })[]>("clauses.json");
 const alpha = generals.find((g) => g.code === "alpha-general")!.tree;
+const meritz = generals.find((g) => g.code === "meritz-general")!.tree;
 
 function find(n: unknown, pred: (x: Json) => boolean): Json | undefined {
   if (Array.isArray(n)) {
@@ -88,7 +89,7 @@ describe("알파Plus 납입면제 템플릿 — 사유 값으로 분기하지 �
   });
 
   it("종들을 받는 역할 함수조항 넷은 원천 연결(적용 납입면제종)로 넣는다", () => {
-    for (const label of ["면제 부가항(알파Plus)", "납입면제 세부규정(알파Plus)", "무효 문구(알파Plus)", "부활 문구(알파Plus)"]) {
+    for (const label of ["면제 부가항(알파Plus)", "납입면제 세부규정(알파Plus)", "무효 문구(알파Plus)", "부활 문구"]) {
       const ref = find(alpha, (x) => x.kind === "clauseBlockRef" && x.clauseCode === clauseByLabel(label).code)!;
       expect(ref.bindings, label).toEqual({ 종들: { kind: "source", source: { form: "waiver", filter: "waiver.applies = true" } } });
     }
@@ -116,5 +117,51 @@ describe("역할 함수조항 — switch 는 값마다 정확히 한 칸, 반복
       ["V11+V12+V13", "및"],
       ["V11+V12+V13", "또는"],
     ]);
+  });
+});
+
+describe("메리츠 납입면제 템플릿 — 알파Plus 와 같은 모양, 호 · 부활 문구는 함께 쓴다", () => {
+  it("세 조(납입면제 · 정의 · 세부규정)를 「납입면제 있음」 IF 로, 제29조 ① ② = [납입면제종마다] 항 하나(번호 · 이름 슬롯) › ⟨납입면제 호⟩", () => {
+    const wrap = find(meritz, (x) => x.kind === "condBlock" && JSON.stringify(x).includes('"title":"보험료의 납입면제"'))!;
+    const [branch] = wrap.branches as { when: string; children: Json[] }[];
+    expect(branch.when).toBe(WAIVER_PRESENT);
+    expect(branch.children.map((a) => a.title)).toEqual(["보험료의 납입면제", "암(유사암제외), 뇌졸중, 급성심근경색증, 중증화상및부식의 정의 및 진단확정", "납입면제에 관한 세부규정"]);
+    const outer = find(branch.children[0], (x) => x.kind === "forBlock")!;
+    const p = outer.children![0];
+    expect((p.children as Json[]).map((c) => (c.kind === "text" ? c.text : c.ref))[4]).toMatch(/^\)을 가입한 피보험자가 보험료 납입기간 중에/);
+    expect(find(p, (x) => x.kind === "clauseBlockRef")!.clauseCode).toBe(clauseByLabel("납입면제 호").code);
+    expect(all(meritz, (x) => typeof x.when === "string" && /V\d\d/.test(x.when as string))).toEqual([]);
+  });
+
+  it("「제1항 또는 제2항」 = 반복 항 하나(연결어 또는) · 「제1항부터 제4항까지」 = 대상 셋(반복 항 · 부가항 · ④)인 참조 하나", () => {
+    const article = find(meritz, (x) => x.kind === "article" && x.title === "보험료의 납입면제")!;
+    const refs = all(article.children!.slice(2), (x) => x.kind === "articleRef");
+    expect(refs.map((r) => [(r.targets as unknown[]).length, r.connector])).toEqual([
+      [1, "또는"],
+      [1, "또는"],
+      [3, "및"],
+      [1, "및"],
+      [3, "및"],
+      [1, "및"],
+    ]);
+  });
+
+  it("부활 문구는 기준일 옵션 — 알파Plus 계약일(V01) · 메리츠 최초계약일(V02)", () => {
+    const code = clauseByLabel("부활 문구").code;
+    expect(find(alpha, (x) => x.kind === "clauseBlockRef" && x.clauseCode === code)!.options).toEqual({ O01: "V01" });
+    expect(find(meritz, (x) => x.kind === "clauseBlockRef" && x.clauseCode === code)!.options).toEqual({ O01: "V02" });
+  });
+
+  it("세부규정(메리츠) — 값 한정 참조: 암·면책 · 장해 · 장해+화상 · 상해 호(안쪽 코드) + 화상", () => {
+    const refs = all(clauseByLabel("납입면제 세부규정(메리츠)").body, (x) => x.kind === "articleRef" && JSON.stringify(x).includes("restrict"));
+    const shapes = refs.map((r) => (r.targets as { innerCode?: string; restrict: { values: string[] } }[]).map((t) => `${t.innerCode ?? ""}${t.restrict.values.join("+")}`).join() + ` ${r.connector}`);
+    expect(shapes).toEqual(["V01 또는", "V01 또는", "V01 또는", "V11+V12+V13 또는", "V11+V12+V13+V14 또는", "P0100V11+V12+V14 또는"]);
+  });
+
+  it("정의(메리츠) — E0001 값 14 가 정확히 한 칸씩, 제2조 표의 종 한 항 참조는 글로 굳힌다(종 한정 참조는 다음 기획)", () => {
+    const sw = find(clauseByLabel("정의 및 진단확정(메리츠)").body, (x) => x.kind === "switchBlock")!;
+    expect((sw.cases as { values: string[] }[]).flatMap((c) => c.values)).toEqual(Array.from({ length: 14 }, (_, i) => `V${String(i + 1).padStart(2, "0")}`));
+    const definitions = find(meritz, (x) => x.kind === "article" && x.title === "용어의 정의")!;
+    expect(JSON.stringify(definitions)).toContain('"text":"제29조(보험료의 납입면제) 제2항"');
   });
 });

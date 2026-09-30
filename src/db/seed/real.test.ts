@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { Booklet } from "@/domain/assembly";
-import { articleTitles, diffArticlesUnordered, referenceNumberIssues, renderedToLines, sourceToLines, type UnorderedDiff } from "@/domain/assembly/compare";
+import { articleTitles, diffArticlesUnordered, normalizeLine, referenceNumberIssues, renderedToLines, sourceToLines, type UnorderedDiff } from "@/domain/assembly/compare";
 import type { Actor, Value } from "@/domain/types";
 
 import { createTestDb, type TestDb } from "@/db/test-utils";
@@ -134,11 +134,14 @@ describe("★ 실물 재현 — 실물 시드 → 조립 → 원문 대조", () 
       expect(referenceNumberIssues(lines, articleTitles(renderedToLines(booklet().general!)))).toEqual([]);
     });
 
-    it("알려진 차이는 원문과 정말 다르다 — 목록이 낡으면(원문 · 조립이 같아지면) 지운다", () => {
-      const lines = renderedToLines(booklet().general!);
+    it("알려진 차이는 원문과 정말 다르다 — 차이마다 조립에 그 줄이 있고 원문에는 없다(목록이 낡으면 지운다)", () => {
+      const lines = renderedToLines(booklet().general!).map(normalizeLine);
+      const raw = sourceToLines(readFileSync(path.join(FIXTURES, product.dir, "보통약관.md"), "utf8")).map(normalizeLine);
       for (const d of KNOWN_DIFFERENCES.filter((x) => x.dir === product.dir && x.file === "보통약관.md")) {
-        const raw = sourceToLines(readFileSync(path.join(FIXTURES, product.dir, d.file), "utf8"));
-        expect(diffArticlesUnordered(raw, lines), d.why).not.toEqual(clean);
+        for (const l of d.lines) {
+          expect(lines, d.why).toContain(normalizeLine(l));
+          expect(raw, d.why).not.toContain(normalizeLine(l));
+        }
       }
     });
 
@@ -230,6 +233,8 @@ describe("★ 실물 재현 변형 — 알파Plus 납입면제 사유를 바꾸�
   });
 });
 
+const MERITZ = "메리츠 통합간편건강보험(연만기형)";
+
 /** 변형 한 벌 — 실물 시드를 넣고 세목 선택지 값을 바꾼 뒤 상품마다 조립한다. */
 async function previewVariant(changes: { product: string; axis: "type" | "form"; number: number; entries: { path: string; value: Value }[] }[]) {
   const db = await createTestDb();
@@ -284,5 +289,54 @@ describe("★ 실물 재현 변형 — 해약환급금 지급형이 없으면 1�
     const waiver = articleLines(renderedToLines(booklet.general!), "보험료의 납입면제");
     expect(waiver.some((l) => l.includes("적립보험료 납입을 중지"))).toBe(false);
     expect(waiver.at(-1)).toMatch(/^@ 제1항부터 제3항까지의 규정에도 불구하고/);
+  });
+});
+
+/**
+ * 대표 변형 — 메리츠 납입면제종 하나(3종 · 2형을 미적용으로). [납입면제종마다] 항이 하나라 「제1항 또는 제2항」 · 「제1항 제1호 및 제2항 제1호」가
+ * 「제1항」 · 「제1항 제1호」로, 「제1항부터 제4항까지」가 「제1항부터 제3항까지」로 좁혀지고, 중증화상및부식이 빠져 정의 · 세부규정 ⑪ ⑫ 가 따라온다.
+ */
+describe("★ 실물 재현 변형 — 메리츠 납입면제종이 하나면 종마다 항 · 값 한정 참조가 따라온다", () => {
+  let db: TestDb;
+  let booklet: Booklet;
+  let lines: string[] = [];
+
+  beforeAll(async () => {
+    const v = await previewVariant([{ product: MERITZ, axis: "type", number: 3, entries: [{ path: "waiver.applies", value: false }, { path: "waiver.reasons", value: [] }] }]);
+    db = v.db;
+    booklet = v.booklets.get(MERITZ)!;
+    lines = renderedToLines(booklet.general!);
+  }, 120_000);
+
+  afterAll(async () => {
+    await db.close();
+  });
+
+  it("오류 0 · 제29조 = 2종 항 하나 · 부가항 · ④ ⑤ 「제1항」 · ⑥ ⑦ 「제1항부터 제3항까지」", () => {
+    expect(booklet.issues).toEqual([]);
+    const waiver = articleLines(lines, "보험료의 납입면제").filter((l) => l.startsWith("@ "));
+    const prefixes = [
+      "@ 회사는 2종(보험료 납입면제 1형)을 가입한 피보험자가 보험료 납입기간 중",
+      "@ 제1항 제1호의 암보장개시일이라 함은 최초계약일부터 그날을 포함하여 90일",
+      "@ 제1항에도 불구하고 아래의 보험료 납입면제 제외대상 특별약관은 보장보험료의",
+      "@ 회사는 제1항에 따라 보장보험료 납입면제가 된 경우에 차회 이후의 적립보험",
+      "@ 제1항부터 제3항까지의 규정에도 불구하고 보장보험료의 납입이 면제되기 이전",
+      "@ 제1항부터 제3항까지의 규정에도 불구하고 제25조(계약의 자동갱신)에 의하여",
+    ];
+    expect(waiver).toHaveLength(prefixes.length);
+    prefixes.forEach((prefix, i) => expect(waiver[i].startsWith(prefix), waiver[i]).toBe(true));
+  });
+
+  it("세부규정 — 「제1항 제1호」, 장해 「제1항 제4호 또는 제5호」, 상해관련 「제1항 제4호」", () => {
+    const detail = articleLines(lines, "납입면제에 관한 세부규정");
+    expect(detail[1]).toMatch(/^@ 제29조\(보험료의 납입면제\) 제1항 제1호에도 불구하고/);
+    expect(detail.find((l) => l.startsWith("@ 회사는 다음 중 어느 한 가지로"))).toContain("제29조(보험료의 납입면제) 제1항 제4호 또는 제5호의 보험료");
+    expect(detail.find((l) => l.startsWith("@ 회사는 다른 약정이 없으면"))).toContain("제29조(보험료의 납입면제) 제1항 제4호의 상해관련");
+  });
+
+  it("정의 조 — 중증화상및부식이 빠진다(암 · 뇌졸중 · 급성심근경색증)", () => {
+    const definition = articleLines(lines, "암(유사암제외), 뇌졸중, 급성심근경색증, 중증화상및부식의 정의 및 진단확정");
+    expect(definition.filter((l) => l.startsWith("@ "))).toHaveLength(8);
+    expect(definition.some((l) => l.includes("중증화상및부식(화학약품"))).toBe(false);
   });
 });
