@@ -183,6 +183,37 @@ describe("함수조항 오버레이 — 원문 자리를 참조로", () => {
       expect(lapseOf(other).children).toEqual([{ id: "m-a3-p1-k", kind: "clauseBlockRef", clauseCode: "C0009", options: { O01: "V02" } }]);
     });
 
+    it("박스가 낀 조도 조째 딴다 — 호 목록 · 항 사이 박스 참조를 본문에 품고(박스는 잎, 최종 결정 6), 사용처 대조는 박스 코드까지 본다", () => {
+      const withBoxes = (prefix: string, box: string): ArticleNode => ({
+        id: `${prefix}-a5`,
+        kind: "article",
+        title: "보험금을 지급하지 않는 사유",
+        children: [
+          { id: `${prefix}-a5-p1`, kind: "paragraph", children: [text(`${prefix}-x1`, "다음:")], items: [{ id: `${prefix}-a5-p1-i1`, kind: "item", children: [text(`${prefix}-x2`, "고의")] }, { id: `${prefix}-a5-p1-b1-k`, kind: "boxRef", boxCode: "BX000005" }] },
+          { id: `${prefix}-a5-p2`, kind: "paragraph", children: [text(`${prefix}-x3`, "둘째")] },
+          { id: `${prefix}-a5-b2-k`, kind: "boxRef", boxCode: box },
+          { id: `${prefix}-a5-p3`, kind: "paragraph", children: [ref(`${prefix}-r`, `${prefix}-a5-p2`), text(`${prefix}-x4`, "에도 불구하고")] },
+          { id: `${prefix}-a5-b3-k`, kind: "boxRef", boxCode: "BX000099" },
+        ],
+      });
+      const docOf = (a: ArticleNode): DocumentNode => ({ id: "d", kind: "document", title: "보통약관", children: [a] });
+      const source = withBoxes("m", "BX000035");
+      const taken = source.children.slice(0, 4);
+      const body = reId(clauseFromSource(docOf(source), taken as never, "C0020"), "c20");
+      expect(body.map((b) => b.kind)).toEqual(["paragraph", "paragraph", "boxRef", "paragraph"]);
+      expect((body[0] as { items: { kind: string }[] }).items.map((i) => i.kind)).toEqual(["item", "boxRef"]);
+      const clause: ClauseRecord = { code: "C0020", label: "보험금을 지급하지 않는 사유", mode: "block", description: "", body, options: [] };
+      // 박스 코드가 다르면 바꾸지 않는다
+      const other = withBoxes("g", "BX000036");
+      const report: string[] = [];
+      expect(applyClauseUse({ article: "5", paragraph: 1, clause: "C0020" }, clause, () => other, "[t]", report, docOf(other))).toBe(false);
+      expect(report[0]).toMatch(/박스/);
+      // 같으면 박스까지 참조 하나로 — 조 끝 박스(BX000099)는 사용처에 남는다
+      const same = withBoxes("g", "BX000035");
+      expect(applyClauseUse({ article: "5", paragraph: 1, clause: "C0020" }, clause, () => same, "[t]", [], docOf(same))).toBe(true);
+      expect(same.children).toEqual([{ id: "g-a5-p1-k", kind: "clauseBlockRef", clauseCode: "C0020", options: {} }, { id: "g-a5-b3-k", kind: "boxRef", boxCode: "BX000099" }]);
+    });
+
     it("한 참조가 딴 항 안팎을 함께 가리키면 딸 수 없다", () => {
       const d = special("s", "소멸됩니다");
       const p2 = lapseOf(d).children[1] as ParagraphNode;

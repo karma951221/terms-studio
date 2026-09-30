@@ -930,154 +930,11 @@
               "title": "보험금을 지급하지 않는 사유",
               "children": [
                 {
-                  "id": "g-a5-p1",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a5-p1-x1",
-                      "kind": "text",
-                      "text": "회사는 다음 중 어느 한 가지로 보험금 지급사유가 발생한 때에는 보험금을 지급하지 않습니다."
-                    }
-                  ],
-                  "items": [
-                    {
-                      "id": "g-a5-p1-i1",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "g-a5-p1-i1-x1",
-                          "kind": "text",
-                          "text": "피보험자가 고의로 자신을 해친 경우. 다만, 피보험자가 심신상실 등으로 자유로운 의사결정을 할 수 없는 상태에서 자신을 해친 경우에는 보험금을 지급합니다."
-                        }
-                      ],
-                      "code": "P0300"
-                    },
-                    {
-                      "id": "g-a5-p1-i2",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "g-a5-p1-i2-x1",
-                          "kind": "text",
-                          "text": "보험수익자가 고의로 피보험자를 해친 경우. 다만, 그 보험수익자가 보험금의 일부 보험수익자인 경우에는 다른 보험수익자에 대한 보험금은 지급합니다."
-                        }
-                      ],
-                      "code": "P0400"
-                    },
-                    {
-                      "id": "g-a5-p1-i3",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "g-a5-p1-i3-x1",
-                          "kind": "text",
-                          "text": "계약자가 고의로 피보험자를 해친 경우"
-                        }
-                      ],
-                      "code": "P0500"
-                    },
-                    {
-                      "id": "g-a5-p1-i4",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "g-a5-p1-i4-x1",
-                          "kind": "text",
-                          "text": "피보험자의 임신, 출산(제왕절개를 포함합니다), 산후기. 그러나 회사가 보장하는 보험금 지급사유와 보장개시일부터 2년이 지난 후에 발생한 습관성 유산, 불임 및 인공수정 관련 합병증으로 인한 경우에는 보험금을 지급합니다."
-                        }
-                      ],
-                      "code": "P0600"
-                    },
-                    {
-                      "id": "g-a5-p1-i5",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "g-a5-p1-i5-x1",
-                          "kind": "text",
-                          "text": "전쟁, 외국의 무력행사, 혁명, 내란, 사변, 폭동"
-                        }
-                      ],
-                      "code": "P0700"
-                    },
-                    {
-                      "id": "g-a5-b1-k",
-                      "kind": "boxRef",
-                      "boxCode": "BX000005"
-                    },
-                    {
-                      "id": "g-a5-b2-k",
-                      "kind": "boxRef",
-                      "boxCode": "BX000006"
-                    }
-                  ],
+                  "id": "g-a5-p1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0020",
+                  "options": {},
                   "code": "P0100"
-                },
-                {
-                  "id": "g-a5-p2",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a5-p2-x2",
-                      "kind": "text",
-                      "text": "회사는 다른 약정이 없으면 피보험자가 직업, 직무 또는 동호회 활동목적으로 아래에 열거된 행위로 인하여 "
-                    },
-                    {
-                      "id": "g-a5-p2-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "g-a3"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "g-a5-p2-x3",
-                      "kind": "text",
-                      "text": "의 상해 관련 보험금 지급사유가 발생한 때에는 해당 보험금을 지급하지 않습니다."
-                    }
-                  ],
-                  "items": [
-                    {
-                      "id": "g-a5-p2-i1",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "g-a5-p2-i1-x1",
-                          "kind": "text",
-                          "text": "전문등반(전문적인 등산용구를 사용하여 암벽 또는 빙벽을 오르내리거나 특수한 기술, 경험, 사전훈련을 필요로 하는 등반을 말합니다), 글라이더 조종, 스카이다이빙, 스쿠버다이빙, 행글라이딩, 수상보트, 패러글라이딩"
-                        }
-                      ],
-                      "code": "P0800"
-                    },
-                    {
-                      "id": "g-a5-p2-i2",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "g-a5-p2-i2-x1",
-                          "kind": "text",
-                          "text": "모터보트, 자동차 또는 오토바이에 의한 경기, 시범, 흥행(이를 위한 연습을 포함합니다) 또는 시운전(다만, 공용도로상에서 시운전을 하는 동안 보험금 지급사유가 발생한 경우에는 보장합니다)"
-                        }
-                      ],
-                      "code": "P0900"
-                    },
-                    {
-                      "id": "g-a5-p2-i3",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "g-a5-p2-i3-x1",
-                          "kind": "text",
-                          "text": "선박에 탑승하는 것을 직무로 하는 사람이 직무상 선박에 탑승하고 있는 동안"
-                        }
-                      ],
-                      "code": "P1000"
-                    }
-                  ],
-                  "code": "P0200"
                 }
               ]
             },
@@ -3284,7 +3141,7 @@
                 {
                   "id": "g-a22-p3-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0024",
+                  "clauseCode": "C0026",
                   "options": {},
                   "bindings": {
                     "종들": {
@@ -3671,122 +3528,11 @@
               "title": "제1회 보험료 및 회사의 보장개시",
               "children": [
                 {
-                  "id": "g-a26-p1",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a26-p1-x1",
-                      "kind": "text",
-                      "text": "회사는 계약의 청약을 승낙하고 제1회 보험료를 받은 때부터 이 약관이 정한 바에 따라 보장을 합니다. 또한, 회사가 청약과 함께 제1회 보험료를 받은 후 승낙한 경우에도 제1회 보험료를 받은 때부터 보장이 개시됩니다. 자동이체 또는 신용카드로 납입하는 경우에는 자동이체신청 또는 신용카드매출승인에 필요한 정보를 제공한 때를 제1회 보험료를 받은 때로 하며, 계약자의 책임 있는 사유로 자동이체 또는 매출승인이 불가능한 경우에는 보험료가 납입되지 않은 것으로 봅니다."
-                    }
-                  ],
+                  "id": "g-a26-p1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0021",
+                  "options": {},
                   "code": "P0100"
-                },
-                {
-                  "id": "g-a26-p2",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a26-p2-x1",
-                      "kind": "text",
-                      "text": "회사가 청약과 함께 제1회 보험료를 받고 청약을 승낙하기 전에 보험금 지급사유가 발생하였을 때에도 보장개시일부터 이 약관이 정하는 바에 따라 보장을 합니다."
-                    }
-                  ],
-                  "code": "P0200"
-                },
-                {
-                  "id": "g-a26-b1-k",
-                  "kind": "boxRef",
-                  "boxCode": "BX000035"
-                },
-                {
-                  "id": "g-a26-p3",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "g-a26-p3-x2",
-                      "kind": "text",
-                      "text": "회사는 "
-                    },
-                    {
-                      "id": "g-a26-p3-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "g-a26",
-                          "code": "P0200"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "g-a26-p3-x3",
-                      "kind": "text",
-                      "text": "에도 불구하고 다음 중 한 가지에 해당되는 경우에는 보장을 하지 않습니다."
-                    }
-                  ],
-                  "items": [
-                    {
-                      "id": "g-a26-p3-i1",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "g-a26-p3-i1-x1",
-                          "kind": "articleRef",
-                          "targets": [
-                            {
-                              "articleId": "g-a15"
-                            }
-                          ],
-                          "connector": "및",
-                          "scope": "self"
-                        },
-                        {
-                          "id": "g-a26-p3-i1-x2",
-                          "kind": "text",
-                          "text": "에 따라 계약자 또는 피보험자가 회사에 알린 내용이나 건강진단 내용이 보험금 지급사유의 발생에 영향을 미쳤음을 회사가 증명하는 경우"
-                        }
-                      ],
-                      "code": "P0300"
-                    },
-                    {
-                      "id": "g-a26-p3-i2",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "g-a26-p3-i2-x1",
-                          "kind": "articleRef",
-                          "targets": [
-                            {
-                              "articleId": "g-a17"
-                            }
-                          ],
-                          "connector": "및",
-                          "scope": "self"
-                        },
-                        {
-                          "id": "g-a26-p3-i2-x2",
-                          "kind": "text",
-                          "text": "를 준용하여 회사가 보장을 하지 않을 수 있는 경우"
-                        }
-                      ],
-                      "code": "P0500"
-                    },
-                    {
-                      "id": "g-a26-p3-i3",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "g-a26-p3-i3-x1",
-                          "kind": "text",
-                          "text": "진단계약에서 보험금 지급사유가 발생할 때까지 진단을 받지 않은 경우. 다만, 진단계약에서 진단을 받지 않은 경우라도 상해로 보험금 지급사유가 발생하는 경우에는 보장을 해드립니다."
-                        }
-                      ],
-                      "code": "P0600"
-                    }
-                  ],
-                  "code": "P0400"
                 }
               ]
             },
@@ -3874,7 +3620,7 @@
                                     {
                                       "id": "g-a27_1-p1-k",
                                       "kind": "clauseBlockRef",
-                                      "clauseCode": "C0020",
+                                      "clauseCode": "C0022",
                                       "options": {},
                                       "bindings": {
                                         "사유": {
@@ -3896,7 +3642,7 @@
                         {
                           "id": "g-a27_1-p2-k",
                           "kind": "clauseBlockRef",
-                          "clauseCode": "C0022",
+                          "clauseCode": "C0024",
                           "options": {},
                           "bindings": {
                             "종들": {
@@ -4034,7 +3780,7 @@
                         {
                           "id": "g-a27_2-p1-k",
                           "kind": "clauseBlockRef",
-                          "clauseCode": "C0023",
+                          "clauseCode": "C0025",
                           "options": {},
                           "bindings": {
                             "종들": {
@@ -4071,7 +3817,7 @@
                             {
                               "id": "g-a27_3-p1-k",
                               "kind": "clauseBlockRef",
-                              "clauseCode": "C0021",
+                              "clauseCode": "C0023",
                               "options": {},
                               "bindings": {
                                 "사유": {
@@ -4696,7 +4442,7 @@
                 {
                   "id": "g-a30-p4-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0025",
+                  "clauseCode": "C0027",
                   "options": {},
                   "bindings": {
                     "종들": {
@@ -6662,154 +6408,11 @@
               "title": "보험금을 지급하지 않는 사유",
               "children": [
                 {
-                  "id": "m-a5-p1",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a5-p1-x1",
-                      "kind": "text",
-                      "text": "회사는 다음 중 어느 한 가지로 보험금 지급사유가 발생한 때에는 보험금을 지급하지 않습니다."
-                    }
-                  ],
-                  "items": [
-                    {
-                      "id": "m-a5-p1-i1",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a5-p1-i1-x1",
-                          "kind": "text",
-                          "text": "피보험자가 고의로 자신을 해친 경우. 다만, 피보험자가 심신상실 등으로 자유로운 의사결정을 할 수 없는 상태에서 자신을 해친 경우에는 보험금을 지급합니다."
-                        }
-                      ],
-                      "code": "P0300"
-                    },
-                    {
-                      "id": "m-a5-p1-i2",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a5-p1-i2-x1",
-                          "kind": "text",
-                          "text": "보험수익자가 고의로 피보험자를 해친 경우. 다만, 그 보험수익자가 보험금의 일부 보험수익자인 경우에는 다른 보험수익자에 대한 보험금은 지급합니다."
-                        }
-                      ],
-                      "code": "P0400"
-                    },
-                    {
-                      "id": "m-a5-p1-i3",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a5-p1-i3-x1",
-                          "kind": "text",
-                          "text": "계약자가 고의로 피보험자를 해친 경우"
-                        }
-                      ],
-                      "code": "P0500"
-                    },
-                    {
-                      "id": "m-a5-p1-i4",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a5-p1-i4-x1",
-                          "kind": "text",
-                          "text": "피보험자의 임신, 출산(제왕절개를 포함합니다), 산후기. 그러나 회사가 보장하는 보험금 지급사유와 보장개시일부터 2년이 지난 후에 발생한 습관성 유산, 불임 및 인공수정 관련 합병증으로 인한 경우에는 보험금을 지급합니다."
-                        }
-                      ],
-                      "code": "P0600"
-                    },
-                    {
-                      "id": "m-a5-p1-i5",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a5-p1-i5-x1",
-                          "kind": "text",
-                          "text": "전쟁, 외국의 무력행사, 혁명, 내란, 사변, 폭동"
-                        }
-                      ],
-                      "code": "P0700"
-                    },
-                    {
-                      "id": "m-a5-b1-k",
-                      "kind": "boxRef",
-                      "boxCode": "BX000005"
-                    },
-                    {
-                      "id": "m-a5-b2-k",
-                      "kind": "boxRef",
-                      "boxCode": "BX000006"
-                    }
-                  ],
+                  "id": "m-a5-p1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0020",
+                  "options": {},
                   "code": "P0100"
-                },
-                {
-                  "id": "m-a5-p2",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a5-p2-x2",
-                      "kind": "text",
-                      "text": "회사는 다른 약정이 없으면 피보험자가 직업, 직무 또는 동호회 활동목적으로 아래에 열거된 행위로 인하여 "
-                    },
-                    {
-                      "id": "m-a5-p2-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a3"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a5-p2-x3",
-                      "kind": "text",
-                      "text": "의 상해 관련 보험금 지급사유가 발생한 때에는 해당 보험금을 지급하지 않습니다."
-                    }
-                  ],
-                  "items": [
-                    {
-                      "id": "m-a5-p2-i1",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a5-p2-i1-x1",
-                          "kind": "text",
-                          "text": "전문등반(전문적인 등산용구를 사용하여 암벽 또는 빙벽을 오르내리거나 특수한 기술, 경험, 사전훈련을 필요로 하는 등반을 말합니다), 글라이더 조종, 스카이다이빙, 스쿠버다이빙, 행글라이딩, 수상보트, 패러글라이딩"
-                        }
-                      ],
-                      "code": "P0800"
-                    },
-                    {
-                      "id": "m-a5-p2-i2",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a5-p2-i2-x1",
-                          "kind": "text",
-                          "text": "모터보트, 자동차 또는 오토바이에 의한 경기, 시범, 흥행(이를 위한 연습을 포함합니다) 또는 시운전(다만, 공용도로상에서 시운전을 하는 동안 보험금 지급사유가 발생한 경우에는 보장합니다)"
-                        }
-                      ],
-                      "code": "P0900"
-                    },
-                    {
-                      "id": "m-a5-p2-i3",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a5-p2-i3-x1",
-                          "kind": "text",
-                          "text": "선박에 탑승하는 것을 직무로 하는 사람이 직무상 선박에 탑승하고 있는 동안"
-                        }
-                      ],
-                      "code": "P1000"
-                    }
-                  ],
-                  "code": "P0200"
                 }
               ]
             },
@@ -9523,122 +9126,11 @@
               "title": "제1회 보험료 및 회사의 보장개시",
               "children": [
                 {
-                  "id": "m-a27-p1",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a27-p1-x1",
-                      "kind": "text",
-                      "text": "회사는 계약의 청약을 승낙하고 제1회 보험료를 받은 때부터 이 약관이 정한 바에 따라 보장을 합니다. 또한, 회사가 청약과 함께 제1회 보험료를 받은 후 승낙한 경우에도 제1회 보험료를 받은 때부터 보장이 개시됩니다. 자동이체 또는 신용카드로 납입하는 경우에는 자동이체신청 또는 신용카드매출승인에 필요한 정보를 제공한 때를 제1회 보험료를 받은 때로 하며, 계약자의 책임 있는 사유로 자동이체 또는 매출승인이 불가능한 경우에는 보험료가 납입되지 않은 것으로 봅니다."
-                    }
-                  ],
+                  "id": "m-a27-p1-k",
+                  "kind": "clauseBlockRef",
+                  "clauseCode": "C0021",
+                  "options": {},
                   "code": "P0100"
-                },
-                {
-                  "id": "m-a27-p2",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a27-p2-x1",
-                      "kind": "text",
-                      "text": "회사가 청약과 함께 제1회 보험료를 받고 청약을 승낙하기 전에 보험금 지급사유가 발생하였을 때에도 보장개시일부터 이 약관이 정하는 바에 따라 보장을 합니다."
-                    }
-                  ],
-                  "code": "P0200"
-                },
-                {
-                  "id": "m-a27-b1-k",
-                  "kind": "boxRef",
-                  "boxCode": "BX000035"
-                },
-                {
-                  "id": "m-a27-p3",
-                  "kind": "paragraph",
-                  "children": [
-                    {
-                      "id": "m-a27-p3-x2",
-                      "kind": "text",
-                      "text": "회사는 "
-                    },
-                    {
-                      "id": "m-a27-p3-x1",
-                      "kind": "articleRef",
-                      "targets": [
-                        {
-                          "articleId": "m-a27",
-                          "code": "P0200"
-                        }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
-                    },
-                    {
-                      "id": "m-a27-p3-x3",
-                      "kind": "text",
-                      "text": "에도 불구하고 다음 중 한 가지에 해당되는 경우에는 보장을 하지 않습니다."
-                    }
-                  ],
-                  "items": [
-                    {
-                      "id": "m-a27-p3-i1",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a27-p3-i1-x1",
-                          "kind": "articleRef",
-                          "targets": [
-                            {
-                              "articleId": "m-a15"
-                            }
-                          ],
-                          "connector": "및",
-                          "scope": "self"
-                        },
-                        {
-                          "id": "m-a27-p3-i1-x2",
-                          "kind": "text",
-                          "text": "에 따라 계약자 또는 피보험자가 회사에 알린 내용이나 건강진단 내용이 보험금 지급사유의 발생에 영향을 미쳤음을 회사가 증명하는 경우"
-                        }
-                      ],
-                      "code": "P0300"
-                    },
-                    {
-                      "id": "m-a27-p3-i2",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a27-p3-i2-x1",
-                          "kind": "articleRef",
-                          "targets": [
-                            {
-                              "articleId": "m-a17"
-                            }
-                          ],
-                          "connector": "및",
-                          "scope": "self"
-                        },
-                        {
-                          "id": "m-a27-p3-i2-x2",
-                          "kind": "text",
-                          "text": "를 준용하여 회사가 보장을 하지 않을 수 있는 경우"
-                        }
-                      ],
-                      "code": "P0500"
-                    },
-                    {
-                      "id": "m-a27-p3-i3",
-                      "kind": "item",
-                      "children": [
-                        {
-                          "id": "m-a27-p3-i3-x1",
-                          "kind": "text",
-                          "text": "진단계약에서 보험금 지급사유가 발생할 때까지 진단을 받지 않은 경우. 다만, 진단계약에서 진단을 받지 않은 경우라도 상해로 보험금 지급사유가 발생하는 경우에는 보장을 해드립니다."
-                        }
-                      ],
-                      "code": "P0600"
-                    }
-                  ],
-                  "code": "P0400"
                 }
               ]
             },

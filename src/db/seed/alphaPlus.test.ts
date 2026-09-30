@@ -14,7 +14,7 @@ import { MERITZ_PRODUCT_NAME } from "./load";
 const admin: Actor = { userId: "00000000-0000-4000-8000-000000000001", role: "admin" };
 
 /**
- * 시드가 실물 재료 두 상품(카탈로그 · 담보 9 + 9 · 함수조항 40 · 상품 2 · 별표 21 · 보통약관 2 · 탑재 11 + 9)을 실제 서비스로 끝까지 만들고, 재실행에 안전한지.
+ * 시드가 실물 재료 두 상품(카탈로그 · 담보 9 + 9 · 함수조항 42 · 상품 2 · 별표 21 · 보통약관 2 · 탑재 11 + 9)을 실제 서비스로 끝까지 만들고, 재실행에 안전한지.
  * 원문과의 대조는 `real.test.ts` 몫.
  */
 describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (PGlite)", () => {
@@ -133,10 +133,10 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     ]);
   });
 
-  it("함수조항 40건 — 조 · 여러 항(두 곳 이상이 되풀이) 34 + 알파Plus 납입면제 역할 함수조항 6 · 박스는 함수조항이 아니라 정적 마스터 103 (알파플러스_모델명세 §4 · §6 · 메리츠_모델명세 §4)", async () => {
+  it("함수조항 42건 — 조 · 여러 항(두 곳 이상이 되풀이) 36 + 알파Plus 납입면제 역할 함수조항 6 · 박스는 함수조항이 아니라 정적 마스터 103 (알파플러스_모델명세 §4 · §6 · 메리츠_모델명세 §4)", async () => {
     const list = await services.clause.list();
-    expect(list).toHaveLength(40);
-    // 보통약관이 쓰는 조째 19(C0001~) · 역할 함수조항 6(C0020~C0025 — 보통약관이 쓴다) · 담보약관 조 13 · 준용규정 두 벌(보통약관 조를 가리켜 맨 뒤)
+    expect(list).toHaveLength(42);
+    // 보통약관이 쓰는 조째 21(C0001~ — 박스를 품은 조째 둘 C0020 · C0021 포함) · 역할 함수조항 6(C0022~C0027 — 보통약관이 쓴다) · 담보약관 조 13 · 준용규정 두 벌(보통약관 조를 가리켜 맨 뒤)
     const role: [string, string][] = [
       ["item", "납입면제 호"],
       ["block", "정의 및 진단확정(알파Plus)"],
@@ -145,11 +145,14 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
       ["block", "무효 문구(알파Plus)"],
       ["block", "부활 문구(알파Plus)"],
     ];
-    expect(list.slice(19, 25).map((c) => [c.code, c.mode, c.label])).toEqual(role.map(([mode, label], i) => [`C${String(20 + i).padStart(4, "0")}`, mode, label]));
+    expect(list.slice(21, 27).map((c) => [c.code, c.mode, c.label])).toEqual(role.map(([mode, label], i) => [`C${String(22 + i).padStart(4, "0")}`, mode, label]));
     // 역할 함수조항은 인자를 받는다 — 사유(E0001) 하나 또는 종들(세목 선택지 목록) + 내부 변수
-    expect(list.slice(19, 25).map((c) => c.params?.map((p) => p.name))).toEqual([["사유"], ["사유"], ["종들"], ["종들"], ["종들"], ["종들"]]);
-    expect(list[22].locals?.map((l) => l.name)).toEqual(["사유들", "면책있음", "장해있음", "상해장해"]);
-    expect([...list.slice(0, 19), ...list.slice(25)].map((c) => [c.code, c.mode, c.label])).toEqual(
+    expect(list.slice(21, 27).map((c) => c.params?.map((p) => p.name))).toEqual([["사유"], ["사유"], ["종들"], ["종들"], ["종들"], ["종들"]]);
+    expect(list[24].locals?.map((l) => l.name)).toEqual(["사유들", "면책있음", "장해있음", "상해장해"]);
+    // 박스를 품은 조째 — 호 목록 · 항 사이의 박스 참조가 본문에 선다(최종 결정 6)
+    expect(JSON.stringify(list[19].body)).toContain('"boxCode":"BX000005"');
+    expect(JSON.stringify(list[20].body)).toContain('"kind":"boxRef"');
+    expect([...list.slice(0, 21), ...list.slice(27)].map((c) => [c.code, c.mode, c.label])).toEqual(
       [
         "목적",
         "보험금 등의 청구",
@@ -170,6 +173,8 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
         "개인정보보호",
         "준거법",
         "예금보험에 의한 지급보장",
+        "보험금을 지급하지 않는 사유",
+        "제1회 보험료 및 회사의 보장개시",
         "보장의 범위(신화상치료비)",
         "보험금의 지급사유(골절진단비)",
         "보험금의 지급사유(골절수술비)",
@@ -185,7 +190,7 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
         "특별약관의 소멸(중증화상및부식)",
         "준용규정(알파Plus)",
         "준용규정(메리츠)",
-      ].map((label, i) => [`C${String(i < 19 ? i + 1 : i + 7).padStart(4, "0")}`, "block", label]),
+      ].map((label, i) => [`C${String(i < 21 ? i + 1 : i + 7).padStart(4, "0")}`, "block", label]),
     );
     // 박스 — 원문의 박스 전부(같은 박스는 하나, 낱말만 달라도 따로). 보통약관이 놓는 박스가 앞 코드(BX000001~BX000084)
     const boxes = await services.document.listBoxes();
@@ -200,15 +205,16 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
       ["BX000014", "【계약 전 알릴 의무】 — 서면으로"],
     ]);
     // 알파Plus 준용규정은 담보속성(갱신유형)을 읽는다 — 담보속성은 함수조항이 직접 읽는다 — 요구 참조는 저장 때 식에서 뽑는다 (기능/함수조항 §3.3)
-    expect((await services.clause.get("C0039"))?.required).toEqual({ discriminators: [], attributes: ["A0001"] });
+    expect((await services.clause.get("C0041"))?.required).toEqual({ discriminators: [], attributes: ["A0001"] });
     // 쓰임 수 = 참조 자리 수 — 특별약관의 소멸(사망)은 소멸 급부 없는 특약 7벌(알파Plus 3 · 메리츠 4), 보통약관 조째 함수조항은 보통약관 두 벌,
     // 지급사유 발생 소멸은 세 담보(중대한특정상해수술비 · 메리츠 상해 · 질병 80%이상후유장해)
     const summaries = await services.clause.summaries();
-    expect(summaries.find((c) => c.code === "C0034")?.usageCount).toBe(7);
+    expect(summaries.find((c) => c.code === "C0036")?.usageCount).toBe(7);
     expect(summaries.find((c) => c.code === "C0019")?.usageCount).toBe(2);
-    expect(summaries.find((c) => c.code === "C0035")?.usageCount).toBe(3);
+    expect(summaries.find((c) => c.code === "C0020")?.usageCount).toBe(2);
+    expect(summaries.find((c) => c.code === "C0037")?.usageCount).toBe(3);
     // 역할 함수조항은 알파Plus 보통약관 한 자리씩
-    for (const code of ["C0020", "C0021", "C0022", "C0023", "C0024", "C0025"]) expect(summaries.find((c) => c.code === code)?.usageCount).toBe(1);
+    for (const code of ["C0022", "C0023", "C0024", "C0025", "C0026", "C0027"]) expect(summaries.find((c) => c.code === code)?.usageCount).toBe(1);
   }, 30_000);
 
   it("메리츠 — 보통약관 · 기본계약(일반상해사망) · 특약 8(전부 갱신형) · 세목 종 3 × 형 2 · 담보 COV000010~18", async () => {

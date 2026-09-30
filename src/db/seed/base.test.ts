@@ -10,9 +10,9 @@ import { boxesUsedByGenerals, clausesUsedByGenerals, loadRealBase } from "./load
 const admin: Actor = { userId: "00000000-0000-4000-8000-000000000001", role: "admin" };
 
 /**
- * 실물 화면 E2E 의 바탕(`SEED_PROFILE=base`) — 별표 · 보통약관 두 벌과 보통약관이 쓰는 박스(BX000001~BX000084) · 함수조항(C0001~C0025 —
- * 조째 19 + 알파Plus 납입면제 역할 함수조항 6), 그리고 그것들이 읽는 열거형(E0001 납입면제사유 — 필드 포함) · 구분자(D0002 납입면제 있음까지 앞 코드).
- * 화면 E2E 는 그 뒤 코드(E0002~ · BX000085~ · C0026~)부터 친다 (docs/QA/시나리오/실물재현_E2E_시나리오.md §4).
+ * 실물 화면 E2E 의 바탕(`SEED_PROFILE=base`) — 별표 · 보통약관 두 벌과 보통약관이 쓰는 박스(BX000001~BX000084) · 함수조항(C0001~C0027 —
+ * 조째 21 + 알파Plus 납입면제 역할 함수조항 6), 그리고 그것들이 읽는 열거형(E0001 납입면제사유 — 필드 포함) · 구분자(D0002 납입면제 있음까지 앞 코드).
+ * 화면 E2E 는 그 뒤 코드(E0002~ · BX000085~ · C0028~)부터 친다 (docs/QA/시나리오/실물재현_E2E_시나리오.md §4).
  */
 describe("loadRealBase — 화면 E2E 바탕", () => {
   let t: TestDb;
@@ -26,14 +26,14 @@ describe("loadRealBase — 화면 E2E 바탕", () => {
     await t.close();
   });
 
-  it("별표 21 · 열거형 1(E0001 · 필드 셋) · 구분자 2(D0001 · D0002) · 보통약관이 쓰는 박스 84 · 함수조항 25(앞 코드) · 보통약관 2 — 담보 · 상품은 없다", async () => {
+  it("별표 21 · 열거형 1(E0001 · 필드 셋) · 구분자 2(D0001 · D0002) · 보통약관이 쓰는 박스 84 · 함수조항 27(앞 코드) · 보통약관 2 — 담보 · 상품은 없다", async () => {
     expect(await loadRealBase(services, admin)).toEqual({ created: true });
     expect(await services.document.listAppendices()).toHaveLength(21);
     const clauses = (await services.clause.list()).map((c) => c.code);
     expect(clauses).toEqual([...clausesUsedByGenerals()].sort());
-    expect(clauses).toEqual(Array.from({ length: 25 }, (_, i) => `C${String(i + 1).padStart(4, "0")}`));
+    expect(clauses).toEqual(Array.from({ length: 27 }, (_, i) => `C${String(i + 1).padStart(4, "0")}`));
     // 역할 함수조항은 보통약관 조를 가리킨다(가리키기 순환) — 두 번에 만들어 자리표시가 남지 않는다
-    expect(JSON.stringify((await services.clause.get("C0023"))?.body)).not.toContain("〔보통약관 참조〕");
+    expect(JSON.stringify((await services.clause.get("C0025"))?.body)).not.toContain("〔보통약관 참조〕");
     expect((await services.catalog.listEnums()).map((e) => [e.code, e.fields?.length ?? 0])).toEqual([["E0001", 3]]);
     expect((await services.catalog.list()).map((d) => d.code)).toEqual(["D0001", "D0002"]);
     const boxes = (await services.document.listBoxes()).map((b) => b.code);
@@ -49,7 +49,7 @@ describe("loadRealBase — 화면 E2E 바탕", () => {
 
   it("다시 부르면 아무것도 하지 않는다", async () => {
     expect(await loadRealBase(services, admin)).toEqual({ created: false });
-    expect(await services.clause.list()).toHaveLength(25);
+    expect(await services.clause.list()).toHaveLength(27);
     expect(await services.document.listBoxes()).toHaveLength(84);
   });
 });

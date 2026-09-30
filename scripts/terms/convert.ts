@@ -20,7 +20,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import type { ArticleNode, BlockNode, BoxNode, DocumentNode, InlineNode, ParagraphNode, SectionNode, TableNode } from "../../src/domain/document/nodes";
+import type { ArticleNode, BlockNode, BoxNode, BoxRefNode, DocumentNode, InlineNode, ParagraphNode, SectionNode, TableNode } from "../../src/domain/document/nodes";
 import { indexTree, validateTree } from "../../src/domain/document/nodes";
 import { referenceKeysOf, targetOfNode, withCodes } from "../../src/domain/document/pcode";
 import type { RefTarget } from "../../src/domain/document/nodes";
@@ -327,8 +327,8 @@ function main(): void {
     for (const [code, b] of p.specials) built.set(code, b);
   }
 
-  // ── 함수조항(조 · 여러 항, 설정)과 박스(원문의 박스 전부 → 정적 마스터)를 만들고, 적재 순서로 코드를 매긴다
-  const configured = CLAUSES.map((c) => ({ key: c.key, record: buildClause(c, built, products, report) }));
+  // ── 박스(원문의 박스 전부 → 정적 마스터)와 함수조항(조 · 여러 항, 설정)을 만들고, 적재 순서로 코드를 매긴다.
+  // 박스 자리를 먼저 박스 참조로 바꾼다 — 조째 함수조항이 항 사이 · 호 목록의 박스 참조를 본문에 품는다(최종 결정 6)
   const productOf = (code: string) => products.find((p) => p.product.code === code)!;
   const sites = products.flatMap((p) => [
     ...boxSites(p.general.tree, { doc: p.product.general.code, product: p.product.code, general: true }),
@@ -337,6 +337,7 @@ function main(): void {
   const boxes = orderBoxes(planBoxes(sites));
   // 박스 자리 → 박스 참조 (같은 목록 자리)
   for (const plan of boxes) for (const site of plan.sites) replaceBox(site, plan.record.code);
+  const configured = CLAUSES.map((c) => ({ key: c.key, record: buildClause(c, built, products, report) }));
   // 알파Plus 납입면제 — 역할 함수조항 여섯 + 반복 템플릿(waiver.ts). 박스 참조가 선 뒤에 옮긴다(암 정의 칸 · 그림 박스). 보통약관이 쓰는 함수조항이다
   const waiver = applyAlphaWaiver(productOf("alpha").general, productOf("meritz").general);
   configured.push(...waiver);
@@ -491,11 +492,14 @@ function buildClause(spec: (typeof CLAUSES)[number], built: Map<string, Built>, 
     const b = built.get(source);
     const a = b && [...articlesOf(b.tree)].find((x) => b.numberOf.get(x.id) === article);
     const at = a ? a.children.findIndex((c) => c.kind === "paragraph" && c.id === `${a.id}-p${paragraph}`) : -1;
-    // 항 수를 안 주면 그 항부터 조의 끝까지의 항 전부 — 조째 함수조항
-    const paragraphs = spec.from.paragraphs ?? (a ? a.children.slice(Math.max(at, 0)).filter((c) => c.kind === "paragraph").length : 0);
-    const taken = a && at >= 0 ? a.children.slice(at, at + paragraphs) : [];
-    if (!b || taken.length !== paragraphs || taken.some((c) => c.kind !== "paragraph")) throw new Error(`${spec.key}: 원문 자리 ${source} 조 ${article} 제${paragraph}항부터 잇닿은 항 ${paragraphs}개 없음 (사이에 표 · 박스가 끼면 조째 딸 수 없다)`);
-    const blocks = clauseFromSource(b.tree, taken as ParagraphNode[], spec.key);
+    // 항 수를 안 주면 그 항부터 조의 끝까지의 항 전부 — 조째 함수조항. 항 사이의 박스 참조는 함께 품고, 마지막 항 뒤(조 끝) 박스는 사용처에 남긴다
+    const rest = a && at >= 0 ? a.children.slice(at) : [];
+    const paragraphs = spec.from.paragraphs ?? rest.filter((c) => c.kind === "paragraph").length;
+    let seen = 0;
+    const end = rest.findIndex((c) => c.kind === "paragraph" && ++seen === paragraphs);
+    const taken = end >= 0 ? rest.slice(0, end + 1) : [];
+    if (!b || taken.filter((c) => c.kind === "paragraph").length !== paragraphs || taken.some((c) => c.kind !== "paragraph" && c.kind !== "boxRef")) throw new Error(`${spec.key}: 원문 자리 ${source} 조 ${article} 제${paragraph}항부터 잇닿은 항 ${paragraphs}개 없음 (사이에 표가 끼면 조째 딸 수 없다)`);
+    const blocks = clauseFromSource(b.tree, taken as (ParagraphNode | BoxRefNode)[], spec.key);
     placeOptions(blocks, spec.place ?? [], spec.key);
     body = reId(blocks, prefix);
   } else {
