@@ -197,3 +197,58 @@ describe("펼칠 때 사용처 문맥에서 평가", () => {
     expect(r.ok && whenOf(r.value)).toBe("var.암 and D0002 = 'V01'");
   });
 });
+
+describe("밟지 않은 칸 · 가지는 평가하지 않는다 (지연 평가)", () => {
+  /** 사유 칸 둘 — V01 칸만 약관표시명(F01) 슬롯. V02 는 F01 이 비었다. */
+  const switched = clauseWith([], [
+    {
+      id: "sw",
+      kind: "inlineSwitch",
+      on: "arg.사유",
+      cases: [
+        { id: "k1", values: ["V01", "V03"], children: [{ id: "s1", kind: "slot", ref: "arg.사유.F01" }] },
+        { id: "k2", values: ["V02"], children: [{ id: "t2", kind: "text", text: "뇌졸중" }] },
+      ],
+    },
+  ]);
+
+  it("값별 분기 — 고른 칸(V02) 밖의 필드 슬롯은 읽지 않는다: V02 의 약관표시명이 비어도 오류가 아니다", () => {
+    const r = applyBindings(switched, undefined, plainConst, {}, env({ D0001: [], D0002: "V02" }));
+    expect(r.ok).toBe(true);
+  });
+
+  it("값별 분기 — 고른 칸(V01) 안의 필드 슬롯은 값 글로 푼다", () => {
+    const r = applyBindings(switched, undefined, plainConst, {}, env({ D0001: [], D0002: "V01" }));
+    expect(r.ok && JSON.stringify(r.value.body)).toContain("암(유사암 제외)");
+  });
+
+  it("조건 가지 — 거짓인 가지 안의 필드 슬롯은 읽지 않는다", () => {
+    const c = clauseWith([], [
+      {
+        id: "c1",
+        kind: "inlineCond",
+        branches: [
+          { id: "b1", when: "arg.사유 = 'V01'", children: [{ id: "s1", kind: "slot", ref: "arg.사유.F01" }] },
+          { id: "b2", children: [{ id: "t2", kind: "text", text: "그 밖" }] },
+        ],
+      },
+    ]);
+    const r = applyBindings(c, undefined, plainConst, {}, env({ D0001: [], D0002: "V02" }));
+    expect(r.ok).toBe(true);
+  });
+
+  it("앞 가지가 참이면 뒤 가지의 조건 · 본문은 평가하지 않는다", () => {
+    const c = clauseWith([], [
+      {
+        id: "c1",
+        kind: "inlineCond",
+        branches: [
+          { id: "b1", when: "arg.사유 = 'V02'", children: [{ id: "t1", kind: "text", text: "뇌" }] },
+          { id: "b2", when: "arg.사유.F01 = '암'", children: [{ id: "s2", kind: "slot", ref: "arg.사유.F01" }] },
+        ],
+      },
+    ]);
+    const r = applyBindings(c, undefined, plainConst, {}, env({ D0001: [], D0002: "V02" }));
+    expect(r.ok).toBe(true);
+  });
+});

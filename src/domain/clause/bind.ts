@@ -11,9 +11,9 @@
  * 계획은 「평가 문맥(EvalContext) 래퍼」를 적었으나, 슬롯은 치환 단계(substitute)가 따로 평가하므로 펼칠 때 소스를 바꿔 쓰는 편이
  * 조립 파이프 뒤쪽(치환 · 렌더 · 원문 대조)을 건드리지 않는다 — 결과는 같다.
  */
-import { format, parse, refPath, type Expr, type Literal, type Ref } from "../expression";
+import { evaluate, format, parse, refPath, type Expr, type Literal, type Ref } from "../expression";
 import { ok, reject } from "../types";
-import type { Coordinate, Issue, Result, ScalarValue } from "../types";
+import type { Coordinate, Issue, Result, ScalarValue, Value } from "../types";
 import { hasClauseOnly, localScope, type LocalEnv } from "./locals";
 import type { ClauseNode, Inline } from "./nodes";
 import { effectiveBindings, type Binding, type Bindings, type ParamDef } from "./params";
@@ -125,17 +125,57 @@ export function applyBindings(clause: Clause, bindings: Bindings | undefined, fo
     return r ? { ...n, ref: format(r) } : n;
   };
 
+  /**
+   * 바꿔 쓴 식을 사용처 문맥에서 미리 평가한다 — 지연 평가(밟을 가지 · 칸 고르기)용. 조립(resolve)이 같은 문맥에서 같은 식을 다시 평가하므로
+   * 여기서 값이 안 나오면(오류 · 미결) undefined — 그 자리의 오류는 조립이 낸다. 재료가 없으면(미리보기) 늘 undefined.
+   */
+  const peek = (src: string): Value | undefined => {
+    if (!env) return undefined;
+    const parsed = parse(src);
+    if (!parsed.ok) return undefined;
+    const r = evaluate(parsed.value, { ...env.ctx, coordinate: at });
+    return r.kind === "value" ? r.value : undefined;
+  };
+
   /** 노드 하나 — 모양을 몰라도 걷는다(가지 · 글 · 호 목록 · 목 목록). 슬롯과 가지 조건만 바꾼다. */
-  type Loose = { kind: string; on?: string; children?: unknown[]; items?: unknown[]; subitems?: unknown[]; branches?: { when?: string; children: unknown[] }[]; cases?: { children: unknown[] }[] };
+  type Loose = { kind: string; on?: string; children?: unknown[]; items?: unknown[]; subitems?: unknown[]; branches?: { when?: string; children: unknown[] }[]; cases?: { values?: string[]; children: unknown[] }[] };
   const node = (n: ClauseNode): ClauseNode => {
     if (n.kind === "slot") return slot(n);
     const any = n as unknown as Loose;
     const walk = (list: unknown[]) => list.map((c) => node(c as ClauseNode));
     let out: Loose = any;
-    if (any.branches) out = { ...out, branches: any.branches.map((br) => ({ ...br, ...(br.when !== undefined ? { when: rewrite(br.when) } : {}), children: walk(br.children) })) };
-    // 값별 분기 — 대상(arg.X · var.X)도 조건처럼 사용처 연결로 바꿔 쓴다(구분자 코드 · 값 리터럴). 칸은 가지처럼 걷는다
+    if (any.branches) {
+      // 지연 평가 (조립 — 재료 있음): 가지를 앞에서부터 보다 참인 첫 가지(또는 else)만 바꿔 쓴다. 밟지 않은 가지의 조건 · 본문은 손대지 않는다 —
+      // 조립도 거기를 평가하지 않으므로(ADR-0016 「밟은 자리만」) 그 안의 필드 슬롯 등이 모든 값에 입력돼 있을 필요가 없다.
+      // 조건 값을 미리 알 수 없으면(오류 · 미결) 거기서 멈춘다 — 조립이 그 조건에서 오류 마커를 낸다. 재료가 없으면(미리보기) 모든 가지를 바꿔 쓴다.
+      let open = true;
+      out = {
+        ...out,
+        branches: any.branches.map((br) => {
+          if (!open) return br;
+          if (br.when === undefined) {
+            if (env) open = false;
+            return { ...br, children: walk(br.children) };
+          }
+          const when = rewrite(br.when);
+          if (!env) return { ...br, when, children: walk(br.children) };
+          const v = peek(when);
+          if (v === true) {
+            open = false;
+            return { ...br, when, children: walk(br.children) };
+          }
+          if (v !== false) open = false;
+          return { ...br, when };
+        }),
+      };
+    }
+    // 값별 분기 — 대상(arg.X · var.X)도 조건처럼 사용처 연결로 바꿔 쓴다(구분자 코드 · 값 리터럴). 칸은 가지처럼 걷는다 —
+    // 조립(재료 있음)이면 대상 값이 든 칸만(지연 평가, 위와 같은 이유)
     if (typeof any.on === "string") out = { ...out, on: rewrite(any.on) };
-    if (any.cases) out = { ...out, cases: any.cases.map((k) => ({ ...k, children: walk(k.children) })) };
+    if (any.cases) {
+      const picked = env && typeof out.on === "string" ? peek(out.on) : undefined;
+      out = { ...out, cases: any.cases.map((k) => (!env || (typeof picked === "string" && k.values?.includes(picked)) ? { ...k, children: walk(k.children) } : k)) };
+    }
     if (any.children) out = { ...out, children: walk(any.children) };
     if (any.items) out = { ...out, items: walk(any.items) };
     if (any.subitems) out = { ...out, subitems: walk(any.subitems) };
