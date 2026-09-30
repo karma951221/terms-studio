@@ -13,8 +13,8 @@
  */
 
 import type { Bindings } from "../clause/params";
-import { ok, reject } from "../types";
-import type { Code, Id, Issue, Result } from "../types";
+import { isWorkMark, ok, reject, WORK_MARK_MESSAGE } from "../types";
+import type { Code, Id, Issue, Result, WorkMark } from "../types";
 import type { IdSource } from "./builders";
 import { randomIds } from "./builders";
 import {
@@ -43,6 +43,7 @@ import {
   type TableColumn,
   type TableNode,
   type TableRow,
+  type TextNode,
   type TreeEnv,
   type TreeIndex,
 } from "./nodes";
@@ -56,11 +57,12 @@ export type InlineAt = { parentId: Id } | { tableId: Id; row: number; col: numbe
 
 /**
  * 인라인 목록을 새로 짤 때의 한 조각 (`setInlines`).
- * - `{ id, text }` — 문장. 그 목록에 같은 id 의 문장이 있으면 그것을 고치고, 없으면 그 id 로 새 문장. 빈 문장은 버린다.
+ * - `{ id, text, mark? }` — 문장. 그 목록에 같은 id 의 문장이 있으면 그것을 고치고, 없으면 그 id 로 새 문장. 빈 문장은 버린다.
+ *   `mark` = 작업용 글자색(types.ts `WorkMark`) — 주면 칠하고, 없으면 지운다(목록을 통째로 짜므로 없음 = 색 없음).
  * - `{ keep }` — 그 목록에 이미 있는 칩(슬롯 · 참조 · 문장 안 조건 …)을 그대로 둔다. 목록에 없으면 거부.
  * - `{ node }` — 새로 넣는 인라인 노드(칩을 그 자리에 넣기 · 조건 풀기로 가지 내용을 꺼내기).
  */
-export type InlineRun = { id: Id; text: string } | { keep: Id } | { node: InlineNode };
+export type InlineRun = { id: Id; text: string; mark?: WorkMark } | { keep: Id } | { node: InlineNode };
 
 /** 삽입 자리 — 부모(노드 id 또는 가지 id) · 목록 자리 · 위치(없으면 끝). */
 export interface Position {
@@ -521,12 +523,16 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
           if (run.text === "") continue;
           const n = current.get(run.id);
           if (n && (n.kind !== "text" || used.has(run.id))) return structure(`노드 ${run.id} 는 이 자리의 문장이 아닙니다`, path);
+          if (run.mark !== undefined && !isWorkMark(run.mark)) return structure(WORK_MARK_MESSAGE, path);
           if (n) {
             used.add(run.id);
-            (n as { text: string }).text = run.text;
+            const t = n as TextNode;
+            t.text = run.text;
+            if (run.mark) t.mark = run.mark;
+            else delete t.mark;
             next.push(n);
           } else {
-            const t: Node = { id: run.id, kind: "text", text: run.text };
+            const t: Node = { id: run.id, kind: "text", text: run.text, ...(run.mark ? { mark: run.mark } : {}) };
             next.push(t);
             added.push(t);
           }

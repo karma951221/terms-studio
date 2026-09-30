@@ -8,7 +8,7 @@
  *
  * - **인자를 가진 함수조항은 접어 둔다** (최종 결정 8 · 기능/함수조항 §4.4) — 블록 · 목록 자리의 조건 가지 · 값별 분기 칸은 머리 줄(배지 · 식 또는 배정 값 이름 · 문장 수)만
  *   보이고, 누른 칸만 펼친다(`<details name>` — 한 분기의 칸은 한 묶음, 묶음 이름 앞마디 = 사용처 상자 id). 칸 밖 본문 · 문장 안 칩은 그대로. 인자 0개 조항은 전체.
- * - 조작이 없다. 함수조항 자체는 함수조항 화면에서 고친다(상자 머리의 「함수조항에서 고치기 →」는 호출부가 단다).
+ * - 조작이 없다. 함수조항 자체는 함수조항 화면에서 고친다(상자 머리는 호출부가 단다 — 「[코드] 이름」).
  * - `data-block` · `data-inline` · `data-node` 를 심지 않는다 — 문면 편집기의 자리 읽기(`place.ts`)와 E2E 의 블록 셈이
  *   함수조항 본문을 이 문서의 자리로 착각하지 않게.
  * - 훅이 없어 서버 · 클라이언트 어느 쪽에서도 그린다 — 접힘 상태도 브라우저(`<details>`)가 쥔다.
@@ -144,7 +144,7 @@ function OptionPlace({ optionCode, ctx }: { optionCode: Code; ctx: Ctx }) {
   const values = [...option.values].sort((a, b) => a.order - b.order);
   const bodyText = (body: readonly Inline[]) => body.map((n) => (n.kind === "text" ? n.text : "〔…〕")).join("");
   return (
-    <span className="ts-clause-model-opt" title={`옵션 자리 — ${option.label} · ${values.map((v) => `${v.label}: ${bodyText(v.body) || "(빈 문구)"}`).join(" / ")}`}>
+    <span className="ts-clause-model-opt" title={`옵션 자리 — ${option.label} · ${values.map((v) => { const text = bodyText(v.body) || "(빈 문구)"; return v.label === text ? text : `${v.label}: ${text}`; }).join(" / ")}`}>
       〔<span className="ts-clause-model-opt-name">{option.label}</span>:{" "}
       {values.map((v, i) => (
         <Fragment key={v.code}>
@@ -366,9 +366,4 @@ export function ClauseModel(props: ClauseModelProps) {
       )}
     </div>
   );
-}
-
-/** 함수조항 화면 링크 — 함수조항 자체는 거기서 고친다. */
-export function clauseEditHref(code: Code): string {
-  return `/functions/${code}`;
 }

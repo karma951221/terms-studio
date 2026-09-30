@@ -556,7 +556,7 @@ export class DocumentAuthoring {
       await this.page.getByRole("menuitem", { name: `${this.clauseLabels.get(node.clauseCode)}(${node.clauseCode})`, exact: true }).click();
       if (Object.keys(node.options).length > 0) {
         // 블록 머리의 옵션 단추 → 「함수조항 옵션」 팝업에서 옵션마다 선택지 (인자가 있는 함수조항이면 「함수조항 옵션 · 인자」 — 인자는 기본 연결 그대로)
-        const block = this.article.locator("[data-clause-ref]").filter({ hasText: `함수조항 (${this.clauseLabels.get(node.clauseCode)})` }).last();
+        const block = this.article.locator("[data-clause-ref]").filter({ hasText: `[${node.clauseCode}] ${this.clauseLabels.get(node.clauseCode)}` }).last();
         await block.locator(".ts-doc-clause-opt").click();
         const d = this.page.getByRole("dialog", { name: /^함수조항 옵션( · 인자)?$/ });
         for (const [option, value] of Object.entries(node.options)) await d.locator(`#pop-opt-${option}`).selectOption(value);
@@ -612,16 +612,15 @@ export class ClauseAuthoringDriver {
     await this.page.getByLabel("함수조항명").fill(label);
   }
 
-  /** 옵션 목록 — 옵션마다 이름, 선택지마다 이름 · 문구. 새 옵션은 빈 선택지 둘을 품고 온다. */
+  /** 옵션 목록 — 옵션마다 카드(옵션명), 선택지마다 문구 칸 하나(이름은 문구에서 저절로). 새 옵션은 빈 선택지 둘을 품고 온다. */
   async options(options: readonly ClauseOption[]): Promise<void> {
     this.editor.optionLabels = new Map(options.map((o) => [o.code, o.label]));
     for (const option of options) {
       await this.page.getByRole("button", { name: "옵션 추가" }).click();
       await this.page.getByLabel("옵션명").last().fill(option.label);
       for (const [i, value] of option.values.entries()) {
-        if (i >= 2) await this.page.getByRole("button", { name: `${option.label}에 선택지 추가` }).click();
-        await this.page.getByRole("textbox", { name: `${option.label} — 선택지 ${i + 1} 이름`, exact: true }).fill(value.label);
-        await this.page.getByRole("textbox", { name: `${option.label} — 선택지 ${i + 1} 문구`, exact: true }).fill(value.body.map((n) => n.text ?? "").join(""));
+        if (i >= 2) await this.page.getByRole("button", { name: `선택지 추가 · ${option.label}`, exact: true }).click();
+        await this.page.getByRole("textbox", { name: `${option.label} — 선택지 ${i + 1}`, exact: true }).fill(value.body.map((n) => n.text ?? "").join(""));
       }
     }
   }

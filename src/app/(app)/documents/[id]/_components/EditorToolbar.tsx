@@ -10,12 +10,16 @@
  * - 드물게 쓰는 넣기(관 · 문장 안 함수조항)는 끝의 「더보기(⋯)」 안. 복제 · 삭제는 고른 블록 오른쪽 위(`DocBody` `BlockActs`), 위로 · 아래로는 오른쪽 클릭 메뉴.
  * - 버튼을 누르는 동안 문장 칸의 초점 · 선택을 뺏지 않는다(mousedown 을 막는다) — 커서 자리 · 고른 글에 넣기 위해서.
  * - 편집 모드에서만 선다(읽기 모드의 입구는 바의 「편집」). `editing` 이 거짓이면 전부 잠근다.
+ * - 넣기 묶음 뒤 「서식」 묶음에 작업용 「글자색」(`workMarks.tsx`, `onMark` 를 줄 때만) — 산출물 서식이 아니라 작업 표시다 (§3.2).
  */
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { IconAttach, IconBox, IconBranch, IconBulletList, IconClauseBlock, IconLink, IconMore, IconRepeat, IconSlot, IconTable } from "@/app/_components/icons";
 
+import type { WorkMark } from "@/domain/types";
+
 import type { MenuSections } from "./menus";
+import { MarkPicker } from "./workMarks";
 import { onBar, toolState, type Tool, type ToolGroup, type ToolIcon, type ToolId, type ToolState } from "./tools";
 
 const ICONS: Record<ToolIcon, ReactNode> = {
@@ -35,6 +39,7 @@ export function EditorToolbar({
   sections,
   editing,
   onRun,
+  onMark,
   where,
 }: {
   groups: readonly ToolGroup[];
@@ -42,6 +47,8 @@ export function EditorToolbar({
   sections: MenuSections;
   editing: boolean;
   onRun: (tool: ToolId, button: HTMLElement) => void;
+  /** 작업용 글자색 — 고른 글에 칠한다(없으면 색 지우기). 주면 「글자색」이 선다. */
+  onMark?: (mark: WorkMark | undefined) => void;
   /** 지금 자리 — 「항 ②」처럼. 툴바 끝에 작게. */
   where?: string;
 }) {
@@ -70,6 +77,7 @@ export function EditorToolbar({
         </div>
       ))}
       {more.length > 0 && <MoreTools tools={more} onRun={onRun} />}
+      {editing && onMark ? <MarkPicker onMark={onMark} /> : null}
       {editing && where ? <span className="ts-tool-where">자리 — {where}</span> : null}
     </div>
   );

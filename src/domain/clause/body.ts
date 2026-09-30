@@ -16,7 +16,7 @@
  */
 import { checkTypes, extractRefs, parse } from "../expression";
 import type { EnumInfo, Expr, ExprType, Ref, TypeResolver } from "../expression";
-import { CONNECTOR_REPEAT_MESSAGE, CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, ok, reject } from "../types";
+import { CONNECTOR_REPEAT_MESSAGE, CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, isWorkMark, ok, reject, WORK_MARK_MESSAGE } from "../types";
 import type { Code, Coordinate, Id, Issue, Result } from "../types";
 import { BLOCK_KINDS, HOST_PATH, INLINE_KINDS } from "./nodes";
 import type { AnySwitchNode, Block, BoxRefNode, BulletListNode, ClauseNode, Inline, InlineBranch, BlockBranch, ItemBodyNode, ItemNode, SubitemBodyNode, SwitchCase } from "./nodes";
@@ -267,6 +267,7 @@ export function analyzeBody(
     if (!isInlineKind(String(node.kind))) return kindError(node, path, "인라인");
     switch (node.kind) {
       case "text":
+        if (node.mark !== undefined && !isWorkMark(node.mark)) report("structure", WORK_MARK_MESSAGE, here);
         return;
       case "articleRef":
         if (!Array.isArray(node.targets) || node.targets.length === 0) {

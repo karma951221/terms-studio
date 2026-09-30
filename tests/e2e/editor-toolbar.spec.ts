@@ -266,13 +266,11 @@ test(
       await expect(page.getByRole("radio", { name: /^문구/ })).toBeDisabled();
     });
 
-    await ev.action("함수조항생성#5", "「옵션 추가」 — 빈 선택지 둘을 품은 옵션이 선다, 이름 · 선택지를 채운다", async () => {
+    await ev.action("함수조항생성#5", "「옵션 추가」 — 빈 선택지 둘을 품은 옵션 카드가 선다, 옵션명 · 선택지 문구(선택지 = 문구 칸 하나)를 채운다", async () => {
       await page.getByRole("button", { name: "옵션 추가" }).click();
       await page.getByLabel("옵션명").fill("제한 사유");
-      await page.getByRole("textbox", { name: "제한 사유 — 선택지 1 이름" }).fill("고의");
-      await page.getByRole("textbox", { name: "제한 사유 — 선택지 1 문구" }).fill("피보험자가 고의로 자신을 해친 경우");
-      await page.getByRole("textbox", { name: "제한 사유 — 선택지 2 이름" }).fill("전쟁");
-      await page.getByRole("textbox", { name: "제한 사유 — 선택지 2 문구" }).fill("전쟁 · 외국의 무력행사로 생긴 경우");
+      await page.getByRole("textbox", { name: "제한 사유 — 선택지 1", exact: true }).fill("피보험자가 고의로 자신을 해친 경우");
+      await page.getByRole("textbox", { name: "제한 사유 — 선택지 2", exact: true }).fill("전쟁 · 외국의 무력행사로 생긴 경우");
     });
 
     await ev.action("함수조항생성#6", "항 문장 끝에 커서를 두고 툴바 「옵션 자리」 — 〔제한 사유〕 칩이 선다", async () => {
@@ -488,7 +486,7 @@ test(
     const box = body.locator("[data-clause-ref]");
     const cells = box.locator("details.ts-clause-cell");
     await ev.action("접기#4", "상자 머리 = 이름 + 「사유 ← 연결」, 칸은 머리(값 이름 · 문장 수)만 — 내용은 접혀 있다", async () => {
-      await expect(box.locator(".ts-doc-clause-head")).toContainText(`함수조항 (${clauseName})`);
+      await expect(box.locator(".ts-doc-clause-name")).toHaveText(`[${code}] ${clauseName}`);
       await expect(box.locator(".ts-doc-clause-head")).toContainText("인자: 사유 ← 질병(상수)");
       await expect(cells).toHaveCount(2);
       await expect(cells.nth(0).locator("summary")).toContainText("질병");

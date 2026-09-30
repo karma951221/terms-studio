@@ -41,6 +41,11 @@
   /* 조건 블록 테두리 · 함수조항 블록 머리 띠 (기능/문면 §4.3, 2026-09-28) — 기존 색에서 빌린다(다크 모드도 따라간다) */
   --ts-cond-line: var(--ts-ok);
   --ts-clause-line: var(--ts-graph-5);
+  /* 작업용 글자색 (기능/문면 §3.2 작업 표시, 2026-10-01) — 산출물 서식이 아니다. 본문 글(명조)과 나란히 읽혀야 해 채도를 누른다 */
+  --ts-work-red: #c0262d;
+  --ts-work-blue: #1d5fbf;
+  --ts-work-green: #1f7a3a;
+  --ts-work-orange: #b35900;
 
   /* 글꼴 — 디자인원칙 §3. 맑은 고딕은 시스템 설치본만 부른다(웹폰트 배포 불가) */
   --sans: "Malgun Gothic", "맑은 고딕", AppleSDGothicNeo-Regular, "Apple SD Gothic Neo",
@@ -76,6 +81,10 @@
     --ts-graph-6: #c0a06a;
     --ts-graph-7: #aaa0bd;
     --ts-graph-8: #88ad93;
+    --ts-work-red: #ff8a80;
+    --ts-work-blue: #8cb8ff;
+    --ts-work-green: #7ed49a;
+    --ts-work-orange: #ffb35c;
 
     color-scheme: dark;
   }
@@ -1191,6 +1200,19 @@ button.danger:focus-visible {
   font-weight: 700;
 }
 
+/* 제목 옆 ⓘ (디자인원칙 §2 L1 「제목 옆 ⓘ InfoTip」) — 글에 붙이지 않고 보통 간격, 제목 줄 가운데 */
+.ts-clause-sec:has(> .ts-infotip) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.ts-clause-sec > .ts-infotip {
+  margin-left: 0;
+  vertical-align: 0;
+}
+
 .ts-clause-sec-note {
   margin: 0 0 8px;
   font-size: 12px;
@@ -1214,6 +1236,28 @@ button.danger:focus-visible {
 
 .ts-clause-meta-value {
   padding: 3px 0;
+}
+
+/* 기본정보 — 접히는 구획(.ts-basics). 펼친 칸의 줄 간격은 접기 전과 같게 */
+#clause-meta-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ts-clause-meta .ts-basics-head .ts-mono {
+  font-size: 12px;
+}
+
+/* 접힌 줄 끝 — 반환 타입 경고가 있다는 표시만(문구는 tooltip · 펼치면 경고 줄) */
+.ts-clause-meta-warn {
+  align-self: center;
+  display: inline-flex;
+  color: var(--ts-warn);
+}
+
+.ts-clause-warnings .ts-icon {
+  vertical-align: -2px;
 }
 
 /* 단위 규칙 경고 — 저장은 된다, 읽고 넘어갈 줄 (기능/함수조항 §3.1) */
@@ -1384,20 +1428,42 @@ button.danger:focus-visible {
   white-space: nowrap;
 }
 
+/* 옵션 카드 (기능/함수조항 §4.3, 2026-10-01) — 머리 = ⊖ + 옵션명(제목), 몸 = 「선택지」 캡션 + 번호 붙은 문구 줄 + ⊕ */
 .ts-option {
-  padding: 10px 0;
-  border-top: 1px solid var(--ts-rule);
+  margin: 0 0 8px;
+  padding: 8px 10px 6px;
+  border: 1px solid var(--ts-rule);
+  border-radius: 8px;
+  background: var(--ts-surface);
 }
 
 .ts-option-head {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-height: 24px;
 }
 
-.ts-option-head > input {
+.ts-option.is-editing .ts-option-head {
+  align-items: flex-end;
+}
+
+.ts-option.is-editing .ts-option-head > .ts-iconbtn {
+  margin: 0 0 3px -4px;
+}
+
+.ts-option-title-field {
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
+}
+
+input.ts-option-title {
+  width: 100%;
+  min-width: 0;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -1405,47 +1471,73 @@ button.danger:focus-visible {
   font-weight: 700;
 }
 
-.ts-option-values {
-  margin: 6px 0 4px;
-  padding: 0 0 0 22px;
-  list-style: decimal outside;
-  color: var(--ts-ink-3);
-  border-left: 1px solid var(--ts-rule);
-}
-
-.ts-option-values > li.ts-option-value {
-  display: list-item;
-  color: var(--ts-ink);
-}
-
-.ts-option-values > li.ts-option-value::marker {
+.ts-option-caption {
+  display: block;
   color: var(--ts-ink-3);
   font-size: 11px;
+  line-height: 1.4;
 }
 
-.ts-option-values > li.ts-option-value > .ts-option-value-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 2px 6px;
-  padding: 4px 0;
+/* 몸 — 제목보다 한 단 들여 쓴다. 왼쪽 괘선이 「이 옵션의 선택지」를 묶는다 */
+.ts-option-body {
+  margin: 8px 0 2px 8px;
+  padding-left: 10px;
+  border-left: 2px solid var(--ts-rule);
 }
 
-.ts-option-value-grid > input {
+.ts-option-values {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 3px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ts-option-value {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+}
+
+.ts-option-value > .ts-iconbtn {
+  flex: none;
+  margin-left: -4px;
+}
+
+.ts-option-num {
+  flex: none;
+  min-width: 16px;
+  color: var(--ts-ink-3);
+  font-size: 11px;
+  text-align: right;
+}
+
+.ts-option-value > .ts-option-text {
+  flex: 1;
   min-width: 0;
 }
 
-.ts-option-value-grid > .ts-option-text {
-  grid-column: 1 / -1;
+/* 읽기 — 문구는 문면 글꼴 그대로, 문면 쪽 여백 · 바탕은 걷는다 */
+.ts-option-value > .ts-option-text.ts-doc {
+  margin: 0;
+  padding: 0;
+  background: none;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
-.ts-option-value-name {
-  font-weight: 700;
+/* ⊕ 「선택지 추가」 — 마지막 줄 아래, ⊖ 칸 아래 (값 행 표와 같은 자리) */
+.ts-option-value-add {
+  display: flex;
+  margin: 2px 0 0 -4px;
 }
 
 .ts-cov-add-tile.ts-option-add {
   width: 100%;
   min-height: 36px;
-  margin: 10px 0 6px;
+  margin: 2px 0 6px;
 }
 
 @container l3 (max-width: 899px) {
@@ -1590,6 +1682,119 @@ button.danger:focus-visible {
 .ts-tool-more .ts-more-menu-item:disabled {
   opacity: 0.45;
   cursor: default;
+}
+
+/* ── 작업용 글자색 (기능/문면 §3.2 작업 표시 · §4.3, 2026-10-01) — 산출물 서식이 아니다 ── */
+.ts-mark[data-mark="red"],
+.ts-mark-glyph-bar[data-mark="red"],
+.ts-mark-swatch[data-mark="red"] { --ts-work: var(--ts-work-red); }
+.ts-mark[data-mark="blue"],
+.ts-mark-glyph-bar[data-mark="blue"],
+.ts-mark-swatch[data-mark="blue"] { --ts-work: var(--ts-work-blue); }
+.ts-mark[data-mark="green"],
+.ts-mark-glyph-bar[data-mark="green"],
+.ts-mark-swatch[data-mark="green"] { --ts-work: var(--ts-work-green); }
+.ts-mark[data-mark="orange"],
+.ts-mark-glyph-bar[data-mark="orange"],
+.ts-mark-swatch[data-mark="orange"] { --ts-work: var(--ts-work-orange); }
+
+.ts-mark { color: var(--ts-work); }
+/* 「수정 흔적 보기」 끔 — 보통 글색 */
+.is-marks-off .ts-mark { color: inherit; }
+
+/* 그림 — 글자 「가」 + 색 밑줄 (툴바 「글자색」 · 바의 「수정 흔적 보기」) */
+.ts-mark-glyph {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  width: 16px;
+  line-height: 1;
+}
+.ts-mark-glyph-letter {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 13px;
+}
+.ts-mark-glyph-bar {
+  width: 14px;
+  height: 3px;
+  border-radius: 1px;
+  background: var(--ts-work, currentColor);
+}
+
+/* 바의 토글 — 켜면 네 색 띠, 끄면 흐린 한 줄 */
+.ts-marks-toggle .ts-mark-glyph-bar {
+  background: linear-gradient(90deg, var(--ts-work-red) 0 25%, var(--ts-work-blue) 25% 50%, var(--ts-work-green) 50% 75%, var(--ts-work-orange) 75%);
+}
+.ts-marks-toggle:not(.is-on) .ts-mark-glyph-bar {
+  background: var(--ts-rule-strong);
+}
+.ts-marks-toggle:not(.is-on) .ts-mark-glyph-letter {
+  color: var(--ts-ink-3);
+}
+
+/* 툴바 「서식」 묶음 — 넣기 묶음 뒤, 가는 세로 선 */
+.ts-tool-marks {
+  position: relative;
+  display: inline-flex;
+  margin-left: 9px;
+}
+.ts-tool-marks::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 5px;
+  bottom: 5px;
+  width: 1px;
+  background: var(--ts-rule-strong);
+  pointer-events: none;
+}
+.ts-tool-marks > .ts-mark-menu {
+  left: 0;
+  right: auto;
+  min-width: 176px;
+}
+.ts-mark-swatches {
+  display: flex;
+  gap: 4px;
+  padding: 4px 6px 6px;
+}
+.ts-mark-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: none;
+}
+.ts-mark-swatch:hover,
+.ts-mark-swatch:focus-visible {
+  border-color: var(--ts-rule-strong);
+  background: var(--ts-surface-2);
+}
+.ts-mark-swatch-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--ts-work);
+}
+.ts-tool-marks .ts-more-menu-item {
+  height: 28px;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+.ts-mark-menu-note {
+  margin: 4px 0 0;
+  padding: 4px 10px 2px;
+  border-top: 1px solid var(--ts-rule);
+  font-size: 11px;
+  color: var(--ts-ink-3);
 }
 
 .ts-tool-where {
@@ -1738,11 +1943,6 @@ button.danger:focus-visible {
 
 .ts-dialog::backdrop {
   background: rgb(0 0 0 / 28%);
-}
-
-/* 사용처처럼 좌표 문자열이 긴 표를 담는 모달 — 넘치면 표만 가로로 흐른다 */
-.ts-dialog-wide {
-  width: min(880px, calc(100vw - 32px));
 }
 
 .ts-dialog-body {
@@ -3109,6 +3309,14 @@ label.ts-field > textarea {
   font-weight: 700;
 }
 
+/* 「[C0001] 목적」 — 코드는 다른 코드 자리처럼 고정폭 */
+.ts-doc-clause-code {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 11px;
+  opacity: 0.9;
+}
+
 .ts-doc-clause-opt {
   min-height: 0;
   padding: 0;
@@ -3134,19 +3342,6 @@ button.ts-doc-clause-opt {
   padding: 4px 10px 6px;
 }
 
-/* 머리 띠 오른쪽 — 함수조항 화면(새 탭)으로. 복제 · 삭제가 있으면 그 앞 */
-.ts-doc-clause-link {
-  margin-left: auto;
-  color: inherit;
-  font-size: 11px;
-  opacity: 0.9;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.ts-doc-clause-link + .ts-block-acts.is-inline {
-  margin-left: 0;
-}
 
 /* 함수조항 모델 — 상자 안의 구조(가운데 = 모델, 오른쪽 = 결과 · 2026-09-28). 칩은 문면 편집기와 같은 색 */
 .ts-clause-model .ts-doc-cond {
@@ -4509,7 +4704,7 @@ button.ts-ref-fold:hover {
   height: 12px;
 }
 
-/* 강조 행 — 마스터 사용처에서 건너온 자리. 테두리(형태)로 말한다 */
+/* 강조 행 — 마스터 필드 상세의 값 노드(「입력 화면 →」)에서 건너온 자리. 테두리(형태)로 말한다 */
 .ts-field-highlight {
   outline: 2px solid var(--ts-mark);
   outline-offset: 2px;
@@ -4570,7 +4765,7 @@ button.ts-ref-fold:hover {
   color: var(--ts-ink-3);
 }
 
-/* 상세 안의 구획 제목(「사용처」) — 위 괘선으로 정체와 가른다 */
+/* 상세 안의 구획 제목(필드 상세 「값 노드」) — 위 괘선으로 정체와 가른다 */
 .ts-master-section {
   margin: 16px 0 8px;
   padding-top: 12px;
@@ -4637,47 +4832,6 @@ button.ts-ref-fold:hover {
   margin: 12px 0 6px;
   font-size: 13px;
   font-weight: 700;
-}
-
-.ts-master-section + .ts-master-subtitle {
-  margin-top: 4px;
-}
-
-.ts-master-usage {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  font-size: 13px;
-}
-
-.ts-master-usage > li {
-  padding: 6px 0;
-  border-top: 1px solid var(--ts-rule);
-}
-
-.ts-master-usage-head {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.ts-master-usage-head .ts-mono {
-  color: var(--ts-ink-2);
-}
-
-.ts-master-usage-sub {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 2px 0 0 12px;
-  font-size: 12px;
-}
-
-.ts-master-usage-sub ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
 }
 
 .ts-master-stand {

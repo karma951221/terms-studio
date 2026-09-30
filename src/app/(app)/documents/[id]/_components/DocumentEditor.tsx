@@ -62,7 +62,7 @@ import {
   repeatElementEnums,
 } from "@/domain/document";
 import type { Box } from "@/domain/document/box";
-import type { Code, Coordinate, Id, Impact, Issue } from "@/domain/types";
+import type { Code, Coordinate, Id, Impact, Issue, WorkMark } from "@/domain/types";
 
 import { loadGeneralForEditAction, saveDocumentEditAction, startDocumentEditAction, type GeneralForEdit } from "../../edit-actions";
 import { docListHref } from "../../lib";
@@ -76,6 +76,7 @@ import { identityRuns, runsFromTokens, sameRuns, type Token } from "./inlineRuns
 import { boxPickItems, clausePickItems, condInsertItem, condMenu, inlineCondItem, placeBlockId, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
 import { condInput, placeOf, readInline } from "./place";
 import { EditorToolbar } from "./EditorToolbar";
+import { MarksToggle, markSelectionOps, useMarksShown } from "./workMarks";
 import { DOCUMENT_TOOLS, allTools, itemsFor, type ToolId } from "./tools";
 import { useBlockDrag } from "./useBlockDrag";
 import { PopupHost, type PopupEnv } from "./Popups";
@@ -356,6 +357,16 @@ export function DocumentEditor(props: EditorProps) {
     return recorded;
   };
   const apply = (ops: readonly EditOp[]): boolean => applyRecorded(ops) !== undefined;
+  // 작업용 글자색 — 고른 글에 칠한다 · 「수정 흔적 보기」 (§3.2 작업 표시 · §4.3)
+  const [marksShown, setMarksShown] = useMarksShown();
+  const markSelection = (mark: WorkMark | undefined) => {
+    const ops = markSelectionOps(latest(), mark, randomIds);
+    if (ops.length === 0) {
+      setBanner({ message: "글자색을 칠하지 못했다 — 칠할 글을 먼저 끌어서 고른다. 칩(슬롯 · 참조 · 조건)에는 색이 없다." });
+      return;
+    }
+    apply(ops);
+  };
   const drag = useBlockDrag({ latest, apply, enabled: mode === "edit" });
 
   const setGeneral = (generalDocumentId: Id | undefined) => {
@@ -788,7 +799,7 @@ export function DocumentEditor(props: EditorProps) {
     evalRan: evaluation !== undefined,
     evalAvailable,
     ...(props.evalNote ? { evalNote: props.evalNote } : {}),
-    ...(evaluation && mode === "read" ? { rendered: <DocBody tree={tree} ctx={{ ...ctx, tables: evaluation.tables, clauseView: "text" }} /> } : {}),
+    ...(evaluation && mode === "read" ? { rendered: <DocBody tree={tree} ctx={{ ...ctx, tables: evaluation.tables, clauseView: "text", workMarks: false }} /> } : {}),
     toggleEval,
     go,
   };
@@ -842,7 +853,7 @@ export function DocumentEditor(props: EditorProps) {
     // 화면 높이에 고정 — 바는 위에, 목차 · 가운데 · 우측 패널은 각자 스크롤한다 (globals.css .ts-l3).
     // L3 는 전폭 화면이다 — `.ts-main:has(> .ts-l3)`(globals.css)가 공통 레이아웃의 최대폭·패딩을 여기서만 푼다.
     // 좁은 폭(globals.css `@container l3`)에서는 우측 패널이 접히고 바의 패널 버튼으로 본문 위에 연다 — 가운데 본문 폭이 먼저다.
-    <div className={sideOpen ? "ts-l3 is-side-open" : "ts-l3"} aria-busy={pending || undefined}>
+    <div className={`ts-l3${sideOpen ? " is-side-open" : ""}${marksShown ? "" : " is-marks-off"}`} aria-busy={pending || undefined}>
       <div className="ts-l3-bar">
         <Breadcrumb items={[{ label: DOC_TEMPLATE_LABEL[doc.kind], href: docListHref(doc.kind) }, { label: tree.title }]} guard={mode === "edit" ? leave : undefined} />
         <span className="ts-count" title="이 템플릿의 규모와, 저장 검증이 잡은 문제 수">
@@ -871,6 +882,7 @@ export function DocumentEditor(props: EditorProps) {
             aria-controls="ts-l3-side"
             onClick={() => setSideOpen((open) => !open)}
           />
+          <MarksToggle shown={marksShown} onChange={setMarksShown} />
           <MoreMenu items={moreItems} />
           {mode === "edit" ? (
             <>
@@ -932,7 +944,7 @@ export function DocumentEditor(props: EditorProps) {
           if (at) setPlace(at);
         }}
       >
-        {mode === "edit" && <EditorToolbar groups={DOCUMENT_TOOLS} sections={toolbarSections} editing onRun={runTool} where={placeWords(toolbarPlace)} />}
+        {mode === "edit" && <EditorToolbar groups={DOCUMENT_TOOLS} sections={toolbarSections} editing onRun={runTool} onMark={markSelection} where={placeWords(toolbarPlace)} />}
         {conflict && (
           <div className="ts-error-banner" role="alert">
             <p>{conflict}</p>
@@ -972,7 +984,7 @@ export function DocumentEditor(props: EditorProps) {
       {removeCard}
       {fullView && (
         <FullPreview onClose={() => setFullView(false)}>
-          <DocBody tree={tree} ctx={{ ...ctx, clauseView: "text" }} />
+          <DocBody tree={tree} ctx={{ ...ctx, clauseView: "text", workMarks: false }} />
         </FullPreview>
       )}
 

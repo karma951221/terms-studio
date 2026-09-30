@@ -27,15 +27,16 @@
  * DB·React import 금지 (순수층).
  */
 
-import type { Code, Id, ReferenceConnector, RefRestrict } from "../types";
+import type { Code, Id, ReferenceConnector, RefRestrict, WorkMark } from "../types";
 
 // ───────────────────────────── 인라인 ─────────────────────────────
 
-/** 텍스트런. */
+/** 텍스트런. `mark` = 작업용 글자색 — 산출물 · 비교에 뜻이 없는 작업 표시 (types.ts `WorkMark`). 없으면 키를 싣지 않는다. */
 export interface TextNode {
   id: Id;
   kind: "text";
   text: string;
+  mark?: WorkMark;
 }
 
 /** 값 치환 슬롯 — `ref` 는 식 참조 경로 문자열. 문면·함수조항은 구분자 코드만 찍는다 (ADR-0037). */

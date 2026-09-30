@@ -43,7 +43,7 @@ import {
 import type { Code, Id } from "@/domain/types";
 
 import { BoxView } from "@/app/_components/BoxView";
-import { ClauseModel, clauseEditHref } from "@/app/_components/ClauseModel";
+import { ClauseModel } from "@/app/_components/ClauseModel";
 import { bindingLabel } from "@/app/(app)/functions/_components/params";
 import { applyBindings, plainConst } from "@/domain/clause";
 
@@ -302,7 +302,7 @@ function optionChip(clause: { options: readonly { code: string; label: string; v
 }
 
 /**
- * 함수조항(조 단위) 블록 — 머리 띠 「함수조항 (이름)」 · 옵션 선택(편집이면 눌러서 고치기) · 「함수조항에서 고치기 →」 · 🗑,
+ * 함수조항(조 단위) 블록 — 머리 띠 「[코드] 이름」 · 옵션 선택(편집이면 눌러서 고치기) · 복제 · 삭제,
  * 그 아래 함수조항의 모델(`ClauseModel` — 읽기 전용). 미리보기(`clauseView: "text"`)는 고른 선택지를 끼운 문장이다.
  * 본문 안은 이 문서의 자리가 아니다 — `data-clause-ref` 가 누른 자리를 이 블록으로 모은다(`place.ts`).
  */
@@ -377,8 +377,8 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
     <div className={`ts-doc-clause${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id} data-clause-ref={node.id}>
       <DragHandle id={node.id} what="함수조항" ctx={ctx} acts={false} />
       <div className="ts-doc-clause-head">
-        <span className="ts-doc-clause-name" title={`함수조항(조 단위) · ${node.clauseCode}`}>
-          함수조항 ({label ?? `${node.clauseCode} — 없는 함수조항`})
+        <span className="ts-doc-clause-name" title={`함수조항 · ${node.clauseCode}`}>
+          <span className="ts-doc-clause-code">[{node.clauseCode}]</span> {label ?? "없는 함수조항"}
         </span>
         {hasOptions &&
           (edit ? (
@@ -388,11 +388,6 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
           ) : (
             <span className="ts-doc-clause-opt">{options}</span>
           ))}
-        {clause && !asText && (
-          <a className="ts-doc-clause-link" href={clauseEditHref(clause.code)} target="_blank" rel="noopener" title="함수조항 화면을 새 탭으로 연다 — 본문 · 옵션은 거기서 고친다">
-            함수조항에서 고치기 →
-          </a>
-        )}
         <BlockActs id={node.id} what={`함수조항 ${label ?? node.clauseCode}`} ctx={ctx} inline />
       </div>
       <div className="ts-doc-clause-body">{body}</div>

@@ -193,11 +193,20 @@ const INNER_WORD: Record<string, string> = { paragraph: "항", item: "호", subi
 function firstText(n: unknown): string {
   const walk = (x: unknown): string | undefined => {
     if (Array.isArray(x)) {
+      // 잇닿은 문장 조각은 한 글로 — 작업용 글자색이 문장을 갈라도 머리 글은 같다
+      let run = "";
       for (const v of x) {
+        const o = v as { kind?: string; text?: unknown };
+        if (o?.kind === "text" && typeof o.text === "string") {
+          run += o.text;
+          continue;
+        }
+        if (run.trim() !== "") return run.trim();
+        run = "";
         const t = walk(v);
         if (t) return t;
       }
-      return undefined;
+      return run.trim() !== "" ? run.trim() : undefined;
     }
     if (typeof x !== "object" || x === null) return undefined;
     const o = x as { kind?: string; text?: unknown; children?: unknown };

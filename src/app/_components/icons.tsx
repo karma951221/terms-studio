@@ -226,6 +226,17 @@ export function IconInfo(props: IconProps) {
   );
 }
 
+/** 경고 — 느낌표 든 세모. 「저장은 되지만 읽고 넘어갈 것」(함수조항 반환 타입의 단위 규칙 경고). */
+export function IconWarn(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M8 2.2 14.2 13H1.8z" />
+      <path d="M8 6.5v3" />
+      <path d="M8 11.4h.01" />
+    </Svg>
+  );
+}
+
 /** 우측 패널 — 창 오른쪽에 세로 칸이 선 사각. 저작 화면(L3) 좁은 폭의 패널 열기 · 닫기. */
 export function IconPanel(props: IconProps) {
   return (
