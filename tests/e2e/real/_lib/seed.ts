@@ -7,6 +7,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
+import { findMasterField } from "../../../../src/domain/master";
 import { numberTree, referenceOutline, referenceTargetIndex, refKey, refTargetOf, type DocumentNode, type InlineNode, type Node } from "../../../../src/domain/document";
 
 const DATA = path.join(process.cwd(), "src/db/seed/data");
@@ -139,8 +140,35 @@ export const ALL_GENERAL_ANCESTORS = new Map(SEED.generals.flatMap((g) => [...ge
  */
 export const BASE_CLAUSE_CODES = new Set(SEED.generals.flatMap((g) => [...JSON.stringify(g.tree).matchAll(/"clauseCode":"(C\d+)"/g)].map((m) => m[1])));
 
-/** 보통약관이 놓는 박스 — 바탕 DB 가 보통약관과 함께 시드로 넣는다(BX000001~). 화면 E2E 는 그 뒤 코드부터 박스 화면으로 친다. */
-export const BASE_BOX_CODES = new Set(SEED.generals.flatMap((g) => [...JSON.stringify(g.tree).matchAll(/"boxCode":"(BX\d+)"/g)].map((m) => m[1])));
+/** 보통약관 문면 + 보통약관이 쓰는 함수조항 본문(역할 함수조항 — 박스 · 열거형을 품는다). 바탕 DB 가 함께 넣는 것의 근거 (src/db/seed/load.ts 와 같은 셈). */
+const BASE_SOURCES = JSON.stringify([...SEED.generals.map((g) => g.tree), ...SEED.clauses.filter((c) => BASE_CLAUSE_CODES.has(c.code))]);
+
+/** 코드 목록에서 `codes` 중 가장 뒤 코드까지의 앞자리 — 채번값이라 바탕 DB 는 앞에서부터 만든다. */
+function prefixCodes(list: readonly { code: string }[], codes: ReadonlySet<string>): Set<string> {
+  const last = list.reduce((at, x, i) => (codes.has(x.code) ? i : at), -1);
+  return new Set(list.slice(0, last + 1).map((x) => x.code));
+}
+
+/** 보통약관 · 그 함수조항이 놓는 박스 — 바탕 DB 가 보통약관과 함께 시드로 넣는다(BX000001~). 화면 E2E 는 그 뒤 코드부터 박스 화면으로 친다. */
+export const BASE_BOX_CODES = prefixCodes(SEED.boxes, new Set([...BASE_SOURCES.matchAll(/"boxCode":"(BX\d+)"/g)].map((m) => m[1])));
+
+/** 보통약관 조 자리 조건이 읽는 구분자(D0004 해약환급금 지급형 있음까지 앞 코드) — 바탕 DB 가 넣는다. 화면 E2E ① 은 그 뒤 코드부터. */
+export const BASE_DISCRIMINATOR_CODES = prefixCodes(SEED.discriminators, new Set([...BASE_SOURCES.matchAll(/\b(D\d{4})\b/g)].map((m) => m[1])));
+
+/**
+ * 보통약관이 쓰는 함수조항이 읽는 열거형(E0001 납입면제사유 — 필드 포함)과 바탕 구분자 식이 읽는 마스터 열거 필드의 열거형
+ * (D0003 「no_surrender.type = 'V01'」 → E0002) — 바탕 DB 가 넣는다. 화면 E2E ① 은 그 뒤 코드부터 (src/db/seed/load.ts `catalogUsedByGenerals` 와 같은 셈).
+ */
+export const BASE_ENUM_CODES = prefixCodes(
+  SEED.enums,
+  new Set([
+    ...[...BASE_SOURCES.matchAll(/"enumCode":"(E\d{4})"/g)].map((m) => m[1]),
+    ...SEED.discriminators
+      .filter((d) => BASE_DISCRIMINATOR_CODES.has(d.code))
+      .flatMap((d) => [...d.expression.matchAll(/\b([a-z_]+\.[a-z_]+)\b/g)].map((m) => findMasterField(m[1])?.field.type))
+      .flatMap((t) => (t && "enumCode" in t && t.enumCode ? [t.enumCode] : [])),
+  ]),
+);
 
 /** 상품마다 원문 대조 짝 — 픽스처 폴더 · 특약(책자 제목 → 픽스처) · 미리보기 별표 수와 1번 (real.test.ts 와 같은 짝). */
 export const REAL_FIXTURES: Record<string, { dir: string; appendices: number; firstAppendix: string; specials: [string, string][] }> = {

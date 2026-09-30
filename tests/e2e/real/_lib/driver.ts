@@ -281,8 +281,16 @@ export class Editor {
       await chip.click();
       await expect(popup).toBeVisible();
     };
-    if (branches.length !== 2 || branches[1].when !== undefined) throw new Error("이 E2E 의 문장 안 조건은 IF · ELSE 두 가지뿐이다");
-    await this.fillHead(popup.locator(".ts-pop-branch").nth(0), "IF", branches[0].when!);
+    // 칩은 IF + ELSE 로 선다 — ELSE 가 없는 조건이면 지우고, ELIF 는 「가지 추가(ELIF)」로 ELSE 앞에 더한다(IF / ELIF / ELSE)
+    const hasElse = branches.at(-1)?.when === undefined;
+    const conditions = hasElse ? branches.slice(0, -1) : branches;
+    if (conditions.length === 0 || conditions.some((b) => b.when === undefined)) throw new Error("문장 안 조건의 가지 모양이 IF (/ ELIF …) (/ ELSE) 가 아니다");
+    if (!hasElse) await popup.getByRole("button", { name: "ELSE 가지 삭제", exact: true }).click();
+    for (let i = 1; i < conditions.length; i++) {
+      await popup.getByRole("button", { name: "가지 추가(ELIF)", exact: true }).click();
+      await expect(popup.locator(".ts-pop-branch")).toHaveCount(i + 1 + (hasElse ? 1 : 0));
+    }
+    for (const [i, branch] of conditions.entries()) await this.fillHead(popup.locator(".ts-pop-branch").nth(i), i === 0 ? "IF" : "ELIF", branch.when!);
     for (const [i, branch] of branches.entries()) {
       await reopen();
       const editor = () => popup.locator(".ts-pop-branch").nth(i).getByRole("textbox");

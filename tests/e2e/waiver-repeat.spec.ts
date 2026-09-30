@@ -7,7 +7,7 @@ import { expect, test } from "./_lib/fixtures";
  * 블록 반복 — 납입면제종마다 · 사유마다 · 현재 원소 (최종 결정 11 · ADR-0077 결정 2 · 3 · 4, 기능/문면 §3.7).
  *
  * 호 유형 함수조항(인자 사유 — 열거형 납입면제사유)을 만들고, 새 보통약관 템플릿의 조 자리에 「납입면제종마다」 반복 → 안에 항 →
- * 그 항의 호 목록에 「납입면제사유마다」 반복 → 안에 그 함수조항(사유 ← 현재 원소)을 넣는다. 종 둘(질병 · 질병+상해)인 새 상품의
+ * 그 항의 호 목록에 「납입면제사유마다」 반복 → 안에 그 함수조항(사유 ← 현재 원소)을 넣는다. 종 둘(뇌졸중 · 뇌졸중+급성심근경색증)인 새 상품의
  * 조립 미리보기에서 종마다 항 하나, 그 안에 그 종의 사유마다 호가 선다 — 개수 조건 · 서수 없이.
  * 반복 블록을 가리키는 조 참조는 펼친 항 전부로, 함수조항 참조 줄 + 값 한정(해당 값들)은 그 값이 낸 호만으로 찍힌다 (결정 13).
  * 시드는 건드리지 않는다 — 새 함수조항 · 새 템플릿 · 새 상품만 쓴다.
@@ -148,7 +148,7 @@ test(
       await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
     });
 
-    await ev.action("반복#7c", "함수조항 참조 줄을 고르고 값 한정 「해당 값들 — 상해」 → 칩에 ⟨값 = 상해⟩, 연결어는 골라야 넣어진다 (결정 13)", async () => {
+    await ev.action("반복#7c", "함수조항 참조 줄을 고르고 값 한정 「해당 값들 — 급성심근경색증」 → 칩에 ⟨값 = 급성심근경색증⟩, 연결어는 골라야 넣어진다 (결정 13)", async () => {
       await page.getByRole("button", { name: "편집", exact: true }).click();
       await page.getByRole("button", { name: "제2조(반복 참조)", exact: true }).click();
       const paragraph = body.getByRole("textbox", { name: "항", exact: true }).filter({ hasText: "면제 사유는" });
@@ -163,20 +163,23 @@ test(
       const clauseRow = d.locator("[data-ref-row]").filter({ hasText: `함수조항 「${clauseName}」` });
       // 조 › 반복 블록 › 항 › 안쪽 반복 블록을 차례로 편다 — 편집기는 반복 본문 한 벌을 원형으로 싣는다
       for (let i = 0; i < 4 && (await clauseRow.count()) === 0; i++) await d.getByRole("button", { name: /펴기$/ }).first().click();
+      // 안쪽 반복 줄 머리는 바깥 종의 폼 필드 이름으로 — 「reasons마다」(필드 키)가 아니다
+      await expect(d.locator("[data-ref-row]").filter({ hasText: "반복 — 납입면제사유마다" })).toHaveCount(1);
+      await expect(d).not.toContainText("reasons마다");
       await clauseRow.getByRole("checkbox").check();
       await d.getByLabel("값 한정").selectOption("values");
-      await d.getByRole("checkbox", { name: "상해", exact: true }).check();
+      await d.getByRole("checkbox", { name: "급성심근경색증", exact: true }).check();
       await d.getByRole("button", { name: "넣기", exact: true }).click();
       await expect(d).toContainText("연결어(및 · 또는)를 고른다");
       await d.getByRole("radio", { name: "및", exact: true }).check();
       await d.getByRole("button", { name: "넣기", exact: true }).click();
       await expect(d).toHaveCount(0);
-      await expect(body.locator(".ts-doc-ref").filter({ hasText: "⟨값 = 상해⟩" })).toHaveCount(1);
+      await expect(body.locator(".ts-doc-ref").filter({ hasText: "⟨값 = 급성심근경색증⟩" })).toHaveCount(1);
       await submit(page, page.getByRole("button", { name: "저장", exact: true }));
       await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
     });
 
-    const productUrl = await ev.action("반복#8", "새 상품 — 종 둘(1종: 질병 · 2종: 질병 · 상해, 적용여부 예) · 조합 둘 · 보통약관 = 새 템플릿", async () => {
+    const productUrl = await ev.action("반복#8", "새 상품 — 종 둘(1종: 뇌졸중 · 2종: 뇌졸중 · 급성심근경색증, 적용여부 예) · 조합 둘 · 보통약관 = 새 템플릿", async () => {
       await page.goto("/products/new");
       await page.getByLabel("상품명", { exact: true }).fill(productName);
       await page.getByRole("button", { name: "생성", exact: true }).click();
@@ -185,8 +188,8 @@ test(
       await page.getByRole("button", { name: "편집", exact: true }).click();
       const rows = page.locator("#definitions-panel tbody tr");
       for (const [i, name, reasons] of [
-        [0, "질병면제형", ["질병"]],
-        [1, "질병상해면제형", ["질병", "상해"]],
+        [0, "뇌졸중면제형", ["뇌졸중"]],
+        [1, "뇌졸중심근경색면제형", ["뇌졸중", "급성심근경색증"]],
       ] as const) {
         await page.getByRole("button", { name: "보험종목 추가" }).click();
         const row = rows.nth(i);
@@ -213,9 +216,9 @@ test(
       const general = page.locator("article.ts-doc").first();
       const paragraphs = general.locator(".ts-doc-article").first().locator(".ts-doc-paragraph");
       await expect(paragraphs).toHaveCount(2);
-      await expect(paragraphs.nth(0).locator("ol.ts-doc-items > li")).toHaveText([/면제사유: 질병$/]);
-      await expect(paragraphs.nth(1).locator("ol.ts-doc-items > li")).toHaveText([/면제사유: 질병$/, /면제사유: 상해$/]);
-      // 반복 블록을 가리킨 참조 = 펼친 항 전부, 값 한정(상해) = 2종 항의 상해 호만 (결정 13)
+      await expect(paragraphs.nth(0).locator("ol.ts-doc-items > li")).toHaveText([/면제사유: 뇌졸중$/]);
+      await expect(paragraphs.nth(1).locator("ol.ts-doc-items > li")).toHaveText([/면제사유: 뇌졸중$/, /면제사유: 급성심근경색증$/]);
+      // 반복 블록을 가리킨 참조 = 펼친 항 전부, 값 한정(급성심근경색증) = 2종 항의 그 호만 (결정 13)
       const refs = general.locator(".ts-doc-article").nth(1).locator(".ts-doc-paragraph");
       await expect(refs.nth(0)).toContainText("면제 사유는 제1조(보험료의 납입면제) 제1항 및 제2항");
       await expect(refs.nth(1)).toContainText("상해 사유 호는 제1조(보험료의 납입면제) 제2항 제2호");

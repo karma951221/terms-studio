@@ -96,24 +96,35 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
         await submit(page, page.getByRole("button", { name: "템플릿 저장" }));
       });
 
-      await ev.action("실물재현#1.4", "세목 선택지 2건을 만든다 (종 축) — 기본정보 탭", async () => {
+      await ev.action("실물재현#1.4", "세목 선택지 3건을 만든다 — 종 축: 1종 적용여부 아니오 · 2종 예 + 사유(암·면책 · 질병 8 · 상해및질병80%), 형 축: 1형 해약환급금 지급형 — 기본정보 탭", async () => {
         await openTab(page, "기본정보");
         await page.getByRole("button", { name: "편집", exact: true }).click();
-        for (const [number, name] of [
-          [1, "보험료 납입면제 미적용형"],
-          [2, "보험료 납입면제형"],
+        // 보통약관의 납입면제 세 조는 「납입면제 있음」 IF · 납입면제종마다 반복 · 사유마다 호로 모델링돼 있다 — 사유가 원문 호 11개를 낸다
+        for (const [number, name, reasons] of [
+          [1, "보험료 납입면제 미적용형", undefined],
+          [2, "보험료 납입면제형", ["암(유사암제외)·면책", "뇌졸중", "급성심근경색증", "말기폐질환", "말기간경화", "말기신부전증", "양성뇌종양", "중대한재생불량성빈혈", "만성당뇨합병증", "상해및질병80%이상후유장해"]],
         ] as const) {
           await page.getByRole("button", { name: "보험종목 추가" }).click();
           const option = page.locator("#definitions-panel tbody tr").nth(number - 1);
           await option.getByLabel("번호", { exact: true }).fill(String(number));
           await option.getByLabel("보험종목명", { exact: true }).fill(name);
           await option.getByLabel("세목유형").selectOption("waiver");
+          await option.getByRole("radio", { name: reasons ? "예" : "아니오", exact: true }).check();
+          for (const reason of reasons ?? []) await option.getByRole("checkbox", { name: reason, exact: true }).check();
         }
+        // 형 축 — 해약환급금 지급형. 제27조의1 ④ 「1형(해약환급금 지급형)의 경우 …」는 상품에 해약환급금 지급형이 있을 때만 선다(최종 결정 24)
+        await page.getByRole("button", { name: "보험종목 추가" }).click();
+        const form = page.locator("#definitions-panel tbody tr").nth(2);
+        await form.getByLabel("종·형 구분").selectOption("form");
+        await form.getByLabel("번호", { exact: true }).fill("1");
+        await form.getByLabel("보험종목명", { exact: true }).fill("해약환급금 지급형");
+        await form.getByLabel("세목유형").selectOption("no_surrender");
+        await form.locator('[data-path="no_surrender.type"]').last().locator("select").selectOption("V01");
       });
 
       await ev.action("실물재현#1.5", "유효 조합 2건을 선택하고 기본정보를 한 번에 저장한다", async () => {
         await page.getByRole("tab", { name: "종·형 조합" }).click();
-        for (const label of [/제1종/, /제2종/]) await page.getByRole("checkbox", { name: label }).check();
+        for (const label of [/제1종.*제1형.* 사용$/, /제2종.*제1형.* 사용$/]) await page.getByRole("checkbox", { name: label }).check();
         await page.getByRole("button", { name: "저장", exact: true }).click();
         await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
         await expect(page.locator("#combinations-panel tbody tr")).toHaveCount(2);

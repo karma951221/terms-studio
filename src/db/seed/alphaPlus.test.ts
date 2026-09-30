@@ -14,7 +14,7 @@ import { MERITZ_PRODUCT_NAME } from "./load";
 const admin: Actor = { userId: "00000000-0000-4000-8000-000000000001", role: "admin" };
 
 /**
- * 시드가 실물 재료 두 상품(카탈로그 · 담보 9 + 9 · 함수조항 133 · 상품 2 · 별표 21 · 보통약관 2 · 탑재 11 + 9)을 실제 서비스로 끝까지 만들고, 재실행에 안전한지.
+ * 시드가 실물 재료 두 상품(카탈로그 · 담보 9 + 9 · 함수조항 42 · 상품 2 · 별표 21 · 보통약관 2 · 탑재 11 + 9)을 실제 서비스로 끝까지 만들고, 재실행에 안전한지.
  * 원문과의 대조는 `real.test.ts` 몫.
  */
 describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (PGlite)", () => {
@@ -64,7 +64,19 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     expect(defs.find((d) => d.code === "D0001")).toMatchObject({ label: "담보명", level: "coverage", expression: "coverage_basic.claim_name" });
     // 세목유형 4종은 이제 세목 레벨 마스터 폼이다 (ADR-0037 · 기능/마스터 §3.3)
     expect(planTypeOptions().map((t) => t.label)).toEqual(["납입면제", "무저해지", "계약전환", "영위업종적용"]);
-    expect((await services.catalog.getEnum("E0001"))?.values.map((v) => v.label)).toEqual(["질병", "상해"]);
+    // E0001 납입면제사유 — 면책은 값을 나눠(암·면책 / 암·무면책), 장해는 값으로, 한 값이 호 여럿(최종 결정 17). 유저 정의 필드 셋(결정 18)
+    const reasons = await services.catalog.getEnum("E0001");
+    expect(reasons?.values.map((v) => v.label)).toEqual([
+      "암(유사암제외)·면책", "암(유사암제외)·무면책", "뇌졸중", "급성심근경색증", "말기폐질환", "말기간경화", "말기신부전증", "양성뇌종양", "중대한재생불량성빈혈", "만성당뇨합병증",
+      "상해및질병80%이상후유장해", "상해80%이상후유장해", "질병80%이상후유장해", "중증화상및부식",
+    ]);
+    expect(reasons?.fields?.map((f) => [f.key, f.label, f.type])).toEqual([["F01", "약관표시명", "string"], ["F02", "면책여부", "boolean"], ["F03", "정의조대상", "boolean"]]);
+    expect(reasons?.values.slice(0, 3).map((v) => v.fields)).toEqual([
+      { F01: "암(유사암제외)", F02: true, F03: true },
+      { F01: "암(유사암제외)", F02: false, F03: true },
+      { F01: "뇌졸중", F02: false, F03: true },
+    ]);
+    expect(reasons?.values.find((v) => v.code === "V11")?.fields).toEqual({ F01: "상해 또는 질병 80% 이상 후유장해", F02: false, F03: false });
     expect((await services.catalog.getEnum("E0002"))?.values.map((v) => v.label)).toEqual(["해약환급금지급형", "해약환급금미지급형", "해약환급금미지급형(납입후50%)"]);
 
     // 세목 — 종 2(납입면제) · 형 2(무저해지 E0002) · 조합 4 = 종 × 형 전부 (실물 상품, 2026-09-27)
@@ -81,7 +93,7 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     const plans = await services.product.listPlans(r.productId);
     expect(plans.map((plan) => planCombinationLabel(plan.options))).toEqual(["(제1종, 제1형)", "(제1종, 제2형)", "(제2종, 제1형)", "(제2종, 제2형)"]);
     const option = (axis: string, number: number) => options.find((o) => o.axis === axis && o.number === number)!;
-    expect(Object.fromEntries(await services.product.getPlanOptionValues(option("type", 2).id))).toEqual({ "waiver.applies": { entered: true, value: true }, "waiver.reasons": { entered: true, value: ["V01", "V02"] } });
+    expect(Object.fromEntries(await services.product.getPlanOptionValues(option("type", 2).id))).toEqual({ "waiver.applies": { entered: true, value: true }, "waiver.reasons": { entered: true, value: ["V01", "V03", "V04", "V05", "V06", "V07", "V08", "V09", "V10", "V11"] } });
     expect(Object.fromEntries(await services.product.getPlanOptionValues(option("form", 1).id))).toEqual({ "no_surrender.type": { entered: true, value: "V01" } });
     expect(Object.fromEntries(await services.product.getPlanOptionValues(option("form", 2).id))).toEqual({ "no_surrender.type": { entered: true, value: "V03" } });
 
@@ -113,16 +125,43 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     expect(burn.subCoverages.map((s) => s.benefits.map((b) => b.name))).toEqual(names.map((n) => [n]));
   });
 
-  it("시드 구분자는 원문 모델링이 쓰는 담보명(D0001) 하나뿐 — 감액 · 면책 · 최초1회 같은 특성 구분자는 두지 않는다 (알파플러스_모델명세 §2)", async () => {
+  it("시드 구분자는 원문 모델링이 쓰는 담보명(D0001) · 납입면제 있음(D0002) · 해약환급금 지급형(D0003 · D0004 있음)뿐 — 감액 · 면책 · 최초1회 같은 특성 구분자는 두지 않는다 (알파플러스_모델명세 §2)", async () => {
     const defs = await services.catalog.list();
-    expect(defs.map((d) => [d.code, d.label, d.level])).toEqual([["D0001", "담보명", "coverage"]]);
+    expect(defs.map((d) => [d.code, d.label, d.level, d.expression])).toEqual([
+      ["D0001", "담보명", "coverage", "coverage_basic.claim_name"],
+      ["D0002", "납입면제 있음", "product", "any(waiver.applies)"],
+      ["D0003", "해약환급금 지급형", "plan", "no_surrender.type = 'V01'"],
+      ["D0004", "해약환급금 지급형 있음", "product", "any(D0003)"],
+    ]);
   });
 
-  it("함수조항 34건 — 조 · 여러 항(두 곳 이상이 되풀이) · 박스는 함수조항이 아니라 정적 마스터 103 (알파플러스_모델명세 §4 · 메리츠_모델명세 §4)", async () => {
+  it("함수조항 46건 — 조 · 여러 항(두 곳 이상이 되풀이) 36 + 납입면제 역할 함수조항 10(알파Plus 6 · 메리츠 전용 4) · 박스는 함수조항이 아니라 정적 마스터 103 (알파플러스_모델명세 §4 · §6 · 메리츠_모델명세 §4)", async () => {
     const list = await services.clause.list();
-    expect(list).toHaveLength(34);
-    // 조 · 여러 항 — 보통약관이 쓰는 조째 19(C0001~) · 담보약관 조 13 · 준용규정 두 벌(보통약관 조를 가리켜 맨 뒤)
-    expect(list.map((c) => [c.code, c.mode, c.label])).toEqual(
+    expect(list).toHaveLength(46);
+    // 보통약관이 쓰는 조째 21(C0001~ — 박스를 품은 조째 둘 C0020 · C0021 포함) · 역할 함수조항 10(C0022~C0031 — 보통약관이 쓴다, 호 · 부활 문구는 두 상품 공유) · 담보약관 조 13 · 준용규정 두 벌(보통약관 조를 가리켜 맨 뒤)
+    const role: [string, string][] = [
+      ["item", "납입면제 호"],
+      ["block", "정의 및 진단확정(알파Plus)"],
+      ["block", "면제 부가항(알파Plus)"],
+      ["block", "납입면제 세부규정(알파Plus)"],
+      ["block", "무효 문구(알파Plus)"],
+      ["block", "부활 문구"],
+      ["block", "정의 및 진단확정(메리츠)"],
+      ["block", "면제 부가항(메리츠)"],
+      ["block", "납입면제 세부규정(메리츠)"],
+      ["block", "무효 문구(메리츠)"],
+    ];
+    expect(list.slice(21, 31).map((c) => [c.code, c.mode, c.label])).toEqual(role.map(([mode, label], i) => [`C${String(22 + i).padStart(4, "0")}`, mode, label]));
+    // 역할 함수조항은 인자를 받는다 — 사유(E0001) 하나 또는 종들(세목 선택지 목록) + 내부 변수
+    expect(list.slice(21, 31).map((c) => c.params?.map((p) => p.name))).toEqual([["사유"], ["사유"], ["종들"], ["종들"], ["종들"], ["종들"], ["사유"], ["종들"], ["종들"], ["종들"]]);
+    expect(list[29].locals?.map((l) => l.name)).toEqual(["사유들", "면책있음", "장해있음", "상해장해", "장해화상", "상해관련"]);
+    // 부활 문구는 기준일 옵션(계약일 · 최초계약일)으로 두 보통약관이 함께 쓴다
+    expect(list[26].options.map((o) => [o.label, o.values.map((v) => v.label)])).toEqual([["기준일", ["계약일", "최초계약일"]]]);
+    expect(list[24].locals?.map((l) => l.name)).toEqual(["사유들", "면책있음", "장해있음", "상해장해"]);
+    // 박스를 품은 조째 — 호 목록 · 항 사이의 박스 참조가 본문에 선다(최종 결정 6)
+    expect(JSON.stringify(list[19].body)).toContain('"boxCode":"BX000005"');
+    expect(JSON.stringify(list[20].body)).toContain('"kind":"boxRef"');
+    expect([...list.slice(0, 21), ...list.slice(31)].map((c) => [c.code, c.mode, c.label])).toEqual(
       [
         "목적",
         "보험금 등의 청구",
@@ -143,6 +182,8 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
         "개인정보보호",
         "준거법",
         "예금보험에 의한 지급보장",
+        "보험금을 지급하지 않는 사유",
+        "제1회 보험료 및 회사의 보장개시",
         "보장의 범위(신화상치료비)",
         "보험금의 지급사유(골절진단비)",
         "보험금의 지급사유(골절수술비)",
@@ -158,7 +199,7 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
         "특별약관의 소멸(중증화상및부식)",
         "준용규정(알파Plus)",
         "준용규정(메리츠)",
-      ].map((label, i) => [`C${String(i + 1).padStart(4, "0")}`, "block", label]),
+      ].map((label, i) => [`C${String(i < 21 ? i + 1 : i + 11).padStart(4, "0")}`, "block", label]),
     );
     // 박스 — 원문의 박스 전부(같은 박스는 하나, 낱말만 달라도 따로). 보통약관이 놓는 박스가 앞 코드(BX000001~BX000084)
     const boxes = await services.document.listBoxes();
@@ -172,14 +213,20 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
       ["BX000013", "【계약 전 알릴 의무】 — 청약서에서"],
       ["BX000014", "【계약 전 알릴 의무】 — 서면으로"],
     ]);
-    // 알파Plus 준용규정은 담보속성(갱신유형)을 읽는다 — 담보속성은 함수조항이 직접 읽는다 — 요구 참조는 저장 때 식에서 뽑는다 (기능/함수조항 §3.3)
-    expect((await services.clause.get("C0033"))?.required).toEqual({ discriminators: [], attributes: ["A0001"] });
+    // 알파Plus 준용규정은 담보속성(갱신유형)을 읽는다 — 담보속성은 함수조항이 직접 읽는다 — 요구 참조는 저장 때 식에서 뽑는다 (기능/함수조항 §3.3).
+    // 「1종 … 납입면제 조도 제외」 문장은 「납입면제 있음」 인자(기본 연결 D0002)로 가른다 — 납입면제 없는 상품이면 빠진다
+    expect((await services.clause.get("C0045"))?.required).toEqual({ discriminators: ["D0002"], attributes: ["A0001"] });
+    expect((await services.clause.get("C0046"))?.params?.map((p) => [p.name, p.default])).toEqual([["납입면제_있음", { kind: "discriminator", code: "D0002" }]]);
     // 쓰임 수 = 참조 자리 수 — 특별약관의 소멸(사망)은 소멸 급부 없는 특약 7벌(알파Plus 3 · 메리츠 4), 보통약관 조째 함수조항은 보통약관 두 벌,
     // 지급사유 발생 소멸은 세 담보(중대한특정상해수술비 · 메리츠 상해 · 질병 80%이상후유장해)
     const summaries = await services.clause.summaries();
-    expect(summaries.find((c) => c.code === "C0028")?.usageCount).toBe(7);
+    expect(summaries.find((c) => c.code === "C0040")?.usageCount).toBe(7);
     expect(summaries.find((c) => c.code === "C0019")?.usageCount).toBe(2);
-    expect(summaries.find((c) => c.code === "C0029")?.usageCount).toBe(3);
+    expect(summaries.find((c) => c.code === "C0020")?.usageCount).toBe(2);
+    expect(summaries.find((c) => c.code === "C0041")?.usageCount).toBe(3);
+    // 역할 함수조항은 보통약관 한 자리씩 — 호 · 부활 문구는 두 보통약관이 함께 쓴다
+    for (const code of ["C0023", "C0024", "C0025", "C0026", "C0028", "C0029", "C0030", "C0031"]) expect(summaries.find((c) => c.code === code)?.usageCount).toBe(1);
+    for (const code of ["C0022", "C0027"]) expect(summaries.find((c) => c.code === code)?.usageCount).toBe(2);
   }, 30_000);
 
   it("메리츠 — 보통약관 · 기본계약(일반상해사망) · 특약 8(전부 갱신형) · 세목 종 3 × 형 2 · 담보 COV000010~18", async () => {

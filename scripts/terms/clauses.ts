@@ -15,12 +15,13 @@
  * - **조 참조 대상의 변환 중간 모양** — 대상 노드 id(사용처 위치면 경로)를 `articleId` 자리에 싣는다(refs.ts 와 같다).
  *   P코드는 출력 직전에야 매겨지므로 (조, P코드) · 제 코드 · `{ host }` 로 바꾸는 것은 convert.ts `codeTargets` · `codeClauseTargets` 다 (ADR-0072).
  */
-import type { ArticleRefNode as ClauseArticleRef, Block, Inline, ParagraphNode as ClauseParagraph } from "../../src/domain/clause/nodes";
-import type { ArticleNode, DocumentNode, InlineNode, ParagraphNode } from "../../src/domain/document/nodes";
+import type { ArticleRefNode as ClauseArticleRef, Block, BoxRefNode as ClauseBoxRef, Inline, ParagraphNode as ClauseParagraph } from "../../src/domain/clause/nodes";
+import type { ArticleNode, BoxRefNode, DocumentNode, InlineNode, ParagraphNode } from "../../src/domain/document/nodes";
 import type { Id } from "../../src/domain/types";
 import { discriminatorResultType } from "../../src/domain/catalog/expression";
 import type { Discriminator } from "../../src/domain/catalog/types";
 import type { ParamDef } from "../../src/domain/clause/params";
+import type { LocalDef } from "../../src/domain/clause/locals";
 import type { ClauseMode } from "../../src/domain/clause/types";
 import { format, parse, type Expr } from "../../src/domain/expression";
 
@@ -30,13 +31,15 @@ import type { ClauseSpec, ClauseUse } from "./config";
 export interface ClauseRecord {
   code: string;
   label: string;
-  /** 변환기가 짓는 유형 — 「문구」 · 「항」뿐. 「호」 · 「목」 유형(`ClauseMode`)은 화면 저작이 만든다 (기능/함수조항 §3.1). */
-  mode: ConvertedClauseMode;
+  /** 유형 — 설정(`CLAUSES`)이 짓는 것은 「문구」 · 「항」뿐, 역할 함수조항(waiver.ts)은 「호」도 짓는다 (기능/함수조항 §3.1). */
+  mode: ClauseMode;
   description: string;
   body: Inline[] | Block[];
   options: { code: string; label: string; order: number; values: { code: string; label: string; order: number; body: Inline[] }[] }[];
-  /** 인자 — 구분자 직접 읽기를 기계 변환한 것(`parameterize`). 없으면 인자 0개. */
+  /** 인자 — 구분자 직접 읽기를 기계 변환한 것(`parameterize`) · 역할 함수조항이 처음부터 쓴 것(waiver.ts). 없으면 인자 0개. */
   params?: ParamDef[];
+  /** 내부 변수 — 역할 함수조항(waiver.ts). */
+  locals?: LocalDef[];
 }
 
 /** 실물 변환이 내는 함수조항 유형 — 도메인 유형 넷 중 「문구」(inline) · 「항」(block). */
@@ -151,7 +154,7 @@ export function reId<T>(nodes: T, prefix: string): T {
       n.id = next;
     }
     if (n.kind === "articleRef" && n.scope === "clause") refs.push(n as unknown as ClauseArticleRef);
-    for (const key of ["children", "items", "subitems", "branches"]) {
+    for (const key of ["children", "items", "subitems", "branches", "cases"]) {
       const list = n[key];
       if (Array.isArray(list)) for (const c of list) visit(c);
     }
@@ -195,10 +198,11 @@ export function hostNodeIds(tree: DocumentNode): (path: string) => Id | undefine
   return (path) => byPath.get(path);
 }
 
-/** 항 목록의 항 · 호 · 목 id. */
-function structIdsOf(paragraphs: readonly ParagraphNode[]): Set<Id> {
+/** 항 목록의 항 · 호 · 목 id (박스 참조는 참조 대상이 아니다). */
+function structIdsOf(blocks: readonly (ParagraphNode | BoxRefNode)[]): Set<Id> {
   const out = new Set<Id>();
-  for (const p of paragraphs) {
+  for (const p of blocks) {
+    if (p.kind !== "paragraph") continue;
     out.add(p.id);
     for (const it of p.items ?? []) {
       if (it.kind !== "item") continue;
@@ -211,9 +215,10 @@ function structIdsOf(paragraphs: readonly ParagraphNode[]): Set<Id> {
 
 /**
  * 원문 자리의 잇닿은 항들 → 함수조항 항 목록 (호 · 목 포함). 자기 조 참조는 딴 항 안이면 「이 함수조항」, 밖이면 「사용처」 위치.
- * 한 참조가 둘을 섞으면 오류. 호 목록에 표 · 박스가 있으면 함수조항 본문이 될 수 없다.
+ * 한 참조가 둘을 섞으면 오류. 항 사이 · 호 목록의 **박스 참조**는 그대로 품는다 — 정적 마스터 박스는 잎이라 함수조항 어디에나 선다(최종 결정 6, 2026-09-30).
+ * 호 목록에 표가 있으면 함수조항 본문이 될 수 없다.
  */
-export function clauseFromSource(tree: DocumentNode, taken: readonly ParagraphNode[], code: string): Block[] {
+export function clauseFromSource(tree: DocumentNode, taken: readonly (ParagraphNode | BoxRefNode)[], code: string): Block[] {
   const inside = structIdsOf(taken);
   const paths = hostPaths(tree);
   const localize: Localize = (n) => {
@@ -228,8 +233,11 @@ export function clauseFromSource(tree: DocumentNode, taken: readonly ParagraphNo
     return { id: n.id, kind: "articleRef", targets, connector: n.connector, scope: "host" };
   };
   const inl = (list: InlineNode[]) => structuredClone(list).map((c) => toClauseInline(c, localize));
+  const box = (b: BoxRefNode): ClauseBoxRef => ({ id: b.id, kind: "boxRef", boxCode: b.boxCode });
   return taken.map((p): Block => {
+    if (p.kind === "boxRef") return box(p);
     const items = (p.items ?? []).map((it) => {
+      if (it.kind === "boxRef") return box(it);
       if (it.kind !== "item") throw new Error(`${code}: 호 목록에 ${it.kind} 이 있는 항은 함수조항 본문이 될 수 없다`);
       const subitems = (it.subitems ?? []).map((u) => {
         if (u.kind !== "subitem") throw new Error(`${code}: 목 목록에 ${u.kind} 이 있다`);
@@ -308,11 +316,11 @@ export function clauseRenderings(clause: ClauseRecord, selection: Record<string,
   return renderings(clause.body as Inline[], bodiesOf(clause, selection));
 }
 
-/** 「항」 함수조항 본문의 항 목록 — 조건 블록은 오버레이가 다루지 않는다(실물 쓰임새에 없다). */
-function clauseParagraphs(clause: ClauseRecord): ClauseParagraph[] {
+/** 「항」 함수조항 본문의 항 · 박스 참조 목록 — 조건 블록은 오버레이가 다루지 않는다(실물 쓰임새에 없다). */
+function clauseBlocks(clause: ClauseRecord): (ClauseParagraph | ClauseBoxRef)[] {
   const blocks = clause.body as Block[];
-  if (blocks.some((b) => b.kind !== "paragraph")) throw new Error(`${clause.code}: 항 함수조항 오버레이는 조건 블록 없는 항 목록만 다룬다`);
-  return blocks as ClauseParagraph[];
+  if (blocks.some((b) => b.kind !== "paragraph" && b.kind !== "boxRef")) throw new Error(`${clause.code}: 항 함수조항 오버레이는 조건 블록 없는 항 · 박스 목록만 다룬다`);
+  return blocks as (ClauseParagraph | ClauseBoxRef)[];
 }
 
 // ───────────────────────────── 사용처 자리 바꾸기 ─────────────────────────────
@@ -425,15 +433,22 @@ function applyBlockUse(
   const where = `${label} 함수조항 ${clause.code}: 조 ${use.article} 제${use.paragraph}항`;
   const bodies = bodiesOf(clause, selection);
   const at = article.children.indexOf(first);
-  const count = clauseParagraphs(clause).length;
+  const blocks = clauseBlocks(clause);
+  const count = blocks.length;
   const mine = article.children.slice(at, at + count);
-  if (mine.length !== count || mine.some((c) => c.kind !== "paragraph")) {
-    report.push(`${where}부터 잇닿은 항 ${count}개가 없음`);
+  if (mine.length !== count || mine.some((c, k) => c.kind !== blocks[k].kind)) {
+    report.push(`${where}부터 잇닿은 항 · 박스 ${count}개가 함수조항 본문과 다름`);
     return false;
   }
-  const theirs = localizeClause(clauseParagraphs(clause), mine as ParagraphNode[], doc ? hostNodeIds(doc) : () => undefined);
-  for (const [k, node] of mine.entries()) {
-    const p = node as ParagraphNode;
+  // 박스 참조는 같은 박스여야 한다 — 정적 마스터 박스는 코드가 곧 내용이다
+  const boxMismatch = mine.findIndex((c, k) => c.kind === "boxRef" && (blocks[k] as ClauseBoxRef).boxCode !== c.boxCode);
+  if (boxMismatch >= 0) {
+    report.push(`${where}(+${boxMismatch}) 박스가 다름`);
+    return false;
+  }
+  const mineParagraphs = mine.filter((c): c is ParagraphNode => c.kind === "paragraph");
+  const theirs = localizeClause(blocks.filter((b): b is ClauseParagraph => b.kind === "paragraph"), mineParagraphs, doc ? hostNodeIds(doc) : () => undefined);
+  for (const [k, p] of mineParagraphs.entries()) {
     const c = theirs[k];
     const miss = missingRendering(p.children, c.children, bodies);
     if (miss !== undefined) {
@@ -442,12 +457,18 @@ function applyBlockUse(
     }
     const items = p.items ?? [];
     const citems = c.items ?? [];
-    if (items.some((it) => it.kind !== "item") || items.length !== citems.length) {
-      report.push(`${where}(+${k}) 호 목록이 다름 (표 · 박스가 끼었거나 개수가 다르다)`);
+    const sameBox = (i: number) => {
+      const it = items[i];
+      const cit = citems[i];
+      return it.kind === "boxRef" && cit.kind === "boxRef" && it.boxCode === cit.boxCode;
+    };
+    if (items.some((it, i) => it.kind !== "item" && !sameBox(i)) || items.length !== citems.length) {
+      report.push(`${where}(+${k}) 호 목록이 다름 (표가 끼었거나 박스 · 개수가 다르다)`);
       return false;
     }
     for (const [i, it] of items.entries()) {
       const cit = citems[i];
+      if (it.kind === "boxRef" && sameBox(i)) continue;
       if (it.kind !== "item" || cit.kind !== "item") return false;
       const subs = it.subitems ?? [];
       const csubs = cit.subitems ?? [];
@@ -461,7 +482,7 @@ function applyBlockUse(
       }
     }
   }
-  article.children.splice(at, theirs.length, { id: `${first.id}-k`, kind: "clauseBlockRef", clauseCode: clause.code, options: { ...selection } });
+  article.children.splice(at, count, { id: `${first.id}-k`, kind: "clauseBlockRef", clauseCode: clause.code, options: { ...selection } });
   return true;
 }
 

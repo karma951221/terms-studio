@@ -1,6 +1,7 @@
-import type { NewDiscriminator, NewEnum } from "@/domain/catalog";
-import type { NewClause } from "@/domain/clause";
+import type { EnumFieldType, EnumFieldValue, NewDiscriminator, NewEnum } from "@/domain/catalog";
+import type { ClauseBody, NewClause } from "@/domain/clause";
 import type { DocumentNode } from "@/domain/document";
+import { findMasterField } from "@/domain/master";
 import type { Actor, Code, Id, Result, Value } from "@/domain/types";
 import type { Services } from "@/services/container";
 
@@ -74,9 +75,50 @@ async function createClause(services: Services, actor: Actor, raw: ClauseRaw): P
   expectCode(created.code, raw.code);
 }
 
-/** 보통약관 문면이 놓는 박스 코드 — 보통약관 가져오기 전에 있어야 한다 (문면 저장 검사가 박스 존재를 본다). */
+/** 보통약관이 쓰는 함수조항의 정의(JSON) — 역할 함수조항 본문이 박스 · 열거형을 품는다. */
+function generalClauseRaws(): ClauseRaw[] {
+  const used = clausesUsedByGenerals();
+  return (clauses as unknown as ClauseRaw[]).filter((c) => used.has(c.code));
+}
+
+/**
+ * 보통약관이 놓는 박스 코드 — 보통약관 문면과 **보통약관이 쓰는 함수조항 본문**(암 정의 칸의 박스 · 그림 박스)이 놓는 것.
+ * 보통약관 · 그 함수조항을 만들기 전에 있어야 한다 (저장 검사가 박스 존재를 본다).
+ */
 export function boxesUsedByGenerals(): Set<Code> {
-  return new Set((generals as unknown as Array<{ tree: DocumentNode }>).flatMap((g) => [...JSON.stringify(g.tree).matchAll(/"boxCode":"(BX\d+)"/g)].map((m) => m[1])));
+  const sources = [...(generals as unknown as Array<{ tree: DocumentNode }>).map((g) => g.tree), ...generalClauseRaws()];
+  return new Set(sources.flatMap((x) => [...JSON.stringify(x).matchAll(/"boxCode":"(BX\d+)"/g)].map((m) => m[1])));
+}
+
+/** JSON 배열에서 `codes` 중 가장 뒤 코드까지의 앞자리 수 — 코드는 시스템 채번이라 앞에서부터만 만들 수 있다. */
+function prefixCovering(list: ReadonlyArray<{ code: Code }>, codes: ReadonlySet<Code>): number {
+  let upTo = 0;
+  list.forEach((x, i) => {
+    if (codes.has(x.code)) upTo = i + 1;
+  });
+  return upTo;
+}
+
+/**
+ * 보통약관 · 보통약관이 쓰는 함수조항이 읽는 열거형(인자 타입 · 값별 분기 값)과 구분자(조 자리 조건) — 그보다 먼저 있어야 한다.
+ * 열거형 · 구분자 코드는 시스템 채번이라 앞에서부터 그 코드까지 만든다(바탕 DB — 화면 E2E 는 그 뒤 코드부터 친다).
+ */
+export function catalogUsedByGenerals(): { enums: number; discriminators: number } {
+  const text = JSON.stringify([...(generals as unknown as Array<{ tree: DocumentNode }>).map((g) => g.tree), ...generalClauseRaws()]);
+  const enumCodes = new Set([...text.matchAll(/"enumCode":"(E\d{4})"/g)].map((m) => m[1]));
+  const discriminatorCodes = new Set([...text.matchAll(/\b(D\d{4})\b/g)].map((m) => m[1]));
+  const upTo = prefixCovering(discriminators as unknown as Array<{ code: Code }>, discriminatorCodes);
+  // 앞 코드 구분자가 읽는 마스터 열거 필드의 열거형도 먼저 있어야 한다 — 식의 열거값 비교(「no_surrender.type = 'V01'」)는 저장 때 그 값을 찾는다
+  for (const d of (discriminators as unknown as Array<{ expression: string }>).slice(0, upTo)) {
+    for (const m of d.expression.matchAll(/\b([a-z_]+\.[a-z_]+)\b/g)) {
+      const type = findMasterField(m[1])?.field.type;
+      if (type && "enumCode" in type && type.enumCode) enumCodes.add(type.enumCode);
+    }
+  }
+  return {
+    enums: prefixCovering(enums as unknown as Array<{ code: Code }>, enumCodes),
+    discriminators: upTo,
+  };
 }
 
 /**
@@ -87,6 +129,44 @@ async function loadBoxes(services: Services, actor: Actor, upTo?: number): Promi
   for (const box of (boxes as Array<{ code: string; name: string; title: string; lines: string[] }>).slice(0, upTo)) {
     const created = unwrap(await services.document.createBox(actor, { name: box.name, title: box.title, lines: box.lines }));
     expectCode(created.code, box.code);
+  }
+}
+
+interface EnumSeed {
+  code: Code;
+  label: string;
+  /** 유저 정의 필드(ADR-0078) — 키는 시스템 채번(F01…)이라 JSON 순서가 곧 키다. JSON 의 key 는 채번 대조용. */
+  fields?: Array<{ key: Code; label: string; type: EnumFieldType }>;
+  values: Array<{ code: Code; label: string; fields?: Record<Code, EnumFieldValue> }>;
+}
+
+/**
+ * 열거형 — 생성(이름 · 값)은 필드를 받지 않으므로(생성 화면에 필드가 없다 — 기능/열거형 §4) 필드가 있으면 상세 저장(`reviseEnum`)을 한 번 더 한다.
+ * 화면으로 치는 순서와 같다: 만든 뒤 상세에서 필드를 정의하고 값마다 채운다. `upTo` 가 있으면 그 개수까지만 만든다.
+ */
+async function loadEnums(services: Services, actor: Actor, upTo?: number): Promise<void> {
+  for (const definition of (enums as unknown as EnumSeed[]).slice(0, upTo)) {
+    const created = unwrap(await services.catalog.createEnum(actor, { label: definition.label, values: definition.values.map(({ label }) => ({ label })) } as NewEnum));
+    expectCode(created.code, definition.code);
+    definition.values.forEach((v, i) => expectCode(created.values[i]?.code ?? "", v.code));
+    if (!definition.fields?.length) continue;
+    const revised = unwrap(
+      await services.catalog.reviseEnum(actor, created.code, {
+        label: created.label,
+        description: created.description ?? "",
+        fields: definition.fields.map((f) => ({ ref: f.key, label: f.label, type: f.type })),
+        values: definition.values.map((v, i) => ({ code: created.values[i].code, label: v.label, fields: v.fields ?? {} })),
+      }),
+    );
+    definition.fields.forEach((f, i) => expectCode(revised.fields?.[i]?.key ?? "", f.key));
+  }
+}
+
+/** 구분자 — 코드는 시스템 채번이라 JSON 순서대로. `upTo` 가 있으면 그 개수까지만 만든다. */
+async function loadDiscriminators(services: Services, actor: Actor, upTo?: number): Promise<void> {
+  for (const raw of (discriminators as unknown as Array<Record<string, unknown> & { code: Code }>).slice(0, upTo)) {
+    const created = unwrap(await services.catalog.create(actor, omit(raw, ["code"]) as unknown as NewDiscriminator));
+    expectCode(created.code, raw.code);
   }
 }
 
@@ -109,17 +189,43 @@ async function loadGenerals(services: Services, actor: Actor): Promise<Map<strin
   return generalIds;
 }
 
+/** 본문 · 선택지의 보통약관 조 참조(범위 없음)를 자리표시 글로 바꾼 사본 — 보통약관보다 먼저 만들 때(가리키기 순환). */
+function withoutGeneralRefs(raw: ClauseRaw): ClauseRaw {
+  const visit = (n: unknown): unknown => {
+    if (Array.isArray(n)) return n.map(visit);
+    if (!n || typeof n !== "object") return n;
+    const node = n as Record<string, unknown>;
+    if (node.kind === "articleRef" && node.scope === undefined) return { id: node.id, kind: "text", text: "〔보통약관 참조〕" };
+    return Object.fromEntries(Object.entries(node).map(([k, v]) => [k, visit(v)]));
+  };
+  return { ...raw, body: visit(raw.body), options: visit(raw.options) as ClauseRaw["options"] };
+}
+
 /**
  * 함수조항 전부 + 그 사이에 보통약관 — 코드는 시스템 채번이라 JSON 순서대로 만든다. 보통약관 조를 가리키는 첫 함수조항 앞에서 보통약관을 넣는다
  * (보통약관이 쓰는 함수조항은 그보다 앞 코드다 — 변환기가 검사한다). `upTo` 가 있으면 그 개수까지만 만든다.
+ * 보통약관이 쓰면서 보통약관 조를 가리키는 함수조항(역할 함수조항 — 세부규정이 납입면제 조의 호를 가리킨다)은 **두 번에** 만든다:
+ * 보통약관 참조를 자리표시로 바꿔 먼저 만들고, 보통약관을 넣은 뒤 본문을 다시 저장한다 — 가리키기 순환(최종 결정 12)을 화면에서 치는 순서와 같다.
  */
 async function loadClausesAndGenerals(services: Services, actor: Actor, upTo?: number): Promise<Map<string, Id>> {
+  const usedByGenerals = clausesUsedByGenerals();
+  const deferred: ClauseRaw[] = [];
   let generalIds: Map<string, Id> | undefined;
+  const generalsNow = async () => {
+    const ids = await loadGenerals(services, actor);
+    for (const raw of deferred) unwrap(await services.clause.setBody(actor, raw.code, raw.body as unknown as ClauseBody));
+    return ids;
+  };
   for (const raw of (clauses as unknown as ClauseRaw[]).slice(0, upTo)) {
-    if (!generalIds && refsGeneral(raw)) generalIds = await loadGenerals(services, actor);
+    if (usedByGenerals.has(raw.code) && refsGeneral(raw)) {
+      await createClause(services, actor, withoutGeneralRefs(raw));
+      deferred.push(raw);
+      continue;
+    }
+    if (!generalIds && refsGeneral(raw)) generalIds = await generalsNow();
     await createClause(services, actor, raw);
   }
-  return generalIds ?? (await loadGenerals(services, actor));
+  return generalIds ?? (await generalsNow());
 }
 
 /**
@@ -134,7 +240,10 @@ export async function loadRealBase(services: Services, actor: Actor): Promise<{ 
   const existing = await services.document.list("general");
   if (existing.some((d) => titles.includes(d.title))) return { created: false };
   await loadAppendices(services, actor);
-  await loadBoxes(services, actor, boxesUsedByGenerals().size);
+  const catalog = catalogUsedByGenerals();
+  await loadEnums(services, actor, catalog.enums);
+  await loadDiscriminators(services, actor, catalog.discriminators);
+  await loadBoxes(services, actor, prefixCovering(boxes as Array<{ code: Code }>, boxesUsedByGenerals()));
   await loadClausesAndGenerals(services, actor, clausesUsedByGenerals().size);
   return { created: true };
 }
@@ -147,16 +256,9 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
     return { created: false, productId: existing.id };
   }
 
-  const enumInputs = enums as unknown as Array<{ code: Code; label: string; values: Array<{ label: string }> }>;
-  for (const definition of enumInputs) {
-    const created = unwrap(await services.catalog.createEnum(actor, { label: definition.label, values: definition.values.map(({ label }) => ({ label })) } as NewEnum));
-    expectCode(created.code, definition.code);
-  }
+  await loadEnums(services, actor);
 
-  for (const raw of discriminators as unknown as Array<Record<string, unknown> & { code: Code }>) {
-    const created = unwrap(await services.catalog.create(actor, omit(raw, ["code"]) as unknown as NewDiscriminator));
-    expectCode(created.code, raw.code);
-  }
+  await loadDiscriminators(services, actor);
 
   interface CoverageSpec {
     /** 시드 안의 참조 키 — 상품 탑재(`mounts[].coverage`) · 담보약관(`ownerCoverage`)이 이것으로 담보를 가리킨다. */

@@ -5,6 +5,38 @@
     "description": "문면이 담보의 보험금 이름을 그대로 찍는 자리의 값 — 담보 레벨 마스터 필드(보험금명)의 투영",
     "level": "coverage",
     "expression": "coverage_basic.claim_name",
-    "resultType": { "kind": "string" }
+    "resultType": {
+      "kind": "string"
+    }
+  },
+  {
+    "code": "D0002",
+    "label": "납입면제 있음",
+    "description": "상품에 적용 납입면제종(세목 waiver 선택지 중 적용여부 = 예)이 있는가 — 보통약관 납입면제 세 조(납입면제 · 세부규정 · 정의 및 진단확정)를 조 자리 IF 로 감싼다 (최종 결정 16)",
+    "level": "product",
+    "expression": "any(waiver.applies)",
+    "resultType": {
+      "kind": "boolean"
+    }
+  },
+  {
+    "code": "D0003",
+    "label": "해약환급금 지급형",
+    "description": "형(세목 선택지)의 무저해지 유형이 해약환급금지급형인가 — 「해약환급금 지급형 있음」(D0004)이 읽는다",
+    "level": "plan",
+    "expression": "no_surrender.type = 'V01'",
+    "resultType": {
+      "kind": "boolean"
+    }
+  },
+  {
+    "code": "D0004",
+    "label": "해약환급금 지급형 있음",
+    "description": "상품에 해약환급금 지급형인 형이 있는가 — 알파Plus 보통약관 납입면제 조 「1형(해약환급금 지급형)의 경우 … 적립보험료 납입을 중지합니다」 항을 항 자리 IF 로 감싼다 (최종 결정 24 「상품 범위 조건」)",
+    "level": "product",
+    "expression": "any(D0003)",
+    "resultType": {
+      "kind": "boolean"
+    }
   }
 ]

@@ -818,6 +818,3388 @@
   },
   {
     "code": "C0020",
+    "label": "보험금을 지급하지 않는 사유",
+    "mode": "block",
+    "description": "보통약관 「보험금을 지급하지 않는 사유」 — 두 상품 보통약관이 같은 글이다",
+    "body": [
+      {
+        "id": "c-g-exclusion-n1",
+        "kind": "paragraph",
+        "children": [
+          {
+            "id": "c-g-exclusion-n2",
+            "kind": "text",
+            "text": "회사는 다음 중 어느 한 가지로 보험금 지급사유가 발생한 때에는 보험금을 지급하지 않습니다."
+          }
+        ],
+        "items": [
+          {
+            "id": "c-g-exclusion-n3",
+            "kind": "item",
+            "children": [
+              {
+                "id": "c-g-exclusion-n4",
+                "kind": "text",
+                "text": "피보험자가 고의로 자신을 해친 경우. 다만, 피보험자가 심신상실 등으로 자유로운 의사결정을 할 수 없는 상태에서 자신을 해친 경우에는 보험금을 지급합니다."
+              }
+            ],
+            "code": "P0300"
+          },
+          {
+            "id": "c-g-exclusion-n5",
+            "kind": "item",
+            "children": [
+              {
+                "id": "c-g-exclusion-n6",
+                "kind": "text",
+                "text": "보험수익자가 고의로 피보험자를 해친 경우. 다만, 그 보험수익자가 보험금의 일부 보험수익자인 경우에는 다른 보험수익자에 대한 보험금은 지급합니다."
+              }
+            ],
+            "code": "P0400"
+          },
+          {
+            "id": "c-g-exclusion-n7",
+            "kind": "item",
+            "children": [
+              {
+                "id": "c-g-exclusion-n8",
+                "kind": "text",
+                "text": "계약자가 고의로 피보험자를 해친 경우"
+              }
+            ],
+            "code": "P0500"
+          },
+          {
+            "id": "c-g-exclusion-n9",
+            "kind": "item",
+            "children": [
+              {
+                "id": "c-g-exclusion-n10",
+                "kind": "text",
+                "text": "피보험자의 임신, 출산(제왕절개를 포함합니다), 산후기. 그러나 회사가 보장하는 보험금 지급사유와 보장개시일부터 2년이 지난 후에 발생한 습관성 유산, 불임 및 인공수정 관련 합병증으로 인한 경우에는 보험금을 지급합니다."
+              }
+            ],
+            "code": "P0600"
+          },
+          {
+            "id": "c-g-exclusion-n11",
+            "kind": "item",
+            "children": [
+              {
+                "id": "c-g-exclusion-n12",
+                "kind": "text",
+                "text": "전쟁, 외국의 무력행사, 혁명, 내란, 사변, 폭동"
+              }
+            ],
+            "code": "P0700"
+          },
+          {
+            "id": "c-g-exclusion-n13",
+            "kind": "boxRef",
+            "boxCode": "BX000005"
+          },
+          {
+            "id": "c-g-exclusion-n14",
+            "kind": "boxRef",
+            "boxCode": "BX000006"
+          }
+        ],
+        "code": "P0100"
+      },
+      {
+        "id": "c-g-exclusion-n15",
+        "kind": "paragraph",
+        "children": [
+          {
+            "id": "c-g-exclusion-n16",
+            "kind": "text",
+            "text": "회사는 다른 약정이 없으면 피보험자가 직업, 직무 또는 동호회 활동목적으로 아래에 열거된 행위로 인하여 "
+          },
+          {
+            "id": "c-g-exclusion-n17",
+            "kind": "articleRef",
+            "targets": [
+              {
+                "host": "3"
+              }
+            ],
+            "connector": "및",
+            "scope": "host"
+          },
+          {
+            "id": "c-g-exclusion-n18",
+            "kind": "text",
+            "text": "의 상해 관련 보험금 지급사유가 발생한 때에는 해당 보험금을 지급하지 않습니다."
+          }
+        ],
+        "items": [
+          {
+            "id": "c-g-exclusion-n19",
+            "kind": "item",
+            "children": [
+              {
+                "id": "c-g-exclusion-n20",
+                "kind": "text",
+                "text": "전문등반(전문적인 등산용구를 사용하여 암벽 또는 빙벽을 오르내리거나 특수한 기술, 경험, 사전훈련을 필요로 하는 등반을 말합니다), 글라이더 조종, 스카이다이빙, 스쿠버다이빙, 행글라이딩, 수상보트, 패러글라이딩"
+              }
+            ],
+            "code": "P0800"
+          },
+          {
+            "id": "c-g-exclusion-n21",
+            "kind": "item",
+            "children": [
+              {
+                "id": "c-g-exclusion-n22",
+                "kind": "text",
+                "text": "모터보트, 자동차 또는 오토바이에 의한 경기, 시범, 흥행(이를 위한 연습을 포함합니다) 또는 시운전(다만, 공용도로상에서 시운전을 하는 동안 보험금 지급사유가 발생한 경우에는 보장합니다)"
+              }
+            ],
+            "code": "P0900"
+          },
+          {
+            "id": "c-g-exclusion-n23",
+            "kind": "item",
+            "children": [
+              {
+                "id": "c-g-exclusion-n24",
+                "kind": "text",
+                "text": "선박에 탑승하는 것을 직무로 하는 사람이 직무상 선박에 탑승하고 있는 동안"
+              }
+            ],
+            "code": "P1000"
+          }
+        ],
+        "code": "P0200"
+      }
+    ],
+    "options": []
+  },
+  {
+    "code": "C0021",
+    "label": "제1회 보험료 및 회사의 보장개시",
+    "mode": "block",
+    "description": "보통약관 「제1회 보험료 및 회사의 보장개시」 — 두 상품 보통약관이 같은 글이다",
+    "body": [
+      {
+        "id": "c-g-first-premium-n1",
+        "kind": "paragraph",
+        "children": [
+          {
+            "id": "c-g-first-premium-n2",
+            "kind": "text",
+            "text": "회사는 계약의 청약을 승낙하고 제1회 보험료를 받은 때부터 이 약관이 정한 바에 따라 보장을 합니다. 또한, 회사가 청약과 함께 제1회 보험료를 받은 후 승낙한 경우에도 제1회 보험료를 받은 때부터 보장이 개시됩니다. 자동이체 또는 신용카드로 납입하는 경우에는 자동이체신청 또는 신용카드매출승인에 필요한 정보를 제공한 때를 제1회 보험료를 받은 때로 하며, 계약자의 책임 있는 사유로 자동이체 또는 매출승인이 불가능한 경우에는 보험료가 납입되지 않은 것으로 봅니다."
+          }
+        ],
+        "code": "P0100"
+      },
+      {
+        "id": "c-g-first-premium-n3",
+        "kind": "paragraph",
+        "children": [
+          {
+            "id": "c-g-first-premium-n4",
+            "kind": "text",
+            "text": "회사가 청약과 함께 제1회 보험료를 받고 청약을 승낙하기 전에 보험금 지급사유가 발생하였을 때에도 보장개시일부터 이 약관이 정하는 바에 따라 보장을 합니다."
+          }
+        ],
+        "code": "P0200"
+      },
+      {
+        "id": "c-g-first-premium-n5",
+        "kind": "boxRef",
+        "boxCode": "BX000035"
+      },
+      {
+        "id": "c-g-first-premium-n6",
+        "kind": "paragraph",
+        "children": [
+          {
+            "id": "c-g-first-premium-n7",
+            "kind": "text",
+            "text": "회사는 "
+          },
+          {
+            "id": "c-g-first-premium-n8",
+            "kind": "articleRef",
+            "targets": [
+              {
+                "code": "P0200"
+              }
+            ],
+            "connector": "및",
+            "scope": "clause"
+          },
+          {
+            "id": "c-g-first-premium-n9",
+            "kind": "text",
+            "text": "에도 불구하고 다음 중 한 가지에 해당되는 경우에는 보장을 하지 않습니다."
+          }
+        ],
+        "items": [
+          {
+            "id": "c-g-first-premium-n10",
+            "kind": "item",
+            "children": [
+              {
+                "id": "c-g-first-premium-n11",
+                "kind": "articleRef",
+                "targets": [
+                  {
+                    "host": "15"
+                  }
+                ],
+                "connector": "및",
+                "scope": "host"
+              },
+              {
+                "id": "c-g-first-premium-n12",
+                "kind": "text",
+                "text": "에 따라 계약자 또는 피보험자가 회사에 알린 내용이나 건강진단 내용이 보험금 지급사유의 발생에 영향을 미쳤음을 회사가 증명하는 경우"
+              }
+            ],
+            "code": "P0300"
+          },
+          {
+            "id": "c-g-first-premium-n13",
+            "kind": "item",
+            "children": [
+              {
+                "id": "c-g-first-premium-n14",
+                "kind": "articleRef",
+                "targets": [
+                  {
+                    "host": "17"
+                  }
+                ],
+                "connector": "및",
+                "scope": "host"
+              },
+              {
+                "id": "c-g-first-premium-n15",
+                "kind": "text",
+                "text": "를 준용하여 회사가 보장을 하지 않을 수 있는 경우"
+              }
+            ],
+            "code": "P0500"
+          },
+          {
+            "id": "c-g-first-premium-n16",
+            "kind": "item",
+            "children": [
+              {
+                "id": "c-g-first-premium-n17",
+                "kind": "text",
+                "text": "진단계약에서 보험금 지급사유가 발생할 때까지 진단을 받지 않은 경우. 다만, 진단계약에서 진단을 받지 않은 경우라도 상해로 보험금 지급사유가 발생하는 경우에는 보장을 해드립니다."
+              }
+            ],
+            "code": "P0600"
+          }
+        ],
+        "code": "P0400"
+      }
+    ],
+    "options": []
+  },
+  {
+    "code": "C0022",
+    "label": "납입면제 호",
+    "mode": "item",
+    "description": "납입면제 조 ① 의 사유 호 — 사유(E0001) 값마다 칸, 원문 글 그대로. 상해및질병80%이상후유장해는 호 둘(상해 · 질병). 템플릿의 [현재 종의 사유마다] 반복 안에서 사유 ← 현재 원소",
+    "body": [
+      {
+        "id": "c-waiver-item-n1",
+        "kind": "switchBlock",
+        "on": "arg.사유",
+        "cases": [
+          {
+            "id": "c-waiver-item-n2",
+            "values": [
+              "V01"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-item-n3",
+                "kind": "item",
+                "children": [
+                  {
+                    "id": "c-waiver-item-n4",
+                    "kind": "text",
+                    "text": "피보험자가 암보장개시일 이후「암(유사암제외)」으로 진단확정되었을 경우"
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-item-n5",
+            "values": [
+              "V02"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-item-n6",
+                "kind": "item",
+                "children": [
+                  {
+                    "id": "c-waiver-item-n7",
+                    "kind": "text",
+                    "text": "피보험자가「암(유사암제외)」으로 진단확정되었을 경우"
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-item-n8",
+            "values": [
+              "V03"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-item-n9",
+                "kind": "item",
+                "children": [
+                  {
+                    "id": "c-waiver-item-n10",
+                    "kind": "text",
+                    "text": "피보험자가「뇌졸중」으로 진단확정되었을 경우"
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-item-n11",
+            "values": [
+              "V04"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-item-n12",
+                "kind": "item",
+                "children": [
+                  {
+                    "id": "c-waiver-item-n13",
+                    "kind": "text",
+                    "text": "피보험자가「급성심근경색증」으로 진단확정되었을 경우"
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-item-n14",
+            "values": [
+              "V05"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-item-n15",
+                "kind": "item",
+                "children": [
+                  {
+                    "id": "c-waiver-item-n16",
+                    "kind": "text",
+                    "text": "피보험자가「말기폐질환」으로 진단확정되었을 경우"
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-item-n17",
+            "values": [
+              "V06"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-item-n18",
+                "kind": "item",
+                "children": [
+                  {
+                    "id": "c-waiver-item-n19",
+                    "kind": "text",
+                    "text": "피보험자가「말기간경화」로 진단확정되었을 경우"
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-item-n20",
+            "values": [
+              "V07"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-item-n21",
+                "kind": "item",
+                "children": [
+                  {
+                    "id": "c-waiver-item-n22",
+                    "kind": "text",
+                    "text": "피보험자가「말기신부전증」으로 진단확정되었을 경우"
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-item-n23",
+            "values": [
+              "V08"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-item-n24",
+                "kind": "item",
+                "children": [
+                  {
+                    "id": "c-waiver-item-n25",
+                    "kind": "text",
+                    "text": "피보험자가「양성뇌종양」으로 진단확정되었을 경우"
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-item-n26",
+            "values": [
+              "V09"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-item-n27",
+                "kind": "item",
+                "children": [
+                  {
+                    "id": "c-waiver-item-n28",
+                    "kind": "text",
+                    "text": "피보험자가「중대한재생불량성빈혈」으로 진단확정되었을 경우"
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-item-n29",
+            "values": [
+              "V10"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-item-n30",
+                "kind": "item",
+                "children": [
+                  {
+                    "id": "c-waiver-item-n31",
+                    "kind": "text",
+                    "text": "피보험자가「만성당뇨합병증」으로 진단확정되었을 경우"
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-item-n32",
+            "values": [
+              "V11"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-item-n33",
+                "kind": "item",
+                "children": [
+                  {
+                    "id": "c-waiver-item-n34",
+                    "kind": "text",
+                    "text": "피보험자가 상해로"
+                  },
+                  {
+                    "id": "c-waiver-item-n35",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000002"
+                  },
+                  {
+                    "id": "c-waiver-item-n36",
+                    "kind": "text",
+                    "text": "에서 정한 장해지급률이 80% 이상에 해당하는 장해상태가 되었을 경우"
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-item-n37",
+                "kind": "item",
+                "children": [
+                  {
+                    "id": "c-waiver-item-n38",
+                    "kind": "text",
+                    "text": "피보험자가 진단 확정된 질병으로"
+                  },
+                  {
+                    "id": "c-waiver-item-n39",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000002"
+                  },
+                  {
+                    "id": "c-waiver-item-n40",
+                    "kind": "text",
+                    "text": "에서 정한 장해지급률이 80% 이상에 해당하는 장해상태가 되었을 경우"
+                  }
+                ],
+                "code": "P0200"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-item-n41",
+            "values": [
+              "V12"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-item-n42",
+                "kind": "item",
+                "children": [
+                  {
+                    "id": "c-waiver-item-n43",
+                    "kind": "text",
+                    "text": "피보험자가 상해로"
+                  },
+                  {
+                    "id": "c-waiver-item-n44",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000002"
+                  },
+                  {
+                    "id": "c-waiver-item-n45",
+                    "kind": "text",
+                    "text": "에서 정한 장해지급률이 80% 이상에 해당하는 장해상태가 되었을 경우"
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-item-n46",
+            "values": [
+              "V13"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-item-n47",
+                "kind": "item",
+                "children": [
+                  {
+                    "id": "c-waiver-item-n48",
+                    "kind": "text",
+                    "text": "피보험자가 진단 확정된 질병으로"
+                  },
+                  {
+                    "id": "c-waiver-item-n49",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000002"
+                  },
+                  {
+                    "id": "c-waiver-item-n50",
+                    "kind": "text",
+                    "text": "에서 정한 장해지급률이 80% 이상에 해당하는 장해상태가 되었을 경우"
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-item-n51",
+            "values": [
+              "V14"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-item-n52",
+                "kind": "item",
+                "children": [
+                  {
+                    "id": "c-waiver-item-n53",
+                    "kind": "text",
+                    "text": "피보험자가 「중증화상및부식」으로 진단확정되었을 경우"
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "options": [],
+    "params": [
+      {
+        "name": "사유",
+        "type": {
+          "kind": "enum",
+          "enumCode": "E0001"
+        }
+      }
+    ]
+  },
+  {
+    "code": "C0023",
+    "label": "정의 및 진단확정(알파Plus)",
+    "mode": "block",
+    "description": "「…의 정의 및 진단확정」 조의 본문 — 사유 값마다 정의 · 진단확정 항(암 칸 안에 【용어풀이】 박스 둘). 장해 값은 문구 없음(정의조대상 = 아니오). 템플릿의 [사유 합집합 ∩ 정의조대상마다] 반복 안에서 사유 ← 현재 원소",
+    "body": [
+      {
+        "id": "c-waiver-definition-n1",
+        "kind": "switchBlock",
+        "on": "arg.사유",
+        "cases": [
+          {
+            "id": "c-waiver-definition-n2",
+            "values": [
+              "V01",
+              "V02"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-n3",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n4",
+                    "kind": "text",
+                    "text": "이 계약에서「암(유사암제외)」이라 함은 제9차 한국표준질병사인분류에 있어서 악성신생물(암)로 분류되는 질병("
+                  },
+                  {
+                    "id": "c-waiver-definition-n5",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000004"
+                  },
+                  {
+                    "id": "c-waiver-definition-n6",
+                    "kind": "text",
+                    "text": "참조) 중 C44(기타 피부의 악성신생물) 및 C73(갑상선의 악성신생물)을 제외한 질병을 말합니다. 또한, 전암(前癌)상태(암으로 변하기 이전 상태, Premalignant condition or condition with malignant potential)에 해당하는 질병도 제외합니다."
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-definition-n7",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n8",
+                    "kind": "text",
+                    "text": "「암(유사암제외)」의 진단확정은 병리 또는 진단검사의학의 전문의 자격증을 가진 자에 의하여 내려져야 하며, 이 진단은 조직(fixed tissue)검사, 미세바늘흡인검사(fine needle aspiration) 또는 혈액(hemic system)검사에 대한 현미경 소견을 기초로 하여야 하며, 이 경우「암(유사암제외)」의 진단확정 시점은 상기 검사에 의한 결과보고 시점으로 합니다. 또한, 회사가「암(유사암제외)」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
+                  }
+                ],
+                "code": "P0200"
+              },
+              {
+                "id": "c-waiver-definition-n9",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n10",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "code": "P0200"
+                      }
+                    ],
+                    "connector": "및",
+                    "scope": "clause"
+                  },
+                  {
+                    "id": "c-waiver-definition-n11",
+                    "kind": "text",
+                    "text": "에 따른 진단이 가능하지 않을 때에는 피보험자가「암(유사암제외)」으로 진단 또는 치료를 받고 있음을 증명할 만한 문서화된 기록 또는 증거가 있어야 합니다."
+                  }
+                ],
+                "code": "P0300"
+              },
+              {
+                "id": "c-waiver-definition-n12",
+                "kind": "boxRef",
+                "boxCode": "BX000039"
+              },
+              {
+                "id": "c-waiver-definition-n13",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n14",
+                    "kind": "text",
+                    "text": "한국표준질병·사인분류 지침서의 \"사망 및 질병이환의 분류번호부여를 위한 선정준칙과 지침\"에 따라 C77~C80(불명확한, 이차성 및 상세불명 부위의 악성신생물)의 경우 일차성 악성신생물(암)이 확인되는 경우에는 원발부위(최초 발생한 부위)를 기준으로 분류합니다. 다만, 이 경우에도 원발암이 완치되었다면, 이차성 및 상세불명 부위의 악성신생물(암)(C77~C80)의 진단확정 시점은 원발암 진단확정 시점으로 변경되지 않습니다."
+                  }
+                ],
+                "code": "P0500"
+              },
+              {
+                "id": "c-waiver-definition-n15",
+                "kind": "boxRef",
+                "boxCode": "BX000040"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-definition-n16",
+            "values": [
+              "V03"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-n17",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n18",
+                    "kind": "text",
+                    "text": "이 계약에서「뇌졸중」이라 함은 제9차 한국표준질병사인분류에 있어서「뇌졸중」으로 분류되는 질병으로"
+                  },
+                  {
+                    "id": "c-waiver-definition-n19",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000007"
+                  },
+                  {
+                    "id": "c-waiver-definition-n20",
+                    "kind": "text",
+                    "text": "에서 정한 거미막하출혈, 뇌내출혈, 기타 비외상성 두개내출혈, 뇌경색증, 뇌경색증을 유발하지 않은 뇌전동맥의 폐쇄 및 협착, 뇌경색증을 유발하지 않은 대뇌동맥의 폐쇄 및 협착을 말합니다."
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-definition-n21",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n22",
+                    "kind": "text",
+                    "text": "「뇌졸중」의 진단확정은 의료법 제3조(의료기관)에서 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관의 의사(치과의사 제외) 면허를 가진 자에 의하여 내려져야 하며, 이 진단은 병력, 신경학적 검진과 함께 뇌전산화단층촬영(brain CT scan), 자기공명영상(MRI), 뇌혈관조영술, 양전자방출단층술(PET), 단일광자방출 전산화 단층술(SPECT), 뇌척수액검사 등을 기초로 하여야 합니다. 또한, 회사가 「뇌졸중」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
+                  }
+                ],
+                "code": "P0200"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-definition-n23",
+            "values": [
+              "V04"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-n24",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n25",
+                    "kind": "text",
+                    "text": "이 계약에서「급성심근경색증」이라 함은 제9차 한국표준질병사인분류에 있어서「급성심근경색증」으로 분류되는 질병으로"
+                  },
+                  {
+                    "id": "c-waiver-definition-n26",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000008"
+                  },
+                  {
+                    "id": "c-waiver-definition-n27",
+                    "kind": "text",
+                    "text": "에서 정한 급성 심근경색증, 후속심근경색증, 급성 심근경색증 후 특정 현존 합병증을 말합니다."
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-definition-n28",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n29",
+                    "kind": "text",
+                    "text": "「급성심근경색증」의 진단확정은 의료법 제3조(의료기관)에서 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관의 의사(치과의사 제외) 면허를 가진 자에 의하여 내려져야 하며, 이 진단은 병력과 함께 심전도, 심장초음파, 관상동맥(심장동맥)촬영술, 혈액중 심장 효소검사 등을 기초로 하여야 합니다. 또한, 회사가 「급성심근경색증」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
+                  }
+                ],
+                "code": "P0200"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-definition-n30",
+            "values": [
+              "V05"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-n31",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n32",
+                    "kind": "text",
+                    "text": "이 계약에서「말기폐질환」이라 함은"
+                  },
+                  {
+                    "id": "c-waiver-definition-n33",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000010"
+                  },
+                  {
+                    "id": "c-waiver-definition-n34",
+                    "kind": "text",
+                    "text": "에서 정한 「말기폐질환」을 말합니다."
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-definition-n35",
+            "values": [
+              "V06"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-n36",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n37",
+                    "kind": "text",
+                    "text": "이 계약에서「말기간경화」라 함은"
+                  },
+                  {
+                    "id": "c-waiver-definition-n38",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000011"
+                  },
+                  {
+                    "id": "c-waiver-definition-n39",
+                    "kind": "text",
+                    "text": "에서 정한 「말기간경화」를 말합니다."
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-definition-n40",
+            "values": [
+              "V07"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-n41",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n42",
+                    "kind": "text",
+                    "text": "이 계약에서「말기신부전증」이라 함은 양쪽 신장 모두가 비가역적 기능부전을 보이는 말기신질환(End Stage Renal Disease)으로서 만성콩팥병(제9차 한국표준질병사인분류 N18)에 해당하는 질병 중에서 보전요법으로는 치료가 불가능하여 정기적인 신장투석요법(혈액투석이나 복막투석)을 받고 있거나 받은 경우를 말하며, 일시적으로 투석치료를 필요로 하는 신부전증은 말기신부전증으로 보지 않습니다."
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-definition-n43",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n44",
+                    "kind": "text",
+                    "text": "「말기신부전증」의 진단확정은 의료법 제3조에서 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관의 의사(한의사, 치과의사는 제외합니다) 면허를 가진 자가 작성한 문서화된 기록 또는 검사결과를 기초로 하여 내려져야 합니다. 또한, 회사가「말기신부전증」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
+                  }
+                ],
+                "code": "P0200"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-definition-n45",
+            "values": [
+              "V08"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-n46",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n47",
+                    "kind": "text",
+                    "text": "이 계약에 있어「양성뇌종양」이라 함은 뇌와 척수(뇌막과 척수수막 포함)에 발생한 병리조직학적으로 양성인 뇌종양으로서 한국표준질병·사인분류 중"
+                  },
+                  {
+                    "id": "c-waiver-definition-n48",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000020"
+                  },
+                  {
+                    "id": "c-waiver-definition-n49",
+                    "kind": "text",
+                    "text": "에서 정한 질병을 말하며, 낭종, 육아종, 혈종, 뇌농양, 뇌의 정맥기형 또는 동맥기형, 경계성종양은 보장에서 제외합니다."
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-definition-n50",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n51",
+                    "kind": "text",
+                    "text": "「양성뇌종양」의 진단확정은 의료법 제3조에서 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관의 의사(한의사, 치과의사는 제외합니다) 면허를 가진 자(이하「의사」라고 합니다) 중 신경과, 신경외과 또는 병리과 전문의 자격증을 가진 자에 의하여 내려져야하며, 이 진단은 병력, 신경학적검사상 객관적인 이상소견(Sign)과 함께 뇌전산화단층촬영(Brain CT Scan), 자기공명영상(MRI), 뇌조직에 대한 현미경 소견을 기초(문서화된 기록 또는 검사결과를 말합니다)로 하여 내려져야합니다. 또한 회사가「양성뇌종양」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 계약자 또는 피보험자에게 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
+                  }
+                ],
+                "code": "P0200"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-definition-n52",
+            "values": [
+              "V09"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-n53",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n54",
+                    "kind": "text",
+                    "text": "이 계약에서「중대한재생불량성빈혈」이라 함은「영구적인 재생불량성빈혈」로서 피보험자가 근본적인 치료를 목적으로 수혈, 면역억제제, 골수 촉진제와 같은 표준적 치료를 3개월 이상 지속적으로 치료를 받고 있고 현재 골수이식이 필요하다고 인정된 질병 상태를 말하며, 일시적이거나 회복이 가능한 재생불량성빈혈은 보장에서 제외됩니다."
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-definition-n55",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n56",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "code": "P0100"
+                      }
+                    ],
+                    "connector": "및",
+                    "scope": "clause"
+                  },
+                  {
+                    "id": "c-waiver-definition-n57",
+                    "kind": "text",
+                    "text": "의「영구적인 재생불량성빈혈」이라 함은 만성 골수부전상태로써 호중구 수가 200/㎣미만이거나, 또는 골수세포충실성(bone marrow cellularity)이 25%이하 이고 동시에 다음중 2가지 이상에 해당되는 것을 말합니다."
+                  }
+                ],
+                "items": [
+                  {
+                    "id": "c-waiver-definition-n58",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-definition-n59",
+                        "kind": "text",
+                        "text": "호중구 수가 500/㎣미만"
+                      }
+                    ],
+                    "code": "P0400"
+                  },
+                  {
+                    "id": "c-waiver-definition-n60",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-definition-n61",
+                        "kind": "text",
+                        "text": "혈소판 수가 20,000/㎣미만"
+                      }
+                    ],
+                    "code": "P0500"
+                  },
+                  {
+                    "id": "c-waiver-definition-n62",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-definition-n63",
+                        "kind": "text",
+                        "text": "망상적혈구 수가 20,000/㎣미만"
+                      }
+                    ],
+                    "code": "P0600"
+                  }
+                ],
+                "code": "P0200"
+              },
+              {
+                "id": "c-waiver-definition-n64",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n65",
+                    "kind": "text",
+                    "text": "「중대한재생불량성빈혈」의 진단확정은 의료법 제3조(의료기관)에서 규정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관의 혈액학 전문의가 작성한 문서화된 기록 또는 기록결과를 기초로 하여 내려져야 합니다. 또한, 회사가「중대한재생불량성빈혈」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 계약자 또는 피보험자에게 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
+                  }
+                ],
+                "code": "P0300"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-definition-n66",
+            "values": [
+              "V10"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-n67",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n68",
+                    "kind": "text",
+                    "text": "이 계약에서「만성당뇨합병증」이라 함은 제9차 한국표준질병사인분류에 있어서 만성당뇨합병증으로 분류되는 질병으로,"
+                  },
+                  {
+                    "id": "c-waiver-definition-n69",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000012"
+                  },
+                  {
+                    "id": "c-waiver-definition-n70",
+                    "kind": "text",
+                    "text": "에서 정한 1형 당뇨병, 2형 당뇨병, 영양실조-관련 당뇨병, 기타 명시된 당뇨병, 상세불명의 당뇨병, 기타 당뇨병성 합병증을 말합니다."
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-definition-n71",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n72",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "code": "P0100"
+                      }
+                    ],
+                    "connector": "및",
+                    "scope": "clause"
+                  },
+                  {
+                    "id": "c-waiver-definition-n73",
+                    "kind": "text",
+                    "text": "의「만성당뇨합병증」의 진단확정은 의료법 제3조에 따른 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관의 의사(치과의사 제외) 면허를 가진 자에 의하여 내려져야 하며, 이 진단은 반드시 피보험자가 당뇨병의 병력과 함께 다음과 같은 기준에 의하여 합병증 진단을 받아야 합니다. 또한, 회사가「만성당뇨합병증」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
+                  }
+                ],
+                "items": [
+                  {
+                    "id": "c-waiver-definition-n74",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-definition-n75",
+                        "kind": "text",
+                        "text": "당뇨병성 망막증 : 내과와 안과에서 시행한 안저검사 및 형광 안저혈관 조형술을 시행하여 망막 출혈반, 미세동맥류, 면화반, 부종 등의 소견이 보이는 경우"
+                      }
+                    ],
+                    "code": "P0300"
+                  },
+                  {
+                    "id": "c-waiver-definition-n76",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-definition-n77",
+                        "kind": "text",
+                        "text": "당뇨병성 신증 : 소변검사상 단백뇨가 생길수 있는 다른 질환이 없는 상태에서 24시간 소변에서 단백질 500㎎이상 검출된 경우(단백뇨군으로 분류), 혈청 크레아틴치가 1.5㎎/㎗이상인 경우(당뇨로 인한 신부전증으로 분류)"
+                      }
+                    ],
+                    "code": "P0400"
+                  },
+                  {
+                    "id": "c-waiver-definition-n78",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-definition-n79",
+                        "kind": "text",
+                        "text": "당뇨병성 신경병증 : 말초신경병증과 자율신경병증으로 구분하여 신경전도검사상 당뇨병성 신경병증의 이상소견을 보이거나 Ewing방법에 의한 심혈관계 자율신경 기능검사상 이상이 있는 경우"
+                      }
+                    ],
+                    "code": "P0500"
+                  },
+                  {
+                    "id": "c-waiver-definition-n80",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-definition-n81",
+                        "kind": "text",
+                        "text": "당뇨병성 말초순환장애 : 이학적검사상 피부궤양(Ulcer), 괴저(Gangrene) 및 말초혈관병증(Peripheral Angiopathy)이 있는 경우"
+                      }
+                    ],
+                    "code": "P0600"
+                  }
+                ],
+                "code": "P0200"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-definition-n82",
+            "values": [
+              "V11",
+              "V12",
+              "V13"
+            ],
+            "empty": true,
+            "children": []
+          },
+          {
+            "id": "c-waiver-definition-n83",
+            "values": [
+              "V14"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-n84",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n85",
+                    "kind": "text",
+                    "text": "이 계약에 있어「중증화상및부식(화학약품 등에 의한 피부 손상)」이라 함은「9의 법칙(Rule of 9's)」또는「룬드와 브라우더 신체 표면적 차트(Lund & Browder chart)」에 의해 측정된 신체표면적으로 최소 20% 이상의 3도 화상 또는 부식(화학약품 등에 의한 피부 손상)을 입은 경우를 말합니다. 다만,「9의 법칙」또는「룬드와 브라우더 신체 표면적 차트」측정법처럼 표준화되고 임상학적으로 받아들여지는 다른 신체 표면적 차트를 이용하여 유사한 결과가 나온 것도 인정합니다."
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-definition-n86",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-n87",
+                    "kind": "text",
+                    "text": "「중증화상및부식(화학약품 등에 의한 피부 손상)」의 진단확정은 의료법 제3조에서 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관의 의사(한의사, 치과의사는 제외합니다) 면허를 가진 자가 작성한 문서화된 기록 또는 검사결과를 기초로 하여 내려져야 합니다. 또한, 회사가「중증화상및부식」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
+                  }
+                ],
+                "code": "P0200"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "options": [],
+    "params": [
+      {
+        "name": "사유",
+        "type": {
+          "kind": "enum",
+          "enumCode": "E0001"
+        }
+      }
+    ]
+  },
+  {
+    "code": "C0024",
+    "label": "면제 부가항(알파Plus)",
+    "mode": "block",
+    "description": "납입면제 조 ② — 적용 종들의 사유에 면책(암보장개시일이 있는) 사유가 있으면 「제1항 제1호의 암보장개시일이라 함은 …」 항과 【그림】 박스. 「제1항 제1호」는 값 한정 참조(사유 = 암·면책)",
+    "body": [
+      {
+        "id": "c-waiver-addendum-n1",
+        "kind": "condBlock",
+        "branches": [
+          {
+            "id": "c-waiver-addendum-n2",
+            "when": "var.면책있음",
+            "children": [
+              {
+                "id": "c-waiver-addendum-n3",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-addendum-n4",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "g-a27_1",
+                        "code": "P0800",
+                        "restrict": {
+                          "values": [
+                            "V01"
+                          ]
+                        }
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-waiver-addendum-n5",
+                    "kind": "text",
+                    "text": "의 암보장개시일이라 함은 계약일을 기준으로 피보험자의 보험나이가 15세 이상인 경우에는 계약일부터 그날을 포함하여 90일이 지난날의 다음날로 하며,15세 미만인 경우에는 계약일로 합니다.(이하「암보장개시일」이라 합니다)"
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-addendum-n6",
+                "kind": "boxRef",
+                "boxCode": "BX000037"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "options": [],
+    "params": [
+      {
+        "name": "종들",
+        "type": {
+          "kind": "planOptions",
+          "form": "waiver"
+        }
+      }
+    ],
+    "locals": [
+      {
+        "name": "사유들",
+        "expr": "arg.종들.합치기(waiver.reasons)"
+      },
+      {
+        "name": "면책있음",
+        "expr": "not var.사유들.거르기(F02 = true).비었음"
+      }
+    ]
+  },
+  {
+    "code": "C0025",
+    "label": "납입면제 세부규정(알파Plus)",
+    "mode": "block",
+    "description": "납입면제에 관한 세부규정 조의 본문 — 면책 사유 → ①~③(재발 · 5년 · 부활 청약일), 장해 → ④~⑥ · ⑧~⑪, ⑦ 제3자 합의는 늘, 상해 관련 장해 → ⑫. 「제27조의1 제1항 제1호」 · 「제10호, 제11호」는 값 한정 참조",
+    "body": [
+      {
+        "id": "c-waiver-detail-n1",
+        "kind": "condBlock",
+        "branches": [
+          {
+            "id": "c-waiver-detail-n2",
+            "when": "var.면책있음",
+            "children": [
+              {
+                "id": "c-waiver-detail-n3",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-n4",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "g-a27_1",
+                        "code": "P0800",
+                        "restrict": {
+                          "values": [
+                            "V01"
+                          ]
+                        }
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-waiver-detail-n5",
+                    "kind": "text",
+                    "text": "에도 불구하고 암보장개시일 전일 이전에 진단 확정된「암(유사암제외)」과 동일하거나 다른 신체기관에 재발 또는 전이되어 "
+                  },
+                  {
+                    "id": "c-waiver-detail-n6",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "g-a27_1",
+                        "code": "P0800",
+                        "restrict": {
+                          "values": [
+                            "V01"
+                          ]
+                        }
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-waiver-detail-n7",
+                    "kind": "text",
+                    "text": "에서 정한 보험료 납입면제사유가 발생한 경우 회사는 보장보험료의 납입을 면제하지 않습니다. 다만, 청약일부터 암보장개시일 전일 이전에「암(유사암제외)」으로 진단확정 받더라도 암보장개시일 이후 5년이 지나는 동안 그「암(유사암제외)」으로 추가 진단(단순건강검진 제외) 또는 치료사실이 없을 경우, 암보장개시일부터 5년이 지난 이후에는 "
+                  },
+                  {
+                    "id": "c-waiver-detail-n8",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "g-a27_1",
+                        "code": "P0800",
+                        "restrict": {
+                          "values": [
+                            "V01"
+                          ]
+                        }
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-waiver-detail-n9",
+                    "kind": "text",
+                    "text": "에 따라 보장보험료의 납입을 면제합니다."
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-detail-n10",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-n11",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "code": "P0100"
+                      }
+                    ],
+                    "connector": "및",
+                    "scope": "clause"
+                  },
+                  {
+                    "id": "c-waiver-detail-n12",
+                    "kind": "text",
+                    "text": "의「암보장개시일 이후 5년이 지나는 동안」이라 함은 "
+                  },
+                  {
+                    "id": "c-waiver-detail-n13",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "g-a29"
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-waiver-detail-n14",
+                    "kind": "text",
+                    "text": "에서 정한 계약의 해지가 발생하지 않은 경우를 말합니다."
+                  }
+                ],
+                "code": "P0200"
+              },
+              {
+                "id": "c-waiver-detail-n15",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-n16",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "g-a30"
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-waiver-detail-n17",
+                    "kind": "text",
+                    "text": "에서 정한 계약의 부활이 이루어진 경우 부활을 청약한 날을 "
+                  },
+                  {
+                    "id": "c-waiver-detail-n18",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "code": "P0100"
+                      }
+                    ],
+                    "connector": "및",
+                    "scope": "clause"
+                  },
+                  {
+                    "id": "c-waiver-detail-n19",
+                    "kind": "text",
+                    "text": "의 청약일로 하여 적용합니다."
+                  }
+                ],
+                "code": "P0300"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "c-waiver-detail-n20",
+        "kind": "condBlock",
+        "branches": [
+          {
+            "id": "c-waiver-detail-n21",
+            "when": "var.장해있음",
+            "children": [
+              {
+                "id": "c-waiver-detail-n22",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-n23",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "g-a27_1",
+                        "code": "P0800",
+                        "restrict": {
+                          "values": [
+                            "V11",
+                            "V12",
+                            "V13"
+                          ]
+                        }
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-waiver-detail-n24",
+                    "kind": "text",
+                    "text": "에서 장해지급률이 상해 발생일 또는 질병의 진단확정일부터 180일 이내에 확정되지 않는 경우에는 상해 발생일 또는 질병의 진단확정일부터 180일이 되는 날의 의사 진단에 기초하여 고정될 것으로 인정되는 상태를 장해지급률로 결정합니다. 다만, "
+                  },
+                  {
+                    "id": "c-waiver-detail-n25",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000002"
+                  },
+                  {
+                    "id": "c-waiver-detail-n26",
+                    "kind": "text",
+                    "text": "에 장해판정시기를 별도로 정한 경우에는 그에 따릅니다."
+                  }
+                ],
+                "code": "P0400"
+              },
+              {
+                "id": "c-waiver-detail-n27",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-n28",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "code": "P0400"
+                      }
+                    ],
+                    "connector": "및",
+                    "scope": "clause"
+                  },
+                  {
+                    "id": "c-waiver-detail-n29",
+                    "kind": "text",
+                    "text": "에 따라 장해지급률이 결정되었으나 그 이후 보험료 납입면제를 받을 수 있는 기간(계약의 효력이 없어진 경우에는 보험기간이 10년 이상인 계약은 상해 발생일 또는 질병의 진단확정일부터 2년 이내로 하고, 보험기간이 10년 미만인 계약은 상해 발생일 또는 질병의 진단확정일부터 1년 이내)에 장해상태가 더 악화된 때에는 그 악화된 장해상태를 기준으로 장해지급률을 결정합니다."
+                  }
+                ],
+                "code": "P0500"
+              },
+              {
+                "id": "c-waiver-detail-n30",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-n31",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000002"
+                  },
+                  {
+                    "id": "c-waiver-detail-n32",
+                    "kind": "text",
+                    "text": "에 해당되지 않는 후유장해는 피보험자의 직업, 연령, 신분 또는 성별 등에 관계없이 신체의 장해정도에 따라"
+                  },
+                  {
+                    "id": "c-waiver-detail-n33",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000002"
+                  },
+                  {
+                    "id": "c-waiver-detail-n34",
+                    "kind": "text",
+                    "text": "의 구분에 준하여 지급률을 결정합니다."
+                  }
+                ],
+                "code": "P0600"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "c-waiver-detail-n35",
+        "kind": "paragraph",
+        "children": [
+          {
+            "id": "c-waiver-detail-n36",
+            "kind": "text",
+            "text": "보험수익자와 회사가 "
+          },
+          {
+            "id": "c-waiver-detail-n37",
+            "kind": "articleRef",
+            "targets": [
+              {
+                "articleId": "g-a27_1",
+                "code": "P0200"
+              }
+            ],
+            "connector": "및"
+          },
+          {
+            "id": "c-waiver-detail-n38",
+            "kind": "text",
+            "text": "의 보험료의 납입면제 사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험료 납입면제 사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
+          }
+        ],
+        "code": "P0700"
+      },
+      {
+        "id": "c-waiver-detail-n39",
+        "kind": "condBlock",
+        "branches": [
+          {
+            "id": "c-waiver-detail-n40",
+            "when": "var.장해있음",
+            "children": [
+              {
+                "id": "c-waiver-detail-n41",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-n42",
+                    "kind": "text",
+                    "text": "같은 상해 또는 질병으로 두 가지 이상의 후유장해가 생긴 경우에는 장해지급률을 합산하여 결정합니다. 다만, "
+                  },
+                  {
+                    "id": "c-waiver-detail-n43",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000002"
+                  },
+                  {
+                    "id": "c-waiver-detail-n44",
+                    "kind": "text",
+                    "text": "의 각 신체부위별 판정기준에 별도로 정한 경우에는 그 기준에 따릅니다."
+                  }
+                ],
+                "code": "P0800"
+              },
+              {
+                "id": "c-waiver-detail-n45",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-n46",
+                    "kind": "text",
+                    "text": "다른 상해 또는 질병으로 인하여 후유장해가 2회 이상 발생하였을 경우에는 그 때마다 이에 해당하는 장해지급률을 결정합니다. 그러나 그 후유장해가 이미 장해지급률이 결정된 동일한 부위에 가중된 때에는 최종 장해상태에 해당하는 장해지급률에서 이미 결정된 장해지급률을 차감하여 결정합니다. 다만, "
+                  },
+                  {
+                    "id": "c-waiver-detail-n47",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000002"
+                  },
+                  {
+                    "id": "c-waiver-detail-n48",
+                    "kind": "text",
+                    "text": "의 각 신체부위별 판정기준에서 별도로 정한 경우에는 그 기준에 따릅니다."
+                  }
+                ],
+                "code": "P0900"
+              },
+              {
+                "id": "c-waiver-detail-n49",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-n50",
+                    "kind": "text",
+                    "text": "이미 이 계약에서 보험료의 납입면제 사유에 해당되지 않았거나(보장개시 이전의 원인에 의하거나 또는 그 이전에 발생한 후유장해를 포함합니다), 보험료의 납입면제가 적용되지 않았던 피보험자에게 그 신체의 동일 부위에 또다시 "
+                  },
+                  {
+                    "id": "c-waiver-detail-n51",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "code": "P0900"
+                      }
+                    ],
+                    "connector": "및",
+                    "scope": "clause"
+                  },
+                  {
+                    "id": "c-waiver-detail-n52",
+                    "kind": "text",
+                    "text": "에 규정하는 후유장해상태가 발생하였을 경우에는 직전까지의 후유장해에 대한 후유장해지급률이 결정된 것으로 보고 최종 후유장해 상태에 해당되는 후유장해지급률에서 이를 차감하여 결정합니다."
+                  }
+                ],
+                "code": "P1000"
+              },
+              {
+                "id": "c-waiver-detail-n53",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-n54",
+                    "kind": "text",
+                    "text": "회사는 다음 중 어느 한 가지로 "
+                  },
+                  {
+                    "id": "c-waiver-detail-n55",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "g-a27_1",
+                        "code": "P0800",
+                        "restrict": {
+                          "values": [
+                            "V11",
+                            "V12",
+                            "V13"
+                          ]
+                        }
+                      }
+                    ],
+                    "connector": "또는"
+                  },
+                  {
+                    "id": "c-waiver-detail-n56",
+                    "kind": "text",
+                    "text": "의 후유장해가 발생한 때에는 "
+                  },
+                  {
+                    "id": "c-waiver-detail-n57",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "g-a27_1",
+                        "code": "P0200"
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-waiver-detail-n58",
+                    "kind": "text",
+                    "text": "에서 정한 보험료 납입면제 사유에서 제외됩니다."
+                  }
+                ],
+                "items": [
+                  {
+                    "id": "c-waiver-detail-n59",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-detail-n60",
+                        "kind": "text",
+                        "text": "피보험자가 고의로 자신을 해친 경우. 다만, 피보험자가 심신상실 등으로 자유로운 의사결정을 할 수 없는 상태에서 자신을 해친 경우에는 보험료의 납입을 면제합니다."
+                      }
+                    ],
+                    "code": "P1300"
+                  },
+                  {
+                    "id": "c-waiver-detail-n61",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-detail-n62",
+                        "kind": "text",
+                        "text": "보험수익자가 고의로 피보험자를 해친 경우"
+                      }
+                    ],
+                    "code": "P1400"
+                  },
+                  {
+                    "id": "c-waiver-detail-n63",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-detail-n64",
+                        "kind": "text",
+                        "text": "계약자가 고의로 피보험자를 해친 경우"
+                      }
+                    ],
+                    "code": "P1500"
+                  },
+                  {
+                    "id": "c-waiver-detail-n65",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-detail-n66",
+                        "kind": "text",
+                        "text": "피보험자의 임신, 출산(제왕절개를 포함합니다), 산후기. 그러나 회사가 보장하는 사유와 보장개시일부터 2년이 지난 후에 발생한 습관성 유산, 불임 및 인공수정 관련 합병증으로 인한 경우에는 보험료의 납입을 면제합니다."
+                      }
+                    ],
+                    "code": "P1600"
+                  },
+                  {
+                    "id": "c-waiver-detail-n67",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-detail-n68",
+                        "kind": "text",
+                        "text": "전쟁, 외국의 무력행사, 혁명, 내란, 사변, 폭동"
+                      }
+                    ],
+                    "code": "P1700"
+                  }
+                ],
+                "code": "P1100"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "c-waiver-detail-n69",
+        "kind": "condBlock",
+        "branches": [
+          {
+            "id": "c-waiver-detail-n70",
+            "when": "var.상해장해",
+            "children": [
+              {
+                "id": "c-waiver-detail-n71",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-n72",
+                    "kind": "text",
+                    "text": "회사는 다른 약정이 없으면 피보험자가 직업, 직무 또는 동호회 활동목적으로 아래에 열거된 행위로 인하여 상해 관련 후유장해가 발생한 때에는 "
+                  },
+                  {
+                    "id": "c-waiver-detail-n73",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "g-a27_1",
+                        "code": "P0200"
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-waiver-detail-n74",
+                    "kind": "text",
+                    "text": "에서 정한 보험료 납입면제 사유에서 제외됩니다."
+                  }
+                ],
+                "items": [
+                  {
+                    "id": "c-waiver-detail-n75",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-detail-n76",
+                        "kind": "text",
+                        "text": "전문등반(전문적인 등산용구를 사용하여 암벽 또는 빙벽을 오르내리거나 특수한 기술, 경험, 사전훈련을 필요로 하는 등반을 말합니다), 글라이더 조종, 스카이다이빙, 스쿠버다이빙, 행글라이딩, 수상보트, 패러글라이딩"
+                      }
+                    ],
+                    "code": "P1800"
+                  },
+                  {
+                    "id": "c-waiver-detail-n77",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-detail-n78",
+                        "kind": "text",
+                        "text": "모터보트, 자동차 또는 오토바이에 의한 경기, 시범, 흥행(이를 위한 연습을 포함합니다) 또는 시운전(다만, 공용도로상에서 시운전을 하는 동안 납입면제 사유가 발생한 경우에는 납입면제 하여 드립니다)"
+                      }
+                    ],
+                    "code": "P1900"
+                  },
+                  {
+                    "id": "c-waiver-detail-n79",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-detail-n80",
+                        "kind": "text",
+                        "text": "선박에 탑승하는 것을 직무로 하는 사람이 직무상 선박에 탑승하고 있는 동안"
+                      }
+                    ],
+                    "code": "P2000"
+                  }
+                ],
+                "code": "P1200"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "options": [],
+    "params": [
+      {
+        "name": "종들",
+        "type": {
+          "kind": "planOptions",
+          "form": "waiver"
+        }
+      }
+    ],
+    "locals": [
+      {
+        "name": "사유들",
+        "expr": "arg.종들.합치기(waiver.reasons)"
+      },
+      {
+        "name": "면책있음",
+        "expr": "not var.사유들.거르기(F02 = true).비었음"
+      },
+      {
+        "name": "장해있음",
+        "expr": "var.사유들.있음('V11', 'V12', 'V13')"
+      },
+      {
+        "name": "상해장해",
+        "expr": "var.사유들.있음('V11', 'V12')"
+      }
+    ]
+  },
+  {
+    "code": "C0026",
+    "label": "무효 문구(알파Plus)",
+    "mode": "block",
+    "description": "계약의 무효 조 — 적용 종들의 사유에 면책 사유가 있으면 암보장개시일 전일 이전 진단확정 시 무효 항. 알파Plus 원문 제22조에는 없다(원문 누락 — QA/인수기준 알려진 차이)",
+    "body": [
+      {
+        "id": "c-waiver-void-n1",
+        "kind": "condBlock",
+        "branches": [
+          {
+            "id": "c-waiver-void-n2",
+            "when": "var.면책있음",
+            "children": [
+              {
+                "id": "c-waiver-void-n3",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-void-n4",
+                    "kind": "text",
+                    "text": "회사는 "
+                  },
+                  {
+                    "id": "c-waiver-void-n5",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "g-a22",
+                        "code": "P0100"
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-waiver-void-n6",
+                    "kind": "text",
+                    "text": "에서 정한 사항 이외에도 피보험자가 계약일부터 암보장개시일의 전일 이전에「암(유사암제외)」으로 진단확정되는 경우에는 계약을 무효로 하며 이미 납입한 보험료를 돌려드립니다. 다만, 회사의 고의 또는 과실로 계약이 무효로 된 경우와 회사가 승낙 전에 무효임을 알았거나 알 수 있었음에도 보험료를 반환하지 않은 경우에는 보험료를 납입한 날의 다음날부터 반환일까지의 기간에 대하여 회사는 보험계약대출이율을 연단위 복리로 계산한 금액을 더하여 돌려 드립니다."
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "options": [],
+    "params": [
+      {
+        "name": "종들",
+        "type": {
+          "kind": "planOptions",
+          "form": "waiver"
+        }
+      }
+    ],
+    "locals": [
+      {
+        "name": "사유들",
+        "expr": "arg.종들.합치기(waiver.reasons)"
+      },
+      {
+        "name": "면책있음",
+        "expr": "not var.사유들.거르기(F02 = true).비었음"
+      }
+    ]
+  },
+  {
+    "code": "C0027",
+    "label": "부활 문구",
+    "mode": "block",
+    "description": "부활(효력회복) 조 — 적용 종들의 사유에 면책 사유가 있으면 「부활(효력회복)시 부활(효력회복)일을 〔기준일〕로 하여 암보장개시일을 적용합니다」. 기준일은 옵션(알파Plus 계약일 · 메리츠 최초계약일)",
+    "body": [
+      {
+        "id": "c-waiver-revive-n1",
+        "kind": "condBlock",
+        "branches": [
+          {
+            "id": "c-waiver-revive-n2",
+            "when": "var.면책있음",
+            "children": [
+              {
+                "id": "c-waiver-revive-n3",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-revive-n4",
+                    "kind": "text",
+                    "text": "부활(효력회복)시 부활(효력회복)일을 "
+                  },
+                  {
+                    "id": "c-waiver-revive-n5",
+                    "kind": "optionSlot",
+                    "optionCode": "O01"
+                  },
+                  {
+                    "id": "c-waiver-revive-n6",
+                    "kind": "text",
+                    "text": "로 하여 암보장개시일을 적용합니다."
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "options": [
+      {
+        "code": "O01",
+        "label": "기준일",
+        "order": 0,
+        "values": [
+          {
+            "code": "V01",
+            "label": "계약일",
+            "order": 0,
+            "body": [
+              {
+                "id": "c-waiver-revive-o1v1-x1",
+                "kind": "text",
+                "text": "계약일"
+              }
+            ]
+          },
+          {
+            "code": "V02",
+            "label": "최초계약일",
+            "order": 1,
+            "body": [
+              {
+                "id": "c-waiver-revive-o1v2-x1",
+                "kind": "text",
+                "text": "최초계약일"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "params": [
+      {
+        "name": "종들",
+        "type": {
+          "kind": "planOptions",
+          "form": "waiver"
+        }
+      }
+    ],
+    "locals": [
+      {
+        "name": "사유들",
+        "expr": "arg.종들.합치기(waiver.reasons)"
+      },
+      {
+        "name": "면책있음",
+        "expr": "not var.사유들.거르기(F02 = true).비었음"
+      }
+    ]
+  },
+  {
+    "code": "C0028",
+    "label": "정의 및 진단확정(메리츠)",
+    "mode": "block",
+    "description": "「…의 정의 및 진단확정」 조의 본문(메리츠 — 「이 계약에 있어」) — 사유 값마다 정의 · 진단확정 항(암 칸 안에 【용어풀이】 박스 둘). 메리츠 원문에 없는 질병 여섯은 알파Plus 원문 칸. 장해 값은 문구 없음. 템플릿의 [사유 합집합 ∩ 정의조대상마다] 반복 안에서 사유 ← 현재 원소",
+    "body": [
+      {
+        "id": "c-waiver-definition-meritz-n1",
+        "kind": "switchBlock",
+        "on": "arg.사유",
+        "cases": [
+          {
+            "id": "c-waiver-definition-meritz-n2",
+            "values": [
+              "V01",
+              "V02"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-meritz-n3",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n4",
+                    "kind": "text",
+                    "text": "이 계약에 있어「암(유사암제외)」이라 함은 제9차 한국표준질병사인분류에 있어서 악성신생물(암)로 분류되는 질병("
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n5",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000004"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n6",
+                    "kind": "text",
+                    "text": "참조) 중 C44(기타 피부의 악성신생물) 및 C73(갑상선의 악성신생물)을 제외한 질병을 말합니다. 또한, 전암(前癌)상태(암으로 변하기 이전 상태, Premalignant condition or condition with malignant potential)에 해당하는 질병도 제외합니다."
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-definition-meritz-n7",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n8",
+                    "kind": "text",
+                    "text": "「암(유사암제외)」의 진단확정은 병리 또는 진단검사의학의 전문의 자격증을 가진 자에 의하여 내려져야 하며, 이 진단은 조직(fixed tissue)검사, 미세바늘흡인검사(fine needle aspiration) 또는 혈액(hemic system)검사에 대한 현미경 소견을 기초로 하여야 하며, 이 경우「암(유사암제외)」의 진단확정 시점은 상기 검사에 의한 결과보고 시점으로 합니다. 또한, 회사가「암(유사암제외)」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
+                  }
+                ],
+                "code": "P0200"
+              },
+              {
+                "id": "c-waiver-definition-meritz-n9",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n10",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "code": "P0200"
+                      }
+                    ],
+                    "connector": "및",
+                    "scope": "clause"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n11",
+                    "kind": "text",
+                    "text": "에 따른 진단이 가능하지 않을 때에는 피보험자가「암(유사암제외)」으로 진단 또는 치료를 받고 있음을 증명할 만한 문서화된 기록 또는 증거가 있어야 합니다."
+                  }
+                ],
+                "code": "P0300"
+              },
+              {
+                "id": "c-waiver-definition-meritz-n12",
+                "kind": "boxRef",
+                "boxCode": "BX000075"
+              },
+              {
+                "id": "c-waiver-definition-meritz-n13",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n14",
+                    "kind": "text",
+                    "text": "한국표준질병·사인분류 지침서의 \"사망 및 질병이환의 분류번호부여를 위한 선정준칙과 지침\"에 따라 C77~C80(불명확한, 이차성 및 상세불명 부위의 악성신생물)의 경우 일차성 악성신생물(암)이 확인되는 경우에는 원발부위(최초 발생한 부위)를 기준으로 분류합니다. 다만, 이 경우에도 원발암이 완치되었다면, 이차성 및 상세불명 부위의 악성신생물(암)(C77~C80)의 진단확정 시점은 원발암 진단확정 시점으로 변경되지 않습니다."
+                  }
+                ],
+                "code": "P0500"
+              },
+              {
+                "id": "c-waiver-definition-meritz-n15",
+                "kind": "boxRef",
+                "boxCode": "BX000076"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-definition-meritz-n16",
+            "values": [
+              "V03"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-meritz-n17",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n18",
+                    "kind": "text",
+                    "text": "이 계약에 있어「뇌졸중」이라 함은 제9차 한국표준질병사인분류에 있어서「뇌졸중」으로 분류되는 질병으로"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n19",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000007"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n20",
+                    "kind": "text",
+                    "text": "에서 정한 질병을 말합니다."
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-definition-meritz-n21",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n22",
+                    "kind": "text",
+                    "text": "「뇌졸중」의 진단확정은 의료법 제3조(의료기관)에서 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관의 의사(치과의사 제외) 면허를 가진 자에 의하여 내려져야 하며, 이 진단은 병력, 신경학적 검진과 함께 뇌전산화단층촬영(brain CT scan), 자기공명영상(MRI), 뇌혈관조영술, 양전자방출단층술(PET), 단일광자방출 전산화 단층술(SPECT), 뇌척수액검사 등을 기초로 하여야 합니다. 또한, 회사가「뇌졸중」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
+                  }
+                ],
+                "code": "P0200"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-definition-meritz-n23",
+            "values": [
+              "V04"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-meritz-n24",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n25",
+                    "kind": "text",
+                    "text": "이 계약에 있어서「급성심근경색증」이라 함은 제9차 한국표준질병사인분류에 있어서「급성심근경색증」으로 분류되는 질병으로"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n26",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000008"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n27",
+                    "kind": "text",
+                    "text": "에서 정한 급성 심근경색증, 후속심근경색증, 급성 심근경색증 후 특정 현존 합병증을 말합니다."
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-definition-meritz-n28",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n29",
+                    "kind": "text",
+                    "text": "「급성심근경색증」의 진단확정은 의료법 제3조(의료기관)에서 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관의 의사(치과의사 제외) 면허를 가진 자에 의하여 내려져야 하며, 이 진단은 병력과 함께 심전도, 심장초음파, 관상동맥(심장동맥)촬영술, 혈액중 심장 효소검사 등을 기초로 하여야 합니다. 또한, 회사가「급성심근경색증」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
+                  }
+                ],
+                "code": "P0200"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-definition-meritz-n30",
+            "values": [
+              "V05"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-meritz-n31",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n32",
+                    "kind": "text",
+                    "text": "이 계약에서「말기폐질환」이라 함은"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n33",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000010"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n34",
+                    "kind": "text",
+                    "text": "에서 정한 「말기폐질환」을 말합니다."
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-definition-meritz-n35",
+            "values": [
+              "V06"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-meritz-n36",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n37",
+                    "kind": "text",
+                    "text": "이 계약에서「말기간경화」라 함은"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n38",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000011"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n39",
+                    "kind": "text",
+                    "text": "에서 정한 「말기간경화」를 말합니다."
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-definition-meritz-n40",
+            "values": [
+              "V07"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-meritz-n41",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n42",
+                    "kind": "text",
+                    "text": "이 계약에서「말기신부전증」이라 함은 양쪽 신장 모두가 비가역적 기능부전을 보이는 말기신질환(End Stage Renal Disease)으로서 만성콩팥병(제9차 한국표준질병사인분류 N18)에 해당하는 질병 중에서 보전요법으로는 치료가 불가능하여 정기적인 신장투석요법(혈액투석이나 복막투석)을 받고 있거나 받은 경우를 말하며, 일시적으로 투석치료를 필요로 하는 신부전증은 말기신부전증으로 보지 않습니다."
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-definition-meritz-n43",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n44",
+                    "kind": "text",
+                    "text": "「말기신부전증」의 진단확정은 의료법 제3조에서 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관의 의사(한의사, 치과의사는 제외합니다) 면허를 가진 자가 작성한 문서화된 기록 또는 검사결과를 기초로 하여 내려져야 합니다. 또한, 회사가「말기신부전증」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
+                  }
+                ],
+                "code": "P0200"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-definition-meritz-n45",
+            "values": [
+              "V08"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-meritz-n46",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n47",
+                    "kind": "text",
+                    "text": "이 계약에 있어「양성뇌종양」이라 함은 뇌와 척수(뇌막과 척수수막 포함)에 발생한 병리조직학적으로 양성인 뇌종양으로서 한국표준질병·사인분류 중"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n48",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000020"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n49",
+                    "kind": "text",
+                    "text": "에서 정한 질병을 말하며, 낭종, 육아종, 혈종, 뇌농양, 뇌의 정맥기형 또는 동맥기형, 경계성종양은 보장에서 제외합니다."
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-definition-meritz-n50",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n51",
+                    "kind": "text",
+                    "text": "「양성뇌종양」의 진단확정은 의료법 제3조에서 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관의 의사(한의사, 치과의사는 제외합니다) 면허를 가진 자(이하「의사」라고 합니다) 중 신경과, 신경외과 또는 병리과 전문의 자격증을 가진 자에 의하여 내려져야하며, 이 진단은 병력, 신경학적검사상 객관적인 이상소견(Sign)과 함께 뇌전산화단층촬영(Brain CT Scan), 자기공명영상(MRI), 뇌조직에 대한 현미경 소견을 기초(문서화된 기록 또는 검사결과를 말합니다)로 하여 내려져야합니다. 또한 회사가「양성뇌종양」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 계약자 또는 피보험자에게 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
+                  }
+                ],
+                "code": "P0200"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-definition-meritz-n52",
+            "values": [
+              "V09"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-meritz-n53",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n54",
+                    "kind": "text",
+                    "text": "이 계약에서「중대한재생불량성빈혈」이라 함은「영구적인 재생불량성빈혈」로서 피보험자가 근본적인 치료를 목적으로 수혈, 면역억제제, 골수 촉진제와 같은 표준적 치료를 3개월 이상 지속적으로 치료를 받고 있고 현재 골수이식이 필요하다고 인정된 질병 상태를 말하며, 일시적이거나 회복이 가능한 재생불량성빈혈은 보장에서 제외됩니다."
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-definition-meritz-n55",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n56",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "code": "P0100"
+                      }
+                    ],
+                    "connector": "및",
+                    "scope": "clause"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n57",
+                    "kind": "text",
+                    "text": "의「영구적인 재생불량성빈혈」이라 함은 만성 골수부전상태로써 호중구 수가 200/㎣미만이거나, 또는 골수세포충실성(bone marrow cellularity)이 25%이하 이고 동시에 다음중 2가지 이상에 해당되는 것을 말합니다."
+                  }
+                ],
+                "items": [
+                  {
+                    "id": "c-waiver-definition-meritz-n58",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-definition-meritz-n59",
+                        "kind": "text",
+                        "text": "호중구 수가 500/㎣미만"
+                      }
+                    ],
+                    "code": "P0400"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n60",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-definition-meritz-n61",
+                        "kind": "text",
+                        "text": "혈소판 수가 20,000/㎣미만"
+                      }
+                    ],
+                    "code": "P0500"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n62",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-definition-meritz-n63",
+                        "kind": "text",
+                        "text": "망상적혈구 수가 20,000/㎣미만"
+                      }
+                    ],
+                    "code": "P0600"
+                  }
+                ],
+                "code": "P0200"
+              },
+              {
+                "id": "c-waiver-definition-meritz-n64",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n65",
+                    "kind": "text",
+                    "text": "「중대한재생불량성빈혈」의 진단확정은 의료법 제3조(의료기관)에서 규정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관의 혈액학 전문의가 작성한 문서화된 기록 또는 기록결과를 기초로 하여 내려져야 합니다. 또한, 회사가「중대한재생불량성빈혈」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 계약자 또는 피보험자에게 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
+                  }
+                ],
+                "code": "P0300"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-definition-meritz-n66",
+            "values": [
+              "V10"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-meritz-n67",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n68",
+                    "kind": "text",
+                    "text": "이 계약에서「만성당뇨합병증」이라 함은 제9차 한국표준질병사인분류에 있어서 만성당뇨합병증으로 분류되는 질병으로,"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n69",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000012"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n70",
+                    "kind": "text",
+                    "text": "에서 정한 1형 당뇨병, 2형 당뇨병, 영양실조-관련 당뇨병, 기타 명시된 당뇨병, 상세불명의 당뇨병, 기타 당뇨병성 합병증을 말합니다."
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-definition-meritz-n71",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n72",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "code": "P0100"
+                      }
+                    ],
+                    "connector": "및",
+                    "scope": "clause"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n73",
+                    "kind": "text",
+                    "text": "의「만성당뇨합병증」의 진단확정은 의료법 제3조에 따른 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관의 의사(치과의사 제외) 면허를 가진 자에 의하여 내려져야 하며, 이 진단은 반드시 피보험자가 당뇨병의 병력과 함께 다음과 같은 기준에 의하여 합병증 진단을 받아야 합니다. 또한, 회사가「만성당뇨합병증」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
+                  }
+                ],
+                "items": [
+                  {
+                    "id": "c-waiver-definition-meritz-n74",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-definition-meritz-n75",
+                        "kind": "text",
+                        "text": "당뇨병성 망막증 : 내과와 안과에서 시행한 안저검사 및 형광 안저혈관 조형술을 시행하여 망막 출혈반, 미세동맥류, 면화반, 부종 등의 소견이 보이는 경우"
+                      }
+                    ],
+                    "code": "P0300"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n76",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-definition-meritz-n77",
+                        "kind": "text",
+                        "text": "당뇨병성 신증 : 소변검사상 단백뇨가 생길수 있는 다른 질환이 없는 상태에서 24시간 소변에서 단백질 500㎎이상 검출된 경우(단백뇨군으로 분류), 혈청 크레아틴치가 1.5㎎/㎗이상인 경우(당뇨로 인한 신부전증으로 분류)"
+                      }
+                    ],
+                    "code": "P0400"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n78",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-definition-meritz-n79",
+                        "kind": "text",
+                        "text": "당뇨병성 신경병증 : 말초신경병증과 자율신경병증으로 구분하여 신경전도검사상 당뇨병성 신경병증의 이상소견을 보이거나 Ewing방법에 의한 심혈관계 자율신경 기능검사상 이상이 있는 경우"
+                      }
+                    ],
+                    "code": "P0500"
+                  },
+                  {
+                    "id": "c-waiver-definition-meritz-n80",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-definition-meritz-n81",
+                        "kind": "text",
+                        "text": "당뇨병성 말초순환장애 : 이학적검사상 피부궤양(Ulcer), 괴저(Gangrene) 및 말초혈관병증(Peripheral Angiopathy)이 있는 경우"
+                      }
+                    ],
+                    "code": "P0600"
+                  }
+                ],
+                "code": "P0200"
+              }
+            ]
+          },
+          {
+            "id": "c-waiver-definition-meritz-n82",
+            "values": [
+              "V11",
+              "V12",
+              "V13"
+            ],
+            "empty": true,
+            "children": []
+          },
+          {
+            "id": "c-waiver-definition-meritz-n83",
+            "values": [
+              "V14"
+            ],
+            "children": [
+              {
+                "id": "c-waiver-definition-meritz-n84",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n85",
+                    "kind": "text",
+                    "text": "이 계약에 있어「중증화상및부식(화학약품 등에 의한 피부 손상)」이라 함은「9의 법칙(Rule of 9's)」또는「룬드와 브라우더 신체 표면적 차트(Lund & Browder chart)」에 의해 측정된 신체표면적으로 최소 20% 이상의 3도 화상 또는 부식(화학약품 등에 의한 피부 손상)을 입은 경우를 말합니다. 다만,「9의 법칙」또는「룬드와 브라우더 신체 표면적 차트」측정법처럼 표준화되고 임상학적으로 받아들여지는 다른 신체 표면적 차트를 이용하여 유사한 결과가 나온 것도 인정합니다."
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-definition-meritz-n86",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-definition-meritz-n87",
+                    "kind": "text",
+                    "text": "「중증화상및부식(화학약품 등에 의한 피부 손상)」의 진단확정은 의료법 제3조에서 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관의 의사(한의사, 치과의사는 제외합니다) 면허를 가진 자가 작성한 문서화된 기록 또는 검사결과를 기초로 하여 내려져야 합니다. 또한, 회사가「중증화상및부식」의 조사나 확인을 위하여 필요하다고 인정하는 경우에는 검사결과, 진료기록부의 사본 제출을 요청할 수 있습니다."
+                  }
+                ],
+                "code": "P0200"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "options": [],
+    "params": [
+      {
+        "name": "사유",
+        "type": {
+          "kind": "enum",
+          "enumCode": "E0001"
+        }
+      }
+    ]
+  },
+  {
+    "code": "C0029",
+    "label": "면제 부가항(메리츠)",
+    "mode": "block",
+    "description": "납입면제 조 ③(메리츠) — 적용 종들의 사유에 면책 사유가 있으면 「제1항 제1호 및 제2항 제1호의 암보장개시일이라 함은 최초계약일부터 …」 항과 【그림】 박스. 「제1항 제1호 및 제2항 제1호」는 값 한정 참조(사유 = 암·면책) 하나 — 종마다 항이 펼쳐진 만큼 찍힌다",
+    "body": [
+      {
+        "id": "c-waiver-addendum-meritz-n1",
+        "kind": "condBlock",
+        "branches": [
+          {
+            "id": "c-waiver-addendum-meritz-n2",
+            "when": "var.면책있음",
+            "children": [
+              {
+                "id": "c-waiver-addendum-meritz-n3",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-addendum-meritz-n4",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "m-a29",
+                        "code": "P0900",
+                        "restrict": {
+                          "values": [
+                            "V01"
+                          ]
+                        }
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-waiver-addendum-meritz-n5",
+                    "kind": "text",
+                    "text": "의 암보장개시일이라 함은 최초계약일부터 그날을 포함하여 90일이 지난날의 다음날(이하「암보장개시일」이라 합니다)을 말합니다. 다만, "
+                  },
+                  {
+                    "id": "c-waiver-addendum-meritz-n6",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "m-a25"
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-waiver-addendum-meritz-n7",
+                    "kind": "text",
+                    "text": "에 따라 보장이 자동갱신되는 경우에는 이 계약의 갱신일을 암보장개시일로 합니다."
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-addendum-meritz-n8",
+                "kind": "boxRef",
+                "boxCode": "BX000073"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "options": [],
+    "params": [
+      {
+        "name": "종들",
+        "type": {
+          "kind": "planOptions",
+          "form": "waiver"
+        }
+      }
+    ],
+    "locals": [
+      {
+        "name": "사유들",
+        "expr": "arg.종들.합치기(waiver.reasons)"
+      },
+      {
+        "name": "면책있음",
+        "expr": "not var.사유들.거르기(F02 = true).비었음"
+      }
+    ]
+  },
+  {
+    "code": "C0030",
+    "label": "납입면제 세부규정(메리츠)",
+    "mode": "block",
+    "description": "납입면제에 관한 세부규정 조의 본문(메리츠) — 면책 사유 → ①~③, 장해 → ④~⑥ · ⑧~⑩, ⑦ 제3자 합의는 늘, 장해 또는 중증화상및부식 → ⑪ 고의 · 전쟁 제외, 상해 장해 또는 중증화상및부식 → ⑫ 위험 활동 제외. 「제29조 제1항 제1호 또는 제2항 제1호」 등은 값 한정 참조 — 원문의 두 겹 연결어는 연결어 한 칸으로(인수기준 알려진 차이)",
+    "body": [
+      {
+        "id": "c-waiver-detail-meritz-n1",
+        "kind": "condBlock",
+        "branches": [
+          {
+            "id": "c-waiver-detail-meritz-n2",
+            "when": "var.면책있음",
+            "children": [
+              {
+                "id": "c-waiver-detail-meritz-n3",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-meritz-n4",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "m-a29",
+                        "code": "P0900",
+                        "restrict": {
+                          "values": [
+                            "V01"
+                          ]
+                        }
+                      }
+                    ],
+                    "connector": "또는"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n5",
+                    "kind": "text",
+                    "text": "에도 불구하고 피보험자가 암보장개시일 전일 이전에 진단 확정된「암(유사암제외)」과 동일하거나 다른 신체기관에 재발 또는 전이되어 "
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n6",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "m-a29",
+                        "code": "P0900",
+                        "restrict": {
+                          "values": [
+                            "V01"
+                          ]
+                        }
+                      }
+                    ],
+                    "connector": "또는"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n7",
+                    "kind": "text",
+                    "text": "에서 정한 보험료 납입면제사유가 발생한 경우 회사는 보장보험료의 납입을 면제하지 않습니다. 다만, 청약일부터 암보장개시일 전일 이전에「암(유사암제외)」으로 진단확정 받더라도 암보장개시일 이후 5년(갱신형 계약의 경우에는 최초 계약의 암보장개시일 이후 5년)이 지나는 동안 그「암(유사암제외)」으로 추가 진단(단순건강검진 제외) 또는 치료사실이 없을 경우, 암보장개시일부터 5년이 지난 이후에는 "
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n8",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "m-a29",
+                        "code": "P0900",
+                        "restrict": {
+                          "values": [
+                            "V01"
+                          ]
+                        }
+                      }
+                    ],
+                    "connector": "또는"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n9",
+                    "kind": "text",
+                    "text": "에 따라 보장보험료의 납입을 면제합니다."
+                  }
+                ],
+                "code": "P0100"
+              },
+              {
+                "id": "c-waiver-detail-meritz-n10",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-meritz-n11",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "code": "P0100"
+                      }
+                    ],
+                    "connector": "및",
+                    "scope": "clause"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n12",
+                    "kind": "text",
+                    "text": "의「암보장개시일 이후 5년이 지나는 동안」이라 함은 "
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n13",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "m-a34"
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n14",
+                    "kind": "text",
+                    "text": "에서 정한 계약의 해지가 발생하지 않은 경우를 말합니다."
+                  }
+                ],
+                "code": "P0200"
+              },
+              {
+                "id": "c-waiver-detail-meritz-n15",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-meritz-n16",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "m-a35"
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n17",
+                    "kind": "text",
+                    "text": "에서 정한 계약의 부활이 이루어진 경우 부활을 청약한 날을 "
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n18",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "code": "P0100"
+                      }
+                    ],
+                    "connector": "및",
+                    "scope": "clause"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n19",
+                    "kind": "text",
+                    "text": "의 청약일로 하여 적용합니다."
+                  }
+                ],
+                "code": "P0300"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "c-waiver-detail-meritz-n20",
+        "kind": "condBlock",
+        "branches": [
+          {
+            "id": "c-waiver-detail-meritz-n21",
+            "when": "var.장해있음",
+            "children": [
+              {
+                "id": "c-waiver-detail-meritz-n22",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-meritz-n23",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "m-a29",
+                        "code": "P0900",
+                        "restrict": {
+                          "values": [
+                            "V11",
+                            "V12",
+                            "V13"
+                          ]
+                        }
+                      }
+                    ],
+                    "connector": "또는"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n24",
+                    "kind": "text",
+                    "text": "에서 장해지급률이 상해 발생일 또는 질병의 진단확정일부터 180일 이내에 확정되지 않는 경우에는 상해 발생일 또는 질병의 진단확정일부터 180일이 되는 날의 의사 진단에 기초하여 고정될 것으로 인정되는 상태를 장해지급률로 결정합니다. 다만,"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n25",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000002"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n26",
+                    "kind": "text",
+                    "text": "에 장해판정시기를 별도로 정한 경우에는 그에 따릅니다."
+                  }
+                ],
+                "code": "P0400"
+              },
+              {
+                "id": "c-waiver-detail-meritz-n27",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-meritz-n28",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "code": "P0400"
+                      }
+                    ],
+                    "connector": "및",
+                    "scope": "clause"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n29",
+                    "kind": "text",
+                    "text": "에 따라 장해지급률이 결정되었으나 그 이후 보험료 납입면제를 받을 수 있는 기간(계약의 효력이 없어진 경우에는 보험기간이 10년 이상인 계약은 상해 발생일 또는 질병의 진단확정일부터 2년 이내로 하고, 보험기간이 10년 미만인 계약은 상해 발생일 또는 질병의 진단확정일부터 1년 이내)에 장해상태가 더 악화된 때에는 그 악화된 장해상태를 기준으로 장해지급률을 결정합니다."
+                  }
+                ],
+                "code": "P0500"
+              },
+              {
+                "id": "c-waiver-detail-meritz-n30",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-meritz-n31",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000002"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n32",
+                    "kind": "text",
+                    "text": "에 해당되지 않는 후유장해는 피보험자의 직업, 연령, 신분 또는 성별 등에 관계없이 신체의 장해정도에 따라"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n33",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000002"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n34",
+                    "kind": "text",
+                    "text": "의 구분에 준하여 지급률을 결정합니다."
+                  }
+                ],
+                "code": "P0600"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "c-waiver-detail-meritz-n35",
+        "kind": "paragraph",
+        "children": [
+          {
+            "id": "c-waiver-detail-meritz-n36",
+            "kind": "text",
+            "text": "보험수익자와 회사가 "
+          },
+          {
+            "id": "c-waiver-detail-meritz-n37",
+            "kind": "articleRef",
+            "targets": [
+              {
+                "articleId": "m-a29",
+                "code": "P0200"
+              }
+            ],
+            "connector": "또는"
+          },
+          {
+            "id": "c-waiver-detail-meritz-n38",
+            "kind": "text",
+            "text": "의 보험료의 납입면제 사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험료 납입면제 사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
+          }
+        ],
+        "code": "P0700"
+      },
+      {
+        "id": "c-waiver-detail-meritz-n39",
+        "kind": "condBlock",
+        "branches": [
+          {
+            "id": "c-waiver-detail-meritz-n40",
+            "when": "var.장해있음",
+            "children": [
+              {
+                "id": "c-waiver-detail-meritz-n41",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-meritz-n42",
+                    "kind": "text",
+                    "text": "같은 상해 또는 질병으로 두 가지 이상의 후유장해가 생긴 경우에는 장해지급률을 합산하여 결정합니다. 다만,"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n43",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000002"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n44",
+                    "kind": "text",
+                    "text": "의 각 신체부위별 판정기준에 별도로 정한 경우에는 그 기준에 따릅니다."
+                  }
+                ],
+                "code": "P0800"
+              },
+              {
+                "id": "c-waiver-detail-meritz-n45",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-meritz-n46",
+                    "kind": "text",
+                    "text": "다른 상해 또는 질병으로 인하여 후유장해가 2회 이상 발생하였을 경우에는 그 때마다 이에 해당하는 장해지급률을 결정합니다. 그러나 그 후유장해가 이미 장해지급률이 결정된 동일한 부위에 가중된 때에는 최종 장해상태에 해당하는 장해지급률에서 이미 결정된 장해지급률을 차감하여 결정합니다. 다만,"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n47",
+                    "kind": "appendixRef",
+                    "appendixCode": "AX000002"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n48",
+                    "kind": "text",
+                    "text": "의 각 신체부위별 판정기준에서 별도로 정한 경우에는 그 기준에 따릅니다."
+                  }
+                ],
+                "code": "P0900"
+              },
+              {
+                "id": "c-waiver-detail-meritz-n49",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-meritz-n50",
+                    "kind": "text",
+                    "text": "이미 이 계약에서 보험료의 납입면제 사유에 해당되지 않았거나(보장개시 이전의 원인에 의하거나 또는 그 이전에 발생한 후유장해를 포함합니다), 보험료의 납입면제가 적용되지 않았던 피보험자에게 그 신체의 동일 부위에 또다시 "
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n51",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "code": "P0900"
+                      }
+                    ],
+                    "connector": "및",
+                    "scope": "clause"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n52",
+                    "kind": "text",
+                    "text": "에 규정하는 후유장해상태가 발생하였을 경우에는 직전까지의 후유장해에 대한 후유장해지급률이 결정된 것으로 보고 최종 후유장해 상태에 해당되는 후유장해지급률에서 이를 차감하여 결정합니다."
+                  }
+                ],
+                "code": "P1000"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "c-waiver-detail-meritz-n53",
+        "kind": "condBlock",
+        "branches": [
+          {
+            "id": "c-waiver-detail-meritz-n54",
+            "when": "var.장해화상",
+            "children": [
+              {
+                "id": "c-waiver-detail-meritz-n55",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-meritz-n56",
+                    "kind": "text",
+                    "text": "회사는 다음 중 어느 한 가지로 "
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n57",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "m-a29",
+                        "code": "P0900",
+                        "restrict": {
+                          "values": [
+                            "V11",
+                            "V12",
+                            "V13",
+                            "V14"
+                          ]
+                        }
+                      }
+                    ],
+                    "connector": "또는"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n58",
+                    "kind": "text",
+                    "text": "의 보험료 납입면제 사유가 발생한 때에는 보장보험료의 납입을 면제하지 않습니다."
+                  }
+                ],
+                "items": [
+                  {
+                    "id": "c-waiver-detail-meritz-n59",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-detail-meritz-n60",
+                        "kind": "text",
+                        "text": "피보험자가 고의로 자신을 해친 경우. 다만, 피보험자가 심신상실 등으로 자유로운 의사결정을 할 수 없는 상태에서 자신을 해친 경우에는 보험료의 납입을 면제합니다."
+                      }
+                    ],
+                    "code": "P1300"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n61",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-detail-meritz-n62",
+                        "kind": "text",
+                        "text": "보험수익자가 고의로 피보험자를 해친 경우"
+                      }
+                    ],
+                    "code": "P1400"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n63",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-detail-meritz-n64",
+                        "kind": "text",
+                        "text": "계약자가 고의로 피보험자를 해친 경우"
+                      }
+                    ],
+                    "code": "P1500"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n65",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-detail-meritz-n66",
+                        "kind": "text",
+                        "text": "피보험자의 임신, 출산(제왕절개를 포함합니다), 산후기. 그러나 회사가 보장하는 사유와 보장개시일부터 2년이 지난 후에 발생한 습관성 유산, 불임 및 인공수정 관련 합병증으로 인한 경우에는 보험료의 납입을 면제합니다."
+                      }
+                    ],
+                    "code": "P1600"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n67",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-detail-meritz-n68",
+                        "kind": "text",
+                        "text": "전쟁, 외국의 무력행사, 혁명, 내란, 사변, 폭동"
+                      }
+                    ],
+                    "code": "P1700"
+                  }
+                ],
+                "code": "P1100"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "c-waiver-detail-meritz-n69",
+        "kind": "condBlock",
+        "branches": [
+          {
+            "id": "c-waiver-detail-meritz-n70",
+            "when": "var.상해관련",
+            "children": [
+              {
+                "id": "c-waiver-detail-meritz-n71",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-detail-meritz-n72",
+                    "kind": "text",
+                    "text": "회사는 다른 약정이 없으면 피보험자가 직업, 직무 또는 동호회 활동목적으로 아래에 열거된 행위로 인하여 "
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n73",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "m-a29",
+                        "code": "P0900",
+                        "innerCode": "P0100",
+                        "restrict": {
+                          "values": [
+                            "V11",
+                            "V12",
+                            "V14"
+                          ]
+                        }
+                      }
+                    ],
+                    "connector": "또는"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n74",
+                    "kind": "text",
+                    "text": "의 상해관련 보험료 납입면제 사유가 발생한 때에는 보장보험료의 납입을 면제하지 않습니다."
+                  }
+                ],
+                "items": [
+                  {
+                    "id": "c-waiver-detail-meritz-n75",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-detail-meritz-n76",
+                        "kind": "text",
+                        "text": "전문등반(전문적인 등산용구를 사용하여 암벽 또는 빙벽을 오르내리거나 특수한 기술, 경험, 사전훈련을 필요로 하는 등반을 말합니다), 글라이더 조종, 스카이다이빙, 스쿠버다이빙, 행글라이딩, 수상보트, 패러글라이딩"
+                      }
+                    ],
+                    "code": "P1800"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n77",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-detail-meritz-n78",
+                        "kind": "text",
+                        "text": "모터보트, 자동차 또는 오토바이에 의한 경기, 시범, 흥행(이를 위한 연습을 포함합니다) 또는 시운전(다만, 공용도로상에서 시운전을 하는 동안 납입면제 사유가 발생한 경우에는 납입면제 하여 드립니다)"
+                      }
+                    ],
+                    "code": "P1900"
+                  },
+                  {
+                    "id": "c-waiver-detail-meritz-n79",
+                    "kind": "item",
+                    "children": [
+                      {
+                        "id": "c-waiver-detail-meritz-n80",
+                        "kind": "text",
+                        "text": "선박에 탑승하는 것을 직무로 하는 사람이 직무상 선박에 탑승하고 있는 동안"
+                      }
+                    ],
+                    "code": "P2000"
+                  }
+                ],
+                "code": "P1200"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "options": [],
+    "params": [
+      {
+        "name": "종들",
+        "type": {
+          "kind": "planOptions",
+          "form": "waiver"
+        }
+      }
+    ],
+    "locals": [
+      {
+        "name": "사유들",
+        "expr": "arg.종들.합치기(waiver.reasons)"
+      },
+      {
+        "name": "면책있음",
+        "expr": "not var.사유들.거르기(F02 = true).비었음"
+      },
+      {
+        "name": "장해있음",
+        "expr": "var.사유들.있음('V11', 'V12', 'V13')"
+      },
+      {
+        "name": "상해장해",
+        "expr": "var.사유들.있음('V11', 'V12')"
+      },
+      {
+        "name": "장해화상",
+        "expr": "var.사유들.있음('V11', 'V12', 'V13', 'V14')"
+      },
+      {
+        "name": "상해관련",
+        "expr": "var.사유들.있음('V11', 'V12', 'V14')"
+      }
+    ]
+  },
+  {
+    "code": "C0031",
+    "label": "무효 문구(메리츠)",
+    "mode": "block",
+    "description": "계약의 무효 조(메리츠) — 적용 종들의 사유에 면책 사유가 있으면 암보장개시일 전일 이전 진단확정 시 무효 항. 메리츠 원문 제22조에는 없다(원문 누락 — QA/인수기준 알려진 차이). 글은 무효 문구(알파Plus)와 같다",
+    "body": [
+      {
+        "id": "c-waiver-void-meritz-n1",
+        "kind": "condBlock",
+        "branches": [
+          {
+            "id": "c-waiver-void-meritz-n2",
+            "when": "var.면책있음",
+            "children": [
+              {
+                "id": "c-waiver-void-meritz-n3",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-waiver-void-meritz-n4",
+                    "kind": "text",
+                    "text": "회사는 "
+                  },
+                  {
+                    "id": "c-waiver-void-meritz-n5",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "m-a22",
+                        "code": "P0100"
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-waiver-void-meritz-n6",
+                    "kind": "text",
+                    "text": "에서 정한 사항 이외에도 피보험자가 계약일부터 암보장개시일의 전일 이전에「암(유사암제외)」으로 진단확정되는 경우에는 계약을 무효로 하며 이미 납입한 보험료를 돌려드립니다. 다만, 회사의 고의 또는 과실로 계약이 무효로 된 경우와 회사가 승낙 전에 무효임을 알았거나 알 수 있었음에도 보험료를 반환하지 않은 경우에는 보험료를 납입한 날의 다음날부터 반환일까지의 기간에 대하여 회사는 보험계약대출이율을 연단위 복리로 계산한 금액을 더하여 돌려 드립니다."
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "options": [],
+    "params": [
+      {
+        "name": "종들",
+        "type": {
+          "kind": "planOptions",
+          "form": "waiver"
+        }
+      }
+    ],
+    "locals": [
+      {
+        "name": "사유들",
+        "expr": "arg.종들.합치기(waiver.reasons)"
+      },
+      {
+        "name": "면책있음",
+        "expr": "not var.사유들.거르기(F02 = true).비었음"
+      }
+    ]
+  },
+  {
+    "code": "C0032",
     "label": "보장의 범위(신화상치료비)",
     "mode": "block",
     "description": "신화상치료비의 세 보장 — 두 상품이 같은 글이다(뒤 박스는 사용처 소유)",
@@ -838,7 +4220,7 @@
     "options": []
   },
   {
-    "code": "C0021",
+    "code": "C0033",
     "label": "보험금의 지급사유(골절진단비)",
     "mode": "block",
     "description": "골절(치아파절 제외)진단비의 지급사유 — 두 상품이 같은 글이다. 보험금명은 담보 값(D0001)",
@@ -891,7 +4273,7 @@
     ]
   },
   {
-    "code": "C0022",
+    "code": "C0034",
     "label": "보험금의 지급사유(골절수술비)",
     "mode": "block",
     "description": "골절수술비의 지급사유 — 두 상품이 같은 글이다. 보험금명은 담보 값(D0001)",
@@ -944,7 +4326,7 @@
     ]
   },
   {
-    "code": "C0023",
+    "code": "C0035",
     "label": "보험금 지급에 관한 세부규정(골절진단비)",
     "mode": "block",
     "description": "골절 여럿이면 1회 · 제3자 판정 — 두 상품이 같은 글이다. 「제1조」는 사용처 위치",
@@ -993,7 +4375,7 @@
     "options": []
   },
   {
-    "code": "C0024",
+    "code": "C0036",
     "label": "보험금 지급에 관한 세부규정(골절수술비)",
     "mode": "block",
     "description": "골절 수술 여럿이면 하나 · 제3자 판정 — 두 상품이 같은 글이다. 「제1조」는 사용처 위치",
@@ -1042,7 +4424,7 @@
     "options": []
   },
   {
-    "code": "C0025",
+    "code": "C0037",
     "label": "보험금 지급에 관한 세부규정(생활자금)",
     "mode": "block",
     "description": "알파Plus 후유장해 생활자금 두 담보의 장해지급률 · 합산 · 가중 규정 — 분류표 외 후유장해로 정하는 것(지급액 · 장해지급률)만 다르다",
@@ -1276,7 +4658,7 @@
     ]
   },
   {
-    "code": "C0026",
+    "code": "C0038",
     "label": "보험금 지급에 관한 세부규정(후유장해)",
     "mode": "block",
     "description": "메리츠 80%이상후유장해 두 담보(상해 · 질병)의 장해지급률 · 합산 · 가중 규정 — 기산일 · 원인 · 분류표 외 결정 대상이 다르다",
@@ -1632,7 +5014,7 @@
     ]
   },
   {
-    "code": "C0027",
+    "code": "C0039",
     "label": "중증화상및부식진단의 정의 및 진단확정",
     "mode": "block",
     "description": "중증화상및부식의 정의 · 진단확정 — 두 상품이 조사 두 곳만 다르다",
@@ -1748,7 +5130,7 @@
     ]
   },
   {
-    "code": "C0028",
+    "code": "C0040",
     "label": "특별약관의 소멸(사망)",
     "mode": "block",
     "description": "소멸 급부가 없는 담보 — 피보험자 사망으로 소멸하고 계약자적립액 · 미경과보험료를 지급한다",
@@ -1769,7 +5151,7 @@
     "options": []
   },
   {
-    "code": "C0029",
+    "code": "C0041",
     "label": "특별약관의 소멸(지급사유 발생)",
     "mode": "block",
     "description": "소멸 급부가 담보 전체 — 제1조의 지급사유가 생기면 소멸 · 해약환급금 미지급 · 사망 시 소멸. 보험금명은 담보 값(D0001), 「그 때부터」 유무가 상품마다 다르다",
@@ -1900,7 +5282,7 @@
     ]
   },
   {
-    "code": "C0030",
+    "code": "C0042",
     "label": "특별약관의 소멸(사망보험금)",
     "mode": "block",
     "description": "사망이 곧 지급사유인 담보 — 「지급사유 발생」 조에서 ③ 이 「제1항 이외의 사유로」 사망한 경우",
@@ -2088,7 +5470,7 @@
     ]
   },
   {
-    "code": "C0031",
+    "code": "C0043",
     "label": "특별약관의 소멸(생활자금)",
     "mode": "block",
     "description": "알파Plus 후유장해 생활자금 두 담보 — 제1조 제1항의 생활자금 지급사유가 생기면 소멸. 장해율(80% · 50%)만 다르다",
@@ -2197,7 +5579,7 @@
     ]
   },
   {
-    "code": "C0032",
+    "code": "C0044",
     "label": "특별약관의 소멸(중증화상및부식)",
     "mode": "block",
     "description": "세부보장 하나(중증화상및부식진단비)가 소멸 급부 — ① 사망 시 소멸 ②③ 그 세부보장의 소멸 · 해약환급금 미지급",
@@ -2280,7 +5662,7 @@
     "options": []
   },
   {
-    "code": "C0033",
+    "code": "C0045",
     "label": "준용규정(알파Plus)",
     "mode": "block",
     "description": "특별약관에서 정하지 않은 사항은 보통약관을 따른다 — 알파Plus 보통약관 조를 가리킨다. 제외 조 목록은 갱신형(담보속성 A0001 = 2)이면 다섯 조 무조건, 아니면 세 조 + 1종 가입 시 두 조",
@@ -2373,6 +5755,33 @@
                     "kind": "text",
                     "text": "도 제외합니다."
                   }
+                ],
+                "when": "arg.납입면제_있음 = true"
+              },
+              {
+                "id": "c-alpha-application-n7-else",
+                "children": [
+                  {
+                    "id": "c-alpha-application-n8-else",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "g-a9"
+                      },
+                      {
+                        "articleId": "g-a10"
+                      },
+                      {
+                        "articleId": "g-a38"
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-alpha-application-n7-else-t",
+                    "kind": "text",
+                    "text": "은 제외합니다."
+                  }
                 ]
               }
             ]
@@ -2381,10 +5790,22 @@
         "code": "P0100"
       }
     ],
-    "options": []
+    "options": [],
+    "params": [
+      {
+        "name": "납입면제_있음",
+        "type": {
+          "kind": "boolean"
+        },
+        "default": {
+          "kind": "discriminator",
+          "code": "D0002"
+        }
+      }
+    ]
   },
   {
-    "code": "C0034",
+    "code": "C0046",
     "label": "준용규정(메리츠)",
     "mode": "block",
     "description": "특별약관에서 정하지 않은 사항은 보통약관을 따른다 — 메리츠 보통약관 조를 가리킨다(적립이율 · 만기환급금 · 중도인출 제외, 1종이면 납입면제 두 조도 제외). 질병사망은 제5조까지 빼는 다른 글이라 쓰지 않는다",
@@ -2417,30 +5838,59 @@
           {
             "id": "c-meritz-application-n4",
             "kind": "text",
-            "text": "은 제외합니다. 또한, 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
-          },
-          {
-            "id": "c-meritz-application-n5",
-            "kind": "articleRef",
-            "targets": [
-              {
-                "articleId": "m-a29"
-              },
-              {
-                "articleId": "m-a31"
-              }
-            ],
-            "connector": "및"
-          },
-          {
-            "id": "c-meritz-application-n6",
-            "kind": "text",
             "text": "은 제외합니다."
+          },
+          {
+            "id": "c-meritz-application-n5-if-waiver",
+            "kind": "inlineCond",
+            "branches": [
+              {
+                "id": "c-meritz-application-n5-if-waiver-b",
+                "when": "arg.납입면제_있음 = true",
+                "children": [
+                  {
+                    "id": "c-meritz-application-n4-w",
+                    "kind": "text",
+                    "text": " 또한, 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
+                  },
+                  {
+                    "id": "c-meritz-application-n5",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "m-a29"
+                      },
+                      {
+                        "articleId": "m-a31"
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-meritz-application-n6-w",
+                    "kind": "text",
+                    "text": "은 제외합니다."
+                  }
+                ]
+              }
+            ]
           }
         ],
         "code": "P0100"
       }
     ],
-    "options": []
+    "options": [],
+    "params": [
+      {
+        "name": "납입면제_있음",
+        "type": {
+          "kind": "boolean"
+        },
+        "default": {
+          "kind": "discriminator",
+          "code": "D0002"
+        }
+      }
+    ]
   }
 ]

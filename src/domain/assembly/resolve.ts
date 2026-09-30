@@ -183,8 +183,11 @@ function codesIn(nodes: readonly unknown[], via: string): string[] {
 /**
  * 조 참조의 범위 → 조립 범위. 문면 참조는 제 범위 그대로, 함수조항의 보통약관 참조(범위 없음)는 `general`,
  * 제 항 · 사용처 참조(`clause` · `host`)는 펼칠 때 사용처 노드 id 가 됐으므로 `self` (기능/함수조항 §3.5).
+ * 함수조항의 보통약관 참조라도 **보통약관이 넣었으면 제 문서 참조**다 — 「보통약관」 머리 없이, 같은 조면 조를 뺀다
+ * (역할 함수조항: 원문 제27조의1 ② 「제1항 제1호의 암보장개시일」 · 세부규정 「제27조의1(…) 제1항 제1호」).
  */
-function refScope(scope: "self" | "general" | "clause" | "host" | undefined): "self" | "general" {
+function refScope(scope: "self" | "general" | "clause" | "host" | undefined, document: Coordinate["document"]): "self" | "general" {
+  if (scope === undefined && document === "general") return "self";
   return scope === "self" || scope === "clause" || scope === "host" ? "self" : "general";
 }
 
@@ -457,7 +460,7 @@ class Walker {
           : (t) => ({ articleId: t.articleId ?? "", ...(t.code !== undefined ? { code: t.code } : {}) }));
         if (!r.ok) return [this.error(n.id, r.issue)];
         const within = f.loops ? Object.fromEntries(Object.entries(f.loops).map(([loop, e]) => [loop, repeatElementId(e)])) : undefined;
-        return [{ kind: "articleRef", id: n.id, targets: r.targets, ...(n.connector !== undefined ? { connector: n.connector } : {}), scope: refScope(n.scope), ...(within ? { within } : {}), at }];
+        return [{ kind: "articleRef", id: n.id, targets: r.targets, ...(n.connector !== undefined ? { connector: n.connector } : {}), scope: refScope(n.scope, this.env.coordinate.document), ...(within ? { within } : {}), at }];
       }
       case "appendixRef":
         return [{ kind: "appendixRef", id: n.id, appendixCode: n.appendixCode, at }];

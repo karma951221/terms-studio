@@ -125,7 +125,19 @@ describe("펼친 함수조항 안 노드 참조 — {조, P코드, 안쪽 P코�
     const cyclic = { ...input, clauses: input.clauses.map((c) => (c.code === "C0301" ? { ...c, body } : c)) } as typeof input;
     const booklet = assemble(cyclic, cyclic);
     expect(booklet.issues.filter((i) => i.at.document === "general" && i.severity !== "warning")).toEqual([]);
-    expect(lines(booklet.general)).toContain("  ③ 암보장개시일보통약관 제1조(보험료의 납입면제) 제1항 및 제2항");
+    // 보통약관이 넣은 함수조항의 보통약관 참조는 제 문서 참조다 — 「보통약관」 머리 없이, 같은 조면 조를 뺀다(원문 제27조의1 ② 「제1항 제1호의 …」)
+    expect(lines(booklet.general)).toContain("  ③ 암보장개시일제1항 및 제2항");
+  });
+
+  it("보통약관이 넣은 함수조항의 보통약관 참조 — 다른 조를 가리키면 「제N조(…)」, 「보통약관」 머리는 붙지 않는다", () => {
+    const input = waiverFixture(waiverTemplate(), TWO);
+    const addendum = input.clauses.find((c) => c.code === "C0301")!;
+    const body = structuredClone(addendum.body) as unknown as ParagraphNode[];
+    body[0].children.push({ id: "cr", kind: "articleRef", connector: "및", targets: [{ articleId: "d" }] } as never);
+    const other = { ...input, clauses: input.clauses.map((c) => (c.code === "C0301" ? { ...c, body } : c)) } as typeof input;
+    const booklet = assemble(other, other);
+    expect(booklet.issues.filter((i) => i.at.document === "general" && i.severity !== "warning")).toEqual([]);
+    expect(lines(booklet.general)).toContain("  ③ 암보장개시일제2조(정의 및 진단확정)");
   });
 });
 

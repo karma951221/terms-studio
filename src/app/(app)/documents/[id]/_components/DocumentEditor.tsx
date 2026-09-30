@@ -265,7 +265,7 @@ export function DocumentEditor(props: EditorProps) {
   const currentGeneral = current.generalDocumentId ? renderCache[current.generalDocumentId] : undefined;
   // 대상 고르기 색인 — 반복 블록 · 함수조항 참조 줄과 그 본문의 항 · 호 · 목 줄까지 (ADR-0077 결정 6 · 7)
   const indexOpts = useMemo(
-    () => ({ clauseOf: (c: Code) => props.clauses.find((x) => x.code === c), repeatCaption: (n: ForBlockNode) => n.alias ?? repeatLabel(n.source, { enumOf: (c) => enumByCode.get(c) }) }),
+    () => ({ clauseOf: (c: Code) => props.clauses.find((x) => x.code === c), repeatCaption: (n: ForBlockNode, outer?: ForBlockNode) => n.alias ?? repeatLabel(n.source, { ...(outer && isRepeatSource(outer.source) ? { outer: outer.source } : {}), enumOf: (c) => enumByCode.get(c) }) }),
     [props.clauses, enumByCode],
   );
   const generalTargets = useMemo(() => (currentGeneral ? referenceTargetIndex(currentGeneral.tree, numberTree(currentGeneral.tree), indexOpts) : new Map<Id, ReferenceTarget>()), [currentGeneral, indexOpts]);

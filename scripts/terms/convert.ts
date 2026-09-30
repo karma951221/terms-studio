@@ -20,7 +20,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import type { ArticleNode, BlockNode, BoxNode, DocumentNode, InlineNode, ParagraphNode, SectionNode, TableNode } from "../../src/domain/document/nodes";
+import type { ArticleNode, BlockNode, BoxNode, BoxRefNode, DocumentNode, InlineNode, ParagraphNode, SectionNode, TableNode } from "../../src/domain/document/nodes";
 import { indexTree, validateTree } from "../../src/domain/document/nodes";
 import { referenceKeysOf, targetOfNode, withCodes } from "../../src/domain/document/pcode";
 import type { RefTarget } from "../../src/domain/document/nodes";
@@ -34,6 +34,7 @@ import { APPENDICES, CLAUSES, PRODUCTS, SEED_DIR, type ClauseUse, type ProductTe
 import { parseTerms, type ParsedArticle, type ParsedDoc } from "./parse";
 import { applyArticleConds, applyInlineConds, articlesOf } from "./overlay";
 import { inlinesFromText, leftoverReferences, type ArticleEntry, type ArticleIndex, type RefEnv } from "./refs";
+import { applyAlphaWaiver, applyMeritzWaiver, guardAlphaApplication, guardWaiverMentions, resolveWaiverCodes } from "./waiver";
 
 const root = process.cwd();
 const read = (product: ProductTerms, file: string) => readFileSync(path.join(root, product.fixtureDir, file), "utf8");
@@ -281,10 +282,11 @@ function codeClauseTargets(clause: ClauseRecord, generals: ReturnType<typeof ind
         }
         const ix = generals.find((g) => g.nodes.has(id));
         if (!ix) throw new Error(`${clause.code}: 보통약관 참조 대상 ${id} 가 보통약관에 없다`);
-        return targetOfId(ix, id, clause.code);
+        // 값 한정(반복으로 생긴 호 — 역할 함수조항, ADR-0077 결정 7) · 펼친 함수조항 안쪽 코드(ADR-0077 결정 6)는 그대로 싣는다
+        return { ...targetOfId(ix, id, clause.code), ...(t.innerCode ? { innerCode: t.innerCode } : {}), ...(t.restrict ? { restrict: t.restrict } : {}) };
       });
     }
-    for (const key of ["children", "items", "subitems", "branches"]) {
+    for (const key of ["children", "items", "subitems", "branches", "cases"]) {
       const list = n[key];
       if (Array.isArray(list)) list.forEach(visit);
     }
@@ -325,17 +327,26 @@ function main(): void {
     for (const [code, b] of p.specials) built.set(code, b);
   }
 
-  // ── 함수조항(조 · 여러 항, 설정)과 박스(원문의 박스 전부 → 정적 마스터)를 만들고, 적재 순서로 코드를 매긴다
-  const configured = CLAUSES.map((c) => ({ key: c.key, record: buildClause(c, built, products, report) }));
+  // ── 박스(원문의 박스 전부 → 정적 마스터)와 함수조항(조 · 여러 항, 설정)을 만들고, 적재 순서로 코드를 매긴다.
+  // 박스 자리를 먼저 박스 참조로 바꾼다 — 조째 함수조항이 항 사이 · 호 목록의 박스 참조를 본문에 품는다(최종 결정 6)
+  const productOf = (code: string) => products.find((p) => p.product.code === code)!;
   const sites = products.flatMap((p) => [
     ...boxSites(p.general.tree, { doc: p.product.general.code, product: p.product.code, general: true }),
     ...p.product.specials.flatMap((spec) => boxSites(p.specials.get(spec.code)!.tree, { doc: spec.code, product: p.product.code, general: false })),
   ]);
   const boxes = orderBoxes(planBoxes(sites));
-  const clauses = orderClauses(configured, new Set(products.flatMap((p) => (p.product.general.clauses ?? []).map((u) => u.clause))));
-  const clauseByKey = new Map(configured.map((c) => [c.key, c.record]));
   // 박스 자리 → 박스 참조 (같은 목록 자리)
   for (const plan of boxes) for (const site of plan.sites) replaceBox(site, plan.record.code);
+  const configured = CLAUSES.map((c) => ({ key: c.key, record: buildClause(c, built, products, report) }));
+  // 알파Plus 납입면제 — 역할 함수조항 여섯 + 반복 템플릿(waiver.ts). 박스 참조가 선 뒤에 옮긴다(암 정의 칸 · 그림 박스). 보통약관이 쓰는 함수조항이다
+  const alphaWaiver = applyAlphaWaiver(productOf("alpha").general, productOf("meritz").general);
+  // 메리츠 납입면제 — 같은 모양으로. 호 · 부활 문구는 알파Plus 것을 함께 쓰고, 정의 · 부가항 · 세부규정 · 무효는 메리츠 전용(글 · 가리키는 조가 다르다)
+  const waiver = [...alphaWaiver, ...applyMeritzWaiver(productOf("meritz").general, alphaWaiver)];
+  configured.push(...waiver);
+  const generalKeys = new Set([...products.flatMap((p) => (p.product.general.clauses ?? []).map((u) => u.clause)), ...waiver.map((w) => w.key)]);
+  const clauses = orderClauses(configured, generalKeys);
+  const clauseByKey = new Map(configured.map((c) => [c.key, c.record]));
+  for (const code of ["alpha", "meritz"]) resolveWaiverCodes(productOf(code).general.tree, (key) => clauseByKey.get(key)?.code);
   const applyUses = (b: Built, uses: readonly ClauseUse[], label: string) => {
     const articleOf = (number: string) => [...articlesOf(b.tree)].find((x) => b.numberOf.get(x.id) === number);
     for (const u of uses) {
@@ -347,6 +358,19 @@ function main(): void {
   for (const p of products) {
     applyUses(p.general, p.product.general.clauses ?? [], p.product.general.code);
     for (const spec of p.product.specials) applyUses(p.specials.get(spec.code)!, spec.clauses ?? [], spec.code);
+  }
+
+  // 납입면제 조를 가리키는 문장 — 「납입면제 있음」 조건으로(납입면제 없는 상품이면 세 조와 함께 빠진다). 사용처 자리 대조(applyUses) 뒤에 고친다
+  const waiverArticles: Record<string, string[]> = { alpha: ["g-a27_1", "g-a27_2", "g-a27_3"], meritz: ["m-a29", "m-a30", "m-a31"] };
+  for (const p of products) {
+    const ids = waiverArticles[p.product.code];
+    const isWaiver = (id: string) => ids.some((a) => id === a || id.startsWith(`${a}-`));
+    guardWaiverMentions(p.general.tree, isWaiver, p.product.general.code);
+    for (const spec of p.product.specials) guardWaiverMentions(p.specials.get(spec.code)!.tree, isWaiver, spec.code);
+    const application = clauseByKey.get(`${p.product.code}-application`);
+    if (!application) throw new Error(`${p.product.code}-application 함수조항 없음`);
+    if (p.product.code === "alpha") guardAlphaApplication(application, isWaiver);
+    else guardWaiverMentions({ id: application.code, kind: "document", title: "", children: application.body } as unknown as DocumentNode, isWaiver, application.code);
   }
 
   // ── 조 자리 조건 · 검증
@@ -447,7 +471,8 @@ function orderBoxes(plans: readonly BoxPlan[]): BoxPlan[] {
  */
 function checkClauseOrder(clauses: readonly ClauseRecord[], generals: readonly { tree: DocumentNode }[]): void {
   const usedByGeneral = new Set(generals.flatMap((g) => [...JSON.stringify(g.tree).matchAll(/"clauseCode":"(C\d+)"/g)].map((m) => m[1])));
-  const firstGeneralRef = clauses.findIndex(refsGeneralArticle);
+  // 보통약관이 쓰면서 보통약관 조를 가리키는 함수조항(역할 함수조항 — 가리키기 순환, 결정 12)은 적재가 두 번에 나눠 만든다(load.ts) — 순서 검사에서 뺀다
+  const firstGeneralRef = clauses.findIndex((c) => refsGeneralArticle(c) && !usedByGeneral.has(c.code));
   if (firstGeneralRef < 0) return;
   // 화면 E2E 바탕(SEED_PROFILE=base)은 보통약관이 쓰는 함수조항을 앞에서부터 그 개수만큼 만든다 — 앞 코드에 모여 있어야 한다
   const prefix = clauses.slice(0, usedByGeneral.size).map((c) => c.code);
@@ -482,11 +507,14 @@ function buildClause(spec: (typeof CLAUSES)[number], built: Map<string, Built>, 
     const b = built.get(source);
     const a = b && [...articlesOf(b.tree)].find((x) => b.numberOf.get(x.id) === article);
     const at = a ? a.children.findIndex((c) => c.kind === "paragraph" && c.id === `${a.id}-p${paragraph}`) : -1;
-    // 항 수를 안 주면 그 항부터 조의 끝까지의 항 전부 — 조째 함수조항
-    const paragraphs = spec.from.paragraphs ?? (a ? a.children.slice(Math.max(at, 0)).filter((c) => c.kind === "paragraph").length : 0);
-    const taken = a && at >= 0 ? a.children.slice(at, at + paragraphs) : [];
-    if (!b || taken.length !== paragraphs || taken.some((c) => c.kind !== "paragraph")) throw new Error(`${spec.key}: 원문 자리 ${source} 조 ${article} 제${paragraph}항부터 잇닿은 항 ${paragraphs}개 없음 (사이에 표 · 박스가 끼면 조째 딸 수 없다)`);
-    const blocks = clauseFromSource(b.tree, taken as ParagraphNode[], spec.key);
+    // 항 수를 안 주면 그 항부터 조의 끝까지의 항 전부 — 조째 함수조항. 항 사이의 박스 참조는 함께 품고, 마지막 항 뒤(조 끝) 박스는 사용처에 남긴다
+    const rest = a && at >= 0 ? a.children.slice(at) : [];
+    const paragraphs = spec.from.paragraphs ?? rest.filter((c) => c.kind === "paragraph").length;
+    let seen = 0;
+    const end = rest.findIndex((c) => c.kind === "paragraph" && ++seen === paragraphs);
+    const taken = end >= 0 ? rest.slice(0, end + 1) : [];
+    if (!b || taken.filter((c) => c.kind === "paragraph").length !== paragraphs || taken.some((c) => c.kind !== "paragraph" && c.kind !== "boxRef")) throw new Error(`${spec.key}: 원문 자리 ${source} 조 ${article} 제${paragraph}항부터 잇닿은 항 ${paragraphs}개 없음 (사이에 표가 끼면 조째 딸 수 없다)`);
+    const blocks = clauseFromSource(b.tree, taken as (ParagraphNode | BoxRefNode)[], spec.key);
     placeOptions(blocks, spec.place ?? [], spec.key);
     body = reId(blocks, prefix);
   } else {

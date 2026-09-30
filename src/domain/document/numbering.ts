@@ -183,7 +183,8 @@ export function referenceChunkLabel(targets: readonly ReferenceTarget[], connect
 /** 대상 고르기 색인의 재료 — 함수조항 본문(펼칠 항 · 호 · 목 줄) · 반복 블록 줄 머리. 없으면 그 줄 없이(원형 본문만). */
 export interface ReferenceIndexOptions {
   clauseOf?: (code: Code) => Clause | undefined;
-  repeatCaption?: (node: ForBlockNode) => string;
+  /** 반복 블록 줄 머리 — `outer` 는 감싼 바깥 반복(목록 원천의 이름이 바깥 폼의 필드 이름을 읽는다, ADR-0077). */
+  repeatCaption?: (node: ForBlockNode, outer?: ForBlockNode) => string;
 }
 
 const INNER_WORD: Record<string, string> = { paragraph: "항", item: "호", subitem: "목" };
@@ -258,6 +259,8 @@ export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id,
     };
     walk(list);
   };
+  /** 지금 걷는 자리를 감싼 반복 블록들(바깥부터) — 줄 머리가 바깥 반복을 읽는다. */
+  const loops: ForBlockNode[] = [];
   const visit = (node: Node, parent: ReferenceTarget | undefined, section: Section, row?: Id): void => {
     if (node.kind === "condBlock") {
       for (const branch of node.branches) for (const child of branch.children) visit(child, parent, section, row);
@@ -268,13 +271,15 @@ export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id,
       let here = row;
       if (parent && parent.kind !== "section" && node.code !== undefined) {
         const kind = parent.kind === "article" ? "paragraph" : parent.kind === "paragraph" ? "item" : undefined;
-        const t = kind ? below(parent, kind, { id: node.id, n: firstNumber(node.children), code: node.code }, { caption: `반복 — ${opts.repeatCaption?.(node) ?? node.alias ?? "반복 블록"}`, ...(row ? { parentRow: row } : {}) }) : undefined;
+        const t = kind ? below(parent, kind, { id: node.id, n: firstNumber(node.children), code: node.code }, { caption: `반복 — ${opts.repeatCaption?.(node, loops.at(-1)) ?? node.alias ?? "반복 블록"}`, ...(row ? { parentRow: row } : {}) }) : undefined;
         if (t) {
           out.set(node.id, t);
           here = node.id;
         }
       }
+      loops.push(node);
       for (const child of node.children) visit(child, parent, section, here);
+      loops.pop();
       return;
     }
     const number = numbers.get(node.id);

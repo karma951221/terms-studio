@@ -1,19 +1,21 @@
 import { expect, test } from "../_lib/fixtures";
 import { NO_COORD, arrive, login, open, saveEdit } from "./_lib/app";
-import { SEED } from "./_lib/seed";
+import { BASE_DISCRIMINATOR_CODES, BASE_ENUM_CODES, SEED } from "./_lib/seed";
 
 /**
- * ★ 실물 재현(화면) ① 카탈로그 — 열거형 4(세목 둘 · 상품특성 둘) · 구분자 1 · 담보속성 2(+ 값) · 상품담보명 규칙.
- * 바탕 DB(E2E_PROFILE=real)에는 별표 · 보통약관만 있다. 코드는 시스템 채번이라 명세 §1 순서대로 만들면 명세의 코드가 나온다 — 그것을 확인한다.
+ * ★ 실물 재현(화면) ① 카탈로그 — 열거형(세목 · 상품특성) · 구분자 · 담보속성 2(+ 값) · 상품담보명 규칙.
+ * 바탕 DB(E2E_PROFILE=real)에는 별표 · 보통약관과 보통약관이 쓰는 함수조항 · 그것들이 읽는 열거형(E0001 납입면제사유 · 구분자 식이 읽는 E0002 무저해지 유형)과 구분자(D0001 ~ D0004 — 앞 코드)가 있다 —
+ * 그 뒤 코드부터 친다. 코드는 시스템 채번이라 명세 §1 순서대로 만들면 명세의 코드가 나온다 — 그것을 확인한다.
  * 이 파일부터 05 까지가 한 흐름이다(앞 파일이 만든 것을 뒤 파일이 쓴다). 근거: docs/QA/시나리오/실물재현_E2E_시나리오.md §4 ④
  */
 
 const RESULT_TYPE_LABEL: Record<string, string> = { string: "문자열" };
 
 test.describe.serial("실물 재현(화면) ① 카탈로그", () => {
-  test(`열거형 ${SEED.enums.map((e) => e.code).join(" · ")} — 이름과 값을 생성 화면에서`, NO_COORD, async ({ page, ev }) => {
+  const enums = SEED.enums.filter((e) => !BASE_ENUM_CODES.has(e.code));
+  test(`열거형 ${enums.map((e) => e.code).join(" · ")} — 이름과 값을 생성 화면에서`, NO_COORD, async ({ page, ev }) => {
     await ev.action("실물화면#1.1", "관리자로 로그인한다", () => login(page));
-    for (const spec of SEED.enums) {
+    for (const spec of enums) {
       await ev.action(`실물화면#1.2 ${spec.code}`, `열거형 「${spec.label}」 값 ${spec.values.length}개를 만든다`, async () => {
         await open(page, "/enums/new");
         await page.getByLabel("열거형변수 이름").fill(spec.label);
@@ -26,9 +28,11 @@ test.describe.serial("실물 재현(화면) ① 카탈로그", () => {
     }
   });
 
-  test("구분자 D0001 담보명 — 식 · 결과 타입", NO_COORD, async ({ page, ev }) => {
+  const discriminators = SEED.discriminators.filter((d) => !BASE_DISCRIMINATOR_CODES.has(d.code));
+  // 바탕 DB 가 구분자를 모두 넣었으면(담보명 D0001 은 보통약관의 D0002 보다 앞 코드) 화면으로 칠 구분자가 없다 — 구분자 생성 화면은 기본 E2E 가 본다
+  if (discriminators.length > 0) test(`구분자 ${discriminators.map((d) => d.code).join(" · ")} — 식 · 결과 타입`, NO_COORD, async ({ page, ev }) => {
     await ev.action("실물화면#1.3", "관리자로 로그인한다", () => login(page));
-    for (const spec of SEED.discriminators) {
+    for (const spec of discriminators) {
       await ev.action(`실물화면#1.4 ${spec.code}`, `구분자 「${spec.label}」 = ${spec.expression}`, async () => {
         await open(page, "/catalog/new");
         await page.getByLabel("구분자명").fill(spec.label);
