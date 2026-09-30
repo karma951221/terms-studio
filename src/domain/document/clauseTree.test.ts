@@ -28,6 +28,11 @@ const inline: Inline[] = [
 ];
 
 describe("함수조항 본문 ↔ 편집 트리", () => {
+  it("작업용 글자색은 오가도 그대로 남는다 (기능/문면 §3.2 작업 표시)", () => {
+    const colored: Inline[] = [{ id: "t1", kind: "text", text: "지급기일은 ", mark: "blue" }, { id: "t2", kind: "text", text: "3영업일" }];
+    expect(treeToClauseBody("inline", clauseBodyToTree("inline", colored, "지급기일"))).toEqual({ ok: true, value: colored });
+  });
+
   it("「항」 본문은 조 하나의 자식으로 싸이고, 되돌리면 그대로다 — 옵션 자리는 운반체, 조 참조는 보통약관 범위", () => {
     const tree = clauseBodyToTree("block", block, "특별약관의 소멸");
     const article = tree.children[0];

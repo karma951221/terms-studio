@@ -46,10 +46,10 @@ test(
     const code = await ev.action("인자#3", "새 함수조항(항) — 인자 「보험금명」(문자 · 기본 연결 담보명 D0001)을 더하고 본문 슬롯이 그 인자를 읽게 한 뒤 저장", async () => {
       await page.goto("/functions/new?type=block");
       await page.getByLabel("함수조항명").fill(clauseName);
+      await page.getByLabel("새 인자 이름", { exact: true }).fill("보험금명");
+      await page.getByLabel("새 인자 타입", { exact: true }).selectOption("string");
+      await page.getByLabel("새 인자 기본 연결", { exact: true }).selectOption("d:D0001");
       await page.getByRole("button", { name: "인자 추가" }).click();
-      await page.getByLabel("인자 1 이름").fill("보험금명");
-      await page.getByLabel("인자 1 타입").selectOption("string");
-      await page.getByLabel("인자 1 기본 연결").selectOption("d:D0001");
       const paragraph = editor.getByRole("textbox", { name: "항", exact: true });
       await paragraph.click();
       await paragraph.fill("이 특별약관의 보험금은 ");

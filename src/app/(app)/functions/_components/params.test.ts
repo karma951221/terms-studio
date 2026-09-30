@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, paramEntries, typeOfValue, typeValue } from "./params";
+import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, newParamNameError, paramEntries, typeOfValue, typeValue } from "./params";
 
 const discriminators = [
   { code: "D0001", label: "갱신여부", level: "coverage" as const, type: { kind: "boolean" as const }, forms: [] },
@@ -48,5 +48,15 @@ describe("인자 표 칸 값 (기능/함수조항 §4.3)", () => {
       ["arg.갱신형", "boolean", true],
       ["arg.종들", undefined, true],
     ]);
+  });
+});
+
+describe("인자 추가 줄의 이름 검사 (2026-10-01)", () => {
+  const ps = [{ name: "사유", type: { kind: "boolean" as const } }];
+  it("비었음 · 겹침 · 모양은 막고, 맞으면 null", () => {
+    expect(newParamNameError(ps, "  ")).toBe("인자 이름을 적는다");
+    expect(newParamNameError(ps, "사유")).toContain("겹칩니다");
+    expect(newParamNameError(ps, "두 단어")).toContain("글자로 시작");
+    expect(newParamNameError(ps, "갱신형")).toBeNull();
   });
 });

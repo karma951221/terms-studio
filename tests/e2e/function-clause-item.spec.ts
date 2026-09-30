@@ -56,7 +56,15 @@ test(
       await page.getByRole("button", { name: "저장", exact: true }).click();
       await page.waitForURL(/\/functions\/C\d+$/);
       await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
-      await expect(page.locator(".ts-clause-meta")).toContainText("호 — 항의 호 목록 자리에 선다");
+      // 기본정보는 접혀서 선다(코드 · 이름 한 줄) — 펼치면 반환 타입 「호 목록」 아래에 단위 규칙 경고. 펼침은 브라우저가 기억한다
+      const metaHead = page.locator(".ts-clause-meta .ts-basics-head");
+      await expect(metaHead).toContainText(CLAUSE_NAME);
+      await expect(async () => {
+        if ((await metaHead.getAttribute("aria-expanded")) !== "true") await metaHead.click();
+        await expect(metaHead).toHaveAttribute("aria-expanded", "true", { timeout: 1000 });
+      }).toPass();
+      await expect(page.locator(".ts-clause-meta")).toContainText("반환 타입");
+      await expect(page.locator(".ts-clause-meta")).toContainText("호 목록");
       await expect(page.getByRole("list", { name: "단위 규칙 경고" })).toContainText("「호」 함수조항 — 조 · 여러 항 단위가 아닙니다");
       await expect(editor.locator("ol.ts-doc-items > li.ts-doc-item")).toHaveCount(2);
       return decodeURIComponent(page.url().split("/").at(-1)!);
@@ -97,7 +105,7 @@ test(
       await page.getByRole("menuitem", { name: `${CLAUSE_NAME}(${code})`, exact: true }).click();
       const placed = body.locator("ol.ts-doc-items [data-clause-ref]");
       await expect(placed).toHaveCount(1);
-      await expect(placed).toContainText(`함수조항 (${CLAUSE_NAME})`);
+      await expect(placed.locator(".ts-doc-clause-name")).toHaveText(`[${code}] ${CLAUSE_NAME}`);
       await expect(placed).toContainText("뇌졸중으로 진단확정된 경우");
     });
 
@@ -115,6 +123,8 @@ test(
 
     await ev.action("호함수조항#8", "함수조항 상세 — 이제 한 곳에서 쓰므로 「한 곳에서만 씁니다」 경고가 더해진다", async () => {
       await page.goto(`/functions/${code}`);
+      // #3 에서 펼친 기본정보를 브라우저가 기억한다
+      await expect(page.locator(".ts-clause-meta .ts-basics-head")).toHaveAttribute("aria-expanded", "true");
       await expect(page.getByRole("list", { name: "단위 규칙 경고" })).toContainText("한 곳에서만 씁니다");
     });
   },

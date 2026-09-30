@@ -31,9 +31,9 @@ test(
     await ev.action("값별분기#2", "새 함수조항(항) — 인자 「사유」(그 열거형) · 툴바 「값별 분기」 → 값마다 칸(질병 · 상해)", async () => {
       await page.goto("/functions/new?type=block");
       await page.getByLabel("함수조항명").fill(clauseName);
+      await page.getByLabel("새 인자 이름", { exact: true }).fill("사유");
+      await page.getByLabel("새 인자 타입", { exact: true }).selectOption(`enum:${reasons}`);
       await page.getByRole("button", { name: "인자 추가" }).click();
-      await page.getByLabel("인자 1 이름").fill("사유");
-      await page.getByLabel("인자 1 타입").selectOption(`enum:${reasons}`);
       await toolbar.getByRole("button", { name: "값별 분기", exact: true }).click();
       await expect(cases).toHaveCount(2);
       await expect(editor.getByLabel("값별 분기 대상")).toHaveValue("arg.사유");
@@ -90,9 +90,9 @@ test(
     await ev.action("문장분기#2", "새 함수조항(문구) — 인자 「사유」 · 문장 끝에 툴바 「문장 안 값별 분기」 → 팝업(칸 질병 · 상해)", async () => {
       await page.goto("/functions/new?type=inline");
       await page.getByLabel("함수조항명").fill(clauseName);
+      await page.getByLabel("새 인자 이름", { exact: true }).fill("사유");
+      await page.getByLabel("새 인자 타입", { exact: true }).selectOption(`enum:${reasons}`);
       await page.getByRole("button", { name: "인자 추가" }).click();
-      await page.getByLabel("인자 1 이름").fill("사유");
-      await page.getByLabel("인자 1 타입").selectOption(`enum:${reasons}`);
       const line = editor.getByRole("textbox", { name: "문구", exact: true });
       await line.click();
       await line.fill("보험료 납입을 면제하는 사유: ");

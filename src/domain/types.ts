@@ -41,6 +41,19 @@ export function isReferenceConnector(value: unknown): value is ReferenceConnecto
 // ───────────────────────────── 값의 체계 ─────────────────────────────
 
 /** 표 열의 스칼라 타입. period = 개월(정수 · 입력 `3M`/`1Y`) · percent = 0~100 정수. */
+/**
+ * 작업용 글자색 — 작업자가 차수별로 고친 글에 칠하는 표시 (기능/문면 §3.2 「작업 표시」, 2026-10-01).
+ * **산출물 서식이 아니다** — 조립 산출물 · 미리보기 · 준용 비교 · 슬롯 · 참조 · 조건 · 검증 · 참조 그래프 어디에도 뜻이 없다.
+ * 색만 저장한다(칠한 사람 · 날짜 없음). 네 색 고정 — 자유 색상은 없다.
+ */
+export const WORK_MARKS = ["red", "blue", "green", "orange"] as const;
+export type WorkMark = (typeof WORK_MARKS)[number];
+export const WORK_MARK_LABEL: Record<WorkMark, string> = { red: "빨강", blue: "파랑", green: "초록", orange: "주황" };
+export function isWorkMark(value: unknown): value is WorkMark {
+  return typeof value === "string" && (WORK_MARKS as readonly string[]).includes(value);
+}
+export const WORK_MARK_MESSAGE = "작업용 글자색은 빨강 · 파랑 · 초록 · 주황 중 하나여야 합니다";
+
 export type TableColumnType = "number" | "percent" | "period" | "boolean" | "string";
 
 export interface TableColumn {

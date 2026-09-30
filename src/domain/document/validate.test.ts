@@ -59,6 +59,20 @@ describe("validateDocument — 저장 검증 한 벌", () => {
   });
 });
 
+describe("작업용 글자색 — 검증은 모양만 본다 (기능/문면 §3.2 작업 표시)", () => {
+  const checks = { env: { kind: "general" as const, clauseGate: clauseGateFrom([], []) }, resolve: catalogTypeResolver(catalog), scope: {} };
+  it("네 색은 문제없다 — 칠한 문서와 칠하지 않은 문서의 검증 결과가 같다", () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    const tree = b.document("D", [b.article("조", [b.paragraph([{ ...b.text("회사는 "), mark: "red" }, b.text("보험금을"), { ...b.text(" 지급"), mark: "orange" }])])]);
+    expect(validateDocument(tree, checks)).toEqual([]);
+  });
+  it("없는 색은 구조 오류 — 저장 거부", () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    const tree = b.document("D", [b.article("조", [b.paragraph([{ ...b.text("회사는"), mark: "purple" as never }])])]);
+    expect(validateDocument(tree, checks).map((i) => [i.kind, i.message])).toEqual([["structure", "작업용 글자색은 빨강 · 파랑 · 초록 · 주황 중 하나여야 합니다"]]);
+  });
+});
+
 describe("함수조항 참조 자리 — 유형 = 출력 모양 (최종 결정 4 · 기능/함수조항 §3.1)", () => {
   const modes: Record<string, "inline" | "block" | "item" | "subitem"> = { C1: "inline", C2: "block", C3: "item", C4: "subitem" };
   const gate = { ...PERMISSIVE_GATE, clauseMode: (code: string) => modes[code] };

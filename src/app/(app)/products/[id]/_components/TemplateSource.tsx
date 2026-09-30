@@ -12,7 +12,7 @@
  *   표·박스에는 id 를 심지 않는다 — 오른쪽 패널의 `node-<id>` 와 겹쳐 오류 패널의 이동이 엉킨다.
  */
 import { BoxView } from "@/app/_components/BoxView";
-import { ClauseModel, clauseEditHref } from "@/app/_components/ClauseModel";
+import { ClauseModel } from "@/app/_components/ClauseModel";
 import { IconButton, IconRevert } from "@/app/_components/icons";
 import { STRUCT_KEY_CHIP } from "@/app/_lib/labels";
 import type { EnumDef } from "@/domain/catalog";
@@ -253,15 +253,10 @@ function ClauseBox({ nodeId, clauseCode, baseOptions, bindings, ctx }: { nodeId:
     <div className="ts-doc-clause" data-clause-box={nodeId}>
       <div className="ts-doc-clause-head">
         <span className="ts-doc-clause-name" title={`함수조항 · ${clauseCode}`}>
-          함수조항 ({label})
+          <span className="ts-doc-clause-code">[{clauseCode}]</span> {clause?.label ?? "없는 함수조항"}
         </span>
         {clause && (clause.params ?? []).length > 0 && <span className="ts-doc-clause-opt">인자: {argsText(clause, bindings, ctx)}</span>}
         {override && <span className="ts-badge">오버라이드</span>}
-        {clause && (
-          <a className="ts-doc-clause-link" href={clauseEditHref(clause.code)} target="_blank" rel="noopener" title="함수조항 화면을 새 탭으로 연다 — 본문 · 옵션은 거기서 고친다">
-            함수조항에서 고치기 →
-          </a>
-        )}
       </div>
       <div className="ts-doc-clause-body">
         {clause ? (

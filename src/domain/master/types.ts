@@ -22,6 +22,15 @@ export interface MasterField {
   /** 기본값 — 폼 프리필 전용 (ADR-0004). 저장소로 자동 유입되지 않는다. */
   defaultValue?: Value;
   description?: string;
+  /** 단위 — 숫자 필드의 입력칸 뒤 · 읽기 값 뒤에 붙는다 (「2.5 %」). 저장 값에는 들어가지 않는다. */
+  unit?: string;
+  /**
+   * 조건부 필드 — 같은 폼의 `field` 가 `equals` 일 때만 자리가 있다 (「고지유형 = 간편심사면 간편심사구분」).
+   * 조건이 맞지 않으면 칸을 그리지 않고 · 미입력으로 세지 않고 · 저장 때 값을 지운다 (`isFieldShown`).
+   */
+  visibleWhen?: FieldCondition;
+  /** list<enum> 만 — 같은 폼의 `field` 가 `equals` 면 하나만 고른다(라디오). 여럿이면 체크박스. */
+  singleWhen?: FieldCondition;
   /** 시스템 소유 필드 — 유저 정의 폼이 들어오면 삭제 · 타입 변경 금지의 근거 (ADR-0065 §3). */
   system?: true;
   /**
@@ -35,6 +44,12 @@ export interface MasterField {
    * 여는 폼(`MasterForm.optional`)의 필드 단위판이다 — 정하는 것은 마스터 코드다, 유저가 붙이지 않는다 (기능/마스터 §3.4 · 2026-09-27).
    */
   optional?: true;
+}
+
+/** 같은 폼 안 다른 필드의 값 조건 — 필드 키 · 비교 값(열거형이면 값 코드). */
+export interface FieldCondition {
+  field: Code;
+  equals: Value;
 }
 
 /** 폼 — 입력 묶음. 키는 전역 유일 · 불변. 레벨 하나. */

@@ -81,7 +81,7 @@ export interface StructFormProps {
   issues?: Issue[];
   /** 관리자 — 필드 라벨 옆에 작은 ⓘ 링크. tooltip 이 `폼키.필드키` 이고 마스터 화면의 그 필드로 이어진다. */
   showCodes?: boolean;
-  /** 이 경로의 행을 강조하고 마운트 시 화면 가운데로 스크롤한다 (마스터 → 사용처에서 건너왔을 때). */
+  /** 이 경로의 행을 강조하고 마운트 시 화면 가운데로 스크롤한다 (마스터 필드 상세의 값 노드에서 건너왔을 때). */
   highlightPath?: string;
   /**
    * 노드 카드(담보 · 세부보장 · 급부 카드) 안에 얹힌 폼 — 폼마다 테두리 상자(fieldset · legend)를 두르지 않고
@@ -111,7 +111,7 @@ function StringInput({ id, field, onEdit, className, name }: InputProps) {
 }
 
 function NumberInput({ id, field, onEdit, className, name }: InputProps) {
-  return (
+  const input = (
     <input
       id={id}
       type="number"
@@ -122,6 +122,13 @@ function NumberInput({ id, field, onEdit, className, name }: InputProps) {
       value={textDraft(field)}
       onChange={(e) => onEdit(e.target.value)}
     />
+  );
+  if (field.view.unit === undefined) return input;
+  return (
+    <span className="ts-input-unit">
+      {input}
+      <span aria-hidden="true">{field.view.unit}</span>
+    </span>
   );
 }
 
@@ -228,13 +235,28 @@ function EnumInput({ id, field, onEdit, className, name }: InputProps) {
   );
 }
 
-function ListEnumInput({ id, field, onEdit, name }: InputProps) {
+function ListEnumInput({ id, field, onEdit, name, single }: InputProps) {
   // list<enum> 전용 입력이라 draft 는 항상 코드 배열이다 (table 의 TableDraft 와는 INPUT_BY_KIND 매핑이 갈라 준다).
   const selected = (Array.isArray(field.draft) ? field.draft : []) as string[];
   const options = (field.view.enumOptions ?? []).map((o) => o.code);
   // 선택지 순서를 유지한 채 켜고 끈다 — 없는 값은 남긴다 (빼기로만 지운다)
   const toggle = (code: string, on: boolean) => onEdit(toggleEnumCode(options, selected, code, on));
   const missing = missingCodes(field, selected);
+  if (single) {
+    return (
+      <span className="ts-form-checks" role="radiogroup" aria-labelledby={`${id}-label`}>
+        {(field.view.enumOptions ?? []).map((o) => (
+          <label key={o.code} className="ts-form-check">
+            <input type="radio" name={name ?? field.view.path} value={o.code} checked={selected.includes(o.code)} onChange={() => onEdit([o.code])} />
+            {o.label}
+          </label>
+        ))}
+        {missing.map((code) => (
+          <MissingChip key={code} code={code} onRemove={() => toggle(code, false)} />
+        ))}
+      </span>
+    );
+  }
   return (
     <span className="ts-form-checks" role="group" aria-labelledby={`${id}-label`}>
       {(field.view.enumOptions ?? []).map((o) => (
@@ -305,7 +327,7 @@ function FieldRow({ idBase, field, externalIssues, onEdit, onRevert, onRemove, s
   const { view } = field;
   const [askRevert, setAskRevert] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
-  // 강조 행은 화면 가운데로 — 마스터 사용처에서 건너온 사람이 그 자리를 바로 본다
+  // 강조 행은 화면 가운데로 — 마스터 필드 상세의 값 노드에서 건너온 사람이 그 자리를 바로 본다
   useEffect(() => {
     if (highlighted) rowRef.current?.scrollIntoView?.({ block: "center" });
   }, [highlighted]);

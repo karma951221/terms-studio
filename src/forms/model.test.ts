@@ -6,6 +6,7 @@ import { entered, NOT_ENTERED, type ValueSlot } from "@/domain/types";
 
 import {
   buildForm,
+  draftValueOf,
   formatValue,
   formProgress,
   formReducer,
@@ -13,6 +14,8 @@ import {
   initFormState,
   isFieldAbsent,
   isFieldHidden,
+  isViewShown,
+  isViewSingle,
   toSubmission,
   zodSchemaFor,
   zodValueSchema,
@@ -671,6 +674,65 @@ describe("기본 숨김 필드 (hiddenByDefault) — 감액 「이후 지급률�
     const revealed = formReducer(s, { type: "reveal", path: "reduction.after_rate" });
     expect(isFieldHidden(revealed, "reduction.after_rate")).toBe(false);
     expect(toSubmission(revealed)).toEqual(toSubmission(s));
+  });
+});
+
+describe("조건부 필드 (visibleWhen · singleWhen) — 상품특성 고지유형에 딸린 칸 (2026-10-01)", () => {
+  // 픽스처 — 고지유형(E0001) = 간편심사(V02)면 구분 · 유형, 구분 = 단일(V01)이면 유형 하나만
+  const master: MasterForm[] = [
+    {
+      key: "f", label: "상품특성", level: "product",
+      fields: [
+        { key: "kind", label: "고지유형", type: { kind: "enum", enumCode: "E0001" } },
+        { key: "scope", label: "간편심사구분", type: { kind: "enum", enumCode: "E0001" }, visibleWhen: { field: "kind", equals: "V02" } },
+        { key: "types", label: "간편심사유형", type: { kind: "list<enum>", enumCode: "E0001" }, visibleWhen: { field: "kind", equals: "V02" }, singleWhen: { field: "scope", equals: "V01" } },
+        { key: "rate", label: "평균공시이율", type: { kind: "number" }, unit: "%" },
+      ],
+    },
+  ];
+  const stateWith = (...slots: (readonly [string, ValueSlot])[]) => initFormState(buildForm("product", enums, new Map(slots), undefined, master));
+  const view = (s: FormState, path: string) => s.model.fields.find((f) => f.path === path)!;
+
+  it("폼 모델이 조건을 같은 폼의 경로로 옮긴다 · 단위도 옮긴다", () => {
+    const s = stateWith();
+    expect(view(s, "f.types").visibleWhen).toEqual({ path: "f.kind", equals: "V02" });
+    expect(view(s, "f.types").singleWhen).toEqual({ path: "f.scope", equals: "V01" });
+    expect(view(s, "f.kind").visibleWhen).toBeUndefined();
+    expect(view(s, "f.rate").unit).toBe("%");
+  });
+
+  it("isViewShown · isViewSingle — 편집 중 초안으로 판정한다", () => {
+    let s = stateWith();
+    expect(isViewShown(view(s, "f.scope"), draftValueOf(s))).toBe(false);
+    s = formReducer(s, { type: "edit", path: "f.kind", draft: "V02" });
+    expect(isViewShown(view(s, "f.scope"), draftValueOf(s))).toBe(true);
+    expect(isViewSingle(view(s, "f.types"), draftValueOf(s))).toBe(false);
+    s = formReducer(s, { type: "edit", path: "f.scope", draft: "V01" });
+    expect(isViewSingle(view(s, "f.types"), draftValueOf(s))).toBe(true);
+  });
+
+  it("고지유형을 바꿔 칸이 사라지면 저장된 딸린 값은 지우기로 제출 · 저장 값 없는 숨은 칸은 싣지 않는다", () => {
+    let s = stateWith(["f.kind", entered("V02")], ["f.scope", entered("V02")], ["f.types", entered(["V01", "V02"])]);
+    s = formReducer(s, { type: "edit", path: "f.kind", draft: "V01" });
+    expect(toSubmission(s).values).toEqual([
+      { path: "f.kind", value: "V01" },
+      { path: "f.scope", value: undefined },
+      { path: "f.types", value: undefined },
+    ]);
+    // 처음부터 일반심사 — 숨은 칸에 저장 값이 없으니 아무것도 싣지 않는다
+    expect(toSubmission(stateWith(["f.kind", entered("V01")])).values).toEqual([]);
+  });
+
+  it("통합 → 단일로 바꾸면 여럿 고른 유형은 첫 것만 남는다", () => {
+    let s = stateWith(["f.kind", entered("V02")], ["f.scope", entered("V02")], ["f.types", entered(["V01", "V02"])]);
+    s = formReducer(s, { type: "edit", path: "f.scope", draft: "V01" });
+    expect(s.fields["f.types"].draft).toEqual(["V01"]);
+    expect(s.fields["f.types"].value).toEqual(["V01"]);
+    expect(toSubmission(s).values).toContainEqual({ path: "f.types", value: ["V01"] });
+  });
+
+  it("formatValue 는 단위를 값 뒤에 붙인다", () => {
+    expect(formatValue(view(stateWith(["f.rate", entered(2.5)]), "f.rate"))).toBe("2.5%");
   });
 });
 

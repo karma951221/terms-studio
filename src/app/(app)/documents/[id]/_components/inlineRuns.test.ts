@@ -47,6 +47,21 @@ describe("문장 칸 DOM 조각 → setInlines 조각 (기능/문면 §4.3 그 �
     expect(runsReplacing(cur, "n2", inner)).toEqual([{ id: "n1", text: "계약일부터 " }, { node: inner[0] }, { id: "n3", text: " 이내" }]);
   });
 
+  it("작업용 글자색 — 색이 바뀌는 자리에서 문장이 갈리고, 같은 색이 잇닿으면 합친다 (§3.2 작업 표시)", () => {
+    const cur = list();
+    // 「계약일부터 」 가운데 「부터」만 빨강 — 첫 조각은 제 id, 나머지는 새 id
+    const runs = runsFromTokens(cur, [{ text: "계약일" }, { text: "부터", mark: "red" }, { text: " " }, { chip: "n2" }, { text: " 이내", mark: "blue" }], sequentialIds("x"));
+    expect(runs).toEqual([{ id: "n1", text: "계약일" }, { id: "x1", text: "부터", mark: "red" }, { id: "x2", text: " " }, { keep: "n2" }, { id: "n3", text: " 이내", mark: "blue" }]);
+    // 칠한 목록의 제자리 조각은 색까지 같다 — 바뀐 것 없음
+    const colored = [{ ...cur[0], mark: "red" as const }, cur[1], cur[2]];
+    expect(identityRuns(colored)[0]).toEqual({ id: "n1", text: "계약일부터 ", mark: "red" });
+    expect(sameRuns(runsFromTokens(colored, [{ text: "계약일", mark: "red" }, { text: "부터 ", mark: "red" }, { chip: "n2" }, { text: " 이내" }], sequentialIds("x")), identityRuns(colored))).toBe(true);
+    // 색을 지우면 옛 조각과 합쳐진다
+    expect(runsFromTokens(colored, [{ text: "계약일부터 " }, { chip: "n2" }, { text: " 이내" }], sequentialIds("x"))).toEqual(identityRuns(cur));
+    // 칩 삭제 · 풀기도 색을 지킨다
+    expect(runsWithout(colored, "n2")[0]).toEqual({ id: "n1", text: "계약일부터 ", mark: "red" });
+  });
+
   it("표 붙여넣기 — 탭 · 줄로 나뉜 글만 격자로 읽는다", () => {
     expect(parseGrid("용어\t정의\n계약자\t회사와…\n")).toEqual([
       ["용어", "정의"],

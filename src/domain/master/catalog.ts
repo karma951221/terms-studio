@@ -6,7 +6,9 @@
  * 레벨 배치의 근거:
  * - 공시이율{평균공시이율} · 상품특성{갱신형여부 · 태아보장여부 · 단체계약여부 · 간편심사유형 · 건강고지유형}은 **상품(product)** —
  *   상품 한 권에 하나인 사실이라 세목 축을 타지 않는다. 기본정보 탭의 상품정보에서 상품명과 함께 편집 한 번 · 저장 한 번 (2026-09-28).
- *   고지유형을 상품 레벨 enum 으로 둔 결정(ADR-0006)의 구현이다. 간편심사유형 E0003 · 건강고지유형 E0004 는 열거형(데이터)이다.
+ *   고지유형을 상품 레벨 enum 으로 둔 결정(ADR-0006)의 구현이다. 계약은 일반심사 · 간편심사 · 건강고지 중 하나라
+ *   고지유형 E0005 하나를 고르고, 그에 딸린 칸만 연다 (2026-10-01): 간편심사 → 간편심사구분 E0006(단일 · 통합) + 간편심사유형 E0003
+ *   (단일이면 하나 · 통합이면 둘 이상), 건강고지 → 건강고지유형 E0004 (하나 이상). 조건 값은 열거형 값 코드다 — 코드는 불변이다.
  * - 납입면제 · 무저해지 · 계약전환 · 영위업종적용은 **세목(plan)** — 값을 갖는 것이 세목 선택지라
  *   상품 레벨로 올리면 종 · 형 축이 성립하지 않는다.
  * - 담보 기본{보험금명}은 **담보(coverage)** — 문면 값 슬롯이 투영 구분자로 이 자리를 찍는다.
@@ -17,25 +19,93 @@
  *
  * enum 코드(E0001 · E0002)는 데이터(열거형변수)를 가리킨다 — 값은 배포 없이 늘어난다 (ADR-0037 §5).
  */
-import type { MasterForm } from "./types";
+import type { ValueSlot } from "../types";
+import type { FormFieldReader, MasterForm } from "./types";
+
+/** 고지유형 E0005 값 코드 — 상품특성 조건부 칸의 조건. */
+export const NOTICE_KIND = { general: "V01", review: "V02", health: "V03" } as const;
+/** 계약형태 E0007 값 코드 — 독립특약이면 기본계약을 두지 않는다 (기능/상품 §3.1 · 2026-10-01). */
+export const CONTRACT_KIND = { main: "V01", standalone: "V02" } as const;
+/** 계약형태 값 자리 경로 — 기본계약 규칙(기능/상품 §3.5)이 읽는다. */
+export const CONTRACT_KIND_PATH = "feature.contract_kind";
+/** 독립특약인가 — 미입력은 기본값(주계약)으로 본다. */
+export function isStandaloneContract(slot: ValueSlot | undefined): boolean {
+  return slot?.entered === true && slot.value === CONTRACT_KIND.standalone;
+}
+/** 간편심사구분 E0006 값 코드. */
+export const REVIEW_SCOPE = { single: "V01", combined: "V02" } as const;
+
+const is = (read: FormFieldReader, key: string, code: string) => {
+  const slot = read(key);
+  return slot?.entered === true && slot.value === code;
+};
+const countOf = (read: FormFieldReader, key: string) => {
+  const slot = read(key);
+  return slot?.entered && Array.isArray(slot.value) ? slot.value.length : 0;
+};
 
 export const MASTER: readonly MasterForm[] = [
   {
     key: "disclosure",
     label: "공시이율",
     level: "product",
-    fields: [{ key: "avg_rate", label: "평균공시이율", type: { kind: "number" }, description: "% — 이 계약 체결 시점의 평균공시이율 (예: 2.5 = 2.50%)" }],
+    fields: [{ key: "avg_rate", label: "평균공시이율", type: { kind: "number" }, unit: "%", description: "% — 이 계약 체결 시점의 평균공시이율 (예: 2.5 = 2.50%)" }],
   },
   {
     key: "feature",
     label: "상품특성",
     level: "product",
     fields: [
+      { key: "contract_kind", label: "계약형태", type: { kind: "enum", enumCode: "E0007" }, defaultValue: CONTRACT_KIND.main },
       { key: "renewable", label: "갱신형여부", type: { kind: "boolean" } },
-      { key: "fetal", label: "태아보장여부", type: { kind: "boolean" } },
-      { key: "group_contract", label: "단체계약여부", type: { kind: "boolean" } },
-      { key: "review_type", label: "간편심사유형", type: { kind: "enum", enumCode: "E0003" } },
-      { key: "notice_type", label: "건강고지유형", type: { kind: "enum", enumCode: "E0004" } },
+      { key: "fetal", label: "태아보장여부", type: { kind: "boolean" }, defaultValue: false },
+      { key: "group_contract", label: "단체계약여부", type: { kind: "boolean" }, defaultValue: false },
+      { key: "notice_kind", label: "고지유형", type: { kind: "enum", enumCode: "E0005" }, defaultValue: NOTICE_KIND.general },
+      {
+        key: "review_scope",
+        label: "간편심사구분",
+        type: { kind: "enum", enumCode: "E0006" },
+        visibleWhen: { field: "notice_kind", equals: NOTICE_KIND.review },
+      },
+      {
+        key: "review_type",
+        label: "간편심사유형",
+        type: { kind: "list<enum>", enumCode: "E0003" },
+        visibleWhen: { field: "notice_kind", equals: NOTICE_KIND.review },
+        singleWhen: { field: "review_scope", equals: REVIEW_SCOPE.single },
+      },
+      {
+        key: "notice_type",
+        label: "건강고지유형",
+        type: { kind: "list<enum>", enumCode: "E0004" },
+        visibleWhen: { field: "notice_kind", equals: NOTICE_KIND.health },
+      },
+    ],
+    rules: [
+      {
+        description: "고지유형 = 간편심사면 간편심사구분을 고른다",
+        check: (read) => {
+          if (!is(read, "notice_kind", NOTICE_KIND.review)) return undefined;
+          return read("review_scope")?.entered ? undefined : { field: "review_scope", message: "간편심사면 단일심사인지 통합간편심사인지 고르세요" };
+        },
+      },
+      {
+        description: "간편심사유형 — 단일심사면 1개, 통합간편심사면 2개 이상",
+        check: (read) => {
+          if (!is(read, "notice_kind", NOTICE_KIND.review)) return undefined;
+          const count = countOf(read, "review_type");
+          if (is(read, "review_scope", REVIEW_SCOPE.single) && count !== 1) return { field: "review_type", message: "단일심사면 간편심사유형을 1개 고르세요" };
+          if (is(read, "review_scope", REVIEW_SCOPE.combined) && count < 2) return { field: "review_type", message: "통합간편심사면 간편심사유형을 2개 이상 고르세요" };
+          return undefined;
+        },
+      },
+      {
+        description: "고지유형 = 건강고지면 건강고지유형을 1개 이상 고른다",
+        check: (read) => {
+          if (!is(read, "notice_kind", NOTICE_KIND.health)) return undefined;
+          return countOf(read, "notice_type") > 0 ? undefined : { field: "notice_type", message: "건강고지면 건강고지유형을 1개 이상 고르세요" };
+        },
+      },
     ],
   },
   {

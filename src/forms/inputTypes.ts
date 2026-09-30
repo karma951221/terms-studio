@@ -18,4 +18,6 @@ export interface InputProps {
    * 라디오 묶음이 서로 섞이지 않도록 호출부가 접두를 붙여 넘긴다.
    */
   name?: string;
+  /** list<enum> 만 — 하나만 고른다(라디오). 조건부 `singleWhen` 이 맞을 때 호출부가 넘긴다. */
+  single?: boolean;
 }

@@ -58,7 +58,15 @@ export class Editor {
     return this.toolbar.getByRole("button", { name, exact: true });
   }
 
+  /** 툴바 「더보기(⋯)」 안의 도구(관 · 문장 안 함수조항, 2026-10-01) — 툴바 줄에 없으면 더보기를 열어 고른다. */
   async runTool(name: string): Promise<void> {
+    if ((await this.tool(name).count()) === 0) {
+      await this.tool("더보기").click();
+      const item = this.toolbar.getByRole("menuitem", { name, exact: true });
+      await expect(item).toBeEnabled();
+      await item.click();
+      return;
+    }
     const button = this.tool(name);
     try {
       await expect(button).toBeEnabled();
@@ -125,7 +133,7 @@ export class Editor {
         return this.confirm(d, "넣기");
       }
       case "clauseInlineRef": {
-        await this.runTool("함수조항(문장)");
+        await this.runTool("문장 안 함수조항");
         const d = this.dialog("함수조항(문장 안) 넣기");
         await pickCombo(d.locator("#pop-clause"), { value: node.clauseCode });
         for (const [option, value] of Object.entries(node.options)) await d.locator(`#pop-opt-${option}`).selectOption(value);
@@ -466,7 +474,7 @@ export class DocumentAuthoring {
       const linked = (article as { linkedArticleId?: string }).linkedArticleId;
       if (linked) {
         await this.article.locator("h3 [role=textbox]").focus();
-        await this.editor.runTool("조연결");
+        await this.editor.runTool("보통약관 조 연결");
         const d = this.editor.dialog("조연결");
         await pickCombo(d.locator("#pop-link"), { value: linked });
         await this.editor.confirm(d, "확인");
@@ -548,7 +556,7 @@ export class DocumentAuthoring {
       await this.page.getByRole("menuitem", { name: `${this.clauseLabels.get(node.clauseCode)}(${node.clauseCode})`, exact: true }).click();
       if (Object.keys(node.options).length > 0) {
         // 블록 머리의 옵션 단추 → 「함수조항 옵션」 팝업에서 옵션마다 선택지 (인자가 있는 함수조항이면 「함수조항 옵션 · 인자」 — 인자는 기본 연결 그대로)
-        const block = this.article.locator("[data-clause-ref]").filter({ hasText: `함수조항 (${this.clauseLabels.get(node.clauseCode)})` }).last();
+        const block = this.article.locator("[data-clause-ref]").filter({ hasText: `[${node.clauseCode}] ${this.clauseLabels.get(node.clauseCode)}` }).last();
         await block.locator(".ts-doc-clause-opt").click();
         const d = this.page.getByRole("dialog", { name: /^함수조항 옵션( · 인자)?$/ });
         for (const [option, value] of Object.entries(node.options)) await d.locator(`#pop-opt-${option}`).selectOption(value);
@@ -604,28 +612,27 @@ export class ClauseAuthoringDriver {
     await this.page.getByLabel("함수조항명").fill(label);
   }
 
-  /** 옵션 목록 — 옵션마다 이름, 선택지마다 이름 · 문구. 새 옵션은 빈 선택지 둘을 품고 온다. */
+  /** 옵션 목록 — 옵션마다 카드(옵션명), 선택지마다 문구 칸 하나(이름은 문구에서 저절로). 새 옵션은 빈 선택지 둘을 품고 온다. */
   async options(options: readonly ClauseOption[]): Promise<void> {
     this.editor.optionLabels = new Map(options.map((o) => [o.code, o.label]));
     for (const option of options) {
       await this.page.getByRole("button", { name: "옵션 추가" }).click();
       await this.page.getByLabel("옵션명").last().fill(option.label);
       for (const [i, value] of option.values.entries()) {
-        if (i >= 2) await this.page.getByRole("button", { name: `${option.label}에 선택지 추가` }).click();
-        await this.page.getByRole("textbox", { name: `${option.label} — 선택지 ${i + 1} 이름`, exact: true }).fill(value.label);
-        await this.page.getByRole("textbox", { name: `${option.label} — 선택지 ${i + 1} 문구`, exact: true }).fill(value.body.map((n) => n.text ?? "").join(""));
+        if (i >= 2) await this.page.getByRole("button", { name: `선택지 추가 · ${option.label}`, exact: true }).click();
+        await this.page.getByRole("textbox", { name: `${option.label} — 선택지 ${i + 1}`, exact: true }).fill(value.body.map((n) => n.text ?? "").join(""));
       }
     }
   }
 
-  /** 인자 표 — 인자마다 이름 · 타입 · 기본 연결(최종 결정 2). 본문의 슬롯 · 조건 고르기가 인자를 보려면 본문보다 먼저. */
+  /** 인자 — 맨 위 추가 줄에 인자마다 이름 · 타입 · 기본 연결을 적고 ⊕(최종 결정 2 · 2026-10-01 추가 줄). 본문의 슬롯 · 조건 고르기가 인자를 보려면 본문보다 먼저. */
   async params(params: NonNullable<ClauseSpec["params"]>): Promise<void> {
-    for (const [i, p] of params.entries()) {
-      await this.page.getByRole("button", { name: "인자 추가" }).click();
-      await this.page.getByLabel(`인자 ${i + 1} 이름`, { exact: true }).fill(p.name);
+    for (const p of params) {
+      await this.page.getByLabel("새 인자 이름", { exact: true }).fill(p.name);
       const type = p.type.kind === "enum" || p.type.kind === "list<enum>" ? `${p.type.kind}:${p.type.enumCode}` : p.type.kind === "planOptions" ? `planOptions:${p.type.form}` : p.type.kind;
-      await this.page.getByLabel(`인자 ${i + 1} 타입`, { exact: true }).selectOption(type);
-      if (p.default) await this.page.getByLabel(`인자 ${i + 1} 기본 연결`, { exact: true }).selectOption(`d:${p.default.code}`);
+      await this.page.getByLabel("새 인자 타입", { exact: true }).selectOption(type);
+      if (p.default) await this.page.getByLabel("새 인자 기본 연결", { exact: true }).selectOption(`d:${p.default.code}`);
+      await this.page.getByRole("button", { name: "인자 추가" }).click();
     }
   }
 

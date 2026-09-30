@@ -88,9 +88,14 @@ function baseContractCoordinate(product: { id: Id; name: string }): Coordinate {
 /**
  * 읽기 시점 판정 — 0 → `noBaseContract` · 2+ → `unsupported`(복구 동선 「하나만 남기고 해제」) · 1 → 없음.
  * 2+ 는 서비스가 두 번째 지정을 막으므로 기존 데이터·우회 저장에서만 생긴다 — 그래도 조립은 이 오류로 멈춘다.
+ * 독립특약(`standalone`, 계약형태 E0007 · 기능/상품 §3.1 · 2026-10-01)은 거꾸로 0 이 정상이고 1+ 가 오류다 —
+ * 서비스가 탑재 · 지정 · 전환 저장에서 막으므로 이것도 우회 저장에서만 생긴다.
  */
-export function baseContractCountIssue(count: number, product: { id: Id; name: string }): Issue | undefined {
+export function baseContractCountIssue(count: number, product: { id: Id; name: string }, standalone = false): Issue | undefined {
   const at = baseContractCoordinate(product);
+  if (standalone) {
+    return count === 0 ? undefined : { kind: "unsupported", severity: "error", message: "독립특약 상품은 기본계약을 두지 않습니다 — 기본계약을 해제하세요", at, source: at };
+  }
   if (count === 0) return { kind: "noBaseContract", severity: "error", message: "기본계약이 지정되지 않았습니다", at, source: at };
   if (count > 1) return { kind: "unsupported", severity: "error", message: `기본계약이 ${count}개입니다 — 하나만 남기고 해제하세요 (MVP 는 1개)`, at, source: at };
   return undefined;
@@ -99,8 +104,10 @@ export function baseContractCountIssue(count: number, product: { id: Id; name: s
 /**
  * 지정 전 검사 — 이미 기본계약이 있으면 거부한다 (기능/상품 §3 「기본계약」 · MVP 정확히 1개).
  * 같은 상품담보를 다시 지정하는 것도 「이미 기본계약」이므로 같은 거부다. 바꾸려면 해제 → 지정.
+ * 독립특약 상품은 수와 무관하게 거부한다 (기능/상품 §3.1 · 2026-10-01).
  */
-export function baseContractDesignationIssues(existingCount: number, product: { id: Id; name: string }): Issue[] {
+export function baseContractDesignationIssues(existingCount: number, product: { id: Id; name: string }, standalone = false): Issue[] {
+  if (standalone) return [{ kind: "unsupported", message: "독립특약 상품은 기본계약을 두지 않습니다", at: baseContractCoordinate(product) }];
   if (existingCount === 0) return [];
   return [{ kind: "unsupported", message: "기본계약은 하나만 지정할 수 있습니다 — 먼저 현재 기본계약을 해제하세요 (MVP)", at: baseContractCoordinate(product) }];
 }

@@ -8,11 +8,18 @@
  * - 칩 사이의 글자 구간마다 지금 목록의 문장 id 를 다시 쓴다 — 명령 목록이 같은 문장을 가리켜 저장 재적용이 흔들리지 않는다.
  * - 지워진 칩(Backspace)은 목록에서 빠진다 — 칩 양옆 글자는 한 구간으로 합쳐진다.
  * - 커서 자리(`caret`)에 새 칩을 넣으면 그 구간의 문장이 둘로 갈린다 (오른쪽 클릭 › 넣기).
+ * - 작업용 글자색(`mark`, 기능/문면 §3.2 작업 표시)이 다른 글은 다른 문장 조각이다 — 색이 바뀌는 자리에서 문장이 갈리고,
+ *   같은 색이 잇닿으면 한 조각으로 합쳐진다. 칩은 색을 갖지 않는다.
  */
 import type { IdSource, InlineNode, InlineRun } from "@/domain/document";
-import type { Id } from "@/domain/types";
+import type { Id, WorkMark } from "@/domain/types";
 
-export type Token = { text: string } | { chip: Id } | { caret: true };
+export type Token = { text: string; mark?: WorkMark } | { chip: Id } | { caret: true };
+
+/** 문장 노드 → 조각 (색이 있으면 싣는다). */
+function textRun(n: { id: Id; text: string; mark?: WorkMark }): InlineRun {
+  return n.mark ? { id: n.id, text: n.text, mark: n.mark } : { id: n.id, text: n.text };
+}
 
 /** contentEditable 이 끼워 넣는 글자를 문면 글자로 — nbsp 는 공백, 폭 없는 공백 · 줄바꿈은 버린다. */
 export function cleanText(raw: string): string {
@@ -21,7 +28,7 @@ export function cleanText(raw: string): string {
 
 /** 지금 목록을 그대로 둘 때의 조각 — 바뀐 것이 없는지 견줄 때 쓴다. */
 export function identityRuns(current: readonly InlineNode[]): InlineRun[] {
-  return current.flatMap((n): InlineRun[] => (n.kind === "text" ? (n.text === "" ? [] : [{ id: n.id, text: n.text }]) : [{ keep: n.id }]));
+  return current.flatMap((n): InlineRun[] => (n.kind === "text" ? (n.text === "" ? [] : [textRun(n)]) : [{ keep: n.id }]));
 }
 
 export function sameRuns(a: readonly InlineRun[], b: readonly InlineRun[]): boolean {
@@ -47,18 +54,27 @@ export function runsFromTokens(current: readonly InlineNode[], tokens: readonly 
   const runs: InlineRun[] = [];
   let gap = 0;
   let buffer = "";
+  let mark: WorkMark | undefined;
   let inserted = false;
   const used = new Set<Id>();
   const flush = () => {
     if (buffer === "") return;
     const pool = pools[Math.min(gap, pools.length - 1)];
     const id = pool.shift() ?? newId();
-    runs.push({ id, text: buffer });
+    runs.push(mark ? { id, text: buffer, mark } : { id, text: buffer });
     buffer = "";
   };
   for (const t of tokens) {
-    if ("text" in t) buffer += cleanText(t.text);
-    else if ("caret" in t) {
+    if ("text" in t) {
+      const text = cleanText(t.text);
+      if (text === "") continue;
+      // 색이 바뀌는 자리에서 문장이 갈린다
+      if (t.mark !== mark) {
+        flush();
+        mark = t.mark;
+      }
+      buffer += text;
+    } else if ("caret" in t) {
       flush();
       if (insert && !inserted) {
         runs.push({ node: insert });
@@ -83,7 +99,7 @@ export function runsWithout(current: readonly InlineNode[], chipId: Id): InlineR
 
 /** 칩 하나를 노드 목록으로 바꾼 목록 (문장 안 조건 「풀기」 — 가지 내용을 그 자리에 꺼낸다). */
 export function runsReplacing(current: readonly InlineNode[], chipId: Id, nodes: readonly InlineNode[]): InlineRun[] {
-  return current.flatMap((n): InlineRun[] => (n.id === chipId ? nodes.map((node) => ({ node })) : n.kind === "text" ? (n.text === "" ? [] : [{ id: n.id, text: n.text }]) : [{ keep: n.id }]));
+  return current.flatMap((n): InlineRun[] => (n.id === chipId ? nodes.map((node) => ({ node })) : n.kind === "text" ? (n.text === "" ? [] : [textRun(n)]) : [{ keep: n.id }]));
 }
 
 /**

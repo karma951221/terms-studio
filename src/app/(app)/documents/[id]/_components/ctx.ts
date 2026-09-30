@@ -103,6 +103,11 @@ export interface DocCtx {
   clauseView?: "model" | "text";
   /** 값별 분기 대상 후보(목록값 인자 · 내부 변수와 그 값) — 칸 머리가 값 이름 · 칸 없는 값을 그린다. 함수조항 편집기만 준다. */
   switchSubjects?: readonly SwitchSubject[];
+  /**
+   * 작업용 글자색(§3.2 작업 표시)을 색 조각으로 그리나 — `false` 면 글만(미리보기 · 사전평가 결과 조문 — 산출물 모양).
+   * 「수정 흔적 보기」 끄기는 이것이 아니라 화면의 `.is-marks-off` 가 글색을 되돌린다(편집기는 색 조각을 늘 품어야 되읽는다).
+   */
+  workMarks?: boolean;
 }
 
 /** 가운데 편집기의 조작 — 편집 모드에서만 준다. */
@@ -140,6 +145,13 @@ export interface EditHandlers {
   blockSel?: readonly Id[];
   /** 블록 손잡이를 눌렀다 — Shift 면 잇닿은 형제까지 늘린다. */
   selectBlock?: (id: Id, extend: boolean) => void;
+  /**
+   * 블록 오른쪽 위의 복제 · 삭제 (2026-10-01) — 툴바 버튼이 쓰던 길(`runTool`)을 그 노드 자리로 돌린다(조 · 관이면 그 제목 자리).
+   * 없으면 아이콘도 없다.
+   */
+  blockAct?: (nodeId: Id, act: "duplicate" | "remove", button: HTMLElement) => void;
+  /** 지금 자리의 블록(커서가 선 블록 · 누른 블록 · 조 · 관 제목) — 그 블록의 복제 · 삭제 아이콘은 포인터가 없어도 보인다. */
+  currentBlock?: Id;
 }
 
 /** 조건식 칩 글자 — 읽기 모드는 길면 자르고 전체는 tooltip 으로 준다 (디자인원칙 §2 L3). */

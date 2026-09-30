@@ -14,13 +14,14 @@
 import { Fragment, useEffect, useId, useState } from "react";
 
 import { PLAN_AXIS_LABEL, planCombinationKey, planOptionLabel, type PlanAxis, type PlanOption, type ProductPlan } from "@/domain/product";
-import { FieldInput, FieldReadValue, formReducer, initFormState, toSubmission, type FieldView, type FormAction, type FormModel, type FormState } from "@/forms";
+import { draftValueOf, FieldInput, FieldReadValue, formReducer, initFormState, isViewShown, isViewSingle, savedValueOf, toSubmission, type FieldView, type FormAction, type FormModel, type FormState } from "@/forms";
 import type { EditOutcome } from "@/app/_lib/edit";
 import type { ProductBasicInput } from "@/services/product";
 
 import { saveProductBasicAction } from "../../actions";
 import { basicDraftDirty } from "../../lib";
 import { useProductEdit } from "./ProductEdit";
+import { SaveConfirmDialog } from "./SaveConfirmDialog";
 
 type OptionDraft = Omit<ProductBasicInput["options"][number], "values">;
 type Confirmation = Extract<EditOutcome, { ok: "confirm" }>;
@@ -150,7 +151,7 @@ export function BasicTab(props: BasicTabProps) {
     return () => register(null);
   });
 
-  // 마스터 사용처에서 건너온 강조 행은 화면 가운데로
+  // 마스터 필드 상세의 값 노드(「입력 화면 →」)에서 건너온 강조 행은 화면 가운데로
   useEffect(() => {
     if (highlightOption) document.getElementById(`plan-option-${highlightOption}`)?.scrollIntoView?.({ block: "center" });
   }, [highlightOption]);
@@ -239,7 +240,7 @@ export function BasicTab(props: BasicTabProps) {
         <span id={`${id}-label`} className="sr-only">
           {label}
         </span>
-        <FieldInput id={id} field={field} name={`product:${path}`} className="ts-field-direct" onEdit={(draft) => setProductState((s) => formReducer(s, { type: "edit", path, draft }))} />
+        <FieldInput id={id} field={field} name={`product:${path}`} className="ts-field-direct" single={isViewSingle(field.view, draftValueOf(productState))} onEdit={(draft) => setProductState((s) => formReducer(s, { type: "edit", path, draft }))} />
         {field.error !== undefined && (
           <span className="ts-form-error" role="alert">
             {field.error}
@@ -256,26 +257,8 @@ export function BasicTab(props: BasicTabProps) {
           {error}
         </p>
       )}
-      {confirmation && (
-        <section className="ts-confirm">
-          <p className="ts-confirm-title">저장하면 아래 항목이 삭제된다</p>
-          <ul className="ts-confirm-loss">
-            {confirmation.impact.valueRowsLost > 0 && <li>사람이 입력한 값 {confirmation.impact.valueRowsLost}건이 사라진다</li>}
-            {confirmation.impact.cascade.map((line, i) => (
-              <li key={i}>{line}</li>
-            ))}
-            {confirmation.impact.brokenRefs.length > 0 && <li>깨질 참조 {confirmation.impact.brokenRefs.length}건</li>}
-          </ul>
-          <div className="ts-confirm-actions ts-basic-confirm-actions">
-            <button type="button" className="danger" disabled={pending} onClick={() => requestSave(true)}>
-              삭제 반영 후 저장
-            </button>
-            <button type="button" disabled={pending} onClick={() => setConfirmation(undefined)}>
-              돌아가기
-            </button>
-          </div>
-        </section>
-      )}
+      {/* 잃거나 바뀌는 것이 있으면 화면 위쪽 모달 하나로 묻는다 — 세목 제거 · 독립특약 전환의 기본계약 해제 (기능/상품 §3.1 · §4.4) */}
+      {confirmation && <SaveConfirmDialog impact={confirmation.impact} pending={pending} onCancel={() => setConfirmation(undefined)} onConfirm={() => requestSave(true)} />}
       <fieldset className="ts-basic-body" disabled={pending || !!confirmation}>
         <section className="ts-basic-product-values" id="product-values" aria-label="상품정보">
           <h3>상품정보</h3>
@@ -316,7 +299,7 @@ export function BasicTab(props: BasicTabProps) {
                         </th>
                       </tr>
                     )}
-                    {group.fields.map((field) => (
+                    {group.fields.filter((field) => isViewShown(field, editing ? draftValueOf(productState) : savedValueOf(productForm))).map((field) => (
                       <tr key={field.path} className={field.path === productHighlight ? "is-highlighted" : undefined} data-path={field.path}>
                         <th scope="row">{field.label}</th>
                         <td className="col-flex">{editing ? productCell(field.path, field.label) : <FieldReadValue field={field} />}</td>

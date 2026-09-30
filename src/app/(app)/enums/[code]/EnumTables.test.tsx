@@ -29,7 +29,7 @@ function render(mode: "read" | "edit", initial: EnumEditData = data) {
   return renderToStaticMarkup(
     <EditShell initial={initial} title="납입면제사유" path={[]} saveAction={async () => ({ ok: true })} initialMode={mode}>
       <FieldsEditor />
-      <ValuesEditor usage={{}} />
+      <ValuesEditor />
     </EditShell>,
   );
 }
@@ -53,7 +53,27 @@ describe("열거형 상세 — 필드 · 값 × 필드 표", () => {
     expect(html).toMatch(/<select[^>]*aria-label="뇌졸중 면책여부"/);
     expect(html).toContain(">미입력</option>");
     expect(html).toContain('aria-label="필드 이름 약관표시명"');
-    expect(html).toContain('aria-label="면책여부(F02) 빼기 — 저장할 때 삭제"');
+    expect(html).toContain('aria-label="행 삭제 · 면책여부"');
+  });
+
+  it("편집: 값 행 표 문법 — 행 앞 ⊖ · 끌기 손잡이, 마지막 행 아래 ⊕ 둘(필드 · 값) · 「사용 수」 열 · ↑↓ · 머리 「개수 +」 없음 (2026-10-01)", () => {
+    const html = render("edit");
+    expect(html).toContain('aria-label="행 삭제 · 암·면책"');
+    expect(html).toContain('aria-label="순서 옮기기 · 뇌졸중"');
+    expect(html).toContain('aria-label="행 추가 · 필드"');
+    expect(html).toContain('aria-label="행 추가 · 값"');
+    expect(html).not.toContain("사용 수");
+    expect(html).not.toMatch(/위로|아래로|ts-values-head/);
+  });
+
+  it("읽기: 「사용 수」 열은 없다(사용처는 관계정보 메뉴) · 조작(⊖ · 손잡이 · ⊕)도 없다", () => {
+    const html = renderToStaticMarkup(
+      <EditShell initial={data} title="납입면제사유" path={[]} saveAction={async () => ({ ok: true })} initialMode="read">
+        <ValuesEditor />
+      </EditShell>,
+    );
+    expect(html).not.toContain("사용 수");
+    expect(html).not.toMatch(/행 삭제|행 추가|순서 옮기기/);
   });
 
   it("필드가 없으면 읽기는 안내 한 줄, 값 표에는 필드 열이 없다 · 입력률 카운트는 두지 않는다", () => {

@@ -17,7 +17,7 @@ import { z } from "zod";
 
 import type { EnumLookup, SlotPath } from "@/domain/catalog/types";
 import { validateSlotValue } from "@/domain/coverage";
-import { fieldsOfForm, fieldsOfLevel, formsOfLevel, parseTableDraft, tableRowsToDraft, type MasterTree, type TableDraft } from "@/domain/master";
+import { fieldsOfForm, fieldsOfLevel, formsOfLevel, masterPath, parseTableDraft, tableRowsToDraft, type MasterField, type MasterTree, type TableDraft } from "@/domain/master";
 import { ATTACH_LEVEL_LABEL, type AttachLevel, type Code, type FieldType, type Issue, type TableRow, type Value, type ValueSlot } from "@/domain/types";
 
 // ───────────────────────────── 폼 모델 ─────────────────────────────
@@ -37,6 +37,12 @@ export interface EnumOption {
  * - `snapshot` : 탑재 스냅샷을 손댔다 → 입력 필드 오른쪽 끝에 되돌리기 버튼. 마스터 값은 tooltip 으로만
  */
 export type FieldSource = "direct" | "snapshot";
+
+/** 조건 — 같은 폼 다른 필드의 경로와 비교 값. */
+export interface ViewCondition {
+  path: SlotPath;
+  equals: Value;
+}
 
 /** 필드 하나의 화면 표현. 직렬화 가능 — 서버 컴포넌트에서 클라이언트로 그대로 넘긴다. */
 export interface FieldView {
@@ -63,6 +69,12 @@ export interface FieldView {
   masterLabel?: string;
   /** 기본 숨김 — 값이 기본값 그대로면 칸을 감춘다 (`isFieldHidden`, 기능/담보 §3.4). */
   hiddenByDefault?: true;
+  /** 조건부 필드 — 이 경로가 이 값일 때만 칸이 선다 (마스터 `visibleWhen`, `isViewShown`). */
+  visibleWhen?: ViewCondition;
+  /** list<enum> 만 — 이 경로가 이 값이면 하나만 고른다 (마스터 `singleWhen`, `isViewSingle`). */
+  singleWhen?: ViewCondition;
+  /** 단위 — 입력칸 뒤 · 읽기 값 뒤 (마스터 `unit`). */
+  unit?: string;
   /** 선택 필드 — 값이 없으면 자리를 보이지 않고 「⊕ {라벨}」로 더한다 (`isFieldAbsent`, 2026-09-27). */
   optional?: true;
 }
@@ -127,6 +139,7 @@ function fieldView(
   defaultValue: Value | undefined,
   hiddenByDefault: boolean,
   optional: boolean,
+  field: Pick<MasterField, "unit" | "visibleWhen" | "singleWhen">,
   form: FormRef,
   enums: EnumLookup,
   current: Map<SlotPath, ValueSlot>,
@@ -147,6 +160,9 @@ function fieldView(
   if (defaultValue !== undefined) view.prefill = defaultValue;
   if (hiddenByDefault) view.hiddenByDefault = true;
   if (optional) view.optional = true;
+  if (field.unit !== undefined) view.unit = field.unit;
+  if (field.visibleWhen) view.visibleWhen = { path: masterPath(form.key, field.visibleWhen.field), equals: field.visibleWhen.equals };
+  if (field.singleWhen) view.singleWhen = { path: masterPath(form.key, field.singleWhen.field), equals: field.singleWhen.equals };
   // 탑재 스냅샷을 손댄 자리만 「스냅샷 · 변경됨」 — 마스터와 같으면 평범한 직접값이다 (§1.2)
   const master = snapshot?.masterValues.get(path);
   if (snapshot && master?.entered && !valueEquals(master.value, view.value)) {
@@ -175,7 +191,7 @@ export function buildForm(
     const card: FormCard = {
       ...ref,
       fields: fieldsOfForm(form).map((r) =>
-        fieldView(r.path, r.field.label, r.field.type, r.field.defaultValue, r.field.hiddenByDefault === true, r.field.optional === true, ref, enums, current, snapshot),
+        fieldView(r.path, r.field.label, r.field.type, r.field.defaultValue, r.field.hiddenByDefault === true, r.field.optional === true, r.field, ref, enums, current, snapshot),
       ),
     };
     if (form.description !== undefined) card.description = form.description;
@@ -234,7 +250,7 @@ export function formatValue(field: FieldView): string | undefined {
     case "table":
       return Array.isArray(v) ? `${v.length}행` : String(v);
     default:
-      return String(v);
+      return field.unit === undefined ? String(v) : `${String(v)}${field.unit}`;
   }
 }
 
@@ -474,7 +490,45 @@ export function formReducer(state: FormState, action: FormAction): FormState {
       next = fieldStateOf(field.view, draftOf(field.view.type, field.view.masterValue), true);
       break;
   }
-  return { ...state, fields: { ...state.fields, [action.path]: next } };
+  return trimSingles({ ...state, fields: { ...state.fields, [action.path]: next } });
+}
+
+/** 하나만 고르게 된 list<enum> 칸에 여럿이 들어 있으면 첫 것만 남긴다 — 통합 → 단일로 바꿀 때. */
+function trimSingles(state: FormState): FormState {
+  const valueOf = draftValueOf(state);
+  let fields = state.fields;
+  for (const view of state.model.fields) {
+    const f = fields[view.path];
+    if (!f || !isViewSingle(view, valueOf) || !Array.isArray(f.draft) || f.draft.length <= 1) continue;
+    fields = { ...fields, [view.path]: fieldStateOf(view, f.draft.slice(0, 1) as string[], true) };
+  }
+  return fields === state.fields ? state : { ...state, fields };
+}
+
+/** 경로 → 지금 편집 중인 값 (초안). 조건부 필드 판정의 읽개. */
+export function draftValueOf(state: FormState): (path: SlotPath) => Value | undefined {
+  return (path) => {
+    const f = state.fields[path];
+    return f?.entered ? f.value : undefined;
+  };
+}
+
+/** 경로 → 저장된 값. 읽기 모드의 조건부 필드 판정 읽개. */
+export function savedValueOf(model: FormModel): (path: SlotPath) => Value | undefined {
+  return (path) => {
+    const view = model.fields.find((f) => f.path === path);
+    return view?.state === "entered" ? view.value : undefined;
+  };
+}
+
+/** 조건부 필드가 지금 칸을 갖나 (마스터 `isFieldShown` 의 화면판). */
+export function isViewShown(view: FieldView, valueOf: (path: SlotPath) => Value | undefined): boolean {
+  return view.visibleWhen === undefined || valueOf(view.visibleWhen.path) === view.visibleWhen.equals;
+}
+
+/** list<enum> 칸을 지금 하나만 고르나 (마스터 `isFieldSingle` 의 화면판). */
+export function isViewSingle(view: FieldView, valueOf: (path: SlotPath) => Value | undefined): boolean {
+  return view.singleWhen !== undefined && valueOf(view.singleWhen.path) === view.singleWhen.equals;
 }
 
 /**
@@ -521,9 +575,15 @@ export interface Submission {
 export function toSubmission(state: FormState): Submission {
   const values: SubmissionEntry[] = [];
   const issues: Issue[] = [];
+  const valueOf = draftValueOf(state);
   for (const view of state.model.fields) {
     const f = state.fields[view.path];
     if (!f) continue;
+    // 조건이 맞지 않는 조건부 칸 — 자리가 없다. 저장된 값이 있으면 지운다 (고지유형을 바꾸면 딸린 칸 값이 남지 않게)
+    if (!isViewShown(view, valueOf)) {
+      if (view.state === "entered") values.push({ path: view.path, value: undefined });
+      continue;
+    }
     // 저장 값 그대로인 칸 — 사람이 손대지 않았으면 변경 없음이다. 제출하지 않는다 (점검 H3 · D3 (c)).
     // 명시적 빈 목록 `[]` 은 초안이 빈 배열이라 「미입력」처럼 보이지만, 손대지 않았으니 지우지 않는다.
     // 프리필 칸(저장 값 없음)은 여기 해당하지 않는다 — 보인 제안을 그대로 두고 저장하면 싣는다 (ADR-0004 · 시나리오 1).

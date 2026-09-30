@@ -20,7 +20,7 @@ test.describe.serial("실물 재현(화면) ① 카탈로그", () => {
         await open(page, "/enums/new");
         await page.getByLabel("열거형변수 이름").fill(spec.label);
         // 생성 화면은 빈 값 두 줄로 시작한다
-        for (let i = 2; i < spec.values.length; i++) await page.getByRole("button", { name: "값 추가", exact: true }).click();
+        for (let i = 2; i < spec.values.length; i++) await page.getByRole("button", { name: "행 추가 · 값", exact: true }).click();
         for (const [i, value] of spec.values.entries()) await page.getByRole("textbox", { name: `${i + 1}번 값 이름`, exact: true }).fill(value.label);
         await page.getByRole("button", { name: "생성", exact: true }).click();
         await arrive(page, new RegExp(`/enums/${spec.code}$`));
@@ -59,7 +59,7 @@ test.describe.serial("실물 재현(화면) ① 카탈로그", () => {
         await page.getByRole("button", { name: "편집", exact: true }).click();
         const rows = page.locator("table.ts-attr-values tbody tr");
         for (const [i, value] of spec.values.entries()) {
-          await page.locator("table.ts-attr-values tfoot").getByRole("button", { name: "값 추가" }).click();
+          await page.locator("table.ts-attr-values tfoot").getByRole("button", { name: "행 추가 · 값", exact: true }).click();
           await rows.nth(i).getByRole("textbox", { name: "값 이름", exact: true }).fill(value.label);
           if (value.fragment) await rows.nth(i).getByRole("textbox", { name: /^상품담보명 표기/ }).fill(value.fragment);
         }

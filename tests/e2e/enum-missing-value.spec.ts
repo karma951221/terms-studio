@@ -17,7 +17,7 @@ async function login(page: Page) {
 async function addEnumValue(page: Page, code: string, label: string) {
   await page.goto(`/enums/${code}`);
   await page.getByRole("button", { name: "편집", exact: true }).click();
-  await page.getByRole("button", { name: "값 추가", exact: true }).click();
+  await page.getByRole("button", { name: "행 추가 · 값", exact: true }).click();
   // 값 행의 첫 칸이 값 이름 — 필드가 있는 열거형(E0001)은 필드 칸이 뒤따른다
   await page.locator("table.ts-table tbody tr").last().locator("input").first().fill(label);
   await page.getByRole("button", { name: "저장", exact: true }).click();
@@ -28,7 +28,7 @@ async function addEnumValue(page: Page, code: string, label: string) {
 async function removeEnumValue(page: Page, code: string, label: string, confirmLine?: RegExp) {
   await page.goto(`/enums/${code}`);
   await page.getByRole("button", { name: "편집", exact: true }).click();
-  await page.getByRole("button", { name: new RegExp(`^${label}\\(V\\d+\\) 빼기`) }).click();
+  await page.getByRole("button", { name: `행 삭제 · ${label}`, exact: true }).click();
   await page.getByRole("button", { name: "저장", exact: true }).click();
   const dialog = page.locator("dialog.ts-dialog");
   await expect(dialog).toContainText("값을 빼면 그 값을 고른 자리가 「없는 값」 오류가 된다");

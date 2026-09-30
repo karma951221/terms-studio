@@ -436,6 +436,21 @@ export function placeExists(ix: TreeIndex, place: Place): boolean {
   }
 }
 
+/** 자리가 가리키는 블록 — 블록 · 조 · 관 제목이면 그 노드, 문장 칸이면 그 주인(표 셀이면 표). 블록 오른쪽 위 복제 · 삭제를 늘 보일 블록이다. */
+export function placeBlockId(place: Place | undefined): Id | undefined {
+  if (!place) return undefined;
+  switch (place.kind) {
+    case "block":
+    case "articleTitle":
+    case "sectionTitle":
+      return place.id;
+    case "inline":
+      return "tableId" in place.at ? place.at.tableId : place.at.parentId;
+    default:
+      return undefined;
+  }
+}
+
 /** 자리 하나의 목록 — 오른쪽 클릭 메뉴와 툴바가 같은 것을 쓴다. `tokens` 는 문장 자리의 DOM 조각(커서 포함). */
 export function placeMenu(env: MenuEnv, place: Place, tokens: Token[] = []): MenuSections {
   switch (place.kind) {

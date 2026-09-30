@@ -6,7 +6,8 @@
  * - 가운데는 **조 하나**다(`ArticleBody`) — 조 위에 소속 관 머리 줄, 조를 감싼 블록 조건이 있으면 그 띠와 머리 줄.
  *   약관 전체를 이어 읽는 것(`DocBody`)은 더보기 › 미리보기와 사전평가 결과 조문만 쓴다.
  * - 읽기 모드에는 조작이 없다. 편집 모드에서는 **그 자리가 편집기**다 — 제목 · 문장 · 조건 머리 줄은 그 자리에서 고치고, 칩은 누르면
- *   바로 아래에 팝업, 넣기 · 이동 · 복제 · 삭제 · 조건식은 본문 위 툴바(자리는 `data-*` 로 읽는다, 오른쪽 클릭 메뉴는 지름길). 블록마다 붙던 버튼 줄은 없다.
+ *   바로 아래에 팝업, 넣기 · 조건식은 본문 위 툴바(자리는 `data-*` 로 읽는다, 오른쪽 클릭 메뉴는 지름길). 블록은 왼쪽 손잡이로 끌어 옮기고,
+ *   복제 · 삭제는 고른 블록 오른쪽 여백의 작은 아이콘(`BlockActs`, 2026-10-01 툴바에서 내려옴)이다.
  * - 조건 블록은 테두리 상자(배경 없음)다 — 가지마다 머리 줄(IF / ELIF / ELSE) + 그 아래 내용. 편집 모드의 머리 줄은 늘 열린 조건식 줄
  *   (`CondRows` — 변수 · 연산자 · 값, ⊕ ⊖)과 끝의 작은 버튼(ELIF · ELSE · 풀기 · 삭제)이다. 팝업 없음 (2026-09-28).
  * - 값별 분기(함수조항 편집기만, 최종 결정 5)는 조건 블록과 같은 상자 — 첫 칸 위에 대상 줄(대상 고르기 · 칸 없는 값 · 칸 추가 · 삭제),
@@ -17,7 +18,7 @@
  */
 import type { MouseEvent, ReactNode } from "react";
 
-import { IconButton, IconTrash } from "@/app/_components/icons";
+import { IconButton, IconCopy, IconTrash } from "@/app/_components/icons";
 import { StaticTable } from "@/app/_components/StaticNodes";
 import { REPEAT_DEPTH_LABEL, SWITCH_WORD } from "@/app/_lib/labels";
 import {
@@ -42,7 +43,7 @@ import {
 import type { Code, Id } from "@/domain/types";
 
 import { BoxView } from "@/app/_components/BoxView";
-import { ClauseModel, clauseEditHref } from "@/app/_components/ClauseModel";
+import { ClauseModel } from "@/app/_components/ClauseModel";
 import { bindingLabel } from "@/app/(app)/functions/_components/params";
 import { applyBindings, plainConst } from "@/domain/clause";
 
@@ -60,9 +61,17 @@ const flash = (ctx: DocCtx, id: Id) => `${ctx.flashId === id ? " is-flash" : ""}
  * 블록 손잡이(⠿) — 편집 모드에서 블록 왼쪽 여백에 선다. 끌면 옮기고(`useBlockDrag`), 누르면 그 블록을 고른다 · Shift 면 잇닿은 형제까지.
  * 글자 칸 밖이라 문장 편집(커서 · 선택)과 겹치지 않는다.
  */
-function DragHandle({ id, what, ctx }: { id: Id; what: string; ctx: DocCtx }) {
+function DragHandle({ id, what, ctx, acts = true }: { id: Id; what: string; ctx: DocCtx; acts?: boolean }) {
   const select = ctx.edit?.selectBlock;
-  if (!select) return null;
+  return (
+    <>
+      {select && <Handle id={id} what={what} select={select} />}
+      {acts && <BlockActs id={id} what={what} ctx={ctx} />}
+    </>
+  );
+}
+
+function Handle({ id, what, select }: { id: Id; what: string; select: (id: Id, extend: boolean) => void }) {
   return (
     <span
       className="ts-drag"
@@ -81,6 +90,23 @@ function DragHandle({ id, what, ctx }: { id: Id; what: string; ctx: DocCtx }) {
   );
 }
 
+/**
+ * 블록 복제 · 삭제 (2026-10-01, 툴바에서 내려옴) — 블록 오른쪽 여백의 작은 아이콘 둘. 고른 블록(`currentBlock` · 손잡이로 고른 것)이면 늘,
+ * 아니면 포인터가 선 블록에만 보인다. 누르면 툴바 「복제」 · 「삭제」가 쓰던 길(`blockAct` → `runTool`) — 삭제는 삭제 확인 카드.
+ * `inline` 이면 머리 줄 끝에 늘 선다(함수조항 · 반복 · 조건 블록 머리 줄).
+ */
+function BlockActs({ id, what, ctx, inline }: { id: Id; what: string; ctx: DocCtx; inline?: boolean }) {
+  const act = ctx.edit?.blockAct;
+  if (!act) return null;
+  const on = ctx.edit?.currentBlock === id || (ctx.edit?.blockSel?.includes(id) ?? false);
+  return (
+    <span className={`ts-block-acts${inline ? " is-inline" : on ? " is-on" : ""}`} contentEditable={false} data-block-acts={id}>
+      <IconButton icon={<IconCopy />} label={`${what} 복제 — 바로 뒤에 사본`} onClick={(e) => act(id, "duplicate", e.currentTarget)} />
+      <IconButton icon={<IconTrash />} danger label={`${what} 삭제`} onClick={(e) => act(id, "remove", e.currentTarget)} />
+    </span>
+  );
+}
+
 /** 머리 줄 끝의 작은 버튼 — 그 가지 자리의 목록(툴바와 같은 목록)에서 이름으로 고른다. */
 /** IF 머리 줄에만 — 가지 추가 · ELSE · 풀기. 뒤 가지(ELIF · ELSE) 머리 줄은 「이 가지 삭제」만. */
 const HEAD_TOOLS: { match: (label: string) => boolean; text: string; title: string }[] = [
@@ -89,7 +115,7 @@ const HEAD_TOOLS: { match: (label: string) => boolean; text: string; title: stri
   { match: (l) => l.startsWith("조건 풀기"), text: "풀기", title: "조건 풀기 — 이 가지 내용만 남긴다" },
 ];
 
-function HeadTools({ ctx, branch, first }: { ctx: DocCtx; branch: BlockBranch; first: boolean }) {
+function HeadTools({ ctx, branch, first, ownerId }: { ctx: DocCtx; branch: BlockBranch; first: boolean; ownerId?: Id }) {
   const edit = ctx.edit!;
   const items = edit.headItems(branch.id);
   const run = (item: MenuItem | undefined) => (e: MouseEvent<HTMLElement>) => item && edit.run(item, anchorOf(e.currentTarget));
@@ -107,7 +133,11 @@ function HeadTools({ ctx, branch, first }: { ctx: DocCtx; branch: BlockBranch; f
         );
       })}
       {first ? (
-        removeBlock && <IconButton className="ts-cond-rowbtn" icon={<IconTrash />} danger label="조건 블록 삭제" onClick={run(removeBlock)} />
+        ownerId && edit.blockAct ? (
+          <BlockActs id={ownerId} what="조건 블록" ctx={ctx} inline />
+        ) : (
+          removeBlock && <IconButton className="ts-cond-rowbtn" icon={<IconTrash />} danger label="조건 블록 삭제" onClick={run(removeBlock)} />
+        )
       ) : (
         removeBranch && <IconButton className="ts-cond-rowbtn" icon={<IconTrash />} danger label="이 가지 삭제" onClick={run(removeBranch)} />
       )}
@@ -119,7 +149,7 @@ function HeadTools({ ctx, branch, first }: { ctx: DocCtx; branch: BlockBranch; f
  * 블록 조건 가지의 머리 줄 — 읽기 모드는 `IF 조건식` 한 줄(글자), 편집 모드는 그 자리에서 고치는 조건식 줄(`CondRows`).
  * `data-cond-head` 는 툴바 · 오른쪽 클릭이 자리(조건 가지)를 읽는 표지다.
  */
-function CondHead({ ctx, branch, label, first }: { ctx: DocCtx; branch: BlockBranch; label: string; first: boolean }) {
+function CondHead({ ctx, branch, label, first, ownerId }: { ctx: DocCtx; branch: BlockBranch; label: string; first: boolean; ownerId?: Id }) {
   const { text, full } = chipText(branch.when, ctx.mode, ctx.refLabel);
   const state = ctx.branchEval?.get(branch.id)?.state;
   const suffix = state === "taken" ? " · 참" : state === "notTaken" ? " · 거짓" : state === "undetermined" ? " · 미결" : state === "error" ? " · 오류" : "";
@@ -133,7 +163,7 @@ function CondHead({ ctx, branch, label, first }: { ctx: DocCtx; branch: BlockBra
       </p>
     );
   }
-  const tools = <HeadTools ctx={ctx} branch={branch} first={first} />;
+  const tools = <HeadTools ctx={ctx} branch={branch} first={first} {...(ownerId ? { ownerId } : {})} />;
   return (
     <div className="ts-doc-cond-head is-edit" data-cond-head={branch.id}>
       {branch.when === undefined ? (
@@ -272,7 +302,7 @@ function optionChip(clause: { options: readonly { code: string; label: string; v
 }
 
 /**
- * 함수조항(조 단위) 블록 — 머리 띠 「함수조항 (이름)」 · 옵션 선택(편집이면 눌러서 고치기) · 「함수조항에서 고치기 →」 · 🗑,
+ * 함수조항(조 단위) 블록 — 머리 띠 「[코드] 이름」 · 옵션 선택(편집이면 눌러서 고치기) · 복제 · 삭제,
  * 그 아래 함수조항의 모델(`ClauseModel` — 읽기 전용). 미리보기(`clauseView: "text"`)는 고른 선택지를 끼운 문장이다.
  * 본문 안은 이 문서의 자리가 아니다 — `data-clause-ref` 가 누른 자리를 이 블록으로 모은다(`place.ts`).
  */
@@ -345,10 +375,10 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
   }
   return (
     <div className={`ts-doc-clause${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id} data-clause-ref={node.id}>
-      <DragHandle id={node.id} what="함수조항" ctx={ctx} />
+      <DragHandle id={node.id} what="함수조항" ctx={ctx} acts={false} />
       <div className="ts-doc-clause-head">
-        <span className="ts-doc-clause-name" title={`함수조항(조 단위) · ${node.clauseCode}`}>
-          함수조항 ({label ?? `${node.clauseCode} — 없는 함수조항`})
+        <span className="ts-doc-clause-name" title={`함수조항 · ${node.clauseCode}`}>
+          <span className="ts-doc-clause-code">[{node.clauseCode}]</span> {label ?? "없는 함수조항"}
         </span>
         {hasOptions &&
           (edit ? (
@@ -358,20 +388,7 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
           ) : (
             <span className="ts-doc-clause-opt">{options}</span>
           ))}
-        {clause && !asText && (
-          <a className="ts-doc-clause-link" href={clauseEditHref(clause.code)} target="_blank" rel="noopener" title="함수조항 화면을 새 탭으로 연다 — 본문 · 옵션은 거기서 고친다">
-            함수조항에서 고치기 →
-          </a>
-        )}
-        {edit && (
-          <IconButton
-            className="ts-doc-clause-del"
-            icon={<IconTrash />}
-            danger
-            label={`함수조항 ${label ?? node.clauseCode} 삭제`}
-            onClick={(e) => edit.run({ label: "삭제", action: { do: "remove", nodeId: node.id } }, anchorOf(e.currentTarget))}
-          />
-        )}
+        <BlockActs id={node.id} what={`함수조항 ${label ?? node.clauseCode}`} ctx={ctx} inline />
       </div>
       <div className="ts-doc-clause-body">{body}</div>
     </div>
@@ -465,7 +482,7 @@ function SwitchBlock({ node, ctx, as }: { node: Node & { kind: "condBlock" }; ct
           data-drop-block={node.id}
           className={`ts-doc-cond is-switch${i === 0 ? "" : " is-alt"}${flash(ctx, br.id)}${ctx.edit?.blockSel?.includes(node.id) ? " is-block-sel" : ""}`}
         >
-          {i === 0 && <DragHandle id={node.id} what={SWITCH_WORD.switch} ctx={ctx} />}
+          {i === 0 && <DragHandle id={node.id} what={SWITCH_WORD.switch} ctx={ctx} acts={false} />}
           {i === 0 && <SwitchHead node={node} ctx={ctx} subject={subject} />}
           <CaseHead ctx={ctx} node={node} branch={br} subject={subject} />
           {!br.empty && <Block nodes={br.children} ctx={ctx} inList={as === "li"} />}
@@ -491,8 +508,8 @@ function CondBlock({ node, ctx, as }: { node: Node & { kind: "condBlock" }; ctx:
             className={`ts-doc-cond${i === 0 ? "" : " is-alt"}${dim ? " ts-dim" : ""}${flash(ctx, br.id)}${ctx.edit?.blockSel?.includes(node.id) ? " is-block-sel" : ""}`}
             style={dim ? { textDecoration: "line-through" } : undefined}
           >
-            {i === 0 && <DragHandle id={node.id} what="조건 블록" ctx={ctx} />}
-            <CondHead ctx={ctx} branch={br} label={branchLabel(node.branches, i)} first={i === 0} />
+            {i === 0 && <DragHandle id={node.id} what="조건 블록" ctx={ctx} acts={false} />}
+            <CondHead ctx={ctx} branch={br} label={branchLabel(node.branches, i)} first={i === 0} ownerId={node.id} />
             <Block nodes={br.children} ctx={ctx} inList={as === "li"} />
           </Tag>
         );
@@ -511,8 +528,8 @@ function RepeatBlock({ node, ctx, as }: { node: Node & { kind: "forBlock" }; ctx
   const edit = ctx.edit;
   return (
     <Tag className={`ts-doc-repeat${flash(ctx, node.id)}${edit?.blockSel?.includes(node.id) ? " is-block-sel" : ""}`} data-node={node.id} data-drop-block={node.id} data-repeat={node.id}>
-      <DragHandle id={node.id} what="반복 블록" ctx={ctx} />
-      <p className="ts-doc-cond-head" data-block={node.id} title="반복 블록 — 원천의 원소마다 본문을 복제한다(번호는 조립이 펼친 뒤 매긴다)">
+      <DragHandle id={node.id} what="반복 블록" ctx={ctx} acts={false} />
+      <p className={`ts-doc-cond-head${edit ? " is-acts" : ""}`} data-block={node.id} title="반복 블록 — 원천의 원소마다 본문을 복제한다(번호는 조립이 펼친 뒤 매긴다)">
         {edit ? (
           <button type="button" className="ts-doc-cond-btn" aria-label={`반복 원천 — ${label}`} onClick={(e) => edit.popup({ kind: "repeatBlock", nodeId: node.id }, anchorOf(e.currentTarget))}>
             ⟳ {label}
@@ -520,6 +537,7 @@ function RepeatBlock({ node, ctx, as }: { node: Node & { kind: "forBlock" }; ctx
         ) : (
           <>⟳ {label}</>
         )}
+        <BlockActs id={node.id} what="반복 블록" ctx={ctx} inline />
       </p>
       {/* 호 목록 자리면 본문 호들을 제 목록으로 감싼다 — <li> 안에 <li> 를 바로 두지 않는다 */}
       {as === "li" ? (
@@ -689,6 +707,7 @@ function SectionHead({ node, ctx }: { node: Node & { kind: "section" }; ctx: Doc
   return (
     <h2 className={`ts-doc-section-title${flash(ctx, node.id)}`} data-section-title={node.id} data-node={node.id}>
       {num?.label ?? "관"} <EditableText value={node.title} editing={!!ctx.edit} label="관 제목" onCommit={(title) => ctx.edit?.setTitle(node.id, title)} />
+      <BlockActs id={node.id} what={num?.label ?? "관"} ctx={ctx} />
     </h2>
   );
 }
@@ -722,6 +741,7 @@ function Article({ node, ctx }: { node: ArticleNode; ctx: DocCtx }) {
       {node.linkedArticleId !== undefined && <ArticleLink article={node} ctx={ctx} />}
       <h3 className={`ts-doc-article-title${flash(ctx, node.id)}`} data-article-title={node.id} data-node={node.id}>
         {label}(<EditableText value={node.title} editing={!!ctx.edit} label="조 제목" onCommit={(title) => ctx.edit?.setTitle(node.id, title)} />)
+        <BlockActs id={node.id} what={label} ctx={ctx} />
       </h3>
       {node.children.length === 0 && ctx.edit ? (
         <p className="ts-muted ts-doc-hint">항이 없다 — 툴바의 「항」으로 넣는다.</p>

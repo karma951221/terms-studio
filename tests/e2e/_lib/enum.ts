@@ -8,7 +8,7 @@ export async function createEnum(page: Page, label: string, values: readonly str
   await page.goto("/enums/new");
   await page.getByLabel("열거형변수 이름").fill(label);
   // 생성 화면은 빈 값 두 줄로 시작한다
-  for (let i = 2; i < values.length; i++) await page.getByRole("button", { name: "값 추가", exact: true }).click();
+  for (let i = 2; i < values.length; i++) await page.getByRole("button", { name: "행 추가 · 값", exact: true }).click();
   for (const [i, value] of values.entries()) await page.getByRole("textbox", { name: `${i + 1}번 값 이름`, exact: true }).fill(value);
   await page.getByRole("button", { name: "생성", exact: true }).click();
   await page.waitForURL(/\/enums\/E\d{4}$/);

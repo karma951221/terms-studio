@@ -2,7 +2,6 @@
 
 import { BoxView } from "@/app/_components/BoxView";
 import { EditShell, Field, useEditField } from "@/app/_components/EditShell";
-import { UsageDialog } from "@/app/_components/UsageDialog";
 import { ENTITY_LABEL, FIELD_LABEL, NAME_LABEL } from "@/app/_lib/labels";
 import { boxLinesFromText, boxLinesText, type Box } from "@/domain/document/box";
 
@@ -34,13 +33,12 @@ function LinesField({ code }: { code: string }) {
   );
 }
 
-export function BoxEditor({ box, usage, usageCount }: { box: Box; usage: React.ReactNode; usageCount: number }) {
+export function BoxEditor({ box }: { box: Box }) {
   const data: BoxEditData = { name: box.name, title: box.title, lines: boxLinesText(box.lines) };
   return (
     <EditShell
       initial={data}
       title={box.name}
-      extraActions={<UsageDialog count={usageCount}>{usage}</UsageDialog>}
       path={[{ label: ENTITY_LABEL.box, href: "/boxes" }]}
       saveAction={saveBoxEditAction.bind(null, box.code)}
       deleteAction={removeBoxEditAction.bind(null, box.code)}

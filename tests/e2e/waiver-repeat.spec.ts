@@ -42,9 +42,9 @@ test(
     const code = await ev.action("반복#2", "새 함수조항(호) — 인자 「사유」(열거형 납입면제사유) · 호 「면제사유: 〔arg.사유〕」", async () => {
       await page.goto("/functions/new?type=item");
       await page.getByLabel("함수조항명").fill(clauseName);
+      await page.getByLabel("새 인자 이름", { exact: true }).fill("사유");
+      await page.getByLabel("새 인자 타입", { exact: true }).selectOption("enum:E0001");
       await page.getByRole("button", { name: "인자 추가" }).click();
-      await page.getByLabel("인자 1 이름").fill("사유");
-      await page.getByLabel("인자 1 타입").selectOption("enum:E0001");
       const item = editor.getByRole("textbox", { name: "호", exact: true });
       await item.click();
       await item.fill("면제사유: ");

@@ -3,7 +3,7 @@
 /**
  * 함수조항 에디터 — `/functions/new`(생성) · `/functions/<code>`(상세) 한 벌 (기능/함수조항 §4.2 · §4.3).
  *
- * 한 화면 두 단 — 왼쪽은 위에서 아래로 「함수조항명 · 유형」 → 「본문」(툴바 + 약관 에디터), 오른쪽은 옵션 목록. 좁으면 옵션이 아래로 내려간다.
+ * 한 화면 두 단 — 왼쪽은 위에서 아래로 「기본정보」(접힘 — `ClauseMeta`) → 「본문」(툴바 + 약관 에디터), 오른쪽은 옵션 목록. 좁으면 옵션이 아래로 내려간다.
  * - 본문은 **문면 저작 에디터를 그대로 쓴다**(§6.2) — 본문을 편집 트리(문서 › 조 하나)로 싸서(`clauseBodyToTree`) 문면의 편집 명령
  *   (`applyEdit`) · 렌더러(`Block` · `InlineSlot`) · 툴바 · 팝업을 쓰고, 저장 때 함수조항 본문으로 되돌린다(`treeToClauseBody`).
  *   다른 점은 자리뿐이다 — 조 · 관 · 함수조항 참조는 툴바에서 잠기고(사유 tooltip), 조 참조는 보통약관 대상만, 옵션 자리 넣기가 더해진다(`clauseMenus`).
@@ -20,15 +20,16 @@ import { useRouter } from "next/navigation";
 import { Breadcrumb } from "@/app/_components/Breadcrumb";
 import { DiscardDialog } from "@/app/_components/EditShell";
 import { IconButton, IconClose, IconTrash } from "@/app/_components/icons";
-import { ENTITY_LABEL, MODE_LABEL, MODE_OPTIONS, NAME_LABEL, newLabel } from "@/app/_lib/labels";
+import { ENTITY_LABEL, newLabel } from "@/app/_lib/labels";
 import { refLabelOf } from "@/app/(app)/documents/[id]/_components/condition/display";
 import { anchorOf, type Anchor, type ArticleRefChoice, type DocCtx, type EditHandlers } from "@/app/(app)/documents/[id]/_components/ctx";
 import { Block } from "@/app/(app)/documents/[id]/_components/DocBody";
 import { EditorToolbar } from "@/app/(app)/documents/[id]/_components/EditorToolbar";
+import { MarksToggle, markSelectionOps, useMarksShown } from "@/app/(app)/documents/[id]/_components/workMarks";
 import { backspaceOps, enterOps, inlineAtOf, inlineListAt, moveSelectionOps } from "@/app/(app)/documents/[id]/_components/editOps";
 import { InlineSlot, caretFromPoint, tokensOf } from "@/app/(app)/documents/[id]/_components/Inline";
 import { identityRuns, runsFromTokens, runsReplacing, sameRuns, type Token } from "@/app/(app)/documents/[id]/_components/inlineRuns";
-import { boxPickItems, condInsertItem, inlineCondItem, placeExists, type MenuItem, type MenuSections, type Place, type PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
+import { boxPickItems, condInsertItem, inlineCondItem, placeBlockId, placeExists, type MenuItem, type MenuSections, type Place, type PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
 import { condInput, placeOf, readInline } from "@/app/(app)/documents/[id]/_components/place";
 import { PopupHost, type PopupEnv } from "@/app/(app)/documents/[id]/_components/Popups";
 import { ContextMenu, PopActions, Popover } from "@/app/(app)/documents/[id]/_components/Popover";
@@ -64,13 +65,14 @@ import {
   type InlineNode,
   type ReferenceTarget,
 } from "@/domain/document";
-import type { Id, Impact, Issue } from "@/domain/types";
+import type { Id, Impact, Issue, WorkMark } from "@/domain/types";
 
 import { createClauseAction } from "../actions";
 import { removeClauseEditAction, saveClauseEditAction } from "../edit-actions";
 import type { ClauseEditOption } from "../edit-types";
 import type { ClauseEditorData } from "../editorData";
 import { clauseCanHold, clauseCondMenu, clauseDefaultPlace, clausePlaceMenu, withClauseRefusals, type ClauseMenuEnv } from "./clauseMenus";
+import { ClauseMeta } from "./ClauseMeta";
 import { OptionsPane } from "./OptionsPane";
 import { localEntries, localsForSave } from "./locals";
 import { LocalsPane } from "./LocalsPane";
@@ -385,10 +387,13 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     setMenu({ x: event.clientX, y: event.clientY, sections });
   };
 
-  /** 툴바 버튼 — 누르는 순간의 편집본 · 문장 칸 조각(커서 · 고른 글)으로 목록을 다시 짓고 그 버튼의 항목을 돌린다. */
-  const runTool = (toolId: ToolId, button: HTMLElement) => {
+  /**
+   * 툴바 버튼 — 누르는 순간의 편집본 · 문장 칸 조각(커서 · 고른 글)으로 목록을 다시 짓고 그 버튼의 항목을 돌린다.
+   * `onPlace` 를 주면 그 자리로 돈다 — 블록 오른쪽 위의 복제 · 삭제(`blockAct`)가 같은 길을 쓴다.
+   */
+  const runTool = (toolId: ToolId, button: HTMLElement, onPlace?: Place) => {
     const env = menuEnv();
-    const at = placeIn(env.ix);
+    const at = onPlace ?? placeIn(env.ix);
     let tokens: Token[] = [];
     let cut: string | undefined;
     if (at.kind === "inline") {
@@ -406,15 +411,6 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
       if (!item) return;
       if (item.label !== "문장 안 조건") (document.activeElement as HTMLElement | null)?.blur?.();
       runMenu(item, anchor);
-      return;
-    }
-    // 여러 항을 골랐으면 위로 · 아래로는 고른 것 전부를 한 칸
-    if ((toolId === "up" || toolId === "down") && drag.blockSel.length > 1) {
-      const ops = moveSelectionOps(latest(), drag.blockSel, toolId === "up" ? -1 : 1);
-      if (ops.length > 0) {
-        (document.activeElement as HTMLElement | null)?.blur?.();
-        apply(ops);
-      }
       return;
     }
     const tool = allTools(CLAUSE_TOOLS).find((t) => t.id === toolId);
@@ -435,6 +431,19 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     runMenu(items[0], anchor);
   };
 
+  /** 오른쪽 클릭 메뉴에서 고른 항목 — 여러 항을 골랐으면 위로 · 아래로는 고른 것 전부를 한 칸(툴바에서 내려온 규칙, 2026-10-01). */
+  const pickMenu = (item: MenuItem) => {
+    if ((item.label === "위로" || item.label === "아래로") && drag.blockSel.length > 1) {
+      const ops = moveSelectionOps(latest(), drag.blockSel, item.label === "위로" ? -1 : 1);
+      if (ops.length > 0) {
+        (document.activeElement as HTMLElement | null)?.blur?.();
+        apply(ops);
+      }
+      return;
+    }
+    runMenu(item);
+  };
+
   const runMenu = (item: MenuItem, anchor: Anchor = menuAt.current) => {
     const a = item.action;
     if (a.do === "popup") {
@@ -450,6 +459,17 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     if (!apply(ops)) return;
     if (a.focus) setFocusRequest(a.focus);
     if (a.openChip) setPop({ spec: { kind: "editChip", nodeId: a.openChip }, anchor });
+  };
+
+  // 작업용 글자색 — 문면 편집기와 같은 모델 · 같은 도구 (기능/문면 §3.2 작업 표시)
+  const [marksShown, setMarksShown] = useMarksShown();
+  const markSelection = (mark: WorkMark | undefined) => {
+    const ops = markSelectionOps(latest(), mark, randomIds);
+    if (ops.length === 0) {
+      setBanner({ message: "글자색을 칠하지 못했다 — 칠할 글을 먼저 끌어서 고른다. 칩(슬롯 · 참조 · 조건)에는 색이 없다." });
+      return;
+    }
+    apply(ops);
   };
 
   const edit: EditHandlers = {
@@ -486,6 +506,17 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     headItems: (branchId) => clauseCondMenu(menuEnv(), branchId).flat(),
     run: (item, anchor) => runMenu(item, anchor),
     ...(clauseMode === "block" ? { blockSel: drag.blockSel, selectBlock: drag.selectBlock } : {}),
+    // 블록 오른쪽 위의 복제 · 삭제 — 툴바가 쓰던 길(runTool)을 그 블록 자리로 (「문구」 유형은 블록이 없다)
+    ...(clauseMode !== "inline"
+      ? {
+          blockAct: (nodeId: string, act: "duplicate" | "remove", button: HTMLElement) => {
+            const at: Place = { kind: "block", id: nodeId };
+            setPlace(at);
+            runTool(act, button, at);
+          },
+          ...(placeBlockId(place) ? { currentBlock: placeBlockId(place) } : {}),
+        }
+      : {}),
   };
 
   const ctx: DocCtx = {
@@ -661,14 +692,14 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   const hostItem = clauseMode === "subitem" ? hostItems.find((n) => n.id === CLAUSE_HOST_ITEM_ID) : undefined;
   const listNodes = clauseMode === "item" ? hostItems : hostItem?.kind === "item" ? (hostItem.subitems ?? []) : [];
   const readEmpty = !editing && (clauseMode === "inline" ? lineNodes.length === 0 : clauseMode === "block" ? blockNodes.length === 0 : listNodes.length === 0);
-  const modeHint = MODE_OPTIONS.find((o) => o.value === clauseMode)?.hint;
 
   return (
-    <div className="ts-l3 is-clause" aria-busy={pending || undefined}>
+    <div className={`ts-l3 is-clause${marksShown ? "" : " is-marks-off"}`} aria-busy={pending || undefined}>
       <div className="ts-l3-bar">
         <Breadcrumb items={[{ label: ENTITY_LABEL.clause, href: "/functions" }, { label: clauseName }]} guard={editing ? leave : undefined} />
         {editing && <span className="ts-l3-dirty">{isNew ? "새 함수조항 — 저장하면 만들어진다" : dirty ? "편집 중 · 저장해야 반영" : "편집 중"}</span>}
         <span className="ts-l3-bar-actions">
+          <MarksToggle shown={marksShown} onChange={setMarksShown} />
           {editing ? (
             <>
               {isNew ? (
@@ -706,69 +737,20 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
         )}
         <div className="ts-clause-grid">
           <div className="ts-clause-main">
-            <section className="ts-clause-meta" aria-label="함수조항 정보">
-              <div className="ts-form-row">
-                <label htmlFor="clause-label">{NAME_LABEL.clause}</label>
-                {editing ? (
-                  <input id="clause-label" className="ts-field-direct" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="예: 특별약관의 소멸" autoFocus={isNew} />
-                ) : (
-                  <span className="ts-clause-meta-value">{props.label}</span>
-                )}
-              </div>
-              <div className="ts-form-row">
-                <span className="ts-form-label" id="clause-mode-label">
-                  유형
-                </span>
-                {isNew ? (
-                  <div className="ts-clause-mode" role="radiogroup" aria-labelledby="clause-mode-label">
-                    {MODE_OPTIONS.map((o) => (
-                      <label key={o.value} className={`ts-clause-mode-option${clauseMode === o.value ? " is-on" : ""}`}>
-                        <input type="radio" name="clause-mode" value={o.value} checked={clauseMode === o.value} disabled={modeLocked && clauseMode !== o.value} onChange={() => changeMode(o.value)} />
-                        <span className="ts-clause-mode-name">{o.label}</span>
-                        <span className="ts-clause-mode-hint">{o.hint}</span>
-                      </label>
-                    ))}
-                    {modeLocked ? <p className="ts-muted ts-clause-sec-note">본문을 쓰기 시작해서 유형이 잠겼다 — 바꾸려면 본문을 비운다.</p> : null}
-                  </div>
-                ) : (
-                  <span className="ts-clause-meta-value" title="유형은 생성 때 정하고 그 뒤 바꾸지 않는다">
-                    {MODE_LABEL[clauseMode]} <span className="ts-muted">— {modeHint}</span>
-                  </span>
-                )}
-              </div>
-              {!isNew && (
-                <>
-                  <div className="ts-form-row">
-                    <span className="ts-form-label">코드</span>
-                    <span className="ts-clause-meta-value ts-mono">{code}</span>
-                  </div>
-                  <div className="ts-form-row">
-                    <span className="ts-form-label">요구 구분자</span>
-                    <span className="ts-clause-meta-value ts-mono">
-                      {props.required && props.required.discriminators.length > 0 ? props.required.discriminators.join(" · ") : <span className="ts-muted">없음 — 저장 때 식에서 뽑는다</span>}
-                    </span>
-                  </div>
-                  {props.warnings && props.warnings.length > 0 && (
-                    <div className="ts-form-row">
-                      <span className="ts-form-label">단위</span>
-                      <ul className="ts-clause-meta-value ts-clause-warnings" aria-label="단위 규칙 경고">
-                        {props.warnings.map((w) => (
-                          <li key={w} className="ts-warn">
-                            {w}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  <div className="ts-form-row">
-                    <span className="ts-form-label">사용처</span>
-                    <span className="ts-clause-meta-value">
-                      <a href={`/relations?kind=clause&code=${code}`}>관계정보에서 보기</a>
-                    </span>
-                  </div>
-                </>
-              )}
-            </section>
+            <ClauseMeta
+              code={code}
+              editing={editing}
+              name={clauseName}
+              savedLabel={props.label}
+              label={label}
+              onLabel={setLabel}
+              mode={clauseMode}
+              modeLocked={modeLocked}
+              onMode={changeMode}
+              unitNodes={clauseMode === "block" ? blockNodes : listNodes}
+              required={props.required}
+              warnings={props.warnings}
+            />
 
             <section className="ts-clause-body-sec" aria-label="본문">
               <h2 className="ts-clause-sec">본문</h2>
@@ -782,7 +764,8 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
                 onPointerDown={(e) => {
                   if (!editing) return;
                   const target = e.target as HTMLElement;
-                  if (!e.shiftKey && !target.closest("[data-drag], .ts-doc-toolbar")) drag.clearSel();
+                  // 오른쪽 클릭은 고른 항을 두고 — 메뉴 「위로」 · 「아래로」가 고른 것 전부를 옮긴다
+                  if (e.button !== 2 && !e.shiftKey && !target.closest("[data-drag], .ts-doc-toolbar")) drag.clearSel();
                   if (target.closest(".ts-doc-toolbar")) return;
                   setPlace(placeOf(target));
                 }}
@@ -792,7 +775,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
                   if (at) setPlace(at);
                 }}
               >
-                {editing && <EditorToolbar groups={clauseMode === "inline" ? CLAUSE_LINE_TOOLS : CLAUSE_TOOLS} sections={toolbarSections} editing onRun={runTool} where={placeWords(toolbarPlace)} />}
+                {editing && <EditorToolbar groups={clauseMode === "inline" ? CLAUSE_LINE_TOOLS : CLAUSE_TOOLS} sections={toolbarSections} editing onRun={runTool} onMark={markSelection} where={placeWords(toolbarPlace)} />}
                 <article className="ts-doc">
                   {readEmpty ? (
                     <EmptyBody mode={clauseMode} />
@@ -840,7 +823,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
         </div>
       </div>
 
-      {menu && <ContextMenu x={menu.x} y={menu.y} sections={menu.sections} onPick={(item) => runMenu(item)} onClose={() => setMenu(undefined)} />}
+      {menu && <ContextMenu x={menu.x} y={menu.y} sections={menu.sections} onPick={pickMenu} onClose={() => setMenu(undefined)} />}
       {pop && editing && (optionChip(pop.spec, index) ? <OptionSlotPopup env={popupEnv} nodeId={optionChip(pop.spec, index)!} options={options} anchor={pop.anchor} onClose={() => setPop(undefined)} /> : <PopupHost env={popupEnv} spec={pop.spec} anchor={pop.anchor} onClose={() => setPop(undefined)} />)}
 
       {discard ? (

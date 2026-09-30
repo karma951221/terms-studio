@@ -51,6 +51,7 @@ function ctxOf(tree: DocumentNode, edit: boolean): DocCtx {
     contextMenu: () => undefined,
     headItems: (branchId): MenuItem[] => condMenu({ tree, ix, docKind: "general", newId: sequentialIds("m") }, branchId).flat(),
     run: () => undefined,
+    blockAct: () => undefined,
   };
   return {
     documentId: "d",
@@ -116,11 +117,11 @@ describe("조건 블록 — 머리 줄은 그 자리 편집, 팝업 없음 (기�
   });
 });
 
-describe("함수조항 블록 — 머리 띠 「함수조항 (이름)」 + 🗑, 그 아래 본문", () => {
+describe("함수조항 블록 — 머리 띠 「[코드] 이름」 + 복제 · 삭제, 그 아래 본문 (2026-10-01)", () => {
   it("편집 모드 — 이름 · 삭제 버튼 · 함수조항 본문(읽기 전용)", () => {
     const html = render("D0009 = true", true);
     expect(html).toContain('class="ts-doc-clause"');
-    expect(html).toContain("함수조항 (보험기간)");
+    expect(html).toContain('<span class="ts-doc-clause-code">[C0001]</span> 보험기간');
     expect(html).toContain('aria-label="함수조항 보험기간 삭제"');
     expect(html).toContain("회사는 다음에 정한 기간 중에 보장합니다.");
     expect(html).toMatch(/data-clause-ref="[^"]+"/);
@@ -130,7 +131,7 @@ describe("함수조항 블록 — 머리 띠 「함수조항 (이름)」 + 🗑,
 
   it("읽기 모드 — 머리 띠 · 본문만, 삭제 버튼 없음", () => {
     const html = render("D0009 = true", false);
-    expect(html).toContain("함수조항 (보험기간)");
+    expect(html).toContain('<span class="ts-doc-clause-code">[C0001]</span> 보험기간');
     expect(html).not.toContain("삭제");
   });
 });
@@ -165,17 +166,19 @@ describe("함수조항 블록 안 — 가운데는 모델, 미리보기는 문�
     return renderToStaticMarkup(<Block nodes={(tree.children[0] as { children: DocumentNode["children"] }).children} ctx={ctx} />);
   }
 
-  it("편집 · 읽기 모두 — 옵션 자리(선택지 전부 + 고른 것 ✓) · 슬롯 칩 · IF 머리 · 「함수조항에서 고치기 →」", () => {
+  it("편집 · 읽기 모두 — 머리 「[코드] 이름」 · 옵션 자리(선택지 전부 + 고른 것 ✓) · 슬롯 칩 · IF 머리, 함수조항 화면 링크는 없다", () => {
     for (const edit of [true, false]) {
       const html = renderClause(edit);
-      expect(html).toContain("함수조항 (대표자의 지정)");
+      expect(html).toContain('<span class="ts-doc-clause-code">[C0002]</span> 대표자의 지정');
+      expect(html).not.toContain("함수조항 (대표자의 지정)");
       expect(html).toContain('class="ts-clause-model"');
       expect(html).toContain("지정 주체");
       expect(html).toContain("계약자");
       expect(html).toContain("✓피보험자");
       expect(html).toContain("〔담보명〕");
       expect(html).toContain('<span class="ts-cond-badge">IF</span> 감액여부 = true');
-      expect(html).toContain('href="/functions/C0002"');
+      expect(html).not.toContain('href="/functions/C0002"');
+      expect(html).not.toContain("함수조항에서 고치기");
       // 모델은 이 문서의 자리가 아니다 — 문장 칸 · 블록 표지가 없다
       const body = html.slice(html.indexOf("ts-doc-clause-body"));
       expect(body).not.toContain("data-block");
@@ -183,11 +186,11 @@ describe("함수조항 블록 안 — 가운데는 모델, 미리보기는 문�
     }
   });
 
-  it("미리보기(clauseView: text) — 고른 선택지 문구를 끼운 문장, 모델 · 고치기 링크 없음", () => {
+  it("미리보기(clauseView: text) — 고른 선택지 문구를 끼운 문장, 모델 없음 · 머리는 같은 「[코드] 이름」", () => {
     const html = renderClause(false, "text");
     expect(html).toContain("피보험자는");
     expect(html).not.toContain("ts-clause-model");
-    expect(html).not.toContain("함수조항에서 고치기");
+    expect(html).toContain('<span class="ts-doc-clause-code">[C0002]</span> 대표자의 지정');
   });
 });
 
@@ -228,6 +231,36 @@ describe("블록 손잡이 — 편집 모드에서 끌어 옮기기 · 고르기
   });
 });
 
+describe("블록 복제 · 삭제 — 블록 오른쪽 여백의 아이콘 (기능/문면 §4.3, 2026-10-01)", () => {
+  const b = nodeBuilders(sequentialIds("k"));
+  const t = b.document("D", [b.article("가", [b.paragraph([b.text("첫")]), b.paragraph([b.text("둘")])])]);
+  const nodes = (t.children[0] as { children: DocumentNode["children"] }).children;
+  it("편집 모드 — 블록마다 복제 · 삭제, 지금 자리 블록만 늘 보인다(is-on) · 읽기 모드에는 없다", () => {
+    expect(renderToStaticMarkup(<Block nodes={nodes} ctx={ctxOf(t, false)} />)).not.toContain("ts-block-acts");
+    const base = ctxOf(t, true);
+    const html = renderToStaticMarkup(<Block nodes={nodes} ctx={{ ...base, edit: { ...base.edit!, currentBlock: nodes[1].id } }} />);
+    expect(html.match(/class="ts-block-acts[^"]*"/g)).toEqual(['class="ts-block-acts"', 'class="ts-block-acts is-on"']);
+    expect(html).toContain('aria-label="제1항 복제 — 바로 뒤에 사본"');
+    expect(html).toContain('aria-label="제2항 삭제"');
+  });
+
+  it("아이콘 묶음은 그 블록 id 를 싣는다 — blockAct 가 없으면(읽기 · 「문구」 함수조항) 그리지 않는다", () => {
+    const base = ctxOf(t, true);
+    expect(renderToStaticMarkup(<Block nodes={nodes} ctx={base} />)).toContain(`data-block-acts="${nodes[0].id}"`);
+    const rest = { ...base.edit! };
+    delete rest.blockAct;
+    expect(renderToStaticMarkup(<Block nodes={nodes} ctx={{ ...base, edit: rest }} />)).not.toContain("data-block-acts");
+  });
+
+  it("조건 블록 · 함수조항은 머리 줄 끝에 늘 선다", () => {
+    const html = render("D0009 = true", true);
+    expect(html).toContain('aria-label="조건 블록 복제 — 바로 뒤에 사본"');
+    expect(html).toContain('aria-label="조건 블록 삭제"');
+    expect(html).toContain('aria-label="함수조항 보험기간 복제 — 바로 뒤에 사본"');
+    expect(html.match(/ts-block-acts is-inline/g)).toHaveLength(2);
+  });
+});
+
 describe("글머리 목록 — 편집기 (기능/문면 §3.2 · §4.3, 2026-09-28)", () => {
   const b = nodeBuilders(sequentialIds("l"));
   const t = b.document("D", [b.article("가", [b.paragraph([b.text("다음과 같습니다.")]), b.bulletList([b.bullet([b.text("가")]), b.bullet([])])])]);
@@ -238,5 +271,22 @@ describe("글머리 목록 — 편집기 (기능/문면 §3.2 · §4.3, 2026-09-
     expect(html.match(/class="ts-doc-bullet"/g)).toHaveLength(2);
     expect(html).toContain('data-placeholder="항목"');
     expect(html).toContain("is-bare");
+  });
+});
+
+describe("작업용 글자색 — 색 조각으로 그린다, 산출물 모양(미리보기)에는 없다 (기능/문면 §3.2 작업 표시)", () => {
+  const b = nodeBuilders(sequentialIds("w"));
+  const t = b.document("D", [b.article("가", [b.paragraph([b.text("회사는 "), { ...b.text("보험금을"), mark: "red" }, b.text(" 지급합니다.")])])]);
+  const nodes = (t.children[0] as { children: DocumentNode["children"] }).children;
+  const colored = '<span class="ts-mark" data-mark="red">보험금을</span>';
+
+  it("읽기 · 편집 모두 색 조각 — 편집기는 되읽기 위해 `data-mark` 를 품는다", () => {
+    for (const edit of [false, true]) expect(renderToStaticMarkup(<Block nodes={nodes} ctx={ctxOf(t, edit)} />)).toContain(`회사는 ${colored} 지급합니다.`);
+  });
+
+  it("미리보기 · 사전평가 결과(workMarks: false)는 글만", () => {
+    const html = renderToStaticMarkup(<Block nodes={nodes} ctx={{ ...ctxOf(t, false), workMarks: false }} />);
+    expect(html).toContain("회사는 보험금을 지급합니다.");
+    expect(html).not.toContain("ts-mark");
   });
 });

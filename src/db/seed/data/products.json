@@ -8,6 +8,22 @@
       {
         "path": "disclosure.avg_rate",
         "value": 2.5
+      },
+      {
+        "path": "feature.contract_kind",
+        "value": "V01"
+      },
+      {
+        "path": "feature.fetal",
+        "value": false
+      },
+      {
+        "path": "feature.group_contract",
+        "value": false
+      },
+      {
+        "path": "feature.notice_kind",
+        "value": "V01"
       }
     ],
     "planOptions": [
@@ -217,12 +233,44 @@
         "value": 2.5
       },
       {
+        "path": "feature.contract_kind",
+        "value": "V01"
+      },
+      {
         "path": "feature.renewable",
         "value": true
       },
       {
-        "path": "feature.review_type",
+        "path": "feature.fetal",
+        "value": false
+      },
+      {
+        "path": "feature.group_contract",
+        "value": false
+      },
+      {
+        "path": "feature.notice_kind",
         "value": "V02"
+      },
+      {
+        "path": "feature.review_scope",
+        "value": "V02"
+      },
+      {
+        "path": "feature.review_type",
+        "value": [
+          "V01",
+          "V02",
+          "V03",
+          "V04",
+          "V05",
+          "V06",
+          "V07",
+          "V08",
+          "V09",
+          "V10",
+          "V11"
+        ]
       }
     ],
     "planOptions": [

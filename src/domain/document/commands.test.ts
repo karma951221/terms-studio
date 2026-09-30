@@ -455,6 +455,26 @@ describe("setInlines — 가운데 본문의 그 자리 편집 (기능/문면 §
     void b;
   });
 
+  it("작업용 글자색 — 문장 조각마다 색을 싣고 · 바꾸고 · 지운다. 없는 색은 거부 (§3.2 작업 표시)", () => {
+    const { doc } = paragraphDoc();
+    const colored = unwrap(
+      applyCommand(doc, { type: "setInlines", at: { parentId: "n4" }, runs: [{ id: "n1", text: "계약일", mark: "red" }, { id: "t-x", text: "부터 " }, { keep: "n2" }, { id: "n3", text: " 이내", mark: "blue" }] }),
+    );
+    expect(para(colored).children).toEqual([
+      { id: "n1", kind: "text", text: "계약일", mark: "red" },
+      { id: "t-x", kind: "text", text: "부터 " },
+      { id: "n2", kind: "slot", ref: "D0001" },
+      { id: "n3", kind: "text", text: " 이내", mark: "blue" },
+    ]);
+    // 색 없는 조각 = 색 지우기 — 키째 빠진다(옛 문서와 같은 모양)
+    const cleared = unwrap(applyCommand(colored, { type: "setInlines", at: { parentId: "n4" }, runs: [{ id: "n1", text: "계약일부터 " }, { keep: "n2" }, { id: "n3", text: " 이내", mark: "green" }] }));
+    expect(para(cleared).children[0]).toEqual({ id: "n1", kind: "text", text: "계약일부터 " });
+    expect(para(cleared).children[2]).toEqual({ id: "n3", kind: "text", text: " 이내", mark: "green" });
+    expect(rejection(applyCommand(doc, { type: "setInlines", at: { parentId: "n4" }, runs: [{ id: "n1", text: "a", mark: "purple" as never }] })).reason).toBe("invalid");
+    // 원본 트리는 그대로
+    expect(para(doc).children[0]).toEqual({ id: "n1", kind: "text", text: "계약일부터 " });
+  });
+
   it("문장 안 조건 가지 안에 문장 안 조건은 넣을 수 없다 (§3.2 중첩)", () => {
     const b = make();
     const cond = b.inlineCond([b.inlineBranch("D0001 = true", [b.text("참")]), b.inlineBranch(undefined, [])]); // text n1 · br n2 · br n3 · cond n4

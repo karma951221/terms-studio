@@ -96,10 +96,5 @@ test(
       await expect(preview.locator(`aside[data-box="${code}"]`)).toContainText("예: 2026년 3월 1일 계약이면");
       await preview.getByRole("button", { name: "미리보기 닫기" }).click();
     });
-
-    await ev.action("박스#9", "박스 상세의 사용처가 1 — 그 템플릿의 자리", async () => {
-      await page.goto(`/boxes/${code}`);
-      await expect(page.getByRole("button", { name: /사용처/ })).toContainText("1");
-    });
   },
 );

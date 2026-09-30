@@ -16,7 +16,7 @@
  * DB·React import 금지 (순수층).
  */
 
-import { CONNECTOR_REPEAT_MESSAGE, CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, type AttachLevel, type Code, type Coordinate, type Id, type Issue, type ReferenceConnector, type RefRestrict } from "../types";
+import { CONNECTOR_REPEAT_MESSAGE, CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, isWorkMark, WORK_MARK_MESSAGE, type AttachLevel, type Code, type Coordinate, type Id, type Issue, type ReferenceConnector, type RefRestrict, type WorkMark } from "../types";
 import type { ClauseMode } from "../clause/types";
 import type { Bindings } from "../clause/params";
 import { documentCodeIssues, multiTarget, referenceKeys, refKey, refLabel } from "./pcode";
@@ -28,11 +28,12 @@ import type { MasterTree } from "../master";
 
 // ───────────────────────────── 인라인 ─────────────────────────────
 
-/** 텍스트런. */
+/** 텍스트런. `mark` = 작업용 글자색 — 산출물 · 비교에 뜻이 없는 작업 표시 (types.ts `WorkMark`). 없으면 키를 싣지 않는다. */
 export interface TextNode {
   id: Id;
   kind: "text";
   text: string;
+  mark?: WorkMark;
 }
 
 /** 값 치환 슬롯 — `ref` 는 값 참조 경로 (`D0001` · `D0002.F01` · `builtin.subCoverage.name`). 이름 슬롯은 없다. */
@@ -596,6 +597,8 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
     const inFor = f.inFor || node.kind === "forBlock" || node.kind === "inlineFor";
     const forDepth = f.forDepth + (node.kind === "forBlock" ? 1 : 0);
 
+    // 작업용 글자색 — 네 색 중 하나거나 없다 (뜻은 없고 모양만 검사한다)
+    if (node.kind === "text" && node.mark !== undefined && !isWorkMark(node.mark)) structure(WORK_MARK_MESSAGE, path, articleId);
     if (node.kind === "bulletList" && node.children.length === 0) structure("글머리 목록에는 항목이 하나 이상 있어야 합니다", path, articleId);
     if (node.kind === "table") {
       // 표 불변식 — 열이 하나 이상, 행마다 셀 수 = 열 수, 너비는 1~100 정수 (setTable · importTree 공통)

@@ -42,7 +42,8 @@ function serializer(refInsensitive: boolean) {
         return `e(${n.id})`;
     }
   };
-  const inlines = (list: readonly SInline[]) => list.map(inline).join("");
+  // 잇닿은 문장 조각은 한 조각으로 — 작업용 글자색(편집기의 작업 표시)이 문장을 여러 조각으로 갈라도 같은 글은 같다 (기능/조립산출 §3.5)
+  const inlines = (list: readonly SInline[]) => joinTexts(list).map(inline).join("");
   const err = (n: ErrorNode) => `e(${n.id})`;
   const subitem = (n: RSubitem<SInline> | RBulletList<SInline> | ErrorNode) => (n.kind === "error" ? err(n) : n.kind === "bulletList" ? stat(n) : `목[${inlines(n.children)}]`);
   /**
@@ -57,6 +58,17 @@ function serializer(refInsensitive: boolean) {
   const item = (n: RItem<SInline> | RStatic<SInline> | ErrorNode) => (n.kind === "error" ? err(n) : n.kind !== "item" ? stat(n) : `호[${inlines(n.children)}${(n.subitems ?? []).map(subitem).join("")}]`);
   const paragraph = (n: Compared) => (n.kind === "error" ? err(n) : n.kind !== "paragraph" ? stat(n) : `항[${inlines(n.children)}${(n.items ?? []).map(item).join("")}]`);
   return paragraph;
+}
+
+/** 잇닿은 문장 조각을 하나로 합친다 — 비교 전용(id 는 앞 조각 것). */
+function joinTexts(list: readonly SInline[]): SInline[] {
+  const out: SInline[] = [];
+  for (const n of list) {
+    const last = out[out.length - 1];
+    if (n.kind === "text" && last?.kind === "text") out[out.length - 1] = { ...last, text: last.text + n.text };
+    else out.push(n);
+  }
+  return out;
 }
 
 /** 리터럴 직렬화 (정본) · 참조 무시 직렬화 (미합의 셋째·넷째 줄의 문). */

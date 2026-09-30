@@ -14,9 +14,9 @@ import { filterMountRows, mountRows, withGroupStarts, type ProductTab } from "..
 
 /**
  * 기본계약 · 특약 두 절의 구조는 같다 (ADR-0021) — 둘 다 상품담보 탭에 선다. 제목은 옛 상품모델링 화면의 말을 따른다
- * (「보통약관 기본계약」 · 「특별약관」, 2026-09-27).
+ * (「기본계약」 · 「특별약관」, 2026-10-01 — 옛 「보통약관 기본계약」).
  */
-export const SECTION_TITLE = { base: "보통약관 기본계약", special: "특별약관" } as const;
+export const SECTION_TITLE = { base: "기본계약", special: "특별약관" } as const;
 const TAB: ProductTab = "coverages";
 
 /** 탑재 표의 검색어 · 페이지 쿼리 — 두 절이 한 탭에 있어 절마다 이름이 다르다. */
@@ -118,10 +118,7 @@ export function CoverageMountSection({ productId, section, items, coverages, att
                       <form action={renameProductCoverageAction.bind(null, productId, tab, pc.id)} style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
                         <input type="text" name="name" defaultValue={pc.name} aria-label={`상품담보명 · ${pc.name}`} style={{ width: 220 }} />
                         <IconButton type="submit" label={`이름 저장 · ${pc.name}`} icon={<IconCheck />} />
-                      </form>{" "}
-                      <Link href={`/products/${productId}/coverages/${pc.id}`} title={`상품담보 값 열기 · ${pc.name}`}>
-                        값 →
-                      </Link>
+                      </form>
                       {previewPath && (
                         <>
                           {" "}

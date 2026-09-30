@@ -13,7 +13,7 @@ import { Fragment, useEffect, useRef, type ClipboardEvent, type KeyboardEvent, t
 
 import { STRUCT_KEY_CHIP, SWITCH_WORD } from "@/app/_lib/labels";
 import { referenceChunkLabel, referenceKeyIndex, refKey, type ArticleRefNode, type InlineAt, type InlineNode, type ReferenceTarget } from "@/domain/document";
-import type { Id } from "@/domain/types";
+import type { Id, WorkMark } from "@/domain/types";
 
 import { anchorOf, chipText, encodeAt, type DocCtx } from "./ctx";
 import type { Token } from "./inlineRuns";
@@ -113,10 +113,23 @@ function chipParts(node: InlineNode, ctx: DocCtx): { className: string; title: s
   }
 }
 
+/**
+ * 문장 조각 — 작업용 글자색이 있으면 색 조각(`data-mark`)으로 싼다 (§3.2 작업 표시). 산출물 서식이 아니다 —
+ * 「수정 흔적 보기」를 끄면 화면이 `.is-marks-off` 로 보통 글색을 입힌다. `hide` 면(미리보기 · 사전평가 결과) 싸지 않는다.
+ */
+function TextRun({ node, hide }: { node: { text: string; mark?: WorkMark }; hide?: boolean }): ReactNode {
+  if (!node.mark || hide) return node.text;
+  return (
+    <span className="ts-mark" data-mark={node.mark}>
+      {node.text}
+    </span>
+  );
+}
+
 /** 읽기 — 글과 칩. 문장 안 조건은 **점선 밑줄만**(칩 · 배경 없음), 조건식은 tooltip. */
 export function InlineView({ nodes, ctx }: { nodes: readonly InlineNode[]; ctx: DocCtx }): ReactNode {
   return nodes.map((node) => {
-    if (node.kind === "text") return <Fragment key={node.id}>{node.text}</Fragment>;
+    if (node.kind === "text") return <TextRun key={node.id} node={node} hide={ctx.workMarks === false} />;
     if (node.kind === "inlineCond" && node.switchOn !== undefined) {
       // 문장 안 값별 분기 읽기 — 칸마다 점선 밑줄 조각, 칸 머리(값)는 tooltip
       const subject = ctx.switchSubjects?.find((s) => s.code === node.switchOn);
@@ -170,8 +183,14 @@ export function caretFromPoint(x: number, y: number): { node: globalThis.Node; o
   return range ? { node: range.startContainer, offset: range.startOffset } : undefined;
 }
 
+/** 글 조각 — 색이 있으면 싣는다. */
+const textToken = (text: string, mark: WorkMark | undefined): Token => (mark ? { text, mark } : { text });
+
+/** 색 조각 요소의 색 — 없으면 바깥 색을 물려받는다. */
+const markOf = (el: HTMLElement, outer: WorkMark | undefined): WorkMark | undefined => (el.dataset.mark as WorkMark | undefined) ?? outer;
+
 /**
- * 편집기 DOM → 조각 목록. 칩은 `data-chip`, 그 밖의 요소는 속 글만 읽는다. `caret` 을 주면 그 자리에 커서 조각.
+ * 편집기 DOM → 조각 목록. 칩은 `data-chip`, 그 밖의 요소는 속 글만 읽는다(색 조각 `data-mark` 는 글에 색을 싣는다). `caret` 을 주면 그 자리에 커서 조각.
  * `cutTo` 를 주면(같은 글자 노드 안의 끝 자리) 커서부터 거기까지의 글을 빼고 읽는다 — 고른 글을 칩으로 바꿀 때.
  */
 export function tokensOf(root: HTMLElement, caret?: { node: globalThis.Node; offset: number }, cutTo?: number): Token[] {
@@ -183,16 +202,16 @@ export function tokensOf(root: HTMLElement, caret?: { node: globalThis.Node; off
       placed = true;
     }
   };
-  const walk = (el: globalThis.Node) => {
+  const walk = (el: globalThis.Node, mark: WorkMark | undefined) => {
     el.childNodes.forEach((child, i) => {
       if (caret && caret.node === el && caret.offset === i) put();
       if (child.nodeType === 3) {
         const text = child.textContent ?? "";
         if (caret && caret.node === child) {
-          out.push({ text: text.slice(0, caret.offset) });
+          out.push(textToken(text.slice(0, caret.offset), mark));
           put();
-          out.push({ text: text.slice(cutTo !== undefined && cutTo > caret.offset ? cutTo : caret.offset) });
-        } else out.push({ text });
+          out.push(textToken(text.slice(cutTo !== undefined && cutTo > caret.offset ? cutTo : caret.offset), mark));
+        } else out.push(textToken(text, mark));
         return;
       }
       if (!(child instanceof HTMLElement)) return;
@@ -203,12 +222,52 @@ export function tokensOf(root: HTMLElement, caret?: { node: globalThis.Node; off
         return;
       }
       if (child.tagName === "BR") return;
-      walk(child);
+      walk(child, markOf(child, mark));
     });
     if (caret && caret.node === el && caret.offset >= el.childNodes.length) put();
   };
-  walk(root);
+  walk(root, undefined);
   return out;
+}
+
+/**
+ * 고른 글에 작업용 글자색을 칠한 조각 목록 (툴바 「글자색」, §3.2 작업 표시). `mark` 가 없으면 색 지우기.
+ * 이 문장 칸 안의 글 중 `range` 에 든 부분만 색을 바꾸고, 칩은 그대로 둔다(칩은 색을 갖지 않는다).
+ * 칸 안에 고른 글이 없으면 undefined.
+ */
+export function markedTokensOf(root: HTMLElement, range: Range, mark: WorkMark | undefined): Token[] | undefined {
+  const out: Token[] = [];
+  let touched = false;
+  const walk = (el: globalThis.Node, outer: WorkMark | undefined) => {
+    el.childNodes.forEach((child) => {
+      if (child.nodeType === 3) {
+        const text = child.textContent ?? "";
+        if (!range.intersectsNode(child)) {
+          out.push(textToken(text, outer));
+          return;
+        }
+        const from = range.startContainer === child ? range.startOffset : 0;
+        const to = range.endContainer === child ? range.endOffset : text.length;
+        if (from >= to) {
+          out.push(textToken(text, outer));
+          return;
+        }
+        touched = true;
+        out.push(textToken(text.slice(0, from), outer), textToken(text.slice(from, to), mark), textToken(text.slice(to), outer));
+        return;
+      }
+      if (!(child instanceof HTMLElement)) return;
+      const chip = child.dataset.chip;
+      if (chip) {
+        out.push({ chip });
+        return;
+      }
+      if (child.tagName === "BR") return;
+      walk(child, markOf(child, outer));
+    });
+  };
+  walk(root, undefined);
+  return touched ? out : undefined;
 }
 
 function caretToEnd(el: HTMLElement) {
@@ -302,7 +361,7 @@ function InlineEditor({ at, nodes, ctx, owner, focusKey, placeholder }: { at: In
       onPaste={onPaste}
     >
       {nodes.map((node) => {
-        if (node.kind === "text") return <Fragment key={node.id}>{node.text}</Fragment>;
+        if (node.kind === "text") return <TextRun key={node.id} node={node} />;
         const { className, title, body, what } = chipParts(node, ctx);
         const state = node.kind === "inlineCond" ? node.branches.map((br) => ctx.branchEval?.get(br.id)?.state) : [];
         return (

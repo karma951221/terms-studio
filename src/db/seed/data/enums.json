@@ -189,18 +189,69 @@
     "values": [
       {
         "code": "V01",
-        "label": "단일심사구분",
-        "order": 0
+        "label": "3.0.5",
+        "order": 0,
+        "fields": {}
       },
       {
         "code": "V02",
-        "label": "통합간편심사",
-        "order": 1
+        "label": "3.1.5",
+        "order": 1,
+        "fields": {}
       },
       {
         "code": "V03",
-        "label": "건강가입",
-        "order": 2
+        "label": "3.2.5",
+        "order": 2,
+        "fields": {}
+      },
+      {
+        "code": "V04",
+        "label": "3.3.5",
+        "order": 3,
+        "fields": {}
+      },
+      {
+        "code": "V05",
+        "label": "3.4.5",
+        "order": 4,
+        "fields": {}
+      },
+      {
+        "code": "V06",
+        "label": "3.5.5",
+        "order": 5,
+        "fields": {}
+      },
+      {
+        "code": "V07",
+        "label": "3.6.5",
+        "order": 6,
+        "fields": {}
+      },
+      {
+        "code": "V08",
+        "label": "3.7.5",
+        "order": 7,
+        "fields": {}
+      },
+      {
+        "code": "V09",
+        "label": "3.8.5",
+        "order": 8,
+        "fields": {}
+      },
+      {
+        "code": "V10",
+        "label": "3.9.5",
+        "order": 9,
+        "fields": {}
+      },
+      {
+        "code": "V11",
+        "label": "3.10.5",
+        "order": 10,
+        "fields": {}
       }
     ]
   },
@@ -210,18 +261,96 @@
     "values": [
       {
         "code": "V01",
-        "label": "일반고지",
-        "order": 0
+        "label": "6년 건강고지형",
+        "order": 0,
+        "fields": {}
       },
       {
         "code": "V02",
-        "label": "간편고지(3.5.5)",
-        "order": 1
+        "label": "7년 건강고지형",
+        "order": 1,
+        "fields": {}
       },
       {
         "code": "V03",
-        "label": "간편고지(3.10.5)",
-        "order": 2
+        "label": "8년 건강고지형",
+        "order": 2,
+        "fields": {}
+      },
+      {
+        "code": "V04",
+        "label": "9년 건강고지형",
+        "order": 3,
+        "fields": {}
+      },
+      {
+        "code": "V05",
+        "label": "10년 건강고지형",
+        "order": 4,
+        "fields": {}
+      }
+    ]
+  },
+  {
+    "code": "E0005",
+    "label": "고지유형",
+    "fields": [],
+    "values": [
+      {
+        "code": "V01",
+        "label": "일반심사",
+        "order": 0,
+        "fields": {}
+      },
+      {
+        "code": "V02",
+        "label": "간편심사",
+        "order": 1,
+        "fields": {}
+      },
+      {
+        "code": "V03",
+        "label": "건강고지",
+        "order": 2,
+        "fields": {}
+      }
+    ]
+  },
+  {
+    "code": "E0006",
+    "label": "간편심사구분",
+    "fields": [],
+    "values": [
+      {
+        "code": "V01",
+        "label": "단일심사",
+        "order": 0,
+        "fields": {}
+      },
+      {
+        "code": "V02",
+        "label": "통합간편심사",
+        "order": 1,
+        "fields": {}
+      }
+    ]
+  },
+  {
+    "code": "E0007",
+    "label": "계약형태",
+    "fields": [],
+    "values": [
+      {
+        "code": "V01",
+        "label": "주계약",
+        "order": 0,
+        "fields": {}
+      },
+      {
+        "code": "V02",
+        "label": "독립특약",
+        "order": 1,
+        "fields": {}
       }
     ]
   }
