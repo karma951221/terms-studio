@@ -131,7 +131,7 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
       });
 
       // 탑재 — 기본계약 섹션 1 + 특약 섹션 4 (같은 담보 2벌은 부가유형으로 구별)
-      const mount = async (step: number, section: "보통약관 기본계약" | "특별약관", coverage: string, addon?: "기본" | "추가") =>
+      const mount = async (step: number, section: "기본계약" | "특별약관", coverage: string, addon?: "기본" | "추가") =>
         ev.action(`실물재현#1.${step}`, `${section}에 ${coverage}${addon ? `(${addon})` : ""} 를 탑재한다`, async () => {
           // 기본계약 · 특약 두 절 모두 상품담보 탭에 산다 (기능/상품 §3.8, 2026-09-28)
           await page.goto(`${productUrl}?tab=coverages`);
@@ -142,7 +142,7 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
           // 탑재는 새 상품담보의 값 화면으로 간다 — 다음 단계가 제 탭을 다시 연다
           await page.waitForURL(/\/coverages\/[0-9a-f-]+$/);
         });
-      await mount(7, "보통약관 기본계약", "일반상해80%이상후유장해");
+      await mount(7, "기본계약", "일반상해80%이상후유장해");
       await mount(8, "특별약관", "일반상해사망보장", "기본");
       await mount(9, "특별약관", "일반상해사망보장", "추가");
       await mount(10, "특별약관", "일반상해80%이상후유장해 생활자금보장");

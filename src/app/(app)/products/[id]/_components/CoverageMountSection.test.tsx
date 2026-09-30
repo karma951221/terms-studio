@@ -1,5 +1,5 @@
 /**
- * 탑재 표 — 보통약관 기본계약 · 특별약관 두 절, 둘 다 상품담보 탭 (기능/상품 §4.5, 2026-09-28).
+ * 탑재 표 — 기본계약 · 특별약관 두 절, 둘 다 상품담보 탭 (기능/상품 §4.5, 2026-09-28).
  * 한 행 = 상품담보 하나: 담보코드 · 담보명 · 담보속성 · 상품담보명. 담보 : 상품담보 = 1 : N — 같은 담보는 이어 놓고
  * 코드 · 담보명은 묶음 첫 행에만. 「담보 검색」(특약 `?mq=` · 기본계약 `?bq=`)은 코드 · 이름 · 속성 값을 거른다.
  */
@@ -82,16 +82,16 @@ describe("CoverageMountSection — 상품담보 한 건 = 한 행", () => {
     expect(rows[2]).toContain('<span class="ts-muted">—</span>');
   });
 
-  it("기존 행 조작은 그대로 — 값 화면 · 이름 저장 · 작명 · 탑재 해제", () => {
+  it("기존 행 조작 — 이름 저장 · 작명 · 탑재 해제. 「값 →」 링크는 없다 (2026-10-01 — 잘못 누르면 화면이 바뀌었다)", () => {
     const html = render();
-    expect(html).toContain('href="/products/p1/coverages/pc2"');
+    expect(html).not.toContain('href="/products/p1/coverages/pc2"');
     expect(html).toContain("이름 저장 · 일반상해사망보장 추가");
     expect(html).toContain("작명 규칙으로 다시 짓기 · 수술비");
     expect(html).toContain('href="?tab=coverages&amp;confirm=pc:pc3"');
   });
 
-  it("제목은 옛 화면의 말 — 보통약관 기본계약 · 특별약관, 검색창 · 페이저 「총 N건」", () => {
-    expect(render(undefined, "base")).toContain(">보통약관 기본계약</h2>");
+  it("제목 — 기본계약 · 특별약관, 검색창 · 페이저 「총 N건」", () => {
+    expect(render(undefined, "base")).toContain(">기본계약</h2>");
     const html = render();
     expect(html).toContain(">특별약관</h2>");
     expect(html).toContain('placeholder="담보 검색 — 코드 · 담보명 · 상품담보명 · 담보속성"');

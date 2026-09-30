@@ -272,7 +272,6 @@ export default async function ProductDetailPage({
           productId={id}
           baseCoverages={baseCoverages}
           specialCoverages={specialCoverages}
-          productCoverages={productCoverages}
           coverages={coverages}
           attributeKinds={attributeKinds}
           plans={plans}

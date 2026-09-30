@@ -95,7 +95,6 @@ describe("상품담보 — 기본계약 · 특별약관 표 · 기본계약 지�
         productId="p1"
         baseCoverages={[pc("b1", "c1", "기본")]}
         specialCoverages={[pc("s1", "c2", "특약 A"), pc("s2", "c2", "특약 A 추가")]}
-        productCoverages={[]}
         coverages={[
           { id: "c1", code: "COV000001", name: "일반상해사망" },
           { id: "c2", code: "COV000002", name: "수술비" },
@@ -111,7 +110,7 @@ describe("상품담보 — 기본계약 · 특별약관 표 · 기본계약 지�
         confirmNode={null}
       />,
     );
-    expect(html).toContain(">보통약관 기본계약</h2>");
+    expect(html).toContain(">기본계약</h2>");
     expect(html).toContain('id="base-contract"');
     expect(html).toContain(">특별약관</h2>");
     expect(html).toContain("특약 그룹");
@@ -158,6 +157,6 @@ describe("약관 › 보통약관 작성 — 템플릿 한 줄 + 세 패널, 다
     expect(html).toContain("약관 — 전체 (원문)");
     expect(html).toContain("미리보기 — 전체 (평가)");
     expect(html).toContain("이 계약은");
-    for (const absent of ["보통약관 기본계약", "기본계약 지정", "특별약관", "담보 검색"]) expect(html).not.toContain(absent);
+    for (const absent of ["기본계약", "특별약관", "담보 검색"]) expect(html).not.toContain(absent);
   });
 });
