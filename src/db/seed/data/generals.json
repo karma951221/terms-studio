@@ -3685,33 +3685,45 @@
                           "boxCode": "BX000038"
                         },
                         {
-                          "id": "g-a27_1-p4",
-                          "kind": "paragraph",
-                          "children": [
+                          "id": "g-a27_1-p4-if",
+                          "kind": "condBlock",
+                          "branches": [
                             {
-                              "id": "g-a27_1-p4-x2",
-                              "kind": "text",
-                              "text": "1형(해약환급금 지급형)의 경우 회사는 "
-                            },
-                            {
-                              "id": "g-a27_1-p4-x1",
-                              "kind": "articleRef",
-                              "targets": [
+                              "id": "g-a27_1-p4-if-b",
+                              "when": "D0004",
+                              "children": [
                                 {
-                                  "articleId": "g-a27_1",
-                                  "code": "P0200"
+                                  "id": "g-a27_1-p4",
+                                  "kind": "paragraph",
+                                  "children": [
+                                    {
+                                      "id": "g-a27_1-p4-x2",
+                                      "kind": "text",
+                                      "text": "1형(해약환급금 지급형)의 경우 회사는 "
+                                    },
+                                    {
+                                      "id": "g-a27_1-p4-x1",
+                                      "kind": "articleRef",
+                                      "targets": [
+                                        {
+                                          "articleId": "g-a27_1",
+                                          "code": "P0200"
+                                        }
+                                      ],
+                                      "connector": "및",
+                                      "scope": "self"
+                                    },
+                                    {
+                                      "id": "g-a27_1-p4-x3",
+                                      "kind": "text",
+                                      "text": "에 따라 보장보험료 납입면제가 된 경우에 차회 이후의 적립보험료 납입을 중지합니다."
+                                    }
+                                  ],
+                                  "code": "P0500"
                                 }
-                              ],
-                              "connector": "및",
-                              "scope": "self"
-                            },
-                            {
-                              "id": "g-a27_1-p4-x3",
-                              "kind": "text",
-                              "text": "에 따라 보장보험료 납입면제가 된 경우에 차회 이후의 적립보험료 납입을 중지합니다."
+                              ]
                             }
-                          ],
-                          "code": "P0500"
+                          ]
                         },
                         {
                           "id": "g-a27_1-p5",
@@ -3724,20 +3736,15 @@
                                 {
                                   "articleId": "g-a27_1",
                                   "code": "P0200"
-                                }
-                              ],
-                              "connector": "및",
-                              "scope": "self"
-                            },
-                            {
-                              "id": "g-a27_1-p5-x4",
-                              "kind": "text",
-                              "text": "부터 "
-                            },
-                            {
-                              "id": "g-a27_1-p5-x2",
-                              "kind": "articleRef",
-                              "targets": [
+                                },
+                                {
+                                  "articleId": "g-a27_1",
+                                  "code": "P0300"
+                                },
+                                {
+                                  "articleId": "g-a27_1",
+                                  "code": "P0400"
+                                },
                                 {
                                   "articleId": "g-a27_1",
                                   "code": "P0500"
@@ -3749,7 +3756,7 @@
                             {
                               "id": "g-a27_1-p5-x5",
                               "kind": "text",
-                              "text": "까지의 규정에도 불구하고 보장보험료의 납입이 면제되기 이전에 보험료 납입 연체가 있는 경우에는 연체된 보험료를 납입하여야 하며, 납입하지 않은 경우 "
+                              "text": "의 규정에도 불구하고 보장보험료의 납입이 면제되기 이전에 보험료 납입 연체가 있는 경우에는 연체된 보험료를 납입하여야 하며, 납입하지 않은 경우 "
                             },
                             {
                               "id": "g-a27_1-p5-x3",

@@ -18,5 +18,25 @@
     "resultType": {
       "kind": "boolean"
     }
+  },
+  {
+    "code": "D0003",
+    "label": "해약환급금 지급형",
+    "description": "형(세목 선택지)의 무저해지 유형이 해약환급금지급형인가 — 「해약환급금 지급형 있음」(D0004)이 읽는다",
+    "level": "plan",
+    "expression": "no_surrender.type = 'V01'",
+    "resultType": {
+      "kind": "boolean"
+    }
+  },
+  {
+    "code": "D0004",
+    "label": "해약환급금 지급형 있음",
+    "description": "상품에 해약환급금 지급형인 형이 있는가 — 알파Plus 보통약관 납입면제 조 「1형(해약환급금 지급형)의 경우 … 적립보험료 납입을 중지합니다」 항을 항 자리 IF 로 감싼다 (최종 결정 24 「상품 범위 조건」)",
+    "level": "product",
+    "expression": "any(D0003)",
+    "resultType": {
+      "kind": "boolean"
+    }
   }
 ]

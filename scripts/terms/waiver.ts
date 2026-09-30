@@ -16,7 +16,7 @@
 import type { Block, Inline, ItemNode as ClauseItem, ParagraphNode as ClauseParagraph } from "../../src/domain/clause/nodes";
 import type { Binding, ParamDef } from "../../src/domain/clause/params";
 import type { LocalDef } from "../../src/domain/clause/locals";
-import type { ArticleNode, BlockNode, ClauseBlockRefNode, DocumentNode, ForBlockNode, InlineNode, ItemNode, ParagraphNode, SectionNode } from "../../src/domain/document/nodes";
+import type { ArticleNode, ArticleRefNode, BlockNode, ClauseBlockRefNode, DocumentNode, ForBlockNode, InlineNode, ItemNode, ParagraphNode, SectionNode } from "../../src/domain/document/nodes";
 import type { Code, Id, RefRestrict } from "../../src/domain/types";
 
 import type { ClauseRecord } from "./clauses";
@@ -30,6 +30,12 @@ export interface WaiverSource {
 
 /** 「납입면제 있음」 — 상품 레벨 구분자(적용 종이 있는가, discriminators.json). 세 조를 조 자리 IF 로 감싼다 (결정 16). */
 export const WAIVER_PRESENT = "D0002";
+
+/**
+ * 「해약환급금 지급형 있음」 — 상품 레벨 구분자 `any(D0003)`(D0003 = 형의 무저해지 유형이 해약환급금지급형, discriminators.json).
+ * 알파Plus 제27조의1 ④ 「1형(해약환급금 지급형)의 경우 … 적립보험료 납입을 중지합니다」를 항 자리 IF 로 감싼다 (최종 결정 24 「상품 범위 조건」).
+ */
+export const SURRENDER_PAYING = "D0004";
 
 /** E0001 납입면제사유 값 코드 (enums.json — 열거형 순서). */
 export const REASON = {
@@ -362,8 +368,13 @@ export function applyAlphaWaiver(alpha: WaiverSource, meritz: WaiverSource): Wai
   };
   const outer: ForBlockNode = { id: outerId, kind: "forBlock", source: { kind: "planOptions", ...APPLIED }, children: [repeated] };
   const addendumRef = ref(`${a27.id}-p2-k`, "waiver-addendum", { 종들: APPLIED_BINDING });
-  const rest = a27.children.slice(a27.children.indexOf(paragraphs(a27)[2]));
+  const [, , p3, p4, p5] = paragraphs(a27);
+  const rest = a27.children.slice(a27.children.indexOf(p3));
   a27.children = [outer, addendumRef, ...rest];
+  // ④ 1형 적립 중지 — 해약환급금 지급형이 있을 때만 (결정 24). ⑤ 「제1항부터 제4항까지」는 대상 넷인 참조 하나로
+  if (!paragraphs(a27).includes(p4) || !JSON.stringify(p4.children).includes("1형(해약환급금 지급형)의 경우")) throw new Error("납입면제 재모델링: 제27조의1 ④ 가 1형 적립 중지가 아니다");
+  wrapBlock(a27, p4.id, SURRENDER_PAYING, `${p4.id}-if`);
+  mergeRanges(p5, [p1.id, addendumRef.id, p3.id, p4.id, p5.id]);
 
   // 제27조의2 — 조 본문 = 세부규정 한 줄
   a27d.children = [ref(`${a27d.id}-p1-k`, "waiver-detail", { 종들: APPLIED_BINDING })];
@@ -383,6 +394,41 @@ export function applyAlphaWaiver(alpha: WaiverSource, meritz: WaiverSource): Wai
   wrapArticles(alpha.tree, [a27.id, a27d.id, x.id], `${a27.id}-if-waiver`);
 
   return [itemClause, definitionClause, addendumClause, detailClause, voidClause, reviveClause];
+}
+
+/**
+ * 「[참조 A]부터 [참조 B]까지」(원문 변환은 참조 둘 + 글) → 대상 여럿인 참조 하나. `order` = 조의 항 자리(원문 항 순서 — 반복 · 함수조항 참조 · 조건 안 항)
+ * 에서 A 부터 B 까지. 번호는 조립이 계산하므로 반복이 여러 항을 내거나 조건이 한 항을 빼도 「제1항부터 제N항까지」 · 「제1항 및 제2항」으로 따라온다 —
+ * 참조 둘이면 끝 대상이 빠질 때 오류가 되고, 반복이 항 둘을 내면 「제1항 및 제2항부터」가 된다.
+ */
+function mergeRanges(p: { children: InlineNode[] }, order: readonly Id[]): void {
+  const out: InlineNode[] = [];
+  const xs = p.children;
+  for (let i = 0; i < xs.length; i++) {
+    const a = xs[i];
+    const mid = xs[i + 1];
+    const b = xs[i + 2];
+    const tail = xs[i + 3];
+    const one = (n: InlineNode | undefined): n is ArticleRefNode => n?.kind === "articleRef" && n.scope === "self" && n.targets.length === 1;
+    if (one(a) && mid?.kind === "text" && mid.text === "부터 " && one(b) && tail?.kind === "text" && tail.text.startsWith("까지")) {
+      const from = order.indexOf(a.targets[0].articleId);
+      const to = order.indexOf(b.targets[0].articleId);
+      if (from < 0 || to <= from) throw new Error(`납입면제 재모델링: 범위 참조 ${a.id} 의 끝을 항 자리에서 찾지 못했다`);
+      out.push({ ...a, targets: order.slice(from, to + 1).map((articleId) => ({ articleId })), connector: a.connector ?? "및" });
+      out.push({ ...tail, text: tail.text.slice("까지".length) });
+      i += 3;
+      continue;
+    }
+    out.push(a);
+  }
+  p.children = out;
+}
+
+/** 블록 하나를 조건 블록(가지 하나)으로 감싼다. */
+function wrapBlock(a: ArticleNode, target: Id, when: string, id: Id): void {
+  const at = a.children.findIndex((c) => c.id === target);
+  if (at < 0) throw new Error(`납입면제 재모델링: ${a.id} 에 ${target} 없음`);
+  a.children.splice(at, 1, { id, kind: "condBlock", branches: [{ id: `${id}-b`, when, children: [a.children[at]] }] } as BlockNode);
 }
 
 /** 잇닿은 조들을 조 자리 IF 하나로 감싼다. */

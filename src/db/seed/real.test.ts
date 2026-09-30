@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { Booklet } from "@/domain/assembly";
 import { articleTitles, diffArticlesUnordered, referenceNumberIssues, renderedToLines, sourceToLines, type UnorderedDiff } from "@/domain/assembly/compare";
-import type { Actor } from "@/domain/types";
+import type { Actor, Value } from "@/domain/types";
 
 import { createTestDb, type TestDb } from "@/db/test-utils";
 import { createServices } from "@/services/container";
@@ -227,5 +227,62 @@ describe("★ 실물 재현 변형 — 알파Plus 납입면제 사유를 바꾸�
   it("무효 · 부활 — 면책 사유가 없어 암보장개시일 항이 없다", () => {
     expect(article("계약의 무효").filter((l) => l.startsWith("@ "))).toHaveLength(2);
     expect(article("보험료의 납입을 연체하여 해지된 계약의 부활(효력회복)").some((l) => l.includes("암보장개시일"))).toBe(false);
+  });
+});
+
+/** 변형 한 벌 — 실물 시드를 넣고 세목 선택지 값을 바꾼 뒤 상품마다 조립한다. */
+async function previewVariant(changes: { product: string; axis: "type" | "form"; number: number; entries: { path: string; value: Value }[] }[]) {
+  const db = await createTestDb();
+  const services = createServices(db.db);
+  const admin = await services.auth.ensureSeedAdmin();
+  const actor: Actor = { userId: admin.id, role: admin.role };
+  await loadAlphaPlus(services, actor);
+  const products = await services.product.listProducts();
+  for (const c of changes) {
+    const product = products.find((p) => p.name === c.product)!;
+    const option = (await services.product.listPlanOptions(product.id)).find((o) => o.axis === c.axis && o.number === c.number)!;
+    const saved = await services.product.setPlanOptionValues(actor, option.id, c.entries);
+    if (!saved.ok) throw new Error(JSON.stringify(saved.rejection));
+  }
+  const out = new Map<string, Booklet>();
+  for (const product of products) {
+    const r = await services.assembly.preview(product.id);
+    if (!r.ok) throw new Error(JSON.stringify(r.rejection));
+    out.set(product.name, r.value);
+  }
+  return { db, booklets: out };
+}
+
+/** 조립 줄에서 조 하나(헤딩 줄 포함) — 조 명으로. */
+function articleLines(lines: readonly string[], title: string): string[] {
+  const at = lines.findIndex((l) => l.startsWith("## ") && l.endsWith(`(${title})`));
+  if (at < 0) return [];
+  const end = lines.findIndex((l, i) => i > at && /^##? /.test(l));
+  return lines.slice(at, end < 0 ? undefined : end);
+}
+
+/**
+ * 대표 변형 — 1형 적립 중지(최종 결정 24 「상품 범위 조건」). 알파Plus 제27조의1 ④ 「1형(해약환급금 지급형)의 경우 … 적립보험료 납입을 중지합니다」는
+ * 상품에 해약환급금 지급형(무저해지 유형 = 해약환급금지급형)인 형이 있을 때만 선다. 뒤 항의 「제1항부터 제4항까지」는 한 참조(대상 넷)라 「제1항부터 제3항까지」로 따라온다.
+ */
+describe("★ 실물 재현 변형 — 해약환급금 지급형이 없으면 1형 적립 중지 항이 빠진다", () => {
+  let db: TestDb;
+  let booklet: Booklet;
+
+  beforeAll(async () => {
+    const v = await previewVariant([{ product: "알파Plus보장보험", axis: "form", number: 1, entries: [{ path: "no_surrender.type", value: "V02" }] }]);
+    db = v.db;
+    booklet = v.booklets.get("알파Plus보장보험")!;
+  }, 120_000);
+
+  afterAll(async () => {
+    await db.close();
+  });
+
+  it("오류 0 · ④ 가 없고 ⑤ 의 범위 참조가 「제1항부터 제3항까지」", () => {
+    expect(booklet.issues).toEqual([]);
+    const waiver = articleLines(renderedToLines(booklet.general!), "보험료의 납입면제");
+    expect(waiver.some((l) => l.includes("적립보험료 납입을 중지"))).toBe(false);
+    expect(waiver.at(-1)).toMatch(/^@ 제1항부터 제3항까지의 규정에도 불구하고/);
   });
 });

@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { WAIVER_PRESENT } from "./waiver";
+import { SURRENDER_PAYING, WAIVER_PRESENT } from "./waiver";
 
 /**
  * 알파Plus 납입면제 재모델링의 변환 결과(시드 JSON) — 템플릿 모양 · 역할 함수조항 본문 · 값 한정 참조.
@@ -70,6 +70,15 @@ describe("알파Plus 납입면제 템플릿 — 사유 값으로 분기하지 �
     expect(ref.bindings).toEqual({ 사유: { kind: "current", loop: inner.id } });
     // 템플릿 어디에도 사유 값 코드 비교가 없다
     expect(all(alpha, (x) => typeof x.when === "string" && /V\d\d/.test(x.when as string))).toEqual([]);
+  });
+
+  it("④ 1형 적립 중지는 「해약환급금 지급형 있음」 항 자리 IF, ⑤ 「제1항부터 제4항까지」는 대상 넷(반복 항 · 부가항 · ③ · ④)인 참조 하나 (결정 24)", () => {
+    const wrap = find(alpha, (x) => x.kind === "condBlock" && (x.branches as { when: string }[])[0].when === SURRENDER_PAYING)!;
+    expect(JSON.stringify(wrap)).toContain("1형(해약환급금 지급형)의 경우");
+    const range = find(alpha, (x) => x.kind === "paragraph" && JSON.stringify(x.children).includes("의 규정에도 불구하고 보장보험료의 납입이 면제되기"))!;
+    const refs = (range.children as Json[]).filter((c) => c.kind === "articleRef");
+    expect((refs[0].targets as unknown[]).length).toBe(4);
+    expect((range.children as Json[]).find((c) => c.kind === "text" && (c.text as string).startsWith("의 규정에도"))).toBeDefined();
   });
 
   it("정의 조 = [사유 합집합 ∩ 정의조대상(F03) = 예마다] ⟨정의(사유 ← 현재 원소)⟩", () => {

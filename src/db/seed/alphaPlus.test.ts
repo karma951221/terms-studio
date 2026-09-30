@@ -125,11 +125,13 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     expect(burn.subCoverages.map((s) => s.benefits.map((b) => b.name))).toEqual(names.map((n) => [n]));
   });
 
-  it("시드 구분자는 원문 모델링이 쓰는 담보명(D0001) · 납입면제 있음(D0002) 둘뿐 — 감액 · 면책 · 최초1회 같은 특성 구분자는 두지 않는다 (알파플러스_모델명세 §2)", async () => {
+  it("시드 구분자는 원문 모델링이 쓰는 담보명(D0001) · 납입면제 있음(D0002) · 해약환급금 지급형(D0003 · D0004 있음)뿐 — 감액 · 면책 · 최초1회 같은 특성 구분자는 두지 않는다 (알파플러스_모델명세 §2)", async () => {
     const defs = await services.catalog.list();
     expect(defs.map((d) => [d.code, d.label, d.level, d.expression])).toEqual([
       ["D0001", "담보명", "coverage", "coverage_basic.claim_name"],
       ["D0002", "납입면제 있음", "product", "any(waiver.applies)"],
+      ["D0003", "해약환급금 지급형", "plan", "no_surrender.type = 'V01'"],
+      ["D0004", "해약환급금 지급형 있음", "product", "any(D0003)"],
     ]);
   });
 

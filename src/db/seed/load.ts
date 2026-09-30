@@ -1,6 +1,7 @@
 import type { EnumFieldType, EnumFieldValue, NewDiscriminator, NewEnum } from "@/domain/catalog";
 import type { ClauseBody, NewClause } from "@/domain/clause";
 import type { DocumentNode } from "@/domain/document";
+import { findMasterField } from "@/domain/master";
 import type { Actor, Code, Id, Result, Value } from "@/domain/types";
 import type { Services } from "@/services/container";
 
@@ -106,9 +107,17 @@ export function catalogUsedByGenerals(): { enums: number; discriminators: number
   const text = JSON.stringify([...(generals as unknown as Array<{ tree: DocumentNode }>).map((g) => g.tree), ...generalClauseRaws()]);
   const enumCodes = new Set([...text.matchAll(/"enumCode":"(E\d{4})"/g)].map((m) => m[1]));
   const discriminatorCodes = new Set([...text.matchAll(/\b(D\d{4})\b/g)].map((m) => m[1]));
+  const upTo = prefixCovering(discriminators as unknown as Array<{ code: Code }>, discriminatorCodes);
+  // 앞 코드 구분자가 읽는 마스터 열거 필드의 열거형도 먼저 있어야 한다 — 식의 열거값 비교(「no_surrender.type = 'V01'」)는 저장 때 그 값을 찾는다
+  for (const d of (discriminators as unknown as Array<{ expression: string }>).slice(0, upTo)) {
+    for (const m of d.expression.matchAll(/\b([a-z_]+\.[a-z_]+)\b/g)) {
+      const type = findMasterField(m[1])?.field.type;
+      if (type && "enumCode" in type && type.enumCode) enumCodes.add(type.enumCode);
+    }
+  }
   return {
     enums: prefixCovering(enums as unknown as Array<{ code: Code }>, enumCodes),
-    discriminators: prefixCovering(discriminators as unknown as Array<{ code: Code }>, discriminatorCodes),
+    discriminators: upTo,
   };
 }
 
