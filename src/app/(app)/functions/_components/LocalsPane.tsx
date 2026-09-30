@@ -8,7 +8,10 @@
  * 더하기 `+`, 빼기 ⊖ — 인자 표 · 옵션 목록과 같은 문법.
  */
 import { IconButton, IconMinusCircle, IconPlus } from "@/app/_components/icons";
+import { InfoTip } from "@/app/_components/InfoTip";
 import type { LocalDef } from "@/domain/clause";
+
+const NOTE = "인자를 가공한 이름 — 본문과 뒤의 내부 변수가 읽는다(앞에 선언한 것만). 개수 연산은 없다.";
 
 /** 연산 안내 — 식 칸 툴팁 (기능/식언어 §12). */
 const OPS_HINT =
@@ -18,8 +21,10 @@ export function LocalsPane({ locals, editing, onChange }: { locals: readonly Loc
   const patch = (i: number, next: LocalDef) => onChange(locals.map((l, idx) => (idx === i ? next : l)));
   return (
     <section className="ts-clause-params" aria-label="내부 변수">
-      <h2 className="ts-clause-sec">내부 변수</h2>
-      <p className="ts-muted ts-clause-sec-note">인자를 가공한 이름 — 본문과 뒤의 내부 변수가 읽는다(앞에 선언한 것만). 개수 연산은 없다.</p>
+      <h2 className="ts-clause-sec">
+        내부 변수
+        <InfoTip text={NOTE} />
+      </h2>
       {locals.length === 0 && !editing ? <p className="ts-muted">내부 변수 없음.</p> : null}
       {locals.length > 0 && (
         <table className="ts-table ts-clause-params-table">
