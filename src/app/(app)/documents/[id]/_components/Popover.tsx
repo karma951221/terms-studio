@@ -36,6 +36,11 @@ export function Popover({ anchor, label, onClose, children, wide }: { anchor: An
     if (!d) return;
     if (!d.open) d.showModal();
     placeAt(d, anchor);
+    // 열린 뒤 내용이 자라면(값 한정 「해당 값들」 체크 목록 등) 다시 자리를 잡는다 — 처음 높이로 잡은 자리면 아래가 화면 밖으로 나가 확인 단추를 못 누른다
+    if (typeof ResizeObserver === "undefined") return;
+    const watch = new ResizeObserver(() => placeAt(d, anchor));
+    watch.observe(d);
+    return () => watch.disconnect();
   }, [anchor]);
   return (
     <dialog
