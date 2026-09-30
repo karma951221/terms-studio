@@ -1,11 +1,12 @@
 import { type Page } from "@playwright/test";
 
+import { createEnum } from "./_lib/enum";
 import { expect, test } from "./_lib/fixtures";
 
 /**
- * 함수조항 값별 분기(switch, 최종 결정 5 · 기능/함수조항 §3.7) — 목록값 인자(납입면제사유 E0001: 질병 · 상해)를 대상으로 값별 분기를 넣으면
+ * 함수조항 값별 분기(switch, 최종 결정 5 · 기능/함수조항 §3.7) — 목록값 인자(이 테스트가 만든 열거형: 질병 · 상해)를 대상으로 값별 분기를 넣으면
  * 값마다 칸이 서고, 저장하면 상세(읽기)에 칸 머리가 남는다. 칸 하나를 지워 값이 칸 없이 남으면 저장이 거부되고,
- * 칸을 다시 더해 「문구 없음」으로 두면 저장된다. 시드는 건드리지 않는다 — 새 함수조항만 쓴다.
+ * 칸을 다시 더해 「문구 없음」으로 두면 저장된다. 시드는 건드리지 않는다 — 새 열거형 · 새 함수조항만 쓴다(시드 E0001 은 실물 값 14개).
  */
 
 async function login(page: Page): Promise<void> {
@@ -21,17 +22,18 @@ test(
     test.setTimeout(120_000);
     const clauseName = `사유 정의(${Date.now()})`;
     await ev.action("값별분기#1", "관리자로 로그인한다", () => login(page));
+    const reasons = await ev.action("값별분기#1b", "열거형 「사유(스탬프)」 — 값 질병 · 상해를 생성 화면에서", () => createEnum(page, `사유${Date.now()}`, ["질병", "상해"]));
 
     const editor = page.locator(".ts-clause-editor");
     const toolbar = page.getByRole("toolbar", { name: "약관 편집 도구" });
     const cases = editor.locator(".ts-doc-cond.is-switch");
 
-    await ev.action("값별분기#2", "새 함수조항(항) — 인자 「사유」(열거형 납입면제사유) · 툴바 「값별 분기」 → 값마다 칸(질병 · 상해)", async () => {
+    await ev.action("값별분기#2", "새 함수조항(항) — 인자 「사유」(그 열거형) · 툴바 「값별 분기」 → 값마다 칸(질병 · 상해)", async () => {
       await page.goto("/functions/new?type=block");
       await page.getByLabel("함수조항명").fill(clauseName);
       await page.getByRole("button", { name: "인자 추가" }).click();
       await page.getByLabel("인자 1 이름").fill("사유");
-      await page.getByLabel("인자 1 타입").selectOption("enum:E0001");
+      await page.getByLabel("인자 1 타입").selectOption(`enum:${reasons}`);
       await toolbar.getByRole("button", { name: "값별 분기", exact: true }).click();
       await expect(cases).toHaveCount(2);
       await expect(editor.getByLabel("값별 분기 대상")).toHaveValue("arg.사유");
@@ -81,6 +83,7 @@ test(
     test.setTimeout(120_000);
     const clauseName = `사유 말(${Date.now()})`;
     await ev.action("문장분기#1", "관리자로 로그인한다", () => login(page));
+    const reasons = await ev.action("문장분기#1b", "열거형 「사유(스탬프)」 — 값 질병 · 상해를 생성 화면에서", () => createEnum(page, `사유${Date.now()}`, ["질병", "상해"]));
     const editor = page.locator(".ts-clause-editor");
     const toolbar = page.getByRole("toolbar", { name: "약관 편집 도구" });
 
@@ -89,7 +92,7 @@ test(
       await page.getByLabel("함수조항명").fill(clauseName);
       await page.getByRole("button", { name: "인자 추가" }).click();
       await page.getByLabel("인자 1 이름").fill("사유");
-      await page.getByLabel("인자 1 타입").selectOption("enum:E0001");
+      await page.getByLabel("인자 1 타입").selectOption(`enum:${reasons}`);
       const line = editor.getByRole("textbox", { name: "문구", exact: true });
       await line.click();
       await line.fill("보험료 납입을 면제하는 사유: ");

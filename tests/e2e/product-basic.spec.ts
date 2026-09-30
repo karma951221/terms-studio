@@ -95,7 +95,7 @@ test(
       await page.getByRole("button", { name: "저장", exact: true }).click();
       await expect(page.getByText("제2종(보험료납입면제적용형) — 적용여부가 「예」면 납입면제사유를 1개 이상 고르세요")).toBeVisible();
       await expect(page.getByRole("button", { name: "저장", exact: true })).toBeVisible();
-      await rows.nth(1).getByRole("checkbox", { name: "상해", exact: true }).check();
+      await rows.nth(1).getByRole("checkbox", { name: "뇌졸중", exact: true }).check();
       await page.getByRole("button", { name: "저장", exact: true }).click();
 
       // ── 저장 후 읽기: 표에 종·형 · 이름 · 값이 함께 보인다

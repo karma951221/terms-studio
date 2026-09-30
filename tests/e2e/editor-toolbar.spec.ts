@@ -1,6 +1,7 @@
 import { type Locator, type Page } from "@playwright/test";
 
 import { pickCombo } from "./_lib/combo";
+import { createEnum } from "./_lib/enum";
 import { expect, test } from "./_lib/fixtures";
 
 /**
@@ -429,14 +430,16 @@ test(
     const stamp = Date.now();
     const clauseName = `접기검증 사유(${stamp})`;
     await ev.action("접기#1", "관리자로 로그인한다", () => login(page));
+    // 시드 E0001(납입면제사유)은 실물 값 14개라 칸 둘을 보기 어렵다 — 이 테스트가 두 값 열거형을 만든다
+    const reasons = await ev.action("접기#1b", "열거형 「사유(스탬프)」 — 값 질병 · 상해를 생성 화면에서", () => createEnum(page, `접기사유${stamp}`, ["질병", "상해"]));
 
     const toolbar = page.getByRole("toolbar", { name: "약관 편집 도구" });
-    const code = await ev.action("접기#2", "역할 함수조항 — 인자 「사유」(납입면제사유) · 값별 분기 칸마다 항(질병 둘 · 상해 하나)을 쓰고 저장", async () => {
+    const code = await ev.action("접기#2", "역할 함수조항 — 인자 「사유」(그 열거형) · 값별 분기 칸마다 항(질병 둘 · 상해 하나)을 쓰고 저장", async () => {
       await page.goto("/functions/new?type=block");
       await page.getByLabel("함수조항명").fill(clauseName);
       await page.getByRole("button", { name: "인자 추가" }).click();
       await page.getByLabel("인자 1 이름").fill("사유");
-      await page.getByLabel("인자 1 타입").selectOption("enum:E0001");
+      await page.getByLabel("인자 1 타입").selectOption(`enum:${reasons}`);
       const editor = page.locator(".ts-clause-editor");
       await toolbar.getByRole("button", { name: "값별 분기", exact: true }).click();
       const cases = editor.locator(".ts-doc-cond.is-switch");

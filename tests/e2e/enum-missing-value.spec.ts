@@ -18,7 +18,8 @@ async function addEnumValue(page: Page, code: string, label: string) {
   await page.goto(`/enums/${code}`);
   await page.getByRole("button", { name: "편집", exact: true }).click();
   await page.getByRole("button", { name: "값 추가", exact: true }).click();
-  await page.locator("table.ts-table tbody tr").last().locator("input").fill(label);
+  // 값 행의 첫 칸이 값 이름 — 필드가 있는 열거형(E0001)은 필드 칸이 뒤따른다
+  await page.locator("table.ts-table tbody tr").last().locator("input").first().fill(label);
   await page.getByRole("button", { name: "저장", exact: true }).click();
   await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
 }
@@ -79,7 +80,7 @@ test(
       await row.getByRole("textbox", { name: "보험종목명" }).fill("납입면제형");
       await row.getByRole("combobox", { name: "세목유형" }).selectOption("waiver");
       await row.getByRole("radio", { name: "예", exact: true }).check();
-      await row.getByRole("checkbox", { name: "질병", exact: true }).check();
+      await row.getByRole("checkbox", { name: "뇌졸중", exact: true }).check();
       await row.getByRole("checkbox", { name: reason, exact: true }).check();
       await page.getByRole("button", { name: "저장", exact: true }).click();
       await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
@@ -89,21 +90,21 @@ test(
       // 읽기: 남은 값은 이름으로, 지운 값은 코드와 함께 오류 칩으로 — 조용히 사라지지 않는다
       await page.goto(productUrl);
       const readRow = page.locator("#definitions-panel tbody tr").nth(0);
-      await expect(readRow).toContainText("질병");
+      await expect(readRow).toContainText("뇌졸중");
       const chip = readRow.locator(".ts-chip.is-error");
       await expect(chip).toHaveText(/^없는 값 V\d+$/);
 
       // 편집: 칩에 빼기 버튼 — 다른 체크를 만져도 칩은 남고, 빼기로만 지운다. 빼고 저장하면 칩이 없다
       await page.getByRole("button", { name: "편집", exact: true }).click();
       const editRow = page.locator("#definitions-panel tbody tr").nth(0);
-      await editRow.getByRole("checkbox", { name: "상해", exact: true }).check();
+      await editRow.getByRole("checkbox", { name: "급성심근경색증", exact: true }).check();
       await expect(editRow.locator(".ts-chip.is-error")).toHaveCount(1);
       await editRow.getByRole("button", { name: /^없는 값 V\d+ 빼기$/ }).click();
       await expect(editRow.locator(".ts-chip.is-error")).toHaveCount(0);
       await page.getByRole("button", { name: "저장", exact: true }).click();
       await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
       await page.reload();
-      await expect(page.locator("#definitions-panel tbody tr").nth(0)).toContainText("질병, 상해");
+      await expect(page.locator("#definitions-panel tbody tr").nth(0)).toContainText("뇌졸중, 급성심근경색증");
       await expect(page.locator(".ts-chip.is-error")).toHaveCount(0);
     } finally {
       if (productUrl) {
