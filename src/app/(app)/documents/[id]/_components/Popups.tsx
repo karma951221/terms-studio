@@ -293,10 +293,15 @@ function articleRefOf(fd: FormData): { targets: RefTarget[]; connector: Referenc
  * 함수조항 칸 — 함수조항을 고르면 그 옵션마다 선택지 · 인자마다 연결. 옵션 선택 · 인자 연결은 사용처(이 문서) 소유다 (기능/함수조항 §3.2 · §3.7).
  * 인자 연결 칸은 「기본 연결」(비움 — 선언의 기본을 쓴다)이 처음 값이다. 기본 연결이 없으면 골라야 저장된다(연결 누락 = 저장 오류).
  */
-function ClauseFields({ clauses, code, options, bindings, condition, loops = [] }: { clauses: readonly Clause[]; code?: Code; options?: Record<Code, Code>; bindings?: Bindings; condition: ConditionContext; loops?: readonly LoopChoice[] }) {
+function ClauseFields({ clauses, code, options, bindings, condition, loops = [], enumOf }: { clauses: readonly Clause[]; code?: Code; options?: Record<Code, Code>; bindings?: Bindings; condition: ConditionContext; loops?: readonly LoopChoice[]; enumOf?: (code: Code) => EnumDef | undefined }) {
   const [picked, setPicked] = useState<Code>(code ?? "");
   const clause = clauses.find((c) => c.code === picked);
   const forms = planFormChoices();
+  // 목록값 인자의 상수 연결 후보 — 그 열거형의 값(기능/함수조항 §5 「상수 연결은 참거짓 · 열거값만」)
+  const enumsOf = (t: { kind: string; enumCode?: Code }): EnumDef[] => {
+    const def = t.enumCode !== undefined ? enumOf?.(t.enumCode) : undefined;
+    return def ? [def] : [];
+  };
   return (
     <>
       {code === undefined ? (
@@ -320,8 +325,8 @@ function ClauseFields({ clauses, code, options, bindings, condition, loops = [] 
         <div key={`${clause!.code}-arg-${p.name}`} className="ts-form-row">
           <label htmlFor={`pop-arg-${p.name}`}>인자 {p.name}</label>
           <select id={`pop-arg-${p.name}`} name={`arg:${p.name}`} defaultValue={bindingValue(bindings?.[p.name])}>
-            <option value="">{p.default ? `기본 연결 — ${bindingLabel(p.default, p.type, condition.discriminators, [], forms)}` : "— 연결 안 함(기본 연결 없음) —"}</option>
-            {bindingOptions(p.type, condition.discriminators, [], forms, true, loops).map((o) => (
+            <option value="">{p.default ? `기본 연결 — ${bindingLabel(p.default, p.type, condition.discriminators, enumsOf(p.type), forms)}` : "— 연결 안 함(기본 연결 없음) —"}</option>
+            {bindingOptions(p.type, condition.discriminators, enumsOf(p.type), forms, true, loops).map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
@@ -645,7 +650,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             )}
             {spec.what === "articleRef" && <ArticleRefFields ctx={ctx} restrict={restrictAt("tableId" in spec.at ? undefined : spec.at.parentId)} />}
             {spec.what === "appendixRef" && <AppendixSelect appendices={env.appendices} />}
-            {spec.what === "clauseInlineRef" && <ClauseFields clauses={env.clauses} condition={env.condition} loops={"tableId" in spec.at ? [] : loopsAt(spec.at.parentId)} />}
+            {spec.what === "clauseInlineRef" && <ClauseFields clauses={env.clauses} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={"tableId" in spec.at ? [] : loopsAt(spec.at.parentId)} />}
             {spec.what === "structKey" && (
               <div className="ts-form-row">
                 <label htmlFor="pop-struct">구조 표기</label>
@@ -703,7 +708,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             )}
             {node.kind === "articleRef" && <ArticleRefFields ctx={ctx} node={node} restrict={restrictAt(node.id)} />}
             {node.kind === "appendixRef" && <AppendixSelect appendices={env.appendices} value={node.appendixCode} />}
-            {(node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && <ClauseFields clauses={env.clauses} code={node.clauseCode} options={node.options} {...(node.bindings ? { bindings: node.bindings } : {})} condition={env.condition} loops={loopsAt(node.id)} />}
+            {(node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && <ClauseFields clauses={env.clauses} code={node.clauseCode} options={node.options} {...(node.bindings ? { bindings: node.bindings } : {})} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(node.id)} />}
             <PopActions onCancel={onClose} />
           </PopForm>
         </Popover>
@@ -749,7 +754,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
               return code ? [{ type: "insert", node: withBindings(b.clauseBlock(code, optionsOf(fd)), bindingsOf(fd, env.clauses)), at: spec.at }] : "함수조항을 고른다.";
             }}
           >
-            <ClauseFields clauses={clausesFitting(env.clauses, spec.fit)} condition={env.condition} loops={loopsAt(spec.at.parentId)} />
+            <ClauseFields clauses={clausesFitting(env.clauses, spec.fit)} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(spec.at.parentId)} />
             <PopActions onCancel={onClose} confirmLabel="넣기" />
           </PopForm>
         </Popover>
