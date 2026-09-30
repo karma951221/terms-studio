@@ -30,9 +30,9 @@ test(
     await ev.action("내부변수#2", "새 함수조항(항) — 인자 「사유」(열거형 납입면제사유) · 내부 변수 「질병인가 = arg.사유 = 'V01'」 · 「대표 = arg.사유」", async () => {
       await page.goto("/functions/new?type=block");
       await page.getByLabel("함수조항명").fill(clauseName);
+      await page.getByLabel("새 인자 이름", { exact: true }).fill("사유");
+      await page.getByLabel("새 인자 타입", { exact: true }).selectOption("enum:E0001");
       await page.getByRole("button", { name: "인자 추가" }).click();
-      await page.getByLabel("인자 1 이름").fill("사유");
-      await page.getByLabel("인자 1 타입").selectOption("enum:E0001");
       await page.getByRole("button", { name: "내부 변수 추가" }).click();
       await page.getByLabel("내부 변수 1 이름").fill("질병인가");
       await page.getByLabel("내부 변수 1 식").fill("arg.사유 = 'V01'");

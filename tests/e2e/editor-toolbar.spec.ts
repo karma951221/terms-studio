@@ -284,10 +284,10 @@ test(
     });
 
     await ev.action("함수조항생성#6a", "「인자 추가」 — 인자 보험금명(문자 · 기본 연결 담보명 D0001). 함수조항은 구분자를 직접 읽지 않고 인자만 읽는다(기능/함수조항 §3.3)", async () => {
+      await page.getByLabel("새 인자 이름", { exact: true }).fill("보험금명");
+      await page.getByLabel("새 인자 타입", { exact: true }).selectOption("string");
+      await page.getByLabel("새 인자 기본 연결", { exact: true }).selectOption("d:D0001");
       await page.getByRole("button", { name: "인자 추가" }).click();
-      await page.getByLabel("인자 1 이름").fill("보험금명");
-      await page.getByLabel("인자 1 타입").selectOption("string");
-      await page.getByLabel("인자 1 기본 연결").selectOption("d:D0001");
     });
 
     await ev.action("함수조항생성#6b", "항 문장을 고른 채 「조건식」 — 팝업 없이 항이 조건 블록 안에 서고, 머리 줄의 변수 「인자」 묶음에서 조건을 고른다", async () => {
@@ -444,9 +444,9 @@ test(
     const code = await ev.action("접기#2", "역할 함수조항 — 인자 「사유」(그 열거형) · 값별 분기 칸마다 항(질병 둘 · 상해 하나)을 쓰고 저장", async () => {
       await page.goto("/functions/new?type=block");
       await page.getByLabel("함수조항명").fill(clauseName);
+      await page.getByLabel("새 인자 이름", { exact: true }).fill("사유");
+      await page.getByLabel("새 인자 타입", { exact: true }).selectOption(`enum:${reasons}`);
       await page.getByRole("button", { name: "인자 추가" }).click();
-      await page.getByLabel("인자 1 이름").fill("사유");
-      await page.getByLabel("인자 1 타입").selectOption(`enum:${reasons}`);
       const editor = page.locator(".ts-clause-editor");
       await toolbar.getByRole("button", { name: "값별 분기", exact: true }).click();
       const cases = editor.locator(".ts-doc-cond.is-switch");

@@ -1326,6 +1326,64 @@ button.danger:focus-visible {
   min-width: 0;
 }
 
+/* 인자 (2026-10-01) — 위에 고정된 추가 줄(이름 · 타입 · 기본 연결 · ⊕) + 아래 카드 목록(맨 앞 ⊖), 카드가 많으면 목록만 스크롤 */
+.ts-param-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.ts-param-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 22px;
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+}
+
+.ts-param-grid > input,
+.ts-param-grid > select,
+.ts-param-card > input,
+.ts-param-card > select {
+  width: 100%;
+  min-width: 0;
+}
+
+.ts-param-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ts-param-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px solid var(--ts-rule);
+  border-radius: 4px;
+  background: var(--ts-surface);
+}
+
+.ts-param-card.is-editing {
+  grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  padding-left: 4px;
+}
+
+.ts-param-card > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ts-option {
   padding: 10px 0;
   border-top: 1px solid var(--ts-rule);

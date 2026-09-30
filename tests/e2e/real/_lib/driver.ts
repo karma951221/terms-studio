@@ -626,14 +626,14 @@ export class ClauseAuthoringDriver {
     }
   }
 
-  /** 인자 표 — 인자마다 이름 · 타입 · 기본 연결(최종 결정 2). 본문의 슬롯 · 조건 고르기가 인자를 보려면 본문보다 먼저. */
+  /** 인자 — 맨 위 추가 줄에 인자마다 이름 · 타입 · 기본 연결을 적고 ⊕(최종 결정 2 · 2026-10-01 추가 줄). 본문의 슬롯 · 조건 고르기가 인자를 보려면 본문보다 먼저. */
   async params(params: NonNullable<ClauseSpec["params"]>): Promise<void> {
-    for (const [i, p] of params.entries()) {
-      await this.page.getByRole("button", { name: "인자 추가" }).click();
-      await this.page.getByLabel(`인자 ${i + 1} 이름`, { exact: true }).fill(p.name);
+    for (const p of params) {
+      await this.page.getByLabel("새 인자 이름", { exact: true }).fill(p.name);
       const type = p.type.kind === "enum" || p.type.kind === "list<enum>" ? `${p.type.kind}:${p.type.enumCode}` : p.type.kind === "planOptions" ? `planOptions:${p.type.form}` : p.type.kind;
-      await this.page.getByLabel(`인자 ${i + 1} 타입`, { exact: true }).selectOption(type);
-      if (p.default) await this.page.getByLabel(`인자 ${i + 1} 기본 연결`, { exact: true }).selectOption(`d:${p.default.code}`);
+      await this.page.getByLabel("새 인자 타입", { exact: true }).selectOption(type);
+      if (p.default) await this.page.getByLabel("새 인자 기본 연결", { exact: true }).selectOption(`d:${p.default.code}`);
+      await this.page.getByRole("button", { name: "인자 추가" }).click();
     }
   }
 

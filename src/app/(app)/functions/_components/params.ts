@@ -5,7 +5,7 @@
  * 연결 `""`(없음 · 기본 연결) · `d:D0001`(구분자) · `c:true` · `c:false` · `c:V01`(상수 — 참거짓 · 열거값) · `s:waiver` · `s:waiver:applies`(원천 — 폼 전체 · 참거짓 필드 = 예) ·
  * `r:<반복 블록 id>`(반복의 현재 원소 — 넣는 자리를 감싼 반복만, ADR-0077 결정 3).
  */
-import type { Binding, LoopElementType, ParamDef, ParamType } from "@/domain/clause";
+import { checkParams, type Binding, type LoopElementType, type ParamDef, type ParamType } from "@/domain/clause";
 import { fieldsOfForm, formsOfLevel } from "@/domain/master";
 import type { FieldType } from "@/domain/types";
 
@@ -175,4 +175,16 @@ export function paramEntries(params: readonly ParamDef[], enums: readonly EnumCh
       // 열거값 인자는 필드 읽기 칸도 (최종 결정 18 — `arg.사유.약관표시명`)
       return p.type.kind === "enum" ? [out, ...fieldEntries(`arg.${p.name}`, p.name, p.type.enumCode, enums, "param")] : [out];
     });
+}
+
+/**
+ * 인자 추가 줄의 이름 검사 — 더하기 전에 막는다(2026-10-01). 비었음 · 이미 있는 이름 · 예약어 · 이름 모양은 저장 검사 ①(`checkParams`)의 문구 그대로.
+ * 타입 · 기본 연결은 고르기 칸이 맞는 것만 내므로 여기서 보지 않는다. 문제가 없으면 null.
+ */
+export function newParamNameError(params: readonly ParamDef[], name: string): string | null {
+  const n = name.trim();
+  if (n === "") return "인자 이름을 적는다";
+  if (params.some((p) => p.name === n)) return `인자 이름이 겹칩니다: ${n}`;
+  const issue = checkParams([{ name: n, type: { kind: "boolean" } }]).find((i) => i.kind === "structure");
+  return issue ? issue.message : null;
 }
