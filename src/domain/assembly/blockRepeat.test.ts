@@ -81,6 +81,15 @@ describe("블록 반복 조립 — 납입면제종마다 · 사유마다 (결정
     expect(r.issues.filter((i) => i.severity !== "warning")).toEqual([]);
   });
 
+  it("종 반복 안 builtin.plan.number 는 현재 종의 번호 — 원문 표기 「2종(보험료 납입면제형) 가입시」를 번호 · 이름 슬롯으로", () => {
+    const doc = waiverTemplate();
+    const p = (doc.children[0] as { children: ForBlockNode[] }).children[0].children[0] as { children: unknown[] };
+    p.children = [{ id: "pn", kind: "slot", ref: "builtin.plan.number" }, { id: "pa", kind: "text", text: "종(" }, { id: "ps", kind: "slot", ref: "builtin.plan.name" }, { id: "pt", kind: "text", text: ") 가입시" }];
+    const r = run({ "opt-type-1": { applies: false, reasons: ["V01"] }, "opt-type-2": { applies: true, reasons: ["V02"] } }, doc);
+    expect(r.issues.filter((i) => i.severity !== "warning")).toEqual([]);
+    expect(r.lines.slice(0, 3)).toEqual(["제1조(보험료의 납입면제)", "  ① 2종(2종) 가입시", "    1. 뇌졸중으로 진단확정"]);
+  });
+
   it("종 원소를 세목 선택지 목록 인자에 — 현재 종 하나짜리 목록으로 합치기", () => {
     const doc = waiverTemplate();
     const fo = (doc.children[0] as { children: ForBlockNode[] }).children[0];

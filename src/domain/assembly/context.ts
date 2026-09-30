@@ -140,6 +140,8 @@ function ancestorOrSelf(env: Env, node: CoverageNode | undefined, level: Coverag
 type PlanCursor = AssemblyPlanOption | undefined;
 
 function lookupBuiltin(env: Env, node: CoverageNode | undefined, plan: PlanCursor, ref: ValueRef & { kind: "builtin" }): LookupResult {
+  // 세목 선택지는 번호도 뼈대다 — 종형명 표기 「2종(보험료 납입면제형)」 = `builtin.plan.number` + 「종(」 + `builtin.plan.name` + 「)」 (기능/상품 §3.2)
+  if (ref.level === "plan" && ref.prop === "number") return plan ? slotOf(String(plan.number)) : MISSING;
   if (ref.prop !== "name") return BROKEN;
   if (ref.level === "product") return slotOf(env.product.name);
   if (ref.level === "plan") return plan ? slotOf(plan.name) : MISSING;
