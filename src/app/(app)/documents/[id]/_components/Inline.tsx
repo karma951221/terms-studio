@@ -31,7 +31,10 @@ function articleRefText(node: ArticleRefNode, ctx: DocCtx): string {
     else broken += 1;
   }
   const joined = alive.length === 0 ? (broken > 0 ? "없는 조(연결 끊김)" : "대상 없음") : referenceChunkLabel(alive, node.connector);
-  return `${node.scope === "general" ? "보통약관 " : ""}${joined}${alive.length > 0 && broken > 0 ? ` (연결 끊김 ${broken}건)` : ""}`;
+  // 값 한정 — 반복(사유)으로 생긴 노드 중 그 값이 낸 것만 (ADR-0077 결정 7). 번호는 조립이 펼친 뒤 매긴다
+  const restrict = node.targets.find((t) => t.restrict)?.restrict;
+  const narrowed = !restrict ? "" : "current" in restrict ? ` ⟨현재 값 — ${ctx.repeatLabelOf?.(restrict.current) ?? "반복"}⟩` : ` ⟨값 = ${restrict.values.map((v) => ctx.enumValueLabel?.(v) ?? v).join(" · ")}⟩`;
+  return `${node.scope === "general" ? "보통약관 " : ""}${joined}${narrowed}${alive.length > 0 && broken > 0 ? ` (연결 끊김 ${broken}건)` : ""}`;
 }
 
 const CHIP_WHAT: Record<string, string> = {

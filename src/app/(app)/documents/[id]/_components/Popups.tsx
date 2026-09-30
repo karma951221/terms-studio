@@ -19,8 +19,10 @@ import {
   HOST_TARGET_PREFIX,
   indexTree,
   isRepeatSource,
+  multiTarget,
   nodeBuilders,
   parseRefKey,
+  repeatElementEnums,
   referenceKeyIndex,
   referenceTargetLabel,
   refKey,
@@ -34,6 +36,7 @@ import {
   type InlineNode,
   type Node,
   type ReferenceTarget,
+  type RefRestrict,
   type RefTarget,
 } from "@/domain/document";
 import type { Box } from "@/domain/document/box";
@@ -100,13 +103,32 @@ function PopForm({ env, onClose, build, children }: { env: PopupEnv; onClose: ()
   );
 }
 
-/** 조 참조 칸 — 범위 · 대상(여럿) · 연결어. 넣기와 고치기가 같이 쓴다. */
-function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode }) {
+/**
+ * 값 한정 칸의 재료 (ADR-0077 결정 7) — 참조 자리를 감싼 열거값 반복(「현재 값」 후보)과 반복 원소 열거형의 값(「해당 값들」 후보).
+ * 값이 없으면(열거형 모름) 값 한정 칸을 그리지 않는다.
+ */
+export interface RestrictChoices {
+  loops: readonly { id: Id; label: string }[];
+  values: readonly { code: Code; label: string }[];
+}
+
+/** 저장된 값 한정 → 칸 값 (`""` 없음 · `values` 해당 값들 · `current:<반복 id>` 현재 값). */
+function restrictMode(r: RefRestrict | undefined): string {
+  if (!r) return "";
+  return "current" in r ? `current:${r.current}` : "values";
+}
+
+/** 조 참조 칸 — 범위 · 대상(여럿) · 값 한정 · 연결어. 넣기와 고치기가 같이 쓴다. */
+function ArticleRefFields({ ctx, node, restrict }: { ctx: DocCtx; node?: ArticleRefNode; restrict?: RestrictChoices }) {
   const [count, setCount] = useState(node?.targets.length ?? 0);
   // 고른 연결어 — 기본값 없이 시작한다(결정 14). 대상이 하나로 줄었다 다시 늘어도 기억한다 (고치기면 저장된 값에서 시작)
   const [connector, setConnector] = useState<ReferenceConnector | undefined>(node?.connector);
-  // 반복 블록 안 대상은 하나여도 펼치면 여러 번호가 될 수 있다 — 연결어를 켠다 (결정 14 확장 · ADR-0077 결정 7)
-  const [repeatedPicked, setRepeatedPicked] = useState(() => (node ? node.targets.some((t) => ctx.repeatedKeys?.has(refKey(t)) ?? false) : false));
+  // 반복 블록 안 대상 · 반복 블록 · 함수조항 참조는 하나여도 펼치면 여러 번호가 될 수 있다 — 연결어를 켠다 (결정 14 확장 · ADR-0077 결정 7)
+  const [repeatedPicked, setRepeatedPicked] = useState(() => (node ? node.targets.some((t) => multiTarget({ ...t, restrict: undefined }, ctx.repeatedKeys)) : false));
+  // 값 한정 — 모든 대상에 같이 건다. 고르면 하나여도 연결어가 켜진다
+  const saved = node?.targets.find((t) => t.restrict)?.restrict;
+  const [mode, setMode] = useState(() => restrictMode(saved));
+  const savedValues = saved && "values" in saved ? saved.values : [];
   const keyOfRow = (rowId: Id): string | undefined => {
     for (const index of [ctx.references.self, ctx.references.general, ...(ctx.articleRefChoices ?? []).map((c) => c.index)]) {
       const t = index.get(rowId);
@@ -118,10 +140,10 @@ function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode })
     setCount(n);
     setRepeatedPicked(ids.some((rowId) => {
       const key = keyOfRow(rowId);
-      return key !== undefined && (ctx.repeatedKeys?.has(key) ?? false);
+      return key !== undefined && multiTarget(parseRefKey(key), ctx.repeatedKeys);
     }));
   };
-  const joins = count >= 2 || repeatedPicked;
+  const joins = count >= 2 || repeatedPicked || mode !== "";
   // 범위를 화면이 정하면(공용조항 — 보통약관 · 이 공용조항 · 사용처) 그 목록이 범위 고르기, 고른 범위의 후보만 선다
   const choices = ctx.articleRefChoices;
   const [choice, setChoice] = useState(() => initialChoice(choices, node));
@@ -176,6 +198,33 @@ function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode })
           }
         />
       </div>
+      {restrict && restrict.values.length > 0 && (
+        <div className="ts-form-row">
+          <label htmlFor="pop-ref-restrict">값 한정</label>
+          <div>
+            <select id="pop-ref-restrict" name="restrictMode" value={mode} onChange={(e) => setMode(e.target.value)}>
+              <option value="">없음 — 펼친 것 전부</option>
+              <option value="values">해당 값들</option>
+              {restrict.loops.map((l) => (
+                <option key={l.id} value={`current:${l.id}`}>
+                  현재 값 — {l.label}
+                </option>
+              ))}
+            </select>
+            {mode === "values" && (
+              <div className="ts-radio-group" role="group" aria-label="한정할 값">
+                {restrict.values.map((v) => (
+                  <label key={v.code} className="ts-form-radio">
+                    <input type="checkbox" name="restrictValue" value={v.code} defaultChecked={savedValues.includes(v.code)} />
+                    {v.label}
+                  </label>
+                ))}
+              </div>
+            )}
+            <p className="ts-form-hint">반복(사유)으로 생긴 노드를 그 값이 낸 것만으로 좁힌다 — 펼친 뒤 0개면 조립 오류다. 대상은 사유 반복 안의 노드여야 한다.</p>
+          </div>
+        </div>
+      )}
       <div className="ts-form-row">
         <span className="ts-form-label">연결어</span>
         <div>
@@ -189,8 +238,8 @@ function ArticleRefFields({ ctx, node }: { ctx: DocCtx; node?: ArticleRefNode })
           </div>
           <p className="ts-form-hint">
             {joins
-              ? `골라야 적용된다 — 기본값이 없다.${count < 2 ? " 반복 블록 안 대상이라 펼치면 여러 번호가 될 수 있다." : ""} 마지막 대상 앞에 붙는다. 번호가 잇달아 셋 이상이면 「제3조부터 제5조까지」로 묶이고, 분기로 빠진 대상은 산출 때 제외된다.`
-              : "대상을 둘 이상(또는 반복 블록 안 대상을) 고르면 고를 수 있다."}
+              ? `골라야 적용된다 — 기본값이 없다.${count < 2 ? " 반복 · 함수조항으로 펼치면 여러 번호가 될 수 있다." : ""} 마지막 대상 앞에 붙는다. 번호가 잇달아 셋 이상이면 「제3조부터 제5조까지」로 묶이고, 분기로 빠진 대상은 산출 때 제외된다.`
+              : "대상을 둘 이상(또는 반복 블록 · 함수조항 참조 · 그 안 대상을) 고르거나 값 한정을 걸면 고를 수 있다."}
           </p>
         </div>
       </div>
@@ -207,19 +256,19 @@ function initialChoice(choices: DocCtx["articleRefChoices"], node?: ArticleRefNo
   return choices.some((c) => c.value === want) ? want : choices[0].value;
 }
 
-/** 연결어 미선택 — 대상이 둘 이상이거나 반복 블록 안이면 적용 전에 고른다 (결정 14 · 기능/문면 §3.5). */
-const CONNECTOR_PICK_MESSAGE = "대상이 둘 이상이거나 반복 블록 안이면 연결어(및 · 또는)를 고른다.";
+/** 연결어 미선택 — 대상이 둘 이상이거나 펼치면 여럿이 될 수 있으면 적용 전에 고른다 (결정 14 · 기능/문면 §3.5). */
+const CONNECTOR_PICK_MESSAGE = "대상이 둘 이상이거나 반복 · 함수조항 · 값 한정으로 여러 번호가 될 수 있으면 연결어(및 · 또는)를 고른다.";
 
-/** 연결어가 필요한 대상인가 — 둘 이상 · 반복 블록 안 대상 하나 (문서 저장 검사와 같은 규칙). */
+/** 연결어가 필요한 대상인가 — 둘 이상 · 여러 번호가 될 수 있는 대상 하나 (문서 저장 검사와 같은 규칙 — `multiTarget`). */
 function needsConnector(ctx: DocCtx, targets: readonly RefTarget[]): boolean {
-  return targets.length >= 2 || targets.some((t) => ctx.repeatedKeys?.has(refKey(t)) ?? false);
+  return targets.length >= 2 || targets.some((t) => multiTarget(t, ctx.repeatedKeys));
 }
 
 /** 저장된 대상 → 고르기 트리의 줄 id (같은 코드의 분기 짝이면 문서 순 첫 줄). 범위의 색인들에서 찾는다. */
 function selectedIds(node: ArticleRefNode, indexes: readonly ReadonlyMap<Id, ReferenceTarget>[]): Id[] {
   return node.targets.flatMap((t) => {
     for (const index of indexes) {
-      const found = referenceKeyIndex(index).get(refKey(t));
+      const found = referenceKeyIndex(index).get(refKey(t)); // 값 한정은 열쇠에 들지 않는다 — 같은 줄
       if (found) return [found.id];
     }
     return [];
@@ -227,8 +276,12 @@ function selectedIds(node: ArticleRefNode, indexes: readonly ReadonlyMap<Id, Ref
 }
 
 function articleRefOf(fd: FormData): { targets: RefTarget[]; connector: ReferenceConnector | undefined; scope: ArticleRefNode["scope"] } {
-  // 고르기 트리가 참조 대상 열쇠(조 id · 조#P코드)를 싣는다 (ADR-0072 결정 3)
-  const targets = [...new Set(fd.getAll("targets").map((v) => String(v).trim()).filter(Boolean))].map(parseRefKey);
+  // 고르기 트리가 참조 대상 열쇠(조 id · 조#P코드 · 조#참조코드/안쪽코드)를 싣는다 (ADR-0072 결정 3 · ADR-0077 결정 6)
+  const keys = [...new Set(fd.getAll("targets").map((v) => String(v).trim()).filter(Boolean))];
+  // 값 한정 — 고른 대상 모두에 같이 (ADR-0077 결정 7). 해당 값들을 하나도 안 고르면 빈 목록(저장 검사가 알린다)
+  const mode = str(fd, "restrictMode");
+  const restrict: RefRestrict | undefined = mode === "values" ? { values: fd.getAll("restrictValue").map(String) } : mode.startsWith("current:") ? { current: mode.slice("current:".length) } : undefined;
+  const targets = keys.map((k) => ({ ...parseRefKey(k), ...(restrict ? { restrict } : {}) }));
   // 라디오가 꺼져 있으면(대상 하나 · 반복 밖) 값이 오지 않는다 — 연결어를 싣지 않는다(표기에 안 나온다, 결정 14)
   const connector = str(fd, "connector");
   // 사용처 위치(`host`)는 편집 트리에서 보통약관 참조 자리로 운반한다 (clauseTree)
@@ -534,6 +587,11 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
   const b = nodeBuilders(env.newId);
   /** 자리를 감싼 반복 → 인자 연결 칸의 「반복의 현재 원소」 후보 (ADR-0077 결정 3). */
   const loopsAt = (id: Id) => loopChoices(loopsAround(ix, id), env.enumOf ? { enumOf: env.enumOf } : {});
+  /** 조 참조 자리의 값 한정 후보 — 감싼 열거값 반복(현재 값) · 반복 원소 열거형의 값(해당 값들, ADR-0077 결정 7). */
+  const restrictAt = (id: Id | undefined): RestrictChoices => ({
+    loops: id === undefined ? [] : loopsAt(id).filter((l) => l.type.kind === "enum").map((l) => ({ id: l.id, label: l.label })),
+    values: [...repeatElementEnums()].flatMap((code) => (env.enumOf?.(code)?.values ?? []).map((v) => ({ code: v.code, label: v.label }))),
+  });
 
   switch (spec.kind) {
     case "repeatBlock":
@@ -585,7 +643,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
                 <SlotRefInput id="pop-slot" name="ref" context={env.condition} />
               </div>
             )}
-            {spec.what === "articleRef" && <ArticleRefFields ctx={ctx} />}
+            {spec.what === "articleRef" && <ArticleRefFields ctx={ctx} restrict={restrictAt("tableId" in spec.at ? undefined : spec.at.parentId)} />}
             {spec.what === "appendixRef" && <AppendixSelect appendices={env.appendices} />}
             {spec.what === "clauseInlineRef" && <ClauseFields clauses={env.clauses} condition={env.condition} loops={"tableId" in spec.at ? [] : loopsAt(spec.at.parentId)} />}
             {spec.what === "structKey" && (
@@ -643,7 +701,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
                 <SlotRefInput id="pop-slot" name="ref" initial={node.ref} context={env.condition} />
               </div>
             )}
-            {node.kind === "articleRef" && <ArticleRefFields ctx={ctx} node={node} />}
+            {node.kind === "articleRef" && <ArticleRefFields ctx={ctx} node={node} restrict={restrictAt(node.id)} />}
             {node.kind === "appendixRef" && <AppendixSelect appendices={env.appendices} value={node.appendixCode} />}
             {(node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && <ClauseFields clauses={env.clauses} code={node.clauseCode} options={node.options} {...(node.bindings ? { bindings: node.bindings } : {})} condition={env.condition} loops={loopsAt(node.id)} />}
             <PopActions onCancel={onClose} />

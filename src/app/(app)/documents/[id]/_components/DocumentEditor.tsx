@@ -58,6 +58,8 @@ import {
   type EditEnv,
   type EditOp,
   type ReferenceTarget,
+  type ForBlockNode,
+  repeatElementEnums,
 } from "@/domain/document";
 import type { Box } from "@/domain/document/box";
 import type { Code, Coordinate, Id, Impact, Issue } from "@/domain/types";
@@ -256,8 +258,13 @@ export function DocumentEditor(props: EditorProps) {
     return numberTree(tree, states ? { branchStates: states } : {});
   }, [tree, evaluation]);
   const currentGeneral = current.generalDocumentId ? renderCache[current.generalDocumentId] : undefined;
-  const generalTargets = useMemo(() => (currentGeneral ? referenceTargetIndex(currentGeneral.tree, numberTree(currentGeneral.tree)) : new Map<Id, ReferenceTarget>()), [currentGeneral]);
-  const references = useMemo(() => ({ self: referenceTargetIndex(tree, numbers), general: generalTargets }), [tree, numbers, generalTargets]);
+  // 대상 고르기 색인 — 반복 블록 · 함수조항 참조 줄과 그 본문의 항 · 호 · 목 줄까지 (ADR-0077 결정 6 · 7)
+  const indexOpts = useMemo(
+    () => ({ clauseOf: (c: Code) => props.clauses.find((x) => x.code === c), repeatCaption: (n: ForBlockNode) => n.alias ?? repeatLabel(n.source, { enumOf: (c) => enumByCode.get(c) }) }),
+    [props.clauses, enumByCode],
+  );
+  const generalTargets = useMemo(() => (currentGeneral ? referenceTargetIndex(currentGeneral.tree, numberTree(currentGeneral.tree), indexOpts) : new Map<Id, ReferenceTarget>()), [currentGeneral, indexOpts]);
+  const references = useMemo(() => ({ self: referenceTargetIndex(tree, numbers, indexOpts), general: generalTargets }), [tree, numbers, generalTargets, indexOpts]);
   // 반복 블록 안 대상 — 이 템플릿 · 대응 보통약관 (조 참조 연결어, ADR-0077 결정 7)
   const repeated = useMemo(() => new Set([...repeatedKeys(indexTree(tree)), ...(currentGeneral ? repeatedKeys(indexTree(currentGeneral.tree)) : [])]), [tree, currentGeneral]);
 
@@ -699,6 +706,13 @@ export function DocumentEditor(props: EditorProps) {
     clauses: props.clauses,
     boxOf: (code) => boxByCode.get(code),
     repeatLabelOf,
+    enumValueLabel: (code: Code) => {
+      for (const e of props.enums) {
+        const v = e.values.find((x) => x.code === code);
+        if (v && repeatElementEnums().has(e.code)) return v.label;
+      }
+      return undefined;
+    },
     conditionFor: (nodeId) => withRow(scopeOf(nodeId)),
     ...(flashId ? { flashId } : {}),
     ...(mode === "edit" ? { edit } : {}),

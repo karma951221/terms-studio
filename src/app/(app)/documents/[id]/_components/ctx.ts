@@ -89,6 +89,8 @@ export interface DocCtx {
   boxOf?: (code: Code) => Box | undefined;
   /** 블록 반복의 머리 줄 이름 — 별칭 또는 원천에서 지은 이름(「납입면제종마다」 · 「납입면제사유마다」, ADR-0077). 없으면 원천만으로. */
   repeatLabelOf?: (nodeId: Id) => string;
+  /** 반복 원소 열거값의 표시명 — 조 참조 칩의 값 한정(「⟨값 = 암⟩」) 표기. 없으면 코드. */
+  enumValueLabel?: (code: Code) => string | undefined;
   /**
    * 공용조항 블록 안을 무엇으로 그리나 — 기본은 **모델**(슬롯 · 옵션 자리 · 조건 · 참조, `ClauseModel`),
    * `"text"` 는 고른 선택지 문구를 끼운 문장(미리보기 · 사전평가 결과). 가운데 = 모델, 오른쪽 = 결과 (2026-09-28).
