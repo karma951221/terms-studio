@@ -188,23 +188,35 @@
                         ],
                         [
                           {
-                            "id": "g-a2-t1-r7c1-x1",
-                            "kind": "articleRef",
-                            "targets": [
+                            "id": "g-a2-t1-r7c1-x1-if-waiver",
+                            "kind": "inlineCond",
+                            "branches": [
                               {
-                                "articleId": "g-a27_1"
-                              },
-                              {
-                                "articleId": "g-a27_2"
+                                "id": "g-a2-t1-r7c1-x1-if-waiver-b",
+                                "when": "D0002",
+                                "children": [
+                                  {
+                                    "id": "g-a2-t1-r7c1-x1",
+                                    "kind": "articleRef",
+                                    "targets": [
+                                      {
+                                        "articleId": "g-a27_1"
+                                      },
+                                      {
+                                        "articleId": "g-a27_2"
+                                      }
+                                    ],
+                                    "connector": "및",
+                                    "scope": "self"
+                                  },
+                                  {
+                                    "id": "g-a2-t1-r7c1-x2",
+                                    "kind": "text",
+                                    "text": "를 적용하지 않는 계약을 말합니다."
+                                  }
+                                ]
                               }
-                            ],
-                            "connector": "및",
-                            "scope": "self"
-                          },
-                          {
-                            "id": "g-a2-t1-r7c1-x2",
-                            "kind": "text",
-                            "text": "를 적용하지 않는 계약을 말합니다."
+                            ]
                           }
                         ]
                       ]
@@ -220,23 +232,35 @@
                         ],
                         [
                           {
-                            "id": "g-a2-t1-r8c1-x1",
-                            "kind": "articleRef",
-                            "targets": [
+                            "id": "g-a2-t1-r8c1-x1-if-waiver",
+                            "kind": "inlineCond",
+                            "branches": [
                               {
-                                "articleId": "g-a27_1"
-                              },
-                              {
-                                "articleId": "g-a27_2"
+                                "id": "g-a2-t1-r8c1-x1-if-waiver-b",
+                                "when": "D0002",
+                                "children": [
+                                  {
+                                    "id": "g-a2-t1-r8c1-x1",
+                                    "kind": "articleRef",
+                                    "targets": [
+                                      {
+                                        "articleId": "g-a27_1"
+                                      },
+                                      {
+                                        "articleId": "g-a27_2"
+                                      }
+                                    ],
+                                    "connector": "및",
+                                    "scope": "self"
+                                  },
+                                  {
+                                    "id": "g-a2-t1-r8c1-x2",
+                                    "kind": "text",
+                                    "text": "에 의하여 납입면제가 적용되는 계약을 말합니다."
+                                  }
+                                ]
                               }
-                            ],
-                            "connector": "및",
-                            "scope": "self"
-                          },
-                          {
-                            "id": "g-a2-t1-r8c1-x2",
-                            "kind": "text",
-                            "text": "에 의하여 납입면제가 적용되는 계약을 말합니다."
+                            ]
                           }
                         ]
                       ]
@@ -966,23 +990,45 @@
                     {
                       "id": "g-a6-p1-x4",
                       "kind": "text",
-                      "text": "에서 정한 보험금 지급사유의 발생을 알게된 경우 또는 "
+                      "text": "에서 정한 보험금 지급사유의 발생을 알게된 경우"
                     },
                     {
-                      "id": "g-a6-p1-x2",
-                      "kind": "articleRef",
-                      "targets": [
+                      "id": "g-a6-p1-x2-if-waiver",
+                      "kind": "inlineCond",
+                      "branches": [
                         {
-                          "articleId": "g-a27_1"
+                          "id": "g-a6-p1-x2-if-waiver-b",
+                          "when": "D0002",
+                          "children": [
+                            {
+                              "id": "g-a6-p1-x4-w",
+                              "kind": "text",
+                              "text": " 또는 "
+                            },
+                            {
+                              "id": "g-a6-p1-x2",
+                              "kind": "articleRef",
+                              "targets": [
+                                {
+                                  "articleId": "g-a27_1"
+                                }
+                              ],
+                              "connector": "및",
+                              "scope": "self"
+                            },
+                            {
+                              "id": "g-a6-p1-x5-w",
+                              "kind": "text",
+                              "text": "에서 정한 보험료 납입면제 사유의 발생을 알게된 경우"
+                            }
+                          ]
                         }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
+                      ]
                     },
                     {
                       "id": "g-a6-p1-x5",
                       "kind": "text",
-                      "text": "에서 정한 보험료 납입면제 사유의 발생을 알게된 경우에는 지체없이 그 사실을 회사에 알려야 합니다."
+                      "text": "에는 지체없이 그 사실을 회사에 알려야 합니다."
                     }
                   ],
                   "code": "P0100"
@@ -5708,23 +5754,35 @@
                         ],
                         [
                           {
-                            "id": "m-a2-t1-r6c1-x1",
-                            "kind": "articleRef",
-                            "targets": [
+                            "id": "m-a2-t1-r6c1-x1-if-waiver",
+                            "kind": "inlineCond",
+                            "branches": [
                               {
-                                "articleId": "m-a29"
-                              },
-                              {
-                                "articleId": "m-a31"
+                                "id": "m-a2-t1-r6c1-x1-if-waiver-b",
+                                "when": "D0002",
+                                "children": [
+                                  {
+                                    "id": "m-a2-t1-r6c1-x1",
+                                    "kind": "articleRef",
+                                    "targets": [
+                                      {
+                                        "articleId": "m-a29"
+                                      },
+                                      {
+                                        "articleId": "m-a31"
+                                      }
+                                    ],
+                                    "connector": "및",
+                                    "scope": "self"
+                                  },
+                                  {
+                                    "id": "m-a2-t1-r6c1-x2",
+                                    "kind": "text",
+                                    "text": "을 적용하지 않는 계약을 말합니다."
+                                  }
+                                ]
                               }
-                            ],
-                            "connector": "및",
-                            "scope": "self"
-                          },
-                          {
-                            "id": "m-a2-t1-r6c1-x2",
-                            "kind": "text",
-                            "text": "을 적용하지 않는 계약을 말합니다."
+                            ]
                           }
                         ]
                       ]
@@ -5740,31 +5798,43 @@
                         ],
                         [
                           {
-                            "id": "m-a2-t1-r7c1-x1",
-                            "kind": "text",
-                            "text": "제29조(보험료의 납입면제) 제1항"
-                          },
-                          {
-                            "id": "m-a2-t1-r7c1-x3",
-                            "kind": "text",
-                            "text": "에 따라 보장보험료를 납입면제하는 계약을 말합니다. 단, "
-                          },
-                          {
-                            "id": "m-a2-t1-r7c1-x2",
-                            "kind": "articleRef",
-                            "targets": [
+                            "id": "m-a2-t1-r7c1-x1-if-waiver",
+                            "kind": "inlineCond",
+                            "branches": [
                               {
-                                "articleId": "m-a29",
-                                "code": "P0400"
+                                "id": "m-a2-t1-r7c1-x1-if-waiver-b",
+                                "when": "D0002",
+                                "children": [
+                                  {
+                                    "id": "m-a2-t1-r7c1-x1",
+                                    "kind": "text",
+                                    "text": "제29조(보험료의 납입면제) 제1항"
+                                  },
+                                  {
+                                    "id": "m-a2-t1-r7c1-x3",
+                                    "kind": "text",
+                                    "text": "에 따라 보장보험료를 납입면제하는 계약을 말합니다. 단, "
+                                  },
+                                  {
+                                    "id": "m-a2-t1-r7c1-x2",
+                                    "kind": "articleRef",
+                                    "targets": [
+                                      {
+                                        "articleId": "m-a29",
+                                        "code": "P0400"
+                                      }
+                                    ],
+                                    "connector": "및",
+                                    "scope": "self"
+                                  },
+                                  {
+                                    "id": "m-a2-t1-r7c1-x4",
+                                    "kind": "text",
+                                    "text": "에서 정한 특별약관은 보장보험료 납입을 면제하지 않습니다."
+                                  }
+                                ]
                               }
-                            ],
-                            "connector": "및",
-                            "scope": "self"
-                          },
-                          {
-                            "id": "m-a2-t1-r7c1-x4",
-                            "kind": "text",
-                            "text": "에서 정한 특별약관은 보장보험료 납입을 면제하지 않습니다."
+                            ]
                           }
                         ]
                       ]
@@ -5780,31 +5850,43 @@
                         ],
                         [
                           {
-                            "id": "m-a2-t1-r8c1-x1",
-                            "kind": "text",
-                            "text": "제29조(보험료의 납입면제) 제2항"
-                          },
-                          {
-                            "id": "m-a2-t1-r8c1-x3",
-                            "kind": "text",
-                            "text": "에 따라 보장보험료를 납입면제하는 계약을 말합니다. 단, "
-                          },
-                          {
-                            "id": "m-a2-t1-r8c1-x2",
-                            "kind": "articleRef",
-                            "targets": [
+                            "id": "m-a2-t1-r8c1-x1-if-waiver",
+                            "kind": "inlineCond",
+                            "branches": [
                               {
-                                "articleId": "m-a29",
-                                "code": "P0400"
+                                "id": "m-a2-t1-r8c1-x1-if-waiver-b",
+                                "when": "D0002",
+                                "children": [
+                                  {
+                                    "id": "m-a2-t1-r8c1-x1",
+                                    "kind": "text",
+                                    "text": "제29조(보험료의 납입면제) 제2항"
+                                  },
+                                  {
+                                    "id": "m-a2-t1-r8c1-x3",
+                                    "kind": "text",
+                                    "text": "에 따라 보장보험료를 납입면제하는 계약을 말합니다. 단, "
+                                  },
+                                  {
+                                    "id": "m-a2-t1-r8c1-x2",
+                                    "kind": "articleRef",
+                                    "targets": [
+                                      {
+                                        "articleId": "m-a29",
+                                        "code": "P0400"
+                                      }
+                                    ],
+                                    "connector": "및",
+                                    "scope": "self"
+                                  },
+                                  {
+                                    "id": "m-a2-t1-r8c1-x4",
+                                    "kind": "text",
+                                    "text": "에서 정한 특별약관은 보장보험료 납입을 면제하지 않습니다."
+                                  }
+                                ]
                               }
-                            ],
-                            "connector": "및",
-                            "scope": "self"
-                          },
-                          {
-                            "id": "m-a2-t1-r8c1-x4",
-                            "kind": "text",
-                            "text": "에서 정한 특별약관은 보장보험료 납입을 면제하지 않습니다."
+                            ]
                           }
                         ]
                       ]
@@ -6439,23 +6521,45 @@
                     {
                       "id": "m-a6-p1-x4",
                       "kind": "text",
-                      "text": "에서 정한 보험금 지급사유의 발생을 알게된 경우 또는 "
+                      "text": "에서 정한 보험금 지급사유의 발생을 알게된 경우"
                     },
                     {
-                      "id": "m-a6-p1-x2",
-                      "kind": "articleRef",
-                      "targets": [
+                      "id": "m-a6-p1-x2-if-waiver",
+                      "kind": "inlineCond",
+                      "branches": [
                         {
-                          "articleId": "m-a29"
+                          "id": "m-a6-p1-x2-if-waiver-b",
+                          "when": "D0002",
+                          "children": [
+                            {
+                              "id": "m-a6-p1-x4-w",
+                              "kind": "text",
+                              "text": " 또는 "
+                            },
+                            {
+                              "id": "m-a6-p1-x2",
+                              "kind": "articleRef",
+                              "targets": [
+                                {
+                                  "articleId": "m-a29"
+                                }
+                              ],
+                              "connector": "및",
+                              "scope": "self"
+                            },
+                            {
+                              "id": "m-a6-p1-x5-w",
+                              "kind": "text",
+                              "text": "에서 정한 보험료 납입면제 사유의 발생을 알게된 경우"
+                            }
+                          ]
                         }
-                      ],
-                      "connector": "및",
-                      "scope": "self"
+                      ]
                     },
                     {
                       "id": "m-a6-p1-x5",
                       "kind": "text",
-                      "text": "에서 정한 보험료 납입면제 사유의 발생을 알게된 경우에는 지체없이 그 사실을 회사에 알려야 합니다."
+                      "text": "에는 지체없이 그 사실을 회사에 알려야 합니다."
                     }
                   ],
                   "code": "P0100"

@@ -340,3 +340,42 @@ describe("★ 실물 재현 변형 — 메리츠 납입면제종이 하나면 �
     expect(definition.some((l) => l.includes("중증화상및부식(화학약품"))).toBe(false);
   });
 });
+
+/**
+ * 대표 변형 — 납입면제 없는 상품(W1 열린 문제 2). 두 상품 모두 납입면제종을 미적용으로 → 「납입면제 있음」 = 아니오라 세 조가 빠지고,
+ * 그 조를 가리키던 문장(제2조 표 종 행의 정의 · 제6조 「또는 … 납입면제 사유의 발생을 알게된 경우」 · 준용규정 「1종 … 제외」)도 같은 조건으로 빠진다.
+ */
+describe("★ 실물 재현 변형 — 납입면제 없는 상품은 납입면제 조를 가리키던 문장도 빠진다", () => {
+  let db: TestDb;
+  let booklets: Map<string, Booklet>;
+  const off = [{ path: "waiver.applies", value: false }, { path: "waiver.reasons", value: [] }];
+
+  beforeAll(async () => {
+    const v = await previewVariant([
+      { product: "알파Plus보장보험", axis: "type", number: 2, entries: off },
+      { product: MERITZ, axis: "type", number: 2, entries: off },
+      { product: MERITZ, axis: "type", number: 3, entries: off },
+    ]);
+    db = v.db;
+    booklets = v.booklets;
+  }, 120_000);
+
+  afterAll(async () => {
+    await db.close();
+  });
+
+  it.each(["알파Plus보장보험", MERITZ])("%s — 오류 0 · 납입면제 조가 없고 어느 문장도 납입면제를 말하지 않는다", (name) => {
+    const b = booklets.get(name)!;
+    expect(b.issues).toEqual([]);
+    const general = renderedToLines(b.general!);
+    expect(articleLines(general, "보험료의 납입면제")).toEqual([]);
+    expect(articleLines(general, "납입면제에 관한 세부규정")).toEqual([]);
+    expect(articleLines(general, "보험금 지급사유 등의 통지").join("\n")).not.toContain("납입면제");
+    expect(articleLines(general, "보험금 지급사유 등의 통지")[1]).toMatch(/보험금 지급사유의 발생을 알게된 경우에는 지체없이/);
+    for (const doc of b.specials.flatMap((g) => g.docs)) {
+      const application = articleLines(renderedToLines(doc), "준용규정").join("\n");
+      expect(application, doc.title).not.toContain("납입면제");
+      expect(application, doc.title).toContain("은 제외합니다.");
+    }
+  });
+});

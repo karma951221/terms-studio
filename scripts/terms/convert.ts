@@ -34,7 +34,7 @@ import { APPENDICES, CLAUSES, PRODUCTS, SEED_DIR, type ClauseUse, type ProductTe
 import { parseTerms, type ParsedArticle, type ParsedDoc } from "./parse";
 import { applyArticleConds, applyInlineConds, articlesOf } from "./overlay";
 import { inlinesFromText, leftoverReferences, type ArticleEntry, type ArticleIndex, type RefEnv } from "./refs";
-import { applyAlphaWaiver, applyMeritzWaiver, resolveWaiverCodes } from "./waiver";
+import { applyAlphaWaiver, applyMeritzWaiver, guardAlphaApplication, guardWaiverMentions, resolveWaiverCodes } from "./waiver";
 
 const root = process.cwd();
 const read = (product: ProductTerms, file: string) => readFileSync(path.join(root, product.fixtureDir, file), "utf8");
@@ -358,6 +358,19 @@ function main(): void {
   for (const p of products) {
     applyUses(p.general, p.product.general.clauses ?? [], p.product.general.code);
     for (const spec of p.product.specials) applyUses(p.specials.get(spec.code)!, spec.clauses ?? [], spec.code);
+  }
+
+  // 납입면제 조를 가리키는 문장 — 「납입면제 있음」 조건으로(납입면제 없는 상품이면 세 조와 함께 빠진다). 사용처 자리 대조(applyUses) 뒤에 고친다
+  const waiverArticles: Record<string, string[]> = { alpha: ["g-a27_1", "g-a27_2", "g-a27_3"], meritz: ["m-a29", "m-a30", "m-a31"] };
+  for (const p of products) {
+    const ids = waiverArticles[p.product.code];
+    const isWaiver = (id: string) => ids.some((a) => id === a || id.startsWith(`${a}-`));
+    guardWaiverMentions(p.general.tree, isWaiver, p.product.general.code);
+    for (const spec of p.product.specials) guardWaiverMentions(p.specials.get(spec.code)!.tree, isWaiver, spec.code);
+    const application = clauseByKey.get(`${p.product.code}-application`);
+    if (!application) throw new Error(`${p.product.code}-application 함수조항 없음`);
+    if (p.product.code === "alpha") guardAlphaApplication(application, isWaiver);
+    else guardWaiverMentions({ id: application.code, kind: "document", title: "", children: application.body } as unknown as DocumentNode, isWaiver, application.code);
   }
 
   // ── 조 자리 조건 · 검증

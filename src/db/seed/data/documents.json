@@ -7193,26 +7193,43 @@
                 {
                   "id": "m6-a4-p1-x4",
                   "kind": "text",
-                  "text": "은 제외합니다. 또한, 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
-                },
-                {
-                  "id": "m6-a4-p1-x2",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "articleId": "m-a29"
-                    },
-                    {
-                      "articleId": "m-a31"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "general"
-                },
-                {
-                  "id": "m6-a4-p1-x5",
-                  "kind": "text",
                   "text": "은 제외합니다."
+                },
+                {
+                  "id": "m6-a4-p1-x2-if-waiver",
+                  "kind": "inlineCond",
+                  "branches": [
+                    {
+                      "id": "m6-a4-p1-x2-if-waiver-b",
+                      "when": "D0002",
+                      "children": [
+                        {
+                          "id": "m6-a4-p1-x4-w",
+                          "kind": "text",
+                          "text": " 또한, 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
+                        },
+                        {
+                          "id": "m6-a4-p1-x2",
+                          "kind": "articleRef",
+                          "targets": [
+                            {
+                              "articleId": "m-a29"
+                            },
+                            {
+                              "articleId": "m-a31"
+                            }
+                          ],
+                          "connector": "및",
+                          "scope": "general"
+                        },
+                        {
+                          "id": "m6-a4-p1-x5-w",
+                          "kind": "text",
+                          "text": "은 제외합니다."
+                        }
+                      ]
+                    }
+                  ]
                 }
               ],
               "code": "P0100"

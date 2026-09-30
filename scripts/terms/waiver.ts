@@ -593,6 +593,93 @@ export function applyMeritzWaiver(meritz: WaiverSource, shared: readonly WaiverC
   return [definitionClause, addendumClause, detailClause, voidClause];
 }
 
+/**
+ * 납입면제 조를 가리키는 문장을 「납입면제 있음」 조건으로 감싼다 (W1 열린 문제 2 — 납입면제 없는 상품이면 세 조가 빠져 참조가 사라진 조를 가리킨다).
+ * - 문장 안 덩어리(제6조 「또는 [제27조의1]에서 정한 보험료 납입면제 사유의 발생을 알게된 경우」 · 준용규정 「또한, 1종 … [제29조 및 제31조]은 제외합니다.」)
+ *   는 문장 안 조건 하나(`guardSpan`).
+ * - 제2조 표의 종 행(「1종(보험료 납입면제 미적용형)」 · 「2종 …」)은 정의 칸 전체 — 표 행 조건은 없고 종마다 행 반복은 다음 기획이라
+ *   납입면제 없는 상품은 종 이름 행이 빈 정의로 남는다(인수기준 알려진 한계).
+ * - 준용규정(알파Plus) 함수조항의 「…은 제외하며, 보통약관 1종 … [제27조의1 및 제27조의2]도 제외합니다.」는 문장 앞뒤가 이어져
+ *   가지를 하나 더 둔다(`guardAlphaApplication`). 갱신형 가지의 나열(제9조 · 제10조 · 제27조의1 · 제27조의2 · 제38조)은 일부만 빠지면
+ *   남은 대상으로 찍혀 오류가 아니라 그대로 둔다 (기능/문면 §3.5).
+ * `waiver(id)` = 그 보통약관 납입면제 조(또는 그 안 노드)의 변환 중간 id 인가.
+ */
+export function guardWaiverMentions(tree: DocumentNode, waiver: (id: Id) => boolean, where: string): number {
+  let count = 0;
+  const mentions = (list: readonly unknown[]) => JSON.stringify(list).match(/"articleId":"([^"]+)"/g)?.some((m) => waiver(m.slice('"articleId":"'.length, -1))) ?? false;
+  const visit = (n: unknown): void => {
+    if (Array.isArray(n)) return n.forEach(visit);
+    if (!n || typeof n !== "object") return;
+    const o = n as { id?: Id; kind?: string; children?: InlineNode[]; rows?: { header?: boolean; cells: InlineNode[][] }[] };
+    // 납입면제 조 자신(서로 가리킨다)은 함께 빠지므로 감싸지 않는다
+    if (o.kind === "article" && o.id && waiver(o.id)) return;
+    if (o.kind === "table" && o.rows) {
+      for (const row of o.rows) {
+        if (row.header) continue;
+        row.cells = row.cells.map((cell, c) => {
+          if (!mentions(cell)) return cell;
+          count++;
+          const id = `${cell[0]?.id ?? `${where}-c${c}`}-if-waiver`;
+          return [{ id, kind: "inlineCond", branches: [{ id: `${id}-b`, when: WAIVER_PRESENT, children: cell }] } as InlineNode];
+        });
+      }
+      return;
+    }
+    if ((o.kind === "paragraph" || o.kind === "item") && o.children && mentions(o.children)) {
+      const refAt = o.children.findIndex((c) => c.kind === "articleRef" && c.targets.some((t) => waiver(t.articleId)));
+      const before = o.children[refAt - 1];
+      const marker = before?.kind === "text" && before.text.endsWith(" 또는 ") ? " 또는 " : before?.kind === "text" && before.text.includes(" 또한, ") ? " 또한, " : undefined;
+      const end = marker === " 또는 " ? "에서 정한 보험료 납입면제 사유의 발생을 알게된 경우" : "은 제외합니다.";
+      if (!marker || !guardSpan(o as { children: InlineNode[] }, refAt, marker, end, WAIVER_PRESENT)) throw new Error(`납입면제 재모델링: ${where} 의 납입면제 조 참조 ${o.children[refAt]?.id} 를 감쌀 문장을 모른다`);
+      count++;
+    }
+    for (const key of ["children", "items", "subitems", "branches"]) {
+      const v = (o as Record<string, unknown>)[key];
+      if (Array.isArray(v)) v.forEach(visit);
+    }
+  };
+  visit(tree.children);
+  return count;
+}
+
+/** 문장 안 덩어리 — 참조(`refAt`) 앞 글의 `marker` 부터 뒤 글의 `end` 까지를 문장 안 조건 하나로 감싼다. */
+function guardSpan(p: { children: InlineNode[] }, refAt: number, marker: string, end: string, when: string): boolean {
+  const xs = p.children;
+  const before = xs[refAt - 1];
+  const after = xs[refAt + 1];
+  if (before?.kind !== "text" || after?.kind !== "text") return false;
+  const cut = before.text.lastIndexOf(marker);
+  const stop = after.text.indexOf(end);
+  if (cut < 0 || stop < 0) return false;
+  const id = `${xs[refAt].id}-if-waiver`;
+  const head: InlineNode = { ...before, text: before.text.slice(0, cut) };
+  const inner: InlineNode[] = [{ id: `${before.id}-w`, kind: "text", text: before.text.slice(cut) }, xs[refAt], { id: `${after.id}-w`, kind: "text", text: after.text.slice(0, stop + end.length) }];
+  const tail: InlineNode = { ...after, text: after.text.slice(stop + end.length) };
+  const cond = { id, kind: "inlineCond", branches: [{ id: `${id}-b`, when, children: inner }] } as InlineNode;
+  p.children = [...xs.slice(0, refAt - 1), ...(head.kind === "text" && head.text ? [head] : []), cond, ...(tail.kind === "text" && tail.text ? [tail] : []), ...xs.slice(refAt + 2)];
+  return true;
+}
+
+/**
+ * 준용규정(알파Plus) — 비갱신 가지 「[제9조 · 제10조 · 제38조]은 제외하며, 보통약관 1종(…)으로 가입한 경우 [제27조의1 및 제27조의2]도 제외합니다.」를
+ * 「납입면제 있음」이면 그대로, 아니면 「[제9조 · 제10조 · 제38조]은 제외합니다.」 가지로 나눈다(문장 안 IF / ELIF / ELSE).
+ */
+export function guardAlphaApplication(clause: ClauseRecord, waiver: (id: Id) => boolean): void {
+  const cond = find(clause.body, (x) => x.kind === "inlineCond") as { branches: { id: Id; when?: string; children: Inline[] }[] } | undefined;
+  const last = cond?.branches.at(-1);
+  const refs = last?.children.filter((c) => c.kind === "articleRef") ?? [];
+  const tail = refs.at(-1);
+  if (!cond || !last || last.when !== undefined || refs.length !== 2 || !tail || tail.kind !== "articleRef" || !tail.targets.every((t) => waiver(t.articleId ?? ""))) {
+    throw new Error(`납입면제 재모델링: ${clause.label} 의 비갱신 가지가 원문 모양이 아니다`);
+  }
+  const [head] = last.children;
+  cond.branches = [
+    ...cond.branches.slice(0, -1),
+    { ...last, when: WAIVER_PRESENT },
+    { id: `${last.id}-else`, children: [copyWithSuffix(head, "-else"), { id: `${last.id}-else-t`, kind: "text", text: "은 제외합니다." }] },
+  ];
+}
+
 /** 항 안의 참조(대상 `before`) 뒤 글이 `plain` 으로 시작하면 그 글을 떼고 대상 `more` 를 더한다 — 연결어는 「또는」. */
 function absorbPlain(p: ParagraphNode | undefined, before: readonly Id[], plain: string, more: readonly Id[]): void {
   const xs = p?.children ?? [];

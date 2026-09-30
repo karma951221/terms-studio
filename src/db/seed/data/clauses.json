@@ -5755,6 +5755,33 @@
                     "kind": "text",
                     "text": "도 제외합니다."
                   }
+                ],
+                "when": "arg.납입면제_있음"
+              },
+              {
+                "id": "c-alpha-application-n7-else",
+                "children": [
+                  {
+                    "id": "c-alpha-application-n8-else",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "g-a9"
+                      },
+                      {
+                        "articleId": "g-a10"
+                      },
+                      {
+                        "articleId": "g-a38"
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-alpha-application-n7-else-t",
+                    "kind": "text",
+                    "text": "은 제외합니다."
+                  }
                 ]
               }
             ]
@@ -5763,7 +5790,19 @@
         "code": "P0100"
       }
     ],
-    "options": []
+    "options": [],
+    "params": [
+      {
+        "name": "납입면제_있음",
+        "type": {
+          "kind": "boolean"
+        },
+        "default": {
+          "kind": "discriminator",
+          "code": "D0002"
+        }
+      }
+    ]
   },
   {
     "code": "C0046",
@@ -5799,30 +5838,59 @@
           {
             "id": "c-meritz-application-n4",
             "kind": "text",
-            "text": "은 제외합니다. 또한, 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
-          },
-          {
-            "id": "c-meritz-application-n5",
-            "kind": "articleRef",
-            "targets": [
-              {
-                "articleId": "m-a29"
-              },
-              {
-                "articleId": "m-a31"
-              }
-            ],
-            "connector": "및"
-          },
-          {
-            "id": "c-meritz-application-n6",
-            "kind": "text",
             "text": "은 제외합니다."
+          },
+          {
+            "id": "c-meritz-application-n5-if-waiver",
+            "kind": "inlineCond",
+            "branches": [
+              {
+                "id": "c-meritz-application-n5-if-waiver-b",
+                "when": "arg.납입면제_있음",
+                "children": [
+                  {
+                    "id": "c-meritz-application-n4-w",
+                    "kind": "text",
+                    "text": " 또한, 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
+                  },
+                  {
+                    "id": "c-meritz-application-n5",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "m-a29"
+                      },
+                      {
+                        "articleId": "m-a31"
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-meritz-application-n6-w",
+                    "kind": "text",
+                    "text": "은 제외합니다."
+                  }
+                ]
+              }
+            ]
           }
         ],
         "code": "P0100"
       }
     ],
-    "options": []
+    "options": [],
+    "params": [
+      {
+        "name": "납입면제_있음",
+        "type": {
+          "kind": "boolean"
+        },
+        "default": {
+          "kind": "discriminator",
+          "code": "D0002"
+        }
+      }
+    ]
   }
 ]

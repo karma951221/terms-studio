@@ -165,3 +165,18 @@ describe("메리츠 납입면제 템플릿 — 알파Plus 와 같은 모양, 호
     expect(JSON.stringify(definitions)).toContain('"text":"제29조(보험료의 납입면제) 제2항"');
   });
 });
+
+describe("납입면제 조를 가리키는 문장 — 「납입면제 있음」 조건 (납입면제 없는 상품이면 함께 빠진다)", () => {
+  it.each([
+    ["알파Plus", alpha, 2],
+    ["메리츠", meritz, 3],
+  ] as const)("%s — 제6조 「또는 … 납입면제 사유의 발생을 알게된 경우」는 문장 안 조건, 제2조 표 종 행의 정의 칸은 칸째 조건", (_, tree, rows) => {
+    const notice = find(tree, (x) => x.kind === "article" && x.title === "보험금 지급사유 등의 통지")!;
+    const cond = find(notice, (x) => x.kind === "inlineCond")!;
+    const [branch] = cond.branches as { when: string; children: Json[] }[];
+    expect(branch.when).toBe(WAIVER_PRESENT);
+    expect(branch.children.map((c) => (c.kind === "text" ? c.text : c.kind))).toEqual([" 또는 ", "articleRef", "에서 정한 보험료 납입면제 사유의 발생을 알게된 경우"]);
+    const definitions = find(tree, (x) => x.kind === "article" && x.title === "용어의 정의")!;
+    expect(all(definitions, (x) => x.kind === "inlineCond" && (x.branches as { when: string }[])[0].when === WAIVER_PRESENT)).toHaveLength(rows);
+  });
+});
