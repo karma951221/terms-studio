@@ -73,7 +73,7 @@ import { ArticleBody, DocBody } from "./DocBody";
 import { backspaceOps, enterOps, inlineListAt, moveSelectionOps, pasteGridOps } from "./editOps";
 import { caretFromPoint, tokensOf } from "./Inline";
 import { identityRuns, runsFromTokens, sameRuns, type Token } from "./inlineRuns";
-import { boxPickItems, clausePickItems, condInsertItem, condMenu, inlineCondItem, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
+import { boxPickItems, clausePickItems, condInsertItem, condMenu, inlineCondItem, placeBlockId, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
 import { condInput, placeOf, readInline } from "./place";
 import { EditorToolbar } from "./EditorToolbar";
 import { DOCUMENT_TOOLS, allTools, itemsFor, type ToolId } from "./tools";
@@ -514,10 +514,13 @@ export function DocumentEditor(props: EditorProps) {
     setMenu({ x: event.clientX, y: event.clientY, sections: placeMenu(env, at, tokens) });
   };
 
-  /** 툴바 버튼 — 누르는 순간의 편집본 · 문장 칸 조각(커서 · 고른 글)으로 목록을 다시 짓고 그 버튼의 항목을 돌린다. */
-  const runTool = (toolId: ToolId, button: HTMLElement) => {
+  /**
+   * 툴바 버튼 — 누르는 순간의 편집본 · 문장 칸 조각(커서 · 고른 글)으로 목록을 다시 짓고 그 버튼의 항목을 돌린다.
+   * `onPlace` 를 주면 그 자리로 돈다 — 블록 오른쪽 위의 복제 · 삭제(`blockAct`)가 같은 길을 쓴다.
+   */
+  const runTool = (toolId: ToolId, button: HTMLElement, onPlace?: Place) => {
     const env = menuEnv();
-    let at = placeIn(env.ix);
+    let at = onPlace ?? placeIn(env.ix);
     let tokens: Token[] = [];
     let cut: string | undefined;
     if (at.kind === "inline") {
@@ -539,15 +542,6 @@ export function DocumentEditor(props: EditorProps) {
       // 넣기 전에 쓰던 문장을 편집본에 넣는다(초점이 떠나며 적용) — 감싸는 블록이 쓰던 글을 두고 가지 않게
       if (item.label !== "문장 안 조건") (document.activeElement as HTMLElement | null)?.blur?.();
       runMenu(item, anchor);
-      return;
-    }
-    // 여러 블록을 골랐으면 위로 · 아래로는 고른 것 전부를 한 칸
-    if ((toolId === "up" || toolId === "down") && drag.blockSel.length > 1) {
-      const ops = moveSelectionOps(latest(), drag.blockSel, toolId === "up" ? -1 : 1);
-      if (ops.length > 0) {
-        (document.activeElement as HTMLElement | null)?.blur?.();
-        apply(ops);
-      }
       return;
     }
     const tool = allTools(DOCUMENT_TOOLS).find((t) => t.id === toolId);
@@ -603,6 +597,19 @@ export function DocumentEditor(props: EditorProps) {
         return kind ? `${num(p.at.parentId) ?? ""} ${NODE_WHAT[kind] ?? ""} 문장`.trim() : "조건 가지 문장";
       }
     }
+  };
+
+  /** 오른쪽 클릭 메뉴에서 고른 항목 — 여러 블록을 골랐으면 위로 · 아래로는 고른 것 전부를 한 칸(툴바에서 내려온 규칙, 2026-10-01). */
+  const pickMenu = (item: MenuItem) => {
+    if ((item.label === "위로" || item.label === "아래로") && drag.blockSel.length > 1) {
+      const ops = moveSelectionOps(latest(), drag.blockSel, item.label === "위로" ? -1 : 1);
+      if (ops.length > 0) {
+        (document.activeElement as HTMLElement | null)?.blur?.();
+        apply(ops);
+      }
+      return;
+    }
+    runMenu(item);
   };
 
   const runMenu = (item: MenuItem, anchor: Anchor = menuAt.current) => {
@@ -677,6 +684,13 @@ export function DocumentEditor(props: EditorProps) {
     run: (item, anchor) => runMenu(item, anchor),
     blockSel: drag.blockSel,
     selectBlock: drag.selectBlock,
+    blockAct: (nodeId, act, button) => {
+      const kind = index.nodes.get(nodeId)?.node.kind;
+      const at: Place = kind === "article" ? { kind: "articleTitle", id: nodeId } : kind === "section" ? { kind: "sectionTitle", id: nodeId } : { kind: "block", id: nodeId };
+      setPlace(at);
+      runTool(act, button, at);
+    },
+    ...(placeBlockId(place) ? { currentBlock: placeBlockId(place) } : {}),
   };
 
   // 조건 머리 줄 · 팝업의 조건 · 슬롯 문맥 — 반복 표 템플릿 셀 안이면 「현재 행」 가지 (ADR-0070 · 설계 §3.1). 담보약관만.
@@ -904,8 +918,8 @@ export function DocumentEditor(props: EditorProps) {
         {...(mode === "edit" ? drag.props : {})}
         onPointerDown={(e) => {
           const target = e.target as HTMLElement;
-          // 블록 손잡이 밖을 누르면 고른 블록을 푼다(Shift 는 늘리기)
-          if (!e.shiftKey && !target.closest("[data-drag], .ts-doc-toolbar")) drag.clearSel();
+          // 블록 손잡이 밖을 누르면 고른 블록을 푼다(Shift 는 늘리기) — 오른쪽 클릭은 두고(메뉴 「위로」 · 「아래로」가 고른 것 전부를 옮긴다)
+          if (e.button !== 2 && !e.shiftKey && !target.closest("[data-drag], .ts-doc-toolbar")) drag.clearSel();
           // 툴바 · 셀 조작 줄은 자리를 바꾸지 않는다
           if (target.closest(".ts-doc-toolbar, .ts-cell-bar")) return;
           // 표 밖을 누르면 셀 조작 줄을 닫는다
@@ -945,7 +959,7 @@ export function DocumentEditor(props: EditorProps) {
             <p className="ts-empty-what">아직 조가 하나도 없다 — 이 템플릿은 조립해도 아무것도 만들지 않는다.</p>
             <p className="ts-empty-example">예: 제1조(보험금의 지급사유) · 제2조(보험금을 지급하지 않는 사유)</p>
             <p className="ts-empty-action">
-              {mode === "edit" ? "툴바의 「조」 · 「관」으로 시작한다. 다 쓰면 「저장」." : "위 바의 「편집」을 누르고, 툴바의 「조」로 조를 넣는다. 다 쓰면 「저장」."}
+              {mode === "edit" ? "툴바의 「조」로 시작한다(관은 툴바 끝 더보기). 다 쓰면 「저장」." : "위 바의 「편집」을 누르고, 툴바의 「조」로 조를 넣는다. 다 쓰면 「저장」."}
             </p>
           </div>
         )}
@@ -953,7 +967,7 @@ export function DocumentEditor(props: EditorProps) {
 
       <SidePanel ctx={ctx} data={panel} />
 
-      {menu && <ContextMenu x={menu.x} y={menu.y} sections={menu.sections} onPick={runMenu} onClose={() => setMenu(undefined)} />}
+      {menu && <ContextMenu x={menu.x} y={menu.y} sections={menu.sections} onPick={pickMenu} onClose={() => setMenu(undefined)} />}
       {pop && mode === "edit" && <PopupHost env={popupEnv} spec={pop.spec} anchor={pop.anchor} onClose={() => setPop(undefined)} />}
       {removeCard}
       {fullView && (

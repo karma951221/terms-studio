@@ -58,7 +58,15 @@ export class Editor {
     return this.toolbar.getByRole("button", { name, exact: true });
   }
 
+  /** 툴바 「더보기(⋯)」 안의 도구(관 · 문장 안 함수조항, 2026-10-01) — 툴바 줄에 없으면 더보기를 열어 고른다. */
   async runTool(name: string): Promise<void> {
+    if ((await this.tool(name).count()) === 0) {
+      await this.tool("더보기").click();
+      const item = this.toolbar.getByRole("menuitem", { name, exact: true });
+      await expect(item).toBeEnabled();
+      await item.click();
+      return;
+    }
     const button = this.tool(name);
     try {
       await expect(button).toBeEnabled();
@@ -125,7 +133,7 @@ export class Editor {
         return this.confirm(d, "넣기");
       }
       case "clauseInlineRef": {
-        await this.runTool("함수조항(문장)");
+        await this.runTool("문장 안 함수조항");
         const d = this.dialog("함수조항(문장 안) 넣기");
         await pickCombo(d.locator("#pop-clause"), { value: node.clauseCode });
         for (const [option, value] of Object.entries(node.options)) await d.locator(`#pop-opt-${option}`).selectOption(value);
@@ -466,7 +474,7 @@ export class DocumentAuthoring {
       const linked = (article as { linkedArticleId?: string }).linkedArticleId;
       if (linked) {
         await this.article.locator("h3 [role=textbox]").focus();
-        await this.editor.runTool("조연결");
+        await this.editor.runTool("보통약관 조 연결");
         const d = this.editor.dialog("조연결");
         await pickCombo(d.locator("#pop-link"), { value: linked });
         await this.editor.confirm(d, "확인");

@@ -4,7 +4,7 @@ import { clauseCanHold, clauseDefaultPlace, clausePlaceMenu, withClauseRefusals,
 import { CLAUSE_LINE_ID, clauseBodyToTree, indexTree, nodeBuilders, replayEdits, sequentialIds, type DocumentNode, type EditOp } from "@/domain/document";
 
 import { condInsertItem, forContextMenu, inlineCondItem, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place } from "./menus";
-import { CLAUSE_LINE_TOOLS, CLAUSE_TOOLS, DOCUMENT_TOOLS, allTools, condItem, itemsFor, toolFor, toolState } from "./tools";
+import { CLAUSE_LINE_TOOLS, CLAUSE_TOOLS, DOCUMENT_TOOLS, allTools, condItem, itemsFor, onBar, toolFor, toolState } from "./tools";
 
 function env(tree: DocumentNode, docKind: "special" | "general" = "special"): MenuEnv {
   return { tree, ix: indexTree(tree), docKind, newId: sequentialIds("m") };
@@ -70,8 +70,8 @@ describe("약관 에디터 툴바 (기능/문면 §4.3)", () => {
     }
   });
 
-  it("버튼 구성 — 구조 넣기 · 문장에 넣기 · 조건(조건식) · 속성 · 배치, id 는 겹치지 않는다", () => {
-    expect(DOCUMENT_TOOLS.map((g) => g.name)).toEqual(["구조 넣기", "문장에 넣기", "조건", "속성", "배치"]);
+  it("버튼 구성 — 구조 넣기 · 문장에 넣기 · 조건 넣기 · 조건 편집 · 고른 것 속성 · 배치, id 는 겹치지 않는다", () => {
+    expect(DOCUMENT_TOOLS.map((g) => g.name)).toEqual(["구조 넣기", "문장에 넣기", "조건 넣기", "조건 편집", "고른 것 속성", "배치"]);
     const ids = allTools(DOCUMENT_TOOLS).map((t) => t.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(allTools(DOCUMENT_TOOLS).map((t) => t.label)).toEqual(
@@ -80,6 +80,37 @@ describe("약관 에디터 툴바 (기능/문면 §4.3)", () => {
     expect(ids).not.toContain("optionSlot");
     // 박스는 정적 마스터 박스를 고른다 — 「박스」 버튼 (기능/박스 §4.4). 옛 문면 박스(사본)를 넣는 길은 없다
     expect(allTools(DOCUMENT_TOOLS).find((t) => t.id === "box")?.label).toBe("박스");
+  });
+
+  it("서는 곳 (2026-10-01 정리) — 복제 · 삭제는 블록 곁, 위로 · 아래로는 오른쪽 클릭 메뉴, 관 · 문장 안 함수조항은 더보기, 조건 편집 · 속성은 켜질 때만", () => {
+    const at = (id: string) => allTools(DOCUMENT_TOOLS).find((t) => t.id === id)?.at ?? "bar";
+    expect(["duplicate", "remove"].map(at)).toEqual(["block", "block"]);
+    expect(["up", "down"].map(at)).toEqual(["menu", "menu"]);
+    expect(["section", "clauseInline"].map(at)).toEqual(["more", "more"]);
+    for (const g of DOCUMENT_TOOLS.filter((g) => g.name === "조건 편집" || g.name === "고른 것 속성")) for (const t of g.tools) expect(at(t.id), t.id).toBe("context");
+    // 구조 넣기 핵심 묶음은 늘 선다 — 조 · 항 · 호 · 목 · 표 · 목록 · 함수조항 · 박스 · 반복
+    const core = DOCUMENT_TOOLS[0].tools.filter((t) => (t.at ?? "bar") === "bar").map((t) => t.label);
+    expect(core).toEqual(["조", "항", "호", "목", "표", "글머리 목록", "함수조항", "박스", "반복"]);
+    // 모양이 분명한 넣기는 아이콘
+    expect(allTools(DOCUMENT_TOOLS).filter((t) => t.icon).map((t) => t.id)).toEqual(["table", "bulletList", "clauseBlock", "box", "forBlock", "slot", "articleRef", "appendixRef", "inlineCond"]);
+    // 아이콘만은 누구나 아는 모양(표 · 글머리 목록)뿐 — 나머지는 짧은 글자를 붙인다 (2026-10-01 유저 피드백)
+    expect(allTools(DOCUMENT_TOOLS).filter((t) => t.icon && !t.short).map((t) => t.id)).toEqual(["table", "bulletList"]);
+  });
+
+  it("툴바 줄 — 항 자리면 조건 편집 · 속성 묶음이 없고, 조건 머리면 조건 편집이 켜져 선다", () => {
+    const s = sample();
+    const barIds = (sections: MenuSections) => allTools(DOCUMENT_TOOLS).filter((t) => onBar(t, toolState(t, sections))).map((t) => t.id);
+    const para = barIds(placeMenu(env(s.tree), { kind: "block", id: s.paragraph.id }));
+    expect(para).toEqual(expect.arrayContaining(["article", "paragraph", "cond", "slot"]));
+    for (const id of ["elif", "else", "unwrap", "removeBranch", "edit", "repeat", "link", "up", "down", "duplicate", "remove", "section", "clauseInline", "structKey"]) expect(para, id).not.toContain(id);
+    const head = barIds(placeMenu(env(s.tree), { kind: "head", id: s.cond.branches[0].id }));
+    expect(head).toEqual(expect.arrayContaining(["elif", "else", "unwrap"]));
+    // 「속성」 하나가 칩 · 표 · 함수조항 참조 · 반복 블록의 속성 창을 맡는다
+    const edit = allTools(DOCUMENT_TOOLS).find((t) => t.id === "edit")!;
+    expect(itemsFor(edit, placeMenu(env(s.tree), { kind: "block", id: s.table.id })).map((i) => i.label)).toEqual(["표 속성…"]);
+    expect(itemsFor(edit, placeMenu(env(s.tree), { kind: "chip", id: s.slot.id })).map((i) => i.label)).toEqual(["고치기…"]);
+    const cell = barIds(placeMenu(env(s.tree), { kind: "inline", at: { tableId: s.table.id, row: 1, col: 0 } }));
+    expect(cell).toEqual(expect.arrayContaining(["structKey", "edit", "repeat"]));
   });
 
   it("버튼 켜짐은 자리를 따른다 — 항이면 항 · 호 · 조건식이 켜지고 조건 가지 조작은 잠긴다", () => {

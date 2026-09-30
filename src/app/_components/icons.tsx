@@ -236,6 +236,104 @@ export function IconPanel(props: IconProps) {
   );
 }
 
+/* ── 약관 편집 툴바 아이콘 (기능/문면 §4.3, 2026-10-01) — 넣는 것의 모양을 그린다 ─────────── */
+
+/** 표 — 머리 줄이 있는 칸. */
+export function IconTable(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="2.5" y="3" width="11" height="10" rx="1" />
+      <path d="M2.5 6.5h11" />
+      <path d="M2.5 9.8h11" />
+      <path d="M7 6.5V13" />
+    </Svg>
+  );
+}
+
+/** 글머리 목록 — 점 셋 + 줄 셋. */
+export function IconBulletList(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3.3 4.5h.01M3.3 8h.01M3.3 11.5h.01" strokeWidth={2.2} />
+      <path d="M6.3 4.5h7.2M6.3 8h7.2M6.3 11.5h7.2" />
+    </Svg>
+  );
+}
+
+/** 함수조항(조 단위) 블록 — 머리 띠가 있는 상자 안의 ƒ. */
+export function IconClauseBlock(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="2.5" y="2.5" width="11" height="11" rx="1" />
+      <path d="M2.5 5.2h11" />
+      <path d="M9.6 7.4a1.1 1.1 0 0 0-1.7.9v3.2a1.1 1.1 0 0 1-1.7.9" />
+      <path d="M6.3 9.4h3" />
+    </Svg>
+  );
+}
+
+/** 박스 — 테두리 안의 글 줄. */
+export function IconBox(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="2.5" y="3" width="11" height="10" rx="0.5" />
+      <path d="M5 6.3h6" />
+      <path d="M5 9.6h4" />
+    </Svg>
+  );
+}
+
+/** 반복 — 도는 두 화살표(⟳). */
+export function IconRepeat(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3 7.5a5 5 0 0 1 8.7-3.3" />
+      <path d="M12 1.8v2.6H9.4" />
+      <path d="M13 8.5a5 5 0 0 1-8.7 3.3" />
+      <path d="M4 14.2v-2.6h2.6" />
+    </Svg>
+  );
+}
+
+/** 슬롯 — 값이 들어갈 자리 { }. */
+export function IconSlot(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6 3h-.6a1 1 0 0 0-1 1v2.4L3.2 8l1.2 1.6V12a1 1 0 0 0 1 1H6" />
+      <path d="M10 3h.6a1 1 0 0 1 1 1v2.4L12.8 8l-1.2 1.6V12a1 1 0 0 1-1 1H10" />
+    </Svg>
+  );
+}
+
+/** 별표 참조 — 약관에 붙은 표(別表)라 클립. */
+export function IconAttach(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12.8 7.6 8 12.4a3 3 0 0 1-4.3-4.3l5-5a2 2 0 0 1 2.9 2.9L6.8 10.8a1 1 0 0 1-1.4-1.4L9.8 5" />
+    </Svg>
+  );
+}
+
+/** 문장 안 조건 — 한 줄이 두 갈래로 나뉜다. */
+export function IconBranch(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M5 2.5v11" />
+      <path d="M5 5.5c0 2.3 2 3.5 6.2 3.5" />
+      <path d="M9.6 7.3 11.3 9l-1.7 1.7" />
+    </Svg>
+  );
+}
+
+/** 더보기 — 가로 점 셋. */
+export function IconMore(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3.5 8h.01M8 8h.01M12.5 8h.01" strokeWidth={2.4} />
+    </Svg>
+  );
+}
+
 /* ── 담보 상태 글리프 (7px) — 디자인원칙 §2 L1 ─────────────────────────── */
 
 type GlyphProps = { className?: string; title?: string };

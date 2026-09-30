@@ -140,6 +140,13 @@ export interface EditHandlers {
   blockSel?: readonly Id[];
   /** 블록 손잡이를 눌렀다 — Shift 면 잇닿은 형제까지 늘린다. */
   selectBlock?: (id: Id, extend: boolean) => void;
+  /**
+   * 블록 오른쪽 위의 복제 · 삭제 (2026-10-01) — 툴바 버튼이 쓰던 길(`runTool`)을 그 노드 자리로 돌린다(조 · 관이면 그 제목 자리).
+   * 없으면 아이콘도 없다.
+   */
+  blockAct?: (nodeId: Id, act: "duplicate" | "remove", button: HTMLElement) => void;
+  /** 지금 자리의 블록(커서가 선 블록 · 누른 블록 · 조 · 관 제목) — 그 블록의 복제 · 삭제 아이콘은 포인터가 없어도 보인다. */
+  currentBlock?: Id;
 }
 
 /** 조건식 칩 글자 — 읽기 모드는 길면 자르고 전체는 tooltip 으로 준다 (디자인원칙 §2 L3). */

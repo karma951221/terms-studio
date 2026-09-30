@@ -1422,24 +1422,81 @@ button.danger:focus-visible {
   padding: 6px 24px;
 }
 
-/* 묶음은 줄을 차지하지 않는다 — 버튼이 한 흐름으로 줄바꿈하고, 묶음 사이만 넓게 띄운다(좁은 폭에서 줄 수를 아낀다) */
+/* 묶음은 줄을 차지하지 않는다 — 버튼이 한 흐름으로 줄바꿈하고, 묶음 사이에 가는 세로 선(좁은 폭에서 줄 수를 아낀다) */
 .ts-tool-group {
   display: contents;
 }
 
-.ts-tool-group + .ts-tool-group > .ts-tool:first-child {
-  margin-left: 10px;
+.ts-tool-group + .ts-tool-group > .ts-tool:first-child,
+.ts-tool-group + .ts-tool-more {
+  position: relative;
+  margin-left: 9px;
 }
 
+.ts-tool-group + .ts-tool-group > .ts-tool:first-child::before,
+.ts-tool-group + .ts-tool-more::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 5px;
+  bottom: 5px;
+  width: 1px;
+  background: var(--ts-rule-strong);
+  pointer-events: none;
+}
+
+/* 버튼은 한 크기 · 한 모서리 — 평소엔 테두리 없이, hover 에서 선다. 아이콘 · 한 글자(조 · 항 · 호 · 목)는 정사각 */
 .ts-doc-toolbar .ts-tool {
-  height: 24px;
-  min-height: 24px;
-  padding: 0 8px;
-  border: 1px solid var(--ts-rule-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0 7px;
+  border: 1px solid transparent;
   border-radius: 3px;
-  font-size: 12px;
-  line-height: 22px;
+  background: none;
+  color: var(--ts-ink);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 24px;
   white-space: nowrap;
+}
+
+.ts-doc-toolbar .ts-tool.is-icon {
+  padding: 0 5px;
+  color: var(--ts-ink-2);
+}
+
+.ts-doc-toolbar .ts-tool.is-icon .ts-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* 아이콘 + 짧은 글자 — 이 시스템에만 있는 넣기(참조 · 슬롯 · 함수조항 · 박스 · 반복 · 문장 안 조건) */
+.ts-doc-toolbar .ts-tool.is-icon-text {
+  gap: 3px;
+  padding: 0 6px 0 5px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ts-doc-toolbar .ts-tool.is-icon-text .ts-icon {
+  color: var(--ts-ink-2);
+}
+
+.ts-doc-toolbar .ts-tool:not(:disabled):hover,
+.ts-doc-toolbar .ts-tool[aria-expanded="true"] {
+  border-color: var(--ts-rule-strong);
+  background: var(--ts-surface);
+  color: var(--ts-ink);
+}
+
+.ts-tool-caret {
+  font-size: 9px;
+  color: var(--ts-ink-3);
 }
 
 .ts-doc-toolbar .ts-tool.is-cond:not(:disabled) {
@@ -1449,6 +1506,30 @@ button.danger:focus-visible {
 }
 
 .ts-doc-toolbar .ts-tool:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* 더보기(⋯) — 메뉴는 버튼 왼쪽 끝에 맞춰 편다(좁은 폭에서 둘째 줄 왼쪽에 서도 화면 안) */
+.ts-tool-more {
+  position: relative;
+  display: inline-flex;
+}
+
+.ts-tool-more > .ts-more-menu {
+  left: 0;
+  right: auto;
+  min-width: 160px;
+}
+
+.ts-tool-more .ts-more-menu-item {
+  height: 28px;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.ts-tool-more .ts-more-menu-item:disabled {
   opacity: 0.45;
   cursor: default;
 }
@@ -2986,7 +3067,7 @@ button.ts-doc-clause-opt {
   cursor: pointer;
 }
 
-.ts-doc-clause-head .ts-doc-clause-del {
+.ts-doc-clause-head .ts-block-acts {
   margin-left: auto;
   color: inherit;
 }
@@ -2995,7 +3076,7 @@ button.ts-doc-clause-opt {
   padding: 4px 10px 6px;
 }
 
-/* 머리 띠 오른쪽 — 함수조항 화면(새 탭)으로. 🗑 가 있으면 그 앞 */
+/* 머리 띠 오른쪽 — 함수조항 화면(새 탭)으로. 복제 · 삭제가 있으면 그 앞 */
 .ts-doc-clause-link {
   margin-left: auto;
   color: inherit;
@@ -3005,7 +3086,7 @@ button.ts-doc-clause-opt {
   text-underline-offset: 3px;
 }
 
-.ts-doc-clause-link + .ts-doc-clause-del {
+.ts-doc-clause-link + .ts-block-acts.is-inline {
   margin-left: 0;
 }
 
@@ -4889,6 +4970,64 @@ button.ts-ref-fold:hover {
 .ts-drag:hover {
   background: var(--ts-surface-2);
   color: var(--ts-ink);
+}
+
+/* 블록 복제 · 삭제 — 고른 블록(커서가 선 블록 · 손잡이로 고른 블록)이나 포인터가 선 블록의 오른쪽 여백에 세로로 선다 (2026-10-01).
+   툴바에서 내려왔다 — 무엇을 복제 · 삭제하는지 그 블록 곁에서 보인다. 겹친 블록이면 가장 안쪽 것만. 글자 칸 밖이라 문장을 가리지 않는다. */
+.ts-block-acts {
+  position: absolute;
+  top: 0.2em;
+  right: -22px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-indent: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ts-block-acts .ts-iconbtn {
+  width: 20px;
+  height: 20px;
+  background: var(--ts-surface);
+}
+
+[data-block]:hover:not(:has([data-block]:hover)) > .ts-block-acts,
+[data-drop-block]:hover:not(:has([data-block]:hover, [data-drop-block]:hover)) > .ts-block-acts,
+.ts-doc-article-title:hover > .ts-block-acts,
+.ts-doc-section-title:hover > .ts-block-acts,
+.ts-block-acts.is-on,
+.ts-block-acts:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 머리 줄이 있는 블록(함수조항 · 반복)은 머리 줄 끝에 늘 선다 — 조건 블록 머리 줄의 🗑 와 같은 자리 */
+.ts-block-acts.is-inline {
+  position: static;
+  flex-direction: row;
+  gap: 2px;
+  margin-left: auto;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ts-block-acts.is-inline .ts-iconbtn {
+  background: none;
+  color: inherit;
+}
+
+/* 반복 블록 머리 줄 — 이름 버튼 + 끝에 복제 · 삭제 */
+.ts-doc-cond-head.is-acts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ts-l3-body .ts-doc-article-title,
+.ts-l3-body .ts-doc-section-title {
+  position: relative;
 }
 
 /* 고른 블록 — 강조색 대신 옅은 바탕 + 왼쪽 선 (색은 현재 위치 표시에만, 디자인원칙 §1.3) */

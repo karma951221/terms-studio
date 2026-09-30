@@ -51,6 +51,7 @@ function ctxOf(tree: DocumentNode, edit: boolean): DocCtx {
     contextMenu: () => undefined,
     headItems: (branchId): MenuItem[] => condMenu({ tree, ix, docKind: "general", newId: sequentialIds("m") }, branchId).flat(),
     run: () => undefined,
+    blockAct: () => undefined,
   };
   return {
     documentId: "d",
@@ -225,6 +226,36 @@ describe("블록 손잡이 — 편집 모드에서 끌어 옮기기 · 고르기
     expect(html.match(/data-drag=/g)).toHaveLength(2);
     expect(html).toContain('aria-label="제1항 끌어 옮기기"');
     expect(html).toMatch(/class="ts-doc-paragraph is-block-sel"/);
+  });
+});
+
+describe("블록 복제 · 삭제 — 블록 오른쪽 여백의 아이콘 (기능/문면 §4.3, 2026-10-01)", () => {
+  const b = nodeBuilders(sequentialIds("k"));
+  const t = b.document("D", [b.article("가", [b.paragraph([b.text("첫")]), b.paragraph([b.text("둘")])])]);
+  const nodes = (t.children[0] as { children: DocumentNode["children"] }).children;
+  it("편집 모드 — 블록마다 복제 · 삭제, 지금 자리 블록만 늘 보인다(is-on) · 읽기 모드에는 없다", () => {
+    expect(renderToStaticMarkup(<Block nodes={nodes} ctx={ctxOf(t, false)} />)).not.toContain("ts-block-acts");
+    const base = ctxOf(t, true);
+    const html = renderToStaticMarkup(<Block nodes={nodes} ctx={{ ...base, edit: { ...base.edit!, currentBlock: nodes[1].id } }} />);
+    expect(html.match(/class="ts-block-acts[^"]*"/g)).toEqual(['class="ts-block-acts"', 'class="ts-block-acts is-on"']);
+    expect(html).toContain('aria-label="제1항 복제 — 바로 뒤에 사본"');
+    expect(html).toContain('aria-label="제2항 삭제"');
+  });
+
+  it("아이콘 묶음은 그 블록 id 를 싣는다 — blockAct 가 없으면(읽기 · 「문구」 함수조항) 그리지 않는다", () => {
+    const base = ctxOf(t, true);
+    expect(renderToStaticMarkup(<Block nodes={nodes} ctx={base} />)).toContain(`data-block-acts="${nodes[0].id}"`);
+    const rest = { ...base.edit! };
+    delete rest.blockAct;
+    expect(renderToStaticMarkup(<Block nodes={nodes} ctx={{ ...base, edit: rest }} />)).not.toContain("data-block-acts");
+  });
+
+  it("조건 블록 · 함수조항은 머리 줄 끝에 늘 선다", () => {
+    const html = render("D0009 = true", true);
+    expect(html).toContain('aria-label="조건 블록 복제 — 바로 뒤에 사본"');
+    expect(html).toContain('aria-label="조건 블록 삭제"');
+    expect(html).toContain('aria-label="함수조항 보험기간 복제 — 바로 뒤에 사본"');
+    expect(html.match(/ts-block-acts is-inline/g)).toHaveLength(2);
   });
 });
 

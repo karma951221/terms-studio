@@ -54,7 +54,13 @@ test(
       await page.getByRole("button", { name: "편집", exact: true }).click();
       await expect(page.getByRole("button", { name: "저장", exact: true })).toBeVisible();
       await expect(toolbar).toBeVisible();
-      for (const name of ["조", "관", "항", "호", "목", "표", "글머리 목록", "슬롯", "조 참조", "별표 참조", "조건식", "문장 안 조건", "위로", "아래로", "복제", "삭제"]) await expect(tool(name)).toBeVisible();
+      for (const name of ["조", "항", "호", "목", "표", "글머리 목록", "함수조항", "반복", "슬롯", "조 참조", "별표 참조", "조건식", "문장 안 조건", "더보기"]) await expect(tool(name)).toBeVisible();
+      // 2026-10-01 정리 — 위로 · 아래로 · 복제 · 삭제는 툴바에 없다(블록 곁 아이콘 · 오른쪽 클릭 메뉴), 관은 더보기 안
+      for (const name of ["관", "위로", "아래로", "복제", "삭제"]) await expect(tool(name)).toHaveCount(0);
+      await tool("더보기").click();
+      await expect(toolbar.getByRole("menuitem", { name: "관", exact: true })).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(toolbar.getByRole("menuitem", { name: "관", exact: true })).toHaveCount(0);
       // 「박스」는 정적 마스터 박스를 고른다 (기능/박스 §4.4)
       await expect(tool("박스")).toBeVisible();
     });
@@ -157,7 +163,7 @@ test(
       const value = head.getByRole("textbox", { name: "IF 1번 줄 값" });
       await value.fill("사망보험금");
       await value.press("Enter");
-      await expect(tool("ELSE")).toBeEnabled();
+      await expect(tool("그 밖의 경우 추가")).toBeEnabled();
       await submit(page, page.getByRole("button", { name: "저장", exact: true }));
       await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
       await page.reload();
@@ -377,9 +383,10 @@ test(
       await expect(paragraphs).toHaveText(["나", "다", "라", "가"]);
     });
 
-    await ev.action("끌기#5", "고른 둘을 툴바 「위로」 — 한 칸 위로 함께", async () => {
+    await ev.action("끌기#5", "고른 둘 중 하나의 손잡이를 오른쪽 클릭 · 「위로」 — 한 칸 위로 함께 (툴바에서 내려옴, 2026-10-01)", async () => {
       await expect(body.locator(".ts-doc-paragraph.is-block-sel")).toHaveCount(2);
-      await tool("위로").click();
+      await handle(4).click({ button: "right" });
+      await page.getByRole("menuitem", { name: "위로", exact: true }).click();
       await expect(paragraphs).toHaveText(["나", "라", "가", "다"]);
     });
 

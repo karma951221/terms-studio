@@ -28,7 +28,7 @@ import { EditorToolbar } from "@/app/(app)/documents/[id]/_components/EditorTool
 import { backspaceOps, enterOps, inlineAtOf, inlineListAt, moveSelectionOps } from "@/app/(app)/documents/[id]/_components/editOps";
 import { InlineSlot, caretFromPoint, tokensOf } from "@/app/(app)/documents/[id]/_components/Inline";
 import { identityRuns, runsFromTokens, runsReplacing, sameRuns, type Token } from "@/app/(app)/documents/[id]/_components/inlineRuns";
-import { boxPickItems, condInsertItem, inlineCondItem, placeExists, type MenuItem, type MenuSections, type Place, type PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
+import { boxPickItems, condInsertItem, inlineCondItem, placeBlockId, placeExists, type MenuItem, type MenuSections, type Place, type PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
 import { condInput, placeOf, readInline } from "@/app/(app)/documents/[id]/_components/place";
 import { PopupHost, type PopupEnv } from "@/app/(app)/documents/[id]/_components/Popups";
 import { ContextMenu, PopActions, Popover } from "@/app/(app)/documents/[id]/_components/Popover";
@@ -385,10 +385,13 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     setMenu({ x: event.clientX, y: event.clientY, sections });
   };
 
-  /** 툴바 버튼 — 누르는 순간의 편집본 · 문장 칸 조각(커서 · 고른 글)으로 목록을 다시 짓고 그 버튼의 항목을 돌린다. */
-  const runTool = (toolId: ToolId, button: HTMLElement) => {
+  /**
+   * 툴바 버튼 — 누르는 순간의 편집본 · 문장 칸 조각(커서 · 고른 글)으로 목록을 다시 짓고 그 버튼의 항목을 돌린다.
+   * `onPlace` 를 주면 그 자리로 돈다 — 블록 오른쪽 위의 복제 · 삭제(`blockAct`)가 같은 길을 쓴다.
+   */
+  const runTool = (toolId: ToolId, button: HTMLElement, onPlace?: Place) => {
     const env = menuEnv();
-    const at = placeIn(env.ix);
+    const at = onPlace ?? placeIn(env.ix);
     let tokens: Token[] = [];
     let cut: string | undefined;
     if (at.kind === "inline") {
@@ -408,15 +411,6 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
       runMenu(item, anchor);
       return;
     }
-    // 여러 항을 골랐으면 위로 · 아래로는 고른 것 전부를 한 칸
-    if ((toolId === "up" || toolId === "down") && drag.blockSel.length > 1) {
-      const ops = moveSelectionOps(latest(), drag.blockSel, toolId === "up" ? -1 : 1);
-      if (ops.length > 0) {
-        (document.activeElement as HTMLElement | null)?.blur?.();
-        apply(ops);
-      }
-      return;
-    }
     const tool = allTools(CLAUSE_TOOLS).find((t) => t.id === toolId);
     const items = tool ? itemsFor(tool, sections).filter((i) => !i.disabled && !i.refusal) : [];
     if (items.length === 0) return;
@@ -433,6 +427,19 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     // 바로 적용하는 조작은 쓰던 문장을 먼저 편집본에 넣는다(초점이 떠나며 적용) — 복제 · 이동이 쓰던 글을 두고 가지 않게
     if (items[0].action.do !== "popup") (document.activeElement as HTMLElement | null)?.blur?.();
     runMenu(items[0], anchor);
+  };
+
+  /** 오른쪽 클릭 메뉴에서 고른 항목 — 여러 항을 골랐으면 위로 · 아래로는 고른 것 전부를 한 칸(툴바에서 내려온 규칙, 2026-10-01). */
+  const pickMenu = (item: MenuItem) => {
+    if ((item.label === "위로" || item.label === "아래로") && drag.blockSel.length > 1) {
+      const ops = moveSelectionOps(latest(), drag.blockSel, item.label === "위로" ? -1 : 1);
+      if (ops.length > 0) {
+        (document.activeElement as HTMLElement | null)?.blur?.();
+        apply(ops);
+      }
+      return;
+    }
+    runMenu(item);
   };
 
   const runMenu = (item: MenuItem, anchor: Anchor = menuAt.current) => {
@@ -486,6 +493,17 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     headItems: (branchId) => clauseCondMenu(menuEnv(), branchId).flat(),
     run: (item, anchor) => runMenu(item, anchor),
     ...(clauseMode === "block" ? { blockSel: drag.blockSel, selectBlock: drag.selectBlock } : {}),
+    // 블록 오른쪽 위의 복제 · 삭제 — 툴바가 쓰던 길(runTool)을 그 블록 자리로 (「문구」 유형은 블록이 없다)
+    ...(clauseMode !== "inline"
+      ? {
+          blockAct: (nodeId: string, act: "duplicate" | "remove", button: HTMLElement) => {
+            const at: Place = { kind: "block", id: nodeId };
+            setPlace(at);
+            runTool(act, button, at);
+          },
+          ...(placeBlockId(place) ? { currentBlock: placeBlockId(place) } : {}),
+        }
+      : {}),
   };
 
   const ctx: DocCtx = {
@@ -782,7 +800,8 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
                 onPointerDown={(e) => {
                   if (!editing) return;
                   const target = e.target as HTMLElement;
-                  if (!e.shiftKey && !target.closest("[data-drag], .ts-doc-toolbar")) drag.clearSel();
+                  // 오른쪽 클릭은 고른 항을 두고 — 메뉴 「위로」 · 「아래로」가 고른 것 전부를 옮긴다
+                  if (e.button !== 2 && !e.shiftKey && !target.closest("[data-drag], .ts-doc-toolbar")) drag.clearSel();
                   if (target.closest(".ts-doc-toolbar")) return;
                   setPlace(placeOf(target));
                 }}
@@ -840,7 +859,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
         </div>
       </div>
 
-      {menu && <ContextMenu x={menu.x} y={menu.y} sections={menu.sections} onPick={(item) => runMenu(item)} onClose={() => setMenu(undefined)} />}
+      {menu && <ContextMenu x={menu.x} y={menu.y} sections={menu.sections} onPick={pickMenu} onClose={() => setMenu(undefined)} />}
       {pop && editing && (optionChip(pop.spec, index) ? <OptionSlotPopup env={popupEnv} nodeId={optionChip(pop.spec, index)!} options={options} anchor={pop.anchor} onClose={() => setPop(undefined)} /> : <PopupHost env={popupEnv} spec={pop.spec} anchor={pop.anchor} onClose={() => setPop(undefined)} />)}
 
       {discard ? (
