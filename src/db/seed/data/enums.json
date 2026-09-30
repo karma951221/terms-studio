@@ -334,5 +334,24 @@
         "fields": {}
       }
     ]
+  },
+  {
+    "code": "E0007",
+    "label": "계약형태",
+    "fields": [],
+    "values": [
+      {
+        "code": "V01",
+        "label": "주계약",
+        "order": 0,
+        "fields": {}
+      },
+      {
+        "code": "V02",
+        "label": "독립특약",
+        "order": 1,
+        "fields": {}
+      }
+    ]
   }
 ]

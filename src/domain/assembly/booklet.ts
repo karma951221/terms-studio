@@ -15,6 +15,7 @@ import type { OptionSelection } from "../clause/types";
 import type { ArticleNode, BlockNode, DocumentNode, SectionNode } from "../document/nodes";
 import { refKey, withCodes } from "../document/pcode";
 import type { CompletenessFilter } from "../coverage/values";
+import { CONTRACT_KIND_PATH, isStandaloneContract } from "../master";
 import { baseContractCountIssue } from "../product/completeness";
 import { sortInGroup } from "../product/groups";
 import type { ClauseOptionOverride, ProductCoverage } from "../product/types";
@@ -311,8 +312,10 @@ export function assemble(master: MasterBundle, product: ProductInput): Booklet {
   const issues: Issue[] = [];
   const omitted: OmissionRecord[] = [];
 
-  // 기본계약 0 · 2+ — 서비스 checkBaseContract 와 같은 판정·문구 (도메인 한 곳 · 기능/상품 §3.5 MVP 정확히 1개)
-  const baseCountIssue = baseContractCountIssue(input.product.baseContractIds.length, input.product);
+  // 기본계약 0 · 2+ — 서비스 checkBaseContract 와 같은 판정·문구 (도메인 한 곳 · 기능/상품 §3.5 MVP 정확히 1개).
+  // 독립특약은 0 이 정상 (기능/상품 §3.1 · 2026-10-01)
+  const standalone = isStandaloneContract(input.product.values.get(CONTRACT_KIND_PATH));
+  const baseCountIssue = baseContractCountIssue(input.product.baseContractIds.length, input.product, standalone);
   if (baseCountIssue) issues.push(baseCountIssue);
 
   // 선택지는 있는데 유효 조합이 0건 — 집계 범위가 비어 세목 조건(any → false · all → true)이 결정된 값으로 평가되고

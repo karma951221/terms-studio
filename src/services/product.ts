@@ -65,7 +65,7 @@ import {
   type SnapshotNode,
   type SpecialGroup,
 } from "@/domain/product";
-import { findForm, findMasterField, formRuleIssues, formsOfLevel, type MasterForm } from "@/domain/master";
+import { CONTRACT_KIND_PATH, findForm, findMasterField, formRuleIssues, formsOfLevel, isStandaloneContract, type MasterForm } from "@/domain/master";
 import type { Actor, AttachLevel, Code, Coordinate, Id, Impact, Issue, Result, Value, ValueSlot } from "@/domain/types";
 import { entered, mergeImpacts, ok, reject } from "@/domain/types";
 
@@ -140,6 +140,10 @@ export interface ProductBasicInput {
 }
 
 export interface ProductService {
+  /**
+   * 기본정보(상품명 · 상품 레벨 값 · 세목) 한 번 저장. 잃는 것이 있으면 1차 호출은 needsConfirmation —
+   * 세목 제거(product.detachPlan 관문) · 독립특약 전환 시 기본계약 해제(관문 없이 확인만, 기능/상품 §3.1). 둘이 겹치면 확인 한 번.
+   */
   saveBasic(actor: Actor, id: Id, input: ProductBasicInput, opts?: Confirmable): Promise<Result<void>>;
   // ── 담보속성 카탈로그
   listAttributeKinds(): Promise<AttributeKind[]>;
@@ -256,7 +260,7 @@ export interface ProductService {
   designateBaseContract(actor: Actor, productId: Id, productCoverageId: Id): Promise<Result<BaseContractCheck>>;
   releaseBaseContract(actor: Actor, productId: Id, productCoverageId: Id): Promise<Result<void>>;
   listBaseContractIds(productId: Id): Promise<Id[]>;
-  /** 「정확히 1개」 검증 + 부착 검사. 0개 → invalid(noBaseContract). */
+  /** 「정확히 1개」 검증 + 부착 검사. 0개 → invalid(noBaseContract). 독립특약은 0개가 정상 · 1개 이상이 invalid (기능/상품 §3.1). */
   checkBaseContract(productId: Id): Promise<Result<BaseContractCheck[]>>;
 
   // ── 특약 그룹
@@ -527,6 +531,11 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
     return pcs.map((pc) => toSnapshot(pc, nodesByPc.get(pc.id) ?? [], names.get(pc.id) ?? ""));
   }
 
+  /** 독립특약 상품인가 — 계약형태 E0007 (기능/상품 §3.1 · 2026-10-01). 기본계약 수 규칙이 뒤집힌다. */
+  async function isStandalone(tx: Db, productId: Id): Promise<boolean> {
+    return isStandaloneContract((await readSlots(tx, { kind: "product", id: productId })).get(CONTRACT_KIND_PATH));
+  }
+
   async function checkOne(tx: Db, product: Product, pc: ProductCoverage): Promise<Result<BaseContractCheck>> {
     if (!product.generalDocumentId) return invalid([issue("brokenRef", "보통약관 템플릿이 선택되지 않았습니다", { document: "product", ownerId: product.id })]);
     const { defs } = await catalogDefs(tx);
@@ -591,7 +600,18 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
       const removedOptions = currentOptions.filter((o) => !nextOptions.some((n) => n.id === o.id));
       const keys = new Set(input.combinations.map(planCombinationKey));
       const removedPlans = currentPlans.filter((p) => !keys.has(planCombinationKey(p.options.map((o) => o.id))));
+      // 독립특약으로 저장하면 기본계약을 함께 해제한다 — 확인 뒤 같은 트랜잭션에서 (기능/상품 §3.1 · §6.2 · 2026-10-01).
+      // 해제는 releaseBaseContract 와 같은 뜻: 지정만 지우고 상품담보 · 스냅샷 값은 남는다 → 특별약관 표(그룹 미배치)로 간다.
+      const kindEntry = input.values.find((e) => e.path === CONTRACT_KIND_PATH);
+      const standalone = kindEntry
+        ? isStandaloneContract(kindEntry.value === undefined ? undefined : entered(kindEntry.value))
+        : await isStandalone(tx, id);
+      const releasedBase = standalone
+        ? (await Promise.all((await repo.listBaseContractIds(tx, id)).map((pcId) => repo.loadProductCoverage(tx, pcId)))).filter((pc): pc is ProductCoverage => !!pc)
+        : [];
+      const releaseLines = releasedBase.map((pc) => `기본계약 해제 · ${pc.name} — 상품담보는 특별약관 표에 남습니다`);
       const execute = async (): Promise<Result<void>> => {
+        for (const pc of releasedBase) await repo.deleteBaseContract(tx, id, pc.id);
         for (const plan of removedPlans) await repo.deletePlan(tx, plan.id);
         for (const option of removedOptions) {
           await clearOwner(tx, { kind: "plan", id: option.id });
@@ -616,7 +636,12 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
         for (const entry of input.values) await writeSlot(tx, { kind: "product", id }, entry.path, entry.value, actor.userId);
         return ok(undefined);
       };
-      if (!removedOptions.length && !removedPlans.length) return execute();
+      if (!removedOptions.length && !removedPlans.length) {
+        if (!releasedBase.length || opts.confirm) return execute();
+        // 기본계약 해제만이면 잃는 값이 없다 — 역할 관문 없이 확인 2단만 (releaseBaseContract 도 편집자가 한다)
+        return reject({ reason: "needsConfirmation", impact: { valueRowsLost: 0, brokenRefs: [], cascade: releaseLines } });
+      }
+      // 세목 제거와 기본계약 해제가 겹치면 확인은 한 번 — 세목 제거 쪽 관문(product.detachPlan)에 해제 줄을 싣는다
       return destructive<void>({
         actor, action: "product.detachPlan", confirm: opts.confirm,
         precheck: async () => ok(undefined),
@@ -624,9 +649,11 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
           valueRowsLost: await countSlots(tx, removedOptions.map((o) => ({ kind: "plan" as const, id: o.id }))),
           brokenRefs: [],
           cascade: [
-            ...removedOptions.map((o) => `보험종목 ${planOptionLabel(o)}`),
-            ...removedPlans.map((p) => `종·형 조합 ${planCombinationLabel(p.options)}`),
-            ...(await Promise.all(removedPlans.map(async (p) => (await repo.listCoveragesAttachingPlan(tx, p.id)).map((c) => `세목 부착 ${c.name}`)))).flat(),
+            // 기본계약 해제 줄과 한 확인 창에 섞이므로 줄마다 무엇이 되는지(삭제 · 해제)를 싣는다
+            ...removedOptions.map((o) => `보험종목 삭제 · ${planOptionLabel(o)}`),
+            ...removedPlans.map((p) => `종·형 조합 삭제 · ${planCombinationLabel(p.options)}`),
+            ...(await Promise.all(removedPlans.map(async (p) => (await repo.listCoveragesAttachingPlan(tx, p.id)).map((c) => `세목 부착 해제 · ${c.name}`)))).flat(),
+            ...releaseLines,
           ],
         }),
         execute,
@@ -929,7 +956,7 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
           if (!tree) return notFound(`담보 마스터 ${coverageId}`);
           // 기본계약으로 탑재 = 탑재 + 지정 — 지정 규칙(MVP 정확히 1개)을 먼저 본다. 상품담보를 만들고 나서 거부하면 반쪽이 남는다.
           if (section === "base") {
-            const blocked = baseContractDesignationIssues((await repo.listBaseContractIds(tx, productId)).length, product);
+            const blocked = baseContractDesignationIssues((await repo.listBaseContractIds(tx, productId)).length, product, await isStandalone(tx, productId));
             if (blocked.length > 0) return invalid(blocked);
           }
           const kinds = await repo.listAttributeKinds(tx);
@@ -1127,7 +1154,7 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
             if (pc.productId !== productId) return notFound(`상품 ${productId} 의 상품담보 ${productCoverageId}`);
             // 이미 기본계약이 있으면 거부 — 같은 상품담보의 재지정도 (기능/상품 §3 「기본계약」 · MVP 정확히 1개)
             // DB 유일성 제약 없음 — pg 드라이버 도입 시 부분 유일 인덱스 검토 (기존 2행 데이터가 있어 지금 마이그레이션은 못 건다)
-            const blocked = baseContractDesignationIssues((await repo.listBaseContractIds(tx, productId)).length, product);
+            const blocked = baseContractDesignationIssues((await repo.listBaseContractIds(tx, productId)).length, product, await isStandalone(tx, productId));
             if (blocked.length > 0) return invalid(blocked);
             if (!product.generalDocumentId) return invalid([issue("brokenRef", "보통약관 템플릿이 선택되지 않았습니다", { document: "product", ownerId: productId })]);
             await repo.insertBaseContract(tx, productId, productCoverageId, actor.userId);
@@ -1150,7 +1177,7 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
       withProduct(db, productId, async (product) => {
         const ids = await repo.listBaseContractIds(db, productId);
         // 0 · 2+ 판정은 도메인 한 곳 — 조립(booklet) 과 같은 문구·좌표(refPath baseContract → 보통약관 탭 링크)
-        const countIssue = baseContractCountIssue(ids.length, product);
+        const countIssue = baseContractCountIssue(ids.length, product, await isStandalone(db, productId));
         if (countIssue) return invalid([countIssue]);
         const checks: BaseContractCheck[] = [];
         for (const id of ids) {

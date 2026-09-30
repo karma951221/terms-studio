@@ -490,6 +490,16 @@ describe("기능/조립산출 §3.2 — 기본계약을 지정하지 않아도 �
     expect(b.complete).toBe(false);
   });
 
+  it("독립특약 상품(계약형태 V02)은 기본계약 0개가 정상 — noBaseContract 를 내지 않는다 (기능/상품 §3.1 · 2026-10-01)", () => {
+    const input = alphaPlusFixture();
+    const values = new Map(input.product.values);
+    values.set("feature.contract_kind", { entered: true, value: "V02" });
+    const b = assembleInput({ ...input, product: { ...input.product, values, baseContractIds: [] } });
+    expect(kinds(b.issues)).not.toContain("noBaseContract");
+    // 기본계약이던 상품담보는 그룹이 없어 미배치 — 그건 그대로 드러난다
+    expect(kinds(b.issues)).toContain("unplaced");
+  });
+
   it("기본계약 문면을 바꾸면 연결된 보통약관 조 본문도 따라간다", () => {
     const input = alphaPlusFixture();
     const baseDoc = input.specialDocuments.get("cov-base-death")!;

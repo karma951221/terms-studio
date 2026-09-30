@@ -42,12 +42,14 @@ const enums = [
   { code: "E0004", label: "건강고지유형", values: [{ code: "V01", label: "6년 건강고지형", order: 0 }] },
   { code: "E0005", label: "고지유형", values: [{ code: "V01", label: "일반심사", order: 0 }, { code: "V02", label: "간편심사", order: 1 }, { code: "V03", label: "건강고지", order: 2 }] },
   { code: "E0006", label: "간편심사구분", values: [{ code: "V01", label: "단일심사", order: 0 }, { code: "V02", label: "통합간편심사", order: 1 }] },
+  { code: "E0007", label: "계약형태", values: [{ code: "V01", label: "주계약", order: 0 }, { code: "V02", label: "독립특약", order: 1 }] },
 ];
 const lookup = (code: string) => enums.find((e) => e.code === code) as never;
 
 describe("기본정보 — 상품정보(상품명 · 평균공시이율 · 상품특성) + 세목", () => {
   const values = new Map([
     ["disclosure.avg_rate", { entered: true as const, value: 2.5 }],
+    ["feature.contract_kind", { entered: true as const, value: "V01" }],
     ["feature.renewable", { entered: true as const, value: true }],
     ["feature.notice_kind", { entered: true as const, value: "V02" }],
     ["feature.review_scope", { entered: true as const, value: "V02" }],
@@ -60,11 +62,11 @@ describe("기본정보 — 상품정보(상품명 · 평균공시이율 · 상�
       </ProductEditProvider>,
     );
 
-  it("상품정보 표 — 상품명 · 평균공시이율, 폼 이름 줄 「상품특성」 아래 여섯 칸 (고지유형 = 간편심사라 건강고지유형은 없다)", () => {
+  it("상품정보 표 — 상품명 · 평균공시이율, 폼 이름 줄 「상품특성」 아래 일곱 칸 — 계약형태가 맨 앞 (고지유형 = 간편심사라 건강고지유형은 없다)", () => {
     const html = render();
     expect(html).toContain("<h3>상품정보</h3>");
     const rows = [...html.matchAll(/<th scope="row">(?:<label[^>]*>)?([^<]+)/g)].map((m) => m[1]);
-    expect(rows).toEqual(["상품명", "평균공시이율", "갱신형여부", "태아보장여부", "단체계약여부", "고지유형", "간편심사구분", "간편심사유형"]);
+    expect(rows).toEqual(["상품명", "평균공시이율", "계약형태", "갱신형여부", "태아보장여부", "단체계약여부", "고지유형", "간편심사구분", "간편심사유형"]);
     expect(html).toContain(">상품특성</th>");
   });
 
@@ -75,6 +77,7 @@ describe("기본정보 — 상품정보(상품명 · 평균공시이율 · 상�
     expect(html).toMatch(/data-path="feature.review_scope"[\s\S]*?>통합간편심사</);
     expect(html).toMatch(/data-path="feature.review_type"[\s\S]*?>3.0.5/);
     expect(html).toMatch(/data-path="feature.fetal"[\s\S]*?>—</);
+    expect(html).toMatch(/data-path="feature.contract_kind"[\s\S]*?>주계약</);
     expect(html).toMatch(/<input[^>]*aria-label="상품명"[^>]*readOnly=""/);
   });
 
@@ -118,6 +121,31 @@ describe("상품담보 — 기본계약 · 특별약관 표 · 기본계약 지�
     // 담보 : 상품담보 = 1 : N — 특별약관 표에서 COV000002 는 한 번만
     expect(html.split("<code>COV000002</code>").length - 1).toBe(1);
     expect(html).not.toContain("보통약관 템플릿");
+  });
+
+  it("독립특약 상품 — 기본계약 표의 탑재 폼 대신 「독립특약 상품은 기본계약을 두지 않습니다」, 특별약관 표는 그대로 탑재한다 (기능/상품 §3.1)", () => {
+    const html = renderToStaticMarkup(
+      <CoveragesTab
+        productId="p1"
+        baseCoverages={[]}
+        specialCoverages={[]}
+        coverages={[]}
+        attributeKinds={[]}
+        plans={[]}
+        mountSearch={{ base: {}, special: {} }}
+        wouldBeName={(p) => p.name}
+        baseCheck={{ ok: true, value: [] }}
+        standalone
+        groups={[]}
+        unplaced={[]}
+        confirm={undefined}
+        confirmNode={null}
+      />,
+    );
+    expect(html).toContain("독립특약 상품은 기본계약을 두지 않습니다");
+    // 탑재 폼(hidden section)은 특별약관 절에만
+    expect(html).not.toContain('name="section" value="base"');
+    expect(html).toContain('name="section" value="special"');
   });
 });
 

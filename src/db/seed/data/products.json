@@ -10,6 +10,10 @@
         "value": 2.5
       },
       {
+        "path": "feature.contract_kind",
+        "value": "V01"
+      },
+      {
         "path": "feature.fetal",
         "value": false
       },
@@ -227,6 +231,10 @@
       {
         "path": "disclosure.avg_rate",
         "value": 2.5
+      },
+      {
+        "path": "feature.contract_kind",
+        "value": "V01"
       },
       {
         "path": "feature.renewable",

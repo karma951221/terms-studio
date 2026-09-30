@@ -27,6 +27,8 @@ export interface CoveragesTabProps {
   mountSearch: Record<"base" | "special", { query?: string; page?: string }>;
   wouldBeName: (pc: ProductCoverage) => string;
   baseCheck: Result<BaseContractCheck[]>;
+  /** 독립특약 상품 — 기본계약 표에 얹지 못한다 (계약형태 E0007 · 기능/상품 §3.1 · §4.5). */
+  standalone?: boolean;
   groups: SpecialGroupView[];
   unplaced: ProductCoverage[];
   confirm: string | undefined;
@@ -35,11 +37,11 @@ export interface CoveragesTabProps {
 
 /**
  * 상품담보 탭 — 무엇을 얹는가 (기능/상품 §4.5, 2026-09-28 「안 2」): 기본계약 표 · 특별약관 표 · 특약 그룹.
- * 기본계약 표에 얹은 것이 곧 기본계약이다 — 따로 지정하는 절은 없다 (2026-10-01).
+ * 기본계약 표에 얹은 것이 곧 기본계약이다 — 따로 지정하는 절은 없다 (2026-10-01). 독립특약 상품은 기본계약 표의 탑재가 막힌다 (§3.1).
  * 조작은 전부 즉시 저장 명령이다(탑재/해제 · 이름 · 세목 부착 · 기본계약 지정 · 그룹). 문면 미리보기는 약관 탭에 있다 —
  * 특약 행의 「미리보기」가 약관 › 담보별 미리보기로 간다.
  */
-export function CoveragesTab({ productId, baseCoverages, specialCoverages, coverages, attributeKinds, plans, mountSearch, wouldBeName, baseCheck, groups, unplaced, confirm, confirmNode }: CoveragesTabProps) {
+export function CoveragesTab({ productId, baseCoverages, specialCoverages, coverages, attributeKinds, plans, mountSearch, wouldBeName, baseCheck, standalone = false, groups, unplaced, confirm, confirmNode }: CoveragesTabProps) {
   // 한 절의 페이저를 넘겨도 다른 절 검색이 풀리지 않게 — 서로의 검색 쿼리를 싣는다
   const keep = (other: "base" | "special") => ({ [MOUNT_QUERY_KEYS[other].query]: mountSearch[other].query || undefined });
   return (
@@ -60,7 +62,9 @@ export function CoveragesTab({ productId, baseCoverages, specialCoverages, cover
         page={mountSearch.base.page}
         keepQuery={keep("special")}
         wouldBeName={wouldBeName}
-        mountBlockedHint={baseCoverages.length > 0 ? "변경하려면 먼저 해제하세요 — 기본계약은 하나만 지정할 수 있다 (MVP)" : undefined}
+        mountBlockedHint={
+          standalone ? "독립특약 상품은 기본계약을 두지 않습니다" : baseCoverages.length > 0 ? "변경하려면 먼저 해제하세요 — 기본계약은 하나만 지정할 수 있다 (MVP)" : undefined
+        }
         confirm={confirm}
         confirmNode={confirmNode}
       />

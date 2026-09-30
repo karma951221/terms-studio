@@ -26,13 +26,13 @@ describe("마스터 경로 — 폼키.필드키", () => {
     expect(masterPath("waiver", "applies")).toBe("waiver.applies");
   });
 
-  it("MVP 정본 — 폼 10벌 · 필드 22자리, 선언 순서", () => {
+  it("MVP 정본 — 폼 10벌 · 필드 23자리, 선언 순서", () => {
     expect(MASTER.map((f) => f.key)).toEqual([
       "disclosure", "feature", "waiver", "no_surrender", "conversion", "business_type", "coverage_basic", "pay", "reduction", "exemption",
     ]);
     expect(allMasterFields().map((r) => r.path)).toEqual([
       "disclosure.avg_rate",
-      "feature.renewable", "feature.fetal", "feature.group_contract", "feature.notice_kind", "feature.review_scope", "feature.review_type", "feature.notice_type",
+      "feature.contract_kind", "feature.renewable", "feature.fetal", "feature.group_contract", "feature.notice_kind", "feature.review_scope", "feature.review_type", "feature.notice_type",
       "waiver.applies", "waiver.reasons", "no_surrender.type", "conversion.converts", "business_type.applies",
       "coverage_basic.claim_name", "pay.exempt", "pay.rate",
       "reduction.periods", "reduction.after_rate", "reduction.new_only",

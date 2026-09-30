@@ -64,11 +64,12 @@ describe("product 서비스 (PGlite)", () => {
     // 세목 waiver{applies · reasons} · no_surrender{type}. 상품 레벨은 비어 있다 (ADR-0037).
     unwrap(await catalog.createEnum(editor, { label: "납입면제사유", values: [{ label: "질병" }, { label: "상해" }] })); // E0001
     unwrap(await catalog.createEnum(editor, { label: "해약환급금유형", values: [{ label: "지급형" }, { label: "미지급형" }] })); // E0002
-    // 상품특성(상품 레벨)이 가리키는 넷 — 고지유형 조건 규칙 검사용 (2026-10-01)
+    // 상품특성(상품 레벨)이 가리키는 다섯 — 고지유형 조건 규칙 · 계약형태(기본계약 규칙) 검사용 (2026-10-01)
     unwrap(await catalog.createEnum(editor, { label: "간편심사유형", values: [{ label: "3.0.5" }, { label: "3.5.5" }, { label: "3.10.5" }] })); // E0003
     unwrap(await catalog.createEnum(editor, { label: "건강고지유형", values: [{ label: "6년 건강고지형" }, { label: "10년 건강고지형" }] })); // E0004
     unwrap(await catalog.createEnum(editor, { label: "고지유형", values: [{ label: "일반심사" }, { label: "간편심사" }, { label: "건강고지" }] })); // E0005
     unwrap(await catalog.createEnum(editor, { label: "간편심사구분", values: [{ label: "단일심사" }, { label: "통합간편심사" }] })); // E0006
+    unwrap(await catalog.createEnum(editor, { label: "계약형태", values: [{ label: "주계약" }, { label: "독립특약" }] })); // E0007 — 독립특약이면 기본계약 없음
     unwrap(await catalog.create(editor, { label: "담보명", level: "coverage", expression: "coverage_basic.claim_name" })); // D0001
 
     // 담보 마스터 값 (B1 이 공용 저장소에 넣는 것과 같은 자리)
@@ -180,6 +181,76 @@ describe("product 서비스 (PGlite)", () => {
     });
   });
 
+  describe("계약형태 — 독립특약은 기본계약을 두지 않는다 (기능/상품 §3.1 · 2026-10-01)", () => {
+    const STANDALONE = [{ path: "feature.contract_kind", value: "V02" }];
+
+    it("기본계약이 있는 상품을 독립특약으로 저장 — 확인 먼저(편집자도), 확인 뒤 같은 저장에서 기본계약 해제 · 상품담보는 특별약관(미배치)으로 남는다", async () => {
+      const p = unwrap(await svc.createProduct(editor, { name: "독립특약 전환" }));
+      const base = unwrap(await svc.mount(editor, p.id, DEATH, [], "base"));
+      const input = { name: p.name, values: STANDALONE, options: [], combinations: [] };
+      const first = await svc.saveBasic(editor, p.id, input);
+      expect(reason(first)).toBe("needsConfirmation");
+      if (!first.ok && first.rejection.reason === "needsConfirmation") {
+        expect(first.rejection.impact).toEqual({ valueRowsLost: 0, brokenRefs: [], cascade: ["기본계약 해제 · 일반상해사망 — 상품담보는 특별약관 표에 남습니다"] });
+      }
+      // 확인 전에는 아무것도 바뀌지 않는다
+      expect((await svc.getProductValues(p.id)).get("feature.contract_kind")).toBeUndefined();
+      expect(await svc.listBaseContractIds(p.id)).toEqual([base.id]);
+
+      unwrap(await svc.saveBasic(editor, p.id, input, { confirm: true }));
+      expect((await svc.getProductValues(p.id)).get("feature.contract_kind")).toEqual(entered("V02"));
+      expect(await svc.listBaseContractIds(p.id)).toEqual([]);
+      expect((await svc.listProductCoverages(p.id)).map((c) => c.id)).toEqual([base.id]);
+      expect((await svc.listUnplaced(p.id)).map((c) => c.id)).toEqual([base.id]);
+      // 기본계약 0 이 정상
+      expect(unwrap(await svc.checkBaseContract(p.id))).toEqual([]);
+    });
+
+    it("세목 제거와 겹치면 확인은 한 번 — 세목 관문(관리자) 하나에 해제 줄이 함께 실린다", async () => {
+      const p = unwrap(await svc.createProduct(editor, { name: "독립특약 전환 + 세목 제거" }));
+      const o = unwrap(await svc.addPlanOption(editor, p.id, { axis: "type", number: 1, name: "종목", planTypeCode: "waiver" }));
+      unwrap(await svc.registerPlan(editor, p.id, [o.id]));
+      unwrap(await svc.mount(editor, p.id, DEATH, [], "base"));
+      const input = { name: p.name, values: STANDALONE, options: [], combinations: [] };
+      expect(reason(await svc.saveBasic(editor, p.id, input, { confirm: true }))).toBe("forbidden");
+      const first = await svc.saveBasic(admin, p.id, input);
+      expect(reason(first)).toBe("needsConfirmation");
+      if (!first.ok && first.rejection.reason === "needsConfirmation") {
+        expect(first.rejection.impact.cascade).toEqual(["보험종목 삭제 · 제1종(종목)", "종·형 조합 삭제 · (제1종)", "기본계약 해제 · 일반상해사망 — 상품담보는 특별약관 표에 남습니다"]);
+      }
+      unwrap(await svc.saveBasic(admin, p.id, input, { confirm: true }));
+      expect(await svc.listPlanOptions(p.id)).toEqual([]);
+      expect(await svc.listBaseContractIds(p.id)).toEqual([]);
+    });
+
+    it("독립특약 상품은 기본계약 표 탑재 · 지정을 거부한다 — 특별약관 탑재는 그대로", async () => {
+      const p = unwrap(await svc.createProduct(editor, { name: "독립특약 탑재" }));
+      unwrap(await svc.saveBasic(editor, p.id, { name: p.name, values: STANDALONE, options: [], combinations: [] }));
+      const mounted = await svc.mount(editor, p.id, DEATH, [], "base");
+      expect(reason(mounted)).toBe("invalid");
+      if (!mounted.ok && mounted.rejection.reason === "invalid") expect(mounted.rejection.issues[0].message).toContain("독립특약 상품은 기본계약을 두지 않습니다");
+      expect(await svc.listProductCoverages(p.id)).toEqual([]); // 반쪽(상품담보만)이 남지 않는다
+      const special = unwrap(await svc.mount(editor, p.id, DEATH, []));
+      unwrap(await svc.setGeneralDocument(editor, p.id, GENERAL_DOC));
+      expect(reason(await svc.designateBaseContract(editor, p.id, special.id))).toBe("invalid");
+      expect(unwrap(await svc.checkBaseContract(p.id))).toEqual([]);
+    });
+
+    it("우회로 독립특약 상품에 기본계약이 남아 있으면 검사가 오류로 드러낸다 · 주계약 0개는 여전히 noBaseContract", async () => {
+      const p = unwrap(await svc.createProduct(editor, { name: "독립특약 우회" }));
+      const pc = unwrap(await svc.mount(editor, p.id, DEATH, [], "base"));
+      await writeSlot(t.db, { kind: "product", id: p.id }, "feature.contract_kind", "V02");
+      const check = await svc.checkBaseContract(p.id);
+      expect(reason(check)).toBe("invalid");
+      if (!check.ok && check.rejection.reason === "invalid") expect(check.rejection.issues[0]).toMatchObject({ kind: "unsupported", message: expect.stringContaining("독립특약") });
+      await writeSlot(t.db, { kind: "product", id: p.id }, "feature.contract_kind", "V01");
+      unwrap(await svc.releaseBaseContract(editor, p.id, pc.id));
+      const none = await svc.checkBaseContract(p.id);
+      if (!none.ok && none.rejection.reason === "invalid") expect(none.rejection.issues[0].kind).toBe("noBaseContract");
+      else throw new Error("주계약 0개는 noBaseContract 여야 한다");
+    });
+  });
+
   describe("담보속성탑재 S1 — 담보속성 카탈로그", () => {
     it("종류 「갱신유형」 A0001 · 「부가유형」 A0002 채번, 유효값(코드 1 · 2 …)·상품담보명 표기·종류 순서 저장", async () => {
       const renewal = unwrap(await svc.createAttributeKind(editor, { label: "갱신유형" }));
@@ -224,13 +295,13 @@ describe("product 서비스 (PGlite)", () => {
       expect(reason(await svc.setProductValue(editor, productId, "coverage_basic.claim_name", "x"))).toBe("invalid"); // 담보 레벨 자리
       expect(reason(await svc.setProductValue(editor, productId, "product.nope", "x"))).toBe("invalid");
       expect(reason(await svc.setProductValue(editor, productId, "feature.renewable", "예"))).toBe("invalid"); // 타입 불일치
-      // 완결성은 분모를 함께 준다 (디자인원칙 §9.6) — 상품 레벨 마스터 8자리 중 조건부 칸(간편심사구분 · 간편심사유형 · 건강고지유형)은
-      // 고지유형이 미입력이라 자리가 없다. 분모와 미입력 목록이 같은 자리를 센다 → 5.
-      expect(await svc.productCompleteness(productId)).toMatchObject({ total: 5 });
+      // 완결성은 분모를 함께 준다 (디자인원칙 §9.6) — 상품 레벨 마스터 9자리 중 조건부 칸(간편심사구분 · 간편심사유형 · 건강고지유형)은
+      // 고지유형이 미입력이라 자리가 없다. 분모와 미입력 목록이 같은 자리를 센다 → 6.
+      expect(await svc.productCompleteness(productId)).toMatchObject({ total: 6 });
       unwrap(await svc.setProductValue(editor, productId, "disclosure.avg_rate", 2.5));
       unwrap(await svc.setProductValue(editor, productId, "feature.renewable", true));
       expect((await svc.getProductValues(productId)).get("disclosure.avg_rate")).toEqual({ entered: true, value: 2.5 });
-      expect((await svc.productMissing(productId)).map((m) => m.path)).toEqual(["feature.fetal", "feature.group_contract", "feature.notice_kind"]);
+      expect((await svc.productMissing(productId)).map((m) => m.path)).toEqual(["feature.contract_kind", "feature.fetal", "feature.group_contract", "feature.notice_kind"]);
       // 뒤 세목 검사가 세목 자리만 보도록 되돌린다(미입력으로)
       unwrap(await svc.setProductValue(editor, productId, "disclosure.avg_rate", undefined));
       unwrap(await svc.setProductValue(editor, productId, "feature.renewable", undefined));
@@ -291,9 +362,9 @@ describe("product 서비스 (PGlite)", () => {
       expect(reason(await svc.setProductValues(editor, productId, [{ path: "nope.x", value: 1 }]))).toBe("invalid");
     });
     it("상품 완결성이 세목 선택지 자리를 센다 — 선택지마다 제 폼의 필드만 (코덱스 리뷰 T2 ④)", async () => {
-      // 상품 레벨 5자리(전부 미입력 — 조건부 칸 셋은 고지유형 미입력이라 자리가 없다) + 선택지 4개: waiver(2자리) × 2 + no_surrender(1자리) × 2 = 6
+      // 상품 레벨 6자리(전부 미입력 — 조건부 칸 셋은 고지유형 미입력이라 자리가 없다) + 선택지 4개: waiver(2자리) × 2 + no_surrender(1자리) × 2 = 6
       const all = await svc.productCompleteness(productId);
-      expect(all.total).toBe(11);
+      expect(all.total).toBe(12);
       const summary = { ...all, missing: all.missing.filter((m) => m.level === "plan") };
       // 입력됨: t2 waiver.reasons · f1 no_surrender.type → 미입력 4. 순서는 선택지 목록 순(축 · 번호).
       expect(summary.missing.map((m) => [m.owner.kind, m.ownerName, m.path])).toEqual([
@@ -302,8 +373,8 @@ describe("product 서비스 (PGlite)", () => {
         ["plan", "제1종(보험료 납입면제 미적용형)", "waiver.reasons"],
         ["plan", "제2종(보험료 납입면제형)", "waiver.applies"],
       ]);
-      // 상품 레벨 미입력은 5 — 고지유형이 미입력이라 조건부 칸 셋은 자리가 없다
-      expect(all.missing.filter((m) => m.level === "product")).toHaveLength(5);
+      // 상품 레벨 미입력은 6 — 고지유형이 미입력이라 조건부 칸 셋은 자리가 없다
+      expect(all.missing.filter((m) => m.level === "product")).toHaveLength(6);
       expect(await svc.productMissing(productId)).toEqual(all.missing);
     });
     it("마스터에 없는 그룹은 세목유형이 아니다 · 한 유형은 한 축에만 · 번호 중복 거부", async () => {

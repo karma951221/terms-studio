@@ -4671,8 +4671,7 @@ button.ts-ref-fold:hover {
 .ts-product-actions > a,
 .ts-more-button,
 .ts-more-menu-item,
-.ts-basic-toolbar button,
-.ts-basic-confirm-actions button {
+.ts-basic-toolbar button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4691,8 +4690,7 @@ button.ts-ref-fold:hover {
   text-decoration: none;
   white-space: nowrap;
 }
-.ts-product-actions > button.primary,
-.ts-basic-confirm-actions button.primary { border-color: var(--ts-mark); color: var(--ts-mark); font-weight: 700; }
+.ts-product-actions > button.primary { border-color: var(--ts-mark); color: var(--ts-mark); font-weight: 700; }
 .ts-product-actions > button.primary:hover { background: var(--ts-mark-bg); }
 
 /* 더보기 — 버튼 하나 뒤의 텍스트 메뉴. 항목은 같은 높이·정렬 (§20.2 버튼 원칙). */

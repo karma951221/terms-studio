@@ -9,7 +9,7 @@ import { ENTITY_LABEL } from "@/app/_lib/labels";
 import { previewOutcome, rejectionMessage } from "@/app/_lib/rejection";
 import { articleRefLabel, type NodeNumber } from "@/domain/document";
 import type { Id } from "@/domain/types";
-import { findForm } from "@/domain/master";
+import { CONTRACT_KIND_PATH, findForm, isStandaloneContract } from "@/domain/master";
 import { defaultCoverageName, planOptionLabel, planTypeOptions, type ProductCoverage } from "@/domain/product";
 import { buildForm } from "@/forms";
 import { currentActor, getServices } from "@/lib/services";
@@ -278,6 +278,7 @@ export default async function ProductDetailPage({
           mountSearch={{ base: { query: sp.bq, page: sp.bpage }, special: { query: sp.mq, page: sp.mpage } }}
           wouldBeName={wouldBeName}
           baseCheck={baseCheck}
+          standalone={isStandaloneContract(productValues.get(CONTRACT_KIND_PATH))}
           groups={groups}
           unplaced={unplaced}
           confirm={c}

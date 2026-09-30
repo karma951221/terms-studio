@@ -19,10 +19,19 @@
  *
  * enum 코드(E0001 · E0002)는 데이터(열거형변수)를 가리킨다 — 값은 배포 없이 늘어난다 (ADR-0037 §5).
  */
+import type { ValueSlot } from "../types";
 import type { FormFieldReader, MasterForm } from "./types";
 
 /** 고지유형 E0005 값 코드 — 상품특성 조건부 칸의 조건. */
 export const NOTICE_KIND = { general: "V01", review: "V02", health: "V03" } as const;
+/** 계약형태 E0007 값 코드 — 독립특약이면 기본계약을 두지 않는다 (기능/상품 §3.1 · 2026-10-01). */
+export const CONTRACT_KIND = { main: "V01", standalone: "V02" } as const;
+/** 계약형태 값 자리 경로 — 기본계약 규칙(기능/상품 §3.5)이 읽는다. */
+export const CONTRACT_KIND_PATH = "feature.contract_kind";
+/** 독립특약인가 — 미입력은 기본값(주계약)으로 본다. */
+export function isStandaloneContract(slot: ValueSlot | undefined): boolean {
+  return slot?.entered === true && slot.value === CONTRACT_KIND.standalone;
+}
 /** 간편심사구분 E0006 값 코드. */
 export const REVIEW_SCOPE = { single: "V01", combined: "V02" } as const;
 
@@ -47,6 +56,7 @@ export const MASTER: readonly MasterForm[] = [
     label: "상품특성",
     level: "product",
     fields: [
+      { key: "contract_kind", label: "계약형태", type: { kind: "enum", enumCode: "E0007" }, defaultValue: CONTRACT_KIND.main },
       { key: "renewable", label: "갱신형여부", type: { kind: "boolean" } },
       { key: "fetal", label: "태아보장여부", type: { kind: "boolean" }, defaultValue: false },
       { key: "group_contract", label: "단체계약여부", type: { kind: "boolean" }, defaultValue: false },

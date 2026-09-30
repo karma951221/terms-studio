@@ -114,4 +114,10 @@ describe("기본계약 수 규칙 — MVP 정확히 1개 (기능/상품 §3.5)",
     expect(baseContractDesignationIssues(1, product)).toEqual([{ kind: "unsupported", message: "기본계약은 하나만 지정할 수 있습니다 — 먼저 현재 기본계약을 해제하세요 (MVP)", at }]);
     expect(baseContractDesignationIssues(2, product)).toHaveLength(1);
   });
+
+  it("독립특약(계약형태 E0007) — 0개가 정상, 1개 이상은 unsupported · 지정은 수와 무관하게 거부 (기능/상품 §3.1 · 2026-10-01)", () => {
+    expect(baseContractCountIssue(0, product, true)).toBeUndefined();
+    expect(baseContractCountIssue(1, product, true)).toEqual({ kind: "unsupported", severity: "error", message: "독립특약 상품은 기본계약을 두지 않습니다 — 기본계약을 해제하세요", at, source: at });
+    expect(baseContractDesignationIssues(0, product, true)).toEqual([{ kind: "unsupported", message: "독립특약 상품은 기본계약을 두지 않습니다", at }]);
+  });
 });

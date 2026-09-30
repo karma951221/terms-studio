@@ -64,6 +64,7 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
     unwrap(await catalog.createEnum(editor, { label: "건강고지유형", values: [{ label: "6년 건강고지형" }, { label: "10년 건강고지형" }] })); // E0004 — 상품특성
     unwrap(await catalog.createEnum(editor, { label: "고지유형", values: [{ label: "일반심사" }, { label: "간편심사" }, { label: "건강고지" }] })); // E0005 — 상품특성
     unwrap(await catalog.createEnum(editor, { label: "간편심사구분", values: [{ label: "단일심사" }, { label: "통합간편심사" }] })); // E0006 — 상품특성
+    unwrap(await catalog.createEnum(editor, { label: "계약형태", values: [{ label: "주계약" }, { label: "독립특약" }] })); // E0007 — 상품특성
     unwrap(await catalog.create(editor, { label: "갱신여부", level: "coverage", expression: "coverage_basic.claim_name = '갱신'" })); // D0001
     unwrap(await catalog.create(editor, { label: "무저해지유형", level: "plan", expression: "no_surrender.type" })); // D0002
     unwrap(await catalog.create(editor, { label: "지급률", level: "benefit", expression: "pay.rate" })); // D0003
