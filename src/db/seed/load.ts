@@ -1,4 +1,4 @@
-import type { NewDiscriminator, NewEnum } from "@/domain/catalog";
+import type { EnumFieldType, EnumFieldValue, NewDiscriminator, NewEnum } from "@/domain/catalog";
 import type { NewClause } from "@/domain/clause";
 import type { DocumentNode } from "@/domain/document";
 import type { Actor, Code, Id, Result, Value } from "@/domain/types";
@@ -90,6 +90,36 @@ async function loadBoxes(services: Services, actor: Actor, upTo?: number): Promi
   }
 }
 
+interface EnumSeed {
+  code: Code;
+  label: string;
+  /** 유저 정의 필드(ADR-0078) — 키는 시스템 채번(F01…)이라 JSON 순서가 곧 키다. JSON 의 key 는 채번 대조용. */
+  fields?: Array<{ key: Code; label: string; type: EnumFieldType }>;
+  values: Array<{ code: Code; label: string; fields?: Record<Code, EnumFieldValue> }>;
+}
+
+/**
+ * 열거형 — 생성(이름 · 값)은 필드를 받지 않으므로(생성 화면에 필드가 없다 — 기능/열거형 §4) 필드가 있으면 상세 저장(`reviseEnum`)을 한 번 더 한다.
+ * 화면으로 치는 순서와 같다: 만든 뒤 상세에서 필드를 정의하고 값마다 채운다. `upTo` 가 있으면 그 개수까지만 만든다.
+ */
+async function loadEnums(services: Services, actor: Actor, upTo?: number): Promise<void> {
+  for (const definition of (enums as unknown as EnumSeed[]).slice(0, upTo)) {
+    const created = unwrap(await services.catalog.createEnum(actor, { label: definition.label, values: definition.values.map(({ label }) => ({ label })) } as NewEnum));
+    expectCode(created.code, definition.code);
+    definition.values.forEach((v, i) => expectCode(created.values[i]?.code ?? "", v.code));
+    if (!definition.fields?.length) continue;
+    const revised = unwrap(
+      await services.catalog.reviseEnum(actor, created.code, {
+        label: created.label,
+        description: created.description ?? "",
+        fields: definition.fields.map((f) => ({ ref: f.key, label: f.label, type: f.type })),
+        values: definition.values.map((v, i) => ({ code: created.values[i].code, label: v.label, fields: v.fields ?? {} })),
+      }),
+    );
+    definition.fields.forEach((f, i) => expectCode(revised.fields?.[i]?.key ?? "", f.key));
+  }
+}
+
 async function loadAppendices(services: Services, actor: Actor): Promise<void> {
   // 코드는 시스템 채번(AX000001…) — JSON 의 code 는 채번 순서가 어긋나지 않았는지 대조용 (기능/별표 §3.1).
   for (const appendix of appendices) {
@@ -147,11 +177,7 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
     return { created: false, productId: existing.id };
   }
 
-  const enumInputs = enums as unknown as Array<{ code: Code; label: string; values: Array<{ label: string }> }>;
-  for (const definition of enumInputs) {
-    const created = unwrap(await services.catalog.createEnum(actor, { label: definition.label, values: definition.values.map(({ label }) => ({ label })) } as NewEnum));
-    expectCode(created.code, definition.code);
-  }
+  await loadEnums(services, actor);
 
   for (const raw of discriminators as unknown as Array<Record<string, unknown> & { code: Code }>) {
     const created = unwrap(await services.catalog.create(actor, omit(raw, ["code"]) as unknown as NewDiscriminator));

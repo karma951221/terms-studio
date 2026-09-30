@@ -2,16 +2,163 @@
   {
     "code": "E0001",
     "label": "납입면제사유",
+    "fields": [
+      {
+        "key": "F01",
+        "label": "약관표시명",
+        "type": "string"
+      },
+      {
+        "key": "F02",
+        "label": "면책여부",
+        "type": "boolean"
+      },
+      {
+        "key": "F03",
+        "label": "정의조대상",
+        "type": "boolean"
+      }
+    ],
     "values": [
       {
         "code": "V01",
-        "label": "질병",
-        "order": 0
+        "label": "암(유사암제외)·면책",
+        "order": 0,
+        "fields": {
+          "F01": "암(유사암제외)",
+          "F02": true,
+          "F03": true
+        }
       },
       {
         "code": "V02",
-        "label": "상해",
-        "order": 1
+        "label": "암(유사암제외)·무면책",
+        "order": 1,
+        "fields": {
+          "F01": "암(유사암제외)",
+          "F02": false,
+          "F03": true
+        }
+      },
+      {
+        "code": "V03",
+        "label": "뇌졸중",
+        "order": 2,
+        "fields": {
+          "F01": "뇌졸중",
+          "F02": false,
+          "F03": true
+        }
+      },
+      {
+        "code": "V04",
+        "label": "급성심근경색증",
+        "order": 3,
+        "fields": {
+          "F01": "급성심근경색증",
+          "F02": false,
+          "F03": true
+        }
+      },
+      {
+        "code": "V05",
+        "label": "말기폐질환",
+        "order": 4,
+        "fields": {
+          "F01": "말기폐질환",
+          "F02": false,
+          "F03": true
+        }
+      },
+      {
+        "code": "V06",
+        "label": "말기간경화",
+        "order": 5,
+        "fields": {
+          "F01": "말기간경화",
+          "F02": false,
+          "F03": true
+        }
+      },
+      {
+        "code": "V07",
+        "label": "말기신부전증",
+        "order": 6,
+        "fields": {
+          "F01": "말기신부전증",
+          "F02": false,
+          "F03": true
+        }
+      },
+      {
+        "code": "V08",
+        "label": "양성뇌종양",
+        "order": 7,
+        "fields": {
+          "F01": "양성뇌종양",
+          "F02": false,
+          "F03": true
+        }
+      },
+      {
+        "code": "V09",
+        "label": "중대한재생불량성빈혈",
+        "order": 8,
+        "fields": {
+          "F01": "중대한재생불량성빈혈",
+          "F02": false,
+          "F03": true
+        }
+      },
+      {
+        "code": "V10",
+        "label": "만성당뇨합병증",
+        "order": 9,
+        "fields": {
+          "F01": "만성당뇨합병증",
+          "F02": false,
+          "F03": true
+        }
+      },
+      {
+        "code": "V11",
+        "label": "상해및질병80%이상후유장해",
+        "order": 10,
+        "fields": {
+          "F01": "상해 또는 질병 80% 이상 후유장해",
+          "F02": false,
+          "F03": false
+        }
+      },
+      {
+        "code": "V12",
+        "label": "상해80%이상후유장해",
+        "order": 11,
+        "fields": {
+          "F01": "상해 80% 이상 후유장해",
+          "F02": false,
+          "F03": false
+        }
+      },
+      {
+        "code": "V13",
+        "label": "질병80%이상후유장해",
+        "order": 12,
+        "fields": {
+          "F01": "질병 80% 이상 후유장해",
+          "F02": false,
+          "F03": false
+        }
+      },
+      {
+        "code": "V14",
+        "label": "중증화상및부식",
+        "order": 13,
+        "fields": {
+          "F01": "중증화상및부식",
+          "F02": false,
+          "F03": true
+        }
       }
     ]
   },

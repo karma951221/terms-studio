@@ -64,7 +64,19 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     expect(defs.find((d) => d.code === "D0001")).toMatchObject({ label: "담보명", level: "coverage", expression: "coverage_basic.claim_name" });
     // 세목유형 4종은 이제 세목 레벨 마스터 폼이다 (ADR-0037 · 기능/마스터 §3.3)
     expect(planTypeOptions().map((t) => t.label)).toEqual(["납입면제", "무저해지", "계약전환", "영위업종적용"]);
-    expect((await services.catalog.getEnum("E0001"))?.values.map((v) => v.label)).toEqual(["질병", "상해"]);
+    // E0001 납입면제사유 — 면책은 값을 나눠(암·면책 / 암·무면책), 장해는 값으로, 한 값이 호 여럿(최종 결정 17). 유저 정의 필드 셋(결정 18)
+    const reasons = await services.catalog.getEnum("E0001");
+    expect(reasons?.values.map((v) => v.label)).toEqual([
+      "암(유사암제외)·면책", "암(유사암제외)·무면책", "뇌졸중", "급성심근경색증", "말기폐질환", "말기간경화", "말기신부전증", "양성뇌종양", "중대한재생불량성빈혈", "만성당뇨합병증",
+      "상해및질병80%이상후유장해", "상해80%이상후유장해", "질병80%이상후유장해", "중증화상및부식",
+    ]);
+    expect(reasons?.fields?.map((f) => [f.key, f.label, f.type])).toEqual([["F01", "약관표시명", "string"], ["F02", "면책여부", "boolean"], ["F03", "정의조대상", "boolean"]]);
+    expect(reasons?.values.slice(0, 3).map((v) => v.fields)).toEqual([
+      { F01: "암(유사암제외)", F02: true, F03: true },
+      { F01: "암(유사암제외)", F02: false, F03: true },
+      { F01: "뇌졸중", F02: false, F03: true },
+    ]);
+    expect(reasons?.values.find((v) => v.code === "V11")?.fields).toEqual({ F01: "상해 또는 질병 80% 이상 후유장해", F02: false, F03: false });
     expect((await services.catalog.getEnum("E0002"))?.values.map((v) => v.label)).toEqual(["해약환급금지급형", "해약환급금미지급형", "해약환급금미지급형(납입후50%)"]);
 
     // 세목 — 종 2(납입면제) · 형 2(무저해지 E0002) · 조합 4 = 종 × 형 전부 (실물 상품, 2026-09-27)
@@ -81,7 +93,7 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     const plans = await services.product.listPlans(r.productId);
     expect(plans.map((plan) => planCombinationLabel(plan.options))).toEqual(["(제1종, 제1형)", "(제1종, 제2형)", "(제2종, 제1형)", "(제2종, 제2형)"]);
     const option = (axis: string, number: number) => options.find((o) => o.axis === axis && o.number === number)!;
-    expect(Object.fromEntries(await services.product.getPlanOptionValues(option("type", 2).id))).toEqual({ "waiver.applies": { entered: true, value: true }, "waiver.reasons": { entered: true, value: ["V01", "V02"] } });
+    expect(Object.fromEntries(await services.product.getPlanOptionValues(option("type", 2).id))).toEqual({ "waiver.applies": { entered: true, value: true }, "waiver.reasons": { entered: true, value: ["V01", "V03", "V04", "V05", "V06", "V07", "V08", "V09", "V10", "V11"] } });
     expect(Object.fromEntries(await services.product.getPlanOptionValues(option("form", 1).id))).toEqual({ "no_surrender.type": { entered: true, value: "V01" } });
     expect(Object.fromEntries(await services.product.getPlanOptionValues(option("form", 2).id))).toEqual({ "no_surrender.type": { entered: true, value: "V03" } });
 
