@@ -27,7 +27,7 @@
  * DB·React import 금지 (순수층).
  */
 
-import type { Code, Id, ReferenceConnector } from "../types";
+import type { Code, Id, ReferenceConnector, RefRestrict } from "../types";
 
 // ───────────────────────────── 인라인 ─────────────────────────────
 
@@ -72,6 +72,10 @@ export interface ClauseRefTarget {
   articleId?: Id;
   code?: Code;
   host?: string;
+  /** 보통약관의 펼친 함수조항 안 노드 — `code` 가 그 함수조항 블록 참조 (문면 `RefTarget.innerCode` 와 같다, ADR-0077 결정 6). */
+  innerCode?: Code;
+  /** 값 한정 — 해당 값들만(함수조항 본문에는 반복이 없어 「현재 값」은 저장 검사가 거부한다, ADR-0077 결정 7). */
+  restrict?: RefRestrict;
 }
 
 /** 조 참조 슬롯 — 대상을 저장하고 렌더 시 계산된 번호를 찍는다. */

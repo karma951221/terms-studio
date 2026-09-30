@@ -27,6 +27,12 @@ export const CONNECTOR_PLACEHOLDER = "〔연결어?〕";
 /** 연결어 미선택 저장 오류 문구 — 문서 · 공용조항 본문 검사가 같은 말을 쓴다 (기능/문면 §3.5). */
 export const CONNECTOR_REQUIRED_MESSAGE = "조 참조 대상이 둘 이상이면 연결어를 고르세요 (및 · 또는)";
 /** 반복 블록 안 대상은 하나여도 펼치면 여러 번호가 될 수 있다 — 연결어 필수 (결정 14 확장 · ADR-0077 결정 7). */
+/**
+ * 값 한정 참조 (ADR-0077 결정 7) — 「사유 = 해당 값들」(`values` — 고른 열거값 코드) · 「사유 = 현재 값」(`current` — 참조 자리를 감싼
+ * 반복 블록 id, 원소가 열거값인 반복). 대상은 열거값 원소 반복 안(또는 그 반복 블록)의 노드여야 하고, 조립 뒤 0개면 오류다.
+ */
+export type RefRestrict = { values: Code[] } | { current: Id };
+
 export const CONNECTOR_REPEAT_MESSAGE = "반복 블록 안 대상은 펼치면 여러 번호가 될 수 있어 연결어를 고르세요 (및 · 또는)";
 export function isReferenceConnector(value: unknown): value is ReferenceConnector {
   return (REFERENCE_CONNECTORS as readonly unknown[]).includes(value);

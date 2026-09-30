@@ -22,7 +22,7 @@ export type DocRef =
   /** `bindings` = 사용처의 인자 연결(최종 결정 2) — 없으면 기본 연결. */
   | { kind: "clause"; clauseCode: Code; options: Record<Code, Code>; bindings?: Bindings; mode: "block" | "inline"; at: Coordinate }
   /** 조 참조의 대상 하나 — 조 id · (항 · 호 · 목이면) P코드 (ADR-0072 결정 3). `at.refPath` = 대상 열쇠(`refKey`). */
-  | { kind: "article"; articleId: Id; code?: Code; scope: "self" | "general"; at: Coordinate }
+  | { kind: "article"; articleId: Id; code?: Code; innerCode?: Code; values?: Code[]; scope: "self" | "general"; at: Coordinate }
   | { kind: "appendix"; appendixCode: Code; at: Coordinate }
   /** 정적 마스터 박스 참조 (최종 결정 9). */
   | { kind: "box"; boxCode: Code; at: Coordinate }
@@ -82,7 +82,16 @@ export function collectRefs(doc: DocumentNode, base: Coordinate = {}): DocRef[] 
         break;
       case "articleRef":
         for (const target of n.targets) {
-          out.push({ kind: "article", articleId: target.articleId, ...(target.code !== undefined ? { code: target.code } : {}), scope: n.scope, at: { ...at, refPath: refKey(target) } });
+          const values = target.restrict && "values" in target.restrict ? target.restrict.values : undefined;
+          out.push({
+            kind: "article",
+            articleId: target.articleId,
+            ...(target.code !== undefined ? { code: target.code } : {}),
+            ...(target.innerCode !== undefined ? { innerCode: target.innerCode } : {}),
+            ...(values ? { values } : {}),
+            scope: n.scope,
+            at: { ...at, refPath: refKey(target) },
+          });
         }
         break;
       case "appendixRef":

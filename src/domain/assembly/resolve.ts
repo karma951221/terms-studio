@@ -62,7 +62,7 @@ import { descend, enumerateRows, type StructNodeRef } from "../structure";
 import type { Code, Coordinate, Id, Issue } from "../types";
 import type { AssemblyContext } from "./context";
 import { formatValue } from "./substitute";
-import type { ErrorNode, RArticle, RBulletList, RInline, RItem, RParagraph, ResolvedDoc, RSection, RStatic, RSubitem } from "./types";
+import type { ErrorNode, LoopTag, RArticle, RArticleRef, RBulletList, RInline, RItem, RParagraph, ResolvedDoc, RSection, RStatic, RSubitem } from "./types";
 
 export interface ResolveEnv {
   clauses: ReadonlyMap<Code, Clause>;
@@ -129,6 +129,8 @@ interface Frame {
   plan?: Id;
   /** 감싼 블록 반복의 현재 원소 — 템플릿 반복 id(복제 접미사 앞) → 원소. 인자의 현재 원소 연결 · 안쪽 반복의 목록 원천이 읽는다. */
   loops?: Readonly<Record<Id, RepeatElement>>;
+  /** 투명 자리를 거쳐 곧바로 노드를 내는 반복 블록 · 함수조항 블록 참조의 열쇠 — 다음 구조 노드(항 · 호 · 목)가 `groups` 로 싣는다. */
+  groups?: string[];
 }
 
 /** 함수조항 블록 참조가 펼친 노드의 열쇠 앞마디 — 참조 노드의 P코드(없으면 노드 id, 가리킬 수 없는 임시 열쇠). */
@@ -136,9 +138,46 @@ function viaOf(n: { id: Id; code?: Code }): string {
   return `${n.code ?? `@${n.id}`}/`;
 }
 
-/** 구조 노드의 참조 열쇠 (`Keyed.key`) — 코드가 없으면 싣지 않는다. */
-function keyOf(n: { code?: Code }, f: Frame): { key?: string } {
-  return n.code !== undefined ? { key: `${f.via ?? ""}${n.code}` } : {};
+/**
+ * 구조 노드의 참조 열쇠 (`Keyed.key`) · 반복 원소 표지(`loops`) · 곧바로 낸 블록(`groups`) — 코드가 없으면 열쇠를 싣지 않는다.
+ * 반복 안 대상 · 반복 블록 · 함수조항 참조 · 값 한정 참조는 렌더가 이 셋으로 푼다 (ADR-0077 결정 7).
+ */
+function keyOf(n: { code?: Code }, f: Frame): { key?: string; loops?: LoopTag[]; groups?: string[] } {
+  const loops = f.loops ? Object.entries(f.loops).map(([loop, e]): LoopTag => ({ loop, element: repeatElementId(e), kind: e.kind })) : [];
+  return {
+    ...(n.code !== undefined ? { key: `${f.via ?? ""}${n.code}` } : {}),
+    ...(loops.length > 0 ? { loops } : {}),
+    ...(f.groups && f.groups.length > 0 ? { groups: f.groups } : {}),
+  };
+}
+
+/** 구조 노드 안쪽 프레임 — 곧바로 낸 블록 묶음은 그 노드까지다(안쪽 호 · 목은 블록의 「펼친 것」이 아니다). */
+function inside(f: Frame, id: Id): Frame {
+  const rest: Frame = { ...f, path: [...f.path, id] };
+  delete rest.groups;
+  return rest;
+}
+
+/** 열쇠의 원형 — 복제 접미사(`@원소`)를 뗀 것 (`P0200@종@V01/P0100` → `P0200/P0100`). */
+export function keyBase(key: string): string {
+  const slash = key.indexOf("/");
+  const head = slash < 0 ? key : key.slice(0, slash);
+  const at = head.indexOf("@");
+  return at < 0 ? key : `${head.slice(0, at)}${slash < 0 ? "" : key.slice(slash)}`;
+}
+
+/** 반복 본문이 낼 수 있는 코드의 원형 — 원소 0개여도 그 대상의 참조를 「0개」 오류로 가르기 위해 (코드 가진 노드 전부, 투명 자리 안까지). */
+function codesIn(nodes: readonly unknown[], via: string): string[] {
+  const out: string[] = [];
+  const walk = (x: unknown): void => {
+    if (Array.isArray(x)) return x.forEach(walk);
+    if (typeof x !== "object" || x === null) return;
+    const o = x as { code?: unknown; kind?: unknown; targets?: unknown };
+    if (typeof o.code === "string" && typeof o.kind === "string" && o.kind !== "articleRef") out.push(keyBase(`${via}${o.code}`));
+    for (const [k, v] of Object.entries(o)) if (k !== "targets" && k !== "bindings" && k !== "source") walk(v);
+  };
+  walk(nodes);
+  return out;
 }
 
 /**
@@ -179,6 +218,8 @@ export function hostLocator(doc: DocumentNode): (path: string) => RefTarget | un
 
 class Walker {
   readonly issues: Issue[] = [];
+  /** 조 id → 밟은 반복 블록이 낼 수 있던 코드 원형 (`RArticle.repeatKeys`). */
+  private readonly repeatKeys = new Map<Id, Set<string>>();
   constructor(
     private readonly ctx: AssemblyContext,
     private readonly env: ResolveEnv,
@@ -221,14 +262,54 @@ class Walker {
     }, at);
     if (!r.ok) return [this.error(n.id, r.issue)];
     const loop = templateIdOf(n.id);
+    const via = f.via ?? "";
+    // 반복 블록 · 그 안 대상을 가리키는 참조가 원소 0개일 때 「사라짐」이 아니라 「0개」 오류가 되도록 밟은 반복의 코드를 적어 둔다
+    if (f.articleId !== undefined) {
+      const keys = this.repeatKeys.get(f.articleId) ?? new Set<string>();
+      if (n.code !== undefined) keys.add(keyBase(`${via}${n.code}`));
+      for (const c of codesIn(n.children, via)) keys.add(c);
+      this.repeatKeys.set(f.articleId, keys);
+    }
+    const group = n.code !== undefined ? [...(f.groups ?? []), `${via}${n.code}`] : f.groups;
     return r.value.flatMap((element) =>
       each(cloneForElement(n.children, repeatElementId(element)), {
         ...f,
         path: [...f.path, n.id],
         loops: { ...f.loops, [loop]: element },
         ...(element.kind === "planOption" ? { plan: element.id } : {}),
+        ...(group ? { groups: group } : {}),
       }),
     );
+  }
+
+  /** 함수조항 블록 참조가 펼친 본문의 프레임 — 펼친 노드 열쇠 앞마디 · 곧바로 낸 블록 묶음(그 참조를 가리키면 펼친 것 전부). */
+  expanded(n: { id: Id; clauseCode: Code; code?: Code }, f: Frame): Frame {
+    const group = n.code !== undefined ? [...(f.groups ?? []), `${f.via ?? ""}${n.code}`] : f.groups;
+    return { ...f, path: [...f.path, n.id], clause: n.clauseCode, via: viaOf(n), ...(group ? { groups: group } : {}) };
+  }
+
+  /**
+   * 조 참조 대상 → 조립 대상 — 안쪽 코드 · 값 한정을 싣는다. 「현재 값」 한정은 참조 자리를 감싼 반복의 원소(열거값)로 바꾼다 —
+   * 반복 밖이거나 원소가 종이면 오류.
+   */
+  refTargets(n: { targets: readonly { articleId?: Id; code?: Code; innerCode?: Code; restrict?: unknown }[] }, f: Frame, at: Coordinate, map: (t: { articleId?: Id; code?: Code }) => { articleId: Id; code?: Code }): { ok: true; targets: RArticleRef["targets"] } | { ok: false; issue: Issue } {
+    const out: RArticleRef["targets"] = [];
+    for (const t of n.targets) {
+      const base = map(t);
+      const target: RArticleRef["targets"][number] = { ...base, ...(t.innerCode !== undefined ? { innerCode: t.innerCode } : {}) };
+      const r = t.restrict as { values?: unknown; current?: unknown } | undefined;
+      if (r !== undefined) {
+        if (Array.isArray(r.values)) target.values = r.values.filter((v): v is string => typeof v === "string");
+        else if (typeof r.current === "string") {
+          const e = f.loops?.[r.current];
+          if (!e) return { ok: false, issue: { kind: "structure", message: `값 한정 「현재 값」의 반복 ${r.current} 이(가) 이 참조를 감싸지 않습니다 — 그 반복 블록 안에서만 쓴다`, at } };
+          if (e.kind !== "enumValue") return { ok: false, issue: { kind: "typeMismatch", message: "값 한정 「현재 값」은 원소가 열거값(사유)인 반복에만 쓴다", at } };
+          target.values = [e.code];
+        } else return { ok: false, issue: { kind: "structure", message: "값 한정의 모양이 잘못됐습니다 — 값들 또는 현재 값", at } };
+      }
+      out.push(target);
+    }
+    return { ok: true, targets: out };
   }
 
   /** 조건식 하나 — taken / notTaken / 오류. */
@@ -371,10 +452,12 @@ class Walker {
         return [{ kind: "slot", id: n.id, ref: n.ref, at, ...(f.row ? { row: f.row } : {}), ...(f.plan !== undefined ? { plan: f.plan } : {}) }];
       case "articleRef": {
         // 「이 함수조항」 대상(코드)은 사용처 조 + 참조 노드 코드로 짝짓는다 — 펼친 노드의 열쇠와 같은 모양 (ADR-0072 결정 3 개정)
-        const targets = n.scope === "clause"
-          ? n.targets.map((t) => ({ articleId: f.articleId ?? "", code: `${f.via ?? ""}${t.code ?? ""}` }))
-          : n.targets.map((t) => ({ articleId: t.articleId ?? "", ...(t.code !== undefined ? { code: t.code } : {}) }));
-        return [{ kind: "articleRef", id: n.id, targets, ...(n.connector !== undefined ? { connector: n.connector } : {}), scope: refScope(n.scope), at }];
+        const r = this.refTargets(n as { targets: readonly { articleId?: Id; code?: Code; innerCode?: Code; restrict?: unknown }[] }, f, at, n.scope === "clause"
+          ? (t) => ({ articleId: f.articleId ?? "", code: `${f.via ?? ""}${t.code ?? ""}` })
+          : (t) => ({ articleId: t.articleId ?? "", ...(t.code !== undefined ? { code: t.code } : {}) }));
+        if (!r.ok) return [this.error(n.id, r.issue)];
+        const within = f.loops ? Object.fromEntries(Object.entries(f.loops).map(([loop, e]) => [loop, repeatElementId(e)])) : undefined;
+        return [{ kind: "articleRef", id: n.id, targets: r.targets, ...(n.connector !== undefined ? { connector: n.connector } : {}), scope: refScope(n.scope), ...(within ? { within } : {}), at }];
       }
       case "appendixRef":
         return [{ kind: "appendixRef", id: n.id, appendixCode: n.appendixCode, at }];
@@ -400,7 +483,7 @@ class Walker {
   }
 
   subitem(n: AnySubitem, f: Frame): RSubitem<RInline> {
-    return { kind: "subitem", id: n.id, ...keyOf(n, f), children: this.inlines(n.children, { ...f, path: [...f.path, n.id] }) };
+    return { kind: "subitem", id: n.id, ...keyOf(n, f), children: this.inlines(n.children, inside(f, n.id)) };
   }
 
   subitems(list: readonly AnySubitemSlot[], f: Frame): (RSubitem<RInline> | RBulletList<RInline> | ErrorNode)[] {
@@ -411,7 +494,7 @@ class Walker {
         // 「목」 함수조항 — 목 목록을 이 자리에 펴고 번호는 사용처에서 이어 매긴다 (최종 결정 4)
         const r = this.expand(n, ["subitem"], this.at(f, n.id), f);
         if (!r.ok) return [r.marker];
-        return this.subitems(r.body as unknown as AnySubitemSlot[], { ...f, path: [...f.path, n.id], clause: n.clauseCode, via: viaOf(n) });
+        return this.subitems(r.body as unknown as AnySubitemSlot[], this.expanded(n, f));
       }
       if (n.kind === "switchBlock") return this.switchOf(n, f, (children, g) => this.subitems(children as AnySubitemSlot[], g));
       const r = this.select(n.branches, f, n.id);
@@ -422,7 +505,7 @@ class Walker {
   }
 
   item(n: AnyItem, f: Frame): RItem<RInline> {
-    const inner = { ...f, path: [...f.path, n.id] };
+    const inner = inside(f, n.id);
     return {
       kind: "item",
       id: n.id,
@@ -513,7 +596,7 @@ class Walker {
         // 다른 유형이면(저장 검사를 거치지 않은 트리) expand 가 자리 유형 오류 마커를 낸다
         const r = this.expand(n, ["item"], this.at(f, n.id), f);
         if (!r.ok) return [r.marker];
-        return this.items(r.body as unknown as AnyItemSlot[], { ...f, path: [...f.path, n.id], clause: n.clauseCode, via: viaOf(n) });
+        return this.items(r.body as unknown as AnyItemSlot[], this.expanded(n, f));
       }
       if (n.kind === "switchBlock") return this.switchOf(n, f, (children, g) => this.items(children as AnyItemSlot[], g));
       // 호 목록 자리의 블록 반복 — 원소마다 호 · 「호」 함수조항을 편다 (사유마다, ADR-0077)
@@ -526,7 +609,7 @@ class Walker {
   }
 
   paragraph(n: AnyParagraph, f: Frame, excludeFromComparison = false): RParagraph<RInline> {
-    const inner = { ...f, path: [...f.path, n.id] };
+    const inner = inside(f, n.id);
     return {
       kind: "paragraph",
       id: n.id,
@@ -563,7 +646,7 @@ class Walker {
           if (!r.ok) return [r.marker];
           return this.blocks(
             r.body as ClauseBlock[],
-            { ...f, path: [...f.path, n.id], clause: n.clauseCode, via: viaOf(n) },
+            this.expanded(n, f),
             excludeFromComparison || (this.env.coordinate.document === "general" && n.excludeFromComparison === true),
           );
         }
@@ -590,12 +673,15 @@ class Walker {
 
   article(n: ArticleNode, f: Frame): RArticle<RInline> {
     const inner: Frame = { path: [...f.path, n.id], articleId: n.id, articleTitle: n.title };
+    const children = this.blocks(n.children, inner);
+    const repeatKeys = this.repeatKeys.get(n.id);
     return {
       kind: "article",
       id: n.id,
       title: n.title,
       ...(n.linkedArticleId !== undefined ? { linkedArticleId: n.linkedArticleId } : {}),
-      children: this.blocks(n.children, inner),
+      children,
+      ...(repeatKeys && repeatKeys.size > 0 ? { repeatKeys: [...repeatKeys] } : {}),
     };
   }
 

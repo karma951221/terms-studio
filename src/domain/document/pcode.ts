@@ -21,7 +21,7 @@ import { indexTree, type DocumentNode, type Node, type NodeKind, type TreeIndex 
 export const PCODE_PATTERN = /^P\d{4,}$/;
 
 /** 코드가 붙는 문면 노드 종류 — 항 · 호 · 목 + 함수조항 블록 참조(펼친 안쪽 노드를 두 마디로 가리키는 바깥 마디, 결정 3 개정). */
-export const CODED_KINDS: readonly NodeKind[] = ["paragraph", "item", "subitem", "clauseBlockRef"];
+export const CODED_KINDS: readonly NodeKind[] = ["paragraph", "item", "subitem", "clauseBlockRef", "forBlock"];
 
 export function isCodedKind(kind: string): boolean {
   return (CODED_KINDS as readonly string[]).includes(kind);
@@ -138,7 +138,7 @@ export function documentCodeEntries(doc: DocumentNode, ix: TreeIndex = indexTree
     for (const id of e.path.slice(0, -1)) {
       const br = ix.branches.get(id);
       if (br) branches.push([br.ownerId, id]);
-      else if (isCodedKind(ix.nodes.get(id)?.node.kind ?? "")) depth += 1;
+      else if (isCodedKind(ix.nodes.get(id)?.node.kind ?? "") && ix.nodes.get(id)?.node.kind !== "forBlock") depth += 1; // 반복 블록은 단계가 아니다(투명)
     }
     out.push({ id: e.node.id, code: (e.node as { code?: Code }).code, scope: e.articleId, branches, position: e.index + 1, depth });
   }
@@ -173,17 +173,25 @@ export function documentCodeIssues(doc: DocumentNode, ix: TreeIndex = indexTree(
 
 // ───────────────────────────── 참조 대상 (결정 3 · 9) ─────────────────────────────
 
-/** 참조가 가리킬 수 있는 코드 자리 — 항 · 호 · 목. (함수조항 블록 참조의 코드는 펼친 안쪽 노드를 가리키는 바깥 마디다 — 반복 · 안쪽 참조와 함께.) */
-const REFERABLE_CODED: readonly NodeKind[] = ["paragraph", "item", "subitem"];
+/**
+ * 참조가 가리킬 수 있는 코드 자리 — 항 · 호 · 목 + 함수조항 블록 참조(펼친 것 전부 · 안쪽 노드의 바깥 마디) · 반복 블록(펼친 것 전부)
+ * (ADR-0077 결정 6 · 7).
+ */
+export const REFERABLE_CODED: readonly NodeKind[] = ["paragraph", "item", "subitem", "clauseBlockRef", "forBlock"];
 
-/** 참조 대상의 열쇠 — 조면 조 id, 항 · 호 · 목이면 `조id#코드`. 대상 비교 · 존재 판정 · 해소 색인이 이 열쇠를 쓴다. */
-export function refKey(t: { articleId: Id; code?: Code }): string {
-  return t.code === undefined ? t.articleId : `${t.articleId}#${t.code}`;
+/**
+ * 참조 대상의 열쇠 — 조면 조 id, 항 · 호 · 목 · 함수조항 참조 · 반복 블록이면 `조id#코드`, 펼친 함수조항 안 노드면 `조id#참조코드/안쪽코드`.
+ * 대상 비교 · 존재 판정 · 해소 색인이 이 열쇠를 쓴다. 값 한정(`restrict`)은 열쇠에 들지 않는다(같은 노드를 다르게 좁힐 뿐).
+ */
+export function refKey(t: { articleId: Id; code?: Code; innerCode?: Code }): string {
+  if (t.code === undefined) return t.articleId;
+  return t.innerCode === undefined ? `${t.articleId}#${t.code}` : `${t.articleId}#${t.code}/${t.innerCode}`;
 }
 
 /** 오류 문구용 대상 표기 — 조 id · `조id 의 P0100`. */
-export function refLabel(t: { articleId: Id; code?: Code }): string {
-  return t.code === undefined ? t.articleId : `${t.articleId} 의 ${t.code}`;
+export function refLabel(t: { articleId: Id; code?: Code; innerCode?: Code }): string {
+  if (t.code === undefined) return t.articleId;
+  return t.innerCode === undefined ? `${t.articleId} 의 ${t.code}` : `${t.articleId} 의 ${t.code} 안 ${t.innerCode}`;
 }
 
 const keyCache = new WeakMap<TreeIndex, Set<string>>();
@@ -247,7 +255,19 @@ export function lostRefKeys(ix: TreeIndex, removed: ReadonlySet<Id>): Set<string
 }
 
 /** 열쇠 → 참조 대상 (`refKey` 의 역 — 조 id 에는 `#` 가 없다). 대상 고르기 폼이 열쇠를 싣는다. */
-export function parseRefKey(key: string): { articleId: Id; code?: Code } {
+export function parseRefKey(key: string): { articleId: Id; code?: Code; innerCode?: Code } {
   const at = key.lastIndexOf("#");
-  return at < 0 ? { articleId: key } : { articleId: key.slice(0, at), code: key.slice(at + 1) };
+  if (at < 0) return { articleId: key };
+  const articleId = key.slice(0, at);
+  const rest = key.slice(at + 1);
+  const slash = rest.indexOf("/");
+  return slash < 0 ? { articleId, code: rest } : { articleId, code: rest.slice(0, slash), innerCode: rest.slice(slash + 1) };
+}
+
+/** 대상이 여러 번호가 될 수 있는가 — 값 한정 · 반복 안 · 함수조항 참조 · 반복 블록 (`repeatedKeys`(blockRepeat.ts) 재료 — 연결어 필수 판정). */
+export function multiTarget(t: { articleId: Id; code?: Code; innerCode?: Code; restrict?: unknown }, repeated: ReadonlySet<string> | undefined): boolean {
+  if (t.restrict !== undefined) return true;
+  if (!repeated || t.code === undefined) return false;
+  const head = refKey({ articleId: t.articleId, code: t.code });
+  return t.innerCode === undefined ? repeated.has(head) : repeated.has(`${head}/*`);
 }

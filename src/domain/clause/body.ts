@@ -23,7 +23,7 @@ import type { AnySwitchNode, Block, BoxRefNode, BulletListNode, ClauseNode, Inli
 import { checkLocals, planFieldType, type LocalDef } from "./locals";
 import { checkParams, type ParamDef } from "./params";
 import { clauseCodeEntries, clauseCodeIssues } from "./pcode";
-import { refKey } from "../document/pcode";
+import { multiTarget, refKey } from "../document/pcode";
 import type { ClauseBody, ClauseMode, OptionDef, RequiredRefs } from "./types";
 
 // ───────────────────────────── 식 수집 ─────────────────────────────
@@ -304,7 +304,14 @@ export function analyzeBody(
           }
           const key = refKey({ articleId: t.articleId, ...(t.code !== undefined ? { code: t.code } : {}) });
           if (opts.generalReferenceKeys && !opts.generalReferenceKeys.has(key)) report("brokenRef", `보통약관 참조 대상 ${key} 가 보통약관 마스터에 없습니다`, here, key);
-          if (opts.generalRepeatedKeys?.has(key)) repeated = true;
+          if (multiTarget(t as { articleId: string; code?: string; innerCode?: string; restrict?: unknown }, opts.generalRepeatedKeys)) repeated = true;
+          if (t.innerCode !== undefined && (typeof t.innerCode !== "string" || t.code === undefined)) report("structure", "안쪽 코드는 보통약관의 함수조항 블록 참조(코드)와 함께 쓴다", here, key);
+          const restrict = t.restrict as { values?: unknown; current?: unknown } | undefined;
+          if (restrict !== undefined) {
+            if (restrict.current !== undefined) report("structure", "함수조항 본문에는 반복이 없어 값 한정 「현재 값」을 쓸 수 없습니다 — 해당 값들로 고른다", here, key);
+            else if (!Array.isArray(restrict.values) || restrict.values.length === 0) report("structure", "값 한정의 값을 하나 이상 고른다", here, key);
+            else if (opts.generalRepeatedKeys && !opts.generalRepeatedKeys.has(key)) report("structure", "값 한정은 반복으로 생긴 노드에만 건다 — 이 보통약관 대상은 반복 안이 아닙니다", here, key);
+          }
         }
         if (repeated && node.connector === undefined && node.targets.length < 2) report("structure", CONNECTOR_REPEAT_MESSAGE, here);
         return;

@@ -153,7 +153,13 @@ export interface RSlot {
 export interface RArticleRef {
   kind: "articleRef";
   id: Id;
-  targets: { articleId: Id; code?: string }[];
+  /**
+   * 대상 — 조 · 조+코드 · 조+참조코드+안쪽코드(펼친 함수조항 안 노드). `values` = 값 한정(현재 값은 해소 단계가 원소 코드로 바꿔 둔다 —
+   * 열거값 원소 반복으로 생긴 노드 중 그 값이 낸 것만, ADR-0077 결정 7).
+   */
+  targets: { articleId: Id; code?: string; innerCode?: string; values?: string[] }[];
+  /** 참조 자리를 감싼 블록 반복의 현재 원소 — 템플릿 반복 id → 원소 id. 같은 반복 안 대상은 이 회차의 사본으로 좁힌다. */
+  within?: Readonly<Record<Id, string>>;
   connector?: ReferenceConnector;
   scope: "self" | "general";
   at: Coordinate;
@@ -204,6 +210,20 @@ export type RStatic<I> = RTable<I> | RBox<I> | RBulletList<I>;
  */
 interface Keyed {
   key?: string;
+  /** 블록 반복이 만든 노드면 감싼 반복의 원소들(바깥 → 안쪽) — 반복 안 대상 · 값 한정 참조를 이 원소로 좁힌다 (ADR-0077 결정 7). */
+  loops?: LoopTag[];
+  /**
+   * 이 노드를 (투명 자리를 거쳐) 곧바로 낸 반복 블록 · 함수조항 블록 참조의 열쇠 — 그 블록을 가리키는 참조는 이 노드들 전부다
+   * (「펼친 것 전부」, ADR-0077 결정 7).
+   */
+  groups?: string[];
+}
+
+/** 반복 원소 표지 — 템플릿 반복 id · 원소 id(종 = 세목 선택지 id, 열거값 = 값 코드). */
+export interface LoopTag {
+  loop: Id;
+  element: string;
+  kind: "planOption" | "enumValue";
 }
 export interface RSubitem<I> extends Keyed {
   kind: "subitem";
@@ -230,6 +250,11 @@ export interface RArticle<I> {
   title: string;
   linkedArticleId?: Id;
   children: (RParagraph<I> | RStatic<I> | ErrorNode)[];
+  /**
+   * 조립이 밟은 반복 블록이 낼 수 있던 코드(복제 접미사 · 펼치기 앞마디 포함 원형 — `P0100` · `P0300/…`는 참조코드만) — 원소 0개라 노드가 없어도
+   * 그 대상을 가리키는 참조는 「사라짐」이 아니라 「펼친 것 0개」 오류다 (ADR-0077 결정 7).
+   */
+  repeatKeys?: string[];
 }
 /** 관 — 제목 + 조 목록. 번호는 계산값. */
 export interface RSection<I> {

@@ -69,7 +69,7 @@ function inlineToTree(node: C.Inline): InlineNode {
       const { scope, targets, ...rest } = node;
       if (scope === "host") return { ...rest, targets: targets.map((t) => ({ articleId: `${HOST_TARGET_PREFIX}${t.host ?? ""}` })), scope: "general" };
       if (scope === "clause") return { ...rest, targets: targets.map((t) => ({ articleId: CLAUSE_ARTICLE_ID, ...(t.code !== undefined ? { code: t.code } : {}) })), scope: "self" };
-      return { ...rest, targets: targets.map((t) => ({ articleId: t.articleId ?? "", ...(t.code !== undefined ? { code: t.code } : {}) })), scope: "general" };
+      return { ...rest, targets: targets.map((t) => ({ articleId: t.articleId ?? "", ...(t.code !== undefined ? { code: t.code } : {}), ...(t.innerCode !== undefined ? { innerCode: t.innerCode } : {}), ...(t.restrict !== undefined ? { restrict: structuredClone(t.restrict) } : {}) })), scope: "general" };
     }
     case "inlineCond":
       return { ...node, branches: node.branches.map((br) => ({ ...br, children: br.children.map(inlineToTree) })) };

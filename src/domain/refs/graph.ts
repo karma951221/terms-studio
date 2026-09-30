@@ -32,6 +32,7 @@ import { nodesOf } from "../coverage/tree";
 import type { Coverage, CoverageNodeLevel } from "../coverage/types";
 import { coordinateOf, indexTree } from "../document/nodes";
 import { articleRefLabel, numberTree } from "../document/numbering";
+import { valueLoopEnum } from "../document/blockRepeat";
 import { collectRefs } from "../document/refs";
 import { referenceKeys, refKey, targetOfNode } from "../document/pcode";
 import { enumReads, extractRefs, inferType, parse, refPath, type EnumReadTypes, type Expr, type ExprType, type Ref } from "../expression";
@@ -184,6 +185,8 @@ class Builder {
   /** 보통약관 노드 id → 속한 조(documentId·articleId) — 공용조항·문서의 조 참조가 항·호·목을 가리킬 때 조로 올리는 인덱스. 조 자신은 자기 id. */
   /** 보통약관 문서들의 참조 열쇠(`refKey` — 조 id · 조#코드) → 속한 문서 · 조. */
   readonly generalTargets = new Map<string, { documentId: Id; articleId: Id }>();
+  /** 보통약관 참조 열쇠 → 그 대상이 선 열거값 반복의 열거형 (값 한정 참조의 값 간선 — ADR-0077 결정 7). */
+  readonly generalValueEnums = new Map<string, Code>();
 
   node(info: RefNodeInfo): void {
     this.nodes.set(nodeKey(info.key), info);
@@ -305,15 +308,24 @@ function walkClauseNodes(body: readonly ClauseNode[], basePath: Id[], visit: (no
  * 보통약관 문서들의 참조 열쇠 → 속한 조 인덱스 (`Builder.generalTargets`). 공용조항을 넣기 전에 채운다 —
  * 공용조항의 범위 없는 조 참조는 보통약관 마스터를 가리키고(기능/함수조항 §3.5), 공용조항은 어느 문서인지 모른다.
  */
-function indexGeneralArticles(b: Builder, documents: readonly DocumentInput[]): void {
+function indexGeneralArticles(b: Builder, documents: readonly DocumentInput[], master?: MasterTree): void {
   for (const doc of documents) {
     if (doc.kind !== "general") continue;
     const ix = indexTree(doc.tree);
     for (const e of ix.nodes.values()) {
       const t = targetOfNode(ix, e.node.id);
-      if (t) b.generalTargets.set(refKey(t), { documentId: doc.id, articleId: t.articleId });
+      if (!t) continue;
+      b.generalTargets.set(refKey(t), { documentId: doc.id, articleId: t.articleId });
+      const enumCode = e.inFor || e.node.kind === "forBlock" ? valueLoopEnum(ix, t, master) : undefined;
+      if (enumCode) b.generalValueEnums.set(refKey(t), enumCode);
     }
   }
+}
+
+/** 값 한정 참조의 값 → 열거값 간선 (최종 결정 13 · 20 · 21). 열거형을 모르면(대상이 열거값 반복 밖 · 사라짐) 간선이 없다 — 저장 검사가 드러낸다. */
+function restrictEdges(b: Builder, from: RefNodeKey, enumCode: Code | undefined, values: readonly Code[] | undefined, at: Coordinate): void {
+  if (!enumCode || !values) return;
+  for (const valueCode of values) b.edge({ from, to: { kind: "enumValue", enumCode, valueCode }, via: "valueRestrict", at });
 }
 
 /**
@@ -395,10 +407,13 @@ function addClause(b: Builder, clause: Clause, master?: MasterTree): void {
         // indexGeneralArticles 로 속한 조로 올리고, 인덱스에 없으면(대상이 사라졌거나 보통약관이 안 들어옴)
         // documentId 없는 키로 내 깨진 간선으로 남긴다 (문서 쪽 generalOf 와 같은 모양).
         for (const target of n.targets) {
-          const refPath = refKey({ articleId: target.articleId ?? "", ...(target.code !== undefined ? { code: target.code } : {}) });
-          const found = b.generalTargets.get(refPath);
+          const head = refKey({ articleId: target.articleId ?? "", ...(target.code !== undefined ? { code: target.code } : {}) });
+          const refPath = refKey({ articleId: target.articleId ?? "", ...(target.code !== undefined ? { code: target.code } : {}), ...(target.innerCode !== undefined ? { innerCode: target.innerCode } : {}) });
+          const found = b.generalTargets.get(head);
           const to: RefNodeKey = found ? { kind: "article", documentId: found.documentId, articleId: found.articleId } : { kind: "article", documentId: "", articleId: refPath };
           b.edge({ from: key, to, via: "articleRef", at: { ...base, nodePath, refPath } });
+          const values = target.restrict && "values" in target.restrict ? target.restrict.values : undefined;
+          restrictEdges(b, key, b.generalValueEnums.get(head), values, { ...base, nodePath, refPath });
         }
       }
     });
@@ -410,7 +425,7 @@ function anchorOf(doc: DocumentInput, articleId: Id | undefined): RefNodeKey {
   return articleId !== undefined ? { kind: "article", documentId: doc.id, articleId } : { kind: "document", id: doc.id };
 }
 
-function addDocument(b: Builder, doc: DocumentInput): Map<Id, RefNodeKey> {
+function addDocument(b: Builder, doc: DocumentInput, master?: MasterTree): Map<Id, RefNodeKey> {
   const key: RefNodeKey = { kind: "document", id: doc.id };
   b.node({ key, label: doc.title, detail: doc.kind, ownerId: doc.ownerId ?? doc.id });
   // ownerId 는 소유 실체(담보약관이면 담보 id) — 문서 화면으로 가는 id 는 documentId 에 (사용처 링크가 그 문서의 그 노드로 간다).
@@ -460,15 +475,21 @@ function addDocument(b: Builder, doc: DocumentInput): Map<Id, RefNodeKey> {
       case "article": {
         // 간선은 대상의 조로 — 대상(조 · 그 조의 코드)이 살아 있으면 조 노드, 사라졌으면 열쇠 그대로 둔 깨진 간선 (ADR-0072 결정 8).
         // self 는 이 문서의 참조 열쇠, general 은 indexGeneralArticles 로 찾는다.
-        const k = refKey(r);
+        // 펼친 함수조항 안 노드는 참조 노드(바깥 마디)의 열쇠로 산다 (ADR-0077 결정 6)
+        const k = refKey({ articleId: r.articleId, ...(r.code !== undefined ? { code: r.code } : {}) });
         let to: RefNodeKey;
+        let enumCode: Code | undefined;
         if (r.scope === "self") {
-          to = { kind: "article", documentId: doc.id, articleId: referenceKeys(ix).has(k) ? r.articleId : k };
+          const alive = referenceKeys(ix).has(k);
+          to = { kind: "article", documentId: doc.id, articleId: alive ? r.articleId : refKey(r) };
+          if (alive && r.values) enumCode = valueLoopEnum(ix, r, master);
         } else {
           const found = b.generalTargets.get(k);
-          to = found ? { kind: "article", documentId: found.documentId, articleId: found.articleId } : generalOf(k);
+          to = found ? { kind: "article", documentId: found.documentId, articleId: found.articleId } : generalOf(refKey(r));
+          enumCode = b.generalValueEnums.get(k);
         }
         b.edge({ from, to, via: "articleRef", at: r.at });
+        restrictEdges(b, from, enumCode, r.values, r.at);
         break;
       }
       case "appendix":
@@ -567,10 +588,10 @@ export function buildGraph(inputs: GraphInputs): RefGraph {
   for (const c of inputs.coverages ?? []) addCoverage(b, c);
   // 간선은 노드 선언이 끝난 뒤 (enum 자리 · 소유자 이름을 알아야 한다)
   for (const d of defs) addExpression(b, d);
-  indexGeneralArticles(b, inputs.documents ?? []);
+  indexGeneralArticles(b, inputs.documents ?? [], inputs.master);
   for (const c of inputs.clauses ?? []) addClause(b, c, inputs.master);
   const anchors = new Map<Id, RefNodeKey>();
-  for (const d of inputs.documents ?? []) for (const [id, key] of addDocument(b, d)) anchors.set(id, key);
+  for (const d of inputs.documents ?? []) for (const [id, key] of addDocument(b, d, inputs.master)) anchors.set(id, key);
   for (const p of inputs.products ?? []) addProduct(b, p, anchors);
   return { nodes: b.nodes, edges: b.edges };
 }

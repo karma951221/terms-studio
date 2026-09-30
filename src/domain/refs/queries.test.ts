@@ -507,3 +507,41 @@ describe("값별 분기(switch) 칸의 값 — switchCase 간선 (최종 결정 
     expect(brokenEdges(g).some((e) => nodeKey(e.to) === "enumValue:E0001/V09")).toBe(true);
   });
 });
+
+describe("값 한정 참조의 값 — valueRestrict 간선 (최종 결정 13 · 20 · 21)", () => {
+  const 사유: EnumDef = { code: "E0001", label: "납입면제사유", values: [{ code: "V01", label: "암", order: 0 }, { code: "V02", label: "뇌졸중", order: 1 }] };
+  /** 보통약관 — 납입면제종마다 › 항 › 사유마다 › 호 P0300, 참조 조가 「사유 = 암 · (지운) V09」 한정으로 가리킨다. */
+  const tree = {
+    id: "g",
+    kind: "document",
+    title: "보통약관",
+    children: [
+      {
+        id: "a",
+        kind: "article",
+        title: "납입면제",
+        children: [
+          {
+            id: "fo",
+            kind: "forBlock",
+            code: "P0100",
+            source: { kind: "planOptions", form: "waiver" },
+            children: [{ id: "p", kind: "paragraph", code: "P0200", children: [], items: [{ id: "fi", kind: "forBlock", code: "P0300", source: { kind: "listOfCurrent", loop: "fo", field: "reasons" }, children: [{ id: "i", kind: "item", code: "P0400", children: [] }] }] }],
+          },
+        ],
+      },
+      { id: "z", kind: "article", title: "참조", children: [{ id: "zp", kind: "paragraph", code: "P0100", children: [{ id: "zr", kind: "articleRef", scope: "self", connector: "및", targets: [{ articleId: "a", code: "P0400", restrict: { values: ["V01", "V09"] } }] }] }] },
+    ],
+  } as unknown as DocumentInput["tree"];
+  const graph = () => buildGraph({ enums: [사유], documents: [{ id: "doc-g", kind: "general", title: "보통약관", tree }] });
+
+  it("값 한정 참조가 열거값 추가 재검사 목록에 선다 — 새 값은 한정에 안 든다", () => {
+    expect(enumValueListers(graph(), "E0001").map((e) => [e.via, e.at.nodePath?.at(-1), e.at.refPath])).toEqual([["valueRestrict", "zr", "a#P0400"]]);
+  });
+
+  it("한정에 남은 지운 값(V09)은 깨진 참조 — 값 삭제 영향 · 「없는 값」 의 재료", () => {
+    const g = graph();
+    expect(usagesOf(g, { kind: "enumValue", enumCode: "E0001", valueCode: "V01" }).map((e) => e.via)).toEqual(["valueRestrict"]);
+    expect(brokenEdges(g).some((e) => nodeKey(e.to) === "enumValue:E0001/V09")).toBe(true);
+  });
+});

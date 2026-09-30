@@ -11,7 +11,9 @@
  */
 
 import { CONNECTOR_PLACEHOLDER, type Code, type Id, type ReferenceConnector } from "../types";
-import type { ArticleNode, BlockNode, DocumentNode, Node, RefTarget } from "./nodes";
+import { withClauseCodes } from "../clause/pcode";
+import type { Clause } from "../clause/types";
+import type { ArticleNode, BlockNode, DocumentNode, ForBlockNode, Node, RefTarget } from "./nodes";
 import { refKey } from "./pcode";
 
 export type NumberKind = "section" | "article" | "paragraph" | "item" | "subitem";
@@ -79,6 +81,14 @@ export interface ReferenceTarget {
   paragraph?: ReferencePart;
   item?: ReferencePart;
   subitem?: ReferencePart;
+  /**
+   * 대상 고르기 트리 전용 (편집기 — 반복 블록 · 함수조항 참조 · 그 안 코드, ADR-0077 결정 6 · 7):
+   * `parentRow` = 트리의 윗줄(기본은 한 단계 위 조 · 항 · 호), `caption` = 줄 머리 말(번호 뒤), `via` = 펼친 함수조항 안 노드면 그 참조 노드의 코드
+   * (저장 대상 `{ 조, 참조코드, 안쪽코드 }`). 이런 줄의 번호는 자리표시다 — 실제 번호는 조립이 펼친 뒤 매긴다.
+   */
+  parentRow?: Id;
+  caption?: string;
+  via?: Code;
 }
 
 /** 목 참조 표기 — 「가목」…「하목」 (법령 인용 꼴), 그 너머는 「제N목」. */
@@ -170,18 +180,101 @@ export function referenceChunkLabel(targets: readonly ReferenceTarget[], connect
   return `${segments.slice(0, -1).join(", ")} ${connector ?? CONNECTOR_PLACEHOLDER} ${segments.at(-1)}`;
 }
 
-/** 편집기용: 현재 계산 번호를 붙여 문서 안의 조·항·호·목을 참조 대상 id로 색인한다. 문서 순서(전위)대로. */
-export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id, NodeNumber>): Map<Id, ReferenceTarget> {
+/** 대상 고르기 색인의 재료 — 함수조항 본문(펼칠 항 · 호 · 목 줄) · 반복 블록 줄 머리. 없으면 그 줄 없이(원형 본문만). */
+export interface ReferenceIndexOptions {
+  clauseOf?: (code: Code) => Clause | undefined;
+  repeatCaption?: (node: ForBlockNode) => string;
+}
+
+const INNER_WORD: Record<string, string> = { paragraph: "항", item: "호", subitem: "목" };
+
+/** 함수조항 본문 첫 글 — 안쪽 줄 머리(값별 분기 칸은 첫 칸 글). */
+function firstText(n: unknown): string {
+  const walk = (x: unknown): string | undefined => {
+    if (Array.isArray(x)) {
+      for (const v of x) {
+        const t = walk(v);
+        if (t) return t;
+      }
+      return undefined;
+    }
+    if (typeof x !== "object" || x === null) return undefined;
+    const o = x as { kind?: string; text?: unknown; children?: unknown };
+    if (o.kind === "text" && typeof o.text === "string" && o.text.trim() !== "") return o.text.trim();
+    return walk(o.children);
+  };
+  const t = walk((n as { children?: unknown }).children) ?? "";
+  return t.length > 18 ? `${t.slice(0, 18)}…` : t;
+}
+
+/**
+ * 편집기용: 현재 계산 번호를 붙여 문서 안의 조·항·호·목을 참조 대상 id로 색인한다. 문서 순서(전위)대로.
+ * 반복 블록 · 함수조항 블록 참조도 줄이 되고(펼친 것 전부), 함수조항 참조 아래에 그 본문의 항 · 호 · 목 줄(같은 코드는 한 줄)이 선다 (ADR-0077 결정 6 · 7).
+ * 이 줄들의 번호는 자리표시다 — 반복 블록은 첫 본문의 번호, 펼친 본문은 참조 자리 번호부터 센다.
+ */
+export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id, NodeNumber>, opts: ReferenceIndexOptions = {}): Map<Id, ReferenceTarget> {
   const out = new Map<Id, ReferenceTarget>();
   type Section = ReferenceTarget["section"];
-  const visit = (node: Node, parent: ReferenceTarget | undefined, section: Section): void => {
+  /** 반복 · 조건을 투명하게 건너 첫 번호. */
+  const firstNumber = (list: readonly Node[]): number => {
+    for (const n of list) {
+      const own = numbers.get(n.id);
+      if (own) return own.n;
+      const inner = n.kind === "condBlock" ? n.branches.flatMap((b) => b.children) : n.kind === "forBlock" ? n.children : [];
+      const found = firstNumber(inner as Node[]);
+      if (found > 0) return found;
+    }
+    return 0;
+  };
+  /** 한 단계 아래 자리의 대상 — `parent` 아래 `kind` 단계 한 줄. */
+  const below = (parent: ReferenceTarget, kind: "paragraph" | "item" | "subitem", part: ReferencePart, extra: Partial<ReferenceTarget>): ReferenceTarget | undefined => {
+    const up = parent.section ? { section: parent.section } : {};
+    if (kind === "paragraph") return { kind, ...up, article: parent.article, paragraph: part, ...extra };
+    if (kind === "item" && parent.paragraph) return { kind, ...up, article: parent.article, paragraph: parent.paragraph, item: part, ...extra };
+    if (kind === "subitem" && parent.paragraph && parent.item) return { kind, ...up, article: parent.article, paragraph: parent.paragraph, item: parent.item, subitem: part, ...extra };
+    return undefined;
+  };
+  /** 함수조항 본문의 항 · 호 · 목 줄 — 같은 코드(칸 · 가지 짝)는 한 줄, 번호는 참조 자리부터 센 자리표시. */
+  const innerRows = (list: readonly unknown[], parent: ReferenceTarget, row: Id, refId: Id, via: Code, start: number): void => {
+    const seen = new Set<Code>();
+    let k = 0;
+    const walk = (xs: readonly unknown[]): void => {
+      for (const x of xs) {
+        const n = x as { id?: Id; kind?: string; code?: Code; items?: unknown[]; subitems?: unknown[]; branches?: { children: unknown[] }[]; cases?: { children: unknown[] }[] };
+        if (n.kind === "condBlock" || n.kind === "switchBlock") {
+          for (const arm of n.branches ?? n.cases ?? []) walk(arm.children);
+          continue;
+        }
+        const kind = n.kind === "paragraph" || n.kind === "item" || n.kind === "subitem" ? n.kind : undefined;
+        if (!kind || n.code === undefined || n.id === undefined || seen.has(n.code)) continue;
+        seen.add(n.code);
+        const id = `${refId}/${n.id}`;
+        const t = below(parent, kind, { id, n: start + k++, code: n.code }, { parentRow: row, via, caption: `${INNER_WORD[kind]} ${n.code}${firstText(n) ? ` 「${firstText(n)}」` : ""}` });
+        if (!t) continue;
+        out.set(id, t);
+        const children = kind === "paragraph" ? n.items : kind === "item" ? n.subitems : undefined;
+        if (children) innerRows(children, t, id, refId, via, 1);
+      }
+    };
+    walk(list);
+  };
+  const visit = (node: Node, parent: ReferenceTarget | undefined, section: Section, row?: Id): void => {
     if (node.kind === "condBlock") {
-      for (const branch of node.branches) for (const child of branch.children) visit(child, parent, section);
+      for (const branch of node.branches) for (const child of branch.children) visit(child, parent, section, row);
       return;
     }
-    // 블록 반복은 투명 — 본문 한 벌을 원형으로 고른다(편집기 번호는 한 번만 센다, 실제 번호 · 해소는 조립 — ADR-0077)
+    // 블록 반복 — 줄 하나(가리키면 펼친 것 전부) 아래에 본문 한 벌을 원형으로 고른다(편집기 번호는 한 번만 센다, 실제 번호 · 해소는 조립 — ADR-0077)
     if (node.kind === "forBlock") {
-      for (const child of node.children) visit(child, parent, section);
+      let here = row;
+      if (parent && parent.kind !== "section" && node.code !== undefined) {
+        const kind = parent.kind === "article" ? "paragraph" : parent.kind === "paragraph" ? "item" : undefined;
+        const t = kind ? below(parent, kind, { id: node.id, n: firstNumber(node.children), code: node.code }, { caption: `반복 — ${opts.repeatCaption?.(node) ?? node.alias ?? "반복 블록"}`, ...(row ? { parentRow: row } : {}) }) : undefined;
+        if (t) {
+          out.set(node.id, t);
+          here = node.id;
+        }
+      }
+      for (const child of node.children) visit(child, parent, section, here);
       return;
     }
     const number = numbers.get(node.id);
@@ -196,23 +289,32 @@ export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id,
       for (const child of node.children) visit(child, target, section);
       return;
     }
-    const up = parent?.section ? { section: parent.section } : {};
     const code = (node as { code?: Code }).code;
     const part = (n: number): ReferencePart => ({ id: node.id, n, ...(code !== undefined ? { code } : {}) });
+    const rowOf = row ? { parentRow: row } : {};
+    // 함수조항 블록 참조 — 줄 하나(가리키면 펼친 것 전부) + 그 본문의 항 · 호 · 목 줄(펼친 함수조항 안 노드, ADR-0077 결정 6)
+    if (node.kind === "clauseBlockRef" && number && parent && code !== undefined && (number.kind === "paragraph" || number.kind === "item" || number.kind === "subitem")) {
+      const clause = opts.clauseOf?.(node.clauseCode);
+      const t = below(parent, number.kind, part(number.n), { caption: `함수조항 「${clause?.label ?? node.clauseCode}」`, ...rowOf });
+      if (!t) return;
+      out.set(node.id, t);
+      if (clause) innerRows(withClauseCodes(clause.body) as readonly unknown[], parent, node.id, node.id, code, number.n);
+      return;
+    }
     if (node.kind === "paragraph" && number && parent) {
-      const target: ReferenceTarget = { kind: "paragraph", ...up, article: parent.article, paragraph: part(number.n) };
+      const target = below(parent, "paragraph", part(number.n), rowOf)!;
       out.set(node.id, target);
       for (const item of node.items ?? []) visit(item, target, section);
       return;
     }
     if (node.kind === "item" && number && parent?.paragraph) {
-      const target: ReferenceTarget = { kind: "item", ...up, article: parent.article, paragraph: parent.paragraph, item: part(number.n) };
+      const target = below(parent, "item", part(number.n), rowOf)!;
       out.set(node.id, target);
       for (const subitem of node.subitems ?? []) visit(subitem, target, section);
       return;
     }
     if (node.kind === "subitem" && number && parent?.paragraph && parent.item) {
-      out.set(node.id, { kind: "subitem", ...up, article: parent.article, paragraph: parent.paragraph, item: parent.item, subitem: part(number.n) });
+      out.set(node.id, below(parent, "subitem", part(number.n), rowOf)!);
     }
   };
   for (const node of doc.children) visit(node, undefined, undefined);
@@ -226,6 +328,7 @@ export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id,
 export function refTargetOf(t: ReferenceTarget): RefTarget {
   if (t.kind === "article" || t.kind === "section") return { articleId: t.article.id };
   const part = t.subitem ?? t.item ?? t.paragraph;
+  if (t.via !== undefined && part?.code !== undefined) return { articleId: t.article.id, code: t.via, innerCode: part.code };
   return part?.code !== undefined ? { articleId: t.article.id, code: part.code } : { articleId: part?.id ?? t.article.id };
 }
 
@@ -263,6 +366,7 @@ export interface ReferenceOutlineGroup {
 }
 
 function parentIdOf(t: ReferenceTarget): Id | undefined {
+  if (t.parentRow !== undefined) return t.parentRow;
   switch (t.kind) {
     case "paragraph":
       return t.article.id;
@@ -282,7 +386,9 @@ export function referenceOutline(index: ReadonlyMap<Id, ReferenceTarget>): Refer
   for (const [id, target] of index) {
     const parentId = parentIdOf(target);
     const parent = parentId === undefined ? undefined : nodes.get(parentId);
-    const label = parent ? referenceTargetLabel(target, parent.target) : referenceTargetLabel(target);
+    const own = parent && !target.via ? referenceTargetLabel(target, parent.target) : referenceTargetLabel(target);
+    // 반복 블록 · 함수조항 참조 줄은 번호 뒤에 머리 말, 펼칠 본문 줄은 머리 말만(번호는 조립이 매긴다)
+    const label = target.via !== undefined && target.caption ? target.caption : target.caption ? `${own} · ${target.caption}` : own;
     const node: ReferenceOutlineNode = { id, target, label, children: [] };
     if (target.kind === "article") {
       let group = groups.at(-1);
@@ -302,12 +408,19 @@ export function referenceOutline(index: ReadonlyMap<Id, ReferenceTarget>): Refer
 /** 고른 대상들의 조상 id — 기존 참조를 고칠 때 이 줄들을 펴 둔다. */
 export function referenceAncestorIds(index: ReadonlyMap<Id, ReferenceTarget>, ids: Iterable<Id>): Set<Id> {
   const out = new Set<Id>();
+  // 트리의 윗줄 — 반복 블록 · 함수조항 참조 줄(parentRow)이면 그 줄, 아니면 한 단계 위 조 · 항 · 호. 조에 닿을 때까지 오른다
   for (const id of ids) {
     const t = index.get(id);
     if (!t) continue;
     if (t.kind !== "article") out.add(t.article.id);
-    if ((t.kind === "item" || t.kind === "subitem") && t.paragraph) out.add(t.paragraph.id);
-    if (t.kind === "subitem" && t.item) out.add(t.item.id);
+    const chain: Id[] = [];
+    for (let cur: ReferenceTarget | undefined = t; cur && cur.kind !== "article"; ) {
+      const up = parentIdOf(cur);
+      if (up === undefined || up === t.article.id || chain.includes(up)) break;
+      chain.push(up);
+      cur = index.get(up);
+    }
+    for (const up of chain.reverse()) out.add(up);
   }
   return out;
 }

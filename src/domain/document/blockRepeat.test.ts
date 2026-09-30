@@ -7,7 +7,7 @@ import type { Issue } from "../types";
 import { cloneForElement, repeatLabel, type RepeatSource } from "./blockRepeat";
 import { nodeBuilders, sequentialIds } from "./builders";
 import { applyCommand } from "./commands";
-import { numberTree, referenceTargetIndex } from "./numbering";
+import { numberTree, referenceAncestorIds, referenceOutline, referenceTargetIndex, refTargetOf } from "./numbering";
 import type { DocumentNode, ForBlockNode, TreeEnv } from "./nodes";
 import { validateTree } from "./nodes";
 import { catalogTypeResolver, clauseGateFrom, validateDocument } from "./validate";
@@ -318,5 +318,90 @@ describe("반복 명령 — setFor (편집기 원천 고르기)", () => {
     const { doc, paragraph } = 납입면제조();
     const index = referenceTargetIndex(doc, numberTree(doc));
     expect(index.get(paragraph.id)).toMatchObject({ kind: "paragraph", paragraph: { n: 1 } });
+  });
+});
+
+describe("조 참조 고르기 색인 — 반복 블록 · 함수조항 참조 · 그 안 코드 (결정 12 · 13 · 편집기는 원형 · 번호는 자리표시)", () => {
+  it("반복 블록 줄 · 함수조항 참조 줄 · 펼칠 본문의 항 · 호 줄이 선다 — 저장 대상은 {조, 코드} · {조, 참조코드, 안쪽코드}", () => {
+    const { doc, outer, inner, ref, paragraph } = 납입면제조();
+    outer.code = "P0100";
+    paragraph.code = "P0200";
+    inner.code = "P0300";
+    ref.code = "P0400";
+    const index = referenceTargetIndex(doc, numberTree(doc), { clauseOf: (c) => [면제호, 부가항, 정의].find((x) => x.code === c), repeatCaption: () => "납입면제종마다" });
+    const article = (doc.children[0] as { id: string }).id;
+    expect(refTargetOf(index.get(outer.id)!)).toEqual({ articleId: article, code: "P0100" });
+    expect(refTargetOf(index.get(ref.id)!)).toEqual({ articleId: article, code: "P0400" });
+    const innerRow = [...index.entries()].find(([, t]) => t.via === "P0400");
+    expect(innerRow && refTargetOf(innerRow[1])).toEqual({ articleId: article, code: "P0400", innerCode: "P0100" });
+    // 트리 — 조 › 반복 블록 › 항 › 안쪽 반복 › 함수조항 참조 › 본문 호
+    const [group] = referenceOutline(index);
+    const rows = group.rows[0].children;
+    expect(rows.map((r) => r.id)).toEqual([outer.id]);
+    expect(rows[0].label).toContain("납입면제종마다");
+    expect(rows[0].children.map((r) => r.id)).toEqual([paragraph.id]);
+    const innerLoop = rows[0].children[0].children[0];
+    expect(innerLoop.id).toBe(inner.id);
+    expect(innerLoop.children[0].id).toBe(ref.id);
+    expect(innerLoop.children[0].label).toContain("납입면제 호");
+    expect(innerLoop.children[0].children.map((r) => r.label)).toEqual([expect.stringContaining("P0100")]);
+    expect(referenceAncestorIds(index, [innerRow![0]])).toEqual(new Set([article, outer.id, paragraph.id, inner.id, ref.id]));
+  });
+});
+
+describe("반복 · 펼친 함수조항 안 · 값 한정 참조 저장 검사 (결정 12 · 13 · ADR-0077 결정 6 · 7)", () => {
+  /** 코드를 매긴 납입면제조 + 뒤에 참조 항 하나. 바깥 반복 P0100 · 항 P0200 · 안쪽 반복 P0300 · 함수조항 참조 P0400, 반복 밖 항 P0500. */
+  function 참조(target: Record<string, unknown>, connector?: "및") {
+    const { doc, outer, inner, ref, paragraph, b } = 납입면제조();
+    outer.code = "P0100";
+    paragraph.code = "P0200";
+    inner.code = "P0300";
+    ref.code = "P0400";
+    const plain = b.paragraph([b.text("고정 항")]);
+    plain.code = "P0500";
+    const article = doc.children[0] as { id: string; children: unknown[] };
+    const r = b.articleRef({ articleId: article.id, ...target } as never);
+    if (connector) r.connector = connector;
+    else delete r.connector;
+    article.children.push(plain, b.paragraph([r]));
+    return { doc, r, article, outer, inner, b };
+  }
+
+  it("반복 블록 · 함수조항 참조도 대상이다 — 펼치면 여럿이라 하나여도 연결어", () => {
+    expect(errors(validateTree(참조({ code: "P0100" }, "및").doc, env))).toEqual([]);
+    expect(errors(validateTree(참조({ code: "P0400" }, "및").doc, env))).toEqual([]);
+    expect(messages(validateTree(참조({ code: "P0100" }).doc, env))).toEqual([expect.stringContaining("연결어")]);
+  });
+
+  it("펼친 함수조항 안 노드 — 참조 노드의 코드 + 그 함수조항 본문의 코드. 없는 안쪽 코드 · 함수조항 참조가 아닌 노드 = 오류", () => {
+    expect(errors(validateTree(참조({ code: "P0400", innerCode: "P0100" }, "및").doc, env))).toEqual([]);
+    expect(validateTree(참조({ code: "P0400", innerCode: "P0900" }, "및").doc, env)).toEqual([expect.objectContaining({ kind: "brokenRef", message: expect.stringContaining("P0900") })]);
+    expect(validateTree(참조({ code: "P0500", innerCode: "P0100" }, "및").doc, env)).toEqual([expect.objectContaining({ kind: "structure", message: expect.stringContaining("함수조항") })]);
+  });
+
+  it("값 한정(해당 값들) — 열거값 반복 안 대상만 · 하나여도 연결어 · 없는 값 = 오류", () => {
+    expect(errors(validateTree(참조({ code: "P0400", restrict: { values: ["V01"] } }, "및").doc, env))).toEqual([]);
+    expect(messages(validateTree(참조({ code: "P0400", restrict: { values: ["V01"] } }).doc, env))).toEqual([expect.stringContaining("연결어")]);
+    expect(validateTree(참조({ code: "P0400", restrict: { values: ["V09"] } }, "및").doc, env)).toEqual([expect.objectContaining({ kind: "brokenRef", message: expect.stringContaining("V09") })]);
+    // 종 반복 안 항(열거값 반복 밖) · 반복 밖 항은 값으로 좁힐 수 없다
+    expect(validateTree(참조({ code: "P0200", restrict: { values: ["V01"] } }, "및").doc, env)).toEqual([expect.objectContaining({ kind: "structure", message: expect.stringContaining("값 한정") })]);
+    expect(validateTree(참조({ code: "P0500", restrict: { values: ["V01"] } }, "및").doc, env)).toEqual([expect.objectContaining({ kind: "structure", message: expect.stringContaining("값 한정") })]);
+    expect(validateTree(참조({ code: "P0400", restrict: { values: [] } }, "및").doc, env)).toEqual([expect.objectContaining({ kind: "structure" })]);
+  });
+
+  it("값 한정(현재 값) — 참조 자리를 감싼 열거값 반복만. 감싸지 않은 반복 · 종 반복 = 오류", () => {
+    const { doc, article, b } = 참조({ code: "P0400" }, "및");
+    const refNow = b.articleRef({ articleId: article.id, code: "P0400" });
+    refNow.connector = "및";
+    const union = b.forBlock(정의조대상마다, [b.paragraph([refNow])]);
+    union.code = "P0600";
+    article.children.push(union);
+    (refNow.targets[0] as { restrict?: unknown }).restrict = { current: union.id };
+    expect(errors(validateTree(doc, env))).toEqual([]);
+    (refNow.targets[0] as { restrict?: unknown }).restrict = { current: "없는-반복" };
+    expect(validateTree(doc, env)).toEqual([expect.objectContaining({ kind: "structure", message: expect.stringContaining("현재 값") })]);
+    const outerId = (article.children[0] as { id: string }).id;
+    (refNow.targets[0] as { restrict?: unknown }).restrict = { current: outerId };
+    expect(validateTree(doc, env)).toEqual([expect.objectContaining({ message: expect.stringContaining("현재 값") })]);
   });
 });

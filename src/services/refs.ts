@@ -145,7 +145,7 @@ export function createRefsService(db: Db): RefsService {
 // ───────────────────────────── 공통 — 문서가 읽는 자리 ─────────────────────────────
 
 /** 「참조」로 치는 형태 — 부착·타입·탑재·조합은 뺀다. */
-const REFERENCE_VIAS: readonly EdgeVia[] = ["when", "slot", "expression", "local", "switchCase", "binding", "defaultBinding"];
+const REFERENCE_VIAS: readonly EdgeVia[] = ["when", "slot", "expression", "local", "switchCase", "valueRestrict", "binding", "defaultBinding"];
 
 /** 문서가 읽는 값 자리 하나 — 직접 또는 공용조항·파생을 거쳐서. 좌표는 문서 쪽 자리다. */
 interface DocumentRead {

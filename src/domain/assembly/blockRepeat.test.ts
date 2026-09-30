@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { DocumentNode, ForBlockNode } from "../document/nodes";
+import type { ForBlockNode } from "../document/nodes";
 import type { Id, Issue } from "../types";
 import { assemble } from "./booklet";
 import { buildContexts } from "./context";
@@ -137,16 +137,5 @@ describe("복제 id · 열쇠 합성과 오류 좌표 — 두 단계 (위험 4)"
         at: expect.objectContaining({ articleId: "a", nodePath: ["g", "a", "fo", "p@opt-type-2", "fi@opt-type-2", "r@opt-type-2@V04", "r@opt-type-2@V04/sw"], refPath: "V04" }),
       }),
     ]);
-  });
-
-  it("반복 안 대상을 가리키는 참조는 아직 조립하지 않는다 — P12 전 `unsupported` (조용히 첫 원소를 찍지 않는다)", () => {
-    const refArticle: DocumentNode["children"][number] = {
-      id: "z",
-      kind: "article",
-      title: "참조",
-      children: [{ id: "zp", kind: "paragraph", children: [{ id: "zr", kind: "articleRef", scope: "self", connector: "및", targets: [{ articleId: "a", code: "P0100" }] }] }],
-    };
-    const r = run({ "opt-type-1": { applies: true, reasons: ["V01"] } }, waiverTemplate([refArticle]));
-    expect(r.issues).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "unsupported", message: expect.stringContaining("반복") })]));
   });
 });

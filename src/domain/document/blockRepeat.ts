@@ -30,7 +30,9 @@ import { parse, refPath, type Expr, type ExprType, type Ref, type TypeResolver }
 import { findMasterField, formsOfLevel, MASTER, type MasterTree } from "../master";
 import type { Code, Coordinate, Id, Issue } from "../types";
 import { coordinateOf, indexTree, type DocumentNode, type ForBlockNode, type NodeEntry, type TreeIndex } from "./nodes";
-import { CODED_KINDS, refKey } from "./pcode";
+import { clauseCodeEntries, withClauseCodes } from "../clause/pcode";
+import { missingValueMessage } from "../catalog/values";
+import { CODED_KINDS, nodesOfTarget, refKey } from "./pcode";
 
 // ───────────────────────────── 모델 ─────────────────────────────
 
@@ -222,14 +224,101 @@ export function cloneForElement<T>(nodes: readonly T[], elementId: string): T[] 
 
 // ───────────────────────────── 반복 안 대상 ─────────────────────────────
 
-/** 반복 블록 안의 참조 대상 열쇠(`조id#코드`) — 대상이 하나여도 여러 번호가 될 수 있다(연결어 필수, 결정 14 확장). */
+/**
+ * 여러 번호가 될 수 있는 참조 대상 열쇠(`조id#코드`) — 대상이 하나여도 연결어가 필요하다(결정 14 확장 · ADR-0077 결정 7).
+ * - 반복 블록 안의 항 · 호 · 목 · 함수조항 참조 · 반복 블록(펼치면 원소마다 생긴다), 반복 블록 자신(펼친 것 전부).
+ * - 함수조항 블록 참조(펼친 것 전부 — 항 · 호 · 목 유형은 여러 개를 낼 수 있다).
+ * - 펼친 함수조항 안 노드(`조id#참조코드/…`)는 그 참조가 반복 안일 때만 — 열쇠 `조id#참조코드/*` 로 싣는다(`multiTarget`).
+ */
 export function repeatedKeys(ix: TreeIndex): Set<string> {
   const out = new Set<string>();
   for (const e of ix.nodes.values()) {
-    if (!e.inFor || e.articleId === undefined) continue;
+    if (e.articleId === undefined) continue;
+    const kind = e.node.kind;
     const code = (e.node as { code?: Code }).code;
-    if (code !== undefined && (e.node.kind === "paragraph" || e.node.kind === "item" || e.node.kind === "subitem")) out.add(refKey({ articleId: e.articleId, code }));
+    if (code === undefined) continue;
+    const key = refKey({ articleId: e.articleId, code });
+    if (kind === "forBlock" || kind === "clauseBlockRef") out.add(key);
+    if (e.inFor && (kind === "paragraph" || kind === "item" || kind === "subitem")) out.add(key);
+    if (e.inFor && kind === "clauseBlockRef") out.add(`${key}/*`);
   }
+  return out;
+}
+
+
+/** 참조 대상 검사 재료 — 함수조항 본문(안쪽 코드) · 열거형(값 한정의 값) · 마스터(반복 원소 타입). */
+export interface RefTargetEnv {
+  clauseOf?: (code: Code) => Clause | undefined;
+  enumOf?: (code: Code) => EnumDef | undefined;
+  master?: MasterTree;
+}
+
+/** 함수조항 본문이 내놓는 참조 대상 코드(항 · 호 · 목) — 코드 없는 자리는 저장 · 펼치기 채번과 같은 규칙으로 채운 뒤. */
+export function clauseInnerCodes(clause: Clause): Set<Code> {
+  const out = new Set<Code>();
+  for (const e of clauseCodeEntries(withClauseCodes(clause.body)).entries) if (e.code !== undefined) out.add(e.code);
+  return out;
+}
+
+/**
+ * 대상이 선 열거값 반복의 열거형 — 대상(안쪽 코드면 그 참조 노드)을 감싼 반복 + (대상이 반복 블록이면) 자신 중 원소가 열거값인 것(안쪽 것).
+ * 없으면 값 한정을 걸 수 없는 대상이다 (ADR-0077 결정 7).
+ */
+export function valueLoopEnum(ix: TreeIndex, t: { articleId: Id; code?: Code }, master: MasterTree = MASTER): Code | undefined {
+  if (t.code === undefined) return undefined;
+  let enumCode: Code | undefined;
+  for (const id of nodesOfTarget(ix, { articleId: t.articleId, code: t.code })) {
+    const h = ix.nodes.get(id);
+    if (!h) continue;
+    const types = loopTypesAt(ix, h, master);
+    if (h.node.kind === "forBlock" && isRepeatSource(h.node.source)) {
+      const outer = enclosingLoops(ix, h).at(-1);
+      const own = loopElementType(h.node.source, outer && isRepeatSource(outer.source) ? outer.source : undefined, master);
+      if (own) types.set(h.node.id, own);
+    }
+    for (const lt of types.values()) if (lt.kind === "enum") enumCode = lt.enumCode;
+  }
+  return enumCode;
+}
+
+/**
+ * 이 문서 안 참조 대상 하나의 검사 (ADR-0077 결정 6 · 7) — 존재는 호출부(`referenceKeys`)가 본다.
+ * - 안쪽 코드: 대상 코드가 함수조항 블록 참조여야 하고, 그 함수조항 본문에 그 코드가 있어야 한다.
+ * - 값 한정: 대상(안쪽 코드면 그 참조 노드)이 원소가 열거값인 반복 안(또는 그 반복 블록)이어야 한다. 해당 값들 = 비지 않은 그 열거형의 값,
+ *   현재 값 = 참조 자리를 감싼 열거값 반복.
+ */
+export function refTargetIssues(t: { articleId: Id; code?: Code; innerCode?: Code; restrict?: unknown }, refEntry: Pick<NodeEntry, "path" | "node">, ix: TreeIndex, env: RefTargetEnv): { kind: Issue["kind"]; message: string }[] {
+  const out: { kind: Issue["kind"]; message: string }[] = [];
+  const master = env.master ?? MASTER;
+  const heads = t.code === undefined ? [] : nodesOfTarget(ix, { articleId: t.articleId, code: t.code }).map((id) => ix.nodes.get(id)!).filter(Boolean);
+  if (t.innerCode !== undefined && heads.length > 0) {
+    const head = heads[0].node;
+    if (head.kind !== "clauseBlockRef") out.push({ kind: "structure", message: `안쪽 코드 ${t.innerCode} 는 함수조항 블록 참조를 가리킬 때만 쓴다 — ${t.code} 는 함수조항 참조가 아닙니다` });
+    else {
+      const clause = env.clauseOf?.(head.clauseCode);
+      if (clause && !clauseInnerCodes(clause).has(t.innerCode)) out.push({ kind: "brokenRef", message: `함수조항 ${head.clauseCode} 본문에 참조 대상 ${t.innerCode} 가 없습니다` });
+    }
+  }
+  if (t.restrict === undefined) return out;
+  const r = t.restrict as { values?: unknown; current?: unknown };
+  const enumCode = valueLoopEnum(ix, t, master);
+  if (heads.length > 0 && enumCode === undefined) {
+    out.push({ kind: "structure", message: "값 한정은 원소가 열거값(사유)인 반복으로 생긴 노드에만 건다 — 이 대상은 그런 반복 안이 아닙니다" });
+    return out;
+  }
+  if (Array.isArray(r.values)) {
+    const values = r.values.filter((v): v is string => typeof v === "string");
+    if (values.length === 0) out.push({ kind: "structure", message: "값 한정의 값을 하나 이상 고른다" });
+    const def = enumCode ? env.enumOf?.(enumCode) : undefined;
+    const missing = def ? values.filter((v) => !def.values.some((x) => x.code === v)) : [];
+    if (def && missing.length > 0) out.push({ kind: "brokenRef", message: missingValueMessage(def, missing) });
+  } else if (typeof r.current === "string") {
+    const types = loopTypesAt(ix, refEntry, master);
+    const lt = types.get(r.current);
+    if (!lt) out.push({ kind: "structure", message: `값 한정 「현재 값」의 반복이 이 참조를 감싸지 않습니다 — 그 반복 블록 안에서만 쓴다` });
+    else if (lt.kind !== "enum") out.push({ kind: "structure", message: "값 한정 「현재 값」은 원소가 열거값(사유)인 반복에만 쓴다 — 종 반복은 안 된다" });
+    else if (enumCode !== undefined && lt.enumCode !== enumCode) out.push({ kind: "typeMismatch", message: `값 한정 「현재 값」의 열거형(${lt.enumCode})이 대상 반복의 열거형(${enumCode})과 다릅니다` });
+  } else out.push({ kind: "structure", message: "값 한정은 값들 또는 현재 값 중 하나다" });
   return out;
 }
 

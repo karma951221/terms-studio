@@ -16,11 +16,11 @@
  * DB·React import 금지 (순수층).
  */
 
-import { CONNECTOR_REPEAT_MESSAGE, CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, type AttachLevel, type Code, type Coordinate, type Id, type Issue, type ReferenceConnector } from "../types";
+import { CONNECTOR_REPEAT_MESSAGE, CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, type AttachLevel, type Code, type Coordinate, type Id, type Issue, type ReferenceConnector, type RefRestrict } from "../types";
 import type { ClauseMode } from "../clause/types";
 import type { Bindings } from "../clause/params";
-import { documentCodeIssues, referenceKeys, refKey, refLabel } from "./pcode";
-import { checkRepeatSource, enclosingLoops, loopTypesAt, REPEAT_MAX_DEPTH, repeatedKeys, type RepeatSource } from "./blockRepeat";
+import { documentCodeIssues, multiTarget, referenceKeys, refKey, refLabel } from "./pcode";
+import { checkRepeatSource, enclosingLoops, loopTypesAt, refTargetIssues, REPEAT_MAX_DEPTH, repeatedKeys, type RepeatSource } from "./blockRepeat";
 import type { EnumDef } from "../catalog/types";
 import type { LoopElementType } from "../clause/params";
 import type { Clause } from "../clause/types";
@@ -85,7 +85,16 @@ export interface InlineForNode {
 export interface RefTarget {
   articleId: Id;
   code?: Code;
+  /**
+   * 펼친 함수조항 안의 항 · 호 · 목 — `code` 가 그 조의 함수조항 블록 참조 노드, `innerCode` 가 함수조항 본문 안의 코드(ADR-0072 결정 3 개정 ·
+   * ADR-0077 결정 6). 조립 열쇠 `조id#참조코드/안쪽코드`.
+   */
+  innerCode?: Code;
+  /** 값 한정 — 반복(열거값 원소)으로 생긴 노드를 그 값이 낸 것만으로 좁힌다 (ADR-0077 결정 7). */
+  restrict?: RefRestrict;
 }
+
+export type { RefRestrict } from "../types";
 
 /**
  * 조 참조 슬롯 — 대상(조 · 조+코드)을 저장하고 렌더 시 계산된 번호(+조 명)를 찍는다.
@@ -269,6 +278,8 @@ export interface ForBlockNode {
   source: RepeatSource;
   /** 화면 이름 — 없으면 원천에서 짓는다(`repeatLabel`: 「납입면제종마다」). */
   alias?: string;
+  /** P코드 — 반복 블록을 가리키는 참조(조립 뒤 펼쳐진 것 전부, ADR-0077 결정 7)의 대상 정체성. */
+  code?: Code;
   children: BlockNode[];
 }
 
@@ -745,17 +756,26 @@ export function checkNodeRefs(e: NodeEntry, ix: TreeIndex, env: TreeEnv, atSave:
       if (n.targets.length === 0) return one("structure", "조 참조 슬롯에는 대상이 하나 이상 있어야 합니다");
       if (n.connector === undefined) {
         if (n.targets.length >= 2) return one("structure", CONNECTOR_REQUIRED_MESSAGE);
-        // 반복 블록 안 대상은 하나여도 여러 번호가 될 수 있다 (결정 14 확장 · ADR-0077 결정 7)
+        // 반복 블록 안 대상 · 반복 블록 · 함수조항 참조 · 값 한정은 하나여도 여러 번호가 될 수 있다 (결정 14 확장 · ADR-0077 결정 7)
         const repeated = n.scope === "self" ? repeatedKeys(ix) : env.generalRepeatedKeys;
-        if (repeated && n.targets.some((t) => repeated.has(refKey(t)))) return one("structure", CONNECTOR_REPEAT_MESSAGE);
+        if (n.targets.some((t) => multiTarget(t, repeated))) return one("structure", CONNECTOR_REPEAT_MESSAGE);
       } else if (!isReferenceConnector(n.connector)) return one("structure", `조 참조 연결어는 「및」·「또는」 중 하나여야 합니다: ${String(n.connector)}`);
       if (n.scope === "general" && env.kind === "general") return one("structure", "보통약관 문서에서는 보통약관 조 참조를 쓸 수 없습니다");
       return n.targets.flatMap((target) => {
-        const key = refKey(target);
+        // 펼친 함수조항 안 노드는 참조 노드가 있는지 보고, 안쪽 코드는 함수조항 본문에서 본다 (refTargetIssues)
+        const key = refKey({ articleId: target.articleId, ...(target.code !== undefined ? { code: target.code } : {}) });
         const exists = n.scope === "self"
           ? referenceKeys(ix).has(key)
           : env.generalReferenceKeys ? env.generalReferenceKeys.has(key) : !env.generalArticleIds || env.generalArticleIds.has(target.articleId);
-        if (exists) return [];
+        if (exists) {
+          const here = { ...at, refPath: refKey(target) };
+          if (n.scope === "self") return refTargetIssues(target, e, ix, { ...(gate.clauseOf ? { clauseOf: (c: Code) => gate.clauseOf!(c) } : {}), ...(env.enumOf ? { enumOf: env.enumOf } : {}), ...(env.master ? { master: env.master } : {}) }).map((i) => ({ ...i, at: here }));
+          // 대응 보통약관 대상 — 값 한정은 반복 안 대상에만(열거형 · 안쪽 코드는 그 문서를 열 때 본다)
+          if (target.restrict !== undefined && env.generalRepeatedKeys && !env.generalRepeatedKeys.has(key)) return [{ kind: "structure" as const, message: "값 한정은 반복으로 생긴 노드에만 건다 — 이 보통약관 대상은 반복 안이 아닙니다", at: here }];
+          const current = (target.restrict as { current?: unknown } | undefined)?.current;
+          if (typeof current === "string" && !loopTypesAt(ix, e, env.master).has(current)) return [{ kind: "structure" as const, message: "값 한정 「현재 값」의 반복이 이 참조를 감싸지 않습니다 — 그 반복 블록 안에서만 쓴다", at: here }];
+          return [];
+        }
         const message = n.scope === "self"
           ? `참조 대상 ${refLabel(target)} 가 이 문서에 없습니다`
           : `보통약관 참조 대상 ${refLabel(target)} 가 대응 보통약관에 없습니다`;

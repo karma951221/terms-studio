@@ -231,6 +231,18 @@ describe("함수조항 S1 — 조 참조 · 별표 참조 검사 (기능/함수�
     expect(analyzeBody("inline", [조참조([{ articleId: "g-art-1", code: "P0100" }], "및")], [], { generalRepeatedKeys: new Set(["g-art-1#P0100"]) }).ok).toBe(true);
   });
 
+  it("보통약관의 펼친 함수조항 안 노드 · 값 한정(해당 값들)을 가리킨다 — 값 한정은 하나여도 연결어, 「현재 값」은 함수조항 본문에서 못 쓴다", () => {
+    const keys = new Set(["g-art-1", "g-art-1#P0400"]);
+    const repeated = new Set(["g-art-1#P0400", "g-art-1#P0400/*"]);
+    const inner = [조참조([{ articleId: "g-art-1", code: "P0400", innerCode: "P0100" } as never], "및")];
+    expect(analyzeBody("inline", inner, [], { generalReferenceKeys: keys, generalRepeatedKeys: repeated }).ok).toBe(true);
+    const valued = (connector: "및" | null) => [조참조([{ articleId: "g-art-1", code: "P0400", restrict: { values: ["V01"] } } as never], connector)];
+    expect(analyzeBody("inline", valued("및"), [], { generalReferenceKeys: keys, generalRepeatedKeys: repeated }).ok).toBe(true);
+    expect(issuesOf(analyzeBody("inline", valued(null), [], { generalReferenceKeys: keys, generalRepeatedKeys: repeated }))[0]!.message).toContain("연결어");
+    const now = [조참조([{ articleId: "g-art-1", code: "P0400", restrict: { current: "f" } } as never], "및")];
+    expect(issuesOf(analyzeBody("inline", now, [], { generalReferenceKeys: keys, generalRepeatedKeys: repeated }))[0]!.message).toContain("현재 값");
+  });
+
   it("별표 코드가 비어 있으면 거부한다 (structure)", () => {
     const issues = issuesOf(analyzeBody("inline", [별표참조("")], []));
     expect(issues.map((i) => i.kind)).toEqual(["structure"]);

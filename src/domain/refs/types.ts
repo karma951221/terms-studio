@@ -89,6 +89,8 @@ export type EdgeVia =
   | "override"
   /** 조 참조 슬롯 (self · general) */
   | "articleRef"
+  /** 값 한정 참조가 고른 열거값 (최종 결정 13) — 좌표는 참조 자리 · refPath 대상 열쇠. 열거값 추가 = 재검사(새 값은 한정에 안 든다) · 지운 값 = 「없는 값」 */
+  | "valueRestrict"
   /** 조연결 (담보약관 조 → 보통약관 조) */
   | "link"
   /** 별표 참조 슬롯 */

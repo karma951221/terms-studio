@@ -193,6 +193,7 @@ export const REFERENCE_VIA_LABEL = {
   expression: "파생식",
   local: "내부 변수",
   switchCase: "값별 분기",
+  valueRestrict: "값 한정 참조",
   nodeQualifier: "노드 한정자",
   clauseRef: "함수조항 참조",
   optionSelect: "옵션 선택",

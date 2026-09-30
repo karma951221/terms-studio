@@ -1,6 +1,6 @@
 # ADR-0072 — 참조 대상 식별: 조는 uuid · 항·호·목은 조 전체에서 유일한 P코드 · 조 제목 인라인 조건 · 조 자리 조건은 켜고 끄기만
 
-> 상태: 채택 · 날짜: 2026-09-27 · 구현(2026-09-30): 결정 1 · 2b · 3(개정) · 4(공존 유일 — 조건 가지 · 값별 분기 칸) · 5(채번 · 사본 재채번 · 이동 무재채번 · 직접 수정 명령) · 6 · 8 · 9 · 10 — `src/domain/document/pcode.ts` · `src/domain/clause/pcode.ts` · `src/domain/assembly/render.ts`. 수용 기준 1 · 2 · 3 · 7(조 자리 elif · else 거부) = `document/pcode.test.ts`, 4(일부) · 5 · 6(이동으로 대신) = `pcode.test.ts` · `assembly/pcodeRefs.test.ts`.
+> 상태: 채택 · 날짜: 2026-09-27 · 구현(2026-09-30): 결정 1 · 2b · 3(개정 — 펼친 함수조항 안 노드 · 반복 블록 · 값 한정 `{ articleId, code, innerCode?, restrict? }` 포함, ADR-0077 결정 6 · 7) · 4(공존 유일 — 조건 가지 · 값별 분기 칸) · 5(채번 · 사본 재채번 · 이동 무재채번 · 직접 수정 명령) · 6 · 8 · 9 · 10 — `src/domain/document/pcode.ts` · `src/domain/clause/pcode.ts` · `src/domain/assembly/render.ts`. 수용 기준 1 · 2 · 3 · 7(조 자리 elif · else 거부) = `document/pcode.test.ts`, 4(일부) · 5 · 6(이동으로 대신) = `pcode.test.ts` · `assembly/pcodeRefs.test.ts`.
 > 미구현: 코드 수정 창 · 이동 충돌 추천 화면 · 영향 건수(수용 기준 4 · 5 의 화면 몫) · 들여쓰기 명령(결정 7 — 명령이 없다) · 2a(조 제목 인라인 조건 — 수용 기준 7 후반).
 >
 > **개정** [[기능/문면/문면]] §3.5 조 참조 슬롯 — 참조 대상 저장 형태 `{ nodeId }` → `{ articleId }` · `{ articleId, code }`.

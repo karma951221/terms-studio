@@ -11,8 +11,10 @@ import type { Appendix } from "../document/appendix";
 import { refKey } from "../document/pcode";
 import { appendixRefLabel, articleLabel, itemLabel, paragraphLabel, referenceChunkLabel, referenceTargetLabel, sectionLabel, subitemLabel, type ReferenceTarget } from "../document/numbering";
 import type { Code, Coordinate, Id, Issue } from "../types";
+import { keyBase } from "./resolve";
 import type {
   BookletAppendix,
+  LoopTag,
   ErrorNode,
   NumberedDoc,
   NumberedNode,
@@ -114,23 +116,48 @@ export interface RenderOutcome {
   issues: Issue[];
 }
 
-/** 번호 붙은 조립 결과의 색인 — 노드 id → 대상(좌표 · 출처 표기용), 참조 열쇠(`refKey`) → 대상(참조 해소용, ADR-0072). */
+/** 열쇠 하나가 가리키는 살아남은 노드 — 반복 원소 표지와 함께 (반복 안 대상 · 값 한정을 좁히는 재료). */
+interface Instance {
+  target: ReferenceTarget;
+  loops: readonly LoopTag[];
+}
+
+/**
+ * 번호 붙은 조립 결과의 색인 — 노드 id → 대상(좌표 · 출처 표기용), 참조 열쇠(`refKey`) → 대상(참조 해소용, ADR-0072).
+ * 반복 · 함수조항 펼치기가 만든 노드는 열쇠의 원형(복제 접미사를 뗀 것)으로도 모은다 — 원형 하나 = 원소마다 생긴 노드 여럿(ADR-0077 결정 7).
+ */
 interface TargetIndex {
   byId: Map<Id, ReferenceTarget>;
   byKey: Map<string, ReferenceTarget>;
-  /** 반복 블록이 복제한 노드의 원 열쇠(`조id#코드` — 복제 접미사 `@원소` 앞) — 반복으로 생긴 노드를 가리키는 참조 판정 (ADR-0077 결정 7, 해소는 P12). */
-  repeated: Set<string>;
+  /** 원형 열쇠(`조id#P0200/P0100`) → 그 열쇠로 생긴 노드들(문서 순). 반복 밖 노드는 하나. */
+  instances: Map<string, Instance[]>;
+  /** 반복 블록 · 함수조항 블록 참조의 원형 열쇠 → 그 블록이 곧바로 낸 노드들(문서 순) — 「펼친 것 전부」. */
+  groups: Map<string, Instance[]>;
+  /** 조립이 밟은 반복 블록이 낼 수 있던 원형 열쇠 — 원소 0개라 노드가 없어도 「0개」 오류로 가른다. */
+  repeatBases: Set<string>;
 }
 
 function targetIndex(d: NumberedDoc | undefined): TargetIndex {
   const byId = new Map<Id, ReferenceTarget>();
   const byKey = new Map<string, ReferenceTarget>();
-  const repeated = new Set<string>();
-  const put = (id: Id, articleId: Id, key: string | undefined, t: ReferenceTarget) => {
+  const instances = new Map<string, Instance[]>();
+  const groups = new Map<string, Instance[]>();
+  const repeatBases = new Set<string>();
+  const push = (m: Map<string, Instance[]>, key: string, inst: Instance) => {
+    const list = m.get(key);
+    if (list) list.push(inst);
+    else m.set(key, [inst]);
+  };
+  const put = (id: Id, articleId: Id, n: { key?: string; loops?: LoopTag[]; groups?: string[] }, t: ReferenceTarget) => {
     byId.set(id, t);
-    if (key !== undefined && key.includes("@")) repeated.add(refKey({ articleId, code: key.slice(0, key.indexOf("@")) }));
+    const inst: Instance = { target: t, loops: n.loops ?? [] };
+    for (const g of n.groups ?? []) push(groups, refKey({ articleId, code: keyBase(g) }), inst);
+    if (n.key === undefined) return;
+    const exact = refKey({ articleId, code: n.key });
     // 같은 열쇠는 살아남은 트리에 하나다(배타 가지 짝은 하나만 산다) — 먼저 것을 둔다
-    if (key !== undefined && !byKey.has(refKey({ articleId, code: key }))) byKey.set(refKey({ articleId, code: key }), t);
+    if (byKey.has(exact)) return;
+    byKey.set(exact, t);
+    push(instances, refKey({ articleId, code: keyBase(n.key) }), inst);
   };
   for (const a of d ? articlesOf(d.doc) : []) {
     const articleNumber = d!.numbers.get(a.id);
@@ -138,27 +165,48 @@ function targetIndex(d: NumberedDoc | undefined): TargetIndex {
     const article = { id: a.id, n: articleNumber.n, title: a.title };
     byId.set(a.id, { kind: "article", article });
     byKey.set(a.id, { kind: "article", article });
+    instances.set(a.id, [{ target: { kind: "article", article }, loops: [] }]);
+    for (const k of a.repeatKeys ?? []) repeatBases.add(refKey({ articleId: a.id, code: k }));
     for (const p of a.children) {
       if (p.kind !== "paragraph") continue;
       const paragraphNumber = d!.numbers.get(p.id);
       if (!paragraphNumber) continue;
       const paragraph = { id: p.id, n: paragraphNumber.n };
-      put(p.id, a.id, p.key, { kind: "paragraph", article, paragraph });
+      put(p.id, a.id, p, { kind: "paragraph", article, paragraph });
       for (const it of p.items ?? []) {
         if (it.kind !== "item") continue;
         const itemNumber = d!.numbers.get(it.id);
         if (!itemNumber) continue;
         const item = { id: it.id, n: itemNumber.n };
-        put(it.id, a.id, it.key, { kind: "item", article, paragraph, item });
+        put(it.id, a.id, it, { kind: "item", article, paragraph, item });
         for (const sub of it.subitems ?? []) {
           if (sub.kind !== "subitem") continue;
           const subitemNumber = d!.numbers.get(sub.id);
-          if (subitemNumber) put(sub.id, a.id, sub.key, { kind: "subitem", article, paragraph, item, subitem: { id: sub.id, n: subitemNumber.n } });
+          if (subitemNumber) put(sub.id, a.id, sub, { kind: "subitem", article, paragraph, item, subitem: { id: sub.id, n: subitemNumber.n } });
         }
       }
     }
   }
-  return { byId, byKey, repeated };
+  return { byId, byKey, instances, groups, repeatBases };
+}
+
+/**
+ * 열쇠 하나 → 살아남은 노드들 (ADR-0072 결정 9 · ADR-0077 결정 7). 복제 접미사가 든 열쇠(「이 함수조항」 참조가 사본 안에서 만든 것)는 그 노드 하나,
+ * 원형 열쇠는 그 열쇠로 생긴 노드 전부(반복 밖이면 하나), 없으면 그 열쇠의 블록(반복 블록 · 함수조항 참조)이 곧바로 낸 노드 전부.
+ */
+function lookup(ix: TargetIndex, key: string): Instance[] | undefined {
+  if (key.includes("@")) {
+    const t = ix.byKey.get(key);
+    return t ? [{ target: t, loops: [] }] : undefined;
+  }
+  return ix.instances.get(key) ?? ix.groups.get(key);
+}
+
+/** 반복으로 생길 수 있는 대상인가 — 밟은 반복의 원형이거나(원소 0개 포함) 안쪽 코드의 참조 노드가 그렇다. */
+function repeatBorn(ix: TargetIndex, key: string): boolean {
+  if (ix.repeatBases.has(key)) return true;
+  const slash = key.indexOf("/");
+  return slash >= 0 && ix.repeatBases.has(key.slice(0, slash));
 }
 
 /** 해소된 대상의 노드 id — 가장 깊은 단계. */
@@ -221,23 +269,17 @@ class Renderer {
   /** 노드 id → 대상 (참조 자리의 출처 — 앞 경로 생략 기준). */
   private readonly self: Map<Id, ReferenceTarget>;
   /** 참조 열쇠 → 대상 — 이 문서 · 보통약관. */
-  private readonly selfKeys: Map<string, ReferenceTarget>;
-  private readonly selfRepeated: Set<string>;
-  private readonly generalRepeated: Set<string>;
-  private readonly generalKeys: Map<string, ReferenceTarget>;
+  private readonly own: TargetIndex;
+  private readonly general: TargetIndex;
   private readonly appendices: Map<Code, BookletAppendix>;
 
   constructor(
     private readonly numbered: NumberedDoc,
     private readonly env: RenderEnv,
   ) {
-    const own = targetIndex(numbered);
-    this.self = own.byId;
-    this.selfKeys = own.byKey;
-    this.selfRepeated = own.repeated;
-    const general = targetIndex(env.general);
-    this.generalKeys = general.byKey;
-    this.generalRepeated = general.repeated;
+    this.own = targetIndex(numbered);
+    this.self = this.own.byId;
+    this.general = targetIndex(env.general);
     this.appendices = new Map(env.appendices.map((a) => [a.code, a]));
   }
 
@@ -262,39 +304,45 @@ class Renderer {
         if (n.scope === "general" && this.env.document !== "general" && !this.env.general) {
           return this.error(n.id, { kind: "brokenRef", message: "보통약관 템플릿이 없어 보통약관 참조를 해소할 수 없습니다", at: { ...n.at, ...(n.targets[0] ? { refPath: refKey(n.targets[0]) } : {}) } });
         }
-        // 사라짐 판정 = 「살아남은 트리에 그 조의 그 코드가 없다」 — 같은 코드를 공유한 분기 짝 중 살아남은 것으로 해소한다 (ADR-0072 결정 9)
+        // 사라짐 판정 = 「살아남은 트리에 그 조의 그 코드가 없다」 — 같은 코드를 공유한 분기 짝 중 살아남은 것으로 해소한다 (ADR-0072 결정 9).
+        // 반복 · 함수조항 블록이 만든 노드는 원형 열쇠 하나에 여럿 — 펼친 것 전부, 같은 반복 회차 안의 참조면 그 회차의 사본, 값 한정이면 그 값이 낸 것만.
+        // 그렇게 좁힌 것이 0개면 조립 오류다 (ADR-0077 결정 7 — 좌표 = 참조 자리)
         const alive: ReferenceTarget[] = [];
         const dropped: { key: string; articleId: Id }[] = [];
-        const repeatedTargets: string[] = [];
+        const empty: string[] = [];
         let generalPrefix = n.scope === "general";
         let previous = n.scope === "self" ? source : undefined;
         for (const target of n.targets) {
           const key = refKey(target);
-          let info = n.scope === "self" || this.env.document === "general" ? this.selfKeys.get(key) : this.generalKeys.get(key);
-          if (!info && n.scope === "self") {
+          let ix = n.scope === "self" || this.env.document === "general" ? this.own : this.general;
+          let found = lookup(ix, key);
+          if (!found && n.scope === "self") {
             // 별칭 — 생략된 특약 조(→ 보통약관 조) 또는 대치된 기본계약 조 · 그 항 · 호 · 목(→ 이 문서의 대치 노드).
             const alias = this.env.aliases?.get(key);
             if (alias) {
-              const own = this.selfKeys.get(alias);
-              if (own) {
-                info = own;
-              } else {
-                info = this.generalKeys.get(alias);
-                if (info) {
+              found = lookup(this.own, alias);
+              if (!found) {
+                found = lookup(this.general, alias);
+                if (found) {
+                  ix = this.general;
                   generalPrefix = true;
                   previous = undefined;
                 }
               }
             }
           }
-          if (info) alive.push(info);
-          else if ((n.scope === "self" || this.env.document === "general" ? this.selfRepeated : this.generalRepeated).has(key)) repeatedTargets.push(key);
+          const narrowed = (found ?? []).filter(
+            (inst) =>
+              inst.loops.every((l) => n.within?.[l.loop] === undefined || n.within[l.loop] === l.element) &&
+              (target.values === undefined || inst.loops.some((l) => l.kind === "enumValue" && target.values!.includes(l.element))),
+          );
+          if (narrowed.length > 0) alive.push(...narrowed.map((i) => i.target));
+          else if (target.values !== undefined || (found?.length ?? 0) > 0 || repeatBorn(ix, key)) empty.push(key);
           else dropped.push({ key, articleId: target.articleId });
         }
-        if (repeatedTargets.length > 0) {
-          // 반복 블록 안 노드 — 펼치면 원소마다 생겨 하나로 정할 수 없다. 조용히 첫 원소를 찍지 않는다 (반복 블록 · 값 한정 참조는 P12 — ADR-0077 결정 7)
-          for (const key of repeatedTargets) {
-            this.issues.push({ kind: "unsupported", message: `참조 대상 ${key} 은(는) 반복 블록 안 노드라 펼치면 원소마다 생깁니다 — 반복으로 생긴 노드를 가리키는 참조는 아직 조립하지 않습니다`, at: { ...n.at, refPath: key } });
+        if (empty.length > 0) {
+          for (const key of empty) {
+            this.issues.push({ kind: "articleGone", message: `참조 대상 ${key} 을(를) 반복 · 값 한정으로 펼친 것이 0개입니다 — 이 상품에서 그 대상이 생기지 않는다`, at: { ...n.at, refPath: key } });
           }
           return { kind: "error", id: n.id, issue: this.issues.at(-1)! };
         }

@@ -14,7 +14,7 @@ import { evaluate, parse, refPath, type ValueRef } from "../expression";
 import { findMasterField, type MasterTree } from "../master";
 import type { Code, Coordinate, FieldType, Issue, Value } from "../types";
 import type { AssemblyContext } from "./context";
-import type { ErrorNode, RArticle, RBulletList, RInline, RItem, RParagraph, ResolvedDoc, RStatic, RSubitem, SInline, SubstitutedDoc } from "./types";
+import type { ErrorNode, LoopTag, RArticle, RBulletList, RInline, RItem, RParagraph, ResolvedDoc, RStatic, RSubitem, SInline, SubstitutedDoc } from "./types";
 import { mapArticles } from "./walk";
 
 export interface SubstituteEnv {
@@ -126,7 +126,7 @@ class Substituter {
     return {
       kind: "item",
       id: n.id,
-      ...(n.key !== undefined ? { key: n.key } : {}),
+      ...keyedOf(n),
       children: this.inlines(n.children),
       ...(n.subitems ? { subitems: n.subitems.map((s) => (s.kind === "error" ? s : s.kind === "bulletList" ? this.bullets(s) : this.subitem(s))) } : {}),
     };
@@ -147,7 +147,7 @@ class Substituter {
     return {
       kind: "paragraph",
       id: n.id,
-      ...(n.key !== undefined ? { key: n.key } : {}),
+      ...keyedOf(n),
       children: this.inlines(n.children),
       ...(n.items ? { items: n.items.map((it) => (it.kind === "item" ? this.item(it) : it.kind === "error" ? it : this.static(it))) } : {}),
       ...(n.excludeFromComparison ? { excludeFromComparison: true } : {}),
@@ -162,4 +162,9 @@ class Substituter {
 export function substituteSlots(doc: ResolvedDoc, ctx: AssemblyContext, env: SubstituteEnv): SubstituteOutcome {
   const s = new Substituter(ctx, env);
   return { doc: mapArticles(doc, (a) => s.article(a)), issues: s.issues };
+}
+
+/** 참조 열쇠 · 반복 원소 표지 · 블록 묶음 (`Keyed`) — 단계를 건너도 그대로 싣는다. */
+function keyedOf(n: { key?: string; loops?: LoopTag[]; groups?: string[] }): { key?: string; loops?: LoopTag[]; groups?: string[] } {
+  return { ...(n.key !== undefined ? { key: n.key } : {}), ...(n.loops ? { loops: n.loops } : {}), ...(n.groups ? { groups: n.groups } : {}) };
 }
