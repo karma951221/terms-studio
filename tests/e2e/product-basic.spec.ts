@@ -48,10 +48,10 @@ test(
       await expect(page.getByRole("button", { name: "더보기" })).toHaveCount(0);
       await name.fill("취소할 이름");
       await page.getByRole("button", { name: "취소", exact: true }).click();
-      await page.getByRole("button", { name: "계속 편집" }).click();
+      await page.getByRole("button", { name: "계속 수정" }).click();
       await expect(name).toHaveValue("취소할 이름");
       await page.getByRole("button", { name: "취소", exact: true }).click();
-      await page.getByRole("button", { name: "버리기" }).click();
+      await page.getByRole("button", { name: "저장하지 않고 나가기" }).click();
       await expect(name).toHaveValue(originalName);
       await expect(name).toHaveAttribute("readonly", "");
 

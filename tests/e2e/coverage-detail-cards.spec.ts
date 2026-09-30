@@ -113,7 +113,7 @@ test(
     await ev.action("담보카드#8", "취소 — 시드 담보를 바꾸지 않고 편집을 버린다", async () => {
       await page.getByRole("button", { name: "편집 취소", exact: true }).click();
       // 면책 폼을 열어 변경이 있다 — 「고친 내용을 버립니까?」를 거친다
-      await page.getByRole("button", { name: "버리기", exact: true }).click();
+      await page.getByRole("button", { name: "저장하지 않고 나가기", exact: true }).click();
       await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
       await page.reload();
       await expect(page.locator("section.ts-cov-card[data-level='subCoverage']")).toHaveCount(7);

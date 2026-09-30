@@ -61,7 +61,7 @@ test(
 
     await ev.action("담보속성#5", "편집 취소 → 버리기 — 새 행은 사라지고 읽기로 돌아간다(저장 없음)", async () => {
       await page.getByRole("button", { name: "편집 취소", exact: true }).click();
-      await page.getByRole("button", { name: "버리기", exact: true }).click();
+      await page.getByRole("button", { name: "저장하지 않고 나가기", exact: true }).click();
       await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
       await expect(page.locator("table.ts-attr-values tbody tr")).toHaveCount(2);
       await expect(page.getByText("혼합형")).toHaveCount(0);

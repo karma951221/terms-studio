@@ -1583,6 +1583,12 @@ button.danger:focus-visible {
   color: var(--ts-ink);
 }
 
+/* 화면 위쪽에 고정하는 모달 — 가운데보다 시선이 먼저 닿는 자리 */
+.ts-dialog-top:modal {
+  margin-top: 12vh;
+  padding: 16px 18px;
+}
+
 .ts-dialog::backdrop {
   background: rgb(0 0 0 / 28%);
 }

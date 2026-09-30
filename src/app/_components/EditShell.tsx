@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useTransition, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import type { EditOutcome } from "@/app/_lib/edit";
@@ -63,9 +63,37 @@ function ImpactLines({ outcome }: { outcome: Extract<EditOutcome, { ok: "confirm
 /** 편집 모드에서 잠긴 즉시 실행 명령(헤더 🗑 등)의 tooltip — 디자인원칙 §2 L2. */
 export const EDIT_MODE_LOCKED_TIP = "저장하거나 취소한 뒤 실행";
 
-/** 「고친 내용을 버립니까?」 — 편집 중 나가기 · ✕ 취소가 함께 쓰는 확인. */
+/**
+ * 「저장하지 않은 변경 사항」 확인 — 편집 중 나가기 · ✕ 취소가 함께 쓴다.
+ * 모달(`showModal`)로 띄워 화면 위쪽에 고정한다 — 제자리(`open`)로 그리면 폼 맨 아래에 붙어 눈에 안 띈다. Esc 는 「계속 수정」.
+ */
 export function DiscardDialog({ onStay, onDiscard }: { onStay: () => void; onDiscard: () => void }) {
-  return <dialog open className="ts-dialog"><p className="ts-confirm-title">고친 내용을 버립니까?</p><div className="ts-confirm-actions"><button type="button" onClick={onStay}>계속 편집</button><button type="button" className="danger" onClick={onDiscard}>버리기</button></div></dialog>;
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog || dialog.open) return;
+    // jsdom 에는 showModal 이 없다 — 그때는 제자리로 연다
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      className="ts-dialog ts-dialog-top"
+      aria-labelledby="ts-discard-title"
+      onCancel={(e) => {
+        e.preventDefault();
+        onStay();
+      }}
+    >
+      <p id="ts-discard-title" className="ts-confirm-title">저장하지 않은 변경 사항이 있습니다</p>
+      <p className="ts-confirm-body">지금 나가면 수정한 내용이 모두 사라집니다.</p>
+      <div className="ts-confirm-actions">
+        <button type="button" className="primary" autoFocus onClick={onStay}>계속 수정</button>
+        <button type="button" className="danger" onClick={onDiscard}>저장하지 않고 나가기</button>
+      </div>
+    </dialog>
+  );
 }
 
 export function EditShell<T extends EditData>({
