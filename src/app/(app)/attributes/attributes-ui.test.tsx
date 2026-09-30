@@ -3,7 +3,8 @@
  *
  * - 조회: 한 행 = 유효값 하나(갱신유형의 비갱신형 · 갱신형이 각각 한 행) · 「수」 컬럼 없음 · 검색은 유형 · 값 어느 쪽으로도.
  * - 상세 값 표: 코드 · 값 이름 · 「상품담보명 표기」ⓘ — 순서 · 사용 수 컬럼 없음, 「명명 조각」이라는 말 없음.
- * - 편집 모드: 표 끝 「+ 값 추가」 한 줄 · 행마다 ⊖. 읽기 모드에는 둘 다 없다.
+ * - 편집 모드: 값 행 표 문법(ValueRowsTable, 2026-10-01) — 행 앞 ⊖ 「행 삭제 · {값 이름}」 · 마지막 행 아래 ⊕ 「행 추가 · 값」.
+ *   코드가 곧 순서라 끌기 손잡이는 없다. 읽기 모드에는 조작이 없다.
  *
  * 조회 페이지는 서비스를 바꿔 끼워 서버 컴포넌트를 그대로 그리고, 상세 표는 `EditShell.initialMode` 로 모드를 고정해 본다
  * (같은 패턴: `EditShell.test.tsx` · `CoverageCards.test.tsx`).
@@ -83,25 +84,25 @@ function detailHtml(mode: "read" | "edit") {
 }
 
 describe("담보속성 상세 — 유효값 표", () => {
-  it("읽기: 코드 · 값 이름 · 상품담보명 표기(ⓘ) — 순서 · 사용 수 없음 · 「+ 값 추가」 · ⊖ 없음", () => {
+  it("읽기: 코드 · 값 이름 · 상품담보명 표기(ⓘ) — 순서 · 사용 수 없음 · ⊕ · ⊖ 없음", () => {
     const html = detailHtml("read");
     expect(headers(html)).toEqual(["코드", "값 이름", "상품담보명 표기"]);
     expect(html).toContain('title="상품담보명에 이 값 대신 들어갈 말 — 비우면 붙지 않는다"');
     expect(html).not.toMatch(/사용 수|순서|명명/);
-    expect(html).not.toContain("값 추가");
-    expect(html).not.toContain("빼기");
+    expect(html).not.toMatch(/행 추가|행 삭제|순서 옮기기/);
     expect(bodyRows(html)).toEqual([
       ["1", "비갱신형", "—"],
       ["2", "갱신형", "갱신형"],
     ]);
   });
 
-  it("편집: 값 이름 · 표기가 입력칸, 행마다 ⊖(저장할 때 삭제), 표 끝(tfoot) 한 줄 「+ 값 추가」 — 옛 값 추가 입력 줄 · ↑↓ 없음", () => {
+  it("편집: 값 이름 · 표기가 입력칸, 행 앞 ⊖(행 삭제), 마지막 행 아래(tfoot) ⊕ 「행 추가 · 값」 — 코드 순이라 손잡이 · ↑↓ 없음", () => {
     const html = detailHtml("edit");
-    expect(html).toMatch(/<tfoot><tr class="ts-table-add"><td colSpan="4"><button type="button" class="ts-linklike ts-cov-add"[^>]*>.*값 추가<\/button><\/td><\/tr><\/tfoot>/);
-    expect(html).toContain('aria-label="비갱신형(1) 빼기 — 저장할 때 삭제"');
+    expect(html).toMatch(/<tfoot><tr class="ts-vrows-add"><td class="ts-vrows-ctl"[^>]*><button[^>]*aria-label="행 추가 · 값"/);
+    expect(headers(html)).toEqual(["조작", "코드", "값 이름", "상품담보명 표기"]);
+    expect(html).toMatch(/<tr><td class="ts-vrows-ctl">.*?aria-label="행 삭제 · 비갱신형".*?<\/td><td class="col-code/);
     expect(html).toContain('aria-label="값 이름 2"');
     expect(html).toContain('aria-label="상품담보명 표기 — 갱신형"');
-    expect(html).not.toMatch(/위로|아래로|ts-add-row/);
+    expect(html).not.toMatch(/위로|아래로|순서 옮기기|ts-add-row/);
   });
 });

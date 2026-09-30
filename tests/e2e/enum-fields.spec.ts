@@ -30,7 +30,7 @@ test(
       await page.goto("/enums/E0001");
       const firstValue = (await page.locator("table.ts-table").last().locator("tbody tr").first().locator("td").nth(1).innerText()).trim();
       await page.getByRole("button", { name: "편집", exact: true }).click();
-      await page.getByRole("button", { name: "필드 추가", exact: true }).click();
+      await page.getByRole("button", { name: "행 추가 · 필드", exact: true }).click();
       await page.getByRole("textbox", { name: /^필드 이름/ }).last().fill(field);
       await page.getByRole("combobox", { name: `${field} 타입` }).selectOption({ label: "참거짓" });
       // 값 × 필드 칸 — 새 필드 열이 값 표에 바로 선다
@@ -52,7 +52,7 @@ test(
         // 필드 삭제 = 관리자 확인 (ADR-0019) — 「값 1개의 입력이 지워진다」
         await page.goto("/enums/E0001");
         await page.getByRole("button", { name: "편집", exact: true }).click();
-        await page.getByRole("button", { name: new RegExp(`^${field}\\(F\\d+\\) 빼기`) }).click();
+        await page.getByRole("button", { name: `행 삭제 · ${field}`, exact: true }).click();
         await page.getByRole("button", { name: "저장", exact: true }).click();
         const dialog = page.locator("dialog.ts-dialog");
         await expect(dialog).toContainText("필드를 빼거나 타입을 바꾸면 값마다 넣은 입력이 지워진다");

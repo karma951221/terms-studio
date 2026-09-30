@@ -4108,21 +4108,51 @@ button.ts-ref-fold:hover {
   min-width: 0;
 }
 
-/* 값 표 머리 — 행 수 + 「+」(빈 행 추가). 표 위 오른쪽 끝, 표와 같은 폭 */
-.ts-values-head {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 0 0 4px;
+/*
+ * 값 행 표 (ValueRowsTable, 디자인원칙 §2 L2 「값 행 표」, 2026-10-01) — 편집이면 행 맨 앞 조작 칸(⊖ · 끌기 손잡이 ⋮⋮),
+ * 마지막 행 아래 ⊕ 한 줄. 조작 칸은 버튼 폭만큼만 — 값 칸이 자리를 먹는다.
+ */
+.ts-vrows th.ts-vrows-ctl,
+.ts-vrows td.ts-vrows-ctl {
+  width: 1%;
+  padding-right: 2px;
+  white-space: nowrap;
 }
 
-/* 열거형 필드 표 — 제목 「필드」 는 왼쪽, 「+」 는 오른쪽. 값 표와 사이를 띄운다 (ADR-0078 결정 2) */
+.ts-vrows-ctl-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ts-vrows-handle {
+  cursor: grab;
+  color: var(--ts-ink-3);
+}
+
+.ts-vrows-handle:hover,
+.ts-vrows-handle:focus-visible {
+  color: var(--ts-ink);
+}
+
+.ts-vrows-handle:active {
+  cursor: grabbing;
+}
+
+.ts-vrows tr.is-dragging > td {
+  background: var(--ts-surface-2);
+  opacity: 0.6;
+}
+
+.ts-vrows tfoot tr.ts-vrows-add > td {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  border-bottom: 0;
+}
+
+/* 열거형 필드 표 — 제목 「필드」 한 줄 + 값 행 표. 값 표와 사이를 띄운다 (ADR-0078 결정 2) */
 .ts-enum-fields {
   margin: 0 0 16px;
-}
-.ts-enum-fields > .ts-values-head {
-  justify-content: space-between;
 }
 
 .ts-table tr.is-error > td {

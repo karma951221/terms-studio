@@ -322,3 +322,17 @@ export function IconButton({ label, icon, danger, className, type, ...rest }: Ic
     </button>
   );
 }
+
+/** 끌기 손잡이 ⋮⋮ — 값 표 행의 순서를 끌어서 바꾼다 (ValueRowsTable, 2026-10-01). 점은 채운 원이라 stroke 를 끈다. */
+export function IconGrip(props: IconProps) {
+  return (
+    <Svg {...props} stroke="none" fill="currentColor">
+      <circle cx="6" cy="3.5" r="1.1" />
+      <circle cx="10" cy="3.5" r="1.1" />
+      <circle cx="6" cy="8" r="1.1" />
+      <circle cx="10" cy="8" r="1.1" />
+      <circle cx="6" cy="12.5" r="1.1" />
+      <circle cx="10" cy="12.5" r="1.1" />
+    </Svg>
+  );
+}
