@@ -5756,7 +5756,7 @@
                     "text": "도 제외합니다."
                   }
                 ],
-                "when": "arg.납입면제_있음"
+                "when": "arg.납입면제_있음 = true"
               },
               {
                 "id": "c-alpha-application-n7-else",
@@ -5846,7 +5846,7 @@
             "branches": [
               {
                 "id": "c-meritz-application-n5-if-waiver-b",
-                "when": "arg.납입면제_있음",
+                "when": "arg.납입면제_있음 = true",
                 "children": [
                   {
                     "id": "c-meritz-application-n4-w",

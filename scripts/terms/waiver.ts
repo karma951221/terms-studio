@@ -604,6 +604,9 @@ export function applyMeritzWaiver(meritz: WaiverSource, shared: readonly WaiverC
  *   남은 대상으로 찍혀 오류가 아니라 그대로 둔다 (기능/문면 §3.5).
  * `waiver(id)` = 그 보통약관 납입면제 조(또는 그 안 노드)의 변환 중간 id 인가.
  */
+/** 가리키는 문장의 조건 — 화면 조건 줄(좌변 · 연산자 · 값)로 풀리는 모양(맨 구분자는 줄이 되지 않는다 — 화면 E2E 가 머리 줄로 친다). */
+const WAIVER_PRESENT_ROW = `${WAIVER_PRESENT} = true`;
+
 export function guardWaiverMentions(tree: DocumentNode, waiver: (id: Id) => boolean, where: string): number {
   let count = 0;
   const mentions = (list: readonly unknown[]) => JSON.stringify(list).match(/"articleId":"([^"]+)"/g)?.some((m) => waiver(m.slice('"articleId":"'.length, -1))) ?? false;
@@ -620,7 +623,7 @@ export function guardWaiverMentions(tree: DocumentNode, waiver: (id: Id) => bool
           if (!mentions(cell)) return cell;
           count++;
           const id = `${cell[0]?.id ?? `${where}-c${c}`}-if-waiver`;
-          return [{ id, kind: "inlineCond", branches: [{ id: `${id}-b`, when: WAIVER_PRESENT, children: cell }] } as InlineNode];
+          return [{ id, kind: "inlineCond", branches: [{ id: `${id}-b`, when: WAIVER_PRESENT_ROW, children: cell }] } as InlineNode];
         });
       }
       return;
@@ -630,7 +633,7 @@ export function guardWaiverMentions(tree: DocumentNode, waiver: (id: Id) => bool
       const before = o.children[refAt - 1];
       const marker = before?.kind === "text" && before.text.endsWith(" 또는 ") ? " 또는 " : before?.kind === "text" && before.text.includes(" 또한, ") ? " 또한, " : undefined;
       const end = marker === " 또는 " ? "에서 정한 보험료 납입면제 사유의 발생을 알게된 경우" : "은 제외합니다.";
-      if (!marker || !guardSpan(o as { children: InlineNode[] }, refAt, marker, end, WAIVER_PRESENT)) throw new Error(`납입면제 재모델링: ${where} 의 납입면제 조 참조 ${o.children[refAt]?.id} 를 감쌀 문장을 모른다`);
+      if (!marker || !guardSpan(o as { children: InlineNode[] }, refAt, marker, end, WAIVER_PRESENT_ROW)) throw new Error(`납입면제 재모델링: ${where} 의 납입면제 조 참조 ${o.children[refAt]?.id} 를 감쌀 문장을 모른다`);
       count++;
     }
     for (const key of ["children", "items", "subitems", "branches"]) {
@@ -675,7 +678,7 @@ export function guardAlphaApplication(clause: ClauseRecord, waiver: (id: Id) => 
   const [head] = last.children;
   cond.branches = [
     ...cond.branches.slice(0, -1),
-    { ...last, when: WAIVER_PRESENT },
+    { ...last, when: WAIVER_PRESENT_ROW },
     { id: `${last.id}-else`, children: [copyWithSuffix(head, "-else"), { id: `${last.id}-else-t`, kind: "text", text: "은 제외합니다." }] },
   ];
 }

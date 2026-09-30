@@ -174,9 +174,9 @@ describe("납입면제 조를 가리키는 문장 — 「납입면제 있음」 
     const notice = find(tree, (x) => x.kind === "article" && x.title === "보험금 지급사유 등의 통지")!;
     const cond = find(notice, (x) => x.kind === "inlineCond")!;
     const [branch] = cond.branches as { when: string; children: Json[] }[];
-    expect(branch.when).toBe(WAIVER_PRESENT);
+    expect(branch.when).toBe(`${WAIVER_PRESENT} = true`);
     expect(branch.children.map((c) => (c.kind === "text" ? c.text : c.kind))).toEqual([" 또는 ", "articleRef", "에서 정한 보험료 납입면제 사유의 발생을 알게된 경우"]);
     const definitions = find(tree, (x) => x.kind === "article" && x.title === "용어의 정의")!;
-    expect(all(definitions, (x) => x.kind === "inlineCond" && (x.branches as { when: string }[])[0].when === WAIVER_PRESENT)).toHaveLength(rows);
+    expect(all(definitions, (x) => x.kind === "inlineCond" && (x.branches as { when: string }[])[0].when === `${WAIVER_PRESENT} = true`)).toHaveLength(rows);
   });
 });

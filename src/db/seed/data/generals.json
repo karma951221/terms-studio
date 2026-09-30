@@ -193,7 +193,7 @@
                             "branches": [
                               {
                                 "id": "g-a2-t1-r7c1-x1-if-waiver-b",
-                                "when": "D0002",
+                                "when": "D0002 = true",
                                 "children": [
                                   {
                                     "id": "g-a2-t1-r7c1-x1",
@@ -237,7 +237,7 @@
                             "branches": [
                               {
                                 "id": "g-a2-t1-r8c1-x1-if-waiver-b",
-                                "when": "D0002",
+                                "when": "D0002 = true",
                                 "children": [
                                   {
                                     "id": "g-a2-t1-r8c1-x1",
@@ -998,7 +998,7 @@
                       "branches": [
                         {
                           "id": "g-a6-p1-x2-if-waiver-b",
-                          "when": "D0002",
+                          "when": "D0002 = true",
                           "children": [
                             {
                               "id": "g-a6-p1-x4-w",
@@ -5759,7 +5759,7 @@
                             "branches": [
                               {
                                 "id": "m-a2-t1-r6c1-x1-if-waiver-b",
-                                "when": "D0002",
+                                "when": "D0002 = true",
                                 "children": [
                                   {
                                     "id": "m-a2-t1-r6c1-x1",
@@ -5803,7 +5803,7 @@
                             "branches": [
                               {
                                 "id": "m-a2-t1-r7c1-x1-if-waiver-b",
-                                "when": "D0002",
+                                "when": "D0002 = true",
                                 "children": [
                                   {
                                     "id": "m-a2-t1-r7c1-x1",
@@ -5855,7 +5855,7 @@
                             "branches": [
                               {
                                 "id": "m-a2-t1-r8c1-x1-if-waiver-b",
-                                "when": "D0002",
+                                "when": "D0002 = true",
                                 "children": [
                                   {
                                     "id": "m-a2-t1-r8c1-x1",
@@ -6529,7 +6529,7 @@
                       "branches": [
                         {
                           "id": "m-a6-p1-x2-if-waiver-b",
-                          "when": "D0002",
+                          "when": "D0002 = true",
                           "children": [
                             {
                               "id": "m-a6-p1-x4-w",
