@@ -21,6 +21,7 @@ import type { Id } from "../../src/domain/types";
 import { discriminatorResultType } from "../../src/domain/catalog/expression";
 import type { Discriminator } from "../../src/domain/catalog/types";
 import type { ParamDef } from "../../src/domain/clause/params";
+import type { LocalDef } from "../../src/domain/clause/locals";
 import type { ClauseMode } from "../../src/domain/clause/types";
 import { format, parse, type Expr } from "../../src/domain/expression";
 
@@ -30,13 +31,15 @@ import type { ClauseSpec, ClauseUse } from "./config";
 export interface ClauseRecord {
   code: string;
   label: string;
-  /** 변환기가 짓는 유형 — 「문구」 · 「항」뿐. 「호」 · 「목」 유형(`ClauseMode`)은 화면 저작이 만든다 (기능/함수조항 §3.1). */
-  mode: ConvertedClauseMode;
+  /** 유형 — 설정(`CLAUSES`)이 짓는 것은 「문구」 · 「항」뿐, 역할 함수조항(waiver.ts)은 「호」도 짓는다 (기능/함수조항 §3.1). */
+  mode: ClauseMode;
   description: string;
   body: Inline[] | Block[];
   options: { code: string; label: string; order: number; values: { code: string; label: string; order: number; body: Inline[] }[] }[];
-  /** 인자 — 구분자 직접 읽기를 기계 변환한 것(`parameterize`). 없으면 인자 0개. */
+  /** 인자 — 구분자 직접 읽기를 기계 변환한 것(`parameterize`) · 역할 함수조항이 처음부터 쓴 것(waiver.ts). 없으면 인자 0개. */
   params?: ParamDef[];
+  /** 내부 변수 — 역할 함수조항(waiver.ts). */
+  locals?: LocalDef[];
 }
 
 /** 실물 변환이 내는 함수조항 유형 — 도메인 유형 넷 중 「문구」(inline) · 「항」(block). */
@@ -151,7 +154,7 @@ export function reId<T>(nodes: T, prefix: string): T {
       n.id = next;
     }
     if (n.kind === "articleRef" && n.scope === "clause") refs.push(n as unknown as ClauseArticleRef);
-    for (const key of ["children", "items", "subitems", "branches"]) {
+    for (const key of ["children", "items", "subitems", "branches", "cases"]) {
       const list = n[key];
       if (Array.isArray(list)) for (const c of list) visit(c);
     }
