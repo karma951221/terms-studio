@@ -1,5 +1,5 @@
 /**
- * 공용조항 저장소 — drizzle 쿼리만. 규칙 없음 (규칙은 src/domain/clause, 조립은 src/services/clause).
+ * 함수조항 저장소 — drizzle 쿼리만. 규칙 없음 (규칙은 src/domain/clause, 조립은 src/services/clause).
  *
  * 도메인 객체(Clause) ↔ 행 매핑. 본문·옵션은 jsonb 그대로.
  * 채번은 카탈로그와 같은 code_sequences 테이블을 쓰되 kind 를 달리한다 (`clause` · `clauseOption` · `clauseOptionValue`).
@@ -7,7 +7,8 @@
 import { asc, eq, sql } from "drizzle-orm";
 
 import type { ClauseCodeKind, ClauseNextSeq } from "@/domain/clause/codes";
-import type { Block, BoxNode, Inline } from "@/domain/clause/nodes";
+import type { Block, Inline, ItemBodyNode, SubitemBodyNode } from "@/domain/clause/nodes";
+import { withClauseCodes } from "@/domain/clause/pcode";
 import type { Clause } from "@/domain/clause/types";
 import type { Code, Id } from "@/domain/types";
 
@@ -48,11 +49,22 @@ function toClause(row: ClauseRow): Clause {
     code: row.code,
     label: row.label,
     options: row.options,
+    // 인자 0개는 키를 싣지 않는다 — 도메인이 만든 정의와 같은 모양(빈 목록 = 키 없음)
+    ...(row.params && row.params.length > 0 ? { params: row.params } : {}),
+    ...(row.locals && row.locals.length > 0 ? { locals: row.locals } : {}),
     required: { discriminators: row.requiredDiscriminators, attributes: row.requiredAttributes },
   };
-  if (row.mode === "inline") return { ...base, mode: "inline", body: row.body as Inline[] };
-  if (row.mode === "box") return { ...base, mode: "box", body: row.body as BoxNode[] };
-  return { ...base, mode: "block", body: row.body as Block[] };
+  switch (row.mode) {
+    case "inline":
+      return { ...base, mode: "inline", body: row.body as Inline[] };
+    case "item":
+      return { ...base, mode: "item", body: withClauseCodes(row.body as ItemBodyNode[]) };
+    case "subitem":
+      return { ...base, mode: "subitem", body: withClauseCodes(row.body as SubitemBodyNode[]) };
+    default:
+      // P코드 없는 옛 행은 읽을 때 채운다 — 「이 함수조항」 참조가 코드로 가리킨다 (ADR-0072 결정 10, 저장이 같은 규칙으로 채운다)
+      return { ...base, mode: "block", body: withClauseCodes(row.body as Block[]) };
+  }
 }
 
 function toRow(def: Clause) {
@@ -62,6 +74,8 @@ function toRow(def: Clause) {
     mode: def.mode,
     body: def.body,
     options: def.options,
+    params: def.params ?? [],
+    locals: def.locals ?? [],
     requiredDiscriminators: def.required.discriminators,
     requiredAttributes: def.required.attributes,
   };
@@ -96,7 +110,7 @@ export async function saveClause(db: Db, def: Clause, who: Id): Promise<void> {
     .set({ ...toRow(def), updatedAt: new Date(), updatedBy: who })
     .where(eq(clauses.code, def.code))
     .returning({ id: clauses.id });
-  if (rows.length === 0) throw new Error(`저장 대상 공용조항이 없습니다: ${def.code}`);
+  if (rows.length === 0) throw new Error(`저장 대상 함수조항이 없습니다: ${def.code}`);
 }
 
 export async function deleteClause(db: Db, code: Code): Promise<void> {

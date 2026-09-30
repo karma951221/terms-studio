@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type * as C from "../clause/nodes";
 import type { Block, Inline } from "../clause/nodes";
-import { CLAUSE_ARTICLE_ID, CLAUSE_LINE_ID, HOST_TARGET_PREFIX, boxLineFromText, clauseBodyToTree, clausePositions, clauseScopedRefLabel, optionCarrier, optionCodeOf, treeToClauseBody } from "./clauseTree";
+import { CLAUSE_ARTICLE_ID, CLAUSE_LINE_ID, HOST_TARGET_PREFIX, clauseBodyToTree, clausePositions, clauseScopedRefLabel, optionCarrier, optionCodeOf, treeToClauseBody } from "./clauseTree";
 import { analyzeBody, structuralIds } from "../clause/body";
 import { expandClause } from "../clause/reference";
 import { applyEdit, generalRefsOf, type EditEnv } from "./edit";
@@ -15,7 +15,7 @@ const block: Block[] = [
     children: [
       { id: "t1", kind: "text", text: "이 특별약관은 " },
       { id: "o1", kind: "optionSlot", optionCode: "O01" },
-      { id: "r1", kind: "articleRef", targets: [{ nodeId: "g-a1" }], connector: "및" },
+      { id: "r1", kind: "articleRef", targets: [{ articleId: "g-a1" }], connector: "및" },
     ],
     items: [{ id: "i1", kind: "item", children: [{ id: "t2", kind: "text", text: "호" }], subitems: [{ id: "s1", kind: "subitem", children: [] }] }],
   },
@@ -27,7 +27,7 @@ const inline: Inline[] = [
   { id: "q1", kind: "inlineCond", branches: [{ id: "qb", when: "D0001 = true", children: [{ id: "o1", kind: "optionSlot", optionCode: "O02" }] }] },
 ];
 
-describe("공용조항 본문 ↔ 편집 트리", () => {
+describe("함수조항 본문 ↔ 편집 트리", () => {
   it("「항」 본문은 조 하나의 자식으로 싸이고, 되돌리면 그대로다 — 옵션 자리는 운반체, 조 참조는 보통약관 범위", () => {
     const tree = clauseBodyToTree("block", block, "특별약관의 소멸");
     const article = tree.children[0];
@@ -46,12 +46,12 @@ describe("공용조항 본문 ↔ 편집 트리", () => {
     expect(treeToClauseBody("inline", clauseBodyToTree("inline", []))).toEqual({ ok: true, value: [] });
   });
 
-  it("옵션 운반체는 옵션 코드를 알아보고, 진짜 공용조항 참조는 운반체가 아니다", () => {
+  it("옵션 운반체는 옵션 코드를 알아보고, 진짜 함수조항 참조는 운반체가 아니다", () => {
     expect(optionCodeOf(optionCarrier("x", "O03"))).toBe("O03");
     expect(optionCodeOf({ id: "x", kind: "clauseInlineRef", clauseCode: "C0001", options: {} })).toBeUndefined();
   });
 
-  it("공용조항에 없는 노드(표 · 공용조항 참조 · 둘째 조)는 되돌릴 때 거부한다", () => {
+  it("함수조항에 없는 노드(표 · 함수조항 참조 · 둘째 조)는 되돌릴 때 거부한다", () => {
     const base = clauseBodyToTree("block", block);
     const withTable: DocumentNode = {
       ...base,
@@ -75,69 +75,43 @@ describe("공용조항 본문 ↔ 편집 트리", () => {
     expect(added.ok).toBe(true);
     const back = added.ok ? treeToClauseBody("block", added.value.state.tree) : undefined;
     expect(back?.ok && (back.value as Block[]).map((b) => b.id)).toEqual(["p1", "c1", "p3"]);
-    const broken = applyEdit(state, { type: "setArticleRef", nodeId: "r1", targets: [{ nodeId: "없는조" }], connector: "및", scope: "general" }, env);
+    const broken = applyEdit(state, { type: "setArticleRef", nodeId: "r1", targets: [{ articleId: "없는조" }], connector: "및", scope: "general" }, env);
     expect(broken.ok).toBe(false);
   });
 });
 
-describe("공용조항 조 참조 범위 — 편집 트리 운반 · 표기 (§3.5)", () => {
+describe("함수조항 조 참조 범위 — 편집 트리 운반 · 표기 (§3.5)", () => {
   const body: C.Block[] = [
-    { id: "p1", kind: "paragraph", children: [{ id: "r1", kind: "articleRef", targets: [{ nodeId: "2.1.3" }], connector: "및", scope: "host" }], items: [{ id: "i1", kind: "item", children: [] }] },
-    { id: "p2", kind: "paragraph", children: [{ id: "r2", kind: "articleRef", targets: [{ nodeId: "p1" }, { nodeId: "i1" }], connector: "및", scope: "clause" }] },
+    { id: "p1", kind: "paragraph", code: "P0100", children: [{ id: "r1", kind: "articleRef", targets: [{ host: "2.1.3" }], connector: "및", scope: "host" }], items: [{ id: "i1", kind: "item", code: "P0300", children: [] }] },
+    { id: "p2", kind: "paragraph", code: "P0200", children: [{ id: "r2", kind: "articleRef", targets: [{ code: "P0100" }, { code: "P0300" }], connector: "및", scope: "clause" }] },
   ];
 
-  it("제 항은 `self`, 사용처 위치는 `general` + `host:` 대상으로 싸고 되돌리면 같은 본문이다", () => {
+  it("제 항은 `self` + 자리 조 · P코드, 사용처 위치는 `general` + `host:` 대상으로 싸고 되돌리면 같은 본문이다", () => {
     const tree = clauseBodyToTree("block", body);
     const [p1, p2] = (tree.children[0] as { children: { children: unknown[] }[] }).children;
-    expect(p1.children[0]).toMatchObject({ scope: "general", targets: [{ nodeId: `${HOST_TARGET_PREFIX}2.1.3` }] });
-    expect(p2.children[0]).toMatchObject({ scope: "self", targets: [{ nodeId: "p1" }, { nodeId: "i1" }] });
+    expect(p1.children[0]).toMatchObject({ scope: "general", targets: [{ articleId: `${HOST_TARGET_PREFIX}2.1.3` }] });
+    expect(p2.children[0]).toMatchObject({ scope: "self", targets: [{ articleId: CLAUSE_ARTICLE_ID, code: "P0100" }, { articleId: CLAUSE_ARTICLE_ID, code: "P0300" }] });
     expect(treeToClauseBody("block", tree)).toEqual({ ok: true, value: body });
   });
 
-  it("표기 — 「사용처 제2조 제1항 제3호」 · 「이 공용조항 제1항 및 제1항 제1호」, 보통약관 참조는 undefined", () => {
+  it("표기 — 「사용처 제2조 제1항 제3호」 · 「이 함수조항 제1항 및 제1항 제1호」, 보통약관 참조는 undefined", () => {
     const tree = clauseBodyToTree("block", body);
     const positions = clausePositions(tree);
     const [p1, p2] = (tree.children[0] as { children: { children: InlineNode[] }[] }).children;
     expect(clauseScopedRefLabel(p1.children[0], positions)).toBe("사용처 제2조 제1항 제3호");
-    expect(clauseScopedRefLabel(p2.children[0], positions)).toBe("이 공용조항 제1항 및 제1항 제1호");
-    expect(clauseScopedRefLabel({ id: "g", kind: "articleRef", targets: [{ nodeId: "g-a1" }], connector: "및", scope: "general" }, positions)).toBeUndefined();
+    expect(clauseScopedRefLabel(p2.children[0], positions)).toBe("이 함수조항 제1항 및 제1항 제1호");
+    expect(clauseScopedRefLabel({ id: "g", kind: "articleRef", targets: [{ articleId: "g-a1" }], connector: "및", scope: "general" }, positions)).toBeUndefined();
   });
 
   it("한 참조에 보통약관 조와 사용처 위치를 섞으면 되돌리기를 거부한다", () => {
     const tree = clauseBodyToTree("block", body);
     const p1 = (tree.children[0] as { children: { children: InlineNode[] }[] }).children[0];
-    p1.children[0] = { id: "r1", kind: "articleRef", targets: [{ nodeId: "g-a1" }, { nodeId: `${HOST_TARGET_PREFIX}1` }], connector: "및", scope: "general" };
+    p1.children[0] = { id: "r1", kind: "articleRef", targets: [{ articleId: "g-a1" }, { articleId: `${HOST_TARGET_PREFIX}1` }], connector: "및", scope: "general" };
     expect(treeToClauseBody("block", tree).ok).toBe(false);
   });
 });
 
-describe("「박스」 공용조항 — 편집 트리는 문면 박스 하나(줄은 표기 글)", () => {
-  const options = [{ code: "O01", label: "질문 방식" }];
-  const box: C.BoxNode[] = [
-    {
-      id: "b",
-      kind: "box",
-      title: "계약 전 알릴 의무",
-      lines: [{ id: "b-l1", kind: "line", children: [{ id: "b-l1-1", kind: "text", text: "회사가 " }, { id: "b-l1-2", kind: "optionSlot", optionCode: "O01" }, { id: "b-l1-3", kind: "text", text: " 질문한 " }, { id: "b-l1-4", kind: "slot", ref: "D0001" }] }],
-    },
-  ];
-
-  it("옵션 자리는 〔옵션명〕, 값 슬롯은 〔값 참조〕로 싸고, 되돌리면 같은 본문이다", () => {
-    const tree = clauseBodyToTree("box", box, "", options);
-    expect(tree.children[0]).toMatchObject({ children: [{ kind: "box", title: "계약 전 알릴 의무", lines: ["회사가 〔질문 방식〕 질문한 〔값 D0001〕"] }] });
-    expect(treeToClauseBody("box", tree, options)).toEqual({ ok: true, value: box });
-  });
-
-  it("모르는 옵션 이름은 되돌리기를 거부한다 — 빈 줄은 싣지 않는다", () => {
-    expect(boxLineFromText("그냥 글", "x").children).toEqual([{ id: "x-1", kind: "text", text: "그냥 글" }]);
-    const tree = clauseBodyToTree("box", [{ ...box[0], lines: [] }], "", options);
-    (tree.children[0] as { children: { lines: string[] }[] }).children[0].lines = ["〔없는 옵션〕", "  "];
-    const r = treeToClauseBody("box", tree, options);
-    expect(r.ok).toBe(false);
-  });
-});
-
-describe("공용조항 「항」 본문의 글머리 목록 (2026-09-28)", () => {
+describe("함수조항 「항」 본문의 글머리 목록 (2026-09-28)", () => {
   const withBullets: Block[] = [
     {
       id: "p1",
@@ -156,7 +130,7 @@ describe("공용조항 「항」 본문의 글머리 목록 (2026-09-28)", () =>
     expect(treeToClauseBody("block", tree)).toEqual({ ok: true, value: withBullets });
   });
 
-  it("검사 ① — 항목 없는 목록은 거부, 글머리 목록은 번호가 없어 「이 공용조항」 조 참조 대상이 아니다", () => {
+  it("검사 ① — 항목 없는 목록은 거부, 글머리 목록은 번호가 없어 「이 함수조항」 조 참조 대상이 아니다", () => {
     const options = [{ code: "O01", label: "사유", values: [], order: 1 }];
     expect(analyzeBody("block", withBullets, options).ok).toBe(true);
     const empty: Block[] = [{ id: "L", kind: "bulletList", children: [] }];
@@ -178,5 +152,90 @@ describe("공용조항 「항」 본문의 글머리 목록 (2026-09-28)", () =>
     const list = (out.value as Block[])[1] as C.BulletListNode;
     expect(list.id).toBe("ref/L2");
     expect(list.children[0].children.map((c) => (c.kind === "text" ? c.text : c.kind))).toEqual(["사망"]);
+  });
+});
+
+describe("호 · 목 유형 본문 ↔ 편집 트리 (최종 결정 4)", () => {
+  const items: C.ItemBodyNode[] = [
+    { id: "i1", kind: "item", code: "P0100", children: [{ id: "t1", kind: "text", text: "암" }] },
+    { id: "c1", kind: "condBlock", branches: [{ id: "b1", when: "D0001 = 1", children: [{ id: "i2", kind: "item", code: "P0200", children: [{ id: "r1", kind: "articleRef", targets: [{ code: "P0100" }], scope: "clause" }] }] }] },
+  ];
+  const subitems: C.SubitemBodyNode[] = [
+    { id: "s1", kind: "subitem", code: "P0100", children: [] },
+    { id: "c1", kind: "condBlock", branches: [{ id: "b1", when: "D0001 = 1", children: [{ id: "s2", kind: "subitem", code: "P0200", children: [] }] }] },
+  ];
+
+  it("호 유형은 자리 항의 호 목록으로 싸고 되돌리면 같다 — 조건 블록 가지 안의 호도", () => {
+    const back = treeToClauseBody("item", clauseBodyToTree("item", items));
+    expect(back.ok && back.value).toEqual(items);
+  });
+
+  it("목 유형은 자리 항 › 자리 호의 목 목록으로 싸고 되돌리면 같다", () => {
+    const back = treeToClauseBody("subitem", clauseBodyToTree("subitem", subitems));
+    expect(back.ok && back.value).toEqual(subitems);
+  });
+
+  it("호 유형에 항 · 문장이 끼면 거부한다", () => {
+    const tree = clauseBodyToTree("item", items);
+    const article = tree.children[0] as { children: unknown[] };
+    article.children.push({ id: "p9", kind: "paragraph", children: [] });
+    expect(treeToClauseBody("item", tree).ok).toBe(false);
+  });
+
+  it("제 호 참조는 「이 함수조항 제1호」 — 자리 항은 번호 단계가 아니다", () => {
+    const tree = clauseBodyToTree("item", items);
+    const ref: InlineNode = { id: "r1", kind: "articleRef", targets: [{ articleId: CLAUSE_ARTICLE_ID, code: "P0100" }], scope: "self" };
+    expect(clauseScopedRefLabel(ref, clausePositions(tree))).toBe("이 함수조항 제1호");
+    const subTree = clauseBodyToTree("subitem", subitems);
+    expect(clauseScopedRefLabel({ ...ref, targets: [{ articleId: CLAUSE_ARTICLE_ID, code: "P0200" }] }, clausePositions(subTree))).toBe("이 함수조항 나목");
+  });
+});
+
+describe("값별 분기 — 편집 트리 운반 (최종 결정 5)", () => {
+  const p = (id: string): Block => ({ id, kind: "paragraph", children: [{ id: `${id}t`, kind: "text", text: id }] });
+  const sw: Block[] = [
+    {
+      id: "sw",
+      kind: "switchBlock",
+      on: "arg.사유",
+      cases: [
+        { id: "k1", values: ["V01", "V02"], children: [p("p1")] },
+        { id: "k2", values: ["V03"], empty: true, children: [] },
+      ],
+    },
+  ];
+  const line: Inline[] = [{ id: "is", kind: "inlineSwitch", on: "arg.사유", cases: [{ id: "a", values: ["V01"], children: [{ id: "ta", kind: "text", text: "진단" }] }] }];
+
+  it("분기는 조건 블록 + switchOn(칸 = 값 · 문구 없음 가지)으로 싸고 되돌리면 같은 본문이다 — 블록 · 문장 안 · 호 목록", () => {
+    const tree = clauseBodyToTree("block", sw);
+    const wrapped = (tree.children[0] as { children: { kind: string; switchOn?: string; branches: { values?: string[]; empty?: true; when?: string }[] }[] }).children[0];
+    expect(wrapped).toMatchObject({ kind: "condBlock", switchOn: "arg.사유", branches: [{ values: ["V01", "V02"] }, { values: ["V03"], empty: true }] });
+    expect(treeToClauseBody("block", tree)).toEqual({ ok: true, value: sw });
+    expect(treeToClauseBody("inline", clauseBodyToTree("inline", line))).toEqual({ ok: true, value: line });
+    const items: C.ItemBodyNode[] = [{ id: "sw", kind: "switchBlock", on: "arg.사유", cases: [{ id: "k1", values: ["V01"], children: [{ id: "i1", kind: "item", children: [] }] }] }];
+    expect(treeToClauseBody("item", clauseBodyToTree("item", items))).toEqual({ ok: true, value: items });
+  });
+
+  it("편집 명령 — 칸의 값 · 「문구 없음」 · 대상 바꾸기, 칸 추가(else 규칙 없음). 「문구 없음」은 본문이 없을 때만", () => {
+    const env: EditEnv = { env: { kind: "special", switches: true }, generalRefs: () => undefined };
+    let state = { tree: clauseBodyToTree("block", sw) };
+    const step = (op: Parameters<typeof applyEdit>[1]) => {
+      const r = applyEdit(state, op, env);
+      if (!r.ok) throw new Error(JSON.stringify(r.rejection));
+      state = r.value.state;
+    };
+    step({ type: "setCase", branchId: "k1", values: ["V01"] });
+    step({ type: "addBranch", condId: "sw", branch: { id: "k3", values: ["V02"], children: [p("p3") as never] } });
+    step({ type: "setSwitch", nodeId: "sw", on: "var.대표" });
+    const back = treeToClauseBody("block", state.tree);
+    expect(back.ok && back.value[0]).toMatchObject({ on: "var.대표", cases: [{ id: "k1", values: ["V01"] }, { id: "k2", empty: true }, { id: "k3", values: ["V02"] }] });
+    expect(applyEdit(state, { type: "setCase", branchId: "k1", values: ["V01"], empty: true }, env).ok).toBe(false);
+  });
+
+  it("문면(템플릿)에서는 값별 분기를 거부한다 — 지금은 함수조항 안에서만", () => {
+    const env: EditEnv = { env: { kind: "special" }, generalRefs: () => undefined };
+    const carrier = (clauseBodyToTree("block", sw).children[0] as unknown as { children: never[] }).children[0];
+    const r = applyEdit({ tree: clauseBodyToTree("block", []) }, { type: "insert", node: carrier, at: { parentId: CLAUSE_ARTICLE_ID } }, env);
+    expect(r.ok).toBe(false);
   });
 });

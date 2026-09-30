@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Discriminator } from "../catalog/types";
-import type { Block, BoxNode, Inline } from "./nodes";
+import type { Block, Inline } from "./nodes";
 import {
   checkAttachmentForReference,
   expandClause,
@@ -11,7 +11,7 @@ import {
   validateOptionSelection,
   type Usage,
 } from "./reference";
-import type { BlockClause, BoxClause, InlineClause } from "./types";
+import type { BlockClause, InlineClause } from "./types";
 
 function unwrap<T>(r: { ok: true; value: T } | { ok: false; rejection: unknown }): T {
   if (!r.ok) throw new Error(`기대: ok, 실제: ${JSON.stringify(r.rejection)}`);
@@ -40,19 +40,23 @@ const 준용규정: BlockClause = {
       { id: "t2", kind: "text", text: "을 따릅니다." },
     ] },
     { id: "cb", kind: "condBlock", branches: [
-      { id: "b1", when: "D0002 = '기준A'", children: [{ id: "p2", kind: "paragraph", children: [{ id: "t3", kind: "text", text: "기준A 문구" }] }] },
+      { id: "b1", when: "arg.기준 = '기준A'", children: [{ id: "p2", kind: "paragraph", children: [{ id: "t3", kind: "text", text: "기준A 문구" }] }] },
     ] },
   ],
   options: [
     { code: "O01", label: "준용 대상", order: 0, values: [
       { code: "V01", label: "보통약관", order: 0, body: [{ id: "v1", kind: "text", text: "보통약관" }] },
-      { code: "V02", label: "기본계약 약관", order: 1, body: [{ id: "v2", kind: "text", text: "기본계약 " }, { id: "v2s", kind: "slot", ref: "D0005" }] },
+      { code: "V02", label: "기본계약 약관", order: 1, body: [{ id: "v2", kind: "text", text: "기본계약 " }, { id: "v2s", kind: "slot", ref: "arg.이율" }] },
     ] },
+  ],
+  params: [
+    { name: "기준", type: { kind: "string" }, default: { kind: "discriminator", code: "D0002" } },
+    { name: "이율", type: { kind: "string" }, default: { kind: "discriminator", code: "D0005" } },
   ],
   required: { discriminators: ["D0002", "D0005"], attributes: [] },
 };
 
-describe("공용조항 S2 — 참조 추가 시 요구 구분자 존재 검사", () => {
+describe("함수조항 S2 — 참조 추가 시 요구 구분자 존재 검사", () => {
   it("요구 구분자가 전부 카탈로그에 있으면 문제 없다 — 부착이 없어 미부착도 없다 (ADR-0037)", () => {
     const r = checkAttachmentForReference(준용규정, lookup);
     expect(r.missing).toEqual([]);
@@ -71,7 +75,7 @@ describe("공용조항 S2 — 참조 추가 시 요구 구분자 존재 검사",
     expect(checkAttachmentForReference(clause, lookup).issues).toEqual([]);
   });
 
-  it("카탈로그에 없는 구분자는 깨진 참조로 보고한다 — at 은 사용처, source 는 공용조항 본문(고치면 사라지는 곳 · ADR-0049 §4)", () => {
+  it("카탈로그에 없는 구분자는 깨진 참조로 보고한다 — at 은 사용처, source 는 함수조항 본문(고치면 사라지는 곳 · ADR-0049 §4)", () => {
     const clause: InlineClause = { ...준용규정, mode: "inline", body: [], options: [], required: { discriminators: ["D0099"], attributes: [] } };
     const r = checkAttachmentForReference(clause, lookup, { document: "coverageMaster", ownerId: "cov-1", nodePath: ["ref-1"] });
     expect(r.missing).toEqual([]);
@@ -79,7 +83,7 @@ describe("공용조항 S2 — 참조 추가 시 요구 구분자 존재 검사",
     expect(r.issues).toEqual([
       {
         kind: "brokenRef",
-        message: "공용조항 C0001 이(가) 읽는 구분자가 없습니다: D0099",
+        message: "함수조항 C0001 이(가) 읽는 구분자가 없습니다: D0099",
         at: { document: "coverageMaster", ownerId: "cov-1", nodePath: ["ref-1"], refPath: "D0099" },
         source: { document: "clause", ownerId: "C0001", ownerName: "준용규정", refPath: "D0099" },
       },
@@ -87,7 +91,7 @@ describe("공용조항 S2 — 참조 추가 시 요구 구분자 존재 검사",
   });
 });
 
-describe("공용조항 S5 · S7 — 옵션 선택 검증과 오버라이드 해소 (기능/공용조항 §3.2 · 기능/상품 §3.6)", () => {
+describe("함수조항 S5 · S7 — 옵션 선택 검증과 오버라이드 해소 (기능/함수조항 §3.2 · 기능/상품 §3.6)", () => {
   it("미선택 옵션은 optionUnselected, 유효 집합 밖 선택은 optionInvalid", () => {
     expect(validateOptionSelection(준용규정, {})).toMatchObject([{ kind: "optionUnselected", at: { refPath: "O01" } }]);
     expect(validateOptionSelection(준용규정, { O01: "V09" })).toMatchObject([{ kind: "optionInvalid" }]);
@@ -110,18 +114,18 @@ describe("공용조항 S5 · S7 — 옵션 선택 검증과 오버라이드 해�
   });
 });
 
-describe("공용조항 S6 — 인라인화 헬퍼 expandClause", () => {
+describe("함수조항 S6 — 인라인화 헬퍼 expandClause", () => {
   it("block: 옵션 자리를 선택지 본문으로 치환하고 모든 id 를 `${참조노드id}/${원노드id}` 로 유일화(선택지 본문은 `${참조노드id}/${옵션 자리 id}/${원노드id}`). 조건은 해소하지 않는다", () => {
     const out = unwrap(expandClause(준용규정, { O01: "V02" }, "ref-1")) as Block[];
     expect(out).toEqual([
       { id: "ref-1/p1", kind: "paragraph", children: [
         { id: "ref-1/t1", kind: "text", text: "이 특별약관에서 정하지 않은 사항은 " },
         { id: "ref-1/o1/v2", kind: "text", text: "기본계약 " },
-        { id: "ref-1/o1/v2s", kind: "slot", ref: "D0005" },
+        { id: "ref-1/o1/v2s", kind: "slot", ref: "arg.이율" },
         { id: "ref-1/t2", kind: "text", text: "을 따릅니다." },
       ] },
       { id: "ref-1/cb", kind: "condBlock", branches: [
-        { id: "ref-1/b1", when: "D0002 = '기준A'", children: [
+        { id: "ref-1/b1", when: "arg.기준 = '기준A'", children: [
           { id: "ref-1/p2", kind: "paragraph", children: [{ id: "ref-1/t3", kind: "text", text: "기준A 문구" }] },
         ] },
       ] },
@@ -168,7 +172,7 @@ describe("공용조항 S6 — 인라인화 헬퍼 expandClause", () => {
     if (!r2.ok && r2.rejection.reason === "invalid") expect(r2.rejection.issues[0].kind).toBe("optionInvalid");
   });
 
-  it("같은 공용조항을 두 자리에서 참조해도 참조 노드 id 가 다르면 전개 결과의 id 가 겹치지 않는다 (D-P3-10)", () => {
+  it("같은 함수조항을 두 자리에서 참조해도 참조 노드 id 가 다르면 전개 결과의 id 가 겹치지 않는다 (D-P3-10)", () => {
     const a = unwrap(expandClause(준용규정, { O01: "V01" }, "ref-a")) as Block[];
     const b = unwrap(expandClause(준용규정, { O01: "V01" }, "ref-b")) as Block[];
     expect(a[0].id).toBe("ref-a/p1");
@@ -176,14 +180,14 @@ describe("공용조항 S6 — 인라인화 헬퍼 expandClause", () => {
   });
 });
 
-describe("공용조항 S3 — 수정 시 기존 사용처 재검사", () => {
+describe("함수조항 S3 — 수정 시 기존 사용처 재검사", () => {
   const usages: Usage[] = [
     { documentId: "doc-1", ownerKind: "coverage", ownerId: "cov-수술비", ownerName: "수술비", selection: { O01: "V01" } },
     { documentId: "doc-2", ownerKind: "coverage", ownerId: "cov-상해사망", ownerName: "일반상해사망", selection: { O01: "V01" } },
     { documentId: "doc-3", ownerKind: "general", ownerId: "gen-1", ownerName: "보통약관 A", selection: { O01: "V02" } },
   ];
   it("요구 구분자가 삭제된 코드를 가리키면 모든 사용처가 목록에 오른다", () => {
-    const broken: BlockClause = { ...준용규정, required: { discriminators: ["D0099"], attributes: [] } };
+    const broken: BlockClause = { ...준용규정, params: [{ name: "기준", type: { kind: "string" }, default: { kind: "discriminator", code: "D0099" } }], required: { discriminators: ["D0099"], attributes: [] } };
     const entries = recheckUsages(broken, usages, lookup);
     expect(entries).toHaveLength(3);
     expect(entries[0].issues[0]).toMatchObject({
@@ -230,7 +234,7 @@ describe("공용조항 S3 — 수정 시 기존 사용처 재검사", () => {
   });
 });
 
-describe("expandClause — 제 항 · 사용처 위치 조 참조를 사용처 노드 id 로 (§3.5)", () => {
+describe("expandClause — 제 항 · 사용처 위치 조 참조 (§3.5 · ADR-0072)", () => {
   const 소멸: BlockClause = {
     code: "C0009",
     label: "특별약관의 소멸",
@@ -238,40 +242,84 @@ describe("expandClause — 제 항 · 사용처 위치 조 참조를 사용처 �
     options: [],
     required: { discriminators: [], attributes: [] },
     body: [
-      { id: "p1", kind: "paragraph", children: [{ id: "r1", kind: "articleRef", targets: [{ nodeId: "1" }], connector: "및", scope: "host" }] },
-      { id: "p2", kind: "paragraph", children: [{ id: "r2", kind: "articleRef", targets: [{ nodeId: "p1" }], connector: "및", scope: "clause" }] },
-      { id: "p3", kind: "paragraph", children: [{ id: "r3", kind: "articleRef", targets: [{ nodeId: "g-a5" }], connector: "및" }] },
+      { id: "p1", kind: "paragraph", code: "P0100", children: [{ id: "r1", kind: "articleRef", targets: [{ host: "1" }], connector: "및", scope: "host" }] },
+      { id: "p2", kind: "paragraph", code: "P0200", children: [{ id: "r2", kind: "articleRef", targets: [{ code: "P0100" }], connector: "및", scope: "clause" }] },
+      { id: "p3", kind: "paragraph", code: "P0300", children: [{ id: "r3", kind: "articleRef", targets: [{ articleId: "g-a5" }], connector: "및" }] },
     ],
   };
 
-  it("제 항 대상은 펼친 노드 id · 사용처 위치는 사용처가 푼 id · 보통약관 대상은 그대로", () => {
-    const body = unwrap(expandClause(소멸, {}, "ref", (path) => (path === "1" ? "s-a1" : undefined))) as Block[];
+  it("제 항 대상은 코드 그대로(사용처 조 · 참조 노드 코드와 짝짓는 것은 조립) · 사용처 위치는 사용처가 푼 대상 · 보통약관 대상은 그대로 · 항의 P코드는 남는다", () => {
+    const body = unwrap(expandClause(소멸, {}, "ref", (path) => (path === "1" ? { articleId: "s-a1" } : undefined))) as Block[];
     const refOf = (b: Block) => (b.kind === "paragraph" ? b.children[0] : undefined);
-    expect(refOf(body[0])).toMatchObject({ id: "ref/r1", scope: "host", targets: [{ nodeId: "s-a1" }] });
-    expect(refOf(body[1])).toMatchObject({ id: "ref/r2", scope: "clause", targets: [{ nodeId: "ref/p1" }] });
-    expect(body[1].kind === "paragraph" && body[0].id).toBe("ref/p1");
-    expect(refOf(body[2])).toEqual({ id: "ref/r3", kind: "articleRef", targets: [{ nodeId: "g-a5" }], connector: "및" });
+    expect(refOf(body[0])).toMatchObject({ id: "ref/r1", scope: "host", targets: [{ articleId: "s-a1" }] });
+    expect(refOf(body[1])).toMatchObject({ id: "ref/r2", scope: "clause", targets: [{ code: "P0100" }] });
+    expect(body[0]).toMatchObject({ id: "ref/p1", code: "P0100" });
+    expect(refOf(body[2])).toEqual({ id: "ref/r3", kind: "articleRef", targets: [{ articleId: "g-a5" }], connector: "및" });
   });
 
-  it("사용처가 위치를 못 풀면 `host:<경로>` — 조립 렌더가 사라진 대상(articleGone)으로 알린다", () => {
+  it("사용처가 위치를 못 풀면 조 자리에 `host:<경로>` — 조립 렌더가 사라진 대상(articleGone)으로 알린다", () => {
     const body = unwrap(expandClause(소멸, {}, "ref")) as Block[];
-    expect(body[0].kind === "paragraph" && body[0].children[0]).toMatchObject({ targets: [{ nodeId: "host:1" }] });
+    expect(body[0].kind === "paragraph" && body[0].children[0]).toMatchObject({ targets: [{ articleId: "host:1" }] });
   });
 });
 
-describe("expandClause — 「박스」 공용조항은 줄의 옵션 자리를 선택지 문구로", () => {
-  it("박스 · 줄 id 도 사용처 참조 id 로 유일화된다", () => {
-    const clause: BoxClause = {
-      code: "C0100",
-      label: "【계약 전 알릴 의무】",
-      mode: "box",
+describe("expandClause — 호 · 목 유형 (최종 결정 4)", () => {
+  it("호 유형은 호 목록을 조건째 펼치고 id 를 사용처 자리로 유일화한다", () => {
+    const clause = {
+      code: "C0300",
+      label: "호",
+      mode: "item" as const,
+      options: [],
       required: { discriminators: [], attributes: [] },
-      options: [{ code: "O01", label: "1째 줄", order: 0, values: [{ code: "V01", label: "청약서", order: 0, body: [{ id: "v1", kind: "text", text: "청약서에서" }] }, { code: "V02", label: "서면", order: 1, body: [{ id: "v2", kind: "text", text: "서면으로" }] }] }],
-      body: [{ id: "b", kind: "box", title: "계약 전 알릴 의무", lines: [{ id: "l1", kind: "line", children: [{ id: "t", kind: "text", text: "회사가 " }, { id: "o", kind: "optionSlot", optionCode: "O01" }, { id: "u", kind: "text", text: " 질문한" }] }] }],
+      body: [
+        { id: "i1", kind: "item" as const, children: [{ id: "t1", kind: "text" as const, text: "하나" }], subitems: [{ id: "s1", kind: "subitem" as const, children: [] }] },
+        { id: "c1", kind: "condBlock" as const, branches: [{ id: "b1", when: "D0001 = 1", children: [{ id: "i2", kind: "item" as const, children: [] }] }] },
+      ],
     };
-    const [box] = unwrap(expandClause(clause, { O01: "V02" }, "k")) as BoxNode[];
-    expect(box.id).toBe("k/b");
-    expect(box.lines[0].id).toBe("k/l1");
-    expect(box.lines[0].children.map((n) => (n.kind === "text" ? n.text : n.kind))).toEqual(["회사가 ", "서면으로", " 질문한"]);
+    const r = expandClause(clause, {}, "k");
+    expect(r.ok && JSON.stringify(r.value)).toBe(
+      JSON.stringify([
+        { id: "k/i1", kind: "item", children: [{ id: "k/t1", kind: "text", text: "하나" }], subitems: [{ id: "k/s1", kind: "subitem", children: [] }] },
+        { id: "k/c1", kind: "condBlock", branches: [{ id: "k/b1", when: "D0001 = 1", children: [{ id: "k/i2", kind: "item", children: [] }] }] },
+      ]),
+    );
+  });
+});
+
+describe("재검사 — 인자 · 기본 연결 (최종 결정 2 · 기능/함수조항 §3.7)", () => {
+  const 판정: BlockClause = {
+    code: "C0010",
+    label: "판정",
+    mode: "block",
+    body: [{ id: "p1", kind: "paragraph", children: [{ id: "c1", kind: "inlineCond", branches: [{ id: "b1", when: "arg.갱신형", children: [{ id: "t1", kind: "text", text: "갱신" }] }] }] }],
+    options: [],
+    params: [{ name: "갱신형", type: { kind: "boolean" }, default: { kind: "discriminator", code: "D0001" } }],
+    required: { discriminators: [], attributes: [] },
+  };
+  const usages: Usage[] = [
+    { documentId: "doc-1", ownerKind: "coverage", ownerId: "cov-1", ownerName: "수술비" },
+    { documentId: "doc-2", ownerKind: "coverage", ownerId: "cov-2", ownerName: "상해사망", bindings: { 갱신형: { kind: "discriminator", code: "D0006" } } },
+  ];
+
+  it("인자를 더하면(기본 연결 없음) 연결하지 않은 사용처가 재검사에 연결 누락으로 오른다", () => {
+    const added: BlockClause = { ...판정, params: [...판정.params!, { name: "면책", type: { kind: "boolean" } }] };
+    const entries = recheckUsages(added, usages, lookup);
+    expect(entries.map((e) => [e.usage.documentId, e.issues.map((i) => [i.kind, i.at.refPath])])).toEqual([
+      ["doc-1", [["argUnbound", "arg.면책"]]],
+      ["doc-2", [["argUnbound", "arg.면책"]]],
+    ]);
+  });
+
+  it("기본 연결 구분자를 지우면 정의가 기대는 구분자가 깨지고, 기본 연결을 쓰는 사용처만 재검사에 오른다", () => {
+    const shrunk = lookupFrom(catalog.filter((d) => d.code !== "D0001"));
+    const def = checkAttachmentForReference(판정, shrunk);
+    expect(def.broken).toEqual(["D0001"]);
+    const entries = recheckUsages(판정, usages, shrunk);
+    expect(entries.map((e) => [e.usage.documentId, e.issues.map((i) => i.kind)])).toEqual([["doc-1", ["brokenRef"]]]);
+  });
+
+  it("사용처 연결의 타입이 인자와 다르면(타입 조회를 주면) 재검사에 오른다", () => {
+    const typed = recheckUsages(판정, [{ ...usages[1], bindings: { 갱신형: { kind: "discriminator", code: "D0002" } } }], lookup, (code) => (code === "D0002" ? { kind: "string" } : { kind: "boolean" }));
+    expect(typed[0].issues.map((i) => i.kind)).toEqual(["typeMismatch"]);
   });
 });

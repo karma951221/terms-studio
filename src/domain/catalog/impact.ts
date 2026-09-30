@@ -20,7 +20,9 @@ export type ImpactTarget =
   /** enum 값 삭제 — 그 값을 고른 값 행 */
   | { kind: "enumValue"; enumCode: Code; valueCode: Code }
   /** enum 삭제 — 그 enum 의 어떤 값이든 고른 값 행 */
-  | { kind: "enum"; enumCode: Code };
+  | { kind: "enum"; enumCode: Code }
+  /** enum 필드 삭제 · 타입 변경 — 값 행은 없다(필드 값은 열거형 정의 안). 그 필드를 읽는 곳이 재검사 대상 (ADR-0078 결정 2) */
+  | { kind: "enumField"; enumCode: Code; key: Code };
 
 /**
  * 값 저장소 · 참조 역인덱스가 구현하는 인터페이스.

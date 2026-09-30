@@ -8,7 +8,7 @@ import type { SpecialGroup } from "../product/types";
 import type { Code, Id, Issue } from "../types";
 import { formatCoordinate } from "../coordinate";
 import { assemble, assembleSpecial, executionBasedFilter } from "./booklet";
-import { alphaPlusFixture, alphaGeneralDocument, baseDeathCoverage, coverageEntry, deathCoverage } from "./fixture";
+import { alphaPlusFixture, alphaGeneralDocument, baseDeathCoverage, coverageEntry, deathCoverage, waiverFixture, waiverTemplate } from "./fixture";
 import type { AssemblyCoverage, AssemblyInput, RenderedDoc, RenderedInline } from "./types";
 
 /** 픽스처를 한 객체로 다루는 테스트 진입 — 조립 서명 `assemble(master, product)` 에 같은 객체를 두 번 넘긴다 (AssemblyInput = MasterBundle & ProductInput). */
@@ -69,7 +69,7 @@ function surgeryCoverage(id: Id, name: string, opts: { renew: boolean; exempt?: 
   });
 }
 
-/** surgeryFixture 의 공용조항 — C001 block(옵션 tone: death · general) · C002 inline(갱신형 문구 인라인 조건). */
+/** surgeryFixture 의 함수조항 — C001 block(옵션 tone: death · general) · C002 inline(갱신형 문구 인라인 조건). */
 const surgeryClauses: Clause[] = [
   {
     code: "C001",
@@ -229,7 +229,7 @@ describe("조립오류 S4 — 분기로 사라진 조를 가리키는 조 참조
   /** 제1조 ① 끝에 「보험기간」 조 참조 슬롯을 단다. */
   const special = surgeryFixture().special;
   const art = special.children[0] as ArticleNode;
-  (art.children[0] as ParagraphNode).children.push({ id: "s-txt-ref", kind: "text", text: " 보험기간은 " }, { id: "s-aref-term", kind: "articleRef", targets: [{ nodeId: "s-art-term" }], connector: "및", scope: "self" });
+  (art.children[0] as ParagraphNode).children.push({ id: "s-txt-ref", kind: "text", text: " 보험기간은 " }, { id: "s-aref-term", kind: "articleRef", targets: [{ articleId: "s-art-term" }], connector: "및", scope: "self" });
   const { booklet, doc } = docsOf(withSurgery([surgeryCoverage("pc-surgery", "수술비", { renew: false }), surgeryCoverage("pc-renew", "갱신형 수술비", { renew: true })], {}, special));
 
   it("「갱신형 수술비」 — 보험기간 조가 살아 제2조가 되고 참조는 「제2조(보험기간)」, 이후 조 번호가 밀린다", () => {
@@ -299,7 +299,7 @@ describe("조립오류 S6 — 생략 자동 판정: 리터럴 비교 · 탑재�
   const coverages = [surgeryCoverage("pc-surgery", "수술비", { renew: false }), surgeryCoverage("pc-renew", "갱신형 수술비", { renew: true })];
   const build = (body: ParagraphNode["children"]) => docsOf(withSurgery(coverages, { generalDocuments: new Map([["g6", general]]), product: { ...alphaPlusFixture().product, generalDocumentId: "g6", baseContractIds: ["pc-base"] } }, special(body)));
 
-  it("같은 공용조항을 참조 → 「수술비」는 보통약관 조와 동일해 생략, 「갱신형 수술비」는 갱신 문구가 붙어 유지 (탑재분별 판정)", () => {
+  it("같은 함수조항을 참조 → 「수술비」는 보통약관 조와 동일해 생략, 「갱신형 수술비」는 갱신 문구가 붙어 유지 (탑재분별 판정)", () => {
     const { booklet, doc } = build(viaClause);
     expect(lines(doc("pc-surgery")).map((l) => l.split("(")[0])).toEqual(["제1조", "   수술을 보장합니다."]);
     expect(lines(doc("pc-renew"))).toEqual(["제1조(보험금의 지급사유)", "   수술을 보장합니다.", "제2조(준용규정)", "   이 약관에서 정하지 않은 사항은 보통약관을 따릅니다. 갱신형 계약은 갱신 특칙을 우선합니다."]);
@@ -477,7 +477,7 @@ describe("그룹핑별표 S3·S4 — 별표 번호는 등장 순 자동 (ADR-006
   });
 });
 
-// ───────────────────────────── 기본계약 · 공용조항 옵션 · 반복 자리 ─────────────────────────────
+// ───────────────────────────── 기본계약 · 함수조항 옵션 · 반복 자리 ─────────────────────────────
 
 describe("기능/조립산출 §3.2 — 기본계약을 지정하지 않아도 오류를 남기고 부분 조립", () => {
   it("기본계약 없음 — noBaseContract와 미배치 전환을 알리고 특약은 정상 조립", () => {
@@ -544,8 +544,8 @@ describe("기본계약 대치 — 대치될 보통약관 본문은 실행하지 
   });
 });
 
-describe("기능/상품 §3.6 — 공용조항 옵션 해소: 오버라이드 > 마스터, 미선택·무효는 오류 마커", () => {
-  /** 특약 소멸 조의 공용조항 참조 마스터 선택만 바꾼다 — 담보약관에는 오버라이드가 없다 (기능/상품 §3.6). */
+describe("기능/상품 §3.6 — 함수조항 옵션 해소: 오버라이드 > 마스터, 미선택·무효는 오류 마커", () => {
+  /** 특약 소멸 조의 함수조항 참조 마스터 선택만 바꾼다 — 담보약관에는 오버라이드가 없다 (기능/상품 §3.6). */
   const withMaster = (options: Record<string, string>) => {
     const input = alphaPlusFixture();
     const doc = input.specialDocuments.get("cov-death")!;
@@ -554,7 +554,7 @@ describe("기능/상품 §3.6 — 공용조항 옵션 해소: 오버라이드 > 
     return docsOf(input);
   };
 
-  /** 보통약관 면책 조의 공용조항 참조를 옵션 있는 C0001 로 바꾸고 상품 스코프 오버라이드를 얹는다 — 오버라이드가 사는 유일한 자리. */
+  /** 보통약관 면책 조의 함수조항 참조를 옵션 있는 C0001 로 바꾸고 상품 스코프 오버라이드를 얹는다 — 오버라이드가 사는 유일한 자리. */
   const withGeneralOverride = (master: Record<string, string>, override?: Record<string, string>) => {
     const input = alphaPlusFixture();
     const exempt = input.generalDocuments.get("g-doc")!.children.find((a) => a.kind === "article" && a.id === "g-art-exempt") as ArticleNode;
@@ -591,21 +591,34 @@ describe("기능/상품 §3.6 — 공용조항 옵션 해소: 오버라이드 > 
     expect(invalid.issues[0].at).toMatchObject({ document: "general", ownerId: "g-doc", articleId: "g-art-exempt", refPath: "O01" });
   });
 
-  it("없는 공용조항 참조는 brokenRef 마커", () => {
+  it("없는 함수조항 참조는 brokenRef 마커", () => {
     const input = alphaPlusFixture();
     const b = assembleInput({ ...input, clauses: input.clauses.filter((c) => c.code !== "C0001") });
     expect(kinds(b.issues)).toEqual(["brokenRef", "brokenRef"]);
   });
 });
 
-describe("반복 자리(P7) · 밟은 자리 원칙", () => {
-  it("forBlock 을 만나면 structure 마커 — 조립은 계속된다", () => {
+describe("블록 반복 · 밟은 자리 원칙", () => {
+  it("원천이 없는(옛 글자) 반복 블록은 structure 마커 — 조립은 계속된다", () => {
     const input = alphaPlusFixture();
     const doc = input.specialDocuments.get("cov-death")!;
-    (doc.children[0] as ArticleNode).children.push({ id: "s-for", kind: "forBlock", source: "subCoverage", children: [] });
+    (doc.children[0] as ArticleNode).children.push({ id: "s-for", kind: "forBlock", source: "subCoverage" as never, children: [] });
     const { booklet, doc: d } = docsOf(input);
     expect(lines(d("pc-basic"))[2]).toBe("  ⟦structure⟧");
-    expect(booklet.issues.map((i) => i.message)).toEqual(["블록 반복은 아직 조립하지 않습니다 (P7)", "블록 반복은 아직 조립하지 않습니다 (P7)"]);
+    expect(booklet.issues.map((i) => i.message)).toEqual(["반복 블록의 원천이 없습니다 — 편집기에서 원천을 고른다", "반복 블록의 원천이 없습니다 — 편집기에서 원천을 고른다"]);
+  });
+
+  it("납입면제 시나리오 — 2종 · 3사유: 납입면제종마다 항 › 사유마다 호 · 부가항 · 정의 조(합집합 ∩ 정의조대상) (결정 11 · 23)", () => {
+    const input = waiverFixture(waiverTemplate(), { "opt-type-1": { applies: true, reasons: ["V01", "V03"] }, "opt-type-2": { applies: true, reasons: ["V02", "V01"] } });
+    const booklet = assembleInput(input);
+    expect(booklet.issues.filter((i) => i.at.document === "general")).toEqual([]);
+    const inline = (list: RenderedInline[]) => list.map((n) => (n.kind === "text" ? n.text : n.kind === "error" ? `⟦${n.issue.kind}⟧` : n.label)).join("");
+    const out = booklet.general!.children.flatMap((a) =>
+      a.kind !== "article"
+        ? []
+        : [`${a.label}(${a.title})`, ...a.children.flatMap((p) => (p.kind !== "paragraph" ? [] : [`  ${p.label} ${inline(p.children)}`, ...(p.items ?? []).map((i) => (i.kind === "item" ? `    ${i.label} ${inline(i.children)}` : `    [${i.kind}]`))]))],
+    );
+    expect(out).toMatchSnapshot();
   });
 
   it("실행 기반 완결성 필터 — 책자가 실제로 읽은 자리의 미입력만 남긴다", () => {
@@ -659,7 +672,7 @@ describe("조 노출 토글 (기능/상품 §3.6) — 숨긴 조는 빠지고 �
   it("숨긴 조를 조참조하는 조 → articleHidden 오류 · 메시지에 「노출을 껐습니다」 · 좌표는 보통약관", () => {
     const input = alphaPlusFixture();
     const def = input.generalDocuments.get("g-doc")!.children.find((c) => c.kind === "article" && c.id === "g-art-def") as ArticleNode;
-    (def.children[0] as ParagraphNode).children.push({ id: "g-aref-dis", kind: "articleRef", targets: [{ nodeId: "g-art-disability" }], connector: "및", scope: "self" });
+    (def.children[0] as ParagraphNode).children.push({ id: "g-aref-dis", kind: "articleRef", targets: [{ articleId: "g-art-disability" }], connector: "및", scope: "self" });
     const booklet = assembleInput({ ...input, product: { ...input.product, hiddenArticleIds: new Set(["g-art-disability"]) } });
     const issue = hiddenIssues(booklet)[0];
     expect(issue?.message).toBe("보통약관 조 「장해의 분류」 은(는) 상품에서 노출을 껐습니다");

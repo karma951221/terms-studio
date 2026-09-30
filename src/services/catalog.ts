@@ -21,6 +21,7 @@ import {
   createEnum,
   discriminatorResultType,
   discriminatorWarnings,
+  ENUM_FIELD_TYPE_LABEL,
   enumReferences,
   inspectExpression,
   NO_VALUE_STORE,
@@ -48,7 +49,7 @@ import {
 } from "@/domain/catalog";
 import { formatCoordinate } from "@/domain/coordinate";
 import type { ExprType } from "@/domain/expression";
-import { transitiveUsages, type RefGraph } from "@/domain/refs";
+import { enumFieldReaders, enumValueListers, transitiveUsages, type RefEdge, type RefGraph } from "@/domain/refs";
 import type { Actor, AttachLevel, Code, Coordinate, FieldType, Issue, Result } from "@/domain/types";
 import { mergeImpacts, ok, reject } from "@/domain/types";
 
@@ -125,12 +126,21 @@ export interface CatalogService {
   /**
    * 열거형변수 편집 화면 한 벌 저장 — 이름 · 주석 · 최종 값 목록을 **최종 상태로 한 번에** 검사해 한 번 저장한다
    * (점검 2026-09-27 H2 ① · D1 — 맞바꾸기 · 비운 이름 받기). 빠진 값이 있으면 `enum.deleteValue` 2단(편집자 forbidden ·
-   * 관리자 1차 needsConfirmation — 빠진 값 전부의 영향을 합쳐서 · confirm 이면 저장 + 값 행 purge, D2).
+   * 관리자 1차 needsConfirmation — 빠진 값 전부의 영향을 합쳐서 · confirm 이면 저장, D2). 뺀 값을 고른 값 행은 지우지 않는다 —
+   * 코드가 남아 「없는 값」 오류가 된다 (ADR-0078 결정 5).
    * 거부 · 확인 필요면 트랜잭션을 롤백한다 — 채번한 순번도 타지 않는다.
    */
   reviseEnum(actor: Actor, code: Code, revision: EnumRevision, opts?: Confirmable): Promise<Result<EnumDef>>;
 
-  // enum — 파괴적 (admin · 2단)
+  /**
+   * 열거값 추가의 재검사 목록 — 그 열거형 값 코드와 비교하는 조건식 · 슬롯 · 구분자 식 (ADR-0078 결정 4).
+   * 값 저장은 막지 않는다 — 저장 뒤 화면이 「재검사 N건」으로 보인다. 그래프가 주입되지 않으면 빈 목록.
+   */
+  enumValueRecheck(code: Code): Promise<RefEdge[]>;
+  /** 필드 삭제 · 타입 변경 뒤의 재검사 목록 — 그 필드를 읽는 함수조항 식 (ADR-0078 결정 2). 저장은 막지 않는다. */
+  enumFieldRecheck(code: Code, keys: readonly Code[]): Promise<RefEdge[]>;
+
+  // enum — 파괴적 (admin · 2단) — 값 삭제는 값 행을 남긴다 (「없는 값」, ADR-0078 결정 5)
   removeEnumValue(actor: Actor, code: Code, valueCode: Code, opts?: Confirmable): Promise<Result<EnumDef>>;
   removeEnum(actor: Actor, code: Code, opts?: Confirmable): Promise<Result<void>>;
 }
@@ -141,6 +151,16 @@ export function createCatalogService(db: Db, deps: CatalogServiceDeps = {}): Cat
 
   function catalogOf(defs: readonly Discriminator[]): ReadonlyMap<Code, Discriminator> {
     return new Map(defs.map((d) => [d.code, d]));
+  }
+
+  /** 필드 삭제 · 타입 변경의 확인창 한 줄 — 「필드 「면책여부」 — 값 2개의 입력이 지워진다」. 입력 수는 저장 전 정의에서 센다. */
+  function fieldLoss(before: EnumDef, after: EnumDef, key: Code): string {
+    const was = before.fields?.find((f) => f.key === key);
+    const now = after.fields?.find((f) => f.key === key);
+    const entered = before.values.filter((v) => v.fields?.[key] !== undefined).length;
+    const name = `필드 「${now?.label ?? was?.label ?? key}」`;
+    const change = now && was && now.type !== was.type ? ` 타입 ${ENUM_FIELD_TYPE_LABEL[was.type]} → ${ENUM_FIELD_TYPE_LABEL[now.type]}` : "";
+    return `${name}${change} — 값 ${entered}개의 입력이 지워진다`;
   }
 
   /** 저장 전 검사 — 구분자 참조를 풀려면 카탈로그가 필요하다 (기능/구분자 §3.2). */
@@ -336,6 +356,8 @@ export function createCatalogService(db: Db, deps: CatalogServiceDeps = {}): Cat
     addEnumValue: (actor, code, input) => editEnum(actor, code, (def, ctx) => addEnumValue(def, input, ctx.nextSeq)),
     renameEnumValue: (actor, code, valueCode, label) => editEnum(actor, code, (def) => renameEnumValue(def, valueCode, label)),
     reorderEnumValues: (actor, code, order) => editEnum(actor, code, (def) => reorderEnumValues(def, order)),
+    enumValueRecheck: async (code) => (deps.graph ? enumValueListers(await deps.graph(), code) : []),
+    enumFieldRecheck: async (code, keys) => (deps.graph && keys.length > 0 ? enumFieldReaders(await deps.graph(), code, keys) : []),
     reviseEnum: (actor, code, revision, opts = {}) =>
       rollbackUnless(
         db,
@@ -344,19 +366,27 @@ export function createCatalogService(db: Db, deps: CatalogServiceDeps = {}): Cat
             const ctx = await context(tx);
             const revised = await reviseEnum(def, revision, { existingEnumLabels: ctx.existingEnumLabels ?? [], nextSeq: ctx.nextSeq });
             if (!revised.ok) return revised as Result<EnumDef>;
-            const { def: next, removed } = revised.value;
+            const { def: next, removed, removedFields, retypedFields } = revised.value;
             const targets = removed.map((valueCode): ImpactTarget => ({ kind: "enumValue", enumCode: code, valueCode }));
+            // 필드 삭제 · 타입 변경 — 그 필드를 읽는 곳(참조 그래프의 enumField 간선)이 깨질 참조, 값마다 넣은 입력이 함께 지워질 항목 (ADR-0078 결정 2)
+            // 영향은 1차 호출에서만 계산한다(destructive 가 computeImpact 를 부를 때) — 미리 만들면 confirm 경로에서 트랜잭션이 닫힌 뒤 돈다
+            const fieldKeys = [...removedFields, ...retypedFields];
+            const fieldImpacts = () =>
+              fieldKeys.map((key) => computeImpact({ kind: "enumField", enumCode: code, key }, impact, { cascade: [fieldLoss(def, next, key)] }));
+            // 뺀 값을 고른 값 행은 지우지 않는다 — 코드가 남아 값 폼 · 조립에서 「없는 값」 오류가 된다 (ADR-0078 결정 5)
             const save = async (): Promise<Result<EnumDef>> => {
               await repo.saveEnum(tx, next, actor.userId);
-              for (const target of targets) await impact.purgeValueRows(target);
               return ok(next);
             };
-            if (targets.length === 0) return save();
+            if (targets.length === 0 && fieldKeys.length === 0) return save();
+            // 셋 모두 관리자 전용이라 판정은 같다 — 거부 사유에는 가장 앞선 변경을 싣는다(값 삭제 → 필드 삭제 → 타입 변경)
+            const action = targets.length > 0 ? "enum.deleteValue" : removedFields.length > 0 ? "enum.deleteField" : "enum.changeFieldType";
             return destructive<EnumDef>({
               actor,
-              action: "enum.deleteValue",
+              action,
               confirm: opts.confirm,
-              computeImpact: async () => mergeImpacts(await Promise.all(targets.map((target) => computeImpact(target, impact)))),
+              computeImpact: async () =>
+                mergeImpacts([...(await Promise.all(targets.map((target) => computeImpact(target, impact)))), ...(await Promise.all(fieldImpacts()))]),
               execute: save,
             });
           }),
@@ -379,8 +409,8 @@ export function createCatalogService(db: Db, deps: CatalogServiceDeps = {}): Cat
           computeImpact: () => computeImpact(target, impact),
           execute: async () => {
             if (!changed?.ok) throw new Error("precheck 없이 execute 호출");
+            // 값 행은 남긴다 — 「없는 값」 오류로 드러난다 (ADR-0078 결정 5)
             await repo.saveEnum(tx, changed.value, actor.userId);
-            await impact.purgeValueRows(target);
             return changed;
           },
         });

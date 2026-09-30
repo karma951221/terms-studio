@@ -19,6 +19,21 @@ export type Id = string;
 /** 조 참조 덩어리의 연결어 — 둘뿐이다 (기능/문면 §3.5). 「,」·자유 입력은 없다. */
 export const REFERENCE_CONNECTORS = ["및", "또는"] as const;
 export type ReferenceConnector = (typeof REFERENCE_CONNECTORS)[number];
+/**
+ * 연결어를 아직 안 고른 참조의 표기 자리 (결정 14 — 기본값 없음). 대상이 둘 이상이면 저장 오류라 산출에는 안 나온다 —
+ * 편집 중 표기 · 옛 조립 입력의 방어용이다.
+ */
+export const CONNECTOR_PLACEHOLDER = "〔연결어?〕";
+/** 연결어 미선택 저장 오류 문구 — 문서 · 함수조항 본문 검사가 같은 말을 쓴다 (기능/문면 §3.5). */
+export const CONNECTOR_REQUIRED_MESSAGE = "조 참조 대상이 둘 이상이면 연결어를 고르세요 (및 · 또는)";
+/** 반복 블록 안 대상은 하나여도 펼치면 여러 번호가 될 수 있다 — 연결어 필수 (결정 14 확장 · ADR-0077 결정 7). */
+/**
+ * 값 한정 참조 (ADR-0077 결정 7) — 「사유 = 해당 값들」(`values` — 고른 열거값 코드) · 「사유 = 현재 값」(`current` — 참조 자리를 감싼
+ * 반복 블록 id, 원소가 열거값인 반복). 대상은 열거값 원소 반복 안(또는 그 반복 블록)의 노드여야 하고, 조립 뒤 0개면 오류다.
+ */
+export type RefRestrict = { values: Code[] } | { current: Id };
+
+export const CONNECTOR_REPEAT_MESSAGE = "반복 블록 안 대상은 펼치면 여러 번호가 될 수 있어 연결어를 고르세요 (및 · 또는)";
 export function isReferenceConnector(value: unknown): value is ReferenceConnector {
   return (REFERENCE_CONNECTORS as readonly unknown[]).includes(value);
 }
@@ -125,11 +140,11 @@ export interface Actor {
  */
 export interface Coordinate {
   /**
-   * 문서 종류: 보통약관 / 특별약관(상품담보) / 공용조항 정의 / 담보 마스터 / 상품 /
+   * 문서 종류: 보통약관 / 특별약관(상품담보) / 함수조항 정의 / 담보 마스터 / 상품 /
    * 구분자 정의 — 고치는 자리는 구분자 편집기 (ADR-0049 §4 「원천은 고치면 사라지는 곳」)
    */
   document?: "general" | "special" | "clause" | "coverageMaster" | "product" | "catalog";
-  /** 문서를 소유한 실체 — 보통약관 템플릿 id · 상품담보 id · 공용조항 id · 담보 id · 상품 id · 구분자 코드 */
+  /** 문서를 소유한 실체 — 보통약관 템플릿 id · 상품담보 id · 함수조항 id · 담보 id · 상품 id · 구분자 코드 */
   ownerId?: Id;
   /**
    * 문면 문서 id — 담보약관(`coverageMaster`·`special`)의 오류를 담보 상세가 아니라 그 문서 화면으로 바로 보내기 위한 것.
@@ -169,11 +184,13 @@ export interface Coordinate {
 export type IssueKind =
   | "notEntered" // 미입력 값 참조
   | "unusedAttribute" // 미사용 담보속성 참조
-  | "brokenRef" // 깨진 참조 (삭제된 구분자·필드·enum 값·공용조항·조·별표)
+  | "brokenRef" // 깨진 참조 (삭제된 구분자·필드·enum 값·함수조항·조·별표)
   | "articleGone" // 대상 조가 분기로 사라짐
   | "articleHidden" // 상품에서 노출을 끈 보통약관 조를 참조 (기능/상품 §3.6)
-  | "optionUnselected" // 공용조항 옵션 미선택
+  | "optionUnselected" // 함수조항 옵션 미선택
   | "optionInvalid" // 유효 옵션 집합 밖 선택/오버라이드
+  | "argUnbound" // 함수조항 인자 연결 누락 — 사용처 연결도 기본 연결도 없음 (최종 결정 2)
+  | "unassignedValue" // 값별 분기(switch)에 칸이 없는 값 — 함수조항 저장 오류 · 조립에서는 그 값이 실제로 닿을 때만 (최종 결정 5)
   | "noBaseContract" // 기본계약 미지정
   | "noPlan" // 세목 선택지는 있는데 유효 조합이 없다 — 집계 범위가 비어 조건부 조문이 조용히 빠진다
   | "notAttached" // 요구 구분자 미부착 (값 자리 없음)

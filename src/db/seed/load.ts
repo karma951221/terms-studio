@@ -6,6 +6,7 @@ import type { Services } from "@/services/container";
 
 import appendices from "./data/appendices.json";
 import attributes from "./data/attributes.json";
+import boxes from "./data/boxes.json";
 import clauses from "./data/clauses.json";
 import coverages from "./data/coverages.json";
 import discriminators from "./data/discriminators.json";
@@ -43,13 +44,13 @@ async function assertAssembles(services: Services, productId: Id): Promise<void>
 
 type ClauseRaw = Record<string, unknown> & { code: Code; options: Array<Record<string, unknown>> };
 
-/** 보통약관 문면이 쓰는 공용조항 코드 — 보통약관 가져오기 전에 있어야 한다 (문면 저장 검사가 공용조항 존재를 본다). */
+/** 보통약관 문면이 쓰는 함수조항 코드 — 보통약관 가져오기 전에 있어야 한다 (문면 저장 검사가 함수조항 존재를 본다). */
 export function clausesUsedByGenerals(): Set<Code> {
   return new Set((generals as unknown as Array<{ tree: DocumentNode }>).flatMap((g) => [...JSON.stringify(g.tree).matchAll(/"clauseCode":"(C\d+)"/g)].map((m) => m[1])));
 }
 
 /**
- * 보통약관 조를 가리키는 공용조항인가 — 그 조가 있어야 정의 검사 ① 을 통과하므로 보통약관 뒤에 만든다 (기능/공용조항 §3.4).
+ * 보통약관 조를 가리키는 함수조항인가 — 그 조가 있어야 정의 검사 ① 을 통과하므로 보통약관 뒤에 만든다 (기능/함수조항 §3.4).
  * 범위 있는 조 참조(제 항 · 사용처 위치)는 보통약관이 없어도 성립한다.
  */
 export function refsGeneral(raw: unknown): boolean {
@@ -73,6 +74,22 @@ async function createClause(services: Services, actor: Actor, raw: ClauseRaw): P
   expectCode(created.code, raw.code);
 }
 
+/** 보통약관 문면이 놓는 박스 코드 — 보통약관 가져오기 전에 있어야 한다 (문면 저장 검사가 박스 존재를 본다). */
+export function boxesUsedByGenerals(): Set<Code> {
+  return new Set((generals as unknown as Array<{ tree: DocumentNode }>).flatMap((g) => [...JSON.stringify(g.tree).matchAll(/"boxCode":"(BX\d+)"/g)].map((m) => m[1])));
+}
+
+/**
+ * 정적 마스터 박스 — 코드는 시스템 채번(BX000001…)이라 JSON 순서대로 만든다. JSON 의 code 는 채번 대조용 (기능/박스 §3.1).
+ * 보통약관이 놓는 박스가 앞 코드다(변환기 `orderBoxes`). `upTo` 가 있으면 그 개수까지만 만든다.
+ */
+async function loadBoxes(services: Services, actor: Actor, upTo?: number): Promise<void> {
+  for (const box of (boxes as Array<{ code: string; name: string; title: string; lines: string[] }>).slice(0, upTo)) {
+    const created = unwrap(await services.document.createBox(actor, { name: box.name, title: box.title, lines: box.lines }));
+    expectCode(created.code, box.code);
+  }
+}
+
 async function loadAppendices(services: Services, actor: Actor): Promise<void> {
   // 코드는 시스템 채번(AX000001…) — JSON 의 code 는 채번 순서가 어긋나지 않았는지 대조용 (기능/별표 §3.1).
   for (const appendix of appendices) {
@@ -81,7 +98,7 @@ async function loadAppendices(services: Services, actor: Actor): Promise<void> {
   }
 }
 
-/** 보통약관 템플릿 전부 — 보통약관 시드 코드 → 문서 id. 별표와 보통약관이 쓰는 공용조항이 먼저 있어야 한다. */
+/** 보통약관 템플릿 전부 — 보통약관 시드 코드 → 문서 id. 별표와 보통약관이 쓰는 함수조항이 먼저 있어야 한다. */
 async function loadGenerals(services: Services, actor: Actor): Promise<Map<string, Id>> {
   const generalIds = new Map<string, Id>();
   for (const specification of generals as unknown as Array<{ code: string; tree: DocumentNode }>) {
@@ -93,8 +110,8 @@ async function loadGenerals(services: Services, actor: Actor): Promise<Map<strin
 }
 
 /**
- * 공용조항 전부 + 그 사이에 보통약관 — 코드는 시스템 채번이라 JSON 순서대로 만든다. 보통약관 조를 가리키는 첫 공용조항 앞에서 보통약관을 넣는다
- * (보통약관이 쓰는 공용조항은 그보다 앞 코드다 — 변환기가 검사한다). `upTo` 가 있으면 그 개수까지만 만든다.
+ * 함수조항 전부 + 그 사이에 보통약관 — 코드는 시스템 채번이라 JSON 순서대로 만든다. 보통약관 조를 가리키는 첫 함수조항 앞에서 보통약관을 넣는다
+ * (보통약관이 쓰는 함수조항은 그보다 앞 코드다 — 변환기가 검사한다). `upTo` 가 있으면 그 개수까지만 만든다.
  */
 async function loadClausesAndGenerals(services: Services, actor: Actor, upTo?: number): Promise<Map<string, Id>> {
   let generalIds: Map<string, Id> | undefined;
@@ -106,10 +123,10 @@ async function loadClausesAndGenerals(services: Services, actor: Actor, upTo?: n
 }
 
 /**
- * 실물 화면 E2E 의 바탕 — 별표 · 보통약관 두 벌과 **보통약관이 쓰는 공용조항**만 넣는다 (docs/QA/시나리오/실물재현_E2E_시나리오.md §4).
- * 나머지(열거형 · 구분자 · 담보속성 · 담보 · 나머지 공용조항 · 담보약관 · 상품)는 E2E 가 화면으로 넣는다.
- * 보통약관은 가져오기 화면이 없어 시드로 넣고, 별표 · 보통약관이 쓰는 공용조항은 보통약관이 참조해 그보다 먼저 있어야 해서 함께 넣는다
- * (보통약관이 쓰는 공용조항은 C0001 부터의 앞 코드다 — 화면 E2E 는 그 뒤 코드부터 친다).
+ * 실물 화면 E2E 의 바탕 — 별표 · 보통약관 두 벌과 **보통약관이 쓰는 박스 · 함수조항**만 넣는다 (docs/QA/시나리오/실물재현_E2E_시나리오.md §4).
+ * 나머지(열거형 · 구분자 · 담보속성 · 담보 · 나머지 함수조항 · 담보약관 · 상품)는 E2E 가 화면으로 넣는다.
+ * 보통약관은 가져오기 화면이 없어 시드로 넣고, 별표 · 보통약관이 쓰는 박스 · 함수조항은 보통약관이 참조해 그보다 먼저 있어야 해서 함께 넣는다
+ * (보통약관이 쓰는 박스 · 함수조항은 BX000001 · C0001 부터의 앞 코드다 — 화면 E2E 는 그 뒤 코드부터 친다).
  * 이미 보통약관이 있으면 아무것도 하지 않는다.
  */
 export async function loadRealBase(services: Services, actor: Actor): Promise<{ created: boolean }> {
@@ -117,6 +134,7 @@ export async function loadRealBase(services: Services, actor: Actor): Promise<{ 
   const existing = await services.document.list("general");
   if (existing.some((d) => titles.includes(d.title))) return { created: false };
   await loadAppendices(services, actor);
+  await loadBoxes(services, actor, boxesUsedByGenerals().size);
   await loadClausesAndGenerals(services, actor, clausesUsedByGenerals().size);
   return { created: true };
 }
@@ -179,8 +197,9 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
     }
   }
 
-  // 별표 → 공용조항(보통약관이 쓰는 것 · 조 참조 없는 것) → 보통약관 → 보통약관 조를 가리키는 공용조항 (기능/공용조항 §3.4)
+  // 별표 · 박스 → 함수조항(보통약관이 쓰는 것 · 조 참조 없는 것) → 보통약관 → 보통약관 조를 가리키는 함수조항 (기능/함수조항 §3.4)
   await loadAppendices(services, actor);
+  await loadBoxes(services, actor);
   const generalIds = await loadClausesAndGenerals(services, actor);
 
   const documentIds = new Map<string, Id>();
@@ -209,7 +228,8 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
     for (const option of specification.planOptions) {
       const created = unwrap(await services.product.addPlanOption(actor, productId, { axis: option.axis as "type" | "form", number: option.number, name: option.name, planTypeCode: option.planTypeCode }));
       optionIds.set(option.code, created.id);
-      for (const entry of option.values) unwrap(await services.product.setPlanOptionValue(actor, created.id, entry.path, entry.value as Value));
+      // 한 제출로 — 폼 교차 규칙(적용여부 = 예면 사유 1개 이상)은 최종 상태로 본다
+      unwrap(await services.product.setPlanOptionValues(actor, created.id, option.values.map((entry) => ({ path: entry.path, value: entry.value as Value }))));
     }
     for (const combination of specification.plans) {
       const ids = combination.map((code) => optionIds.get(code));

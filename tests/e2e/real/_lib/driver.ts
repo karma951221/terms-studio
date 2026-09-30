@@ -1,23 +1,24 @@
 /**
- * 약관 에디터 운전 — 시드 트리 한 벌을 **화면 조작으로** 다시 친다 (문면 저작 · 공용조항 본문 공용).
+ * 약관 에디터 운전 — 시드 트리 한 벌을 **화면 조작으로** 다시 친다 (문면 저작 · 함수조항 본문 공용).
  *
  * 사람이 하는 것과 같은 길만 쓴다: 툴바 버튼 · 그 자리 팝업 · 문장 칸에 글 치기 · 커서 끝으로 가기 · 글 골라 「조건식」 · 「문장 안 조건」.
  * 편집본을 직접 만지거나 서버 액션을 부르지 않는다.
  *
  * 두 단계로 친다 (조 참조가 뒤 조 · 항을 가리킬 수 있어서 — 고르기 트리는 이미 있는 대상만 보인다):
- * 1. 뼈대 — 조 · 제목 · 항 · 호 · 목 · 표 · 공용조항 블록(항 · 박스) · 조연결 · 조 자리 조건 (문장은 비워 둔다)
- *    박스는 툴바 「박스」가 없다 — 「박스」 공용조항을 「공용조항」으로 넣는다(항 · 호 뒤면 박스 공용조항만 고르기에 선다, 2026-09-28)
- * 2. 문장 — 조마다 문장 칸(항 · 호 · 목 · 표 셀)을 차례로 채운다: 글 · 슬롯 · 조 참조 · 별표 참조 · 공용조항(문장) · 문장 안 조건
+ * 1. 뼈대 — 조 · 제목 · 항 · 호 · 목 · 표 · 박스 · 함수조항 블록 · 조연결 · 조 자리 조건 (문장은 비워 둔다)
+ *    박스는 툴바 「박스」에서 정적 마스터 박스를 고른다(기능/박스 §4.4 — 박스 참조).
+ * 2. 문장 — 조마다 문장 칸(항 · 호 · 목 · 표 셀)을 차례로 채운다: 글 · 슬롯 · 조 참조 · 별표 참조 · 함수조항(문장) · 문장 안 조건
  *
  * 화면 자리 ↔ 시드 노드는 **순서**로 맞춘다 — 가운데는 조 하나를 그리고, 그 안의 `[data-block]` · `[data-inline]` 은
- * 문서 순서(전위)다. 시드도 같은 순서로 뽑는다. 공용조항 블록의 본문(읽기 전용)은 셈에서 뺀다.
+ * 문서 순서(전위)다. 시드도 같은 순서로 뽑는다. 함수조항 블록의 본문(읽기 전용)은 셈에서 뺀다.
  */
 import { expect, type Locator, type Page } from "@playwright/test";
 
 import { pickCombo } from "../../_lib/combo";
+import type { ClauseSpec, GeneralRow } from "./seed";
 
 import { parse } from "../../../../src/domain/expression";
-import { toRows, type ConditionRow, type DocumentNode, type InlineNode, type Node } from "../../../../src/domain/document";
+import { refKey, rowRefPath, toRows, type ConditionRow, type DocumentNode, type InlineNode, type Node } from "../../../../src/domain/document";
 
 /** 문장 칸의 커서를 끝으로 — 칸이 여러 줄로 접혀도 맨 끝. */
 const END = process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End";
@@ -27,26 +28,26 @@ type SeedInline = InlineNode | { id: string; kind: "optionSlot"; optionCode: str
 type Branch = { id: string; when?: string; children: SeedInline[] };
 
 export interface RefScopes {
-  /** 이 문서의 참조 대상 id → 고르기 트리 줄 표기 경로. */
+  /** 이 문서의 참조 대상 열쇠(`refKey`, 함수조항 본문이면 P코드) → 고르기 트리 줄 표기 경로. */
   selfPaths: Map<string, string[]>;
-  /** 보통약관 대상 id → 펴야 할 조상 id. */
-  generalAncestors: Map<string, string[]>;
-  /** 조 참조 팝업에 범위 고르기가 있는가 (담보약관 · 공용조항). */
+  /** 보통약관 대상 열쇠 → 고를 줄 · 펴야 할 조상 줄. */
+  generalAncestors: Map<string, GeneralRow>;
+  /** 조 참조 팝업에 범위 고르기가 있는가 (담보약관 · 함수조항). */
   hasScopeSelect: boolean;
-  /** 공용조항 에디터인가 — 범위가 보통약관 · 이 공용조항 · 사용처 셋이다 (기능/공용조항 §3.5). 「이 템플릿」 자리에 「이 공용조항」. */
+  /** 함수조항 에디터인가 — 범위가 보통약관 · 이 함수조항 · 사용처 셋이다 (기능/함수조항 §3.5). 「이 템플릿」 자리에 「이 함수조항」. */
   clauseEditor?: boolean;
 }
 
-/** 에디터 한 벌 — 문면(`/documents/<id>`)과 공용조항(`/clauses/new`)이 같은 에디터 부품을 쓴다. */
+/** 에디터 한 벌 — 문면(`/documents/<id>`)과 함수조항(`/functions/new`)이 같은 에디터 부품을 쓴다. */
 export class Editor {
   constructor(
     readonly page: Page,
-    /** 툴바 · 본문을 품은 뿌리 — 문면은 `.ts-l3-body`, 공용조항은 `.ts-clause-editor`. */
+    /** 툴바 · 본문을 품은 뿌리 — 문면은 `.ts-l3-body`, 함수조항은 `.ts-clause-editor`. */
     readonly root: Locator,
     readonly refs: RefScopes,
   ) {}
 
-  /** 공용조항 본문의 옵션 코드 → 옵션명 — 「옵션 자리」 메뉴의 줄 이름(「옵션 자리 — <옵션명>」)으로 고른다. */
+  /** 함수조항 본문의 옵션 코드 → 옵션명 — 「옵션 자리」 메뉴의 줄 이름(「옵션 자리 — <옵션명>」)으로 고른다. */
   optionLabels: ReadonlyMap<string, string> = new Map();
 
   get toolbar(): Locator {
@@ -124,8 +125,8 @@ export class Editor {
         return this.confirm(d, "넣기");
       }
       case "clauseInlineRef": {
-        await this.runTool("공용조항(문장)");
-        const d = this.dialog("공용조항(문장 안) 넣기");
+        await this.runTool("함수조항(문장)");
+        const d = this.dialog("함수조항(문장 안) 넣기");
         await pickCombo(d.locator("#pop-clause"), { value: node.clauseCode });
         for (const [option, value] of Object.entries(node.options)) await d.locator(`#pop-opt-${option}`).selectOption(value);
         return this.confirm(d, "넣기");
@@ -137,7 +138,7 @@ export class Editor {
         return this.confirm(d, "넣기");
       }
       case "optionSlot": {
-        // 공용조항 본문 — 옵션이 하나면 곧바로, 여럿이면 버튼 아래 메뉴에서 그 옵션
+        // 함수조항 본문 — 옵션이 하나면 곧바로, 여럿이면 버튼 아래 메뉴에서 그 옵션
         await this.runTool("옵션 자리");
         const label = this.optionLabels.get(node.optionCode) ?? node.optionCode;
         const item = this.page.getByRole("menuitem", { name: `옵션 자리 — ${label}`, exact: true });
@@ -153,26 +154,31 @@ export class Editor {
 
   /**
    * 조 참조 팝업 — 범위 · 대상(트리에서 펴고 고르기) · 연결어.
-   * 공용조항 본문의 조 참조는 범위가 셋이다: 없음 = 보통약관 · `clause` = 이 공용조항(항 줄 표기로 찾는다) · `host` = 사용처 위치(줄 id `host:2.1.3`).
+   * 함수조항 본문의 조 참조는 범위가 셋이다: 없음 = 보통약관 · `clause` = 이 함수조항(항 줄 표기로 찾는다) · `host` = 사용처 위치(줄 id `host:2.1.3`).
    */
   private async pickTargets(d: Locator, node: Extract<InlineNode, { kind: "articleRef" }>): Promise<void> {
     const scope = (node as { scope?: string }).scope;
     const choice = this.refs.clauseEditor ? (scope === "clause" ? "self" : scope === "host" ? "host" : "general") : scope === "general" ? "general" : "self";
     const general = choice === "general";
     if (this.refs.hasScopeSelect) await d.locator("#pop-ref-scope").selectOption(choice);
-    for (const { nodeId } of node.targets) {
+    // 대상 모양은 범위마다 — 조 · 조+P코드(보통약관 · 이 템플릿), P코드(이 함수조항), 위치 경로(사용처) (ADR-0072 결정 3)
+    for (const t of node.targets as { articleId?: string; code?: string; host?: string }[]) {
       let rowId: string;
       if (general) {
-        for (const up of this.refs.generalAncestors.get(nodeId) ?? []) await this.expandRow(d, up);
-        rowId = nodeId;
+        const key = refKey({ articleId: t.articleId ?? "", ...(t.code !== undefined ? { code: t.code } : {}) });
+        const row = this.refs.generalAncestors.get(key);
+        if (!row) throw new Error(`보통약관 참조 대상 ${key} 가 고르기 트리에 없다`);
+        for (const up of row.chain) await this.expandRow(d, up);
+        rowId = row.row;
       } else if (choice === "host") {
         // 사용처 위치 줄 — 조 · 항 순으로 편다
-        const parts = nodeId.split(".");
+        const parts = (t.host ?? "").split(".");
         for (let k = 1; k < parts.length; k++) await this.expandRow(d, `host:${parts.slice(0, k).join(".")}`);
-        rowId = `host:${nodeId}`;
+        rowId = `host:${t.host ?? ""}`;
       } else {
-        const labels = this.refs.selfPaths.get(nodeId);
-        if (!labels) throw new Error(`조 참조 대상 ${nodeId} 가 이 문서 고르기 트리에 없다`);
+        const key = this.refs.clauseEditor ? (t.code ?? "") : refKey({ articleId: t.articleId ?? "", ...(t.code !== undefined ? { code: t.code } : {}) });
+        const labels = this.refs.selfPaths.get(key);
+        if (!labels) throw new Error(`조 참조 대상 ${key} 가 이 문서 고르기 트리에 없다`);
         rowId = await this.resolveSelfRow(d, labels);
       }
       const box = d.locator(`[data-ref-row="${rowId}"]`).first().locator(":scope > .ts-ref-pick input[type=checkbox]");
@@ -192,7 +198,7 @@ export class Editor {
     for (let guard = 0; guard < labels.length + 2; guard++) {
       const found = await d.evaluate((dialog, path) => {
         const scopes = [...dialog.querySelectorAll(".ts-ref-tree > div[role=none]")];
-        const self = scopes.find((s) => ["이 템플릿", "이 공용조항"].includes(s.querySelector(":scope > .ts-ref-scope")?.textContent ?? "")) ?? scopes[0];
+        const self = scopes.find((s) => ["이 템플릿", "이 함수조항"].includes(s.querySelector(":scope > .ts-ref-scope")?.textContent ?? "")) ?? scopes[0];
         if (!self) return { missing: -1 };
         let lis = [...self.querySelectorAll(":scope > div[role=none] > ul > li")];
         let row: HTMLElement | null = null;
@@ -241,7 +247,7 @@ export class Editor {
 
   private async fillRow(head: Locator, name: string, row: ConditionRow): Promise<void> {
     const left = row.left!;
-    const key = left.kind === "attr" ? `attr.${left.code}` : left.node ? `${left.code}@${left.node.id}` : left.code;
+    const key = left.kind === "attr" ? `attr.${left.code}` : left.kind !== "discriminator" ? rowRefPath(left) : left.node ? `${left.code}@${left.node.id}` : left.code;
     await pickCombo(head.getByRole("combobox", { name: `${name} 변수`, exact: true }), { value: key });
     await head.getByRole("combobox", { name: `${name} 연산자`, exact: true }).selectOption(row.op!);
     const right = row.right;
@@ -323,10 +329,10 @@ export class Editor {
     });
     await this.page.mouse.click(point.x, point.y, { button: "right" });
     const menu = this.page.getByRole("menu", { name: "편집 메뉴" });
-    const label = node.kind === "articleRef" ? "조 참조…" : node.kind === "appendixRef" ? "별표 참조…" : node.kind === "slot" ? "치환 슬롯…" : node.kind === "clauseInlineRef" ? "공용조항(문장 안)…" : undefined;
+    const label = node.kind === "articleRef" ? "조 참조…" : node.kind === "appendixRef" ? "별표 참조…" : node.kind === "slot" ? "치환 슬롯…" : node.kind === "clauseInlineRef" ? "함수조항(문장 안)…" : undefined;
     if (!label) throw new Error(`가지 문장에 넣을 수 없는 칩: ${node.kind}`);
     await menu.getByRole("menuitem", { name: label, exact: true }).click();
-    const title = { "조 참조…": "조 참조 넣기", "별표 참조…": "별표 참조 넣기", "치환 슬롯…": "치환 슬롯 넣기", "공용조항(문장 안)…": "공용조항(문장 안) 넣기" }[label];
+    const title = { "조 참조…": "조 참조 넣기", "별표 참조…": "별표 참조 넣기", "치환 슬롯…": "치환 슬롯 넣기", "함수조항(문장 안)…": "함수조항(문장 안) 넣기" }[label];
     const d = this.dialog(title);
     if (node.kind === "articleRef") await this.pickTargets(d, node);
     else if (node.kind === "appendixRef") await pickCombo(d.locator("#pop-appendix"), { value: node.appendixCode });
@@ -384,7 +390,7 @@ function articlesOf(tree: DocumentNode): { article: Node; wrap?: string }[] {
   return out;
 }
 
-const BLOCK_TOOL: Partial<Record<Node["kind"], string>> = { paragraph: "항", item: "호", subitem: "목", table: "표", clauseBlockRef: "공용조항" };
+const BLOCK_TOOL: Partial<Record<Node["kind"], string>> = { paragraph: "항", item: "호", subitem: "목", table: "표", clauseBlockRef: "함수조항", boxRef: "박스" };
 
 /** 문면 저작 화면 운전 — 담보약관 템플릿 한 벌. */
 export class DocumentAuthoring {
@@ -395,8 +401,10 @@ export class DocumentAuthoring {
     readonly page: Page,
     readonly tree: DocumentNode,
     refs: Omit<RefScopes, "hasScopeSelect">,
-    /** 공용조항 코드 → 이름 (공용조항 블록 고르기 메뉴의 줄 이름). */
+    /** 함수조항 코드 → 이름 (함수조항 블록 고르기 메뉴의 줄 이름). */
     private readonly clauseLabels: ReadonlyMap<string, string>,
+    /** 박스 코드 → 이름 (툴바 「박스」 고르기 메뉴의 줄 이름). */
+    private readonly boxNames: ReadonlyMap<string, string>,
   ) {
     this.body = page.locator(".ts-l3-body");
     this.editor = new Editor(page, this.body, { ...refs, hasScopeSelect: true });
@@ -407,7 +415,7 @@ export class DocumentAuthoring {
     return this.body.locator("section.ts-doc-article");
   }
 
-  /** 조 안의 블록 — 공용조항 블록의 본문(읽기 전용)은 뺀다. */
+  /** 조 안의 블록 — 함수조항 블록의 본문(읽기 전용)은 뺀다. */
   private blockAt(index: number): Locator {
     return this.article.locator("[data-block]:not([data-clause-ref] [data-block])").nth(index);
   }
@@ -483,7 +491,7 @@ export class DocumentAuthoring {
     }
   }
 
-  /** 자리 고르기 — -1 이면 조 제목, 아니면 k 번째 블록(문장 칸 · 표 첫 셀 · 공용조항 머리). */
+  /** 자리 고르기 — -1 이면 조 제목, 아니면 k 번째 블록(문장 칸 · 표 첫 셀 · 함수조항 머리). */
   private async select(index: number): Promise<void> {
     if (index < 0) {
       await this.article.locator("h3 [role=textbox]").blur();
@@ -494,6 +502,13 @@ export class DocumentAuthoring {
     const inline = block.locator("[data-inline]").first();
     if ((await block.getAttribute("data-clause-ref")) !== null) {
       await block.locator(".ts-doc-clause-name").click();
+      return;
+    }
+    // 박스 참조 — 글 칸이 없다. 박스 제목 · 첫 줄을 눌러 그 블록을 자리로 (머리 띠의 이름은 박스 화면 링크라 누르지 않는다).
+    // 블록 바로 아래의 박스만 — 항 블록은 호 목록 안에 박스를 품을 수 있다
+    const box = block.locator(":scope > aside.ts-doc-box");
+    if ((await box.count()) > 0) {
+      await box.locator(".ts-doc-box-title, .ts-doc-box-line").first().click();
       return;
     }
     // 이미 초점이 있으면 focus 가 자리를 다시 알리지 않는다 — 한 번 놓았다가 잡는다
@@ -515,14 +530,19 @@ export class DocumentAuthoring {
       await this.editor.confirm(d, "표 만들기");
       return;
     }
+    if (node.kind === "boxRef") {
+      await this.editor.runTool(tool);
+      await this.page.getByRole("menuitem", { name: `${this.boxNames.get(node.boxCode)}(${node.boxCode})`, exact: true }).click();
+      return;
+    }
     if (node.kind === "clauseBlockRef") {
       await this.editor.runTool(tool);
       await this.page.getByRole("menuitem", { name: `${this.clauseLabels.get(node.clauseCode)}(${node.clauseCode})`, exact: true }).click();
       if (Object.keys(node.options).length > 0) {
-        // 블록 머리의 옵션 단추 → 「공용조항 옵션」 팝업에서 옵션마다 선택지
-        const block = this.article.locator("[data-clause-ref]").filter({ hasText: `공용조항 (${this.clauseLabels.get(node.clauseCode)})` }).last();
+        // 블록 머리의 옵션 단추 → 「함수조항 옵션」 팝업에서 옵션마다 선택지 (인자가 있는 함수조항이면 「함수조항 옵션 · 인자」 — 인자는 기본 연결 그대로)
+        const block = this.article.locator("[data-clause-ref]").filter({ hasText: `함수조항 (${this.clauseLabels.get(node.clauseCode)})` }).last();
         await block.locator(".ts-doc-clause-opt").click();
-        const d = this.editor.dialog("공용조항 옵션");
+        const d = this.page.getByRole("dialog", { name: /^함수조항 옵션( · 인자)?$/ });
         for (const [option, value] of Object.entries(node.options)) await d.locator(`#pop-opt-${option}`).selectOption(value);
         await this.editor.confirm(d, "확인");
       }
@@ -553,29 +573,27 @@ export class DocumentAuthoring {
   }
 }
 
-// ───────────────────────────── 공용조항 ─────────────────────────────
+// ───────────────────────────── 함수조항 ─────────────────────────────
 
 type ClauseOption = { code: string; label: string; values: { label: string; body: { kind: string; text?: string }[] }[] };
-type ClauseMode = "inline" | "block" | "box";
-/** 「박스」 본문 — 제목 + 줄(글 · 값 슬롯 · 옵션 자리). */
-type SeedBox = { kind: "box"; title: string; lines: { children: ({ kind: "text"; text: string } | { kind: "slot"; ref: string } | { kind: "optionSlot"; optionCode: string })[] }[] };
+type ClauseMode = "inline" | "block";
 
-/** 공용조항 생성 화면 운전 — 이름 · 유형 · 옵션 · 본문 (기능/공용조항 §4.2). */
+/** 함수조항 생성 화면 운전 — 이름 · 유형 · 옵션 · 본문 (기능/함수조항 §4.2). */
 export class ClauseAuthoringDriver {
   readonly editor: Editor;
 
   constructor(
     readonly page: Page,
-    generalAncestors: Map<string, string[]>,
+    generalAncestors: Map<string, GeneralRow>,
   ) {
     this.editor = new Editor(page, page.locator(".ts-clause-editor"), { selfPaths: new Map(), generalAncestors, hasScopeSelect: true, clauseEditor: true });
   }
 
   async open(mode: ClauseMode, label: string): Promise<void> {
-    await this.page.goto(`/clauses/new?type=${mode}`);
+    await this.page.goto(`/functions/new?type=${mode}`);
     await this.page.waitForLoadState("networkidle");
-    await expect(this.page.getByRole("radio", { name: mode === "inline" ? /^문구/ : mode === "box" ? /^박스/ : /^항/ })).toBeChecked();
-    await this.page.getByLabel("공용조항명").fill(label);
+    await expect(this.page.getByRole("radio", { name: mode === "inline" ? /^문구/ : /^항/ })).toBeChecked();
+    await this.page.getByLabel("함수조항명").fill(label);
   }
 
   /** 옵션 목록 — 옵션마다 이름, 선택지마다 이름 · 문구. 새 옵션은 빈 선택지 둘을 품고 온다. */
@@ -592,41 +610,35 @@ export class ClauseAuthoringDriver {
     }
   }
 
+  /** 인자 표 — 인자마다 이름 · 타입 · 기본 연결(최종 결정 2). 본문의 슬롯 · 조건 고르기가 인자를 보려면 본문보다 먼저. */
+  async params(params: NonNullable<ClauseSpec["params"]>): Promise<void> {
+    for (const [i, p] of params.entries()) {
+      await this.page.getByRole("button", { name: "인자 추가" }).click();
+      await this.page.getByLabel(`인자 ${i + 1} 이름`, { exact: true }).fill(p.name);
+      const type = p.type.kind === "enum" || p.type.kind === "list<enum>" ? `${p.type.kind}:${p.type.enumCode}` : p.type.kind === "planOptions" ? `planOptions:${p.type.form}` : p.type.kind;
+      await this.page.getByLabel(`인자 ${i + 1} 타입`, { exact: true }).selectOption(type);
+      if (p.default) await this.page.getByLabel(`인자 ${i + 1} 기본 연결`, { exact: true }).selectOption(`d:${p.default.code}`);
+    }
+  }
+
   /**
-   * 본문 — 문구면 문장 한 줄, 항이면 항마다 (처음 빈 항 하나가 서 있다 · 다음 항은 툴바 「항」),
-   * 박스면 빈 박스의 제목 칸 · 줄 칸(한 줄씩 — 옵션 자리는 〔옵션명〕, 값 슬롯은 〔값 참조〕 표기).
+   * 본문 — 문구면 문장 한 줄, 항이면 항마다 (처음 빈 항 하나가 서 있다 · 다음 항은 툴바 「항」).
    */
   async body(mode: ClauseMode, body: readonly unknown[]): Promise<void> {
     const root = this.editor.root;
-    if (mode === "box") {
-      const [box] = body as SeedBox[];
-      const title = root.getByRole("textbox", { name: "박스 제목" });
-      await title.fill(box.title);
-      await title.press("Enter");
-      const lines = root.getByRole("textbox", { name: "박스 줄" });
-      await lines.focus();
-      for (const [i, line] of box.lines.entries()) {
-        if (i > 0) await this.page.keyboard.press("Enter");
-        const text = line.children
-          .map((n) => (n.kind === "text" ? n.text : n.kind === "slot" ? `〔값 ${n.ref}〕` : `〔${this.editor.optionLabels.get(n.optionCode) ?? n.optionCode}〕`))
-          .join("");
-        await this.page.keyboard.insertText(text);
-      }
-      // 칸을 떠나야 편집본에 들어간다
-      await this.page.keyboard.press("Tab");
-      await this.editor.noBanner();
-      return;
-    }
     if (mode === "inline") {
       await this.editor.fillInline(root.getByRole("textbox", { name: "문구", exact: true }), body as SeedInline[]);
       return;
     }
-    // 「이 공용조항」 조 참조의 줄 표기 — 본문 k 번째 항 = 「제k항」 (고르기 트리는 조 줄 없이 항부터)
+    // 「이 함수조항」 조 참조의 줄 표기 — 본문 k 번째 항(P코드로 가리킨다) = 「제k항」 (고르기 트리는 조 줄 없이 항부터)
     const selfPaths = this.editor.refs.selfPaths;
     selfPaths.clear();
-    (body as Node[]).forEach((node, k) => selfPaths.set(node.id, [`제${k + 1}항`]));
+    (body as Node[]).forEach((node, k) => {
+      const code = (node as { code?: string }).code;
+      if (code !== undefined) selfPaths.set(code, [`제${k + 1}항`]);
+    });
     for (const [i, node] of (body as Node[]).entries()) {
-      if (node.kind !== "paragraph" || (node.items ?? []).length > 0) throw new Error("이 E2E 의 「항」 공용조항은 호 없는 항뿐이다");
+      if (node.kind !== "paragraph" || (node.items ?? []).length > 0) throw new Error("이 E2E 의 「항」 함수조항은 호 없는 항뿐이다");
       if (i > 0) {
         await root.getByRole("textbox", { name: "항", exact: true }).nth(i - 1).focus();
         await this.editor.runTool("항");
@@ -638,7 +650,7 @@ export class ClauseAuthoringDriver {
   /** 저장 한 번 — 만들어지고 상세(읽기)로 간다. 코드는 시스템 채번. */
   async save(code: string): Promise<void> {
     await this.page.getByRole("button", { name: "저장", exact: true }).click();
-    await this.page.waitForURL(new RegExp(`/clauses/${code}$`), { timeout: 30_000 });
+    await this.page.waitForURL(new RegExp(`/functions/${code}$`), { timeout: 30_000 });
     await expect(this.page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
   }
 }

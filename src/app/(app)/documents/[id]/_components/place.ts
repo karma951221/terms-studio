@@ -7,10 +7,10 @@ import { tokensOf } from "./Inline";
 import type { Token } from "./inlineRuns";
 import type { CondInput, Place } from "./menus";
 
-/** 누른 요소 → 자리. 공용조항 블록 · 칩 · 조건 머리 · 조 제목 · 관 제목 · 문장 칸 · 블록 · 조 순으로 가까운 것. 본문 빈 곳이면 undefined. */
+/** 누른 요소 → 자리. 함수조항 블록 · 칩 · 조건 머리 · 조 제목 · 관 제목 · 문장 칸 · 블록 · 조 순으로 가까운 것. 본문 빈 곳이면 undefined. */
 export function placeOf(target: Element): Place | undefined {
   const data = (selector: string, key: string): string | undefined => (target.closest(selector) as HTMLElement | null)?.dataset[key];
-  // 공용조항 블록 안(그 공용조항의 본문)은 이 문서의 자리가 아니다 — 블록 하나로 모은다
+  // 함수조항 블록 안(그 함수조항의 본문)은 이 문서의 자리가 아니다 — 블록 하나로 모은다
   const clauseRef = data("[data-clause-ref]", "clauseRef");
   if (clauseRef) return { kind: "block", id: clauseRef };
   const chip = data("[data-chip]", "chip");
@@ -58,7 +58,7 @@ export function readInline(root: HTMLElement, place: Extract<Place, { kind: "inl
 }
 
 /**
- * DOM 자리 하나 → 그 자리를 품은 블록 id (공용조항 블록 · 항/호/목/표/박스 · 조 제목 → 조 · 관 제목 → 관 · 조건 머리 → 가지 · 조 본문 → 조).
+ * DOM 자리 하나 → 그 자리를 품은 블록 id (함수조항 블록 · 항/호/목/표/박스 · 조 제목 → 조 · 관 제목 → 관 · 조건 머리 → 가지 · 조 본문 → 조).
  * 선택(드래그)의 두 끝을 블록으로 옮길 때 쓴다 — 조건식 감싸기 · 끌어 옮기기.
  */
 export function blockAt(node: Node | null): string | undefined {

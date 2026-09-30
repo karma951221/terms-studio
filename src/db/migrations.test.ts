@@ -267,7 +267,7 @@ describe("0017_attribute_value_numeric_code", () => {
     await client.query(`INSERT INTO product_coverage_attributes (product_coverage_id, kind_code, value_code) VALUES ($1, 'A0001', 'V02')`, [PC]);
     await insertDiscriminator("D0001", "exist(attr.A0001) and attr.A0001 = 'V02'");
     await insertDiscriminator("D0002", "attr.A0001 ≠ 'V10' or 'V01' = attr.A0001");
-    // enum 값 비교 · 공용조항 옵션 선택 코드는 다른 기능 — 그대로
+    // enum 값 비교 · 함수조항 옵션 선택 코드는 다른 기능 — 그대로
     await insertDiscriminator("D0003", "D0009 = 'V02'");
     await client.query(`INSERT INTO enums (id, code, label) VALUES ($1, 'E0001', '고지유형')`, [ENUM]);
     await client.query(`INSERT INTO enum_values (enum_id, code, label, "order") VALUES ($1, 'V01', '일반심사', 0)`, [ENUM]);
@@ -296,7 +296,7 @@ describe("0017_attribute_value_numeric_code", () => {
     };
   }
 
-  it("유효값 코드 V0n → n 을 값 · 상품담보 조합 · 조합 키 · attr 식(구분자 · 문서 · 공용조항 본문 · 옵션)에서 함께 바꾸고, enum 값 · 옵션 선택지 코드는 두며, 순서 컬럼을 지운다 · 두 번 돌려도 같다", async () => {
+  it("유효값 코드 V0n → n 을 값 · 상품담보 조합 · 조합 키 · attr 식(구분자 · 문서 · 함수조항 본문 · 옵션)에서 함께 바꾸고, enum 값 · 옵션 선택지 코드는 두며, 순서 컬럼을 지운다 · 두 번 돌려도 같다", async () => {
     await upTo16();
     await seedOld();
     await apply0017();
@@ -334,5 +334,18 @@ describe("0017_attribute_value_numeric_code", () => {
     await expect(apply0017()).rejects.toThrow(/0017/);
     const codes = await client.query<{ code: string }>(`SELECT code FROM attribute_values ORDER BY code`);
     expect(codes.rows.map((r) => r.code)).toEqual(["V01", "V1"]);
+  });
+});
+
+describe("0018_enum_fields", () => {
+  it("옛 열거형 · 열거값 행은 필드 없음(fields = [] · {})을 받는다", async () => {
+    for (let idx = 6; idx <= 17; idx++) for (const s of statementsOf(tagOf(idx))) await client.exec(s);
+    const [{ id }] = (await client.query<{ id: string }>(`INSERT INTO enums (code, label) VALUES ('E0001', '납입면제사유') RETURNING id`)).rows as [{ id: string }];
+    await client.query(`INSERT INTO enum_values (enum_id, code, label, "order") VALUES ($1, 'V01', '암', 0)`, [id]);
+    await client.transaction(async (tx) => {
+      for (const s of statementsOf(tagOf(18))) await tx.exec(s);
+    });
+    expect((await client.query<{ fields: unknown }>(`SELECT fields FROM enums`)).rows).toEqual([{ fields: [] }]);
+    expect((await client.query<{ fields: unknown }>(`SELECT fields FROM enum_values`)).rows).toEqual([{ fields: {} }]);
   });
 });

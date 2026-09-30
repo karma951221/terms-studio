@@ -2,7 +2,7 @@
  * 평가기 — 문맥(EvalContext)은 언어 밖에서 주입된다 (ADR-0013).
  *
  * 세 가지 결과: 값 · 미결(문맥이 그 자리를 모름 — 사전평가용) · 오류(Issue + 좌표).
- * 규칙 (ADR-0004 · ADR-0010 · ADR-0015):
+ * 규칙 (ADR-0004 · ADR-0015 · ADR-0076 — 인자는 펼칠 때 연결로 바뀐다):
  *   - 미입력 참조 → error notEntered. 조용한 false 는 없다.
  *   - 값 자리 자체가 없음(미부착·삭제) → error notAttached / brokenRef.
  *   - 미사용 담보속성의 = ≠ → error unusedAttribute. exist(attr.X) 는 unused 면 false.
@@ -29,7 +29,12 @@ export type LookupResult =
    * 정의·필드가 삭제된 경우 `brokenRef`. `source` 는 자리를 없앤 원인의 원천 좌표 — 구분자 식이 깨져서면
    * 그 구분자의 편집기 (ADR-0049 §4 「원천은 고치면 사라지는 곳」). 문맥이 알 때만 싣고 평가기는 오류에 그대로 옮긴다.
    */
-  | { kind: "missing"; issue?: "notAttached" | "brokenRef"; source?: Coordinate };
+  | { kind: "missing"; issue?: "notAttached" | "brokenRef"; source?: Coordinate }
+  /**
+   * 값 자리는 있고 입력도 됐지만 값이 정의와 어긋난다 — 지운 열거값 코드가 남은 자리(「없는 값」, ADR-0078 결정 5).
+   * 읽으면 늘 오류다(exist 도). `source` 는 그 값을 고치는 곳(상품 · 세목 선택지 · 담보 노드의 값 자리).
+   */
+  | { kind: "invalid"; issue: "brokenRef"; message: string; source?: Coordinate };
 
 /** 담보속성 조회 결과. */
 export type AttributeResult =
@@ -103,6 +108,8 @@ function readValue(ctx: EvalContext, ref: ValueRef): EvalResult {
           : `${refPath(ref)} 의 값 자리가 없습니다 (구분자 미부착)`;
       return error(ctx, kind, message, ref, r.source);
     }
+    case "invalid":
+      return error(ctx, r.issue, r.message, ref, r.source);
   }
 }
 
@@ -175,6 +182,11 @@ function asBoolean(ctx: EvalContext, r: EvalResult, what: string, ref?: Ref): Ev
   return r;
 }
 
+/** 함수조항 전용 식(내부 변수 · 필드 읽기 · 연산)은 펼칠 때 값으로 풀린다(clause/locals.ts) — 평가기까지 오면 풀리지 않은 것이다. */
+function clauseOnly(ctx: EvalContext, what: string, ref?: Ref): EvalResult {
+  return error(ctx, "structure", `${what} 은(는) 함수조항을 펼칠 때 풀려야 하는데 평가에 닿았습니다`, ref);
+}
+
 function refOf(e: Expr): Ref | undefined {
   if (e.kind === "ref") return e.ref;
   if (e.kind === "aggregate") return e.ref;
@@ -221,6 +233,7 @@ function aggregate(ctx: EvalContext, op: AggregateOp, ref: ValueRef): EvalResult
     for (const child of scope) {
       const r = child.lookup(ref);
       if (r.kind === "missing") continue;
+      if (r.kind === "invalid") return readValue(child, ref); // 「없는 값」 오류
       if (r.kind === "undetermined") {
         pending ??= undetermined(ref);
         continue;
@@ -295,6 +308,11 @@ export function evaluate(expr: Expr, ctx: EvalContext): EvalResult {
       if (expr.ref.kind === "attr") {
         return error(ctx, "typeMismatch", `담보속성 attr.${expr.ref.code} 는 exist · = · ≠ 로만 쓸 수 있습니다`, expr.ref);
       }
+      if (expr.ref.kind === "local") return clauseOnly(ctx, `내부 변수 ${refPath(expr.ref)}`, expr.ref);
+      if (expr.ref.kind === "param") {
+        // 인자는 함수조항을 펼칠 때 연결(구분자 · 상수)로 바뀐다(clause/bind.ts) — 평가까지 남았으면 연결이 빠진 것이다
+        return error(ctx, "structure", `인자 ${refPath(expr.ref)} 가 연결되지 않은 채 평가에 닿았습니다`, expr.ref);
+      }
       return readValue(ctx, expr.ref);
 
     case "not": {
@@ -326,6 +344,12 @@ export function evaluate(expr: Expr, ctx: EvalContext): EvalResult {
 
     case "aggregate":
       if (expr.ref.kind === "attr") return aggregateAttribute(ctx, expr.op, expr.ref);
+      if (expr.ref.kind === "param" || expr.ref.kind === "local") return error(ctx, "structure", `${refPath(expr.ref)} 는 집계할 수 없습니다`, expr.ref);
       return aggregate(ctx, expr.op, expr.ref);
+
+    case "member":
+      return clauseOnly(ctx, `필드 읽기 .${expr.field}`);
+    case "call":
+      return clauseOnly(ctx, `연산 .${expr.op}`);
   }
 }

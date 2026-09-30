@@ -91,6 +91,11 @@ test(
       await expect(rows.nth(0).getByRole("textbox", { name: "보험종목명" })).toHaveValue("보험료납입면제미적용형");
       await expect(page.getByRole("button", { name: "저장", exact: true })).toHaveCount(1);
       await page.screenshot({ path: "/tmp/terms-basic-edit.png", fullPage: true });
+      // 납입면제 폼 검사 (결정 16) — 적용여부 「예」인데 사유를 안 고르면 저장이 거부되고 어느 종목인지 알린다
+      await page.getByRole("button", { name: "저장", exact: true }).click();
+      await expect(page.getByText("제2종(보험료납입면제적용형) — 적용여부가 「예」면 납입면제사유를 1개 이상 고르세요")).toBeVisible();
+      await expect(page.getByRole("button", { name: "저장", exact: true })).toBeVisible();
+      await rows.nth(1).getByRole("checkbox", { name: "상해", exact: true }).check();
       await page.getByRole("button", { name: "저장", exact: true }).click();
 
       // ── 저장 후 읽기: 표에 종·형 · 이름 · 값이 함께 보인다

@@ -9,12 +9,12 @@
 
 import type { Discriminator, EnumDef } from "../catalog/types";
 import { discriminatorResultType } from "../catalog/expression";
-import { slotType } from "../catalog/values";
+import { missingValueMessage, slotType } from "../catalog/values";
 import { evaluate, parse, refPath, type ValueRef } from "../expression";
 import { findMasterField, type MasterTree } from "../master";
 import type { Code, Coordinate, FieldType, Issue, Value } from "../types";
 import type { AssemblyContext } from "./context";
-import type { ErrorNode, RArticle, RBulletList, RInline, RItem, RParagraph, ResolvedDoc, RStatic, RSubitem, SInline, SubstitutedDoc } from "./types";
+import type { ErrorNode, LoopTag, RArticle, RBulletList, RInline, RItem, RParagraph, ResolvedDoc, RStatic, RSubitem, SInline, SubstitutedDoc } from "./types";
 import { mapArticles } from "./walk";
 
 export interface SubstituteEnv {
@@ -37,7 +37,7 @@ function enumLabel(enums: ReadonlyMap<Code, EnumDef>, enumCode: Code, valueCode:
   const def = enums.get(enumCode);
   if (!def) return { ok: false, issue: { kind: "brokenRef", message: `enum ${enumCode} 이(가) 없습니다`, at } };
   const v = def.values.find((x) => x.code === valueCode);
-  if (!v) return { ok: false, issue: { kind: "brokenRef", message: `enum ${def.label}(${def.code}) 에 값 코드 ${String(valueCode)} 이(가) 없습니다`, at } };
+  if (!v) return { ok: false, issue: { kind: "brokenRef", message: missingValueMessage(def, [String(valueCode)]), at } };
   return { ok: true, text: v.label };
 }
 
@@ -99,12 +99,13 @@ class Substituter {
       const issue: Issue = parsed.rejection.reason === "invalid" && parsed.rejection.issues[0] ? parsed.rejection.issues[0] : { kind: "syntax", message: "슬롯 참조를 읽을 수 없습니다", at };
       return this.error(n.id, issue);
     }
-    if (parsed.value.kind !== "ref" || parsed.value.ref.kind === "attr") {
-      return this.error(n.id, { kind: "typeMismatch", message: "슬롯은 값 참조 경로 하나여야 합니다 (식 · 담보속성 불가)", at });
+    if (parsed.value.kind !== "ref" || parsed.value.ref.kind === "attr" || parsed.value.ref.kind === "param" || parsed.value.ref.kind === "local") {
+      return this.error(n.id, { kind: "typeMismatch", message: "슬롯은 값 참조 경로 하나여야 합니다 (식 · 담보속성 · 연결 안 된 인자 불가)", at });
     }
     // 반복 표 행 안의 슬롯은 행 노드 문맥에서 (한정자 없는 참조 = 행 노드의 자기-또는-조상 — ADR-0070)
-    const base = n.row ? this.ctx.rows?.rowContext(n.row) : this.ctx.eval;
-    if (!base) return this.error(n.id, { kind: "brokenRef", message: "반복 표 행 노드의 문맥을 만들 수 없습니다", at });
+    // 블록 반복 안(세목 선택지 원천)의 슬롯은 그 종을 커서로 세운 문맥에서 (ADR-0077 — 종형명 · 세목 레벨 구분자)
+    const base = n.row ? this.ctx.rows?.rowContext(n.row) : n.plan !== undefined ? this.ctx.plans?.context(n.plan) : this.ctx.eval;
+    if (!base) return this.error(n.id, { kind: "brokenRef", message: n.row ? "반복 표 행 노드의 문맥을 만들 수 없습니다" : "반복의 현재 종 문맥을 만들 수 없습니다", at });
     const r = evaluate(parsed.value, { ...base, coordinate: n.at });
     if (r.kind === "error") return this.error(n.id, r.issue);
     if (r.kind === "undetermined") return this.error(n.id, this.ctx.explainUndetermined(r.reason, n.at));
@@ -125,6 +126,7 @@ class Substituter {
     return {
       kind: "item",
       id: n.id,
+      ...keyedOf(n),
       children: this.inlines(n.children),
       ...(n.subitems ? { subitems: n.subitems.map((s) => (s.kind === "error" ? s : s.kind === "bulletList" ? this.bullets(s) : this.subitem(s))) } : {}),
     };
@@ -145,6 +147,7 @@ class Substituter {
     return {
       kind: "paragraph",
       id: n.id,
+      ...keyedOf(n),
       children: this.inlines(n.children),
       ...(n.items ? { items: n.items.map((it) => (it.kind === "item" ? this.item(it) : it.kind === "error" ? it : this.static(it))) } : {}),
       ...(n.excludeFromComparison ? { excludeFromComparison: true } : {}),
@@ -159,4 +162,9 @@ class Substituter {
 export function substituteSlots(doc: ResolvedDoc, ctx: AssemblyContext, env: SubstituteEnv): SubstituteOutcome {
   const s = new Substituter(ctx, env);
   return { doc: mapArticles(doc, (a) => s.article(a)), issues: s.issues };
+}
+
+/** 참조 열쇠 · 반복 원소 표지 · 블록 묶음 (`Keyed`) — 단계를 건너도 그대로 싣는다. */
+function keyedOf(n: { key?: string; loops?: LoopTag[]; groups?: string[] }): { key?: string; loops?: LoopTag[]; groups?: string[] } {
+  return { ...(n.key !== undefined ? { key: n.key } : {}), ...(n.loops ? { loops: n.loops } : {}), ...(n.groups ? { groups: n.groups } : {}) };
 }

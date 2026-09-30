@@ -105,7 +105,7 @@ export function StaticBox({ node, controls }: { node: StaticBoxShape; controls?:
 }
 
 /**
- * 글머리 목록 — 번호 없는 항목 나열(마커 「-」, 원문 관례). 조립 결과 · 공용조항 모델 · 상품 원문 패널이 함께 쓴다.
+ * 글머리 목록 — 번호 없는 항목 나열(마커 「-」, 원문 관례). 조립 결과 · 함수조항 모델 · 상품 원문 패널이 함께 쓴다.
  * 항목은 인라인을 그린 결과다. 편집기(DocBody)는 항목마다 그 자리 편집기를 넣어 같은 모양(`ts-doc-bullets`)으로 그린다.
  */
 export function StaticBullets({ id, items }: { id: string; items: { id: string; body: ReactNode }[] }) {

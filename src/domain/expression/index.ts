@@ -6,7 +6,7 @@
  *   parse(src)                      소스 → AST (문법 오류는 Rejection invalid/syntax)
  *   format(expr, displayName?)      AST → 소스 (표시명 훅; parse∘format 동치)
  *   extractRefs(expr)               읽는 참조 전부 (집계·담보속성·내장 구분)
- *   requiredDiscriminatorCodes(expr) 요구 구분자 코드 집합 (ADR-0010)
+ *   requiredDiscriminatorCodes(expr) 요구 구분자 코드 집합
  *   masterFieldPaths(expr)          마스터 필드 경로 집합 (역인덱스 1단)
  *   checkTypes / checkCondition     타입 검사 (타입 조회 주입)
  *   evaluate(expr, ctx)             평가 (문맥 주입) → 값 | 미결 | 오류
@@ -22,23 +22,27 @@ export type {
   DiscriminatorRef,
   Expr,
   ExprKind,
+  CallExpr,
   Literal,
+  LocalRef,
   MasterRef,
+  MethodOp,
   NodeQualifier,
+  ParamRef,
   Ref,
   ValueRef,
 } from "./ast";
-export { AGGREGATE_OPS, COMPARE_OPS, refPath, sameRef } from "./ast";
+export { AGGREGATE_OPS, COMPARE_OPS, METHOD_OPS, refPath, sameRef } from "./ast";
 
 export { parse, RESERVED_WORDS } from "./parser";
 
-export type { DisplayName } from "./format";
+export type { DisplayName, MemberName } from "./format";
 export { format, formatLiteral } from "./format";
 
-export type { ExtractedRef } from "./refs";
-export { extractRefs, masterFieldPaths, requiredDiscriminatorCodes } from "./refs";
+export type { EnumRead, EnumReadTypes, ExtractedRef } from "./refs";
+export { enumReads, extractRefs, inferType, localNames, masterFieldPaths, paramNames, requiredDiscriminatorCodes } from "./refs";
 
-export type { CheckOptions, ExprType, TypeResolver } from "./typecheck";
+export type { CheckOptions, EnumInfo, ExprType, LocalTypes, ParamTypes, TypeResolver } from "./typecheck";
 export { checkCondition, checkTypes } from "./typecheck";
 
 export type { AttributeResult, EvalContext, EvalResult, LookupResult } from "./evaluate";

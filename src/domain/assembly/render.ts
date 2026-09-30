@@ -8,10 +8,13 @@
  */
 
 import type { Appendix } from "../document/appendix";
+import { refKey } from "../document/pcode";
 import { appendixRefLabel, articleLabel, itemLabel, paragraphLabel, referenceChunkLabel, referenceTargetLabel, sectionLabel, subitemLabel, type ReferenceTarget } from "../document/numbering";
 import type { Code, Coordinate, Id, Issue } from "../types";
+import { keyBase } from "./resolve";
 import type {
   BookletAppendix,
+  LoopTag,
   ErrorNode,
   NumberedDoc,
   NumberedNode,
@@ -99,8 +102,10 @@ export interface RenderEnv {
   ownerId: Id;
   /** 보통약관 (담보약관의 `scope:'general'` 조 참조 · 같은 문서에 없는 조 id 의 두 번째 탐색 대상). */
   general?: NumberedDoc;
-  /** 생략된 특약 조 id → 연결된 보통약관 조 id. */
-  aliases?: ReadonlyMap<Id, Id>;
+  /**
+   * 대상 열쇠(`refKey`) 별칭 — 생략된 특약 조 id → 연결된 보통약관 조 id, 대치된 기본계약 조 · 그 항 · 호 · 목(`조#코드`) → 이 문서의 대치 노드 열쇠.
+   */
+  aliases?: ReadonlyMap<string, string>;
   /** 상품이 노출을 끈 보통약관 조 id → 조 명 (기능/상품 §3.6). 사라진 참조 대상이 이 중에 있으면 `articleHidden` 오류다. */
   hiddenArticles?: ReadonlyMap<Id, string>;
   appendices: readonly BookletAppendix[];
@@ -111,34 +116,102 @@ export interface RenderOutcome {
   issues: Issue[];
 }
 
-function targetIndex(d: NumberedDoc | undefined): Map<Id, ReferenceTarget> {
-  const out = new Map<Id, ReferenceTarget>();
+/** 열쇠 하나가 가리키는 살아남은 노드 — 반복 원소 표지와 함께 (반복 안 대상 · 값 한정을 좁히는 재료). */
+interface Instance {
+  target: ReferenceTarget;
+  loops: readonly LoopTag[];
+}
+
+/**
+ * 번호 붙은 조립 결과의 색인 — 노드 id → 대상(좌표 · 출처 표기용), 참조 열쇠(`refKey`) → 대상(참조 해소용, ADR-0072).
+ * 반복 · 함수조항 펼치기가 만든 노드는 열쇠의 원형(복제 접미사를 뗀 것)으로도 모은다 — 원형 하나 = 원소마다 생긴 노드 여럿(ADR-0077 결정 7).
+ */
+interface TargetIndex {
+  byId: Map<Id, ReferenceTarget>;
+  byKey: Map<string, ReferenceTarget>;
+  /** 원형 열쇠(`조id#P0200/P0100`) → 그 열쇠로 생긴 노드들(문서 순). 반복 밖 노드는 하나. */
+  instances: Map<string, Instance[]>;
+  /** 반복 블록 · 함수조항 블록 참조의 원형 열쇠 → 그 블록이 곧바로 낸 노드들(문서 순) — 「펼친 것 전부」. */
+  groups: Map<string, Instance[]>;
+  /** 조립이 밟은 반복 블록이 낼 수 있던 원형 열쇠 — 원소 0개라 노드가 없어도 「0개」 오류로 가른다. */
+  repeatBases: Set<string>;
+}
+
+function targetIndex(d: NumberedDoc | undefined): TargetIndex {
+  const byId = new Map<Id, ReferenceTarget>();
+  const byKey = new Map<string, ReferenceTarget>();
+  const instances = new Map<string, Instance[]>();
+  const groups = new Map<string, Instance[]>();
+  const repeatBases = new Set<string>();
+  const push = (m: Map<string, Instance[]>, key: string, inst: Instance) => {
+    const list = m.get(key);
+    if (list) list.push(inst);
+    else m.set(key, [inst]);
+  };
+  const put = (id: Id, articleId: Id, n: { key?: string; loops?: LoopTag[]; groups?: string[] }, t: ReferenceTarget) => {
+    byId.set(id, t);
+    const inst: Instance = { target: t, loops: n.loops ?? [] };
+    for (const g of n.groups ?? []) push(groups, refKey({ articleId, code: keyBase(g) }), inst);
+    if (n.key === undefined) return;
+    const exact = refKey({ articleId, code: n.key });
+    // 같은 열쇠는 살아남은 트리에 하나다(배타 가지 짝은 하나만 산다) — 먼저 것을 둔다
+    if (byKey.has(exact)) return;
+    byKey.set(exact, t);
+    push(instances, refKey({ articleId, code: keyBase(n.key) }), inst);
+  };
   for (const a of d ? articlesOf(d.doc) : []) {
     const articleNumber = d!.numbers.get(a.id);
     if (!articleNumber) continue;
     const article = { id: a.id, n: articleNumber.n, title: a.title };
-    out.set(a.id, { kind: "article", article });
+    byId.set(a.id, { kind: "article", article });
+    byKey.set(a.id, { kind: "article", article });
+    instances.set(a.id, [{ target: { kind: "article", article }, loops: [] }]);
+    for (const k of a.repeatKeys ?? []) repeatBases.add(refKey({ articleId: a.id, code: k }));
     for (const p of a.children) {
       if (p.kind !== "paragraph") continue;
       const paragraphNumber = d!.numbers.get(p.id);
       if (!paragraphNumber) continue;
       const paragraph = { id: p.id, n: paragraphNumber.n };
-      out.set(p.id, { kind: "paragraph", article, paragraph });
+      put(p.id, a.id, p, { kind: "paragraph", article, paragraph });
       for (const it of p.items ?? []) {
         if (it.kind !== "item") continue;
         const itemNumber = d!.numbers.get(it.id);
         if (!itemNumber) continue;
         const item = { id: it.id, n: itemNumber.n };
-        out.set(it.id, { kind: "item", article, paragraph, item });
+        put(it.id, a.id, it, { kind: "item", article, paragraph, item });
         for (const sub of it.subitems ?? []) {
           if (sub.kind !== "subitem") continue;
           const subitemNumber = d!.numbers.get(sub.id);
-          if (subitemNumber) out.set(sub.id, { kind: "subitem", article, paragraph, item, subitem: { id: sub.id, n: subitemNumber.n } });
+          if (subitemNumber) put(sub.id, a.id, sub, { kind: "subitem", article, paragraph, item, subitem: { id: sub.id, n: subitemNumber.n } });
         }
       }
     }
   }
-  return out;
+  return { byId, byKey, instances, groups, repeatBases };
+}
+
+/**
+ * 열쇠 하나 → 살아남은 노드들 (ADR-0072 결정 9 · ADR-0077 결정 7). 복제 접미사가 든 열쇠(「이 함수조항」 참조가 사본 안에서 만든 것)는 그 노드 하나,
+ * 원형 열쇠는 그 열쇠로 생긴 노드 전부(반복 밖이면 하나), 없으면 그 열쇠의 블록(반복 블록 · 함수조항 참조)이 곧바로 낸 노드 전부.
+ */
+function lookup(ix: TargetIndex, key: string): Instance[] | undefined {
+  if (key.includes("@")) {
+    const t = ix.byKey.get(key);
+    return t ? [{ target: t, loops: [] }] : undefined;
+  }
+  return ix.instances.get(key) ?? ix.groups.get(key);
+}
+
+/** 반복으로 생길 수 있는 대상인가 — 밟은 반복의 원형이거나(원소 0개 포함) 안쪽 코드의 참조 노드가 그렇다. */
+function repeatBorn(ix: TargetIndex, key: string): boolean {
+  if (ix.repeatBases.has(key)) return true;
+  const slash = key.indexOf("/");
+  return slash >= 0 && ix.repeatBases.has(key.slice(0, slash));
+}
+
+/** 해소된 대상의 노드 id — 가장 깊은 단계. */
+function nodeIdOf(t: ReferenceTarget): Id {
+  return t.subitem?.id ?? t.item?.id ?? t.paragraph?.id ?? t.article.id;
 }
 
 function issueNodeKind(issue: Issue): string | undefined {
@@ -152,7 +225,7 @@ function issueNodeKind(issue: Issue): string | undefined {
 
 /** 조립 후 계산 번호를 issue 결과·원천 좌표에 보탠다. */
 export function locateIssues(issues: readonly Issue[], numbered: NumberedDoc): Issue[] {
-  const index = targetIndex(numbered);
+  const index = targetIndex(numbered).byId;
   return issues.map((issue) => {
     const structural = [issue.at.articleId ?? "", ...(issue.at.nodePath ?? [])].reverse().map((id) => index.get(id)).find(Boolean);
     const numberedAt: Coordinate = structural
@@ -193,15 +266,19 @@ function boxText(n: RenderedInline): string {
 
 class Renderer {
   readonly issues: Issue[] = [];
+  /** 노드 id → 대상 (참조 자리의 출처 — 앞 경로 생략 기준). */
   private readonly self: Map<Id, ReferenceTarget>;
-  private readonly general: Map<Id, ReferenceTarget>;
+  /** 참조 열쇠 → 대상 — 이 문서 · 보통약관. */
+  private readonly own: TargetIndex;
+  private readonly general: TargetIndex;
   private readonly appendices: Map<Code, BookletAppendix>;
 
   constructor(
     private readonly numbered: NumberedDoc,
     private readonly env: RenderEnv,
   ) {
-    this.self = targetIndex(numbered);
+    this.own = targetIndex(numbered);
+    this.self = this.own.byId;
     this.general = targetIndex(env.general);
     this.appendices = new Map(env.appendices.map((a) => [a.code, a]));
   }
@@ -223,58 +300,75 @@ class Renderer {
         return n;
       case "articleRef": {
         // 담보약관의 보통약관 참조인데 템플릿이 없으면 통째로 해소 불가 — 대상 단위 판단 이전의 문제다
-        // (보통약관 문서 안의 scope general 참조 — 공용조항 본문 — 는 자기 문서에서 찾는다)
+        // (보통약관 문서 안의 scope general 참조 — 함수조항 본문 — 는 자기 문서에서 찾는다)
         if (n.scope === "general" && this.env.document !== "general" && !this.env.general) {
-          return this.error(n.id, { kind: "brokenRef", message: "보통약관 템플릿이 없어 보통약관 참조를 해소할 수 없습니다", at: { ...n.at, refPath: n.targets[0]?.nodeId } });
+          return this.error(n.id, { kind: "brokenRef", message: "보통약관 템플릿이 없어 보통약관 참조를 해소할 수 없습니다", at: { ...n.at, ...(n.targets[0] ? { refPath: refKey(n.targets[0]) } : {}) } });
         }
-        const alive: { nodeId: Id; info: ReferenceTarget }[] = [];
-        const dropped: Id[] = [];
+        // 사라짐 판정 = 「살아남은 트리에 그 조의 그 코드가 없다」 — 같은 코드를 공유한 분기 짝 중 살아남은 것으로 해소한다 (ADR-0072 결정 9).
+        // 반복 · 함수조항 블록이 만든 노드는 원형 열쇠 하나에 여럿 — 펼친 것 전부, 같은 반복 회차 안의 참조면 그 회차의 사본, 값 한정이면 그 값이 낸 것만.
+        // 그렇게 좁힌 것이 0개면 조립 오류다 (ADR-0077 결정 7 — 좌표 = 참조 자리)
+        const alive: ReferenceTarget[] = [];
+        const dropped: { key: string; articleId: Id }[] = [];
+        const empty: string[] = [];
         let generalPrefix = n.scope === "general";
         let previous = n.scope === "self" ? source : undefined;
         for (const target of n.targets) {
-          let info = n.scope === "self" || this.env.document === "general" ? this.self.get(target.nodeId) : this.general.get(target.nodeId);
-          if (!info && n.scope === "self") {
-            // 별칭 — 생략된 특약 조(→ 보통약관 조) 또는 대치된 기본계약 조(→ 이 문서의 보통약관 조).
-            const alias = this.env.aliases?.get(target.nodeId);
+          const key = refKey(target);
+          let ix = n.scope === "self" || this.env.document === "general" ? this.own : this.general;
+          let found = lookup(ix, key);
+          if (!found && n.scope === "self") {
+            // 별칭 — 생략된 특약 조(→ 보통약관 조) 또는 대치된 기본계약 조 · 그 항 · 호 · 목(→ 이 문서의 대치 노드).
+            const alias = this.env.aliases?.get(key);
             if (alias) {
-              const own = this.self.get(alias);
-              if (own) {
-                info = own;
-              } else {
-                info = this.general.get(alias);
-                if (info) {
+              found = lookup(this.own, alias);
+              if (!found) {
+                found = lookup(this.general, alias);
+                if (found) {
+                  ix = this.general;
                   generalPrefix = true;
                   previous = undefined;
                 }
               }
             }
           }
-          if (info) alive.push({ nodeId: target.nodeId, info });
-          else dropped.push(target.nodeId);
+          const narrowed = (found ?? []).filter(
+            (inst) =>
+              inst.loops.every((l) => n.within?.[l.loop] === undefined || n.within[l.loop] === l.element) &&
+              (target.values === undefined || inst.loops.some((l) => l.kind === "enumValue" && target.values!.includes(l.element))),
+          );
+          if (narrowed.length > 0) alive.push(...narrowed.map((i) => i.target));
+          else if (target.values !== undefined || (found?.length ?? 0) > 0 || repeatBorn(ix, key)) empty.push(key);
+          else dropped.push({ key, articleId: target.articleId });
+        }
+        if (empty.length > 0) {
+          for (const key of empty) {
+            this.issues.push({ kind: "articleGone", message: `참조 대상 ${key} 을(를) 반복 · 값 한정으로 펼친 것이 0개입니다 — 이 상품에서 그 대상이 생기지 않는다`, at: { ...n.at, refPath: key } });
+          }
+          return { kind: "error", id: n.id, issue: this.issues.at(-1)! };
         }
         if (alive.length === 0) {
           // 덩어리의 대상 전부가 사라졌다 — 가리킬 것이 없으니 오류. issue 는 대상마다, 마커는 자리에 하나 (기능/문면 §3.5).
-          for (const nodeId of dropped) {
-            // 상품이 노출을 끈 조를 가리켰다면 원인이 다르다 — 분기가 아니라 상품의 결정이다 (기능/상품 §3.6).
-            const hiddenTitle = this.env.hiddenArticles?.get(nodeId);
+          for (const { key, articleId } of dropped) {
+            // 상품이 노출을 끈 조(또는 그 조의 항 · 호 · 목)를 가리켰다면 원인이 다르다 — 분기가 아니라 상품의 결정이다 (기능/상품 §3.6).
+            const hiddenTitle = this.env.hiddenArticles?.get(articleId);
             this.issues.push(
               hiddenTitle !== undefined
-                ? { kind: "articleHidden", severity: "error", message: `보통약관 조 「${hiddenTitle}」 은(는) 상품에서 노출을 껐습니다`, at: { ...n.at, refPath: nodeId } }
-                : { kind: "articleGone", message: `참조 대상 ${nodeId} 이(가) 분기·생략으로 사라졌거나 없습니다`, at: { ...n.at, refPath: nodeId } },
+                ? { kind: "articleHidden", severity: "error", message: `보통약관 조 「${hiddenTitle}」 은(는) 상품에서 노출을 껐습니다`, at: { ...n.at, refPath: key } }
+                : { kind: "articleGone", message: `참조 대상 ${key} 이(가) 분기·생략으로 사라졌거나 없습니다`, at: { ...n.at, refPath: key } },
             );
           }
           return { kind: "error", id: n.id, issue: this.issues.at(-1)! };
         }
         // 일부만 사라졌으면 남은 대상으로 표기한다 — 그 상품에서는 그 조가 없는 것이 맞으므로 오류가 아니다 (기능/문면 §3.5).
-        const label = referenceChunkLabel(alive.map((t) => t.info), n.connector, previous);
-        const targets = alive.map((t, i) => ({ nodeId: t.nodeId, label: referenceTargetLabel(t.info, i === 0 ? previous : alive[i - 1].info) }));
+        const label = referenceChunkLabel(alive, n.connector, previous);
+        const targets = alive.map((t, i) => ({ nodeId: nodeIdOf(t), label: referenceTargetLabel(t, i === 0 ? previous : alive[i - 1]) }));
         return {
           kind: "articleRef",
           id: n.id,
           targets,
-          connector: n.connector,
+          ...(n.connector !== undefined ? { connector: n.connector } : {}),
           label: `${generalPrefix ? "보통약관 " : ""}${label}`,
-          ...(dropped.length > 0 ? { dropped } : {}),
+          ...(dropped.length > 0 ? { dropped: dropped.map((d) => d.key) } : {}),
         };
       }
       case "appendixRef": {

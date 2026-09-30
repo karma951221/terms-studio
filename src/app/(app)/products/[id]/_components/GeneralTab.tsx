@@ -4,8 +4,9 @@ import { Combobox } from "@/app/_components/Combobox";
 import { IssueList } from "@/app/_components/IssueList";
 import { RenderedDoc } from "@/app/_components/RenderedDoc";
 import type { Booklet } from "@/domain/assembly";
+import type { EnumDef } from "@/domain/catalog";
 import type { Clause } from "@/domain/clause";
-import { referenceTargetIndex, type DocumentNode, type NodeNumber } from "@/domain/document";
+import { referenceTargetIndex, type Box, type DocumentNode, type NodeNumber } from "@/domain/document";
 import type { ClauseOptionOverride, ProductCoverage } from "@/domain/product";
 import type { Id } from "@/domain/types";
 
@@ -24,10 +25,14 @@ export interface GeneralTabProps {
   baseCoverages: ProductCoverage[];
   overrides: ClauseOptionOverride[];
   overrideTargets: OverrideTarget[];
-  /** 공용조항 정의 — 상자 안의 모델 · 옵션 이름 · 선택지 이름. */
+  /** 함수조항 정의 — 상자 안의 모델 · 옵션 이름 · 선택지 이름. */
   clauses: Clause[];
   /** 별표 · 구분자 표시명 — 원문 모델의 칩을 한글로. */
   appendices: { code: string; name: string }[];
+  /** 정적 마스터 박스 — 원문 모델의 박스 참조를 내용째. */
+  boxes: Box[];
+  /** 열거형 — 함수조항 상자의 값별 분기 칸 머리를 값 이름으로. */
+  enums?: readonly EnumDef[];
   discriminators: { code: string; label: string }[];
   /** 보통약관 템플릿 트리 — 미지정이면 undefined (세 패널 대신 한 줄 안내). */
   generalTree: DocumentNode | undefined;
@@ -47,7 +52,7 @@ export interface GeneralTabProps {
 /**
  * 약관 › 보통약관 작성 — 보통약관 본문에만 집중한다 (기능/상품 §4.6, 2026-09-28 「안 2」).
  *
- * 위는 템플릿 선택 한 줄(선택 + 저장)뿐, 아래는 화면 높이를 채우는 세 패널 — 목차(조 노출 토글) · 원문 모델(공용조항 옵션만 편집) ·
+ * 위는 템플릿 선택 한 줄(선택 + 저장)뿐, 아래는 화면 높이를 채우는 세 패널 — 목차(조 노출 토글) · 원문 모델(함수조항 옵션만 편집) ·
  * 조립 결과. 기본계약 · 탑재 표는 상품담보 탭에 산다. 옵션 오버라이드는 별도 섹션 없이 문면의 그 자리에서 고친다 (기능/상품 §3.6).
  */
 export function GeneralTab({
@@ -59,6 +64,8 @@ export function GeneralTab({
   overrideTargets,
   clauses,
   appendices,
+  boxes,
+  enums,
   discriminators,
   generalTree,
   generalNumbers,
@@ -110,6 +117,8 @@ export function GeneralTab({
           overrides={overrides}
           overrideTargets={overrideTargets}
           appendices={appendices}
+          boxes={boxes}
+          {...(enums ? { enums } : {})}
           discriminators={discriminators}
         />
       ),

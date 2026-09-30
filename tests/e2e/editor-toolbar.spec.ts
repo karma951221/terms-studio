@@ -4,15 +4,15 @@ import { pickCombo } from "./_lib/combo";
 import { expect, test } from "./_lib/fixtures";
 
 /**
- * 약관 에디터 툴바 · 공용조항 생성 (기능/문면 §4.3 · 기능/공용조항 §4.2, 2026-09-27).
+ * 약관 에디터 툴바 · 함수조항 생성 (기능/문면 §4.3 · 기능/함수조항 §4.2, 2026-09-27).
  *
  * 1. 문면 저작 — 편집을 누르면 본문 위에 툴바가 선다. 툴바 「조」 · 「항」으로 쓰고, 「조건식」은 블록 조건이다(팝업 없음):
  *    커서만 있으면 그 항 뒤에 빈 조건 블록, 글을 고르면 그 선택이 걸친 항(여럿이면 여럿)을 감싸고 빈 IF 줄에 초점이 간다.
  *    변수 · 연산자 · 값을 머리 줄에서 고르고 저장 → 읽기 모드의 IF 한 줄.
  *    오른쪽 클릭 메뉴에는 조건 넣기가 없다. (기능/문면 §4.3 · §6.2 「조건식 = 블록 삽입 + 머리 줄 인라인 편집」, 2026-09-28)
- * 2. 공용조항 생성 — `/clauses/new` 에서 유형(항) · 공용조항명 · 본문 · 옵션을 쓰고 툴바로 옵션 자리를 넣고, 「조건식」으로 그 항을
+ * 2. 함수조항 생성 — `/functions/new` 에서 유형(항) · 함수조항명 · 본문 · 옵션을 쓰고 툴바로 옵션 자리를 넣고, 「조건식」으로 그 항을
  *    조건 블록으로 감싸 머리 줄을 채운 뒤 저장 한 번 → 상세(읽기 모드 IF 줄) · 목록.
- * 시드 문서 · 공용조항은 건드리지 않는다 — 새로 만든 것만 쓴다.
+ * 시드 문서 · 함수조항은 건드리지 않는다 — 새로 만든 것만 쓴다.
  */
 
 const DOC_TITLE = "툴바검증 보통약관";
@@ -54,8 +54,8 @@ test(
       await expect(page.getByRole("button", { name: "저장", exact: true })).toBeVisible();
       await expect(toolbar).toBeVisible();
       for (const name of ["조", "관", "항", "호", "목", "표", "글머리 목록", "슬롯", "조 참조", "별표 참조", "조건식", "문장 안 조건", "위로", "아래로", "복제", "삭제"]) await expect(tool(name)).toBeVisible();
-      // 박스는 툴바로 넣지 않는다 — 「박스」 공용조항을 「공용조항」으로 (2026-09-28)
-      await expect(tool("박스")).toHaveCount(0);
+      // 「박스」는 정적 마스터 박스를 고른다 (기능/박스 §4.4)
+      await expect(tool("박스")).toBeVisible();
     });
 
     await ev.action("툴바#4", "툴바 「조」로 첫 조를 넣고 제목을 쓴다", async () => {
@@ -194,19 +194,48 @@ test(
       await head.getByRole("combobox", { name: "IF 3번 줄 결합" }).selectOption("or");
       await expect(head.locator(".ts-cond-paren")).toHaveCount(0);
     });
+
+    await ev.action("툴바#10", "조 참조 — 대상 둘을 고르고 연결어를 안 고르면 적용이 거부된다, 「또는」을 고르면 「제1항 또는 제2항」 (결정 14 · 기능/문면 §3.5)", async () => {
+      const inside = body.locator(".ts-doc-cond").getByRole("textbox", { name: "항", exact: true });
+      await inside.first().click();
+      await inside.first().press("End");
+      await tool("조 참조").click();
+      const d = page.getByRole("dialog", { name: "조 참조 넣기" });
+      await expect(d).toBeVisible();
+      // 연결어는 기본값 없이 시작한다 — 대상이 하나 이하면 꺼져 있다
+      await expect(d.getByRole("radio", { name: "및", exact: true })).toBeDisabled();
+      await d.getByRole("button", { name: /펴기$/ }).first().click();
+      const paragraphsInTree = d.getByRole("treeitem", { level: 2 });
+      await paragraphsInTree.nth(0).getByRole("checkbox").check();
+      await paragraphsInTree.nth(1).getByRole("checkbox").check();
+      await expect(d.getByRole("radio", { name: "및", exact: true })).toBeEnabled();
+      await expect(d.getByRole("radio", { name: "및", exact: true })).not.toBeChecked();
+      await expect(d.getByRole("radio", { name: "또는", exact: true })).not.toBeChecked();
+      await d.getByRole("button", { name: "넣기", exact: true }).click();
+      await expect(d.getByRole("alert")).toHaveText("대상이 둘 이상이거나 반복 · 함수조항 · 값 한정으로 여러 번호가 될 수 있으면 연결어(및 · 또는)를 고른다.");
+      await expect(d).toBeVisible();
+      await d.getByRole("radio", { name: "또는", exact: true }).check();
+      await d.getByRole("button", { name: "넣기", exact: true }).click();
+      await expect(d).toHaveCount(0);
+      await expect(body.locator(".ts-doc-cond [data-chip]")).toContainText(["제1항 또는 제2항"]);
+      await submit(page, page.getByRole("button", { name: "저장", exact: true }));
+      await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
+      await page.reload();
+      await expect(body.locator(".ts-doc-cond")).toContainText("제1항 또는 제2항");
+    });
   },
 );
 
 test(
-  "공용조항 생성 — 유형 · 이름 · 본문 · 옵션을 한 화면에서 쓰고 저장하면 상세와 목록에 선다",
-  { annotation: { type: "좌표없음", description: "기능/공용조항 §4.2 생성 화면 (2026-09-27 재설계)" } },
+  "함수조항 생성 — 유형 · 이름 · 본문 · 옵션을 한 화면에서 쓰고 저장하면 상세와 목록에 선다",
+  { annotation: { type: "좌표없음", description: "기능/함수조항 §4.2 생성 화면 (2026-09-27 재설계)" } },
   async ({ page, ev }) => {
     test.setTimeout(120_000);
-    await ev.action("공용조항생성#1", "관리자로 로그인한다", () => login(page));
+    await ev.action("함수조항생성#1", "관리자로 로그인한다", () => login(page));
 
-    await ev.action("공용조항생성#2", "생성 화면(?type=inline)에 들어간다 — 이름 칸 · 유형 세 칸(문구 선택) · 본문 툴바 · 쓸 자리가 보인다", async () => {
-      await page.goto("/clauses/new?type=inline");
-      await expect(page.getByLabel("공용조항명")).toBeVisible();
+    await ev.action("함수조항생성#2", "생성 화면(?type=inline)에 들어간다 — 이름 칸 · 유형 세 칸(문구 선택) · 본문 툴바 · 쓸 자리가 보인다", async () => {
+      await page.goto("/functions/new?type=inline");
+      await expect(page.getByLabel("함수조항명")).toBeVisible();
       await expect(page.getByRole("radio", { name: /^문구/ })).toBeChecked();
       await expect(page.getByRole("toolbar", { name: "약관 편집 도구" })).toBeVisible();
       await expect(page.getByRole("textbox", { name: "문구", exact: true })).toBeVisible();
@@ -215,14 +244,14 @@ test(
     const toolbar = page.getByRole("toolbar", { name: "약관 편집 도구" });
     const tool = (name: string) => toolbar.getByRole("button", { name, exact: true });
 
-    await ev.action("공용조항생성#3", "본문을 쓰기 전이라 유형을 「항」으로 바꿀 수 있다 — 빈 항 하나가 쓸 자리로 선다", async () => {
+    await ev.action("함수조항생성#3", "본문을 쓰기 전이라 유형을 「항」으로 바꿀 수 있다 — 빈 항 하나가 쓸 자리로 선다", async () => {
       await page.getByRole("radio", { name: /^항/ }).check();
       await expect(page.getByRole("radio", { name: /^항/ })).toBeChecked();
       await expect(page.locator(".ts-clause-editor").getByRole("textbox", { name: "항", exact: true })).toHaveCount(1);
     });
 
-    await ev.action("공용조항생성#4", "공용조항명과 항 문장을 쓴다 — 쓰기 시작하면 유형이 잠긴다", async () => {
-      await page.getByLabel("공용조항명").fill(CLAUSE_NAME);
+    await ev.action("함수조항생성#4", "함수조항명과 항 문장을 쓴다 — 쓰기 시작하면 유형이 잠긴다", async () => {
+      await page.getByLabel("함수조항명").fill(CLAUSE_NAME);
       const paragraph = page.locator(".ts-clause-editor").getByRole("textbox", { name: "항", exact: true });
       await paragraph.click();
       await paragraph.fill("다음의 경우에는 보험금을 지급하지 않습니다. 사유: ");
@@ -230,7 +259,7 @@ test(
       await expect(page.getByRole("radio", { name: /^문구/ })).toBeDisabled();
     });
 
-    await ev.action("공용조항생성#5", "「옵션 추가」 — 빈 선택지 둘을 품은 옵션이 선다, 이름 · 선택지를 채운다", async () => {
+    await ev.action("함수조항생성#5", "「옵션 추가」 — 빈 선택지 둘을 품은 옵션이 선다, 이름 · 선택지를 채운다", async () => {
       await page.getByRole("button", { name: "옵션 추가" }).click();
       await page.getByLabel("옵션명").fill("제한 사유");
       await page.getByRole("textbox", { name: "제한 사유 — 선택지 1 이름" }).fill("고의");
@@ -239,7 +268,7 @@ test(
       await page.getByRole("textbox", { name: "제한 사유 — 선택지 2 문구" }).fill("전쟁 · 외국의 무력행사로 생긴 경우");
     });
 
-    await ev.action("공용조항생성#6", "항 문장 끝에 커서를 두고 툴바 「옵션 자리」 — 〔제한 사유〕 칩이 선다", async () => {
+    await ev.action("함수조항생성#6", "항 문장 끝에 커서를 두고 툴바 「옵션 자리」 — 〔제한 사유〕 칩이 선다", async () => {
       const paragraph = page.locator(".ts-clause-editor").getByRole("textbox", { name: "항", exact: true });
       await paragraph.click();
       await paragraph.press("End");
@@ -247,7 +276,14 @@ test(
       await expect(page.locator(".ts-clause-editor")).toContainText("〔제한 사유〕");
     });
 
-    await ev.action("공용조항생성#6b", "항 문장을 고른 채 「조건식」 — 팝업 없이 항이 조건 블록 안에 서고, 머리 줄에서 조건을 고른다", async () => {
+    await ev.action("함수조항생성#6a", "「인자 추가」 — 인자 보험금명(문자 · 기본 연결 담보명 D0001). 함수조항은 구분자를 직접 읽지 않고 인자만 읽는다(기능/함수조항 §3.3)", async () => {
+      await page.getByRole("button", { name: "인자 추가" }).click();
+      await page.getByLabel("인자 1 이름").fill("보험금명");
+      await page.getByLabel("인자 1 타입").selectOption("string");
+      await page.getByLabel("인자 1 기본 연결").selectOption("d:D0001");
+    });
+
+    await ev.action("함수조항생성#6b", "항 문장을 고른 채 「조건식」 — 팝업 없이 항이 조건 블록 안에 서고, 머리 줄의 변수 「인자」 묶음에서 조건을 고른다", async () => {
       const editor = page.locator(".ts-clause-editor");
       const paragraph = editor.getByRole("textbox", { name: "항", exact: true });
       await paragraph.click();
@@ -258,16 +294,16 @@ test(
       const head = editor.locator("[data-cond-head]");
       await expect(head).toHaveCount(1);
       await expect(head.getByRole("combobox", { name: "IF 1번 줄 변수" })).toBeFocused();
-      await pickCombo(head.getByRole("combobox", { name: "IF 1번 줄 변수" }), { value: "D0001" });
+      await pickCombo(head.getByRole("combobox", { name: "IF 1번 줄 변수" }), { value: "arg.보험금명" });
       const value = head.getByRole("textbox", { name: "IF 1번 줄 값" });
       await value.fill("사망보험금");
       await value.press("Enter");
       await expect(editor.locator(".ts-doc-cond")).toContainText("〔제한 사유〕");
     });
 
-    const detailUrl = await ev.action("공용조항생성#7", "저장 한 번 — 만들어지고 상세(읽기)로 간다 · 조건 블록은 IF 한 줄", async () => {
+    const detailUrl = await ev.action("함수조항생성#7", "저장 한 번 — 만들어지고 상세(읽기)로 간다 · 조건 블록은 IF 한 줄", async () => {
       await page.getByRole("button", { name: "저장", exact: true }).click();
-      await page.waitForURL(/\/clauses\/C\d+$/);
+      await page.waitForURL(/\/functions\/C\d+$/);
       await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
       await expect(page.locator(".ts-l3-bar")).toContainText(CLAUSE_NAME);
       await expect(page.locator(".ts-clause-editor")).toContainText("다음의 경우에는 보험금을 지급하지 않습니다.");
@@ -277,9 +313,9 @@ test(
       return page.url();
     });
 
-    await ev.action("공용조항생성#8", "공용조항 목록에서 이름으로 찾으면 새 공용조항이 있고, 누르면 그 상세로 간다", async () => {
-      // 실물 공용조항이 133건이라 한 쪽(50건)에 다 안 선다 — 검색으로 좁힌다
-      await page.goto(`/clauses?q=${encodeURIComponent(CLAUSE_NAME)}`);
+    await ev.action("함수조항생성#8", "함수조항 목록에서 이름으로 찾으면 새 함수조항이 있고, 누르면 그 상세로 간다", async () => {
+      // 실물 함수조항이 133건이라 한 쪽(50건)에 다 안 선다 — 검색으로 좁힌다
+      await page.goto(`/functions?q=${encodeURIComponent(CLAUSE_NAME)}`);
       const link = page.getByRole("link", { name: CLAUSE_NAME, exact: true });
       await expect(link).toBeVisible();
       await link.click();
@@ -381,6 +417,84 @@ test(
       // 항 번호는 글머리 목록을 세지 않는다 — ① 다음 항은 ②
       await expect(body.locator(".ts-doc-paragraph .ts-doc-num").nth(1)).toHaveText("②");
       await expect(page.locator(".ts-error-banner")).toHaveCount(0);
+    });
+  },
+);
+
+test(
+  "함수조항 상자 접기 — 인자 있는 함수조항은 템플릿에서 칸 머리(값 이름)만, 누른 칸만 펼친다",
+  { annotation: { type: "좌표없음", description: "기능/함수조항 §4.4 「함수조항 상자는 접어 둔다」 (최종 결정 8)" } },
+  async ({ page, ev }) => {
+    test.setTimeout(150_000);
+    const stamp = Date.now();
+    const clauseName = `접기검증 사유(${stamp})`;
+    await ev.action("접기#1", "관리자로 로그인한다", () => login(page));
+
+    const toolbar = page.getByRole("toolbar", { name: "약관 편집 도구" });
+    const code = await ev.action("접기#2", "역할 함수조항 — 인자 「사유」(납입면제사유) · 값별 분기 칸마다 항(질병 둘 · 상해 하나)을 쓰고 저장", async () => {
+      await page.goto("/functions/new?type=block");
+      await page.getByLabel("함수조항명").fill(clauseName);
+      await page.getByRole("button", { name: "인자 추가" }).click();
+      await page.getByLabel("인자 1 이름").fill("사유");
+      await page.getByLabel("인자 1 타입").selectOption("enum:E0001");
+      const editor = page.locator(".ts-clause-editor");
+      await toolbar.getByRole("button", { name: "값별 분기", exact: true }).click();
+      const cases = editor.locator(".ts-doc-cond.is-switch");
+      await expect(cases).toHaveCount(2);
+      const first = cases.nth(0).getByRole("textbox", { name: "항", exact: true });
+      await first.fill("질병으로 진단확정된 경우");
+      await first.press("End");
+      await first.press("Enter");
+      await cases.nth(0).getByRole("textbox", { name: "항", exact: true }).nth(1).fill("질병으로 장해상태가 된 경우");
+      await cases.nth(1).getByRole("textbox", { name: "항", exact: true }).fill("상해로 장해상태가 된 경우");
+      await page.getByRole("button", { name: "저장", exact: true }).click();
+      await page.waitForURL(/\/functions\/C\d+$/);
+      return decodeURIComponent(page.url().split("/").at(-1)!);
+    });
+
+    const body = page.locator(".ts-l3-body");
+    await ev.action("접기#3", "새 보통약관 템플릿에 조를 쓰고 툴바 「함수조항」으로 넣고, 인자 「사유」를 상수 질병으로 연결해 저장", async () => {
+      await page.goto("/documents/new");
+      await page.getByLabel("제목").fill(`접기검증 보통약관 ${stamp}`);
+      await page.getByRole("button", { name: "생성" }).first().click();
+      await page.waitForURL(/\/documents\/[0-9a-f-]+$/);
+      await page.getByRole("button", { name: "편집", exact: true }).click();
+      await toolbar.getByRole("button", { name: "조", exact: true }).click();
+      const title = body.getByRole("textbox", { name: "조 제목" });
+      await title.fill("보험료 납입면제");
+      await title.press("Enter");
+      await toolbar.getByRole("button", { name: "함수조항", exact: true }).click();
+      await page.getByRole("menuitem", { name: `${clauseName}(${code})`, exact: true }).click();
+      await expect(body.locator("[data-clause-ref]")).toHaveCount(1);
+      await body.locator("[data-clause-ref] .ts-doc-clause-opt").click();
+      const dialog = page.getByRole("dialog", { name: "함수조항 옵션 · 인자", exact: true });
+      await dialog.getByLabel("인자 사유").selectOption("c:V01");
+      await dialog.getByRole("button", { name: "확인", exact: true }).click();
+      await expect(dialog).toHaveCount(0);
+      await submit(page, page.getByRole("button", { name: "저장", exact: true }));
+      await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
+    });
+
+    const box = body.locator("[data-clause-ref]");
+    const cells = box.locator("details.ts-clause-cell");
+    await ev.action("접기#4", "상자 머리 = 이름 + 「사유 ← 연결」, 칸은 머리(값 이름 · 문장 수)만 — 내용은 접혀 있다", async () => {
+      await expect(box.locator(".ts-doc-clause-head")).toContainText(`함수조항 (${clauseName})`);
+      await expect(box.locator(".ts-doc-clause-head")).toContainText("인자: 사유 ← 질병(상수)");
+      await expect(cells).toHaveCount(2);
+      await expect(cells.nth(0).locator("summary")).toContainText("질병");
+      await expect(cells.nth(0).locator("summary")).toContainText("문장 2");
+      await expect(cells.nth(1).locator("summary")).toContainText("상해");
+      await expect(box.getByText("질병으로 진단확정된 경우")).toBeHidden();
+      await expect(box.getByText("상해로 장해상태가 된 경우")).toBeHidden();
+    });
+
+    await ev.action("접기#5", "「질병」 칸 머리를 누르면 그 칸만 펼친다 · 「상해」를 누르면 질병 칸은 닫힌다", async () => {
+      await cells.nth(0).locator("summary").click();
+      await expect(box.getByText("질병으로 진단확정된 경우")).toBeVisible();
+      await expect(box.getByText("상해로 장해상태가 된 경우")).toBeHidden();
+      await cells.nth(1).locator("summary").click();
+      await expect(box.getByText("상해로 장해상태가 된 경우")).toBeVisible();
+      await expect(box.getByText("질병으로 진단확정된 경우")).toBeHidden();
     });
   },
 );

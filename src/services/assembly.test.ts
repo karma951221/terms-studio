@@ -35,7 +35,7 @@ function lines(doc: RenderedDoc): string[] {
 
 /**
  * 관통 1 축약 픽스처를 **실제 서비스**로 DB 에 만든다 (도메인 픽스처 `alphaPlusFixture` 와 같은 모양 —
- * 카탈로그 · 담보 · 공용조항 · 문서 · 별표 · 상품 · 탑재 · 그룹 · 기본계약).
+ * 카탈로그 · 담보 · 함수조항 · 문서 · 별표 · 상품 · 탑재 · 그룹 · 기본계약).
  */
 describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
   let t: TestDb;
@@ -102,7 +102,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
     trees.set(covBase, baseTree);
     unwrap(await coverage.writeValue(editor, { level: "coverage", id: covBase }, "coverage_basic.claim_name", "기본"));
 
-    // 별표 · 공용조항 (C0001 소멸 block + 옵션 O01{V01 일반, V02 사망} · C0002 준용 inline)
+    // 별표 · 함수조항 (C0001 소멸 block + 옵션 O01{V01 일반, V02 사망} · C0002 준용 inline)
     unwrap(await documents.createAppendix(editor, { name: "장해분류표" }));
     unwrap(await documents.createAppendix(editor, { name: "화상 분류표" }));
     unwrap(
@@ -114,7 +114,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
       }),
     );
 
-    // 보통약관 — 4개 조 (제2조 갱신여부 인라인 조건 + 고지유형 슬롯 · 제3조 별표 · 제4조 준용 = 공용조항)
+    // 보통약관 — 4개 조 (제2조 갱신여부 인라인 조건 + 고지유형 슬롯 · 제3조 별표 · 제4조 준용 = 함수조항)
     const g = unwrap(await documents.createGeneral(editor, "알파Plus 보통약관"));
     unwrap(
       await documents.apply(
@@ -145,12 +145,12 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
         ]),
       ),
     );
-    // 공용조항 C0002 준용 inline — 조 참조(g-art-def)는 보통약관 마스터에 있어야 저장된다 (기능/공용조항 §3.5) → 트리 적재 뒤에 만든다
+    // 함수조항 C0002 준용 inline — 조 참조(g-art-def)는 보통약관 마스터에 있어야 저장된다 (기능/함수조항 §3.5) → 트리 적재 뒤에 만든다
     unwrap(
       await clause.create(editor, {
         label: "준용 문구",
         mode: "inline",
-        body: [{ id: "c2-t1", kind: "text", text: "이 약관에서 정하지 않은 사항은 " }, { id: "c2-ref", kind: "articleRef", targets: [{ nodeId: "g-art-def" }], connector: "및" }, { id: "c2-t2", kind: "text", text: " 및 관계 법령을 따릅니다." }],
+        body: [{ id: "c2-t1", kind: "text", text: "이 약관에서 정하지 않은 사항은 " }, { id: "c2-ref", kind: "articleRef", targets: [{ articleId: "g-art-def" }], connector: "및" }, { id: "c2-t2", kind: "text", text: " 및 관계 법령을 따릅니다." }],
       }),
     );
 
@@ -318,7 +318,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
     const type2 = unwrap(await product.addPlanOption(editor, productId, { axis: "type", number: 2, name: "2종", planTypeCode: "waiver" }));
     const form1 = unwrap(await product.addPlanOption(editor, productId, { axis: "form", number: 1, name: "1형", planTypeCode: "no_surrender" }));
     const form2 = unwrap(await product.addPlanOption(editor, productId, { axis: "form", number: 2, name: "2형", planTypeCode: "no_surrender" }));
-    unwrap(await product.setPlanOptionValue(editor, type1.id, "waiver.applies", true));
+    unwrap(await product.setPlanOptionValues(editor, type1.id, [{ path: "waiver.applies", value: true }, { path: "waiver.reasons", value: ["V01"] }])); // 예면 사유 1개 이상 (결정 16)
     unwrap(await product.setPlanOptionValue(editor, type2.id, "waiver.applies", false));
     unwrap(await product.setPlanOptionValue(editor, form1.id, "no_surrender.type", "V01"));
     unwrap(await product.setPlanOptionValue(editor, form2.id, "no_surrender.type", "V02"));
@@ -333,7 +333,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
       [form1.id, "form", 1, "1형", "no_surrender"],
     ]);
     expect(input.product.planOptions.map((o) => [...o.values.entries()])).toEqual([
-      [["waiver.applies", { entered: true, value: true }]],
+      [["waiver.applies", { entered: true, value: true }], ["waiver.reasons", { entered: true, value: ["V01"] }]],
       [["waiver.applies", { entered: true, value: false }]],
       [["no_surrender.type", { entered: true, value: "V01" }]],
     ]);
@@ -389,7 +389,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
       expect((await svc.latest(productId))!.stale).toBe(false);
     });
 
-    it("공유 마스터 변경(공용조항 이름 · 구분자 설명)도 stale:true — 어느 마스터든 바뀌면 전 상품 오래됨", async () => {
+    it("공유 마스터 변경(함수조항 이름 · 구분자 설명)도 stale:true — 어느 마스터든 바뀌면 전 상품 오래됨", async () => {
       unwrap(await clause.rename(editor, "C0002", "준용 문구(개정)"));
       expect((await svc.latest(productId))!.stale).toBe(true);
       unwrap(await svc.run(editor, productId));
@@ -402,7 +402,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
     it("상품 값 행 삭제만으로도 stale:true — 최신 행이 아닌 것을 지워도 count 가 잡는다", async () => {
       const [newest, older] = (await product.listPlanOptions(productId)).filter((o) => o.axis === "type");
       // newest 의 값을 마지막으로 써 max(updated_at) 을 그 행에 둔다 → older 의 값 삭제는 max 를 바꾸지 않는다
-      unwrap(await product.setPlanOptionValue(editor, newest.id, "waiver.applies", true));
+      unwrap(await product.setPlanOptionValues(editor, newest.id, [{ path: "waiver.applies", value: true }, { path: "waiver.reasons", value: ["V01"] }]));
       unwrap(await svc.run(editor, productId));
       expect((await svc.latest(productId))!.stale).toBe(false);
       unwrap(await product.setPlanOptionValue(editor, older.id, "waiver.applies", undefined));
@@ -423,7 +423,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
     it("다른 상품의 고유분 변경은 이 상품을 오래되게 하지 않는다", async () => {
       const other = unwrap(await product.createProduct(editor, { name: "다른 상품" }));
       const opt = unwrap(await product.addPlanOption(editor, other.id, { axis: "type", number: 1, name: "1종", planTypeCode: "waiver" }));
-      unwrap(await product.setPlanOptionValue(editor, opt.id, "waiver.applies", true));
+      unwrap(await product.setPlanOptionValues(editor, opt.id, [{ path: "waiver.applies", value: true }, { path: "waiver.reasons", value: ["V01"] }]));
       unwrap(await product.setArticleHidden(editor, productId, "g-art-def", false)); // 멱등 — 아무것도 안 바뀐다
       expect((await svc.latest(productId))!.stale).toBe(false);
       expect(await svc.latest(other.id)).toBeUndefined();

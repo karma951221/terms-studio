@@ -7,7 +7,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { numberTree, referenceOutline, referenceTargetIndex, type DocumentNode, type InlineNode, type Node } from "../../../../src/domain/document";
+import { numberTree, referenceOutline, referenceTargetIndex, refKey, refTargetOf, type DocumentNode, type InlineNode, type Node } from "../../../../src/domain/document";
 
 const DATA = path.join(process.cwd(), "src/db/seed/data");
 const read = <T>(file: string): T => JSON.parse(readFileSync(path.join(DATA, file), "utf8")) as T;
@@ -36,12 +36,21 @@ export interface CoverageSpec {
   subCoverages?: { name: string; benefitName: string }[];
   coverageValues: { path: string; value: string }[];
 }
+/** 정적 마스터 박스 — 코드 · 이름 · 제목 · 줄 (기능/박스 §3.1). */
+export interface BoxSpec {
+  code: string;
+  name: string;
+  title: string;
+  lines: string[];
+}
 export interface ClauseSpec {
   code: string;
   label: string;
-  mode: "inline" | "block" | "box";
+  mode: "inline" | "block";
   body: (Node | InlineNode | { id: string; kind: "optionSlot"; optionCode: string })[];
   options: { code: string; label: string; values: { code: string; label: string; body: { kind: string; text?: string }[] }[] }[];
+  /** 인자 — 구분자 직접 읽기를 기계 변환한 것(최종 결정 2). */
+  params?: { name: string; type: { kind: string; enumCode?: string; form?: string }; default?: { kind: "discriminator"; code: string } }[];
 }
 export interface DocumentSpec {
   code: string;
@@ -67,19 +76,24 @@ export const SEED = {
   discriminators: read<DiscriminatorSpec[]>("discriminators.json"),
   attributes: read<AttributeSpec[]>("attributes.json"),
   coverages: read<CoverageSpec[]>("coverages.json"),
+  boxes: read<BoxSpec[]>("boxes.json"),
   clauses: read<ClauseSpec[]>("clauses.json"),
   documents: read<DocumentSpec[]>("documents.json"),
   generals: read<{ code: string; tree: DocumentNode }[]>("generals.json"),
   products: read<ProductSpec[]>("products.json"),
 };
 
-/** 조 참조 고르기 트리의 줄 표기 경로 — 대상 id → [「제1조(…)」, 「제1항」, 「제2호」]. 화면(`RefTargetTree`)과 같은 도메인 함수로 짓는다. */
+/**
+ * 조 참조 고르기 트리의 줄 표기 경로 — 대상 열쇠(`refKey` — 조 id · 조#P코드) → [「제1조(…)」, 「제1항」, 「제2호」].
+ * 화면(`RefTargetTree`)과 같은 도메인 함수로 짓는다. 같은 코드의 분기 짝은 첫 줄.
+ */
 export function outlinePaths(tree: DocumentNode): Map<string, string[]> {
   const out = new Map<string, string[]>();
   const walk = (rows: ReturnType<typeof referenceOutline>[number]["rows"], prefix: string[]) => {
     for (const row of rows) {
       const p = [...prefix, row.label];
-      out.set(row.id, p);
+      const key = refKey(refTargetOf(row.target));
+      if (!out.has(key)) out.set(key, p);
       walk(row.children, p);
     }
   };
@@ -87,15 +101,22 @@ export function outlinePaths(tree: DocumentNode): Map<string, string[]> {
   return out;
 }
 
-/** 보통약관 참조 대상의 조상 id (펴야 할 줄) — 보통약관은 시드가 id 를 그대로 넣어 화면 줄 id 와 같다. */
-export function generalAncestors(tree: DocumentNode): Map<string, string[]> {
-  const out = new Map<string, string[]>();
+/** 보통약관 참조 대상 → 고를 줄 id · 펴야 할 조상 줄 id. */
+export interface GeneralRow {
+  row: string;
+  chain: string[];
+}
+
+/** 보통약관 참조 대상 열쇠(`refKey`) → 줄 · 조상 줄 — 보통약관은 시드가 id 를 그대로 넣어 화면 줄 id 와 같다. 같은 코드의 분기 짝은 첫 줄. */
+export function generalAncestors(tree: DocumentNode): Map<string, GeneralRow> {
+  const out = new Map<string, GeneralRow>();
   for (const [id, t] of referenceTargetIndex(tree, numberTree(tree))) {
     const chain: string[] = [];
     if (t.kind !== "article") chain.push(t.article.id);
     if ((t.kind === "item" || t.kind === "subitem") && t.paragraph) chain.push(t.paragraph.id);
     if (t.kind === "subitem" && t.item) chain.push(t.item.id);
-    out.set(id, chain);
+    const key = refKey(refTargetOf(t));
+    if (!out.has(key)) out.set(key, { row: id, chain });
   }
   return out;
 }
@@ -109,14 +130,17 @@ export function generalTreeOf(code: string): DocumentNode {
   return tree;
 }
 
-/** 보통약관 두 벌의 참조 대상 조상 — 노드 id 가 벌마다 다르다(`g-…` · `m-…`) — 공용조항 조 참조는 보통약관 전부가 후보다. */
+/** 보통약관 두 벌의 참조 대상 줄 — 조 id 가 벌마다 다르다(`g-…` · `m-…`) — 함수조항 조 참조는 보통약관 전부가 후보다. */
 export const ALL_GENERAL_ANCESTORS = new Map(SEED.generals.flatMap((g) => [...generalAncestors(g.tree)]));
 
 /**
- * 보통약관이 쓰는 공용조항 — 바탕 DB(`SEED_PROFILE=base`)가 보통약관과 함께 시드로 넣는다(C0001~, 보통약관 가져오기 전에 있어야 한다).
+ * 보통약관이 쓰는 함수조항 — 바탕 DB(`SEED_PROFILE=base`)가 보통약관과 함께 시드로 넣는다(C0001~, 보통약관 가져오기 전에 있어야 한다).
  * 화면 E2E 는 이것들을 치지 않는다.
  */
 export const BASE_CLAUSE_CODES = new Set(SEED.generals.flatMap((g) => [...JSON.stringify(g.tree).matchAll(/"clauseCode":"(C\d+)"/g)].map((m) => m[1])));
+
+/** 보통약관이 놓는 박스 — 바탕 DB 가 보통약관과 함께 시드로 넣는다(BX000001~). 화면 E2E 는 그 뒤 코드부터 박스 화면으로 친다. */
+export const BASE_BOX_CODES = new Set(SEED.generals.flatMap((g) => [...JSON.stringify(g.tree).matchAll(/"boxCode":"(BX\d+)"/g)].map((m) => m[1])));
 
 /** 상품마다 원문 대조 짝 — 픽스처 폴더 · 특약(책자 제목 → 픽스처) · 미리보기 별표 수와 1번 (real.test.ts 와 같은 짝). */
 export const REAL_FIXTURES: Record<string, { dir: string; appendices: number; firstAppendix: string; specials: [string, string][] }> = {

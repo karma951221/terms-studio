@@ -84,7 +84,7 @@ function full() {
 const edgesTo = (g: ReturnType<typeof buildGraph>, key: string) => g.edges.filter((e) => nodeKey(e.to) === key);
 
 describe("refs 그래프 — buildGraph (기능/관계정보 §3 「참조 그래프」)", () => {
-  it("노드 = 실체: 구분자·마스터 필드·enum·enum 값·공용조항·옵션·문서·조·별표·담보 노드·담보속성·상품·상품담보", () => {
+  it("노드 = 실체: 구분자·마스터 필드·enum·enum 값·함수조항·옵션·문서·조·별표·담보 노드·담보속성·상품·상품담보", () => {
     const g = full();
     for (const k of [
       "discriminator:D0001",
@@ -127,7 +127,7 @@ describe("refs 그래프 — buildGraph (기능/관계정보 §3 「참조 그�
     expect(edgesTo(g, "discriminator:D0003")[0]).toMatchObject({ via: "slot", at: { articleId: "s-art-exempt" } });
   });
 
-  it("문서 → 공용조항 참조 + 옵션 선택, 조 참조(self·general), 조연결, 별표, 대응 보통약관", () => {
+  it("문서 → 함수조항 참조 + 옵션 선택, 조 참조(self·general), 조연결, 별표, 대응 보통약관", () => {
     const g = full();
     expect(edgesTo(g, "clause:C001")[0]).toMatchObject({ via: "clauseRef", options: { tone: "death" }, at: { articleId: "s-art-lapse", nodePath: ["s-doc", "s-art-lapse", "s-clause-lapse"] } });
     // 옵션 선택 — 정의에 없는 옵션 tone 은 깨진 대상이 된다 (재검사 목록 재료)
@@ -145,7 +145,7 @@ describe("refs 그래프 — buildGraph (기능/관계정보 §3 「참조 그�
     ]);
   });
 
-  it("구분자 식 → 마스터 필드(집계 표시) · 공용조항 본문 → 구분자·담보속성(리터럴 유효값까지) · enum 타입 간선", () => {
+  it("구분자 식 → 마스터 필드(집계 표시) · 함수조항 본문 → 구분자·담보속성(리터럴 유효값까지) · enum 타입 간선", () => {
     const g = full();
     const derived = edgesTo(g, "masterField:pay.exempt").find((e) => e.via === "expression");
     expect(derived).toMatchObject({ from: { kind: "discriminator", code: "D0005" }, aggregate: "any", at: { refPath: "pay.exempt", ownerName: "면책여부합" } });
@@ -158,7 +158,7 @@ describe("refs 그래프 — buildGraph (기능/관계정보 §3 「참조 그�
     ]);
   });
 
-  it("담보 문서 연결, 상품담보 탑재·조합·옵션 오버라이드(기능/공용조항 §3.2 — 문서 노드를 매개로)", () => {
+  it("담보 문서 연결, 상품담보 탑재·조합·옵션 오버라이드(기능/함수조항 §3.2 — 문서 노드를 매개로)", () => {
     const g = full();
     expect(edgesTo(g, "document:doc-s").map((e) => e.via)).toEqual(["document"]);
     expect(edgesTo(g, "coverageNode:coverage/cov-surgery")[0]).toMatchObject({ via: "mount", from: { kind: "productCoverage", id: "pc-1" }, at: { document: "special", ownerId: "pc-1", ownerName: "갱신형 수술비" } });
@@ -187,7 +187,7 @@ describe("refs 그래프 — buildGraph (기능/관계정보 §3 「참조 그�
 });
 
 describe("refs 그래프 — 구분자 참조의 노드 한정자 `@노드` (ADR-0066)", () => {
-  /** 급부 ben-1 을 가리키는 한정자 — 문서 조건식 · 공용조항 본문 · 구분자 식 세 자리. */
+  /** 급부 ben-1 을 가리키는 한정자 — 문서 조건식 · 함수조항 본문 · 구분자 식 세 자리. */
   const 담보약관_한정자: DocumentInput = {
     id: "doc-q",
     kind: "special",
@@ -220,7 +220,7 @@ describe("refs 그래프 — 구분자 참조의 노드 한정자 `@노드` (ADR
   const withQualifiers = (coverages: Coverage[] = [수술비]) =>
     buildGraph({ discriminators: [지급률, 파생_한정자], clauses: [공용_한정자], documents: [담보약관_한정자], coverages, master });
 
-  it("문서 조건식 · 공용조항 본문 · 구분자 식의 `D@노드` 는 구분자 간선에 더해 담보 노드로 가는 nodeQualifier 간선을 낸다", () => {
+  it("문서 조건식 · 함수조항 본문 · 구분자 식의 `D@노드` 는 구분자 간선에 더해 담보 노드로 가는 nodeQualifier 간선을 낸다", () => {
     const g = withQualifiers();
     const es = edgesTo(g, "coverageNode:benefit/ben-1").filter((e) => e.via === "nodeQualifier");
     expect(es.map((e) => nodeKey(e.from)).sort()).toEqual(["article:doc-q/q-art", "clause:C009", "discriminator:D0010"].sort());
@@ -252,45 +252,45 @@ describe("refs 그래프 — 구분자 참조의 노드 한정자 `@노드` (ADR
 });
 
 describe("refs 그래프 — 조 참조(articleRef)를 속한 조로 잇는다", () => {
-  /** 보통약관 조 g-art-pay 를 가리키는 인라인 공용조항. */
+  /** 보통약관 조 g-art-pay 를 가리키는 인라인 함수조항. */
   const 공용_조참조: Clause = {
     code: "C010",
     label: "조 참조 문구",
     mode: "inline",
-    body: [{ id: "c10-aref", kind: "articleRef", targets: [{ nodeId: "g-art-pay" }], connector: "및" }],
+    body: [{ id: "c10-aref", kind: "articleRef", targets: [{ articleId: "g-art-pay" }], connector: "및" }],
     options: [],
     required: { discriminators: [], attributes: [] },
   };
-  /** 보통약관 조 g-art-pay **안의 항** g-par-pay-1 을 가리키는 인라인 공용조항 — 속한 조로 올라가야 한다. */
+  /** 보통약관 조 g-art-pay **안의 항** g-par-pay-1(P0100) 을 가리키는 인라인 함수조항 — 조로 간선이 난다(코드는 좌표 열쇠에). */
   const 공용_항참조: Clause = {
     code: "C011",
     label: "항 참조 문구",
     mode: "inline",
-    body: [{ id: "c11-aref", kind: "articleRef", targets: [{ nodeId: "g-par-pay-1" }], connector: "및" }],
+    body: [{ id: "c11-aref", kind: "articleRef", targets: [{ articleId: "g-art-pay", code: "P0100" }], connector: "및" }],
     options: [],
     required: { discriminators: [], attributes: [] },
   };
-  /** 어디에도 없는 id 를 가리키는 인라인 공용조항 — 깨진 간선. */
+  /** 어디에도 없는 id 를 가리키는 인라인 함수조항 — 깨진 간선. */
   const 공용_깨진참조: Clause = {
     code: "C012",
     label: "깨진 참조 문구",
     mode: "inline",
-    body: [{ id: "c12-aref", kind: "articleRef", targets: [{ nodeId: "no-such-node" }], connector: "및" }],
+    body: [{ id: "c12-aref", kind: "articleRef", targets: [{ articleId: "no-such-node" }], connector: "및" }],
     options: [],
     required: { discriminators: [], attributes: [] },
   };
 
-  it("공용조항 → 보통약관 조: articleRef 대상이 조 자신이면 그 조로 간선이 난다", () => {
+  it("함수조항 → 보통약관 조: articleRef 대상이 조 자신이면 그 조로 간선이 난다", () => {
     const g = buildGraph({ clauses: [공용_조참조], documents: [보통약관] });
     const es = edgesTo(g, "article:doc-g/g-art-pay");
     expect(es).toEqual([expect.objectContaining({ via: "articleRef", from: { kind: "clause", code: "C010" }, at: expect.objectContaining({ refPath: "g-art-pay" }) })]);
   });
 
-  it("항 대상은 속한 조로 올린다 (공용조항) — 깨진 간선이 아니다", () => {
+  it("항 대상은 속한 조로 올린다 (함수조항) — 깨진 간선이 아니다", () => {
     const g = buildGraph({ clauses: [공용_항참조], documents: [보통약관] });
     const es = edgesTo(g, "article:doc-g/g-art-pay");
     const e = es.find((x) => x.from.kind === "clause");
-    expect(e).toMatchObject({ via: "articleRef", from: { kind: "clause", code: "C011" }, at: { refPath: "g-par-pay-1" } });
+    expect(e).toMatchObject({ via: "articleRef", from: { kind: "clause", code: "C011" }, at: { refPath: "g-art-pay#P0100" } });
     expect(g.nodes.has("article:doc-g/g-art-pay")).toBe(true); // 깨진 간선이 아니다 — 대상 조가 선언돼 있다
   });
 
@@ -312,20 +312,28 @@ describe("refs 그래프 — 조 참조(articleRef)를 속한 조로 잇는다",
         kind: "document",
         title: "자기 항 참조 문서",
         children: [
-          { id: "sp-art-1", kind: "article", title: "1조", children: [{ id: "sp-par-1", kind: "paragraph", children: [{ id: "sp-txt-1", kind: "text", text: "본문" }] }] },
+          { id: "sp-art-1", kind: "article", title: "1조", children: [{ id: "sp-par-1", kind: "paragraph", code: "P0100", children: [{ id: "sp-txt-1", kind: "text", text: "본문" }] }] },
           {
             id: "sp-art-2",
             kind: "article",
             title: "2조",
-            children: [{ id: "sp-par-2", kind: "paragraph", children: [{ id: "sp-aref", kind: "articleRef", targets: [{ nodeId: "sp-par-1" }], connector: "및", scope: "self" }] }],
+            children: [{ id: "sp-par-2", kind: "paragraph", children: [{ id: "sp-aref", kind: "articleRef", targets: [{ articleId: "sp-art-1", code: "P0100" }], connector: "및", scope: "self" }] }],
           },
         ],
       },
     };
     const g = buildGraph({ documents: [자기항참조_문서] });
     const e = edgesTo(g, "article:doc-self-par/sp-art-1").find((x) => x.via === "articleRef");
-    expect(e).toMatchObject({ from: { kind: "article", documentId: "doc-self-par", articleId: "sp-art-2" }, at: { refPath: "sp-par-1" } });
+    expect(e).toMatchObject({ from: { kind: "article", documentId: "doc-self-par", articleId: "sp-art-2" }, at: { refPath: "sp-art-1#P0100" } });
     expect(brokenEdges(g).some((x) => x.via === "articleRef")).toBe(false);
+  });
+
+  it("조는 있어도 그 코드가 없으면 깨진 간선 — 대상 열쇠 그대로 (ADR-0072 결정 8)", () => {
+    const 없는코드: Clause = { ...공용_항참조, code: "C013", body: [{ id: "c13-aref", kind: "articleRef", targets: [{ articleId: "g-art-pay", code: "P0900" }], connector: "및" }] };
+    const g = buildGraph({ clauses: [없는코드], documents: [보통약관] });
+    const es = edgesTo(g, "article:/g-art-pay#P0900");
+    expect(es).toEqual([expect.objectContaining({ via: "articleRef", at: expect.objectContaining({ refPath: "g-art-pay#P0900" }) })]);
+    expect(brokenEdges(g)).toEqual(expect.arrayContaining(es));
   });
 
   it("문서 쪽 항 대상 (general) — 보통약관의 항을 가리키면 그 항이 속한 조로 올라간다", () => {
@@ -344,14 +352,50 @@ describe("refs 그래프 — 조 참조(articleRef)를 속한 조로 잇는다",
             id: "gp-art-1",
             kind: "article",
             title: "1조",
-            children: [{ id: "gp-par-1", kind: "paragraph", children: [{ id: "gp-aref", kind: "articleRef", targets: [{ nodeId: "g-par-pay-1" }], connector: "및", scope: "general" }] }],
+            children: [{ id: "gp-par-1", kind: "paragraph", children: [{ id: "gp-aref", kind: "articleRef", targets: [{ articleId: "g-art-pay", code: "P0100" }], connector: "및", scope: "general" }] }],
           },
         ],
       },
     };
     const g = buildGraph({ documents: [일반항참조_문서, 보통약관] });
     const e = edgesTo(g, "article:doc-g/g-art-pay").find((x) => x.from.kind === "article" && x.from.documentId === "doc-gen-par");
-    expect(e).toMatchObject({ via: "articleRef", at: { refPath: "g-par-pay-1" } });
+    expect(e).toMatchObject({ via: "articleRef", at: { refPath: "g-art-pay#P0100" } });
     expect(brokenEdges(g).some((x) => x.via === "articleRef")).toBe(false);
+  });
+});
+
+describe("refs 그래프 — 정적 마스터 박스 (최종 결정 9)", () => {
+  const 박스조항: Clause = {
+    code: "C0900",
+    label: "암 정의",
+    mode: "block",
+    options: [],
+    required: { discriminators: [], attributes: [] },
+    body: [
+      { id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text: "암이란" }], items: [{ id: "bx-in", kind: "boxRef", boxCode: "BX000001" }] },
+      { id: "bx-top", kind: "boxRef", boxCode: "BX000002" },
+    ],
+  };
+  const doc: DocumentInput = {
+    id: "doc-b",
+    kind: "general",
+    title: "보통약관",
+    tree: { id: "root", kind: "document", title: "보통약관", children: [{ id: "a1", kind: "article", title: "용어", children: [{ id: "p", kind: "paragraph", children: [] }, { id: "bx-doc", kind: "boxRef", boxCode: "BX000001" }] }] },
+  };
+
+  it("박스는 선언된 실체(box:코드)이고, 문서 · 함수조항 본문의 박스 참조가 boxRef 간선을 낸다", () => {
+    const g = buildGraph({ boxes: [{ code: "BX000001", name: "암 정의 박스", title: "", lines: ["x"] }, { code: "BX000002", name: "예시", title: "", lines: ["y"] }], clauses: [박스조항], documents: [doc] });
+    expect(g.nodes.get("box:BX000001")?.label).toBe("암 정의 박스");
+    expect(edgesTo(g, "box:BX000001").map((e) => [e.from.kind, e.via, e.at.nodePath?.at(-1)])).toEqual([
+      ["clause", "boxRef", "bx-in"],
+      ["article", "boxRef", "bx-doc"],
+    ]);
+    expect(edgesTo(g, "box:BX000002")).toHaveLength(1);
+    expect(brokenEdges(g).filter((e) => e.via === "boxRef")).toEqual([]);
+  });
+
+  it("없는 박스를 가리키면 깨진 간선이다", () => {
+    const g = buildGraph({ boxes: [], documents: [doc] });
+    expect(brokenEdges(g).filter((e) => e.via === "boxRef").map((e) => nodeKey(e.to))).toEqual(["box:BX000001"]);
   });
 });

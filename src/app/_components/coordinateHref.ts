@@ -12,7 +12,7 @@ export function coordinateHref(coordinate: Coordinate | undefined): string | und
   const node = coordinate.nodePath?.at(-1) ?? coordinate.articleId;
   // 보통약관 좌표의 ownerId 는 곧 문서 id 다.
   if (coordinate.document === "general") return `/documents/${coordinate.ownerId}${node ? `?node=${node}` : ""}`;
-  if (coordinate.document === "clause") return `/clauses/${coordinate.ownerId}${node ? `?node=${node}` : ""}`;
+  if (coordinate.document === "clause") return `/functions/${coordinate.ownerId}${node ? `?node=${node}` : ""}`;
   // 구분자 식이 깨진 원천은 구분자 편집기, 그 구분자다 — 문면 편집기가 아니다 (ADR-0049 §4)
   if (coordinate.document === "catalog") return `/catalog/${coordinate.ownerId}`;
   // 담보 마스터 · 담보약관 좌표의 ownerId 는 **담보 id** 다 (문서 id 가 아니다 — `Coordinate` 주석).

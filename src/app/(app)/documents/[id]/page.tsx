@@ -3,7 +3,7 @@
  *
  * ADR-0074: 편집은 브라우저 편집본에서 하고 `저장` 한 번에 서버로 간다. 이 페이지가 넘기는 것:
  * - 원본 트리 · 판 · 대응 보통약관(트리 — 조연결 · 보통약관 조 참조 후보)
- * - 검증 재료(별표 · 공용조항 · 구분자 · 담보속성 유효값 · 문맥 담보) — 브라우저의 검증 목록이 서버 저장 검증과 같은 코드를 탄다
+ * - 검증 재료(별표 · 함수조항 · 구분자 · 담보속성 유효값 · 문맥 담보) — 브라우저의 검증 목록이 서버 저장 검증과 같은 코드를 탄다
  * - 사전평가 문맥(담보 마스터 값) · 조건 팝업 문맥
  *
  * 편집본 밖의 조작(문서 삭제 `?del=1` · 복제 `?dup=1`)은 읽기 모드 더보기 메뉴에서 오고, 확인 카드는 여기서 그린다.
@@ -48,8 +48,9 @@ export default async function DocumentDetailPage({ params, searchParams }: { par
   }
   const actor = await currentActor();
 
-  const [appendices, clauses, discriminators, enums, generalSummaries, attributeKinds] = await Promise.all([
+  const [appendices, boxes, clauses, discriminators, enums, generalSummaries, attributeKinds] = await Promise.all([
     services.document.listAppendices(),
+    services.document.listBoxes(),
     services.clause.list(),
     services.catalog.list(),
     services.catalog.listEnums(),
@@ -107,7 +108,7 @@ export default async function DocumentDetailPage({ params, searchParams }: { par
         <p className="ts-confirm-title">
           {DOC_TEMPLATE_LABEL[doc.kind]} {doc.title} 복제
         </p>
-        <p className="ts-muted">문서 안 조 참조는 사본의 조를 가리키고, 보통약관 조 참조 · 조연결 · 공용조항 · 별표 · 구분자는 그대로 둔다. 원본은 바뀌지 않는다.</p>
+        <p className="ts-muted">문서 안 조 참조는 사본의 조를 가리키고, 보통약관 조 참조 · 조연결 · 함수조항 · 별표 · 구분자는 그대로 둔다. 원본은 바뀌지 않는다.</p>
         {doc.kind === "general" ? (
           <form action={duplicateGeneralAction.bind(null, id)}>
             <div className="ts-form-row">
@@ -171,8 +172,10 @@ export default async function DocumentDetailPage({ params, searchParams }: { par
         generals={generalSummaries.filter((g) => g.id !== id).map((g) => ({ id: g.id, title: g.title }))}
         {...(suggestedGeneralId ? { suggestedGeneralId } : {})}
         appendices={appendices}
+        boxes={boxes}
         clauses={clauses}
         discriminators={discriminators}
+        enums={enums}
         attributeValues={Object.fromEntries(attributeKinds.map((k) => [k.code, k.values.map((v) => v.code)]))}
         {...(coverage ? { coverage } : {})}
         {...(special && mv?.ok ? { master: { tree: mv.value.tree, values: mv.value.values } } : {})}

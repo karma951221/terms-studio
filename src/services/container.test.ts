@@ -27,7 +27,7 @@ function impactOf(r: { ok: boolean; rejection?: Rejection }) {
 
 /**
  * 관통 흐름 — 조립 루트가 모든 주입을 실제 구현으로 연결했는지, 한 DB 위에서 영역을 가로질러 확인한다.
- * 구분자 채번 → 담보 생성·부착·값 → 공용조항 → 담보약관의 공용조항 참조(부착 제안 → 수락) → 상품·담보속성·탑재 →
+ * 구분자 채번 → 담보 생성·부착·값 → 함수조항 → 담보약관의 함수조항 참조(부착 제안 → 수락) → 상품·담보속성·탑재 →
  * 관계정보 역조회 → 구분자 삭제(needsConfirmation · 편집자 forbidden) → 각 영역 파괴적 액션의 영향에 다른 영역 사용처가 실린다.
  */
 describe("container — createServices 관통 (PGlite)", () => {
@@ -50,7 +50,7 @@ describe("container — createServices 관통 (PGlite)", () => {
   const clauseBlock = b.clauseBlock("C0001", { O01: "V01" });
   const artLapse = b.article("특별약관의 소멸", [b.paragraph([b.text("이 특별약관은 다음의 경우 소멸합니다.")]), clauseBlock]);
   const gApply = b.article("준용규정", [b.paragraph([b.text("이 약관에서 정하지 않은 사항은 관계 법령을 따릅니다.")])]);
-  // 상품 오버라이드는 **보통약관의 공용조항 자리**에만 매달린다 (기능/상품 §3.6) — 보통약관에도 참조 자리를 둔다.
+  // 상품 오버라이드는 **보통약관의 함수조항 자리**에만 매달린다 (기능/상품 §3.6) — 보통약관에도 참조 자리를 둔다.
   const gClause = b.clauseBlock("C0001", { O01: "V01" });
   const gLapse = b.article("계약의 소멸", [b.paragraph([b.text("이 계약은 다음의 경우 소멸합니다.")]), gClause]);
   const gRenew = b.condBlock([b.branch("D0001 = true", [b.article("갱신 특칙", [b.paragraph([b.text("갱신형 계약의 특칙")])])])]);
@@ -90,15 +90,17 @@ describe("container — createServices 관통 (PGlite)", () => {
     expect(unwrap(await s.coverage.completeness(death.id))).toEqual([]);
   });
 
-  it("공용조항 S1 — 「특별약관의 소멸」 C0001: 옵션(어조) + 구분자 D0002 를 읽는 조건 → 요구 구분자 자동 추출", async () => {
+  it("함수조항 S1 — 「특별약관의 소멸」 C0001: 옵션(어조) + 인자(기본 연결 D0002)를 읽는 조건 → 요구 구분자 = 그 기본 연결", async () => {
     const c = unwrap(
       await s.clause.create(editor, {
         label: "특별약관의 소멸",
         mode: "block",
         body: [
           { id: "c-p", kind: "paragraph", children: [{ id: "c-t", kind: "text", text: "소멸합니다. " }, { id: "c-o", kind: "optionSlot", optionCode: "O01" }] },
-          { id: "c-cb", kind: "condBlock", branches: [{ id: "c-br", when: "D0002 = '기준A'", children: [{ id: "c-p2", kind: "paragraph", children: [{ id: "c-t2", kind: "text", text: "기준A 특칙" }] }] }] },
+          { id: "c-cb", kind: "condBlock", branches: [{ id: "c-br", when: "arg.기준 = '기준A'", children: [{ id: "c-p2", kind: "paragraph", children: [{ id: "c-t2", kind: "text", text: "기준A 특칙" }] }] }] },
         ],
+        // 함수조항은 구분자를 직접 읽지 않고 인자만 읽는다 (최종 결정 2)
+        params: [{ name: "기준", type: { kind: "string" }, default: { kind: "discriminator", code: "D0002" } }],
         options: [{ label: "어조", values: [{ label: "사망", body: [{ id: "c-v1", kind: "text", text: "사망 시" }] }, { label: "해지", body: [{ id: "c-v2", kind: "text", text: "해지 시" }] }] }],
       }),
     );
@@ -120,13 +122,13 @@ describe("container — createServices 관통 (PGlite)", () => {
     expect(rejection(await s.document.apply(editor, special.id, [{ type: "insert", node: badAttr, at: { parentId: special.tree.id } }])).reason).toBe("invalid");
   });
 
-  it("공용조항 S2 — 참조 추가 시 요구 구분자 존재 검사: 부착이 없어 값 자리를 묻지 않는다 (ADR-0037)", async () => {
+  it("함수조항 S2 — 참조 추가 시 요구 구분자 존재 검사: 부착이 없어 값 자리를 묻지 않는다 (ADR-0037)", async () => {
     const check = unwrap(await s.clause.checkReference("C0001", { kind: "coverage", id: death.id }));
     expect(check.missing).toEqual([]);
     expect(check.broken).toEqual([]);
     expect(unwrap(await s.coverage.form({ level: "coverage", id: death.id })).fields.map((f) => f.path)).toEqual(["coverage_basic.claim_name"]);
     unwrap(await s.coverage.writeValue(editor, { level: "coverage", id: death.id }, "coverage_basic.claim_name", "기준A"));
-    // 옵션 미선택 참조는 저장 시점에 거부된다 (기능/공용조항 §3.2) — 게이트가 공용조항 정의로 검사
+    // 옵션 미선택 참조는 저장 시점에 거부된다 (기능/함수조항 §3.2) — 게이트가 함수조항 정의로 검사
     const unselected = b.article("y", [b.clauseBlock("C0001", {})]);
     const r = await s.document.apply(editor, special.id, [{ type: "insert", node: unselected, at: { parentId: special.tree.id } }]);
     const rj = rejection(r);
@@ -162,7 +164,7 @@ describe("container — createServices 관통 (PGlite)", () => {
     // 옵션 오버라이드 — 유효 집합 안에서만
     unwrap(await s.product.setOptionOverride(editor, { kind: "product", id: productId }, gClause.id, "C0001", { O01: "V02" }));
     expect(rejection(await s.product.setOptionOverride(editor, { kind: "product", id: productId }, gClause.id, "C0001", { O01: "V09" })).reason).toBe("invalid");
-    // 자리에 걸린 공용조항과 다른 코드는 그 자리의 오버라이드가 아니다 — 저장 전에 자리에서 막는다 (코덱스 리뷰 후속)
+    // 자리에 걸린 함수조항과 다른 코드는 그 자리의 오버라이드가 아니다 — 저장 전에 자리에서 막는다 (코덱스 리뷰 후속)
     expect(rejection(await s.product.setOptionOverride(editor, { kind: "product", id: productId }, gClause.id, "C9999", {})).reason).toBe("notFound");
     // 특약 자리의 노드는 상품 오버라이드 대상이 아니다 — 보통약관 템플릿에서 못 찾는다 (Important-1)
     expect(rejection(await s.product.setOptionOverride(editor, { kind: "product", id: productId }, clauseBlock.id, "C0001", { O01: "V02" })).reason).toBe("notFound");
@@ -179,7 +181,7 @@ describe("container — createServices 관통 (PGlite)", () => {
     // 참조 자리는 둘 — 보통약관(상품 오버라이드의 자리)과 담보약관
     expect(v.incoming.map((e) => e.via)).toEqual(["clauseRef", "optionSelect", "clauseRef", "optionSelect"]);
     expect(v.overrides.map((e) => [e.from.kind, e.at.ownerName, e.at.refPath])).toEqual([["product", "알파Plus(축약)", "C0001.O01"]]);
-    expect(v.outgoing.map((e) => e.at.refPath)).toEqual(["D0002"]);
+    expect(v.outgoing.map((e) => [e.via, e.at.refPath])).toEqual([["defaultBinding", "arg.기준"]]);
     const integrity = await s.refs.integrity();
     expect(integrity.broken).toEqual([]);
     expect(integrity.cycles).toEqual([]);
@@ -191,11 +193,11 @@ describe("container — createServices 관통 (PGlite)", () => {
     const impact = impactOf(await s.catalog.remove(admin, "D0002"));
     expect(impact.valueRowsLost).toBe(0); // 구분자는 식이라 값 행이 없다 (ADR-0037)
     const kinds = impact.brokenRefs.map((c: Coordinate) => [c.document, c.ownerName]);
-    expect(kinds).toEqual([["clause", "특별약관의 소멸"]]); // 공용조항 식이 이 구분자를 읽는다
-    expect(impact.brokenRefs[0]).toMatchObject({ ownerId: "C0001", nodePath: ["c-cb", "c-br"], refPath: "D0002" });
+    expect(kinds).toEqual([["clause", "특별약관의 소멸"]]); // 함수조항 인자의 기본 연결이 이 구분자다
+    expect(impact.brokenRefs[0]).toMatchObject({ ownerId: "C0001", refPath: "arg.기준" });
   });
 
-  it("역할권한 S3 — 다른 영역의 파괴적 액션 영향에도 그래프 사용처가 실린다: 담보 삭제 · 공용조항 삭제 · 보통약관 삭제 · 담보속성 유효값 삭제", async () => {
+  it("역할권한 S3 — 다른 영역의 파괴적 액션 영향에도 그래프 사용처가 실린다: 담보 삭제 · 함수조항 삭제 · 보통약관 삭제 · 담보속성 유효값 삭제", async () => {
     // 담보 삭제 → 문면 문서 · 탑재한 상품담보
     const cov = impactOf(await s.coverage.remove(admin, death.id));
     expect(cov.brokenRefs).toEqual([
@@ -205,7 +207,7 @@ describe("container — createServices 관통 (PGlite)", () => {
     expect(cov.valueRowsLost).toBe(3); // 담보명 + 급부 면책여부·지급률
     // 급부 삭제는 최소 구조 위반 — 관리자도 거부
     expect(rejection(await s.coverage.removeBenefit(admin, death.subCoverages[0].benefits[0].id)).reason).toBe("minimumStructure");
-    // 공용조항 삭제 → 참조 문서 (참조 노드 좌표)
+    // 함수조항 삭제 → 참조 문서 (참조 노드 좌표)
     const cl = impactOf(await s.clause.remove(admin, "C0001"));
     expect(cl.brokenRefs).toEqual([
       { document: "general", ownerId: general.id, documentId: general.id, ownerName: "알파Plus 보통약관", nodePath: [gClause.id] },
@@ -214,7 +216,7 @@ describe("container — createServices 관통 (PGlite)", () => {
     ]);
     // 보통약관 삭제 → 담보약관의 대응 지정(문서 서비스 자체 스캔) + 상품 템플릿 선택(refs 외부 사용처)
     const doc = impactOf(await s.document.remove(admin, general.id));
-    // 보통약관을 지우면 그 문서의 공용조항 자리에 매달린 상품 오버라이드도 함께 깨진다 → product 둘
+    // 보통약관을 지우면 그 문서의 함수조항 자리에 매달린 상품 오버라이드도 함께 깨진다 → product 둘
     expect(doc.brokenRefs.map((c: Coordinate) => c.document)).toEqual(["special", "product", "product"]);
     // 담보속성 유효값 삭제 → 조합(상품 서비스) + 식 참조(refs)
     const attr = impactOf(await s.product.removeAttributeValue(admin, "A0001", "1"));
@@ -230,9 +232,9 @@ describe("container — createServices 관통 (PGlite)", () => {
     // 값은 마스터 자리에 있으므로 구분자를 지워도 남는다 — 사라진 것은 문면이 부를 이름이다
     expect((await s.product.getSnapshotValues(pcId)).get(pcId)?.has("coverage_basic.claim_name")).toBe(true);
     const { broken, issues } = await s.refs.integrity();
-    expect(broken.map((e) => [e.via, e.at.ownerId])).toEqual([["when", "C0001"]]);
-    expect(issues[0]).toMatchObject({ kind: "brokenRef", at: { document: "clause", ownerId: "C0001", refPath: "D0002" } });
-    // 공용조항 재검사도 같은 사실을 brokenRef 로 보고한다
+    expect(broken.map((e) => [e.via, e.at.ownerId])).toEqual([["defaultBinding", "C0001"]]);
+    expect(issues[0]).toMatchObject({ kind: "brokenRef", at: { document: "clause", ownerId: "C0001", refPath: "arg.기준" } });
+    // 함수조항 재검사도 같은 사실을 brokenRef 로 보고한다
     const recheck = unwrap(await s.clause.recheck("C0001"));
     expect(recheck[0].issues.map((i) => i.kind)).toEqual(["brokenRef"]);
   });

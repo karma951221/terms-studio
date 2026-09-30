@@ -4,7 +4,7 @@ import type { Coordinate } from "./types";
 const DOCUMENT_LABEL: Record<NonNullable<Coordinate["document"]>, string> = {
   general: "보통약관",
   special: "특약",
-  clause: "공용조항",
+  clause: "함수조항",
   coverageMaster: "담보 마스터",
   product: "상품모델링",
   catalog: "구분자",
@@ -16,7 +16,7 @@ const NODE_LABEL: Record<string, string> = {
   condition: "조건식",
   articleRef: "참조",
   appendixRef: "별표 참조",
-  clauseRef: "공용조항 참조",
+  clauseRef: "함수조항 참조",
   option: "옵션",
 };
 

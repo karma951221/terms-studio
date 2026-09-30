@@ -1,5 +1,5 @@
 /**
- * 공용조항 모델 — 사용처 상자 안에 공용조항이 **어떻게 짜였는지**가 보여야 한다 (2026-09-28 사용자 QA:
+ * 함수조항 모델 — 사용처 상자 안에 함수조항이 **어떻게 짜였는지**가 보여야 한다 (2026-09-28 사용자 QA:
  * 「대표자의 지정」이 가운데 편집기에서 접힌 이름표로만 보여 모델을 알 수 없었다).
  */
 import { renderToStaticMarkup } from "react-dom/server";
@@ -10,7 +10,7 @@ import type { ReferenceTarget } from "@/domain/document";
 
 import { ClauseModel } from "./ClauseModel";
 
-/** 슬롯 · 옵션 자리 · 문장 안 조건 · 조 참조 · 별표 참조 · 블록 조건을 다 가진 공용조항. */
+/** 슬롯 · 옵션 자리 · 문장 안 조건 · 조 참조 · 별표 참조 · 블록 조건을 다 가진 함수조항. */
 const modelClause: Clause = {
   code: "C0007",
   label: "대표자의 지정",
@@ -37,7 +37,7 @@ const modelClause: Clause = {
         { id: "s1", kind: "slot", ref: "D0001" },
         { id: "t2", kind: "text", text: " 을 청구합니다. " },
         { id: "c1", kind: "inlineCond", branches: [{ id: "b1", when: "D0001 = '사망'", children: [{ id: "t3", kind: "text", text: "사망한 경우" }] }, { id: "b2", children: [{ id: "t4", kind: "text", text: "그 밖" }] }] },
-        { id: "r1", kind: "articleRef", targets: [{ nodeId: "A3" }], connector: "및" },
+        { id: "r1", kind: "articleRef", targets: [{ articleId: "A3" }], connector: "및" },
         { id: "x1", kind: "appendixRef", appendixCode: "AP01" },
       ],
     },
@@ -57,7 +57,7 @@ function render(selected: Record<string, string>) {
   );
 }
 
-describe("ClauseModel — 공용조항 본문의 모델을 편다", () => {
+describe("ClauseModel — 함수조항 본문의 모델을 편다", () => {
   it("글 · 슬롯 칩 · 문장 안 조건(IF/ELSE 머리) · 조 참조 · 별표 참조 · 블록 조건(IF 상자)", () => {
     const html = render({ O01: "V02" });
     expect(html).toContain("대표자를 지정하여");
@@ -86,19 +86,54 @@ describe("ClauseModel — 공용조항 본문의 모델을 편다", () => {
   });
 });
 
-describe("「박스」 공용조항 모델 — 문면 박스와 같은 상자, 줄의 옵션 자리 · 슬롯은 칩", () => {
-  it("제목 【…】 · 줄마다 한 줄, 옵션 자리는 선택지 전부 + 고른 것", () => {
-    const box: Clause = {
-      code: "C0100",
-      label: "【계약 전 알릴 의무】",
-      mode: "box",
-      required: { discriminators: [], attributes: [] },
-      options: [{ code: "O01", label: "1째 줄", order: 0, values: [{ code: "V01", label: "청약서에서", order: 0, body: [{ id: "v1", kind: "text", text: "청약서에서" }] }, { code: "V02", label: "서면으로", order: 1, body: [{ id: "v2", kind: "text", text: "서면으로" }] }] }],
-      body: [{ id: "b", kind: "box", title: "계약 전 알릴 의무", lines: [{ id: "l1", kind: "line", children: [{ id: "t", kind: "text", text: "회사가 " }, { id: "o", kind: "optionSlot", optionCode: "O01" }] }] }],
-    };
-    const html = renderToStaticMarkup(<ClauseModel clause={box} selected={{ O01: "V02" }} references={new Map()} />);
-    expect(html).toContain("ts-doc-box");
-    expect(html).toContain("【계약 전 알릴 의무】");
-    expect(html).toContain("✓서면으로");
+/** 인자를 가진 함수조항 — 공통 항 · 값별 분기(질병 칸 · 상해 「문구 없음」) · 조건 블록. */
+const foldClause: Clause = {
+  code: "C0100",
+  label: "납입면제 사유",
+  mode: "block",
+  required: { discriminators: [], attributes: [] },
+  options: [],
+  params: [{ name: "사유", type: { kind: "enum", enumCode: "E0001" } }],
+  body: [
+    { id: "p0", kind: "paragraph", children: [{ id: "t0", kind: "text", text: "공통 항" }] },
+    {
+      id: "sw",
+      kind: "switchBlock",
+      on: "arg.사유",
+      cases: [
+        { id: "k1", values: ["V01"], children: [{ id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text: "질병 칸 항" }] }, { id: "p1b", kind: "paragraph", children: [{ id: "t1b", kind: "text", text: "질병 칸 둘째 항" }] }] },
+        { id: "k2", values: ["V02"], empty: true, children: [] },
+      ],
+    },
+    { id: "cb", kind: "condBlock", branches: [{ id: "cb1", when: "arg.사유 = 'V01'", children: [{ id: "p2", kind: "paragraph", children: [{ id: "t2", kind: "text", text: "조건 칸 항" }] }] }] },
+  ],
+};
+
+function renderFold(scope?: string) {
+  return renderToStaticMarkup(
+    <ClauseModel clause={foldClause} selected={{}} references={references} {...(scope ? { foldScope: scope } : {})} valueLabel={(on, v) => (on === "arg.사유" ? ({ V01: "질병", V02: "상해" } as Record<string, string>)[v] : undefined)} />,
+  );
+}
+
+describe("ClauseModel — 인자 있는 함수조항은 접어 둔다 (최종 결정 8 · 기능/함수조항 §4.4)", () => {
+  it("인자 있는 조항은 칸 머리만 — 칸마다 접힌 <details>, 머리 = 배정 값 이름 · 문장 수", () => {
+    const html = renderFold();
+    expect(html.match(/<details/g)).toHaveLength(2); // 질병 칸 · IF 가지 (문구 없음 칸은 펼칠 것이 없다)
+    expect(html).not.toMatch(/<details[^>]* open/);
+    expect(html).toMatch(/<summary[^>]*>.*질병.*문장 2.*<\/summary>/);
+    expect(html).not.toContain(">V01<");
+    expect(html).toContain("상해 — 문구 없음");
+    expect(html).toContain("공통 항"); // 칸 밖 본문은 그대로
+  });
+
+  it("칸을 누르면 그 칸만 펼침 — 한 분기의 칸은 같은 묶음(name)이고, 묶음 이름은 상자마다 다르다", () => {
+    const html = renderFold("box-1");
+    const names = [...html.matchAll(/<details[^>]* name="([^"]+)"/g)].map((m) => m[1]);
+    expect(names).toEqual(["box-1:sw", "box-1:cb"]);
+    expect(renderFold("box-2")).toContain('name="box-2:sw"');
+  });
+
+  it("인자 0개 조항은 전체 — 접지 않는다", () => {
+    expect(render({ O01: "V01" })).not.toContain("<details");
   });
 });

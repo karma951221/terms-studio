@@ -144,7 +144,7 @@ export async function coverageAudit(db: Db, id: Id) {
 // ───────────────────────────── 쓰기 ─────────────────────────────
 
 /**
- * 담보코드 순번 — 카탈로그 · 공용조항 · 별표와 같은 code_sequences 를 쓰되 kind 는 `coverage` (scope 전역 "").
+ * 담보코드 순번 — 카탈로그 · 함수조항 · 별표와 같은 code_sequences 를 쓰되 kind 는 `coverage` (scope 전역 "").
  * 한 문장의 upsert 라 동시 호출에도 안전하고, 삭제된 순번은 재사용하지 않는다.
  */
 export async function nextCoverageSeq(db: Db): Promise<number> {

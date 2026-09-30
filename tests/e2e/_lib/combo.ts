@@ -11,9 +11,14 @@ import { expect, type Locator } from "@playwright/test";
 const exact = (text: string) => new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
 
 export async function pickCombo(input: Locator, pick: { value?: string; label?: string; query?: string }): Promise<void> {
-  await input.click();
-  await input.fill(pick.query ?? (pick.value === undefined ? (pick.label ?? "") : ""));
-  await expect(input).toHaveAttribute("aria-expanded", "true");
+  // 여는 단계는 다시 해 본다 — 바로 앞 제출(서버 액션 → redirect)이 늦게 그린 화면이 입력칸의 초점을 빼앗으면
+  // onBlur 가 목록을 닫는다(실물 ⑤ 그룹 배치에서 드물게 보였다). 누르기 · 치기는 몇 번 해도 같은 결과다.
+  const text = pick.query ?? (pick.value === undefined ? (pick.label ?? "") : "");
+  await expect(async () => {
+    await input.click();
+    await input.fill(text);
+    await expect(input).toHaveAttribute("aria-expanded", "true", { timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
   const listId = await input.getAttribute("aria-controls");
   const list = input.page().locator(`[id="${listId}"]`);
   const option =

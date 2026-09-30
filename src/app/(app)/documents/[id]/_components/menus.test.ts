@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { indexTree, nodeBuilders, sequentialIds, type DocumentNode } from "@/domain/document";
 
-import { articleMenu, blockMenu, chipMenu, clausePickItems, condMenu, inlineInsertItems, type MenuSections } from "./menus";
+import { DOCUMENT_TOOLS, toolFor } from "./tools";
+import { articleMenu, blockMenu, boxPickItems, chipMenu, clausePickItems, clausesFitting, condMenu, inlineInsertItems, type MenuSections } from "./menus";
 
 const labels = (s: MenuSections) => s.flat().map((i) => `${i.label}${i.disabled ? "(잠김)" : ""}`);
 
@@ -17,13 +18,17 @@ function tree(): DocumentNode {
 }
 
 describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 §3.2 · §4.3)", () => {
-  it("항 — 아래에 항 · 호 추가 · 표 · 공용조항(조 단위) · 감싸기 · 이동(맨 위 · 맨 아래 잠김) · 복제 · 삭제 — 박스는 공용조항으로만(박스 추가 없음)", () => {
+  it("항 — 아래에 항 · 호 추가 · 표 · 함수조항(조 단위) · 박스(정적 마스터) · 감싸기 · 이동(맨 위 · 맨 아래 잠김) · 복제 · 삭제", () => {
     expect(labels(blockMenu(env(tree()), "n3"))).toEqual([
       "아래에 항 추가",
       "호 추가",
+      "함수조항(호) 추가…",
       "아래에 표 추가…",
       "아래에 글머리 목록 추가",
-      "아래에 공용조항(조 단위) 추가…",
+      "아래에 함수조항(조 단위) 추가…",
+      "아래에 박스 추가…",
+      "아래에 반복 블록 추가…",
+      "반복 블록(호) 추가…",
       "조건으로 감싸기",
       "위로(잠김)",
       "아래로(잠김)",
@@ -32,9 +37,19 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
     ]);
   });
 
-  it("호 — 항 목록 자리라 호 · 표 · 글머리 목록 · 박스 공용조항, 공용조항(조 단위)은 없다 · 목 뒤는 목 · 글머리 목록", () => {
-    expect(labels(blockMenu(env(tree()), "n2")).slice(0, 5)).toEqual(["아래에 호 추가", "목 추가", "아래에 표 추가…", "아래에 글머리 목록 추가", "아래에 박스 공용조항 추가…"]);
-    expect(labels(blockMenu(env(tree()), "n1")).slice(0, 3)).toEqual(["아래에 목 추가", "아래에 글머리 목록 추가", "조건으로 감싸기"]);
+  it("호 — 항 목록 자리라 호 · 표 · 글머리 목록 · 박스 · 「호」 함수조항 · 목 뒤는 목 · 글머리 목록 · 「목」 함수조항(박스 없음)", () => {
+    expect(labels(blockMenu(env(tree()), "n2")).slice(0, 9)).toEqual([
+      "아래에 호 추가",
+      "목 추가",
+      "함수조항(목) 추가…",
+      "아래에 표 추가…",
+      "아래에 글머리 목록 추가",
+      "아래에 함수조항(호) 추가…",
+      "아래에 박스 추가…",
+      "아래에 반복 블록 추가…",
+      "조건으로 감싸기",
+    ]);
+    expect(labels(blockMenu(env(tree()), "n1")).slice(0, 4)).toEqual(["아래에 목 추가", "아래에 글머리 목록 추가", "아래에 함수조항(목) 추가…", "조건으로 감싸기"]);
   });
 
   it("조 제목이면 그 조를 감싸고, 조 본문(고른 블록 없음)이면 새 조건 블록을 넣는다", () => {
@@ -49,11 +64,11 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
     expect(labels(articleMenu(env(tree(), "special"), "n4"))).toContain("조연결…");
     const b = nodeBuilders(sequentialIds("n"));
     const top = b.document("D", [b.article("가", [])]);
-    expect(labels(articleMenu(env(top), top.children[0].id)).slice(0, 4)).toEqual(["아래에 조 추가", "아래에 관 추가", "항 추가", "공용조항 참조 추가…"]);
+    expect(labels(articleMenu(env(top), top.children[0].id)).slice(0, 5)).toEqual(["아래에 조 추가", "아래에 관 추가", "항 추가", "함수조항 참조 추가…", "박스 추가…"]);
   });
 
-  it("조 제목 — 조 끝에 공용조항(조 단위)을 넣는 팝업 (첫 자리가 공용조항인 조 · 2026-09-28)", () => {
-    const item = articleMenu(env(tree(), "special"), "n4").flat().find((i) => i.label === "공용조항 참조 추가…");
+  it("조 제목 — 조 끝에 함수조항(조 단위)을 넣는 팝업 (첫 자리가 함수조항인 조 · 2026-09-28)", () => {
+    const item = articleMenu(env(tree(), "special"), "n4").flat().find((i) => i.label === "함수조항 참조 추가…");
     expect(item?.action).toEqual({ do: "popup", popup: { kind: "clauseBlock", at: { parentId: "n4" } } });
   });
 
@@ -68,6 +83,7 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
       "이 가지에 항 추가",
       "이 가지에 글머리 목록 추가",
       "이 가지에 표 추가…",
+      "이 가지에 박스 추가…",
       "조건 풀기 — 이 가지 내용만 남긴다",
       "조건 블록 삭제",
     ]);
@@ -76,24 +92,78 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
     const top = b.condBlock([b.branch("D0001 = true", [b.article("나", [])])]);
     const d2 = b.document("D", [top]);
     expect(labels(condMenu(env(d2), top.branches[0].id)).slice(0, 3)).toEqual(["이 가지 삭제(잠김)", "이 가지에 조 추가", "조건 풀기 — 이 가지 내용만 남긴다"]);
-    expect(inlineInsertItems({ parentId: "n2" }, [], { inInlineCond: true, newId: sequentialIds("x") }).map((i) => i.label)).toEqual(["치환 슬롯…", "조 참조…", "별표 참조…", "공용조항(문장 안)…"]);
+    expect(inlineInsertItems({ parentId: "n2" }, [], { inInlineCond: true, newId: sequentialIds("x") }).map((i) => i.label)).toEqual(["치환 슬롯…", "조 참조…", "별표 참조…", "함수조항(문장 안)…"]);
     expect(inlineInsertItems({ tableId: "t", row: 1, col: 0 }, [], { inInlineCond: false, newId: sequentialIds("x"), structLevels: ["subCoverage"] }).map((i) => i.label)).toContain("구조 표기…");
   });
 
-  it("툴바 「공용조항」 — 공용조항마다 한 줄, 고르면 그 자리에 공용조항 블록(옵션 없음)을 곧바로 넣는다", () => {
+  it("툴바 「함수조항」 — 함수조항마다 한 줄, 고르면 그 자리에 함수조항 블록(옵션 없음)을 곧바로 넣는다", () => {
     const items = clausePickItems([{ code: "C0001", label: "보험기간" }], { parentId: "n4", index: 1 }, sequentialIds("k"));
     expect(items.map((i) => i.label)).toEqual(["보험기간(C0001)"]);
     expect(items[0].action).toMatchObject({ do: "ops", ops: [{ type: "insert", node: { kind: "clauseBlockRef", clauseCode: "C0001", options: {} }, at: { parentId: "n4", index: 1 } }] });
   });
 
-  it("공용조항 고르기는 자리를 따른다 — 호 목록 자리는 「박스」만, 조 자리는 「항」 · 「박스」(「문구」는 없다)", () => {
+  it("함수조항 고르기는 조 자리의 「항」 함수조항만 (「문구」는 없다)", () => {
     const clauses = [
       { code: "C0001", label: "소멸", mode: "block" },
-      { code: "C0002", label: "용어풀이", mode: "box" },
       { code: "C0003", label: "제3자", mode: "inline" },
     ];
-    const at = (slot?: "items") => clausePickItems(clauses, { parentId: "p", ...(slot ? { slot } : {}) }, sequentialIds("k")).map((i) => i.label);
-    expect(at()).toEqual(["소멸(C0001)", "용어풀이(C0002)"]);
-    expect(at("items")).toEqual(["용어풀이(C0002)"]);
+    expect(clausePickItems(clauses, { parentId: "p" }, sequentialIds("k")).map((i) => i.label)).toEqual(["소멸(C0001)"]);
+  });
+
+  it("툴바 「박스」 — 정적 마스터 박스마다 한 줄, 고르면 그 자리에 박스 참조를 곧바로 넣는다 · 조 제목의 「박스 추가…」는 조 끝 고르기 팝업", () => {
+    const items = boxPickItems([{ code: "BX000001", name: "보험연도" }], { parentId: "n3", slot: "items", index: 1 }, sequentialIds("k"));
+    expect(items.map((i) => i.label)).toEqual(["보험연도(BX000001)"]);
+    expect(items[0].action).toMatchObject({ do: "ops", ops: [{ type: "insert", node: { kind: "boxRef", boxCode: "BX000001" }, at: { parentId: "n3", slot: "items", index: 1 } }] });
+    const item = articleMenu(env(tree()), "n4").flat().find((i) => i.label === "박스 추가…");
+    expect(item?.action).toEqual({ do: "popup", popup: { kind: "boxPick", at: { parentId: "n4" } } });
+  });
+});
+
+describe("함수조항 넣기는 자리 유형대로 — 조 자리 「항」 · 호 목록 「호」 · 목 목록 「목」 (최종 결정 4)", () => {
+  const clauses = [
+    { code: "C1", label: "문구", mode: "inline" },
+    { code: "C2", label: "항", mode: "block" },
+    { code: "C3", label: "호", mode: "item" },
+    { code: "C4", label: "목", mode: "subitem" },
+    { code: "C5", label: "옛 호출" },
+  ];
+  it("clausesFitting 은 자리 유형만 남긴다 — 유형을 모르면 조 자리", () => {
+    expect(clausesFitting(clauses).map((c) => c.code)).toEqual(["C2", "C5"]);
+    expect(clausesFitting(clauses, "item").map((c) => c.code)).toEqual(["C3"]);
+    expect(clausesFitting(clauses, "subitem").map((c) => c.code)).toEqual(["C4"]);
+  });
+
+  it("항의 「함수조항(호) 추가…」는 그 항의 호 목록 자리 팝업", () => {
+    const item = blockMenu(env(tree()), "n3").flat().find((i) => i.label === "함수조항(호) 추가…");
+    expect(item?.action).toEqual({ do: "popup", popup: { kind: "clauseBlock", at: { parentId: "n3", slot: "items" }, fit: "item" } });
+  });
+});
+
+describe("블록 반복 메뉴 (ADR-0077 — 조 자리 · 호 목록, 한 단계 중첩)", () => {
+  /** 조 › 반복(종) › 항 › 호 목록 반복(사유) › 호. */
+  function repeatTree() {
+    const b = nodeBuilders(sequentialIds("r"));
+    const item = b.item([]);
+    const inner = b.forBlock({ kind: "listOfCurrent", loop: "?", field: "reasons" }, [item]);
+    const paragraph = b.paragraph([], [inner]);
+    const outer = b.forBlock({ kind: "planOptions", form: "waiver", filter: "waiver.applies = true" }, [paragraph]);
+    inner.source = { kind: "listOfCurrent", loop: outer.id, field: "reasons" };
+    const doc = b.document("D", [b.article("가", [outer])]);
+    return { doc, outer, inner, paragraph, item };
+  }
+
+  it("반복 블록 자리 — 이 반복에 항 · 함수조항 · 안쪽 반복 넣기 · 반복 원천, 모든 항목에 툴바 버튼", () => {
+    const { doc, outer } = repeatTree();
+    const got = labels(blockMenu(env(doc), outer.id));
+    expect(got).toEqual(expect.arrayContaining(["이 반복에 항 추가", "이 반복에 함수조항(조 단위) 추가…", "이 반복에 반복 블록 추가…", "반복 원천…"]));
+    for (const l of blockMenu(env(doc), outer.id).flat().map((i) => i.label)) expect(toolFor(DOCUMENT_TOOLS, l), l).toBeDefined();
+    expect(labels(articleMenu(env(doc), doc.children[0].id))).toContain("반복 블록 추가…");
+  });
+
+  it("두 단계 안에서는 반복을 더 넣지 않는다 — 안쪽 반복 · 그 안 호", () => {
+    const { doc, inner, item } = repeatTree();
+    expect(labels(blockMenu(env(doc), inner.id))).toEqual(expect.arrayContaining(["이 반복에 호 추가", "이 반복에 함수조항(호) 추가…"]));
+    expect(labels(blockMenu(env(doc), inner.id))).not.toContain("이 반복에 반복 블록 추가…");
+    expect(labels(blockMenu(env(doc), item.id))).not.toContain("아래에 반복 블록 추가…");
   });
 });

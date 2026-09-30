@@ -25,7 +25,7 @@ describe("inlinesFromText — 평문의 조·별표 참조를 슬롯으로", () 
   it("조 참조·별표 참조를 슬롯으로 바꾸고 나머지는 텍스트", () => {
     const out = inlinesFromText("제1조(보험금의 지급사유)에서【별표2(장해분류표)】에 정한", env(), newId);
     expect(out.map((x) => x.kind)).toEqual(["articleRef", "text", "appendixRef", "text"]);
-    expect(out[0]).toMatchObject({ kind: "articleRef", scope: "self", connector: "및", targets: [{ nodeId: "a1" }] });
+    expect(out[0]).toMatchObject({ kind: "articleRef", scope: "self", connector: "및", targets: [{ articleId: "a1" }] });
     expect(out[1]).toMatchObject({ kind: "text", text: "에서" });
     expect(out[2]).toMatchObject({ kind: "appendixRef", appendixCode: "APX02_DISABILITY" });
     expect(out[3]).toMatchObject({ kind: "text", text: "에 정한" });
@@ -35,7 +35,7 @@ describe("inlinesFromText — 평문의 조·별표 참조를 슬롯으로", () 
     const out = inlinesFromText("다만, 보통약관 제9조(적립부분 적립이율에 관한 사항), 제10조(만기환급금의 지급) 및 제38조(중도인출)은 제외하며", env(), newId);
     expect(out.map((x) => x.kind)).toEqual(["text", "articleRef", "text"]);
     expect(out[0]).toMatchObject({ text: "다만, " });
-    expect(out[1]).toMatchObject({ scope: "general", connector: "및", targets: [{ nodeId: "a9" }, { nodeId: "a10" }, { nodeId: "a38" }] });
+    expect(out[1]).toMatchObject({ scope: "general", connector: "및", targets: [{ articleId: "a9" }, { articleId: "a10" }, { articleId: "a38" }] });
     expect(out[2]).toMatchObject({ text: "은 제외하며" });
   });
 
@@ -44,7 +44,7 @@ describe("inlinesFromText — 평문의 조·별표 참조를 슬롯으로", () 
     e.general!.byNumber.set("27의2", { id: "a27-2", title: "납입면제에 관한 세부규정", paragraphIds: [], itemIds: new Map() });
     const out = inlinesFromText("보통약관 1종으로 가입한 경우 보통약관 제27조의1(보험료의 납입면제) 및 제27조의2(납입면제에 관한 세부규정)도 제외합니다.", e, newId);
     expect(out.map((x) => x.kind)).toEqual(["text", "articleRef", "text"]);
-    expect(out[1]).toMatchObject({ scope: "general", targets: [{ nodeId: "a27-1" }, { nodeId: "a27-2" }] });
+    expect(out[1]).toMatchObject({ scope: "general", targets: [{ articleId: "a27-1" }, { articleId: "a27-2" }] });
   });
 
   it("법령 인용(의료법 제3조 · 민법 제27조)은 건드리지 않는다", () => {
@@ -58,13 +58,13 @@ describe("inlinesFromText — 평문의 조·별표 참조를 슬롯으로", () 
   it("조 없는 항·호 참조는 현재 조의 항·호를 가리킨다 (「제1항」 「제1항 제2호」)", () => {
     const out = inlinesFromText("제1항에 따라 제1항 제2호의 서류를", env(), newId);
     expect(out.map((x) => x.kind)).toEqual(["articleRef", "text", "articleRef", "text"]);
-    expect(out[0]).toMatchObject({ targets: [{ nodeId: "a1p1" }] });
-    expect(out[2]).toMatchObject({ targets: [{ nodeId: "a1p1i2" }] });
+    expect(out[0]).toMatchObject({ targets: [{ articleId: "a1p1" }] });
+    expect(out[2]).toMatchObject({ targets: [{ articleId: "a1p1i2" }] });
   });
 
   it("「제N조(…) 제M항」은 그 조의 항을 가리킨다", () => {
     const out = inlinesFromText("제1조(보험금의 지급사유) 제2항에서 정한", env(), newId);
-    expect(out[0]).toMatchObject({ kind: "articleRef", targets: [{ nodeId: "a1p2" }] });
+    expect(out[0]).toMatchObject({ kind: "articleRef", targets: [{ articleId: "a1p2" }] });
     expect(out[1]).toMatchObject({ text: "에서 정한" });
   });
 
@@ -74,7 +74,7 @@ describe("inlinesFromText — 평문의 조·별표 참조를 슬롯으로", () 
     e.currentArticleId = "a1";
     const out = inlinesFromText("제16조(상해보험계약 후 알릴 의무) 제4항 또는 제5항에 따라", e, newId);
     expect(out.map((x) => x.kind)).toEqual(["articleRef", "text"]);
-    expect(out[0]).toMatchObject({ connector: "또는", targets: [{ nodeId: "a16p4" }, { nodeId: "a16p5" }] });
+    expect(out[0]).toMatchObject({ connector: "또는", targets: [{ articleId: "a16p4" }, { articleId: "a16p5" }] });
     expect(e.report).toEqual([]);
   });
 
@@ -83,7 +83,7 @@ describe("inlinesFromText — 평문의 조·별표 참조를 슬롯으로", () 
     e.self.byNumber.set("27의1", { id: "a27-1", title: "보험료의 납입면제", paragraphIds: ["a27p1"], itemIds: new Map([["a27p1", ["a27p1i1"]]]) });
     const out = inlinesFromText("보험수익자와 회사가 제27조의1(보험료의 납입면제)제1항의 사유에 대해", e, newId);
     expect(out.map((x) => x.kind)).toEqual(["text", "articleRef", "text"]);
-    expect(out[1]).toMatchObject({ targets: [{ nodeId: "a27p1" }] });
+    expect(out[1]).toMatchObject({ targets: [{ articleId: "a27p1" }] });
   });
 
   it("쉼표로만 이어진 호 목록도 한 덩어리이고 연결어는 쉼표다 (리뷰 1 — 「제1항 제10호, 제11호」)", () => {
@@ -93,7 +93,7 @@ describe("inlinesFromText — 평문의 조·별표 참조를 슬롯으로", () 
     e.currentArticleId = "a9";
     const out = inlinesFromText("제1조(보험금의 지급사유) 제1항 제10호, 제11호에서 정한", e, newId);
     expect(out.map((x) => x.kind)).toEqual(["articleRef", "text"]);
-    expect(out[0]).toMatchObject({ connector: "및", targets: [{ nodeId: "a1p1i10" }, { nodeId: "a1p1i11" }] });
+    expect(out[0]).toMatchObject({ connector: "및", targets: [{ articleId: "a1p1i10" }, { articleId: "a1p1i11" }] });
   });
 
   it("현재 조의 항 목록도 한 덩어리로 잇는다 (「제4항 및 제5항」)", () => {
@@ -101,7 +101,7 @@ describe("inlinesFromText — 평문의 조·별표 참조를 슬롯으로", () 
     e.self.byNumber.set("17", { id: "a17", title: "알릴 의무 위반의 효과", paragraphIds: ["a17p1", "a17p2", "a17p3", "a17p4", "a17p5"], itemIds: new Map() });
     e.currentArticleId = "a17";
     const out = inlinesFromText("제4항 및 제5항에 관계없이", e, newId);
-    expect(out[0]).toMatchObject({ kind: "articleRef", connector: "및", targets: [{ nodeId: "a17p4" }, { nodeId: "a17p5" }] });
+    expect(out[0]).toMatchObject({ kind: "articleRef", connector: "및", targets: [{ articleId: "a17p4" }, { articleId: "a17p5" }] });
   });
 
   it("법령 인용은 뒤따르는 항·호까지 통째로 건너뛴다", () => {
@@ -133,7 +133,7 @@ describe("현재 항 문맥 — 조 없는 단독 호 참조", () => {
     const e = env();
     e.currentParagraphId = "a1p1";
     const out = inlinesFromText("제3호 및 제4호의 내용에 관한 사항", e, newId);
-    expect(out[0]).toMatchObject({ kind: "articleRef", connector: "및", targets: [{ nodeId: "a1p1i3" }, { nodeId: "a1p1i4" }] });
+    expect(out[0]).toMatchObject({ kind: "articleRef", connector: "및", targets: [{ articleId: "a1p1i3" }, { articleId: "a1p1i4" }] });
     expect(e.report).toEqual([]);
   });
 
@@ -141,7 +141,7 @@ describe("현재 항 문맥 — 조 없는 단독 호 참조", () => {
     const e = env({ currentArticleId: "a9" });
     const out = inlinesFromText("다만, 제1조(보험금의 지급사유) 제2호의 경우에는", e, newId);
     expect(out.map((x) => x.kind)).toEqual(["text", "articleRef", "text"]);
-    expect(out[1]).toMatchObject({ targets: [{ nodeId: "a1" }] });
+    expect(out[1]).toMatchObject({ targets: [{ articleId: "a1" }] });
     expect(out[2]).toMatchObject({ text: " 제2호의 경우에는" });
     expect(e.report[0]).toMatch(/항 없는 호/);
   });
@@ -150,7 +150,7 @@ describe("현재 항 문맥 — 조 없는 단독 호 참조", () => {
     const e = env({ currentArticleId: "a9" });
     const out = inlinesFromText("제1조(보험금의 지급사유) 제1항 제1호 및 제2호 또는 제2항에서", e, newId);
     expect(out.map((x) => x.kind)).toEqual(["articleRef", "text"]);
-    expect(out[0]).toMatchObject({ connector: "및", targets: [{ nodeId: "a1p1i1" }, { nodeId: "a1p1i2" }] });
+    expect(out[0]).toMatchObject({ connector: "및", targets: [{ articleId: "a1p1i1" }, { articleId: "a1p1i2" }] });
     expect(out[1]).toMatchObject({ text: " 또는 제2항에서" });
     expect(e.report[0]).toMatch(/연결어가 섞인 나열/);
   });

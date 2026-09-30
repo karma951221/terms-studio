@@ -47,6 +47,19 @@ export const MASTER: readonly MasterForm[] = [
       { key: "applies", label: "적용여부", type: { kind: "boolean" } },
       { key: "reasons", label: "납입면제사유", type: { kind: "list<enum>", enumCode: "E0001" } },
     ],
+    rules: [
+      {
+        // 납입면제종 = 적용여부 = 예 인 선택지 — 사유 없는 종은 펼칠 항이 없다 (결정 16 · 기능/상품 §3.9)
+        description: "적용여부 = 예면 납입면제사유를 1개 이상 고른다",
+        check: (read) => {
+          const applies = read("applies");
+          if (!applies?.entered || applies.value !== true) return undefined;
+          const reasons = read("reasons");
+          const count = reasons?.entered && Array.isArray(reasons.value) ? reasons.value.length : 0;
+          return count > 0 ? undefined : { field: "reasons", message: "적용여부가 「예」면 납입면제사유를 1개 이상 고르세요" };
+        },
+      },
+    ],
   },
   {
     key: "no_surrender",

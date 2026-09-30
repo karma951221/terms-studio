@@ -28,16 +28,20 @@ export const DESTRUCTIVE_ACTIONS = [
   "coverage.deleteNode", // 담보·세부보장·급부 노드 삭제 — 하위 값 행 연쇄 삭제
   "coverage.detach", // 부착 해제 — 그 실체의 값 행 삭제
   // clause (B2)
-  "clause.delete", // 공용조항 삭제 — 참조 문면 오류화
+  "clause.delete", // 함수조항 삭제 — 참조 문면 오류화
   // document (B3)
   "document.delete", // 문면 마스터 삭제
   "appendix.delete", // 별표 마스터 삭제 — 참조 슬롯 오류화
+  "box.delete", // 정적 마스터 박스 삭제 — 박스 참조 오류화
   // product (B4)
   "product.delete", // 상품 삭제 — 상품담보·스냅샷 값 연쇄 삭제
   "product.unmount", // 상품담보 탑재 해제 — 스냅샷 값 삭제
   "product.detachPlan", // 세목 조합 제거
   "attribute.delete", // 담보속성 종류 삭제 — 상품담보 조합 오류화
   "attribute.deleteValue", // 담보속성 유효값 삭제
+  // catalog — 열거형 유저 정의 필드 (ADR-0078 결정 2)
+  "enum.deleteField", // 열거형 필드 삭제 — 값마다 넣은 그 필드 값 · 읽는 곳 재검사
+  "enum.changeFieldType", // 열거형 필드 타입 변경 — 옛 타입 값 삭제 · 읽는 곳 재검사
 ] as const;
 
 export type DestructiveAction = (typeof DESTRUCTIVE_ACTIONS)[number];

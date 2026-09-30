@@ -144,6 +144,13 @@ function evalSlot(id: Id, ref: string, ctx: EvalContext, coordinate: Coordinate,
   }
 }
 
+/** 슬롯 참조 하나를 문서 문맥에서 — 사전평가의 슬롯 평가와 같은 규칙. 펼친 함수조항 본문의 슬롯(인자를 연결로 바꿔 쓴 뒤)을 미리보기가 찍을 때 쓴다. */
+export function evaluateSlotRef(ref: string, ctx: EvalContext, coordinate: Coordinate = {}): SlotEvaluation {
+  const slots = new Map<Id, SlotEvaluation>();
+  evalSlot("_", ref, ctx, coordinate, slots, []);
+  return slots.get("_")!;
+}
+
 /** 반복 표 템플릿 행 안의 노드 · 가지 id — 문서 문맥으로 평가하지 않는다 (행 문맥에서만 뜻이 있다). */
 function templateIds(doc: DocumentNode): Set<Id> {
   const out = new Set<Id>();

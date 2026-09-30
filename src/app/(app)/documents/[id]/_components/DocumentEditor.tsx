@@ -28,8 +28,8 @@ import { IconButton, IconClose, IconPanel } from "@/app/_components/icons";
 import { MoreMenu, type MoreMenuItem } from "@/app/_components/MoreMenu";
 import { DOC_TEMPLATE_LABEL } from "@/app/_lib/labels";
 import { describeRejection } from "@/app/_lib/rejection";
-import type { Discriminator } from "@/domain/catalog";
-import type { Clause } from "@/domain/clause";
+import type { Discriminator, EnumDef } from "@/domain/catalog";
+import { switchValueLabeler, type Clause } from "@/domain/clause";
 import { formatCoordinate } from "@/domain/coordinate";
 import { coverageRowSource, masterCatalog, masterEvalContext, type Coverage, type MasterValues } from "@/domain/coverage";
 import {
@@ -40,10 +40,14 @@ import {
   envAt,
   generalRefsOf,
   indexTree,
+  isRepeatSource,
   numberTree,
   preEvaluate,
+  evaluateSlotRef,
   randomIds,
   referenceTargetIndex,
+  repeatLabel,
+  repeatedKeys,
   repeatLevels,
   repeatScopeOf,
   rowReadableLevels,
@@ -54,7 +58,10 @@ import {
   type EditEnv,
   type EditOp,
   type ReferenceTarget,
+  type ForBlockNode,
+  repeatElementEnums,
 } from "@/domain/document";
+import type { Box } from "@/domain/document/box";
 import type { Code, Coordinate, Id, Impact, Issue } from "@/domain/types";
 
 import { loadGeneralForEditAction, saveDocumentEditAction, startDocumentEditAction, type GeneralForEdit } from "../../edit-actions";
@@ -66,12 +73,13 @@ import { ArticleBody, DocBody } from "./DocBody";
 import { backspaceOps, enterOps, inlineListAt, moveSelectionOps, pasteGridOps } from "./editOps";
 import { caretFromPoint, tokensOf } from "./Inline";
 import { identityRuns, runsFromTokens, sameRuns, type Token } from "./inlineRuns";
-import { clausePickItems, condInsertItem, condMenu, inlineCondItem, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
+import { boxPickItems, clausePickItems, condInsertItem, condMenu, inlineCondItem, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
 import { condInput, placeOf, readInline } from "./place";
 import { EditorToolbar } from "./EditorToolbar";
 import { DOCUMENT_TOOLS, allTools, itemsFor, type ToolId } from "./tools";
 import { useBlockDrag } from "./useBlockDrag";
 import { PopupHost, type PopupEnv } from "./Popups";
+import { loopsAround } from "./repeatSources";
 import { ContextMenu, Popover } from "./Popover";
 import { RemoveCard } from "./RemoveCard";
 import { DraftIssues, SidePanel, type PanelData } from "./SidePanel";
@@ -94,8 +102,12 @@ export interface EditorProps {
   generals: readonly { id: Id; title: string }[];
   suggestedGeneralId?: Id;
   appendices: readonly Appendix[];
+  /** 정적 마스터 박스 — 박스 참조 검사 · 그리기 · 「박스」 고르기 (기능/박스 §4.4). */
+  boxes: readonly Box[];
   clauses: readonly Clause[];
   discriminators: readonly Discriminator[];
+  /** 열거형 — 반복 원천 거름 필드 · 정의 조 교차 검사 · 반복 이름 · 현재 원소 연결 (ADR-0077). */
+  enums: readonly EnumDef[];
   /** 담보속성 코드 → 유효값 코드 (식 타입 검사). */
   attributeValues: Readonly<Record<Code, readonly Code[]>>;
   /** 담보약관의 문맥 담보 — `@노드` 식 검사 재료. */
@@ -132,8 +144,9 @@ const NODE_WHAT: Record<string, string> = {
   item: "호",
   subitem: "목",
   condBlock: "조건 블록",
-  clauseBlockRef: "공용조항 참조",
+  clauseBlockRef: "함수조항 참조",
   forBlock: "반복 블록",
+  boxRef: "박스",
 };
 
 /** 노드가 든 조 — 조면 자기, 관이면 그 첫 조. */
@@ -203,18 +216,25 @@ export function DocumentEditor(props: EditorProps) {
 
   // ── 검증 재료 — 서버 저장 검증과 같은 한 벌(validateDocument)을 서버가 넘긴 정의로 짓는다 ──
   const coordinate: Coordinate = useMemo(() => ({ document: doc.kind, ownerId: doc.ownerId ?? doc.id, documentId: doc.id, ownerName: doc.title }), [doc.kind, doc.ownerId, doc.id, doc.title]);
-  const gate = useMemo(() => clauseGateFrom(props.clauses, props.discriminators.map((d) => d.code)), [props.clauses, props.discriminators]);
+  const gate = useMemo(() => clauseGateFrom(props.clauses, props.discriminators.map((d) => d.code), catalogTypeResolver(props.discriminators), props.enums), [props.clauses, props.discriminators, props.enums]);
+  const enumByCode = useMemo(() => new Map(props.enums.map((e) => [e.code, e] as const)), [props.enums]);
+  // 함수조항 상자의 값별 분기 칸 머리(값 이름) — 함수조항마다 한 번 (최종 결정 8)
+  const switchLabelers = useMemo(
+    () => new Map((props.clauses ?? []).filter((c) => (c.params ?? []).length > 0).map((c) => [c.code, switchValueLabeler(c, props.enums)] as const)),
+    [props.clauses, props.enums],
+  );
   const appendixCodes = useMemo(() => new Set(props.appendices.map((a) => a.code)), [props.appendices]);
+  const boxByCode = useMemo(() => new Map(props.boxes.map((x) => [x.code, x] as const)), [props.boxes]);
   /** 보통약관 캐시 → 편집 환경. 렌더는 상태의 캐시로, 명령 적용은 방금 받은 것까지 든 ref 의 캐시로 만든다. */
   const makeEditEnv = useCallback(
     (cache: Readonly<Record<Id, GeneralForEdit>>): EditEnv => ({
-      env: { kind: doc.kind, appendixExists: (c: Code) => appendixCodes.has(c), clauseGate: gate, coordinate },
+      env: { kind: doc.kind, appendixExists: (c: Code) => appendixCodes.has(c), boxExists: (c: Code) => boxByCode.has(c), clauseGate: gate, enumOf: (c: Code) => enumByCode.get(c), coordinate },
       generalRefs: (id: Id) => {
         const g = cache[id];
         return g ? generalRefsOf(g.tree) : undefined;
       },
     }),
-    [doc.kind, appendixCodes, gate, coordinate],
+    [doc.kind, appendixCodes, boxByCode, gate, enumByCode, coordinate],
   );
   // 읽기 모드는 서버가 방금 넘긴 대응 보통약관이 기준이다 (편집 중에는 편집 시작 때 받은 것 · 새로 고른 것)
   const renderCache = useMemo(() => (mode === "read" && props.general ? { ...generalCache, [props.general.id]: props.general } : generalCache), [mode, props.general, generalCache]);
@@ -233,7 +253,8 @@ export function DocumentEditor(props: EditorProps) {
     if (!evalOn || !props.master) return undefined;
     const mcat = masterCatalog(props.discriminators);
     const ctxEval = masterEvalContext(props.master.tree, props.master.values, mcat);
-    return preEvaluate(tree, ctxEval, { coordinate: { ...coordinate, ...(ctxEval.coordinate ?? {}) }, rows: coverageRowSource(props.master.tree, props.master.values, mcat) });
+    const at = { ...coordinate, ...(ctxEval.coordinate ?? {}) };
+    return { ...preEvaluate(tree, ctxEval, { coordinate: at, rows: coverageRowSource(props.master.tree, props.master.values, mcat) }), evalRef: (ref: string) => evaluateSlotRef(ref, ctxEval, at) };
   }, [evalOn, props.master, props.discriminators, tree, coordinate]);
 
   // ── 번호 · 참조 표기 ──
@@ -242,8 +263,15 @@ export function DocumentEditor(props: EditorProps) {
     return numberTree(tree, states ? { branchStates: states } : {});
   }, [tree, evaluation]);
   const currentGeneral = current.generalDocumentId ? renderCache[current.generalDocumentId] : undefined;
-  const generalTargets = useMemo(() => (currentGeneral ? referenceTargetIndex(currentGeneral.tree, numberTree(currentGeneral.tree)) : new Map<Id, ReferenceTarget>()), [currentGeneral]);
-  const references = useMemo(() => ({ self: referenceTargetIndex(tree, numbers), general: generalTargets }), [tree, numbers, generalTargets]);
+  // 대상 고르기 색인 — 반복 블록 · 함수조항 참조 줄과 그 본문의 항 · 호 · 목 줄까지 (ADR-0077 결정 6 · 7)
+  const indexOpts = useMemo(
+    () => ({ clauseOf: (c: Code) => props.clauses.find((x) => x.code === c), repeatCaption: (n: ForBlockNode) => n.alias ?? repeatLabel(n.source, { enumOf: (c) => enumByCode.get(c) }) }),
+    [props.clauses, enumByCode],
+  );
+  const generalTargets = useMemo(() => (currentGeneral ? referenceTargetIndex(currentGeneral.tree, numberTree(currentGeneral.tree), indexOpts) : new Map<Id, ReferenceTarget>()), [currentGeneral, indexOpts]);
+  const references = useMemo(() => ({ self: referenceTargetIndex(tree, numbers, indexOpts), general: generalTargets }), [tree, numbers, generalTargets, indexOpts]);
+  // 반복 블록 안 대상 — 이 템플릿 · 대응 보통약관 (조 참조 연결어, ADR-0077 결정 7)
+  const repeated = useMemo(() => new Set([...repeatedKeys(indexTree(tree)), ...(currentGeneral ? repeatedKeys(indexTree(currentGeneral.tree)) : [])]), [tree, currentGeneral]);
 
   const appendixName = useMemo(() => new Map(props.appendices.map((a) => [a.code, a.name] as const)), [props.appendices]);
   const clauseLabel = useMemo(() => new Map(props.clauses.map((c) => [c.code, c.label] as const)), [props.clauses]);
@@ -529,10 +557,20 @@ export function DocumentEditor(props: EditorProps) {
       setMenu({ x: anchor.x, y: anchor.y, sections: [items] });
       return;
     }
-    // 「공용조항」 — 버튼 아래 작은 메뉴에서 공용조항을 고른다(모달 없음). 공용조항이 없으면 그 사유를 보이는 팝업
+    // 「함수조항」 — 버튼 아래 작은 메뉴에서 함수조항을 고른다(모달 없음). 자리마다(아래에 · 호 목록 · 목 목록) 그 유형의 함수조항을 한 묶음씩,
+    // 「아래에」(같은 자리) 묶음이 먼저. 맞는 함수조항이 하나도 없으면 그 사유를 보이는 팝업
     const first = items[0].action;
-    if (toolId === "clauseBlock" && first.do === "popup" && first.popup.kind === "clauseBlock" && props.clauses.length > 0) {
-      setMenu({ x: anchor.x, y: anchor.y, sections: [clausePickItems(props.clauses, first.popup.at, randomIds)] });
+    if (toolId === "clauseBlock") {
+      const ordered = [...items.filter((i) => i.label.startsWith("아래에")), ...items.filter((i) => !i.label.startsWith("아래에"))];
+      const groups = ordered.flatMap((i) => (i.action.do === "popup" && i.action.popup.kind === "clauseBlock" ? [clausePickItems(props.clauses, i.action.popup.at, randomIds, i.action.popup.fit)] : [])).filter((g) => g.length > 0);
+      if (groups.length > 0) {
+        setMenu({ x: anchor.x, y: anchor.y, sections: groups });
+        return;
+      }
+    }
+    // 「박스」 — 버튼 아래 작은 메뉴에서 정적 마스터 박스를 고른다. 박스가 없으면 그 사유를 보이는 팝업 (기능/박스 §4.4)
+    if (toolId === "box" && first.do === "popup" && first.popup.kind === "boxPick" && props.boxes.length > 0) {
+      setMenu({ x: anchor.x, y: anchor.y, sections: [boxPickItems(props.boxes, first.popup.at, randomIds)] });
       return;
     }
     // 바로 적용하는 조작은 쓰던 문장을 먼저 편집본에 넣는다(초점이 떠나며 적용) — 복제 · 이동이 쓰던 글을 두고 가지 않게
@@ -649,18 +687,39 @@ export function DocumentEditor(props: EditorProps) {
     return repeatScopeOf(tree, owner)?.levels;
   };
 
+  // 블록 반복 이름 — 별칭 또는 원천(목록 원천은 바깥 반복의 폼을 읽는다, ADR-0077)
+  const repeatLabelOf = (nodeId: Id): string => {
+    const loops = loopsAround(index, nodeId);
+    const self = loops.at(-1);
+    if (!self || self.id !== nodeId) return "반복";
+    const outer = loops.at(-2)?.source;
+    return self.alias ?? repeatLabel(self.source, { ...(outer && isRepeatSource(outer) ? { outer } : {}), enumOf: (c) => enumByCode.get(c) });
+  };
+
   const ctx: DocCtx = {
     documentId: doc.id,
     docKind: doc.kind,
     mode,
     numbers,
-    ...(evaluation ? { branchEval: evaluation.branches, slotEval: evaluation.slots } : {}),
+    ...(evaluation ? { branchEval: evaluation.branches, slotEval: evaluation.slots, evalRef: evaluation.evalRef } : {}),
     appendixName,
     clauseLabel,
     optionText,
     references,
+    repeatedKeys: repeated,
     refLabel,
     clauses: props.clauses,
+    boxOf: (code) => boxByCode.get(code),
+    repeatLabelOf,
+    enumValueLabel: (code: Code) => {
+      for (const e of props.enums) {
+        const v = e.values.find((x) => x.code === code);
+        if (v && repeatElementEnums().has(e.code)) return v.label;
+      }
+      return undefined;
+    },
+    enumOf: (c: Code) => enumByCode.get(c),
+    switchValueLabel: (clause, on, code) => switchLabelers.get(clause.code)?.(on, code),
     conditionFor: (nodeId) => withRow(scopeOf(nodeId)),
     ...(flashId ? { flashId } : {}),
     ...(mode === "edit" ? { edit } : {}),
@@ -689,12 +748,14 @@ export function DocumentEditor(props: EditorProps) {
     apply,
     newId: randomIds,
     appendices: props.appendices,
+    boxes: props.boxes,
     clauses: props.clauses,
     generals: props.generals,
     ...(current.generalDocumentId ? { generalDocumentId: current.generalDocumentId } : {}),
     ...(props.suggestedGeneralId ? { suggestedGeneralId: props.suggestedGeneralId } : {}),
     setGeneral,
     condition: pop ? conditionFor(pop.spec) : props.condition,
+    enumOf: (c) => enumByCode.get(c),
   };
 
   const generalTitle = current.generalDocumentId

@@ -39,14 +39,37 @@ export interface EnumDef {
   code: Code;
   label: string;
   description?: string;
+  /**
+   * 유저 정의 필드 (ADR-0078 결정 2) — 값마다 채우는 사실(약관표시명 · 면책여부 …). 순서대로.
+   * **없으면 필드 없음** — 빈 목록은 저장 · 조립 스냅샷에 싣지 않는다(키를 뺀다).
+   */
+  fields?: EnumFieldDef[];
   /** 선택지 표시 순서대로. */
   values: EnumValueDef[];
 }
+
+/** 열거형 필드 타입 — 우선 문자열 · 참거짓 둘 (ADR-0078 결정 2). */
+export const ENUM_FIELD_TYPES = ["string", "boolean"] as const;
+export type EnumFieldType = (typeof ENUM_FIELD_TYPES)[number];
+/** 필드 타입의 사람 말 — 화면 · 확인창 · 오류가 같은 낱말을 쓴다 (마스터 필드 타입 「참거짓」과 같은 말). */
+export const ENUM_FIELD_TYPE_LABEL: Record<EnumFieldType, string> = { string: "문자열", boolean: "참거짓" };
+
+/** 열거형 필드 정의. `key` 는 그 열거형 안에서 자동 채번(`F01`) · 불변 — 이름은 언제든 바꾼다 (ADR-0005). */
+export interface EnumFieldDef {
+  key: Code;
+  label: string;
+  type: EnumFieldType;
+  order: number;
+}
+
+export type EnumFieldValue = string | boolean;
 
 export interface EnumValueDef {
   code: Code;
   label: string;
   order: number;
+  /** 필드 코드 → 값. **키 없음 = 미입력**(빈 칸). 없으면 모든 필드가 미입력. */
+  fields?: Record<Code, EnumFieldValue>;
 }
 
 // ───────────────────────────── 생성 입력 (code 없음) ─────────────────────────────

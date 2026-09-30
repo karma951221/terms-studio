@@ -16,7 +16,7 @@
  * - `【별표N(이름)】` → appendixRef (번호 → 코드 표). 이름은 마스터가 찍는다.
  */
 
-import type { InlineNode } from "../../src/domain/document/nodes";
+import type { InlineNode, RefTarget } from "../../src/domain/document/nodes";
 import type { Id, ReferenceConnector } from "../../src/domain/types";
 
 export interface ArticleEntry {
@@ -174,7 +174,8 @@ interface Chunk {
   end: number;
   /** 참조로 읽지 않고 평문으로 남길 뒤따르는 구간의 끝 (항 없는 호 · 연결어가 바뀐 뒤의 나열). */
   skipTo?: number;
-  targets?: { nodeId: Id }[];
+  /** 변환 중간 모양 — 대상 **노드 id** 를 `articleId` 자리에 싣는다. 출력 직전 `codeTargets`(convert.ts)가 (조, P코드)로 바꾼다 (ADR-0072). */
+  targets?: RefTarget[];
   connector?: ReferenceConnector;
   scope?: "self" | "general";
 }
@@ -194,7 +195,7 @@ function readChunk(text: string, start: number, env: RefEnv): Chunk {
     ...(current ? { entry: current } : {}),
     ...(env.currentParagraphId !== undefined ? { paragraphId: env.currentParagraphId } : {}),
   };
-  const targets: { nodeId: Id }[] = [];
+  const targets: RefTarget[] = [];
   let connectorWord: string | undefined;
   let token: Token | undefined = first;
   let end = first.end;
@@ -203,7 +204,7 @@ function readChunk(text: string, start: number, env: RefEnv): Chunk {
   while (token) {
     const nodeId = resolve(token, context, env, text.slice(start, token.end));
     if (nodeId === undefined) return { end: token.end };
-    targets.push({ nodeId });
+    targets.push({ articleId: nodeId });
     end = token.end;
     if (token.kind === "article" && token.skipTo !== undefined) {
       env.report.push(`항 없는 호 — 조까지만 참조, 호는 평문: ${text.slice(start, token.skipTo)}`);

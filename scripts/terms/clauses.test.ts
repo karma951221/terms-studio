@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import { hostLocator } from "../../src/domain/assembly/resolve";
-import type { ArticleNode, DocumentNode, InlineNode, ParagraphNode } from "../../src/domain/document/nodes";
+import { indexTree, type ArticleNode, type DocumentNode, type InlineNode, type ParagraphNode } from "../../src/domain/document/nodes";
+import { targetOfNode, withCodes } from "../../src/domain/document/pcode";
 
-import { applyClauseUse, clauseFromSource, hostPaths, inlineBody, placeOptions, reId, renderings, replaceInlineRun, toClauseInline, type ClauseRecord } from "./clauses";
+import { applyClauseUse, clauseFromSource, hostPaths, inlineBody, parameterize, placeOptions, reId, renderings, replaceInlineRun, toClauseInline, type ClauseRecord } from "./clauses";
 
 const text = (id: string, t: string): InlineNode => ({ id, kind: "text", text: t });
-const ref = (id: string, nodeId: string, scope: "self" | "general" = "self"): InlineNode => ({ id, kind: "articleRef", targets: [{ nodeId }], connector: "및", scope });
+/** 변환 중간 모양의 조 참조 — 대상 노드 id 를 `articleId` 자리에 싣는다(clauses.ts 머리 주석). */
+const ref = (id: string, nodeId: string, scope: "self" | "general" = "self"): InlineNode => ({ id, kind: "articleRef", targets: [{ articleId: nodeId }], connector: "및", scope });
 
 const INLINE: ClauseRecord = {
   code: "C0004",
@@ -35,11 +37,11 @@ function article(children: InlineNode[]): ArticleNode {
   return { id: "s-a3", kind: "article", title: "특별약관의 소멸", children: [{ id: "s-a3-p2", kind: "paragraph", children }] };
 }
 
-describe("공용조항 오버레이 — 원문 자리를 참조로", () => {
-  it("평문 → 공용조항 인라인: {O01} 은 옵션 자리 · 보통약관 조 참조는 scope 를 뗀다 · 자기 조 참조는 거부", () => {
+describe("함수조항 오버레이 — 원문 자리를 참조로", () => {
+  it("평문 → 함수조항 인라인: {O01} 은 옵션 자리 · 보통약관 조 참조는 scope 를 뗀다 · 자기 조 참조는 거부", () => {
     const body = inlineBody("가 {O01} 나", "c1", (t, newId) => [text(newId(), t)]);
     expect(body.map((n) => n.kind)).toEqual(["text", "optionSlot", "text"]);
-    expect(toClauseInline(ref("r", "g-a9", "general"))).toEqual({ id: "r", kind: "articleRef", targets: [{ nodeId: "g-a9" }], connector: "및" });
+    expect(toClauseInline(ref("r", "g-a9", "general"))).toEqual({ id: "r", kind: "articleRef", targets: [{ articleId: "g-a9" }], connector: "및" });
     expect(() => toClauseInline(ref("r", "s-a1"))).toThrow(/보통약관 마스터만/);
   });
 
@@ -67,7 +69,7 @@ describe("공용조항 오버레이 — 원문 자리를 참조로", () => {
     expect(report[0]).toMatch(/문구를 찾지 못함/);
   });
 
-  it("「항」 — 항의 가능한 렌더가 모두 공용조항 렌더 안에 있어야 항 전체를 참조로 바꾼다", () => {
+  it("「항」 — 항의 가능한 렌더가 모두 함수조항 렌더 안에 있어야 항 전체를 참조로 바꾼다", () => {
     const block: ClauseRecord = { ...INLINE, code: "C0011", mode: "block", options: [], body: [{ id: "p", kind: "paragraph", children: [{ id: "x", kind: "text", text: "합산합니다." }] }] };
     const a = article([text("x", "합산합니다.")]);
     expect(applyClauseUse({ article: "3", paragraph: 2, clause: "C0011" }, block, () => a, "[t]", [])).toBe(true);
@@ -113,7 +115,7 @@ describe("공용조항 오버레이 — 원문 자리를 참조로", () => {
     expect(p.items[0].children).toEqual([{ id: "s-a4-p1-i1-k1", kind: "clauseInlineRef", clauseCode: "C0004", options: { O01: "V01" } }]);
   });
 
-  describe("조째 공용조항 — 자기 조 참조는 제 항 · 사용처 위치로 (기능/공용조항 §3.5)", () => {
+  describe("조째 함수조항 — 자기 조 참조는 제 항 · 사용처 위치로 (기능/함수조항 §3.5)", () => {
     /** 특약 — 제1조 지급사유 · 제2조 세부규정 · 제3조 소멸(① 제1조 참조 · ② 제1항 참조 · ③ 사망). */
     function special(prefix: string, lapse: string): DocumentNode {
       const p = (id: string, children: InlineNode[]): ParagraphNode => ({ id, kind: "paragraph", children });
@@ -138,26 +140,27 @@ describe("공용조항 오버레이 — 원문 자리를 참조로", () => {
     }
     const lapseOf = (d: DocumentNode) => d.children[2] as ArticleNode;
 
-    it("hostPaths 는 조립의 hostLocator 와 같은 셈이다", () => {
-      const d = special("s", "소멸됩니다");
+    it("hostPaths 는 조립의 hostLocator 와 같은 셈이다 — 같은 경로가 같은 노드(의 참조 대상)를 가리킨다", () => {
+      const d = withCodes(special("s", "소멸됩니다"));
       const find = hostLocator(d);
-      for (const [id, path] of hostPaths(d)) expect(find(path)).toBe(id);
+      const ix = indexTree(d);
+      for (const [id, path] of hostPaths(d)) expect(find(path)).toEqual(targetOfNode(ix, id));
     });
 
-    it("원문 자리에서 딴 본문 — 딴 항 안은 「이 공용조항」, 밖은 「사용처」 위치 · 낱말은 옵션 자리 · id 는 다시 매겨도 제 항 대상이 따라간다", () => {
+    it("원문 자리에서 딴 본문 — 딴 항 안은 「이 함수조항」, 밖은 「사용처」 위치 · 낱말은 옵션 자리 · id 는 다시 매겨도 제 항 대상이 따라간다", () => {
       const d = special("s", "그 때부터 소멸됩니다");
       const body = clauseFromSource(d, lapseOf(d).children as ParagraphNode[], "C0009");
       placeOptions(body, [{ option: "O01", text: "그 때부터 소멸됩니다" }], "C0009");
       reId(body, "c9");
       expect(body).toEqual([
         { id: "c9-n1", kind: "paragraph", children: [
-          { id: "c9-n2", kind: "articleRef", targets: [{ nodeId: "1" }], connector: "및", scope: "host" },
+          { id: "c9-n2", kind: "articleRef", targets: [{ articleId: "1" }], connector: "및", scope: "host" },
           { id: "c9-n3", kind: "text", text: "에서 정한 지급사유가 발생하면 " },
           { id: "c9-n4", kind: "optionSlot", optionCode: "O01" },
           { id: "c9-n5", kind: "text", text: "." },
         ] },
         { id: "c9-n6", kind: "paragraph", children: [
-          { id: "c9-n7", kind: "articleRef", targets: [{ nodeId: "c9-n1" }], connector: "및", scope: "clause" },
+          { id: "c9-n7", kind: "articleRef", targets: [{ articleId: "c9-n1" }], connector: "및", scope: "clause" },
           { id: "c9-n8", kind: "text", text: "에 따라 소멸되면 지급하지 않습니다." },
         ] },
       ]);
@@ -183,8 +186,39 @@ describe("공용조항 오버레이 — 원문 자리를 참조로", () => {
     it("한 참조가 딴 항 안팎을 함께 가리키면 딸 수 없다", () => {
       const d = special("s", "소멸됩니다");
       const p2 = lapseOf(d).children[1] as ParagraphNode;
-      p2.children[0] = { id: "mix", kind: "articleRef", targets: [{ nodeId: "s-a3-p1" }, { nodeId: "s-a1" }], connector: "및", scope: "self" };
+      p2.children[0] = { id: "mix", kind: "articleRef", targets: [{ articleId: "s-a3-p1" }, { articleId: "s-a1" }], connector: "및", scope: "self" };
       expect(() => clauseFromSource(d, lapseOf(d).children as ParagraphNode[], "C0009")).toThrow(/안팎/);
     });
+  });
+});
+
+describe("구분자 직접 읽기 → 인자 + 기본 연결 (최종 결정 2 · C7 기계 변환)", () => {
+  const catalog = [{ code: "D0001", label: "담보명", description: "", level: "coverage" as const, expression: "coverage_basic.claim_name", resultType: { kind: "string" as const } }];
+  it("슬롯 · 조건의 구분자를 인자(이름 = 구분자 표시명, 기본 연결 = 그 구분자)로 바꾼다 — 담보속성은 그대로", () => {
+    const record: ClauseRecord = {
+      code: "C0021",
+      label: "지급사유",
+      mode: "block",
+      description: "",
+      body: [
+        {
+          id: "p",
+          kind: "paragraph",
+          children: [
+            { id: "s", kind: "slot", ref: "D0001" },
+            { id: "c", kind: "inlineCond", branches: [{ id: "b", when: "D0001 = '사망' and attr.A0001 = '2'", children: [] }] },
+          ],
+        },
+      ],
+      options: [],
+    };
+    const out = parameterize(record, catalog);
+    expect(out.params).toEqual([{ name: "담보명", type: { kind: "string" }, default: { kind: "discriminator", code: "D0001" } }]);
+    expect(JSON.stringify(out.body)).toContain('"ref":"arg.담보명"');
+    expect(JSON.stringify(out.body)).toContain(`"when":"arg.담보명 = '사망' and attr.A0001 = '2'"`);
+  });
+
+  it("구분자를 읽지 않으면 그대로(params 키 없음)", () => {
+    expect(parameterize(INLINE, catalog)).toEqual(INLINE);
   });
 });

@@ -19,7 +19,7 @@ export interface MoreMenuItem {
   onSelect?: (anchor: DOMRect) => void;
   /** 파괴적 항목 — hover/focus 에서만 error 색 (§1.6). */
   danger?: boolean;
-  /** 항목 아래 한 줄 설명 — 고르기 전에 차이를 알아야 하는 메뉴(공용조항 `+` 의 문구 / 항). */
+  /** 항목 아래 한 줄 설명 — 고르기 전에 차이를 알아야 하는 메뉴(함수조항 `+` 의 문구 / 항). */
   hint?: string;
 }
 

@@ -49,7 +49,7 @@ function ImpactLines({ outcome }: { outcome: Extract<EditOutcome, { ok: "confirm
   const { impact } = outcome;
   const mounts = impact.mounts ?? [];
   return <ul className="ts-confirm-loss">
-    <li>사람이 입력한 값 {impact.valueRowsLost}건이 사라진다</li>
+    <li>{outcome.valueRowsLine ?? `사람이 입력한 값 ${impact.valueRowsLost}건이 사라진다`}</li>
     {impact.cascade.length ? <li>함께 삭제되는 항목 {impact.cascade.length}건</li> : null}
     {impact.brokenRefs.length ? <li>깨질 참조 {impact.brokenRefs.length}건</li> : null}
     {/* 탑재 상품담보 — 구조 정정이 미치는 상품과 그 스냅샷에서 사라질 값 행 (ADR-0075) */}
@@ -86,6 +86,7 @@ export function EditShell<T extends EditData>({
   initialMode = "read",
   cancelHref,
   saveSuccessHref,
+  onSaved,
   children,
 }: {
   initial: T;
@@ -124,6 +125,8 @@ export function EditShell<T extends EditData>({
   initialMode?: "read" | "edit";
   cancelHref?: string;
   saveSuccessHref?: string;
+  /** 저장이 끝난 뒤 — 결과에 실린 후속 안내(열거값 추가의 재검사 목록 등)를 화면이 받는다. */
+  onSaved?: (outcome: Extract<EditOutcome, { ok: true }>) => void;
   children: ReactNode;
 }) {
   const [mode, setMode] = useState<"read" | "edit">(initialMode);
@@ -168,6 +171,7 @@ export function EditShell<T extends EditData>({
         router.replace(deleteSuccessHref ?? "/");
         return;
       }
+      onSaved?.(outcome);
       if (saveSuccessHref) {
         router.replace(saveSuccessHref);
         return;

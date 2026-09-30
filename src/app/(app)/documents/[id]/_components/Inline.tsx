@@ -4,39 +4,44 @@
  * 문장 자리 — 읽기면 명조 글 + 칩, 편집이면 **그 자리 편집기** (기능/문면 §4.3).
  *
  * - 문장 자리 하나(항 · 호 · 목의 문장 · 문장 안 조건의 가지 · 표 셀)가 contentEditable 하나다. 글은 그대로 치고,
- *   칩(슬롯 · 조 참조 · 별표 참조 · 공용조항 · 문장 안 조건 · 구조 표기)은 고칠 수 없는 덩어리로 들어 있다 — 누르면 바로 아래에 팝업.
+ *   칩(슬롯 · 조 참조 · 별표 참조 · 함수조항 · 문장 안 조건 · 구조 표기)은 고칠 수 없는 덩어리로 들어 있다 — 누르면 바로 아래에 팝업.
  * - 초점이 떠나면 DOM 을 읽어 `setInlines` 한 명령으로 편집본에 넣는다(「적용」 단계 없음). 저장은 바의 `저장` 하나.
  * - Enter 는 아래에 새 항(호 · 목), 빈 칸에서 Backspace 는 그 항을 지운다. 붙여넣기는 글만 — 표 셀에 탭 · 줄로 나뉜 글이면 셀을 채운다.
  * - 목록이 바뀌면(적용 · 다른 조작) 편집기를 새로 그린다(key) — 사용자가 고친 DOM 과 React 가 엇갈리지 않게.
  */
 import { Fragment, useEffect, useRef, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
 
-import { STRUCT_KEY_CHIP } from "@/app/_lib/labels";
-import { referenceChunkLabel, type ArticleRefNode, type InlineAt, type InlineNode, type ReferenceTarget } from "@/domain/document";
+import { STRUCT_KEY_CHIP, SWITCH_WORD } from "@/app/_lib/labels";
+import { referenceChunkLabel, referenceKeyIndex, refKey, type ArticleRefNode, type InlineAt, type InlineNode, type ReferenceTarget } from "@/domain/document";
 import type { Id } from "@/domain/types";
 
 import { anchorOf, chipText, encodeAt, type DocCtx } from "./ctx";
 import type { Token } from "./inlineRuns";
+import { caseValueLabel } from "./SwitchControls";
 
 function articleRefText(node: ArticleRefNode, ctx: DocCtx): string {
   // 편집기 미리보기 — 조립과 같은 덩어리 규칙(기능/문면 §3.5). 전체 뷰 번호라 분기 결과는 반영되지 않는다.
   const index = node.scope === "general" ? ctx.references.general : ctx.references.self;
   const alive: ReferenceTarget[] = [];
   let broken = 0;
-  for (const { nodeId } of node.targets) {
-    const target = index.get(nodeId);
-    if (target) alive.push(target);
+  const byKey = referenceKeyIndex(index);
+  for (const t of node.targets) {
+    const found = byKey.get(refKey(t));
+    if (found) alive.push(found.target);
     else broken += 1;
   }
   const joined = alive.length === 0 ? (broken > 0 ? "없는 조(연결 끊김)" : "대상 없음") : referenceChunkLabel(alive, node.connector);
-  return `${node.scope === "general" ? "보통약관 " : ""}${joined}${alive.length > 0 && broken > 0 ? ` (연결 끊김 ${broken}건)` : ""}`;
+  // 값 한정 — 반복(사유)으로 생긴 노드 중 그 값이 낸 것만 (ADR-0077 결정 7). 번호는 조립이 펼친 뒤 매긴다
+  const restrict = node.targets.find((t) => t.restrict)?.restrict;
+  const narrowed = !restrict ? "" : "current" in restrict ? ` ⟨현재 값 — ${ctx.repeatLabelOf?.(restrict.current) ?? "반복"}⟩` : ` ⟨값 = ${restrict.values.map((v) => ctx.enumValueLabel?.(v) ?? v).join(" · ")}⟩`;
+  return `${node.scope === "general" ? "보통약관 " : ""}${joined}${narrowed}${alive.length > 0 && broken > 0 ? ` (연결 끊김 ${broken}건)` : ""}`;
 }
 
 const CHIP_WHAT: Record<string, string> = {
   slot: "치환 슬롯",
   articleRef: "조 참조",
   appendixRef: "별표 참조",
-  clauseInlineRef: "공용조항(문장 안)",
+  clauseInlineRef: "함수조항(문장 안)",
   inlineCond: "문장 안 조건",
   inlineFor: "문장 안 반복",
   structKey: "구조 표기",
@@ -60,14 +65,37 @@ function chipParts(node: InlineNode, ctx: DocCtx): { className: string; title: s
     case "clauseInlineRef":
       return {
         className: "ts-doc-ref",
-        title: `공용조항(문장 안) · ${node.clauseCode} · ${ctx.optionText(node.clauseCode, node.options)}`,
-        body: `〔${ctx.clauseLabel.get(node.clauseCode) ?? `${node.clauseCode}(없는 공용조항)`}〕`,
+        title: `함수조항(문장 안) · ${node.clauseCode} · ${ctx.optionText(node.clauseCode, node.options)}`,
+        body: `〔${ctx.clauseLabel.get(node.clauseCode) ?? `${node.clauseCode}(없는 함수조항)`}〕`,
       };
     case "structKey":
       return { className: "ts-doc-ref", title: "구조 표기 — 행마다 그 행의 노드 이름이 찍힌다", body: STRUCT_KEY_CHIP[node.level] };
     case "inlineFor":
       return { className: "ts-muted", title: "문장 안 반복 — 아직 지원하지 않는다", body: "(문장 안 반복 — 아직 지원하지 않는다)" };
     case "inlineCond":
+      if (node.switchOn !== undefined) {
+        // 문장 안 값별 분기 — 칩 하나: 대상 + 칸마다 머리(값 · 문구 없음) + 그 칸 문장 (최종 결정 5)
+        const subject = ctx.switchSubjects?.find((s) => s.code === node.switchOn);
+        const head = (br: (typeof node.branches)[number]) => `${(br.values ?? []).map((v) => caseValueLabel(subject, v)).join(" · ") || "값 없음"}${br.empty ? ` — ${SWITCH_WORD.empty}` : ""}`;
+        return {
+          className: "ts-doc-inline-chip is-switch",
+          what: SWITCH_WORD.inlineSwitch,
+          title: `${SWITCH_WORD.inlineSwitch} — ${subject?.label ?? node.switchOn} │ ${node.branches.map(head).join(" │ ")}`,
+          body: (
+            <>
+              <span className="ts-doc-inline-head">
+                {SWITCH_WORD.switch} {subject?.label ?? node.switchOn}
+              </span>
+              {node.branches.map((br) => (
+                <Fragment key={br.id}>
+                  <span className="ts-doc-inline-sep"> │ </span>
+                  <span className="ts-doc-inline-head">{head(br)}</span> {!br.empty && <InlineView nodes={br.children} ctx={{ ...ctx, mode: "read", edit: undefined }} />}
+                </Fragment>
+              ))}
+            </>
+          ),
+        };
+      }
       // 편집 모드의 문장 안 조건은 칩 하나 — 가지마다 머리(IF … / ELSE) + 그 가지 문장 (§4.3)
       return {
         className: "ts-doc-inline-chip",
@@ -89,6 +117,19 @@ function chipParts(node: InlineNode, ctx: DocCtx): { className: string; title: s
 export function InlineView({ nodes, ctx }: { nodes: readonly InlineNode[]; ctx: DocCtx }): ReactNode {
   return nodes.map((node) => {
     if (node.kind === "text") return <Fragment key={node.id}>{node.text}</Fragment>;
+    if (node.kind === "inlineCond" && node.switchOn !== undefined) {
+      // 문장 안 값별 분기 읽기 — 칸마다 점선 밑줄 조각, 칸 머리(값)는 tooltip
+      const subject = ctx.switchSubjects?.find((s) => s.code === node.switchOn);
+      return (
+        <Fragment key={node.id}>
+          {node.branches.map((br, i) => (
+            <span key={br.id} data-node={br.id} className={`ts-doc-inline-cond${i === 0 ? "" : " is-alt"}${ctx.flashId === br.id ? " is-flash" : ""}`} title={`${SWITCH_WORD.inlineSwitch} — ${SWITCH_WORD.case} ${(br.values ?? []).map((v) => caseValueLabel(subject, v)).join(" · ")}${br.empty ? ` — ${SWITCH_WORD.empty}` : ""}`}>
+              {br.empty ? `〔${SWITCH_WORD.empty}〕` : <InlineView nodes={br.children} ctx={ctx} />}
+            </span>
+          ))}
+        </Fragment>
+      );
+    }
     if (node.kind === "inlineCond") {
       return (
         <Fragment key={node.id}>

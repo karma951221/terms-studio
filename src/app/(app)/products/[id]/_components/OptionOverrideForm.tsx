@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * 옵션 오버라이드 설정 폼 — 노드 id·공용조항 코드·옵션 JSON 을 사람이 옮겨 적던 자리를 고르기로 바꾼다
+ * 옵션 오버라이드 설정 폼 — 노드 id·함수조항 코드·옵션 JSON 을 사람이 옮겨 적던 자리를 고르기로 바꾼다
  * (리뷰 #7 · #65 · 디자인원칙 §9.1). 고르는 것은 둘뿐이다:
- *   ① 보통약관 문면의 공용조항 참조 자리 (「제4조(…) › 공용조항 …」) — 검색 입력(콤보박스, 디자인원칙 §1.8)
- *   ② 그 공용조항이 가진 옵션마다의 선택지
+ *   ① 보통약관 문면의 함수조항 참조 자리 (「제4조(…) › 함수조항 …」) — 검색 입력(콤보박스, 디자인원칙 §1.8)
+ *   ② 그 함수조항이 가진 옵션마다의 선택지
  * 서버 액션은 그대로 `nodeId` · `clauseCode` · `options`(JSON) 를 받으므로 hidden 으로 조립해 넘긴다.
  *
  * **지금 저장된 선택(`current`)으로 채워서 연다** — 저장은 그 자리의 오버라이드 레코드를 통째로 덮어쓰므로
@@ -30,7 +30,7 @@ export interface OverrideOption {
 export interface OverrideTarget {
   nodeId: string;
   clauseCode: string;
-  /** 「제4조(보험금의 지급사유) › 공용조항 면책 보충(C0002)」 */
+  /** 「제4조(보험금의 지급사유) › 함수조항 면책 보충(C0002)」 */
   label: string;
   options: OverrideOption[];
 }
@@ -65,20 +65,20 @@ export function OptionOverrideForm({
       {articleId && <input type="hidden" name="art" value={articleId} />}
 
       <label className="ts-field">
-        <span>공용조항 자리</span>
+        <span>함수조항 자리</span>
         <Combobox
           value={target.nodeId}
           onChange={(next) => {
             setNodeId(next);
             setSelection({});
           }}
-          placeholder="조 번호 · 공용조항 이름으로 찾기"
+          placeholder="조 번호 · 함수조항 이름으로 찾기"
           options={targets.map((t) => ({ value: t.nodeId, label: t.label, hint: t.clauseCode }))}
         />
       </label>
 
       {target.options.length === 0 ? (
-        <p className="ts-form-empty">이 공용조항에는 고를 옵션이 없다.</p>
+        <p className="ts-form-empty">이 함수조항에는 고를 옵션이 없다.</p>
       ) : (
         target.options.map((o) => (
           <label key={o.code} className="ts-field">

@@ -27,10 +27,12 @@ import { parse, requiredDiscriminatorCodes } from "../expression";
 import type { ExprType } from "../expression";
 import { allocateCode, type NextSeq } from "./codes";
 import { checkDiscriminatorExpression, checkReferenceCycle, checkResultType, type DiscriminatorCatalog } from "./expression";
+import { fieldValuesFor, planFields, type EnumFieldInput, type EnumFieldRevision } from "./fields";
 import type {
   Discriminator,
   DiscriminatorResultType,
   EnumDef,
+  EnumFieldDef,
   EnumLookup,
   EnumValueDef,
   NewDiscriminator,
@@ -379,17 +381,26 @@ export function renameEnumValue(def: EnumDef, valueCode: Code, label: string): R
   return ok({ ...def, values: def.values.map((x) => (x.code === valueCode ? { ...x, label } : x)) });
 }
 
-/** 편집 화면 한 벌 — 이름 · 주석 · **최종** 값 목록. 배열 순서 = 저장 순서, `code` 가 없으면 새 값, 목록에 없는 기존 값은 빠진다. */
+/**
+ * 편집 화면 한 벌 — 이름 · 주석 · **최종** 필드 목록 · **최종** 값 목록. 배열 순서 = 저장 순서, `code`(`key`) 가 없으면 새 값(새 필드),
+ * 목록에 없는 기존 값(필드)은 빠진다. `fields` 를 주지 않으면 필드 정의 · 값의 필드 값을 그대로 둔다 (ADR-0078 결정 2).
+ */
 export interface EnumRevision {
   label: string;
   description: string;
-  values: readonly { code?: Code; label: string }[];
+  fields?: readonly EnumFieldRevision[];
+  /** `fields` — 필드 코드(새 필드는 그 행의 `ref`) → 값. 주지 않으면 그 값의 필드 값을 그대로 둔다. */
+  values: readonly { code?: Code; label: string; fields?: EnumFieldInput }[];
 }
 
 export interface RevisedEnum {
   def: EnumDef;
-  /** 빠진 기존 값 코드 (원래 순서) — 값 행 purge · 영향 확인은 서비스 몫. */
+  /** 빠진 기존 값 코드 (원래 순서) — 영향 확인은 서비스 몫. */
   removed: Code[];
+  /** 빠진 기존 필드 코드 — 관리자 + 영향 확인 (ADR-0019). 값의 그 키는 이미 빠져 있다. */
+  removedFields: Code[];
+  /** 타입이 바뀐 필드 코드 — 관리자 + 영향 확인. 옛 타입 값은 넘기지 않는다. */
+  retypedFields: Code[];
 }
 
 /**
@@ -419,14 +430,39 @@ export async function reviseEnum(
     if (labels.has(key)) return reject({ reason: "duplicate", what: `enum 값 표시명 「${v.label}」` });
     labels.add(key);
   }
+  const plan = planFields(def, revision.fields);
+  if (!plan.ok) return plan as Result<RevisedEnum>;
+  // 필드 값 검사는 확정 코드 없이 할 수 있다 — 새 필드는 ref 로 가리키므로 자리표시 정의로 먼저 본다 (거부된 입력이 순번을 태우지 않게)
+  const draft = new Map<string, EnumFieldDef>();
+  for (const [order, row] of plan.value.rows.entries()) {
+    const ref = row.key ?? row.ref;
+    if (ref !== undefined) draft.set(ref, { key: ref, label: row.label, type: row.type, order });
+  }
+  for (const v of revision.values) {
+    const checked = fieldValuesFor(v.label, v.fields, v.code ? known.get(v.code)?.fields : undefined, draft);
+    if (!checked.ok) return checked as Result<RevisedEnum>;
+  }
+  const fields: EnumFieldDef[] = [];
+  const byRef = new Map<string, EnumFieldDef>();
+  for (const [order, row] of plan.value.rows.entries()) {
+    const field: EnumFieldDef = { key: row.key ?? (await allocateCode("enumField", def.code, ctx.nextSeq)), label: row.label, type: row.type, order };
+    fields.push(field);
+    byRef.set(field.key, field);
+    if (row.ref !== undefined) byRef.set(row.ref, field);
+  }
   const values: EnumValueDef[] = [];
   for (const [order, v] of revision.values.entries()) {
     const code = v.code ?? (await allocateCode("enumValue", def.code, ctx.nextSeq));
-    values.push({ ...known.get(code), code, label: v.label, order });
+    const filled = fieldValuesFor(v.label, v.fields, known.get(code)?.fields, byRef);
+    if (!filled.ok) return filled as Result<RevisedEnum>;
+    values.push({ code, label: v.label, order, ...(filled.value ? { fields: filled.value } : {}) });
   }
+  const { fields: _replaced, ...base } = def; // eslint-disable-line @typescript-eslint/no-unused-vars -- 필드는 아래에서 새로 싣는다
   return ok({
-    def: { ...def, label: revision.label, description: revision.description, values },
+    def: { ...base, label: revision.label, description: revision.description, ...(fields.length > 0 ? { fields } : {}), values },
     removed: def.values.filter((v) => !kept.has(v.code)).map((v) => v.code),
+    removedFields: plan.value.removedFields,
+    retypedFields: plan.value.retypedFields,
   });
 }
 

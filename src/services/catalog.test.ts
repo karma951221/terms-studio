@@ -7,7 +7,10 @@ import { nodeBuilders } from "@/domain/document";
 
 import { insertDocument } from "@/db/repo/document";
 import { createTestDb, type TestDb } from "@/db/test-utils";
+import { readSlots, writeSlot } from "@/db/repo/values";
+import { buildForm, initFormState, toSubmission } from "@/forms/model";
 import { createCatalogService, type CatalogService } from "./catalog";
+import { createServices, type Services } from "./container";
 import { loadGraph } from "./refs";
 
 const admin: Actor = { userId: "00000000-0000-4000-8000-000000000001", role: "admin" };
@@ -98,7 +101,7 @@ describe("catalog 서비스 (PGlite)", () => {
       expect((await svc.getEnum("E0001"))?.values[1].label).toBe("간편고지심사");
     });
 
-    it("enum 값 삭제 — 편집자는 forbidden, 관리자는 영향(값 행 3) 확인 후 삭제 + 값 행 purge", async () => {
+    it("enum 값 삭제 — 편집자는 forbidden, 관리자는 영향(값 행 3) 확인 후 삭제 · 값 행은 지우지 않는다 (ADR-0078 결정 5)", async () => {
       const denied = await svc.removeEnumValue(editor, "E0001", "V02");
       expect(denied).toEqual({ ok: false, rejection: { reason: "forbidden", role: "editor", action: "enum.deleteValue" } });
 
@@ -111,7 +114,7 @@ describe("catalog 서비스 (PGlite)", () => {
 
       const done = unwrap(await svc.removeEnumValue(admin, "E0001", "V02", { confirm: true }));
       expect(done.values.map((v) => v.code)).toEqual(["V01", "V03"]);
-      expect(store.purged).toContainEqual({ kind: "enumValue", enumCode: "E0001", valueCode: "V02" });
+      expect(store.purged).not.toContainEqual({ kind: "enumValue", enumCode: "E0001", valueCode: "V02" });
     });
 
     it("삭제된 값의 순번은 재사용하지 않는다 — 다음 값은 V04", async () => {
@@ -438,9 +441,174 @@ describe("catalog.reviseEnum — 열거형변수 편집 한 벌 저장 (점검 2
     const done = unwrap(await svc.reviseEnum(admin, "E0001", revision, { confirm: true }));
     expect(done.label).toBe("고지유형2");
     expect(done.values.map((v) => [v.code, v.label])).toEqual([["V05", "새값"], ["V03", "건강"], ["V04", "기타"]]); // 1차가 V05 를 태우지 않았다
-    expect(store.purged).toEqual([
-      { kind: "enumValue", enumCode: "E0001", valueCode: "V02" },
-      { kind: "enumValue", enumCode: "E0001", valueCode: "V01" },
-    ]);
+    // 값 행은 지우지 않는다 — 코드가 남아 「없는 값」 오류로 드러난다 (ADR-0078 결정 5)
+    expect(store.purged).toEqual([]);
+  });
+});
+
+describe("열거값 삭제 = 「없는 값」 · 열거값 추가 = 재검사 목록 (ADR-0078 결정 4 · 5, 실제 주입)", () => {
+  let t: TestDb;
+  let s: Services;
+  const P1 = "11111111-1111-4111-8111-111111111111";
+  const P2 = "22222222-2222-4222-8222-222222222222";
+
+  beforeAll(async () => {
+    t = await createTestDb();
+    s = createServices(t.db);
+    // MVP 마스터: waiver.reasons = 목록값(복수) ▸ E0001 · no_surrender.type = 목록값 ▸ E0002
+    unwrap(await s.catalog.createEnum(editor, { label: "납입면제사유", values: [{ label: "암" }, { label: "뇌졸중" }, { label: "급성심근경색" }] })); // E0001 V01 V02 V03
+    unwrap(await s.catalog.createEnum(editor, { label: "해약환급금유형", values: [{ label: "지급형" }, { label: "미지급형" }] })); // E0002
+    await writeSlot(t.db, { kind: "plan", id: P1 }, "waiver.reasons", ["V01", "V02"]);
+    await writeSlot(t.db, { kind: "plan", id: P2 }, "no_surrender.type", "V02");
+  });
+  afterAll(async () => {
+    await t.close();
+  });
+
+  it("열거값을 지워도 그 값을 고른 세목 값은 코드가 남는다", async () => {
+    unwrap(await s.catalog.removeEnumValue(admin, "E0002", "V02", { confirm: true }));
+    expect((await readSlots(t.db, { kind: "plan", id: P2 })).get("no_surrender.type")).toEqual({ entered: true, value: "V02" });
+  });
+
+  it("[암, 뇌졸중]에서 암을 지우면 배열은 그대로이고 값 폼에 없는 값 오류", async () => {
+    const def = (await s.catalog.getEnum("E0001"))!;
+    const kept = def.values.filter((v) => v.code !== "V01").map((v) => ({ code: v.code, label: v.label }));
+    unwrap(await s.catalog.reviseEnum(admin, "E0001", { label: def.label, description: "", values: kept }, { confirm: true }));
+    const slots = await readSlots(t.db, { kind: "plan", id: P1 });
+    expect(slots.get("waiver.reasons")).toEqual({ entered: true, value: ["V01", "V02"] });
+    const enums = new Map((await s.catalog.listEnums()).map((e) => [e.code, e]));
+    const form = initFormState(buildForm("plan", (c) => enums.get(c), slots));
+    expect(toSubmission(form).issues).toEqual([expect.objectContaining({ kind: "brokenRef", message: "없는 값 V01 — 납입면제사유(E0001)에서 지워진 값입니다", at: { refPath: "waiver.reasons" } })]);
+  });
+
+  it("열거값을 추가하면 그 열거형 값을 비교하는 조건식이 재검사 목록에 오른다", async () => {
+    unwrap(await s.catalog.create(editor, { label: "해약환급금유형", level: "plan", expression: "no_surrender.type" })); // D0001
+    const b = nodeBuilders();
+    await insertDocument(t.db, { kind: "general", title: "보통약관", tree: b.document("보통약관", [b.condBlock([b.branch("D0001 = 'V01' or D0001 = 'V02'", [b.article("지급형 특칙", [b.paragraph([b.text("지급")])])])])]) }, editor.userId);
+    const recheck = await s.catalog.enumValueRecheck("E0002");
+    expect(recheck.map((e) => [e.via, e.at.document, e.at.refPath])).toEqual([["when", "general", "D0001"]]);
+    expect(await s.catalog.enumValueRecheck("E0001")).toEqual([]);
+  });
+
+  it("값을 추가하면 .있음(값…)으로 나열한 함수조항 내부 변수가 재검사 목록에 오른다 (최종 결정 20)", async () => {
+    unwrap(
+      await s.clause.create(editor, {
+        label: "면제 부가항",
+        mode: "block",
+        params: [{ name: "종들", type: { kind: "planOptions", form: "waiver" }, default: { kind: "source", source: { form: "waiver", filter: "waiver.applies = true" } } }],
+        locals: [
+          { name: "모든사유", expr: "arg.종들.합치기(waiver.reasons)" },
+          { name: "뇌있음", expr: "var.모든사유.있음('V02')" },
+        ],
+        body: [{ id: "p", kind: "paragraph", children: [{ id: "c", kind: "inlineCond", branches: [{ id: "b", when: "var.뇌있음", children: [{ id: "t", kind: "text", text: "뇌" }] }] }] }],
+      }),
+    );
+    const recheck = await s.catalog.enumValueRecheck("E0001");
+    expect(recheck.map((e) => [e.via, e.at.document, e.at.refPath])).toEqual([["local", "clause", "var.뇌있음"]]);
+  });
+
+  it("열거값을 추가하면 그 열거형 값별 분기(switch)가 미배정으로 재검사 목록에 — 열거값 저장은 성공 (최종 결정 5)", async () => {
+    const def = (await s.catalog.getEnum("E0001"))!;
+    const values = def.values.map((v) => ({ code: v.code, label: v.label }));
+    const item = (id: string) => ({ id, kind: "item" as const, children: [{ id: `${id}t`, kind: "text" as const, text: "호" }] });
+    unwrap(
+      await s.clause.create(editor, {
+        label: "납입면제 호",
+        mode: "item",
+        params: [{ name: "사유", type: { kind: "enum", enumCode: "E0001" } }],
+        body: [{ id: "sw", kind: "switchBlock", on: "arg.사유", cases: [{ id: "k1", values: values.map((v) => v.code), children: [item("i1")] }] }],
+      }),
+    );
+    unwrap(await s.catalog.reviseEnum(editor, "E0001", { label: def.label, description: "", values: [...values, { label: "새 사유" }] }));
+    const recheck = await s.catalog.enumValueRecheck("E0001");
+    // 앞 시나리오의 내부 변수(.있음)도 같은 목록에 있다 — 분기만 본다
+    expect(recheck.filter((e) => e.via === "switchCase").map((e) => [e.at.document, e.at.ownerName, e.at.nodePath])).toEqual([["clause", "납입면제 호", ["sw"]]]);
+  });
+
+  it("필드를 지우면 그 필드를 읽는 함수조항이 재검사 목록에 — 저장은 관리자 확인 뒤 성공 (최종 결정 18)", async () => {
+    const def = (await s.catalog.getEnum("E0001"))!;
+    const values = def.values.map((v) => ({ code: v.code, label: v.label }));
+    unwrap(await s.catalog.reviseEnum(editor, "E0001", { label: def.label, description: "", fields: [{ ref: "new:1", label: "약관표시명", type: "string" }], values }));
+    const key = (await s.catalog.getEnum("E0001"))!.fields![0].key;
+    unwrap(
+      await s.clause.create(editor, {
+        label: "사유 표시",
+        mode: "inline",
+        params: [{ name: "사유", type: { kind: "enum", enumCode: "E0001" }, default: { kind: "const", value: "V02" } }],
+        body: [{ id: "s", kind: "slot", ref: `arg.사유.${key}` }],
+      }),
+    );
+    // 필드 삭제 영향 — 읽는 곳이 깨질 참조로 선다(P2 에서는 읽는 간선이 없어 늘 0건이었다)
+    const first = await s.catalog.reviseEnum(admin, "E0001", { label: def.label, description: "", fields: [], values });
+    if (first.ok || first.rejection.reason !== "needsConfirmation") throw new Error("needsConfirmation 기대");
+    expect(first.rejection.impact.brokenRefs.map((c) => [c.document, c.ownerName])).toEqual([["clause", "사유 표시"]]);
+    unwrap(await s.catalog.reviseEnum(admin, "E0001", { label: def.label, description: "", fields: [], values }, { confirm: true }));
+    const recheck = await s.catalog.enumFieldRecheck("E0001", [key]);
+    expect(recheck.map((e) => [e.via, e.at.document, e.at.ownerName])).toEqual([["slot", "clause", "사유 표시"]]);
+  });
+});
+
+describe("열거형 유저 정의 필드 — 저장 · 권한 (ADR-0078 결정 2 · ADR-0019)", () => {
+  let t: TestDb;
+  let svc: CatalogService;
+  const values = [{ code: "V01", label: "암·면책" }, { code: "V02", label: "뇌졸중" }];
+
+  beforeAll(async () => {
+    t = await createTestDb();
+    svc = createCatalogService(t.db);
+    unwrap(await svc.createEnum(editor, { label: "납입면제사유", values: [{ label: "암·면책" }, { label: "뇌졸중" }] }));
+  });
+  afterAll(async () => {
+    await t.close();
+  });
+
+  it("편집자는 필드를 더하고 값을 넣을 수 있다 — 다시 읽어도 그대로", async () => {
+    const r = unwrap(
+      await svc.reviseEnum(editor, "E0001", {
+        label: "납입면제사유",
+        description: "",
+        fields: [{ ref: "new:1", label: "약관표시명", type: "string" }, { ref: "new:2", label: "면책여부", type: "boolean" }],
+        values: [{ ...values[0]!, fields: { "new:1": "암(유사암제외)", "new:2": true } }, { ...values[1]!, fields: { "new:2": false } }],
+      }),
+    );
+    expect(r.fields?.map((f) => [f.key, f.label, f.type])).toEqual([["F01", "약관표시명", "string"], ["F02", "면책여부", "boolean"]]);
+    expect(await svc.getEnum("E0001")).toEqual(r);
+    expect(r.values.map((v) => v.fields)).toEqual([{ F01: "암(유사암제외)", F02: true }, { F02: false }]);
+  });
+
+  it("편집자는 필드 이름을 바꾸고 값을 고칠 수 있다 — 파괴적이 아니다", async () => {
+    const r = unwrap(
+      await svc.reviseEnum(editor, "E0001", {
+        label: "납입면제사유",
+        description: "",
+        fields: [{ key: "F01", label: "표시명", type: "string" }, { key: "F02", label: "면책여부", type: "boolean" }],
+        values: [{ ...values[0]!, fields: { F01: "암", F02: true } }, { ...values[1]!, fields: { F01: "", F02: false } }],
+      }),
+    );
+    expect(r.fields?.[0]?.label).toBe("표시명");
+    expect(r.values.map((v) => v.fields)).toEqual([{ F01: "암", F02: true }, { F02: false }]);
+  });
+
+  it("필드 삭제는 관리자 확인이 필요하다 — 편집자 forbidden · 관리자 1차는 영향만 · confirm 이면 저장", async () => {
+    const revision = { label: "납입면제사유", description: "", fields: [{ key: "F01", label: "표시명", type: "string" as const }], values };
+    expect(await svc.reviseEnum(editor, "E0001", revision)).toEqual({ ok: false, rejection: { reason: "forbidden", role: "editor", action: "enum.deleteField" } });
+    const first = await svc.reviseEnum(admin, "E0001", revision);
+    if (first.ok || first.rejection.reason !== "needsConfirmation") throw new Error("needsConfirmation 기대");
+    expect(first.rejection.impact.cascade).toEqual(["필드 「면책여부」 — 값 2개의 입력이 지워진다"]);
+    expect((await svc.getEnum("E0001"))?.fields).toHaveLength(2);
+    const done = unwrap(await svc.reviseEnum(admin, "E0001", revision, { confirm: true }));
+    expect(done.fields?.map((f) => f.key)).toEqual(["F01"]);
+    expect(done.values.map((v) => v.fields)).toEqual([{ F01: "암" }, undefined]);
+  });
+
+  it("필드 타입 변경도 관리자 확인이 필요하다", async () => {
+    const revision = { label: "납입면제사유", description: "", fields: [{ key: "F01", label: "표시명", type: "boolean" as const }], values };
+    expect(await svc.reviseEnum(editor, "E0001", revision)).toEqual({ ok: false, rejection: { reason: "forbidden", role: "editor", action: "enum.changeFieldType" } });
+    const first = await svc.reviseEnum(admin, "E0001", revision);
+    if (first.ok || first.rejection.reason !== "needsConfirmation") throw new Error("needsConfirmation 기대");
+    expect(first.rejection.impact.cascade).toEqual(["필드 「표시명」 타입 문자열 → 참거짓 — 값 1개의 입력이 지워진다"]);
+    const done = unwrap(await svc.reviseEnum(admin, "E0001", revision, { confirm: true }));
+    expect(done.fields?.[0]?.type).toBe("boolean");
+    expect(done.values.every((v) => v.fields === undefined)).toBe(true);
   });
 });

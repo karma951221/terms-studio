@@ -86,6 +86,20 @@ describe("번호 표기 (임시 규칙 — 실물 조사 후 확정)", () => {
       expect(referenceChunkLabel([par("p1", 1), par("p2", 2), par("q3", 3, b)], "및")).toBe("제1조(첫 조) 제1항, 제2항 및 제2조(둘째 조) 제3항");
     });
 
+    it("결정 14 회귀 — 2개 「및」 · 3개 이상 연속 「부터 … 까지」 · 쉼표 + 마지막 앞에만 연결어 · 「까지」 생략 없음", () => {
+      const here = par("p9", 9);
+      expect(referenceChunkLabel([par("p1", 1), par("p2", 2)], "및", here)).toBe("제1항 및 제2항");
+      expect(referenceChunkLabel([par("p1", 1), par("p2", 2), par("p3", 3)], "및", here)).toBe("제1항부터 제3항까지");
+      expect(referenceChunkLabel([par("p1", 1), par("p2", 2), par("p4", 4)], "및", here)).toBe("제1항, 제2항 및 제4항");
+      expect(referenceChunkLabel([par("p1", 1), par("p2", 2), par("p3", 3), par("p4", 4), par("p6", 6)], "및", here)).toBe("제1항부터 제4항까지 및 제6항");
+    });
+
+    it("연결어를 아직 안 고른 참조(결정 14 — 기본값 없음)는 연결어 자리에 「〔연결어?〕」 — 대상이 하나면 연결어가 필요 없다", () => {
+      const here = par("p9", 9);
+      expect(referenceChunkLabel([par("p1", 1), par("p2", 2)], undefined, here)).toBe("제1항 〔연결어?〕 제2항");
+      expect(referenceChunkLabel([par("p1", 1)], undefined, here)).toBe("제1항");
+    });
+
     it("대상 하나 · 없음", () => {
       expect(referenceChunkLabel([art("a3", 3)], "및")).toBe("제3조(조3)");
       expect(referenceChunkLabel([], "및")).toBe("");
@@ -172,7 +186,7 @@ describe("문면작성 S1·S3 — 번호는 저장하지 않고 현재 트리에
     expect(undetermined.get("s-art-term")?.label).toBe("제2조");
   });
 
-  it("공용조항 block 참조는 항 1개로 센다 (임시 — 실제 항 수는 조립이 안다)", () => {
+  it("함수조항 block 참조는 항 1개로 센다 (임시 — 실제 항 수는 조립이 안다)", () => {
     const b = nodeBuilders(sequentialIds("n"));
     const doc = b.document("d", [b.article("a", [b.paragraph([]), b.clauseBlock("C001", {}), b.paragraph([])])]);
     const numbers = numberTree(doc);

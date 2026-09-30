@@ -116,12 +116,12 @@ describe("조건 블록 — 머리 줄은 그 자리 편집, 팝업 없음 (기�
   });
 });
 
-describe("공용조항 블록 — 머리 띠 「공용조항 (이름)」 + 🗑, 그 아래 본문", () => {
-  it("편집 모드 — 이름 · 삭제 버튼 · 공용조항 본문(읽기 전용)", () => {
+describe("함수조항 블록 — 머리 띠 「함수조항 (이름)」 + 🗑, 그 아래 본문", () => {
+  it("편집 모드 — 이름 · 삭제 버튼 · 함수조항 본문(읽기 전용)", () => {
     const html = render("D0009 = true", true);
     expect(html).toContain('class="ts-doc-clause"');
-    expect(html).toContain("공용조항 (보험기간)");
-    expect(html).toContain('aria-label="공용조항 보험기간 삭제"');
+    expect(html).toContain("함수조항 (보험기간)");
+    expect(html).toContain('aria-label="함수조항 보험기간 삭제"');
     expect(html).toContain("회사는 다음에 정한 기간 중에 보장합니다.");
     expect(html).toMatch(/data-clause-ref="[^"]+"/);
     // 본문은 읽기 전용 — 문장 칸이 아니다
@@ -130,12 +130,12 @@ describe("공용조항 블록 — 머리 띠 「공용조항 (이름)」 + 🗑,
 
   it("읽기 모드 — 머리 띠 · 본문만, 삭제 버튼 없음", () => {
     const html = render("D0009 = true", false);
-    expect(html).toContain("공용조항 (보험기간)");
+    expect(html).toContain("함수조항 (보험기간)");
     expect(html).not.toContain("삭제");
   });
 });
 
-describe("공용조항 블록 안 — 가운데는 모델, 미리보기는 문장 (2026-09-28)", () => {
+describe("함수조항 블록 안 — 가운데는 모델, 미리보기는 문장 (2026-09-28)", () => {
   const optionClause: Clause = {
     code: "C0002",
     label: "대표자의 지정",
@@ -165,17 +165,17 @@ describe("공용조항 블록 안 — 가운데는 모델, 미리보기는 문�
     return renderToStaticMarkup(<Block nodes={(tree.children[0] as { children: DocumentNode["children"] }).children} ctx={ctx} />);
   }
 
-  it("편집 · 읽기 모두 — 옵션 자리(선택지 전부 + 고른 것 ✓) · 슬롯 칩 · IF 머리 · 「공용조항에서 고치기 →」", () => {
+  it("편집 · 읽기 모두 — 옵션 자리(선택지 전부 + 고른 것 ✓) · 슬롯 칩 · IF 머리 · 「함수조항에서 고치기 →」", () => {
     for (const edit of [true, false]) {
       const html = renderClause(edit);
-      expect(html).toContain("공용조항 (대표자의 지정)");
+      expect(html).toContain("함수조항 (대표자의 지정)");
       expect(html).toContain('class="ts-clause-model"');
       expect(html).toContain("지정 주체");
       expect(html).toContain("계약자");
       expect(html).toContain("✓피보험자");
       expect(html).toContain("〔담보명〕");
       expect(html).toContain('<span class="ts-cond-badge">IF</span> 감액여부 = true');
-      expect(html).toContain('href="/clauses/C0002"');
+      expect(html).toContain('href="/functions/C0002"');
       // 모델은 이 문서의 자리가 아니다 — 문장 칸 · 블록 표지가 없다
       const body = html.slice(html.indexOf("ts-doc-clause-body"));
       expect(body).not.toContain("data-block");
@@ -187,7 +187,7 @@ describe("공용조항 블록 안 — 가운데는 모델, 미리보기는 문�
     const html = renderClause(false, "text");
     expect(html).toContain("피보험자는");
     expect(html).not.toContain("ts-clause-model");
-    expect(html).not.toContain("공용조항에서 고치기");
+    expect(html).not.toContain("함수조항에서 고치기");
   });
 });
 

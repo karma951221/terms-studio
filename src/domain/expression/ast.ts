@@ -16,7 +16,7 @@ export interface NodeQualifier {
 
 /**
  * 구분자 참조 — `<구분자코드>` 한 마디. 구분자는 식 하나라 필드가 없다 (ADR-0037).
- * 요구 구분자 추출(ADR-0010)의 단위가 이것이다. **문면(조건식·반복·슬롯)이 쓰는 유일한 값 참조**다.
+ * 요구 구분자의 단위가 이것이다. **문면(조건식·반복·슬롯)이 쓰는 유일한 값 참조**다.
  */
 export interface DiscriminatorRef {
   kind: "discriminator";
@@ -53,10 +53,29 @@ export interface AttributeRef {
   code: Code;
 }
 
-/** 값 자리를 갖는 참조 (담보속성 제외). 문맥의 lookup/children 이 받는 것. */
+/**
+ * 인자 참조 — 소스 표기 `arg.<이름>` (최종 결정 2 · 기능/식언어 §인자). 함수조항 본문만 쓴다 — 조항이 선언한 입력을 이름으로 읽는다.
+ * 값은 사용처의 인자 연결(구분자 · 상수)이 정하고, 조립은 펼칠 때 연결로 바꿔 쓴다(`clause/bind.ts`) — 평가기는 인자를 모른다.
+ * 타입 검사는 문맥 플래그(`CheckOptions.params`)가 있을 때만 푼다 — 구분자 식 · 문면 식으로 새지 않게 (경계).
+ */
+export interface ParamRef {
+  kind: "param";
+  name: string;
+}
+
+/**
+ * 내부 변수 참조 — 소스 표기 `var.<이름>` (최종 결정 2 · 기능/식언어 §12). 함수조항 안에서 인자를 가공한 값에 붙인 이름이다.
+ * 앞에 선언한 내부 변수만 읽는다(순서대로 평가). 타입 검사는 문맥 플래그(`CheckOptions.locals`)가 있을 때만 푼다.
+ */
+export interface LocalRef {
+  kind: "local";
+  name: string;
+}
+
+/** 값 자리를 갖는 참조 (담보속성 · 인자 · 내부 변수 제외). 문맥의 lookup/children 이 받는 것. */
 export type ValueRef = DiscriminatorRef | MasterRef | BuiltinRef;
 
-export type Ref = ValueRef | AttributeRef;
+export type Ref = ValueRef | AttributeRef | ParamRef | LocalRef;
 
 // ───────────────────────────── 리터럴 ─────────────────────────────
 
@@ -86,6 +105,23 @@ export const AGGREGATE_OPS: readonly AggregateOp[] = [
   "notexist",
 ];
 
+/**
+ * 함수조항 전용 연산 — 타입마다 몇 개만 (최종 결정 2 · 기능/식언어 §12). **개수 연산은 없다**(개수 조건 폐지와 한 몸).
+ * - `합치기(폼.필드)` : 세목 선택지 목록 → 그 폼 열거 필드 값의 합집합 list<enum> (중복 제거 · 열거형 순서). 화면 말 「사유합치기」.
+ * - `있음(값…)`      : list<enum> → 값 중 하나라도 있으면 참.
+ * - `거르기(필드 = 값)` : list<enum> → 열거값 필드가 그 값인 원소만.
+ * - `비었음`          : list<enum> → 원소가 없으면 참.
+ */
+export type MethodOp = "합치기" | "있음" | "거르기" | "비었음";
+
+export const METHOD_OPS: readonly MethodOp[] = ["합치기", "있음", "거르기", "비었음"];
+
+export type CallExpr =
+  | { kind: "call"; op: "합치기"; target: Expr; ref: MasterRef }
+  | { kind: "call"; op: "있음"; target: Expr; values: string[] }
+  | { kind: "call"; op: "거르기"; target: Expr; field: Code; value: Literal }
+  | { kind: "call"; op: "비었음"; target: Expr };
+
 // ───────────────────────────── 노드 ─────────────────────────────
 
 export type Expr =
@@ -99,7 +135,11 @@ export type Expr =
    * 집계. `ref` 는 집계 경로 — 값 참조(any·all·sum·count·exist·notexist)
    * 또는 담보속성(exist·notexist 만). 범위(하위 트리)는 문맥이 정한다.
    */
-  | { kind: "aggregate"; op: AggregateOp; ref: Ref };
+  | { kind: "aggregate"; op: AggregateOp; ref: Ref }
+  /** 열거값 필드 읽기 `<열거값 식>.<필드키>` (ADR-0078) — 함수조항 전용. 저장은 필드 키(F01), 화면은 필드 이름. 빈 값 = 미입력. */
+  | { kind: "member"; target: Expr; field: Code }
+  /** 타입별 연산 — 함수조항 전용 (`MethodOp`). */
+  | CallExpr;
 
 export type ExprKind = Expr["kind"];
 
@@ -116,6 +156,10 @@ export function refPath(ref: Ref): string {
       return `builtin.${ref.level}.${ref.prop}`;
     case "attr":
       return `attr.${ref.code}`;
+    case "param":
+      return `arg.${ref.name}`;
+    case "local":
+      return `var.${ref.name}`;
   }
 }
 

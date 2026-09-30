@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { Clause } from "@/domain/clause";
+import { withClauseCodes } from "@/domain/clause/pcode";
 
 import { createTestDb, type TestDb } from "../test-utils";
 import { clauseAudit, clauseSeqSource, deleteClause, insertClause, listClauses, loadClause, nextClauseSeq, saveClause } from "./clause";
@@ -42,7 +43,8 @@ describe("clauses repo (PGlite)", () => {
 
   it("insert → load 가 도메인 객체를 그대로 돌려준다 (본문·옵션·요구 구분자 포함)", async () => {
     await insertClause(t.db, 소멸, who);
-    expect(await loadClause(t.db, "C0001")).toEqual(소멸);
+    // 코드 없는 옛 본문은 읽을 때 P코드를 채운다 (ADR-0072 결정 10) — 그 밖은 그대로
+    expect(await loadClause(t.db, "C0001")).toEqual({ ...소멸, body: withClauseCodes(소멸.body) });
     expect(await loadClause(t.db, "C9999")).toBeUndefined();
     const audit = await clauseAudit(t.db, "C0001");
     expect(audit?.createdBy).toBe(who);

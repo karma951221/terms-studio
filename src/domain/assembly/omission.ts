@@ -9,11 +9,12 @@
  *   맞아떨어져도 통째로 두고 `omissionUndecided` warning 하나(표 순서의 첫 사유)를 낸다 — 자동으로 지우는 범위는 좁게.
  *
  * 비교 직렬화: 구조(항·호·목) + 텍스트 + 참조 대상(조 id · 별표 코드). 노드 id 는 비교하지 않는다 —
- * 같은 공용조항을 두 문서가 참조하면 id 접두(`${참조노드id}/…`)만 다르고 내용은 같기 때문.
+ * 같은 함수조항을 두 문서가 참조하면 id 접두(`${참조노드id}/…`)만 다르고 내용은 같기 때문.
  * 오류 마커가 있는 조는 절대 같다고 보지 않는다 (마커 id 로 직렬화 → 문서마다 다르다).
  * 띄어쓰기 하나도 다르면 다르다 — 정규화·유사도 없음.
  */
 
+import { refKey } from "../document/pcode";
 import type { Id, Issue } from "../types";
 import type { ErrorNode, OmissionPair, OmissionPairKind, OmissionRecord, RArticle, RBulletList, RItem, RParagraph, RStatic, RSubitem, SInline, SubstitutedDoc } from "./types";
 import { articlesOf, mapArticles } from "./walk";
@@ -34,7 +35,7 @@ function serializer(refInsensitive: boolean) {
       case "text":
         return `t(${n.text})`;
       case "articleRef":
-        return refInsensitive ? "a(?)" : `a(${n.scope}:${n.targets.map((target) => target.nodeId).join(",")}:${n.connector})`;
+        return refInsensitive ? "a(?)" : `a(${n.scope}:${n.targets.map((target) => refKey(target)).join(",")}:${n.connector})`;
       case "appendixRef":
         return `x(${n.appendixCode})`;
       case "error":
@@ -102,7 +103,7 @@ interface ComparedParagraph {
   loose: string;
 }
 
-/** 비교 대상 항 — 보통약관 쪽은 block 공용조항의 비교 제외 항을 뺀다 (ADR-0020 결정 2). 빈 조는 빈 항 하나로 본다. */
+/** 비교 대상 항 — 보통약관 쪽은 block 함수조항의 비교 제외 항을 뺀다 (ADR-0020 결정 2). 빈 조는 빈 항 하나로 본다. */
 function comparedParagraphs(a: RArticle<SInline>, excludeMarked: boolean): ComparedParagraph[] {
   const out: ComparedParagraph[] = [];
   const counts = { paragraph: 0, table: 0, box: 0, bulletList: 0, error: 0 };
@@ -131,7 +132,7 @@ function containsErrors(a: RArticle<SInline>): boolean {
 }
 
 /**
- * 비교에서 뺀 block 공용조항 참조 노드 id — 펼쳐진 항의 id 는 `${참조노드id}/${원노드id}` 라 첫 `/` 앞이 참조 노드다
+ * 비교에서 뺀 block 함수조항 참조 노드 id — 펼쳐진 항의 id 는 `${참조노드id}/${원노드id}` 라 첫 `/` 앞이 참조 노드다
  * (`expandClause`). 접두가 없으면(직접 쓴 항에 표시가 붙은 경우) 그 항 id 를 그대로 둔다.
  */
 function excludedClauseNodeIds(a: RArticle<SInline>): Id[] {
@@ -145,37 +146,24 @@ function excludedClauseNodeIds(a: RArticle<SInline>): Id[] {
   return out;
 }
 
-/** 노드 id → 종류 색인 (두 문서의 조·항·호·목). 참조 슬롯의 대상이 조인지 항 이하인지 가르는 데 쓴다. */
-function nodeKinds(docs: readonly (SubstitutedDoc | undefined)[]): Map<Id, "article" | "paragraph" | "item" | "subitem"> {
-  const out = new Map<Id, "article" | "paragraph" | "item" | "subitem">();
+/** 두 문서의 살아남은 항 · 호 · 목 참조 열쇠(`조id#코드`) — 참조 슬롯의 대상이 항 이하인지(그리고 살아 있는지) 가르는 데 쓴다 (ADR-0072). */
+function liveCodedKeys(docs: readonly (SubstitutedDoc | undefined)[]): Set<string> {
+  const out = new Set<string>();
   for (const doc of docs) {
     if (!doc) continue;
     for (const a of articlesOf(doc)) {
-      out.set(a.id, "article");
+      const add = (key: string | undefined) => {
+        if (key !== undefined) out.add(refKey({ articleId: a.id, code: key }));
+      };
       for (const p of a.children) {
         if (p.kind !== "paragraph") continue;
-        out.set(p.id, "paragraph");
+        add(p.key);
         for (const it of p.items ?? []) {
           if (it.kind !== "item") continue;
-          out.set(it.id, "item");
-          for (const s of it.subitems ?? []) if (s.kind === "subitem") out.set(s.id, "subitem");
+          add(it.key);
+          for (const s of it.subitems ?? []) if (s.kind === "subitem") add(s.key);
         }
       }
-    }
-  }
-  return out;
-}
-
-/** 조 안의 모든 노드 id (항·호·목) — 남는 담보 항의 자기 참조가 같은 조를 가리키는지 볼 때 쓴다. */
-function articleNodeIds(a: RArticle<SInline>): Set<Id> {
-  const out = new Set<Id>([a.id]);
-  for (const p of a.children) {
-    if (p.kind !== "paragraph") continue;
-    out.add(p.id);
-    for (const it of p.items ?? []) {
-      if (it.kind !== "item") continue;
-      out.add(it.id);
-      for (const s of it.subitems ?? []) if (s.kind === "subitem") out.add(s.id);
     }
   }
   return out;
@@ -216,7 +204,7 @@ function eachInline(list: readonly Compared[], fn: (n: SInline) => void, onTable
 }
 
 /** 지워질 항 안의 참조 슬롯·표 — 항 이하 참조(`paragraphRef`)가 하나라도 있으면 그것이 먼저다 (표 셋째 줄). */
-function scanRefsAndTables(list: readonly Compared[], kinds: ReadonlyMap<Id, string>): { paragraphRef: boolean; refOrTable: boolean } {
+function scanRefsAndTables(list: readonly Compared[], coded: ReadonlySet<string>): { paragraphRef: boolean; refOrTable: boolean } {
   let paragraphRef = false;
   let refOrTable = false;
   eachInline(
@@ -225,7 +213,7 @@ function scanRefsAndTables(list: readonly Compared[], kinds: ReadonlyMap<Id, str
       if (n.kind !== "articleRef") return;
       refOrTable = true;
       // 대상 노드를 못 찾으면(분기로 사라짐 등) 조 참조로 본다 — 넷째 문구로 흡수.
-      if (n.targets.some((t) => kinds.get(t.nodeId) !== undefined && kinds.get(t.nodeId) !== "article")) paragraphRef = true;
+      if (n.targets.some((t) => t.code !== undefined && coded.has(refKey(t)))) paragraphRef = true;
     },
     () => {
       refOrTable = true;
@@ -234,13 +222,13 @@ function scanRefsAndTables(list: readonly Compared[], kinds: ReadonlyMap<Id, str
   return { paragraphRef, refOrTable };
 }
 
-/** 남는 담보 항이 같은 조 안(지워질 항 포함)을 가리키는가 — 준용하면 그 참조가 `articleGone` 으로 깨진다. */
-function refersInsideArticle(list: readonly Compared[], own: ReadonlySet<Id>): boolean {
+/** 남는 담보 항이 같은 조 안(조 자신 · 지워질 항 포함)을 가리키는가 — 준용하면 그 참조가 `articleGone` 으로 깨진다. */
+function refersInsideArticle(list: readonly Compared[], articleId: Id): boolean {
   let found = false;
   eachInline(
     list,
     (n) => {
-      if (n.kind === "articleRef" && n.targets.some((t) => own.has(t.nodeId))) found = true;
+      if (n.kind === "articleRef" && n.targets.some((t) => t.articleId === articleId)) found = true;
     },
     () => {},
   );
@@ -306,7 +294,7 @@ function applicationParagraph(article: RArticle<SInline>, linkedArticleId: Id, o
     id,
     children: [
       { kind: "text", id: `${id}::prefix`, text: `이 특별약관의 ${article.title}${topicParticle(article.title)} ` },
-      { kind: "articleRef", id: `${id}::ref`, targets: [{ nodeId: linkedArticleId }], connector: "및", scope: "general", at },
+      { kind: "articleRef", id: `${id}::ref`, targets: [{ articleId: linkedArticleId }], connector: "및", scope: "general", at },
       { kind: "text", id: `${id}::suffix`, text: "를 준용합니다." },
     ],
   };
@@ -331,9 +319,9 @@ interface Verdict {
  *
  * 참조 슬롯 · 표는 **지워질 담보 항**(생략은 전부, 준용은 보통약관과 짝지은 항)에서 찾고, 준용에서 **남는 항**은 같은 조 안을
  * 가리키는 참조가 있는지 본다 — 지워질 항을 가리키면 렌더가 `articleGone` 오류를 내므로 (원문 유지가 ADR 의 뜻) 준용하지 않는다.
- * @param kinds 두 문서의 노드 종류 색인 (참조 슬롯 대상이 조인지 항·호·목인지).
+ * @param kinds 두 문서의 살아남은 항 · 호 · 목 참조 열쇠 (참조 슬롯 대상이 조인지 항·호·목인지).
  */
-function judgeArticle(a: RArticle<SInline>, target: RArticle<SInline>, kinds: ReadonlyMap<Id, string>): Verdict {
+function judgeArticle(a: RArticle<SInline>, target: RArticle<SInline>, kinds: ReadonlySet<string>): Verdict {
   const special = comparedParagraphs(a, false);
   const general = comparedParagraphs(target, true);
   const positional = positionalPairs(special, general, "body");
@@ -368,7 +356,7 @@ function judgeArticle(a: RArticle<SInline>, target: RArticle<SInline>, kinds: Re
   if (positional.all) return { disposition: "omitted", pairs: positional.pairs };
   // 준용 — 남는 항이 같은 조 안을 가리키면 준용하지 않는다 (지워질 항을 가리키는 참조는 깨진다).
   const kept = special.filter((_p, i) => !ordered.matchedSpecial.has(i));
-  if (refersInsideArticle(nodes(kept), articleNodeIds(a))) return undecided(UNDECIDED_REASON.paragraphRef, ordered.pairs);
+  if (refersInsideArticle(nodes(kept), a.id)) return undecided(UNDECIDED_REASON.paragraphRef, ordered.pairs);
   return { disposition: "applied", pairs: ordered.pairs, keep: kept.map((p) => p.index) };
 }
 
@@ -378,7 +366,7 @@ function judgeArticle(a: RArticle<SInline>, target: RArticle<SInline>, kinds: Re
 export function judgeOmission(special: SubstitutedDoc, general: SubstitutedDoc | undefined, owner: OmissionOwner, hidden?: ReadonlyMap<Id, string>): OmissionOutcome {
   const generalArticles = new Map<Id, RArticle<SInline>>();
   if (general) for (const a of articlesOf(general)) generalArticles.set(a.id, a);
-  const kinds = nodeKinds([special, general]);
+  const kinds = liveCodedKeys([special, general]);
 
   const records: OmissionRecord[] = [];
   const issues: Issue[] = [];

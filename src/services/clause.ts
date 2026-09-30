@@ -1,12 +1,12 @@
 /**
- * 공용조항 서비스 — 모든 쓰기의 진입점. actor 검사 · 도메인 규칙 · repo 호출.
+ * 함수조항 서비스 — 모든 쓰기의 진입점. actor 검사 · 도메인 규칙 · repo 호출.
  *
  * - 비파괴 액션(채번 · 표시명 · 본문 · 모드 · 옵션 추가/수정/삭제 · 순서 · 복제)은 editor 도 가능.
  *   본문·옵션이 바뀌는 저장은 ① 요구 구분자 재추출 ② 사용처 전부 재검사 → `{ clause, recheck }` 를 돌려준다.
  *   저장 자체는 미부착이 생겨도 차단하지 않는다 (D-P3-8).
  * - 파괴적 액션은 `clause.delete` 하나 — `destructive()` 2단: editor → forbidden ·
  *   admin 1차 → needsConfirmation(Impact: brokenRefs = 사용처) · `{ confirm: true }` → 삭제.
- *   (옵션·선택지 삭제는 정의 수정으로 두고 깨진 선택은 재검사 목록이 드러낸다 — 기능/공용조항 §3.2.)
+ *   (옵션·선택지 삭제는 정의 수정으로 두고 깨진 선택은 재검사 목록이 드러낸다 — 기능/함수조항 §3.2.)
  * - 사용처 역인덱스(`UsageSource`)는 C1/B3 몫 — 주입한다. 부착은 없다 (ADR-0037).
  *   기본값: 사용처 없음 · 부착기 없음(수락 거부).
  * - 카탈로그(구분자 정의)는 catalog repo 에서 읽어 조건식 타입 검사·부착 검사에 쓴다.
@@ -19,6 +19,7 @@ import {
   addOptionValue,
   checkAttachmentForReference,
   createClause,
+  withClauseCodes,
   duplicateClause,
   recheckUsages,
   removeOption,
@@ -31,6 +32,10 @@ import {
   setBody,
   setMode,
   setOptionValueBody,
+  setParams,
+  enumInfoOf,
+  type LocalDef,
+  unitWarnings,
   usageCoordinate,
   type AttachmentCheck,
   type Clause,
@@ -42,17 +47,18 @@ import {
   type NewClause,
   type NewOption,
   type NewOptionValue,
+  type ParamDef,
   type RecheckEntry,
   type RequiredRefs,
   type Usage,
 } from "@/domain/clause";
 import type { Inline } from "@/domain/clause/nodes";
-import { indexTree } from "@/domain/document";
+import { indexTree, referenceKeys, repeatedKeys } from "@/domain/document";
 import type { TypeResolver } from "@/domain/expression";
-import type { Actor, Code, Id, Result } from "@/domain/types";
+import type { Actor, Code, Issue, Result } from "@/domain/types";
 import { ok, reject } from "@/domain/types";
 
-import { listDiscriminators } from "@/db/repo/catalog";
+import { listDiscriminators, listEnums } from "@/db/repo/catalog";
 import * as repo from "@/db/repo/clause";
 import * as documentRepo from "@/db/repo/document";
 import type { Db } from "@/db/repo/types";
@@ -60,7 +66,7 @@ import type { ValueOwner } from "@/db/repo/values";
 
 // ───────────────────────────── 주입 인터페이스 ─────────────────────────────
 
-/** 사용처 역인덱스 — 이 공용조항을 참조하는 문서들. C1(refs)/B3(document) 가 구현한다. */
+/** 사용처 역인덱스 — 이 함수조항을 참조하는 문서들. C1(refs)/B3(document) 가 구현한다. */
 export interface UsageSource {
   documentsReferencing(clauseCode: Code): Promise<Usage[]>;
 }
@@ -75,10 +81,11 @@ export interface Confirmable {
   confirm?: boolean;
 }
 
-/** 본문·옵션이 바뀌는 저장의 결과 — 저장된 정의 + 사용처 재검사 목록. */
+/** 본문·옵션이 바뀌는 저장의 결과 — 저장된 정의 + 사용처 재검사 목록 + 단위 규칙 경고(저장은 막지 않는다, 최종 결정 7). */
 export interface SaveOutcome {
   clause: Clause;
   recheck: RecheckEntry[];
+  warnings: Issue[];
 }
 
 export interface ClauseService {
@@ -88,6 +95,8 @@ export interface ClauseService {
   summaries(): Promise<ClauseSummary[]>;
   required(code: Code): Promise<RequiredRefs | undefined>;
   usages(code: Code): Promise<Usage[]>;
+  /** 단위 규칙 경고 — 조 · 여러 항 단위가 아님 · 한 곳에서만 씀 (최종 결정 7 — 경고만, 상세 화면이 보인다). 없는 코드면 빈 목록. */
+  unitWarnings(code: Code): Promise<Issue[]>;
   audit(code: Code): ReturnType<typeof repo.clauseAudit>;
 
   // 정의 — 비파괴
@@ -95,6 +104,8 @@ export interface ClauseService {
   rename(actor: Actor, code: Code, label: string): Promise<Result<Clause>>;
   setBody(actor: Actor, code: Code, body: ClauseBody): Promise<Result<SaveOutcome>>;
   setMode(actor: Actor, code: Code, mode: ClauseMode, body: ClauseBody): Promise<Result<SaveOutcome>>;
+  /** 인자 표 교체 (최종 결정 2) — 본문도 함께(같은 저장). 인자 추가 · 기본 연결 변경은 사용처 재검사 목록으로 돌아온다. */
+  setParams(actor: Actor, code: Code, params: ParamDef[], body?: ClauseBody, locals?: LocalDef[]): Promise<Result<SaveOutcome>>;
   duplicate(actor: Actor, code: Code): Promise<Result<Clause>>;
 
   // 옵션 — 비파괴 (선택지·옵션 삭제의 사용처 영향은 recheck 로)
@@ -122,7 +133,7 @@ export interface ClauseService {
 
 /**
  * 카탈로그 정의로 만드는 식 타입 조회 — 조건식 boolean 검사용.
- * 공용조항 본문은 문면과 같은 규칙을 따른다 (ADR-0037) — 구분자만 보고, 그 타입은 식에서 추론한다.
+ * 함수조항 본문은 문면과 같은 규칙을 따른다 (ADR-0037) — 구분자만 보고, 그 타입은 식에서 추론한다.
  * 마스터 필드 직접 참조는 타입을 주지 않아 brokenRef 로 걸린다.
  */
 function typeResolverFrom(catalog: ReadonlyMap<Code, Discriminator>): TypeResolver {
@@ -133,6 +144,8 @@ function typeResolverFrom(catalog: ReadonlyMap<Code, Discriminator>): TypeResolv
       case "builtin":
         return { kind: "string" }; // 뼈대 속성(이름) — MVP 는 문자열
       case "master":
+      case "param": // 인자 · 내부 변수는 타입 검사의 문맥 플래그(params · locals)가 푼다 — 여기로 오지 않는다
+      case "local":
         return undefined;
       case "discriminator": {
         const def = catalog.get(ref.code);
@@ -143,6 +156,11 @@ function typeResolverFrom(catalog: ReadonlyMap<Code, Discriminator>): TypeResolv
 }
 
 // ───────────────────────────── 서비스 ─────────────────────────────
+
+/** 저장 직전 — 본문의 코드 없는 항 · 호 · 목에 P코드를 채운다 (ADR-0072 결정 10 · 최종 결정 12). */
+function coded(r: Result<Clause>): Result<Clause> {
+  return r.ok ? ok({ ...r.value, body: withClauseCodes(r.value.body) } as Clause) : r;
+}
 
 export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): ClauseService {
   const usage = deps.usage ?? NO_USAGES;
@@ -161,35 +179,47 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
   }
 
   /**
-   * 조 참조 대상 집합 — 보통약관 마스터의 조·항·호·목 id (기능/공용조항 §3.5). 보통약관이 여러 벌이면 합집합
-   * (MVP 는 1벌 — 2벌 이상은 기능/공용조항 §5 미결). 문서 서비스 `envOf` 의 `generalReferenceIds` 와 같은 기준.
+   * 조 참조 대상 열쇠 — 보통약관 마스터의 조 id · 조#P코드 (기능/함수조항 §3.5 · ADR-0072). 보통약관이 여러 벌이면 합집합
+   * (MVP 는 1벌 — 2벌 이상은 기능/함수조항 §5 미결). 문서 서비스 `envOf` 의 `generalReferenceKeys` 와 같은 기준.
    */
-  async function generalReferenceIdsOf(tx: Db): Promise<ReadonlySet<Id>> {
-    const ids = new Set<Id>();
+  async function generalReferenceKeysOf(tx: Db): Promise<{ keys: ReadonlySet<string>; repeated: ReadonlySet<string> }> {
+    const keys = new Set<string>();
+    const repeated = new Set<string>();
     for (const summary of await documentRepo.listDocuments(tx, "general")) {
       const doc = await documentRepo.loadDocument(tx, summary.id);
       if (!doc) continue;
-      for (const entry of indexTree(doc.tree).nodes.values()) {
-        if (["article", "paragraph", "item", "subitem"].includes(entry.node.kind)) ids.add(entry.node.id);
-      }
+      const ix = indexTree(doc.tree);
+      for (const k of referenceKeys(ix)) keys.add(k);
+      for (const k of repeatedKeys(ix)) repeated.add(k); // 반복 블록 안 대상 — 대상 하나여도 연결어 필수 (결정 14 확장)
     }
-    return ids;
+    return { keys, repeated };
   }
 
   async function context(tx: Db, catalog?: ReadonlyMap<Code, Discriminator>): Promise<ClauseContext> {
     const cat = catalog ?? (await catalogOf(tx));
     const existing = (await repo.listClauses(tx)).map((c) => ({ code: c.code, label: c.label }));
-    const generalReferenceIds = await generalReferenceIdsOf(tx);
+    const { keys: generalReferenceKeys, repeated: generalRepeatedKeys } = await generalReferenceKeysOf(tx);
     const appendixCodes = new Set((await documentRepo.listAppendices(tx)).map((a) => a.code));
+    const boxCodes = new Set((await documentRepo.listBoxes(tx)).map((x) => x.code));
+    const enumDefs = new Map((await listEnums(tx)).map((e) => [e.code, e]));
+    const enumValues = new Map([...enumDefs.values()].map((e) => [e.code, e.values.map((v) => v.code)]));
     return {
       nextSeq: repo.clauseSeqSource(tx),
       existing,
-      analyze: { resolveType: typeResolverFrom(cat), generalReferenceIds, appendixExists: (c) => appendixCodes.has(c) },
+      analyze: {
+        resolveType: typeResolverFrom(cat),
+        generalReferenceKeys,
+        generalRepeatedKeys,
+        appendixExists: (c) => appendixCodes.has(c),
+        boxExists: (c) => boxCodes.has(c),
+        enumValues: (c) => enumValues.get(c),
+        enums: enumInfoOf((c) => enumDefs.get(c)),
+      },
     };
   }
 
   function notFound<T>(code: Code): Result<T> {
-    return reject({ reason: "notFound", what: `공용조항 ${code}` });
+    return reject({ reason: "notFound", what: `함수조항 ${code}` });
   }
 
   async function withClause<T>(tx: Db, code: Code, fn: (def: Clause) => Promise<Result<T>> | Result<T>): Promise<Result<T>> {
@@ -198,18 +228,21 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
     return fn(def);
   }
 
-  /** 사용처 재검사 — 요구 구분자 존재 + 옵션 선택 (부착은 없다 — ADR-0037). */
-  async function recheckOf(clause: Clause, lookup: DiscriminatorLookup): Promise<RecheckEntry[]> {
-    const usages = await usage.documentsReferencing(clause.code);
+  /** 사용처 재검사 — 요구 구분자 존재 + 옵션 선택 + 인자 연결(누락 · 타입) (부착은 없다 — ADR-0037). */
+  function recheckOf(clause: Clause, usages: readonly Usage[], catalog: ReadonlyMap<Code, Discriminator>): RecheckEntry[] {
     if (usages.length === 0) return [];
-    return recheckUsages(clause, usages, lookup);
+    const typeOf = (code: Code) => {
+      const def = catalog.get(code);
+      return def ? discriminatorResultType(def, undefined, catalog) : undefined;
+    };
+    return recheckUsages(clause, usages, lookupIn(catalog), typeOf);
   }
 
   /** 비파괴 변경 (본문·옵션 무관) — 읽기 → 도메인 → 저장. */
   function edit(actor: Actor, code: Code, change: (def: Clause, ctx: ClauseContext) => Promise<Result<Clause>> | Result<Clause>): Promise<Result<Clause>> {
     return db.transaction((tx) =>
       withClause(tx, code, async (def) => {
-        const r = await change(def, await context(tx));
+        const r = coded(await change(def, await context(tx)));
         if (!r.ok) return r;
         await repo.saveClause(tx, r.value, actor.userId);
         return r;
@@ -230,14 +263,15 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
     const saved = await db.transaction((tx) =>
       withClause<Clause>(tx, code, async (def) => {
         catalog = await catalogOf(tx);
-        const r = await change(def, await context(tx, catalog));
+        const r = coded(await change(def, await context(tx, catalog)));
         if (!r.ok) return r;
         await repo.saveClause(tx, r.value, actor.userId);
         return r;
       }),
     );
     if (!saved.ok) return saved as Result<SaveOutcome>;
-    return ok({ clause: saved.value, recheck: await recheckOf(saved.value, lookupIn(catalog!)) });
+    const usages = await usage.documentsReferencing(saved.value.code);
+    return ok({ clause: saved.value, recheck: recheckOf(saved.value, usages, catalog!), warnings: unitWarnings(saved.value, usages.length) });
   }
 
   return {
@@ -262,11 +296,15 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
     },
     required: async (code) => (await repo.loadClause(db, code))?.required,
     usages: (code) => usage.documentsReferencing(code),
+    unitWarnings: async (code) => {
+      const clause = await repo.loadClause(db, code);
+      return clause ? unitWarnings(clause, (await usage.documentsReferencing(code)).length) : [];
+    },
     audit: (code) => repo.clauseAudit(db, code),
 
     create: (actor, input) =>
       db.transaction(async (tx) => {
-        const r = await createClause(input, await context(tx));
+        const r = coded(await createClause(input, await context(tx)));
         if (!r.ok) return r;
         await repo.insertClause(tx, r.value, actor.userId);
         return r;
@@ -274,10 +312,11 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
     rename: (actor, code, label) => edit(actor, code, (def, ctx) => renameClause(def, label, ctx.existing)),
     setBody: (actor, code, body) => editAndRecheck(actor, code, (def, ctx) => setBody(def, body, ctx.analyze)),
     setMode: (actor, code, mode, body) => editAndRecheck(actor, code, (def, ctx) => setMode(def, mode, body, ctx.analyze)),
+    setParams: (actor, code, params, body, locals) => editAndRecheck(actor, code, (def, ctx) => setParams(def, params, body, ctx.analyze, locals)),
     duplicate: (actor, code) =>
       db.transaction((tx) =>
         withClause(tx, code, async (def) => {
-          const r = await duplicateClause(def, await context(tx));
+          const r = coded(await duplicateClause(def, await context(tx)));
           if (!r.ok) return r;
           await repo.insertClause(tx, r.value, actor.userId);
           return r;
@@ -328,6 +367,6 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
         ok(checkAttachmentForReference(def, await lookupOf(db), { ownerId: owner.id })),
       ),
 
-    recheck: (code) => withClause(db, code, async (def) => ok(await recheckOf(def, await lookupOf(db)))),
+    recheck: (code) => withClause(db, code, async (def) => ok(recheckOf(def, await usage.documentsReferencing(code), await catalogOf(db)))),
   };
 }

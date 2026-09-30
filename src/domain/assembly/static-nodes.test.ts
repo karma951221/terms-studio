@@ -104,11 +104,11 @@ describe("기본계약 대치 — 보통약관이 대치되는 조의 항을 가
     const general = input.generalDocuments.get("g-doc")!;
     // 마스터 「보험금 지급에 관한 세부규정」(g-art-detail) 에 항 둘을 두고, 다른 조에서 그 둘째 항을 가리킨다
     const detail = general.children.find((c): c is ArticleNode => c.kind === "article" && c.id === "g-art-detail")!;
-    const gp1 = b.paragraph([b.text("마스터 첫 항")]);
-    const gp2 = b.paragraph([b.text("마스터 둘째 항")]);
+    const gp1 = { ...b.paragraph([b.text("마스터 첫 항")]), code: "P0100" };
+    const gp2 = { ...b.paragraph([b.text("마스터 둘째 항")]), code: "P0200" };
     detail.children = [gp1, gp2];
     const refund = general.children.find((c): c is ArticleNode => c.kind === "article" && c.id === "g-art-refund")!;
-    (refund.children[0] as ParagraphNode).children.push(b.text(" "), b.articleRef(gp2.id, "self"), b.text("에 따라"));
+    (refund.children[0] as ParagraphNode).children.push(b.text(" "), b.articleRef({ articleId: detail.id, code: gp2.code }, "self"), b.text("에 따라"));
     // 기본계약 문면의 세부규정 조는 항 둘 — 대치되면 둘째 항이 「제3조(…) 제2항」 으로 찍혀야 한다
     const baseDoc = input.specialDocuments.get("cov-base-death")!;
     const baseDetail = baseDoc.children.find((c): c is ArticleNode => c.kind === "article" && c.linkedArticleId === "g-art-detail")!;
@@ -129,11 +129,11 @@ describe("순번 별칭은 구조가 같음을 증명한 경우에만 만든다 
     const b = nodeBuilders(sequentialIds("m"));
     const general = input.generalDocuments.get("g-doc")!;
     const detail = general.children.find((c): c is ArticleNode => c.kind === "article" && c.id === "g-art-detail")!;
-    const gp1 = b.paragraph([b.text("마스터 첫 항")]);
-    const gp2 = b.paragraph([b.text("마스터 둘째 항")]);
+    const gp1 = { ...b.paragraph([b.text("마스터 첫 항")]), code: "P0100" };
+    const gp2 = { ...b.paragraph([b.text("마스터 둘째 항")]), code: "P0200" };
     detail.children = [gp1, gp2];
     const refund = general.children.find((c): c is ArticleNode => c.kind === "article" && c.id === "g-art-refund")!;
-    (refund.children[0] as ParagraphNode).children.push(b.articleRef(gp2.id, "self"));
+    (refund.children[0] as ParagraphNode).children.push(b.articleRef({ articleId: detail.id, code: gp2.code }, "self"));
     // 기본계약 조는 항이 하나뿐 — 마스터의 둘째 항에 대응하는 자리가 없다
     const booklet = assembleInput(input);
     expect(booklet.issues.map((i) => i.kind)).toEqual(["articleGone"]);
@@ -145,11 +145,58 @@ describe("순번 별칭은 구조가 같음을 증명한 경우에만 만든다 
     const b = nodeBuilders(sequentialIds("c"));
     const general = input.generalDocuments.get("g-doc")!;
     const detail = general.children.find((c): c is ArticleNode => c.kind === "article" && c.id === "g-art-detail")!;
-    const gp1 = b.paragraph([b.text("마스터 첫 항")]);
+    const gp1 = { ...b.paragraph([b.text("마스터 첫 항")]), code: "P0100" };
     detail.children = [gp1, b.condBlock([b.branch("D0001 = true", [b.paragraph([b.text("조건 항")])])])];
     const refund = general.children.find((c): c is ArticleNode => c.kind === "article" && c.id === "g-art-refund")!;
-    (refund.children[0] as ParagraphNode).children.push(b.articleRef(gp1.id, "self"));
+    // 기본계약 조의 첫 항도 코드가 P0100 이지만(열쇠가 기본계약 조 앞마디로 갈린다) 별칭이 없으면 풀리지 않는다
+    (refund.children[0] as ParagraphNode).children.push(b.articleRef({ articleId: detail.id, code: gp1.code }, "self"));
     const booklet = assembleInput(input);
     expect(booklet.issues.map((i) => i.kind)).toEqual(["articleGone"]);
+  });
+});
+
+describe("정적 마스터 박스 참조가 조립에서 박스 내용으로 펼쳐진다 (최종 결정 9)", () => {
+  const boxes = [
+    { code: "BX000001", name: "암 정의 박스", title: "암의 정의", lines: ["암이란 …", "", "유사암 제외"] },
+    { code: "BX000002", name: "예시", title: "", lines: ["예시 줄"] },
+  ];
+
+  it("boxRef가 박스 내용으로 펼쳐진다 — 조 자리 · 항 뒤(호 목록 자리) 모두, 제목 · 줄은 마스터 그대로", () => {
+    const input = alphaPlusFixture();
+    const b = nodeBuilders(sequentialIds("x"));
+    const general = input.generalDocuments.get("g-doc")!;
+    const first = general.children[0] as ArticleNode;
+    const paragraph = first.children[0] as ParagraphNode;
+    paragraph.items = [b.item([b.text("첫 호")]), b.boxRef("BX000002")];
+    first.children = [...first.children, b.boxRef("BX000001")];
+    const booklet = assembleInput({ ...input, boxes });
+    expect(booklet.issues).toEqual([]);
+    const a1 = booklet.general!.children[0] as RenderedArticle;
+    expect(a1.children.map((c) => c.kind)).toEqual(["paragraph", "box"]);
+    expect(a1.children[1]).toMatchObject({ kind: "box", title: "암의 정의", lines: ["암이란 …", "", "유사암 제외"] });
+    expect((a1.children[0] as RenderedParagraph).items?.map((i) => i.kind)).toEqual(["item", "box"]);
+  });
+
+  it("함수조항 본문 안의 boxRef도 사용처 자리에서 박스로 펼쳐진다 (박스는 잎 — 중첩 금지에 걸리지 않는다)", () => {
+    const input = alphaPlusFixture();
+    const b = nodeBuilders(sequentialIds("y"));
+    const clause = { code: "C0900", label: "암 정의", mode: "block" as const, options: [], required: { discriminators: [], attributes: [] }, body: [{ id: "p1", kind: "paragraph" as const, children: [{ id: "t1", kind: "text" as const, text: "암이란" }] }, { id: "bx", kind: "boxRef" as const, boxCode: "BX000001" }] };
+    const general = input.generalDocuments.get("g-doc")!;
+    const first = general.children[0] as ArticleNode;
+    first.children = [...first.children, b.clauseBlock("C0900")];
+    const booklet = assembleInput({ ...input, clauses: [...input.clauses, clause], boxes });
+    expect(booklet.issues).toEqual([]);
+    const a1 = booklet.general!.children[0] as RenderedArticle;
+    expect(a1.children.at(-1)).toMatchObject({ kind: "box", title: "암의 정의" });
+  });
+
+  it("없는 박스를 가리키면 그 자리가 brokenRef 오류 마커가 된다", () => {
+    const input = alphaPlusFixture();
+    const b = nodeBuilders(sequentialIds("z"));
+    const general = input.generalDocuments.get("g-doc")!;
+    const first = general.children[0] as ArticleNode;
+    first.children = [...first.children, b.boxRef("BX000099")];
+    const booklet = assembleInput({ ...input, boxes });
+    expect(booklet.issues.map((i) => [i.kind, i.message])).toEqual([["brokenRef", "박스 BX000099 이(가) 정적 마스터에 없습니다"]]);
   });
 });

@@ -1,15 +1,17 @@
 /**
  * 문면 저장소 — drizzle 쿼리만. 규칙 없음 (규칙은 src/domain/document, 조립은 src/services/document).
  *
- * 문서 행 ↔ `DocumentRecord`, 별표 행 ↔ `Appendix` 매핑을 여기서 한다.
+ * 문서 행 ↔ `DocumentRecord`, 별표 행 ↔ `Appendix`, 박스 행 ↔ `Box` 매핑을 여기서 한다.
  */
 import { and, asc, eq, sql } from "drizzle-orm";
 
 import type { Appendix } from "@/domain/document/appendix";
+import type { Box } from "@/domain/document/box";
 import type { DocumentNode } from "@/domain/document/nodes";
+import { withCodes } from "@/domain/document/pcode";
 import type { Code, Id } from "@/domain/types";
 
-import { appendices, codeSequences, documents } from "../schema";
+import { appendices, boxes, codeSequences, documents } from "../schema";
 import type { Db } from "./types";
 
 export type DocumentKind = "special" | "general";
@@ -59,7 +61,8 @@ function toSummary(r: Row): DocumentSummary {
 }
 
 function toRecord(r: Row): DocumentRecord {
-  return { ...toSummary(r), tree: r.tree };
+  // P코드 없는 옛 트리는 읽을 때 채운다 — 편집기의 참조 대상이 코드다 (ADR-0072 결정 10, 저장이 같은 규칙으로 채운다)
+  return { ...toSummary(r), tree: withCodes(r.tree) };
 }
 
 // ───────────────────────────── 문서 ─────────────────────────────
@@ -161,7 +164,7 @@ export async function deleteDocument(db: Db, id: Id): Promise<void> {
 // ───────────────────────────── 별표 ─────────────────────────────
 
 /**
- * 별표 순번 — 카탈로그 · 공용조항과 같은 code_sequences 를 쓰되 kind 는 `appendix` (scope 전역 "").
+ * 별표 순번 — 카탈로그 · 함수조항과 같은 code_sequences 를 쓰되 kind 는 `appendix` (scope 전역 "").
  * 한 문장의 upsert 라 동시 호출에도 안전하고, 삭제된 순번은 재사용하지 않는다.
  */
 export async function nextAppendixSeq(db: Db): Promise<number> {
@@ -215,5 +218,59 @@ export async function appendixAudits(db: Db): Promise<Map<Code, { updatedAt: Dat
   const rows = await db
     .select({ code: appendices.code, updatedAt: appendices.updatedAt, updatedBy: appendices.updatedBy })
     .from(appendices);
+  return new Map(rows.map((row) => [row.code, { updatedAt: row.updatedAt, updatedBy: row.updatedBy }] as const));
+}
+
+// ───────────────────────────── 박스 (정적 마스터) ─────────────────────────────
+
+/** 박스 순번 — code_sequences kind `box` (scope 전역 ""). 별표와 같은 한 문장 upsert. */
+export async function nextBoxSeq(db: Db): Promise<number> {
+  const [row] = await db
+    .insert(codeSequences)
+    .values({ kind: "box", scope: "", next: 2 })
+    .onConflictDoUpdate({
+      target: [codeSequences.kind, codeSequences.scope],
+      set: { next: sql`${codeSequences.next} + 1` },
+    })
+    .returning({ next: codeSequences.next });
+  return row.next - 1;
+}
+
+type BoxRow = typeof boxes.$inferSelect;
+
+function toBox(r: BoxRow): Box {
+  return { code: r.code, name: r.name, title: r.title, lines: r.lines };
+}
+
+export async function insertBox(db: Db, x: Box, who: Id): Promise<void> {
+  await db.insert(boxes).values({ code: x.code, name: x.name, title: x.title, lines: x.lines, createdBy: who, updatedBy: who });
+}
+
+export async function loadBox(db: Db, code: Code): Promise<Box | undefined> {
+  const [row] = await db.select().from(boxes).where(eq(boxes.code, code)).limit(1);
+  return row ? toBox(row) : undefined;
+}
+
+/** 코드순. */
+export async function listBoxes(db: Db): Promise<Box[]> {
+  const rows = await db.select().from(boxes).orderBy(asc(boxes.code));
+  return rows.map(toBox);
+}
+
+export async function saveBox(db: Db, x: Box, who: Id): Promise<void> {
+  const [row] = await db
+    .update(boxes)
+    .set({ name: x.name, title: x.title, lines: x.lines, updatedAt: new Date(), updatedBy: who })
+    .where(eq(boxes.code, x.code))
+    .returning({ id: boxes.id });
+  if (!row) throw new Error(`저장 대상 박스가 없습니다: ${x.code}`);
+}
+
+export async function deleteBox(db: Db, code: Code): Promise<void> {
+  await db.delete(boxes).where(eq(boxes.code, code));
+}
+
+export async function boxAudits(db: Db): Promise<Map<Code, { updatedAt: Date; updatedBy: Id | null }>> {
+  const rows = await db.select({ code: boxes.code, updatedAt: boxes.updatedAt, updatedBy: boxes.updatedBy }).from(boxes);
   return new Map(rows.map((row) => [row.code, { updatedAt: row.updatedAt, updatedBy: row.updatedBy }] as const));
 }

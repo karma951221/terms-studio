@@ -9,7 +9,7 @@
  * - 구조 계획(`applyStructurePlan`, ADR-0075)은 초안 하나를 최종 트리로 검사해(`applyStructurePlanTo` — 형제 이름 맞바꾸기 · 지운 이름 재사용 허용) **한 트랜잭션에서 한 번 저장**.
  *   삭제가 섞이면 같은 2단(편집자 forbidden · 관리자 needsConfirmation) — 영향에 탑재 상품담보 · 스냅샷 소실 행(`Impact.mounts`)이
  *   실린다. 저장 뒤 탑재 상품담보 스냅샷을 같은 트랜잭션에서 맞춘다 (`MountSync`, 조립 루트가 product 를 잇는다).
- * - 사용처(문면 조건식·슬롯 · 요구 공용조항 · 파생식)는 `UsageSource` 로 주입 (C1 refs). 기본 NO_USAGE.
+ * - 사용처(문면 조건식·슬롯 · 요구 함수조항 · 파생식)는 `UsageSource` 로 주입 (C1 refs). 기본 NO_USAGE.
  * - 값 자리는 마스터가 정한다 (ADR-0037) — 부착이 없어 `attach`/`detach`/`attachable` 이 사라졌다.
  * - 완결성의 실행 기반 필터는 `CompletenessFilter` 로 주입 (C2). 기본은 마스터 전체.
  */

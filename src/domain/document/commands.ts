@@ -2,28 +2,30 @@
  * 트리 편집 커맨드 — 전부 `(tree, command) → Result<tree>` 순수 함수. 입력 트리는 바꾸지 않는다.
  *
  * 구조 편집기(ADR-0012)의 조작이 그대로 커맨드다: 추가 · 삭제 · 이동 · 복제 · 텍스트/조 명 · 슬롯/참조 대상 ·
- * 조건 가지(추가·식·삭제·순서) · 반복 속성 · 조연결 · 공용조항 옵션.
+ * 조건 가지(추가·식·삭제·순서) · 반복 속성 · 조연결 · 함수조항 옵션.
  *
  * 검증 원칙:
  * - 커맨드는 **자기가 건드린 자리**만 검사한다 (허용 자식 · 중첩 · id 유일 · 가지 규칙 · 참조 대상 존재).
  *   문서 전체의 저장 검증은 `validateTree` + `validateExpressions` (서비스가 저장 직전에).
- * - 참조를 **추가하는 시점**에 대상 존재를 검증한다 (기능/문면 §3.5 — 추가할 때와 저장할 때 두 번 검증). 공용조항 옵션 미선택은
- *   추가 시점엔 통과, 저장 시점에 거부 (기능/공용조항 §3.2).
+ * - 참조를 **추가하는 시점**에 대상 존재를 검증한다 (기능/문면 §3.5 — 추가할 때와 저장할 때 두 번 검증). 함수조항 옵션 미선택은
+ *   추가 시점엔 통과, 저장 시점에 거부 (기능/함수조항 §3.2).
  * - 참조되는 조는 삭제할 수 없다 — 참조처 좌표를 제시한다 (D-P4-7). 같이 지워지는 참조는 무관.
  */
 
+import type { Bindings } from "../clause/params";
 import { ok, reject } from "../types";
 import type { Code, Id, Issue, Result } from "../types";
 import type { IdSource } from "./builders";
 import { randomIds } from "./builders";
 import {
+  allowedAtSlot,
   allowedChildren,
-  allowedIn,
   branchesOf,
   cellNodesOf,
   checkNodeRefs,
   coordinateOf,
   indexTree,
+  isSwitchCarrier,
   listOf,
   slotsOf,
   tableIssues,
@@ -36,6 +38,7 @@ import {
   type InlineNode,
   type Node,
   type NodeEntry,
+  type RefTarget,
   type SlotName,
   type TableColumn,
   type TableNode,
@@ -43,6 +46,8 @@ import {
   type TreeEnv,
   type TreeIndex,
 } from "./nodes";
+import { isRepeatSource, type RepeatSource } from "./blockRepeat";
+import { codeTreeInPlace, documentCodeIssues, isCodedKind, isPCode, lostRefKeys, refKey, refLabel } from "./pcode";
 
 // ───────────────────────────── 커맨드 ─────────────────────────────
 
@@ -98,17 +103,28 @@ export type Command =
   | { type: "setTableRowHeader"; tableId: Id; index: number; header: boolean }
   /** 표 셀(행 · 열)에 인라인 노드를 넣는다 — 구조 표기 · 슬롯 등. `index` 없으면 끝. */
   | { type: "insertCell"; tableId: Id; row: number; col: number; node: InlineNode; index?: number }
-  | { type: "setArticleRef"; nodeId: Id; targets: { nodeId: Id }[]; connector: ArticleRefNode["connector"]; scope: ArticleRefNode["scope"] }
+  | { type: "setArticleRef"; nodeId: Id; targets: RefTarget[]; connector: ArticleRefNode["connector"]; scope: ArticleRefNode["scope"] }
   | { type: "setAppendixRef"; nodeId: Id; appendixCode: Code }
-  | { type: "setClauseOptions"; nodeId: Id; options: Record<Code, Code> }
-  | { type: "setFor"; nodeId: Id; source?: string; alias?: string; separator?: string }
+  /** 함수조항 참조의 옵션 선택 · 인자 연결. `bindings` 없으면 연결은 그대로, 빈 맵이면 걷는다(모두 기본 연결, 최종 결정 2). */
+  | { type: "setClauseOptions"; nodeId: Id; options: Record<Code, Code>; bindings?: Bindings }
+  /** 반복 원천 · 이름 — 블록 반복은 `RepeatSource`(ADR-0077), 인라인 반복(자리만)은 글자. 이름을 빈 글자로 주면 지운다(원천에서 짓는다). */
+  | { type: "setFor"; nodeId: Id; source?: RepeatSource | string; alias?: string; separator?: string }
   | { type: "addBranch"; condId: Id; branch: BlockBranch | InlineBranch; index?: number }
   /** `when` 없음 = else 로 바꾼다. */
   | { type: "setWhen"; branchId: Id; when?: string }
   | { type: "removeBranch"; branchId: Id }
+  /** 값별 분기 운반체의 대상 식 (함수조항 편집기 — 최종 결정 5). */
+  | { type: "setSwitch"; nodeId: Id; on: string }
+  /** 값별 분기 칸의 값 · 「문구 없음」 — 「문구 없음」은 본문이 없을 때만. */
+  | { type: "setCase"; branchId: Id; values: readonly Code[]; empty?: boolean }
   | { type: "moveBranch"; branchId: Id; index: number }
   /** 조연결 설정(`linkedArticleId`) 또는 해제(undefined). */
-  | { type: "link"; articleId: Id; linkedArticleId?: Id };
+  | { type: "link"; articleId: Id; linkedArticleId?: Id }
+  /**
+   * P코드 직접 수정 (ADR-0072 결정 5) — 형식(`P` + 숫자 4자리 이상)이 아니거나 공존하는 노드의 코드와 겹치면 거부.
+   * 참조는 따라가지 않는다(결정 6) — 같은 코드의 분기 짝이 있으면 그리로, 없으면 깨진다. 수정 창 · 영향 건수는 다음 작업.
+   */
+  | { type: "setCode"; nodeId: Id; code: Code };
 
 export interface ApplyOptions {
   env?: TreeEnv;
@@ -183,7 +199,7 @@ function containerOf(ix: TreeIndex, pos: Position): Result<Container> {
   }
   const e = ix.nodes.get(pos.parentId);
   if (!e) return notFound(`노드 ${pos.parentId}`);
-  const allowed = allowedIn(e.node.kind, slot);
+  const allowed = allowedAtSlot(e, slot);
   if (allowed === undefined) return structure(`${e.node.kind} 에는 ${slot} 자리가 없습니다`, e.path);
   let list = listOf(e.node, slot);
   if (!list) {
@@ -215,18 +231,23 @@ function verifyPlaced(doc: DocumentNode, node: Node, env: TreeEnv): Result<Docum
   return issues.length > 0 ? invalid(issues) : ok(doc);
 }
 
-/** 삭제될 조를 밖에서 가리키는 조 참조 슬롯 (D-P4-7). */
+/**
+ * 삭제될 대상을 밖에서 가리키는 조 참조 슬롯 (D-P4-7). 대상은 열쇠(조 · 조#코드)로 본다 —
+ * 지우는 노드와 같은 코드의 분기 짝이 남으면 대상은 살아 있다 (ADR-0072 결정 4 · 9).
+ */
 function danglingRefs(ix: TreeIndex, removed: ReadonlySet<Id>, env: TreeEnv): Issue[] {
+  const lost = lostRefKeys(ix, removed);
   const out: Issue[] = [];
   for (const e of ix.nodes.values()) {
     const n = e.node;
     if (n.kind !== "articleRef" || n.scope !== "self" || removed.has(n.id)) continue;
     for (const target of n.targets) {
-      if (!removed.has(target.nodeId)) continue;
+      const key = refKey(target);
+      if (!lost.has(key)) continue;
       out.push({
         kind: "brokenRef",
-        message: `노드 ${target.nodeId} 를 가리키는 참조 슬롯이 남아 있습니다`,
-        at: { ...coordinateOf(ix, e, env.coordinate), refPath: target.nodeId },
+        message: `${refLabel(target)} 를 가리키는 참조 슬롯이 남아 있습니다`,
+        at: { ...coordinateOf(ix, e, env.coordinate), refPath: key },
       });
     }
   }
@@ -234,7 +255,9 @@ function danglingRefs(ix: TreeIndex, removed: ReadonlySet<Id>, env: TreeEnv): Is
 }
 
 /** else 는 마지막에 최대 1개 (D-P4-11). */
-function elseRule(branches: (BlockBranch | InlineBranch)[], path: Id[]): Result<void> {
+function elseRule(branches: (BlockBranch | InlineBranch)[], path: Id[], owner?: Node): Result<void> {
+  // 값별 분기 운반체의 칸은 `when` 이 없다 — else 규칙이 아니라 값 배정 규칙(함수조항 저장 검사)을 따른다
+  if (owner && isSwitchCarrier(owner)) return ok(undefined);
   const elseAt = branches.findIndex((b) => b.when === undefined);
   if (elseAt !== -1 && elseAt !== branches.length - 1) return structure("else 가지는 마지막에만 올 수 있습니다", path);
   if (branches.filter((b) => b.when === undefined).length > 1) return structure("else 가지는 하나만 둘 수 있습니다", path);
@@ -268,9 +291,10 @@ function cloneSubtree<T extends Node>(root: T, newId: IdSource): T {
     cellNodesOf(n).forEach(relabel);
   };
   relabel(copy);
+  // 사본 안의 조를 가리키는 자기 참조는 사본의 조로 — 코드는 조 안에서만 유일하므로 조째 복사한 사본은 코드가 그대로다
   for (const n of nodesIn(copy)) {
     if (n.kind === "articleRef" && n.scope === "self") {
-      n.targets = n.targets.map(({ nodeId }) => ({ nodeId: map.get(nodeId) ?? nodeId }));
+      n.targets = n.targets.map((t) => ({ ...t, articleId: map.get(t.articleId) ?? t.articleId }));
     }
   }
   return copy;
@@ -308,6 +332,7 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       }
       const node = structuredClone(cmd.node);
       c.value.list.splice(clampIndex(cmd.at.index, c.value.list.length), 0, node);
+      numberNew(work, node);
       return verifyPlaced(work, node, env);
     }
 
@@ -353,6 +378,8 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       if (!c.ok) return c;
       if (!c.value.allowed.includes(copy.kind)) return structure(`이 자리에 ${copy.kind} 은(는) 올 수 없습니다`, [...c.value.path]);
       c.value.list.splice(clampIndex(at.index, c.value.list.length), 0, copy);
+      // 붙여넣기(사본)는 항상 재채번 — 새로 생긴 노드라 가리키는 곳이 없다 (ADR-0072 결정 5). 사본 안에서 사본을 가리키던 참조는 새 코드로 따라간다
+      followRenumbered(copy, e.value.articleId, numberNew(work, copy));
       return verifyPlaced(work, copy, env);
     }
 
@@ -546,14 +573,19 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       if (cmd.type === "setArticleRef") {
         if (n.kind !== "articleRef") return structure("조 참조 슬롯이 아닙니다", e.value.path);
         n.targets = cmd.targets.map((target) => ({ ...target }));
-        n.connector = cmd.connector;
+        if (cmd.connector === undefined) delete n.connector;
+        else n.connector = cmd.connector;
         n.scope = cmd.scope;
       } else if (cmd.type === "setAppendixRef") {
         if (n.kind !== "appendixRef") return structure("별표 참조 슬롯이 아닙니다", e.value.path);
         n.appendixCode = cmd.appendixCode;
       } else {
-        if (n.kind !== "clauseBlockRef" && n.kind !== "clauseInlineRef") return structure("공용조항 참조가 아닙니다", e.value.path);
+        if (n.kind !== "clauseBlockRef" && n.kind !== "clauseInlineRef") return structure("함수조항 참조가 아닙니다", e.value.path);
         n.options = { ...cmd.options };
+        if (cmd.bindings !== undefined) {
+          if (Object.keys(cmd.bindings).length === 0) delete n.bindings;
+          else n.bindings = structuredClone(cmd.bindings);
+        }
       }
       const issues = checkNodeRefs(e.value, ix, env, false);
       return issues.length > 0 ? invalid(issues) : ok(work);
@@ -564,9 +596,27 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       if (!e.ok) return e;
       const n = e.value.node;
       if (n.kind !== "forBlock" && n.kind !== "inlineFor") return structure("반복 노드가 아닙니다", e.value.path);
-      if (cmd.source !== undefined) n.source = cmd.source;
-      if (cmd.alias !== undefined) n.alias = cmd.alias;
+      if (cmd.source !== undefined) {
+        if (n.kind === "forBlock") {
+          if (!isRepeatSource(cmd.source)) return structure("블록 반복의 원천을 고른다", e.value.path);
+          n.source = structuredClone(cmd.source);
+        } else {
+          if (typeof cmd.source !== "string") return structure("인라인 반복의 원천은 글자입니다", e.value.path);
+          n.source = cmd.source;
+        }
+      }
+      if (cmd.alias !== undefined) {
+        if (cmd.alias.trim() === "") delete n.alias;
+        else n.alias = cmd.alias;
+      }
       if (cmd.separator !== undefined && n.kind === "inlineFor") n.separator = cmd.separator;
+      if (n.kind === "forBlock") {
+        // 원천을 바꾸면 그 자리에서 바로 검사한다(안쪽 반복 · 현재 원소 연결이 기대는 원천) — 넣기와 같은 규칙
+        const wix = indexTree(work, env.coordinate);
+        const entry = wix.nodes.get(n.id);
+        const issues = entry ? checkNodeRefs(entry, wix, env, false) : [];
+        if (issues.length > 0) return invalid(issues);
+      }
       return ok(work);
     }
 
@@ -577,8 +627,9 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       if (!brs) return structure("조건 노드가 아닙니다", e.value.path);
       const branch = structuredClone(cmd.branch);
       brs.splice(clampIndex(cmd.index, brs.length), 0, branch as BlockBranch & InlineBranch);
-      const rule = elseRule(brs, e.value.path);
+      const rule = elseRule(brs, e.value.path, e.value.node);
       if (!rule.ok) return rule;
+      for (const child of branch.children as Node[]) numberNew(work, child);
       const after = indexTree(work, env.coordinate);
       const ids = new Set<Id>([branch.id]);
       (branch.children as Node[]).forEach((c) => idsIn(c).forEach((id) => ids.add(id)));
@@ -593,8 +644,29 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       if (cmd.when === undefined) delete b.branch.when;
       else b.branch.when = cmd.when;
       const owner = ix.nodes.get(b.ownerId)!;
-      const rule = elseRule(branchesOf(owner.node)!, owner.path);
+      const rule = elseRule(branchesOf(owner.node)!, owner.path, owner.node);
       return rule.ok ? ok(work) : rule;
+    }
+
+    case "setSwitch": {
+      const e = entryOf(ix, cmd.nodeId);
+      if (!e.ok) return e;
+      const n = e.value.node;
+      if (!isSwitchCarrier(n) || (n.kind !== "condBlock" && n.kind !== "inlineCond")) return structure("값별 분기가 아닙니다", e.value.path);
+      n.switchOn = cmd.on;
+      return ok(work);
+    }
+
+    case "setCase": {
+      const b = ix.branches.get(cmd.branchId);
+      if (!b) return notFound(`칸 ${cmd.branchId}`);
+      const owner = ix.nodes.get(b.ownerId)!;
+      if (!isSwitchCarrier(owner.node)) return structure("값별 분기의 칸이 아닙니다", owner.path);
+      if (cmd.empty && b.branch.children.length > 0) return structure("「문구 없음」 칸은 본문이 없어야 합니다 — 본문을 먼저 지운다", b.path);
+      b.branch.values = [...cmd.values];
+      if (cmd.empty) b.branch.empty = true;
+      else delete b.branch.empty;
+      return ok(work);
     }
 
     case "removeBranch": {
@@ -618,8 +690,18 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       const brs = branchesOf(owner.node)!;
       brs.splice(b.index, 1);
       brs.splice(clampIndex(cmd.index, brs.length), 0, b.branch as BlockBranch & InlineBranch);
-      const rule = elseRule(brs, owner.path);
+      const rule = elseRule(brs, owner.path, owner.node);
       return rule.ok ? ok(work) : rule;
+    }
+
+    case "setCode": {
+      const e = entryOf(ix, cmd.nodeId);
+      if (!e.ok) return e;
+      if (!isCodedKind(e.value.node.kind)) return structure("코드는 항 · 호 · 목 · 함수조항 블록 참조에만 둘 수 있습니다", e.value.path);
+      if (!isPCode(cmd.code)) return structure(`코드 ${cmd.code} 는 P코드 형식(P + 숫자 4자리 이상)이 아닙니다`, e.value.path);
+      (e.value.node as Node & { code?: Code }).code = cmd.code;
+      const clash = documentCodeIssues(work).find((i) => i.id === cmd.nodeId);
+      return clash ? structure(clash.message, e.value.path) : ok(work);
     }
 
     case "link": {
@@ -631,6 +713,37 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       const issues = checkNodeRefs(e.value, ix, env, false);
       return issues.length > 0 ? invalid(issues) : ok(work);
     }
+  }
+}
+
+/**
+ * 새로 놓인 하위 트리의 코드 자리를 매긴다 (새 노드 · 사본, ADR-0072 결정 5). 이미 있던 조에 놓인 자리는 가진 코드를 버리고 새로 —
+ * 같은 조의 코드와 겹치지 않게. 함께 새로 생긴 조 안의 자리는 가진 코드를 둔다(범위가 새 조뿐이라 겹칠 것이 없다), 없으면 채운다.
+ * 돌려주는 것은 다시 매긴 자리의 옛 코드 → 새 대상(놓인 조 · 새 코드).
+ */
+function numberNew(doc: DocumentNode, root: Node): Map<Code, RefTarget> {
+  const ix = indexTree(doc);
+  const fresh = new Set(nodesIn(root).map((n) => n.id));
+  const coded = nodesIn(root).filter((n) => isCodedKind(n.kind));
+  const ids = new Set(coded.map((n) => n.id));
+  const renumber = new Set(coded.filter((n) => !fresh.has(ix.nodes.get(n.id)?.articleId ?? "")).map((n) => n.id));
+  const before = new Map(coded.map((n) => [n.id, (n as { code?: Code }).code] as const));
+  const moved = new Map<Code, RefTarget>();
+  if (ids.size === 0) return moved;
+  for (const [id, code] of codeTreeInPlace(doc, { renumber, only: ids })) {
+    const old = before.get(id);
+    const articleId = ix.nodes.get(id)?.articleId;
+    if (old !== undefined && articleId !== undefined) moved.set(old, { articleId, code });
+  }
+  return moved;
+}
+
+/** 사본 안의 자기 참조가 원본 조의 복사된 노드(옛 코드)를 가리켰으면 사본 노드(새 대상)로 옮긴다 — 사본 안 참조는 사본을 따라간다(D-P4-9). */
+function followRenumbered(copy: Node, sourceArticleId: Id | undefined, moved: ReadonlyMap<Code, RefTarget>): void {
+  if (moved.size === 0 || sourceArticleId === undefined) return;
+  for (const n of nodesIn(copy)) {
+    if (n.kind !== "articleRef" || n.scope !== "self") continue;
+    n.targets = n.targets.map((t) => (t.articleId === sourceArticleId && t.code !== undefined && moved.has(t.code) ? { ...moved.get(t.code)! } : t));
   }
 }
 

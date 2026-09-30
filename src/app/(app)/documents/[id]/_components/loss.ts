@@ -1,9 +1,9 @@
 /**
  * 노드 삭제가 무엇을 데려가는지 세는 순수 계산 (디자인원칙 §9.5 · 리뷰 #33).
- * 「정말 삭제하시겠습니까?」 대신 「제4조(…) 삭제 → 항 2 · 호 5 · 공용조항 참조 1 이 함께 사라진다」를 만든다.
+ * 「정말 삭제하시겠습니까?」 대신 「제4조(…) 삭제 → 항 2 · 호 5 · 함수조항 참조 1 이 함께 사라진다」를 만든다.
  * **계산된 것만 쓴다** — 겁주려고 범위를 부풀리지 않는다.
  */
-import type { DocumentNode, Node } from "@/domain/document";
+import { indexTree, lostRefKeys, refKey, type DocumentNode, type Node } from "@/domain/document";
 import type { Id } from "@/domain/types";
 
 const KIND_LABEL: Record<string, string> = {
@@ -18,10 +18,11 @@ const KIND_LABEL: Record<string, string> = {
   slot: "치환 슬롯",
   inlineCond: "문장 안 조건",
   condBlock: "조건 블록",
-  clauseBlockRef: "공용조항 참조",
-  clauseInlineRef: "공용조항 참조(문장 안)",
+  clauseBlockRef: "함수조항 참조",
+  clauseInlineRef: "함수조항 참조(문장 안)",
   articleRef: "조 참조",
   appendixRef: "별표 참조",
+  boxRef: "박스 참조",
   forBlock: "반복 블록",
   inlineFor: "문장 안 반복",
 };
@@ -48,7 +49,7 @@ export function subtreeIds(node: Node): Set<Id> {
   return ids;
 }
 
-/** 함께 사라지는 것 — 「항 2」 「호 5」 「공용조항 참조 1」. 자기 자신은 빼고 센다. */
+/** 함께 사라지는 것 — 「항 2」 「호 5」 「함수조항 참조 1」. 자기 자신은 빼고 센다. */
 export function cascadeOf(node: Node): string[] {
   const counts = new Map<string, number>();
   let first = true;
@@ -65,10 +66,12 @@ export function cascadeOf(node: Node): string[] {
 /** 이 문서 안에서 삭제 대상(과 그 아래)을 가리키는 조 참조 슬롯 · 조연결. */
 export function internalReferrers(tree: DocumentNode, targets: ReadonlySet<Id>): { articleId?: Id; what: string }[] {
   const out: { articleId?: Id; what: string }[] = [];
+  // 참조 대상은 열쇠(조 · 조#코드)다 — 지울 노드와 같은 코드의 분기 짝이 남으면 대상은 산다 (ADR-0072)
+  const lost = lostRefKeys(indexTree(tree), targets);
   const visit = (node: Node, articleId?: Id): void => {
     const here = node.kind === "article" ? node.id : articleId;
     if (targets.has(node.id)) return; // 지워질 것 안의 참조는 같이 지워진다
-    if (node.kind === "articleRef" && node.scope === "self" && node.targets.some((t) => targets.has(t.nodeId))) {
+    if (node.kind === "articleRef" && node.scope === "self" && node.targets.some((t) => lost.has(refKey(t)))) {
       out.push({ ...(here !== undefined ? { articleId: here } : {}), what: "조 참조 슬롯" });
     }
     if (node.kind === "article" && node.linkedArticleId !== undefined && targets.has(node.linkedArticleId)) {

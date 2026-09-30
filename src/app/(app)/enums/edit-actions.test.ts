@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { createTestDb, type TestDb } from "@/db/test-utils";
+import { nodeKey } from "@/domain/refs";
 import type { Actor } from "@/domain/types";
 import { createServices, type Services } from "@/services/container";
 
@@ -85,6 +86,9 @@ describe("saveEnumEditAction", () => {
     if (first.ok === "confirm") {
       expect(first.actionLabel).toBe("값 1개 삭제하고 저장");
       expect(first.impact.valueRowsLost).toBe(0);
+      // 값 행은 지우지 않는다 — 「없는 값」 오류로 남는다 (ADR-0078 결정 5)
+      expect(first.title).toBe("값을 빼면 그 값을 고른 자리가 「없는 값」 오류가 된다");
+      expect(first.valueRowsLine).toBe("그 값을 고른 저장 값 0건이 「없는 값」 오류로 남는다");
     }
     expect(await s.catalog.getEnum(def.code)).toEqual(def);
 
@@ -100,5 +104,46 @@ describe("saveEnumEditAction", () => {
     const r = await saveEnumEditAction(def.code, { label: "가입 형태", description: "", values: [{ code: a!, label: "개인" }, { code: "new:1", label: "법인" }] }, true);
     expect(r.ok).toBe(false);
     expect(await s.catalog.getEnum(def.code)).toEqual(def);
+  });
+
+  it("새 값을 더해 저장하면 그 열거형 값을 비교하는 식이 재검사 목록으로 결과에 실린다 · 값을 더하지 않으면 목록이 없다 (ADR-0078 결정 4)", async () => {
+    actor = editor;
+    const e3 = (await s.catalog.getEnum("E0003"))!; // 납입주기 — 마스터 feature.review_type 이 E0003 을 쓴다
+    unwrap(await s.catalog.create(editor, { label: "첫값여부", level: "product", expression: "feature.review_type = 'V01'" }));
+    const values = [...e3.values].sort((a, b) => a.order - b.order).map((v) => ({ code: v.code, label: v.label }));
+    const r = await saveEnumEditAction("E0003", { label: e3.label, description: "", values: [...values, { code: "new:1", label: "분기납" }] });
+    if (r.ok !== true) throw new Error("저장 기대");
+    expect(r.recheck?.map((e) => [e.via, nodeKey(e.from), nodeKey(e.to)])).toEqual([["expression", "discriminator:D0001", "enumValue:E0003/V01"]]);
+    expect(await saveEnumEditAction("E0003", { label: "납입 주기", description: "", values: [...values, { code: "V05", label: "분기납" }] })).toEqual({ ok: true });
+  });
+  it("필드를 더하고 값에 넣어 저장 — 새 필드는 new: 키로 가리키고 저장 뒤 F 코드를 받는다 · 빈 새 필드 행은 버린다 (ADR-0078 결정 2)", async () => {
+    actor = editor;
+    const def = unwrap(await s.catalog.createEnum(editor, { label: "면제사유", values: [{ label: "암" }, { label: "뇌졸중" }] }));
+    const [a, b] = def.values.map((v) => v.code);
+    const r = await saveEnumEditAction(def.code, {
+      label: "면제사유",
+      description: "",
+      fields: [{ key: "new:1", label: "면책여부", type: "boolean" }, { key: "new:2", label: " ", type: "string" }],
+      values: [{ code: a!, label: "암", fields: { "new:1": true } }, { code: b!, label: "뇌졸중", fields: {} }],
+    });
+    expect(r).toEqual({ ok: true });
+    const saved = await s.catalog.getEnum(def.code);
+    expect(saved?.fields).toEqual([{ key: "F01", label: "면책여부", type: "boolean", order: 0 }]);
+    expect(saved?.values.map((v) => v.fields)).toEqual([{ F01: true }, undefined]);
+  });
+
+  it("필드를 빼고 저장 — 관리자 1차는 필드 문구의 확인창(값 행 줄 대신 필드 입력 손실) · 확인하면 저장", async () => {
+    actor = admin;
+    const def = unwrap(await s.catalog.createEnum(editor, { label: "면제사유2", values: [{ label: "암" }] }));
+    const [a] = def.values.map((v) => v.code);
+    unwrap(await s.catalog.reviseEnum(editor, def.code, { label: "면제사유2", description: "", fields: [{ ref: "n", label: "약관표시명", type: "string" }], values: [{ code: a!, label: "암", fields: { n: "암(유사암제외)" } }] }));
+    const input = { label: "면제사유2", description: "", fields: [], values: [{ code: a!, label: "암", fields: {} }] };
+    const first = await saveEnumEditAction(def.code, input);
+    if (first.ok !== "confirm") throw new Error("확인 기대");
+    expect(first.title).toBe("필드를 빼거나 타입을 바꾸면 값마다 넣은 입력이 지워진다");
+    expect(first.actionLabel).toBe("필드 1개 바꾸고 저장");
+    expect(first.valueRowsLine).toBe("필드 「약관표시명」 — 값 1개의 입력이 지워진다");
+    expect(await saveEnumEditAction(def.code, input, true)).toEqual({ ok: true });
+    expect((await s.catalog.getEnum(def.code))?.fields).toBeUndefined();
   });
 });

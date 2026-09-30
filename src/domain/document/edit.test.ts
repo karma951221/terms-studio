@@ -22,7 +22,7 @@ function fixture() {
   const g = nodeBuilders(sequentialIds("g"));
   const h = nodeBuilders(sequentialIds("h"));
   const special = b.document("수술비 특별약관", [b.article("보험금의 지급사유", [b.paragraph([b.text("회사는 ")])]), b.article("보험기간", [])]);
-  const general = g.document("보통약관", [g.article("계약의 성립", [g.paragraph([g.text("…")])])]); // text g1 · paragraph g2 · article g3 · document g4
+  const general = g.document("보통약관", [g.article("계약의 성립", [{ ...g.paragraph([g.text("…")]), code: "P0100" }])]); // text g1 · paragraph g2(P0100) · article g3 · document g4
   const other = h.document("다른 보통약관", [h.article("청약의 철회", [])]); // article h1 · document h2
   const generals = new Map<string, DocumentNode>([
     ["G", general],
@@ -117,7 +117,8 @@ describe("대응 보통약관 지정도 편집에 포함된다 (ADR-0074 결정 
   it("envAt — 담보약관은 지정한 보통약관의 조 집합, 미지정이면 빈 집합", () => {
     const { env } = fixture();
     expect([...(envAt(env, "G").generalArticleIds ?? [])]).toEqual(["g3"]);
-    expect([...(envAt(env, "G").generalReferenceIds ?? [])].sort()).toEqual(["g2", "g3"]);
+    // 참조 대상 열쇠 — 조 id · 조#P코드 (ADR-0072)
+    expect([...(envAt(env, "G").generalReferenceKeys ?? [])].sort()).toEqual(["g3", "g3#P0100"]);
     expect(envAt(env, undefined).generalArticleIds?.size).toBe(0);
     expect(envAt({ ...env, env: { kind: "general" } }, "G").generalArticleIds).toBeUndefined();
   });

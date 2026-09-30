@@ -14,8 +14,8 @@ import { CatalogEditor } from "./CatalogEditor";
 export const dynamic = "force-dynamic";
 
 const VIA_LABEL = {
-  when: "조건식", slot: "치환 슬롯", expression: "파생식", nodeQualifier: "노드 한정자", clauseRef: "공용조항 참조", optionSelect: "옵션 선택",
-  override: "옵션 오버라이드", articleRef: "조 참조", link: "조연결", appendixRef: "별표 참조", generalDocument: "보통약관 연결",
+  when: "조건식", slot: "치환 슬롯", expression: "파생식", local: "내부 변수", switchCase: "값별 분기", valueRestrict: "값 한정 참조", nodeQualifier: "노드 한정자", clauseRef: "함수조항 참조", optionSelect: "옵션 선택",
+  override: "옵션 오버라이드", articleRef: "조 참조", link: "조연결", appendixRef: "별표 참조", boxRef: "박스 참조", defaultBinding: "인자 기본 연결", binding: "인자 연결", generalDocument: "보통약관 연결",
   document: "담보약관", type: "타입", mount: "탑재", combination: "조합",
 } as const satisfies Record<EdgeVia, string>;
 
@@ -35,7 +35,7 @@ export default async function CatalogDetailPage({ params }: { params: Promise<{ 
   const inferred = inspection.inferred;
   // 넣기 패널 재료 — 마스터 필드 트리와 구분자 목록을 직렬화해 넘긴다 (기능/구분자 §4.3)
   const panel = insertPanelData(MASTER, defs);
-  // 사용처는 두 묶음 — 이 구분자를 쓰는 문면(조건식 · 슬롯 · 공용조항 본문)과 이 구분자를 참조하는 다른 구분자 (기능/구분자 §4.4).
+  // 사용처는 두 묶음 — 이 구분자를 쓰는 문면(조건식 · 슬롯 · 함수조항 본문)과 이 구분자를 참조하는 다른 구분자 (기능/구분자 §4.4).
   // 문면은 참조하는 구분자를 거쳐 닿는 것까지 센다 (ADR-0049 §2 역인덱스 「구분자 → 구분자 → 문면 → 상품」).
   const usages = transitiveUsages(graph, code);
   const dependents = dependentDiscriminators(graph, code);

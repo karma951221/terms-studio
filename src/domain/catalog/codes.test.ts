@@ -28,7 +28,8 @@ describe("구분자정의 S1 — 코드는 시스템 자동 채번 · 접두 + �
     expect(parseCode("D0042")).toEqual({ kind: "discriminator", seq: 42 });
     expect(parseCode("V03")).toEqual({ kind: "enumValue", seq: 3 });
     expect(parseCode("cov_pay")).toBeUndefined();
-    expect(parseCode("F01")).toBeUndefined(); // 마스터 필드 코드는 채번하지 않는다 (ADR-0037)
+    expect(parseCode("waiver.applies")).toBeUndefined(); // 마스터 필드 코드는 채번하지 않는다 (ADR-0037)
+    expect(parseCode("F01")).toEqual({ kind: "enumField", seq: 1 }); // 열거형 필드 (ADR-0078 결정 2)
     expect(isValidCode("E0001")).toBe(true);
     expect(isValidCode("e0001")).toBe(false);
     expect(CODE_PATTERN.test("V01")).toBe(true);

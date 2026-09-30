@@ -133,6 +133,7 @@ export function inferredLabel(inferred: ExprType | undefined, enumLabel: (code: 
   if (!inferred) return "추론 불가";
   if (inferred.kind === "attribute") return ENTITY_LABEL.attribute;
   if (inferred.kind === "table") return TYPE_LABEL.table;
+  if (inferred.kind === "planOptions") return "추론 불가"; // 인자 전용 타입 — 구분자 식에는 오지 않는다
   return resultTypeLabel(inferred, enumLabel);
 }
 

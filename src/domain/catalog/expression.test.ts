@@ -225,6 +225,11 @@ describe("규칙 4 — 파서 · 타입 검사", () => {
     expect(issues("any(coverage_basic.claim_name)", "plan")[0].kind).toBe("typeMismatch"); // any 는 boolean 경로만
   });
 
+  it("구분자 식은 인자(arg.X)를 읽을 수 없다 — 인자는 함수조항 본문 문맥에서만 (경계, 최종 결정 2)", () => {
+    const found = issues("arg.갱신형", "product");
+    expect(found).toEqual([expect.objectContaining({ kind: "structure", message: expect.stringContaining("함수조항 본문에서만") })]);
+  });
+
   it("결과 타입은 식에서 추론한다 — 정의에 표기하지 않는다", () => {
     expect(typeOf("waiver.applies = true", "plan")).toEqual({ kind: "boolean" });
     expect(typeOf("no_surrender.type", "plan")).toEqual({ kind: "enum", enumCode: "E0002" });

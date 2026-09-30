@@ -8,7 +8,7 @@
  *
  *   MasterBundle + ProductInput  (합치면 AssemblyInput · ADR-0034 결정 2)
  *     │ 1. 문맥 구성            buildContexts        → AssemblyContexts  (상품담보별 EvalContext + 보통약관 문맥)
- *     │ 2. 조건·공용조항 해소    resolveDocument      → ResolvedDoc      (밟은 가지 인라인화, 슬롯·참조 유지)
+ *     │ 2. 조건·함수조항 해소    resolveDocument      → ResolvedDoc      (밟은 가지 인라인화, 슬롯·참조 유지)
  *     │ 3. 슬롯 치환            substituteSlots      → SubstitutedDoc   (슬롯이 텍스트/오류 마커로)
  *     │ 4. 기본계약 본문 대치    replaceGeneralWithBase
  *     │ 5. 최소 준용규정 생성    ensureApplicationArticle
@@ -28,6 +28,7 @@ import type { StructNodeRef } from "../structure";
 import type { Discriminator, EnumDef, SlotPath } from "../catalog/types";
 import type { Clause } from "../clause/types";
 import type { Appendix } from "../document/appendix";
+import type { Box } from "../document/box";
 import type { DocumentNode, TableColumn } from "../document/nodes";
 import type { AttributeKind, ClauseOptionOverride, PlanAxis, ProductCoverageSnapshot, ProductPlan, SpecialGroup } from "../product/types";
 import type { MasterTree } from "../master";
@@ -69,7 +70,7 @@ export interface AssemblyProduct {
   baseContractIds: readonly Id[];
   /** 보통약관 템플릿 문서 id — 문면은 `MasterBundle.generalDocuments` 에서 이 id 로 고른다. 없으면 오류 + 특약만 조립. */
   generalDocumentId?: Id;
-  /** 보통약관 공용조항의 상품별 옵션 오버라이드 (scope product). */
+  /** 보통약관 함수조항의 상품별 옵션 오버라이드 (scope product). */
   overrides: readonly ClauseOptionOverride[];
   /**
    * 이 상품에서 「노출 끔」 한 보통약관 템플릿 조 id (기능/상품 §3.6).
@@ -101,6 +102,8 @@ export interface MasterBundle {
   attributeKinds: readonly AttributeKind[];
   clauses: readonly Clause[];
   appendices: readonly Appendix[];
+  /** 정적 마스터 박스 — 박스 참조가 여기서 내용을 읽는다 (최종 결정 9). 없으면 박스 없음. */
+  boxes?: readonly Box[];
   /** 보통약관 문서 id → 문면. 상품은 `AssemblyProduct.generalDocumentId` 로 고른다. */
   generalDocuments: ReadonlyMap<Id, DocumentNode>;
   /** 담보 id → 담보약관 마스터 문서. 없는 담보의 탑재분은 문서를 내지 않는다 (오류 아님). */
@@ -142,13 +145,22 @@ export interface RSlot {
   at: Coordinate;
   /** 반복 표 행 안의 슬롯이면 행 노드 — 치환이 그 노드 문맥(`AssemblyContext.rows`)에서 평가한다 (ADR-0070). */
   row?: StructNodeRef;
+  /** 블록 반복(세목 선택지 원천) 안의 슬롯이면 그 종(세목 선택지 id) — 치환이 그 종을 커서로 세운 문맥(`AssemblyContext.plans`)에서 평가한다 (ADR-0077). */
+  plan?: Id;
 }
 
+/** 해소 단계의 조 참조 — 대상 = 조 id + (항 · 호 · 목이면) 참조 열쇠(`Keyed.key` 와 같은 모양). */
 export interface RArticleRef {
   kind: "articleRef";
   id: Id;
-  targets: { nodeId: Id }[];
-  connector: ReferenceConnector;
+  /**
+   * 대상 — 조 · 조+코드 · 조+참조코드+안쪽코드(펼친 함수조항 안 노드). `values` = 값 한정(현재 값은 해소 단계가 원소 코드로 바꿔 둔다 —
+   * 열거값 원소 반복으로 생긴 노드 중 그 값이 낸 것만, ADR-0077 결정 7).
+   */
+  targets: { articleId: Id; code?: string; innerCode?: string; values?: string[] }[];
+  /** 참조 자리를 감싼 블록 반복의 현재 원소 — 템플릿 반복 id → 원소 id. 같은 반복 안 대상은 이 회차의 사본으로 좁힌다. */
+  within?: Readonly<Record<Id, string>>;
+  connector?: ReferenceConnector;
   scope: "self" | "general";
   at: Coordinate;
 }
@@ -175,7 +187,7 @@ export interface RTable<I> {
   rows: { header?: boolean; cells: I[][]; spans?: number[] }[];
 }
 /**
- * 【용어풀이】 박스 — 줄은 인라인 목록이라 「박스」 공용조항의 값 슬롯이 단계마다 해소된다(옛 문면 박스 노드는 글 한 조각씩).
+ * 【용어풀이】 박스 — 줄은 인라인 목록(박스 참조 · 옛 문면 박스 노드는 줄마다 글 한 조각).
  * 렌더 결과(`RenderedBox`)에서는 줄마다 글 하나다.
  */
 export interface RBox<I> {
@@ -192,23 +204,44 @@ export interface RBulletList<I> {
 }
 export type RStatic<I> = RTable<I> | RBox<I> | RBulletList<I>;
 
-export interface RSubitem<I> {
+/**
+ * 참조 열쇠 — 조 안에서 이 노드를 가리키는 코드 (ADR-0072). 조가 직접 가진 노드는 제 P코드, 펼친 함수조항의 노드는
+ * `참조노드코드/안쪽코드`(결정 3 개정 — 펼친 코드가 사용처 조의 코드와 겹치지 않는다). 코드가 없으면 가리킬 수 없다.
+ */
+interface Keyed {
+  key?: string;
+  /** 블록 반복이 만든 노드면 감싼 반복의 원소들(바깥 → 안쪽) — 반복 안 대상 · 값 한정 참조를 이 원소로 좁힌다 (ADR-0077 결정 7). */
+  loops?: LoopTag[];
+  /**
+   * 이 노드를 (투명 자리를 거쳐) 곧바로 낸 반복 블록 · 함수조항 블록 참조의 열쇠 — 그 블록을 가리키는 참조는 이 노드들 전부다
+   * (「펼친 것 전부」, ADR-0077 결정 7).
+   */
+  groups?: string[];
+}
+
+/** 반복 원소 표지 — 템플릿 반복 id · 원소 id(종 = 세목 선택지 id, 열거값 = 값 코드). */
+export interface LoopTag {
+  loop: Id;
+  element: string;
+  kind: "planOption" | "enumValue";
+}
+export interface RSubitem<I> extends Keyed {
   kind: "subitem";
   id: Id;
   children: I[];
 }
-export interface RItem<I> {
+export interface RItem<I> extends Keyed {
   kind: "item";
   id: Id;
   children: I[];
   subitems?: (RSubitem<I> | RBulletList<I> | ErrorNode)[];
 }
-export interface RParagraph<I> {
+export interface RParagraph<I> extends Keyed {
   kind: "paragraph";
   id: Id;
   children: I[];
   items?: (RItem<I> | RStatic<I> | ErrorNode)[];
-  /** 보통약관의 block 공용조항 참조에서 펼쳐져 자동 판정 비교 대상에서 빠지는 항. */
+  /** 보통약관의 block 함수조항 참조에서 펼쳐져 자동 판정 비교 대상에서 빠지는 항. */
   excludeFromComparison?: boolean;
 }
 export interface RArticle<I> {
@@ -217,6 +250,11 @@ export interface RArticle<I> {
   title: string;
   linkedArticleId?: Id;
   children: (RParagraph<I> | RStatic<I> | ErrorNode)[];
+  /**
+   * 조립이 밟은 반복 블록이 낼 수 있던 코드(복제 접미사 · 펼치기 앞마디 포함 원형 — `P0100` · `P0300/…`는 참조코드만) — 원소 0개라 노드가 없어도
+   * 그 대상을 가리키는 참조는 「사라짐」이 아니라 「펼친 것 0개」 오류다 (ADR-0077 결정 7).
+   */
+  repeatKeys?: string[];
 }
 /** 관 — 제목 + 조 목록. 번호는 계산값. */
 export interface RSection<I> {
@@ -257,13 +295,14 @@ export interface RenderedText {
 }
 /**
  * 조 참조 — 남은 대상과 계산된 표기 (「제3조(…)부터 제5조(…)까지 및 제7조(…)」 · 기능/문면 §3.5).
- * `targets` 는 조립 결과에 살아남은 대상만, `dropped` 는 분기·생략으로 빠진 대상 id (출처 추적용 · 오류 아님).
+ * `targets` 는 조립 결과에 살아남은 대상(해소된 노드 id — 코드를 공유한 분기 짝 중 살아남은 것)만,
+ * `dropped` 는 분기·생략으로 빠진 대상 열쇠(`refKey`, 출처 추적용 · 오류 아님).
  */
 export interface RenderedArticleRef {
   kind: "articleRef";
   id: Id;
   targets: { nodeId: Id; label: string }[];
-  connector: ReferenceConnector;
+  connector?: ReferenceConnector;
   label: string;
   dropped?: Id[];
 }
@@ -387,7 +426,7 @@ export interface OmissionRecord {
   disposition: "omitted" | "applied" | "full";
   /** 항별 대조 — 생략·준용은 대응, 통째는 위치 대조(i ↔ i). */
   pairs: OmissionPair[];
-  /** 비교에서 뺀 보통약관 block 공용조항 참조 노드 id (`excludeFromComparison`). 이름은 화면이 붙인다. */
+  /** 비교에서 뺀 보통약관 block 함수조항 참조 노드 id (`excludeFromComparison`). 이름은 화면이 붙인다. */
   excludedClauseNodeIds: Id[];
   /** 미합의 사유 문구 (기능/조립산출 §3.5 표) — `full` 이고 자동 판정을 보류했을 때만. */
   reason?: string;

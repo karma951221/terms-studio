@@ -25,7 +25,12 @@ export type PopupSpec =
   | { kind: "insertInline"; what: InlineInsertKind; at: InlineAt; tokens: Token[]; structLevels?: readonly Exclude<AttachLevel, "product">[] }
   | { kind: "editChip"; nodeId: Id }
   | { kind: "newTable"; at: Position }
-  | { kind: "clauseBlock"; at: Position }
+  /** 함수조항 넣기 — `fit` 은 그 자리에 맞는 유형(항 = 조 자리 · 호 = 호 목록 · 목 = 목 목록). 없으면 항. */
+  | { kind: "clauseBlock"; at: Position; fit?: ClauseFit }
+  /** 정적 마스터 박스 고르기 — 고르면 그 자리에 박스 참조 (기능/박스 §4.4). */
+  | { kind: "boxPick"; at: Position }
+  /** 블록 반복 — `at` 이면 넣기(원천 고르기 → 빈 항 · 호 하나를 든 반복), `nodeId` 면 그 반복의 원천 · 이름 고치기 (ADR-0077). */
+  | { kind: "repeatBlock"; at?: Position; nodeId?: Id }
   | { kind: "tableProps"; tableId: Id }
   | { kind: "repeat"; tableId: Id }
   | { kind: "link"; articleId: Id }
@@ -50,7 +55,7 @@ export interface MenuItem {
   toolbarOnly?: boolean;
   /** 이 자리에서 막힌 도구 — 툴바는 잠그고 이 사유를 tooltip 으로, 오른쪽 클릭 메뉴는 누르면 거부 배너. */
   refusal?: string;
-  /** 조건으로 감싸기가 감쌀 노드 — 공용조항 메뉴가 자리를 거른다. */
+  /** 조건으로 감싸기가 감쌀 노드 — 함수조항 메뉴가 자리를 거른다. */
   wrapTarget?: Id;
 }
 
@@ -62,7 +67,10 @@ export function forContextMenu(sections: MenuSections): MenuSections {
 /** 메뉴는 구획(구분선으로 나뉜 묶음)의 목록이다. 빈 구획은 그리지 않는다. */
 export type MenuSections = MenuItem[][];
 
-const KIND_WORD: Partial<Record<NodeKind, string>> = { paragraph: "항", item: "호", subitem: "목", bullet: "항목", bulletList: "글머리 목록", article: "조", section: "관", table: "표", box: "박스", clauseBlockRef: "공용조항" };
+const KIND_WORD: Partial<Record<NodeKind, string>> = { paragraph: "항", item: "호", subitem: "목", bullet: "항목", bulletList: "글머리 목록", article: "조", section: "관", table: "표", box: "박스", clauseBlockRef: "함수조항", boxRef: "박스", forBlock: "반복 블록" };
+
+/** 반복 깊이 한도 — 반복 안 반복 하나 (ADR-0077 결정 4). 도메인 `REPEAT_MAX_DEPTH` 와 같다. */
+const MAX_REPEAT_DEPTH = 2;
 
 /**
  * 위로 · 아래로 · 복제 · 삭제 — 모든 블록이 같은 네 줄을 쓴다.
@@ -94,14 +102,14 @@ function bulletListItem(label: string, at: Position, newId: IdSource): MenuItem 
 
 /**
  * 조건으로 감싸기 — 툴바 「조건식」만 (오른쪽 클릭 메뉴에는 없다). 팝업 없이 곧바로 감싸고 빈 IF 줄에 초점 (2026-09-28).
- * `wrapTarget` 은 공용조항 메뉴가 감쌀 자리를 거르는 표지.
+ * `wrapTarget` 은 함수조항 메뉴가 감쌀 자리를 거르는 표지.
  */
 function wrapItem(env: MenuEnv, nodeId: Id): MenuItem {
   const branchId = env.newId();
   return { label: "조건으로 감싸기", action: { do: "ops", ops: (t) => wrapOps(t, nodeId, "", env.newId, branchId), focus: branchId }, toolbarOnly: true, wrapTarget: nodeId };
 }
 
-/** 조건 블록 넣기 — 감쌀 블록이 없는 자리(조 본문 · 공용조항 본문)의 「조건식」. 빈 IF 줄 + 빈 항 하나를 든 조건 블록을 끝에 넣는다. */
+/** 조건 블록 넣기 — 감쌀 블록이 없는 자리(조 본문 · 함수조항 본문)의 「조건식」. 빈 IF 줄 + 빈 항 하나를 든 조건 블록을 끝에 넣는다. */
 export function condBlockItem(env: MenuEnv, at: Position, allowed: readonly NodeKind[]): MenuItem {
   const b = nodeBuilders(env.newId);
   const branch = b.branch("", firstChild(allowed, env.newId));
@@ -115,7 +123,7 @@ export interface MenuEnv {
   newId: IdSource;
 }
 
-/** 항 · 호 · 목 · 표 · 박스 · 공용조항(조 단위) 블록의 메뉴. */
+/** 항 · 호 · 목 · 표 · 박스 · 함수조항(조 단위) · 박스 참조 블록의 메뉴. */
 export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
   const { ix } = env;
   const e = ix.nodes.get(nodeId);
@@ -133,14 +141,25 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
     const node = emptyNode("item", env.newId);
     add.push({ label: "호 추가", action: { do: "ops", ops: [{ type: "insert", node, at: { parentId: nodeId, slot: "items" } }], focus: node.id } });
   }
+  if (e.node.kind === "paragraph") add.push({ label: "함수조항(호) 추가…", action: { do: "popup", popup: { kind: "clauseBlock", at: { parentId: nodeId, slot: "items" }, fit: "item" } } });
   if (e.node.kind === "item") {
     const node = emptyNode("subitem", env.newId);
     add.push({ label: "목 추가", action: { do: "ops", ops: [{ type: "insert", node, at: { parentId: nodeId, slot: "subitems" } }], focus: node.id } });
+    add.push({ label: "함수조항(목) 추가…", action: { do: "popup", popup: { kind: "clauseBlock", at: { parentId: nodeId, slot: "subitems" }, fit: "subitem" } } });
   }
   if (after && e.allowed.includes("table")) add.push({ label: "아래에 표 추가…", action: { do: "popup", popup: { kind: "newTable", at: after } } });
   if (after && e.allowed.includes("bulletList")) add.push(bulletListItem("아래에 글머리 목록 추가", after, env.newId));
-  // 박스는 「박스」 공용조항으로만 넣는다 — 호 목록 자리(항 · 호 뒤)면 박스 공용조항, 조 자리면 항 · 박스 공용조항 (2026-09-28)
-  if (after && e.allowed.includes("clauseBlockRef")) add.push({ label: after.slot === "items" ? "아래에 박스 공용조항 추가…" : "아래에 공용조항(조 단위) 추가…", action: { do: "popup", popup: { kind: "clauseBlock", at: after } } });
+  // 함수조항 — 그 자리에 맞는 유형만(유형 = 출력 모양, 최종 결정 4): 조 자리는 「항」, 호 목록은 「호」, 목 목록은 「목」
+  if (after && e.allowed.includes("clauseBlockRef")) {
+    const fit = fitOf(e.allowed);
+    add.push({ label: `아래에 함수조항(${FIT_WORD[fit]}) 추가…`, action: { do: "popup", popup: { kind: "clauseBlock", at: after, ...(fit === "block" ? {} : { fit }) } } });
+  }
+  // 정적 마스터 박스 — 조 자리 · 항 · 호 뒤(호 목록 자리). 박스는 잎이라 함수조항 본문에서도 같다 (기능/박스 §3.2)
+  if (after && e.allowed.includes("boxRef")) add.push({ label: "아래에 박스 추가…", action: { do: "popup", popup: { kind: "boxPick", at: after } } });
+  // 블록 반복 — 조 자리 · 호 목록 자리, 반복 안 반복은 한 단계까지 (ADR-0077)
+  if (after && e.allowed.includes("forBlock") && e.forDepth < MAX_REPEAT_DEPTH) add.push({ label: "아래에 반복 블록 추가…", action: { do: "popup", popup: { kind: "repeatBlock", at: after } } });
+  if (e.node.kind === "paragraph" && e.forDepth < MAX_REPEAT_DEPTH) add.push({ label: "반복 블록(호) 추가…", action: { do: "popup", popup: { kind: "repeatBlock", at: { parentId: nodeId, slot: "items" } } } });
+  if (e.node.kind === "forBlock") add.push(...repeatIntoItems(env, nodeId, e.allowed, e.forDepth + 1));
 
   const own: MenuItem[] = [];
   if (e.node.kind === "table") {
@@ -148,26 +167,68 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
     if (env.docKind === "special") own.push({ label: "행 반복…", action: { do: "popup", popup: { kind: "repeat", tableId: nodeId } } });
   }
   if (e.node.kind === "clauseBlockRef") own.push({ label: "옵션 고치기…", action: { do: "popup", popup: { kind: "editChip", nodeId } } });
+  if (e.node.kind === "forBlock") own.push({ label: "반복 원천…", action: { do: "popup", popup: { kind: "repeatBlock", nodeId } } });
   if (e.allowed.includes("condBlock")) own.push(wrapItem(env, nodeId));
 
   return [add, own, arrangeItems(ix, nodeId)];
 }
 
 /**
- * 툴바 「공용조항」의 고르기 목록 — 버튼 아래 작은 메뉴에 공용조항마다 한 줄, 고르면 그 자리에 공용조항 블록(옵션은 블록 머리 띠에서 고른다).
- * 모달 없이 고른다 (2026-09-28). 오른쪽 클릭 메뉴의 「…추가…」는 옵션까지 한 번에 고르는 그 자리 팝업 그대로.
+ * 반복 블록 안 끝에 넣기 — 본문 자리는 반복이 선 자리의 허용 집합(표 · 옛 박스 제외, 투명)이다. 빈 반복(원소 본문 없음)에 첫 내용을 넣는 입구.
+ * `depth` = 이 반복 자신까지의 깊이 — 한 단계 중첩 한도 안이면 안쪽 반복도 넣는다.
  */
-export function clausePickItems(clauses: readonly { code: string; label: string; mode?: string }[], at: Position, newId: IdSource): MenuItem[] {
-  const b = nodeBuilders(newId);
-  return clausesFitting(clauses, at).map((c) => ({ label: `${c.label}(${c.code})`, action: { do: "ops", ops: [{ type: "insert", node: b.clauseBlock(c.code, {}), at }] } }));
+function repeatIntoItems(env: MenuEnv, forId: Id, allowed: readonly NodeKind[], depth: number): MenuItem[] {
+  const at: Position = { parentId: forId };
+  const out: MenuItem[] = [];
+  for (const k of ["paragraph", "item"] as const) {
+    if (!allowed.includes(k)) continue;
+    const node = emptyNode(k, env.newId);
+    out.push({ label: `이 반복에 ${KIND_WORD[k]} 추가`, action: { do: "ops", ops: [{ type: "insert", node, at }], focus: node.id } });
+  }
+  if (allowed.includes("clauseBlockRef")) {
+    const fit = fitOf(allowed);
+    out.push({ label: `이 반복에 함수조항(${FIT_WORD[fit]}) 추가…`, action: { do: "popup", popup: { kind: "clauseBlock", at, ...(fit === "block" ? {} : { fit }) } } });
+  }
+  if (allowed.includes("forBlock") && depth < MAX_REPEAT_DEPTH) out.push({ label: "이 반복에 반복 블록 추가…", action: { do: "popup", popup: { kind: "repeatBlock", at } } });
+  return out;
 }
 
 /**
- * 그 자리에 설 수 있는 공용조항 — 호 목록 자리(항 · 호 뒤)는 「박스」만, 조 자리는 「항」 · 「박스」 (기능/공용조항 §3.1).
- * 박스는 툴바 「박스」가 아니라 「박스」 공용조항으로만 넣는다 (2026-09-28). 유형을 모르면(옛 호출) 조 자리 공용조항으로 본다.
+ * 툴바 「함수조항」의 고르기 목록 — 버튼 아래 작은 메뉴에 함수조항마다 한 줄, 고르면 그 자리에 함수조항 블록(옵션은 블록 머리 띠에서 고른다).
+ * 모달 없이 고른다 (2026-09-28). 오른쪽 클릭 메뉴의 「…추가…」는 옵션까지 한 번에 고르는 그 자리 팝업 그대로.
  */
-export function clausesFitting<C extends { mode?: string }>(clauses: readonly C[], at: Position): C[] {
-  return clauses.filter((c) => (at.slot === "items" ? c.mode === "box" : c.mode !== "inline"));
+export function clausePickItems(clauses: readonly { code: string; label: string; mode?: string }[], at: Position, newId: IdSource, fit: ClauseFit = "block"): MenuItem[] {
+  const b = nodeBuilders(newId);
+  return clausesFitting(clauses, fit).map((c) => ({ label: `${c.label}(${c.code})`, action: { do: "ops", ops: [{ type: "insert", node: b.clauseBlock(c.code, {}), at }] } }));
+}
+
+/**
+ * 툴바 「박스」의 고르기 목록 — 정적 마스터 박스마다 한 줄(「이름(코드)」), 고르면 그 자리에 박스 참조를 곧바로 넣는다 (기능/박스 §4.4).
+ * 박스는 조 자리 · 호 목록 자리 어디서나 같아 자리로 거르지 않는다.
+ */
+export function boxPickItems(boxes: readonly { code: string; name: string }[], at: Position, newId: IdSource): MenuItem[] {
+  const b = nodeBuilders(newId);
+  return boxes.map((x) => ({ label: `${x.name}(${x.code})`, action: { do: "ops", ops: [{ type: "insert", node: b.boxRef(x.code), at }] } }));
+}
+
+/** 블록 자리에 넣는 함수조항 유형 — 조 자리 「항」 · 호 목록 「호」 · 목 목록 「목」. */
+export type ClauseFit = "block" | "item" | "subitem";
+
+const FIT_WORD: Record<ClauseFit, string> = { block: "조 단위", item: "호", subitem: "목" };
+
+/** 자리(허용 집합)에 맞는 유형 — 조건 가지는 서 있는 자리를 물려받는다 (문서 `clausePlacement` 와 같은 판정). */
+export function fitOf(allowed: readonly NodeKind[]): ClauseFit {
+  if (allowed.includes("item")) return "item";
+  if (allowed.includes("subitem")) return "subitem";
+  return "block";
+}
+
+/**
+ * 그 자리에 설 수 있는 함수조항 — 유형 = 출력 모양 (기능/함수조항 §3.1): 조 자리는 「항」, 호 목록은 「호」, 목 목록은 「목」.
+ * 유형을 모르면(옛 호출) 조 자리 함수조항으로 본다.
+ */
+export function clausesFitting<C extends { mode?: string }>(clauses: readonly C[], fit: ClauseFit = "block"): C[] {
+  return clauses.filter((c) => (c.mode ?? "block") === fit);
 }
 
 /**
@@ -190,8 +251,10 @@ export function articleMenu(env: MenuEnv, articleId: Id, title = true): MenuSect
   }
   const paragraph = emptyNode("paragraph", env.newId);
   add.push({ label: "항 추가", action: { do: "ops", ops: [{ type: "insert", node: paragraph, at: { parentId: articleId } }], focus: paragraph.id } });
-  // 조 끝에 공용조항(조 단위) — 조의 첫 자리가 공용조항인 조(「준용규정」 = 〔항 공용조항〕 하나)를 항 없이 세운다 (2026-09-28, 실물재현 E2E)
-  add.push({ label: "공용조항 참조 추가…", action: { do: "popup", popup: { kind: "clauseBlock", at: { parentId: articleId } } } });
+  // 조 끝에 함수조항(조 단위) — 조의 첫 자리가 함수조항인 조(「준용규정」 = 〔항 함수조항〕 하나)를 항 없이 세운다 (2026-09-28, 실물재현 E2E)
+  add.push({ label: "함수조항 참조 추가…", action: { do: "popup", popup: { kind: "clauseBlock", at: { parentId: articleId } } } });
+  add.push({ label: "박스 추가…", action: { do: "popup", popup: { kind: "boxPick", at: { parentId: articleId } } } });
+  add.push({ label: "반복 블록 추가…", action: { do: "popup", popup: { kind: "repeatBlock", at: { parentId: articleId } } } });
   add.push(bulletListItem("글머리 목록 추가", { parentId: articleId }, env.newId));
 
   const own: MenuItem[] = [];
@@ -270,6 +333,7 @@ export function condMenu(env: MenuEnv, branchId: Id): MenuSections {
       into.push({ label: "이 가지에 조 추가", action: { do: "ops", ops: [{ type: "insert", node: article, at }], goArticle: article.id } });
     }
     if (br.allowed.includes("table")) into.push({ label: "이 가지에 표 추가…", action: { do: "popup", popup: { kind: "newTable", at } } });
+    if (br.allowed.includes("boxRef")) into.push({ label: "이 가지에 박스 추가…", action: { do: "popup", popup: { kind: "boxPick", at } } });
   }
   return [
     branch,
@@ -281,7 +345,7 @@ export function condMenu(env: MenuEnv, branchId: Id): MenuSections {
   ];
 }
 
-/** 칩(슬롯 · 참조 · 공용조항 · 구조 표기 · 문장 안 조건)의 메뉴 — 고치기 · 풀기(조건) · 삭제. */
+/** 칩(슬롯 · 참조 · 함수조항 · 구조 표기 · 문장 안 조건)의 메뉴 — 고치기 · 풀기(조건) · 삭제. */
 export function chipMenu(env: MenuEnv, chipId: Id): MenuSections {
   const e = env.ix.nodes.get(chipId);
   if (!e) return [];
@@ -317,7 +381,7 @@ export function inlineCondItem(at: InlineAt, tokens: Token[], newId: IdSource, c
 }
 
 /**
- * 문장 속(커서 자리)의 넣기 — 슬롯 · 조 참조 · 별표 참조 · 공용조항(문장 안) · 문장 안 조건 (+ 반복 표 템플릿 셀이면 구조 표기).
+ * 문장 속(커서 자리)의 넣기 — 슬롯 · 조 참조 · 별표 참조 · 함수조항(문장 안) · 문장 안 조건 (+ 반복 표 템플릿 셀이면 구조 표기).
  * 문장 안 조건의 가지 안이면 문장 안 조건은 싣지 않는다 (중첩 금지 §3.2).
  */
 export function inlineInsertItems(at: InlineAt, tokens: Token[], opts: { inInlineCond: boolean; newId: IdSource; structLevels?: readonly Exclude<AttachLevel, "product">[] }): MenuItem[] {
@@ -325,7 +389,7 @@ export function inlineInsertItems(at: InlineAt, tokens: Token[], opts: { inInlin
     label,
     action: { do: "popup", popup: { kind: "insertInline", what, at, tokens, ...(what === "structKey" && opts.structLevels ? { structLevels: opts.structLevels } : {}) } },
   });
-  const items = [pop("slot", "치환 슬롯…"), pop("articleRef", "조 참조…"), pop("appendixRef", "별표 참조…"), pop("clauseInlineRef", "공용조항(문장 안)…")];
+  const items = [pop("slot", "치환 슬롯…"), pop("articleRef", "조 참조…"), pop("appendixRef", "별표 참조…"), pop("clauseInlineRef", "함수조항(문장 안)…")];
   if (!opts.inInlineCond) items.push(inlineCondItem(at, tokens, opts.newId));
   if (opts.structLevels && opts.structLevels.length > 0) items.push(pop("structKey", "구조 표기…"));
   return items;
@@ -400,9 +464,9 @@ export function placeMenu(env: MenuEnv, place: Place, tokens: Token[] = []): Men
  *   (제1항 일부 → 제1항 · 제1항과 그 호 → 호를 품은 제1항 · 제1항~제2항 → 둘 다). 조 제목의 글을 골랐으면 그 조를 감싼다.
  * - `caret`(고른 글 없이 커서가 선 블록) — 그 블록 **바로 뒤**에 빈 조건 블록(빈 IF 줄 + 그 자리의 빈 항 · 호 · 목). 조 제목이면 그 조 맨 앞.
  * - 둘 다 없으면(본문 빈 자리 · 블록을 누른 자리) 자리의 목록대로 — 고른 블록 감싸기 · 조 끝에 새 블록.
- * - 조건 블록을 둘 수 없는 자리뿐이면(「문구」 공용조항의 한 줄) 문장 안 조건 — `inline` 이 그 입구(고른 글이 IF 가지 문장).
+ * - 조건 블록을 둘 수 없는 자리뿐이면(「문구」 함수조항의 한 줄) 문장 안 조건 — `inline` 이 그 입구(고른 글이 IF 가지 문장).
  * 새 블록 · 감싼 블록의 IF 줄에 초점이 간다. 팝업은 없다 — 무엇을 넣을지 묻지 않는다.
- * `canHold(nodeId)` — 그 노드 자리(형제 목록)에 조건 블록이 설 수 있는가 (공용조항은 항 자리뿐).
+ * `canHold(nodeId)` — 그 노드 자리(형제 목록)에 조건 블록이 설 수 있는가 (함수조항은 항 자리뿐).
  */
 export interface CondInput {
   selection?: { start: Id; end: Id };

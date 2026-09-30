@@ -57,7 +57,7 @@ describe("extractRefs — 참조 추출", () => {
   });
 });
 
-describe("requiredDiscriminatorCodes — 요구 구분자 집합 (ADR-0010)", () => {
+describe("requiredDiscriminatorCodes — 요구 구분자 집합 (문면이 읽는 구분자)", () => {
   it("구분자 코드만 중복 없이 돌려준다 (담보속성·내장 경로 제외)", () => {
     expect(
       requiredDiscriminatorCodes(

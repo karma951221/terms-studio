@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`기능/관계정보 §3 참조 그래프 — collectRefs 는 문서가 읽는 참조 전부를 좌표와 함께 뽑는다 (C1 역인덱스 재료) > 구분자(식 안·슬롯) · 담보속성 · 공용조항 · 조(자기·보통약관) · 별표 · 조연결 1`] = `
+exports[`기능/관계정보 §3 참조 그래프 — collectRefs 는 문서가 읽는 참조 전부를 좌표와 함께 뽑는다 (C1 역인덱스 재료) > 구분자(식 안·슬롯) · 담보속성 · 함수조항 · 조(자기·보통약관) · 별표 · 조연결 1`] = `
 [
   [
     "discriminator",

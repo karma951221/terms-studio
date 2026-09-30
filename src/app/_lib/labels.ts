@@ -16,8 +16,10 @@ export const ENTITY_LABEL = {
   discriminator: "구분자",
   form: "폼",
   enum: "열거형변수",
-  clause: "공용조항",
+  clause: "함수조항",
   appendix: "별표",
+  box: "박스",
+  staticMaster: "정적 마스터",
   coverage: "담보",
   product: "상품",
   attribute: "담보속성",
@@ -32,8 +34,9 @@ export const NAME_LABEL = {
   discriminator: "구분자명",
   form: "폼 이름",
   enum: "열거형변수 이름",
-  clause: "공용조항명",
+  clause: "함수조항명",
   appendix: "별표 이름",
+  box: "박스 이름",
   coverage: "담보명",
   product: "상품명",
   attribute: "담보속성명",
@@ -146,7 +149,8 @@ export const TYPE_OPTIONS = SELECTABLE_TYPE_KINDS.map((kind) => ({ value: kind, 
 export const MODE_LABEL = {
   inline: "문구",
   block: "항",
-  box: "박스",
+  item: "호",
+  subitem: "목",
 } as const satisfies Record<ClauseMode, string>;
 
 export const DOC_KIND_LABEL = {
@@ -167,29 +171,39 @@ export const DOC_TEMPLATE_LABEL = {
   special: ENTITY_LABEL.coverageTemplate,
 } as const satisfies Record<keyof typeof DOC_KIND_LABEL, string>;
 
-/** 공용조항 모드 — 두 값의 차이가 「어디에 서느냐」라서, 고를 때 읽을 뜻풀이를 붙인다. */
+/** 함수조항 유형 = 출력 모양 — 넷의 차이가 「어디에 서느냐」라서, 고를 때 읽을 뜻풀이를 붙인다. */
 export const MODE_OPTIONS = [
   { value: "inline", label: MODE_LABEL.inline, hint: "조 안 문장 중간에 끼어 들어간다 — 문장 조각 하나." },
   { value: "block", label: MODE_LABEL.block, hint: "조 안 항 자리에 선다 — 항 하나 또는 항 목록(호 · 목 포함)." },
-  { value: "box", label: MODE_LABEL.box, hint: "항 · 호 뒤에 붙는 【용어풀이】 류 박스 — 제목 + 줄. 박스는 이것으로만 만든다." },
-] as const;
+  { value: "item", label: MODE_LABEL.item, hint: "항의 호 목록 자리에 선다 — 호 목록, 번호는 쓰는 곳에서 이어 매긴다." },
+  { value: "subitem", label: MODE_LABEL.subitem, hint: "호의 목 목록 자리에 선다 — 목 목록, 번호는 쓰는 곳에서 이어 매긴다." },
+] as const satisfies readonly { value: ClauseMode; label: string; hint: string }[];
 
 /** 부착 레벨 2지선다가 아니라 5지선다 — 라디오로 늘어놓는다 (선택지가 짧고 개수가 고정이다). */
 export const LEVEL_OPTIONS = ATTACH_LEVELS.map((value) => ({ value, label: LEVEL_LABEL[value] }));
 
 export const ROLE_LABEL = { admin: "관리자", editor: "편집자" } as const;
 
+/** 값별 분기(switch) 화면 단어 (화면단어 — 「switch」 · 「케이스」 · 「default」는 쓰지 않는다). */
+export const SWITCH_WORD = { switch: "값별 분기", inlineSwitch: "문장 안 값별 분기", case: "칸", empty: "문구 없음", unassigned: "칸 없는 값" } as const;
+
 export const REFERENCE_VIA_LABEL = {
   when: "조건식",
   slot: "치환 슬롯",
   expression: "파생식",
+  local: "내부 변수",
+  switchCase: "값별 분기",
+  valueRestrict: "값 한정 참조",
   nodeQualifier: "노드 한정자",
-  clauseRef: "공용조항 참조",
+  clauseRef: "함수조항 참조",
   optionSelect: "옵션 선택",
   override: "옵션 오버라이드",
   articleRef: "조 참조",
   link: "조연결",
   appendixRef: "별표 참조",
+  boxRef: "박스 참조",
+  defaultBinding: "인자 기본 연결",
+  binding: "인자 연결",
   generalDocument: "대응 보통약관",
   document: "담보약관 연결",
   type: "타입",

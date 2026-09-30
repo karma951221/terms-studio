@@ -1,5 +1,5 @@
 /**
- * 원문 패널의 서버 렌더 검사 — 시드에 공용조항 참조·조상 조건 블록이 없어 브라우저로는 못 보는 자리다
+ * 원문 패널의 서버 렌더 검사 — 시드에 함수조항 참조·조상 조건 블록이 없어 브라우저로는 못 보는 자리다
  * (코덱스 리뷰 2026-09-15 Important-2 · Important-3). `MasterTree.test.tsx` 와 같은 방식으로 문자열을 본다.
  */
 import { renderToStaticMarkup } from "react-dom/server";
@@ -36,7 +36,7 @@ const clauses: Clause[] = [
   },
 ];
 
-/** 네 자리(항·호·목·표 셀)에 공용조항 참조를 하나씩 둔 조. */
+/** 네 자리(항·호·목·표 셀)에 함수조항 참조를 하나씩 둔 조. */
 const article: ArticleNode = {
   id: "A1",
   kind: "article",
@@ -67,7 +67,7 @@ const article: ArticleNode = {
 const targets: OverrideTarget[] = ["R-para", "R-item", "R-subitem", "R-cell"].map((nodeId) => ({
   nodeId,
   clauseCode: "C0001",
-  label: `제1조(지급사유) › 공용조항 소멸(C0001)`,
+  label: `제1조(지급사유) › 함수조항 소멸(C0001)`,
   options: [{ code: "O01", label: "어조", values: [{ code: "V01", label: "일반" }, { code: "V02", label: "사망" }] }],
 }));
 
@@ -80,7 +80,7 @@ function boxCount(html: string): number {
   return html.split("data-clause-box=").length - 1;
 }
 
-describe("TemplateSource — 공용조항 옵션 박스 (Important-2)", () => {
+describe("TemplateSource — 함수조항 옵션 박스 (Important-2)", () => {
   it("항·호·목·표 셀의 참조 넷 모두 옵션 박스를 얻는다 (같은 자리를 두 번 그리지 않는다)", () => {
     const html = renderToStaticMarkup(
       <TemplateSource
@@ -103,7 +103,7 @@ describe("TemplateSource — 공용조항 옵션 박스 (Important-2)", () => {
   });
 });
 
-describe("TemplateSource — 공용조항 상자 안에 모델을 편다 (2026-09-28)", () => {
+describe("TemplateSource — 함수조항 상자 안에 모델을 편다 (2026-09-28)", () => {
   const blockClause: Clause = {
     mode: "block",
     code: "C0002",
@@ -127,7 +127,7 @@ describe("TemplateSource — 공용조항 상자 안에 모델을 편다 (2026-0
   };
   const host: ArticleNode = { id: "A1", kind: "article", title: "대표자", children: [{ id: "R1", kind: "clauseBlockRef", clauseCode: "C0002", options: { O01: "V01" } }] };
 
-  it("머리 띠 「공용조항 (이름)」 · 공용조항에서 고치기 · 슬롯 · 옵션 자리(고른 것 ✓) · 조건 · 오버라이드가 모델에 반영", () => {
+  it("머리 띠 「함수조항 (이름)」 · 함수조항에서 고치기 · 슬롯 · 옵션 자리(고른 것 ✓) · 조건 · 오버라이드가 모델에 반영", () => {
     const html = renderToStaticMarkup(
       <TemplateSource
         productId="p1"
@@ -142,9 +142,9 @@ describe("TemplateSource — 공용조항 상자 안에 모델을 편다 (2026-0
       />,
     );
     expect(html).toContain('class="ts-doc-clause-head"');
-    expect(html).toContain("공용조항 (대표자의 지정)");
-    expect(html).toContain('href="/clauses/C0002"');
-    expect(html).toContain("공용조항에서 고치기");
+    expect(html).toContain("함수조항 (대표자의 지정)");
+    expect(html).toContain('href="/functions/C0002"');
+    expect(html).toContain("함수조항에서 고치기");
     expect(html).toContain("대표자를 지정합니다");
     expect(html).toContain("〔담보명〕");
     expect(html).toContain('<span class="ts-cond-badge">IF</span> 담보명 = &#x27;입원&#x27;');
@@ -195,5 +195,48 @@ describe("TemplateSource — 조를 감싼 조건 블록 (Important-3)", () => {
 
   it("조가 하나도 없는 관은 한 줄 안내", () => {
     expect(render([])).toContain("이 관에는 조가 없다");
+  });
+});
+
+describe("TemplateSource — 인자 있는 함수조항 상자는 접힌다 (최종 결정 8)", () => {
+  const waiver: Clause = {
+    mode: "block",
+    code: "C0200",
+    label: "납입면제 사유",
+    required: { discriminators: [], attributes: [] },
+    options: [],
+    params: [{ name: "사유", type: { kind: "enum", enumCode: "E0001" }, default: { kind: "discriminator", code: "D0009" } }],
+    body: [
+      {
+        id: "sw",
+        kind: "switchBlock",
+        on: "arg.사유",
+        cases: [
+          { id: "k1", values: ["V01"], children: [{ id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text: "질병 항" }] }] },
+          { id: "k2", values: ["V02"], children: [{ id: "p2", kind: "paragraph", children: [{ id: "t2", kind: "text", text: "상해 항" }] }] },
+        ],
+      },
+    ],
+  };
+  const host: ArticleNode = { id: "A9", kind: "article", title: "납입면제", children: [{ id: "CB1", kind: "clauseBlockRef", clauseCode: "C0200", options: {} }] };
+
+  it("머리 줄 「인자 ← 연결(기본)」 · 칸 머리 = 값 이름 · 칸은 접힌 <details> (묶음 = 상자 id)", () => {
+    const html = renderToStaticMarkup(
+      <TemplateSource
+        productId="p1"
+        nodes={[host]}
+        numbers={numbers}
+        hidden={new Set()}
+        references={new Map()}
+        clauses={[waiver]}
+        overrides={[]}
+        overrideTargets={[]}
+        discriminators={[{ code: "D0009", label: "납입면제사유" }]}
+        enums={[{ code: "E0001", label: "납입면제사유", values: [{ code: "V01", label: "질병", order: 0 }, { code: "V02", label: "상해", order: 1 }] }]}
+      />,
+    );
+    expect(html).toContain("인자: 사유 ← 납입면제사유(기본)");
+    expect(html).toMatch(/<summary[^>]*>.*질병.*<\/summary>/);
+    expect(html).toContain('name="CB1:sw"');
   });
 });

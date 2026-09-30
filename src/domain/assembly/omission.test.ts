@@ -1,23 +1,27 @@
 import { describe, expect, it } from "vitest";
 
 import type { RArticle, RItem, RParagraph, RStatic, SInline, SubstitutedDoc } from "./types";
+import { parseRefKey } from "../document/pcode";
 import { judgeOmission } from "./omission";
 
+/** 항 — 참조 열쇠(`key`)는 id 그대로 둔다(조립이 매긴 P코드 자리). 가리키는 쪽은 `조id#항id`. */
 const paragraph = (id: string, text: string, excludeFromComparison = false): RParagraph<SInline> => ({
   kind: "paragraph",
   id,
+  key: id,
   children: [{ kind: "text", id: `${id}-text`, text }],
   ...(excludeFromComparison ? { excludeFromComparison: true } : {}),
 });
 
 const at = { document: "special" as const, ownerId: "pc-1" };
-/** 참조 슬롯을 품은 항 — `targets` 가 조든 항이든 판정기가 노드 종류를 가려낸다. */
+/** 참조 슬롯을 품은 항 — `targets` 는 대상 열쇠(조 id · `조id#열쇠`). 조든 항이든 판정기가 코드 유무로 가려낸다 (ADR-0072). */
 const refParagraph = (id: string, text: string, targets: string[], scope: "self" | "general" = "self"): RParagraph<SInline> => ({
   kind: "paragraph",
   id,
+  key: id,
   children: [
     { kind: "text", id: `${id}-text`, text },
-    { kind: "articleRef", id: `${id}-ref`, targets: targets.map((nodeId) => ({ nodeId })), connector: "및", scope, at },
+    { kind: "articleRef", id: `${id}-ref`, targets: targets.map(parseRefKey), connector: "및", scope, at },
   ],
 });
 
@@ -86,7 +90,7 @@ describe("3차 S4 — 항 단위 생략·준용·통째 판정 (기능/조립산
     expect(judged.kind).toBe("article");
     if (judged.kind !== "article") return;
     expect(judged.children.map((p) => p.id)).toEqual(["s-a::application", "s-extra"]);
-    expect(judged.children[0]).toMatchObject({ children: [{ text: "이 특별약관의 보험금의 감액지급은 " }, { kind: "articleRef", scope: "general", targets: [{ nodeId: "g-a" }] }, { text: "를 준용합니다." }] });
+    expect(judged.children[0]).toMatchObject({ children: [{ text: "이 특별약관의 보험금의 감액지급은 " }, { kind: "articleRef", scope: "general", targets: [{ articleId: "g-a" }] }, { text: "를 준용합니다." }] });
     expect(out.records[0].disposition).toBe("applied");
     expect(out.records[0].pairs).toEqual([
       { special: 1, general: 1, matched: true },
@@ -123,7 +127,7 @@ describe("3차 S4 — 항 단위 생략·준용·통째 판정 (기능/조립산
     expect(out.issues).toEqual([]);
   });
 
-  it("보통약관 block 공용조항의 비교 제외 항은 판정 집합에서 빼고 참조 노드 id 를 기록한다", () => {
+  it("보통약관 block 함수조항의 비교 제외 항은 판정 집합에서 빼고 참조 노드 id 를 기록한다", () => {
     const general = doc("g", [article("g-a", "일반 조", [paragraph("g-1", "공통"), paragraph("g-clause/g-x", "제외", true)])]);
     const special = doc("s", [article("s-a", "특약 조", [paragraph("s-1", "공통")], "g-a")]);
     const out = judgeOmission(special, general, owner);
@@ -167,8 +171,8 @@ describe("기능/조립산출 §3.5 미합의 사례 — 원문 유지 + warning
   });
 
   it("항 참조 슬롯(대상이 항·호·목)을 품은 항 → 통째 + 「항 참조를 품은 항이라 생략하면 참조가 끊깁니다」", () => {
-    const general = article("g-a", "일반 조", [paragraph("g-1", "하나"), refParagraph("g-2", "앞 항의 사유로 ", ["g-1"], "general")]);
-    const special = article("s-a", "특약 조", [paragraph("s-1", "하나"), refParagraph("s-2", "앞 항의 사유로 ", ["g-1"], "general")], "g-a");
+    const general = article("g-a", "일반 조", [paragraph("g-1", "하나"), refParagraph("g-2", "앞 항의 사유로 ", ["g-a#g-1"], "general")]);
+    const special = article("s-a", "특약 조", [paragraph("s-1", "하나"), refParagraph("s-2", "앞 항의 사유로 ", ["g-a#g-1"], "general")], "g-a");
     const { out, reason, kinds } = undecided(special, general);
     expect(out.doc.children).toEqual([special]);
     expect(reason).toBe("항 참조를 품은 항이라 생략하면 참조가 끊깁니다");
@@ -176,15 +180,15 @@ describe("기능/조립산출 §3.5 미합의 사례 — 원문 유지 + warning
   });
 
   it("호 참조도 항 참조로 본다 — 대상 노드 종류로 가른다", () => {
-    const item = (id: string): RItem<SInline> => ({ kind: "item", id, children: [{ kind: "text", id: `${id}-t`, text: "호" }] });
-    const general = article("g-a", "일반 조", [{ ...paragraph("g-1", "하나"), items: [item("g-i1")] }, refParagraph("g-2", "위 호에 따라 ", ["g-i1"], "general")]);
-    const special = article("s-a", "특약 조", [{ ...paragraph("s-1", "하나"), items: [item("s-i1")] }, refParagraph("s-2", "위 호에 따라 ", ["g-i1"], "general")], "g-a");
+    const item = (id: string): RItem<SInline> => ({ kind: "item", id, key: id, children: [{ kind: "text", id: `${id}-t`, text: "호" }] });
+    const general = article("g-a", "일반 조", [{ ...paragraph("g-1", "하나"), items: [item("g-i1")] }, refParagraph("g-2", "위 호에 따라 ", ["g-a#g-i1"], "general")]);
+    const special = article("s-a", "특약 조", [{ ...paragraph("s-1", "하나"), items: [item("s-i1")] }, refParagraph("s-2", "위 호에 따라 ", ["g-a#g-i1"], "general")], "g-a");
     expect(undecided(special, general).reason).toBe("항 참조를 품은 항이라 생략하면 참조가 끊깁니다");
   });
 
   it("준용에서 남는 담보 항의 참조는 사유가 아니다 — 지워질 항만 본다 (남는 항은 문서에 그대로 선다)", () => {
     const general = article("g-a", "해약환급금", [paragraph("g-1", "공통 1"), paragraph("g-2", "공통 2")]);
-    const special = article("s-a", "특약 조", [paragraph("s-1", "공통 1"), paragraph("s-2", "공통 2"), refParagraph("s-3", "감액 시 ", ["g-1", "g-2"], "general")], "g-a");
+    const special = article("s-a", "특약 조", [paragraph("s-1", "공통 1"), paragraph("s-2", "공통 2"), refParagraph("s-3", "감액 시 ", ["g-a#g-1", "g-a#g-2"], "general")], "g-a");
     const { out, reason } = undecided(special, general);
     expect(out.records[0].disposition).toBe("applied");
     expect(reason).toBeUndefined();
@@ -246,7 +250,7 @@ describe("기능/조립산출 §3.5 미합의 사례 — 원문 유지 + warning
   });
 
   it("비교 제외된 보통약관 항 안의 참조·표는 사유가 되지 않는다", () => {
-    const general = article("g-a", "일반 조", [paragraph("g-1", "하나"), { ...refParagraph("g-c/x", "참조 ", ["g-1"]), excludeFromComparison: true }]);
+    const general = article("g-a", "일반 조", [paragraph("g-1", "하나"), { ...refParagraph("g-c/x", "참조 ", ["g-a#g-1"]), excludeFromComparison: true }]);
     const special = article("s-a", "특약 조", [paragraph("s-1", "하나")], "g-a");
     const { out, reason } = undecided(special, general);
     expect(out.records[0].disposition).toBe("omitted");
@@ -263,8 +267,8 @@ describe("기능/조립산출 §3.5 미합의 사례 — 원문 유지 + warning
   });
 
   it("자기 문서 항 참조 — 양쪽 id 가 달라 리터럴로는 안 맞아도 참조를 빼고 보면 같으면 「항 참조를 품은 …」 (셋째 줄)", () => {
-    const general = article("g-a", "일반 조", [paragraph("g-1", "하나"), refParagraph("g-2", "앞 항의 사유로 ", ["g-1"])]);
-    const special = article("s-a", "특약 조", [paragraph("s-1", "하나"), refParagraph("s-2", "앞 항의 사유로 ", ["s-1"])], "g-a");
+    const general = article("g-a", "일반 조", [paragraph("g-1", "하나"), refParagraph("g-2", "앞 항의 사유로 ", ["g-a#g-1"])]);
+    const special = article("s-a", "특약 조", [paragraph("s-1", "하나"), refParagraph("s-2", "앞 항의 사유로 ", ["s-a#s-1"])], "g-a");
     const { out, reason, kinds } = undecided(special, general);
     expect(out.doc.children).toEqual([special]);
     expect(out.records[0].disposition).toBe("full");
@@ -292,7 +296,7 @@ describe("기능/조립산출 §3.5 미합의 사례 — 원문 유지 + warning
 
   it("준용에서 남는 담보 항이 지워질(같은 조 안의) 항을 가리키면 준용하지 않는다 — 통째 + 「항 참조를 품은 …」 (렌더의 articleGone 을 만들지 않는다)", () => {
     const general = article("g-a", "일반 조", [paragraph("g-1", "공통 1"), paragraph("g-2", "공통 2")]);
-    const special = article("s-a", "특약 조", [paragraph("s-1", "공통 1"), paragraph("s-2", "공통 2"), refParagraph("s-3", "위 ", ["s-1"])], "g-a");
+    const special = article("s-a", "특약 조", [paragraph("s-1", "공통 1"), paragraph("s-2", "공통 2"), refParagraph("s-3", "위 ", ["s-a#s-1"])], "g-a");
     const { out, reason, kinds } = undecided(special, general);
     expect(out.doc.children).toEqual([special]);
     expect(out.records[0].disposition).toBe("full");

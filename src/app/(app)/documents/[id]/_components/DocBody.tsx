@@ -9,7 +9,9 @@
  *   바로 아래에 팝업, 넣기 · 이동 · 복제 · 삭제 · 조건식은 본문 위 툴바(자리는 `data-*` 로 읽는다, 오른쪽 클릭 메뉴는 지름길). 블록마다 붙던 버튼 줄은 없다.
  * - 조건 블록은 테두리 상자(배경 없음)다 — 가지마다 머리 줄(IF / ELIF / ELSE) + 그 아래 내용. 편집 모드의 머리 줄은 늘 열린 조건식 줄
  *   (`CondRows` — 변수 · 연산자 · 값, ⊕ ⊖)과 끝의 작은 버튼(ELIF · ELSE · 풀기 · 삭제)이다. 팝업 없음 (2026-09-28).
- * - 공용조항(조 단위)은 머리 띠 「공용조항 (이름)」 + 🗑 · 그 아래 공용조항의 **모델**(슬롯 · 옵션 자리 · 조건 · 참조, 읽기 전용)을 든 상자다.
+ * - 값별 분기(함수조항 편집기만, 최종 결정 5)는 조건 블록과 같은 상자 — 첫 칸 위에 대상 줄(대상 고르기 · 칸 없는 값 · 칸 추가 · 삭제),
+ *   칸마다 머리 줄(값 칩 · 값 더하기 · 「문구 없음」 · 칸 삭제) + 그 칸 내용. 칸 머리는 조건 머리처럼 자리(`data-cond-head`)라 툴바가 그 칸을 본다.
+ * - 함수조항(조 단위)은 머리 띠 「함수조항 (이름)」 + 🗑 · 그 아래 함수조항의 **모델**(슬롯 · 옵션 자리 · 조건 · 참조, 읽기 전용)을 든 상자다.
  *   미리보기(`clauseView: "text"`)만 고른 선택지를 끼운 문장으로 그린다 — 가운데 = 모델, 오른쪽 = 결과 (2026-09-28).
  * - 노드 id·8자리 접두를 화면에 내보내지 않는다 (리뷰 #25).
  */
@@ -17,13 +19,17 @@ import type { MouseEvent, ReactNode } from "react";
 
 import { IconButton, IconTrash } from "@/app/_components/icons";
 import { StaticTable } from "@/app/_components/StaticNodes";
-import { REPEAT_DEPTH_LABEL } from "@/app/_lib/labels";
+import { REPEAT_DEPTH_LABEL, SWITCH_WORD } from "@/app/_lib/labels";
 import {
+  CLAUSE_HOST_ITEM_ID,
+  CLAUSE_HOST_PARAGRAPH_ID,
   CLAUSE_LINE_ID,
   clauseBodyToTree,
+  indexTree,
   numberTree,
   optionCodeOf,
   referenceTargetLabel,
+  repeatLabel,
   type ArticleNode,
   type BlockBranch,
   type ClauseBlockRefNode,
@@ -33,15 +39,20 @@ import {
   type TableNode,
   type TreeIndex,
 } from "@/domain/document";
-import type { Id } from "@/domain/types";
+import type { Code, Id } from "@/domain/types";
 
+import { BoxView } from "@/app/_components/BoxView";
 import { ClauseModel, clauseEditHref } from "@/app/_components/ClauseModel";
+import { bindingLabel } from "@/app/(app)/functions/_components/params";
+import { applyBindings, plainConst } from "@/domain/clause";
 
 import { parseLines } from "../../lib";
 import { CondRows } from "./condition/CondRows";
 import { anchorOf, chipText, type DocCtx } from "./ctx";
 import { EditableText, InlineSlot } from "./Inline";
 import type { MenuItem } from "./menus";
+import { CaseControls, caseValueLabel } from "./SwitchControls";
+import { unassignedValues, type SwitchSubject } from "./switchCases";
 
 const flash = (ctx: DocCtx, id: Id) => `${ctx.flashId === id ? " is-flash" : ""}${ctx.edit?.blockSel?.includes(id) ? " is-block-sel" : ""}`;
 
@@ -243,14 +254,7 @@ function Box({ node, ctx }: { node: Node & { kind: "box" }; ctx: DocCtx }) {
   );
 }
 
-/** 옵션 하나의 고른 선택지 문구 — 안 골랐으면 〔옵션명〕. */
-function optionValueText(clause: { options: readonly { code: string; label: string; values: readonly { code: string; label: string; body: readonly { kind: string; text?: string }[] }[] }[] }, chosen: Record<string, string>, code: string): string {
-  const option = clause.options.find((o) => o.code === code);
-  const value = option?.values.find((v) => v.code === chosen[code]);
-  return value ? value.body.map((n) => n.text ?? "").join("") || value.label : `〔${option?.label ?? code}〕`;
-}
-
-/** 공용조항 옵션 자리(운반체) → 사용처가 고른 선택지 문구. 안 골랐으면 〔옵션명〕. */
+/** 함수조항 옵션 자리(운반체) → 사용처가 고른 선택지 문구. 안 골랐으면 〔옵션명〕. */
 function optionChip(clause: { options: readonly { code: string; label: string; values: readonly { code: string; label: string; body: readonly { kind: string; text?: string }[] }[] }[] }, chosen: Record<string, string>) {
   return (node: InlineNode) => {
     const code = optionCodeOf(node);
@@ -268,67 +272,95 @@ function optionChip(clause: { options: readonly { code: string; label: string; v
 }
 
 /**
- * 공용조항(조 단위) 블록 — 머리 띠 「공용조항 (이름)」 · 옵션 선택(편집이면 눌러서 고치기) · 「공용조항에서 고치기 →」 · 🗑,
- * 그 아래 공용조항의 모델(`ClauseModel` — 읽기 전용). 미리보기(`clauseView: "text"`)는 고른 선택지를 끼운 문장이다.
+ * 함수조항(조 단위) 블록 — 머리 띠 「함수조항 (이름)」 · 옵션 선택(편집이면 눌러서 고치기) · 「함수조항에서 고치기 →」 · 🗑,
+ * 그 아래 함수조항의 모델(`ClauseModel` — 읽기 전용). 미리보기(`clauseView: "text"`)는 고른 선택지를 끼운 문장이다.
  * 본문 안은 이 문서의 자리가 아니다 — `data-clause-ref` 가 누른 자리를 이 블록으로 모은다(`place.ts`).
  */
 function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
   const edit = ctx.edit;
   const clause = ctx.clauses?.find((c) => c.code === node.clauseCode);
   const label = ctx.clauseLabel.get(node.clauseCode) ?? clause?.label;
-  const options = ctx.optionText(node.clauseCode, node.options);
-  const hasOptions = !clause || clause.options.length > 0;
+  // 인자 연결 (최종 결정 2) — 「인자 ← 연결」, 사용처가 대지 않은 인자는 기본 연결
+  const params = clause?.params ?? [];
+  const discriminators = ctx.conditionFor?.(node.id).discriminators ?? [];
+  const enumChoicesOf = (t: { kind: string; enumCode?: Code }) => {
+    const def = t.enumCode !== undefined ? ctx.enumOf?.(t.enumCode) : undefined;
+    return def ? [def] : [];
+  };
+  const args = params.map((p) => {
+    const own = node.bindings?.[p.name];
+    const b = own ?? p.default;
+    // 반복의 현재 원소 — 그 반복의 이름으로 「현재 ⟳ 납입면제사유마다」 (ADR-0077 결정 3)
+    const what = b?.kind === "current" ? `현재 ⟳ ${ctx.repeatLabelOf?.(b.loop) ?? "반복"}` : b ? bindingLabel(b, p.type, discriminators, enumChoicesOf(p.type), []) : "연결 없음";
+    return `${p.name} ← ${what}${own || !b ? "" : "(기본)"}`;
+  });
+  const optionWords = clause && clause.options.length === 0 && params.length > 0 ? "" : ctx.optionText(node.clauseCode, node.options);
+  const options = [optionWords, args.length > 0 ? `인자: ${args.join(" · ")}` : ""].filter(Boolean).join(" · ");
+  const hasOptions = !clause || clause.options.length > 0 || params.length > 0;
   const asText = ctx.clauseView === "text";
-  let body: ReactNode = <p className="ts-muted">{label ? "본문을 불러오지 않았다." : `${node.clauseCode} — 없는 공용조항이다(깨진 참조).`}</p>;
-  if (clause && asText && clause.mode === "box") {
-    // 미리보기 — 박스 줄에 고른 선택지 문구를 끼운다 (값 슬롯은 표기 그대로 — 값은 조립 결과에서)
-    body = clause.body.map((box) => (
-      <aside key={box.id} className="ts-doc-box">
-        <p className="ts-doc-box-title">【{box.title}】</p>
-        {box.lines.map((l) => (
-          <p key={l.id} className="ts-doc-box-line">
-            {l.children.map((n) => (n.kind === "text" ? n.text : n.kind === "optionSlot" ? optionValueText(clause, node.options, n.optionCode) : n.kind === "slot" ? `〔${n.ref}〕` : "")).join("")}
-          </p>
-        ))}
-      </aside>
-    ));
-  } else if (clause && asText) {
-    // 미리보기 — 고른 선택지 문구를 끼운 문장 (조립 결과와 같은 읽기)
-    const tree = clauseBodyToTree(clause.mode, clause.body, clause.label);
+  let body: ReactNode = <p className="ts-muted">{label ? "본문을 불러오지 않았다." : `${node.clauseCode} — 없는 함수조항이다(깨진 참조).`}</p>;
+  if (clause && asText) {
+    // 미리보기 — 고른 선택지 문구를 끼운 문장 (조립 결과와 같은 읽기). 인자는 이 사용처의 연결로 바꿔 쓰고(조립과 같은 applyBindings),
+    // 사전평가를 켰으면 슬롯을 문서 문맥에서 찍는다 — 연결을 못 하면(연결 누락) 원래 본문 그대로
+    const bound = applyBindings(clause, node.bindings, plainConst);
+    const shown = bound.ok ? bound.value : clause;
+    const tree = clauseBodyToTree(shown.mode, shown.body, shown.label);
     const nodes = tree.children[0]?.kind === "article" ? tree.children[0].children : [];
-    const inner: DocCtx = { ...ctx, mode: "read", edit: undefined, numbers: numberTree(tree), branchEval: undefined, flashId: undefined, chipOverride: optionChip(clause, node.options) };
+    const slotEval = ctx.evalRef ? new Map([...indexTree(tree).nodes.values()].flatMap((e) => (e.node.kind === "slot" ? [[e.node.id, ctx.evalRef!(e.node.ref)] as const] : []))) : undefined;
+    const inner: DocCtx = { ...ctx, mode: "read", edit: undefined, numbers: numberTree(tree), branchEval: undefined, flashId: undefined, chipOverride: optionChip(clause, node.options), ...(slotEval ? { slotEval } : {}) };
     const line = clause.mode === "inline" ? nodes.find((n) => n.id === CLAUSE_LINE_ID) : undefined;
-    body = nodes.length === 0 ? <p className="ts-muted">본문이 비어 있다.</p> : line && line.kind === "paragraph" ? <p className="ts-doc-paragraph is-line"><InlineSlot at={{ parentId: line.id }} nodes={line.children} ctx={inner} /></p> : <Block nodes={nodes} ctx={inner} />;
+    // 「호」 · 「목」 — 자리 항(· 자리 호)은 번호 단계가 아니라 그 목록만 그린다
+    const host = nodes.find((n) => n.id === CLAUSE_HOST_PARAGRAPH_ID);
+    const hostItems = host?.kind === "paragraph" ? (host.items ?? []) : [];
+    const hostItem = hostItems.find((n) => n.id === CLAUSE_HOST_ITEM_ID);
+    const list = clause.mode === "item" ? hostItems : clause.mode === "subitem" && hostItem?.kind === "item" ? (hostItem.subitems ?? []) : undefined;
+    body =
+      clause.body.length === 0 ? (
+        <p className="ts-muted">본문이 비어 있다.</p>
+      ) : line && line.kind === "paragraph" ? (
+        <p className="ts-doc-paragraph is-line">
+          <InlineSlot at={{ parentId: line.id }} nodes={line.children} ctx={inner} />
+        </p>
+      ) : list ? (
+        <ol className={clause.mode === "item" ? "ts-doc-items" : "ts-doc-subitems"}>
+          <Block nodes={list} ctx={inner} inList />
+        </ol>
+      ) : (
+        <Block nodes={nodes} ctx={inner} />
+      );
   } else if (clause) {
-    // 가운데(모델) — 공용조항이 어떻게 짜였는지: 슬롯 · 옵션 자리(선택지 전부 + 고른 것) · 조건 · 참조 (2026-09-28)
+    // 가운데(모델) — 함수조항이 어떻게 짜였는지: 슬롯 · 옵션 자리(선택지 전부 + 고른 것) · 조건 · 참조 (2026-09-28)
     body = (
       <ClauseModel
         clause={clause}
         selected={node.options}
         references={ctx.docKind === "general" ? ctx.references.self : ctx.references.general}
         appendixName={(code) => ctx.appendixName.get(code)}
+        boxOf={ctx.boxOf}
         exprText={(source) => chipText(source, "edit", ctx.refLabel).full}
+        {...(ctx.switchValueLabel ? { valueLabel: (on: string, code: Code) => ctx.switchValueLabel!(clause, on, code) } : {})}
+        foldScope={node.id}
       />
     );
   }
   return (
     <div className={`ts-doc-clause${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id} data-clause-ref={node.id}>
-      <DragHandle id={node.id} what="공용조항" ctx={ctx} />
+      <DragHandle id={node.id} what="함수조항" ctx={ctx} />
       <div className="ts-doc-clause-head">
-        <span className="ts-doc-clause-name" title={`공용조항(조 단위) · ${node.clauseCode}`}>
-          공용조항 ({label ?? `${node.clauseCode} — 없는 공용조항`})
+        <span className="ts-doc-clause-name" title={`함수조항(조 단위) · ${node.clauseCode}`}>
+          함수조항 ({label ?? `${node.clauseCode} — 없는 함수조항`})
         </span>
         {hasOptions &&
           (edit ? (
-            <button type="button" className="ts-doc-clause-opt" title="옵션 고치기" onClick={(e) => edit.popup({ kind: "editChip", nodeId: node.id }, anchorOf(e.currentTarget))}>
+            <button type="button" className="ts-doc-clause-opt" title="옵션 · 인자 연결 고치기" onClick={(e) => edit.popup({ kind: "editChip", nodeId: node.id }, anchorOf(e.currentTarget))}>
               {options}
             </button>
           ) : (
             <span className="ts-doc-clause-opt">{options}</span>
           ))}
         {clause && !asText && (
-          <a className="ts-doc-clause-link" href={clauseEditHref(clause.code)} target="_blank" rel="noopener" title="공용조항 화면을 새 탭으로 연다 — 본문 · 옵션은 거기서 고친다">
-            공용조항에서 고치기 →
+          <a className="ts-doc-clause-link" href={clauseEditHref(clause.code)} target="_blank" rel="noopener" title="함수조항 화면을 새 탭으로 연다 — 본문 · 옵션은 거기서 고친다">
+            함수조항에서 고치기 →
           </a>
         )}
         {edit && (
@@ -336,7 +368,7 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
             className="ts-doc-clause-del"
             icon={<IconTrash />}
             danger
-            label={`공용조항 ${label ?? node.clauseCode} 삭제`}
+            label={`함수조항 ${label ?? node.clauseCode} 삭제`}
             onClick={(e) => edit.run({ label: "삭제", action: { do: "remove", nodeId: node.id } }, anchorOf(e.currentTarget))}
           />
         )}
@@ -346,8 +378,106 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
   );
 }
 
+/** 값별 분기의 대상 줄 — 읽기: 「값별 분기 대상」 + 칸 없는 값. 편집: 대상 고르기 · 칸 없는 값 · 칸 추가 · 분기 삭제. */
+function SwitchHead({ node, ctx, subject }: { node: Node & { kind: "condBlock" }; ctx: DocCtx; subject: SwitchSubject | undefined }) {
+  const edit = ctx.edit;
+  const missing = unassignedValues(subject, node.branches);
+  const firstBranch = node.branches[0];
+  const items = edit && firstBranch ? edit.headItems(firstBranch.id) : [];
+  const add = items.find((i) => i.label === "칸 추가");
+  const remove = items.find((i) => i.label === "값별 분기 삭제");
+  const run = (item: MenuItem | undefined) => (e: MouseEvent<HTMLElement>) => item && edit?.run(item, anchorOf(e.currentTarget));
+  const subjects = ctx.switchSubjects ?? [];
+  const onSubject = (code: string) => {
+    const next = subjects.find((s) => s.code === code);
+    if (!edit || !next) return;
+    // 다른 열거형으로 바꾸면 그 열거형에 없는 값은 칸에서 뺀다(같은 열거형이면 그대로)
+    const keep = new Set(next.values.map((v) => v.code));
+    edit.apply([{ type: "setSwitch", nodeId: node.id, on: code }, ...node.branches.map((br) => ({ type: "setCase" as const, branchId: br.id, values: (br.values ?? []).filter((v) => keep.has(v)), empty: br.empty === true }))]);
+  };
+  const missingLine = missing.length > 0 && (
+    <span className="ts-cond-issue ts-switch-missing" role="note">
+      {SWITCH_WORD.unassigned}: {missing.map((v) => v.label).join(" · ")}
+    </span>
+  );
+  return (
+    <div className={`ts-doc-cond-head ts-switch-on${edit ? " is-edit" : ""}`}>
+      <span className="ts-cond-badge">{SWITCH_WORD.switch}</span>{" "}
+      {edit ? (
+        <select aria-label="값별 분기 대상" value={node.switchOn} onChange={(e) => onSubject(e.target.value)}>
+          {!subject && <option value={node.switchOn}>{node.switchOn} (없는 대상)</option>}
+          {subjects.map((s) => (
+            <option key={s.code} value={s.code}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <span>{subject?.label ?? node.switchOn}</span>
+      )}{" "}
+      {missingLine}
+      {edit && (
+        <span className="ts-cond-tools">
+          {add && (
+            <button type="button" className="ts-cond-mini" title="칸 추가 — 칸 없는 값 첫째를 든 칸" onClick={run(add)}>
+              +{SWITCH_WORD.case}
+            </button>
+          )}
+          {remove && <IconButton className="ts-cond-rowbtn" icon={<IconTrash />} danger label="값별 분기 삭제" onClick={run(remove)} />}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** 값별 분기 칸의 머리 줄 — 읽기: 「칸 값 · 값」(「문구 없음」). 편집: 값 칩(× 빼기) · 값 더하기 · 「문구 없음」 · 칸 삭제. */
+function CaseHead({ ctx, node, branch, subject }: { ctx: DocCtx; node: Node & { kind: "condBlock" }; branch: BlockBranch; subject: SwitchSubject | undefined }) {
+  const edit = ctx.edit;
+  const values = branch.values ?? [];
+  if (!edit) {
+    return (
+      <p className="ts-doc-cond-head">
+        <span className="ts-cond-badge">{SWITCH_WORD.case}</span> {values.map((v) => caseValueLabel(subject, v)).join(" · ") || "값 없음"}
+        {branch.empty ? ` — ${SWITCH_WORD.empty}` : ""}
+      </p>
+    );
+  }
+  const removeCase = edit.headItems(branch.id).find((i) => i.label === "이 칸 삭제" && !i.disabled);
+  return (
+    <div className="ts-doc-cond-head is-edit ts-switch-case" data-cond-head={branch.id}>
+      <span className="ts-cond-badge">{SWITCH_WORD.case}</span>
+      <CaseControls subject={subject} branch={branch} branches={node.branches} apply={edit.apply} />
+      <span className="ts-cond-tools">{removeCase && <IconButton className="ts-cond-rowbtn" icon={<IconTrash />} danger label="이 칸 삭제" onClick={(e) => edit.run(removeCase, anchorOf(e.currentTarget))} />}</span>
+    </div>
+  );
+}
+
+/** 값별 분기 — 조건 블록과 같은 상자: 첫 칸 위에 대상 줄, 칸마다 머리 줄 + 그 칸 내용(「문구 없음」 칸은 내용 없음). */
+function SwitchBlock({ node, ctx, as }: { node: Node & { kind: "condBlock" }; ctx: DocCtx; as: "div" | "li" }) {
+  const Tag = as;
+  const subject = ctx.switchSubjects?.find((s) => s.code === node.switchOn);
+  return (
+    <>
+      {node.branches.map((br, i) => (
+        <Tag
+          key={br.id}
+          data-node={br.id}
+          data-drop-block={node.id}
+          className={`ts-doc-cond is-switch${i === 0 ? "" : " is-alt"}${flash(ctx, br.id)}${ctx.edit?.blockSel?.includes(node.id) ? " is-block-sel" : ""}`}
+        >
+          {i === 0 && <DragHandle id={node.id} what={SWITCH_WORD.switch} ctx={ctx} />}
+          {i === 0 && <SwitchHead node={node} ctx={ctx} subject={subject} />}
+          <CaseHead ctx={ctx} node={node} branch={br} subject={subject} />
+          {!br.empty && <Block nodes={br.children} ctx={ctx} inList={as === "li"} />}
+        </Tag>
+      ))}
+    </>
+  );
+}
+
 /** 블록 조건 — 가지마다 테두리 상자 + 머리 줄. 첫 가지는 실선(IF), 나머지는 파선(ELIF · ELSE). */
 function CondBlock({ node, ctx, as }: { node: Node & { kind: "condBlock" }; ctx: DocCtx; as: "div" | "li" }) {
+  if (node.switchOn !== undefined) return <SwitchBlock node={node} ctx={ctx} as={as} />;
   const Tag = as;
   return (
     <>
@@ -372,8 +502,40 @@ function CondBlock({ node, ctx, as }: { node: Node & { kind: "condBlock" }; ctx:
 }
 
 /**
+ * 블록 반복 (ADR-0077) — 상자 머리 줄에 반복 이름(「⟳ 납입면제종마다」), 그 아래 본문 한 벌. 편집기 번호는 본문을 한 번만 센다 — 실제 번호는 조립이 원소마다 매긴다.
+ * 머리 줄이 반복 블록의 자리(`data-block`)다 — 툴바 「반복 원천」 · 「이 반복에 … 추가」가 그 자리로 선다. 편집 중이면 누르면 원천 팝업.
+ */
+function RepeatBlock({ node, ctx, as }: { node: Node & { kind: "forBlock" }; ctx: DocCtx; as: "div" | "li" }) {
+  const Tag = as;
+  const label = ctx.repeatLabelOf?.(node.id) ?? node.alias ?? repeatLabel(node.source);
+  const edit = ctx.edit;
+  return (
+    <Tag className={`ts-doc-repeat${flash(ctx, node.id)}${edit?.blockSel?.includes(node.id) ? " is-block-sel" : ""}`} data-node={node.id} data-drop-block={node.id} data-repeat={node.id}>
+      <DragHandle id={node.id} what="반복 블록" ctx={ctx} />
+      <p className="ts-doc-cond-head" data-block={node.id} title="반복 블록 — 원천의 원소마다 본문을 복제한다(번호는 조립이 펼친 뒤 매긴다)">
+        {edit ? (
+          <button type="button" className="ts-doc-cond-btn" aria-label={`반복 원천 — ${label}`} onClick={(e) => edit.popup({ kind: "repeatBlock", nodeId: node.id }, anchorOf(e.currentTarget))}>
+            ⟳ {label}
+          </button>
+        ) : (
+          <>⟳ {label}</>
+        )}
+      </p>
+      {/* 호 목록 자리면 본문 호들을 제 목록으로 감싼다 — <li> 안에 <li> 를 바로 두지 않는다 */}
+      {as === "li" ? (
+        <ol className="ts-doc-items">
+          <Block nodes={node.children} ctx={ctx} inList />
+        </ol>
+      ) : (
+        <Block nodes={node.children} ctx={ctx} />
+      )}
+    </Tag>
+  );
+}
+
+/**
  * 항·호·목·조건 블록 — 자리에 맞는 태그로. `data-block` 은 툴바 · 오른쪽 클릭 메뉴가 자리를 읽는 표지다(`place.ts`).
- * 공용조항 화면도 이것으로 본문(항 목록)을 그린다 — 조 머리 없이 (기능/공용조항 §4.3).
+ * 함수조항 화면도 이것으로 본문(항 목록)을 그린다 — 조 머리 없이 (기능/함수조항 §4.3).
  */
 export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: DocCtx; inList?: boolean }): ReactNode {
   return nodes.map((node) => {
@@ -443,7 +605,7 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
       }
 
       case "clauseBlockRef":
-        // 호 목록 자리(항 · 호 뒤)의 공용조항은 「박스」 — 목록 안이면 <li> 로 감싼다
+        // 호 목록 자리(항 · 호 뒤)의 함수조항은 「박스」 — 목록 안이면 <li> 로 감싼다
         return inList ? (
           <li key={node.id} className="ts-doc-static-item">
             <ClauseBlock node={node} ctx={ctx} />
@@ -485,6 +647,22 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
         );
       }
 
+      // 정적 마스터 박스 참조 — 박스 마스터의 내용을 그대로 그린다(여기서 고치지 않는다 — 박스 화면에서, 기능/박스 §4.4)
+      case "boxRef": {
+        const body = <BoxView code={node.boxCode} box={ctx.boxOf?.(node.boxCode)} />;
+        return inList ? (
+          <li key={node.id} className={`ts-doc-static-item${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
+            <DragHandle id={node.id} what="박스" ctx={ctx} />
+            {body}
+          </li>
+        ) : (
+          <div key={node.id} className={`ts-doc-static${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
+            <DragHandle id={node.id} what="박스" ctx={ctx} />
+            {body}
+          </div>
+        );
+      }
+
       case "section":
         return (
           <section key={node.id} id={`sec-${node.id}`} className="ts-doc-section">
@@ -494,11 +672,7 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
         );
 
       case "forBlock":
-        return (
-          <div key={node.id} className="ts-muted" data-block={node.id} data-node={node.id}>
-            (반복 블록 — 아직 지원하지 않는다)
-          </div>
-        );
+        return <RepeatBlock key={node.id} node={node} ctx={ctx} as={inList ? "li" : "div"} />;
 
       case "article":
         return <Article key={node.id} node={node} ctx={ctx} />;

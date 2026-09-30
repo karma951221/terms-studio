@@ -261,7 +261,7 @@ export const specialGroupMembers = pgTable(
 
 // ───────────────────────────── 옵션 오버라이드 (기능/상품 §3.6) ─────────────────────────────
 
-/** 공용조항 옵션 오버라이드 — 상품의 보통약관 자리만 (scope product). 담보약관 옵션은 담보 마스터에서 정한다 (기능/상품 §3.6). */
+/** 함수조항 옵션 오버라이드 — 상품의 보통약관 자리만 (scope product). 담보약관 옵션은 담보 마스터에서 정한다 (기능/상품 §3.6). */
 export const clauseOptionOverrides = pgTable(
   "clause_option_overrides",
   {
@@ -269,7 +269,7 @@ export const clauseOptionOverrides = pgTable(
     /** 항상 "product" — 컬럼은 남겨 둔다 (기능/상품 §3.6, 마이그레이션 없음). */
     scopeKind: text("scope_kind").notNull(),
     scopeId: uuid("scope_id").notNull(),
-    /** 문서 안 공용조항 참조 노드 id (B3). FK 없음. 문서 노드 id 는 uuid 가 아닐 수 있다 (시드의 `g-clause-1` 등) — text. */
+    /** 문서 안 함수조항 참조 노드 id (B3). FK 없음. 문서 노드 id 는 uuid 가 아닐 수 있다 (시드의 `g-clause-1` 등) — text. */
     nodeId: text("node_id").notNull(),
     clauseCode: text("clause_code").notNull(),
     /** 옵션 자리 → 선택 코드. 유효 집합 검증은 B2 OptionValidator. */

@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import type { Discriminator } from "../catalog";
+import type { Discriminator, EnumDef } from "../catalog";
 import type { Clause } from "../clause";
 import type { MasterForm } from "../master";
 import { surgeryFixture } from "../document";
 import { buildGraph, nodeKey, type DocumentInput } from "./graph";
-import { affectedProducts, brokenEdges, cycles, dependentDiscriminators, describeKey, orphans, refStats, relationView, transitiveUsages, usagesOf } from "./queries";
+import { affectedProducts, brokenEdges, cycles, dependentDiscriminators, describeKey, enumValueListers, orphans, refStats, relationView, transitiveUsages, usagesOf } from "./queries";
 
 /** 픽스처 마스터 — 담보 기본{갱신여부} · 급부 보험금지급{면책여부 · 지급률}. 경로는 `폼키.필드키`. */
 const master: MasterForm[] = [
@@ -43,7 +43,7 @@ function surgeryGraph() {
 }
 
 describe("usagesOf — 역방향 조회 (구분자정의 S6 · 관계정보 뷰)", () => {
-  it("구분자 사용처 = 문면 조건식·슬롯·공용조항 식 — 좌표 목록으로", () => {
+  it("구분자 사용처 = 문면 조건식·슬롯·함수조항 식 — 좌표 목록으로", () => {
     const g = surgeryGraph();
     const u = usagesOf(g, { kind: "discriminator", code: "D0001" });
     expect(u.map((e) => e.via)).toEqual(["when", "when"]); // 인라인 조건(제1조) · 조 자리 조건 블록
@@ -66,7 +66,7 @@ describe("usagesOf — 역방향 조회 (구분자정의 S6 · 관계정보 뷰)
     expect(usagesOf(g, { kind: "discriminator", code: "D0099" }, { via: ["when", "slot", "expression"] })).toEqual([]);
   });
 
-  it("공용조항·조·별표 사용처", () => {
+  it("함수조항·조·별표 사용처", () => {
     const g = surgeryGraph();
     expect(usagesOf(g, { kind: "clause", code: "C001" }).map((e) => [e.via, e.at.articleTitle])).toEqual([
       ["clauseRef", "특별약관의 소멸"],
@@ -78,8 +78,8 @@ describe("usagesOf — 역방향 조회 (구분자정의 S6 · 관계정보 뷰)
   });
 });
 
-describe("orphans — 어디서도 참조되지 않는 구분자·공용조항·별표", () => {
-  it("식·문면이 읽지 않는 구분자, 참조 없는 공용조항·별표가 고아다", () => {
+describe("orphans — 어디서도 참조되지 않는 구분자·함수조항·별표", () => {
+  it("식·문면이 읽지 않는 구분자, 참조 없는 함수조항·별표가 고아다", () => {
     const g = surgeryGraph();
     expect(orphans(g).map((n) => nodeKey(n.key))).toEqual(["discriminator:D0099", "clause:C003", "appendix:APX_ORPHAN"]);
   });
@@ -109,7 +109,7 @@ describe("cycles — 파생식 순환 · 조 참조 순환", () => {
       id: `${id}-root`,
       kind: "document" as const,
       title: id,
-      children: refs.map(([art, target]) => ({ id: art, kind: "article" as const, title: art, children: [{ id: `${art}-p`, kind: "paragraph" as const, children: [{ id: `${art}-r`, kind: "articleRef" as const, targets: [{ nodeId: target }], connector: "및" as const, scope: "self" as const }] }] })),
+      children: refs.map(([art, target]) => ({ id: art, kind: "article" as const, title: art, children: [{ id: `${art}-p`, kind: "paragraph" as const, children: [{ id: `${art}-r`, kind: "articleRef" as const, targets: [{ articleId: target }], connector: "및" as const, scope: "self" as const }] }] })),
     });
     const g = buildGraph({ documents: [{ id: "d", kind: "general", title: "d", tree: tree("d", [["a1", "a2"], ["a2", "a1"], ["a3", "a3"]]) }] });
     expect(cycles(g).map((c) => c.nodes.map((n) => (n.kind === "article" ? n.articleId : "?")).sort())).toEqual([["a1", "a2"], ["a3"]]);
@@ -141,7 +141,7 @@ describe("brokenEdges — 대상이 없는 참조 (삭제 후 남은 오류 상�
 });
 
 describe("relationView — 관계정보 뷰 (정방향 · 역방향 · 옵션 오버라이드 사용처)", () => {
-  it("공용조항: 정방향(본문이 읽는 것) · 역방향(참조 문서) · 오버라이드(기능/공용조항 §3.2) · 깨진 것", () => {
+  it("함수조항: 정방향(본문이 읽는 것) · 역방향(참조 문서) · 오버라이드(기능/함수조항 §3.2) · 깨진 것", () => {
     const g = buildGraph({
       discriminators: [D("D0001")],
       master,
@@ -207,13 +207,13 @@ describe("describeKey — 표시명 표기 (기능/조립산출 §3.4 · 리뷰 
 
   it("선언되지 않은 대상(깨진 참조)은 상위 이름 아래 「…(없음)」으로, 상위도 없으면 id 표기로 돌아간다", () => {
     const g = surgeryGraph();
-    expect(describeKey({ kind: "clause", code: "C999" }, g)).toBe("공용조항 C999");
+    expect(describeKey({ kind: "clause", code: "C999" }, g)).toBe("함수조항 C999");
     expect(describeKey({ kind: "article", documentId: "doc-g", articleId: "g-gone" }, g)).toBe(`${fx.general.title} › 조 g-gone(없음)`);
   });
 });
 
 describe("refStats — 문제 개수에 붙일 분모 (§9.6)", () => {
-  it("고아 분모는 고아가 될 수 있는 종류(구분자·공용조항·별표)만 센다", () => {
+  it("고아 분모는 고아가 될 수 있는 종류(구분자·함수조항·별표)만 센다", () => {
     const g = surgeryGraph();
     const s = refStats(g);
     expect(s.edges).toBe(g.edges.length);
@@ -229,7 +229,7 @@ describe("refStats — 문제 개수에 붙일 분모 (§9.6)", () => {
  * 체인 픽스처 — D1 ← D2 ← D3 (D2 가 D1 을, D3 가 D2 를 읽는다) · D8 은 D1 을 직접 읽는다.
  *   - doc-g(보통약관) 조 g1 조건식 `D1` — 직접 사용처.
  *   - doc-s(담보약관 · cov-1 소유 · 보통약관 doc-g) 조 s1 조건식 `D3` — D2 → D3 를 거친 사용처.
- *   - 공용조항 C001 본문 조건식 `D3` · doc-s2(담보약관 · cov-2 소유) 조 s2 가 C001 을 참조.
+ *   - 함수조항 C001 본문 조건식 `D3` · doc-s2(담보약관 · cov-2 소유) 조 s2 가 C001 을 참조.
  *   - 상품 p1 이 cov-1 탑재 · p2 는 보통약관 doc-g 만 · p3 가 cov-2 탑재.
  */
 function chainDocument(id: string, title: string, article: { id: string; when?: string; clause?: string }): DocumentInput["tree"] {
@@ -305,7 +305,7 @@ describe("transitiveUsages — 이 구분자와 의존 구분자들의 문면 �
 });
 
 describe("affectedProducts — 사용처 문면이 들어가는 상품 (ADR-0049 §3 「영향 받는 상품 m건」)", () => {
-  it("담보약관 경로 · 보통약관 직접 · 공용조항 경유 각 1건 — 상품별로 한 번, 대표 경로 하나", () => {
+  it("담보약관 경로 · 보통약관 직접 · 함수조항 경유 각 1건 — 상품별로 한 번, 대표 경로 하나", () => {
     const g = chainGraph();
     const a = affectedProducts(g, "D1");
     expect(a.map((x) => [nodeKey(x.product), x.productName])).toEqual([
@@ -315,7 +315,7 @@ describe("affectedProducts — 사용처 문면이 들어가는 상품 (ADR-0049
     ]);
     expect(a[1].through.map(nodeKey)).toEqual(["article:doc-g/g1", "document:doc-g"]);
     expect(a[2].through.map(nodeKey)).toEqual(["clause:C001", "article:doc-s2/s2", "document:doc-s2", "coverageNode:coverage/cov-2", "productCoverage:pc3"]);
-    // D3 만 보면 보통약관 직접 사용처가 없어 p2 는 빠진다 — 공용조항 간선이 문서 간선보다 먼저라 p3 가 앞
+    // D3 만 보면 보통약관 직접 사용처가 없어 p2 는 빠진다 — 함수조항 간선이 문서 간선보다 먼저라 p3 가 앞
     expect(affectedProducts(g, "D3").map((x) => nodeKey(x.product))).toEqual(["product:p3", "product:p1"]);
   });
 
@@ -329,15 +329,15 @@ describe("affectedProducts — 사용처 문면이 들어가는 상품 (ADR-0049
     expect(affectedProducts(g, { kind: "discriminator", code: "D1" })).toEqual(affectedProducts(g, "D1"));
   });
 
-  describe("공용조항 → 사용처 문서 → 상품 (기능/공용조항 §3.4 검사 ③ 「영향 받는 상품」 · ADR-0049 §3)", () => {
-    it("공용조항 → 담보약관 → 담보 → 상품담보 → 상품 · through 는 사용처 조부터", () => {
+  describe("함수조항 → 사용처 문서 → 상품 (기능/함수조항 §3.4 검사 ③ 「영향 받는 상품」 · ADR-0049 §3)", () => {
+    it("함수조항 → 담보약관 → 담보 → 상품담보 → 상품 · through 는 사용처 조부터", () => {
       const g = chainGraph();
       const a = affectedProducts(g, { kind: "clause", code: "C001" });
       expect(a.map((x) => [nodeKey(x.product), x.productName])).toEqual([["product:p3", "상품 3"]]);
       expect(a[0].through.map(nodeKey)).toEqual(["article:doc-s2/s2", "document:doc-s2", "coverageNode:coverage/cov-2", "productCoverage:pc3"]);
     });
 
-    it("공용조항 → 보통약관 → 상품(직접) · 보통약관 → 담보약관 → 상품 — 상품별 한 번", () => {
+    it("함수조항 → 보통약관 → 상품(직접) · 보통약관 → 담보약관 → 상품 — 상품별 한 번", () => {
       const g = buildGraph({
         clauses: [clause("C002", "공용 문구", [{ id: "c2-p", kind: "paragraph", children: [{ id: "c2-t", kind: "text", text: "문구" }] }])],
         documents: [
@@ -356,9 +356,192 @@ describe("affectedProducts — 사용처 문면이 들어가는 상품 (ADR-0049
       expect(a[1].through.map(nodeKey)).toEqual(["article:doc-g/g1", "document:doc-g"]);
     });
 
-    it("아무 문서도 참조하지 않는 공용조항 · 선언되지 않은 공용조항은 빈 목록", () => {
+    it("아무 문서도 참조하지 않는 함수조항 · 선언되지 않은 함수조항은 빈 목록", () => {
       const g = chainGraph();
       expect(affectedProducts(g, { kind: "clause", code: "C999" })).toEqual([]);
     });
+  });
+});
+
+describe("enumValueListers — 열거값 추가의 재검사 목록 (ADR-0078 결정 4)", () => {
+  const enumMaster: MasterForm[] = [
+    { key: "product_basic", label: "상품 기본", level: "product", fields: [{ key: "notice", label: "고지유형", type: { kind: "enum", enumCode: "E0001" } }] },
+    { key: "no_surrender", label: "무저해지", level: "plan", fields: [{ key: "type", label: "유형", type: { kind: "enum", enumCode: "E0002" } }] },
+  ];
+  const enums: EnumDef[] = [
+    { code: "E0001", label: "고지유형", values: [{ code: "V01", label: "일반심사", order: 0 }, { code: "V02", label: "간편심사", order: 1 }] },
+    { code: "E0002", label: "무저해지유형", values: [{ code: "V01", label: "지급형", order: 0 }, { code: "V02", label: "무저해지형", order: 1 }] },
+  ];
+  const 고지유형: Discriminator = { code: "D0002", label: "고지유형", description: "", level: "product", expression: "product_basic.notice" };
+  const 간편여부: Discriminator = { code: "D0010", label: "간편여부", description: "", level: "product", expression: "product_basic.notice = 'V02'" };
+  const 무저해지: Discriminator = { code: "D0009", label: "무저해지형", description: "", level: "plan", expression: "no_surrender.type = 'V02'" };
+
+  function graph() {
+    return buildGraph({
+      discriminators: [고지유형, 간편여부, 무저해지],
+      enums,
+      documents: [
+        {
+          id: "d",
+          kind: "general",
+          title: "g",
+          tree: {
+            id: "root",
+            kind: "document",
+            title: "g",
+            children: [
+              { id: "cb", kind: "condBlock", branches: [{ id: "b1", when: "D0002 = 'V01'", children: [] }, { id: "b2", when: "any(D0009)", children: [] }] },
+            ],
+          },
+        },
+      ],
+      master: enumMaster,
+    });
+  }
+
+  it("그 열거형 값 코드와 비교하는 조건식 · 구분자 식 간선만 — 다른 열거형 · 값을 비교하지 않는 참조는 뺀다", () => {
+    const edges = enumValueListers(graph(), "E0001");
+    expect(edges.map((e) => [e.via, nodeKey(e.from), nodeKey(e.to)])).toEqual([
+      ["expression", "discriminator:D0010", "enumValue:E0001/V02"],
+      ["when", "document:d", "enumValue:E0001/V01"],
+    ]);
+    expect(enumValueListers(graph(), "E0002").map((e) => nodeKey(e.from))).toEqual(["discriminator:D0009"]);
+  });
+
+  it("같은 자리가 값을 여럿 비교해도 좌표 하나로 모은다", () => {
+    const g = buildGraph({
+      discriminators: [고지유형],
+      enums,
+      documents: [{ id: "d", kind: "general", title: "g", tree: { id: "root", kind: "document", title: "g", children: [{ id: "cb", kind: "condBlock", branches: [{ id: "b1", when: "D0002 = 'V01' or D0002 = 'V02'", children: [] }] }] } }],
+      master: enumMaster,
+    });
+    expect(enumValueListers(g, "E0001")).toHaveLength(1);
+  });
+});
+
+describe("함수조항 인자 · 내부 변수의 열거값 읽기 — 값 나열 · 필드 읽기 간선 (ADR-0078 결정 2 · 4 · 최종 결정 20)", () => {
+  const waiverMaster: MasterForm[] = [{ key: "waiver", label: "납입면제", level: "plan", fields: [{ key: "reasons", label: "사유", type: { kind: "list<enum>", enumCode: "E0001" } }] }];
+  const 사유: EnumDef = {
+    code: "E0001",
+    label: "납입면제사유",
+    fields: [{ key: "F01", label: "약관표시명", type: "string", order: 1 }],
+    values: [{ code: "V01", label: "암", order: 0 }, { code: "V02", label: "뇌졸중", order: 1 }],
+  };
+  const 부가항: Clause = {
+    code: "C0001",
+    label: "면제 부가항",
+    mode: "block",
+    options: [],
+    params: [
+      { name: "종들", type: { kind: "planOptions", form: "waiver" } },
+      { name: "사유", type: { kind: "enum", enumCode: "E0001" } },
+    ],
+    locals: [
+      { name: "모든사유", expr: "arg.종들.합치기(waiver.reasons)" },
+      { name: "암있음", expr: "var.모든사유.있음('V01')" },
+      { name: "표시명있음", expr: "var.모든사유.거르기(F02 = true).비었음" },
+    ],
+    body: [
+      {
+        id: "p",
+        kind: "paragraph",
+        children: [
+          { id: "c", kind: "inlineCond", branches: [{ id: "b1", when: "arg.사유 = 'V02'", children: [] }] },
+          { id: "s", kind: "slot", ref: "arg.사유.F01" },
+        ],
+      },
+    ],
+    required: { discriminators: [], attributes: [] },
+  } as Clause;
+  const graph = () => buildGraph({ enums: [사유], clauses: [부가항], master: waiverMaster });
+
+  it("있음(값…) 으로 나열한 내부 변수 · 인자 = 값 비교가 열거값 추가 재검사 목록에 오른다", () => {
+    expect(enumValueListers(graph(), "E0001").map((e) => [e.via, nodeKey(e.to), e.at.refPath ?? e.at.nodePath?.join("/")])).toEqual([
+      ["local", "enumValue:E0001/V01", "var.암있음"],
+      ["when", "enumValue:E0001/V02", "p/c/b1"],
+    ]);
+  });
+
+  it("필드 읽기(.필드 · 거르기) → enumField 간선 — 지운 필드(F02)를 읽는 곳은 깨진 참조로 남는다", () => {
+    const g = graph();
+    expect(usagesOf(g, { kind: "enumField", enumCode: "E0001", key: "F01" }).map((e) => e.via)).toEqual(["slot"]);
+    expect(usagesOf(g, { kind: "enumField", enumCode: "E0001", key: "F02" }).map((e) => [e.via, e.at.refPath])).toEqual([["local", "var.표시명있음"]]);
+    expect(brokenEdges(g).some((e) => nodeKey(e.to) === "enumField:E0001/F02")).toBe(true);
+  });
+
+  it("내부 변수의 합치기(폼.필드)는 그 마스터 필드를 읽는 간선이다", () => {
+    expect(usagesOf(graph(), { kind: "masterField", path: "waiver.reasons" }).map((e) => [e.via, nodeKey(e.from)])).toEqual([["local", "clause:C0001"]]);
+  });
+});
+
+describe("값별 분기(switch) 칸의 값 — switchCase 간선 (최종 결정 5 · 20 · 21)", () => {
+  const 사유: EnumDef = { code: "E0001", label: "납입면제사유", values: [{ code: "V01", label: "암", order: 0 }, { code: "V02", label: "뇌졸중", order: 1 }] };
+  const 면제호: Clause = {
+    code: "C0001",
+    label: "납입면제 호",
+    mode: "item",
+    options: [],
+    params: [{ name: "사유", type: { kind: "enum", enumCode: "E0001" } }],
+    body: [
+      {
+        id: "sw",
+        kind: "switchBlock",
+        on: "arg.사유",
+        cases: [
+          { id: "k1", values: ["V01"], children: [{ id: "i1", kind: "item", children: [] }] },
+          { id: "k2", values: ["V02", "V09"], empty: true, children: [] },
+        ],
+      },
+    ],
+    required: { discriminators: [], attributes: [] },
+  } as Clause;
+  const graph = () => buildGraph({ enums: [사유], clauses: [면제호] });
+
+  it("분기 하나가 열거값 추가 재검사 목록에 한 번 선다 — 새 값은 그 분기에서 미배정이다", () => {
+    expect(enumValueListers(graph(), "E0001").map((e) => [e.via, nodeKey(e.from), e.at.nodePath?.join("/"), e.at.refPath])).toEqual([["switchCase", "clause:C0001", "sw", "arg.사유"]]);
+  });
+
+  it("칸에 남은 지운 값(V09)은 깨진 참조 — 값 삭제 영향 · 「없는 값」 의 재료", () => {
+    const g = graph();
+    expect(usagesOf(g, { kind: "enumValue", enumCode: "E0001", valueCode: "V02" }).map((e) => e.via)).toEqual(["switchCase"]);
+    expect(brokenEdges(g).some((e) => nodeKey(e.to) === "enumValue:E0001/V09")).toBe(true);
+  });
+});
+
+describe("값 한정 참조의 값 — valueRestrict 간선 (최종 결정 13 · 20 · 21)", () => {
+  const 사유: EnumDef = { code: "E0001", label: "납입면제사유", values: [{ code: "V01", label: "암", order: 0 }, { code: "V02", label: "뇌졸중", order: 1 }] };
+  /** 보통약관 — 납입면제종마다 › 항 › 사유마다 › 호 P0300, 참조 조가 「사유 = 암 · (지운) V09」 한정으로 가리킨다. */
+  const tree = {
+    id: "g",
+    kind: "document",
+    title: "보통약관",
+    children: [
+      {
+        id: "a",
+        kind: "article",
+        title: "납입면제",
+        children: [
+          {
+            id: "fo",
+            kind: "forBlock",
+            code: "P0100",
+            source: { kind: "planOptions", form: "waiver" },
+            children: [{ id: "p", kind: "paragraph", code: "P0200", children: [], items: [{ id: "fi", kind: "forBlock", code: "P0300", source: { kind: "listOfCurrent", loop: "fo", field: "reasons" }, children: [{ id: "i", kind: "item", code: "P0400", children: [] }] }] }],
+          },
+        ],
+      },
+      { id: "z", kind: "article", title: "참조", children: [{ id: "zp", kind: "paragraph", code: "P0100", children: [{ id: "zr", kind: "articleRef", scope: "self", connector: "및", targets: [{ articleId: "a", code: "P0400", restrict: { values: ["V01", "V09"] } }] }] }] },
+    ],
+  } as unknown as DocumentInput["tree"];
+  const graph = () => buildGraph({ enums: [사유], documents: [{ id: "doc-g", kind: "general", title: "보통약관", tree }] });
+
+  it("값 한정 참조가 열거값 추가 재검사 목록에 선다 — 새 값은 한정에 안 든다", () => {
+    expect(enumValueListers(graph(), "E0001").map((e) => [e.via, e.at.nodePath?.at(-1), e.at.refPath])).toEqual([["valueRestrict", "zr", "a#P0400"]]);
+  });
+
+  it("한정에 남은 지운 값(V09)은 깨진 참조 — 값 삭제 영향 · 「없는 값」 의 재료", () => {
+    const g = graph();
+    expect(usagesOf(g, { kind: "enumValue", enumCode: "E0001", valueCode: "V01" }).map((e) => e.via)).toEqual(["valueRestrict"]);
+    expect(brokenEdges(g).some((e) => nodeKey(e.to) === "enumValue:E0001/V09")).toBe(true);
   });
 });

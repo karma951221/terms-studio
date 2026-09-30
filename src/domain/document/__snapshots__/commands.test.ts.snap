@@ -61,7 +61,7 @@ exports[`문면작성 S2 — 인라인 조건 삽입 > 문장 안에 인라인 �
 }
 `;
 
-exports[`문면작성 S3 — 조 자리의 조건 블록과 가지 편집 > 조 자리에 조건 블록(if) 추가 후 가지 안에 조 작성 · elif · else 추가 1`] = `
+exports[`문면작성 S3 — 조건 블록과 가지 편집 > 조 자리에 조건 블록(if) 추가 후 가지 안에 조 작성 — 조 자리는 켜고 끄기만이라 ELIF · ELSE 는 거부 (ADR-0072 결정 2b) 1`] = `
 {
   "children": [
     {
@@ -95,22 +95,6 @@ exports[`문면작성 S3 — 조 자리의 조건 블록과 가지 편집 > 조 
           ],
           "id": "n6",
           "when": "D0001 = true",
-        },
-        {
-          "children": [],
-          "id": "n9",
-          "when": "D0002 = 'V01'",
-        },
-        {
-          "children": [
-            {
-              "children": [],
-              "id": "n10",
-              "kind": "article",
-              "title": "그 외",
-            },
-          ],
-          "id": "n11",
         },
       ],
       "id": "n7",
@@ -148,28 +132,27 @@ exports[`복제 (D-P4-9) — 하위 트리·조연결·참조 대상 id 를 그�
         {
           "children": [
             {
-              "connector": "및",
               "id": "n6",
               "kind": "articleRef",
               "scope": "self",
               "targets": [
                 {
-                  "nodeId": "n3",
+                  "articleId": "n3",
                 },
               ],
             },
             {
-              "connector": "및",
               "id": "n7",
               "kind": "articleRef",
               "scope": "self",
               "targets": [
                 {
-                  "nodeId": "n4",
+                  "articleId": "n4",
                 },
               ],
             },
           ],
+          "code": "P0200",
           "id": "n8",
           "kind": "paragraph",
         },
@@ -189,34 +172,34 @@ exports[`복제 (D-P4-9) — 하위 트리·조연결·참조 대상 id 를 그�
               "text": "회사는 ",
             },
           ],
+          "code": "P0100",
           "id": "c2",
           "kind": "paragraph",
         },
         {
           "children": [
             {
-              "connector": "및",
               "id": "c5",
               "kind": "articleRef",
               "scope": "self",
               "targets": [
                 {
-                  "nodeId": "c1",
+                  "articleId": "c1",
                 },
               ],
             },
             {
-              "connector": "및",
               "id": "c6",
               "kind": "articleRef",
               "scope": "self",
               "targets": [
                 {
-                  "nodeId": "n4",
+                  "articleId": "n4",
                 },
               ],
             },
           ],
+          "code": "P0200",
           "id": "c4",
           "kind": "paragraph",
         },

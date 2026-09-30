@@ -6,8 +6,8 @@
  *              graph = refs 그래프 (「검사」의 깨질 사용처)
  * - coverage ← UsageSource = `coverageUsageSource` (노드 삭제의 문면 사용처) · MountSync = product.syncStructureIn (구조 정정 뒤 탑재 스냅샷)
  * - clause   ← UsageSource = `clauseUsageSource` (참조 문서)
- * - document ← ClauseGate = 공용조항 정의(존재·요구 구분자·옵션 검증) · TypeResolver = 카탈로그 정의 + 담보속성 유효값 ·
- *              UsageSource = `documentUsageSource` (상품 템플릿 · 담보 문서 연결 · 옵션 오버라이드 · 공용조항의 별표 참조)
+ * - document ← ClauseGate = 함수조항 정의(존재·요구 구분자·옵션 검증) · TypeResolver = 카탈로그 정의 + 담보속성 유효값 ·
+ *              UsageSource = `documentUsageSource` (상품 템플릿 · 담보 문서 연결 · 옵션 오버라이드 · 함수조항의 별표 참조)
  * - product  ← CoverageMasterSource = coverage.get (구조적 상위집합) · GeneralDocumentGate = document.get 이 general 인가 ·
  *              GeneralAttachmentCheck = document.requiredDiscriminators + 카탈로그 레벨 ·
  *              OptionValidator = clause 정의의 validateOptionSelection · AttributeRefSource = `attributeRefSource`
@@ -66,13 +66,13 @@ export interface ContainerOptions {
 // ───────────────────────────── 주입 구현 ─────────────────────────────
 
 /**
- * 문서 검증용 공용조항 게이트 — 정의 존재 · 요구 구분자 · 옵션 선택 검증 (ADR-0010 · 기능/공용조항 §3.2).
- * `missingRequired` 는 검사 ② (a) 의 재료 — 요구 구분자를 카탈로그 목록과 대조한다 (기능/공용조항 §3.4).
+ * 문서 검증용 함수조항 게이트 — 정의 존재 · 연결한 구분자 · 옵션 선택 · 인자 연결 검증 (기능/함수조항 §3.2 · §3.7).
+ * `missingRequired` 는 검사 ② (a) 의 재료 — 요구 구분자를 카탈로그 목록과 대조한다 (기능/함수조항 §3.4).
  */
 async function clauseGateOf(tx: Db): Promise<ClauseGate> {
-  const [clauses, defs] = await Promise.all([clauseRepo.listClauses(tx), catalogRepo.listDiscriminators(tx)]);
+  const [clauses, defs, enums] = await Promise.all([clauseRepo.listClauses(tx), catalogRepo.listDiscriminators(tx), catalogRepo.listEnums(tx)]);
   // 브라우저 편집본도 같은 정의로 같은 게이트를 만든다 (ADR-0074) — 구성은 도메인 한 벌
-  return clauseGateFrom(clauses, defs.map((d) => d.code));
+  return clauseGateFrom(clauses, defs.map((d) => d.code), catalogTypeResolver(defs), enums);
 }
 
 /** 식 타입 조회 — 카탈로그 정의 + 담보속성 카탈로그(`attr.X` 의 유효값). 없는 담보속성은 깨진 참조. */
@@ -149,7 +149,7 @@ export function createServices(root: Db, opts: ContainerOptions = {}): Services 
     optionValidator: {
       validate: async (clauseCode, options) => {
         const def = await services.clause.get(clauseCode);
-        if (!def) return [{ kind: "brokenRef", message: `공용조항 ${clauseCode} 가 없습니다`, at: { refPath: clauseCode } }];
+        if (!def) return [{ kind: "brokenRef", message: `함수조항 ${clauseCode} 가 없습니다`, at: { refPath: clauseCode } }];
         return validateOptionSelection(def, options, { refPath: clauseCode });
       },
     },

@@ -78,7 +78,7 @@ describe("product 서비스 (PGlite)", () => {
       generalDocuments: {
         exists: async (id) => id === GENERAL_DOC || id === OTHER_DOC,
         articleIds: async (id) => (id === GENERAL_DOC ? [ART_A, ART_B] : id === OTHER_DOC ? [ART_OTHER] : []),
-        // GENERAL_DOC 의 공용조항 참조 자리 하나 — 마스터 기본 선택은 { style: "A", tone: "T1" } 이다.
+        // GENERAL_DOC 의 함수조항 참조 자리 하나 — 마스터 기본 선택은 { style: "A", tone: "T1" } 이다.
         clauseRef: async (id, nodeId) => (id === GENERAL_DOC && (nodeId === NODE || nodeId === SEED_NODE) ? { clauseCode: "C0001", options: MASTER_OPTIONS } : undefined),
       },
       generalAttachment: { requiredRefs: async () => required },
@@ -124,6 +124,22 @@ describe("product 서비스 (PGlite)", () => {
       expect(reason(await svc.saveBasic(editor, p.id, { ...input, options: [{ ...o, isNew: false, values: [] }], combinations: [[o.id], [o.id]] }))).toBe("invalid");
       expect((await svc.getProduct(p.id))?.name).toBe("기본정보 원자성");
       expect(await svc.listPlans(p.id)).toEqual([]);
+    });
+
+    it("납입면제 적용여부 = 예인데 사유가 0개면 저장 거부 — 저장된 값 위에 이번 제출을 얹은 최종 상태로 본다 (결정 16)", async () => {
+      const p = unwrap(await svc.createProduct(editor, { name: "기본정보 납입면제 폼 검사" }));
+      const draftId = "bbbbbbbb-0000-4000-8000-000000000002";
+      const draft = { id: draftId, isNew: true, axis: "type" as const, number: 1, name: "보험료납입면제형", planTypeCode: "waiver" };
+      const r = await svc.saveBasic(editor, p.id, { name: p.name, values: [], options: [{ ...draft, values: [{ path: "waiver.applies", value: true }] }], combinations: [] });
+      expect(reason(r)).toBe("invalid");
+      if (!r.ok && r.rejection.reason === "invalid") expect(r.rejection.issues[0]).toMatchObject({ message: expect.stringContaining("납입면제사유"), at: { refPath: "waiver.reasons" } });
+      expect(await svc.listPlanOptions(p.id)).toEqual([]);
+      unwrap(await svc.saveBasic(editor, p.id, { name: p.name, values: [], options: [{ ...draft, values: [{ path: "waiver.applies", value: true }, { path: "waiver.reasons", value: ["V02"] }] }], combinations: [] }));
+      // 기존 종목 — 사유를 싣지 않은 제출은 저장된 사유를 본다(통과), 사유를 비우는 제출은 거부
+      const [o] = await svc.listPlanOptions(p.id);
+      unwrap(await svc.saveBasic(editor, p.id, { name: p.name, values: [], options: [{ ...o, isNew: false, values: [{ path: "waiver.applies", value: true }] }], combinations: [] }));
+      expect(reason(await svc.saveBasic(editor, p.id, { name: p.name, values: [], options: [{ ...o, isNew: false, values: [{ path: "waiver.reasons", value: [] }] }], combinations: [] }))).toBe("invalid");
+      expect((await svc.getPlanOptionValues(o.id)).get("waiver.reasons")).toEqual(entered(["V02"]));
     });
 
     it("다른 상품의 종목을 거부하고 삭제는 권한·영향 확인 후에만 반영한다", async () => {
@@ -239,7 +255,11 @@ describe("product 서비스 (PGlite)", () => {
       expect(reason(r2)).toBe("invalid");
       expect((await svc.getPlanOptionValues(t1)).get("waiver.applies")).toEqual({ entered: true, value: false });
       // 전부 통하면 전부 쓴다
-      unwrap(await svc.setPlanOptionValues(editor, t1, [{ path: "waiver.applies", value: true }, { path: "waiver.reasons", value: [] }]));
+      // 적용여부 = 예 + 사유 0개는 폼 교차 규칙 위반 (결정 16) — 사유를 고른 제출만 통한다
+      expect(reason(await svc.setPlanOptionValues(editor, t1, [{ path: "waiver.applies", value: true }, { path: "waiver.reasons", value: [] }]))).toBe("invalid");
+      expect(reason(await svc.setPlanOptionValue(editor, t1, "waiver.applies", true))).toBe("invalid"); // 저장된 사유 없음 = 0개
+      expect((await svc.getPlanOptionValues(t1)).get("waiver.applies")).toEqual({ entered: true, value: false });
+      unwrap(await svc.setPlanOptionValues(editor, t1, [{ path: "waiver.applies", value: true }, { path: "waiver.reasons", value: ["V02"] }]));
       expect((await svc.getPlanOptionValues(t1)).get("waiver.applies")).toEqual({ entered: true, value: true });
       // 되돌리기도 한 제출로 — 다음 테스트(완결성)가 t1 미입력을 전제한다
       unwrap(await svc.setPlanOptionValues(editor, t1, [{ path: "waiver.applies", value: undefined }, { path: "waiver.reasons", value: undefined }]));
@@ -526,7 +546,7 @@ describe("product 서비스 (PGlite)", () => {
     });
   });
 
-  describe("기능/상품 §3.6 — 공용조항 옵션 오버라이드", () => {
+  describe("기능/상품 §3.6 — 함수조항 옵션 오버라이드", () => {
     const scope = () => ({ kind: "product", id: productId }) as const;
 
     it("오버라이드는 보통약관 자리(상품 스코프)만 — 유효 집합 밖은 거부 · 없는 상품은 notFound (기능/상품 §3.6)", async () => {
@@ -571,7 +591,7 @@ describe("product 서비스 (PGlite)", () => {
       expect(await svc.listOptionOverrides(scope())).toEqual([]);
     });
 
-    it("자리의 공용조항과 다른 clauseCode 는 notFound — 행을 남기지 않는다 (코덱스 리뷰 후속)", async () => {
+    it("자리의 함수조항과 다른 clauseCode 는 notFound — 행을 남기지 않는다 (코덱스 리뷰 후속)", async () => {
       // 조립은 오버라이드를 nodeId 로만 얹는다 — 어긋난 코드가 저장되면 그 자리에 조용히 적용된다.
       expect(reason(await svc.setOptionOverride(editor, scope(), NODE, "C9999", { style: "B" }))).toBe("notFound");
       expect(await svc.listOptionOverrides(scope())).toEqual([]);

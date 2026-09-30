@@ -32,7 +32,8 @@
                   "kind": "text",
                   "text": "에서 정한 장해지급률이 80% 이상에 해당하는 장해상태가 되었을 때에는 보험수익자에게 최초1회에 한하여 보험가입금액을 일반상해80%이상후유장해보험금으로 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             }
           ],
           "linkedArticleId": "g-a3"
@@ -51,7 +52,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "b-a3"
+                      "articleId": "b-a3"
                     }
                   ],
                   "connector": "및",
@@ -72,7 +73,8 @@
                   "kind": "text",
                   "text": "에 장해판정시기를 별도로 정한 경우에는 그에 따릅니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "b-a4-p2",
@@ -83,7 +85,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "b-a4-p1"
+                      "articleId": "b-a4",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -94,7 +97,8 @@
                   "kind": "text",
                   "text": "에 따라 장해지급률이 결정되었으나 그 이후 보장을 받을 수 있는 기간(계약의 효력이 없어진 경우에는 보험기간이 10년 이상인 계약은 상해 발생일부터 2년 이내로 하고, 보험기간이 10년 미만인 계약은 상해 발생일부터 1년 이내)에 장해상태가 더 악화된 때에는 그 악화된 장해상태를 기준으로 장해지급률을 결정합니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             },
             {
               "id": "b-a4-p3",
@@ -130,7 +134,8 @@
                   "kind": "text",
                   "text": "의 각 장해분류별 최저 지급률 장해정도에 이르지 않는 후유장해에 대하여는 후유장해보험금을 지급하지 않습니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             },
             {
               "id": "b-a4-p4",
@@ -146,7 +151,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "b-a3"
+                      "articleId": "b-a3"
                     }
                   ],
                   "connector": "및",
@@ -157,13 +162,13 @@
                   "kind": "text",
                   "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
-              ]
+              ],
+              "code": "P0400"
             },
             {
               "id": "b-a4-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0023",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000004"
             },
             {
               "id": "b-a4-p5",
@@ -184,7 +189,8 @@
                   "kind": "text",
                   "text": "의 각 신체부위별 판정기준에 별도로 정한 경우에는 그 기준에 따릅니다."
                 }
-              ]
+              ],
+              "code": "P0600"
             },
             {
               "id": "b-a4-p6",
@@ -205,7 +211,8 @@
                   "kind": "text",
                   "text": "의 각 신체부위별 판정기준에서 별도로 정한 경우에는 그 기준에 따릅니다."
                 }
-              ]
+              ],
+              "code": "P0700"
             },
             {
               "id": "b-a4-p7",
@@ -221,7 +228,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "b-a4-p6"
+                      "articleId": "b-a4",
+                      "code": "P0700"
                     }
                   ],
                   "connector": "및",
@@ -232,7 +240,8 @@
                   "kind": "text",
                   "text": "에 규정하는 후유장해상태가 발생하였을 경우에는 직전까지의 후유장해에 대한 후유장해보험금이 지급된 것으로 보고 최종 후유장해 상태에 해당되는 후유장해보험금에서 이를 차감하여 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0800"
             }
           ],
           "linkedArticleId": "g-a4"
@@ -263,7 +272,8 @@
                   "kind": "text",
                   "text": "회사는 보험증권에 기재된 피보험자가 이 특별약관의 보험기간 중에 상해의 직접결과로써 사망한 경우(질병으로 인한 사망은 제외합니다)에는 보험수익자에게 이 특별약관의 보험가입금액 전액을 사망보험금으로 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             }
           ]
         },
@@ -281,7 +291,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s1-a1"
+                      "articleId": "s1-a1"
                     }
                   ],
                   "connector": "및",
@@ -303,7 +313,8 @@
                       "kind": "text",
                       "text": "실종선고를 받은 경우: 법원에서 인정한 실종기간이 끝나는 때에 사망한 것으로 봅니다."
                     }
-                  ]
+                  ],
+                  "code": "P0400"
                 },
                 {
                   "id": "s1-a2-p1-i2",
@@ -314,15 +325,16 @@
                       "kind": "text",
                       "text": "관공서에서 수해, 화재나 그 밖의 재난을 조사하고 사망한 것으로 통보하는 경우: 가족관계등록부에 기재된 사망연월일을 기준으로 합니다."
                     }
-                  ]
+                  ],
+                  "code": "P0500"
                 },
                 {
                   "id": "s1-a2-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0114",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000085"
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "s1-a2-p2",
@@ -338,7 +350,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s1-a1"
+                      "articleId": "s1-a1"
                     }
                   ],
                   "connector": "및",
@@ -349,7 +361,8 @@
                   "kind": "text",
                   "text": "「사망」의 원인 및「사망보험금」지급에 영향을 미치지 않습니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             },
             {
               "id": "s1-a2-p3",
@@ -365,7 +378,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s1-a1"
+                      "articleId": "s1-a1"
                     }
                   ],
                   "connector": "및",
@@ -376,7 +389,8 @@
                   "kind": "text",
                   "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             }
           ]
         },
@@ -388,11 +402,12 @@
             {
               "id": "s1-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0111",
+              "clauseCode": "C0030",
               "options": {
                 "O01": "V01",
                 "O02": "V01"
-              }
+              },
+              "code": "P0100"
             }
           ]
         },
@@ -404,8 +419,9 @@
             {
               "id": "s1-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0132",
-              "options": {}
+              "clauseCode": "C0033",
+              "options": {},
+              "code": "P0100"
             }
           ]
         }
@@ -455,7 +471,8 @@
                   "kind": "text",
                   "text": "으로 매월 보험금 지급사유 발생해당일에 확정 지급합니다. 다만, 생활자금 지급을 위한 보험금 지급사유 발생해당일이 없는 때에는 해당 월의 마지막 날에 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "s2-a1-t1",
@@ -506,9 +523,8 @@
             },
             {
               "id": "s2-a1-b2-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0115",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000086"
             },
             {
               "id": "s2-a1-p2",
@@ -519,7 +535,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s2-a1-p1"
+                      "articleId": "s2-a1",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -530,7 +547,8 @@
                   "kind": "text",
                   "text": "의 금액은 보험수익자의 요청에 따라 일시지급이 가능하며, 이 경우에는 평균공시이율로 할인된 금액을 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0400"
             }
           ]
         },
@@ -542,10 +560,11 @@
             {
               "id": "s2-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0106",
+              "clauseCode": "C0025",
               "options": {
                 "O01": "V01"
-              }
+              },
+              "code": "P0100"
             }
           ]
         },
@@ -557,10 +576,11 @@
             {
               "id": "s2-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0112",
+              "clauseCode": "C0031",
               "options": {
                 "O01": "V01"
-              }
+              },
+              "code": "P0100"
             }
           ]
         },
@@ -572,8 +592,9 @@
             {
               "id": "s2-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0132",
-              "options": {}
+              "clauseCode": "C0033",
+              "options": {},
+              "code": "P0100"
             }
           ]
         }
@@ -597,8 +618,9 @@
             {
               "id": "s3-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0102",
-              "options": {}
+              "clauseCode": "C0021",
+              "options": {},
+              "code": "P0100"
             }
           ]
         },
@@ -610,8 +632,9 @@
             {
               "id": "s3-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0104",
-              "options": {}
+              "clauseCode": "C0023",
+              "options": {},
+              "code": "P0100"
             }
           ]
         },
@@ -634,7 +657,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "g-a5"
+                      "articleId": "g-a5"
                     }
                   ],
                   "connector": "및",
@@ -645,7 +668,8 @@
                   "kind": "text",
                   "text": "에서 정한 사유로 보험금 지급사유가 발생한 때에는 보험금을 지급하지 않습니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "s3-a3-p2",
@@ -661,7 +685,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s3-a1"
+                      "articleId": "s3-a1"
                     }
                   ],
                   "connector": "및",
@@ -677,7 +701,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s3-a2"
+                      "articleId": "s3-a2"
                     }
                   ],
                   "connector": "및",
@@ -688,7 +712,8 @@
                   "kind": "text",
                   "text": "를 따릅니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             }
           ]
         },
@@ -700,8 +725,9 @@
             {
               "id": "s3-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0109",
-              "options": {}
+              "clauseCode": "C0028",
+              "options": {},
+              "code": "P0100"
             }
           ]
         },
@@ -713,8 +739,9 @@
             {
               "id": "s3-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0132",
-              "options": {}
+              "clauseCode": "C0033",
+              "options": {},
+              "code": "P0100"
             }
           ]
         }
@@ -764,7 +791,8 @@
                   "kind": "text",
                   "text": "으로 매월 보험금 지급사유 발생해당일에 확정 지급합니다. 다만, 생활자금 지급을 위한 보험금 지급사유 발생해당일이 없는 때에는 해당 월의 마지막 날에 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "s4-a1-t1",
@@ -815,9 +843,8 @@
             },
             {
               "id": "s4-a1-b2-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0115",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000086"
             },
             {
               "id": "s4-a1-p2",
@@ -828,7 +855,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s4-a1-p1"
+                      "articleId": "s4-a1",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -839,7 +867,8 @@
                   "kind": "text",
                   "text": "의 금액은 보험수익자의 요청에 따라 일시지급이 가능하며, 이 경우에는 평균공시이율로 할인된 금액을 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0400"
             }
           ]
         },
@@ -851,10 +880,11 @@
             {
               "id": "s4-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0106",
+              "clauseCode": "C0025",
               "options": {
                 "O01": "V02"
-              }
+              },
+              "code": "P0100"
             }
           ]
         },
@@ -866,10 +896,11 @@
             {
               "id": "s4-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0112",
+              "clauseCode": "C0031",
               "options": {
                 "O01": "V02"
-              }
+              },
+              "code": "P0100"
             }
           ]
         },
@@ -881,8 +912,9 @@
             {
               "id": "s4-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0132",
-              "options": {}
+              "clauseCode": "C0033",
+              "options": {},
+              "code": "P0100"
             }
           ]
         }
@@ -906,8 +938,9 @@
             {
               "id": "s5-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0103",
-              "options": {}
+              "clauseCode": "C0022",
+              "options": {},
+              "code": "P0100"
             }
           ]
         },
@@ -919,8 +952,9 @@
             {
               "id": "s5-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0105",
-              "options": {}
+              "clauseCode": "C0024",
+              "options": {},
+              "code": "P0100"
             }
           ]
         },
@@ -938,7 +972,8 @@
                   "kind": "text",
                   "text": "이 특별약관에서「수술」이라 함은 의사, 치과의사 또는 한의사의 면허를 가진 자(이하「의사」라 합니다)가 치료가 필요하다고 인정한 경우로서 의사의 관리하에 치료를 직접적인 목적으로 기구를 사용하여 생체(生體)에 절단(切斷, 특정부위를 잘라 내는 것), 절제(切除, 특정부위를 잘라 없애는 것) 등의 조작을 가하는 것을 말합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "s5-a3-p2",
@@ -949,7 +984,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s5-a3-p1"
+                      "articleId": "s5-a3",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -960,7 +996,8 @@
                   "kind": "text",
                   "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             },
             {
               "id": "s5-a3-p3",
@@ -971,7 +1008,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s5-a3-p1"
+                      "articleId": "s5-a3",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -982,13 +1020,13 @@
                   "kind": "text",
                   "text": "의「수술」에는 보건복지부 산하 신의료기술평가위원회 또는 이에 준하는 기관으로부터 안전성과 치료효과를 인정받은 최신 수술기법으로 생체에 절단, 절제 등의 조작을 가하는 수술도 포함됩니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             },
             {
               "id": "s5-a3-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0116",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000087"
             },
             {
               "id": "s5-a3-p4",
@@ -999,7 +1037,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s5-a3-p1"
+                      "articleId": "s5-a3",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -1021,7 +1060,8 @@
                       "kind": "text",
                       "text": "흡인(吸引, 주사기 등으로 빨아들이는 것)"
                     }
-                  ]
+                  ],
+                  "code": "P0400"
                 },
                 {
                   "id": "s5-a3-p4-i2",
@@ -1032,7 +1072,8 @@
                       "kind": "text",
                       "text": "천자(穿刺, 바늘 또는 관을 꽂아 체액․조직을 뽑아내거나 약물을 주입하는 것) 등의 조치"
                     }
-                  ]
+                  ],
+                  "code": "P0600"
                 },
                 {
                   "id": "s5-a3-p4-i3",
@@ -1043,7 +1084,8 @@
                       "kind": "text",
                       "text": "신경(神經)차단(NERVE BLOCK)"
                     }
-                  ]
+                  ],
+                  "code": "P0700"
                 },
                 {
                   "id": "s5-a3-p4-i4",
@@ -1054,7 +1096,8 @@
                       "kind": "text",
                       "text": "미용성형 목적의 수술"
                     }
-                  ]
+                  ],
+                  "code": "P0800"
                 },
                 {
                   "id": "s5-a3-p4-i5",
@@ -1065,7 +1108,8 @@
                       "kind": "text",
                       "text": "피임(避妊)목적의 수술, 피임(避妊) 및 불임술 후 가임목적의 수술"
                     }
-                  ]
+                  ],
+                  "code": "P0900"
                 },
                 {
                   "id": "s5-a3-p4-i6",
@@ -1076,7 +1120,8 @@
                       "kind": "text",
                       "text": "검사 및 진단을 위한 수술(생검(生檢), 복강경검사(腹腔鏡檢査) 등)"
                     }
-                  ]
+                  ],
+                  "code": "P1000"
                 },
                 {
                   "id": "s5-a3-p4-i7",
@@ -1087,9 +1132,11 @@
                       "kind": "text",
                       "text": "기타 수술의 정의에 해당하지 않는 시술"
                     }
-                  ]
+                  ],
+                  "code": "P1100"
                 }
-              ]
+              ],
+              "code": "P0500"
             }
           ]
         },
@@ -1112,7 +1159,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "g-a5"
+                      "articleId": "g-a5"
                     }
                   ],
                   "connector": "및",
@@ -1134,7 +1181,8 @@
                       "kind": "text",
                       "text": "위생관리, 미모를 위한 성형수술(다만, 사고전 상태로의 회복을 위한 수술은 보험금을 지급합니다)"
                     }
-                  ]
+                  ],
+                  "code": "P0200"
                 },
                 {
                   "id": "s5-a4-p1-i2",
@@ -1145,9 +1193,11 @@
                       "kind": "text",
                       "text": "선천적 기형 및 이에 근거한 병상"
                     }
-                  ]
+                  ],
+                  "code": "P0300"
                 }
-              ]
+              ],
+              "code": "P0100"
             }
           ]
         },
@@ -1159,8 +1209,9 @@
             {
               "id": "s5-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0109",
-              "options": {}
+              "clauseCode": "C0028",
+              "options": {},
+              "code": "P0100"
             }
           ]
         },
@@ -1172,8 +1223,9 @@
             {
               "id": "s5-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0132",
-              "options": {}
+              "clauseCode": "C0033",
+              "options": {},
+              "code": "P0100"
             }
           ]
         }
@@ -1213,7 +1265,8 @@
                   "kind": "text",
                   "text": "로 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             }
           ]
         },
@@ -1231,7 +1284,8 @@
                   "kind": "text",
                   "text": "피보험자가 동일한 사고로 중대한특정상해수술비 지급사유가 2가지 이상 발생한 경우에도 한 가지 사유에 의한 중대한특정상해수술비만을 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "s6-a2-p2",
@@ -1247,7 +1301,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s6-a1"
+                      "articleId": "s6-a1"
                     }
                   ],
                   "connector": "및",
@@ -1258,7 +1312,8 @@
                   "kind": "text",
                   "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             }
           ]
         },
@@ -1276,7 +1331,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s6-a1"
+                      "articleId": "s6-a1"
                     }
                   ],
                   "connector": "및",
@@ -1297,7 +1352,8 @@
                   "kind": "text",
                   "text": "참조)을 입은 경우를 말합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "s6-a3-p2",
@@ -1308,7 +1364,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s6-a1"
+                      "articleId": "s6-a1"
                     }
                   ],
                   "connector": "및",
@@ -1329,7 +1385,8 @@
                   "kind": "text",
                   "text": "참조)을 입은 경우를 말합니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             },
             {
               "id": "s6-a3-p3",
@@ -1340,7 +1397,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s6-a1"
+                      "articleId": "s6-a1"
                     }
                   ],
                   "connector": "및",
@@ -1362,7 +1419,8 @@
                       "kind": "text",
                       "text": "「개두(開頭)수술」이라 함은 두개를 열어 뇌를 노출시키는 수술을 말합니다."
                     }
-                  ]
+                  ],
+                  "code": "P0700"
                 },
                 {
                   "id": "s6-a3-p3-i2",
@@ -1373,7 +1431,8 @@
                       "kind": "text",
                       "text": "「개흉(開胸)수술」이라 함은 흉강을 여는 수술로서 농흉수술, 흉막, 폐장, 심장, 횡경막, 종격동, 식도수술 등 흉강 내에 조작을 가할 때에 행하는 것을 말합니다. 또한 개흉수술에 준하는 것은 늑골(갈비뼈), 흉골(복장뼈)의 절제술을 포함하는 것으로 합니다."
                     }
-                  ]
+                  ],
+                  "code": "P0900"
                 },
                 {
                   "id": "s6-a3-p3-i3",
@@ -1384,9 +1443,11 @@
                       "kind": "text",
                       "text": "「개복(開腹)수술」이라 함은 복벽을 절개하여 복강을 여는 수술로서 위, 십이지장, 소장, 대장, 충수, 간장 및 담도, 췌장, 비장, 난소 및 자궁수술 등 복강 내에 조작을 가할 때에 행하는 것을 말합니다. 또한 개복수술에 준하는 것으로서 신장, 뇨관 및 방광수술을 포함하는 것으로 하지만 경요도적조작에 의한 것은 해당되지 않습니다."
                     }
-                  ]
+                  ],
+                  "code": "P1000"
                 }
-              ]
+              ],
+              "code": "P0300"
             },
             {
               "id": "s6-a3-p4",
@@ -1397,7 +1458,8 @@
                   "kind": "text",
                   "text": "이 특별약관에서「수술」이라 함은 의사, 치과의사 또는 한의사의 면허를 가진 자(이하「의사」라 합니다)가 치료가 필요하다고 인정한 경우로서 의사의 관리하에 치료를 직접적인 목적으로 기구를 사용하여 생체(生體)에 절단(切斷, 특정부위를 잘라 내는 것), 절제(切除, 특정부위를 잘라 없애는 것) 등의 조작을 가하는 것을 말합니다."
                 }
-              ]
+              ],
+              "code": "P0400"
             },
             {
               "id": "s6-a3-p5",
@@ -1408,7 +1470,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s6-a3-p4"
+                      "articleId": "s6-a3",
+                      "code": "P0400"
                     }
                   ],
                   "connector": "및",
@@ -1419,7 +1482,8 @@
                   "kind": "text",
                   "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
                 }
-              ]
+              ],
+              "code": "P0500"
             },
             {
               "id": "s6-a3-p6",
@@ -1430,7 +1494,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s6-a3-p4"
+                      "articleId": "s6-a3",
+                      "code": "P0400"
                     }
                   ],
                   "connector": "및",
@@ -1441,13 +1506,13 @@
                   "kind": "text",
                   "text": "의「수술」에는 보건복지부 산하 신의료기술평가위원회 또는 이에 준하는 기관으로부터 안전성과 치료효과를 인정받은 최신 수술기법으로 생체에 절단, 절제 등의 조작을 가하는 수술도 포함됩니다."
                 }
-              ]
+              ],
+              "code": "P0600"
             },
             {
               "id": "s6-a3-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0116",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000087"
             },
             {
               "id": "s6-a3-p7",
@@ -1458,7 +1523,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s6-a3-p4"
+                      "articleId": "s6-a3",
+                      "code": "P0400"
                     }
                   ],
                   "connector": "및",
@@ -1480,7 +1546,8 @@
                       "kind": "text",
                       "text": "흡인(吸引, 주사기 등으로 빨아들이는 것)"
                     }
-                  ]
+                  ],
+                  "code": "P1100"
                 },
                 {
                   "id": "s6-a3-p7-i2",
@@ -1491,7 +1558,8 @@
                       "kind": "text",
                       "text": "천자(穿刺, 바늘 또는 관을 꽂아 체액․조직을 뽑아내거나 약물을 주입하는 것) 등의 조치"
                     }
-                  ]
+                  ],
+                  "code": "P1200"
                 },
                 {
                   "id": "s6-a3-p7-i3",
@@ -1502,7 +1570,8 @@
                       "kind": "text",
                       "text": "신경(神經)차단(NERVE BLOCK)"
                     }
-                  ]
+                  ],
+                  "code": "P1300"
                 },
                 {
                   "id": "s6-a3-p7-i4",
@@ -1513,7 +1582,8 @@
                       "kind": "text",
                       "text": "미용성형 목적의 수술"
                     }
-                  ]
+                  ],
+                  "code": "P1400"
                 },
                 {
                   "id": "s6-a3-p7-i5",
@@ -1524,7 +1594,8 @@
                       "kind": "text",
                       "text": "피임(避妊)목적의 수술, 피임(避妊) 및 불임술 후 가임목적의 수술"
                     }
-                  ]
+                  ],
+                  "code": "P1500"
                 },
                 {
                   "id": "s6-a3-p7-i6",
@@ -1535,7 +1606,8 @@
                       "kind": "text",
                       "text": "검사 및 진단을 위한 수술(생검(生檢), 복강경검사(腹腔鏡檢査) 등)"
                     }
-                  ]
+                  ],
+                  "code": "P1600"
                 },
                 {
                   "id": "s6-a3-p7-i7",
@@ -1546,9 +1618,11 @@
                       "kind": "text",
                       "text": "기타 수술의 정의에 해당하지 않는 시술"
                     }
-                  ]
+                  ],
+                  "code": "P1700"
                 }
-              ]
+              ],
+              "code": "P0800"
             }
           ]
         },
@@ -1560,10 +1634,11 @@
             {
               "id": "s6-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0110",
+              "clauseCode": "C0029",
               "options": {
                 "O01": "V01"
-              }
+              },
+              "code": "P0100"
             }
           ]
         },
@@ -1575,8 +1650,9 @@
             {
               "id": "s6-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0132",
-              "options": {}
+              "clauseCode": "C0033",
+              "options": {},
+              "code": "P0100"
             }
           ]
         }
@@ -1626,7 +1702,8 @@
                   "kind": "text",
                   "text": "로 지급합니다. 다만, 1회의 입원당 또는 1회의 통원당 1회의 수술에 한하여 보장하며, 하나의 수술코드당 연간 3회에 한하여 보장합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "s7-a1-t1",
@@ -1792,7 +1869,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s7-a1-p1"
+                      "articleId": "s7-a1",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -1835,7 +1913,8 @@
                   "kind": "text",
                   "text": " 매1년 단위로 도래하는 계약해당일 전일까지의 기간을 말합니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             },
             {
               "id": "s7-a1-p3",
@@ -1851,7 +1930,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s7-a1-p1"
+                      "articleId": "s7-a1",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -1862,7 +1942,8 @@
                   "kind": "text",
                   "text": "의 수술비를 지급하지 않습니다. 이 때, 30일이라 함은 수술비가 지급된 수술코드에 대하여 그「수술」이 행해진 해당 입원의 퇴원일 또는 해당 통원의 통원일의 다음날부터 이후 동일한 수술코드가 부여된 입원의 입원일 또는 통원의 통원일까지의 기간을 말합니다."
                 }
-              ]
+              ],
+              "code": "P0400"
             },
             {
               "id": "s7-a1-t2",
@@ -2660,7 +2741,8 @@
                   "kind": "text",
                   "text": "에서 정한 수술코드(이하「수술코드」라 합니다.)에 해당하는 의료행위를 하는 것을 말합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "s7-a2-p2",
@@ -2671,7 +2753,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s7-a2-p1"
+                      "articleId": "s7-a2",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -2682,7 +2765,8 @@
                   "kind": "text",
                   "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             },
             {
               "id": "s7-a2-p3",
@@ -2693,7 +2777,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s7-a2-p1"
+                      "articleId": "s7-a2",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -2704,13 +2789,13 @@
                   "kind": "text",
                   "text": "의「수술코드」는「국민건강보험법」에서 정한 요양급여(이하「요양급여」라 합니다) 또는「의료급여법」에서 정한 의료급여(이하「의료급여」라 합니다)의 절차를 거쳐 수술항목에서 급여항목이 발생하고,「진단명기준환자군(Diagnosis Related Group, DRG)」분류체계에 따라 부여된「ADRG(Adjacent DRG)」중 이 특별약관 정한 코드를 말합니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             },
             {
               "id": "s7-a2-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0117",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000088"
             },
             {
               "id": "s7-a2-p4",
@@ -2721,7 +2806,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s7-a2-p3"
+                      "articleId": "s7-a2",
+                      "code": "P0300"
                     }
                   ],
                   "connector": "및",
@@ -2732,13 +2818,13 @@
                   "kind": "text",
                   "text": "의「수술코드」에서 향후「진단명기준환자군(DRG)」개정으로 동일한 수술에 대해「수술코드」가 변경되는 경우 이 특별약관의 체결시점에서 정한「수술코드」를 따릅니다."
                 }
-              ]
+              ],
+              "code": "P0500"
             },
             {
               "id": "s7-a2-b2-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0118",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000089"
             },
             {
               "id": "s7-a2-p5",
@@ -2749,10 +2835,12 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s7-a2-p3"
+                      "articleId": "s7-a2",
+                      "code": "P0300"
                     },
                     {
-                      "nodeId": "s7-a2-p4"
+                      "articleId": "s7-a2",
+                      "code": "P0500"
                     }
                   ],
                   "connector": "및",
@@ -2763,7 +2851,8 @@
                   "kind": "text",
                   "text": "에도 불구하고 이 특별약관 체결시점에 급여항목으로 분류된 수술이 향후 비급여항목으로 변경된 경우 해당 수술은 보장에서 제외됩니다."
                 }
-              ]
+              ],
+              "code": "P0700"
             },
             {
               "id": "s7-a2-p6",
@@ -2774,7 +2863,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s7-a2-p1"
+                      "articleId": "s7-a2",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -2785,13 +2875,13 @@
                   "kind": "text",
                   "text": "의 수술은「건강보험 행위 급여∙비급여 목록 및 급여 상대가치점수」(보건복지부 고시 제2021-72호,2021.3.4.) 제2부(행위 급여 목록∙상대가치점수 및 산정 지침)의 제2장(검사료) 및 제3장(영상진단 및 방사선치료 료)에서 정하는 내용은 포함하지 않습니다. 다만, 제3장(영상진단 및 방사선치료료)에서 사이버나이프(Cyberknife) 정위적 방사선 치료, 감마나이프(Gammaknife) 정위적 방사선 치료, 선형가속기(LINAC)정위적 방사선 치료, 양성자치료는 수술에 포함하여 보장합니다."
                 }
-              ]
+              ],
+              "code": "P0800"
             },
             {
               "id": "s7-a2-b3-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0119",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000090"
             }
           ]
         },
@@ -2809,13 +2899,13 @@
                   "kind": "text",
                   "text": "피보험자가 1회의 입원 또는 1회의 통원 중에 2가지 이상의 수술을 받은 경우 퇴원일 또는 통원일을 기준으로 진단서 및 진료비 세부내역서 등에서 확인되는 하나의 수술코드에 한하여 수술비를 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "s7-a3-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0120",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000091"
             },
             {
               "id": "s7-a3-p2",
@@ -2826,7 +2916,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s7-a3-p1"
+                      "articleId": "s7-a3",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -2837,7 +2928,8 @@
                   "kind": "text",
                   "text": "에도 불구하고 피보험자가 동일한 의료기관에서 퇴원없이 계속입원 중에 2가지 이상의 수술코드가 부여되는 경우 또는 1일 2회 이상 통원하여 2가지 이상의 수술코드가 부여된 경우에는 수술종류가 높은 하나의 수술코드에 한하여 수술비를 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             },
             {
               "id": "s7-a3-p3",
@@ -2853,7 +2945,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s7-a1"
+                      "articleId": "s7-a1"
                     }
                   ],
                   "connector": "및",
@@ -2864,7 +2956,8 @@
                   "kind": "text",
                   "text": "에서 정한 바에 따라 보장합니다."
                 }
-              ]
+              ],
+              "code": "P0400"
             },
             {
               "id": "s7-a3-p4",
@@ -2880,7 +2973,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s7-a1"
+                      "articleId": "s7-a1"
                     }
                   ],
                   "connector": "및",
@@ -2891,7 +2984,8 @@
                   "kind": "text",
                   "text": "에서 정한 보험금 지급사유가 발생한 경우에는 회사는 이 특별약관에서 정한 바에 따라 보장합니다."
                 }
-              ]
+              ],
+              "code": "P0500"
             },
             {
               "id": "s7-a3-p5",
@@ -2907,7 +3001,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s7-a2"
+                      "articleId": "s7-a2"
                     }
                   ],
                   "connector": "및",
@@ -2918,7 +3012,8 @@
                   "kind": "text",
                   "text": "에서 정한 수술에 포함하여 보장합니다."
                 }
-              ]
+              ],
+              "code": "P0600"
             },
             {
               "id": "s7-a3-p6",
@@ -2929,7 +3024,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s7-a3-p2"
+                      "articleId": "s7-a3",
+                      "code": "P0300"
                     }
                   ],
                   "connector": "및",
@@ -2945,7 +3041,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s7-a3-p5"
+                      "articleId": "s7-a3",
+                      "code": "P0600"
                     }
                   ],
                   "connector": "및",
@@ -2961,7 +3058,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s7-a3-p5"
+                      "articleId": "s7-a3",
+                      "code": "P0600"
                     }
                   ],
                   "connector": "및",
@@ -2972,7 +3070,8 @@
                   "kind": "text",
                   "text": "의 수술코드에 해당하는 수술비를 각각 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0700"
             },
             {
               "id": "s7-a3-p7",
@@ -2988,7 +3087,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s7-a1"
+                      "articleId": "s7-a1"
                     }
                   ],
                   "connector": "및",
@@ -2999,7 +3098,8 @@
                   "kind": "text",
                   "text": "에서 정한 바에 따라 보장합니다."
                 }
-              ]
+              ],
+              "code": "P0800"
             },
             {
               "id": "s7-a3-p8",
@@ -3015,7 +3115,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s7-a1"
+                      "articleId": "s7-a1"
                     }
                   ],
                   "connector": "및",
@@ -3026,7 +3126,8 @@
                   "kind": "text",
                   "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
-              ]
+              ],
+              "code": "P0900"
             }
           ]
         },
@@ -3049,7 +3150,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "g-a5"
+                      "articleId": "g-a5"
                     }
                   ],
                   "connector": "및",
@@ -3060,7 +3161,8 @@
                   "kind": "text",
                   "text": "에서 정한 사항에 따라 보험금 지급사유가 발생한 때에는 보험금을 지급하지 않습니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "s7-a4-p2",
@@ -3082,7 +3184,8 @@
                       "kind": "text",
                       "text": "마약, 습관성 의약품 및 알코올중독으로 인한 경우"
                     }
-                  ]
+                  ],
+                  "code": "P0600"
                 },
                 {
                   "id": "s7-a4-p2-i2",
@@ -3093,7 +3196,8 @@
                       "kind": "text",
                       "text": "치의보철 및 미용상의 처치로 인한 경우"
                     }
-                  ]
+                  ],
+                  "code": "P0700"
                 },
                 {
                   "id": "s7-a4-p2-i3",
@@ -3104,7 +3208,8 @@
                       "kind": "text",
                       "text": "상해를 직접적인 원인으로 하지 않는 불임수술 또는 제왕절개수술 등으로 인한 경우"
                     }
-                  ]
+                  ],
+                  "code": "P0800"
                 },
                 {
                   "id": "s7-a4-p2-i4",
@@ -3115,7 +3220,8 @@
                       "kind": "text",
                       "text": "치료를 수반하지 않는 건강진단으로 인한 경우"
                     }
-                  ]
+                  ],
+                  "code": "P0900"
                 },
                 {
                   "id": "s7-a4-p2-i5",
@@ -3126,9 +3232,11 @@
                       "kind": "text",
                       "text": "신체의 필수 기능개선 목적이 아닌 외모개선으로 인한 경우"
                     }
-                  ]
+                  ],
+                  "code": "P1000"
                 }
-              ]
+              ],
+              "code": "P0200"
             },
             {
               "id": "s7-a4-p3",
@@ -3149,7 +3257,8 @@
                   "kind": "text",
                   "text": "의 주2)에 해당하는 사항은 보상하지 않습니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             },
             {
               "id": "s7-a4-p4",
@@ -3160,7 +3269,8 @@
                   "kind": "text",
                   "text": "회사는「국민건강보험 요양급여의 기준에 관한 규칙」제9조 제1항([별표2]비급여대상)에 해당하는 수술에 대하여는 보상하지 않습니다."
                 }
-              ]
+              ],
+              "code": "P0400"
             },
             {
               "id": "s7-a4-p5",
@@ -3181,7 +3291,8 @@
                   "kind": "text",
                   "text": "에서 정한 수술코드를 받은 경우에는 보상하지 않습니다."
                 }
-              ]
+              ],
+              "code": "P0500"
             }
           ]
         },
@@ -3210,7 +3321,8 @@
                       "kind": "text",
                       "text": "청구서(회사양식)"
                     }
-                  ]
+                  ],
+                  "code": "P0300"
                 },
                 {
                   "id": "s7-a5-p1-i2",
@@ -3221,13 +3333,13 @@
                       "kind": "text",
                       "text": "사고증명서(진단서(진단명, 진단코드, 수술명 포함), 진료비 세부내역서(급여수가코드(EDI코드 포함)), 수술증명서, 진료비계산서, 진료기록부 등)[단, 진료비 세부내역서 등에서 급여수가코드(EDI코드 포함)를 확인할 수 없는 경우 보험금 청구시 급여수가코드(EDI코드 포함)를 확인할 수 있는 서류를 제출해야 합니다]"
                     }
-                  ]
+                  ],
+                  "code": "P0400"
                 },
                 {
                   "id": "s7-a5-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0121",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000092"
                 },
                 {
                   "id": "s7-a5-p1-i3",
@@ -3238,7 +3350,8 @@
                       "kind": "text",
                       "text": "신분증(주민등록증이나 운전면허증 등 사진이 붙은 정부기관발행 신분증, 본인이 아닌 경우에는 본인의 인감증명서, 본인서명사실확인서 또는 안전성과 신뢰성이 확보된 전자적 수단을 활용한 보험수익자 의사표시의 확인방법 포함)"
                     }
-                  ]
+                  ],
+                  "code": "P0500"
                 },
                 {
                   "id": "s7-a5-p1-i4",
@@ -3249,9 +3362,11 @@
                       "kind": "text",
                       "text": "기타 보험수익자가 보험금의 수령에 필요하여 제출하는 서류"
                     }
-                  ]
+                  ],
+                  "code": "P0600"
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "s7-a5-p2",
@@ -3262,7 +3377,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s7-a5-p1-i2"
+                      "articleId": "s7-a5",
+                      "code": "P0400"
                     }
                   ],
                   "connector": "및",
@@ -3273,7 +3389,8 @@
                   "kind": "text",
                   "text": "의 사고증명서는 의료법 제3조(의료기관)에서 규정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 발급한 것이어야 합니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             }
           ]
         },
@@ -3299,7 +3416,8 @@
                           "kind": "text",
                           "text": "회사는 다음에 정한 3년만기형, 10년만기형, 15년만기형,20년만기형 중에서 계약자가 선택한 한가지형만을 적용합니다.[3년만기형]이 특별약관의 보험기간은 3년으로 합니다. 다만, 갱신시점의 피보험자의 보험나이부터 갱신종료보험나이(갱신시점의 갱신종료보험나이를 말합니다)까지의 기간이 3년 미만일 경우에는 그 잔여기간을 보험기간으로 합니다.[10년만기형]이 특별약관의 보험기간은 10년으로 합니다. 다만, 갱신시점의 피보험자의 보험나이부터 갱신종료보험나이(갱신 시점의 갱신종료보험나이를 말합니다)까지의 기간이 10년 미만일 경우에는 그 잔여기간을 보험기간으로 합니다.[15년만기형]이 특별약관의 보험기간은 15년으로 합니다. 다만, 갱신시점의 피보험자의 보험나이부터 갱신종료보험나이(갱신 시점의 갱신종료보험나이를 말합니다)까지의 기간이 15년 미만일 경우에는 그 잔여기간을 보험기간으로 합니다.[20년만기형]이 특별약관의 보험기간은 20년으로 합니다. 다만, 갱신시점의 피보험자의 보험나이부터 갱신종료보험나이(갱신 시점의 갱신종료보험나이를 말합니다)까지의 기간이 20년 미만일 경우에는 그 잔여기간을 보험기간으로 합니다."
                         }
-                      ]
+                      ],
+                      "code": "P0100"
                     }
                   ]
                 }
@@ -3315,8 +3433,9 @@
             {
               "id": "s7-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0109",
-              "options": {}
+              "clauseCode": "C0028",
+              "options": {},
+              "code": "P0100"
             }
           ]
         },
@@ -3328,8 +3447,9 @@
             {
               "id": "s7-a8-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0132",
-              "options": {}
+              "clauseCode": "C0033",
+              "options": {},
+              "code": "P0100"
             }
           ]
         }
@@ -3353,18 +3473,14 @@
             {
               "id": "s9-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0101",
-              "options": {}
+              "clauseCode": "C0020",
+              "options": {},
+              "code": "P0100"
             },
             {
               "id": "s9-a1-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0122",
-              "options": {
-                "O01": "V01",
-                "O02": "V01",
-                "O03": "V01"
-              }
+              "kind": "boxRef",
+              "boxCode": "BX000093"
             }
           ]
         },
@@ -3408,7 +3524,8 @@
                       "kind": "text",
                       "text": "로 지급합니다."
                     }
-                  ]
+                  ],
+                  "code": "P0300"
                 },
                 {
                   "id": "s9-a2-p1-i2",
@@ -3419,7 +3536,8 @@
                       "kind": "text",
                       "text": "화상수술비보장 : 화상을 입고 그 치료를 직접적인 목적으로 수술을 받은 경우 이 보장의 보험가입금액을 화상수술비로 지급합니다."
                     }
-                  ]
+                  ],
+                  "code": "P0400"
                 },
                 {
                   "id": "s9-a2-p1-i3",
@@ -3435,7 +3553,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "s9-a6"
+                          "articleId": "s9-a6"
                         }
                       ],
                       "connector": "및",
@@ -3446,9 +3564,11 @@
                       "kind": "text",
                       "text": "에서 정한 중증화상및부식으로 진단확정시 이 보장의 보험가입금액을 최초 1회에 한하여 중증화상및부식진단비로 지급합니다."
                     }
-                  ]
+                  ],
+                  "code": "P0500"
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "s9-a2-p2",
@@ -3459,10 +3579,12 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s9-a2-p1-i1"
+                      "articleId": "s9-a2",
+                      "code": "P0300"
                     },
                     {
-                      "nodeId": "s9-a2-p1-i2"
+                      "articleId": "s9-a2",
+                      "code": "P0400"
                     }
                   ],
                   "connector": "및",
@@ -3483,7 +3605,8 @@
                   "kind": "text",
                   "text": "에서 정한 화상(열상을 포함합니다)에 해당되고 심재성 2도 이상의 화상을 말합니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             }
           ]
         },
@@ -3501,7 +3624,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s9-a2-p1-i1"
+                      "articleId": "s9-a2",
+                      "code": "P0300"
                     }
                   ],
                   "connector": "및",
@@ -3512,7 +3636,8 @@
                   "kind": "text",
                   "text": "에서 피보험자가 동일한 사고로 2가지 이상의 화상 상태인 경우에는 1회에 한하여 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "s9-a3-p2",
@@ -3523,7 +3648,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s9-a2-p1-i2"
+                      "articleId": "s9-a2",
+                      "code": "P0400"
                     }
                   ],
                   "connector": "및",
@@ -3534,7 +3660,8 @@
                   "kind": "text",
                   "text": "에서 피보험자가 동일한 사고로 두 종류 이상의 화상 수술을 받거나 같은 종류의 화상 수술을 2회 이상 받은 경우에는 하나의 화상수술비만을 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             },
             {
               "id": "s9-a3-p3",
@@ -3550,7 +3677,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s9-a2"
+                      "articleId": "s9-a2"
                     }
                   ],
                   "connector": "및",
@@ -3561,7 +3688,8 @@
                   "kind": "text",
                   "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             }
           ]
         },
@@ -3584,7 +3712,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "g-a5"
+                      "articleId": "g-a5"
                     }
                   ],
                   "connector": "및",
@@ -3600,7 +3728,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s9-a2-p1-i2"
+                      "articleId": "s9-a2",
+                      "code": "P0400"
                     }
                   ],
                   "connector": "및",
@@ -3622,7 +3751,8 @@
                       "kind": "text",
                       "text": "위생관리, 미모를 위한 성형수술(다만, 사고전 상태로의 회복을 위한 수술은 보험금을 지급합니다)"
                     }
-                  ]
+                  ],
+                  "code": "P0200"
                 },
                 {
                   "id": "s9-a4-p1-i2",
@@ -3633,9 +3763,11 @@
                       "kind": "text",
                       "text": "선천적 기형 및 이에 근거한 병상"
                     }
-                  ]
+                  ],
+                  "code": "P0300"
                 }
-              ]
+              ],
+              "code": "P0100"
             }
           ]
         },
@@ -3653,7 +3785,8 @@
                   "kind": "text",
                   "text": "이 특별약관에서「수술」이라 함은 의사, 치과의사 또는 한의사의 면허를 가진 자(이하「의사」라 합니다)가 치료가 필요하다고 인정한 경우로서 의사의 관리하에 치료를 직접적인 목적으로 기구를 사용하여 생체(生體)에 절단(切斷, 특정부위를 잘라 내는 것), 절제(切除, 특정부위를 잘라 없애는 것) 등의 조작을 가하는 것을 말합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "s9-a5-p2",
@@ -3664,7 +3797,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s9-a5-p1"
+                      "articleId": "s9-a5",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -3675,7 +3809,8 @@
                   "kind": "text",
                   "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             },
             {
               "id": "s9-a5-p3",
@@ -3686,7 +3821,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s9-a5-p1"
+                      "articleId": "s9-a5",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -3697,13 +3833,13 @@
                   "kind": "text",
                   "text": "의「수술」에는 보건복지부 산하 신의료기술평가위원회 또는 이에 준하는 기관으로부터 안전성과 치료효과를 인정받은 최신 수술기법으로 생체에 절단, 절제 등의 조작을 가하는 수술도 포함됩니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             },
             {
               "id": "s9-a5-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0116",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000087"
             },
             {
               "id": "s9-a5-p4",
@@ -3714,7 +3850,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "s9-a5-p1"
+                      "articleId": "s9-a5",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -3736,7 +3873,8 @@
                       "kind": "text",
                       "text": "흡인(吸引, 주사기 등으로 빨아들이는 것)"
                     }
-                  ]
+                  ],
+                  "code": "P0400"
                 },
                 {
                   "id": "s9-a5-p4-i2",
@@ -3747,7 +3885,8 @@
                       "kind": "text",
                       "text": "천자(穿刺, 바늘 또는 관을 꽂아 체액․조직을 뽑아내거나 약물을 주입하는 것) 등의 조치"
                     }
-                  ]
+                  ],
+                  "code": "P0600"
                 },
                 {
                   "id": "s9-a5-p4-i3",
@@ -3758,7 +3897,8 @@
                       "kind": "text",
                       "text": "신경(神經)차단(NERVE BLOCK)"
                     }
-                  ]
+                  ],
+                  "code": "P0700"
                 },
                 {
                   "id": "s9-a5-p4-i4",
@@ -3769,7 +3909,8 @@
                       "kind": "text",
                       "text": "미용성형 목적의 수술"
                     }
-                  ]
+                  ],
+                  "code": "P0800"
                 },
                 {
                   "id": "s9-a5-p4-i5",
@@ -3780,7 +3921,8 @@
                       "kind": "text",
                       "text": "피임(避妊)목적의 수술, 피임(避妊) 및 불임술 후 가임목적의 수술"
                     }
-                  ]
+                  ],
+                  "code": "P0900"
                 },
                 {
                   "id": "s9-a5-p4-i6",
@@ -3791,7 +3933,8 @@
                       "kind": "text",
                       "text": "검사 및 진단을 위한 수술(생검(生檢), 복강경검사(腹腔鏡檢査) 등)"
                     }
-                  ]
+                  ],
+                  "code": "P1000"
                 },
                 {
                   "id": "s9-a5-p4-i7",
@@ -3802,9 +3945,11 @@
                       "kind": "text",
                       "text": "기타 수술의 정의에 해당하지 않는 시술"
                     }
-                  ]
+                  ],
+                  "code": "P1100"
                 }
-              ]
+              ],
+              "code": "P0500"
             }
           ]
         },
@@ -3816,11 +3961,12 @@
             {
               "id": "s9-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0108",
+              "clauseCode": "C0027",
               "options": {
                 "O01": "V01",
                 "O02": "V01"
-              }
+              },
+              "code": "P0100"
             }
           ]
         },
@@ -3832,8 +3978,9 @@
             {
               "id": "s9-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0113",
-              "options": {}
+              "clauseCode": "C0032",
+              "options": {},
+              "code": "P0100"
             }
           ]
         },
@@ -3845,8 +3992,9 @@
             {
               "id": "s9-a8-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0132",
-              "options": {}
+              "clauseCode": "C0033",
+              "options": {},
+              "code": "P0100"
             }
           ]
         }
@@ -3876,7 +4024,8 @@
                   "kind": "text",
                   "text": "회사는 피보험자가 보험기간 중에 상해의 직접결과로써 사망한 경우(질병으로 인한 사망은 제외합니다)에는 보험수익자에게 일반상해사망 보험가입금액 전액을 사망보험금으로 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             }
           ],
           "linkedArticleId": "m-a3"
@@ -3895,7 +4044,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "mb-a3"
+                      "articleId": "mb-a3"
                     }
                   ],
                   "connector": "및",
@@ -3917,7 +4066,8 @@
                       "kind": "text",
                       "text": "실종선고를 받은 경우: 법원에서 인정한 실종기간이 끝나는 때에 사망한 것으로 봅니다."
                     }
-                  ]
+                  ],
+                  "code": "P0400"
                 },
                 {
                   "id": "mb-a4-p1-i2",
@@ -3928,15 +4078,16 @@
                       "kind": "text",
                       "text": "관공서에서 수해, 화재나 그 밖의 재난을 조사하고 사망한 것으로 통보하는 경우: 가족관계등록부에 기재된 사망연월일을 기준으로 합니다."
                     }
-                  ]
+                  ],
+                  "code": "P0500"
                 },
                 {
                   "id": "mb-a4-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0073",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000057"
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "mb-a4-p2",
@@ -3952,7 +4103,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "mb-a3"
+                      "articleId": "mb-a3"
                     }
                   ],
                   "connector": "및",
@@ -3963,7 +4114,8 @@
                   "kind": "text",
                   "text": " ｢사망｣의 원인 및 ｢사망보험금｣ 지급에 영향을 미치지 않습니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             },
             {
               "id": "mb-a4-p3",
@@ -3979,7 +4131,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "mb-a3"
+                      "articleId": "mb-a3"
                     }
                   ],
                   "connector": "및",
@@ -3990,13 +4142,13 @@
                   "kind": "text",
                   "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             },
             {
               "id": "mb-a4-b2-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0074",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000058"
             }
           ],
           "linkedArticleId": "m-a4"
@@ -4047,7 +4199,8 @@
                   "kind": "text",
                   "text": "으로 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             }
           ]
         },
@@ -4059,12 +4212,13 @@
             {
               "id": "m1-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0107",
+              "clauseCode": "C0026",
               "options": {
                 "O01": "V01",
                 "O02": "V01",
                 "O03": "V02"
-              }
+              },
+              "code": "P0100"
             }
           ]
         },
@@ -4076,10 +4230,11 @@
             {
               "id": "m1-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0110",
+              "clauseCode": "C0029",
               "options": {
                 "O01": "V02"
-              }
+              },
+              "code": "P0100"
             }
           ]
         },
@@ -4091,8 +4246,9 @@
             {
               "id": "m1-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0133",
-              "options": {}
+              "clauseCode": "C0034",
+              "options": {},
+              "code": "P0100"
             }
           ]
         }
@@ -4142,7 +4298,8 @@
                   "kind": "text",
                   "text": "로 지급합니다. 다만, 1회의 입원당 또는 1회의 통원당 1회의 수술에 한하여 보장하며, 하나의 수술코드당 연간 3회에 한하여 보장합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "m2-a1-t1",
@@ -4308,7 +4465,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m2-a1-p1"
+                      "articleId": "m2-a1",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -4319,7 +4477,8 @@
                   "kind": "text",
                   "text": "에서「연간」이라 함은 최초계약일부터 매1년 단위로 도래하는 계약해당일 전일까지의 기간을 말합니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             },
             {
               "id": "m2-a1-p3",
@@ -4335,7 +4494,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m2-a1-p1"
+                      "articleId": "m2-a1",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -4346,7 +4506,8 @@
                   "kind": "text",
                   "text": "의 수술비를 지급하지 않습니다. 이 때, 30일이라 함은 수술비가 지급된 수술코드에 대하여 그「수술」이 행해진 해당 입원의 퇴원일 또는 해당 통원의 통원일의 다음날부터 이후 동일한 수술코드가 부여된 입원의 입원일 또는 통원의 통원일까지의 기간을 말합니다."
                 }
-              ]
+              ],
+              "code": "P0400"
             },
             {
               "id": "m2-a1-t2",
@@ -4685,9 +4846,8 @@
             },
             {
               "id": "m2-a1-b3-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0123",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000095"
             },
             {
               "id": "m2-a1-t4",
@@ -4983,9 +5143,8 @@
             },
             {
               "id": "m2-a1-b5-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0124",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000096"
             }
           ]
         },
@@ -5013,7 +5172,8 @@
                   "kind": "text",
                   "text": "에서 정한 수술코드(이하「수술코드」라 합니다.)에 해당하는 의료행위를 하는 것을 말합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "m2-a2-p2",
@@ -5024,7 +5184,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m2-a2-p1"
+                      "articleId": "m2-a2",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -5035,7 +5196,8 @@
                   "kind": "text",
                   "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             },
             {
               "id": "m2-a2-p3",
@@ -5046,7 +5208,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m2-a2-p1"
+                      "articleId": "m2-a2",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -5057,13 +5220,13 @@
                   "kind": "text",
                   "text": "의「수술코드」는「국민건강보험법」에서 정한 요양급여(이하「요양급여」라 합니다) 또는「의료급여법」에서 정한 의료급여(이하「의료급여」라 합니다)의 절차를 거쳐 수술항목에서 급여항목이 발생하고,「진단명기준환자군(Diagnosis Related Group, DRG)」분류체계에 따라 부여된「ADRG(Adjacent DRG)」중 이 특별약관에서 정한 코드를 말합니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             },
             {
               "id": "m2-a2-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0125",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000097"
             },
             {
               "id": "m2-a2-p4",
@@ -5074,7 +5237,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m2-a2-p3"
+                      "articleId": "m2-a2",
+                      "code": "P0300"
                     }
                   ],
                   "connector": "및",
@@ -5085,13 +5249,13 @@
                   "kind": "text",
                   "text": "의「수술코드」에서 향후「진단명기준환자군(DRG)」개정으로 동일한 수술에 대해「수술코드」가 변경되는 경우에도 이 특별약관의 체결시점에서 정한「수술코드」를 따릅니다."
                 }
-              ]
+              ],
+              "code": "P0500"
             },
             {
               "id": "m2-a2-b2-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0126",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000098"
             },
             {
               "id": "m2-a2-p5",
@@ -5102,10 +5266,12 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m2-a2-p3"
+                      "articleId": "m2-a2",
+                      "code": "P0300"
                     },
                     {
-                      "nodeId": "m2-a2-p4"
+                      "articleId": "m2-a2",
+                      "code": "P0500"
                     }
                   ],
                   "connector": "및",
@@ -5116,7 +5282,8 @@
                   "kind": "text",
                   "text": "에도 불구하고 이 특별약관 체결시점에 급여항목으로 분류된 수술이 향후 비급여항목으로 변경된 경우 해당 수술은 보장에서 제외됩니다."
                 }
-              ]
+              ],
+              "code": "P0700"
             },
             {
               "id": "m2-a2-p6",
@@ -5127,7 +5294,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m2-a2-p1"
+                      "articleId": "m2-a2",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -5138,13 +5306,13 @@
                   "kind": "text",
                   "text": "의 수술은「건강보험 행위 급여∙비급여 목록 및 급여 상대가치점수」(보건복지부 고시 제2021-72호, 2021.3.4.) 제2부(행위 급여 목록∙상대가치점수 및 산정지침)의 제2장(검사료) 및 제3장(영상진단 및 방사선치료료)에서 정하는 내용은 포함하지 않습니다. 다만, 제3장(영상진단 및 방사선치료료)에서 사이버나이프(Cyberknife) 정위적 방사선 치료, 감마나이프(Gammaknife) 정위적 방사선 치료, 선형가속기(LINAC) 정위적 방사선 치료, 양성자치료는 수술에 포함하여 보장합니다."
                 }
-              ]
+              ],
+              "code": "P0800"
             },
             {
               "id": "m2-a2-b3-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0127",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000099"
             }
           ]
         },
@@ -5162,13 +5330,13 @@
                   "kind": "text",
                   "text": "피보험자가 1회의 입원 또는 1회의 통원 중에 2가지 이상의 수술을 받은 경우 퇴원일 또는 통원일을 기준으로 진단서 및 진료비 세부내역서 등에서 확인되는 하나의 수술코드에 한하여 수술비를 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "m2-a3-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0128",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000100"
             },
             {
               "id": "m2-a3-p2",
@@ -5179,7 +5347,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m2-a3-p1"
+                      "articleId": "m2-a3",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -5190,7 +5359,8 @@
                   "kind": "text",
                   "text": "에도 불구하고 피보험자가 동일한 의료기관에서 퇴원없이 계속입원 중에 2가지 이상의 수술코드가 부여되는 경우 또는 1일 2회 이상 통원하여 2가지 이상의 수술코드가 부여된 경우에는 수술종류가 높은 하나의 수술코드에 한하여 수술비를 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             },
             {
               "id": "m2-a3-p3",
@@ -5206,7 +5376,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m2-a1"
+                      "articleId": "m2-a1"
                     }
                   ],
                   "connector": "및",
@@ -5217,7 +5387,8 @@
                   "kind": "text",
                   "text": "에서 정한 바에 따라 보장합니다."
                 }
-              ]
+              ],
+              "code": "P0400"
             },
             {
               "id": "m2-a3-p4",
@@ -5233,7 +5404,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m2-a1"
+                      "articleId": "m2-a1"
                     }
                   ],
                   "connector": "및",
@@ -5244,7 +5415,8 @@
                   "kind": "text",
                   "text": "에서 정한 보험금 지급사유가 발생한 경우에는 회사는 이 특별약관에서 정한 바에 따라 보장합니다."
                 }
-              ]
+              ],
+              "code": "P0500"
             },
             {
               "id": "m2-a3-p5",
@@ -5260,7 +5432,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m2-a2"
+                      "articleId": "m2-a2"
                     }
                   ],
                   "connector": "및",
@@ -5271,7 +5443,8 @@
                   "kind": "text",
                   "text": "에서 정한 수술에 포함하여 보장합니다."
                 }
-              ]
+              ],
+              "code": "P0600"
             },
             {
               "id": "m2-a3-p6",
@@ -5282,7 +5455,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m2-a3-p2"
+                      "articleId": "m2-a3",
+                      "code": "P0300"
                     }
                   ],
                   "connector": "및",
@@ -5298,7 +5472,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m2-a3-p5"
+                      "articleId": "m2-a3",
+                      "code": "P0600"
                     }
                   ],
                   "connector": "및",
@@ -5314,7 +5489,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m2-a3-p5"
+                      "articleId": "m2-a3",
+                      "code": "P0600"
                     }
                   ],
                   "connector": "및",
@@ -5325,7 +5501,8 @@
                   "kind": "text",
                   "text": "의 수술코드에 해당하는 수술비를 각각 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0700"
             },
             {
               "id": "m2-a3-p7",
@@ -5341,7 +5518,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m2-a1"
+                      "articleId": "m2-a1"
                     }
                   ],
                   "connector": "및",
@@ -5352,7 +5529,8 @@
                   "kind": "text",
                   "text": "에서 정한 바에 따라 보장합니다."
                 }
-              ]
+              ],
+              "code": "P0800"
             },
             {
               "id": "m2-a3-p8",
@@ -5368,7 +5546,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m2-a1"
+                      "articleId": "m2-a1"
                     }
                   ],
                   "connector": "및",
@@ -5379,7 +5557,8 @@
                   "kind": "text",
                   "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
-              ]
+              ],
+              "code": "P0900"
             }
           ]
         },
@@ -5402,7 +5581,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m-a5"
+                      "articleId": "m-a5"
                     }
                   ],
                   "connector": "및",
@@ -5413,7 +5592,8 @@
                   "kind": "text",
                   "text": "에서 정한 사항에 따라 보험금 지급사유가 발생한 때에는 보험금을 지급하지 않습니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "m2-a4-p2",
@@ -5435,7 +5615,8 @@
                       "kind": "text",
                       "text": "마약, 습관성 의약품 및 알코올중독으로 인한 경우"
                     }
-                  ]
+                  ],
+                  "code": "P0600"
                 },
                 {
                   "id": "m2-a4-p2-i2",
@@ -5446,7 +5627,8 @@
                       "kind": "text",
                       "text": "치의보철 및 미용상의 처치로 인한 경우"
                     }
-                  ]
+                  ],
+                  "code": "P0700"
                 },
                 {
                   "id": "m2-a4-p2-i3",
@@ -5457,7 +5639,8 @@
                       "kind": "text",
                       "text": "상해를 직접적인 원인으로 하지 않는 불임수술 또는 제왕절개수술 등으로 인한 경우"
                     }
-                  ]
+                  ],
+                  "code": "P0800"
                 },
                 {
                   "id": "m2-a4-p2-i4",
@@ -5468,7 +5651,8 @@
                       "kind": "text",
                       "text": "치료를 수반하지 않는 건강진단으로 인한 경우"
                     }
-                  ]
+                  ],
+                  "code": "P0900"
                 },
                 {
                   "id": "m2-a4-p2-i5",
@@ -5479,9 +5663,11 @@
                       "kind": "text",
                       "text": "신체의 필수 기능개선 목적이 아닌 외모개선으로 인한 경우"
                     }
-                  ]
+                  ],
+                  "code": "P1000"
                 }
-              ]
+              ],
+              "code": "P0200"
             },
             {
               "id": "m2-a4-p3",
@@ -5502,7 +5688,8 @@
                   "kind": "text",
                   "text": "의 주2)에 해당하는 사항은 보상하지 않습니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             },
             {
               "id": "m2-a4-p4",
@@ -5513,7 +5700,8 @@
                   "kind": "text",
                   "text": "회사는「국민건강보험 요양급여의 기준에 관한 규칙」제9조 제1항([별표2]비급여대상)에 해당하는 수술에 대하여는 보상하지 않습니다."
                 }
-              ]
+              ],
+              "code": "P0400"
             },
             {
               "id": "m2-a4-p5",
@@ -5534,7 +5722,8 @@
                   "kind": "text",
                   "text": "에서 정한 수술코드를 받은 경우에는 보상하지 않습니다."
                 }
-              ]
+              ],
+              "code": "P0500"
             }
           ]
         },
@@ -5563,7 +5752,8 @@
                       "kind": "text",
                       "text": "청구서(회사양식)"
                     }
-                  ]
+                  ],
+                  "code": "P0300"
                 },
                 {
                   "id": "m2-a5-p1-i2",
@@ -5574,13 +5764,13 @@
                       "kind": "text",
                       "text": "사고증명서(진단서(진단명, 진단코드, 수술명 포함), 진료비 세부내역서(급여수가코드(EDI코드 포함)), 수술증명서, 진료비계산서, 진료기록부 등) [단, 진료비 세부내역서 등에서 급여수가코드(EDI코드 포함)를 확인할 수 없는 경우 보험금 청구시 급여수가코드(EDI코드 포함)를 확인할 수 있는 서류를 제출해야 합니다]"
                     }
-                  ]
+                  ],
+                  "code": "P0400"
                 },
                 {
                   "id": "m2-a5-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0121",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000092"
                 },
                 {
                   "id": "m2-a5-p1-i3",
@@ -5591,7 +5781,8 @@
                       "kind": "text",
                       "text": "신분증(주민등록증이나 운전면허증 등 사진이 붙은 정부기관 발행 신분증, 본인이 아닌 경우에는 본인의 인감증명서, 본인서명사실확인서 또는 안전성과 신뢰성이 확보된 전자적 수단을 활용한 보험수익자 의사표시의 확인방법 포함)"
                     }
-                  ]
+                  ],
+                  "code": "P0500"
                 },
                 {
                   "id": "m2-a5-p1-i4",
@@ -5602,9 +5793,11 @@
                       "kind": "text",
                       "text": "기타 보험수익자가 보험금의 수령에 필요하여 제출하는 서류"
                     }
-                  ]
+                  ],
+                  "code": "P0600"
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "m2-a5-p2",
@@ -5615,7 +5808,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m2-a5-p1-i2"
+                      "articleId": "m2-a5",
+                      "code": "P0400"
                     }
                   ],
                   "connector": "및",
@@ -5626,7 +5820,8 @@
                   "kind": "text",
                   "text": "의 사고증명서는 의료법 제3조(의료기관)에서 규정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 발급한 것이어야 합니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             }
           ]
         },
@@ -5638,8 +5833,9 @@
             {
               "id": "m2-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0109",
-              "options": {}
+              "clauseCode": "C0028",
+              "options": {},
+              "code": "P0100"
             }
           ]
         },
@@ -5651,8 +5847,9 @@
             {
               "id": "m2-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0133",
-              "options": {}
+              "clauseCode": "C0034",
+              "options": {},
+              "code": "P0100"
             }
           ]
         }
@@ -5676,8 +5873,9 @@
             {
               "id": "m3-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0102",
-              "options": {}
+              "clauseCode": "C0021",
+              "options": {},
+              "code": "P0100"
             }
           ]
         },
@@ -5689,8 +5887,9 @@
             {
               "id": "m3-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0104",
-              "options": {}
+              "clauseCode": "C0023",
+              "options": {},
+              "code": "P0100"
             }
           ]
         },
@@ -5713,7 +5912,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m-a5"
+                      "articleId": "m-a5"
                     }
                   ],
                   "connector": "및",
@@ -5724,7 +5923,8 @@
                   "kind": "text",
                   "text": "에서 정한 사유로 보험금 지급사유가 발생한 때에는 보험금을 지급하지 않습니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "m3-a3-p2",
@@ -5740,7 +5940,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m3-a1"
+                      "articleId": "m3-a1"
                     }
                   ],
                   "connector": "및",
@@ -5756,7 +5956,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m3-a2"
+                      "articleId": "m3-a2"
                     }
                   ],
                   "connector": "및",
@@ -5767,7 +5967,8 @@
                   "kind": "text",
                   "text": "를 따릅니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             }
           ]
         },
@@ -5779,8 +5980,9 @@
             {
               "id": "m3-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0109",
-              "options": {}
+              "clauseCode": "C0028",
+              "options": {},
+              "code": "P0100"
             }
           ]
         },
@@ -5792,8 +5994,9 @@
             {
               "id": "m3-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0133",
-              "options": {}
+              "clauseCode": "C0034",
+              "options": {},
+              "code": "P0100"
             }
           ]
         }
@@ -5817,18 +6020,14 @@
             {
               "id": "m4-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0101",
-              "options": {}
+              "clauseCode": "C0020",
+              "options": {},
+              "code": "P0100"
             },
             {
               "id": "m4-a1-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0122",
-              "options": {
-                "O01": "V02",
-                "O02": "V02",
-                "O03": "V02"
-              }
+              "kind": "boxRef",
+              "boxCode": "BX000094"
             }
           ]
         },
@@ -5872,7 +6071,8 @@
                       "kind": "text",
                       "text": "로 지급합니다."
                     }
-                  ]
+                  ],
+                  "code": "P0300"
                 },
                 {
                   "id": "m4-a2-p1-i2",
@@ -5883,7 +6083,8 @@
                       "kind": "text",
                       "text": "화상수술비 : 화상을 입고 그 치료를 직접적인 목적으로 수술을 받은 경우 이 보장의 보험가입금액을 화상수술비로 지급합니다."
                     }
-                  ]
+                  ],
+                  "code": "P0400"
                 },
                 {
                   "id": "m4-a2-p1-i3",
@@ -5899,7 +6100,7 @@
                       "kind": "articleRef",
                       "targets": [
                         {
-                          "nodeId": "m4-a6"
+                          "articleId": "m4-a6"
                         }
                       ],
                       "connector": "및",
@@ -5910,9 +6111,11 @@
                       "kind": "text",
                       "text": "에서 정한 중증화상및부식으로 진단확정시 이 보장의 보험가입금액을 최초 1회에 한하여 중증화상및부식진단비로 지급합니다."
                     }
-                  ]
+                  ],
+                  "code": "P0500"
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "m4-a2-p2",
@@ -5923,10 +6126,12 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m4-a2-p1-i1"
+                      "articleId": "m4-a2",
+                      "code": "P0300"
                     },
                     {
-                      "nodeId": "m4-a2-p1-i2"
+                      "articleId": "m4-a2",
+                      "code": "P0400"
                     }
                   ],
                   "connector": "및",
@@ -5947,7 +6152,8 @@
                   "kind": "text",
                   "text": "에서 정한 화상(열상을 포함합니다)에 해당되고 심재성 2도 이상의 화상을 말합니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             }
           ]
         },
@@ -5965,7 +6171,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m4-a2-p1-i1"
+                      "articleId": "m4-a2",
+                      "code": "P0300"
                     }
                   ],
                   "connector": "및",
@@ -5976,7 +6183,8 @@
                   "kind": "text",
                   "text": "에서 피보험자가 동일한 사고로 인하여 2가지 이상의 화상 상태인 경우에는 1회에 한하여 화상진단비를 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "m4-a3-p2",
@@ -5987,7 +6195,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m4-a2-p1-i2"
+                      "articleId": "m4-a2",
+                      "code": "P0400"
                     }
                   ],
                   "connector": "및",
@@ -5998,7 +6207,8 @@
                   "kind": "text",
                   "text": "에서 피보험자가 동일한 사고로 두 종류 이상의 화상 수술을 받거나 같은 종류의 화상수술을 2회 이상 받은 경우에는 하나의 화상수술비만을 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             },
             {
               "id": "m4-a3-p3",
@@ -6014,7 +6224,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m4-a2"
+                      "articleId": "m4-a2"
                     }
                   ],
                   "connector": "및",
@@ -6025,7 +6235,8 @@
                   "kind": "text",
                   "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             }
           ]
         },
@@ -6043,7 +6254,8 @@
                   "kind": "text",
                   "text": "이 특별약관에 있어서「수술」이라 함은 의사, 치과의사 또는 한의사의 면허를 가진 자(이하「의사」라 합니다)가 치료가 필요하다고 인정한 경우로서 의사의 관리하에 치료를 직접적인 목적으로 기구를 사용하여 생체(生體)에 절단(切斷, 특정부위를 잘라 내는 것), 절제(切除, 특정부위를 잘라 없애는 것) 등의 조작을 가하는 것을 말합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "m4-a4-p2",
@@ -6054,7 +6266,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m4-a4-p1"
+                      "articleId": "m4-a4",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -6065,7 +6278,8 @@
                   "kind": "text",
                   "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             },
             {
               "id": "m4-a4-p3",
@@ -6076,7 +6290,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m4-a4-p1"
+                      "articleId": "m4-a4",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -6087,13 +6302,13 @@
                   "kind": "text",
                   "text": "의「수술」에는 보건복지부 산하 신의료기술평가위원회 또는 이에 준하는 기관으로부터 안전성과 치료효과를 인정받은 최신 수술기법으로 생체에 절단, 절제 등의 조작을 가하는 수술도 포함됩니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             },
             {
               "id": "m4-a4-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0116",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000087"
             },
             {
               "id": "m4-a4-p4",
@@ -6104,7 +6319,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m4-a4-p1"
+                      "articleId": "m4-a4",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -6126,7 +6342,8 @@
                       "kind": "text",
                       "text": "흡인(吸引, 주사기 등으로 빨아들이는 것)"
                     }
-                  ]
+                  ],
+                  "code": "P0400"
                 },
                 {
                   "id": "m4-a4-p4-i2",
@@ -6137,7 +6354,8 @@
                       "kind": "text",
                       "text": "천자(穿刺, 바늘 또는 관을 꽂아 체액․조직을 뽑아내거나 약물을 주입하는 것) 등의 조치"
                     }
-                  ]
+                  ],
+                  "code": "P0600"
                 },
                 {
                   "id": "m4-a4-p4-i3",
@@ -6148,7 +6366,8 @@
                       "kind": "text",
                       "text": "신경(神經)차단(NERVE BLOCK)"
                     }
-                  ]
+                  ],
+                  "code": "P0700"
                 },
                 {
                   "id": "m4-a4-p4-i4",
@@ -6159,7 +6378,8 @@
                       "kind": "text",
                       "text": "미용성형 목적의 수술"
                     }
-                  ]
+                  ],
+                  "code": "P0800"
                 },
                 {
                   "id": "m4-a4-p4-i5",
@@ -6170,7 +6390,8 @@
                       "kind": "text",
                       "text": "피임(避妊)목적의 수술, 피임(避妊) 및 불임술 후 가임목적의 수술"
                     }
-                  ]
+                  ],
+                  "code": "P0900"
                 },
                 {
                   "id": "m4-a4-p4-i6",
@@ -6181,7 +6402,8 @@
                       "kind": "text",
                       "text": "검사 및 진단을 위한 수술(생검(生檢), 복강경검사(腹腔鏡檢査) 등)"
                     }
-                  ]
+                  ],
+                  "code": "P1000"
                 },
                 {
                   "id": "m4-a4-p4-i7",
@@ -6192,9 +6414,11 @@
                       "kind": "text",
                       "text": "기타 수술의 정의에 해당하지 않는 시술"
                     }
-                  ]
+                  ],
+                  "code": "P1100"
                 }
-              ]
+              ],
+              "code": "P0500"
             }
           ]
         },
@@ -6217,7 +6441,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m-a5"
+                      "articleId": "m-a5"
                     }
                   ],
                   "connector": "및",
@@ -6233,7 +6457,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m4-a2-p1-i2"
+                      "articleId": "m4-a2",
+                      "code": "P0400"
                     }
                   ],
                   "connector": "및",
@@ -6255,7 +6480,8 @@
                       "kind": "text",
                       "text": "위생관리, 미모를 위한 성형수술(다만, 사고전 상태로의 회복을 위한 수술은 보험금을 지급합니다)"
                     }
-                  ]
+                  ],
+                  "code": "P0200"
                 },
                 {
                   "id": "m4-a5-p1-i2",
@@ -6266,9 +6492,11 @@
                       "kind": "text",
                       "text": "선천적 기형 및 이에 근거한 병상"
                     }
-                  ]
+                  ],
+                  "code": "P0300"
                 }
-              ]
+              ],
+              "code": "P0100"
             }
           ]
         },
@@ -6280,11 +6508,12 @@
             {
               "id": "m4-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0108",
+              "clauseCode": "C0027",
               "options": {
                 "O01": "V02",
                 "O02": "V02"
-              }
+              },
+              "code": "P0100"
             }
           ]
         },
@@ -6296,8 +6525,9 @@
             {
               "id": "m4-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0113",
-              "options": {}
+              "clauseCode": "C0032",
+              "options": {},
+              "code": "P0100"
             }
           ]
         },
@@ -6309,8 +6539,9 @@
             {
               "id": "m4-a8-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0133",
-              "options": {}
+              "clauseCode": "C0034",
+              "options": {},
+              "code": "P0100"
             }
           ]
         }
@@ -6334,8 +6565,9 @@
             {
               "id": "m5-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0103",
-              "options": {}
+              "clauseCode": "C0022",
+              "options": {},
+              "code": "P0100"
             }
           ]
         },
@@ -6347,8 +6579,9 @@
             {
               "id": "m5-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0105",
-              "options": {}
+              "clauseCode": "C0024",
+              "options": {},
+              "code": "P0100"
             }
           ]
         },
@@ -6366,7 +6599,8 @@
                   "kind": "text",
                   "text": "이 특별약관에 있어서「수술」이라 함은 의사, 치과의사 또는 한의사의 면허를 가진 자(이하「의사」라 합니다)가 치료가 필요하다고 인정한 경우로서 의사의 관리하에 치료를 직접적인 목적으로 기구를 사용하여 생체(生體)에 절단(切斷, 특정부위를 잘라 내는 것), 절제(切除, 특정부위를 잘라 없애는 것) 등의 조작을 가하는 것을 말합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "m5-a3-p2",
@@ -6377,7 +6611,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m5-a3-p1"
+                      "articleId": "m5-a3",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -6388,7 +6623,8 @@
                   "kind": "text",
                   "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             },
             {
               "id": "m5-a3-p3",
@@ -6399,7 +6635,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m5-a3-p1"
+                      "articleId": "m5-a3",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -6410,13 +6647,13 @@
                   "kind": "text",
                   "text": "의「수술」에는 보건복지부 산하 신의료기술평가위원회 또는 이에 준하는 기관으로부터 안전성과 치료효과를 인정받은 최신 수술기법으로 생체에 절단, 절제 등의 조작을 가하는 수술도 포함됩니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             },
             {
               "id": "m5-a3-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0116",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000087"
             },
             {
               "id": "m5-a3-p4",
@@ -6427,7 +6664,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m5-a3-p1"
+                      "articleId": "m5-a3",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -6449,7 +6687,8 @@
                       "kind": "text",
                       "text": "흡인(吸引, 주사기 등으로 빨아들이는 것)"
                     }
-                  ]
+                  ],
+                  "code": "P0400"
                 },
                 {
                   "id": "m5-a3-p4-i2",
@@ -6460,7 +6699,8 @@
                       "kind": "text",
                       "text": "천자(穿刺, 바늘 또는 관을 꽂아 체액․조직을 뽑아내거나 약물을 주입하는 것) 등의 조치"
                     }
-                  ]
+                  ],
+                  "code": "P0600"
                 },
                 {
                   "id": "m5-a3-p4-i3",
@@ -6471,7 +6711,8 @@
                       "kind": "text",
                       "text": "신경(神經)차단(NERVE BLOCK)"
                     }
-                  ]
+                  ],
+                  "code": "P0700"
                 },
                 {
                   "id": "m5-a3-p4-i4",
@@ -6482,7 +6723,8 @@
                       "kind": "text",
                       "text": "미용성형 목적의 수술"
                     }
-                  ]
+                  ],
+                  "code": "P0800"
                 },
                 {
                   "id": "m5-a3-p4-i5",
@@ -6493,7 +6735,8 @@
                       "kind": "text",
                       "text": "피임(避妊)목적의 수술, 피임(避妊) 및 불임술 후 가임목적의 수술"
                     }
-                  ]
+                  ],
+                  "code": "P0900"
                 },
                 {
                   "id": "m5-a3-p4-i6",
@@ -6504,7 +6747,8 @@
                       "kind": "text",
                       "text": "검사 및 진단을 위한 수술(생검(生檢), 복강경검사(腹腔鏡檢査) 등)"
                     }
-                  ]
+                  ],
+                  "code": "P1000"
                 },
                 {
                   "id": "m5-a3-p4-i7",
@@ -6515,9 +6759,11 @@
                       "kind": "text",
                       "text": "기타 수술의 정의에 해당하지 않는 시술"
                     }
-                  ]
+                  ],
+                  "code": "P1100"
                 }
-              ]
+              ],
+              "code": "P0500"
             }
           ]
         },
@@ -6540,7 +6786,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m-a5"
+                      "articleId": "m-a5"
                     }
                   ],
                   "connector": "및",
@@ -6562,7 +6808,8 @@
                       "kind": "text",
                       "text": "위생관리, 미모를 위한 성형수술(다만, 사고전 상태로의 회복을 위한 수술은 보험금을 지급합니다)"
                     }
-                  ]
+                  ],
+                  "code": "P0200"
                 },
                 {
                   "id": "m5-a4-p1-i2",
@@ -6573,9 +6820,11 @@
                       "kind": "text",
                       "text": "선천적 기형 및 이에 근거한 병상"
                     }
-                  ]
+                  ],
+                  "code": "P0300"
                 }
-              ]
+              ],
+              "code": "P0100"
             }
           ]
         },
@@ -6587,8 +6836,9 @@
             {
               "id": "m5-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0109",
-              "options": {}
+              "clauseCode": "C0028",
+              "options": {},
+              "code": "P0100"
             }
           ]
         },
@@ -6600,8 +6850,9 @@
             {
               "id": "m5-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0133",
-              "options": {}
+              "clauseCode": "C0034",
+              "options": {},
+              "code": "P0100"
             }
           ]
         }
@@ -6641,7 +6892,8 @@
                   "kind": "text",
                   "text": "으로 지급합니다. 다만, 아래의「최초계약일부터 90일경과시점」이라 함은 최초계약일부터 그 날을 포함하여 90일이 지난날의 다음날을 말합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "m6-a1-t1",
@@ -6732,9 +6984,8 @@
             },
             {
               "id": "m6-a1-b2-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0129",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000101"
             },
             {
               "id": "m6-a1-p2",
@@ -6745,7 +6996,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m6-a1-p1"
+                      "articleId": "m6-a1",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -6761,7 +7013,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m-a25"
+                      "articleId": "m-a25"
                     }
                   ],
                   "connector": "및",
@@ -6772,7 +7024,8 @@
                   "kind": "text",
                   "text": "에 따라 보장이 자동갱신되는 경우 피보험자가 질병으로 사망하였을 때에는 보험수익자에게 아래의 금액을 질병사망보험금으로 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0400"
             },
             {
               "id": "m6-a1-t3",
@@ -6842,7 +7095,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m6-a1"
+                      "articleId": "m6-a1"
                     }
                   ],
                   "connector": "및",
@@ -6853,7 +7106,8 @@
                   "kind": "text",
                   "text": " ｢사망｣의 원인 및 ｢사망보험금｣ 지급에 영향을 미치지 않습니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "m6-a2-p2",
@@ -6869,7 +7123,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m6-a1"
+                      "articleId": "m6-a1"
                     }
                   ],
                   "connector": "및",
@@ -6880,7 +7134,8 @@
                   "kind": "text",
                   "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             }
           ]
         },
@@ -6892,11 +7147,12 @@
             {
               "id": "m6-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0111",
+              "clauseCode": "C0030",
               "options": {
                 "O01": "V02",
                 "O02": "V02"
-              }
+              },
+              "code": "P0100"
             }
           ]
         },
@@ -6919,16 +7175,16 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m-a5"
+                      "articleId": "m-a5"
                     },
                     {
-                      "nodeId": "m-a9"
+                      "articleId": "m-a9"
                     },
                     {
-                      "nodeId": "m-a10"
+                      "articleId": "m-a10"
                     },
                     {
-                      "nodeId": "m-a43"
+                      "articleId": "m-a43"
                     }
                   ],
                   "connector": "및",
@@ -6944,10 +7200,10 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m-a29"
+                      "articleId": "m-a29"
                     },
                     {
-                      "nodeId": "m-a31"
+                      "articleId": "m-a31"
                     }
                   ],
                   "connector": "및",
@@ -6958,7 +7214,8 @@
                   "kind": "text",
                   "text": "은 제외합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             }
           ]
         }
@@ -7008,7 +7265,8 @@
                   "kind": "text",
                   "text": "으로 지급합니다. 다만, 아래의「최초계약일부터 1년경과시점」이라 함은 최초계약일부터 그 날을 포함하여 1년이 지난날의 다음날을 말합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "m7-a1-t1",
@@ -7099,9 +7357,8 @@
             },
             {
               "id": "m7-a1-b2-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0130",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000102"
             },
             {
               "id": "m7-a1-p2",
@@ -7112,7 +7369,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m7-a1-p1"
+                      "articleId": "m7-a1",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -7128,7 +7386,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m-a25"
+                      "articleId": "m-a25"
                     }
                   ],
                   "connector": "및",
@@ -7144,7 +7402,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m7-a1-p1"
+                      "articleId": "m7-a1",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -7155,7 +7414,8 @@
                   "kind": "text",
                   "text": "에서 정한 장해상태가 되었을 때에는 보험수익자에게 최초 1회에 한하여 아래의 금액을 질병80%이상후유장해보험금으로 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0400"
             },
             {
               "id": "m7-a1-t3",
@@ -7214,12 +7474,13 @@
             {
               "id": "m7-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0107",
+              "clauseCode": "C0026",
               "options": {
                 "O01": "V02",
                 "O02": "V02",
                 "O03": "V01"
-              }
+              },
+              "code": "P0100"
             }
           ]
         },
@@ -7231,10 +7492,11 @@
             {
               "id": "m7-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0110",
+              "clauseCode": "C0029",
               "options": {
                 "O01": "V02"
-              }
+              },
+              "code": "P0100"
             }
           ]
         },
@@ -7246,8 +7508,9 @@
             {
               "id": "m7-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0133",
-              "options": {}
+              "clauseCode": "C0034",
+              "options": {},
+              "code": "P0100"
             }
           ]
         }
@@ -7297,7 +7560,8 @@
                   "kind": "text",
                   "text": "로 지급합니다. 다만, 1회의 입원당 또는 1회의 통원당 1회의 수술에 한하여 보장하며, 하나의 수술코드당 연간 3회에 한하여 보장합니다. 다만, 아래의「최초계약일부터 90일경과시점」이라 함은 최초계약일부터 그 날을 포함하여 90일이 지난날의 다음날을 말하며,「최초계약일부터 1년경과시점」이라 함은 최초계약일부터 그 날을 포함하여 1년이 지난날의 다음날을 말합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "m8-a1-t1",
@@ -7609,7 +7873,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m8-a1-p1"
+                      "articleId": "m8-a1",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -7625,7 +7890,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m-a25"
+                      "articleId": "m-a25"
                     }
                   ],
                   "connector": "및",
@@ -7646,7 +7911,8 @@
                   "kind": "text",
                   "text": "에서 정한「수술」을 받은 경우에는 아래의 금액을 보험수익자에게 수술비로 지급합니다. 다만, 1회의 입원당 또는 1회의 통원당 1회의 수술에 한하여 보장하며, 하나의 수술코드당 연간 3회에 한하여 보장합니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             },
             {
               "id": "m8-a1-t2",
@@ -7812,10 +8078,12 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m8-a1-p1"
+                      "articleId": "m8-a1",
+                      "code": "P0100"
                     },
                     {
-                      "nodeId": "m8-a1-p2"
+                      "articleId": "m8-a1",
+                      "code": "P0300"
                     }
                   ],
                   "connector": "및",
@@ -7826,7 +8094,8 @@
                   "kind": "text",
                   "text": "에서「연간」이라 함은 최초계약일부터 매1년 단위로 도래하는 계약해당일 전일까지의 기간을 말합니다."
                 }
-              ]
+              ],
+              "code": "P0500"
             },
             {
               "id": "m8-a1-p4",
@@ -7842,7 +8111,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m8-a1-p1"
+                      "articleId": "m8-a1",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -7853,7 +8123,8 @@
                   "kind": "text",
                   "text": "의 수술비를 지급하지 않습니다. 이 때, 30일이라 함은 수술비가 지급된 수술코드에 대하여 그「수술」이 행해진 해당 입원의 퇴원일 또는 해당 통원의 통원일의 다음날부터 이후 동일한 수술코드가 부여된 입원의 입원일 또는 통원의 통원일까지의 기간을 말합니다."
                 }
-              ]
+              ],
+              "code": "P0600"
             },
             {
               "id": "m8-a1-t3",
@@ -8192,9 +8463,8 @@
             },
             {
               "id": "m8-a1-b4-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0131",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000103"
             },
             {
               "id": "m8-a1-t5",
@@ -8490,9 +8760,8 @@
             },
             {
               "id": "m8-a1-b6-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0124",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000096"
             }
           ]
         },
@@ -8520,7 +8789,8 @@
                   "kind": "text",
                   "text": "에서 정한 수술코드(이하「수술코드」라 합니다.)에 해당하는 의료행위를 하는 것을 말합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "m8-a2-p2",
@@ -8531,7 +8801,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m8-a2-p1"
+                      "articleId": "m8-a2",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -8542,7 +8813,8 @@
                   "kind": "text",
                   "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             },
             {
               "id": "m8-a2-p3",
@@ -8553,7 +8825,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m8-a2-p1"
+                      "articleId": "m8-a2",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -8564,13 +8837,13 @@
                   "kind": "text",
                   "text": "의「수술코드」는「국민건강보험법」에서 정한 요양급여(이하「요양급여」라 합니다) 또는「의료급여법」에서 정한 의료급여(이하「의료급여」라 합니다)의 절차를 거쳐 수술항목에서 급여항목이 발생하고,「진단명기준환자군(Diagnosis Related Group, DRG)」분류체계에 따라 부여된「ADRG(Adjacent DRG)」중 이 특별약관에서 정한 코드를 말합니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             },
             {
               "id": "m8-a2-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0125",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000097"
             },
             {
               "id": "m8-a2-p4",
@@ -8581,7 +8854,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m8-a2-p3"
+                      "articleId": "m8-a2",
+                      "code": "P0300"
                     }
                   ],
                   "connector": "및",
@@ -8592,13 +8866,13 @@
                   "kind": "text",
                   "text": "의「수술코드」에서 향후「진단명기준환자군(DRG)」개정으로 동일한 수술에 대해「수술코드」가 변경되는 경우 이 특별약관의 체결시점에서 정한「수술코드」를 따릅니다."
                 }
-              ]
+              ],
+              "code": "P0500"
             },
             {
               "id": "m8-a2-b2-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0126",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000098"
             },
             {
               "id": "m8-a2-p5",
@@ -8609,10 +8883,12 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m8-a2-p3"
+                      "articleId": "m8-a2",
+                      "code": "P0300"
                     },
                     {
-                      "nodeId": "m8-a2-p4"
+                      "articleId": "m8-a2",
+                      "code": "P0500"
                     }
                   ],
                   "connector": "및",
@@ -8623,7 +8899,8 @@
                   "kind": "text",
                   "text": "에도 불구하고 이 특별약관 체결시점에 급여항목으로 분류된 수술이 향후 비급여항목으로 변경된 경우 해당 수술은 보장에서 제외됩니다."
                 }
-              ]
+              ],
+              "code": "P0700"
             },
             {
               "id": "m8-a2-p6",
@@ -8634,7 +8911,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m8-a2-p1"
+                      "articleId": "m8-a2",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -8645,13 +8923,13 @@
                   "kind": "text",
                   "text": "의 수술은「건강보험 행위 급여∙비급여 목록 및 급여 상대가치점수」(보건복지부 고시 제2021-72호, 2021.3.4.) 제2부(행위 급여 목록∙상대가치점수 및 산정지침)의 제2장(검사료) 및 제3장(영상진단 및 방사선치료료)에서 정하는 내용은 포함하지 않습니다. 다만, 제3장(영상진단 및 방사선치료료)에서 사이버나이프(Cyberknife) 정위적 방사선 치료, 감마나이프(Gammaknife) 정위적 방사선 치료, 선형가속기(LINAC) 정위적 방사선 치료, 양성자치료는 수술에 포함하여 보장합니다."
                 }
-              ]
+              ],
+              "code": "P0800"
             },
             {
               "id": "m8-a2-b3-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0127",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000099"
             }
           ]
         },
@@ -8669,13 +8947,13 @@
                   "kind": "text",
                   "text": "피보험자가 1회의 입원 또는 1회의 통원 중에 2가지 이상의 수술을 받은 경우 퇴원일 또는 통원일을 기준으로 진단서 및 진료비 세부내역서 등에서 확인되는 하나의 수술코드에 한하여 수술비를 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "m8-a3-b1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0128",
-              "options": {}
+              "kind": "boxRef",
+              "boxCode": "BX000100"
             },
             {
               "id": "m8-a3-p2",
@@ -8686,7 +8964,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m8-a3-p1"
+                      "articleId": "m8-a3",
+                      "code": "P0100"
                     }
                   ],
                   "connector": "및",
@@ -8697,7 +8976,8 @@
                   "kind": "text",
                   "text": "에도 불구하고 피보험자가 동일한 의료기관에서 퇴원없이 계속입원 중에 2가지 이상의 수술코드가 부여되는 경우 또는 1일 2회 이상 통원하여 2가지 이상의 수술코드가 부여된 경우에는 수술종류가 높은 하나의 수술코드에 한하여 수술비를 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             },
             {
               "id": "m8-a3-p3",
@@ -8713,7 +8993,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m8-a1"
+                      "articleId": "m8-a1"
                     }
                   ],
                   "connector": "및",
@@ -8724,7 +9004,8 @@
                   "kind": "text",
                   "text": "에서 정한 바에 따라 보장합니다."
                 }
-              ]
+              ],
+              "code": "P0400"
             },
             {
               "id": "m8-a3-p4",
@@ -8740,7 +9021,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m8-a1"
+                      "articleId": "m8-a1"
                     }
                   ],
                   "connector": "및",
@@ -8751,7 +9032,8 @@
                   "kind": "text",
                   "text": "에서 정한 보험금 지급사유가 발생한 경우에는 회사는 이 특별약관에서 정한 바에 따라 보장합니다."
                 }
-              ]
+              ],
+              "code": "P0500"
             },
             {
               "id": "m8-a3-p5",
@@ -8767,7 +9049,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m8-a2"
+                      "articleId": "m8-a2"
                     }
                   ],
                   "connector": "및",
@@ -8778,7 +9060,8 @@
                   "kind": "text",
                   "text": "에서 정한 수술에 포함하여 보장합니다."
                 }
-              ]
+              ],
+              "code": "P0600"
             },
             {
               "id": "m8-a3-p6",
@@ -8789,7 +9072,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m8-a3-p2"
+                      "articleId": "m8-a3",
+                      "code": "P0300"
                     }
                   ],
                   "connector": "및",
@@ -8805,7 +9089,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m8-a3-p5"
+                      "articleId": "m8-a3",
+                      "code": "P0600"
                     }
                   ],
                   "connector": "및",
@@ -8821,7 +9106,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m8-a3-p5"
+                      "articleId": "m8-a3",
+                      "code": "P0600"
                     }
                   ],
                   "connector": "및",
@@ -8832,7 +9118,8 @@
                   "kind": "text",
                   "text": "의 수술코드에 해당하는 수술비를 각각 지급합니다."
                 }
-              ]
+              ],
+              "code": "P0700"
             },
             {
               "id": "m8-a3-p7",
@@ -8848,7 +9135,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m8-a1"
+                      "articleId": "m8-a1"
                     }
                   ],
                   "connector": "및",
@@ -8859,7 +9146,8 @@
                   "kind": "text",
                   "text": "에서 정한 바에 따라 보장합니다."
                 }
-              ]
+              ],
+              "code": "P0800"
             },
             {
               "id": "m8-a3-p8",
@@ -8875,7 +9163,7 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m8-a1"
+                      "articleId": "m8-a1"
                     }
                   ],
                   "connector": "및",
@@ -8886,7 +9174,8 @@
                   "kind": "text",
                   "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
                 }
-              ]
+              ],
+              "code": "P0900"
             }
           ]
         },
@@ -8915,7 +9204,8 @@
                       "kind": "text",
                       "text": "피보험자가 고의로 자신을 해친 경우. 다만, 피보험자가 심신상실 등으로 자유로운 의사결정을 할 수 없는 상태에서 자신을 해친 경우에는 보험금을 지급합니다."
                     }
-                  ]
+                  ],
+                  "code": "P0600"
                 },
                 {
                   "id": "m8-a4-p1-i2",
@@ -8926,7 +9216,8 @@
                       "kind": "text",
                       "text": "보험수익자가 고의로 피보험자를 해친 경우. 다만, 그 보험수익자가 보험금의 일부 보험수익자인 경우에는 다른 보험수익자에 대한 보험금은 지급합니다."
                     }
-                  ]
+                  ],
+                  "code": "P0700"
                 },
                 {
                   "id": "m8-a4-p1-i3",
@@ -8937,7 +9228,8 @@
                       "kind": "text",
                       "text": "계약자가 고의로 피보험자를 해친 경우"
                     }
-                  ]
+                  ],
+                  "code": "P0800"
                 },
                 {
                   "id": "m8-a4-p1-i4",
@@ -8948,7 +9240,8 @@
                       "kind": "text",
                       "text": "전쟁, 외국의 무력행사, 혁명, 내란, 사변, 폭동"
                     }
-                  ]
+                  ],
+                  "code": "P0900"
                 },
                 {
                   "id": "m8-a4-p1-i5",
@@ -8959,7 +9252,8 @@
                       "kind": "text",
                       "text": "마약, 습관성 의약품 및 알코올중독으로 인한 경우"
                     }
-                  ]
+                  ],
+                  "code": "P1000"
                 },
                 {
                   "id": "m8-a4-p1-i6",
@@ -8970,7 +9264,8 @@
                       "kind": "text",
                       "text": "치의보철 및 미용상의 처치로 인한 경우"
                     }
-                  ]
+                  ],
+                  "code": "P1100"
                 },
                 {
                   "id": "m8-a4-p1-i7",
@@ -8981,7 +9276,8 @@
                       "kind": "text",
                       "text": "정상임신, 출산(제왕절개 제외), 분만전후의 간호 및 검사와 인공유산, 불법유산 등으로 인한 경우"
                     }
-                  ]
+                  ],
+                  "code": "P1200"
                 },
                 {
                   "id": "m8-a4-p1-i8",
@@ -8992,7 +9288,8 @@
                       "kind": "text",
                       "text": "질병을 직접적인 원인으로 하지 않는 불임수술 또는 제왕절개수술 등으로 인한 경우"
                     }
-                  ]
+                  ],
+                  "code": "P1300"
                 },
                 {
                   "id": "m8-a4-p1-i9",
@@ -9003,7 +9300,8 @@
                       "kind": "text",
                       "text": "치료를 수반하지 않는 건강진단으로 인한 경우"
                     }
-                  ]
+                  ],
+                  "code": "P1400"
                 },
                 {
                   "id": "m8-a4-p1-i10",
@@ -9014,15 +9312,16 @@
                       "kind": "text",
                       "text": "신체의 필수 기능개선 목적이 아닌 외모개선으로 인한 경우"
                     }
-                  ]
+                  ],
+                  "code": "P1500"
                 },
                 {
                   "id": "m8-a4-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0024",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000005"
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "m8-a4-p2",
@@ -9044,7 +9343,8 @@
                       "kind": "text",
                       "text": "정신 및 행동장애(F04∼F99)"
                     }
-                  ]
+                  ],
+                  "code": "P1600"
                 },
                 {
                   "id": "m8-a4-p2-i2",
@@ -9055,7 +9355,8 @@
                       "kind": "text",
                       "text": "여성생식기의 비염증성 장애로 인한 습관성 유산, 불임 및 인공수정관련 합병증(N96∼N98)(단, 보장개시일부터 2년이 지난 후에 발생한 습관성 유산, 불임 및 인공수정 관련 합병증으로 인한 경우에는 보상합니다.)"
                     }
-                  ]
+                  ],
+                  "code": "P1700"
                 },
                 {
                   "id": "m8-a4-p2-i3",
@@ -9066,7 +9367,8 @@
                       "kind": "text",
                       "text": "선천성기형, 변형 및 염색체이상(Q00∼Q99)"
                     }
-                  ]
+                  ],
+                  "code": "P1800"
                 },
                 {
                   "id": "m8-a4-p2-i4",
@@ -9077,7 +9379,8 @@
                       "kind": "text",
                       "text": "치아우식증, 치아 및 치주질환 등의 치과질환(K00∼K08)"
                     }
-                  ]
+                  ],
+                  "code": "P1900"
                 },
                 {
                   "id": "m8-a4-p2-i5",
@@ -9088,15 +9391,16 @@
                       "kind": "text",
                       "text": "출생전후기에 기원한 특정 병태(P00~P96)"
                     }
-                  ]
+                  ],
+                  "code": "P2000"
                 },
                 {
                   "id": "m8-a4-b2-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0025",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000006"
                 }
-              ]
+              ],
+              "code": "P0200"
             },
             {
               "id": "m8-a4-p3",
@@ -9117,7 +9421,8 @@
                   "kind": "text",
                   "text": "의 주2)에 해당하는 사항은 보상하지 않습니다."
                 }
-              ]
+              ],
+              "code": "P0300"
             },
             {
               "id": "m8-a4-p4",
@@ -9128,7 +9433,8 @@
                   "kind": "text",
                   "text": "회사는「국민건강보험 요양급여의 기준에 관한 규칙」제9조 제1항([별표2]비급여대상)에 해당하는 수술에 대하여는 보상하지 않습니다."
                 }
-              ]
+              ],
+              "code": "P0400"
             },
             {
               "id": "m8-a4-p5",
@@ -9149,7 +9455,8 @@
                   "kind": "text",
                   "text": "에서 정한 수술코드를 받은 경우에는 보상하지 않습니다."
                 }
-              ]
+              ],
+              "code": "P0500"
             }
           ]
         },
@@ -9178,7 +9485,8 @@
                       "kind": "text",
                       "text": "청구서(회사양식)"
                     }
-                  ]
+                  ],
+                  "code": "P0300"
                 },
                 {
                   "id": "m8-a5-p1-i2",
@@ -9189,13 +9497,13 @@
                       "kind": "text",
                       "text": "사고증명서(진단서(진단명, 진단코드, 수술명 포함), 진료비 세부내역서(급여수가코드(EDI코드 포함)), 수술증명서, 진료비계산서, 진료기록부 등) [단, 진료비 세부내역서 등에서 급여수가코드(EDI코드 포함)를 확인할 수 없는 경우 보험금 청구시 급여수가코드(EDI코드 포함)를 확인할 수 있는 서류를 제출해야 합니다]"
                     }
-                  ]
+                  ],
+                  "code": "P0400"
                 },
                 {
                   "id": "m8-a5-b1-k",
-                  "kind": "clauseBlockRef",
-                  "clauseCode": "C0121",
-                  "options": {}
+                  "kind": "boxRef",
+                  "boxCode": "BX000092"
                 },
                 {
                   "id": "m8-a5-p1-i3",
@@ -9206,7 +9514,8 @@
                       "kind": "text",
                       "text": "신분증(주민등록증이나 운전면허증 등 사진이 붙은 정부기관 발행 신분증, 본인이 아닌 경우에는 본인의 인감증명서, 본인서명사실확인서 또는 안전성과 신뢰성이 확보된 전자적 수단을 활용한 보험수익자 의사표시의 확인방법 포함)"
                     }
-                  ]
+                  ],
+                  "code": "P0500"
                 },
                 {
                   "id": "m8-a5-p1-i4",
@@ -9217,9 +9526,11 @@
                       "kind": "text",
                       "text": "기타 보험수익자가 보험금의 수령에 필요하여 제출하는 서류"
                     }
-                  ]
+                  ],
+                  "code": "P0600"
                 }
-              ]
+              ],
+              "code": "P0100"
             },
             {
               "id": "m8-a5-p2",
@@ -9230,7 +9541,8 @@
                   "kind": "articleRef",
                   "targets": [
                     {
-                      "nodeId": "m8-a5-p1-i2"
+                      "articleId": "m8-a5",
+                      "code": "P0400"
                     }
                   ],
                   "connector": "및",
@@ -9241,7 +9553,8 @@
                   "kind": "text",
                   "text": "의 사고증명서는 의료법 제3조(의료기관)에서 규정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 발급한 것이어야 합니다."
                 }
-              ]
+              ],
+              "code": "P0200"
             }
           ]
         },
@@ -9253,8 +9566,9 @@
             {
               "id": "m8-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0109",
-              "options": {}
+              "clauseCode": "C0028",
+              "options": {},
+              "code": "P0100"
             }
           ]
         },
@@ -9266,8 +9580,9 @@
             {
               "id": "m8-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0133",
-              "options": {}
+              "clauseCode": "C0034",
+              "options": {},
+              "code": "P0100"
             }
           ]
         }

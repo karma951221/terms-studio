@@ -134,6 +134,8 @@ for (const product of SEED.products) {
           const place = page.getByRole("button", { name: `배치 · ${group.title} 에` });
           await pickCombo(page.locator("form", { has: place }).getByRole("combobox"), { label: mountName(mount) });
           await submit(page, place);
+          // 배치가 그려질 때까지 — 다음 고르기가 늦게 온 화면에 초점을 뺏기지 않게
+          await expect(page.getByRole("button", { name: `배치 해제 · ${mountName(mount)} 를 ${group.title} 에서`, exact: true })).toBeVisible();
         }
         await expect(page.getByText(`미배치 상품담보: ${mountName(product.mounts[0])}`, { exact: true })).toBeVisible();
       });
@@ -160,7 +162,7 @@ for (const product of SEED.products) {
         await expect(appendixList.getByRole("listitem").first()).toHaveText(`【별표1(${fixtures.firstAppendix})】`);
       });
 
-      const generalLines = await ev.action("실물화면#5.9", `보통약관 「${general.title}」(기본계약 대치 · 공용조항 펼침)을 원문과 대조한다`, async () => {
+      const generalLines = await ev.action("실물화면#5.9", `보통약관 「${general.title}」(기본계약 대치 · 함수조항 펼침)을 원문과 대조한다`, async () => {
         const lines = await renderedLines(page.locator("article.ts-doc").first());
         dump(`${product.code}-보통약관`, lines);
         const diff = diffArticlesUnordered(sourceLines("보통약관.md", fixtures.dir), lines);

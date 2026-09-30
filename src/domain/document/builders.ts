@@ -4,8 +4,10 @@
  */
 
 import type { Code, Id } from "../types";
+import type { RepeatSource } from "./blockRepeat";
 import type {
   AppendixRefNode,
+  BoxRefNode,
   ArticleNode,
   ArticleRefNode,
   BlockBranch,
@@ -24,6 +26,7 @@ import type {
   InlineNode,
   ItemNode,
   ParagraphNode,
+  RefTarget,
   SectionNode,
   SlotNode,
   StructKeyNode,
@@ -104,7 +107,7 @@ export function nodeBuilders(newId: IdSource = randomIds) {
       ...(when !== undefined ? { when } : {}),
       children,
     }),
-    forBlock: (source: string, children: BlockNode[] = [], alias?: string): ForBlockNode => ({
+    forBlock: (source: RepeatSource, children: BlockNode[] = [], alias?: string): ForBlockNode => ({
       id: newId(),
       kind: "forBlock",
       source,
@@ -119,14 +122,20 @@ export function nodeBuilders(newId: IdSource = randomIds) {
       children,
       ...(opts.separator !== undefined ? { separator: opts.separator } : {}),
     }),
-    articleRef: (targets: Id | readonly Id[], scope: ArticleRefNode["scope"] = "self", connector: ArticleRefNode["connector"] = "및"): ArticleRefNode => ({
+    /**
+     * 연결어는 기본값이 없다 (결정 14) — 안 주면 싣지 않는다. 대상이 둘 이상이면 저장 전에 골라야 한다.
+     * 대상은 `RefTarget`(조 · 조+코드, ADR-0072) — 글자열 하나는 조 id 로 읽는다.
+     */
+    articleRef: (targets: Id | RefTarget | readonly (Id | RefTarget)[], scope: ArticleRefNode["scope"] = "self", connector?: ArticleRefNode["connector"]): ArticleRefNode => ({
       id: newId(),
       kind: "articleRef",
-      targets: (typeof targets === "string" ? [targets] : targets).map((nodeId) => ({ nodeId })),
-      connector,
+      targets: (Array.isArray(targets) ? targets : [targets as Id | RefTarget]).map((t: Id | RefTarget) => (typeof t === "string" ? { articleId: t } : { ...t })),
+      ...(connector !== undefined ? { connector } : {}),
       scope,
     }),
     appendixRef: (appendixCode: Code): AppendixRefNode => ({ id: newId(), kind: "appendixRef", appendixCode }),
+    /** 정적 마스터 박스 참조 — 코드만. */
+    boxRef: (boxCode: Code): BoxRefNode => ({ id: newId(), kind: "boxRef", boxCode }),
     clauseBlock: (clauseCode: Code, options: Record<Code, Code> = {}, excludeFromComparison?: boolean): ClauseBlockRefNode => ({
       id: newId(),
       kind: "clauseBlockRef",

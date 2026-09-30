@@ -1,22 +1,28 @@
 /**
- * 공용조항 오버레이 — 원문에서 여러 문서가 되풀이하는 **조 · 여러 항 단위**를 공용조항으로 따고, 사용처 자리를 참조로 바꾼다
- * (개발 도구 — 제품 기능 아님). 근거: 기능/공용조항 §3.1 · §3.5 · §6.2 「공용조항 = 되풀이되는 조 · 여러 항 단위」.
+ * 함수조항 오버레이 — 원문에서 여러 문서가 되풀이하는 **조 · 여러 항 단위**를 함수조항으로 따고, 사용처 자리를 참조로 바꾼다
+ * (개발 도구 — 제품 기능 아님). 근거: 기능/함수조항 §3.1 · §3.5 · §6.2 「함수조항 = 되풀이되는 조 · 여러 항 단위」.
  *
- * - 공용조항 본문은 원문 한 자리에서 딴다(`from` — 조건 오버레이가 얹힌 뒤, 잇닿은 항 N 개). 평문(`text`, `{O01}` = 옵션 자리)도 된다.
+ * - 함수조항 본문은 원문 한 자리에서 딴다(`from` — 조건 오버레이가 얹힌 뒤, 잇닿은 항 N 개). 평문(`text`, `{O01}` = 옵션 자리)도 된다.
  *   참조 평문(「보통약관 제N조(…)」 · 【별표N(…)】)은 참조 슬롯이 된다.
- *   원문 자리의 자기 조 참조는 둘로 나뉜다 (§3.5): 딴 항 안을 가리키면 「이 공용조항」(`scope: "clause"`),
+ *   원문 자리의 자기 조 참조는 둘로 나뉜다 (§3.5): 딴 항 안을 가리키면 「이 함수조항」(`scope: "clause"`),
  *   밖을 가리키면 「사용처」 위치(`scope: "host"`, `"2.1.3"` — `hostPaths`, 조립의 `hostLocator` 와 같은 셈).
  * - 낱말만 다른 자리는 옵션이다 — 원문 자리의 글에서 그 낱말(`within` 문맥 안의 `text`)을 옵션 자리로 바꾼다(`placeOptions`).
- * - 사용처 자리 바꾸기는 **원자열 대조**다 — 글자 하나 · 참조 노드 하나를 원자로 보고, 공용조항이 고른 옵션으로 펼친 원자열이
+ * - 사용처 자리 바꾸기는 **원자열 대조**다 — 글자 하나 · 참조 노드 하나를 원자로 보고, 함수조항이 고른 옵션으로 펼친 원자열이
  *   사용처 항 안에 그대로 있어야 바꾼다(제 항 · 사용처 위치 참조는 사용처 노드로 옮겨 대조). 못 찾으면 보고하고 건드리지 않는다.
- *   - 「항」(block)   : 잇닿은 항 N 개를 `clauseBlockRef` 하나로. 항의 가능한 렌더(조건 가지별)가 전부 공용조항의 렌더 안에 있어야 한다.
+ *   - 「항」(block)   : 잇닿은 항 N 개를 `clauseBlockRef` 하나로. 항의 가능한 렌더(조건 가지별)가 전부 함수조항의 렌더 안에 있어야 한다.
  *   - 「문구」(inline) : 항 안의 첫 등장 구간을 `clauseInlineRef` 하나로 (제품 기능 — 실물 데이터는 쓰지 않는다, 2026-09-28).
- * - 노드 id 는 결정적이다: 공용조항 본문 `c<번호>-…` · 사용처 참조 `<항 id>-k<순번>` (block 은 `<항 id>-k`).
+ * - 노드 id 는 결정적이다: 함수조항 본문 `c<번호>-…` · 사용처 참조 `<항 id>-k<순번>` (block 은 `<항 id>-k`).
+ * - **조 참조 대상의 변환 중간 모양** — 대상 노드 id(사용처 위치면 경로)를 `articleId` 자리에 싣는다(refs.ts 와 같다).
+ *   P코드는 출력 직전에야 매겨지므로 (조, P코드) · 제 코드 · `{ host }` 로 바꾸는 것은 convert.ts `codeTargets` · `codeClauseTargets` 다 (ADR-0072).
  */
-import type { ArticleRefNode as ClauseArticleRef, Block, BoxNode, Inline, ParagraphNode as ClauseParagraph } from "../../src/domain/clause/nodes";
-import { hostLocator } from "../../src/domain/assembly/resolve";
+import type { ArticleRefNode as ClauseArticleRef, Block, Inline, ParagraphNode as ClauseParagraph } from "../../src/domain/clause/nodes";
 import type { ArticleNode, DocumentNode, InlineNode, ParagraphNode } from "../../src/domain/document/nodes";
 import type { Id } from "../../src/domain/types";
+import { discriminatorResultType } from "../../src/domain/catalog/expression";
+import type { Discriminator } from "../../src/domain/catalog/types";
+import type { ParamDef } from "../../src/domain/clause/params";
+import type { ClauseMode } from "../../src/domain/clause/types";
+import { format, parse, type Expr } from "../../src/domain/expression";
 
 import type { ClauseSpec, ClauseUse } from "./config";
 
@@ -24,11 +30,17 @@ import type { ClauseSpec, ClauseUse } from "./config";
 export interface ClauseRecord {
   code: string;
   label: string;
-  mode: "inline" | "block" | "box";
+  /** 변환기가 짓는 유형 — 「문구」 · 「항」뿐. 「호」 · 「목」 유형(`ClauseMode`)은 화면 저작이 만든다 (기능/함수조항 §3.1). */
+  mode: ConvertedClauseMode;
   description: string;
-  body: Inline[] | Block[] | BoxNode[];
+  body: Inline[] | Block[];
   options: { code: string; label: string; order: number; values: { code: string; label: string; order: number; body: Inline[] }[] }[];
+  /** 인자 — 구분자 직접 읽기를 기계 변환한 것(`parameterize`). 없으면 인자 0개. */
+  params?: ParamDef[];
 }
+
+/** 실물 변환이 내는 함수조항 유형 — 도메인 유형 넷 중 「문구」(inline) · 「항」(block). */
+export type ConvertedClauseMode = Extract<ClauseMode, "inline" | "block">;
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 export const optionCode = (i: number) => `O${pad2(i + 1)}`;
@@ -42,7 +54,7 @@ type AnyInline = InlineNode | Inline;
 function tokenOf(n: AnyInline): string {
   switch (n.kind) {
     case "articleRef":
-      return `〔조:${n.targets.map((t) => t.nodeId).join(",")}:${n.connector}〕`;
+      return `〔조:${n.targets.map((t) => t.articleId).join(",")}:${n.connector}〕`;
     case "appendixRef":
       return `〔별표:${n.appendixCode}〕`;
     case "slot":
@@ -80,7 +92,7 @@ export function renderings(list: readonly AnyInline[], options?: OptionBodies): 
 
 const keyOf = (atoms: readonly string[]) => atoms.join("\u0001");
 
-// ───────────────────────────── 공용조항 본문 ─────────────────────────────
+// ───────────────────────────── 함수조항 본문 ─────────────────────────────
 
 /** 평문 → 인라인 (참조 변환은 호출자가 준다). `{O01}` 은 옵션 자리. */
 export function inlineBody(text: string, idPrefix: string, convert: (text: string, newId: () => Id) => InlineNode[]): Inline[] {
@@ -100,18 +112,18 @@ export function inlineBody(text: string, idPrefix: string, convert: (text: strin
   return out;
 }
 
-/** 원문 자리의 자기 조 참조(`scope: "self"`) → 공용조항 조 참조 (제 항 또는 사용처 위치). 없으면 자기 참조를 거부한다. */
+/** 원문 자리의 자기 조 참조(`scope: "self"`) → 함수조항 조 참조 (제 항 또는 사용처 위치). 없으면 자기 참조를 거부한다. */
 export type Localize = (n: Extract<InlineNode, { kind: "articleRef" }>) => ClauseArticleRef;
 
 /**
- * 문면 인라인 → 공용조항 인라인. 보통약관 조 참조는 scope 를 뗀다. 자기 조 참조는 `localize` 가 제 항 · 사용처 위치로 바꾼다 —
- * 없으면(평문 공용조항) 오류 (기능/공용조항 §3.5).
+ * 문면 인라인 → 함수조항 인라인. 보통약관 조 참조는 scope 를 뗀다. 자기 조 참조는 `localize` 가 제 항 · 사용처 위치로 바꾼다 —
+ * 없으면(평문 함수조항) 오류 (기능/함수조항 §3.5).
  */
 export function toClauseInline(n: InlineNode, localize?: Localize): Inline {
   switch (n.kind) {
     case "articleRef": {
       if (n.scope === "general") return { id: n.id, kind: "articleRef", targets: n.targets.map((t) => ({ ...t })), connector: n.connector };
-      if (!localize) throw new Error(`평문 공용조항의 조 참조는 보통약관 마스터만 — 사용처 자신을 가리킨다: ${n.targets.map((t) => t.nodeId).join(",")}`);
+      if (!localize) throw new Error(`평문 함수조항의 조 참조는 보통약관 마스터만 — 사용처 자신을 가리킨다: ${n.targets.map((t) => t.articleId).join(",")}`);
       return localize(n);
     }
     case "inlineCond":
@@ -121,11 +133,11 @@ export function toClauseInline(n: InlineNode, localize?: Localize): Inline {
     case "appendixRef":
       return { ...n };
     default:
-      throw new Error(`공용조항 본문에 올 수 없는 노드: ${n.kind}`);
+      throw new Error(`함수조항 본문에 올 수 없는 노드: ${n.kind}`);
   }
 }
 
-/** 공용조항 본문의 노드 id 를 결정적으로 다시 매긴다 (`<prefix>-n<순번>`). 「이 공용조항」 조 참조의 대상도 따라간다. */
+/** 함수조항 본문의 노드 id 를 결정적으로 다시 매긴다 (`<prefix>-n<순번>`). 「이 함수조항」 조 참조의 대상도 따라간다. */
 export function reId<T>(nodes: T, prefix: string): T {
   let seq = 0;
   const renamed = new Map<string, string>();
@@ -145,7 +157,7 @@ export function reId<T>(nodes: T, prefix: string): T {
     }
   };
   for (const n of nodes as unknown[]) visit(n);
-  for (const r of refs) r.targets = r.targets.map((t) => ({ nodeId: renamed.get(t.nodeId) ?? t.nodeId }));
+  for (const r of refs) r.targets = r.targets.map((t) => ({ articleId: renamed.get(t.articleId ?? "") ?? t.articleId }));
   return nodes;
 }
 
@@ -153,7 +165,7 @@ export function reId<T>(nodes: T, prefix: string): T {
 
 /**
  * 문서의 조 · 항 · 호 · 목 id → 사용처 위치 경로(`"2.1.3"`). 조립의 `hostLocator` 와 같은 셈 —
- * 관은 투명, 조건 블록은 모든 가지를 차례로, 공용조항 블록이 펼칠 항은 세지 않는다.
+ * 관은 투명, 조건 블록은 모든 가지를 차례로, 함수조항 블록이 펼칠 항은 세지 않는다.
  */
 export function hostPaths(tree: DocumentNode): Map<Id, string> {
   const out = new Map<Id, string>();
@@ -177,6 +189,12 @@ export function hostPaths(tree: DocumentNode): Map<Id, string> {
   return out;
 }
 
+/** 사용처 위치 경로 → 사용처 노드 id (`hostPaths` 의 역 — 변환 중간 모양의 대조용). */
+export function hostNodeIds(tree: DocumentNode): (path: string) => Id | undefined {
+  const byPath = new Map([...hostPaths(tree)].map(([id, path]) => [path, id] as const));
+  return (path) => byPath.get(path);
+}
+
 /** 항 목록의 항 · 호 · 목 id. */
 function structIdsOf(paragraphs: readonly ParagraphNode[]): Set<Id> {
   const out = new Set<Id>();
@@ -192,27 +210,27 @@ function structIdsOf(paragraphs: readonly ParagraphNode[]): Set<Id> {
 }
 
 /**
- * 원문 자리의 잇닿은 항들 → 공용조항 항 목록 (호 · 목 포함). 자기 조 참조는 딴 항 안이면 「이 공용조항」, 밖이면 「사용처」 위치.
- * 한 참조가 둘을 섞으면 오류. 호 목록에 표 · 박스가 있으면 공용조항 본문이 될 수 없다.
+ * 원문 자리의 잇닿은 항들 → 함수조항 항 목록 (호 · 목 포함). 자기 조 참조는 딴 항 안이면 「이 함수조항」, 밖이면 「사용처」 위치.
+ * 한 참조가 둘을 섞으면 오류. 호 목록에 표 · 박스가 있으면 함수조항 본문이 될 수 없다.
  */
 export function clauseFromSource(tree: DocumentNode, taken: readonly ParagraphNode[], code: string): Block[] {
   const inside = structIdsOf(taken);
   const paths = hostPaths(tree);
   const localize: Localize = (n) => {
-    const own = n.targets.filter((t) => inside.has(t.nodeId));
+    const own = n.targets.filter((t) => inside.has(t.articleId));
     if (own.length === n.targets.length) return { id: n.id, kind: "articleRef", targets: n.targets.map((t) => ({ ...t })), connector: n.connector, scope: "clause" };
-    if (own.length > 0) throw new Error(`${code}: 조 참조 하나가 딴 항 안팎을 함께 가리킨다 — ${n.targets.map((t) => t.nodeId).join(",")}`);
+    if (own.length > 0) throw new Error(`${code}: 조 참조 하나가 딴 항 안팎을 함께 가리킨다 — ${n.targets.map((t) => t.articleId).join(",")}`);
     const targets = n.targets.map((t) => {
-      const path = paths.get(t.nodeId);
-      if (!path) throw new Error(`${code}: 사용처 위치를 모르는 조 참조 대상 ${t.nodeId}`);
-      return { nodeId: path };
+      const path = paths.get(t.articleId);
+      if (!path) throw new Error(`${code}: 사용처 위치를 모르는 조 참조 대상 ${t.articleId}`);
+      return { articleId: path };
     });
     return { id: n.id, kind: "articleRef", targets, connector: n.connector, scope: "host" };
   };
   const inl = (list: InlineNode[]) => structuredClone(list).map((c) => toClauseInline(c, localize));
   return taken.map((p): Block => {
     const items = (p.items ?? []).map((it) => {
-      if (it.kind !== "item") throw new Error(`${code}: 호 목록에 ${it.kind} 이 있는 항은 공용조항 본문이 될 수 없다`);
+      if (it.kind !== "item") throw new Error(`${code}: 호 목록에 ${it.kind} 이 있는 항은 함수조항 본문이 될 수 없다`);
       const subitems = (it.subitems ?? []).map((u) => {
         if (u.kind !== "subitem") throw new Error(`${code}: 목 목록에 ${u.kind} 이 있다`);
         return { id: u.id, kind: "subitem" as const, children: inl(u.children) };
@@ -261,12 +279,12 @@ export function placeOptions(body: Block[], placements: readonly OptionPlacement
       });
     const block = (b: Block): Block => {
       if (b.kind === "condBlock") return { ...b, branches: b.branches.map((br) => ({ ...br, children: br.children.map(block) })) };
-      // 실물 공용조항 본문에는 글머리 목록이 없다 — 옵션 자리 찾기는 항 · 호 · 목만
-      if (b.kind === "bulletList") return b;
+      // 실물 함수조항 본문에는 글머리 목록이 없다 — 옵션 자리 찾기는 항 · 호 · 목만
+      if (b.kind === "bulletList" || b.kind === "boxRef" || b.kind === "switchBlock") return b;
       return {
         ...b,
         children: visit(b.children),
-        ...(b.items ? { items: b.items.map((it) => (it.kind === "bulletList" ? it : { ...it, children: visit(it.children), ...(it.subitems ? { subitems: it.subitems.map((u) => ({ ...u, children: visit(u.children) })) } : {}) })) } : {}),
+        ...(b.items ? { items: b.items.map((it) => (it.kind === "bulletList" || it.kind === "boxRef" ? it : { ...it, children: visit(it.children), ...(it.subitems ? { subitems: it.subitems.map((u) => ({ ...u, children: visit(u.children) })) } : {}) })) } : {}),
       };
     };
     body.splice(0, body.length, ...body.map(block));
@@ -284,16 +302,16 @@ function bodiesOf(clause: ClauseRecord, selection: Record<string, string>): Opti
   };
 }
 
-/** 「문구」 공용조항 한 건의 본문을 고른 옵션으로 펼친 가능한 렌더(인라인 원자열). */
+/** 「문구」 함수조항 한 건의 본문을 고른 옵션으로 펼친 가능한 렌더(인라인 원자열). */
 export function clauseRenderings(clause: ClauseRecord, selection: Record<string, string>): string[][] {
-  if (clause.mode !== "inline") throw new Error(`${clause.code}: 「항」 공용조항은 clauseParagraphs 로 본다`);
+  if (clause.mode !== "inline") throw new Error(`${clause.code}: 「항」 함수조항은 clauseParagraphs 로 본다`);
   return renderings(clause.body as Inline[], bodiesOf(clause, selection));
 }
 
-/** 「항」 공용조항 본문의 항 목록 — 조건 블록은 오버레이가 다루지 않는다(실물 쓰임새에 없다). */
+/** 「항」 함수조항 본문의 항 목록 — 조건 블록은 오버레이가 다루지 않는다(실물 쓰임새에 없다). */
 function clauseParagraphs(clause: ClauseRecord): ClauseParagraph[] {
   const blocks = clause.body as Block[];
-  if (blocks.some((b) => b.kind !== "paragraph")) throw new Error(`${clause.code}: 항 공용조항 오버레이는 조건 블록 없는 항 목록만 다룬다`);
+  if (blocks.some((b) => b.kind !== "paragraph")) throw new Error(`${clause.code}: 항 함수조항 오버레이는 조건 블록 없는 항 목록만 다룬다`);
   return blocks as ClauseParagraph[];
 }
 
@@ -306,7 +324,7 @@ function paragraphOf(article: ArticleNode, paragraph: number): ParagraphNode | u
 }
 
 /**
- * 「문구」 공용조항 — 항 본문에서 공용조항 렌더(원자열)의 첫 등장을 참조 하나로 바꾼다.
+ * 「문구」 함수조항 — 항 본문에서 함수조항 렌더(원자열)의 첫 등장을 참조 하나로 바꾼다.
  * 조건 노드를 가로지르는 구간은 찾지 않는다 (조건 밖 자리만 — 실물 쓰임새가 그렇다).
  */
 export function replaceInlineRun(owner: { id: Id; children: InlineNode[] }, atoms: readonly string[], ref: InlineNode): boolean {
@@ -353,11 +371,11 @@ function missingRendering(mine: readonly AnyInline[], allowed: readonly AnyInlin
 }
 
 /**
- * 「항」 공용조항 — 본문의 항 N 개를 사용처의 **잇닿은** 항 N 개(첫 항 = `use.paragraph`)와 대조해 통째로 참조 하나로 바꾼다.
- * 항마다 문장 · 호 · 목의 가능한 렌더가 모두 공용조항 렌더 안에 있어야 하고, 호 목록에 표 · 박스가 끼면 바꾸지 않는다(공용조항 본문에 둘 수 없다).
+ * 「항」 함수조항 — 본문의 항 N 개를 사용처의 **잇닿은** 항 N 개(첫 항 = `use.paragraph`)와 대조해 통째로 참조 하나로 바꾼다.
+ * 항마다 문장 · 호 · 목의 가능한 렌더가 모두 함수조항 렌더 안에 있어야 하고, 호 목록에 표 · 박스가 끼면 바꾸지 않는다(함수조항 본문에 둘 수 없다).
  */
 /**
- * 공용조항 항 목록의 제 항 · 사용처 위치 조 참조를 사용처 노드 id 로 옮긴 사본 — 사용처 항과 원자열로 대조하려고.
+ * 함수조항 항 목록의 제 항 · 사용처 위치 조 참조를 사용처 노드 id 로 옮긴 사본 — 사용처 항과 원자열로 대조하려고.
  * 제 항은 같은 자리(k 번째 항 · i 번째 호 · j 번째 목)의 사용처 노드로, 사용처 위치는 `host` 로 푼다(조립과 같은 셈).
  */
 export function localizeClause(theirs: readonly ClauseParagraph[], mine: readonly ParagraphNode[], host: (path: string) => Id | undefined): ClauseParagraph[] {
@@ -383,7 +401,7 @@ export function localizeClause(theirs: readonly ClauseParagraph[], mine: readonl
     const n = node as Record<string, unknown>;
     if (n.kind === "articleRef" && (n.scope === "clause" || n.scope === "host")) {
       const r = n as unknown as ClauseArticleRef;
-      r.targets = r.targets.map((t) => ({ nodeId: (r.scope === "clause" ? map.get(t.nodeId) : host(t.nodeId)) ?? `?${t.nodeId}` }));
+      r.targets = r.targets.map((t) => ({ articleId: (r.scope === "clause" ? map.get(t.articleId ?? "") : host(t.articleId ?? "")) ?? `?${t.articleId}` }));
     }
     for (const key of ["children", "items", "subitems", "branches"]) {
       const list = n[key];
@@ -404,7 +422,7 @@ function applyBlockUse(
   report: string[],
   doc: DocumentNode | undefined,
 ): boolean {
-  const where = `${label} 공용조항 ${clause.code}: 조 ${use.article} 제${use.paragraph}항`;
+  const where = `${label} 함수조항 ${clause.code}: 조 ${use.article} 제${use.paragraph}항`;
   const bodies = bodiesOf(clause, selection);
   const at = article.children.indexOf(first);
   const count = clauseParagraphs(clause).length;
@@ -413,13 +431,13 @@ function applyBlockUse(
     report.push(`${where}부터 잇닿은 항 ${count}개가 없음`);
     return false;
   }
-  const theirs = localizeClause(clauseParagraphs(clause), mine as ParagraphNode[], doc ? hostLocator(doc) : () => undefined);
+  const theirs = localizeClause(clauseParagraphs(clause), mine as ParagraphNode[], doc ? hostNodeIds(doc) : () => undefined);
   for (const [k, node] of mine.entries()) {
     const p = node as ParagraphNode;
     const c = theirs[k];
     const miss = missingRendering(p.children, c.children, bodies);
     if (miss !== undefined) {
-      report.push(`${where}(+${k})이 공용조항 렌더와 다름 — ${miss}…`);
+      report.push(`${where}(+${k})이 함수조항 렌더와 다름 — ${miss}…`);
       return false;
     }
     const items = p.items ?? [];
@@ -448,7 +466,7 @@ function applyBlockUse(
 }
 
 /**
- * 사용처 자리 하나를 공용조항 참조로 바꾼다. 성공하면 true, 못 찾으면 보고하고 false.
+ * 사용처 자리 하나를 함수조항 참조로 바꾼다. 성공하면 true, 못 찾으면 보고하고 false.
  * `articleOf` 는 원문 조 번호 → 조.
  */
 export function applyClauseUse(
@@ -457,30 +475,30 @@ export function applyClauseUse(
   articleOf: (number: string) => ArticleNode | undefined,
   label: string,
   report: string[],
-  /** 사용처 문서 — 공용조항의 사용처 위치 참조를 대조할 때 푼다. */
+  /** 사용처 문서 — 함수조항의 사용처 위치 참조를 대조할 때 푼다. */
   doc?: DocumentNode,
 ): boolean {
   const article = articleOf(use.article);
   const paragraph = article && paragraphOf(article, use.paragraph);
   if (!article || !paragraph) {
-    report.push(`${label} 공용조항 ${clause.code}: 조 ${use.article} 제${use.paragraph}항 없음`);
+    report.push(`${label} 함수조항 ${clause.code}: 조 ${use.article} 제${use.paragraph}항 없음`);
     return false;
   }
   const selection = use.options ?? {};
   if (clause.mode === "block") return applyBlockUse(use, clause, article, paragraph, selection, label, report, doc);
   const alternatives = clauseRenderings(clause, selection);
-  if (alternatives.length !== 1) throw new Error(`${clause.code}: 조건 있는 「문구」 공용조항은 자리 대조를 하지 않는다`);
+  if (alternatives.length !== 1) throw new Error(`${clause.code}: 조건 있는 「문구」 함수조항은 자리 대조를 하지 않는다`);
   // 호 자리(`use.item`)면 그 호의 문장에서 찾는다
   const item = use.item === undefined ? undefined : paragraph.items?.filter((n) => n.kind === "item")[use.item - 1];
   if (use.item !== undefined && (!item || item.kind !== "item")) {
-    report.push(`${label} 공용조항 ${clause.code}: 조 ${use.article} 제${use.paragraph}항 제${use.item}호 없음`);
+    report.push(`${label} 함수조항 ${clause.code}: 조 ${use.article} 제${use.paragraph}항 제${use.item}호 없음`);
     return false;
   }
   const owner: { id: Id; children: InlineNode[] } = item && item.kind === "item" ? item : paragraph;
   const seq = owner.children.filter((c) => c.kind === "clauseInlineRef").length + 1;
   const ref: InlineNode = { id: `${owner.id}-k${seq}`, kind: "clauseInlineRef", clauseCode: clause.code, options: { ...selection } };
   if (!replaceInlineRun(owner, alternatives[0], ref)) {
-    report.push(`${label} 공용조항 ${clause.code}: 조 ${use.article} 제${use.paragraph}항${use.item ? ` 제${use.item}호` : ""}에서 문구를 찾지 못함 — ${alternatives[0].join("").slice(0, 40)}…`);
+    report.push(`${label} 함수조항 ${clause.code}: 조 ${use.article} 제${use.paragraph}항${use.item ? ` 제${use.item}호` : ""}에서 문구를 찾지 못함 — ${alternatives[0].join("").slice(0, 40)}…`);
     return false;
   }
   return true;
@@ -499,3 +517,75 @@ export function* allArticles(tree: DocumentNode): Generator<ArticleNode> {
 }
 
 export type { ClauseSpec };
+
+// ───────────────────────────── 구분자 직접 읽기 → 인자 ─────────────────────────────
+
+/** 인자 이름 — 구분자 표시명에서 식에 못 쓰는 글자를 밑줄로. */
+function paramName(label: string): string {
+  const cleaned = label.replace(/[^A-Za-z0-9_ㄱ-ㆎ가-힣]/g, "_");
+  return /^[0-9]/.test(cleaned) ? `_${cleaned}` : cleaned;
+}
+
+/**
+ * 함수조항은 구분자를 직접 읽지 않고 인자만 읽는다 (최종 결정 2) — 원문에서 딴 본문 · 선택지 문구의 구분자 참조를
+ * 「인자(이름 = 구분자 표시명, 타입 = 구분자 결과 타입) + 기본 연결 = 그 구분자」로 바꾸고 식을 `arg.<이름>` 으로 고친다.
+ * 사용처는 기본 연결을 쓰므로 조립 결과가 그대로다(실물 대조). 담보속성(`attr.X`)은 구분자가 아니라 그대로 둔다.
+ */
+export function parameterize(record: ClauseRecord, catalog: readonly Discriminator[]): ClauseRecord {
+  const byCode = new Map(catalog.map((d) => [d.code, d]));
+  const params: ParamDef[] = [];
+  const nameOf = new Map<string, string>();
+  const paramFor = (code: string): string => {
+    const known = nameOf.get(code);
+    if (known) return known;
+    const def = byCode.get(code);
+    if (!def) throw new Error(`${record.code}: 모르는 구분자 ${code} — 인자로 바꿀 수 없다`);
+    const type = def.resultType ?? discriminatorResultType(def, undefined, byCode);
+    if (!type || type.kind === "table") throw new Error(`${record.code}: 구분자 ${code} 의 결과 타입을 알 수 없다`);
+    let name = paramName(def.label);
+    for (let n = 2; params.some((p) => p.name === name); n++) name = `${paramName(def.label)}${n}`;
+    params.push({ name, type, default: { kind: "discriminator", code } });
+    nameOf.set(code, name);
+    return name;
+  };
+  const rewriteExpr = (e: Expr): Expr => {
+    switch (e.kind) {
+      case "ref":
+        if (e.ref.kind !== "discriminator") return e;
+        if (e.ref.node) throw new Error(`${record.code}: 노드 한정자 ${e.ref.code}@${e.ref.node.id} 는 인자로 바꾸지 않는다`);
+        return { kind: "ref", ref: { kind: "param", name: paramFor(e.ref.code) } };
+      case "not":
+        return { ...e, operand: rewriteExpr(e.operand) };
+      case "and":
+      case "or":
+      case "compare":
+        return { ...e, left: rewriteExpr(e.left), right: rewriteExpr(e.right) };
+      default:
+        return e;
+    }
+  };
+  let changed = false;
+  const rewrite = (src: string): string => {
+    const parsed = parse(src);
+    if (!parsed.ok) return src;
+    const next = format(rewriteExpr(parsed.value));
+    if (next !== format(parsed.value)) changed = true;
+    return next === format(parsed.value) ? src : next;
+  };
+  const walk = (n: unknown): unknown => {
+    if (Array.isArray(n)) return n.map(walk);
+    if (!n || typeof n !== "object") return n;
+    const o = n as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(o)) {
+      if (k === "when" && typeof v === "string") out[k] = rewrite(v);
+      else if (k === "ref" && o.kind === "slot" && typeof v === "string") out[k] = rewrite(v);
+      else out[k] = walk(v);
+    }
+    return out;
+  };
+  const body = walk(record.body) as ClauseRecord["body"];
+  const options = walk(record.options) as ClauseRecord["options"];
+  if (!changed) return record;
+  return { ...record, body, options, params };
+}

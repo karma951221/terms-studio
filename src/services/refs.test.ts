@@ -120,7 +120,7 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
       expect(u[0].at).toMatchObject({ document: "special", ownerId: surgery.id, ownerName: "수술비 특별약관", articleId: artPay.id, articleTitle: "보험금의 지급사유", refPath: "D0001" });
     });
 
-    it("공용조항 관계정보 — 역방향(참조 문서·옵션 선택) · 옵션별 오버라이드 사용처 (기능/공용조항 §3.2)", async () => {
+    it("함수조항 관계정보 — 역방향(참조 문서·옵션 선택) · 옵션별 오버라이드 사용처 (기능/함수조항 §3.2)", async () => {
       const v = await refs.relation({ kind: "clause", code: "C001" });
       expect(v.node?.label).toBe("특별약관의 소멸");
       expect(v.incoming.map((e) => [e.via, e.at.articleTitle])).toEqual([["clauseRef", "특별약관의 소멸"], ["optionSelect", "특별약관의 소멸"]]);
@@ -150,7 +150,7 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
   });
 
   describe("catalogImpactSource — 구분자 삭제·enum 값 삭제의 영향 (기능/구분자 §3.4)", () => {
-    it("구분자의 깨질 참조 = 그 구분자를 읽는 문면 · 공용조항 식 (부착은 없다)", async () => {
+    it("구분자의 깨질 참조 = 그 구분자를 읽는 문면 · 함수조항 식 (부착은 없다)", async () => {
       const src = catalogImpactSource(contextualDb(t.db));
       expect(await src.findBrokenRefs({ kind: "discriminator", code: "D0006" })).toEqual([
         expect.objectContaining({ document: "clause", ownerId: "C002", ownerName: "준용규정", nodePath: ["c2-c", "c2-b"], refPath: "D0006" }),
@@ -162,7 +162,7 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
       expect(await src.countValueRows({ kind: "discriminator", code: "D0003" })).toBe(0);
     });
 
-    it("enum 값 E0002/V02 — 리터럴로 비교하는 조건식이 깨질 참조, 그 값을 고른 값 행만 세고 지운다", async () => {
+    it("enum 값 E0002/V02 — 리터럴로 비교하는 조건식이 깨질 참조, 그 값을 고른 값 행만 센다 · 값 행은 지우지 않는다 (ADR-0078 결정 5)", async () => {
       const src = catalogImpactSource(contextualDb(t.db));
       expect(await src.findBrokenRefs({ kind: "enumValue", enumCode: "E0002", valueCode: "V02" })).toEqual([expect.objectContaining({ document: "general", ownerId: general.id, refPath: "D0002" })]);
       expect(await src.findBrokenRefs({ kind: "enumValue", enumCode: "E0002", valueCode: "V01" })).toEqual([]);
@@ -170,7 +170,7 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
       expect(await src.countValueRows({ kind: "enumValue", enumCode: "E0002", valueCode: "V01" })).toBe(0);
       expect(await src.countValueRows({ kind: "enum", enumCode: "E0002" })).toBe(1);
       await src.purgeValueRows({ kind: "enumValue", enumCode: "E0002", valueCode: "V02" });
-      expect((await readSlots(t.db, { kind: "plan", id: productId })).size).toBe(0);
+      expect((await readSlots(t.db, { kind: "plan", id: productId })).get("no_surrender.type")).toEqual({ entered: true, value: "V02" });
     });
 
     it("트랜잭션 안에서 불러도 교착하지 않는다 (contextualDb)", async () => {
@@ -253,7 +253,7 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
   });
 
   describe("documentUsageSource — 문서 서비스가 못 보는 외부 사용처", () => {
-    it("보통약관: 상품 템플릿 선택 · 담보약관: 담보 문서 연결 + 옵션 오버라이드 · 별표: 공용조항 본문 참조", async () => {
+    it("보통약관: 상품 템플릿 선택 · 담보약관: 담보 문서 연결 + 옵션 오버라이드 · 별표: 함수조항 본문 참조", async () => {
       const src = documentUsageSource();
       expect(await src.documentUsages(t.db, general.id)).toEqual([{ document: "product", ownerId: productId, ownerName: "알파Plus" }]);
       expect(await src.documentUsages(t.db, special.id)).toEqual([
@@ -273,5 +273,54 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
       expect(await src.findExpressionRefs("A0001", "1")).toHaveLength(1);
       expect(await src.findExpressionRefs("A0001", "2")).toEqual([]);
     });
+  });
+});
+
+describe("인자 연결 간선 — 기본 연결(함수조항 → 구분자) · 사용처 연결(문서 → 구분자) (최종 결정 2)", () => {
+  let t: TestDb;
+  let special: DocumentRecord;
+  const b = nodeBuilders();
+  const ref = { ...b.clauseBlock("C010"), bindings: { 갱신형: { kind: "discriminator" as const, code: "D0002" } } };
+
+  beforeAll(async () => {
+    t = await createTestDb();
+    const db = contextualDb(t.db);
+    const catalog = createCatalogService(db);
+    unwrap(await catalog.create(editor, { label: "갱신여부", level: "coverage", expression: "coverage_basic.claim_name = '갱신'" })); // D0001
+    unwrap(await catalog.create(editor, { label: "갱신여부2", level: "coverage", expression: "coverage_basic.claim_name = '갱신2'" })); // D0002
+    const clause: Clause = {
+      code: "C010",
+      label: "판정",
+      mode: "block",
+      body: [{ id: "p", kind: "paragraph", children: [{ id: "c", kind: "inlineCond", branches: [{ id: "c-if", when: "arg.갱신형 and arg.면책", children: [{ id: "t", kind: "text", text: "갱신" }] }] }] }],
+      options: [],
+      params: [
+        { name: "갱신형", type: { kind: "boolean" }, default: { kind: "discriminator", code: "D0001" } },
+        { name: "면책", type: { kind: "boolean" }, default: { kind: "discriminator", code: "D0001" } },
+      ],
+      required: { discriminators: [], attributes: [] },
+    };
+    await insertClause(db, clause, editor.userId);
+    const general = await insertDocument(db, { kind: "general", title: "보통약관", tree: b.document("보통약관", [b.article("조", [ref])]) }, editor.userId);
+    special = general;
+  });
+  afterAll(async () => {
+    await t.close();
+  });
+
+  it("기본 연결 구분자를 지우면 그 함수조항 정의가 깨질 참조에 오른다", async () => {
+    const src = catalogImpactSource(contextualDb(t.db));
+    const broken = await src.findBrokenRefs({ kind: "discriminator", code: "D0001" });
+    expect(broken).toEqual(expect.arrayContaining([expect.objectContaining({ document: "clause", ownerId: "C010", refPath: "arg.갱신형" }), expect.objectContaining({ document: "clause", ownerId: "C010", refPath: "arg.면책" })]));
+  });
+
+  it("사용처가 바꾼 연결 구분자를 지우면 그 사용처가 깨질 참조에 오른다", async () => {
+    const src = catalogImpactSource(contextualDb(t.db));
+    expect(await src.findBrokenRefs({ kind: "discriminator", code: "D0002" })).toEqual([expect.objectContaining({ document: "general", ownerId: special.id, refPath: "C010.arg.갱신형" })]);
+  });
+
+  it("사용처 목록에 인자 연결이 실린다 — 재검사가 그 연결로 본다", async () => {
+    const u = await clauseUsageSource(contextualDb(t.db)).documentsReferencing("C010");
+    expect(u[0].bindings).toEqual({ 갱신형: { kind: "discriminator", code: "D0002" } });
   });
 });

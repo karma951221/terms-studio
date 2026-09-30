@@ -1,20 +1,23 @@
 /**
- * 공용조항 정의의 생성·변경 규칙 (순수).
+ * 함수조항 정의의 생성·변경 규칙 (순수).
  *
- * 근거: docs/기능/공용조항/공용조항.md (§3.1 · §3.2) · ADR-0010.
+ * 근거: docs/기능/함수조항/함수조항.md (§3.1 · §3.2 · §3.7) · ADR-0076.
  *
  * - 생성은 코드를 채번한다 — 순번은 주입된 `nextSeq` 가 준다 (저장소).
  * - 모든 변경은 새 정의를 돌려주고 원본은 바꾸지 않는다.
- * - 본문·옵션이 바뀌는 변경은 `analyzeBody` 로 다시 검사하고 요구 구분자를 **다시 계산**한다 (ADR-0010).
+ * - 본문·옵션이 바뀌는 변경은 `analyzeBody` 로 다시 검사하고 요구 구분자(읽는 인자의 기본 연결)를 **다시 계산**한다 (기능/함수조항 §3.3).
  * - 옵션 자리는 선택지 2개 이상 (D-P3-4) · 기본 선택지 없음 (D-P3-7) · 순서 변경 가능 (D-P3-6).
- * - 옵션·선택지 삭제의 사용처 영향(깨진 선택)은 서비스의 재검사(`recheckUsages`)가 드러낸다 (기능/공용조항 §3.2).
+ * - 옵션·선택지 삭제의 사용처 영향(깨진 선택)은 서비스의 재검사(`recheckUsages`)가 드러낸다 (기능/함수조항 §3.2).
  */
 import { ok, reject } from "../types";
 import type { Code, Issue, Result } from "../types";
-import { analyzeBody, allNodeIds } from "./body";
+import { analyzeBody, allNodeIds, orderSwitchCases } from "./body";
 import type { AnalyzeOptions } from "./body";
 import { allocateClauseCode, optionValueScope, type ClauseNextSeq } from "./codes";
 import type { Block, Inline } from "./nodes";
+import type { LocalDef } from "./locals";
+import type { ParamDef } from "./params";
+import { CLAUSE_MODES } from "./types";
 import type {
   Clause,
   ClauseBody,
@@ -36,13 +39,15 @@ export interface ClauseSummaryLite {
 
 export interface ClauseContext {
   nextSeq: ClauseNextSeq;
-  /** 현재 공용조항들 (표시명 중복 검사용). */
+  /** 현재 함수조항들 (표시명 중복 검사용). */
   existing: readonly ClauseSummaryLite[];
   /** 본문 검사 옵션 (조건식 타입 조회 등). */
   analyze?: AnalyzeOptions;
 }
 
-const MODES: readonly ClauseMode[] = ["inline", "block", "box"];
+const MODES: readonly ClauseMode[] = CLAUSE_MODES;
+const MODE_WORD: Record<ClauseMode, string> = { inline: "문구", block: "항", item: "호", subitem: "목" };
+const MODE_REFUSAL = "유형은 문구 · 항 · 호 · 목 중 하나여야 합니다 — 박스는 정적 마스터에서 만든다";
 
 // ───────────────────────────── 헬퍼 ─────────────────────────────
 
@@ -64,12 +69,23 @@ function checkLabel(label: string, existing: readonly ClauseSummaryLite[], selfC
 
 /** 본문·옵션을 검사하고 요구 참조를 계산해 정의를 완성한다. */
 function withAnalysis(base: Omit<Clause, "required">, analyze?: AnalyzeOptions): Result<Clause> {
-  const r = analyzeBody(base.mode, base.body, base.options, {
-    ...analyze,
-    coordinate: { document: "clause", ownerName: base.label, ...analyze?.coordinate },
-  });
+  const r = analyzeBody(
+    base.mode,
+    base.body,
+    base.options,
+    {
+      ...analyze,
+      coordinate: { document: "clause", ownerName: base.label, ...analyze?.coordinate },
+    },
+    base.params ?? [],
+    base.locals ?? [],
+  );
   if (!r.ok) return r as Result<Clause>;
-  return ok({ ...base, required: r.value } as Clause);
+  // 빈 인자 · 내부 변수 목록은 싣지 않는다 — 0개 = 키 없음(옛 정의 · 스냅샷 무변동)
+  const { params, locals, ...rest } = base;
+  // 값별 분기의 칸 순서 = 열거형 순서 — 저장할 때 맞춘다 (최종 결정 5)
+  rest.body = orderSwitchCases(base.body, params ?? [], locals ?? [], analyze ?? {}) as typeof rest.body;
+  return ok({ ...rest, ...(params && params.length > 0 ? { params } : {}), ...(locals && locals.length > 0 ? { locals } : {}), required: r.value } as Clause);
 }
 
 function findOption(clause: Clause, optionCode: Code): OptionDef | undefined {
@@ -121,13 +137,13 @@ async function buildOption(clauseCode: Code, input: NewOption, order: number, ne
 }
 
 /**
- * 공용조항 채번 + 본문·옵션 등록. 모드는 필수.
+ * 함수조항 채번 + 본문·옵션 등록. 모드는 필수.
  *
- * 검사를 전부 통과한 뒤에 채번한다 — 거부된 입력이 순번을 태우지 않게. 새 공용조항의 옵션·선택지
+ * 검사를 전부 통과한 뒤에 채번한다 — 거부된 입력이 순번을 태우지 않게. 새 함수조항의 옵션·선택지
  * 순번 범위는 비어 있으므로 검사 단계의 임시 코드(O01… · V01…)와 실제 채번 결과가 같다.
  */
 export async function createClause(input: NewClause, ctx: ClauseContext): Promise<Result<Clause>> {
-  if (!MODES.includes(input.mode)) return invalid("typeMismatch", `모드는 inline · block · box 중 하나여야 합니다: ${String(input.mode)}`);
+  if (!MODES.includes(input.mode)) return invalid("typeMismatch", `${MODE_REFUSAL}: ${String(input.mode)}`);
   const label = checkLabel(input.label, ctx.existing);
   if (!label.ok) return label as Result<Clause>;
 
@@ -146,6 +162,8 @@ export async function createClause(input: NewClause, ctx: ClauseContext): Promis
       mode: input.mode,
       body: (input.body ?? []) as Inline[] & Block[],
       options,
+      params: input.params ?? [],
+      locals: input.locals ?? [],
     } as Omit<Clause, "required">,
     ctx.analyze,
   );
@@ -188,11 +206,22 @@ export function setBody(clause: Clause, body: ClauseBody, analyze?: AnalyzeOptio
 }
 
 /**
+ * 인자 표 교체 (최종 결정 2) — 본문도 함께 받을 수 있다(인자를 더하며 본문이 그 인자를 읽게 고친 저장 한 번 — 따로 저장하면 중간 상태가 거부된다).
+ * 본문이 지운 인자를 아직 읽으면 거부된다(검사 ①). 사용처 영향(연결 누락 · 없는 인자 연결)은 서비스의 재검사 목록이 드러낸다.
+ */
+export function setParams(clause: Clause, params: readonly ParamDef[], body?: ClauseBody, analyze?: AnalyzeOptions, locals?: readonly LocalDef[]): Result<Clause> {
+  return withAnalysis(
+    { ...clause, params: deepCopy([...params]), ...(locals !== undefined ? { locals: deepCopy([...locals]) } : {}), ...(body !== undefined ? { body } : {}) } as Omit<Clause, "required">,
+    analyze,
+  );
+}
+
+/**
  * 모드 변경 — 본문 모양이 달라지므로 그 모드의 새 본문과 함께만 받는다.
  * (사용처의 참조 노드 종류가 어긋나는 문제는 사용처 재검사·관계정보 뷰가 드러낸다 — D-P3-1 참고.)
  */
 export function setMode(clause: Clause, mode: ClauseMode, body: ClauseBody, analyze?: AnalyzeOptions): Result<Clause> {
-  if (!MODES.includes(mode)) return invalid("typeMismatch", `모드는 inline · block · box 중 하나여야 합니다: ${String(mode)}`);
+  if (!MODES.includes(mode)) return invalid("typeMismatch", `${MODE_REFUSAL}: ${String(mode)}`);
   return withAnalysis({ ...clause, mode, body } as Omit<Clause, "required">, analyze);
 }
 
@@ -319,7 +348,7 @@ export async function duplicateClause(origin: Clause, ctx: ClauseContext): Promi
   for (let n = 2; taken.has(label); n++) label = `${origin.label}(복제${n})`;
 
   const code = await allocateClauseCode("clause", "", ctx.nextSeq);
-  // 옵션·선택지 코드는 새 공용조항 안에서 다시 채번한다 (순번 범위가 공용조항마다라 같은 코드가 나온다).
+  // 옵션·선택지 코드는 새 함수조항 안에서 다시 채번한다 (순번 범위가 함수조항마다라 같은 코드가 나온다).
   const options: OptionDef[] = [];
   for (const o of origin.options) {
     const optionCode = await allocateClauseCode("option", code, ctx.nextSeq);
@@ -337,7 +366,7 @@ export async function duplicateClause(origin: Clause, ctx: ClauseContext): Promi
   const body = remapOptionSlots(deepCopy(origin.body), codeMap);
 
   return withAnalysis(
-    { code, label, mode: origin.mode, body, options } as Omit<Clause, "required">,
+    { code, label, mode: origin.mode, body, options, ...(origin.params?.length ? { params: deepCopy(origin.params) } : {}), ...(origin.locals?.length ? { locals: deepCopy(origin.locals) } : {}) } as Omit<Clause, "required">,
     ctx.analyze,
   );
 }
@@ -359,4 +388,36 @@ function remapOptionSlots<B extends ClauseBody>(body: B, codeMap: Map<Code, Code
 /** 정의 안의 노드 id 전부 (본문 + 선택지 본문). */
 export function clauseNodeIds(clause: Clause): Code[] {
   return [...allNodeIds(clause.body), ...clause.options.flatMap((o) => o.values.flatMap((v) => allNodeIds(v.body)))];
+}
+
+// ───────────────────────────── 단위 규칙 — 경고 (최종 결정 7) ─────────────────────────────
+
+/**
+ * 단위 규칙 경고 — 함수조항은 「되풀이되는 조 · 여러 항, 두 곳 이상 사용」이 기본 단위다(기능/함수조항 §3.1). 벗어나도 **만들 수 있고**
+ * 경고만 한다(ADR-0076 결정 8) — 항 · 호 · 목 하나(역할 함수조항의 「납입면제 호」처럼), 한 곳 사용도 된다.
+ * - 문구 · 호 · 목 유형 → 조 · 여러 항 단위가 아니다.
+ * - 항 유형인데 항이 하나 → 조째(그 조의 항 전부)가 아니면 여러 항 단위가 아니다. 조째인지는 사용처에서만 알아 「아니면」으로 말한다.
+ * - 사용처가 딱 하나 → 두 곳 이상 규칙. 아직 쓰는 곳이 없으면(막 만든 조항) 말하지 않는다.
+ * 빈 본문은 단위를 따지지 않는다(빈 본문 안내가 따로 있다). 저장은 막지 않는다 — `severity: "warning"`.
+ */
+export function unitWarnings(clause: Clause, usageCount: number): Issue[] {
+  const at = { document: "clause" as const, ownerId: clause.code, ownerName: clause.label };
+  const warn = (message: string): Issue => ({ kind: "structure", message, at, severity: "warning" });
+  if (clause.body.length === 0) return [];
+  const out: Issue[] = [];
+  if (clause.mode !== "block") out.push(warn(`「${MODE_WORD[clause.mode]}」 함수조항 — 조 · 여러 항 단위가 아닙니다`));
+  else if (paragraphIds(clause.body).size <= 1) out.push(warn("항이 하나뿐입니다 — 조째(그 조의 항 전부)가 아니면 조 · 여러 항 단위가 아닙니다"));
+  if (usageCount === 1) out.push(warn("한 곳에서만 씁니다 — 두 곳 이상에서 되풀이될 때 함수조항으로 딴다"));
+  return out;
+}
+
+/** 항 유형 본문의 항 id (조건 블록 안 포함). */
+function paragraphIds(body: Block[]): Set<string> {
+  const out = new Set<string>();
+  const visit = (b: Block) => {
+    if (b.kind === "paragraph") out.add(b.id);
+    if (b.kind === "condBlock") for (const br of b.branches) br.children.forEach(visit);
+  };
+  body.forEach(visit);
+  return out;
 }

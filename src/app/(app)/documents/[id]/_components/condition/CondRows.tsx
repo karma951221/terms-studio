@@ -16,10 +16,10 @@ import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties, type
 
 import { Combobox, type ComboOption } from "@/app/_components/Combobox";
 import { IconButton, IconMinusCircle, IconPlusCircle } from "@/app/_components/icons";
-import { emptyRows, isUnaryOp, joinParens, rowIssues, type ConditionRow, type ConditionRows, type Join, type RowOp } from "@/domain/document";
-import type { DiscriminatorRef, Literal } from "@/domain/expression";
+import { emptyRows, isUnaryOp, joinParens, rowIssues, type ConditionRow, type ConditionRows, type Join, type RowOp, type RowValueRef } from "@/domain/document";
+import type { Literal } from "@/domain/expression";
 
-import { OP_LABEL, addRow, headOf, opsOf, pickerGroups, refKey, refOfKey, removeRow, setLeft, sourceOf, type HeadModel } from "./rows";
+import { OP_LABEL, addRow, ctxCodeOf, headOf, opsOf, pickerGroups, refKey, refOfKey, removeRow, setLeft, sourceOf, type HeadModel } from "./rows";
 import type { ConditionContext, CtxAttribute, CtxDiscriminator } from "./types";
 
 /** 값 칸 — 좌변 타입대로. 우변이 구분자 참조면 칩 + 비우기. 담보속성이면 유효값 목록(있음 · 없음은 값 없음). */
@@ -36,7 +36,7 @@ function ValueInput({
   name: string;
   def?: CtxDiscriminator;
   attribute?: CtxAttribute;
-  refText: (ref: DiscriminatorRef) => string;
+  refText: (ref: RowValueRef) => string;
   onChange: (right: ConditionRow["right"], commit: boolean) => void;
   onDone: () => void;
 }) {
@@ -165,9 +165,9 @@ export function CondRows({
     }
   }, [focus, onFocused]);
 
-  const defOf = (ref: DiscriminatorRef): CtxDiscriminator | undefined => context.discriminators.find((d) => d.code === ref.code);
+  const defOf = (ref: RowValueRef): CtxDiscriminator | undefined => context.discriminators.find((d) => d.code === ctxCodeOf(ref));
   const nodeName = (id: string) => context.coverage?.nodes.find((n) => n.id === id)?.name;
-  const refText = (ref: DiscriminatorRef) => `${defOf(ref)?.label ?? ref.code}${ref.node ? ` @${nodeName(ref.node.id) ?? "끊어진 노드"}` : ""}`;
+  const refText = (ref: RowValueRef) => (ref.kind !== "discriminator" ? (defOf(ref)?.label ?? ctxCodeOf(ref)) : `${defOf(ref)?.label ?? ref.code}${ref.node ? ` @${nodeName(ref.node.id) ?? "끊어진 노드"}` : ""}`);
   const attributeOf = (code: string): CtxAttribute | undefined => context.attributes?.find((a) => a.code === code);
   const leftText = (ref: NonNullable<ConditionRow["left"]>) => (ref.kind === "attr" ? (attributeOf(ref.code)?.label ?? `attr.${ref.code}`) : refText(ref));
   const groups = pickerGroups(context);
@@ -210,7 +210,7 @@ export function CondRows({
 
   const rows = model.rows;
   const setRows = (next: ConditionRows, commit = true) => update({ kind: "rows", rows: next }, commit);
-  const typeOf = (ref: DiscriminatorRef) => defOf(ref)?.type;
+  const typeOf = (ref: RowValueRef) => defOf(ref)?.type;
   const issues = rowIssues(rows, typeOf, (code) => attributeOf(code)?.values.map((v) => v.code));
   const parens = joinParens(rows.joins);
   // 괄호 자리는 괄호가 있을 때만, 모든 줄에 같은 폭으로 — 줄끼리 칸이 어긋나지 않고, 그만큼(자리 폭 + 칸 사이 4px 둘) 변수 칸을 줄여 한 줄에 둔다
@@ -223,7 +223,7 @@ export function CondRows({
       {rows.rows.map((row, i) => {
         const name = `${label} ${i + 1}번 줄`;
         const discriminator = row.left?.kind === "discriminator" ? row.left : undefined;
-        const def = discriminator ? defOf(discriminator) : undefined;
+        const def = row.left && row.left.kind !== "attr" ? defOf(row.left) : undefined;
         const ops = opsOf(row.left, typeOf);
         const key = row.left ? refKey(row.left) : "";
         const issue = row.left ? issues.find((m) => m.startsWith(`${i + 1}번 줄:`)) : undefined;

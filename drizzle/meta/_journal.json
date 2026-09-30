@@ -127,6 +127,34 @@
       "when": 1790522288467,
       "tag": "0017_attribute_value_numeric_code",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790702560347,
+      "tag": "0018_enum_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790705518168,
+      "tag": "0019_static_master_boxes",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790712094459,
+      "tag": "0020_clause_params",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790716197248,
+      "tag": "0021_clause_locals",
+      "breakpoints": true
     }
   ]
 }

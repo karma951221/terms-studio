@@ -11,7 +11,7 @@
  */
 import { fieldsOfLevel, findMasterField, formsOfLevel, masterPath, type MasterForm, type MasterTree } from "../master";
 import type { AttachLevel, Coordinate, FieldType, Issue, TableColumn, Value, ValueSlot } from "../types";
-import type { EnumLookup, SlotPath } from "./types";
+import type { EnumDef, EnumLookup, SlotPath } from "./types";
 
 // ───────────────────────────── 값 검증 ─────────────────────────────
 
@@ -33,10 +33,23 @@ function broken(message: string, at: Coordinate): Issue {
   return { kind: "brokenRef", message, at };
 }
 
+/** 값 코드 가운데 그 열거형변수에 없는 것 — 값 삭제 뒤 저장 값에 남은 코드 (ADR-0078 결정 5), 순서 유지. */
+export function missingEnumCodes(def: EnumDef, codes: readonly string[]): string[] {
+  const known = new Set(def.values.map((v) => v.code));
+  return codes.filter((c) => !known.has(c));
+}
+
+/** 「없는 값」 오류 문구 — 값 폼 · 조립이 같은 말을 쓴다. */
+export function missingValueMessage(def: EnumDef, codes: readonly string[]): string {
+  return `없는 값 ${codes.join(", ")} — ${def.label}(${def.code})에서 지워진 값입니다`;
+}
+
 /**
  * 타입에 맞는 값인가. 빈 배열이면 유효.
  * - enum 값은 표시명이 아니라 **값 코드**(`V01`)여야 한다.
- * - 없는 enum · 없는 값 코드는 `brokenRef`, 모양이 틀리면 `typeMismatch`.
+ * - 없는 enum 은 `brokenRef`, 모양이 틀리면 `typeMismatch`.
+ * - 정의에 없는 값 코드는 `brokenRef` 「없는 값 V03」 — 값을 지워도 저장 값에는 코드가 남고 여기서 오류로 드러난다
+ *   (ADR-0078 결정 5 · ADR-0049 〔D-P1-18〕). 조용히 빼지 않는다.
  */
 export function validateValue(
   type: FieldType,
@@ -61,9 +74,7 @@ export function validateValue(
       const def = enums(type.enumCode);
       if (!def) return [broken(`enum ${type.enumCode} 이(가) 없습니다`, at)];
       if (typeof value !== "string") return [mismatch("enum 값 코드여야 합니다", at)];
-      return def.values.some((v) => v.code === value)
-        ? []
-        : [broken(`enum ${def.label}(${def.code}) 에 값 코드 ${value} 이(가) 없습니다`, at)];
+      return def.values.some((v) => v.code === value) ? [] : [broken(missingValueMessage(def, [value]), at)];
     }
     case "list<enum>": {
       const def = enums(type.enumCode);
@@ -74,11 +85,8 @@ export function validateValue(
       if (new Set(value).size !== value.length) {
         return [mismatch("같은 enum 값을 두 번 고를 수 없습니다", at)];
       }
-      const codes = new Set(def.values.map((v) => v.code));
-      const unknown = value.filter((v) => !codes.has(v));
-      return unknown.length === 0
-        ? []
-        : [broken(`enum ${def.label}(${def.code}) 에 값 코드 ${unknown.join(", ")} 이(가) 없습니다`, at)];
+      const unknown = missingEnumCodes(def, value);
+      return unknown.length === 0 ? [] : [broken(missingValueMessage(def, unknown), at)];
     }
     case "table": {
       if (!Array.isArray(value)) return [mismatch("표는 행 배열이어야 합니다", at)];

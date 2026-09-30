@@ -65,9 +65,9 @@ import {
   type SnapshotNode,
   type SpecialGroup,
 } from "@/domain/product";
-import { findForm, findMasterField, type MasterForm } from "@/domain/master";
+import { findForm, findMasterField, formRuleIssues, type MasterForm } from "@/domain/master";
 import type { Actor, AttachLevel, Code, Coordinate, Id, Impact, Issue, Result, Value, ValueSlot } from "@/domain/types";
-import { mergeImpacts, ok, reject } from "@/domain/types";
+import { entered, mergeImpacts, ok, reject } from "@/domain/types";
 
 import * as catalog from "@/db/repo/catalog";
 import * as repo from "@/db/repo/product";
@@ -85,7 +85,7 @@ export interface ProductServiceDeps {
   generalDocuments?: GeneralDocumentGate;
   /** 보통약관이 요구하는 담보 레벨 참조 (B2/B3). 기본: 없음 → 부착 검사 통과. */
   generalAttachment?: GeneralAttachmentCheck;
-  /** 공용조항 옵션 유효 집합 (B2). 기본: 모두 유효. */
+  /** 함수조항 옵션 유효 집합 (B2). 기본: 모두 유효. */
   optionValidator?: OptionValidator;
   /** 담보속성의 식 참조 사용처 (C1). 기본: 없음. */
   attributeRefs?: AttributeRefSource;
@@ -271,12 +271,12 @@ export interface ProductService {
 
   // ── 옵션 오버라이드
   /**
-   * 보통약관 공용조항 자리의 상품별 옵션 선택 (기능/상품 §3.6).
+   * 보통약관 함수조항 자리의 상품별 옵션 선택 (기능/상품 §3.6).
    *
    * `options` 는 **부분 선택**이어도 된다 — 자리의 마스터 선택에 얹어 합친 결과를 검사하고
    * (`resolveOptions` 와 같은 규칙), 마스터와 **다른 키만** 저장한다. 전부 마스터와 같아지면
    * 행을 지우고 `ok(undefined)` 다 (코덱스 리뷰 2026-09-15 Important-1).
-   * 상품의 보통약관 템플릿에 그 참조 노드가 없거나, 그 자리의 공용조항이 `clauseCode` 와 다르면 `notFound`.
+   * 상품의 보통약관 템플릿에 그 참조 노드가 없거나, 그 자리의 함수조항이 `clauseCode` 와 다르면 `notFound`.
    */
   setOptionOverride(actor: Actor, scope: OverrideScope, nodeId: Id, clauseCode: Code, options: ClauseOptionSelection): Promise<Result<ClauseOptionOverride | undefined>>;
   listOptionOverrides(scope: OverrideScope): Promise<ClauseOptionOverride[]>;
@@ -355,6 +355,21 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
     return validateSlotValue(path, type, value, findEnum, { refPath: path });
   }
 
+  /**
+   * 폼 교차 규칙 (결정 16 — waiver 「적용여부 = 예면 사유 1개 이상」). 저장된 값 위에 이번 제출을 얹은 **최종 상태**로 본다 —
+   * 한 필드만 고치는 제출도 저장된 다른 필드와 함께 판정한다. `undefined` 제출은 미입력으로 되돌리기다.
+   */
+  async function formRulesOf(tx: Db, owner: ValueOwner | undefined, formKey: Code, entries: readonly SlotWrite[]): Promise<Issue[]> {
+    const form = findForm(formKey);
+    if (!form?.rules?.length) return [];
+    const next = new Map<SlotPath, ValueSlot>(owner ? await readSlots(tx, owner) : []);
+    for (const e of entries) {
+      if (e.value === undefined) next.delete(e.path);
+      else next.set(e.path, entered(e.value));
+    }
+    return formRuleIssues(form, (path) => next.get(path));
+  }
+
   /** 값 자리 하나 쓰기 (검증 포함). */
   async function writeChecked(tx: Db, actor: Actor, owner: ValueOwner, path: SlotPath, value: Value | undefined): Promise<Result<void>> {
     return writeAllChecked(tx, actor, owner, [{ path, value }]);
@@ -411,7 +426,12 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
           foreign.map((e) => issue("brokenRef", `세목 선택지 ${planOptionLabel(o)} 의 세목유형은 ${o.planTypeCode} 라 ${e.path} 자리가 없습니다`, { refPath: e.path })),
         );
       }
-      return writeAllChecked(tx, actor, { kind: "plan", id: optionId }, entries);
+      const owner: ValueOwner = { kind: "plan", id: optionId };
+      const issues: Issue[] = [];
+      for (const e of entries) issues.push(...(await checkSlot(tx, owner, e.path, e.value)));
+      if (issues.length === 0) issues.push(...(await formRulesOf(tx, owner, o.planTypeCode, entries)));
+      if (issues.length > 0) return invalid(issues);
+      return writeAllChecked(tx, actor, owner, entries);
     });
   }
 
@@ -555,6 +575,11 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
           const field = findMasterField(entry.path);
           if (!field || field.form.key !== option.planTypeCode) issues.push(issue("brokenRef", `보험종목의 입력 항목이 아닙니다: ${entry.path}`));
           issues.push(...await checkSlot(tx, { kind: "plan", id: option.id }, entry.path, entry.value));
+        }
+        if (!option.isNew && !existing) continue;
+        // 여러 종목을 한 번에 저장하니 어느 종목인지 문구에 싣는다 — 오류는 고칠 자리로 안내한다
+        for (const broken of await formRulesOf(tx, option.isNew ? undefined : { kind: "plan", id: option.id }, option.planTypeCode, option.values)) {
+          issues.push({ ...broken, message: `${planOptionLabel(option)} — ${broken.message}`, at: { ...broken.at, ownerId: option.id } });
         }
       }
       for (const entry of input.values) issues.push(...await checkSlot(tx, { kind: "product", id }, entry.path, entry.value));
@@ -1215,12 +1240,12 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
         if (!p.generalDocumentId) return notFound(`상품 ${scope.id} 의 보통약관 템플릿`);
         // 오버라이드는 「그 자리의 마스터 선택에 얹는 차이」다 — 자리를 먼저 찾아 마스터를 읽는다.
         const ref = await gate.clauseRef(p.generalDocumentId, nodeId);
-        if (!ref) return notFound(`보통약관 템플릿 ${p.generalDocumentId} 의 공용조항 참조 ${nodeId}`);
-        // 그 자리의 공용조항과 **다른 코드**로 온 행은 받지 않는다 — 조립은 오버라이드를 `nodeId` 로만 얹으므로
+        if (!ref) return notFound(`보통약관 템플릿 ${p.generalDocumentId} 의 함수조항 참조 ${nodeId}`);
+        // 그 자리의 함수조항과 **다른 코드**로 온 행은 받지 않는다 — 조립은 오버라이드를 `nodeId` 로만 얹으므로
         // (`domain/assembly/booklet.ts`) 어긋난 코드로 저장된 선택이 그 자리에 조용히 적용된다 (코덱스 리뷰 후속).
-        if (ref.clauseCode !== clauseCode) return notFound(`보통약관 템플릿 ${p.generalDocumentId} 의 자리 ${nodeId} 에 걸린 공용조항 ${clauseCode}`);
+        if (ref.clauseCode !== clauseCode) return notFound(`보통약관 템플릿 ${p.generalDocumentId} 의 자리 ${nodeId} 에 걸린 함수조항 ${clauseCode}`);
         // 검사는 **합친 결과**로 한다 — 부분 선택(한 옵션만 바꾸기)이 미선택으로 거부되지 않도록 (Important-1).
-        // clauseCode 자체의 유효성(없는 공용조항)은 검증기가 본다.
+        // clauseCode 자체의 유효성(없는 함수조항)은 검증기가 본다.
         const merged = { ...ref.options, ...options };
         const issues = await optionValidator.validate(clauseCode, merged);
         if (issues.length > 0) return invalid(issues);

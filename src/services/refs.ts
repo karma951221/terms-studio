@@ -8,7 +8,7 @@
  *   - `coverageUsageSource(db)`   : coverage `UsageSource.findUsages` — 부착 해제·노드 삭제가 깨뜨릴 문면 사용처.
  *   - `clauseUsageSource(db)`     : clause `UsageSource.documentsReferencing` — 참조 문서(ownerKind coverage/general) + 옵션 선택.
  *   - `documentUsageSource(db)`   : document `UsageSource` — 문서 서비스가 스스로 못 보는 외부 사용처(상품 템플릿 · 담보 문서 연결 ·
- *     옵션 오버라이드 · 공용조항 본문의 별표 참조).
+ *     옵션 오버라이드 · 함수조항 본문의 별표 참조).
  *   - `attributeRefSource(db)`    : product `AttributeRefSource.findExpressionRefs` — 식이 읽는 담보속성(유효값) 사용처.
  * - 「참조 추가 시점 검증」은 각 영역이 한다. 여기는 조회·영향뿐이다.
  *
@@ -64,12 +64,13 @@ import type { UsageSource as DocumentUsageSource } from "./document";
 
 /** DB 전체를 재료로 그래프를 만든다. 주어진 핸들(db 또는 tx)로만 읽는다. */
 export async function loadGraph(db: Db): Promise<RefGraph> {
-  const [discriminators, enums, clauses, documents, appendices, coverages, attributeKinds, productRows] = await Promise.all([
+  const [discriminators, enums, clauses, documents, appendices, boxes, coverages, attributeKinds, productRows] = await Promise.all([
     catalogRepo.listDiscriminators(db),
     catalogRepo.listEnums(db),
     clauseRepo.listClauses(db),
     documentRepo.listDocumentRecords(db),
     documentRepo.listAppendices(db),
+    documentRepo.listBoxes(db),
     coverageRepo.listCoverages(db),
     productRepo.listAttributeKinds(db),
     productRepo.listProducts(db),
@@ -86,6 +87,7 @@ export async function loadGraph(db: Db): Promise<RefGraph> {
     clauses,
     documents: documents.map((d) => ({ id: d.id, kind: d.kind, ...(d.ownerId ? { ownerId: d.ownerId } : {}), title: d.title, ...(d.generalDocumentId ? { generalDocumentId: d.generalDocumentId } : {}), tree: d.tree })),
     appendices,
+    boxes,
     coverages,
     attributeKinds,
     products,
@@ -143,17 +145,17 @@ export function createRefsService(db: Db): RefsService {
 // ───────────────────────────── 공통 — 문서가 읽는 자리 ─────────────────────────────
 
 /** 「참조」로 치는 형태 — 부착·타입·탑재·조합은 뺀다. */
-const REFERENCE_VIAS: readonly EdgeVia[] = ["when", "slot", "expression"];
+const REFERENCE_VIAS: readonly EdgeVia[] = ["when", "slot", "expression", "local", "switchCase", "valueRestrict", "binding", "defaultBinding"];
 
-/** 문서가 읽는 값 자리 하나 — 직접 또는 공용조항·파생을 거쳐서. 좌표는 문서 쪽 자리다. */
+/** 문서가 읽는 값 자리 하나 — 직접 또는 함수조항·파생을 거쳐서. 좌표는 문서 쪽 자리다. */
 interface DocumentRead {
   target: RefNodeKey;
   at: Coordinate;
 }
 
 /**
- * 문서(와 조)가 읽는 구분자·필드·담보속성 자리 전부. 공용조항 참조는 그 본문의 참조로, 파생 참조는 그 식의 참조로 펼친다
- * (ADR-0010 늦은 바인딩 — 공용조항의 식은 사용처 문맥에서 해소되므로 사용처의 값 자리를 읽는 것이다).
+ * 문서(와 조)가 읽는 구분자·필드·담보속성 자리 전부. 함수조항 참조는 그 본문의 참조로, 파생 참조는 그 식의 참조로 펼친다
+ * (함수조항 인자에 연결한 구분자는 사용처 문맥에서 해소되므로 사용처의 값 자리를 읽는 것이다 — 사용처 연결 · 기본 연결, ADR-0076).
  */
 function documentReads(graph: RefGraph, doc: RefNodeKey): DocumentRead[] {
   const out: DocumentRead[] = [];
@@ -169,9 +171,12 @@ function documentReads(graph: RefGraph, doc: RefNodeKey): DocumentRead[] {
     }
   };
   for (const e of referencesFrom(graph, doc)) {
-    if (e.via === "when" || e.via === "slot") expand(e, e.at, new Set());
+    // 사용처의 인자 연결(binding)도 문서가 읽는 구분자다 — 연결한 구분자는 사용처 문맥에서 풀린다 (최종 결정 2)
+    if (e.via === "when" || e.via === "slot" || e.via === "binding") expand(e, e.at, new Set());
     else if (e.via === "clauseRef") {
-      for (const ce of referencesFrom(graph, e.to, { via: ["when", "slot"] })) expand(ce, e.at, new Set());
+      for (const ce of referencesFrom(graph, e.to, { via: ["when", "slot", "local"] })) expand(ce, e.at, new Set());
+      // 사용처가 바꾸지 않은 인자는 기본 연결 구분자를 읽는다
+      for (const ce of referencesFrom(graph, e.to, { via: ["defaultBinding"] })) if (ce.param === undefined || e.bindings?.[ce.param] === undefined) expand(ce, e.at, new Set());
     }
   }
   return out;
@@ -200,6 +205,8 @@ function impactKey(target: ImpactTarget): RefNodeKey {
       return { kind: "enum", enumCode: target.enumCode };
     case "enumValue":
       return { kind: "enumValue", enumCode: target.enumCode, valueCode: target.valueCode };
+    case "enumField":
+      return { kind: "enumField", enumCode: target.enumCode, key: target.key };
   }
 }
 
@@ -223,6 +230,8 @@ export function catalogImpactSource(db: Db): ImpactSource {
           return valuesRepo.countPathRows(db, enumSlots(target.enumCode).map((s) => s.path));
         case "enumValue":
           return refsRepo.countEnumValueRows(db, enumSlots(target.enumCode), target.valueCode);
+        case "enumField":
+          return 0; // 필드 값은 열거형 정의 안에 산다 — 상품 · 세목 값 행이 아니다 (ADR-0078 결정 2)
       }
     },
     async findBrokenRefs(target) {
@@ -236,7 +245,11 @@ export function catalogImpactSource(db: Db): ImpactSource {
         case "enum":
           return valuesRepo.purgePathRows(db, enumSlots(target.enumCode).map((s) => s.path));
         case "enumValue":
-          return refsRepo.purgeEnumValueRows(db, enumSlots(target.enumCode), target.valueCode);
+          // 값 삭제는 값 행을 남긴다 — 코드가 남아 「없는 값」 오류가 된다 (ADR-0078 결정 5). 서비스도 부르지 않는다.
+          return;
+        case "enumField":
+          return; // 값 행이 없다
+
       }
     },
   };
@@ -308,6 +321,7 @@ export function clauseUsageSource(db: Db): ClauseUsageSource {
           ...(e.at.ownerName !== undefined ? { ownerName: e.at.ownerName } : {}),
           ...(refNodeId !== undefined ? { refNodeId } : {}),
           selection: e.options ?? {},
+          ...(e.bindings ? { bindings: e.bindings } : {}),
         });
       }
       return out;
@@ -334,6 +348,13 @@ export function documentUsageSource(): DocumentUsageSource {
     async appendixUsages(tx, code) {
       const graph = await loadGraph(tx);
       return usagesOf(graph, { kind: "appendix", code }, { via: ["appendixRef"] })
+        .filter((e) => e.from.kind === "clause")
+        .map((e) => e.at);
+    },
+    async boxUsages(tx, code) {
+      // 문서 안 박스 참조는 문서 서비스가 스스로 훑는다 — 여기서는 함수조항 본문의 것만
+      const graph = await loadGraph(tx);
+      return usagesOf(graph, { kind: "box", code }, { via: ["boxRef"] })
         .filter((e) => e.from.kind === "clause")
         .map((e) => e.at);
     },

@@ -14,6 +14,8 @@ import type { IdSource } from "./builders";
 import { randomIds } from "./builders";
 import { applyCommand, type Command } from "./commands";
 import { branchesOf, cellNodesOf, indexTree, listOf, slotsOf, type DocumentNode, type Node, type TreeEnv } from "./nodes";
+import { referenceKeys } from "./pcode";
+import { repeatedKeys } from "./blockRepeat";
 import { collectRefs } from "./refs";
 
 /** 편집 명령 — 트리 명령 또는 대응 보통약관 지정(`generalDocumentId` 없음 = 해제). */
@@ -29,12 +31,14 @@ export interface DraftState {
 export interface GeneralRefs {
   /** 조 id — 조연결 대상. */
   articleIds: ReadonlySet<Id>;
-  /** 조 · 항 · 호 · 목 id — `scope:'general'` 조 참조 대상. */
-  referenceIds: ReadonlySet<Id>;
+  /** 참조 대상 열쇠(조 id · 조#코드, `refKey`) — `scope:'general'` 조 참조 대상 (ADR-0072). */
+  referenceKeys: ReadonlySet<string>;
+  /** 반복 블록 안 대상 열쇠 — 대상이 하나여도 연결어가 필요하다 (결정 14 확장). */
+  repeatedKeys?: ReadonlySet<string>;
 }
 
 export interface EditEnv {
-  /** 대응 보통약관을 뺀 검증 환경 (종류 · 별표 · 공용조항 게이트 · 좌표). */
+  /** 대응 보통약관을 뺀 검증 환경 (종류 · 별표 · 함수조항 게이트 · 좌표). */
   env: TreeEnv;
   /** 보통약관 템플릿 id → 그 대상. 없는 문서이거나 보통약관이 아니면 undefined. */
   generalRefs: (generalDocumentId: Id) => GeneralRefs | undefined;
@@ -42,23 +46,18 @@ export interface EditEnv {
   newId?: IdSource;
 }
 
-const REFERABLE = new Set<Node["kind"]>(["article", "paragraph", "item", "subitem"]);
-
 export function generalRefsOf(tree: DocumentNode): GeneralRefs {
+  const ix = indexTree(tree);
   const articleIds = new Set<Id>();
-  const referenceIds = new Set<Id>();
-  for (const e of indexTree(tree).nodes.values()) {
-    if (e.node.kind === "article") articleIds.add(e.node.id);
-    if (REFERABLE.has(e.node.kind)) referenceIds.add(e.node.id);
-  }
-  return { articleIds, referenceIds };
+  for (const e of ix.nodes.values()) if (e.node.kind === "article") articleIds.add(e.node.id);
+  return { articleIds, referenceKeys: referenceKeys(ix), repeatedKeys: repeatedKeys(ix) };
 }
 
 /** 대응 보통약관이 `generalDocumentId` 일 때의 검증 환경. 담보약관이 아직 안 골랐으면 조연결 대상은 빈 집합이다. */
 export function envAt(edit: EditEnv, generalDocumentId: Id | undefined): TreeEnv {
   if (edit.env.kind !== "special") return edit.env;
   const refs = generalDocumentId !== undefined ? edit.generalRefs(generalDocumentId) : undefined;
-  return { ...edit.env, generalArticleIds: refs?.articleIds ?? new Set(), generalReferenceIds: refs?.referenceIds ?? new Set() };
+  return { ...edit.env, generalArticleIds: refs?.articleIds ?? new Set(), generalReferenceKeys: refs?.referenceKeys ?? new Set(), ...(refs?.repeatedKeys ? { generalRepeatedKeys: refs.repeatedKeys } : {}) };
 }
 
 function invalid<T>(message: string): Result<T> {

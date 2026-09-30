@@ -356,14 +356,14 @@ export function omissionPairLabel(n: number, kind?: OmissionPairKind): string {
 }
 
 /**
- * 비교에서 뺀 block 공용조항 참조 노드의 화면 이름 — 보통약관 템플릿 트리에서 그 노드를 찾아 「공용조항 C0003(라벨)」.
- * 트리에 없거나 공용조항 참조가 아니면(템플릿이 바뀐 뒤의 저장본) 노드 id 를 그대로 보인다 — 숨기지 않는다.
+ * 비교에서 뺀 block 함수조항 참조 노드의 화면 이름 — 보통약관 템플릿 트리에서 그 노드를 찾아 「함수조항 C0003(라벨)」.
+ * 트리에 없거나 함수조항 참조가 아니면(템플릿이 바뀐 뒤의 저장본) 노드 id 를 그대로 보인다 — 숨기지 않는다.
  */
 export function excludedClauseLabel(tree: DocumentNode | undefined, nodeId: Id, clauseLabelOf: (code: Code) => string | undefined): string {
   const node = tree ? indexTree(tree).nodes.get(nodeId)?.node : undefined;
   if (!node || node.kind !== "clauseBlockRef") return nodeId;
   const label = clauseLabelOf(node.clauseCode);
-  return `공용조항 ${node.clauseCode}${label ? `(${label})` : ""}`;
+  return `함수조항 ${node.clauseCode}${label ? `(${label})` : ""}`;
 }
 
 // ───────────────────────────── 탑재 표 — 보통약관 기본계약 · 특별약관 (기능/상품 §4.6) ─────────────────────────────

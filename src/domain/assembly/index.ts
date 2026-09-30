@@ -3,7 +3,7 @@
  *
  * - types.ts      : MasterBundle · ProductInput (= AssemblyInput) · 중간 표현(ResolvedDoc · SubstitutedDoc · NumberedDoc) · Booklet · RenderedDoc
  * - context.ts    : 1. buildContexts — 상품담보 스냅샷 문맥 · 보통약관 문맥(기본계약)
- * - resolve.ts    : 2·3. resolveDocument — 조건 해소(밟은 자리만) + 공용조항 인라인화(오버라이드 > 마스터)
+ * - resolve.ts    : 2·3. resolveDocument — 조건 해소(밟은 자리만) + 함수조항 인라인화(오버라이드 > 마스터)
  * - substitute.ts : 4. substituteSlots — 값 슬롯 → 문자열 (포맷 규칙 임시)
  * - omission.ts   : 5. judgeOmission — 조연결 + 리터럴 비교 생략
  * - render.ts     : 6. numberDocument · 8. collectAppendices · 7. renderDocument(조·별표 참조 해소)

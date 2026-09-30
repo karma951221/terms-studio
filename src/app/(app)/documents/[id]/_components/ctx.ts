@@ -1,6 +1,6 @@
 /**
  * L3 저작 화면이 렌더에 쓰는 문맥 — 편집기(`DocumentEditor`)가 한 번 만들어 목차 · 본문 · 우측 패널 · 팝업이 나눠 쓴다.
- * 규칙 없음. 표시명 해소(공용조항 · 별표 · 조 참조)와 조작 콜백만 든다.
+ * 규칙 없음. 표시명 해소(함수조항 · 별표 · 조 참조)와 조작 콜백만 든다.
  *
  * ADR-0074: 조작은 전부 편집본에 명령을 적용할 뿐 서버로 가지 않는다. 가운데 본문이 그 자리 편집기다 —
  * 문장 · 제목 · 조건 머리 줄은 그 자리에서 고치고(초점이 떠나면 편집본에), 칩은 누르면 바로 아래에 팝업, 넣기 · 조작은 본문 위 툴바(오른쪽 클릭 메뉴는 지름길).
@@ -9,14 +9,17 @@ import type { MouseEvent } from "react";
 
 import type { ReactNode } from "react";
 
+import type { EnumDef } from "@/domain/catalog";
 import type { Clause } from "@/domain/clause";
 import type { BranchEvaluation, EditOp, InlineAt, InlineNode, NodeNumber, ReferenceTarget, SlotEvaluation, TableEvaluation } from "@/domain/document";
-import { format, parse, type DisplayName } from "@/domain/expression";
+import { format, parse, type DisplayName, type MemberName } from "@/domain/expression";
+import type { Box } from "@/domain/document/box";
 import type { Code, Id } from "@/domain/types";
 
 import type { ConditionContext } from "./condition/types";
 import type { Token } from "./inlineRuns";
 import type { MenuItem, PopupSpec } from "./menus";
+import type { SwitchSubject } from "./switchCases";
 
 export type DocMode = "read" | "edit";
 
@@ -47,6 +50,8 @@ export interface DocCtx {
   /** 사전평가 결과 — 있으면 안 탄 가지를 톤다운한다. */
   branchEval?: ReadonlyMap<Id, BranchEvaluation>;
   slotEval?: ReadonlyMap<Id, SlotEvaluation>;
+  /** 사전평가 문맥에서 슬롯 참조 하나를 평가 — 미리보기가 펼친 함수조항 본문의 슬롯(인자 연결을 적용한 뒤)을 찍는다. 평가를 켰을 때만. */
+  evalRef?: (ref: string) => SlotEvaluation;
   /**
    * 반복 표 펼침 결과 (ADR-0070 결정 6) — 미리보기(사전평가)의 결과 조문에서만 준다. 있으면 반복 표는 펼친 행으로,
    * 행 0 이면 「표 생략됨」 자리로 그린다. 없으면 템플릿(for 띠) 그대로.
@@ -54,11 +59,13 @@ export interface DocCtx {
   tables?: ReadonlyMap<Id, TableEvaluation>;
   /** 별표 코드 → 이름. */
   appendixName: ReadonlyMap<Code, string>;
-  /** 공용조항 코드 → 표시명. */
+  /** 함수조항 코드 → 표시명. */
   clauseLabel: ReadonlyMap<Code, string>;
-  /** 공용조항 옵션 선택 → 「소멸 사유: 사망」. */
+  /** 함수조항 옵션 선택 → 「소멸 사유: 사망」. */
   optionText: (clauseCode: Code, options: Record<Code, Code>) => string;
   references: { self: ReadonlyMap<Id, ReferenceTarget>; general: ReadonlyMap<Id, ReferenceTarget> };
+  /** 반복 블록 안 참조 대상 열쇠(이 템플릿 · 대응 보통약관) — 대상이 하나여도 연결어를 고른다(결정 14 확장 · ADR-0077 결정 7). */
+  repeatedKeys?: ReadonlySet<string>;
   /** 조건식 칩이 구분자 코드 대신 표시명(`+@노드 이름`)을 찍게 하는 훅 — `condition/display.ts` 의 것과 같다. */
   refLabel?: DisplayName;
   /** 「고칠 자리로」 · 좌표 링크로 잠깐 강조할 노드. */
@@ -66,24 +73,36 @@ export interface DocCtx {
   /** 편집 모드에서만 있다. */
   edit?: EditHandlers;
   /**
-   * 칩 모양을 화면이 바꿔 그리는 훅 — 공용조항 화면이 옵션 자리 운반체(`clauseInlineRef` · `option:O01`)를 「〔옵션명〕」으로 그린다.
+   * 칩 모양을 화면이 바꿔 그리는 훅 — 함수조항 화면이 옵션 자리 운반체(`clauseInlineRef` · `option:O01`)를 「〔옵션명〕」으로 그린다.
    * undefined 를 돌려주면 기본 모양. `what` 은 편집 모드 tooltip 의 칩 이름.
    */
   chipOverride?: (node: InlineNode) => { className: string; title: string; body: ReactNode; what: string } | undefined;
   /**
-   * 조 참조 팝업의 범위를 화면이 정한다 — 공용조항 에디터: 보통약관 · 이 공용조항 · 사용처(기능/공용조항 §3.5).
+   * 조 참조 팝업의 범위를 화면이 정한다 — 함수조항 에디터: 보통약관 · 이 함수조항 · 사용처(기능/함수조항 §3.5).
    * 있으면 이 목록이 범위 고르기가 되고, 고른 범위의 후보만 트리에 선다. 없으면 문면 규칙(담보약관: 이 템플릿 · 대응 보통약관).
    */
   articleRefChoices?: readonly ArticleRefChoice[];
   /** 조건 머리 줄의 변수 목록 문맥 — 노드(가지 · 조건 블록) 자리대로(반복 표 안이면 「현재 행」). 편집 모드에서만 쓴다. */
   conditionFor?: (nodeId: Id) => ConditionContext;
-  /** 공용조항 블록이 본문을 그리는 재료 — 코드로 찾는다. 없으면 이름만. */
+  /** 함수조항 블록이 본문을 그리는 재료 — 코드로 찾는다. 없으면 이름만. */
   clauses?: readonly Clause[];
+  /** 정적 마스터 박스 조회 — 박스 참조를 내용째 그린다(함수조항 블록 안도). 없으면 코드만. */
+  boxOf?: (code: Code) => Box | undefined;
+  /** 블록 반복의 머리 줄 이름 — 별칭 또는 원천에서 지은 이름(「납입면제종마다」 · 「납입면제사유마다」, ADR-0077). 없으면 원천만으로. */
+  repeatLabelOf?: (nodeId: Id) => string;
+  /** 반복 원소 열거값의 표시명 — 조 참조 칩의 값 한정(「⟨값 = 암⟩」) 표기. 없으면 코드. */
+  enumValueLabel?: (code: Code) => string | undefined;
+  /** 함수조항 상자의 값별 분기 칸 머리 — (함수조항, 대상 식, 값 코드) → 값 이름 (최종 결정 8). 없으면 코드. */
+  switchValueLabel?: (clause: Clause, on: string, code: Code) => string | undefined;
+  /** 열거형 조회 — 함수조항 상자 머리의 목록값 상수 연결을 값 이름으로(「질병(상수)」). 없으면 코드. */
+  enumOf?: (code: Code) => EnumDef | undefined;
   /**
-   * 공용조항 블록 안을 무엇으로 그리나 — 기본은 **모델**(슬롯 · 옵션 자리 · 조건 · 참조, `ClauseModel`),
+   * 함수조항 블록 안을 무엇으로 그리나 — 기본은 **모델**(슬롯 · 옵션 자리 · 조건 · 참조, `ClauseModel`),
    * `"text"` 는 고른 선택지 문구를 끼운 문장(미리보기 · 사전평가 결과). 가운데 = 모델, 오른쪽 = 결과 (2026-09-28).
    */
   clauseView?: "model" | "text";
+  /** 값별 분기 대상 후보(목록값 인자 · 내부 변수와 그 값) — 칸 머리가 값 이름 · 칸 없는 값을 그린다. 함수조항 편집기만 준다. */
+  switchSubjects?: readonly SwitchSubject[];
 }
 
 /** 가운데 편집기의 조작 — 편집 모드에서만 준다. */
@@ -115,7 +134,7 @@ export interface EditHandlers {
   contextMenu: (event: MouseEvent<HTMLElement>) => void;
   /** 조건 머리 줄 끝의 작은 버튼(가지 추가 · ELSE · 풀기 · 가지 삭제 · 블록 삭제)이 쓰는 목록 — 툴바의 그 자리 목록과 같다. */
   headItems: (branchId: Id) => MenuItem[];
-  /** 목록 항목 하나를 돌린다 — 툴바 · 오른쪽 클릭 메뉴와 같은 길. 공용조항 블록의 🗑 도 이 길(삭제 확인). */
+  /** 목록 항목 하나를 돌린다 — 툴바 · 오른쪽 클릭 메뉴와 같은 길. 함수조항 블록의 🗑 도 이 길(삭제 확인). */
   run: (item: MenuItem, anchor: Anchor) => void;
   /** 고른 잇닿은 형제 블록(끌어 옮기기 · 위로/아래로가 한꺼번에 옮긴다). 없으면 블록 손잡이도 없다 (`useBlockDrag`). */
   blockSel?: readonly Id[];
@@ -133,7 +152,8 @@ export function chipText(when: string | undefined, mode: DocMode, refLabel?: Dis
 function displayOf(when: string, refLabel: DisplayName | undefined): string {
   if (!refLabel) return when;
   const parsed = parse(when);
-  return parsed.ok ? format(parsed.value, refLabel) : when;
+  // 열거값 필드 읽기 표시 훅이 붙어 있으면(함수조항 편집기 — condition/display.ts refLabelOf) 필드 이름으로
+  return parsed.ok ? format(parsed.value, refLabel, (refLabel as DisplayName & { member?: MemberName }).member) : when;
 }
 
 /** 문장 자리 → DOM `data-inline` 값 (오른쪽 클릭이 자리를 되읽는다). */
@@ -153,6 +173,6 @@ export interface ArticleRefChoice {
   value: "general" | "self" | "host";
   label: string;
   index: ReadonlyMap<Id, ReferenceTarget>;
-  /** 조 줄 없이 항부터 (이 공용조항). */
+  /** 조 줄 없이 항부터 (이 함수조항). */
   rootless?: boolean;
 }

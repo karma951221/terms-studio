@@ -26,7 +26,7 @@
 import { useEffect, useId, useReducer, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import { InfoTip } from "@/app/_components/InfoTip";
-import { IconButton, IconInfo, IconMinusCircle, IconPlusCircle, IconRevert } from "@/app/_components/icons";
+import { IconButton, IconClose, IconInfo, IconMinusCircle, IconPlusCircle, IconRevert } from "@/app/_components/icons";
 import { EXEMPTION_MONTHS } from "@/domain/coverage";
 import { formatPeriod } from "@/domain/master";
 import type { Issue } from "@/domain/types";
@@ -38,6 +38,8 @@ import {
   initFormState,
   isFieldAbsent,
   isFieldHidden,
+  missingEnumCodesOf,
+  toggleEnumCode,
   toSubmission,
   type Draft,
   type FieldState,
@@ -157,37 +159,82 @@ function BooleanInput({ id, field, onEdit, name }: InputProps) {
   );
 }
 
-function EnumInput({ id, field, onEdit, className, name }: InputProps) {
+/** 선택지에 없는 코드 — 지운 열거값이 저장 값에 남은 것 (「없는 값」, ADR-0078 결정 5). */
+function missingCodes(field: FieldState, codes: readonly string[]): string[] {
+  const known = new Set((field.view.enumOptions ?? []).map((o) => o.code));
+  return codes.filter((c) => c !== "" && !known.has(c));
+}
+
+/** 「없는 값 V03」 오류 칩 — 저장 때 고치게 드러낸다. `onRemove` 가 있으면 빼기 버튼(목록값(복수)). */
+function MissingChip({ code, onRemove }: { code: string; onRemove?: () => void }) {
   return (
-    <select
-      id={id}
-      className={className}
-      aria-labelledby={`${id}-label`}
-      name={name ?? field.view.path}
-      value={textDraft(field)}
-      onChange={(e) => onEdit(e.target.value)}
-    >
-      <option value="">— 선택 —</option>
-      {(field.view.enumOptions ?? []).map((o) => (
-        <option key={o.code} value={o.code}>
-          {o.label}
-        </option>
+    <span className="ts-chip is-error" role="alert">
+      없는 값 {code}
+      {onRemove && <IconButton icon={<IconClose />} label={`없는 값 ${code} 빼기`} onClick={onRemove} />}
+    </span>
+  );
+}
+
+/**
+ * 읽기 표시 — 값 문자열에 「없는 값」 칩을 더한다. 지운 열거값 코드는 이름 대신 오류 칩으로만 보인다 (ADR-0078 결정 5).
+ * 미입력이면 `empty` 를 그린다.
+ */
+export function FieldReadValue({ field, empty = "—" }: { field: FieldView; empty?: ReactNode }) {
+  const missing = missingEnumCodesOf(field);
+  if (missing.length === 0) return <>{formatValue(field) || empty}</>;
+  const known = new Set((field.enumOptions ?? []).map((o) => o.code));
+  const codes = (Array.isArray(field.value) ? field.value : [field.value]) as string[];
+  const labels = codes.filter((c) => known.has(c)).map((c) => field.enumOptions!.find((o) => o.code === c)!.label);
+  return (
+    <>
+      {labels.join(", ")}
+      {missing.map((code) => (
+        <MissingChip key={code} code={code} />
       ))}
-    </select>
+    </>
+  );
+}
+
+function EnumInput({ id, field, onEdit, className, name }: InputProps) {
+  const draft = textDraft(field);
+  const missing = missingCodes(field, [draft]);
+  return (
+    <>
+      <select
+        id={id}
+        className={className}
+        aria-labelledby={`${id}-label`}
+        name={name ?? field.view.path}
+        value={draft}
+        onChange={(e) => onEdit(e.target.value)}
+      >
+        <option value="">— 선택 —</option>
+        {missing.map((code) => (
+          // 지운 값 — 고를 수는 없지만 지금 값으로 보여야 한다 (조용히 「— 선택 —」으로 보이면 안 된다)
+          <option key={code} value={code} disabled>
+            없는 값 {code}
+          </option>
+        ))}
+        {(field.view.enumOptions ?? []).map((o) => (
+          <option key={o.code} value={o.code}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      {missing.map((code) => (
+        <MissingChip key={code} code={code} />
+      ))}
+    </>
   );
 }
 
 function ListEnumInput({ id, field, onEdit, name }: InputProps) {
   // list<enum> 전용 입력이라 draft 는 항상 코드 배열이다 (table 의 TableDraft 와는 INPUT_BY_KIND 매핑이 갈라 준다).
   const selected = (Array.isArray(field.draft) ? field.draft : []) as string[];
-  const toggle = (code: string, on: boolean) => {
-    // 선택지 순서를 유지한 채 켜고 끈다
-    const order = (field.view.enumOptions ?? []).map((o) => o.code);
-    const next = new Set(selected);
-    if (on) next.add(code);
-    else next.delete(code);
-    onEdit(order.filter((c) => next.has(c)));
-  };
+  const options = (field.view.enumOptions ?? []).map((o) => o.code);
+  // 선택지 순서를 유지한 채 켜고 끈다 — 없는 값은 남긴다 (빼기로만 지운다)
+  const toggle = (code: string, on: boolean) => onEdit(toggleEnumCode(options, selected, code, on));
+  const missing = missingCodes(field, selected);
   return (
     <span className="ts-form-checks" role="group" aria-labelledby={`${id}-label`}>
       {(field.view.enumOptions ?? []).map((o) => (
@@ -201,6 +248,9 @@ function ListEnumInput({ id, field, onEdit, name }: InputProps) {
           />
           {o.label}
         </label>
+      ))}
+      {missing.map((code) => (
+        <MissingChip key={code} code={code} onRemove={() => toggle(code, false)} />
       ))}
     </span>
   );

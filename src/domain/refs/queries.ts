@@ -2,10 +2,10 @@
  * 참조 그래프 조회 (순수) — 사용처 역인덱스 · 고아 · 순환 · 깨진 참조 · 관계정보 뷰.
  *
  * - `usagesOf`     : 이 실체(와 그 하위 — 구조체면 필드, enum 이면 값, 문서면 조 …)를 참조하는 간선. 좌표가 실려 있다.
- * - `orphans`      : 어디서도 참조되지 않는 구분자·공용조항·별표 (기능/관계정보 §3 「참조 그래프」 고아). 부착·타입 간선은 참조가 아니다.
+ * - `orphans`      : 어디서도 참조되지 않는 구분자·함수조항·별표 (기능/관계정보 §3 「참조 그래프」 고아). 부착·타입 간선은 참조가 아니다.
  * - `cycles`       : 순환 (파생식 · 조 참조 · 조연결 …). 어떤 간선이든 닫힌 경로면 보고한다.
  * - `brokenEdges`  : 대상이 선언되지 않은 참조 — 삭제 뒤 남은 오류 상태 (ADR-0019 「깨진 참조는 오류 상태로」).
- * - `relationView` : 관계정보 뷰 한 구조 — 정방향 · 역방향 · 옵션 오버라이드 사용처(기능/공용조항 §3.2) · 깨진 정방향.
+ * - `relationView` : 관계정보 뷰 한 구조 — 정방향 · 역방향 · 옵션 오버라이드 사용처(기능/함수조항 §3.2) · 깨진 정방향.
  * - 다단 사용처 (ADR-0049 §2 「마스터 필드 → 구분자 → 구분자 → 문면 → 상품」 역인덱스 · 기능/구분자 §4.4):
  *   `dependentDiscriminators`(구분자 → 구분자) · `transitiveUsages`(→ 문면) · `affectedProducts`(→ 상품).
  */
@@ -53,6 +53,47 @@ export function referencesFrom(graph: RefGraph, source: RefNodeKey, opts: UsageO
   const s = nodeKey(source);
   const via = opts.via ? new Set(opts.via) : undefined;
   return graph.edges.filter((e) => (!via || via.has(e.via)) && underOrSelf(graph, e.from, s));
+}
+
+/** 값을 나열해 비교하는 참조의 형태 — 조건식 · 슬롯 · 구분자 식 · 함수조항 내부 변수 · 값별 분기 칸(새 값은 미배정). */
+const VALUE_LISTING_VIAS: readonly EdgeVia[] = ["when", "slot", "expression", "local", "switchCase", "valueRestrict"];
+
+/**
+ * 열거값 추가의 재검사 목록 — 그 열거형의 값 코드와 비교하는(`= 'V02'` · `.있음('V02')`) 조건식 · 슬롯 · 구분자 식 · 함수조항 내부 변수 간선
+ * (ADR-0078 결정 4 · 최종 결정 20).
+ * 값별 분기(switchCase)는 새 값이 그 분기에서 미배정이 된다 — 분기 하나에 한 번(좌표 = 분기 노드) 선다 (최종 결정 5).
+ * 값 한정 참조(valueRestrict)는 새 값이 한정에 들지 않는다 — 참조 자리 · 대상마다 한 번 선다 (최종 결정 13).
+ * 값을 나열한 곳은 새 값을 조용히 놓치므로 사람이 다시 본다. 지운 값을 비교하는 간선(깨진 참조)도 든다.
+ * 한 자리가 값을 여럿 비교하면(`D = 'V01' or D = 'V02'`) 좌표 하나로 모은다. 등장 순.
+ */
+export function enumValueListers(graph: RefGraph, enumCode: Code): RefEdge[] {
+  const seen = new Set<string>();
+  const out: RefEdge[] = [];
+  for (const e of graph.edges) {
+    if (e.to.kind !== "enumValue" || e.to.enumCode !== enumCode || !VALUE_LISTING_VIAS.includes(e.via)) continue;
+    const key = `${e.via}|${nodeKey(e.from)}|${JSON.stringify(e.at)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(e);
+  }
+  return out;
+}
+
+/**
+ * 열거형 필드 삭제 · 타입 변경의 재검사 목록 — 그 필드를 읽는(`.필드` · `.거르기(필드 = …)`) 함수조항 식 간선 (ADR-0078 결정 2 · 최종 결정 18).
+ * 저장은 막지 않는다 — 읽는 곳을 사람이 다시 본다. 한 자리가 여러 필드를 읽어도 좌표 하나로. 등장 순.
+ */
+export function enumFieldReaders(graph: RefGraph, enumCode: Code, keys: readonly Code[]): RefEdge[] {
+  const seen = new Set<string>();
+  const out: RefEdge[] = [];
+  for (const e of graph.edges) {
+    if (e.to.kind !== "enumField" || e.to.enumCode !== enumCode || !keys.includes(e.to.key)) continue;
+    const key = `${e.via}|${nodeKey(e.from)}|${JSON.stringify(e.at)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(e);
+  }
+  return out;
 }
 
 // ───────────────────────────── 다단 사용처 ─────────────────────────────
@@ -106,7 +147,7 @@ export function dependentDiscriminators(graph: RefGraph, code: Code): DependentD
 }
 
 export interface TransitiveUsage {
-  /** 문면(조 · 문서 · 공용조항 본문)의 조건식 · 슬롯 참조 간선. */
+  /** 문면(조 · 문서 · 함수조항 본문)의 조건식 · 슬롯 참조 간선. */
   edge: RefEdge;
   /** 거쳐 온 구분자 체인. 이 구분자를 직접 읽으면 `[]`. */
   via: Code[];
@@ -145,10 +186,10 @@ export interface AffectedProduct {
  *
  * 출발점은 두 종류다:
  * - **구분자**(코드 또는 키): 자기와 의존 구분자의 문면 사용처(`transitiveUsages`)에서.
- * - **공용조항**: `clauseRef` 역방향의 참조 문서·조에서 — 정의를 고치면 이 상품들의 저장된 미리보기가 오래된 결과가 된다
- *   (기능/공용조항 §3.4 검사 ③ 은 상품 미리보기에서 돈다 · 기능/조립산출 §3.6).
+ * - **함수조항**: `clauseRef` 역방향의 참조 문서·조에서 — 정의를 고치면 이 상품들의 저장된 미리보기가 오래된 결과가 된다
+ *   (기능/함수조항 §3.4 검사 ③ 은 상품 미리보기에서 돈다 · 기능/조립산출 §3.6).
  *
- * 사용처 노드에서 상품까지: 공용조항이면 `clauseRef` 역방향으로 참조 문서로 → 조는 문서로 올려서 →
+ * 사용처 노드에서 상품까지: 함수조항이면 `clauseRef` 역방향으로 참조 문서로 → 조는 문서로 올려서 →
  *   (a) `document` 역방향으로 담보 마스터 → `mount` 역방향으로 상품담보 → 부모 상품,
  *   (b) 보통약관이면 `generalDocument` 역방향으로 상품(직접) 또는 담보약관(다시 (a)).
  * 그래프에 선언되지 않은 노드(깨진 간선)는 건너뛴다. 문서 ↔ 문서 순환은 방문 집합으로 끊는다.
@@ -193,7 +234,7 @@ export function affectedProducts(graph: RefGraph, target: Code | RefNodeKey): Af
       if (declared(doc)) fromDocument(doc, [...through, node, doc], new Set());
     } else if (node.kind === "document") fromDocument(node, [...through, node], new Set());
   };
-  /** 공용조항 사용처는 참조 문서·조에서 출발. `through` 의 머리는 출발이 구분자면 공용조항(거쳐 온 사용처), 공용조항 자신이면 비워 둔다. */
+  /** 함수조항 사용처는 참조 문서·조에서 출발. `through` 의 머리는 출발이 구분자면 함수조항(거쳐 온 사용처), 함수조항 자신이면 비워 둔다. */
   const fromClause = (clause: RefNodeKey, through: RefNodeKey[]): void => {
     for (const referrer of sourcesOf(clause, "clauseRef")) fromNode(referrer, through);
   };
@@ -209,9 +250,9 @@ export function affectedProducts(graph: RefGraph, target: Code | RefNodeKey): Af
 
 // ───────────────────────────── 고아 ─────────────────────────────
 
-const ORPHAN_KINDS: readonly RefNodeKey["kind"][] = ["discriminator", "clause", "appendix"];
+const ORPHAN_KINDS: readonly RefNodeKey["kind"][] = ["discriminator", "clause", "appendix", "box"];
 
-/** 어디서도 참조되지 않는 구분자·공용조항·별표 (종류 순 · 선언 순). */
+/** 어디서도 참조되지 않는 구분자·함수조항·별표·박스 (종류 순 · 선언 순). */
 export function orphans(graph: RefGraph): RefNodeInfo[] {
   const referenced = new Set<string>();
   for (const e of graph.edges) {
@@ -305,7 +346,7 @@ export interface RefStats {
   nodes: number;
   /** 간선(참조) 수 전부 — 「참조 M 건 중 깨짐 N」의 분모. */
   edges: number;
-  /** 고아 판정 대상 수 — 구분자·공용조항·별표. 「참조 노드 N 개 중 고아 M」의 분모다. */
+  /** 고아 판정 대상 수 — 구분자·함수조항·별표. 「참조 노드 N 개 중 고아 M」의 분모다. */
   orphanCandidates: number;
 }
 
@@ -322,6 +363,7 @@ function codeOf(key: RefNodeKey): string | undefined {
     case "discriminator":
     case "clause":
     case "appendix":
+    case "box":
     case "attribute":
       return key.code;
     case "enum":
@@ -336,6 +378,8 @@ function selfFragment(key: RefNodeKey): string {
   switch (key.kind) {
     case "enumValue":
       return `값 ${key.valueCode}`;
+    case "enumField":
+      return `필드 ${key.key}`;
     case "clauseOption":
       return `옵션 ${key.optionCode}`;
     case "clauseOptionValue":
@@ -396,8 +440,10 @@ export function describeKey(key: RefNodeKey, graph?: RefGraph): string {
       return `enum ${key.enumCode}`;
     case "enumValue":
       return `enum 값 ${key.enumCode}/${key.valueCode}`;
+    case "enumField":
+      return `enum 필드 ${key.enumCode}/${key.key}`;
     case "clause":
-      return `공용조항 ${key.code}`;
+      return `함수조항 ${key.code}`;
     case "clauseOption":
       return `옵션 ${key.clauseCode}.${key.optionCode}`;
     case "clauseOptionValue":
@@ -408,6 +454,8 @@ export function describeKey(key: RefNodeKey, graph?: RefGraph): string {
       return `조 ${key.articleId} (문서 ${key.documentId || "?"})`;
     case "appendix":
       return `별표 ${key.code}`;
+    case "box":
+      return `박스 ${key.code}`;
     case "coverageNode":
       return `${key.level} ${key.id}`;
     case "attribute":
@@ -433,7 +481,7 @@ export interface RelationView {
   outgoing: RefEdge[];
   /** 이것(과 하위)을 참조하는 것 — 옵션 오버라이드는 제외 (따로). */
   incoming: RefEdge[];
-  /** 옵션별 오버라이드 사용처 (기능/공용조항 §3.2). */
+  /** 옵션별 오버라이드 사용처 (기능/함수조항 §3.2). */
   overrides: RefEdge[];
   /** outgoing 중 대상이 없는 것. */
   broken: RefEdge[];
