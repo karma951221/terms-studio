@@ -1,5 +1,5 @@
 /**
- * 공용조항 저장소 — drizzle 쿼리만. 규칙 없음 (규칙은 src/domain/clause, 조립은 src/services/clause).
+ * 함수조항 저장소 — drizzle 쿼리만. 규칙 없음 (규칙은 src/domain/clause, 조립은 src/services/clause).
  *
  * 도메인 객체(Clause) ↔ 행 매핑. 본문·옵션은 jsonb 그대로.
  * 채번은 카탈로그와 같은 code_sequences 테이블을 쓰되 kind 를 달리한다 (`clause` · `clauseOption` · `clauseOptionValue`).

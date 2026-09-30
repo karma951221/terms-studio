@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * 공용조항 에디터 — `/functions/new`(생성) · `/functions/<code>`(상세) 한 벌 (기능/함수조항 §4.2 · §4.3).
+ * 함수조항 에디터 — `/functions/new`(생성) · `/functions/<code>`(상세) 한 벌 (기능/함수조항 §4.2 · §4.3).
  *
- * 한 화면 두 단 — 왼쪽은 위에서 아래로 「공용조항명 · 유형」 → 「본문」(툴바 + 약관 에디터), 오른쪽은 옵션 목록. 좁으면 옵션이 아래로 내려간다.
+ * 한 화면 두 단 — 왼쪽은 위에서 아래로 「함수조항명 · 유형」 → 「본문」(툴바 + 약관 에디터), 오른쪽은 옵션 목록. 좁으면 옵션이 아래로 내려간다.
  * - 본문은 **문면 저작 에디터를 그대로 쓴다**(§6.2) — 본문을 편집 트리(문서 › 조 하나)로 싸서(`clauseBodyToTree`) 문면의 편집 명령
- *   (`applyEdit`) · 렌더러(`Block` · `InlineSlot`) · 툴바 · 팝업을 쓰고, 저장 때 공용조항 본문으로 되돌린다(`treeToClauseBody`).
- *   다른 점은 자리뿐이다 — 조 · 관 · 공용조항 참조는 툴바에서 잠기고(사유 tooltip), 조 참조는 보통약관 대상만, 옵션 자리 넣기가 더해진다(`clauseMenus`).
+ *   (`applyEdit`) · 렌더러(`Block` · `InlineSlot`) · 툴바 · 팝업을 쓰고, 저장 때 함수조항 본문으로 되돌린다(`treeToClauseBody`).
+ *   다른 점은 자리뿐이다 — 조 · 관 · 함수조항 참조는 툴바에서 잠기고(사유 tooltip), 조 참조는 보통약관 대상만, 옵션 자리 넣기가 더해진다(`clauseMenus`).
  *   「문구」 유형은 문장 한 줄(항 · 호 · 목 없음), 「항」 유형은 빈 항 하나에서 시작한다 — 어디에 쓰는지가 처음부터 보인다.
  * - 유형은 생성 화면에서만 고른다(본문이 비어 있을 때) — 목록 `+` 메뉴의 고름은 처음 값일 뿐이다.
  * - 옵션 목록: 본문 옆에 늘 보이는 단(`OptionsPane`).
@@ -161,8 +161,8 @@ function unionRefs(generals: ClauseEditorData["generals"]): GeneralRefs {
 }
 
 /**
- * 보통약관 범위 조 참조 후보 — 보통약관의 조 · 항 · 호 · 목. 이 공용조항이 실려 있는 보통약관의 그 조(와 그 아래)는 뺀다 —
- * 제 조 안은 「이 공용조항」 범위로 가리킨다 (§3.5).
+ * 보통약관 범위 조 참조 후보 — 보통약관의 조 · 항 · 호 · 목. 이 함수조항이 실려 있는 보통약관의 그 조(와 그 아래)는 뺀다 —
+ * 제 조 안은 「이 함수조항」 범위로 가리킨다 (§3.5).
  */
 function generalTargets(generals: ClauseEditorData["generals"], code: string | undefined): Map<Id, ReferenceTarget> {
   const out = new Map<Id, ReferenceTarget>();
@@ -264,7 +264,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
         JSON.stringify(params) !== JSON.stringify(props.params) ||
         JSON.stringify(locals) !== JSON.stringify(props.locals));
 
-  // ── 편집 환경 — 문면 저작과 같은 명령 검사. 공용조항 참조 자리는 옵션 운반체만 통과한다(진짜 참조는 중첩 금지) ──
+  // ── 편집 환경 — 문면 저작과 같은 명령 검사. 함수조항 참조 자리는 옵션 운반체만 통과한다(진짜 참조는 중첩 금지) ──
   const appendixCodes = useMemo(() => new Set(data.appendices.map((a) => a.code)), [data.appendices]);
   const boxByCode = useMemo(() => new Map(data.boxes.map((x) => [x.code, x] as const)), [data.boxes]);
   const refs = useMemo(() => unionRefs(data.generals), [data.generals]);
@@ -286,7 +286,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   const index = useMemo(() => indexTree(tree), [tree]);
   const numbers = useMemo(() => numberTree(tree), [tree]);
   const general = useMemo(() => generalTargets(data.generals, code), [data.generals, code]);
-  // 조 참조 범위 — 보통약관 · 이 공용조항(「항」 유형만 — 본문의 항 · 호 · 목) · 사용처 위치 (§3.5)
+  // 조 참조 범위 — 보통약관 · 이 함수조항(「항」 유형만 — 본문의 항 · 호 · 목) · 사용처 위치 (§3.5)
   const refChoices = useMemo((): ArticleRefChoice[] => {
     const own = referenceTargetIndex(tree, numbers);
     return [
@@ -308,7 +308,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   const positions = useMemo(() => clausePositions(tree), [tree]);
   const chipOverride = useCallback(
     (node: InlineNode) => {
-      // 이 공용조항의 항 · 사용처 위치 조 참조 — 본문 안 순번으로 적는다 (§3.5)
+      // 이 함수조항의 항 · 사용처 위치 조 참조 — 본문 안 순번으로 적는다 (§3.5)
       const scoped = clauseScopedRefLabel(node, positions);
       if (scoped !== undefined) return { className: "ts-doc-ref", what: "조 참조", title: "조 참조 — 사용처에 펼치면 그 자리의 계산 번호로 찍힌다", body: scoped };
       const optionCode = optionCodeOf(node);
@@ -475,7 +475,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     },
     pasteGrid: () => false,
     setTitle: () => undefined,
-    // 공용조항 본문에는 옛 문면 박스 노드가 없다 — 박스는 정적 마스터 박스 참조(기능/박스)
+    // 함수조항 본문에는 옛 문면 박스 노드가 없다 — 박스는 정적 마스터 박스 참조(기능/박스)
     setBox: () => undefined,
     popup: (spec, anchor) => setPop({ spec, anchor }),
     focusInline: () => undefined,
@@ -562,7 +562,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
         return;
       }
       if (isNew) {
-        // 만들어진 공용조항의 상세(읽기)로 — 편집 중 표시를 먼저 내려 「버립니까?」가 뜨지 않게 한다
+        // 만들어진 함수조항의 상세(읽기)로 — 편집 중 표시를 먼저 내려 「버립니까?」가 뜨지 않게 한다
         setEditing(false);
         router.push(`/functions/${out.code}`);
         return;

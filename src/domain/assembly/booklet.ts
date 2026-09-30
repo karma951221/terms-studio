@@ -36,7 +36,7 @@ import { articlesOf } from "./walk";
  * 사라지므로 순번으로 기본계약 쪽 id 에 잇는다.
  *
  * **구조가 같음을 증명한 경우에만 잇는다** (2026-09-08 리뷰 3): 양쪽 모두 항·호·목만으로 이뤄져 있고 개수가 같아야 한다.
- * 마스터에 조건 블록·공용조항 참조·표가 있거나 개수가 다르면 어느 항이 어느 항인지 알 수 없으므로 별칭을 만들지 않는다 —
+ * 마스터에 조건 블록·함수조항 참조·표가 있거나 개수가 다르면 어느 항이 어느 항인지 알 수 없으므로 별칭을 만들지 않는다 —
  * 그 참조는 `articleGone` 오류로 드러난다 (조용한 오연결보다 낫다).
  */
 /**
@@ -50,7 +50,7 @@ function positionAliases(master: ArticleNode, base: RArticle<SInline>): [string,
 }
 
 function positionPairs(master: ArticleNode, base: RArticle<SInline>): [{ code?: string }, { key?: string }][] {
-  // 마스터에 동적 노드(조건 블록 · 공용조항 참조 · 반복)가 있으면 항이 몇 개로 펼쳐질지 알 수 없다 — 별칭을 만들지 않는다.
+  // 마스터에 동적 노드(조건 블록 · 함수조항 참조 · 반복)가 있으면 항이 몇 개로 펼쳐질지 알 수 없다 — 별칭을 만들지 않는다.
   // 박스 참조(boxRef)는 항을 펼치지 않는다 — 정적 박스와 같다 (기능/박스 §3.2)
   const dynamicNode = (c: { kind: string }) => c.kind === "condBlock" || c.kind === "forBlock" || c.kind === "clauseBlockRef";
   const masterParagraphs = master.children.filter((c) => c.kind === "paragraph");

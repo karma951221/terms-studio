@@ -3,8 +3,8 @@
  *
  * - 읽기 표기는 문면 편집기 읽기 모드(`documents/[id]/_components/DocBody.tsx`)를 따른다 — 다만 `DocCtx`(편집·평가 문맥)에
  *   기대지 않고 이 컴포넌트가 직접 그린다. 조작은 하나도 없다.
- * - **유일한 입력은 공용조항 상자 안의 옵션 선택**이다 (기능/함수조항 §3.2 · 기능/상품 §3.6). 마스터 기본값을 옆에 보이고,
- *   다르면 「오버라이드」 배지 + 되돌리기(↺). 상자 안에는 그 공용조항의 **모델**(`ClauseModel` — 슬롯 · 옵션 자리 · 조건 · 참조)이 선다.
+ * - **유일한 입력은 함수조항 상자 안의 옵션 선택**이다 (기능/함수조항 §3.2 · 기능/상품 §3.6). 마스터 기본값을 옆에 보이고,
+ *   다르면 「오버라이드」 배지 + 되돌리기(↺). 상자 안에는 그 함수조항의 **모델**(`ClauseModel` — 슬롯 · 옵션 자리 · 조건 · 참조)이 선다.
  * - 끈 조는 자리에 남되 흐리게 + 「노출 끔」 (다시 켜는 것은 목차에서).
  * - **조를 감싼 조건 블록도 그대로 그린다** — 목차는 조건 블록을 펴지만(조는 어디 있든 한 줄),
  *   원문에서 조상 조건식을 잃으면 조건부인 조가 무조건 있는 것처럼 보인다 (코덱스 리뷰 2026-09-15 Important-3).
@@ -35,7 +35,7 @@ export interface TemplateSourceProps {
   references: ReadonlyMap<Id, ReferenceTarget>;
   clauses: readonly Clause[];
   overrides: readonly ClauseOptionOverride[];
-  /** page.tsx 가 `document.refs` 로 만든 공용조항 자리 — 노드 id 로 찾는다. */
+  /** page.tsx 가 `document.refs` 로 만든 함수조항 자리 — 노드 id 로 찾는다. */
   overrideTargets: readonly OverrideTarget[];
   /** 별표 코드 → 이름 — 별표 참조 칩. 없으면 코드. */
   appendices?: readonly { code: Code; name: string }[];
@@ -164,7 +164,7 @@ function Inlines({ nodes, ctx }: { nodes: readonly InlineNode[]; ctx: Ctx }) {
 
 type ClauseInlineRef = Extract<InlineNode, { kind: "clauseInlineRef" }>;
 
-/** 문장 안 공용조항 참조 — 옵션 박스는 문장 흐름을 끊지 않도록 그 항 **아래**에 모아 선다. */
+/** 문장 안 함수조항 참조 — 옵션 박스는 문장 흐름을 끊지 않도록 그 항 **아래**에 모아 선다. */
 function inlineClauseRefs(nodes: readonly InlineNode[]): ClauseInlineRef[] {
   return nodes.flatMap((n) =>
     n.kind === "clauseInlineRef" ? [n] : n.kind === "inlineCond" ? n.branches.flatMap((br) => inlineClauseRefs(br.children)) : n.kind === "inlineFor" ? inlineClauseRefs(n.children) : [],
@@ -172,7 +172,7 @@ function inlineClauseRefs(nodes: readonly InlineNode[]): ClauseInlineRef[] {
 }
 
 /**
- * 블록 아래의 **모든** 공용조항 인라인 참조 — 호·목·표 셀·중첩 조건 블록·반복까지 (코덱스 리뷰 2026-09-15 Important-2).
+ * 블록 아래의 **모든** 함수조항 인라인 참조 — 호·목·표 셀·중첩 조건 블록·반복까지 (코덱스 리뷰 2026-09-15 Important-2).
  * 이전에는 항 본문만 모아, 호·목·표 셀의 참조에는 옵션을 고를 자리가 아예 없었다.
  */
 function blockClauseRefs(nodes: readonly Node[]): ClauseInlineRef[] {
@@ -209,7 +209,7 @@ function dedupeRefs(refs: readonly ClauseInlineRef[]): ClauseInlineRef[] {
   return refs.filter((r) => !seen.has(r.id) && (seen.add(r.id), true));
 }
 
-// ───────────────────────────── 공용조항 박스 ─────────────────────────────
+// ───────────────────────────── 함수조항 박스 ─────────────────────────────
 
 /**
  * 머리 줄의 인자 연결 — 「사유 ← 납입면제사유(기본)」 (최종 결정 8 · 문면 편집기 상자 머리와 같은 말). 사용처가 대지 않은 인자는 기본 연결에 「(기본)」.
@@ -235,9 +235,9 @@ function argsText(clause: Clause, bindings: Bindings | undefined, ctx: Ctx): str
 }
 
 /**
- * 공용조항 자리 — 문면 편집기와 같은 상자(머리 띠 「공용조항 (이름)」)에 **그 공용조항의 모델**을 편다 (2026-09-28).
- * 가운데는 모델(슬롯 · 옵션 자리 · 조건 · 참조), 오른쪽은 조립 결과 — 둘을 나란히 대조한다. 공용조항 자체는 공용조항 화면에서 고친다.
- * 모델 아래에 이 자리의 옵션 선택(마스터 기본 · 이 상품 오버라이드)이 선다 — 옵션이 없는 공용조항이면 선택 줄도 없다.
+ * 함수조항 자리 — 문면 편집기와 같은 상자(머리 띠 「함수조항 (이름)」)에 **그 함수조항의 모델**을 편다 (2026-09-28).
+ * 가운데는 모델(슬롯 · 옵션 자리 · 조건 · 참조), 오른쪽은 조립 결과 — 둘을 나란히 대조한다. 함수조항 자체는 함수조항 화면에서 고친다.
+ * 모델 아래에 이 자리의 옵션 선택(마스터 기본 · 이 상품 오버라이드)이 선다 — 옵션이 없는 함수조항이면 선택 줄도 없다.
  */
 function ClauseBox({ nodeId, clauseCode, baseOptions, bindings, ctx }: { nodeId: Id; clauseCode: Code; baseOptions: Record<Code, Code>; bindings: Bindings | undefined; ctx: Ctx }) {
   const clause = ctx.clauseByCode.get(clauseCode);
@@ -329,14 +329,14 @@ function StaticTableView({ node, ctx }: { node: TableNode; ctx: Ctx }) {
 }
 
 /**
- * `gathered` = **위쪽 항이 이 아래의 공용조항 참조를 이미 모았다**는 표시.
+ * `gathered` = **위쪽 항이 이 아래의 함수조항 참조를 이미 모았다**는 표시.
  * 항은 제 호·목·표 셀까지 재귀로 모아 항 아래 한 줄로 세우므로, 그 안의 표가 같은 박스를 또 그리면 안 된다.
  */
 function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: Ctx; inList?: boolean; gathered?: boolean }) {
   return nodes.map((node) => {
     switch (node.kind) {
       case "paragraph": {
-        // 읽는 순서 — 항 본문 → 호·목·표 → 이 항이 품은 공용조항 박스들.
+        // 읽는 순서 — 항 본문 → 호·목·표 → 이 항이 품은 함수조항 박스들.
         const boxes = dedupeRefs([...inlineClauseRefs(node.children), ...blockClauseRefs(node.items ?? [])]);
         return (
           <div key={node.id} className={ctx.numbers.get(node.id)?.label ? "ts-doc-paragraph" : "ts-doc-paragraph is-bare"}>
@@ -373,7 +373,7 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
         );
 
       case "clauseBlockRef":
-        // 호 목록 자리(항 · 호 뒤)의 공용조항은 「박스」 — 목록 안이면 <li>
+        // 호 목록 자리(항 · 호 뒤)의 함수조항은 「박스」 — 목록 안이면 <li>
         return inList ? (
           <li key={node.id} className="ts-doc-static-item">
             <ClauseBox nodeId={node.id} clauseCode={node.clauseCode} baseOptions={node.options} bindings={node.bindings} ctx={ctx} />
@@ -406,7 +406,7 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
         });
 
       case "table": {
-        // 조 바로 아래의 표 — 항이 없으니 셀의 공용조항 박스를 표 뒤에 직접 세운다.
+        // 조 바로 아래의 표 — 항이 없으니 셀의 함수조항 박스를 표 뒤에 직접 세운다.
         const boxes = gathered ? [] : dedupeRefs(tableClauseRefs(node));
         const body = (
           <>
@@ -457,7 +457,7 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
         );
       }
 
-      // 글머리 목록 — 번호 없는 「-」 항목 (항목 문장의 공용조항 박스는 목록 뒤)
+      // 글머리 목록 — 번호 없는 「-」 항목 (항목 문장의 함수조항 박스는 목록 뒤)
       case "bullet":
         return (
           <li key={node.id} className="ts-doc-bullet">

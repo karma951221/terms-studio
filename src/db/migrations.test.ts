@@ -267,7 +267,7 @@ describe("0017_attribute_value_numeric_code", () => {
     await client.query(`INSERT INTO product_coverage_attributes (product_coverage_id, kind_code, value_code) VALUES ($1, 'A0001', 'V02')`, [PC]);
     await insertDiscriminator("D0001", "exist(attr.A0001) and attr.A0001 = 'V02'");
     await insertDiscriminator("D0002", "attr.A0001 ≠ 'V10' or 'V01' = attr.A0001");
-    // enum 값 비교 · 공용조항 옵션 선택 코드는 다른 기능 — 그대로
+    // enum 값 비교 · 함수조항 옵션 선택 코드는 다른 기능 — 그대로
     await insertDiscriminator("D0003", "D0009 = 'V02'");
     await client.query(`INSERT INTO enums (id, code, label) VALUES ($1, 'E0001', '고지유형')`, [ENUM]);
     await client.query(`INSERT INTO enum_values (enum_id, code, label, "order") VALUES ($1, 'V01', '일반심사', 0)`, [ENUM]);

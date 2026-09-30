@@ -78,7 +78,7 @@ describe("product 서비스 (PGlite)", () => {
       generalDocuments: {
         exists: async (id) => id === GENERAL_DOC || id === OTHER_DOC,
         articleIds: async (id) => (id === GENERAL_DOC ? [ART_A, ART_B] : id === OTHER_DOC ? [ART_OTHER] : []),
-        // GENERAL_DOC 의 공용조항 참조 자리 하나 — 마스터 기본 선택은 { style: "A", tone: "T1" } 이다.
+        // GENERAL_DOC 의 함수조항 참조 자리 하나 — 마스터 기본 선택은 { style: "A", tone: "T1" } 이다.
         clauseRef: async (id, nodeId) => (id === GENERAL_DOC && (nodeId === NODE || nodeId === SEED_NODE) ? { clauseCode: "C0001", options: MASTER_OPTIONS } : undefined),
       },
       generalAttachment: { requiredRefs: async () => required },

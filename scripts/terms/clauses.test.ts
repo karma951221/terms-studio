@@ -37,8 +37,8 @@ function article(children: InlineNode[]): ArticleNode {
   return { id: "s-a3", kind: "article", title: "특별약관의 소멸", children: [{ id: "s-a3-p2", kind: "paragraph", children }] };
 }
 
-describe("공용조항 오버레이 — 원문 자리를 참조로", () => {
-  it("평문 → 공용조항 인라인: {O01} 은 옵션 자리 · 보통약관 조 참조는 scope 를 뗀다 · 자기 조 참조는 거부", () => {
+describe("함수조항 오버레이 — 원문 자리를 참조로", () => {
+  it("평문 → 함수조항 인라인: {O01} 은 옵션 자리 · 보통약관 조 참조는 scope 를 뗀다 · 자기 조 참조는 거부", () => {
     const body = inlineBody("가 {O01} 나", "c1", (t, newId) => [text(newId(), t)]);
     expect(body.map((n) => n.kind)).toEqual(["text", "optionSlot", "text"]);
     expect(toClauseInline(ref("r", "g-a9", "general"))).toEqual({ id: "r", kind: "articleRef", targets: [{ articleId: "g-a9" }], connector: "및" });
@@ -69,7 +69,7 @@ describe("공용조항 오버레이 — 원문 자리를 참조로", () => {
     expect(report[0]).toMatch(/문구를 찾지 못함/);
   });
 
-  it("「항」 — 항의 가능한 렌더가 모두 공용조항 렌더 안에 있어야 항 전체를 참조로 바꾼다", () => {
+  it("「항」 — 항의 가능한 렌더가 모두 함수조항 렌더 안에 있어야 항 전체를 참조로 바꾼다", () => {
     const block: ClauseRecord = { ...INLINE, code: "C0011", mode: "block", options: [], body: [{ id: "p", kind: "paragraph", children: [{ id: "x", kind: "text", text: "합산합니다." }] }] };
     const a = article([text("x", "합산합니다.")]);
     expect(applyClauseUse({ article: "3", paragraph: 2, clause: "C0011" }, block, () => a, "[t]", [])).toBe(true);
@@ -115,7 +115,7 @@ describe("공용조항 오버레이 — 원문 자리를 참조로", () => {
     expect(p.items[0].children).toEqual([{ id: "s-a4-p1-i1-k1", kind: "clauseInlineRef", clauseCode: "C0004", options: { O01: "V01" } }]);
   });
 
-  describe("조째 공용조항 — 자기 조 참조는 제 항 · 사용처 위치로 (기능/함수조항 §3.5)", () => {
+  describe("조째 함수조항 — 자기 조 참조는 제 항 · 사용처 위치로 (기능/함수조항 §3.5)", () => {
     /** 특약 — 제1조 지급사유 · 제2조 세부규정 · 제3조 소멸(① 제1조 참조 · ② 제1항 참조 · ③ 사망). */
     function special(prefix: string, lapse: string): DocumentNode {
       const p = (id: string, children: InlineNode[]): ParagraphNode => ({ id, kind: "paragraph", children });
@@ -147,7 +147,7 @@ describe("공용조항 오버레이 — 원문 자리를 참조로", () => {
       for (const [id, path] of hostPaths(d)) expect(find(path)).toEqual(targetOfNode(ix, id));
     });
 
-    it("원문 자리에서 딴 본문 — 딴 항 안은 「이 공용조항」, 밖은 「사용처」 위치 · 낱말은 옵션 자리 · id 는 다시 매겨도 제 항 대상이 따라간다", () => {
+    it("원문 자리에서 딴 본문 — 딴 항 안은 「이 함수조항」, 밖은 「사용처」 위치 · 낱말은 옵션 자리 · id 는 다시 매겨도 제 항 대상이 따라간다", () => {
       const d = special("s", "그 때부터 소멸됩니다");
       const body = clauseFromSource(d, lapseOf(d).children as ParagraphNode[], "C0009");
       placeOptions(body, [{ option: "O01", text: "그 때부터 소멸됩니다" }], "C0009");

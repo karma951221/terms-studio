@@ -1,5 +1,5 @@
 /**
- * 공용조항 모델 — 사용처 상자 안에 공용조항이 **어떻게 짜였는지**가 보여야 한다 (2026-09-28 사용자 QA:
+ * 함수조항 모델 — 사용처 상자 안에 함수조항이 **어떻게 짜였는지**가 보여야 한다 (2026-09-28 사용자 QA:
  * 「대표자의 지정」이 가운데 편집기에서 접힌 이름표로만 보여 모델을 알 수 없었다).
  */
 import { renderToStaticMarkup } from "react-dom/server";
@@ -10,7 +10,7 @@ import type { ReferenceTarget } from "@/domain/document";
 
 import { ClauseModel } from "./ClauseModel";
 
-/** 슬롯 · 옵션 자리 · 문장 안 조건 · 조 참조 · 별표 참조 · 블록 조건을 다 가진 공용조항. */
+/** 슬롯 · 옵션 자리 · 문장 안 조건 · 조 참조 · 별표 참조 · 블록 조건을 다 가진 함수조항. */
 const modelClause: Clause = {
   code: "C0007",
   label: "대표자의 지정",

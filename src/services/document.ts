@@ -8,7 +8,7 @@
  * - 파괴적 액션(문서 삭제 `document.delete` · 별표 삭제 `appendix.delete` · 박스 삭제 `box.delete`)은 `destructive()` 2단 프로토콜.
  *   영향의 「깨질 참조」 = 사용처 — 기본은 이 DB 의 문서들을 훑어 계산하고, 상품이 보통약관을 선택하는 사용처 등
  *   다른 영역(B4 · C1)의 것은 `UsageSource` 로 주입해 합친다.
- * - 공용조항 게이트(`ClauseGate`)는 B2 가, 담보 마스터 평가 문맥(`EvalContext`)은 B1 이 만든다 — 여기서는 주입만 받는다.
+ * - 함수조항 게이트(`ClauseGate`)는 B2 가, 담보 마스터 평가 문맥(`EvalContext`)은 B1 이 만든다 — 여기서는 주입만 받는다.
  * - 타입 조회(`TypeResolver`)는 기본으로 카탈로그 정의에서 만든다. 담보속성(attr.X)의 유효값은 B4 몫이라
  *   기본 조회는 「담보속성 타입(유효값 모름)」으로만 답한다 — 정밀 검사는 `typeResolver` 주입.
  */
@@ -66,19 +66,19 @@ import type { DocumentKind, DocumentRecord, DocumentSummary } from "@/db/repo/do
 import type { Db } from "@/db/repo/types";
 
 export type { DocumentKind, DocumentRecord, DocumentSummary } from "@/db/repo/document";
-/** 식 타입 조회 · 공용조항 게이트 구성은 도메인에 있다 (브라우저 편집본과 한 벌 — ADR-0074). */
+/** 식 타입 조회 · 함수조항 게이트 구성은 도메인에 있다 (브라우저 편집본과 한 벌 — ADR-0074). */
 export { catalogTypeResolver } from "@/domain/document";
 
 /** 다른 영역이 아는 사용처 (상품의 보통약관 선택 등). 문서 안 참조는 서비스가 직접 훑는다. */
 export interface UsageSource {
   documentUsages(tx: Db, documentId: Id): Promise<Coordinate[]>;
   appendixUsages(tx: Db, code: Code): Promise<Coordinate[]>;
-  /** 공용조항 본문의 박스 참조 등 — 문서 밖에서 박스를 쓰는 곳. 없으면 문서 안만 센다. */
+  /** 함수조항 본문의 박스 참조 등 — 문서 밖에서 박스를 쓰는 곳. 없으면 문서 안만 센다. */
   boxUsages?(tx: Db, code: Code): Promise<Coordinate[]>;
 }
 
 export interface DocumentServiceDeps {
-  /** 공용조항 게이트 (B2). 기본 전부 통과. */
+  /** 함수조항 게이트 (B2). 기본 전부 통과. */
   clauseGate?: (tx: Db) => Promise<ClauseGate>;
   /** 식 타입 조회. 기본 카탈로그 정의로 구성. */
   typeResolver?: (tx: Db) => Promise<TypeResolver>;
@@ -109,7 +109,7 @@ export interface DocumentService {
   list(kind?: DocumentKind): Promise<DocumentSummary[]>;
   validate(id: Id): Promise<Issue[]>;
   /**
-   * 미결정 공용조항 옵션 수 — 저장 검사와 **같은** 검증(`validate`)의 `optionUnselected` 만 센다 (기능/담보 §3.5).
+   * 미결정 함수조항 옵션 수 — 저장 검사와 **같은** 검증(`validate`)의 `optionUnselected` 만 센다 (기능/담보 §3.5).
    * 저장은 미선택을 거부하므로(기능/함수조항 §3.2) 0 이 아닌 값은 「저장 뒤 정의에 옵션이 늘었다」는 뜻이다.
    * 담보약관은 담보 마스터 안에서 옵션이 다 정해져야 해서, 담보 상세가 이 수를 경고로 띄운다.
    */
@@ -199,7 +199,7 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
     return g && g.kind === "general" ? generalRefsOf(g.tree) : undefined;
   }
 
-  /** 대응 보통약관을 뺀 검증 환경 — 종류 · 별표 존재 · 공용조항 게이트 · 좌표. */
+  /** 대응 보통약관을 뺀 검증 환경 — 종류 · 별표 존재 · 함수조항 게이트 · 좌표. */
   async function baseEnvOf(tx: Db, doc: DocumentRecord): Promise<TreeEnv> {
     const appendixCodes = new Set((await repo.listAppendices(tx)).map((a) => a.code));
     const boxCodes = new Set((await repo.listBoxes(tx)).map((x) => x.code));
@@ -215,7 +215,7 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
     };
   }
 
-  /** 저장 검증 환경 — 대응 보통약관의 조 집합 · 별표 존재 · 공용조항 게이트 · 좌표. */
+  /** 저장 검증 환경 — 대응 보통약관의 조 집합 · 별표 존재 · 함수조항 게이트 · 좌표. */
   async function envOf(tx: Db, doc: DocumentRecord): Promise<TreeEnv> {
     const env = await baseEnvOf(tx, doc);
     if (doc.kind !== "special") return env;

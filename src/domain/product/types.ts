@@ -5,7 +5,7 @@
  * ADR-0002(탑재 = 값 스냅샷) · ADR-0006(세목 축) · 기능/상품 §3.5(기본계약) · ADR-0015(담보속성) ·
  * 기능/상품 §3.6(옵션 오버라이드) · ADR-0019(역할).
  *
- * 다른 영역(담보 마스터 B1 · 공용조항 B2 · 문서 B3)의 코드는 import 하지 않는다 —
+ * 다른 영역(담보 마스터 B1 · 함수조항 B2 · 문서 B3)의 코드는 import 하지 않는다 —
  * 필요한 것은 이 파일 끝의 **주입 인터페이스**로 받는다.
  */
 import type { SlotPath } from "../catalog/types";
@@ -175,14 +175,14 @@ export interface NewSpecialGroup {
 
 // ───────────────────────────── 옵션 오버라이드 (기능/상품 §3.6) ─────────────────────────────
 
-/** 공용조항 옵션 선택 — 옵션 자리 → 선택한 옵션 코드. 유효 집합 검증은 B2 `OptionValidator`. */
+/** 함수조항 옵션 선택 — 옵션 자리 → 선택한 옵션 코드. 유효 집합 검증은 B2 `OptionValidator`. */
 export type ClauseOptionSelection = Record<string, string>;
 
 export interface ClauseOptionOverride {
   id: Id;
-  /** 보통약관 공용조항의 상품별 선택. 담보약관 옵션은 담보 마스터에서 정한다 (기능/상품 §3.6). */
+  /** 보통약관 함수조항의 상품별 선택. 담보약관 옵션은 담보 마스터에서 정한다 (기능/상품 §3.6). */
   scope: { kind: "product"; id: Id };
-  /** 문서 안 공용조항 참조 노드(clauseBlockRef · clauseInlineRef) id. */
+  /** 문서 안 함수조항 참조 노드(clauseBlockRef · clauseInlineRef) id. */
   nodeId: Id;
   clauseCode: Code;
   options: ClauseOptionSelection;
@@ -228,7 +228,7 @@ export interface CoverageMasterSource {
 }
 
 /**
- * 보통약관 부착 검사 재료 — 문서(B3)·공용조항(B2)이 「이 보통약관 템플릿이 요구하는 담보 레벨 참조」를 준다.
+ * 보통약관 부착 검사 재료 — 문서(B3)·함수조항(B2)이 「이 보통약관 템플릿이 요구하는 담보 레벨 참조」를 준다.
  * 기본계약 지정 순간 호출한다 (기능/상품 §3.5).
  */
 export interface GeneralAttachmentCheck {
@@ -241,14 +241,14 @@ export interface GeneralDocumentGate {
   /** 템플릿 안의 조 id (관·조건 블록 안까지) — 조 노출 토글의 검증 재료 (기능/상품 §3.6). 기본 구현은 빈 목록. */
   articleIds(generalDocumentId: Id): Promise<readonly Id[]>;
   /**
-   * 템플릿 안 공용조항 참조 노드 하나(clauseBlockRef · clauseInlineRef)의 **마스터 선택** —
+   * 템플릿 안 함수조항 참조 노드 하나(clauseBlockRef · clauseInlineRef)의 **마스터 선택** —
    * 상품 오버라이드는 이 기본값에 얹는 차이라서, 합친 결과를 검사하려면 자리의 마스터가 필요하다
    * (코덱스 리뷰 2026-09-15 Important-1). 참조 노드가 아니거나 없으면 undefined. 기본 구현은 없음.
    */
   clauseRef(generalDocumentId: Id, nodeId: Id): Promise<{ clauseCode: Code; options: ClauseOptionSelection } | undefined>;
 }
 
-/** 공용조항 옵션 유효 집합 검증 (B2). 빈 배열 = 유효. */
+/** 함수조항 옵션 유효 집합 검증 (B2). 빈 배열 = 유효. */
 export interface OptionValidator {
   validate(clauseCode: Code, options: ClauseOptionSelection): Promise<Issue[]>;
 }

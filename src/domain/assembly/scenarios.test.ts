@@ -69,7 +69,7 @@ function surgeryCoverage(id: Id, name: string, opts: { renew: boolean; exempt?: 
   });
 }
 
-/** surgeryFixture 의 공용조항 — C001 block(옵션 tone: death · general) · C002 inline(갱신형 문구 인라인 조건). */
+/** surgeryFixture 의 함수조항 — C001 block(옵션 tone: death · general) · C002 inline(갱신형 문구 인라인 조건). */
 const surgeryClauses: Clause[] = [
   {
     code: "C001",
@@ -477,7 +477,7 @@ describe("그룹핑별표 S3·S4 — 별표 번호는 등장 순 자동 (ADR-006
   });
 });
 
-// ───────────────────────────── 기본계약 · 공용조항 옵션 · 반복 자리 ─────────────────────────────
+// ───────────────────────────── 기본계약 · 함수조항 옵션 · 반복 자리 ─────────────────────────────
 
 describe("기능/조립산출 §3.2 — 기본계약을 지정하지 않아도 오류를 남기고 부분 조립", () => {
   it("기본계약 없음 — noBaseContract와 미배치 전환을 알리고 특약은 정상 조립", () => {
@@ -545,7 +545,7 @@ describe("기본계약 대치 — 대치될 보통약관 본문은 실행하지 
 });
 
 describe("기능/상품 §3.6 — 함수조항 옵션 해소: 오버라이드 > 마스터, 미선택·무효는 오류 마커", () => {
-  /** 특약 소멸 조의 공용조항 참조 마스터 선택만 바꾼다 — 담보약관에는 오버라이드가 없다 (기능/상품 §3.6). */
+  /** 특약 소멸 조의 함수조항 참조 마스터 선택만 바꾼다 — 담보약관에는 오버라이드가 없다 (기능/상품 §3.6). */
   const withMaster = (options: Record<string, string>) => {
     const input = alphaPlusFixture();
     const doc = input.specialDocuments.get("cov-death")!;
@@ -554,7 +554,7 @@ describe("기능/상품 §3.6 — 함수조항 옵션 해소: 오버라이드 > 
     return docsOf(input);
   };
 
-  /** 보통약관 면책 조의 공용조항 참조를 옵션 있는 C0001 로 바꾸고 상품 스코프 오버라이드를 얹는다 — 오버라이드가 사는 유일한 자리. */
+  /** 보통약관 면책 조의 함수조항 참조를 옵션 있는 C0001 로 바꾸고 상품 스코프 오버라이드를 얹는다 — 오버라이드가 사는 유일한 자리. */
   const withGeneralOverride = (master: Record<string, string>, override?: Record<string, string>) => {
     const input = alphaPlusFixture();
     const exempt = input.generalDocuments.get("g-doc")!.children.find((a) => a.kind === "article" && a.id === "g-art-exempt") as ArticleNode;

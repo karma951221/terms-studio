@@ -10,7 +10,7 @@ import { boxesUsedByGenerals, clausesUsedByGenerals, loadRealBase } from "./load
 const admin: Actor = { userId: "00000000-0000-4000-8000-000000000001", role: "admin" };
 
 /**
- * 실물 화면 E2E 의 바탕(`SEED_PROFILE=base`) — 별표 · 보통약관 두 벌과 보통약관이 쓰는 박스(BX000001~BX000084) · 공용조항(C0001~C0019 — 조째)만.
+ * 실물 화면 E2E 의 바탕(`SEED_PROFILE=base`) — 별표 · 보통약관 두 벌과 보통약관이 쓰는 박스(BX000001~BX000084) · 함수조항(C0001~C0019 — 조째)만.
  * 화면 E2E 는 그 뒤 코드(BX000085~ · C0020~)부터 친다 (docs/QA/시나리오/실물재현_E2E_시나리오.md §4).
  */
 describe("loadRealBase — 화면 E2E 바탕", () => {

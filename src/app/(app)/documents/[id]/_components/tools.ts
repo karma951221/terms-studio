@@ -7,7 +7,7 @@
  *
  * 「조건식」은 **블록 조건**을 넣는다 — 팝업 없이 곧바로 선다(2026-09-28, 무엇을 넣을지 묻지 않는다). 글을 골랐으면(드래그) 그 선택이 걸친
  * 블록을 다 덮는 가장 작은 잇닿은 형제 블록들을 감싸고, 고른 글이 없으면 커서가 선 블록 바로 뒤에 빈 조건 블록 (`menus.condInsertItem`).
- * 어느 쪽이든 빈 IF 줄 하나가 서고 첫 칸에 초점이 간다 — 식은 그 머리 줄에서 고른다. 조건 블록을 둘 자리가 없으면(「문구」 공용조항)
+ * 어느 쪽이든 빈 IF 줄 하나가 서고 첫 칸에 초점이 간다 — 식은 그 머리 줄에서 고른다. 조건 블록을 둘 자리가 없으면(「문구」 함수조항)
  * 문장 안 조건. 문장 안 조건은 따로 「문장 안 조건」 버튼이 넣는다.
  */
 import type { MenuItem, MenuSections } from "./menus";
@@ -147,12 +147,12 @@ export const DOC_TOOLS: ToolGroup[] = [
   },
 ];
 
-/** 공용조항 본문에 없는 도구 — 공용조항 툴바에서 빠진다 (기능/함수조항 §4.3). 조 · 관 · 공용조항은 남고 잠긴다(사유 tooltip). */
+/** 함수조항 본문에 없는 도구 — 함수조항 툴바에서 빠진다 (기능/함수조항 §4.3). 조 · 관 · 함수조항은 남고 잠긴다(사유 tooltip). */
 const CLAUSE_HIDDEN = new Set<ToolId>(["table", "structKey", "tableProps", "repeat", "link", "forBlock", "repeatSource"]);
 
 export const CLAUSE_TOOLS: ToolGroup[] = DOC_TOOLS.map((g) => ({ ...g, tools: g.tools.filter((t) => !CLAUSE_HIDDEN.has(t.id)) })).filter((g) => g.tools.length > 0);
 
-/** 「문구」 공용조항 — 문장 한 줄뿐이라 구조 넣기 묶음이 없다. */
+/** 「문구」 함수조항 — 문장 한 줄뿐이라 구조 넣기 묶음이 없다. */
 export const CLAUSE_LINE_TOOLS: ToolGroup[] = CLAUSE_TOOLS.filter((g) => g.name !== "구조 넣기");
 
 /** 문면 툴바에는 옵션 자리 · 값별 분기가 없다(함수조항만 — 값별 분기는 「지금은 함수조항 안에서만」, 최종 결정 5). */

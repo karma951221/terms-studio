@@ -1,16 +1,16 @@
 /**
- * 약관 에디터 운전 — 시드 트리 한 벌을 **화면 조작으로** 다시 친다 (문면 저작 · 공용조항 본문 공용).
+ * 약관 에디터 운전 — 시드 트리 한 벌을 **화면 조작으로** 다시 친다 (문면 저작 · 함수조항 본문 공용).
  *
  * 사람이 하는 것과 같은 길만 쓴다: 툴바 버튼 · 그 자리 팝업 · 문장 칸에 글 치기 · 커서 끝으로 가기 · 글 골라 「조건식」 · 「문장 안 조건」.
  * 편집본을 직접 만지거나 서버 액션을 부르지 않는다.
  *
  * 두 단계로 친다 (조 참조가 뒤 조 · 항을 가리킬 수 있어서 — 고르기 트리는 이미 있는 대상만 보인다):
- * 1. 뼈대 — 조 · 제목 · 항 · 호 · 목 · 표 · 박스 · 공용조항 블록 · 조연결 · 조 자리 조건 (문장은 비워 둔다)
+ * 1. 뼈대 — 조 · 제목 · 항 · 호 · 목 · 표 · 박스 · 함수조항 블록 · 조연결 · 조 자리 조건 (문장은 비워 둔다)
  *    박스는 툴바 「박스」에서 정적 마스터 박스를 고른다(기능/박스 §4.4 — 박스 참조).
- * 2. 문장 — 조마다 문장 칸(항 · 호 · 목 · 표 셀)을 차례로 채운다: 글 · 슬롯 · 조 참조 · 별표 참조 · 공용조항(문장) · 문장 안 조건
+ * 2. 문장 — 조마다 문장 칸(항 · 호 · 목 · 표 셀)을 차례로 채운다: 글 · 슬롯 · 조 참조 · 별표 참조 · 함수조항(문장) · 문장 안 조건
  *
  * 화면 자리 ↔ 시드 노드는 **순서**로 맞춘다 — 가운데는 조 하나를 그리고, 그 안의 `[data-block]` · `[data-inline]` 은
- * 문서 순서(전위)다. 시드도 같은 순서로 뽑는다. 공용조항 블록의 본문(읽기 전용)은 셈에서 뺀다.
+ * 문서 순서(전위)다. 시드도 같은 순서로 뽑는다. 함수조항 블록의 본문(읽기 전용)은 셈에서 뺀다.
  */
 import { expect, type Locator, type Page } from "@playwright/test";
 
@@ -32,22 +32,22 @@ export interface RefScopes {
   selfPaths: Map<string, string[]>;
   /** 보통약관 대상 열쇠 → 고를 줄 · 펴야 할 조상 줄. */
   generalAncestors: Map<string, GeneralRow>;
-  /** 조 참조 팝업에 범위 고르기가 있는가 (담보약관 · 공용조항). */
+  /** 조 참조 팝업에 범위 고르기가 있는가 (담보약관 · 함수조항). */
   hasScopeSelect: boolean;
-  /** 공용조항 에디터인가 — 범위가 보통약관 · 이 공용조항 · 사용처 셋이다 (기능/함수조항 §3.5). 「이 템플릿」 자리에 「이 공용조항」. */
+  /** 함수조항 에디터인가 — 범위가 보통약관 · 이 함수조항 · 사용처 셋이다 (기능/함수조항 §3.5). 「이 템플릿」 자리에 「이 함수조항」. */
   clauseEditor?: boolean;
 }
 
-/** 에디터 한 벌 — 문면(`/documents/<id>`)과 공용조항(`/functions/new`)이 같은 에디터 부품을 쓴다. */
+/** 에디터 한 벌 — 문면(`/documents/<id>`)과 함수조항(`/functions/new`)이 같은 에디터 부품을 쓴다. */
 export class Editor {
   constructor(
     readonly page: Page,
-    /** 툴바 · 본문을 품은 뿌리 — 문면은 `.ts-l3-body`, 공용조항은 `.ts-clause-editor`. */
+    /** 툴바 · 본문을 품은 뿌리 — 문면은 `.ts-l3-body`, 함수조항은 `.ts-clause-editor`. */
     readonly root: Locator,
     readonly refs: RefScopes,
   ) {}
 
-  /** 공용조항 본문의 옵션 코드 → 옵션명 — 「옵션 자리」 메뉴의 줄 이름(「옵션 자리 — <옵션명>」)으로 고른다. */
+  /** 함수조항 본문의 옵션 코드 → 옵션명 — 「옵션 자리」 메뉴의 줄 이름(「옵션 자리 — <옵션명>」)으로 고른다. */
   optionLabels: ReadonlyMap<string, string> = new Map();
 
   get toolbar(): Locator {
@@ -138,7 +138,7 @@ export class Editor {
         return this.confirm(d, "넣기");
       }
       case "optionSlot": {
-        // 공용조항 본문 — 옵션이 하나면 곧바로, 여럿이면 버튼 아래 메뉴에서 그 옵션
+        // 함수조항 본문 — 옵션이 하나면 곧바로, 여럿이면 버튼 아래 메뉴에서 그 옵션
         await this.runTool("옵션 자리");
         const label = this.optionLabels.get(node.optionCode) ?? node.optionCode;
         const item = this.page.getByRole("menuitem", { name: `옵션 자리 — ${label}`, exact: true });
@@ -154,7 +154,7 @@ export class Editor {
 
   /**
    * 조 참조 팝업 — 범위 · 대상(트리에서 펴고 고르기) · 연결어.
-   * 공용조항 본문의 조 참조는 범위가 셋이다: 없음 = 보통약관 · `clause` = 이 공용조항(항 줄 표기로 찾는다) · `host` = 사용처 위치(줄 id `host:2.1.3`).
+   * 함수조항 본문의 조 참조는 범위가 셋이다: 없음 = 보통약관 · `clause` = 이 함수조항(항 줄 표기로 찾는다) · `host` = 사용처 위치(줄 id `host:2.1.3`).
    */
   private async pickTargets(d: Locator, node: Extract<InlineNode, { kind: "articleRef" }>): Promise<void> {
     const scope = (node as { scope?: string }).scope;
@@ -401,7 +401,7 @@ export class DocumentAuthoring {
     readonly page: Page,
     readonly tree: DocumentNode,
     refs: Omit<RefScopes, "hasScopeSelect">,
-    /** 공용조항 코드 → 이름 (공용조항 블록 고르기 메뉴의 줄 이름). */
+    /** 함수조항 코드 → 이름 (함수조항 블록 고르기 메뉴의 줄 이름). */
     private readonly clauseLabels: ReadonlyMap<string, string>,
     /** 박스 코드 → 이름 (툴바 「박스」 고르기 메뉴의 줄 이름). */
     private readonly boxNames: ReadonlyMap<string, string>,
@@ -415,7 +415,7 @@ export class DocumentAuthoring {
     return this.body.locator("section.ts-doc-article");
   }
 
-  /** 조 안의 블록 — 공용조항 블록의 본문(읽기 전용)은 뺀다. */
+  /** 조 안의 블록 — 함수조항 블록의 본문(읽기 전용)은 뺀다. */
   private blockAt(index: number): Locator {
     return this.article.locator("[data-block]:not([data-clause-ref] [data-block])").nth(index);
   }
@@ -491,7 +491,7 @@ export class DocumentAuthoring {
     }
   }
 
-  /** 자리 고르기 — -1 이면 조 제목, 아니면 k 번째 블록(문장 칸 · 표 첫 셀 · 공용조항 머리). */
+  /** 자리 고르기 — -1 이면 조 제목, 아니면 k 번째 블록(문장 칸 · 표 첫 셀 · 함수조항 머리). */
   private async select(index: number): Promise<void> {
     if (index < 0) {
       await this.article.locator("h3 [role=textbox]").blur();
@@ -573,12 +573,12 @@ export class DocumentAuthoring {
   }
 }
 
-// ───────────────────────────── 공용조항 ─────────────────────────────
+// ───────────────────────────── 함수조항 ─────────────────────────────
 
 type ClauseOption = { code: string; label: string; values: { label: string; body: { kind: string; text?: string }[] }[] };
 type ClauseMode = "inline" | "block";
 
-/** 공용조항 생성 화면 운전 — 이름 · 유형 · 옵션 · 본문 (기능/함수조항 §4.2). */
+/** 함수조항 생성 화면 운전 — 이름 · 유형 · 옵션 · 본문 (기능/함수조항 §4.2). */
 export class ClauseAuthoringDriver {
   readonly editor: Editor;
 

@@ -229,7 +229,7 @@ describe("refStats — 문제 개수에 붙일 분모 (§9.6)", () => {
  * 체인 픽스처 — D1 ← D2 ← D3 (D2 가 D1 을, D3 가 D2 를 읽는다) · D8 은 D1 을 직접 읽는다.
  *   - doc-g(보통약관) 조 g1 조건식 `D1` — 직접 사용처.
  *   - doc-s(담보약관 · cov-1 소유 · 보통약관 doc-g) 조 s1 조건식 `D3` — D2 → D3 를 거친 사용처.
- *   - 공용조항 C001 본문 조건식 `D3` · doc-s2(담보약관 · cov-2 소유) 조 s2 가 C001 을 참조.
+ *   - 함수조항 C001 본문 조건식 `D3` · doc-s2(담보약관 · cov-2 소유) 조 s2 가 C001 을 참조.
  *   - 상품 p1 이 cov-1 탑재 · p2 는 보통약관 doc-g 만 · p3 가 cov-2 탑재.
  */
 function chainDocument(id: string, title: string, article: { id: string; when?: string; clause?: string }): DocumentInput["tree"] {
@@ -315,7 +315,7 @@ describe("affectedProducts — 사용처 문면이 들어가는 상품 (ADR-0049
     ]);
     expect(a[1].through.map(nodeKey)).toEqual(["article:doc-g/g1", "document:doc-g"]);
     expect(a[2].through.map(nodeKey)).toEqual(["clause:C001", "article:doc-s2/s2", "document:doc-s2", "coverageNode:coverage/cov-2", "productCoverage:pc3"]);
-    // D3 만 보면 보통약관 직접 사용처가 없어 p2 는 빠진다 — 공용조항 간선이 문서 간선보다 먼저라 p3 가 앞
+    // D3 만 보면 보통약관 직접 사용처가 없어 p2 는 빠진다 — 함수조항 간선이 문서 간선보다 먼저라 p3 가 앞
     expect(affectedProducts(g, "D3").map((x) => nodeKey(x.product))).toEqual(["product:p3", "product:p1"]);
   });
 

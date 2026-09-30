@@ -1,6 +1,6 @@
 /**
  * 노드 삭제가 무엇을 데려가는지 세는 순수 계산 (디자인원칙 §9.5 · 리뷰 #33).
- * 「정말 삭제하시겠습니까?」 대신 「제4조(…) 삭제 → 항 2 · 호 5 · 공용조항 참조 1 이 함께 사라진다」를 만든다.
+ * 「정말 삭제하시겠습니까?」 대신 「제4조(…) 삭제 → 항 2 · 호 5 · 함수조항 참조 1 이 함께 사라진다」를 만든다.
  * **계산된 것만 쓴다** — 겁주려고 범위를 부풀리지 않는다.
  */
 import { indexTree, lostRefKeys, refKey, type DocumentNode, type Node } from "@/domain/document";
@@ -49,7 +49,7 @@ export function subtreeIds(node: Node): Set<Id> {
   return ids;
 }
 
-/** 함께 사라지는 것 — 「항 2」 「호 5」 「공용조항 참조 1」. 자기 자신은 빼고 센다. */
+/** 함께 사라지는 것 — 「항 2」 「호 5」 「함수조항 참조 1」. 자기 자신은 빼고 센다. */
 export function cascadeOf(node: Node): string[] {
   const counts = new Map<string, number>();
   let first = true;

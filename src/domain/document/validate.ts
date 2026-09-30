@@ -1,10 +1,10 @@
 /**
  * 문서 전체 저장 검증 한 벌 — 서버의 저장과 브라우저 편집본의 「템플릿 전체」 검증 목록이 같은 함수를 쓴다 (ADR-0074).
  *
- * 구조(허용 자식 · 중첩 · id · 가지) · 참조 대상 · 공용조항(`validateTree`) + 식(문법 · boolean · 구분자만 · `@노드`) · 반복 표 오류
+ * 구조(허용 자식 · 중첩 · id · 가지) · 참조 대상 · 함수조항(`validateTree`) + 식(문법 · boolean · 구분자만 · `@노드`) · 반복 표 오류
  * (`validateExpressions`) + 반복 표 경고. 경고(`severity: "warning"`)는 저장을 막지 않는다 — `blockingIssues` 로 거른다.
  *
- * 검증 재료(공용조항 게이트 · 식 타입 조회)도 여기서 만든다 — 서버는 DB 에서 읽은 정의로, 브라우저는 서버가 넘긴 같은 정의로.
+ * 검증 재료(함수조항 게이트 · 식 타입 조회)도 여기서 만든다 — 서버는 DB 에서 읽은 정의로, 브라우저는 서버가 넘긴 같은 정의로.
  */
 import { discriminatorResultType, type Discriminator } from "../catalog";
 import { boundDiscriminators, checkUsageBindings, validateOptionSelection, type BindingEnv, type Clause } from "../clause";

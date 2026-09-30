@@ -1,5 +1,5 @@
 /**
- * 원문 패널의 서버 렌더 검사 — 시드에 공용조항 참조·조상 조건 블록이 없어 브라우저로는 못 보는 자리다
+ * 원문 패널의 서버 렌더 검사 — 시드에 함수조항 참조·조상 조건 블록이 없어 브라우저로는 못 보는 자리다
  * (코덱스 리뷰 2026-09-15 Important-2 · Important-3). `MasterTree.test.tsx` 와 같은 방식으로 문자열을 본다.
  */
 import { renderToStaticMarkup } from "react-dom/server";
@@ -36,7 +36,7 @@ const clauses: Clause[] = [
   },
 ];
 
-/** 네 자리(항·호·목·표 셀)에 공용조항 참조를 하나씩 둔 조. */
+/** 네 자리(항·호·목·표 셀)에 함수조항 참조를 하나씩 둔 조. */
 const article: ArticleNode = {
   id: "A1",
   kind: "article",

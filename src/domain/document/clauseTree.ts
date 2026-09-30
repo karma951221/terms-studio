@@ -1,21 +1,21 @@
 /**
- * 공용조항 본문 ↔ 문면 편집 트리 (순수) — 공용조항 화면이 문면 저작 에디터를 그대로 쓰게 하는 어댑터 (기능/함수조항 §4.3 · §6.2).
+ * 함수조항 본문 ↔ 문면 편집 트리 (순수) — 함수조항 화면이 문면 저작 에디터를 그대로 쓰게 하는 어댑터 (기능/함수조항 §4.3 · §6.2).
  *
- * 공용조항 본문 노드(`../clause/nodes`)는 문면 노드의 부분집합이다. 다른 점은 셋뿐이라, 편집하는 동안만 문면 트리로 싸서
- * 문면의 편집 명령(`applyEdit`) · 렌더러 · 메뉴를 그대로 쓰고, 저장할 때 공용조항 본문으로 되돌린다.
+ * 함수조항 본문 노드(`../clause/nodes`)는 문면 노드의 부분집합이다. 다른 점은 셋뿐이라, 편집하는 동안만 문면 트리로 싸서
+ * 문면의 편집 명령(`applyEdit`) · 렌더러 · 메뉴를 그대로 쓰고, 저장할 때 함수조항 본문으로 되돌린다.
  *
- * | 공용조항 본문 | 편집 트리 |
+ * | 함수조항 본문 | 편집 트리 |
  * |---|---|
  * | 본문 전체 | 문서 › 조 하나(`CLAUSE_ARTICLE_ID`) — 조는 사용처 소유라 화면에 그리지 않는 자리일 뿐이다 |
  * | 「문구」(inline) 본문 `Inline[]` | 그 조의 항 하나(`CLAUSE_LINE_ID`)의 문장 — 문장 한 줄 |
  * | 「항」(block) 본문 `Block[]` | 그 조의 자식(항 · 조건 블록) |
- * | `optionSlot` | `clauseInlineRef`(코드 `OPTION_REF_PREFIX + 옵션 코드`) — 옵션 자리 운반체. 공용조항 참조와 같은 「다른 곳의 문구가 들어오는 자리」라 문면 규칙(허용 자리 · 인라인 조건 안 허용)이 같다 |
+ * | `optionSlot` | `clauseInlineRef`(코드 `OPTION_REF_PREFIX + 옵션 코드`) — 옵션 자리 운반체. 함수조항 참조와 같은 「다른 곳의 문구가 들어오는 자리」라 문면 규칙(허용 자리 · 인라인 조건 안 허용)이 같다 |
  * | `articleRef` 보통약관 대상(범위 없음) | `articleRef` + `scope: "general"` |
  * | `articleRef` 제 항 · 호 · 목(`scope: "clause"`) | `articleRef` + `scope: "self"` — 편집 트리의 항 id 가 곧 본문 노드 id |
  * | `switchBlock` · `inlineSwitch`(값별 분기) | `condBlock` · `inlineCond` + `switchOn`(대상 식) — 가지 = 칸(`values` · `empty`, `when` 없음). 조건 가지와 같은 투명 · 자리 · 중첩 규칙을 물려받는다(document/nodes.ts `SwitchCaseMark`) |
  * | `articleRef` 사용처 위치(`scope: "host"`, `"2.1.3"`) | `articleRef` + `scope: "general"` + 대상 `host:2.1.3`(`HOST_TARGET_PREFIX`) — 에디터의 「사용처」 후보 줄 id. 이 문서 밖 대상이라 보통약관 참조처럼 후보 집합(`generalRefs`)으로 검사한다 |
  *
- * 되돌릴 때 공용조항에 없는 것(조 · 관 · 표 · 박스 · 반복 · 구조 표기 · 진짜 공용조항 참조 · 호/목 자리의 조건 블록)이 있으면 거부한다 —
+ * 되돌릴 때 함수조항에 없는 것(조 · 관 · 표 · 박스 · 반복 · 구조 표기 · 진짜 함수조항 참조 · 호/목 자리의 조건 블록)이 있으면 거부한다 —
  * 에디터 메뉴가 애초에 싣지 않지만, 저장 직전의 마지막 관문이다. 노드 id 는 그대로 옮긴다(오류 좌표 · 「고칠 자리로」가 같은 id 를 쓴다).
  *
  * DB·React import 금지 (순수층).
@@ -34,7 +34,7 @@ export const CLAUSE_LINE_ID = "clause-line";
 export const CLAUSE_HOST_PARAGRAPH_ID = "clause-host-paragraph";
 /** 「목」 본문을 담는 호 — 문장 없이 목 목록만 쓰는 자리. */
 export const CLAUSE_HOST_ITEM_ID = "clause-host-item";
-/** 옵션 자리 운반체의 코드 접두 — 공용조항 코드(`C0001`)와 겹치지 않는다. */
+/** 옵션 자리 운반체의 코드 접두 — 함수조항 코드(`C0001`)와 겹치지 않는다. */
 export const OPTION_REF_PREFIX = "option:";
 
 /** 옵션 자리 운반체인가 — 운반체면 그 옵션 코드. */
@@ -137,7 +137,7 @@ function articleChildrenOf(mode: ClauseMode, body: ClauseBody): BlockNode[] {
   }
 }
 
-/** 공용조항 본문을 편집 트리로 — 제목은 공용조항명(화면에는 그리지 않는다). */
+/** 함수조항 본문을 편집 트리로 — 제목은 함수조항명(화면에는 그리지 않는다). */
 export function clauseBodyToTree(mode: ClauseMode, body: ClauseBody, title = ""): DocumentNode {
   const children = articleChildrenOf(mode, body);
   const article: ArticleNode = { id: CLAUSE_ARTICLE_ID, kind: "article", title: "", children };
@@ -254,7 +254,7 @@ function hostParagraph(children: readonly BlockNode[], what: string): ParagraphN
   return host;
 }
 
-/** 편집 트리를 공용조항 본문으로 — 공용조항에 없는 노드가 있으면 거부(그 사유 한 줄). */
+/** 편집 트리를 함수조항 본문으로 — 함수조항에 없는 노드가 있으면 거부(그 사유 한 줄). */
 export function treeToClauseBody(mode: ClauseMode, tree: DocumentNode): Result<ClauseBody> {
   try {
     const [article, ...rest] = tree.children;
@@ -340,7 +340,7 @@ export function clausePositions(tree: DocumentNode): Map<string, number[]> {
 }
 
 /**
- * 공용조항의 제 항 · 사용처 조 참조 표기 (기능/함수조항 §3.5) — 「이 공용조항 제1항」 · 「사용처 제2조 제1항 제3호」.
+ * 함수조항의 제 항 · 사용처 조 참조 표기 (기능/함수조항 §3.5) — 「이 함수조항 제1항」 · 「사용처 제2조 제1항 제3호」.
  * 번호는 본문 안 순번이다(사용처에서는 펼친 자리의 계산 번호로 찍힌다). 편집 트리 노드를 받는다 — 보통약관 참조면 undefined.
  */
 export function clauseScopedRefLabel(node: InlineNode, positions: ReadonlyMap<string, number[]>): string | undefined {
@@ -356,13 +356,13 @@ export function clauseScopedRefLabel(node: InlineNode, positions: ReadonlyMap<st
   return `${host ? "사용처" : "이 함수조항"} ${joined}`;
 }
 
-/** 공용조항 본문 노드 → 편집 트리 노드 (모델 표시가 `clauseScopedRefLabel` 을 쓰게). */
+/** 함수조항 본문 노드 → 편집 트리 노드 (모델 표시가 `clauseScopedRefLabel` 을 쓰게). */
 export function clauseInlineToTree(node: C.Inline): InlineNode {
   return inlineToTree(node);
 }
 
 /**
- * 「사용처」 후보 — 사용처 문서의 위치(조 · 항 · 호 순번) 줄 목록. 공용조항 에디터의 조 참조 고르기 트리가 쓴다 (기능/함수조항 §3.5).
+ * 「사용처」 후보 — 사용처 문서의 위치(조 · 항 · 호 순번) 줄 목록. 함수조항 에디터의 조 참조 고르기 트리가 쓴다 (기능/함수조항 §3.5).
  * 사용처는 여럿이라 실제 조 제목은 모른다 — 줄은 번호만(「제1조」 · 「제1항」 · 「제3호」).
  */
 export function hostTargetIndex(articles = 20, paragraphs = 10, items = 10): Map<string, ReferenceTarget> {

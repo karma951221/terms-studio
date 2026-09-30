@@ -1,16 +1,16 @@
 /**
- * 공용조항 본문 검사 · 식 수집 · 요구 구분자 추출 (순수).
+ * 함수조항 본문 검사 · 식 수집 · 요구 구분자 추출 (순수).
  *
  * - `analyzeBody(mode, body, options)` : 허용 노드 규칙 검사 + 모든 식 파싱 + 요구 참조 추출.
  *   하나라도 어긋나면 `invalid` (저장 거부). 통과하면 `RequiredRefs`.
  * - 허용 규칙 (nodes.ts 머리말): inline 본문은 Inline 만 · block 본문은 항 자리 노드만 · item 본문은 호 목록(조건 블록 가지 안도) ·
  *   subitem 본문은 목 목록(조건 블록 가지 안도) ·
- *   조(article)·공용조항 참조(clause*Ref)·반복은 없다 · 인라인 조건 중첩 금지 · 블록 조건 중첩 허용 ·
+ *   조(article)·함수조항 참조(clause*Ref)·반복은 없다 · 인라인 조건 중첩 금지 · 블록 조건 중첩 허용 ·
  *   else 가지는 마지막에만 · 가지 없는 조건 불가 · 옵션 자리는 정의된 옵션만 · 노드 id 유일.
  * - 식 검사: `slot.ref` 는 참조 하나(경로)여야 하고, `when` 은 파싱한다. 참조 존재·boolean 여부는
  *   타입 조회(`resolveType`)가 있을 때만 검사한다 — 없으면 건너뛴다 (카탈로그 없이도 순수 검사가 되게).
- * - 조 참조·별표 참조 (기능/함수조항 §3.5): 공용조항의 조 참조는 셋 중 하나다 — 보통약관 마스터의 조·항·호·목(범위 없음) ·
- *   이 공용조항 본문의 항·호·목(`scope: "clause"`, 본문에 있어야) · 사용처의 위치(`scope: "host"`, 순번 경로).
+ * - 조 참조·별표 참조 (기능/함수조항 §3.5): 함수조항의 조 참조는 셋 중 하나다 — 보통약관 마스터의 조·항·호·목(범위 없음) ·
+ *   이 함수조항 본문의 항·호·목(`scope: "clause"`, 본문에 있어야) · 사용처의 위치(`scope: "host"`, 순번 경로).
  *   구조(대상 ≥1 · 연결어 · 별표 코드 · 위치 경로 모양)는 항상 검사하고, 보통약관 · 별표 대상 존재는
  *   `generalReferenceKeys` · `appendixExists` 를 줬을 때만 검사한다 — 문서 쪽 `validateTree` 와 같은 관례.
  */
@@ -102,7 +102,7 @@ export function allNodeIds(body: ClauseBody): Id[] {
   return ids;
 }
 
-/** 본문의 항 · 호 · 목 id (조건 블록 안 포함) — 등장 순. 「이 공용조항」 조 참조가 가리킬 수 있는 노드. 유형 넷 모두. */
+/** 본문의 항 · 호 · 목 id (조건 블록 안 포함) — 등장 순. 「이 함수조항」 조 참조가 가리킬 수 있는 노드. 유형 넷 모두. */
 export function structuralIds(body: ClauseBody): Id[] {
   const out: Id[] = [];
   const visit = (n: unknown) => {
@@ -142,7 +142,7 @@ function isInlineKind(kind: string): boolean {
 // ───────────────────────────── 검사 ─────────────────────────────
 
 export interface AnalyzeOptions {
-  /** 오류 좌표의 기본값 (공용조항 코드 등). nodePath 는 검사기가 얹는다. */
+  /** 오류 좌표의 기본값 (함수조항 코드 등). nodePath 는 검사기가 얹는다. */
   coordinate?: Coordinate;
   /** 참조 타입 조회 — 있으면 조건식이 boolean 인지까지 검사한다. */
   resolveType?: TypeResolver;
@@ -160,7 +160,7 @@ export interface AnalyzeOptions {
   enums?: EnumInfo;
 }
 
-/** 공용조항 참조 노드 종류 — 본문 안에 나타나면 중첩이라 거부. */
+/** 함수조항 참조 노드 종류 — 본문 안에 나타나면 중첩이라 거부. */
 const CLAUSE_REF_KINDS = new Set(["clauseInlineRef", "clauseBlockRef"]);
 
 /**

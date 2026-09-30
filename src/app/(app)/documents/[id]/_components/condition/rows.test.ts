@@ -81,7 +81,7 @@ describe("조건 머리 줄 — 줄 ⇄ 식 (기능/문면 §4.3, 2026-09-28)", 
     const inRow = pickerGroups({ ...ctx, row: { levels: ["subCoverage"], readable: ["product", "plan", "coverage", "subCoverage"] } });
     expect(inRow[0].label).toBe("현재 행 — 세부보장마다");
     expect(inRow[0].options.map((o) => o.key)).toEqual(["D0007", "D0009", "D0001"]);
-    // 보통약관 · 공용조항(담보 문맥 없음) — 레벨별로 한정자 없이
+    // 보통약관 · 함수조항(담보 문맥 없음) — 레벨별로 한정자 없이
     const plain = pickerGroups(buildConditionContext({ discriminators: defs, enums: [] }));
     expect(plain.map((g) => g.label)).toEqual(["담보", "세부보장", "급부"]);
     expect(plain[0].options.map((o) => o.key)).toEqual(["D0009", "D0001"]);

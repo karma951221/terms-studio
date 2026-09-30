@@ -1,5 +1,5 @@
 /**
- * 공용조항 참조 — 사용처 쪽 규칙 (순수).
+ * 함수조항 참조 — 사용처 쪽 규칙 (순수).
  *
  * - `checkAttachmentForReference` : 참조 추가 시 요구 구분자 존재 검사 (기능/함수조항 §3.4 ②).
  *   2026-09-12 이후 부착(노출여부)이 없어 「값 자리가 없어서 미부착」인 경우가 사라졌다 (ADR-0037) —
@@ -41,8 +41,8 @@ export interface AttachmentCheck {
  * 요구 구분자 존재 검사 — 검사 ② (a) (기능/함수조항 §3.4). 부착이 사라져 값 자리가 없어서 막히는 경우는 없다 (ADR-0037) —
  * 카탈로그에 없는 구분자만 깨진 참조로 보고한다. `missing` 은 늘 비어 있다 (호출부 계약 보존).
  *
- * 이슈의 `at` 은 사용처 좌표(참조가 놓인 자리), `source` 는 **공용조항 본문**이다 — 고치면 사라지는 곳은
- * 그 구분자를 읽는 공용조항 쪽(참조 제거)이지 사용처가 아니다 (ADR-0049 §4 「원천은 고치면 사라지는 곳」).
+ * 이슈의 `at` 은 사용처 좌표(참조가 놓인 자리), `source` 는 **함수조항 본문**이다 — 고치면 사라지는 곳은
+ * 그 구분자를 읽는 함수조항 쪽(참조 제거)이지 사용처가 아니다 (ADR-0049 §4 「원천은 고치면 사라지는 곳」).
  */
 export function checkAttachmentForReference(
   clause: Clause,
@@ -129,7 +129,7 @@ export function expandClause(clause: Clause, selection: OptionSelection, refNode
   };
 
   // 옵션 자리는 자리 id 를 앞에 붙여 펼친다 — 같은 옵션을 본문에 두 번 두어도 펼친 노드 id 가 겹치지 않는다
-  // (예: 「{기산일}부터 180일 … {기산일}부터 180일이 되는 날」 — 2026-09-28 메리츠 공용조항 재편)
+  // (예: 「{기산일}부터 180일 … {기산일}부터 180일이 되는 날」 — 2026-09-28 메리츠 함수조항 재편)
   const inlines = (list: Inline[], scope = ""): Inline[] => list.flatMap((n) => inline(n, scope));
   const inline = (n: Inline, scope: string): Inline[] => {
     switch (n.kind) {
@@ -196,7 +196,7 @@ export function expandClause(clause: Clause, selection: OptionSelection, refNode
 /** 사용처 문서의 소유 실체 종류 — 담보약관은 담보, 보통약관은 템플릿. */
 export type UsageOwnerKind = "coverage" | "general";
 
-/** 공용조항을 참조하는 문서 1건 (참조 인스턴스 단위 — D-P3-10). C1/B3 가 제공한다. */
+/** 함수조항을 참조하는 문서 1건 (참조 인스턴스 단위 — D-P3-10). C1/B3 가 제공한다. */
 export interface Usage {
   documentId: Id;
   ownerKind: UsageOwnerKind;

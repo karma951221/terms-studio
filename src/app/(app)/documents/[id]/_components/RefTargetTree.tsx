@@ -23,7 +23,7 @@ export interface RefTargetScope {
   /** 묶음 머리 — 범위가 하나뿐이면 생략. */
   label?: string;
   index: ReadonlyMap<Id, ReferenceTarget>;
-  /** 조 줄을 그리지 않고 그 아래(항 · 호 · 목)부터 — 공용조항 에디터의 「이 공용조항」(조는 사용처 소유라 고를 조가 없다). */
+  /** 조 줄을 그리지 않고 그 아래(항 · 호 · 목)부터 — 함수조항 에디터의 「이 함수조항」(조는 사용처 소유라 고를 조가 없다). */
   rootless?: boolean;
 }
 

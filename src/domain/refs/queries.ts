@@ -2,7 +2,7 @@
  * 참조 그래프 조회 (순수) — 사용처 역인덱스 · 고아 · 순환 · 깨진 참조 · 관계정보 뷰.
  *
  * - `usagesOf`     : 이 실체(와 그 하위 — 구조체면 필드, enum 이면 값, 문서면 조 …)를 참조하는 간선. 좌표가 실려 있다.
- * - `orphans`      : 어디서도 참조되지 않는 구분자·공용조항·별표 (기능/관계정보 §3 「참조 그래프」 고아). 부착·타입 간선은 참조가 아니다.
+ * - `orphans`      : 어디서도 참조되지 않는 구분자·함수조항·별표 (기능/관계정보 §3 「참조 그래프」 고아). 부착·타입 간선은 참조가 아니다.
  * - `cycles`       : 순환 (파생식 · 조 참조 · 조연결 …). 어떤 간선이든 닫힌 경로면 보고한다.
  * - `brokenEdges`  : 대상이 선언되지 않은 참조 — 삭제 뒤 남은 오류 상태 (ADR-0019 「깨진 참조는 오류 상태로」).
  * - `relationView` : 관계정보 뷰 한 구조 — 정방향 · 역방향 · 옵션 오버라이드 사용처(기능/함수조항 §3.2) · 깨진 정방향.
@@ -147,7 +147,7 @@ export function dependentDiscriminators(graph: RefGraph, code: Code): DependentD
 }
 
 export interface TransitiveUsage {
-  /** 문면(조 · 문서 · 공용조항 본문)의 조건식 · 슬롯 참조 간선. */
+  /** 문면(조 · 문서 · 함수조항 본문)의 조건식 · 슬롯 참조 간선. */
   edge: RefEdge;
   /** 거쳐 온 구분자 체인. 이 구분자를 직접 읽으면 `[]`. */
   via: Code[];
@@ -186,10 +186,10 @@ export interface AffectedProduct {
  *
  * 출발점은 두 종류다:
  * - **구분자**(코드 또는 키): 자기와 의존 구분자의 문면 사용처(`transitiveUsages`)에서.
- * - **공용조항**: `clauseRef` 역방향의 참조 문서·조에서 — 정의를 고치면 이 상품들의 저장된 미리보기가 오래된 결과가 된다
+ * - **함수조항**: `clauseRef` 역방향의 참조 문서·조에서 — 정의를 고치면 이 상품들의 저장된 미리보기가 오래된 결과가 된다
  *   (기능/함수조항 §3.4 검사 ③ 은 상품 미리보기에서 돈다 · 기능/조립산출 §3.6).
  *
- * 사용처 노드에서 상품까지: 공용조항이면 `clauseRef` 역방향으로 참조 문서로 → 조는 문서로 올려서 →
+ * 사용처 노드에서 상품까지: 함수조항이면 `clauseRef` 역방향으로 참조 문서로 → 조는 문서로 올려서 →
  *   (a) `document` 역방향으로 담보 마스터 → `mount` 역방향으로 상품담보 → 부모 상품,
  *   (b) 보통약관이면 `generalDocument` 역방향으로 상품(직접) 또는 담보약관(다시 (a)).
  * 그래프에 선언되지 않은 노드(깨진 간선)는 건너뛴다. 문서 ↔ 문서 순환은 방문 집합으로 끊는다.
@@ -234,7 +234,7 @@ export function affectedProducts(graph: RefGraph, target: Code | RefNodeKey): Af
       if (declared(doc)) fromDocument(doc, [...through, node, doc], new Set());
     } else if (node.kind === "document") fromDocument(node, [...through, node], new Set());
   };
-  /** 공용조항 사용처는 참조 문서·조에서 출발. `through` 의 머리는 출발이 구분자면 공용조항(거쳐 온 사용처), 공용조항 자신이면 비워 둔다. */
+  /** 함수조항 사용처는 참조 문서·조에서 출발. `through` 의 머리는 출발이 구분자면 함수조항(거쳐 온 사용처), 함수조항 자신이면 비워 둔다. */
   const fromClause = (clause: RefNodeKey, through: RefNodeKey[]): void => {
     for (const referrer of sourcesOf(clause, "clauseRef")) fromNode(referrer, through);
   };
@@ -252,7 +252,7 @@ export function affectedProducts(graph: RefGraph, target: Code | RefNodeKey): Af
 
 const ORPHAN_KINDS: readonly RefNodeKey["kind"][] = ["discriminator", "clause", "appendix", "box"];
 
-/** 어디서도 참조되지 않는 구분자·공용조항·별표·박스 (종류 순 · 선언 순). */
+/** 어디서도 참조되지 않는 구분자·함수조항·별표·박스 (종류 순 · 선언 순). */
 export function orphans(graph: RefGraph): RefNodeInfo[] {
   const referenced = new Set<string>();
   for (const e of graph.edges) {
@@ -346,7 +346,7 @@ export interface RefStats {
   nodes: number;
   /** 간선(참조) 수 전부 — 「참조 M 건 중 깨짐 N」의 분모. */
   edges: number;
-  /** 고아 판정 대상 수 — 구분자·공용조항·별표. 「참조 노드 N 개 중 고아 M」의 분모다. */
+  /** 고아 판정 대상 수 — 구분자·함수조항·별표. 「참조 노드 N 개 중 고아 M」의 분모다. */
   orphanCandidates: number;
 }
 

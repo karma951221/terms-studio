@@ -44,13 +44,13 @@ async function assertAssembles(services: Services, productId: Id): Promise<void>
 
 type ClauseRaw = Record<string, unknown> & { code: Code; options: Array<Record<string, unknown>> };
 
-/** 보통약관 문면이 쓰는 공용조항 코드 — 보통약관 가져오기 전에 있어야 한다 (문면 저장 검사가 공용조항 존재를 본다). */
+/** 보통약관 문면이 쓰는 함수조항 코드 — 보통약관 가져오기 전에 있어야 한다 (문면 저장 검사가 함수조항 존재를 본다). */
 export function clausesUsedByGenerals(): Set<Code> {
   return new Set((generals as unknown as Array<{ tree: DocumentNode }>).flatMap((g) => [...JSON.stringify(g.tree).matchAll(/"clauseCode":"(C\d+)"/g)].map((m) => m[1])));
 }
 
 /**
- * 보통약관 조를 가리키는 공용조항인가 — 그 조가 있어야 정의 검사 ① 을 통과하므로 보통약관 뒤에 만든다 (기능/함수조항 §3.4).
+ * 보통약관 조를 가리키는 함수조항인가 — 그 조가 있어야 정의 검사 ① 을 통과하므로 보통약관 뒤에 만든다 (기능/함수조항 §3.4).
  * 범위 있는 조 참조(제 항 · 사용처 위치)는 보통약관이 없어도 성립한다.
  */
 export function refsGeneral(raw: unknown): boolean {
@@ -98,7 +98,7 @@ async function loadAppendices(services: Services, actor: Actor): Promise<void> {
   }
 }
 
-/** 보통약관 템플릿 전부 — 보통약관 시드 코드 → 문서 id. 별표와 보통약관이 쓰는 공용조항이 먼저 있어야 한다. */
+/** 보통약관 템플릿 전부 — 보통약관 시드 코드 → 문서 id. 별표와 보통약관이 쓰는 함수조항이 먼저 있어야 한다. */
 async function loadGenerals(services: Services, actor: Actor): Promise<Map<string, Id>> {
   const generalIds = new Map<string, Id>();
   for (const specification of generals as unknown as Array<{ code: string; tree: DocumentNode }>) {
@@ -110,8 +110,8 @@ async function loadGenerals(services: Services, actor: Actor): Promise<Map<strin
 }
 
 /**
- * 공용조항 전부 + 그 사이에 보통약관 — 코드는 시스템 채번이라 JSON 순서대로 만든다. 보통약관 조를 가리키는 첫 공용조항 앞에서 보통약관을 넣는다
- * (보통약관이 쓰는 공용조항은 그보다 앞 코드다 — 변환기가 검사한다). `upTo` 가 있으면 그 개수까지만 만든다.
+ * 함수조항 전부 + 그 사이에 보통약관 — 코드는 시스템 채번이라 JSON 순서대로 만든다. 보통약관 조를 가리키는 첫 함수조항 앞에서 보통약관을 넣는다
+ * (보통약관이 쓰는 함수조항은 그보다 앞 코드다 — 변환기가 검사한다). `upTo` 가 있으면 그 개수까지만 만든다.
  */
 async function loadClausesAndGenerals(services: Services, actor: Actor, upTo?: number): Promise<Map<string, Id>> {
   let generalIds: Map<string, Id> | undefined;
@@ -123,10 +123,10 @@ async function loadClausesAndGenerals(services: Services, actor: Actor, upTo?: n
 }
 
 /**
- * 실물 화면 E2E 의 바탕 — 별표 · 보통약관 두 벌과 **보통약관이 쓰는 박스 · 공용조항**만 넣는다 (docs/QA/시나리오/실물재현_E2E_시나리오.md §4).
- * 나머지(열거형 · 구분자 · 담보속성 · 담보 · 나머지 공용조항 · 담보약관 · 상품)는 E2E 가 화면으로 넣는다.
- * 보통약관은 가져오기 화면이 없어 시드로 넣고, 별표 · 보통약관이 쓰는 박스 · 공용조항은 보통약관이 참조해 그보다 먼저 있어야 해서 함께 넣는다
- * (보통약관이 쓰는 박스 · 공용조항은 BX000001 · C0001 부터의 앞 코드다 — 화면 E2E 는 그 뒤 코드부터 친다).
+ * 실물 화면 E2E 의 바탕 — 별표 · 보통약관 두 벌과 **보통약관이 쓰는 박스 · 함수조항**만 넣는다 (docs/QA/시나리오/실물재현_E2E_시나리오.md §4).
+ * 나머지(열거형 · 구분자 · 담보속성 · 담보 · 나머지 함수조항 · 담보약관 · 상품)는 E2E 가 화면으로 넣는다.
+ * 보통약관은 가져오기 화면이 없어 시드로 넣고, 별표 · 보통약관이 쓰는 박스 · 함수조항은 보통약관이 참조해 그보다 먼저 있어야 해서 함께 넣는다
+ * (보통약관이 쓰는 박스 · 함수조항은 BX000001 · C0001 부터의 앞 코드다 — 화면 E2E 는 그 뒤 코드부터 친다).
  * 이미 보통약관이 있으면 아무것도 하지 않는다.
  */
 export async function loadRealBase(services: Services, actor: Actor): Promise<{ created: boolean }> {
@@ -197,7 +197,7 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
     }
   }
 
-  // 별표 · 박스 → 공용조항(보통약관이 쓰는 것 · 조 참조 없는 것) → 보통약관 → 보통약관 조를 가리키는 공용조항 (기능/함수조항 §3.4)
+  // 별표 · 박스 → 함수조항(보통약관이 쓰는 것 · 조 참조 없는 것) → 보통약관 → 보통약관 조를 가리키는 함수조항 (기능/함수조항 §3.4)
   await loadAppendices(services, actor);
   await loadBoxes(services, actor);
   const generalIds = await loadClausesAndGenerals(services, actor);

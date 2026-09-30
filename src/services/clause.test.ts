@@ -224,7 +224,7 @@ describe("clause 서비스 (PGlite)", () => {
   describe("S1 — 조 참조 · 별표 참조 대상 존재 (기능/함수조항 §3.5)", () => {
     const b = nodeBuilders();
     const 조참조 = (articleId: string, code?: string): Inline => ({ id: "a1", kind: "articleRef", targets: [{ articleId, ...(code ? { code } : {}) }], connector: "및" });
-    /** 보통약관 마스터의 조 하나 — 공용조항 조 참조가 가리킬 수 있는 유일한 종류의 대상. */
+    /** 보통약관 마스터의 조 하나 — 함수조항 조 참조가 가리킬 수 있는 유일한 종류의 대상. */
     const 지급사유 = b.article("보험금의 지급사유", [b.paragraph([b.text("회사는 보험금을 지급합니다.")])]);
 
     beforeAll(async () => {

@@ -85,7 +85,7 @@ export interface ProductServiceDeps {
   generalDocuments?: GeneralDocumentGate;
   /** 보통약관이 요구하는 담보 레벨 참조 (B2/B3). 기본: 없음 → 부착 검사 통과. */
   generalAttachment?: GeneralAttachmentCheck;
-  /** 공용조항 옵션 유효 집합 (B2). 기본: 모두 유효. */
+  /** 함수조항 옵션 유효 집합 (B2). 기본: 모두 유효. */
   optionValidator?: OptionValidator;
   /** 담보속성의 식 참조 사용처 (C1). 기본: 없음. */
   attributeRefs?: AttributeRefSource;
@@ -271,12 +271,12 @@ export interface ProductService {
 
   // ── 옵션 오버라이드
   /**
-   * 보통약관 공용조항 자리의 상품별 옵션 선택 (기능/상품 §3.6).
+   * 보통약관 함수조항 자리의 상품별 옵션 선택 (기능/상품 §3.6).
    *
    * `options` 는 **부분 선택**이어도 된다 — 자리의 마스터 선택에 얹어 합친 결과를 검사하고
    * (`resolveOptions` 와 같은 규칙), 마스터와 **다른 키만** 저장한다. 전부 마스터와 같아지면
    * 행을 지우고 `ok(undefined)` 다 (코덱스 리뷰 2026-09-15 Important-1).
-   * 상품의 보통약관 템플릿에 그 참조 노드가 없거나, 그 자리의 공용조항이 `clauseCode` 와 다르면 `notFound`.
+   * 상품의 보통약관 템플릿에 그 참조 노드가 없거나, 그 자리의 함수조항이 `clauseCode` 와 다르면 `notFound`.
    */
   setOptionOverride(actor: Actor, scope: OverrideScope, nodeId: Id, clauseCode: Code, options: ClauseOptionSelection): Promise<Result<ClauseOptionOverride | undefined>>;
   listOptionOverrides(scope: OverrideScope): Promise<ClauseOptionOverride[]>;
@@ -1241,11 +1241,11 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
         // 오버라이드는 「그 자리의 마스터 선택에 얹는 차이」다 — 자리를 먼저 찾아 마스터를 읽는다.
         const ref = await gate.clauseRef(p.generalDocumentId, nodeId);
         if (!ref) return notFound(`보통약관 템플릿 ${p.generalDocumentId} 의 함수조항 참조 ${nodeId}`);
-        // 그 자리의 공용조항과 **다른 코드**로 온 행은 받지 않는다 — 조립은 오버라이드를 `nodeId` 로만 얹으므로
+        // 그 자리의 함수조항과 **다른 코드**로 온 행은 받지 않는다 — 조립은 오버라이드를 `nodeId` 로만 얹으므로
         // (`domain/assembly/booklet.ts`) 어긋난 코드로 저장된 선택이 그 자리에 조용히 적용된다 (코덱스 리뷰 후속).
         if (ref.clauseCode !== clauseCode) return notFound(`보통약관 템플릿 ${p.generalDocumentId} 의 자리 ${nodeId} 에 걸린 함수조항 ${clauseCode}`);
         // 검사는 **합친 결과**로 한다 — 부분 선택(한 옵션만 바꾸기)이 미선택으로 거부되지 않도록 (Important-1).
-        // clauseCode 자체의 유효성(없는 공용조항)은 검증기가 본다.
+        // clauseCode 자체의 유효성(없는 함수조항)은 검증기가 본다.
         const merged = { ...ref.options, ...options };
         const issues = await optionValidator.validate(clauseCode, merged);
         if (issues.length > 0) return invalid(issues);

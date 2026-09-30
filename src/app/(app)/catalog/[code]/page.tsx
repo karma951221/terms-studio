@@ -35,7 +35,7 @@ export default async function CatalogDetailPage({ params }: { params: Promise<{ 
   const inferred = inspection.inferred;
   // 넣기 패널 재료 — 마스터 필드 트리와 구분자 목록을 직렬화해 넘긴다 (기능/구분자 §4.3)
   const panel = insertPanelData(MASTER, defs);
-  // 사용처는 두 묶음 — 이 구분자를 쓰는 문면(조건식 · 슬롯 · 공용조항 본문)과 이 구분자를 참조하는 다른 구분자 (기능/구분자 §4.4).
+  // 사용처는 두 묶음 — 이 구분자를 쓰는 문면(조건식 · 슬롯 · 함수조항 본문)과 이 구분자를 참조하는 다른 구분자 (기능/구분자 §4.4).
   // 문면은 참조하는 구분자를 거쳐 닿는 것까지 센다 (ADR-0049 §2 역인덱스 「구분자 → 구분자 → 문면 → 상품」).
   const usages = transitiveUsages(graph, code);
   const dependents = dependentDiscriminators(graph, code);

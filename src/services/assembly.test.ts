@@ -35,7 +35,7 @@ function lines(doc: RenderedDoc): string[] {
 
 /**
  * 관통 1 축약 픽스처를 **실제 서비스**로 DB 에 만든다 (도메인 픽스처 `alphaPlusFixture` 와 같은 모양 —
- * 카탈로그 · 담보 · 공용조항 · 문서 · 별표 · 상품 · 탑재 · 그룹 · 기본계약).
+ * 카탈로그 · 담보 · 함수조항 · 문서 · 별표 · 상품 · 탑재 · 그룹 · 기본계약).
  */
 describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
   let t: TestDb;
@@ -102,7 +102,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
     trees.set(covBase, baseTree);
     unwrap(await coverage.writeValue(editor, { level: "coverage", id: covBase }, "coverage_basic.claim_name", "기본"));
 
-    // 별표 · 공용조항 (C0001 소멸 block + 옵션 O01{V01 일반, V02 사망} · C0002 준용 inline)
+    // 별표 · 함수조항 (C0001 소멸 block + 옵션 O01{V01 일반, V02 사망} · C0002 준용 inline)
     unwrap(await documents.createAppendix(editor, { name: "장해분류표" }));
     unwrap(await documents.createAppendix(editor, { name: "화상 분류표" }));
     unwrap(
@@ -114,7 +114,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
       }),
     );
 
-    // 보통약관 — 4개 조 (제2조 갱신여부 인라인 조건 + 고지유형 슬롯 · 제3조 별표 · 제4조 준용 = 공용조항)
+    // 보통약관 — 4개 조 (제2조 갱신여부 인라인 조건 + 고지유형 슬롯 · 제3조 별표 · 제4조 준용 = 함수조항)
     const g = unwrap(await documents.createGeneral(editor, "알파Plus 보통약관"));
     unwrap(
       await documents.apply(
@@ -145,7 +145,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
         ]),
       ),
     );
-    // 공용조항 C0002 준용 inline — 조 참조(g-art-def)는 보통약관 마스터에 있어야 저장된다 (기능/함수조항 §3.5) → 트리 적재 뒤에 만든다
+    // 함수조항 C0002 준용 inline — 조 참조(g-art-def)는 보통약관 마스터에 있어야 저장된다 (기능/함수조항 §3.5) → 트리 적재 뒤에 만든다
     unwrap(
       await clause.create(editor, {
         label: "준용 문구",

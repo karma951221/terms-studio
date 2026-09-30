@@ -8,7 +8,7 @@
  *   - `coverageUsageSource(db)`   : coverage `UsageSource.findUsages` — 부착 해제·노드 삭제가 깨뜨릴 문면 사용처.
  *   - `clauseUsageSource(db)`     : clause `UsageSource.documentsReferencing` — 참조 문서(ownerKind coverage/general) + 옵션 선택.
  *   - `documentUsageSource(db)`   : document `UsageSource` — 문서 서비스가 스스로 못 보는 외부 사용처(상품 템플릿 · 담보 문서 연결 ·
- *     옵션 오버라이드 · 공용조항 본문의 별표 참조).
+ *     옵션 오버라이드 · 함수조항 본문의 별표 참조).
  *   - `attributeRefSource(db)`    : product `AttributeRefSource.findExpressionRefs` — 식이 읽는 담보속성(유효값) 사용처.
  * - 「참조 추가 시점 검증」은 각 영역이 한다. 여기는 조회·영향뿐이다.
  *
@@ -147,14 +147,14 @@ export function createRefsService(db: Db): RefsService {
 /** 「참조」로 치는 형태 — 부착·타입·탑재·조합은 뺀다. */
 const REFERENCE_VIAS: readonly EdgeVia[] = ["when", "slot", "expression", "local", "switchCase", "valueRestrict", "binding", "defaultBinding"];
 
-/** 문서가 읽는 값 자리 하나 — 직접 또는 공용조항·파생을 거쳐서. 좌표는 문서 쪽 자리다. */
+/** 문서가 읽는 값 자리 하나 — 직접 또는 함수조항·파생을 거쳐서. 좌표는 문서 쪽 자리다. */
 interface DocumentRead {
   target: RefNodeKey;
   at: Coordinate;
 }
 
 /**
- * 문서(와 조)가 읽는 구분자·필드·담보속성 자리 전부. 공용조항 참조는 그 본문의 참조로, 파생 참조는 그 식의 참조로 펼친다
+ * 문서(와 조)가 읽는 구분자·필드·담보속성 자리 전부. 함수조항 참조는 그 본문의 참조로, 파생 참조는 그 식의 참조로 펼친다
  * (함수조항 인자에 연결한 구분자는 사용처 문맥에서 해소되므로 사용처의 값 자리를 읽는 것이다 — 사용처 연결 · 기본 연결, ADR-0076).
  */
 function documentReads(graph: RefGraph, doc: RefNodeKey): DocumentRead[] {
@@ -352,7 +352,7 @@ export function documentUsageSource(): DocumentUsageSource {
         .map((e) => e.at);
     },
     async boxUsages(tx, code) {
-      // 문서 안 박스 참조는 문서 서비스가 스스로 훑는다 — 여기서는 공용조항 본문의 것만
+      // 문서 안 박스 참조는 문서 서비스가 스스로 훑는다 — 여기서는 함수조항 본문의 것만
       const graph = await loadGraph(tx);
       return usagesOf(graph, { kind: "box", code }, { via: ["boxRef"] })
         .filter((e) => e.from.kind === "clause")

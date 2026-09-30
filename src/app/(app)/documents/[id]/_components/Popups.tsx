@@ -144,7 +144,7 @@ function ArticleRefFields({ ctx, node, restrict }: { ctx: DocCtx; node?: Article
     }));
   };
   const joins = count >= 2 || repeatedPicked || mode !== "";
-  // 범위를 화면이 정하면(공용조항 — 보통약관 · 이 공용조항 · 사용처) 그 목록이 범위 고르기, 고른 범위의 후보만 선다
+  // 범위를 화면이 정하면(함수조항 — 보통약관 · 이 함수조항 · 사용처) 그 목록이 범위 고르기, 고른 범위의 후보만 선다
   const choices = ctx.articleRefChoices;
   const [choice, setChoice] = useState(() => initialChoice(choices, node));
   const picked = choices?.find((c) => c.value === choice);

@@ -1,4 +1,4 @@
-/** 공용조항 조회 (L1) — 화면은 컬럼만 적고, 조립은 ListPage 가 한다. */
+/** 함수조항 조회 (L1) — 화면은 컬럼만 적고, 조립은 ListPage 가 한다. */
 import Link from "next/link";
 
 import { ListPage, codeCol, dateCol, nameCol, userCol, type ListColumn } from "@/app/_components/ListPage";

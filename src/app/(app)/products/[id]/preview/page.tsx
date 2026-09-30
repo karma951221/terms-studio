@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
  * - 저장본 있음: 생성 시각 · 실행자 + 본문. 생성 이후 입력이 바뀌었으면(`stale`) 「오래된 결과」 배지 —
  *   결과는 지우지 않고 배지가 붙은 채 남긴다(기능/조립산출 §3.6). 「다시 실행」 만이 산출본을 바꾼다.
  * - 머리의 두 줄: 규모(먼저 읽히는 숫자는 전체 규모 — 디자인원칙 §9.6) · 조립 검사/내용 검토(디자인원칙 §9.2).
- * - 「조연결 판정」 절(기능/조립산출 §4.1): 조연결된 조마다 판정 배지 · 미합의 사유, 펼치면 항별 대조 표와 비교 제외 공용조항.
+ * - 「조연결 판정」 절(기능/조립산출 §4.1): 조연결된 조마다 판정 배지 · 미합의 사유, 펼치면 항별 대조 표와 비교 제외 함수조항.
  *   생략된 조는 본문에서 사라지므로 근거는 여기서만 열린다.
  */
 export default async function ProductPreviewPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
@@ -72,7 +72,7 @@ export default async function ProductPreviewPage({ params, searchParams }: { par
   // 「다시 실행」 전까지는 근거 없는 행으로 그린다 (화면이 죽지 않게).
   const records = booklet.omitted.map((o) => ({ ...o, pairs: o.pairs ?? [], excludedClauseNodeIds: o.excludedClauseNodeIds ?? [] }));
   const counts = omissionCounts(records);
-  // 비교 제외 공용조항의 이름 — 보통약관 템플릿 트리 + 공용조항 라벨 (판정 절에 그 노드가 있을 때만 읽는다)
+  // 비교 제외 함수조항의 이름 — 보통약관 템플릿 트리 + 함수조항 라벨 (판정 절에 그 노드가 있을 때만 읽는다)
   const needsClauseNames = records.some((o) => o.excludedClauseNodeIds.length > 0);
   const [generalTemplate, clauses] = needsClauseNames
     ? await Promise.all([product.generalDocumentId ? services.document.get(product.generalDocumentId) : undefined, services.clause.list()])

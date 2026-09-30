@@ -5,7 +5,7 @@
  *   다시 소스로 묶는다. 줄이 다 차지 않았으면 빈 소스(`""`) — 저장 검증이 그 가지를 오류로 잡아 그 자리로 안내한다.
  * - 줄로 풀 수 없는 식(괄호 중첩 · not · 집계 직접 사용)은 원문(`raw`) 읽기 전용 + 「줄로 다시 만들기」 (ADR-0066 결정 8).
  * - 변수 고르기는 목록 하나 — 담보약관이면 문맥 담보 트리의 노드마다 그 레벨 구분자(`@노드`), 반복 표 셀이면 「현재 행」,
- *   담보 문맥이 없으면(보통약관 · 공용조항) 레벨별 한정자 없는 구분자, 그 밖(상품 · 세목 레벨)은 「구분자」 묶음.
+ *   담보 문맥이 없으면(보통약관 · 함수조항) 레벨별 한정자 없는 구분자, 그 밖(상품 · 세목 레벨)은 「구분자」 묶음.
  *   값은 `코드` 또는 `코드@노드id` 글자다. 끝에 「담보속성」 묶음(값 `attr.코드`) — 있음 · 없음 · = · ≠ (2026-09-28).
  */
 import { COVERAGE_NODE_LEVELS } from "@/domain/coverage";
@@ -88,7 +88,7 @@ export function pickerGroups(context: ConditionContext): PickerGroup[] {
     // 담보 뿌리 아래 잎은 한정자 없음, 세부보장 · 급부 아래 잎은 `@노드`
     groups.push({ label: `${ATTACH_LEVEL_LABEL[node.level]} — ${node.name}`, options: leaves.map((d) => (node.level === "coverage" ? at(d) : at(d, node))) });
   }
-  // 담보 문맥이 없으면(보통약관 · 공용조항) 트리 레벨 구분자도 한정자 없이 레벨별로 — 사용처의 담보에서 읽힌다
+  // 담보 문맥이 없으면(보통약관 · 함수조항) 트리 레벨 구분자도 한정자 없이 레벨별로 — 사용처의 담보에서 읽힌다
   if (!context.coverage) {
     for (const level of COVERAGE_NODE_LEVELS) {
       const leaves = context.discriminators.filter((d) => d.level === level);

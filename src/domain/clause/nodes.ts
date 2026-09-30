@@ -1,13 +1,13 @@
 /**
- * 공용조항 본문 노드 — 문면 노드 트리(ADR-0012 · 기능/문면 §3.2)의 **부분집합**.
+ * 함수조항 본문 노드 — 문면 노드 트리(ADR-0012 · 기능/문면 §3.2)의 **부분집합**.
  *
- * 공용조항 본문은 문면과 같은 노드 모델을 쓰되, 공용조항 안에서 쓸 수 있는 종류만 여기 둔다.
+ * 함수조항 본문은 문면과 같은 노드 모델을 쓰되, 함수조항 안에서 쓸 수 있는 종류만 여기 둔다.
  * B3(document)·C2(assembly) 통합 시 노드 타입을 하나로 합칠 수 있도록 **타입은 이 파일 한 곳**에만 둔다.
  *
  * - 유형 = 출력 모양 (최종 결정 4): inline 본문 = `Inline[]` (문장 안 문구) · block 본문 = `Block[]` (항 목록) ·
  *   item 본문 = `ItemBodyNode[]` (호 목록 — 조건 블록 가지 안도 호 목록) · subitem 본문 = `SubitemBodyNode[]` (목 목록). 빈 목록도 된다.
  * - 인라인 종류: `text · slot · inlineCond · articleRef · appendixRef · optionSlot`.
- *   **공용조항 참조(clauseInlineRef · clauseBlockRef)는 없다** — 중첩 금지(MVP, 기능/함수조항 §3.1).
+ *   **함수조항 참조(clauseInlineRef · clauseBlockRef)는 없다** — 중첩 금지(MVP, 기능/함수조항 §3.1).
  *   반복(forBlock · inlineFor)도 MVP 이후라 없다.
  * - 블록 종류: `paragraph(항) · condBlock(조건 블록) · bulletList(글머리 목록) · boxRef(정적 마스터 박스 참조)`. 조(article)는 항상 사용처 소유라 없다.
  *   박스 참조는 잎이라 중첩 금지에 걸리지 않는다 — 항 자리와 항의 호 목록 자리(호 뒤)에 선다 (최종 결정 6 · 9).
@@ -21,7 +21,7 @@
  * - 식(`slot.ref` · `when`)은 코드 기반 소스 문자열 — 파싱·추출은 expression 모듈.
  * - 항 · 호 · 목은 P코드(`code`)를 가진다 — 본문 안에서 공존하는 노드끼리 유일, 조건 가지 · switch 칸의 같은 자리는 코드를 공유한다
  *   (ADR-0072 결정 4 · 최종 결정 12, clause/pcode.ts).
- * - 노드 id 는 공용조항 하나 안(본문 + 모든 옵션 선택지 본문)에서 유일해야 한다 —
+ * - 노드 id 는 함수조항 하나 안(본문 + 모든 옵션 선택지 본문)에서 유일해야 한다 —
  *   인라인화(`expandClause`)가 `${참조노드id}/${원노드id}` 로 유일화하기 때문.
  *
  * DB·React import 금지 (순수층).
@@ -38,7 +38,7 @@ export interface TextNode {
   text: string;
 }
 
-/** 값 치환 슬롯 — `ref` 는 식 참조 경로 문자열. 문면·공용조항은 구분자 코드만 찍는다 (ADR-0037). */
+/** 값 치환 슬롯 — `ref` 는 식 참조 경로 문자열. 문면·함수조항은 구분자 코드만 찍는다 (ADR-0037). */
 export interface SlotNode {
   id: Id;
   kind: "slot";
@@ -88,7 +88,7 @@ export interface ArticleRefNode {
   scope?: ClauseRefScope;
 }
 
-/** 공용조항 조 참조의 범위 — 없으면 보통약관 마스터. */
+/** 함수조항 조 참조의 범위 — 없으면 보통약관 마스터. */
 export type ClauseRefScope = "clause" | "host";
 
 /** 사용처 위치 경로 — `조[.항[.호[.목]]]` 순번(1부터). */
@@ -271,7 +271,7 @@ export interface SubitemSwitchBlockNode {
 /** 「목」 유형 본문의 한 자리 — 목 목록(list<목>). 사용처 호의 목 목록 자리에 펼쳐진다. */
 export type SubitemBodyNode = SubitemNode | SubitemCondBlockNode | SubitemSwitchBlockNode;
 
-/** 공용조항 안에 나타날 수 있는 모든 노드. */
+/** 함수조항 안에 나타날 수 있는 모든 노드. */
 export type ClauseNode = Inline | Block | ItemNode | SubitemNode | BulletNode | ItemCondBlockNode | SubitemCondBlockNode | ItemSwitchBlockNode | SubitemSwitchBlockNode;
 
 /** 값별 분기 노드(블록 · 문장 안) — 모양이 같아 걷는 쪽이 한 벌로 다룬다. */

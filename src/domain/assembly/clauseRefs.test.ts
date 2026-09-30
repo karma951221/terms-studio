@@ -9,7 +9,7 @@ import { hostLocator, resolveDocument } from "./resolve";
 import type { SubstitutedDoc } from "./types";
 
 /**
- * 조째 공용조항의 조 참조 (기능/함수조항 §3.5) — 「제1조(보험금의 지급사유)에서 정한」(사용처 위치) · 「제1항에 따라」(제 항)가
+ * 조째 함수조항의 조 참조 (기능/함수조항 §3.5) — 「제1조(보험금의 지급사유)에서 정한」(사용처 위치) · 「제1항에 따라」(제 항)가
  * 사용처에 펼쳐진 자리의 계산 번호로 찍힌다.
  */
 const 소멸: BlockClause = {

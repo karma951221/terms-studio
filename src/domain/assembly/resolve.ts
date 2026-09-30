@@ -1,5 +1,5 @@
 /**
- * 2·3단계 — 조건 해소 + 공용조항 인라인화 (문서 한 벌을 한 문맥으로 실행).
+ * 2·3단계 — 조건 해소 + 함수조항 인라인화 (문서 한 벌을 한 문맥으로 실행).
  *
  * - 조건은 **밟은 자리만** 평가한다 (ADR-0016): 가지를 앞에서부터 보다 true 인 첫 가지(또는 else)를 택하고,
  *   택하지 않은 가지 안쪽은 들여다보지 않는다. 오류·미결이면 조건 노드 전체가 오류 마커가 된다 — 조립 문맥에
@@ -19,10 +19,10 @@
  *   행 안의 조건은 행 노드 문맥에서 해소하고, 슬롯은 행 노드(`RSlot.row`)를 달고 치환 단계로 넘긴다.
  *   행 원천이 없는 문맥(보통약관)의 반복 표는 오류 마커.
  * - **박스 참조**(정적 마스터, 최종 결정 9)는 박스 마스터(`env.boxes`)에서 제목 · 줄을 읽어 정적 박스로 바꾼다 — 조 자리 · 호 목록 자리,
- *   펼친 공용조항 본문 안도 같다. 없는 박스는 brokenRef 오류 마커. 줄은 고정 글이라 더 해소할 것이 없다.
+ *   펼친 함수조항 본문 안도 같다. 없는 박스는 brokenRef 오류 마커. 줄은 고정 글이라 더 해소할 것이 없다.
  * - 슬롯·조 참조·별표 참조는 그대로 둔다 (4·7단계).
  *
- * 좌표: 문서 기본 좌표 + 조(id·조 명) + 노드 경로. 펼친 공용조항 안의 노드 id 는 `${참조노드id}/${원노드id}`, 반복 복제본은 `${원id}@${원소}`
+ * 좌표: 문서 기본 좌표 + 조(id·조 명) + 노드 경로. 펼친 함수조항 안의 노드 id 는 `${참조노드id}/${원노드id}`, 반복 복제본은 `${원id}@${원소}`
  * (둘이 섞이면 `참조id@종@사유/안쪽id` — 원 템플릿 노드는 `templateIdOf`).
  */
 
@@ -68,7 +68,7 @@ export interface ResolveEnv {
   clauses: ReadonlyMap<Code, Clause>;
   /** 정적 마스터 박스 — 코드 → 박스. 박스 참조를 여기서 편다 (없으면 모든 박스 참조가 brokenRef). */
   boxes?: ReadonlyMap<Code, Box>;
-  /** 공용조항 참조 노드 id → 옵션 오버라이드 (상품 스코프 — 보통약관 자리만, 기능/상품 §3.6). */
+  /** 함수조항 참조 노드 id → 옵션 오버라이드 (상품 스코프 — 보통약관 자리만, 기능/상품 §3.6). */
   overrides: ReadonlyMap<Id, OptionSelection>;
   /** 문서 기본 좌표 (document · ownerId · ownerName). */
   coordinate: Coordinate;
@@ -89,7 +89,7 @@ export interface ResolveOutcome {
 /** 유형(출력 모양)의 화면 말 — 자리 유형 오류 문구용. */
 const MODE_WORD: Record<ClauseMode, string> = { inline: "문구", block: "항", item: "호", subitem: "목" };
 
-/** 문면 노드와 공용조항 노드(부분집합 — articleRef 에 scope 없음)를 함께 다룬다. */
+/** 문면 노드와 함수조항 노드(부분집합 — articleRef 에 scope 없음)를 함께 다룬다. */
 type AnyInline = InlineNode | ClauseInline | ClauseInlineSwitchNode;
 type AnyCond = CondBlockNode | ClauseCondBlockNode;
 type AnySubitem = ClauseSubitemNode | SubitemNode;
@@ -101,7 +101,7 @@ type AnyStatic = TableNode | BoxNode | BulletListNode | ClauseBulletListNode;
 type AnyItemSlot = AnyItem | AnyCond | AnyStatic | BoxRefNode | ClauseBlockRefNode | ClauseItemCondBlockNode | ClauseItemSwitchBlockNode | ForBlockNode;
 /** 목 목록 자리 — 목 · 조건 블록 · 글머리 목록 · 「목」 함수조항 참조 (펼친 목 유형 본문도 같은 자리). */
 type AnySubitemSlot = AnySubitem | AnyCond | BulletListNode | ClauseBlockRefNode | ClauseSubitemCondBlockNode | ClauseSubitemSwitchBlockNode;
-/** 가지 — 블록·인라인·공용조항 쪽 모두 이 모양이다. children 은 자리에 맞게 캐스팅한다. */
+/** 가지 — 블록·인라인·함수조항 쪽 모두 이 모양이다. children 은 자리에 맞게 캐스팅한다. */
 interface Branch {
   id: Id;
   when?: string;
@@ -181,7 +181,7 @@ function codesIn(nodes: readonly unknown[], via: string): string[] {
 }
 
 /**
- * 조 참조의 범위 → 조립 범위. 문면 참조는 제 범위 그대로, 공용조항의 보통약관 참조(범위 없음)는 `general`,
+ * 조 참조의 범위 → 조립 범위. 문면 참조는 제 범위 그대로, 함수조항의 보통약관 참조(범위 없음)는 `general`,
  * 제 항 · 사용처 참조(`clause` · `host`)는 펼칠 때 사용처 노드 id 가 됐으므로 `self` (기능/함수조항 §3.5).
  */
 function refScope(scope: "self" | "general" | "clause" | "host" | undefined): "self" | "general" {
@@ -191,7 +191,7 @@ function refScope(scope: "self" | "general" | "clause" | "host" | undefined): "s
 /**
  * 사용처 위치 경로(`"2.1.3"` = n번째 조 · m번째 항 · k번째 호 · 목) → 사용처 참조 대상(조 · 조+P코드) (기능/함수조항 §3.5).
  * 순번은 **원본 트리의 문서 순**이다 — 관은 투명하고 조건 블록은 모든 가지를 차례로 센다(값에 따라 번호가 바뀌어도 가리키는 노드는 같다).
- * 공용조항 블록이 펼친 항은 세지 않는다 — 사용처가 소유한 노드만 가리킬 수 있다.
+ * 함수조항 블록이 펼친 항은 세지 않는다 — 사용처가 소유한 노드만 가리킬 수 있다.
  */
 export function hostLocator(doc: DocumentNode): (path: string) => RefTarget | undefined {
   const flat = <T extends { kind: string }>(list: readonly unknown[], want: string): T[] =>
@@ -375,7 +375,7 @@ class Walker {
     return each(r.case.children, { ...f, path: [...f.path, n.id, r.case.id] });
   }
 
-  /** 공용조항 참조 → 펼친 본문 (옵션 해소 포함). 실패면 오류 마커. */
+  /** 함수조항 참조 → 펼친 본문 (옵션 해소 포함). 실패면 오류 마커. */
   expand(
     node: { id: Id; clauseCode: Code; options: OptionSelection; bindings?: Bindings },
     modes: readonly ClauseMode[],
@@ -620,7 +620,7 @@ class Walker {
     };
   }
 
-  /** 조 안의 블록 자리 — 항 · 조건 블록 · 공용조항 block 참조 · 반복 블록. */
+  /** 조 안의 블록 자리 — 항 · 조건 블록 · 함수조항 block 참조 · 반복 블록. */
   blocks(list: readonly AnyBlock[], f: Frame, excludeFromComparison = false): (RParagraph<RInline> | RStatic<RInline> | ErrorNode)[] {
     return list.flatMap((n): (RParagraph<RInline> | RStatic<RInline> | ErrorNode)[] => {
       const at = this.at(f, n.id);
@@ -697,7 +697,7 @@ class Walker {
   }
 }
 
-/** 문서 한 벌을 문맥으로 실행 — 조건 해소 + 공용조항 인라인화. 슬롯·참조는 남는다. */
+/** 문서 한 벌을 문맥으로 실행 — 조건 해소 + 함수조항 인라인화. 슬롯·참조는 남는다. */
 export function resolveDocument(input: DocumentNode, ctx: AssemblyContext, env: ResolveEnv): ResolveOutcome {
   // 코드 없는 옛 · 손으로 짠 트리도 같은 열쇠로 푼다 — 저장 트리는 이미 코드가 있어 그대로다 (ADR-0072 결정 10)
   const doc = withCodes(input);

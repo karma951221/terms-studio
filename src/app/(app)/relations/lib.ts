@@ -22,7 +22,7 @@ export interface RelationQuery {
 
 const COVERAGE_LEVELS: readonly string[] = ["coverage", "subCoverage", "benefit"];
 
-/** 화면이 지원하는 실체 종류만 (구분자·입력항목·enum·enum값·공용조항·별표·담보 노드·담보속성(값)·상품·상품담보). */
+/** 화면이 지원하는 실체 종류만 (구분자·입력항목·enum·enum값·함수조항·별표·담보 노드·담보속성(값)·상품·상품담보). */
 export function parseRefTarget(q: RelationQuery): RefNodeKey | undefined {
   switch (q.kind) {
     case "discriminator":

@@ -11,7 +11,7 @@
  *   (`CondRows` — 변수 · 연산자 · 값, ⊕ ⊖)과 끝의 작은 버튼(ELIF · ELSE · 풀기 · 삭제)이다. 팝업 없음 (2026-09-28).
  * - 값별 분기(함수조항 편집기만, 최종 결정 5)는 조건 블록과 같은 상자 — 첫 칸 위에 대상 줄(대상 고르기 · 칸 없는 값 · 칸 추가 · 삭제),
  *   칸마다 머리 줄(값 칩 · 값 더하기 · 「문구 없음」 · 칸 삭제) + 그 칸 내용. 칸 머리는 조건 머리처럼 자리(`data-cond-head`)라 툴바가 그 칸을 본다.
- * - 공용조항(조 단위)은 머리 띠 「공용조항 (이름)」 + 🗑 · 그 아래 공용조항의 **모델**(슬롯 · 옵션 자리 · 조건 · 참조, 읽기 전용)을 든 상자다.
+ * - 함수조항(조 단위)은 머리 띠 「함수조항 (이름)」 + 🗑 · 그 아래 함수조항의 **모델**(슬롯 · 옵션 자리 · 조건 · 참조, 읽기 전용)을 든 상자다.
  *   미리보기(`clauseView: "text"`)만 고른 선택지를 끼운 문장으로 그린다 — 가운데 = 모델, 오른쪽 = 결과 (2026-09-28).
  * - 노드 id·8자리 접두를 화면에 내보내지 않는다 (리뷰 #25).
  */
@@ -254,7 +254,7 @@ function Box({ node, ctx }: { node: Node & { kind: "box" }; ctx: DocCtx }) {
   );
 }
 
-/** 공용조항 옵션 자리(운반체) → 사용처가 고른 선택지 문구. 안 골랐으면 〔옵션명〕. */
+/** 함수조항 옵션 자리(운반체) → 사용처가 고른 선택지 문구. 안 골랐으면 〔옵션명〕. */
 function optionChip(clause: { options: readonly { code: string; label: string; values: readonly { code: string; label: string; body: readonly { kind: string; text?: string }[] }[] }[] }, chosen: Record<string, string>) {
   return (node: InlineNode) => {
     const code = optionCodeOf(node);
@@ -272,8 +272,8 @@ function optionChip(clause: { options: readonly { code: string; label: string; v
 }
 
 /**
- * 공용조항(조 단위) 블록 — 머리 띠 「공용조항 (이름)」 · 옵션 선택(편집이면 눌러서 고치기) · 「공용조항에서 고치기 →」 · 🗑,
- * 그 아래 공용조항의 모델(`ClauseModel` — 읽기 전용). 미리보기(`clauseView: "text"`)는 고른 선택지를 끼운 문장이다.
+ * 함수조항(조 단위) 블록 — 머리 띠 「함수조항 (이름)」 · 옵션 선택(편집이면 눌러서 고치기) · 「함수조항에서 고치기 →」 · 🗑,
+ * 그 아래 함수조항의 모델(`ClauseModel` — 읽기 전용). 미리보기(`clauseView: "text"`)는 고른 선택지를 끼운 문장이다.
  * 본문 안은 이 문서의 자리가 아니다 — `data-clause-ref` 가 누른 자리를 이 블록으로 모은다(`place.ts`).
  */
 function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
@@ -329,7 +329,7 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
         <Block nodes={nodes} ctx={inner} />
       );
   } else if (clause) {
-    // 가운데(모델) — 공용조항이 어떻게 짜였는지: 슬롯 · 옵션 자리(선택지 전부 + 고른 것) · 조건 · 참조 (2026-09-28)
+    // 가운데(모델) — 함수조항이 어떻게 짜였는지: 슬롯 · 옵션 자리(선택지 전부 + 고른 것) · 조건 · 참조 (2026-09-28)
     body = (
       <ClauseModel
         clause={clause}
@@ -535,7 +535,7 @@ function RepeatBlock({ node, ctx, as }: { node: Node & { kind: "forBlock" }; ctx
 
 /**
  * 항·호·목·조건 블록 — 자리에 맞는 태그로. `data-block` 은 툴바 · 오른쪽 클릭 메뉴가 자리를 읽는 표지다(`place.ts`).
- * 공용조항 화면도 이것으로 본문(항 목록)을 그린다 — 조 머리 없이 (기능/함수조항 §4.3).
+ * 함수조항 화면도 이것으로 본문(항 목록)을 그린다 — 조 머리 없이 (기능/함수조항 §4.3).
  */
 export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: DocCtx; inList?: boolean }): ReactNode {
   return nodes.map((node) => {
@@ -605,7 +605,7 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
       }
 
       case "clauseBlockRef":
-        // 호 목록 자리(항 · 호 뒤)의 공용조항은 「박스」 — 목록 안이면 <li> 로 감싼다
+        // 호 목록 자리(항 · 호 뒤)의 함수조항은 「박스」 — 목록 안이면 <li> 로 감싼다
         return inList ? (
           <li key={node.id} className="ts-doc-static-item">
             <ClauseBlock node={node} ctx={ctx} />

@@ -300,7 +300,7 @@ class Renderer {
         return n;
       case "articleRef": {
         // 담보약관의 보통약관 참조인데 템플릿이 없으면 통째로 해소 불가 — 대상 단위 판단 이전의 문제다
-        // (보통약관 문서 안의 scope general 참조 — 공용조항 본문 — 는 자기 문서에서 찾는다)
+        // (보통약관 문서 안의 scope general 참조 — 함수조항 본문 — 는 자기 문서에서 찾는다)
         if (n.scope === "general" && this.env.document !== "general" && !this.env.general) {
           return this.error(n.id, { kind: "brokenRef", message: "보통약관 템플릿이 없어 보통약관 참조를 해소할 수 없습니다", at: { ...n.at, ...(n.targets[0] ? { refPath: refKey(n.targets[0]) } : {}) } });
         }

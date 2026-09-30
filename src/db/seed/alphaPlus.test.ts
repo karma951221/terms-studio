@@ -14,7 +14,7 @@ import { MERITZ_PRODUCT_NAME } from "./load";
 const admin: Actor = { userId: "00000000-0000-4000-8000-000000000001", role: "admin" };
 
 /**
- * 시드가 실물 재료 두 상품(카탈로그 · 담보 9 + 9 · 공용조항 133 · 상품 2 · 별표 21 · 보통약관 2 · 탑재 11 + 9)을 실제 서비스로 끝까지 만들고, 재실행에 안전한지.
+ * 시드가 실물 재료 두 상품(카탈로그 · 담보 9 + 9 · 함수조항 133 · 상품 2 · 별표 21 · 보통약관 2 · 탑재 11 + 9)을 실제 서비스로 끝까지 만들고, 재실행에 안전한지.
  * 원문과의 대조는 `real.test.ts` 몫.
  */
 describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (PGlite)", () => {
@@ -174,7 +174,7 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     ]);
     // 알파Plus 준용규정은 담보속성(갱신유형)을 읽는다 — 담보속성은 함수조항이 직접 읽는다 — 요구 참조는 저장 때 식에서 뽑는다 (기능/함수조항 §3.3)
     expect((await services.clause.get("C0033"))?.required).toEqual({ discriminators: [], attributes: ["A0001"] });
-    // 쓰임 수 = 참조 자리 수 — 특별약관의 소멸(사망)은 소멸 급부 없는 특약 7벌(알파Plus 3 · 메리츠 4), 보통약관 조째 공용조항은 보통약관 두 벌,
+    // 쓰임 수 = 참조 자리 수 — 특별약관의 소멸(사망)은 소멸 급부 없는 특약 7벌(알파Plus 3 · 메리츠 4), 보통약관 조째 함수조항은 보통약관 두 벌,
     // 지급사유 발생 소멸은 세 담보(중대한특정상해수술비 · 메리츠 상해 · 질병 80%이상후유장해)
     const summaries = await services.clause.summaries();
     expect(summaries.find((c) => c.code === "C0028")?.usageCount).toBe(7);

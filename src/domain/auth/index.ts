@@ -28,7 +28,7 @@ export const DESTRUCTIVE_ACTIONS = [
   "coverage.deleteNode", // 담보·세부보장·급부 노드 삭제 — 하위 값 행 연쇄 삭제
   "coverage.detach", // 부착 해제 — 그 실체의 값 행 삭제
   // clause (B2)
-  "clause.delete", // 공용조항 삭제 — 참조 문면 오류화
+  "clause.delete", // 함수조항 삭제 — 참조 문면 오류화
   // document (B3)
   "document.delete", // 문면 마스터 삭제
   "appendix.delete", // 별표 마스터 삭제 — 참조 슬롯 오류화

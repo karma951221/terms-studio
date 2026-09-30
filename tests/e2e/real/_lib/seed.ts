@@ -130,11 +130,11 @@ export function generalTreeOf(code: string): DocumentNode {
   return tree;
 }
 
-/** 보통약관 두 벌의 참조 대상 줄 — 조 id 가 벌마다 다르다(`g-…` · `m-…`) — 공용조항 조 참조는 보통약관 전부가 후보다. */
+/** 보통약관 두 벌의 참조 대상 줄 — 조 id 가 벌마다 다르다(`g-…` · `m-…`) — 함수조항 조 참조는 보통약관 전부가 후보다. */
 export const ALL_GENERAL_ANCESTORS = new Map(SEED.generals.flatMap((g) => [...generalAncestors(g.tree)]));
 
 /**
- * 보통약관이 쓰는 공용조항 — 바탕 DB(`SEED_PROFILE=base`)가 보통약관과 함께 시드로 넣는다(C0001~, 보통약관 가져오기 전에 있어야 한다).
+ * 보통약관이 쓰는 함수조항 — 바탕 DB(`SEED_PROFILE=base`)가 보통약관과 함께 시드로 넣는다(C0001~, 보통약관 가져오기 전에 있어야 한다).
  * 화면 E2E 는 이것들을 치지 않는다.
  */
 export const BASE_CLAUSE_CODES = new Set(SEED.generals.flatMap((g) => [...JSON.stringify(g.tree).matchAll(/"clauseCode":"(C\d+)"/g)].map((m) => m[1])));

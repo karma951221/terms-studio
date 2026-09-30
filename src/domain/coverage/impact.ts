@@ -3,7 +3,7 @@
  *
  * 2026-09-12 — 부착 해제(`coverage.detach`)는 사라졌다. 값 자리가 마스터라 뗄 부착이 없다 (ADR-0037).
  *
- * 값 행 수·cascade 는 여기서 센다. **사용처**(문면 조건식·슬롯, 요구 공용조항 참조, 파생식)는 참조
+ * 값 행 수·cascade 는 여기서 센다. **사용처**(문면 조건식·슬롯, 요구 함수조항 참조, 파생식)는 참조
  * 역인덱스(C1 refs)가 담당하므로 `UsageSource` 인터페이스만 정의하고 주입받는다. 기본 `NO_USAGE` 는 빈 목록.
  */
 import type { Coordinate, Id, Impact } from "../types";

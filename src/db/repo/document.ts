@@ -164,7 +164,7 @@ export async function deleteDocument(db: Db, id: Id): Promise<void> {
 // ───────────────────────────── 별표 ─────────────────────────────
 
 /**
- * 별표 순번 — 카탈로그 · 공용조항과 같은 code_sequences 를 쓰되 kind 는 `appendix` (scope 전역 "").
+ * 별표 순번 — 카탈로그 · 함수조항과 같은 code_sequences 를 쓰되 kind 는 `appendix` (scope 전역 "").
  * 한 문장의 upsert 라 동시 호출에도 안전하고, 삭제된 순번은 재사용하지 않는다.
  */
 export async function nextAppendixSeq(db: Db): Promise<number> {

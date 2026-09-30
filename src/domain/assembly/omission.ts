@@ -9,7 +9,7 @@
  *   맞아떨어져도 통째로 두고 `omissionUndecided` warning 하나(표 순서의 첫 사유)를 낸다 — 자동으로 지우는 범위는 좁게.
  *
  * 비교 직렬화: 구조(항·호·목) + 텍스트 + 참조 대상(조 id · 별표 코드). 노드 id 는 비교하지 않는다 —
- * 같은 공용조항을 두 문서가 참조하면 id 접두(`${참조노드id}/…`)만 다르고 내용은 같기 때문.
+ * 같은 함수조항을 두 문서가 참조하면 id 접두(`${참조노드id}/…`)만 다르고 내용은 같기 때문.
  * 오류 마커가 있는 조는 절대 같다고 보지 않는다 (마커 id 로 직렬화 → 문서마다 다르다).
  * 띄어쓰기 하나도 다르면 다르다 — 정규화·유사도 없음.
  */
@@ -103,7 +103,7 @@ interface ComparedParagraph {
   loose: string;
 }
 
-/** 비교 대상 항 — 보통약관 쪽은 block 공용조항의 비교 제외 항을 뺀다 (ADR-0020 결정 2). 빈 조는 빈 항 하나로 본다. */
+/** 비교 대상 항 — 보통약관 쪽은 block 함수조항의 비교 제외 항을 뺀다 (ADR-0020 결정 2). 빈 조는 빈 항 하나로 본다. */
 function comparedParagraphs(a: RArticle<SInline>, excludeMarked: boolean): ComparedParagraph[] {
   const out: ComparedParagraph[] = [];
   const counts = { paragraph: 0, table: 0, box: 0, bulletList: 0, error: 0 };
@@ -132,7 +132,7 @@ function containsErrors(a: RArticle<SInline>): boolean {
 }
 
 /**
- * 비교에서 뺀 block 공용조항 참조 노드 id — 펼쳐진 항의 id 는 `${참조노드id}/${원노드id}` 라 첫 `/` 앞이 참조 노드다
+ * 비교에서 뺀 block 함수조항 참조 노드 id — 펼쳐진 항의 id 는 `${참조노드id}/${원노드id}` 라 첫 `/` 앞이 참조 노드다
  * (`expandClause`). 접두가 없으면(직접 쓴 항에 표시가 붙은 경우) 그 항 id 를 그대로 둔다.
  */
 function excludedClauseNodeIds(a: RArticle<SInline>): Id[] {

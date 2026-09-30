@@ -9,9 +9,9 @@
  *    참조 슬롯으로 바꾼다 — 조건 가지 안의 참조도 같이 풀린다.
  * 4. 보통약관의 기본계약 대치 조는 제목만 남기고, 기본계약 문면은 그 조들을 뽑아 조연결한다.
  * 5. 슬롯 오버레이(담보명 등)를 얹는다.
- * 6. 공용조항 · 박스를 만든다 — 조 · 여러 항 공용조항(`CLAUSES`, 원문 한 자리 `from` 에서 또는 평문에서, `clauses.ts`)과
+ * 6. 함수조항 · 박스를 만든다 — 조 · 여러 항 함수조항(`CLAUSES`, 원문 한 자리 `from` 에서 또는 평문에서, `clauses.ts`)과
  *    정적 마스터 박스(원문의 박스 전부, 같은 박스는 하나 · 낱말만 달라도 따로, `boxes.ts`). 적재 순서로 코드를 매기고,
- *    박스 자리는 박스 참조로 · 설정의 쓰임 자리는 공용조항 참조로 바꾼다.
+ *    박스 자리는 박스 참조로 · 설정의 쓰임 자리는 함수조항 참조로 바꾼다.
  * 7. 조 자리 조건 오버레이(`articleConds`)를 얹고 `validateTree` 로 검증한 뒤 `src/db/seed/data/{generals,documents,appendices,boxes,clauses}.json` 을 쓴다.
  *
  * 변환하지 못한 참조는 `[report]` 로 stdout 에 남긴다 — 사람이 본다 (법령 인용은 의도된 미변환).
@@ -318,14 +318,14 @@ function main(): void {
     for (const spec of product.specials) specials.set(spec.code, buildSpecial(spec, product, parsed, general, report));
     return { product, parsed, general, specials };
   });
-  /** 문서 코드 → 문면 (보통약관 · 담보약관 전부) — 공용조항 `from` 이 가리킨다. */
+  /** 문서 코드 → 문면 (보통약관 · 담보약관 전부) — 함수조항 `from` 이 가리킨다. */
   const built = new Map<string, Built>();
   for (const p of products) {
     built.set(p.product.general.code, p.general);
     for (const [code, b] of p.specials) built.set(code, b);
   }
 
-  // ── 공용조항(조 · 여러 항, 설정)과 박스(원문의 박스 전부 → 정적 마스터)를 만들고, 적재 순서로 코드를 매긴다
+  // ── 함수조항(조 · 여러 항, 설정)과 박스(원문의 박스 전부 → 정적 마스터)를 만들고, 적재 순서로 코드를 매긴다
   const configured = CLAUSES.map((c) => ({ key: c.key, record: buildClause(c, built, products, report) }));
   const sites = products.flatMap((p) => [
     ...boxSites(p.general.tree, { doc: p.product.general.code, product: p.product.code, general: true }),
@@ -340,7 +340,7 @@ function main(): void {
     const articleOf = (number: string) => [...articlesOf(b.tree)].find((x) => b.numberOf.get(x.id) === number);
     for (const u of uses) {
       const clause = clauseByKey.get(u.clause);
-      if (!clause) throw new Error(`${label}: 공용조항 ${u.clause} 정의 없음`);
+      if (!clause) throw new Error(`${label}: 함수조항 ${u.clause} 정의 없음`);
       applyClauseUse(u, clause, articleOf, `[${label}]`, report, b.tree);
     }
   };
@@ -391,7 +391,7 @@ function main(): void {
   const stats = (tree: DocumentNode) => {
     const ix = indexTree(tree);
     const count = (kind: string) => [...ix.nodes.values()].filter((e) => e.node.kind === kind).length;
-    return `관 ${count("section")} · 조 ${count("article")} · 항 ${count("paragraph")} · 호 ${count("item")} · 목 ${count("subitem")} · 표 ${count("table")} · 박스 ${count("boxRef")} · 조참조 ${count("articleRef")} · 별표참조 ${count("appendixRef")} · 슬롯 ${count("slot")} · 조건 ${count("condBlock")}/${count("inlineCond")} · 공용조항 ${count("clauseInlineRef") + count("clauseBlockRef")}`;
+    return `관 ${count("section")} · 조 ${count("article")} · 항 ${count("paragraph")} · 호 ${count("item")} · 목 ${count("subitem")} · 표 ${count("table")} · 박스 ${count("boxRef")} · 조참조 ${count("articleRef")} · 별표참조 ${count("appendixRef")} · 슬롯 ${count("slot")} · 조건 ${count("condBlock")}/${count("inlineCond")} · 함수조항 ${count("clauseInlineRef") + count("clauseBlockRef")}`;
   };
   const all = [...generals, ...documents];
   for (const g of generals) console.log(`[general] ${g.tree.title}: ${stats(g.tree)}`);
@@ -403,7 +403,7 @@ function main(): void {
   if (issues.length > 0) process.exit(1);
 }
 
-/** 보통약관 조를 가리키는 공용조항인가 — 범위 없는 조 참조가 있다 (제 항 · 사용처 위치 참조는 보통약관 없이도 성립한다). */
+/** 보통약관 조를 가리키는 함수조항인가 — 범위 없는 조 참조가 있다 (제 항 · 사용처 위치 참조는 보통약관 없이도 성립한다). */
 function refsGeneralArticle(clause: ClauseRecord): boolean {
   const visit = (n: unknown): boolean => {
     if (Array.isArray(n)) return n.some(visit);
@@ -416,8 +416,8 @@ function refsGeneralArticle(clause: ClauseRecord): boolean {
 }
 
 /**
- * 공용조항 코드를 적재 순서로 매긴다 — 보통약관이 쓰는 것 · 담보약관만 쓰는 것 · 보통약관 조를 가리키는 것 (각각 설정 순).
- * 보통약관 가져오기는 쓰는 공용조항이 있어야, 보통약관 조를 가리키는 공용조항은 그 조가 있어야 검사 ① 을 통과한다.
+ * 함수조항 코드를 적재 순서로 매긴다 — 보통약관이 쓰는 것 · 담보약관만 쓰는 것 · 보통약관 조를 가리키는 것 (각각 설정 순).
+ * 보통약관 가져오기는 쓰는 함수조항이 있어야, 보통약관 조를 가리키는 함수조항은 그 조가 있어야 검사 ① 을 통과한다.
  */
 function orderClauses(configured: readonly { key: string; record: ClauseRecord }[], generalKeys: ReadonlySet<string>): ClauseRecord[] {
   const ordered: ClauseRecord[] = [
@@ -441,24 +441,24 @@ function orderBoxes(plans: readonly BoxPlan[]): BoxPlan[] {
 }
 
 /**
- * 시드 적재 순서 검사 — 공용조항 코드는 시스템 채번(배열 순서)이고, 적재는 「보통약관이 쓰는 공용조항 → 보통약관 → 보통약관 조를 가리키는 공용조항」 순이다
- * (보통약관 가져오기는 쓰는 공용조항이 있어야 · 보통약관 조를 가리키는 공용조항은 그 조가 있어야 검사 ① 을 통과한다).
- * 그래서 보통약관이 쓰는 공용조항은 보통약관 조를 가리키는 어느 공용조항보다 앞 코드여야 한다.
+ * 시드 적재 순서 검사 — 함수조항 코드는 시스템 채번(배열 순서)이고, 적재는 「보통약관이 쓰는 함수조항 → 보통약관 → 보통약관 조를 가리키는 함수조항」 순이다
+ * (보통약관 가져오기는 쓰는 함수조항이 있어야 · 보통약관 조를 가리키는 함수조항은 그 조가 있어야 검사 ① 을 통과한다).
+ * 그래서 보통약관이 쓰는 함수조항은 보통약관 조를 가리키는 어느 함수조항보다 앞 코드여야 한다.
  */
 function checkClauseOrder(clauses: readonly ClauseRecord[], generals: readonly { tree: DocumentNode }[]): void {
   const usedByGeneral = new Set(generals.flatMap((g) => [...JSON.stringify(g.tree).matchAll(/"clauseCode":"(C\d+)"/g)].map((m) => m[1])));
   const firstGeneralRef = clauses.findIndex(refsGeneralArticle);
   if (firstGeneralRef < 0) return;
-  // 화면 E2E 바탕(SEED_PROFILE=base)은 보통약관이 쓰는 공용조항을 앞에서부터 그 개수만큼 만든다 — 앞 코드에 모여 있어야 한다
+  // 화면 E2E 바탕(SEED_PROFILE=base)은 보통약관이 쓰는 함수조항을 앞에서부터 그 개수만큼 만든다 — 앞 코드에 모여 있어야 한다
   const prefix = clauses.slice(0, usedByGeneral.size).map((c) => c.code);
-  if (prefix.some((code) => !usedByGeneral.has(code))) throw new Error(`보통약관이 쓰는 공용조항(${[...usedByGeneral].join(", ")})이 C0001 부터 잇닿아 있지 않다 — CLAUSES 순서를 고친다`);
+  if (prefix.some((code) => !usedByGeneral.has(code))) throw new Error(`보통약관이 쓰는 함수조항(${[...usedByGeneral].join(", ")})이 C0001 부터 잇닿아 있지 않다 — CLAUSES 순서를 고친다`);
   const late = clauses.slice(firstGeneralRef).filter((c) => usedByGeneral.has(c.code));
-  if (late.length > 0) throw new Error(`보통약관이 쓰는 공용조항 ${late.map((c) => c.code).join(", ")} 이 보통약관 조를 가리키는 공용조항 ${clauses[firstGeneralRef].code} 뒤에 있다 — CLAUSES 순서를 고친다`);
+  if (late.length > 0) throw new Error(`보통약관이 쓰는 함수조항 ${late.map((c) => c.code).join(", ")} 이 보통약관 조를 가리키는 함수조항 ${clauses[firstGeneralRef].code} 뒤에 있다 — CLAUSES 순서를 고친다`);
 }
 
 
 /**
- * 공용조항 한 건 — 원문 자리(`from`)의 항 본문(호 · 목 포함, 잇닿은 항 여럿)을 따거나 평문(`text`)을 변환한다.
+ * 함수조항 한 건 — 원문 자리(`from`)의 항 본문(호 · 목 포함, 잇닿은 항 여럿)을 따거나 평문(`text`)을 변환한다.
  * 원문 자리의 자기 조 참조는 제 항 · 사용처 위치가 되고(`clauseFromSource`), 낱말 옵션은 `place` 자리에 선다.
  * 평문 · 선택지 문구의 참조는 `product` 상품의 별표 번호 · 보통약관 색인으로 푼다.
  */
@@ -482,7 +482,7 @@ function buildClause(spec: (typeof CLAUSES)[number], built: Map<string, Built>, 
     const b = built.get(source);
     const a = b && [...articlesOf(b.tree)].find((x) => b.numberOf.get(x.id) === article);
     const at = a ? a.children.findIndex((c) => c.kind === "paragraph" && c.id === `${a.id}-p${paragraph}`) : -1;
-    // 항 수를 안 주면 그 항부터 조의 끝까지의 항 전부 — 조째 공용조항
+    // 항 수를 안 주면 그 항부터 조의 끝까지의 항 전부 — 조째 함수조항
     const paragraphs = spec.from.paragraphs ?? (a ? a.children.slice(Math.max(at, 0)).filter((c) => c.kind === "paragraph").length : 0);
     const taken = a && at >= 0 ? a.children.slice(at, at + paragraphs) : [];
     if (!b || taken.length !== paragraphs || taken.some((c) => c.kind !== "paragraph")) throw new Error(`${spec.key}: 원문 자리 ${source} 조 ${article} 제${paragraph}항부터 잇닿은 항 ${paragraphs}개 없음 (사이에 표 · 박스가 끼면 조째 딸 수 없다)`);

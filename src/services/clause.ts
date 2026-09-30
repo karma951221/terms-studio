@@ -1,5 +1,5 @@
 /**
- * 공용조항 서비스 — 모든 쓰기의 진입점. actor 검사 · 도메인 규칙 · repo 호출.
+ * 함수조항 서비스 — 모든 쓰기의 진입점. actor 검사 · 도메인 규칙 · repo 호출.
  *
  * - 비파괴 액션(채번 · 표시명 · 본문 · 모드 · 옵션 추가/수정/삭제 · 순서 · 복제)은 editor 도 가능.
  *   본문·옵션이 바뀌는 저장은 ① 요구 구분자 재추출 ② 사용처 전부 재검사 → `{ clause, recheck }` 를 돌려준다.
@@ -66,7 +66,7 @@ import type { ValueOwner } from "@/db/repo/values";
 
 // ───────────────────────────── 주입 인터페이스 ─────────────────────────────
 
-/** 사용처 역인덱스 — 이 공용조항을 참조하는 문서들. C1(refs)/B3(document) 가 구현한다. */
+/** 사용처 역인덱스 — 이 함수조항을 참조하는 문서들. C1(refs)/B3(document) 가 구현한다. */
 export interface UsageSource {
   documentsReferencing(clauseCode: Code): Promise<Usage[]>;
 }
@@ -133,7 +133,7 @@ export interface ClauseService {
 
 /**
  * 카탈로그 정의로 만드는 식 타입 조회 — 조건식 boolean 검사용.
- * 공용조항 본문은 문면과 같은 규칙을 따른다 (ADR-0037) — 구분자만 보고, 그 타입은 식에서 추론한다.
+ * 함수조항 본문은 문면과 같은 규칙을 따른다 (ADR-0037) — 구분자만 보고, 그 타입은 식에서 추론한다.
  * 마스터 필드 직접 참조는 타입을 주지 않아 brokenRef 로 걸린다.
  */
 function typeResolverFrom(catalog: ReadonlyMap<Code, Discriminator>): TypeResolver {

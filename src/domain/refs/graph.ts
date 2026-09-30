@@ -4,8 +4,8 @@
  * 재료와 간선:
  * - 입력 마스터 → 마스터 필드 노드 · enum 타입 간선(`type`)
  * - 카탈로그 정의 → 구분자 노드 · 식 참조(`expression`) — 마스터 필드 · 담보속성으로 간다
- * - 공용조항 → 옵션·선택지 노드 · 본문/선택지 본문의 식 참조(`when`·`slot`) · 별표 참조
- * - 문서 → 조 노드 · `collectRefs` 의 참조 전부 (구분자 · 담보속성 · 공용조항+옵션 선택 · 조 참조 · 별표 · 조연결) ·
+ * - 함수조항 → 옵션·선택지 노드 · 본문/선택지 본문의 식 참조(`when`·`slot`) · 별표 참조
+ * - 문서 → 조 노드 · `collectRefs` 의 참조 전부 (구분자 · 담보속성 · 함수조항+옵션 선택 · 조 참조 · 별표 · 조연결) ·
  *   대응 보통약관(`generalDocument`)
  * - 담보 트리 → 담보 노드 · 문서 연결(`document`)
  * - 상품 → 상품담보 노드 · 탑재(`mount`) · 조합(`combination`) · 옵션 오버라이드(`override`) · 템플릿(`generalDocument`)
@@ -17,8 +17,8 @@
  * (ADR-0066 §3: 둘은 같아야 한다).
  *
  * 조 참조(articleRef)의 대상은 조 또는 조 + 항·호·목의 P코드(ADR-0072 결정 3 · 8)이고, 문서에는 **조만** `article:` 노드로
- * 선언된다 — 간선은 대상의 조로 낸다(코드는 좌표 refPath 의 열쇠에 실린다). 공용조항의 조
- * 참조 중 범위 없는 것은 보통약관 마스터를 가리킨다(기능/함수조항 §3.5 — 제 항 · 사용처 위치는 간선이 없다) — 공용조항을 넣기 전에 보통약관 문서들의
+ * 선언된다 — 간선은 대상의 조로 낸다(코드는 좌표 refPath 의 열쇠에 실린다). 함수조항의 조
+ * 참조 중 범위 없는 것은 보통약관 마스터를 가리킨다(기능/함수조항 §3.5 — 제 항 · 사용처 위치는 간선이 없다) — 함수조항을 넣기 전에 보통약관 문서들의
  * 참조 열쇠 → 속한 조 인덱스(`generalTargets`)를 만들어 둔다. 대상(조 · 그 코드)이 사라졌으면 깨진 간선으로 남기고,
  * 아예 모르면(보통약관이 안 들어옴) 마찬가지로 깨진 간선으로 남긴다 — 간선을 안 내지는 않는다.
  */
@@ -182,7 +182,7 @@ class Builder {
   readonly coverageNodeLevels = new Map<Id, CoverageNodeLevel>();
   /** 구분자 코드 → 레벨 (노드가 사라진 한정자의 키 폴백). */
   readonly discriminatorLevels = new Map<Code, AttachLevel>();
-  /** 보통약관 노드 id → 속한 조(documentId·articleId) — 공용조항·문서의 조 참조가 항·호·목을 가리킬 때 조로 올리는 인덱스. 조 자신은 자기 id. */
+  /** 보통약관 노드 id → 속한 조(documentId·articleId) — 함수조항·문서의 조 참조가 항·호·목을 가리킬 때 조로 올리는 인덱스. 조 자신은 자기 id. */
   /** 보통약관 문서들의 참조 열쇠(`refKey` — 조 id · 조#코드) → 속한 문서 · 조. */
   readonly generalTargets = new Map<string, { documentId: Id; articleId: Id }>();
   /** 보통약관 참조 열쇠 → 그 대상이 선 열거값 반복의 열거형 (값 한정 참조의 값 간선 — ADR-0077 결정 7). */
@@ -305,8 +305,8 @@ function walkClauseNodes(body: readonly ClauseNode[], basePath: Id[], visit: (no
 }
 
 /**
- * 보통약관 문서들의 참조 열쇠 → 속한 조 인덱스 (`Builder.generalTargets`). 공용조항을 넣기 전에 채운다 —
- * 공용조항의 범위 없는 조 참조는 보통약관 마스터를 가리키고(기능/함수조항 §3.5), 공용조항은 어느 문서인지 모른다.
+ * 보통약관 문서들의 참조 열쇠 → 속한 조 인덱스 (`Builder.generalTargets`). 함수조항을 넣기 전에 채운다 —
+ * 함수조항의 범위 없는 조 참조는 보통약관 마스터를 가리키고(기능/함수조항 §3.5), 함수조항은 어느 문서인지 모른다.
  */
 function indexGeneralArticles(b: Builder, documents: readonly DocumentInput[], master?: MasterTree): void {
   for (const doc of documents) {
@@ -403,7 +403,7 @@ function addClause(b: Builder, clause: Clause, master?: MasterTree): void {
         if (enumCode) for (const k of n.cases) for (const valueCode of k.values ?? []) b.edge({ from: key, to: { kind: "enumValue", enumCode, valueCode }, via: "switchCase", at: { ...base, nodePath, refPath: n.on } });
       }
       else if (n.kind === "articleRef" && n.scope === undefined) {
-        // 범위 없는 공용조항 조 참조는 보통약관 마스터를 가리킨다(기능/함수조항 §3.5 — 제 항 · 사용처 위치 참조는 사용처마다 대상이 달라 간선이 없다). 대상이 항·호·목이면
+        // 범위 없는 함수조항 조 참조는 보통약관 마스터를 가리킨다(기능/함수조항 §3.5 — 제 항 · 사용처 위치 참조는 사용처마다 대상이 달라 간선이 없다). 대상이 항·호·목이면
         // indexGeneralArticles 로 속한 조로 올리고, 인덱스에 없으면(대상이 사라졌거나 보통약관이 안 들어옴)
         // documentId 없는 키로 내 깨진 간선으로 남긴다 (문서 쪽 generalOf 와 같은 모양).
         for (const target of n.targets) {

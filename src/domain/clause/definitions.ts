@@ -1,5 +1,5 @@
 /**
- * 공용조항 정의의 생성·변경 규칙 (순수).
+ * 함수조항 정의의 생성·변경 규칙 (순수).
  *
  * 근거: docs/기능/함수조항/함수조항.md (§3.1 · §3.2 · §3.7) · ADR-0076.
  *
@@ -39,7 +39,7 @@ export interface ClauseSummaryLite {
 
 export interface ClauseContext {
   nextSeq: ClauseNextSeq;
-  /** 현재 공용조항들 (표시명 중복 검사용). */
+  /** 현재 함수조항들 (표시명 중복 검사용). */
   existing: readonly ClauseSummaryLite[];
   /** 본문 검사 옵션 (조건식 타입 조회 등). */
   analyze?: AnalyzeOptions;
@@ -137,9 +137,9 @@ async function buildOption(clauseCode: Code, input: NewOption, order: number, ne
 }
 
 /**
- * 공용조항 채번 + 본문·옵션 등록. 모드는 필수.
+ * 함수조항 채번 + 본문·옵션 등록. 모드는 필수.
  *
- * 검사를 전부 통과한 뒤에 채번한다 — 거부된 입력이 순번을 태우지 않게. 새 공용조항의 옵션·선택지
+ * 검사를 전부 통과한 뒤에 채번한다 — 거부된 입력이 순번을 태우지 않게. 새 함수조항의 옵션·선택지
  * 순번 범위는 비어 있으므로 검사 단계의 임시 코드(O01… · V01…)와 실제 채번 결과가 같다.
  */
 export async function createClause(input: NewClause, ctx: ClauseContext): Promise<Result<Clause>> {
@@ -348,7 +348,7 @@ export async function duplicateClause(origin: Clause, ctx: ClauseContext): Promi
   for (let n = 2; taken.has(label); n++) label = `${origin.label}(복제${n})`;
 
   const code = await allocateClauseCode("clause", "", ctx.nextSeq);
-  // 옵션·선택지 코드는 새 공용조항 안에서 다시 채번한다 (순번 범위가 공용조항마다라 같은 코드가 나온다).
+  // 옵션·선택지 코드는 새 함수조항 안에서 다시 채번한다 (순번 범위가 함수조항마다라 같은 코드가 나온다).
   const options: OptionDef[] = [];
   for (const o of origin.options) {
     const optionCode = await allocateClauseCode("option", code, ctx.nextSeq);

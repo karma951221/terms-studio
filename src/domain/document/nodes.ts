@@ -120,7 +120,7 @@ export interface AppendixRefNode {
   appendixCode: Code;
 }
 
-/** 공용조항 inline 참조 — 옵션 선택은 사용처(이 문서) 소유 (기능/함수조항 §3.2). */
+/** 함수조항 inline 참조 — 옵션 선택은 사용처(이 문서) 소유 (기능/함수조항 §3.2). */
 export interface ClauseInlineRefNode {
   id: Id;
   kind: "clauseInlineRef";
@@ -649,9 +649,9 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
 // ───────────────────────────── 검증 ─────────────────────────────
 
 /**
- * 공용조항 게이트 — B2(clause) 가 구현해 주입한다. 없으면 전부 통과.
+ * 함수조항 게이트 — B2(clause) 가 구현해 주입한다. 없으면 전부 통과.
  * - clauseExists    : 코드가 정의돼 있는가 (없으면 참조 추가 실패 → brokenRef)
- * - requiredCodes   : 그 공용조항이 읽는 요구 구분자 (문서의 요구 구분자 합산 재료 — refs.ts `requiredDiscriminators`)
+ * - requiredCodes   : 그 함수조항이 읽는 요구 구분자 (문서의 요구 구분자 합산 재료 — refs.ts `requiredDiscriminators`)
  * - missingRequired : 요구 구분자 중 **카탈로그에 없는** 코드 — 검사 ② (a) 「요구 구분자가 지금 존재하는가」(기능/함수조항 §3.4).
  *                     비어 있지 않으면 참조 추가 미성립 · 저장 거부 (brokenRef)
  * - validateOptions : 선택 옵션 검사 — 미선택 `optionUnselected`(저장 시점만 거부, 기능/함수조항 §3.2) · 집합 밖 `optionInvalid`
@@ -703,7 +703,7 @@ export interface TreeEnv {
 }
 
 /**
- * 저장 시점 구조 검증 — 허용 자식 · 인라인 조건/반복 중첩 · id 중복 · 가지 규칙 · 참조 대상 존재 · 공용조항 게이트.
+ * 저장 시점 구조 검증 — 허용 자식 · 인라인 조건/반복 중첩 · id 중복 · 가지 규칙 · 참조 대상 존재 · 함수조항 게이트.
  * 식의 문법·타입은 `validateExpressions` (expressions.ts) 가 따로 본다.
  */
 export function validateTree(doc: DocumentNode, env: TreeEnv = {}): Issue[] {
@@ -736,7 +736,7 @@ export function coordinateOf(ix: TreeIndex, e: { path: Id[]; articleId?: Id }, b
 }
 
 /**
- * 노드 하나의 참조 검사 — 조연결 · 조 참조 · 별표 참조 · 박스 참조 · 공용조항 참조.
+ * 노드 하나의 참조 검사 — 조연결 · 조 참조 · 별표 참조 · 박스 참조 · 함수조항 참조.
  * 참조 추가 시점(`atSave=false`)과 저장 시점(`atSave=true`) 이 같은 함수를 쓴다 (기능/문면 §3.5 — 두 번 검증).
  */
 export function checkNodeRefs(e: NodeEntry, ix: TreeIndex, env: TreeEnv, atSave: boolean): Issue[] {
@@ -825,7 +825,7 @@ function clausePlacement(node: ClauseBlockRefNode | ClauseInlineRefNode, allowed
 }
 
 /**
- * 공용조항 참조 검사 — 검사 ② 「사용처 문맥」(기능/함수조항 §3.4).
+ * 함수조항 참조 검사 — 검사 ② 「사용처 문맥」(기능/함수조항 §3.4).
  * - (a) 요구 구분자 존재: 카탈로그에 없는 요구 구분자가 있으면 참조 추가 시점(`atSave=false`)·저장 시점 둘 다 brokenRef.
  *   없는 구분자를 삽입해 두고 조립에서야 아는 것은 「붙이는 순간이 가장 싼 발견 시점」에 어긋난다 (기능/함수조항 §3.4).
  *   미입력은 검사하지 않는다 — 그것은 ③ 조립 몫이다.

@@ -8,7 +8,7 @@
  *
  *   MasterBundle + ProductInput  (합치면 AssemblyInput · ADR-0034 결정 2)
  *     │ 1. 문맥 구성            buildContexts        → AssemblyContexts  (상품담보별 EvalContext + 보통약관 문맥)
- *     │ 2. 조건·공용조항 해소    resolveDocument      → ResolvedDoc      (밟은 가지 인라인화, 슬롯·참조 유지)
+ *     │ 2. 조건·함수조항 해소    resolveDocument      → ResolvedDoc      (밟은 가지 인라인화, 슬롯·참조 유지)
  *     │ 3. 슬롯 치환            substituteSlots      → SubstitutedDoc   (슬롯이 텍스트/오류 마커로)
  *     │ 4. 기본계약 본문 대치    replaceGeneralWithBase
  *     │ 5. 최소 준용규정 생성    ensureApplicationArticle
@@ -70,7 +70,7 @@ export interface AssemblyProduct {
   baseContractIds: readonly Id[];
   /** 보통약관 템플릿 문서 id — 문면은 `MasterBundle.generalDocuments` 에서 이 id 로 고른다. 없으면 오류 + 특약만 조립. */
   generalDocumentId?: Id;
-  /** 보통약관 공용조항의 상품별 옵션 오버라이드 (scope product). */
+  /** 보통약관 함수조항의 상품별 옵션 오버라이드 (scope product). */
   overrides: readonly ClauseOptionOverride[];
   /**
    * 이 상품에서 「노출 끔」 한 보통약관 템플릿 조 id (기능/상품 §3.6).
@@ -241,7 +241,7 @@ export interface RParagraph<I> extends Keyed {
   id: Id;
   children: I[];
   items?: (RItem<I> | RStatic<I> | ErrorNode)[];
-  /** 보통약관의 block 공용조항 참조에서 펼쳐져 자동 판정 비교 대상에서 빠지는 항. */
+  /** 보통약관의 block 함수조항 참조에서 펼쳐져 자동 판정 비교 대상에서 빠지는 항. */
   excludeFromComparison?: boolean;
 }
 export interface RArticle<I> {
@@ -426,7 +426,7 @@ export interface OmissionRecord {
   disposition: "omitted" | "applied" | "full";
   /** 항별 대조 — 생략·준용은 대응, 통째는 위치 대조(i ↔ i). */
   pairs: OmissionPair[];
-  /** 비교에서 뺀 보통약관 block 공용조항 참조 노드 id (`excludeFromComparison`). 이름은 화면이 붙인다. */
+  /** 비교에서 뺀 보통약관 block 함수조항 참조 노드 id (`excludeFromComparison`). 이름은 화면이 붙인다. */
   excludedClauseNodeIds: Id[];
   /** 미합의 사유 문구 (기능/조립산출 §3.5 표) — `full` 이고 자동 판정을 보류했을 때만. */
   reason?: string;

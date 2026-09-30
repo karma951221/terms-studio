@@ -38,7 +38,7 @@ export interface GeneralRefs {
 }
 
 export interface EditEnv {
-  /** 대응 보통약관을 뺀 검증 환경 (종류 · 별표 · 공용조항 게이트 · 좌표). */
+  /** 대응 보통약관을 뺀 검증 환경 (종류 · 별표 · 함수조항 게이트 · 좌표). */
   env: TreeEnv;
   /** 보통약관 템플릿 id → 그 대상. 없는 문서이거나 보통약관이 아니면 undefined. */
   generalRefs: (generalDocumentId: Id) => GeneralRefs | undefined;

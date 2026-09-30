@@ -35,7 +35,7 @@ export function RadioGroup({
   /** 비제어형 초기값. */
   defaultValue?: string | boolean;
   onChange?: (value: string | boolean) => void;
-  /** 고를 수 없는 자리 — 값은 보이되 조작은 막는다 (공용조항 유형처럼 등록 뒤 안 바뀌는 값). */
+  /** 고를 수 없는 자리 — 값은 보이되 조작은 막는다 (함수조항 유형처럼 등록 뒤 안 바뀌는 값). */
   disabled?: boolean;
 }) {
   const [inner, setInner] = useState(defaultValue);

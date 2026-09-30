@@ -187,7 +187,7 @@ describe("refs 그래프 — buildGraph (기능/관계정보 §3 「참조 그�
 });
 
 describe("refs 그래프 — 구분자 참조의 노드 한정자 `@노드` (ADR-0066)", () => {
-  /** 급부 ben-1 을 가리키는 한정자 — 문서 조건식 · 공용조항 본문 · 구분자 식 세 자리. */
+  /** 급부 ben-1 을 가리키는 한정자 — 문서 조건식 · 함수조항 본문 · 구분자 식 세 자리. */
   const 담보약관_한정자: DocumentInput = {
     id: "doc-q",
     kind: "special",
@@ -252,7 +252,7 @@ describe("refs 그래프 — 구분자 참조의 노드 한정자 `@노드` (ADR
 });
 
 describe("refs 그래프 — 조 참조(articleRef)를 속한 조로 잇는다", () => {
-  /** 보통약관 조 g-art-pay 를 가리키는 인라인 공용조항. */
+  /** 보통약관 조 g-art-pay 를 가리키는 인라인 함수조항. */
   const 공용_조참조: Clause = {
     code: "C010",
     label: "조 참조 문구",
@@ -261,7 +261,7 @@ describe("refs 그래프 — 조 참조(articleRef)를 속한 조로 잇는다",
     options: [],
     required: { discriminators: [], attributes: [] },
   };
-  /** 보통약관 조 g-art-pay **안의 항** g-par-pay-1(P0100) 을 가리키는 인라인 공용조항 — 조로 간선이 난다(코드는 좌표 열쇠에). */
+  /** 보통약관 조 g-art-pay **안의 항** g-par-pay-1(P0100) 을 가리키는 인라인 함수조항 — 조로 간선이 난다(코드는 좌표 열쇠에). */
   const 공용_항참조: Clause = {
     code: "C011",
     label: "항 참조 문구",
@@ -270,7 +270,7 @@ describe("refs 그래프 — 조 참조(articleRef)를 속한 조로 잇는다",
     options: [],
     required: { discriminators: [], attributes: [] },
   };
-  /** 어디에도 없는 id 를 가리키는 인라인 공용조항 — 깨진 간선. */
+  /** 어디에도 없는 id 를 가리키는 인라인 함수조항 — 깨진 간선. */
   const 공용_깨진참조: Clause = {
     code: "C012",
     label: "깨진 참조 문구",

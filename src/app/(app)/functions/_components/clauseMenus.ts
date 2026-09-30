@@ -1,15 +1,15 @@
 /**
- * 공용조항 에디터의 툴바 · 오른쪽 클릭 메뉴 목록 — 문면 저작 메뉴(`documents/[id]/_components/menus.ts`)를 그대로 짓고
- * 공용조항 자리에 맞게 거른다 (순수 — React 없음. `clauseMenus.test.ts`).
+ * 함수조항 에디터의 툴바 · 오른쪽 클릭 메뉴 목록 — 문면 저작 메뉴(`documents/[id]/_components/menus.ts`)를 그대로 짓고
+ * 함수조항 자리에 맞게 거른다 (순수 — React 없음. `clauseMenus.test.ts`).
  *
  * 기능/함수조항 §4.3 「에디터 도구」:
  * - 같은 도구 — 조건 블록 · 인라인 조건 · 값 슬롯 · 참조 슬롯(별표 · 보통약관 조 · 항 · 호 · 목) + **옵션 자리 넣기**(옵션 목록 단의 옵션마다 한 줄).
  *   「조건식」은 문면과 같다 — 항을 골랐으면 감싸고, 본문 빈 자리면 빈 항을 든 조건 블록을 끝에, 「문구」면 문장 안 조건 (2026-09-28).
- * - 막는 것 — 조 · 관 추가(조는 사용처 소유) · 공용조항 참조 넣기(중첩 금지). 그 도구 자리는 남는다 — 툴바는 잠그고 사유를 tooltip 으로,
+ * - 막는 것 — 조 · 관 추가(조는 사용처 소유) · 함수조항 참조 넣기(중첩 금지). 그 도구 자리는 남는다 — 툴바는 잠그고 사유를 tooltip 으로,
  *   오른쪽 클릭 메뉴는 누르면 거부 배너(`refusing`).
  * - **값별 분기**(최종 결정 5) — 「값별 분기 넣기」는 조건 블록이 설 수 있는 자리(유형의 목록 자리)에 대상 = 목록값 인자 · 내부 변수 첫째,
  *   칸 = 값마다 하나(각 칸에 그 자리의 빈 항 · 호 · 목)로 선다. 대상 후보가 없으면 거부 자리. 칸 머리의 목록은 칸 추가 · 이 칸 삭제 · 이 칸에 넣기 · 분기 삭제.
- * - 공용조항 본문에 없는 것(표 · 옛 문면 박스 · 행 반복 · 조연결 · 구조 표기 · 호/목 자리의 조건 블록)은 싣지 않는다.
+ * - 함수조항 본문에 없는 것(표 · 옛 문면 박스 · 행 반복 · 조연결 · 구조 표기 · 호/목 자리의 조건 블록)은 싣지 않는다.
  *   정적 마스터 박스(박스 참조)는 잎이라 싣는다 — 항 자리 · 호 뒤 (기능/박스 §3.2).
  */
 import { blockMenu, chipMenu, condBlockItem, condMenu, inlineInsertItems, type MenuEnv, type MenuItem, type MenuSections, type Place } from "@/app/(app)/documents/[id]/_components/menus";
@@ -118,7 +118,7 @@ export function refusing(label: string, message: string, onRefuse: (message: str
 const DROPPED_POPUPS = new Set(["newTable", "tableProps", "repeat", "repeatBlock", "link", "docTitle", "general"]);
 const DROPPED_NODES = new Set(["table", "box", "article", "section", "forBlock"]);
 
-/** 문면 메뉴 항목 하나를 공용조항 자리로 — 그대로 · 거부 자리로 바꿈 · 뺌(undefined). */
+/** 문면 메뉴 항목 하나를 함수조항 자리로 — 그대로 · 거부 자리로 바꿈 · 뺌(undefined). */
 function adapt(item: MenuItem, env: ClauseMenuEnv, onRefuse: (message: string) => void): MenuItem | undefined {
   const a = item.action;
   if (a.do === "popup") {
@@ -133,7 +133,7 @@ function adapt(item: MenuItem, env: ClauseMenuEnv, onRefuse: (message: string) =
   // 조건 블록은 유형의 목록 자리에만 선다 — 「항」은 항 자리, 「호」는 호 목록, 「목」은 목 목록 (clause/nodes.ts)
   if (item.wrapTarget !== undefined) return clauseCanHold(env.ix, env.mode)(item.wrapTarget) ? item : undefined;
   if (a.do === "ops" && Array.isArray(a.ops) && a.ops.some((op) => op.type === "insert" && DROPPED_NODES.has(op.node.kind))) return undefined;
-  // 글머리 목록은 항 자리 · 호 뒤(항의 호 목록)에만 — 목 뒤(호의 목 목록) · 조건 가지 안 항목은 공용조항 본문에 없다 (clause/nodes.ts)
+  // 글머리 목록은 항 자리 · 호 뒤(항의 호 목록)에만 — 목 뒤(호의 목 목록) · 조건 가지 안 항목은 함수조항 본문에 없다 (clause/nodes.ts)
   if (
     a.do === "ops" &&
     Array.isArray(a.ops) &&
@@ -237,7 +237,7 @@ export function clauseBodyMenu(env: ClauseMenuEnv): MenuSections {
   return [
     [
       { label: "항 추가", action: { do: "ops", ops: [{ type: "insert", node: paragraph, at: { parentId: CLAUSE_ARTICLE_ID } }], focus: paragraph.id } },
-      // 정적 마스터 박스는 잎이라 공용조항 본문에도 놓는다 (기능/박스 §3.2)
+      // 정적 마스터 박스는 잎이라 함수조항 본문에도 놓는다 (기능/박스 §3.2)
       { label: "박스 추가…", action: { do: "popup", popup: { kind: "boxPick", at: { parentId: CLAUSE_ARTICLE_ID } } } },
     ],
     [condBlockItem(env, { parentId: CLAUSE_ARTICLE_ID }, ["paragraph"]), switchInsertItem(env, { parentId: CLAUSE_ARTICLE_ID }, ["paragraph"])],
@@ -250,7 +250,7 @@ export function clauseDefaultPlace(mode: ClauseMenuEnv["mode"]): Place {
   return mode === "inline" ? { kind: "inline", at: { parentId: CLAUSE_LINE_ID } } : { kind: "document" };
 }
 
-/** 자리 하나의 목록 — 툴바와 오른쪽 클릭 메뉴가 같은 것을 쓴다 (문면 `placeMenu` 의 공용조항 판). */
+/** 자리 하나의 목록 — 툴바와 오른쪽 클릭 메뉴가 같은 것을 쓴다 (문면 `placeMenu` 의 함수조항 판). */
 export function clausePlaceMenu(env: ClauseMenuEnv, place: Place, tokens: Token[] = []): MenuSections {
   switch (place.kind) {
     case "chip":
@@ -268,7 +268,7 @@ export function clausePlaceMenu(env: ClauseMenuEnv, place: Place, tokens: Token[
 }
 
 /**
- * 툴바의 막힌 도구 — 어느 자리에서든 조 · 관 · 공용조항 참조 버튼이 잠긴 채 사유를 보이도록, 목록에 없으면 거부 자리를 덧붙인다.
+ * 툴바의 막힌 도구 — 어느 자리에서든 조 · 관 · 함수조항 참조 버튼이 잠긴 채 사유를 보이도록, 목록에 없으면 거부 자리를 덧붙인다.
  */
 export function withClauseRefusals(env: ClauseMenuEnv, sections: MenuSections): MenuSections {
   const labels = new Set(sections.flat().map((i) => i.label));
@@ -282,7 +282,7 @@ export function withClauseRefusals(env: ClauseMenuEnv, sections: MenuSections): 
 }
 
 /**
- * 공용조항 본문에서 조건 블록이 설 수 있는 자리 — 유형의 목록 자리뿐(clause/nodes.ts): 「항」은 항 자리(항의 호 · 목 목록에는 없다),
+ * 함수조항 본문에서 조건 블록이 설 수 있는 자리 — 유형의 목록 자리뿐(clause/nodes.ts): 「항」은 항 자리(항의 호 · 목 목록에는 없다),
  * 「호」는 호 목록(호 · 글머리 목록 · 박스 · 조건 블록 — 호 안의 목 목록에는 없다), 「목」은 목 목록.
  * 「문구」 유형은 없다 — 조건식은 문장 안 조건이 된다. 툴바 「조건식」(`condInsertItem`)이 쓴다.
  */

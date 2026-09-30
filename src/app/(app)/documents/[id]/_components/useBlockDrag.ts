@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * 블록 끌어 옮기기 · 여러 블록 고르기 — 문면 편집기와 공용조항 편집기가 같이 쓴다 (기능/문면 §4.3 「끌어 옮기기」, 2026-09-28).
+ * 블록 끌어 옮기기 · 여러 블록 고르기 — 문면 편집기와 함수조항 편집기가 같이 쓴다 (기능/문면 §4.3 「끌어 옮기기」, 2026-09-28).
  *
  * - 고르기: 블록 손잡이(⠿)를 누르면 그 블록, Shift 를 누른 채면 잇닿은 형제까지 늘린다. 글을 끌어 두 블록 이상에 걸쳐 고르면
  *   그 선택이 걸친 형제 블록들이 골린다(조건식 감싸기와 같은 범위 — `selectionRange`). 손잡이 밖을 누르면 풀린다.
@@ -68,7 +68,7 @@ export function useBlockDrag({ latest, apply, enabled }: { latest: () => Documen
     dragging.current = undefined;
   };
 
-  /** 포인터 아래의 놓을 자리 후보 — 목차 줄 · 공용조항 블록 · 블록 · 조 제목 순. */
+  /** 포인터 아래의 놓을 자리 후보 — 목차 줄 · 함수조항 블록 · 블록 · 조 제목 순. */
   const overOf = (e: DragEvent<HTMLElement>): Over | undefined => {
     const target = e.target as Element | null;
     if (!target?.closest) return undefined;

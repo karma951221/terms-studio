@@ -7,7 +7,7 @@
  *
  * ⚠ 표기 규칙은 **임시**다 — 조·별표 참조 슬롯의 렌더 표기(「제3조(보험금의 지급사유)」·「【별표13(화상 분류표)】」)는
  *   2026-09-07 확정분: 관 「제N관」 · 항이 하나뿐인 조는 마커 없음(빈 label) · 별표 번호는 책자 등장 순(ADR-0063).
- *   공용조항 block 참조는 항 1개로 센다 — 실제 항 수는 인라인화 뒤 조립이 안다.
+ *   함수조항 block 참조는 항 1개로 센다 — 실제 항 수는 인라인화 뒤 조립이 안다.
  */
 
 import { CONNECTOR_PLACEHOLDER, type Code, type Id, type ReferenceConnector } from "../types";
@@ -61,7 +61,7 @@ export function subitemLabel(n: number): string {
 
 /** 조 참조 슬롯 표기 — 「제N조(조 명)」. */
 export function articleRefLabel(n: number, title: string): string {
-  // 제목 없는 조(공용조항 에디터의 「사용처」 위치 후보)는 번호만
+  // 제목 없는 조(함수조항 에디터의 「사용처」 위치 후보)는 번호만
   return title === "" ? articleLabel(n) : `${articleLabel(n)}(${title})`;
 }
 
@@ -464,7 +464,7 @@ class Counter {
   }
 }
 
-/** 노드 id → 번호. 번호가 붙는 종류(조·항·호·목·공용조항 block 참조)만 들어 있다. */
+/** 노드 id → 번호. 번호가 붙는 종류(조·항·호·목·함수조항 block 참조)만 들어 있다. */
 export function numberTree(doc: DocumentNode, opts: NumberingOptions = {}): Map<Id, NodeNumber> {
   const out = new Map<Id, NodeNumber>();
   const skip = (branchId: Id) => opts.branchStates?.get(branchId) === "notTaken";

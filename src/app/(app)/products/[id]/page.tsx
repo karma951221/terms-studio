@@ -117,7 +117,7 @@ export default async function ProductDetailPage({
   const booklet = bookletResult?.ok ? bookletResult.value : undefined;
   const bookletNote = bookletResult && !bookletResult.ok ? `조립할 수 없다 — ${rejectionMessage(bookletResult)}` : undefined;
 
-  // 보통약관 문면의 공용조항 참조 자리(block · inline 둘 다 노드 id 로 오버라이드된다) = 고를 수 있는 자리 (리뷰 #7).
+  // 보통약관 문면의 함수조항 참조 자리(block · inline 둘 다 노드 id 로 오버라이드된다) = 고를 수 있는 자리 (리뷰 #7).
   // 오버라이드는 이제 그 자리의 괘선 박스에서 고친다 — 별도 섹션은 없다 (기능/상품 §3.6).
   const overrideTargets: OverrideTarget[] = [];
   if (gid) {

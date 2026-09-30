@@ -1,7 +1,7 @@
 /**
  * 조립 서비스 — 재료를 「공유 마스터 / 상품 고유분」으로 나눠 읽고 순수 조립기 `assemble(master, product)` 를 돌린다 (ADR-0034).
  *
- *   loadMaster()                          공유 마스터 적재 — 구분자 · enum · 담보속성 종류 · 공용조항 · 별표 · 문서 전체 (실행당 1회)
+ *   loadMaster()                          공유 마스터 적재 — 구분자 · enum · 담보속성 종류 · 함수조항 · 별표 · 문서 전체 (실행당 1회)
  *   loadProduct(productId, master)        상품 고유분 적재 — 상품 · 세목 선택지 · 상품담보 스냅샷/값/부착 · 그룹 · 오버라이드 · 숨긴 조 (상품당 상수 쿼리)
  *   loadAssemblyInput(productId)          호환 — 위 둘을 한 객체로
  *   preview(productId)                    책자 조립 (매번 재계산 · 저장 없음)
