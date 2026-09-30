@@ -14,7 +14,7 @@
 import { Fragment, useEffect, useId, useState } from "react";
 
 import { PLAN_AXIS_LABEL, planCombinationKey, planOptionLabel, type PlanAxis, type PlanOption, type ProductPlan } from "@/domain/product";
-import { FieldInput, FieldReadValue, formReducer, initFormState, toSubmission, type FieldView, type FormAction, type FormModel, type FormState } from "@/forms";
+import { draftValueOf, FieldInput, FieldReadValue, formReducer, initFormState, isViewShown, isViewSingle, savedValueOf, toSubmission, type FieldView, type FormAction, type FormModel, type FormState } from "@/forms";
 import type { EditOutcome } from "@/app/_lib/edit";
 import type { ProductBasicInput } from "@/services/product";
 
@@ -239,7 +239,7 @@ export function BasicTab(props: BasicTabProps) {
         <span id={`${id}-label`} className="sr-only">
           {label}
         </span>
-        <FieldInput id={id} field={field} name={`product:${path}`} className="ts-field-direct" onEdit={(draft) => setProductState((s) => formReducer(s, { type: "edit", path, draft }))} />
+        <FieldInput id={id} field={field} name={`product:${path}`} className="ts-field-direct" single={isViewSingle(field.view, draftValueOf(productState))} onEdit={(draft) => setProductState((s) => formReducer(s, { type: "edit", path, draft }))} />
         {field.error !== undefined && (
           <span className="ts-form-error" role="alert">
             {field.error}
@@ -316,7 +316,7 @@ export function BasicTab(props: BasicTabProps) {
                         </th>
                       </tr>
                     )}
-                    {group.fields.map((field) => (
+                    {group.fields.filter((field) => isViewShown(field, editing ? draftValueOf(productState) : savedValueOf(productForm))).map((field) => (
                       <tr key={field.path} className={field.path === productHighlight ? "is-highlighted" : undefined} data-path={field.path}>
                         <th scope="row">{field.label}</th>
                         <td className="col-flex">{editing ? productCell(field.path, field.label) : <FieldReadValue field={field} />}</td>

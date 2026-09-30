@@ -67,9 +67,11 @@ describe("container — createServices 관통 (PGlite)", () => {
     // MVP 마스터가 가리키는 열거형변수 둘을 먼저 만든다 (E0001 납입면제사유 · E0002 해약환급금유형)
     unwrap(await s.catalog.createEnum(editor, { label: "납입면제사유", values: [{ label: "질병" }, { label: "상해" }] }));
     unwrap(await s.catalog.createEnum(editor, { label: "해약환급금유형", values: [{ label: "지급형" }, { label: "미지급형" }] }));
-    // 상품 레벨(상품특성)이 가리키는 둘 — E0003 간편심사유형 · E0004 건강고지유형
-    unwrap(await s.catalog.createEnum(editor, { label: "간편심사유형", values: [{ label: "단일심사구분" }, { label: "통합간편심사" }] }));
-    unwrap(await s.catalog.createEnum(editor, { label: "건강고지유형", values: [{ label: "일반고지" }, { label: "간편고지(3.5.5)" }] }));
+    // 상품 레벨(상품특성)이 가리키는 넷 — E0003 간편심사유형 · E0004 건강고지유형 · E0005 고지유형 · E0006 간편심사구분
+    unwrap(await s.catalog.createEnum(editor, { label: "간편심사유형", values: [{ label: "3.0.5" }, { label: "3.5.5" }] }));
+    unwrap(await s.catalog.createEnum(editor, { label: "건강고지유형", values: [{ label: "6년 건강고지형" }, { label: "10년 건강고지형" }] }));
+    unwrap(await s.catalog.createEnum(editor, { label: "고지유형", values: [{ label: "일반심사" }, { label: "간편심사" }, { label: "건강고지" }] }));
+    unwrap(await s.catalog.createEnum(editor, { label: "간편심사구분", values: [{ label: "단일심사" }, { label: "통합간편심사" }] }));
     expect(unwrap(await s.catalog.create(editor, { label: "갱신여부", level: "coverage", expression: "coverage_basic.claim_name = '갱신'" })).code).toBe("D0001");
     expect(unwrap(await s.catalog.create(editor, { label: "수술급여기준", level: "coverage", expression: "coverage_basic.claim_name" })).code).toBe("D0002");
     unwrap(await s.catalog.create(editor, { label: "지급률", level: "benefit", expression: "pay.rate" }));

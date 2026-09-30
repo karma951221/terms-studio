@@ -83,7 +83,7 @@ describe("값 자리 — 노드 × 마스터 필드 (ADR-0037)", () => {
   });
 
   it("마스터가 비어 있는 레벨은 값 자리가 없다", () => {
-    expect(valueSlotsOf("product")).toEqual(["disclosure.avg_rate", "feature.renewable", "feature.fetal", "feature.group_contract", "feature.review_type", "feature.notice_type"]);
+    expect(valueSlotsOf("product")).toEqual(["disclosure.avg_rate", "feature.renewable", "feature.fetal", "feature.group_contract", "feature.notice_kind", "feature.review_scope", "feature.review_type", "feature.notice_type"]);
     expect(valueSlotsOf("subCoverage")).toEqual([]);
     expect(valueSlotsOf("benefit")).toEqual([
       "pay.exempt",

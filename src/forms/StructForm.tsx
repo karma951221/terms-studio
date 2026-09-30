@@ -111,7 +111,7 @@ function StringInput({ id, field, onEdit, className, name }: InputProps) {
 }
 
 function NumberInput({ id, field, onEdit, className, name }: InputProps) {
-  return (
+  const input = (
     <input
       id={id}
       type="number"
@@ -122,6 +122,13 @@ function NumberInput({ id, field, onEdit, className, name }: InputProps) {
       value={textDraft(field)}
       onChange={(e) => onEdit(e.target.value)}
     />
+  );
+  if (field.view.unit === undefined) return input;
+  return (
+    <span className="ts-input-unit">
+      {input}
+      <span aria-hidden="true">{field.view.unit}</span>
+    </span>
   );
 }
 
@@ -228,13 +235,28 @@ function EnumInput({ id, field, onEdit, className, name }: InputProps) {
   );
 }
 
-function ListEnumInput({ id, field, onEdit, name }: InputProps) {
+function ListEnumInput({ id, field, onEdit, name, single }: InputProps) {
   // list<enum> 전용 입력이라 draft 는 항상 코드 배열이다 (table 의 TableDraft 와는 INPUT_BY_KIND 매핑이 갈라 준다).
   const selected = (Array.isArray(field.draft) ? field.draft : []) as string[];
   const options = (field.view.enumOptions ?? []).map((o) => o.code);
   // 선택지 순서를 유지한 채 켜고 끈다 — 없는 값은 남긴다 (빼기로만 지운다)
   const toggle = (code: string, on: boolean) => onEdit(toggleEnumCode(options, selected, code, on));
   const missing = missingCodes(field, selected);
+  if (single) {
+    return (
+      <span className="ts-form-checks" role="radiogroup" aria-labelledby={`${id}-label`}>
+        {(field.view.enumOptions ?? []).map((o) => (
+          <label key={o.code} className="ts-form-check">
+            <input type="radio" name={name ?? field.view.path} value={o.code} checked={selected.includes(o.code)} onChange={() => onEdit([o.code])} />
+            {o.label}
+          </label>
+        ))}
+        {missing.map((code) => (
+          <MissingChip key={code} code={code} onRemove={() => toggle(code, false)} />
+        ))}
+      </span>
+    );
+  }
   return (
     <span className="ts-form-checks" role="group" aria-labelledby={`${id}-label`}>
       {(field.view.enumOptions ?? []).map((o) => (

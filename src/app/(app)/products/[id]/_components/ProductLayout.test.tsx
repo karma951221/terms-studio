@@ -38,8 +38,10 @@ import { GeneralTab } from "./GeneralTab";
 import { ProductEditProvider } from "./ProductEdit";
 
 const enums = [
-  { code: "E0003", label: "간편심사유형", values: [{ code: "V01", label: "단일심사구분", order: 0 }, { code: "V02", label: "통합간편심사", order: 1 }] },
-  { code: "E0004", label: "건강고지유형", values: [{ code: "V01", label: "일반고지", order: 0 }] },
+  { code: "E0003", label: "간편심사유형", values: [{ code: "V01", label: "3.0.5", order: 0 }, { code: "V02", label: "3.5.5", order: 1 }] },
+  { code: "E0004", label: "건강고지유형", values: [{ code: "V01", label: "6년 건강고지형", order: 0 }] },
+  { code: "E0005", label: "고지유형", values: [{ code: "V01", label: "일반심사", order: 0 }, { code: "V02", label: "간편심사", order: 1 }, { code: "V03", label: "건강고지", order: 2 }] },
+  { code: "E0006", label: "간편심사구분", values: [{ code: "V01", label: "단일심사", order: 0 }, { code: "V02", label: "통합간편심사", order: 1 }] },
 ];
 const lookup = (code: string) => enums.find((e) => e.code === code) as never;
 
@@ -47,7 +49,9 @@ describe("기본정보 — 상품정보(상품명 · 평균공시이율 · 상�
   const values = new Map([
     ["disclosure.avg_rate", { entered: true as const, value: 2.5 }],
     ["feature.renewable", { entered: true as const, value: true }],
-    ["feature.review_type", { entered: true as const, value: "V02" }],
+    ["feature.notice_kind", { entered: true as const, value: "V02" }],
+    ["feature.review_scope", { entered: true as const, value: "V02" }],
+    ["feature.review_type", { entered: true as const, value: ["V01", "V02"] }],
   ]);
   const render = () =>
     renderToStaticMarkup(
@@ -56,19 +60,20 @@ describe("기본정보 — 상품정보(상품명 · 평균공시이율 · 상�
       </ProductEditProvider>,
     );
 
-  it("상품정보 표 — 상품명 · 평균공시이율, 폼 이름 줄 「상품특성」 아래 다섯 칸", () => {
+  it("상품정보 표 — 상품명 · 평균공시이율, 폼 이름 줄 「상품특성」 아래 여섯 칸 (고지유형 = 간편심사라 건강고지유형은 없다)", () => {
     const html = render();
     expect(html).toContain("<h3>상품정보</h3>");
     const rows = [...html.matchAll(/<th scope="row">(?:<label[^>]*>)?([^<]+)/g)].map((m) => m[1]);
-    expect(rows).toEqual(["상품명", "평균공시이율", "갱신형여부", "태아보장여부", "단체계약여부", "간편심사유형", "건강고지유형"]);
+    expect(rows).toEqual(["상품명", "평균공시이율", "갱신형여부", "태아보장여부", "단체계약여부", "고지유형", "간편심사구분", "간편심사유형"]);
     expect(html).toContain(">상품특성</th>");
   });
 
-  it("읽기 — 저장된 값(2.5 · 예 · 통합간편심사), 없는 값은 「—」, 상품명은 읽기 전용", () => {
+  it("읽기 — 저장된 값(2.5% · 예 · 통합간편심사), 없는 값은 「—」, 상품명은 읽기 전용", () => {
     const html = render();
-    expect(html).toMatch(/data-path="disclosure.avg_rate"[^>]*><th scope="row">평균공시이율<\/th><td class="col-flex">2.5</);
+    expect(html).toMatch(/data-path="disclosure.avg_rate"[^>]*><th scope="row">평균공시이율<\/th><td class="col-flex">2.5%</);
     expect(html).toMatch(/data-path="feature.renewable"[\s\S]*?>예</);
-    expect(html).toMatch(/data-path="feature.review_type"[\s\S]*?>통합간편심사</);
+    expect(html).toMatch(/data-path="feature.review_scope"[\s\S]*?>통합간편심사</);
+    expect(html).toMatch(/data-path="feature.review_type"[\s\S]*?>3.0.5/);
     expect(html).toMatch(/data-path="feature.fetal"[\s\S]*?>—</);
     expect(html).toMatch(/<input[^>]*aria-label="상품명"[^>]*readOnly=""/);
   });

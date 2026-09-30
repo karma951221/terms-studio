@@ -108,13 +108,14 @@ describe("saveEnumEditAction", () => {
 
   it("새 값을 더해 저장하면 그 열거형 값을 비교하는 식이 재검사 목록으로 결과에 실린다 · 값을 더하지 않으면 목록이 없다 (ADR-0078 결정 4)", async () => {
     actor = editor;
-    const e3 = (await s.catalog.getEnum("E0003"))!; // 납입주기 — 마스터 feature.review_type 이 E0003 을 쓴다
-    unwrap(await s.catalog.create(editor, { label: "첫값여부", level: "product", expression: "feature.review_type = 'V01'" }));
-    const values = [...e3.values].sort((a, b) => a.order - b.order).map((v) => ({ code: v.code, label: v.label }));
-    const r = await saveEnumEditAction("E0003", { label: e3.label, description: "", values: [...values, { code: "new:1", label: "분기납" }] });
+    const e5 = (await s.catalog.getEnum("E0005"))!; // 가입형태 — 마스터 feature.notice_kind(고지유형)가 E0005 를 쓴다
+    unwrap(await s.catalog.create(editor, { label: "첫값여부", level: "product", expression: "feature.notice_kind = 'V01'" }));
+    const rows = (def: typeof e5) => [...def.values].sort((a, b) => a.order - b.order).map((v) => ({ code: v.code, label: v.label }));
+    const r = await saveEnumEditAction("E0005", { label: e5.label, description: "", values: [...rows(e5), { code: "new:1", label: "법인" }] });
     if (r.ok !== true) throw new Error("저장 기대");
-    expect(r.recheck?.map((e) => [e.via, nodeKey(e.from), nodeKey(e.to)])).toEqual([["expression", "discriminator:D0001", "enumValue:E0003/V01"]]);
-    expect(await saveEnumEditAction("E0003", { label: "납입 주기", description: "", values: [...values, { code: "V05", label: "분기납" }] })).toEqual({ ok: true });
+    expect(r.recheck?.map((e) => [e.via, nodeKey(e.from), nodeKey(e.to)])).toEqual([["expression", "discriminator:D0001", "enumValue:E0005/V01"]]);
+    const saved = (await s.catalog.getEnum("E0005"))!;
+    expect(await saveEnumEditAction("E0005", { label: "가입 형태", description: "", values: rows(saved) })).toEqual({ ok: true });
   });
   it("필드를 더하고 값에 넣어 저장 — 새 필드는 new: 키로 가리키고 저장 뒤 F 코드를 받는다 · 빈 새 필드 행은 버린다 (ADR-0078 결정 2)", async () => {
     actor = editor;

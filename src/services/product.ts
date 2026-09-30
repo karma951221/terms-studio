@@ -12,7 +12,7 @@
  *   `OptionValidator`(B2 옵션 집합) · `AttributeRefSource`(C1 식 참조). 기본 구현은 「없음/통과」.
  */
 import { destructive, type DestructiveAction } from "@/domain/auth";
-import { countedSlotsOf, slotType, validateValue, valueSlotsOf, type Discriminator, type SlotPath } from "@/domain/catalog";
+import { countedSlotsOf, slotType, validateValue, type Discriminator, type SlotPath } from "@/domain/catalog";
 import { validateSlotValue } from "@/domain/coverage";
 import {
   addAttributeValue,
@@ -65,7 +65,7 @@ import {
   type SnapshotNode,
   type SpecialGroup,
 } from "@/domain/product";
-import { findForm, findMasterField, formRuleIssues, type MasterForm } from "@/domain/master";
+import { findForm, findMasterField, formRuleIssues, formsOfLevel, type MasterForm } from "@/domain/master";
 import type { Actor, AttachLevel, Code, Coordinate, Id, Impact, Issue, Result, Value, ValueSlot } from "@/domain/types";
 import { entered, mergeImpacts, ok, reject } from "@/domain/types";
 
@@ -308,11 +308,6 @@ function invalid<T>(issues: Issue[]): Result<T> {
 function issue(kind: Issue["kind"], message: string, at: Coordinate = {}): Issue {
   return { kind, message, at };
 }
-/** 완결성 분모 — 이 레벨의 마스터 값 자리 수 (디자인원칙 §9.6 「분모 없는 카운트를 두지 않는다」). */
-function countLevelSlots(level: AttachLevel): number {
-  return valueSlotsOf(level).length;
-}
-
 /**
  * 세목 선택지의 값 자리 = **제 세목유형 폼**의 필드만 (마스터 조회 `services/master.ts` 의 세목 값 노드 규칙과 같다).
  * 같은 plan 레벨이라도 다른 폼의 자리는 이 선택지의 것이 아니다. 폼이 마스터에서 사라졌으면 자리가 없다.
@@ -397,7 +392,8 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
     const p = await repo.loadProduct(db, id);
     if (!p) return { total: 0, missing: [] };
     const slots = await readSlots(db, { kind: "product", id });
-    let total = countLevelSlots("product");
+    // 조건이 맞지 않는 조건부 칸(고지유형에 딸린 칸)은 분모에도 안 든다 — 미입력 목록과 같은 자리를 센다
+    let total = countedSlotsOf("product", (path) => slots.get(path)).length;
     const missing = missingSlotsOf({ kind: "product", id }, p.name, "product", (path) => slots.get(path));
     for (const o of await repo.listPlanOptions(db, id)) {
       const master = planOptionForm(o);
@@ -583,6 +579,8 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
         }
       }
       for (const entry of input.values) issues.push(...await checkSlot(tx, { kind: "product", id }, entry.path, entry.value));
+      // 상품 레벨 폼 교차 규칙 — 상품특성의 고지유형 조건 (「건강고지면 건강고지유형 1개 이상」 등, 2026-10-01)
+      for (const form of formsOfLevel("product")) issues.push(...await formRulesOf(tx, { kind: "product", id }, form.key, input.values.filter((e) => findMasterField(e.path)?.form.key === form.key)));
       const nextPlans: ProductPlan[] = [];
       for (const optionIds of input.combinations) {
         const result = validatePlanCombination(optionIds, nextOptions, nextPlans);

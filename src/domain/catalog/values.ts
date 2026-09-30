@@ -9,7 +9,7 @@
  *   세지 않고(`countedSlotsOf`), 직접 읽으면 자리 없음. 값 행이 하나라도 있으면 나머지 필드는 보통 자리다.
  * - **선택 필드(`MasterField.optional`)** — 값이 없으면 `missingSlots` 가 세지 않는다. 식이 읽는 뜻은 그대로(미입력)다.
  */
-import { fieldsOfLevel, findMasterField, formsOfLevel, masterPath, type MasterForm, type MasterTree } from "../master";
+import { fieldsOfLevel, findMasterField, formsOfLevel, isFieldShown, masterPath, type MasterForm, type MasterTree } from "../master";
 import type { AttachLevel, Coordinate, FieldType, Issue, TableColumn, Value, ValueSlot } from "../types";
 import type { EnumDef, EnumLookup, SlotPath } from "./types";
 
@@ -176,6 +176,8 @@ export function countedSlotsOf(level: AttachLevel, read: SlotReader, master?: Ma
       const path = masterPath(form.key, f.key);
       // 선택 필드는 더했을 때(값이 있을 때)만 자리다 — 안 더한 것은 「없음」이지 미입력이 아니다
       if (f.optional && read(path)?.entered !== true) continue;
+      // 조건부 필드는 조건이 맞을 때만 자리다 — 고지유형 = 일반심사면 간편심사유형은 없는 칸이다
+      if (!isFieldShown(f, (key) => read(masterPath(form.key, key)))) continue;
       out.push(path);
     }
   }
