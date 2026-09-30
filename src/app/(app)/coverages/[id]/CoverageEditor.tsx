@@ -26,7 +26,6 @@ export interface CoverageEditorProps {
   initial: CoverageEditData;
   /** 노드 키 → 그 레벨 마스터 값 폼 (ADR-0037: 레벨 하나에 폼 하나). */
   formByNode: Record<string, FormModel>;
-  usageCount: number;
   /** 담보속성 유효값 표시명 — 담보명에 섞이면 경고한다 (Q-C: 경고까지, 거부 아님). */
   attributeValueLabels: string[];
   /** 진입 좌표의 노드 (`encodeNodeKey`) — 그 카드로 스크롤 · 강조한다. */
@@ -38,7 +37,7 @@ export interface CoverageEditorProps {
 }
 
 export function CoverageEditor(props: CoverageEditorProps) {
-  const { id, code, initial, usageCount } = props;
+  const { id, code, initial } = props;
   return (
     <EditShell
       initial={initial}
@@ -50,15 +49,13 @@ export function CoverageEditor(props: CoverageEditorProps) {
       deleteLabel={`${initial.label} 삭제`}
       deleteTooltip={`담보 ${initial.label} 삭제`}
       deleteSuccessHref="/coverages"
+      // 탑재 상품담보 수(사용처)는 두지 않는다 — 관계정보 메뉴 (2026-10-01). 구조 정정의 영향은 저장 확인이 말한다
       headerMeta={
-        <span className="ts-count">
-          {code && (
-            <>
-              <code title="담보코드 — 시스템 채번 · 바뀌지 않는다">{code}</code> ·{" "}
-            </>
-          )}
-          탑재 상품담보 <b>{usageCount}</b>
-        </span>
+        code ? (
+          <span className="ts-count">
+            <code title="담보코드 — 시스템 채번 · 바뀌지 않는다">{code}</code>
+          </span>
+        ) : undefined
       }
     >
       <CoverageCards

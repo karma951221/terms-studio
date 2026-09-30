@@ -1,10 +1,9 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useRef } from "react";
 
 import { EditShell, Field, useEditField } from "@/app/_components/EditShell";
 import { InfoTip } from "@/app/_components/InfoTip";
-import { UsageDialog } from "@/app/_components/UsageDialog";
 import { ADD_ROW_LABEL, ValueRowsTable } from "@/app/_components/ValueRowsTable";
 import { ENTITY_LABEL, FIELD_LABEL, NAME_LABEL, NAMING_FRAGMENT_TIP, newLabel } from "@/app/_lib/labels";
 import { sortAttributeValues, type AttributeKind } from "@/domain/product";
@@ -74,10 +73,10 @@ export function ValuesEditor() {
 
 const isSaved = (value: AttributeEditValue) => !value.code.startsWith("new:");
 
-export function AttributeEditor({ item, usage, usageCount }: { item: AttributeKind; usage: ReactNode; usageCount: number }) {
+export function AttributeEditor({ item }: { item: AttributeKind }) {
   const initial: AttributeEditData = { label: item.label, values: sortAttributeValues(item.values).map(({ code, label, fragment }) => ({ code, label, fragment })) };
   return (
-    <EditShell initial={initial} title={item.label} extraActions={<UsageDialog count={usageCount}>{usage}</UsageDialog>} path={[{ label: ENTITY_LABEL.attribute, href: "/attributes" }]} saveAction={saveAttributeEditAction.bind(null, item.code)} deleteAction={removeAttributeEditAction.bind(null, item.code)} deleteLabel={`${item.label} 삭제`} deleteTooltip={`${ENTITY_LABEL.attribute} ${item.label}(${item.code}) 삭제 — 값 ${item.values.length}개가 함께 사라진다`} deleteSuccessHref="/attributes">
+    <EditShell initial={initial} title={item.label} path={[{ label: ENTITY_LABEL.attribute, href: "/attributes" }]} saveAction={saveAttributeEditAction.bind(null, item.code)} deleteAction={removeAttributeEditAction.bind(null, item.code)} deleteLabel={`${item.label} 삭제`} deleteTooltip={`${ENTITY_LABEL.attribute} ${item.label}(${item.code}) 삭제 — 값 ${item.values.length}개가 함께 사라진다`} deleteSuccessHref="/attributes">
       <div className="ts-l2-main">
         <div className="ts-form-row"><label>{FIELD_LABEL.code}</label><div className="ts-form-control"><span className="ts-field-static ts-mono">{item.code}</span></div></div>
         <Field name="label" label={NAME_LABEL.attribute} />

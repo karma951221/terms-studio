@@ -1,20 +1,18 @@
 "use client";
 
 import { EditShell, Field } from "@/app/_components/EditShell";
-import { UsageDialog } from "@/app/_components/UsageDialog";
 import { ENTITY_LABEL, FIELD_LABEL, NAME_LABEL } from "@/app/_lib/labels";
 import type { Appendix } from "@/domain/document";
 
 import { removeAppendixEditAction, saveAppendixEditAction } from "../edit-actions";
 import type { AppendixEditData } from "../edit-types";
 
-export function AppendixEditor({ appendix, usage, usageCount }: { appendix: Appendix; usage: React.ReactNode; usageCount: number }) {
+export function AppendixEditor({ appendix }: { appendix: Appendix }) {
   const data: AppendixEditData = { name: appendix.name, description: appendix.description };
   return (
     <EditShell
       initial={data}
       title={appendix.name}
-      extraActions={<UsageDialog count={usageCount}>{usage}</UsageDialog>}
       path={[{ label: ENTITY_LABEL.appendix, href: "/appendices" }]}
       saveAction={saveAppendixEditAction.bind(null, appendix.code)}
       deleteAction={removeAppendixEditAction.bind(null, appendix.code)}

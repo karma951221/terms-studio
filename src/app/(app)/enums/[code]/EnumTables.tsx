@@ -94,10 +94,10 @@ function FieldCell({ value, field, onChange, disabled }: { value: EnumEditValue;
 /**
  * 값 표 — 순서 · 값 이름 · 필드 열(필드마다 하나). 편집은 값 행 표 문법(`ValueRowsTable` — 행 앞 ⊖ · 끌기 손잡이 · 마지막 행 아래 ⊕).
  * 저장된 값 행도 ⊖ 로 초안에서 뺀다 — 서버 삭제는 저장 때, 영향 확인도 그때 한 번 (디자인원칙 §2 L2 표 · 점검 2026-09-27 D2).
- * 빈 채로 남은 새 행은 저장 때 버린다. 「사용 수」 열은 읽기에만 있다 — 편집 중 빼는 값의 영향은 저장 확인이 말한다 (2026-10-01).
+ * 빈 채로 남은 새 행은 저장 때 버린다. 빼는 값의 영향은 저장 확인이 말한다 — 사용 수 열은 두지 않는다(사용처는 관계정보 메뉴, 2026-10-01).
  * 입력률 카운트는 두지 않는다 (화면 편집 원칙) — 빈 칸은 「—」로 보일 뿐이다.
  */
-export function ValuesEditor({ usage }: { usage: Record<string, number> }) {
+export function ValuesEditor() {
   const field = useEditField<EnumEditValue[]>("values");
   const fieldDefs = useEditField<EnumEditField[] | undefined>("fields").value ?? [];
   const next = useRef(1);
@@ -120,7 +120,6 @@ export function ValuesEditor({ usage }: { usage: Record<string, number> }) {
       ? <span className="ts-field-locked">{value.label}</span>
       : <input value={value.label} aria-label={`${FIELD_LABEL.valueName}${isNew(value.code) ? "" : ` ${value.code}`}`} ref={(el) => { if (el) inputs.current.set(value.code, el); else inputs.current.delete(value.code); }} onChange={(event) => field.update((current) => current.map((item) => item.code === value.code ? { ...item, label: event.target.value } : item))} onKeyDown={(event) => { if (event.key !== "Enter" || event.nativeEvent.isComposing) return; event.preventDefault(); if (index === field.value.length - 1) add(); else inputs.current.get(field.value[index + 1]!.code)?.focus(); }} className="ts-field-direct" /> },
     ...fieldDefs.map((def): ValueRowsColumn<EnumEditValue> => ({ key: `f:${def.key}`, header: def.label || NEW_FIELD, className: "col-fixed-md", cell: (value) => edit ? <FieldCell value={value} field={def} disabled={field.pending} onChange={(cell) => setCell(value.code, def.key, cell)} /> : cellText(value.fields?.[def.key]) })),
-    ...(edit ? [] : [{ key: "usage", header: FIELD_LABEL.usageCount, className: "col-num", cell: (value: EnumEditValue) => (!isNew(value.code) && usage[value.code]) || "—" }]),
   ];
   return <ValueRowsTable
     rows={field.value}

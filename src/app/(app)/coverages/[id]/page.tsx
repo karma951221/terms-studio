@@ -2,7 +2,6 @@ import { Breadcrumb } from "@/app/_components/Breadcrumb";
 import { ErrorBanner } from "@/app/_components/ErrorBanner";
 import { ENTITY_LABEL } from "@/app/_lib/labels";
 import { decodeNodeKey, encodeNodeKey, nodesOf, structureDraftOf } from "@/domain/coverage";
-import { usagesOf } from "@/domain/refs";
 import { buildForm, type FormModel } from "@/forms";
 import { currentActor, getServices } from "@/lib/services";
 
@@ -35,9 +34,8 @@ export default async function CoverageDetailPage({
     );
   }
 
-  const [enumsList, graph, attributeKinds] = await Promise.all([
+  const [enumsList, attributeKinds] = await Promise.all([
     services.catalog.listEnums(),
-    services.refs.graph(),
     services.product.listAttributeKinds(),
   ]);
   const enumLookup = (code: string) => enumsList.find((e) => e.code === code);
@@ -63,7 +61,6 @@ export default async function CoverageDetailPage({
         ? nodes.map((n) => encodeNodeKey(n.level, n.id)).find((key) => formByNode[key]!.fields.some((f) => f.path === sp.field))
         : undefined;
 
-  const usageCount = usagesOf(graph, { kind: "coverageNode", level: "coverage", id: tree.id }, { via: ["mount"] }).length;
   const attributeValueLabels = attributeKinds.flatMap((kind) => kind.values.map((value) => value.label));
 
   // 이름 · 구조가 바뀌면 초안을 새 진실로 다시 세운다 (EnumDetailPage 와 같은 패턴).
@@ -78,7 +75,6 @@ export default async function CoverageDetailPage({
         code={tree.code}
         initial={{ label: tree.name, description: tree.description, structure: structureDraftOf(tree), values: {} }}
         formByNode={formByNode}
-        usageCount={usageCount}
         attributeValueLabels={attributeValueLabels}
         target={target}
         highlightPath={target ? sp.field : undefined}

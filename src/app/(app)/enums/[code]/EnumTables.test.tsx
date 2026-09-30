@@ -29,7 +29,7 @@ function render(mode: "read" | "edit", initial: EnumEditData = data) {
   return renderToStaticMarkup(
     <EditShell initial={initial} title="납입면제사유" path={[]} saveAction={async () => ({ ok: true })} initialMode={mode}>
       <FieldsEditor />
-      <ValuesEditor usage={{}} />
+      <ValuesEditor />
     </EditShell>,
   );
 }
@@ -66,14 +66,13 @@ describe("열거형 상세 — 필드 · 값 × 필드 표", () => {
     expect(html).not.toMatch(/위로|아래로|ts-values-head/);
   });
 
-  it("읽기: 「사용 수」 열은 읽기에만 · 조작(⊖ · 손잡이 · ⊕)은 없다", () => {
+  it("읽기: 「사용 수」 열은 없다(사용처는 관계정보 메뉴) · 조작(⊖ · 손잡이 · ⊕)도 없다", () => {
     const html = renderToStaticMarkup(
       <EditShell initial={data} title="납입면제사유" path={[]} saveAction={async () => ({ ok: true })} initialMode="read">
-        <ValuesEditor usage={{ V01: 3 }} />
+        <ValuesEditor />
       </EditShell>,
     );
-    expect(html).toMatch(/<th[^>]*>사용 수<\/th>/);
-    expect(html).toContain(">3<");
+    expect(html).not.toContain("사용 수");
     expect(html).not.toMatch(/행 삭제|행 추가|순서 옮기기/);
   });
 

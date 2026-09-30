@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * 구분자 상세 — 코드(정적) · 구분자명 · 레벨(정적) · 식 · 결과 타입 · 주석 + 사용처.
+ * 구분자 상세 — 코드(정적) · 구분자명 · 레벨(정적) · 식 · 결과 타입 · 주석. 사용처는 관계정보 메뉴에서 본다 (2026-10-01).
  *
  * 2026-09-12 — 구분자가 식 하나가 되면서 유형 · 타입 · 노출 · 상수값 · 구조체 필드 표가 사라졌다 (ADR-0037).
  * 레벨은 정적이다 — 식의 참조 규칙(같은 레벨 · 하위는 집계 안)이 레벨에 매여 있어 바꾸면 사용처의 의미가 조용히 달라진다.
@@ -13,7 +13,6 @@ import { useCallback, useEffect, useState } from "react";
 
 import { EditShell, Field, useEditField } from "@/app/_components/EditShell";
 import { InfoTip } from "@/app/_components/InfoTip";
-import { UsageDialog } from "@/app/_components/UsageDialog";
 import { ENTITY_LABEL, FIELD_LABEL, LEVEL_LABEL, TYPE_LABEL } from "@/app/_lib/labels";
 import { DISCRIMINATORS_MENU, menuCrumb } from "@/app/_lib/menu";
 import type { Discriminator, EnumDef } from "@/domain/catalog";
@@ -137,8 +136,6 @@ export function CatalogEditor({
   inferred,
   warnings,
   panel,
-  usage,
-  usageCount,
 }: {
   def: Discriminator;
   /** 결과 타입이 목록값일 때 고를 열거형변수 · 읽기 표시명. */
@@ -149,9 +146,6 @@ export function CatalogEditor({
   warnings: readonly Issue[];
   /** 넣기 패널 재료 — 마스터 필드 트리 · 구분자 목록 (서버가 직렬화). */
   panel: InsertPanelData;
-  usage: React.ReactNode;
-  /** 문면 사용처 총수 — 직접 + 참조하는 구분자를 거친 것 (ADR-0049 §2). */
-  usageCount: number;
 }) {
   const [inspection, setInspection] = useState<InspectionState>();
   const clearInspection = useCallback(() => setInspection(undefined), []);
@@ -169,14 +163,13 @@ export function CatalogEditor({
     <EditShell
       initial={data}
       title={def.label}
-      extraActions={<UsageDialog count={usageCount}>{usage}</UsageDialog>}
       editActions={<EditInspectButton code={def.code} level={def.level} onResult={setInspection} />}
       readBadges={badges.map((b) => <span key={b.label} className="ts-badge warning" title={b.title}>{b.label}</span>)}
       path={[menuCrumb(DISCRIMINATORS_MENU)]}
       saveAction={saveDiscriminatorEditAction.bind(null, def.code)}
       deleteAction={removeDiscriminatorEditAction.bind(null, def.code)}
       deleteLabel={`${def.label} 삭제`}
-      deleteTooltip={`구분자 ${def.label}(${def.code}) 삭제 — 이 구분자에 닿는 조문 ${usageCount}곳(참조하는 구분자를 거친 것 포함)이 영향받는다`}
+      deleteTooltip={`구분자 ${def.label}(${def.code}) 삭제`}
       deleteSuccessHref="/catalog"
     >
       <EditorBody def={def} enums={enums} inferred={inferred} panel={panel} inspection={inspection} onClear={clearInspection} />

@@ -2,17 +2,15 @@
  * 필드 상세의 본문 (기능/마스터 §4.3) — `/master/{폼키.필드키}` 화면이 경로 제목 줄 아래에 세운다. 서버 컴포넌트 · 비동기.
  * 2026-09-27 두 칸의 오른쪽 패널에서 별도 상세 화면으로 옮겼다 — 제목(h2)은 경로(`폼 › {폼} › {필드}`)가 대신한다.
  *
- * 셋 — **정체**(코드 ⧉ · 폼 → 폼 상세 · 레벨 · 타입 · 기본값 · 설명),
- * **사용처 · 위**(이 코드를 읽는 구분자 → 그 구분자를 쓰는 문면 · 참조하는 구분자),
- * **사용처 · 아래**(값 노드 전부, 미입력 포함 · 20건 페이저 · 「입력 화면 →」).
- * 데이터원은 `services.master` (기능/마스터 §4.3). 추적의 역방향 진입점이다. 값 노드 페이저는 `?page=`.
+ * 둘 — **정체**(코드 ⧉ · 폼 → 폼 상세 · 레벨 · 타입 · 기본값 · 설명),
+ * **값 노드**(값 노드 전부, 미입력 포함 · 20건 페이저 · 「입력 화면 →」).
+ * 이 필드를 읽는 구분자 · 문면(사용처)은 두지 않는다 — 관계정보 메뉴 (디자인원칙 §11.2, 2026-10-01).
+ * 데이터원은 `services.master` (기능/마스터 §4.3). 값 노드 페이저는 `?page=`.
  */
 import Link from "next/link";
 
-import { coordinateHref } from "@/app/_components/coordinateHref";
-import { ENTITY_LABEL, FIELD_LABEL, LEVEL_LABEL, REFERENCE_VIA_LABEL } from "@/app/_lib/labels";
+import { ENTITY_LABEL, FIELD_LABEL, LEVEL_LABEL } from "@/app/_lib/labels";
 import type { EnumDef } from "@/domain/catalog/types";
-import { formatCoordinate } from "@/domain/coordinate";
 import type { MasterFieldRef } from "@/domain/master";
 import type { MasterService } from "@/services/master";
 
@@ -21,7 +19,7 @@ import { defaultValueText, fieldHref, formHref, nodeValueText, TypeText, type En
 
 export async function FieldDetail({ field, page, master, enums }: { field: MasterFieldRef; page: number; master: MasterService; enums: readonly EnumDef[] }) {
   // 서비스가 page 를 마지막 페이지로 죄어 돌려준다 — 페이저는 요청값이 아니라 nodes.page 를 본다.
-  const [usage, nodes] = await Promise.all([master.fieldUsage(field.path), master.valueNodes(field.path, page)]);
+  const nodes = await master.valueNodes(field.path, page);
   const enumLabels: EnumLabels = new Map(enums.map((e) => [e.code, e.label] as const));
   const valueLabel = (enumCode: string, valueCode: string) => enums.find((e) => e.code === enumCode)?.values.find((v) => v.code === valueCode)?.label ?? valueCode;
   const pages = Math.max(1, Math.ceil(nodes.total / nodes.pageSize));
@@ -46,63 +44,12 @@ export async function FieldDetail({ field, page, master, enums }: { field: Maste
       </dl>
 
       <section className="ts-section">
-        <h3 className="ts-master-section">{FIELD_LABEL.usage}</h3>
-
-        <p className="ts-master-subtitle">
-          {ENTITY_LABEL.discriminator} <span className="ts-count"><b>{usage.discriminators.length}</b></span>
-        </p>
-        {usage.discriminators.length === 0 ? (
-          <p className="ts-muted">이 필드를 읽는 {ENTITY_LABEL.discriminator}가 없습니다</p>
-        ) : (
-          <ul className="ts-master-usage">
-            {usage.discriminators.map((d) => (
-              <li key={d.code}>
-                <div className="ts-master-usage-head">
-                  <Link href={`/catalog/${encodeURIComponent(d.code)}`}>{d.label}</Link>
-                  <span className="ts-badge">{LEVEL_LABEL[d.level]}</span>
-                  <span className="ts-mono">= {d.expression}</span>
-                </div>
-                <div className="ts-master-usage-sub">
-                  <span className="ts-form-label">└ 조문</span>
-                  {d.documents.length === 0 ? (
-                    <span className="ts-muted">(없음)</span>
-                  ) : (
-                    <ul>
-                      {d.documents.map((doc, i) => {
-                        const href = coordinateHref(doc.at);
-                        const text = formatCoordinate(doc.at, { source: true });
-                        return (
-                          <li key={i}>
-                            {href ? <Link href={href}>{text}</Link> : text} <span className="ts-muted">({REFERENCE_VIA_LABEL[doc.via]})</span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </div>
-                {d.referencedBy.length > 0 ? (
-                  <div className="ts-master-usage-sub">
-                    <span className="ts-form-label">└ 참조하는 {ENTITY_LABEL.discriminator}</span>
-                    <ul>
-                      {d.referencedBy.map((r) => (
-                        <li key={r.code}>
-                          <Link href={`/catalog/${encodeURIComponent(r.code)}`}>{r.label}</Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <p className="ts-master-subtitle">
+        <h3 className="ts-master-section">
           값 노드{" "}
           <span className="ts-count">
             명시 값 <b>{nodes.entered}</b> · 미입력 <b>{nodes.notEntered}</b>
           </span>
-        </p>
+        </h3>
         {nodes.total === 0 ? (
           <p className="ts-muted">아직 이 레벨의 노드가 없습니다</p>
         ) : (

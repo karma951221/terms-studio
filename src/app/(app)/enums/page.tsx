@@ -3,23 +3,19 @@
  * 제목은 메뉴 이름 「열거형」, 오른쪽 `+` 는 새 열거형변수.
  */
 import { EmptyState } from "@/app/_components/EmptyState";
-import type { ColumnFilterSpec } from "@/app/_components/ListFilters";
 import { ListPage, codeCol, nameCol, type ListColumn } from "@/app/_components/ListPage";
 import { formatDate, includesQuery, paginate } from "@/app/_lib/list";
 import { ENTITY_LABEL, FIELD_LABEL, NAME_LABEL, newLabel, searchPlaceholder } from "@/app/_lib/labels";
 import { ENUMS_MENU } from "@/app/_lib/menu";
 import type { EnumDef } from "@/domain/catalog";
-import { usagesOf } from "@/domain/refs";
 import { getServices } from "@/lib/services";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 50;
-const FILTERS = [{ key: "usage", label: "사용처", options: [{ value: "yes", label: "있음" }, { value: "no", label: "없음" }] }] as const satisfies readonly ColumnFilterSpec[];
-
+// 사용처 열 · 거르기는 두지 않는다 — 사용처는 관계정보 메뉴 (디자인원칙 §11.2, 2026-10-01).
 interface Row {
   item: EnumDef;
-  usageCount: number;
 }
 
 const VALUE_PREVIEW = 5;
@@ -35,30 +31,19 @@ function ValueChips({ item }: { item: EnumDef }) {
   </span>;
 }
 
-export default async function EnumListPage({ searchParams }: { searchParams: Promise<{ error?: string; q?: string; usage?: string; page?: string }> }) {
+export default async function EnumListPage({ searchParams }: { searchParams: Promise<{ error?: string; q?: string; page?: string }> }) {
   const sp = await searchParams;
   const services = getServices();
-  const [enums, graph, audits, users] = await Promise.all([services.catalog.listEnums(), services.refs.graph(), services.catalog.enumAudits(), services.auth.listUsers()]);
+  const [enums, audits, users] = await Promise.all([services.catalog.listEnums(), services.catalog.enumAudits(), services.auth.listUsers()]);
   const userName = new Map(users.map((u) => [u.id, u.name] as const));
   const q = (sp.q ?? "").trim();
-  const usage = sp.usage ?? "";
-  const withUsage: Row[] = enums.map((item) => ({
-    item,
-    usageCount: usagesOf(graph, { kind: "enum", enumCode: item.code }, { via: ["type"] }).length,
-  }));
-  const filtered = withUsage.filter(({ item, usageCount }) => {
-    if (!includesQuery(q, [item.code, item.label, ...item.values.map((value) => value.label)])) return false;
-    if (usage === "yes" && usageCount === 0) return false;
-    if (usage === "no" && usageCount > 0) return false;
-    return true;
-  });
+  const filtered: Row[] = enums.filter((item) => includesQuery(q, [item.code, item.label, ...item.values.map((value) => value.label)])).map((item) => ({ item }));
   const { rows, total, page } = paginate(filtered, sp.page, PAGE_SIZE);
 
   const columns: readonly ListColumn<Row>[] = [
     codeCol((r) => r.item.code),
     nameCol(NAME_LABEL.enum, (r) => r.item.label, (r) => `/enums/${r.item.code}`),
     { header: FIELD_LABEL.values, width: "values", cell: (r) => <ValueChips item={r.item} /> },
-    { filter: FILTERS[0], width: "sm", cell: (r) => r.usageCount || "—" },
     { header: FIELD_LABEL.updatedAt, width: "md", mono: true, cell: (r) => { const audit = audits.get(r.item.code); return audit ? formatDate(audit.updatedAt) : "—"; } },
     { header: FIELD_LABEL.updatedBy, width: "md", cell: (r) => { const by = audits.get(r.item.code)?.updatedBy; return (by && userName.get(by)) ?? "—"; } },
   ];
@@ -68,7 +53,6 @@ export default async function EnumListPage({ searchParams }: { searchParams: Pro
       title={ENUMS_MENU.label}
       create={{ href: q ? `/enums/new?q=${encodeURIComponent(q)}` : "/enums/new", label: newLabel(ENTITY_LABEL.enum) }}
       search={{ placeholder: searchPlaceholder(FIELD_LABEL.code, NAME_LABEL.enum, FIELD_LABEL.value) }}
-      filters={FILTERS}
       columns={columns}
       rows={rows}
       rowKey={(r) => r.item.code}
@@ -76,7 +60,7 @@ export default async function EnumListPage({ searchParams }: { searchParams: Pro
       page={page}
       pageSize={PAGE_SIZE}
       basePath="/enums"
-      query={{ q, usage }}
+      query={{ q }}
       error={sp.error}
       empty={enums.length === 0 ? <EmptyState what="열거형변수는 목록값 타입이 고르는 값의 정의다." example="심사유형: 일반심사 · 간편심사" actionHref="/enums/new" actionLabel={newLabel(ENTITY_LABEL.enum)} /> : <p className="ts-empty-what">이 조건에 맞는 열거형변수가 없습니다.</p>}
     />

@@ -59,8 +59,6 @@ export const FIELD_LABEL = {
   field: "필드",
   fieldName: "필드 이름",
   valueName: "값 이름",
-  usage: "사용처",
-  usageCount: "사용 수",
   updatedAt: "최종수정",
   updatedBy: "수정자",
   template: "템플릿",

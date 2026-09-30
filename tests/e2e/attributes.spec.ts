@@ -40,11 +40,11 @@ test(
     await ev.action("담보속성#3", "행의 담보속성명을 누르면 유형 상세 — 값 표는 코드 · 값 이름 · 상품담보명 표기(ⓘ)뿐", async () => {
       await page.getByRole("link", { name: "갱신유형" }).first().click();
       await page.waitForURL(/\/attributes\/A0001$/);
-      // 상세에는 사용처 표도 있다 — 값 표만 본다. 머리 칸 끝의 ⓘ 는 공백을 남기므로 정규식으로.
+      // 값 표 머리만 본다. 머리 칸 끝의 ⓘ 는 공백을 남기므로 정규식으로.
       const head = page.locator("table.ts-attr-values thead th");
       await expect(head).toHaveText([/^코드$/, /^값 이름$/, /^상품담보명 표기\s*$/]);
       await expect(page.getByLabel("상품담보명에 이 값 대신 들어갈 말 — 비우면 붙지 않는다")).toBeVisible();
-      await expect(page.getByText(/사용 수|명명 조각/)).toHaveCount(0);
+      await expect(page.getByText(/사용처|사용 수|명명 조각/)).toHaveCount(0);
       await expect(page.getByRole("button", { name: /행 추가|행 삭제/ })).toHaveCount(0);
     });
 

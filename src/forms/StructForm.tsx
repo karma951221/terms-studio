@@ -81,7 +81,7 @@ export interface StructFormProps {
   issues?: Issue[];
   /** 관리자 — 필드 라벨 옆에 작은 ⓘ 링크. tooltip 이 `폼키.필드키` 이고 마스터 화면의 그 필드로 이어진다. */
   showCodes?: boolean;
-  /** 이 경로의 행을 강조하고 마운트 시 화면 가운데로 스크롤한다 (마스터 → 사용처에서 건너왔을 때). */
+  /** 이 경로의 행을 강조하고 마운트 시 화면 가운데로 스크롤한다 (마스터 필드 상세의 값 노드에서 건너왔을 때). */
   highlightPath?: string;
   /**
    * 노드 카드(담보 · 세부보장 · 급부 카드) 안에 얹힌 폼 — 폼마다 테두리 상자(fieldset · legend)를 두르지 않고
@@ -327,7 +327,7 @@ function FieldRow({ idBase, field, externalIssues, onEdit, onRevert, onRemove, s
   const { view } = field;
   const [askRevert, setAskRevert] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
-  // 강조 행은 화면 가운데로 — 마스터 사용처에서 건너온 사람이 그 자리를 바로 본다
+  // 강조 행은 화면 가운데로 — 마스터 필드 상세의 값 노드에서 건너온 사람이 그 자리를 바로 본다
   useEffect(() => {
     if (highlighted) rowRef.current?.scrollIntoView?.({ block: "center" });
   }, [highlighted]);

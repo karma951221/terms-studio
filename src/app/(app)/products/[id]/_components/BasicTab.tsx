@@ -151,7 +151,7 @@ export function BasicTab(props: BasicTabProps) {
     return () => register(null);
   });
 
-  // 마스터 사용처에서 건너온 강조 행은 화면 가운데로
+  // 마스터 필드 상세의 값 노드(「입력 화면 →」)에서 건너온 강조 행은 화면 가운데로
   useEffect(() => {
     if (highlightOption) document.getElementById(`plan-option-${highlightOption}`)?.scrollIntoView?.({ block: "center" });
   }, [highlightOption]);
