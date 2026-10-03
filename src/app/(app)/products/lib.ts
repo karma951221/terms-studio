@@ -290,6 +290,52 @@ export function specialPreviewPath(productId: Id, productCoverageId: Id): string
   return `${termsPath(productId, "special")}&pc=${productCoverageId}`;
 }
 
+/** 담보별 미리보기에서 담보를 고르는 주소 — 상품담보는 그 담보의 첫 건이 기본이다 (기능/상품 §4.7). */
+export function specialCoveragePath(productId: Id, coverageId: Id): string {
+  return `${termsPath(productId, "special")}&cov=${coverageId}`;
+}
+
+/** 담보별 미리보기 왼쪽의 한 행 — 담보 마스터 하나와 거기서 탑재한 특약 상품담보들. */
+export interface SpecialCoverageGroup {
+  coverageId: Id;
+  /** 담보명 — 없으면 담보 id. */
+  name: string;
+  productCoverages: ProductCoverage[];
+}
+
+/** 특약 상품담보 → 담보 마스터별 묶음. 담보는 처음 나온 순, 묶음 안은 상품담보 순 그대로. */
+export function specialCoverageGroups(specials: readonly ProductCoverage[], coverageName: (coverageId: Id) => string | undefined): SpecialCoverageGroup[] {
+  const byCoverage = new Map<Id, SpecialCoverageGroup>();
+  for (const pc of specials) {
+    let group = byCoverage.get(pc.coverageId);
+    if (!group) {
+      group = { coverageId: pc.coverageId, name: coverageName(pc.coverageId) ?? pc.coverageId, productCoverages: [] };
+      byCoverage.set(pc.coverageId, group);
+    }
+    group.productCoverages.push(pc);
+  }
+  return [...byCoverage.values()];
+}
+
+/**
+ * `?cov=` · `?pc=` → 고른 담보와 상품담보. 특약 절에 있는 좌표만 믿는다 (URL 의 좌표를 믿지 않는다).
+ * `pc` 가 있으면 제 담보를 함께 정한다(옛 `?pc=` 링크) — 없으면 `cov` 의 첫 상품담보, 그것도 없으면 첫 담보의 첫 건.
+ */
+export function resolveSpecialSelection(
+  groups: readonly SpecialCoverageGroup[],
+  params: { cov?: string | undefined; pc?: string | undefined },
+): { group: SpecialCoverageGroup; pc: ProductCoverage } | undefined {
+  if (params.pc) {
+    for (const group of groups) {
+      const pc = group.productCoverages.find((p) => p.id === params.pc);
+      if (pc) return { group, pc };
+    }
+  }
+  const group = (params.cov ? groups.find((g) => g.coverageId === params.cov) : undefined) ?? groups[0];
+  const pc = group?.productCoverages[0];
+  return group && pc ? { group, pc } : undefined;
+}
+
 /**
  * 조립 결과가 **앵커(`#node-<id>`)를 심은 노드 id 전부** — 오류 목록의 「미리보기에서 보기」가
  * 도착할 수 있는 자리 (`RenderedDoc.tsx` 가 id 를 다는 자리와 짝). 관을 잘라 그린 결과에 이 함수를

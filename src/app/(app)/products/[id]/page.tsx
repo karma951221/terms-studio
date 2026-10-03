@@ -22,7 +22,7 @@ import { ProductEditProvider, ProductHeadActions, ProductPath } from "./_compone
 import { ProductTabs, TermsSubTabs } from "./_components/ProductTabs";
 import { SpecialPreviewTab } from "./_components/SpecialPreviewTab";
 import { confirmProductGeneralDocumentAction, deleteGroupAction, deleteProductAction, detachPlanAction, removePlanAction, removePlanOptionAction, unmountAction } from "../actions";
-import { legacyProductTabRedirect, productTabOf, termsPath, termsSubOf } from "../lib";
+import { legacyProductTabRedirect, productTabOf, resolveSpecialSelection, specialCoverageGroups, termsPath, termsSubOf } from "../lib";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +41,7 @@ export default async function ProductDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; sub?: string; error?: string; confirm?: string; option?: string; field?: string; art?: string; pc?: string; mq?: string; mpage?: string; bq?: string; bpage?: string }>;
+  searchParams: Promise<{ tab?: string; sub?: string; error?: string; confirm?: string; option?: string; field?: string; art?: string; pc?: string; cov?: string; mq?: string; mpage?: string; bq?: string; bpage?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
@@ -103,17 +103,12 @@ export default async function ProductDetailPage({
   // ── 약관 › 보통약관 작성의 재료 (기능/상품 §4.6) ───────────────────────
   // 템플릿 트리 · 템플릿 번호 · 숨긴 조 · 조립 결과. 그 하위 탭을 열었을 때만 읽는다 — 조립은 매번 재계산이라 싸지 않다.
   const gid = sub === "general" ? product.generalDocumentId : undefined;
-  const [generalDoc, generalNumbers, hiddenArticles, bookletResult, appendices, discriminators, boxes] = gid
-    ? await Promise.all([
-        services.document.get(gid),
-        services.document.numbering(gid),
-        services.product.listHiddenArticles(id),
-        services.assembly.preview(id),
-        services.document.listAppendices(),
-        services.catalog.list(),
-        services.document.listBoxes(),
-      ])
-    : [undefined, new Map<Id, NodeNumber>(), [] as Id[], undefined, [], [], []];
+  const [generalDoc, generalNumbers, hiddenArticles, bookletResult] = gid
+    ? await Promise.all([services.document.get(gid), services.document.numbering(gid), services.product.listHiddenArticles(id), services.assembly.preview(id)])
+    : [undefined, new Map<Id, NodeNumber>(), [] as Id[], undefined];
+  // 원문 모델의 칩 재료(별표 이름 · 구분자 표시명 · 박스) — 보통약관 작성 · 담보별 미리보기 둘 다 원문 모델을 그린다
+  const [appendices, discriminators, boxes] =
+    gid || sub === "special" ? await Promise.all([services.document.listAppendices(), services.catalog.list(), services.document.listBoxes()]) : [[], [], []];
   const booklet = bookletResult?.ok ? bookletResult.value : undefined;
   const bookletNote = bookletResult && !bookletResult.ok ? `조립할 수 없다 — ${rejectionMessage(bookletResult)}` : undefined;
 
@@ -140,9 +135,16 @@ export default async function ProductDetailPage({
   }
 
   // ── 약관 › 담보별 미리보기 재료 (기능/상품 §4.7) ─────────────────────────
-  // `?pc=` 는 **특약 절의 상품담보**일 때만 믿는다 — 없는 id · 기본계약이면 안 고른 것으로 친다 (URL 의 좌표를 믿지 않는다).
-  const selectedSpecial = sub === "special" && sp.pc ? specialCoverages.find((pc) => pc.id === sp.pc) : undefined;
-  const specialPreview = selectedSpecial ? await services.assembly.previewSpecial(id, selectedSpecial.id) : undefined;
+  // 특약 상품담보를 담보별로 묶고, `?cov=` · `?pc=` 는 **특약 절**의 것일 때만 믿는다 (`resolveSpecialSelection` — 기본계약 · 없는 id 는 무시).
+  // 고른 담보의 담보약관 템플릿(가운데) + 그 담보의 상품담보 **전부**의 조립 결과(오른쪽 선택기가 서버 없이 바꿔 붙인다).
+  const specialGroups = sub === "special" ? specialCoverageGroups(specialCoverages, (cid) => coverageName.get(cid)) : [];
+  const specialSelected = sub === "special" ? resolveSpecialSelection(specialGroups, { cov: sp.cov, pc: sp.pc }) : undefined;
+  const [specialTemplate, specialPreviewList] = specialSelected
+    ? await Promise.all([
+        services.document.findByCoverage(specialSelected.group.coverageId),
+        Promise.all(specialSelected.group.productCoverages.map(async (pc) => [pc.id, await services.assembly.previewSpecial(id, pc.id)] as const)),
+      ])
+    : [undefined, []];
 
   let confirmNode: ReactNode = null;
   const c = sp.confirm;
@@ -312,7 +314,20 @@ export default async function ProductDetailPage({
         />
       )}
 
-      {sub === "special" && <SpecialPreviewTab productId={id} specialCoverages={specialCoverages} selected={selectedSpecial} preview={specialPreview} />}
+      {sub === "special" && (
+        <SpecialPreviewTab
+          productId={id}
+          groups={specialGroups}
+          selected={specialSelected}
+          template={specialTemplate ? { id: specialTemplate.id, tree: specialTemplate.tree } : undefined}
+          previews={new Map(specialPreviewList)}
+          clauses={clauses}
+          appendices={appendices.map((a) => ({ code: a.code, name: a.name }))}
+          boxes={boxes}
+          enums={enumsList}
+          discriminators={discriminators.map((d) => ({ code: d.code, label: d.label }))}
+        />
+      )}
     </ProductEditProvider>
   );
 }

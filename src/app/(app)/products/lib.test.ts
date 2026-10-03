@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { ErrorNode, OmissionRecord, RenderedArticle, RenderedDoc, RenderedSection } from "@/domain/assembly";
 import type { ArticleNode, CondBlockNode, DocumentNode, NodeNumber, SectionNode } from "@/domain/document";
-import type { AttributeKind } from "@/domain/product";
+import type { AttributeKind, ProductCoverage } from "@/domain/product";
 import type { Issue } from "@/domain/types";
 import type { MasterForm } from "@/domain/master";
 import { buildForm, formReducer, initFormState } from "@/forms";
@@ -35,6 +35,9 @@ import {
   renderedNodeIds,
   sectionOfArticle,
   sectionPreviewDoc,
+  resolveSpecialSelection,
+  specialCoverageGroups,
+  specialCoveragePath,
   specialPreviewPath,
   str,
 } from "./lib";
@@ -310,6 +313,10 @@ describe("products lib — 특별약관 탭의 미리보기", () => {
     expect(specialPreviewPath("p1", "pc1")).toBe("/products/p1?tab=terms&sub=special&pc=pc1");
   });
 
+  it("specialCoveragePath — 담보를 고르는 주소(`&cov=`)", () => {
+    expect(specialCoveragePath("p1", "c1")).toBe("/products/p1?tab=terms&sub=special&cov=c1");
+  });
+
   it("articleCount — 관 안의 조까지 세고 오류 마커는 빼고 센다", () => {
     const err: ErrorNode = { kind: "error", id: "E1", issue: { kind: "structure", message: "x", at: {} } };
     expect(articleCount(undefined)).toBe(0);
@@ -436,5 +443,51 @@ describe("탑재 표 — 담보속성 조합 · 담보 검색 (기능/상품 §4
     // 코드 · 담보명은 묶음 첫 행에만 — 걸러져 묶음 가운데부터 보여도 보이는 첫 행은 찍힌다
     expect(withGroupStarts(rows).map((r) => r.groupStart)).toEqual([true, false, true]);
     expect(withGroupStarts(rows.slice(1)).map((r) => r.groupStart)).toEqual([true, true]);
+  });
+});
+
+describe("products lib — 담보별 미리보기의 담보 묶음 (기능/상품 §4.7)", () => {
+  const pc = (id: string, coverageId: string, name: string): ProductCoverage => ({ id, productId: "p1", coverageId, name, attributes: [] });
+  const specials = [pc("s1", "c2", "상해사망"), pc("s2", "c3", "질병사망"), pc("s3", "c2", "상해사망 추가")];
+  const names = new Map([
+    ["c2", "일반상해사망보장"],
+    ["c3", "질병사망보장"],
+  ]);
+  const groups = specialCoverageGroups(specials, (id) => names.get(id));
+
+  it("특약 상품담보를 담보 마스터별로 묶는다 — 담보 순서는 처음 나온 순, 묶음 안은 상품담보 순", () => {
+    expect(groups.map((g) => [g.coverageId, g.name, g.productCoverages.map((p) => p.id)])).toEqual([
+      ["c2", "일반상해사망보장", ["s1", "s3"]],
+      ["c3", "질병사망보장", ["s2"]],
+    ]);
+  });
+
+  it("담보 이름이 없으면 담보 id 로", () => {
+    expect(specialCoverageGroups([pc("s9", "cX", "x")], () => undefined)[0].name).toBe("cX");
+  });
+
+  it("0건이면 묶음도 없고 고른 것도 없다", () => {
+    expect(specialCoverageGroups([], () => undefined)).toEqual([]);
+    expect(resolveSpecialSelection([], { cov: "c2", pc: "s1" })).toBeUndefined();
+  });
+
+  it("아무 좌표도 없으면 첫 담보의 첫 상품담보", () => {
+    const sel = resolveSpecialSelection(groups, {});
+    expect([sel?.group.coverageId, sel?.pc.id]).toEqual(["c2", "s1"]);
+  });
+
+  it("`cov` 만 — 그 담보의 첫 상품담보", () => {
+    const sel = resolveSpecialSelection(groups, { cov: "c3" });
+    expect([sel?.group.coverageId, sel?.pc.id]).toEqual(["c3", "s2"]);
+  });
+
+  it("`pc` 는 제 담보를 함께 정한다 — 옛 `?pc=` 링크 그대로, `cov` 와 어긋나면 `pc` 가 이긴다", () => {
+    expect(resolveSpecialSelection(groups, { pc: "s3" })).toMatchObject({ group: { coverageId: "c2" }, pc: { id: "s3" } });
+    expect(resolveSpecialSelection(groups, { cov: "c3", pc: "s3" })).toMatchObject({ group: { coverageId: "c2" }, pc: { id: "s3" } });
+  });
+
+  it("특약 절에 없는 좌표는 믿지 않는다 — 없는 `pc` 는 `cov` 로, 없는 `cov` 는 첫 담보로", () => {
+    expect(resolveSpecialSelection(groups, { cov: "c3", pc: "base1" })).toMatchObject({ group: { coverageId: "c3" }, pc: { id: "s2" } });
+    expect(resolveSpecialSelection(groups, { cov: "nope", pc: "nope" })).toMatchObject({ group: { coverageId: "c2" }, pc: { id: "s1" } });
   });
 });
