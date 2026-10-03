@@ -24,7 +24,7 @@ export function parseSelections(fd: FormData, kinds: readonly AttributeKind[]): 
 // ───────────────────────────── 상세의 탭 ─────────────────────────────
 
 /**
- * 상품 상세는 한 줄 탭 넷 — 기본정보(상품정보 · 세목) · 상품담보(기본계약 · 특별약관 표 · 그룹) · 보통약관 · 특별약관
+ * 상품 상세는 한 줄 탭 넷 — 기본정보(상품정보 · 세목) · 상품담보(기본계약 · 특별약관 표) · 보통약관 · 특별약관
  * (기능/상품 §3.8 저장 단위 · 화면 공통, 2026-10-03). 보통약관 = 템플릿 + 세 패널, 특별약관 = 담보 단위 세 패널.
  * 탭은 URL(`?tab=`)에 산다: 서버가 그대로 렌더하고, 새로고침 · 북마크 · 서버 액션의 redirect 가 같은 자리를 가리킨다.
  */
@@ -42,8 +42,9 @@ export function productTabOf(value: string | undefined): ProductTab {
 /**
  * 옛 탭 주소의 새 자리 — 없으면 undefined(옮길 것 없음). 나머지 쿼리는 그대로 싣는다.
  * - 옛 약관 탭(2026-09-28 ~ 10-03: `?tab=terms&sub=general|special`) → `?tab=general` · `?tab=special` (하위 탭이 없거나 모르면 보통약관).
- * - 탑재 · 그룹 · 기본계약의 확인 카드(`confirm=pc:|detach:|group:`)는 상품담보 탭에만 뜬다 — 2026-09-28 이전의
- *   `?tab=general|special&confirm=…` 북마크는 상품담보 탭으로 보낸다.
+ * - 탑재 · 기본계약의 확인 카드(`confirm=pc:|detach:`)는 상품담보 탭에만 뜬다 — 2026-09-28 이전의
+ *   `?tab=general|special&confirm=…` 북마크는 상품담보 탭으로 보낸다. 옛 그룹 삭제 카드(`confirm=group:`)도 상품담보 탭으로 —
+ *   그룹은 담보의 것이 되어(ADR-0080) 그 탭에서 아무 카드도 뜨지 않는다.
  */
 export function legacyProductTabRedirect(id: string, sp: Readonly<Record<string, string | undefined>>): string | undefined {
   if (sp.tab !== "terms" && sp.tab !== "general" && sp.tab !== "special") return undefined;
@@ -404,6 +405,8 @@ export interface MountRow {
   coverageName?: string;
   /** `attributeComboLabel` 결과. */
   attributes: string;
+  /** 특약 그룹 — 그 담보의 「특약 그룹」 값 이름(읽기 전용 · 상품이 못 바꾼다, ADR-0080). 그룹 없는 담보는 undefined. */
+  group?: string;
 }
 
 /**
@@ -412,7 +415,7 @@ export interface MountRow {
  */
 export function mountRows(
   items: readonly ProductCoverage[],
-  coverages: readonly { id: Id; code?: string; name: string }[],
+  coverages: readonly { id: Id; code?: string; name: string; group?: string }[],
   kinds: readonly AttributeKind[],
 ): MountRow[] {
   const byId = new Map(coverages.map((c) => [c.id, c]));
@@ -423,7 +426,7 @@ export function mountRows(
     .sort((a, b) => firstSeen.get(a.pc.coverageId)! - firstSeen.get(b.pc.coverageId)! || a.i - b.i)
     .map(({ pc }) => {
       const coverage = byId.get(pc.coverageId);
-      return { pc, coverageCode: coverage?.code, coverageName: coverage?.name, attributes: attributeComboLabel(pc.attributes, kinds) };
+      return { pc, coverageCode: coverage?.code, coverageName: coverage?.name, attributes: attributeComboLabel(pc.attributes, kinds), group: coverage?.group };
     });
 }
 

@@ -11,10 +11,13 @@
  *   「+ 세부보장」은 그리드 마지막 칸의 점선 타일, 「+ 급부」는 세부보장 카드 맨 아래 작은 버튼. 읽기 모드에는 구조 조작이 하나도 없다.
  *   빈 이름 · 형제 중복은 이름 옆에. 새 카드는 값 폼이 없다 — 저장 뒤에야 값 자리가 생긴다. ⊖ 로 뺀 기존 노드는 초안에서 사라진다(되돌리려면 편집 취소).
  * - **진입 좌표** — 필드 좌표가 있으면 그 행을(StructForm), 없으면 `target` 카드를 스크롤 · 강조한다.
+ * - **특약 그룹** (ADR-0080) — 담보 카드 맨 위 한 줄. 읽기는 값 이름, 편집은 「없음」 + 열거형 「특약 그룹」 값 select. 지운 값은 「없는 값 V09」.
+ *   값 폼(StructForm)의 필드가 아니라 담보의 뼈대 칸이다 — 스냅샷되지 않고 상품이 바꾸지 못한다.
  */
-import { useEffect, useReducer, useRef, type ReactNode } from "react";
+import { useEffect, useId, useReducer, useRef, type ReactNode } from "react";
 
 import { useEditField } from "@/app/_components/EditShell";
+import { InfoTip } from "@/app/_components/InfoTip";
 import { IconButton, IconDown, IconMinusCircle, IconPlus, IconUp } from "@/app/_components/icons";
 import { NAME_LABEL } from "@/app/_lib/labels";
 import { structureIssues, structureRemovals, type StructureDraftBenefit, type StructureDraftSub, type StructureSavedSub } from "@/domain/coverage";
@@ -91,7 +94,49 @@ function Card({ editing, level, nodeKey, name, onName, issue, sibling, isTarget,
   );
 }
 
-export function CoverageCards({ coverageKey, formByNode, original, attributeValueLabels, target, highlightPath, showCodes }: {
+/** 특약 그룹 고르기의 선택지 — 열거형 「특약 그룹」(E0008)의 값, 순서 = 책자 순서. */
+export interface SpecialGroupOption {
+  code: string;
+  label: string;
+}
+
+/** 담보 카드의 「특약 그룹」 한 줄 — 값 폼의 행과 같은 모양(`ts-form-row`). 빈 문자열 = 그룹 없음. */
+function SpecialGroupRow({ editing, value, options, onChange }: { editing: boolean; value: string; options: readonly SpecialGroupOption[]; onChange: (code: string) => void }) {
+  const id = useId();
+  // 지운 값(열거형에 없는 코드)은 이름을 지어내지 않는다 — 「없는 값 V09」, 다른 값을 고르면 풀린다
+  const missing = value !== "" && !options.some((o) => o.code === value);
+  const label = value === "" ? undefined : missing ? `없는 값 ${value}` : options.find((o) => o.code === value)?.label;
+  return (
+    <div className="ts-form-group">
+      <div className="ts-form-row" data-path="specialGroup">
+        <span className="ts-form-label-cell">
+          <label className="ts-form-label" htmlFor={id}>
+            특약 그룹
+          </label>
+          <InfoTip text="책자에서 이 담보의 특약이 들어갈 그룹 — 열거형 「특약 그룹」의 값이다. 상품은 바꾸지 못하고, 없으면 그룹 제목 없이 찍힌다." />
+        </span>
+        <div className="ts-form-control">
+          {editing ? (
+            <select id={id} className="ts-field-direct" aria-label="특약 그룹" value={value} onChange={(e) => onChange(e.target.value)}>
+              <option value="">없음 — 그룹 제목 없이 찍힌다</option>
+              {missing && <option value={value}>{label}</option>}
+              {options.map((o) => (
+                <option key={o.code} value={o.code}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span id={id}>{label ?? <span className="ts-muted">—</span>}</span>
+          )}
+          {missing && <span className="ts-form-error">열거형 「특약 그룹」에서 지워진 값입니다 — 다른 값을 고르세요</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function CoverageCards({ coverageKey, formByNode, original, attributeValueLabels, target, highlightPath, showCodes, specialGroups }: {
   /** 담보 자신의 노드 키 (`encodeNodeKey("coverage", id)`). */
   coverageKey: string;
   formByNode: Record<string, FormModel>;
@@ -101,8 +146,11 @@ export function CoverageCards({ coverageKey, formByNode, original, attributeValu
   target?: string;
   highlightPath?: string;
   showCodes?: boolean;
+  /** 열거형 「특약 그룹」의 값 — 주면 담보 카드 맨 위에 그룹 칸이 선다 (ADR-0080). */
+  specialGroups?: readonly SpecialGroupOption[];
 }) {
   const label = useEditField<string>("label");
+  const specialGroup = useEditField<string | undefined>("specialGroup");
   const structure = useEditField<StructureDraftSub[]>("structure");
   const values = useEditField<Record<string, Submission>>("values");
   const editing = label.mode === "edit";
@@ -208,6 +256,7 @@ export function CoverageCards({ coverageKey, formByNode, original, attributeValu
       scrollToCard={scrollToCard}
       body={
         <>
+          {specialGroups && <SpecialGroupRow editing={editing} value={specialGroup.value ?? ""} options={specialGroups} onChange={specialGroup.setValue} />}
           {formOf(coverageKey, false)}
           <div className="ts-cov-grid">
             {subs.map(subCard)}

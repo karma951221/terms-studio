@@ -10,6 +10,7 @@ import { ENTITY_LABEL } from "@/app/_lib/labels";
 import { previewOutcome, rejectionMessage } from "@/app/_lib/rejection";
 import { articleRefLabel, collectRefs, indexTree, type NodeNumber } from "@/domain/document";
 import type { Id } from "@/domain/types";
+import { SPECIAL_GROUP_ENUM, specialGroupLabel } from "@/domain/coverage";
 import { CONTRACT_KIND_PATH, findForm, isStandaloneContract } from "@/domain/master";
 import { applyArticleCopies, defaultCoverageName, liveArticleCopies, planOptionLabel, planTypeOptions, type ProductCoverage } from "@/domain/product";
 import { buildForm } from "@/forms";
@@ -22,7 +23,7 @@ import { type OverrideTarget } from "./_components/GeneralEdit";
 import { ProductEditProvider, ProductHeadActions, ProductPath } from "./_components/ProductEdit";
 import { ProductTabs } from "./_components/ProductTabs";
 import { SpecialPreviewTab } from "./_components/SpecialPreviewTab";
-import { confirmProductGeneralDocumentAction, deleteGroupAction, deleteProductAction, detachPlanAction, removePlanAction, removePlanOptionAction, unmountAction } from "../actions";
+import { confirmProductGeneralDocumentAction, deleteProductAction, detachPlanAction, removePlanAction, removePlanOptionAction, unmountAction } from "../actions";
 import { legacyProductTabRedirect, productDetailPath, productTabOf, resolveSpecialSelection, specialCoverageGroups } from "../lib";
 
 export const dynamic = "force-dynamic";
@@ -61,7 +62,7 @@ export default async function ProductDetailPage({
     );
   }
   const actor = await currentActor();
-  const [generals, enumsList, planOptions, plans, coverages, attributeKinds, productCoverages, baseContractIds, groups, unplaced, overrides, namingTemplate, clauses] =
+  const [generals, enumsList, planOptions, plans, coverages, attributeKinds, productCoverages, baseContractIds, overrides, namingTemplate, clauses] =
     await Promise.all([
       services.document.list("general"),
       services.catalog.listEnums(),
@@ -71,8 +72,6 @@ export default async function ProductDetailPage({
       services.product.listAttributeKinds(),
       services.product.listProductCoverages(id),
       services.product.listBaseContractIds(id),
-      services.product.listGroups(id),
-      services.product.listUnplaced(id),
       services.product.listOptionOverrides({ kind: "product", id }),
       services.product.getNamingTemplate(),
       services.clause.list(),
@@ -95,6 +94,9 @@ export default async function ProductDetailPage({
   const baseCheck = await services.product.checkBaseContract(id);
   const baseContractSet = new Set(baseContractIds);
   const coverageName = new Map(coverages.map((c) => [c.id, c.name]));
+  // 특약 그룹은 담보의 것 (ADR-0080) — 특별약관 표의 「그룹」 열(읽기 전용)이 그 담보의 「특약 그룹」 값 이름을 보인다
+  const groupEnum = enumLookup(SPECIAL_GROUP_ENUM);
+  const coverageRows = coverages.map((c) => ({ id: c.id, code: c.code, name: c.name, group: specialGroupLabel(c.specialGroup, groupEnum) }));
   const baseCoverages = productCoverages.filter((coverage) => baseContractSet.has(coverage.id));
   const specialCoverages = productCoverages.filter((coverage) => !baseContractSet.has(coverage.id));
 
@@ -257,21 +259,6 @@ export default async function ProductDetailPage({
       ) : outcome.kind === "error" ? (
         <p className="ts-error-banner">{outcome.message}</p>
       ) : null;
-  } else if (c?.startsWith("group:")) {
-    // 그룹 삭제도 다른 파괴 조작과 같은 확인 경로를 탄다 (리뷰 #34). 값은 안 사라지고 소속만 풀린다 —
-    // 잃는 것을 계산된 대로만 적는다 (디자인원칙 §9.5).
-    const groupId = c.slice(6);
-    const group = groups.find((g) => g.id === groupId);
-    confirmNode = group ? (
-      <Confirm
-        impact={{ valueRowsLost: 0, cascade: group.members.map((m) => `상품담보 ${m.name} 의 배치 (미배치로 돌아간다)`), brokenRefs: [] }}
-        action={deleteGroupAction.bind(null, id, groupId)}
-        targetLabel={`특약 그룹 ${group.title}`}
-        actionLabel={`${group.title} 삭제 · 상품담보 ${group.members.length}건 미배치로`}
-      />
-    ) : (
-      <p className="ts-error-banner">그룹을 찾을 수 없습니다.</p>
-    );
   }
 
   return (
@@ -310,15 +297,13 @@ export default async function ProductDetailPage({
           productId={id}
           baseCoverages={baseCoverages}
           specialCoverages={specialCoverages}
-          coverages={coverages}
+          coverages={coverageRows}
           attributeKinds={attributeKinds}
           plans={plans}
           mountSearch={{ base: { query: sp.bq, page: sp.bpage }, special: { query: sp.mq, page: sp.mpage } }}
           wouldBeName={wouldBeName}
           baseCheck={baseCheck}
           standalone={isStandaloneContract(productValues.get(CONTRACT_KIND_PATH))}
-          groups={groups}
-          unplaced={unplaced}
           confirm={c}
           confirmNode={confirmNode}
         />

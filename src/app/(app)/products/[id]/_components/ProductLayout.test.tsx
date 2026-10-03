@@ -1,5 +1,5 @@
 /**
- * 상품 상세 한 줄 탭 넷 (2026-10-03) — 기본정보(상품정보 · 세목) · 상품담보(기본계약 · 특별약관 표 · 그룹) · 보통약관 · 특별약관.
+ * 상품 상세 한 줄 탭 넷 (2026-10-03) — 기본정보(상품정보 · 세목) · 상품담보(기본계약 · 특별약관 표) · 보통약관 · 특별약관.
  * 탭마다 제 일만 선다 — 특히 보통약관 탭에는 템플릿 한 줄과 세 패널 말고는 아무것도 없다(사용자 QA: 템플릿 · 기본계약이 집중을 흐린다).
  */
 import { renderToStaticMarkup } from "react-dom/server";
@@ -15,12 +15,8 @@ vi.mock("../../actions", () => ({
   mountAction: () => {},
   regenerateNameAction: () => {},
   renameProductCoverageAction: () => {},
-  createGroupAction: () => {},
   designateBaseContractAction: () => {},
-  placeInGroupAction: () => {},
   releaseBaseContractAction: () => {},
-  removeFromGroupAction: () => {},
-  renameGroupAction: () => {},
   setProductGeneralDocumentAction: () => {},
   saveProductGeneralAction: async () => ({ ok: true }),
   saveProductBasicAction: async () => ({ ok: true }),
@@ -96,8 +92,8 @@ describe("기본정보 — 상품정보(상품명 · 평균공시이율 · 상�
 
 const pc = (id: string, coverageId: string, name: string): ProductCoverage => ({ id, productId: "p1", coverageId, name, attributes: [] });
 
-describe("상품담보 — 기본계약 · 특별약관 표 · 기본계약 지정 · 특약 그룹이 한 탭에", () => {
-  it("두 표(각자 검색 쿼리) · 기본계약 · 그룹 — 상품담보 행에 미리보기 링크는 없다", () => {
+describe("상품담보 — 기본계약 · 특별약관 표가 한 탭에 (특약 그룹 섹션은 없다 — 그룹은 담보의 것, ADR-0080)", () => {
+  it("두 표(각자 검색 쿼리) · 기본계약 · 특별약관 표의 읽기 전용 「그룹」 열 — 상품담보 행에 미리보기 링크는 없다", () => {
     const html = renderToStaticMarkup(
       <CoveragesTab
         productId="p1"
@@ -105,15 +101,13 @@ describe("상품담보 — 기본계약 · 특별약관 표 · 기본계약 지�
         specialCoverages={[pc("s1", "c2", "특약 A"), pc("s2", "c2", "특약 A 추가")]}
         coverages={[
           { id: "c1", code: "COV000001", name: "일반상해사망" },
-          { id: "c2", code: "COV000002", name: "수술비" },
+          { id: "c2", code: "COV000002", name: "수술비", group: "상해 관련 특별약관" },
         ]}
         attributeKinds={[]}
         plans={[]}
         mountSearch={{ base: {}, special: {} }}
         wouldBeName={(p) => p.name}
         baseCheck={{ ok: true, value: [] }}
-        groups={[]}
-        unplaced={[]}
         confirm={undefined}
         confirmNode={null}
       />,
@@ -121,7 +115,12 @@ describe("상품담보 — 기본계약 · 특별약관 표 · 기본계약 지�
     expect(html).toContain(">기본계약</h2>");
     expect(html).toContain('id="base-contract"');
     expect(html).toContain(">특별약관</h2>");
-    expect(html).toContain("특약 그룹");
+    expect(html).not.toContain("특약 그룹");
+    expect(html).not.toContain("새 그룹 제목");
+    expect(html).not.toContain("confirm=group:");
+    // 그룹 열은 특별약관 표에만 — 값 이름 글자(고르기 칸 없음)
+    expect(html.split("<th class=\"col-fixed-md\">그룹</th>").length - 1).toBe(1);
+    expect(html).toContain("상해 관련 특별약관");
     expect(html).not.toContain("tab=special&amp;pc=s1");
     // 담보 : 상품담보 = 1 : N — 특별약관 표에서 COV000002 는 한 번만
     expect(html.split("<code>COV000002</code>").length - 1).toBe(1);
@@ -141,8 +140,6 @@ describe("상품담보 — 기본계약 · 특별약관 표 · 기본계약 지�
         wouldBeName={(p) => p.name}
         baseCheck={{ ok: true, value: [] }}
         standalone
-        groups={[]}
-        unplaced={[]}
         confirm={undefined}
         confirmNode={null}
       />,

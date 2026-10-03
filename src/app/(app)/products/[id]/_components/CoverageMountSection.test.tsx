@@ -58,10 +58,10 @@ function render(query?: string, section: "base" | "special" = "special") {
 const rowsOf = (html: string) => html.match(/<tr(?: [^>]*)?>(?!<th)[\s\S]*?<\/tr>/g)?.filter((r) => !r.includes("<th")) ?? [];
 
 describe("CoverageMountSection — 상품담보 한 건 = 한 행", () => {
-  it("열 — 담보코드 · 담보명 · 담보속성 · 상품담보명 · 세목 부착 · 조작", () => {
-    const html = render();
-    const headers = [...html.matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((m) => m[1]);
-    expect(headers).toEqual(["담보코드", "담보명", "담보속성", "상품담보명", "세목 부착", "조작"]);
+  it("열 — 특별약관: 담보코드 · 담보명 · 담보속성 · 상품담보명 · 그룹(읽기 전용) · 세목 부착 · 조작, 기본계약에는 그룹 열이 없다", () => {
+    const headers = (html: string) => [...html.matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((m) => m[1]);
+    expect(headers(render())).toEqual(["담보코드", "담보명", "담보속성", "상품담보명", "그룹", "세목 부착", "조작"]);
+    expect(headers(render(undefined, "base"))).toEqual(["담보코드", "담보명", "담보속성", "상품담보명", "세목 부착", "조작"]);
   });
 
   it("행 수 = 상품담보 수 · 코드(담보 마스터 링크) · 담보명은 같은 담보 묶음의 첫 행에만", () => {

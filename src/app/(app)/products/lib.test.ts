@@ -419,6 +419,21 @@ describe("탑재 표 — 담보속성 조합 · 담보 검색 (기능/상품 §4
     expect(filterMountRows(rows, "부가유형").map((r) => r.pc.id)).toEqual(["pc1"]);
     expect(filterMountRows(rows, "—")).toEqual([]);
   });
+  it("mountRows — 그룹은 담보의 「특약 그룹」 값 이름(읽기 전용, ADR-0080) · 그룹 없는 담보 · 없어진 담보는 undefined", () => {
+    const rows = mountRows(
+      [
+        { id: "pc1", productId: "p", coverageId: "c1", name: "사망", attributes: [] },
+        { id: "pc2", productId: "p", coverageId: "c2", name: "기본", attributes: [] },
+        { id: "pc3", productId: "p", coverageId: "gone", name: "고아", attributes: [] },
+      ],
+      [
+        { id: "c1", code: "COV000001", name: "일반상해사망보장", group: "상해 관련 특별약관" },
+        { id: "c2", code: "COV000002", name: "기본계약 담보" },
+      ],
+      kinds,
+    );
+    expect(rows.map((r) => r.group)).toEqual(["상해 관련 특별약관", undefined, undefined]);
+  });
   it("mountRows — 담보 : 상품담보 = 1 : N, 같은 담보의 상품담보를 이어 놓는다(처음 나온 담보 순 · 묶음 안은 탑재 순)", () => {
     const rows = mountRows(
       [

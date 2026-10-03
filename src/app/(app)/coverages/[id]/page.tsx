@@ -1,7 +1,7 @@
 import { Breadcrumb } from "@/app/_components/Breadcrumb";
 import { ErrorBanner } from "@/app/_components/ErrorBanner";
 import { ENTITY_LABEL } from "@/app/_lib/labels";
-import { decodeNodeKey, encodeNodeKey, nodesOf, structureDraftOf } from "@/domain/coverage";
+import { decodeNodeKey, encodeNodeKey, nodesOf, SPECIAL_GROUP_ENUM, structureDraftOf } from "@/domain/coverage";
 import { buildForm, type FormModel } from "@/forms";
 import { currentActor, getServices } from "@/lib/services";
 
@@ -62,9 +62,11 @@ export default async function CoverageDetailPage({
         : undefined;
 
   const attributeValueLabels = attributeKinds.flatMap((kind) => kind.values.map((value) => value.label));
+  // 특약 그룹 선택지 — 열거형 「특약 그룹」의 값, 순서 = 책자 순서 (ADR-0080). 열거형이 없으면 「없음」만
+  const specialGroups = (enumLookup(SPECIAL_GROUP_ENUM)?.values ?? []).map((v) => ({ code: v.code, label: v.label }));
 
   // 이름 · 구조가 바뀌면 초안을 새 진실로 다시 세운다 (EnumDetailPage 와 같은 패턴).
-  const signature = [tree.name, ...nodes.map((n) => `${encodeNodeKey(n.level, n.id)}=${n.name}`)].join("|");
+  const signature = [tree.name, tree.specialGroup ?? "", ...nodes.map((n) => `${encodeNodeKey(n.level, n.id)}=${n.name}`)].join("|");
 
   return (
     <div>
@@ -73,12 +75,13 @@ export default async function CoverageDetailPage({
         key={signature}
         id={tree.id}
         code={tree.code}
-        initial={{ label: tree.name, description: tree.description, structure: structureDraftOf(tree), values: {} }}
+        initial={{ label: tree.name, description: tree.description, specialGroup: tree.specialGroup ?? "", structure: structureDraftOf(tree), values: {} }}
         formByNode={formByNode}
         attributeValueLabels={attributeValueLabels}
         target={target}
         highlightPath={target ? sp.field : undefined}
         showCodes={actor.role === "admin"}
+        specialGroups={specialGroups}
       />
     </div>
   );

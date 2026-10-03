@@ -43,7 +43,7 @@ const BASE = "/products";
 function msg(r: Parameters<typeof describeRejection>[0]): string {
   return describeRejection(r).message;
 }
-/** 되돌아갈 자리 — 섹션이 사는 탭까지 (기능/상품 §3.8). 탭을 안 주면 기본정보다. 상품담보 · 기본계약 · 그룹 조작은 상품담보 탭. */
+/** 되돌아갈 자리 — 섹션이 사는 탭까지 (기능/상품 §3.8). 탭을 안 주면 기본정보다. 상품담보 · 기본계약 조작은 상품담보 탭. */
 function detailPath(id: Id, tab?: ProductTab): string {
   return productDetailPath(id, tab);
 }
@@ -288,50 +288,6 @@ export async function designateBaseContractAction(productId: Id, formData: FormD
 export async function releaseBaseContractAction(productId: Id, pcId: Id): Promise<void> {
   const actor = await currentActor();
   const r = await getServices().product.releaseBaseContract(actor, productId, pcId);
-  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "coverages"), msg(r.rejection)));
-  redirect(detailPath(productId, "coverages"));
-}
-
-// ───────────────────────────── 특약 그룹 ─────────────────────────────
-
-export async function createGroupAction(productId: Id, formData: FormData): Promise<void> {
-  const actor = await currentActor();
-  const r = await getServices().product.createGroup(actor, productId, { title: str(formData, "title") });
-  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "coverages"), msg(r.rejection)));
-  redirect(detailPath(productId, "coverages"));
-}
-
-export async function renameGroupAction(productId: Id, groupId: Id, formData: FormData): Promise<void> {
-  const actor = await currentActor();
-  const r = await getServices().product.renameGroup(actor, groupId, str(formData, "title"));
-  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "coverages"), msg(r.rejection)));
-  redirect(detailPath(productId, "coverages"));
-}
-
-export async function reorderGroupsAction(productId: Id, order: Id[]): Promise<void> {
-  const actor = await currentActor();
-  const r = await getServices().product.reorderGroups(actor, productId, order);
-  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "coverages"), msg(r.rejection)));
-  redirect(detailPath(productId, "coverages"));
-}
-
-export async function deleteGroupAction(productId: Id, groupId: Id): Promise<void> {
-  const actor = await currentActor();
-  const r = await getServices().product.deleteGroup(actor, groupId);
-  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "coverages"), msg(r.rejection)));
-  redirect(detailPath(productId, "coverages"));
-}
-
-export async function placeInGroupAction(productId: Id, groupId: Id, formData: FormData): Promise<void> {
-  const actor = await currentActor();
-  const r = await getServices().product.placeInGroup(actor, groupId, str(formData, "productCoverageId"));
-  if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "coverages"), msg(r.rejection)));
-  redirect(detailPath(productId, "coverages"));
-}
-
-export async function removeFromGroupAction(productId: Id, pcId: Id): Promise<void> {
-  const actor = await currentActor();
-  const r = await getServices().product.removeFromGroup(actor, pcId);
   if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "coverages"), msg(r.rejection)));
   redirect(detailPath(productId, "coverages"));
 }

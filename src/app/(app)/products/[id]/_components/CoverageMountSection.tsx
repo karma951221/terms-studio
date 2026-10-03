@@ -28,7 +28,7 @@ export interface CoverageMountSectionProps {
   section: keyof typeof SECTION_TITLE;
   items: ProductCoverage[];
   /** 담보 마스터 — 행의 담보코드 · 담보명 출처. 탑재 폼의 담보는 서버 조회(`/api/lookup/coverages`)로 찾는다. */
-  coverages: { id: Id; code?: string; name: string }[];
+  coverages: { id: Id; code?: string; name: string; group?: string }[];
   attributeKinds: AttributeKind[];
   plans: ProductPlan[];
   /** 작명 규칙이 지금 지어 줄 이름 — 누르기 전에 결과를 보여준다 (리뷰 #27 · §9.3). */
@@ -92,12 +92,13 @@ export function CoverageMountSection({ productId, section, items, coverages, att
                 <th className="col-fixed-md">담보명</th>
                 <th className="col-fixed-md">담보속성</th>
                 <th className="col-flex">상품담보명</th>
+                {section === "special" && <th className="col-fixed-md">그룹</th>}
                 <th className="col-fixed-md">세목 부착</th>
                 <th className="col-act">조작</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ pc, coverageCode, coverageName, attributes, groupStart }) => {
+              {rows.map(({ pc, coverageCode, coverageName, attributes, group, groupStart }) => {
                 const suggested = wouldBeName(pc);
                 return (
                   <tr key={pc.id} aria-current={pc.id === selectedId ? "true" : undefined} className={groupStart ? undefined : "is-group-cont"}>
@@ -118,6 +119,12 @@ export function CoverageMountSection({ productId, section, items, coverages, att
                         <IconButton type="submit" label={`이름 저장 · ${pc.name}`} icon={<IconCheck />} />
                       </form>
                     </td>
+                    {section === "special" && (
+                      // 그룹은 담보 마스터의 것 — 읽기 전용, 상품에서 못 바꾼다 (ADR-0080). 없으면 책자에서 그룹 제목 없이 찍힌다
+                      <td className="col-fixed-md" title={group ? undefined : "그룹 없음 — 책자에서 그룹 제목 없이 찍힌다 (담보 화면에서 고른다)"}>
+                        {group ?? <span className="ts-muted">—</span>}
+                      </td>
+                    )}
                     <td className="col-fixed-md">
                       <form action={attachPlanAction.bind(null, productId, tab, pc.id)} style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
                         <select name="planId" style={{ maxWidth: 150 }} aria-label={`세목 조합 · ${pc.name}`}>

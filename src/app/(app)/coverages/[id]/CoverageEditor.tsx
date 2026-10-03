@@ -34,6 +34,8 @@ export interface CoverageEditorProps {
   highlightPath?: string;
   /** 관리자 — 값 폼 필드 옆에 코드(ⓘ) 링크. */
   showCodes?: boolean;
+  /** 열거형 「특약 그룹」의 값 — 담보 카드의 그룹 칸 선택지 (ADR-0080). */
+  specialGroups?: { code: string; label: string }[];
 }
 
 export function CoverageEditor(props: CoverageEditorProps) {
@@ -66,6 +68,7 @@ export function CoverageEditor(props: CoverageEditorProps) {
         target={props.target}
         highlightPath={props.highlightPath}
         showCodes={props.showCodes}
+        specialGroups={props.specialGroups}
       />
     </EditShell>
   );

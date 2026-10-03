@@ -10,6 +10,8 @@ export interface CoverageEditData extends Record<string, unknown> {
   label: string;
   /** 주석 — 화면에는 없지만 저장값을 그대로 실어 보낸다 (지우지 않는다). */
   description: string;
+  /** 특약 그룹 — 열거형 「특약 그룹」(E0008)의 값 코드, 빈 문자열 = 그룹 없음 (ADR-0080). */
+  specialGroup: string;
   /**
    * 세부보장 · 급부의 구조 초안 — 이름 · 순서 · 추가(id 없음) · 삭제(빠짐)가 한 자리에 (ADR-0075).
    * 담보 자신은 `label` 이 정본이라 여기 없다. 탑재 여부와 상관없이 구조를 바꾸고, 저장이 영향을 확인시킨다.

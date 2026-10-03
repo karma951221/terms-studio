@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * 담보 상세의 편집 흐름 서버 액션 — 「저장 하나」가 담보명 · 구조(세부보장 · 급부) · 모든 카드의 값을 다 담는다
+ * 담보 상세의 편집 흐름 서버 액션 — 「저장 하나」가 담보명 · 특약 그룹 · 구조(세부보장 · 급부) · 모든 카드의 값을 다 담는다
  * (기능/담보 §4 「상세」 조작 · 디자인원칙 §2 L2). 주석(description)은 화면에 없지만 초안에 실려 와 저장값을 그대로 지킨다.
  *
  * 구조(추가 · 이름 · 순서 · 삭제)는 탑재 여부와 상관없이 이 경로 하나다 (ADR-0075) — 초안 `structure` 를 서비스 `applyStructurePlan` 이
@@ -94,6 +94,12 @@ export async function saveCoverageEditAction(id: Id, input: CoverageEditData, co
     }
     if (input.description !== current.description) {
       const error = failed(await services.coverage.setDescription(actor, id, input.description), "description");
+      if (error) return error;
+    }
+    // 특약 그룹 (ADR-0080) — 빈 문자열 = 없음. 열거형에 없는 값은 서비스가 거부한다(롤백)
+    const group = input.specialGroup || undefined;
+    if (group !== current.specialGroup) {
+      const error = failed(await services.coverage.setSpecialGroup(actor, id, group), "specialGroup");
       if (error) return error;
     }
 
