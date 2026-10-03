@@ -8,7 +8,7 @@ import { Confirm } from "@/app/_components/Confirm";
 import { ErrorBanner } from "@/app/_components/ErrorBanner";
 import { ENTITY_LABEL } from "@/app/_lib/labels";
 import { previewOutcome, rejectionMessage } from "@/app/_lib/rejection";
-import { articleRefLabel, collectRefs, type NodeNumber } from "@/domain/document";
+import { articleRefLabel, collectRefs, indexTree, type NodeNumber } from "@/domain/document";
 import type { Id } from "@/domain/types";
 import { CONTRACT_KIND_PATH, findForm, isStandaloneContract } from "@/domain/master";
 import { applyArticleCopies, defaultCoverageName, liveArticleCopies, planOptionLabel, planTypeOptions, type ProductCoverage } from "@/domain/product";
@@ -123,8 +123,18 @@ export default async function ProductDetailPage({
   const [appendices, discriminators, boxes] =
     gid || tab === "special" ? await Promise.all([services.document.listAppendices(), services.catalog.list(), services.document.listBoxes()]) : [[], [], []];
   // 편집 중 조 편집 패널(문면 편집기)의 재료 — 문면 화면(`documents/[id]/page.tsx`)과 같은 것 (ADR-0079)
+  // 기본계약 대치 자리 — 기본계약 담보약관의 조연결 대상 (조립은 그 조를 늘 기본계약 조로 찍는다, ADR-0021)
+  const replacedBy: Record<Id, string> = {};
+  if (gid) {
+    for (const pc of baseCoverages) {
+      const doc = await services.document.findByCoverage(pc.coverageId);
+      if (!doc) continue;
+      for (const e of indexTree(doc.tree).nodes.values()) if (e.node.kind === "article" && e.node.linkedArticleId) replacedBy[e.node.linkedArticleId] = pc.name;
+    }
+  }
   const copyEditorData = gid
     ? {
+        replacedBy,
         appendices,
         boxes,
         clauses,

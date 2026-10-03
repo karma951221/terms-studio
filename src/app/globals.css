@@ -4964,8 +4964,18 @@ button.ts-ref-fold:hover {
   line-height: 1.5;
 }
 
+/* 체크박스 · 표시 · 점 · 배지는 줄지 않고, 제목만 남는 폭에서 말줄임 — 긴 제목이 체크박스를 윗줄에 남기지 않게 (2026-10-04 QA) */
+.ts-toc-row > input,
+.ts-toc-row > .ts-toc-mark,
+.ts-toc-row > .ts-copy-dot,
+.ts-toc-row > .ts-badge {
+  flex: none;
+}
+
 .ts-toc-row a {
   display: block;
+  flex: 1 1 0;
+  min-width: 0;
   padding: 2px 6px;
   border-left: 2px solid transparent;
   color: var(--ts-ink-2);

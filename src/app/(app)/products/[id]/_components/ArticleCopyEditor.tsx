@@ -87,6 +87,11 @@ export interface CopyEditorData {
   condition: ConditionContext;
   /** 담보속성 코드 → 유효값 코드 (식 타입 검사). */
   attributeValues?: Readonly<Record<Code, readonly Code[]>>;
+  /**
+   * 기본계약 대치 자리 — 보통약관 조 id → 그 조를 대치하는 기본계약 상품담보 이름. 조립은 이 조를 늘 기본계약 조로 찍으므로
+   * (ADR-0021) 여기서 고친 본문은 미리보기 · 산출에 나오지 않는다 — 패널이 그것을 말한다.
+   */
+  replacedBy?: Readonly<Record<Id, string>>;
 }
 
 const NODE_WHAT: Record<string, string> = {
@@ -555,6 +560,11 @@ export function ArticleCopyEditor({ data, articleId, label }: { data: CopyEditor
         </div>
       ) : (
         <p className="ts-muted ts-copy-note">템플릿 조 그대로다 — 고치면 이 상품만의 사본이 된다(저장해야 반영). 조를 넣거나 옮기거나 지우는 일은 템플릿에서 한다.</p>
+      )}
+      {data.replacedBy?.[articleId] !== undefined && (
+        <p className="ts-warn ts-copy-replaced" role="status">
+          이 조는 기본계약 「{data.replacedBy[articleId]}」의 조로 대치된다 — 조립(미리보기 · 산출)에는 기본계약 본문이 찍히고, 여기서 고친 본문은 나오지 않는다. 문장을 바꾸려면 기본계약 담보약관을 고친다.
+        </p>
       )}
       {banner && (
         <p className="ts-error-banner" role="alert">

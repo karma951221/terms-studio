@@ -61,11 +61,11 @@ const copies: ArticleCopy[] = [
   { articleId: "A2", article: art("A2", "지급사유", "이 상품 A2 본문"), templateHash: "옛지문" },
 ];
 
-function render(editing: boolean, articleId: string) {
+function render(editing: boolean, articleId: string, editor: CopyEditorData = data) {
   return renderToStaticMarkup(
     <ProductEditProvider canEdit initialEditing={editing}>
       <GeneralEditProvider productId="p1" generalDocumentId="g" templateVersion={4} hiddenArticles={[]} overrides={[]} copies={copies}>
-        <GeneralPanels productId="p1" toc={toc} panes={panes} initialArticleId={articleId} copyEditor={data} />
+        <GeneralPanels productId="p1" toc={toc} panes={panes} initialArticleId={articleId} copyEditor={editor} />
       </GeneralEditProvider>
     </ProductEditProvider>,
   );
@@ -102,6 +102,14 @@ describe("편집 — 목차 + 조 편집 두 패널", () => {
     expect(html).toContain(">템플릿대로 되돌리기</button>");
     expect(html).not.toContain(">사본 유지</button>");
     expect(html).toContain("이 상품 A1");
+  });
+});
+
+describe("기본계약 대치 자리 (ADR-0021) — 조립에는 기본계약 조가 찍힌다", () => {
+  it("기본계약 조가 조연결된 조를 열면 고친 본문이 조립에 나오지 않는다고 말한다", () => {
+    const html = render(true, "A3", { ...data, replacedBy: { A3: "상해사망(기본계약)" } });
+    expect(html).toContain("기본계약 「상해사망(기본계약)」의 조로 대치된다");
+    expect(render(true, "A1", { ...data, replacedBy: { A3: "상해사망(기본계약)" } })).not.toContain("대치된다");
   });
 });
 

@@ -372,6 +372,21 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
     expect(lines(unwrap(await svc.preview(productId)).general!)[1]).toBe("   이 계약에서 사용하는 용어의 정의는 다음과 같습니다.");
   });
 
+  it("QA 재현 — 기본계약 조가 조연결된 보통약관 조(대치 자리)의 사본은 조립 본문에 나오지 않는다: 그 조는 늘 기본계약 조로 찍힌다 (ADR-0021)", async () => {
+    const p = (await product.getProduct(productId))!;
+    const doc = (await documents.get(p.generalDocumentId!))!;
+    const pay = doc.tree.children.find((c) => c.kind === "article" && c.id === "g-art-pay");
+    if (pay?.kind !== "article") throw new Error("g-art-pay");
+    // 화면(GeneralEdit → saveProductGeneralAction)이 보내는 모양 그대로
+    const copy = { ...pay, children: [{ id: "qa-par", kind: "paragraph" as const, children: [{ id: "qa-txt", kind: "text" as const, text: "회사는 (QA수정)" }] }] };
+    unwrap(await product.saveGeneralSettings(editor, productId, { generalDocumentId: p.generalDocumentId!, hiddenArticles: [], overrides: [], copies: [{ articleId: "g-art-pay", article: copy, templateHash: "h" }], templateVersion: doc.version }));
+    expect((await product.listArticleCopies(productId)).map((c) => c.articleId)).toEqual(["g-art-pay"]);
+    const general = lines(unwrap(await svc.preview(productId)).general!).join("\n");
+    expect(general).not.toContain("(QA수정)");
+    expect(general).toContain("회사는 피보험자가 계약일 이후 기본계약의 보험금 지급사유가 발생한 때 보험금을 지급합니다.");
+    unwrap(await product.saveGeneralSettings(editor, productId, { generalDocumentId: p.generalDocumentId!, hiddenArticles: [], overrides: [], copies: [] }));
+  });
+
   it("없는 상품은 notFound", async () => {
     const r = await svc.preview("00000000-0000-4000-8000-0000000000ff");
     expect(!r.ok && r.rejection.reason).toBe("notFound");
