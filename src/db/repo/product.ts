@@ -361,7 +361,8 @@ export interface NewProductCoverageRow {
 export async function insertProductCoverage(db: Db, input: NewProductCoverageRow, who: Id): Promise<ProductCoverage> {
   const [row] = await db
     .insert(productCoverages)
-    .values({ productId: input.productId, coverageId: input.coverageId, coverageName: input.coverageName, name: input.name, combinationKey: input.combinationKey, createdBy: who, updatedBy: who })
+    // 탑재 순 = created_at 순(목록 · 탑재 표). 한 트랜잭션에서 여럿을 더해도(상품담보 탭 저장 한 번) 순서가 서도록 now() 대신 clock_timestamp()
+    .values({ productId: input.productId, coverageId: input.coverageId, coverageName: input.coverageName, name: input.name, combinationKey: input.combinationKey, createdAt: sql`clock_timestamp()`, createdBy: who, updatedBy: who })
     .returning();
   await replaceAttributes(db, row.id, input.attributes);
   return toCoverage(row, input.attributes);

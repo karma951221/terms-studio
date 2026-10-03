@@ -11,7 +11,7 @@
  * - 다른 영역은 주입: `CoverageMasterSource`(B1 트리) · `GeneralDocumentGate`(B3 존재) · `GeneralAttachmentCheck`(B2/B3 요구 참조) ·
  *   `OptionValidator`(B2 옵션 집합) · `AttributeRefSource`(C1 식 참조). 기본 구현은 「없음/통과」.
  */
-import { destructive, type DestructiveAction } from "@/domain/auth";
+import { can, destructive, type DestructiveAction } from "@/domain/auth";
 import { countedSlotsOf, slotType, validateValue, type Discriminator, type SlotPath } from "@/domain/catalog";
 import { validateSlotValue } from "@/domain/coverage";
 import { blockingIssues, indexTree, type ArticleNode } from "@/domain/document";
@@ -51,6 +51,7 @@ import {
   type ClauseOptionOverride,
   type ClauseOptionSelection,
   type CoverageMasterSource,
+  type CoverageTree,
   type GeneralAttachmentCheck,
   type GeneralDocumentGate,
   type MissingSlot,
@@ -145,6 +146,19 @@ export interface GeneralSettingsInput {
   copies?: ArticleCopy[];
   /** 편집을 시작할 때 본 템플릿 판 — 저장하면 「기준 판」이 된다. 없으면 지금 판. */
   templateVersion?: number;
+}
+
+/**
+ * 상품담보 탭 한 번 저장의 바뀐 것 (기능/상품 §3.8 · §4.5, 2026-10-04) — 세 갈래.
+ * - `added`: 새 탑재. `key` 는 화면의 행 열쇠(`new:N`) — 거부 이슈의 `at.ownerId` 로 돌아간다. `name` 이 없으면 작명 규칙.
+ * - `updated`: 남는 상품담보의 **최종** 상품담보명 · 세목 부착 목록. 목록에 없는 상품담보는 건드리지 않는다.
+ * - `removed`: 탑재 해제할 상품담보 — 기본계약이면 지정도 함께 풀린다.
+ * 목록에 없는 상품담보를 지우지 않는다 — 편집을 시작한 뒤 다른 곳에서 탑재된 것이 「빠졌다」고 지워지지 않게.
+ */
+export interface ProductCoveragesInput {
+  added: { key: string; coverageId: Id; attributes: AttributeSelection[]; section: CoverageSection; name?: string; plans: Id[] }[];
+  updated: { id: Id; name: string; plans: Id[] }[];
+  removed: Id[];
 }
 
 export interface ProductBasicInput {
@@ -245,6 +259,15 @@ export interface ProductService {
 
   // ── 상품담보 = 탑재
   mount(actor: Actor, productId: Id, coverageId: Id, selections: AttributeSelection[], section?: CoverageSection): Promise<Result<ProductCoverage>>;
+  /**
+   * 상품담보 탭 편집 화면 한 번 저장 (기능/상품 §3.8) — 탑재 추가 · 상품담보명 · 세목 부착/해제 · 탑재 해제를 **전부 검사한 뒤** 한 트랜잭션으로.
+   * 하나라도 틀리면 아무것도 안 쓰고 `invalid` — 이슈 좌표는 그 행(`ownerId` = 상품담보 id 또는 추가 행 `key`) · 그 칸(`refPath`
+   * `coverage` · `attributes` · `section` · `name` · `plans`). 검사는 탑재(`mount`)와 같다 — 조합 중복(남는 것 + 같은 저장의 추가) ·
+   * 기본계약 하나(MVP) · 독립특약은 기본계약 없음. 기본계약 수는 지우는 것을 뺀 최종 상태로 센다(지우고 새로 넣으면 교체).
+   * 탑재 해제 · 세목 부착 해제는 파괴적이다(`product.unmount` · `product.detachPlan`) — 편집자면 그 행의 이슈로 거부,
+   * 관리자 1차는 `needsConfirmation`(값 행 · 줄), `{ confirm: true }` 면 실행.
+   */
+  saveCoverages(actor: Actor, productId: Id, input: ProductCoveragesInput, opts?: Confirmable): Promise<Result<void>>;
   getProductCoverage(id: Id): Promise<ProductCoverage | undefined>;
   listProductCoverages(productId: Id): Promise<ProductCoverage[]>;
   getSnapshot(id: Id): Promise<Result<ProductCoverageSnapshot>>;
@@ -282,6 +305,8 @@ export interface ProductService {
   attachPlan(actor: Actor, id: Id, planId: Id): Promise<Result<void>>;
   detachPlan(actor: Actor, id: Id, planId: Id, opts?: Confirmable): Promise<Result<void>>;
   listAttachedPlans(id: Id): Promise<ProductPlan[]>;
+  /** 상품의 세목 부착 전부 — 상품담보 id → 조합 id (부착 순). 상품담보 탭이 한 번에 읽는다. */
+  listAttachedPlanIdsOf(productId: Id): Promise<Map<Id, Id[]>>;
 
   // ── 기본계약
   designateBaseContract(actor: Actor, productId: Id, productCoverageId: Id): Promise<Result<BaseContractCheck>>;
@@ -573,6 +598,137 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
     return ok({ productCoverageId: pc.id, issues: checkGeneralAttachment(required, known, { id: pc.id, name: pc.name }) });
   }
 
+  /**
+   * 탑재 한 건 쓰기 — 상품담보 · 기본계약 지정 · 값 스냅샷(담보 → 세부보장 → 급부, ADR-0002). 검사는 부르는 쪽이 끝냈다.
+   * `mount` 와 상품담보 탭 저장(`saveCoverages`)이 함께 쓴다.
+   */
+  async function mountIn(tx: Db, actor: Actor, productId: Id, tree: CoverageTree, attributes: AttributeSelection[], key: string, section: CoverageSection, name: string): Promise<ProductCoverage> {
+    const pc = await repo.insertProductCoverage(tx, { productId, coverageId: tree.id, coverageName: tree.name, name, attributes, combinationKey: key }, actor.userId);
+    if (section === "base") await repo.insertBaseContract(tx, productId, pc.id, actor.userId);
+    await snapshotFrom(tx, { kind: "coverage", id: tree.id }, { kind: "productCoverage", id: pc.id }, actor.userId);
+    for (const sub of tree.subCoverages) {
+      const s = await repo.insertNode(tx, { productCoverageId: pc.id, kind: "sub", masterNodeId: sub.id, name: sub.name, order: sub.order }, actor.userId);
+      await snapshotFrom(tx, { kind: "subCoverage", id: sub.id }, { kind: "productSubCoverage", id: s.id }, actor.userId);
+      for (const b of sub.benefits) {
+        const bn = await repo.insertNode(tx, { productCoverageId: pc.id, kind: "benefit", masterNodeId: b.id, parentId: s.id, name: b.name, order: b.order }, actor.userId);
+        await snapshotFrom(tx, { kind: "benefit", id: b.id }, { kind: "productBenefit", id: bn.id }, actor.userId);
+      }
+    }
+    return pc;
+  }
+
+  /** 상품담보 탭 저장 한 번 — 전부 검사 → (잃는 것이 있으면) 역할 · 확인 → 지우기 → 고치기 → 더하기 (기능/상품 §3.8). */
+  function saveCoverages(actor: Actor, productId: Id, input: ProductCoveragesInput, opts: Confirmable = {}): Promise<Result<void>> {
+    return db.transaction((tx) => withProduct(tx, productId, async (product) => {
+      const current = await repo.listProductCoverages(tx, productId);
+      const byId = new Map(current.map((pc) => [pc.id, pc]));
+      const plans = new Map((await repo.listPlans(tx, productId)).map((p) => [p.id, p]));
+      const kinds = await repo.listAttributeKinds(tx);
+      const baseIds = new Set(await repo.listBaseContractIds(tx, productId));
+      const issues: Issue[] = [];
+      const rowIssue = (kind: Issue["kind"], message: string, ownerId: Id, refPath?: string, ownerName?: string): Issue =>
+        issue(kind, message, { document: "special", ownerId, ...(ownerName ? { ownerName } : {}), ...(refPath ? { refPath } : {}) });
+
+      // ── 지우기 · 고치기 — 이 상품의 상품담보만
+      const removed = new Set<Id>();
+      for (const id of input.removed) {
+        if (byId.has(id)) removed.add(id);
+        else issues.push(rowIssue("brokenRef", "이 상품의 상품담보가 아닙니다 — 화면을 새로고침해 주세요", id));
+      }
+      const updates: { pc: ProductCoverage; name: string; attach: Id[]; detach: Id[] }[] = [];
+      for (const u of input.updated) {
+        const pc = byId.get(u.id);
+        if (!pc) {
+          issues.push(rowIssue("brokenRef", "이 상품의 상품담보가 아닙니다 — 화면을 새로고침해 주세요", u.id));
+          continue;
+        }
+        if (removed.has(u.id)) {
+          issues.push(rowIssue("typeMismatch", "탑재 해제하는 상품담보는 고칠 수 없습니다", u.id, undefined, pc.name));
+          continue;
+        }
+        const name = cleanName(u.name);
+        if (!name) issues.push(rowIssue("typeMismatch", "상품담보명은 비울 수 없습니다", u.id, "name", pc.name));
+        const foreign = u.plans.filter((planId) => !plans.has(planId));
+        if (foreign.length) issues.push(rowIssue("brokenRef", "이 상품의 종·형 조합이 아닙니다", u.id, "plans", pc.name));
+        const attached = await repo.listAttachedPlanIds(tx, u.id);
+        const next = [...new Set(u.plans)];
+        updates.push({ pc, name: name ?? pc.name, attach: next.filter((p) => !attached.includes(p) && plans.has(p)), detach: attached.filter((p) => !next.includes(p)) });
+      }
+
+      // ── 더하기 — 탑재(mount)와 같은 검사. 조합은 남는 것 + 같은 저장에서 먼저 더한 것과 겹치면 안 된다
+      const taken = new Map(current.filter((pc) => !removed.has(pc.id)).map((pc) => [combinationKey(pc.coverageId, normalizeSelections(pc.attributes, kinds)), pc.name]));
+      const standalone = await isStandalone(tx, productId);
+      let baseCount = [...baseIds].filter((id) => !removed.has(id)).length;
+      const template = await repo.loadNamingTemplate(tx);
+      const adds: { key: string; tree: CoverageTree; attributes: AttributeSelection[]; combination: string; section: CoverageSection; name: string; plans: Id[] }[] = [];
+      for (const a of input.added) {
+        const before = issues.length;
+        const tree = await master.tree(a.coverageId);
+        if (!tree) issues.push(rowIssue("brokenRef", "담보 마스터에 없는 담보입니다", a.key, "coverage"));
+        const selectionIssues = validateSelections(a.attributes, kinds);
+        for (const i of selectionIssues) issues.push(rowIssue(i.kind, i.message, a.key, "attributes"));
+        if (a.section === "base") {
+          for (const i of baseContractDesignationIssues(baseCount, product, standalone)) issues.push(rowIssue(i.kind, i.message, a.key, "section"));
+          baseCount += 1;
+        }
+        const name = a.name === undefined ? undefined : cleanName(a.name);
+        if (a.name !== undefined && !name) issues.push(rowIssue("typeMismatch", "상품담보명은 비울 수 없습니다", a.key, "name"));
+        if (a.plans.some((planId) => !plans.has(planId))) issues.push(rowIssue("brokenRef", "이 상품의 종·형 조합이 아닙니다", a.key, "plans"));
+        if (!tree || selectionIssues.length > 0) continue;
+        const attributes = normalizeSelections(a.attributes, kinds);
+        const combination = combinationKey(a.coverageId, attributes);
+        const clash = taken.get(combination);
+        if (clash !== undefined) {
+          const label = attributes.map((x) => `${kinds.find((k) => k.code === x.kindCode)?.label ?? x.kindCode}=${kinds.find((k) => k.code === x.kindCode)?.values.find((v) => v.code === x.valueCode)?.label ?? x.valueCode}`).join(" · ");
+          issues.push(rowIssue("typeMismatch", `이미 탑재한 조합입니다 — ${tree.name}${label ? ` (${label})` : " (담보속성 없음)"} = 「${clash}」`, a.key, "attributes"));
+          continue;
+        }
+        const finalName = name ?? defaultCoverageName(tree.name, attributes, kinds, template);
+        taken.set(combination, finalName);
+        if (issues.length === before) adds.push({ key: a.key, tree, attributes, combination, section: a.section, name: finalName, plans: [...new Set(a.plans)] });
+      }
+
+      // ── 잃는 것 — 탑재 해제 · 세목 부착 해제는 관리자만 (ADR-0019). 편집자는 그 행에서 거부한다
+      const detaching = updates.filter((u) => u.detach.length > 0);
+      if (!can(actor, "product.unmount")) for (const id of removed) issues.push(rowIssue("unsupported", "탑재 해제는 관리자만 할 수 있습니다 — 저장하지 않았습니다", id, undefined, byId.get(id)!.name));
+      if (!can(actor, "product.detachPlan")) for (const u of detaching) issues.push(rowIssue("unsupported", "세목 부착 해제는 관리자만 할 수 있습니다 — 저장하지 않았습니다", u.pc.id, "plans", u.pc.name));
+      if (issues.length) return invalid(issues);
+
+      const execute = async (): Promise<Result<void>> => {
+        for (const id of removed) {
+          for (const { owner } of await snapshotOwners(tx, id)) await clearOwner(tx, owner);
+          await repo.deleteProductCoverage(tx, id); // 기본계약 지정 · 세목 부착 · 노드는 FK cascade
+        }
+        for (const u of updates) {
+          if (u.name !== u.pc.name) await repo.updateProductCoverage(tx, u.pc.id, { name: u.name }, actor.userId);
+          for (const planId of u.detach) await repo.detachPlan(tx, u.pc.id, planId);
+          for (const planId of u.attach) await repo.attachPlan(tx, u.pc.id, planId, actor.userId);
+        }
+        for (const a of adds) {
+          const pc = await mountIn(tx, actor, productId, a.tree, a.attributes, a.combination, a.section, a.name);
+          for (const planId of a.plans) await repo.attachPlan(tx, pc.id, planId, actor.userId);
+        }
+        return ok(undefined);
+      };
+      if (removed.size === 0 && detaching.length === 0) return execute();
+      if (opts.confirm) return execute();
+      // 1차 — 영향만. 줄마다 무엇이 되는지(탑재 해제 · 세목 부착 해제)를 싣는다
+      const owners: ValueOwner[] = [];
+      const cascade: string[] = [];
+      for (const id of removed) {
+        const snaps = await snapshotOwners(tx, id);
+        owners.push(...snaps.map((x) => x.owner));
+        const subs = snaps.filter((x) => x.node?.kind === "sub").length;
+        const bens = snaps.filter((x) => x.node?.kind === "benefit").length;
+        const attachedCount = (await repo.listAttachedPlanIds(tx, id)).length;
+        const parts = [...(baseIds.has(id) ? ["기본계약 해제"] : []), `세부보장 ${subs}`, `급부 ${bens}`, ...(attachedCount ? [`세목 부착 ${attachedCount}건`] : [])];
+        cascade.push(`탑재 해제 · ${byId.get(id)!.name} — ${parts.join(" · ")}`);
+      }
+      for (const u of detaching) cascade.push(`세목 부착 해제 · ${u.pc.name} — ${u.detach.map((planId) => planCombinationLabel(plans.get(planId)?.options ?? [])).join(" · ")}`);
+      return reject({ reason: "needsConfirmation", impact: { valueRowsLost: await countSlots(tx, owners), brokenRefs: [], cascade } });
+    }));
+  }
+
   /** 기본정보 전체를 검증한 후 한 트랜잭션으로 저장한다. */
   function saveBasic(actor: Actor, id: Id, input: ProductBasicInput, opts: Confirmable = {}): Promise<Result<void>> {
     return db.transaction((tx) => withProduct(tx, id, async () => {
@@ -786,6 +942,7 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
 
     // 상품
     saveBasic,
+    saveCoverages,
     listProducts: () => repo.listProducts(db),
     getProduct: (id) => repo.loadProduct(db, id),
     productAudit: (id) => repo.productAudit(db, id),
@@ -1087,19 +1244,7 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
           const attributes = normalizeSelections(selections, kinds);
           const key = combinationKey(coverageId, attributes);
           if (await repo.findByCombination(tx, productId, key)) return reject({ reason: "duplicate", what: `상품담보 조합 ${tree.name} × ${attributes.map((a) => `${a.kindCode}=${a.valueCode}`).join(",") || "(속성 없음)"}` });
-          const pc = await repo.insertProductCoverage(tx, { productId, coverageId, coverageName: tree.name, name: defaultCoverageName(tree.name, attributes, kinds, await repo.loadNamingTemplate(tx)), attributes, combinationKey: key }, actor.userId);
-          if (section === "base") await repo.insertBaseContract(tx, productId, pc.id, actor.userId);
-          // 값 스냅샷 (ADR-0002): 담보 → 세부보장 → 급부
-          await snapshotFrom(tx, { kind: "coverage", id: coverageId }, { kind: "productCoverage", id: pc.id }, actor.userId);
-          for (const sub of tree.subCoverages) {
-            const s = await repo.insertNode(tx, { productCoverageId: pc.id, kind: "sub", masterNodeId: sub.id, name: sub.name, order: sub.order }, actor.userId);
-            await snapshotFrom(tx, { kind: "subCoverage", id: sub.id }, { kind: "productSubCoverage", id: s.id }, actor.userId);
-            for (const b of sub.benefits) {
-              const bn = await repo.insertNode(tx, { productCoverageId: pc.id, kind: "benefit", masterNodeId: b.id, parentId: s.id, name: b.name, order: b.order }, actor.userId);
-              await snapshotFrom(tx, { kind: "benefit", id: b.id }, { kind: "productBenefit", id: bn.id }, actor.userId);
-            }
-          }
-          return ok(pc);
+          return ok(await mountIn(tx, actor, productId, tree, attributes, key, section, defaultCoverageName(tree.name, attributes, kinds, await repo.loadNamingTemplate(tx))));
         }),
       ),
     getProductCoverage: (id) => repo.loadProductCoverage(db, id),
@@ -1257,6 +1402,7 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
         async () => ({ valueRowsLost: 0, brokenRefs: [], cascade: [] }),
         (tx) => repo.detachPlan(tx, id, planId),
       ),
+    listAttachedPlanIdsOf: async (productId) => new Map([...(await repo.listAttachedPlansForProduct(db, productId))].map(([pcId, list]) => [pcId, list.map((p) => p.id)])),
     listAttachedPlans: async (id) => {
       const ids = await repo.listAttachedPlanIds(db, id);
       const plans: ProductPlan[] = [];
