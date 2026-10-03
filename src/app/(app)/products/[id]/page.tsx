@@ -3,14 +3,15 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 
 import { Breadcrumb } from "@/app/_components/Breadcrumb";
+import { buildConditionContext } from "@/app/(app)/documents/[id]/_components/condition/conditionContext";
 import { Confirm } from "@/app/_components/Confirm";
 import { ErrorBanner } from "@/app/_components/ErrorBanner";
 import { ENTITY_LABEL } from "@/app/_lib/labels";
 import { previewOutcome, rejectionMessage } from "@/app/_lib/rejection";
-import { articleRefLabel, type NodeNumber } from "@/domain/document";
+import { articleRefLabel, collectRefs, type NodeNumber } from "@/domain/document";
 import type { Id } from "@/domain/types";
 import { CONTRACT_KIND_PATH, findForm, isStandaloneContract } from "@/domain/master";
-import { defaultCoverageName, planOptionLabel, planTypeOptions, type ProductCoverage } from "@/domain/product";
+import { applyArticleCopies, defaultCoverageName, liveArticleCopies, planOptionLabel, planTypeOptions, type ProductCoverage } from "@/domain/product";
 import { buildForm } from "@/forms";
 import { currentActor, getServices } from "@/lib/services";
 
@@ -103,20 +104,45 @@ export default async function ProductDetailPage({
   // ── 보통약관 탭의 재료 (기능/상품 §4.6) ───────────────────────
   // 템플릿 트리 · 템플릿 번호 · 숨긴 조 · 조립 결과. 그 탭을 열었을 때만 읽는다 — 조립은 매번 재계산이라 싸지 않다.
   const gid = tab === "general" ? product.generalDocumentId : undefined;
-  const [generalDoc, generalNumbers, hiddenArticles, bookletResult] = gid
-    ? await Promise.all([services.document.get(gid), services.document.numbering(gid), services.product.listHiddenArticles(id), services.assembly.preview(id)])
-    : [undefined, new Map<Id, NodeNumber>(), [] as Id[], undefined];
+  const [generalDoc, generalNumbers, hiddenArticles, bookletResult, savedCopies, baseVersion] = gid
+    ? await Promise.all([
+        services.document.get(gid),
+        services.document.numbering(gid),
+        services.product.listHiddenArticles(id),
+        services.assembly.preview(id),
+        services.product.listArticleCopies(id),
+        services.product.generalBaseVersion(id),
+      ])
+    : [undefined, new Map<Id, NodeNumber>(), [] as Id[], undefined, [], undefined];
+  // 조 사본 (ADR-0079) — 템플릿에서 조가 지워진 사본은 쓰이지 않는다(다음 저장에서 지워진다). 이 상품의 본문 = 템플릿 + 사본.
+  const articleCopies = generalDoc ? liveArticleCopies(generalDoc.tree, savedCopies) : [];
+  const effectiveTree = generalDoc ? applyArticleCopies(generalDoc.tree, articleCopies) : undefined;
+  // 마지막 저장 뒤 템플릿이 고쳐졌는가 — 기준 판을 모르면(옛 데이터) 묻지 않는다
+  const templateChanged = generalDoc !== undefined && baseVersion !== undefined && generalDoc.version > baseVersion;
   // 원문 모델의 칩 재료(별표 이름 · 구분자 표시명 · 박스) — 보통약관 · 특별약관 탭 둘 다 원문 모델을 그린다
   const [appendices, discriminators, boxes] =
     gid || tab === "special" ? await Promise.all([services.document.listAppendices(), services.catalog.list(), services.document.listBoxes()]) : [[], [], []];
+  // 편집 중 조 편집 패널(문면 편집기)의 재료 — 문면 화면(`documents/[id]/page.tsx`)과 같은 것 (ADR-0079)
+  const copyEditorData = gid
+    ? {
+        appendices,
+        boxes,
+        clauses,
+        discriminators,
+        enums: enumsList,
+        condition: buildConditionContext({ discriminators, enums: enumsList, attributes: attributeKinds }),
+        attributeValues: Object.fromEntries(attributeKinds.map((k) => [k.code, k.values.map((v) => v.code)])),
+      }
+    : undefined;
   const booklet = bookletResult?.ok ? bookletResult.value : undefined;
   const bookletNote = bookletResult && !bookletResult.ok ? `조립할 수 없다 — ${rejectionMessage(bookletResult)}` : undefined;
 
   // 보통약관 문면의 함수조항 참조 자리(block · inline 둘 다 노드 id 로 오버라이드된다) = 고를 수 있는 자리 (리뷰 #7).
   // 오버라이드는 이제 그 자리의 괘선 박스에서 고친다 — 별도 섹션은 없다 (기능/상품 §3.6).
+  // 자리는 이 상품의 본문(템플릿 + 사본)에서 — 사본에 새로 넣은 함수조항 자리도 고를 수 있다 (ADR-0079).
   const overrideTargets: OverrideTarget[] = [];
-  if (gid) {
-    const refs = await services.document.refs(gid);
+  if (gid && effectiveTree && generalDoc) {
+    const refs = collectRefs(effectiveTree, { document: "general", ownerId: gid, documentId: gid, ownerName: generalDoc.title });
     const clauseByCode = new Map(clauses.map((c) => [c.code, c]));
     for (const ref of refs) {
       if (ref.kind !== "clause") continue;
@@ -302,6 +328,10 @@ export default async function ProductDetailPage({
           enums={enumsList}
           discriminators={discriminators.map((d) => ({ code: d.code, label: d.label }))}
           generalTree={generalDoc?.tree}
+          {...(generalDoc ? { templateVersion: generalDoc.version } : {})}
+          templateChanged={templateChanged}
+          articleCopies={articleCopies}
+          {...(copyEditorData ? { copyEditorData } : {})}
           generalNumbers={generalNumbers}
           hiddenArticles={hiddenArticles}
           booklet={booklet}

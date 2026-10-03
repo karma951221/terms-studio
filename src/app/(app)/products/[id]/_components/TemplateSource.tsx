@@ -27,7 +27,7 @@ import { format, parse, refPath } from "@/domain/expression";
 import type { ClauseOptionOverride } from "@/domain/product";
 import type { Code, Id } from "@/domain/types";
 
-import { useGeneralEdit, type OverrideTarget } from "./GeneralEdit";
+import { useGeneralEdit, type OverrideOption, type OverrideTarget } from "./GeneralEdit";
 
 export interface TemplateSourceProps {
   productId: Id;
@@ -261,7 +261,6 @@ function ClauseBox({ nodeId, clauseCode, baseOptions, bindings, ctx, at }: { nod
   const editing = hasOptions && !!edit?.editing;
   const changed = edit?.changes.nodes.has(nodeId) ?? false;
   const errors = edit?.errors.nodes.get(nodeId) ?? [];
-  const valueLabel = (optionCode: Code, value: Code | undefined) => target?.options.find((o) => o.code === optionCode)?.values.find((v) => v.code === value)?.label ?? value;
   return (
     <div className="ts-doc-clause" data-clause-box={nodeId}>
       <div className="ts-doc-clause-head">
@@ -282,31 +281,7 @@ function ClauseBox({ nodeId, clauseCode, baseOptions, bindings, ctx, at }: { nod
           <div className="ts-clause-use">
             <p className="ts-muted">마스터 기본 — {ctx.optionText(clauseCode, baseOptions)}</p>
             {!editing && own && <p>이 상품 — {ctx.optionText(clauseCode, effective)}</p>}
-            {editing &&
-              (target && target.options.length > 0 ? (
-                <div className="ts-clause-pick">
-                  {target.options.map((o) => (
-                    <label key={o.code}>
-                      <span>{o.label}</span>
-                      <select
-                        value={own?.[o.code] ?? ""}
-                        aria-invalid={errors.length > 0 || undefined}
-                        onChange={(e) => edit?.dispatch({ type: "setOption", nodeId, clauseCode, optionCode: o.code, value: e.target.value, base: baseOptions })}
-                      >
-                        <option value="">— 마스터 기본{baseOptions[o.code] !== undefined ? `(${valueLabel(o.code, baseOptions[o.code])})` : ""} —</option>
-                        {o.values.map((v) => (
-                          <option key={v.code} value={v.code}>
-                            {v.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  ))}
-                  {own && <IconButton type="button" label={`마스터 기본으로 되돌리기 · ${label}`} icon={<IconRevert />} onClick={() => edit?.dispatch({ type: "resetNode", nodeId })} />}
-                </div>
-              ) : (
-                <p className="ts-muted">이 자리는 고를 옵션이 없다.</p>
-              ))}
+            {editing && <ClauseOptionPicker nodeId={nodeId} clauseCode={clauseCode} baseOptions={baseOptions} options={target?.options ?? []} label={label} />}
             {unresolved.length > 0 && <p className="ts-warn">옵션 미선택 — {unresolved.join(" · ")} (고르지 않으면 조립이 막힌다)</p>}
             {errors.map((message, i) => (
               <p key={i} className="ts-error" role="alert">
@@ -316,6 +291,40 @@ function ClauseBox({ nodeId, clauseCode, baseOptions, bindings, ctx, at }: { nod
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * 함수조항 자리 하나의 옵션 고르기(편집 중) — 옵션마다 「— 마스터 기본(값) —」 + 선택지, 오버라이드가 있으면 ↺.
+ * 고른 것은 보통약관 탭 초안에만 쌓인다(`setOption` · `resetNode`). 원문 패널의 상자와 조 편집 패널의 옵션 줄(ADR-0079)이 같이 쓴다.
+ */
+export function ClauseOptionPicker({ nodeId, clauseCode, baseOptions, options, label }: { nodeId: Id; clauseCode: Code; baseOptions: Record<Code, Code>; options: readonly OverrideOption[]; label: string }) {
+  const edit = useGeneralEdit();
+  const own = edit?.current.overrides[nodeId]?.options;
+  const errors = edit?.errors.nodes.get(nodeId) ?? [];
+  const valueLabel = (optionCode: Code, value: Code | undefined) => options.find((o) => o.code === optionCode)?.values.find((v) => v.code === value)?.label ?? value;
+  if (options.length === 0) return <p className="ts-muted">이 자리는 고를 옵션이 없다.</p>;
+  return (
+    <div className="ts-clause-pick">
+      {options.map((o) => (
+        <label key={o.code}>
+          <span>{o.label}</span>
+          <select
+            value={own?.[o.code] ?? ""}
+            aria-invalid={errors.length > 0 || undefined}
+            onChange={(e) => edit?.dispatch({ type: "setOption", nodeId, clauseCode, optionCode: o.code, value: e.target.value, base: baseOptions })}
+          >
+            <option value="">— 마스터 기본{baseOptions[o.code] !== undefined ? `(${valueLabel(o.code, baseOptions[o.code])})` : ""} —</option>
+            {o.values.map((v) => (
+              <option key={v.code} value={v.code}>
+                {v.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      ))}
+      {own && <IconButton type="button" label={`마스터 기본으로 되돌리기 · ${label}`} icon={<IconRevert />} onClick={() => edit?.dispatch({ type: "resetNode", nodeId })} />}
     </div>
   );
 }

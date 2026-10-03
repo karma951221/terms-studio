@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * 보통약관 탭의 편집 상태 — 읽기로 열고, 탭 첫 줄의 `편집`을 누르면 조 노출(목차 체크) · 함수조항 옵션(가운데 상자)을
- * 고칠 수 있다. 고친 것은 **초안**(`generalDraft`)에만 쌓이고 `저장` 한 번이 `saveProductGeneralAction` 으로 최종 상태를
- * 보낸다 (기능/상품 §3.8 · §4.6). 오른쪽 미리보기는 저장 전까지 저장된 조립 그대로다.
+ * 보통약관 탭의 편집 상태 — 읽기로 열고, 탭 첫 줄의 `편집`을 누르면 조 노출(목차 체크) · 조 사본(조 편집 패널) ·
+ * 함수조항 옵션(조 편집 패널의 옵션 줄)을 고칠 수 있다. 고친 것은 **초안**(`generalDraft`)에만 쌓이고 `저장` 한 번이
+ * `saveProductGeneralAction` 으로 최종 상태를 보낸다 (기능/상품 §3.8 · §3.10 · §4.6, ADR-0079).
  *
  * `ProductEditProvider` 에 제 begin · cancel · save · dirty 를 등록한다 — 기본정보 탭과 같은 손잡이라
  * 탭 링크 · 경로 링크 · 취소의 「고친 내용을 버립니까?」도 그대로 탄다. 목차 · 원문 패널은 `useGeneralEdit()` 로
@@ -12,7 +12,7 @@
  */
 import { createContext, useContext, useEffect, useMemo, useReducer, useState, type ReactNode } from "react";
 
-import type { ClauseOptionOverride } from "@/domain/product";
+import type { ArticleCopy, ClauseOptionOverride } from "@/domain/product";
 import type { Id } from "@/domain/types";
 
 import { saveProductGeneralAction } from "../../actions";
@@ -52,8 +52,10 @@ export interface GeneralEditValue {
   dispatch(action: GeneralDraftAction): void;
 }
 
-const NO_ERRORS: GeneralEditValue["errors"] = { articles: new Map(), nodes: new Map(), other: [] };
+const NO_ERRORS: GeneralEditValue["errors"] = { articles: new Map(), nodes: new Map(), copies: [], other: [] };
 const NO_CHANGES: GeneralEditValue["changes"] = { articles: new Set(), nodes: new Set() };
+
+const NO_COPIES: readonly ArticleCopy[] = [];
 
 export const GeneralEditContext = createContext<GeneralEditValue | undefined>(undefined);
 
@@ -64,18 +66,24 @@ export function useGeneralEdit(): GeneralEditValue | undefined {
 export function GeneralEditProvider({
   productId,
   generalDocumentId,
+  templateVersion,
   hiddenArticles,
   overrides,
+  copies = NO_COPIES,
   children,
 }: {
   productId: Id;
   generalDocumentId: Id;
+  /** 화면이 받은 템플릿 판 — 저장하면 「기준 판」이 된다(그 사이 템플릿이 바뀌었으면 경고가 남는다). */
+  templateVersion?: number;
   hiddenArticles: readonly Id[];
   overrides: readonly ClauseOptionOverride[];
+  /** 저장된 조 사본 — 템플릿에 자리가 남은 것만 (page.tsx). */
+  copies?: readonly ArticleCopy[];
   children: ReactNode;
 }) {
   const { editing, register } = useProductEdit();
-  const saved = useMemo(() => initGeneralDraft(hiddenArticles, overrides), [hiddenArticles, overrides]);
+  const saved = useMemo(() => initGeneralDraft(hiddenArticles, overrides, copies), [hiddenArticles, overrides, copies]);
   const [draft, dispatch] = useReducer(generalDraftReducer, saved);
   const [errors, setErrors] = useState(NO_ERRORS);
   const [message, setMessage] = useState<string>();
@@ -90,7 +98,7 @@ export function GeneralEditProvider({
   };
   const save = async (): Promise<"done" | "stay"> => {
     try {
-      const outcome = await saveProductGeneralAction(productId, toGeneralSettings(generalDocumentId, draft));
+      const outcome = await saveProductGeneralAction(productId, toGeneralSettings(generalDocumentId, draft, templateVersion));
       if (outcome.ok) {
         clear();
         return "done";

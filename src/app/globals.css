@@ -5208,6 +5208,29 @@ button.ts-ref-fold:hover {
 .ts-terms-template-count { font-size: 12px; }
 .ts-terms-template-pick { margin-top: -4px; padding: 8px 12px; border: 1px solid var(--ts-rule); border-radius: 4px; background: var(--ts-surface-2); }
 .ts-terms-focus .ts-terms-panel { height: calc(100vh - 230px); min-height: 420px; max-height: none; }
+/* 보통약관 탭 편집 — 목차 + 조 편집 두 패널 (ADR-0079 · 기능/상품 §4.6). 미리보기는 숨는다 */
+.ts-terms-panels.is-editing { grid-template-columns: minmax(200px, 1fr) 4fr; }
+.ts-terms-panel-edit .ts-doc-toolbar { top: 36px; margin: 0 -12px 8px; }
+/* 목차 · 조 편집 머리의 점 — 빨강 = 이 상품 사본, 노랑 = 사본을 만든 뒤 템플릿이 바뀜 */
+.ts-copy-dot { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ts-error); align-self: center; }
+.ts-copy-dot.is-stale { background: var(--ts-warn); }
+.ts-terms-template-warn { margin: -4px 0 10px; font-size: 13px; }
+.ts-copy-editor { font-size: 13px; }
+.ts-copy-note { margin: 0 0 8px; font-size: 12px; }
+.ts-copy-status { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin: 0 0 8px; padding: 6px 10px; border: 1px solid var(--ts-rule); border-left: 3px solid var(--ts-error); border-radius: 4px; background: var(--ts-surface-2); }
+.ts-copy-status.is-stale { border-left-color: var(--ts-warn); }
+.ts-copy-status-actions { display: inline-flex; gap: 8px; margin-left: auto; }
+.ts-copy-status-actions > button { height: 28px; padding: 0 10px; border-radius: 4px; font-size: 13px; }
+.ts-copy-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+.ts-copy-compare > section { min-width: 0; }
+.ts-copy-compare > section:first-child { opacity: 0.85; border-right: 1px dashed var(--ts-rule-strong); padding-right: 12px; }
+.ts-copy-compare-title { margin: 4px 0 6px; font-size: 12px; font-weight: 600; color: var(--ts-ink-3); }
+.ts-copy-options { margin-top: 12px; padding-top: 4px; border-top: 1px solid var(--ts-rule); }
+@media (max-width: 1100px) {
+  .ts-terms-panels.is-editing { grid-template-columns: 1fr; }
+  .ts-copy-compare { grid-template-columns: 1fr; }
+  .ts-copy-compare > section:first-child { border-right: 0; padding-right: 0; }
+}
 /* 특별약관 탭 (기능/상품 §4.7) — 담보 · 모델링 · 미리보기 세 패널. 머리 띠는 위 `.ts-terms-panel-head` 공통 규칙 */
 .ts-special-pc-select { min-width: 0; max-width: 100%; flex: 0 1 auto; font-size: 13px; }
 .ts-special-list ul { list-style: none; margin: 0; padding: 0; font-size: 13px; }

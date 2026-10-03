@@ -9,6 +9,8 @@
  *   템플릿이 실제로 바뀌어 돌아오면 편집을 묻지 않고 끝낸다(`end` — 초안의 노드는 옛 템플릿 것이다).
  * - 템플릿이 없으면(미지정) 편집할 것이 없다 — 이 줄이 곧 고르기(잃을 것이 없으면 바로 지정)다.
  * - 오른쪽 끝은 집계 한 줄 + 이 탭의 편집 조작(`ProductEditButtons`) — 헤더가 아니라 탭 안이다 (2026-10-03 사용자 QA).
+ * - 이 상품의 보통약관 설정을 마지막으로 저장한 뒤 템플릿이 고쳐졌으면(템플릿 판 > 기준 판) 줄 아래에 경고 한 줄 — 다음 저장에서 사라진다
+ *   (ADR-0079). 새 조는 템플릿을 따라 저절로 들어오므로 알리기만 한다.
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -25,13 +27,16 @@ export function GeneralTemplateLine({
   templateTitle,
   generals,
   summary,
+  templateChanged = false,
 }: {
   productId: Id;
   generalDocumentId: Id | undefined;
   templateTitle: string | undefined;
   generals: readonly { id: Id; title: string }[];
-  /** 「N조 중 M 노출 · 오버라이드 k · 오류 e · 별표 b(자동)」 — 템플릿이 있을 때만. */
+  /** 「N조 중 M 노출 · 사본 c · 오버라이드 k · 오류 e · 별표 b(자동)」 — 템플릿이 있을 때만. */
   summary?: ReactNode;
+  /** 마지막 저장 뒤 템플릿이 바뀌었다 — 경고 한 줄. */
+  templateChanged?: boolean;
 }) {
   const { editing, end } = useProductEdit();
   const edit = useGeneralEdit();
@@ -102,9 +107,14 @@ export function GeneralTemplateLine({
             닫기
           </button>
           <span className="ts-muted">
-            바꾸면 조 노출 · 옵션 오버라이드가 초기화된다{unsaved > 0 ? ` — 저장하지 않은 변경 ${unsaved}건도 버려진다` : ""}.
+            바꾸면 조 노출 · 옵션 오버라이드 · 조 사본이 초기화된다{unsaved > 0 ? ` — 저장하지 않은 변경 ${unsaved}건도 버려진다` : ""}.
           </span>
         </form>
+      )}
+      {templateChanged && (
+        <p role="status" className="ts-warn ts-terms-template-warn">
+          보통약관 템플릿이 바뀌었습니다 — 새로 추가된 조 등을 확인하세요
+        </p>
       )}
       {edit?.message && (
         <p role="alert" className="ts-error-banner">

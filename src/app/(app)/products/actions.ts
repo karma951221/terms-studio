@@ -9,6 +9,7 @@ import type { ActionOutcome } from "@/app/_components/ValueForm";
 import { str } from "@/app/_lib/formData";
 import { describeRejection, errorRedirectPath } from "@/app/_lib/rejection";
 import type { GeneralSettingsInput, ProductBasicInput, SnapshotOwner } from "@/services/product";
+import type { ArticleNode } from "@/domain/document";
 import type { Id, Issue, Result } from "@/domain/types";
 import type { Submission } from "@/forms";
 import { currentActor, getServices } from "@/lib/services";
@@ -106,10 +107,21 @@ const generalSchema = z.object({
   generalDocumentId: z.string().min(1),
   hiddenArticles: z.array(z.string()),
   overrides: z.array(z.object({ nodeId: z.string(), clauseCode: z.string(), options: z.record(z.string(), z.string()) })),
+  // 조 사본 (ADR-0079) — 조 노드의 모양은 서비스가 문면 저장 검증으로 본다. 여기서는 조 노드인지 · 자리 id 만
+  copies: z
+    .array(
+      z.object({
+        articleId: z.string().min(1),
+        article: z.custom<ArticleNode>((v) => typeof v === "object" && v !== null && (v as { kind?: unknown }).kind === "article" && typeof (v as { id?: unknown }).id === "string"),
+        templateHash: z.string().min(1),
+      }),
+    )
+    .optional(),
+  templateVersion: z.number().int().positive().optional(),
 });
 
 /**
- * 보통약관 탭 저장 한 번 (기능/상품 §3.8) — 조 노출 · 옵션 오버라이드의 최종 상태를 한 트랜잭션으로.
+ * 보통약관 탭 저장 한 번 (기능/상품 §3.8) — 조 노출 · 옵션 오버라이드 · 조 사본(ADR-0079)의 최종 상태를 한 트랜잭션으로.
  * redirect 하지 않는다 — 탭 첫 줄의 `저장`(ProductEditProvider)이 `startTransition` 으로 부르고, 성공하면 읽기로 돌아가 refresh 한다.
  */
 export async function saveProductGeneralAction(productId: Id, input: GeneralSettingsInput): Promise<GeneralSaveOutcome> {
