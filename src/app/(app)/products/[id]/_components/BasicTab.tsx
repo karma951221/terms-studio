@@ -192,6 +192,10 @@ export function BasicTab(props: BasicTabProps) {
   const columns = valueColumns(shownOptions.map(modelFor));
   const types = shownOptions.filter((o) => o.axis === "type");
   const formsAxis = shownOptions.filter((o) => o.axis === "form");
+  /** 조합 표의 열 — 쓰인 축만(종 · 형). */
+  const comboAxes = (["type", "form"] as const).filter((axis) => shownOptions.some((o) => o.axis === axis));
+  /** 남는 폭은 마지막 열(형)만 먹고, 앞 열(종)은 글자 폭 그대로. */
+  const comboColClass = (i: number) => (i === comboAxes.length - 1 ? "col-flex" : "ts-basic-col-nowrap");
   const candidates: OptionDraft[][] = types.length && formsAxis.length ? types.flatMap((t) => formsAxis.map((f) => [t, f])) : shownOptions.map((o) => [o]);
   const combinationRows: OptionDraft[][] = editing
     ? candidates
@@ -464,9 +468,11 @@ export function BasicTab(props: BasicTabProps) {
                           사용
                         </th>
                       )}
-                      <th scope="col" className="col-flex">
-                        종·형 조합
-                      </th>
+                      {comboAxes.map((axis, i) => (
+                        <th key={axis} scope="col" className={comboColClass(i)}>
+                          {PLAN_AXIS_LABEL[axis]}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
@@ -482,7 +488,14 @@ export function BasicTab(props: BasicTabProps) {
                               <input type="checkbox" aria-label={`${label} 사용`} checked={used} onChange={(e) => toggleCombination(ids, e.target.checked)} />
                             </td>
                           )}
-                          <td className="col-flex">{label}</td>
+                          {comboAxes.map((axis, i) => {
+                            const item = items.find((o) => o.axis === axis);
+                            return (
+                              <td key={axis} className={comboColClass(i)}>
+                                {item ? planOptionLabel(item) : ""}
+                              </td>
+                            );
+                          })}
                         </tr>
                       );
                     })}

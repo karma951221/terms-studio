@@ -5072,6 +5072,7 @@ button.ts-ref-fold:hover {
 .ts-basic-table th,
 .ts-basic-table td { vertical-align: middle; }
 .ts-basic-table tbody th { font-size: 13px; font-weight: 400; color: var(--ts-ink-2); white-space: nowrap; }
+.ts-basic-table .ts-basic-col-nowrap { white-space: nowrap; }
 .ts-basic-table td { padding-block: 5px; }
 .ts-basic-table .ts-basic-col-select { width: 44px; text-align: center; }
 .ts-basic-table .ts-basic-col-name { min-width: 200px; }
