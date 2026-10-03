@@ -11,12 +11,6 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/products/p1",
   useSearchParams: () => new URLSearchParams(),
 }));
-vi.mock("../../actions", () => ({
-  attachPlanAction: () => {},
-  mountAction: () => {},
-  regenerateNameAction: () => {},
-  renameProductCoverageAction: () => {},
-}));
 
 import type { AttributeKind, ProductCoverage } from "@/domain/product";
 
@@ -47,10 +41,9 @@ function render(query?: string, section: "base" | "special" = "special") {
       coverages={coverages}
       attributeKinds={kinds}
       plans={[]}
-      wouldBeName={(pc) => pc.name}
+      attachedPlans={{}}
+      suggestedNames={{}}
       query={query}
-      confirm={undefined}
-      confirmNode={null}
     />,
   );
 }
@@ -58,10 +51,10 @@ function render(query?: string, section: "base" | "special" = "special") {
 const rowsOf = (html: string) => html.match(/<tr(?: [^>]*)?>(?!<th)[\s\S]*?<\/tr>/g)?.filter((r) => !r.includes("<th")) ?? [];
 
 describe("CoverageMountSection — 상품담보 한 건 = 한 행", () => {
-  it("열 — 특별약관: 담보코드 · 담보명 · 담보속성 · 상품담보명 · 그룹(읽기 전용) · 세목 부착 · 조작, 기본계약에는 그룹 열이 없다", () => {
+  it("열(읽기) — 특별약관: 담보코드 · 담보명 · 담보속성 · 상품담보명 · 그룹(읽기 전용) · 세목 부착, 기본계약에는 그룹 열이 없다 · 조작 열은 편집에만", () => {
     const headers = (html: string) => [...html.matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((m) => m[1]);
-    expect(headers(render())).toEqual(["담보코드", "담보명", "담보속성", "상품담보명", "그룹", "세목 부착", "조작"]);
-    expect(headers(render(undefined, "base"))).toEqual(["담보코드", "담보명", "담보속성", "상품담보명", "세목 부착", "조작"]);
+    expect(headers(render())).toEqual(["담보코드", "담보명", "담보속성", "상품담보명", "그룹", "세목 부착"]);
+    expect(headers(render(undefined, "base"))).toEqual(["담보코드", "담보명", "담보속성", "상품담보명", "세목 부착"]);
   });
 
   it("행 수 = 상품담보 수 · 코드(담보 마스터 링크) · 담보명은 같은 담보 묶음의 첫 행에만", () => {
@@ -76,18 +69,19 @@ describe("CoverageMountSection — 상품담보 한 건 = 한 행", () => {
     expect(rows[1]).not.toContain(">일반상해사망보장</td>");
     expect(rows[1]).toContain("is-group-cont");
     expect(rows[1]).toContain("갱신유형=갱신형 · 부가유형=추가");
-    expect(rows[1]).toContain('value="일반상해사망보장 추가"');
+    expect(rows[1]).toContain(">일반상해사망보장 추가</td>");
     expect(rows[2]).toContain("<code>COV000008</code>");
     expect(rows[2]).toContain(">수술비</td>");
     expect(rows[2]).toContain('<span class="ts-muted">—</span>');
   });
 
-  it("기존 행 조작 — 이름 저장 · 작명 · 탑재 해제. 「값 →」 링크는 없다 (2026-10-01 — 잘못 누르면 화면이 바뀌었다)", () => {
+  it("읽기에는 조작이 없다 — 입력 · 이름 저장 · 작명 · 탑재 해제 · 확인 카드 링크 · 「값 →」 링크 모두 없다", () => {
     const html = render();
     expect(html).not.toContain('href="/products/p1/coverages/pc2"');
-    expect(html).toContain("이름 저장 · 일반상해사망보장 추가");
-    expect(html).toContain("작명 규칙으로 다시 짓기 · 수술비");
-    expect(html).toContain('href="?tab=coverages&amp;confirm=pc:pc3"');
+    expect(html).not.toContain("<input type=\"text\"");
+    expect(html).not.toContain("이름 저장");
+    expect(html).not.toContain("작명 규칙으로 다시 짓기");
+    expect(html).not.toContain("confirm=pc:");
   });
 
   it("제목 — 기본계약 · 특별약관, 검색창 · 페이저 「총 N건」", () => {
@@ -96,7 +90,7 @@ describe("CoverageMountSection — 상품담보 한 건 = 한 행", () => {
     expect(html).toContain(">특별약관</h2>");
     expect(html).toContain('placeholder="담보 검색 — 코드 · 담보명 · 상품담보명 · 담보속성"');
     expect(html).toContain("총 <b>3</b>건");
-    expect(html).toContain(">특별약관에 탑재<");
+    expect(html).not.toContain("에 탑재<");
   });
 
   it("담보 검색 — 코드로", () => {

@@ -1,4 +1,4 @@
-/** 상품 화면·서버 액션이 함께 쓰는 순수 함수 — 입력 파싱 · 탭 좌표 · 보통약관의 관 묶기 · 조 수. `*.test.ts` 로 검증. */
+/** 상품 화면·서버 액션이 함께 쓰는 순수 함수 — 탭 좌표 · 보통약관의 관 묶기 · 조 수. `*.test.ts` 로 검증. */
 import type { OmissionPairKind, OmissionRecord, RenderedDoc } from "@/domain/assembly";
 import { indexTree, type ArticleNode, type CondBlockNode, type DocumentNode, type Node, type NodeNumber } from "@/domain/document";
 import { findAttributeValue, normalizeSelections, planCombinationKey, type AttributeKind, type AttributeSelection, type ProductCoverage } from "@/domain/product";
@@ -9,16 +9,6 @@ import { includesQuery } from "@/app/_lib/list";
 
 export function str(fd: FormData, key: string): string {
   return String(fd.get(key) ?? "").trim();
-}
-
-/** `attr:<kindCode>` 이름의 select 들 → 선택된 것만 AttributeSelection[]. */
-export function parseSelections(fd: FormData, kinds: readonly AttributeKind[]): AttributeSelection[] {
-  const out: AttributeSelection[] = [];
-  for (const k of kinds) {
-    const v = str(fd, `attr:${k.code}`);
-    if (v) out.push({ kindCode: k.code, valueCode: v });
-  }
-  return out;
 }
 
 // ───────────────────────────── 상세의 탭 ─────────────────────────────
@@ -42,9 +32,9 @@ export function productTabOf(value: string | undefined): ProductTab {
 /**
  * 옛 탭 주소의 새 자리 — 없으면 undefined(옮길 것 없음). 나머지 쿼리는 그대로 싣는다.
  * - 옛 약관 탭(2026-09-28 ~ 10-03: `?tab=terms&sub=general|special`) → `?tab=general` · `?tab=special` (하위 탭이 없거나 모르면 보통약관).
- * - 탑재 · 기본계약의 확인 카드(`confirm=pc:|detach:`)는 상품담보 탭에만 뜬다 — 2026-09-28 이전의
- *   `?tab=general|special&confirm=…` 북마크는 상품담보 탭으로 보낸다. 옛 그룹 삭제 카드(`confirm=group:`)도 상품담보 탭으로 —
- *   그룹은 담보의 것이 되어(ADR-0080) 그 탭에서 아무 카드도 뜨지 않는다.
+ * - 옛 탑재 해제 · 세목 부착 해제 · 그룹 삭제 확인 카드 주소(`confirm=pc:|detach:|group:`)는 상품담보 탭으로 보낸다 — 2026-09-28 이전의
+ *   `?tab=general|special&confirm=…` 북마크도. 그 탭은 이제 그 카드를 그리지 않는다: 탑재 해제 · 부착 해제는 편집 저장의 확인 모달이고
+ *   (2026-10-04), 그룹은 담보의 것이다(ADR-0080). 그래서 옛 주소는 상품담보 탭 읽기로 열릴 뿐이다.
  */
 export function legacyProductTabRedirect(id: string, sp: Readonly<Record<string, string | undefined>>): string | undefined {
   if (sp.tab !== "terms" && sp.tab !== "general" && sp.tab !== "special") return undefined;

@@ -11,12 +11,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock("../../actions", () => ({
-  attachPlanAction: () => {},
-  mountAction: () => {},
-  regenerateNameAction: () => {},
-  renameProductCoverageAction: () => {},
-  designateBaseContractAction: () => {},
-  releaseBaseContractAction: () => {},
+  saveProductCoveragesAction: async () => ({ ok: true }),
   setProductGeneralDocumentAction: () => {},
   saveProductGeneralAction: async () => ({ ok: true }),
   saveProductBasicAction: async () => ({ ok: true }),
@@ -95,22 +90,24 @@ const pc = (id: string, coverageId: string, name: string): ProductCoverage => ({
 describe("상품담보 — 기본계약 · 특별약관 표가 한 탭에 (특약 그룹 섹션은 없다 — 그룹은 담보의 것, ADR-0080)", () => {
   it("두 표(각자 검색 쿼리) · 기본계약 · 특별약관 표의 읽기 전용 「그룹」 열 — 상품담보 행에 미리보기 링크는 없다", () => {
     const html = renderToStaticMarkup(
-      <CoveragesTab
-        productId="p1"
-        baseCoverages={[pc("b1", "c1", "기본")]}
-        specialCoverages={[pc("s1", "c2", "특약 A"), pc("s2", "c2", "특약 A 추가")]}
-        coverages={[
-          { id: "c1", code: "COV000001", name: "일반상해사망" },
-          { id: "c2", code: "COV000002", name: "수술비", group: "상해 관련 특별약관" },
-        ]}
-        attributeKinds={[]}
-        plans={[]}
-        mountSearch={{ base: {}, special: {} }}
-        wouldBeName={(p) => p.name}
-        baseCheck={{ ok: true, value: [] }}
-        confirm={undefined}
-        confirmNode={null}
-      />,
+      <ProductEditProvider canEdit>
+        <CoveragesTab
+          productId="p1"
+          baseCoverages={[pc("b1", "c1", "기본")]}
+          specialCoverages={[pc("s1", "c2", "특약 A"), pc("s2", "c2", "특약 A 추가")]}
+          coverages={[
+            { id: "c1", code: "COV000001", name: "일반상해사망" },
+            { id: "c2", code: "COV000002", name: "수술비", group: "상해 관련 특별약관" },
+          ]}
+          attributeKinds={[]}
+          plans={[]}
+          attachedPlans={{}}
+          namingTemplate="[담보명]"
+          suggestedNames={{}}
+          mountSearch={{ base: {}, special: {} }}
+          baseCheck={{ ok: true, value: [] }}
+        />
+      </ProductEditProvider>,
     );
     expect(html).toContain(">기본계약</h2>");
     expect(html).toContain('id="base-contract"');
@@ -125,29 +122,6 @@ describe("상품담보 — 기본계약 · 특별약관 표가 한 탭에 (특�
     // 담보 : 상품담보 = 1 : N — 특별약관 표에서 COV000002 는 한 번만
     expect(html.split("<code>COV000002</code>").length - 1).toBe(1);
     expect(html).not.toContain("보통약관 템플릿");
-  });
-
-  it("독립특약 상품 — 기본계약 표의 탑재 폼 대신 「독립특약 상품은 기본계약을 두지 않습니다」, 특별약관 표는 그대로 탑재한다 (기능/상품 §3.1)", () => {
-    const html = renderToStaticMarkup(
-      <CoveragesTab
-        productId="p1"
-        baseCoverages={[]}
-        specialCoverages={[]}
-        coverages={[]}
-        attributeKinds={[]}
-        plans={[]}
-        mountSearch={{ base: {}, special: {} }}
-        wouldBeName={(p) => p.name}
-        baseCheck={{ ok: true, value: [] }}
-        standalone
-        confirm={undefined}
-        confirmNode={null}
-      />,
-    );
-    expect(html).toContain("독립특약 상품은 기본계약을 두지 않습니다");
-    // 탑재 폼(hidden section)은 특별약관 절에만
-    expect(html).not.toContain('name="section" value="base"');
-    expect(html).toContain('name="section" value="special"');
   });
 });
 

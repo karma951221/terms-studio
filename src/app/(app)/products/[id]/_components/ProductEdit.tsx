@@ -4,7 +4,7 @@
  * 상품 상세의 편집 상태 — 탭 첫 줄의 조작(편집 / 취소 · 저장)과 탭 본문이 함께 쓴다
  * (와이어프레임 §20.2 「화면 전체의 저장 버튼 하나」 · 기능/상품 §3.8).
  *
- * 서버 컴포넌트인 page.tsx 는 `ProductEditProvider` 로 본문을 감싸기만 한다. 편집이 있는 탭(기본정보 · 보통약관)의 본문이
+ * 서버 컴포넌트인 page.tsx 는 `ProductEditProvider` 로 본문을 감싸기만 한다. 편집이 있는 탭(기본정보 · 상품담보 · 보통약관)의 본문이
  * 마운트되며 제 begin · cancel · save · dirty 를 등록하고, 그 탭 첫 줄 오른쪽의 `ProductEditButtons` 가 그것을 부른다.
  * 편집 버튼은 헤더에 두지 않는다 — 머리의 편집은 모든 탭에 걸리는 것처럼 보였다 (2026-10-03 사용자 QA). 헤더에는 더보기만.
  * 저장이 끝나면 여기서 읽기로 돌아가고 `router.refresh()` 로 서버 값을 다시 받는다.
@@ -34,7 +34,7 @@ export interface ProductEditHandlers {
 interface ProductEditContextValue {
   editing: boolean;
   pending: boolean;
-  /** 이 탭에 편집할 것이 있는가 — 기본정보 탭 · 템플릿이 있는 보통약관 탭. */
+  /** 이 탭에 편집할 것이 있는가 — 기본정보 탭 · 상품담보 탭 · 템플릿이 있는 보통약관 탭. */
   canEdit: boolean;
   begin(): void;
   /** ✕ — 고친 것이 있으면 「버립니까?」 뒤에, 없으면 바로 읽기로. */

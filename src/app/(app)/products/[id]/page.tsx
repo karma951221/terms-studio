@@ -23,7 +23,7 @@ import { type OverrideTarget } from "./_components/GeneralEdit";
 import { ProductEditProvider, ProductHeadActions, ProductPath } from "./_components/ProductEdit";
 import { ProductTabs } from "./_components/ProductTabs";
 import { SpecialPreviewTab } from "./_components/SpecialPreviewTab";
-import { confirmProductGeneralDocumentAction, deleteProductAction, detachPlanAction, removePlanAction, removePlanOptionAction, unmountAction } from "../actions";
+import { confirmProductGeneralDocumentAction, deleteProductAction, removePlanAction, removePlanOptionAction } from "../actions";
 import { legacyProductTabRedirect, productDetailPath, productTabOf, resolveSpecialSelection, specialCoverageGroups } from "../lib";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +32,7 @@ export const dynamic = "force-dynamic";
  * 상품 상세 — 헤더(경로 「상품 › 상품명」 · 편집 · 더보기) + 한 줄 탭 넷 기본정보 · 상품담보 · 보통약관 · 특별약관
  * (기능/상품 §3.8 · §4.3, 2026-10-03). 옛 약관 탭 주소(`?tab=terms&sub=`)는 새 자리로 redirect 한다.
  *
- * 편집 · 취소 · 저장은 편집이 있는 탭(기본정보 · 템플릿이 있는 보통약관)의 **첫 줄 오른쪽**에 있다 — 헤더에는 더보기만
+ * 편집 · 취소 · 저장은 편집이 있는 탭(기본정보 · 상품담보 · 템플릿이 있는 보통약관)의 **첫 줄 오른쪽**에 있다 — 헤더에는 더보기만
  * (머리의 편집은 모든 탭에 걸리는 것처럼 보였다, 2026-10-03 사용자 QA). 편집 상태는 클라이언트 `ProductEditProvider` 가 갖고,
  * 서버 컴포넌트인 이 파일은 Provider 로 본문을 감싸기만 한다. 목록 이동은 경로의 「상품」 링크 하나, 미리보기 · 삭제는 더보기 안이다.
  *
@@ -102,6 +102,9 @@ export default async function ProductDetailPage({
 
   /** 작명 규칙이 지금 지어 줄 이름 — 누르기 전에 결과를 보여준다 (리뷰 #27 · §9.3). */
   const wouldBeName = (pc: ProductCoverage) => defaultCoverageName(coverageName.get(pc.coverageId) ?? "", pc.attributes, attributeKinds, namingTemplate);
+  // 상품담보 탭 (기능/상품 §4.5) — 세목 부착 · 작명 결과는 그 탭을 열었을 때만 (클라이언트로 넘기는 재료라 함수가 아니라 값으로)
+  const attachedPlans = tab === "coverages" ? Object.fromEntries(await services.product.listAttachedPlanIdsOf(id)) : {};
+  const suggestedNames = tab === "coverages" ? Object.fromEntries(productCoverages.map((pc) => [pc.id, wouldBeName(pc)])) : {};
 
   // ── 보통약관 탭의 재료 (기능/상품 §4.6) ───────────────────────
   // 템플릿 트리 · 템플릿 번호 · 숨긴 조 · 조립 결과. 그 탭을 열었을 때만 읽는다 — 조립은 매번 재계산이라 싸지 않다.
@@ -194,16 +197,6 @@ export default async function ProductDetailPage({
       ) : outcome.kind === "error" ? (
         <p className="ts-error-banner">{outcome.message}</p>
       ) : null;
-  } else if (c?.startsWith("pc:")) {
-    const pcId = c.slice(3);
-    const pc = productCoverages.find((p) => p.id === pcId);
-    const outcome = previewOutcome(await services.product.unmount(actor, pcId));
-    confirmNode =
-      outcome.kind === "confirm" ? (
-        <Confirm impact={outcome.impact} action={unmountAction.bind(null, id, "coverages", pcId)} targetLabel={`상품담보 ${pc?.name ?? pcId}`} actionLabel={`${pc?.name ?? "상품담보"} 탑재 해제`} />
-      ) : outcome.kind === "error" ? (
-        <p className="ts-error-banner">{outcome.message}</p>
-      ) : null;
   } else if (c?.startsWith("planOption:")) {
     const optionId = c.slice(11);
     const option = planOptions.find((o) => o.id === optionId);
@@ -230,16 +223,6 @@ export default async function ProductDetailPage({
       ) : outcome.kind === "error" ? (
         <p className="ts-error-banner">{outcome.message}</p>
       ) : null;
-  } else if (c?.startsWith("detach:")) {
-    const [, pcId, planId] = c.split(":");
-    const pc = productCoverages.find((p) => p.id === pcId);
-    const outcome = previewOutcome(await services.product.detachPlan(actor, pcId, planId));
-    confirmNode =
-      outcome.kind === "confirm" ? (
-        <Confirm impact={outcome.impact} action={detachPlanAction.bind(null, id, "coverages", pcId, planId)} targetLabel={`${pc?.name ?? pcId} 의 세목 부착`} actionLabel="세목 부착 해제" />
-      ) : outcome.kind === "error" ? (
-        <p className="ts-error-banner">{outcome.message}</p>
-      ) : null;
   } else if (c?.startsWith("template:")) {
     // 템플릿 교체 — 조 노출·오버라이드는 템플릿의 노드에 매달린 설정이라 함께 초기화된다 (기능/상품 §3 「보통약관」).
     // `dryRun` 으로 묻는다: 확인 주소를 그리는 GET 이 템플릿을 바꿔서는 안 되는데 (뒤로가기 · 다른 창),
@@ -262,7 +245,7 @@ export default async function ProductDetailPage({
   }
 
   return (
-    <ProductEditProvider canEdit={tab === "basic" || (tab === "general" && !!product.generalDocumentId)}>
+    <ProductEditProvider canEdit={tab === "basic" || tab === "coverages" || (tab === "general" && !!product.generalDocumentId)}>
       <div className="ts-page-head ts-product-head">
         <ProductPath name={product.name} />
         <ProductHeadActions
@@ -300,12 +283,12 @@ export default async function ProductDetailPage({
           coverages={coverageRows}
           attributeKinds={attributeKinds}
           plans={plans}
+          attachedPlans={attachedPlans}
+          namingTemplate={namingTemplate}
+          suggestedNames={suggestedNames}
           mountSearch={{ base: { query: sp.bq, page: sp.bpage }, special: { query: sp.mq, page: sp.mpage } }}
-          wouldBeName={wouldBeName}
           baseCheck={baseCheck}
           standalone={isStandaloneContract(productValues.get(CONTRACT_KIND_PATH))}
-          confirm={c}
-          confirmNode={confirmNode}
         />
       )}
 

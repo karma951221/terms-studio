@@ -23,7 +23,6 @@ import {
   generalTabIssues,
   omissionCounts,
   omissionPairLabel,
-  parseSelections,
   productDetailPath,
   productTabOf,
   legacyProductTabRedirect,
@@ -39,23 +38,11 @@ import {
   str,
 } from "./lib";
 
-const kinds: AttributeKind[] = [
-  { code: "A0001", label: "갱신유형", order: 0, values: [{ code: "1", label: "갱신형", fragment: "" }] },
-  { code: "A0002", label: "부가유형", order: 1, values: [{ code: "1", label: "기본", fragment: "" }] },
-];
-
 describe("products lib — 순수 파싱", () => {
   it("str — trim", () => {
     const fd = new FormData();
     fd.set("a", " x ");
     expect(str(fd, "a")).toBe("x");
-  });
-
-  it("parseSelections — attr:<kindCode> 이름의 값만 골라 담는다, 비어있으면 제외", () => {
-    const fd = new FormData();
-    fd.set("attr:A0001", "1");
-    fd.set("attr:A0002", "");
-    expect(parseSelections(fd, kinds)).toEqual([{ kindCode: "A0001", valueCode: "1" }]);
   });
 
 });
