@@ -5137,15 +5137,19 @@ button.ts-ref-fold:hover {
 .ts-terms-template .ts-combo { width: 280px; font-weight: 400; }
 .ts-terms-template-count { margin-left: auto; font-size: 12px; }
 .ts-terms-focus .ts-terms-panel { height: calc(100vh - 230px); min-height: 420px; max-height: none; }
-/* 담보별 미리보기 (기능/상품 §4.7) — 왼쪽 담보 목록 · 가운데 제목 옆 템플릿 링크 · 오른쪽 위 상품담보 선택기 */
+/* 담보별 미리보기 (기능/상품 §4.7) — 담보 · 모델링 · 미리보기 세 패널. 패널마다 머리 띠(스크롤해도 위에 붙는다) */
+.ts-special-preview .ts-terms-panel { padding-top: 0; background: var(--ts-surface); }
+.ts-special-preview .ts-terms-panel-head {
+  position: sticky; top: 0; z-index: 2;
+  display: flex; align-items: center; gap: 8px; min-height: 36px;
+  margin: 0 -12px 8px; padding: 6px 12px;
+  background: var(--ts-surface-2); border-bottom: 1px solid var(--ts-rule);
+}
+.ts-special-preview .ts-terms-panel-head .ts-terms-panel-title { margin: 0; color: var(--ts-ink); }
+.ts-special-pc-select { min-width: 0; max-width: 100%; flex: 0 1 auto; font-size: 13px; }
 .ts-special-list ul { list-style: none; margin: 0; padding: 0; font-size: 13px; }
 .ts-special-list li a { display: block; padding: 3px 4px; color: var(--ts-ink-2); text-decoration: none; }
 .ts-special-list li a[aria-current="page"] { color: var(--ts-mark); font-weight: 700; }
-.ts-terms-panel-link { margin-left: 4px; font-size: 12px; font-weight: 400; }
-.ts-special-pcs { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 8px; padding-bottom: 8px; border-bottom: 1px solid var(--ts-rule); font-size: 13px; }
-.ts-special-pcs a { padding: 2px 8px; border: 1px solid var(--ts-rule); border-radius: 4px; color: var(--ts-ink-2); text-decoration: none; }
-.ts-special-pcs a:hover { background: var(--ts-surface-2); color: var(--ts-ink); }
-.ts-special-pcs a[aria-current="page"] { border-color: var(--ts-mark); color: var(--ts-mark); font-weight: 700; }
 
 @media (max-width: 1100px) {
   .ts-terms-focus .ts-terms-panel { height: auto; max-height: 60vh; min-height: 0; }

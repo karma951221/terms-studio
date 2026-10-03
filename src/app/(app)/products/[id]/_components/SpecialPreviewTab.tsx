@@ -81,10 +81,12 @@ export function SpecialPreviewTab({ productId, groups, selected, template, previ
   }));
 
   return (
-    <div className="ts-terms-focus">
+    <div className="ts-terms-focus ts-special-preview">
       <div className="ts-terms-panels">
         <nav className="ts-terms-panel ts-special-list" aria-label="담보">
-          <h3 className="ts-terms-panel-title">담보</h3>
+          <div className="ts-terms-panel-head">
+            <h3 className="ts-terms-panel-title">담보</h3>
+          </div>
           <ul>
             {groups.map((g) => (
               <li key={g.coverageId}>
@@ -101,15 +103,10 @@ export function SpecialPreviewTab({ productId, groups, selected, template, previ
             ))}
           </ul>
         </nav>
-        <section className="ts-terms-panel" aria-label="담보 모델">
-          <h3 className="ts-terms-panel-title">
-            담보약관 — {group.name} (원문){" "}
-            {template && (
-              <Link className="ts-terms-panel-link" href={`/documents/${template.id}`}>
-                템플릿 열기
-              </Link>
-            )}
-          </h3>
+        <section className="ts-terms-panel" aria-label="모델링">
+          <div className="ts-terms-panel-head">
+            <h3 className="ts-terms-panel-title">모델링 — {group.name}</h3>
+          </div>
           {template ? (
             <TemplateSource
               productId={productId}

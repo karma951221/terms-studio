@@ -93,9 +93,11 @@ describe("SpecialPreviewTab — 담보 단위 세 패널", () => {
     expect(html).not.toContain("질병사망보장");
   });
 
-  it("가운데는 고른 담보의 담보약관 템플릿 원문 모델 — 읽기 전용(폼 · 체크박스 없음) + 템플릿 화면 링크 하나", () => {
-    const html = render({});
-    expect(html).toContain('href="/documents/D1"');
+  it("가운데는 「모델링 — 담보명」 머리 + 담보약관 템플릿 원문 모델 — 읽기 전용(폼 · 체크박스 · 선택 없음), 템플릿 링크도 없다", () => {
+    const page = render({});
+    const html = page.slice(page.indexOf('aria-label="모델링"'), page.indexOf('aria-label="미리보기"'));
+    expect(html).toContain("모델링 — 일반상해사망");
+    expect(page).not.toContain('href="/documents/');
     expect(html).toContain("회사는 상해로 사망한 경우");
     expect(html).toContain("data-clause-box=");
     expect(html).toContain("대표자를 지정합니다");
@@ -104,10 +106,13 @@ describe("SpecialPreviewTab — 담보 단위 세 패널", () => {
     expect(html).not.toContain("<select");
   });
 
-  it("오른쪽 선택기는 고른 담보의 상품담보만 — 고른 건 강조, 미리보기는 그 한 건", () => {
+  it("오른쪽 머리는 상품담보 드롭다운 + 개수 — 고른 담보의 상품담보만, 고른 건 선택됨, 미리보기는 그 한 건", () => {
     const html = render({ pc: "s3" });
-    expect(html).toContain('href="/products/p1?tab=terms&amp;sub=special&amp;pc=s1"');
-    expect(html).toMatch(/<a(?=[^>]*pc=s3")(?=[^>]*aria-current="page")[^>]*>일반상해사망보장 추가/);
+    expect(html).toMatch(/<select[^>]*aria-label="상품담보"/);
+    expect(html).toMatch(/<option value="s1"[^>]*>일반상해사망보장<\/option>/);
+    expect(html).toMatch(/<option value="s3" selected="">일반상해사망보장 추가<\/option>/);
+    expect(html).toMatch(/상품담보 (<!-- -->)?2/);
+    expect(html).not.toContain("ts-special-pcs");
     expect(html).not.toContain("pc=s2");
     expect(html).toContain("일반상해사망보장 추가 지급사유");
     expect(html).not.toContain("일반상해사망보장 지급사유");
