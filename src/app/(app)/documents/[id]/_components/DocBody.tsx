@@ -26,8 +26,8 @@ import {
   CLAUSE_HOST_PARAGRAPH_ID,
   CLAUSE_LINE_ID,
   clauseBodyToTree,
+  clauseModelNumbers,
   indexTree,
-  numberTree,
   optionCodeOf,
   referenceTargetLabel,
   repeatLabel,
@@ -337,7 +337,8 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
     const tree = clauseBodyToTree(shown.mode, shown.body, shown.label);
     const nodes = tree.children[0]?.kind === "article" ? tree.children[0].children : [];
     const slotEval = ctx.evalRef ? new Map([...indexTree(tree).nodes.values()].flatMap((e) => (e.node.kind === "slot" ? [[e.node.id, ctx.evalRef!(e.node.ref)] as const] : []))) : undefined;
-    const inner: DocCtx = { ...ctx, mode: "read", edit: undefined, numbers: numberTree(tree), branchEval: undefined, flashId: undefined, chipOverride: optionChip(clause, node.options), ...(slotEval ? { slotEval } : {}) };
+    const at = ctx.numbers.get(node.id);
+    const inner: DocCtx = { ...ctx, mode: "read", edit: undefined, numbers: clauseModelNumbers(tree, at?.kind === "paragraph" ? at : undefined), branchEval: undefined, flashId: undefined, chipOverride: optionChip(clause, node.options), ...(slotEval ? { slotEval } : {}) };
     const line = clause.mode === "inline" ? nodes.find((n) => n.id === CLAUSE_LINE_ID) : undefined;
     // 「호」 · 「목」 — 자리 항(· 자리 호)은 번호 단계가 아니라 그 목록만 그린다
     const host = nodes.find((n) => n.id === CLAUSE_HOST_PARAGRAPH_ID);
@@ -352,7 +353,7 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
           <InlineSlot at={{ parentId: line.id }} nodes={line.children} ctx={inner} />
         </p>
       ) : list ? (
-        <ol className={clause.mode === "item" ? "ts-doc-items" : "ts-doc-subitems"}>
+        <ol className={clause.mode === "item" ? "ts-doc-items" : "ts-doc-subitems"} style={at && at.kind === clause.mode && at.n > 1 ? { counterReset: `ts-doc-${at.kind} ${at.n - 1}` } : undefined}>
           <Block nodes={list} ctx={inner} inList />
         </ol>
       ) : (
@@ -370,6 +371,7 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
         exprText={(source) => chipText(source, "edit", ctx.refLabel).full}
         {...(ctx.switchValueLabel ? { valueLabel: (on: string, code: Code) => ctx.switchValueLabel!(clause, on, code) } : {})}
         foldScope={node.id}
+        {...(ctx.numbers.get(node.id) ? { at: ctx.numbers.get(node.id) } : {})}
       />
     );
   }
@@ -622,15 +624,17 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
         );
       }
 
-      case "clauseBlockRef":
-        // 호 목록 자리(항 · 호 뒤)의 함수조항은 「박스」 — 목록 안이면 <li> 로 감싼다
+      case "clauseBlockRef": {
+        // 호 목록 자리(항 · 호 뒤)의 함수조항은 「박스」 — 목록 안이면 <li> 로 감싸고, 목록 번호(CSS 카운터)를 차지한 수만큼 올린다 (2026-10-03)
+        const at = ctx.numbers.get(node.id);
         return inList ? (
-          <li key={node.id} className="ts-doc-static-item">
+          <li key={node.id} className="ts-doc-static-item" style={at && (at.kind === "item" || at.kind === "subitem") ? { counterIncrement: `ts-doc-${at.kind} ${at.span ?? 1}` } : undefined}>
             <ClauseBlock node={node} ctx={ctx} />
           </li>
         ) : (
           <ClauseBlock key={node.id} node={node} ctx={ctx} />
         );
+      }
 
       case "condBlock":
         return <CondBlock key={node.id} node={node} ctx={ctx} as={inList ? "li" : "div"} />;

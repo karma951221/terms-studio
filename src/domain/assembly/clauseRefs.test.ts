@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import type { BlockClause, ItemClause } from "../clause/types";
+import { clauseBodyToTree, clauseModelNumbers, clauseSpanBy } from "../document/clauseTree";
 import type { DocumentNode } from "../document/nodes";
+import { numberTree } from "../document/numbering";
 import { specialContext } from "./context";
 import { alphaPlusFixture } from "./fixture";
 import { numberDocument, renderDocument } from "./render";
@@ -144,5 +146,53 @@ describe("호 유형 함수조항 — 항의 호 목록 자리에서 펼쳐 사�
 
   it("IF 로 호 0개 → 그 자리 없음", () => {
     expect(render("C0201")).toEqual(["1. 사망한 경우", "2. 장해를 입은 경우"]);
+  });
+});
+
+describe("원문 모델 번호(clauseSpan)는 조립 번호와 같다 (2026-10-03 사용자 QA)", () => {
+  const 두항: BlockClause = {
+    code: "C0013",
+    label: "약관의 해석",
+    mode: "block",
+    options: [],
+    required: { discriminators: [], attributes: [] },
+    body: [
+      { id: "q1", kind: "paragraph", children: [{ id: "q1t", kind: "text", text: "회사는 약관의 뜻이" }] },
+      { id: "q2", kind: "paragraph", children: [{ id: "q2t", kind: "text", text: "회사는 보험금을" }] },
+    ],
+  };
+  const tree: DocumentNode = {
+    kind: "document",
+    id: "s",
+    title: "특약",
+    children: [
+      {
+        kind: "article",
+        id: "a1",
+        title: "약관의 해석",
+        children: [
+          { kind: "paragraph", id: "h1", children: [{ kind: "text", id: "h1t", text: "앞 항" }] },
+          { kind: "clauseBlockRef", id: "k", clauseCode: "C0013", options: {} },
+          { kind: "paragraph", id: "h2", children: [{ kind: "text", id: "h2t", text: "뒤 항" }] },
+        ],
+      },
+    ],
+  };
+
+  it("② 자리의 2항 함수조항 — 모델은 ① · (②③) · ④, 조립도 ①②③④", () => {
+    const input = alphaPlusFixture();
+    const ctx = specialContext(input, input.coverages[0]);
+    const resolved = resolveDocument(tree, ctx, { clauses: new Map([["C0013", 두항]]), overrides: new Map(), coordinate: { document: "special", ownerId: "pc" } });
+    expect(resolved.issues).toEqual([]);
+    const result = renderDocument(numberDocument(resolved.doc as unknown as SubstitutedDoc), { document: "special", ownerId: "pc", appendices: [] });
+    const article = result.doc.children[0];
+    if (article.kind !== "article") throw new Error("조 아님");
+    const assembled = article.children.map((p) => (p.kind === "paragraph" ? p.label : p.kind));
+
+    const numbers = numberTree(tree, { clauseSpan: clauseSpanBy((code) => (code === "C0013" ? 두항 : undefined)) });
+    const inner = clauseModelNumbers(clauseBodyToTree("block", 두항.body), numbers.get("k"));
+    const model = [numbers.get("h1")?.label, inner.get("q1")?.label, inner.get("q2")?.label, numbers.get("h2")?.label];
+    expect(model).toEqual(["①", "②", "③", "④"]);
+    expect(assembled).toEqual(model);
   });
 });

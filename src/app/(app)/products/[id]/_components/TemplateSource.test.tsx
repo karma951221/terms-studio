@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import type { Clause } from "@/domain/clause";
-import type { ArticleNode, CondBlockNode, InlineNode, NodeNumber } from "@/domain/document";
+import { clauseSpanBy, numberTree, type ArticleNode, type CondBlockNode, type DocumentNode, type InlineNode, type NodeNumber } from "@/domain/document";
 import type { Id } from "@/domain/types";
 
 import { TemplateSource } from "./TemplateSource";
@@ -238,5 +238,39 @@ describe("TemplateSource — 인자 있는 함수조항 상자는 접힌다 (최
     expect(html).toContain("인자: 사유 ← 납입면제사유(기본)");
     expect(html).toMatch(/<summary[^>]*>.*질병.*<\/summary>/);
     expect(html).toContain('name="CB1:sw"');
+  });
+});
+
+describe("TemplateSource — 함수조항 자리의 번호 (2026-10-03 사용자 QA)", () => {
+  const base = { required: { discriminators: [], attributes: [] }, options: [] };
+  const para = (id: string, t: string) => ({ id, kind: "paragraph" as const, children: [{ id: `${id}t`, kind: "text" as const, text: t }] });
+  const item = (id: string) => ({ id, kind: "item" as const, children: [] });
+  const sub = (id: string) => ({ id, kind: "subitem" as const, children: [] });
+  const twoParas: Clause = { ...base, code: "C0013", label: "약관의 해석", mode: "block", body: [para("q1", "회사는 약관의 뜻이"), para("q2", "회사는 보험금을")] };
+  const twoItems: Clause = { ...base, code: "C0200", label: "사유 호", mode: "item", body: [item("ci1"), item("ci2")] };
+  const twoSubs: Clause = { ...base, code: "C0300", label: "사유 목", mode: "subitem", body: [sub("cs1"), sub("cs2")] };
+  const all = [twoParas, twoItems, twoSubs];
+  const render = (article: ArticleNode) => {
+    const tree: DocumentNode = { id: "d", kind: "document", title: "", children: [article] };
+    const numbers = numberTree(tree, { clauseSpan: clauseSpanBy((code) => all.find((c) => c.code === code)) });
+    return renderToStaticMarkup(<TemplateSource productId="p1" nodes={[article]} numbers={numbers} hidden={new Set()} references={new Map()} clauses={all} overrides={[]} overrideTargets={[]} />);
+  };
+  const nums = (html: string) => [...html.matchAll(/<span class="ts-doc-num">([^<]*?) ?<\/span>/g)].map((m) => m[1]);
+
+  it("항 — 자리 번호 ②는 찍지 않고, 함수조항 안이 ②③, 뒤 항이 ④", () => {
+    const html = render({ id: "A1", kind: "article", title: "약관의 해석", children: [para("h1", "앞 항"), { id: "K", kind: "clauseBlockRef", clauseCode: "C0013", options: {} }, para("h2", "뒤 항")] });
+    expect(nums(html)).toEqual(["①", "②", "③", "④"]);
+  });
+
+  it("호 — 함수조항 자리 <li> 가 호 2개만큼 세고, 안 목록은 2.부터", () => {
+    const html = render({ id: "A1", kind: "article", title: "조", children: [{ id: "P", kind: "paragraph", children: [], items: [item("h1"), { id: "K", kind: "clauseBlockRef", clauseCode: "C0200", options: {} }, item("h2")] }] });
+    expect(html).toContain('<li class="ts-doc-static-item" style="counter-increment:ts-doc-item 2">');
+    expect(html).toContain('<ol class="ts-doc-items" style="counter-reset:ts-doc-item 1">');
+  });
+
+  it("목 — 함수조항 자리 <li> 가 목 2개만큼 세고, 안 목록은 나.부터", () => {
+    const html = render({ id: "A1", kind: "article", title: "조", children: [{ id: "P", kind: "paragraph", children: [], items: [{ id: "I", kind: "item", children: [], subitems: [sub("s1"), { id: "K", kind: "clauseBlockRef", clauseCode: "C0300", options: {} } as unknown as ReturnType<typeof sub>, sub("s2")] }] }] });
+    expect(html).toContain('<li class="ts-doc-static-item" style="counter-increment:ts-doc-subitem 2">');
+    expect(html).toContain('<ol class="ts-doc-subitems" style="counter-reset:ts-doc-subitem 1">');
   });
 });

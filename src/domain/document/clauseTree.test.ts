@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type * as C from "../clause/nodes";
 import type { Block, Inline } from "../clause/nodes";
-import { CLAUSE_ARTICLE_ID, CLAUSE_LINE_ID, HOST_TARGET_PREFIX, clauseBodyToTree, clausePositions, clauseScopedRefLabel, optionCarrier, optionCodeOf, treeToClauseBody } from "./clauseTree";
+import { CLAUSE_ARTICLE_ID, CLAUSE_LINE_ID, HOST_TARGET_PREFIX, clauseBodyToTree, clauseModelNumbers, clausePositions, clauseSpanBy, clauseSpanOf, clauseScopedRefLabel, optionCarrier, optionCodeOf, treeToClauseBody } from "./clauseTree";
 import { analyzeBody, structuralIds } from "../clause/body";
 import { expandClause } from "../clause/reference";
 import { applyEdit, generalRefsOf, type EditEnv } from "./edit";
@@ -242,5 +242,40 @@ describe("값별 분기 — 편집 트리 운반 (최종 결정 5)", () => {
     const carrier = (clauseBodyToTree("block", sw).children[0] as unknown as { children: never[] }).children[0];
     const r = applyEdit({ tree: clauseBodyToTree("block", []) }, { type: "insert", node: carrier, at: { parentId: CLAUSE_ARTICLE_ID } }, env);
     expect(r.ok).toBe(false);
+  });
+});
+
+describe("사용처 자리에서 본 함수조항 번호 (2026-10-03 사용자 QA — 자리 번호부터 잇는다)", () => {
+  const para = (id: string): Block => ({ id, kind: "paragraph", children: [] });
+  const item = (id: string): C.ItemNode => ({ id, kind: "item", children: [] });
+  const sub = (id: string): C.SubitemNode => ({ id, kind: "subitem", children: [] });
+
+  it("clauseSpanOf — 맨 위 단계(항 · 호 · 목) 수, 조건 가지 안도 모델처럼 센다", () => {
+    expect(clauseSpanOf({ mode: "block", body: [para("p1"), { id: "c", kind: "condBlock", branches: [{ id: "b", when: "1 = 1", children: [para("p2")] }] }] })).toBe(2);
+    expect(clauseSpanOf({ mode: "block", body: block })).toBe(2); // 항 안의 호 · 목은 세지 않는다
+    expect(clauseSpanOf({ mode: "item", body: [item("i1"), { id: "c", kind: "condBlock", branches: [{ id: "b", when: "1 = 1", children: [item("i2")] }] }, item("i3")] })).toBe(3);
+    expect(clauseSpanOf({ mode: "subitem", body: [sub("s1"), sub("s2")] })).toBe(2);
+  });
+
+  it("clauseSpanOf — 빈 본문 · 문구 유형은 1(자리 하나)", () => {
+    expect(clauseSpanOf({ mode: "block", body: [] })).toBe(1);
+    expect(clauseSpanOf({ mode: "inline", body: inline })).toBe(1);
+  });
+
+  it("clauseModelNumbers — 자리 번호 ②부터 ②③, 자리가 단항(빈 label)이면 번호 없음, 자리 없으면 ①②", () => {
+    const tree = clauseBodyToTree("block", [para("p1"), para("p2")]);
+    const labels = (at?: { n: number; label: string }) => ["p1", "p2"].map((id) => clauseModelNumbers(tree, at).get(id)?.label);
+    expect(labels({ n: 2, label: "②" })).toEqual(["②", "③"]);
+    expect(labels({ n: 1, label: "" })).toEqual(["", ""]);
+    expect(labels()).toEqual(["①", "②"]);
+    // 1항 함수조항이라도 자리가 ③이면 ③ (모델 혼자서는 단항이라 번호가 없다)
+    const single = clauseBodyToTree("block", [para("p1")]);
+    expect(clauseModelNumbers(single, { n: 3, label: "③" }).get("p1")?.label).toBe("③");
+  });
+
+  it("clauseSpanBy — 코드로 찾아 센다, 모르는 함수조항은 undefined", () => {
+    const span = clauseSpanBy((code) => (code === "C1" ? { mode: "block", body: [para("p1"), para("p2")] } : undefined));
+    expect(span({ id: "k", kind: "clauseBlockRef", clauseCode: "C1", options: {} })).toBe(2);
+    expect(span({ id: "k", kind: "clauseBlockRef", clauseCode: "C9", options: {} })).toBeUndefined();
   });
 });

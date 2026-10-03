@@ -16,7 +16,7 @@
 import { Fragment, type ReactNode } from "react";
 
 import type { ArticleRefNode, Block, BulletListNode, Clause, Inline, ItemBodyNode, SubitemBodyNode } from "@/domain/clause";
-import { clauseBodyToTree, clauseInlineToTree, clausePositions, clauseScopedRefLabel, numberTree, referenceChunkLabel, referenceKeyIndex, refKey, type NodeNumber, type ReferenceTarget } from "@/domain/document";
+import { clauseBodyToTree, clauseInlineToTree, clauseModelNumbers, clausePositions, clauseScopedRefLabel, referenceChunkLabel, referenceKeyIndex, refKey, type NodeNumber, type ReferenceTarget } from "@/domain/document";
 import type { Box } from "@/domain/document/box";
 import type { Code, Id } from "@/domain/types";
 
@@ -40,6 +40,16 @@ export interface ClauseModelProps {
   valueLabel?: (on: string, code: Code) => string | undefined;
   /** 접힌 칸 묶음(`<details name>`)의 앞마디 — 사용처 상자마다 다르게(상자 노드 id). 같은 함수조항 상자가 둘이어도 서로 닫지 않게. 없으면 함수조항 코드. */
   foldScope?: string;
+  /**
+   * 사용처 자리의 번호(그 함수조항 참조 노드의 번호 — `numberTree` + `clauseSpan`). 주면 맨 위 항 · 호 · 목이 이 번호부터 잇는다
+   * (③ 자리의 3항 함수조항 → ③④⑤, 2026-10-03 사용자 QA). 자리가 단항(빈 label)이면 항 번호 없음. 없으면 모델 혼자 센 번호.
+   */
+  at?: NodeNumber;
+}
+
+/** 맨 위 호 · 목 목록의 시작 — 목록 번호는 CSS 카운터라 `counter-reset` 을 자리 번호 앞으로 맞춘다. */
+function listStart(at: NodeNumber | undefined, kind: "item" | "subitem"): { counterReset: string } | undefined {
+  return at && at.kind === kind && at.n > 1 ? { counterReset: `ts-doc-${kind} ${at.n - 1}` } : undefined;
 }
 
 interface Ctx extends ClauseModelProps {
@@ -262,9 +272,9 @@ function BranchHead({ ctx, i, when }: { ctx: Ctx; i: number; when: string | unde
   );
 }
 
-function Items({ nodes, ctx }: { nodes: readonly ItemBodyNode[]; ctx: Ctx }) {
+function Items({ nodes, ctx, top }: { nodes: readonly ItemBodyNode[]; ctx: Ctx; top?: boolean }) {
   return (
-    <ol className="ts-doc-items">
+    <ol className="ts-doc-items" style={top ? listStart(ctx.at, "item") : undefined}>
       {nodes.map((item) =>
         item.kind === "condBlock" ? (
           <ListCond key={item.id} node={item} ctx={ctx}>
@@ -293,9 +303,9 @@ function Items({ nodes, ctx }: { nodes: readonly ItemBodyNode[]; ctx: Ctx }) {
   );
 }
 
-function Subitems({ nodes, ctx }: { nodes: readonly SubitemBodyNode[]; ctx: Ctx }) {
+function Subitems({ nodes, ctx, top }: { nodes: readonly SubitemBodyNode[]; ctx: Ctx; top?: boolean }) {
   return (
-    <ol className="ts-doc-subitems">
+    <ol className="ts-doc-subitems" style={top ? listStart(ctx.at, "subitem") : undefined}>
       {nodes.map((s) =>
         s.kind === "condBlock" ? (
           <ListCond key={s.id} node={s} ctx={ctx}>
@@ -349,7 +359,7 @@ function Blocks({ nodes, ctx }: { nodes: readonly Block[]; ctx: Ctx }): ReactNod
 export function ClauseModel(props: ClauseModelProps) {
   const { clause } = props;
   const tree = clauseBodyToTree(clause.mode, clause.body, clause.label);
-  const ctx: Ctx = { ...props, numbers: numberTree(tree), positions: clausePositions(tree), fold: (clause.params ?? []).length > 0 };
+  const ctx: Ctx = { ...props, numbers: clauseModelNumbers(tree, props.at?.kind === "paragraph" ? props.at : undefined), positions: clausePositions(tree), fold: (clause.params ?? []).length > 0 };
   if (clause.body.length === 0) return <p className="ts-muted">본문이 비어 있다.</p>;
   return (
     <div className="ts-clause-model" aria-label={`함수조항 ${clause.label} 모델`}>
@@ -358,9 +368,9 @@ export function ClauseModel(props: ClauseModelProps) {
           <Inlines nodes={clause.body} ctx={ctx} />
         </p>
       ) : clause.mode === "item" ? (
-        <Items nodes={clause.body} ctx={ctx} />
+        <Items nodes={clause.body} ctx={ctx} top />
       ) : clause.mode === "subitem" ? (
-        <Subitems nodes={clause.body} ctx={ctx} />
+        <Subitems nodes={clause.body} ctx={ctx} top />
       ) : (
         <Blocks nodes={clause.body} ctx={ctx} />
       )}

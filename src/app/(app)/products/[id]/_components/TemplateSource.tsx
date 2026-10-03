@@ -239,7 +239,7 @@ function argsText(clause: Clause, bindings: Bindings | undefined, ctx: Ctx): str
  * 가운데는 모델(슬롯 · 옵션 자리 · 조건 · 참조), 오른쪽은 조립 결과 — 둘을 나란히 대조한다. 함수조항 자체는 함수조항 화면에서 고친다.
  * 모델 아래에 이 자리의 옵션 선택(마스터 기본 · 이 상품 오버라이드)이 선다 — 옵션이 없는 함수조항이면 선택 줄도 없다.
  */
-function ClauseBox({ nodeId, clauseCode, baseOptions, bindings, ctx }: { nodeId: Id; clauseCode: Code; baseOptions: Record<Code, Code>; bindings: Bindings | undefined; ctx: Ctx }) {
+function ClauseBox({ nodeId, clauseCode, baseOptions, bindings, ctx, at }: { nodeId: Id; clauseCode: Code; baseOptions: Record<Code, Code>; bindings: Bindings | undefined; ctx: Ctx; at?: NodeNumber }) {
   const clause = ctx.clauseByCode.get(clauseCode);
   const label = clause?.label ?? `${clauseCode}(없는 함수조항)`;
   const override = ctx.overrideByNode.get(nodeId);
@@ -260,7 +260,7 @@ function ClauseBox({ nodeId, clauseCode, baseOptions, bindings, ctx }: { nodeId:
       </div>
       <div className="ts-doc-clause-body">
         {clause ? (
-          <ClauseModel clause={clause} selected={effective} references={ctx.references} appendixName={ctx.appendixName} boxOf={ctx.boxOf} exprText={ctx.exprText} valueLabel={switchValueLabeler(clause, ctx.enums)} foldScope={nodeId} />
+          <ClauseModel clause={clause} selected={effective} references={ctx.references} appendixName={ctx.appendixName} boxOf={ctx.boxOf} exprText={ctx.exprText} valueLabel={switchValueLabeler(clause, ctx.enums)} foldScope={nodeId} {...(at ? { at } : {})} />
         ) : (
           <p className="ts-muted">{clauseCode} — 없는 함수조항이다(깨진 참조).</p>
         )}
@@ -367,18 +367,21 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
           </li>
         );
 
-      case "clauseBlockRef":
-        // 호 목록 자리(항 · 호 뒤)의 함수조항은 「박스」 — 목록 안이면 <li>
+      case "clauseBlockRef": {
+        // 자리 번호(②)는 찍지 않는다 — 함수조항 안 번호가 자리부터 잇고(②③), 뒤 형제는 차지한 수만큼 밀린다 (2026-10-03 사용자 QA).
+        // 호 · 목 목록 자리면 <li> — 목록 번호(CSS 카운터)를 차지한 수만큼 올린다
+        const at = ctx.numbers.get(node.id);
+        const box = <ClauseBox nodeId={node.id} clauseCode={node.clauseCode} baseOptions={node.options} bindings={node.bindings} ctx={ctx} {...(at ? { at } : {})} />;
         return inList ? (
-          <li key={node.id} className="ts-doc-static-item">
-            <ClauseBox nodeId={node.id} clauseCode={node.clauseCode} baseOptions={node.options} bindings={node.bindings} ctx={ctx} />
+          <li key={node.id} className="ts-doc-static-item" style={at && (at.kind === "item" || at.kind === "subitem") ? { counterIncrement: `ts-doc-${at.kind} ${at.span ?? 1}` } : undefined}>
+            {box}
           </li>
         ) : (
-          <div key={node.id} className={ctx.numbers.get(node.id)?.label ? "ts-doc-paragraph" : "ts-doc-paragraph is-bare"}>
-            {ctx.numbers.get(node.id)?.label ? <span className="ts-doc-num">{ctx.numbers.get(node.id)?.label}</span> : null}
-            <ClauseBox nodeId={node.id} clauseCode={node.clauseCode} baseOptions={node.options} bindings={node.bindings} ctx={ctx} />
+          <div key={node.id} className="ts-doc-paragraph is-bare">
+            {box}
           </div>
         );
+      }
 
       case "condBlock":
         return node.branches.map((br, i) => {

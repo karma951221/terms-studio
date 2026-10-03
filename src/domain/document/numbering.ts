@@ -7,13 +7,14 @@
  *
  * ⚠ 표기 규칙은 **임시**다 — 조·별표 참조 슬롯의 렌더 표기(「제3조(보험금의 지급사유)」·「【별표13(화상 분류표)】」)는
  *   2026-09-07 확정분: 관 「제N관」 · 항이 하나뿐인 조는 마커 없음(빈 label) · 별표 번호는 책자 등장 순(ADR-0063).
- *   함수조항 block 참조는 항 1개로 센다 — 실제 항 수는 인라인화 뒤 조립이 안다.
+ *   함수조항 참조(항 · 호 · 목 자리)는 `clauseSpan` 을 주면 그 함수조항이 펼칠 수만큼 센다 — 뒤 형제가 그만큼 밀려
+ *   조립 번호와 같아진다(2026-10-03). 주지 않으면 1개로 센다.
  */
 
 import { CONNECTOR_PLACEHOLDER, type Code, type Id, type ReferenceConnector } from "../types";
 import { withClauseCodes } from "../clause/pcode";
 import type { Clause } from "../clause/types";
-import type { ArticleNode, BlockNode, DocumentNode, ForBlockNode, Node, RefTarget } from "./nodes";
+import type { ArticleNode, BlockNode, ClauseBlockRefNode, DocumentNode, ForBlockNode, Node, RefTarget } from "./nodes";
 import { refKey } from "./pcode";
 
 export type NumberKind = "section" | "article" | "paragraph" | "item" | "subitem";
@@ -23,6 +24,8 @@ export interface NodeNumber {
   /** 1부터. */
   n: number;
   label: string;
+  /** 함수조항 참조가 차지한 수(2 이상일 때만) — `n` 부터 `n + span - 1` 까지. */
+  span?: number;
 }
 
 export type BranchState = "taken" | "notTaken" | "undetermined" | "error";
@@ -30,6 +33,11 @@ export type BranchState = "taken" | "notTaken" | "undetermined" | "error";
 export interface NumberingOptions {
   /** 가지 id → 사전평가 상태. `notTaken` 가지는 번호 계산에서 뺀다. */
   branchStates?: ReadonlyMap<Id, BranchState>;
+  /**
+   * 함수조항 참조가 그 자리(항 · 호 · 목)에서 펼칠 수 (`clauseSpanBy`). undefined 면 1 — 모르는 함수조항 · 옛 동작.
+   * 번호는 자리의 첫 번호, 뒤 형제는 그만큼 밀린다 (2026-10-03 사용자 QA).
+   */
+  clauseSpan?: (ref: ClauseBlockRefNode) => number | undefined;
 }
 
 // ───────────────────────────── 표기 (임시 규칙) ─────────────────────────────
@@ -461,15 +469,17 @@ class Counter {
     private readonly kind: NumberKind,
     private readonly out: Map<Id, NodeNumber>,
   ) {}
-  next(id: Id): void {
-    this.n += 1;
+  /** `span` = 이 노드가 차지하는 수 (함수조항 참조). 번호는 첫 자리. */
+  next(id: Id, span = 1): void {
+    const n = this.n + 1;
+    this.n += Math.max(1, span);
     this.last = id;
-    this.out.set(id, { kind: this.kind, n: this.n, label: LABELS[this.kind](this.n) });
+    this.out.set(id, { kind: this.kind, n, label: LABELS[this.kind](n), ...(span > 1 ? { span } : {}) });
   }
   get count(): number {
     return this.n;
   }
-  /** 항이 하나뿐인 조는 마커를 찍지 않는다 (실물: 단항 조는 전부 번호 없는 본문 — 기능/문면 §3.2). */
+  /** 항이 하나뿐인 조는 마커를 찍지 않는다 (실물: 단항 조는 전부 번호 없는 본문 — 기능/문면 §3.2). 센 총수로 본다 — 홀로 선 2항 함수조항은 단항이 아니다. */
   hideIfSingle(): void {
     if (this.n === 1 && this.last !== undefined) {
       const only = this.out.get(this.last);
@@ -482,6 +492,7 @@ class Counter {
 export function numberTree(doc: DocumentNode, opts: NumberingOptions = {}): Map<Id, NodeNumber> {
   const out = new Map<Id, NodeNumber>();
   const skip = (branchId: Id) => opts.branchStates?.get(branchId) === "notTaken";
+  const span = (ref: ClauseBlockRefNode) => opts.clauseSpan?.(ref) ?? 1;
 
   /** 같은 자리의 형제 목록을 조건 블록·반복 블록을 투명하게 펼쳐 순회한다. */
   const each = (list: readonly Node[], fn: (node: Node) => void): void => {
@@ -503,16 +514,17 @@ export function numberTree(doc: DocumentNode, opts: NumberingOptions = {}): Map<
         paragraphs.next(n.id);
         const items = new Counter("item", out);
         each(n.items ?? [], (it) => {
-          if (it.kind === "clauseBlockRef") return items.next(it.id); // 임시 — 「호」 함수조항을 호 1개로 센다(펼친 수는 조립에서)
+          if (it.kind === "clauseBlockRef") return items.next(it.id, span(it));
           if (it.kind !== "item") return;
           items.next(it.id);
           const subitems = new Counter("subitem", out);
           each(it.subitems ?? [], (s) => {
-            if (s.kind === "subitem" || s.kind === "clauseBlockRef") subitems.next(s.id);
+            if (s.kind === "subitem") subitems.next(s.id);
+            else if (s.kind === "clauseBlockRef") subitems.next(s.id, span(s));
           });
         });
       } else if (n.kind === "clauseBlockRef") {
-        paragraphs.next(n.id); // 임시 — 항 1개로 센다
+        paragraphs.next(n.id, span(n));
       }
     });
     paragraphs.hideIfSingle();

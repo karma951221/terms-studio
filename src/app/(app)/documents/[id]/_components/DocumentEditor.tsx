@@ -41,6 +41,7 @@ import {
   generalRefsOf,
   indexTree,
   isRepeatSource,
+  clauseSpanBy,
   numberTree,
   preEvaluate,
   evaluateSlotRef,
@@ -259,17 +260,19 @@ export function DocumentEditor(props: EditorProps) {
   }, [evalOn, props.master, props.discriminators, tree, coordinate]);
 
   // ── 번호 · 참조 표기 ──
+  // 함수조항 참조는 펼칠 항 · 호 · 목 수만큼 센다 — 뒤 형제 · 조 참조 표기가 조립과 같게 (2026-10-03 사용자 QA)
+  const clauseSpan = useMemo(() => clauseSpanBy((code) => props.clauses.find((c) => c.code === code)), [props.clauses]);
   const numbers = useMemo(() => {
     const states = evaluation ? new Map([...evaluation.branches].map(([k, v]) => [k, v.state] as [Id, BranchState])) : undefined;
-    return numberTree(tree, states ? { branchStates: states } : {});
-  }, [tree, evaluation]);
+    return numberTree(tree, { clauseSpan, ...(states ? { branchStates: states } : {}) });
+  }, [tree, evaluation, clauseSpan]);
   const currentGeneral = current.generalDocumentId ? renderCache[current.generalDocumentId] : undefined;
   // 대상 고르기 색인 — 반복 블록 · 함수조항 참조 줄과 그 본문의 항 · 호 · 목 줄까지 (ADR-0077 결정 6 · 7)
   const indexOpts = useMemo(
     () => ({ clauseOf: (c: Code) => props.clauses.find((x) => x.code === c), repeatCaption: (n: ForBlockNode, outer?: ForBlockNode) => n.alias ?? repeatLabel(n.source, { ...(outer && isRepeatSource(outer.source) ? { outer: outer.source } : {}), enumOf: (c) => enumByCode.get(c) }) }),
     [props.clauses, enumByCode],
   );
-  const generalTargets = useMemo(() => (currentGeneral ? referenceTargetIndex(currentGeneral.tree, numberTree(currentGeneral.tree), indexOpts) : new Map<Id, ReferenceTarget>()), [currentGeneral, indexOpts]);
+  const generalTargets = useMemo(() => (currentGeneral ? referenceTargetIndex(currentGeneral.tree, numberTree(currentGeneral.tree, { clauseSpan }), indexOpts) : new Map<Id, ReferenceTarget>()), [currentGeneral, indexOpts, clauseSpan]);
   const references = useMemo(() => ({ self: referenceTargetIndex(tree, numbers, indexOpts), general: generalTargets }), [tree, numbers, generalTargets, indexOpts]);
   // 반복 블록 안 대상 — 이 템플릿 · 대응 보통약관 (조 참조 연결어, ADR-0077 결정 7)
   const repeated = useMemo(() => new Set([...repeatedKeys(indexTree(tree)), ...(currentGeneral ? repeatedKeys(indexTree(currentGeneral.tree)) : [])]), [tree, currentGeneral]);

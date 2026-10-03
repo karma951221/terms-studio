@@ -6,7 +6,7 @@ import { RenderedDoc } from "@/app/_components/RenderedDoc";
 import type { Booklet } from "@/domain/assembly";
 import type { EnumDef } from "@/domain/catalog";
 import type { Clause } from "@/domain/clause";
-import { referenceTargetIndex, type Box, type DocumentNode, type NodeNumber } from "@/domain/document";
+import { clauseSpanBy, numberTree, referenceTargetIndex, type Box, type DocumentNode, type NodeNumber } from "@/domain/document";
 import type { ClauseOptionOverride, ProductCoverage } from "@/domain/product";
 import type { Id } from "@/domain/types";
 
@@ -68,7 +68,7 @@ export function GeneralTab({
   enums,
   discriminators,
   generalTree,
-  generalNumbers,
+  generalNumbers: templateNumbers,
   hiddenArticles,
   booklet,
   bookletNote,
@@ -78,6 +78,8 @@ export function GeneralTab({
 }: GeneralTabProps) {
   // ── 약관 섹션의 좌표 — 관 하나가 세 패널의 단위다 ──────────────────────────
   const sections = generalTree ? generalSections(generalTree) : [];
+  // 원문 모델 번호 — 함수조항 참조는 펼칠 항 · 호 · 목 수만큼 센다(뒤 형제 · 조 참조 표기가 조립과 같게, 2026-10-03 사용자 QA)
+  const generalNumbers = generalTree ? numberTree(generalTree, { clauseSpan: clauseSpanBy((code) => clauses.find((c) => c.code === code)) }) : templateNumbers;
   const hidden = new Set(hiddenArticles);
   const allArticles = sections.flatMap((s) => s.articles);
   const articleTotal = allArticles.length;
