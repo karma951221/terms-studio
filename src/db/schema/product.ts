@@ -1,5 +1,5 @@
 /**
- * 상품 스키마 — 담보속성 카탈로그 · 상품 · 세목 · 상품담보(탑재 스냅샷) · 기본계약 · 특약 그룹 · 옵션 오버라이드.
+ * 상품 스키마 — 담보속성 카탈로그 · 상품 · 조 사본 · 세목 · 상품담보(탑재 스냅샷) · 기본계약 · 특약 그룹 · 옵션 오버라이드.
  *
  * 근거: docs/기능/상품/상품.md (§3.5 · §3.6) · docs/기능/조립산출/조립산출.md · ADR-0002 · ADR-0006 · ADR-0015.
  *
@@ -15,6 +15,7 @@
 import { integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 import type { Booklet } from "@/domain/assembly/types";
+import type { ArticleNode } from "@/domain/document/nodes";
 import type { ClauseOptionSelection } from "@/domain/product/types";
 
 /** 감사 컬럼 — 상품 영역 테이블 공통. */
@@ -71,6 +72,11 @@ export const products = pgTable("products", {
   name: text("name").notNull().unique(),
   /** 보통약관 템플릿(문서) id. FK 없음. MVP 는 1개. */
   generalDocumentId: uuid("general_document_id"),
+  /**
+   * 이 상품의 보통약관 설정이 기준으로 삼은 템플릿 판(`documents.version`) — 템플릿 지정 · 보통약관 탭 저장 때 적는다.
+   * 지금 템플릿 판이 이보다 크면 「보통약관 템플릿이 바뀌었습니다」 한 줄 (ADR-0079 · 기능/상품 §4.6). null = 모름(경고 없음).
+   */
+  generalBaseVersion: integer("general_base_version"),
   ...audit,
 });
 
@@ -87,6 +93,25 @@ export const productHiddenArticles = pgTable(
     articleId: text("article_id").notNull(),
     hiddenAt: timestamp("hidden_at", { withTimezone: true }).notNull().defaultNow(),
     hiddenBy: uuid("hidden_by"),
+  },
+  (t) => [primaryKey({ columns: [t.productId, t.articleId] })],
+);
+
+/**
+ * 상품의 조 사본 (ADR-0079 · 기능/상품 §3.10) — 보통약관 탭에서 고친 템플릿 조 하나 = 행 하나. 행이 없는 조는 템플릿을 따른다.
+ * `article` = 그 조 노드의 하위 트리 전부(jsonb, id 는 자리의 조 id 와 같다). `template_hash` = 사본을 만들 때(또는 「사본 유지」 때)의
+ * 템플릿 조 지문 — 지금 템플릿 조 지문과 다르면 「템플릿이 바뀜」. 조 id 는 문서 노드 id 라 text (숨긴 조와 같은 이유).
+ */
+export const productArticleCopies = pgTable(
+  "product_article_copies",
+  {
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    articleId: text("article_id").notNull(),
+    article: jsonb("article").$type<ArticleNode>().notNull(),
+    templateHash: text("template_hash").notNull(),
+    ...audit,
   },
   (t) => [primaryKey({ columns: [t.productId, t.articleId] })],
 );

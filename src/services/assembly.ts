@@ -149,7 +149,7 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
     const p = await product.getProduct(productId);
     if (!p) return reject({ reason: "notFound", what: `상품 ${productId}` });
 
-    const [coverages, groups, baseContractIds, productValues, planOptions, definedPlanOptions, productOverrides, hiddenArticleIds] = await Promise.all([
+    const [coverages, groups, baseContractIds, productValues, planOptions, definedPlanOptions, productOverrides, hiddenArticleIds, articleCopies] = await Promise.all([
       loadCoverages(productId),
       listGroups(db, productId),
       listBaseContractIds(db, productId),
@@ -158,6 +158,7 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
       product.listPlanOptions(productId),
       product.listOptionOverrides({ kind: "product", id: productId }),
       product.listHiddenArticles(productId),
+      product.listArticleCopies(productId),
     ]);
     // 가리키는 문서가 마스터에 없으면 「템플릿 미선택」과 같다 — id 를 싣지 않는다
     const generalDocumentId = p.generalDocumentId && master.generalDocuments.has(p.generalDocumentId) ? p.generalDocumentId : undefined;
@@ -173,6 +174,8 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
         ...(generalDocumentId ? { generalDocumentId } : {}),
         overrides: productOverrides,
         hiddenArticleIds: new Set(hiddenArticleIds),
+        // 조 사본 (ADR-0079) — 템플릿에 자리가 없는 사본은 조립이 쓰지 않는다(generalDocumentOf)
+        ...(articleCopies.length > 0 ? { articleCopies: new Map(articleCopies.map((c) => [c.articleId, c.article] as const)) } : {}),
       },
       coverages,
       groups,

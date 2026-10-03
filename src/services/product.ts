@@ -14,8 +14,13 @@
 import { destructive, type DestructiveAction } from "@/domain/auth";
 import { countedSlotsOf, slotType, validateValue, type Discriminator, type SlotPath } from "@/domain/catalog";
 import { validateSlotValue } from "@/domain/coverage";
+import { blockingIssues, indexTree, type ArticleNode } from "@/domain/document";
 import {
   addAttributeValue,
+  applyArticleCopies,
+  articlesById,
+  sameArticle,
+  type ArticleCopy,
   baseContractCountIssue,
   baseContractDesignationIssues,
   checkGeneralAttachment,
@@ -141,6 +146,10 @@ export interface GeneralSettingsInput {
   generalDocumentId: Id;
   hiddenArticles: Id[];
   overrides: { nodeId: Id; clauseCode: Code; options: ClauseOptionSelection }[];
+  /** 조 사본 전부 (ADR-0079) — 목록에 없는 사본은 지운다(「템플릿대로 되돌리기」). 템플릿과 같은 내용의 사본은 남기지 않는다. 없으면 빈 목록. */
+  copies?: ArticleCopy[];
+  /** 편집을 시작할 때 본 템플릿 판 — 저장하면 「기준 판」이 된다. 없으면 지금 판. */
+  templateVersion?: number;
 }
 
 export interface ProductBasicInput {
@@ -187,10 +196,10 @@ export interface ProductService {
   /**
    * 보통약관 템플릿 선택·교체·해제(undefined).
    *
-   * 조 노출·옵션 오버라이드는 **템플릿 기준** 설정이라 템플릿이 실제로 바뀌면 함께 초기화된다
+   * 조 노출·옵션 오버라이드·조 사본(ADR-0079)은 **템플릿 기준** 설정이라 템플릿이 실제로 바뀌면 함께 초기화된다
    * (기능/상품 §3.6). 잃는 것이 있으면 1차 호출은
    * `needsConfirmation(Impact)` 으로 거부하고, `{ confirm: true }` 재호출이 **한 트랜잭션**에서
-   * 둘을 비우고 교체한다 — 한쪽만 조용히 버리거나(숨김) 교체 자체를 막지(오버라이드) 않는다
+   * 셋을 비우고 교체한다(기준 판도 새 템플릿 판으로) — 한쪽만 조용히 버리거나(숨김) 교체 자체를 막지(오버라이드) 않는다
    * (코덱스 리뷰 2026-09-15 Important-6). 같은 템플릿을 다시 고르면 아무것도 잃지 않는다.
    *
    * 역할 관문은 두지 않는다 — `destructive()` 카탈로그에 넣지 않고 **확인 2단만** 쓴다. 편집자도 한다
@@ -205,11 +214,17 @@ export interface ProductService {
    */
   setArticleHidden(actor: Actor, productId: Id, articleId: Id, hidden: boolean): Promise<Result<void>>;
   /**
-   * 보통약관 탭 편집 화면 한 번 저장 — 조 노출 · 옵션 오버라이드의 최종 상태를 전부 검사한 뒤 한 트랜잭션으로 맞춘다
-   * (기능/상품 §3.8). 하나라도 틀리면 아무것도 안 쓰고 `invalid` — 이슈 좌표는 그 조(`articleId`) · 그 자리(`nodePath`).
+   * 보통약관 탭 편집 화면 한 번 저장 — 조 노출 · 옵션 오버라이드 · 조 사본의 최종 상태를 전부 검사한 뒤 한 트랜잭션으로 맞춘다
+   * (기능/상품 §3.8 · §3.10). 하나라도 틀리면 아무것도 안 쓰고 `invalid` — 이슈 좌표는 그 조(`articleId`) · 그 자리(`nodePath`).
+   * 조 사본은 템플릿에 사본을 갈아 끼운 트리를 문면 저장 검증으로 보고 사본이 든 조의 오류만 이 저장의 것으로 친다(ADR-0079).
+   * 오버라이드 자리도 그 트리에서 찾는다. 저장하면 「기준 판」을 편집을 시작한 템플릿 판으로 적는다.
    * 편집을 시작한 템플릿과 지금 템플릿이 다르면(템플릿 없음 포함) `conflict`.
    */
   saveGeneralSettings(actor: Actor, productId: Id, input: GeneralSettingsInput): Promise<Result<void>>;
+  /** 상품의 조 사본 (ADR-0079) — 템플릿에서 조가 지워진 사본도 그대로 돌려준다(가리는 것은 화면 · 조립). */
+  listArticleCopies(productId: Id): Promise<ArticleCopy[]>;
+  /** 이 상품의 보통약관 설정이 기준으로 삼은 템플릿 판 — 지금 판이 더 크면 「템플릿이 바뀌었습니다」. 모르면 undefined. */
+  generalBaseVersion(productId: Id): Promise<number | undefined>;
   deleteProduct(actor: Actor, id: Id, opts?: Confirmable): Promise<Result<void>>;
   setProductValue(actor: Actor, id: Id, path: SlotPath, value: Value | undefined): Promise<Result<void>>;
   /** 한 제출의 값 여럿 — 전부 검사한 뒤 한 트랜잭션으로 쓴다. 하나라도 거부되면 아무것도 안 바뀐다. */
@@ -345,7 +360,19 @@ function cleanName(name: unknown): string | undefined {
 
 export function createProductService(db: Db, deps: ProductServiceDeps = {}): ProductService {
   const master = deps.coverageMaster ?? NO_MASTER;
-  const gate: GeneralDocumentGate = { exists: async () => true, articleIds: async () => [], clauseRef: async () => undefined, ...deps.generalDocuments };
+  const gate: Required<GeneralDocumentGate> = {
+    exists: async () => true,
+    articleIds: async () => [],
+    clauseRef: async () => undefined,
+    template: async () => undefined,
+    validate: async () => [],
+    ...deps.generalDocuments,
+  };
+
+  /** 템플릿 지정 · 저장의 「기준 판」 — 판을 모르면 null(경고 없음). */
+  async function baseVersionOf(generalDocumentId: Id | undefined): Promise<number | null> {
+    return generalDocumentId ? ((await gate.template(generalDocumentId))?.version ?? null) : null;
+  }
   const attachment = deps.generalAttachment ?? { requiredRefs: async () => [] };
   const optionValidator = deps.optionValidator ?? { validate: async () => [] };
   const attributeRefs = deps.attributeRefs ?? { findExpressionRefs: async () => [] };
@@ -798,7 +825,9 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
         if (!name) return invalid([issue("typeMismatch", "상품명은 비울 수 없습니다")]);
         if (await repo.findProductByName(tx, name)) return reject({ reason: "duplicate", what: `상품명 ${name}` });
         if (input.generalDocumentId && !(await gate.exists(input.generalDocumentId))) return notFound(`보통약관 템플릿 ${input.generalDocumentId}`);
-        return ok(await repo.insertProduct(tx, { name, generalDocumentId: input.generalDocumentId }, actor.userId));
+        const product = await repo.insertProduct(tx, { name, generalDocumentId: input.generalDocumentId }, actor.userId);
+        if (input.generalDocumentId) await repo.setGeneralBaseVersion(tx, product.id, await baseVersionOf(input.generalDocumentId));
+        return ok(product);
       }),
     renameProduct: (actor, id, name) =>
       db.transaction((tx) =>
@@ -819,9 +848,13 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
           // 조 노출·오버라이드는 템플릿의 노드에 매달린 설정이다 — 교체(해제 포함)면 **둘 다** 초기화된다.
           // 잃는 것이 있으면 세어 확인부터 받는다 (기능/상품 §3 「보통약관」).
           if (changes) {
-            const [hidden, overrides] = await Promise.all([repo.listHiddenArticles(tx, id), repo.listOverrides(tx, { kind: "product", id })]);
-            if (!opts.confirm && hidden.length + overrides.length > 0) {
-              const cascade = [...(hidden.length > 0 ? [`숨긴 조 ${hidden.length}`] : []), ...(overrides.length > 0 ? [`옵션 오버라이드 ${overrides.length}`] : [])];
+            const [hidden, overrides, copies] = await Promise.all([repo.listHiddenArticles(tx, id), repo.listOverrides(tx, { kind: "product", id }), repo.listArticleCopies(tx, id)]);
+            if (!opts.confirm && hidden.length + overrides.length + copies.length > 0) {
+              const cascade = [
+                ...(hidden.length > 0 ? [`숨긴 조 ${hidden.length}`] : []),
+                ...(overrides.length > 0 ? [`옵션 오버라이드 ${overrides.length}`] : []),
+                ...(copies.length > 0 ? [`조 사본 ${copies.length}`] : []),
+              ];
               return reject({ reason: "needsConfirmation", impact: { valueRowsLost: 0, brokenRefs: [], cascade } });
             }
           }
@@ -834,8 +867,10 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
             // 같은 트랜잭션에서 비우고 바꾼다 — 한쪽만 비워진 상태로 끝나지 않는다.
             await repo.clearHiddenArticles(tx, id);
             await repo.deleteOverridesOf(tx, { kind: "product", id });
+            await repo.clearArticleCopies(tx, id);
           }
           await repo.updateProduct(tx, id, { generalDocumentId: generalDocumentId ?? null }, actor.userId);
+          if (changes) await repo.setGeneralBaseVersion(tx, id, await baseVersionOf(generalDocumentId));
           return ok(next);
         }),
       ),
@@ -872,7 +907,45 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
           const articleIds = new Set(await gate.articleIds(templateId));
           const hidden = [...new Set(input.hiddenArticles)];
           for (const id of hidden) if (!articleIds.has(id)) issues.push(issue("brokenRef", "템플릿에 없는 조입니다 — 새로고침해 주세요", at({ articleId: id })));
-          // ② 오버라이드 — 자리 · 함수조항 · 합친 선택 검사 (setOptionOverride 와 같은 규칙), 저장은 차이만
+          // ② 조 사본 (ADR-0079) — 자리(템플릿의 조) · 내용의 조 id, 그다음 이 상품의 보통약관 트리를 문면 저장 검증으로.
+          //    사본이 든 조의 오류만 이 저장의 것이다(나머지 조의 오류는 템플릿의 일이다). 템플릿과 같은 내용의 사본은 남기지 않는다.
+          const template = await gate.template(templateId);
+          const templateArticles = template ? articlesById(template.tree) : new Map<Id, ArticleNode>();
+          const copies: ArticleCopy[] = [];
+          const copied = new Set<Id>();
+          for (const c of input.copies ?? []) {
+            const where = at({ articleId: c.articleId });
+            if (copied.has(c.articleId)) {
+              issues.push(issue("typeMismatch", "같은 조의 사본이 두 번 왔습니다", where));
+              continue;
+            }
+            copied.add(c.articleId);
+            const original = templateArticles.get(c.articleId);
+            if (!original) {
+              issues.push(issue("brokenRef", "템플릿에 없는 조의 사본입니다 — 새로고침해 주세요", where));
+              continue;
+            }
+            if (c.article?.kind !== "article" || c.article.id !== c.articleId || typeof c.templateHash !== "string" || c.templateHash === "") {
+              issues.push(issue("structure", "조 사본을 읽을 수 없습니다 — 새로고침한 뒤 다시 고쳐 주세요", where));
+              continue;
+            }
+            if (!sameArticle(c.article, original)) copies.push({ articleId: c.articleId, article: c.article, templateHash: c.templateHash });
+          }
+          const effective = template ? applyArticleCopies(template.tree, copies) : undefined;
+          if (effective && copies.length > 0) {
+            const mine = new Set(copies.map((c) => c.articleId));
+            for (const i of blockingIssues(await gate.validate(templateId, effective))) {
+              if (i.at.articleId && mine.has(i.at.articleId)) issues.push({ ...i, at: at({ articleId: i.at.articleId, ...(i.at.articleTitle ? { articleTitle: i.at.articleTitle } : {}), ...(i.at.nodePath ? { nodePath: i.at.nodePath } : {}) }) });
+            }
+          }
+          // ③ 오버라이드 — 자리 · 함수조항 · 합친 선택 검사 (setOptionOverride 와 같은 규칙), 저장은 차이만.
+          //    자리는 이 상품의 보통약관 트리에서 찾는다 — 사본에서 지운 자리는 없고, 사본에 새로 넣은 자리는 있다 (트리를 모르면 템플릿 게이트).
+          const effectiveIndex = effective ? indexTree(effective) : undefined;
+          const clauseRefIn = async (nodeId: Id): Promise<{ clauseCode: Code; options: ClauseOptionSelection } | undefined> => {
+            if (!effectiveIndex) return gate.clauseRef(templateId, nodeId);
+            const node = effectiveIndex.nodes.get(nodeId)?.node;
+            return node && (node.kind === "clauseBlockRef" || node.kind === "clauseInlineRef") ? { clauseCode: node.clauseCode, options: node.options } : undefined;
+          };
           const writes: { nodeId: Id; clauseCode: Code; diff: ClauseOptionSelection }[] = [];
           const seen = new Set<Id>();
           for (const o of input.overrides) {
@@ -882,7 +955,7 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
               continue;
             }
             seen.add(o.nodeId);
-            const ref = await gate.clauseRef(templateId, o.nodeId);
+            const ref = await clauseRefIn(o.nodeId);
             if (!ref || ref.clauseCode !== o.clauseCode) {
               issues.push(issue("brokenRef", `템플릿에 없는 함수조항 자리입니다 (${o.clauseCode}) — 새로고침해 주세요`, where));
               continue;
@@ -907,9 +980,21 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
           const kept = new Set(writes.map((w) => w.nodeId));
           for (const o of await repo.listOverrides(tx, scope)) if (!kept.has(o.nodeId)) await repo.deleteOverride(tx, scope, o.nodeId, o.clauseCode);
           for (const w of writes) await repo.upsertOverride(tx, scope, w.nodeId, w.clauseCode, w.diff, actor.userId);
+          // 조 사본 — 빠진 것은 지우고, 바뀐 것만 쓴다 (내용 · 지문이 같으면 행을 건드리지 않는다)
+          const savedCopies = new Map((await repo.listArticleCopies(tx, productId)).map((c) => [c.articleId, c] as const));
+          const keptCopies = new Set(copies.map((c) => c.articleId));
+          for (const id of savedCopies.keys()) if (!keptCopies.has(id)) await repo.deleteArticleCopy(tx, productId, id);
+          for (const c of copies) {
+            const was = savedCopies.get(c.articleId);
+            if (!was || was.templateHash !== c.templateHash || !sameArticle(was.article, c.article)) await repo.upsertArticleCopy(tx, productId, c, actor.userId);
+          }
+          // 기준 판 — 편집을 시작할 때 본 판(그 사이 템플릿이 또 바뀌었으면 경고가 남는다)
+          await repo.setGeneralBaseVersion(tx, productId, input.templateVersion ?? template?.version ?? null);
           return ok(undefined);
         }),
       ),
+    listArticleCopies: (productId) => repo.listArticleCopies(db, productId),
+    generalBaseVersion: (productId) => repo.loadGeneralBaseVersion(db, productId),
     deleteProduct: (actor, id, opts = {}) =>
       db.transaction(async (tx) => {
         let owners: ValueOwner[] = [];

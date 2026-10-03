@@ -139,6 +139,11 @@ export function createServices(root: Db, opts: ContainerOptions = {}): Services 
         if (!node || (node.kind !== "clauseBlockRef" && node.kind !== "clauseInlineRef")) return undefined;
         return { clauseCode: node.clauseCode, options: node.options };
       },
+      template: async (id) => {
+        const doc = await services.document.get(id);
+        return doc?.kind === "general" ? { tree: doc.tree, version: doc.version } : undefined;
+      },
+      validate: (id, tree) => services.document.validateTree(id, tree),
     },
     generalAttachment: {
       requiredRefs: async (generalDocumentId) => {

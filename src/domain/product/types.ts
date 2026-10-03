@@ -8,6 +8,7 @@
  * 다른 영역(담보 마스터 B1 · 함수조항 B2 · 문서 B3)의 코드는 import 하지 않는다 —
  * 필요한 것은 이 파일 끝의 **주입 인터페이스**로 받는다.
  */
+import type { DocumentNode } from "../document/nodes";
 import type { SlotPath } from "../catalog/types";
 import type { AttachLevel, Code, Coordinate, Id, Issue, ValueSlot } from "../types";
 
@@ -246,6 +247,10 @@ export interface GeneralDocumentGate {
    * (코덱스 리뷰 2026-09-15 Important-1). 참조 노드가 아니거나 없으면 undefined. 기본 구현은 없음.
    */
   clauseRef(generalDocumentId: Id, nodeId: Id): Promise<{ clauseCode: Code; options: ClauseOptionSelection } | undefined>;
+  /** 템플릿 트리와 판 — 조 사본의 자리 · 검사 · 「템플릿이 바뀜」의 재료 (ADR-0079). 없으면 undefined. 기본 구현은 없음. */
+  template?(generalDocumentId: Id): Promise<{ tree: DocumentNode; version: number } | undefined>;
+  /** 그 템플릿 자리에서 트리 하나를 문면 저장 검증과 같은 규칙으로 검사한다(경고 포함) — 조 사본 검사 (ADR-0079). 기본 구현은 통과. */
+  validate?(generalDocumentId: Id, tree: DocumentNode): Promise<Issue[]>;
 }
 
 /** 함수조항 옵션 유효 집합 검증 (B2). 빈 배열 = 유효. */

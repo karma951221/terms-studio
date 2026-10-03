@@ -33,6 +33,7 @@ import {
   enums,
   namingTemplates,
   planOptions,
+  productArticleCopies,
   productBaseContracts,
   productCoverageAttributes,
   productCoverageNodes,
@@ -140,6 +141,12 @@ export const ASSEMBLY_STAMP_SOURCES: readonly StampSource[] = [
   { name: "enums", table: enums, time: enums.updatedAt },
   { name: "naming_templates", table: namingTemplates, time: namingTemplates.updatedAt },
   { name: "plan_options", table: planOptions, time: planOptions.updatedAt, where: (productId) => eq(planOptions.productId, productId) },
+  {
+    name: "product_article_copies",
+    table: productArticleCopies,
+    time: productArticleCopies.updatedAt,
+    where: (productId) => eq(productArticleCopies.productId, productId),
+  },
   {
     name: "product_base_contracts",
     table: productBaseContracts,

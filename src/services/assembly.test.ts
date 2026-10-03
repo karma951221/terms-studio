@@ -72,6 +72,10 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
         exists: async () => true,
         articleIds: async (id) => ((await documents.get(id))?.tree.children ?? []).flatMap((c) => (c.kind === "article" ? [c.id] : [])),
         clauseRef: async () => undefined, // 이 테스트는 옵션 오버라이드를 쓰지 않는다
+        template: async (id) => {
+          const d = await documents.get(id);
+          return d ? { tree: d.tree, version: d.version } : undefined;
+        },
       },
     });
     svc = createAssemblyService(db, { catalog, coverage, clause, document: documents, product });
@@ -353,6 +357,19 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
     expect([...unwrap(await svc.loadAssemblyInput(productId)).product.hiddenArticleIds]).toEqual(["g-art-def"]);
     unwrap(await product.setArticleHidden(editor, productId, "g-art-def", false));
     expect([...unwrap(await svc.loadAssemblyInput(productId)).product.hiddenArticleIds]).toEqual([]);
+  });
+
+  it("조 사본이 조립 재료의 articleCopies 로 실리고 preview 의 보통약관이 사본 본문을 쓴다 (ADR-0079)", async () => {
+    const p = (await product.getProduct(productId))!;
+    const template = (await documents.get(p.generalDocumentId!))!.tree;
+    const def = template.children.find((c) => c.kind === "article" && c.id === "g-art-def");
+    if (def?.kind !== "article") throw new Error("g-art-def");
+    const copy = { ...def, children: [{ id: "copy-par", kind: "paragraph" as const, children: [{ id: "copy-txt", kind: "text" as const, text: "이 상품에서 쓰는 용어는 다음과 같습니다." }] }] };
+    unwrap(await product.saveGeneralSettings(editor, productId, { generalDocumentId: p.generalDocumentId!, hiddenArticles: [], overrides: [], copies: [{ articleId: "g-art-def", article: copy, templateHash: "h" }] }));
+    expect([...(unwrap(await svc.loadAssemblyInput(productId)).product.articleCopies ?? new Map()).keys()]).toEqual(["g-art-def"]);
+    expect(lines(unwrap(await svc.preview(productId)).general!).slice(0, 2)).toEqual(["제1조(용어의 정의)", "   이 상품에서 쓰는 용어는 다음과 같습니다."]);
+    unwrap(await product.saveGeneralSettings(editor, productId, { generalDocumentId: p.generalDocumentId!, hiddenArticles: [], overrides: [], copies: [] }));
+    expect(lines(unwrap(await svc.preview(productId)).general!)[1]).toBe("   이 계약에서 사용하는 용어의 정의는 다음과 같습니다.");
   });
 
   it("없는 상품은 notFound", async () => {

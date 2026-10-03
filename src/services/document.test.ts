@@ -325,6 +325,17 @@ describe("document 서비스 (PGlite)", () => {
     });
   });
 
+  describe("validateTree — 조 사본 검사 (ADR-0079)", () => {
+    it("저장되지 않은 트리를 그 문서 자리의 저장 검증으로 — 없는 별표는 그 조 좌표로", async () => {
+      const tree = (await svc.get(generalId))!.tree;
+      expect(await svc.validateTree(generalId, tree)).toEqual(await svc.validate(generalId));
+      const broken = { ...tree, children: [...tree.children, b.article("사본", [b.paragraph([b.appendixRef("AX999999")])])] };
+      const issues = await svc.validateTree(generalId, broken);
+      expect(issues.some((i) => i.kind === "brokenRef" && i.at.articleTitle === "사본")).toBe(true);
+      expect(await svc.validateTree("00000000-0000-4000-8000-0000000000ff", tree)).toEqual([]);
+    });
+  });
+
   describe("사전평가 S1·S3 — 문맥 주입", () => {
     it("담보 마스터 문맥(D0001=false)으로 갱신형 가지 notTaken, 슬롯 값 실림", async () => {
       const r = await svc.preEvaluate(specialId, masterCtx);

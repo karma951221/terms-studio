@@ -29,7 +29,7 @@ import type { Discriminator, EnumDef, SlotPath } from "../catalog/types";
 import type { Clause } from "../clause/types";
 import type { Appendix } from "../document/appendix";
 import type { Box } from "../document/box";
-import type { DocumentNode, TableColumn } from "../document/nodes";
+import type { ArticleNode, DocumentNode, TableColumn } from "../document/nodes";
 import type { AttributeKind, ClauseOptionOverride, PlanAxis, ProductCoverageSnapshot, ProductPlan, SpecialGroup } from "../product/types";
 import type { MasterTree } from "../master";
 import type { Code, Coordinate, Id, Issue, ReferenceConnector, ValueSlot } from "../types";
@@ -78,6 +78,12 @@ export interface AssemblyProduct {
    * 숨긴 조를 가리키는 조참조·준용(조연결)은 `articleHidden` 오류로 드러난다 (조용히 빠지지 않는다).
    */
   hiddenArticleIds: ReadonlySet<Id>;
+  /**
+   * 이 상품의 조 사본 — 템플릿 조 id → 그 조를 갈아 끼울 내용 (ADR-0079 · 기능/상품 §3.10). 없거나 비면 템플릿 그대로.
+   * 조립은 보통약관을 읽는 첫 자리(`generalDocumentOf`)에서 갈아 끼우므로 번호 · 숨김 · 준용 · 기본계약 대치가 모두 사본을 본다.
+   * 템플릿에 없는 조의 사본은 쓰이지 않는다.
+   */
+  articleCopies?: ReadonlyMap<Id, ArticleNode>;
 }
 
 /** 상품담보(탑재분) — 스냅샷 구조·값 · 세목 부착 · 그룹 소속. */

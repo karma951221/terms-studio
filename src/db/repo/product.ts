@@ -6,6 +6,7 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 
 import { type AttributeCodeKind, type AttributeSeq, sortAttributeValues } from "@/domain/product/attributes";
+import type { ArticleCopy } from "@/domain/product/articleCopies";
 import type {
   AttributeKind,
   AttributeSelection,
@@ -31,6 +32,7 @@ import {
   codeSequences,
   namingTemplates,
   planOptions,
+  productArticleCopies,
   productBaseContracts,
   productCoverageAttributes,
   productCoverageNodes,
@@ -220,6 +222,46 @@ export async function removeHiddenArticle(db: Db, productId: Id, articleId: Id):
 /** 템플릿 교체 시 — 숨김은 템플릿 기준 설정이므로 통째로 비운다. */
 export async function clearHiddenArticles(db: Db, productId: Id): Promise<void> {
   await db.delete(productHiddenArticles).where(eq(productHiddenArticles.productId, productId));
+}
+
+// ───────────────────────────── 조 사본 (ADR-0079) ─────────────────────────────
+
+/** 상품의 조 사본 — 만든 순. */
+export async function listArticleCopies(db: Db, productId: Id): Promise<ArticleCopy[]> {
+  const rows = await db
+    .select({ articleId: productArticleCopies.articleId, article: productArticleCopies.article, templateHash: productArticleCopies.templateHash })
+    .from(productArticleCopies)
+    .where(eq(productArticleCopies.productId, productId))
+    .orderBy(asc(productArticleCopies.createdAt), asc(productArticleCopies.articleId));
+  return rows;
+}
+
+export async function upsertArticleCopy(db: Db, productId: Id, copy: ArticleCopy, who: Id): Promise<void> {
+  await db
+    .insert(productArticleCopies)
+    .values({ productId, articleId: copy.articleId, article: copy.article, templateHash: copy.templateHash, createdBy: who, updatedBy: who })
+    .onConflictDoUpdate({
+      target: [productArticleCopies.productId, productArticleCopies.articleId],
+      set: { article: copy.article, templateHash: copy.templateHash, updatedAt: new Date(), updatedBy: who },
+    });
+}
+
+export async function deleteArticleCopy(db: Db, productId: Id, articleId: Id): Promise<void> {
+  await db.delete(productArticleCopies).where(and(eq(productArticleCopies.productId, productId), eq(productArticleCopies.articleId, articleId)));
+}
+
+export async function clearArticleCopies(db: Db, productId: Id): Promise<void> {
+  await db.delete(productArticleCopies).where(eq(productArticleCopies.productId, productId));
+}
+
+/** 이 상품의 보통약관 설정이 기준으로 삼은 템플릿 판 — 모르면 undefined. */
+export async function loadGeneralBaseVersion(db: Db, productId: Id): Promise<number | undefined> {
+  const [row] = await db.select({ v: products.generalBaseVersion }).from(products).where(eq(products.id, productId)).limit(1);
+  return row?.v ?? undefined;
+}
+
+export async function setGeneralBaseVersion(db: Db, productId: Id, version: number | null): Promise<void> {
+  await db.update(products).set({ generalBaseVersion: version }).where(eq(products.id, productId));
 }
 
 // ───────────────────────────── 세목 ─────────────────────────────

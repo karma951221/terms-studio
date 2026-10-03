@@ -656,6 +656,43 @@ describe("블록 반복 · 밟은 자리 원칙", () => {
   });
 });
 
+describe("조 사본 (ADR-0079 · 기능/상품 §3.10) — 고친 조는 이 상품의 사본, 나머지는 템플릿", () => {
+  const copyOf = (id: Id, text: string, title?: string): ArticleNode => {
+    const original = alphaGeneralDocument().children.find((c) => c.kind === "article" && c.id === id) as ArticleNode;
+    return { ...original, ...(title ? { title } : {}), children: [{ id: `${id}-copy-par`, kind: "paragraph", children: [{ id: `${id}-copy-txt`, kind: "text", text }] }] };
+  };
+  const withCopies = (...copies: ArticleNode[]) => {
+    const input = alphaPlusFixture();
+    return assembleInput({ ...input, product: { ...input.product, articleCopies: new Map(copies.map((a) => [a.id, a])) } });
+  };
+  const generalText = (doc: RenderedDoc) => lines(doc).join("\n");
+
+  it("보통약관 조립은 사본이 있는 조만 사본 본문 · 제목, 번호 · 순서는 템플릿 그대로", () => {
+    const plain = withCopies();
+    const booklet = withCopies(copyOf("g-art-def", "이 상품에서 쓰는 용어는 다음과 같습니다.", "용어의 정의(상품)"));
+    expect(generalText(booklet.general!)).toContain("제1조(용어의 정의(상품))");
+    expect(generalText(booklet.general!)).toContain("이 상품에서 쓰는 용어는 다음과 같습니다.");
+    expect(generalText(booklet.general!)).not.toContain("이 계약에서 사용하는 용어의 정의는");
+    // 다른 조는 템플릿 그대로 — 사본 하나가 바꾼 것은 그 조뿐
+    expect(lines(booklet.general!).slice(2)).toEqual(lines(plain.general!).slice(2));
+  });
+
+  it("특약의 준용 판정도 사본을 본다 — 보통약관 조 본문이 달라지면 같은 문장의 특약 조는 더는 준용되지 않는다", () => {
+    const before = withCopies().omitted.find((r) => r.articleId === "s-art-exempt" && r.productCoverageId === "pc-basic");
+    const after = withCopies(copyOf("g-art-exempt", "중대한 과실로 사고를 일으킨 경우에는 보험금을 지급하지 않습니다.")).omitted.find((r) => r.articleId === "s-art-exempt" && r.productCoverageId === "pc-basic");
+    expect(before?.disposition).toBe("omitted");
+    expect(after?.disposition).not.toBe("omitted");
+  });
+
+  it("템플릿에 없는 조의 사본은 쓰이지 않는다 · 숨긴 조의 사본도 빠진다", () => {
+    const orphan: ArticleNode = { id: "g-art-gone", kind: "article", title: "사라진 조", children: [] };
+    expect(generalText(withCopies(orphan).general!)).not.toContain("사라진 조");
+    const input = alphaPlusFixture();
+    const hidden = assembleInput({ ...input, product: { ...input.product, hiddenArticleIds: new Set(["g-art-def"]), articleCopies: new Map([["g-art-def", copyOf("g-art-def", "숨긴 사본")]]) } });
+    expect(generalText(hidden.general!)).not.toContain("숨긴 사본");
+  });
+});
+
 describe("조 노출 토글 (기능/상품 §3.6) — 숨긴 조는 빠지고 번호가 순연되며 참조하면 오류", () => {
   /** 보통약관 조 몇 개를 이 상품에서 「노출 끔」 한 책자. */
   const withHidden = (...ids: Id[]) => {
