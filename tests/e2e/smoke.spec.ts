@@ -148,7 +148,7 @@ test(
     // 관리자 코드 칩은 담보 상세 값 폼에만 선다(기능/마스터 §3.5) — 세목 표 칸에는 칩이 없어 마스터로의 왕복은 여기서 보지 않는다.
     await enter.first().click();
     await expect(page).toHaveURL(/\/products\/.+\?option=.+&field=waiver\.applies/);
-    const highlighted = page.locator("td.is-highlighted[data-path]");
+    const highlighted = page.locator(".ts-basic-value.is-highlighted[data-path]");
     await expect(highlighted).toHaveCount(1);
     await expect(highlighted).toHaveAttribute("data-path", "waiver.applies");
     await expect(highlighted).toBeInViewport();

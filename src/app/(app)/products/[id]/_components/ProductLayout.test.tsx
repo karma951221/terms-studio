@@ -33,6 +33,7 @@ import { buildForm } from "@/forms";
 import { BasicTab } from "./BasicTab";
 import { CoveragesTab } from "./CoveragesTab";
 import { GeneralTab } from "./GeneralTab";
+import { findForm } from "@/domain/master";
 import { ProductEditProvider } from "./ProductEdit";
 
 const enums = [
@@ -246,5 +247,50 @@ describe("보통약관 탭 — 템플릿 한 줄 + 세 패널, 다른 것은 없
     expect(html).toContain(">템플릿 지정</button>");
     expect(html).toContain("보통약관 템플릿을 지정하면");
     expect(html).not.toContain(">편집<");
+  });
+});
+
+describe("보험종목 정의 — 고정 열 넷 + 그 행 세목유형의 값만 (2026-10-03 QA)", () => {
+  const opt = (id: string, axis: "type" | "form", number: number, name: string, planTypeCode: string) => ({ id, productId: "p1", axis, number, name, planTypeCode });
+  const waiverOpt = opt("o1", "type", 1, "납입면제형", "waiver");
+  const nsOpt = opt("o2", "form", 1, "해약환급금지급형", "no_surrender");
+  const model = (code: string, values: [string, unknown][] = []) => buildForm("plan", lookup, new Map(values.map(([k, v]) => [k, { entered: true as const, value: v as never }])), undefined, [findForm(code)!]);
+  const render = () =>
+    renderToStaticMarkup(
+      <ProductEditProvider canEdit>
+        <BasicTab
+          productId="p1"
+          productName="메리츠"
+          productForm={buildForm("product", lookup, new Map())}
+          planOptions={[waiverOpt, nsOpt]}
+          plans={[]}
+          planOptionForms={[
+            { option: waiverOpt, model: model("waiver", [["waiver.applies", true]]) },
+            { option: nsOpt, model: model("no_surrender") },
+          ]}
+          planTypeForms={[
+            { code: "waiver", label: "납입면제", model: model("waiver") },
+            { code: "no_surrender", label: "무저해지", model: model("no_surrender") },
+          ]}
+        />
+      </ProductEditProvider>,
+    );
+
+  it("머리는 종·형 · 보험종목명 · 세목유형 · 값 — 세목유형별 필드 열(납입면제 적용여부 · 무저해지 유형)은 머리에 없다", () => {
+    const html = render();
+    const panel = html.slice(html.indexOf('id="definitions-panel"'));
+    const heads = [...panel.slice(0, panel.indexOf("</thead>")).matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((m) => m[1]);
+    expect(heads).toEqual(["종·형", "보험종목명", "세목유형", "값"]);
+  });
+
+  it("행마다 제 세목유형의 필드만(이름 + 값) — 납입면제 행엔 적용여부, 무저해지 행엔 유형", () => {
+    const html = render();
+    const row = (id: string) => html.slice(html.indexOf(`id="plan-option-${id}"`), html.indexOf("</tr>", html.indexOf(`id="plan-option-${id}"`)));
+    expect(row("o1")).toContain("적용여부");
+    expect(row("o1")).not.toContain('data-path="no_surrender.type"');
+    expect(row("o1")).toContain("납입면제</td>");
+    expect(row("o2")).toContain('data-path="no_surrender.type"');
+    expect(row("o2")).toContain(">유형</span>");
+    expect(row("o2")).not.toContain("적용여부");
   });
 });

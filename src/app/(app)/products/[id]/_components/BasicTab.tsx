@@ -39,21 +39,6 @@ export interface BasicTabProps {
   highlightField?: string;
 }
 
-/** 값 열 — 표시되는 종목들의 폼 필드 합집합 (경로 기준 · 처음 나온 순서). */
-interface ValueColumn {
-  path: string;
-  label: string;
-}
-
-function valueColumns(models: FormModel[]): ValueColumn[] {
-  const seen = new Map<string, FieldView>();
-  for (const model of models) for (const field of model.fields) if (!seen.has(field.path)) seen.set(field.path, field);
-  const fields = [...seen.values()];
-  // 폼이 둘 이상 섞이면 「적용여부」 같은 라벨이 겹친다 — 폼 이름을 앞에 붙여 구분한다
-  const forms = new Set(fields.map((f) => f.form.key));
-  return fields.map((f) => ({ path: f.path, label: forms.size > 1 ? `${f.form.label} ${f.label}` : f.label }));
-}
-
 /** 종·형 칸 — 「제1종」. 이름은 제 열에 따로 있다. */
 const axisLabel = (o: Pick<PlanOption, "axis" | "number">) => `제${o.number}${PLAN_AXIS_LABEL[o.axis]}`;
 const combinationLabel = (items: Pick<PlanOption, "axis" | "number" | "name">[]) => items.map(planOptionLabel).join(" · ");
@@ -189,7 +174,9 @@ export function BasicTab(props: BasicTabProps) {
   // ── 표에 그릴 것 — 읽기는 저장된 것, 편집은 초안 ─────────────────────────
   const shownOptions: OptionDraft[] = editing ? options : initialOptions();
   const shownCombinations = editing ? combinations : initialCombinations();
-  const columns = valueColumns(shownOptions.map(modelFor));
+  /** 세목유형 열 — 편집은 고르는 칸(showPlanType), 읽기는 글자. 세목유형이 하나뿐이면 열이 없다. */
+  const showPlanTypeColumn = planTypeForms.length > 1;
+  const planTypeLabel = (code: string) => planTypeForms.find((f) => f.code === code)?.label ?? code;
   const types = shownOptions.filter((o) => o.axis === "type");
   const formsAxis = shownOptions.filter((o) => o.axis === "form");
   /** 조합 표의 열 — 쓰인 축만(종 · 형). */
@@ -368,13 +355,10 @@ export function BasicTab(props: BasicTabProps) {
                       <th scope="col" className="ts-basic-col-name">
                         보험종목명
                       </th>
-                      {showPlanType && <th scope="col">세목유형</th>}
-                      {columns.map((col) => (
-                        <th key={col.path} scope="col">
-                          {col.label}
-                        </th>
-                      ))}
-                      {columns.length === 0 && <th scope="col" className="col-flex" aria-hidden="true" />}
+                      {showPlanTypeColumn && <th scope="col">세목유형</th>}
+                      <th scope="col" className="col-flex">
+                        값
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -413,7 +397,7 @@ export function BasicTab(props: BasicTabProps) {
                               </td>
                             </>
                           ) : (
-                            <td>{axisLabel(option)}</td>
+                            <td className="ts-basic-col-nowrap">{axisLabel(option)}</td>
                           )}
                           <td className="ts-basic-col-name">
                             {editing ? (
@@ -440,15 +424,25 @@ export function BasicTab(props: BasicTabProps) {
                               </select>
                             </td>
                           )}
-                          {columns.map((col) => {
-                            const cellHighlighted = rowHighlighted && highlightField === col.path;
-                            return (
-                              <td key={col.path} className={cellHighlighted ? "is-highlighted" : undefined} data-path={col.path}>
-                                {editing ? editCell(option.id, forms[option.id], col.path, col.label) : readCell(model, col.path)}
-                              </td>
-                            );
-                          })}
-                          {columns.length === 0 && <td className="col-flex" />}
+                          {!showPlanType && showPlanTypeColumn && <td className="ts-basic-col-nowrap">{planTypeLabel(option.planTypeCode)}</td>}
+                          {/* 값 — 그 행 세목유형의 필드만, 이름 + 입력(읽기는 값)을 한 줄에 (2026-10-03 QA) */}
+                          <td className="col-flex">
+                            <div className="ts-basic-values">
+                              {model.fields.map((field) => {
+                                const cell = editing ? editCell(option.id, forms[option.id], field.path, field.label) : readCell(model, field.path);
+                                if (cell === null) return null;
+                                const cellHighlighted = rowHighlighted && highlightField === field.path;
+                                return (
+                                  <div key={field.path} className={cellHighlighted ? "ts-basic-value is-highlighted" : "ts-basic-value"} data-path={field.path}>
+                                    <span className="ts-basic-value-label" aria-hidden="true">
+                                      {field.label}
+                                    </span>
+                                    {cell}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}

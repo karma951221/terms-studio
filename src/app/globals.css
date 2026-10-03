@@ -5134,6 +5134,11 @@ button.ts-ref-fold:hover {
 .ts-basic-table tbody th { font-size: 13px; font-weight: 400; color: var(--ts-ink-2); white-space: nowrap; }
 .ts-basic-table .ts-basic-col-nowrap { white-space: nowrap; }
 .ts-basic-table td { padding-block: 5px; }
+/* 보험종목 정의 값 칸 — 그 행 세목유형의 필드만, 「이름 입력」 묶음이 가로로 흐른다 (2026-10-03) */
+.ts-basic-values { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; }
+.ts-basic-value { display: inline-flex; align-items: center; gap: 8px; }
+.ts-basic-value-label { font-size: 12px; color: var(--ts-ink-2); white-space: nowrap; }
+.ts-basic-value.is-highlighted { outline: 2px solid var(--ts-mark); outline-offset: 2px; }
 .ts-basic-table .ts-basic-col-select { width: 44px; text-align: center; }
 .ts-basic-table .ts-basic-col-name { min-width: 200px; }
 /* 좁은 폭(내비 포함 820 안팎) — 이름 칸을 줄여 시드 규모의 표(세목유형 폼 하나)가 가로 스크롤 없이 들어오게. 폼이 더 붙으면 표는 감싼 칸 안에서 가로로 민다 */
