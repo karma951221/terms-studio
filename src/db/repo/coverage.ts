@@ -30,6 +30,7 @@ function toCoverage(row: CoverageRow, subs: SubRow[], bens: BenefitRow[]): Cover
     name: row.name,
     description: row.description,
     ...(row.documentId ? { documentId: row.documentId } : {}),
+    ...(row.specialGroup ? { specialGroup: row.specialGroup } : {}),
     subCoverages: subs.map<SubCoverage>((s) => ({
       id: s.id,
       name: s.name,
@@ -102,6 +103,12 @@ export async function listCoverageSummaries(db: Db): Promise<CoverageSummary[]> 
   return rows.map((r) => ({ id: r.id, code: r.code, name: r.name, updatedAt: r.updatedAt, ...(r.documentId ? { documentId: r.documentId } : {}) }));
 }
 
+/** 담보 id → 특약 그룹 열거값 코드 — 그룹이 있는 담보만 (조립 공유 마스터 적재 · ADR-0080). */
+export async function listCoverageGroups(db: Db): Promise<Map<Id, Code>> {
+  const rows = await db.select({ id: coverages.id, group: coverages.specialGroup }).from(coverages);
+  return new Map(rows.flatMap((r) => (r.group ? [[r.id, r.group] as const] : [])));
+}
+
 /** 담보명 전부 — 전역 중복 검사용. */
 export async function listCoverageNames(db: Db): Promise<string[]> {
   const rows = await db.select({ name: coverages.name }).from(coverages).orderBy(asc(coverages.name));
@@ -170,6 +177,7 @@ export async function insertCoverage(db: Db, tree: Coverage, who: Id): Promise<v
     name: tree.name,
     description: tree.description,
     documentId: tree.documentId ?? null,
+    specialGroup: tree.specialGroup ?? null,
     createdBy: who,
     updatedBy: who,
   });
@@ -185,7 +193,7 @@ export async function saveCoverage(db: Db, tree: Coverage, who: Id): Promise<voi
   const now = new Date();
   const [row] = await db
     .update(coverages)
-    .set({ name: tree.name, description: tree.description, documentId: tree.documentId ?? null, updatedAt: now, updatedBy: who })
+    .set({ name: tree.name, description: tree.description, documentId: tree.documentId ?? null, specialGroup: tree.specialGroup ?? null, updatedAt: now, updatedBy: who })
     .where(eq(coverages.id, tree.id))
     .returning({ id: coverages.id });
   if (!row) throw new Error(`저장 대상 담보가 없습니다: ${tree.id}`);

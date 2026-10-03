@@ -97,6 +97,18 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     expect(Object.fromEntries(await services.product.getPlanOptionValues(option("form", 1).id))).toEqual({ "no_surrender.type": { entered: true, value: "V01" } });
     expect(Object.fromEntries(await services.product.getPlanOptionValues(option("form", 2).id))).toEqual({ "no_surrender.type": { entered: true, value: "V03" } });
 
+    // 특약 그룹 — 열거형 「특약 그룹」(E0008) 값 순서 = 책자 순서, 담보마다 하나(기본계약 담보는 없음) (ADR-0080)
+    expect((await services.catalog.getEnum("E0008"))?.values.map((v) => [v.code, v.label])).toEqual([["V01", "상해 관련 특별약관"], ["V02", "질병 관련 특별약관"]]);
+    expect(preview.value.specials.map((g) => g.title)).toEqual(["상해 관련 특별약관"]);
+    const groupOf = new Map((await services.coverage.list()).map((c) => [c.name, c.specialGroup]));
+    expect(groupOf.get("일반상해사망보장")).toBe("V01");
+    expect(groupOf.get("일반상해80%이상후유장해")).toBeUndefined();
+    expect(groupOf.get("질병사망(통합간편가입)보장")).toBe("V02");
+    const meritz = (await services.product.listProducts()).find((p) => p.name === MERITZ_PRODUCT_NAME)!;
+    const meritzPreview = await services.assembly.preview(meritz.id);
+    if (!meritzPreview.ok) throw new Error(JSON.stringify(meritzPreview.rejection));
+    expect(meritzPreview.value.specials.map((g) => [g.title, g.docs.length])).toEqual([["상해 관련 특별약관", 5], ["질병 관련 특별약관", 3]]);
+
     // 담보코드 — JSON 순서대로 시스템 채번 (기능/담보 §3.1)
     expect((await services.coverage.listSummaries()).find((c) => c.name === "일반상해80%이상후유장해")?.code).toBe("COV000001");
     expect((await services.coverage.listSummaries()).find((c) => c.name === "신화상치료비보장")?.code).toBe("COV000009");

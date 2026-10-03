@@ -205,7 +205,6 @@ describe("여는 폼(optional) — 급부의 감액 폼을 안 열면 exist 가 
         "pc-basic": { "coverage_basic.renewal": false, "coverage_basic.reduction_months": 24, "coverage_basic.reduction_text": "24개월" },
         "pc-basic-ben": periods === undefined ? { "pay.exempt": true, "pay.rate": 100 } : { "pay.exempt": true, "pay.rate": 100, "reduction.periods": periods },
       },
-      groupId: "grp-injury",
     });
     return { ...input, master: reductionMaster, coverages: input.coverages.map((c) => (c.snapshot.id === "pc-basic" ? coverage : c)) };
   }

@@ -16,6 +16,8 @@
 import { assertCan, destructive, type DestructiveAction } from "@/domain/auth";
 import type { EnumLookup, SlotPath } from "@/domain/catalog";
 import {
+  SPECIAL_GROUP_ENUM,
+  setCoverageSpecialGroup,
   addBenefit,
   addSubCoverage,
   applyStructurePlanTo,
@@ -58,7 +60,7 @@ import {
 } from "@/domain/coverage";
 import { countedSlotsOf } from "@/domain/catalog";
 import { fieldsOfLevel, masterFieldLabel, type MasterFieldRef } from "@/domain/master";
-import type { Actor, Id, Impact, MountImpact, Result, Value, ValueSlot } from "@/domain/types";
+import type { Actor, Code, Id, Impact, MountImpact, Result, Value, ValueSlot } from "@/domain/types";
 import { ok, reject } from "@/domain/types";
 
 import * as catalogRepo from "@/db/repo/catalog";
@@ -136,6 +138,11 @@ export interface CoverageService {
   rename(actor: Actor, id: Id, name: string): Promise<Result<Coverage>>;
   setDescription(actor: Actor, id: Id, description: string): Promise<Result<Coverage>>;
   setDocument(actor: Actor, id: Id, documentId: Id | undefined): Promise<Result<Coverage>>;
+  /**
+   * 특약 그룹 — 열거형 「특약 그룹」(E0008)의 값 코드 하나, undefined 면 그룹 없음 (ADR-0080). 열거형에 없는 값은 invalid.
+   * 비파괴(편집자 가능). 탑재 상품담보는 스냅샷이 아니라 지금 담보의 그룹을 따르므로 동기화할 것이 없다.
+   */
+  setSpecialGroup(actor: Actor, id: Id, code: Code | undefined): Promise<Result<Coverage>>;
 
   // 세부보장 · 급부 — 비파괴
   addSubCoverage(actor: Actor, coverageId: Id, input: NewSubCoverage): Promise<Result<Coverage>>;
@@ -424,6 +431,8 @@ export function createCoverageService(db: Db, deps: CoverageServiceDeps = {}): C
     rename: (actor, id, name) => editCoverage(actor, id, async (tree, tx) => renameCoverage(tree, name, await repo.listCoverageNames(tx))),
     setDescription: (actor, id, description) => editCoverage(actor, id, (tree) => setCoverageDescription(tree, description)),
     setDocument: (actor, id, documentId) => editCoverage(actor, id, (tree) => setCoverageDocument(tree, documentId)),
+    setSpecialGroup: (actor, id, code) =>
+      editCoverage(actor, id, async (tree, tx) => setCoverageSpecialGroup(tree, code, await catalogRepo.loadEnum(tx, SPECIAL_GROUP_ENUM))),
 
     addSubCoverage: (actor, coverageId, input) => editCoverage(actor, coverageId, (tree) => addSubCoverage(tree, input, newId)),
     addBenefit: (actor, subCoverageId, name) =>

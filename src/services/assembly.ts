@@ -21,8 +21,9 @@
  *   `assembleMany` 는 모든 상품의 스탬프를 마스터 적재보다 먼저 읽어, 마스터가 도중에 바뀌어도 다음 `latest` 에서 오래됨으로 드러난다.
  *   자동 재실행은 없다 (기능/조립산출 §3.6).
  * - `Booklet` 은 순수 데이터(Map/Set/Date 없음)라 jsonb 에 그대로 넣고 그대로 꺼낸다 — 변환 함수 없음.
- * - 서비스 조회 메서드에 없는 일괄 조회만 repo 로 직접 읽는다 (`readSlotsMany` · `listBaseContractIds` · `listGroups` · `listMembersByGroup` ·
- *   `listAttachedPlansForProduct` · `listDocumentRecords`).
+ * - 서비스 조회 메서드에 없는 일괄 조회만 repo 로 직접 읽는다 (`readSlotsMany` · `listBaseContractIds` ·
+ *   `listAttachedPlansForProduct` · `listDocumentRecords` · `listCoverageGroups`).
+ * - 특약 그룹은 담보 마스터의 「특약 그룹」 열거값이라 공유 마스터로 싣는다(`coverageGroups`, ADR-0080).
  * - 세목 선택지는 **유효 조합에 등장하는 것**만 (기능/조립산출 §3.2) — 값은 `readSlotsMany(db, "plan", ids)` 한 번.
  * - 컨테이너(C1 동시 작업)는 쓰지 않는다 — 호출자가 서비스 5개를 넘긴다.
  */
@@ -35,7 +36,8 @@ import { ok, reject } from "@/domain/types";
 
 import { listDocumentRecords } from "@/db/repo/document";
 import { assemblyInputStamp, loadPreview, type PreviewGrade, savePreview } from "@/db/repo/preview";
-import { listAttachedPlansForProduct, listBaseContractIds, listGroups, listMembersByGroup } from "@/db/repo/product";
+import { listCoverageGroups } from "@/db/repo/coverage";
+import { listAttachedPlansForProduct, listBaseContractIds } from "@/db/repo/product";
 import type { Db } from "@/db/repo/types";
 import { readSlotsMany } from "@/db/repo/values";
 import type { CatalogService } from "./catalog";
@@ -95,7 +97,7 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
   const { catalog, clause, document, product } = services;
 
   async function loadMaster(): Promise<MasterBundle> {
-    const [clauses, appendices, boxes, defs, enums, attributeKinds, docs] = await Promise.all([
+    const [clauses, appendices, boxes, defs, enums, attributeKinds, docs, coverageGroups] = await Promise.all([
       clause.list(),
       document.listAppendices(),
       document.listBoxes(),
@@ -103,6 +105,7 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
       catalog.listEnums(),
       product.listAttributeKinds(),
       listDocumentRecords(db),
+      listCoverageGroups(db),
     ]);
     // 문서는 통째로 1회 — 보통약관은 id 로, 담보약관은 담보 id 로 (담보 1 : 문서 1)
     const generalDocuments = new Map<Id, DocumentNode>();
@@ -111,7 +114,7 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
       if (d.kind === "general") generalDocuments.set(d.id, d.tree);
       else if (d.ownerId) specialDocuments.set(d.ownerId, d.tree);
     }
-    return { catalog: defs, enums, attributeKinds, clauses, appendices, boxes, generalDocuments, specialDocuments };
+    return { catalog: defs, enums, attributeKinds, clauses, appendices, boxes, generalDocuments, specialDocuments, coverageGroups };
   }
 
   /** 유효 조합에 등장하는 선택지 합집합 — 축 순(종 → 형) · 번호 순. 값은 한 번에 읽는다. */
@@ -123,11 +126,9 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
     return sorted.map((o) => ({ id: o.id, axis: o.axis, number: o.number, name: o.name, planTypeCode: o.planTypeCode, values: values.get(o.id) ?? new Map() }));
   }
 
-  /** 탑재분 전부 — 스냅샷 · 값(kind 별 1회씩, 모든 탑재분의 노드 id 를 모아) · 부착 세목 · 그룹. 상품담보 수와 무관한 쿼리 수. */
+  /** 탑재분 전부 — 스냅샷 · 값(kind 별 1회씩, 모든 탑재분의 노드 id 를 모아) · 부착 세목. 상품담보 수와 무관한 쿼리 수. */
   async function loadCoverages(productId: Id): Promise<AssemblyCoverage[]> {
-    const [snapshots, plansByPc, members] = await Promise.all([product.listSnapshots(productId), listAttachedPlansForProduct(db, productId), listMembersByGroup(db, productId)]);
-    const groupOf = new Map<Id, Id>();
-    for (const [groupId, pcIds] of members) for (const pcId of pcIds) groupOf.set(pcId, groupId);
+    const [snapshots, plansByPc] = await Promise.all([product.listSnapshots(productId), listAttachedPlansForProduct(db, productId)]);
     const subIds = snapshots.flatMap((s) => s.subCoverages.map((x) => x.id));
     const benIds = snapshots.flatMap((s) => s.subCoverages.flatMap((x) => x.benefits.map((b) => b.id)));
     const [cov, sub, ben] = await Promise.all([
@@ -140,8 +141,7 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
       values.set(s.id, cov.get(s.id)!);
       for (const x of s.subCoverages) values.set(x.id, sub.get(x.id)!);
       for (const x of s.subCoverages) for (const b of x.benefits) values.set(b.id, ben.get(b.id)!);
-      const groupId = groupOf.get(s.id);
-      return { snapshot: s, values, plans: plansByPc.get(s.id) ?? [], ...(groupId !== undefined ? { groupId } : {}) };
+      return { snapshot: s, values, plans: plansByPc.get(s.id) ?? [] };
     });
   }
 
@@ -149,9 +149,8 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
     const p = await product.getProduct(productId);
     if (!p) return reject({ reason: "notFound", what: `상품 ${productId}` });
 
-    const [coverages, groups, baseContractIds, productValues, planOptions, definedPlanOptions, productOverrides, hiddenArticleIds, articleCopies] = await Promise.all([
+    const [coverages, baseContractIds, productValues, planOptions, definedPlanOptions, productOverrides, hiddenArticleIds, articleCopies] = await Promise.all([
       loadCoverages(productId),
-      listGroups(db, productId),
       listBaseContractIds(db, productId),
       product.getProductValues(productId),
       loadPlanOptions(productId),
@@ -178,7 +177,6 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
         ...(articleCopies.length > 0 ? { articleCopies: new Map(articleCopies.map((c) => [c.articleId, c.article] as const)) } : {}),
       },
       coverages,
-      groups,
     });
   }
 

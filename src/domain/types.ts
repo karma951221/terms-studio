@@ -208,7 +208,6 @@ export type IssueKind =
   | "noPlan" // 세목 선택지는 있는데 유효 조합이 없다 — 집계 범위가 비어 조건부 조문이 조용히 빠진다
   | "notAttached" // 요구 구분자 미부착 (값 자리 없음)
   | "typeMismatch" // 조건 자리에 boolean 아님 등
-  | "unplaced" // 그룹에 배치되지 않은 상품담보
   | "unsupported" // 기획은 확정됐으나 아직 지원하지 않는 조립 모드
   | "unlinkedBaseArticle" // 1개 모드 기본계약 조에 조연결 없음 (warning)
   | "omissionUndecided" // 조연결 자동 판정 보류 — 원문 유지 + 검토 경고 (기능/조립산출 §3.5)

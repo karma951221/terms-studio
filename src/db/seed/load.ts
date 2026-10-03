@@ -271,6 +271,8 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
     subCoverages?: { name: string; benefitName: string }[];
     coverageValues: { path: string; value: unknown }[];
     benefitValues: { path: string; value: unknown }[];
+    /** 특약 그룹 — 열거형 「특약 그룹」(E0008) 값 코드. 없으면 그룹 없음(기본계약 담보) (ADR-0080). */
+    specialGroup?: string;
   }
   const coverageIds = new Map<string, Id>();
   for (const specification of coverages as unknown as CoverageSpec[]) {
@@ -285,6 +287,7 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
     expectCode(tree.code ?? "", specification.code);
     for (const sub of rest) tree = unwrap(await services.coverage.addSubCoverage(actor, tree.id, sub));
     coverageIds.set(specification.key, tree.id);
+    if (specification.specialGroup) unwrap(await services.coverage.setSpecialGroup(actor, tree.id, specification.specialGroup));
     const benefitId = tree.subCoverages[0].benefits[0].id;
     for (const entry of specification.coverageValues) unwrap(await services.coverage.writeValue(actor, { level: "coverage", id: tree.id }, entry.path, entry.value as Value));
     for (const entry of specification.benefitValues) unwrap(await services.coverage.writeValue(actor, { level: "benefit", id: benefitId }, entry.path, entry.value as Value));
@@ -339,19 +342,12 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
       unwrap(await services.product.registerPlan(actor, productId, ids as Id[]));
     }
 
-    const groupIds = new Map<string, Id>();
-    for (const group of specification.groups) groupIds.set(group.code, unwrap(await services.product.createGroup(actor, productId, { title: group.title })).id);
     const mountIds = new Map<string, Id>();
     for (const mount of specification.mounts) {
       const coverageId = coverageIds.get(mount.coverage);
       if (!coverageId) throw new Error(`[seed:alphaPlus] 담보 참조를 찾을 수 없음: ${mount.coverage}`);
       const mounted = unwrap(await services.product.mount(actor, productId, coverageId, mount.attributes, mount.section as "base" | "special"));
       mountIds.set(mount.code, mounted.id);
-      if (mount.group) {
-        const groupId = groupIds.get(mount.group);
-        if (!groupId) throw new Error(`[seed:alphaPlus] 그룹 참조를 찾을 수 없음: ${mount.group}`);
-        unwrap(await services.product.placeInGroup(actor, groupId, mounted.id));
-      }
     }
   }
 

@@ -215,7 +215,7 @@ describe("product 서비스 (PGlite)", () => {
   describe("계약형태 — 독립특약은 기본계약을 두지 않는다 (기능/상품 §3.1 · 2026-10-01)", () => {
     const STANDALONE = [{ path: "feature.contract_kind", value: "V02" }];
 
-    it("기본계약이 있는 상품을 독립특약으로 저장 — 확인 먼저(편집자도), 확인 뒤 같은 저장에서 기본계약 해제 · 상품담보는 특별약관(미배치)으로 남는다", async () => {
+    it("기본계약이 있는 상품을 독립특약으로 저장 — 확인 먼저(편집자도), 확인 뒤 같은 저장에서 기본계약 해제 · 상품담보는 특별약관 표로 남는다", async () => {
       const p = unwrap(await svc.createProduct(editor, { name: "독립특약 전환" }));
       const base = unwrap(await svc.mount(editor, p.id, DEATH, [], "base"));
       const input = { name: p.name, values: STANDALONE, options: [], combinations: [] };
@@ -232,7 +232,6 @@ describe("product 서비스 (PGlite)", () => {
       expect((await svc.getProductValues(p.id)).get("feature.contract_kind")).toEqual(entered("V02"));
       expect(await svc.listBaseContractIds(p.id)).toEqual([]);
       expect((await svc.listProductCoverages(p.id)).map((c) => c.id)).toEqual([base.id]);
-      expect((await svc.listUnplaced(p.id)).map((c) => c.id)).toEqual([base.id]);
       // 기본계약 0 이 정상
       expect(unwrap(await svc.checkBaseContract(p.id))).toEqual([]);
     });
@@ -645,33 +644,6 @@ describe("product 서비스 (PGlite)", () => {
     });
   });
 
-  describe("기능/상품 §3 특약 그룹 — 자동 정렬 · 미배치", () => {
-    it("그룹 「상해 관련 특별약관」 생성 → 배치 → 그룹 안은 담보→종류→값 순 자동 정렬, 미배치 목록", async () => {
-      const g = unwrap(await svc.createGroup(editor, productId, { title: "상해 관련 특별약관" }));
-      expect(g.order).toBe(0);
-      const g2 = unwrap(await svc.createGroup(editor, productId, { title: "기타" }));
-      expect(g2.order).toBe(1);
-      expect(reason(await svc.createGroup(editor, productId, { title: "x", generalDocumentId: OTHER_DOC }))).toBe("invalid");
-      unwrap(await svc.createGroup(editor, productId, { title: "같은 템플릿", generalDocumentId: GENERAL_DOC }));
-
-      unwrap(await svc.placeInGroup(editor, g.id, pcAddon));
-      unwrap(await svc.placeInGroup(editor, g.id, pcBasic));
-      const view = await svc.listGroups(productId);
-      expect(view[0].members.map((m) => m.name)).toEqual(["일반상해사망", "일반상해사망 추가"]);
-      expect((await svc.listUnplaced(productId)).map((m) => m.name)).toEqual(["갱신형 수술비"]);
-      // 옮기기: 한 상품담보는 한 그룹에만
-      unwrap(await svc.placeInGroup(editor, g2.id, pcBasic));
-      expect((await svc.listGroups(productId))[1].members.map((m) => m.id)).toEqual([pcBasic]);
-      unwrap(await svc.removeFromGroup(editor, pcBasic));
-      expect((await svc.listUnplaced(productId)).length).toBe(2);
-      unwrap(await svc.renameGroup(editor, g2.id, "기타 특별약관"));
-      unwrap(await svc.reorderGroups(editor, productId, [g2.id, g.id, (await svc.listGroups(productId))[2].id]));
-      expect((await svc.listGroups(productId))[0].title).toBe("기타 특별약관");
-      unwrap(await svc.deleteGroup(editor, g2.id));
-      expect((await svc.listGroups(productId)).length).toBe(2);
-    });
-  });
-
   describe("기능/상품 §3.6 — 함수조항 옵션 오버라이드", () => {
     const scope = () => ({ kind: "product", id: productId }) as const;
 
@@ -1000,7 +972,7 @@ describe("product 서비스 (PGlite)", () => {
       expect((await svc.getProductCoverage(pcAddon))?.attributes).toEqual([{ kindCode: "A0002", valueCode: "2" }]); // 깨진 참조로 남는다
     });
 
-    it("세목 선택지 삭제(파괴적): 조합·값 연쇄 · 상품 삭제: 상품담보·스냅샷 값·세목·그룹·오버라이드 전부 연쇄", async () => {
+    it("세목 선택지 삭제(파괴적): 조합·값 연쇄 · 상품 삭제: 상품담보·스냅샷 값·세목·오버라이드 전부 연쇄", async () => {
       const opts = await svc.listPlanOptions(productId);
       const t1 = opts.find((o) => o.axis === "type" && o.number === 1)!;
       expect(reason(await svc.removePlanOption(editor, t1.id))).toBe("forbidden");

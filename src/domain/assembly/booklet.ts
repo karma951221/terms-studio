@@ -5,7 +5,8 @@
  *   → judgeOmission → dropEmptyArticles → numberDocument → placeSpecials → collectAppendices → renderDocument
  *
  * - 부분 조립: 오류는 마커로 심고 끝까지 간다. `issues` 는 책자 등장 순 (D-P6-12). error가 있으면 `complete=false`, warning만 있으면 완성본이다.
- * - 미배치 상품담보(문면 있음)는 `unplaced` 오류 + 책자에서 제외 (D-P6-5). 그 문서의 오류도 뒤이어 보고한다.
+ * - 특약 그룹은 담보 마스터의 「특약 그룹」 열거값이다 (ADR-0080) — 그룹 순서 = 열거값 순서, 제목 = 값 이름. 그룹 없는 담보의 상품담보는
+ *   그룹들 뒤에 제목 없이 찍힌다(오류 아님). 열거형에서 지워진 값이면 「없는 값」 brokenRef + 제목 없이.
  * - 문면 없는 담보의 탑재분은 오류가 아니라 `undocumented` (D-P6-9).
  * - 특약 문서 제목 = 상품담보명 + 「 특별약관」 (임시 규칙 — 실물 조사 후 확정).
  * - `assembleSpecial` = 상품담보 미리보기 (기능/상품 §4 「상품담보 값」): 담보약관 하나를 그 상품담보 문맥으로, 보통약관과 함께.
@@ -17,6 +18,7 @@ import { refKey, withCodes } from "../document/pcode";
 import type { CompletenessFilter } from "../coverage/values";
 import { CONTRACT_KIND_PATH, isStandaloneContract } from "../master";
 import { baseContractCountIssue } from "../product/completeness";
+import { SPECIAL_GROUP_ENUM } from "../coverage/specialGroup";
 import { sortInGroup } from "../product/groups";
 import type { ClauseOptionOverride, ProductCoverage } from "../product/types";
 import { type Coordinate, type Id, type Issue, ok, reject, type Result } from "../types";
@@ -264,11 +266,16 @@ function buildSpecial(input: AssemblyInput, contexts: AssemblyContexts, s: Share
 
 // ───────────────────────────── 9. 특약 배치 ─────────────────────────────
 
+/** 그룹 없는 상품담보를 모은 자리의 id — 책자에서 제목 없이 그룹들 뒤에 선다. */
+export const UNGROUPED_ID = "ungrouped";
+
 export interface Placement {
-  /** 그룹 순 → 그룹 안 자동 정렬 순. */
-  groups: { id: Id; title: string; members: AssemblyCoverage[] }[];
-  /** 어느 그룹에도 속하지 않은 상품담보 (문면 있는 것만 — 없는 것은 undocumented). */
-  unplaced: AssemblyCoverage[];
+  /**
+   * 열거값 순 → 그룹 안 자동 정렬 순. 상품담보가 없는 그룹은 없다. 그룹 없는 상품담보는 마지막 한 자리(`title` 없음 · id `ungrouped`).
+   */
+  groups: { id: Id; title?: string; members: AssemblyCoverage[] }[];
+  /** 상품담보 id → 그 담보의 그룹 값이 열거형에 없다는 오류 (ADR-0080 · 기능/열거형 §3.2 「없는 값」). */
+  groupIssues: ReadonlyMap<Id, Issue>;
   undocumented: UndocumentedCoverage[];
   baseContracts: Booklet["baseContracts"];
 }
@@ -283,20 +290,38 @@ export function placeSpecials(input: AssemblyInput): Placement {
   const undocumented = specials
     .filter((c) => !input.specialDocuments.has(c.snapshot.coverageId))
     .map((c) => ({ productCoverageId: c.snapshot.id, name: c.snapshot.name, coverageId: c.snapshot.coverageId }));
-  // 담보 순서 = 담보명 순 (B4 groupViews 와 같은 규칙 — B1 마스터 순서는 통합 때 어댑터로)
+  // 담보 순서 = 담보명 순 (B1 마스터 순서는 통합 때 어댑터로)
   const names = [...new Set(documented.map((c) => c.snapshot.coverageName))].sort((a, b) => a.localeCompare(b));
   const nameOf = new Map(documented.map((c) => [c.snapshot.coverageId, c.snapshot.coverageName]));
   const coverageOrder = (id: Id) => names.indexOf(nameOf.get(id) ?? "");
   const byId = new Map(documented.map((c) => [c.snapshot.id, c]));
+  const sorted = (members: readonly AssemblyCoverage[]) => sortInGroup(members.map((c) => c.snapshot as ProductCoverage), input.attributeKinds, coverageOrder).map((m) => byId.get(m.id)!);
 
-  const groups = [...input.groups]
-    .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
-    .map((g) => {
-      const members = documented.filter((c) => c.groupId === g.id).map((c) => c.snapshot as ProductCoverage);
-      return { id: g.id, title: g.title, members: sortInGroup(members, input.attributeKinds, coverageOrder).map((m) => byId.get(m.id)!) };
+  // 그룹 = 담보의 「특약 그룹」 열거값 (ADR-0080). 값 순서가 책자 순서, 값 이름이 그룹 제목.
+  const groupEnum = input.enums.find((e) => e.code === SPECIAL_GROUP_ENUM);
+  const groupIssues = new Map<Id, Issue>();
+  const groupOf = (c: AssemblyCoverage): Id | undefined => {
+    const code = input.coverageGroups?.get(c.snapshot.coverageId);
+    if (code === undefined) return undefined;
+    if (groupEnum?.values.some((v) => v.code === code)) return code;
+    groupIssues.set(c.snapshot.id, {
+      kind: "brokenRef",
+      message: `없는 값 ${code} — 특약 그룹(${SPECIAL_GROUP_ENUM})에서 지워진 값입니다 · 담보 「${c.snapshot.coverageName}」의 특약 그룹`,
+      at: specialCoordinate(c),
     });
-  const placed = new Set(groups.flatMap((g) => g.members.map((m) => m.snapshot.id)));
-  return { groups, unplaced: documented.filter((c) => !placed.has(c.snapshot.id)), undocumented, baseContracts };
+    return undefined;
+  };
+  const membersOf = new Map<Id, AssemblyCoverage[]>();
+  for (const c of documented) {
+    const key = groupOf(c) ?? UNGROUPED_ID;
+    membersOf.set(key, [...(membersOf.get(key) ?? []), c]);
+  }
+  const groups: Placement["groups"] = (groupEnum?.values ?? [])
+    .filter((v) => membersOf.has(v.code))
+    .map((v) => ({ id: v.code, title: v.label, members: sorted(membersOf.get(v.code)!) }));
+  const ungrouped = membersOf.get(UNGROUPED_ID);
+  if (ungrouped) groups.push({ id: UNGROUPED_ID, members: sorted(ungrouped) });
+  return { groups, groupIssues, undocumented, baseContracts };
 }
 
 // ───────────────────────────── 조립 ─────────────────────────────
@@ -351,24 +376,16 @@ export function assemble(master: MasterBundle, product: ProductInput): Booklet {
   }
   const specials: RenderedGroup[] = builtGroups.map((g) => ({
     id: g.id,
-    title: g.title,
+    ...(g.title !== undefined ? { title: g.title } : {}),
     docs: g.docs.map(({ c, b }) => {
+      const groupIssue = placement.groupIssues.get(c.snapshot.id);
+      if (groupIssue) issues.push(groupIssue);
       const r = renderDocument(b.numbered, { document: "special", ownerId: c.snapshot.id, general: general?.numbered, aliases: omissionAliases(b.omitted), appendices, ...(general?.hidden ? { hiddenArticles: general.hidden } : {}) });
       issues.push(...locateIssues(b.issues, b.numbered), ...r.issues);
       omitted.push(...b.omitted);
       return r.doc;
     }),
   }));
-
-  // 미배치 — 오류 + (책자엔 안 실리지만) 그 문서의 오류도 드러낸다
-  for (const c of placement.unplaced) {
-    issues.push({ kind: "unplaced", message: `상품담보 「${c.snapshot.name}」 이(가) 어느 특약 그룹에도 배치되지 않았습니다`, at: specialCoordinate(c) });
-    const b = buildSpecial(input, contexts, s, c, general);
-    if (b) {
-      issues.push(...locateIssues(b.issues, b.numbered));
-      omitted.push(...b.omitted);
-    }
-  }
 
   return { general: renderedGeneral, specials, appendices, issues, complete: !issues.some((item) => (item.severity ?? "error") === "error"), omitted, undocumented: placement.undocumented, baseContracts: placement.baseContracts, trace: contexts.traces };
 }

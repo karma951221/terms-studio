@@ -102,6 +102,7 @@ export const EDGE_STYLE = {
   override: "dashed",
   type: "dotted",
   mount: "dotted",
+  specialGroup: "dotted",
   combination: "dotted",
 } as const satisfies Record<EdgeVia, Exclude<EdgeStyle, "containment">>;
 

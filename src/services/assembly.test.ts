@@ -35,7 +35,7 @@ function lines(doc: RenderedDoc): string[] {
 
 /**
  * 관통 1 축약 픽스처를 **실제 서비스**로 DB 에 만든다 (도메인 픽스처 `alphaPlusFixture` 와 같은 모양 —
- * 카탈로그 · 담보 · 함수조항 · 문서 · 별표 · 상품 · 탑재 · 그룹 · 기본계약).
+ * 카탈로그 · 담보(특약 그룹) · 함수조항 · 문서 · 별표 · 상품 · 탑재 · 기본계약).
  */
 describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
   let t: TestDb;
@@ -85,6 +85,9 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
     // D0004 평균공시이율(상품 리터럴) · D0005 면책여부합(담보 집계) · D0006 감액기간문구(담보 투영)
     unwrap(await catalog.createEnum(editor, { label: "고지유형", values: [{ label: "일반심사" }, { label: "간편심사" }] }));
     unwrap(await catalog.createEnum(editor, { label: "무저해지유형", values: [{ label: "지급형" }, { label: "무저해지형" }] })); // E0002 — 세목 no_surrender.type
+    // E0003 ~ E0007 자리 — 여덟째가 「특약 그룹」(E0008, ADR-0080). 코드는 채번이라 순서로 맞춘다
+    for (let i = 3; i <= 7; i++) unwrap(await catalog.createEnum(editor, { label: `열거형${i}`, values: [{ label: "값" }] }));
+    unwrap(await catalog.createEnum(editor, { label: "특약 그룹", values: [{ label: "상해 관련 특별약관" }, { label: "기타 특별약관" }] }));
     unwrap(await catalog.create(editor, { label: "갱신여부", level: "coverage", expression: "coverage_basic.claim_name = '갱신'" }));
     unwrap(await catalog.create(editor, { label: "고지유형", level: "product", expression: "'간편심사'" }));
     unwrap(await catalog.create(editor, { label: "지급률", level: "benefit", expression: "pay.rate" }));
@@ -223,7 +226,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
       ),
     );
 
-    // 상품 — 담보속성 · 상품 · 값 · 기본계약 1 + 특약 2 · 그룹
+    // 상품 — 담보속성 · 상품 · 값 · 기본계약 1 + 특약 2. 특약 그룹은 담보의 것 — 일반상해사망 = 「상해 관련 특별약관」(V01)
     unwrap(await product.createAttributeKind(editor, { label: "갱신유형" })); // A0001
     unwrap(await product.addAttributeValue(editor, "A0001", { label: "비갱신형" }));
     unwrap(await product.addAttributeValue(editor, "A0001", { label: "갱신형", fragment: "갱신형" }));
@@ -235,9 +238,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
     pcBase = unwrap(await product.mount(editor, productId, covBase, [], "base")).id;
     pcBasic = unwrap(await product.mount(editor, productId, covDeath, [{ kindCode: "A0002", valueCode: "1" }])).id;
     pcAddon = unwrap(await product.mount(editor, productId, covDeath, [{ kindCode: "A0002", valueCode: "2" }])).id;
-    const group = unwrap(await product.createGroup(editor, productId, { title: "상해 관련 특별약관" }));
-    unwrap(await product.placeInGroup(editor, group.id, pcBasic));
-    unwrap(await product.placeInGroup(editor, group.id, pcAddon));
+    unwrap(await coverage.setSpecialGroup(editor, covDeath, "V01"));
   });
   afterAll(async () => {
     await t.close();
@@ -310,7 +311,9 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
     unwrap(await product.releaseBaseContract(editor, productId, pcBase));
     const b = unwrap(await svc.preview(productId));
     expect(b.complete).toBe(false);
-    expect(b.issues.map((issue) => issue.kind)).toEqual(["noBaseContract", "noBaseContract", "omissionUndecided", "omissionUndecided", "unplaced"]);
+    // 기본계약이던 상품담보는 특약이 된다 — 제 담보에 그룹이 없어 그룹들 뒤에 제목 없이 찍힌다(오류 아님, ADR-0080)
+    expect(b.issues.map((issue) => issue.kind)).toEqual(["noBaseContract", "noBaseContract", "omissionUndecided", "omissionUndecided"]);
+    expect(b.specials.map((g) => [g.title, g.docs.map((d) => d.ownerId)])).toEqual([["상해 관련 특별약관", [pcBasic, pcAddon]], [undefined, [pcBase]]]);
     expect(b.issues[0]).toMatchObject({ kind: "noBaseContract", at: { document: "product", ownerId: productId } });
     expect(b.specials[0].docs).toHaveLength(2);
     expect(lines(b.specials[0].docs[0])).toHaveLength(12);
@@ -443,14 +446,16 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
       unwrap(await svc.run(editor, productId));
     });
 
-    it("행 수가 그대로인 관계 변경(상품담보의 그룹 이동)도 stale:true — updated_at 없는 테이블은 키 다이제스트가 잡는다", async () => {
-      unwrap(await svc.run(editor, productId));
-      const group2 = unwrap(await product.createGroup(editor, productId, { title: "기타 특별약관" }));
-      unwrap(await svc.run(editor, productId)); // 그룹 행 추가분은 반영해 두고
-      unwrap(await product.placeInGroup(editor, group2.id, pcAddon)); // 멤버 행 수는 2 그대로
-      expect((await svc.latest(productId))!.stale).toBe(true);
+    it("담보의 특약 그룹을 바꾸면 stale:true — 그룹은 담보 마스터(coverages) 것이라 공유 마스터 스탬프가 잡는다 (ADR-0080)", async () => {
       unwrap(await svc.run(editor, productId));
       expect((await svc.latest(productId))!.stale).toBe(false);
+      unwrap(await coverage.setSpecialGroup(editor, covDeath, "V02"));
+      expect((await svc.latest(productId))!.stale).toBe(true);
+      const b = unwrap(await svc.run(editor, productId));
+      expect(b.booklet.specials.map((g) => g.title)).toEqual(["기타 특별약관"]);
+      expect((await svc.latest(productId))!.stale).toBe(false);
+      unwrap(await coverage.setSpecialGroup(editor, covDeath, "V01"));
+      unwrap(await svc.run(editor, productId));
     });
 
     it("다른 상품의 고유분 변경은 이 상품을 오래되게 하지 않는다", async () => {

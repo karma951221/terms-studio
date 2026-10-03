@@ -2,7 +2,7 @@
  * 상품·탑재 서비스 — 모든 쓰기의 진입점. actor 검사 · 도메인 규칙 · repo 호출 · 트랜잭션.
  *
  * - 비파괴 액션(채번 · 표시명 · 작명 규칙 · 순서 · 상품 생성 · 값 입력 · 선택지 · 조합 등록 · 탑재 ·
- *   세목 부착 · 기본계약 지정/해제 · 그룹 · 오버라이드)은 editor 도 가능.
+ *   세목 부착 · 기본계약 지정/해제 · 오버라이드)은 editor 도 가능. 특약 그룹은 상품 것이 아니다 — 담보 마스터의 열거값(ADR-0080).
  * - 파괴적 액션은 `destructive()` 2단 (ADR-0019): editor → forbidden · admin 1차 → needsConfirmation(Impact) ·
  *   `{ confirm: true }` → 실행. 여기서 쓰는 액션: `product.delete` · `product.unmount` · `product.detachPlan`
  *   (세목 부착 해제 · 유효 조합 삭제 · 선택지 삭제 — 셋 다 「세목 조합 제거」 결) · `attribute.delete` · `attribute.deleteValue`.
@@ -39,8 +39,6 @@ import {
   reorderAttributeKinds,
   reviseAttributeKind,
   setNamingFragment,
-  sortInGroup,
-  validateGroupTemplate,
   validateNewPlanOption,
   validatePlanCombination,
   validatePlanType,
@@ -60,7 +58,6 @@ import {
   type NewAttributeValue,
   type NewPlanOption,
   type NewProduct,
-  type NewSpecialGroup,
   type OptionValidator,
   type PlanOption,
   type Product,
@@ -68,7 +65,6 @@ import {
   type ProductCoverageSnapshot,
   type ProductPlan,
   type SnapshotNode,
-  type SpecialGroup,
 } from "@/domain/product";
 import { CONTRACT_KIND_PATH, findForm, findMasterField, formRuleIssues, formsOfLevel, isStandaloneContract, type MasterForm } from "@/domain/master";
 import type { Actor, AttachLevel, Code, Coordinate, Id, Impact, Issue, Result, Value, ValueSlot } from "@/domain/types";
@@ -124,7 +120,6 @@ export interface CompletenessSummary {
 }
 export type CoverageSection = "base" | "special";
 export type OverrideScope = ClauseOptionOverride["scope"];
-export type SpecialGroupView = SpecialGroup & { members: ProductCoverage[] };
 export interface SyncResult {
   added: number;
   removed: number;
@@ -294,16 +289,6 @@ export interface ProductService {
   listBaseContractIds(productId: Id): Promise<Id[]>;
   /** 「정확히 1개」 검증 + 부착 검사. 0개 → invalid(noBaseContract). 독립특약은 0개가 정상 · 1개 이상이 invalid (기능/상품 §3.1). */
   checkBaseContract(productId: Id): Promise<Result<BaseContractCheck[]>>;
-
-  // ── 특약 그룹
-  listGroups(productId: Id): Promise<SpecialGroupView[]>;
-  createGroup(actor: Actor, productId: Id, input: NewSpecialGroup): Promise<Result<SpecialGroup>>;
-  renameGroup(actor: Actor, groupId: Id, title: string): Promise<Result<SpecialGroup>>;
-  reorderGroups(actor: Actor, productId: Id, order: Id[]): Promise<Result<SpecialGroup[]>>;
-  deleteGroup(actor: Actor, groupId: Id): Promise<Result<void>>;
-  placeInGroup(actor: Actor, groupId: Id, productCoverageId: Id): Promise<Result<void>>;
-  removeFromGroup(actor: Actor, productCoverageId: Id): Promise<Result<void>>;
-  listUnplaced(productId: Id): Promise<ProductCoverage[]>;
 
   // ── 옵션 오버라이드
   /**
@@ -588,21 +573,6 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
     return ok({ productCoverageId: pc.id, issues: checkGeneralAttachment(required, known, { id: pc.id, name: pc.name }) });
   }
 
-  async function groupViews(tx: Db, productId: Id): Promise<SpecialGroupView[]> {
-    const [groups, members, coverages, kinds] = await Promise.all([repo.listGroups(tx, productId), repo.listMembersByGroup(tx, productId), repo.listProductCoverages(tx, productId), repo.listAttributeKinds(tx)]);
-    const byId = new Map(coverages.map((c) => [c.id, c]));
-    // 담보 순서 = 탑재 시점 담보명 순 (B1 마스터 순서는 통합 때 어댑터로 바꿀 수 있다) — 담보명은 한 번에 읽는다
-    const namesByPc = await repo.coverageNamesOf(tx, coverages.map((c) => c.id));
-    const nameOf = new Map<Id, string>();
-    for (const c of coverages) if (!nameOf.has(c.coverageId)) nameOf.set(c.coverageId, namesByPc.get(c.id) ?? "");
-    const names = [...new Set(nameOf.values())].sort((a, b) => a.localeCompare(b));
-    const coverageOrder = (id: Id) => names.indexOf(nameOf.get(id) ?? "");
-    return groups.map((g) => ({
-      ...g,
-      members: sortInGroup((members.get(g.id) ?? []).map((id) => byId.get(id)).filter((c): c is ProductCoverage => !!c), kinds, coverageOrder),
-    }));
-  }
-
   /** 기본정보 전체를 검증한 후 한 트랜잭션으로 저장한다. */
   function saveBasic(actor: Actor, id: Id, input: ProductBasicInput, opts: Confirmable = {}): Promise<Result<void>> {
     return db.transaction((tx) => withProduct(tx, id, async () => {
@@ -645,7 +615,7 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
       const keys = new Set(input.combinations.map(planCombinationKey));
       const removedPlans = currentPlans.filter((p) => !keys.has(planCombinationKey(p.options.map((o) => o.id))));
       // 독립특약으로 저장하면 기본계약을 함께 해제한다 — 확인 뒤 같은 트랜잭션에서 (기능/상품 §3.1 · §6.2 · 2026-10-01).
-      // 해제는 releaseBaseContract 와 같은 뜻: 지정만 지우고 상품담보 · 스냅샷 값은 남는다 → 특별약관 표(그룹 미배치)로 간다.
+      // 해제는 releaseBaseContract 와 같은 뜻: 지정만 지우고 상품담보 · 스냅샷 값은 남는다 → 특별약관 표로 간다(그룹은 그 담보의 것).
       const kindEntry = input.values.find((e) => e.path === CONTRACT_KIND_PATH);
       const standalone = kindEntry
         ? isStandaloneContract(kindEntry.value === undefined ? undefined : entered(kindEntry.value))
@@ -1008,10 +978,9 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
             withProduct(tx, id, async () => {
               coverages = await repo.listProductCoverages(tx, id);
               const options = await repo.listPlanOptions(tx, id);
-              const groups = await repo.listGroups(tx, id);
               owners = [{ kind: "product", id }, ...options.map<ValueOwner>((o) => ({ kind: "plan", id: o.id }))];
               for (const c of coverages) owners.push(...(await snapshotOwners(tx, c.id)).map((s) => s.owner));
-              cascade = [...coverages.map((c) => `상품담보 ${c.name}`), ...options.map((o) => `세목 선택지 ${planOptionLabel(o)}`), ...groups.map((g) => `그룹 ${g.title}`)];
+              cascade = [...coverages.map((c) => `상품담보 ${c.name}`), ...options.map((o) => `세목 선택지 ${planOptionLabel(o)}`)];
               return ok(undefined);
             }),
           computeImpact: async () => ({ valueRowsLost: await countSlots(tx, owners), brokenRefs: [], cascade }),
@@ -1195,7 +1164,6 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
               cascade = [
                 ...snaps.filter((s) => s.node).map((s) => `${s.node!.kind === "sub" ? "세부보장" : "급부"} ${s.node!.name}`),
                 ...(plans.length ? [`세목 부착 ${plans.length}건`] : []),
-                ...((await repo.groupOf(tx, id)) ? ["그룹 배치"] : []),
               ];
               return ok(undefined);
             }),
@@ -1311,7 +1279,6 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
             if (blocked.length > 0) return invalid(blocked);
             if (!product.generalDocumentId) return invalid([issue("brokenRef", "보통약관 템플릿이 선택되지 않았습니다", { document: "product", ownerId: productId })]);
             await repo.insertBaseContract(tx, productId, productCoverageId, actor.userId);
-            await repo.removeMember(tx, productCoverageId);
             return checkOne(tx, product, pc); // 부착 검사 — 실패는 거부가 아니라 오류 목록 (D-P5-13)
           }),
         ),
@@ -1342,73 +1309,6 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
         }
         return ok(checks);
       }),
-
-    // 특약 그룹
-    listGroups: (productId) => groupViews(db, productId),
-    createGroup: (actor, productId, input) =>
-      db.transaction((tx) =>
-        withProduct(tx, productId, async (p) => {
-          const title = cleanName(input.title);
-          if (!title) return invalid([issue("typeMismatch", "그룹 제목은 비울 수 없습니다")]);
-          const issues = validateGroupTemplate(input.generalDocumentId, p.generalDocumentId);
-          if (issues.length > 0) return invalid(issues);
-          const order = (await repo.listGroups(tx, productId)).reduce((m, g) => Math.max(m, g.order + 1), 0);
-          return ok(await repo.insertGroup(tx, productId, title, order, input.generalDocumentId, actor.userId));
-        }),
-      ),
-    renameGroup: (actor, groupId, title) =>
-      db.transaction(async (tx) => {
-        const g = await repo.loadGroup(tx, groupId);
-        if (!g) return notFound(`그룹 ${groupId}`);
-        const clean = cleanName(title);
-        if (!clean) return invalid([issue("typeMismatch", "그룹 제목은 비울 수 없습니다")]);
-        await repo.updateGroup(tx, groupId, { title: clean }, actor.userId);
-        return ok({ ...g, title: clean });
-      }),
-    reorderGroups: (actor, productId, order) =>
-      db.transaction(async (tx) => {
-        const groups = await repo.listGroups(tx, productId);
-        const ids = new Set(groups.map((g) => g.id));
-        if (order.length !== ids.size || new Set(order).size !== order.length || order.some((id) => !ids.has(id))) {
-          return invalid([issue("typeMismatch", "그룹 순서는 상품의 모든 그룹 id 를 한 번씩 담아야 합니다")]);
-        }
-        const byId = new Map(groups.map((g) => [g.id, g]));
-        const out: SpecialGroup[] = [];
-        for (const [i, id] of order.entries()) {
-          await repo.updateGroup(tx, id, { order: i }, actor.userId);
-          out.push({ ...byId.get(id)!, order: i });
-        }
-        return ok(out);
-      }),
-    deleteGroup: (actor, groupId) =>
-      db.transaction(async (tx) => {
-        void actor;
-        if (!(await repo.loadGroup(tx, groupId))) return notFound(`그룹 ${groupId}`);
-        await repo.deleteGroup(tx, groupId); // 소속은 cascade — 상품담보는 미배치로 돌아간다 (값 손실 없음)
-        return ok(undefined);
-      }),
-    placeInGroup: (actor, groupId, productCoverageId) =>
-      db.transaction(async (tx) => {
-        void actor;
-        const g = await repo.loadGroup(tx, groupId);
-        if (!g) return notFound(`그룹 ${groupId}`);
-        return withCoverage(tx, productCoverageId, async (pc) => {
-          if (pc.productId !== g.productId) return notFound(`상품 ${g.productId} 의 상품담보 ${productCoverageId}`);
-          await repo.placeMember(tx, groupId, productCoverageId);
-          return ok(undefined);
-        });
-      }),
-    removeFromGroup: (actor, productCoverageId) =>
-      db.transaction(async (tx) => {
-        void actor;
-        if (!(await repo.groupOf(tx, productCoverageId))) return notFound(`상품담보 ${productCoverageId} 의 그룹 배치`);
-        await repo.removeMember(tx, productCoverageId);
-        return ok(undefined);
-      }),
-    listUnplaced: async (productId) => {
-      const placed = new Set([...(await repo.listMembersByGroup(db, productId)).values()].flat());
-      return (await repo.listProductCoverages(db, productId)).filter((c) => !placed.has(c.id));
-    },
 
     // 옵션 오버라이드
     setOptionOverride: (actor, scope, nodeId, clauseCode, options) =>

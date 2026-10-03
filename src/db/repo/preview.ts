@@ -3,11 +3,11 @@
  *
  * 스탬프 = 조립이 읽는 재료 테이블 전부의 `이름=시각:count` 조각을 테이블 이름 순으로 `|` 로 이은 문자열.
  * - `updated_at` 이 있는 테이블은 `max(updated_at)`(UTC · 마이크로초) — 행이 없으면 `-`.
- * - `updated_at` 이 없는 테이블(구성 행 · 관계 행)은 키 열을 정렬해 이은 것의 md5 — 삭제 + 재삽입(그룹 이동 · 기본계약 교체)
+ * - `updated_at` 이 없는 테이블(구성 행 · 관계 행)은 키 열을 정렬해 이은 것의 md5 — 삭제 + 재삽입(기본계약 교체 · 세목 부착)
  *   처럼 행 수가 그대로인 변경을 잡기 위해서다.
  * - `count` 를 함께 두는 이유: 삭제만으로는 `max(updated_at)` 이 변하지 않는다.
  * - 상품 고유분은 그 상품 행으로 한정하고(FK 경로), 공유 마스터는 전체 — 기능/조립산출 §3.6 「입력 = 마스터(구분자 · 함수조항 ·
- *   문면 · 별표 · 박스) + 상품 고유분(상품 값 · 세목 · 탑재 · 스냅샷 값 · 그룹 · 오버라이드 · 별표 순서) — 조립이 읽는 재료 전부」 ·
+ *   문면 · 별표 · 박스) + 상품 고유분(상품 값 · 세목 · 탑재 · 스냅샷 값 · 오버라이드 · 별표 순서 — 특약 그룹은 담보 마스터(coverages) 것, ADR-0080) — 조립이 읽는 재료 전부」 ·
  *   열어 둔 것 「공유 마스터는 어느 것이든 바뀌면 전 상품이 오래됨」.
  * - 스탬프는 「같다/다르다」만 말한다. 무엇이 바뀌었는지는 판본(ADR-0026 · MVP 이후)의 몫.
  */
@@ -44,8 +44,6 @@ import {
   productPlans,
   productPreviews,
   products,
-  specialGroupMembers,
-  specialGroups,
   subCoverages,
 } from "../schema";
 import type { Db } from "./types";
@@ -94,7 +92,6 @@ interface StampSource {
 
 const ownedCoverageIds = (productId: Id) => sql`(select ${productCoverages.id} from ${productCoverages} where ${productCoverages.productId} = ${productId})`;
 const ownedPlanIds = (productId: Id) => sql`(select ${productPlans.id} from ${productPlans} where ${productPlans.productId} = ${productId})`;
-const ownedGroupIds = (productId: Id) => sql`(select ${specialGroups.id} from ${specialGroups} where ${specialGroups.productId} = ${productId})`;
 const ownedOptionIds = (productId: Id) => sql`(select ${planOptions.id} from ${planOptions} where ${planOptions.productId} = ${productId})`;
 const ownedNodeIds = (productId: Id) =>
   sql`(select ${productCoverageNodes.id} from ${productCoverageNodes} where ${productCoverageNodes.productCoverageId} in ${ownedCoverageIds(productId)})`;
@@ -186,13 +183,6 @@ export const ASSEMBLY_STAMP_SOURCES: readonly StampSource[] = [
   },
   { name: "product_plans", table: productPlans, time: productPlans.updatedAt, where: (productId) => eq(productPlans.productId, productId) },
   { name: "products", table: products, time: products.updatedAt, where: (productId) => eq(products.id, productId) },
-  {
-    name: "special_group_members",
-    table: specialGroupMembers,
-    keys: [specialGroupMembers.groupId, specialGroupMembers.productCoverageId],
-    where: (productId) => inArray(specialGroupMembers.groupId, ownedGroupIds(productId)),
-  },
-  { name: "special_groups", table: specialGroups, time: specialGroups.updatedAt, where: (productId) => eq(specialGroups.productId, productId) },
   { name: "sub_coverages", table: subCoverages, time: subCoverages.updatedAt },
 ];
 

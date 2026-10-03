@@ -21,7 +21,6 @@ import type {
   ProductCoverage,
   ProductPlan,
   SnapshotNode,
-  SpecialGroup,
 } from "@/domain/product/types";
 import type { Code, Id } from "@/domain/types";
 
@@ -42,8 +41,6 @@ import {
   productPlanOptions,
   productPlans,
   products,
-  specialGroupMembers,
-  specialGroups,
 } from "../schema";
 import type { Db } from "./types";
 
@@ -552,63 +549,6 @@ export async function listBaseContractIds(db: Db, productId: Id): Promise<Id[]> 
 export async function isBaseContract(db: Db, productCoverageId: Id): Promise<boolean> {
   const [row] = await db.select({ id: productBaseContracts.productCoverageId }).from(productBaseContracts).where(eq(productBaseContracts.productCoverageId, productCoverageId)).limit(1);
   return !!row;
-}
-
-// ───────────────────────────── 특약 그룹 ─────────────────────────────
-
-type GroupRow = typeof specialGroups.$inferSelect;
-
-function toGroup(r: GroupRow): SpecialGroup {
-  return { id: r.id, productId: r.productId, title: r.title, order: r.order, ...(r.generalDocumentId ? { generalDocumentId: r.generalDocumentId } : {}) };
-}
-
-export async function insertGroup(db: Db, productId: Id, title: string, order: number, generalDocumentId: Id | undefined, who: Id): Promise<SpecialGroup> {
-  const [row] = await db.insert(specialGroups).values({ productId, title, order, generalDocumentId: generalDocumentId ?? null, createdBy: who, updatedBy: who }).returning();
-  return toGroup(row);
-}
-
-export async function loadGroup(db: Db, id: Id): Promise<SpecialGroup | undefined> {
-  const [row] = await db.select().from(specialGroups).where(eq(specialGroups.id, id)).limit(1);
-  return row ? toGroup(row) : undefined;
-}
-
-export async function listGroups(db: Db, productId: Id): Promise<SpecialGroup[]> {
-  return (await db.select().from(specialGroups).where(eq(specialGroups.productId, productId)).orderBy(asc(specialGroups.order), asc(specialGroups.id))).map(toGroup);
-}
-
-export async function updateGroup(db: Db, id: Id, patch: { title?: string; order?: number; generalDocumentId?: Id | null }, who: Id): Promise<void> {
-  await db.update(specialGroups).set({ ...patch, updatedAt: new Date(), updatedBy: who }).where(eq(specialGroups.id, id));
-}
-
-export async function deleteGroup(db: Db, id: Id): Promise<void> {
-  await db.delete(specialGroups).where(eq(specialGroups.id, id));
-}
-
-/** 배치 — 이미 다른 그룹에 있으면 옮긴다 (상품담보 하나는 한 그룹에만). */
-export async function placeMember(db: Db, groupId: Id, productCoverageId: Id): Promise<void> {
-  await db.delete(specialGroupMembers).where(eq(specialGroupMembers.productCoverageId, productCoverageId));
-  await db.insert(specialGroupMembers).values({ groupId, productCoverageId });
-}
-
-export async function removeMember(db: Db, productCoverageId: Id): Promise<void> {
-  await db.delete(specialGroupMembers).where(eq(specialGroupMembers.productCoverageId, productCoverageId));
-}
-
-/** 그룹별 소속 상품담보 id (정렬 전). */
-export async function listMembersByGroup(db: Db, productId: Id): Promise<Map<Id, Id[]>> {
-  const rows = await db
-    .select({ groupId: specialGroupMembers.groupId, pcId: specialGroupMembers.productCoverageId })
-    .from(specialGroupMembers)
-    .innerJoin(specialGroups, eq(specialGroups.id, specialGroupMembers.groupId))
-    .where(eq(specialGroups.productId, productId));
-  const out = new Map<Id, Id[]>();
-  for (const r of rows) out.set(r.groupId, [...(out.get(r.groupId) ?? []), r.pcId]);
-  return out;
-}
-
-export async function groupOf(db: Db, productCoverageId: Id): Promise<Id | undefined> {
-  const [row] = await db.select({ id: specialGroupMembers.groupId }).from(specialGroupMembers).where(eq(specialGroupMembers.productCoverageId, productCoverageId)).limit(1);
-  return row?.id;
 }
 
 // ───────────────────────────── 옵션 오버라이드 ─────────────────────────────

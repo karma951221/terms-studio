@@ -169,6 +169,13 @@
       "when": 1791039457833,
       "tag": "0023_product_article_copies",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791042699816,
+      "tag": "0024_coverage_special_group",
+      "breakpoints": true
     }
   ]
 }

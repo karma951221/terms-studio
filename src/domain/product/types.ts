@@ -157,23 +157,6 @@ export interface BaseContractCheck {
   issues: Issue[];
 }
 
-// ───────────────────────────── 특약 그룹 (기능/상품 §3) ─────────────────────────────
-
-export interface SpecialGroup {
-  id: Id;
-  productId: Id;
-  title: string;
-  /** 책자 안 그룹 순서 (0부터). */
-  order: number;
-  /** 한 그룹 = 한 보통약관 템플릿. MVP 는 상품 것과 같아야 한다 (검증). 없으면 상품 것을 따른다. */
-  generalDocumentId?: Id;
-}
-
-export interface NewSpecialGroup {
-  title: string;
-  generalDocumentId?: Id;
-}
-
 // ───────────────────────────── 옵션 오버라이드 (기능/상품 §3.6) ─────────────────────────────
 
 /** 함수조항 옵션 선택 — 옵션 자리 → 선택한 옵션 코드. 유효 집합 검증은 B2 `OptionValidator`. */

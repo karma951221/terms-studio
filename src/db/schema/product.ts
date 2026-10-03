@@ -1,5 +1,6 @@
 /**
- * 상품 스키마 — 담보속성 카탈로그 · 상품 · 조 사본 · 세목 · 상품담보(탑재 스냅샷) · 기본계약 · 특약 그룹 · 옵션 오버라이드.
+ * 상품 스키마 — 담보속성 카탈로그 · 상품 · 조 사본 · 세목 · 상품담보(탑재 스냅샷) · 기본계약 · 옵션 오버라이드.
+ * 특약 그룹은 상품 것이 아니다 — 담보 마스터의 「특약 그룹」 열거값이다 (`coverages.special_group`, ADR-0080).
  *
  * 근거: docs/기능/상품/상품.md (§3.5 · §3.6) · docs/기능/조립산출/조립산출.md · ADR-0002 · ADR-0006 · ADR-0015.
  *
@@ -253,35 +254,6 @@ export const productBaseContracts = pgTable(
     createdBy: uuid("created_by"),
   },
   (t) => [primaryKey({ columns: [t.productId, t.productCoverageId] })],
-);
-
-// ───────────────────────────── 특약 그룹 (기능/상품 §3) ─────────────────────────────
-
-export const specialGroups = pgTable("special_groups", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  productId: uuid("product_id")
-    .notNull()
-    .references(() => products.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  order: integer("order").notNull(),
-  /** 한 그룹 = 한 보통약관 템플릿. null 이면 상품 것을 따른다. MVP 는 상품 것과 같아야 함. */
-  generalDocumentId: uuid("general_document_id"),
-  ...audit,
-});
-
-/** 그룹 소속 — 상품담보 하나는 한 그룹에만. 그룹 안 순서는 저장하지 않는다 (자동 정렬). */
-export const specialGroupMembers = pgTable(
-  "special_group_members",
-  {
-    groupId: uuid("group_id")
-      .notNull()
-      .references(() => specialGroups.id, { onDelete: "cascade" }),
-    productCoverageId: uuid("product_coverage_id")
-      .notNull()
-      .references(() => productCoverages.id, { onDelete: "cascade" })
-      .unique(),
-  },
-  (t) => [primaryKey({ columns: [t.groupId, t.productCoverageId] })],
 );
 
 // ───────────────────────────── 옵션 오버라이드 (기능/상품 §3.6) ─────────────────────────────

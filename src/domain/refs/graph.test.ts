@@ -166,6 +166,15 @@ describe("refs 그래프 — buildGraph (기능/관계정보 §3 「참조 그�
     expect(ov).toMatchObject({ via: "override", from: { kind: "product", id: "prod-1" }, through: { kind: "article", documentId: "doc-s", articleId: "s-art-lapse" }, at: { document: "product", ownerId: "prod-1", ownerName: "알파Plus", nodePath: ["s-clause-lapse"], refPath: "C001.O01" } });
   });
 
+  it("담보의 특약 그룹 → 「특약 그룹」 열거값 간선(specialGroup) — 값 삭제 영향 · 관계정보의 재료 (ADR-0080)", () => {
+    const g = buildGraph({ enums: [{ code: "E0008", label: "특약 그룹", values: [{ code: "V01", label: "상해 관련 특별약관" }] }] as EnumDef[], coverages: [{ ...수술비, specialGroup: "V01" }] });
+    expect(edgesTo(g, "enumValue:E0008/V01")).toEqual([
+      { from: { kind: "coverageNode", level: "coverage", id: 수술비.id }, to: { kind: "enumValue", enumCode: "E0008", valueCode: "V01" }, via: "specialGroup", at: { document: "coverageMaster", ownerId: 수술비.id, ownerName: 수술비.name, refPath: "specialGroup" } },
+    ]);
+    // 그룹 없는 담보는 간선이 없다
+    expect(buildGraph({ coverages: [수술비] }).edges.filter((e) => e.via === "specialGroup")).toEqual([]);
+  });
+
   it("enum 타입 자리와 문자열 리터럴을 비교하는 식은 enum 값 간선을 낸다 (enum 값 삭제 영향 재료)", () => {
     const g = buildGraph({
       discriminators: [고지유형],
