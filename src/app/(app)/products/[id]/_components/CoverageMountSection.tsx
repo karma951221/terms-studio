@@ -33,8 +33,6 @@ export interface CoverageMountSectionProps {
   plans: ProductPlan[];
   /** 작명 규칙이 지금 지어 줄 이름 — 누르기 전에 결과를 보여준다 (리뷰 #27 · §9.3). */
   wouldBeName: (pc: ProductCoverage) => string;
-  /** 행마다의 「미리보기」 좌표 — 특약 절만 준다 (기본계약은 약관 › 보통약관 작성의 세 패널이 미리보기다 · 기능/상품 §4.6). */
-  previewPath?: (pcId: Id) => string;
   /** 지금 미리보고 있는 상품담보 — 그 행이 `aria-current`. */
   selectedId?: Id;
   /** 주면 탑재 폼 대신 이 한 줄 — 기본계약 절은 이미 기본계약이 있으면 탑재(=지정)를 서비스가 거부한다 (MVP 정확히 1개). */
@@ -55,7 +53,7 @@ export interface CoverageMountSectionProps {
  * 「담보 검색」은 코드 · 이름 · 속성 값을 거른다(`?mq=`). 표 위 검색 · 아래 페이저는 L1 목록과 같은 부품이다.
  * `?confirm=pc:…` · `?confirm=detach:…` 확인 카드는 **그 상품담보를 가진 절**에서만 뜬다 — 검색에 가려져도.
  */
-export function CoverageMountSection({ productId, section, items, coverages, attributeKinds, plans, wouldBeName, previewPath, selectedId, mountBlockedHint, query = "", page, keepQuery = {}, confirm, confirmNode }: CoverageMountSectionProps) {
+export function CoverageMountSection({ productId, section, items, coverages, attributeKinds, plans, wouldBeName, selectedId, mountBlockedHint, query = "", page, keepQuery = {}, confirm, confirmNode }: CoverageMountSectionProps) {
   const title = SECTION_TITLE[section];
   const tab = TAB;
   const keys = MOUNT_QUERY_KEYS[section];
@@ -119,14 +117,6 @@ export function CoverageMountSection({ productId, section, items, coverages, att
                         <input type="text" name="name" defaultValue={pc.name} aria-label={`상품담보명 · ${pc.name}`} style={{ width: 220 }} />
                         <IconButton type="submit" label={`이름 저장 · ${pc.name}`} icon={<IconCheck />} />
                       </form>
-                      {previewPath && (
-                        <>
-                          {" "}
-                          <Link href={previewPath(pc.id)} title={`미리보기 · ${pc.name}`}>
-                            미리보기
-                          </Link>
-                        </>
-                      )}
                     </td>
                     <td className="col-fixed-md">
                       <form action={attachPlanAction.bind(null, productId, tab, pc.id)} style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>

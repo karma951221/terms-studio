@@ -11,7 +11,6 @@ import type { Id, Result } from "@/domain/types";
 import type { SpecialGroupView } from "@/services/product";
 
 import { createGroupAction, placeInGroupAction, removeFromGroupAction, renameGroupAction } from "../../actions";
-import { specialPreviewPath } from "../../lib";
 import { CoverageMountSection, MOUNT_QUERY_KEYS } from "./CoverageMountSection";
 
 export interface CoveragesTabProps {
@@ -80,7 +79,6 @@ export function CoveragesTab({ productId, baseCoverages, specialCoverages, cover
         page={mountSearch.special.page}
         keepQuery={keep("base")}
         wouldBeName={wouldBeName}
-        previewPath={(pcId) => specialPreviewPath(productId, pcId)}
         confirm={confirm}
         confirmNode={confirmNode}
       />
