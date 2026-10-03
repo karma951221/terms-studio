@@ -791,6 +791,62 @@ describe("product 서비스 (PGlite)", () => {
     });
   });
 
+  describe("기능/상품 §3.8 — 보통약관 탭 저장 한 번 (조 노출 · 옵션 오버라이드)", () => {
+    it("최종 상태를 한 번에 — 숨긴 조와 오버라이드를 맞추고, 빠진 자리는 지운다", async () => {
+      const p = unwrap(await svc.createProduct(editor, { name: "보통약관 저장 한 번", generalDocumentId: GENERAL_DOC }));
+      const scope = { kind: "product", id: p.id } as const;
+      unwrap(await svc.setArticleHidden(editor, p.id, ART_A, true));
+      unwrap(await svc.setOptionOverride(editor, scope, SEED_NODE, "C0001", { style: "B" }));
+
+      unwrap(
+        await svc.saveGeneralSettings(editor, p.id, {
+          generalDocumentId: GENERAL_DOC,
+          hiddenArticles: [ART_B],
+          overrides: [{ nodeId: NODE, clauseCode: "C0001", options: { style: "C", tone: "T1" } }],
+        }),
+      );
+      expect(await svc.listHiddenArticles(p.id)).toEqual([ART_B]);
+      // 차이만 저장 · 목록에 없는 자리(SEED_NODE)는 지운다
+      expect((await svc.listOptionOverrides(scope)).map((o) => [o.nodeId, o.options])).toEqual([[NODE, { style: "C" }]]);
+
+      // 마스터와 같은 선택만 보내면 행을 남기지 않는다
+      unwrap(await svc.saveGeneralSettings(editor, p.id, { generalDocumentId: GENERAL_DOC, hiddenArticles: [], overrides: [{ nodeId: NODE, clauseCode: "C0001", options: MASTER_OPTIONS }] }));
+      expect(await svc.listHiddenArticles(p.id)).toEqual([]);
+      expect(await svc.listOptionOverrides(scope)).toEqual([]);
+    });
+
+    it("잘못된 선택 · 없는 조 · 다른 함수조항이 하나라도 있으면 아무것도 쓰지 않고 그 자리 좌표로 거부한다", async () => {
+      const p = unwrap(await svc.createProduct(editor, { name: "보통약관 저장 거부", generalDocumentId: GENERAL_DOC }));
+      const scope = { kind: "product", id: p.id } as const;
+      unwrap(await svc.setArticleHidden(editor, p.id, ART_A, true));
+
+      optionIssues = [{ kind: "optionInvalid", message: "없는 선택지", at: {} }];
+      const bad = await svc.saveGeneralSettings(editor, p.id, { generalDocumentId: GENERAL_DOC, hiddenArticles: [ART_B], overrides: [{ nodeId: NODE, clauseCode: "C0001", options: { style: "Z" } }] });
+      optionIssues = [];
+      if (bad.ok || bad.rejection.reason !== "invalid") throw new Error("기대: invalid");
+      expect(bad.rejection.issues[0].at).toMatchObject({ document: "product", ownerId: p.id, nodePath: [NODE] });
+      expect(await svc.listHiddenArticles(p.id)).toEqual([ART_A]); // 앞쪽(조 노출)도 안 바뀐다
+
+      const wrong = await svc.saveGeneralSettings(editor, p.id, {
+        generalDocumentId: GENERAL_DOC,
+        hiddenArticles: [ART_OTHER],
+        overrides: [{ nodeId: NODE, clauseCode: "C9999", options: { style: "B" } }],
+      });
+      if (wrong.ok || wrong.rejection.reason !== "invalid") throw new Error("기대: invalid");
+      expect(wrong.rejection.issues.map((i) => i.at.articleId ?? i.at.nodePath?.at(-1))).toEqual([ART_OTHER, NODE]);
+      expect(await svc.listHiddenArticles(p.id)).toEqual([ART_A]);
+      expect(await svc.listOptionOverrides(scope)).toEqual([]);
+    });
+
+    it("편집을 시작한 템플릿과 지금 템플릿이 다르면 conflict · 템플릿 없는 상품 · 없는 상품", async () => {
+      const p = unwrap(await svc.createProduct(editor, { name: "보통약관 저장 충돌", generalDocumentId: OTHER_DOC }));
+      expect(reason(await svc.saveGeneralSettings(editor, p.id, { generalDocumentId: GENERAL_DOC, hiddenArticles: [], overrides: [] }))).toBe("conflict");
+      const bare = unwrap(await svc.createProduct(editor, { name: "보통약관 저장 템플릿 없음" }));
+      expect(reason(await svc.saveGeneralSettings(editor, bare.id, { generalDocumentId: GENERAL_DOC, hiddenArticles: [], overrides: [] }))).toBe("conflict");
+      expect(reason(await svc.saveGeneralSettings(editor, "cccccccc-0000-4000-8000-000000000009", { generalDocumentId: GENERAL_DOC, hiddenArticles: [], overrides: [] }))).toBe("notFound");
+    });
+  });
+
   describe("역할권한 — 파괴적 액션 2단 (탑재 해제 · 속성 삭제 · 상품 삭제)", () => {
     it("탑재 해제: 편집자 forbidden · 관리자 영향(값 행 수) 확인 후 스냅샷 값·세목 부착 연쇄 삭제", async () => {
       expect(reason(await svc.unmount(editor, pcSurgery))).toBe("forbidden");

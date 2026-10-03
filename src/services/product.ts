@@ -132,6 +132,17 @@ export interface SlotWrite {
   value: Value | undefined;
 }
 
+/**
+ * 보통약관 탭 한 번 저장의 **최종 상태** (기능/상품 §3.8) — 숨긴 조 전부 · 오버라이드할 자리 전부.
+ * 목록에 없는 숨김 · 오버라이드는 지운다. `options` 는 부분 선택이어도 되고 마스터와 같은 키는 남기지 않는다.
+ */
+export interface GeneralSettingsInput {
+  /** 편집을 시작할 때의 템플릿 — 그 사이 바뀌었으면 초안의 노드가 다른 템플릿 것이라 conflict. */
+  generalDocumentId: Id;
+  hiddenArticles: Id[];
+  overrides: { nodeId: Id; clauseCode: Code; options: ClauseOptionSelection }[];
+}
+
 export interface ProductBasicInput {
   name: string;
   values: SlotWrite[];
@@ -193,6 +204,12 @@ export interface ProductService {
    * 템플릿이 없으면 invalid · 템플릿에 없는 조 id 면 notFound.
    */
   setArticleHidden(actor: Actor, productId: Id, articleId: Id, hidden: boolean): Promise<Result<void>>;
+  /**
+   * 보통약관 탭 편집 화면 한 번 저장 — 조 노출 · 옵션 오버라이드의 최종 상태를 전부 검사한 뒤 한 트랜잭션으로 맞춘다
+   * (기능/상품 §3.8). 하나라도 틀리면 아무것도 안 쓰고 `invalid` — 이슈 좌표는 그 조(`articleId`) · 그 자리(`nodePath`).
+   * 편집을 시작한 템플릿과 지금 템플릿이 다르면(템플릿 없음 포함) `conflict`.
+   */
+  saveGeneralSettings(actor: Actor, productId: Id, input: GeneralSettingsInput): Promise<Result<void>>;
   deleteProduct(actor: Actor, id: Id, opts?: Confirmable): Promise<Result<void>>;
   setProductValue(actor: Actor, id: Id, path: SlotPath, value: Value | undefined): Promise<Result<void>>;
   /** 한 제출의 값 여럿 — 전부 검사한 뒤 한 트랜잭션으로 쓴다. 하나라도 거부되면 아무것도 안 바뀐다. */
@@ -839,6 +856,57 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
           if (!ids.includes(articleId)) return notFound(`보통약관 템플릿 ${p.generalDocumentId} 의 조 ${articleId}`);
           if (hidden) await repo.addHiddenArticle(tx, productId, articleId, actor.userId);
           else await repo.removeHiddenArticle(tx, productId, articleId);
+          return ok(undefined);
+        }),
+      ),
+    saveGeneralSettings: (actor, productId, input) =>
+      db.transaction((tx) =>
+        withProduct(tx, productId, async (p) => {
+          const templateId = p.generalDocumentId;
+          if (!templateId || templateId !== input.generalDocumentId) {
+            return reject({ reason: "conflict", what: "보통약관 템플릿이 그 사이 바뀌었습니다 — 새로고침한 뒤 다시 편집해 주세요" });
+          }
+          const at = (extra: Partial<Coordinate>): Coordinate => ({ document: "product", ownerId: productId, ...extra });
+          const issues: Issue[] = [];
+          // ① 조 노출 — 템플릿의 조만
+          const articleIds = new Set(await gate.articleIds(templateId));
+          const hidden = [...new Set(input.hiddenArticles)];
+          for (const id of hidden) if (!articleIds.has(id)) issues.push(issue("brokenRef", "템플릿에 없는 조입니다 — 새로고침해 주세요", at({ articleId: id })));
+          // ② 오버라이드 — 자리 · 함수조항 · 합친 선택 검사 (setOptionOverride 와 같은 규칙), 저장은 차이만
+          const writes: { nodeId: Id; clauseCode: Code; diff: ClauseOptionSelection }[] = [];
+          const seen = new Set<Id>();
+          for (const o of input.overrides) {
+            const where = at({ nodePath: [o.nodeId] });
+            if (seen.has(o.nodeId)) {
+              issues.push(issue("typeMismatch", "같은 함수조항 자리가 두 번 왔습니다", where));
+              continue;
+            }
+            seen.add(o.nodeId);
+            const ref = await gate.clauseRef(templateId, o.nodeId);
+            if (!ref || ref.clauseCode !== o.clauseCode) {
+              issues.push(issue("brokenRef", `템플릿에 없는 함수조항 자리입니다 (${o.clauseCode}) — 새로고침해 주세요`, where));
+              continue;
+            }
+            const merged = { ...ref.options, ...o.options };
+            const found = await optionValidator.validate(o.clauseCode, merged);
+            if (found.length > 0) {
+              issues.push(...found.map((i) => ({ ...i, at: { ...i.at, ...where } })));
+              continue;
+            }
+            const diff = Object.fromEntries(Object.entries(merged).filter(([code, value]) => ref.options[code] !== value));
+            if (Object.keys(diff).length > 0) writes.push({ nodeId: o.nodeId, clauseCode: o.clauseCode, diff });
+          }
+          if (issues.length > 0) return invalid(issues);
+
+          // 검사가 끝난 뒤에만 쓴다 — 숨김은 바뀐 것만(숨긴 순서 유지), 오버라이드는 빠진 자리를 지우고 남은 자리를 덮는다
+          const before = await repo.listHiddenArticles(tx, productId);
+          const next = new Set(hidden);
+          for (const id of before) if (!next.has(id)) await repo.removeHiddenArticle(tx, productId, id);
+          for (const id of hidden) if (!before.includes(id)) await repo.addHiddenArticle(tx, productId, id, actor.userId);
+          const scope = { kind: "product", id: productId } as const;
+          const kept = new Set(writes.map((w) => w.nodeId));
+          for (const o of await repo.listOverrides(tx, scope)) if (!kept.has(o.nodeId)) await repo.deleteOverride(tx, scope, o.nodeId, o.clauseCode);
+          for (const w of writes) await repo.upsertOverride(tx, scope, w.nodeId, w.clauseCode, w.diff, actor.userId);
           return ok(undefined);
         }),
       ),
