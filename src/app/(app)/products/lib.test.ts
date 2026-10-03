@@ -34,6 +34,7 @@ import {
   resolveSpecialSelection,
   specialCoverageGroups,
   specialCoveragePath,
+  planCellShown,
   specialPreviewPath,
   str,
 } from "./lib";
@@ -481,5 +482,18 @@ describe("products lib — 특별약관 탭의 담보 묶음 (기능/상품 §4.
   it("특약 절에 없는 좌표는 믿지 않는다 — 없는 `pc` 는 `cov` 로, 없는 `cov` 는 첫 담보로", () => {
     expect(resolveSpecialSelection(groups, { cov: "c3", pc: "base1" })).toMatchObject({ group: { coverageId: "c3" }, pc: { id: "s2" } });
     expect(resolveSpecialSelection(groups, { cov: "nope", pc: "nope" })).toMatchObject({ group: { coverageId: "c2" }, pc: { id: "s1" } });
+  });
+});
+
+describe("planCellShown — 세목 표의 칸을 그 행 값에 따라 비운다 (2026-10-03 QA)", () => {
+  const values = (v: Record<string, unknown>) => (path: string) => v[path] as never;
+  it("납입면제사유는 같은 행 적용여부 = 예일 때만", () => {
+    expect(planCellShown("waiver.reasons", values({ "waiver.applies": true }))).toBe(true);
+    expect(planCellShown("waiver.reasons", values({ "waiver.applies": false }))).toBe(false);
+    expect(planCellShown("waiver.reasons", values({}))).toBe(false);
+  });
+  it("다른 칸은 늘 보인다", () => {
+    expect(planCellShown("waiver.applies", values({}))).toBe(true);
+    expect(planCellShown("no_surrender.type", values({}))).toBe(true);
   });
 });

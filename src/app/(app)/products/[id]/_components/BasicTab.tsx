@@ -19,7 +19,7 @@ import type { EditOutcome } from "@/app/_lib/edit";
 import type { ProductBasicInput } from "@/services/product";
 
 import { saveProductBasicAction } from "../../actions";
-import { basicDraftDirty } from "../../lib";
+import { basicDraftDirty, planCellShown } from "../../lib";
 import { ProductEditButtons, useProductEdit } from "./ProductEdit";
 import { SaveConfirmDialog } from "./SaveConfirmDialog";
 
@@ -213,13 +213,14 @@ export function BasicTab(props: BasicTabProps) {
   // ── 값 셀 ────────────────────────────────────────────────────────────────
   const readCell = (model: FormModel, path: string) => {
     const field = model.fields.find((f) => f.path === path);
-    if (!field) return null;
+    if (!field || !planCellShown(path, savedValueOf(model))) return null;
     // 빈 list<enum> 은 "" 로 나온다 — 없는 값은 전부 「—」. 지운 열거값 코드는 「없는 값」 칩 (ADR-0078 결정 5)
     return <FieldReadValue field={field} />;
   };
   const editCell = (ownerId: string, state: FormState | undefined, path: string, label: string) => {
     const field = state?.fields[path];
-    if (!field) return null;
+    // 같은 행 값에 따라 칸을 비운다(납입면제사유는 적용여부 = 예일 때만)
+    if (!field || !state || !planCellShown(path, draftValueOf(state))) return null;
     const id = `${idBase}-${ownerId}-${path.replace(".", "-")}`;
     return (
       <>

@@ -441,3 +441,12 @@ export function filterMountRows(rows: readonly MountRow[], query: string): Mount
     includesQuery(query, [row.coverageCode ?? "", row.pc.name, row.coverageName ?? "", row.attributes === "—" ? "" : row.attributes]),
   );
 }
+
+/**
+ * 세목 표 칸을 지금 그리나 — 같은 행의 다른 값에 따라 비운다(화면 규칙만, 마스터 필드 조건이 아니다 · 2026-10-03 QA).
+ * 납입면제사유는 적용여부 = 예일 때만 뜻이 있다 — 「아니오」 · 미입력 행에서 사유 칸이 열려 있으면 고를 것처럼 보였다.
+ */
+export function planCellShown(path: string, valueOf: (path: string) => unknown): boolean {
+  if (path === "waiver.reasons") return valueOf("waiver.applies") === true;
+  return true;
+}
