@@ -2,7 +2,7 @@ import { expect, test } from "./_lib/fixtures";
 
 /**
  * 상품 기본정보 — 와이어프레임 §20.2 (읽기 · 편집 · 종·형 조합) + 상품정보(평균공시이율 · 상품특성, 2026-09-28).
- * 헤더의 편집/더보기 ↔ 취소/저장, 상품정보 칸 · 보험종목 표의 추가 · 선택 삭제 · 인라인 값, 조합 체크, 저장 하나.
+ * 탭 첫 줄의 편집 ↔ 취소/저장(헤더에는 더보기만), 상품정보 칸 · 보험종목 표의 추가 · 선택 삭제 · 인라인 값, 조합 체크, 저장 하나.
  */
 test(
   "기본정보: 읽기 → 편집 → 단일 저장, 종목·조합과 취소",
@@ -26,7 +26,7 @@ test(
       await page.waitForURL(/\/products\/[0-9a-f-]{36}(?:\?tab=basic)?$/);
       productUrl = page.url();
 
-      // ── 읽기: 경로 + 편집 · 더보기. 목록 버튼 · 미리보기 · 삭제 버튼은 헤더에 없다.
+      // ── 읽기: 경로 + 더보기(헤더) · 편집(탭 첫 줄). 목록 버튼 · 미리보기 · 삭제 버튼은 헤더에 없다.
       const name = page.getByRole("textbox", { name: "상품명", exact: true });
       await expect(name).toHaveAttribute("readonly", "");
       await expect(page.getByRole("heading", { level: 1 })).toContainText(originalName);
@@ -95,7 +95,7 @@ test(
       await page.getByRole("button", { name: "저장", exact: true }).click();
       await expect(page.getByText("제2종(보험료납입면제적용형) — 적용여부가 「예」면 납입면제사유를 1개 이상 고르세요")).toBeVisible();
       await expect(page.getByRole("button", { name: "저장", exact: true })).toBeVisible();
-      await rows.nth(1).getByRole("checkbox", { name: "뇌졸중", exact: true }).check();
+      { await rows.nth(1).getByRole("button", { name: / 값 추가$/ }).click(); await rows.nth(1).getByRole("combobox", { name: / 값 추가$/ }).selectOption({ label: "뇌졸중" }); }
       await page.getByRole("button", { name: "저장", exact: true }).click();
 
       // ── 저장 후 읽기: 표에 종·형 · 이름 · 값이 함께 보인다

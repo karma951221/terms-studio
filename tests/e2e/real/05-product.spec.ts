@@ -9,8 +9,8 @@ import { renderedLines, sourceLines } from "./_lib/compare";
 import { REAL_FIXTURES, SEED, generalTreeOf, type ProductSpec } from "./_lib/seed";
 
 /**
- * ★ 실물 재현(화면) ⑤ 상품 — 상품마다 상품 → 보통약관 → 세목(종 · 형 · 조합, 세목 값) → 탑재(담보속성) → 그룹 → 조립 미리보기 → 원문 대조.
- * 알파Plus(종 2 · 형 2 · 조합 4 · 탑재 11 · 그룹 1)와 메리츠(종 3 · 형 2 · 조합 6 · 탑재 9 · 그룹 2) 두 상품.
+ * ★ 실물 재현(화면) ⑤ 상품 — 상품마다 상품 → 보통약관 → 세목(종 · 형 · 조합, 세목 값) → 탑재(담보속성, 편집 저장 한 번) → 조립 미리보기 → 원문 대조.
+ * 알파Plus(종 2 · 형 2 · 조합 4 · 탑재 11)와 메리츠(종 3 · 형 2 · 조합 6 · 탑재 9) 두 상품. 특약 그룹은 담보의 것이라 ② 담보에서 골랐다(ADR-0080).
  * 대조는 Vitest 실물 재현(`src/db/seed/real.test.ts`)과 같은 대조기 — 조 순서는 허용(다중집합), 조 번호 · 조 참조 번호는 조립 순서와 맞아야 한다
  * ([[QA/인수기준]] 허용 차이 ⑥ · ⑦). 미리보기 화면(DOM)을 파싱양식 줄로 되돌려 넣는다(`_lib/compare.ts`).
  */
@@ -53,7 +53,7 @@ for (const product of SEED.products) {
   const specials = product.mounts.filter((m) => m.section === "special");
 
   test.describe.serial(`실물 재현(화면) ⑤ 상품 「${product.name}」 → 조립 → 원문 대조`, () => {
-    test(`「${product.name}」 — 보통약관 · 세목 · 탑재 ${product.mounts.length} · 그룹 ${product.groups.length}`, NO_COORD, async ({ page, ev }) => {
+    test(`「${product.name}」 — 보통약관 · 세목 · 탑재 ${product.mounts.length}`, NO_COORD, async ({ page, ev }) => {
       test.setTimeout(300_000);
       await ev.action("실물화면#5.1", "관리자로 로그인한다", () => login(page));
 
@@ -65,10 +65,10 @@ for (const product of SEED.products) {
         return page.url();
       });
 
-      await ev.action("실물화면#5.3", `약관 › 보통약관 작성 — 보통약관 템플릿 「${general.title}」을 고른다`, async () => {
-        await open(page, `${productUrl}?tab=terms&sub=general`);
+      await ev.action("실물화면#5.3", `보통약관 탭 — 보통약관 템플릿 「${general.title}」을 고른다`, async () => {
+        await open(page, `${productUrl}?tab=general`);
         await pickCombo(page.getByRole("combobox", { name: "보통약관 템플릿" }), { label: general.title });
-        await submit(page, page.getByRole("button", { name: "템플릿 저장" }));
+        await submit(page, page.getByRole("button", { name: "템플릿 지정" }));
       });
 
       const types = product.planOptions.filter((o) => o.axis === "type").length;
@@ -107,37 +107,37 @@ for (const product of SEED.products) {
         for (const v of product.values.filter((x) => typeof x.value === "number")) await expect(page.locator(`tr[data-path="${v.path}"] td`)).toHaveText(String(v.value));
       });
 
+      // 탑재 — 상품담보 탭 편집 하나에 전부 더하고 저장 한 번 (기능/상품 §3.8 · §4.5, 2026-10-04)
+      await ev.action("실물화면#5.6.0", "상품담보 탭을 편집으로 연다", async () => {
+        await open(page, `${productUrl}?tab=coverages`);
+        await page.getByRole("button", { name: "편집", exact: true }).click();
+        await expect(page.getByRole("button", { name: "저장", exact: true })).toBeVisible();
+      });
       for (const [i, mount] of product.mounts.entries()) {
-        const section = mount.section === "base" ? "보통약관 기본계약" : "특별약관";
+        const section = mount.section === "base" ? "기본계약" : "특별약관";
         const name = mountName(mount);
-        await ev.action(`실물화면#5.6.${i + 1}`, `${section}에 「${name}」 탑재`, async () => {
-          // 기본계약 · 특약 두 절 모두 상품담보 탭 (기능/상품 §4.5)
-          await open(page, `${productUrl}?tab=coverages`);
-          const form = page.locator("form", { has: page.getByRole("button", { name: `${section}에 탑재` }) });
+        await ev.action(`실물화면#5.6.${i + 1}`, `${section} 표 아래 「+ 담보 추가」로 「${name}」`, async () => {
+          const region = page.getByRole("region", { name: section, exact: true });
+          await region.getByRole("button", { name: `${section}에 담보 추가` }).click();
           // 담보는 서버 조회 검색 입력 — 이름을 쳐서 그 줄을 누른다
-          await pickCombo(form.getByRole("combobox", { name: "담보", exact: true }), { label: coverageOf(mount.coverage).name });
-          for (const a of mount.attributes) await form.getByLabel(attributeOf(a.kindCode).label).selectOption(a.valueCode);
-          await submit(page, form.getByRole("button", { name: `${section}에 탑재` }));
-          await arrive(page, /\/coverages\/[0-9a-f-]+$/);
+          await pickCombo(region.getByRole("combobox", { name: `담보 · ${section}에 추가`, exact: true }), { label: coverageOf(mount.coverage).name });
+          for (const a of mount.attributes) await region.getByLabel(`${attributeOf(a.kindCode).label} · ${section}에 추가`).selectOption(a.valueCode);
+          await region.getByRole("button", { name: "추가", exact: true }).click();
+          await expect(region.getByRole("textbox", { name: `상품담보명 · ${name}`, exact: true })).toBeVisible();
         });
       }
 
-      await ev.action("실물화면#5.7", `특약 그룹 ${product.groups.map((g) => `「${g.title}」`).join(" · ")}을 만들고 특약 ${specials.length} 을 배치한다`, async () => {
-        await open(page, `${productUrl}?tab=coverages`);
-        await expect(page.getByRole("region", { name: "특별약관", exact: true }).locator("tbody tr")).toHaveCount(specials.length);
-        for (const group of product.groups) {
-          await page.getByLabel("새 그룹 제목").fill(group.title);
-          await submit(page, page.getByRole("button", { name: "그룹 추가" }));
+      await ev.action("실물화면#5.7", `저장 한 번 — 특약 ${specials.length} · 그룹 열은 담보의 「특약 그룹」(상품에서 만들지 않는다, ADR-0080)`, async () => {
+        await page.getByRole("button", { name: "저장", exact: true }).click();
+        await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
+        const region = page.getByRole("region", { name: "특별약관", exact: true });
+        await expect(region.locator("tbody tr")).toHaveCount(specials.length);
+        const groups = SEED.enums.find((e) => e.code === "E0008")!.values;
+        for (const mount of specials) {
+          const group = groups.find((v) => v.code === coverageOf(mount.coverage).specialGroup)?.label ?? "—";
+          const row = region.locator("tbody tr").filter({ has: page.locator("td.col-flex").getByText(mountName(mount), { exact: true }) });
+          await expect(row.locator("td").nth(4)).toHaveText(group);
         }
-        for (const mount of product.mounts.filter((m) => m.group)) {
-          const group = product.groups.find((g) => g.code === mount.group)!;
-          const place = page.getByRole("button", { name: `배치 · ${group.title} 에` });
-          await pickCombo(page.locator("form", { has: place }).getByRole("combobox"), { label: mountName(mount) });
-          await submit(page, place);
-          // 배치가 그려질 때까지 — 다음 고르기가 늦게 온 화면에 초점을 뺏기지 않게
-          await expect(page.getByRole("button", { name: `배치 해제 · ${mountName(mount)} 를 ${group.title} 에서`, exact: true })).toBeVisible();
-        }
-        await expect(page.getByText(`미배치 상품담보: ${mountName(product.mounts[0])}`, { exact: true })).toBeVisible();
       });
     });
 

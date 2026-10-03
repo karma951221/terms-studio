@@ -206,6 +206,7 @@ export const REFERENCE_VIA_LABEL = {
   document: "담보약관 연결",
   type: "타입",
   mount: "탑재",
+  specialGroup: "특약 그룹",
   combination: "담보속성 조합",
 } as const satisfies Record<EdgeVia, string>;
 

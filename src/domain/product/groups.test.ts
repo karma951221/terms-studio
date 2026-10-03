@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { sortInGroup, validateGroupTemplate } from "./groups";
+import { sortInGroup } from "./groups";
 import type { AttributeKind, ProductCoverage } from "./types";
 
 const renewal: AttributeKind = {
@@ -27,7 +27,7 @@ function pc(id: string, coverageId: string, name: string, attributes: ProductCov
   return { id, productId: "p1", coverageId, name, attributes };
 }
 
-describe("기능/상품 §3 특약 그룹 — 그룹 안 자동 정렬", () => {
+describe("기능/상품 §3.7 특약 그룹 — 그룹 안 자동 정렬", () => {
   it("담보 → 담보속성 종류(order) → 유효값(order) 오름차순. 같은 담보의 탑재분은 뭉친다", () => {
     const members = [
       pc("c", "cov-surgery", "갱신형 수술비", [{ kindCode: "A0001", valueCode: "2" }]),
@@ -55,14 +55,5 @@ describe("기능/상품 §3 특약 그룹 — 그룹 안 자동 정렬", () => {
   it("미사용 속성은 사용한 것보다 앞 — 「일반상해사망」이 「일반상해사망 추가」보다 먼저", () => {
     const members = [pc("b", "cov", "일반상해사망 추가", [{ kindCode: "A0002", valueCode: "2" }]), pc("a", "cov", "일반상해사망", [])];
     expect(sortInGroup(members, kinds).map((m) => m.id)).toEqual(["a", "b"]);
-  });
-});
-
-describe("기능/상품 §3 특약 그룹 — 한 그룹 = 한 보통약관 템플릿 (MVP 는 상품의 템플릿과 같아야 한다)", () => {
-  it("그룹 템플릿을 비우면 상품 것을 따른다 · 같으면 통과 · 다르면 invalid", () => {
-    expect(validateGroupTemplate(undefined, "g1")).toEqual([]);
-    expect(validateGroupTemplate("g1", "g1")).toEqual([]);
-    expect(validateGroupTemplate("g2", "g1")).toHaveLength(1);
-    expect(validateGroupTemplate("g2", undefined)).toHaveLength(1);
   });
 });

@@ -137,3 +137,29 @@ describe("ClauseModel — 인자 있는 함수조항은 접어 둔다 (최종 �
     expect(render({ O01: "V01" })).not.toContain("<details");
   });
 });
+
+describe("ClauseModel — 사용처 자리 번호부터 잇는다 (2026-10-03 사용자 QA)", () => {
+  const base = { required: { discriminators: [], attributes: [] }, options: [] };
+  const p = (id: string, t: string) => ({ id, kind: "paragraph" as const, children: [{ id: `${id}t`, kind: "text" as const, text: t }] });
+  const nums = (html: string) => [...html.matchAll(/<span class="ts-doc-num">([^<]*) <\/span>/g)].map((m) => m[1]);
+
+  it("항 — ② 자리면 ②③ (자리 없으면 ①②, 단항 자리면 번호 없음)", () => {
+    const clause: Clause = { ...base, code: "C0013", label: "약관의 해석", mode: "block", body: [p("q1", "회사는 약관의 뜻이"), p("q2", "회사는 보험금을")] };
+    const at = (n: number, label: string) => renderToStaticMarkup(<ClauseModel clause={clause} selected={{}} references={new Map()} at={{ kind: "paragraph", n, label }} />);
+    expect(nums(at(2, "②"))).toEqual(["②", "③"]);
+    expect(nums(at(1, ""))).toEqual([]);
+    expect(nums(renderToStaticMarkup(<ClauseModel clause={clause} selected={{}} references={new Map()} />))).toEqual(["①", "②"]);
+  });
+
+  it("호 — 3. 자리면 목록이 3.부터 (counter-reset 2)", () => {
+    const clause: Clause = { ...base, code: "C0200", label: "사유 호", mode: "item", body: [{ id: "i1", kind: "item", children: [] }, { id: "i2", kind: "item", children: [] }] };
+    const html = renderToStaticMarkup(<ClauseModel clause={clause} selected={{}} references={new Map()} at={{ kind: "item", n: 3, label: "3." }} />);
+    expect(html).toContain('<ol class="ts-doc-items" style="counter-reset:ts-doc-item 2">');
+  });
+
+  it("목 — 나. 자리면 목록이 나.부터 (counter-reset 1)", () => {
+    const clause: Clause = { ...base, code: "C0300", label: "사유 목", mode: "subitem", body: [{ id: "s1", kind: "subitem", children: [] }] };
+    const html = renderToStaticMarkup(<ClauseModel clause={clause} selected={{}} references={new Map()} at={{ kind: "subitem", n: 2, label: "나." }} />);
+    expect(html).toContain('<ol class="ts-doc-subitems" style="counter-reset:ts-doc-subitem 1">');
+  });
+});

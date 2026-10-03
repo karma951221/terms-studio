@@ -80,8 +80,8 @@ test(
       await row.getByRole("textbox", { name: "보험종목명" }).fill("납입면제형");
       await row.getByRole("combobox", { name: "세목유형" }).selectOption("waiver");
       await row.getByRole("radio", { name: "예", exact: true }).check();
-      await row.getByRole("checkbox", { name: "뇌졸중", exact: true }).check();
-      await row.getByRole("checkbox", { name: reason, exact: true }).check();
+      { await row.getByRole("button", { name: / 값 추가$/ }).click(); await row.getByRole("combobox", { name: / 값 추가$/ }).selectOption({ label: "뇌졸중" }); }
+      { await row.getByRole("button", { name: / 값 추가$/ }).click(); await row.getByRole("combobox", { name: / 값 추가$/ }).selectOption({ label: reason }); }
       await page.getByRole("button", { name: "저장", exact: true }).click();
       await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
 
@@ -97,7 +97,7 @@ test(
       // 편집: 칩에 빼기 버튼 — 다른 체크를 만져도 칩은 남고, 빼기로만 지운다. 빼고 저장하면 칩이 없다
       await page.getByRole("button", { name: "편집", exact: true }).click();
       const editRow = page.locator("#definitions-panel tbody tr").nth(0);
-      await editRow.getByRole("checkbox", { name: "급성심근경색증", exact: true }).check();
+      { await editRow.getByRole("button", { name: / 값 추가$/ }).click(); await editRow.getByRole("combobox", { name: / 값 추가$/ }).selectOption({ label: "급성심근경색증" }); }
       await expect(editRow.locator(".ts-chip.is-error")).toHaveCount(1);
       await editRow.getByRole("button", { name: /^없는 값 V\d+ 빼기$/ }).click();
       await expect(editRow.locator(".ts-chip.is-error")).toHaveCount(0);

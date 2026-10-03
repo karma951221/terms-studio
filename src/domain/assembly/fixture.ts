@@ -21,7 +21,7 @@ import type { Clause } from "../clause/types";
 import type { Appendix } from "../document/appendix";
 import type { DocumentNode, ForBlockNode } from "../document/nodes";
 import type { MasterForm } from "../master";
-import type { AttributeKind, ProductCoverageSnapshot, SpecialGroup } from "../product/types";
+import type { AttributeKind, ProductCoverageSnapshot } from "../product/types";
 import type { PlanAxis } from "../product/types";
 import { type Code, entered, type Id, type Value, type ValueSlot } from "../types";
 import type { AssemblyCoverage, AssemblyInput, AssemblyPlanOption } from "./types";
@@ -532,7 +532,6 @@ export interface CoverageSpec {
   subCoverages: { id: Id; masterNodeId: Id; name: string; benefits: { id: Id; masterNodeId: Id; name: string }[] }[];
   /** owner id → 경로 → 값. */
   values: Record<Id, Record<SlotPath, Value>>;
-  groupId?: Id;
 }
 
 export function coverageEntry(spec: CoverageSpec): AssemblyCoverage {
@@ -557,16 +556,11 @@ export function coverageEntry(spec: CoverageSpec): AssemblyCoverage {
   for (const [owner, slots] of Object.entries(spec.values)) {
     values.set(owner, new Map(Object.entries(slots).map(([p, v]) => [p, entered(v)])));
   }
-  return {
-    snapshot,
-    values,
-    plans: [],
-    ...(spec.groupId !== undefined ? { groupId: spec.groupId } : {}),
-  };
+  return { snapshot, values, plans: [] };
 }
 
 /** 일반상해사망 탑재분 하나 — 스냅샷 값은 마스터와 같다 (갱신여부 false · 면책 true · 지급률 100 · 감액기간 24). */
-export function deathCoverage(id: Id, name: string, attributes: CoverageSpec["attributes"], groupId?: Id): AssemblyCoverage {
+export function deathCoverage(id: Id, name: string, attributes: CoverageSpec["attributes"]): AssemblyCoverage {
   return coverageEntry({
     id,
     name,
@@ -578,7 +572,6 @@ export function deathCoverage(id: Id, name: string, attributes: CoverageSpec["at
       [id]: { "coverage_basic.renewal": false, "coverage_basic.reduction_months": 24, "coverage_basic.reduction_text": "24개월" },
       [`${id}-ben`]: { "pay.exempt": true, "pay.rate": 100 },
     },
-    groupId,
   });
 }
 
@@ -597,7 +590,11 @@ export function baseDeathCoverage(): AssemblyCoverage {
   });
 }
 
-export const alphaGroups: SpecialGroup[] = [{ id: "grp-injury", productId: "prod-alpha", title: "상해 관련 특별약관", order: 0 }];
+/** 열거형 「특약 그룹」(E0008) — 그룹 제목 · 책자 순서 (ADR-0080). 담보의 그룹은 `alphaCoverageGroups`. */
+export const alphaSpecialGroupEnum: EnumDef = { code: "E0008", label: "특약 그룹", values: [{ code: "V01", label: "상해 관련 특별약관", order: 0 }] };
+
+/** 담보 id → 특약 그룹 값 코드 — 담보 마스터의 그룹 칸. 기본계약 담보(cov-base-death)는 그룹이 없다. */
+export const alphaCoverageGroups: ReadonlyMap<Id, Code> = new Map([["cov-death", "V01"]]);
 
 // ───────────────────────────── 진입점 ─────────────────────────────
 
@@ -616,17 +613,17 @@ export function alphaPlusFixture(): AssemblyInput {
     },
     coverages: [
       baseDeathCoverage(),
-      deathCoverage("pc-basic", "일반상해사망", [{ kindCode: "A0002", valueCode: "1" }], "grp-injury"),
-      deathCoverage("pc-addon", "일반상해사망 추가", [{ kindCode: "A0002", valueCode: "2" }], "grp-injury"),
+      deathCoverage("pc-basic", "일반상해사망", [{ kindCode: "A0002", valueCode: "1" }]),
+      deathCoverage("pc-addon", "일반상해사망 추가", [{ kindCode: "A0002", valueCode: "2" }]),
     ],
     generalDocuments: new Map([["g-doc", alphaGeneralDocument()]]),
     specialDocuments: new Map([["cov-base-death", alphaBaseDocument()], ["cov-death", alphaDeathDocument()]]),
     clauses: alphaClauses,
     appendices: alphaAppendices,
     catalog: alphaCatalog,
-    enums: alphaEnums,
+    enums: [...alphaEnums, alphaSpecialGroupEnum],
     attributeKinds: alphaAttributeKinds,
-    groups: alphaGroups,
+    coverageGroups: alphaCoverageGroups,
     master: alphaMaster,
   };
 }

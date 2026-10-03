@@ -1,7 +1,7 @@
-/** 상품 화면·서버 액션이 함께 쓰는 순수 함수 — 입력 파싱 · 탭 좌표 · 보통약관의 관 묶기 · 조 수. `*.test.ts` 로 검증. */
+/** 상품 화면·서버 액션이 함께 쓰는 순수 함수 — 탭 좌표 · 보통약관의 관 묶기 · 조 수. `*.test.ts` 로 검증. */
 import type { OmissionPairKind, OmissionRecord, RenderedDoc } from "@/domain/assembly";
 import { indexTree, type ArticleNode, type CondBlockNode, type DocumentNode, type Node, type NodeNumber } from "@/domain/document";
-import { findAttributeValue, normalizeSelections, planCombinationKey, type AttributeKind, type AttributeSelection, type ClauseOptionSelection, type ProductCoverage } from "@/domain/product";
+import { findAttributeValue, normalizeSelections, planCombinationKey, type AttributeKind, type AttributeSelection, type ProductCoverage } from "@/domain/product";
 import type { Code, Id, Issue } from "@/domain/types";
 import type { FormState } from "@/forms";
 import { isDirty } from "@/app/_lib/edit";
@@ -11,79 +11,46 @@ export function str(fd: FormData, key: string): string {
   return String(fd.get(key) ?? "").trim();
 }
 
-/** `attr:<kindCode>` 이름의 select 들 → 선택된 것만 AttributeSelection[]. */
-export function parseSelections(fd: FormData, kinds: readonly AttributeKind[]): AttributeSelection[] {
-  const out: AttributeSelection[] = [];
-  for (const k of kinds) {
-    const v = str(fd, `attr:${k.code}`);
-    if (v) out.push({ kindCode: k.code, valueCode: v });
-  }
-  return out;
-}
-
-/** `{"O01":"V01"}` 형태의 JSON — 실패하면 빈 객체. */
-export function parseOptionSelection(json: string): ClauseOptionSelection {
-  const trimmed = json.trim();
-  if (trimmed === "") return {};
-  try {
-    const parsed: unknown = JSON.parse(trimmed);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as ClauseOptionSelection) : {};
-  } catch {
-    return {};
-  }
-}
-
 // ───────────────────────────── 상세의 탭 ─────────────────────────────
 
 /**
- * 상품 상세는 탭 셋 — 기본정보(상품정보 · 세목) · 상품담보(기본계약 · 특별약관 표 · 그룹) · 약관
- * (기능/상품 §3.8 저장 단위 · 화면 공통, 2026-09-28 「안 2」). 약관은 둘째 줄 하위 탭 둘 — 보통약관 작성 · 담보별 미리보기.
- * 탭은 URL(`?tab=` · `?sub=`)에 산다: 서버가 그대로 렌더하고, 새로고침 · 북마크 · 서버 액션의 redirect 가 같은 자리를 가리킨다.
+ * 상품 상세는 한 줄 탭 넷 — 기본정보(상품정보 · 세목) · 상품담보(기본계약 · 특별약관 표) · 보통약관 · 특별약관
+ * (기능/상품 §3.8 저장 단위 · 화면 공통, 2026-10-03). 보통약관 = 템플릿 + 세 패널, 특별약관 = 담보 단위 세 패널.
+ * 탭은 URL(`?tab=`)에 산다: 서버가 그대로 렌더하고, 새로고침 · 북마크 · 서버 액션의 redirect 가 같은 자리를 가리킨다.
  */
-export type ProductTab = "basic" | "coverages" | "terms";
-export type TermsSub = "general" | "special";
+export type ProductTab = "basic" | "coverages" | "general" | "special";
 
-export const PRODUCT_TAB_LABEL: Record<ProductTab, string> = { basic: "기본정보", coverages: "상품담보", terms: "약관" };
-export const TERMS_SUB_LABEL: Record<TermsSub, string> = { general: "보통약관 작성", special: "담보별 미리보기" };
+export const PRODUCT_TAB_LABEL: Record<ProductTab, string> = { basic: "기본정보", coverages: "상품담보", general: "보통약관", special: "특별약관" };
 
-export const PRODUCT_TABS: readonly ProductTab[] = ["basic", "coverages", "terms"];
-export const TERMS_SUBS: readonly TermsSub[] = ["general", "special"];
+export const PRODUCT_TABS: readonly ProductTab[] = ["basic", "coverages", "general", "special"];
 
 /** 없는 값 · 모르는 값은 기본정보로 — URL 의 좌표를 믿지 않는다. */
 export function productTabOf(value: string | undefined): ProductTab {
-  return value === "coverages" || value === "terms" ? value : "basic";
-}
-
-/** 약관 하위 탭 — 없거나 모르면 보통약관 작성. */
-export function termsSubOf(value: string | undefined): TermsSub {
-  return value === "special" ? "special" : "general";
+  return value === "coverages" || value === "general" || value === "special" ? value : "basic";
 }
 
 /**
- * 옛 탭 주소(2026-09-28 이전: `?tab=general|special`)의 새 자리 — 없으면 undefined(옮길 것 없음).
- * 옛 보통약관 탭에는 템플릿 · 기본계약 · 세 패널이, 옛 특별약관 탭에는 탑재 표 · 그룹 · 미리보기가 한데 있었다 —
- * 확인 카드(`confirm=`)와 미리보기 좌표(`pc=`)가 **지금 사는 탭**으로 보낸다. 나머지 쿼리는 그대로 싣는다.
+ * 옛 탭 주소의 새 자리 — 없으면 undefined(옮길 것 없음). 나머지 쿼리는 그대로 싣는다.
+ * - 옛 약관 탭(2026-09-28 ~ 10-03: `?tab=terms&sub=general|special`) → `?tab=general` · `?tab=special` (하위 탭이 없거나 모르면 보통약관).
+ * - 옛 탑재 해제 · 세목 부착 해제 · 그룹 삭제 확인 카드 주소(`confirm=pc:|detach:|group:`)는 상품담보 탭으로 보낸다 — 2026-09-28 이전의
+ *   `?tab=general|special&confirm=…` 북마크도. 그 탭은 이제 그 카드를 그리지 않는다: 탑재 해제 · 부착 해제는 편집 저장의 확인 모달이고
+ *   (2026-10-04), 그룹은 담보의 것이다(ADR-0080). 그래서 옛 주소는 상품담보 탭 읽기로 열릴 뿐이다.
  */
 export function legacyProductTabRedirect(id: string, sp: Readonly<Record<string, string | undefined>>): string | undefined {
-  if (sp.tab !== "general" && sp.tab !== "special") return undefined;
+  if (sp.tab !== "terms" && sp.tab !== "general" && sp.tab !== "special") return undefined;
   const confirm = sp.confirm ?? "";
   const coverageConfirm = confirm.startsWith("pc:") || confirm.startsWith("detach:") || confirm.startsWith("group:");
-  const target: Record<string, string> =
-    coverageConfirm || (sp.tab === "special" && !sp.pc)
-      ? { tab: "coverages" }
-      : { tab: "terms", sub: sp.tab === "special" ? "special" : "general" };
+  let tab: ProductTab;
+  if (coverageConfirm) tab = "coverages";
+  else if (sp.tab === "terms") tab = sp.sub === "special" ? "special" : "general";
+  else return undefined;
   const rest = Object.entries(sp).filter(([k, v]) => k !== "tab" && k !== "sub" && v !== undefined) as [string, string][];
-  return `/products/${id}?${new URLSearchParams({ ...target, ...Object.fromEntries(rest) }).toString()}`;
+  return `/products/${id}?${new URLSearchParams({ tab, ...Object.fromEntries(rest) }).toString()}`;
 }
 
 /** 상품 상세 경로 (+ 탭). 화면의 링크와 액션의 redirect 가 같은 함수를 쓴다. */
 export function productDetailPath(id: string, tab?: ProductTab): string {
   return tab ? `/products/${id}?tab=${tab}` : `/products/${id}`;
-}
-
-/** 약관 탭의 하위 탭 경로 — `?tab=terms&sub=<하위>`. */
-export function termsPath(id: string, sub: TermsSub): string {
-  return `${productDetailPath(id, "terms")}&sub=${sub}`;
 }
 
 // ───────────────────────────── 기본정보 탭의 초안 ─────────────────────────────
@@ -214,17 +181,9 @@ export function currentGeneralArticle(sections: readonly GeneralSection[], artic
   return (found ?? sections.find((s) => s.articles.length > 0)?.articles[0])?.id;
 }
 
-/** 목차 링크의 좌표 — 탭을 잃지 않는다(`?tab=terms&sub=general&art=<조 id>`). */
+/** 목차 링크의 좌표 — 탭을 잃지 않는다(`?tab=general&art=<조 id>`). */
 export function generalArticlePath(productId: Id, articleId: Id): string {
-  return `${termsPath(productId, "general")}&art=${articleId}`;
-}
-
-/**
- * 약관 세 패널에서 부른 서버 액션이 **돌아갈 자리** — 고르고 있던 조까지.
- * 조를 잃으면 저장 직후 첫 관으로 튕겨 방금 고친 자리가 화면 밖으로 나간다 (§조작과 상태 전이).
- */
-export function generalReturnPath(productId: Id, articleId: string | undefined): string {
-  return articleId ? generalArticlePath(productId, articleId) : termsPath(productId, "general");
+  return `${productDetailPath(productId, "general")}&art=${articleId}`;
 }
 
 /**
@@ -259,7 +218,7 @@ export function generalTabIssues(
  * 특약 오류는 그 상품담보의 미리보기로 보내고(결과 좌표의 `ownerId` = 상품담보 id — `specialCoordinate`),
  * 보통약관 오류는 **지금 그린 결과에 그 노드가 있을 때만** 앵커를 건다.
  *
- * 특약 절의 상품담보는 담보별 미리보기(`?tab=terms&sub=special&pc=…`)가 제자리다. 그런데 `articleHidden` 을
+ * 특약 절의 상품담보는 특별약관 탭(`?tab=special&pc=…`)이 제자리다. 그런데 `articleHidden` 을
  * 가장 많이 내는 것은 **기본계약** 상품담보이고, 그 탭의 `?pc=` 는 특약 절만 믿는다(URL 의 좌표를 믿지
  * 않는다) — 기본계약 id 로 보내면 아무것도 고르지 않은 탭이 열린다. 그래서 기본계약은 제 상품담보 화면
  * (조립된 문면과 같은 오류가 그 자리에 선다)으로 보낸다. 되돌아갈 탭의 분기(`tabOfCoverage`)와 같은 기준이다.
@@ -283,11 +242,57 @@ export function generalIssueLink(
 // ───────────────────────────── 특별약관 탭의 미리보기 ─────────────────────────────
 
 /**
- * 고른 상품담보의 미리보기 좌표 (`?tab=terms&sub=special&pc=<상품담보 id>`) — 약관 › 담보별 미리보기
+ * 고른 상품담보의 미리보기 좌표 (`?tab=special&pc=<상품담보 id>`) — 특별약관 탭
  * (기능/상품 §4.7). 상품담보 표의 「미리보기」와 미리보기 화면의 상품담보 목록이 이 자리를 가리킨다.
  */
 export function specialPreviewPath(productId: Id, productCoverageId: Id): string {
-  return `${termsPath(productId, "special")}&pc=${productCoverageId}`;
+  return `${productDetailPath(productId, "special")}&pc=${productCoverageId}`;
+}
+
+/** 특별약관 탭에서 담보를 고르는 주소 — 상품담보는 그 담보의 첫 건이 기본이다 (기능/상품 §4.7). */
+export function specialCoveragePath(productId: Id, coverageId: Id): string {
+  return `${productDetailPath(productId, "special")}&cov=${coverageId}`;
+}
+
+/** 특별약관 탭 왼쪽의 한 행 — 담보 마스터 하나와 거기서 탑재한 특약 상품담보들. */
+export interface SpecialCoverageGroup {
+  coverageId: Id;
+  /** 담보명 — 없으면 담보 id. */
+  name: string;
+  productCoverages: ProductCoverage[];
+}
+
+/** 특약 상품담보 → 담보 마스터별 묶음. 담보는 처음 나온 순, 묶음 안은 상품담보 순 그대로. */
+export function specialCoverageGroups(specials: readonly ProductCoverage[], coverageName: (coverageId: Id) => string | undefined): SpecialCoverageGroup[] {
+  const byCoverage = new Map<Id, SpecialCoverageGroup>();
+  for (const pc of specials) {
+    let group = byCoverage.get(pc.coverageId);
+    if (!group) {
+      group = { coverageId: pc.coverageId, name: coverageName(pc.coverageId) ?? pc.coverageId, productCoverages: [] };
+      byCoverage.set(pc.coverageId, group);
+    }
+    group.productCoverages.push(pc);
+  }
+  return [...byCoverage.values()];
+}
+
+/**
+ * `?cov=` · `?pc=` → 고른 담보와 상품담보. 특약 절에 있는 좌표만 믿는다 (URL 의 좌표를 믿지 않는다).
+ * `pc` 가 있으면 제 담보를 함께 정한다(옛 `?pc=` 링크) — 없으면 `cov` 의 첫 상품담보, 그것도 없으면 첫 담보의 첫 건.
+ */
+export function resolveSpecialSelection(
+  groups: readonly SpecialCoverageGroup[],
+  params: { cov?: string | undefined; pc?: string | undefined },
+): { group: SpecialCoverageGroup; pc: ProductCoverage } | undefined {
+  if (params.pc) {
+    for (const group of groups) {
+      const pc = group.productCoverages.find((p) => p.id === params.pc);
+      if (pc) return { group, pc };
+    }
+  }
+  const group = (params.cov ? groups.find((g) => g.coverageId === params.cov) : undefined) ?? groups[0];
+  const pc = group?.productCoverages[0];
+  return group && pc ? { group, pc } : undefined;
 }
 
 /**
@@ -390,6 +395,8 @@ export interface MountRow {
   coverageName?: string;
   /** `attributeComboLabel` 결과. */
   attributes: string;
+  /** 특약 그룹 — 그 담보의 「특약 그룹」 값 이름(읽기 전용 · 상품이 못 바꾼다, ADR-0080). 그룹 없는 담보는 undefined. */
+  group?: string;
 }
 
 /**
@@ -398,7 +405,7 @@ export interface MountRow {
  */
 export function mountRows(
   items: readonly ProductCoverage[],
-  coverages: readonly { id: Id; code?: string; name: string }[],
+  coverages: readonly { id: Id; code?: string; name: string; group?: string }[],
   kinds: readonly AttributeKind[],
 ): MountRow[] {
   const byId = new Map(coverages.map((c) => [c.id, c]));
@@ -409,7 +416,7 @@ export function mountRows(
     .sort((a, b) => firstSeen.get(a.pc.coverageId)! - firstSeen.get(b.pc.coverageId)! || a.i - b.i)
     .map(({ pc }) => {
       const coverage = byId.get(pc.coverageId);
-      return { pc, coverageCode: coverage?.code, coverageName: coverage?.name, attributes: attributeComboLabel(pc.attributes, kinds) };
+      return { pc, coverageCode: coverage?.code, coverageName: coverage?.name, attributes: attributeComboLabel(pc.attributes, kinds), group: coverage?.group };
     });
 }
 
@@ -426,4 +433,13 @@ export function filterMountRows(rows: readonly MountRow[], query: string): Mount
   return rows.filter((row) =>
     includesQuery(query, [row.coverageCode ?? "", row.pc.name, row.coverageName ?? "", row.attributes === "—" ? "" : row.attributes]),
   );
+}
+
+/**
+ * 세목 표 칸을 지금 그리나 — 같은 행의 다른 값에 따라 비운다(화면 규칙만, 마스터 필드 조건이 아니다 · 2026-10-03 QA).
+ * 납입면제사유는 적용여부 = 예일 때만 뜻이 있다 — 「아니오」 · 미입력 행에서 사유 칸이 열려 있으면 고를 것처럼 보였다.
+ */
+export function planCellShown(path: string, valueOf: (path: string) => unknown): boolean {
+  if (path === "waiver.reasons") return valueOf("waiver.applies") === true;
+  return true;
 }

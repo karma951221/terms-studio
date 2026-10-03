@@ -10,7 +10,7 @@ import type { TocSection } from "./GeneralToc";
 import { selectArticleOnClick, type TocClickEvent } from "./tocNav";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => undefined, push: () => undefined }) }));
-vi.mock("../../actions", () => ({ setArticleHiddenAction: async () => ({ ok: true }) }));
+vi.mock("../../actions", () => ({ saveProductGeneralAction: async () => ({ ok: true }) }));
 
 const click = (over: Partial<TocClickEvent> = {}): TocClickEvent & { prevented: boolean } => {
   const e: TocClickEvent & { prevented: boolean } = {
@@ -34,10 +34,10 @@ describe("selectArticleOnClick — 목차 누름은 이동이 아니라 고르�
     const e = click();
     const select = vi.fn();
     const history = { replaceState: vi.fn() };
-    expect(selectArticleOnClick(e, "/products/p1?tab=terms&art=A2", select, history)).toBe(true);
+    expect(selectArticleOnClick(e, "/products/p1?tab=general&art=A2", select, history)).toBe(true);
     expect(e.prevented).toBe(true);
     expect(select).toHaveBeenCalledOnce();
-    expect(history.replaceState).toHaveBeenCalledWith(null, "", "/products/p1?tab=terms&art=A2");
+    expect(history.replaceState).toHaveBeenCalledWith(null, "", "/products/p1?tab=general&art=A2");
   });
 
   it("새 탭 · 새 창(수정키 · 가운데 단추)은 브라우저에 맡긴다", () => {
@@ -54,8 +54,15 @@ describe("selectArticleOnClick — 목차 누름은 이동이 아니라 고르�
 });
 
 const toc: TocSection[] = [
-  { key: "S1", label: "제1관 목적", articles: [{ id: "A1", label: "제1조(목적)", hidden: false }] },
-  { key: "S2", label: "제2관 보험금", articles: [{ id: "A2", label: "제2조(지급사유)", hidden: true }, { id: "A3", label: "제3조(지급제한)", hidden: false }] },
+  { key: "S1", label: "제1관 목적", articles: [{ id: "A1", label: "제1조(목적)", number: "제1조", templateTitle: "목적", hidden: false, templateHash: "h1" }] },
+  {
+    key: "S2",
+    label: "제2관 보험금",
+    articles: [
+      { id: "A2", label: "제2조(지급사유)", number: "제2조", templateTitle: "지급사유", hidden: true, templateHash: "h2" },
+      { id: "A3", label: "제3조(지급제한)", number: "제3조", templateTitle: "지급제한", hidden: false, templateHash: "h3" },
+    ],
+  },
 ];
 const panes: GeneralPane[] = [
   { key: "S1", label: "제1관 목적", articleIds: ["A1"], center: <p>원문-관1</p>, right: <p>결과-관1</p> },
@@ -68,8 +75,10 @@ describe("GeneralPanels — 관은 미리 그려 두고 고른 조의 관만 붙
     expect(html).toContain("원문-관2");
     expect(html).toContain("결과-관2");
     expect(html).not.toContain("원문-관1");
-    expect(html).toContain("약관 — 제2관 보험금 (원문)");
-    expect(html).toContain("미리보기 — 제2관 보험금 (평가)");
+    // 머리 띠 셋 — 특별약관 탭과 같은 규칙 (2026-10-03)
+    expect(html.match(/<div class="ts-terms-panel-head"><h3 class="ts-terms-panel-title">/g)).toHaveLength(3);
+    expect(html).toContain(">모델링 — 제2관 보험금</h3>");
+    expect(html).toContain(">미리보기 — 제2관 보험금</h3>");
   });
 
   it("목차 조 제목은 진짜 주소를 가진 평범한 링크(서버 이동 없이 가로챈다) · 고른 조에 aria-current", () => {

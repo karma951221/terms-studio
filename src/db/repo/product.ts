@@ -6,6 +6,7 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 
 import { type AttributeCodeKind, type AttributeSeq, sortAttributeValues } from "@/domain/product/attributes";
+import type { ArticleCopy } from "@/domain/product/articleCopies";
 import type {
   AttributeKind,
   AttributeSelection,
@@ -20,7 +21,6 @@ import type {
   ProductCoverage,
   ProductPlan,
   SnapshotNode,
-  SpecialGroup,
 } from "@/domain/product/types";
 import type { Code, Id } from "@/domain/types";
 
@@ -31,6 +31,7 @@ import {
   codeSequences,
   namingTemplates,
   planOptions,
+  productArticleCopies,
   productBaseContracts,
   productCoverageAttributes,
   productCoverageNodes,
@@ -40,8 +41,6 @@ import {
   productPlanOptions,
   productPlans,
   products,
-  specialGroupMembers,
-  specialGroups,
 } from "../schema";
 import type { Db } from "./types";
 
@@ -222,6 +221,46 @@ export async function clearHiddenArticles(db: Db, productId: Id): Promise<void> 
   await db.delete(productHiddenArticles).where(eq(productHiddenArticles.productId, productId));
 }
 
+// ───────────────────────────── 조 사본 (ADR-0079) ─────────────────────────────
+
+/** 상품의 조 사본 — 만든 순. */
+export async function listArticleCopies(db: Db, productId: Id): Promise<ArticleCopy[]> {
+  const rows = await db
+    .select({ articleId: productArticleCopies.articleId, article: productArticleCopies.article, templateHash: productArticleCopies.templateHash })
+    .from(productArticleCopies)
+    .where(eq(productArticleCopies.productId, productId))
+    .orderBy(asc(productArticleCopies.createdAt), asc(productArticleCopies.articleId));
+  return rows;
+}
+
+export async function upsertArticleCopy(db: Db, productId: Id, copy: ArticleCopy, who: Id): Promise<void> {
+  await db
+    .insert(productArticleCopies)
+    .values({ productId, articleId: copy.articleId, article: copy.article, templateHash: copy.templateHash, createdBy: who, updatedBy: who })
+    .onConflictDoUpdate({
+      target: [productArticleCopies.productId, productArticleCopies.articleId],
+      set: { article: copy.article, templateHash: copy.templateHash, updatedAt: new Date(), updatedBy: who },
+    });
+}
+
+export async function deleteArticleCopy(db: Db, productId: Id, articleId: Id): Promise<void> {
+  await db.delete(productArticleCopies).where(and(eq(productArticleCopies.productId, productId), eq(productArticleCopies.articleId, articleId)));
+}
+
+export async function clearArticleCopies(db: Db, productId: Id): Promise<void> {
+  await db.delete(productArticleCopies).where(eq(productArticleCopies.productId, productId));
+}
+
+/** 이 상품의 보통약관 설정이 기준으로 삼은 템플릿 판 — 모르면 undefined. */
+export async function loadGeneralBaseVersion(db: Db, productId: Id): Promise<number | undefined> {
+  const [row] = await db.select({ v: products.generalBaseVersion }).from(products).where(eq(products.id, productId)).limit(1);
+  return row?.v ?? undefined;
+}
+
+export async function setGeneralBaseVersion(db: Db, productId: Id, version: number | null): Promise<void> {
+  await db.update(products).set({ generalBaseVersion: version }).where(eq(products.id, productId));
+}
+
 // ───────────────────────────── 세목 ─────────────────────────────
 
 type OptionRow = typeof planOptions.$inferSelect;
@@ -322,7 +361,8 @@ export interface NewProductCoverageRow {
 export async function insertProductCoverage(db: Db, input: NewProductCoverageRow, who: Id): Promise<ProductCoverage> {
   const [row] = await db
     .insert(productCoverages)
-    .values({ productId: input.productId, coverageId: input.coverageId, coverageName: input.coverageName, name: input.name, combinationKey: input.combinationKey, createdBy: who, updatedBy: who })
+    // 탑재 순 = created_at 순(목록 · 탑재 표). 한 트랜잭션에서 여럿을 더해도(상품담보 탭 저장 한 번) 순서가 서도록 now() 대신 clock_timestamp()
+    .values({ productId: input.productId, coverageId: input.coverageId, coverageName: input.coverageName, name: input.name, combinationKey: input.combinationKey, createdAt: sql`clock_timestamp()`, createdBy: who, updatedBy: who })
     .returning();
   await replaceAttributes(db, row.id, input.attributes);
   return toCoverage(row, input.attributes);
@@ -510,63 +550,6 @@ export async function listBaseContractIds(db: Db, productId: Id): Promise<Id[]> 
 export async function isBaseContract(db: Db, productCoverageId: Id): Promise<boolean> {
   const [row] = await db.select({ id: productBaseContracts.productCoverageId }).from(productBaseContracts).where(eq(productBaseContracts.productCoverageId, productCoverageId)).limit(1);
   return !!row;
-}
-
-// ───────────────────────────── 특약 그룹 ─────────────────────────────
-
-type GroupRow = typeof specialGroups.$inferSelect;
-
-function toGroup(r: GroupRow): SpecialGroup {
-  return { id: r.id, productId: r.productId, title: r.title, order: r.order, ...(r.generalDocumentId ? { generalDocumentId: r.generalDocumentId } : {}) };
-}
-
-export async function insertGroup(db: Db, productId: Id, title: string, order: number, generalDocumentId: Id | undefined, who: Id): Promise<SpecialGroup> {
-  const [row] = await db.insert(specialGroups).values({ productId, title, order, generalDocumentId: generalDocumentId ?? null, createdBy: who, updatedBy: who }).returning();
-  return toGroup(row);
-}
-
-export async function loadGroup(db: Db, id: Id): Promise<SpecialGroup | undefined> {
-  const [row] = await db.select().from(specialGroups).where(eq(specialGroups.id, id)).limit(1);
-  return row ? toGroup(row) : undefined;
-}
-
-export async function listGroups(db: Db, productId: Id): Promise<SpecialGroup[]> {
-  return (await db.select().from(specialGroups).where(eq(specialGroups.productId, productId)).orderBy(asc(specialGroups.order), asc(specialGroups.id))).map(toGroup);
-}
-
-export async function updateGroup(db: Db, id: Id, patch: { title?: string; order?: number; generalDocumentId?: Id | null }, who: Id): Promise<void> {
-  await db.update(specialGroups).set({ ...patch, updatedAt: new Date(), updatedBy: who }).where(eq(specialGroups.id, id));
-}
-
-export async function deleteGroup(db: Db, id: Id): Promise<void> {
-  await db.delete(specialGroups).where(eq(specialGroups.id, id));
-}
-
-/** 배치 — 이미 다른 그룹에 있으면 옮긴다 (상품담보 하나는 한 그룹에만). */
-export async function placeMember(db: Db, groupId: Id, productCoverageId: Id): Promise<void> {
-  await db.delete(specialGroupMembers).where(eq(specialGroupMembers.productCoverageId, productCoverageId));
-  await db.insert(specialGroupMembers).values({ groupId, productCoverageId });
-}
-
-export async function removeMember(db: Db, productCoverageId: Id): Promise<void> {
-  await db.delete(specialGroupMembers).where(eq(specialGroupMembers.productCoverageId, productCoverageId));
-}
-
-/** 그룹별 소속 상품담보 id (정렬 전). */
-export async function listMembersByGroup(db: Db, productId: Id): Promise<Map<Id, Id[]>> {
-  const rows = await db
-    .select({ groupId: specialGroupMembers.groupId, pcId: specialGroupMembers.productCoverageId })
-    .from(specialGroupMembers)
-    .innerJoin(specialGroups, eq(specialGroups.id, specialGroupMembers.groupId))
-    .where(eq(specialGroups.productId, productId));
-  const out = new Map<Id, Id[]>();
-  for (const r of rows) out.set(r.groupId, [...(out.get(r.groupId) ?? []), r.pcId]);
-  return out;
-}
-
-export async function groupOf(db: Db, productCoverageId: Id): Promise<Id | undefined> {
-  const [row] = await db.select({ id: specialGroupMembers.groupId }).from(specialGroupMembers).where(eq(specialGroupMembers.productCoverageId, productCoverageId)).limit(1);
-  return row?.id;
 }
 
 // ───────────────────────────── 옵션 오버라이드 ─────────────────────────────

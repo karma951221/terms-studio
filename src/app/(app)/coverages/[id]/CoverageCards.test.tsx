@@ -186,3 +186,45 @@ describe("CoverageCards — 담보 기본은 담보 카드 본문에 바로 선�
     });
   }
 });
+
+describe("CoverageCards — 담보 카드의 「특약 그룹」 칸 (ADR-0080 · 기능/담보 §3.1)", () => {
+  const groups = [
+    { code: "V01", label: "상해 관련 특별약관" },
+    { code: "V02", label: "질병 관련 특별약관" },
+  ];
+  function renderGroup(mode: "read" | "edit", specialGroup: string) {
+    const structure = subs(1);
+    return renderToStaticMarkup(
+      <EditShell initial={{ label: "수술비", specialGroup, structure, values: {} }} title="수술비" path={[{ label: "담보", href: "/coverages" }]} saveAction={async () => ({ ok: true })} initialMode={mode}>
+        <CoverageCards coverageKey={COVERAGE_KEY} formByNode={{}} original={savedOf(structure)} attributeValueLabels={[]} specialGroups={groups} />
+      </EditShell>,
+    );
+  }
+  const groupRow = (html: string) => html.match(/<div class="ts-form-row"[^>]*data-path="specialGroup"[\s\S]*?<\/div><\/div>/)?.[0] ?? "";
+
+  it("읽기 — 값 이름 글자만, 고르기 칸이 없다 · 없음은 「—」", () => {
+    const row = groupRow(renderGroup("read", "V02"));
+    expect(row).toContain("특약 그룹");
+    expect(row).toContain("질병 관련 특별약관");
+    expect(row).not.toContain("<select");
+    expect(groupRow(renderGroup("read", ""))).toContain("—");
+  });
+
+  it("편집 — 「없음」 + 열거값 전부를 고르는 select, 지금 값이 골라져 있다", () => {
+    const row = groupRow(renderGroup("edit", "V01"));
+    expect(row).toContain('<select');
+    expect(row).toContain('aria-label="특약 그룹"');
+    expect(row).toMatch(/<option value="">없음[^<]*<\/option>/);
+    expect(row).toMatch(/<option value="V01" selected="">상해 관련 특별약관<\/option>/);
+    expect(row).toContain('<option value="V02">질병 관련 특별약관</option>');
+  });
+
+  it("열거형에서 지워진 값 — 「없는 값 V09」로 보이고(읽기 · 편집) 다른 값을 고르면 풀린다", () => {
+    expect(groupRow(renderGroup("read", "V09"))).toContain("없는 값 V09");
+    expect(groupRow(renderGroup("edit", "V09"))).toMatch(/<option value="V09" selected="">없는 값 V09<\/option>/);
+  });
+
+  it("세부보장 · 급부 카드에는 그룹 칸이 없다 — 담보 카드에 한 번", () => {
+    expect((renderGroup("edit", "V01").match(/data-path="specialGroup"/g) ?? []).length).toBe(1);
+  });
+});

@@ -14,7 +14,7 @@
  *     │ 5. 최소 준용규정 생성    ensureApplicationArticle
  *     │ 6. 항 단위 준용 판정     judgeOmission        → SubstitutedDoc + OmissionRecord[]
  *     │ 7. 번호 계산            numberDocument       → NumberedDoc      (조·항·호·목 번호)
- *     │ 8. 특약 배치            placeSpecials        → 그룹별 정렬된 문서 목록 (+ unplaced 오류)
+ *     │ 8. 특약 배치            placeSpecials        → 담보의 특약 그룹(열거값 순)별 정렬된 문서 목록 — 그룹 없는 것은 끝에 제목 없이
  *     │ 9. 별표 번호            collectAppendices    → BookletAppendix[] (책자 등장 순 = 번호, ADR-0063)
  *     │ 10. 참조 슬롯 해소      renderDocument       → RenderedDoc      (조·별표 참조가 표기 문자열로)
  *     ▼
@@ -29,8 +29,8 @@ import type { Discriminator, EnumDef, SlotPath } from "../catalog/types";
 import type { Clause } from "../clause/types";
 import type { Appendix } from "../document/appendix";
 import type { Box } from "../document/box";
-import type { DocumentNode, TableColumn } from "../document/nodes";
-import type { AttributeKind, ClauseOptionOverride, PlanAxis, ProductCoverageSnapshot, ProductPlan, SpecialGroup } from "../product/types";
+import type { ArticleNode, DocumentNode, TableColumn } from "../document/nodes";
+import type { AttributeKind, ClauseOptionOverride, PlanAxis, ProductCoverageSnapshot, ProductPlan } from "../product/types";
 import type { MasterTree } from "../master";
 import type { Code, Coordinate, Id, Issue, ReferenceConnector, ValueSlot } from "../types";
 
@@ -78,9 +78,15 @@ export interface AssemblyProduct {
    * 숨긴 조를 가리키는 조참조·준용(조연결)은 `articleHidden` 오류로 드러난다 (조용히 빠지지 않는다).
    */
   hiddenArticleIds: ReadonlySet<Id>;
+  /**
+   * 이 상품의 조 사본 — 템플릿 조 id → 그 조를 갈아 끼울 내용 (ADR-0079 · 기능/상품 §3.10). 없거나 비면 템플릿 그대로.
+   * 조립은 보통약관을 읽는 첫 자리(`generalDocumentOf`)에서 갈아 끼우므로 번호 · 숨김 · 준용 · 기본계약 대치가 모두 사본을 본다.
+   * 템플릿에 없는 조의 사본은 쓰이지 않는다.
+   */
+  articleCopies?: ReadonlyMap<Id, ArticleNode>;
 }
 
-/** 상품담보(탑재분) — 스냅샷 구조·값 · 세목 부착 · 그룹 소속. */
+/** 상품담보(탑재분) — 스냅샷 구조·값 · 세목 부착. */
 export interface AssemblyCoverage {
   /** 상품담보 + 스냅샷 노드 트리 (담보명·상품담보명·속성 조합 포함). */
   snapshot: ProductCoverageSnapshot;
@@ -88,8 +94,6 @@ export interface AssemblyCoverage {
   values: ReadonlyMap<Id, ReadonlyMap<SlotPath, ValueSlot>>;
   /** 부착된 세목 — 조립은 읽지 않는다 (세목 범위는 상품의 `planOptions`, 기능/조립산출 §3.2). */
   plans: readonly ProductPlan[];
-  /** 소속 그룹 id. 없으면 미배치 → `unplaced` 오류. */
-  groupId?: Id;
 }
 
 /**
@@ -110,13 +114,17 @@ export interface MasterBundle {
   specialDocuments: ReadonlyMap<Id, DocumentNode>;
   /** 값 자리를 정하는 마스터 트리 (ADR-0037). 없으면 MVP 정본. */
   master?: MasterTree;
+  /**
+   * 담보 id → 특약 그룹 열거값 코드 (ADR-0080) — 담보 마스터의 그룹 칸. 없는 담보는 그룹 없음(책자에서 제목 없이).
+   * 그룹 제목 · 순서는 `enums` 의 「특약 그룹」(E0008)에서 읽는다.
+   */
+  coverageGroups?: ReadonlyMap<Id, Code>;
 }
 
-/** 상품 고유분 — 상품 값 · 세목 · 탑재 스냅샷/값/부착 · 그룹 · 오버라이드 · 숨김 (ADR-0034 결정 2). 상품마다 적재한다. */
+/** 상품 고유분 — 상품 값 · 세목 · 탑재 스냅샷/값/부착 · 오버라이드 · 숨김 (ADR-0034 결정 2). 상품마다 적재한다. 특약 그룹은 담보 마스터 것이다(ADR-0080). */
 export interface ProductInput {
   product: AssemblyProduct;
   coverages: readonly AssemblyCoverage[];
-  groups: readonly SpecialGroup[];
 }
 
 /** 호환용 — 두 재료를 한 객체로 다루는 자리(픽스처 · 적재 래퍼). 조립 서명은 `assemble(master, product)` 다. */
@@ -380,9 +388,10 @@ export interface RenderedDoc {
   children: (RenderedArticle | RenderedSection | ErrorNode)[];
 }
 
+/** 책자의 특약 그룹 하나 — id 는 「특약 그룹」 열거값 코드. 그룹 없는 상품담보의 자리는 id `ungrouped` · 제목 없음(제목을 찍지 않는다). */
 export interface RenderedGroup {
   id: Id;
-  title: string;
+  title?: string;
   docs: RenderedDoc[];
 }
 

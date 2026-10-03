@@ -1,12 +1,13 @@
 "use client";
 
 /**
- * 상품 상세의 편집 상태 — 헤더 조작(편집 · 더보기 / 취소 · 저장)과 기본정보 본문이 함께 쓴다
- * (와이어프레임 §20.2 「화면 전체의 저장 버튼 하나」).
+ * 상품 상세의 편집 상태 — 탭 첫 줄의 조작(편집 / 취소 · 저장)과 탭 본문이 함께 쓴다
+ * (와이어프레임 §20.2 「화면 전체의 저장 버튼 하나」 · 기능/상품 §3.8).
  *
- * 서버 컴포넌트인 page.tsx 는 `ProductEditProvider` 로 본문을 감싸기만 한다. 본문(BasicTab)이 마운트되며
- * 제 begin · cancel · save · dirty 를 등록하고, 헤더의 `ProductHeadActions` 가 그것을 부른다. 저장이 끝나면
- * 여기서 읽기로 돌아가고 `router.refresh()` 로 서버 값을 다시 받는다.
+ * 서버 컴포넌트인 page.tsx 는 `ProductEditProvider` 로 본문을 감싸기만 한다. 편집이 있는 탭(기본정보 · 상품담보 · 보통약관)의 본문이
+ * 마운트되며 제 begin · cancel · save · dirty 를 등록하고, 그 탭 첫 줄 오른쪽의 `ProductEditButtons` 가 그것을 부른다.
+ * 편집 버튼은 헤더에 두지 않는다 — 머리의 편집은 모든 탭에 걸리는 것처럼 보였다 (2026-10-03 사용자 QA). 헤더에는 더보기만.
+ * 저장이 끝나면 여기서 읽기로 돌아가고 `router.refresh()` 로 서버 값을 다시 받는다.
  *
  * 편집 중 떠나는 조작 — ✕ 취소 · 하위 탭 링크(`ProductTabs`) · 경로 링크(`ProductPath`) — 은 고친 것이 있으면
  * EditShell 과 같은 `DiscardDialog`(「고친 내용을 버립니까?」)를 거친다 (디자인원칙 §1.7 · 점검 M21).
@@ -33,7 +34,7 @@ export interface ProductEditHandlers {
 interface ProductEditContextValue {
   editing: boolean;
   pending: boolean;
-  /** 이 탭에 편집할 것이 있는가 — 기본정보 탭만 (보통약관·특별약관의 편집 흐름 통합은 후속 범위). */
+  /** 이 탭에 편집할 것이 있는가 — 기본정보 탭 · 상품담보 탭 · 템플릿이 있는 보통약관 탭. */
   canEdit: boolean;
   begin(): void;
   /** ✕ — 고친 것이 있으면 「버립니까?」 뒤에, 없으면 바로 읽기로. */
@@ -41,6 +42,8 @@ interface ProductEditContextValue {
   save(confirmed?: boolean): void;
   /** 이 편집 화면을 떠나는 조작(탭 링크 · 경로 링크) — 고친 것이 있으면 「버립니까?」 뒤에, 없으면 바로 `go`. */
   leave(go: () => void): void;
+  /** 묻지 않고 초안을 버리고 읽기로 — 사용자가 이미 버림을 안내받은 조작(보통약관 템플릿 교체)이 부른다. */
+  end(): void;
   register(handlers: ProductEditHandlers | null): void;
 }
 
@@ -60,8 +63,8 @@ export function leaveNeedsConfirm({ editing, dirty }: { editing: boolean; dirty:
   return editing && dirty;
 }
 
-export function ProductEditProvider({ canEdit, children }: { canEdit: boolean; children: ReactNode }) {
-  const [editingState, setEditing] = useState(false);
+export function ProductEditProvider({ canEdit, initialEditing = false, children }: { canEdit: boolean; /** 테스트 · 렌더 검사용 — 편집 상태로 시작. */ initialEditing?: boolean; children: ReactNode }) {
+  const [editingState, setEditing] = useState(initialEditing);
   /** 「버립니까?」 확인 — 버리면 그 조작의 `go` 로. */
   const [discard, setDiscard] = useState<{ go: () => void }>();
   const [pending, startTransition] = useTransition();
@@ -92,6 +95,10 @@ export function ProductEditProvider({ canEdit, children }: { canEdit: boolean; c
       }),
     [leave],
   );
+  const end = useCallback(() => {
+    handlers.current?.cancel();
+    setEditing(false);
+  }, []);
   const save = useCallback(
     (confirmed = false) => {
       const h = handlers.current;
@@ -107,8 +114,8 @@ export function ProductEditProvider({ canEdit, children }: { canEdit: boolean; c
   );
 
   const value = useMemo<ProductEditContextValue>(
-    () => ({ editing, pending, canEdit, begin, cancel, save, leave, register }),
-    [editing, pending, canEdit, begin, cancel, save, leave, register],
+    () => ({ editing, pending, canEdit, begin, cancel, save, leave, end, register }),
+    [editing, pending, canEdit, begin, cancel, save, leave, end, register],
   );
   return (
     <ProductEditContext.Provider value={value}>
@@ -136,31 +143,36 @@ export function ProductPath({ name }: { name: string }) {
 }
 
 /**
- * 헤더 오른쪽의 조작 — 읽기: `[편집] [더보기 ▾]`, 편집: `[취소] [저장]` (같은 자리 · 같은 규격).
- * 편집이 없는 탭에서는 더보기만 선다.
+ * 헤더 오른쪽 — 더보기(미리보기 · 상품 삭제)만. 편집 중에는 비운다: 미리보기 링크는 「버립니까?」를 거치지 않고 떠난다.
  */
 export function ProductHeadActions({ menu }: { menu: MoreMenuItem[] }) {
+  const { editing } = useProductEdit();
+  return <div className="ts-product-actions">{!editing && <MoreMenu items={menu} />}</div>;
+}
+
+/**
+ * 탭 첫 줄 오른쪽의 편집 조작 — 읽기: `[편집]`, 편집: `[취소] [저장]` (같은 자리 · 같은 규격, 높이 32 · 모서리 4).
+ * 편집할 것이 없는 탭(또는 템플릿 없는 보통약관)에서는 아무것도 그리지 않는다.
+ */
+export function ProductEditButtons() {
   const { editing, pending, canEdit, begin, cancel, save } = useProductEdit();
-  if (editing) {
-    return (
-      <div className="ts-product-actions">
-        <button type="button" disabled={pending} onClick={cancel}>
-          취소
-        </button>
-        <button type="button" className="primary" disabled={pending} onClick={() => save()}>
-          {pending ? "저장 중…" : "저장"}
-        </button>
-      </div>
-    );
-  }
+  if (!canEdit) return null;
   return (
     <div className="ts-product-actions">
-      {canEdit && (
+      {editing ? (
+        <>
+          <button type="button" disabled={pending} onClick={cancel}>
+            취소
+          </button>
+          <button type="button" className="primary" disabled={pending} onClick={() => save()}>
+            {pending ? "저장 중…" : "저장"}
+          </button>
+        </>
+      ) : (
         <button type="button" onClick={begin}>
           편집
         </button>
       )}
-      <MoreMenu items={menu} />
     </div>
   );
 }

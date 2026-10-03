@@ -2380,6 +2380,24 @@ td.col-act {
 }
 
 .ts-form-radios,
+/* 목록값(복수) — 고른 값 칩 + 「+」 (값을 다 펼치지 않는다, 2026-10-03) */
+.ts-form-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  /* 표 칸 안에서도 칩이 한 줄에 여럿 서게 — 좁으면 칩 하나씩 세로로 쌓여 행이 길어졌다 */
+  min-width: 320px;
+}
+
+.ts-form-chips .ts-chip {
+  white-space: nowrap;
+}
+
+.ts-form-chips select {
+  font-size: 13px;
+}
+
 .ts-form-checks {
   display: inline-flex;
   flex-wrap: wrap;
@@ -4868,17 +4886,34 @@ button.ts-ref-fold:hover {
 .ts-terms-panel {
   border: 1px solid var(--ts-rule);
   border-radius: 3px;
-  padding: 8px 12px;
+  padding: 0 12px 8px;
   max-height: 72vh;
   overflow: auto;
   min-width: 0;
+  background: var(--ts-surface);
+}
+
+/* 패널 머리 띠 — 패널 본문이 스크롤해도 위에 붙는다. 보통약관 · 특별약관 탭 세 패널이 같은 규칙을 쓴다 (기능/상품 §4.6 · §4.7) */
+.ts-terms-panel-head {
+  position: sticky; top: 0; z-index: 2;
+  display: flex; align-items: center; gap: 8px; min-height: 36px;
+  margin: 0 -12px 8px; padding: 6px 12px;
+  background: var(--ts-surface-2); border-bottom: 1px solid var(--ts-rule);
 }
 
 .ts-terms-panel-title {
-  margin: 0 0 8px;
+  margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: var(--ts-ink-2);
+  color: var(--ts-ink);
+}
+
+/* 편집 중 미리보기 머리 띠의 안내 — 오른쪽은 저장 전까지 저장된 조립이다 */
+.ts-terms-panel-hint {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--ts-ink-3);
+  white-space: nowrap;
 }
 
 /* 패널 안의 문서 세계는 패널 폭을 넘지 않는다 — 측정폭 44em 은 여기서 상한이 아니다 */
@@ -4912,7 +4947,16 @@ button.ts-ref-fold:hover {
   padding-left: 4px;
 }
 
-/* 조 노출 저장 실패 — 체크박스 옆(좁으면 아랫줄)에 이유 한 줄 (코덱스 리뷰 2026-09-15 Minor-2) */
+/* 읽기 모드의 노출 표시(✓ · –) — 체크박스와 같은 폭 */
+.ts-toc-mark {
+  display: inline-block;
+  width: 13px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--ts-ink-3);
+}
+
+/* 조 노출 저장 거부 — 그 줄 아래에 이유 한 줄 (CLAUDE.md 「실제 오류는 해당 항목과 수정 위치로」) */
 .ts-toc-error {
   flex-basis: 100%;
   padding-left: 4px;
@@ -4920,8 +4964,18 @@ button.ts-ref-fold:hover {
   line-height: 1.5;
 }
 
+/* 체크박스 · 표시 · 점 · 배지는 줄지 않고, 제목만 남는 폭에서 말줄임 — 긴 제목이 체크박스를 윗줄에 남기지 않게 (2026-10-04 QA) */
+.ts-toc-row > input,
+.ts-toc-row > .ts-toc-mark,
+.ts-toc-row > .ts-copy-dot,
+.ts-toc-row > .ts-badge {
+  flex: none;
+}
+
 .ts-toc-row a {
   display: block;
+  flex: 1 1 0;
+  min-width: 0;
   padding: 2px 6px;
   border-left: 2px solid transparent;
   color: var(--ts-ink-2);
@@ -4960,15 +5014,29 @@ button.ts-ref-fold:hover {
   line-height: 1.6;
 }
 
-.ts-clause-use > p,
-.ts-clause-use > .ts-clause-box-row {
+.ts-clause-use > p {
   margin: 0 0 2px;
 }
 
-.ts-clause-use .ts-form {
-  margin: 4px 0 0;
-  padding: 0;
-  border: 0;
+/* 편집 중 옵션 고르기 — 옵션마다 이름 + 선택, 끝에 되돌리기(↺) */
+.ts-clause-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 4px 0 2px;
+}
+
+.ts-clause-pick label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 초안에서 바뀐 자리 — 저장 전 「변경」 */
+.ts-badge.ts-changed-mark {
+  color: var(--ts-mark);
+  border-color: var(--ts-mark);
 }
 
 .ts-doc-clause-head .ts-badge {
@@ -4992,6 +5060,8 @@ button.ts-ref-fold:hover {
 .ts-product-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
 .ts-product-actions > button,
 .ts-product-actions > a,
+.ts-terms-template > button,
+.ts-terms-template-end > button,
 .ts-more-button,
 .ts-more-menu-item,
 .ts-basic-toolbar button {
@@ -5072,7 +5142,13 @@ button.ts-ref-fold:hover {
 .ts-basic-table th,
 .ts-basic-table td { vertical-align: middle; }
 .ts-basic-table tbody th { font-size: 13px; font-weight: 400; color: var(--ts-ink-2); white-space: nowrap; }
+.ts-basic-table .ts-basic-col-nowrap { white-space: nowrap; }
 .ts-basic-table td { padding-block: 5px; }
+/* 보험종목 정의 값 칸 — 그 행 세목유형의 필드만, 「이름 입력」 묶음이 가로로 흐른다 (2026-10-03) */
+.ts-basic-values { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; }
+.ts-basic-value { display: inline-flex; align-items: center; gap: 8px; }
+.ts-basic-value-label { font-size: 12px; color: var(--ts-ink-2); white-space: nowrap; }
+.ts-basic-value.is-highlighted { outline: 2px solid var(--ts-mark); outline-offset: 2px; }
 .ts-basic-table .ts-basic-col-select { width: 44px; text-align: center; }
 .ts-basic-table .ts-basic-col-name { min-width: 200px; }
 /* 좁은 폭(내비 포함 820 안팎) — 이름 칸을 줄여 시드 규모의 표(세목유형 폼 하나)가 가로 스크롤 없이 들어오게. 폼이 더 붙으면 표는 감싼 칸 안에서 가로로 민다 */
@@ -5118,7 +5194,7 @@ button.ts-ref-fold:hover {
   width: 110px;
 }
 
-/* ── 상품 상세 「안 2」 (2026-09-28) — 기본정보 › 상품정보 표 · 상품담보 표 묶음 · 약관 하위 탭 · 보통약관 작성 ── */
+/* ── 상품 상세 「안 2」 (2026-09-28) — 기본정보 › 상품정보 표 · 상품담보 표 묶음 · 보통약관 탭 ── */
 .ts-basic-info th[scope="row"] { width: 160px; font-weight: 600; text-align: left; }
 .ts-basic-info input[type="text"] { width: 100%; min-height: 32px; box-sizing: border-box; }
 .ts-basic-info input[readonly] { background: var(--ts-surface-2); border-color: var(--ts-rule); color: var(--ts-ink); }
@@ -5126,24 +5202,60 @@ button.ts-ref-fold:hover {
 
 /* 같은 담보의 둘째 상품담보부터 — 코드 · 담보명 칸이 비고 윗줄 괘선을 흐리게 해 한 묶음으로 읽힌다 */
 .ts-mount-section tr.is-group-cont > td { border-top-color: transparent; }
+/* 상품담보 탭 편집 (2026-10-04) — 🗑 로 뺀 행은 저장하면 탑재 해제: 흐리게 + 취소선(조작 칸은 그대로 — 되돌리기) */
+.ts-mount-section tr.is-removed > td:not(.col-act) { color: var(--ts-ink-3); text-decoration: line-through; }
+.ts-mount-section tr.is-removed input[type="text"] { text-decoration: line-through; }
+/* 표 아래 「+ 담보 추가」 줄 — 펼치면 그 자리에서 담보 찾기 · 담보속성 · 추가 / 닫기 */
+.ts-mount-section tfoot td { border-bottom: 0; }
+.ts-mount-add-row .ts-combo { width: 280px; }
+.ts-mount-section tr.ts-row-error > td { border-top-color: transparent; padding-top: 0; }
 
-.ts-subtabs-second { margin: -4px 0 12px; font-size: 13px; }
-
-/* 보통약관 작성 · 담보별 미리보기 — 위 한 줄 뒤 화면 높이를 채우는 패널 */
-.ts-terms-template { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; }
-.ts-terms-template label { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
-.ts-terms-template select { min-width: 280px; }
-.ts-terms-template .ts-combo { width: 280px; font-weight: 400; }
-.ts-terms-template-count { margin-left: auto; font-size: 12px; }
+/* 보통약관 · 특별약관 탭 — 위 한 줄 뒤 화면 높이를 채우는 패널 */
+/* 탭 첫 줄 — 그 탭의 편집 조작이 오른쪽 끝에 선다 (헤더에는 더보기만, 2026-10-03) */
+.ts-tab-head { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-height: 32px; margin: 0 0 10px; }
+/* 보통약관 탭 첫 줄 — 「보통약관 템플릿」 이름(글) · 편집 중 「템플릿 바꾸기…」 · 오른쪽 끝 집계 + 편집 조작 */
+.ts-terms-template { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 32px; margin: 0 0 10px; font-size: 13px; }
+.ts-terms-template-label,
+.ts-terms-template label > span { font-weight: 600; }
+.ts-terms-template label { display: inline-flex; align-items: center; gap: 8px; }
+.ts-terms-template-name { color: var(--ts-ink-2); }
+.ts-terms-template .ts-combo { width: 280px; }
+.ts-terms-template-end { display: inline-flex; align-items: center; gap: 12px; margin-left: auto; }
+.ts-terms-template-end .ts-product-actions { margin-left: 0; }
+.ts-terms-template-count { font-size: 12px; }
+.ts-terms-template-pick { margin-top: -4px; padding: 8px 12px; border: 1px solid var(--ts-rule); border-radius: 4px; background: var(--ts-surface-2); }
 .ts-terms-focus .ts-terms-panel { height: calc(100vh - 230px); min-height: 420px; max-height: none; }
-.ts-special-preview { display: grid; grid-template-columns: minmax(200px, 1fr) 3fr; gap: 12px; align-items: start; }
+/* 보통약관 탭 편집 — 목차 + 조 편집 두 패널 (ADR-0079 · 기능/상품 §4.6). 미리보기는 숨는다 */
+.ts-terms-panels.is-editing { grid-template-columns: minmax(200px, 1fr) 4fr; }
+.ts-terms-panel-edit .ts-doc-toolbar { top: 36px; margin: 0 -12px 8px; }
+/* 목차 · 조 편집 머리의 점 — 빨강 = 이 상품 사본, 노랑 = 사본을 만든 뒤 템플릿이 바뀜 */
+.ts-copy-dot { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ts-error); align-self: center; }
+.ts-copy-dot.is-stale { background: var(--ts-warn); }
+.ts-terms-template-warn { margin: -4px 0 10px; font-size: 13px; }
+.ts-copy-editor { font-size: 13px; }
+.ts-copy-note { margin: 0 0 8px; font-size: 12px; }
+.ts-copy-status { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin: 0 0 8px; padding: 6px 10px; border: 1px solid var(--ts-rule); border-left: 3px solid var(--ts-error); border-radius: 4px; background: var(--ts-surface-2); }
+.ts-copy-status.is-stale { border-left-color: var(--ts-warn); }
+.ts-copy-status-actions { display: inline-flex; gap: 8px; margin-left: auto; }
+.ts-copy-status-actions > button { height: 28px; padding: 0 10px; border-radius: 4px; font-size: 13px; }
+.ts-copy-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+.ts-copy-compare > section { min-width: 0; }
+.ts-copy-compare > section:first-child { opacity: 0.85; border-right: 1px dashed var(--ts-rule-strong); padding-right: 12px; }
+.ts-copy-compare-title { margin: 4px 0 6px; font-size: 12px; font-weight: 600; color: var(--ts-ink-3); }
+.ts-copy-options { margin-top: 12px; padding-top: 4px; border-top: 1px solid var(--ts-rule); }
+@media (max-width: 1100px) {
+  .ts-terms-panels.is-editing { grid-template-columns: 1fr; }
+  .ts-copy-compare { grid-template-columns: 1fr; }
+  .ts-copy-compare > section:first-child { border-right: 0; padding-right: 0; }
+}
+/* 특별약관 탭 (기능/상품 §4.7) — 담보 · 모델링 · 미리보기 세 패널. 머리 띠는 위 `.ts-terms-panel-head` 공통 규칙 */
+.ts-special-pc-select { min-width: 0; max-width: 100%; flex: 0 1 auto; font-size: 13px; }
 .ts-special-list ul { list-style: none; margin: 0; padding: 0; font-size: 13px; }
 .ts-special-list li a { display: block; padding: 3px 4px; color: var(--ts-ink-2); text-decoration: none; }
 .ts-special-list li a[aria-current="page"] { color: var(--ts-mark); font-weight: 700; }
 
 @media (max-width: 1100px) {
   .ts-terms-focus .ts-terms-panel { height: auto; max-height: 60vh; min-height: 0; }
-  .ts-special-preview { grid-template-columns: 1fr; }
 }
 
 /* ── 블록 끌어 옮기기 · 여러 블록 고르기 (기능/문면 §4.3, 2026-09-28) ──

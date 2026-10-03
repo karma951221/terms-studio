@@ -1,11 +1,10 @@
 /**
- * 특약 그룹 (기능/상품 §3 「특약 그룹」) — 순수.
+ * 특약 그룹 안 순서 (기능/상품 §3.7) — 순수. 그룹 자체는 담보 마스터의 「특약 그룹」 열거값이다 (ADR-0080 · `coverage/specialGroup.ts`).
  *
  * - 그룹 안 순서는 자동: **담보 → 담보속성 종류(order) → 유효값(코드 순) 오름차순.**
  *   담보가 1차 키라 같은 담보의 탑재분 뭉침은 정렬의 귀결. 미사용 속성은 사용한 것보다 앞.
- * - 한 그룹 = 한 보통약관 템플릿. MVP 는 상품 템플릿과 같아야 한다 (검증).
  */
-import type { Id, Issue } from "../types";
+import type { Id } from "../types";
 import { attributeValueRank } from "./attributes";
 import type { AttributeKind, ProductCoverage } from "./types";
 
@@ -38,17 +37,4 @@ export function sortInGroup<T extends ProductCoverage>(
     }
     return a.id.localeCompare(b.id);
   });
-}
-
-/** 그룹 템플릿은 비우거나(상품 것을 따름) 상품 것과 같아야 한다. */
-export function validateGroupTemplate(groupTemplateId: Id | undefined, productTemplateId: Id | undefined): Issue[] {
-  if (groupTemplateId === undefined) return [];
-  if (groupTemplateId === productTemplateId) return [];
-  return [
-    {
-      kind: "typeMismatch",
-      message: "한 그룹 = 한 보통약관 템플릿 — MVP 는 그룹의 템플릿이 상품의 템플릿과 같아야 합니다",
-      at: { document: "product", refPath: groupTemplateId },
-    },
-  ];
 }

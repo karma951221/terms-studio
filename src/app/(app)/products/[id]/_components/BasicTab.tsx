@@ -4,7 +4,7 @@
  * 기본정보 탭 — 상품정보(상품명 · 평균공시이율 · 상품특성) · 세목 두 탭(보험종목 정의 · 종·형 조합)
  * (와이어프레임 §20.2 A·B·C · 기능/상품 §4.4, 2026-09-28 「안 2」).
  *
- * - 읽기로 시작한다. 편집·취소·저장 버튼은 헤더(`ProductHeadActions`)에 있고, 이 컴포넌트는 마운트 시
+ * - 읽기로 시작한다. 편집·취소·저장 버튼은 이 탭 첫 줄 오른쪽(`ProductEditButtons`)에 있고(헤더에는 더보기만), 이 컴포넌트는 마운트 시
  *   제 begin · cancel · save · dirty 를 `ProductEditProvider` 에 등록한다. 저장 하나가 상품명 · 상품 레벨 값 · 종목 정의 ·
  *   세목 값 · 사용할 조합을 함께 반영한다.
  * - 보험종목은 표다. 값 열은 표시되는 종목들의 세목유형 폼 필드의 합집합. 편집 중에는 셀 안에서 바로
@@ -19,8 +19,8 @@ import type { EditOutcome } from "@/app/_lib/edit";
 import type { ProductBasicInput } from "@/services/product";
 
 import { saveProductBasicAction } from "../../actions";
-import { basicDraftDirty } from "../../lib";
-import { useProductEdit } from "./ProductEdit";
+import { basicDraftDirty, planCellShown } from "../../lib";
+import { ProductEditButtons, useProductEdit } from "./ProductEdit";
 import { SaveConfirmDialog } from "./SaveConfirmDialog";
 
 type OptionDraft = Omit<ProductBasicInput["options"][number], "values">;
@@ -37,21 +37,6 @@ export interface BasicTabProps {
   planTypeForms: { code: string; label: string; model: FormModel }[];
   highlightOption?: string;
   highlightField?: string;
-}
-
-/** 값 열 — 표시되는 종목들의 폼 필드 합집합 (경로 기준 · 처음 나온 순서). */
-interface ValueColumn {
-  path: string;
-  label: string;
-}
-
-function valueColumns(models: FormModel[]): ValueColumn[] {
-  const seen = new Map<string, FieldView>();
-  for (const model of models) for (const field of model.fields) if (!seen.has(field.path)) seen.set(field.path, field);
-  const fields = [...seen.values()];
-  // 폼이 둘 이상 섞이면 「적용여부」 같은 라벨이 겹친다 — 폼 이름을 앞에 붙여 구분한다
-  const forms = new Set(fields.map((f) => f.form.key));
-  return fields.map((f) => ({ path: f.path, label: forms.size > 1 ? `${f.form.label} ${f.label}` : f.label }));
 }
 
 /** 종·형 칸 — 「제1종」. 이름은 제 열에 따로 있다. */
@@ -189,9 +174,15 @@ export function BasicTab(props: BasicTabProps) {
   // ── 표에 그릴 것 — 읽기는 저장된 것, 편집은 초안 ─────────────────────────
   const shownOptions: OptionDraft[] = editing ? options : initialOptions();
   const shownCombinations = editing ? combinations : initialCombinations();
-  const columns = valueColumns(shownOptions.map(modelFor));
+  /** 세목유형 열 — 편집은 고르는 칸(showPlanType), 읽기는 글자. 세목유형이 하나뿐이면 열이 없다. */
+  const showPlanTypeColumn = planTypeForms.length > 1;
+  const planTypeLabel = (code: string) => planTypeForms.find((f) => f.code === code)?.label ?? code;
   const types = shownOptions.filter((o) => o.axis === "type");
   const formsAxis = shownOptions.filter((o) => o.axis === "form");
+  /** 조합 표의 열 — 쓰인 축만(종 · 형). */
+  const comboAxes = (["type", "form"] as const).filter((axis) => shownOptions.some((o) => o.axis === axis));
+  /** 남는 폭은 마지막 열(형)만 먹고, 앞 열(종)은 글자 폭 그대로. */
+  const comboColClass = (i: number) => (i === comboAxes.length - 1 ? "col-flex" : "ts-basic-col-nowrap");
   const candidates: OptionDraft[][] = types.length && formsAxis.length ? types.flatMap((t) => formsAxis.map((f) => [t, f])) : shownOptions.map((o) => [o]);
   const combinationRows: OptionDraft[][] = editing
     ? candidates
@@ -209,13 +200,14 @@ export function BasicTab(props: BasicTabProps) {
   // ── 값 셀 ────────────────────────────────────────────────────────────────
   const readCell = (model: FormModel, path: string) => {
     const field = model.fields.find((f) => f.path === path);
-    if (!field) return null;
+    if (!field || !planCellShown(path, savedValueOf(model))) return null;
     // 빈 list<enum> 은 "" 로 나온다 — 없는 값은 전부 「—」. 지운 열거값 코드는 「없는 값」 칩 (ADR-0078 결정 5)
     return <FieldReadValue field={field} />;
   };
   const editCell = (ownerId: string, state: FormState | undefined, path: string, label: string) => {
     const field = state?.fields[path];
-    if (!field) return null;
+    // 같은 행 값에 따라 칸을 비운다(납입면제사유는 적용여부 = 예일 때만)
+    if (!field || !state || !planCellShown(path, draftValueOf(state))) return null;
     const id = `${idBase}-${ownerId}-${path.replace(".", "-")}`;
     return (
       <>
@@ -252,6 +244,10 @@ export function BasicTab(props: BasicTabProps) {
 
   return (
     <div className="ts-basic-editor">
+      {/* 탭 첫 줄 — 편집 · 저장은 이 탭에 걸린다는 것이 보이도록 탭 안 오른쪽 끝 (2026-10-03 사용자 QA) */}
+      <div className="ts-tab-head">
+        <ProductEditButtons />
+      </div>
       {error && (
         <p role="alert" className="ts-error-banner">
           {error}
@@ -359,13 +355,10 @@ export function BasicTab(props: BasicTabProps) {
                       <th scope="col" className="ts-basic-col-name">
                         보험종목명
                       </th>
-                      {showPlanType && <th scope="col">세목유형</th>}
-                      {columns.map((col) => (
-                        <th key={col.path} scope="col">
-                          {col.label}
-                        </th>
-                      ))}
-                      {columns.length === 0 && <th scope="col" className="col-flex" aria-hidden="true" />}
+                      {showPlanTypeColumn && <th scope="col">세목유형</th>}
+                      <th scope="col" className="col-flex">
+                        값
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -404,7 +397,7 @@ export function BasicTab(props: BasicTabProps) {
                               </td>
                             </>
                           ) : (
-                            <td>{axisLabel(option)}</td>
+                            <td className="ts-basic-col-nowrap">{axisLabel(option)}</td>
                           )}
                           <td className="ts-basic-col-name">
                             {editing ? (
@@ -431,15 +424,25 @@ export function BasicTab(props: BasicTabProps) {
                               </select>
                             </td>
                           )}
-                          {columns.map((col) => {
-                            const cellHighlighted = rowHighlighted && highlightField === col.path;
-                            return (
-                              <td key={col.path} className={cellHighlighted ? "is-highlighted" : undefined} data-path={col.path}>
-                                {editing ? editCell(option.id, forms[option.id], col.path, col.label) : readCell(model, col.path)}
-                              </td>
-                            );
-                          })}
-                          {columns.length === 0 && <td className="col-flex" />}
+                          {!showPlanType && showPlanTypeColumn && <td className="ts-basic-col-nowrap">{planTypeLabel(option.planTypeCode)}</td>}
+                          {/* 값 — 그 행 세목유형의 필드만, 이름 + 입력(읽기는 값)을 한 줄에 (2026-10-03 QA) */}
+                          <td className="col-flex">
+                            <div className="ts-basic-values">
+                              {model.fields.map((field) => {
+                                const cell = editing ? editCell(option.id, forms[option.id], field.path, field.label) : readCell(model, field.path);
+                                if (cell === null) return null;
+                                const cellHighlighted = rowHighlighted && highlightField === field.path;
+                                return (
+                                  <div key={field.path} className={cellHighlighted ? "ts-basic-value is-highlighted" : "ts-basic-value"} data-path={field.path}>
+                                    <span className="ts-basic-value-label" aria-hidden="true">
+                                      {field.label}
+                                    </span>
+                                    {cell}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}
@@ -464,9 +467,11 @@ export function BasicTab(props: BasicTabProps) {
                           사용
                         </th>
                       )}
-                      <th scope="col" className="col-flex">
-                        종·형 조합
-                      </th>
+                      {comboAxes.map((axis, i) => (
+                        <th key={axis} scope="col" className={comboColClass(i)}>
+                          {PLAN_AXIS_LABEL[axis]}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
@@ -482,7 +487,14 @@ export function BasicTab(props: BasicTabProps) {
                               <input type="checkbox" aria-label={`${label} 사용`} checked={used} onChange={(e) => toggleCombination(ids, e.target.checked)} />
                             </td>
                           )}
-                          <td className="col-flex">{label}</td>
+                          {comboAxes.map((axis, i) => {
+                            const item = items.find((o) => o.axis === axis);
+                            return (
+                              <td key={axis} className={comboColClass(i)}>
+                                {item ? planOptionLabel(item) : ""}
+                              </td>
+                            );
+                          })}
                         </tr>
                       );
                     })}

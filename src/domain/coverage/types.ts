@@ -34,6 +34,11 @@ export interface Coverage {
   description: string;
   /** 담보약관 마스터 문서 id (B3 소유). 문면 없는 담보 허용. */
   documentId?: Id;
+  /**
+   * 특약 그룹 — 열거형 「특약 그룹」(E0008)의 값 코드. 없으면 그룹 없음(책자에서 그룹 제목 없이 찍힌다).
+   * 뼈대 속성이라 스냅샷 대상이 아니다 — 탑재한 상품은 지금 담보의 그룹을 따른다 (ADR-0080 · `specialGroup.ts`).
+   */
+  specialGroup?: Code;
   /** order 오름차순. 최소 1개 (최소 구조). */
   subCoverages: SubCoverage[];
 }

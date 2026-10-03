@@ -36,6 +36,8 @@ export interface CoverageSpec {
   benefitName: string;
   subCoverages?: { name: string; benefitName: string }[];
   coverageValues: { path: string; value: string }[];
+  /** 특약 그룹 — 열거형 「특약 그룹」(E0008) 값 코드. 없으면 그룹 없음(기본계약 담보) (ADR-0080). */
+  specialGroup?: string;
 }
 /** 정적 마스터 박스 — 코드 · 이름 · 제목 · 줄 (기능/박스 §3.1). */
 export interface BoxSpec {
@@ -68,8 +70,7 @@ export interface ProductSpec {
   values: { path: string; value: unknown }[];
   planOptions: { code: string; axis: "type" | "form"; number: number; name: string; planTypeCode: string; values: { path: string; value: unknown }[] }[];
   plans: string[][];
-  groups: { code: string; title: string }[];
-  mounts: { code: string; coverage: string; section: "base" | "special"; attributes: { kindCode: string; valueCode: string }[]; group?: string }[];
+  mounts: { code: string; coverage: string; section: "base" | "special"; attributes: { kindCode: string; valueCode: string }[] }[];
 }
 
 export const SEED = {

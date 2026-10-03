@@ -460,3 +460,56 @@ describe("coverage 서비스 — applyStructurePlan · previewStructurePlan (조
     expect(unwrap(await s.product.getSnapshot(pcQ))).toEqual(nodesBefore);
   });
 });
+
+describe("담보의 특약 그룹 — 열거형 「특약 그룹」(E0008) 값 하나 또는 없음 (ADR-0080 · 기능/담보 §3.1)", () => {
+  let t: TestDb;
+  let s: Services;
+  let coverage: Coverage;
+
+  beforeAll(async () => {
+    t = await createTestDb();
+    s = createServices(t.db);
+    // E0001 ~ E0007 자리를 채우고 여덟째가 「특약 그룹」 — 시드와 같은 순서 (코드는 채번이다)
+    for (let i = 1; i <= 7; i++) unwrap(await s.catalog.createEnum(editor, { label: `열거형${i}`, values: [{ label: "값" }] }));
+    const groups = unwrap(await s.catalog.createEnum(editor, { label: "특약 그룹", values: [{ label: "상해 관련 특별약관" }, { label: "질병 관련 특별약관" }] }));
+    expect(groups.code).toBe("E0008");
+    coverage = unwrap(await s.coverage.create(editor, { name: "골절진단" }));
+  });
+  afterAll(async () => {
+    await t.close();
+  });
+
+  it("새 담보는 그룹이 없다 — 편집자가 값을 고르고 저장하면 다시 읽어도 그 값", async () => {
+    expect(coverage.specialGroup).toBeUndefined();
+    const saved = unwrap(await s.coverage.setSpecialGroup(editor, coverage.id, "V02"));
+    expect(saved.specialGroup).toBe("V02");
+    expect((await s.coverage.get(coverage.id))?.specialGroup).toBe("V02");
+    expect((await s.coverage.list()).find((c) => c.id === coverage.id)?.specialGroup).toBe("V02");
+  });
+
+  it("없음으로 되돌린다 — 그룹 칸이 비고 다른 뼈대(이름 · 구조)는 그대로", async () => {
+    const before = await s.coverage.get(coverage.id);
+    const cleared = unwrap(await s.coverage.setSpecialGroup(editor, coverage.id, undefined));
+    expect(cleared.specialGroup).toBeUndefined();
+    const { specialGroup: _gone, ...rest } = before!;
+    void _gone;
+    expect(await s.coverage.get(coverage.id)).toEqual(rest);
+  });
+
+  it("열거형에 없는 값은 거부 — 아무것도 바뀌지 않는다 · 없는 담보는 notFound", async () => {
+    unwrap(await s.coverage.setSpecialGroup(editor, coverage.id, "V01"));
+    const r = rejection(await s.coverage.setSpecialGroup(editor, coverage.id, "V09"));
+    expect(r.reason).toBe("invalid");
+    expect(r.issues?.[0]).toMatchObject({ kind: "brokenRef" });
+    expect((await s.coverage.get(coverage.id))?.specialGroup).toBe("V01");
+    expect(rejection(await s.coverage.setSpecialGroup(editor, "44444444-4444-4444-8444-444444444444", "V01")).reason).toBe("notFound");
+  });
+
+  it("구조 정정 저장(applyStructurePlan)은 그룹을 지키고, 탑재 상품담보 스냅샷에는 그룹이 없다 — 상품은 지금 담보의 그룹을 따른다", async () => {
+    const saved = await s.coverage.get(coverage.id);
+    const draft = structureDraftOf(saved!);
+    draft[0]!.name = "골절진단 세부";
+    const next = unwrap(await s.coverage.applyStructurePlan(editor, coverage.id, draft));
+    expect(next.specialGroup).toBe("V01");
+  });
+});

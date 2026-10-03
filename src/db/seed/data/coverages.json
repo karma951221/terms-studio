@@ -17,6 +17,7 @@
     "code": "COV000002",
     "name": "일반상해사망보장",
     "benefitName": "사망보험금",
+    "specialGroup": "V01",
     "coverageValues": [
       {
         "path": "coverage_basic.claim_name",
@@ -30,6 +31,7 @@
     "code": "COV000003",
     "name": "일반상해80%이상후유장해 생활자금보장",
     "benefitName": "생활자금",
+    "specialGroup": "V01",
     "coverageValues": [
       {
         "path": "coverage_basic.claim_name",
@@ -43,6 +45,7 @@
     "code": "COV000004",
     "name": "골절(치아파절 제외)진단비Ⅱ보장",
     "benefitName": "골절진단비",
+    "specialGroup": "V01",
     "coverageValues": [
       {
         "path": "coverage_basic.claim_name",
@@ -56,6 +59,7 @@
     "code": "COV000005",
     "name": "일반상해50%이상후유장해 생활자금보장",
     "benefitName": "생활자금",
+    "specialGroup": "V01",
     "coverageValues": [
       {
         "path": "coverage_basic.claim_name",
@@ -69,6 +73,7 @@
     "code": "COV000006",
     "name": "골절수술비Ⅱ보장",
     "benefitName": "골절수술비",
+    "specialGroup": "V01",
     "coverageValues": [
       {
         "path": "coverage_basic.claim_name",
@@ -82,6 +87,7 @@
     "code": "COV000007",
     "name": "중대한특정상해수술비보장",
     "benefitName": "중대한특정상해수술비",
+    "specialGroup": "V01",
     "coverageValues": [
       {
         "path": "coverage_basic.claim_name",
@@ -95,6 +101,7 @@
     "code": "COV000008",
     "name": "수술비(1-7종, 연간3회한)[상해]보장",
     "benefitName": "1종 상해수술비(연간3회한)",
+    "specialGroup": "V01",
     "subCoverages": [
       {
         "name": "1종 상해수술비(연간3회한)",
@@ -138,6 +145,7 @@
     "code": "COV000009",
     "name": "신화상치료비보장",
     "benefitName": "화상진단비",
+    "specialGroup": "V01",
     "subCoverages": [
       {
         "name": "화상진단비",
@@ -178,6 +186,7 @@
     "code": "COV000011",
     "name": "일반상해80%이상후유장해(통합간편가입)보장",
     "benefitName": "일반상해80%이상후유장해보험금",
+    "specialGroup": "V01",
     "coverageValues": [
       {
         "path": "coverage_basic.claim_name",
@@ -191,6 +200,7 @@
     "code": "COV000012",
     "name": "수술비(1-7종, 연간3회한)[상해](통합간편가입)보장",
     "benefitName": "상해1종 수술비",
+    "specialGroup": "V01",
     "subCoverages": [
       {
         "name": "상해1종 수술비보장",
@@ -234,6 +244,7 @@
     "code": "COV000013",
     "name": "골절(치아파절 제외)진단비Ⅱ(통합간편가입)보장",
     "benefitName": "골절(치아파절 제외)진단비",
+    "specialGroup": "V01",
     "coverageValues": [
       {
         "path": "coverage_basic.claim_name",
@@ -247,6 +258,7 @@
     "code": "COV000014",
     "name": "신화상치료비(통합간편가입)보장",
     "benefitName": "화상진단비",
+    "specialGroup": "V01",
     "subCoverages": [
       {
         "name": "화상진단비(통합간편가입)",
@@ -274,6 +286,7 @@
     "code": "COV000015",
     "name": "골절수술비Ⅱ(통합간편가입)보장",
     "benefitName": "골절수술비",
+    "specialGroup": "V01",
     "coverageValues": [
       {
         "path": "coverage_basic.claim_name",
@@ -287,6 +300,7 @@
     "code": "COV000016",
     "name": "질병사망(통합간편가입)보장",
     "benefitName": "질병사망보험금",
+    "specialGroup": "V02",
     "coverageValues": [
       {
         "path": "coverage_basic.claim_name",
@@ -300,6 +314,7 @@
     "code": "COV000017",
     "name": "질병80%이상후유장해(통합간편가입)보장",
     "benefitName": "질병80%이상후유장해보험금",
+    "specialGroup": "V02",
     "coverageValues": [
       {
         "path": "coverage_basic.claim_name",
@@ -313,6 +328,7 @@
     "code": "COV000018",
     "name": "수술비(1-7종, 연간3회한)[질병](통합간편가입)보장",
     "benefitName": "질병1종 수술비",
+    "specialGroup": "V02",
     "subCoverages": [
       {
         "name": "질병1종 수술비보장",

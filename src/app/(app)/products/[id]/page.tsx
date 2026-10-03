@@ -3,35 +3,38 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 
 import { Breadcrumb } from "@/app/_components/Breadcrumb";
+import { buildConditionContext } from "@/app/(app)/documents/[id]/_components/condition/conditionContext";
 import { Confirm } from "@/app/_components/Confirm";
 import { ErrorBanner } from "@/app/_components/ErrorBanner";
 import { ENTITY_LABEL } from "@/app/_lib/labels";
 import { previewOutcome, rejectionMessage } from "@/app/_lib/rejection";
-import { articleRefLabel, type NodeNumber } from "@/domain/document";
+import { articleRefLabel, collectRefs, indexTree, type NodeNumber } from "@/domain/document";
 import type { Id } from "@/domain/types";
+import { SPECIAL_GROUP_ENUM, specialGroupLabel } from "@/domain/coverage";
 import { CONTRACT_KIND_PATH, findForm, isStandaloneContract } from "@/domain/master";
-import { defaultCoverageName, planOptionLabel, planTypeOptions, type ProductCoverage } from "@/domain/product";
+import { applyArticleCopies, defaultCoverageName, liveArticleCopies, planOptionLabel, planTypeOptions, type ProductCoverage } from "@/domain/product";
 import { buildForm } from "@/forms";
 import { currentActor, getServices } from "@/lib/services";
 
 import { BasicTab } from "./_components/BasicTab";
 import { CoveragesTab } from "./_components/CoveragesTab";
 import { GeneralTab } from "./_components/GeneralTab";
-import { type OverrideTarget } from "./_components/OptionOverrideForm";
+import { type OverrideTarget } from "./_components/GeneralEdit";
 import { ProductEditProvider, ProductHeadActions, ProductPath } from "./_components/ProductEdit";
-import { ProductTabs, TermsSubTabs } from "./_components/ProductTabs";
+import { ProductTabs } from "./_components/ProductTabs";
 import { SpecialPreviewTab } from "./_components/SpecialPreviewTab";
-import { confirmProductGeneralDocumentAction, deleteGroupAction, deleteProductAction, detachPlanAction, removePlanAction, removePlanOptionAction, unmountAction } from "../actions";
-import { legacyProductTabRedirect, productTabOf, termsPath, termsSubOf } from "../lib";
+import { confirmProductGeneralDocumentAction, deleteProductAction, removePlanAction, removePlanOptionAction } from "../actions";
+import { legacyProductTabRedirect, productDetailPath, productTabOf, resolveSpecialSelection, specialCoverageGroups } from "../lib";
 
 export const dynamic = "force-dynamic";
 
 /**
- * 상품 상세 — 헤더(경로 「상품 › 상품명」 · 편집 · 더보기) + 탭 셋 기본정보 · 상품담보 · 약관(하위 탭 보통약관 작성 · 담보별 미리보기)
- * (기능/상품 §3.8 · §4.3, 2026-09-28 「안 2」). 옛 `?tab=general|special` 주소는 새 자리로 redirect 한다.
+ * 상품 상세 — 헤더(경로 「상품 › 상품명」 · 편집 · 더보기) + 한 줄 탭 넷 기본정보 · 상품담보 · 보통약관 · 특별약관
+ * (기능/상품 §3.8 · §4.3, 2026-10-03). 옛 약관 탭 주소(`?tab=terms&sub=`)는 새 자리로 redirect 한다.
  *
- * 헤더의 편집 · 취소 · 저장은 클라이언트 `ProductEditProvider` 가 기본정보 탭과 나눠 쓴다 — 서버 컴포넌트인
- * 이 파일은 Provider 로 본문을 감싸기만 한다. 목록 이동은 경로의 「상품」 링크 하나, 미리보기 · 삭제는 더보기 안이다.
+ * 편집 · 취소 · 저장은 편집이 있는 탭(기본정보 · 상품담보 · 템플릿이 있는 보통약관)의 **첫 줄 오른쪽**에 있다 — 헤더에는 더보기만
+ * (머리의 편집은 모든 탭에 걸리는 것처럼 보였다, 2026-10-03 사용자 QA). 편집 상태는 클라이언트 `ProductEditProvider` 가 갖고,
+ * 서버 컴포넌트인 이 파일은 Provider 로 본문을 감싸기만 한다. 목록 이동은 경로의 「상품」 링크 하나, 미리보기 · 삭제는 더보기 안이다.
  *
  * 이 파일은 **로드 · 헤더 · 분기**만 한다. 섹션은 탭 컴포넌트에 있다.
  * 탭은 `?tab=` 이라 서버가 그대로 렌더한다 — 한 번에 한 탭만 그리지만 데이터는 확인 카드 때문에 한 벌로 읽는다.
@@ -41,14 +44,13 @@ export default async function ProductDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; sub?: string; error?: string; confirm?: string; option?: string; field?: string; art?: string; pc?: string; mq?: string; mpage?: string; bq?: string; bpage?: string }>;
+  searchParams: Promise<{ tab?: string; sub?: string; error?: string; confirm?: string; option?: string; field?: string; art?: string; pc?: string; cov?: string; mq?: string; mpage?: string; bq?: string; bpage?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
   const legacy = legacyProductTabRedirect(id, sp);
   if (legacy) redirect(legacy);
   const tab = productTabOf(sp.tab);
-  const sub = tab === "terms" ? termsSubOf(sp.sub) : undefined;
   const services = getServices();
   const product = await services.product.getProduct(id);
   if (!product) {
@@ -60,7 +62,7 @@ export default async function ProductDetailPage({
     );
   }
   const actor = await currentActor();
-  const [generals, enumsList, planOptions, plans, coverages, attributeKinds, productCoverages, baseContractIds, groups, unplaced, overrides, namingTemplate, clauses] =
+  const [generals, enumsList, planOptions, plans, coverages, attributeKinds, productCoverages, baseContractIds, overrides, namingTemplate, clauses] =
     await Promise.all([
       services.document.list("general"),
       services.catalog.listEnums(),
@@ -70,8 +72,6 @@ export default async function ProductDetailPage({
       services.product.listAttributeKinds(),
       services.product.listProductCoverages(id),
       services.product.listBaseContractIds(id),
-      services.product.listGroups(id),
-      services.product.listUnplaced(id),
       services.product.listOptionOverrides({ kind: "product", id }),
       services.product.getNamingTemplate(),
       services.clause.list(),
@@ -94,34 +94,70 @@ export default async function ProductDetailPage({
   const baseCheck = await services.product.checkBaseContract(id);
   const baseContractSet = new Set(baseContractIds);
   const coverageName = new Map(coverages.map((c) => [c.id, c.name]));
+  // 특약 그룹은 담보의 것 (ADR-0080) — 특별약관 표의 「그룹」 열(읽기 전용)이 그 담보의 「특약 그룹」 값 이름을 보인다
+  const groupEnum = enumLookup(SPECIAL_GROUP_ENUM);
+  const coverageRows = coverages.map((c) => ({ id: c.id, code: c.code, name: c.name, group: specialGroupLabel(c.specialGroup, groupEnum) }));
   const baseCoverages = productCoverages.filter((coverage) => baseContractSet.has(coverage.id));
   const specialCoverages = productCoverages.filter((coverage) => !baseContractSet.has(coverage.id));
 
   /** 작명 규칙이 지금 지어 줄 이름 — 누르기 전에 결과를 보여준다 (리뷰 #27 · §9.3). */
   const wouldBeName = (pc: ProductCoverage) => defaultCoverageName(coverageName.get(pc.coverageId) ?? "", pc.attributes, attributeKinds, namingTemplate);
+  // 상품담보 탭 (기능/상품 §4.5) — 세목 부착 · 작명 결과는 그 탭을 열었을 때만 (클라이언트로 넘기는 재료라 함수가 아니라 값으로)
+  const attachedPlans = tab === "coverages" ? Object.fromEntries(await services.product.listAttachedPlanIdsOf(id)) : {};
+  const suggestedNames = tab === "coverages" ? Object.fromEntries(productCoverages.map((pc) => [pc.id, wouldBeName(pc)])) : {};
 
-  // ── 약관 › 보통약관 작성의 재료 (기능/상품 §4.6) ───────────────────────
-  // 템플릿 트리 · 템플릿 번호 · 숨긴 조 · 조립 결과. 그 하위 탭을 열었을 때만 읽는다 — 조립은 매번 재계산이라 싸지 않다.
-  const gid = sub === "general" ? product.generalDocumentId : undefined;
-  const [generalDoc, generalNumbers, hiddenArticles, bookletResult, appendices, discriminators, boxes] = gid
+  // ── 보통약관 탭의 재료 (기능/상품 §4.6) ───────────────────────
+  // 템플릿 트리 · 템플릿 번호 · 숨긴 조 · 조립 결과. 그 탭을 열었을 때만 읽는다 — 조립은 매번 재계산이라 싸지 않다.
+  const gid = tab === "general" ? product.generalDocumentId : undefined;
+  const [generalDoc, generalNumbers, hiddenArticles, bookletResult, savedCopies, baseVersion] = gid
     ? await Promise.all([
         services.document.get(gid),
         services.document.numbering(gid),
         services.product.listHiddenArticles(id),
         services.assembly.preview(id),
-        services.document.listAppendices(),
-        services.catalog.list(),
-        services.document.listBoxes(),
+        services.product.listArticleCopies(id),
+        services.product.generalBaseVersion(id),
       ])
-    : [undefined, new Map<Id, NodeNumber>(), [] as Id[], undefined, [], [], []];
+    : [undefined, new Map<Id, NodeNumber>(), [] as Id[], undefined, [], undefined];
+  // 조 사본 (ADR-0079) — 템플릿에서 조가 지워진 사본은 쓰이지 않는다(다음 저장에서 지워진다). 이 상품의 본문 = 템플릿 + 사본.
+  const articleCopies = generalDoc ? liveArticleCopies(generalDoc.tree, savedCopies) : [];
+  const effectiveTree = generalDoc ? applyArticleCopies(generalDoc.tree, articleCopies) : undefined;
+  // 마지막 저장 뒤 템플릿이 고쳐졌는가 — 기준 판을 모르면(옛 데이터) 묻지 않는다
+  const templateChanged = generalDoc !== undefined && baseVersion !== undefined && generalDoc.version > baseVersion;
+  // 원문 모델의 칩 재료(별표 이름 · 구분자 표시명 · 박스) — 보통약관 · 특별약관 탭 둘 다 원문 모델을 그린다
+  const [appendices, discriminators, boxes] =
+    gid || tab === "special" ? await Promise.all([services.document.listAppendices(), services.catalog.list(), services.document.listBoxes()]) : [[], [], []];
+  // 편집 중 조 편집 패널(문면 편집기)의 재료 — 문면 화면(`documents/[id]/page.tsx`)과 같은 것 (ADR-0079)
+  // 기본계약 대치 자리 — 기본계약 담보약관의 조연결 대상 (조립은 그 조를 늘 기본계약 조로 찍는다, ADR-0021)
+  const replacedBy: Record<Id, string> = {};
+  if (gid) {
+    for (const pc of baseCoverages) {
+      const doc = await services.document.findByCoverage(pc.coverageId);
+      if (!doc) continue;
+      for (const e of indexTree(doc.tree).nodes.values()) if (e.node.kind === "article" && e.node.linkedArticleId) replacedBy[e.node.linkedArticleId] = pc.name;
+    }
+  }
+  const copyEditorData = gid
+    ? {
+        replacedBy,
+        appendices,
+        boxes,
+        clauses,
+        discriminators,
+        enums: enumsList,
+        condition: buildConditionContext({ discriminators, enums: enumsList, attributes: attributeKinds }),
+        attributeValues: Object.fromEntries(attributeKinds.map((k) => [k.code, k.values.map((v) => v.code)])),
+      }
+    : undefined;
   const booklet = bookletResult?.ok ? bookletResult.value : undefined;
   const bookletNote = bookletResult && !bookletResult.ok ? `조립할 수 없다 — ${rejectionMessage(bookletResult)}` : undefined;
 
   // 보통약관 문면의 함수조항 참조 자리(block · inline 둘 다 노드 id 로 오버라이드된다) = 고를 수 있는 자리 (리뷰 #7).
   // 오버라이드는 이제 그 자리의 괘선 박스에서 고친다 — 별도 섹션은 없다 (기능/상품 §3.6).
+  // 자리는 이 상품의 본문(템플릿 + 사본)에서 — 사본에 새로 넣은 함수조항 자리도 고를 수 있다 (ADR-0079).
   const overrideTargets: OverrideTarget[] = [];
-  if (gid) {
-    const refs = await services.document.refs(gid);
+  if (gid && effectiveTree && generalDoc) {
+    const refs = collectRefs(effectiveTree, { document: "general", ownerId: gid, documentId: gid, ownerName: generalDoc.title });
     const clauseByCode = new Map(clauses.map((c) => [c.code, c]));
     for (const ref of refs) {
       if (ref.kind !== "clause") continue;
@@ -139,10 +175,17 @@ export default async function ProductDetailPage({
     }
   }
 
-  // ── 약관 › 담보별 미리보기 재료 (기능/상품 §4.7) ─────────────────────────
-  // `?pc=` 는 **특약 절의 상품담보**일 때만 믿는다 — 없는 id · 기본계약이면 안 고른 것으로 친다 (URL 의 좌표를 믿지 않는다).
-  const selectedSpecial = sub === "special" && sp.pc ? specialCoverages.find((pc) => pc.id === sp.pc) : undefined;
-  const specialPreview = selectedSpecial ? await services.assembly.previewSpecial(id, selectedSpecial.id) : undefined;
+  // ── 특별약관 탭의 재료 (기능/상품 §4.7) ─────────────────────────
+  // 특약 상품담보를 담보별로 묶고, `?cov=` · `?pc=` 는 **특약 절**의 것일 때만 믿는다 (`resolveSpecialSelection` — 기본계약 · 없는 id 는 무시).
+  // 고른 담보의 담보약관 템플릿(가운데) + 그 담보의 상품담보 **전부**의 조립 결과(오른쪽 선택기가 서버 없이 바꿔 붙인다).
+  const specialGroups = tab === "special" ? specialCoverageGroups(specialCoverages, (cid) => coverageName.get(cid)) : [];
+  const specialSelected = tab === "special" ? resolveSpecialSelection(specialGroups, { cov: sp.cov, pc: sp.pc }) : undefined;
+  const [specialTemplate, specialPreviewList] = specialSelected
+    ? await Promise.all([
+        services.document.findByCoverage(specialSelected.group.coverageId),
+        Promise.all(specialSelected.group.productCoverages.map(async (pc) => [pc.id, await services.assembly.previewSpecial(id, pc.id)] as const)),
+      ])
+    : [undefined, []];
 
   let confirmNode: ReactNode = null;
   const c = sp.confirm;
@@ -151,16 +194,6 @@ export default async function ProductDetailPage({
     confirmNode =
       outcome.kind === "confirm" ? (
         <Confirm impact={outcome.impact} action={deleteProductAction.bind(null, id)} targetLabel={`상품 ${product.name}`} actionLabel={`${product.name} 삭제`} />
-      ) : outcome.kind === "error" ? (
-        <p className="ts-error-banner">{outcome.message}</p>
-      ) : null;
-  } else if (c?.startsWith("pc:")) {
-    const pcId = c.slice(3);
-    const pc = productCoverages.find((p) => p.id === pcId);
-    const outcome = previewOutcome(await services.product.unmount(actor, pcId));
-    confirmNode =
-      outcome.kind === "confirm" ? (
-        <Confirm impact={outcome.impact} action={unmountAction.bind(null, id, "coverages", pcId)} targetLabel={`상품담보 ${pc?.name ?? pcId}`} actionLabel={`${pc?.name ?? "상품담보"} 탑재 해제`} />
       ) : outcome.kind === "error" ? (
         <p className="ts-error-banner">{outcome.message}</p>
       ) : null;
@@ -190,16 +223,6 @@ export default async function ProductDetailPage({
       ) : outcome.kind === "error" ? (
         <p className="ts-error-banner">{outcome.message}</p>
       ) : null;
-  } else if (c?.startsWith("detach:")) {
-    const [, pcId, planId] = c.split(":");
-    const pc = productCoverages.find((p) => p.id === pcId);
-    const outcome = previewOutcome(await services.product.detachPlan(actor, pcId, planId));
-    confirmNode =
-      outcome.kind === "confirm" ? (
-        <Confirm impact={outcome.impact} action={detachPlanAction.bind(null, id, "coverages", pcId, planId)} targetLabel={`${pc?.name ?? pcId} 의 세목 부착`} actionLabel="세목 부착 해제" />
-      ) : outcome.kind === "error" ? (
-        <p className="ts-error-banner">{outcome.message}</p>
-      ) : null;
   } else if (c?.startsWith("template:")) {
     // 템플릿 교체 — 조 노출·오버라이드는 템플릿의 노드에 매달린 설정이라 함께 초기화된다 (기능/상품 §3 「보통약관」).
     // `dryRun` 으로 묻는다: 확인 주소를 그리는 GET 이 템플릿을 바꿔서는 안 되는데 (뒤로가기 · 다른 창),
@@ -214,36 +237,21 @@ export default async function ProductDetailPage({
           action={confirmProductGeneralDocumentAction.bind(null, id, newId)}
           title={newId ? `템플릿을 「${title}」로 바꾸면 아래 설정이 초기화된다` : "보통약관 템플릿을 해제하면 아래 설정이 초기화된다"}
           actionLabel={newId ? `「${title}」로 교체` : "템플릿 해제"}
-          cancelHref={termsPath(id, "general")}
+          cancelHref={productDetailPath(id, "general")}
         />
       ) : outcome.kind === "error" ? (
         <p className="ts-error-banner">{outcome.message}</p>
       ) : null;
-  } else if (c?.startsWith("group:")) {
-    // 그룹 삭제도 다른 파괴 조작과 같은 확인 경로를 탄다 (리뷰 #34). 값은 안 사라지고 소속만 풀린다 —
-    // 잃는 것을 계산된 대로만 적는다 (디자인원칙 §9.5).
-    const groupId = c.slice(6);
-    const group = groups.find((g) => g.id === groupId);
-    confirmNode = group ? (
-      <Confirm
-        impact={{ valueRowsLost: 0, cascade: group.members.map((m) => `상품담보 ${m.name} 의 배치 (미배치로 돌아간다)`), brokenRefs: [] }}
-        action={deleteGroupAction.bind(null, id, groupId)}
-        targetLabel={`특약 그룹 ${group.title}`}
-        actionLabel={`${group.title} 삭제 · 상품담보 ${group.members.length}건 미배치로`}
-      />
-    ) : (
-      <p className="ts-error-banner">그룹을 찾을 수 없습니다.</p>
-    );
   }
 
   return (
-    <ProductEditProvider canEdit={tab === "basic"}>
+    <ProductEditProvider canEdit={tab === "basic" || tab === "coverages" || (tab === "general" && !!product.generalDocumentId)}>
       <div className="ts-page-head ts-product-head">
         <ProductPath name={product.name} />
         <ProductHeadActions
           menu={[
             { label: "미리보기", href: `/products/${id}/preview` },
-            { label: "상품 삭제", href: `?tab=${tab}${sub ? `&sub=${sub}` : ""}&confirm=product`, danger: true },
+            { label: "상품 삭제", href: `?tab=${tab}&confirm=product`, danger: true },
           ]}
         />
       </div>
@@ -272,23 +280,19 @@ export default async function ProductDetailPage({
           productId={id}
           baseCoverages={baseCoverages}
           specialCoverages={specialCoverages}
-          coverages={coverages}
+          coverages={coverageRows}
           attributeKinds={attributeKinds}
           plans={plans}
+          attachedPlans={attachedPlans}
+          namingTemplate={namingTemplate}
+          suggestedNames={suggestedNames}
           mountSearch={{ base: { query: sp.bq, page: sp.bpage }, special: { query: sp.mq, page: sp.mpage } }}
-          wouldBeName={wouldBeName}
           baseCheck={baseCheck}
           standalone={isStandaloneContract(productValues.get(CONTRACT_KIND_PATH))}
-          groups={groups}
-          unplaced={unplaced}
-          confirm={c}
-          confirmNode={confirmNode}
         />
       )}
 
-      {sub && <TermsSubTabs productId={id} current={sub} />}
-
-      {sub === "general" && (
+      {tab === "general" && (
         <GeneralTab
           productId={id}
           generalDocumentId={product.generalDocumentId}
@@ -302,6 +306,10 @@ export default async function ProductDetailPage({
           enums={enumsList}
           discriminators={discriminators.map((d) => ({ code: d.code, label: d.label }))}
           generalTree={generalDoc?.tree}
+          {...(generalDoc ? { templateVersion: generalDoc.version } : {})}
+          templateChanged={templateChanged}
+          articleCopies={articleCopies}
+          {...(copyEditorData ? { copyEditorData } : {})}
           generalNumbers={generalNumbers}
           hiddenArticles={hiddenArticles}
           booklet={booklet}
@@ -312,7 +320,20 @@ export default async function ProductDetailPage({
         />
       )}
 
-      {sub === "special" && <SpecialPreviewTab productId={id} specialCoverages={specialCoverages} selected={selectedSpecial} preview={specialPreview} />}
+      {tab === "special" && (
+        <SpecialPreviewTab
+          productId={id}
+          groups={specialGroups}
+          selected={specialSelected}
+          template={specialTemplate ? { id: specialTemplate.id, tree: specialTemplate.tree } : undefined}
+          previews={new Map(specialPreviewList)}
+          clauses={clauses}
+          appendices={appendices.map((a) => ({ code: a.code, name: a.name }))}
+          boxes={boxes}
+          enums={enumsList}
+          discriminators={discriminators.map((d) => ({ code: d.code, label: d.label }))}
+        />
+      )}
     </ProductEditProvider>
   );
 }

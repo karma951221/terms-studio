@@ -23,6 +23,7 @@ import { coverageChildrenProviders, coverageStructNode } from "../coverage/evalC
 import { descendants, findNode, findNodeById, nodeName, nodesOf } from "../coverage/tree";
 import type { Coverage, CoverageNode, CoverageNodeLevel } from "../coverage/types";
 import type { DocumentNode } from "../document/nodes";
+import { applyArticleCopies } from "../product/articleCopies";
 import type { EvalContext, LookupResult, ValueRef } from "../expression";
 import { evaluate, parse, refPath } from "../expression";
 import { findMasterField, isMasterPathShape, type MasterFieldRef, type MasterTree } from "../master";
@@ -379,9 +380,12 @@ export function specialCoordinate(c: AssemblyCoverage): Coordinate {
 }
 
 /** 상품이 고른 보통약관 문면 — `generalDocumentId` 로 마스터 문서 맵에서. 없으면 undefined (오류 + 특약만 조립). */
+/** 이 상품의 보통약관 트리 — 템플릿에 조 사본을 갈아 끼운 것 (ADR-0079). 조립이 보통약관을 읽는 자리는 모두 이것을 본다. */
 export function generalDocumentOf(input: Pick<AssemblyInput, "product" | "generalDocuments">): DocumentNode | undefined {
   const id = input.product.generalDocumentId;
-  return id === undefined ? undefined : input.generalDocuments.get(id);
+  const template = id === undefined ? undefined : input.generalDocuments.get(id);
+  const copies = input.product.articleCopies;
+  return template && copies && copies.size > 0 ? applyArticleCopies(template, copies) : template;
 }
 
 export function generalCoordinate(product: AssemblyProduct, general: DocumentNode | undefined): Coordinate {

@@ -21,10 +21,10 @@
  * DB·React import 금지 (순수층).
  */
 import type * as C from "../clause/nodes";
-import type { ClauseBody, ClauseMode } from "../clause/types";
+import type { Clause, ClauseBody, ClauseMode } from "../clause/types";
 import { CONNECTOR_PLACEHOLDER, ok, reject, type Code, type Result } from "../types";
-import type { ArticleNode, BlockNode, BulletListNode, ClauseInlineRefNode, DocumentNode, InlineNode, ItemNode, ParagraphNode, SubitemNode } from "./nodes";
-import { subitemRefLabel, type ReferenceTarget } from "./numbering";
+import type { ArticleNode, BlockNode, BulletListNode, ClauseBlockRefNode, ClauseInlineRefNode, DocumentNode, InlineNode, ItemNode, ParagraphNode, SubitemNode } from "./nodes";
+import { numberTree, paragraphLabel, subitemRefLabel, type NodeNumber, type NumberKind, type ReferenceTarget } from "./numbering";
 
 export const CLAUSE_DOCUMENT_ID = "clause-document";
 export const CLAUSE_ARTICLE_ID = "clause-article";
@@ -142,6 +142,51 @@ export function clauseBodyToTree(mode: ClauseMode, body: ClauseBody, title = "")
   const children = articleChildrenOf(mode, body);
   const article: ArticleNode = { id: CLAUSE_ARTICLE_ID, kind: "article", title: "", children };
   return { id: CLAUSE_DOCUMENT_ID, kind: "document", title, children: [article] };
+}
+
+// ───────────────────────────── 사용처 자리의 번호 ─────────────────────────────
+
+/** 유형마다 맨 위 단계 — 사용처에서 그 단계의 번호를 잇는다. 문구 유형은 번호 단계가 없다. */
+const TOP_KIND: Partial<Record<ClauseMode, NumberKind>> = { block: "paragraph", item: "item", subitem: "subitem" };
+
+/**
+ * 함수조항이 사용처 자리에서 차지하는 수 — 맨 위 단계(항 · 호 · 목)의 수 (2026-10-03 사용자 QA).
+ * 모델 번호(`numberTree`)와 같은 셈이라 조건 가지 · 값별 분기 칸은 전부 센다. 빈 본문 · 문구 유형은 1(자리 하나).
+ */
+export function clauseSpanOf(clause: Pick<Clause, "mode" | "body">): number {
+  const kind = TOP_KIND[clause.mode];
+  if (!kind) return 1;
+  let n = 0;
+  for (const num of numberTree(clauseBodyToTree(clause.mode, clause.body)).values()) if (num.kind === kind) n += 1;
+  return Math.max(1, n);
+}
+
+/** `numberTree` 의 `clauseSpan` — 코드로 함수조항을 찾아 센다. 모르는 함수조항은 undefined(1개로 센다). */
+export function clauseSpanBy(clauseOf: (code: Code) => Pick<Clause, "mode" | "body"> | undefined): (ref: ClauseBlockRefNode) => number | undefined {
+  const cache = new Map<Code, number | undefined>();
+  return (ref) => {
+    if (!cache.has(ref.clauseCode)) {
+      const clause = clauseOf(ref.clauseCode);
+      cache.set(ref.clauseCode, clause ? clauseSpanOf(clause) : undefined);
+    }
+    return cache.get(ref.clauseCode);
+  };
+}
+
+/**
+ * 함수조항 모델(편집 트리)의 번호 — 사용처 자리 번호 `at` 부터 맨 위 항을 잇는다 (② 자리의 2항 함수조항 → ②③).
+ * 자리가 단항(빈 label)이면 항 번호를 찍지 않는다. `at` 이 없으면 모델 혼자 센 번호 그대로.
+ * 호 · 목은 목록(CSS 카운터)이 번호를 그리므로 시작 번호는 호출부가 `at.n` 으로 맞춘다.
+ */
+export function clauseModelNumbers(tree: DocumentNode, at?: Pick<NodeNumber, "n" | "label">): Map<string, NodeNumber> {
+  const numbers = numberTree(tree);
+  if (!at) return numbers;
+  for (const [id, num] of numbers) {
+    if (num.kind !== "paragraph" || id === CLAUSE_HOST_PARAGRAPH_ID || id === CLAUSE_LINE_ID) continue;
+    const n = at.n + num.n - 1;
+    numbers.set(id, { ...num, n, label: at.label === "" ? "" : paragraphLabel(n) });
+  }
+  return numbers;
 }
 
 // ───────────────────────────── 트리 → 본문 ─────────────────────────────

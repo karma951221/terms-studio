@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { nodeBuilders, sequentialIds } from "./builders";
 import { surgeryFixture } from "./fixture";
+import type { ArticleNode, DocumentNode, Node } from "./nodes";
 import {
   appendixRefLabel,
   articleLabel,
@@ -186,13 +187,61 @@ describe("문면작성 S1·S3 — 번호는 저장하지 않고 현재 트리에
     expect(undetermined.get("s-art-term")?.label).toBe("제2조");
   });
 
-  it("함수조항 block 참조는 항 1개로 센다 (임시 — 실제 항 수는 조립이 안다)", () => {
+  it("clauseSpan 을 주지 않으면 함수조항 block 참조는 항 1개로 센다", () => {
     const b = nodeBuilders(sequentialIds("n"));
     const doc = b.document("d", [b.article("a", [b.paragraph([]), b.clauseBlock("C001", {}), b.paragraph([])])]);
     const numbers = numberTree(doc);
     expect(numbers.get("n1")?.label).toBe("①");
     expect(numbers.get("n2")?.label).toBe("②");
     expect(numbers.get("n3")?.label).toBe("③");
+  });
+});
+
+describe("함수조항 참조는 펼칠 항 · 호 · 목 수만큼 센다 (clauseSpan · 2026-10-03 사용자 QA)", () => {
+  const para = (id: string): Node => ({ id, kind: "paragraph", children: [] });
+  const item = (id: string, subitems?: Node[]): Node => ({ id, kind: "item", children: [], ...(subitems ? { subitems } : {}) }) as Node;
+  const sub = (id: string): Node => ({ id, kind: "subitem", children: [] });
+  const ref = (id: string, clauseCode: string): Node => ({ id, kind: "clauseBlockRef", clauseCode, options: {} });
+  const doc = (children: Node[]): DocumentNode => ({ id: "d", kind: "document", title: "", children: [{ id: "a", kind: "article", title: "조", children } as unknown as ArticleNode] });
+  const spans: Record<string, number> = { C2: 2, C3: 3, C1: 1 };
+  const clauseSpan = (r: { clauseCode: string }) => spans[r.clauseCode];
+
+  it("항 — ② 자리의 2항 함수조항은 ②③을 차지하고, 뒤 항은 ④", () => {
+    const numbers = numberTree(doc([para("p1"), ref("k", "C2"), para("p2")]), { clauseSpan });
+    expect(numbers.get("p1")?.label).toBe("①");
+    expect(numbers.get("k")).toMatchObject({ kind: "paragraph", n: 2, span: 2 });
+    expect(numbers.get("p2")?.label).toBe("④");
+  });
+
+  it("단항 판단은 센 총수로 — 홀로 선 2항 함수조항은 번호를 단다, 1항 함수조항은 단항(빈 label)", () => {
+    expect(numberTree(doc([ref("k", "C2")]), { clauseSpan }).get("k")?.label).toBe("①");
+    expect(numberTree(doc([ref("k", "C1")]), { clauseSpan }).get("k")?.label).toBe("");
+  });
+
+  it("호 — 2호 자리의 3호 함수조항 뒤 호는 5.", () => {
+    const tree = doc([{ id: "p", kind: "paragraph", children: [], items: [item("i1"), ref("k", "C3"), item("i2")] } as Node]);
+    const numbers = numberTree(tree, { clauseSpan });
+    expect(numbers.get("k")).toMatchObject({ kind: "item", n: 2, span: 3 });
+    expect(numbers.get("i2")?.label).toBe("5.");
+  });
+
+  it("목 — 나목 자리의 2목 함수조항 뒤 목은 라.", () => {
+    const tree = doc([{ id: "p", kind: "paragraph", children: [], items: [item("i", [sub("s1"), ref("k", "C2"), sub("s2")])] } as Node]);
+    const numbers = numberTree(tree, { clauseSpan });
+    expect(numbers.get("k")).toMatchObject({ kind: "subitem", n: 2, span: 2 });
+    expect(numbers.get("s2")?.label).toBe("라.");
+  });
+
+  it("모르는 함수조항(undefined)은 1개로 센다 — clauseSpan 이 없을 때와 같다", () => {
+    const numbers = numberTree(doc([para("p1"), ref("k", "C9"), para("p2")]), { clauseSpan });
+    expect(numbers.get("p2")?.label).toBe("③");
+    expect(numbers.get("k")?.span).toBeUndefined();
+  });
+
+  it("조 참조 대상 색인도 밀린 번호를 쓴다 — 함수조항 뒤 항은 제4항", () => {
+    const tree = doc([para("p1"), ref("k", "C2"), para("p2")]);
+    const index = referenceTargetIndex(tree, numberTree(tree, { clauseSpan }));
+    expect(index.get("p2")?.paragraph?.n).toBe(4);
   });
 });
 

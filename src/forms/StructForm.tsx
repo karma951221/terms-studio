@@ -26,7 +26,7 @@
 import { useEffect, useId, useReducer, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import { InfoTip } from "@/app/_components/InfoTip";
-import { IconButton, IconClose, IconInfo, IconMinusCircle, IconPlusCircle, IconRevert } from "@/app/_components/icons";
+import { IconButton, IconClose, IconInfo, IconMinusCircle, IconPlus, IconPlusCircle, IconRevert } from "@/app/_components/icons";
 import { EXEMPTION_MONTHS } from "@/domain/coverage";
 import { formatPeriod } from "@/domain/master";
 import type { Issue } from "@/domain/types";
@@ -257,24 +257,55 @@ function ListEnumInput({ id, field, onEdit, name, single }: InputProps) {
       </span>
     );
   }
+  // 복수 — 값을 다 펼치지 않는다(목록이 길면 편집 화면이 커진다, 2026-10-03 QA). 고른 것만 칩, 「+」로 하나씩 더한다
+  const label = field.view.label;
+  const rest = (field.view.enumOptions ?? []).filter((o) => !selected.includes(o.code));
   return (
-    <span className="ts-form-checks" role="group" aria-labelledby={`${id}-label`}>
-      {(field.view.enumOptions ?? []).map((o) => (
-        <label key={o.code} className="ts-form-check">
-          <input
-            type="checkbox"
-            name={name ?? field.view.path}
-            value={o.code}
-            checked={selected.includes(o.code)}
-            onChange={(e) => toggle(o.code, e.target.checked)}
-          />
-          {o.label}
-        </label>
-      ))}
+    <span className="ts-form-chips" role="group" aria-labelledby={`${id}-label`}>
+      {(field.view.enumOptions ?? [])
+        .filter((o) => selected.includes(o.code))
+        .map((o) => (
+          <span key={o.code} className="ts-chip">
+            {o.label}
+            <input type="hidden" name={name ?? field.view.path} value={o.code} />
+            <IconButton icon={<IconClose />} label={`${o.label} 빼기`} onClick={() => toggle(o.code, false)} />
+          </span>
+        ))}
       {missing.map((code) => (
-        <MissingChip key={code} code={code} onRemove={() => toggle(code, false)} />
+        <span key={code}>
+          <input type="hidden" name={name ?? field.view.path} value={code} />
+          <MissingChip code={code} onRemove={() => toggle(code, false)} />
+        </span>
       ))}
+      {rest.length > 0 && <AddEnumValue label={label} options={rest} onAdd={(code) => toggle(code, true)} />}
     </span>
+  );
+}
+
+/** 「+」 — 누르면 아직 안 고른 값의 select 가 열리고, 고르면 더하고 닫힌다. */
+function AddEnumValue({ label, options, onAdd }: { label: string; options: readonly { code: string; label: string }[]; onAdd: (code: string) => void }) {
+  const [open, setOpen] = useState(false);
+  if (!open) return <IconButton icon={<IconPlus />} label={`${label} 값 추가`} onClick={() => setOpen(true)} />;
+  return (
+    <select
+      aria-label={`${label} 값 추가`}
+      autoFocus
+      defaultValue=""
+      onChange={(e) => {
+        if (e.target.value) onAdd(e.target.value);
+        setOpen(false);
+      }}
+      onBlur={() => setOpen(false)}
+    >
+      <option value="" disabled>
+        추가할 값 고르기
+      </option>
+      {options.map((o) => (
+        <option key={o.code} value={o.code}>
+          {o.label}
+        </option>
+      ))}
+    </select>
   );
 }
 

@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import type { CoverageMasterSource, CoverageTree, ProductPlan, RequiredCoverageRef } from "@/domain/product";
+import { indexTree, type ArticleNode, type DocumentNode } from "@/domain/document";
+import { articleHash, type CoverageMasterSource, type CoverageTree, type ProductPlan, type RequiredCoverageRef } from "@/domain/product";
 import { entered, type Actor, type Issue, type Value } from "@/domain/types";
 
 import { insertBaseContract } from "@/db/repo/product";
@@ -37,6 +38,29 @@ const SEED_NODE = "g-clause-1"; // 문서 노드 id 는 uuid 가 아닐 수 있�
 const ART_A = "ffffffff-0000-4000-8000-000000000001"; // GENERAL_DOC 의 조
 const ART_B = "ffffffff-0000-4000-8000-000000000002";
 const ART_OTHER = "ffffffff-0000-4000-8000-000000000003"; // OTHER_DOC 의 조
+
+/** GENERAL_DOC 템플릿 — ART_A(글 + 함수조항 NODE) · ART_B(함수조항 SEED_NODE). */
+function generalTree(): DocumentNode {
+  return {
+    id: GENERAL_DOC,
+    kind: "document",
+    title: "보통약관",
+    children: [
+      { id: ART_A, kind: "article", title: "목적", children: [{ id: "par-a", kind: "paragraph", children: [{ id: "txt-a", kind: "text", text: "원문 A" }] }, { id: NODE, kind: "clauseBlockRef", clauseCode: "C0001", options: MASTER_OPTIONS }] },
+      { id: ART_B, kind: "article", title: "지급", children: [{ id: SEED_NODE, kind: "clauseBlockRef", clauseCode: "C0001", options: MASTER_OPTIONS }] },
+    ],
+  };
+}
+function otherTree(): DocumentNode {
+  return { id: OTHER_DOC, kind: "document", title: "다른 보통약관", children: [{ id: ART_OTHER, kind: "article", title: "다른 조", children: [] }] };
+}
+/** GENERAL_DOC 의 지금 판 — 테스트가 올려 「템플릿이 바뀜」을 만든다. */
+let generalVersion = 3;
+/** ART_A 를 고친 사본 — 글만 바꾸고 함수조항 자리는 그대로. */
+function copyOfA(text: string, extra: ArticleNode["children"] = []): ArticleNode {
+  const a = generalTree().children[0] as ArticleNode;
+  return { ...a, children: [{ id: "par-a", kind: "paragraph", children: [{ id: "txt-a", kind: "text", text }] }, ...a.children.slice(1), ...extra] };
+}
 
 const trees = new Map<string, CoverageTree>([
   [DEATH, { id: DEATH, name: "일반상해사망", subCoverages: [{ id: DEATH_SUB, name: "일반상해사망", order: 0, benefits: [{ id: DEATH_BEN, name: "사망보험금", order: 0 }] }] }],
@@ -86,6 +110,13 @@ describe("product 서비스 (PGlite)", () => {
         articleIds: async (id) => (id === GENERAL_DOC ? [ART_A, ART_B] : id === OTHER_DOC ? [ART_OTHER] : []),
         // GENERAL_DOC 의 함수조항 참조 자리 하나 — 마스터 기본 선택은 { style: "A", tone: "T1" } 이다.
         clauseRef: async (id, nodeId) => (id === GENERAL_DOC && (nodeId === NODE || nodeId === SEED_NODE) ? { clauseCode: "C0001", options: MASTER_OPTIONS } : undefined),
+        // 템플릿 트리 · 판 — 조 사본의 검사 재료 (ADR-0079). NODE 는 ART_A, SEED_NODE 는 ART_B 안의 함수조항 자리다.
+        template: async (id) => (id === GENERAL_DOC ? { tree: generalTree(), version: generalVersion } : id === OTHER_DOC ? { tree: otherTree(), version: 1 } : undefined),
+        // 문면 저장 검증의 대역 — 글에 「깨짐」이 있으면 그 자리 좌표로 오류
+        validate: async (id, tree) =>
+          [...indexTree(tree).nodes.values()].flatMap((e) =>
+            e.node.kind === "text" && e.node.text.includes("깨짐") ? [{ kind: "brokenRef" as const, message: "깨진 참조", at: { document: "general" as const, ownerId: id, ...(e.articleId ? { articleId: e.articleId } : {}), nodePath: e.path } }] : [],
+          ),
       },
       generalAttachment: { requiredRefs: async () => required },
       optionValidator: {
@@ -184,7 +215,7 @@ describe("product 서비스 (PGlite)", () => {
   describe("계약형태 — 독립특약은 기본계약을 두지 않는다 (기능/상품 §3.1 · 2026-10-01)", () => {
     const STANDALONE = [{ path: "feature.contract_kind", value: "V02" }];
 
-    it("기본계약이 있는 상품을 독립특약으로 저장 — 확인 먼저(편집자도), 확인 뒤 같은 저장에서 기본계약 해제 · 상품담보는 특별약관(미배치)으로 남는다", async () => {
+    it("기본계약이 있는 상품을 독립특약으로 저장 — 확인 먼저(편집자도), 확인 뒤 같은 저장에서 기본계약 해제 · 상품담보는 특별약관 표로 남는다", async () => {
       const p = unwrap(await svc.createProduct(editor, { name: "독립특약 전환" }));
       const base = unwrap(await svc.mount(editor, p.id, DEATH, [], "base"));
       const input = { name: p.name, values: STANDALONE, options: [], combinations: [] };
@@ -201,7 +232,6 @@ describe("product 서비스 (PGlite)", () => {
       expect((await svc.getProductValues(p.id)).get("feature.contract_kind")).toEqual(entered("V02"));
       expect(await svc.listBaseContractIds(p.id)).toEqual([]);
       expect((await svc.listProductCoverages(p.id)).map((c) => c.id)).toEqual([base.id]);
-      expect((await svc.listUnplaced(p.id)).map((c) => c.id)).toEqual([base.id]);
       // 기본계약 0 이 정상
       expect(unwrap(await svc.checkBaseContract(p.id))).toEqual([]);
     });
@@ -614,33 +644,6 @@ describe("product 서비스 (PGlite)", () => {
     });
   });
 
-  describe("기능/상품 §3 특약 그룹 — 자동 정렬 · 미배치", () => {
-    it("그룹 「상해 관련 특별약관」 생성 → 배치 → 그룹 안은 담보→종류→값 순 자동 정렬, 미배치 목록", async () => {
-      const g = unwrap(await svc.createGroup(editor, productId, { title: "상해 관련 특별약관" }));
-      expect(g.order).toBe(0);
-      const g2 = unwrap(await svc.createGroup(editor, productId, { title: "기타" }));
-      expect(g2.order).toBe(1);
-      expect(reason(await svc.createGroup(editor, productId, { title: "x", generalDocumentId: OTHER_DOC }))).toBe("invalid");
-      unwrap(await svc.createGroup(editor, productId, { title: "같은 템플릿", generalDocumentId: GENERAL_DOC }));
-
-      unwrap(await svc.placeInGroup(editor, g.id, pcAddon));
-      unwrap(await svc.placeInGroup(editor, g.id, pcBasic));
-      const view = await svc.listGroups(productId);
-      expect(view[0].members.map((m) => m.name)).toEqual(["일반상해사망", "일반상해사망 추가"]);
-      expect((await svc.listUnplaced(productId)).map((m) => m.name)).toEqual(["갱신형 수술비"]);
-      // 옮기기: 한 상품담보는 한 그룹에만
-      unwrap(await svc.placeInGroup(editor, g2.id, pcBasic));
-      expect((await svc.listGroups(productId))[1].members.map((m) => m.id)).toEqual([pcBasic]);
-      unwrap(await svc.removeFromGroup(editor, pcBasic));
-      expect((await svc.listUnplaced(productId)).length).toBe(2);
-      unwrap(await svc.renameGroup(editor, g2.id, "기타 특별약관"));
-      unwrap(await svc.reorderGroups(editor, productId, [g2.id, g.id, (await svc.listGroups(productId))[2].id]));
-      expect((await svc.listGroups(productId))[0].title).toBe("기타 특별약관");
-      unwrap(await svc.deleteGroup(editor, g2.id));
-      expect((await svc.listGroups(productId)).length).toBe(2);
-    });
-  });
-
   describe("기능/상품 §3.6 — 함수조항 옵션 오버라이드", () => {
     const scope = () => ({ kind: "product", id: productId }) as const;
 
@@ -791,6 +794,151 @@ describe("product 서비스 (PGlite)", () => {
     });
   });
 
+  describe("기능/상품 §3.8 — 보통약관 탭 저장 한 번 (조 노출 · 옵션 오버라이드)", () => {
+    it("최종 상태를 한 번에 — 숨긴 조와 오버라이드를 맞추고, 빠진 자리는 지운다", async () => {
+      const p = unwrap(await svc.createProduct(editor, { name: "보통약관 저장 한 번", generalDocumentId: GENERAL_DOC }));
+      const scope = { kind: "product", id: p.id } as const;
+      unwrap(await svc.setArticleHidden(editor, p.id, ART_A, true));
+      unwrap(await svc.setOptionOverride(editor, scope, SEED_NODE, "C0001", { style: "B" }));
+
+      unwrap(
+        await svc.saveGeneralSettings(editor, p.id, {
+          generalDocumentId: GENERAL_DOC,
+          hiddenArticles: [ART_B],
+          overrides: [{ nodeId: NODE, clauseCode: "C0001", options: { style: "C", tone: "T1" } }],
+        }),
+      );
+      expect(await svc.listHiddenArticles(p.id)).toEqual([ART_B]);
+      // 차이만 저장 · 목록에 없는 자리(SEED_NODE)는 지운다
+      expect((await svc.listOptionOverrides(scope)).map((o) => [o.nodeId, o.options])).toEqual([[NODE, { style: "C" }]]);
+
+      // 마스터와 같은 선택만 보내면 행을 남기지 않는다
+      unwrap(await svc.saveGeneralSettings(editor, p.id, { generalDocumentId: GENERAL_DOC, hiddenArticles: [], overrides: [{ nodeId: NODE, clauseCode: "C0001", options: MASTER_OPTIONS }] }));
+      expect(await svc.listHiddenArticles(p.id)).toEqual([]);
+      expect(await svc.listOptionOverrides(scope)).toEqual([]);
+    });
+
+    it("잘못된 선택 · 없는 조 · 다른 함수조항이 하나라도 있으면 아무것도 쓰지 않고 그 자리 좌표로 거부한다", async () => {
+      const p = unwrap(await svc.createProduct(editor, { name: "보통약관 저장 거부", generalDocumentId: GENERAL_DOC }));
+      const scope = { kind: "product", id: p.id } as const;
+      unwrap(await svc.setArticleHidden(editor, p.id, ART_A, true));
+
+      optionIssues = [{ kind: "optionInvalid", message: "없는 선택지", at: {} }];
+      const bad = await svc.saveGeneralSettings(editor, p.id, { generalDocumentId: GENERAL_DOC, hiddenArticles: [ART_B], overrides: [{ nodeId: NODE, clauseCode: "C0001", options: { style: "Z" } }] });
+      optionIssues = [];
+      if (bad.ok || bad.rejection.reason !== "invalid") throw new Error("기대: invalid");
+      expect(bad.rejection.issues[0].at).toMatchObject({ document: "product", ownerId: p.id, nodePath: [NODE] });
+      expect(await svc.listHiddenArticles(p.id)).toEqual([ART_A]); // 앞쪽(조 노출)도 안 바뀐다
+
+      const wrong = await svc.saveGeneralSettings(editor, p.id, {
+        generalDocumentId: GENERAL_DOC,
+        hiddenArticles: [ART_OTHER],
+        overrides: [{ nodeId: NODE, clauseCode: "C9999", options: { style: "B" } }],
+      });
+      if (wrong.ok || wrong.rejection.reason !== "invalid") throw new Error("기대: invalid");
+      expect(wrong.rejection.issues.map((i) => i.at.articleId ?? i.at.nodePath?.at(-1))).toEqual([ART_OTHER, NODE]);
+      expect(await svc.listHiddenArticles(p.id)).toEqual([ART_A]);
+      expect(await svc.listOptionOverrides(scope)).toEqual([]);
+    });
+
+    it("편집을 시작한 템플릿과 지금 템플릿이 다르면 conflict · 템플릿 없는 상품 · 없는 상품", async () => {
+      const p = unwrap(await svc.createProduct(editor, { name: "보통약관 저장 충돌", generalDocumentId: OTHER_DOC }));
+      expect(reason(await svc.saveGeneralSettings(editor, p.id, { generalDocumentId: GENERAL_DOC, hiddenArticles: [], overrides: [] }))).toBe("conflict");
+      const bare = unwrap(await svc.createProduct(editor, { name: "보통약관 저장 템플릿 없음" }));
+      expect(reason(await svc.saveGeneralSettings(editor, bare.id, { generalDocumentId: GENERAL_DOC, hiddenArticles: [], overrides: [] }))).toBe("conflict");
+      expect(reason(await svc.saveGeneralSettings(editor, "cccccccc-0000-4000-8000-000000000009", { generalDocumentId: GENERAL_DOC, hiddenArticles: [], overrides: [] }))).toBe("notFound");
+    });
+  });
+
+  describe("ADR-0079 — 조 사본 (보통약관 탭 저장 한 번에 실린다)", () => {
+    const hashA = () => articleHash(generalTree().children[0] as ArticleNode);
+    const save = (productId: string, input: Partial<Parameters<ProductService["saveGeneralSettings"]>[2]>) =>
+      svc.saveGeneralSettings(editor, productId, { generalDocumentId: GENERAL_DOC, hiddenArticles: [], overrides: [], ...input });
+
+    it("고친 조만 사본 행 — 내용 · 지문을 그대로 남기고, 목록에서 빠지거나 템플릿과 같아지면 행을 지운다", async () => {
+      const p = unwrap(await svc.createProduct(editor, { name: "조 사본 저장", generalDocumentId: GENERAL_DOC }));
+      unwrap(await save(p.id, { copies: [{ articleId: ART_A, article: copyOfA("이 상품만의 A"), templateHash: hashA() }] }));
+      expect(await svc.listArticleCopies(p.id)).toEqual([{ articleId: ART_A, article: copyOfA("이 상품만의 A"), templateHash: hashA() }]);
+
+      // 템플릿과 같은 내용의 사본은 사본이 아니다 — 남기지 않는다
+      unwrap(await save(p.id, { copies: [{ articleId: ART_A, article: generalTree().children[0] as ArticleNode, templateHash: hashA() }] }));
+      expect(await svc.listArticleCopies(p.id)).toEqual([]);
+
+      // 「템플릿대로 되돌리기」 = 목록에서 빠짐 → 행을 지운다
+      unwrap(await save(p.id, { copies: [{ articleId: ART_A, article: copyOfA("다시"), templateHash: hashA() }] }));
+      unwrap(await save(p.id, { copies: [] }));
+      expect(await svc.listArticleCopies(p.id)).toEqual([]);
+    });
+
+    it("사본 검사 — 템플릿에 없는 조 · 자리와 다른 조 · 문면 검증 오류는 그 조(와 그 자리) 좌표로 거부하고 아무것도 쓰지 않는다", async () => {
+      const p = unwrap(await svc.createProduct(editor, { name: "조 사본 거부", generalDocumentId: GENERAL_DOC }));
+      unwrap(await save(p.id, { copies: [{ articleId: ART_A, article: copyOfA("처음"), templateHash: hashA() }] }));
+
+      const bad = await save(p.id, {
+        hiddenArticles: [ART_B],
+        copies: [
+          { articleId: ART_A, article: copyOfA("깨짐이 든 글"), templateHash: hashA() },
+          { articleId: ART_OTHER, article: { id: ART_OTHER, kind: "article", title: "x", children: [] }, templateHash: "h" },
+          { articleId: ART_B, article: { id: "엉뚱한 id", kind: "article", title: "x", children: [] }, templateHash: "h" },
+        ],
+      });
+      if (bad.ok || bad.rejection.reason !== "invalid") throw new Error("기대: invalid");
+      const at = bad.rejection.issues.map((i) => [i.at.articleId, i.at.nodePath?.at(-1)]);
+      expect(at).toEqual([
+        [ART_OTHER, undefined],
+        [ART_B, undefined],
+        [ART_A, "txt-a"],
+      ]);
+      expect(bad.rejection.issues[2].at).toMatchObject({ document: "product", ownerId: p.id });
+      expect(await svc.listArticleCopies(p.id)).toEqual([{ articleId: ART_A, article: copyOfA("처음"), templateHash: hashA() }]);
+      expect(await svc.listHiddenArticles(p.id)).toEqual([]);
+    });
+
+    it("사본 안의 함수조항 자리 — 사본에서 지운 자리의 오버라이드는 거부, 사본에 새로 넣은 자리는 받는다", async () => {
+      const p = unwrap(await svc.createProduct(editor, { name: "조 사본 오버라이드", generalDocumentId: GENERAL_DOC }));
+      const NEW_NODE = "new-clause-in-copy";
+      const withoutNode: ArticleNode = { ...copyOfA("자리 없음"), children: [{ id: "par-a", kind: "paragraph", children: [{ id: "txt-a", kind: "text", text: "자리 없음" }] }] };
+      const gone = await save(p.id, { copies: [{ articleId: ART_A, article: withoutNode, templateHash: hashA() }], overrides: [{ nodeId: NODE, clauseCode: "C0001", options: { style: "B" } }] });
+      if (gone.ok || gone.rejection.reason !== "invalid") throw new Error("기대: invalid");
+      expect(gone.rejection.issues[0].at.nodePath).toEqual([NODE]);
+
+      unwrap(
+        await save(p.id, {
+          copies: [{ articleId: ART_A, article: copyOfA("새 자리", [{ id: NEW_NODE, kind: "clauseBlockRef", clauseCode: "C0001", options: { style: "A" } }]), templateHash: hashA() }],
+          overrides: [{ nodeId: NEW_NODE, clauseCode: "C0001", options: { style: "C" } }],
+        }),
+      );
+      expect((await svc.listOptionOverrides({ kind: "product", id: p.id })).map((o) => [o.nodeId, o.options])).toEqual([[NEW_NODE, { style: "C" }]]);
+    });
+
+    it("기준 판 — 템플릿 지정 · 저장 때 템플릿 판을 적는다(편집을 시작한 판). 그 뒤 템플릿 판이 오르면 화면이 「바뀜」을 안다", async () => {
+      generalVersion = 3;
+      const p = unwrap(await svc.createProduct(editor, { name: "조 사본 기준 판", generalDocumentId: GENERAL_DOC }));
+      expect(await svc.generalBaseVersion(p.id)).toBe(3);
+      generalVersion = 5;
+      unwrap(await save(p.id, { templateVersion: 4 })); // 4 판을 보고 편집했다 — 그 사이 5 가 됐으면 경고는 남는다
+      expect(await svc.generalBaseVersion(p.id)).toBe(4);
+      unwrap(await save(p.id, {}));
+      expect(await svc.generalBaseVersion(p.id)).toBe(5); // 판을 안 보내면 지금 판
+      const q = unwrap(await svc.createProduct(editor, { name: "조 사본 기준 판 2" }));
+      expect(await svc.generalBaseVersion(q.id)).toBeUndefined();
+      unwrap(await svc.setGeneralDocument(editor, q.id, OTHER_DOC));
+      expect(await svc.generalBaseVersion(q.id)).toBe(1);
+      generalVersion = 3;
+    });
+
+    it("템플릿 교체 — 확인 카드에 「조 사본 N」, 실행하면 사본도 지운다", async () => {
+      const p = unwrap(await svc.createProduct(editor, { name: "조 사본 교체", generalDocumentId: GENERAL_DOC }));
+      unwrap(await save(p.id, { copies: [{ articleId: ART_A, article: copyOfA("사본"), templateHash: hashA() }] }));
+      const dry = await svc.setGeneralDocument(editor, p.id, OTHER_DOC, { dryRun: true });
+      if (dry.ok || dry.rejection.reason !== "needsConfirmation") throw new Error("기대: needsConfirmation");
+      expect(dry.rejection.impact.cascade).toEqual(["조 사본 1"]);
+      expect((await svc.listArticleCopies(p.id)).length).toBe(1);
+      unwrap(await svc.setGeneralDocument(editor, p.id, OTHER_DOC, { confirm: true }));
+      expect(await svc.listArticleCopies(p.id)).toEqual([]);
+    });
+  });
+
   describe("역할권한 — 파괴적 액션 2단 (탑재 해제 · 속성 삭제 · 상품 삭제)", () => {
     it("탑재 해제: 편집자 forbidden · 관리자 영향(값 행 수) 확인 후 스냅샷 값·세목 부착 연쇄 삭제", async () => {
       expect(reason(await svc.unmount(editor, pcSurgery))).toBe("forbidden");
@@ -824,7 +972,7 @@ describe("product 서비스 (PGlite)", () => {
       expect((await svc.getProductCoverage(pcAddon))?.attributes).toEqual([{ kindCode: "A0002", valueCode: "2" }]); // 깨진 참조로 남는다
     });
 
-    it("세목 선택지 삭제(파괴적): 조합·값 연쇄 · 상품 삭제: 상품담보·스냅샷 값·세목·그룹·오버라이드 전부 연쇄", async () => {
+    it("세목 선택지 삭제(파괴적): 조합·값 연쇄 · 상품 삭제: 상품담보·스냅샷 값·세목·오버라이드 전부 연쇄", async () => {
       const opts = await svc.listPlanOptions(productId);
       const t1 = opts.find((o) => o.axis === "type" && o.number === 1)!;
       expect(reason(await svc.removePlanOption(editor, t1.id))).toBe("forbidden");

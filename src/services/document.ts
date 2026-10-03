@@ -108,6 +108,8 @@ export interface DocumentService {
   findByCoverage(coverageId: Id): Promise<DocumentRecord | undefined>;
   list(kind?: DocumentKind): Promise<DocumentSummary[]>;
   validate(id: Id): Promise<Issue[]>;
+  /** 저장되지 않은 트리를 문서 `id` 자리의 저장 검증(`validate` 와 같은 규칙 · 경고 포함)으로 — 상품 조 사본 검사 (ADR-0079). 없는 문서면 빈 목록. */
+  validateTree(id: Id, tree: DocumentNode): Promise<Issue[]>;
   /**
    * 미결정 함수조항 옵션 수 — 저장 검사와 **같은** 검증(`validate`)의 `optionUnselected` 만 센다 (기능/담보 §3.5).
    * 저장은 미선택을 거부하므로(기능/함수조항 §3.2) 0 이 아닌 값은 「저장 뒤 정의에 옵션이 늘었다」는 뜻이다.
@@ -340,6 +342,12 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
       db.transaction(async (tx) => {
         const doc = await repo.loadDocument(tx, id);
         return doc ? validateDoc(tx, doc, doc.tree) : [];
+      }),
+
+    validateTree: (id, tree) =>
+      db.transaction(async (tx) => {
+        const doc = await repo.loadDocument(tx, id);
+        return doc ? validateDoc(tx, doc, tree) : [];
       }),
 
     unresolvedOptionCount: (id) =>

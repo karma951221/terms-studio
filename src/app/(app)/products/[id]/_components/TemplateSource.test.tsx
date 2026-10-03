@@ -3,14 +3,30 @@
  * (코덱스 리뷰 2026-09-15 Important-2 · Important-3). `MasterTree.test.tsx` 와 같은 방식으로 문자열을 본다.
  */
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import type { ReactNode } from "react";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, replace: () => {}, refresh: () => {} }) }));
+vi.mock("../../actions", () => ({ saveProductGeneralAction: async () => ({ ok: true }) }));
 
 import type { Clause } from "@/domain/clause";
-import type { ArticleNode, CondBlockNode, InlineNode, NodeNumber } from "@/domain/document";
+import { clauseSpanBy, numberTree, type ArticleNode, type CondBlockNode, type DocumentNode, type InlineNode, type NodeNumber } from "@/domain/document";
 import type { Id } from "@/domain/types";
 
+import { GeneralEditProvider, type OverrideTarget } from "./GeneralEdit";
+import { ProductEditProvider } from "./ProductEdit";
 import { TemplateSource } from "./TemplateSource";
-import type { OverrideTarget } from "./OptionOverrideForm";
+
+/** 보통약관 탭의 편집 상태 안에서 — `editing` 이면 편집 모드로 시작한다. */
+function inTab(editing: boolean, node: ReactNode, overrides: Parameters<typeof GeneralEditProvider>[0]["overrides"] = [], hidden: string[] = []) {
+  return (
+    <ProductEditProvider canEdit initialEditing={editing}>
+      <GeneralEditProvider productId="p1" generalDocumentId="doc" hiddenArticles={hidden} overrides={overrides}>
+        {node}
+      </GeneralEditProvider>
+    </ProductEditProvider>
+  );
+}
 
 const ref = (id: string): InlineNode => ({ id, kind: "clauseInlineRef", clauseCode: "C0001", options: { O01: "V01" } });
 const text = (id: string, t: string): InlineNode => ({ id, kind: "text", text: t });
@@ -81,25 +97,34 @@ function boxCount(html: string): number {
 }
 
 describe("TemplateSource — 함수조항 옵션 박스 (Important-2)", () => {
-  it("항·호·목·표 셀의 참조 넷 모두 옵션 박스를 얻는다 (같은 자리를 두 번 그리지 않는다)", () => {
-    const html = renderToStaticMarkup(
-      <TemplateSource
-        productId="p1"
-        nodes={[article]}
-        numbers={numbers}
-        hidden={new Set()}
-        references={new Map()}
-        clauses={clauses}
-        overrides={[]}
-        overrideTargets={targets}
-      />,
-    );
+  const source = (
+    <TemplateSource productId="p1" nodes={[article]} numbers={numbers} hidden={new Set()} references={new Map()} clauses={clauses} overrides={[]} overrideTargets={targets} />
+  );
+
+  it("편집 — 항·호·목·표 셀의 참조 넷 모두 상자 안에 옵션 고르기(같은 자리를 두 번 그리지 않는다)", () => {
+    const html = renderToStaticMarkup(inTab(true, source));
     expect(boxCount(html)).toBe(4);
-    // 자리마다 제 노드 id 로 저장 폼이 선다 — 박스가 있어도 target 을 못 찾으면 고를 수 없다.
-    for (const nodeId of ["R-para", "R-item", "R-subitem", "R-cell"]) expect(html).toContain(`value="${nodeId}"`);
+    expect(html.split("<select").length - 1).toBe(4);
+    expect(html).toContain("— 마스터 기본(일반) —");
     expect(html).not.toContain("이 자리는 고를 옵션이 없다");
-    // 옵션을 저장하면 그 상자가 든 조로 돌아온다 — 목차가 클라이언트에서 관을 바꿔도 좌표가 맞다
-    expect(html).toContain('name="art" value="A1"');
+    // 저장은 탭 첫 줄의 저장 한 번 — 상자마다의 폼 · 저장 버튼은 없다 (기능/상품 §3.8)
+    expect(html).not.toContain("<form");
+    expect(html).not.toContain("오버라이드 저장");
+  });
+
+  it("읽기 — 고르기 · 되돌리기 없이 선택을 글로만 (마스터 기본 · 이 상품)", () => {
+    const html = renderToStaticMarkup(inTab(false, source, [{ id: "o", scope: { kind: "product", id: "p1" }, nodeId: "R-para", clauseCode: "C0001", options: { O01: "V02" } }]));
+    expect(boxCount(html)).toBe(4);
+    expect(html).not.toContain("<select");
+    expect(html).not.toContain("<button");
+    expect(html).toContain("마스터 기본 — 어조: 일반");
+    expect(html).toContain("이 상품 — 어조: 사망");
+  });
+
+  it("편집 — 오버라이드가 있는 자리에만 ↺ 되돌리기(버튼, 폼 아님)", () => {
+    const html = renderToStaticMarkup(inTab(true, source, [{ id: "o", scope: { kind: "product", id: "p1" }, nodeId: "R-item", clauseCode: "C0001", options: { O01: "V02" } }]));
+    expect(html.match(/aria-label="마스터 기본으로 되돌리기 · 소멸"/g)).toHaveLength(1);
+    expect(html).toMatch(/<option value="V02" selected="">사망<\/option>/);
   });
 });
 
@@ -152,6 +177,29 @@ describe("TemplateSource — 함수조항 상자 안에 모델을 편다 (2026-0
     expect(html).toContain("✓피보험자");
     expect(html).toContain("오버라이드");
     expect(html).toContain("마스터 기본 — 지정 주체: 계약자");
+  });
+});
+
+describe("TemplateSource — 읽기 전용 (특별약관 탭 가운데, 2026-10-03)", () => {
+  it("모델은 그대로, 옵션 선택 · 되돌리기 · 오버라이드 배지는 없다", () => {
+    const html = renderToStaticMarkup(
+      <TemplateSource
+        productId="p1"
+        nodes={[article]}
+        numbers={numbers}
+        hidden={new Set()}
+        references={new Map()}
+        clauses={clauses}
+        overrides={[]}
+        overrideTargets={targets}
+        readOnly
+      />,
+    );
+    expect(boxCount(html)).toBe(4);
+    expect(html).not.toContain("<form");
+    expect(html).not.toContain("<select");
+    expect(html).not.toContain("마스터 기본");
+    expect(html).not.toContain("이 자리는 고를 옵션이 없다");
   });
 });
 
@@ -238,5 +286,39 @@ describe("TemplateSource — 인자 있는 함수조항 상자는 접힌다 (최
     expect(html).toContain("인자: 사유 ← 납입면제사유(기본)");
     expect(html).toMatch(/<summary[^>]*>.*질병.*<\/summary>/);
     expect(html).toContain('name="CB1:sw"');
+  });
+});
+
+describe("TemplateSource — 함수조항 자리의 번호 (2026-10-03 사용자 QA)", () => {
+  const base = { required: { discriminators: [], attributes: [] }, options: [] };
+  const para = (id: string, t: string) => ({ id, kind: "paragraph" as const, children: [{ id: `${id}t`, kind: "text" as const, text: t }] });
+  const item = (id: string) => ({ id, kind: "item" as const, children: [] });
+  const sub = (id: string) => ({ id, kind: "subitem" as const, children: [] });
+  const twoParas: Clause = { ...base, code: "C0013", label: "약관의 해석", mode: "block", body: [para("q1", "회사는 약관의 뜻이"), para("q2", "회사는 보험금을")] };
+  const twoItems: Clause = { ...base, code: "C0200", label: "사유 호", mode: "item", body: [item("ci1"), item("ci2")] };
+  const twoSubs: Clause = { ...base, code: "C0300", label: "사유 목", mode: "subitem", body: [sub("cs1"), sub("cs2")] };
+  const all = [twoParas, twoItems, twoSubs];
+  const render = (article: ArticleNode) => {
+    const tree: DocumentNode = { id: "d", kind: "document", title: "", children: [article] };
+    const numbers = numberTree(tree, { clauseSpan: clauseSpanBy((code) => all.find((c) => c.code === code)) });
+    return renderToStaticMarkup(<TemplateSource productId="p1" nodes={[article]} numbers={numbers} hidden={new Set()} references={new Map()} clauses={all} overrides={[]} overrideTargets={[]} />);
+  };
+  const nums = (html: string) => [...html.matchAll(/<span class="ts-doc-num">([^<]*?) ?<\/span>/g)].map((m) => m[1]);
+
+  it("항 — 자리 번호 ②는 찍지 않고, 함수조항 안이 ②③, 뒤 항이 ④", () => {
+    const html = render({ id: "A1", kind: "article", title: "약관의 해석", children: [para("h1", "앞 항"), { id: "K", kind: "clauseBlockRef", clauseCode: "C0013", options: {} }, para("h2", "뒤 항")] });
+    expect(nums(html)).toEqual(["①", "②", "③", "④"]);
+  });
+
+  it("호 — 함수조항 자리 <li> 가 호 2개만큼 세고, 안 목록은 2.부터", () => {
+    const html = render({ id: "A1", kind: "article", title: "조", children: [{ id: "P", kind: "paragraph", children: [], items: [item("h1"), { id: "K", kind: "clauseBlockRef", clauseCode: "C0200", options: {} }, item("h2")] }] });
+    expect(html).toContain('<li class="ts-doc-static-item" style="counter-increment:ts-doc-item 2">');
+    expect(html).toContain('<ol class="ts-doc-items" style="counter-reset:ts-doc-item 1">');
+  });
+
+  it("목 — 함수조항 자리 <li> 가 목 2개만큼 세고, 안 목록은 나.부터", () => {
+    const html = render({ id: "A1", kind: "article", title: "조", children: [{ id: "P", kind: "paragraph", children: [], items: [{ id: "I", kind: "item", children: [], subitems: [sub("s1"), { id: "K", kind: "clauseBlockRef", clauseCode: "C0300", options: {} } as unknown as ReturnType<typeof sub>, sub("s2")] }] }] });
+    expect(html).toContain('<li class="ts-doc-static-item" style="counter-increment:ts-doc-subitem 2">');
+    expect(html).toContain('<ol class="ts-doc-subitems" style="counter-reset:ts-doc-subitem 1">');
   });
 });

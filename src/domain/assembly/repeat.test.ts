@@ -66,7 +66,7 @@ function input(table: TableNode, spec: CoverageSpec = surgerySpec()): AssemblyIn
   return {
     ...base,
     catalog: [...alphaCatalog, { code: "D0013", label: "세부면책", description: "", level: "subCoverage", expression: "any(pay.exempt)" }],
-    coverages: [...base.coverages, { ...coverageEntry(spec), groupId: "grp-injury" }],
+    coverages: [...base.coverages, coverageEntry(spec)],
     specialDocuments: new Map([...base.specialDocuments, ["cov-surg", surgeryDocument(table)]]),
   };
 }

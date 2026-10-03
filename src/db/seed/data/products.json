@@ -117,12 +117,6 @@
         "form-2"
       ]
     ],
-    "groups": [
-      {
-        "code": "injury",
-        "title": "상해 관련 특별약관"
-      }
-    ],
     "mounts": [
       {
         "code": "base",
@@ -139,8 +133,7 @@
             "kindCode": "A0002",
             "valueCode": "1"
           }
-        ],
-        "group": "injury"
+        ]
       },
       {
         "code": "death-addon",
@@ -151,43 +144,37 @@
             "kindCode": "A0002",
             "valueCode": "2"
           }
-        ],
-        "group": "injury"
+        ]
       },
       {
         "code": "living80",
         "coverage": "living80",
         "section": "special",
-        "attributes": [],
-        "group": "injury"
+        "attributes": []
       },
       {
         "code": "fracture",
         "coverage": "fracture",
         "section": "special",
-        "attributes": [],
-        "group": "injury"
+        "attributes": []
       },
       {
         "code": "living50",
         "coverage": "living50",
         "section": "special",
-        "attributes": [],
-        "group": "injury"
+        "attributes": []
       },
       {
         "code": "fracture-surgery",
         "coverage": "fracture-surgery",
         "section": "special",
-        "attributes": [],
-        "group": "injury"
+        "attributes": []
       },
       {
         "code": "major-injury-surgery",
         "coverage": "major-injury-surgery",
         "section": "special",
-        "attributes": [],
-        "group": "injury"
+        "attributes": []
       },
       {
         "code": "surgery17",
@@ -198,8 +185,7 @@
             "kindCode": "A0001",
             "valueCode": "1"
           }
-        ],
-        "group": "injury"
+        ]
       },
       {
         "code": "surgery17-renew",
@@ -210,15 +196,13 @@
             "kindCode": "A0001",
             "valueCode": "2"
           }
-        ],
-        "group": "injury"
+        ]
       },
       {
         "code": "burn",
         "coverage": "burn",
         "section": "special",
-        "attributes": [],
-        "group": "injury"
+        "attributes": []
       }
     ]
   },
@@ -389,16 +373,6 @@
         "form-2"
       ]
     ],
-    "groups": [
-      {
-        "code": "injury",
-        "title": "상해 관련 특별약관"
-      },
-      {
-        "code": "disease",
-        "title": "질병 관련 특별약관"
-      }
-    ],
     "mounts": [
       {
         "code": "base",
@@ -415,8 +389,7 @@
             "kindCode": "A0001",
             "valueCode": "2"
           }
-        ],
-        "group": "injury"
+        ]
       },
       {
         "code": "m-surgery17",
@@ -427,8 +400,7 @@
             "kindCode": "A0001",
             "valueCode": "2"
           }
-        ],
-        "group": "injury"
+        ]
       },
       {
         "code": "m-fracture",
@@ -439,8 +411,7 @@
             "kindCode": "A0001",
             "valueCode": "2"
           }
-        ],
-        "group": "injury"
+        ]
       },
       {
         "code": "m-burn",
@@ -451,8 +422,7 @@
             "kindCode": "A0001",
             "valueCode": "2"
           }
-        ],
-        "group": "injury"
+        ]
       },
       {
         "code": "m-fracture-surgery",
@@ -463,8 +433,7 @@
             "kindCode": "A0001",
             "valueCode": "2"
           }
-        ],
-        "group": "injury"
+        ]
       },
       {
         "code": "m-disease-death",
@@ -475,8 +444,7 @@
             "kindCode": "A0001",
             "valueCode": "2"
           }
-        ],
-        "group": "disease"
+        ]
       },
       {
         "code": "m-disease-disability80",
@@ -487,8 +455,7 @@
             "kindCode": "A0001",
             "valueCode": "2"
           }
-        ],
-        "group": "disease"
+        ]
       },
       {
         "code": "m-disease-surgery17",
@@ -499,8 +466,7 @@
             "kindCode": "A0001",
             "valueCode": "2"
           }
-        ],
-        "group": "disease"
+        ]
       }
     ]
   }

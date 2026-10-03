@@ -71,12 +71,11 @@ describe("StructForm — 마스터 필드 메타만으로 6 타입이 알맞은 
     expect(select).not.toContain('value="일반심사"');
   });
 
-  it("list<enum> → 체크박스 목록 — 표시명 노출, 값은 코드", () => {
+  it("list<enum>(복수) → 값을 다 펼치지 않는다 — 고른 것이 없으면 칩 없이 「+」 버튼 하나 (2026-10-03 QA)", () => {
     const html = render();
-    const boxes = tagsWith(html, 'name="pay.applied"').filter((t) => t.includes('type="checkbox"'));
-    expect(boxes).toHaveLength(2);
-    expect(boxes.some((t) => t.includes('value="V01"'))).toBe(true);
-    expect(boxes.some((t) => t.includes('value="V02"'))).toBe(true);
+    expect(tagsWith(html, 'type="checkbox"').filter((t) => t.includes('name="pay.applied"'))).toHaveLength(0);
+    expect(html).not.toContain("일반심사</span>");
+    expect(html).toContain('aria-label="적용유형 값 추가"');
   });
 
   it("필드 라벨은 표시명으로 그려진다", () => {
@@ -138,11 +137,15 @@ describe("StructForm — 미입력 · 보이는 제안값 · 비우기 (ADR-0004
     expect(html).toContain('<option value="V02" selected="">간편심사</option>');
   });
 
-  it("list<enum> 저장 값은 체크돼 있다", () => {
+  it("list<enum> 저장 값은 칩(표시명 + 빼기)으로만 보이고, 값은 코드로 제출된다", () => {
     const html = render(new Map([["pay.applied", entered(["V02"])]]));
-    const boxes = tagsWith(html, 'name="pay.applied"');
-    expect(boxes.find((t) => t.includes('value="V02"'))).toContain("checked");
-    expect(boxes.find((t) => t.includes('value="V01"'))).not.toContain("checked");
+    expect(html).toContain("간편심사");
+    expect(html).toContain('aria-label="간편심사 빼기"');
+    expect(html).not.toContain('aria-label="일반심사 빼기"');
+    const hidden = tagsWith(html, 'name="pay.applied"');
+    expect(hidden).toHaveLength(1);
+    expect(hidden[0]).toContain('type="hidden"');
+    expect(hidden[0]).toContain('value="V02"');
   });
 
   it("목록값(복수)에 지운 값 코드가 남았으면 「없는 값 V09」 오류 칩 + 빼기 버튼 — 조용히 숨기지 않는다 (ADR-0078 결정 5)", () => {
@@ -150,8 +153,9 @@ describe("StructForm — 미입력 · 보이는 제안값 · 비우기 (ADR-0004
     expect(html).toContain("없는 값 V09");
     expect(html).toMatch(/class="ts-chip is-error"[^>]*role="alert"/);
     expect(html).toContain('aria-label="없는 값 V09 빼기"');
-    // 남은 선택은 그대로 체크
-    expect(tagsWith(html, 'name="pay.applied"').find((t) => t.includes('value="V01"'))).toContain("checked");
+    // 남은 선택은 그대로 칩 + 제출 값
+    expect(html).toContain('aria-label="일반심사 빼기"');
+    expect(tagsWith(html, 'name="pay.applied"').some((t) => t.includes('value="V01"'))).toBe(true);
   });
 
   it("목록값에 지운 값 코드가 남았으면 select 에 「없는 값 V09」 선택지가 선택된 채 보이고 오류 칩이 붙는다", () => {
