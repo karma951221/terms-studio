@@ -14,9 +14,10 @@ import { useProductEdit } from "./ProductEdit";
  * 현재 탭은 경로가 아니라 `?tab=` 에서 오므로 `NavLink`(pathname 판정) 대신 계산한 `aria-current` 를 단다.
  * 탭 전환은 곧 새 서버 렌더라 기본정보의 편집 초안이 사라진다 — 그래서 편집 중 고친 것이 있으면
  * 탭 링크도 경로 링크처럼 「고친 내용을 버립니까?」를 거친다 (디자인원칙 §1.7 · 점검 M21).
+ * 떠나면 편집을 끝낸다 — 기본정보 · 보통약관 둘 다 편집이 있어, 남겨 두면 옮겨 간 탭이 편집 상태로 열린다.
  */
 export function ProductTabs({ productId, current }: { productId: Id; current: ProductTab }) {
-  const { leave } = useProductEdit();
+  const { leave, end } = useProductEdit();
   const router = useRouter();
   return (
     <nav className="ts-subtabs" aria-label="상품 하위 탭">
@@ -32,7 +33,10 @@ export function ProductTabs({ productId, current }: { productId: Id; current: Pr
                 ? undefined
                 : (event) => {
                     event.preventDefault();
-                    leave(() => router.push(href));
+                    leave(() => {
+                      end();
+                      router.push(href);
+                    });
                   }
             }
           >

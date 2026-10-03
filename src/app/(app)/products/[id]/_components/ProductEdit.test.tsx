@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, replace: () => {}, refresh: () => {} }) }));
 
-import { leaveNeedsConfirm, ProductEditProvider, ProductHeadActions } from "./ProductEdit";
+import { leaveNeedsConfirm, ProductEditButtons, ProductEditProvider, ProductHeadActions } from "./ProductEdit";
 import { ProductTabs } from "./ProductTabs";
 
 describe("ProductEdit — 떠나는 조작의 판정 (M21)", () => {
@@ -48,22 +48,37 @@ describe("ProductTabs — 편집 상태 안에서 그려진다", () => {
   });
 });
 
-describe("ProductHeadActions — 편집할 것이 없는 탭", () => {
-  it("상품담보 · 보통약관 · 특별약관 탭에는 편집이 없고 더보기만 선다", () => {
-    const html = renderToStaticMarkup(
-      <ProductEditProvider canEdit={false}>
-        <ProductHeadActions menu={[]} />
+describe("ProductHeadActions — 헤더에는 더보기만 (2026-10-03 사용자 QA: 머리의 편집은 모든 탭에 걸리는 것처럼 보였다)", () => {
+  it("편집이 있는 탭이어도 헤더에는 편집이 없다", () => {
+    for (const canEdit of [true, false]) {
+      const html = renderToStaticMarkup(
+        <ProductEditProvider canEdit={canEdit}>
+          <ProductHeadActions menu={[]} />
+        </ProductEditProvider>,
+      );
+      expect(html).not.toContain(">편집<");
+      expect(html).toContain("더보기");
+    }
+  });
+});
+
+describe("ProductEditButtons — 탭 첫 줄 오른쪽의 편집 조작", () => {
+  const render = (canEdit: boolean, initialEditing = false) =>
+    renderToStaticMarkup(
+      <ProductEditProvider canEdit={canEdit} initialEditing={initialEditing}>
+        <ProductEditButtons />
       </ProductEditProvider>,
     );
-    expect(html).not.toContain(">편집<");
+
+  it("편집할 것이 없는 탭에는 아무것도 없다", () => {
+    expect(render(false)).toBe("");
   });
 
-  it("기본정보 탭은 편집으로 시작한다", () => {
-    const html = renderToStaticMarkup(
-      <ProductEditProvider canEdit>
-        <ProductHeadActions menu={[]} />
-      </ProductEditProvider>,
-    );
-    expect(html).toContain(">편집<");
+  it("읽기는 [편집], 편집은 같은 자리에 [취소] [저장]", () => {
+    expect(render(true)).toContain(">편집<");
+    const editing = render(true, true);
+    expect(editing).not.toContain(">편집<");
+    expect(editing).toContain(">취소<");
+    expect(editing).toMatch(/class="primary"[^>]*>저장</);
   });
 });

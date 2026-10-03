@@ -4,7 +4,7 @@
  * 기본정보 탭 — 상품정보(상품명 · 평균공시이율 · 상품특성) · 세목 두 탭(보험종목 정의 · 종·형 조합)
  * (와이어프레임 §20.2 A·B·C · 기능/상품 §4.4, 2026-09-28 「안 2」).
  *
- * - 읽기로 시작한다. 편집·취소·저장 버튼은 헤더(`ProductHeadActions`)에 있고, 이 컴포넌트는 마운트 시
+ * - 읽기로 시작한다. 편집·취소·저장 버튼은 이 탭 첫 줄 오른쪽(`ProductEditButtons`)에 있고(헤더에는 더보기만), 이 컴포넌트는 마운트 시
  *   제 begin · cancel · save · dirty 를 `ProductEditProvider` 에 등록한다. 저장 하나가 상품명 · 상품 레벨 값 · 종목 정의 ·
  *   세목 값 · 사용할 조합을 함께 반영한다.
  * - 보험종목은 표다. 값 열은 표시되는 종목들의 세목유형 폼 필드의 합집합. 편집 중에는 셀 안에서 바로
@@ -20,7 +20,7 @@ import type { ProductBasicInput } from "@/services/product";
 
 import { saveProductBasicAction } from "../../actions";
 import { basicDraftDirty } from "../../lib";
-import { useProductEdit } from "./ProductEdit";
+import { ProductEditButtons, useProductEdit } from "./ProductEdit";
 import { SaveConfirmDialog } from "./SaveConfirmDialog";
 
 type OptionDraft = Omit<ProductBasicInput["options"][number], "values">;
@@ -256,6 +256,10 @@ export function BasicTab(props: BasicTabProps) {
 
   return (
     <div className="ts-basic-editor">
+      {/* 탭 첫 줄 — 편집 · 저장은 이 탭에 걸린다는 것이 보이도록 탭 안 오른쪽 끝 (2026-10-03 사용자 QA) */}
+      <div className="ts-tab-head">
+        <ProductEditButtons />
+      </div>
       {error && (
         <p role="alert" className="ts-error-banner">
           {error}
