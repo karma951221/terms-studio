@@ -45,6 +45,11 @@ export interface TemplateSourceProps {
   boxes?: readonly Box[];
   /** 열거형 — 함수조항 상자의 값별 분기 칸 머리를 값 이름으로(최종 결정 8). 없으면 값 코드. */
   enums?: readonly EnumDef[];
+  /**
+   * 읽기 전용 — 함수조항 상자에 모델만 펴고 옵션 선택 · 되돌리기 · 오버라이드 배지를 그리지 않는다
+   * (담보별 미리보기 가운데 · 기능/상품 §4.7 — 담보약관 옵션은 담보가 소유한다, 고치는 곳은 담보약관 템플릿 화면).
+   */
+  readOnly?: boolean;
 }
 
 interface Ctx {
@@ -63,6 +68,7 @@ interface Ctx {
   optionText: (clauseCode: Code, options: Record<Code, Code>) => string;
   enums: readonly EnumDef[];
   discriminatorLabel: (code: Code) => string | undefined;
+  readOnly: boolean;
 }
 
 /** 「소멸 사유: 사망 · 어조: 일반」 — 문면 편집기와 같은 문장 (미선택도 그대로 드러낸다). */
@@ -247,7 +253,7 @@ function ClauseBox({ nodeId, clauseCode, baseOptions, bindings, ctx, at }: { nod
   const effective = override ? { ...baseOptions, ...override.options } : baseOptions;
   // 미선택 = 마스터 기본도 상품 선택도 없는 옵션 — 저장 오류가 되기 전에 여기서 말한다 (기능/함수조항 §3.2).
   const unresolved = (clause?.options ?? []).filter((o) => effective[o.code] === undefined).map((o) => o.label);
-  const hasOptions = !clause || clause.options.length > 0;
+  const hasOptions = !ctx.readOnly && (!clause || clause.options.length > 0);
   const scope = { kind: "product", id: ctx.productId } as const;
   return (
     <div className="ts-doc-clause" data-clause-box={nodeId}>
@@ -256,7 +262,7 @@ function ClauseBox({ nodeId, clauseCode, baseOptions, bindings, ctx, at }: { nod
           <span className="ts-doc-clause-code">[{clauseCode}]</span> {clause?.label ?? "없는 함수조항"}
         </span>
         {clause && (clause.params ?? []).length > 0 && <span className="ts-doc-clause-opt">인자: {argsText(clause, bindings, ctx)}</span>}
-        {override && <span className="ts-badge">오버라이드</span>}
+        {override && !ctx.readOnly && <span className="ts-badge">오버라이드</span>}
       </div>
       <div className="ts-doc-clause-body">
         {clause ? (
@@ -518,7 +524,7 @@ function ArticleNodes({ nodes, ctx }: { nodes: readonly Node[]; ctx: Ctx }) {
   });
 }
 
-export function TemplateSource({ productId, nodes, numbers, hidden, references, clauses, overrides, overrideTargets, appendices = [], discriminators = [], boxes = [], enums = [] }: TemplateSourceProps) {
+export function TemplateSource({ productId, nodes, numbers, hidden, references, clauses, overrides, overrideTargets, appendices = [], discriminators = [], boxes = [], enums = [], readOnly = false }: TemplateSourceProps) {
   const boxByCode = new Map(boxes.map((x) => [x.code, x] as const));
   const clauseByCode = new Map(clauses.map((c) => [c.code, c] as const));
   const appendixByCode = new Map(appendices.map((a) => [a.code, a.name] as const));
@@ -538,6 +544,7 @@ export function TemplateSource({ productId, nodes, numbers, hidden, references, 
     optionText: (clauseCode, options) => optionTextOf(clauseByCode, clauseCode, options),
     enums,
     discriminatorLabel: (code) => labelOf.get(code),
+    readOnly,
   };
   if (nodes.length === 0) return <p className="ts-muted">이 관에는 조가 없다.</p>;
   return (

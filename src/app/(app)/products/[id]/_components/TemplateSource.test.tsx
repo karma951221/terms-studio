@@ -155,6 +155,29 @@ describe("TemplateSource — 함수조항 상자 안에 모델을 편다 (2026-0
   });
 });
 
+describe("TemplateSource — 읽기 전용 (담보별 미리보기 가운데, 2026-10-03)", () => {
+  it("모델은 그대로, 옵션 선택 · 되돌리기 · 오버라이드 배지는 없다", () => {
+    const html = renderToStaticMarkup(
+      <TemplateSource
+        productId="p1"
+        nodes={[article]}
+        numbers={numbers}
+        hidden={new Set()}
+        references={new Map()}
+        clauses={clauses}
+        overrides={[]}
+        overrideTargets={targets}
+        readOnly
+      />,
+    );
+    expect(boxCount(html)).toBe(4);
+    expect(html).not.toContain("<form");
+    expect(html).not.toContain("<select");
+    expect(html).not.toContain("마스터 기본");
+    expect(html).not.toContain("이 자리는 고를 옵션이 없다");
+  });
+});
+
 describe("TemplateSource — 조를 감싼 조건 블록 (Important-3)", () => {
   const plain = (id: string, title: string): ArticleNode => ({ id, kind: "article", title, children: [] });
   const cond: CondBlockNode = {
