@@ -196,7 +196,7 @@ test(
         await row.getByRole("textbox", { name: "보험종목명" }).fill(name);
         await row.getByRole("combobox", { name: "세목유형" }).selectOption("waiver");
         await row.getByRole("radio", { name: "예", exact: true }).check();
-        for (const r of reasons) await row.getByRole("checkbox", { name: r, exact: true }).check();
+        for (const r of reasons) { await row.getByRole("button", { name: / 값 추가$/ }).click(); await row.getByRole("combobox", { name: / 값 추가$/ }).selectOption({ label: r }); }
       }
       await page.getByRole("tab", { name: "종·형 조합" }).click();
       for (const label of [/제1종/, /제2종/]) await page.getByRole("checkbox", { name: label }).check();

@@ -110,7 +110,7 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
           await option.getByLabel("보험종목명", { exact: true }).fill(name);
           await option.getByLabel("세목유형").selectOption("waiver");
           await option.getByRole("radio", { name: reasons ? "예" : "아니오", exact: true }).check();
-          for (const reason of reasons ?? []) await option.getByRole("checkbox", { name: reason, exact: true }).check();
+          for (const reason of reasons ?? []) { await option.getByRole("button", { name: / 값 추가$/ }).click(); await option.getByRole("combobox", { name: / 값 추가$/ }).selectOption({ label: reason }); }
         }
         // 형 축 — 해약환급금 지급형. 제27조의1 ④ 「1형(해약환급금 지급형)의 경우 …」는 상품에 해약환급금 지급형이 있을 때만 선다(최종 결정 24)
         await page.getByRole("button", { name: "보험종목 추가" }).click();

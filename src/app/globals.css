@@ -2380,6 +2380,24 @@ td.col-act {
 }
 
 .ts-form-radios,
+/* 목록값(복수) — 고른 값 칩 + 「+」 (값을 다 펼치지 않는다, 2026-10-03) */
+.ts-form-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  /* 표 칸 안에서도 칩이 한 줄에 여럿 서게 — 좁으면 칩 하나씩 세로로 쌓여 행이 길어졌다 */
+  min-width: 320px;
+}
+
+.ts-form-chips .ts-chip {
+  white-space: nowrap;
+}
+
+.ts-form-chips select {
+  font-size: 13px;
+}
+
 .ts-form-checks {
   display: inline-flex;
   flex-wrap: wrap;
