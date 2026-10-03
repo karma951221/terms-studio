@@ -76,7 +76,7 @@ function firstMismatch(expected: ArticleText[], actual: ArticleText[]): string {
 
 test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수행하고 조립 결과를 원문과 대조한다", () => {
   test(
-    "상품 생성 → 보통약관 → 세목 → 탑재(기본계약 1 + 특약 4) → 그룹 → 미리보기 대조",
+    "상품 생성 → 보통약관 → 세목 → 탑재(기본계약 1 + 특약 4, 저장 한 번) → 미리보기 대조",
     { annotation: { type: "좌표없음", description: "실물재현_E2E_시나리오 — 절차 문서라 좌표 체계 밖" } },
     async ({ page, ev }) => {
       test.setTimeout(180_000);
@@ -130,45 +130,36 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
         await expect(page.locator("#combinations-panel tbody tr")).toHaveCount(2);
       });
 
-      // 탑재 — 기본계약 섹션 1 + 특약 섹션 4 (같은 담보 2벌은 부가유형으로 구별)
+      // 탑재 — 상품담보 탭 편집 하나에 기본계약 1 + 특약 4 (같은 담보 2벌은 부가유형으로 구별), 저장 한 번 (기능/상품 §3.8 · §4.5, 2026-10-04)
+      await ev.action("실물재현#1.6", "상품담보 탭을 편집으로 연다", async () => {
+        await page.goto(`${productUrl}?tab=coverages`);
+        await page.getByRole("button", { name: "편집", exact: true }).click();
+        await expect(page.getByRole("button", { name: "저장", exact: true })).toBeVisible();
+      });
       const mount = async (step: number, section: "기본계약" | "특별약관", coverage: string, addon?: "기본" | "추가") =>
-        ev.action(`실물재현#1.${step}`, `${section}에 ${coverage}${addon ? `(${addon})` : ""} 를 탑재한다`, async () => {
-          // 기본계약 · 특약 두 절 모두 상품담보 탭에 산다 (기능/상품 §3.8, 2026-09-28)
-          await page.goto(`${productUrl}?tab=coverages`);
-          const form = page.locator("form", { has: page.getByRole("button", { name: `${section}에 탑재` }) });
-          await pickCombo(form.getByRole("combobox", { name: "담보", exact: true }), { label: coverage });
-          if (addon) await form.getByLabel("부가유형").selectOption({ label: addon });
-          await submit(page, form.getByRole("button", { name: `${section}에 탑재` }));
-          // 탑재는 새 상품담보의 값 화면으로 간다 — 다음 단계가 제 탭을 다시 연다
-          await page.waitForURL(/\/coverages\/[0-9a-f-]+$/);
+        ev.action(`실물재현#1.${step}`, `${section} 표 아래 「+ 담보 추가」로 ${coverage}${addon ? `(${addon})` : ""} 를 더한다`, async () => {
+          const region = page.getByRole("region", { name: section, exact: true });
+          await region.getByRole("button", { name: `${section}에 담보 추가` }).click();
+          await pickCombo(region.getByRole("combobox", { name: `담보 · ${section}에 추가`, exact: true }), { label: coverage });
+          if (addon) await region.getByLabel(`부가유형 · ${section}에 추가`).selectOption({ label: addon });
+          await region.getByRole("button", { name: "추가", exact: true }).click();
         });
       await mount(7, "기본계약", "일반상해80%이상후유장해");
       await mount(8, "특별약관", "일반상해사망보장", "기본");
       await mount(9, "특별약관", "일반상해사망보장", "추가");
       await mount(10, "특별약관", "일반상해80%이상후유장해 생활자금보장");
       await mount(11, "특별약관", "골절(치아파절 제외)진단비Ⅱ보장");
-      // 기본계약 섹션에 탑재하면 곧 기본계약 지정이다 — 담보명 값은 스냅샷으로 복사돼 있다
-      // 탑재 표는 상품담보 한 건 = 한 행 · 개수는 페이저 「총 N건」 (기능/상품 §4.6)
-      await page.goto(`${productUrl}?tab=coverages`);
-      await expect(page.getByRole("region", { name: "보통약관 기본계약", exact: true }).locator("tbody tr")).toHaveCount(1);
-      await expect(page.getByRole("region", { name: "특별약관", exact: true }).locator("tbody tr")).toHaveCount(4);
 
-      await ev.action("실물재현#1.12", "특약 그룹을 만든다 — 상품담보 탭", async () => {
-        // 그룹 제목은 입력칸 값이라 hasText 로는 못 찾는다: 배치 버튼의 접근성 이름으로 폼을 잡는다
-        await page.getByLabel("새 그룹 제목").fill("상해 관련 특별약관");
-        await submit(page, page.getByRole("button", { name: "그룹 추가" }));
+      await ev.action("실물재현#1.12", "저장 한 번 — 읽기로 돌아와 기본계약 1 · 특약 4, 그룹 열은 담보의 「특약 그룹」(시드)", async () => {
+        await page.getByRole("button", { name: "저장", exact: true }).click();
+        await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
+        // 기본계약 표에 얹은 것이 곧 기본계약이다 — 탑재 표는 상품담보 한 건 = 한 행
+        await expect(page.getByRole("region", { name: "기본계약", exact: true }).locator("tbody tr")).toHaveCount(1);
+        const specials = page.getByRole("region", { name: "특별약관", exact: true });
+        await expect(specials.locator("tbody tr")).toHaveCount(4);
+        // 그룹은 상품에서 만들지 않는다 — 담보 마스터의 그룹(ADR-0080)
+        await expect(specials.getByText("상해 관련 특별약관", { exact: true })).toHaveCount(4);
       });
-
-      const 특약들 = ["일반상해사망보장", "일반상해사망보장 추가", "일반상해80%이상후유장해 생활자금보장", "골절(치아파절 제외)진단비Ⅱ보장"];
-      for (const [i, name] of 특약들.entries()) {
-        await ev.action(`실물재현#1.${13 + i}`, `${name} 을 그룹에 배치한다`, async () => {
-          const place = page.getByRole("button", { name: "배치 · 상해 관련 특별약관 에" });
-          await pickCombo(page.locator("form", { has: place }).getByRole("combobox"), { label: name });
-          await submit(page, place);
-        });
-      }
-      // 기본계약은 특약 벌로 찍히지 않으므로 배치하지 않는다 — 미배치에 기본계약 하나만 남는다
-      await expect(page.getByText(/^미배치 상품담보: 일반상해80%이상후유장해$/)).toBeVisible();
 
       await ev.action("실물재현#1.17", "조립 미리보기를 연다 — 완성본이어야 한다 · 별표는 참조된 것만 등장 순으로 (ADR-0063)", async () => {
         // 미리보기는 헤더 [더보기 ▾] 메뉴 항목이다 (기능/상품 §4)
