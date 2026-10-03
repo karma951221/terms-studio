@@ -1,5 +1,5 @@
 /**
- * 약관 › 담보별 미리보기 — 담보 단위 세 패널 (기능/상품 §4.7, 2026-10-03 사용자 결정).
+ * 특별약관 탭 — 담보 단위 세 패널 (기능/상품 §4.7, 2026-10-03 사용자 결정).
  * 왼쪽 담보 목록 · 가운데 담보약관 템플릿 원문 모델(읽기 전용) · 오른쪽 상품담보 선택기 + 조립 결과.
  */
 import { renderToStaticMarkup } from "react-dom/server";
@@ -85,8 +85,8 @@ describe("SpecialPreviewTab — 담보 단위 세 패널", () => {
   it("세 패널 — 왼쪽은 담보 한 행씩(상품담보가 둘 이상이면 수), 고른 담보 강조 · `&cov=` 링크", () => {
     const html = render({});
     expect(html.match(/class="ts-terms-panel[ "]/g)).toHaveLength(3);
-    expect(html).toContain('href="/products/p1?tab=terms&amp;sub=special&amp;cov=c2"');
-    expect(html).toContain('href="/products/p1?tab=terms&amp;sub=special&amp;cov=c3"');
+    expect(html).toContain('href="/products/p1?tab=special&amp;cov=c2"');
+    expect(html).toContain('href="/products/p1?tab=special&amp;cov=c3"');
     expect(html).toMatch(/<a(?=[^>]*cov=c2")(?=[^>]*aria-current="page")[^>]*>일반상해사망/);
     expect(html).toMatch(/일반상해사망<!-- -->\s*<span class="ts-count">2<\/span>|일반상해사망 <span class="ts-count">2<\/span>/);
     // 다른 담보의 상품담보는 어디에도 없다 — 선택기는 고른 담보의 것만

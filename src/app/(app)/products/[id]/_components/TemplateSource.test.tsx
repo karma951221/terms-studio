@@ -155,7 +155,7 @@ describe("TemplateSource — 함수조항 상자 안에 모델을 편다 (2026-0
   });
 });
 
-describe("TemplateSource — 읽기 전용 (담보별 미리보기 가운데, 2026-10-03)", () => {
+describe("TemplateSource — 읽기 전용 (특별약관 탭 가운데, 2026-10-03)", () => {
   it("모델은 그대로, 옵션 선택 · 되돌리기 · 오버라이드 배지는 없다", () => {
     const html = renderToStaticMarkup(
       <TemplateSource

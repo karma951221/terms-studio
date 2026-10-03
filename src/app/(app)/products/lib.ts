@@ -36,54 +36,42 @@ export function parseOptionSelection(json: string): ClauseOptionSelection {
 // ───────────────────────────── 상세의 탭 ─────────────────────────────
 
 /**
- * 상품 상세는 탭 셋 — 기본정보(상품정보 · 세목) · 상품담보(기본계약 · 특별약관 표 · 그룹) · 약관
- * (기능/상품 §3.8 저장 단위 · 화면 공통, 2026-09-28 「안 2」). 약관은 둘째 줄 하위 탭 둘 — 보통약관 작성 · 담보별 미리보기.
- * 탭은 URL(`?tab=` · `?sub=`)에 산다: 서버가 그대로 렌더하고, 새로고침 · 북마크 · 서버 액션의 redirect 가 같은 자리를 가리킨다.
+ * 상품 상세는 한 줄 탭 넷 — 기본정보(상품정보 · 세목) · 상품담보(기본계약 · 특별약관 표 · 그룹) · 보통약관 · 특별약관
+ * (기능/상품 §3.8 저장 단위 · 화면 공통, 2026-10-03). 보통약관 = 템플릿 + 세 패널, 특별약관 = 담보 단위 세 패널.
+ * 탭은 URL(`?tab=`)에 산다: 서버가 그대로 렌더하고, 새로고침 · 북마크 · 서버 액션의 redirect 가 같은 자리를 가리킨다.
  */
-export type ProductTab = "basic" | "coverages" | "terms";
-export type TermsSub = "general" | "special";
+export type ProductTab = "basic" | "coverages" | "general" | "special";
 
-export const PRODUCT_TAB_LABEL: Record<ProductTab, string> = { basic: "기본정보", coverages: "상품담보", terms: "약관" };
-export const TERMS_SUB_LABEL: Record<TermsSub, string> = { general: "보통약관 작성", special: "담보별 미리보기" };
+export const PRODUCT_TAB_LABEL: Record<ProductTab, string> = { basic: "기본정보", coverages: "상품담보", general: "보통약관", special: "특별약관" };
 
-export const PRODUCT_TABS: readonly ProductTab[] = ["basic", "coverages", "terms"];
-export const TERMS_SUBS: readonly TermsSub[] = ["general", "special"];
+export const PRODUCT_TABS: readonly ProductTab[] = ["basic", "coverages", "general", "special"];
 
 /** 없는 값 · 모르는 값은 기본정보로 — URL 의 좌표를 믿지 않는다. */
 export function productTabOf(value: string | undefined): ProductTab {
-  return value === "coverages" || value === "terms" ? value : "basic";
-}
-
-/** 약관 하위 탭 — 없거나 모르면 보통약관 작성. */
-export function termsSubOf(value: string | undefined): TermsSub {
-  return value === "special" ? "special" : "general";
+  return value === "coverages" || value === "general" || value === "special" ? value : "basic";
 }
 
 /**
- * 옛 탭 주소(2026-09-28 이전: `?tab=general|special`)의 새 자리 — 없으면 undefined(옮길 것 없음).
- * 옛 보통약관 탭에는 템플릿 · 기본계약 · 세 패널이, 옛 특별약관 탭에는 탑재 표 · 그룹 · 미리보기가 한데 있었다 —
- * 확인 카드(`confirm=`)와 미리보기 좌표(`pc=`)가 **지금 사는 탭**으로 보낸다. 나머지 쿼리는 그대로 싣는다.
+ * 옛 탭 주소의 새 자리 — 없으면 undefined(옮길 것 없음). 나머지 쿼리는 그대로 싣는다.
+ * - 옛 약관 탭(2026-09-28 ~ 10-03: `?tab=terms&sub=general|special`) → `?tab=general` · `?tab=special` (하위 탭이 없거나 모르면 보통약관).
+ * - 탑재 · 그룹 · 기본계약의 확인 카드(`confirm=pc:|detach:|group:`)는 상품담보 탭에만 뜬다 — 2026-09-28 이전의
+ *   `?tab=general|special&confirm=…` 북마크는 상품담보 탭으로 보낸다.
  */
 export function legacyProductTabRedirect(id: string, sp: Readonly<Record<string, string | undefined>>): string | undefined {
-  if (sp.tab !== "general" && sp.tab !== "special") return undefined;
+  if (sp.tab !== "terms" && sp.tab !== "general" && sp.tab !== "special") return undefined;
   const confirm = sp.confirm ?? "";
   const coverageConfirm = confirm.startsWith("pc:") || confirm.startsWith("detach:") || confirm.startsWith("group:");
-  const target: Record<string, string> =
-    coverageConfirm || (sp.tab === "special" && !sp.pc)
-      ? { tab: "coverages" }
-      : { tab: "terms", sub: sp.tab === "special" ? "special" : "general" };
+  let tab: ProductTab;
+  if (coverageConfirm) tab = "coverages";
+  else if (sp.tab === "terms") tab = sp.sub === "special" ? "special" : "general";
+  else return undefined;
   const rest = Object.entries(sp).filter(([k, v]) => k !== "tab" && k !== "sub" && v !== undefined) as [string, string][];
-  return `/products/${id}?${new URLSearchParams({ ...target, ...Object.fromEntries(rest) }).toString()}`;
+  return `/products/${id}?${new URLSearchParams({ tab, ...Object.fromEntries(rest) }).toString()}`;
 }
 
 /** 상품 상세 경로 (+ 탭). 화면의 링크와 액션의 redirect 가 같은 함수를 쓴다. */
 export function productDetailPath(id: string, tab?: ProductTab): string {
   return tab ? `/products/${id}?tab=${tab}` : `/products/${id}`;
-}
-
-/** 약관 탭의 하위 탭 경로 — `?tab=terms&sub=<하위>`. */
-export function termsPath(id: string, sub: TermsSub): string {
-  return `${productDetailPath(id, "terms")}&sub=${sub}`;
 }
 
 // ───────────────────────────── 기본정보 탭의 초안 ─────────────────────────────
@@ -214,9 +202,9 @@ export function currentGeneralArticle(sections: readonly GeneralSection[], artic
   return (found ?? sections.find((s) => s.articles.length > 0)?.articles[0])?.id;
 }
 
-/** 목차 링크의 좌표 — 탭을 잃지 않는다(`?tab=terms&sub=general&art=<조 id>`). */
+/** 목차 링크의 좌표 — 탭을 잃지 않는다(`?tab=general&art=<조 id>`). */
 export function generalArticlePath(productId: Id, articleId: Id): string {
-  return `${termsPath(productId, "general")}&art=${articleId}`;
+  return `${productDetailPath(productId, "general")}&art=${articleId}`;
 }
 
 /**
@@ -224,7 +212,7 @@ export function generalArticlePath(productId: Id, articleId: Id): string {
  * 조를 잃으면 저장 직후 첫 관으로 튕겨 방금 고친 자리가 화면 밖으로 나간다 (§조작과 상태 전이).
  */
 export function generalReturnPath(productId: Id, articleId: string | undefined): string {
-  return articleId ? generalArticlePath(productId, articleId) : termsPath(productId, "general");
+  return articleId ? generalArticlePath(productId, articleId) : productDetailPath(productId, "general");
 }
 
 /**
@@ -259,7 +247,7 @@ export function generalTabIssues(
  * 특약 오류는 그 상품담보의 미리보기로 보내고(결과 좌표의 `ownerId` = 상품담보 id — `specialCoordinate`),
  * 보통약관 오류는 **지금 그린 결과에 그 노드가 있을 때만** 앵커를 건다.
  *
- * 특약 절의 상품담보는 담보별 미리보기(`?tab=terms&sub=special&pc=…`)가 제자리다. 그런데 `articleHidden` 을
+ * 특약 절의 상품담보는 특별약관 탭(`?tab=special&pc=…`)이 제자리다. 그런데 `articleHidden` 을
  * 가장 많이 내는 것은 **기본계약** 상품담보이고, 그 탭의 `?pc=` 는 특약 절만 믿는다(URL 의 좌표를 믿지
  * 않는다) — 기본계약 id 로 보내면 아무것도 고르지 않은 탭이 열린다. 그래서 기본계약은 제 상품담보 화면
  * (조립된 문면과 같은 오류가 그 자리에 선다)으로 보낸다. 되돌아갈 탭의 분기(`tabOfCoverage`)와 같은 기준이다.
@@ -283,19 +271,19 @@ export function generalIssueLink(
 // ───────────────────────────── 특별약관 탭의 미리보기 ─────────────────────────────
 
 /**
- * 고른 상품담보의 미리보기 좌표 (`?tab=terms&sub=special&pc=<상품담보 id>`) — 약관 › 담보별 미리보기
+ * 고른 상품담보의 미리보기 좌표 (`?tab=special&pc=<상품담보 id>`) — 특별약관 탭
  * (기능/상품 §4.7). 상품담보 표의 「미리보기」와 미리보기 화면의 상품담보 목록이 이 자리를 가리킨다.
  */
 export function specialPreviewPath(productId: Id, productCoverageId: Id): string {
-  return `${termsPath(productId, "special")}&pc=${productCoverageId}`;
+  return `${productDetailPath(productId, "special")}&pc=${productCoverageId}`;
 }
 
-/** 담보별 미리보기에서 담보를 고르는 주소 — 상품담보는 그 담보의 첫 건이 기본이다 (기능/상품 §4.7). */
+/** 특별약관 탭에서 담보를 고르는 주소 — 상품담보는 그 담보의 첫 건이 기본이다 (기능/상품 §4.7). */
 export function specialCoveragePath(productId: Id, coverageId: Id): string {
-  return `${termsPath(productId, "special")}&cov=${coverageId}`;
+  return `${productDetailPath(productId, "special")}&cov=${coverageId}`;
 }
 
-/** 담보별 미리보기 왼쪽의 한 행 — 담보 마스터 하나와 거기서 탑재한 특약 상품담보들. */
+/** 특별약관 탭 왼쪽의 한 행 — 담보 마스터 하나와 거기서 탑재한 특약 상품담보들. */
 export interface SpecialCoverageGroup {
   coverageId: Id;
   /** 담보명 — 없으면 담보 id. */

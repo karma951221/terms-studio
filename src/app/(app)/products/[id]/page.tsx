@@ -19,16 +19,16 @@ import { CoveragesTab } from "./_components/CoveragesTab";
 import { GeneralTab } from "./_components/GeneralTab";
 import { type OverrideTarget } from "./_components/OptionOverrideForm";
 import { ProductEditProvider, ProductHeadActions, ProductPath } from "./_components/ProductEdit";
-import { ProductTabs, TermsSubTabs } from "./_components/ProductTabs";
+import { ProductTabs } from "./_components/ProductTabs";
 import { SpecialPreviewTab } from "./_components/SpecialPreviewTab";
 import { confirmProductGeneralDocumentAction, deleteGroupAction, deleteProductAction, detachPlanAction, removePlanAction, removePlanOptionAction, unmountAction } from "../actions";
-import { legacyProductTabRedirect, productTabOf, resolveSpecialSelection, specialCoverageGroups, termsPath, termsSubOf } from "../lib";
+import { legacyProductTabRedirect, productDetailPath, productTabOf, resolveSpecialSelection, specialCoverageGroups } from "../lib";
 
 export const dynamic = "force-dynamic";
 
 /**
- * 상품 상세 — 헤더(경로 「상품 › 상품명」 · 편집 · 더보기) + 탭 셋 기본정보 · 상품담보 · 약관(하위 탭 보통약관 작성 · 담보별 미리보기)
- * (기능/상품 §3.8 · §4.3, 2026-09-28 「안 2」). 옛 `?tab=general|special` 주소는 새 자리로 redirect 한다.
+ * 상품 상세 — 헤더(경로 「상품 › 상품명」 · 편집 · 더보기) + 한 줄 탭 넷 기본정보 · 상품담보 · 보통약관 · 특별약관
+ * (기능/상품 §3.8 · §4.3, 2026-10-03). 옛 약관 탭 주소(`?tab=terms&sub=`)는 새 자리로 redirect 한다.
  *
  * 헤더의 편집 · 취소 · 저장은 클라이언트 `ProductEditProvider` 가 기본정보 탭과 나눠 쓴다 — 서버 컴포넌트인
  * 이 파일은 Provider 로 본문을 감싸기만 한다. 목록 이동은 경로의 「상품」 링크 하나, 미리보기 · 삭제는 더보기 안이다.
@@ -48,7 +48,6 @@ export default async function ProductDetailPage({
   const legacy = legacyProductTabRedirect(id, sp);
   if (legacy) redirect(legacy);
   const tab = productTabOf(sp.tab);
-  const sub = tab === "terms" ? termsSubOf(sp.sub) : undefined;
   const services = getServices();
   const product = await services.product.getProduct(id);
   if (!product) {
@@ -100,15 +99,15 @@ export default async function ProductDetailPage({
   /** 작명 규칙이 지금 지어 줄 이름 — 누르기 전에 결과를 보여준다 (리뷰 #27 · §9.3). */
   const wouldBeName = (pc: ProductCoverage) => defaultCoverageName(coverageName.get(pc.coverageId) ?? "", pc.attributes, attributeKinds, namingTemplate);
 
-  // ── 약관 › 보통약관 작성의 재료 (기능/상품 §4.6) ───────────────────────
-  // 템플릿 트리 · 템플릿 번호 · 숨긴 조 · 조립 결과. 그 하위 탭을 열었을 때만 읽는다 — 조립은 매번 재계산이라 싸지 않다.
-  const gid = sub === "general" ? product.generalDocumentId : undefined;
+  // ── 보통약관 탭의 재료 (기능/상품 §4.6) ───────────────────────
+  // 템플릿 트리 · 템플릿 번호 · 숨긴 조 · 조립 결과. 그 탭을 열었을 때만 읽는다 — 조립은 매번 재계산이라 싸지 않다.
+  const gid = tab === "general" ? product.generalDocumentId : undefined;
   const [generalDoc, generalNumbers, hiddenArticles, bookletResult] = gid
     ? await Promise.all([services.document.get(gid), services.document.numbering(gid), services.product.listHiddenArticles(id), services.assembly.preview(id)])
     : [undefined, new Map<Id, NodeNumber>(), [] as Id[], undefined];
-  // 원문 모델의 칩 재료(별표 이름 · 구분자 표시명 · 박스) — 보통약관 작성 · 담보별 미리보기 둘 다 원문 모델을 그린다
+  // 원문 모델의 칩 재료(별표 이름 · 구분자 표시명 · 박스) — 보통약관 · 특별약관 탭 둘 다 원문 모델을 그린다
   const [appendices, discriminators, boxes] =
-    gid || sub === "special" ? await Promise.all([services.document.listAppendices(), services.catalog.list(), services.document.listBoxes()]) : [[], [], []];
+    gid || tab === "special" ? await Promise.all([services.document.listAppendices(), services.catalog.list(), services.document.listBoxes()]) : [[], [], []];
   const booklet = bookletResult?.ok ? bookletResult.value : undefined;
   const bookletNote = bookletResult && !bookletResult.ok ? `조립할 수 없다 — ${rejectionMessage(bookletResult)}` : undefined;
 
@@ -134,11 +133,11 @@ export default async function ProductDetailPage({
     }
   }
 
-  // ── 약관 › 담보별 미리보기 재료 (기능/상품 §4.7) ─────────────────────────
+  // ── 특별약관 탭의 재료 (기능/상품 §4.7) ─────────────────────────
   // 특약 상품담보를 담보별로 묶고, `?cov=` · `?pc=` 는 **특약 절**의 것일 때만 믿는다 (`resolveSpecialSelection` — 기본계약 · 없는 id 는 무시).
   // 고른 담보의 담보약관 템플릿(가운데) + 그 담보의 상품담보 **전부**의 조립 결과(오른쪽 선택기가 서버 없이 바꿔 붙인다).
-  const specialGroups = sub === "special" ? specialCoverageGroups(specialCoverages, (cid) => coverageName.get(cid)) : [];
-  const specialSelected = sub === "special" ? resolveSpecialSelection(specialGroups, { cov: sp.cov, pc: sp.pc }) : undefined;
+  const specialGroups = tab === "special" ? specialCoverageGroups(specialCoverages, (cid) => coverageName.get(cid)) : [];
+  const specialSelected = tab === "special" ? resolveSpecialSelection(specialGroups, { cov: sp.cov, pc: sp.pc }) : undefined;
   const [specialTemplate, specialPreviewList] = specialSelected
     ? await Promise.all([
         services.document.findByCoverage(specialSelected.group.coverageId),
@@ -216,7 +215,7 @@ export default async function ProductDetailPage({
           action={confirmProductGeneralDocumentAction.bind(null, id, newId)}
           title={newId ? `템플릿을 「${title}」로 바꾸면 아래 설정이 초기화된다` : "보통약관 템플릿을 해제하면 아래 설정이 초기화된다"}
           actionLabel={newId ? `「${title}」로 교체` : "템플릿 해제"}
-          cancelHref={termsPath(id, "general")}
+          cancelHref={productDetailPath(id, "general")}
         />
       ) : outcome.kind === "error" ? (
         <p className="ts-error-banner">{outcome.message}</p>
@@ -245,7 +244,7 @@ export default async function ProductDetailPage({
         <ProductHeadActions
           menu={[
             { label: "미리보기", href: `/products/${id}/preview` },
-            { label: "상품 삭제", href: `?tab=${tab}${sub ? `&sub=${sub}` : ""}&confirm=product`, danger: true },
+            { label: "상품 삭제", href: `?tab=${tab}&confirm=product`, danger: true },
           ]}
         />
       </div>
@@ -288,9 +287,7 @@ export default async function ProductDetailPage({
         />
       )}
 
-      {sub && <TermsSubTabs productId={id} current={sub} />}
-
-      {sub === "general" && (
+      {tab === "general" && (
         <GeneralTab
           productId={id}
           generalDocumentId={product.generalDocumentId}
@@ -314,7 +311,7 @@ export default async function ProductDetailPage({
         />
       )}
 
-      {sub === "special" && (
+      {tab === "special" && (
         <SpecialPreviewTab
           productId={id}
           groups={specialGroups}

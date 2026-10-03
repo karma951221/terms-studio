@@ -65,8 +65,8 @@ for (const product of SEED.products) {
         return page.url();
       });
 
-      await ev.action("실물화면#5.3", `약관 › 보통약관 작성 — 보통약관 템플릿 「${general.title}」을 고른다`, async () => {
-        await open(page, `${productUrl}?tab=terms&sub=general`);
+      await ev.action("실물화면#5.3", `보통약관 탭 — 보통약관 템플릿 「${general.title}」을 고른다`, async () => {
+        await open(page, `${productUrl}?tab=general`);
         await pickCombo(page.getByRole("combobox", { name: "보통약관 템플릿" }), { label: general.title });
         await submit(page, page.getByRole("button", { name: "템플릿 저장" }));
       });

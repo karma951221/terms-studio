@@ -34,8 +34,8 @@ async function submit(page: Page, button: Locator): Promise<void> {
   await page.waitForLoadState("networkidle");
 }
 
-/** 상세는 탭 셋 — 기본정보 · 상품담보 · 약관(기능/상품 §3.8, 2026-09-28) — 섹션을 만지기 전에 그 탭을 먼저 연다. 약관은 보통약관 작성으로 열린다. */
-async function openTab(page: Page, name: "기본정보" | "상품담보" | "약관"): Promise<void> {
+/** 상세는 한 줄 탭 넷 — 기본정보 · 상품담보 · 보통약관 · 특별약관(기능/상품 §3.8, 2026-10-03) — 섹션을 만지기 전에 그 탭을 먼저 연다. */
+async function openTab(page: Page, name: "기본정보" | "상품담보" | "보통약관" | "특별약관"): Promise<void> {
   await page.getByRole("navigation", { name: "상품 하위 탭" }).getByRole("link", { name, exact: true }).click();
   await page.waitForLoadState("networkidle");
 }
@@ -90,8 +90,8 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
         return page.url();
       });
 
-      await ev.action("실물재현#1.3", "보통약관 템플릿을 고른다 — 약관 › 보통약관 작성", async () => {
-        await openTab(page, "약관");
+      await ev.action("실물재현#1.3", "보통약관 템플릿을 고른다 — 보통약관 탭", async () => {
+        await openTab(page, "보통약관");
         await pickCombo(page.getByRole("combobox", { name: "보통약관 템플릿" }), { label: "무배당 알파Plus보장보험2604 보통약관" });
         await submit(page, page.getByRole("button", { name: "템플릿 저장" }));
       });

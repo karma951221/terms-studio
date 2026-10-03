@@ -52,7 +52,7 @@ function PreviewBody({ productId, preview }: { productId: Id; preview: Result<Sp
 }
 
 /**
- * 약관 › 담보별 미리보기 — 담보 단위 세 패널 (기능/상품 §4.7, 2026-10-03 사용자 결정).
+ * 특별약관 탭 — 담보 단위 세 패널 (기능/상품 §4.7, 2026-10-03 사용자 결정).
  *
  * 왼쪽은 특약 상품담보를 담보 마스터별로 묶은 **담보** 목록(`&cov=` 링크), 가운데는 고른 담보의 **담보약관 템플릿 원문 모델**
  * (읽기 전용 — 고치는 곳은 담보약관 템플릿 화면), 오른쪽은 그 담보의 **상품담보 선택기** + 고른 한 건의 조립 결과
@@ -68,7 +68,7 @@ export function SpecialPreviewTab({ productId, groups, selected, template, previ
   }
   const { group } = selected;
 
-  // 가운데 — 원문 모델 번호는 함수조항이 펼칠 항 · 호 · 목 수만큼 센다(보통약관 작성과 같은 규칙)
+  // 가운데 — 원문 모델 번호는 함수조항이 펼칠 항 · 호 · 목 수만큼 센다(보통약관 탭과 같은 규칙)
   const tree = template?.tree;
   const numbers = tree ? numberTree(tree, { clauseSpan: clauseSpanBy((code) => clauses.find((c) => c.code === code)) }) : new Map();
   const references = tree ? referenceTargetIndex(tree, numbers) : new Map();

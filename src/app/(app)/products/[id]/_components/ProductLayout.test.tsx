@@ -1,6 +1,6 @@
 /**
- * 상품 상세 「안 2」 (2026-09-28) — 기본정보(상품정보 · 세목) · 상품담보(기본계약 · 특별약관 표 · 그룹) · 약관(보통약관 작성 · 담보별 미리보기).
- * 탭마다 제 일만 선다 — 특히 보통약관 작성에는 템플릿 한 줄과 세 패널 말고는 아무것도 없다(사용자 QA: 템플릿 · 기본계약이 집중을 흐린다).
+ * 상품 상세 한 줄 탭 넷 (2026-10-03) — 기본정보(상품정보 · 세목) · 상품담보(기본계약 · 특별약관 표 · 그룹) · 보통약관 · 특별약관.
+ * 탭마다 제 일만 선다 — 특히 보통약관 탭에는 템플릿 한 줄과 세 패널 말고는 아무것도 없다(사용자 QA: 템플릿 · 기본계약이 집중을 흐린다).
  */
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -117,7 +117,7 @@ describe("상품담보 — 기본계약 · 특별약관 표 · 기본계약 지�
     expect(html).toContain('id="base-contract"');
     expect(html).toContain(">특별약관</h2>");
     expect(html).toContain("특약 그룹");
-    expect(html).not.toContain("sub=special&amp;pc=s1");
+    expect(html).not.toContain("tab=special&amp;pc=s1");
     // 담보 : 상품담보 = 1 : N — 특별약관 표에서 COV000002 는 한 번만
     expect(html.split("<code>COV000002</code>").length - 1).toBe(1);
     expect(html).not.toContain("보통약관 템플릿");
@@ -149,7 +149,7 @@ describe("상품담보 — 기본계약 · 특별약관 표 · 기본계약 지�
   });
 });
 
-describe("약관 › 보통약관 작성 — 템플릿 한 줄 + 세 패널, 다른 것은 없다", () => {
+describe("보통약관 탭 — 템플릿 한 줄 + 세 패널, 다른 것은 없다", () => {
   const tree: DocumentNode = {
     id: "doc",
     kind: "document",

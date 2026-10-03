@@ -34,10 +34,10 @@ describe("selectArticleOnClick — 목차 누름은 이동이 아니라 고르�
     const e = click();
     const select = vi.fn();
     const history = { replaceState: vi.fn() };
-    expect(selectArticleOnClick(e, "/products/p1?tab=terms&art=A2", select, history)).toBe(true);
+    expect(selectArticleOnClick(e, "/products/p1?tab=general&art=A2", select, history)).toBe(true);
     expect(e.prevented).toBe(true);
     expect(select).toHaveBeenCalledOnce();
-    expect(history.replaceState).toHaveBeenCalledWith(null, "", "/products/p1?tab=terms&art=A2");
+    expect(history.replaceState).toHaveBeenCalledWith(null, "", "/products/p1?tab=general&art=A2");
   });
 
   it("새 탭 · 새 창(수정키 · 가운데 단추)은 브라우저에 맡긴다", () => {

@@ -13,7 +13,7 @@ import type { Code, Id, Result } from "@/domain/types";
 import type { Submission } from "@/forms";
 import { currentActor, getServices } from "@/lib/services";
 
-import { generalReturnPath, parseOptionSelection, parseSelections, productDetailPath, termsPath, type ProductTab } from "./lib";
+import { generalReturnPath, parseOptionSelection, parseSelections, productDetailPath, type ProductTab } from "./lib";
 
 const basicValue = z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]);
 const basicSlots = z.array(z.object({ path: z.string(), value: basicValue.optional() }).transform((entry) => ({ path: entry.path, value: entry.value })));
@@ -66,16 +66,16 @@ export async function renameProductAction(id: Id, formData: FormData): Promise<v
 /**
  * 보통약관 템플릿 선택·교체·해제. 교체로 조 노출·오버라이드를 잃으면 서비스가
  * `needsConfirmation` 으로 거부한다 — 그때는 **확인 카드가 뜰 자리**로 보낸다
- * (`?tab=terms&sub=general&confirm=template:<새 템플릿 id>`, 해제는 빈 id). 카드의 실행 버튼이
+ * (`?tab=general&confirm=template:<새 템플릿 id>`, 해제는 빈 id). 카드의 실행 버튼이
  * 같은 액션을 `confirm=1` 로 다시 부른다 (코덱스 리뷰 2026-09-15 Important-6).
  */
 export async function setProductGeneralDocumentAction(id: Id, formData: FormData): Promise<void> {
   const actor = await currentActor();
   const generalDocumentId = str(formData, "generalDocumentId") || undefined;
   const r = await getServices().product.setGeneralDocument(actor, id, generalDocumentId, { confirm: formData.get("confirm") === "1" });
-  if (!r.ok && r.rejection.reason === "needsConfirmation") redirect(`${termsPath(id, "general")}&confirm=template:${encodeURIComponent(generalDocumentId ?? "")}`);
-  if (!r.ok) redirect(errorRedirectPath(termsPath(id, "general"), msg(r.rejection)));
-  redirect(termsPath(id, "general"));
+  if (!r.ok && r.rejection.reason === "needsConfirmation") redirect(`${productDetailPath(id, "general")}&confirm=template:${encodeURIComponent(generalDocumentId ?? "")}`);
+  if (!r.ok) redirect(errorRedirectPath(productDetailPath(id, "general"), msg(r.rejection)));
+  redirect(productDetailPath(id, "general"));
 }
 
 /** 확인 카드의 실행 버튼 — 같은 교체를 `confirm` 으로 다시 부른다 (폼에는 필드가 없어 여기서 짠다). */
