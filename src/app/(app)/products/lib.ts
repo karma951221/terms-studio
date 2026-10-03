@@ -1,7 +1,7 @@
 /** 상품 화면·서버 액션이 함께 쓰는 순수 함수 — 입력 파싱 · 탭 좌표 · 보통약관의 관 묶기 · 조 수. `*.test.ts` 로 검증. */
 import type { OmissionPairKind, OmissionRecord, RenderedDoc } from "@/domain/assembly";
 import { indexTree, type ArticleNode, type CondBlockNode, type DocumentNode, type Node, type NodeNumber } from "@/domain/document";
-import { findAttributeValue, normalizeSelections, planCombinationKey, type AttributeKind, type AttributeSelection, type ClauseOptionSelection, type ProductCoverage } from "@/domain/product";
+import { findAttributeValue, normalizeSelections, planCombinationKey, type AttributeKind, type AttributeSelection, type ProductCoverage } from "@/domain/product";
 import type { Code, Id, Issue } from "@/domain/types";
 import type { FormState } from "@/forms";
 import { isDirty } from "@/app/_lib/edit";
@@ -19,18 +19,6 @@ export function parseSelections(fd: FormData, kinds: readonly AttributeKind[]): 
     if (v) out.push({ kindCode: k.code, valueCode: v });
   }
   return out;
-}
-
-/** `{"O01":"V01"}` 형태의 JSON — 실패하면 빈 객체. */
-export function parseOptionSelection(json: string): ClauseOptionSelection {
-  const trimmed = json.trim();
-  if (trimmed === "") return {};
-  try {
-    const parsed: unknown = JSON.parse(trimmed);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as ClauseOptionSelection) : {};
-  } catch {
-    return {};
-  }
 }
 
 // ───────────────────────────── 상세의 탭 ─────────────────────────────
@@ -205,14 +193,6 @@ export function currentGeneralArticle(sections: readonly GeneralSection[], artic
 /** 목차 링크의 좌표 — 탭을 잃지 않는다(`?tab=general&art=<조 id>`). */
 export function generalArticlePath(productId: Id, articleId: Id): string {
   return `${productDetailPath(productId, "general")}&art=${articleId}`;
-}
-
-/**
- * 약관 세 패널에서 부른 서버 액션이 **돌아갈 자리** — 고르고 있던 조까지.
- * 조를 잃으면 저장 직후 첫 관으로 튕겨 방금 고친 자리가 화면 밖으로 나간다 (§조작과 상태 전이).
- */
-export function generalReturnPath(productId: Id, articleId: string | undefined): string {
-  return articleId ? generalArticlePath(productId, articleId) : productDetailPath(productId, "general");
 }
 
 /**

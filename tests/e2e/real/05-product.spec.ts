@@ -68,7 +68,7 @@ for (const product of SEED.products) {
       await ev.action("실물화면#5.3", `보통약관 탭 — 보통약관 템플릿 「${general.title}」을 고른다`, async () => {
         await open(page, `${productUrl}?tab=general`);
         await pickCombo(page.getByRole("combobox", { name: "보통약관 템플릿" }), { label: general.title });
-        await submit(page, page.getByRole("button", { name: "템플릿 저장" }));
+        await submit(page, page.getByRole("button", { name: "템플릿 지정" }));
       });
 
       const types = product.planOptions.filter((o) => o.axis === "type").length;

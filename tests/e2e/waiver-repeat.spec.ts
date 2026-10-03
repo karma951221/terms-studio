@@ -205,7 +205,7 @@ test(
       await page.getByRole("navigation", { name: "상품 하위 탭" }).getByRole("link", { name: "약관", exact: true }).click();
       await page.waitForLoadState("networkidle");
       await pickCombo(page.getByRole("combobox", { name: "보통약관 템플릿" }), { label: docTitle });
-      await submit(page, page.getByRole("button", { name: "템플릿 저장" }));
+      await submit(page, page.getByRole("button", { name: "템플릿 지정" }));
       return url;
     });
 

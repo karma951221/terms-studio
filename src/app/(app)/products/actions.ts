@@ -8,12 +8,12 @@ import { redirect } from "next/navigation";
 import type { ActionOutcome } from "@/app/_components/ValueForm";
 import { str } from "@/app/_lib/formData";
 import { describeRejection, errorRedirectPath } from "@/app/_lib/rejection";
-import type { ProductBasicInput, OverrideScope, SnapshotOwner } from "@/services/product";
-import type { Code, Id, Result } from "@/domain/types";
+import type { GeneralSettingsInput, ProductBasicInput, SnapshotOwner } from "@/services/product";
+import type { Id, Issue, Result } from "@/domain/types";
 import type { Submission } from "@/forms";
 import { currentActor, getServices } from "@/lib/services";
 
-import { generalReturnPath, parseOptionSelection, parseSelections, productDetailPath, type ProductTab } from "./lib";
+import { parseSelections, productDetailPath, type ProductTab } from "./lib";
 
 const basicValue = z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]);
 const basicSlots = z.array(z.object({ path: z.string(), value: basicValue.optional() }).transform((entry) => ({ path: entry.path, value: entry.value })));
@@ -99,15 +99,30 @@ export async function writeProductValuesAction(productId: Id, submission: Submis
   return outcome(await services.product.setProductValues(actor, productId, submission.values));
 }
 
+/** 보통약관 탭 저장 결과 — 거부면 이슈 좌표(조 · 함수조항 자리)째 돌려 화면이 그 항목 옆에 붙인다. */
+export type GeneralSaveOutcome = { ok: true } | { ok: false; message: string; issues: Issue[] };
+
+const generalSchema = z.object({
+  generalDocumentId: z.string().min(1),
+  hiddenArticles: z.array(z.string()),
+  overrides: z.array(z.object({ nodeId: z.string(), clauseCode: z.string(), options: z.record(z.string(), z.string()) })),
+});
+
 /**
- * 보통약관 조 노출 토글 (기능/상품 §3.6) — redirect 하지 않는다 (체크박스가 `startTransition` 으로 부른다).
- * 성공하면 상품 상세를 무효화해 서버 컴포넌트가 새 숨김 목록으로 다시 그리게 한다.
+ * 보통약관 탭 저장 한 번 (기능/상품 §3.8) — 조 노출 · 옵션 오버라이드의 최종 상태를 한 트랜잭션으로.
+ * redirect 하지 않는다 — 탭 첫 줄의 `저장`(ProductEditProvider)이 `startTransition` 으로 부르고, 성공하면 읽기로 돌아가 refresh 한다.
  */
-export async function setArticleHiddenAction(productId: Id, articleId: Id, hidden: boolean): Promise<ActionOutcome> {
+export async function saveProductGeneralAction(productId: Id, input: GeneralSettingsInput): Promise<GeneralSaveOutcome> {
   const actor = await currentActor();
-  const r = await getServices().product.setArticleHidden(actor, productId, articleId, hidden);
-  if (r.ok) revalidatePath(detailPath(productId));
-  return outcome(r);
+  const parsed = generalSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: "저장할 내용을 읽을 수 없습니다. 새로고침한 뒤 다시 편집해 주세요.", issues: [] };
+  const r = await getServices().product.saveGeneralSettings(actor, productId, parsed.data);
+  if (!r.ok) {
+    const issues = r.rejection.reason === "invalid" ? r.rejection.issues : [];
+    return { ok: false, message: issues.length > 0 ? "저장하지 못한 항목이 있습니다. 표시된 자리를 고쳐 주세요." : msg(r.rejection), issues };
+  }
+  revalidatePath(detailPath(productId));
+  return { ok: true };
 }
 
 // ───────────────────────────── 조립 미리보기 ─────────────────────────────
@@ -307,26 +322,4 @@ export async function removeFromGroupAction(productId: Id, pcId: Id): Promise<vo
   const r = await getServices().product.removeFromGroup(actor, pcId);
   if (!r.ok) redirect(errorRedirectPath(detailPath(productId, "coverages"), msg(r.rejection)));
   redirect(detailPath(productId, "coverages"));
-}
-
-// ───────────────────────────── 옵션 오버라이드 ─────────────────────────────
-
-/** nodeId·clauseCode 는 폼 입력(사용처 화면의 문면에서 복사한 참조 노드 id) — bind 는 productId·scope 만. */
-/** 옵션은 문면의 그 자리에서 고친다 — 저장 뒤에도 **고르고 있던 조**로 돌아온다 (`art` · 기능/상품 §3.6). */
-export async function setOptionOverrideAction(productId: Id, scope: OverrideScope, formData: FormData): Promise<void> {
-  const actor = await currentActor();
-  const nodeId = str(formData, "nodeId");
-  const clauseCode = str(formData, "clauseCode");
-  const back = generalReturnPath(productId, str(formData, "art") || undefined);
-  const r = await getServices().product.setOptionOverride(actor, scope, nodeId, clauseCode, parseOptionSelection(str(formData, "options")));
-  if (!r.ok) redirect(errorRedirectPath(back, msg(r.rejection)));
-  redirect(back);
-}
-
-export async function removeOptionOverrideAction(productId: Id, scope: OverrideScope, nodeId: Id, clauseCode: Code, articleId?: Id): Promise<void> {
-  const actor = await currentActor();
-  const back = generalReturnPath(productId, articleId);
-  const r = await getServices().product.removeOptionOverride(actor, scope, nodeId, clauseCode);
-  if (!r.ok) redirect(errorRedirectPath(back, msg(r.rejection)));
-  redirect(back);
 }

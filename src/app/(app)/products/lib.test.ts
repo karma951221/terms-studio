@@ -18,13 +18,11 @@ import {
   excludedClauseLabel,
   generalArticlePath,
   generalIssueLink,
-  generalReturnPath,
   generalSectionLabel,
   generalSections,
   generalTabIssues,
   omissionCounts,
   omissionPairLabel,
-  parseOptionSelection,
   parseSelections,
   productDetailPath,
   productTabOf,
@@ -59,11 +57,6 @@ describe("products lib — 순수 파싱", () => {
     expect(parseSelections(fd, kinds)).toEqual([{ kindCode: "A0001", valueCode: "1" }]);
   });
 
-  it("parseOptionSelection — 객체 JSON 은 그대로, 아니면 빈 객체", () => {
-    expect(parseOptionSelection("")).toEqual({});
-    expect(parseOptionSelection('{"O01":"V01"}')).toEqual({ O01: "V01" });
-    expect(parseOptionSelection("not json")).toEqual({});
-  });
 });
 
 describe("products lib — 상세 탭 좌표", () => {
@@ -183,10 +176,6 @@ describe("products lib — 보통약관의 관", () => {
     expect(generalArticlePath("p1", "A1")).toBe("/products/p1?tab=general&art=A1");
   });
 
-  it("generalReturnPath — 옵션을 저장해도 고르던 조로 돌아온다 (조가 없으면 탭만)", () => {
-    expect(generalReturnPath("p1", "A1")).toBe("/products/p1?tab=general&art=A1");
-    expect(generalReturnPath("p1", undefined)).toBe("/products/p1?tab=general");
-  });
 });
 
 describe("products lib — 오른쪽 미리보기의 관 자르기 (sectionPreviewDoc)", () => {

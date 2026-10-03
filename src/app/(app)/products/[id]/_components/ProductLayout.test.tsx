@@ -22,9 +22,7 @@ vi.mock("../../actions", () => ({
   removeFromGroupAction: () => {},
   renameGroupAction: () => {},
   setProductGeneralDocumentAction: () => {},
-  setArticleHiddenAction: async () => ({ ok: true }),
-  setOptionOverrideAction: () => {},
-  removeOptionOverrideAction: () => {},
+  saveProductGeneralAction: async () => ({ ok: true }),
   saveProductBasicAction: async () => ({ ok: true }),
 }));
 
@@ -79,6 +77,12 @@ describe("기본정보 — 상품정보(상품명 · 평균공시이율 · 상�
     expect(html).toMatch(/data-path="feature.fetal"[\s\S]*?>—</);
     expect(html).toMatch(/data-path="feature.contract_kind"[\s\S]*?>주계약</);
     expect(html).toMatch(/<input[^>]*aria-label="상품명"[^>]*readOnly=""/);
+  });
+
+  it("편집은 헤더가 아니라 이 탭 첫 줄 오른쪽에 — 상품정보보다 위 (2026-10-03 사용자 QA)", () => {
+    const html = render();
+    expect(html).toMatch(/<div class="ts-tab-head"><div class="ts-product-actions"><button type="button">편집<\/button>/);
+    expect(html.indexOf("ts-tab-head")).toBeLessThan(html.indexOf("<h3>상품정보</h3>"));
   });
 
   it("세목(보험종목 정의 · 종·형 조합)이 같은 탭 아래에 선다 — 저장은 하나", () => {
@@ -149,42 +153,98 @@ describe("상품담보 — 기본계약 · 특별약관 표 · 기본계약 지�
   });
 });
 
-describe("보통약관 탭 — 템플릿 한 줄 + 세 패널, 다른 것은 없다", () => {
+describe("보통약관 탭 — 템플릿 한 줄 + 세 패널, 다른 것은 없다 (기능/상품 §4.6)", () => {
   const tree: DocumentNode = {
     id: "doc",
     kind: "document",
     title: "보통약관",
-    children: [{ id: "A1", kind: "article", title: "목적", children: [{ id: "P1", kind: "paragraph", children: [{ id: "t", kind: "text", text: "이 계약은" }] }] }],
+    children: [
+      {
+        id: "A1",
+        kind: "article",
+        title: "목적",
+        children: [{ id: "P1", kind: "paragraph", children: [{ id: "t", kind: "text", text: "이 계약은" }, { id: "R1", kind: "clauseInlineRef", clauseCode: "C0001", options: { O01: "V01" } }] }],
+      },
+    ],
   };
-  it("템플릿 select + 저장 · 목차 · 원문 · 미리보기 — 탑재 표 · 기본계약은 여기 없다", () => {
-    const html = renderToStaticMarkup(
-      <GeneralTab
-        productId="p1"
-        generalDocumentId="doc"
-        generals={[{ id: "doc", title: "보통약관" }]}
-        baseCoverages={[]}
-        overrides={[]}
-        overrideTargets={[]}
-        clauses={[]}
-        appendices={[]}
-        boxes={[]}
-        discriminators={[]}
-        generalTree={tree}
-        generalNumbers={new Map<string, NodeNumber>([["A1", { n: 1, label: "제1조" } as NodeNumber]])}
-        hiddenArticles={[]}
-        booklet={undefined}
-        bookletNote={undefined}
-        articleId={undefined}
-        confirm={undefined}
-        confirmNode={null}
-      />,
+  const clauses = [
+    {
+      mode: "inline" as const,
+      code: "C0001",
+      label: "소멸",
+      body: [],
+      required: { discriminators: [], attributes: [] },
+      options: [{ code: "O01", label: "어조", order: 0, values: [{ code: "V01", label: "일반", body: [], order: 0 }, { code: "V02", label: "사망", body: [], order: 1 }] }],
+    },
+  ];
+  const tab = (props: Partial<Parameters<typeof GeneralTab>[0]> = {}) => (
+    <GeneralTab
+      productId="p1"
+      generalDocumentId="doc"
+      generals={[{ id: "doc", title: "알파 보통약관" }, { id: "doc2", title: "베타 보통약관" }]}
+      baseCoverages={[]}
+      overrides={[]}
+      overrideTargets={[{ nodeId: "R1", clauseCode: "C0001", label: "제1조(목적) › 함수조항 소멸(C0001)", options: [{ code: "O01", label: "어조", values: [{ code: "V01", label: "일반" }, { code: "V02", label: "사망" }] }] }]}
+      clauses={clauses}
+      appendices={[]}
+      boxes={[]}
+      discriminators={[]}
+      generalTree={tree}
+      generalNumbers={new Map<string, NodeNumber>([["A1", { n: 1, label: "제1조" } as NodeNumber]])}
+      hiddenArticles={[]}
+      booklet={undefined}
+      bookletNote={undefined}
+      articleId={undefined}
+      confirm={undefined}
+      confirmNode={null}
+      {...props}
+    />
+  );
+  const render = (editing: boolean, props: Partial<Parameters<typeof GeneralTab>[0]> = {}) =>
+    renderToStaticMarkup(
+      <ProductEditProvider canEdit initialEditing={editing}>
+        {tab(props)}
+      </ProductEditProvider>,
     );
-    expect(html).toContain("보통약관 템플릿");
-    expect(html).toContain(">템플릿 저장<");
-    expect(html).toContain(">목차<");
-    expect(html).toContain("약관 — 전체 (원문)");
-    expect(html).toContain("미리보기 — 전체 (평가)");
+
+  it("템플릿 이름(글) · 집계 · 목차 · 모델링 · 미리보기 — 탑재 표 · 기본계약은 여기 없다", () => {
+    const html = render(false);
+    expect(html).toContain('<span class="ts-terms-template-label">보통약관 템플릿</span><span class="ts-terms-template-name">알파 보통약관</span>');
+    expect(html).toContain("조 중 <b>1</b> 노출");
+    expect(html).toContain(">목차</h3>");
+    expect(html).toContain(">모델링 — 전체</h3>");
+    expect(html).toContain(">미리보기 — 전체</h3>");
+    expect(html.match(/class="ts-terms-panel-head"/g)).toHaveLength(3);
     expect(html).toContain("이 계약은");
-    for (const absent of ["기본계약", "특별약관", "담보 검색"]) expect(html).not.toContain(absent);
+    for (const absent of ["기본계약", "특별약관", "담보 검색", "템플릿 저장"]) expect(html).not.toContain(absent);
+  });
+
+  it("읽기 — 입력이 없다(체크박스 · 선택 · 콤보박스 없음), 탭 첫 줄 오른쪽에 [편집]", () => {
+    const html = render(false);
+    expect(html).not.toContain('type="checkbox"');
+    expect(html).not.toContain("<select");
+    expect(html).not.toContain('role="combobox"');
+    expect(html).not.toContain("템플릿 바꾸기");
+    expect(html).toContain('aria-label="노출 · 제1조(목적)"');
+    expect(html).toMatch(/ts-terms-template-end[\s\S]*<button type="button">편집<\/button>/);
+    expect(html).not.toContain("저장하면 미리보기에 반영됩니다");
+  });
+
+  it("편집 — [취소] [저장] · 목차 체크박스 · 상자 안 옵션 고르기 · 안내 한 줄 · 「템플릿 바꾸기…」", () => {
+    const html = render(true);
+    expect(html).toMatch(/ts-terms-template-end[\s\S]*>취소<[\s\S]*>저장</);
+    expect(html).not.toContain(">편집<");
+    expect(html).toMatch(/<input type="checkbox" aria-label="노출 · 제1조\(목적\)"[^>]*checked=""/);
+    expect(html).toContain("<select");
+    expect(html).toContain("저장하면 미리보기에 반영됩니다");
+    expect(html).toContain(">템플릿 바꾸기…</button>");
+  });
+
+  it("템플릿 미지정 — 이 줄이 곧 고르기(편집 없이), 한 줄 안내", () => {
+    const html = render(false, { generalDocumentId: undefined, generalTree: undefined });
+    expect(html).toContain('role="combobox"');
+    expect(html).toContain(">템플릿 지정</button>");
+    expect(html).toContain("보통약관 템플릿을 지정하면");
+    expect(html).not.toContain(">편집<");
   });
 });

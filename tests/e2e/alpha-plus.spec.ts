@@ -93,7 +93,7 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
       await ev.action("실물재현#1.3", "보통약관 템플릿을 고른다 — 보통약관 탭", async () => {
         await openTab(page, "보통약관");
         await pickCombo(page.getByRole("combobox", { name: "보통약관 템플릿" }), { label: "무배당 알파Plus보장보험2604 보통약관" });
-        await submit(page, page.getByRole("button", { name: "템플릿 저장" }));
+        await submit(page, page.getByRole("button", { name: "템플릿 지정" }));
       });
 
       await ev.action("실물재현#1.4", "세목 선택지 3건을 만든다 — 종 축: 1종 적용여부 아니오 · 2종 예 + 사유(암·면책 · 질병 8 · 상해및질병80%), 형 축: 1형 해약환급금 지급형 — 기본정보 탭", async () => {

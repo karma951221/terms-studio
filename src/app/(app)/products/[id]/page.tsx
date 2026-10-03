@@ -17,7 +17,7 @@ import { currentActor, getServices } from "@/lib/services";
 import { BasicTab } from "./_components/BasicTab";
 import { CoveragesTab } from "./_components/CoveragesTab";
 import { GeneralTab } from "./_components/GeneralTab";
-import { type OverrideTarget } from "./_components/OptionOverrideForm";
+import { type OverrideTarget } from "./_components/GeneralEdit";
 import { ProductEditProvider, ProductHeadActions, ProductPath } from "./_components/ProductEdit";
 import { ProductTabs } from "./_components/ProductTabs";
 import { SpecialPreviewTab } from "./_components/SpecialPreviewTab";
@@ -30,8 +30,9 @@ export const dynamic = "force-dynamic";
  * 상품 상세 — 헤더(경로 「상품 › 상품명」 · 편집 · 더보기) + 한 줄 탭 넷 기본정보 · 상품담보 · 보통약관 · 특별약관
  * (기능/상품 §3.8 · §4.3, 2026-10-03). 옛 약관 탭 주소(`?tab=terms&sub=`)는 새 자리로 redirect 한다.
  *
- * 헤더의 편집 · 취소 · 저장은 클라이언트 `ProductEditProvider` 가 기본정보 탭과 나눠 쓴다 — 서버 컴포넌트인
- * 이 파일은 Provider 로 본문을 감싸기만 한다. 목록 이동은 경로의 「상품」 링크 하나, 미리보기 · 삭제는 더보기 안이다.
+ * 편집 · 취소 · 저장은 편집이 있는 탭(기본정보 · 템플릿이 있는 보통약관)의 **첫 줄 오른쪽**에 있다 — 헤더에는 더보기만
+ * (머리의 편집은 모든 탭에 걸리는 것처럼 보였다, 2026-10-03 사용자 QA). 편집 상태는 클라이언트 `ProductEditProvider` 가 갖고,
+ * 서버 컴포넌트인 이 파일은 Provider 로 본문을 감싸기만 한다. 목록 이동은 경로의 「상품」 링크 하나, 미리보기 · 삭제는 더보기 안이다.
  *
  * 이 파일은 **로드 · 헤더 · 분기**만 한다. 섹션은 탭 컴포넌트에 있다.
  * 탭은 `?tab=` 이라 서버가 그대로 렌더한다 — 한 번에 한 탭만 그리지만 데이터는 확인 카드 때문에 한 벌로 읽는다.
@@ -238,7 +239,7 @@ export default async function ProductDetailPage({
   }
 
   return (
-    <ProductEditProvider canEdit={tab === "basic"}>
+    <ProductEditProvider canEdit={tab === "basic" || (tab === "general" && !!product.generalDocumentId)}>
       <div className="ts-page-head ts-product-head">
         <ProductPath name={product.name} />
         <ProductHeadActions

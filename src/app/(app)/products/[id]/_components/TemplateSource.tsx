@@ -1,11 +1,16 @@
+"use client";
+
 /**
  * 약관 섹션 가운데 — 템플릿에 모델링된 **원문**을 관 단위로 (기능/상품 §4 「보통약관」 약관 — 원문(가운데)).
  *
  * - 읽기 표기는 문면 편집기 읽기 모드(`documents/[id]/_components/DocBody.tsx`)를 따른다 — 다만 `DocCtx`(편집·평가 문맥)에
  *   기대지 않고 이 컴포넌트가 직접 그린다. 조작은 하나도 없다.
  * - **유일한 입력은 함수조항 상자 안의 옵션 선택**이다 (기능/함수조항 §3.2 · 기능/상품 §3.6). 마스터 기본값을 옆에 보이고,
- *   다르면 「오버라이드」 배지 + 되돌리기(↺). 상자 안에는 그 함수조항의 **모델**(`ClauseModel` — 슬롯 · 옵션 자리 · 조건 · 참조)이 선다.
- * - 끈 조는 자리에 남되 흐리게 + 「노출 끔」 (다시 켜는 것은 목차에서).
+ *   다르면 「오버라이드」 배지. 상자 안에는 그 함수조항의 **모델**(`ClauseModel` — 슬롯 · 옵션 자리 · 조건 · 참조)이 선다.
+ * - 읽기 · 편집은 보통약관 탭의 편집 상태(`useGeneralEdit`)를 따른다 (기능/상품 §3.8): 읽기는 선택을 글로만, 편집은
+ *   옵션마다 고르기 + 되돌리기(↺) — 고른 것은 초안에만 쌓이고 모델의 ✓ 도 초안을 따른다. 바뀐 자리에 「변경」, 저장 거부는 그 상자에.
+ *   편집 상태 밖(특별약관 탭 · 단독 렌더)이면 저장본 읽기다.
+ * - 끈 조는 자리에 남되 흐리게 + 「노출 끔」 (켜고 끄는 것은 목차에서, 편집 중이면 초안을 따른다).
  * - **조를 감싼 조건 블록도 그대로 그린다** — 목차는 조건 블록을 펴지만(조는 어디 있든 한 줄),
  *   원문에서 조상 조건식을 잃으면 조건부인 조가 무조건 있는 것처럼 보인다 (코덱스 리뷰 2026-09-15 Important-3).
  * - 앵커는 `art-<조 id>` — 오른쪽 조립 결과의 `node-<조 id>` 와 짝이다 (`PanelScrollSync`).
@@ -22,8 +27,7 @@ import { format, parse, refPath } from "@/domain/expression";
 import type { ClauseOptionOverride } from "@/domain/product";
 import type { Code, Id } from "@/domain/types";
 
-import { removeOptionOverrideAction, setOptionOverrideAction } from "../../actions";
-import { OptionOverrideForm, type OverrideTarget } from "./OptionOverrideForm";
+import { useGeneralEdit, type OverrideTarget } from "./GeneralEdit";
 
 export interface TemplateSourceProps {
   productId: Id;
@@ -54,8 +58,6 @@ export interface TemplateSourceProps {
 
 interface Ctx {
   productId: Id;
-  /** 지금 그리는 조 — 그 조 안의 옵션 저장은 이 조로 돌아온다 (`ArticleNodes` 가 조마다 채운다). */
-  articleId: Id | undefined;
   appendixName: (code: Code) => string | undefined;
   boxOf: (code: Code) => Box | undefined;
   exprText: (source: string) => string;
@@ -246,15 +248,20 @@ function argsText(clause: Clause, bindings: Bindings | undefined, ctx: Ctx): str
  * 모델 아래에 이 자리의 옵션 선택(마스터 기본 · 이 상품 오버라이드)이 선다 — 옵션이 없는 함수조항이면 선택 줄도 없다.
  */
 function ClauseBox({ nodeId, clauseCode, baseOptions, bindings, ctx, at }: { nodeId: Id; clauseCode: Code; baseOptions: Record<Code, Code>; bindings: Bindings | undefined; ctx: Ctx; at?: NodeNumber }) {
+  const edit = useGeneralEdit();
   const clause = ctx.clauseByCode.get(clauseCode);
   const label = clause?.label ?? `${clauseCode}(없는 함수조항)`;
-  const override = ctx.overrideByNode.get(nodeId);
+  // 이 상품의 선택 — 편집 상태 안이면 그 상태(읽기 = 저장본, 편집 = 초안), 밖이면 저장본
+  const own = edit ? edit.current.overrides[nodeId]?.options : ctx.overrideByNode.get(nodeId)?.options;
   const target = ctx.targetByNode.get(nodeId);
-  const effective = override ? { ...baseOptions, ...override.options } : baseOptions;
+  const effective = own ? { ...baseOptions, ...own } : baseOptions;
   // 미선택 = 마스터 기본도 상품 선택도 없는 옵션 — 저장 오류가 되기 전에 여기서 말한다 (기능/함수조항 §3.2).
   const unresolved = (clause?.options ?? []).filter((o) => effective[o.code] === undefined).map((o) => o.label);
   const hasOptions = !ctx.readOnly && (!clause || clause.options.length > 0);
-  const scope = { kind: "product", id: ctx.productId } as const;
+  const editing = hasOptions && !!edit?.editing;
+  const changed = edit?.changes.nodes.has(nodeId) ?? false;
+  const errors = edit?.errors.nodes.get(nodeId) ?? [];
+  const valueLabel = (optionCode: Code, value: Code | undefined) => target?.options.find((o) => o.code === optionCode)?.values.find((v) => v.code === value)?.label ?? value;
   return (
     <div className="ts-doc-clause" data-clause-box={nodeId}>
       <div className="ts-doc-clause-head">
@@ -262,7 +269,8 @@ function ClauseBox({ nodeId, clauseCode, baseOptions, bindings, ctx, at }: { nod
           <span className="ts-doc-clause-code">[{clauseCode}]</span> {clause?.label ?? "없는 함수조항"}
         </span>
         {clause && (clause.params ?? []).length > 0 && <span className="ts-doc-clause-opt">인자: {argsText(clause, bindings, ctx)}</span>}
-        {override && !ctx.readOnly && <span className="ts-badge">오버라이드</span>}
+        {own && !ctx.readOnly && <span className="ts-badge">오버라이드</span>}
+        {changed && <span className="ts-badge ts-changed-mark">변경</span>}
       </div>
       <div className="ts-doc-clause-body">
         {clause ? (
@@ -273,28 +281,38 @@ function ClauseBox({ nodeId, clauseCode, baseOptions, bindings, ctx, at }: { nod
         {hasOptions && (
           <div className="ts-clause-use">
             <p className="ts-muted">마스터 기본 — {ctx.optionText(clauseCode, baseOptions)}</p>
-            {/* 폼은 <p> 안에 둘 수 없다 — 파서가 <p> 를 닫아 서버 DOM 과 React 트리가 어긋난다. */}
-            {override && (
-              <div className="ts-clause-box-row">
-                <span>이 상품 — {ctx.optionText(clauseCode, effective)}</span>{" "}
-                <form action={removeOptionOverrideAction.bind(null, ctx.productId, scope, nodeId, clauseCode, ctx.articleId)} style={{ display: "inline" }}>
-                  <IconButton type="submit" label={`마스터 기본으로 되돌리기 · ${label}`} icon={<IconRevert />} />
-                </form>
-              </div>
-            )}
+            {!editing && own && <p>이 상품 — {ctx.optionText(clauseCode, effective)}</p>}
+            {editing &&
+              (target && target.options.length > 0 ? (
+                <div className="ts-clause-pick">
+                  {target.options.map((o) => (
+                    <label key={o.code}>
+                      <span>{o.label}</span>
+                      <select
+                        value={own?.[o.code] ?? ""}
+                        aria-invalid={errors.length > 0 || undefined}
+                        onChange={(e) => edit?.dispatch({ type: "setOption", nodeId, clauseCode, optionCode: o.code, value: e.target.value, base: baseOptions })}
+                      >
+                        <option value="">— 마스터 기본{baseOptions[o.code] !== undefined ? `(${valueLabel(o.code, baseOptions[o.code])})` : ""} —</option>
+                        {o.values.map((v) => (
+                          <option key={v.code} value={v.code}>
+                            {v.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                  {own && <IconButton type="button" label={`마스터 기본으로 되돌리기 · ${label}`} icon={<IconRevert />} onClick={() => edit?.dispatch({ type: "resetNode", nodeId })} />}
+                </div>
+              ) : (
+                <p className="ts-muted">이 자리는 고를 옵션이 없다.</p>
+              ))}
             {unresolved.length > 0 && <p className="ts-warn">옵션 미선택 — {unresolved.join(" · ")} (고르지 않으면 조립이 막힌다)</p>}
-            {target ? (
-              // 저장된 선택이 바뀌면 폼도 새로 연다 — `useState` 의 시작값은 다시 읽히지 않는다.
-              <OptionOverrideForm
-                key={JSON.stringify(override?.options ?? {})}
-                targets={[target]}
-                action={setOptionOverrideAction.bind(null, ctx.productId, scope)}
-                current={override?.options}
-                articleId={ctx.articleId}
-              />
-            ) : (
-              <p className="ts-muted">이 자리는 고를 옵션이 없다.</p>
-            )}
+            {errors.map((message, i) => (
+              <p key={i} className="ts-error" role="alert">
+                {message}
+              </p>
+            ))}
           </div>
         )}
       </div>
@@ -499,17 +517,17 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
  * (`.ts-doc-cond` + 조건식 칩, 뒤 가지는 `is-alt`). 조건 블록은 중첩될 수 있어 재귀한다.
  */
 function ArticleNodes({ nodes, ctx }: { nodes: readonly Node[]; ctx: Ctx }) {
+  const edit = useGeneralEdit();
   return nodes.map((node) => {
     if (node.kind === "article") {
-      const isHidden = ctx.hidden.has(node.id);
+      const isHidden = edit ? edit.current.hidden.includes(node.id) : ctx.hidden.has(node.id);
       const label = `${ctx.numbers.get(node.id)?.label ?? "조"}(${node.title})`;
       return (
         <section key={node.id} id={`art-${node.id}`} className={isHidden ? "ts-doc-article is-hidden-article" : "ts-doc-article"}>
           <h4 className="ts-doc-article-title">
             {label} {isHidden && <span className="ts-dim">— 노출 끔</span>}
           </h4>
-          {/* 이 조 안의 옵션 저장은 이 조로 돌아온다 — 목차가 클라이언트에서 관을 바꿔도 좌표가 어긋나지 않는다 */}
-          <Block nodes={node.children} ctx={{ ...ctx, articleId: node.id }} />
+          <Block nodes={node.children} ctx={ctx} />
         </section>
       );
     }
@@ -531,7 +549,6 @@ export function TemplateSource({ productId, nodes, numbers, hidden, references, 
   const labelOf = new Map(discriminators.map((d) => [d.code, d.label] as const));
   const ctx: Ctx = {
     productId,
-    articleId: undefined,
     appendixName: (code) => appendixByCode.get(code),
     boxOf: (code) => boxByCode.get(code),
     exprText: (source) => exprDisplay(source, labelOf),

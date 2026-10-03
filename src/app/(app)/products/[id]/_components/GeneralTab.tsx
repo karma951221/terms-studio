@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import { Combobox } from "@/app/_components/Combobox";
 import { IssueList } from "@/app/_components/IssueList";
 import { RenderedDoc } from "@/app/_components/RenderedDoc";
 import type { Booklet } from "@/domain/assembly";
@@ -10,11 +9,11 @@ import { clauseSpanBy, numberTree, referenceTargetIndex, type Box, type Document
 import type { ClauseOptionOverride, ProductCoverage } from "@/domain/product";
 import type { Id } from "@/domain/types";
 
-import { setProductGeneralDocumentAction } from "../../actions";
 import { currentGeneralArticle, generalIssueLink, generalSections, generalSectionLabel, generalTabIssues, renderedNodeIds, sectionPreviewDoc } from "../../lib";
+import { GeneralEditProvider, type OverrideTarget } from "./GeneralEdit";
 import { GeneralPanels, type GeneralPane } from "./GeneralPanels";
+import { GeneralTemplateLine } from "./GeneralTemplateLine";
 import type { TocSection } from "./GeneralToc";
-import { type OverrideTarget } from "./OptionOverrideForm";
 import { TemplateSource } from "./TemplateSource";
 
 export interface GeneralTabProps {
@@ -52,8 +51,10 @@ export interface GeneralTabProps {
 /**
  * 보통약관 탭 — 보통약관 본문에만 집중한다 (기능/상품 §4.6).
  *
- * 위는 템플릿 선택 한 줄(선택 + 저장)뿐, 아래는 화면 높이를 채우는 세 패널 — 목차(조 노출 토글) · 원문 모델(함수조항 옵션만 편집) ·
- * 조립 결과. 기본계약 · 탑재 표는 상품담보 탭에 산다. 옵션 오버라이드는 별도 섹션 없이 문면의 그 자리에서 고친다 (기능/상품 §3.6).
+ * 위는 템플릿 한 줄(이름 · 집계 · 편집/저장)뿐, 아래는 화면 높이를 채우는 세 패널 — 목차(조 노출) · 모델링(함수조항 옵션) ·
+ * 미리보기(조립 결과). 기본계약 · 탑재 표는 상품담보 탭에 산다. 옵션 오버라이드는 별도 섹션 없이 문면의 그 자리에서 고친다 (기능/상품 §3.6).
+ *
+ * 읽기로 연다. 편집 → 조 노출 · 옵션을 초안에 고르고 저장 한 번 (기능/상품 §3.8 — `GeneralEditProvider`). 템플릿 교체만 확인 카드에서 즉시.
  */
 export function GeneralTab({
   productId,
@@ -133,31 +134,34 @@ export function GeneralTab({
     };
   });
 
-  return (
-    <div className="ts-terms-focus">
-      <form action={setProductGeneralDocumentAction.bind(null, productId)} className="ts-terms-template">
-        <label>
-          <span>보통약관 템플릿</span>
-          <Combobox
-            name="generalDocumentId"
-            defaultValue={generalDocumentId ?? ""}
-            placeholder="— 미지정 — (이름으로 찾기)"
-            options={[{ value: "", label: "미지정" }, ...generals.map((g) => ({ value: g.id, label: g.title }))]}
-          />
-        </label>
-        <button type="submit">템플릿 저장</button>
-        {generalTree && (
-          <span className="ts-count ts-terms-template-count">
-            <b>{articleTotal}</b>조 중 <b>{shownCount}</b> 노출 · 오버라이드 {overrides.length} · 오류 {errorCount} · 별표 {appendixCount}(자동)
-          </span>
-        )}
-      </form>
+  const summary = generalTree ? (
+    <>
+      <b>{articleTotal}</b>조 중 <b>{shownCount}</b> 노출 · 오버라이드 {overrides.length} · 오류 {errorCount} · 별표 {appendixCount}(자동)
+    </>
+  ) : undefined;
+  const templateTitle = generalDocumentId ? generals.find((g) => g.id === generalDocumentId)?.title : undefined;
+  const body = (
+    <>
+      <GeneralTemplateLine productId={productId} generalDocumentId={generalDocumentId} templateTitle={templateTitle} generals={generals} summary={summary} />
       {/* 교체로 조 노출·오버라이드를 잃으면 액션이 `?confirm=template:<새 id>` 로 보낸다 (코덱스 리뷰 Important-6). */}
       {confirm?.startsWith("template:") && confirmNode}
       {generalTree === undefined ? (
-        <p className="ts-muted">보통약관 템플릿을 고르면 여기에 목차 · 원문 · 미리보기가 선다.</p>
+        <p className="ts-muted">{generalDocumentId ? "보통약관 템플릿을 읽을 수 없다." : "보통약관 템플릿을 지정하면 여기에 목차 · 모델링 · 미리보기가 선다."}</p>
       ) : (
         <GeneralPanels productId={productId} toc={toc} panes={panes} initialArticleId={currentArticleId} />
+      )}
+    </>
+  );
+
+  return (
+    <div className="ts-terms-focus">
+      {generalDocumentId ? (
+        // 템플릿이 바뀌면 초안을 새로 — 옛 템플릿의 노드 id 가 남지 않게
+        <GeneralEditProvider key={generalDocumentId} productId={productId} generalDocumentId={generalDocumentId} hiddenArticles={hiddenArticles} overrides={overrides}>
+          {body}
+        </GeneralEditProvider>
+      ) : (
+        body
       )}
     </div>
   );
