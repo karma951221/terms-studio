@@ -92,7 +92,7 @@ describe("기본정보 — 상품정보(상품명 · 평균공시이율 · 상�
 const pc = (id: string, coverageId: string, name: string): ProductCoverage => ({ id, productId: "p1", coverageId, name, attributes: [] });
 
 describe("상품담보 — 기본계약 · 특별약관 표 · 기본계약 지정 · 특약 그룹이 한 탭에", () => {
-  it("두 표(각자 검색 쿼리) · 기본계약 · 그룹, 특약 행의 미리보기는 약관 › 담보별 미리보기로", () => {
+  it("두 표(각자 검색 쿼리) · 기본계약 · 그룹 — 상품담보 행에 미리보기 링크는 없다", () => {
     const html = renderToStaticMarkup(
       <CoveragesTab
         productId="p1"
@@ -117,7 +117,7 @@ describe("상품담보 — 기본계약 · 특별약관 표 · 기본계약 지�
     expect(html).toContain('id="base-contract"');
     expect(html).toContain(">특별약관</h2>");
     expect(html).toContain("특약 그룹");
-    expect(html).toContain('href="/products/p1?tab=terms&amp;sub=special&amp;pc=s1"');
+    expect(html).not.toContain("sub=special&amp;pc=s1");
     // 담보 : 상품담보 = 1 : N — 특별약관 표에서 COV000002 는 한 번만
     expect(html.split("<code>COV000002</code>").length - 1).toBe(1);
     expect(html).not.toContain("보통약관 템플릿");
