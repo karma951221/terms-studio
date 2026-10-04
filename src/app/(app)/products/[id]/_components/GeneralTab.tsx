@@ -173,6 +173,7 @@ export function GeneralTab({
           toc={toc}
           panes={panes}
           initialArticleId={currentArticleId}
+          requestedArticleId={articleId}
           {...(copyEditorData && generalDocumentId && templateTree ? { copyEditor: { ...copyEditorData, templateId: generalDocumentId, template: templateTree } } : {})}
         />
       )}

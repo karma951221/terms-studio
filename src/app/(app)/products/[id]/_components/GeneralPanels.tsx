@@ -19,6 +19,7 @@ import type { Id } from "@/domain/types";
 import { ArticleCopyEditor, type CopyEditorData } from "./ArticleCopyEditor";
 import { useGeneralEdit } from "./GeneralEdit";
 import { CopyDots, copyStateOf, GeneralToc, type TocSection } from "./GeneralToc";
+import { initialScrollTarget } from "./panelScroll";
 import { PanelScrollSync } from "./PanelScrollSync";
 
 export interface GeneralPane {
@@ -40,22 +41,32 @@ export function GeneralPanels({
   toc,
   panes,
   initialArticleId,
+  requestedArticleId,
   copyEditor,
 }: {
   productId: Id;
   toc: readonly TocSection[];
   panes: readonly GeneralPane[];
   initialArticleId: Id | undefined;
+  /** 주소의 `?art=` 그대로 — 이게 현재 조일 때만 처음 열면서 그 조로 옮긴다(`initialScrollTarget`). */
+  requestedArticleId?: Id | undefined;
   /** 편집 중 조 편집 패널의 재료 — 없으면 편집 중에도 세 패널(템플릿이 없는 화면 · 단독 렌더). */
   copyEditor?: CopyEditorData;
 }) {
   const [current, setCurrent] = useState(initialArticleId);
   // 서버가 다른 조로 다시 그렸으면(`?art=` 로 돌아온 저장 등) 그 조를 따른다 — 렌더 중 상태 맞추기(React 권장 패턴)
   const [served, setServed] = useState(initialArticleId);
+  // 패널을 옮길 조 — 목차를 눌렀거나 `art=` 로 열었을 때만. 서버가 고른 기본값(첫 조)으로는 옮기지 않는다 (2026-10-04 사용자 QA)
+  const [scrollTo, setScrollTo] = useState(() => initialScrollTarget(requestedArticleId, initialArticleId));
   if (served !== initialArticleId) {
     setServed(initialArticleId);
     setCurrent(initialArticleId);
+    setScrollTo(initialScrollTarget(requestedArticleId, initialArticleId));
   }
+  const select = (articleId: Id) => {
+    setCurrent(articleId);
+    setScrollTo(articleId);
+  };
   const edit = useGeneralEdit();
   const editing = edit?.editing ?? false;
   const pane = paneOf(panes, current);
@@ -72,7 +83,7 @@ export function GeneralPanels({
           <div className="ts-terms-panel-head">
             <h3 className="ts-terms-panel-title">목차</h3>
           </div>
-          <GeneralToc productId={productId} sections={toc} currentArticleId={articleId} onSelect={setCurrent} />
+          <GeneralToc productId={productId} sections={toc} currentArticleId={articleId} onSelect={select} />
         </section>
         <section className="ts-terms-panel ts-terms-panel-edit" aria-label="조 편집">
           <div className="ts-terms-panel-head">
@@ -92,7 +103,7 @@ export function GeneralPanels({
         <div className="ts-terms-panel-head">
           <h3 className="ts-terms-panel-title">목차</h3>
         </div>
-        <GeneralToc productId={productId} sections={toc} currentArticleId={current} onSelect={setCurrent} />
+        <GeneralToc productId={productId} sections={toc} currentArticleId={current} onSelect={select} />
       </section>
       <section className="ts-terms-panel" aria-label="모델링">
         <div className="ts-terms-panel-head">
@@ -107,7 +118,7 @@ export function GeneralPanels({
         </div>
         {pane && <Fragment key={pane.key}>{pane.right}</Fragment>}
       </section>
-      <PanelScrollSync articleId={current} />
+      <PanelScrollSync articleId={scrollTo} />
     </div>
   );
 }
