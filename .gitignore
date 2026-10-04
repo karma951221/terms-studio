@@ -50,3 +50,7 @@ next-env.d.ts
 
 # superpowers SDD scratch
 .superpowers/
+
+# 로컬 도구 메타데이터 — Claude 데스크톱 앱이 고쳐 쓰는 실행 설정 · 개인 설정
+/.claude/launch.json
+/.claude/settings.local.json
