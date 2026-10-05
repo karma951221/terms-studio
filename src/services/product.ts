@@ -246,6 +246,11 @@ export interface ProductService {
   generalReferenceIssues(productId: Id): Promise<Issue[]>;
   /** 이 상품이 볼 밖의 참조 재료 — 탑재한 담보의 담보약관 + 함수조항 (ADR-0081). 화면이 초안의 깨짐을 바로 셈하는 재료(`productRefIssues`). */
   generalDependents(productId: Id): Promise<GeneralDependents>;
+  /**
+   * 템플릿 저장의 상품 영향 (ADR-0081 결정 3) — 이 템플릿을 쓰는 상품마다 최종 트리(새 템플릿 `tree` + 그 상품의 사본 · 노출 끔)를
+   * 다시 셈해 참조가 깨지는 상품 · 자리. 좌표는 상품(이름) · 가리키는 조(`articleId`) · 문구(`subjectName`) — 확인 카드 한 줄이 된다.
+   */
+  templateImpact(templateId: Id, tree: DocumentNode): Promise<Coordinate[]>;
   deleteProduct(actor: Actor, id: Id, opts?: Confirmable): Promise<Result<void>>;
   setProductValue(actor: Actor, id: Id, path: SlotPath, value: Value | undefined): Promise<Result<void>>;
   /** 한 제출의 값 여럿 — 전부 검사한 뒤 한 트랜잭션으로 쓴다. 하나라도 거부되면 아무것도 안 바뀐다. */
@@ -1176,6 +1181,18 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
         if (!p?.generalDocumentId || !template) return [];
         const [copies, hidden] = await Promise.all([repo.listArticleCopies(tx, productId), repo.listHiddenArticles(tx, productId)]);
         return referenceBreaksOf(tx, productId, p.generalDocumentId, template.tree, liveArticleCopies(template.tree, copies), hidden);
+      }),
+    templateImpact: (templateId, tree) =>
+      db.transaction(async (tx) => {
+        const previous = (await gate.template(templateId))?.tree;
+        const out: Coordinate[] = [];
+        for (const p of await repo.listProducts(tx)) {
+          if (p.generalDocumentId !== templateId) continue;
+          const [copies, hidden] = await Promise.all([repo.listArticleCopies(tx, p.id), repo.listHiddenArticles(tx, p.id)]);
+          const issues = productRefIssues({ template: tree, copies: liveArticleCopies(tree, copies), hidden, dependents: await dependentsFor(tx, p.id, templateId), ...(previous ? { previous } : {}) });
+          for (const i of issues) out.push({ document: "product", ownerId: p.id, ownerName: p.name, ...(i.at.articleId ? { articleId: i.at.articleId } : {}), subjectName: i.message });
+        }
+        return out;
       }),
     generalDependents: (productId) =>
       db.transaction(async (tx) => {

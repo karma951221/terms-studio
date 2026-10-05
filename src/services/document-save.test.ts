@@ -156,6 +156,29 @@ describe("document.save — 편집본 저장 (ADR-0074)", () => {
     expect(saved.tree.children).toEqual([]);
   });
 
+  it("보통약관 템플릿 저장은 상품 영향도 보인다 (ADR-0081 결정 3) — 주입한 상품 영향을 같은 확인 카드에, 확인하면 저장", async () => {
+    const seen: { templateId: Id; titles: string[] }[] = [];
+    const withProducts = createDocumentService(t.db, {
+      clauseGate: async () => gate,
+      newId: sequentialIds("srv-p"),
+      productImpact: async (_tx, templateId, tree) => {
+        seen.push({ templateId, titles: tree.children.map((c) => (c as ArticleNode).title) });
+        return [{ document: "product", ownerId: "prod-a", ownerName: "상품 A", articleId: "a12", subjectName: "제12조 ② — 지운 제10조 ①을 가리킴" }];
+      },
+    });
+    const g = unwrap(await withProducts.createGeneral(editor, "상품이 쓰는 보통약관"));
+    const ops: EditOp[] = [{ type: "insert", node: b.article("새 조", []), at: { parentId: g.tree.id } }];
+    const first = rejection(await withProducts.save(editor, g.id, { baseVersion: 1, ops }));
+    expect(first.reason).toBe("needsConfirmation");
+    if (first.reason === "needsConfirmation") expect(first.impact.brokenRefs.map((c) => [c.document, c.ownerId])).toEqual([["product", "prod-a"]]);
+    expect(seen).toEqual([{ templateId: g.id, titles: ["새 조"] }]); // 새 템플릿 트리로 묻는다
+    expect(unwrap(await withProducts.save(editor, g.id, { baseVersion: 1, ops, confirm: true })).version).toBe(2);
+    // 담보약관 템플릿 저장은 묻지 않는다
+    const s = unwrap(await withProducts.createSpecial(editor, "33333333-3333-4333-8333-333333333333", "특약"));
+    unwrap(await withProducts.save(editor, s.id, { baseVersion: 1, ops: [{ type: "insert", node: b.article("x", []), at: { parentId: s.tree.id } }] }));
+    expect(seen).toHaveLength(1); // 확인한 저장 · 담보약관 저장은 다시 묻지 않는다
+  });
+
   it("원본을 바꾸는 다른 경로(이름 수정 · 명령 적용 · 트리 적재)도 판을 올린다", async () => {
     const g = unwrap(await svc.createGeneral(editor, "다른 경로 보통약관"));
     const v2 = unwrap(await svc.setTitle(editor, g.id, "다른 경로 보통약관 2"));

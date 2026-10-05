@@ -139,4 +139,16 @@ describe("ADR-0081 — 보통약관 탭 저장의 참조 무결성 (PGlite)", ()
     unwrap(await save(p.id, { copies: [copy(rewrittenA10()), copy(fixedA11())] }));
     expect(await svc.generalReferenceIssues(p.id)).toEqual([]);
   });
+
+  it("templateImpact — 새 템플릿으로 이 템플릿을 쓰는 상품마다 다시 셈한다: 상품 · 자리 좌표(이름 · 문구), 깨짐 없는 상품은 없다", async () => {
+    const p = unwrap(await svc.createProduct(editor, { name: "템플릿 영향 A", generalDocumentId: GENERAL }));
+    unwrap(await svc.createProduct(editor, { name: "템플릿 영향 B", generalDocumentId: GENERAL }));
+    // A 는 제2조를 사본으로 두어 제1조 ①을 그대로 가리킨다 — 템플릿이 제1조 ①을 지우고 제2조를 고치면 A 의 사본만 깨진다
+    const own11: ArticleNode = { ...a11(), children: [para("p11-1", "P0100", text("t11", "이 상품의 제2조 "), ref("r11", "a10", "P0100")), para("p11-2", "P0200")] };
+    unwrap(await save(p.id, { copies: [copy(own11)] }));
+    const next: DocumentNode = { ...template(), children: [{ ...a10(), children: [para("p10-2", "P0200")] }, fixedA11(), template().children[2]] };
+    const impact = (await svc.templateImpact(GENERAL, next)).filter((c) => c.ownerName?.startsWith("템플릿 영향"));
+    expect(impact).toEqual([{ document: "product", ownerId: p.id, ownerName: "템플릿 영향 A", articleId: "a11", subjectName: "제2조 ① — 없는 제1조 ①을 가리킴 · 가리키는 조를 고친다" }]);
+  });
 });
+

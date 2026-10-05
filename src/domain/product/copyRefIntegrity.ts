@@ -111,6 +111,8 @@ export interface BreakLabels {
   final: DocumentNode;
   /** 최종 트리 번호(함수조항 펼침 수를 아는 화면이 넘긴다). 없으면 기본 번호. */
   numbers?: ReadonlyMap<Id, NodeNumber>;
+  /** 바뀌기 전 템플릿 — 템플릿 저장이 지운 대상의 번호를 찾는다(템플릿 저장의 상품 영향). */
+  previous?: DocumentNode;
 }
 
 /** 깨짐 → 저장 거부 · 목차 줄 오류. 대상은 템플릿 번호(지운 대상은 최종 트리에 없다), 가리키는 쪽은 최종 트리 번호로. */
@@ -120,11 +122,20 @@ export function refBreakIssues(breaks: readonly RefBreak[], labels: BreakLabels)
   const finalNumbers = labels.numbers ?? numberTree(labels.final);
   const templateIx = indexTree(labels.template);
   const templateNumbers = numberTree(labels.template);
+  const previousIx = labels.previous ? indexTree(labels.previous) : undefined;
+  const previousNumbers = labels.previous ? numberTree(labels.previous) : undefined;
   const targetLabel = (key: string): string => {
     const target = parseRefKey(key);
     const inTemplate = nodesOfTarget(templateIx, target)[0];
     const inFinal = nodesOfTarget(finalIx, target)[0];
-    const label = inTemplate ? placeLabel(templateIx, templateNumbers, inTemplate) : inFinal ? placeLabel(finalIx, finalNumbers, inFinal) : undefined;
+    const inPrevious = previousIx ? nodesOfTarget(previousIx, target)[0] : undefined;
+    const label = inTemplate
+      ? placeLabel(templateIx, templateNumbers, inTemplate)
+      : inFinal
+        ? placeLabel(finalIx, finalNumbers, inFinal)
+        : inPrevious && previousIx && previousNumbers
+          ? placeLabel(previousIx, previousNumbers, inPrevious)
+          : undefined;
     return label ?? `대상 ${refLabel(target)}`;
   };
   const articleLabel = (id: Id): string => finalNumbers.get(id)?.label ?? templateNumbers.get(id)?.label ?? "조";
@@ -210,13 +221,15 @@ export interface ProductRefInput {
   /** 이 상품이 탑재한 담보의 담보약관만 든 재료 (서비스 `generalDependents`). 없으면 같은 템플릿 안 · 끈 조만. */
   dependents?: GeneralDependents;
   numbers?: ReadonlyMap<Id, NodeNumber>;
+  /** 바뀌기 전 템플릿 — 문구의 번호 재료(`BreakLabels.previous`). */
+  previous?: DocumentNode;
   coordinate?: Coordinate;
 }
 
 /** 상품 하나의 참조 깨짐 이슈 — 템플릿 + 사본 + 노출 끔 + 밖의 참조 (서버 저장 검사 · 보통약관 탭 목차 · 조 편집 목록이 같은 한 벌). */
-export function productRefIssues({ template, copies, hidden, dependents, numbers, coordinate }: ProductRefInput): Issue[] {
+export function productRefIssues({ template, copies, hidden, dependents, numbers, previous, coordinate }: ProductRefInput): Issue[] {
   const final = applyArticleCopies(template, [...copies]);
   const outside = dependents ? outsideRefsFor(dependents, new Set(dependents.documents.map((d) => d.coverageId)), final) : [];
   const breaks = copyRefBreaks({ template, final, hidden, outside, ...(coordinate ? { coordinate } : {}) });
-  return refBreakIssues(breaks, { template, final, ...(numbers ? { numbers } : {}) });
+  return refBreakIssues(breaks, { template, final, ...(numbers ? { numbers } : {}), ...(previous ? { previous } : {}) });
 }

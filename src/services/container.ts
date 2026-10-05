@@ -7,6 +7,7 @@
  * - coverage ← UsageSource = `coverageUsageSource` (노드 삭제의 문면 사용처) · MountSync = product.syncStructureIn (구조 정정 뒤 탑재 스냅샷)
  * - clause   ← UsageSource = `clauseUsageSource` (참조 문서)
  * - document ← ClauseGate = 함수조항 정의(존재·요구 구분자·옵션 검증) · TypeResolver = 카탈로그 정의 + 담보속성 유효값 ·
+ *              productImpact = product.templateImpact (템플릿 저장의 상품 영향 — ADR-0081) ·
  *              UsageSource = `documentUsageSource` (상품 템플릿 · 담보 문서 연결 · 옵션 오버라이드 · 함수조항의 별표 참조)
  * - product  ← CoverageMasterSource = coverage.get (구조적 상위집합) · GeneralDocumentGate = document.get 이 general 인가 ·
  *              (+ `dependents` = 템플릿을 가리키는 담보약관 · 함수조항 참조 — ADR-0081) ·
@@ -141,7 +142,14 @@ export function createServices(root: Db, opts: ContainerOptions = {}): Services 
   // 구조 정정 뒤 탑재 스냅샷 동기화 — product 가 coverage 를 마스터로 보므로 지연 참조 (coverage ↔ product).
   const coverage = createCoverageService(db, { usage: coverageUsageSource(db), newId, mountSync: { syncStructure: (tx, pcId, who) => services.product.syncStructureIn(tx, pcId, who) } });
   const clause = createClauseService(db, { usage: clauseUsageSource(db) });
-  const document = createDocumentService(db, { clauseGate: clauseGateOf, typeResolver: typeResolverOf, usages: documentUsageSource(), newId });
+  const document = createDocumentService(db, {
+    clauseGate: clauseGateOf,
+    typeResolver: typeResolverOf,
+    usages: documentUsageSource(),
+    newId,
+    // 템플릿 저장의 상품 영향 — product 가 document 를 게이트로 보므로 지연 참조 (ADR-0081 결정 3)
+    productImpact: (_tx, templateId, tree) => services.product.templateImpact(templateId, tree),
+  });
   const product = createProductService(db, {
     coverageMaster: { tree: (id) => services.coverage.get(id) },
     generalDocuments: {
