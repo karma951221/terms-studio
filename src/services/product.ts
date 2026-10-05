@@ -19,6 +19,7 @@ import {
   addAttributeValue,
   applyArticleCopies,
   articlesById,
+  copyCodeIssues,
   liveArticleCopies,
   newIssuesOnly,
   productRefIssues,
@@ -1082,6 +1083,7 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
           const templateArticles = template ? articlesById(template.tree) : new Map<Id, ArticleNode>();
           const copies: ArticleCopy[] = [];
           const copied = new Set<Id>();
+          const savedCopies = new Map((await repo.listArticleCopies(tx, productId)).map((c) => [c.articleId, c] as const));
           for (const c of input.copies ?? []) {
             const where = at({ articleId: c.articleId });
             if (copied.has(c.articleId)) {
@@ -1098,7 +1100,10 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
               issues.push(issue("structure", "조 사본을 읽을 수 없습니다 — 새로고침한 뒤 다시 고쳐 주세요", where));
               continue;
             }
-            if (!sameArticle(c.article, original)) copies.push({ articleId: c.articleId, article: c.article, templateHash: c.templateHash });
+            if (sameArticle(c.article, original)) continue;
+            // 사본의 새 노드는 템플릿 원본 조가 쓰지 않는 코드여야 한다 — 저장된 사본의 노드는 그대로 둔다 (ADR-0081 결정 4)
+            issues.push(...copyCodeIssues(original, c.article, savedCopies.get(c.articleId)?.article, at({})));
+            copies.push({ articleId: c.articleId, article: c.article, templateHash: c.templateHash });
           }
           const effective = template ? applyArticleCopies(template.tree, copies) : undefined;
           // ②' 참조 무결성 (ADR-0081 결정 2) — 최종 트리 전체에서 템플릿 단독일 때 없던 깨짐. 사본이 든 조의 오류는 전부, 나머지 조는 새 오류만.
@@ -1160,7 +1165,6 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
           for (const o of await repo.listOverrides(tx, scope)) if (!kept.has(o.nodeId)) await repo.deleteOverride(tx, scope, o.nodeId, o.clauseCode);
           for (const w of writes) await repo.upsertOverride(tx, scope, w.nodeId, w.clauseCode, w.diff, actor.userId);
           // 조 사본 — 빠진 것은 지우고, 바뀐 것만 쓴다 (내용 · 지문이 같으면 행을 건드리지 않는다)
-          const savedCopies = new Map((await repo.listArticleCopies(tx, productId)).map((c) => [c.articleId, c] as const));
           const keptCopies = new Set(copies.map((c) => c.articleId));
           for (const id of savedCopies.keys()) if (!keptCopies.has(id)) await repo.deleteArticleCopy(tx, productId, id);
           for (const c of copies) {

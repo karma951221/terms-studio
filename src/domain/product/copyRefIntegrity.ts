@@ -10,9 +10,9 @@
  *   원인 조(사본 · 끈 조)의 목차 줄에 붙인다 — 그 상품에서 할 수 있는 일은 사본을 되돌리거나 노출을 켜는 것이다.
  * - 검사는 문서 저장 검증과 같은 정적 검사라 조건을 평가하지 않는다 — 밟지 않는 가지 안의 참조도 깨짐으로 본다(ADR-0081 결과).
  */
-import { indexTree, type DocumentNode, type TreeIndex } from "../document/nodes";
+import { indexTree, type ArticleNode, type DocumentNode, type TreeIndex } from "../document/nodes";
 import { numberTree, type NodeNumber } from "../document/numbering";
-import { nodesOfTarget, parseRefKey, refKey, refLabel, referenceKeys } from "../document/pcode";
+import { documentCodeEntries, fillCodes, nodesOfTarget, parseRefKey, refKey, refLabel, referenceKeys } from "../document/pcode";
 import { collectRefs } from "../document/refs";
 import type { Code, Coordinate, Id, Issue } from "../types";
 import { applyArticleCopies, type ArticleCopy } from "./articleCopies";
@@ -232,4 +232,40 @@ export function productRefIssues({ template, copies, hidden, dependents, numbers
   const outside = dependents ? outsideRefsFor(dependents, new Set(dependents.documents.map((d) => d.coverageId)), final) : [];
   const breaks = copyRefBreaks({ template, final, hidden, outside, ...(coordinate ? { coordinate } : {}) });
   return refBreakIssues(breaks, { template, final, ...(numbers ? { numbers } : {}), ...(previous ? { previous } : {}) });
+}
+
+// ───────────────────────────── 사본의 새 코드 (결정 4) ─────────────────────────────
+
+/** 조 하나를 든 문서 — 코드 자리 색인용. */
+function soloDoc(article: ArticleNode): DocumentNode {
+  return { id: "__copy", kind: "document", title: "", children: [article] };
+}
+
+/** 조 하나의 코드 (항 · 호 · 목 · 함수조항 참조 · 반복 블록). 편집기가 사본의 새 자리에 주지 않을 코드(`TreeEnv.reservedCodes`)다. */
+export function articleCodes(article: ArticleNode): Set<Code> {
+  return new Set(documentCodeEntries(soloDoc(article)).flatMap((e) => (e.code !== undefined ? [e.code] : [])));
+}
+
+/**
+ * 사본의 새 노드가 템플릿 원본 조의 코드를 쓰는가 (ADR-0081 결정 4) — 새 노드 = 템플릿 원본 조에 없는 노드 id.
+ * 이미 저장된 사본에 같은 id · 같은 코드로 있던 노드는 그대로 둔다(이 결정 전 사본을 다시 쓰지 않는다 — 새 편집만 거른다).
+ * 오류는 그 노드 자리에 추천 코드(템플릿 · 사본 코드를 피한 위치값)와 함께.
+ */
+export function copyCodeIssues(original: ArticleNode, copy: ArticleNode, saved: ArticleNode | undefined, coordinate: Coordinate = {}): Issue[] {
+  const reserved = articleCodes(original);
+  if (reserved.size === 0) return [];
+  const originalIds = new Set(indexTree(soloDoc(original)).nodes.keys());
+  const savedCodes = new Map(saved ? documentCodeEntries(soloDoc(saved)).map((e) => [e.id, e.code] as const) : []);
+  const entries = documentCodeEntries(soloDoc(copy));
+  const out: Issue[] = [];
+  for (const e of entries) {
+    if (e.code === undefined || originalIds.has(e.id) || !reserved.has(e.code) || savedCodes.get(e.id) === e.code) continue;
+    const suggestion = fillCodes(entries, { only: new Set([e.id]), renumber: new Set([e.id]), reserved: () => reserved }).get(e.id);
+    out.push({
+      kind: "structure",
+      message: `사본에 새로 넣은 자리의 코드 ${e.code} 은 템플릿 원본 조가 쓰는 코드다 — 템플릿이 쓰지 않는 코드를 받는다${suggestion ? ` (추천 ${suggestion})` : ""}`,
+      at: { ...coordinate, articleId: copy.id, articleTitle: copy.title, nodePath: [e.id] },
+    });
+  }
+  return out;
 }

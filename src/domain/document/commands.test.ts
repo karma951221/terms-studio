@@ -234,6 +234,31 @@ describe("노드 삭제 — 참조되는 조는 삭제 거부 (D-P4-7 · 참조 
   });
 });
 
+describe("상품 조 사본의 새 코드 — 템플릿 원본 조가 쓰는 코드를 피한다 (ADR-0081 결정 4)", () => {
+  const doc = (): DocumentNode => ({
+    id: "d",
+    kind: "document",
+    title: "보통약관",
+    // 사본 — 템플릿 원본 조(P0100 · P0200)에서 ①(P0100)을 지운 뒤
+    children: [{ id: "a1", kind: "article", title: "지급", children: [{ id: "p2", kind: "paragraph", code: "P0200", children: [{ id: "t2", kind: "text", text: "나" }] }] }],
+  });
+  const fresh = (id: string): ParagraphNode => ({ id, kind: "paragraph", children: [{ id: `${id}-t`, kind: "text", text: "새" }] });
+  const codeOf = (d: DocumentNode, id: string) => (indexTree(d).nodes.get(id)!.node as ParagraphNode).code;
+
+  it("env.reservedCodes 가 없으면 위치값(첫 자리 = P0100)을 받는다 — 지운 ①의 코드가 되살아난다", () => {
+    expect(codeOf(unwrap(applyCommand(doc(), { type: "insert", node: fresh("n1"), at: { parentId: "a1", index: 0 } })), "n1")).toBe("P0100");
+  });
+
+  it("env.reservedCodes 면 템플릿 원본 조의 코드를 건너뛴다 — 넣기 · 복제 둘 다", () => {
+    const env = { reservedCodes: (articleId: string) => (articleId === "a1" ? new Set(["P0100", "P0200"]) : undefined) };
+    const inserted = unwrap(applyCommand(doc(), { type: "insert", node: fresh("n1"), at: { parentId: "a1", index: 0 } }, { env }));
+    expect(codeOf(inserted, "n1")).toBe("P0300");
+    const duplicated = unwrap(applyCommand(inserted, { type: "duplicate", nodeId: "n1" }, { env, newId: sequentialIds("c") }));
+    const copyId = (duplicated.children[0] as ArticleNode).children[1].id;
+    expect(codeOf(duplicated, copyId)).toBe("P0400");
+  });
+});
+
 describe("텍스트 · 조 명 · 슬롯 · 참조 대상 · 옵션 수정", () => {
   it("텍스트런 편집 · 조 명 수정 · 문서 제목 수정", () => {
     const { doc } = twoArticles();

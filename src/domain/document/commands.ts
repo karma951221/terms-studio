@@ -335,7 +335,7 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       }
       const node = structuredClone(cmd.node);
       c.value.list.splice(clampIndex(cmd.at.index, c.value.list.length), 0, node);
-      numberNew(work, node);
+      numberNew(work, node, env);
       return verifyPlaced(work, node, env);
     }
 
@@ -382,7 +382,7 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       if (!c.value.allowed.includes(copy.kind)) return structure(`이 자리에 ${copy.kind} 은(는) 올 수 없습니다`, [...c.value.path]);
       c.value.list.splice(clampIndex(at.index, c.value.list.length), 0, copy);
       // 붙여넣기(사본)는 항상 재채번 — 새로 생긴 노드라 가리키는 곳이 없다 (ADR-0072 결정 5). 사본 안에서 사본을 가리키던 참조는 새 코드로 따라간다
-      followRenumbered(copy, e.value.articleId, numberNew(work, copy));
+      followRenumbered(copy, e.value.articleId, numberNew(work, copy, env));
       return verifyPlaced(work, copy, env);
     }
 
@@ -636,7 +636,7 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       brs.splice(clampIndex(cmd.index, brs.length), 0, branch as BlockBranch & InlineBranch);
       const rule = elseRule(brs, e.value.path, e.value.node);
       if (!rule.ok) return rule;
-      for (const child of branch.children as Node[]) numberNew(work, child);
+      for (const child of branch.children as Node[]) numberNew(work, child, env);
       const after = indexTree(work, env.coordinate);
       const ids = new Set<Id>([branch.id]);
       (branch.children as Node[]).forEach((c) => idsIn(c).forEach((id) => ids.add(id)));
@@ -725,10 +725,11 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
 
 /**
  * 새로 놓인 하위 트리의 코드 자리를 매긴다 (새 노드 · 사본, ADR-0072 결정 5). 이미 있던 조에 놓인 자리는 가진 코드를 버리고 새로 —
- * 같은 조의 코드와 겹치지 않게. 함께 새로 생긴 조 안의 자리는 가진 코드를 둔다(범위가 새 조뿐이라 겹칠 것이 없다), 없으면 채운다.
+ * 같은 조의 코드와 겹치지 않게(상품 조 사본이면 템플릿 원본 조의 코드도 피한다 — `env.reservedCodes`, ADR-0081 결정 4).
+ * 함께 새로 생긴 조 안의 자리는 가진 코드를 둔다(범위가 새 조뿐이라 겹칠 것이 없다), 없으면 채운다.
  * 돌려주는 것은 다시 매긴 자리의 옛 코드 → 새 대상(놓인 조 · 새 코드).
  */
-function numberNew(doc: DocumentNode, root: Node): Map<Code, RefTarget> {
+function numberNew(doc: DocumentNode, root: Node, env: TreeEnv = {}): Map<Code, RefTarget> {
   const ix = indexTree(doc);
   const fresh = new Set(nodesIn(root).map((n) => n.id));
   const coded = nodesIn(root).filter((n) => isCodedKind(n.kind));
@@ -737,7 +738,7 @@ function numberNew(doc: DocumentNode, root: Node): Map<Code, RefTarget> {
   const before = new Map(coded.map((n) => [n.id, (n as { code?: Code }).code] as const));
   const moved = new Map<Code, RefTarget>();
   if (ids.size === 0) return moved;
-  for (const [id, code] of codeTreeInPlace(doc, { renumber, only: ids })) {
+  for (const [id, code] of codeTreeInPlace(doc, { renumber, only: ids, ...(env.reservedCodes ? { reserved: env.reservedCodes } : {}) })) {
     const old = before.get(id);
     const articleId = ix.nodes.get(id)?.articleId;
     if (old !== undefined && articleId !== undefined) moved.set(old, { articleId, code });

@@ -81,11 +81,19 @@ function takenBy(entry: CodedEntry, entries: readonly CodedEntry[], code: (e: Co
   return out;
 }
 
+/** 채번 옵션 — `renumber` 가진 코드를 버리고 새로 · `only` 그 자리만 · `reserved` 범위(조)마다 쓰지 않을 코드(공존 여부와 무관). */
+export interface FillOptions {
+  renumber?: ReadonlySet<Id>;
+  only?: ReadonlySet<Id>;
+  /** 상품 조 사본 — 템플릿 원본 조가 쓰는 코드를 새 자리에 주지 않는다 (ADR-0081 결정 4, ADR-0072 결정 5 의 예외). */
+  reserved?: (scope: string) => ReadonlySet<Code> | undefined;
+}
+
 /**
  * 코드를 매길 자리에 코드를 채운다 — 깊이 순 · 같은 깊이는 주어진(문서) 순. 매길 자리 = 코드가 없는 자리 + `renumber` 에 든 자리
  * (가진 코드를 버리고 새로). `only` 를 주면 그 자리만 매긴다(나머지 코드 없는 자리는 그대로 둔다). 돌려주는 것은 새로 매긴 id → 코드.
  */
-export function fillCodes(entries: readonly CodedEntry[], opts: { renumber?: ReadonlySet<Id>; only?: ReadonlySet<Id> } = {}): Map<Id, Code> {
+export function fillCodes(entries: readonly CodedEntry[], opts: FillOptions = {}): Map<Id, Code> {
   const assigned = new Map<Id, Code>();
   const pending = (e: CodedEntry) => (opts.only === undefined || opts.only.has(e.id)) && (e.code === undefined || opts.renumber?.has(e.id) === true);
   const current = (e: CodedEntry): Code | undefined => (assigned.has(e.id) ? assigned.get(e.id) : pending(e) ? undefined : e.code);
@@ -93,7 +101,11 @@ export function fillCodes(entries: readonly CodedEntry[], opts: { renumber?: Rea
     .map((e, i) => ({ e, i }))
     .filter(({ e }) => pending(e))
     .sort((x, y) => x.e.depth - y.e.depth || x.i - y.i);
-  for (const { e } of order) assigned.set(e.id, nextCode(takenBy(e, entries, current), e.position));
+  for (const { e } of order) {
+    const taken = takenBy(e, entries, current);
+    for (const c of opts.reserved?.(e.scope) ?? []) taken.add(pcodeNumber(c));
+    assigned.set(e.id, nextCode(taken, e.position));
+  }
   return assigned;
 }
 
@@ -146,7 +158,7 @@ export function documentCodeEntries(doc: DocumentNode, ix: TreeIndex = indexTree
 }
 
 /** 문면 트리에 코드를 매긴다 — **제자리 수정**(편집 명령의 작업 사본용). 매긴 id → 코드. */
-export function codeTreeInPlace(doc: DocumentNode, opts: { renumber?: ReadonlySet<Id>; only?: ReadonlySet<Id> } = {}): Map<Id, Code> {
+export function codeTreeInPlace(doc: DocumentNode, opts: FillOptions = {}): Map<Id, Code> {
   const ix = indexTree(doc);
   const assigned = fillCodes(documentCodeEntries(doc, ix), opts);
   for (const [id, code] of assigned) (ix.nodes.get(id)!.node as Node & { code?: Code }).code = code;

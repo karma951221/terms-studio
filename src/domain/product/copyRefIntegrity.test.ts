@@ -7,7 +7,7 @@ import type { ArticleNode, DocumentNode, ParagraphNode } from "@/domain/document
 import type { Issue } from "@/domain/types";
 
 import { applyArticleCopies } from "./articleCopies";
-import { clauseGeneralRefs, copyRefBreaks, newIssuesOnly, outsideRefsOf, productRefIssues, refBreakIssues } from "./copyRefIntegrity";
+import { clauseGeneralRefs, copyCodeIssues, copyRefBreaks, newIssuesOnly, outsideRefsOf, productRefIssues, refBreakIssues } from "./copyRefIntegrity";
 
 const text = (id: string, t: string) => ({ id, kind: "text" as const, text: t });
 const para = (id: string, code: string, ...children: ParagraphNode["children"]): ParagraphNode => ({ id, kind: "paragraph", code, children: children.length > 0 ? children : [text(`${id}-t`, "글")] });
@@ -144,5 +144,20 @@ describe("productRefIssues — 화면 · 서버가 같은 한 벌로 (템플릿 
       ["a10", "담보약관 「암」 보험금"],
     ]);
     expect(productRefIssues({ template: template(), copies: [], hidden: [] })).toEqual([]);
+  });
+});
+
+describe("copyCodeIssues — 사본의 새 노드가 템플릿 원본 조의 코드를 쓰면 거부 (ADR-0081 결정 4)", () => {
+  it("템플릿에 없던 노드 id + 템플릿 원본 조의 코드 → 그 노드 자리에 오류, 템플릿 노드 · 겹치지 않는 코드는 통과", () => {
+    const copy: ArticleNode = { ...a10(), children: [para("p10-new", "P0100"), para("p10-2", "P0200"), para("p10-other", "P0300")] };
+    const issues = copyCodeIssues(a10(), copy, undefined, product);
+    expect(issues.map((i) => [i.kind, i.at.articleId, i.at.nodePath])).toEqual([["structure", "a10", ["p10-new"]]]);
+    expect(issues[0].message).toBe("사본에 새로 넣은 자리의 코드 P0100 은 템플릿 원본 조가 쓰는 코드다 — 템플릿이 쓰지 않는 코드를 받는다 (추천 P0400)");
+  });
+
+  it("이미 저장된 사본에 같은 코드로 있던 노드는 그대로 둔다 — 이 결정 전 사본을 다시 쓰지 않는다", () => {
+    const copy: ArticleNode = { ...a10(), children: [para("p10-new", "P0100"), para("p10-2", "P0200")] };
+    expect(copyCodeIssues(a10(), copy, copy, product)).toEqual([]);
+    expect(copyCodeIssues(a10(), copy, { ...copy, children: [para("p10-new", "P0500")] }, product)).toHaveLength(1);
   });
 });

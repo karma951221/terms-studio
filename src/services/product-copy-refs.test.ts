@@ -150,5 +150,14 @@ describe("ADR-0081 — 보통약관 탭 저장의 참조 무결성 (PGlite)", ()
     const impact = (await svc.templateImpact(GENERAL, next)).filter((c) => c.ownerName?.startsWith("템플릿 영향"));
     expect(impact).toEqual([{ document: "product", ownerId: p.id, ownerName: "템플릿 영향 A", articleId: "a11", subjectName: "제2조 ① — 없는 제1조 ①을 가리킴 · 가리키는 조를 고친다" }]);
   });
+
+  it("사본의 새 노드가 템플릿 원본 조의 코드를 쓰면 거부 — 이미 저장된 사본의 노드는 그대로 (ADR-0081 결정 4)", async () => {
+    const p = unwrap(await svc.createProduct(editor, { name: "새 코드", generalDocumentId: GENERAL }));
+    // 제1조 ②만 남기고 새 항을 P0100 으로 — 지운 ①의 코드를 다시 쓴다
+    const reused: ArticleNode = { ...a10(), children: [para("p10-new", "P0100"), para("p10-2", "P0200")] };
+    const issues = issuesOf(await save(p.id, { copies: [copy(reused)] }));
+    expect(issues.map((i) => [i.at.articleId, i.at.nodePath?.at(-1)])).toEqual([["a10", "p10-new"]]);
+    unwrap(await save(p.id, { copies: [copy(rewrittenA10()), copy(fixedA11())] }));
+  });
 });
 

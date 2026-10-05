@@ -708,6 +708,11 @@ export interface TreeEnv {
    * 저장 검사가 거부한다. 템플릿 저작은 끄고 그대로 거부한다(D-P4-7).
    */
   allowDanglingRefs?: boolean;
+  /**
+   * 조마다 새 자리에 주지 않을 코드 — 상품 조 사본 편집이 템플릿 원본 조의 코드를 준다(ADR-0081 결정 4). 새 항 · 호 · 목 · 함수조항 참조는
+   * 이 코드를 건너뛰어 템플릿이 나중에 원본 코드를 가리켜도 사본의 다른 자리에 조용히 붙지 않는다. 템플릿 저작은 주지 않는다.
+   */
+  reservedCodes?: (articleId: Id) => ReadonlySet<Code> | undefined;
 }
 
 /**
