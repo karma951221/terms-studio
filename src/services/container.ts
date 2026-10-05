@@ -7,8 +7,10 @@
  * - coverage ← UsageSource = `coverageUsageSource` (노드 삭제의 문면 사용처) · MountSync = product.syncStructureIn (구조 정정 뒤 탑재 스냅샷)
  * - clause   ← UsageSource = `clauseUsageSource` (참조 문서)
  * - document ← ClauseGate = 함수조항 정의(존재·요구 구분자·옵션 검증) · TypeResolver = 카탈로그 정의 + 담보속성 유효값 ·
+ *              productImpact = product.templateImpact (템플릿 저장의 상품 영향 — ADR-0081) ·
  *              UsageSource = `documentUsageSource` (상품 템플릿 · 담보 문서 연결 · 옵션 오버라이드 · 함수조항의 별표 참조)
  * - product  ← CoverageMasterSource = coverage.get (구조적 상위집합) · GeneralDocumentGate = document.get 이 general 인가 ·
+ *              (+ `dependents` = 템플릿을 가리키는 담보약관 · 함수조항 참조 — ADR-0081) ·
  *              GeneralAttachmentCheck = document.requiredDiscriminators + 카탈로그 레벨 ·
  *              OptionValidator = clause 정의의 validateOptionSelection · AttributeRefSource = `attributeRefSource`
  * - refs     ← 그래프 서비스 (관계정보 · 무결성)
@@ -22,13 +24,14 @@
  */
 import type { Discriminator } from "@/domain/catalog";
 import { validateOptionSelection } from "@/domain/clause";
-import { catalogTypeResolver, clauseGateFrom, indexTree, type ClauseGate } from "@/domain/document";
+import { catalogTypeResolver, clauseGateFrom, collectRefs, indexTree, type ClauseGate } from "@/domain/document";
 import { checkTypes, parse, type TypeResolver } from "@/domain/expression";
-import type { RequiredCoverageRef } from "@/domain/product";
+import { clauseGeneralRefs, outsideRefsOf, type GeneralDependents, type RequiredCoverageRef } from "@/domain/product";
 import type { Code, Id } from "@/domain/types";
 
 import * as catalogRepo from "@/db/repo/catalog";
 import * as clauseRepo from "@/db/repo/clause";
+import * as documentRepo from "@/db/repo/document";
 import * as productRepo from "@/db/repo/product";
 import type { Db } from "@/db/repo/types";
 
@@ -99,6 +102,21 @@ function requiredCoverageRefs(codes: readonly Code[], defs: readonly Discriminat
   return out;
 }
 
+/**
+ * 보통약관 템플릿을 밖에서 가리키는 참조 (ADR-0081 결정 2) — 대응 보통약관이 이 템플릿인 담보약관(담보별 · 그 문서가 쓰는 함수조항)과
+ * 보통약관 참조가 든 함수조항. 상품이 제 탑재 · 제 트리로 거른다(`outsideRefsFor`).
+ */
+async function generalDependentsOf(tx: Db, generalDocumentId: Id): Promise<GeneralDependents> {
+  const documents: GeneralDependents["documents"] = [];
+  for (const d of await documentRepo.listDocumentRecords(tx)) {
+    if (d.kind !== "special" || d.generalDocumentId !== generalDocumentId || !d.ownerId) continue;
+    const clauseCodes = [...new Set(collectRefs(d.tree).flatMap((r) => (r.kind === "clause" ? [r.clauseCode] : [])))];
+    documents.push({ coverageId: d.ownerId, clauseCodes, refs: outsideRefsOf(d.tree, { document: "special", ownerId: d.ownerId, documentId: d.id, ownerName: d.title }) });
+  }
+  const clauses = (await clauseRepo.listClauses(tx)).map((c) => ({ code: c.code, refs: clauseGeneralRefs(c) })).filter((c) => c.refs.length > 0);
+  return { documents, clauses };
+}
+
 /** 담보속성 유효값 조회 — 구분자 식의 `attr.X = '값'` 리터럴 검사에 쓴다. */
 async function attributeValuesOf(tx: Db): Promise<(kindCode: Code) => string[] | undefined> {
   const kinds = await productRepo.listAttributeKinds(tx);
@@ -124,7 +142,14 @@ export function createServices(root: Db, opts: ContainerOptions = {}): Services 
   // 구조 정정 뒤 탑재 스냅샷 동기화 — product 가 coverage 를 마스터로 보므로 지연 참조 (coverage ↔ product).
   const coverage = createCoverageService(db, { usage: coverageUsageSource(db), newId, mountSync: { syncStructure: (tx, pcId, who) => services.product.syncStructureIn(tx, pcId, who) } });
   const clause = createClauseService(db, { usage: clauseUsageSource(db) });
-  const document = createDocumentService(db, { clauseGate: clauseGateOf, typeResolver: typeResolverOf, usages: documentUsageSource(), newId });
+  const document = createDocumentService(db, {
+    clauseGate: clauseGateOf,
+    typeResolver: typeResolverOf,
+    usages: documentUsageSource(),
+    newId,
+    // 템플릿 저장의 상품 영향 — product 가 document 를 게이트로 보므로 지연 참조 (ADR-0081 결정 3)
+    productImpact: (_tx, templateId, tree) => services.product.templateImpact(templateId, tree),
+  });
   const product = createProductService(db, {
     coverageMaster: { tree: (id) => services.coverage.get(id) },
     generalDocuments: {
@@ -144,6 +169,7 @@ export function createServices(root: Db, opts: ContainerOptions = {}): Services 
         return doc?.kind === "general" ? { tree: doc.tree, version: doc.version } : undefined;
       },
       validate: (id, tree) => services.document.validateTree(id, tree),
+      dependents: (id) => generalDependentsOf(db, id),
     },
     generalAttachment: {
       requiredRefs: async (generalDocumentId) => {

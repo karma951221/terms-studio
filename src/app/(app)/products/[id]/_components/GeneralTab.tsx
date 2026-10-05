@@ -6,7 +6,7 @@ import type { Booklet } from "@/domain/assembly";
 import type { EnumDef } from "@/domain/catalog";
 import type { Clause } from "@/domain/clause";
 import { clauseSpanBy, numberTree, referenceTargetIndex, type Box, type DocumentNode, type NodeNumber } from "@/domain/document";
-import { applyArticleCopies, articleHash, articlesById, type ArticleCopy, type ClauseOptionOverride, type ProductCoverage } from "@/domain/product";
+import { applyArticleCopies, articleHash, articlesById, productRefIssues, type ArticleCopy, type ClauseOptionOverride, type GeneralDependents, type ProductCoverage } from "@/domain/product";
 import type { Id } from "@/domain/types";
 
 import { currentGeneralArticle, generalIssueLink, generalSections, generalSectionLabel, generalTabIssues, renderedNodeIds, sectionPreviewDoc } from "../../lib";
@@ -42,6 +42,8 @@ export interface GeneralTabProps {
   templateChanged?: boolean;
   /** 이 상품의 조 사본 — 템플릿에 자리가 남은 것만 (ADR-0079). */
   articleCopies?: readonly ArticleCopy[];
+  /** 이 상품이 볼 밖의 참조 재료 — 탑재한 담보의 담보약관 · 함수조항 (ADR-0081). 참조 깨짐 목록 · 목차 줄의 재료. */
+  dependents?: GeneralDependents;
   /** 편집 중 조 편집 패널의 재료(템플릿 · 트리 밖) — 별표 · 박스 · 함수조항 · 구분자 · 열거형 · 조건 문맥. */
   copyEditorData?: Omit<CopyEditorData, "templateId" | "template">;
   /** 템플릿 번호 (원천 노드 id 키) — 목차·원문이 쓰는 「끄기 전」 번호. */
@@ -81,6 +83,7 @@ export function GeneralTab({
   templateVersion,
   templateChanged = false,
   articleCopies = [],
+  dependents,
   copyEditorData,
   generalNumbers: templateNumbers,
   hiddenArticles,
@@ -104,6 +107,8 @@ export function GeneralTab({
   const currentArticleId = currentGeneralArticle(sections, articleId);
   const references = generalTree ? referenceTargetIndex(generalTree, generalNumbers) : new Map();
   const { errorCount } = generalTabIssues(booklet?.issues ?? [], new Set());
+  // 저장본의 참조 깨짐 — 템플릿이 바뀌어 깨진 상품도 여기서 드러난다. 고치기 전까지 이 탭 저장은 거부된다 (ADR-0081 결정 3)
+  const refBreakCount = templateTree ? productRefIssues({ template: templateTree, copies: articleCopies, hidden: hiddenArticles, ...(dependents ? { dependents } : {}) }).length : 0;
   const appendixCount = booklet?.appendices.length ?? 0;
   const baseCoverageIds = new Set(baseCoverages.map((pc) => pc.id));
 
@@ -156,7 +161,14 @@ export function GeneralTab({
 
   const summary = generalTree ? (
     <>
-      <b>{articleTotal}</b>조 중 <b>{shownCount}</b> 노출 · 사본 {articleCopies.length} · 오버라이드 {overrides.length} · 오류 {errorCount} · 별표 {appendixCount}(자동)
+      <b>{articleTotal}</b>조 중 <b>{shownCount}</b> 노출 · 사본 {articleCopies.length} · 오버라이드 {overrides.length} · 오류 {errorCount}
+      {refBreakCount > 0 && (
+        <>
+          {" "}
+          · <span className="ts-error">참조 깨짐 {refBreakCount}</span>
+        </>
+      )}{" "}
+      · 별표 {appendixCount}(자동)
     </>
   ) : undefined;
   const templateTitle = generalDocumentId ? generals.find((g) => g.id === generalDocumentId)?.title : undefined;
@@ -192,6 +204,9 @@ export function GeneralTab({
           hiddenArticles={hiddenArticles}
           overrides={overrides}
           copies={articleCopies}
+          {...(templateTree ? { template: templateTree } : {})}
+          {...(dependents ? { dependents } : {})}
+          clauses={clauses}
         >
           {body}
         </GeneralEditProvider>

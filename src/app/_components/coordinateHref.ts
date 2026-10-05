@@ -34,6 +34,8 @@ export function coordinateHref(coordinate: Coordinate | undefined): string | und
     if (coverageId) return `/products/${coordinate.ownerId}/coverages/${coverageId}`;
     // 기본계약 0 · 2+ 오류 — 고치는 자리는 상품담보 탭(`?tab=coverages`)의 기본계약 블록이다 (상품 첫 화면이 아니라)
     if (coordinate.refPath === BASE_CONTRACT_REF) return `/products/${coordinate.ownerId}?tab=coverages#base-contract`;
+    // 보통약관 조 — 템플릿 저장의 상품 영향(참조 깨짐)은 그 상품 보통약관 탭의 그 조로 (ADR-0081)
+    if (coordinate.articleId) return `/products/${coordinate.ownerId}?tab=general&art=${coordinate.articleId}`;
     return `/products/${coordinate.ownerId}`;
   }
   return undefined;

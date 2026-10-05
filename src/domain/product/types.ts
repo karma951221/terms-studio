@@ -9,6 +9,7 @@
  * 필요한 것은 이 파일 끝의 **주입 인터페이스**로 받는다.
  */
 import type { DocumentNode } from "../document/nodes";
+import type { OutsideRef } from "./copyRefIntegrity";
 import type { SlotPath } from "../catalog/types";
 import type { AttachLevel, Code, Coordinate, Id, Issue, ValueSlot } from "../types";
 
@@ -234,6 +235,19 @@ export interface GeneralDocumentGate {
   template?(generalDocumentId: Id): Promise<{ tree: DocumentNode; version: number } | undefined>;
   /** 그 템플릿 자리에서 트리 하나를 문면 저장 검증과 같은 규칙으로 검사한다(경고 포함) — 조 사본 검사 (ADR-0079). 기본 구현은 통과. */
   validate?(generalDocumentId: Id, tree: DocumentNode): Promise<Issue[]>;
+  /**
+   * 이 템플릿 밖에서 이 템플릿을 가리키는 참조 — 대응 보통약관이 이 템플릿인 담보약관(담보별)의 조연결 · 보통약관 조 참조와
+   * 함수조항 본문의 보통약관 참조 (ADR-0081 결정 2). 상품은 제가 탑재한 담보 · 제 트리가 쓰는 함수조항 것만 본다. 기본 구현은 없음.
+   */
+  dependents?(generalDocumentId: Id): Promise<GeneralDependents>;
+}
+
+/** 템플릿을 가리키는 밖의 참조 재료 (ADR-0081) — `GeneralDocumentGate.dependents`. */
+export interface GeneralDependents {
+  /** 대응 보통약관이 이 템플릿인 담보약관 — 그 문서가 쓰는 함수조항 코드와 함께. */
+  documents: { coverageId: Id; clauseCodes: Code[]; refs: OutsideRef[] }[];
+  /** 보통약관 참조가 든 함수조항. */
+  clauses: { code: Code; refs: OutsideRef[] }[];
 }
 
 /** 함수조항 옵션 유효 집합 검증 (B2). 빈 배열 = 유효. */

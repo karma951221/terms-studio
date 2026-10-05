@@ -5238,6 +5238,10 @@ button.ts-ref-fold:hover {
 .ts-copy-status.is-stale { border-left-color: var(--ts-warn); }
 .ts-copy-status-actions { display: inline-flex; gap: 8px; margin-left: auto; }
 .ts-copy-status-actions > button { height: 28px; padding: 0 10px; border-radius: 4px; font-size: 13px; }
+/* 깨지는 참조 목록 — 조 편집 패널 위 (ADR-0081) */
+.ts-ref-breaks { margin: 0 0 8px; padding: 6px 10px; border: 1px solid var(--ts-rule); border-left: 3px solid var(--ts-error); border-radius: 4px; background: var(--ts-surface-2); font-size: 13px; }
+.ts-ref-breaks-title { margin: 0 0 4px; }
+.ts-ref-breaks ul { margin: 0; padding-left: 18px; }
 .ts-copy-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
 .ts-copy-compare > section { min-width: 0; }
 .ts-copy-compare > section:first-child { opacity: 0.85; border-right: 1px dashed var(--ts-rule-strong); padding-right: 12px; }

@@ -48,7 +48,7 @@ import {
   type TreeIndex,
 } from "./nodes";
 import { isRepeatSource, type RepeatSource } from "./blockRepeat";
-import { codeTreeInPlace, documentCodeIssues, isCodedKind, isPCode, lostRefKeys, refKey, refLabel } from "./pcode";
+import { codeFormatMessage, codeTreeInPlace, documentCodeIssues, isCodedKind, lostRefKeys, refKey, refLabel } from "./pcode";
 
 // ───────────────────────────── 커맨드 ─────────────────────────────
 
@@ -238,6 +238,7 @@ function verifyPlaced(doc: DocumentNode, node: Node, env: TreeEnv): Result<Docum
  * 지우는 노드와 같은 코드의 분기 짝이 남으면 대상은 살아 있다 (ADR-0072 결정 4 · 9).
  */
 function danglingRefs(ix: TreeIndex, removed: ReadonlySet<Id>, env: TreeEnv): Issue[] {
+  if (env.allowDanglingRefs) return []; // 상품 조 사본 편집 — 막지 않고 목록으로 (ADR-0081 결정 2)
   const lost = lostRefKeys(ix, removed);
   const out: Issue[] = [];
   for (const e of ix.nodes.values()) {
@@ -334,7 +335,7 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       }
       const node = structuredClone(cmd.node);
       c.value.list.splice(clampIndex(cmd.at.index, c.value.list.length), 0, node);
-      numberNew(work, node);
+      numberNew(work, node, env);
       return verifyPlaced(work, node, env);
     }
 
@@ -381,7 +382,7 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       if (!c.value.allowed.includes(copy.kind)) return structure(`이 자리에 ${copy.kind} 은(는) 올 수 없습니다`, [...c.value.path]);
       c.value.list.splice(clampIndex(at.index, c.value.list.length), 0, copy);
       // 붙여넣기(사본)는 항상 재채번 — 새로 생긴 노드라 가리키는 곳이 없다 (ADR-0072 결정 5). 사본 안에서 사본을 가리키던 참조는 새 코드로 따라간다
-      followRenumbered(copy, e.value.articleId, numberNew(work, copy));
+      followRenumbered(copy, e.value.articleId, numberNew(work, copy, env));
       return verifyPlaced(work, copy, env);
     }
 
@@ -635,7 +636,7 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       brs.splice(clampIndex(cmd.index, brs.length), 0, branch as BlockBranch & InlineBranch);
       const rule = elseRule(brs, e.value.path, e.value.node);
       if (!rule.ok) return rule;
-      for (const child of branch.children as Node[]) numberNew(work, child);
+      for (const child of branch.children as Node[]) numberNew(work, child, env);
       const after = indexTree(work, env.coordinate);
       const ids = new Set<Id>([branch.id]);
       (branch.children as Node[]).forEach((c) => idsIn(c).forEach((id) => ids.add(id)));
@@ -704,9 +705,10 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       const e = entryOf(ix, cmd.nodeId);
       if (!e.ok) return e;
       if (!isCodedKind(e.value.node.kind)) return structure("코드는 항 · 호 · 목 · 함수조항 블록 참조에만 둘 수 있습니다", e.value.path);
-      if (!isPCode(cmd.code)) return structure(`코드 ${cmd.code} 는 P코드 형식(P + 숫자 4자리 이상)이 아닙니다`, e.value.path);
+      const bad = codeFormatMessage(cmd.code, env.copyCodes === true);
+      if (bad) return structure(bad, e.value.path);
       (e.value.node as Node & { code?: Code }).code = cmd.code;
-      const clash = documentCodeIssues(work).find((i) => i.id === cmd.nodeId);
+      const clash = documentCodeIssues(work, undefined, { copyCodes: env.copyCodes === true }).find((i) => i.id === cmd.nodeId);
       return clash ? structure(clash.message, e.value.path) : ok(work);
     }
 
@@ -724,10 +726,11 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
 
 /**
  * 새로 놓인 하위 트리의 코드 자리를 매긴다 (새 노드 · 사본, ADR-0072 결정 5). 이미 있던 조에 놓인 자리는 가진 코드를 버리고 새로 —
- * 같은 조의 코드와 겹치지 않게. 함께 새로 생긴 조 안의 자리는 가진 코드를 둔다(범위가 새 조뿐이라 겹칠 것이 없다), 없으면 채운다.
+ * 같은 조의 코드와 겹치지 않게(상품 조 사본이면 `PZ` 영역에서 — `env.copyCodes`, ADR-0081 결정 4).
+ * 함께 새로 생긴 조 안의 자리는 가진 코드를 둔다(범위가 새 조뿐이라 겹칠 것이 없다), 없으면 채운다.
  * 돌려주는 것은 다시 매긴 자리의 옛 코드 → 새 대상(놓인 조 · 새 코드).
  */
-function numberNew(doc: DocumentNode, root: Node): Map<Code, RefTarget> {
+function numberNew(doc: DocumentNode, root: Node, env: TreeEnv = {}): Map<Code, RefTarget> {
   const ix = indexTree(doc);
   const fresh = new Set(nodesIn(root).map((n) => n.id));
   const coded = nodesIn(root).filter((n) => isCodedKind(n.kind));
@@ -736,7 +739,7 @@ function numberNew(doc: DocumentNode, root: Node): Map<Code, RefTarget> {
   const before = new Map(coded.map((n) => [n.id, (n as { code?: Code }).code] as const));
   const moved = new Map<Code, RefTarget>();
   if (ids.size === 0) return moved;
-  for (const [id, code] of codeTreeInPlace(doc, { renumber, only: ids })) {
+  for (const [id, code] of codeTreeInPlace(doc, { renumber, only: ids, ...(env.copyCodes ? { band: "PZ" as const } : {}) })) {
     const old = before.get(id);
     const articleId = ix.nodes.get(id)?.articleId;
     if (old !== undefined && articleId !== undefined) moved.set(old, { articleId, code });

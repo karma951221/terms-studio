@@ -6,6 +6,7 @@
  * ADR-0074: 지우는 것은 **편집본**이다 — 「저장하면 사라집니다」. 저장 전에는 `취소`(✕)로 되돌아온다.
  * - 함께 사라지는 것(항 2 · 호 5 …)은 편집본 트리에서 센다.
  * - 이 문서의 조 참조가 가리키면 지울 수 없다 — 참조처로 가는 버튼을 준다 (도메인 `remove` 가 거부하는 조건과 같다).
+ *   상품 조 사본 편집(`allowBroken`)은 막지 않고 깨진다고만 말한다 — 깨지는 곳은 조 편집 위 목록이 띄운다 (ADR-0081 결정 2).
  * - 다른 문서의 조연결 · 보통약관 조 참조는 원본 기준으로 받아 보인다 — 저장 때 서버가 다시 세고 확인을 묻는다.
  */
 import { useEffect, useState } from "react";
@@ -25,6 +26,7 @@ export function RemoveCard({
   what,
   articles,
   inOriginal,
+  allowBroken = false,
   onRemove,
   onCancel,
   onGo,
@@ -38,6 +40,8 @@ export function RemoveCard({
   articles: readonly ArticleNode[];
   /** 원본에도 있는 노드인가 — 새로 넣은 노드는 다른 문서가 가리킬 수 없다. */
   inOriginal: boolean;
+  /** 가리키는 참조가 있어도 지운다 — 상품 조 사본 편집 (ADR-0081). */
+  allowBroken?: boolean;
   onRemove: () => void;
   onCancel: () => void;
   /** 참조처로 — 가운데에 그 조를 열고 그 자리를 강조한다. */
@@ -76,7 +80,7 @@ export function RemoveCard({
         ) : null}
         {blockers.length > 0 && (
           <li>
-            이 템플릿의 조 참조 {blockers.length}건이 가리키고 있어 지울 수 없다 — 참조를 먼저 고친다:
+            {allowBroken ? `이 조 참조 ${blockers.length}건이 가리키고 있다 — 지우면 깨진다. 저장 전에 가리키는 조도 사본으로 고친다:` : `이 템플릿의 조 참조 ${blockers.length}건이 가리키고 있어 지울 수 없다 — 참조를 먼저 고친다:`}
             <ul>
               {blockers.map((b, i) => (
                 <li key={i}>
@@ -117,7 +121,7 @@ export function RemoveCard({
         ) : null}
       </ul>
       <div className="ts-confirm-actions">
-        {blockers.length === 0 && (
+        {(blockers.length === 0 || allowBroken) && (
           <button type="button" className="danger" onClick={onRemove}>
             {what} 삭제
           </button>

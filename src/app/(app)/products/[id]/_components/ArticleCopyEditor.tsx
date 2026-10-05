@@ -6,7 +6,8 @@
  * - 문면 편집기를 새로 쓰지 않는다 — `documents/[id]/_components` 의 본문(`ArticleBody`) · 툴바(`EditorToolbar` — 항 · 호 · 목 · 조건 · 함수조항 ·
  *   조 · 별표 참조 · 박스 …) · 팝업 · 오른쪽 클릭 메뉴 · 삭제 카드를 그대로 쓴다(함수조항 화면 `ClauseAuthoring` 과 같은 길).
  *   다른 점은 범위뿐이다 — 조 · 관 넣기, 조 자체의 이동 · 복제 · 삭제 · 감싸기는 잠긴다(`copyScopeMenu`), 목록이 놓친 것은
- *   `articleOnlyChange` 안전망이 거부한다.
+ *   `articleOnlyChange` 안전망이 거부한다. 다른 조가 가리키는 항 · 호 · 목도 지울 수 있다 — 깨지는 곳은 패널 위 목록(ADR-0081).
+ *   새 항 · 호 · 목 · 함수조항 참조는 `PZ` 코드를 받는다(`copyCodes`, ADR-0081 결정 4) — 템플릿에서 온 자리는 코드를 바꾸지 않는다.
  * - 편집 트리 = 템플릿 + 초안의 조 사본(`applyArticleCopies`). 명령은 순수 `applyEdit` 로 그 트리에 적용하고, 바뀐 조를 초안의
  *   사본으로 넣는다(`editArticle` — 템플릿과 같아지면 사본이 빠진다). 번호 · 조 참조 대상은 그 트리 전체로 셈한다.
  * - 저장은 탭 첫 줄의 `저장` 한 번(보통약관 탭 초안) — 여기에는 저장 버튼이 없다. 검사는 서버 저장 검증과 같은 `validateDocument` 를
@@ -154,7 +155,8 @@ export function ArticleCopyEditor({ data, articleId, label }: { data: CopyEditor
   const boxByCode = useMemo(() => new Map(data.boxes.map((x) => [x.code, x] as const)), [data.boxes]);
   const editEnv: EditEnv = useMemo(
     () => ({
-      env: { kind: "general", appendixExists: (c: Code) => appendixCodes.has(c), boxExists: (c: Code) => boxByCode.has(c), clauseGate: gate, enumOf: (c: Code) => enumByCode.get(c), coordinate },
+      // 다른 조가 가리키는 항도 지울 수 있다 — 깨지는 곳은 패널 위 목록이 띄우고 저장이 거부한다 (ADR-0081 결정 2) · 새 자리는 PZ (결정 4)
+      env: { kind: "general", appendixExists: (c: Code) => appendixCodes.has(c), boxExists: (c: Code) => boxByCode.has(c), clauseGate: gate, enumOf: (c: Code) => enumByCode.get(c), coordinate, allowDanglingRefs: true, copyCodes: true },
       generalRefs: () => undefined,
     }),
     [appendixCodes, boxByCode, gate, enumByCode, coordinate],
@@ -491,6 +493,7 @@ export function ArticleCopyEditor({ data, articleId, label }: { data: CopyEditor
             what={what}
             articles={articlesOf(tree)}
             inOriginal={false}
+            allowBroken
             onRemove={() => {
               if (apply([{ type: "remove", nodeId: entry.node.id }])) setRemoving(undefined);
             }}

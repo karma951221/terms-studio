@@ -7,7 +7,7 @@
  *
  * DB·React import 금지 (순수층).
  */
-import { codeConflicts, conflictMessage, fillCodes, isPCode, suggestCode, type CodedEntry } from "../document/pcode";
+import { codeConflicts, codeFormatMessage, conflictMessage, fillCodes, suggestCode, type CodedEntry } from "../document/pcode";
 import type { Code, Id } from "../types";
 import type { ClauseBody } from "./types";
 
@@ -65,7 +65,10 @@ export function withClauseCodes<B extends ClauseBody>(body: B): B {
 export function clauseCodeIssues(body: ClauseBody): { path: Id[]; message: string }[] {
   const { entries, paths } = clauseCodeEntries(body);
   const out: { path: Id[]; message: string }[] = [];
-  for (const e of entries) if (e.code !== undefined && !isPCode(e.code)) out.push({ path: paths.get(e.id)!, message: `코드 ${String(e.code)} 는 P코드 형식(P + 숫자 4자리 이상)이 아닙니다` });
+  for (const e of entries) {
+    const message = e.code !== undefined ? codeFormatMessage(e.code) : undefined; // PZ 는 상품 조 사본 전용 — 함수조항에는 거부 (ADR-0081)
+    if (message) out.push({ path: paths.get(e.id)!, message });
+  }
   for (const c of codeConflicts(entries)) out.push({ path: paths.get(c.entry.id)!, message: conflictMessage(c, suggestCode(entries, c.entry.id)).replace("같은 조의", "이 함수조항의") });
   return out;
 }

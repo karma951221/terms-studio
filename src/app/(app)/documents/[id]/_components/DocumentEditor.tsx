@@ -1004,9 +1004,13 @@ export function DocumentEditor(props: EditorProps) {
       ) : null}
       {confirmSave ? (
         <dialog open className="ts-dialog">
-          <p className="ts-confirm-title">저장하면 다른 문서의 참조 {confirmSave.brokenRefs.length}건이 깨진다</p>
-          <ul className="ts-confirm-loss">
-            {confirmSave.brokenRefs.map((c, i) => {
+          <p className="ts-confirm-title">저장하면 참조 {confirmSave.brokenRefs.length}건이 깨진다</p>
+          {(() => {
+            // 상품 영향(ADR-0081 결정 3)은 상품별로 묶어 앞에 — 「이 템플릿을 쓰는 상품 N개에서 참조가 깨집니다」
+            const products = confirmSave.brokenRefs.filter((c) => c.document === "product");
+            const docs = confirmSave.brokenRefs.filter((c) => c.document !== "product");
+            const productCount = new Set(products.map((c) => c.ownerId)).size;
+            const line = (c: Coordinate, i: number) => {
               const href = coordinateHref(c);
               return (
                 <li key={i}>
@@ -1022,9 +1026,24 @@ export function DocumentEditor(props: EditorProps) {
                   )}
                 </li>
               );
-            })}
-          </ul>
-          <p className="ts-muted">지운 조를 가리키던 조연결 · 보통약관 조 참조는 깨진 참조가 된다.</p>
+            };
+            return (
+              <>
+                {products.length > 0 && (
+                  <>
+                    <p>이 템플릿을 쓰는 상품 {productCount}개에서 참조가 깨집니다 — 확인하면 저장되고, 그 상품은 보통약관 탭에서 가리키는 조를 사본으로 고친다(고치기 전까지 그 탭 저장은 거부된다).</p>
+                    <ul className="ts-confirm-loss">{products.map(line)}</ul>
+                  </>
+                )}
+                {docs.length > 0 && (
+                  <>
+                    <ul className="ts-confirm-loss">{docs.map(line)}</ul>
+                    <p className="ts-muted">지운 조를 가리키던 조연결 · 보통약관 조 참조는 깨진 참조가 된다.</p>
+                  </>
+                )}
+              </>
+            );
+          })()}
           <div className="ts-confirm-actions">
             <button type="button" onClick={() => setConfirmSave(undefined)} disabled={pending}>
               취소

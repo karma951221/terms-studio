@@ -3,6 +3,8 @@
  *
  * - 식별 두 층: uuid 는 노드 정체성(편집 · 출처 추적), **참조의 정체성은 코드**. 조는 코드를 두지 않는다(uuid 하나).
  * - 코드는 `P` + 숫자(기본 4자리 100 단위 — P0100). 단계(항/호/목)는 코드가 아니라 트리 위치로 정해진다. P9900 을 넘으면 자릿수를 늘린다.
+ *   예외 — 상품 조 사본에서 새로 생긴 자리는 `PZ` + 숫자(PZ0100 …, ADR-0081 결정 4). 템플릿 코드(P)와 영역이 갈려 지금 · 나중의
+ *   템플릿 코드와 겹칠 수 없다. PZ 는 사본(`copyCodes`)에서만 유효하고 템플릿 · 담보약관 · 함수조항은 거부한다.
  * - **유일성 = 공존하는 노드끼리만**(결정 4): 두 노드를 감싼 공통 조건 블록(값별 분기 포함)에서 서로 다른 가지에 있으면 배타 → 같은 코드 허용.
  *   그 밖(분기 밖 ↔ 가지 안 · 같은 가지 안 · 중첩)은 공존 → 중복 금지. 범위는 조 하나(문면) · 함수조항 본문 하나.
  * - **채번**(결정 5): 새 노드는 기본 위치값 n×100(n = 목록 자리의 1부터 위치)에서 시작해 공존 코드와 겹치면 100 씩 올린다.
@@ -19,6 +21,11 @@ import { indexTree, type DocumentNode, type Node, type NodeKind, type TreeIndex 
 
 /** P코드 형식 — `P` + 숫자 4자리 이상. */
 export const PCODE_PATTERN = /^P\d{4,}$/;
+/** 상품 조 사본의 새 자리 코드 형식 — `PZ` + 숫자 4자리 이상 (ADR-0081 결정 4). */
+export const PZCODE_PATTERN = /^PZ\d{4,}$/;
+
+/** 코드 영역 — 템플릿(P) · 상품 조 사본의 새 자리(PZ). 채번 · 공존 비교는 영역 안에서만 한다. */
+export type CodeBand = "P" | "PZ";
 
 /** 코드가 붙는 문면 노드 종류 — 항 · 호 · 목 + 함수조항 블록 참조(펼친 안쪽 노드를 두 마디로 가리키는 바깥 마디, 결정 3 개정). */
 export const CODED_KINDS: readonly NodeKind[] = ["paragraph", "item", "subitem", "clauseBlockRef", "forBlock"];
@@ -31,14 +38,31 @@ export function isPCode(code: unknown): code is Code {
   return typeof code === "string" && PCODE_PATTERN.test(code);
 }
 
-/** 코드 → 숫자 (형식이 아니면 NaN). */
-export function pcodeNumber(code: Code): number {
-  return isPCode(code) ? Number(code.slice(1)) : Number.NaN;
+export function isPZCode(code: unknown): code is Code {
+  return typeof code === "string" && PZCODE_PATTERN.test(code);
 }
 
-/** 숫자 → 코드 (4자리 미만은 0 채움, 넘치면 자릿수를 늘린다 — P10000). */
-export function formatPCode(n: number): Code {
-  return `P${String(n).padStart(4, "0")}`;
+/** 코드의 영역 — 형식이 아니면 undefined. */
+export function codeBand(code: unknown): CodeBand | undefined {
+  return isPZCode(code) ? "PZ" : isPCode(code) ? "P" : undefined;
+}
+
+/** 코드 → 숫자 (P · PZ 영역 안의 수 · 형식이 아니면 NaN). */
+export function pcodeNumber(code: Code): number {
+  const band = codeBand(code);
+  return band ? Number(code.slice(band.length)) : Number.NaN;
+}
+
+/** 숫자 → 코드 (4자리 미만은 0 채움, 넘치면 자릿수를 늘린다 — P10000 · PZ10000). */
+export function formatPCode(n: number, band: CodeBand = "P"): Code {
+  return `${band}${String(n).padStart(4, "0")}`;
+}
+
+/** 코드 형식 오류 문구 — 형식이 맞으면 undefined. PZ 는 상품 조 사본(`copyCodes`)에서만 맞다. */
+export function codeFormatMessage(code: unknown, copyCodes = false): string | undefined {
+  if (isPCode(code) || (copyCodes && isPZCode(code))) return undefined;
+  if (isPZCode(code)) return `코드 ${code} 는 상품 조 사본 전용(PZ)이다 — 템플릿 · 담보약관 · 함수조항에는 쓸 수 없다`;
+  return `코드 ${String(code)} 는 P코드 형식(P + 숫자 4자리 이상)이 아닙니다`;
 }
 
 /** 채번 · 판정 재료 — 트리 모양과 무관한 코드 자리 하나. */
@@ -65,27 +89,36 @@ export function coexist(a: CodedEntry, b: CodedEntry): boolean {
   return a.id !== b.id && a.scope === b.scope && !exclusive(a, b);
 }
 
-/** 기본 위치값 n×100 에서 시작해 쓰인 번호를 피한 코드. */
-export function nextCode(taken: ReadonlySet<number>, position: number): Code {
+/** 기본 위치값 n×100 에서 시작해 (그 영역에서) 쓰인 번호를 피한 코드. */
+export function nextCode(taken: ReadonlySet<number>, position: number, band: CodeBand = "P"): Code {
   let n = Math.max(1, position) * 100;
   while (taken.has(n)) n += 100;
-  return formatPCode(n);
+  return formatPCode(n, band);
 }
 
-function takenBy(entry: CodedEntry, entries: readonly CodedEntry[], code: (e: CodedEntry) => Code | undefined): Set<number> {
+/** 공존하는 자리가 `band` 영역에서 쓰는 번호. */
+function takenBy(entry: CodedEntry, entries: readonly CodedEntry[], code: (e: CodedEntry) => Code | undefined, band: CodeBand): Set<number> {
   const out = new Set<number>();
   for (const other of entries) {
     const c = code(other);
-    if (c !== undefined && coexist(entry, other)) out.add(pcodeNumber(c));
+    if (c !== undefined && codeBand(c) === band && coexist(entry, other)) out.add(pcodeNumber(c));
   }
   return out;
+}
+
+/** 채번 옵션 — `renumber` 가진 코드를 버리고 새로 · `only` 그 자리만 · `band` 새 코드의 영역(기본 P). */
+export interface FillOptions {
+  renumber?: ReadonlySet<Id>;
+  only?: ReadonlySet<Id>;
+  /** 상품 조 사본의 새 자리는 `PZ` (ADR-0081 결정 4) — 같은 조의 공존 PZ 코드만 피한다. */
+  band?: CodeBand;
 }
 
 /**
  * 코드를 매길 자리에 코드를 채운다 — 깊이 순 · 같은 깊이는 주어진(문서) 순. 매길 자리 = 코드가 없는 자리 + `renumber` 에 든 자리
  * (가진 코드를 버리고 새로). `only` 를 주면 그 자리만 매긴다(나머지 코드 없는 자리는 그대로 둔다). 돌려주는 것은 새로 매긴 id → 코드.
  */
-export function fillCodes(entries: readonly CodedEntry[], opts: { renumber?: ReadonlySet<Id>; only?: ReadonlySet<Id> } = {}): Map<Id, Code> {
+export function fillCodes(entries: readonly CodedEntry[], opts: FillOptions = {}): Map<Id, Code> {
   const assigned = new Map<Id, Code>();
   const pending = (e: CodedEntry) => (opts.only === undefined || opts.only.has(e.id)) && (e.code === undefined || opts.renumber?.has(e.id) === true);
   const current = (e: CodedEntry): Code | undefined => (assigned.has(e.id) ? assigned.get(e.id) : pending(e) ? undefined : e.code);
@@ -93,7 +126,8 @@ export function fillCodes(entries: readonly CodedEntry[], opts: { renumber?: Rea
     .map((e, i) => ({ e, i }))
     .filter(({ e }) => pending(e))
     .sort((x, y) => x.e.depth - y.e.depth || x.i - y.i);
-  for (const { e } of order) assigned.set(e.id, nextCode(takenBy(e, entries, current), e.position));
+  const band = opts.band ?? "P";
+  for (const { e } of order) assigned.set(e.id, nextCode(takenBy(e, entries, current, band), e.position, band));
   return assigned;
 }
 
@@ -101,7 +135,8 @@ export function fillCodes(entries: readonly CodedEntry[], opts: { renumber?: Rea
 export function suggestCode(entries: readonly CodedEntry[], id: Id): Code | undefined {
   const entry = entries.find((e) => e.id === id);
   if (!entry) return undefined;
-  return nextCode(takenBy(entry, entries, (e) => e.code), entry.position);
+  const band = codeBand(entry.code) ?? "P";
+  return nextCode(takenBy(entry, entries, (e) => e.code, band), entry.position, band);
 }
 
 /** 공존하는 두 자리가 같은 코드를 가진 쌍 — 뒤에 나온 자리 기준(앞의 것은 이미 그 코드의 주인이다). */
@@ -146,7 +181,7 @@ export function documentCodeEntries(doc: DocumentNode, ix: TreeIndex = indexTree
 }
 
 /** 문면 트리에 코드를 매긴다 — **제자리 수정**(편집 명령의 작업 사본용). 매긴 id → 코드. */
-export function codeTreeInPlace(doc: DocumentNode, opts: { renumber?: ReadonlySet<Id>; only?: ReadonlySet<Id> } = {}): Map<Id, Code> {
+export function codeTreeInPlace(doc: DocumentNode, opts: FillOptions = {}): Map<Id, Code> {
   const ix = indexTree(doc);
   const assigned = fillCodes(documentCodeEntries(doc, ix), opts);
   for (const [id, code] of assigned) (ix.nodes.get(id)!.node as Node & { code?: Code }).code = code;
@@ -162,11 +197,17 @@ export function withCodes(doc: DocumentNode): DocumentNode {
   return copy;
 }
 
-/** 문면 트리의 코드 검사 — 형식 · 공존 중복 (저장 거부). 코드 없는 자리는 저장 때 채워지므로 오류가 아니다. */
-export function documentCodeIssues(doc: DocumentNode, ix: TreeIndex = indexTree(doc)): { id: Id; message: string }[] {
+/**
+ * 문면 트리의 코드 검사 — 형식 · 공존 중복 (저장 거부). 코드 없는 자리는 저장 때 채워지므로 오류가 아니다.
+ * `copyCodes` = 상품 조 사본 트리 — PZ 코드가 유효하다(아니면 「사본 전용」으로 거부, ADR-0081 결정 4).
+ */
+export function documentCodeIssues(doc: DocumentNode, ix: TreeIndex = indexTree(doc), opts: { copyCodes?: boolean } = {}): { id: Id; message: string }[] {
   const entries = documentCodeEntries(doc, ix);
   const out: { id: Id; message: string }[] = [];
-  for (const e of entries) if (e.code !== undefined && !isPCode(e.code)) out.push({ id: e.id, message: `코드 ${String(e.code)} 는 P코드 형식(P + 숫자 4자리 이상)이 아닙니다` });
+  for (const e of entries) {
+    const message = e.code !== undefined ? codeFormatMessage(e.code, opts.copyCodes) : undefined;
+    if (message) out.push({ id: e.id, message });
+  }
   for (const c of codeConflicts(entries)) out.push({ id: c.entry.id, message: conflictMessage(c, suggestCode(entries, c.entry.id)) });
   return out;
 }

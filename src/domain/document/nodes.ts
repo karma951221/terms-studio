@@ -703,6 +703,16 @@ export interface TreeEnv {
   switches?: boolean;
   /** 이슈 좌표의 기본값 (document · ownerId 등). */
   coordinate?: Coordinate;
+  /**
+   * 다른 조가 가리키는 노드의 삭제를 막지 않는다 — 상품 조 사본 편집만 켠다(ADR-0081 결정 2). 깨지는 곳은 편집기가 목록으로 띄우고
+   * 저장 검사가 거부한다. 템플릿 저작은 끄고 그대로 거부한다(D-P4-7).
+   */
+  allowDanglingRefs?: boolean;
+  /**
+   * 상품 조 사본 트리 — 새로 생긴 항 · 호 · 목 · 함수조항 참조는 `PZ` 코드를 받고, PZ 코드가 유효하다(ADR-0081 결정 4).
+   * 템플릿에서 온 자리는 옮겨도 코드를 바꾸지 않는다. 템플릿 · 담보약관 · 함수조항 저작은 끄고 PZ 를 거부한다.
+   */
+  copyCodes?: boolean;
 }
 
 /**
@@ -720,7 +730,7 @@ export function validateTree(doc: DocumentNode, env: TreeEnv = {}): Issue[] {
 
   for (const e of ix.nodes.values()) issues.push(...checkNodeRefs(e, ix, env, true));
   // P코드 — 형식 · 공존 중복 (ADR-0072 결정 4 · 5). 코드 없는 자리는 저장 때 채운다(withCodes)
-  for (const { id, message } of documentCodeIssues(doc, ix)) {
+  for (const { id, message } of documentCodeIssues(doc, ix, { copyCodes: env.copyCodes === true })) {
     const e = ix.nodes.get(id)!;
     issues.push({ kind: "structure", message, at: coordinateOf(ix, e, base) });
   }

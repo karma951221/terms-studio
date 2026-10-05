@@ -5,6 +5,7 @@
  *   트리 커맨드 적용(저장 시 `validateTree` + `validateExpressions`) · 복제(D-P4-4·9) · 사전평가(문맥 주입) · 별표 CRUD.
  * - 저작 화면의 저장은 `save` 하나다 (ADR-0074) — 편집을 시작한 판 + 브라우저 편집본의 명령 목록을 받아
  *   판 확인 · 원본에 재적용 · 전체 검증 · 한 트랜잭션 반영(판 +1). 판은 repo 가 모든 저장에서 올린다.
+ *   보통약관 템플릿 저장은 다른 문서의 깨짐과 함께 그 템플릿을 쓰는 상품의 참조 깨짐(`productImpact` 주입, ADR-0081)도 확인 카드로 묻는다.
  * - 파괴적 액션(문서 삭제 `document.delete` · 별표 삭제 `appendix.delete` · 박스 삭제 `box.delete`)은 `destructive()` 2단 프로토콜.
  *   영향의 「깨질 참조」 = 사용처 — 기본은 이 DB 의 문서들을 훑어 계산하고, 상품이 보통약관을 선택하는 사용처 등
  *   다른 영역(B4 · C1)의 것은 `UsageSource` 로 주입해 합친다.
@@ -86,6 +87,11 @@ export interface DocumentServiceDeps {
   usages?: UsageSource;
   /** 새 노드 id (복제용). 기본 uuid. */
   newId?: () => Id;
+  /**
+   * 보통약관 템플릿 저장의 상품 영향 (ADR-0081 결정 3) — 그 템플릿을 쓰는 상품마다 새 템플릿 + 상품의 조 사본 · 노출 끔으로 다시 셈한
+   * 참조 깨짐 자리. 확인 카드에 담보약관 조연결 깨짐(`brokenByRemoval`)과 함께 싣는다. 기본 없음(상품을 모른다).
+   */
+  productImpact?: (tx: Db, templateId: Id, tree: DocumentNode) => Promise<Coordinate[]>;
 }
 
 export interface Confirmable {
@@ -108,7 +114,7 @@ export interface DocumentService {
   findByCoverage(coverageId: Id): Promise<DocumentRecord | undefined>;
   list(kind?: DocumentKind): Promise<DocumentSummary[]>;
   validate(id: Id): Promise<Issue[]>;
-  /** 저장되지 않은 트리를 문서 `id` 자리의 저장 검증(`validate` 와 같은 규칙 · 경고 포함)으로 — 상품 조 사본 검사 (ADR-0079). 없는 문서면 빈 목록. */
+  /** 저장되지 않은 트리를 문서 `id` 자리의 저장 검증(`validate` 와 같은 규칙 · 경고 포함)으로 — 상품 조 사본 검사 (ADR-0079). PZ 코드를 받는다(ADR-0081). 없는 문서면 빈 목록. */
   validateTree(id: Id, tree: DocumentNode): Promise<Issue[]>;
   /**
    * 미결정 함수조항 옵션 수 — 저장 검사와 **같은** 검증(`validate`)의 `optionUnselected` 만 센다 (기능/담보 §3.5).
@@ -234,9 +240,12 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
     return { resolve, scope: { ...(coverage ? { coverage } : {}), levelOf } };
   }
 
-  /** 저장 시점 전체 검증 (경고 포함) — 브라우저 편집본의 검증 목록과 같은 `validateDocument`. */
-  async function validateDoc(tx: Db, doc: DocumentRecord, tree: DocumentNode): Promise<Issue[]> {
-    const env = await envOf(tx, doc);
+  /**
+   * 저장 시점 전체 검증 (경고 포함) — 브라우저 편집본의 검증 목록과 같은 `validateDocument`.
+   * `copyCodes` = 상품 조 사본 트리 검사(`validateTree`) — PZ 코드를 받는다. 문서 저장은 PZ 를 거부한다 (ADR-0081 결정 4).
+   */
+  async function validateDoc(tx: Db, doc: DocumentRecord, tree: DocumentNode, copyCodes = false): Promise<Issue[]> {
+    const env = { ...(await envOf(tx, doc)), ...(copyCodes ? { copyCodes } : {}) };
     const { resolve, scope } = await scopeOf(tx, doc);
     return validateDocument(tree, { env, resolve, scope });
   }
@@ -347,7 +356,7 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
     validateTree: (id, tree) =>
       db.transaction(async (tx) => {
         const doc = await repo.loadDocument(tx, id);
-        return doc ? validateDoc(tx, doc, tree) : [];
+        return doc ? validateDoc(tx, doc, tree, true) : [];
       }),
 
     unresolvedOptionCount: (id) =>
@@ -476,6 +485,7 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
           if (errors.length > 0) return invalid(errors);
           if (!input.confirm) {
             const broken = await brokenByRemoval(tx, id, removedIds(doc.tree, tree), removedRefKeys(doc.tree, tree));
+            if (doc.kind === "general" && deps.productImpact) broken.push(...(await deps.productImpact(tx, id, tree)));
             if (broken.length > 0) return reject({ reason: "needsConfirmation", impact: { valueRowsLost: 0, cascade: [], brokenRefs: broken } });
           }
           const saved = await repo.saveDocumentAt(tx, id, input.baseVersion, { tree: withCodes(tree), title: tree.title, generalDocumentId: generalDocumentId ?? null }, actor.userId);

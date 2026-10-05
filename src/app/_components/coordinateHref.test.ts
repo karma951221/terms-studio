@@ -15,6 +15,10 @@ describe("coordinateHref — 상품 좌표", () => {
     expect(coordinateHref({ document: "product", ownerId: "p1", ownerName: "알파플러스", refPath: "baseContract" })).toBe("/products/p1?tab=coverages#base-contract");
   });
 
+  it("조(articleId)만 있으면 보통약관 탭의 그 조로 — 템플릿 저장의 상품 영향 카드 (ADR-0081)", () => {
+    expect(coordinateHref({ document: "product", ownerId: "p1", articleId: "a12" })).toBe("/products/p1?tab=general&art=a12");
+  });
+
   it("ownerId 를 모르면 링크 없음", () => {
     expect(coordinateHref({ document: "product", refPath: "baseContract" })).toBeUndefined();
     expect(coordinateHref(undefined)).toBeUndefined();
