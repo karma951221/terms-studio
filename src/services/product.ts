@@ -14,11 +14,16 @@
 import { can, destructive, type DestructiveAction } from "@/domain/auth";
 import { countedSlotsOf, slotType, validateValue, type Discriminator, type SlotPath } from "@/domain/catalog";
 import { validateSlotValue } from "@/domain/coverage";
-import { blockingIssues, indexTree, type ArticleNode } from "@/domain/document";
+import { blockingIssues, indexTree, type ArticleNode, type DocumentNode } from "@/domain/document";
 import {
   addAttributeValue,
   applyArticleCopies,
   articlesById,
+  copyRefBreaks,
+  liveArticleCopies,
+  newIssuesOnly,
+  outsideRefsFor,
+  refBreakIssues,
   sameArticle,
   type ArticleCopy,
   baseContractCountIssue,
@@ -219,13 +224,14 @@ export interface ProductService {
   listHiddenArticles(productId: Id): Promise<Id[]>;
   /**
    * 보통약관 조 하나의 노출 토글 (기능/상품 §3.6). 멱등 — 이미 그 상태면 그대로 `ok`.
-   * 템플릿이 없으면 invalid · 템플릿에 없는 조 id 면 notFound.
+   * 템플릿이 없으면 invalid · 템플릿에 없는 조 id 면 notFound. 끄면 끈 조만 가리키게 되는 참조가 생길 때 invalid (ADR-0081).
    */
   setArticleHidden(actor: Actor, productId: Id, articleId: Id, hidden: boolean): Promise<Result<void>>;
   /**
    * 보통약관 탭 편집 화면 한 번 저장 — 조 노출 · 옵션 오버라이드 · 조 사본의 최종 상태를 전부 검사한 뒤 한 트랜잭션으로 맞춘다
    * (기능/상품 §3.8 · §3.10). 하나라도 틀리면 아무것도 안 쓰고 `invalid` — 이슈 좌표는 그 조(`articleId`) · 그 자리(`nodePath`).
-   * 조 사본은 템플릿에 사본을 갈아 끼운 트리를 문면 저장 검증으로 보고 사본이 든 조의 오류만 이 저장의 것으로 친다(ADR-0079).
+   * 조 사본 · 노출 끔은 템플릿에 얹은 최종 트리 전체를 보고, 템플릿 단독일 때 없던 참조 깨짐(같은 템플릿 안 · 끈 조 · 탑재한 담보약관 ·
+   * 함수조항 본문)과 문면 저장 검증의 새 오류 · 사본이 든 조의 오류를 이 저장의 것으로 친다(ADR-0079 · ADR-0081 결정 2).
    * 오버라이드 자리도 그 트리에서 찾는다. 저장하면 「기준 판」을 편집을 시작한 템플릿 판으로 적는다.
    * 편집을 시작한 템플릿과 지금 템플릿이 다르면(템플릿 없음 포함) `conflict`.
    */
@@ -234,6 +240,11 @@ export interface ProductService {
   listArticleCopies(productId: Id): Promise<ArticleCopy[]>;
   /** 이 상품의 보통약관 설정이 기준으로 삼은 템플릿 판 — 지금 판이 더 크면 「템플릿이 바뀌었습니다」. 모르면 undefined. */
   generalBaseVersion(productId: Id): Promise<number | undefined>;
+  /**
+   * 저장본(템플릿 + 조 사본 + 노출 끔)의 참조 깨짐 (ADR-0081 결정 3) — 템플릿이 바뀌어 깨진 상품의 보통약관 탭 목차 · 오류 수 재료.
+   * 다음 보통약관 탭 저장은 이것이 남아 있는 동안 거부된다. 템플릿이 없으면 빈 목록.
+   */
+  generalReferenceIssues(productId: Id): Promise<Issue[]>;
   deleteProduct(actor: Actor, id: Id, opts?: Confirmable): Promise<Result<void>>;
   setProductValue(actor: Actor, id: Id, path: SlotPath, value: Value | undefined): Promise<Result<void>>;
   /** 한 제출의 값 여럿 — 전부 검사한 뒤 한 트랜잭션으로 쓴다. 하나라도 거부되면 아무것도 안 바뀐다. */
@@ -376,6 +387,7 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
     clauseRef: async () => undefined,
     template: async () => undefined,
     validate: async () => [],
+    dependents: async () => ({ documents: [], clauses: [] }),
     ...deps.generalDocuments,
   };
 
@@ -465,6 +477,18 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
   async function withProduct<T>(tx: Db, id: Id, fn: (p: Product) => Promise<Result<T>>): Promise<Result<T>> {
     const p = await repo.loadProduct(tx, id);
     return p ? fn(p) : notFound(`상품 ${id}`);
+  }
+
+  /**
+   * 상품 하나의 최종 트리(템플릿 + 사본 + 노출 끔)에서 새로 깨진 참조 (ADR-0081 결정 2 · 기능/상품 §3.10) — 같은 템플릿 안 · 끈 조 ·
+   * 탑재한 담보약관 · 함수조항 본문. 좌표는 상품, 가리키는 쪽 자리(밖의 참조는 원인 조)에 붙는다.
+   */
+  async function referenceBreaksOf(tx: Db, productId: Id, templateId: Id, template: DocumentNode, final: DocumentNode, hidden: readonly Id[]): Promise<Issue[]> {
+    const deps = gate.dependents ? await gate.dependents(templateId) : undefined;
+    const coverageIds = deps ? new Set((await repo.listProductCoverages(tx, productId)).map((pc) => pc.coverageId)) : new Set<Id>();
+    const outside = deps ? outsideRefsFor(deps, coverageIds, final) : [];
+    const breaks = copyRefBreaks({ template, final, hidden, outside, coordinate: { document: "product", ownerId: productId } });
+    return refBreakIssues(breaks, { template, final });
   }
   /** 세목 선택지 값 — 같은 plan 레벨이라도 이 선택지의 세목유형 폼이 아니면 자리가 아니다 (코덱스 리뷰 Important 1). */
   function setPlanOptionValues(actor: Actor, optionId: Id, entries: readonly SlotWrite[]): Promise<Result<void>> {
@@ -1016,8 +1040,17 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
           }
           const ids = await gate.articleIds(p.generalDocumentId);
           if (!ids.includes(articleId)) return notFound(`보통약관 템플릿 ${p.generalDocumentId} 의 조 ${articleId}`);
-          if (hidden) await repo.addHiddenArticle(tx, productId, articleId, actor.userId);
-          else await repo.removeHiddenArticle(tx, productId, articleId);
+          if (hidden) {
+            // 끈 조만 가리키게 되는 참조가 생기면 거부 — 보통약관 탭 저장과 같은 검사 (ADR-0081 결정 2)
+            const template = await gate.template(p.generalDocumentId);
+            if (template) {
+              const before = await repo.listHiddenArticles(tx, productId);
+              const final = applyArticleCopies(template.tree, liveArticleCopies(template.tree, await repo.listArticleCopies(tx, productId)));
+              const broken = await referenceBreaksOf(tx, productId, p.generalDocumentId, template.tree, final, [...new Set([...before, articleId])]);
+              if (broken.length > 0) return invalid(broken);
+            }
+            await repo.addHiddenArticle(tx, productId, articleId, actor.userId);
+          } else await repo.removeHiddenArticle(tx, productId, articleId);
           return ok(undefined);
         }),
       ),
@@ -1059,11 +1092,21 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
             if (!sameArticle(c.article, original)) copies.push({ articleId: c.articleId, article: c.article, templateHash: c.templateHash });
           }
           const effective = template ? applyArticleCopies(template.tree, copies) : undefined;
-          if (effective && copies.length > 0) {
-            const mine = new Set(copies.map((c) => c.articleId));
-            for (const i of blockingIssues(await gate.validate(templateId, effective))) {
-              if (i.at.articleId && mine.has(i.at.articleId)) issues.push({ ...i, at: at({ articleId: i.at.articleId, ...(i.at.articleTitle ? { articleTitle: i.at.articleTitle } : {}), ...(i.at.nodePath ? { nodePath: i.at.nodePath } : {}) }) });
+          // ②' 참조 무결성 (ADR-0081 결정 2) — 최종 트리 전체에서 템플릿 단독일 때 없던 깨짐. 사본이 든 조의 오류는 전부, 나머지 조는 새 오류만.
+          if (template && effective) {
+            const broken = await referenceBreaksOf(tx, productId, templateId, template.tree, effective, hidden);
+            const taken = new Set(broken.map((i) => `${i.at.nodePath?.at(-1) ?? i.at.articleId}|${i.at.refPath ?? ""}`));
+            if (copies.length > 0) {
+              const mine = new Set(copies.map((c) => c.articleId));
+              const found = blockingIssues(await gate.validate(templateId, effective));
+              const fresh = new Set(newIssuesOnly(found, blockingIssues(await gate.validate(templateId, template.tree))));
+              for (const i of found) {
+                if (!i.at.articleId || !(mine.has(i.at.articleId) || fresh.has(i))) continue;
+                if (taken.has(`${i.at.nodePath?.at(-1) ?? i.at.articleId}|${i.at.refPath ?? ""}`)) continue; // 같은 깨짐 — 원인을 적은 쪽을 남긴다
+                issues.push({ ...i, at: at({ articleId: i.at.articleId, ...(i.at.articleTitle ? { articleTitle: i.at.articleTitle } : {}), ...(i.at.nodePath ? { nodePath: i.at.nodePath } : {}), ...(i.at.refPath ? { refPath: i.at.refPath } : {}) }) });
+              }
             }
+            issues.push(...broken);
           }
           // ③ 오버라이드 — 자리 · 함수조항 · 합친 선택 검사 (setOptionOverride 와 같은 규칙), 저장은 차이만.
           //    자리는 이 상품의 보통약관 트리에서 찾는다 — 사본에서 지운 자리는 없고, 사본에 새로 넣은 자리는 있다 (트리를 모르면 템플릿 게이트).
@@ -1122,6 +1165,15 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
       ),
     listArticleCopies: (productId) => repo.listArticleCopies(db, productId),
     generalBaseVersion: (productId) => repo.loadGeneralBaseVersion(db, productId),
+    generalReferenceIssues: (productId) =>
+      db.transaction(async (tx) => {
+        const p = await repo.loadProduct(tx, productId);
+        const template = p?.generalDocumentId ? await gate.template(p.generalDocumentId) : undefined;
+        if (!p?.generalDocumentId || !template) return [];
+        const [copies, hidden] = await Promise.all([repo.listArticleCopies(tx, productId), repo.listHiddenArticles(tx, productId)]);
+        const final = applyArticleCopies(template.tree, liveArticleCopies(template.tree, copies));
+        return referenceBreaksOf(tx, productId, p.generalDocumentId, template.tree, final, hidden);
+      }),
     deleteProduct: (actor, id, opts = {}) =>
       db.transaction(async (tx) => {
         let owners: ValueOwner[] = [];

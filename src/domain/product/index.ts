@@ -3,6 +3,7 @@
  *
  * - types.ts        : 도메인 타입 + 주입 인터페이스 (CoverageMasterSource · GeneralAttachmentCheck · OptionValidator …)
  * - articleCopies.ts : 조 사본 — 템플릿 + 사본 → 이 상품의 보통약관 트리 · 지문 · 「템플릿이 바뀜」 (ADR-0079)
+ * - copyRefIntegrity.ts : 사본 · 노출 끔으로 새로 깨진 참조 · 사본의 새 코드 (ADR-0081)
  * - attributes.ts   : 담보속성 종류·유효값·작명 규칙·순서 (코드 A0001 · 유효값 1 · 2 …)
  * - naming.ts       : default 상품담보명 (작명 문법 확정 주석)
  * - plans.ts        : 세목유형·선택지·유효 조합 규칙
@@ -13,6 +14,7 @@
 export * from "./articleCopies";
 export * from "./attributes";
 export * from "./completeness";
+export * from "./copyRefIntegrity";
 export * from "./groups";
 export * from "./mount";
 export * from "./naming";
