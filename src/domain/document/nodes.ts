@@ -703,6 +703,11 @@ export interface TreeEnv {
   switches?: boolean;
   /** 이슈 좌표의 기본값 (document · ownerId 등). */
   coordinate?: Coordinate;
+  /**
+   * 다른 조가 가리키는 노드의 삭제를 막지 않는다 — 상품 조 사본 편집만 켠다(ADR-0081 결정 2). 깨지는 곳은 편집기가 목록으로 띄우고
+   * 저장 검사가 거부한다. 템플릿 저작은 끄고 그대로 거부한다(D-P4-7).
+   */
+  allowDanglingRefs?: boolean;
 }
 
 /**

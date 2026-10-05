@@ -6,6 +6,7 @@
  * - 관은 제목만, 조는 노출여부 + 번호 + 제목. 번호는 **템플릿 번호**(끄기 전)다 — 순연된 번호는 오른쪽 미리보기에서 본다.
  * - 노출여부는 보통약관 탭의 편집 상태를 따른다 (기능/상품 §3.8): 읽기는 표시(✓ · 끔)만, 편집은 체크박스 — 누르면 초안에만
  *   쌓이고 저장 한 번에 나간다. 저장본과 달라진 조에 「변경」, 저장 거부는 그 줄 아래에.
+ * - 참조 깨짐 (ADR-0081) — 사본 · 노출 끔으로 깨진 참조는 가리키는 조의 줄 아래에(읽기 · 편집 모두 — 템플릿이 바뀌어 깨진 상품도 읽기에서 보인다).
  * - 끈 조는 취소선 · 흐리게(`.is-hidden-article`). 고른 조는 `aria-current` (주칠).
  * - 조 사본 (ADR-0079) — 사본이 있는 조에 빨간 점, 사본을 만든 뒤 템플릿의 그 조가 바뀌었으면 노란 점을 더한다(읽기 · 편집 모두,
  *   편집 중이면 초안을 따른다). 제목은 사본의 제목.
@@ -74,7 +75,8 @@ export function GeneralToc({
           {s.articles.map((a) => {
             const href = generalArticlePath(productId, a.id);
             const hidden = edit ? edit.current.hidden.includes(a.id) : a.hidden;
-            const errors = edit?.errors.articles.get(a.id) ?? [];
+            // 저장 거부 + 지금 상태의 참조 깨짐(가리키는 조 · 밖의 참조면 원인 조, ADR-0081) — 같은 문구는 한 번
+            const errors = [...new Set([...(edit?.errors.articles.get(a.id) ?? []), ...(edit?.breaks ?? []).filter((i) => i.at.articleId === a.id).map((i) => i.message)])];
             const copy = edit?.current.copies[a.id];
             const label = copy ? `${a.number}(${copy.article.title})` : edit ? `${a.number}(${a.templateTitle})` : a.label;
             const state = edit ? copyStateOf(copy, a.templateHash) : undefined;

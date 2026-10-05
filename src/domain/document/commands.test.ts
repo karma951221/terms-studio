@@ -218,6 +218,20 @@ describe("노드 삭제 — 참조되는 조는 삭제 거부 (D-P4-7 · 참조 
     expect(applyCommand(withRef, { type: "remove", nodeId: "n3" }).ok).toBe(true);
     expect(rejection(applyCommand(withRef, { type: "remove", nodeId: "n5" })).reason).toBe("invalid");
   });
+
+  it("상품 조 사본 편집(env.allowDanglingRefs)은 막지 않는다 — 깨지는 곳은 편집기가 목록으로 띄운다 (ADR-0081 결정 2)", () => {
+    const doc: DocumentNode = {
+      id: "d",
+      kind: "document",
+      title: "보통약관",
+      children: [
+        { id: "a1", kind: "article", title: "지급", children: [{ id: "p1", kind: "paragraph", code: "P0100", children: [{ id: "t1", kind: "text", text: "가" }] }] },
+        { id: "a2", kind: "article", title: "제한", children: [{ id: "p2", kind: "paragraph", code: "P0100", children: [{ id: "r2", kind: "articleRef", scope: "self", targets: [{ articleId: "a1", code: "P0100" }] }] }] },
+      ],
+    };
+    expect(rejection(applyCommand(doc, { type: "remove", nodeId: "p1" })).reason).toBe("invalid");
+    expect(indexTree(unwrap(applyCommand(doc, { type: "remove", nodeId: "p1" }, { env: { allowDanglingRefs: true } }))).nodes.has("p1")).toBe(false);
+  });
 });
 
 describe("텍스트 · 조 명 · 슬롯 · 참조 대상 · 옵션 수정", () => {

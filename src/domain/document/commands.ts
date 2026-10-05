@@ -238,6 +238,7 @@ function verifyPlaced(doc: DocumentNode, node: Node, env: TreeEnv): Result<Docum
  * 지우는 노드와 같은 코드의 분기 짝이 남으면 대상은 살아 있다 (ADR-0072 결정 4 · 9).
  */
 function danglingRefs(ix: TreeIndex, removed: ReadonlySet<Id>, env: TreeEnv): Issue[] {
+  if (env.allowDanglingRefs) return []; // 상품 조 사본 편집 — 막지 않고 목록으로 (ADR-0081 결정 2)
   const lost = lostRefKeys(ix, removed);
   const out: Issue[] = [];
   for (const e of ix.nodes.values()) {

@@ -7,7 +7,7 @@ import type { ArticleNode, DocumentNode, ParagraphNode } from "@/domain/document
 import type { Issue } from "@/domain/types";
 
 import { applyArticleCopies } from "./articleCopies";
-import { clauseGeneralRefs, copyRefBreaks, newIssuesOnly, outsideRefsOf, refBreakIssues } from "./copyRefIntegrity";
+import { clauseGeneralRefs, copyRefBreaks, newIssuesOnly, outsideRefsOf, productRefIssues, refBreakIssues } from "./copyRefIntegrity";
 
 const text = (id: string, t: string) => ({ id, kind: "text" as const, text: t });
 const para = (id: string, code: string, ...children: ParagraphNode["children"]): ParagraphNode => ({ id, kind: "paragraph", code, children: children.length > 0 ? children : [text(`${id}-t`, "글")] });
@@ -129,5 +129,20 @@ describe("newIssuesOnly — 최종 트리 검사에서 템플릿 단독 검사�
     const t = [issue("a13", "r13", "a10#P0900")];
     const e = [issue("a13", "r13", "a10#P0900", "문구가 달라도"), issue("a11", "r11", "a10#P0100")];
     expect(newIssuesOnly(e, t)).toEqual([e[1]]);
+  });
+});
+
+describe("productRefIssues — 화면 · 서버가 같은 한 벌로 (템플릿 · 사본 · 노출 끔 · 밖의 참조 재료 → 이슈)", () => {
+  it("탑재로 거른 담보약관 재료 + 트리가 쓰는 함수조항만", () => {
+    const dependents = {
+      documents: [{ coverageId: "cov", clauseCodes: [], refs: [{ key: "a10#P0100", articleId: "a10", at: { document: "special" as const }, where: "담보약관 「암」 보험금" }] }],
+      clauses: [{ code: "C0001", refs: [{ key: "a10#P0200", articleId: "a10", at: { document: "clause" as const }, where: "함수조항 C0001" }] }],
+    };
+    const issues = productRefIssues({ template: template(), copies: [{ articleId: "a10", article: rewrittenA10() }], hidden: [], dependents, coordinate: product });
+    expect(issues.map((i) => [i.at.articleId, i.message.split(" — ")[0]])).toEqual([
+      ["a11", "제2조 ①"],
+      ["a10", "담보약관 「암」 보험금"],
+    ]);
+    expect(productRefIssues({ template: template(), copies: [], hidden: [] })).toEqual([]);
   });
 });

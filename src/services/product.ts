@@ -19,11 +19,10 @@ import {
   addAttributeValue,
   applyArticleCopies,
   articlesById,
-  copyRefBreaks,
   liveArticleCopies,
   newIssuesOnly,
-  outsideRefsFor,
-  refBreakIssues,
+  productRefIssues,
+  type GeneralDependents,
   sameArticle,
   type ArticleCopy,
   baseContractCountIssue,
@@ -245,6 +244,8 @@ export interface ProductService {
    * 다음 보통약관 탭 저장은 이것이 남아 있는 동안 거부된다. 템플릿이 없으면 빈 목록.
    */
   generalReferenceIssues(productId: Id): Promise<Issue[]>;
+  /** 이 상품이 볼 밖의 참조 재료 — 탑재한 담보의 담보약관 + 함수조항 (ADR-0081). 화면이 초안의 깨짐을 바로 셈하는 재료(`productRefIssues`). */
+  generalDependents(productId: Id): Promise<GeneralDependents>;
   deleteProduct(actor: Actor, id: Id, opts?: Confirmable): Promise<Result<void>>;
   setProductValue(actor: Actor, id: Id, path: SlotPath, value: Value | undefined): Promise<Result<void>>;
   /** 한 제출의 값 여럿 — 전부 검사한 뒤 한 트랜잭션으로 쓴다. 하나라도 거부되면 아무것도 안 바뀐다. */
@@ -479,16 +480,19 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
     return p ? fn(p) : notFound(`상품 ${id}`);
   }
 
+  /** 템플릿 밖의 참조 재료 중 이 상품의 것 — 탑재한 담보의 담보약관 + 함수조항 (ADR-0081 결정 2). */
+  async function dependentsFor(tx: Db, productId: Id, templateId: Id): Promise<GeneralDependents> {
+    const deps = await gate.dependents(templateId);
+    const coverageIds = new Set((await repo.listProductCoverages(tx, productId)).map((pc) => pc.coverageId));
+    return { documents: deps.documents.filter((d) => coverageIds.has(d.coverageId)), clauses: deps.clauses };
+  }
+
   /**
    * 상품 하나의 최종 트리(템플릿 + 사본 + 노출 끔)에서 새로 깨진 참조 (ADR-0081 결정 2 · 기능/상품 §3.10) — 같은 템플릿 안 · 끈 조 ·
    * 탑재한 담보약관 · 함수조항 본문. 좌표는 상품, 가리키는 쪽 자리(밖의 참조는 원인 조)에 붙는다.
    */
-  async function referenceBreaksOf(tx: Db, productId: Id, templateId: Id, template: DocumentNode, final: DocumentNode, hidden: readonly Id[]): Promise<Issue[]> {
-    const deps = gate.dependents ? await gate.dependents(templateId) : undefined;
-    const coverageIds = deps ? new Set((await repo.listProductCoverages(tx, productId)).map((pc) => pc.coverageId)) : new Set<Id>();
-    const outside = deps ? outsideRefsFor(deps, coverageIds, final) : [];
-    const breaks = copyRefBreaks({ template, final, hidden, outside, coordinate: { document: "product", ownerId: productId } });
-    return refBreakIssues(breaks, { template, final });
+  async function referenceBreaksOf(tx: Db, productId: Id, templateId: Id, template: DocumentNode, copies: readonly ArticleCopy[], hidden: readonly Id[]): Promise<Issue[]> {
+    return productRefIssues({ template, copies, hidden, dependents: await dependentsFor(tx, productId, templateId), coordinate: { document: "product", ownerId: productId } });
   }
   /** 세목 선택지 값 — 같은 plan 레벨이라도 이 선택지의 세목유형 폼이 아니면 자리가 아니다 (코덱스 리뷰 Important 1). */
   function setPlanOptionValues(actor: Actor, optionId: Id, entries: readonly SlotWrite[]): Promise<Result<void>> {
@@ -1045,8 +1049,8 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
             const template = await gate.template(p.generalDocumentId);
             if (template) {
               const before = await repo.listHiddenArticles(tx, productId);
-              const final = applyArticleCopies(template.tree, liveArticleCopies(template.tree, await repo.listArticleCopies(tx, productId)));
-              const broken = await referenceBreaksOf(tx, productId, p.generalDocumentId, template.tree, final, [...new Set([...before, articleId])]);
+              const copies = liveArticleCopies(template.tree, await repo.listArticleCopies(tx, productId));
+              const broken = await referenceBreaksOf(tx, productId, p.generalDocumentId, template.tree, copies, [...new Set([...before, articleId])]);
               if (broken.length > 0) return invalid(broken);
             }
             await repo.addHiddenArticle(tx, productId, articleId, actor.userId);
@@ -1094,7 +1098,7 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
           const effective = template ? applyArticleCopies(template.tree, copies) : undefined;
           // ②' 참조 무결성 (ADR-0081 결정 2) — 최종 트리 전체에서 템플릿 단독일 때 없던 깨짐. 사본이 든 조의 오류는 전부, 나머지 조는 새 오류만.
           if (template && effective) {
-            const broken = await referenceBreaksOf(tx, productId, templateId, template.tree, effective, hidden);
+            const broken = await referenceBreaksOf(tx, productId, templateId, template.tree, copies, hidden);
             const taken = new Set(broken.map((i) => `${i.at.nodePath?.at(-1) ?? i.at.articleId}|${i.at.refPath ?? ""}`));
             if (copies.length > 0) {
               const mine = new Set(copies.map((c) => c.articleId));
@@ -1171,8 +1175,12 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
         const template = p?.generalDocumentId ? await gate.template(p.generalDocumentId) : undefined;
         if (!p?.generalDocumentId || !template) return [];
         const [copies, hidden] = await Promise.all([repo.listArticleCopies(tx, productId), repo.listHiddenArticles(tx, productId)]);
-        const final = applyArticleCopies(template.tree, liveArticleCopies(template.tree, copies));
-        return referenceBreaksOf(tx, productId, p.generalDocumentId, template.tree, final, hidden);
+        return referenceBreaksOf(tx, productId, p.generalDocumentId, template.tree, liveArticleCopies(template.tree, copies), hidden);
+      }),
+    generalDependents: (productId) =>
+      db.transaction(async (tx) => {
+        const p = await repo.loadProduct(tx, productId);
+        return p?.generalDocumentId ? dependentsFor(tx, productId, p.generalDocumentId) : { documents: [], clauses: [] };
       }),
     deleteProduct: (actor, id, opts = {}) =>
       db.transaction(async (tx) => {

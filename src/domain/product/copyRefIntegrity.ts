@@ -15,6 +15,7 @@ import { numberTree, type NodeNumber } from "../document/numbering";
 import { nodesOfTarget, parseRefKey, refKey, refLabel, referenceKeys } from "../document/pcode";
 import { collectRefs } from "../document/refs";
 import type { Code, Coordinate, Id, Issue } from "../types";
+import { applyArticleCopies, type ArticleCopy } from "./articleCopies";
 import type { GeneralDependents } from "./types";
 
 /** 템플릿 밖에서 이 템플릿의 조 · 자리를 가리키는 참조 하나 — 담보약관의 조연결 · 보통약관 조 참조, 함수조항 본문의 보통약관 참조. */
@@ -200,4 +201,22 @@ export function outsideRefsFor(deps: GeneralDependents, coverageIds: ReadonlySet
   const used = new Set<Code>(docs.flatMap((d) => d.clauseCodes));
   for (const r of collectRefs(final)) if (r.kind === "clause") used.add(r.clauseCode);
   return [...docs.flatMap((d) => d.refs), ...deps.clauses.filter((c) => used.has(c.code)).flatMap((c) => c.refs)];
+}
+
+export interface ProductRefInput {
+  template: DocumentNode;
+  copies: Iterable<Pick<ArticleCopy, "articleId" | "article">>;
+  hidden: Iterable<Id>;
+  /** 이 상품이 탑재한 담보의 담보약관만 든 재료 (서비스 `generalDependents`). 없으면 같은 템플릿 안 · 끈 조만. */
+  dependents?: GeneralDependents;
+  numbers?: ReadonlyMap<Id, NodeNumber>;
+  coordinate?: Coordinate;
+}
+
+/** 상품 하나의 참조 깨짐 이슈 — 템플릿 + 사본 + 노출 끔 + 밖의 참조 (서버 저장 검사 · 보통약관 탭 목차 · 조 편집 목록이 같은 한 벌). */
+export function productRefIssues({ template, copies, hidden, dependents, numbers, coordinate }: ProductRefInput): Issue[] {
+  const final = applyArticleCopies(template, [...copies]);
+  const outside = dependents ? outsideRefsFor(dependents, new Set(dependents.documents.map((d) => d.coverageId)), final) : [];
+  const breaks = copyRefBreaks({ template, final, hidden, outside, ...(coordinate ? { coordinate } : {}) });
+  return refBreakIssues(breaks, { template, final, ...(numbers ? { numbers } : {}) });
 }

@@ -158,3 +158,11 @@ export function issuesByPlace(issues: readonly Issue[]): { articles: Map<Id, str
   }
   return { articles, nodes, copies, other };
 }
+
+/**
+ * 깨진 참조가 남은 초안의 저장 거부 문구 (ADR-0081 결정 2) — 하나라도 남으면 서버에 보내지 않는다(서버도 같은 검사로 거부한다).
+ * 없으면 undefined.
+ */
+export function refBreakRefusal(breaks: readonly Issue[]): string | undefined {
+  return breaks.length > 0 ? `참조가 깨진 곳 ${breaks.length} — 조 편집 위 「깨지는 참조」 목록에서 고친 뒤 저장한다.` : undefined;
+}

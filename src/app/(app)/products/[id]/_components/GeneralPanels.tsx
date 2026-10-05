@@ -10,17 +10,54 @@
  * 패널마다 머리 띠(`.ts-terms-panel-head` — 특별약관 탭과 같은 규칙, 스크롤해도 위에 붙는다): 「목차」 · 「모델링 — 관」 · 「미리보기 — 관」.
  *
  * 편집 중이면 패널이 둘이다 (ADR-0079 · 기능/상품 §4.6) — 목차(노출 체크 · 사본 점)와 **조 편집**(고른 조 하나를 문면 편집기로,
- * `ArticleCopyEditor`). 미리보기는 숨긴다 — 저장 전에는 저장된 조립이라 고친 것과 어긋난다. 모델링도 조 편집이 대신한다.
+ * `ArticleCopyEditor`), 그 위에 깨지는 참조 목록(`RefBreakList`, ADR-0081). 미리보기는 숨긴다 — 저장 전에는 저장된 조립이라 고친 것과 어긋난다. 모델링도 조 편집이 대신한다.
  */
 import { Fragment, useState, type ReactNode } from "react";
 
-import type { Id } from "@/domain/types";
+import type { Id, Issue } from "@/domain/types";
 
+import { generalArticlePath } from "../../lib";
 import { ArticleCopyEditor, type CopyEditorData } from "./ArticleCopyEditor";
 import { useGeneralEdit } from "./GeneralEdit";
 import { CopyDots, copyStateOf, GeneralToc, type TocSection } from "./GeneralToc";
 import { initialScrollTarget } from "./panelScroll";
 import { PanelScrollSync } from "./PanelScrollSync";
+import { selectArticleOnClick } from "./tocNav";
+
+/**
+ * 깨지는 참조 목록 (ADR-0081 결정 2 · 기능/상품 §4.6) — 조 편집 패널 위. 〔고치러 가기〕는 가리키는 조(밖의 참조면 원인 조)를
+ * 같은 초안의 조 편집으로 연다(목차에서 고른 것과 같다 — 서버로 가지 않는다). 하나라도 남으면 `저장`은 거부된다.
+ */
+export function RefBreakList({ productId, issues, onSelect }: { productId: Id; issues: readonly Issue[]; onSelect: (articleId: Id) => void }) {
+  if (issues.length === 0) return null;
+  return (
+    <section className="ts-ref-breaks" aria-label="깨지는 참조" role="alert">
+      <p className="ts-ref-breaks-title">
+        <b>깨지는 참조 {issues.length}</b> — 저장 전에 고친다. 가리키는 조도 사본으로 고치면 함께 저장된다.
+      </p>
+      <ul>
+        {issues.map((i, k) => {
+          const articleId = i.at.articleId;
+          const href = articleId ? generalArticlePath(productId, articleId) : undefined;
+          return (
+            <li key={k} className="ts-error">
+              {i.message}
+              {articleId && href && (
+                <>
+                  {" "}
+                  ·{" "}
+                  <a href={href} onClick={(e) => selectArticleOnClick(e, href, () => onSelect(articleId))}>
+                    고치러 가기
+                  </a>
+                </>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
 
 export interface GeneralPane {
   key: string;
@@ -91,6 +128,7 @@ export function GeneralPanels({
             {entry && <CopyDots state={copyStateOf(copy, entry.templateHash)} label={articleLabel} />}
             <span className="ts-terms-panel-hint">저장하면 이 상품의 보통약관에 반영됩니다</span>
           </div>
+          <RefBreakList productId={productId} issues={edit?.breaks ?? []} onSelect={select} />
           {articleId ? <ArticleCopyEditor key={articleId} data={copyEditor} articleId={articleId} label={articleLabel} /> : <p className="ts-muted">조가 없다.</p>}
         </section>
       </div>
