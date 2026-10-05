@@ -48,7 +48,7 @@ import {
   type TreeIndex,
 } from "./nodes";
 import { isRepeatSource, type RepeatSource } from "./blockRepeat";
-import { codeTreeInPlace, documentCodeIssues, isCodedKind, isPCode, lostRefKeys, refKey, refLabel } from "./pcode";
+import { codeFormatMessage, codeTreeInPlace, documentCodeIssues, isCodedKind, lostRefKeys, refKey, refLabel } from "./pcode";
 
 // ───────────────────────────── 커맨드 ─────────────────────────────
 
@@ -705,9 +705,10 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       const e = entryOf(ix, cmd.nodeId);
       if (!e.ok) return e;
       if (!isCodedKind(e.value.node.kind)) return structure("코드는 항 · 호 · 목 · 함수조항 블록 참조에만 둘 수 있습니다", e.value.path);
-      if (!isPCode(cmd.code)) return structure(`코드 ${cmd.code} 는 P코드 형식(P + 숫자 4자리 이상)이 아닙니다`, e.value.path);
+      const bad = codeFormatMessage(cmd.code, env.copyCodes === true);
+      if (bad) return structure(bad, e.value.path);
       (e.value.node as Node & { code?: Code }).code = cmd.code;
-      const clash = documentCodeIssues(work).find((i) => i.id === cmd.nodeId);
+      const clash = documentCodeIssues(work, undefined, { copyCodes: env.copyCodes === true }).find((i) => i.id === cmd.nodeId);
       return clash ? structure(clash.message, e.value.path) : ok(work);
     }
 
@@ -725,7 +726,7 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
 
 /**
  * 새로 놓인 하위 트리의 코드 자리를 매긴다 (새 노드 · 사본, ADR-0072 결정 5). 이미 있던 조에 놓인 자리는 가진 코드를 버리고 새로 —
- * 같은 조의 코드와 겹치지 않게(상품 조 사본이면 템플릿 원본 조의 코드도 피한다 — `env.reservedCodes`, ADR-0081 결정 4).
+ * 같은 조의 코드와 겹치지 않게(상품 조 사본이면 `PZ` 영역에서 — `env.copyCodes`, ADR-0081 결정 4).
  * 함께 새로 생긴 조 안의 자리는 가진 코드를 둔다(범위가 새 조뿐이라 겹칠 것이 없다), 없으면 채운다.
  * 돌려주는 것은 다시 매긴 자리의 옛 코드 → 새 대상(놓인 조 · 새 코드).
  */
@@ -738,7 +739,7 @@ function numberNew(doc: DocumentNode, root: Node, env: TreeEnv = {}): Map<Code, 
   const before = new Map(coded.map((n) => [n.id, (n as { code?: Code }).code] as const));
   const moved = new Map<Code, RefTarget>();
   if (ids.size === 0) return moved;
-  for (const [id, code] of codeTreeInPlace(doc, { renumber, only: ids, ...(env.reservedCodes ? { reserved: env.reservedCodes } : {}) })) {
+  for (const [id, code] of codeTreeInPlace(doc, { renumber, only: ids, ...(env.copyCodes ? { band: "PZ" as const } : {}) })) {
     const old = before.get(id);
     const articleId = ix.nodes.get(id)?.articleId;
     if (old !== undefined && articleId !== undefined) moved.set(old, { articleId, code });

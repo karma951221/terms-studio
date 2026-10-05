@@ -709,10 +709,10 @@ export interface TreeEnv {
    */
   allowDanglingRefs?: boolean;
   /**
-   * 조마다 새 자리에 주지 않을 코드 — 상품 조 사본 편집이 템플릿 원본 조의 코드를 준다(ADR-0081 결정 4). 새 항 · 호 · 목 · 함수조항 참조는
-   * 이 코드를 건너뛰어 템플릿이 나중에 원본 코드를 가리켜도 사본의 다른 자리에 조용히 붙지 않는다. 템플릿 저작은 주지 않는다.
+   * 상품 조 사본 트리 — 새로 생긴 항 · 호 · 목 · 함수조항 참조는 `PZ` 코드를 받고, PZ 코드가 유효하다(ADR-0081 결정 4).
+   * 템플릿에서 온 자리는 옮겨도 코드를 바꾸지 않는다. 템플릿 · 담보약관 · 함수조항 저작은 끄고 PZ 를 거부한다.
    */
-  reservedCodes?: (articleId: Id) => ReadonlySet<Code> | undefined;
+  copyCodes?: boolean;
 }
 
 /**
@@ -730,7 +730,7 @@ export function validateTree(doc: DocumentNode, env: TreeEnv = {}): Issue[] {
 
   for (const e of ix.nodes.values()) issues.push(...checkNodeRefs(e, ix, env, true));
   // P코드 — 형식 · 공존 중복 (ADR-0072 결정 4 · 5). 코드 없는 자리는 저장 때 채운다(withCodes)
-  for (const { id, message } of documentCodeIssues(doc, ix)) {
+  for (const { id, message } of documentCodeIssues(doc, ix, { copyCodes: env.copyCodes === true })) {
     const e = ix.nodes.get(id)!;
     issues.push({ kind: "structure", message, at: coordinateOf(ix, e, base) });
   }

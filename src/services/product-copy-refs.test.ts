@@ -43,8 +43,8 @@ function template(): DocumentNode {
 }
 const a10 = () => template().children[0] as ArticleNode;
 const a11 = () => template().children[1] as ArticleNode;
-/** 제1조 사본 — ①(P0100)을 지우고 새 항(P0300)을 쓴다. */
-const rewrittenA10 = (): ArticleNode => ({ ...a10(), children: [para("p10-new", "P0300"), para("p10-2", "P0200")] });
+/** 제1조 사본 — ①(P0100)을 지우고 새 항(PZ0100 — 사본의 새 자리)을 쓴다. */
+const rewrittenA10 = (): ArticleNode => ({ ...a10(), children: [para("p10-new", "PZ0100"), para("p10-2", "P0200")] });
 /** 제2조 사본 — 지운 ① 대신 ②를 가리키게 고쳤다. */
 const fixedA11 = (): ArticleNode => ({ ...a11(), children: [para("p11-1", "P0100", text("t11", "제1조 제2항에 따라 "), ref("r11", "a10", "P0200")), para("p11-2", "P0200")] });
 
@@ -151,11 +151,11 @@ describe("ADR-0081 — 보통약관 탭 저장의 참조 무결성 (PGlite)", ()
     expect(impact).toEqual([{ document: "product", ownerId: p.id, ownerName: "템플릿 영향 A", articleId: "a11", subjectName: "제2조 ① — 없는 제1조 ①을 가리킴 · 가리키는 조를 고친다" }]);
   });
 
-  it("사본의 새 노드가 템플릿 원본 조의 코드를 쓰면 거부 — 이미 저장된 사본의 노드는 그대로 (ADR-0081 결정 4)", async () => {
+  it("사본의 새 노드가 PZ 코드가 아니면 거부 — 이미 저장된 사본의 노드는 그대로 (ADR-0081 결정 4)", async () => {
     const p = unwrap(await svc.createProduct(editor, { name: "새 코드", generalDocumentId: GENERAL }));
-    // 제1조 ②만 남기고 새 항을 P0100 으로 — 지운 ①의 코드를 다시 쓴다
-    const reused: ArticleNode = { ...a10(), children: [para("p10-new", "P0100"), para("p10-2", "P0200")] };
-    const issues = issuesOf(await save(p.id, { copies: [copy(reused)] }));
+    // 제1조 ②만 남기고 새 항을 P0300 으로 — 템플릿이 나중에 같은 숫자 코드를 쓰면 조용히 붙는다
+    const plain: ArticleNode = { ...a10(), children: [para("p10-new", "P0300"), para("p10-2", "P0200")] };
+    const issues = issuesOf(await save(p.id, { copies: [copy(plain), copy(fixedA11())] }));
     expect(issues.map((i) => [i.at.articleId, i.at.nodePath?.at(-1)])).toEqual([["a10", "p10-new"]]);
     unwrap(await save(p.id, { copies: [copy(rewrittenA10()), copy(fixedA11())] }));
   });

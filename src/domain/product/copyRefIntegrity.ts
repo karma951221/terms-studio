@@ -12,7 +12,7 @@
  */
 import { indexTree, type ArticleNode, type DocumentNode, type TreeIndex } from "../document/nodes";
 import { numberTree, type NodeNumber } from "../document/numbering";
-import { documentCodeEntries, fillCodes, nodesOfTarget, parseRefKey, refKey, refLabel, referenceKeys } from "../document/pcode";
+import { documentCodeEntries, fillCodes, isPZCode, nodesOfTarget, parseRefKey, refKey, refLabel, referenceKeys } from "../document/pcode";
 import { collectRefs } from "../document/refs";
 import type { Code, Coordinate, Id, Issue } from "../types";
 import { applyArticleCopies, type ArticleCopy } from "./articleCopies";
@@ -241,29 +241,23 @@ function soloDoc(article: ArticleNode): DocumentNode {
   return { id: "__copy", kind: "document", title: "", children: [article] };
 }
 
-/** 조 하나의 코드 (항 · 호 · 목 · 함수조항 참조 · 반복 블록). 편집기가 사본의 새 자리에 주지 않을 코드(`TreeEnv.reservedCodes`)다. */
-export function articleCodes(article: ArticleNode): Set<Code> {
-  return new Set(documentCodeEntries(soloDoc(article)).flatMap((e) => (e.code !== undefined ? [e.code] : [])));
-}
-
 /**
- * 사본의 새 노드가 템플릿 원본 조의 코드를 쓰는가 (ADR-0081 결정 4) — 새 노드 = 템플릿 원본 조에 없는 노드 id.
+ * 사본의 새 노드는 PZ 코드여야 한다 (ADR-0081 결정 4) — 새 노드 = 템플릿 원본 조에 없는 노드 id. P 코드면 그 자리에 오류(추천 PZ 코드 함께).
+ * 템플릿 코드는 P 뿐이라 PZ 는 지금 · 나중의 템플릿 코드와 겹칠 수 없다 — 템플릿이 나중에 같은 숫자 코드를 써도 사본의 새 자리에 붙지 않는다.
  * 이미 저장된 사본에 같은 id · 같은 코드로 있던 노드는 그대로 둔다(이 결정 전 사본을 다시 쓰지 않는다 — 새 편집만 거른다).
- * 오류는 그 노드 자리에 추천 코드(템플릿 · 사본 코드를 피한 위치값)와 함께.
+ * PZ 끼리 공존 중복 · 형식은 문면 저장 검증(`copyCodes`)이 본다.
  */
 export function copyCodeIssues(original: ArticleNode, copy: ArticleNode, saved: ArticleNode | undefined, coordinate: Coordinate = {}): Issue[] {
-  const reserved = articleCodes(original);
-  if (reserved.size === 0) return [];
   const originalIds = new Set(indexTree(soloDoc(original)).nodes.keys());
   const savedCodes = new Map(saved ? documentCodeEntries(soloDoc(saved)).map((e) => [e.id, e.code] as const) : []);
   const entries = documentCodeEntries(soloDoc(copy));
   const out: Issue[] = [];
   for (const e of entries) {
-    if (e.code === undefined || originalIds.has(e.id) || !reserved.has(e.code) || savedCodes.get(e.id) === e.code) continue;
-    const suggestion = fillCodes(entries, { only: new Set([e.id]), renumber: new Set([e.id]), reserved: () => reserved }).get(e.id);
+    if (e.code === undefined || originalIds.has(e.id) || isPZCode(e.code) || savedCodes.get(e.id) === e.code) continue;
+    const suggestion = fillCodes(entries, { only: new Set([e.id]), renumber: new Set([e.id]), band: "PZ" }).get(e.id);
     out.push({
       kind: "structure",
-      message: `사본에 새로 넣은 자리의 코드 ${e.code} 은 템플릿 원본 조가 쓰는 코드다 — 템플릿이 쓰지 않는 코드를 받는다${suggestion ? ` (추천 ${suggestion})` : ""}`,
+      message: `사본에 새로 넣은 자리의 코드 ${e.code} 은 PZ 코드여야 한다 — 템플릿 코드(P)와 갈라 둔다${suggestion ? ` (추천 ${suggestion})` : ""}`,
       at: { ...coordinate, articleId: copy.id, articleTitle: copy.title, nodePath: [e.id] },
     });
   }

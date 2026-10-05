@@ -114,7 +114,7 @@ export interface DocumentService {
   findByCoverage(coverageId: Id): Promise<DocumentRecord | undefined>;
   list(kind?: DocumentKind): Promise<DocumentSummary[]>;
   validate(id: Id): Promise<Issue[]>;
-  /** 저장되지 않은 트리를 문서 `id` 자리의 저장 검증(`validate` 와 같은 규칙 · 경고 포함)으로 — 상품 조 사본 검사 (ADR-0079). 없는 문서면 빈 목록. */
+  /** 저장되지 않은 트리를 문서 `id` 자리의 저장 검증(`validate` 와 같은 규칙 · 경고 포함)으로 — 상품 조 사본 검사 (ADR-0079). PZ 코드를 받는다(ADR-0081). 없는 문서면 빈 목록. */
   validateTree(id: Id, tree: DocumentNode): Promise<Issue[]>;
   /**
    * 미결정 함수조항 옵션 수 — 저장 검사와 **같은** 검증(`validate`)의 `optionUnselected` 만 센다 (기능/담보 §3.5).
@@ -240,9 +240,12 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
     return { resolve, scope: { ...(coverage ? { coverage } : {}), levelOf } };
   }
 
-  /** 저장 시점 전체 검증 (경고 포함) — 브라우저 편집본의 검증 목록과 같은 `validateDocument`. */
-  async function validateDoc(tx: Db, doc: DocumentRecord, tree: DocumentNode): Promise<Issue[]> {
-    const env = await envOf(tx, doc);
+  /**
+   * 저장 시점 전체 검증 (경고 포함) — 브라우저 편집본의 검증 목록과 같은 `validateDocument`.
+   * `copyCodes` = 상품 조 사본 트리 검사(`validateTree`) — PZ 코드를 받는다. 문서 저장은 PZ 를 거부한다 (ADR-0081 결정 4).
+   */
+  async function validateDoc(tx: Db, doc: DocumentRecord, tree: DocumentNode, copyCodes = false): Promise<Issue[]> {
+    const env = { ...(await envOf(tx, doc)), ...(copyCodes ? { copyCodes } : {}) };
     const { resolve, scope } = await scopeOf(tx, doc);
     return validateDocument(tree, { env, resolve, scope });
   }
@@ -353,7 +356,7 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
     validateTree: (id, tree) =>
       db.transaction(async (tx) => {
         const doc = await repo.loadDocument(tx, id);
-        return doc ? validateDoc(tx, doc, tree) : [];
+        return doc ? validateDoc(tx, doc, tree, true) : [];
       }),
 
     unresolvedOptionCount: (id) =>

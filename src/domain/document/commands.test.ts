@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Result } from "../types";
 import { nodeBuilders, sequentialIds } from "./builders";
 import { applyCommand, applyCommands, cloneTree, type Command } from "./commands";
-import { indexTree, type ArticleNode, type CondBlockNode, type DocumentNode, type Node, type ParagraphNode, type SectionNode } from "./nodes";
+import { indexTree, validateTree, type ArticleNode, type CondBlockNode, type DocumentNode, type Node, type ParagraphNode, type SectionNode } from "./nodes";
 
 function make() {
   return nodeBuilders(sequentialIds("n"));
@@ -234,28 +234,42 @@ describe("노드 삭제 — 참조되는 조는 삭제 거부 (D-P4-7 · 참조 
   });
 });
 
-describe("상품 조 사본의 새 코드 — 템플릿 원본 조가 쓰는 코드를 피한다 (ADR-0081 결정 4)", () => {
+describe("상품 조 사본의 새 코드 — PZ 영역 (ADR-0081 결정 4)", () => {
   const doc = (): DocumentNode => ({
     id: "d",
     kind: "document",
     title: "보통약관",
     // 사본 — 템플릿 원본 조(P0100 · P0200)에서 ①(P0100)을 지운 뒤
-    children: [{ id: "a1", kind: "article", title: "지급", children: [{ id: "p2", kind: "paragraph", code: "P0200", children: [{ id: "t2", kind: "text", text: "나" }] }] }],
+    children: [{ id: "a1", kind: "article", title: "지급", children: [{ id: "p2", kind: "paragraph", code: "P0200", children: [{ id: "t2", kind: "text", text: "나" }] }, { id: "p3", kind: "paragraph", code: "P0300", children: [] }] }],
   });
   const fresh = (id: string): ParagraphNode => ({ id, kind: "paragraph", children: [{ id: `${id}-t`, kind: "text", text: "새" }] });
   const codeOf = (d: DocumentNode, id: string) => (indexTree(d).nodes.get(id)!.node as ParagraphNode).code;
+  const env = { copyCodes: true };
 
-  it("env.reservedCodes 가 없으면 위치값(첫 자리 = P0100)을 받는다 — 지운 ①의 코드가 되살아난다", () => {
+  it("env.copyCodes 가 없으면(템플릿 저작) 위치값 P 코드 — 지운 ①의 P0100 을 받는다", () => {
     expect(codeOf(unwrap(applyCommand(doc(), { type: "insert", node: fresh("n1"), at: { parentId: "a1", index: 0 } })), "n1")).toBe("P0100");
   });
 
-  it("env.reservedCodes 면 템플릿 원본 조의 코드를 건너뛴다 — 넣기 · 복제 둘 다", () => {
-    const env = { reservedCodes: (articleId: string) => (articleId === "a1" ? new Set(["P0100", "P0200"]) : undefined) };
+  it("env.copyCodes 면 새 자리는 PZ — 넣기 · 복제(붙여넣기) 모두, 템플릿에서 온 자리는 옮겨도 코드를 바꾸지 않는다", () => {
     const inserted = unwrap(applyCommand(doc(), { type: "insert", node: fresh("n1"), at: { parentId: "a1", index: 0 } }, { env }));
-    expect(codeOf(inserted, "n1")).toBe("P0300");
+    expect(codeOf(inserted, "n1")).toBe("PZ0100");
     const duplicated = unwrap(applyCommand(inserted, { type: "duplicate", nodeId: "n1" }, { env, newId: sequentialIds("c") }));
     const copyId = (duplicated.children[0] as ArticleNode).children[1].id;
-    expect(codeOf(duplicated, copyId)).toBe("P0400");
+    expect(codeOf(duplicated, copyId)).toBe("PZ0200");
+    const moved = unwrap(applyCommand(duplicated, { type: "move", nodeId: "p3", to: { parentId: "a1", index: 0 } }, { env }));
+    expect(codeOf(moved, "p3")).toBe("P0300");
+  });
+
+  it("PZ 코드 직접 수정은 사본에서만 — 템플릿 저작은 「사본 전용」으로 거부", () => {
+    expect(rejection(applyCommand(doc(), { type: "setCode", nodeId: "p3", code: "PZ0500" })).reason).toBe("invalid");
+    expect(codeOf(unwrap(applyCommand(doc(), { type: "setCode", nodeId: "p3", code: "PZ0500" }, { env })), "p3")).toBe("PZ0500");
+  });
+
+  it("사본 안의 PZ 대상 참조 `{ articleId, code: PZ… }` 가 선다", () => {
+    const withNew = unwrap(applyCommand(doc(), { type: "insert", node: fresh("n1"), at: { parentId: "a1", index: 0 } }, { env }));
+    const ref = { id: "r", kind: "articleRef" as const, scope: "self" as const, targets: [{ articleId: "a1", code: "PZ0100" }] };
+    const pointed = unwrap(applyCommand(withNew, { type: "insert", node: { id: "pr", kind: "paragraph", children: [ref] }, at: { parentId: "a1" } }, { env }));
+    expect(validateTree(pointed, env)).toEqual([]);
   });
 });
 

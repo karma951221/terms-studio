@@ -26,8 +26,8 @@ const template = (): DocumentNode => ({
   ],
 });
 const a10 = () => template().children[0] as ArticleNode;
-/** 제1조 사본 — ①(P0100)을 지우고 새 항(P0300)을 쓴다. */
-const rewrittenA10 = (): ArticleNode => ({ ...a10(), children: [para("p10-new", "P0300"), para("p10-2", "P0200")] });
+/** 제1조 사본 — ①(P0100)을 지우고 새 항(PZ0100)을 쓴다. */
+const rewrittenA10 = (): ArticleNode => ({ ...a10(), children: [para("p10-new", "PZ0100"), para("p10-2", "P0200")] });
 const product = { document: "product" as const, ownerId: "prod" };
 
 describe("copyRefBreaks — 템플릿 단독일 때 없던 깨짐만", () => {
@@ -147,16 +147,16 @@ describe("productRefIssues — 화면 · 서버가 같은 한 벌로 (템플릿 
   });
 });
 
-describe("copyCodeIssues — 사본의 새 노드가 템플릿 원본 조의 코드를 쓰면 거부 (ADR-0081 결정 4)", () => {
-  it("템플릿에 없던 노드 id + 템플릿 원본 조의 코드 → 그 노드 자리에 오류, 템플릿 노드 · 겹치지 않는 코드는 통과", () => {
-    const copy: ArticleNode = { ...a10(), children: [para("p10-new", "P0100"), para("p10-2", "P0200"), para("p10-other", "P0300")] };
+describe("copyCodeIssues — 사본의 새 노드는 PZ 코드여야 한다 (ADR-0081 결정 4)", () => {
+  it("템플릿 원본 조에 없는 노드 id 가 P 코드면 그 자리에 오류, PZ · 템플릿 노드는 통과", () => {
+    const copy: ArticleNode = { ...a10(), children: [para("p10-new", "P0300"), para("p10-2", "P0200"), para("p10-z", "PZ0100")] };
     const issues = copyCodeIssues(a10(), copy, undefined, product);
     expect(issues.map((i) => [i.kind, i.at.articleId, i.at.nodePath])).toEqual([["structure", "a10", ["p10-new"]]]);
-    expect(issues[0].message).toBe("사본에 새로 넣은 자리의 코드 P0100 은 템플릿 원본 조가 쓰는 코드다 — 템플릿이 쓰지 않는 코드를 받는다 (추천 P0400)");
+    expect(issues[0].message).toBe("사본에 새로 넣은 자리의 코드 P0300 은 PZ 코드여야 한다 — 템플릿 코드(P)와 갈라 둔다 (추천 PZ0200)");
   });
 
-  it("이미 저장된 사본에 같은 코드로 있던 노드는 그대로 둔다 — 이 결정 전 사본을 다시 쓰지 않는다", () => {
-    const copy: ArticleNode = { ...a10(), children: [para("p10-new", "P0100"), para("p10-2", "P0200")] };
+  it("이미 저장된 사본에 같은 id · 같은 코드로 있던 노드는 그대로 둔다 — 이 결정 전 사본을 다시 쓰지 않는다", () => {
+    const copy: ArticleNode = { ...a10(), children: [para("p10-new", "P0300"), para("p10-2", "P0200")] };
     expect(copyCodeIssues(a10(), copy, copy, product)).toEqual([]);
     expect(copyCodeIssues(a10(), copy, { ...copy, children: [para("p10-new", "P0500")] }, product)).toHaveLength(1);
   });

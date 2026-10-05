@@ -179,6 +179,16 @@ describe("document.save — 편집본 저장 (ADR-0074)", () => {
     expect(seen).toHaveLength(1); // 확인한 저장 · 담보약관 저장은 다시 묻지 않는다
   });
 
+  it("템플릿에 PZ 코드는 저장이 거부한다 — 상품 조 사본 전용 (ADR-0081 결정 4) · 상품 사본 검사(validateTree)는 받는다", async () => {
+    const g = unwrap(await svc.createGeneral(editor, "PZ 거부 보통약관"));
+    const art: ArticleNode = { id: "pz-a", kind: "article", title: "조", children: [{ id: "pz-p", kind: "paragraph", code: "PZ0100", children: [{ id: "pz-t", kind: "text", text: "글" }] }] };
+    const r = rejection(await svc.save(editor, g.id, { baseVersion: 1, ops: [{ type: "insert", node: art, at: { parentId: g.tree.id } }] }));
+    expect(r.reason).toBe("invalid");
+    if (r.reason === "invalid") expect(r.issues.map((i) => i.message)).toContain("코드 PZ0100 는 상품 조 사본 전용(PZ)이다 — 템플릿 · 담보약관 · 함수조항에는 쓸 수 없다");
+    expect(rejection(await svc.importTree(editor, g.id, { ...g.tree, children: [art] })).reason).toBe("invalid");
+    expect(await svc.validateTree(g.id, { ...g.tree, children: [art] })).toEqual([]);
+  });
+
   it("원본을 바꾸는 다른 경로(이름 수정 · 명령 적용 · 트리 적재)도 판을 올린다", async () => {
     const g = unwrap(await svc.createGeneral(editor, "다른 경로 보통약관"));
     const v2 = unwrap(await svc.setTitle(editor, g.id, "다른 경로 보통약관 2"));

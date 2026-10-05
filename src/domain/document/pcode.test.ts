@@ -6,7 +6,7 @@ import type { Result } from "../types";
 import { nodeBuilders, sequentialIds } from "./builders";
 import { applyCommand, applyCommands, type Command } from "./commands";
 import { indexTree, validateTree, type DocumentNode, type Node } from "./nodes";
-import { formatPCode, nextCode, suggestCode, documentCodeEntries, withCodes } from "./pcode";
+import { documentCodeEntries, documentCodeIssues, fillCodes, formatPCode, nextCode, suggestCode, withCodes } from "./pcode";
 
 function unwrap<T>(r: Result<T>): T {
   if (!r.ok) throw new Error(`기대: ok, 실제: ${JSON.stringify(r.rejection)}`);
@@ -257,5 +257,41 @@ describe("수용 기준 7 — 조 자리 조건 블록은 IF 하나(켜고 끄�
     expect(validateTree(doc).map((i) => i.message)).toEqual([expect.stringContaining("IF 하나")]);
     const inside = b.document("문서", [b.article("조", [b.condBlock([b.branch("D0001", [b.paragraph()]), b.branch(undefined, [b.paragraph()])])])]);
     expect(validateTree(inside)).toEqual([]);
+  });
+});
+
+describe("PZ 코드 — 상품 조 사본에서 새로 생긴 자리 (ADR-0081 결정 4)", () => {
+  it("형식 PZ + 숫자 4자리 이상 · 위치값 × 100 · PZ9900 너머는 자릿수를 늘린다", () => {
+    expect(formatPCode(100, "PZ")).toBe("PZ0100");
+    expect(formatPCode(10000, "PZ")).toBe("PZ10000");
+    expect(nextCode(new Set([100]), 1, "PZ")).toBe("PZ0200");
+  });
+
+  it("PZ 채번은 같은 조의 공존 PZ 코드만 피한다 — 템플릿 P 코드는 다른 영역이라 겹칠 수 없다", () => {
+    const entries = [
+      { id: "t1", code: "P0100", scope: "a", branches: [], position: 1, depth: 0 },
+      { id: "z1", code: "PZ0200", scope: "a", branches: [], position: 2, depth: 0 },
+      { id: "new", scope: "a", branches: [], position: 2, depth: 0 },
+    ];
+    expect(fillCodes(entries, { band: "PZ" }).get("new")).toBe("PZ0300");
+    expect(suggestCode([...entries.slice(0, 2), { id: "z2", code: "PZ0200", scope: "a", branches: [], position: 2, depth: 0 }], "z2")).toBe("PZ0300");
+  });
+
+  it("문서 코드 검사 — PZ 는 상품 조 사본(copyCodes)에서만 유효하다. 템플릿 · 담보약관에는 「사본 전용」으로 거부, 사본 안 PZ 끼리 공존 중복은 거부", () => {
+    const doc: DocumentNode = {
+      id: "d",
+      kind: "document",
+      title: "t",
+      children: [{ id: "a", kind: "article", title: "조", children: [{ id: "p1", kind: "paragraph", code: "PZ0100", children: [] }, { id: "p2", kind: "paragraph", code: "PZ0100", children: [] }] }],
+    };
+    expect(documentCodeIssues(doc).map((i) => i.message)).toContain("코드 PZ0100 는 상품 조 사본 전용(PZ)이다 — 템플릿 · 담보약관 · 함수조항에는 쓸 수 없다");
+    const inCopy = documentCodeIssues(doc, undefined, { copyCodes: true });
+    expect(inCopy.map((i) => i.id)).toEqual(["p2"]);
+    expect(inCopy[0].message).toContain("(추천 PZ0200)");
+  });
+
+  it("함수조항 본문의 PZ 코드도 「사본 전용」으로 거부한다 — 사본 내용이 붙여넣기로 새지 않게", () => {
+    const body = [{ id: "p", kind: "paragraph", code: "PZ0100", children: [] }] as unknown as Block[];
+    expect(clauseCodeIssues(body).map((i) => i.message)).toEqual(["코드 PZ0100 는 상품 조 사본 전용(PZ)이다 — 템플릿 · 담보약관 · 함수조항에는 쓸 수 없다"]);
   });
 });
