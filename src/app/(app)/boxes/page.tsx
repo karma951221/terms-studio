@@ -1,6 +1,8 @@
 /**
  * 박스 조회 (L1) — 정적 마스터 › 박스 (기능/박스 §4.1). 별표 목록과 같은 모양이다 — 화면은 컬럼만 적고 조립은 ListPage.
  * 목록의 일은 찾아서 들어가는 것이다 — 고치기 · 삭제는 상세(L2)에서.
+ * 컬럼은 코드 · 박스 이름(상세로) · 최종수정 · 수정자 (2026-10-10, 기능/박스 §6.2) — 【제목】은 박스 이름과 겹치고 줄 수는 쓸 데가 없어 뺐다.
+ * 검색은 그대로 제목까지 본다.
  */
 import { EmptyState } from "@/app/_components/EmptyState";
 import { ListPage, codeCol, nameCol, type ListColumn } from "@/app/_components/ListPage";
@@ -32,8 +34,6 @@ export default async function BoxesPage({ searchParams }: { searchParams: Promis
   const columns: readonly ListColumn<Box>[] = [
     codeCol((x) => x.code),
     nameCol(NAME_LABEL.box, (x) => x.name, (x) => `/boxes/${encodeURIComponent(x.code)}`),
-    { header: FIELD_LABEL.title, width: "flex", cell: (x) => x.title || <span className="ts-muted">없음</span> },
-    { header: "줄 수", width: "sm", mono: true, cell: (x) => x.lines.length },
     { header: FIELD_LABEL.updatedAt, width: "md", mono: true, cell: (x) => { const audit = audits.get(x.code); return audit ? formatDate(audit.updatedAt) : "—"; } },
     { header: FIELD_LABEL.updatedBy, width: "md", cell: (x) => { const by = audits.get(x.code)?.updatedBy; return (by && userName.get(by)) ?? "—"; } },
   ];
