@@ -11,7 +11,7 @@
  * - 경로 링크 · ✕ · 화면을 떠나는 링크는 고친 것이 있으면 「고친 내용을 버립니까?」, 새로고침 · 창 닫기는 브라우저 경고.
  *
  * 가운데 = 그 자리 편집 (2026-09-27):
- * - 가운데에는 **조 하나**만 보인다 — 목차에서 고른 조, 처음은 제1조. 약관 전체 이어 읽기는 더보기 › 미리보기.
+ * - 가운데에는 **조 하나**만 보인다 — 목차에서 고른 조, 처음은 제1조. 우측 패널 「미리보기」 탭이 같은 조를 고른 상품의 조립 문맥으로 보인다(§3.9).
  * - 조 제목 · 관 제목 · 문장은 그 자리에서 고치고, 초점이 떠나면 편집본에 들어간다(「적용」 단계 없음).
  * - 칩은 누르면 바로 아래에 팝업. 넣기 · 이동 · 복제 · 삭제 · 조건식은 본문 위 **툴바**가 입구다 — 가운데서 마지막으로
  *   누르거나 초점이 간 자리(`place`)로 버튼이 켜지고 꺼진다. 오른쪽 클릭 메뉴는 같은 목록의 지름길(조건 넣기는 툴바에만).
@@ -31,7 +31,7 @@ import { describeRejection } from "@/app/_lib/rejection";
 import type { Discriminator, EnumDef } from "@/domain/catalog";
 import { switchValueLabeler, type Clause } from "@/domain/clause";
 import { formatCoordinate } from "@/domain/coordinate";
-import { coverageRowSource, masterCatalog, masterEvalContext, type Coverage, type MasterValues } from "@/domain/coverage";
+import type { Coverage } from "@/domain/coverage";
 import {
   applyEdit,
   blockingIssues,
@@ -43,8 +43,6 @@ import {
   isRepeatSource,
   clauseSpanBy,
   numberTree,
-  preEvaluate,
-  evaluateSlotRef,
   randomIds,
   referenceTargetIndex,
   repeatLabel,
@@ -54,7 +52,6 @@ import {
   rowReadableLevels,
   validateDocument,
   type Appendix,
-  type BranchState,
   type DraftState,
   type EditEnv,
   type EditOp,
@@ -64,13 +61,14 @@ import {
 } from "@/domain/document";
 import type { Box } from "@/domain/document/box";
 import type { Code, Coordinate, Id, Impact, Issue, WorkMark } from "@/domain/types";
+import type { PreviewProduct } from "@/services/assembly";
 
 import { loadGeneralForEditAction, saveDocumentEditAction, startDocumentEditAction, type GeneralForEdit } from "../../edit-actions";
 import { docListHref } from "../../lib";
 import { refLabelOf } from "./condition/display";
 import type { ConditionContext } from "./condition/types";
 import { anchorOf, type Anchor, type CellAt, type DocCtx, type DocMode, type EditHandlers } from "./ctx";
-import { ArticleBody, DocBody } from "./DocBody";
+import { ArticleBody } from "./DocBody";
 import { backspaceOps, enterOps, inlineListAt, moveSelectionOps, pasteGridOps } from "./editOps";
 import { caretFromPoint, tokensOf } from "./Inline";
 import { identityRuns, runsFromTokens, sameRuns, type Token } from "./inlineRuns";
@@ -84,6 +82,7 @@ import { PopupHost, type PopupEnv } from "./Popups";
 import { loopsAround } from "./repeatSources";
 import { ContextMenu, Popover } from "./Popover";
 import { RemoveCard } from "./RemoveCard";
+import { PreviewTab } from "./PreviewTab";
 import { DraftIssues, SidePanel, type PanelData } from "./SidePanel";
 import { Toc, articlesOf } from "./Toc";
 
@@ -114,15 +113,12 @@ export interface EditorProps {
   attributeValues: Readonly<Record<Code, readonly Code[]>>;
   /** 담보약관의 문맥 담보 — `@노드` 식 검사 재료. */
   coverage?: Coverage;
-  /** 담보 마스터 값 — 사전평가 문맥 (서버에서 한 번 받는다). */
-  master?: { tree: Coverage; values: MasterValues };
-  evalNote?: string;
+  /** 미리보기 탭의 상품 목록 — 담보약관은 특약 탑재분, 보통약관은 그 템플릿을 쓰는 상품 (§3.9). */
+  previewProducts: readonly PreviewProduct[];
   /** 조건 팝업 문맥(반복 표 「현재 행」 없이) — 담보 트리 · 구분자 · 열린 폼 · 빠른 조건. */
   condition: ConditionContext;
   /** 좌표 링크(`?node=`)로 들어왔을 때 열 자리 — 그 조를 열고 그 자리를 강조한다. */
   initialNode?: Id;
-  /** `?view=eval` — 미리보기를 켠 채로. */
-  initialEval?: boolean;
   /** 서버가 그린 알림 — 문서 삭제 · 복제 확인 카드, 서버 액션 거부 배너. */
   notice?: ReactNode;
   /** 읽기 모드 더보기 — 복제 · 템플릿 삭제. */
@@ -159,23 +155,6 @@ function articleOfNode(tree: DraftState["tree"], nodeId: Id): Id | undefined {
   return e?.articleId ?? ix.branches.get(nodeId)?.articleId;
 }
 
-/** 조 전체 보기(더보기 › 미리보기) — 약관 한 벌을 이어 읽는다. */
-function FullPreview({ onClose, children }: { onClose: () => void; children: ReactNode }) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    if (ref.current && !ref.current.open) ref.current.showModal();
-  }, []);
-  return (
-    <dialog ref={ref} className="ts-dialog ts-dialog-full" aria-label="미리보기 — 약관 전체" onClose={onClose}>
-      <div className="ts-dialog-full-head">
-        <p className="ts-pop-title">미리보기 — 약관 전체</p>
-        <IconButton icon={<IconClose />} label="미리보기 닫기" onClick={onClose} />
-      </div>
-      <div className="ts-dialog-full-body">{children}</div>
-    </dialog>
-  );
-}
-
 export function DocumentEditor(props: EditorProps) {
   const { doc } = props;
   const router = useRouter();
@@ -200,12 +179,10 @@ export function DocumentEditor(props: EditorProps) {
   const [removing, setRemoving] = useState<{ nodeId: Id; anchor: Anchor }>();
   const [activeCell, setActiveCell] = useState<CellAt>();
   const [focusRequest, setFocusRequest] = useState<Id>();
-  const [fullView, setFullView] = useState(false);
   const [banner, setBanner] = useState<Banner>();
   const [conflict, setConflict] = useState<string>();
   const [confirmSave, setConfirmSave] = useState<Impact>();
   const [discard, setDiscard] = useState<{ go: () => void }>();
-  const [evalOn, setEvalOn] = useState(Boolean(props.initialEval));
   const bodyRef = useRef<HTMLDivElement>(null);
   const menuAt = useRef<Anchor>({ x: 0, y: 0 });
 
@@ -249,23 +226,10 @@ export function DocumentEditor(props: EditorProps) {
   const issues = useMemo(() => validateDocument(tree, { env: envAt(editEnv, current.generalDocumentId), resolve, scope }), [tree, editEnv, current.generalDocumentId, resolve, scope]);
   const errorCount = blockingIssues(issues).length;
 
-  // ── 사전평가 — 담보약관만, 문맥은 서버가 한 번 넘긴 담보 마스터 값. 편집 중이면 편집본을 평가한다 ──
-  const evalAvailable = doc.kind === "special" && props.master !== undefined;
-  const evaluation = useMemo(() => {
-    if (!evalOn || !props.master) return undefined;
-    const mcat = masterCatalog(props.discriminators);
-    const ctxEval = masterEvalContext(props.master.tree, props.master.values, mcat);
-    const at = { ...coordinate, ...(ctxEval.coordinate ?? {}) };
-    return { ...preEvaluate(tree, ctxEval, { coordinate: at, rows: coverageRowSource(props.master.tree, props.master.values, mcat) }), evalRef: (ref: string) => evaluateSlotRef(ref, ctxEval, at) };
-  }, [evalOn, props.master, props.discriminators, tree, coordinate]);
-
   // ── 번호 · 참조 표기 ──
   // 함수조항 참조는 펼칠 항 · 호 · 목 수만큼 센다 — 뒤 형제 · 조 참조 표기가 조립과 같게 (2026-10-03 사용자 QA)
   const clauseSpan = useMemo(() => clauseSpanBy((code) => props.clauses.find((c) => c.code === code)), [props.clauses]);
-  const numbers = useMemo(() => {
-    const states = evaluation ? new Map([...evaluation.branches].map(([k, v]) => [k, v.state] as [Id, BranchState])) : undefined;
-    return numberTree(tree, { clauseSpan, ...(states ? { branchStates: states } : {}) });
-  }, [tree, evaluation, clauseSpan]);
+  const numbers = useMemo(() => numberTree(tree, { clauseSpan }), [tree, clauseSpan]);
   const currentGeneral = current.generalDocumentId ? renderCache[current.generalDocumentId] : undefined;
   // 대상 고르기 색인 — 반복 블록 · 함수조항 참조 줄과 그 본문의 항 · 호 · 목 줄까지 (ADR-0077 결정 6 · 7)
   const indexOpts = useMemo(
@@ -402,13 +366,6 @@ export function DocumentEditor(props: EditorProps) {
       }
       setDraft({ baseVersion: fresh.version, state: { tree: fresh.tree, ...(fresh.generalDocumentId ? { generalDocumentId: fresh.generalDocumentId } : {}) }, ops: [] });
       setMode("edit");
-      // 편집에 들어가면 평가 결과는 지운다 (§4.3) — 주소의 `view=eval` 도
-      setEvalOn(false);
-      const url = new URL(window.location.href);
-      if (url.searchParams.has("view")) {
-        url.searchParams.delete("view");
-        window.history.replaceState(null, "", url);
-      }
       setBanner(undefined);
       setConflict(undefined);
       // 화면에 있던 원본이 낡았으면 읽기 화면도 새로 받는다 — 편집본은 방금 받은 판에서 시작한다
@@ -485,18 +442,6 @@ export function DocumentEditor(props: EditorProps) {
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
   }, [dirty, router]);
-
-  const toggleEval = () => {
-    const next = !evalOn;
-    setEvalOn(next);
-    // 뷰 상태는 쿼리일 뿐 저장하지 않는다 (§3.9) — 읽기 모드만 주소에 남긴다
-    if (mode === "read") {
-      const url = new URL(window.location.href);
-      if (next) url.searchParams.set("view", "eval");
-      else url.searchParams.delete("view");
-      window.history.replaceState(null, "", url);
-    }
-  };
 
   // ── 툴바 · 오른쪽 클릭 메뉴 — 자리(data-*)로 목록을 짓는다 (menus.ts `placeMenu`) ──
   const menuEnv = (): MenuEnv => {
@@ -729,7 +674,6 @@ export function DocumentEditor(props: EditorProps) {
     docKind: doc.kind,
     mode,
     numbers,
-    ...(evaluation ? { branchEval: evaluation.branches, slotEval: evaluation.slots, evalRef: evaluation.evalRef } : {}),
     appendixName,
     clauseLabel,
     optionText,
@@ -793,17 +737,12 @@ export function DocumentEditor(props: EditorProps) {
       : undefined;
 
   const panel: PanelData = {
-    index,
     issues,
     documentTitle: tree.title,
     ...(generalTitle ? { generalTitle } : {}),
     generalProposed: current.generalDocumentId === undefined && props.suggestedGeneralId !== undefined,
-    ...(evaluation ? { branchEval: evaluation.branches } : {}),
-    evalRan: evaluation !== undefined,
-    evalAvailable,
-    ...(props.evalNote ? { evalNote: props.evalNote } : {}),
-    ...(evaluation && mode === "read" ? { rendered: <DocBody tree={tree} ctx={{ ...ctx, tables: evaluation.tables, clauseView: "text", workMarks: false }} /> } : {}),
-    toggleEval,
+    // 가운데와 같은 조를 고른 상품의 조립 문맥으로 — 편집 중이면 편집본 (§3.9)
+    preview: <PreviewTab docKind={doc.kind} products={props.previewProducts} tree={tree} {...(currentArticleId ? { articleId: currentArticleId } : {})} editing={mode === "edit"} />,
     go,
   };
 
@@ -817,11 +756,10 @@ export function DocumentEditor(props: EditorProps) {
     mode === "edit"
       ? [
           marksItem,
-          { label: "미리보기", onSelect: () => setFullView(true) },
           { label: "템플릿 이름…", onSelect: (rect) => setPop({ spec: { kind: "docTitle" }, anchor: popAt(rect) }) },
           ...(doc.kind === "special" ? [{ label: "대응 보통약관…", onSelect: (rect: DOMRect) => setPop({ spec: { kind: "general" }, anchor: popAt(rect) }) }] : []),
         ]
-      : [marksItem, { label: "미리보기", onSelect: () => setFullView(true) }, ...props.moreItems];
+      : [marksItem, ...props.moreItems];
 
   // ── 삭제 확인 (편집본) — 누른 자리 가까이 ──
   let removeCard: ReactNode = null;
@@ -883,7 +821,7 @@ export function DocumentEditor(props: EditorProps) {
           <IconButton
             className="ts-l3-side-toggle"
             icon={<IconPanel />}
-            label={sideOpen ? "우측 패널 닫기 — 검증 목록 · 사전평가" : "우측 패널 열기 — 검증 목록 · 사전평가"}
+            label={sideOpen ? "우측 패널 닫기 — 미리보기 · 검증" : "우측 패널 열기 — 미리보기 · 검증"}
             aria-expanded={sideOpen}
             aria-controls="ts-l3-side"
             onClick={() => setSideOpen((open) => !open)}
@@ -982,16 +920,11 @@ export function DocumentEditor(props: EditorProps) {
         )}
       </div>
 
-      <SidePanel ctx={ctx} data={panel} />
+      <SidePanel docKind={doc.kind} editing={mode === "edit"} data={panel} />
 
       {menu && <ContextMenu x={menu.x} y={menu.y} sections={menu.sections} onPick={pickMenu} onClose={() => setMenu(undefined)} />}
       {pop && mode === "edit" && <PopupHost env={popupEnv} spec={pop.spec} anchor={pop.anchor} onClose={() => setPop(undefined)} />}
       {removeCard}
-      {fullView && (
-        <FullPreview onClose={() => setFullView(false)}>
-          <DocBody tree={tree} ctx={{ ...ctx, clauseView: "text", workMarks: false }} />
-        </FullPreview>
-      )}
 
       {discard ? (
         <DiscardDialog

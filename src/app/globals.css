@@ -4012,33 +4012,27 @@ button.ts-ref-fold:hover {
   padding: 2px 0;
 }
 
-.ts-dialog-full {
-  width: min(960px, calc(100vw - 32px));
-  height: calc(100vh - 64px);
-  padding: 0;
+/* 우측 패널 탭 〔미리보기 | 검증 N〕 (기능/문면 §4.3, 2026-10-10) — 상품 화면 하위 탭과 같은 밑줄 탭 */
+.ts-side-tabs {
+  gap: 20px;
+  margin: -4px 0 12px;
 }
 
-.ts-dialog-full[open] {
-  display: flex;
-  flex-direction: column;
-}
-
-.ts-dialog-full-head {
-  display: flex;
+/* 미리보기 탭 — 맨 위 상품 고르기, 그 아래 조립된 조 하나(산출물 꼴) */
+.ts-preview-tab .ts-form-row {
+  grid-template-columns: auto 1fr;
   align-items: center;
-  justify-content: space-between;
-  padding: 6px 12px;
-  border-bottom: 1px solid var(--ts-rule);
 }
 
-.ts-dialog-full-head .ts-pop-title {
-  margin: 0;
+.ts-preview-tab .ts-form-row select {
+  width: 100%;
+  min-width: 0;
 }
 
-.ts-dialog-full-body {
-  flex: 1;
-  overflow: auto;
-  padding: 12px 24px;
+.ts-preview-article {
+  max-width: none;
+  margin: 8px 0;
+  padding: 0;
 }
 
 /* 「고칠 자리로」 · 좌표 링크 — 그 자리를 잠깐 강조한다 */
