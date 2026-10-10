@@ -32,6 +32,7 @@ import { InlineSlot, caretFromPoint, tokensOf } from "@/app/(app)/documents/[id]
 import { identityRuns, runsFromTokens, runsReplacing, sameRuns, type Token } from "@/app/(app)/documents/[id]/_components/inlineRuns";
 import { boxPickItems, condInsertItem, inlineCondItem, placeBlockId, placeExists, type MenuItem, type MenuSections, type Place, type PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
 import { condInput, placeOf, readInline } from "@/app/(app)/documents/[id]/_components/place";
+import { usePlaceGate } from "@/app/(app)/documents/[id]/_components/placeGate";
 import { PopupHost, type PopupEnv } from "@/app/(app)/documents/[id]/_components/Popups";
 import { ContextMenu, PopActions, Popover } from "@/app/(app)/documents/[id]/_components/Popover";
 import { DraftIssues } from "@/app/(app)/documents/[id]/_components/SidePanel";
@@ -232,6 +233,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
 
   /** 툴바 · 오른쪽 클릭이 짓는 자리 — 본문에서 마지막으로 누르거나 초점이 간 곳. */
   const [place, setPlace] = useState<Place>();
+  const placeAt = usePlaceGate<Place | undefined>(setPlace);
   const [menu, setMenu] = useState<{ x: number; y: number; sections: MenuSections }>();
   const [pop, setPop] = useState<{ spec: PopupSpec; anchor: Anchor }>();
   const [focusRequest, setFocusRequest] = useState<Id>();
@@ -768,13 +770,14 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
                   const target = e.target as HTMLElement;
                   // 오른쪽 클릭은 고른 항을 두고 — 메뉴 「위로」 · 「아래로」가 고른 것 전부를 옮긴다
                   if (e.button !== 2 && !e.shiftKey && !target.closest("[data-drag], .ts-doc-toolbar")) drag.clearSel();
-                  if (target.closest(".ts-doc-toolbar")) return;
-                  setPlace(placeOf(target));
+                  if (target.closest(".ts-doc-toolbar")) return placeAt.hold();
+                  // 자리는 뗄 때 바꾼다 — 누르는 순간 툴바 묶음이 서며 본문이 밀려 누른 것이 빗나가지 않게 (placeGate)
+                  placeAt.press(placeOf(target));
                 }}
                 onFocus={(e) => {
                   if (!editing) return;
                   const at = placeOf(e.target as HTMLElement);
-                  if (at) setPlace(at);
+                  if (at) placeAt.focus(at);
                 }}
               >
                 {editing && <EditorToolbar groups={clauseMode === "inline" ? CLAUSE_LINE_TOOLS : CLAUSE_TOOLS} sections={toolbarSections} editing onRun={runTool} onMark={markSelection} where={placeWords(toolbarPlace)} />}

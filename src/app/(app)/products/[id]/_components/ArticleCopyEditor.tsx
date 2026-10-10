@@ -29,6 +29,7 @@ import { caretFromPoint, tokensOf } from "@/app/(app)/documents/[id]/_components
 import { identityRuns, runsFromTokens, sameRuns, type Token } from "@/app/(app)/documents/[id]/_components/inlineRuns";
 import { boxPickItems, clausePickItems, condInsertItem, condMenu, inlineCondItem, placeBlockId, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
 import { condInput, placeOf, readInline } from "@/app/(app)/documents/[id]/_components/place";
+import { usePlaceGate } from "@/app/(app)/documents/[id]/_components/placeGate";
 import { ContextMenu, Popover } from "@/app/(app)/documents/[id]/_components/Popover";
 import { PopupHost, type PopupEnv } from "@/app/(app)/documents/[id]/_components/Popups";
 import { RemoveCard } from "@/app/(app)/documents/[id]/_components/RemoveCard";
@@ -137,6 +138,7 @@ export function ArticleCopyEditor({ data, articleId, label }: { data: CopyEditor
   const latest = useCallback(() => pendingRef.current ?? tree, [tree]);
 
   const [place, setPlace] = useState<Place>();
+  const placeAt = usePlaceGate<Place>(setPlace);
   const [menu, setMenu] = useState<{ x: number; y: number; sections: MenuSections }>();
   const [pop, setPop] = useState<{ spec: PopupSpec; anchor: Anchor }>();
   const [removing, setRemoving] = useState<{ nodeId: Id; anchor: Anchor }>();
@@ -521,13 +523,14 @@ export function ArticleCopyEditor({ data, articleId, label }: { data: CopyEditor
       onPointerDown={(e) => {
         const target = e.target as HTMLElement;
         if (e.button !== 2 && !e.shiftKey && !target.closest("[data-drag], .ts-doc-toolbar")) drag.clearSel();
-        if (target.closest(".ts-doc-toolbar, .ts-cell-bar")) return;
+        if (target.closest(".ts-doc-toolbar, .ts-cell-bar")) return placeAt.hold();
         if (activeCell && !target.closest(".ts-doc-table")) setActiveCell(undefined);
-        setPlace(placeOf(target) ?? { kind: "article", id: articleId });
+        // 자리는 뗄 때 바꾼다 — 누르는 순간 툴바 묶음이 서며 본문이 밀려 누른 것이 빗나가지 않게 (placeGate)
+        placeAt.press(placeOf(target) ?? { kind: "article", id: articleId });
       }}
       onFocus={(e) => {
         const at = placeOf(e.target as HTMLElement);
-        if (at) setPlace(at);
+        if (at) placeAt.focus(at);
       }}
     >
       <ArticleBody index={articleIndex} articleId={articleId} ctx={ctx} />

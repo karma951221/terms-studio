@@ -74,6 +74,7 @@ import { caretFromPoint, tokensOf } from "./Inline";
 import { identityRuns, runsFromTokens, sameRuns, type Token } from "./inlineRuns";
 import { boxPickItems, clausePickItems, condInsertItem, condMenu, inlineCondItem, placeBlockId, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
 import { condInput, placeOf, readInline } from "./place";
+import { usePlaceGate } from "./placeGate";
 import { EditorToolbar } from "./EditorToolbar";
 import { marksMenuItem, markSelectionOps, useMarksShown } from "./workMarks";
 import { DOCUMENT_TOOLS, allTools, itemsFor, type ToolId } from "./tools";
@@ -175,6 +176,7 @@ export function DocumentEditor(props: EditorProps) {
   const [menu, setMenu] = useState<{ x: number; y: number; sections: MenuSections }>();
   /** 툴바 · 오른쪽 클릭이 짓는 자리 — 가운데서 마지막으로 누르거나 초점이 간 곳. 없거나 지워졌으면 지금 조. */
   const [place, setPlace] = useState<Place>();
+  const placeAt = usePlaceGate<Place | undefined>(setPlace);
   const [pop, setPop] = useState<{ spec: PopupSpec; anchor: Anchor }>();
   const [removing, setRemoving] = useState<{ nodeId: Id; anchor: Anchor }>();
   const [activeCell, setActiveCell] = useState<CellAt>();
@@ -875,16 +877,17 @@ export function DocumentEditor(props: EditorProps) {
           const target = e.target as HTMLElement;
           // 블록 손잡이 밖을 누르면 고른 블록을 푼다(Shift 는 늘리기) — 오른쪽 클릭은 두고(메뉴 「위로」 · 「아래로」가 고른 것 전부를 옮긴다)
           if (e.button !== 2 && !e.shiftKey && !target.closest("[data-drag], .ts-doc-toolbar")) drag.clearSel();
-          // 툴바 · 셀 조작 줄은 자리를 바꾸지 않는다
-          if (target.closest(".ts-doc-toolbar, .ts-cell-bar")) return;
+          // 툴바 · 셀 조작 줄은 자리를 바꾸지 않는다 — 그 버튼에 가는 초점도
+          if (target.closest(".ts-doc-toolbar, .ts-cell-bar")) return placeAt.hold();
           // 표 밖을 누르면 셀 조작 줄을 닫는다
           if (activeCell && !target.closest(".ts-doc-table")) setActiveCell(undefined);
-          if (mode === "edit") setPlace(placeOf(target));
+          // 자리는 뗄 때 바꾼다 — 누르는 순간 툴바 묶음이 서며 본문이 밀려 누른 것이 빗나가지 않게 (placeGate)
+          if (mode === "edit") placeAt.press(placeOf(target));
         }}
         onFocus={(e) => {
           if (mode !== "edit") return;
           const at = placeOf(e.target as HTMLElement);
-          if (at) setPlace(at);
+          if (at) placeAt.focus(at);
         }}
       >
         {mode === "edit" && <EditorToolbar groups={DOCUMENT_TOOLS} sections={toolbarSections} editing onRun={runTool} onMark={markSelection} where={placeWords(toolbarPlace)} />}
