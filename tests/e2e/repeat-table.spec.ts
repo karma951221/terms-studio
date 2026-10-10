@@ -164,6 +164,8 @@ test(
       await page.getByRole("textbox", { name: /^세부보장명/ }).last().fill(SUB_2);
       await page.getByRole("textbox", { name: /^급부명/ }).last().fill("둘째급부");
       await page.getByRole("button", { name: "저장", exact: true }).click();
+      // #7b 에서 탑재했다 — 탑재된 담보의 구조 추가는 영향 확인을 거친다 (기능/담보 §3.2 「구조 바꾸고 저장」)
+      await page.getByRole("dialog").getByRole("button", { name: "구조 바꾸고 저장", exact: true }).click();
       await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
       await expect(page.getByText(SUB_2).first()).toBeVisible();
     });
