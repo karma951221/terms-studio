@@ -77,7 +77,7 @@ import { identityRuns, runsFromTokens, sameRuns, type Token } from "./inlineRuns
 import { boxPickItems, clausePickItems, condInsertItem, condMenu, inlineCondItem, placeBlockId, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
 import { condInput, placeOf, readInline } from "./place";
 import { EditorToolbar } from "./EditorToolbar";
-import { MarksToggle, markSelectionOps, useMarksShown } from "./workMarks";
+import { marksMenuItem, markSelectionOps, useMarksShown } from "./workMarks";
 import { DOCUMENT_TOOLS, allTools, itemsFor, type ToolId } from "./tools";
 import { useBlockDrag } from "./useBlockDrag";
 import { PopupHost, type PopupEnv } from "./Popups";
@@ -360,7 +360,7 @@ export function DocumentEditor(props: EditorProps) {
     return recorded;
   };
   const apply = (ops: readonly EditOp[]): boolean => applyRecorded(ops) !== undefined;
-  // 작업용 글자색 — 고른 글에 칠한다 · 「수정 흔적 보기」 (§3.2 작업 표시 · §4.3)
+  // 작업용 글자색 — 고른 글에 칠한다 · 「수정 흔적 보기」(더보기 체크 항목) (§3.2 작업 표시 · §4.3)
   const [marksShown, setMarksShown] = useMarksShown();
   const markSelection = (mark: WorkMark | undefined) => {
     const ops = markSelectionOps(latest(), mark, randomIds);
@@ -811,14 +811,17 @@ export function DocumentEditor(props: EditorProps) {
   const toolbarSections = mode === "edit" ? placeMenu({ tree, ix: index, docKind: doc.kind, newId: randomIds }, toolbarPlace) : [];
 
   const popAt = (rect: DOMRect): Anchor => ({ x: rect.left, y: rect.bottom, top: rect.top });
+  // 「수정 흔적 보기」는 더보기 첫 줄의 체크 항목 — 바의 「가」 아이콘은 툴바 「글자색」과 같아 헷갈렸다 (2026-10-10)
+  const marksItem = marksMenuItem(marksShown, setMarksShown);
   const moreItems: MoreMenuItem[] =
     mode === "edit"
       ? [
+          marksItem,
           { label: "미리보기", onSelect: () => setFullView(true) },
           { label: "템플릿 이름…", onSelect: (rect) => setPop({ spec: { kind: "docTitle" }, anchor: popAt(rect) }) },
           ...(doc.kind === "special" ? [{ label: "대응 보통약관…", onSelect: (rect: DOMRect) => setPop({ spec: { kind: "general" }, anchor: popAt(rect) }) }] : []),
         ]
-      : [{ label: "미리보기", onSelect: () => setFullView(true) }, ...props.moreItems];
+      : [marksItem, { label: "미리보기", onSelect: () => setFullView(true) }, ...props.moreItems];
 
   // ── 삭제 확인 (편집본) — 누른 자리 가까이 ──
   let removeCard: ReactNode = null;
@@ -885,7 +888,6 @@ export function DocumentEditor(props: EditorProps) {
             aria-controls="ts-l3-side"
             onClick={() => setSideOpen((open) => !open)}
           />
-          <MarksToggle shown={marksShown} onChange={setMarksShown} />
           <MoreMenu items={moreItems} />
           {mode === "edit" ? (
             <>

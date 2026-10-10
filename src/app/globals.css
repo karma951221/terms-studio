@@ -1702,7 +1702,7 @@ input.ts-option-title {
 /* 「수정 흔적 보기」 끔 — 보통 글색 */
 .is-marks-off .ts-mark { color: inherit; }
 
-/* 그림 — 글자 「가」 + 색 밑줄 (툴바 「글자색」 · 바의 「수정 흔적 보기」) */
+/* 그림 — 글자 「가」 + 색 밑줄 (툴바 「글자색」) */
 .ts-mark-glyph {
   display: inline-flex;
   flex-direction: column;
@@ -1723,15 +1723,11 @@ input.ts-option-title {
   background: var(--ts-work, currentColor);
 }
 
-/* 바의 토글 — 켜면 네 색 띠, 끄면 흐린 한 줄 */
-.ts-marks-toggle .ts-mark-glyph-bar {
-  background: linear-gradient(90deg, var(--ts-work-red) 0 25%, var(--ts-work-blue) 25% 50%, var(--ts-work-green) 50% 75%, var(--ts-work-orange) 75%);
-}
-.ts-marks-toggle:not(.is-on) .ts-mark-glyph-bar {
-  background: var(--ts-rule-strong);
-}
-.ts-marks-toggle:not(.is-on) .ts-mark-glyph-letter {
-  color: var(--ts-ink-3);
+/* 더보기 체크 항목(「수정 흔적 보기」) — ✓ 자리를 비워 두어 켜고 꺼도 글자가 움직이지 않는다 */
+.ts-more-check {
+  display: inline-block;
+  width: 12px;
+  color: var(--ts-mark);
 }
 
 /* 툴바 「서식」 묶음 — 넣기 묶음 뒤, 가는 세로 선 */
