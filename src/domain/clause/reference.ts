@@ -116,7 +116,7 @@ export const UNRESOLVED_HOST_PREFIX = "host:";
  * 「사용처」(`scope: "host"`) 위치는 `host` 가 푼 사용처 대상으로 바꾼다(못 풀면 조 id 자리에 `host:<경로>`). 「이 함수조항」(`scope: "clause"`)
  * 대상은 코드 그대로 둔다 — 사용처 조 · 참조 노드 코드와 짝지어 푸는 것은 조립이다(펼친 노드의 열쇠 = 참조 노드 코드 / 안쪽 코드, ADR-0072 결정 3 개정).
  * 범위 표시는 남는다 — 펼친 뒤에는 둘 다 사용처 문서 안의 대상이다(조립은 문서 자기 참조로 렌더한다).
- * 조건은 해소하지 않는다 — 문맥은 사용처(조립·사전평가) 몫.
+ * 조건은 해소하지 않는다 — 문맥은 사용처(조립) 몫.
  */
 export function expandClause(clause: Clause, selection: OptionSelection, refNodeId: Id, host?: HostLocator): Result<ClauseBody> {
   const issues = validateOptionSelection(clause, selection);
