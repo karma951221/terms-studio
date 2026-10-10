@@ -402,7 +402,7 @@ function main(): void {
 
   // ── 출력
   const out = (file: string, data: unknown) => writeFileSync(path.join(root, SEED_DIR, file), `${JSON.stringify(data, null, 2)}\n`);
-  out("appendices.json", APPENDICES.map((a) => ({ code: a.code, name: a.name, description: "" })));
+  out("appendices.json", APPENDICES.map((a) => ({ code: a.code, name: a.name })));
   out("generals.json", generals);
   out("documents.json", documents);
   out("boxes.json", boxes.map((b) => b.record));

@@ -173,7 +173,7 @@ async function loadDiscriminators(services: Services, actor: Actor, upTo?: numbe
 async function loadAppendices(services: Services, actor: Actor): Promise<void> {
   // 코드는 시스템 채번(AX000001…) — JSON 의 code 는 채번 순서가 어긋나지 않았는지 대조용 (기능/별표 §3.1).
   for (const appendix of appendices) {
-    const created = unwrap(await services.document.createAppendix(actor, { name: appendix.name, description: appendix.description }));
+    const created = unwrap(await services.document.createAppendix(actor, { name: appendix.name }));
     expectCode(created.code, appendix.code);
   }
 }

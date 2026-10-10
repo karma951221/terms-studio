@@ -475,7 +475,7 @@ describe("그룹핑별표 S3·S4 — 별표 번호는 등장 순 자동 (ADR-006
         coverageEntry({ id: "pc-burn", name: "화상", coverageId: "cov-burn", coverageName: "화상", attributes: [], subCoverages: [], values: {} }),
         coverageEntry({ id: "pc-dis", name: "장해", coverageId: "cov-dis", coverageName: "장해", attributes: [], subCoverages: [], values: {} }),
       ],
-      appendices: [...base.appendices, { code: "APX_UNUSED", name: "쓰이지 않는 표", description: "" }],
+      appendices: [...base.appendices, { code: "APX_UNUSED", name: "쓰이지 않는 표" }],
     };
   };
 

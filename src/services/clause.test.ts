@@ -229,7 +229,7 @@ describe("clause 서비스 (PGlite)", () => {
 
     beforeAll(async () => {
       await insertDocument(t.db, { kind: "general", title: "알파Plus 보통약관", tree: b.document("알파Plus 보통약관", [지급사유]) }, admin.userId);
-      await insertAppendix(t.db, { code: "AX000001", name: "화상 분류표", description: "" }, admin.userId);
+      await insertAppendix(t.db, { code: "AX000001", name: "화상 분류표" }, admin.userId);
     });
 
     it("보통약관 마스터에 있는 조와 별표 마스터에 있는 별표를 가리키는 본문은 저장된다", async () => {

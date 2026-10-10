@@ -36,7 +36,7 @@ function surgeryGraph() {
     discriminators: [D("D0001", "갱신여부"), 지급률, konst, derived, D("D0099", "아무도 안 쓰는 것")],
     clauses: [clause("C001", "특별약관의 소멸"), clause("C002", "준용규정"), clause("C003", "고아 조항")],
     documents: [special, general],
-    appendices: [...fx.appendices, { code: "APX_ORPHAN", name: "고아 별표", description: "" }],
+    appendices: [...fx.appendices, { code: "APX_ORPHAN", name: "고아 별표" }],
     coverages: [{ id: fx.coverageId, name: "수술비", description: "", documentId: "doc-s", subCoverages: [{ id: "sub-1", name: "1종수술", order: 0, benefits: [{ id: "ben-1", name: "수술보험금", order: 0 }] }] }],
     master,
   });

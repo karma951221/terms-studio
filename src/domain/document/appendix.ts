@@ -5,7 +5,7 @@
  * - 코드는 **시스템 자동 채번 · 등록 후 불변** — `AX000001` 부터
  *   (기능/별표 §3.1 — D-P4-23 의 「유저 입력」을 뒤집었다).
  *   순번 테이블은 카탈로그 · 함수조항과 같은 `code_sequences` 를 kind `appendix` 로 공유한다.
- * - 내용(표 본문) 출력은 MVP 밖 — 코드 · 이름 · 설명만.
+ * - 내용(표 본문) 출력은 MVP 밖 — 코드 · 이름만 (주석은 2026-10-10 폐지 — 기능/별표 §6.2).
  */
 
 import { ok, reject } from "../types";
@@ -14,13 +14,11 @@ import type { Code, Result } from "../types";
 export interface Appendix {
   code: Code;
   name: string;
-  description: string;
 }
 
 /** 생성 입력에 code 는 없다 — 코드는 시스템이 채번한다 (타입으로 강제). */
 export interface NewAppendix {
   name: string;
-  description?: string;
 }
 
 function invalid<T>(message: string): Result<T> {
@@ -59,14 +57,10 @@ export function isValidAppendixCode(code: string): boolean {
 export async function createAppendix(input: NewAppendix, nextSeq: AppendixNextSeq): Promise<Result<Appendix>> {
   const name = input.name.trim();
   if (name === "") return invalid("별표 이름은 비울 수 없습니다");
-  return ok({ code: formatAppendixCode(await nextSeq()), name, description: input.description ?? "" });
+  return ok({ code: formatAppendixCode(await nextSeq()), name });
 }
 
 export function renameAppendix(a: Appendix, name: string): Result<Appendix> {
   if (name.trim() === "") return invalid("별표 이름은 비울 수 없습니다");
   return ok({ ...a, name: name.trim() });
-}
-
-export function setAppendixDescription(a: Appendix, description: string): Result<Appendix> {
-  return ok({ ...a, description });
 }

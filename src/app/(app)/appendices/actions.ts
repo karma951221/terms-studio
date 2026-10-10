@@ -22,7 +22,6 @@ export async function createAppendixAction(formData: FormData): Promise<void> {
   const actor = await currentActor();
   const r = await getServices().document.createAppendix(actor, {
     name: str(formData, "name"),
-    description: str(formData, "description"),
   });
   if (!r.ok) redirect(errorRedirectPath(`${BASE}/new`, msg(r.rejection)));
   redirect(detailPath(r.value.code));

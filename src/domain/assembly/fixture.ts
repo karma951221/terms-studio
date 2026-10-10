@@ -210,8 +210,8 @@ export const alphaClauses: Clause[] = [
 ];
 
 export const alphaAppendices: Appendix[] = [
-  { code: "APX_DISABILITY", name: "장해분류표", description: "" },
-  { code: "APX_BURN", name: "화상 분류표", description: "" },
+  { code: "APX_DISABILITY", name: "장해분류표" },
+  { code: "APX_BURN", name: "화상 분류표" },
 ];
 
 // ───────────────────────────── 문서 ─────────────────────────────

@@ -76,7 +76,7 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
     const coverage = createCoverageService(db);
     surgery = unwrap(await coverage.create(editor, { name: "수술비", subCoverageName: "1종수술", benefitName: "수술보험금" }));
 
-    for (const a of [{ code: "APX_DISABILITY", name: "장해분류표", description: "" }, { code: "APX_BURN", name: "화상 분류표", description: "" }]) await insertAppendix(db, a, editor.userId);
+    for (const a of [{ code: "APX_DISABILITY", name: "장해분류표" }, { code: "APX_BURN", name: "화상 분류표" }]) await insertAppendix(db, a, editor.userId);
     const clauses: Clause[] = [
       {
         code: "C001",

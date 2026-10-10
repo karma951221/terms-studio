@@ -10,6 +10,7 @@
  *   `version` = 판 번호 (ADR-0074). 문서 행을 바꾸는 모든 저장이 1 씩 올린다 — 저작 화면의 저장은 편집을 시작한 판과
  *   같을 때만 반영된다(판 충돌 검사, 잠금 없음).
  * - appendices: 전상품 superset. 코드는 시스템 채번(`AX000001` · code_sequences kind `appendix`) · 불변 · 유일 (기능/별표 §3.1). 내용 출력은 MVP 밖.
+ *   필드는 코드 · 이름뿐 — 주석(description)은 2026-10-10 폐지 (기능/별표 §6.2, 마이그레이션 0025).
  * - boxes: 정적 마스터 박스 (기능/박스 · 최종 결정 9). 코드는 시스템 채번(`BX000001` · code_sequences kind `box`) · 불변 · 유일,
  *   이름도 유일(넣을 때 이름으로 고른다). 줄 = 글 배열(jsonb string[]) — 안에 참조 · 슬롯이 없다.
  *
@@ -53,7 +54,6 @@ export const appendices = pgTable("appendices", {
   /** 자동 채번 불변 코드 `AX000001` … (기능/별표 §3.1 — D-P4-23 의 유저 입력을 뒤집었다). */
   code: text("code").notNull().unique(),
   name: text("name").notNull(),
-  description: text("description").notNull().default(""),
   ...audit,
 });
 
