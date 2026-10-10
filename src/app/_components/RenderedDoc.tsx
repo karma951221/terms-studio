@@ -185,6 +185,11 @@ function Article({ node }: { node: RenderedArticle | RenderedSection | ErrorNode
   );
 }
 
+/** 조 하나 — 문면 저작 화면 미리보기 탭이 고른 상품 문맥으로 조립한 조를 그린다 (기능/문면 §3.9). */
+export function RenderedArticleView({ node }: { node: RenderedArticle }) {
+  return <Article node={node} />;
+}
+
 export function RenderedDoc({ doc }: { doc: RenderedDocType }) {
   return (
     <article className="ts-doc" data-owner={doc.ownerId}>

@@ -3,7 +3,7 @@
  *
  * 값 행(상품 레벨 · 세목 유형 값 · 스냅샷 값)은 여기 없다 — `./values` 공용 저장소를 서비스가 쓴다.
  */
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { type AttributeCodeKind, type AttributeSeq, sortAttributeValues } from "@/domain/product/attributes";
 import type { ArticleCopy } from "@/domain/product/articleCopies";
@@ -545,6 +545,25 @@ export async function deleteBaseContract(db: Db, productId: Id, productCoverageI
 /** 지정 순. 복수 허용 구조 — 「1개」 검증은 서비스. */
 export async function listBaseContractIds(db: Db, productId: Id): Promise<Id[]> {
   return (await db.select({ id: productBaseContracts.productCoverageId }).from(productBaseContracts).where(eq(productBaseContracts.productId, productId)).orderBy(asc(productBaseContracts.createdAt))).map((r) => r.id);
+}
+
+/**
+ * 이 담보를 **특약으로** 탑재한 상품담보 — 기본계약으로 지정된 탑재분은 뺀다 (문면 저작 화면 미리보기의 상품 목록, 기능/문면 §3.9).
+ * 상품명 · 상품담보명 순.
+ */
+export async function listSpecialMountsOfCoverage(db: Db, coverageId: Id): Promise<{ id: Id; name: string; productId: Id; productName: string }[]> {
+  return db
+    .select({ id: productCoverages.id, name: productCoverages.name, productId: productCoverages.productId, productName: products.name })
+    .from(productCoverages)
+    .innerJoin(products, eq(products.id, productCoverages.productId))
+    .leftJoin(productBaseContracts, eq(productBaseContracts.productCoverageId, productCoverages.id))
+    .where(and(eq(productCoverages.coverageId, coverageId), isNull(productBaseContracts.productCoverageId)))
+    .orderBy(asc(products.name), asc(productCoverages.name), asc(productCoverages.id));
+}
+
+/** 이 보통약관 템플릿을 쓰는 상품 — 상품명 순 (문면 저작 화면 미리보기의 상품 목록). */
+export async function listProductsByGeneralDocument(db: Db, documentId: Id): Promise<{ id: Id; name: string }[]> {
+  return db.select({ id: products.id, name: products.name }).from(products).where(eq(products.generalDocumentId, documentId)).orderBy(asc(products.name));
 }
 
 export async function isBaseContract(db: Db, productCoverageId: Id): Promise<boolean> {

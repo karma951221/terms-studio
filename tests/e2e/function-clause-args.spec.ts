@@ -2,6 +2,7 @@ import { type Locator, type Page } from "@playwright/test";
 
 import { pickCombo } from "./_lib/combo";
 import { expect, test } from "./_lib/fixtures";
+import { productWithSpecial } from "./_lib/product";
 
 /**
  * 함수조항 인자 · 인자 연결 · 기본 연결 (최종 결정 2 · 기능/함수조항 §3.7) — 인자(문자, 기본 연결 D0001 담보명)를 두고 본문 슬롯이 그 인자를 읽는
@@ -107,9 +108,10 @@ test(
       await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
     });
 
-    await ev.action("인자#7", "미리보기 — 슬롯이 연결한 구분자 값 「골절진단비」로 찍힌다", async () => {
-      await page.goto(`${docUrl}?view=eval`);
-      await expect(page.locator("aside.ts-l3-side")).toContainText("이 특별약관의 보험금은 골절진단비");
+    await ev.action("인자#7", "이 담보를 특약으로 탑재한 상품을 만들면 미리보기 — 슬롯이 연결한 구분자 값 「골절진단비」로 찍힌다", async () => {
+      await productWithSpecial(page, `인자미리보기 ${coverageName}`, coverageName);
+      await page.goto(docUrl);
+      await expect(page.locator("#ts-side-panel-preview")).toContainText("이 특별약관의 보험금은 골절진단비");
     });
   },
 );

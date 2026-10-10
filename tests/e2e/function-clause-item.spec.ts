@@ -2,10 +2,11 @@ import { type Locator, type Page } from "@playwright/test";
 
 import { pickCombo } from "./_lib/combo";
 import { expect, test } from "./_lib/fixtures";
+import { productWithSpecial } from "./_lib/product";
 
 /**
  * 함수조항 유형 「호」 (최종 결정 4 · 기능/함수조항 §3.1) — 호 목록을 내는 함수조항을 만들고, 담보약관 템플릿 항의 호 목록 자리(호 뒤)에 툴바 「함수조항」으로 넣으면
- * 미리보기(사전평가)에서 그 호들이 사용처 호 목록에 이어 선다. 단위 규칙(호 하나 · 한 곳 사용)은 경고만 — 만들 수 있다(최종 결정 7).
+ * 미리보기 탭(그 담보를 특약으로 탑재한 상품 문맥)에서 그 호들이 사용처 호 목록에 이어 선다. 단위 규칙(호 하나 · 한 곳 사용)은 경고만 — 만들 수 있다(최종 결정 7).
  * 시드 담보 · 문서는 건드리지 않는다 — 새 담보 · 새 템플릿 · 새 함수조항만 쓴다.
  */
 
@@ -115,9 +116,10 @@ test(
       await expect(body.locator("ol.ts-doc-items [data-clause-ref]")).toHaveCount(1);
     });
 
-    await ev.action("호함수조항#7", "미리보기 — 사용처 호 목록에 함수조항의 호 둘이 이어 서서 호가 셋이 된다", async () => {
-      await page.goto(`${docUrl}?view=eval`);
-      const items = page.locator("aside.ts-l3-side ol.ts-doc-items > li.ts-doc-item");
+    await ev.action("호함수조항#7", "이 담보를 특약으로 탑재한 상품을 만들면 미리보기 — 사용처 호 목록에 함수조항의 호 둘이 이어 서서 호가 셋이 된다", async () => {
+      await productWithSpecial(page, `호함수조항미리보기 ${COVERAGE}`, COVERAGE);
+      await page.goto(docUrl);
+      const items = page.locator("#ts-side-panel-preview ol.ts-doc-items > li.ts-doc-item");
       await expect(items).toHaveText(["사망한 경우", "암으로 진단확정된 경우", "뇌졸중으로 진단확정된 경우"]);
     });
 

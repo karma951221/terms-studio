@@ -4,7 +4,7 @@
  * ADR-0074: 편집은 브라우저 편집본에서 하고 `저장` 한 번에 서버로 간다. 이 페이지가 넘기는 것:
  * - 원본 트리 · 판 · 대응 보통약관(트리 — 조연결 · 보통약관 조 참조 후보)
  * - 검증 재료(별표 · 함수조항 · 구분자 · 담보속성 유효값 · 문맥 담보) — 브라우저의 검증 목록이 서버 저장 검증과 같은 코드를 탄다
- * - 사전평가 문맥(담보 마스터 값) · 조건 팝업 문맥
+ * - 조건 팝업 문맥(담보 마스터 값) · 미리보기 탭의 상품 목록(담보약관: 특약 탑재분, 보통약관: 이 템플릿을 쓰는 상품 — §3.9)
  *
  * 편집본 밖의 조작(문서 삭제 `?del=1` · 복제 `?dup=1`)은 읽기 모드 더보기 메뉴에서 오고, 확인 카드는 여기서 그린다.
  */
@@ -29,7 +29,6 @@ interface Query {
   error?: string;
   del?: string;
   dup?: string;
-  view?: string;
   node?: string;
 }
 
@@ -58,10 +57,15 @@ export default async function DocumentDetailPage({ params, searchParams }: { par
     services.product.listAttributeKinds(),
   ]);
 
-  // ── 담보 마스터 값 — 사전평가와 조건 팝업 문맥이 함께 쓴다 (한 번만 부른다) ──
+  // ── 담보 마스터 값 — 조건 팝업 문맥(변수 목록 · 「항상 거짓」) ──
   const special = doc.kind === "special" && doc.ownerId !== undefined;
   const mv = special ? await services.coverage.masterValues(doc.ownerId!) : undefined;
-  const evalNote = !special ? "보통약관은 담보 레벨 문맥이 없어 여기서 평가하지 않는다." : mv && !mv.ok ? "담보 마스터 값을 읽지 못했다." : undefined;
+  // 미리보기 탭의 상품 — 재료는 상품을 고를 때 브라우저가 따로 받는다 (§3.9)
+  const previewProducts = special
+    ? await services.assembly.previewProducts({ kind: "special", coverageId: doc.ownerId! })
+    : doc.kind === "general"
+      ? await services.assembly.previewProducts({ kind: "general", documentId: doc.id })
+      : [];
   const condition = buildConditionContext(
     mv?.ok ? { coverage: mv.value.tree, values: mv.value.values, discriminators, enums, attributes: attributeKinds } : { discriminators, enums, attributes: attributeKinds },
   );
@@ -178,11 +182,9 @@ export default async function DocumentDetailPage({ params, searchParams }: { par
         enums={enums}
         attributeValues={Object.fromEntries(attributeKinds.map((k) => [k.code, k.values.map((v) => v.code)]))}
         {...(coverage ? { coverage } : {})}
-        {...(special && mv?.ok ? { master: { tree: mv.value.tree, values: mv.value.values } } : {})}
-        {...(evalNote ? { evalNote } : {})}
+        previewProducts={previewProducts}
         condition={condition}
         {...(sp.node ? { initialNode: sp.node } : {})}
-        initialEval={sp.view === "eval"}
         notice={
           <>
             <ErrorBanner message={sp.error} />

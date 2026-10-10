@@ -11,7 +11,7 @@ import type { ReactNode } from "react";
 
 import type { EnumDef } from "@/domain/catalog";
 import type { Clause } from "@/domain/clause";
-import type { BranchEvaluation, EditOp, InlineAt, InlineNode, NodeNumber, ReferenceTarget, SlotEvaluation, TableEvaluation } from "@/domain/document";
+import type { EditOp, InlineAt, InlineNode, NodeNumber, ReferenceTarget } from "@/domain/document";
 import { format, parse, type DisplayName, type MemberName } from "@/domain/expression";
 import type { Box } from "@/domain/document/box";
 import type { Code, Id } from "@/domain/types";
@@ -47,16 +47,6 @@ export interface DocCtx {
   docKind: "special" | "general";
   mode: DocMode;
   numbers: ReadonlyMap<Id, NodeNumber>;
-  /** 사전평가 결과 — 있으면 안 탄 가지를 톤다운한다. */
-  branchEval?: ReadonlyMap<Id, BranchEvaluation>;
-  slotEval?: ReadonlyMap<Id, SlotEvaluation>;
-  /** 사전평가 문맥에서 슬롯 참조 하나를 평가 — 미리보기가 펼친 함수조항 본문의 슬롯(인자 연결을 적용한 뒤)을 찍는다. 평가를 켰을 때만. */
-  evalRef?: (ref: string) => SlotEvaluation;
-  /**
-   * 반복 표 펼침 결과 (ADR-0070 결정 6) — 미리보기(사전평가)의 결과 조문에서만 준다. 있으면 반복 표는 펼친 행으로,
-   * 행 0 이면 「표 생략됨」 자리로 그린다. 없으면 템플릿(for 띠) 그대로.
-   */
-  tables?: ReadonlyMap<Id, TableEvaluation>;
   /** 별표 코드 → 이름. */
   appendixName: ReadonlyMap<Code, string>;
   /** 함수조항 코드 → 표시명. */
@@ -96,18 +86,8 @@ export interface DocCtx {
   switchValueLabel?: (clause: Clause, on: string, code: Code) => string | undefined;
   /** 열거형 조회 — 함수조항 상자 머리의 목록값 상수 연결을 값 이름으로(「질병(상수)」). 없으면 코드. */
   enumOf?: (code: Code) => EnumDef | undefined;
-  /**
-   * 함수조항 블록 안을 무엇으로 그리나 — 기본은 **모델**(슬롯 · 옵션 자리 · 조건 · 참조, `ClauseModel`),
-   * `"text"` 는 고른 선택지 문구를 끼운 문장(미리보기 · 사전평가 결과). 가운데 = 모델, 오른쪽 = 결과 (2026-09-28).
-   */
-  clauseView?: "model" | "text";
   /** 값별 분기 대상 후보(목록값 인자 · 내부 변수와 그 값) — 칸 머리가 값 이름 · 칸 없는 값을 그린다. 함수조항 편집기만 준다. */
   switchSubjects?: readonly SwitchSubject[];
-  /**
-   * 작업용 글자색(§3.2 작업 표시)을 색 조각으로 그리나 — `false` 면 글만(미리보기 · 사전평가 결과 조문 — 산출물 모양).
-   * 「수정 흔적 보기」 끄기는 이것이 아니라 화면의 `.is-marks-off` 가 글색을 되돌린다(편집기는 색 조각을 늘 품어야 되읽는다).
-   */
-  workMarks?: boolean;
 }
 
 /** 가운데 편집기의 조작 — 편집 모드에서만 준다. */

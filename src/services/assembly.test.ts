@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import type { RenderedDoc, RenderedInline } from "@/domain/assembly";
+import { previewArticle, type RenderedDoc, type RenderedInline } from "@/domain/assembly";
 import type { Command, DocumentNode } from "@/domain/document";
 import type { Actor, Id, Result } from "@/domain/types";
 
@@ -393,6 +393,35 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
   it("없는 상품은 notFound", async () => {
     const r = await svc.preview("00000000-0000-4000-8000-0000000000ff");
     expect(!r.ok && r.rejection.reason).toBe("notFound");
+  });
+
+  describe("문면 저작 화면 미리보기 — 상품 목록 · 재료 (기능/문면 §3.9)", () => {
+    it("담보약관 — 이 담보를 특약으로 탑재한 상품담보마다 한 줄, 기본계약 탑재는 뺀다", async () => {
+      expect(await svc.previewProducts({ kind: "special", coverageId: covDeath })).toEqual([
+        { productId, productName: "알파Plus(축약)", productCoverageId: pcBasic, productCoverageName: (await product.getProductCoverage(pcBasic))!.name },
+        { productId, productName: "알파Plus(축약)", productCoverageId: pcAddon, productCoverageName: (await product.getProductCoverage(pcAddon))!.name },
+      ]);
+      expect(await svc.previewProducts({ kind: "special", coverageId: covBase })).toEqual([]);
+    });
+
+    it("보통약관 — 이 템플릿을 보통약관으로 쓰는 상품, 다른 템플릿이면 없다", async () => {
+      const generalId = (await product.getProduct(productId))!.generalDocumentId!;
+      expect(await svc.previewProducts({ kind: "general", documentId: generalId })).toEqual([{ productId, productName: "알파Plus(축약)" }]);
+      expect(await svc.previewProducts({ kind: "general", documentId: "00000000-0000-4000-8000-0000000000fe" })).toEqual([]);
+    });
+
+    it("재료 — 공유 마스터의 문서를 그 상품이 읽는 것(보통약관 · 탑재 담보)으로 좁히고, 조립한 조는 책자의 같은 조와 같다", async () => {
+      const m = unwrap(await svc.previewMaterial(productId));
+      const generalId = (await product.getProduct(productId))!.generalDocumentId!;
+      expect([...m.master.generalDocuments.keys()]).toEqual([generalId]);
+      expect(new Set(m.master.specialDocuments.keys())).toEqual(new Set([covDeath, covBase]));
+      const tree = m.master.specialDocuments.get(covDeath)!;
+      const r = previewArticle(m.master, m.product, { document: "special", productCoverageId: pcAddon, tree }, "s-art-pay");
+      const booklet = unwrap(await svc.preview(productId));
+      expect(r.kind === "shown" && r.article).toEqual(booklet.specials[0].docs[1].children.find((c) => c.kind === "article" && c.id === "s-art-pay"));
+      const missing = await svc.previewMaterial("00000000-0000-4000-8000-0000000000ff");
+      expect(!missing.ok && missing.rejection.reason).toBe("notFound");
+    });
   });
 
   describe("run / latest — 산출본 저장 · 입력 스탬프로 오래됨 판정 (기능/조립산출 §3.6)", () => {

@@ -8,11 +8,13 @@
  * - omission.ts   : 5. judgeOmission — 조연결 + 리터럴 비교 생략
  * - render.ts     : 6. numberDocument · 8. collectAppendices · 7. renderDocument(조·별표 참조 해소)
  * - booklet.ts    : assemble(master, product) · assembleSpecial(상품담보 미리보기) · placeSpecials · executionBasedFilter
+ * - articlePreview.ts : previewArticle — 문면 저작 화면 미리보기(고른 상품 문맥으로 조 하나)
  * - fixture.ts    : 관통 1 축약 픽스처 (AssemblyInput)
  *
  * DB·React import 금지.
  */
 export * from "./booklet";
+export * from "./articlePreview";
 export * from "./compare";
 export * from "./application";
 export * from "./base";
