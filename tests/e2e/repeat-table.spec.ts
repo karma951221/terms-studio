@@ -2,6 +2,7 @@ import { type Locator, type Page } from "@playwright/test";
 
 import { comboOptionCount, pickCombo } from "./_lib/combo";
 import { expect, test } from "./_lib/fixtures";
+import { productWithSpecial } from "./_lib/product";
 
 /**
  * 행 반복 표 — 담보 약관 문면 편집기 (ADR-0070 결정 6 · 설계 2026-09-22 §3.1 · §4).
@@ -141,15 +142,19 @@ test(
       await expect(page.locator(".ts-l3-body table.ts-doc-table")).toContainText("[세부보장명]");
     });
 
-    const previewRows = () => page.locator("aside.ts-l3-side table.ts-doc-table tbody tr");
+    const previewRows = () => page.locator("#ts-side-panel-preview table.ts-doc-table tbody tr");
+
+    const productUrl = await ev.action("반복표#7b", "미리보기 문맥 — 이 담보를 특약으로 탑재한 상품을 만든다 (미리보기는 고른 상품의 조립 문맥, 기능/문면 §3.9)", async () => {
+      await page.goto(docUrl);
+      await expect(page.locator("#ts-side-panel-preview")).toContainText("이 담보를 특약으로 탑재한 상품이 없다.");
+      return productWithSpecial(page, `반복표미리보기상품`, COVERAGE);
+    });
 
     await ev.action("반복표#8", "미리보기 — 세부보장 1개라 템플릿 행이 1행으로 펼쳐진다", async () => {
       await page.goto(docUrl);
-      await page.getByRole("button", { name: "미리보기" }).click();
-      await page.waitForURL((url) => url.searchParams.get("view") === "eval");
       await expect(previewRows()).toHaveCount(2); // 머리글 + 세부보장 1
       await expect(previewRows().nth(1)).toContainText(SUB_1);
-      await expect(page.locator("aside.ts-l3-side .ts-doc-for-band")).toHaveCount(0);
+      await expect(page.locator("#ts-side-panel-preview .ts-doc-for-band")).toHaveCount(0);
     });
 
     await ev.action("반복표#9", "담보에 세부보장을 하나 더한다", async () => {
@@ -163,8 +168,11 @@ test(
       await expect(page.getByText(SUB_2).first()).toBeVisible();
     });
 
-    await ev.action("반복표#10", "미리보기 — 행이 2개로 는다 (세부보장 order 순)", async () => {
-      await page.goto(`${docUrl}?view=eval`);
+    await ev.action("반복표#10", "상품담보 탭을 열어 스냅샷 구조를 맞춘 뒤 미리보기 — 행이 2개로 는다 (세부보장 order 순)", async () => {
+      // 미리보기는 상품 스냅샷 문맥이다 — 마스터 구조가 바뀐 상품담보는 상품모델링 화면이 조회 전에 동기화한다(조립과 같다)
+      await page.goto(`${productUrl}?tab=coverages`);
+      await page.waitForLoadState("networkidle");
+      await page.goto(docUrl);
       await expect(previewRows()).toHaveCount(3);
       await expect(previewRows().nth(1)).toContainText(SUB_1);
       await expect(previewRows().nth(2)).toContainText(SUB_2);

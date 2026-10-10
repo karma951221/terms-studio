@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "./_lib/fixtures";
+import { productWithGeneral } from "./_lib/product";
 
 /**
  * 정적 마스터 › 박스 (기능/박스 §4, 최종 결정 9) — 박스를 만들고, 보통약관 템플릿의 항 뒤에 툴바 「박스」로 놓고, 미리보기에 박스 내용이 선다.
@@ -88,13 +89,15 @@ test(
       await expect(body.locator(`aside[data-box="${code}"]`)).toContainText("【보험연도】");
     });
 
-    await ev.action("박스#8", "더보기 › 미리보기 — 약관 전체에 박스 제목 · 줄이 그 자리에 들어가 있다", async () => {
-      await page.getByRole("button", { name: "더보기", exact: true }).click();
-      await page.getByRole("menuitem", { name: "미리보기", exact: true }).click();
-      const preview = page.getByRole("dialog", { name: "미리보기 — 약관 전체" });
+    const docUrl = page.url();
+    await ev.action("박스#8", "이 템플릿을 보통약관으로 쓰는 상품을 만들면 우측 미리보기 탭이 그 상품 문맥의 조에 박스 제목 · 줄을 그 자리에 보인다 (기능/문면 §3.9)", async () => {
+      await productWithGeneral(page, `박스미리보기 ${docTitle}`, docTitle);
+      await page.goto(docUrl);
+      const preview = page.locator("#ts-side-panel-preview");
+      await expect(preview.getByRole("combobox", { name: "상품" })).toHaveValue(/.+/);
       await expect(preview).toContainText("이 약관에서 쓰는 용어의 뜻은 다음과 같습니다.");
-      await expect(preview.locator(`aside[data-box="${code}"]`)).toContainText("예: 2026년 3월 1일 계약이면");
-      await preview.getByRole("button", { name: "미리보기 닫기" }).click();
+      await expect(preview.locator(".ts-doc-box")).toContainText("【보험연도】");
+      await expect(preview.locator(".ts-doc-box")).toContainText("예: 2026년 3월 1일 계약이면");
     });
   },
 );
