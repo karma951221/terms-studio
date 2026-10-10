@@ -58,12 +58,15 @@ test(
       // ── 편집: 이름 · 보험종목 두 행(인라인 값) · 선택 삭제 · 조합 체크 → 저장 하나
       await page.getByRole("button", { name: "편집", exact: true }).click();
       await name.fill(`${originalName} 수정`);
-      // 상품정보 — 평균공시이율 · 상품특성(갱신형여부 · 간편심사유형)도 같은 저장 하나에 실린다
+      // 상품정보 — 평균공시이율 · 상품특성(갱신형여부 · 고지유형 + 딸린 칸)도 같은 저장 하나에 실린다 (기능/상품 §3.1, 2026-10-01)
       const info = page.getByRole("region", { name: "상품정보" });
-      await expect(info.locator("th[scope=row]")).toHaveText(["상품명", "평균공시이율", "갱신형여부", "태아보장여부", "단체계약여부", "간편심사유형", "건강고지유형"]);
+      await expect(info.locator("th[scope=row]")).toHaveText(["상품명", "평균공시이율", "계약형태", "갱신형여부", "태아보장여부", "단체계약여부", "고지유형"]);
       await info.locator('tr[data-path="disclosure.avg_rate"] input').fill("2.5");
       await info.locator('tr[data-path="feature.renewable"]').getByRole("radio", { name: "예", exact: true }).check();
-      await info.locator('tr[data-path="feature.review_type"] select').selectOption({ label: "통합간편심사" });
+      await info.locator('tr[data-path="feature.notice_kind"] select').selectOption({ label: "건강고지" });
+      const noticeType = info.locator('tr[data-path="feature.notice_type"]');
+      await noticeType.getByRole("button", { name: / 값 추가$/ }).click();
+      await noticeType.getByRole("combobox", { name: / 값 추가$/ }).selectOption({ label: "6년 건강고지형" });
       await expect(page.getByRole("button", { name: "선택 삭제" })).toHaveCount(0);
       await page.getByRole("button", { name: "보험종목 추가" }).click();
       const rows = page.locator("#definitions-panel tbody tr");
@@ -102,13 +105,16 @@ test(
       await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
       await expect(name).toHaveValue(`${originalName} 수정`);
       await expect(name).toHaveAttribute("readonly", "");
-      await expect(page.getByRole("cell", { name: "제1종", exact: true })).toBeVisible();
-      await expect(page.getByRole("cell", { name: "보험료납입면제미적용형", exact: true })).toBeVisible();
-      await expect(page.getByRole("cell", { name: "아니오", exact: true })).toBeVisible();
-      await expect(info.locator('tr[data-path="disclosure.avg_rate"] td')).toHaveText("2.5");
+      const definitions = page.locator("#definitions-panel");
+      await expect(definitions.getByRole("cell", { name: "제1종", exact: true })).toBeVisible();
+      await expect(definitions.getByRole("cell", { name: "보험료납입면제미적용형", exact: true })).toBeVisible();
+      await expect(definitions.getByRole("cell", { name: "아니오", exact: true })).toBeVisible();
+      await expect(info.locator('tr[data-path="disclosure.avg_rate"] td')).toHaveText("2.5%"); // 단위 % (기능/상품 §3.1)
       await expect(info.locator('tr[data-path="feature.renewable"] td')).toHaveText("예");
-      await expect(info.locator('tr[data-path="feature.review_type"] td')).toHaveText("통합간편심사");
-      await expect(info.locator('tr[data-path="feature.fetal"] td')).toHaveText("—");
+      await expect(info.locator('tr[data-path="feature.notice_kind"] td')).toHaveText("건강고지");
+      await expect(info.locator('tr[data-path="feature.notice_type"] td')).toContainText("6년 건강고지형");
+      // 태아보장여부 · 단체계약여부는 기본 아니오 프리필 (기능/상품 §3.1)
+      await expect(info.locator('tr[data-path="feature.fetal"] td')).toHaveText("아니오");
       await page.reload();
       await expect(name).toHaveValue(`${originalName} 수정`);
       await expect(page.getByRole("heading", { level: 1 })).toContainText(`${originalName} 수정`);
