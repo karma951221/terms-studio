@@ -5,11 +5,12 @@
  * 산출물 서식이 아니다: 조립 산출물 · 미리보기 · 준용 비교에 나오지 않는다(도메인 조립이 문장 조각을 새로 지으며 색을 버린다).
  *
  * - 툴바 「글자색」(`MarkPicker`) — 네 색 + 색 지우기. 고른 글(문장 칸 여럿에 걸쳐도)에만 칠한다. 칩은 색을 갖지 않는다.
- * - 바 「수정 흔적 보기」(`MarksToggle`) — 켜면 색, 끄면 보통 글색. 읽기 · 편집 모두. 브라우저마다 마지막 선택을 기억한다.
+ * - 바 더보기의 체크 항목 「수정 흔적 보기」(`marksMenuItem`) — 켜면 색, 끄면 보통 글색. 읽기 · 편집 모두. 브라우저마다 마지막 선택을 기억한다.
+ *   바의 아이콘 토글은 툴바 「글자색」과 같은 그림이라 헷갈려 더보기로 옮겼다 (2026-10-10 사용자 QA).
  */
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 
-import { IconButton } from "@/app/_components/icons";
+import type { MoreMenuItem } from "@/app/_components/MoreMenu";
 import type { DocumentNode, EditOp, IdSource } from "@/domain/document";
 import { WORK_MARK_LABEL, WORK_MARKS, type WorkMark } from "@/domain/types";
 
@@ -83,23 +84,14 @@ export function useMarksShown(): [boolean, (next: boolean) => void] {
   return [shown, set];
 }
 
-/** 바의 「수정 흔적 보기」 토글 — 아이콘(색 밑줄 글자) 버튼, 눌림 상태가 곧 켬. */
-export function MarksToggle({ shown, onChange }: { shown: boolean; onChange: (next: boolean) => void }) {
-  return (
-    <IconButton
-      className={`ts-marks-toggle${shown ? " is-on" : ""}`}
-      icon={<MarkGlyph />}
-      label={shown ? "수정 흔적 보기 켜짐 — 작업용 글자색을 보인다(산출물에는 나오지 않는다). 누르면 끈다" : "수정 흔적 보기 꺼짐 — 작업용 글자색을 보통 글색으로. 누르면 켠다"}
-      aria-pressed={shown}
-      data-marks-toggle=""
-      onClick={() => onChange(!shown)}
-    />
-  );
+/** 바 더보기의 「수정 흔적 보기」 체크 항목 — 켜짐이 곧 체크, 누르면 뒤집는다. 더보기 첫 줄에 둔다. */
+export function marksMenuItem(shown: boolean, onChange: (next: boolean) => void): MoreMenuItem {
+  return { label: "수정 흔적 보기", checked: shown, onSelect: () => onChange(!shown) };
 }
 
 // ───────────────────────────── 툴바 「글자색」 ─────────────────────────────
 
-/** 글자 「가」 + 색 밑줄 — 글자색 도구 · 수정 흔적 보기 토글의 그림. 밑줄 색은 `currentColor` 가 아니라 자리에서 준다. */
+/** 글자 「가」 + 색 밑줄 — 툴바 글자색 도구의 그림. 밑줄 색은 `currentColor` 가 아니라 자리에서 준다. */
 function MarkGlyph({ swatch }: { swatch?: WorkMark }) {
   return (
     <span className="ts-mark-glyph" aria-hidden="true">

@@ -5,7 +5,7 @@
  * (디자인원칙 「상세 화면 버튼 정리」 · 와이어프레임 §19A).
  *
  * 항목은 링크가 기본이다 — 삭제도 확인 카드로 가는 링크(`?confirm=…`)라 여기서 실행하지 않는다.
- * 화면 안에서 여닫는 것(미리보기 대화상자 · 그 자리 팝업)은 `onSelect` 로 준다.
+ * 화면 안에서 여닫는 것(미리보기 대화상자 · 그 자리 팝업)은 `onSelect` 로 준다. 켜고 끄는 보기 설정(「수정 흔적 보기」)은 `checked` 를 준 체크 항목이다.
  * 바깥 클릭 · Esc 로 닫히고, 화살표로 항목을 오간다. 열림 상태는 `aria-expanded` 가 말한다.
  */
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
@@ -21,6 +21,45 @@ export interface MoreMenuItem {
   danger?: boolean;
   /** 항목 아래 한 줄 설명 — 고르기 전에 차이를 알아야 하는 메뉴(함수조항 `+` 의 문구 / 항). */
   hint?: string;
+  /** 체크 항목 — 주면 켜고 끄는 보기 설정(`menuitemcheckbox`)이고, 켜짐이면 앞에 ✓. `onSelect` 로 뒤집는다 (2026-10-10). */
+  checked?: boolean;
+}
+
+const ITEM_SELECTOR = "[role=menuitem], [role=menuitemcheckbox]";
+
+/** 더보기 한 줄 — 링크 · 화면 안 조작 · 체크 항목. `onPick` 은 메뉴를 닫는다(누른 뒤). */
+export function MoreMenuEntry({ item, onPick, anchor }: { item: MoreMenuItem; onPick: () => void; anchor?: () => DOMRect }) {
+  const className = ["ts-more-menu-item", item.danger ? "danger" : null, item.hint ? "has-hint" : null, item.checked !== undefined ? "is-check" : null].filter(Boolean).join(" ");
+  const hint = item.hint ? <span className="ts-more-menu-hint">{item.hint}</span> : null;
+  if (item.href !== undefined) {
+    return (
+      <Link role="menuitem" href={item.href} className={className} onClick={onPick}>
+        {item.label}
+        {hint}
+      </Link>
+    );
+  }
+  const check = item.checked !== undefined;
+  return (
+    <button
+      type="button"
+      role={check ? "menuitemcheckbox" : "menuitem"}
+      {...(check ? { "aria-checked": item.checked } : {})}
+      className={className}
+      onClick={() => {
+        onPick();
+        item.onSelect?.(anchor?.() ?? new DOMRect());
+      }}
+    >
+      {check && (
+        <span className="ts-more-check" aria-hidden="true">
+          {item.checked ? "✓" : ""}
+        </span>
+      )}
+      {item.label}
+      {hint}
+    </button>
+  );
 }
 
 /**
@@ -62,7 +101,7 @@ export function MoreMenu({
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKey);
     // 열리면 첫 항목으로 초점 — 키보드로 연 사람이 바로 고를 수 있게
-    listRef.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus();
+    listRef.current?.querySelector<HTMLElement>(ITEM_SELECTOR)?.focus();
     return () => {
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKey);
@@ -71,7 +110,7 @@ export function MoreMenu({
 
   const onMenuKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "Home" && e.key !== "End") return;
-    const nodes = Array.from(listRef.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? []);
+    const nodes = Array.from(listRef.current?.querySelectorAll<HTMLElement>(ITEM_SELECTOR) ?? []);
     if (nodes.length === 0) return;
     e.preventDefault();
     const at = nodes.indexOf(document.activeElement as HTMLElement);
@@ -109,35 +148,9 @@ export function MoreMenu({
       </button>
       {open && (
         <div ref={listRef} id={menuId} role="menu" aria-label={label} className="ts-more-menu" onKeyDown={onMenuKeyDown}>
-          {items.map((item) =>
-            item.href !== undefined ? (
-              <Link
-                key={item.label}
-                role="menuitem"
-                href={item.href}
-                className={["ts-more-menu-item", item.danger ? "danger" : null, item.hint ? "has-hint" : null].filter(Boolean).join(" ")}
-                onClick={() => setOpen(false)}
-              >
-                {item.label}
-                {item.hint ? <span className="ts-more-menu-hint">{item.hint}</span> : null}
-              </Link>
-            ) : (
-              <button
-                key={item.label}
-                type="button"
-                role="menuitem"
-                className={["ts-more-menu-item", item.danger ? "danger" : null, item.hint ? "has-hint" : null].filter(Boolean).join(" ")}
-                onClick={() => {
-                  setOpen(false);
-                  const rect = buttonRef.current?.getBoundingClientRect() ?? new DOMRect();
-                  item.onSelect?.(rect);
-                }}
-              >
-                {item.label}
-                {item.hint ? <span className="ts-more-menu-hint">{item.hint}</span> : null}
-              </button>
-            ),
-          )}
+          {items.map((item) => (
+            <MoreMenuEntry key={item.label} item={item} onPick={() => setOpen(false)} anchor={() => buttonRef.current?.getBoundingClientRect() ?? new DOMRect()} />
+          ))}
         </div>
       )}
     </div>

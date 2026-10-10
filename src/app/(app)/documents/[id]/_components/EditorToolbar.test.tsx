@@ -6,7 +6,7 @@ import { indexTree, nodeBuilders, sequentialIds } from "@/domain/document";
 import { EditorToolbar } from "./EditorToolbar";
 import { placeMenu } from "./menus";
 import { DOCUMENT_TOOLS, allTools, onBar, toolState } from "./tools";
-import { MarksToggle } from "./workMarks";
+import { marksMenuItem } from "./workMarks";
 
 function sections() {
   const b = nodeBuilders(sequentialIds("n"));
@@ -94,13 +94,15 @@ describe("EditorToolbar — 본문 위 버튼 줄 (기능/문면 §4.3, 2026-10-
     expect(renderToStaticMarkup(<EditorToolbar groups={DOCUMENT_TOOLS} sections={sections().sections} editing={false} onRun={() => undefined} onMark={() => undefined} />)).not.toContain('data-tool="workMark"');
   });
 
-  it("「수정 흔적 보기」 토글 — 눌림 상태가 곧 켬, 이름이 무엇을 하는지 말한다", () => {
-    const on = renderToStaticMarkup(<MarksToggle shown onChange={() => undefined} />);
-    expect(on).toContain('aria-pressed="true"');
-    expect(on).toMatch(/aria-label="수정 흔적 보기 켜짐 — /);
-    expect(on).toContain("ts-marks-toggle is-on");
-    const off = renderToStaticMarkup(<MarksToggle shown={false} onChange={() => undefined} />);
-    expect(off).toContain('aria-pressed="false"');
-    expect(off).toMatch(/aria-label="수정 흔적 보기 꺼짐 — /);
+  it("「수정 흔적 보기」 — 바 아이콘이 아니라 더보기의 체크 항목, 켜짐이 곧 체크 · 누르면 뒤집는다 (2026-10-10)", () => {
+    const calls: boolean[] = [];
+    const on = marksMenuItem(true, (next) => calls.push(next));
+    expect(on.label).toBe("수정 흔적 보기");
+    expect(on.checked).toBe(true);
+    on.onSelect?.({} as DOMRect);
+    const off = marksMenuItem(false, (next) => calls.push(next));
+    expect(off.checked).toBe(false);
+    off.onSelect?.({} as DOMRect);
+    expect(calls).toEqual([false, true]);
   });
 });

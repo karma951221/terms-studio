@@ -20,12 +20,13 @@ import { useRouter } from "next/navigation";
 import { Breadcrumb } from "@/app/_components/Breadcrumb";
 import { DiscardDialog } from "@/app/_components/EditShell";
 import { IconButton, IconClose, IconTrash } from "@/app/_components/icons";
+import { MoreMenu } from "@/app/_components/MoreMenu";
 import { ENTITY_LABEL, newLabel } from "@/app/_lib/labels";
 import { refLabelOf } from "@/app/(app)/documents/[id]/_components/condition/display";
 import { anchorOf, type Anchor, type ArticleRefChoice, type DocCtx, type EditHandlers } from "@/app/(app)/documents/[id]/_components/ctx";
 import { Block } from "@/app/(app)/documents/[id]/_components/DocBody";
 import { EditorToolbar } from "@/app/(app)/documents/[id]/_components/EditorToolbar";
-import { MarksToggle, markSelectionOps, useMarksShown } from "@/app/(app)/documents/[id]/_components/workMarks";
+import { marksMenuItem, markSelectionOps, useMarksShown } from "@/app/(app)/documents/[id]/_components/workMarks";
 import { backspaceOps, enterOps, inlineAtOf, inlineListAt, moveSelectionOps } from "@/app/(app)/documents/[id]/_components/editOps";
 import { InlineSlot, caretFromPoint, tokensOf } from "@/app/(app)/documents/[id]/_components/Inline";
 import { identityRuns, runsFromTokens, runsReplacing, sameRuns, type Token } from "@/app/(app)/documents/[id]/_components/inlineRuns";
@@ -699,7 +700,8 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
         <Breadcrumb items={[{ label: ENTITY_LABEL.clause, href: "/functions" }, { label: clauseName }]} guard={editing ? leave : undefined} />
         {editing && <span className="ts-l3-dirty">{isNew ? "새 함수조항 — 저장하면 만들어진다" : dirty ? "편집 중 · 저장해야 반영" : "편집 중"}</span>}
         <span className="ts-l3-bar-actions">
-          <MarksToggle shown={marksShown} onChange={setMarksShown} />
+          {/* 「수정 흔적 보기」 — 문면 편집기와 같이 더보기의 체크 항목 (2026-10-10) */}
+          <MoreMenu items={[marksMenuItem(marksShown, setMarksShown)]} />
           {editing ? (
             <>
               {isNew ? (
