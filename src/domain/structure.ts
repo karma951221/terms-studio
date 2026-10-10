@@ -3,7 +3,7 @@
  *
  * dict 는 실체가 아니다. **가지 = 부착 레벨**, **key = 문맥 트리의 실제 노드**, **잎 = 그 레벨의 구분자**.
  * 여기에는 레벨 → 자식 레벨 · key 표기 규칙(다섯 층 상수)과 레벨별 자식 제공자 인터페이스만 둔다.
- * 제공자 구현은 문맥을 아는 쪽이 댄다 — MVP 는 담보 트리(coverage · subCoverage, `coverage/evalContext.ts`).
+ * 제공자 구현은 문맥을 아는 쪽이 댄다 — MVP 는 담보 트리(coverage · subCoverage, `coverage/children.ts`).
  * plan · product 제공자(종·형 조합의 탑재)는 인터페이스만 있다 — 없으면 「제공자 없음」.
  *
  * 순수층 — DB · React 없음.
@@ -123,7 +123,7 @@ export function enumerateRows(root: StructNode, depth: 1 | 2, providers: Childre
 
 /**
  * 반복 표의 행 원천 — 문맥 노드(뿌리) · 자식 제공자 · 행 노드의 평가 문맥.
- * 문맥 종류(`C`)는 쓰는 쪽이 정한다 (문면 사전평가 · 조립 모두 식 언어의 EvalContext).
+ * 문맥 종류(`C`)는 쓰는 쪽이 정한다 (조립은 식 언어의 EvalContext).
  */
 export interface RowSource<C> {
   root: StructNode;

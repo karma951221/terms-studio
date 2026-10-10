@@ -1,10 +1,10 @@
 /**
  * 1단계 — 문맥 구성. 상품담보(탑재 스냅샷)마다 식 언어의 `EvalContext` 를 만든다.
  *
- * B1 `coverage/evalContext.ts`(담보 마스터 문맥)와 같은 방식이되 재료가 다르다:
+ * 재료:
  *   - 담보·세부보장·급부 레벨 = **스냅샷 값** (owner: 상품담보 · 스냅샷 노드). 마스터 필드 참조는 자기 레벨 또는
  *     조상에서, 집계 범위는 하위 트리 (기능/구분자 §3.2). 부착이 없으므로 자리는 늘 있다 (ADR-0037).
- *   - 상품 레벨 = 상품 값. 구분자 = 그 레벨 문맥에서 식 평가 (오류면 미입력 자리로 보고 — B1 과 같은 규약).
+ *   - 상품 레벨 = 상품 값. 구분자 = 그 레벨 문맥에서 식 평가 (오류면 미입력 자리로 보고).
  *   - 담보속성 = 상품담보의 조합 (쓰면 값, 아니면 unused — ADR-0015).
  *   - 세목(plan) 레벨 = 상품의 **세목 선택지**(`AssemblyProduct.planOptions`, 유효 조합에 등장하는 것 — 기능/조립산출 §3.2).
  *     집계 범위는 참조가 읽는 폼의 선택지 (선택지는 유형 하나), 선택지 하나가 **세목 커서**로 문맥에 실린다.
@@ -19,7 +19,7 @@
 import { planFormScope, type PlanFormScope } from "../catalog/expression";
 import type { Discriminator, EnumDef, SlotPath } from "../catalog/types";
 import { isFormOpened, missingEnumCodes, missingValueMessage } from "../catalog/values";
-import { coverageChildrenProviders, coverageStructNode } from "../coverage/evalContext";
+import { coverageChildrenProviders, coverageStructNode } from "../coverage/children";
 import { descendants, findNode, findNodeById, nodeName, nodesOf } from "../coverage/tree";
 import type { Coverage, CoverageNode, CoverageNodeLevel } from "../coverage/types";
 import type { DocumentNode } from "../document/nodes";

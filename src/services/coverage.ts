@@ -126,7 +126,7 @@ export interface CoverageService {
   audit(id: Id): ReturnType<typeof repo.coverageAudit>;
   /** 실체의 값 폼 — 그 레벨 마스터 필드 전부. */
   form(owner: CoverageNodeRef): Promise<Result<FormView>>;
-  /** 담보 하위 트리의 값 전부 — masterEvalContext 의 입력. */
+  /** 담보 하위 트리의 값 전부 — 조건 팝업 문맥(`buildConditionContext`)의 입력. */
   masterValues(coverageId: Id): Promise<Result<{ tree: Coverage; values: MasterValues }>>;
   /** 완결성 조회 — 마스터 기반 미입력 목록 (필터 주입 시 실행 기반). */
   completeness(coverageId: Id): Promise<Result<MissingSlot[]>>;

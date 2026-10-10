@@ -50,19 +50,20 @@ test(
     await login(page);
     const stamp = Date.now();
     const reason = `임시사유${stamp}`;
-    const reviewType = `임시심사${stamp}`;
+    const noticeKind = `임시고지${stamp}`;
     let productUrl: string | undefined;
     let discriminatorUrl: string | undefined;
     try {
-      // ── 추가 = 재검사: 상품 레벨 구분자가 간편심사유형(E0003) 값을 비교한다 → E0003 에 값을 더하면 그 식이 목록에 오른다
+      // ── 추가 = 재검사: 상품 레벨 구분자가 고지유형(E0005) 값을 비교한다 → E0005 에 값을 더하면 그 식이 목록에 오른다
+      //    (간편심사유형 E0003 은 2026-10-01 부터 목록값(복수)이라 `= 'V01'` 비교가 타입 오류다 — 기능/상품 §3.1)
       await page.goto("/catalog/new");
       await page.getByLabel("구분자명").fill(`재검사확인${stamp}`);
       await page.getByRole("radiogroup", { name: "레벨" }).getByRole("radio", { name: "상품", exact: true }).check();
-      await page.getByLabel("식", { exact: true }).fill("feature.review_type = 'V01'");
+      await page.getByLabel("식", { exact: true }).fill("feature.notice_kind = 'V01'");
       await page.getByRole("button", { name: "생성", exact: true }).click();
       await page.waitForURL(/\/catalog\/D\d{4}$/);
       discriminatorUrl = page.url();
-      await addEnumValue(page, "E0003", reviewType);
+      await addEnumValue(page, "E0005", noticeKind);
       const recheck = page.getByRole("status", { name: "재검사 목록" });
       await expect(recheck).toContainText("재검사 1건");
       await expect(recheck).toContainText(`재검사확인${stamp}`);
@@ -118,8 +119,8 @@ test(
         await page.locator("dialog.ts-dialog").getByRole("button", { name: /삭제$/ }).click();
         await page.waitForURL((url) => !url.pathname.startsWith("/catalog/D"));
       }
-      // E0003 에 더한 값은 아무도 고르지 않았다 — 되돌린다
-      await removeEnumValue(page, "E0003", reviewType).catch(() => undefined);
+      // E0005 에 더한 값은 아무도 고르지 않았다 — 되돌린다
+      await removeEnumValue(page, "E0005", noticeKind).catch(() => undefined);
     }
   },
 );

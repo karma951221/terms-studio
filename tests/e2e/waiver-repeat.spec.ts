@@ -202,7 +202,7 @@ test(
       for (const label of [/제1종/, /제2종/]) await page.getByRole("checkbox", { name: label }).check();
       await page.getByRole("button", { name: "저장", exact: true }).click();
       await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
-      await page.getByRole("navigation", { name: "상품 하위 탭" }).getByRole("link", { name: "약관", exact: true }).click();
+      await page.getByRole("navigation", { name: "상품 하위 탭" }).getByRole("link", { name: "보통약관", exact: true }).click();
       await page.waitForLoadState("networkidle");
       await pickCombo(page.getByRole("combobox", { name: "보통약관 템플릿" }), { label: docTitle });
       await submit(page, page.getByRole("button", { name: "템플릿 지정" }));
