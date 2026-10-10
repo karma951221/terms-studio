@@ -176,6 +176,13 @@
       "when": 1791042699816,
       "tag": "0024_coverage_special_group",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791613703462,
+      "tag": "0025_appendix_drop_description",
+      "breakpoints": true
     }
   ]
 }

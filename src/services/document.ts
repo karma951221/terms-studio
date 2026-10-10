@@ -32,7 +32,6 @@ import {
   replayEdits,
   reviseBox,
   requiredDiscriminators,
-  setAppendixDescription,
   validateDocument,
   validateExpressions,
   validateTree,
@@ -157,7 +156,6 @@ export interface DocumentService {
   appendixAudits(): ReturnType<typeof repo.appendixAudits>;
   createAppendix(actor: Actor, input: NewAppendix): Promise<Result<Appendix>>;
   renameAppendix(actor: Actor, code: Code, name: string): Promise<Result<Appendix>>;
-  setAppendixDescription(actor: Actor, code: Code, description: string): Promise<Result<Appendix>>;
   removeAppendix(actor: Actor, code: Code, opts?: Confirmable): Promise<Result<void>>;
 
   // 박스 (정적 마스터 — 기능/박스)
@@ -564,7 +562,6 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
         return r;
       }),
     renameAppendix: (actor, code, name) => editAppendix(actor, code, (a) => renameAppendix(a, name)),
-    setAppendixDescription: (actor, code, description) => editAppendix(actor, code, (a) => setAppendixDescription(a, description)),
 
     removeAppendix: (actor, code, opts = {}) =>
       db.transaction(async (tx) =>

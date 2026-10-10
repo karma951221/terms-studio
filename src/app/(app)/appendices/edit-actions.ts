@@ -3,9 +3,8 @@
 /**
  * 별표 상세의 저장 · 삭제 — 화면 하나에 저장은 하나다 (디자인원칙 §2 L2).
  *
- * 서비스에는 renameAppendix · setAppendixDescription 으로 나뉜 API 만 있다.
- * 그 사이는 여기서 메운다 — 저장된 것과 화면이 들고 온 값을 견줘 달라진 것만 부른다.
- * 전체가 한 트랜잭션이다 (`saveOnce`, 점검 2026-09-27 H1) — 뒤 단계가 거부되면 이름도 남지 않는다.
+ * 고칠 수 있는 값은 이름 하나다 (주석은 2026-10-10 폐지 — 기능/별표 §6.2). 저장된 것과 견줘 달라졌을 때만 부른다.
+ * 다른 상세와 같은 모양으로 한 트랜잭션(`saveOnce`, 점검 2026-09-27 H1) 안에서 부른다.
  */
 import type { EditOutcome } from "@/app/_lib/edit";
 import { describeRejection } from "@/app/_lib/rejection";
@@ -30,10 +29,6 @@ export async function saveAppendixEditAction(code: Code, input: AppendixEditData
   return saveOnce(services, async () => {
     if (input.name !== before.name) {
       const error = failed(await services.document.renameAppendix(actor, code, input.name), "name");
-      if (error) return error;
-    }
-    if (input.description !== before.description) {
-      const error = failed(await services.document.setAppendixDescription(actor, code, input.description), "description");
       if (error) return error;
     }
     return { ok: true };

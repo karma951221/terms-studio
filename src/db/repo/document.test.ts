@@ -94,11 +94,11 @@ describe("appendices — 별표 마스터", () => {
   });
 
   it("코드 유일 · 이름 수정 · 목록(코드순) · 삭제", async () => {
-    await insertAppendix(t.db, { code: "APX_BURN", name: "화상 분류표", description: "" }, who);
-    await insertAppendix(t.db, { code: "APX_A", name: "a", description: "d" }, who);
-    await expect(insertAppendix(t.db, { code: "APX_A", name: "b", description: "" }, who)).rejects.toThrow();
-    await saveAppendix(t.db, { code: "APX_A", name: "a2", description: "d2" }, who);
-    expect(await loadAppendix(t.db, "APX_A")).toEqual({ code: "APX_A", name: "a2", description: "d2" });
+    await insertAppendix(t.db, { code: "APX_BURN", name: "화상 분류표" }, who);
+    await insertAppendix(t.db, { code: "APX_A", name: "a" }, who);
+    await expect(insertAppendix(t.db, { code: "APX_A", name: "b" }, who)).rejects.toThrow();
+    await saveAppendix(t.db, { code: "APX_A", name: "a2" }, who);
+    expect(await loadAppendix(t.db, "APX_A")).toEqual({ code: "APX_A", name: "a2" });
     expect((await listAppendices(t.db)).map((a) => a.code)).toEqual(["APX_A", "APX_BURN"]);
     await deleteAppendix(t.db, "APX_A");
     expect(await loadAppendix(t.db, "APX_A")).toBeUndefined();

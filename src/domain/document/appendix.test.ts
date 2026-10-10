@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createAppendix, formatAppendixCode, isValidAppendixCode, renameAppendix, setAppendixDescription } from "./appendix";
+import { createAppendix, formatAppendixCode, isValidAppendixCode, renameAppendix } from "./appendix";
 
 /** 순번 출처 흉내 — 부를 때마다 1 씩 오른다. */
 function seqSource(start = 1) {
@@ -18,15 +18,15 @@ describe("별표 마스터 (기능/별표 §3.1 — 코드는 시스템 채번 A
     expect(isValidAppendixCode("APX01_INTEREST")).toBe(false);
   });
 
-  it("이름만 넣으면 코드는 시스템이 AX000001 부터 채번한다 — 설명은 비워도 된다", async () => {
+  it("이름만 넣으면 코드는 시스템이 AX000001 부터 채번한다 — 별표는 코드 · 이름뿐이다 (주석 폐지 2026-10-10)", async () => {
     const nextSeq = seqSource();
     expect(await createAppendix({ name: "화상 분류표" }, nextSeq)).toEqual({
       ok: true,
-      value: { code: "AX000001", name: "화상 분류표", description: "" },
+      value: { code: "AX000001", name: "화상 분류표" },
     });
-    expect(await createAppendix({ name: "장해분류표", description: "지급률 산정" }, nextSeq)).toEqual({
+    expect(await createAppendix({ name: " 장해분류표 " }, nextSeq)).toEqual({
       ok: true,
-      value: { code: "AX000002", name: "장해분류표", description: "지급률 산정" },
+      value: { code: "AX000002", name: "장해분류표" },
     });
   });
 
@@ -38,10 +38,9 @@ describe("별표 마스터 (기능/별표 §3.1 — 코드는 시스템 채번 A
     expect(await createAppendix({ name: "화상 분류표" }, nextSeq)).toMatchObject({ ok: true, value: { code: "AX000001" } });
   });
 
-  it("이름·설명 수정은 코드를 바꾸지 않는다 — 빈 이름은 거부", () => {
-    const a = { code: "AX000001", name: "화상 분류표", description: "" };
+  it("이름 수정은 코드를 바꾸지 않는다 — 빈 이름은 거부", () => {
+    const a = { code: "AX000001", name: "화상 분류표" };
     expect(renameAppendix(a, "화상분류표")).toEqual({ ok: true, value: { ...a, name: "화상분류표" } });
     expect(renameAppendix(a, "").ok).toBe(false);
-    expect(setAppendixDescription(a, "설명")).toEqual({ ok: true, value: { ...a, description: "설명" } });
   });
 });

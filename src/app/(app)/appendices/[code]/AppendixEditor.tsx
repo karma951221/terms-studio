@@ -8,7 +8,7 @@ import { removeAppendixEditAction, saveAppendixEditAction } from "../edit-action
 import type { AppendixEditData } from "../edit-types";
 
 export function AppendixEditor({ appendix }: { appendix: Appendix }) {
-  const data: AppendixEditData = { name: appendix.name, description: appendix.description };
+  const data: AppendixEditData = { name: appendix.name };
   return (
     <EditShell
       initial={data}
@@ -29,7 +29,6 @@ export function AppendixEditor({ appendix }: { appendix: Appendix }) {
           </div>
         </div>
         <Field name="name" label={NAME_LABEL.appendix} />
-        <Field name="description" label={FIELD_LABEL.note} type="textarea" />
       </div>
     </EditShell>
   );

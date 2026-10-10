@@ -1,10 +1,10 @@
 /**
  * 별표 조회 (L1) — 화면은 컬럼만 적고, 조립은 ListPage 가 한다.
  *
- * 함수조항 · 구분자 목록과 같은 모양이다 — 코드 · 이름(상세로) · 설명 · 최종수정 · 수정자.
+ * 함수조항 · 구분자 목록과 같은 모양이다 — 코드 · 이름(상세로) · 최종수정 · 수정자 (주석 컬럼은 2026-10-10 주석 폐지와 함께 뺐다).
  * 최종수정 · 수정자는 `Appendix` 에 없다 — 저장소의 감사 정보(`appendixAudits`)로 따로 받는다
  * (구분자 목록이 `catalog.audits()` 를 받는 것과 같은 방식).
- * 이름 · 설명 고치기와 삭제는 상세(L2)로 갔다. 목록의 일은 **찾아서 들어가는 것**이다
+ * 이름 고치기와 삭제는 상세(L2)로 갔다. 목록의 일은 **찾아서 들어가는 것**이다
  * (2026-09-09: 행마다 입력칸과 저장 버튼이 서 있던 편집형 목록을 접었다).
  */
 import { EmptyState } from "@/app/_components/EmptyState";
@@ -41,7 +41,6 @@ export default async function AppendicesPage({ searchParams }: { searchParams: P
   const columns: readonly ListColumn<Appendix>[] = [
     codeCol((a) => a.code),
     nameCol(NAME_LABEL.appendix, (a) => a.name, (a) => `/appendices/${encodeURIComponent(a.code)}`),
-    { header: FIELD_LABEL.note, width: "flex", cell: (a) => a.description || <span className="ts-muted">없음</span> },
     { header: FIELD_LABEL.updatedAt, width: "md", mono: true, cell: (a) => { const audit = audits.get(a.code); return audit ? formatDate(audit.updatedAt) : "—"; } },
     { header: FIELD_LABEL.updatedBy, width: "md", cell: (a) => { const by = audits.get(a.code)?.updatedBy; return (by && userName.get(by)) ?? "—"; } },
   ];

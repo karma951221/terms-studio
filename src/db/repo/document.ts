@@ -182,11 +182,11 @@ export async function nextAppendixSeq(db: Db): Promise<number> {
 type AppendixRow = typeof appendices.$inferSelect;
 
 function toAppendix(r: AppendixRow): Appendix {
-  return { code: r.code, name: r.name, description: r.description };
+  return { code: r.code, name: r.name };
 }
 
 export async function insertAppendix(db: Db, a: Appendix, who: Id): Promise<void> {
-  await db.insert(appendices).values({ code: a.code, name: a.name, description: a.description, createdBy: who, updatedBy: who });
+  await db.insert(appendices).values({ code: a.code, name: a.name, createdBy: who, updatedBy: who });
 }
 
 export async function loadAppendix(db: Db, code: Code): Promise<Appendix | undefined> {
@@ -203,7 +203,7 @@ export async function listAppendices(db: Db): Promise<Appendix[]> {
 export async function saveAppendix(db: Db, a: Appendix, who: Id): Promise<void> {
   const [row] = await db
     .update(appendices)
-    .set({ name: a.name, description: a.description, updatedAt: new Date(), updatedBy: who })
+    .set({ name: a.name, updatedAt: new Date(), updatedBy: who })
     .where(eq(appendices.code, a.code))
     .returning({ id: appendices.id });
   if (!row) throw new Error(`저장 대상 별표가 없습니다: ${a.code}`);
