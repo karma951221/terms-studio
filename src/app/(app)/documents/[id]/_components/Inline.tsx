@@ -53,10 +53,7 @@ function chipParts(node: InlineNode, ctx: DocCtx): { className: string; title: s
   if (custom) return custom;
   switch (node.kind) {
     case "slot": {
-      const ev = ctx.slotEval?.get(node.id);
-      const shown = ev?.kind === "value" ? String(ev.value) : node.ref;
-      const why = ev?.kind === "undetermined" ? ` — 아직 정해지지 않았다 (${ev.reason})` : ev?.kind === "error" ? ` — ${ev.issue.message}` : "";
-      return { className: "ts-doc-slot", title: `치환 슬롯 · ${node.ref}${why}`, body: shown };
+      return { className: "ts-doc-slot", title: `치환 슬롯 · ${node.ref}`, body: node.ref };
     }
     case "articleRef":
       return { className: "ts-doc-ref", title: "조 참조 슬롯 — 번호는 계산값이다", body: articleRefText(node, ctx) };
@@ -115,10 +112,10 @@ function chipParts(node: InlineNode, ctx: DocCtx): { className: string; title: s
 
 /**
  * 문장 조각 — 작업용 글자색이 있으면 색 조각(`data-mark`)으로 싼다 (§3.2 작업 표시). 산출물 서식이 아니다 —
- * 「수정 흔적 보기」를 끄면 화면이 `.is-marks-off` 로 보통 글색을 입힌다. `hide` 면(미리보기 · 사전평가 결과) 싸지 않는다.
+ * 「수정 흔적 보기」를 끄면 화면이 `.is-marks-off` 로 보통 글색을 입힌다. 산출물 꼴(미리보기 탭)은 조립 결과라 색이 없다.
  */
-function TextRun({ node, hide }: { node: { text: string; mark?: WorkMark }; hide?: boolean }): ReactNode {
-  if (!node.mark || hide) return node.text;
+function TextRun({ node }: { node: { text: string; mark?: WorkMark } }): ReactNode {
+  if (!node.mark) return node.text;
   return (
     <span className="ts-mark" data-mark={node.mark}>
       {node.text}
@@ -129,7 +126,7 @@ function TextRun({ node, hide }: { node: { text: string; mark?: WorkMark }; hide
 /** 읽기 — 글과 칩. 문장 안 조건은 **점선 밑줄만**(칩 · 배경 없음), 조건식은 tooltip. */
 export function InlineView({ nodes, ctx }: { nodes: readonly InlineNode[]; ctx: DocCtx }): ReactNode {
   return nodes.map((node) => {
-    if (node.kind === "text") return <TextRun key={node.id} node={node} hide={ctx.workMarks === false} />;
+    if (node.kind === "text") return <TextRun key={node.id} node={node} />;
     if (node.kind === "inlineCond" && node.switchOn !== undefined) {
       // 문장 안 값별 분기 읽기 — 칸마다 점선 밑줄 조각, 칸 머리(값)는 tooltip
       const subject = ctx.switchSubjects?.find((s) => s.code === node.switchOn);
@@ -147,12 +144,11 @@ export function InlineView({ nodes, ctx }: { nodes: readonly InlineNode[]; ctx: 
       return (
         <Fragment key={node.id}>
           {node.branches.map((br, i) => {
-            const state = ctx.branchEval?.get(br.id)?.state;
             return (
               <span
                 key={br.id}
                 data-node={br.id}
-                className={`ts-doc-inline-cond${i === 0 ? "" : " is-alt"}${state === "notTaken" ? " ts-dim" : ""}${ctx.flashId === br.id ? " is-flash" : ""}`}
+                className={`ts-doc-inline-cond${i === 0 ? "" : " is-alt"}${ctx.flashId === br.id ? " is-flash" : ""}`}
                 title={`문장 안 조건 — ${chipText(br.when, "edit", ctx.refLabel).full}`}
               >
                 <InlineView nodes={br.children} ctx={ctx} />
@@ -363,14 +359,13 @@ function InlineEditor({ at, nodes, ctx, owner, focusKey, placeholder }: { at: In
       {nodes.map((node) => {
         if (node.kind === "text") return <TextRun key={node.id} node={node} />;
         const { className, title, body, what } = chipParts(node, ctx);
-        const state = node.kind === "inlineCond" ? node.branches.map((br) => ctx.branchEval?.get(br.id)?.state) : [];
         return (
           <span
             key={node.id}
             contentEditable={false}
             data-chip={node.id}
             data-node={node.id}
-            className={`${className} ts-chip-inline${state.includes("notTaken") ? " has-dim" : ""}${ctx.flashId === node.id ? " is-flash" : ""}`}
+            className={`${className} ts-chip-inline${ctx.flashId === node.id ? " is-flash" : ""}`}
             title={`${what ?? CHIP_WHAT[node.kind] ?? node.kind} — 눌러서 고치기 · 풀기 · 삭제는 툴바 (${title})`}
             onClick={(event) => {
               event.preventDefault();

@@ -158,11 +158,11 @@ describe("함수조항 블록 안 — 가운데는 모델, 미리보기는 문�
       { id: "qc", kind: "condBlock", branches: [{ id: "qb", when: "D0009 = true", children: [{ id: "q4", kind: "paragraph", children: [{ id: "q5", kind: "text", text: "감액 조건 항" }] }] }] },
     ],
   };
-  function renderClause(edit: boolean, view?: "text") {
+  function renderClause(edit: boolean) {
     const b = nodeBuilders(sequentialIds("k"));
     const tree: DocumentNode = b.document("D", [b.article("가", [b.clauseBlock("C0002", { O01: "V02" })])]);
     const base = ctxOf(tree, edit);
-    const ctx: DocCtx = { ...base, clauses: [clause, optionClause], clauseLabel: new Map([["C0002", "대표자의 지정"]]), ...(view ? { clauseView: view } : {}) };
+    const ctx: DocCtx = { ...base, clauses: [clause, optionClause], clauseLabel: new Map([["C0002", "대표자의 지정"]]) };
     return renderToStaticMarkup(<Block nodes={(tree.children[0] as { children: DocumentNode["children"] }).children} ctx={ctx} />);
   }
 
@@ -184,13 +184,6 @@ describe("함수조항 블록 안 — 가운데는 모델, 미리보기는 문�
       expect(body).not.toContain("data-block");
       expect(body).not.toContain("data-inline");
     }
-  });
-
-  it("미리보기(clauseView: text) — 고른 선택지 문구를 끼운 문장, 모델 없음 · 머리는 같은 「[코드] 이름」", () => {
-    const html = renderClause(false, "text");
-    expect(html).toContain("피보험자는");
-    expect(html).not.toContain("ts-clause-model");
-    expect(html).toContain('<span class="ts-doc-clause-code">[C0002]</span> 대표자의 지정');
   });
 });
 
@@ -274,7 +267,7 @@ describe("글머리 목록 — 편집기 (기능/문면 §3.2 · §4.3, 2026-09-
   });
 });
 
-describe("작업용 글자색 — 색 조각으로 그린다, 산출물 모양(미리보기)에는 없다 (기능/문면 §3.2 작업 표시)", () => {
+describe("작업용 글자색 — 색 조각으로 그린다 (기능/문면 §3.2 작업 표시)", () => {
   const b = nodeBuilders(sequentialIds("w"));
   const t = b.document("D", [b.article("가", [b.paragraph([b.text("회사는 "), { ...b.text("보험금을"), mark: "red" }, b.text(" 지급합니다.")])])]);
   const nodes = (t.children[0] as { children: DocumentNode["children"] }).children;
@@ -282,11 +275,5 @@ describe("작업용 글자색 — 색 조각으로 그린다, 산출물 모양(�
 
   it("읽기 · 편집 모두 색 조각 — 편집기는 되읽기 위해 `data-mark` 를 품는다", () => {
     for (const edit of [false, true]) expect(renderToStaticMarkup(<Block nodes={nodes} ctx={ctxOf(t, edit)} />)).toContain(`회사는 ${colored} 지급합니다.`);
-  });
-
-  it("미리보기 · 사전평가 결과(workMarks: false)는 글만", () => {
-    const html = renderToStaticMarkup(<Block nodes={nodes} ctx={{ ...ctxOf(t, false), workMarks: false }} />);
-    expect(html).toContain("회사는 보험금을 지급합니다.");
-    expect(html).not.toContain("ts-mark");
   });
 });

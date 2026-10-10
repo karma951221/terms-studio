@@ -3402,10 +3402,6 @@ button.ts-doc-clause-opt {
   text-decoration-style: dashed;
 }
 
-.ts-doc-inline-cond.ts-dim {
-  text-decoration-line: underline line-through;
-}
-
 .ts-doc-cond-head {
   font-family: var(--mono);
   font-size: 12px;

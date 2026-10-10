@@ -4,7 +4,7 @@
  * L3 가운데 — 문면을 **문서 세계**로 그린다 (디자인원칙 §1.1 · 기능/문면 §4.3).
  *
  * - 가운데는 **조 하나**다(`ArticleBody`) — 조 위에 소속 관 머리 줄, 조를 감싼 블록 조건이 있으면 그 띠와 머리 줄.
- *   약관 전체를 이어 읽는 것(`DocBody`)은 더보기 › 미리보기와 사전평가 결과 조문만 쓴다.
+ *   산출물 꼴(조립 결과)은 우측 패널 미리보기 탭이 그린다(`PreviewTab` — 기능/문면 §3.9).
  * - 읽기 모드에는 조작이 없다. 편집 모드에서는 **그 자리가 편집기**다 — 제목 · 문장 · 조건 머리 줄은 그 자리에서 고치고, 칩은 누르면
  *   바로 아래에 팝업, 넣기 · 조건식은 본문 위 툴바(자리는 `data-*` 로 읽는다, 오른쪽 클릭 메뉴는 지름길). 블록은 왼쪽 손잡이로 끌어 옮기고,
  *   복제 · 삭제는 고른 블록 오른쪽 여백의 작은 아이콘(`BlockActs`, 2026-10-01 툴바에서 내려옴)이다.
@@ -13,7 +13,6 @@
  * - 값별 분기(함수조항 편집기만, 최종 결정 5)는 조건 블록과 같은 상자 — 첫 칸 위에 대상 줄(대상 고르기 · 칸 없는 값 · 칸 추가 · 삭제),
  *   칸마다 머리 줄(값 칩 · 값 더하기 · 「문구 없음」 · 칸 삭제) + 그 칸 내용. 칸 머리는 조건 머리처럼 자리(`data-cond-head`)라 툴바가 그 칸을 본다.
  * - 함수조항(조 단위)은 머리 띠 「함수조항 (이름)」 + 🗑 · 그 아래 함수조항의 **모델**(슬롯 · 옵션 자리 · 조건 · 참조, 읽기 전용)을 든 상자다.
- *   미리보기(`clauseView: "text"`)만 고른 선택지를 끼운 문장으로 그린다 — 가운데 = 모델, 오른쪽 = 결과 (2026-09-28).
  * - 노드 id·8자리 접두를 화면에 내보내지 않는다 (리뷰 #25).
  */
 import type { MouseEvent, ReactNode } from "react";
@@ -22,20 +21,11 @@ import { IconButton, IconCopy, IconTrash } from "@/app/_components/icons";
 import { StaticTable } from "@/app/_components/StaticNodes";
 import { REPEAT_DEPTH_LABEL, SWITCH_WORD } from "@/app/_lib/labels";
 import {
-  CLAUSE_HOST_ITEM_ID,
-  CLAUSE_HOST_PARAGRAPH_ID,
-  CLAUSE_LINE_ID,
-  clauseBodyToTree,
-  clauseModelNumbers,
-  indexTree,
-  optionCodeOf,
   referenceTargetLabel,
   repeatLabel,
   type ArticleNode,
   type BlockBranch,
   type ClauseBlockRefNode,
-  type DocumentNode,
-  type InlineNode,
   type Node,
   type TableNode,
   type TreeIndex,
@@ -45,7 +35,6 @@ import type { Code, Id } from "@/domain/types";
 import { BoxView } from "@/app/_components/BoxView";
 import { ClauseModel } from "@/app/_components/ClauseModel";
 import { bindingLabel } from "@/app/(app)/functions/_components/params";
-import { applyBindings, plainConst } from "@/domain/clause";
 
 import { parseLines } from "../../lib";
 import { CondRows } from "./condition/CondRows";
@@ -151,15 +140,12 @@ function HeadTools({ ctx, branch, first, ownerId }: { ctx: DocCtx; branch: Block
  */
 function CondHead({ ctx, branch, label, first, ownerId }: { ctx: DocCtx; branch: BlockBranch; label: string; first: boolean; ownerId?: Id }) {
   const { text, full } = chipText(branch.when, ctx.mode, ctx.refLabel);
-  const state = ctx.branchEval?.get(branch.id)?.state;
-  const suffix = state === "taken" ? " · 참" : state === "notTaken" ? " · 거짓" : state === "undetermined" ? " · 미결" : state === "error" ? " · 오류" : "";
   const edit = ctx.edit;
   if (!edit || !ctx.conditionFor) {
     return (
       <p className="ts-doc-cond-head" title={full}>
         <span className="ts-cond-badge">{label}</span>
         {branch.when === undefined ? "" : ` ${text}`}
-        {suffix}
       </p>
     );
   }
@@ -222,24 +208,14 @@ function CellToolbar({ ctx, table, row, col }: { ctx: DocCtx; table: TableNode; 
 
 /**
  * 정적 표 · 행 반복 표 (기능/문면 §3.2 · ADR-0070 결정 6).
- * - 미리보기(`ctx.tables`)에 펼침 결과가 있으면 펼친 표(복제 행 · 병합)를, 행 0 이면 회색 「표 생략됨」 자리를 그린다.
- * - 그 밖에는 템플릿 그대로 — 반복 표면 템플릿 행 왼쪽에 for 띠. 편집 모드면 셀마다 그 자리 편집기.
+ * - 템플릿 그대로 그린다 — 반복 표면 템플릿 행 왼쪽에 for 띠. 편집 모드면 셀마다 그 자리 편집기. 펼친 모양은 미리보기 탭(조립 결과).
  */
 function Table({ node, ctx }: { node: TableNode; ctx: DocCtx }) {
-  const evaluated = ctx.tables?.get(node.id);
-  if (evaluated?.kind === "omitted") {
-    return (
-      <figure id={`node-${node.id}`} className="ts-doc-table-wrap ts-muted" style={{ border: "1px dashed var(--ts-rule-strong)", padding: "8px 12px", color: "var(--ts-ink-3)" }}>
-        표 생략됨{node.title ? ` — ${node.title}` : ""} (반복할 행이 없다 — 산출본에는 이 표가 나오지 않는다)
-      </figure>
-    );
-  }
-  const source = evaluated?.kind === "expanded" ? evaluated.expansion.table : node;
-  const editing = ctx.edit !== undefined && evaluated === undefined;
+  const editing = ctx.edit !== undefined;
   const active = ctx.edit?.activeCell?.tableId === node.id ? ctx.edit.activeCell : undefined;
   const shape = {
-    ...source,
-    rows: source.rows.map((row, ri) => ({
+    ...node,
+    rows: node.rows.map((row, ri) => ({
       ...row,
       cells: row.cells.map((cell, ci) =>
         editing ? (
@@ -252,13 +228,12 @@ function Table({ node, ctx }: { node: TableNode; ctx: DocCtx }) {
       ),
     })),
   };
-  const band = node.repeat && evaluated?.kind !== "expanded" ? REPEAT_DEPTH_LABEL[node.repeat.depth].band : undefined;
+  const band = node.repeat ? REPEAT_DEPTH_LABEL[node.repeat.depth].band : undefined;
   return (
     <div className={editing ? "ts-table-edit" : undefined}>
       {/* 셀 조작 줄은 표 바로 위에 뜬다 — 셀을 가리지 않는다 */}
       {editing && active && node.rows[active.row]?.cells[active.col] && <CellToolbar ctx={ctx} table={node} row={active.row} col={active.col} />}
       <StaticTable node={shape} {...(band ? { band } : {})} />
-      {evaluated?.kind === "error" && <p className="ts-error-banner">{evaluated.issue.message}</p>}
     </div>
   );
 }
@@ -284,26 +259,9 @@ function Box({ node, ctx }: { node: Node & { kind: "box" }; ctx: DocCtx }) {
   );
 }
 
-/** 함수조항 옵션 자리(운반체) → 사용처가 고른 선택지 문구. 안 골랐으면 〔옵션명〕. */
-function optionChip(clause: { options: readonly { code: string; label: string; values: readonly { code: string; label: string; body: readonly { kind: string; text?: string }[] }[] }[] }, chosen: Record<string, string>) {
-  return (node: InlineNode) => {
-    const code = optionCodeOf(node);
-    if (code === undefined) return undefined;
-    const option = clause.options.find((o) => o.code === code);
-    const value = option?.values.find((v) => v.code === chosen[code]);
-    const text = value ? value.body.map((n) => n.text ?? "").join("") || value.label : undefined;
-    return {
-      className: "ts-doc-ref",
-      what: "옵션 자리",
-      title: option ? `옵션 자리 — ${option.label}${value ? ` · ${value.label}` : " · 미선택"}` : "없는 옵션",
-      body: text ?? `〔${option?.label ?? code}〕`,
-    };
-  };
-}
-
 /**
  * 함수조항(조 단위) 블록 — 머리 띠 「[코드] 이름」 · 옵션 선택(편집이면 눌러서 고치기) · 복제 · 삭제,
- * 그 아래 함수조항의 모델(`ClauseModel` — 읽기 전용). 미리보기(`clauseView: "text"`)는 고른 선택지를 끼운 문장이다.
+ * 그 아래 함수조항의 모델(`ClauseModel` — 읽기 전용).
  * 본문 안은 이 문서의 자리가 아니다 — `data-clause-ref` 가 누른 자리를 이 블록으로 모은다(`place.ts`).
  */
 function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
@@ -327,39 +285,8 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
   const optionWords = clause && clause.options.length === 0 && params.length > 0 ? "" : ctx.optionText(node.clauseCode, node.options);
   const options = [optionWords, args.length > 0 ? `인자: ${args.join(" · ")}` : ""].filter(Boolean).join(" · ");
   const hasOptions = !clause || clause.options.length > 0 || params.length > 0;
-  const asText = ctx.clauseView === "text";
   let body: ReactNode = <p className="ts-muted">{label ? "본문을 불러오지 않았다." : `${node.clauseCode} — 없는 함수조항이다(깨진 참조).`}</p>;
-  if (clause && asText) {
-    // 미리보기 — 고른 선택지 문구를 끼운 문장 (조립 결과와 같은 읽기). 인자는 이 사용처의 연결로 바꿔 쓰고(조립과 같은 applyBindings),
-    // 사전평가를 켰으면 슬롯을 문서 문맥에서 찍는다 — 연결을 못 하면(연결 누락) 원래 본문 그대로
-    const bound = applyBindings(clause, node.bindings, plainConst);
-    const shown = bound.ok ? bound.value : clause;
-    const tree = clauseBodyToTree(shown.mode, shown.body, shown.label);
-    const nodes = tree.children[0]?.kind === "article" ? tree.children[0].children : [];
-    const slotEval = ctx.evalRef ? new Map([...indexTree(tree).nodes.values()].flatMap((e) => (e.node.kind === "slot" ? [[e.node.id, ctx.evalRef!(e.node.ref)] as const] : []))) : undefined;
-    const at = ctx.numbers.get(node.id);
-    const inner: DocCtx = { ...ctx, mode: "read", edit: undefined, numbers: clauseModelNumbers(tree, at?.kind === "paragraph" ? at : undefined), branchEval: undefined, flashId: undefined, chipOverride: optionChip(clause, node.options), ...(slotEval ? { slotEval } : {}) };
-    const line = clause.mode === "inline" ? nodes.find((n) => n.id === CLAUSE_LINE_ID) : undefined;
-    // 「호」 · 「목」 — 자리 항(· 자리 호)은 번호 단계가 아니라 그 목록만 그린다
-    const host = nodes.find((n) => n.id === CLAUSE_HOST_PARAGRAPH_ID);
-    const hostItems = host?.kind === "paragraph" ? (host.items ?? []) : [];
-    const hostItem = hostItems.find((n) => n.id === CLAUSE_HOST_ITEM_ID);
-    const list = clause.mode === "item" ? hostItems : clause.mode === "subitem" && hostItem?.kind === "item" ? (hostItem.subitems ?? []) : undefined;
-    body =
-      clause.body.length === 0 ? (
-        <p className="ts-muted">본문이 비어 있다.</p>
-      ) : line && line.kind === "paragraph" ? (
-        <p className="ts-doc-paragraph is-line">
-          <InlineSlot at={{ parentId: line.id }} nodes={line.children} ctx={inner} />
-        </p>
-      ) : list ? (
-        <ol className={clause.mode === "item" ? "ts-doc-items" : "ts-doc-subitems"} style={at && at.kind === clause.mode && at.n > 1 ? { counterReset: `ts-doc-${at.kind} ${at.n - 1}` } : undefined}>
-          <Block nodes={list} ctx={inner} inList />
-        </ol>
-      ) : (
-        <Block nodes={nodes} ctx={inner} />
-      );
-  } else if (clause) {
+  if (clause) {
     // 가운데(모델) — 함수조항이 어떻게 짜였는지: 슬롯 · 옵션 자리(선택지 전부 + 고른 것) · 조건 · 참조 (2026-09-28)
     body = (
       <ClauseModel
@@ -501,14 +428,12 @@ function CondBlock({ node, ctx, as }: { node: Node & { kind: "condBlock" }; ctx:
   return (
     <>
       {node.branches.map((br, i) => {
-        const dim = ctx.branchEval?.get(br.id)?.state === "notTaken";
         return (
           <Tag
             key={br.id}
             data-node={br.id}
             data-drop-block={node.id}
-            className={`ts-doc-cond${i === 0 ? "" : " is-alt"}${dim ? " ts-dim" : ""}${flash(ctx, br.id)}${ctx.edit?.blockSel?.includes(node.id) ? " is-block-sel" : ""}`}
-            style={dim ? { textDecoration: "line-through" } : undefined}
+            className={`ts-doc-cond${i === 0 ? "" : " is-alt"}${flash(ctx, br.id)}${ctx.edit?.blockSel?.includes(node.id) ? " is-block-sel" : ""}`}
           >
             {i === 0 && <DragHandle id={node.id} what="조건 블록" ctx={ctx} acts={false} />}
             <CondHead ctx={ctx} branch={br} label={branchLabel(node.branches, i)} first={i === 0} ownerId={node.id} />
@@ -769,9 +694,8 @@ export function ArticleBody({ index, articleId, ctx }: { index: TreeIndex; artic
     const br = index.branches.get(id);
     if (br) {
       const owner = index.nodes.get(br.ownerId)?.node as { branches: BlockBranch[] } | undefined;
-      const dim = ctx.branchEval?.get(id)?.state === "notTaken";
       content = (
-        <div data-node={id} className={`ts-doc-cond${br.index === 0 ? "" : " is-alt"}${dim ? " ts-dim" : ""}${flash(ctx, id)}`}>
+        <div data-node={id} className={`ts-doc-cond${br.index === 0 ? "" : " is-alt"}${flash(ctx, id)}`}>
           <CondHead ctx={ctx} branch={br.branch as BlockBranch} label={branchLabel(owner?.branches ?? [], br.index)} first={br.index === 0} />
           {content}
         </div>
@@ -790,15 +714,3 @@ export function ArticleBody({ index, articleId, ctx }: { index: TreeIndex; artic
   }
   return <article className="ts-doc">{content}</article>;
 }
-
-/** 문서 하나 전체 — 더보기 › 미리보기 · 사전평가 결과 조문 (읽기 전용). */
-export function DocBody({ tree, ctx }: { tree: DocumentNode; ctx: DocCtx }) {
-  const read: DocCtx = { ...ctx, mode: "read", edit: undefined };
-  return (
-    <article className="ts-doc">
-      <h2 className="ts-doc-title">{tree.title}</h2>
-      {tree.children.length === 0 ? <p className="ts-muted">아직 조가 하나도 없다.</p> : <Block nodes={tree.children} ctx={read} />}
-    </article>
-  );
-}
-
