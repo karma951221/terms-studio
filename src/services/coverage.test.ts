@@ -1,8 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { Coverage, CoverageNodeRef, StructureDraftSub, UsageQuery } from "@/domain/coverage";
-import { masterCatalog, masterEvalContext, structureDraftOf } from "@/domain/coverage";
-import { evaluate, parse } from "@/domain/expression";
+import { structureDraftOf } from "@/domain/coverage";
 import type { Actor, Coordinate, Id, Impact } from "@/domain/types";
 
 import { readSlots, type ValueOwner } from "@/db/repo/values";
@@ -287,20 +286,13 @@ describe("coverage 서비스 (PGlite)", () => {
     });
   });
 
-  describe("마스터 값 조회 → 평가 문맥 (B3 사전평가 · C2 조립 재사용)", () => {
-    it("masterValues 로 만든 masterEvalContext 가 집계 구분자 any(급부.면책여부) 를 평가한다", async () => {
-      for (const s of accident.subCoverages) {
-        for (const b of s.benefits) {
-          unwrap(await svc.writeValue(editor, { level: "benefit", id: b.id }, "pay.exempt", s.name === "1종수술"));
-        }
-      }
+  describe("마스터 값 조회 — 조건 팝업 문맥의 재료", () => {
+    it("masterValues 는 담보 트리와 하위 노드의 값 전부를 돌려준다 · 없는 담보는 notFound", async () => {
+      const b = accident.subCoverages[0]!.benefits[0]!;
+      unwrap(await svc.writeValue(editor, { level: "benefit", id: b.id }, "pay.exempt", true));
       const { tree, values } = unwrap(await svc.masterValues(accident.id));
       expect(tree.id).toBe(accident.id);
-      const catalog = masterCatalog(await createCatalogService(t.db).list());
-      const ctx = masterEvalContext(tree, values, catalog);
-      expect(evaluate(unwrap(parse("D0002")), ctx)).toEqual({ kind: "value", value: true });
-      // 담보명은 미입력 — 투영 구분자를 읽으면 그 자리가 미입력으로 보고된다
-      expect(evaluate(unwrap(parse("D0001")), ctx)).toMatchObject({ kind: "error", issue: { kind: "notEntered" } });
+      expect(values.slots.get(b.id)?.get("pay.exempt")).toEqual({ entered: true, value: true });
       expect(rejection(await svc.masterValues("44444444-4444-4444-8444-444444444444")).reason).toBe("notFound");
     });
   });

@@ -13,7 +13,7 @@ function unwrapTree(r: { ok: true; value: Coverage } | { ok: false; rejection: u
   return r.value;
 }
 
-/** 수술비: 1종수술{수술보험금} · 2종수술{수술보험금, 입원보험금} — evalContext.test.ts 의 surgery() 와 같은 모양. */
+/** 수술비: 1종수술{수술보험금} · 2종수술{수술보험금, 입원보험금} — coverage/fixture.ts 의 surgery() 와 같은 모양. */
 function surgeryTree(): { tree: Coverage; b11: string } {
   let seq = 0;
   const newId = () => `id-${++seq}`;

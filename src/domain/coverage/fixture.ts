@@ -1,5 +1,5 @@
 /**
- * 담보 트리 픽스처 — 여러 테스트가 같은 트리 모양을 공유한다 (evalContext.test · condition/conditionContext.test).
+ * 담보 트리 픽스처 — 여러 테스트가 같은 트리 모양을 공유한다 (children.test · condition/conditionContext.test).
  *
  * 수술비: 1종수술{수술보험금} · 2종수술{수술보험금, 입원보험금}.
  */
