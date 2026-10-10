@@ -141,6 +141,8 @@ interface Built {
   aliases?: ReadonlyMap<string, string>;
   /** 상품이 노출을 끈 보통약관 조 id → 조 명 (기능/상품 §3.6). 참조·조연결이 가리키면 오류를 낸다. */
   hidden?: ReadonlyMap<Id, string>;
+  /** 보통약관: 기본계약 조로 대치된 보통약관 조 id → 기본계약 상품담보 이름 (저작 화면 미리보기의 「대치」 표시). */
+  replaced?: ReadonlyMap<Id, string>;
 }
 
 interface Prepared {
@@ -243,7 +245,8 @@ function buildGeneral(input: AssemblyInput, contexts: AssemblyContexts, s: Share
         if (original) for (const [from, to] of positionAliases(original, baseArticle)) replaced.aliases.set(from, to);
       }
       const replacementIssues = replaced.issues.map((issue) => ({ ...issue, source: { document: "coverageMaster" as const, ownerId: base.snapshot.coverageId, documentId: doc.id, ownerName: base.snapshot.coverageName, articleId: issue.at.articleId, articleTitle: issue.at.articleTitle, nodePath: issue.at.articleId ? [doc.id, issue.at.articleId] : undefined } }));
-      return { numbered: numberDocument(dropEmptyArticles(replaced.doc, authoredEmptyArticleIds(g)).doc), issues: [...generalPrepared.issues, ...basePrepared.issues, ...replacementIssues], omitted: [], aliases: replaced.aliases, ...(hidden ? { hidden } : {}) };
+      const replacedIds = new Map([...replacedArticleIds].filter((id) => originals.has(id)).map((id) => [id, base.snapshot.name] as const));
+      return { numbered: numberDocument(dropEmptyArticles(replaced.doc, authoredEmptyArticleIds(g)).doc), issues: [...generalPrepared.issues, ...basePrepared.issues, ...replacementIssues], omitted: [], aliases: replaced.aliases, ...(hidden ? { hidden } : {}), replaced: replacedIds };
     }
   }
   const prepared = prepare(g, contexts.general, s, { coordinate: generalCoordinate(input.product, master), overrides: input.product.overrides, ...prepareCoordinates(input, g) });
@@ -414,6 +417,26 @@ export function assembleSpecial(master: MasterBundle, product: ProductInput, pro
   issues.push(...locateIssues(b.issues, b.numbered), ...r.issues);
   const trace = contexts.traces.filter((t) => t.productCoverageId === productCoverageId || input.product.baseContractIds.includes(t.productCoverageId));
   return ok({ doc: r.doc, general: renderedGeneral, appendices, issues, complete: !issues.some((item) => (item.severity ?? "error") === "error"), omitted: b.omitted, trace });
+}
+
+/** 보통약관 미리보기 — 그 상품의 보통약관 한 벌만 조립한다 (문면 저작 화면 미리보기, 기능/문면 §3.9). 템플릿을 고르지 않았으면 undefined. */
+export interface GeneralPreview {
+  doc: RenderedDoc;
+  issues: Issue[];
+  /** 기본계약 조로 대치된 보통약관 조 id → 기본계약 상품담보 이름. */
+  replaced: ReadonlyMap<Id, string>;
+}
+
+export function assembleGeneral(master: MasterBundle, product: ProductInput): GeneralPreview | undefined {
+  const input: AssemblyInput = { ...master, ...product };
+  const s = shared(input);
+  const contexts = buildContexts(input);
+  const general = buildGeneral(input, contexts, s);
+  if (!general) return undefined;
+  // 별표는 보통약관이 책자 맨 앞이라 이 한 벌만 훑어도 책자와 번호가 같다 (ADR-0063)
+  const appendices = collectAppendices([general.numbered], input.appendices);
+  const r = renderDocument(general.numbered, { document: "general", ownerId: generalCoordinate(input.product, generalDocumentOf(input)).ownerId!, appendices, aliases: general.aliases, ...(general.hidden ? { hiddenArticles: general.hidden } : {}) });
+  return { doc: r.doc, issues: [...locateIssues(general.issues, general.numbered), ...r.issues], replaced: general.replaced ?? new Map() };
 }
 
 // ───────────────────────────── 실행 기반 완결성 필터 ─────────────────────────────

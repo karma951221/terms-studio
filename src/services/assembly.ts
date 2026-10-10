@@ -6,6 +6,8 @@
  *   loadAssemblyInput(productId)          호환 — 위 둘을 한 객체로
  *   preview(productId)                    책자 조립 (매번 재계산 · 저장 없음)
  *   previewSpecial(productId, pcId)       상품담보 미리보기 (담보약관 하나를 그 탑재분 문맥으로)
+ *   previewProducts(document)             문면 저작 화면 미리보기의 상품 목록 — 담보약관은 특약 탑재분, 보통약관은 그 템플릿을 쓰는 상품 (기능/문면 §3.9)
+ *   previewMaterial(productId)            그 미리보기의 재료 — 공유 마스터(문서는 그 상품이 읽는 것만) + 상품 고유분. 조립은 브라우저가 `previewArticle` 로
  *   assembleMany(actor, productIds)       여러 상품을 마스터 1회 적재로 순서대로 조립 + 산출본 저장 — 다중이 원형이다 (ADR-0034 결정 1)
  *   run(actor, productId)                 = assembleMany 의 1건 (`product_previews` 상품당 1행 · 기능/조립산출 §3.6) — 편집자 가능 · 비파괴
  *   latest(productId)                     저장된 산출본 + 오래됨(`stale` — 입력 스탬프가 지금과 다름)
@@ -37,7 +39,7 @@ import { ok, reject } from "@/domain/types";
 import { listDocumentRecords } from "@/db/repo/document";
 import { assemblyInputStamp, loadPreview, type PreviewGrade, savePreview } from "@/db/repo/preview";
 import { listCoverageGroups } from "@/db/repo/coverage";
-import { listAttachedPlansForProduct, listBaseContractIds } from "@/db/repo/product";
+import { listAttachedPlansForProduct, listBaseContractIds, listProductsByGeneralDocument, listSpecialMountsOfCoverage } from "@/db/repo/product";
 import type { Db } from "@/db/repo/types";
 import { readSlotsMany } from "@/db/repo/values";
 import type { CatalogService } from "./catalog";
@@ -64,6 +66,23 @@ export interface PreviewRecord {
   booklet: Booklet;
 }
 
+/** 문면 저작 화면 미리보기의 상품 한 줄 — 담보약관이면 그 특약 탑재분(상품담보)까지. */
+export interface PreviewProduct {
+  productId: Id;
+  productName: string;
+  productCoverageId?: Id;
+  productCoverageName?: string;
+}
+
+/** 미리보기 대상 문서 — 담보약관은 그 담보, 보통약관은 그 템플릿. */
+export type PreviewDocument = { kind: "special"; coverageId: Id } | { kind: "general"; documentId: Id };
+
+/** 미리보기 재료 — 브라우저가 편집본으로 `previewArticle` 를 돌린다. Map · Set 은 서버 액션이 그대로 넘긴다. */
+export interface PreviewMaterial {
+  master: MasterBundle;
+  product: ProductInput;
+}
+
 export interface AssemblyServices {
   catalog: CatalogService;
   coverage: CoverageService;
@@ -81,6 +100,10 @@ export interface AssemblyService {
   loadAssemblyInput(productId: Id): Promise<Result<AssemblyInput>>;
   preview(productId: Id): Promise<Result<Booklet>>;
   previewSpecial(productId: Id, productCoverageId: Id): Promise<Result<SpecialPreview>>;
+  /** 문면 저작 화면 미리보기의 상품 목록 — 담보약관: 이 담보를 특약으로 탑재한 상품담보마다(기본계약 탑재 제외), 보통약관: 이 템플릿을 쓰는 상품. 이름 순. */
+  previewProducts(document: PreviewDocument): Promise<PreviewProduct[]>;
+  /** 그 상품의 조립 재료 — 공유 마스터의 문서는 그 상품이 읽는 것(보통약관 · 탑재 담보의 담보약관)만 싣는다. */
+  previewMaterial(productId: Id): Promise<Result<PreviewMaterial>>;
   /**
    * 여러 상품을 순서대로 조립해 산출본을 저장한다 — 마스터는 1회 적재. 결과는 상품 id → 건별 결과 (입력 순 · 중복 id 는 한 번).
    * 한 건의 거부(없는 상품 등)나 예외(적재 · 조립 · 저장 중 throw)는 그 건만 `failed` 거부로 남고 나머지는 저장된다
@@ -239,6 +262,26 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
       const master = await loadMaster();
       const input = await loadProduct(productId, master);
       return input.ok ? assembleSpecial(master, input.value, productCoverageId) : (input as Result<never>);
+    },
+    previewProducts: async (target) => {
+      if (target.kind === "general") return (await listProductsByGeneralDocument(db, target.documentId)).map((p) => ({ productId: p.id, productName: p.name }));
+      return (await listSpecialMountsOfCoverage(db, target.coverageId)).map((pc) => ({ productId: pc.productId, productName: pc.productName, productCoverageId: pc.id, productCoverageName: pc.name }));
+    },
+    previewMaterial: async (productId) => {
+      const master = await loadMaster();
+      const input = await loadProduct(productId, master);
+      if (!input.ok) return input as Result<never>;
+      // 브라우저로 보내는 재료 — 다른 상품의 문서는 이 조립이 읽지 않는다
+      const generalId = input.value.product.generalDocumentId;
+      const coverageIds = new Set(input.value.coverages.map((c) => c.snapshot.coverageId));
+      return ok({
+        master: {
+          ...master,
+          generalDocuments: new Map([...master.generalDocuments].filter(([id]) => id === generalId)),
+          specialDocuments: new Map([...master.specialDocuments].filter(([id]) => coverageIds.has(id))),
+        },
+        product: input.value,
+      });
     },
     assembleMany,
     run: async (actor, productId) => (await assembleMany(actor, [productId])).get(productId)!,
