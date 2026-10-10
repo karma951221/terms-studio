@@ -2,8 +2,7 @@
  * 번호 계산 — 번호는 저장하지 않는 계산값이다 (ADR-0012 · 기능/문면 §3.2).
  *
  * `numberTree` 는 조건 해소 없이 **현재 트리** 순서대로 조·항·호·목 번호를 매긴다 (편집기 표시용 · 전체 뷰).
- * 사전평가 결과(`branchStates`)를 주면 `notTaken` 가지를 빼고 센다 — 톤다운된 조가 빠져 이후 번호가 당겨져 보인다
- * (사전평가 S1). 미결·오류 가지는 뺄 수 없으므로 그대로 센다. 조립은 조건 해소 뒤 C2 가 다시 계산한다.
+ * 모든 가지를 센다. 조립은 조건 해소 뒤 C2 가 다시 계산한다.
  *
  * ⚠ 표기 규칙은 **임시**다 — 조·별표 참조 슬롯의 렌더 표기(「제3조(보험금의 지급사유)」·「【별표13(화상 분류표)】」)는
  *   2026-09-07 확정분: 관 「제N관」 · 항이 하나뿐인 조는 마커 없음(빈 label) · 별표 번호는 책자 등장 순(ADR-0063).
@@ -28,11 +27,7 @@ export interface NodeNumber {
   span?: number;
 }
 
-export type BranchState = "taken" | "notTaken" | "undetermined" | "error";
-
 export interface NumberingOptions {
-  /** 가지 id → 사전평가 상태. `notTaken` 가지는 번호 계산에서 뺀다. */
-  branchStates?: ReadonlyMap<Id, BranchState>;
   /**
    * 함수조항 참조가 그 자리(항 · 호 · 목)에서 펼칠 수 (`clauseSpanBy`). undefined 면 1 — 모르는 함수조항 · 옛 동작.
    * 번호는 자리의 첫 번호, 뒤 형제는 그만큼 밀린다 (2026-10-03 사용자 QA).
@@ -491,14 +486,13 @@ class Counter {
 /** 노드 id → 번호. 번호가 붙는 종류(조·항·호·목·함수조항 block 참조)만 들어 있다. */
 export function numberTree(doc: DocumentNode, opts: NumberingOptions = {}): Map<Id, NodeNumber> {
   const out = new Map<Id, NodeNumber>();
-  const skip = (branchId: Id) => opts.branchStates?.get(branchId) === "notTaken";
   const span = (ref: ClauseBlockRefNode) => opts.clauseSpan?.(ref) ?? 1;
 
   /** 같은 자리의 형제 목록을 조건 블록·반복 블록을 투명하게 펼쳐 순회한다. */
   const each = (list: readonly Node[], fn: (node: Node) => void): void => {
     for (const node of list) {
       if (node.kind === "condBlock") {
-        for (const br of node.branches) if (!skip(br.id)) each(br.children, fn);
+        for (const br of node.branches) each(br.children, fn);
       } else if (node.kind === "forBlock") {
         each(node.children, fn);
       } else {

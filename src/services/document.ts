@@ -2,14 +2,14 @@
  * 문면 서비스 — 모든 쓰기의 진입점. actor 검사 · 도메인 규칙 · repo 호출 (한 트랜잭션).
  *
  * - 문서 생성(담보약관 · 보통약관 마스터) · 조회 · 목록 · 제목 · 대응 보통약관 지정(D-P4-5) ·
- *   트리 커맨드 적용(저장 시 `validateTree` + `validateExpressions`) · 복제(D-P4-4·9) · 사전평가(문맥 주입) · 별표 CRUD.
+ *   트리 커맨드 적용(저장 시 `validateTree` + `validateExpressions`) · 복제(D-P4-4·9) · 별표 CRUD.
  * - 저작 화면의 저장은 `save` 하나다 (ADR-0074) — 편집을 시작한 판 + 브라우저 편집본의 명령 목록을 받아
  *   판 확인 · 원본에 재적용 · 전체 검증 · 한 트랜잭션 반영(판 +1). 판은 repo 가 모든 저장에서 올린다.
  *   보통약관 템플릿 저장은 다른 문서의 깨짐과 함께 그 템플릿을 쓰는 상품의 참조 깨짐(`productImpact` 주입, ADR-0081)도 확인 카드로 묻는다.
  * - 파괴적 액션(문서 삭제 `document.delete` · 별표 삭제 `appendix.delete` · 박스 삭제 `box.delete`)은 `destructive()` 2단 프로토콜.
  *   영향의 「깨질 참조」 = 사용처 — 기본은 이 DB 의 문서들을 훑어 계산하고, 상품이 보통약관을 선택하는 사용처 등
  *   다른 영역(B4 · C1)의 것은 `UsageSource` 로 주입해 합친다.
- * - 함수조항 게이트(`ClauseGate`)는 B2 가, 담보 마스터 평가 문맥(`EvalContext`)은 B1 이 만든다 — 여기서는 주입만 받는다.
+ * - 함수조항 게이트(`ClauseGate`)는 B2 가 만든다 — 여기서는 주입만 받는다.
  * - 타입 조회(`TypeResolver`)는 기본으로 카탈로그 정의에서 만든다. 담보속성(attr.X)의 유효값은 B4 몫이라
  *   기본 조회는 「담보속성 타입(유효값 모름)」으로만 답한다 — 정밀 검사는 `typeResolver` 주입.
  */
@@ -24,7 +24,6 @@ import {
   createBox,
   generalRefsOf,
   numberTree,
-  preEvaluate,
   removedIds,
   removedRefKeys,
   refKey,
@@ -39,8 +38,6 @@ import {
   type Appendix,
   type Box,
   type BoxRevision,
-  type BranchEvaluation,
-  type BranchState,
   type ClauseGate,
   type Command,
   type DocRef,
@@ -51,11 +48,9 @@ import {
   type NewAppendix,
   type NewBox,
   type NodeNumber,
-  type PreEvaluation,
   type TreeEnv,
 } from "@/domain/document";
-import type { EvalContext, TypeResolver } from "@/domain/expression";
-import type { RowSource } from "@/domain/structure";
+import type { TypeResolver } from "@/domain/expression";
 import type { Actor, Code, Coordinate, Id, Impact, Issue, Result } from "@/domain/types";
 import { ok, reject } from "@/domain/types";
 
@@ -121,11 +116,9 @@ export interface DocumentService {
    * 담보약관은 담보 마스터 안에서 옵션이 다 정해져야 해서, 담보 상세가 이 수를 경고로 띄운다.
    */
   unresolvedOptionCount(id: Id): Promise<number>;
-  numbering(id: Id, branchStates?: ReadonlyMap<Id, BranchState | BranchEvaluation>): Promise<Map<Id, NodeNumber>>;
+  numbering(id: Id): Promise<Map<Id, NodeNumber>>;
   refs(id: Id): Promise<DocRef[]>;
   requiredDiscriminators(id: Id): Promise<Code[]>;
-  /** `rows` = 반복 표 행 원천 (담보 약관이면 `coverageRowSource` — ADR-0070). */
-  preEvaluate(id: Id, ctx: EvalContext, rows?: RowSource<EvalContext>): Promise<PreEvaluation>;
   documentUsages(id: Id): Promise<Coordinate[]>;
 
   // 문서 — 비파괴
@@ -364,13 +357,9 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
         return (await validateDoc(tx, doc, doc.tree)).filter((i) => i.kind === "optionUnselected").length;
       }),
 
-    numbering: async (id, branchStates) => {
+    numbering: async (id) => {
       const doc = await repo.loadDocument(db, id);
-      if (!doc) return new Map();
-      const states = branchStates
-        ? new Map([...branchStates].map(([k, v]) => [k, typeof v === "string" ? v : v.state] as [Id, BranchState]))
-        : undefined;
-      return numberTree(doc.tree, states ? { branchStates: states } : {});
+      return doc ? numberTree(doc.tree) : new Map();
     },
 
     refs: async (id) => {
@@ -384,12 +373,6 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
         if (!doc) return [];
         return requiredDiscriminators(doc.tree, deps.clauseGate ? await deps.clauseGate(tx) : undefined);
       }),
-
-    preEvaluate: async (id, ctx, rows) => {
-      const doc = await repo.loadDocument(db, id);
-      if (!doc) return { branches: new Map(), slots: new Map(), issues: [], tables: new Map() };
-      return preEvaluate(doc.tree, ctx, { coordinate: { ...coordinateOf(doc), ...(ctx.coordinate ?? {}) }, ...(rows ? { rows } : {}) });
-    },
 
     documentUsages: (id) => db.transaction((tx) => documentUsages(tx, id)),
 

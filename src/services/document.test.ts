@@ -1,7 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { nodeBuilders, sequentialIds, type ClauseGate, type Command, type DocumentNode } from "@/domain/document";
-import type { EvalContext } from "@/domain/expression";
 import type { Actor, Id, Result } from "@/domain/types";
 
 import { createTestDb, type TestDb } from "@/db/test-utils";
@@ -29,18 +28,6 @@ const gate: ClauseGate = {
   requiredCodes: (c) => (c === "C001" ? ["D0001"] : []),
   missingRequired: () => [],
   validateOptions: (_c, o) => (o.tone === undefined ? [{ kind: "optionUnselected", message: "옵션 tone 미선택", at: {} }] : []),
-};
-
-/** B1 흉내 — 담보 마스터 문맥: D0001 = false 입력, 상품 레벨 미결. */
-const masterCtx: EvalContext = {
-  lookup: (ref) => {
-    if (ref.kind !== "discriminator") return { kind: "undetermined" };
-    if (ref.code === "D0001") return { kind: "slot", slot: { entered: true, value: false } };
-    if (ref.code === "D0004") return { kind: "slot", slot: { entered: true, value: "2.5%" } };
-    return { kind: "undetermined" };
-  },
-  attribute: () => ({ kind: "undetermined" }),
-  children: () => undefined,
 };
 
 describe("document 서비스 (PGlite)", () => {
@@ -333,18 +320,6 @@ describe("document 서비스 (PGlite)", () => {
       const issues = await svc.validateTree(generalId, broken);
       expect(issues.some((i) => i.kind === "brokenRef" && i.at.articleTitle === "사본")).toBe(true);
       expect(await svc.validateTree("00000000-0000-4000-8000-0000000000ff", tree)).toEqual([]);
-    });
-  });
-
-  describe("사전평가 S1·S3 — 문맥 주입", () => {
-    it("담보 마스터 문맥(D0001=false)으로 갱신형 가지 notTaken, 슬롯 값 실림", async () => {
-      const r = await svc.preEvaluate(specialId, masterCtx);
-      const states = [...r.branches.values()].map((s) => s.state);
-      expect(states).toEqual(["notTaken", "taken", "notTaken"]);
-      expect([...r.slots.values()]).toEqual([{ kind: "value", value: "2.5%" }]);
-      const numbers = await svc.numbering(specialId, r.branches);
-      expect(numbers.get(artPay)?.label).toBe("제1조");
-      expect(numbers.get(artApply)?.label).toBe("제3조"); // 보험기간 조가 빠져 당겨진다
     });
   });
 
