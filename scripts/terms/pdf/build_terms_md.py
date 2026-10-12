@@ -137,6 +137,7 @@ def merge_baseline(els):
     for e in els:
         if (e['kind'] == 'line' and out and out[-1]['kind'] == 'line' and out[-1]['col'] == e['col']
                 and out[-1]['page'] == e['page'] and out[-1]['box'] == e['box']
+                and bool(out[-1].get('fig')) == bool(e.get('fig'))
                 and abs((out[-1]['y0'] + out[-1]['y1']) / 2 - (e['y0'] + e['y1']) / 2) < 2.6):
             a, b = (out[-1], e) if out[-1]['x0'] <= e['x0'] else (e, out[-1])
             gap = b['x0'] - a['x1']
@@ -149,6 +150,40 @@ def merge_baseline(els):
         else:
             out.append(e)
     return out
+
+
+FIG_SIZE = 8.6           # 본문 9pt · 예시 설명 8pt 안팎 · 그림 안 글자 5.6~8.5pt
+RE_ARROW_RUN = re.compile(r'[←→↑↓−–\-]{3,}|[↑↓]')
+RE_SENT_END = re.compile(r'(다|음|함|것|임)\.?\s*$|[.:)]\s*$')
+
+
+def mark_figures(els):
+    """예시 그림(작은 글씨 도형 · 화살표 · 타임라인)의 글자 줄에 fig=True.
+
+    작은 글씨 줄 가운데 ① 같은 단에서 다른 작은 줄과 옆으로 나란한 줄, ② 10자 이하 조각,
+    ③ 화살표 · 대시 줄을 그림 글자로 본다. 설명 문장(「- 수술하고 …」 「※ 상기 그림의 …」)은 남긴다.
+    """
+    small = [e for e in els if e['kind'] == 'line' and e['size'] < FIG_SIZE]
+    for e in small:
+        ts = e['text'].strip()
+        if ts.startswith('【'):
+            continue
+        side = any(o is not e and o['page'] == e['page'] and o['col'] == e['col']
+                   and min(o['y1'], e['y1']) - max(o['y0'], e['y0']) > 1.5
+                   and (o['x0'] >= e['x1'] - 1 or o['x1'] <= e['x0'] + 1) for o in small)
+        e['fig'] = side or len(ts) <= 10 or bool(RE_ARROW_RUN.search(ts))
+    # 설명 문장의 이어지는 줄(「총입원일수 50일」 처럼 짧아도)은 살린다
+    prev = None
+    for e in els:
+        if e['kind'] != 'line':
+            prev = None
+            continue
+        if e.get('fig') and prev is not None and not prev.get('fig') and prev['size'] < FIG_SIZE \
+                and not RE_SENT_END.search(prev['text'].strip()) and not RE_ARROW_RUN.search(e['text']) \
+                and not any(o is not e and o['page'] == e['page'] and o['col'] == e['col'] and o['kind'] == 'line'
+                            and min(o['y1'], e['y1']) - max(o['y0'], e['y0']) > 1.5 for o in els):
+            e['fig'] = False
+        prev = e
 
 
 def is_heading_line(e):
@@ -166,6 +201,7 @@ def stream_blocks(doc, start, end, stop_at=None):
     els = []
     for p in range(start, end + 1):
         pe = page_elements(doc[p - 1], p)
+        mark_figures(pe)          # 기준선 합치기 전에 — 나란한 그림 조각이 한 줄로 합쳐지면 판정이 안 된다
         els += merge_baseline(pe)
     blocks = []      # {'t':'h'|'p'|'table', ...}
     para = None
@@ -181,12 +217,19 @@ def stream_blocks(doc, start, end, stop_at=None):
     i = 0
     n = len(els)
     mok_next = 0
+    mok_delim = None
     jo_last = None
     while i < n:
         e = els[i]
         if e['kind'] == 'table':
             flush()
             blocks.append({'t': 'table', 'rows': e['rows'], 'page': e['page']})
+            i += 1
+            continue
+        if e.get('fig'):
+            flush()
+            if not (blocks and blocks[-1]['t'] == 'fig' and blocks[-1]['page'] == e['page']):
+                blocks.append({'t': 'fig', 'page': e['page']})
             i += 1
             continue
         t = e['text']
@@ -255,9 +298,12 @@ def stream_blocks(doc, start, end, stop_at=None):
         mm = RE_MOK.match(ts)
         if mm:
             k = MOK.index(mm.group(1)) if mm.group(1) in MOK else -1
-            if k == 0 or k == mok_next:
+            delim = ts[1]
+            # 가) 나) 뒤의 「다. 다만」 은 문장 끝이 줄을 넘어온 것 — 구분 기호까지 같아야 다음 목이다
+            if k == 0 or (k == mok_next and delim == mok_delim):
                 mok_start = True
                 mok_next = k + 1
+                mok_delim = delim
         new = para is None or para['box'] != e['box'] or PARA_START.match(ts) or mok_start \
             or (para['last']['kind'] == 'line' and _short_end(para['last']))
         if new:
@@ -268,7 +314,17 @@ def stream_blocks(doc, start, end, stop_at=None):
             para['last'] = e
         i += 1
     flush()
-    return blocks
+    # 그림 사이에 남은 짧은 조각(「상태(지급률 15%)」)은 그림의 일부 — 그림 둘을 하나로 합친다
+    out = []
+    for b in blocks:
+        if (b['t'] == 'fig' and len(out) >= 2 and out[-2]['t'] == 'fig' and out[-2]['page'] == b['page']
+                and out[-1]['t'] == 'p' and len(out[-1]['text']) <= 20):
+            out.pop()
+            continue
+        if b['t'] == 'fig' and out and out[-1]['t'] == 'fig' and out[-1]['page'] == b['page']:
+            continue
+        out.append(b)
+    return out
 
 
 def _jo_num(h):
@@ -357,6 +413,7 @@ class Writer:
         self.hang = 0
         self.last_page = None
         self.last_table_header = None
+        self.last_table_ncol = None
         self.struct = []
 
     def start(self, key, title, meta):
@@ -387,6 +444,12 @@ class Writer:
 
     def para(self, text, box, page):
         self.page(page)
+        if not box and re.match(r'^\d{1,2}\.\s?\([^()]*\)\s*$', text):
+            # 세부보장 패널 안의 「1.(보험금의 지급사유)」 — 조 안의 작은 조. 항 번호를 여기서 다시 센다
+            self.hang = 0
+            self.files[self.cur]['lines'] += ['**' + text.strip() + '**', '']
+            self.last_table_header = None
+            return
         if text.startswith('\uf000'):
             self.hang += 1
             text = f'[{self.hang}] ' + text[1:].lstrip()
@@ -404,14 +467,18 @@ class Writer:
         md, extra = md_table(rows)
         if md:
             hdr = md[0]
-            if self.last_table_header == hdr:   # 쪽·단 넘김 표 이어붙이기(반복 머리글 제거)
+            ncol = md[1].count('---')
+            if self.last_table_header is not None and self.last_table_ncol == ncol:
+                # 표 바로 뒤에 같은 열 수의 표 = 쪽 · 단을 넘어 이어지는 한 표. 반복 머리글은 버리고,
+                # 머리글 없이 이어지면 첫 줄도 데이터로 붙인다. 표 안에 주석을 못 넣어 쪽 표시는 빠진다
                 L = self.files[self.cur]['lines']
                 while L and (L[-1] == '' or L[-1].startswith('<!--')):
                     L.pop()
-                L += md[2:] + ['']
+                L += (md[2:] if hdr == self.last_table_header else [md[0]] + md[2:]) + ['']
             else:
                 self.files[self.cur]['lines'] += md + ['']
-            self.last_table_header = hdr
+                self.last_table_header = hdr
+            self.last_table_ncol = ncol
         for x in extra:
             self.files[self.cur]['lines'] += ['> ' + x, '']
 
@@ -481,7 +548,8 @@ def main():
     for key, f in w.files.items():
         path = os.path.join(outdir, key + '.md')
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        txt = '\n'.join(f['lines'])
+        txt = '\n'.join(f['lines']).replace('ž', '･')   # 「급여･비급여」 가운뎃점이 글꼴 매핑 탓에 ž 로 나온다
+        txt = txt.replace(')Q보장', ')보장')   # 간병인지원 특약명 표 셀(GulimChe)의 보이지 않는 Q — 인쇄면에 없다
         txt = re.sub(r'\n{3,}', '\n\n', txt)
         open(path, 'w').write(txt.rstrip() + '\n')
     json.dump({'units': [{k: v for k, v in u.items() if k != 'entries'} for u in units],
@@ -501,6 +569,8 @@ def emit(w, b):
         w.heading(k, b['text'], b['page'])
     elif b['t'] == 'p':
         w.para(b['text'], b['box'], b['page'])
+    elif b['t'] == 'fig':
+        w.para(f'[그림 — 원문 PDF p.{b["page"]}]', False, b['page'])
     else:
         w.table(b['rows'], b['page'])
 

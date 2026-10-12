@@ -6,18 +6,29 @@
 처리:
   - 2단 컬럼(좌단 전체 → 우단 전체). 두 단에 걸친 요소는 띠(band) 경계로 처리
   - 쪽번호(Helvetica-Bold 하단 숫자) 제거
-  - find_tables() 표 → 셀 텍스트. 안쪽 가로줄 없는 표(여러 행이 한 칸에 뭉친 표)는 짧은 값 열(코드·지급률)의 줄 위치로 행 재분할
+  - find_tables(lines_strict) 표 → 셀 텍스트. 안쪽 가로줄 없는 표(여러 행이 한 칸에 뭉친 표)는 짧은 값 열(코드·지급률)의 줄 위치로 행 재분할
+  - 회색 음영 패널(글줄마다 채운 띠)은 표 · 상자로 보지 않고 본문으로 둔다
   - 네 변 선으로 그린 상자(용어 설명·법령 인용) → 상자 안 줄에 box id 부여
 """
 import re
 
 PAGE_NUM_FONT = 'Helvetica-Bold'
+RE_ROW_MARK = re.compile(r'^\s*(\d{1,2}\.|\d{1,2}\)|[-－–]\s|[가-하]\.|\(\d{1,2}\))')
 ARROWS = re.compile(r'^[\s↓↑→←…·∙\-−]+$')
 
 
 def _hv_lines(page):
     hs, vs = [], []
     for g in page.get_drawings():
+        if g['type'] == 'f':
+            # 채우기만 한 도형: 회색 음영 패널은 글줄마다 높이 12pt 띠로 칠해져 있어 선으로 보면 안 된다.
+            # 가는 띠(두께 1.2pt 미만)로 그린 표 테두리만 선으로 받는다
+            r = g['rect']
+            if r.height < 1.2 and r.width > 8:
+                hs.append((r.x0, r.x1, (r.y0 + r.y1) / 2))
+            elif r.width < 1.2 and r.height > 8:
+                vs.append(((r.x0 + r.x1) / 2, r.y0, r.y1))
+            continue
         for it in g['items']:
             if it[0] == 'l':
                 p1, p2 = it[1], it[2]
@@ -127,7 +138,8 @@ def table_rows(page, tab):
             for ci, cl in enumerate(clines):
                 if ci == 0 or not cl or len(cl) < 2:
                     continue
-                if all(len(t.strip()) <= 14 for _, t in cl):
+                # 값 열 = 짧고 숫자가 든 줄(코드 · 지급률). 「진료/행위/코드」 같은 여러 줄 머리글은 기준이 못 된다
+                if all(len(t.strip()) <= 14 and (re.search(r'\d', t) or t.strip() in ('-', '–', '−')) for _, t in cl):
                     if best is None or len(cl) > len(clines[best]):
                         best = ci
             anchor = best
@@ -135,9 +147,22 @@ def table_rows(page, tab):
             rows_out.append([join_wrapped([t for _, t in cl]) if cl else ('' if cl is not None else None) for cl in clines])
             continue
         ys = [y for y, _ in clines[anchor]]
+        # 값이 없는 소제목 줄(「2. 호흡기 및 …」 「- 비강 …」)도 새 행으로 — 앞 행에 붙지 않게
+        for ci, cl in enumerate(clines):
+            if ci == anchor or not cl:
+                continue
+            for y, t in cl:
+                if RE_ROW_MARK.match(t) and all(abs(y - ay) > 3 for ay in ys):
+                    ys.append(y)
+        ys.sort()
         sub = [[[] for _ in cells] for _ in ys]
         for ci, cl in enumerate(clines):
             if not cl:
+                continue
+            if ci == 0 and anchor != 0 and len(ys) > 1 and cl[0][0] > ys[0] + 3 \
+                    and not any(RE_ROW_MARK.match(t) for _, t in cl):
+                # 첫 열의 병합 셀 라벨(「특정 소액암」)은 세로 가운데에 찍혀 있다 — 묶음의 첫 행에 둔다
+                sub[0][ci] = [t for _, t in cl]
                 continue
             for y, t in cl:
                 k = 0
@@ -158,7 +183,8 @@ def fitz_rect(c):
 def page_elements(page, pno):
     W, H = page.rect.width, page.rect.height
     mid = W / 2
-    tabs = page.find_tables().tables
+    # lines_strict: 채우기 사각형 경계를 표 선으로 쓰지 않는다 — 음영 패널 전체가 표로 잡히는 것을 막는다
+    tabs = page.find_tables(strategy='lines_strict').tables
     trects = [tuple(t.bbox) for t in tabs]
     boxes = find_boxes(page, trects)
     els = []
