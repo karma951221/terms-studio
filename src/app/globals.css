@@ -233,13 +233,13 @@
   pointer-events: none;
 }
 
-.ts-graph-nodes > a:focus-visible {
+.ts-graph-nodes > a:where(:not([data-slot])):focus-visible {
   outline: none;
 }
 
-.ts-graph-nodes > a:focus-visible .ts-graph-node > circle,
-.ts-graph-nodes > a:focus-visible .ts-graph-node > rect,
-.ts-graph-nodes > a:focus-visible .ts-graph-node > path {
+.ts-graph-nodes > a:where(:not([data-slot])):focus-visible .ts-graph-node > circle,
+.ts-graph-nodes > a:where(:not([data-slot])):focus-visible .ts-graph-node > rect,
+.ts-graph-nodes > a:where(:not([data-slot])):focus-visible .ts-graph-node > path {
   stroke: var(--ts-mark);
   stroke-width: 4;
 }
@@ -369,7 +369,7 @@ a:hover {
   gap: 4px;
 }
 
-.ts-cell-form input {
+.ts-cell-form input:where(:not([data-slot])) {
   min-width: 0;
   flex: 1;
 }
@@ -381,15 +381,15 @@ a:hover {
 }
 
 /* 포커스·선택은 주칠 하나로. 파란 액센트를 쓰지 않는다 (§1.3) */
-:focus-visible {
+:where(:not([data-slot])):focus-visible {
   outline: 2px solid var(--ts-mark);
   outline-offset: 1px;
 }
 
-input,
-select,
-textarea,
-button {
+input:where(:not([data-slot])),
+select:where(:not([data-slot])),
+textarea:where(:not([data-slot])),
+button:where(:not([data-slot])) {
   accent-color: var(--ts-mark);
 }
 
@@ -399,9 +399,9 @@ button {
 
 /* ── 3. 입력 · 버튼 ───────────────────────────────────────────────────────── */
 
-input,
-select,
-textarea {
+input:where(:not([data-slot])),
+select:where(:not([data-slot])),
+textarea:where(:not([data-slot])) {
   font-family: inherit;
   font-size: 13px;
   padding: 3px 6px;
@@ -412,8 +412,8 @@ textarea {
   color: var(--ts-ink);
 }
 
-input[type="checkbox"],
-input[type="radio"] {
+input:where(:not([data-slot]))[type="checkbox"],
+input:where(:not([data-slot]))[type="radio"] {
   min-height: 0;
   padding: 0;
   border: 0;
@@ -421,11 +421,11 @@ input[type="radio"] {
   vertical-align: -1px;
 }
 
-textarea {
+textarea:where(:not([data-slot])) {
   line-height: 1.6;
 }
 
-textarea.ts-json {
+textarea:where(:not([data-slot])).ts-json {
   width: 100%;
   min-height: 200px;
   font-family: var(--mono);
@@ -433,11 +433,11 @@ textarea.ts-json {
 }
 
 /* 생성 폼 안에서도 JSON 칸은 높이를 지킨다 — .ts-create-field 의 34px 이 뒤에서 덮어 3줄로 눌린다. */
-.ts-create-field > textarea.ts-json {
+.ts-create-field > textarea:where(:not([data-slot])).ts-json {
   min-height: 200px;
 }
 
-button,
+button:where(:not([data-slot])),
 a.primary {
   display: inline-block;
   font-family: inherit;
@@ -452,38 +452,38 @@ a.primary {
   cursor: pointer;
 }
 
-button:hover,
+button:where(:not([data-slot])):hover,
 a.primary:hover {
   background: var(--ts-surface-2);
 }
 
-button[disabled] {
+button:where(:not([data-slot]))[disabled] {
   color: var(--ts-ink-3);
   cursor: not-allowed;
   opacity: 0.7;
 }
 
 /* 패널 주 행동 — 채우지 않는다. 주칠 테두리 + 주칠 글자 (§1.3 · §8). <a class="primary"> 도 같은 문법 (링크형 주 행동). */
-button.primary,
+button:where(:not([data-slot])).primary,
 a.primary {
   border-color: var(--ts-mark);
   color: var(--ts-mark);
   font-weight: 700;
 }
 
-button.primary:hover,
+button:where(:not([data-slot])).primary:hover,
 a.primary:hover {
   background: var(--ts-mark-bg);
 }
 
 /* 파괴적 텍스트 버튼 — 평소엔 뉴트럴, hover/focus 에서만 error 로 물든다 (§1.6, 발견 #36) */
-button.danger {
+button:where(:not([data-slot])).danger {
   border-color: var(--ts-rule-strong);
   color: var(--ts-ink-2);
 }
 
-button.danger:hover,
-button.danger:focus-visible {
+button:where(:not([data-slot])).danger:hover,
+button:where(:not([data-slot])).danger:focus-visible {
   border-color: var(--ts-error);
   color: var(--ts-error);
   background: var(--ts-error-bg);
@@ -524,7 +524,7 @@ button.danger:focus-visible {
 }
 
 .ts-iconbtn.danger:hover,
-.ts-iconbtn.danger:focus-visible {
+.ts-iconbtn.danger:where(:not([data-slot])):focus-visible {
   color: var(--ts-error);
   background: var(--ts-error-bg);
 }
@@ -670,7 +670,7 @@ button.danger:focus-visible {
   gap: 6px;
 }
 
-.ts-nav-user button {
+.ts-nav-user button:where(:not([data-slot])) {
   font-size: 12px;
   padding: 2px 8px;
   align-self: flex-start;
@@ -798,7 +798,7 @@ button.danger:focus-visible {
   gap: 4px;
 }
 
-.ts-login-list button {
+.ts-login-list button:where(:not([data-slot])) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1007,7 +1007,7 @@ button.danger:focus-visible {
   flex: 1;
 }
 
-.ts-be-toolbar button {
+.ts-be-toolbar button:where(:not([data-slot])) {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1032,7 +1032,7 @@ button.danger:focus-visible {
   min-height: 28px;
 }
 
-.ts-be-row > input {
+.ts-be-row > input:where(:not([data-slot])) {
   flex: 1;
   min-width: 0;
 }
@@ -1049,7 +1049,7 @@ button.danger:focus-visible {
   opacity: 1;
 }
 
-.ts-be-add > button {
+.ts-be-add > button:where(:not([data-slot])) {
   border: 0;
   background: none;
   color: var(--ts-ink-3);
@@ -1058,7 +1058,7 @@ button.danger:focus-visible {
   gap: 4px;
 }
 
-.ts-be-add > button:hover {
+.ts-be-add > button:where(:not([data-slot])):hover {
   color: var(--ts-mark);
 }
 
@@ -1071,7 +1071,7 @@ button.danger:focus-visible {
   font-size: 11px;
 }
 
-.ts-be-inline > textarea {
+.ts-be-inline > textarea:where(:not([data-slot])) {
   width: 100%;
 }
 
@@ -1099,7 +1099,7 @@ button.danger:focus-visible {
   max-width: 220px;
 }
 
-.ts-ctxmenu > button {
+.ts-ctxmenu > button:where(:not([data-slot])) {
   display: block;
   width: 100%;
   text-align: left;
@@ -1107,14 +1107,14 @@ button.danger:focus-visible {
   background: none;
 }
 
-.ts-ctxmenu > button {
+.ts-ctxmenu > button:where(:not([data-slot])) {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
 }
 
-.ts-ctxmenu > button:disabled {
+.ts-ctxmenu > button:where(:not([data-slot])):disabled {
   color: var(--ts-ink-3);
 }
 
@@ -1123,7 +1123,7 @@ button.danger:focus-visible {
   color: var(--ts-ink-3);
 }
 
-.ts-ctxmenu > button:hover {
+.ts-ctxmenu > button:where(:not([data-slot])):hover {
   background: var(--ts-surface-2);
   color: var(--ts-mark);
 }
@@ -1229,7 +1229,7 @@ button.danger:focus-visible {
   align-items: center;
 }
 
-.ts-clause-meta input.ts-field-direct {
+.ts-clause-meta input:where(:not([data-slot])).ts-field-direct {
   max-width: 420px;
   width: 100%;
 }
@@ -1296,7 +1296,7 @@ button.danger:focus-visible {
   border-color: var(--ts-mark);
 }
 
-.ts-clause-mode-option:has(input:disabled) {
+.ts-clause-mode-option:has(input:where(:not([data-slot])):disabled) {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -1364,8 +1364,8 @@ button.danger:focus-visible {
   width: 100%;
 }
 
-.ts-clause-params-table select,
-.ts-clause-params-table input {
+.ts-clause-params-table select:where(:not([data-slot])),
+.ts-clause-params-table input:where(:not([data-slot])) {
   width: 100%;
   min-width: 0;
 }
@@ -1386,10 +1386,10 @@ button.danger:focus-visible {
   width: 100%;
 }
 
-.ts-param-grid > input,
-.ts-param-grid > select,
-.ts-param-card > input,
-.ts-param-card > select {
+.ts-param-grid > input:where(:not([data-slot])),
+.ts-param-grid > select:where(:not([data-slot])),
+.ts-param-card > input:where(:not([data-slot])),
+.ts-param-card > select:where(:not([data-slot])) {
   width: 100%;
   min-width: 0;
 }
@@ -1460,7 +1460,7 @@ button.danger:focus-visible {
   min-width: 0;
 }
 
-input.ts-option-title {
+input:where(:not([data-slot])).ts-option-title {
   width: 100%;
   min-width: 0;
   font-size: 14px;
@@ -1769,7 +1769,7 @@ input.ts-option-title {
   background: none;
 }
 .ts-mark-swatch:hover,
-.ts-mark-swatch:focus-visible {
+.ts-mark-swatch:where(:not([data-slot])):focus-visible {
   border-color: var(--ts-rule-strong);
   background: var(--ts-surface-2);
 }
@@ -1865,7 +1865,7 @@ input.ts-option-title {
   gap: 4px;
 }
 
-.ts-inline-edit input {
+.ts-inline-edit input:where(:not([data-slot])) {
   min-width: 220px;
 }
 
@@ -1881,7 +1881,7 @@ input.ts-option-title {
   min-width: 200px;
 }
 
-.ts-attr-values td > input {
+.ts-attr-values td > input:where(:not([data-slot])) {
   width: 100%;
 }
 
@@ -1901,7 +1901,7 @@ input.ts-option-title {
   border-bottom: 0;
 }
 
-.ts-field-add-row > input {
+.ts-field-add-row > input:where(:not([data-slot])) {
   flex: 1 1 160px;
 }
 
@@ -1911,7 +1911,7 @@ input.ts-option-title {
   margin-top: 3px;
 }
 
-.ts-type-change select {
+.ts-type-change select:where(:not([data-slot])) {
   max-width: 110px;
 }
 
@@ -1990,7 +1990,7 @@ input.ts-option-title {
 }
 
 .ts-subtabs a,
-.ts-subtabs button {
+.ts-subtabs button:where(:not([data-slot])) {
   padding: 2px 0;
   border: 0;
   border-bottom: 2px solid transparent;
@@ -2002,7 +2002,7 @@ input.ts-option-title {
 }
 
 .ts-subtabs a[aria-current="page"],
-.ts-subtabs button[aria-current="page"] {
+.ts-subtabs button:where(:not([data-slot]))[aria-current="page"] {
   border-bottom-color: var(--ts-mark);
   color: var(--ts-mark);
   font-weight: 700;
@@ -2047,7 +2047,7 @@ input.ts-option-title {
   color: var(--ts-ink-2) !important;
 }
 
-.ts-searchbox input {
+.ts-searchbox input:where(:not([data-slot])) {
   width: min(320px, 32vw);
 }
 
@@ -2102,7 +2102,7 @@ input.ts-option-title {
   color: var(--ts-error);
 }
 
-.ts-chip button {
+.ts-chip button:where(:not([data-slot])) {
   display: inline-flex;
   width: 18px;
   height: 18px;
@@ -2140,7 +2140,7 @@ input.ts-option-title {
   background: var(--ts-surface);
 }
 
-.ts-colfilter-popover button {
+.ts-colfilter-popover button:where(:not([data-slot])) {
   display: block;
   width: 100%;
   border: 0;
@@ -2148,7 +2148,7 @@ input.ts-option-title {
   white-space: nowrap;
 }
 
-.ts-colfilter-popover button[aria-pressed="true"] {
+.ts-colfilter-popover button:where(:not([data-slot]))[aria-pressed="true"] {
   color: var(--ts-mark);
   font-weight: 700;
 }
@@ -2161,8 +2161,8 @@ input.ts-option-title {
   color: var(--ts-ink-3);
 }
 
-.ts-filterbar input,
-.ts-filterbar select {
+.ts-filterbar input:where(:not([data-slot])),
+.ts-filterbar select:where(:not([data-slot])) {
   min-height: 22px;
   padding: 2px 6px;
   font-size: 12px;
@@ -2337,9 +2337,9 @@ td.col-act {
   min-width: 0;
 }
 
-.ts-form-control > input[type="text"],
-.ts-form-control > input[type="number"],
-.ts-form-control > select {
+.ts-form-control > input:where(:not([data-slot]))[type="text"],
+.ts-form-control > input:where(:not([data-slot]))[type="number"],
+.ts-form-control > select:where(:not([data-slot])) {
   min-width: 200px;
 }
 
@@ -2390,7 +2390,7 @@ td.col-act {
   white-space: nowrap;
 }
 
-.ts-form-chips select {
+.ts-form-chips select:where(:not([data-slot])) {
   font-size: 13px;
 }
 
@@ -2431,8 +2431,8 @@ td.col-act {
  * 고른 것은 굵기와 색으로도 말한다 — 라디오 동그라미 하나에만 기대면
  * 선택지가 여럿 늘어섰을 때 어느 것이 켜졌는지 훑어서 안 보인다 (§1.3 주칠 하나).
  */
-.ts-form-radio:has(input:checked),
-.ts-form-check:has(input:checked) {
+.ts-form-radio:has(input:where(:not([data-slot])):checked),
+.ts-form-check:has(input:where(:not([data-slot])):checked) {
   font-weight: 600;
   color: var(--ts-ink);
 }
@@ -2447,9 +2447,9 @@ td.col-act {
 
 /* 값의 출처 문법 — §1.2. 색을 주지 않는다. 형태가 말한다 */
 .ts-field-direct,
-input.ts-field-direct,
-select.ts-field-direct,
-textarea.ts-field-direct {
+input:where(:not([data-slot])).ts-field-direct,
+select:where(:not([data-slot])).ts-field-direct,
+textarea:where(:not([data-slot])).ts-field-direct {
   border: 1px solid var(--ts-rule-strong);
   border-radius: 3px;
   background: var(--ts-surface);
@@ -2457,12 +2457,12 @@ textarea.ts-field-direct {
 
 .ts-field-derived,
 .ts-field-const,
-.ts-field-derived input,
-.ts-field-derived select,
-.ts-field-derived textarea,
-.ts-field-const input,
-.ts-field-const select,
-.ts-field-const textarea {
+.ts-field-derived input:where(:not([data-slot])),
+.ts-field-derived select:where(:not([data-slot])),
+.ts-field-derived textarea:where(:not([data-slot])),
+.ts-field-const input:where(:not([data-slot])),
+.ts-field-const select:where(:not([data-slot])),
+.ts-field-const textarea:where(:not([data-slot])) {
   border: 0;
   border-radius: 3px;
   background: var(--ts-surface-2);
@@ -2508,8 +2508,8 @@ textarea.ts-field-direct {
   gap: 2px;
 }
 
-.ts-field-snapshot > input,
-.ts-field-snapshot > select {
+.ts-field-snapshot > input:where(:not([data-slot])),
+.ts-field-snapshot > select:where(:not([data-slot])) {
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -2538,7 +2538,7 @@ label.ts-field > span {
   margin: 0;
 }
 
-label.ts-field > textarea {
+label.ts-field > textarea:where(:not([data-slot])) {
   min-height: 80px;
 }
 
@@ -2612,9 +2612,9 @@ label.ts-field > textarea {
 }
 
 /* 입력칸은 값 칸 폭을 다 쓴다 — 칸마다 폭이 다르면 오른쪽 끝이 들쭉날쭉해 한 폼으로 안 읽힌다 (2026-09-12) */
-.ts-create-form .ts-form-control > input:not([type="checkbox"]):not([type="radio"]),
-.ts-create-form .ts-form-control > select,
-.ts-create-form .ts-form-control > textarea {
+.ts-create-form .ts-form-control > input:where(:not([data-slot])):not([type="checkbox"]):not([type="radio"]),
+.ts-create-form .ts-form-control > select:where(:not([data-slot])),
+.ts-create-form .ts-form-control > textarea:where(:not([data-slot])) {
   flex: 1 1 240px;
   min-width: 0;
 }
@@ -2649,7 +2649,7 @@ label.ts-field > textarea {
   vertical-align: middle;
 }
 
-.ts-combo > input[role="combobox"] {
+.ts-combo > input:where(:not([data-slot]))[role="combobox"] {
   width: 100%;
   padding-right: 20px;
   text-overflow: ellipsis;
@@ -3002,7 +3002,7 @@ label.ts-field > textarea {
 }
 
 .ts-insert-item:hover:not([disabled]),
-.ts-insert-item:focus-visible {
+.ts-insert-item:where(:not([data-slot])):focus-visible {
   background: var(--ts-surface-2);
 }
 
@@ -3341,7 +3341,7 @@ label.ts-field > textarea {
   opacity: 0.85;
 }
 
-button.ts-doc-clause-opt {
+button:where(:not([data-slot])).ts-doc-clause-opt {
   text-decoration: underline dotted;
   text-underline-offset: 3px;
   cursor: pointer;
@@ -3458,8 +3458,8 @@ p.ts-doc-cond-head {
   gap: 4px;
 }
 
-.ts-cond-line select,
-.ts-cond-line input {
+.ts-cond-line select:where(:not([data-slot])),
+.ts-cond-line input:where(:not([data-slot])) {
   height: 24px;
   min-height: 24px;
   padding: 0 4px;
@@ -3557,7 +3557,7 @@ p.ts-doc-cond-head {
 }
 
 /* 글자처럼 보이는 버튼 — 검증 목록의 「고칠 자리로」 · 삭제 확인의 「그 자리로」. 점선 밑줄이 「누를 수 있다」를 말한다. */
-button.ts-doc-pick {
+button:where(:not([data-slot])).ts-doc-pick {
   display: inline;
   min-height: 0;
   padding: 0;
@@ -3572,23 +3572,23 @@ button.ts-doc-pick {
   cursor: pointer;
 }
 
-button.ts-doc-pick:hover {
+button:where(:not([data-slot])).ts-doc-pick:hover {
   background: none;
   text-decoration-color: var(--ts-ink-2);
 }
 
-button.ts-doc-pick[aria-current="true"] {
+button:where(:not([data-slot])).ts-doc-pick[aria-current="true"] {
   text-decoration: underline solid var(--ts-mark);
 }
 
-button.ts-doc-pick.ts-doc-cond-head {
+button:where(:not([data-slot])).ts-doc-pick.ts-doc-cond-head {
   font-family: var(--mono);
   font-size: 12px;
   color: var(--ts-ink-3);
   text-decoration: none;
 }
 
-button.ts-doc-pick.ts-doc-cond-head[aria-current="true"] {
+button:where(:not([data-slot])).ts-doc-pick.ts-doc-cond-head[aria-current="true"] {
   text-decoration: underline solid var(--ts-mark);
 }
 
@@ -3633,7 +3633,7 @@ button.ts-doc-pick.ts-doc-cond-head[aria-current="true"] {
   font-size: 13px;
 }
 
-.ts-l3-toc button {
+.ts-l3-toc button:where(:not([data-slot])) {
   display: block;
   width: 100%;
   min-height: 0;
@@ -3651,17 +3651,17 @@ button.ts-doc-pick.ts-doc-cond-head[aria-current="true"] {
   cursor: pointer;
 }
 
-.ts-l3-toc button:hover:not(:disabled) {
+.ts-l3-toc button:where(:not([data-slot])):hover:not(:disabled) {
   background: var(--ts-surface-2);
   color: var(--ts-ink);
 }
 
-.ts-l3-toc button:disabled {
+.ts-l3-toc button:where(:not([data-slot])):disabled {
   color: var(--ts-ink-3);
   cursor: default;
 }
 
-.ts-l3-toc button[aria-current="true"] {
+.ts-l3-toc button:where(:not([data-slot]))[aria-current="true"] {
   color: var(--ts-mark);
   border-left-color: var(--ts-mark);
 }
@@ -3784,7 +3784,7 @@ button.ts-doc-pick.ts-doc-cond-head[aria-current="true"] {
   color: var(--ts-ink-3);
 }
 
-button.ts-doc-cond-btn {
+button:where(:not([data-slot])).ts-doc-cond-btn {
   display: inline;
   min-height: 0;
   padding: 0;
@@ -3795,7 +3795,7 @@ button.ts-doc-cond-btn {
   cursor: pointer;
 }
 
-button.ts-doc-cond-btn:hover {
+button:where(:not([data-slot])).ts-doc-cond-btn:hover {
   background: none;
   color: var(--ts-mark);
 }
@@ -3848,7 +3848,7 @@ button.ts-doc-cond-btn:hover {
   text-indent: 0;
 }
 
-.ts-cell-bar button {
+.ts-cell-bar button:where(:not([data-slot])) {
   min-height: 22px;
   padding: 0 6px;
   font-size: 11px;
@@ -3876,7 +3876,7 @@ button.ts-doc-cond-btn:hover {
   border-top: 1px solid var(--ts-rule);
 }
 
-.ts-ctx-menu button {
+.ts-ctx-menu button:where(:not([data-slot])) {
   display: block;
   width: 100%;
   min-height: 0;
@@ -3887,13 +3887,13 @@ button.ts-doc-cond-btn:hover {
   text-align: left;
 }
 
-.ts-ctx-menu button:hover:not(:disabled),
-.ts-ctx-menu button:focus-visible {
+.ts-ctx-menu button:where(:not([data-slot])):hover:not(:disabled),
+.ts-ctx-menu button:where(:not([data-slot])):focus-visible {
   background: var(--ts-surface-2);
 }
 
-.ts-ctx-menu button.danger:hover:not(:disabled),
-.ts-ctx-menu button.danger:focus-visible {
+.ts-ctx-menu button:where(:not([data-slot])).danger:hover:not(:disabled),
+.ts-ctx-menu button:where(:not([data-slot])).danger:focus-visible {
   color: var(--ts-error);
   background: var(--ts-error-bg);
 }
@@ -3953,7 +3953,7 @@ button.ts-doc-cond-btn:hover {
   text-align: center;
 }
 
-button.ts-ref-fold:hover {
+button:where(:not([data-slot])).ts-ref-fold:hover {
   background: none;
   color: var(--ts-ink);
 }
@@ -4020,7 +4020,7 @@ button.ts-ref-fold:hover {
   align-items: center;
 }
 
-.ts-preview-tab .ts-form-row select {
+.ts-preview-tab .ts-form-row select:where(:not([data-slot])) {
   width: 100%;
   min-width: 0;
 }
@@ -4388,9 +4388,9 @@ button.ts-ref-fold:hover {
   min-height: 26px;
 }
 
-.ts-cov-card .ts-form-control > input[type="text"],
-.ts-cov-card .ts-form-control > input[type="number"],
-.ts-cov-card .ts-form-control > select {
+.ts-cov-card .ts-form-control > input:where(:not([data-slot]))[type="text"],
+.ts-cov-card .ts-form-control > input:where(:not([data-slot]))[type="number"],
+.ts-cov-card .ts-form-control > select:where(:not([data-slot])) {
   min-width: 0;
   flex: 1 1 120px;
 }
@@ -4426,9 +4426,9 @@ button.ts-ref-fold:hover {
  * 값 폼의 읽기 모드 (EditShell 안에 얹힌 embedded StructForm) — 입력칸을 잠긴 칸으로 보인다.
  * 「테두리가 없으면 못 고친다」(디자인원칙 §1.2)를 폼 전체에도 그대로 적용한다.
  */
-.ts-form-read input.ts-field-direct,
-.ts-form-read select.ts-field-direct,
-.ts-form-read textarea.ts-field-direct {
+.ts-form-read input:where(:not([data-slot])).ts-field-direct,
+.ts-form-read select:where(:not([data-slot])).ts-field-direct,
+.ts-form-read textarea:where(:not([data-slot])).ts-field-direct {
   border-color: transparent;
   background: var(--ts-surface-2);
   color: var(--ts-ink-2);
@@ -4469,7 +4469,7 @@ button.ts-ref-fold:hover {
 }
 
 .ts-vrows-handle:hover,
-.ts-vrows-handle:focus-visible {
+.ts-vrows-handle:where(:not([data-slot])):focus-visible {
   color: var(--ts-ink);
 }
 
@@ -4503,7 +4503,7 @@ button.ts-ref-fold:hover {
   text-align: center;
 }
 
-.ts-values-input .col-flex > input {
+.ts-values-input .col-flex > input:where(:not([data-slot])) {
   width: 100%;
 }
 
@@ -4526,7 +4526,7 @@ button.ts-ref-fold:hover {
   color: var(--ts-ink-2);
 }
 
-.ts-toggle > input {
+.ts-toggle > input:where(:not([data-slot])) {
   position: absolute;
   opacity: 0;
   width: 0;
@@ -4556,25 +4556,25 @@ button.ts-ref-fold:hover {
   transition: transform 120ms;
 }
 
-.ts-toggle > input:checked + .ts-toggle-track {
+.ts-toggle > input:where(:not([data-slot])):checked + .ts-toggle-track {
   background: var(--ts-mark);
 }
 
-.ts-toggle > input:checked + .ts-toggle-track::after {
+.ts-toggle > input:where(:not([data-slot])):checked + .ts-toggle-track::after {
   transform: translateX(14px);
 }
 
-.ts-toggle > input:focus-visible + .ts-toggle-track {
+.ts-toggle > input:where(:not([data-slot])):focus-visible + .ts-toggle-track {
   outline: 2px solid var(--ts-mark);
   outline-offset: 2px;
 }
 
-.ts-toggle > input:checked ~ .ts-toggle-label {
+.ts-toggle > input:where(:not([data-slot])):checked ~ .ts-toggle-label {
   font-weight: 600;
   color: var(--ts-ink);
 }
 
-.ts-toggle > input:disabled ~ * {
+.ts-toggle > input:where(:not([data-slot])):disabled ~ * {
   opacity: 0.6;
   cursor: default;
 }
@@ -4951,7 +4951,7 @@ button.ts-ref-fold:hover {
 }
 
 /* 체크박스 · 표시 · 점 · 배지는 줄지 않고, 제목만 남는 폭에서 말줄임 — 긴 제목이 체크박스를 윗줄에 남기지 않게 (2026-10-04 QA) */
-.ts-toc-row > input,
+.ts-toc-row > input:where(:not([data-slot])),
 .ts-toc-row > .ts-toc-mark,
 .ts-toc-row > .ts-copy-dot,
 .ts-toc-row > .ts-badge {
@@ -5044,13 +5044,13 @@ button.ts-ref-fold:hover {
  * 주 행동(저장)은 강조색만 다르다. 전역 button 규칙은 건드리지 않는다. */
 .ts-product-head { align-items: center; }
 .ts-product-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
-.ts-product-actions > button,
+.ts-product-actions > button:where(:not([data-slot])),
 .ts-product-actions > a,
-.ts-terms-template > button,
-.ts-terms-template-end > button,
+.ts-terms-template > button:where(:not([data-slot])),
+.ts-terms-template-end > button:where(:not([data-slot])),
 .ts-more-button,
 .ts-more-menu-item,
-.ts-basic-toolbar button {
+.ts-basic-toolbar button:where(:not([data-slot])) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5069,8 +5069,8 @@ button.ts-ref-fold:hover {
   text-decoration: none;
   white-space: nowrap;
 }
-.ts-product-actions > button.primary { border-color: var(--ts-mark); color: var(--ts-mark); font-weight: 700; }
-.ts-product-actions > button.primary:hover { background: var(--ts-mark-bg); }
+.ts-product-actions > button:where(:not([data-slot])).primary { border-color: var(--ts-mark); color: var(--ts-mark); font-weight: 700; }
+.ts-product-actions > button:where(:not([data-slot])).primary:hover { background: var(--ts-mark-bg); }
 
 /* 더보기 — 버튼 하나 뒤의 텍스트 메뉴. 항목은 같은 높이·정렬 (§20.2 버튼 원칙). */
 .ts-more { position: relative; }
@@ -5091,9 +5091,9 @@ button.ts-ref-fold:hover {
 }
 .ts-more-menu-item { justify-content: flex-start; border-color: transparent; background: transparent; }
 .ts-more-menu-item:hover,
-.ts-more-menu-item:focus-visible { background: var(--ts-surface-2); }
+.ts-more-menu-item:where(:not([data-slot])):focus-visible { background: var(--ts-surface-2); }
 .ts-more-menu-item.danger:hover,
-.ts-more-menu-item.danger:focus-visible { color: var(--ts-error); background: var(--ts-error-bg); }
+.ts-more-menu-item.danger:where(:not([data-slot])):focus-visible { color: var(--ts-error); background: var(--ts-error-bg); }
 .ts-more.is-start .ts-more-menu { left: 0; right: auto; }
 .ts-more-menu:has(.has-hint) { min-width: 260px; }
 .ts-more-menu-item.has-hint { flex-direction: column; align-items: flex-start; gap: 2px; height: auto; padding: 6px 12px; white-space: normal; text-align: left; }
@@ -5107,18 +5107,18 @@ button.ts-ref-fold:hover {
 .ts-basic-name { display: grid; grid-template-columns: 100px minmax(0, 1fr); align-items: start; gap: 20px; margin-bottom: 32px; }
 .ts-basic-name > span:first-child { font-weight: 600; line-height: 32px; }
 .ts-basic-name-control { display: grid; gap: 4px; }
-.ts-basic-name input { width: 100%; min-height: 32px; box-sizing: border-box; }
-.ts-basic-name input[readonly] { background: var(--ts-surface-2); border-color: var(--ts-rule); color: var(--ts-ink); }
+.ts-basic-name input:where(:not([data-slot])) { width: 100%; min-height: 32px; box-sizing: border-box; }
+.ts-basic-name input:where(:not([data-slot]))[readonly] { background: var(--ts-surface-2); border-color: var(--ts-rule); color: var(--ts-ink); }
 .ts-basic-product-values { margin-bottom: 32px; }
 .ts-basic-product-values > h3,
 .ts-basic-plans > h3 { font-size: 15px; margin: 0 0 12px; }
 .ts-basic-tabs { display: flex; gap: 24px; border-bottom: 1px solid var(--ts-rule-strong); }
-.ts-basic-tabs button { border: 0; border-radius: 0; border-bottom: 2px solid transparent; padding: 10px 0; margin-bottom: -1px; background: transparent; color: var(--ts-ink-3); font-size: 13px; }
-.ts-basic-tabs button:hover { background: transparent; color: var(--ts-ink); }
-.ts-basic-tabs button[aria-selected="true"] { border-bottom-color: var(--ts-ink); color: var(--ts-ink); font-weight: 700; }
+.ts-basic-tabs button:where(:not([data-slot])) { border: 0; border-radius: 0; border-bottom: 2px solid transparent; padding: 10px 0; margin-bottom: -1px; background: transparent; color: var(--ts-ink-3); font-size: 13px; }
+.ts-basic-tabs button:where(:not([data-slot])):hover { background: transparent; color: var(--ts-ink); }
+.ts-basic-tabs button:where(:not([data-slot]))[aria-selected="true"] { border-bottom-color: var(--ts-ink); color: var(--ts-ink); font-weight: 700; }
 .ts-basic-toolbar { display: flex; justify-content: flex-end; gap: 8px; margin: 12px 0; }
-.ts-basic-toolbar button.danger:hover,
-.ts-basic-toolbar button.danger:focus-visible { border-color: var(--ts-error); color: var(--ts-error); background: var(--ts-error-bg); }
+.ts-basic-toolbar button:where(:not([data-slot])).danger:hover,
+.ts-basic-toolbar button:where(:not([data-slot])).danger:focus-visible { border-color: var(--ts-error); color: var(--ts-error); background: var(--ts-error-bg); }
 .ts-basic-empty { color: var(--ts-ink-3); padding: 24px 0; margin: 0; }
 
 /* 표 — 가로가 넘치면 표 상자 안에서만 스크롤한다 (모바일). */
@@ -5139,13 +5139,13 @@ button.ts-ref-fold:hover {
 .ts-basic-table .ts-basic-col-name { min-width: 200px; }
 /* 좁은 폭(내비 포함 820 안팎) — 이름 칸을 줄여 시드 규모의 표(세목유형 폼 하나)가 가로 스크롤 없이 들어오게. 폼이 더 붙으면 표는 감싼 칸 안에서 가로로 민다 */
 @media (max-width: 1023px) { .ts-basic-table .ts-basic-col-name { min-width: 150px; } }
-.ts-basic-table input[type="text"],
-.ts-basic-table input[type="number"],
-.ts-basic-table input[type="date"],
-.ts-basic-table select { min-height: 28px; box-sizing: border-box; }
-.ts-basic-table input[type="text"] { width: 100%; }
-.ts-basic-table input.ts-basic-number { width: 64px; }
-.ts-basic-table input[aria-invalid="true"] { border-color: var(--ts-error); }
+.ts-basic-table input:where(:not([data-slot]))[type="text"],
+.ts-basic-table input:where(:not([data-slot]))[type="number"],
+.ts-basic-table input:where(:not([data-slot]))[type="date"],
+.ts-basic-table select:where(:not([data-slot])) { min-height: 28px; box-sizing: border-box; }
+.ts-basic-table input:where(:not([data-slot]))[type="text"] { width: 100%; }
+.ts-basic-table input:where(:not([data-slot])).ts-basic-number { width: 64px; }
+.ts-basic-table input:where(:not([data-slot]))[aria-invalid="true"] { border-color: var(--ts-error); }
 .ts-basic-table .ts-form-error { display: block; margin-top: 2px; }
 .ts-basic-table .ts-form-radios,
 .ts-basic-table .ts-form-checks { gap: 12px; }
@@ -5163,7 +5163,7 @@ button.ts-ref-fold:hover {
 .ts-table-input table { border-collapse: collapse; }
 .ts-table-input td,
 .ts-table-input th { border: 1px solid var(--ts-rule); padding: 2px 6px; }
-.ts-table-input input { width: 6em; }
+.ts-table-input input:where(:not([data-slot])) { width: 6em; }
 .ts-table-hint { margin-left: 4px; font-size: 0.85em; }
 
 
@@ -5182,15 +5182,15 @@ button.ts-ref-fold:hover {
 
 /* ── 상품 상세 「안 2」 (2026-09-28) — 기본정보 › 상품정보 표 · 상품담보 표 묶음 · 보통약관 탭 ── */
 .ts-basic-info th[scope="row"] { width: 160px; font-weight: 600; text-align: left; }
-.ts-basic-info input[type="text"] { width: 100%; min-height: 32px; box-sizing: border-box; }
-.ts-basic-info input[readonly] { background: var(--ts-surface-2); border-color: var(--ts-rule); color: var(--ts-ink); }
+.ts-basic-info input:where(:not([data-slot]))[type="text"] { width: 100%; min-height: 32px; box-sizing: border-box; }
+.ts-basic-info input:where(:not([data-slot]))[readonly] { background: var(--ts-surface-2); border-color: var(--ts-rule); color: var(--ts-ink); }
 .ts-basic-group th { padding-top: 12px; font-size: 12px; color: var(--ts-ink-3); font-weight: 600; text-align: left; }
 
 /* 같은 담보의 둘째 상품담보부터 — 코드 · 담보명 칸이 비고 윗줄 괘선을 흐리게 해 한 묶음으로 읽힌다 */
 .ts-mount-section tr.is-group-cont > td { border-top-color: transparent; }
 /* 상품담보 탭 편집 (2026-10-04) — 🗑 로 뺀 행은 저장하면 탑재 해제: 흐리게 + 취소선(조작 칸은 그대로 — 되돌리기) */
 .ts-mount-section tr.is-removed > td:not(.col-act) { color: var(--ts-ink-3); text-decoration: line-through; }
-.ts-mount-section tr.is-removed input[type="text"] { text-decoration: line-through; }
+.ts-mount-section tr.is-removed input:where(:not([data-slot]))[type="text"] { text-decoration: line-through; }
 /* 표 아래 「+ 담보 추가」 줄 — 펼치면 그 자리에서 담보 찾기 · 담보속성 · 추가 / 닫기 */
 .ts-mount-section tfoot td { border-bottom: 0; }
 .ts-mount-add-row .ts-combo { width: 280px; }
@@ -5223,7 +5223,7 @@ button.ts-ref-fold:hover {
 .ts-copy-status { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin: 0 0 8px; padding: 6px 10px; border: 1px solid var(--ts-rule); border-left: 3px solid var(--ts-error); border-radius: 4px; background: var(--ts-surface-2); }
 .ts-copy-status.is-stale { border-left-color: var(--ts-warn); }
 .ts-copy-status-actions { display: inline-flex; gap: 8px; margin-left: auto; }
-.ts-copy-status-actions > button { height: 28px; padding: 0 10px; border-radius: 4px; font-size: 13px; }
+.ts-copy-status-actions > button:where(:not([data-slot])) { height: 28px; padding: 0 10px; border-radius: 4px; font-size: 13px; }
 /* 깨지는 참조 목록 — 조 편집 패널 위 (ADR-0081) */
 .ts-ref-breaks { margin: 0 0 8px; padding: 6px 10px; border: 1px solid var(--ts-rule); border-left: 3px solid var(--ts-error); border-radius: 4px; background: var(--ts-surface-2); font-size: 13px; }
 .ts-ref-breaks-title { margin: 0 0 4px; }
@@ -5277,7 +5277,7 @@ button.ts-ref-fold:hover {
 [data-block]:hover > .ts-drag,
 [data-drop-block]:hover > .ts-drag,
 .is-block-sel > .ts-drag,
-.ts-drag:focus-visible {
+.ts-drag:where(:not([data-slot])):focus-visible {
   opacity: 1;
 }
 
@@ -5446,8 +5446,8 @@ button.ts-ref-fold:hover {
   font-size: 12px;
 }
 
-.ts-switch-on select,
-.ts-switch-case select {
+.ts-switch-on select:where(:not([data-slot])),
+.ts-switch-case select:where(:not([data-slot])) {
   height: 22px;
   min-height: 22px;
   font-size: 12px;
