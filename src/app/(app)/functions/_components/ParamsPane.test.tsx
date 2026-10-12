@@ -1,10 +1,12 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import type { ParamDef } from "@/domain/clause";
+
 import { ParamsPane } from "./ParamsPane";
 
 const discriminators = [{ code: "D0001", label: "담보명", level: "coverage" as const, type: { kind: "string" as const }, forms: [] }];
-const params = [
+const params: ParamDef[] = [
   { name: "보험금명", type: { kind: "string" as const }, default: { kind: "discriminator" as const, code: "D0001" } },
   { name: "갱신형", type: { kind: "boolean" as const } },
 ];
@@ -41,5 +43,14 @@ describe("인자 (기능/함수조항 §4.3, 2026-10-01)", () => {
     expect(html).toContain("ts-infotip");
     expect(html).not.toContain("ts-clause-sec-note");
     expect(render(false, [])).toContain("인자 없음");
+  });
+});
+
+describe("조 참조 인자 — 기본 연결 칸 잠김 (ADR-0083 결정 7)", () => {
+  it("타입 고르기에 「조 참조」가 있고, 조 참조 인자의 기본 연결 칸은 잠기고 사유를 보인다", () => {
+    const html = render(true, [{ name: "보험금의 지급사유 조", type: { kind: "articleRef" } }]);
+    expect(html).toContain('<option value="articleRef" selected="">조 참조</option>');
+    expect(html).toMatch(/aria-label="인자 1 기본 연결" disabled="" title="조 참조 인자는 넣는 자리마다 연결합니다"/);
+    expect(render(false, [{ name: "보험금의 지급사유 조", type: { kind: "articleRef" } }])).toContain("조 참조 인자는 넣는 자리마다 연결합니다");
   });
 });

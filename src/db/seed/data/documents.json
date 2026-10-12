@@ -407,6 +407,18 @@
                 "O01": "V01",
                 "O02": "V01"
               },
+              "bindings": {
+                "보험금의 지급사유 조": {
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "s1-a1"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "self"
+                }
+              },
               "code": "P0100"
             }
           ]
@@ -564,6 +576,18 @@
               "options": {
                 "O01": "V01"
               },
+              "bindings": {
+                "보험금의 지급사유 조": {
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "s2-a1"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "self"
+                }
+              },
               "code": "P0100"
             }
           ]
@@ -579,6 +603,19 @@
               "clauseCode": "C0043",
               "options": {
                 "O01": "V01"
+              },
+              "bindings": {
+                "보험금의 지급사유 조 제1항": {
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "s2-a1",
+                      "code": "P0100"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "self"
+                }
               },
               "code": "P0100"
             }
@@ -634,6 +671,18 @@
               "kind": "clauseBlockRef",
               "clauseCode": "C0035",
               "options": {},
+              "bindings": {
+                "보험금의 지급사유 조": {
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "s3-a1"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "self"
+                }
+              },
               "code": "P0100"
             }
           ]
@@ -884,6 +933,18 @@
               "options": {
                 "O01": "V02"
               },
+              "bindings": {
+                "보험금의 지급사유 조": {
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "s4-a1"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "self"
+                }
+              },
               "code": "P0100"
             }
           ]
@@ -899,6 +960,19 @@
               "clauseCode": "C0043",
               "options": {
                 "O01": "V02"
+              },
+              "bindings": {
+                "보험금의 지급사유 조 제1항": {
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "s4-a1",
+                      "code": "P0100"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "self"
+                }
               },
               "code": "P0100"
             }
@@ -954,6 +1028,18 @@
               "kind": "clauseBlockRef",
               "clauseCode": "C0036",
               "options": {},
+              "bindings": {
+                "보험금의 지급사유 조": {
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "s5-a1"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "self"
+                }
+              },
               "code": "P0100"
             }
           ]
@@ -1637,6 +1723,18 @@
               "clauseCode": "C0041",
               "options": {
                 "O01": "V01"
+              },
+              "bindings": {
+                "보험금의 지급사유 조": {
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "s6-a1"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "self"
+                }
               },
               "code": "P0100"
             }
@@ -3980,6 +4078,19 @@
               "kind": "clauseBlockRef",
               "clauseCode": "C0044",
               "options": {},
+              "bindings": {
+                "보험금의 지급사유 조 제1항 제3호": {
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "s9-a2",
+                      "code": "P0500"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "self"
+                }
+              },
               "code": "P0100"
             }
           ]
@@ -4218,6 +4329,18 @@
                 "O02": "V01",
                 "O03": "V02"
               },
+              "bindings": {
+                "보험금의 지급사유 조": {
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "m1-a1"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "self"
+                }
+              },
               "code": "P0100"
             }
           ]
@@ -4233,6 +4356,18 @@
               "clauseCode": "C0041",
               "options": {
                 "O01": "V02"
+              },
+              "bindings": {
+                "보험금의 지급사유 조": {
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "m1-a1"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "self"
+                }
               },
               "code": "P0100"
             }
@@ -5889,6 +6024,18 @@
               "kind": "clauseBlockRef",
               "clauseCode": "C0035",
               "options": {},
+              "bindings": {
+                "보험금의 지급사유 조": {
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "m3-a1"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "self"
+                }
+              },
               "code": "P0100"
             }
           ]
@@ -6527,6 +6674,19 @@
               "kind": "clauseBlockRef",
               "clauseCode": "C0044",
               "options": {},
+              "bindings": {
+                "보험금의 지급사유 조 제1항 제3호": {
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "m4-a2",
+                      "code": "P0500"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "self"
+                }
+              },
               "code": "P0100"
             }
           ]
@@ -6581,6 +6741,18 @@
               "kind": "clauseBlockRef",
               "clauseCode": "C0036",
               "options": {},
+              "bindings": {
+                "보험금의 지급사유 조": {
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "m5-a1"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "self"
+                }
+              },
               "code": "P0100"
             }
           ]
@@ -7152,6 +7324,18 @@
                 "O01": "V02",
                 "O02": "V02"
               },
+              "bindings": {
+                "보험금의 지급사유 조": {
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "m6-a1"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "self"
+                }
+              },
               "code": "P0100"
             }
           ]
@@ -7497,6 +7681,18 @@
                 "O02": "V02",
                 "O03": "V01"
               },
+              "bindings": {
+                "보험금의 지급사유 조": {
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "m7-a1"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "self"
+                }
+              },
               "code": "P0100"
             }
           ]
@@ -7512,6 +7708,18 @@
               "clauseCode": "C0041",
               "options": {
                 "O01": "V02"
+              },
+              "bindings": {
+                "보험금의 지급사유 조": {
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "m7-a1"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "self"
+                }
               },
               "code": "P0100"
             }

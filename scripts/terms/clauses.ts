@@ -5,22 +5,24 @@
  * - 함수조항 본문은 원문 한 자리에서 딴다(`from` — 조건 오버레이가 얹힌 뒤, 잇닿은 항 N 개). 평문(`text`, `{O01}` = 옵션 자리)도 된다.
  *   참조 평문(「보통약관 제N조(…)」 · 【별표N(…)】)은 참조 슬롯이 된다.
  *   원문 자리의 자기 조 참조는 둘로 나뉜다 (§3.5): 딴 항 안을 가리키면 「이 함수조항」(`scope: "clause"`),
- *   밖을 가리키면 「사용처」 위치(`scope: "host"`, `"2.1.3"` — `hostPaths`, 조립의 `hostLocator` 와 같은 셈).
+ *   밖을 가리키면 **조 참조 인자** 슬롯(`scope: "param"`, ADR-0083 결정 8) — 인자 이름 = 원문 대상 조 제목 + 「 조」(항 · 호면 「 제1항 제3호」),
+ *   같은 대상은 인자 하나를 같이 쓰고, 슬롯의 연결어는 사용처 연결 쪽으로 옮긴다.
  * - 낱말만 다른 자리는 옵션이다 — 원문 자리의 글에서 그 낱말(`within` 문맥 안의 `text`)을 옵션 자리로 바꾼다(`placeOptions`).
  * - 사용처 자리 바꾸기는 **원자열 대조**다 — 글자 하나 · 참조 노드 하나를 원자로 보고, 함수조항이 고른 옵션으로 펼친 원자열이
- *   사용처 항 안에 그대로 있어야 바꾼다(제 항 · 사용처 위치 참조는 사용처 노드로 옮겨 대조). 못 찾으면 보고하고 건드리지 않는다.
+ *   사용처 항 안에 그대로 있어야 바꾼다(제 항 참조는 사용처 노드로 옮겨 대조, 조 참조 인자 슬롯은 사용처 항의 「밖」 조 참조 아무것과 맞고
+ *   맞은 그 참조가 인자 연결이 된다 — 대상 조 제목이 인자 이름과 다르면 보고). 못 찾으면 보고하고 건드리지 않는다.
  *   - 「항」(block)   : 잇닿은 항 N 개를 `clauseBlockRef` 하나로. 항의 가능한 렌더(조건 가지별)가 전부 함수조항의 렌더 안에 있어야 한다.
  *   - 「문구」(inline) : 항 안의 첫 등장 구간을 `clauseInlineRef` 하나로 (제품 기능 — 실물 데이터는 쓰지 않는다, 2026-09-28).
  * - 노드 id 는 결정적이다: 함수조항 본문 `c<번호>-…` · 사용처 참조 `<항 id>-k<순번>` (block 은 `<항 id>-k`).
- * - **조 참조 대상의 변환 중간 모양** — 대상 노드 id(사용처 위치면 경로)를 `articleId` 자리에 싣는다(refs.ts 와 같다).
- *   P코드는 출력 직전에야 매겨지므로 (조, P코드) · 제 코드 · `{ host }` 로 바꾸는 것은 convert.ts `codeTargets` · `codeClauseTargets` 다 (ADR-0072).
+ * - **조 참조 대상의 변환 중간 모양** — 대상 노드 id 를 `articleId` 자리에 싣는다(refs.ts 와 같다 — 사용처의 인자 연결도).
+ *   P코드는 출력 직전에야 매겨지므로 (조, P코드) · 제 코드로 바꾸는 것은 convert.ts `codeTargets` · `codeClauseTargets` 다 (ADR-0072).
  */
 import type { ArticleRefNode as ClauseArticleRef, Block, BoxRefNode as ClauseBoxRef, Inline, ParagraphNode as ClauseParagraph } from "../../src/domain/clause/nodes";
-import type { ArticleNode, BoxRefNode, DocumentNode, InlineNode, ParagraphNode } from "../../src/domain/document/nodes";
+import type { ArticleNode, ArticleRefNode, BoxRefNode, DocumentNode, InlineNode, ParagraphNode } from "../../src/domain/document/nodes";
 import type { Id } from "../../src/domain/types";
 import { discriminatorResultType } from "../../src/domain/catalog/expression";
 import type { Discriminator } from "../../src/domain/catalog/types";
-import type { ParamDef } from "../../src/domain/clause/params";
+import type { ArticleRefBinding, Bindings, ParamDef } from "../../src/domain/clause/params";
 import type { LocalDef } from "../../src/domain/clause/locals";
 import type { ClauseMode } from "../../src/domain/clause/types";
 import { format, parse, type Expr } from "../../src/domain/expression";
@@ -53,10 +55,14 @@ export const valueCode = (i: number) => `V${pad2(i + 1)}`;
 
 type AnyInline = InlineNode | Inline;
 
+/** 「밖」 조 참조 원자의 머리 — 함수조항의 조 참조 인자 슬롯(`〔밖조#arg:이름〕`) · 사용처 항 밖을 가리키는 조 참조(`〔밖조#노드id〕`). 대조는 머리만 본다. */
+const OUTSIDE = "〔밖조#";
+
 /** 참조 · 슬롯 노드의 원자 키 — 같은 대상이면 같은 키. */
 function tokenOf(n: AnyInline): string {
   switch (n.kind) {
     case "articleRef":
+      if (n.scope === "param") return `${OUTSIDE}arg:${n.targets[0]?.param ?? ""}〕`;
       return `〔조:${n.targets.map((t) => t.articleId).join(",")}:${n.connector}〕`;
     case "appendixRef":
       return `〔별표:${n.appendixCode}〕`;
@@ -76,24 +82,26 @@ type OptionBodies = (optionCode: string) => Inline[];
  * 인라인 목록의 가능한 렌더 원자열 전부 — 조건은 가지마다 갈라진다(가지 없음 = 빈 렌더 포함),
  * 옵션 자리는 고른 선택지 본문으로 펼친다.
  */
-export function renderings(list: readonly AnyInline[], options?: OptionBodies): string[][] {
+export function renderings(list: readonly AnyInline[], options?: OptionBodies, token: (n: AnyInline) => string = tokenOf): string[][] {
   let out: string[][] = [[]];
   for (const n of list) {
     let alts: string[][];
     if (n.kind === "text") alts = [[...n.text]];
     else if (n.kind === "inlineCond") {
-      alts = n.branches.flatMap((b) => renderings(b.children as AnyInline[], options));
+      alts = n.branches.flatMap((b) => renderings(b.children as AnyInline[], options, token));
       if (n.branches.every((b) => b.when !== undefined)) alts.push([]);
     } else if (n.kind === "optionSlot") {
       if (!options) throw new Error(`옵션 자리 ${n.optionCode} 를 펼칠 선택이 없다`);
-      alts = renderings(options(n.optionCode));
-    } else alts = [[tokenOf(n)]];
+      alts = renderings(options(n.optionCode), undefined, token);
+    } else alts = [[token(n)]];
     out = out.flatMap((prefix) => alts.map((alt) => [...prefix, ...alt]));
   }
   return out;
 }
 
 const keyOf = (atoms: readonly string[]) => atoms.join("\u0001");
+/** 대조 열쇠 — 「밖」 조 참조 원자는 머리만(무엇을 가리키는지는 사용처가 정한다). */
+const matchKeyOf = (atoms: readonly string[]) => keyOf(atoms.map((a) => (a.startsWith(OUTSIDE) ? OUTSIDE : a)));
 
 // ───────────────────────────── 함수조항 본문 ─────────────────────────────
 
@@ -167,11 +175,11 @@ export function reId<T>(nodes: T, prefix: string): T {
 // ───────────────────────────── 원문 자리에서 딴 본문 ─────────────────────────────
 
 /**
- * 문서의 조 · 항 · 호 · 목 id → 사용처 위치 경로(`"2.1.3"`). 조립의 `hostLocator` 와 같은 셈 —
- * 관은 투명, 조건 블록은 모든 가지를 차례로, 함수조항 블록이 펼칠 항은 세지 않는다.
+ * 문서의 조 · 항 · 호 · 목 id → (조, 조 안 순번 `[항, 호?, 목?]`). 관은 투명, 조건 블록은 모든 가지를 차례로 센다(원문 번호와 같다).
+ * 조 참조 인자 이름을 짓는 재료다.
  */
-export function hostPaths(tree: DocumentNode): Map<Id, string> {
-  const out = new Map<Id, string>();
+function structurePositions(tree: DocumentNode): Map<Id, { article: ArticleNode; at: number[] }> {
+  const out = new Map<Id, { article: ArticleNode; at: number[] }>();
   const flat = (list: readonly unknown[], want: string): { id: Id; [k: string]: unknown }[] =>
     (list as { kind: string; id: Id; branches?: { children: unknown[] }[]; children?: unknown[] }[]).flatMap((n) => {
       if (n.kind === want) return [n];
@@ -179,23 +187,42 @@ export function hostPaths(tree: DocumentNode): Map<Id, string> {
       if (n.kind === "section" && want === "article") return flat(n.children ?? [], want);
       return [];
     });
-  flat(tree.children, "article").forEach((a, ai) => {
-    out.set(a.id, `${ai + 1}`);
+  for (const a of flat(tree.children, "article") as unknown as ArticleNode[]) {
+    out.set(a.id, { article: a, at: [] });
     flat((a.children as unknown[]) ?? [], "paragraph").forEach((p, pi) => {
-      out.set(p.id, `${ai + 1}.${pi + 1}`);
+      out.set(p.id, { article: a, at: [pi + 1] });
       flat((p.items as unknown[]) ?? [], "item").forEach((it, ii) => {
-        out.set(it.id, `${ai + 1}.${pi + 1}.${ii + 1}`);
-        flat((it.subitems as unknown[]) ?? [], "subitem").forEach((u, ui) => out.set(u.id, `${ai + 1}.${pi + 1}.${ii + 1}.${ui + 1}`));
+        out.set(it.id, { article: a, at: [pi + 1, ii + 1] });
+        flat((it.subitems as unknown[]) ?? [], "subitem").forEach((u, ui) => out.set(u.id, { article: a, at: [pi + 1, ii + 1, ui + 1] }));
       });
     });
-  });
+  }
   return out;
 }
 
-/** 사용처 위치 경로 → 사용처 노드 id (`hostPaths` 의 역 — 변환 중간 모양의 대조용). */
-export function hostNodeIds(tree: DocumentNode): (path: string) => Id | undefined {
-  const byPath = new Map([...hostPaths(tree)].map(([id, path]) => [path, id] as const));
-  return (path) => byPath.get(path);
+const SUBITEM_NAMES = "가나다라마바사아자차카타파하";
+
+/** 조 참조 인자 이름 — 대상 조 제목 + 「 조」, 항 · 호 · 목이면 「 제1항 제3호 가목」 (ADR-0083 결정 8). 모르는 대상은 undefined. */
+function paramNameOf(positions: ReadonlyMap<Id, { article: ArticleNode; at: number[] }>, id: Id): string | undefined {
+  const pos = positions.get(id);
+  if (!pos) return undefined;
+  const [p, i, u] = pos.at;
+  const parts = [p !== undefined ? `제${p}항` : "", i !== undefined ? `제${i}호` : "", u !== undefined ? (SUBITEM_NAMES[u - 1] ? `${SUBITEM_NAMES[u - 1]}목` : `제${u}목`) : ""].filter(Boolean);
+  return [`${pos.article.title} 조`, ...parts].join(" ");
+}
+
+/** 함수조항 본문(과 옵션 선택지 문구)의 조 참조 인자 슬롯 → 인자 선언(처음 나온 순, 같은 이름은 하나). */
+export function articleRefParamsOf(body: unknown): ParamDef[] {
+  const names: string[] = [];
+  const visit = (n: unknown) => {
+    if (Array.isArray(n)) return n.forEach(visit);
+    if (!n || typeof n !== "object") return;
+    const o = n as { kind?: string; scope?: string; targets?: { param?: string }[] };
+    if (o.kind === "articleRef" && o.scope === "param") for (const t of o.targets ?? []) if (t.param && !names.includes(t.param)) names.push(t.param);
+    for (const v of Object.values(n)) if (v && typeof v === "object") visit(v);
+  };
+  visit(body);
+  return names.map((name) => ({ name, type: { kind: "articleRef" } }));
 }
 
 /** 항 목록의 항 · 호 · 목 id (박스 참조는 참조 대상이 아니다). */
@@ -214,23 +241,31 @@ function structIdsOf(blocks: readonly (ParagraphNode | BoxRefNode)[]): Set<Id> {
 }
 
 /**
- * 원문 자리의 잇닿은 항들 → 함수조항 항 목록 (호 · 목 포함). 자기 조 참조는 딴 항 안이면 「이 함수조항」, 밖이면 「사용처」 위치.
+ * 원문 자리의 잇닿은 항들 → 함수조항 항 목록 (호 · 목 포함). 자기 조 참조는 딴 항 안이면 「이 함수조항」, 밖이면 조 참조 인자 슬롯
+ * (ADR-0083 결정 8 — 이름 = 원문 대상 조 제목 + 「 조」, 같은 대상은 같은 인자, 연결어는 사용처 연결로 옮긴다).
  * 한 참조가 둘을 섞으면 오류. 항 사이 · 호 목록의 **박스 참조**는 그대로 품는다 — 정적 마스터 박스는 잎이라 함수조항 어디에나 선다(최종 결정 6, 2026-09-30).
  * 호 목록에 표가 있으면 함수조항 본문이 될 수 없다.
  */
 export function clauseFromSource(tree: DocumentNode, taken: readonly (ParagraphNode | BoxRefNode)[], code: string): Block[] {
   const inside = structIdsOf(taken);
-  const paths = hostPaths(tree);
+  const positions = structurePositions(tree);
+  /** 인자 이름 → 그 인자가 가리키던 원문 대상(같은 이름이 다른 대상이면 딸 수 없다). */
+  const named = new Map<string, string>();
   const localize: Localize = (n) => {
     const own = n.targets.filter((t) => inside.has(t.articleId));
     if (own.length === n.targets.length) return { id: n.id, kind: "articleRef", targets: n.targets.map((t) => ({ ...t })), connector: n.connector, scope: "clause" };
     if (own.length > 0) throw new Error(`${code}: 조 참조 하나가 딴 항 안팎을 함께 가리킨다 — ${n.targets.map((t) => t.articleId).join(",")}`);
-    const targets = n.targets.map((t) => {
-      const path = paths.get(t.articleId);
-      if (!path) throw new Error(`${code}: 사용처 위치를 모르는 조 참조 대상 ${t.articleId}`);
-      return { articleId: path };
+    const key = n.targets.map((t) => t.articleId).join(",");
+    const names = n.targets.map((t) => {
+      const name = paramNameOf(positions, t.articleId);
+      if (!name) throw new Error(`${code}: 원문 자리 밖 조 참조 대상 ${t.articleId} 를 문서에서 찾지 못했다`);
+      return name;
     });
-    return { id: n.id, kind: "articleRef", targets, connector: n.connector, scope: "host" };
+    const name = names.join(" · ");
+    const before = named.get(name);
+    if (before !== undefined && before !== key) throw new Error(`${code}: 조 참조 인자 이름 「${name}」이 다른 대상(${before} · ${key})에 겹친다`);
+    named.set(name, key);
+    return { id: n.id, kind: "articleRef", targets: [{ param: name }], scope: "param" };
   };
   const inl = (list: InlineNode[]) => structuredClone(list).map((c) => toClauseInline(c, localize));
   const box = (b: BoxRefNode): ClauseBoxRef => ({ id: b.id, kind: "boxRef", boxCode: b.boxCode });
@@ -371,11 +406,49 @@ export function replaceInlineRun(owner: { id: Id; children: InlineNode[] }, atom
   return true;
 }
 
-/** 인라인 목록의 렌더가 모두 허용 렌더 안에 있는가 — 없으면 처음 어긋난 렌더. */
-function missingRendering(mine: readonly AnyInline[], allowed: readonly AnyInline[], bodies: OptionBodies): string | undefined {
-  const ok = new Set(renderings(allowed, bodies).map(keyOf));
-  const miss = renderings(mine).find((r) => !ok.has(keyOf(r)));
-  return miss ? miss.join("").slice(0, 60) : undefined;
+/**
+ * 사용처 대조 재료 — 사용처 항의 「밖」 조 참조(대조 중인 항 · 호 · 목 밖을 가리키는 자기 참조)는 `〔밖조#노드id〕`로 렌더하고,
+ * 함수조항의 조 참조 인자 슬롯(`〔밖조#arg:이름〕`)과 머리로만 맞춘다. 맞은 자리의 사용처 참조가 그 인자의 연결이 된다(ADR-0083 결정 8).
+ */
+interface UseMatch {
+  /** 대조 중인 사용처 항 · 호 · 목 id — 이 안을 가리키는 참조는 「이 함수조항」 참조와 대조한다. */
+  inside: ReadonlySet<Id>;
+  /** 사용처 「밖」 조 참조 노드 (id → 노드). */
+  outside: Map<Id, ArticleRefNode>;
+  /** 인자 이름 → 맞은 사용처 참조. */
+  bound: Map<string, ArticleRefNode>;
+}
+
+/** 인라인 목록의 렌더가 모두 허용 렌더 안에 있는가 — 없으면 처음 어긋난 렌더. 맞으면 인자 슬롯과 맞은 사용처 참조를 `match.bound` 에 싣는다. */
+function missingRendering(mine: readonly AnyInline[], allowed: readonly AnyInline[], bodies: OptionBodies, match?: UseMatch): string | undefined {
+  const ok = new Map(renderings(allowed, bodies).map((r) => [matchKeyOf(r), r] as const));
+  const token = (n: AnyInline): string => {
+    if (match && n.kind === "articleRef" && n.scope === "self" && n.targets.every((t) => !match.inside.has(t.articleId))) {
+      match.outside.set(n.id, n);
+      return `${OUTSIDE}${n.id}〕`;
+    }
+    return tokenOf(n);
+  };
+  for (const r of renderings(mine, undefined, token)) {
+    const theirs = ok.get(matchKeyOf(r));
+    if (!theirs) return r.join("").slice(0, 60);
+    r.forEach((atom, k) => {
+      if (!match || !atom.startsWith(OUTSIDE)) return;
+      const name = theirs[k].slice(`${OUTSIDE}arg:`.length, -1);
+      const ref = match.outside.get(atom.slice(OUTSIDE.length, -1));
+      const before = match.bound.get(name);
+      if (ref && before && JSON.stringify([before.targets, before.connector]) !== JSON.stringify([ref.targets, ref.connector])) throw new UseConflict(name);
+      if (ref) match.bound.set(name, ref);
+    });
+  }
+  return undefined;
+}
+
+/** 한 인자가 사용처 자리에서 서로 다른 대상과 맞았다 — 연결 하나로 댈 수 없다. */
+class UseConflict extends Error {
+  constructor(readonly param: string) {
+    super(`조 참조 인자 ${param} 가 서로 다른 대상과 맞았다`);
+  }
 }
 
 /**
@@ -384,9 +457,9 @@ function missingRendering(mine: readonly AnyInline[], allowed: readonly AnyInlin
  */
 /**
  * 함수조항 항 목록의 제 항 · 사용처 위치 조 참조를 사용처 노드 id 로 옮긴 사본 — 사용처 항과 원자열로 대조하려고.
- * 제 항은 같은 자리(k 번째 항 · i 번째 호 · j 번째 목)의 사용처 노드로, 사용처 위치는 `host` 로 푼다(조립과 같은 셈).
+ * 제 항은 같은 자리(k 번째 항 · i 번째 호 · j 번째 목)의 사용처 노드로 옮긴다. 조 참조 인자 슬롯은 그대로 둔다(대조가 「밖」 참조와 맞춘다).
  */
-export function localizeClause(theirs: readonly ClauseParagraph[], mine: readonly ParagraphNode[], host: (path: string) => Id | undefined): ClauseParagraph[] {
+export function localizeClause(theirs: readonly ClauseParagraph[], mine: readonly ParagraphNode[]): ClauseParagraph[] {
   const map = new Map<Id, Id>();
   theirs.forEach((c, k) => {
     const m = mine[k];
@@ -407,9 +480,9 @@ export function localizeClause(theirs: readonly ClauseParagraph[], mine: readonl
   const visit = (node: unknown) => {
     if (!node || typeof node !== "object") return;
     const n = node as Record<string, unknown>;
-    if (n.kind === "articleRef" && (n.scope === "clause" || n.scope === "host")) {
+    if (n.kind === "articleRef" && n.scope === "clause") {
       const r = n as unknown as ClauseArticleRef;
-      r.targets = r.targets.map((t) => ({ articleId: (r.scope === "clause" ? map.get(t.articleId ?? "") : host(t.articleId ?? "")) ?? `?${t.articleId}` }));
+      r.targets = r.targets.map((t) => ({ articleId: map.get(t.articleId ?? "") ?? `?${t.articleId}` }));
     }
     for (const key of ["children", "items", "subitems", "branches"]) {
       const list = n[key];
@@ -447,10 +520,48 @@ function applyBlockUse(
     return false;
   }
   const mineParagraphs = mine.filter((c): c is ParagraphNode => c.kind === "paragraph");
-  const theirs = localizeClause(blocks.filter((b): b is ClauseParagraph => b.kind === "paragraph"), mineParagraphs, doc ? hostNodeIds(doc) : () => undefined);
+  const theirs = localizeClause(blocks.filter((b): b is ClauseParagraph => b.kind === "paragraph"), mineParagraphs);
+  const match: UseMatch = { inside: structIdsOf(mineParagraphs), outside: new Map(), bound: new Map() };
+  try {
+    if (!matchParagraphs(mineParagraphs, theirs, bodies, match, where, report)) return false;
+  } catch (error) {
+    if (!(error instanceof UseConflict)) throw error;
+    report.push(`${where} — 조 참조 인자 「${error.param}」가 서로 다른 대상과 맞았다`);
+    return false;
+  }
+  const bindings = bindingsOfUse(clause, match, doc, where, report);
+  article.children.splice(at, count, { id: `${first.id}-k`, kind: "clauseBlockRef", clauseCode: clause.code, options: { ...selection }, ...(bindings ? { bindings } : {}) });
+  return true;
+}
+
+/**
+ * 조 참조 인자 연결 — 맞은 사용처 참조(대상 · 연결어 · 범위)를 그대로 (ADR-0083 결정 8). 못 맞은 인자는 보고(문서 저장 검사가 argUnbound 로 막는다),
+ * 사용처 대상 조 제목이 인자 이름과 다르면 보고 — 이름은 오버레이에 손으로 적는다.
+ */
+function bindingsOfUse(clause: ClauseRecord, match: UseMatch, doc: DocumentNode | undefined, where: string, report: string[]): Bindings | undefined {
+  const params = articleRefParamsOf([clause.body, clause.options]);
+  if (params.length === 0) return undefined;
+  const positions = doc ? structurePositions(doc) : undefined;
+  const out: Bindings = {};
+  for (const { name } of params) {
+    const ref = match.bound.get(name);
+    if (!ref) {
+      report.push(`${where} — 조 참조 인자 「${name}」에 맞는 사용처 조 참조가 없다(연결 안 함)`);
+      continue;
+    }
+    const binding: ArticleRefBinding = { kind: "articleRef", targets: ref.targets.map((t) => ({ ...t })), ...(ref.connector !== undefined ? { connector: ref.connector } : {}), scope: ref.scope };
+    out[name] = binding;
+    const theirs = positions ? ref.targets.map((t) => paramNameOf(positions, t.articleId) ?? t.articleId).join(" · ") : undefined;
+    if (theirs !== undefined && theirs !== name) report.push(`${where} — 조 참조 인자 「${name}」 ← 사용처 대상 「${theirs}」 (제목이 다르다 — 이름은 오버레이에 손으로 적는다)`);
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** 사용처 항들과 함수조항 항들의 문장 · 호 · 목 렌더 대조 — 어긋나면 보고하고 false. */
+function matchParagraphs(mineParagraphs: readonly ParagraphNode[], theirs: readonly ClauseParagraph[], bodies: OptionBodies, match: UseMatch, where: string, report: string[]): boolean {
   for (const [k, p] of mineParagraphs.entries()) {
     const c = theirs[k];
-    const miss = missingRendering(p.children, c.children, bodies);
+    const miss = missingRendering(p.children, c.children, bodies, match);
     if (miss !== undefined) {
       report.push(`${where}(+${k})이 함수조항 렌더와 다름 — ${miss}…`);
       return false;
@@ -473,16 +584,15 @@ function applyBlockUse(
       const subs = it.subitems ?? [];
       const csubs = cit.subitems ?? [];
       const bad =
-        missingRendering(it.children, cit.children, bodies) ??
+        missingRendering(it.children, cit.children, bodies, match) ??
         (subs.length !== csubs.length || subs.some((u) => u.kind !== "subitem") ? "목 목록" : undefined) ??
-        subs.map((u, j) => (u.kind === "subitem" ? missingRendering(u.children, csubs[j].children, bodies) : "목")).find((m) => m !== undefined);
+        subs.map((u, j) => (u.kind === "subitem" ? missingRendering(u.children, csubs[j].children, bodies, match) : "목")).find((m) => m !== undefined);
       if (bad !== undefined) {
         report.push(`${where}(+${k}) 제${i + 1}호가 다름 — ${bad}…`);
         return false;
       }
     }
   }
-  article.children.splice(at, count, { id: `${first.id}-k`, kind: "clauseBlockRef", clauseCode: clause.code, options: { ...selection } });
   return true;
 }
 
@@ -563,8 +673,9 @@ export function parameterize(record: ClauseRecord, catalog: readonly Discriminat
     if (!def) throw new Error(`${record.code}: 모르는 구분자 ${code} — 인자로 바꿀 수 없다`);
     const type = def.resultType ?? discriminatorResultType(def, undefined, byCode);
     if (!type || type.kind === "table") throw new Error(`${record.code}: 구분자 ${code} 의 결과 타입을 알 수 없다`);
+    const taken = (name: string) => params.some((p) => p.name === name) || (record.params ?? []).some((p) => p.name === name);
     let name = paramName(def.label);
-    for (let n = 2; params.some((p) => p.name === name); n++) name = `${paramName(def.label)}${n}`;
+    for (let n = 2; taken(name); n++) name = `${paramName(def.label)}${n}`;
     params.push({ name, type, default: { kind: "discriminator", code } });
     nameOf.set(code, name);
     return name;
@@ -608,5 +719,6 @@ export function parameterize(record: ClauseRecord, catalog: readonly Discriminat
   const body = walk(record.body) as ClauseRecord["body"];
   const options = walk(record.options) as ClauseRecord["options"];
   if (!changed) return record;
-  return { ...record, body, options, params };
+  // 이미 선언된 인자(조 참조 인자 — 원문 자리에서 딴 본문)는 앞에 둔다
+  return { ...record, body, options, params: [...(record.params ?? []), ...params] };
 }

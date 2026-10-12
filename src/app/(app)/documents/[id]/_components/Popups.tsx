@@ -16,11 +16,12 @@ import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, planFormCho
 import type { EnumDef } from "@/domain/catalog";
 import type { Bindings, Clause } from "@/domain/clause";
 import {
-  HOST_TARGET_PREFIX,
   indexTree,
   isRepeatSource,
   multiTarget,
   nodeBuilders,
+  paramOfRef,
+  paramTargetId,
   parseRefKey,
   repeatElementEnums,
   referenceKeyIndex,
@@ -118,8 +119,12 @@ function restrictMode(r: RefRestrict | undefined): string {
   return "current" in r ? `current:${r.current}` : "values";
 }
 
-/** 조 참조 칸 — 범위 · 대상(여럿) · 값 한정 · 연결어. 넣기와 고치기가 같이 쓴다. */
-function ArticleRefFields({ ctx, node, restrict }: { ctx: DocCtx; node?: ArticleRefNode; restrict?: RestrictChoices }) {
+/**
+ * 조 참조 칸 — 범위 · 대상(여럿) · 값 한정 · 연결어. 넣기와 고치기가 같이 쓴다.
+ * 함수조항 참조의 조 참조 인자 연결 칸도 이 부품이다(ADR-0083 결정 7) — `prefix` 로 폼 칸 이름을 나눈다(인자마다 `arg:<이름>:`).
+ */
+function ArticleRefFields({ ctx, node, restrict, prefix = "", idBase = "pop-ref" }: { ctx: DocCtx; node?: Pick<ArticleRefNode, "targets" | "connector" | "scope">; restrict?: RestrictChoices; prefix?: string; idBase?: string }) {
+  const field = (name: string) => `${prefix}${name}`;
   const [count, setCount] = useState(node?.targets.length ?? 0);
   // 고른 연결어 — 기본값 없이 시작한다(결정 14). 대상이 하나로 줄었다 다시 늘어도 기억한다 (고치기면 저장된 값에서 시작)
   const [connector, setConnector] = useState<ReferenceConnector | undefined>(node?.connector);
@@ -144,115 +149,143 @@ function ArticleRefFields({ ctx, node, restrict }: { ctx: DocCtx; node?: Article
     }));
   };
   const joins = count >= 2 || repeatedPicked || mode !== "";
-  // 범위를 화면이 정하면(함수조항 — 보통약관 · 이 함수조항 · 사용처) 그 목록이 범위 고르기, 고른 범위의 후보만 선다
+  // 범위를 화면이 정하면(함수조항 — 보통약관 · 이 함수조항 · 인자) 그 목록이 범위 고르기, 고른 범위의 후보만 선다
   const choices = ctx.articleRefChoices;
   const [choice, setChoice] = useState(() => initialChoice(choices, node));
   const picked = choices?.find((c) => c.value === choice);
+  const savedParam = node ? paramOfRef(node) : undefined;
   return (
     <>
       {choices && (
         <div className="ts-form-row">
-          <label htmlFor="pop-ref-scope">범위</label>
-          <select
-            id="pop-ref-scope"
-            name="scope"
-            value={choice}
-            onChange={(e) => {
-              setChoice(e.target.value);
-              setCount(0);
-            }}
-          >
-            {choices.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
+          <label htmlFor={`${idBase}-scope`}>범위</label>
+          <div>
+            <select
+              id={`${idBase}-scope`}
+              name={field("scope")}
+              value={choice}
+              onChange={(e) => {
+                setChoice(e.target.value);
+                setCount(0);
+              }}
+            >
+              {choices.map((c) => {
+                const locked = c.value === "param" && (c.params ?? []).length === 0;
+                return (
+                  <option key={c.value} value={c.value} disabled={locked} title={locked ? PARAM_SCOPE_LOCKED : undefined}>
+                    {c.label}
+                    {locked ? " (조 참조 인자 없음)" : ""}
+                  </option>
+                );
+              })}
+            </select>
+            {choices.some((c) => c.value === "param" && (c.params ?? []).length === 0) && <p className="ts-form-hint">「인자」 범위 — {PARAM_SCOPE_LOCKED}</p>}
+          </div>
         </div>
       )}
       {!choices && ctx.docKind === "special" && (
         <div className="ts-form-row">
-          <label htmlFor="pop-ref-scope">범위</label>
-          <select id="pop-ref-scope" name="scope" defaultValue={node?.scope ?? "self"}>
+          <label htmlFor={`${idBase}-scope`}>범위</label>
+          <select id={`${idBase}-scope`} name={field("scope")} defaultValue={node?.scope ?? "self"}>
             <option value="self">이 템플릿</option>
             <option value="general">대응 보통약관</option>
           </select>
         </div>
       )}
-      <div className="ts-form-row ts-form-full">
-        <label htmlFor="pop-ref-targets">참조 대상 (여럿 고를 수 있다)</label>
-        <RefTargetTree
-          key={choice}
-          id="pop-ref-targets"
-          defaultSelected={node && initialChoice(choices, node) === choice ? selectedIds(node, picked ? [picked.index] : ctx.docKind === "special" ? [ctx.references.self, ctx.references.general] : [ctx.references.self]) : []}
-          onCountChange={onPicked}
-          scopes={
-            picked
-              ? [{ key: picked.value, label: picked.label, index: picked.index, ...(picked.rootless ? { rootless: true } : {}) }]
-              : ctx.docKind === "special"
-                ? [
-                    { key: "self", label: "이 템플릿", index: ctx.references.self },
-                    { key: "general", label: "대응 보통약관", index: ctx.references.general },
-                  ]
-                : [{ key: "self", index: ctx.references.self }]
-          }
-        />
-      </div>
-      {restrict && restrict.values.length > 0 && (
-        <div className="ts-form-row">
-          <label htmlFor="pop-ref-restrict">값 한정</label>
-          <div>
-            <select id="pop-ref-restrict" name="restrictMode" value={mode} onChange={(e) => setMode(e.target.value)}>
-              <option value="">없음 — 펼친 것 전부</option>
-              <option value="values">해당 값들</option>
-              {restrict.loops.map((l) => (
-                <option key={l.id} value={`current:${l.id}`}>
-                  현재 값 — {l.label}
-                </option>
-              ))}
-            </select>
-            {mode === "values" && (
-              <div className="ts-radio-group" role="group" aria-label="한정할 값">
-                {restrict.values.map((v) => (
-                  <label key={v.code} className="ts-form-radio">
-                    <input type="checkbox" name="restrictValue" value={v.code} defaultChecked={savedValues.includes(v.code)} />
-                    {v.label}
-                  </label>
-                ))}
-              </div>
-            )}
-            <p className="ts-form-hint">반복(사유)으로 생긴 노드를 그 값이 낸 것만으로 좁힌다 — 펼친 뒤 0개면 조립 오류다. 대상은 사유 반복 안의 노드여야 한다.</p>
-          </div>
-        </div>
-      )}
-      <div className="ts-form-row">
-        <span className="ts-form-label">연결어</span>
-        <div>
-          <div className="ts-radio-group" role="radiogroup" aria-label="연결어" aria-disabled={!joins}>
-            {REFERENCE_CONNECTORS.map((c) => (
-              <label key={c} className="ts-form-radio">
-                <input type="radio" name="connector" value={c} disabled={!joins} checked={joins && connector === c} onChange={() => setConnector(c)} />
-                {c}
+      {picked?.value === "param" ? (
+        // 조 참조 인자 하나 — 대상 · 연결어는 사용처가 연결로 고른다 (ADR-0083 결정 3)
+        <div className="ts-form-row ts-form-full">
+          <span className="ts-form-label">조 참조 인자</span>
+          <div className="ts-radio-group" role="radiogroup" aria-label="조 참조 인자">
+            {(picked.params ?? []).map((name) => (
+              <label key={name} className="ts-form-radio">
+                <input type="radio" name={field("param")} value={name} defaultChecked={savedParam === name} />⟨{name}⟩
               </label>
             ))}
           </div>
-          <p className="ts-form-hint">
-            {joins
-              ? `골라야 적용된다 — 기본값이 없다.${count < 2 ? " 반복 · 함수조항으로 펼치면 여러 번호가 될 수 있다." : ""} 마지막 대상 앞에 붙는다. 번호가 잇달아 셋 이상이면 「제3조부터 제5조까지」로 묶이고, 분기로 빠진 대상은 산출 때 제외된다.`
-              : "대상을 둘 이상(또는 반복 블록 · 함수조항 참조 · 그 안 대상을) 고르거나 값 한정을 걸면 고를 수 있다."}
-          </p>
+          <p className="ts-form-hint">사용처가 함수조항을 넣을 때 제 문서의 조 · 항 · 호 · 목을 이 인자에 연결한다 — 번호는 펼친 자리의 계산 번호로 찍힌다.</p>
         </div>
-      </div>
+      ) : (
+        <>
+          <div className="ts-form-row ts-form-full">
+            <label htmlFor={`${idBase}-targets`}>참조 대상 (여럿 고를 수 있다)</label>
+            <RefTargetTree
+              key={choice}
+              id={`${idBase}-targets`}
+              name={field("targets")}
+              defaultSelected={node && initialChoice(choices, node) === choice ? selectedIds(node, picked ? [picked.index] : ctx.docKind === "special" ? [ctx.references.self, ctx.references.general] : [ctx.references.self]) : []}
+              onCountChange={onPicked}
+              scopes={
+                picked
+                  ? [{ key: picked.value, label: picked.label, index: picked.index, ...(picked.rootless ? { rootless: true } : {}) }]
+                  : ctx.docKind === "special"
+                    ? [
+                        { key: "self", label: "이 템플릿", index: ctx.references.self },
+                        { key: "general", label: "대응 보통약관", index: ctx.references.general },
+                      ]
+                    : [{ key: "self", index: ctx.references.self }]
+              }
+            />
+          </div>
+          {restrict && restrict.values.length > 0 && (
+            <div className="ts-form-row">
+              <label htmlFor={`${idBase}-restrict`}>값 한정</label>
+              <div>
+                <select id={`${idBase}-restrict`} name={field("restrictMode")} value={mode} onChange={(e) => setMode(e.target.value)}>
+                  <option value="">없음 — 펼친 것 전부</option>
+                  <option value="values">해당 값들</option>
+                  {restrict.loops.map((l) => (
+                    <option key={l.id} value={`current:${l.id}`}>
+                      현재 값 — {l.label}
+                    </option>
+                  ))}
+                </select>
+                {mode === "values" && (
+                  <div className="ts-radio-group" role="group" aria-label="한정할 값">
+                    {restrict.values.map((v) => (
+                      <label key={v.code} className="ts-form-radio">
+                        <input type="checkbox" name={field("restrictValue")} value={v.code} defaultChecked={savedValues.includes(v.code)} />
+                        {v.label}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <p className="ts-form-hint">반복(사유)으로 생긴 노드를 그 값이 낸 것만으로 좁힌다 — 펼친 뒤 0개면 조립 오류다. 대상은 사유 반복 안의 노드여야 한다.</p>
+              </div>
+            </div>
+          )}
+          <div className="ts-form-row">
+            <span className="ts-form-label">연결어</span>
+            <div>
+              <div className="ts-radio-group" role="radiogroup" aria-label="연결어" aria-disabled={!joins}>
+                {REFERENCE_CONNECTORS.map((c) => (
+                  <label key={c} className="ts-form-radio">
+                    <input type="radio" name={field("connector")} value={c} disabled={!joins} checked={joins && connector === c} onChange={() => setConnector(c)} />
+                    {c}
+                  </label>
+                ))}
+              </div>
+              <p className="ts-form-hint">
+                {joins
+                  ? `골라야 적용된다 — 기본값이 없다.${count < 2 ? " 반복 · 함수조항으로 펼치면 여러 번호가 될 수 있다." : ""} 마지막 대상 앞에 붙는다. 번호가 잇달아 셋 이상이면 「제3조부터 제5조까지」로 묶이고, 분기로 빠진 대상은 산출 때 제외된다.`
+                  : "대상을 둘 이상(또는 반복 블록 · 함수조항 참조 · 그 안 대상을) 고르거나 값 한정을 걸면 고를 수 있다."}
+              </p>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
 
-/** 범위 목록이 있을 때 처음 고른 범위 — 고치기면 그 참조의 범위(`host:` 대상이면 사용처), 넣기면 첫 범위. */
-function initialChoice(choices: DocCtx["articleRefChoices"], node?: ArticleRefNode): string {
+/** 「인자」 범위 잠김 사유 — 조 참조 인자가 없다 (ADR-0083 결정 7). */
+const PARAM_SCOPE_LOCKED = "인자 표에 조 참조 인자를 먼저 더하세요";
+
+/** 범위 목록이 있을 때 처음 고른 범위 — 고치기면 그 참조의 범위(`arg:` 대상이면 인자), 넣기면 첫 범위. */
+function initialChoice(choices: DocCtx["articleRefChoices"], node?: Pick<ArticleRefNode, "targets" | "scope">): string {
   if (!choices || choices.length === 0) return "";
   if (!node) return choices[0].value;
-  const host = node.targets.length > 0 && node.targets.every((t) => t.articleId.startsWith(HOST_TARGET_PREFIX));
-  const want = node.scope === "self" ? "self" : host ? "host" : "general";
+  const want = node.scope === "self" ? "self" : paramOfRef(node) !== undefined ? "param" : "general";
   return choices.some((c) => c.value === want) ? want : choices[0].value;
 }
 
@@ -265,7 +298,7 @@ function needsConnector(ctx: DocCtx, targets: readonly RefTarget[]): boolean {
 }
 
 /** 저장된 대상 → 고르기 트리의 줄 id (같은 코드의 분기 짝이면 문서 순 첫 줄). 범위의 색인들에서 찾는다. */
-function selectedIds(node: ArticleRefNode, indexes: readonly ReadonlyMap<Id, ReferenceTarget>[]): Id[] {
+function selectedIds(node: Pick<ArticleRefNode, "targets">, indexes: readonly ReadonlyMap<Id, ReferenceTarget>[]): Id[] {
   return node.targets.flatMap((t) => {
     for (const index of indexes) {
       const found = referenceKeyIndex(index).get(refKey(t)); // 값 한정은 열쇠에 들지 않는다 — 같은 줄
@@ -275,25 +308,31 @@ function selectedIds(node: ArticleRefNode, indexes: readonly ReadonlyMap<Id, Ref
   });
 }
 
-function articleRefOf(fd: FormData): { targets: RefTarget[]; connector: ReferenceConnector | undefined; scope: ArticleRefNode["scope"] } {
+function articleRefOf(fd: FormData, prefix = ""): { targets: RefTarget[]; connector: ReferenceConnector | undefined; scope: ArticleRefNode["scope"] } {
+  const field = (name: string) => `${prefix}${name}`;
+  const scope = str(fd, field("scope"));
+  // 조 참조 인자(`param`)는 편집 트리에서 보통약관 참조 자리에 대상 하나 `arg:<이름>` 으로 운반한다 (clauseTree · ADR-0083)
+  if (scope === "param") {
+    const name = str(fd, field("param"));
+    return { targets: name ? [{ articleId: paramTargetId(name) }] : [], connector: undefined, scope: "general" };
+  }
   // 고르기 트리가 참조 대상 열쇠(조 id · 조#P코드 · 조#참조코드/안쪽코드)를 싣는다 (ADR-0072 결정 3 · ADR-0077 결정 6)
-  const keys = [...new Set(fd.getAll("targets").map((v) => String(v).trim()).filter(Boolean))];
+  const keys = [...new Set(fd.getAll(field("targets")).map((v) => String(v).trim()).filter(Boolean))];
   // 값 한정 — 고른 대상 모두에 같이 (ADR-0077 결정 7). 해당 값들을 하나도 안 고르면 빈 목록(저장 검사가 알린다)
-  const mode = str(fd, "restrictMode");
-  const restrict: RefRestrict | undefined = mode === "values" ? { values: fd.getAll("restrictValue").map(String) } : mode.startsWith("current:") ? { current: mode.slice("current:".length) } : undefined;
+  const mode = str(fd, field("restrictMode"));
+  const restrict: RefRestrict | undefined = mode === "values" ? { values: fd.getAll(field("restrictValue")).map(String) } : mode.startsWith("current:") ? { current: mode.slice("current:".length) } : undefined;
   const targets = keys.map((k) => ({ ...parseRefKey(k), ...(restrict ? { restrict } : {}) }));
   // 라디오가 꺼져 있으면(대상 하나 · 반복 밖) 값이 오지 않는다 — 연결어를 싣지 않는다(표기에 안 나온다, 결정 14)
-  const connector = str(fd, "connector");
-  // 사용처 위치(`host`)는 편집 트리에서 보통약관 참조 자리로 운반한다 (clauseTree)
-  const scope = str(fd, "scope");
-  return { targets, connector: isReferenceConnector(connector) ? (connector as ReferenceConnector) : undefined, scope: scope === "general" || scope === "host" ? "general" : "self" };
+  const connector = str(fd, field("connector"));
+  return { targets, connector: isReferenceConnector(connector) ? (connector as ReferenceConnector) : undefined, scope: scope === "general" ? "general" : "self" };
 }
 
 /**
  * 함수조항 칸 — 함수조항을 고르면 그 옵션마다 선택지 · 인자마다 연결. 옵션 선택 · 인자 연결은 사용처(이 문서) 소유다 (기능/함수조항 §3.2 · §3.7).
  * 인자 연결 칸은 「기본 연결」(비움 — 선언의 기본을 쓴다)이 처음 값이다. 기본 연결이 없으면 골라야 저장된다(연결 누락 = 저장 오류).
+ * 조 참조 인자 칸은 조 참조 팝업과 같은 부품(대상 트리 + 연결어 + 값 한정) — 이 문서의 조 · 항 · 호 · 목을 고른다 (ADR-0083 결정 7).
  */
-function ClauseFields({ clauses, code, options, bindings, condition, loops = [], enumOf }: { clauses: readonly Clause[]; code?: Code; options?: Record<Code, Code>; bindings?: Bindings; condition: ConditionContext; loops?: readonly LoopChoice[]; enumOf?: (code: Code) => EnumDef | undefined }) {
+function ClauseFields({ clauses, code, options, bindings, condition, loops = [], enumOf, refs }: { clauses: readonly Clause[]; code?: Code; options?: Record<Code, Code>; bindings?: Bindings; condition: ConditionContext; loops?: readonly LoopChoice[]; enumOf?: (code: Code) => EnumDef | undefined; refs: { ctx: DocCtx; restrict: RestrictChoices } }) {
   const [picked, setPicked] = useState<Code>(code ?? "");
   const clause = clauses.find((c) => c.code === picked);
   const forms = planFormChoices();
@@ -321,7 +360,17 @@ function ClauseFields({ clauses, code, options, bindings, condition, loops = [],
         !clause && <p className="ts-error-banner">함수조항 {code} 이(가) 없다 — 깨진 참조다.</p>
       )}
       {clause && clause.options.length === 0 && (clause.params ?? []).length === 0 && <p className="ts-muted">고를 옵션 · 연결할 인자가 없는 함수조항이다.</p>}
-      {(clause?.params ?? []).map((p) => (
+      {(clause?.params ?? []).map((p, i) => {
+        if (p.type.kind === "articleRef") {
+          const own = bindings?.[p.name];
+          return (
+            <fieldset key={`${clause!.code}-arg-${p.name}`} className="ts-form-row ts-form-full ts-arg-ref" aria-label={`인자 ${p.name}`}>
+              <legend>인자 {p.name} — 조 참조</legend>
+              <ArticleRefFields ctx={refs.ctx} restrict={refs.restrict} prefix={`arg:${p.name}:`} idBase={`pop-arg-ref-${i}`} {...(own?.kind === "articleRef" ? { node: own } : {})} />
+            </fieldset>
+          );
+        }
+        return (
         <div key={`${clause!.code}-arg-${p.name}`} className="ts-form-row">
           <label htmlFor={`pop-arg-${p.name}`}>인자 {p.name}</label>
           <select id={`pop-arg-${p.name}`} name={`arg:${p.name}`} defaultValue={bindingValue(bindings?.[p.name])}>
@@ -333,7 +382,8 @@ function ClauseFields({ clauses, code, options, bindings, condition, loops = [],
             ))}
           </select>
         </div>
-      ))}
+        );
+      })}
       {clause?.options.map((o) => (
         <div key={`${clause.code}-${o.code}`} className="ts-form-row">
           <label htmlFor={`pop-opt-${o.code}`}>{o.label}</label>
@@ -351,18 +401,29 @@ function ClauseFields({ clauses, code, options, bindings, condition, loops = [],
   );
 }
 
-/** 인자 연결 칸 → 연결 맵. 비운 칸(기본 연결)은 싣지 않는다. */
+/** 인자 연결 칸 → 연결 맵. 비운 칸(기본 연결) · 대상을 안 고른 조 참조 인자는 싣지 않는다(저장 검사가 연결 누락을 알린다). */
 function bindingsOf(fd: FormData, clauses: readonly Clause[], code: Code = str(fd, "clauseCode")): Bindings {
   const clause = clauses.find((c) => c.code === code);
   const out: Bindings = {};
-  for (const [key, value] of fd.entries()) {
-    if (!key.startsWith("arg:")) continue;
-    const name = key.slice("arg:".length);
-    const param = clause?.params?.find((p) => p.name === name);
-    const b = param ? bindingOfValue(String(value), param.type) : undefined;
-    if (b) out[name] = b;
+  for (const p of clause?.params ?? []) {
+    if (p.type.kind === "articleRef") {
+      const r = articleRefOf(fd, `arg:${p.name}:`);
+      if (r.targets.length > 0) out[p.name] = { kind: "articleRef", targets: r.targets, ...(r.connector ? { connector: r.connector } : {}), scope: r.scope };
+      continue;
+    }
+    const value = fd.get(`arg:${p.name}`);
+    const b = value !== null ? bindingOfValue(String(value), p.type) : undefined;
+    if (b) out[p.name] = b;
   }
   return out;
+}
+
+/** 조 참조 인자 연결의 연결어 미선택 — 조 참조 팝업과 같은 규칙으로 적용 전에 고른다 (ADR-0083 결정 4 · 기능/문면 §3.5). */
+function bindingConnectorProblem(ctx: DocCtx, bindings: Bindings): string | undefined {
+  for (const [name, b] of Object.entries(bindings)) {
+    if (b.kind === "articleRef" && !b.connector && needsConnector(ctx, b.targets)) return `인자 ${name} — ${CONNECTOR_PICK_MESSAGE}`;
+  }
+  return undefined;
 }
 
 /** 연결 맵을 노드에 — 비었으면 키 없음. */
@@ -395,6 +456,11 @@ function AppendixSelect({ appendices, value }: { appendices: readonly Appendix[]
       />
     </div>
   );
+}
+
+/** 조 참조 인자가 있는 함수조항인가 — 팝업을 넓혀 대상 트리를 편다. */
+function hasArticleRefParam(clauses: readonly Clause[], code: Code): boolean {
+  return (clauses.find((c) => c.code === code)?.params ?? []).some((p) => p.type.kind === "articleRef");
 }
 
 const INSERT_TITLE = { slot: "치환 슬롯 넣기", articleRef: "조 참조 넣기", appendixRef: "별표 참조 넣기", clauseInlineRef: "함수조항(문장 안) 넣기", structKey: "구조 표기 넣기" } as const;
@@ -621,7 +687,9 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
           }
           case "clauseInlineRef": {
             const code = str(fd, "clauseCode");
-            return code ? withBindings(b.clauseInline(code, optionsOf(fd)), bindingsOf(fd, env.clauses)) : "함수조항을 고른다.";
+            if (!code) return "함수조항을 고른다.";
+            const bindings = bindingsOf(fd, env.clauses);
+            return bindingConnectorProblem(ctx, bindings) ?? withBindings(b.clauseInline(code, optionsOf(fd)), bindings);
           }
           case "structKey": {
             const level = str(fd, "structLevel");
@@ -650,7 +718,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             )}
             {spec.what === "articleRef" && <ArticleRefFields ctx={ctx} restrict={restrictAt("tableId" in spec.at ? undefined : spec.at.parentId)} />}
             {spec.what === "appendixRef" && <AppendixSelect appendices={env.appendices} />}
-            {spec.what === "clauseInlineRef" && <ClauseFields clauses={env.clauses} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={"tableId" in spec.at ? [] : loopsAt(spec.at.parentId)} />}
+            {spec.what === "clauseInlineRef" && <ClauseFields clauses={env.clauses} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={"tableId" in spec.at ? [] : loopsAt(spec.at.parentId)} refs={{ ctx, restrict: restrictAt("tableId" in spec.at ? undefined : spec.at.parentId) }} />}
             {spec.what === "structKey" && (
               <div className="ts-form-row">
                 <label htmlFor="pop-struct">구조 표기</label>
@@ -677,7 +745,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
       const title =
         node.kind === "slot" ? "치환 슬롯" : node.kind === "articleRef" ? "조 참조" : node.kind === "appendixRef" ? "별표 참조" : node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef" ? (env.clauses.find((c) => c.code === node.clauseCode)?.params?.length ? "함수조항 옵션 · 인자" : "함수조항 옵션") : "고치기";
       return (
-        <Popover anchor={anchor} label={title} onClose={onClose} wide={node.kind === "articleRef"}>
+        <Popover anchor={anchor} label={title} onClose={onClose} wide={node.kind === "articleRef" || ((node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && hasArticleRefParam(env.clauses, node.clauseCode))}>
           <PopForm
             env={env}
             onClose={onClose}
@@ -693,8 +761,10 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
                 case "appendixRef":
                   return [{ type: "setAppendixRef", nodeId: node.id, appendixCode: str(fd, "appendixCode") }];
                 case "clauseInlineRef":
-                case "clauseBlockRef":
-                  return [{ type: "setClauseOptions", nodeId: node.id, options: optionsOf(fd), bindings: bindingsOf(fd, env.clauses, node.clauseCode) }];
+                case "clauseBlockRef": {
+                  const bindings = bindingsOf(fd, env.clauses, node.clauseCode);
+                  return bindingConnectorProblem(ctx, bindings) ?? [{ type: "setClauseOptions", nodeId: node.id, options: optionsOf(fd), bindings }];
+                }
                 default:
                   return [];
               }
@@ -708,7 +778,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             )}
             {node.kind === "articleRef" && <ArticleRefFields ctx={ctx} node={node} restrict={restrictAt(node.id)} />}
             {node.kind === "appendixRef" && <AppendixSelect appendices={env.appendices} value={node.appendixCode} />}
-            {(node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && <ClauseFields clauses={env.clauses} code={node.clauseCode} options={node.options} {...(node.bindings ? { bindings: node.bindings } : {})} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(node.id)} />}
+            {(node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && <ClauseFields clauses={env.clauses} code={node.clauseCode} options={node.options} {...(node.bindings ? { bindings: node.bindings } : {})} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(node.id)} refs={{ ctx, restrict: restrictAt(node.id) }} />}
             <PopActions onCancel={onClose} />
           </PopForm>
         </Popover>
@@ -751,10 +821,12 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             onClose={onClose}
             build={(fd) => {
               const code = str(fd, "clauseCode");
-              return code ? [{ type: "insert", node: withBindings(b.clauseBlock(code, optionsOf(fd)), bindingsOf(fd, env.clauses)), at: spec.at }] : "함수조항을 고른다.";
+              if (!code) return "함수조항을 고른다.";
+              const bindings = bindingsOf(fd, env.clauses);
+              return bindingConnectorProblem(ctx, bindings) ?? [{ type: "insert", node: withBindings(b.clauseBlock(code, optionsOf(fd)), bindings), at: spec.at }];
             }}
           >
-            <ClauseFields clauses={clausesFitting(env.clauses, spec.fit)} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(spec.at.parentId)} />
+            <ClauseFields clauses={clausesFitting(env.clauses, spec.fit)} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(spec.at.parentId)} refs={{ ctx, restrict: restrictAt(spec.at.parentId) }} />
             <PopActions onCancel={onClose} confirmLabel="넣기" />
           </PopForm>
         </Popover>

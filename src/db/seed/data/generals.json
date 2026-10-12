@@ -958,6 +958,18 @@
                   "kind": "clauseBlockRef",
                   "clauseCode": "C0020",
                   "options": {},
+                  "bindings": {
+                    "보험금의 지급사유 조": {
+                      "kind": "articleRef",
+                      "targets": [
+                        {
+                          "articleId": "g-a3"
+                        }
+                      ],
+                      "connector": "및",
+                      "scope": "self"
+                    }
+                  },
                   "code": "P0100"
                 }
               ]
@@ -3578,6 +3590,28 @@
                   "kind": "clauseBlockRef",
                   "clauseCode": "C0021",
                   "options": {},
+                  "bindings": {
+                    "계약 전 알릴 의무 조": {
+                      "kind": "articleRef",
+                      "targets": [
+                        {
+                          "articleId": "g-a15"
+                        }
+                      ],
+                      "connector": "및",
+                      "scope": "self"
+                    },
+                    "알릴 의무 위반의 효과 조": {
+                      "kind": "articleRef",
+                      "targets": [
+                        {
+                          "articleId": "g-a17"
+                        }
+                      ],
+                      "connector": "및",
+                      "scope": "self"
+                    }
+                  },
                   "code": "P0100"
                 }
               ]
@@ -6489,6 +6523,18 @@
                   "kind": "clauseBlockRef",
                   "clauseCode": "C0020",
                   "options": {},
+                  "bindings": {
+                    "보험금의 지급사유 조": {
+                      "kind": "articleRef",
+                      "targets": [
+                        {
+                          "articleId": "m-a3"
+                        }
+                      ],
+                      "connector": "및",
+                      "scope": "self"
+                    }
+                  },
                   "code": "P0100"
                 }
               ]
@@ -9245,6 +9291,28 @@
                   "kind": "clauseBlockRef",
                   "clauseCode": "C0021",
                   "options": {},
+                  "bindings": {
+                    "계약 전 알릴 의무 조": {
+                      "kind": "articleRef",
+                      "targets": [
+                        {
+                          "articleId": "m-a15"
+                        }
+                      ],
+                      "connector": "및",
+                      "scope": "self"
+                    },
+                    "알릴 의무 위반의 효과 조": {
+                      "kind": "articleRef",
+                      "targets": [
+                        {
+                          "articleId": "m-a17"
+                        }
+                      ],
+                      "connector": "및",
+                      "scope": "self"
+                    }
+                  },
                   "code": "P0100"
                 }
               ]

@@ -10,18 +10,18 @@
  * - 식 검사: `slot.ref` 는 참조 하나(경로)여야 하고, `when` 은 파싱한다. 참조 존재·boolean 여부는
  *   타입 조회(`resolveType`)가 있을 때만 검사한다 — 없으면 건너뛴다 (카탈로그 없이도 순수 검사가 되게).
  * - 조 참조·별표 참조 (기능/함수조항 §3.5): 함수조항의 조 참조는 셋 중 하나다 — 보통약관 마스터의 조·항·호·목(범위 없음) ·
- *   이 함수조항 본문의 항·호·목(`scope: "clause"`, 본문에 있어야) · 사용처의 위치(`scope: "host"`, 순번 경로).
- *   구조(대상 ≥1 · 연결어 · 별표 코드 · 위치 경로 모양)는 항상 검사하고, 보통약관 · 별표 대상 존재는
+ *   이 함수조항 본문의 항·호·목(`scope: "clause"`, 본문에 있어야) · 조 참조 인자(`scope: "param"`, 선언된 「조 참조」 인자 하나 — ADR-0083).
+ *   구조(대상 ≥1 · 연결어 · 별표 코드 · 인자 슬롯 모양)는 항상 검사하고, 보통약관 · 별표 대상 존재는
  *   `generalReferenceKeys` · `appendixExists` 를 줬을 때만 검사한다 — 문서 쪽 `validateTree` 와 같은 관례.
  */
 import { checkTypes, extractRefs, parse } from "../expression";
 import type { EnumInfo, Expr, ExprType, Ref, TypeResolver } from "../expression";
 import { CONNECTOR_REPEAT_MESSAGE, CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, isWorkMark, ok, reject, WORK_MARK_MESSAGE } from "../types";
 import type { Code, Coordinate, Id, Issue, Result } from "../types";
-import { BLOCK_KINDS, HOST_PATH, INLINE_KINDS } from "./nodes";
+import { BLOCK_KINDS, INLINE_KINDS } from "./nodes";
 import type { AnySwitchNode, Block, BoxRefNode, BulletListNode, ClauseNode, Inline, InlineBranch, BlockBranch, ItemBodyNode, ItemNode, SubitemBodyNode, SwitchCase } from "./nodes";
 import { checkLocals, planFieldType, type LocalDef } from "./locals";
-import { checkParams, type ParamDef } from "./params";
+import { articleRefReadMessage, checkParams, valueParamTypes, type ParamDef } from "./params";
 import { clauseCodeEntries, clauseCodeIssues } from "./pcode";
 import { multiTarget, refKey } from "../document/pcode";
 import type { ClauseBody, ClauseMode, OptionDef, RequiredRefs } from "./types";
@@ -178,6 +178,7 @@ export function analyzeBody(
   const issues: Issue[] = [];
   const base = opts.coordinate ?? {};
   const optionCodes = new Set(options.map((o) => o.code));
+  const paramByName = new Map(params.map((p) => [p.name, p] as const));
   /** 본문의 항 · 호 · 목 코드 — 「이 함수조항」 조 참조의 대상 후보. 선택지 문구에는 구조가 없다. 코드 없는 자리는 저장 때 채워진다. */
   const structCodes = new Set(mode === "inline" ? [] : clauseCodeEntries(body).entries.flatMap((e) => (e.code !== undefined ? [e.code] : [])));
   const exprs: { expr: Expr; role: "slot" | "condition" | "switch"; path: Id[] }[] = [];
@@ -270,6 +271,19 @@ export function analyzeBody(
         if (node.mark !== undefined && !isWorkMark(node.mark)) report("structure", WORK_MARK_MESSAGE, here);
         return;
       case "articleRef":
+        if (node.scope === "param") {
+          // 조 참조 인자 (ADR-0083 결정 3) — 인자 하나만, 다른 대상 · 연결어와 섞지 않는다. 인자는 선언돼 있고 타입이 「조 참조」
+          const t = Array.isArray(node.targets) && node.targets.length === 1 ? node.targets[0] : undefined;
+          const keys = t && typeof t === "object" ? Object.keys(t) : [];
+          if (!t || typeof t.param !== "string" || keys.length !== 1 || node.connector !== undefined) {
+            report("structure", "범위 「인자」 조 참조는 조 참조 인자 하나만 가리킵니다 — 다른 대상 · 연결어는 사용처의 연결이 정한다", here);
+            return;
+          }
+          const p = paramByName.get(t.param);
+          if (!p) report("brokenRef", `선언되지 않은 인자입니다: ${t.param} — 인자 표에 「조 참조」 인자를 먼저 더한다`, here, `arg.${t.param}`);
+          else if (p.type?.kind !== "articleRef") report("typeMismatch", `인자 ${t.param} 은(는) 조 참조 인자가 아닙니다 — 조 참조 슬롯은 타입 「조 참조」 인자만 가리킨다`, here, `arg.${t.param}`);
+          return;
+        }
         if (!Array.isArray(node.targets) || node.targets.length === 0) {
           report("structure", "조 참조 슬롯에는 대상이 하나 이상 있어야 합니다", here);
           return;
@@ -282,14 +296,8 @@ export function analyzeBody(
         if (node.scope === "clause") {
           // 제 항 · 호 · 목 — 본문(선택지 문구 아님)의 P코드 `{ code }`. 조건 가지 · 칸의 같은 자리는 코드를 공유한다(ADR-0072 결정 4). 펼치면 사용처 번호로 찍힌다
           for (const t of node.targets) {
-            if (typeof t?.code !== "string" || t.articleId !== undefined || t.host !== undefined) report("structure", "「이 함수조항」 참조 대상은 제 항 · 호 · 목의 코드 하나여야 합니다", here);
+            if (typeof t?.code !== "string" || t.articleId !== undefined || t.param !== undefined || "host" in t) report("structure", "「이 함수조항」 참조 대상은 제 항 · 호 · 목의 코드 하나여야 합니다", here);
             else if (!structCodes.has(t.code)) report("brokenRef", `이 함수조항 본문에 참조 대상 ${t.code} 가 없습니다 — 제 항 · 호 · 목만 가리킨다`, here, t.code);
-          }
-          return;
-        }
-        if (node.scope === "host") {
-          for (const t of node.targets) {
-            if (typeof t?.host !== "string" || !HOST_PATH.test(t.host)) report("structure", `사용처 위치는 「조[.항[.호[.목]]]」 순번이어야 합니다: ${String(t?.host)}`, here, t?.host);
           }
           return;
         }
@@ -299,7 +307,7 @@ export function analyzeBody(
         }
         let repeated = false;
         for (const t of node.targets) {
-          if (typeof t?.articleId !== "string" || t.host !== undefined) {
+          if (typeof t?.articleId !== "string" || t.param !== undefined || "host" in t) {
             report("structure", "보통약관 참조 대상은 조(와 항 · 호 · 목의 코드)여야 합니다", here);
             continue;
           }
@@ -489,7 +497,7 @@ export function analyzeBody(
   issues.push(
     ...checkParams(params, { ...(resolveType ? { discriminatorType: (code: Code) => resolveType({ kind: "discriminator", code }) } : {}), ...(opts.enumValues ? { enumValues: opts.enumValues } : {}) }, base),
   );
-  const declared = new Map(params.map((p) => [p.name, p.type] as const));
+  const declared = valueParamTypes(params);
   const paramTypes = (name: string) => declared.get(name);
   // 4b. 내부 변수 표 (최종 결정 2) — 이름 · 앞 이름만 · 직접 읽기 금지 · 타입(개수 연산 없음)
   const lc = checkLocals(locals, params, { coordinate: base, ...(resolveType ? { resolveType } : {}), ...(opts.enums ? { enums: opts.enums } : {}) });
@@ -500,6 +508,12 @@ export function analyzeBody(
   const tainted = new Set<(typeof exprs)[number]>();
   for (const e of exprs) {
     for (const { ref, path } of extractRefs(e.expr)) {
+      // 조 참조 인자는 식에서 읽지 않는다 (ADR-0083 결정 2)
+      if (ref.kind === "param" && paramByName.get(ref.name)?.type?.kind === "articleRef") {
+        report("typeMismatch", articleRefReadMessage(ref.name), e.path, path);
+        tainted.add(e);
+        continue;
+      }
       if (ref.kind === "param" && !resolveType && !declared.has(ref.name)) report("brokenRef", `선언되지 않은 인자입니다: ${path} — 함수조항의 인자 표에 먼저 선언한다`, e.path, path);
       if (ref.kind === "local" && !resolveType && !localNames.has(ref.name)) report("brokenRef", `선언되지 않은 내부 변수입니다: ${path} — 내부 변수 표에 먼저 선언한다`, e.path, path);
       if (ref.kind === "local" && lc.failed.has(ref.name)) tainted.add(e);

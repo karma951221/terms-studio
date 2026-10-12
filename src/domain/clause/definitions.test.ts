@@ -392,4 +392,14 @@ describe("단위 규칙은 경고 — 조 · 여러 항 단위, 두 곳 이상 (
     const clause = unwrap(await createClause({ params: P, label: "빈", mode: "block", body: [] }, ctx()));
     expect(unitWarnings(clause, 0)).toEqual([]);
   });
+
+  it("선언만 하고 본문이 안 쓰는 조 참조 인자는 경고 — 사용처가 쓰이지도 않는 인자를 연결해야 한다 (ADR-0083 결정 5)", () => {
+    const base = { code: "C0009", label: "소멸", mode: "block" as const, options: [], required: { discriminators: [], attributes: [] } };
+    const para = (children: Inline[], id = "p1"): Block => ({ id, kind: "paragraph", children });
+    const body: Block[] = [para([{ id: "r1", kind: "articleRef", targets: [{ param: "지급사유 조" }], scope: "param" }]), para([], "p2")];
+    const params = [{ name: "지급사유 조", type: { kind: "articleRef" as const } }, { name: "안 쓰는 조", type: { kind: "articleRef" as const } }];
+    expect(unitWarnings({ ...base, body, params }, 2).map((i) => [i.severity, i.message])).toEqual([
+      ["warning", "조 참조 인자 「안 쓰는 조」를 본문이 쓰지 않습니다 — 사용처마다 연결해야 하니 본문에 넣거나 지운다"],
+    ]);
+  });
 });

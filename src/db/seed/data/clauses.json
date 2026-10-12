@@ -920,11 +920,10 @@
             "kind": "articleRef",
             "targets": [
               {
-                "host": "3"
+                "param": "보험금의 지급사유 조"
               }
             ],
-            "connector": "및",
-            "scope": "host"
+            "scope": "param"
           },
           {
             "id": "c-g-exclusion-n18",
@@ -973,7 +972,15 @@
         "code": "P0200"
       }
     ],
-    "options": []
+    "options": [],
+    "params": [
+      {
+        "name": "보험금의 지급사유 조",
+        "type": {
+          "kind": "articleRef"
+        }
+      }
+    ]
   },
   {
     "code": "C0021",
@@ -1046,11 +1053,10 @@
                 "kind": "articleRef",
                 "targets": [
                   {
-                    "host": "15"
+                    "param": "계약 전 알릴 의무 조"
                   }
                 ],
-                "connector": "및",
-                "scope": "host"
+                "scope": "param"
               },
               {
                 "id": "c-g-first-premium-n12",
@@ -1069,11 +1075,10 @@
                 "kind": "articleRef",
                 "targets": [
                   {
-                    "host": "17"
+                    "param": "알릴 의무 위반의 효과 조"
                   }
                 ],
-                "connector": "및",
-                "scope": "host"
+                "scope": "param"
               },
               {
                 "id": "c-g-first-premium-n15",
@@ -1099,7 +1104,21 @@
         "code": "P0400"
       }
     ],
-    "options": []
+    "options": [],
+    "params": [
+      {
+        "name": "계약 전 알릴 의무 조",
+        "type": {
+          "kind": "articleRef"
+        }
+      },
+      {
+        "name": "알릴 의무 위반의 효과 조",
+        "type": {
+          "kind": "articleRef"
+        }
+      }
+    ]
   },
   {
     "code": "C0022",
@@ -4357,11 +4376,10 @@
             "kind": "articleRef",
             "targets": [
               {
-                "host": "1"
+                "param": "보험금의 지급사유 조"
               }
             ],
-            "connector": "및",
-            "scope": "host"
+            "scope": "param"
           },
           {
             "id": "c-fracture-detail-n6",
@@ -4372,7 +4390,15 @@
         "code": "P0200"
       }
     ],
-    "options": []
+    "options": [],
+    "params": [
+      {
+        "name": "보험금의 지급사유 조",
+        "type": {
+          "kind": "articleRef"
+        }
+      }
+    ]
   },
   {
     "code": "C0036",
@@ -4406,11 +4432,10 @@
             "kind": "articleRef",
             "targets": [
               {
-                "host": "1"
+                "param": "보험금의 지급사유 조"
               }
             ],
-            "connector": "및",
-            "scope": "host"
+            "scope": "param"
           },
           {
             "id": "c-fracture-surgery-detail-n6",
@@ -4421,7 +4446,15 @@
         "code": "P0200"
       }
     ],
-    "options": []
+    "options": [],
+    "params": [
+      {
+        "name": "보험금의 지급사유 조",
+        "type": {
+          "kind": "articleRef"
+        }
+      }
+    ]
   },
   {
     "code": "C0037",
@@ -4438,11 +4471,10 @@
             "kind": "articleRef",
             "targets": [
               {
-                "host": "1"
+                "param": "보험금의 지급사유 조"
               }
             ],
-            "connector": "및",
-            "scope": "host"
+            "scope": "param"
           },
           {
             "id": "c-living-detail-n3",
@@ -4536,11 +4568,10 @@
             "kind": "articleRef",
             "targets": [
               {
-                "host": "1"
+                "param": "보험금의 지급사유 조"
               }
             ],
-            "connector": "및",
-            "scope": "host"
+            "scope": "param"
           },
           {
             "id": "c-living-detail-n19",
@@ -4655,6 +4686,14 @@
           }
         ]
       }
+    ],
+    "params": [
+      {
+        "name": "보험금의 지급사유 조",
+        "type": {
+          "kind": "articleRef"
+        }
+      }
     ]
   },
   {
@@ -4672,11 +4711,10 @@
             "kind": "articleRef",
             "targets": [
               {
-                "host": "1"
+                "param": "보험금의 지급사유 조"
               }
             ],
-            "connector": "및",
-            "scope": "host"
+            "scope": "param"
           },
           {
             "id": "c-disability-detail-n3",
@@ -4810,11 +4848,10 @@
             "kind": "articleRef",
             "targets": [
               {
-                "host": "1"
+                "param": "보험금의 지급사유 조"
               }
             ],
-            "connector": "및",
-            "scope": "host"
+            "scope": "param"
           },
           {
             "id": "c-disability-detail-n27",
@@ -5011,6 +5048,14 @@
           }
         ]
       }
+    ],
+    "params": [
+      {
+        "name": "보험금의 지급사유 조",
+        "type": {
+          "kind": "articleRef"
+        }
+      }
     ]
   },
   {
@@ -5165,11 +5210,10 @@
             "kind": "articleRef",
             "targets": [
               {
-                "host": "1"
+                "param": "보험금의 지급사유 조"
               }
             ],
-            "connector": "및",
-            "scope": "host"
+            "scope": "param"
           },
           {
             "id": "c-lapse-claim-n3",
@@ -5270,6 +5314,12 @@
     ],
     "params": [
       {
+        "name": "보험금의 지급사유 조",
+        "type": {
+          "kind": "articleRef"
+        }
+      },
+      {
         "name": "담보명",
         "type": {
           "kind": "string"
@@ -5296,11 +5346,10 @@
             "kind": "articleRef",
             "targets": [
               {
-                "host": "1"
+                "param": "보험금의 지급사유 조"
               }
             ],
-            "connector": "및",
-            "scope": "host"
+            "scope": "param"
           },
           {
             "id": "c-lapse-claim-death-n3",
@@ -5458,6 +5507,12 @@
     ],
     "params": [
       {
+        "name": "보험금의 지급사유 조",
+        "type": {
+          "kind": "articleRef"
+        }
+      },
+      {
         "name": "담보명",
         "type": {
           "kind": "string"
@@ -5484,11 +5539,10 @@
             "kind": "articleRef",
             "targets": [
               {
-                "host": "1.1"
+                "param": "보험금의 지급사유 조 제1항"
               }
             ],
-            "connector": "및",
-            "scope": "host"
+            "scope": "param"
           },
           {
             "id": "c-lapse-living-n3",
@@ -5576,6 +5630,14 @@
           }
         ]
       }
+    ],
+    "params": [
+      {
+        "name": "보험금의 지급사유 조 제1항",
+        "type": {
+          "kind": "articleRef"
+        }
+      }
     ]
   },
   {
@@ -5621,11 +5683,10 @@
             "kind": "articleRef",
             "targets": [
               {
-                "host": "2.1.3"
+                "param": "보험금의 지급사유 조 제1항 제3호"
               }
             ],
-            "connector": "및",
-            "scope": "host"
+            "scope": "param"
           },
           {
             "id": "c-lapse-burn-n7",
@@ -5659,7 +5720,15 @@
         "code": "P0300"
       }
     ],
-    "options": []
+    "options": [],
+    "params": [
+      {
+        "name": "보험금의 지급사유 조 제1항 제3호",
+        "type": {
+          "kind": "articleRef"
+        }
+      }
+    ]
   },
   {
     "code": "C0045",

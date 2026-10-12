@@ -144,3 +144,32 @@ describe("조립 — 연결로 바꿔 쓰기 (applyBindings)", () => {
     expect(r.ok && r.value.body).toBe(plain);
   });
 });
+
+describe("조 참조 인자 (ADR-0083 결정 2 · 5)", () => {
+  const 지급사유: ParamDef = { name: "보험금의 지급사유 조", type: { kind: "articleRef" } };
+  const 연결 = { kind: "articleRef" as const, targets: [{ articleId: "a1" }], scope: "self" as const };
+
+  it("이름은 식에 안 들어가 공백을 허용한다 — 비었거나 겹치면 오류는 같다", () => {
+    expect(checkParams([지급사유], env)).toEqual([]);
+    expect(checkParams([지급사유, { ...지급사유 }, { name: " ", type: { kind: "articleRef" } }], env).map((i) => i.message)).toEqual([
+      expect.stringContaining("겹칩니다: 보험금의 지급사유 조"),
+      expect.stringContaining("비어"),
+    ]);
+  });
+
+  it("기본 연결이 없다 — 두면 오류 「조 참조 인자는 넣는 자리마다 연결합니다」", () => {
+    const issues = checkParams([{ ...지급사유, default: { kind: "const", value: "x" } }], env);
+    expect(issues.map((i) => [i.kind, i.message])).toEqual([["structure", expect.stringContaining("조 참조 인자는 넣는 자리마다 연결합니다")]]);
+  });
+
+  it("미연결 = argUnbound · 조 참조 인자에는 조 참조 연결만 · 값 인자에 조 참조 연결은 타입 불일치", () => {
+    expect(checkUsageBindings(clause([지급사유]), undefined, env).map((i) => i.kind)).toEqual(["argUnbound"]);
+    expect(checkUsageBindings(clause([지급사유]), { "보험금의 지급사유 조": 연결 }, env)).toEqual([]);
+    expect(checkUsageBindings(clause([지급사유]), { "보험금의 지급사유 조": { kind: "const", value: "제1조" } }, env).map((i) => i.kind)).toEqual(["typeMismatch"]);
+    expect(checkUsageBindings(clause([갱신형]), { 갱신형: 연결 }, env).map((i) => i.kind)).toEqual(["typeMismatch"]);
+  });
+
+  it("조 참조 연결은 구분자를 읽지 않는다", () => {
+    expect(boundDiscriminators(clause([지급사유, 담보명]), { "보험금의 지급사유 조": 연결 })).toEqual(["D0001"]);
+  });
+});

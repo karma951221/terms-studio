@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { hostLocator } from "../../src/domain/assembly/resolve";
-import { indexTree, type ArticleNode, type DocumentNode, type InlineNode, type ParagraphNode } from "../../src/domain/document/nodes";
-import { targetOfNode, withCodes } from "../../src/domain/document/pcode";
+import type { ArticleNode, DocumentNode, InlineNode, ParagraphNode } from "../../src/domain/document/nodes";
 
-import { applyClauseUse, clauseFromSource, hostPaths, inlineBody, parameterize, placeOptions, reId, renderings, replaceInlineRun, toClauseInline, type ClauseRecord } from "./clauses";
+import { applyClauseUse, articleRefParamsOf, clauseFromSource, inlineBody, parameterize, placeOptions, reId, renderings, replaceInlineRun, toClauseInline, type ClauseRecord } from "./clauses";
 
 const text = (id: string, t: string): InlineNode => ({ id, kind: "text", text: t });
 /** 변환 중간 모양의 조 참조 — 대상 노드 id 를 `articleId` 자리에 싣는다(clauses.ts 머리 주석). */
@@ -115,16 +113,16 @@ describe("함수조항 오버레이 — 원문 자리를 참조로", () => {
     expect(p.items[0].children).toEqual([{ id: "s-a4-p1-i1-k1", kind: "clauseInlineRef", clauseCode: "C0004", options: { O01: "V01" } }]);
   });
 
-  describe("조째 함수조항 — 자기 조 참조는 제 항 · 사용처 위치로 (기능/함수조항 §3.5)", () => {
+  describe("조째 함수조항 — 자기 조 참조는 제 항 · 조 참조 인자로 (기능/함수조항 §3.5 · ADR-0083 결정 8)", () => {
     /** 특약 — 제1조 지급사유 · 제2조 세부규정 · 제3조 소멸(① 제1조 참조 · ② 제1항 참조 · ③ 사망). */
-    function special(prefix: string, lapse: string): DocumentNode {
+    function special(prefix: string, lapse: string, title = "보험금의 지급사유"): DocumentNode {
       const p = (id: string, children: InlineNode[]): ParagraphNode => ({ id, kind: "paragraph", children });
       return {
         id: `${prefix}-doc`,
         kind: "document",
         title: "특약",
         children: [
-          { id: `${prefix}-a1`, kind: "article", title: "보험금의 지급사유", children: [p(`${prefix}-a1-p1`, [text(`${prefix}-a1-x`, "지급")])] },
+          { id: `${prefix}-a1`, kind: "article", title, children: [p(`${prefix}-a1-p1`, [text(`${prefix}-a1-x`, "지급")])] },
           { id: `${prefix}-a2`, kind: "article", title: "세부규정", children: [p(`${prefix}-a2-p1`, [text(`${prefix}-a2-x`, "세부")])] },
           {
             id: `${prefix}-a3`,
@@ -140,21 +138,14 @@ describe("함수조항 오버레이 — 원문 자리를 참조로", () => {
     }
     const lapseOf = (d: DocumentNode) => d.children[2] as ArticleNode;
 
-    it("hostPaths 는 조립의 hostLocator 와 같은 셈이다 — 같은 경로가 같은 노드(의 참조 대상)를 가리킨다", () => {
-      const d = withCodes(special("s", "소멸됩니다"));
-      const find = hostLocator(d);
-      const ix = indexTree(d);
-      for (const [id, path] of hostPaths(d)) expect(find(path)).toEqual(targetOfNode(ix, id));
-    });
-
-    it("원문 자리에서 딴 본문 — 딴 항 안은 「이 함수조항」, 밖은 「사용처」 위치 · 낱말은 옵션 자리 · id 는 다시 매겨도 제 항 대상이 따라간다", () => {
+    it("원문 자리에서 딴 본문 — 딴 항 안은 「이 함수조항」, 밖은 조 참조 인자(이름 = 대상 조 제목 + 「 조」, 연결어는 연결 쪽) · 낱말은 옵션 자리 · id 는 다시 매겨도 제 항 대상이 따라간다", () => {
       const d = special("s", "그 때부터 소멸됩니다");
       const body = clauseFromSource(d, lapseOf(d).children as ParagraphNode[], "C0009");
       placeOptions(body, [{ option: "O01", text: "그 때부터 소멸됩니다" }], "C0009");
       reId(body, "c9");
       expect(body).toEqual([
         { id: "c9-n1", kind: "paragraph", children: [
-          { id: "c9-n2", kind: "articleRef", targets: [{ articleId: "1" }], connector: "및", scope: "host" },
+          { id: "c9-n2", kind: "articleRef", targets: [{ param: "보험금의 지급사유 조" }], scope: "param" },
           { id: "c9-n3", kind: "text", text: "에서 정한 지급사유가 발생하면 " },
           { id: "c9-n4", kind: "optionSlot", optionCode: "O01" },
           { id: "c9-n5", kind: "text", text: "." },
@@ -164,9 +155,18 @@ describe("함수조항 오버레이 — 원문 자리를 참조로", () => {
           { id: "c9-n8", kind: "text", text: "에 따라 소멸되면 지급하지 않습니다." },
         ] },
       ]);
+      expect(articleRefParamsOf(body)).toEqual([{ name: "보험금의 지급사유 조", type: { kind: "articleRef" } }]);
     });
 
-    it("다른 문서의 같은 조 — 제 항 · 사용처 위치를 그 문서 노드로 옮겨 대조하고, 고른 선택지로 참조 하나가 된다", () => {
+    it("항 · 호를 가리키면 이름 뒤에 「 제1항 제3호」 · 같은 대상을 가리키는 슬롯은 인자 하나를 같이 쓴다", () => {
+      const d = special("s", "소멸됩니다");
+      const p2 = lapseOf(d).children[1] as ParagraphNode;
+      p2.children.push(ref("s-r3", "s-a2-p1"), text("s-t3", " · "), ref("s-r4", "s-a2-p1"));
+      const body = clauseFromSource(d, lapseOf(d).children as ParagraphNode[], "C0009");
+      expect(articleRefParamsOf(body).map((p) => p.name)).toEqual(["보험금의 지급사유 조", "세부규정 조 제1항"]);
+    });
+
+    it("다른 문서의 같은 조 — 제 항을 그 문서 노드로 옮겨 대조하고, 고른 선택지 · 그 자리 원문 대상(인자 연결)으로 참조 하나가 된다", () => {
       const source = special("s", "그 때부터 소멸됩니다");
       const body = reId(clauseFromSource(source, lapseOf(source).children as ParagraphNode[], "C0009"), "c9");
       placeOptions(body, [{ option: "O01", text: "그 때부터 소멸됩니다" }], "C0009");
@@ -180,7 +180,19 @@ describe("함수조항 오버레이 — 원문 자리를 참조로", () => {
       // 선택지가 원문과 다르면 바꾸지 않는다
       expect(applyClauseUse({ article: "3", paragraph: 1, clause: "C0009", options: { O01: "V01" } }, clause, () => lapseOf(other), "[t]", report, other)).toBe(false);
       expect(applyClauseUse({ article: "3", paragraph: 1, clause: "C0009", options: { O01: "V02" } }, clause, () => lapseOf(other), "[t]", report, other)).toBe(true);
-      expect(lapseOf(other).children).toEqual([{ id: "m-a3-p1-k", kind: "clauseBlockRef", clauseCode: "C0009", options: { O01: "V02" } }]);
+      expect(lapseOf(other).children).toEqual([
+        { id: "m-a3-p1-k", kind: "clauseBlockRef", clauseCode: "C0009", options: { O01: "V02" }, bindings: { "보험금의 지급사유 조": { kind: "articleRef", targets: [{ articleId: "m-a1" }], connector: "및", scope: "self" } } },
+      ]);
+    });
+
+    it("사용처 대상 조 제목이 인자 이름과 다르면 연결은 하되 보고한다 — 이름은 오버레이에 손으로 적는다", () => {
+      const source = special("s", "소멸됩니다");
+      const body = reId(clauseFromSource(source, lapseOf(source).children as ParagraphNode[], "C0009"), "c9");
+      const clause: ClauseRecord = { code: "C0009", label: "특별약관의 소멸", mode: "block", description: "", body, options: [] };
+      const other = special("m", "소멸됩니다", "보험금 지급사유");
+      const report: string[] = [];
+      expect(applyClauseUse({ article: "3", paragraph: 1, clause: "C0009" }, clause, () => lapseOf(other), "[t]", report, other)).toBe(true);
+      expect(report).toEqual([expect.stringMatching(/인자 「보험금의 지급사유 조」.*「보험금 지급사유 조」/)]);
     });
 
     it("박스가 낀 조도 조째 딴다 — 호 목록 · 항 사이 박스 참조를 본문에 품고(박스는 잎, 최종 결정 6), 사용처 대조는 박스 코드까지 본다", () => {

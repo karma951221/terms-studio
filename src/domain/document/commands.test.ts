@@ -586,3 +586,27 @@ describe("표 행 · 열 넣기 · 빼기 · 제목줄 (셀 조작 줄)", () => 
     expect(rejection(applyCommand(next, { type: "removeTableRow", tableId: id, index: 0 })).reason).toBe("invalid");
   });
 });
+
+describe("함수조항 참조의 조 참조 인자 연결도 조 참조다 — 삭제 거부 · 복제가 따라간다 (ADR-0083 결정 4)", () => {
+  const tree = (): DocumentNode =>
+    ({
+      kind: "document",
+      id: "d",
+      title: "특약",
+      children: [
+        { kind: "article", id: "a1", title: "보험금의 지급사유", children: [] },
+        { kind: "article", id: "a2", title: "소멸", children: [{ kind: "clauseBlockRef", id: "k", clauseCode: "C0009", options: {}, bindings: { "지급사유 조": { kind: "articleRef", targets: [{ articleId: "a1" }], scope: "self" } } }] },
+      ],
+    }) as DocumentNode;
+
+  it("연결이 가리키는 조는 삭제 거부 — 참조처 좌표는 함수조항 참조", () => {
+    const rej = rejection(applyCommand(tree(), { type: "remove", nodeId: "a1" }));
+    expect(rej.reason === "invalid" && rej.issues.map((i) => [i.kind, i.at.nodePath?.at(-1)])).toEqual([["brokenRef", "k"]]);
+  });
+
+  it("문서 복제는 연결 대상도 사본의 조로 옮긴다", () => {
+    const copy = cloneTree(tree(), sequentialIds("c"));
+    const [a1, a2] = copy.children as ArticleNode[];
+    expect(a2.children[0]).toMatchObject({ bindings: { "지급사유 조": { targets: [{ articleId: a1.id }] } } });
+  });
+});

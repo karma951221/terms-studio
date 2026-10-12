@@ -287,10 +287,11 @@ describe("함수조항 S1 — 조 참조 · 별표 참조 검사 (기능/함수�
   });
 });
 
-describe("함수조항 조 참조 범위 — 제 항 · 사용처 위치 (§3.5)", () => {
+describe("함수조항 조 참조 범위 — 제 항 · 조 참조 인자 (§3.5 · ADR-0083)", () => {
+  const 지급사유 = { name: "보험금의 지급사유 조", type: { kind: "articleRef" as const } };
   const 소멸: Block[] = [
     { id: "p1", kind: "paragraph", code: "P0100", children: [
-      { id: "r1", kind: "articleRef", targets: [{ host: "1" }], connector: "및", scope: "host" },
+      { id: "r1", kind: "articleRef", targets: [{ param: "보험금의 지급사유 조" }], scope: "param" },
       { id: "t1", kind: "text", text: "에서 정한 지급사유가 발생한 경우에는 소멸됩니다." },
     ] },
     { id: "p2", kind: "paragraph", code: "P0200", children: [
@@ -298,9 +299,10 @@ describe("함수조항 조 참조 범위 — 제 항 · 사용처 위치 (§3.5)
       { id: "t2", kind: "text", text: "에 따라 소멸된 경우에는 해약환급금을 지급하지 않습니다." },
     ] },
   ];
+  const withRef = (ref: unknown): Block[] => [{ id: "p", kind: "paragraph", children: [ref] } as Block];
 
-  it("제 항(`clause`)과 사용처 위치(`host`)를 가리키는 조 참조는 보통약관 대상 검사를 받지 않고 통과한다", () => {
-    unwrap(analyzeBody("block", 소멸, [], { generalReferenceKeys: new Set(["g-a1"]) }));
+  it("제 항(`clause`)과 조 참조 인자(`param`)를 가리키는 조 참조는 보통약관 대상 검사를 받지 않고 통과한다", () => {
+    unwrap(analyzeBody("block", 소멸, [], { generalReferenceKeys: new Set(["g-a1"]) }, [지급사유]));
   });
 
   it("제 항 참조는 본문의 항 · 호 · 목의 P코드만 — 없는 코드 · 선택지 문구 안은 거부, 코드가 아닌 대상은 구조 오류", () => {
@@ -312,11 +314,35 @@ describe("함수조항 조 참조 범위 — 제 항 · 사용처 위치 (§3.5)
     expect(issuesOf(analyzeBody("inline", inline, [])).map((i) => i.kind)).toEqual(["brokenRef"]);
   });
 
-  it("사용처 위치는 「조[.항[.호[.목]]]」 순번 경로여야 한다", () => {
-    const bad: Block[] = [{ id: "p", kind: "paragraph", children: [{ id: "r", kind: "articleRef", targets: [{ host: "0.1" }], connector: "및", scope: "host" }] }];
-    expect(issuesOf(analyzeBody("block", bad, [])).map((i) => i.kind)).toEqual(["structure"]);
-    const ok: Block[] = [{ id: "p", kind: "paragraph", children: [{ id: "r", kind: "articleRef", targets: [{ host: "2.1.3" }], connector: "및", scope: "host" }] }];
-    unwrap(analyzeBody("block", ok, []));
+  it("인자 슬롯은 선언된 「조 참조」 인자 하나 — 없는 인자 = brokenRef · 값 인자 = typeMismatch", () => {
+    const ref = { id: "r", kind: "articleRef", targets: [{ param: "보험금의 지급사유 조" }], scope: "param" };
+    expect(issuesOf(analyzeBody("block", withRef(ref), [])).map((i) => i.kind)).toEqual(["brokenRef"]);
+    const 값인자 = { ...ref, targets: [{ param: "지급사유" }] };
+    expect(issuesOf(analyzeBody("block", withRef(값인자), [], {}, [{ name: "지급사유", type: { kind: "boolean" } }])).map((i) => i.kind)).toEqual(["typeMismatch"]);
+  });
+
+  it("인자 슬롯은 다른 대상 · 연결어와 섞지 않는다 (결정 3)", () => {
+    const two = { id: "r", kind: "articleRef", targets: [{ param: "보험금의 지급사유 조" }, { articleId: "g-a1" }], scope: "param" };
+    const conn = { id: "r", kind: "articleRef", targets: [{ param: "보험금의 지급사유 조" }], connector: "및", scope: "param" };
+    expect(issuesOf(analyzeBody("block", withRef(two), [], {}, [지급사유])).map((i) => i.kind)).toEqual(["structure"]);
+    expect(issuesOf(analyzeBody("block", withRef(conn), [], {}, [지급사유])).map((i) => i.kind)).toEqual(["structure"]);
+  });
+
+  it("옛 「사용처」 범위(`scope: \"host\"` · `{ host }`)는 받지 않는다", () => {
+    const old = { id: "r", kind: "articleRef", targets: [{ host: "1" }], connector: "및", scope: "host" };
+    expect(issuesOf(analyzeBody("block", withRef(old), [])).map((i) => i.kind)).toEqual(["structure"]);
+    const hostTarget = { id: "r", kind: "articleRef", targets: [{ articleId: "g-a1", host: "1" }], connector: "및" };
+    expect(issuesOf(analyzeBody("block", withRef(hostTarget), [])).map((i) => i.kind)).toEqual(["structure"]);
+  });
+
+  it("조 참조 인자는 식에서 읽을 수 없다 — 본문 조건 · 슬롯 · 내부 변수 모두 typeMismatch", () => {
+    const 이름 = { name: "지급사유", type: { kind: "articleRef" as const } };
+    const cond: Inline[] = [{ id: "c", kind: "inlineCond", branches: [{ id: "b", when: "arg.지급사유", children: [{ id: "t", kind: "text", text: "x" }] }] }];
+    expect(issuesOf(analyzeBody("inline", cond, [], {}, [이름])).map((i) => [i.kind, i.message])).toEqual([["typeMismatch", expect.stringContaining("조 참조 인자")]]);
+    const resolveType = () => undefined;
+    expect(issuesOf(analyzeBody("inline", cond, [], { resolveType }, [이름])).map((i) => i.kind)).toEqual(["typeMismatch"]);
+    const local = issuesOf(analyzeBody("inline", [{ id: "t", kind: "text", text: "x" }], [], {}, [이름], [{ name: "가", expr: "arg.지급사유" }]));
+    expect(local.map((i) => [i.kind, i.message])).toEqual([["typeMismatch", expect.stringContaining("조 참조 인자")]]);
   });
 });
 

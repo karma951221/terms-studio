@@ -6,7 +6,7 @@ import { ALL_GENERAL_ANCESTORS, BASE_BOX_CODES, BASE_CLAUSE_CODES, SEED } from "
 /**
  * ★ 실물 재현(화면) ③ 박스 · 함수조항 — 정적 마스터 박스(이름 · 제목 · 줄)와 함수조항(유형 · 이름 · 옵션 · 본문(글 · 슬롯 · 별표 참조 · 조 참조 · 옵션 자리 · 문장 안 조건)).
  * 모델명세 §4 · 메리츠_모델명세 §4.
- * 함수조항은 두 곳 이상이 되풀이하는 조 · 여러 항이다(2026-09-28) — 조 참조는 범위 셋: 보통약관 · 이 함수조항(「제1항에 따라」) · 사용처(「제1조(보험금의 지급사유)에서 정한」).
+ * 함수조항은 두 곳 이상이 되풀이하는 조 · 여러 항이다(2026-09-28) — 조 참조는 범위 셋: 보통약관 · 이 함수조항(「제1항에 따라」) · 인자(「⟨보험금의 지급사유 조⟩에서 정한」 — 조 참조 인자, 사용처가 연결한다 · ADR-0083).
  * 조 참조 · 별표 참조의 대상이 있어야 하므로 보통약관 · 별표(바탕 DB) 뒤, 담보약관 템플릿 앞 (명세 §1 ⑦).
  * 보통약관이 쓰는 박스(BX000001~) · 함수조항(C0001~C0019 — 조째)은 바탕 DB 가 보통약관과 함께 시드로 넣었다 — 그 뒤 코드부터 친다.
  * 원문의 박스는 모두 정적 마스터 박스다(최종 결정 9) — 박스 화면 「새 박스」에서 이름 · 제목 · 줄(한 줄씩)을 친다. 담보약관 템플릿(④)이 놓으므로 그보다 먼저.
@@ -42,7 +42,7 @@ test.describe.serial("실물 재현(화면) ③ 함수조항", () => {
       const driver = new ClauseAuthoringDriver(page, ancestors);
       await ev.action("실물화면#3.1", "관리자로 로그인한다", () => login(page));
       await ev.action("실물화면#3.2", `생성 화면 — 유형 ${{ inline: "문구", block: "항" }[spec.mode]} · 이름 「${spec.label}」`, () => driver.open(spec.mode, spec.label));
-      if (spec.params && spec.params.length > 0) await ev.action("실물화면#3.3", `인자 ${spec.params.map((p) => p.name).join(" · ")} — 기본 연결 ${spec.params.map((p) => p.default?.code ?? "없음").join(" · ")}`, () => driver.params(spec.params!));
+      if (spec.params && spec.params.length > 0) await ev.action("실물화면#3.3", `인자 ${spec.params.map((p) => p.name).join(" · ")} — 기본 연결 ${spec.params.map((p) => p.default?.code ?? (p.type.kind === "articleRef" ? "없음(조 참조)" : "없음")).join(" · ")}`, () => driver.params(spec.params!));
       if (spec.options.length > 0) await ev.action("실물화면#3.3", `옵션 ${spec.options.map((o) => o.label).join(" · ")}`, () => driver.options(spec.options));
       await ev.action("실물화면#3.4", "본문을 친다", () => driver.body(spec.mode, spec.body));
       await ev.action("실물화면#3.5", `저장 한 번 — ${spec.code} 로 만들어진다`, () => driver.save(spec.code));

@@ -53,7 +53,7 @@ import type { Clause, ClauseMode, OptionSelection } from "../clause/types";
 import type { EnumDef } from "../catalog/types";
 import type { Box } from "../document/box";
 import type { MasterTree } from "../master";
-import type { ArticleNode, BoxNode, BoxRefNode, BulletListNode, BulletNode, ClauseBlockRefNode, CondBlockNode, DocumentNode, ForBlockNode, InlineNode, ItemNode, ParagraphNode, RefTarget, SectionNode, SubitemNode, TableNode } from "../document/nodes";
+import type { ArticleNode, BoxNode, BoxRefNode, BulletListNode, BulletNode, ClauseBlockRefNode, CondBlockNode, DocumentNode, ForBlockNode, InlineNode, ItemNode, ParagraphNode, SectionNode, SubitemNode, TableNode } from "../document/nodes";
 import { withCodes } from "../document/pcode";
 import { withClauseCodes } from "../clause/pcode";
 import { evaluate, parse, type EvalContext } from "../expression";
@@ -182,41 +182,14 @@ function codesIn(nodes: readonly unknown[], via: string): string[] {
 
 /**
  * 조 참조의 범위 → 조립 범위. 문면 참조는 제 범위 그대로, 함수조항의 보통약관 참조(범위 없음)는 `general`,
- * 제 항 · 사용처 참조(`clause` · `host`)는 펼칠 때 사용처 노드 id 가 됐으므로 `self` (기능/함수조항 §3.5).
+ * 제 항 참조(`clause`)는 펼칠 때 사용처 조 · 참조 노드 코드로 풀리므로 `self` (기능/함수조항 §3.5). 조 참조 인자 슬롯은 펼칠 때
+ * 사용처 연결(`self` · `general`)이 됐다(ADR-0083).
  * 함수조항의 보통약관 참조라도 **보통약관이 넣었으면 제 문서 참조**다 — 「보통약관」 머리 없이, 같은 조면 조를 뺀다
  * (역할 함수조항: 원문 제27조의1 ② 「제1항 제1호의 암보장개시일」 · 세부규정 「제27조의1(…) 제1항 제1호」).
  */
-function refScope(scope: "self" | "general" | "clause" | "host" | undefined, document: Coordinate["document"]): "self" | "general" {
+function refScope(scope: "self" | "general" | "clause" | "param" | undefined, document: Coordinate["document"]): "self" | "general" {
   if (scope === undefined && document === "general") return "self";
-  return scope === "self" || scope === "clause" || scope === "host" ? "self" : "general";
-}
-
-/**
- * 사용처 위치 경로(`"2.1.3"` = n번째 조 · m번째 항 · k번째 호 · 목) → 사용처 참조 대상(조 · 조+P코드) (기능/함수조항 §3.5).
- * 순번은 **원본 트리의 문서 순**이다 — 관은 투명하고 조건 블록은 모든 가지를 차례로 센다(값에 따라 번호가 바뀌어도 가리키는 노드는 같다).
- * 함수조항 블록이 펼친 항은 세지 않는다 — 사용처가 소유한 노드만 가리킬 수 있다.
- */
-export function hostLocator(doc: DocumentNode): (path: string) => RefTarget | undefined {
-  const flat = <T extends { kind: string }>(list: readonly unknown[], want: string): T[] =>
-    (list as { kind: string; branches?: { children: unknown[] }[]; children?: unknown[] }[]).flatMap((n): T[] => {
-      if (n.kind === want) return [n as unknown as T];
-      if (n.kind === "condBlock") return (n.branches ?? []).flatMap((b) => flat<T>(b.children, want));
-      if (n.kind === "section" && want === "article") return flat<T>(n.children ?? [], want);
-      return [];
-    });
-  const articles = flat<ArticleNode>(doc.children, "article");
-  const at = (articleId: Id, node: { code?: Code } | undefined): RefTarget | undefined => (node?.code !== undefined ? { articleId, code: node.code } : undefined);
-  return (path) => {
-    const [a, p, i, u] = path.split(".").map(Number);
-    const article = articles[a - 1];
-    if (!article) return undefined;
-    if (p === undefined) return { articleId: article.id };
-    const paragraph = flat<ParagraphNode>(article.children, "paragraph")[p - 1];
-    if (!paragraph || i === undefined) return at(article.id, paragraph);
-    const item = flat<ItemNode>(paragraph.items ?? [], "item")[i - 1];
-    if (!item || u === undefined) return at(article.id, item);
-    return at(article.id, flat<SubitemNode>(item.subitems ?? [], "subitem")[u - 1]);
-  };
+  return scope === "self" || scope === "clause" ? "self" : "general";
 }
 
 class Walker {
@@ -226,7 +199,6 @@ class Walker {
   constructor(
     private readonly ctx: AssemblyContext,
     private readonly env: ResolveEnv,
-    private readonly host?: (path: string) => RefTarget | undefined,
   ) {}
 
   at(f: Frame, id: Id): Coordinate {
@@ -409,7 +381,8 @@ class Walker {
       this.issues.push(...issues);
       return { ok: false, marker: { kind: "error", id: node.id, issue: issues[0] } };
     }
-    const expanded = expandClause(clause, selection, node.id, this.host);
+    // 조 참조 인자 슬롯은 사용처 연결(사용처 조 참조)로 바뀐다 — 연결이 없으면 argUnbound (ADR-0083 결정 4)
+    const expanded = expandClause(clause, selection, node.id, node.bindings);
     if (!expanded.ok) {
       const issue: Issue = expanded.rejection.reason === "invalid" ? expanded.rejection.issues[0] : { kind: "optionInvalid", message: "함수조항을 펼칠 수 없습니다", at };
       return { ok: false, marker: this.error(node.id, { ...issue, at: { ...at, ...issue.at } }) };
@@ -704,7 +677,7 @@ class Walker {
 export function resolveDocument(input: DocumentNode, ctx: AssemblyContext, env: ResolveEnv): ResolveOutcome {
   // 코드 없는 옛 · 손으로 짠 트리도 같은 열쇠로 푼다 — 저장 트리는 이미 코드가 있어 그대로다 (ADR-0072 결정 10)
   const doc = withCodes(input);
-  const w = new Walker(ctx, env, hostLocator(doc));
+  const w = new Walker(ctx, env);
   const children = w.articles(doc.children, { path: [doc.id] });
   return { doc: { kind: "document", id: doc.id, title: doc.title, children }, issues: w.issues };
 }

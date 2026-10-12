@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { nodeBuilders, sequentialIds } from "./builders";
 import { surgeryFixture } from "./fixture";
 import type { ArticleNode, DocumentNode, Node } from "./nodes";
+import { withCodes } from "./pcode";
 import {
   appendixRefLabel,
   articleLabel,
@@ -15,6 +16,7 @@ import {
   referenceOutline,
   referenceTargetIndex,
   referenceTargetLabel,
+  refChunkText,
   subitemLabel,
   subitemRefLabel,
 } from "./numbering";
@@ -112,6 +114,18 @@ describe("번호 표기 (임시 규칙 — 실물 조사 후 확정)", () => {
     const doc = b.document("d", [b.article("a", [b.paragraph([], [b.item([], [b.subitem([])])])])]);
     const index = referenceTargetIndex(doc, numberTree(doc));
     expect([...index.values()].map((target) => referenceTargetLabel(target))).toEqual(["제1조(a)", "제1조(a) 제1항", "제1조(a) 제1항 제1호", "제1조(a) 제1항 제1호 가목"]);
+  });
+
+  it("저장된 조 참조(대상 열쇠)의 편집기 표기 — 조 참조 인자 연결 머리 띠 「← 제1조(a)」, 못 찾은 대상은 연결 끊김 (ADR-0083 결정 7)", () => {
+    const b = nodeBuilders(sequentialIds("r"));
+    const doc = b.document("d", [b.article("a", [b.paragraph([]), b.paragraph([])])]);
+    const coded = withCodes(doc);
+    const index = referenceTargetIndex(coded, numberTree(coded));
+    const a = coded.children[0] as ArticleNode;
+    expect(refChunkText({ targets: [{ articleId: a.id }] }, index)).toBe("제1조(a)");
+    expect(refChunkText({ targets: [{ articleId: a.id, code: "P0100" }, { articleId: a.id, code: "P0200" }], connector: "또는" }, index)).toBe("제1조(a) 제1항 또는 제2항");
+    expect(refChunkText({ targets: [{ articleId: a.id }, { articleId: "없는조" }] }, index)).toBe("제1조(a) (연결 끊김 1건)");
+    expect(refChunkText({ targets: [{ articleId: "없는조" }] }, index)).toBe("연결 끊김");
   });
 });
 

@@ -18,7 +18,7 @@
  *
  * 조 참조(articleRef)의 대상은 조 또는 조 + 항·호·목의 P코드(ADR-0072 결정 3 · 8)이고, 문서에는 **조만** `article:` 노드로
  * 선언된다 — 간선은 대상의 조로 낸다(코드는 좌표 refPath 의 열쇠에 실린다). 함수조항의 조
- * 참조 중 범위 없는 것은 보통약관 마스터를 가리킨다(기능/함수조항 §3.5 — 제 항 · 사용처 위치는 간선이 없다) — 함수조항을 넣기 전에 보통약관 문서들의
+ * 참조 중 범위 없는 것은 보통약관 마스터를 가리킨다(기능/함수조항 §3.5 — 제 항 · 조 참조 인자 슬롯은 간선이 없다 — 인자 연결은 사용처 문서의 조 참조로 센다) — 함수조항을 넣기 전에 보통약관 문서들의
  * 참조 열쇠 → 속한 조 인덱스(`generalTargets`)를 만들어 둔다. 대상(조 · 그 코드)이 사라졌으면 깨진 간선으로 남기고,
  * 아예 모르면(보통약관이 안 들어옴) 마찬가지로 깨진 간선으로 남긴다 — 간선을 안 내지는 않는다.
  */
@@ -27,6 +27,7 @@ import { discriminatorResultType } from "../catalog/expression";
 import { allMasterFields, findMasterField, masterFieldFullLabel, type MasterTree } from "../master";
 import type { ClauseNode } from "../clause/nodes";
 import { collectExpressions, switchEnumCode } from "../clause/body";
+import { valueParamTypes } from "../clause/params";
 import type { Clause, ClauseBody } from "../clause/types";
 import { SPECIAL_GROUP_ENUM } from "../coverage/specialGroup";
 import { nodesOf } from "../coverage/tree";
@@ -344,7 +345,7 @@ function clauseEnumReads(b: Builder, from: RefNodeKey, src: string, via: EdgeVia
 
 /** 함수조항의 식 타입 재료 — 인자 선언 타입 + 내부 변수 타입(앞에서부터 관대하게 추론) + 세목 폼 필드 타입. */
 function clauseTypes(clause: Clause, master?: MasterTree): EnumReadTypes {
-  const params = new Map((clause.params ?? []).map((p) => [p.name, p.type as ExprType] as const));
+  const params = valueParamTypes(clause.params ?? []);
   const planField = (form: Code, field: Code): ExprType | undefined => {
     const f = findMasterField(`${form}.${field}`, master);
     return f && f.level === "plan" ? f.field.type : undefined;
@@ -404,7 +405,7 @@ function addClause(b: Builder, clause: Clause, master?: MasterTree): void {
         if (enumCode) for (const k of n.cases) for (const valueCode of k.values ?? []) b.edge({ from: key, to: { kind: "enumValue", enumCode, valueCode }, via: "switchCase", at: { ...base, nodePath, refPath: n.on } });
       }
       else if (n.kind === "articleRef" && n.scope === undefined) {
-        // 범위 없는 함수조항 조 참조는 보통약관 마스터를 가리킨다(기능/함수조항 §3.5 — 제 항 · 사용처 위치 참조는 사용처마다 대상이 달라 간선이 없다). 대상이 항·호·목이면
+        // 범위 없는 함수조항 조 참조는 보통약관 마스터를 가리킨다(기능/함수조항 §3.5 — 제 항 · 조 참조 인자 슬롯은 사용처마다 대상이 달라 간선이 없다). 대상이 항·호·목이면
         // indexGeneralArticles 로 속한 조로 올리고, 인덱스에 없으면(대상이 사라졌거나 보통약관이 안 들어옴)
         // documentId 없는 키로 내 깨진 간선으로 남긴다 (문서 쪽 generalOf 와 같은 모양).
         for (const target of n.targets) {

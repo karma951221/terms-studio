@@ -766,41 +766,14 @@ export function checkNodeRefs(e: NodeEntry, ix: TreeIndex, env: TreeEnv, atSave:
       }
       return [];
     case "articleRef":
-      if (n.targets.length === 0) return one("structure", "조 참조 슬롯에는 대상이 하나 이상 있어야 합니다");
-      if (n.connector === undefined) {
-        if (n.targets.length >= 2) return one("structure", CONNECTOR_REQUIRED_MESSAGE);
-        // 반복 블록 안 대상 · 반복 블록 · 함수조항 참조 · 값 한정은 하나여도 여러 번호가 될 수 있다 (결정 14 확장 · ADR-0077 결정 7)
-        const repeated = n.scope === "self" ? repeatedKeys(ix) : env.generalRepeatedKeys;
-        if (n.targets.some((t) => multiTarget(t, repeated))) return one("structure", CONNECTOR_REPEAT_MESSAGE);
-      } else if (!isReferenceConnector(n.connector)) return one("structure", `조 참조 연결어는 「및」·「또는」 중 하나여야 합니다: ${String(n.connector)}`);
-      if (n.scope === "general" && env.kind === "general") return one("structure", "보통약관 문서에서는 보통약관 조 참조를 쓸 수 없습니다");
-      return n.targets.flatMap((target) => {
-        // 펼친 함수조항 안 노드는 참조 노드가 있는지 보고, 안쪽 코드는 함수조항 본문에서 본다 (refTargetIssues)
-        const key = refKey({ articleId: target.articleId, ...(target.code !== undefined ? { code: target.code } : {}) });
-        const exists = n.scope === "self"
-          ? referenceKeys(ix).has(key)
-          : env.generalReferenceKeys ? env.generalReferenceKeys.has(key) : !env.generalArticleIds || env.generalArticleIds.has(target.articleId);
-        if (exists) {
-          const here = { ...at, refPath: refKey(target) };
-          if (n.scope === "self") return refTargetIssues(target, e, ix, { ...(gate.clauseOf ? { clauseOf: (c: Code) => gate.clauseOf!(c) } : {}), ...(env.enumOf ? { enumOf: env.enumOf } : {}), ...(env.master ? { master: env.master } : {}) }).map((i) => ({ ...i, at: here }));
-          // 대응 보통약관 대상 — 값 한정은 반복 안 대상에만(열거형 · 안쪽 코드는 그 문서를 열 때 본다)
-          if (target.restrict !== undefined && env.generalRepeatedKeys && !env.generalRepeatedKeys.has(key)) return [{ kind: "structure" as const, message: "값 한정은 반복으로 생긴 노드에만 건다 — 이 보통약관 대상은 반복 안이 아닙니다", at: here }];
-          const current = (target.restrict as { current?: unknown } | undefined)?.current;
-          if (typeof current === "string" && !loopTypesAt(ix, e, env.master).has(current)) return [{ kind: "structure" as const, message: "값 한정 「현재 값」의 반복이 이 참조를 감싸지 않습니다 — 그 반복 블록 안에서만 쓴다", at: here }];
-          return [];
-        }
-        const message = n.scope === "self"
-          ? `참조 대상 ${refLabel(target)} 가 이 문서에 없습니다`
-          : `보통약관 참조 대상 ${refLabel(target)} 가 대응 보통약관에 없습니다`;
-        return [{ kind: "brokenRef" as const, message, at: { ...at, refPath: key } }];
-      });
+      return articleRefIssues(n, e, ix, env, at);
     case "appendixRef":
       return env.appendixExists && !env.appendixExists(n.appendixCode) ? one("brokenRef", `별표 ${n.appendixCode} 가 별표 마스터에 없습니다`) : [];
     case "boxRef":
       return env.boxExists && !env.boxExists(n.boxCode) ? one("brokenRef", `박스 ${n.boxCode} 가 정적 마스터에 없습니다`) : [];
     case "clauseBlockRef":
     case "clauseInlineRef":
-      return [...clausePlacement(n, e.allowed, gate, at), ...checkClauseRef(n, gate, at, atSave, loopTypesAt(ix, e, env.master))];
+      return [...clausePlacement(n, e.allowed, gate, at), ...checkClauseRef(n, gate, at, atSave, loopTypesAt(ix, e, env.master)), ...bindingRefIssues(n, e, ix, env, at)];
     case "forBlock":
       return checkRepeatSource(n, enclosingLoops(ix, e), { ...(env.master ? { master: env.master } : {}), ...(env.enumOf ? { enumOf: env.enumOf } : {}) }, at);
     case "condBlock":
@@ -809,6 +782,67 @@ export function checkNodeRefs(e: NodeEntry, ix: TreeIndex, env: TreeEnv, atSave:
     default:
       return [];
   }
+}
+
+/**
+ * 노드가 가진 조 참조 — 조 참조 슬롯 자신, 또는 함수조항 참조의 조 참조 인자 연결(ADR-0083 결정 4 — 사용처 조 참조와 같은 모양).
+ * 삭제 거부 · 복제 · 이동 재채번 · 참조 수집이 연결 대상도 문서의 조 참조로 본다. 돌려준 객체는 노드 안의 그것이다(고치면 노드가 바뀐다).
+ */
+export function articleRefsOf(n: Node): Pick<ArticleRefNode, "targets" | "connector" | "scope">[] {
+  if (n.kind === "articleRef") return [n];
+  if (n.kind !== "clauseBlockRef" && n.kind !== "clauseInlineRef") return [];
+  return Object.values(n.bindings ?? {}).filter((b): b is Extract<typeof b, { kind: "articleRef" }> => b.kind === "articleRef");
+}
+
+/**
+ * 조 참조 하나의 검사 — 대상 ≥1 · 연결어(둘 이상 · 여러 번호가 될 수 있는 대상) · 범위 · 대상 존재 · 값 한정 (기능/문면 §3.5).
+ * 문면 조 참조 슬롯과 함수조항 참조의 조 참조 인자 연결(ADR-0083 결정 4 — 같은 모양 · 같은 규칙)이 같이 쓴다. `e` 는 그 자리(감싼 반복 · 조).
+ */
+function articleRefIssues(n: Pick<ArticleRefNode, "targets" | "connector" | "scope">, e: NodeEntry, ix: TreeIndex, env: TreeEnv, at: Coordinate): Issue[] {
+  const gate = env.clauseGate ?? PERMISSIVE_GATE;
+  const one = (kind: Issue["kind"], message: string): Issue[] => [{ kind, message, at }];
+  if (n.targets.length === 0) return one("structure", "조 참조 슬롯에는 대상이 하나 이상 있어야 합니다");
+  if (n.connector === undefined) {
+    if (n.targets.length >= 2) return one("structure", CONNECTOR_REQUIRED_MESSAGE);
+    // 반복 블록 안 대상 · 반복 블록 · 함수조항 참조 · 값 한정은 하나여도 여러 번호가 될 수 있다 (결정 14 확장 · ADR-0077 결정 7)
+    const repeated = n.scope === "self" ? repeatedKeys(ix) : env.generalRepeatedKeys;
+    if (n.targets.some((t) => multiTarget(t, repeated))) return one("structure", CONNECTOR_REPEAT_MESSAGE);
+  } else if (!isReferenceConnector(n.connector)) return one("structure", `조 참조 연결어는 「및」·「또는」 중 하나여야 합니다: ${String(n.connector)}`);
+  if (n.scope === "general" && env.kind === "general") return one("structure", "보통약관 문서에서는 보통약관 조 참조를 쓸 수 없습니다");
+  return n.targets.flatMap((target) => {
+    // 펼친 함수조항 안 노드는 참조 노드가 있는지 보고, 안쪽 코드는 함수조항 본문에서 본다 (refTargetIssues)
+    const key = refKey({ articleId: target.articleId, ...(target.code !== undefined ? { code: target.code } : {}) });
+    const exists = n.scope === "self"
+      ? referenceKeys(ix).has(key)
+      : env.generalReferenceKeys ? env.generalReferenceKeys.has(key) : !env.generalArticleIds || env.generalArticleIds.has(target.articleId);
+    if (exists) {
+      const here = { ...at, refPath: refKey(target) };
+      if (n.scope === "self") return refTargetIssues(target, e, ix, { ...(gate.clauseOf ? { clauseOf: (c: Code) => gate.clauseOf!(c) } : {}), ...(env.enumOf ? { enumOf: env.enumOf } : {}), ...(env.master ? { master: env.master } : {}) }).map((i) => ({ ...i, at: here }));
+      // 대응 보통약관 대상 — 값 한정은 반복 안 대상에만(열거형 · 안쪽 코드는 그 문서를 열 때 본다)
+      if (target.restrict !== undefined && env.generalRepeatedKeys && !env.generalRepeatedKeys.has(key)) return [{ kind: "structure" as const, message: "값 한정은 반복으로 생긴 노드에만 건다 — 이 보통약관 대상은 반복 안이 아닙니다", at: here }];
+      const current = (target.restrict as { current?: unknown } | undefined)?.current;
+      if (typeof current === "string" && !loopTypesAt(ix, e, env.master).has(current)) return [{ kind: "structure" as const, message: "값 한정 「현재 값」의 반복이 이 참조를 감싸지 않습니다 — 그 반복 블록 안에서만 쓴다", at: here }];
+      return [];
+    }
+    const message = n.scope === "self"
+      ? `참조 대상 ${refLabel(target)} 가 이 문서에 없습니다`
+      : `보통약관 참조 대상 ${refLabel(target)} 가 대응 보통약관에 없습니다`;
+    return [{ kind: "brokenRef" as const, message, at: { ...at, refPath: key } }];
+  });
+}
+
+/**
+ * 함수조항 참조의 조 참조 인자 연결 — 사용처의 조 참조와 같은 검사(대상 · 연결어 · 값 한정)를 그 참조 자리에서 돌린다 (ADR-0083 결정 4 · 5 ②).
+ * 연결 누락 · 인자 타입은 함수조항 게이트(`validateBindings`)가 본다.
+ */
+function bindingRefIssues(n: ClauseBlockRefNode | ClauseInlineRefNode, e: NodeEntry, ix: TreeIndex, env: TreeEnv, at: Coordinate): Issue[] {
+  const out: Issue[] = [];
+  for (const [name, b] of Object.entries(n.bindings ?? {})) {
+    if (b.kind !== "articleRef") continue;
+    const here: Coordinate = { ...at, refPath: `arg.${name}` };
+    for (const i of articleRefIssues(b, e, ix, env, here)) out.push({ ...i, message: `함수조항 ${n.clauseCode} 의 인자 ${name} 연결 — ${i.message}` });
+  }
+  return out;
 }
 
 /** 블록 참조가 선 자리 — 그 자리의 허용 집합으로 안다(조건 블록 가지는 서 있는 자리를 물려받는다). */

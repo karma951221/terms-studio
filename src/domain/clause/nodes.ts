@@ -66,13 +66,15 @@ export interface InlineCondNode {
  * - 없음 : 보통약관 마스터의 조 `{ articleId }` · 그 조의 항 · 호 · 목 `{ articleId, code }`. 문맥과 무관하게 고정된다.
  * - `"clause"` : **이 함수조항 본문 안의** 항 · 호 · 목 `{ code }` — 「제1항에 따라」처럼 조째 함수조항이 제 항을 가리킨다.
  *   조건 가지 · 값별 분기 칸의 같은 자리는 코드를 공유해 어느 칸이 서든 산다. 펼치면 사용처 조의 (참조 노드 코드, 이 코드)로 바뀌어 사용처 번호로 찍힌다.
- * - `"host"` : **사용처 문서의** 위치 `{ host: "2.1" }` (`"1"` · `"2.1"` · `"2.1.3"` — 사용처의 n번째 조 · 그 조의 m번째 항 · k번째 호).
- *   「제1조(보험금의 지급사유)에서 정한」처럼 조째 함수조항이 사용처의 지급사유 조를 가리킨다. 조립이 사용처 트리에서 대상으로 푼다.
+ * - `"param"` : **조 참조 인자** 하나 `{ param: "보험금의 지급사유 조" }` (ADR-0083) — 「제1조(보험금의 지급사유)에서 정한」처럼 조째 함수조항이
+ *   사용처의 조를 가리킨다. 실제 대상 · 연결어는 사용처가 함수조항 참조의 인자 연결(`bindings`)로 고르고, 펼칠 때 그 조 참조로 바뀐다.
+ *   슬롯은 인자 하나만 — 다른 대상과 섞지 않고 연결어를 갖지 않는다.
  */
 export interface ClauseRefTarget {
   articleId?: Id;
   code?: Code;
-  host?: string;
+  /** 조 참조 인자 이름 (`scope: "param"` 일 때만). */
+  param?: string;
   /** 보통약관의 펼친 함수조항 안 노드 — `code` 가 그 함수조항 블록 참조 (문면 `RefTarget.innerCode` 와 같다, ADR-0077 결정 6). */
   innerCode?: Code;
   /** 값 한정 — 해당 값들만(함수조항 본문에는 반복이 없어 「현재 값」은 저장 검사가 거부한다, ADR-0077 결정 7). */
@@ -89,11 +91,8 @@ export interface ArticleRefNode {
   scope?: ClauseRefScope;
 }
 
-/** 함수조항 조 참조의 범위 — 없으면 보통약관 마스터. */
-export type ClauseRefScope = "clause" | "host";
-
-/** 사용처 위치 경로 — `조[.항[.호[.목]]]` 순번(1부터). */
-export const HOST_PATH = /^[1-9]\d*(\.[1-9]\d*){0,3}$/;
+/** 함수조항 조 참조의 범위 — 없으면 보통약관 마스터 · `clause` = 이 함수조항 · `param` = 조 참조 인자 (ADR-0083). */
+export type ClauseRefScope = "clause" | "param";
 
 /** 별표 참조 슬롯 — 별표 불변 코드. 번호는 책자별 계산값. */
 export interface AppendixRefNode {

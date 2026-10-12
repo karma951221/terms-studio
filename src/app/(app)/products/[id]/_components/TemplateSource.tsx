@@ -22,7 +22,7 @@ import { IconButton, IconRevert } from "@/app/_components/icons";
 import { STRUCT_KEY_CHIP } from "@/app/_lib/labels";
 import type { EnumDef } from "@/domain/catalog";
 import { switchValueLabeler, type Bindings, type Clause } from "@/domain/clause";
-import { referenceChunkLabel, referenceKeyIndex, refKey, type ArticleNode, type Box, type CondBlockNode, type InlineNode, type Node, type NodeNumber, type ReferenceTarget, type TableNode } from "@/domain/document";
+import { refChunkText, referenceChunkLabel, referenceKeyIndex, refKey, type ArticleNode, type Box, type CondBlockNode, type InlineNode, type Node, type NodeNumber, type ReferenceTarget, type TableNode } from "@/domain/document";
 import { format, parse, refPath } from "@/domain/expression";
 import type { ClauseOptionOverride } from "@/domain/product";
 import type { Code, Id } from "@/domain/types";
@@ -236,7 +236,9 @@ function argsText(clause: Clause, bindings: Bindings | undefined, ctx: Ctx): str
             ? String(b.value)
             : b.kind === "current"
               ? "현재 ⟳ 반복"
-              : `${b.source.form}${b.source.filter ? ` — ${b.source.filter}` : ""}`;
+              : b.kind === "articleRef"
+                ? refChunkText(b, ctx.references) // 조 참조 인자 연결 — 「← 제3조(보험금의 지급사유)」 (ADR-0083 결정 7)
+                : `${b.source.form}${b.source.filter ? ` — ${b.source.filter}` : ""}`;
       return `${p.name} ← ${what}${own || !b ? "" : "(기본)"}`;
     })
     .join(" · ");

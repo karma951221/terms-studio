@@ -4,7 +4,7 @@ import type { Discriminator } from "../catalog/types";
 import type { BlockClause } from "../clause/types";
 import type { Issue } from "../types";
 import { nodeBuilders, sequentialIds } from "./builders";
-import { checkClauseRef, PERMISSIVE_GATE, validateTree } from "./nodes";
+import { checkClauseRef, PERMISSIVE_GATE, validateTree, type DocumentNode } from "./nodes";
 import { blockingIssues, catalogTypeResolver, clauseGateFrom, validateDocument } from "./validate";
 
 const catalog: Discriminator[] = [
@@ -157,5 +157,52 @@ describe("검사 ② — 함수조항 인자 연결 (최종 결정 2 · 기능/�
   it("참조 추가 시점에는 연결 누락을 거르지 않는다 — 저장 때 잡는다", () => {
     expect(checkClauseRef(b.clauseBlock("C0002"), gate, {}, false)).toEqual([]);
     expect(checkClauseRef(b.clauseBlock("C0002"), gate, {}, true).map((i) => i.kind)).toEqual(["argUnbound"]);
+  });
+});
+
+describe("조 참조 인자 연결 — 사용처가 제 조를 골라 연결한다 (ADR-0083 결정 4 · 5 ②)", () => {
+  const 소멸: BlockClause = {
+    code: "C0009",
+    label: "특별약관의 소멸",
+    mode: "block",
+    body: [{ id: "p1", kind: "paragraph", children: [{ id: "r1", kind: "articleRef", targets: [{ param: "지급사유 조" }], scope: "param" }] }],
+    options: [],
+    params: [{ name: "지급사유 조", type: { kind: "articleRef" } }],
+    required: { discriminators: [], attributes: [] },
+  };
+  const gate = clauseGateFrom([소멸], []);
+  const tree = (binding?: object): DocumentNode =>
+    ({
+      kind: "document",
+      id: "D",
+      title: "특약",
+      children: [
+        { kind: "article", id: "a1", title: "보험금의 지급사유", children: [{ kind: "paragraph", id: "a1p", code: "P0100", children: [] }, { kind: "paragraph", id: "a1q", code: "P0200", children: [] }] },
+        { kind: "article", id: "a2", title: "소멸", children: [{ kind: "clauseBlockRef", id: "k", code: "P0100", clauseCode: "C0009", options: {}, ...(binding ? { bindings: { "지급사유 조": binding } } : {}) }] },
+      ],
+    }) as DocumentNode;
+  const issues = (t: DocumentNode, env: object = {}) => validateTree(t, { clauseGate: gate, ...env }).map((i) => [i.kind, i.message]);
+
+  it("미연결 = 「인자 연결이 비었습니다」 argUnbound (기본 연결이 없다)", () => {
+    expect(validateTree(tree(), { clauseGate: gate }).map((i) => [i.kind, i.at.refPath])).toEqual([["argUnbound", "arg.지급사유 조"]]);
+  });
+
+  it("이 문서의 조 · 항을 연결하면 통과 · 없는 대상은 brokenRef", () => {
+    expect(issues(tree({ kind: "articleRef", targets: [{ articleId: "a1" }], scope: "self" }))).toEqual([]);
+    expect(issues(tree({ kind: "articleRef", targets: [{ articleId: "a1", code: "P0200" }], scope: "self" }))).toEqual([]);
+    expect(issues(tree({ kind: "articleRef", targets: [{ articleId: "a9" }], scope: "self" }))).toEqual([["brokenRef", expect.stringContaining("인자 지급사유 조")]]);
+  });
+
+  it("연결어 규칙은 문면 조 참조 그대로 — 대상 둘 이상이면 연결어 필수 · 대상 0건 거부", () => {
+    expect(issues(tree({ kind: "articleRef", targets: [{ articleId: "a1", code: "P0100" }, { articleId: "a1", code: "P0200" }], scope: "self" }))).toEqual([["structure", expect.stringContaining("연결어")]]);
+    expect(issues(tree({ kind: "articleRef", targets: [{ articleId: "a1", code: "P0100" }, { articleId: "a1", code: "P0200" }], connector: "및", scope: "self" }))).toEqual([]);
+    expect(issues(tree({ kind: "articleRef", targets: [], scope: "self" }))).toEqual([["structure", expect.stringContaining("대상이 하나 이상")]]);
+  });
+
+  it("대응 보통약관 대상 — 담보약관만, 보통약관 열쇠에 있어야", () => {
+    const g = { kind: "articleRef", targets: [{ articleId: "g1" }], scope: "general" };
+    expect(issues(tree(g), { generalReferenceKeys: new Set(["g1"]) })).toEqual([]);
+    expect(issues(tree(g), { generalReferenceKeys: new Set(["g2"]) })).toEqual([["brokenRef", expect.stringContaining("대응 보통약관")]]);
+    expect(issues(tree(g), { kind: "general" })).toEqual([["structure", expect.stringContaining("보통약관 조 참조")]]);
   });
 });

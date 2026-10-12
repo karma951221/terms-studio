@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { nodeBuilders, sequentialIds } from "./builders";
 import { surgeryFixture } from "./fixture";
+import type { DocumentNode } from "./nodes";
 import { collectRefs, requiredDiscriminators } from "./refs";
 
 describe("기능/관계정보 §3 참조 그래프 — collectRefs 는 문서가 읽는 참조 전부를 좌표와 함께 뽑는다 (C1 역인덱스 재료)", () => {
@@ -72,5 +73,21 @@ describe("기능/관계정보 §3 참조 그래프 — collectRefs 는 문서가
       validateOptions: () => [],
     });
     expect(withGate).toEqual(["D0001", "D0004", "D0005", "D0003", "D0009"]);
+  });
+});
+
+describe("조 참조 인자 연결도 문서의 조 참조로 센다 (ADR-0083 결정 4)", () => {
+  it("함수조항 참조의 연결 대상이 article 참조로 · 좌표는 함수조항 참조 자리", () => {
+    const doc = {
+      kind: "document",
+      id: "d",
+      title: "특약",
+      children: [
+        { kind: "article", id: "a1", title: "지급사유", children: [] },
+        { kind: "article", id: "a2", title: "소멸", children: [{ kind: "clauseBlockRef", id: "k", clauseCode: "C0009", options: {}, bindings: { "지급사유 조": { kind: "articleRef", targets: [{ articleId: "a1" }], scope: "self" } } }] },
+      ],
+    } as DocumentNode;
+    const refs = collectRefs(doc).filter((r) => r.kind === "article");
+    expect(refs).toEqual([expect.objectContaining({ kind: "article", articleId: "a1", scope: "self", at: expect.objectContaining({ nodePath: ["d", "a2", "k"], refPath: "a1" }) })]);
   });
 });

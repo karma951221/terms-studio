@@ -21,6 +21,7 @@ import { IconButton, IconCopy, IconTrash } from "@/app/_components/icons";
 import { StaticTable } from "@/app/_components/StaticNodes";
 import { REPEAT_DEPTH_LABEL, SWITCH_WORD } from "@/app/_lib/labels";
 import {
+  refChunkText,
   referenceTargetLabel,
   repeatLabel,
   type ArticleNode,
@@ -279,7 +280,15 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
     const own = node.bindings?.[p.name];
     const b = own ?? p.default;
     // 반복의 현재 원소 — 그 반복의 이름으로 「현재 ⟳ 납입면제사유마다」 (ADR-0077 결정 3)
-    const what = b?.kind === "current" ? `현재 ⟳ ${ctx.repeatLabelOf?.(b.loop) ?? "반복"}` : b ? bindingLabel(b, p.type, discriminators, enumChoicesOf(p.type), []) : "연결 없음";
+    // 조 참조 인자 — 연결한 이 문서(또는 대응 보통약관)의 조 · 항 「← 제1조(보험금의 지급사유)」 (ADR-0083 결정 7)
+    const what =
+      b?.kind === "current"
+        ? `현재 ⟳ ${ctx.repeatLabelOf?.(b.loop) ?? "반복"}`
+        : b?.kind === "articleRef"
+          ? `${b.scope === "general" ? "보통약관 " : ""}${refChunkText(b, b.scope === "general" ? ctx.references.general : ctx.references.self)}`
+          : b
+            ? bindingLabel(b, p.type, discriminators, enumChoicesOf(p.type), [])
+            : "연결 없음";
     return `${p.name} ← ${what}${own || !b ? "" : "(기본)"}`;
   });
   const optionWords = clause && clause.options.length === 0 && params.length > 0 ? "" : ctx.optionText(node.clauseCode, node.options);

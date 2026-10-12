@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, newParamNameError, paramEntries, typeOfValue, typeValue } from "./params";
+import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, newParamNameError, paramEntries, typeLabel, typeOfValue, typeValue } from "./params";
 
 const discriminators = [
   { code: "D0001", label: "갱신여부", level: "coverage" as const, type: { kind: "boolean" as const }, forms: [] },
@@ -58,5 +58,22 @@ describe("인자 추가 줄의 이름 검사 (2026-10-01)", () => {
     expect(newParamNameError(ps, "사유")).toContain("겹칩니다");
     expect(newParamNameError(ps, "두 단어")).toContain("글자로 시작");
     expect(newParamNameError(ps, "갱신형")).toBeNull();
+  });
+});
+
+describe("조 참조 인자 (ADR-0083 결정 2 · 7)", () => {
+  const 지급사유 = { name: "보험금의 지급사유 조", type: { kind: "articleRef" as const } };
+  it("타입 칸 값 「articleRef」은 왕복하고 「조 참조」로 읽힌다 · 기본 연결 후보가 없다", () => {
+    expect(typeOfValue(typeValue(지급사유.type))).toEqual({ kind: "articleRef" });
+    expect(typeLabel(지급사유.type, [], [])).toBe("조 참조");
+    expect(bindingOptions(지급사유.type, [{ code: "D0001", label: "x", level: "product", forms: [], type: { kind: "boolean" } }], [], [], true)).toEqual([]);
+    expect(bindingLabel(undefined, 지급사유.type, [], [], [])).toBe("조 참조 인자는 넣는 자리마다 연결합니다");
+  });
+  it("조건 · 슬롯 고르기에 나오지 않는다", () => {
+    expect(paramEntries([지급사유], [])).toEqual([]);
+  });
+  it("이름에 띄어쓰기를 쓸 수 있다 — 값 인자는 막는다", () => {
+    expect(newParamNameError([], "보험금의 지급사유 조", { kind: "articleRef" })).toBeNull();
+    expect(newParamNameError([], "보험금의 지급사유 조")).not.toBeNull();
   });
 });

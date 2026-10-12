@@ -9,6 +9,7 @@
  * 모양 (2026-10-01 사용자 결정) — 맨 위에 고정된 **추가 줄**(이름 · 타입 · 기본 연결 · ⊕ 「인자 추가」, 이름 칸 Enter 도 더한다),
  * 그 아래 인자마다 **카드**(맨 앞 ⊖ 「인자 삭제 · {이름}」 · 이름 · 타입 · 기본 연결)가 선언 순서대로 쌓인다 — 많으면 카드 목록만 스크롤한다.
  * 더하기 전에 이름을 검사한다(비었음 · 겹침 · 예약어 · 모양 — 저장 검사 ① 문구). 빼기는 초안에서만 — 확인은 저장 검사가 한다(지금과 같다).
+ * 타입 「조 참조」(ADR-0083) — 사용처의 조 · 항 · 호 · 목을 가리키는 인자. 기본 연결 칸은 잠기고(넣는 자리마다 연결), 이름에 띄어쓰기를 쓸 수 있다.
  */
 import { useId, useRef, useState } from "react";
 
@@ -18,7 +19,7 @@ import type { ParamDef } from "@/domain/clause";
 
 import type { CtxDiscriminator } from "@/app/(app)/documents/[id]/_components/condition/types";
 
-import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, newParamNameError, SCALAR_TYPES, typeLabel, typeOfValue, typeValue, type EnumChoice, type PlanFormChoice } from "./params";
+import { ARTICLE_REF_PARAM_NOTE, bindingLabel, bindingOfValue, bindingOptions, bindingValue, newParamNameError, SCALAR_TYPES, typeLabel, typeOfValue, typeValue, type EnumChoice, type PlanFormChoice } from "./params";
 
 const NOTE = "본문이 읽는 입력 — 조건 · 슬롯은 구분자 대신 인자를 고른다. 넣는 자리에서 인자마다 구분자 · 상수를 댄다(기본 연결은 저절로).";
 
@@ -61,11 +62,19 @@ function TypeSelect({ label, param, onChange, enums, forms }: { label: string; p
           세목 선택지 목록 — {f.label}
         </option>
       ))}
+      <option value="articleRef">조 참조</option>
     </select>
   );
 }
 
 function BindingSelect({ label, param, onChange, discriminators, enums, forms }: { label: string; param: ParamDef; onChange: (next: ParamDef) => void } & Choices) {
+  if (param.type.kind === "articleRef") {
+    return (
+      <select aria-label={label} value="" disabled title={ARTICLE_REF_PARAM_NOTE}>
+        <option value="">없음 — {ARTICLE_REF_PARAM_NOTE}</option>
+      </select>
+    );
+  }
   return (
     <select aria-label={label} value={bindingValue(param.default)} onChange={(e) => onChange(withBinding(param, e.target.value))}>
       <option value="">없음 — 넣는 자리에서 연결</option>
@@ -102,7 +111,7 @@ export function ParamsPane({
   const errorId = useId();
   const patch = (i: number, next: ParamDef) => onChange(params.map((p, idx) => (idx === i ? next : p)));
   const add = () => {
-    const problem = newParamNameError(params, draft.name);
+    const problem = newParamNameError(params, draft.name, draft.type);
     if (problem) {
       setError(problem);
       nameRef.current?.focus();

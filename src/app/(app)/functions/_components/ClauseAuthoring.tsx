@@ -49,7 +49,7 @@ import {
   clauseBodyToTree,
   clausePositions,
   clauseScopedRefLabel,
-  hostTargetIndex,
+  paramTargetId,
   generalRefsOf,
   indexTree,
   numberTree,
@@ -119,7 +119,7 @@ const EMPTY_EXAMPLE: Record<ClauseMode, string> = {
   subitem: "가. 상해",
 };
 
-/** 편집 트리의 대응 보통약관 자리 — 보통약관 범위 조 참조는 보통약관 마스터 전체가 대상이다(사용처 위치 후보도 이 자리로 운반한다, §3.5 · 기능/문면 `scope: "general"`). */
+/** 편집 트리의 대응 보통약관 자리 — 보통약관 범위 조 참조는 보통약관 마스터 전체가 대상이다(조 참조 인자 슬롯도 이 자리로 운반한다, §3.5 · ADR-0083 · 기능/문면 `scope: "general"`). */
 const GENERALS = "clause-generals";
 
 /** 새 함수조항의 첫 본문 — 「항」 · 「호」 · 「목」은 그 빈 자리 하나에서 시작해 쓸 자리가 처음부터 보인다. */
@@ -147,13 +147,13 @@ export function blankBody(body: ClauseBody): boolean {
   });
 }
 
-/** 「사용처」 위치 후보 — 편집 트리에서 보통약관 참조 자리로 운반되므로(clauseTree) 편집 검사의 보통약관 대상 집합에도 넣는다. */
-const HOST_TARGETS = hostTargetIndex();
-
-function unionRefs(generals: ClauseEditorData["generals"]): GeneralRefs {
+/**
+ * 편집 검사의 보통약관 대상 집합 — 보통약관의 조 · 항 · 호 · 목 + 조 참조 인자 운반 대상(`arg:<이름>` — 편집 트리에서 보통약관 참조 자리로
+ * 운반된다, clauseTree · ADR-0083). 인자 슬롯이 가리키는 인자가 선언돼 있는지 · 타입이 「조 참조」인지는 저장 검사 ①이 본다.
+ */
+function unionRefs(generals: ClauseEditorData["generals"], articleRefParams: readonly string[]): GeneralRefs {
   const articleIds = new Set<Id>();
-  // 「사용처」 위치 줄은 코드 없는 줄이라 줄 id 가 곧 열쇠다(refTargetOf)
-  const referenceKeys = new Set<string>(HOST_TARGETS.keys());
+  const referenceKeys = new Set<string>(articleRefParams.map(paramTargetId));
   const repeatedKeys = new Set<string>();
   for (const g of generals) {
     const refs = generalRefsOf(g.tree);
@@ -272,7 +272,9 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   // ── 편집 환경 — 문면 저작과 같은 명령 검사. 함수조항 참조 자리는 옵션 운반체만 통과한다(진짜 참조는 중첩 금지) ──
   const appendixCodes = useMemo(() => new Set(data.appendices.map((a) => a.code)), [data.appendices]);
   const boxByCode = useMemo(() => new Map(data.boxes.map((x) => [x.code, x] as const)), [data.boxes]);
-  const refs = useMemo(() => unionRefs(data.generals), [data.generals]);
+  // 조 참조 인자 이름 — 「인자」 범위 후보 (ADR-0083 결정 7)
+  const articleRefParams = useMemo(() => shownParams.filter((p) => p.type.kind === "articleRef" && p.name.trim() !== "").map((p) => p.name), [shownParams]);
+  const refs = useMemo(() => unionRefs(data.generals, articleRefParams), [data.generals, articleRefParams]);
   const editEnv = useMemo((): EditEnv => {
     const gate: ClauseGate = {
       clauseExists: (c) => {
@@ -291,15 +293,15 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   const index = useMemo(() => indexTree(tree), [tree]);
   const numbers = useMemo(() => numberTree(tree), [tree]);
   const general = useMemo(() => generalTargets(data.generals, code), [data.generals, code]);
-  // 조 참조 범위 — 보통약관 · 이 함수조항(「항」 유형만 — 본문의 항 · 호 · 목) · 사용처 위치 (§3.5)
+  // 조 참조 범위 — 보통약관 · 이 함수조항(「항」 유형만 — 본문의 항 · 호 · 목) · 인자(조 참조 인자 — 없으면 잠김, §3.5 · ADR-0083)
   const refChoices = useMemo((): ArticleRefChoice[] => {
     const own = referenceTargetIndex(tree, numbers);
     return [
       { value: "general", label: "보통약관", index: general },
       ...(clauseMode !== "inline" ? [{ value: "self" as const, label: "이 함수조항", index: own, rootless: true }] : []),
-      { value: "host", label: "사용처", index: HOST_TARGETS },
+      { value: "param", label: "인자", index: new Map(), params: articleRefParams },
     ];
-  }, [general, tree, numbers, clauseMode]);
+  }, [general, tree, numbers, clauseMode, articleRefParams]);
   const appendixName = useMemo(() => new Map(data.appendices.map((a) => [a.code, a.name] as const)), [data.appendices]);
   const refLabel = useMemo(() => refLabelOf(condition), [condition]);
   const used = useMemo(() => {
@@ -313,7 +315,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   const positions = useMemo(() => clausePositions(tree), [tree]);
   const chipOverride = useCallback(
     (node: InlineNode) => {
-      // 이 함수조항의 항 · 사용처 위치 조 참조 — 본문 안 순번으로 적는다 (§3.5)
+      // 이 함수조항의 항 조 참조 — 본문 안 순번으로, 조 참조 인자 슬롯 — 「⟨보험금의 지급사유 조⟩」 (§3.5 · ADR-0083)
       const scoped = clauseScopedRefLabel(node, positions);
       if (scoped !== undefined) return { className: "ts-doc-ref", what: "조 참조", title: "조 참조 — 사용처에 펼치면 그 자리의 계산 번호로 찍힌다", body: scoped };
       const optionCode = optionCodeOf(node);

@@ -20,6 +20,7 @@ import { randomIds } from "./builders";
 import {
   allowedAtSlot,
   allowedChildren,
+  articleRefsOf,
   branchesOf,
   cellNodesOf,
   checkNodeRefs,
@@ -243,8 +244,9 @@ function danglingRefs(ix: TreeIndex, removed: ReadonlySet<Id>, env: TreeEnv): Is
   const out: Issue[] = [];
   for (const e of ix.nodes.values()) {
     const n = e.node;
-    if (n.kind !== "articleRef" || n.scope !== "self" || removed.has(n.id)) continue;
-    for (const target of n.targets) {
+    if (removed.has(n.id)) continue;
+    // 조 참조 슬롯 + 함수조항 참조의 조 참조 인자 연결 (ADR-0083)
+    for (const target of articleRefsOf(n).flatMap((r) => (r.scope === "self" ? r.targets : []))) {
       const key = refKey(target);
       if (!lost.has(key)) continue;
       out.push({
@@ -296,9 +298,7 @@ function cloneSubtree<T extends Node>(root: T, newId: IdSource): T {
   relabel(copy);
   // 사본 안의 조를 가리키는 자기 참조는 사본의 조로 — 코드는 조 안에서만 유일하므로 조째 복사한 사본은 코드가 그대로다
   for (const n of nodesIn(copy)) {
-    if (n.kind === "articleRef" && n.scope === "self") {
-      n.targets = n.targets.map((t) => ({ ...t, articleId: map.get(t.articleId) ?? t.articleId }));
-    }
+    for (const r of articleRefsOf(n)) if (r.scope === "self") r.targets = r.targets.map((t) => ({ ...t, articleId: map.get(t.articleId) ?? t.articleId }));
   }
   return copy;
 }
@@ -751,8 +751,10 @@ function numberNew(doc: DocumentNode, root: Node, env: TreeEnv = {}): Map<Code, 
 function followRenumbered(copy: Node, sourceArticleId: Id | undefined, moved: ReadonlyMap<Code, RefTarget>): void {
   if (moved.size === 0 || sourceArticleId === undefined) return;
   for (const n of nodesIn(copy)) {
-    if (n.kind !== "articleRef" || n.scope !== "self") continue;
-    n.targets = n.targets.map((t) => (t.articleId === sourceArticleId && t.code !== undefined && moved.has(t.code) ? { ...moved.get(t.code)! } : t));
+    for (const r of articleRefsOf(n)) {
+      if (r.scope !== "self") continue;
+      r.targets = r.targets.map((t) => (t.articleId === sourceArticleId && t.code !== undefined && moved.has(t.code) ? { ...moved.get(t.code)! } : t));
+    }
   }
 }
 

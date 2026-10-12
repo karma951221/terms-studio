@@ -21,7 +21,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import type { ArticleNode, BlockNode, BoxNode, BoxRefNode, DocumentNode, InlineNode, ParagraphNode, SectionNode, TableNode } from "../../src/domain/document/nodes";
-import { indexTree, validateTree } from "../../src/domain/document/nodes";
+import { articleRefsOf, indexTree, validateTree } from "../../src/domain/document/nodes";
 import { referenceKeysOf, targetOfNode, withCodes } from "../../src/domain/document/pcode";
 import type { RefTarget } from "../../src/domain/document/nodes";
 import { clauseCodeEntries, withClauseCodes } from "../../src/domain/clause/pcode";
@@ -29,7 +29,7 @@ import type { ArticleRefNode as ClauseArticleRef } from "../../src/domain/clause
 import type { Id } from "../../src/domain/types";
 import { boxSites, planBoxes, replaceBox, type BoxPlan } from "./boxes";
 import type { Discriminator } from "../../src/domain/catalog/types";
-import { applyClauseUse, clauseFromSource, inlineBody, optionCode, parameterize, placeOptions, reId, valueCode, type ClauseRecord } from "./clauses";
+import { applyClauseUse, articleRefParamsOf, clauseFromSource, inlineBody, optionCode, parameterize, placeOptions, reId, valueCode, type ClauseRecord } from "./clauses";
 import { APPENDICES, CLAUSES, PRODUCTS, SEED_DIR, type ClauseUse, type ProductTerms, type SlotOverlay, type SpecialSpec } from "./config";
 import { parseTerms, type ParsedArticle, type ParsedDoc } from "./parse";
 import { applyArticleConds, applyInlineConds, articlesOf } from "./overlay";
@@ -250,31 +250,33 @@ function targetOfId(ix: ReturnType<typeof indexTree>, id: Id, where: string): Re
   return t;
 }
 
-/** 문면의 조 참조 대상을 (조, P코드)로 — 자기 참조는 이 트리, 보통약관 참조는 대응 보통약관. P코드를 매긴 뒤에 부른다. */
+/**
+ * 문면의 조 참조 대상을 (조, P코드)로 — 자기 참조는 이 트리, 보통약관 참조는 대응 보통약관. 함수조항 참조의 조 참조 인자 연결도 같다(ADR-0083).
+ * P코드를 매긴 뒤에 부른다.
+ */
 function codeTargets(tree: DocumentNode, generalTree: DocumentNode | undefined, where: string): void {
   const own = indexTree(tree);
   const general = generalTree ? indexTree(generalTree) : undefined;
   for (const e of own.nodes.values()) {
-    const n = e.node;
-    if (n.kind !== "articleRef") continue;
-    const ix = n.scope === "self" ? own : general;
-    if (!ix) throw new Error(`${where}: 대응 보통약관 없이 보통약관 참조가 있다`);
-    n.targets = n.targets.map((t) => targetOfId(ix, t.articleId, where));
+    for (const r of articleRefsOf(e.node)) {
+      const ix = r.scope === "self" ? own : general;
+      if (!ix) throw new Error(`${where}: 대응 보통약관 없이 보통약관 참조가 있다`);
+      r.targets = r.targets.map((t) => targetOfId(ix, t.articleId, where));
+    }
   }
 }
 
-/** 함수조항 본문의 조 참조 대상 — 보통약관(노드 id → 조 · P코드) · 이 함수조항(본문 노드 id → 제 코드) · 사용처(경로 → `{ host }`). */
+/** 함수조항 본문의 조 참조 대상 — 보통약관(노드 id → 조 · P코드) · 이 함수조항(본문 노드 id → 제 코드). 조 참조 인자 슬롯은 그대로. */
 function codeClauseTargets(clause: ClauseRecord, generals: ReturnType<typeof indexTree>[]): ClauseRecord {
   const body = withClauseCodes(clause.body);
   const own = clauseCodeEntries(body).entries;
   const visit = (node: unknown) => {
     if (!node || typeof node !== "object") return;
     const n = node as Record<string, unknown>;
-    if (n.kind === "articleRef") {
+    if (n.kind === "articleRef" && n.scope !== "param") {
       const r = n as unknown as ClauseArticleRef;
       r.targets = r.targets.map((t) => {
         const id = t.articleId ?? "";
-        if (r.scope === "host") return { host: id };
         if (r.scope === "clause") {
           const code = own.find((e) => e.id === id)?.code;
           if (!code) throw new Error(`${clause.code}: 「이 함수조항」 참조 대상 ${id} 의 P코드가 없다`);
@@ -484,7 +486,7 @@ function checkClauseOrder(clauses: readonly ClauseRecord[], generals: readonly {
 
 /**
  * 함수조항 한 건 — 원문 자리(`from`)의 항 본문(호 · 목 포함, 잇닿은 항 여럿)을 따거나 평문(`text`)을 변환한다.
- * 원문 자리의 자기 조 참조는 제 항 · 사용처 위치가 되고(`clauseFromSource`), 낱말 옵션은 `place` 자리에 선다.
+ * 원문 자리의 자기 조 참조는 제 항 · 조 참조 인자가 되고(`clauseFromSource` — 인자 선언도 여기서), 낱말 옵션은 `place` 자리에 선다.
  * 평문 · 선택지 문구의 참조는 `product` 상품의 별표 번호 · 보통약관 색인으로 푼다.
  */
 function buildClause(spec: (typeof CLAUSES)[number], built: Map<string, Built>, products: readonly BuiltProduct[], report: string[]): ClauseRecord {
@@ -521,7 +523,9 @@ function buildClause(spec: (typeof CLAUSES)[number], built: Map<string, Built>, 
     const inline = inlineBody(spec.text!, prefix, convert);
     body = spec.mode === "inline" ? inline : [{ id: `${prefix}-p1`, kind: "paragraph", children: inline }];
   }
-  return { code: "", label: spec.label, mode: spec.mode, description: spec.description, body, options };
+  // 조 참조 인자 — 원문 자리 밖을 가리키던 조 참조마다(같은 대상은 하나), 사용처가 대상을 연결한다 (ADR-0083 결정 8)
+  const params = articleRefParamsOf(body);
+  return { code: "", label: spec.label, mode: spec.mode, description: spec.description, body, options, ...(params.length > 0 ? { params } : {}) };
 }
 
 function buildSpecial(spec: SpecialSpec, product: ProductTerms, generalParsed: ParsedDoc, general: Built, report: string[]): Built {

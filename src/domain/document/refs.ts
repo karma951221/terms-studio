@@ -9,7 +9,7 @@
 import { extractRefs, parse } from "../expression";
 import type { Bindings } from "../clause/params";
 import type { Code, Coordinate, Id } from "../types";
-import { coordinateOf, indexTree, type ClauseGate, type DocumentNode } from "./nodes";
+import { articleRefsOf, coordinateOf, indexTree, type ArticleRefNode, type ClauseGate, type DocumentNode } from "./nodes";
 import { refKey } from "./pcode";
 
 export type DocRef =
@@ -33,6 +33,22 @@ export type DocRef =
 export function collectRefs(doc: DocumentNode, base: Coordinate = {}): DocRef[] {
   const ix = indexTree(doc, base);
   const out: DocRef[] = [];
+
+  /** 조 참조 하나 — 대상마다 한 줄 (좌표 refPath = 대상 열쇠). 조 참조 슬롯 · 함수조항 참조의 조 참조 인자 연결이 같이 쓴다. */
+  const articleRefs = (n: Pick<ArticleRefNode, "targets" | "scope">, at: Coordinate): void => {
+    for (const target of n.targets) {
+      const values = target.restrict && "values" in target.restrict ? target.restrict.values : undefined;
+      out.push({
+        kind: "article",
+        articleId: target.articleId,
+        ...(target.code !== undefined ? { code: target.code } : {}),
+        ...(target.innerCode !== undefined ? { innerCode: target.innerCode } : {}),
+        ...(values ? { values } : {}),
+        scope: n.scope,
+        at: { ...at, refPath: refKey(target) },
+      });
+    }
+  };
 
   const exprRefs = (src: string, via: "when" | "slot", at: Coordinate): void => {
     const parsed = parse(src);
@@ -75,24 +91,13 @@ export function collectRefs(doc: DocumentNode, base: Coordinate = {}): DocRef[] 
         exprRefs(n.ref, "slot", at);
         break;
       case "clauseBlockRef":
-        out.push({ kind: "clause", clauseCode: n.clauseCode, options: n.options, ...(n.bindings ? { bindings: n.bindings } : {}), mode: "block", at });
-        break;
       case "clauseInlineRef":
-        out.push({ kind: "clause", clauseCode: n.clauseCode, options: n.options, ...(n.bindings ? { bindings: n.bindings } : {}), mode: "inline", at });
+        out.push({ kind: "clause", clauseCode: n.clauseCode, options: n.options, ...(n.bindings ? { bindings: n.bindings } : {}), mode: n.kind === "clauseBlockRef" ? "block" : "inline", at });
+        // 조 참조 인자 연결도 이 문서의 조 참조다 — 깨짐 · 관계 간선을 같이 센다 (ADR-0083 결정 4)
+        for (const r of articleRefsOf(n)) articleRefs(r, at);
         break;
       case "articleRef":
-        for (const target of n.targets) {
-          const values = target.restrict && "values" in target.restrict ? target.restrict.values : undefined;
-          out.push({
-            kind: "article",
-            articleId: target.articleId,
-            ...(target.code !== undefined ? { code: target.code } : {}),
-            ...(target.innerCode !== undefined ? { innerCode: target.innerCode } : {}),
-            ...(values ? { values } : {}),
-            scope: n.scope,
-            at: { ...at, refPath: refKey(target) },
-          });
-        }
+        articleRefs(n, at);
         break;
       case "appendixRef":
         out.push({ kind: "appendix", appendixCode: n.appendixCode, at });
