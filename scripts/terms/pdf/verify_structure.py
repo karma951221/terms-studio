@@ -5,7 +5,8 @@ import re
 import sys
 
 S = json.load(open(sys.argv[1]))
-norm = lambda s: re.sub(r'[\s ]', '', s).replace('ㆍ', '･').replace('·', '･')
+# 공백과 가운뎃점 변종은 목차와 본문이 서로 다르게 찍혀 있어 지우고 비교한다
+norm = lambda s: re.sub('[\\s\u00a0\u3000\u318d\u00b7\uff65\u30fb]', '', s)
 
 
 def key(kind, text):
@@ -14,18 +15,11 @@ def key(kind, text):
         m = re.match(r'(제\d+조(?:의\d+)?)', t)
         return m.group(1) if m else t
     if kind == '별표':
-        m = re.match(r'【(별표[\d\-]+)】', t)
+        m = re.match(r'【(별표[\d\-]*)】', t)  # 무번호 【별표】 는 라벨만 — 목차에 제목이 없다
         return m.group(1) if m else t
     return t
 
 
-report = []
-units = S['units']
-for u in units:
-    # TOC 기대값
-    exp = []
-    for e in S['toc']:
-        pass
 heads = S['headings']
 # 단위별 TOC 항목을 다시 모으기 (toc 리스트를 제목 기준으로 나눔)
 parts, cur = [], None
@@ -65,7 +59,7 @@ for h in heads:
 total_miss = 0
 for uid, entries in groups:
     exp = [(toc_kind(e['text']), key(toc_kind(e['text']), e['text']), e['printed'] + 1)
-           for e in entries if toc_kind(e['text']) and not ('법규' in e['text'])]
+           for e in entries if toc_kind(e['text']) and not e['text'].startswith(('Ⅶ', '【법규'))]  # 인용 법규 제외(「중대법규위반」 특약은 남긴다)
     got, zone = [], None
     for h in file_of_unit.get(uid, []):
         if h['kind'] in ('절', '특약', 'group'):
