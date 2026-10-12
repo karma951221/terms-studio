@@ -18,7 +18,7 @@ import type { Issue } from "@/domain/types";
 import { getServices } from "@/lib/services";
 
 import { GraphPanel } from "./GraphPanel";
-import { KIND_OPTIONS, VIA_LABEL, parseRefTarget, refTargetParams, type RelationQuery } from "./lib";
+import { KIND_OPTIONS, VIA_LABEL, parseRefTarget, presetUsageRows, refTargetParams, type RelationQuery } from "./lib";
 import { parsePlotOptions, serializePlotOptions } from "./plot-options";
 import { plotNeighborhood, type Plot, type PlotOptions } from "./plot";
 
@@ -248,9 +248,10 @@ export default async function RelationsPage({ searchParams }: { searchParams: Pr
   const plot = target ? plotNeighborhood(graph, target, plotOptions) : undefined;
   const serializedOptions = serializePlotOptions(plotOptions);
   const clauseCode = target?.kind === "clause" ? target.code : undefined;
-  const [recheck, usages, documents] = clauseCode
-    ? await Promise.all([services.clause.recheck(clauseCode), services.clause.usages(clauseCode), services.document.list()])
-    : [undefined, [], []];
+  const [recheck, usages, documents, clause] = clauseCode
+    ? await Promise.all([services.clause.recheck(clauseCode), services.clause.usages(clauseCode), services.document.list(), services.clause.get(clauseCode)])
+    : [undefined, [], [], undefined];
+  const presetRows = presetUsageRows(usages, clause?.presets ?? []);
 
   return (
     <div>
@@ -320,6 +321,21 @@ export default async function RelationsPage({ searchParams }: { searchParams: Pr
       {target && plot && <GraphSection target={target} plot={plot} options={plotOptions} stats={stats} />}
 
       {target && relation && <RelationResult target={target} view={relation} graph={graph} />}
+
+      {presetRows.length > 0 && (
+        <section className="ts-section">
+          <h2 className="ts-section-title">
+            프리셋별 사용 <span className="ts-count">사용처 {usages.length}건</span>
+          </h2>
+          <ul>
+            {presetRows.map((r) => (
+              <li key={r.label}>
+                {r.label} — <b>{r.count}</b>곳
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {recheck?.ok && <ClauseRecheck entries={recheck.value} usageCount={usages.length} documentTitle={new Map(documents.map((d) => [d.id, d.title] as const))} />}
 

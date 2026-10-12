@@ -39,9 +39,12 @@ export function OptionsPane({
   onChange,
   newCode,
   before,
+  after,
 }: {
   /** 단 맨 위에 먼저 둘 것 — 인자 표(ParamsPane). 옵션과 같은 「본문 옆 전역 자원」 단을 쓴다. */
   before?: ReactNode;
+  /** 단 맨 아래 — 프리셋(PresetsPane, ADR-0084). */
+  after?: ReactNode;
   options: readonly ClauseEditOption[];
   editing: boolean;
   /** 본문이 지금 쓰는 옵션 코드 — 쓰이는 옵션은 뺄 수 없다 (§3.2). */
@@ -172,6 +175,7 @@ export function OptionsPane({
           <IconPlusCircle /> 옵션 추가
         </button>
       ) : null}
+      {after}
     </aside>
   );
 }

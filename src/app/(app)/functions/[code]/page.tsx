@@ -24,7 +24,10 @@ export default async function ClauseDetailPage({ params }: { params: Promise<{ c
       </div>
     );
   }
-  const [data, warnings] = await Promise.all([loadClauseEditorData(), getServices().clause.unitWarnings(clause.code)]);
+  const [data, warnings, usages] = await Promise.all([loadClauseEditorData(), getServices().clause.unitWarnings(clause.code), getServices().clause.usages(clause.code)]);
+  // 프리셋별 사용처 수 — 빼기 확인 「사용처 N곳이 직접 연결로 바뀝니다」(ADR-0084 결정 7)
+  const presetUses = new Map<string, number>();
+  for (const u of usages) if (u.preset !== undefined) presetUses.set(u.preset, (presetUses.get(u.preset) ?? 0) + 1);
   return (
     <ClauseAuthoring
       // 저장 뒤 새로 받은 정의로 화면을 다시 짓는다 — 편집본은 편집을 시작할 때 원본에서 만든다
@@ -40,6 +43,8 @@ export default async function ClauseDetailPage({ params }: { params: Promise<{ c
       }))}
       params={clause.params ?? []}
       locals={localsForDisplay(clause.params ?? [], clause.locals ?? [], data.enums)}
+      presets={(clause.presets ?? []).map((p) => ({ code: p.code, name: p.name, options: p.options ?? {}, bindings: p.bindings ?? {}, fromUsage: p.fromUsage ?? [] }))}
+      presetUses={presetUses}
       required={clause.required}
       warnings={warnings.map((w) => w.message)}
       data={data}

@@ -19,7 +19,7 @@ import { currentActor, getServices } from "@/lib/services";
 import { rollbackUnless } from "@/services/txContext";
 
 import type { ClauseEditData, ClauseEditOption, ClauseSaveOutcome } from "./edit-types";
-import { isNewCode, remapOptionSlots, textBody, valueText } from "./lib";
+import { isNewCode, presetsForSave, remapOptionSlots, textBody, valueText } from "./lib";
 
 type Actor = Awaited<ReturnType<typeof currentActor>>;
 type Services = ReturnType<typeof getServices>;
@@ -71,6 +71,15 @@ export async function saveClauseEditAction(code: string, input: ClauseEditData):
 
       const optionError = await syncOptions(actor, services, code, before, input.options);
       if (optionError) return optionError;
+
+      // 프리셋은 마지막 — 옵션 · 인자를 다 맞춘 **최종 정의**로 검사 ①(빈 값 · 깨진 선택)을 돌린다 (ADR-0084 결정 6).
+      // 옵션 · 인자만 바뀌어도 부른다 — 새 옵션을 더하고 프리셋 값을 안 채운 저장을 여기서 막는다
+      if (input.presets !== undefined && (input.presets.length > 0 || (before.presets ?? []).length > 0)) {
+        const now = await services.clause.get(code);
+        if (!now) return { ok: false, message: `찾을 수 없습니다 — 함수조항 ${code}` };
+        const error = failed(await services.clause.setPresets(actor, code, presetsForSave(input.presets, input.options, now.options, added.codes)));
+        if (error) return error;
+      }
 
       return { ok: true, code };
     },

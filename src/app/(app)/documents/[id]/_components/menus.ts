@@ -57,6 +57,10 @@ export interface MenuItem {
   refusal?: string;
   /** 조건으로 감싸기가 감쌀 노드 — 함수조항 메뉴가 자리를 거른다. */
   wrapTarget?: Id;
+  /** 접근 이름 — 보이는 글(`label`)이 짧아 겹칠 때(함수조항 프리셋 줄 「· 상해」). 없으면 `label`. 메뉴 줄 열쇠로도 쓴다. */
+  name?: string;
+  /** 들인 줄 — 위 줄에 딸린 줄(함수조항 아래 프리셋, ADR-0084). */
+  indent?: boolean;
 }
 
 /** 오른쪽 클릭 메뉴에 싣는 것 — 툴바 전용(조건 넣기)을 뺀다. */
@@ -197,9 +201,13 @@ function repeatIntoItems(env: MenuEnv, forId: Id, allowed: readonly NodeKind[], 
  * 툴바 「함수조항」의 고르기 목록 — 버튼 아래 작은 메뉴에 함수조항마다 한 줄, 고르면 그 자리에 함수조항 블록(옵션은 블록 머리 띠에서 고른다).
  * 모달 없이 고른다 (2026-09-28). 오른쪽 클릭 메뉴의 「…추가…」는 옵션까지 한 번에 고르는 그 자리 팝업 그대로.
  */
-export function clausePickItems(clauses: readonly { code: string; label: string; mode?: string }[], at: Position, newId: IdSource, fit: ClauseFit = "block"): MenuItem[] {
+export function clausePickItems(clauses: readonly { code: string; label: string; mode?: string; presets?: readonly { code: string; name: string }[] }[], at: Position, newId: IdSource, fit: ClauseFit = "block"): MenuItem[] {
   const b = nodeBuilders(newId);
-  return clausesFitting(clauses, fit).map((c) => ({ label: `${c.label}(${c.code})`, action: { do: "ops", ops: [{ type: "insert", node: b.clauseBlock(c.code, {}), at }] } }));
+  // 프리셋마다 함수조항 줄 아래 들인 한 줄 — 한 번 눌러 그 조합으로 넣는다 (ADR-0084 결정 8). 함수조항 줄은 지금처럼 직접 연결
+  return clausesFitting(clauses, fit).flatMap((c): MenuItem[] => [
+    { label: `${c.label}(${c.code})`, action: { do: "ops", ops: [{ type: "insert", node: b.clauseBlock(c.code, {}), at }] } },
+    ...(c.presets ?? []).map((p): MenuItem => ({ label: `· ${p.name}`, name: `${c.label}(${c.code}) · 프리셋 ${p.name}`, indent: true, action: { do: "ops", ops: [{ type: "insert", node: { ...b.clauseBlock(c.code, {}), preset: p.code }, at }] } })),
+  ]);
 }
 
 /**
