@@ -237,9 +237,9 @@
   outline: none;
 }
 
-.ts-graph-nodes > a:where(:not([data-slot])):focus-visible .ts-graph-node > circle,
-.ts-graph-nodes > a:where(:not([data-slot])):focus-visible .ts-graph-node > rect,
-.ts-graph-nodes > a:where(:not([data-slot])):focus-visible .ts-graph-node > path {
+.ts-graph-nodes > a:focus-visible .ts-graph-node > circle,
+.ts-graph-nodes > a:focus-visible .ts-graph-node > rect,
+.ts-graph-nodes > a:focus-visible .ts-graph-node > path {
   stroke: var(--ts-mark);
   stroke-width: 4;
 }
@@ -1259,7 +1259,7 @@ button:where(:not([data-slot])).danger:focus-visible {
   border-color: var(--ts-mark);
 }
 
-.ts-clause-mode-option:has(input:where(:not([data-slot])):disabled) {
+.ts-clause-mode-option:has(input:disabled) {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -2353,9 +2353,9 @@ td.col-act {
  * 고른 것은 굵기와 색으로도 말한다 — 라디오 동그라미 하나에만 기대면
  * 선택지가 여럿 늘어섰을 때 어느 것이 켜졌는지 훑어서 안 보인다 (§1.3 주칠 하나).
  */
-.ts-form-radio:has(input:where(:not([data-slot])):checked),
-.ts-form-check:has(input:where(:not([data-slot])):checked) {
-  font-weight: 600;
+.ts-form-radio:has(> input:checked),
+.ts-form-check:has(> input:checked) {
+  font-weight: 700;
   color: var(--ts-ink);
 }
 
@@ -4430,6 +4430,12 @@ button:where(:not([data-slot])).ts-ref-fold:hover {
   cursor: pointer;
   font-size: 13px;
   color: var(--ts-ink-2);
+}
+
+/* 켜진 쪽이 굵기와 색으로도 말한다 — 라디오 줄과 같은 문법 (§1.3) */
+.ts-toggle:has(> [data-slot="switch-native"]:checked) .ts-toggle-label {
+  font-weight: 700;
+  color: var(--ts-ink);
 }
 
 .ts-toggle:has(> [data-slot="switch-native"]:disabled) {

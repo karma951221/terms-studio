@@ -16,22 +16,31 @@ function isGuard(node: selectorParser.Node | undefined): boolean {
   return node?.type === "pseudo" && String(node) === GUARD;
 }
 
-function guardOne(selector: selectorParser.Root): void {
-  selector.walkTags((tag) => {
-    if (!TAGS.has(tag.value.toLowerCase())) return;
-    if (isGuard(tag.next())) return;
-    tag.parent?.insertAfter(tag, selectorParser.pseudo({ value: GUARD }));
-  });
-  selector.walkPseudos((pseudo) => {
-    if (pseudo.value !== ":focus-visible") return;
-    const compound: selectorParser.Node[] = [];
-    let at: selectorParser.Node | undefined = pseudo.prev();
-    while (at && at.type !== "combinator") {
-      compound.push(at);
-      at = at.prev();
+/**
+ * 주어(마지막 compound)만 가둔다. 조상 · 앞 형제 자리나 `:has()` · `:not()` · `:is()` · `:where()` 인자 안의 요소에
+ * 가드를 붙이면 뜻이 바뀐다 — 예: `.x:has(input:checked)` 는 shadcn 의 네이티브 input(data-slot)을 품은 줄도 골라야 한다.
+ */
+function subjectCompound(selector: selectorParser.Selector): selectorParser.Node[] {
+  const compound: selectorParser.Node[] = [];
+  for (let i = selector.nodes.length - 1; i >= 0; i--) {
+    const node = selector.nodes[i]!;
+    if (node.type === "combinator") break;
+    compound.unshift(node);
+  }
+  return compound;
+}
+
+function guardOne(root: selectorParser.Root): void {
+  root.each((selector) => {
+    const compound = subjectCompound(selector);
+    if (compound.some(isGuard)) return;
+    const tag = compound.find((n) => n.type === "tag" && TAGS.has(n.value.toLowerCase()));
+    if (tag) {
+      selector.insertAfter(tag, selectorParser.pseudo({ value: GUARD }));
+      return;
     }
-    if (compound.some(isGuard) || compound.some((n) => n.type === "tag" && TAGS.has(n.value))) return;
-    pseudo.parent?.insertBefore(pseudo, selectorParser.pseudo({ value: GUARD }));
+    const focus = compound.find((n) => n.type === "pseudo" && n.value === ":focus-visible");
+    if (focus) selector.insertBefore(focus, selectorParser.pseudo({ value: GUARD }));
   });
 }
 

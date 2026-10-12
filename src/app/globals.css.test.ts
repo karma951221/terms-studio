@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import postcss from "postcss";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -33,5 +34,30 @@ describe("globals.css 구문", () => {
 
   it("병합 충돌 마커가 없다", () => {
     expect(css).not.toMatch(/^(<<<<<<<|=======|>>>>>>>)/m);
+  });
+});
+
+/** 선택자 하나가 든 규칙의 선언을 모은다 — 같은 선택자가 여러 번 나오면 뒤가 이긴다. */
+function declsOf(selector: string): Record<string, string> {
+  const decls: Record<string, string> = {};
+  postcss.parse(css).walkRules((rule) => {
+    if (!rule.selectors.map((s) => s.trim()).includes(selector)) return;
+    rule.walkDecls((d) => {
+      decls[d.prop] = d.value;
+    });
+  });
+  return decls;
+}
+
+describe("고른 것은 굵기와 색으로도 말한다 (디자인원칙 §1.3) — 굵기는 700 만", () => {
+  it("라디오 — 켜진 네이티브 radio(data-slot 이어도)를 품은 줄이 굵고 진하다", () => {
+    expect(declsOf(".ts-form-radio:has(> input:checked)")).toMatchObject({ "font-weight": "700", color: "var(--ts-ink)" });
+  });
+
+  it("토글 — 켜진 스위치의 라벨이 굵고 진하다", () => {
+    expect(declsOf('.ts-toggle:has(> [data-slot="switch-native"]:checked) .ts-toggle-label')).toMatchObject({
+      "font-weight": "700",
+      color: "var(--ts-ink)",
+    });
   });
 });
