@@ -418,7 +418,13 @@ export function applyAlphaWaiver(alpha: WaiverSource, meritz: WaiverSource): Wai
   wrapArticles(alpha.tree, [a27.id, a27d.id, x.id], `${a27.id}-if-waiver`);
 
   const revivePresets: PresetDef[] = (["계약일", "최초계약일"] as const).map((word) => ({ code: REVIVE_PRESET[word], name: `${word} 기준`, options: { [REVIVE_OPTION]: REVIVE_VALUE[word] }, bindings: { 종들: APPLIED_BINDING } }));
-  return [itemClause, definitionClause, withPresets(addendumClause, APPLIED_PRESETS), withPresets(detailClause, APPLIED_PRESETS), withPresets(voidClause, APPLIED_PRESETS), withPresets(reviveClause, revivePresets)];
+  // 납입면제 호 — 사유를 상수로 정한 프리셋 상해(V12 상해80%이상후유장해) · 질병(V13 질병80%이상후유장해) (2026-10-13 사용자 결정).
+  // 보통약관 자리는 반복의 현재 원소로 넣으므로 쓰지 않는다 — 반복 밖에서 사유 하나로 넣을 때 쓴다
+  const itemPresets: PresetDef[] = [
+    { code: "S01", name: "상해", bindings: { 사유: { kind: "const", value: "V12" } } },
+    { code: "S02", name: "질병", bindings: { 사유: { kind: "const", value: "V13" } } },
+  ];
+  return [withPresets(itemClause, itemPresets), definitionClause, withPresets(addendumClause, APPLIED_PRESETS), withPresets(detailClause, APPLIED_PRESETS), withPresets(voidClause, APPLIED_PRESETS), withPresets(reviveClause, revivePresets)];
 }
 
 /**

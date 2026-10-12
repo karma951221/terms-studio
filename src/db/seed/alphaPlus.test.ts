@@ -241,6 +241,10 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     for (const code of ["C0022", "C0027"]) expect(summaries.find((c) => c.code === code)?.usageCount).toBe(2);
     // 납입면제 프리셋 (ADR-0084) — 종들 역할 함수조항은 「적용 종」, 부활 문구는 기준일까지 둘. 사용처는 프리셋을 참조한다
     expect((await services.clause.get("C0027"))?.presets?.map((p) => [p.code, p.name])).toEqual([["S01", "계약일 기준"], ["S02", "최초계약일 기준"]]);
+    expect((await services.clause.get("C0022"))?.presets?.map((p) => [p.code, p.name, p.bindings])).toEqual([
+      ["S01", "상해", { 사유: { kind: "const", value: "V12" } }],
+      ["S02", "질병", { 사유: { kind: "const", value: "V13" } }],
+    ]);
     for (const code of ["C0024", "C0025", "C0026", "C0029", "C0030", "C0031"]) expect((await services.clause.get(code))?.presets?.map((p) => p.name), code).toEqual(["적용 종"]);
     expect((await services.clause.usages("C0027")).map((u) => u.preset).sort()).toEqual(["S01", "S02"]);
   }, 30_000);
