@@ -34,12 +34,12 @@ function guardOne(root: selectorParser.Root): void {
   root.each((selector) => {
     const compound = subjectCompound(selector);
     if (compound.some(isGuard)) return;
-    const tag = compound.find((n) => n.type === "tag" && TAGS.has(n.value.toLowerCase()));
+    const tag = compound.find((n): n is selectorParser.Tag => n.type === "tag" && TAGS.has(n.value.toLowerCase()));
     if (tag) {
       selector.insertAfter(tag, selectorParser.pseudo({ value: GUARD }));
       return;
     }
-    const focus = compound.find((n) => n.type === "pseudo" && n.value === ":focus-visible");
+    const focus = compound.find((n): n is selectorParser.Pseudo => n.type === "pseudo" && n.value === ":focus-visible");
     if (focus) selector.insertBefore(focus, selectorParser.pseudo({ value: GUARD }));
   });
 }
