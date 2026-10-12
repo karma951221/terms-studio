@@ -10,6 +10,9 @@
  */
 import type { ButtonHTMLAttributes, ReactNode, SVGProps } from "react";
 
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
 type IconProps = { className?: string } & Omit<SVGProps<SVGSVGElement>, "ref">;
 
 function Svg({ children, className, ...rest }: IconProps & { children: ReactNode }) {
@@ -421,14 +424,23 @@ export type IconButtonProps = {
   icon: ReactNode;
   /** 파괴적 조작. 평소엔 뉴트럴이고 hover/focus 에서만 error 로 물든다. */
   danger?: boolean;
+  /** md = 32×32(기본), sm = 표 행 안 24×24. */
+  size?: "md" | "sm";
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "aria-label" | "title" | "children">;
 
-export function IconButton({ label, icon, danger, className, type, ...rest }: IconButtonProps) {
-  const cls = ["ts-iconbtn", danger ? "danger" : null, className].filter(Boolean).join(" ");
+export function IconButton({ label, icon, danger, className, type, size = "md", ...rest }: IconButtonProps) {
   return (
-    <button type={type ?? "button"} className={cls} title={label} aria-label={label} {...rest}>
+    <Button
+      type={type ?? "button"}
+      variant={danger ? "ghost-destructive" : "ghost"}
+      size={size === "sm" ? "icon-sm" : "icon"}
+      className={cn("ts-iconbtn", danger ? "danger" : null, className)}
+      title={label}
+      aria-label={label}
+      {...rest}
+    >
       {icon}
-    </button>
+    </Button>
   );
 }
 

@@ -498,43 +498,6 @@ button:where(:not([data-slot])).danger:focus-visible {
   flex: 0 0 auto;
 }
 
-.ts-iconbtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 3px;
-  background: none;
-  color: var(--ts-ink-2);
-  cursor: pointer;
-  transition: color 120ms ease-out, background 120ms ease-out;
-}
-
-.ts-iconbtn:hover {
-  background: var(--ts-surface-2);
-  color: var(--ts-ink);
-}
-
-.ts-iconbtn.danger {
-  color: var(--ts-ink-2);
-}
-
-.ts-iconbtn.danger:hover,
-.ts-iconbtn.danger:where(:not([data-slot])):focus-visible {
-  color: var(--ts-error);
-  background: var(--ts-error-bg);
-}
-
-.ts-iconbtn[disabled] {
-  color: var(--ts-ink-3);
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 /* 담보 상태 글리프 — 색이 아니라 형태가 상태를 말한다 (§2 L1) */
 .ts-glyph {
   display: inline-block;
