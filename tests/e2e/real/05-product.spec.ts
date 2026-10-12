@@ -43,7 +43,18 @@ async function setPlanValue(row: import("@playwright/test").Locator, path: strin
   const cell = row.locator(`[data-path="${path}"]`).last();
   if (typeof value === "number") await cell.locator("input").fill(String(value));
   else if (typeof value === "boolean") await cell.getByRole("radio", { name: value ? "예" : "아니오", exact: true }).check();
-  else if (Array.isArray(value)) for (const code of value) await cell.locator(`input[type=checkbox][value="${code}"]`).check();
+  else if (Array.isArray(value)) {
+    // 목록값 — 하나만 고르는 칸은 라디오, 복수는 고른 값 칩 + 「+ 값 추가」 select 로 하나씩 (2026-10-03 · 35d16b5)
+    for (const code of value) {
+      const radio = cell.locator(`input[type=radio][value="${code}"]`);
+      if ((await radio.count()) > 0) {
+        await radio.check();
+        continue;
+      }
+      await cell.getByRole("button", { name: /값 추가$/ }).click();
+      await cell.getByRole("combobox", { name: /값 추가$/ }).selectOption(code);
+    }
+  }
   else await cell.locator("select").selectOption(String(value));
 }
 
@@ -104,7 +115,8 @@ for (const product of SEED.products) {
         await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
         await expect(page.locator("#combinations-panel tbody tr")).toHaveCount(product.plans.length);
         // 상품정보가 저장본으로 읽힌다 — 수는 그대로, enum 은 값 이름
-        for (const v of product.values.filter((x) => typeof x.value === "number")) await expect(page.locator(`tr[data-path="${v.path}"] td`)).toHaveText(String(v.value));
+        // 단위가 있는 칸은 뒤에 붙는다(평균공시이율 「2.5%」 — bf2e27f)
+        for (const v of product.values.filter((x) => typeof x.value === "number")) await expect(page.locator(`tr[data-path="${v.path}"] td`)).toHaveText(new RegExp(`^${String(v.value).replace(".", "\\.")}%?$`));
       });
 
       // 탑재 — 상품담보 탭 편집 하나에 전부 더하고 저장 한 번 (기능/상품 §3.8 · §4.5, 2026-10-04)

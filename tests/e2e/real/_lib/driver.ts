@@ -456,7 +456,8 @@ export class DocumentAuthoring {
   async startEdit(generalTitle: string): Promise<void> {
     await this.page.getByRole("button", { name: "편집", exact: true }).click();
     await expect(this.page.getByRole("button", { name: "저장", exact: true })).toBeVisible();
-    await this.page.getByRole("button", { name: "더보기", exact: true }).click();
+    // 바 「더보기」 — 툴바에도 「더보기」 아이콘(관 · 문장 안 함수조항)이 있다 (79d2eff)
+    await this.page.locator("button.ts-more-button").click();
     await this.page.getByRole("menuitem", { name: "대응 보통약관…", exact: true }).click();
     const d = this.editor.dialog("대응 보통약관");
     await pickCombo(d.locator("#pop-general"), { label: generalTitle });
