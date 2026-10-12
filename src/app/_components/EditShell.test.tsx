@@ -46,3 +46,9 @@ describe("EditShell — 헤더 🗑 (P2)", () => {
     expect(tag).toContain(`title="${EDIT_MODE_LOCKED_TIP}"`);
   });
 });
+
+describe("EditShell — shadcn 위젯", () => {
+  it("읽기 모드: 「편집」은 shadcn Button", () => {
+    expect(render("read")).toMatch(/<button[^>]*data-slot="button"[^>]*>편집<\/button>/);
+  });
+});

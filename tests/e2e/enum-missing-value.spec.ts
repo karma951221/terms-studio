@@ -30,7 +30,7 @@ async function removeEnumValue(page: Page, code: string, label: string, confirmL
   await page.getByRole("button", { name: "편집", exact: true }).click();
   await page.getByRole("button", { name: `행 삭제 · ${label}`, exact: true }).click();
   await page.getByRole("button", { name: "저장", exact: true }).click();
-  const dialog = page.locator("dialog.ts-dialog");
+  const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText("값을 빼면 그 값을 고른 자리가 「없는 값」 오류가 된다");
   if (confirmLine) await expect(dialog).toContainText(confirmLine);
   await dialog.getByRole("button", { name: "값 1개 삭제하고 저장" }).click();
@@ -116,7 +116,7 @@ test(
       if (discriminatorUrl) {
         await page.goto(discriminatorUrl);
         await page.getByRole("button", { name: /^구분자 재검사확인\d+\(D\d{4}\) 삭제/ }).click();
-        await page.locator("dialog.ts-dialog").getByRole("button", { name: /삭제$/ }).click();
+        await page.getByRole("dialog").getByRole("button", { name: /삭제$/ }).click();
         await page.waitForURL((url) => !url.pathname.startsWith("/catalog/D"));
       }
       // E0005 에 더한 값은 아무도 고르지 않았다 — 되돌린다

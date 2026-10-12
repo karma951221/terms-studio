@@ -2401,8 +2401,10 @@ td.col-act {
   color: var(--ts-ink-2);
 }
 
-/* 값의 출처 문법 — §1.2. 색을 주지 않는다. 형태가 말한다 */
-.ts-field-direct,
+/*
+ * 값의 출처 문법 — §1.2. 색을 주지 않는다. 형태가 말한다.
+ * 요소 선택자는 shadcn 위젯(data-slot)을 뺀다 — 맨 `.ts-field-direct` 로 두면 레이어 밖이라 Input · Textarea · NativeSelect 의 테두리를 덮는다.
+ */
 input:where(:not([data-slot])).ts-field-direct,
 select:where(:not([data-slot])).ts-field-direct,
 textarea:where(:not([data-slot])).ts-field-direct {

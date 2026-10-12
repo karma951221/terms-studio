@@ -1,12 +1,17 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { createContext, useContext, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import type { EditOutcome } from "@/app/_lib/edit";
 import { isDirty } from "@/app/_lib/edit";
 import { Breadcrumb, type Crumb } from "./Breadcrumb";
 import { Combobox } from "./Combobox";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
 import { IconButton, IconClose, IconTrash } from "./icons";
 import { RadioGroup, type RadioOption } from "./RadioGroup";
 import { Toggle } from "./Toggle";
@@ -65,34 +70,20 @@ export const EDIT_MODE_LOCKED_TIP = "저장하거나 취소한 뒤 실행";
 
 /**
  * 「저장하지 않은 변경 사항」 확인 — 편집 중 나가기 · ✕ 취소가 함께 쓴다.
- * 모달(`showModal`)로 띄워 화면 위쪽에 고정한다 — 제자리(`open`)로 그리면 폼 맨 아래에 붙어 눈에 안 띈다. Esc 는 「계속 수정」.
+ * Radix Dialog(role=dialog) — 초점을 가두고 Esc · 바깥 클릭은 「계속 수정」이다. `AlertDialog` 는 역할이 바뀌어 쓰지 않는다.
  */
 export function DiscardDialog({ onStay, onDiscard }: { onStay: () => void; onDiscard: () => void }) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const dialog = ref.current;
-    if (!dialog || dialog.open) return;
-    // jsdom 에는 showModal 이 없다 — 그때는 제자리로 연다
-    if (typeof dialog.showModal === "function") dialog.showModal();
-    else dialog.setAttribute("open", "");
-  }, []);
   return (
-    <dialog
-      ref={ref}
-      className="ts-dialog ts-dialog-top"
-      aria-labelledby="ts-discard-title"
-      onCancel={(e) => {
-        e.preventDefault();
-        onStay();
-      }}
-    >
-      <p id="ts-discard-title" className="ts-confirm-title">저장하지 않은 변경 사항이 있습니다</p>
-      <p className="ts-confirm-body">지금 나가면 수정한 내용이 모두 사라집니다.</p>
-      <div className="ts-confirm-actions">
-        <button type="button" className="primary" autoFocus onClick={onStay}>계속 수정</button>
-        <button type="button" className="danger" onClick={onDiscard}>저장하지 않고 나가기</button>
-      </div>
-    </dialog>
+    <Dialog open onOpenChange={(open) => { if (!open) onStay(); }}>
+      <DialogContent showCloseButton={false} className="max-w-md">
+        <DialogTitle className="ts-confirm-title">저장하지 않은 변경 사항이 있습니다</DialogTitle>
+        <DialogDescription className="ts-confirm-body">지금 나가면 수정한 내용이 모두 사라집니다.</DialogDescription>
+        <DialogFooter className="ts-confirm-actions">
+          <Button variant="primary" autoFocus onClick={onStay}>계속 수정</Button>
+          <Button variant="destructive" onClick={onDiscard}>저장하지 않고 나가기</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -225,7 +216,7 @@ export function EditShell<T extends EditData>({
       {mode === "read" && readBadges ? <span className="ts-edit-badges">{readBadges}</span> : null}
       <span className="ts-edit-actions">
         {mode === "edit" ? editActions : null}
-        {mode === "read" ? <button type="button" onClick={() => setMode("edit")} disabled={pending}>편집</button> : <><IconButton icon={<IconClose />} label="편집 취소" disabled={pending} onClick={() => leave(cancel)} /><button type="button" className="primary" disabled={!dirty || blocked || pending} onClick={() => handle("save")}>{pending ? "저장 중…" : "저장"}</button></>}
+        {mode === "read" ? <Button onClick={() => setMode("edit")} disabled={pending}>편집</Button> : <><IconButton icon={<IconClose />} label="편집 취소" disabled={pending} onClick={() => leave(cancel)} /><Button variant="primary" disabled={!dirty || blocked || pending} onClick={() => handle("save")}>{pending ? "저장 중…" : "저장"}</Button></>}
         {/* 즉시 실행 명령은 편집 모드에서 비활성 — 미저장 변경과 즉시 삭제가 한 화면에 겹치지 않게 (디자인원칙 §2 L2 · 점검 P2) */}
         {deleteAction ? <IconButton icon={<IconTrash />} label={mode === "edit" ? EDIT_MODE_LOCKED_TIP : deleteTooltip ?? deleteLabel ?? `${shownTitle} 삭제`} danger disabled={pending || mode === "edit"} onClick={() => handle("delete")} /> : null}
       </span>
@@ -233,12 +224,21 @@ export function EditShell<T extends EditData>({
     {error ? <p className="ts-error-banner">{error}</p> : null}
     <fieldset className="ts-edit-fields" disabled={pending}>{children}</fieldset>
     {discard ? <DiscardDialog onStay={() => setDiscard(undefined)} onDiscard={() => { const { go } = discard; setDiscard(undefined); go(); }} /> : null}
-    {confirm ? <dialog open className="ts-dialog"><p className="ts-confirm-title">{confirm.kind === "save" ? confirm.outcome.title ?? "변경하면 저장된 값이 사라질 수 있다" : `${deleteLabel ?? shownTitle} 삭제`}</p><ImpactLines outcome={confirm.outcome} /><div className="ts-confirm-actions"><button type="button" onClick={() => setConfirm(undefined)} disabled={pending}>취소</button><button type="button" className="danger" onClick={() => handle(confirm.kind, true)} disabled={pending}>{confirm.kind === "save" ? confirm.outcome.actionLabel ?? `타입 바꾸고 값 ${confirm.outcome.impact.valueRowsLost}건 삭제` : deleteLabel ?? "삭제"}</button></div></dialog> : null}
+    {confirm ? <Dialog open onOpenChange={(open) => { if (!open) setConfirm(undefined); }}>
+      <DialogContent showCloseButton={false} aria-describedby={undefined} className="max-w-md">
+        <DialogTitle className="ts-confirm-title">{confirm.kind === "save" ? confirm.outcome.title ?? "변경하면 저장된 값이 사라질 수 있다" : `${deleteLabel ?? shownTitle} 삭제`}</DialogTitle>
+        <ImpactLines outcome={confirm.outcome} />
+        <DialogFooter className="ts-confirm-actions">
+          <Button onClick={() => setConfirm(undefined)} disabled={pending}>취소</Button>
+          <Button variant="destructive" onClick={() => handle(confirm.kind, true)} disabled={pending}>{confirm.kind === "save" ? confirm.outcome.actionLabel ?? `타입 바꾸고 값 ${confirm.outcome.impact.valueRowsLost}건 삭제` : deleteLabel ?? "삭제"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog> : null}
   </EditContext.Provider>;
 }
 
 export function Field({ name, label, info, type = "text", options = [], readValue, className, toggle }: { name: string; label: string; info?: string; /** "combo" — 참조 고르기(검색 입력, 디자인원칙 §1.8). "select" 는 몇 안 되는 고정 선택지만. */ type?: "text" | "textarea" | "select" | "combo" | "radio" | "number" | "date" | "toggle"; options?: readonly RadioOption[]; readValue?: (value: unknown) => ReactNode; className?: string; /** type="toggle" — 켜진 상태의 이름과 켜짐/꺼짐 뜻풀이. */ toggle?: { label: string; hintOn?: string; hintOff?: string } }) {
   const field = useEditField(name);
   const display = readValue ? readValue(field.value) : field.value === undefined || field.value === "" ? "없음" : typeof field.value === "boolean" ? field.value ? "예" : "아니오" : String(field.value);
-  return <div className="ts-form-row"><label>{label}{info ? <InfoTip text={info} /> : null}</label><div className="ts-form-control">{field.mode === "read" ? <span className={`ts-field-locked ${className ?? ""}`}>{display}</span> : type === "textarea" ? <textarea value={String(field.value ?? "")} onChange={(event) => field.setValue(event.target.value)} rows={2} className="ts-field-direct" /> : type === "select" ? <select value={String(field.value ?? "")} onChange={(event) => field.setValue(event.target.value)} className="ts-field-direct">{options.map((option) => <option key={String(option.value)} value={String(option.value)}>{option.label}</option>)}</select> : type === "combo" ? <Combobox ariaLabel={label} value={String(field.value ?? "")} onChange={(value) => field.setValue(value)} options={options.map((option) => ({ value: String(option.value), label: option.label, hint: option.hint }))} placeholder="이름 · 코드로 찾기" /> : type === "radio" ? <RadioGroup name={name} label={label} options={options} value={field.value as string | boolean} onChange={field.setValue} /> : type === "toggle" ? <Toggle name={name} label={toggle?.label ?? label} checked={Boolean(field.value)} onChange={field.setValue} hintOn={toggle?.hintOn} hintOff={toggle?.hintOff} /> : <input type={type} value={String(field.value ?? "")} onChange={(event) => field.setValue(type === "number" && event.target.value !== "" ? Number(event.target.value) : event.target.value)} className={`ts-field-direct ${className ?? ""}`} />}</div></div>;
+  return <div className="ts-form-row"><label>{label}{info ? <InfoTip text={info} /> : null}</label><div className="ts-form-control">{field.mode === "read" ? <span className={`ts-field-locked ${className ?? ""}`}>{display}</span> : type === "textarea" ? <Textarea value={String(field.value ?? "")} onChange={(event) => field.setValue(event.target.value)} rows={2} className="ts-field-direct" /> : type === "select" ? <NativeSelect value={String(field.value ?? "")} onChange={(event) => field.setValue(event.target.value)} className="ts-field-direct">{options.map((option) => <option key={String(option.value)} value={String(option.value)}>{option.label}</option>)}</NativeSelect> : type === "combo" ? <Combobox ariaLabel={label} value={String(field.value ?? "")} onChange={(value) => field.setValue(value)} options={options.map((option) => ({ value: String(option.value), label: option.label, hint: option.hint }))} placeholder="이름 · 코드로 찾기" /> : type === "radio" ? <RadioGroup name={name} label={label} options={options} value={field.value as string | boolean} onChange={field.setValue} /> : type === "toggle" ? <Toggle name={name} label={toggle?.label ?? label} checked={Boolean(field.value)} onChange={field.setValue} hintOn={toggle?.hintOn} hintOff={toggle?.hintOff} /> : <Input type={type} value={String(field.value ?? "")} onChange={(event) => field.setValue(type === "number" && event.target.value !== "" ? Number(event.target.value) : event.target.value)} className={`ts-field-direct ${className ?? ""}`} />}</div></div>;
 }

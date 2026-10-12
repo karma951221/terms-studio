@@ -54,7 +54,7 @@ test(
         await page.getByRole("button", { name: "편집", exact: true }).click();
         await page.getByRole("button", { name: `행 삭제 · ${field}`, exact: true }).click();
         await page.getByRole("button", { name: "저장", exact: true }).click();
-        const dialog = page.locator("dialog.ts-dialog");
+        const dialog = page.getByRole("dialog");
         await expect(dialog).toContainText("필드를 빼거나 타입을 바꾸면 값마다 넣은 입력이 지워진다");
         await expect(dialog).toContainText(`필드 「${field}」 — 값 1개의 입력이 지워진다`);
         await dialog.getByRole("button", { name: "필드 1개 바꾸고 저장" }).click();
