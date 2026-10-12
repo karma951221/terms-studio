@@ -1,5 +1,5 @@
 import type { EnumFieldType, EnumFieldValue, NewDiscriminator, NewEnum } from "@/domain/catalog";
-import type { ClauseBody, NewClause } from "@/domain/clause";
+import type { ClauseBody, NewClause, PresetDef } from "@/domain/clause";
 import type { DocumentNode } from "@/domain/document";
 import { findMasterField } from "@/domain/master";
 import type { Actor, Code, Id, Result, Value } from "@/domain/types";
@@ -66,13 +66,19 @@ export function refsGeneral(raw: unknown): boolean {
 }
 
 async function createClause(services: Services, actor: Actor, raw: ClauseRaw): Promise<void> {
-  const definition = omit(raw, ["code", "description", "required"]);
+  const definition = omit(raw, ["code", "description", "required", "presets"]);
   definition.options = raw.options.map((option) => ({
     ...omit(option, ["code", "order", "values"]),
     values: (option.values as Array<Record<string, unknown>>).map((value) => omit(value, ["code", "order"])),
   }));
   const created = unwrap(await services.clause.create(actor, definition as unknown as NewClause));
   expectCode(created.code, raw.code);
+  // 프리셋 (ADR-0084) — 만든 뒤 화면과 같은 길(setPresets)로. 코드는 채번이 S01 부터 매긴다 — 시드 순서와 같아야 사용처 참조가 맞는다
+  const presets = (raw.presets ?? []) as PresetDef[];
+  if (presets.length > 0) {
+    const saved = unwrap(await services.clause.setPresets(actor, created.code, presets.map(({ code: _code, ...rest }) => (void _code, rest))));
+    (saved.clause.presets ?? []).forEach((p, i) => expectCode(p.code, presets[i].code));
+  }
 }
 
 /** 보통약관이 쓰는 함수조항의 정의(JSON) — 역할 함수조항 본문이 박스 · 열거형을 품는다. */

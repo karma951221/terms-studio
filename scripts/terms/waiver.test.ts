@@ -88,11 +88,19 @@ describe("알파Plus 납입면제 템플릿 — 사유 값으로 분기하지 �
     expect(union.children![0].clauseCode).toBe(clauseByLabel("정의 및 진단확정(알파Plus)").code);
   });
 
-  it("종들을 받는 역할 함수조항 넷은 원천 연결(적용 납입면제종)로 넣는다", () => {
-    for (const label of ["면제 부가항(알파Plus)", "납입면제 세부규정(알파Plus)", "무효 문구(알파Plus)", "부활 문구"]) {
+  it("종들을 받는 역할 함수조항 넷은 프리셋(적용 납입면제종 · 부활 문구는 기준일까지)으로 넣는다 (ADR-0084)", () => {
+    const applied = { 종들: { kind: "source", source: { form: "waiver", filter: "waiver.applies = true" } } };
+    for (const label of ["면제 부가항(알파Plus)", "납입면제 세부규정(알파Plus)", "무효 문구(알파Plus)"]) {
+      expect(clauseByLabel(label).presets, label).toEqual([{ code: "S01", name: "적용 종", bindings: applied }]);
       const ref = find(alpha, (x) => x.kind === "clauseBlockRef" && x.clauseCode === clauseByLabel(label).code)!;
-      expect(ref.bindings, label).toEqual({ 종들: { kind: "source", source: { form: "waiver", filter: "waiver.applies = true" } } });
+      expect([ref.preset, ref.options, ref.bindings], label).toEqual(["S01", {}, undefined]);
     }
+    expect(clauseByLabel("부활 문구").presets).toEqual([
+      { code: "S01", name: "계약일 기준", options: { O01: "V01" }, bindings: applied },
+      { code: "S02", name: "최초계약일 기준", options: { O01: "V02" }, bindings: applied },
+    ]);
+    const revive = find(alpha, (x) => x.kind === "clauseBlockRef" && x.clauseCode === clauseByLabel("부활 문구").code)!;
+    expect([revive.preset, revive.options, revive.bindings]).toEqual(["S01", {}, undefined]);
   });
 });
 
@@ -146,10 +154,10 @@ describe("메리츠 납입면제 템플릿 — 알파Plus 와 같은 모양, 호
     ]);
   });
 
-  it("부활 문구는 기준일 옵션 — 알파Plus 계약일(V01) · 메리츠 최초계약일(V02)", () => {
+  it("부활 문구는 기준일 옵션 — 알파Plus 계약일(프리셋 S01 · V01) · 메리츠 최초계약일(프리셋 S02 · V02)", () => {
     const code = clauseByLabel("부활 문구").code;
-    expect(find(alpha, (x) => x.kind === "clauseBlockRef" && x.clauseCode === code)!.options).toEqual({ O01: "V01" });
-    expect(find(meritz, (x) => x.kind === "clauseBlockRef" && x.clauseCode === code)!.options).toEqual({ O01: "V02" });
+    expect(find(alpha, (x) => x.kind === "clauseBlockRef" && x.clauseCode === code)!.preset).toBe("S01");
+    expect(find(meritz, (x) => x.kind === "clauseBlockRef" && x.clauseCode === code)!.preset).toBe("S02");
   });
 
   it("세부규정(메리츠) — 값 한정 참조: 암·면책 · 장해 · 장해+화상 · 상해 호(안쪽 코드) + 화상", () => {
