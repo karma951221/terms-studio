@@ -152,13 +152,13 @@ function MoreTools({ tools, onRun }: { tools: ToolState[]; onRun: (tool: ToolId,
         <IconMore />
       </button>
       {open && (
-        <div id={menuId} role="menu" aria-label="더보기" className="ts-more-menu">
+        <div id={menuId} role="menu" aria-label="더보기" className="ts-tool-menu">
           {tools.map((state) => (
             <button
               key={state.tool.id}
               type="button"
               role="menuitem"
-              className="ts-more-menu-item"
+              className="ts-tool-menu-item"
               data-tool={state.tool.id}
               aria-label={state.tool.label}
               title={state.title}

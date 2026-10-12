@@ -1629,20 +1629,20 @@ input:where(:not([data-slot])).ts-option-title {
   display: inline-flex;
 }
 
-.ts-tool-more > .ts-more-menu {
+.ts-tool-more > .ts-tool-menu {
   left: 0;
   right: auto;
   min-width: 160px;
 }
 
-.ts-tool-more .ts-more-menu-item {
+.ts-tool-more .ts-tool-menu-item {
   height: 28px;
   min-height: 28px;
   padding: 0 10px;
   font-size: 13px;
 }
 
-.ts-tool-more .ts-more-menu-item:disabled {
+.ts-tool-more .ts-tool-menu-item:disabled {
   opacity: 0.45;
   cursor: default;
 }
@@ -1684,13 +1684,6 @@ input:where(:not([data-slot])).ts-option-title {
   height: 3px;
   border-radius: 1px;
   background: var(--ts-work, currentColor);
-}
-
-/* 더보기 체크 항목(「수정 흔적 보기」) — ✓ 자리를 비워 두어 켜고 꺼도 글자가 움직이지 않는다 */
-.ts-more-check {
-  display: inline-block;
-  width: 12px;
-  color: var(--ts-mark);
 }
 
 /* 툴바 「서식」 묶음 — 넣기 묶음 뒤, 가는 세로 선 */
@@ -1742,7 +1735,7 @@ input:where(:not([data-slot])).ts-option-title {
   border-radius: 50%;
   background: var(--ts-work);
 }
-.ts-tool-marks .ts-more-menu-item {
+.ts-tool-marks .ts-tool-menu-item {
   height: 28px;
   min-height: 28px;
   padding: 0 10px;
@@ -5011,8 +5004,7 @@ button:where(:not([data-slot])).ts-ref-fold:hover {
 .ts-product-actions > a,
 .ts-terms-template > button:where(:not([data-slot])),
 .ts-terms-template-end > button:where(:not([data-slot])),
-.ts-more-button,
-.ts-more-menu-item,
+.ts-tool-menu-item,
 .ts-basic-toolbar button:where(:not([data-slot])) {
   display: inline-flex;
   align-items: center;
@@ -5035,10 +5027,8 @@ button:where(:not([data-slot])).ts-ref-fold:hover {
 .ts-product-actions > button:where(:not([data-slot])).primary { border-color: var(--ts-mark); color: var(--ts-mark); font-weight: 700; }
 .ts-product-actions > button:where(:not([data-slot])).primary:hover { background: var(--ts-mark-bg); }
 
-/* 더보기 — 버튼 하나 뒤의 텍스트 메뉴. 항목은 같은 높이·정렬 (§20.2 버튼 원칙). */
-.ts-more { position: relative; }
-.ts-more-caret { font-size: 11px; color: var(--ts-ink-3); }
-.ts-more-menu {
+/* 문서 툴바 자체 메뉴(더보기 ⋯ · 글자색) — 항목은 같은 높이·정렬 (§20.2 버튼 원칙). 공용 MoreMenu 는 shadcn DropdownMenu 라 여기 없다 (ADR-0085). */
+.ts-tool-menu {
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
@@ -5052,15 +5042,9 @@ button:where(:not([data-slot])).ts-ref-fold:hover {
   background: var(--ts-surface);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
 }
-.ts-more-menu-item { justify-content: flex-start; border-color: transparent; background: transparent; }
-.ts-more-menu-item:hover,
-.ts-more-menu-item:where(:not([data-slot])):focus-visible { background: var(--ts-surface-2); }
-.ts-more-menu-item.danger:hover,
-.ts-more-menu-item.danger:where(:not([data-slot])):focus-visible { color: var(--ts-error); background: var(--ts-error-bg); }
-.ts-more.is-start .ts-more-menu { left: 0; right: auto; }
-.ts-more-menu:has(.has-hint) { min-width: 260px; }
-.ts-more-menu-item.has-hint { flex-direction: column; align-items: flex-start; gap: 2px; height: auto; padding: 6px 12px; white-space: normal; text-align: left; }
-.ts-more-menu-hint { font-size: 12px; color: var(--ts-ink-3); line-height: 1.4; }
+.ts-tool-menu-item { justify-content: flex-start; border-color: transparent; background: transparent; }
+.ts-tool-menu-item:hover,
+.ts-tool-menu-item:where(:not([data-slot])):focus-visible { background: var(--ts-surface-2); }
 
 /* 기본정보 본문 */
 .ts-basic-editor { max-width: 1040px; padding-top: 20px; }
