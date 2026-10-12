@@ -9,23 +9,26 @@
  * | 함수조항    | C    | 4           | 전역 ("")                   | C0001 |
  * | 옵션 자리   | O    | 2           | 소속 함수조항 코드마다      | O01   |
  * | 옵션 선택지 | V    | 2           | `<함수조항코드>/<옵션코드>` | V01   |
+ * | 프리셋      | S    | 2           | 소속 함수조항 코드마다      | S01   |
  *
  * 순번은 1부터, 오르기만 한다 (삭제된 코드는 다시 태어나지 않는다).
  */
 import type { Code } from "../types";
 
-export type ClauseCodeKind = "clause" | "option" | "optionValue";
+export type ClauseCodeKind = "clause" | "option" | "optionValue" | "preset";
 
 export const CLAUSE_CODE_PREFIX: Record<ClauseCodeKind, string> = {
   clause: "C",
   option: "O",
   optionValue: "V",
+  preset: "S",
 };
 
 export const CLAUSE_CODE_MIN_WIDTH: Record<ClauseCodeKind, number> = {
   clause: 4,
   option: 2,
   optionValue: 2,
+  preset: 2,
 };
 
 /** 순번의 출처 — 저장소가 구현한다 (code_sequences 의 kind 는 `clause` · `clauseOption` · `clauseOptionValue`). */

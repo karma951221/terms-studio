@@ -130,6 +130,8 @@ export interface ClauseInlineRefNode {
   options: Record<Code, Code>;
   /** 인자 연결 — 인자 이름 → 연결 (최종 결정 2). 없는 인자는 기본 연결을 쓴다. 비면 키를 싣지 않는다. */
   bindings?: Bindings;
+  /** 프리셋 코드 (ADR-0084) — 있으면 옵션 선택 · 인자 연결은 그 프리셋 값이고, 사용처는 조 참조 · 「사용처가 채움」 인자만 댄다. */
+  preset?: Code;
 }
 
 /**
@@ -297,6 +299,8 @@ export interface ClauseBlockRefNode {
   options: Record<Code, Code>;
   /** 인자 연결 — 인자 이름 → 연결 (최종 결정 2). 없는 인자는 기본 연결을 쓴다. 비면 키를 싣지 않는다. */
   bindings?: Bindings;
+  /** 프리셋 코드 (ADR-0084) — 있으면 옵션 선택 · 인자 연결은 그 프리셋 값이고, 사용처는 조 참조 · 「사용처가 채움」 인자만 댄다. */
+  preset?: Code;
   /** 보통약관의 항 단위 준용·생략 판정에서 이 block 참조가 만든 항을 뺀다. */
   excludeFromComparison?: boolean;
 }
@@ -672,6 +676,11 @@ export interface ClauseGate {
   validateBindings?(code: Code, bindings: Bindings | undefined, loops?: ReadonlyMap<Id, LoopElementType>): Issue[];
   /** 정의 본문 — 문서 전체 검사(정의 조 교차 검사, 결정 23)가 값별 분기 칸을 본다. */
   clauseOf?(code: Code): Clause | undefined;
+  /**
+   * 사용처의 실제 옵션 선택 · 인자 연결 — 프리셋이면 프리셋 값(ADR-0084 결정 2 · 4). `issues` = 없는 프리셋 · 덮어쓰기.
+   * 없으면 노드 값 그대로.
+   */
+  usageOf?(code: Code, node: { preset?: Code; options: Record<Code, Code>; bindings?: Bindings }): { options: Record<Code, Code>; bindings?: Bindings; issues: Issue[] };
 }
 
 export const PERMISSIVE_GATE: ClauseGate = {
@@ -889,18 +898,21 @@ export function checkClauseRef(
     return [{ kind: "brokenRef", message: `함수조항 ${node.clauseCode} 가 없습니다`, at }];
   }
   const issues: Issue[] = [];
-  const missing = gate.missingRequired(node.clauseCode, node.bindings);
+  // 프리셋이면 옵션 · 연결은 프리셋 값 (ADR-0084) — 없는 프리셋 · 덮어쓰기는 여기서 낸다
+  const used = gate.usageOf?.(node.clauseCode, node) ?? { options: node.options, ...(node.bindings ? { bindings: node.bindings } : {}), issues: [] };
+  for (const i of used.issues) issues.push({ ...i, at: { ...at, ...i.at } });
+  const missing = gate.missingRequired(node.clauseCode, used.bindings);
   if (missing.length > 0) {
     const codes = missing.join(" · ");
     const message = `함수조항 ${node.clauseCode} 의 요구 구분자 ${codes} 이(가) 카탈로그에 없습니다${atSave ? "" : " — 참조 추가 미성립"}`;
     issues.push({ kind: "brokenRef", message, at: { ...at, refPath: codes } });
   }
-  for (const i of gate.validateOptions(node.clauseCode, node.options)) {
+  for (const i of gate.validateOptions(node.clauseCode, used.options)) {
     if (!atSave && i.kind === "optionUnselected") continue;
     issues.push({ ...i, at: { ...at, ...i.at } });
   }
   // 인자 연결 (최종 결정 2) — 누락은 옵션 미선택처럼 저장 시점에만 거부한다(넣는 순간엔 아직 대지 않았다)
-  for (const i of gate.validateBindings?.(node.clauseCode, node.bindings, loops) ?? []) {
+  for (const i of gate.validateBindings?.(node.clauseCode, used.bindings, loops) ?? []) {
     if (!atSave && i.kind === "argUnbound") continue;
     issues.push({ ...i, at: { ...at, ...i.at } });
   }

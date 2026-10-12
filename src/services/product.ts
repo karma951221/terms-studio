@@ -1128,7 +1128,9 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
           const clauseRefIn = async (nodeId: Id): Promise<{ clauseCode: Code; options: ClauseOptionSelection } | undefined> => {
             if (!effectiveIndex) return gate.clauseRef(templateId, nodeId);
             const node = effectiveIndex.nodes.get(nodeId)?.node;
-            return node && (node.kind === "clauseBlockRef" || node.kind === "clauseInlineRef") ? { clauseCode: node.clauseCode, options: node.options } : undefined;
+            if (!node || (node.kind !== "clauseBlockRef" && node.kind !== "clauseInlineRef")) return undefined;
+            // 프리셋을 쓰는 자리면 프리셋 값이 마스터 선택 (ADR-0084 결정 5)
+            return { clauseCode: node.clauseCode, options: (await optionValidator.usageOptions?.(node.clauseCode, node)) ?? node.options };
           };
           const writes: { nodeId: Id; clauseCode: Code; diff: ClauseOptionSelection }[] = [];
           const seen = new Set<Id>();

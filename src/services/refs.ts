@@ -322,6 +322,7 @@ export function clauseUsageSource(db: Db): ClauseUsageSource {
           ...(refNodeId !== undefined ? { refNodeId } : {}),
           selection: e.options ?? {},
           ...(e.bindings ? { bindings: e.bindings } : {}),
+          ...(e.preset !== undefined ? { preset: e.preset } : {}),
         });
       }
       return out;

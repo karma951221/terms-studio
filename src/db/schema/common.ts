@@ -7,7 +7,7 @@
  *   (ADR-0012) 과 같은 결이고, 옵션·선택지 코드는 정의 안에서 유일하므로 별도 테이블이 필요 없다.
  * - 요구 구분자(required_*)는 저장 시 계산해 함께 둔다 — 구분자는 본문이 읽는 인자의 기본 연결, 담보속성은 직접 읽기 (ADR-0076 · 기능/함수조항 §3.3). 선언이 아니라 캐시.
  *   사용처 재검사·관계정보 뷰가 식을 다시 파싱하지 않고 읽는다.
- * - 코드는 code_sequences (kind `clause` · `clauseOption` · `clauseOptionValue`) 로 채번한다.
+ * - 코드는 code_sequences (kind `clause` · `clauseOption` · `clauseOptionValue` · `clausePreset`) 로 채번한다.
  * - 별표 마스터는 document 스키마(B3) 에 둔다.
  * - 사용처(참조) 역인덱스는 refs 영역(C1) 몫 — 여기에는 없다.
  *
@@ -17,6 +17,7 @@ import { jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 import type { LocalDef } from "@/domain/clause/locals";
 import type { ParamDef } from "@/domain/clause/params";
+import type { PresetDef } from "@/domain/clause/presets";
 import type { ClauseBody, ClauseMode, OptionDef } from "@/domain/clause/types";
 import type { Code } from "@/domain/types";
 
@@ -35,6 +36,8 @@ export const clauses = pgTable("clauses", {
   params: jsonb("params").$type<ParamDef[]>().notNull().default([]),
   /** 내부 변수 목록 (LocalDef[] — 이름 · 식, 최종 결정 2). 빈 목록 = 내부 변수 0개. */
   locals: jsonb("locals").$type<LocalDef[]>().notNull().default([]),
+  /** 프리셋 — 인자 연결 · 옵션 선택의 이름 붙은 조합 (ADR-0084). */
+  presets: jsonb("presets").$type<PresetDef[]>().notNull().default([]),
   /** 요구 구분자 코드 (식에서 자동 추출). */
   requiredDiscriminators: jsonb("required_discriminators").$type<Code[]>().notNull(),
   /** 요구 담보속성 종류 코드. */

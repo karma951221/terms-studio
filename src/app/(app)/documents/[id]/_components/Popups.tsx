@@ -14,7 +14,7 @@ import { IconButton, IconTrash } from "@/app/_components/icons";
 import { DOC_KIND_LABEL, REPEAT_DEPTH_LABEL, STRUCT_KEY_CHIP, SWITCH_WORD } from "@/app/_lib/labels";
 import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, planFormChoices, type LoopChoice } from "@/app/(app)/functions/_components/params";
 import type { EnumDef } from "@/domain/catalog";
-import type { Bindings, Clause } from "@/domain/clause";
+import { unfoldPreset, type Bindings, type Clause } from "@/domain/clause";
 import {
   indexTree,
   isRepeatSource,
@@ -332,9 +332,16 @@ function articleRefOf(fd: FormData, prefix = ""): { targets: RefTarget[]; connec
  * 인자 연결 칸은 「기본 연결」(비움 — 선언의 기본을 쓴다)이 처음 값이다. 기본 연결이 없으면 골라야 저장된다(연결 누락 = 저장 오류).
  * 조 참조 인자 칸은 조 참조 팝업과 같은 부품(대상 트리 + 연결어 + 값 한정) — 이 문서의 조 · 항 · 호 · 목을 고른다 (ADR-0083 결정 7).
  */
-function ClauseFields({ clauses, code, options, bindings, condition, loops = [], enumOf, refs }: { clauses: readonly Clause[]; code?: Code; options?: Record<Code, Code>; bindings?: Bindings; condition: ConditionContext; loops?: readonly LoopChoice[]; enumOf?: (code: Code) => EnumDef | undefined; refs: { ctx: DocCtx; restrict: RestrictChoices } }) {
+function ClauseFields({ clauses, code, options, bindings, preset, condition, loops = [], enumOf, refs }: { clauses: readonly Clause[]; code?: Code; options?: Record<Code, Code>; bindings?: Bindings; preset?: Code; condition: ConditionContext; loops?: readonly LoopChoice[]; enumOf?: (code: Code) => EnumDef | undefined; refs: { ctx: DocCtx; restrict: RestrictChoices } }) {
   const [picked, setPicked] = useState<Code>(code ?? "");
+  // 프리셋 (ADR-0084 결정 8) — 맨 위 「프리셋: 상해 ▾ / 직접 연결」. 프리셋이면 그 값은 읽기 전용, 사용처는 조 참조 · 「사용처가 채움」 인자만 댄다
+  const [mode, setMode] = useState<Code>(preset ?? "");
   const clause = clauses.find((c) => c.code === picked);
+  const presets = clause?.presets ?? [];
+  const chosen = mode !== "" ? presets.find((p) => p.code === mode) : undefined;
+  // 직접 연결로 풀면 프리셋 값이 채워진 채 열린다(결정 4) — 처음부터 직접 연결이면 노드 값 그대로
+  const seed = mode === "" && clause && preset !== undefined ? unfoldPreset(clause, { preset, options: options ?? {}, ...(bindings ? { bindings } : {}) }) : { options: options ?? {}, ...(bindings ? { bindings } : {}) };
+  const owned = new Set([...(chosen?.fromUsage ?? []), ...(clause?.params ?? []).filter((p) => p.type.kind === "articleRef").map((p) => p.name)]);
   const forms = planFormChoices();
   // 목록값 인자의 상수 연결 후보 — 그 열거형의 값(기능/함수조항 §5 「상수 연결은 참거짓 · 열거값만」)
   const enumsOf = (t: { kind: string; enumCode?: Code }): EnumDef[] => {
@@ -350,7 +357,10 @@ function ClauseFields({ clauses, code, options, bindings, condition, loops = [],
             id="pop-clause"
             name="clauseCode"
             value={picked}
-            onChange={setPicked}
+            onChange={(next) => {
+              setPicked(next);
+              setMode("");
+            }}
             options={clauses.map((c) => ({ value: c.code, label: c.label, hint: c.code }))}
             placeholder={clauses.length === 0 ? "함수조항 없음" : "이름 · 코드로 찾기"}
             disabled={clauses.length === 0}
@@ -359,46 +369,80 @@ function ClauseFields({ clauses, code, options, bindings, condition, loops = [],
       ) : (
         !clause && <p className="ts-error-banner">함수조항 {code} 이(가) 없다 — 깨진 참조다.</p>
       )}
+      {clause && (presets.length > 0 || preset !== undefined) && (
+        <div className="ts-form-row">
+          <label htmlFor="pop-preset">프리셋</label>
+          <select id="pop-preset" name="preset" value={mode} onChange={(e) => setMode(e.target.value)}>
+            <option value="">직접 연결</option>
+            {presets.map((p) => (
+              <option key={p.code} value={p.code}>
+                {p.name}
+              </option>
+            ))}
+            {preset !== undefined && !presets.some((p) => p.code === preset) && <option value={preset}>{preset}(없는 프리셋)</option>}
+          </select>
+        </div>
+      )}
       {clause && clause.options.length === 0 && (clause.params ?? []).length === 0 && <p className="ts-muted">고를 옵션 · 연결할 인자가 없는 함수조항이다.</p>}
-      {(clause?.params ?? []).map((p, i) => {
-        if (p.type.kind === "articleRef") {
-          const own = bindings?.[p.name];
+      <div key={`${picked}:${mode}`} className="ts-clause-fields">
+        {chosen && (
+          <p className="ts-form-hint">
+            프리셋 ‘{chosen.name}’ 값 그대로 — {[...(clause?.options ?? []).map((o) => `${o.label}: ${o.values.find((v) => v.code === chosen.options?.[o.code])?.label ?? "미선택"}`), ...(clause?.params ?? []).filter((p) => !owned.has(p.name)).map((p) => `${p.name} ← ${chosen.bindings?.[p.name] ? bindingLabel(chosen.bindings[p.name], p.type, condition.discriminators, enumsOf(p.type), forms) : p.default ? "기본 연결" : "없음"}`)].join(" · ") || "값 없음"}. 다르게 쓰려면 「직접 연결」로 바꾼다.
+          </p>
+        )}
+        {(clause?.params ?? []).map((p, i) => {
+          if (p.type.kind === "articleRef") {
+            const own = bindings?.[p.name];
+            return (
+              <fieldset key={`${clause!.code}-arg-${p.name}`} className="ts-form-row ts-form-full ts-arg-ref" aria-label={`인자 ${p.name}`}>
+                <legend>인자 {p.name} — 조 참조</legend>
+                <ArticleRefFields ctx={refs.ctx} restrict={refs.restrict} prefix={`arg:${p.name}:`} idBase={`pop-arg-ref-${i}`} {...(own?.kind === "articleRef" ? { node: own } : {})} />
+              </fieldset>
+            );
+          }
+          if (chosen && !owned.has(p.name)) return null;
           return (
-            <fieldset key={`${clause!.code}-arg-${p.name}`} className="ts-form-row ts-form-full ts-arg-ref" aria-label={`인자 ${p.name}`}>
-              <legend>인자 {p.name} — 조 참조</legend>
-              <ArticleRefFields ctx={refs.ctx} restrict={refs.restrict} prefix={`arg:${p.name}:`} idBase={`pop-arg-ref-${i}`} {...(own?.kind === "articleRef" ? { node: own } : {})} />
-            </fieldset>
+            <div key={`${clause!.code}-arg-${p.name}`} className="ts-form-row">
+              <label htmlFor={`pop-arg-${p.name}`}>인자 {p.name}</label>
+              <select id={`pop-arg-${p.name}`} name={`arg:${p.name}`} defaultValue={bindingValue(seed.bindings?.[p.name])}>
+                <option value="">{p.default ? `기본 연결 — ${bindingLabel(p.default, p.type, condition.discriminators, enumsOf(p.type), forms)}` : "— 연결 안 함(기본 연결 없음) —"}</option>
+                {bindingOptions(p.type, condition.discriminators, enumsOf(p.type), forms, true, loops).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           );
-        }
-        return (
-        <div key={`${clause!.code}-arg-${p.name}`} className="ts-form-row">
-          <label htmlFor={`pop-arg-${p.name}`}>인자 {p.name}</label>
-          <select id={`pop-arg-${p.name}`} name={`arg:${p.name}`} defaultValue={bindingValue(bindings?.[p.name])}>
-            <option value="">{p.default ? `기본 연결 — ${bindingLabel(p.default, p.type, condition.discriminators, enumsOf(p.type), forms)}` : "— 연결 안 함(기본 연결 없음) —"}</option>
-            {bindingOptions(p.type, condition.discriminators, enumsOf(p.type), forms, true, loops).map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        );
-      })}
-      {clause?.options.map((o) => (
-        <div key={`${clause.code}-${o.code}`} className="ts-form-row">
-          <label htmlFor={`pop-opt-${o.code}`}>{o.label}</label>
-          <select id={`pop-opt-${o.code}`} name={`option:${o.code}`} defaultValue={options?.[o.code] ?? ""}>
-            <option value="">— 미선택 —</option>
-            {o.values.map((v) => (
-              <option key={v.code} value={v.code}>
-                {v.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      ))}
+        })}
+        {!chosen &&
+          clause?.options.map((o) => (
+            <div key={`${clause.code}-${o.code}`} className="ts-form-row">
+              <label htmlFor={`pop-opt-${o.code}`}>{o.label}</label>
+              <select id={`pop-opt-${o.code}`} name={`option:${o.code}`} defaultValue={seed.options[o.code] ?? ""}>
+                <option value="">— 미선택 —</option>
+                {o.values.map((v) => (
+                  <option key={v.code} value={v.code}>
+                    {v.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
+      </div>
     </>
   );
+}
+
+/** 프리셋을 노드에 — 없으면 키 없음. */
+function withPreset<T extends object>(node: T, preset: Code | undefined): T {
+  return preset === undefined ? node : { ...node, preset };
+}
+
+/** 고른 프리셋 — 「직접 연결」이면 undefined. */
+function presetOfForm(fd: FormData): Code | undefined {
+  const v = str(fd, "preset");
+  return v === "" ? undefined : v;
 }
 
 /** 인자 연결 칸 → 연결 맵. 비운 칸(기본 연결) · 대상을 안 고른 조 참조 인자는 싣지 않는다(저장 검사가 연결 누락을 알린다). */
@@ -689,7 +733,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             const code = str(fd, "clauseCode");
             if (!code) return "함수조항을 고른다.";
             const bindings = bindingsOf(fd, env.clauses);
-            return bindingConnectorProblem(ctx, bindings) ?? withBindings(b.clauseInline(code, optionsOf(fd)), bindings);
+            return bindingConnectorProblem(ctx, bindings) ?? withPreset(withBindings(b.clauseInline(code, optionsOf(fd)), bindings), presetOfForm(fd));
           }
           case "structKey": {
             const level = str(fd, "structLevel");
@@ -763,7 +807,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
                 case "clauseInlineRef":
                 case "clauseBlockRef": {
                   const bindings = bindingsOf(fd, env.clauses, node.clauseCode);
-                  return bindingConnectorProblem(ctx, bindings) ?? [{ type: "setClauseOptions", nodeId: node.id, options: optionsOf(fd), bindings }];
+                  return bindingConnectorProblem(ctx, bindings) ?? [{ type: "setClauseOptions", nodeId: node.id, options: optionsOf(fd), bindings, preset: presetOfForm(fd) ?? null }];
                 }
                 default:
                   return [];
@@ -778,7 +822,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             )}
             {node.kind === "articleRef" && <ArticleRefFields ctx={ctx} node={node} restrict={restrictAt(node.id)} />}
             {node.kind === "appendixRef" && <AppendixSelect appendices={env.appendices} value={node.appendixCode} />}
-            {(node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && <ClauseFields clauses={env.clauses} code={node.clauseCode} options={node.options} {...(node.bindings ? { bindings: node.bindings } : {})} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(node.id)} refs={{ ctx, restrict: restrictAt(node.id) }} />}
+            {(node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && <ClauseFields clauses={env.clauses} code={node.clauseCode} options={node.options} {...(node.bindings ? { bindings: node.bindings } : {})} {...(node.preset !== undefined ? { preset: node.preset } : {})} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(node.id)} refs={{ ctx, restrict: restrictAt(node.id) }} />}
             <PopActions onCancel={onClose} />
           </PopForm>
         </Popover>
@@ -823,7 +867,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
               const code = str(fd, "clauseCode");
               if (!code) return "함수조항을 고른다.";
               const bindings = bindingsOf(fd, env.clauses);
-              return bindingConnectorProblem(ctx, bindings) ?? [{ type: "insert", node: withBindings(b.clauseBlock(code, optionsOf(fd)), bindings), at: spec.at }];
+              return bindingConnectorProblem(ctx, bindings) ?? [{ type: "insert", node: withPreset(withBindings(b.clauseBlock(code, optionsOf(fd)), bindings), presetOfForm(fd)), at: spec.at }];
             }}
           >
             <ClauseFields clauses={clausesFitting(env.clauses, spec.fit)} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(spec.at.parentId)} refs={{ ctx, restrict: restrictAt(spec.at.parentId) }} />

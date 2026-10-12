@@ -136,10 +136,11 @@ export function ContextMenu({ x, y, sections, onPick, onClose }: { x: number; y:
           <div key={i} className="ts-ctx-section">
             {section.map((item) => (
               <button
-                key={item.label}
+                key={item.name ?? item.label}
                 type="button"
                 role="menuitem"
-                className={item.danger ? "danger" : undefined}
+                aria-label={item.name}
+                className={[item.danger ? "danger" : "", item.indent ? "is-indent" : ""].filter(Boolean).join(" ") || undefined}
                 disabled={item.disabled}
                 onClick={() => {
                   onClose();

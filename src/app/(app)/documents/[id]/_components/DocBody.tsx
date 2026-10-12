@@ -276,7 +276,10 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
     const def = t.enumCode !== undefined ? ctx.enumOf?.(t.enumCode) : undefined;
     return def ? [def] : [];
   };
-  const args = params.map((p) => {
+  // 프리셋 (ADR-0084 결정 8) — 「인자: …」 대신 「프리셋 ‘상해’」, 사용처가 대는 인자(조 참조 · 사용처가 채움)만 덧붙인다
+  const preset = node.preset !== undefined ? clause?.presets?.find((p) => p.code === node.preset) : undefined;
+  const owned = new Set([...(preset?.fromUsage ?? []), ...params.filter((p) => p.type.kind === "articleRef").map((p) => p.name)]);
+  const args = params.filter((p) => node.preset === undefined || owned.has(p.name)).map((p) => {
     const own = node.bindings?.[p.name];
     const b = own ?? p.default;
     // 반복의 현재 원소 — 그 반복의 이름으로 「현재 ⟳ 납입면제사유마다」 (ADR-0077 결정 3)
@@ -291,16 +294,21 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
             : "연결 없음";
     return `${p.name} ← ${what}${own || !b ? "" : "(기본)"}`;
   });
-  const optionWords = clause && clause.options.length === 0 && params.length > 0 ? "" : ctx.optionText(node.clauseCode, node.options);
+  const optionWords =
+    node.preset !== undefined
+      ? `프리셋 ‘${preset?.name ?? `${node.preset}(없는 프리셋)`}’`
+      : clause && clause.options.length === 0 && params.length > 0
+        ? ""
+        : ctx.optionText(node.clauseCode, node.options);
   const options = [optionWords, args.length > 0 ? `인자: ${args.join(" · ")}` : ""].filter(Boolean).join(" · ");
-  const hasOptions = !clause || clause.options.length > 0 || params.length > 0;
+  const hasOptions = !clause || clause.options.length > 0 || params.length > 0 || (clause.presets ?? []).length > 0;
   let body: ReactNode = <p className="ts-muted">{label ? "본문을 불러오지 않았다." : `${node.clauseCode} — 없는 함수조항이다(깨진 참조).`}</p>;
   if (clause) {
     // 가운데(모델) — 함수조항이 어떻게 짜였는지: 슬롯 · 옵션 자리(선택지 전부 + 고른 것) · 조건 · 참조 (2026-09-28)
     body = (
       <ClauseModel
         clause={clause}
-        selected={node.options}
+        selected={preset?.options ?? node.options}
         references={ctx.docKind === "general" ? ctx.references.self : ctx.references.general}
         appendixName={(code) => ctx.appendixName.get(code)}
         boxOf={ctx.boxOf}

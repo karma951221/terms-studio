@@ -28,6 +28,7 @@ import { allMasterFields, findMasterField, masterFieldFullLabel, type MasterTree
 import type { ClauseNode } from "../clause/nodes";
 import { collectExpressions, switchEnumCode } from "../clause/body";
 import { valueParamTypes } from "../clause/params";
+import { presetUsage } from "../clause/presets";
 import type { Clause, ClauseBody } from "../clause/types";
 import { SPECIAL_GROUP_ENUM } from "../coverage/specialGroup";
 import { nodesOf } from "../coverage/tree";
@@ -189,6 +190,8 @@ class Builder {
   readonly generalTargets = new Map<string, { documentId: Id; articleId: Id }>();
   /** 보통약관 참조 열쇠 → 그 대상이 선 열거값 반복의 열거형 (값 한정 참조의 값 간선 — ADR-0077 결정 7). */
   readonly generalValueEnums = new Map<string, Code>();
+  /** 함수조항 코드 → 정의 — 사용처의 프리셋을 실제 값으로 푼다 (ADR-0084). */
+  readonly clauses = new Map<Code, Clause>();
 
   node(info: RefNodeInfo): void {
     this.nodes.set(nodeKey(info.key), info);
@@ -361,6 +364,7 @@ function clauseTypes(clause: Clause, master?: MasterTree): EnumReadTypes {
 }
 
 function addClause(b: Builder, clause: Clause, master?: MasterTree): void {
+  b.clauses.set(clause.code, clause);
   const key: RefNodeKey = { kind: "clause", code: clause.code };
   b.node({ key, label: clause.label, detail: clause.mode });
   for (const o of clause.options) {
@@ -464,16 +468,20 @@ function addDocument(b: Builder, doc: DocumentInput, master?: MasterTree): Map<I
         break;
       case "builtin":
         break;
-      case "clause":
-        b.edge({ from, to: { kind: "clause", code: r.clauseCode }, via: "clauseRef", at: r.at, options: r.options, ...(r.bindings ? { bindings: r.bindings } : {}) });
+      case "clause": {
+        // 프리셋이면 그 프리셋 값이 이 사용처의 실제 연결 · 선택이다 (ADR-0084) — 간선 · 재검사 · 삭제 영향이 그것을 본다
+        const def = b.clauses.get(r.clauseCode);
+        const used = def && r.preset !== undefined ? presetUsage(def, r) : r;
+        b.edge({ from, to: { kind: "clause", code: r.clauseCode }, via: "clauseRef", at: r.at, options: used.options, ...(used.bindings ? { bindings: used.bindings } : {}), ...(r.preset !== undefined ? { preset: r.preset } : {}) });
         // 사용처의 인자 연결 → 구분자 (기본 연결을 바꾼 것만 — 기본 연결은 함수조항의 defaultBinding 간선)
-        for (const [param, binding] of Object.entries(r.bindings ?? {})) {
+        for (const [param, binding] of Object.entries(used.bindings ?? {})) {
           if (binding.kind === "discriminator") b.edge({ from, to: { kind: "discriminator", code: binding.code }, via: "binding", at: { ...r.at, refPath: `${r.clauseCode}.arg.${param}` }, param });
         }
-        for (const [optionCode, valueCode] of Object.entries(r.options)) {
+        for (const [optionCode, valueCode] of Object.entries(used.options)) {
           b.edge({ from, to: { kind: "clauseOptionValue", clauseCode: r.clauseCode, optionCode, valueCode }, via: "optionSelect", at: { ...r.at, refPath: `${r.clauseCode}.${optionCode}` } });
         }
         break;
+      }
       case "article": {
         // 간선은 대상의 조로 — 대상(조 · 그 조의 코드)이 살아 있으면 조 노드, 사라졌으면 열쇠 그대로 둔 깨진 간선 (ADR-0072 결정 8).
         // self 는 이 문서의 참조 열쇠, general 은 indexGeneralArticles 로 찾는다.

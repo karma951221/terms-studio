@@ -20,6 +20,7 @@ export * from "./blockRepeat";
 export * from "./box";
 export * from "./builders";
 export * from "./clauseTree";
+export * from "./clausePresets";
 export * from "./commands";
 export * from "./conditionRows";
 export * from "./edit";

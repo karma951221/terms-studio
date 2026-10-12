@@ -239,6 +239,10 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     // 역할 함수조항은 보통약관 한 자리씩 — 호 · 부활 문구는 두 보통약관이 함께 쓴다
     for (const code of ["C0023", "C0024", "C0025", "C0026", "C0028", "C0029", "C0030", "C0031"]) expect(summaries.find((c) => c.code === code)?.usageCount).toBe(1);
     for (const code of ["C0022", "C0027"]) expect(summaries.find((c) => c.code === code)?.usageCount).toBe(2);
+    // 납입면제 프리셋 (ADR-0084) — 종들 역할 함수조항은 「적용 종」, 부활 문구는 기준일까지 둘. 사용처는 프리셋을 참조한다
+    expect((await services.clause.get("C0027"))?.presets?.map((p) => [p.code, p.name])).toEqual([["S01", "계약일 기준"], ["S02", "최초계약일 기준"]]);
+    for (const code of ["C0024", "C0025", "C0026", "C0029", "C0030", "C0031"]) expect((await services.clause.get(code))?.presets?.map((p) => p.name), code).toEqual(["적용 종"]);
+    expect((await services.clause.usages("C0027")).map((u) => u.preset).sort()).toEqual(["S01", "S02"]);
   }, 30_000);
 
   it("메리츠 — 보통약관 · 기본계약(일반상해사망) · 특약 8(전부 갱신형) · 세목 종 3 × 형 2 · 담보 COV000010~18", async () => {

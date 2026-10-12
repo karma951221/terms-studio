@@ -7,7 +7,7 @@
  * 검증 재료(함수조항 게이트 · 식 타입 조회)도 여기서 만든다 — 서버는 DB 에서 읽은 정의로, 브라우저는 서버가 넘긴 같은 정의로.
  */
 import { discriminatorResultType, type Discriminator } from "../catalog";
-import { boundDiscriminators, checkUsageBindings, validateOptionSelection, type BindingEnv, type Clause } from "../clause";
+import { boundDiscriminators, checkUsageBindings, presetUsage, validateOptionSelection, type BindingEnv, type Clause } from "../clause";
 import type { EnumDef } from "../catalog/types";
 import { definitionCrossCheck, valueBranchWarnings } from "./blockRepeat";
 import type { ExprType, TypeResolver } from "../expression";
@@ -81,6 +81,10 @@ export function clauseGateFrom(clauses: readonly Clause[], catalogCodes: Iterabl
       return checkUsageBindings(clause, bindings, env);
     },
     clauseOf: (code) => byCode.get(code),
+    usageOf: (code, node) => {
+      const clause = byCode.get(code);
+      return clause ? presetUsage(clause, node) : { options: node.options, ...(node.bindings ? { bindings: node.bindings } : {}), issues: [] };
+    },
   };
 }
 

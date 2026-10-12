@@ -12,6 +12,7 @@ import type { Code, Id } from "../types";
 import type { Block, Inline, ItemBodyNode, SubitemBodyNode } from "./nodes";
 import type { LocalDef } from "./locals";
 import type { ParamDef } from "./params";
+import type { PresetDef } from "./presets";
 
 /**
  * 유형 = 출력 모양 (최종 결정 4) — 문구(문장 조각) · 항(항 목록) · 호(호 목록) · 목(목 목록). 유형과 넣는 자리가 맞아야 넣는다.
@@ -61,6 +62,8 @@ interface ClauseBase {
   params?: ParamDef[];
   /** 내부 변수 — 인자를 가공한 값에 붙인 이름, 본문이 `var.<이름>` 으로 읽는다 (최종 결정 2). 앞 이름만 읽는다. 없거나 빈 목록 = 내부 변수 0개. */
   locals?: LocalDef[];
+  /** 프리셋 — 인자 연결 · 옵션 선택의 이름 붙은 조합, 사용처가 `preset` 으로 가리킨다 (ADR-0084). 없거나 빈 목록 = 프리셋 0개. */
+  presets?: PresetDef[];
   required: RequiredRefs;
 }
 

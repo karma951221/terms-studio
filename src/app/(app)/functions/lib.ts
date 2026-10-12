@@ -4,8 +4,10 @@
  * - 선택지 문구는 평문만 받는다(기능/함수조항 §6.2) — 화면은 글 한 줄, 저장은 텍스트 노드 하나.
  * - 새 옵션은 저장 전까지 `new:*` 코드라, 본문의 옵션 자리를 저장 때 실제 코드로 바꾼다.
  */
-import { isInlineBody, type Block, type BulletListNode, type ClauseBody, type Inline } from "@/domain/clause";
+import { isInlineBody, type Block, type BulletListNode, type ClauseBody, type Inline, type PresetInput } from "@/domain/clause";
 import type { Id } from "@/domain/types";
+
+import type { ClauseEditOption, ClauseEditPreset } from "./edit-types";
 
 export const isNewCode = (code: string) => code.startsWith("new:");
 
@@ -73,4 +75,41 @@ export function usedOptionCodes(body: ClauseBody): Set<string> {
   };
   mapInlines(body, walk);
   return out;
+}
+
+/**
+ * 프리셋 저장 모양 (ADR-0084) — 편집 코드를 옵션 · 선택지를 저장한 **뒤**의 실제 코드로 바꾼다. 새 옵션은 `added`(편집 코드 → 만든 코드),
+ * 새 선택지는 그 옵션에 새로 생긴 코드를 순서대로(저장은 남긴 선택지 뒤에 새 선택지를 차례로 붙인다). 새 프리셋(`new:*`)은 코드 없이 — 채번은 서비스가 한다.
+ * 빈 옵션 선택 · 연결 · 「사용처가 채움」 키는 싣지 않는다.
+ */
+export function presetsForSave(
+  presets: readonly ClauseEditPreset[],
+  edit: readonly ClauseEditOption[],
+  saved: readonly { code: string; values: readonly { code: string }[] }[],
+  added: ReadonlyMap<string, string>,
+): PresetInput[] {
+  const optionCode = new Map<string, string>();
+  const valueCode = new Map<string, Map<string, string>>();
+  for (const o of edit) {
+    const real = isNewCode(o.code) ? added.get(o.code) : o.code;
+    if (!real) continue;
+    optionCode.set(o.code, real);
+    const finalValues = saved.find((x) => x.code === real)?.values.map((v) => v.code) ?? [];
+    const kept = new Set(o.values.filter((v) => !isNewCode(v.code)).map((v) => v.code));
+    const fresh = finalValues.filter((c) => !kept.has(c));
+    const map = new Map<string, string>();
+    let k = 0;
+    for (const v of o.values) map.set(v.code, isNewCode(v.code) ? (fresh[k++] ?? v.code) : v.code);
+    valueCode.set(o.code, map);
+  }
+  return presets.map((p) => {
+    const options = Object.fromEntries(Object.entries(p.options).flatMap(([o, v]) => (optionCode.has(o) && v ? [[optionCode.get(o)!, valueCode.get(o)?.get(v) ?? v]] : [])));
+    return {
+      ...(isNewCode(p.code) ? {} : { code: p.code }),
+      name: p.name.trim(),
+      ...(Object.keys(options).length > 0 ? { options } : {}),
+      ...(Object.keys(p.bindings).length > 0 ? { bindings: p.bindings } : {}),
+      ...(p.fromUsage.length > 0 ? { fromUsage: [...p.fromUsage] } : {}),
+    };
+  });
 }
