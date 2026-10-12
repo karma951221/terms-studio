@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { RENEWABLE_PRODUCT } from "./renewal";
 import { SURRENDER_PAYING, WAIVER_PRESENT } from "./waiver";
 
 /**
@@ -128,9 +129,9 @@ describe("알파Plus 납입면제 템플릿 — 사유 값으로 분기하지 �
     expect(article.children!.map((r) => [r.kind, labelOf(r.clauseCode), r.preset, r.bindings])).toEqual(definitionLabels("알파Plus").map((label) => ["clauseBlockRef", label, "S01", undefined]));
   });
 
-  it("종들을 받는 역할 함수조항 · 사유별 정의는 프리셋 ‘적용 종’으로 넣는다 (ADR-0084)", () => {
+  it("종들을 받는 역할 함수조항(부활 문구 포함) · 사유별 정의는 프리셋 ‘적용 종’으로 넣는다 (ADR-0084)", () => {
     const applied = { 종들: APPLIED_SOURCE };
-    for (const label of ["면제 부가항(알파Plus)", "납입면제 세부규정(알파Plus)", "무효 문구(알파Plus)", ...definitionLabels("알파Plus")]) {
+    for (const label of ["면제 부가항(알파Plus)", "납입면제 세부규정(알파Plus)", "무효 문구(알파Plus)", "부활 문구", ...definitionLabels("알파Plus")]) {
       expect(clauseByLabel(label).presets, label).toEqual([{ code: "S01", name: "적용 종", bindings: applied }]);
       const ref = find(alpha, (x) => x.kind === "clauseBlockRef" && x.clauseCode === clauseByLabel(label).code)!;
       expect([ref.preset, ref.options, ref.bindings], label).toEqual(["S01", {}, undefined]);
@@ -211,10 +212,23 @@ describe("통합간편 납입면제 템플릿 — 알파Plus 와 같은 모양, 
     ]);
   });
 
-  it("부활 문구는 기준일 옵션 — 알파Plus 계약일(프리셋 S01 · V01) · 통합간편 최초계약일(프리셋 S02 · V02)", () => {
-    const code = clauseByLabel("부활 문구").code;
-    expect(find(alpha, (x) => x.kind === "clauseBlockRef" && x.clauseCode === code)!.preset).toBe("S01");
-    expect(find(meritz, (x) => x.kind === "clauseBlockRef" && x.clauseCode === code)!.preset).toBe("S02");
+  it("부활 문구 — 기준일은 인자 「갱신」(기본 연결 갱신형 상품) + 문장 안 조건, 옵션 · 기준일 프리셋은 없고 두 보통약관 모두 프리셋 ‘적용 종’ (ADR-0086 결정 6)", () => {
+    const revive = clauseByLabel("부활 문구");
+    expect(revive.params).toEqual([
+      { name: "종들", type: { kind: "planOptions", form: "waiver" } },
+      { name: "갱신", type: { kind: "boolean" }, default: { kind: "discriminator", code: RENEWABLE_PRODUCT } },
+    ]);
+    expect(revive.options).toEqual([]);
+    expect(revive.presets).toEqual([{ code: "S01", name: "적용 종", bindings: { 종들: APPLIED_SOURCE } }]);
+    const cond = find(revive.body, (x) => x.kind === "inlineCond")!;
+    expect((cond.branches as { when?: string; children: Json[] }[]).map((b) => [b.when, b.children.map((c) => c.text).join("")])).toEqual([
+      ["arg.갱신 = true", "최초계약일"],
+      [undefined, "계약일"],
+    ]);
+    for (const tree of [alpha, meritz]) {
+      const ref = find(tree, (x) => x.kind === "clauseBlockRef" && x.clauseCode === revive.code)!;
+      expect([ref.preset, ref.options, ref.bindings]).toEqual(["S01", {}, undefined]);
+    }
   });
 
   it("세부규정(통합간편) — 호 함수조항 참조: 암·면책 · 장해 · 장해 + 화상 · 상해 호(장해 호 함수조항의 첫 호 — 안쪽 코드) + 화상", () => {

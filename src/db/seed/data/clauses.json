@@ -3534,7 +3534,7 @@
     "code": "C0047",
     "label": "부활 문구",
     "mode": "block",
-    "description": "부활(효력회복) 조 — 적용 종들의 사유에 면책 사유가 있으면 「부활(효력회복)시 부활(효력회복)일을 〔기준일〕로 하여 암보장개시일을 적용합니다」. 기준일은 옵션(알파Plus 계약일 · 통합간편 최초계약일)",
+    "description": "부활(효력회복) 조 — 적용 종들의 사유에 면책 사유가 있으면 「부활(효력회복)시 부활(효력회복)일을 〔기준일〕로 하여 암보장개시일을 적용합니다」. 기준일은 인자 갱신(기본 연결 = 갱신형 상품) — 연만기(갱신형) 상품은 최초계약일, 세만기는 계약일",
     "body": [
       {
         "id": "c-waiver-revive-n1",
@@ -3555,11 +3555,33 @@
                   },
                   {
                     "id": "c-waiver-revive-n5",
-                    "kind": "optionSlot",
-                    "optionCode": "O01"
+                    "kind": "inlineCond",
+                    "branches": [
+                      {
+                        "id": "c-waiver-revive-n6",
+                        "when": "arg.갱신 = true",
+                        "children": [
+                          {
+                            "id": "c-waiver-revive-n7",
+                            "kind": "text",
+                            "text": "최초계약일"
+                          }
+                        ]
+                      },
+                      {
+                        "id": "c-waiver-revive-n8",
+                        "children": [
+                          {
+                            "id": "c-waiver-revive-n9",
+                            "kind": "text",
+                            "text": "계약일"
+                          }
+                        ]
+                      }
+                    ]
                   },
                   {
-                    "id": "c-waiver-revive-n6",
+                    "id": "c-waiver-revive-n10",
                     "kind": "text",
                     "text": "로 하여 암보장개시일을 적용합니다."
                   }
@@ -3571,45 +3593,23 @@
         ]
       }
     ],
-    "options": [
-      {
-        "code": "O01",
-        "label": "기준일",
-        "order": 0,
-        "values": [
-          {
-            "code": "V01",
-            "label": "계약일",
-            "order": 0,
-            "body": [
-              {
-                "id": "c-waiver-revive-o1v1-x1",
-                "kind": "text",
-                "text": "계약일"
-              }
-            ]
-          },
-          {
-            "code": "V02",
-            "label": "최초계약일",
-            "order": 1,
-            "body": [
-              {
-                "id": "c-waiver-revive-o1v2-x1",
-                "kind": "text",
-                "text": "최초계약일"
-              }
-            ]
-          }
-        ]
-      }
-    ],
+    "options": [],
     "params": [
       {
         "name": "종들",
         "type": {
           "kind": "planOptions",
           "form": "waiver"
+        }
+      },
+      {
+        "name": "갱신",
+        "type": {
+          "kind": "boolean"
+        },
+        "default": {
+          "kind": "discriminator",
+          "code": "D0006"
         }
       }
     ],
@@ -3626,26 +3626,7 @@
     "presets": [
       {
         "code": "S01",
-        "name": "계약일 기준",
-        "options": {
-          "O01": "V01"
-        },
-        "bindings": {
-          "종들": {
-            "kind": "source",
-            "source": {
-              "form": "waiver",
-              "filter": "waiver.applies = true"
-            }
-          }
-        }
-      },
-      {
-        "code": "S02",
-        "name": "최초계약일 기준",
-        "options": {
-          "O01": "V02"
-        },
+        "name": "적용 종",
         "bindings": {
           "종들": {
             "kind": "source",
@@ -4751,6 +4732,66 @@
   },
   {
     "code": "C0054",
+    "label": "기준일 문구",
+    "mode": "inline",
+    "description": "계약일 ↔ 최초계약일 — 갱신형이면 「최초계약일」, 아니면 「계약일」. 인자 갱신의 기본 연결은 갱신형 상품(보통약관), 담보약관은 프리셋 ‘담보’(갱신 ← 갱신형 담보)로 넣는다 (ADR-0086 결정 6)",
+    "body": [
+      {
+        "id": "c-basis-date-c1",
+        "kind": "inlineCond",
+        "branches": [
+          {
+            "id": "c-basis-date-c1-t",
+            "when": "arg.갱신 = true",
+            "children": [
+              {
+                "id": "c-basis-date-c1-t-x1",
+                "kind": "text",
+                "text": "최초계약일"
+              }
+            ]
+          },
+          {
+            "id": "c-basis-date-c1-e",
+            "children": [
+              {
+                "id": "c-basis-date-c1-e-x1",
+                "kind": "text",
+                "text": "계약일"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "options": [],
+    "params": [
+      {
+        "name": "갱신",
+        "type": {
+          "kind": "boolean"
+        },
+        "default": {
+          "kind": "discriminator",
+          "code": "D0006"
+        }
+      }
+    ],
+    "presets": [
+      {
+        "code": "S01",
+        "name": "담보",
+        "bindings": {
+          "갱신": {
+            "kind": "discriminator",
+            "code": "D0005"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "code": "C0055",
     "label": "보장의 범위(신화상치료비)",
     "mode": "block",
     "description": "신화상치료비의 세 보장 — 두 상품이 같은 글이다(뒤 박스는 사용처 소유)",
@@ -4771,7 +4812,7 @@
     "options": []
   },
   {
-    "code": "C0055",
+    "code": "C0056",
     "label": "보험금의 지급사유(골절진단비)",
     "mode": "block",
     "description": "골절(치아파절 제외)진단비의 지급사유 — 두 상품이 같은 글이다. 보험금명은 담보 값(D0001)",
@@ -4824,7 +4865,7 @@
     ]
   },
   {
-    "code": "C0056",
+    "code": "C0057",
     "label": "보험금의 지급사유(골절수술비)",
     "mode": "block",
     "description": "골절수술비의 지급사유 — 두 상품이 같은 글이다. 보험금명은 담보 값(D0001)",
@@ -4877,7 +4918,7 @@
     ]
   },
   {
-    "code": "C0057",
+    "code": "C0058",
     "label": "보험금 지급에 관한 세부규정(골절진단비)",
     "mode": "block",
     "description": "골절 여럿이면 1회 · 제3자 판정 — 두 상품이 같은 글이다. 「제1조」는 사용처 위치",
@@ -4933,7 +4974,7 @@
     ]
   },
   {
-    "code": "C0058",
+    "code": "C0059",
     "label": "보험금 지급에 관한 세부규정(골절수술비)",
     "mode": "block",
     "description": "골절 수술 여럿이면 하나 · 제3자 판정 — 두 상품이 같은 글이다. 「제1조」는 사용처 위치",
@@ -4989,7 +5030,7 @@
     ]
   },
   {
-    "code": "C0059",
+    "code": "C0060",
     "label": "보험금 지급에 관한 세부규정(생활자금)",
     "mode": "block",
     "description": "알파Plus 후유장해 생활자금 두 담보의 장해지급률 · 합산 · 가중 규정 — 분류표 외 후유장해로 정하는 것(지급액 · 장해지급률)만 다르다",
@@ -5229,7 +5270,7 @@
     ]
   },
   {
-    "code": "C0060",
+    "code": "C0061",
     "label": "보험금 지급에 관한 세부규정(후유장해)",
     "mode": "block",
     "description": "메리츠 80%이상후유장해 두 담보(상해 · 질병)의 장해지급률 · 합산 · 가중 규정 — 기산일 · 원인 · 분류표 외 결정 대상이 다르다",
@@ -5591,7 +5632,7 @@
     ]
   },
   {
-    "code": "C0061",
+    "code": "C0062",
     "label": "중증화상및부식진단의 정의 및 진단확정",
     "mode": "block",
     "description": "중증화상및부식의 정의 · 진단확정 — 두 상품이 조사 두 곳만 다르다",
@@ -5707,7 +5748,7 @@
     ]
   },
   {
-    "code": "C0062",
+    "code": "C0063",
     "label": "특별약관의 소멸(사망)",
     "mode": "block",
     "description": "소멸 급부가 없는 담보 — 피보험자 사망으로 소멸하고 계약자적립액 · 미경과보험료를 지급한다",
@@ -5728,7 +5769,7 @@
     "options": []
   },
   {
-    "code": "C0063",
+    "code": "C0064",
     "label": "특별약관의 소멸(지급사유 발생)",
     "mode": "block",
     "description": "소멸 급부가 담보 전체 — 제1조의 지급사유가 생기면 소멸 · 해약환급금 미지급 · 사망 시 소멸. 보험금명은 담보 값(D0001), 「그 때부터」 유무가 상품마다 다르다",
@@ -5864,7 +5905,7 @@
     ]
   },
   {
-    "code": "C0064",
+    "code": "C0065",
     "label": "특별약관의 소멸(사망보험금)",
     "mode": "block",
     "description": "사망이 곧 지급사유인 담보 — 「지급사유 발생」 조에서 ③ 이 「제1항 이외의 사유로」 사망한 경우",
@@ -6057,7 +6098,7 @@
     ]
   },
   {
-    "code": "C0065",
+    "code": "C0066",
     "label": "특별약관의 소멸(생활자금)",
     "mode": "block",
     "description": "알파Plus 후유장해 생활자금 두 담보 — 제1조 제1항의 생활자금 지급사유가 생기면 소멸. 장해율(80% · 50%)만 다르다",
@@ -6173,7 +6214,7 @@
     ]
   },
   {
-    "code": "C0066",
+    "code": "C0067",
     "label": "특별약관의 소멸(중증화상및부식)",
     "mode": "block",
     "description": "세부보장 하나(중증화상및부식진단비)가 소멸 급부 — ① 사망 시 소멸 ②③ 그 세부보장의 소멸 · 해약환급금 미지급",
@@ -6263,7 +6304,7 @@
     ]
   },
   {
-    "code": "C0067",
+    "code": "C0068",
     "label": "준용규정(알파Plus)",
     "mode": "block",
     "description": "특별약관에서 정하지 않은 사항은 보통약관을 따른다 — 알파Plus 보통약관 조를 가리킨다. 제외 조 목록은 갱신형(담보속성 A0001 = 2)이면 다섯 조 무조건, 아니면 세 조 + 1종 가입 시 두 조",
@@ -6406,7 +6447,7 @@
     ]
   },
   {
-    "code": "C0068",
+    "code": "C0069",
     "label": "준용규정(통합간편)",
     "mode": "block",
     "description": "특별약관에서 정하지 않은 사항은 보통약관을 따른다 — 메리츠 보통약관 조를 가리킨다(적립이율 · 만기환급금 · 중도인출 제외, 1종이면 납입면제 두 조도 제외). 질병사망은 제5조까지 빼는 다른 글이라 쓰지 않는다",

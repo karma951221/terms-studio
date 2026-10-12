@@ -139,22 +139,25 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     expect(burn.subCoverages.map((s) => s.benefits.map((b) => b.name))).toEqual(names.map((n) => [n]));
   });
 
-  it("시드 구분자는 원문 모델링이 쓰는 담보명(D0001) · 납입면제 있음(D0002) · 해약환급금 지급형(D0003 · D0004 있음)뿐 — 감액 · 면책 · 최초1회 같은 특성 구분자는 두지 않는다 (알파플러스_모델명세 §2)", async () => {
+  it("시드 구분자는 원문 모델링이 쓰는 담보명(D0001) · 납입면제 있음(D0002) · 해약환급금 지급형(D0003 · D0004 있음) · 갱신형 담보 · 상품(D0005 · D0006)뿐 — 감액 · 면책 · 최초1회 같은 특성 구분자는 두지 않는다 (알파플러스_모델명세 §2)", async () => {
     const defs = await services.catalog.list();
     expect(defs.map((d) => [d.code, d.label, d.level, d.expression])).toEqual([
       ["D0001", "담보명", "coverage", "coverage_basic.claim_name"],
       ["D0002", "납입면제 있음", "product", "any(waiver.applies)"],
       ["D0003", "해약환급금 지급형", "plan", "no_surrender.type = 'V01'"],
       ["D0004", "해약환급금 지급형 있음", "product", "any(D0003)"],
+      // 계약일 ↔ 최초계약일을 가른다 (ADR-0086 결정 6)
+      ["D0005", "갱신형 담보", "coverage", "exist(attr.A0001) and attr.A0001 = '2'"],
+      ["D0006", "갱신형 상품", "product", "feature.renewable"],
     ]);
   });
 
-  it("함수조항 68건 — 조 · 여러 항(두 곳 이상이 되풀이) 36 + 납입면제 함수조항 32(사유별 호 12 · 사유별 정의 13 · 역할 7) · 박스는 함수조항이 아니라 정적 마스터 103 (알파플러스_모델명세 §4 · §6 · 메리츠_모델명세 §4)", async () => {
+  it("함수조항 69건 — 조 · 여러 항(두 곳 이상이 되풀이) 36 + 납입면제 함수조항 32(사유별 호 12 · 사유별 정의 13 · 역할 7) + 문구 「기준일 문구」 · 박스는 함수조항이 아니라 정적 마스터 103 (알파플러스_모델명세 §4 · §6 · 메리츠_모델명세 §4)", async () => {
     const list = await services.clause.list();
     const reasons = ["암(유사암제외)·면책", "암(유사암제외)·무면책", "뇌졸중", "급성심근경색증", "말기폐질환", "말기간경화", "말기신부전증", "양성뇌종양", "중대한재생불량성빈혈", "만성당뇨합병증", "상해및질병80%이상후유장해", "중증화상및부식"];
     const lineDefinitions = (line: string) => ["암(유사암제외)", "뇌졸중", "급성심근경색증"].map((r) => `${r} 정의 및 진단확정(${line})`);
     const sharedDefinitions = ["말기폐질환", "말기간경화", "말기신부전증", "양성뇌종양", "중대한재생불량성빈혈", "만성당뇨합병증", "중증화상및부식"].map((r) => `${r} 정의 및 진단확정`);
-    // 코드 = 적재 순서: 보통약관이 쓰는 것(조째 21 → 알파Plus 납입면제 26 → 통합간편 납입면제 6) → 담보약관만 쓰는 것 → 보통약관 조를 가리키는 준용규정 두 벌(맨 뒤)
+    // 코드 = 적재 순서: 보통약관이 쓰는 것(조째 21 → 알파Plus 납입면제 26 → 통합간편 납입면제 6) → 담보약관만 쓰는 것(기준일 문구 · 조째 13) → 보통약관 조를 가리키는 준용규정 두 벌(맨 뒤)
     const expected: [string, string][] = [
       ...[
         "목적",
@@ -183,6 +186,7 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
       ...reasons.map((r): [string, string] => ["item", `납입면제 호 — ${r}`]),
       ...[...lineDefinitions("알파Plus"), ...sharedDefinitions, "면제 부가항(알파Plus)", "납입면제 세부규정(알파Plus)", "무효 문구(알파Plus)", "부활 문구"].map((label): [string, string] => ["block", label]),
       ...[...lineDefinitions("통합간편"), "면제 부가항(통합간편)", "납입면제 세부규정(통합간편)", "무효 문구(통합간편)"].map((label): [string, string] => ["block", label]),
+      ["inline", "기준일 문구"],
       ...[
         "보장의 범위(신화상치료비)",
         "보험금의 지급사유(골절진단비)",
@@ -210,8 +214,11 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     }
     expect(byLabel("납입면제 세부규정(통합간편)").locals?.map((l) => l.name)).toEqual(["사유들", "면책있음", "장해있음", "상해장해", "장해화상", "상해관련"]);
     expect(byLabel("납입면제 세부규정(알파Plus)").locals?.map((l) => l.name)).toEqual(["사유들", "면책있음", "장해있음", "상해장해"]);
-    // 부활 문구는 기준일 옵션(계약일 · 최초계약일)으로 두 보통약관이 함께 쓴다
-    expect(byLabel("부활 문구").options.map((o) => [o.label, o.values.map((v) => v.label)])).toEqual([["기준일", ["계약일", "최초계약일"]]]);
+    // 계약일 ↔ 최초계약일은 데이터가 가른다 — 부활 문구 · 기준일 문구 모두 인자 「갱신」(기본 연결 갱신형 상품 D0006), 옵션 없음 (ADR-0086 결정 6)
+    for (const label of ["부활 문구", "기준일 문구"]) {
+      expect(byLabel(label).options, label).toEqual([]);
+      expect(byLabel(label).params?.find((p) => p.name === "갱신")?.default, label).toEqual({ kind: "discriminator", code: "D0006" });
+    }
     // 박스를 품은 조째 — 호 목록 · 항 사이의 박스 참조가 본문에 선다(최종 결정 6)
     expect(JSON.stringify(list[19].body)).toContain('"boxCode":"BX000005"');
     expect(JSON.stringify(list[20].body)).toContain('"kind":"boxRef"');
@@ -245,13 +252,14 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     for (const label of [...lineDefinitions("알파Plus"), ...lineDefinitions("통합간편"), "면제 부가항(알파Plus)", "납입면제 세부규정(알파Plus)", "무효 문구(알파Plus)", "면제 부가항(통합간편)", "납입면제 세부규정(통합간편)", "무효 문구(통합간편)"]) {
       expect(usage(label), label).toBe(1);
     }
-    // 납입면제 프리셋 (ADR-0084) — 종들을 받는 정의 · 역할 함수조항은 「적용 종」, 부활 문구는 기준일까지 둘. 사용처는 프리셋을 참조한다
-    const revive = byLabel("부활 문구").code;
-    expect((await services.clause.get(revive))?.presets?.map((p) => [p.code, p.name])).toEqual([["S01", "계약일 기준"], ["S02", "최초계약일 기준"]]);
-    for (const label of [...lineDefinitions("알파Plus"), ...sharedDefinitions, ...lineDefinitions("통합간편"), "면제 부가항(알파Plus)", "납입면제 세부규정(알파Plus)", "무효 문구(알파Plus)", "면제 부가항(통합간편)", "납입면제 세부규정(통합간편)", "무효 문구(통합간편)"]) {
+    // 납입면제 프리셋 (ADR-0084) — 종들을 받는 정의 · 역할 함수조항(부활 문구 포함)은 「적용 종」. 사용처는 프리셋을 참조한다
+    for (const label of [...lineDefinitions("알파Plus"), ...sharedDefinitions, ...lineDefinitions("통합간편"), "면제 부가항(알파Plus)", "납입면제 세부규정(알파Plus)", "무효 문구(알파Plus)", "부활 문구", "면제 부가항(통합간편)", "납입면제 세부규정(통합간편)", "무효 문구(통합간편)"]) {
       expect((await services.clause.get(byLabel(label).code))?.presets?.map((p) => p.name), label).toEqual(["적용 종"]);
     }
-    expect((await services.clause.usages(revive)).map((u) => u.preset).sort()).toEqual(["S01", "S02"]);
+    expect((await services.clause.usages(byLabel("부활 문구").code)).map((u) => u.preset)).toEqual(["S01", "S01"]);
+    // 기준일 문구 — 알파Plus 수술비 담보약관 세 자리가 프리셋 ‘담보’(갱신 ← 갱신형 담보 D0005)로 쓴다
+    expect((await services.clause.get(byLabel("기준일 문구").code))?.presets?.map((p) => [p.code, p.name, p.bindings])).toEqual([["S01", "담보", { 갱신: { kind: "discriminator", code: "D0005" } }]]);
+    expect(usage("기준일 문구")).toBe(3);
   }, 30_000);
 
   it("메리츠 — 보통약관 · 기본계약(일반상해사망) · 특약 8(전부 갱신형) · 세목 종 3 × 형 2 · 담보 COV000010~18", async () => {

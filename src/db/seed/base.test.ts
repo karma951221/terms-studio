@@ -26,7 +26,7 @@ describe("loadRealBase — 화면 E2E 바탕", () => {
     await t.close();
   });
 
-  it("별표 21 · 열거형 2(E0001 · 필드 셋, E0002 — D0003 이 읽는 무저해지 유형) · 구분자 4(D0001 ~ D0004) · 보통약관이 쓰는 박스 84 · 함수조항 53(앞 코드) · 보통약관 2 — 담보 · 상품은 없다", async () => {
+  it("별표 21 · 열거형 2(E0001 · 필드 셋, E0002 — D0003 이 읽는 무저해지 유형) · 구분자 6(D0001 ~ D0006 — 부활 문구가 기본 연결로 읽는 D0006 갱신형 상품까지 앞 코드) · 보통약관이 쓰는 박스 84 · 함수조항 53(앞 코드) · 보통약관 2 — 담보 · 상품은 없다", async () => {
     expect(await loadRealBase(services, admin)).toEqual({ created: true });
     expect(await services.document.listAppendices()).toHaveLength(21);
     const clauses = (await services.clause.list()).map((c) => c.code);
@@ -35,7 +35,7 @@ describe("loadRealBase — 화면 E2E 바탕", () => {
     // 역할 함수조항은 보통약관 조를 가리킨다(가리키기 순환) — 두 번에 만들어 자리표시가 남지 않는다
     for (const code of ["C0044", "C0045", "C0051", "C0052"]) expect(JSON.stringify((await services.clause.get(code))?.body), code).not.toContain("〔보통약관 참조〕");
     expect((await services.catalog.listEnums()).map((e) => [e.code, e.fields?.length ?? 0])).toEqual([["E0001", 3], ["E0002", 0]]);
-    expect((await services.catalog.list()).map((d) => d.code)).toEqual(["D0001", "D0002", "D0003", "D0004"]);
+    expect((await services.catalog.list()).map((d) => d.code)).toEqual(["D0001", "D0002", "D0003", "D0004", "D0005", "D0006"]);
     const boxes = (await services.document.listBoxes()).map((b) => b.code);
     expect(boxes).toEqual([...boxesUsedByGenerals()].sort());
     expect(boxes).toEqual(Array.from({ length: 84 }, (_, i) => `BX${String(i + 1).padStart(6, "0")}`));

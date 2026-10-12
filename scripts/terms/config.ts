@@ -9,6 +9,7 @@
  */
 
 import type { ConvertedClauseMode } from "./clauses";
+import { BASIS_DATE, BASIS_DATE_COVERAGE_PRESET } from "./renewal";
 
 export interface AppendixSpec {
   /** 알파Plus 원문 번호 — 알파Plus 원문에 없는 별표(메리츠에서 처음 나온 것)는 없다. */
@@ -430,18 +431,16 @@ const ALPHA_SPECIALS: SpecialSpec[] = [
   {
     // 비갱신형 · 갱신형 **두 벌을 내는 한 벌**이다 (ADR-0003 실증) — 원문은 갱신형 쪽(조 8개, 상위집합)을 싣고
     // 담보속성 A0001(갱신유형) 조건으로 비갱신형을 깎는다. 제목은 작명 템플릿 `[A0001] [담보명] [A0002]` 이 낸다.
-    // 원문 두 벌의 차이는 제목을 빼면 다섯 자리뿐이다 (보고서 rr2-report-FG.md §4.1).
+    // 원문 두 벌의 차이는 제목을 빼면 다섯 자리뿐이다 (보고서 rr2-report-FG.md §4.1). 그중 기준일 낱말 세 자리는 「기준일 문구」 함수조항이 가른다.
     code: "surgery17-doc",
     ownerCoverage: "surgery17",
     idPrefix: "s7",
     title: "수술비(1-7종, 연간3회한)[상해]보장 특별약관",
     file: "갱신형_수술비(1-7종,_연간3회한)[상해]보장.md",
     slots: [{ article: "1", find: "수술비", ref: "D0001" }],
+    // ① 제1조 제2항 · ②③ 예시표 (1)(2) 의 행 머리 — 「최초계약일」 ↔ 「계약일」은 문구 함수조항 「기준일 문구」 프리셋 ‘담보’(갱신 ← 갱신형 담보, ADR-0086 결정 6)
+    inlineClauses: [1, 2, 3].map(() => ({ article: "1", find: "최초계약일", clause: BASIS_DATE, preset: BASIS_DATE_COVERAGE_PRESET })),
     inlineConds: [
-      // ① 제1조 제2항 · ②③ 예시표 (1)(2) 의 행 머리 — 「최초계약일」 ↔ 「계약일」
-      { article: "1", find: "최초계약일부터", when: RENEWAL, then: "최초계약일부터", else: "계약일부터" },
-      { article: "1", find: "최초계약일", when: RENEWAL, then: "최초계약일", else: "계약일" },
-      { article: "1", find: "최초계약일", when: RENEWAL, then: "최초계약일", else: "계약일" },
       // ④ 준용규정의 제외 목록 — 갱신형은 다섯 조 무조건 제외, 비갱신형은 세 조 + 「1종으로 가입한 경우」 두 조
       {
         article: "8",

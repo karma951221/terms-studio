@@ -136,7 +136,9 @@ export class Editor {
         await this.runTool("문장 안 함수조항");
         const d = this.dialog("함수조항(문장 안) 넣기");
         await pickCombo(d.locator("#pop-clause"), { value: node.clauseCode });
-        for (const [option, value] of Object.entries(node.options)) await d.locator(`#pop-opt-${option}`).selectOption(value);
+        // 프리셋이면 그 조합 그대로(옵션 · 인자 연결은 프리셋 값 — ADR-0084), 아니면 옵션마다 선택지
+        if (node.preset !== undefined) await d.locator("#pop-preset").selectOption(node.preset);
+        else for (const [option, value] of Object.entries(node.options)) await d.locator(`#pop-opt-${option}`).selectOption(value);
         return this.confirm(d, "넣기");
       }
       case "articleRef": {
@@ -648,6 +650,25 @@ export class ClauseAuthoringDriver {
       await this.page.getByLabel("새 인자 타입", { exact: true }).selectOption(type);
       if (p.default?.kind === "discriminator") await this.page.getByLabel("새 인자 기본 연결", { exact: true }).selectOption(`d:${p.default.code}`);
       await this.page.getByRole("button", { name: "인자 추가" }).click();
+    }
+  }
+
+  /**
+   * 프리셋 — 맨 위 추가 줄에 이름을 적고 ⊕ 「프리셋 추가」, 카드에서 옵션마다 선택지 · 인자마다 연결(구분자 `d:<코드>`)을 고른다 (ADR-0084 · 기능/함수조항 §4.3).
+   * 코드는 함수조항마다 S01 부터 채번 — 시드 순서대로 더하면 시드 코드가 나온다.
+   */
+  async presets(presets: NonNullable<ClauseSpec["presets"]>, options: readonly ClauseOption[]): Promise<void> {
+    for (const p of presets) {
+      await this.page.getByLabel("새 프리셋 이름", { exact: true }).fill(p.name);
+      await this.page.getByRole("button", { name: "프리셋 추가" }).click();
+      for (const [code, value] of Object.entries(p.options ?? {})) {
+        const label = options.find((o) => o.code === code)?.label ?? code;
+        await this.page.getByLabel(`${p.name} — 옵션 ${label}`, { exact: true }).selectOption(value);
+      }
+      for (const [name, b] of Object.entries(p.bindings ?? {})) {
+        if (b.kind !== "discriminator" || !b.code) throw new Error(`이 E2E 의 프리셋 연결은 구분자뿐이다: ${name}`);
+        await this.page.getByLabel(`${p.name} — 인자 ${name}`, { exact: true }).selectOption(`d:${b.code}`);
+      }
     }
   }
 

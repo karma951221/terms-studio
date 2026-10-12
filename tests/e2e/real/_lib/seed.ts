@@ -54,6 +54,8 @@ export interface ClauseSpec {
   options: { code: string; label: string; values: { code: string; label: string; body: { kind: string; text?: string }[] }[] }[];
   /** 인자 — 구분자 직접 읽기를 기계 변환한 것(최종 결정 2) · 조 참조 인자(`articleRef`, 기본 연결 없음 — ADR-0083). */
   params?: { name: string; type: { kind: string; enumCode?: string; form?: string }; default?: { kind: "discriminator"; code: string } }[];
+  /** 프리셋 — 인자 연결 · 옵션 선택의 이름 붙은 조합(ADR-0084). 담보약관만 쓰는 함수조항은 「기준일 문구」 ‘담보’(구분자 연결)뿐이다. */
+  presets?: { code: string; name: string; bindings?: Record<string, { kind: string; code?: string }>; options?: Record<string, string> }[];
 }
 export interface DocumentSpec {
   code: string;
@@ -153,7 +155,7 @@ function prefixCodes(list: readonly { code: string }[], codes: ReadonlySet<strin
 /** 보통약관 · 그 함수조항이 놓는 박스 — 바탕 DB 가 보통약관과 함께 시드로 넣는다(BX000001~). 화면 E2E 는 그 뒤 코드부터 박스 화면으로 친다. */
 export const BASE_BOX_CODES = prefixCodes(SEED.boxes, new Set([...BASE_SOURCES.matchAll(/"boxCode":"(BX\d+)"/g)].map((m) => m[1])));
 
-/** 보통약관 조 자리 조건이 읽는 구분자(D0004 해약환급금 지급형 있음까지 앞 코드) — 바탕 DB 가 넣는다. 화면 E2E ① 은 그 뒤 코드부터. */
+/** 보통약관 · 그 함수조항이 읽는 구분자(D0006 갱신형 상품까지 앞 코드) — 바탕 DB 가 넣는다. 화면 E2E ① 은 그 뒤 코드부터. */
 export const BASE_DISCRIMINATOR_CODES = prefixCodes(SEED.discriminators, new Set([...BASE_SOURCES.matchAll(/\b(D\d{4})\b/g)].map((m) => m[1])));
 
 /**

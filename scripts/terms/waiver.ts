@@ -26,6 +26,7 @@ import type { Code, Id } from "../../src/domain/types";
 import type { ClauseRecord } from "./clauses";
 import { allArticles, reId } from "./clauses";
 import { withClauseCodes } from "../../src/domain/clause/pcode";
+import { basisWord, RENEWAL_PARAM } from "./renewal";
 
 /** 역할 함수조항이 읽는 보통약관 한 벌 — 트리와 원문 조 번호. */
 export interface WaiverSource {
@@ -42,9 +43,7 @@ export const WAIVER_PRESENT = "D0002";
  */
 export const SURRENDER_PAYING = "D0004";
 
-/** 부활 문구의 기준일 옵션 — 알파Plus 「계약일」 · 통합간편 「최초계약일」. */
-const REVIVE_OPTION = "O01";
-const REVIVE_VALUE = { 계약일: "V01", 최초계약일: "V02" } as const;
+/** 부활 문구 원문 — 알파Plus 「계약일」 · 통합간편 「최초계약일」(갱신형 상품). */
 const REVIVE_TEXT = (word: string) => `부활(효력회복)시 부활(효력회복)일을 ${word}로 하여 암보장개시일을 적용합니다.`;
 
 /** E0001 납입면제사유 값 코드 (enums.json — 열거형 순서). V12 · V13 은 쓰는 상품이 없어 지웠다 (ADR-0086 결정 5). */
@@ -104,11 +103,10 @@ const APPLIED = { form: "waiver", filter: "waiver.applies = true" } as const;
 const APPLIED_BINDING: Binding = { kind: "source", source: { ...APPLIED } };
 
 /**
- * 납입면제 프리셋 (ADR-0084) — 종들을 받는 정의 · 역할 함수조항은 사용처마다 「적용 납입면제종」 한 조합이라 프리셋 하나, 부활 문구는 기준일(계약일 · 최초계약일)까지
- * 둘. 사용처는 프리셋을 참조한다. 사유별 호는 「반복의 현재 원소」(현재 종)뿐이라 프리셋에 담을 값이 없다.
+ * 납입면제 프리셋 (ADR-0084) — 종들을 받는 정의 · 역할 함수조항은 사용처마다 「적용 납입면제종」 한 조합이라 프리셋 하나. 사용처는 프리셋을 참조한다.
+ * 사유별 호는 「반복의 현재 원소」(현재 종)뿐이라 프리셋에 담을 값이 없다. 부활 문구의 기준일은 데이터(인자 갱신의 기본 연결)가 가른다(ADR-0086 결정 6).
  */
 const APPLIED_PRESETS: PresetDef[] = [{ code: "S01", name: "적용 종", bindings: { 종들: APPLIED_BINDING } }];
-const REVIVE_PRESET = { 계약일: "S01", 최초계약일: "S02" } as const;
 
 function withPresets(clause: WaiverClause, presets: PresetDef[]): WaiverClause {
   return { ...clause, record: { ...clause.record, presets: structuredClone(presets) } };
@@ -287,12 +285,12 @@ function paragraphRun(a: ArticleNode, from: number, to = from): Id[] {
 /** 글 한 줄 문장. */
 const text = (id: Id, value: string): Inline => ({ id, kind: "text", text: value });
 
-function record(key: string, label: string, mode: ClauseRecord["mode"], description: string, body: Block[] | ClauseItem[] | unknown[], params: ParamDef[], locals: LocalDef[] = [], options: ClauseRecord["options"] = []): WaiverClause {
+function record(key: string, label: string, mode: ClauseRecord["mode"], description: string, body: Block[] | ClauseItem[] | unknown[], params: ParamDef[], locals: LocalDef[] = []): WaiverClause {
   // 노드 id 를 결정적으로 다시 매긴다 — 「이 함수조항」 참조 대상도 따라간다 (clauses.ts reId)
   const rebased = reId(body as unknown[], `c-${key}`);
   return {
     key,
-    record: { code: "", label, mode, description, body: rebased as ClauseRecord["body"], options, params, ...(locals.length ? { locals } : {}) },
+    record: { code: "", label, mode, description, body: rebased as ClauseRecord["body"], options: [], params, ...(locals.length ? { locals } : {}) },
   };
 }
 
@@ -410,7 +408,8 @@ export function applyAlphaWaiver(alpha: WaiverSource, meritz: WaiverSource): Wai
   );
 
   // ── ⑥ 부활 문구(종들) — 제30조 ④ 「…암보장개시일을 적용합니다」, 면책 사유가 있을 때만. 항 하나라 유형 = 항(문구면 빈 ④ 가 남는다).
-  // 통합간편 제35조 ④ 와 낱말 하나(계약일 ↔ 최초계약일)만 달라 옵션으로 두 상품이 함께 쓴다 — 사용처(보통약관 템플릿)가 고른다 (결정 3)
+  // 통합간편 제35조 ④ 와 낱말 하나(계약일 ↔ 최초계약일)만 달라 두 상품이 함께 쓴다 — 그 낱말은 상품 속성(갱신형여부)이 정해 인자 갱신 + 문장 안 조건이다.
+  // 함수조항 안에는 「기준일 문구」 함수조항을 끼울 수 없다(중첩 금지 — ADR-0086 결정 6)
   const reviveId = paragraphRun(a30, 4);
   const [reviveSource] = takeBlocks(a30, reviveId);
   if (reviveId.length !== 1 || reviveSource.kind !== "paragraph" || JSON.stringify(reviveSource.children) !== JSON.stringify([{ ...reviveSource.children[0], text: REVIVE_TEXT("계약일") }])) throw new Error("납입면제 재모델링: 제30조 ④ 가 부활 문구가 아니다");
@@ -418,11 +417,10 @@ export function applyAlphaWaiver(alpha: WaiverSource, meritz: WaiverSource): Wai
     "waiver-revive",
     "부활 문구",
     "block",
-    "부활(효력회복) 조 — 적용 종들의 사유에 면책 사유가 있으면 「부활(효력회복)시 부활(효력회복)일을 〔기준일〕로 하여 암보장개시일을 적용합니다」. 기준일은 옵션(알파Plus 계약일 · 통합간편 최초계약일)",
-    [{ id: "c", kind: "condBlock", branches: [{ id: "c-if", when: "var.면책있음", children: [{ id: reviveSource.id, kind: "paragraph", children: [text("t1", "부활(효력회복)시 부활(효력회복)일을 "), { id: "o", kind: "optionSlot", optionCode: REVIVE_OPTION }, text("t2", "로 하여 암보장개시일을 적용합니다.")] }] }] }],
-    [PLANS_PARAM],
+    "부활(효력회복) 조 — 적용 종들의 사유에 면책 사유가 있으면 「부활(효력회복)시 부활(효력회복)일을 〔기준일〕로 하여 암보장개시일을 적용합니다」. 기준일은 인자 갱신(기본 연결 = 갱신형 상품) — 연만기(갱신형) 상품은 최초계약일, 세만기는 계약일",
+    [{ id: "c", kind: "condBlock", branches: [{ id: "c-if", when: "var.면책있음", children: [{ id: reviveSource.id, kind: "paragraph", children: [text("t1", "부활(효력회복)시 부활(효력회복)일을 "), basisWord("o"), text("t2", "로 하여 암보장개시일을 적용합니다.")] }] }] }],
+    [PLANS_PARAM, RENEWAL_PARAM],
     [REASONS_LOCAL, WAITING_LOCAL],
-    [{ code: REVIVE_OPTION, label: "기준일", order: 0, values: (["계약일", "최초계약일"] as const).map((word, i) => ({ code: REVIVE_VALUE[word], label: word, order: i, body: [text(`c-waiver-revive-o1v${i + 1}-x1`, word)] })) }] as unknown as ClauseRecord["options"],
   );
 
   // ── 템플릿 — 사유 값으로 분기하지 않는다(결정 10). 사유별 함수조항을 늘어놓기만 하고, 켜고 끄기는 함수조항 안의 「해당」이 한다(ADR-0086 결정 2)
@@ -461,13 +459,12 @@ export function applyAlphaWaiver(alpha: WaiverSource, meritz: WaiverSource): Wai
   // 제22조 — 원문 두 항 뒤에 무효 문구(③), 제30조 — ④ 를 부활 문구로
   a22.children = [...a22.children, presetRef(`${a22.id}-p3-k`, "waiver-void", "S01")];
   const at30 = a30.children.findIndex((c) => c.id === reviveId[0]);
-  a30.children.splice(at30, reviveId.length, presetRef(`${a30.id}-p4-k`, "waiver-revive", REVIVE_PRESET["계약일"]));
+  a30.children.splice(at30, reviveId.length, presetRef(`${a30.id}-p4-k`, "waiver-revive", "S01"));
 
   // 세 조를 「납입면제 있음」 조 자리 IF 로 감싼다(결정 16) — 관 안의 잇닿은 세 조
   wrapArticles(alpha.tree, [a27.id, a27d.id, x.id], `${a27.id}-if-waiver`);
 
-  const revivePresets: PresetDef[] = (["계약일", "최초계약일"] as const).map((word) => ({ code: REVIVE_PRESET[word], name: `${word} 기준`, options: { [REVIVE_OPTION]: REVIVE_VALUE[word] }, bindings: { 종들: APPLIED_BINDING } }));
-  return [...itemClauses, ...definitionClauses, withPresets(addendumClause, APPLIED_PRESETS), withPresets(detailClause, APPLIED_PRESETS), withPresets(voidClause, APPLIED_PRESETS), withPresets(reviveClause, revivePresets)];
+  return [...itemClauses, ...definitionClauses, ...[addendumClause, detailClause, voidClause, reviveClause].map((c) => withPresets(c, APPLIED_PRESETS))];
 }
 
 /**
@@ -600,11 +597,11 @@ export function applyMeritzWaiver(meritz: WaiverSource, shared: readonly WaiverC
   a31.children = [presetRef(`${a31.id}-p1-k`, detailClause.key, "S01")];
   a30.children = definitionRefs(a30.id, LINE.meritz);
 
-  // 제22조 — 원문 두 항 뒤에 무효 문구(③), 제35조 ④ — 부활 문구(기준일 = 최초계약일). ④ 뒤 【부활(효력회복)】 박스는 조의 것이라 템플릿에 남는다
+  // 제22조 — 원문 두 항 뒤에 무효 문구(③), 제35조 ④ — 부활 문구(기준일은 갱신형 상품이라 최초계약일). ④ 뒤 【부활(효력회복)】 박스는 조의 것이라 템플릿에 남는다
   a22.children = [...a22.children, presetRef(`${a22.id}-p3-k`, voidClause.key, "S01")];
   const r4 = paragraphs(a35)[3];
   if (!r4 || JSON.stringify(r4.children.map((c) => (c.kind === "text" ? c.text : c.kind))) !== JSON.stringify([REVIVE_TEXT("최초계약일")])) throw new Error("납입면제 재모델링: 통합간편 제35조 ④ 가 부활 문구가 아니다");
-  a35.children.splice(a35.children.indexOf(r4), 1, presetRef(`${a35.id}-p4-k`, "waiver-revive", REVIVE_PRESET["최초계약일"]));
+  a35.children.splice(a35.children.indexOf(r4), 1, presetRef(`${a35.id}-p4-k`, "waiver-revive", "S01"));
 
   // 제2조 표의 종별 행(2종 · 3종)의 「제29조 제1항」 · 「제2항」은 종 하나를 가리킨다 — 종 한정 참조는 다음 기획이라 글로 굳힌다(원문 표기 그대로).
   // 「제29조 제4항」 · 「제29조 및 제31조」는 참조로 둔다
@@ -834,13 +831,13 @@ function wrapArticles(tree: DocumentNode, ids: readonly Id[], id: Id): void {
   if (!visit(tree)) throw new Error("납입면제 재모델링: 감쌀 조를 찾지 못했다");
 }
 
-/** 템플릿이 가리키는 역할 함수조항 자리표 `@key` → 코드. 코드는 적재 순서로 매긴 뒤에 푼다. */
+/** 문면이 가리키는 함수조항 자리표 `@key` → 코드(납입면제 템플릿 · 문구 함수조항 오버레이). 코드는 적재 순서로 매긴 뒤에 푼다. */
 export function resolveWaiverCodes(tree: DocumentNode, codeOf: (key: string) => Code | undefined): void {
   const visit = (n: unknown) => {
     if (Array.isArray(n)) return n.forEach(visit);
     if (!n || typeof n !== "object") return;
     const o = n as Record<string, unknown>;
-    if (o.kind === "clauseBlockRef" && typeof o.clauseCode === "string" && o.clauseCode.startsWith("@")) {
+    if ((o.kind === "clauseBlockRef" || o.kind === "clauseInlineRef") && typeof o.clauseCode === "string" && o.clauseCode.startsWith("@")) {
       const code = codeOf(o.clauseCode.slice(1));
       if (!code) throw new Error(`납입면제 재모델링: 역할 함수조항 ${o.clauseCode} 코드 없음`);
       o.clauseCode = code;
