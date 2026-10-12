@@ -68,6 +68,17 @@ export interface InlineCondOverlay {
   else: string;
 }
 
+/**
+ * 문구 함수조항 오버레이 — 지정 조에서 `find` 첫 등장을 문구 함수조항 참조로 바꾼다 (조건 오버레이 ① 과 같은 찾기 규약).
+ * 상품 · 담보 속성이 가르는 낱말을 함수조항 하나(「기준일 문구」 — ADR-0086 결정 6)로 둘 때. `clause` 는 함수조항 key, `preset` 은 그 함수조항의 프리셋 코드.
+ */
+export interface InlineClauseOverlay {
+  article: string;
+  find: string;
+  clause: string;
+  preset?: string;
+}
+
 /** 담보속성 조건 오버레이 ② 조 자리 on/off — 지정 조를 `condBlock` 으로 감싼다 (참일 때만 실린다. 뒤 조 번호는 자동으로 당겨진다). */
 export interface ArticleCondOverlay {
   /** 원문 조 번호. */
@@ -137,6 +148,8 @@ export interface SpecialSpec {
   slots: SlotOverlay[];
   /** 담보속성 조건 오버레이 — 참조 변환 전에 얹는다 (가지 안의 참조도 슬롯이 된다). */
   inlineConds?: InlineCondOverlay[];
+  /** 문구 함수조항 오버레이 — 조건 오버레이 ① 과 같은 때(참조 변환 전)에 얹는다. */
+  inlineClauses?: InlineClauseOverlay[];
   /** 담보속성 조건 오버레이 — 조 자리 on/off. */
   articleConds?: ArticleCondOverlay[];
   /** 함수조항 쓰임 — 슬롯 오버레이 뒤에 얹는다. */

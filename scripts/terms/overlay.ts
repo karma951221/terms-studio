@@ -9,7 +9,7 @@
  */
 import type { ArticleNode, DocumentNode, InlineNode } from "../../src/domain/document/nodes";
 import type { Id } from "../../src/domain/types";
-import type { ArticleCondOverlay, InlineCondOverlay } from "./config";
+import type { ArticleCondOverlay, InlineClauseOverlay, InlineCondOverlay } from "./config";
 
 /** 조 id → 원문 조 번호 (오버레이가 조를 찾는 열쇠). */
 export type NumberOf = ReadonlyMap<Id, string>;
@@ -70,23 +70,49 @@ export function applyInlineConds(tree: DocumentNode, numberOf: NumberOf, conds: 
     const n = (seq.get(a.id) ?? 0) + 1;
     seq.set(a.id, n);
     const id = `${a.id}-c${n}`;
-    const at = owner.children.findIndex((x) => x.kind === "text" && x.text.includes(cond.find));
-    const node = owner.children[at] as Extract<InlineNode, { kind: "text" }>;
-    const i = node.text.indexOf(cond.find);
-    const before = node.text.slice(0, i);
-    const after = node.text.slice(i + cond.find.length);
-    owner.children.splice(at, 1, ...[
-      ...(before ? [{ id: `${id}a`, kind: "text" as const, text: before }] : []),
-      {
-        id,
-        kind: "inlineCond" as const,
-        branches: [
-          { id: `${id}-t`, when: cond.when, children: [{ id: `${id}-t-x0`, kind: "text" as const, text: cond.then }] },
-          { id: `${id}-e`, children: [{ id: `${id}-e-x0`, kind: "text" as const, text: cond.else }] },
-        ],
-      },
-      ...(after ? [{ id: `${id}b`, kind: "text" as const, text: after }] : []),
-    ]);
+    splitAt(owner, cond.find, id, {
+      id,
+      kind: "inlineCond",
+      branches: [
+        { id: `${id}-t`, when: cond.when, children: [{ id: `${id}-t-x0`, kind: "text", text: cond.then }] },
+        { id: `${id}-e`, children: [{ id: `${id}-e-x0`, kind: "text", text: cond.else }] },
+      ],
+    });
+  }
+}
+
+/** `owner` 의 `find` 첫 등장(텍스트 노드 안)을 `node` 로 쪼갠다 — 앞뒤 글은 `id` + `a` · `b`. */
+function splitAt(owner: { children: InlineNode[] }, find: string, id: Id, node: InlineNode): void {
+  const at = owner.children.findIndex((x) => x.kind === "text" && x.text.includes(find));
+  const text = owner.children[at] as Extract<InlineNode, { kind: "text" }>;
+  const i = text.text.indexOf(find);
+  const before = text.text.slice(0, i);
+  const after = text.text.slice(i + find.length);
+  owner.children.splice(at, 1, ...[
+    ...(before ? [{ id: `${id}a`, kind: "text" as const, text: before }] : []),
+    node,
+    ...(after ? [{ id: `${id}b`, kind: "text" as const, text: after }] : []),
+  ]);
+}
+
+/**
+ * 문구 함수조항 오버레이 — 지정 조에서 `find` 첫 등장을 문구 함수조항 참조(`clauseInlineRef`)로 바꾼다 (**참조 변환 전**에 얹는다).
+ * 함수조항 코드는 아직 없어 자리표 `@<key>` 로 두고, 코드를 매긴 뒤 변환기가 푼다(waiver.ts `resolveWaiverCodes`).
+ * 상품 · 담보 속성이 가르는 낱말(「계약일」 ↔ 「최초계약일」 — ADR-0086 결정 6)을 조건 대신 함수조항 하나로 둘 때 쓴다. 노드 id 는 조 id + `-k<순번>`.
+ */
+export function applyInlineClauses(tree: DocumentNode, numberOf: NumberOf, uses: readonly InlineClauseOverlay[], report: string[]): void {
+  const seq = new Map<Id, number>();
+  for (const use of uses) {
+    const a = articleByNumber(tree, numberOf, use.article);
+    const owner = a && inlineOwnersOf(a).find((o) => o.children.some((n) => n.kind === "text" && n.text.includes(use.find)));
+    if (!a || !owner) {
+      report.push(a ? `문구 함수조항 오버레이: 조 ${use.article} 에서 「${use.find}」 을 찾지 못함` : `문구 함수조항 오버레이: 조 ${use.article} 없음`);
+      continue;
+    }
+    const n = (seq.get(a.id) ?? 0) + 1;
+    seq.set(a.id, n);
+    const id = `${a.id}-k${n}`;
+    splitAt(owner, use.find, id, { id, kind: "clauseInlineRef", clauseCode: `@${use.clause}`, options: {}, ...(use.preset ? { preset: use.preset } : {}) });
   }
 }
 

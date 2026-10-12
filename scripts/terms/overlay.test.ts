@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ArticleNode, DocumentNode, InlineCondNode, ParagraphNode, TableNode } from "../../src/domain/document/nodes";
 import { validateTree } from "../../src/domain/document/nodes";
 
-import { applyArticleConds, applyInlineConds, type NumberOf } from "./overlay";
+import { applyArticleConds, applyInlineClauses, applyInlineConds, type NumberOf } from "./overlay";
 
 const WHEN = "exist(attr.A0001) and attr.A0001 = '2'";
 
@@ -73,6 +73,32 @@ describe("applyInlineConds — 어구 자리를 담보속성 조건으로", () =
     applyInlineConds(doc, numberOf, [{ article: "9", find: "x", when: WHEN, then: "x", else: "y" }, { article: "1", find: "없는 말", when: WHEN, then: "x", else: "y" }], report);
     expect(report).toEqual(["조건 오버레이: 조 9 없음", "조건 오버레이: 조 1 에서 「없는 말」 을 찾지 못함"]);
     expect((doc.children[0] as ArticleNode).children[0]).toMatchObject({ children: [{ id: "s-a1-p1-x0" }] });
+  });
+});
+
+describe("applyInlineClauses — 어구 자리를 문구 함수조항 참조로 (ADR-0086 결정 6 「기준일 문구」)", () => {
+  it("찾은 평문을 문구 함수조항 참조(코드 자리표 @key · 프리셋)로 바꾸고 앞뒤 텍스트는 남긴다 — 다음 오버레이는 다음 등장(표 셀)을 집는다", () => {
+    const doc = tree();
+    const report: string[] = [];
+    const use = { article: "1", find: "최초계약일", clause: "basis-date", preset: "S01" };
+    applyInlineClauses(doc, numberOf, [use, use], report);
+
+    const paragraph = (doc.children[0] as ArticleNode).children[0] as ParagraphNode;
+    expect(paragraph.children).toEqual([
+      { id: "s-a1-k1a", kind: "text", text: "「연간」이라 함은 " },
+      { id: "s-a1-k1", kind: "clauseInlineRef", clauseCode: "@basis-date", options: {}, preset: "S01" },
+      { id: "s-a1-k1b", kind: "text", text: "부터 1년입니다." },
+    ]);
+    const cell = ((doc.children[0] as ArticleNode).children[1] as TableNode).rows[0].cells[0];
+    expect(cell).toEqual([{ id: "s-a1-k2", kind: "clauseInlineRef", clauseCode: "@basis-date", options: {}, preset: "S01" }]);
+    expect(report).toEqual([]);
+  });
+
+  it("평문을 찾지 못하면 바꾸지 않고 보고한다", () => {
+    const doc = tree();
+    const report: string[] = [];
+    applyInlineClauses(doc, numberOf, [{ article: "1", find: "없는 말", clause: "basis-date" }], report);
+    expect(report).toEqual(["문구 함수조항 오버레이: 조 1 에서 「없는 말」 을 찾지 못함"]);
   });
 });
 
