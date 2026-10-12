@@ -49,6 +49,31 @@ function declsOf(selector: string): Record<string, string> {
   return decls;
 }
 
+describe("촘촘한 줄의 콤보박스 입력은 옆 레거시 칸(24px) 높이에 맞춘다", () => {
+  it("조건 줄 — .ts-cond-line 의 select · input 과 같은 24px · 12px · 왼쪽 4px", () => {
+    const legacy = declsOf(".ts-cond-line select:where(:not([data-slot]))");
+    expect(declsOf('.ts-cond-line .ts-combo [data-slot="input"]')).toMatchObject({
+      height: legacy.height,
+      "font-size": legacy["font-size"],
+      "padding-left": "4px",
+    });
+    expect(legacy).toMatchObject({ height: "24px", "font-size": "12px" });
+  });
+
+  it("담보 추가 줄 — 옆 레거시 select(min-height 24px) 에 맞춘 24px", () => {
+    expect(declsOf('.ts-mount-add-row .ts-combo [data-slot="input"]')).toMatchObject({ height: "24px" });
+  });
+
+  it("오른쪽 여백(pr-5 · 지우기 단추 자리)은 덮지 않는다", () => {
+    for (const s of ['.ts-cond-line .ts-combo [data-slot="input"]', '.ts-mount-add-row .ts-combo [data-slot="input"]']) {
+      const d = declsOf(s);
+      expect(d.padding, s).toBeUndefined();
+      expect(d["padding-inline"], s).toBeUndefined();
+      expect(d["padding-right"], s).toBeUndefined();
+    }
+  });
+});
+
 describe("고른 것은 굵기와 색으로도 말한다 (디자인원칙 §1.3) — 굵기는 700 만", () => {
   it("라디오 — 켜진 네이티브 radio(data-slot 이어도)를 품은 줄이 굵고 진하다", () => {
     expect(declsOf(".ts-form-radio:has(> input:checked)")).toMatchObject({ "font-weight": "700", color: "var(--ts-ink)" });

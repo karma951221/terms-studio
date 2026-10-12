@@ -3373,6 +3373,13 @@ p.ts-doc-cond-head {
   font-size: 12px;
 }
 
+/* 콤보박스(shadcn Input, 32px)도 옆 칸과 같은 24px · 12px — 오른쪽 여백(pr-5)은 위젯 것을 둔다 */
+.ts-cond-line .ts-combo [data-slot="input"] {
+  height: 24px;
+  padding-left: 4px;
+  font-size: 12px;
+}
+
 .ts-cond-line .ts-cond-badge {
   margin-right: 0;
 }
@@ -5052,6 +5059,8 @@ button:where(:not([data-slot])).ts-ref-fold:hover {
 /* 표 아래 「+ 담보 추가」 줄 — 펼치면 그 자리에서 담보 찾기 · 담보속성 · 추가 / 닫기 */
 .ts-mount-section tfoot td { border-bottom: 0; }
 .ts-mount-add-row .ts-combo { width: 280px; }
+/* 옆 속성 select(레거시, min-height 24px)와 같은 높이 — 오른쪽 여백(pr-5)은 위젯 것을 둔다 */
+.ts-mount-add-row .ts-combo [data-slot="input"] { height: 24px; padding-left: 6px; }
 .ts-mount-section tr.ts-row-error > td { border-top-color: transparent; padding-top: 0; }
 
 /* 보통약관 · 특별약관 탭 — 위 한 줄 뒤 화면 높이를 채우는 패널 */
