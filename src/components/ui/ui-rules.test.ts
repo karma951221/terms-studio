@@ -3,6 +3,7 @@
  * shadcn 을 다시 add 하거나 손으로 고칠 때 기본값이 슬며시 돌아오는 것을 잡는다.
  */
 import { readFileSync, readdirSync } from "node:fs";
+import postcss from "postcss";
 import { describe, expect, it } from "vitest";
 
 const DIR = "src/components/ui";
@@ -14,6 +15,25 @@ const EXPECTED = [
   "popover", "radio-group", "select", "switch", "table", "tabs", "textarea", "tooltip",
 ];
 const FLOATING = ["dialog.tsx", "dropdown-menu.tsx", "popover.tsx", "select.tsx", "tooltip.tsx"];
+
+describe("위젯 앵커(a[data-slot]) — 브라우저 밑줄 · 레거시 a 색이 새지 않는다", () => {
+  it("ui.css @layer base 가 a[data-slot] 의 색 · 밑줄을 지운다", () => {
+    const decls: Record<string, string> = {};
+    postcss.parse(readFileSync("src/app/ui.css", "utf8")).walkRules((rule) => {
+      const inBase = rule.parent?.type === "atrule" && (rule.parent as postcss.AtRule).params === "base";
+      if (!inBase || !rule.selectors.map((s) => s.trim()).includes("a[data-slot]")) return;
+      rule.walkDecls((d) => {
+        decls[d.prop] = d.value;
+      });
+    });
+    expect(decls).toMatchObject({ color: "inherit", "text-decoration": "none" });
+  });
+
+  it("DropdownMenuItem 은 no-underline — asChild 로 링크가 되어도", () => {
+    const item = read("dropdown-menu.tsx").match(/function DropdownMenuItem\([\s\S]*?\n}\n/)?.[0] ?? "";
+    expect(item).toMatch(/\bno-underline\b/);
+  });
+});
 
 describe("shadcn 위젯 형태 규칙", () => {
   it("위젯 15종이 있다", () => {

@@ -1,5 +1,5 @@
 /**
- * 레거시 요소 선택자 가두기 — globals.css 의 button · input · select · textarea · :focus-visible 규칙이
+ * 레거시 요소 선택자 가두기 — globals.css 의 a · button · input · select · textarea · :focus-visible 규칙이
  * shadcn 위젯(data-slot 이 붙는다)에 닿지 않게 `:where(:not([data-slot]))` 를 붙인다 (ADR-0085).
  * `:where` 는 특이도 0 이라 레거시 규칙끼리의 우선순위는 그대로다.
  *
@@ -9,7 +9,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import postcss, { type Rule } from "postcss";
 import selectorParser from "postcss-selector-parser";
 
-const TAGS = new Set(["button", "input", "select", "textarea"]);
+const TAGS = new Set(["a", "button", "input", "select", "textarea"]);
 const GUARD = ":where(:not([data-slot]))";
 
 function isGuard(node: selectorParser.Node | undefined): boolean {

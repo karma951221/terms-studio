@@ -161,7 +161,7 @@
 }
 
 .ts-graph-edge,
-.ts-graph-nodes > a {
+.ts-graph-nodes > a:where(:not([data-slot])) {
   transition: opacity 120ms ease-out;
 }
 
@@ -355,11 +355,11 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-a {
+a:where(:not([data-slot])) {
   color: inherit;
 }
 
-a:hover {
+a:where(:not([data-slot])):hover {
   color: var(--ts-mark);
 }
 
@@ -376,7 +376,7 @@ a:hover {
 
 /* 표 안의 링크는 밑줄을 긋지 않는다 — 행마다 이름이 링크라 밑줄이 다 그어지면 괘선과 싸운다.
    누를 수 있다는 것은 hover 의 주칠이 말한다 (§1.3). 산문 속 링크는 밑줄을 유지한다. */
-.ts-table a {
+.ts-table a:where(:not([data-slot])) {
   text-decoration: none;
 }
 
@@ -438,7 +438,7 @@ textarea:where(:not([data-slot])).ts-json {
 }
 
 button:where(:not([data-slot])),
-a.primary {
+a:where(:not([data-slot])).primary {
   display: inline-block;
   font-family: inherit;
   font-size: 13px;
@@ -453,7 +453,7 @@ a.primary {
 }
 
 button:where(:not([data-slot])):hover,
-a.primary:hover {
+a:where(:not([data-slot])).primary:hover {
   background: var(--ts-surface-2);
 }
 
@@ -465,14 +465,14 @@ button:where(:not([data-slot]))[disabled] {
 
 /* 패널 주 행동 — 채우지 않는다. 주칠 테두리 + 주칠 글자 (§1.3 · §8). <a class="primary"> 도 같은 문법 (링크형 주 행동). */
 button:where(:not([data-slot])).primary,
-a.primary {
+a:where(:not([data-slot])).primary {
   border-color: var(--ts-mark);
   color: var(--ts-mark);
   font-weight: 700;
 }
 
 button:where(:not([data-slot])).primary:hover,
-a.primary:hover {
+a:where(:not([data-slot])).primary:hover {
   background: var(--ts-mark-bg);
 }
 
@@ -539,7 +539,7 @@ button:where(:not([data-slot])).danger:focus-visible {
 }
 
 /* 제목 = 홈 링크. 내비 항목 스타일(.ts-nav a)을 받지 않게 한 단계 더 구체적으로 */
-.ts-nav a.ts-nav-title {
+.ts-nav a:where(:not([data-slot])).ts-nav-title {
   font-size: 13px;
   font-weight: 700;
   margin: 0 0 0 8px;
@@ -549,11 +549,11 @@ button:where(:not([data-slot])).danger:focus-visible {
   color: var(--ts-ink);
 }
 
-.ts-nav a.ts-nav-title:hover {
+.ts-nav a:where(:not([data-slot])).ts-nav-title:hover {
   color: var(--ts-mark);
 }
 
-.ts-nav a.ts-nav-home {
+.ts-nav a:where(:not([data-slot])).ts-nav-home {
   display: flex;
   justify-content: center;
   padding: 6px 0;
@@ -600,7 +600,7 @@ button:where(:not([data-slot])).danger:focus-visible {
   color: var(--ts-ink-3);
 }
 
-.ts-nav a {
+.ts-nav a:where(:not([data-slot])) {
   display: block;
   padding: 4px 8px;
   border-left: 2px solid transparent;
@@ -609,13 +609,13 @@ button:where(:not([data-slot])).danger:focus-visible {
   color: var(--ts-ink-2);
 }
 
-.ts-nav a:hover {
+.ts-nav a:where(:not([data-slot])):hover {
   background: var(--ts-surface-2);
   color: var(--ts-ink);
 }
 
 /* 현재 위치 — 주칠 + 좌측 괘선 (§1.3, 발견 #61) */
-.ts-nav a[aria-current="page"] {
+.ts-nav a:where(:not([data-slot]))[aria-current="page"] {
   color: var(--ts-mark);
   border-left-color: var(--ts-mark);
   background: var(--ts-mark-bg);
@@ -1945,7 +1945,7 @@ input:where(:not([data-slot])).ts-option-title {
   gap: 12px;
 }
 
-.ts-subtabs a,
+.ts-subtabs a:where(:not([data-slot])),
 .ts-subtabs button:where(:not([data-slot])) {
   padding: 2px 0;
   border: 0;
@@ -1957,7 +1957,7 @@ input:where(:not([data-slot])).ts-option-title {
   text-decoration: none;
 }
 
-.ts-subtabs a[aria-current="page"],
+.ts-subtabs a:where(:not([data-slot]))[aria-current="page"],
 .ts-subtabs button:where(:not([data-slot]))[aria-current="page"] {
   border-bottom-color: var(--ts-mark);
   color: var(--ts-mark);
@@ -2774,7 +2774,7 @@ label.ts-field > textarea:where(:not([data-slot])) {
   margin: 0;
 }
 
-.ts-empty-action a {
+.ts-empty-action a:where(:not([data-slot])) {
   color: var(--ts-mark);
 }
 
@@ -2843,7 +2843,7 @@ label.ts-field > textarea:where(:not([data-slot])) {
   padding-top: 10px;
 }
 
-.ts-inspection .ts-issues a {
+.ts-inspection .ts-issues a:where(:not([data-slot])) {
   color: inherit;
 }
 
@@ -4482,7 +4482,7 @@ button:where(:not([data-slot])).ts-ref-fold:hover {
 }
 
 /* 목록에서 상세로 들어가는 이름은 굵게 — 훑을 때 눈이 걸리는 열이 이름이다 */
-.ts-table td.col-flex > a {
+.ts-table td.col-flex > a:where(:not([data-slot])) {
   font-weight: 600;
 }
 
@@ -4825,7 +4825,7 @@ button:where(:not([data-slot])).ts-ref-fold:hover {
   flex: none;
 }
 
-.ts-toc-row a {
+.ts-toc-row a:where(:not([data-slot])) {
   display: block;
   flex: 1 1 0;
   min-width: 0;
@@ -4838,12 +4838,12 @@ button:where(:not([data-slot])).ts-ref-fold:hover {
   text-overflow: ellipsis;
 }
 
-.ts-toc-row a:hover {
+.ts-toc-row a:where(:not([data-slot])):hover {
   background: var(--ts-surface-2);
   color: var(--ts-ink);
 }
 
-.ts-toc-row a[aria-current="true"] {
+.ts-toc-row a:where(:not([data-slot]))[aria-current="true"] {
   color: var(--ts-mark);
   border-left-color: var(--ts-mark);
 }
@@ -4853,7 +4853,7 @@ button:where(:not([data-slot])).ts-ref-fold:hover {
   opacity: 0.55;
 }
 
-.ts-toc-row.is-hidden-article a {
+.ts-toc-row.is-hidden-article a:where(:not([data-slot])) {
   text-decoration: line-through;
 }
 
@@ -4912,7 +4912,7 @@ button:where(:not([data-slot])).ts-ref-fold:hover {
 .ts-product-head { align-items: center; }
 .ts-product-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
 .ts-product-actions > button:where(:not([data-slot])),
-.ts-product-actions > a,
+.ts-product-actions > a:where(:not([data-slot])),
 .ts-terms-template > button:where(:not([data-slot])),
 .ts-terms-template-end > button:where(:not([data-slot])),
 .ts-tool-menu-item,
@@ -5099,8 +5099,8 @@ button:where(:not([data-slot])).ts-ref-fold:hover {
 /* 특별약관 탭 (기능/상품 §4.7) — 담보 · 모델링 · 미리보기 세 패널. 머리 띠는 위 `.ts-terms-panel-head` 공통 규칙 */
 .ts-special-pc-select { min-width: 0; max-width: 100%; flex: 0 1 auto; font-size: 13px; }
 .ts-special-list ul { list-style: none; margin: 0; padding: 0; font-size: 13px; }
-.ts-special-list li a { display: block; padding: 3px 4px; color: var(--ts-ink-2); text-decoration: none; }
-.ts-special-list li a[aria-current="page"] { color: var(--ts-mark); font-weight: 700; }
+.ts-special-list li a:where(:not([data-slot])) { display: block; padding: 3px 4px; color: var(--ts-ink-2); text-decoration: none; }
+.ts-special-list li a:where(:not([data-slot]))[aria-current="page"] { color: var(--ts-mark); font-weight: 700; }
 
 @media (max-width: 1100px) {
   .ts-terms-focus .ts-terms-panel { height: auto; max-height: 60vh; min-height: 0; }

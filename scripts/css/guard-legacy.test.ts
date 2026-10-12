@@ -12,7 +12,12 @@ describe("guardSelector — 요소 선택자를 shadcn 위젯 밖으로 가둔�
     ["button:hover", `button${G}:hover`],
     ['input[type="radio"]', `input${G}[type="radio"]`],
     [".ts-cell-form input", `.ts-cell-form input${G}`],
-    ["button.primary,\na.primary", `button${G}.primary,\na.primary`],
+    ["button.primary,\na.primary", `button${G}.primary,\na${G}.primary`],
+    ["a", `a${G}`],
+    ["a:hover", `a${G}:hover`],
+    [".ts-table a", `.ts-table a${G}`],
+    [".ts-graph-nodes > a:focus-visible", `.ts-graph-nodes > a${G}:focus-visible`],
+    [".ts-nav a .ts-badge", ".ts-nav a .ts-badge"],
     ["input,\nselect,\ntextarea", `input${G},\nselect${G},\ntextarea${G}`],
     [":focus-visible", `${G}:focus-visible`],
   ])("%s", (input, expected) => {

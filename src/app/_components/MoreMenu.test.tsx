@@ -41,6 +41,17 @@ describe("MoreMenu", () => {
     expect(screen.getByRole("menuitem", { name: "삭제" })).toBeTruthy();
   });
 
+  it("링크 항목은 위젯(data-slot) 앵커 — 밑줄 없음 · 레거시 a 규칙(밑줄 · hover 주칠) 밖", async () => {
+    const user = userEvent.setup();
+    render(<MoreMenu items={[{ label: "미리보기", href: "/p/1/preview" }]} />);
+    screen.getByRole("button", { name: /더보기/ }).focus();
+    await user.keyboard("{Enter}");
+    const link = screen.getByRole("menuitem", { name: "미리보기" });
+    expect(link.tagName).toBe("A");
+    expect(link.getAttribute("data-slot")).toBe("dropdown-menu-item");
+    expect(link.className.split(/\s+/)).toContain("no-underline");
+  });
+
   it("onSelect 는 트리거 자리(DOMRect)를 받고, 고르면 닫힌다", async () => {
     const user = userEvent.setup();
     const onSelect = vi.fn();
