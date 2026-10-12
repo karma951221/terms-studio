@@ -3201,15 +3201,7 @@
                   "kind": "clauseBlockRef",
                   "clauseCode": "C0026",
                   "options": {},
-                  "bindings": {
-                    "종들": {
-                      "kind": "source",
-                      "source": {
-                        "form": "waiver",
-                        "filter": "waiver.applies = true"
-                      }
-                    }
-                  },
+                  "preset": "S01",
                   "code": "P0300"
                 }
               ]
@@ -3724,15 +3716,7 @@
                           "kind": "clauseBlockRef",
                           "clauseCode": "C0024",
                           "options": {},
-                          "bindings": {
-                            "종들": {
-                              "kind": "source",
-                              "source": {
-                                "form": "waiver",
-                                "filter": "waiver.applies = true"
-                              }
-                            }
-                          },
+                          "preset": "S01",
                           "code": "P0300"
                         },
                         {
@@ -3869,15 +3853,7 @@
                           "kind": "clauseBlockRef",
                           "clauseCode": "C0025",
                           "options": {},
-                          "bindings": {
-                            "종들": {
-                              "kind": "source",
-                              "source": {
-                                "form": "waiver",
-                                "filter": "waiver.applies = true"
-                              }
-                            }
-                          },
+                          "preset": "S01",
                           "code": "P0100"
                         }
                       ]
@@ -4530,18 +4506,8 @@
                   "id": "g-a30-p4-k",
                   "kind": "clauseBlockRef",
                   "clauseCode": "C0027",
-                  "options": {
-                    "O01": "V01"
-                  },
-                  "bindings": {
-                    "종들": {
-                      "kind": "source",
-                      "source": {
-                        "form": "waiver",
-                        "filter": "waiver.applies = true"
-                      }
-                    }
-                  },
+                  "options": {},
+                  "preset": "S01",
                   "code": "P0500"
                 }
               ]
@@ -8712,15 +8678,7 @@
                   "kind": "clauseBlockRef",
                   "clauseCode": "C0031",
                   "options": {},
-                  "bindings": {
-                    "종들": {
-                      "kind": "source",
-                      "source": {
-                        "form": "waiver",
-                        "filter": "waiver.applies = true"
-                      }
-                    }
-                  },
+                  "preset": "S01",
                   "code": "P0300"
                 }
               ]
@@ -9425,15 +9383,7 @@
                           "kind": "clauseBlockRef",
                           "clauseCode": "C0029",
                           "options": {},
-                          "bindings": {
-                            "종들": {
-                              "kind": "source",
-                              "source": {
-                                "form": "waiver",
-                                "filter": "waiver.applies = true"
-                              }
-                            }
-                          },
+                          "preset": "S01",
                           "code": "P0300"
                         },
                         {
@@ -9639,15 +9589,7 @@
                           "kind": "clauseBlockRef",
                           "clauseCode": "C0030",
                           "options": {},
-                          "bindings": {
-                            "종들": {
-                              "kind": "source",
-                              "source": {
-                                "form": "waiver",
-                                "filter": "waiver.applies = true"
-                              }
-                            }
-                          },
+                          "preset": "S01",
                           "code": "P0100"
                         }
                       ]
@@ -10289,18 +10231,8 @@
                   "id": "m-a35-p4-k",
                   "kind": "clauseBlockRef",
                   "clauseCode": "C0027",
-                  "options": {
-                    "O01": "V02"
-                  },
-                  "bindings": {
-                    "종들": {
-                      "kind": "source",
-                      "source": {
-                        "form": "waiver",
-                        "filter": "waiver.applies = true"
-                      }
-                    }
-                  },
+                  "options": {},
+                  "preset": "S02",
                   "code": "P0400"
                 },
                 {

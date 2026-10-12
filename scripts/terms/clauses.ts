@@ -24,6 +24,7 @@ import { discriminatorResultType } from "../../src/domain/catalog/expression";
 import type { Discriminator } from "../../src/domain/catalog/types";
 import type { ArticleRefBinding, Bindings, ParamDef } from "../../src/domain/clause/params";
 import type { LocalDef } from "../../src/domain/clause/locals";
+import type { PresetDef } from "../../src/domain/clause/presets";
 import type { ClauseMode } from "../../src/domain/clause/types";
 import { format, parse, type Expr } from "../../src/domain/expression";
 
@@ -42,6 +43,8 @@ export interface ClauseRecord {
   params?: ParamDef[];
   /** 내부 변수 — 역할 함수조항(waiver.ts). */
   locals?: LocalDef[];
+  /** 프리셋 — 납입면제 역할 함수조항(waiver.ts, ADR-0084). 코드는 적재가 S01 부터 다시 매긴다(같은 순서라 같은 코드). */
+  presets?: PresetDef[];
 }
 
 /** 실물 변환이 내는 함수조항 유형 — 도메인 유형 넷 중 「문구」(inline) · 「항」(block). */

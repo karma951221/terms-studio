@@ -2117,6 +2117,21 @@
         "name": "면책있음",
         "expr": "not var.사유들.거르기(F02 = true).비었음"
       }
+    ],
+    "presets": [
+      {
+        "code": "S01",
+        "name": "적용 종",
+        "bindings": {
+          "종들": {
+            "kind": "source",
+            "source": {
+              "form": "waiver",
+              "filter": "waiver.applies = true"
+            }
+          }
+        }
+      }
     ]
   },
   {
@@ -2716,6 +2731,21 @@
         "name": "상해장해",
         "expr": "var.사유들.있음('V11', 'V12')"
       }
+    ],
+    "presets": [
+      {
+        "code": "S01",
+        "name": "적용 종",
+        "bindings": {
+          "종들": {
+            "kind": "source",
+            "source": {
+              "form": "waiver",
+              "filter": "waiver.applies = true"
+            }
+          }
+        }
+      }
     ]
   },
   {
@@ -2783,6 +2813,21 @@
       {
         "name": "면책있음",
         "expr": "not var.사유들.거르기(F02 = true).비었음"
+      }
+    ],
+    "presets": [
+      {
+        "code": "S01",
+        "name": "적용 종",
+        "bindings": {
+          "종들": {
+            "kind": "source",
+            "source": {
+              "form": "waiver",
+              "filter": "waiver.applies = true"
+            }
+          }
+        }
       }
     ]
   },
@@ -2877,6 +2922,40 @@
       {
         "name": "면책있음",
         "expr": "not var.사유들.거르기(F02 = true).비었음"
+      }
+    ],
+    "presets": [
+      {
+        "code": "S01",
+        "name": "계약일 기준",
+        "options": {
+          "O01": "V01"
+        },
+        "bindings": {
+          "종들": {
+            "kind": "source",
+            "source": {
+              "form": "waiver",
+              "filter": "waiver.applies = true"
+            }
+          }
+        }
+      },
+      {
+        "code": "S02",
+        "name": "최초계약일 기준",
+        "options": {
+          "O01": "V02"
+        },
+        "bindings": {
+          "종들": {
+            "kind": "source",
+            "source": {
+              "form": "waiver",
+              "filter": "waiver.applies = true"
+            }
+          }
+        }
       }
     ]
   },
@@ -3535,6 +3614,21 @@
         "name": "면책있음",
         "expr": "not var.사유들.거르기(F02 = true).비었음"
       }
+    ],
+    "presets": [
+      {
+        "code": "S01",
+        "name": "적용 종",
+        "bindings": {
+          "종들": {
+            "kind": "source",
+            "source": {
+              "form": "waiver",
+              "filter": "waiver.applies = true"
+            }
+          }
+        }
+      }
     ]
   },
   {
@@ -4147,6 +4241,21 @@
         "name": "상해관련",
         "expr": "var.사유들.있음('V11', 'V12', 'V14')"
       }
+    ],
+    "presets": [
+      {
+        "code": "S01",
+        "name": "적용 종",
+        "bindings": {
+          "종들": {
+            "kind": "source",
+            "source": {
+              "form": "waiver",
+              "filter": "waiver.applies = true"
+            }
+          }
+        }
+      }
     ]
   },
   {
@@ -4214,6 +4323,21 @@
       {
         "name": "면책있음",
         "expr": "not var.사유들.거르기(F02 = true).비었음"
+      }
+    ],
+    "presets": [
+      {
+        "code": "S01",
+        "name": "적용 종",
+        "bindings": {
+          "종들": {
+            "kind": "source",
+            "source": {
+              "form": "waiver",
+              "filter": "waiver.applies = true"
+            }
+          }
+        }
       }
     ]
   },

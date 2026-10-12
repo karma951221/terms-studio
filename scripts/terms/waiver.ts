@@ -16,6 +16,7 @@
 import type { Block, Inline, ItemNode as ClauseItem, ParagraphNode as ClauseParagraph } from "../../src/domain/clause/nodes";
 import type { Binding, ParamDef } from "../../src/domain/clause/params";
 import type { LocalDef } from "../../src/domain/clause/locals";
+import type { PresetDef } from "../../src/domain/clause/presets";
 import type { ArticleNode, ArticleRefNode, BlockNode, ClauseBlockRefNode, DocumentNode, ForBlockNode, InlineNode, ItemNode, ParagraphNode, SectionNode } from "../../src/domain/document/nodes";
 import type { Code, Id, RefRestrict } from "../../src/domain/types";
 
@@ -56,6 +57,20 @@ export const REASON = {
 /** 적용 납입면제종 — 세목 waiver 선택지 중 적용여부 = 예 (반복 원천 · 인자 원천 연결이 같은 거름을 쓴다). */
 const APPLIED = { form: "waiver", filter: "waiver.applies = true" } as const;
 const APPLIED_BINDING: Binding = { kind: "source", source: { ...APPLIED } };
+
+/**
+ * 납입면제 프리셋 (ADR-0084) — 종들을 받는 역할 함수조항은 사용처마다 「적용 납입면제종」 한 조합이라 프리셋 하나, 부활 문구는 기준일(계약일 · 최초계약일)까지
+ * 둘. 사용처는 프리셋을 참조한다. 사유를 받는 호 · 정의는 「반복의 현재 원소」뿐이라 프리셋에 담을 값이 없다.
+ */
+const APPLIED_PRESETS: PresetDef[] = [{ code: "S01", name: "적용 종", bindings: { 종들: APPLIED_BINDING } }];
+const REVIVE_PRESET = { 계약일: "S01", 최초계약일: "S02" } as const;
+
+function withPresets(clause: WaiverClause, presets: PresetDef[]): WaiverClause {
+  return { ...clause, record: { ...clause.record, presets: structuredClone(presets) } };
+}
+
+/** 프리셋을 쓰는 함수조항 참조 — 옵션 · 연결은 프리셋 값이라 비운다. */
+const presetRef = (id: Id, key: string, preset: Code): ClauseBlockRefNode => ({ id, kind: "clauseBlockRef", clauseCode: `@${key}`, options: {}, preset });
 
 const REASON_PARAM: ParamDef = { name: "사유", type: { kind: "enum", enumCode: "E0001" } };
 const PLANS_PARAM: ParamDef = { name: "종들", type: { kind: "planOptions", form: "waiver" } };
@@ -376,7 +391,7 @@ export function applyAlphaWaiver(alpha: WaiverSource, meritz: WaiverSource): Wai
     items: [inner],
   };
   const outer: ForBlockNode = { id: outerId, kind: "forBlock", source: { kind: "planOptions", ...APPLIED }, children: [repeated] };
-  const addendumRef = ref(`${a27.id}-p2-k`, "waiver-addendum", { 종들: APPLIED_BINDING });
+  const addendumRef = presetRef(`${a27.id}-p2-k`, "waiver-addendum", "S01");
   const [, , p3, p4, p5] = paragraphs(a27);
   const rest = a27.children.slice(a27.children.indexOf(p3));
   a27.children = [outer, addendumRef, ...rest];
@@ -386,7 +401,7 @@ export function applyAlphaWaiver(alpha: WaiverSource, meritz: WaiverSource): Wai
   mergeRanges(p5, [p1.id, addendumRef.id, p3.id, p4.id, p5.id]);
 
   // 제27조의2 — 조 본문 = 세부규정 한 줄
-  a27d.children = [ref(`${a27d.id}-p1-k`, "waiver-detail", { 종들: APPLIED_BINDING })];
+  a27d.children = [presetRef(`${a27d.id}-p1-k`, "waiver-detail", "S01")];
 
   // 제27조의3 — [사유 합집합 ∩ 정의조대상마다] ⟨정의(사유 ← 현재 사유)⟩. 제목은 고정 글(나열 슬롯 미구현 — 인수기준 알려진 차이)
   const unionId = `${x.id}-for-reasons`;
@@ -395,14 +410,15 @@ export function applyAlphaWaiver(alpha: WaiverSource, meritz: WaiverSource): Wai
   ];
 
   // 제22조 — 원문 두 항 뒤에 무효 문구(③), 제30조 — ④ 를 부활 문구로
-  a22.children = [...a22.children, ref(`${a22.id}-p3-k`, "waiver-void", { 종들: APPLIED_BINDING })];
+  a22.children = [...a22.children, presetRef(`${a22.id}-p3-k`, "waiver-void", "S01")];
   const at30 = a30.children.findIndex((c) => c.id === reviveId[0]);
-  a30.children.splice(at30, reviveId.length, { ...ref(`${a30.id}-p4-k`, "waiver-revive", { 종들: APPLIED_BINDING }), options: { [REVIVE_OPTION]: REVIVE_VALUE["계약일"] } });
+  a30.children.splice(at30, reviveId.length, presetRef(`${a30.id}-p4-k`, "waiver-revive", REVIVE_PRESET["계약일"]));
 
   // 세 조를 「납입면제 있음」 조 자리 IF 로 감싼다(결정 16) — 관 안의 잇닿은 세 조
   wrapArticles(alpha.tree, [a27.id, a27d.id, x.id], `${a27.id}-if-waiver`);
 
-  return [itemClause, definitionClause, addendumClause, detailClause, voidClause, reviveClause];
+  const revivePresets: PresetDef[] = (["계약일", "최초계약일"] as const).map((word) => ({ code: REVIVE_PRESET[word], name: `${word} 기준`, options: { [REVIVE_OPTION]: REVIVE_VALUE[word] }, bindings: { 종들: APPLIED_BINDING } }));
+  return [itemClause, definitionClause, withPresets(addendumClause, APPLIED_PRESETS), withPresets(detailClause, APPLIED_PRESETS), withPresets(voidClause, APPLIED_PRESETS), withPresets(reviveClause, revivePresets)];
 }
 
 /**
@@ -563,22 +579,22 @@ export function applyMeritzWaiver(meritz: WaiverSource, shared: readonly WaiverC
     items: [inner],
   };
   const outer: ForBlockNode = { id: outerId, kind: "forBlock", source: { kind: "planOptions", ...APPLIED }, children: [repeated] };
-  const addendumRef = ref(`${a29.id}-p3-k`, addendumClause.key, { 종들: APPLIED_BINDING });
+  const addendumRef = presetRef(`${a29.id}-p3-k`, addendumClause.key, "S01");
   a29.children = [outer, addendumRef, ...a29.children.slice(a29.children.indexOf(p4))];
   // ④ ⑤ 「제1항 또는 제2항」 = 반복 항 하나(연결어 또는), ⑥ ⑦ 「제1항부터 제4항까지」 = 대상 셋(반복 항 · 부가항 · ④)인 참조 하나
   for (const p of [p4, p5, p6, p7]) remapTemplateRefs(p, (id) => (id === p2.id ? p1.id : id));
   for (const p of [p6, p7]) mergeRanges(p, [p1.id, addendumRef.id, p4.id, p5.id, p6.id, p7.id]);
 
   // 제31조 — 조 본문 = 세부규정 한 줄, 제30조 — [사유 합집합 ∩ 정의조대상마다] ⟨정의(메리츠)⟩ (제목은 고정 글)
-  a31.children = [ref(`${a31.id}-p1-k`, detailClause.key, { 종들: APPLIED_BINDING })];
+  a31.children = [presetRef(`${a31.id}-p1-k`, detailClause.key, "S01")];
   const unionId = `${a30.id}-for-reasons`;
   a30.children = [{ id: unionId, kind: "forBlock", source: { kind: "union", ...APPLIED, field: "reasons", where: { field: "F03", value: true } }, children: [ref(`${a30.id}-p1-k`, definitionClause.key, { 사유: { kind: "current", loop: unionId } })] }];
 
   // 제22조 — 원문 두 항 뒤에 무효 문구(③), 제35조 ④ — 부활 문구(기준일 = 최초계약일). ④ 뒤 【부활(효력회복)】 박스는 조의 것이라 템플릿에 남는다
-  a22.children = [...a22.children, ref(`${a22.id}-p3-k`, voidClause.key, { 종들: APPLIED_BINDING })];
+  a22.children = [...a22.children, presetRef(`${a22.id}-p3-k`, voidClause.key, "S01")];
   const r4 = paragraphs(a35)[3];
   if (!r4 || JSON.stringify(r4.children.map((c) => (c.kind === "text" ? c.text : c.kind))) !== JSON.stringify([REVIVE_TEXT("최초계약일")])) throw new Error("납입면제 재모델링: 메리츠 제35조 ④ 가 부활 문구가 아니다");
-  a35.children.splice(a35.children.indexOf(r4), 1, { ...ref(`${a35.id}-p4-k`, "waiver-revive", { 종들: APPLIED_BINDING }), options: { [REVIVE_OPTION]: REVIVE_VALUE["최초계약일"] } });
+  a35.children.splice(a35.children.indexOf(r4), 1, presetRef(`${a35.id}-p4-k`, "waiver-revive", REVIVE_PRESET["최초계약일"]));
 
   // 제2조 표의 종별 행(2종 · 3종)의 「제29조 제1항」 · 「제2항」은 종 하나를 가리킨다 — 종 한정 참조는 다음 기획이라 글로 굳힌다(원문 표기 그대로).
   // 「제29조 제4항」 · 「제29조 및 제31조」는 참조로 둔다
@@ -590,7 +606,7 @@ export function applyMeritzWaiver(meritz: WaiverSource, shared: readonly WaiverC
   // 세 조를 「납입면제 있음」 조 자리 IF 로 감싼다(결정 16)
   wrapArticles(meritz.tree, [a29.id, a30.id, a31.id], `${a29.id}-if-waiver`);
 
-  return [definitionClause, addendumClause, detailClause, voidClause];
+  return [definitionClause, withPresets(addendumClause, APPLIED_PRESETS), withPresets(detailClause, APPLIED_PRESETS), withPresets(voidClause, APPLIED_PRESETS)];
 }
 
 /**
