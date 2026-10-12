@@ -4,7 +4,11 @@
  */
 import { readFileSync, readdirSync } from "node:fs";
 import postcss from "postcss";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+
+import { NativeSelect } from "./native-select";
 
 const DIR = "src/components/ui";
 const files = readdirSync(DIR).filter((f) => f.endsWith(".tsx"));
@@ -15,6 +19,23 @@ const EXPECTED = [
   "popover", "radio-group", "select", "switch", "table", "tabs", "textarea", "tooltip",
 ];
 const FLOATING = ["dialog.tsx", "dropdown-menu.tsx", "popover.tsx", "select.tsx", "tooltip.tsx"];
+
+describe("NativeSelect — cn(twMerge) 를 거쳐도 바탕색이 남는다", () => {
+  it("bg-card 가 class 에 있다 (bg-[right_8px_center] 를 바탕색으로 읽어 지우던 버그)", () => {
+    const html = renderToStaticMarkup(createElement(NativeSelect));
+    const cls = html.match(/class="([^"]*)"/)?.[1]?.split(/\s+/) ?? [];
+    expect(cls).toContain("bg-card");
+    expect(cls).toContain("bg-no-repeat");
+  });
+
+  it("화살표 bg-[url(...)] 은 공백 없는 한 토큰이다 — 공백이 있으면 class 가 쪼개져 Tailwind · twMerge 가 엉뚱한 유틸리티로 읽는다", () => {
+    const html = renderToStaticMarkup(createElement(NativeSelect));
+    const cls = html.match(/class="([^"]*)"/)?.[1]?.split(/\s+/) ?? [];
+    const url = cls.filter((c) => c.startsWith("bg-[url("));
+    expect(url).toHaveLength(1);
+    expect(url[0]).toMatch(/\)\]$/);
+  });
+});
 
 describe("위젯 앵커(a[data-slot]) — 브라우저 밑줄 · 레거시 a 색이 새지 않는다", () => {
   it("ui.css @layer base 가 a[data-slot] 의 색 · 밑줄을 지운다", () => {
