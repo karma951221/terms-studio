@@ -1,4 +1,4 @@
-import type { EnumFieldType, EnumFieldValue, NewDiscriminator, NewEnum } from "@/domain/catalog";
+import { formatCode, parseCode, type EnumFieldType, type EnumFieldValue, type NewDiscriminator, type NewEnum } from "@/domain/catalog";
 import type { ClauseBody, NewClause, PresetDef } from "@/domain/clause";
 import type { DocumentNode } from "@/domain/document";
 import { findMasterField } from "@/domain/master";
@@ -152,19 +152,29 @@ interface EnumSeed {
  */
 async function loadEnums(services: Services, actor: Actor, upTo?: number): Promise<void> {
   for (const definition of (enums as unknown as EnumSeed[]).slice(0, upTo)) {
-    const created = unwrap(await services.catalog.createEnum(actor, { label: definition.label, values: definition.values.map(({ label }) => ({ label })) } as NewEnum));
+    // 지운 값(코드 빈자리 — E0001 의 V12 · V13, ADR-0086 결정 5)은 채번값이라 건너뛸 수 없다 — 자리표시 값으로 만들고 상세 저장에서 지운다(화면에서 지우는 것과 같다)
+    const seeded = new Map(definition.values.map((v) => [v.code, v]));
+    const last = Math.max(0, ...definition.values.map((v) => parseCode(v.code)?.seq ?? 0));
+    const all = Array.from({ length: last }, (_, i) => formatCode("enumValue", i + 1));
+    const gaps = all.filter((code) => !seeded.has(code));
+    const created = unwrap(await services.catalog.createEnum(actor, { label: definition.label, values: all.map((code) => ({ label: seeded.get(code)?.label ?? `(지운 값 ${code})` })) } as NewEnum));
     expectCode(created.code, definition.code);
-    definition.values.forEach((v, i) => expectCode(created.values[i]?.code ?? "", v.code));
-    if (!definition.fields?.length) continue;
+    all.forEach((code, i) => expectCode(created.values[i]?.code ?? "", code));
+    if (!definition.fields?.length && gaps.length === 0) continue;
     const revised = unwrap(
-      await services.catalog.reviseEnum(actor, created.code, {
-        label: created.label,
-        description: created.description ?? "",
-        fields: definition.fields.map((f) => ({ ref: f.key, label: f.label, type: f.type })),
-        values: definition.values.map((v, i) => ({ code: created.values[i].code, label: v.label, fields: v.fields ?? {} })),
-      }),
+      await services.catalog.reviseEnum(
+        actor,
+        created.code,
+        {
+          label: created.label,
+          description: created.description ?? "",
+          fields: (definition.fields ?? []).map((f) => ({ ref: f.key, label: f.label, type: f.type })),
+          values: definition.values.map((v) => ({ code: v.code, label: v.label, fields: v.fields ?? {} })),
+        },
+        { confirm: gaps.length > 0 },
+      ),
     );
-    definition.fields.forEach((f, i) => expectCode(revised.fields?.[i]?.key ?? "", f.key));
+    (definition.fields ?? []).forEach((f, i) => expectCode(revised.fields?.[i]?.key ?? "", f.key));
   }
 }
 

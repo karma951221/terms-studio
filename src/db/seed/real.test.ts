@@ -157,8 +157,8 @@ describe("★ 실물 재현 — 실물 시드 → 조립 → 원문 대조", () 
 
 /**
  * 대표 변형 — 납입면제(QA/인수기준 보통약관 행 · 알파플러스_모델명세 §6). 같은 템플릿 · 같은 역할 함수조항에 세목 사유만 바꿔 넣는다.
- * 2종 사유 = 암·무면책 · 뇌졸중 · 상해80% → 호 셋(암 호에 암보장개시일 없음) · 면책 사유가 없어 부가항 · 무효 · 부활 문구가 빠진다 ·
- * 세부규정은 장해 · 상해장해 항만, 값 한정 참조는 장해 값이 낸 호(제3호) 하나로 좁혀진다 · 정의 조는 암 · 뇌졸중만.
+ * 2종 사유 = 암·무면책 · 뇌졸중 · 상해및질병80% → 호 넷(암 호에 암보장개시일 없음 · 장해는 호 둘) · 면책 사유가 없어 부가항 · 무효 · 부활 문구가 빠진다 ·
+ * 세부규정은 장해 · 상해장해 항만, 장해 호 함수조항을 가리키는 참조는 그 호 둘(제3호 · 제4호)로 따라온다 · 정의 조는 암 · 뇌졸중만(사유별 정의 함수조항이 스스로 켜진다 — ADR-0086).
  */
 describe("★ 실물 재현 변형 — 알파Plus 납입면제 사유를 바꾸면 템플릿이 따라온다", () => {
   let db: TestDb;
@@ -173,7 +173,7 @@ describe("★ 실물 재현 변형 — 알파Plus 납입면제 사유를 바꾸�
     await loadAlphaPlus(services, actor);
     const product = (await services.product.listProducts()).find((p) => p.name === "알파Plus보장보험")!;
     const type2 = (await services.product.listPlanOptions(product.id)).find((o) => o.axis === "type" && o.number === 2)!;
-    const saved = await services.product.setPlanOptionValues(actor, type2.id, [{ path: "waiver.reasons", value: ["V02", "V03", "V12"] }]);
+    const saved = await services.product.setPlanOptionValues(actor, type2.id, [{ path: "waiver.reasons", value: ["V02", "V03", "V11"] }]);
     if (!saved.ok) throw new Error(JSON.stringify(saved.rejection));
     const r = await services.assembly.preview(product.id);
     if (!r.ok) throw new Error(JSON.stringify(r.rejection));
@@ -195,13 +195,14 @@ describe("★ 실물 재현 변형 — 알파Plus 납입면제 사유를 바꾸�
     expect(issues).toEqual([]);
   });
 
-  it("납입면제 조 — 2종 항 하나에 사유 호 셋, 부가항(암보장개시일)이 빠져 ③ ④ 가 당겨진다", () => {
+  it("납입면제 조 — 2종 항 하나에 사유 호 넷, 부가항(암보장개시일)이 빠져 ③ ④ 가 당겨진다", () => {
     expect(article("보험료의 납입면제")).toEqual([
       "## 제28조(보험료의 납입면제)",
       "@ 회사는 피보험자가 2종(보험료 납입면제형) 가입시 보험료 납입기간 중에 다음 중 어느 하나의 사유에 해당되고 계약이 소멸되지 않은 경우에는 차회 이후 보장보험료의 납입을 면제합니다.",
       "  - 피보험자가「암(유사암제외)」으로 진단확정되었을 경우",
       "  - 피보험자가「뇌졸중」으로 진단확정되었을 경우",
       "  - 피보험자가 상해로【별표1(장해분류표)】에서 정한 장해지급률이 80% 이상에 해당하는 장해상태가 되었을 경우",
+      "  - 피보험자가 진단 확정된 질병으로【별표1(장해분류표)】에서 정한 장해지급률이 80% 이상에 해당하는 장해상태가 되었을 경우",
       "@ 제1항에도 불구하고 아래의 보험료 납입면제 제외대상 특별약관 및「자동갱신 특별약관」에서 정한「자동갱신 적용대상 특별약관」은 보장보험료의 납입을 면제하지 않습니다.",
       "```용어풀이",
       "【보험료 납입면제 제외대상 특별약관】",
@@ -212,12 +213,12 @@ describe("★ 실물 재현 변형 — 알파Plus 납입면제 사유를 바꾸�
     ]);
   });
 
-  it("세부규정 — 면책 ①~③ 이 빠지고, 값 한정 참조(장해 값이 낸 호)는 제3호 하나 · ⑫ 상해 관련은 남는다", () => {
+  it("세부규정 — 면책 ①~③ 이 빠지고, 장해 호 함수조항 참조는 제3호 · 제4호 · ⑫ 상해 관련은 남는다", () => {
     const detail = article("납입면제에 관한 세부규정");
     expect(detail).toHaveLength(1 + 9 + 8);
-    expect(detail[1]).toMatch(/^@ 제28조\(보험료의 납입면제\) 제1항 제3호에서 장해지급률이/);
+    expect(detail[1]).toMatch(/^@ 제28조\(보험료의 납입면제\) 제1항 제3호 및 제4호에서 장해지급률이/);
     expect(detail.find((l) => l.includes("합의하지 못할 때"))).toMatch(/^@ 보험수익자와 회사가 제28조\(보험료의 납입면제\) 제1항의/);
-    expect(detail.find((l) => l.startsWith("@ 회사는 다음 중 어느 한 가지로"))).toContain("제28조(보험료의 납입면제) 제1항 제3호의 후유장해");
+    expect(detail.find((l) => l.startsWith("@ 회사는 다음 중 어느 한 가지로"))).toContain("제28조(보험료의 납입면제) 제1항 제3호 또는 제4호의 후유장해");
     expect(detail.find((l) => l.startsWith("@ 회사는 다른 약정이 없으면"))).toBeDefined();
   });
 
