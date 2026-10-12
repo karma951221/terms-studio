@@ -1475,6 +1475,28 @@
           "enumCode": "E0001"
         }
       }
+    ],
+    "presets": [
+      {
+        "code": "S01",
+        "name": "상해",
+        "bindings": {
+          "사유": {
+            "kind": "const",
+            "value": "V12"
+          }
+        }
+      },
+      {
+        "code": "S02",
+        "name": "질병",
+        "bindings": {
+          "사유": {
+            "kind": "const",
+            "value": "V13"
+          }
+        }
+      }
     ]
   },
   {

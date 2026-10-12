@@ -99,6 +99,12 @@ describe("알파Plus 납입면제 템플릿 — 사유 값으로 분기하지 �
       { code: "S01", name: "계약일 기준", options: { O01: "V01" }, bindings: applied },
       { code: "S02", name: "최초계약일 기준", options: { O01: "V02" }, bindings: applied },
     ]);
+    // 납입면제 호 — 사유 상수 프리셋 상해(V12 상해80%) · 질병(V13 질병80%), 2026-10-13 사용자 결정. 보통약관 자리는 반복의 현재 원소 그대로
+    expect(clauseByLabel("납입면제 호").presets).toEqual([
+      { code: "S01", name: "상해", bindings: { 사유: { kind: "const", value: "V12" } } },
+      { code: "S02", name: "질병", bindings: { 사유: { kind: "const", value: "V13" } } },
+    ]);
+    expect(find(alpha, (x) => x.kind === "clauseBlockRef" && x.clauseCode === clauseByLabel("납입면제 호").code)!.preset).toBeUndefined();
     const revive = find(alpha, (x) => x.kind === "clauseBlockRef" && x.clauseCode === clauseByLabel("부활 문구").code)!;
     expect([revive.preset, revive.options, revive.bindings]).toEqual(["S01", {}, undefined]);
   });
