@@ -36,7 +36,7 @@ export function Toggle({
   const hint = current ? hintOn : hintOff;
   return (
     <div className="ts-radio-group">
-      <label className="ts-toggle inline-flex cursor-pointer items-center gap-2">
+      <label className="ts-toggle">
         <input
           type="checkbox"
           role="switch"

@@ -2984,7 +2984,7 @@ label.ts-field > textarea:where(:not([data-slot])) {
   background: none;
   border: 1px solid var(--ts-rule-strong);
   border-left: 2px solid var(--ts-error);
-  border-radius: 3px;
+  border-radius: 6px;
   padding: 10px 12px;
   margin: 12px 0;
   max-width: 44em;
@@ -4482,6 +4482,14 @@ button:where(:not([data-slot])).ts-ref-fold:hover {
   cursor: pointer;
   font-size: 13px;
   color: var(--ts-ink-2);
+}
+
+.ts-toggle:has(> [data-slot="switch-native"]:disabled) {
+  cursor: default;
+}
+
+.ts-toggle:has(> [data-slot="switch-native"]:disabled) .ts-toggle-label {
+  opacity: 0.6;
 }
 
 /* 목록의 값 칩 — 앞 몇 개만 칩으로, 넘치면 「+N」. 칸 폭을 넘는 칩은 잘린다 (현행 약관시스템 조회 화면 준용, 2026-09-12) */

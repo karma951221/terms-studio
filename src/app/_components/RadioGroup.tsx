@@ -46,7 +46,7 @@ export function RadioGroup({
     <div className="ts-radio-group">
       <div className="ts-form-radios" role="radiogroup" aria-label={label}>
         {options.map((option) => (
-          <label key={String(option.value)} className="ts-form-radio inline-flex items-center gap-1.5">
+          <label key={String(option.value)} className="ts-form-radio">
             <input
               type="radio"
               data-slot="radio-native"

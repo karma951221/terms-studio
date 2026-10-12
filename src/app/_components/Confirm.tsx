@@ -56,7 +56,7 @@ export function Confirm({
 }) {
   const resolvedTitle = title ?? (targetLabel ? `${targetLabel} ${eul(targetLabel)} 삭제한다` : `${actionLabel ?? "이 작업"}${eun(actionLabel ?? "이 작업")} 되돌릴 수 없다`);
   return (
-    <section className="ts-confirm rounded-lg border border-border bg-card p-4">
+    <section className="ts-confirm">
       <p className="ts-confirm-title">{resolvedTitle}</p>
       <ul className="ts-confirm-loss">
         {impact.valueRowsLost > 0 && <li>사람이 입력한 값 {impact.valueRowsLost}건이 사라진다</li>}

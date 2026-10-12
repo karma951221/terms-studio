@@ -55,6 +55,9 @@ describe("globals.css — 레거시가 새 모양을 덮지 않는다", () => {
     expect(css).not.toContain(".ts-toggle-track");
     expect(css).not.toMatch(/\.ts-toggle\s*>\s*input/);
   });
+  it("비활성 토글은 라벨이 흐려진다", () => {
+    expect(css).toMatch(/\.ts-toggle:has\(> \[data-slot="switch-native"\]:disabled\) \.ts-toggle-label\s*\{[^}]*opacity/);
+  });
   it(".ts-infotip 규칙에 색 선언이 없다", () => {
     const rules = css.match(/[^{}]*\.ts-infotip[^{}]*\{[^}]*\}/g) ?? [];
     for (const rule of rules) expect(rule).not.toMatch(/\bcolor:/);
