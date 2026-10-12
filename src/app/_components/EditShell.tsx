@@ -75,7 +75,7 @@ export const EDIT_MODE_LOCKED_TIP = "저장하거나 취소한 뒤 실행";
 export function DiscardDialog({ onStay, onDiscard }: { onStay: () => void; onDiscard: () => void }) {
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onStay(); }}>
-      <DialogContent showCloseButton={false} className="max-w-md">
+      <DialogContent showCloseButton={false} className="sm:max-w-md">
         <DialogTitle className="ts-confirm-title">저장하지 않은 변경 사항이 있습니다</DialogTitle>
         <DialogDescription className="ts-confirm-body">지금 나가면 수정한 내용이 모두 사라집니다.</DialogDescription>
         <DialogFooter className="ts-confirm-actions">
@@ -224,8 +224,8 @@ export function EditShell<T extends EditData>({
     {error ? <p className="ts-error-banner">{error}</p> : null}
     <fieldset className="ts-edit-fields" disabled={pending}>{children}</fieldset>
     {discard ? <DiscardDialog onStay={() => setDiscard(undefined)} onDiscard={() => { const { go } = discard; setDiscard(undefined); go(); }} /> : null}
-    {confirm ? <Dialog open onOpenChange={(open) => { if (!open) setConfirm(undefined); }}>
-      <DialogContent showCloseButton={false} aria-describedby={undefined} className="max-w-md">
+    {confirm ? <Dialog open onOpenChange={(open) => { if (!open && !pending) setConfirm(undefined); }}>
+      <DialogContent showCloseButton={false} aria-describedby={undefined} className="sm:max-w-md">
         <DialogTitle className="ts-confirm-title">{confirm.kind === "save" ? confirm.outcome.title ?? "변경하면 저장된 값이 사라질 수 있다" : `${deleteLabel ?? shownTitle} 삭제`}</DialogTitle>
         <ImpactLines outcome={confirm.outcome} />
         <DialogFooter className="ts-confirm-actions">

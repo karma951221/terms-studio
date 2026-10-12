@@ -111,6 +111,32 @@ describe("EditShell — 저장 · 삭제 확인", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
+  it("실행 중(pending)에는 Esc 로 닫히지 않는다 — 끝나면 닫힌다", async () => {
+    const user = userEvent.setup();
+    let finish: (outcome: EditOutcome) => void = () => undefined;
+    const save = async (_data: unknown, confirmed?: boolean): Promise<EditOutcome> =>
+      confirmed ? new Promise<EditOutcome>((resolve) => (finish = resolve)) : { ok: "confirm", impact, token: "t" };
+    shell({ initialMode: "edit", saveAction: save as never });
+    await user.type(screen.getByDisplayValue("골절진단비"), "Ⅱ");
+    await user.click(screen.getByRole("button", { name: "저장" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(screen.getByRole("button", { name: /타입 바꾸고/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "취소" }).hasAttribute("disabled")).toBe(true));
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("dialog")).toBe(dialog);
+    finish({ ok: true });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("확인 대화상자 폭은 sm:max-w-md — DialogContent 의 sm:max-w-lg 를 이긴다", async () => {
+    const user = userEvent.setup();
+    shell({ deleteAction: confirm });
+    await user.click(screen.getByRole("button", { name: "골절진단비 삭제" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.className.split(/\s+/)).toContain("sm:max-w-md");
+    expect(dialog.className.split(/\s+/)).not.toContain("sm:max-w-lg");
+  });
+
   it("삭제 확인 — 「취소」는 닫고, 실행 버튼은 destructive Button", async () => {
     const user = userEvent.setup();
     shell({ deleteAction: confirm });
