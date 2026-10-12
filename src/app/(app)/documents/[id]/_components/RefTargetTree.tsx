@@ -29,11 +29,14 @@ export interface RefTargetScope {
 
 export function RefTargetTree({
   id,
+  name = "targets",
   scopes,
   defaultSelected,
   onCountChange,
 }: {
   id: string;
+  /** 숨은 칸 이름 — 한 폼에 트리가 여럿이면(함수조항 참조의 조 참조 인자 칸마다, ADR-0083) 나눈다. */
+  name?: string;
   scopes: readonly RefTargetScope[];
   defaultSelected: readonly Id[];
   /** 고른 개수가 바뀔 때 — 연결어 라디오를 켜고 끈다. `ids` = 고른 줄(노드 id) — 반복 블록 안 대상이면 하나여도 연결어가 켜진다. */
@@ -193,7 +196,7 @@ export function RefTargetTree({
         {outlines.map((s) =>
           // 숨은 칸 — 문서 순서대로, 값은 참조 대상 열쇠(조 · 조#P코드, ADR-0072). 같은 코드의 분기 짝을 둘 다 골라도 대상은 하나다
           [...new Set([...s.index].filter(([nodeId]) => selected.has(nodeId)).map(([, t]) => refKey(refTargetOf(t))))].map((key) => (
-            <input key={`${s.key}:v:${key}`} type="hidden" name="targets" value={key} />
+            <input key={`${s.key}:v:${key}`} type="hidden" name={name} value={key} />
           )),
         )}
         {empty && <p className="ts-muted">고를 조가 없다.</p>}

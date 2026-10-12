@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Discriminator } from "@/domain/catalog";
 import type { Clause } from "@/domain/clause";
-import { indexTree, nodeBuilders, numberTree, sequentialIds, type DocumentNode } from "@/domain/document";
+import { indexTree, nodeBuilders, numberTree, referenceTargetIndex, sequentialIds, type DocumentNode } from "@/domain/document";
 
 import { buildConditionContext } from "./condition/conditionContext";
 import { refLabelOf } from "./condition/display";
@@ -275,5 +275,32 @@ describe("작업용 글자색 — 색 조각으로 그린다 (기능/문면 §3.
 
   it("읽기 · 편집 모두 색 조각 — 편집기는 되읽기 위해 `data-mark` 를 품는다", () => {
     for (const edit of [false, true]) expect(renderToStaticMarkup(<Block nodes={nodes} ctx={ctxOf(t, edit)} />)).toContain(`회사는 ${colored} 지급합니다.`);
+  });
+});
+
+describe("함수조항 머리 띠 — 조 참조 인자 연결 「인자: 이름 ← 제1조(…)」 (ADR-0083 결정 7)", () => {
+  const lapse: Clause = {
+    code: "C0009",
+    label: "특별약관의 소멸",
+    mode: "block",
+    options: [],
+    params: [{ name: "보험금의 지급사유 조", type: { kind: "articleRef" } }],
+    required: { discriminators: [], attributes: [] },
+    body: [{ id: "lp", kind: "paragraph", children: [{ id: "lr", kind: "articleRef", targets: [{ param: "보험금의 지급사유 조" }], scope: "param" }] }],
+  };
+  function renderLapse(bound: boolean) {
+    const b = nodeBuilders(sequentialIds("k"));
+    const first = b.article("보험금의 지급사유", []);
+    const ref = b.clauseBlock("C0009", {});
+    if (bound) ref.bindings = { "보험금의 지급사유 조": { kind: "articleRef", targets: [{ articleId: first.id }], scope: "self" } };
+    const tree: DocumentNode = b.document("D", [first, b.article("소멸", [ref])]);
+    const numbers = numberTree(tree);
+    const ctx: DocCtx = { ...ctxOf(tree, false), clauses: [lapse], clauseLabel: new Map([["C0009", "특별약관의 소멸"]]), references: { self: referenceTargetIndex(tree, numbers), general: new Map() } };
+    return renderToStaticMarkup(<Block nodes={(tree.children[1] as { children: DocumentNode["children"] }).children} ctx={ctx} />);
+  }
+
+  it("연결이 있으면 이 문서의 조 표기, 없으면 「연결 없음」", () => {
+    expect(renderLapse(true)).toContain("인자: 보험금의 지급사유 조 ← 제1조(보험금의 지급사유)");
+    expect(renderLapse(false)).toContain("인자: 보험금의 지급사유 조 ← 연결 없음");
   });
 });

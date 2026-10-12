@@ -529,7 +529,7 @@ function applyBlockUse(
     report.push(`${where} — 조 참조 인자 「${error.param}」가 서로 다른 대상과 맞았다`);
     return false;
   }
-  const bindings = useBindings(clause, match, doc, where, report);
+  const bindings = bindingsOfUse(clause, match, doc, where, report);
   article.children.splice(at, count, { id: `${first.id}-k`, kind: "clauseBlockRef", clauseCode: clause.code, options: { ...selection }, ...(bindings ? { bindings } : {}) });
   return true;
 }
@@ -538,7 +538,7 @@ function applyBlockUse(
  * 조 참조 인자 연결 — 맞은 사용처 참조(대상 · 연결어 · 범위)를 그대로 (ADR-0083 결정 8). 못 맞은 인자는 보고(문서 저장 검사가 argUnbound 로 막는다),
  * 사용처 대상 조 제목이 인자 이름과 다르면 보고 — 이름은 오버레이에 손으로 적는다.
  */
-function useBindings(clause: ClauseRecord, match: UseMatch, doc: DocumentNode | undefined, where: string, report: string[]): Bindings | undefined {
+function bindingsOfUse(clause: ClauseRecord, match: UseMatch, doc: DocumentNode | undefined, where: string, report: string[]): Bindings | undefined {
   const params = articleRefParamsOf([clause.body, clause.options]);
   if (params.length === 0) return undefined;
   const positions = doc ? structurePositions(doc) : undefined;

@@ -68,7 +68,7 @@ export interface DocCtx {
    */
   chipOverride?: (node: InlineNode) => { className: string; title: string; body: ReactNode; what: string } | undefined;
   /**
-   * 조 참조 팝업의 범위를 화면이 정한다 — 함수조항 에디터: 보통약관 · 이 함수조항 · 사용처(기능/함수조항 §3.5).
+   * 조 참조 팝업의 범위를 화면이 정한다 — 함수조항 에디터: 보통약관 · 이 함수조항 · 인자(기능/함수조항 §3.5 · ADR-0083).
    * 있으면 이 목록이 범위 고르기가 되고, 고른 범위의 후보만 트리에 선다. 없으면 문면 규칙(담보약관: 이 템플릿 · 대응 보통약관).
    */
   articleRefChoices?: readonly ArticleRefChoice[];
@@ -160,11 +160,16 @@ export function decodeAt(raw: string): InlineAt | undefined {
   return undefined;
 }
 
-/** 조 참조 범위 하나 — 폼 값(`scope`)이 `host` 면 노드 범위는 `general`(대상 id 가 `host:` 로 시작한다 — clauseTree 의 운반 규칙). */
+/**
+ * 조 참조 범위 하나 — 폼 값(`scope`)이 `param` 이면 조 참조 인자 하나를 고르고, 노드 범위는 `general`(대상 id 가 `arg:` 로 시작한다 —
+ * clauseTree 의 운반 규칙, ADR-0083).
+ */
 export interface ArticleRefChoice {
-  value: "general" | "self" | "host";
+  value: "general" | "self" | "param";
   label: string;
   index: ReadonlyMap<Id, ReferenceTarget>;
   /** 조 줄 없이 항부터 (이 함수조항). */
   rootless?: boolean;
+  /** 「인자」 범위의 후보 — 조 참조 인자 이름. 비면 범위가 잠긴다. */
+  params?: readonly string[];
 }

@@ -15,7 +15,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
 import { pickCombo } from "../../_lib/combo";
-import type { ClauseSpec, GeneralRow } from "./seed";
+import { SEED, type ClauseSpec, type GeneralRow } from "./seed";
 
 import { parse } from "../../../../src/domain/expression";
 import { refKey, rowRefPath, toRows, type ConditionRow, type DocumentNode, type InlineNode, type Node } from "../../../../src/domain/document";
@@ -162,37 +162,40 @@ export class Editor {
 
   /**
    * 조 참조 팝업 — 범위 · 대상(트리에서 펴고 고르기) · 연결어.
-   * 함수조항 본문의 조 참조는 범위가 셋이다: 없음 = 보통약관 · `clause` = 이 함수조항(항 줄 표기로 찾는다) · `host` = 사용처 위치(줄 id `host:2.1.3`).
+   * 함수조항 본문의 조 참조는 범위가 셋이다: 없음 = 보통약관 · `clause` = 이 함수조항(항 줄 표기로 찾는다) · `param` = 조 참조 인자(이름 라디오, ADR-0083).
+   * `idBase` · 대상 묶음을 주면 함수조항 참조 팝업의 조 참조 인자 연결 칸(`#pop-arg-ref-<n>-…`)이다 — 같은 부품이다.
    */
-  private async pickTargets(d: Locator, node: Extract<InlineNode, { kind: "articleRef" }>): Promise<void> {
-    const scope = (node as { scope?: string }).scope;
-    const choice = this.refs.clauseEditor ? (scope === "clause" ? "self" : scope === "host" ? "host" : "general") : scope === "general" ? "general" : "self";
+  async pickTargets(d: Locator, node: { targets: readonly unknown[]; connector?: string; scope?: string }, idBase = "pop-ref"): Promise<void> {
+    const scope = node.scope;
+    if (this.refs.clauseEditor && scope === "param") {
+      await d.locator(`#${idBase}-scope`).selectOption("param");
+      const name = (node.targets[0] as { param?: string }).param ?? "";
+      await d.getByRole("radio", { name: `⟨${name}⟩`, exact: true }).check();
+      return;
+    }
+    const choice = this.refs.clauseEditor ? (scope === "clause" ? "self" : "general") : scope === "general" ? "general" : "self";
     const general = choice === "general";
-    if (this.refs.hasScopeSelect) await d.locator("#pop-ref-scope").selectOption(choice);
-    // 대상 모양은 범위마다 — 조 · 조+P코드(보통약관 · 이 템플릿), P코드(이 함수조항), 위치 경로(사용처) (ADR-0072 결정 3)
-    for (const t of node.targets as { articleId?: string; code?: string; host?: string }[]) {
+    if (this.refs.hasScopeSelect) await d.locator(`#${idBase}-scope`).selectOption(choice);
+    const tree = d.locator(`#${idBase}-targets`);
+    // 대상 모양은 범위마다 — 조 · 조+P코드(보통약관 · 이 템플릿), P코드(이 함수조항) (ADR-0072 결정 3)
+    for (const t of node.targets as { articleId?: string; code?: string }[]) {
       let rowId: string;
       if (general) {
         const key = refKey({ articleId: t.articleId ?? "", ...(t.code !== undefined ? { code: t.code } : {}) });
         const row = this.refs.generalAncestors.get(key);
         if (!row) throw new Error(`보통약관 참조 대상 ${key} 가 고르기 트리에 없다`);
-        for (const up of row.chain) await this.expandRow(d, up);
+        for (const up of row.chain) await this.expandRow(tree, up);
         rowId = row.row;
-      } else if (choice === "host") {
-        // 사용처 위치 줄 — 조 · 항 순으로 편다
-        const parts = (t.host ?? "").split(".");
-        for (let k = 1; k < parts.length; k++) await this.expandRow(d, `host:${parts.slice(0, k).join(".")}`);
-        rowId = `host:${t.host ?? ""}`;
       } else {
         const key = this.refs.clauseEditor ? (t.code ?? "") : refKey({ articleId: t.articleId ?? "", ...(t.code !== undefined ? { code: t.code } : {}) });
         const labels = this.refs.selfPaths.get(key);
         if (!labels) throw new Error(`조 참조 대상 ${key} 가 이 문서 고르기 트리에 없다`);
-        rowId = await this.resolveSelfRow(d, labels);
+        rowId = await this.resolveSelfRow(tree, labels);
       }
-      const box = d.locator(`[data-ref-row="${rowId}"]`).first().locator(":scope > .ts-ref-pick input[type=checkbox]");
+      const box = tree.locator(`[data-ref-row="${rowId}"]`).first().locator(":scope > .ts-ref-pick input[type=checkbox]");
       await box.check();
     }
-    if (node.targets.length >= 2) await d.getByRole("radio", { name: node.connector, exact: true }).check();
+    if (node.targets.length >= 2) await d.locator(`input[type=radio][name$="connector"][value="${node.connector}"]`).check();
   }
 
   private async expandRow(d: Locator, rowId: string): Promise<void> {
@@ -201,11 +204,11 @@ export class Editor {
     await expect(row).toHaveAttribute("aria-expanded", "true");
   }
 
-  /** 「이 템플릿」 묶음에서 줄 표기 경로로 줄을 찾는다 — 이 문서의 노드 id 는 화면이 새로 발급해 시드와 다르다. */
-  private async resolveSelfRow(d: Locator, labels: string[]): Promise<string> {
+  /** 「이 템플릿」 묶음에서 줄 표기 경로로 줄을 찾는다 — 이 문서의 노드 id 는 화면이 새로 발급해 시드와 다르다. `tree` = 고르기 트리(`.ts-ref-tree`). */
+  private async resolveSelfRow(tree: Locator, labels: string[]): Promise<string> {
     for (let guard = 0; guard < labels.length + 2; guard++) {
-      const found = await d.evaluate((dialog, path) => {
-        const scopes = [...dialog.querySelectorAll(".ts-ref-tree > div[role=none]")];
+      const found = await tree.evaluate((root, path) => {
+        const scopes = [...root.querySelectorAll(":scope > div[role=none]")];
         const self = scopes.find((s) => ["이 템플릿", "이 함수조항"].includes(s.querySelector(":scope > .ts-ref-scope")?.textContent ?? "")) ?? scopes[0];
         if (!self) return { missing: -1 };
         let lis = [...self.querySelectorAll(":scope > div[role=none] > ul > li")];
@@ -223,7 +226,7 @@ export class Editor {
       }, labels);
       if ("id" in found && found.id) return found.id;
       if ("expand" in found && found.expand) {
-        await this.expandRow(d, found.expand);
+        await this.expandRow(tree, found.expand);
         continue;
       }
       throw new Error(`조 참조 고르기 트리에 「${labels.join(" › ")}」가 없다 (${JSON.stringify(found)})`);
@@ -406,6 +409,9 @@ function articlesOf(tree: DocumentNode): { article: Node; wrap?: string }[] {
   return out;
 }
 
+/** 함수조항 코드 → 인자 이름(선언 순) — 「함수조항 옵션 · 인자」 팝업의 조 참조 인자 칸 id(`pop-arg-ref-<순번>`)를 찾는다. */
+const SEED_CLAUSE_PARAMS = new Map(SEED.clauses.map((c) => [c.code, (c.params ?? []).map((p) => p.name)] as const));
+
 const BLOCK_TOOL: Partial<Record<Node["kind"], string>> = { paragraph: "항", item: "호", subitem: "목", table: "표", clauseBlockRef: "함수조항", boxRef: "박스" };
 
 /** 문면 저작 화면 운전 — 담보약관 템플릿 한 벌. */
@@ -554,12 +560,19 @@ export class DocumentAuthoring {
     if (node.kind === "clauseBlockRef") {
       await this.editor.runTool(tool);
       await this.page.getByRole("menuitem", { name: `${this.clauseLabels.get(node.clauseCode)}(${node.clauseCode})`, exact: true }).click();
-      if (Object.keys(node.options).length > 0) {
-        // 블록 머리의 옵션 단추 → 「함수조항 옵션」 팝업에서 옵션마다 선택지 (인자가 있는 함수조항이면 「함수조항 옵션 · 인자」 — 인자는 기본 연결 그대로)
+      // 조 참조 인자 연결 — 이 문서의 조 · 항을 대상 트리에서 고른다 (ADR-0083 결정 4 · 7). 대상은 앞 조라 이미 서 있다
+      const refBindings = Object.entries(node.bindings ?? {}).filter(([, b]) => b.kind === "articleRef");
+      if (Object.keys(node.options).length > 0 || refBindings.length > 0) {
+        // 블록 머리의 옵션 단추 → 「함수조항 옵션」 팝업에서 옵션마다 선택지 (인자가 있는 함수조항이면 「함수조항 옵션 · 인자」 — 값 인자는 기본 연결 그대로)
         const block = this.article.locator("[data-clause-ref]").filter({ hasText: `[${node.clauseCode}] ${this.clauseLabels.get(node.clauseCode)}` }).last();
         await block.locator(".ts-doc-clause-opt").click();
         const d = this.page.getByRole("dialog", { name: /^함수조항 옵션( · 인자)?$/ });
         for (const [option, value] of Object.entries(node.options)) await d.locator(`#pop-opt-${option}`).selectOption(value);
+        const params = SEED_CLAUSE_PARAMS.get(node.clauseCode) ?? [];
+        for (const [name, b] of refBindings) {
+          if (b.kind !== "articleRef") continue;
+          await this.editor.pickTargets(d.getByRole("group", { name: `인자 ${name}`, exact: true }), b, `pop-arg-ref-${params.indexOf(name)}`);
+        }
         await this.editor.confirm(d, "확인");
       }
       return;
@@ -629,9 +642,10 @@ export class ClauseAuthoringDriver {
   async params(params: NonNullable<ClauseSpec["params"]>): Promise<void> {
     for (const p of params) {
       await this.page.getByLabel("새 인자 이름", { exact: true }).fill(p.name);
+      // 조 참조 인자(ADR-0083)는 타입 칸 값이 `articleRef` 이고 기본 연결이 없다(칸이 잠긴다)
       const type = p.type.kind === "enum" || p.type.kind === "list<enum>" ? `${p.type.kind}:${p.type.enumCode}` : p.type.kind === "planOptions" ? `planOptions:${p.type.form}` : p.type.kind;
       await this.page.getByLabel("새 인자 타입", { exact: true }).selectOption(type);
-      if (p.default) await this.page.getByLabel("새 인자 기본 연결", { exact: true }).selectOption(`d:${p.default.code}`);
+      if (p.default?.kind === "discriminator") await this.page.getByLabel("새 인자 기본 연결", { exact: true }).selectOption(`d:${p.default.code}`);
       await this.page.getByRole("button", { name: "인자 추가" }).click();
     }
   }

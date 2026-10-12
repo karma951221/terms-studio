@@ -1,7 +1,7 @@
 /**
  * 함수조항 인자 화면의 순수 재료 (최종 결정 2 · 기능/함수조항 §4.3) — 인자 표 칸 값 ⇄ 인자 선언, 조건 · 슬롯 고르기의 「인자」 칸, 사용처 연결 칸.
  *
- * 고르기 칸의 값은 글자 하나다 — 타입 `boolean` · `enum:E0001` · `list<enum>:E0001` · `planOptions:waiver`,
+ * 고르기 칸의 값은 글자 하나다 — 타입 `boolean` · `enum:E0001` · `list<enum>:E0001` · `planOptions:waiver` · `articleRef`(조 참조 인자, ADR-0083),
  * 연결 `""`(없음 · 기본 연결) · `d:D0001`(구분자) · `c:true` · `c:false` · `c:V01`(상수 — 참거짓 · 열거값) · `s:waiver` · `s:waiver:applies`(원천 — 폼 전체 · 참거짓 필드 = 예) ·
  * `r:<반복 블록 id>`(반복의 현재 원소 — 넣는 자리를 감싼 반복만, ADR-0077 결정 3).
  */
@@ -56,10 +56,14 @@ export function typeValue(t: ParamType): string {
   }
 }
 
+/** 조 참조 인자의 기본 연결 칸 잠김 사유 (ADR-0083 결정 7). */
+export const ARTICLE_REF_PARAM_NOTE = "조 참조 인자는 넣는 자리마다 연결합니다";
+
 export function typeOfValue(value: string): ParamType {
   const [kind, arg] = value.split(":");
   if ((kind === "enum" || kind === "list<enum>") && arg) return { kind, enumCode: arg };
   if (kind === "planOptions" && arg) return { kind: "planOptions", form: arg };
+  if (kind === "articleRef") return { kind: "articleRef" };
   if (kind === "string" || kind === "number" || kind === "date") return { kind };
   return { kind: "boolean" };
 }
@@ -72,6 +76,8 @@ export function typeLabel(t: ParamType, enums: readonly EnumChoice[], forms: rea
       return `열거형 목록 ${enums.find((e) => e.code === t.enumCode)?.label ?? t.enumCode}`;
     case "planOptions":
       return `세목 선택지 목록 ${forms.find((f) => f.key === t.form)?.label ?? t.form}`;
+    case "articleRef":
+      return "조 참조";
     default:
       return SCALAR_TYPES.find((s) => s.value === t.kind)?.label ?? t.kind;
   }
@@ -90,6 +96,8 @@ export function bindingValue(b: Binding | undefined): string {
     }
     case "current":
       return `r:${b.loop}`;
+    case "articleRef":
+      return "a"; // 조 참조 연결은 고르기 칸이 아니라 대상 트리로 고른다 (documents Popups)
   }
 }
 
@@ -116,6 +124,7 @@ export function bindingOfValue(value: string, type: ParamType): Binding | undefi
 }
 
 function sameType(a: FieldType | undefined, t: ParamType): boolean {
+  if (t.kind === "articleRef") return false;
   if (!a || a.kind !== t.kind) return false;
   if ("enumCode" in a && "enumCode" in t) return a.enumCode === t.enumCode;
   return true;
@@ -130,6 +139,7 @@ export function bindingOptions(
   withConst: boolean,
   loops: readonly LoopChoice[] = [],
 ): { value: string; label: string; group: string }[] {
+  if (t.kind === "articleRef") return []; // 조 참조 인자 — 대상 트리로 고른다 · 기본 연결 없음 (ADR-0083)
   // 반복의 현재 원소 — 원소 타입이 인자 타입과 같은 감싼 반복만 (종 → 세목 선택지 목록<폼> · 열거값 → enum<E>)
   const current = loops
     .filter((l) => (l.type.kind === "planOptions" ? t.kind === "planOptions" && t.form === l.type.form : t.kind === "enum" && t.enumCode === l.type.enumCode))
@@ -152,7 +162,8 @@ export function bindingOptions(
 
 /** 연결 표시 — 「갱신여부(D0001)」 · 「예」 · 「납입면제 — 적용여부 = 예인 선택지」. */
 export function bindingLabel(b: Binding | undefined, t: ParamType, discriminators: readonly CtxDiscriminator[], enums: readonly EnumChoice[], forms: readonly PlanFormChoice[], loops: readonly LoopChoice[] = []): string {
-  if (!b) return "없음";
+  if (!b) return t.kind === "articleRef" ? ARTICLE_REF_PARAM_NOTE : "없음";
+  if (b.kind === "articleRef") return "조 참조 연결";
   const found = bindingOptions(t, discriminators, enums, forms, true, loops).find((o) => o.value === bindingValue(b));
   if (found) return found.label;
   if (b.kind === "discriminator") return `${b.code}(없는 구분자)`;
@@ -166,6 +177,8 @@ export function paramEntries(params: readonly ParamDef[], enums: readonly EnumCh
   return params
     .filter((p) => p.name.trim() !== "")
     .flatMap((p) => {
+      // 조 참조 인자는 식에서 읽지 않는다 — 조건 · 슬롯 · 값별 분기 고르기에 나오지 않는다 (ADR-0083 결정 2)
+      if (p.type.kind === "articleRef") return [];
       const out: CtxDiscriminator = { code: `arg.${p.name}`, label: `${p.name}(인자)`, level: "product", forms: [], param: true };
       if (p.type.kind !== "planOptions") out.type = p.type;
       if (p.type.kind === "enum" || p.type.kind === "list<enum>") {
@@ -181,10 +194,11 @@ export function paramEntries(params: readonly ParamDef[], enums: readonly EnumCh
  * 인자 추가 줄의 이름 검사 — 더하기 전에 막는다(2026-10-01). 비었음 · 이미 있는 이름 · 예약어 · 이름 모양은 저장 검사 ①(`checkParams`)의 문구 그대로.
  * 타입 · 기본 연결은 고르기 칸이 맞는 것만 내므로 여기서 보지 않는다. 문제가 없으면 null.
  */
-export function newParamNameError(params: readonly ParamDef[], name: string): string | null {
+export function newParamNameError(params: readonly ParamDef[], name: string, type: ParamType = { kind: "boolean" }): string | null {
   const n = name.trim();
   if (n === "") return "인자 이름을 적는다";
   if (params.some((p) => p.name === n)) return `인자 이름이 겹칩니다: ${n}`;
-  const issue = checkParams([{ name: n, type: { kind: "boolean" } }]).find((i) => i.kind === "structure");
+  // 조 참조 인자는 식에 안 들어가 공백을 허용한다 (ADR-0083 결정 2)
+  const issue = checkParams([{ name: n, type: type.kind === "articleRef" ? type : { kind: "boolean" } }]).find((i) => i.kind === "structure");
   return issue ? issue.message : null;
 }

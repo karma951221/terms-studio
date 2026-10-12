@@ -183,6 +183,21 @@ export function referenceChunkLabel(targets: readonly ReferenceTarget[], connect
   return `${segments.slice(0, -1).join(", ")} ${connector ?? CONNECTOR_PLACEHOLDER} ${segments.at(-1)}`;
 }
 
+/**
+ * 저장된 조 참조(대상 열쇠 목록)의 편집기 표기 — 색인(`referenceTargetIndex`)에서 대상을 찾아 덩어리 표기로. 못 찾은 대상은 「(연결 끊김 N건)」,
+ * 하나도 못 찾으면 「연결 끊김」. 함수조항 참조 머리 띠의 조 참조 인자 연결 「인자: 보험금의 지급사유 조 ← 제1조(…)」가 쓴다 (ADR-0083 결정 7).
+ */
+export function refChunkText(ref: { targets: readonly RefTarget[]; connector?: ReferenceConnector }, index: ReadonlyMap<Id, ReferenceTarget>): string {
+  const keys = referenceKeyIndex(index);
+  const found = ref.targets.flatMap((t) => {
+    const hit = keys.get(refKey(t));
+    return hit ? [hit.target] : [];
+  });
+  if (found.length === 0) return "연결 끊김";
+  const lost = ref.targets.length - found.length;
+  return `${referenceChunkLabel(found, ref.connector)}${lost > 0 ? ` (연결 끊김 ${lost}건)` : ""}`;
+}
+
 /** 대상 고르기 색인의 재료 — 함수조항 본문(펼칠 항 · 호 · 목 줄) · 반복 블록 줄 머리. 없으면 그 줄 없이(원형 본문만). */
 export interface ReferenceIndexOptions {
   clauseOf?: (code: Code) => Clause | undefined;
