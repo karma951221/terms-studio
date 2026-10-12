@@ -253,6 +253,10 @@ export interface GeneralDependents {
 /** 함수조항 옵션 유효 집합 검증 (B2). 빈 배열 = 유효. */
 export interface OptionValidator {
   validate(clauseCode: Code, options: ClauseOptionSelection): Promise<Issue[]>;
+  /**
+   * 그 자리의 실제 옵션 선택 — 프리셋을 쓰는 참조면 프리셋 값(ADR-0084 결정 5 — 오버라이드는 그 위에 얹는 차이). 없으면 노드 선택 그대로.
+   */
+  usageOptions?(clauseCode: Code, node: { preset?: Code; options: ClauseOptionSelection }): Promise<ClauseOptionSelection>;
 }
 
 /** 담보속성의 식 참조 사용처 (C1 refs). 삭제 영향의 brokenRefs 재료. 기본은 없음. */

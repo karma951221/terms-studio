@@ -206,3 +206,29 @@ describe("조 참조 인자 연결 — 사용처가 제 조를 골라 연결한�
     expect(issues(tree(g), { kind: "general" })).toEqual([["structure", expect.stringContaining("보통약관 조 참조")]]);
   });
 });
+
+describe("프리셋을 쓰는 함수조항 참조 — 실제 값 = 프리셋, 덮어쓰기 금지 (ADR-0084 결정 2 · 4)", () => {
+  const 호: BlockClause = {
+    code: "C0022",
+    label: "납입면제 호",
+    mode: "block",
+    body: [{ id: "p1", kind: "paragraph", children: [{ id: "o1", kind: "optionSlot", optionCode: "O01" }] }],
+    options: [{ code: "O01", label: "기산", order: 0, values: [{ code: "V01", label: "계약일", order: 0, body: [] }, { code: "V02", label: "최초계약일", order: 1, body: [] }] }],
+    params: [{ name: "갱신", type: { kind: "boolean" } }],
+    presets: [{ code: "S01", name: "상해", options: { O01: "V01" }, bindings: { 갱신: { kind: "const", value: true } } }],
+    required: { discriminators: [], attributes: [] },
+  };
+  const gate = clauseGateFrom([호], ["D0001"], catalogTypeResolver(catalog));
+  const tree = (ref: object): DocumentNode =>
+    ({ kind: "document", id: "D", title: "특약", children: [{ kind: "article", id: "a1", title: "면제", children: [{ kind: "clauseBlockRef", id: "k", clauseCode: "C0022", options: {}, ...ref }] }] }) as DocumentNode;
+
+  it("프리셋이면 옵션 · 인자를 사용처가 대지 않아도 저장된다", () => {
+    expect(validateTree(tree({ preset: "S01" }), { clauseGate: gate })).toEqual([]);
+    expect(validateTree(tree({}), { clauseGate: gate }).map((i) => i.kind).sort()).toEqual(["argUnbound", "optionUnselected"]);
+  });
+
+  it("프리셋을 쓰는 자리가 옵션 · 연결을 덮어쓰면 오류 · 없는 프리셋은 깨진 참조", () => {
+    expect(validateTree(tree({ preset: "S01", options: { O01: "V02" } }), { clauseGate: gate }).map((i) => i.kind)).toEqual(["structure"]);
+    expect(validateTree(tree({ preset: "S09" }), { clauseGate: gate }).map((i) => i.kind)).toContain("brokenRef");
+  });
+});

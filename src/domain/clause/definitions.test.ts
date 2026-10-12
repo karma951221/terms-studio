@@ -16,6 +16,7 @@ import {
   setBody,
   setMode,
   setOptionValueBody,
+  setPresets,
   unitWarnings,
   type ClauseContext,
 } from "./definitions";
@@ -401,5 +402,26 @@ describe("단위 규칙은 경고 — 조 · 여러 항 단위, 두 곳 이상 (
     expect(unitWarnings({ ...base, body, params }, 2).map((i) => [i.severity, i.message])).toEqual([
       ["warning", "조 참조 인자 「안 쓰는 조」를 본문이 쓰지 않습니다 — 사용처마다 연결해야 하니 본문에 넣거나 지운다"],
     ]);
+  });
+});
+
+describe("프리셋 저장 — 채번 S01 · 검사 ① 은 최종 정의 기준 (ADR-0084 결정 1 · 6)", () => {
+  const 옵션 = [{ label: "기산", values: [{ label: "계약일" }, { label: "최초계약일" }] }];
+
+  it("새 프리셋은 함수조항 안에서 S01 부터 채번 · 있는 코드는 그대로 · 빈 목록이면 키를 싣지 않는다", async () => {
+    const c = ctx();
+    const base = unwrap(await createClause({ label: "부활 문구", mode: "block", body: 소멸_본문, options: 옵션 }, c));
+    const one = unwrap(await setPresets(base, [{ name: "계약일", options: { O01: "V01" } }], c));
+    expect(one.presets).toEqual([{ code: "S01", name: "계약일", options: { O01: "V01" } }]);
+    const two = unwrap(await setPresets(one, [...one.presets!, { name: "최초계약일", options: { O01: "V02" } }], c));
+    expect(two.presets!.map((p) => p.code)).toEqual(["S01", "S02"]);
+    expect(unwrap(await setPresets(two, [], c))).not.toHaveProperty("presets");
+  });
+
+  it("빈 값 · 깨진 선택이 있으면 거부(invalid) — 순번을 태우지 않는다", async () => {
+    const c = ctx();
+    const base = unwrap(await createClause({ label: "부활 문구", mode: "block", body: 소멸_본문, options: 옵션 }, c));
+    expect(reasonOf(await setPresets(base, [{ name: "계약일" }], c))).toBe("invalid");
+    expect(unwrap(await setPresets(base, [{ name: "계약일", options: { O01: "V01" } }], c)).presets?.[0].code).toBe("S01");
   });
 });

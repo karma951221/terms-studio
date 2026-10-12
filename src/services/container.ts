@@ -23,7 +23,7 @@
  * 순환 의존(clause ↔ coverage · clause → product · coverage ↔ product)은 지연 참조로 푼다 — 주입 객체가 호출 시점에 `services.*` 를 본다.
  */
 import type { Discriminator } from "@/domain/catalog";
-import { validateOptionSelection } from "@/domain/clause";
+import { presetUsage, validateOptionSelection } from "@/domain/clause";
 import { catalogTypeResolver, clauseGateFrom, collectRefs, indexTree, type ClauseGate } from "@/domain/document";
 import { checkTypes, parse, type TypeResolver } from "@/domain/expression";
 import { clauseGeneralRefs, outsideRefsOf, type GeneralDependents, type RequiredCoverageRef } from "@/domain/product";
@@ -162,7 +162,9 @@ export function createServices(root: Db, opts: ContainerOptions = {}): Services 
         const doc = await services.document.get(id);
         const node = doc && indexTree(doc.tree).nodes.get(nodeId)?.node;
         if (!node || (node.kind !== "clauseBlockRef" && node.kind !== "clauseInlineRef")) return undefined;
-        return { clauseCode: node.clauseCode, options: node.options };
+        // 프리셋을 쓰는 자리면 그 프리셋 값이 마스터 선택이다 (ADR-0084 결정 5)
+        const def = node.preset !== undefined ? await services.clause.get(node.clauseCode) : undefined;
+        return { clauseCode: node.clauseCode, options: def ? presetUsage(def, node).options : node.options };
       },
       template: async (id) => {
         const doc = await services.document.get(id);
@@ -182,6 +184,10 @@ export function createServices(root: Db, opts: ContainerOptions = {}): Services 
         const def = await services.clause.get(clauseCode);
         if (!def) return [{ kind: "brokenRef", message: `함수조항 ${clauseCode} 가 없습니다`, at: { refPath: clauseCode } }];
         return validateOptionSelection(def, options, { refPath: clauseCode });
+      },
+      usageOptions: async (clauseCode, node) => {
+        const def = node.preset !== undefined ? await services.clause.get(clauseCode) : undefined;
+        return def ? presetUsage(def, node).options : node.options;
       },
     },
     attributeRefs: attributeRefSource(db),

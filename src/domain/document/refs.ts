@@ -20,7 +20,7 @@ export type DocRef =
   | { kind: "attribute"; code: Code; path: string; at: Coordinate }
   | { kind: "builtin"; path: string; at: Coordinate }
   /** `bindings` = 사용처의 인자 연결(최종 결정 2) — 없으면 기본 연결. */
-  | { kind: "clause"; clauseCode: Code; options: Record<Code, Code>; bindings?: Bindings; mode: "block" | "inline"; at: Coordinate }
+  | { kind: "clause"; clauseCode: Code; options: Record<Code, Code>; bindings?: Bindings; preset?: Code; mode: "block" | "inline"; at: Coordinate }
   /** 조 참조의 대상 하나 — 조 id · (항 · 호 · 목이면) P코드 (ADR-0072 결정 3). `at.refPath` = 대상 열쇠(`refKey`). */
   | { kind: "article"; articleId: Id; code?: Code; innerCode?: Code; values?: Code[]; scope: "self" | "general"; at: Coordinate }
   | { kind: "appendix"; appendixCode: Code; at: Coordinate }
@@ -92,7 +92,7 @@ export function collectRefs(doc: DocumentNode, base: Coordinate = {}): DocRef[] 
         break;
       case "clauseBlockRef":
       case "clauseInlineRef":
-        out.push({ kind: "clause", clauseCode: n.clauseCode, options: n.options, ...(n.bindings ? { bindings: n.bindings } : {}), mode: n.kind === "clauseBlockRef" ? "block" : "inline", at });
+        out.push({ kind: "clause", clauseCode: n.clauseCode, options: n.options, ...(n.bindings ? { bindings: n.bindings } : {}), ...(n.preset !== undefined ? { preset: n.preset } : {}), mode: n.kind === "clauseBlockRef" ? "block" : "inline", at });
         // 조 참조 인자 연결도 이 문서의 조 참조다 — 깨짐 · 관계 간선을 같이 센다 (ADR-0083 결정 4)
         for (const r of articleRefsOf(n)) articleRefs(r, at);
         break;
@@ -123,7 +123,8 @@ export function requiredDiscriminators(doc: DocumentNode, gate?: ClauseGate): Co
   };
   for (const r of collectRefs(doc)) {
     if (r.kind === "discriminator") add(r.code);
-    else if (r.kind === "clause" && gate) gate.requiredCodes(r.clauseCode, r.bindings).forEach(add);
+    // 프리셋이면 그 프리셋의 연결로 (ADR-0084)
+    else if (r.kind === "clause" && gate) gate.requiredCodes(r.clauseCode, (gate.usageOf?.(r.clauseCode, r) ?? r).bindings).forEach(add);
   }
   return codes;
 }

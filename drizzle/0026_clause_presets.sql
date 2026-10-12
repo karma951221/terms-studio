@@ -1,0 +1,1 @@
+ALTER TABLE "clauses" ADD COLUMN "presets" jsonb DEFAULT '[]'::jsonb NOT NULL;

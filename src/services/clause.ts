@@ -33,6 +33,7 @@ import {
   setMode,
   setOptionValueBody,
   setParams,
+  setPresets,
   enumInfoOf,
   type LocalDef,
   unitWarnings,
@@ -48,12 +49,13 @@ import {
   type NewOption,
   type NewOptionValue,
   type ParamDef,
+  type PresetInput,
   type RecheckEntry,
   type RequiredRefs,
   type Usage,
 } from "@/domain/clause";
 import type { Inline } from "@/domain/clause/nodes";
-import { indexTree, referenceKeys, repeatedKeys } from "@/domain/document";
+import { indexTree, referenceKeys, repeatedKeys, unfoldPresetsIn } from "@/domain/document";
 import type { TypeResolver } from "@/domain/expression";
 import type { Actor, Code, Issue, Result } from "@/domain/types";
 import { ok, reject } from "@/domain/types";
@@ -61,6 +63,7 @@ import { ok, reject } from "@/domain/types";
 import { listDiscriminators, listEnums } from "@/db/repo/catalog";
 import * as repo from "@/db/repo/clause";
 import * as documentRepo from "@/db/repo/document";
+import * as productRepo from "@/db/repo/product";
 import type { Db } from "@/db/repo/types";
 import type { ValueOwner } from "@/db/repo/values";
 
@@ -106,6 +109,11 @@ export interface ClauseService {
   setMode(actor: Actor, code: Code, mode: ClauseMode, body: ClauseBody): Promise<Result<SaveOutcome>>;
   /** 인자 표 교체 (최종 결정 2) — 본문도 함께(같은 저장). 인자 추가 · 기본 연결 변경은 사용처 재검사 목록으로 돌아온다. */
   setParams(actor: Actor, code: Code, params: ParamDef[], body?: ClauseBody, locals?: LocalDef[]): Promise<Result<SaveOutcome>>;
+  /**
+   * 프리셋 목록 교체 (ADR-0084) — 최종 정의 기준 검사 ①, 새 프리셋 채번. 지운 프리셋을 쓰던 사용처(문면 템플릿 · 상품 조 사본)는
+   * 같은 트랜잭션에서 프리셋 값의 직접 연결로 푼다(결정 7, 출력 불변) — `unfolded` = 푼 참조 수.
+   */
+  setPresets(actor: Actor, code: Code, presets: PresetInput[]): Promise<Result<SaveOutcome & { unfolded: number }>>;
   duplicate(actor: Actor, code: Code): Promise<Result<Clause>>;
 
   // 옵션 — 비파괴 (선택지·옵션 삭제의 사용처 영향은 recheck 로)
@@ -257,13 +265,13 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
   async function editAndRecheck(
     actor: Actor,
     code: Code,
-    change: (def: Clause, ctx: ClauseContext) => Promise<Result<Clause>> | Result<Clause>,
+    change: (def: Clause, ctx: ClauseContext, tx: Db) => Promise<Result<Clause>> | Result<Clause>,
   ): Promise<Result<SaveOutcome>> {
     let catalog: ReadonlyMap<Code, Discriminator> | undefined;
     const saved = await db.transaction((tx) =>
       withClause<Clause>(tx, code, async (def) => {
         catalog = await catalogOf(tx);
-        const r = coded(await change(def, await context(tx, catalog)));
+        const r = coded(await change(def, await context(tx, catalog), tx));
         if (!r.ok) return r;
         await repo.saveClause(tx, r.value, actor.userId);
         return r;
@@ -313,6 +321,34 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
     setBody: (actor, code, body) => editAndRecheck(actor, code, (def, ctx) => setBody(def, body, ctx.analyze)),
     setMode: (actor, code, mode, body) => editAndRecheck(actor, code, (def, ctx) => setMode(def, mode, body, ctx.analyze)),
     setParams: (actor, code, params, body, locals) => editAndRecheck(actor, code, (def, ctx) => setParams(def, params, body, ctx.analyze, locals)),
+    setPresets: async (actor, code, presets) => {
+      let unfolded = 0;
+      const saved = await editAndRecheck(actor, code, async (def, ctx, tx) => {
+        const r = await setPresets(def, presets, ctx);
+        if (!r.ok) return r;
+        // 지운 프리셋 — 그 프리셋을 쓰던 참조를 프리셋 값의 직접 연결 · 옵션 선택으로 푼다 (결정 7). 함수조항 저장이 사용처 문서를 쓰는 유일한 길
+        const kept = new Set((r.value.presets ?? []).map((p) => p.code));
+        const removed = new Set((def.presets ?? []).map((p) => p.code).filter((c) => !kept.has(c)));
+        if (removed.size > 0) {
+          for (const rec of await documentRepo.listDocumentRecords(tx)) {
+            const u = unfoldPresetsIn(rec.tree, def, removed);
+            if (u.count === 0) continue;
+            await documentRepo.saveDocument(tx, rec.id, { tree: u.node }, actor.userId);
+            unfolded += u.count;
+          }
+          for (const product of await productRepo.listProducts(tx)) {
+            for (const copy of await productRepo.listArticleCopies(tx, product.id)) {
+              const u = unfoldPresetsIn(copy.article, def, removed);
+              if (u.count === 0) continue;
+              await productRepo.upsertArticleCopy(tx, product.id, { ...copy, article: u.node }, actor.userId);
+              unfolded += u.count;
+            }
+          }
+        }
+        return r;
+      });
+      return saved.ok ? ok({ ...saved.value, unfolded }) : (saved as Result<SaveOutcome & { unfolded: number }>);
+    },
     duplicate: (actor, code) =>
       db.transaction((tx) =>
         withClause(tx, code, async (def) => {

@@ -2,7 +2,7 @@
  * 함수조항 저장소 — drizzle 쿼리만. 규칙 없음 (규칙은 src/domain/clause, 조립은 src/services/clause).
  *
  * 도메인 객체(Clause) ↔ 행 매핑. 본문·옵션은 jsonb 그대로.
- * 채번은 카탈로그와 같은 code_sequences 테이블을 쓰되 kind 를 달리한다 (`clause` · `clauseOption` · `clauseOptionValue`).
+ * 채번은 카탈로그와 같은 code_sequences 테이블을 쓰되 kind 를 달리한다 (`clause` · `clauseOption` · `clauseOptionValue` · `clausePreset`).
  */
 import { asc, eq, sql } from "drizzle-orm";
 
@@ -21,6 +21,7 @@ const SEQ_KIND: Record<ClauseCodeKind, string> = {
   clause: "clause",
   option: "clauseOption",
   optionValue: "clauseOptionValue",
+  preset: "clausePreset",
 };
 
 /** (kind, scope) 의 다음 순번 — 한 문장의 upsert 라 동시 호출에도 안전. 삭제된 순번은 재사용하지 않는다. */
@@ -52,6 +53,7 @@ function toClause(row: ClauseRow): Clause {
     // 인자 0개는 키를 싣지 않는다 — 도메인이 만든 정의와 같은 모양(빈 목록 = 키 없음)
     ...(row.params && row.params.length > 0 ? { params: row.params } : {}),
     ...(row.locals && row.locals.length > 0 ? { locals: row.locals } : {}),
+    ...(row.presets && row.presets.length > 0 ? { presets: row.presets } : {}),
     required: { discriminators: row.requiredDiscriminators, attributes: row.requiredAttributes },
   };
   switch (row.mode) {
@@ -76,6 +78,7 @@ function toRow(def: Clause) {
     options: def.options,
     params: def.params ?? [],
     locals: def.locals ?? [],
+    presets: def.presets ?? [],
     requiredDiscriminators: def.required.discriminators,
     requiredAttributes: def.required.attributes,
   };

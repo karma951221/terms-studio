@@ -17,6 +17,7 @@ import { allocateClauseCode, optionValueScope, type ClauseNextSeq } from "./code
 import type { Block, Inline } from "./nodes";
 import type { LocalDef } from "./locals";
 import type { ParamDef } from "./params";
+import { checkPresets, type PresetDef } from "./presets";
 import { CLAUSE_MODES } from "./types";
 import type {
   Clause,
@@ -225,6 +226,37 @@ export function setMode(clause: Clause, mode: ClauseMode, body: ClauseBody, anal
   return withAnalysis({ ...clause, mode, body } as Omit<Clause, "required">, analyze);
 }
 
+// ───────────────────────────── 프리셋 (ADR-0084) ─────────────────────────────
+
+/** 저장할 프리셋 — 코드가 없으면 새 프리셋(채번한다). */
+export type PresetInput = Omit<PresetDef, "code"> & { code?: Code };
+
+/**
+ * 프리셋 목록 교체 (ADR-0084 결정 1 · 6) — **최종 정의 기준**으로 검사 ①(빈 값 · 깨진 선택 · 없는 인자 · 타입 · 담지 않는 연결)을 돌린다.
+ * 편집 화면은 옵션 · 인자를 먼저 저장하고 이것을 마지막에 부른다 — 중간 상태(옵션을 더했는데 프리셋 값은 아직)를 거부하지 않게.
+ * 검사를 통과한 뒤에 채번한다(거부된 입력이 순번을 태우지 않게). 빈 목록이면 키를 싣지 않는다.
+ */
+export async function setPresets(clause: Clause, presets: readonly PresetInput[], ctx: Pick<ClauseContext, "nextSeq" | "analyze">): Promise<Result<Clause>> {
+  const tidy = (p: PresetInput, code: Code): PresetDef => ({
+    code,
+    name: p.name.trim(),
+    ...(p.bindings && Object.keys(p.bindings).length > 0 ? { bindings: deepCopy(p.bindings) } : {}),
+    ...(p.options && Object.keys(p.options).length > 0 ? { options: { ...p.options } } : {}),
+    ...(p.fromUsage && p.fromUsage.length > 0 ? { fromUsage: [...p.fromUsage] } : {}),
+  });
+  // 검사용 임시 코드 — 있는 코드(S01 …)와 겹치지 않는 세 자리(S000 …)
+  const provisional = presets.map((p, i) => tidy(p, p.code ?? `S${String(i).padStart(3, "0")}`));
+  const resolveType = ctx.analyze?.resolveType;
+  const env = { ...(resolveType ? { discriminatorType: (code: Code) => resolveType({ kind: "discriminator", code }) } : {}), ...(ctx.analyze?.enumValues ? { enumValues: ctx.analyze.enumValues } : {}) };
+  const issues = checkPresets({ ...clause, presets: provisional }, env, { document: "clause", ownerId: clause.code, ownerName: clause.label });
+  if (issues.length > 0) return reject({ reason: "invalid", issues });
+  const out: PresetDef[] = [];
+  for (const [i, p] of presets.entries()) out.push(p.code ? provisional[i] : { ...provisional[i], code: await allocateClauseCode("preset", clause.code, ctx.nextSeq) });
+  const { presets: _old, ...rest } = clause;
+  void _old;
+  return ok({ ...rest, ...(out.length > 0 ? { presets: out } : {}) } as Clause);
+}
+
 // ───────────────────────────── 옵션 ─────────────────────────────
 
 export async function addOption(clause: Clause, input: NewOption, ctx: ClauseContext): Promise<Result<Clause>> {
@@ -364,9 +396,16 @@ export async function duplicateClause(origin: Clause, ctx: ClauseContext): Promi
   // 옵션 코드가 원본과 다르게 채번됐다면 본문의 optionSlot 도 맞춘다.
   const codeMap = new Map(origin.options.map((o, i) => [o.code, options[i].code]));
   const body = remapOptionSlots(deepCopy(origin.body), codeMap);
+  // 프리셋도 새 함수조항 안에서 다시 채번하고, 옵션 선택은 새 옵션 · 선택지 코드로 옮긴다 (ADR-0084)
+  const valueMap = new Map(origin.options.map((o, i) => [o.code, new Map(o.values.map((v, k) => [v.code, options[i].values[k].code] as const))] as const));
+  const presets: PresetDef[] = [];
+  for (const p of origin.presets ?? []) {
+    const chosen = Object.fromEntries(Object.entries(p.options ?? {}).map(([o, v]) => [codeMap.get(o) ?? o, valueMap.get(o)?.get(v) ?? v]));
+    presets.push({ ...deepCopy(p), code: await allocateClauseCode("preset", code, ctx.nextSeq), ...(p.options ? { options: chosen } : {}) });
+  }
 
   return withAnalysis(
-    { code, label, mode: origin.mode, body, options, ...(origin.params?.length ? { params: deepCopy(origin.params) } : {}), ...(origin.locals?.length ? { locals: deepCopy(origin.locals) } : {}) } as Omit<Clause, "required">,
+    { code, label, mode: origin.mode, body, options, ...(origin.params?.length ? { params: deepCopy(origin.params) } : {}), ...(origin.locals?.length ? { locals: deepCopy(origin.locals) } : {}), ...(presets.length > 0 ? { presets } : {}) } as Omit<Clause, "required">,
     ctx.analyze,
   );
 }

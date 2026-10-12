@@ -202,8 +202,10 @@ export interface Usage {
   refNodeId?: Id;
   /** 그 참조의 마스터 옵션 선택. 없으면 옵션 검사는 건너뛴다. */
   selection?: OptionSelection;
-  /** 그 참조의 인자 연결 (최종 결정 2). 없으면 모든 인자가 기본 연결. */
+  /** 그 참조의 인자 연결 (최종 결정 2). 없으면 모든 인자가 기본 연결. 프리셋을 쓰면 프리셋 값을 푼 실제 연결. */
   bindings?: Bindings;
+  /** 그 참조가 쓰는 프리셋 코드 (ADR-0084) — 프리셋별 사용 수 · 삭제 확인의 재료. */
+  preset?: Code;
 }
 
 export interface RecheckEntry {

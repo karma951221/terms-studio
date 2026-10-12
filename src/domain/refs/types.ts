@@ -122,12 +122,14 @@ export interface RefEdge {
   at: Coordinate;
   /** 집계 인자로 읽었으면 그 집계 (파생식·조건식). */
   aggregate?: AggregateOp;
-  /** clauseRef — 참조 노드의 옵션 선택. */
+  /** clauseRef — 참조 노드의 실제 옵션 선택(프리셋이면 프리셋 값). */
   options?: Record<Code, Code>;
   /** clauseRef — 참조 노드의 인자 연결(없으면 기본 연결). binding · defaultBinding — 그 인자 이름은 `param`. */
   bindings?: Bindings;
   /** binding · defaultBinding — 연결한 인자 이름. */
   param?: string;
+  /** clauseRef — 참조 노드가 쓰는 프리셋 코드 (ADR-0084). 그때 `options` · `bindings` 는 프리셋 값을 푼 실제 값이다. */
+  preset?: Code;
   /** override — 오버라이드가 매달린 문서 쪽 노드(조 또는 문서). */
   through?: RefNodeKey;
 }
