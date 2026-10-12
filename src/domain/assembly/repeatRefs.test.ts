@@ -153,6 +153,17 @@ describe("값 한정 참조 — 사유 = 해당 값들 / 현재 값 (결정 13)"
     expect(r.issues).toEqual([expect.objectContaining({ kind: "articleGone", message: expect.stringContaining("0개"), at: expect.objectContaining({ articleId: "z", refPath: "a#P0200" }) })]);
   });
 
+  it("대상 여럿 중 일부만 0개면 남은 대상으로 찍는다 — 참조 하나의 펼친 것 합이 0개일 때만 오류 (사유별 함수조항이 스스로 꺼진 대상, ADR-0086 결정 2)", () => {
+    const r = run([refArticle([{ articleId: "a", code: "P0200", restrict: { values: ["V01"] } }, { articleId: "a", code: "P0200", restrict: { values: ["V02"] } }], "또는")]);
+    expect(r.issues).toEqual([]);
+    expect(refLine(r)).toBe("제1조(보험료의 납입면제) 제1항 제1호 또는 제2항 제1호를 본다");
+    const none = run([refArticle([{ articleId: "a", code: "P0200", restrict: { values: ["V02"] } }, { articleId: "a", code: "P0200", restrict: { values: ["V04"] } }], "또는")]);
+    expect(none.issues.map((i) => [i.kind, i.at.refPath])).toEqual([
+      ["articleGone", "a#P0200"],
+      ["articleGone", "a#P0200"],
+    ]);
+  });
+
   it("사유 = 현재 값 — 다른 반복(정의 조 합집합) 회차마다 그 사유의 호", () => {
     const doc = waiverTemplate();
     const fu = (doc.children[1] as ArticleNode).children[0] as ForBlockNode;
