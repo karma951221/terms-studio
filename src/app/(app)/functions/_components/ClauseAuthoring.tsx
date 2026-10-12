@@ -71,7 +71,7 @@ import type { Id, Impact, Issue, WorkMark } from "@/domain/types";
 
 import { createClauseAction } from "../actions";
 import { removeClauseEditAction, saveClauseEditAction } from "../edit-actions";
-import type { ClauseEditOption } from "../edit-types";
+import type { ClauseEditOption, ClauseEditPreset } from "../edit-types";
 import type { ClauseEditorData } from "../editorData";
 import { clauseCanHold, clauseCondMenu, clauseDefaultPlace, clausePlaceMenu, withClauseRefusals, type ClauseMenuEnv } from "./clauseMenus";
 import { ClauseMeta } from "./ClauseMeta";
@@ -80,6 +80,7 @@ import { localEntries, localsForSave } from "./locals";
 import { LocalsPane } from "./LocalsPane";
 import { paramEntries } from "./params";
 import { ParamsPane } from "./ParamsPane";
+import { PresetsPane } from "./PresetsPane";
 
 export interface ClauseAuthoringProps {
   /** 없으면 생성 화면(`/functions/new`). */
@@ -92,6 +93,10 @@ export interface ClauseAuthoringProps {
   params: ParamDef[];
   /** 내부 변수 표 (최종 결정 2) — 화면 글(필드는 이름, `localsForDisplay`). */
   locals: LocalDef[];
+  /** 프리셋 (ADR-0084) — 없으면 0개. */
+  presets?: ClauseEditPreset[];
+  /** 저장된 프리셋 코드 → 사용처 수 (빼기 확인 · 읽기 카드). */
+  presetUses?: ReadonlyMap<string, number>;
   required?: RequiredRefs;
   /** 단위 규칙 경고 — 조 · 여러 항 단위가 아님 · 한 곳에서만 씀. 저장은 막지 않고 정보 칸에 보인다 (기능/함수조항 §3.1). */
   warnings?: readonly string[];
@@ -135,6 +140,12 @@ function startBody(mode: ClauseMode, id: string = randomIds()): ClauseBody {
     default:
       return [];
   }
+}
+
+/** 저장할 프리셋 — 지운 인자의 연결 · 「사용처가 채움」은 뺀다(인자 표에서 빼면 프리셋에서도 빠진다, ADR-0084). */
+function presetsKeepingParams(presets: readonly ClauseEditPreset[], params: readonly ParamDef[]): ClauseEditPreset[] {
+  const names = new Set(params.map((p) => p.name));
+  return presets.map((p) => ({ ...p, bindings: Object.fromEntries(Object.entries(p.bindings).filter(([n]) => names.has(n))), fromUsage: p.fromUsage.filter((n) => names.has(n)) }));
 }
 
 /** 쓴 것이 없는 본문 — 빈 항 · 호 · 목(글 · 칩 · 하위 목록 없음)만 있거나 아무것도 없다. 유형을 바꿔도 잃을 것이 없다. 빈 자리는 저장하지 않는다. */
@@ -222,6 +233,13 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     paramsRef.current = next;
     setParamsState(next);
   };
+  const savedPresets = useMemo(() => props.presets ?? [], [props.presets]);
+  const [presets, setPresetsState] = useState<ClauseEditPreset[]>(savedPresets);
+  const presetsRef = useRef(presets);
+  const setPresets = (next: ClauseEditPreset[]) => {
+    presetsRef.current = next;
+    setPresetsState(next);
+  };
   const [locals, setLocalsState] = useState<LocalDef[]>(props.locals);
   const localsRef = useRef(locals);
   const setLocals = (next: LocalDef[]) => {
@@ -248,6 +266,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   const shownOptions = editing ? options : props.options;
   const shownParams = editing ? params : props.params;
   const shownLocals = editing ? locals : props.locals;
+  const shownPresets = editing ? presets : savedPresets;
   /**
    * 조건 · 슬롯 고르기 문맥 — 변수는 인자 칸(`arg.<이름>`)과 담보속성뿐이다. 함수조항은 구분자를 직접 읽지 않는다(최종 결정 2 — 검사 ① 오류) —
    * 구분자는 인자 표의 기본 연결 · 넣는 자리의 연결에서 고른다.
@@ -262,12 +281,13 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   const dirty =
     editing &&
     (isNew
-      ? label.trim() !== "" || draft.ops > 0 || options.length > 0 || params.length > 0 || locals.length > 0
+      ? label.trim() !== "" || draft.ops > 0 || options.length > 0 || params.length > 0 || locals.length > 0 || presets.length > 0
       : draft.ops > 0 ||
         label !== props.label ||
         JSON.stringify(options) !== JSON.stringify(props.options) ||
         JSON.stringify(params) !== JSON.stringify(props.params) ||
-        JSON.stringify(locals) !== JSON.stringify(props.locals));
+        JSON.stringify(locals) !== JSON.stringify(props.locals) ||
+        JSON.stringify(presets) !== JSON.stringify(savedPresets));
 
   // ── 편집 환경 — 문면 저작과 같은 명령 검사. 함수조항 참조 자리는 옵션 운반체만 통과한다(진짜 참조는 중첩 금지) ──
   const appendixCodes = useMemo(() => new Set(data.appendices.map((a) => a.code)), [data.appendices]);
@@ -566,6 +586,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     setOptions(props.options);
     setParams(props.params);
     setLocals(props.locals);
+    setPresets(savedPresets);
     setEditing(true);
     setBanner(undefined);
   };
@@ -588,7 +609,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     }
     // 쓴 것이 없는 본문(처음 빈 항 하나)은 빈 본문으로 — 빈 항을 저장하지 않는다
     const params = paramsRef.current.map((p) => ({ ...p, name: p.name.trim() }));
-    const payload = { label: label.trim(), body: blankBody(body.value) ? [] : body.value, options: optionsRef.current, params, locals: localsForSave(params, localsRef.current, data.enums) };
+    const payload = { label: label.trim(), body: blankBody(body.value) ? [] : body.value, options: optionsRef.current, params, locals: localsForSave(params, localsRef.current, data.enums), presets: presetsKeepingParams(presetsRef.current, params) };
     startTransition(async () => {
       const out = code === undefined ? await createClauseAction({ ...payload, mode: clauseMode }) : await saveClauseEditAction(code, payload);
       if (!out.ok) {
@@ -820,6 +841,20 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
                 <ParamsPane params={shownParams} editing={editing} onChange={setParams} discriminators={data.condition.discriminators} enums={data.enums} forms={data.planForms} />
                 <LocalsPane locals={shownLocals} editing={editing} onChange={setLocals} />
               </>
+            }
+            after={
+              <PresetsPane
+                presets={shownPresets}
+                editing={editing}
+                onChange={setPresets}
+                options={shownOptions}
+                params={shownParams}
+                uses={props.presetUses ?? new Map()}
+                newCode={newCode}
+                discriminators={data.condition.discriminators}
+                enums={data.enums}
+                forms={data.planForms}
+              />
             }
             options={shownOptions}
             editing={editing}

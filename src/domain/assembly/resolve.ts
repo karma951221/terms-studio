@@ -43,6 +43,7 @@ import type {
   SubitemNode as ClauseSubitemNode,
 } from "../clause/nodes";
 import { applyBindings } from "../clause/bind";
+import { presetUsage } from "../clause/presets";
 import type { CurrentValue, LocalEnv } from "../clause/locals";
 import { cloneForElement } from "../document/blockRepeat";
 import { templateIdOf } from "../document/repeat";
@@ -352,19 +353,23 @@ class Walker {
 
   /** 함수조항 참조 → 펼친 본문 (옵션 해소 포함). 실패면 오류 마커. */
   expand(
-    node: { id: Id; clauseCode: Code; options: OptionSelection; bindings?: Bindings },
+    node: { id: Id; clauseCode: Code; options: OptionSelection; bindings?: Bindings; preset?: Code },
     modes: readonly ClauseMode[],
     at: Coordinate,
     f: Frame,
   ): { ok: true; mode: ClauseMode; body: (ClauseInline | ClauseBlock)[] } | { ok: false; marker: ErrorNode } {
     const defined = this.env.clauses.get(node.clauseCode);
     if (!defined) return { ok: false, marker: this.error(node.id, { kind: "brokenRef", message: `함수조항 ${node.clauseCode} 이(가) 없습니다`, at }) };
+    // 프리셋이면 옵션 · 연결은 프리셋 값 (ADR-0084 결정 2) — 없는 프리셋은 깨진 참조. 덮어쓰기는 문서 저장 검사가 막는다(여기서는 프리셋 값을 쓴다)
+    const used = presetUsage(defined, node, at);
+    const broken = used.issues.find((i) => i.kind === "brokenRef");
+    if (broken) return { ok: false, marker: this.error(node.id, broken) };
     // 인자 연결 — 펼치기 전에 arg.X 를 사용처 연결(없으면 기본 연결)로 바꿔 쓰고, 내부 변수 · 필드 읽기 · 연산은 사용처 문맥에서 값으로 푼다
     const usage = this.evalOf(f);
     const locals: LocalEnv | undefined = usage
       ? { ctx: usage, enums: this.env.enums ?? new Map(), ...(this.env.master ? { master: this.env.master } : {}), explain: (reason, where) => this.ctx.explainUndetermined(reason, where), text: (value, type) => this.constText(value, type), current: (loop) => this.currentValue(f, loop) }
       : undefined;
-    const bound = applyBindings(defined, node.bindings, (value, param) => this.constText(value, param.type), at, locals);
+    const bound = applyBindings(defined, used.bindings, (value, param) => this.constText(value, param.type), at, locals);
     if (!bound.ok) {
       const issues = bound.rejection.reason === "invalid" ? bound.rejection.issues : [{ kind: "argUnbound" as const, message: `함수조항 ${node.clauseCode} 의 인자를 연결할 수 없습니다`, at }];
       this.issues.push(...issues);
@@ -376,13 +381,14 @@ class Walker {
       return { ok: false, marker: this.error(node.id, { kind: "structure", message: `함수조항 ${node.clauseCode} 은(는) 「${MODE_WORD[clause.mode]}」 유형이라 ${modes.map((m) => `「${MODE_WORD[m]}」`).join(" · ")} 자리에 올 수 없습니다`, at }) };
     }
     // 옵션 오버라이드는 템플릿 노드 id 로 건다 — 반복 복제본도 원 참조 노드의 오버라이드를 쓴다
-    const { selection, issues } = resolveOptions(clause, node.options, this.env.overrides.get(templateIdOf(node.id)), at);
+    // 해소 순위 = 상품 오버라이드 > 프리셋 값(없으면 사용처 선택) (ADR-0084 결정 5)
+    const { selection, issues } = resolveOptions(clause, used.options, this.env.overrides.get(templateIdOf(node.id)), at);
     if (issues.length > 0) {
       this.issues.push(...issues);
       return { ok: false, marker: { kind: "error", id: node.id, issue: issues[0] } };
     }
     // 조 참조 인자 슬롯은 사용처 연결(사용처 조 참조)로 바뀐다 — 연결이 없으면 argUnbound (ADR-0083 결정 4)
-    const expanded = expandClause(clause, selection, node.id, node.bindings);
+    const expanded = expandClause(clause, selection, node.id, used.bindings);
     if (!expanded.ok) {
       const issue: Issue = expanded.rejection.reason === "invalid" ? expanded.rejection.issues[0] : { kind: "optionInvalid", message: "함수조항을 펼칠 수 없습니다", at };
       return { ok: false, marker: this.error(node.id, { ...issue, at: { ...at, ...issue.at } }) };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { KIND_OPTIONS, VIA_LABEL, parseRefTarget, refTargetParams } from "./lib";
+import { KIND_OPTIONS, VIA_LABEL, parseRefTarget, presetUsageRows, refTargetParams } from "./lib";
 
 describe("relations lib — 쿼리스트링 → RefNodeKey (순수)", () => {
   it("discriminator · clause · appendix — code 필요", () => {
@@ -71,5 +71,17 @@ describe("화면 라벨 (리뷰 #64 — 영문 enum 을 화면에 내보내지 �
 
   it("참조 형태는 전부 한글 표기를 갖는다", () => {
     for (const label of Object.values(VIA_LABEL)) expect(label).toMatch(/^[가-힣][가-힣 ()a-z]*$/);
+  });
+});
+
+describe("함수조항 사용처의 프리셋별 사용 수 (ADR-0084 결정 8)", () => {
+  it("프리셋마다 · 직접 연결 — 프리셋 순서대로, 안 쓰는 프리셋은 0, 지운 프리셋 코드는 그대로", () => {
+    const usages = [{ preset: "S01" }, { preset: "S01" }, {}, { preset: "S09" }];
+    expect(presetUsageRows(usages, [{ code: "S01", name: "상해" }, { code: "S02", name: "질병" }])).toEqual([
+      { label: "프리셋 ‘상해’", count: 2 },
+      { label: "프리셋 ‘질병’", count: 0 },
+      { label: "S09(없는 프리셋)", count: 1 },
+      { label: "직접 연결", count: 1 },
+    ]);
   });
 });

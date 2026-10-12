@@ -213,3 +213,39 @@ describe("원문 모델 번호(clauseSpan)는 조립 번호와 같다 (2026-10-0
     expect(assembled).toEqual(model);
   });
 });
+
+describe("프리셋을 쓰는 함수조항 참조 — 프리셋 값으로 펼치고, 상품 옵션 오버라이드가 앞선다 (ADR-0084 결정 2 · 5)", () => {
+  const 기산: BlockClause = {
+    code: "C0027",
+    label: "부활 문구",
+    mode: "block",
+    options: [{ code: "O01", label: "기산", order: 0, values: [{ code: "V01", label: "계약일", order: 0, body: [{ id: "v1", kind: "text", text: "계약일" }] }, { code: "V02", label: "최초계약일", order: 1, body: [{ id: "v2", kind: "text", text: "최초계약일" }] }] }],
+    presets: [{ code: "S01", name: "갱신", options: { O01: "V02" } }],
+    required: { discriminators: [], attributes: [] },
+    body: [{ id: "p1", kind: "paragraph", children: [{ id: "o1", kind: "optionSlot", optionCode: "O01" }, { id: "t1", kind: "text", text: "부터 부활합니다." }] }],
+  };
+  const tree = (ref: object): DocumentNode =>
+    ({ kind: "document", id: "s", title: "특약", children: [{ kind: "article", id: "a1", title: "부활", children: [{ kind: "clauseBlockRef", id: "k", clauseCode: "C0027", options: {}, ...ref }] }] }) as DocumentNode;
+  const text = (ref: object, overrides = new Map()) => {
+    const input = alphaPlusFixture();
+    const ctx = specialContext(input, input.coverages[0]);
+    const resolved = resolveDocument(tree(ref), ctx, { clauses: new Map([["C0027", 기산]]), overrides, coordinate: { document: "special", ownerId: "pc" } });
+    return { issues: resolved.issues, json: JSON.stringify(resolved.doc) };
+  };
+
+  it("프리셋 값(최초계약일)으로 펼친다", () => {
+    const r = text({ preset: "S01" });
+    expect(r.issues).toEqual([]);
+    expect(r.json).toContain("최초계약일");
+    expect(r.json).not.toContain('"text":"계약일"');
+  });
+
+  it("상품 옵션 오버라이드 > 프리셋", () => {
+    const r = text({ preset: "S01" }, new Map([["k", { O01: "V01" }]]));
+    expect(r.json).toContain('"text":"계약일"');
+  });
+
+  it("없는 프리셋은 조립 오류(깨진 참조) + 좌표", () => {
+    expect(text({ preset: "S09" }).issues.map((i) => [i.kind, i.at.nodePath?.at(-1)])).toEqual([["brokenRef", "k"]]);
+  });
+});

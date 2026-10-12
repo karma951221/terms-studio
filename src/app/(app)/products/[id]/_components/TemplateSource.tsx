@@ -21,7 +21,7 @@ import { ClauseModel } from "@/app/_components/ClauseModel";
 import { IconButton, IconRevert } from "@/app/_components/icons";
 import { STRUCT_KEY_CHIP } from "@/app/_lib/labels";
 import type { EnumDef } from "@/domain/catalog";
-import { switchValueLabeler, type Bindings, type Clause } from "@/domain/clause";
+import { presetUsage, switchValueLabeler, type Bindings, type Clause } from "@/domain/clause";
 import { refChunkText, referenceChunkLabel, referenceKeyIndex, refKey, type ArticleNode, type Box, type CondBlockNode, type InlineNode, type Node, type NodeNumber, type ReferenceTarget, type TableNode } from "@/domain/document";
 import { format, parse, refPath } from "@/domain/expression";
 import type { ClauseOptionOverride } from "@/domain/product";
@@ -249,9 +249,14 @@ function argsText(clause: Clause, bindings: Bindings | undefined, ctx: Ctx): str
  * 가운데는 모델(슬롯 · 옵션 자리 · 조건 · 참조), 오른쪽은 조립 결과 — 둘을 나란히 대조한다. 함수조항 자체는 함수조항 화면에서 고친다.
  * 모델 아래에 이 자리의 옵션 선택(마스터 기본 · 이 상품 오버라이드)이 선다 — 옵션이 없는 함수조항이면 선택 줄도 없다.
  */
-function ClauseBox({ nodeId, clauseCode, baseOptions, bindings, ctx, at }: { nodeId: Id; clauseCode: Code; baseOptions: Record<Code, Code>; bindings: Bindings | undefined; ctx: Ctx; at?: NodeNumber }) {
+function ClauseBox({ nodeId, clauseCode, baseOptions: nodeOptions, bindings: nodeBindings, preset: presetCode, ctx, at }: { nodeId: Id; clauseCode: Code; baseOptions: Record<Code, Code>; bindings: Bindings | undefined; preset?: Code; ctx: Ctx; at?: NodeNumber }) {
   const edit = useGeneralEdit();
   const clause = ctx.clauseByCode.get(clauseCode);
+  // 프리셋 (ADR-0084) — 마스터 선택 · 연결은 그 프리셋 값(상품 오버라이드는 그 위 차이, 결정 5)
+  const used = clause ? presetUsage(clause, { ...(presetCode !== undefined ? { preset: presetCode } : {}), options: nodeOptions, ...(nodeBindings ? { bindings: nodeBindings } : {}) }) : undefined;
+  const preset = used?.preset;
+  const baseOptions = used?.options ?? nodeOptions;
+  const bindings = used ? used.bindings : nodeBindings;
   const label = clause?.label ?? `${clauseCode}(없는 함수조항)`;
   // 이 상품의 선택 — 편집 상태 안이면 그 상태(읽기 = 저장본, 편집 = 초안), 밖이면 저장본
   const own = edit ? edit.current.overrides[nodeId]?.options : ctx.overrideByNode.get(nodeId)?.options;
@@ -269,7 +274,8 @@ function ClauseBox({ nodeId, clauseCode, baseOptions, bindings, ctx, at }: { nod
         <span className="ts-doc-clause-name" title={`함수조항 · ${clauseCode}`}>
           <span className="ts-doc-clause-code">[{clauseCode}]</span> {clause?.label ?? "없는 함수조항"}
         </span>
-        {clause && (clause.params ?? []).length > 0 && <span className="ts-doc-clause-opt">인자: {argsText(clause, bindings, ctx)}</span>}
+        {presetCode !== undefined && <span className="ts-doc-clause-opt">프리셋 ‘{preset?.name ?? `${presetCode}(없는 프리셋)`}’</span>}
+        {clause && presetCode === undefined && (clause.params ?? []).length > 0 && <span className="ts-doc-clause-opt">인자: {argsText(clause, bindings, ctx)}</span>}
         {own && !ctx.readOnly && <span className="ts-badge">오버라이드</span>}
         {changed && <span className="ts-badge ts-changed-mark">변경</span>}
       </div>
@@ -377,7 +383,7 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
               </ol>
             )}
             {boxes.map((b) => (
-              <ClauseBox key={b.id} nodeId={b.id} clauseCode={b.clauseCode} baseOptions={b.options} bindings={b.bindings} ctx={ctx} />
+              <ClauseBox key={b.id} nodeId={b.id} clauseCode={b.clauseCode} baseOptions={b.options} bindings={b.bindings} {...(b.preset !== undefined ? { preset: b.preset } : {})} ctx={ctx} />
             ))}
           </div>
         );
@@ -406,7 +412,7 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
         // 자리 번호(②)는 찍지 않는다 — 함수조항 안 번호가 자리부터 잇고(②③), 뒤 형제는 차지한 수만큼 밀린다 (2026-10-03 사용자 QA).
         // 호 · 목 목록 자리면 <li> — 목록 번호(CSS 카운터)를 차지한 수만큼 올린다
         const at = ctx.numbers.get(node.id);
-        const box = <ClauseBox nodeId={node.id} clauseCode={node.clauseCode} baseOptions={node.options} bindings={node.bindings} ctx={ctx} {...(at ? { at } : {})} />;
+        const box = <ClauseBox nodeId={node.id} clauseCode={node.clauseCode} baseOptions={node.options} bindings={node.bindings} {...(node.preset !== undefined ? { preset: node.preset } : {})} ctx={ctx} {...(at ? { at } : {})} />;
         return inList ? (
           <li key={node.id} className="ts-doc-static-item" style={at && (at.kind === "item" || at.kind === "subitem") ? { counterIncrement: `ts-doc-${at.kind} ${at.span ?? 1}` } : undefined}>
             {box}
@@ -445,7 +451,7 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
           <>
             <StaticTableView node={node} ctx={ctx} />
             {boxes.map((b) => (
-              <ClauseBox key={b.id} nodeId={b.id} clauseCode={b.clauseCode} baseOptions={b.options} bindings={b.bindings} ctx={ctx} />
+              <ClauseBox key={b.id} nodeId={b.id} clauseCode={b.clauseCode} baseOptions={b.options} bindings={b.bindings} {...(b.preset !== undefined ? { preset: b.preset } : {})} ctx={ctx} />
             ))}
           </>
         );

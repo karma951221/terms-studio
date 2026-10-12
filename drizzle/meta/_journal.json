@@ -183,6 +183,13 @@
       "when": 1791613703462,
       "tag": "0025_appendix_drop_description",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791816705800,
+      "tag": "0026_clause_presets",
+      "breakpoints": true
     }
   ]
 }

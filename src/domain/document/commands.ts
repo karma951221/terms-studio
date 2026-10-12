@@ -109,7 +109,7 @@ export type Command =
   | { type: "setArticleRef"; nodeId: Id; targets: RefTarget[]; connector: ArticleRefNode["connector"]; scope: ArticleRefNode["scope"] }
   | { type: "setAppendixRef"; nodeId: Id; appendixCode: Code }
   /** 함수조항 참조의 옵션 선택 · 인자 연결. `bindings` 없으면 연결은 그대로, 빈 맵이면 걷는다(모두 기본 연결, 최종 결정 2). */
-  | { type: "setClauseOptions"; nodeId: Id; options: Record<Code, Code>; bindings?: Bindings }
+  | { type: "setClauseOptions"; nodeId: Id; options: Record<Code, Code>; bindings?: Bindings; preset?: Code | null }
   /** 반복 원천 · 이름 — 블록 반복은 `RepeatSource`(ADR-0077), 인라인 반복(자리만)은 글자. 이름을 빈 글자로 주면 지운다(원천에서 짓는다). */
   | { type: "setFor"; nodeId: Id; source?: RepeatSource | string; alias?: string; separator?: string }
   | { type: "addBranch"; condId: Id; branch: BlockBranch | InlineBranch; index?: number }
@@ -593,6 +593,9 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
           if (Object.keys(cmd.bindings).length === 0) delete n.bindings;
           else n.bindings = structuredClone(cmd.bindings);
         }
+        // 프리셋 (ADR-0084) — 코드면 건다, null 이면 푼다(직접 연결), 없으면 그대로
+        if (cmd.preset === null) delete n.preset;
+        else if (cmd.preset !== undefined) n.preset = cmd.preset;
       }
       const issues = checkNodeRefs(e.value, ix, env, false);
       return issues.length > 0 ? invalid(issues) : ok(work);

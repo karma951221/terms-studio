@@ -1428,6 +1428,43 @@ button.danger:focus-visible {
   white-space: nowrap;
 }
 
+/* 프리셋 카드 (ADR-0084) — 인자 카드와 같은 틀, 한 단: ⊖ · 이름 줄 아래 옵션 · 인자 칸이 「캡션 + 고르기」로 쌓인다 */
+.ts-clause-presets {
+  margin-top: 12px;
+}
+
+.ts-clause-presets .ts-param-grid {
+  grid-template-columns: minmax(0, 1fr) 22px;
+}
+
+.ts-preset-card,
+.ts-preset-card.is-editing {
+  grid-template-columns: 22px minmax(0, 1fr);
+}
+
+.ts-preset-card:not(.is-editing) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ts-preset-card > .ts-preset-row,
+.ts-preset-card > .ts-preset-confirm {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+}
+
+.ts-preset-card > .ts-preset-confirm {
+  display: block;
+  color: var(--ts-error);
+}
+
+.ts-preset-card:not(.is-editing) > span {
+  white-space: normal;
+}
+
 /* 옵션 카드 (기능/함수조항 §4.3, 2026-10-01) — 머리 = ⊖ + 옵션명(제목), 몸 = 「선택지」 캡션 + 번호 붙은 문구 줄 + ⊕ */
 .ts-option {
   margin: 0 0 8px;
@@ -3885,6 +3922,12 @@ button.ts-doc-cond-btn:hover {
   border-radius: 0;
   background: none;
   text-align: left;
+}
+
+/* 들인 줄 — 함수조항 줄 아래 프리셋 (ADR-0084) */
+.ts-ctx-menu button.is-indent {
+  padding-left: 24px;
+  color: var(--ts-ink-2);
 }
 
 .ts-ctx-menu button:hover:not(:disabled),

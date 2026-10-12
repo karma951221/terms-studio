@@ -151,3 +151,21 @@ export function refTargetParams(key: RefNodeKey): Record<string, string> {
 
 /** 참조의 형태(`EdgeVia`) — 화면 표기. */
 export const VIA_LABEL = REFERENCE_VIA_LABEL satisfies Record<EdgeVia, string>;
+
+/**
+ * 함수조항 사용처의 프리셋별 사용 수 (ADR-0084 결정 8) — 프리셋 순서대로(안 쓰는 프리셋은 0), 그다음 지운 프리셋 코드를 가리키는 사용처,
+ * 마지막에 직접 연결. 프리셋도 직접 연결도 없으면 빈 목록.
+ */
+export function presetUsageRows(usages: readonly { preset?: string }[], presets: readonly { code: string; name: string }[]): { label: string; count: number }[] {
+  const counts = new Map<string, number>();
+  let direct = 0;
+  for (const u of usages) {
+    if (u.preset === undefined) direct += 1;
+    else counts.set(u.preset, (counts.get(u.preset) ?? 0) + 1);
+  }
+  const known = new Set(presets.map((p) => p.code));
+  const rows = presets.map((p) => ({ label: `프리셋 ‘${p.name}’`, count: counts.get(p.code) ?? 0 }));
+  for (const [code, count] of counts) if (!known.has(code)) rows.push({ label: `${code}(없는 프리셋)`, count });
+  if (rows.length === 0) return [];
+  return [...rows, { label: "직접 연결", count: direct }];
+}

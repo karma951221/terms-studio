@@ -6,7 +6,7 @@ import type { Actor } from "@/domain/types";
 import { nodeBuilders } from "@/domain/document";
 
 import { insertDiscriminator } from "@/db/repo/catalog";
-import { insertAppendix, insertBox, insertDocument } from "@/db/repo/document";
+import { insertAppendix, insertBox, insertDocument, loadDocument } from "@/db/repo/document";
 import { createTestDb, type TestDb } from "@/db/test-utils";
 import { createClauseService, type ClauseService, type UsageSource } from "./clause";
 
@@ -307,6 +307,28 @@ describe("clause 서비스 (PGlite)", () => {
       expect(saved.recheck.map((e) => e.issues.map((i) => [i.kind, i.at.refPath]))).toEqual([[["argUnbound", "arg.갱신형"]]]);
       const wrong = await svc.setParams(editor, c.code, [...P, { name: "갱신형", type: { kind: "boolean" }, default: { kind: "discriminator", code: "D0002" } }]);
       expect(reasonOf(wrong)).toBe("invalid");
+    });
+  });
+
+  describe("프리셋 (ADR-0084) — 저장 · 채번 · 삭제 = 사용처를 직접 연결로 풀기", () => {
+    it("S01 · S02 채번, 빈 값이면 거부, 지운 프리셋을 쓰던 문서 참조는 프리셋 값의 직접 연결로 풀린다", async () => {
+      const options = [{ label: "기산", values: [{ label: "계약일" }, { label: "최초계약일" }] }];
+      const c = unwrap(await svc.create(editor, { label: "부활 문구(프리셋)", mode: "block", body: [{ id: "p", kind: "paragraph", children: [{ id: "t", kind: "text", text: "부활" }] }], options }));
+      expect(reasonOf(await svc.setPresets(editor, c.code, [{ name: "계약일" }]))).toBe("invalid");
+      const saved = unwrap(await svc.setPresets(editor, c.code, [{ name: "계약일", options: { O01: "V01" } }, { name: "최초계약일", options: { O01: "V02" } }]));
+      expect(saved.clause.presets?.map((x) => [x.code, x.name])).toEqual([["S01", "계약일"], ["S02", "최초계약일"]]);
+
+      const b = nodeBuilders(() => crypto.randomUUID());
+      const ref = { ...b.clauseBlock(c.code, {}), preset: "S01" };
+      const doc = await insertDocument(t.db, { kind: "general", title: "프리셋 사용처", tree: b.document("프리셋 사용처", [b.article("부활", [ref])]) }, admin.userId);
+      const kept = saved.clause.presets!.filter((x) => x.code === "S02");
+      const removed = unwrap(await svc.setPresets(editor, c.code, kept));
+      expect(removed.unfolded).toBe(1);
+      const after = await loadDocument(t.db, doc.id);
+      const node = (after?.tree.children[0] as { children: unknown[] }).children[0];
+      expect(node).toMatchObject({ kind: "clauseBlockRef", clauseCode: c.code, options: { O01: "V01" } });
+      expect(JSON.stringify(after?.tree)).not.toContain('"preset"');
+      expect(after?.version).toBe(doc.version + 1);
     });
   });
 });

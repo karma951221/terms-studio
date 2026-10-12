@@ -102,6 +102,16 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
     expect(items[0].action).toMatchObject({ do: "ops", ops: [{ type: "insert", node: { kind: "clauseBlockRef", clauseCode: "C0001", options: {} }, at: { parentId: "n4", index: 1 } }] });
   });
 
+  it("프리셋이 있으면 함수조항 줄 아래 프리셋마다 들인 한 줄 — 고르면 그 프리셋을 쓰는 블록 (ADR-0084 결정 8)", () => {
+    const items = clausePickItems([{ code: "C0022", label: "납입면제 호", presets: [{ code: "S01", name: "상해" }, { code: "S02", name: "질병" }] }], { parentId: "p" }, sequentialIds("k"));
+    expect(items.map((i) => [i.label, i.indent ?? false, i.name ?? i.label])).toEqual([
+      ["납입면제 호(C0022)", false, "납입면제 호(C0022)"],
+      ["· 상해", true, "납입면제 호(C0022) · 프리셋 상해"],
+      ["· 질병", true, "납입면제 호(C0022) · 프리셋 질병"],
+    ]);
+    expect(items[1].action).toMatchObject({ do: "ops", ops: [{ type: "insert", node: { kind: "clauseBlockRef", clauseCode: "C0022", options: {}, preset: "S01" } }] });
+  });
+
   it("함수조항 고르기는 조 자리의 「항」 함수조항만 (「문구」는 없다)", () => {
     const clauses = [
       { code: "C0001", label: "소멸", mode: "block" },

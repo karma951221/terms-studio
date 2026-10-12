@@ -335,6 +335,11 @@ describe("텍스트 · 조 명 · 슬롯 · 참조 대상 · 옵션 수정", () 
     const bound = unwrap(applyCommand(opt, { type: "setClauseOptions", nodeId: "n7", options: { tone: "a" }, bindings: { 갱신형: { kind: "discriminator", code: "D0002" } } }, { env }));
     expect((bound.children[0] as ArticleNode).children[1]).toMatchObject({ bindings: { 갱신형: { kind: "discriminator", code: "D0002" } } });
     const cleared = unwrap(applyCommand(bound, { type: "setClauseOptions", nodeId: "n7", options: { tone: "a" }, bindings: {} }, { env }));
+    // 프리셋 (ADR-0084) — 걸고 풀기. 풀 때는 null
+    const preset = unwrap(applyCommand(cleared, { type: "setClauseOptions", nodeId: "n7", options: {}, preset: "S01" }, { env }));
+    expect((preset.children[0] as ArticleNode).children[1]).toMatchObject({ preset: "S01", options: {} });
+    const unset = unwrap(applyCommand(preset, { type: "setClauseOptions", nodeId: "n7", options: { tone: "a" }, preset: null }, { env }));
+    expect((unset.children[0] as ArticleNode).children[1]).not.toHaveProperty("preset");
     expect((cleared.children[0] as ArticleNode).children[1]).not.toHaveProperty("bindings");
   });
 
