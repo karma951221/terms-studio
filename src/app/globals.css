@@ -2022,15 +2022,6 @@ input:where(:not([data-slot])).ts-option-title {
   opacity: 0.7;
 }
 
-.ts-filter-clear {
-  min-height: 22px;
-  padding: 1px 6px;
-  border: 0;
-  background: none;
-  color: var(--ts-ink-2);
-  font-size: 12px;
-}
-
 .ts-chips {
   display: flex;
   align-items: center;
@@ -2058,18 +2049,6 @@ input:where(:not([data-slot])).ts-option-title {
   color: var(--ts-error);
 }
 
-.ts-chip button:where(:not([data-slot])) {
-  display: inline-flex;
-  width: 18px;
-  height: 18px;
-  min-height: 0;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 0;
-  background: none;
-}
-
 .ts-colfilter {
   position: relative;
 }
@@ -2094,19 +2073,6 @@ input:where(:not([data-slot])).ts-option-title {
   border: 1px solid var(--ts-rule-strong);
   border-radius: 3px;
   background: var(--ts-surface);
-}
-
-.ts-colfilter-popover button:where(:not([data-slot])) {
-  display: block;
-  width: 100%;
-  border: 0;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.ts-colfilter-popover button:where(:not([data-slot]))[aria-pressed="true"] {
-  color: var(--ts-mark);
-  font-weight: 700;
 }
 
 .ts-filterbar label {
@@ -2607,12 +2573,6 @@ label.ts-field > textarea:where(:not([data-slot])) {
   vertical-align: middle;
 }
 
-.ts-combo > input:where(:not([data-slot]))[role="combobox"] {
-  width: 100%;
-  padding-right: 20px;
-  text-overflow: ellipsis;
-}
-
 .ts-combo::after {
   /* 대체 글 "" — 장식이다. <label> 안에서 칸 이름(「담보」)에 「▾」가 섞이지 않게 */
   content: "▾" / "";
@@ -2639,10 +2599,6 @@ label.ts-field > textarea:where(:not([data-slot])) {
   position: fixed;
   z-index: 60;
   max-width: min(560px, calc(100vw - 16px));
-  border: 1px solid var(--ts-rule-strong);
-  border-radius: 3px;
-  background: var(--ts-surface);
-  box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
 }
 
 .ts-combo-list,
@@ -2655,26 +2611,18 @@ label.ts-field > textarea:where(:not([data-slot])) {
 .ts-combo-list {
   max-height: 260px;
   overflow: auto;
-  padding: 3px;
 }
 
 .ts-combo-list [role="option"] {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  padding: 4px 8px;
-  border-radius: 2px;
   font-size: 13px;
   cursor: pointer;
 }
 
-.ts-combo-list [role="option"].is-active {
-  background: var(--ts-mark-bg);
-  color: var(--ts-mark);
-}
-
 .ts-combo-list [role="option"].is-current .ts-combo-label {
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .ts-combo-list [role="option"].is-disabled {
@@ -2712,7 +2660,7 @@ label.ts-field > textarea:where(:not([data-slot])) {
 .ts-combo-group {
   padding: 6px 8px 2px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--ts-ink-3);
 }
 

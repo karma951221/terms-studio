@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { IconCalendar, IconClose, IconSearch } from "./icons";
+import { Search, X } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+import { IconCalendar } from "./icons";
 import { changedQuery } from "../_lib/list";
 
 export interface FilterOption {
@@ -61,11 +66,12 @@ export function ListFilterBar({
   return (
     <div className="ts-filterbar-stack">
       <div className="ts-filterbar">
-        <label className="ts-searchbox">
-          <IconSearch />
+        <label className="ts-searchbox relative">
+          <Search className="pointer-events-none absolute left-2 size-3.5" aria-hidden="true" />
           <span className="sr-only">검색</span>
-          <input
+          <Input
             type="search"
+            className="w-[min(320px,32vw)] pl-7"
             key={urlQuery}
             defaultValue={urlQuery}
             placeholder={placeholder}
@@ -84,9 +90,9 @@ export function ListFilterBar({
         </label>
         <span className="ts-filterbar-spacer" />
         {active.length > 1 ? (
-          <button type="button" className="ts-filter-clear" onClick={() => replace(Object.fromEntries(filters.map((f) => [f.key, undefined])))}>
+          <Button type="button" variant="ghost" size="sm" onClick={() => replace(Object.fromEntries(filters.map((f) => [f.key, undefined])))}>
             모두 지우기
-          </button>
+          </Button>
         ) : null}
         {/* 이력(ADR-0026)은 아직 없다. 화면 자리는 잡되 **입력으로 보이면 안 된다** —
             테두리 있는 disabled 입력은 「잠긴 칸」이 아니라 「고장난 칸」으로 읽힌다 (§1.2). */}
@@ -102,9 +108,9 @@ export function ListFilterBar({
           {active.map(({ filter, option }) => (
             <span className="ts-chip" key={filter.key}>
               {filter.label}: {option.label}
-              <button type="button" title={`${filter.label} 필터 해제`} aria-label={`${filter.label} 필터 해제`} onClick={() => replace({ [filter.key]: undefined })}>
-                <IconClose />
-              </button>
+              <Button type="button" variant="ghost" size="icon-sm" className="size-[18px]" title={`${filter.label} 필터 해제`} aria-label={`${filter.label} 필터 해제`} onClick={() => replace({ [filter.key]: undefined })}>
+                <X className="size-3" />
+              </Button>
             </span>
           ))}
         </div>
@@ -122,8 +128,11 @@ export function ColumnFilter({ spec }: { spec: ColumnFilterSpec }) {
       <summary aria-label={`${spec.label} 필터`}>{spec.label} {active ? "▼" : "▾"}</summary>
       <div className="ts-colfilter-popover">
         {spec.options.map((option) => (
-          <button
+          <Button
             type="button"
+            variant="default"
+            size="sm"
+            className="w-full justify-start border-0 aria-pressed:font-bold aria-pressed:text-mark"
             key={option.value}
             aria-pressed={searchParams.get(spec.key) === option.value}
             onClick={() => {
@@ -132,7 +141,7 @@ export function ColumnFilter({ spec }: { spec: ColumnFilterSpec }) {
             }}
           >
             {option.label}
-          </button>
+          </Button>
         ))}
       </div>
     </details>

@@ -18,6 +18,9 @@
 import { useEffect, useId, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type Ref } from "react";
 import { createPortal } from "react-dom";
 
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+
 import { comboKey, createLookup, filterOptions, groupOptions, highlightParts, initialActive, isEnabled, moveActive, urlLoad, type ComboLoad, type ComboOption, type LookupState } from "./comboModel";
 
 export type { ComboLoad, ComboOption } from "./comboModel";
@@ -109,7 +112,7 @@ export function ComboList({
         aria-selected={index === active}
         aria-disabled={o.disabled ? true : undefined}
         data-value={o.value}
-        className={cls || undefined}
+        className={cn(cls, "rounded-sm px-2 py-1.5 aria-selected:bg-accent")}
         onMouseMove={() => onHover?.(index)}
         onClick={() => {
           if (isEnabled(o)) onPick?.(o);
@@ -130,7 +133,7 @@ export function ComboList({
   const groups = groupOptions(items);
   return (
     <div
-      className="ts-combo-pop"
+      className="ts-combo-pop rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-float"
       style={style}
       // 목록을 눌러도 초점은 입력칸에 — 떠나면 닫히므로
       onMouseDown={(e) => e.preventDefault()}
@@ -318,8 +321,9 @@ export function Combobox({
 
   return (
     <span className={`ts-combo${className ? ` ${className}` : ""}`}>
-      <input
+      <Input
         ref={inputEl}
+        className="pr-5 text-ellipsis"
         id={id}
         type="text"
         role="combobox"
@@ -330,7 +334,6 @@ export function Combobox({
         aria-label={ariaLabel}
         autoComplete="off"
         spellCheck={false}
-        className="ts-field-direct"
         placeholder={placeholder}
         required={required}
         disabled={disabled}
