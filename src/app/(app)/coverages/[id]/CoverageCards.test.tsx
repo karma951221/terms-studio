@@ -124,7 +124,7 @@ describe("CoverageCards — 편집 모드 구조 조작 (aaf753c)", () => {
   it("편집 모드: 카드마다 ⊖ 빼기 버튼 — 형제가 1개뿐이면 잠기고 tooltip 은 MIN_STRUCTURE", () => {
     const html = render("edit", 1);
     expect(html).toContain(MIN_STRUCTURE);
-    const removeButtons = html.match(/<button[^>]*class="ts-iconbtn danger[^>]*>/g) ?? [];
+    const removeButtons = html.match(/<button[^>]*class="[^"]*ts-iconbtn danger[^>]*>/g) ?? [];
     // 세부보장 1개(마지막) · 그 급부 1개(마지막) — 둘 다 잠긴 ⊖
     const locked = removeButtons.filter((t) => t.includes(MIN_STRUCTURE));
     expect(locked.length).toBeGreaterThanOrEqual(2);
@@ -133,7 +133,7 @@ describe("CoverageCards — 편집 모드 구조 조작 (aaf753c)", () => {
 
   it("편집 모드: 형제가 여럿이면 각자의 ⊖ 는 잠기지 않는다", () => {
     const html = render("edit", 2);
-    const removeButtons = html.match(/<button[^>]*class="ts-iconbtn danger[^>]*>/g) ?? [];
+    const removeButtons = html.match(/<button[^>]*class="[^"]*ts-iconbtn danger[^>]*>/g) ?? [];
     const unlocked = removeButtons.filter((t) => !t.includes(MIN_STRUCTURE));
     expect(unlocked.length).toBeGreaterThan(0);
     for (const tag of unlocked) expect(tag).not.toMatch(/disabled=""/);

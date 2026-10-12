@@ -5,10 +5,11 @@
  * 제목(`term-studio`)은 홈(`/`) 링크다 — 접히면 홈 아이콘이 그 자리를 잇는다.
  * 상태는 쿠키(`ts-nav`)에 두어 서버 레이아웃이 첫 렌더부터 같은 모양을 그린다(깜빡임 없음).
  */
+import { House, PanelLeft } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
-import { IconButton, IconChevron, IconHome } from "@/app/_components/icons";
+import { IconButton } from "@/app/_components/icons";
 import { NAV_COOKIE } from "@/app/_lib/navCookie";
 
 export function NavShell({
@@ -38,13 +39,13 @@ export function NavShell({
           className="ts-nav-toggle"
           label={collapsed ? "메뉴 펼치기" : "메뉴 접기"}
           aria-expanded={!collapsed}
-          icon={<IconChevron />}
+          icon={<PanelLeft className="size-4" />}
           onClick={toggle}
         />
       </div>
       {collapsed ? (
         <Link href="/" className="ts-nav-home" title="홈" aria-label="홈">
-          <IconHome />
+          <House className="size-4" />
         </Link>
       ) : (
         children

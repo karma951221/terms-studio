@@ -13,6 +13,18 @@ const OPTS: ComboOption[] = [
 ];
 
 describe("Combobox — 입력칸", () => {
+  it("입력칸은 shadcn Input — 폼 제출용 hidden name 은 그대로", () => {
+    const html = renderToStaticMarkup(<Combobox ariaLabel="담보" name="coverage" options={[{ value: "C001", label: "상해사망" }]} defaultValue="C001" />);
+    expect(html).toMatch(/<input[^>]*data-slot="input"[^>]*role="combobox"|<input[^>]*role="combobox"[^>]*data-slot="input"/);
+    expect(html).toContain('<input type="hidden" name="coverage" value="C001"/>');
+  });
+
+  it("목록 패널은 떠 있는 요소 — popover 토큰 · shadow-float · 옵션 활성은 accent", () => {
+    const html = renderToStaticMarkup(<ComboList id="l" label="x" items={OPTS} active={0} value="" query="" emptyText="없음" onPick={() => undefined} />);
+    expect(html).toMatch(/class="ts-combo-pop[^"]*bg-popover[^"]*shadow-float/);
+    expect(html).toMatch(/role="option"[^>]*class="[^"]*aria-selected:bg-accent/);
+  });
+
   it("role=combobox · 닫힘 · 목록을 가리킨다, 폼 칸이면 숨은 칸에 값", () => {
     const html = renderToStaticMarkup(<Combobox id="pick" name="appendixCode" options={OPTS} defaultValue="A1" required />);
     expect(html).toMatch(/<input[^>]*role="combobox"/);
@@ -43,8 +55,8 @@ describe("ComboList — 떠 있는 목록", () => {
     const html = renderToStaticMarkup(<ComboList id="L" label="별표" items={OPTS} active={0} value="A1" query="" />);
     expect(html).toContain('role="listbox"');
     expect(html).toContain('aria-label="별표"');
-    expect(html).toMatch(/<li id="L-o0" role="option" aria-selected="true" data-value="A1" class="is-active is-current">/);
-    expect(html).toMatch(/<li id="L-o1" role="option" aria-selected="false" aria-disabled="true" data-value="A2" class="is-disabled">/);
+    expect(html).toMatch(/<li id="L-o0" role="option" aria-selected="true" data-value="A1" class="is-active is-current[^"]*">/);
+    expect(html).toMatch(/<li id="L-o1" role="option" aria-selected="false" aria-disabled="true" data-value="A2" class="is-disabled[^"]*">/);
     expect(html).toContain('<span class="ts-combo-hint">A0001</span>');
     expect(html).toContain('<span class="ts-combo-reason">쓰지 않음</span>');
   });

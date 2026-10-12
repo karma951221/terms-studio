@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { coordinateHref } from "./coordinateHref";
 import { formatCoordinate } from "@/domain/coordinate";
 import type { Impact } from "@/domain/types";
@@ -92,13 +93,15 @@ export function Confirm({
           </li>
         )}
       </ul>
-      <div className="ts-confirm-actions">
+      <div className="ts-confirm-actions flex items-center gap-2">
         <form action={action}>
-          <button type="submit" className="danger">
+          <Button type="submit" variant="destructive">
             {actionLabel ?? "실행"}
-          </button>
+          </Button>
         </form>
-        <a href={cancelHref ?? "?"}>취소</a>
+        <Button asChild variant="ghost">
+          <a href={cancelHref ?? "?"}>취소</a>
+        </Button>
       </div>
     </section>
   );

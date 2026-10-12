@@ -159,7 +159,7 @@ export function MarkPicker({ onMark }: { onMark: (mark: WorkMark | undefined) =>
         <span className="ts-tool-short">글자색</span>
       </button>
       {open && (
-        <div id={menuId} role="menu" aria-label="작업용 글자색" className="ts-more-menu ts-mark-menu">
+        <div id={menuId} role="menu" aria-label="작업용 글자색" className="ts-tool-menu ts-mark-menu">
           <div className="ts-mark-swatches">
             {WORK_MARKS.map((mark) => (
               <button
@@ -176,7 +176,7 @@ export function MarkPicker({ onMark }: { onMark: (mark: WorkMark | undefined) =>
               </button>
             ))}
           </div>
-          <button type="button" role="menuitem" className="ts-more-menu-item" data-mark-clear="" title="고른 글의 작업용 글자색을 지운다" onClick={() => pick(undefined)}>
+          <button type="button" role="menuitem" className="ts-tool-menu-item" data-mark-clear="" title="고른 글의 작업용 글자색을 지운다" onClick={() => pick(undefined)}>
             색 지우기
           </button>
           <p className="ts-mark-menu-note">작업용 — 산출물에는 나오지 않습니다</p>

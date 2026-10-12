@@ -27,7 +27,7 @@ function render(initialMode: "read" | "edit") {
 
 /** 헤더 🗑 버튼 태그 — `.danger` 아이콘 버튼. */
 function trashTag(html: string): string {
-  const tag = html.match(/<button[^>]*class="ts-iconbtn danger"[^>]*>/)?.[0];
+  const tag = html.match(/<button[^>]*class="[^"]*ts-iconbtn danger[^"]*"[^>]*>/)?.[0];
   if (!tag) throw new Error("헤더 🗑 가 없다");
   return tag;
 }
@@ -35,7 +35,7 @@ function trashTag(html: string): string {
 describe("EditShell — 헤더 🗑 (P2)", () => {
   it("읽기 모드: 켜져 있고 tooltip 은 삭제 대상", () => {
     const tag = trashTag(render("read"));
-    expect(tag).not.toMatch(/disabled/);
+    expect(tag).not.toMatch(/disabled=""/);
     expect(tag).toContain('title="담보 골절진단비 삭제"');
   });
 
@@ -44,5 +44,11 @@ describe("EditShell — 헤더 🗑 (P2)", () => {
     expect(tag).toMatch(/disabled=""/);
     expect(EDIT_MODE_LOCKED_TIP).toBe("저장하거나 취소한 뒤 실행");
     expect(tag).toContain(`title="${EDIT_MODE_LOCKED_TIP}"`);
+  });
+});
+
+describe("EditShell — shadcn 위젯", () => {
+  it("읽기 모드: 「편집」은 shadcn Button", () => {
+    expect(render("read")).toMatch(/<button[^>]*data-slot="button"[^>]*>편집<\/button>/);
   });
 });
