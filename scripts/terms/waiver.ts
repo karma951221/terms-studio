@@ -485,7 +485,7 @@ export function applyMeritzWaiver(meritz: WaiverSource, shared: readonly WaiverC
   };
   const noInside = new Set<Id>();
 
-  // ── 정의 및 진단확정(메리츠) — 사유 값마다 칸. 메리츠 원문 제30조(암 ①~④ · 뇌졸중 ⑤⑥ · 급성심근경색증 ⑦⑧ · 중증화상및부식 ⑨⑩),
+  // ── 정의 및 진단확정(통합간편) — 사유 값마다 칸. 메리츠 원문 제30조(암 ①~④ · 뇌졸중 ⑤⑥ · 급성심근경색증 ⑦⑧ · 중증화상및부식 ⑨⑩),
   // 메리츠에 없는 질병 여섯 칸은 알파Plus 원문 칸을 옮긴다(값마다 정확히 한 칸 — 결정 5, 지어낸 글보다 실물 글), 장해는 문구 없음
   const xInside = structIds(a30);
   const m = (from: number, to = from) => takeBlocks(a30, paragraphRun(a30, from, to)).map((b) => clauseBlock(b, xInside, remap));
@@ -497,7 +497,7 @@ export function applyMeritzWaiver(meritz: WaiverSource, shared: readonly WaiverC
   };
   const definitionClause = record(
     "waiver-definition-meritz",
-    "정의 및 진단확정(메리츠)",
+    "정의 및 진단확정(통합간편)",
     "block",
     "「…의 정의 및 진단확정」 조의 본문(메리츠 — 「이 계약에 있어」) — 사유 값마다 정의 · 진단확정 항(암 칸 안에 【용어풀이】 박스 둘). 메리츠 원문에 없는 질병 여섯은 알파Plus 원문 칸. 장해 값은 문구 없음. 템플릿의 [사유 합집합 ∩ 정의조대상마다] 반복 안에서 사유 ← 현재 원소",
     [
@@ -518,12 +518,12 @@ export function applyMeritzWaiver(meritz: WaiverSource, shared: readonly WaiverC
     [REASON_PARAM],
   );
 
-  // ── 면제 부가항(메리츠) — ③ 「제1항 제1호 및 제2항 제1호의 암보장개시일이라 함은 최초계약일부터 …」 + 【그림】 박스, 면책 사유가 있을 때만
+  // ── 면제 부가항(통합간편) — ③ 「제1항 제1호 및 제2항 제1호의 암보장개시일이라 함은 최초계약일부터 …」 + 【그림】 박스, 면책 사유가 있을 때만
   const addendumClause = record(
     "waiver-addendum-meritz",
-    "면제 부가항(메리츠)",
+    "면제 부가항(통합간편)",
     "block",
-    "납입면제 조 ③(메리츠) — 적용 종들의 사유에 면책 사유가 있으면 「제1항 제1호 및 제2항 제1호의 암보장개시일이라 함은 최초계약일부터 …」 항과 【그림】 박스. 「제1항 제1호 및 제2항 제1호」는 값 한정 참조(사유 = 암·면책) 하나 — 종마다 항이 펼쳐진 만큼 찍힌다",
+    "납입면제 조 ③(통합간편) — 적용 종들의 사유에 면책 사유가 있으면 「제1항 제1호 및 제2항 제1호의 암보장개시일이라 함은 최초계약일부터 …」 항과 【그림】 박스. 「제1항 제1호 및 제2항 제1호」는 값 한정 참조(사유 = 암·면책) 하나 — 종마다 항이 펼쳐진 만큼 찍힌다",
     [{ id: "c", kind: "condBlock", branches: [{ id: "c-if", when: "var.면책있음", children: takeBlocks(a29, paragraphRun(a29, 3)).map((b) => clauseBlock(b, noInside, remap)) }] }],
     [PLANS_PARAM],
     [REASONS_LOCAL, WAITING_LOCAL],
@@ -535,26 +535,26 @@ export function applyMeritzWaiver(meritz: WaiverSource, shared: readonly WaiverC
   absorbPlain(d11, [i1[3].id, i1[4].id], " 또는 제2항 제4호부터 제6호까지", [i2[3].id, i2[4].id, i2[5].id]);
   absorbPlain(d12, [i1[3].id, i2[3].id], " 및 제6호", [i2[5].id]);
 
-  // ── 납입면제 세부규정(메리츠) — 면책 ①~③ · 장해 ④~⑥ · ⑦ 제3자 합의 고정 · 장해 ⑧~⑩ · 장해 또는 중증화상 ⑪ · 상해 장해 또는 중증화상 ⑫
+  // ── 납입면제 세부규정(통합간편) — 면책 ①~③ · 장해 ④~⑥ · ⑦ 제3자 합의 고정 · 장해 ⑧~⑩ · 장해 또는 중증화상 ⑪ · 상해 장해 또는 중증화상 ⑫
   const dInside = structIds(a31);
   const d = (from: number, to = from) => takeBlocks(a31, paragraphRun(a31, from, to)).map((b) => clauseBlock(b, dInside, remap));
   const iff = (id: string, when: string, children: Block[]) => ({ id, kind: "condBlock", branches: [{ id: `${id}-if`, when, children }] });
   const detailClause = record(
     "waiver-detail-meritz",
-    "납입면제 세부규정(메리츠)",
+    "납입면제 세부규정(통합간편)",
     "block",
-    "납입면제에 관한 세부규정 조의 본문(메리츠) — 면책 사유 → ①~③, 장해 → ④~⑥ · ⑧~⑩, ⑦ 제3자 합의는 늘, 장해 또는 중증화상및부식 → ⑪ 고의 · 전쟁 제외, 상해 장해 또는 중증화상및부식 → ⑫ 위험 활동 제외. 「제29조 제1항 제1호 또는 제2항 제1호」 등은 값 한정 참조 — 원문의 두 겹 연결어는 연결어 한 칸으로(인수기준 알려진 차이)",
+    "납입면제에 관한 세부규정 조의 본문(통합간편) — 면책 사유 → ①~③, 장해 → ④~⑥ · ⑧~⑩, ⑦ 제3자 합의는 늘, 장해 또는 중증화상및부식 → ⑪ 고의 · 전쟁 제외, 상해 장해 또는 중증화상및부식 → ⑫ 위험 활동 제외. 「제29조 제1항 제1호 또는 제2항 제1호」 등은 값 한정 참조 — 원문의 두 겹 연결어는 연결어 한 칸으로(인수기준 알려진 차이)",
     [iff("c1", "var.면책있음", d(1, 3)), iff("c2", "var.장해있음", d(4, 6)), ...d(7), iff("c3", "var.장해있음", d(8, 10)), iff("c4", "var.장해화상", d(11)), iff("c5", "var.상해관련", d(12))],
     [PLANS_PARAM],
     [REASONS_LOCAL, WAITING_LOCAL, DISABILITY_LOCAL, INJURY_LOCAL, DISABILITY_BURN_LOCAL, INJURY_BURN_LOCAL],
   );
 
-  // ── 무효 문구(메리츠) — 알파Plus 무효 문구와 글이 같지만 「제1항」이 제 보통약관의 계약의 무효 조를 가리킨다(보통약관 참조는 템플릿마다 조가 다르다)
+  // ── 무효 문구(통합간편) — 알파Plus 무효 문구와 글이 같지만 「제1항」이 제 보통약관의 계약의 무효 조를 가리킨다(보통약관 참조는 템플릿마다 조가 다르다)
   const voidClause = record(
     "waiver-void-meritz",
-    "무효 문구(메리츠)",
+    "무효 문구(통합간편)",
     "block",
-    "계약의 무효 조(메리츠) — 적용 종들의 사유에 면책 사유가 있으면 암보장개시일 전일 이전 진단확정 시 무효 항. 메리츠 원문 제22조에는 없다(원문 누락 — QA/인수기준 알려진 차이). 글은 무효 문구(알파Plus)와 같다",
+    "계약의 무효 조(통합간편) — 적용 종들의 사유에 면책 사유가 있으면 암보장개시일 전일 이전 진단확정 시 무효 항. 메리츠 원문 제22조에는 없다(원문 누락 — QA/인수기준 알려진 차이). 글은 무효 문구(알파Plus)와 같다",
     [{ id: "c", kind: "condBlock", branches: [{ id: "c-if", when: "var.면책있음", children: [voidParagraph(paragraphs(a22)[0].id)] }] }],
     [PLANS_PARAM],
     [REASONS_LOCAL, WAITING_LOCAL],
@@ -585,7 +585,7 @@ export function applyMeritzWaiver(meritz: WaiverSource, shared: readonly WaiverC
   for (const p of [p4, p5, p6, p7]) remapTemplateRefs(p, (id) => (id === p2.id ? p1.id : id));
   for (const p of [p6, p7]) mergeRanges(p, [p1.id, addendumRef.id, p4.id, p5.id, p6.id, p7.id]);
 
-  // 제31조 — 조 본문 = 세부규정 한 줄, 제30조 — [사유 합집합 ∩ 정의조대상마다] ⟨정의(메리츠)⟩ (제목은 고정 글)
+  // 제31조 — 조 본문 = 세부규정 한 줄, 제30조 — [사유 합집합 ∩ 정의조대상마다] ⟨정의(통합간편)⟩ (제목은 고정 글)
   a31.children = [presetRef(`${a31.id}-p1-k`, detailClause.key, "S01")];
   const unionId = `${a30.id}-for-reasons`;
   a30.children = [{ id: unionId, kind: "forBlock", source: { kind: "union", ...APPLIED, field: "reasons", where: { field: "F03", value: true } }, children: [ref(`${a30.id}-p1-k`, definitionClause.key, { 사유: { kind: "current", loop: unionId } })] }];

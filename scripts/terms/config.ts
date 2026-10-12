@@ -294,7 +294,7 @@ const CLAUSE_DRAFTS: ClauseDraft[] = [
   },
   {
     key: "meritz-application",
-    label: "준용규정(메리츠)",
+    label: "준용규정(통합간편)",
     mode: "block",
     description: "특별약관에서 정하지 않은 사항은 보통약관을 따른다 — 메리츠 보통약관 조를 가리킨다(적립이율 · 만기환급금 · 중도인출 제외, 1종이면 납입면제 두 조도 제외). 질병사망은 제5조까지 빼는 다른 글이라 쓰지 않는다",
     from: { spec: "m-fracture-doc", article: "5" },

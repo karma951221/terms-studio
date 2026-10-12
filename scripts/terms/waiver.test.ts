@@ -160,14 +160,14 @@ describe("메리츠 납입면제 템플릿 — 알파Plus 와 같은 모양, 호
     expect(find(meritz, (x) => x.kind === "clauseBlockRef" && x.clauseCode === code)!.preset).toBe("S02");
   });
 
-  it("세부규정(메리츠) — 값 한정 참조: 암·면책 · 장해 · 장해+화상 · 상해 호(안쪽 코드) + 화상", () => {
-    const refs = all(clauseByLabel("납입면제 세부규정(메리츠)").body, (x) => x.kind === "articleRef" && JSON.stringify(x).includes("restrict"));
+  it("세부규정(통합간편) — 값 한정 참조: 암·면책 · 장해 · 장해+화상 · 상해 호(안쪽 코드) + 화상", () => {
+    const refs = all(clauseByLabel("납입면제 세부규정(통합간편)").body, (x) => x.kind === "articleRef" && JSON.stringify(x).includes("restrict"));
     const shapes = refs.map((r) => (r.targets as { innerCode?: string; restrict: { values: string[] } }[]).map((t) => `${t.innerCode ?? ""}${t.restrict.values.join("+")}`).join() + ` ${r.connector}`);
     expect(shapes).toEqual(["V01 또는", "V01 또는", "V01 또는", "V11+V12+V13 또는", "V11+V12+V13+V14 또는", "P0100V11+V12+V14 또는"]);
   });
 
-  it("정의(메리츠) — E0001 값 14 가 정확히 한 칸씩, 제2조 표의 종 한 항 참조는 글로 굳힌다(종 한정 참조는 다음 기획)", () => {
-    const sw = find(clauseByLabel("정의 및 진단확정(메리츠)").body, (x) => x.kind === "switchBlock")!;
+  it("정의(통합간편) — E0001 값 14 가 정확히 한 칸씩, 제2조 표의 종 한 항 참조는 글로 굳힌다(종 한정 참조는 다음 기획)", () => {
+    const sw = find(clauseByLabel("정의 및 진단확정(통합간편)").body, (x) => x.kind === "switchBlock")!;
     expect((sw.cases as { values: string[] }[]).flatMap((c) => c.values)).toEqual(Array.from({ length: 14 }, (_, i) => `V${String(i + 1).padStart(2, "0")}`));
     const definitions = find(meritz, (x) => x.kind === "article" && x.title === "용어의 정의")!;
     expect(JSON.stringify(definitions)).toContain('"text":"제29조(보험료의 납입면제) 제2항"');

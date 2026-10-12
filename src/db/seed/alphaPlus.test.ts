@@ -158,10 +158,10 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
       ["block", "납입면제 세부규정(알파Plus)"],
       ["block", "무효 문구(알파Plus)"],
       ["block", "부활 문구"],
-      ["block", "정의 및 진단확정(메리츠)"],
-      ["block", "면제 부가항(메리츠)"],
-      ["block", "납입면제 세부규정(메리츠)"],
-      ["block", "무효 문구(메리츠)"],
+      ["block", "정의 및 진단확정(통합간편)"],
+      ["block", "면제 부가항(통합간편)"],
+      ["block", "납입면제 세부규정(통합간편)"],
+      ["block", "무효 문구(통합간편)"],
     ];
     expect(list.slice(21, 31).map((c) => [c.code, c.mode, c.label])).toEqual(role.map(([mode, label], i) => [`C${String(22 + i).padStart(4, "0")}`, mode, label]));
     // 역할 함수조항은 인자를 받는다 — 사유(E0001) 하나 또는 종들(세목 선택지 목록) + 내부 변수
@@ -210,7 +210,7 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
         "특별약관의 소멸(생활자금)",
         "특별약관의 소멸(중증화상및부식)",
         "준용규정(알파Plus)",
-        "준용규정(메리츠)",
+        "준용규정(통합간편)",
       ].map((label, i) => [`C${String(i < 21 ? i + 1 : i + 11).padStart(4, "0")}`, "block", label]),
     );
     // 박스 — 원문의 박스 전부(같은 박스는 하나, 낱말만 달라도 따로). 보통약관이 놓는 박스가 앞 코드(BX000001~BX000084)
