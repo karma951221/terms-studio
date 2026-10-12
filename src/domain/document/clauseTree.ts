@@ -13,7 +13,7 @@
  * | `articleRef` 보통약관 대상(범위 없음) | `articleRef` + `scope: "general"` |
  * | `articleRef` 제 항 · 호 · 목(`scope: "clause"`) | `articleRef` + `scope: "self"` — 편집 트리의 항 id 가 곧 본문 노드 id |
  * | `switchBlock` · `inlineSwitch`(값별 분기) | `condBlock` · `inlineCond` + `switchOn`(대상 식) — 가지 = 칸(`values` · `empty`, `when` 없음). 조건 가지와 같은 투명 · 자리 · 중첩 규칙을 물려받는다(document/nodes.ts `SwitchCaseMark`) |
- * | `articleRef` 사용처 위치(`scope: "host"`, `"2.1.3"`) | `articleRef` + `scope: "general"` + 대상 `host:2.1.3`(`HOST_TARGET_PREFIX`) — 에디터의 「사용처」 후보 줄 id. 이 문서 밖 대상이라 보통약관 참조처럼 후보 집합(`generalRefs`)으로 검사한다 |
+ * | `articleRef` 조 참조 인자(`scope: "param"`, `{ param }`) | `articleRef` + `scope: "general"` + 대상 하나 `arg:<인자 이름>`(`PARAM_TARGET_PREFIX`) — 이 문서 밖 대상이라 보통약관 참조처럼 후보 집합으로 검사한다(후보 = 조 참조 인자, ADR-0083) |
  *
  * 되돌릴 때 함수조항에 없는 것(조 · 관 · 표 · 박스 · 반복 · 구조 표기 · 진짜 함수조항 참조 · 호/목 자리의 조건 블록)이 있으면 거부한다 —
  * 에디터 메뉴가 애초에 싣지 않지만, 저장 직전의 마지막 관문이다. 노드 id 는 그대로 옮긴다(오류 좌표 · 「고칠 자리로」가 같은 id 를 쓴다).
@@ -24,7 +24,7 @@ import type * as C from "../clause/nodes";
 import type { Clause, ClauseBody, ClauseMode } from "../clause/types";
 import { CONNECTOR_PLACEHOLDER, ok, reject, type Code, type Result } from "../types";
 import type { ArticleNode, BlockNode, BulletListNode, ClauseBlockRefNode, ClauseInlineRefNode, DocumentNode, InlineNode, ItemNode, ParagraphNode, SubitemNode } from "./nodes";
-import { numberTree, paragraphLabel, subitemRefLabel, type NodeNumber, type NumberKind, type ReferenceTarget } from "./numbering";
+import { numberTree, paragraphLabel, subitemRefLabel, type NodeNumber, type NumberKind } from "./numbering";
 
 export const CLAUSE_DOCUMENT_ID = "clause-document";
 export const CLAUSE_ARTICLE_ID = "clause-article";
@@ -42,8 +42,19 @@ export function optionCodeOf(node: InlineNode): Code | undefined {
   return node.kind === "clauseInlineRef" && node.clauseCode.startsWith(OPTION_REF_PREFIX) ? node.clauseCode.slice(OPTION_REF_PREFIX.length) : undefined;
 }
 
-/** 사용처 위치 대상의 편집 트리 id 접두 — 「사용처」 후보 줄(`host:1` · `host:2.1.3`)과 같다. */
-export const HOST_TARGET_PREFIX = "host:";
+/** 조 참조 인자 대상의 편집 트리 조 id 접두 — `arg:보험금의 지급사유 조` (ADR-0083). */
+export const PARAM_TARGET_PREFIX = "arg:";
+
+/** 조 참조 인자 이름 → 편집 트리 대상 조 id. */
+export function paramTargetId(name: string): string {
+  return `${PARAM_TARGET_PREFIX}${name}`;
+}
+
+/** 편집 트리 조 참조가 조 참조 인자 운반체인가 — 그렇다면 인자 이름. */
+export function paramOfRef(node: { targets: readonly { articleId: string }[] }): string | undefined {
+  const [t, ...more] = node.targets;
+  return t && more.length === 0 && t.articleId.startsWith(PARAM_TARGET_PREFIX) ? t.articleId.slice(PARAM_TARGET_PREFIX.length) : undefined;
+}
 
 export function optionCarrier(id: string, optionCode: Code): ClauseInlineRefNode {
   return { id, kind: "clauseInlineRef", clauseCode: `${OPTION_REF_PREFIX}${optionCode}`, options: {} };
@@ -67,7 +78,7 @@ function inlineToTree(node: C.Inline): InlineNode {
       return optionCarrier(node.id, node.optionCode);
     case "articleRef": {
       const { scope, targets, ...rest } = node;
-      if (scope === "host") return { ...rest, targets: targets.map((t) => ({ articleId: `${HOST_TARGET_PREFIX}${t.host ?? ""}` })), scope: "general" };
+      if (scope === "param") return { id: rest.id, kind: "articleRef", targets: [{ articleId: paramTargetId(targets[0]?.param ?? "") }], scope: "general" };
       if (scope === "clause") return { ...rest, targets: targets.map((t) => ({ articleId: CLAUSE_ARTICLE_ID, ...(t.code !== undefined ? { code: t.code } : {}) })), scope: "self" };
       return { ...rest, targets: targets.map((t) => ({ articleId: t.articleId ?? "", ...(t.code !== undefined ? { code: t.code } : {}), ...(t.innerCode !== undefined ? { innerCode: t.innerCode } : {}), ...(t.restrict !== undefined ? { restrict: structuredClone(t.restrict) } : {}) })), scope: "general" };
     }
@@ -225,11 +236,11 @@ function inlineFromTree(node: InlineNode): C.Inline {
         if (targets.some((t) => t.code === undefined)) throw new NotClause("「이 함수조항」 참조는 제 항 · 호 · 목만 가리킨다 — 조는 사용처 소유다");
         return { ...rest, targets: targets.map((t) => ({ code: t.code })), scope: "clause" };
       }
-      // 보통약관 조 또는 사용처 위치 — 한 참조가 둘을 섞지 않는다
-      const host = targets.filter((t) => t.articleId.startsWith(HOST_TARGET_PREFIX));
-      if (host.length === 0) return { ...rest, targets: targets.map((t) => ({ ...t })) };
-      if (host.length !== targets.length) throw new NotClause("조 참조 하나에 보통약관 조와 사용처 위치를 섞을 수 없습니다");
-      return { ...rest, targets: host.map((t) => ({ host: t.articleId.slice(HOST_TARGET_PREFIX.length) })), scope: "host" };
+      // 보통약관 조 또는 조 참조 인자 — 인자 슬롯은 인자 하나만, 다른 대상 · 연결어와 섞지 않는다 (ADR-0083 결정 3)
+      const params = targets.filter((t) => t.articleId.startsWith(PARAM_TARGET_PREFIX));
+      if (params.length === 0) return { ...rest, targets: targets.map((t) => ({ ...t })) };
+      if (targets.length !== 1) throw new NotClause("범위 「인자」 조 참조는 조 참조 인자 하나만 가리킨다 — 보통약관 조 · 다른 인자와 섞지 않는다");
+      return { id: rest.id, kind: "articleRef", targets: [{ param: params[0]!.articleId.slice(PARAM_TARGET_PREFIX.length) }], scope: "param" };
     }
     case "clauseInlineRef": {
       const code = optionCodeOf(node);
@@ -325,11 +336,11 @@ export function treeToClauseBody(mode: ClauseMode, tree: DocumentNode): Result<C
   }
 }
 
-// ───────────────────────────── 제 항 · 사용처 조 참조 표기 ─────────────────────────────
+// ───────────────────────────── 제 항 · 조 참조 인자 표기 ─────────────────────────────
 
-/** 위치 순번 → 「제1항 제2호 가목」 (첫 단계가 조면 「제2조 제1항 …」). 0 은 자리만 있는 단계(호 · 목 유형의 자리 항 · 호)라 적지 않는다. */
-function positionText(parts: readonly number[], fromArticle: boolean): string {
-  const units = fromArticle ? ["조", "항", "호"] : ["항", "호"];
+/** 위치 순번 → 「제1항 제2호 가목」. 0 은 자리만 있는 단계(호 · 목 유형의 자리 항 · 호)라 적지 않는다. */
+function positionText(parts: readonly number[]): string {
+  const units = ["항", "호"];
   return parts
     .map((n, i) => (n === 0 ? undefined : i < units.length ? `제${n}${units[i]}` : subitemRefLabel(n)))
     .filter((t) => t !== undefined)
@@ -385,45 +396,24 @@ export function clausePositions(tree: DocumentNode): Map<string, number[]> {
 }
 
 /**
- * 함수조항의 제 항 · 사용처 조 참조 표기 (기능/함수조항 §3.5) — 「이 함수조항 제1항」 · 「사용처 제2조 제1항 제3호」.
+ * 함수조항의 제 항 · 조 참조 인자 표기 (기능/함수조항 §3.5) — 「이 함수조항 제1항」 · 「⟨보험금의 지급사유 조⟩」(ADR-0083 결정 7).
  * 번호는 본문 안 순번이다(사용처에서는 펼친 자리의 계산 번호로 찍힌다). 편집 트리 노드를 받는다 — 보통약관 참조면 undefined.
  */
 export function clauseScopedRefLabel(node: InlineNode, positions: ReadonlyMap<string, number[]>): string | undefined {
   if (node.kind !== "articleRef") return undefined;
-  const host = node.scope === "general" && node.targets.length > 0 && node.targets.every((t) => t.articleId.startsWith(HOST_TARGET_PREFIX));
-  if (node.scope !== "self" && !host) return undefined;
+  const param = node.scope === "general" ? paramOfRef(node) : undefined;
+  if (param !== undefined) return `⟨${param}⟩`;
+  if (node.scope !== "self") return undefined;
   const labels = node.targets.map((t) => {
-    if (host) return positionText(t.articleId.slice(HOST_TARGET_PREFIX.length).split(".").map(Number), true);
     const at = t.code !== undefined ? positions.get(t.code) : undefined;
-    return at ? positionText(at, false) : "없는 항(연결 끊김)";
+    return at ? positionText(at) : "없는 항(연결 끊김)";
   });
   const joined = labels.length <= 1 ? (labels[0] ?? "") : `${labels.slice(0, -1).join(", ")} ${node.connector ?? CONNECTOR_PLACEHOLDER} ${labels.at(-1)}`;
-  return `${host ? "사용처" : "이 함수조항"} ${joined}`;
+  return `이 함수조항 ${joined}`;
 }
 
 /** 함수조항 본문 노드 → 편집 트리 노드 (모델 표시가 `clauseScopedRefLabel` 을 쓰게). */
 export function clauseInlineToTree(node: C.Inline): InlineNode {
   return inlineToTree(node);
-}
-
-/**
- * 「사용처」 후보 — 사용처 문서의 위치(조 · 항 · 호 순번) 줄 목록. 함수조항 에디터의 조 참조 고르기 트리가 쓴다 (기능/함수조항 §3.5).
- * 사용처는 여럿이라 실제 조 제목은 모른다 — 줄은 번호만(「제1조」 · 「제1항」 · 「제3호」).
- */
-export function hostTargetIndex(articles = 20, paragraphs = 10, items = 10): Map<string, ReferenceTarget> {
-  const out = new Map<string, ReferenceTarget>();
-  for (let a = 1; a <= articles; a++) {
-    const article = { id: `${HOST_TARGET_PREFIX}${a}`, n: a, title: "" };
-    out.set(article.id, { kind: "article", article });
-    for (let p = 1; p <= paragraphs; p++) {
-      const paragraph = { id: `${article.id}.${p}`, n: p };
-      out.set(paragraph.id, { kind: "paragraph", article, paragraph });
-      for (let i = 1; i <= items; i++) {
-        const item = { id: `${paragraph.id}.${i}`, n: i };
-        out.set(item.id, { kind: "item", article, paragraph, item });
-      }
-    }
-  }
-  return out;
 }
 

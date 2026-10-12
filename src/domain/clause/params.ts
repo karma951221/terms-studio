@@ -9,17 +9,31 @@
  *   (P7: 선언 · 검사만. 목록을 가공하는 연산은 내부 변수(P8)라 아직 본문이 읽을 수 없다.)
  * - 반복의 현재 원소: 넣는 자리를 감싼 반복 블록의 원소(종 · 열거값, ADR-0077 결정 3). 그 반복 안에서만 · 타입이 맞아야 하고(`BindingEnv.loops`), 기본 연결로는 둘 수 없다.
  * - 인자 이름은 저장되는 식에 그대로 들어간다(`arg.<이름>`) — 이름을 바꾸면 본문 · 사용처 연결도 함께 고쳐야 한다(기능/함수조항 §5).
+ * - 조 참조 인자(ADR-0083): 타입 「조 참조」 — 사용처의 조 · 항 · 호 · 목을 가리키는 입력. 본문의 조 참조 슬롯(`scope: "param"`)만 쓰고
+ *   식에서 읽지 못한다. 기본 연결이 없고(넣는 자리마다 연결), 이름은 식에 안 들어가 공백을 허용한다. 연결은 사용처 조 참조와 같은 모양
+ *   (대상 + 연결어 + 범위 — 대상 · 연결어 검사는 문면 조 참조 검사가 한다, document/nodes.ts `checkNodeRefs`).
  */
 import { masterTypeResolver } from "../catalog/expression";
 import { checkTypes, extractRefs, parse, RESERVED_WORDS, type ExprType } from "../expression";
 import { formsOfLevel, MASTER, type MasterTree } from "../master";
-import type { Code, Coordinate, FieldType, Id, Issue, ScalarValue } from "../types";
+import type { Code, Coordinate, FieldType, Id, Issue, ReferenceConnector, RefRestrict, ScalarValue } from "../types";
 import type { Clause } from "./types";
 
 // ───────────────────────────── 타입 ─────────────────────────────
 
-/** 인자 타입 — 구분자 결과 타입(표 제외) 또는 세목 선택지 목록(폼 하나의 선택지들). */
-export type ParamType = Exclude<FieldType, { kind: "table" }> | { kind: "planOptions"; form: Code };
+/** 값 인자 타입 — 구분자 결과 타입(표 제외) 또는 세목 선택지 목록(폼 하나의 선택지들). 식에서 `arg.<이름>` 으로 읽는다. */
+export type ValueParamType = Exclude<FieldType, { kind: "table" }> | { kind: "planOptions"; form: Code };
+
+/** 인자 타입 — 값 인자 타입 또는 「조 참조」(ADR-0083 — 식에서 읽지 않는다). */
+export type ParamType = ValueParamType | { kind: "articleRef" };
+
+/** 조 참조 연결의 대상 하나 — 문면 조 참조 대상(`RefTarget`)과 같은 모양: 조 uuid + P코드? + 안쪽 코드? + 값 한정?. */
+export interface ArticleRefBindingTarget {
+  articleId: Id;
+  code?: Code;
+  innerCode?: Code;
+  restrict?: RefRestrict;
+}
 
 /** 세목 선택지 원천 — 세목 폼 + 거름 (반복 원천 선언과 같은 모양, §7-2). 거름은 그 폼 필드만 읽는 참거짓 식. 없으면 폼의 모든 선택지. */
 export interface PlanOptionSource {
@@ -36,7 +50,19 @@ export type Binding =
   /** 반복의 현재 원소 — `loop` = 넣는 자리를 감싼 반복 블록(템플릿) id. 조립이 원소(열거값 코드 · 종)로 바꿔 댄다. */
   | { kind: "current"; loop: Id }
   /** 세목 선택지 원천 — 세목 선택지 목록 인자 전용 (§7-2). */
-  | { kind: "source"; source: PlanOptionSource };
+  | { kind: "source"; source: PlanOptionSource }
+  /**
+   * 조 참조 — 조 참조 인자 전용 (ADR-0083 결정 4). 사용처가 직접 쓰는 조 참조와 같은 모양: 대상 하나 이상 + 연결어 + 범위
+   * (`self` = 이 문서 · `general` = 대응 보통약관). 펼치면 인자 슬롯이 이 조 참조가 된다.
+   */
+  | ArticleRefBinding;
+
+export interface ArticleRefBinding {
+  kind: "articleRef";
+  targets: ArticleRefBindingTarget[];
+  connector?: ReferenceConnector;
+  scope: "self" | "general";
+}
 
 /** 인자 선언. 순서는 배열 순서(화면 표 순서). */
 export interface ParamDef {
@@ -73,16 +99,37 @@ function describeElement(t: LoopElementType): string {
   return t.kind === "planOptions" ? `종(세목 선택지 ${t.form})` : `열거값 enum<${t.enumCode}>`;
 }
 
-const MODE_TYPES = new Set(["boolean", "string", "number", "date", "enum", "list<enum>", "planOptions"]);
+const MODE_TYPES = new Set(["boolean", "string", "number", "date", "enum", "list<enum>", "planOptions", "articleRef"]);
 const IDENT = /^[A-Za-z_ㄱ-ㆎ가-힣][A-Za-z0-9_ㄱ-ㆎ가-힣]*$/;
 const RESERVED = new Set(RESERVED_WORDS);
 
-export function paramTypeOf(p: ParamDef): ExprType {
-  return p.type;
+/** 조 참조 인자인가 (ADR-0083). */
+export function isArticleRefParam(p: ParamDef): boolean {
+  return p.type?.kind === "articleRef";
 }
 
-export function describeParamType(t: ExprType): string {
+/** 식에서 읽는 인자의 타입 — 조 참조 인자는 식에서 읽지 않아 undefined. */
+export function paramTypeOf(p: ParamDef): ExprType | undefined {
+  return p.type?.kind === "articleRef" ? undefined : p.type;
+}
+
+/** 식이 읽는 인자(값 인자)의 이름 → 타입 — 조 참조 인자는 빠진다(읽으면 검사 ① 오류). */
+export function valueParamTypes(params: readonly ParamDef[]): Map<string, ExprType> {
+  return new Map(params.flatMap((p) => {
+    const t = paramTypeOf(p);
+    return t ? [[p.name, t] as const] : [];
+  }));
+}
+
+/** 조 참조 인자를 식에서 읽었을 때의 문구 (검사 ① — 본문 · 내부 변수 공통). */
+export function articleRefReadMessage(name: string): string {
+  return `조 참조 인자 ${name} 는 식에서 읽을 수 없습니다 — 본문의 조 참조 슬롯(범위 「인자」)으로만 쓴다`;
+}
+
+export function describeParamType(t: ExprType | ParamType): string {
   switch (t.kind) {
+    case "articleRef":
+      return "조 참조";
     case "enum":
     case "list<enum>":
       return `${t.kind}<${t.enumCode}>`;
@@ -93,7 +140,7 @@ export function describeParamType(t: ExprType): string {
   }
 }
 
-function sameType(a: ExprType, b: ExprType): boolean {
+function sameType(a: ExprType | ParamType, b: ExprType | ParamType): boolean {
   if (a.kind !== b.kind) return false;
   if ("enumCode" in a && "enumCode" in b) return a.enumCode === b.enumCode;
   if (a.kind === "planOptions" && b.kind === "planOptions") return a.form === b.form;
@@ -109,7 +156,14 @@ export function checkBinding(param: ParamDef, binding: Binding, env: BindingEnv,
   const head = `인자 ${param.name} 의 ${what}`;
   const refAt = (refPath: string): Coordinate => ({ ...at, refPath });
   const planOptions = param.type.kind === "planOptions";
+  // 조 참조 인자 ↔ 조 참조 연결 (ADR-0083) — 대상 · 연결어는 문면 조 참조 검사(document/nodes.ts)가 본다
+  if ((param.type.kind === "articleRef") !== (binding.kind === "articleRef")) {
+    const why = param.type.kind === "articleRef" ? "조 참조 인자에는 이 문서의 조 · 항 · 호 · 목을 골라 연결합니다" : `조 참조는 조 참조 인자에만 연결합니다 (${describeParamType(param.type)} 인자)`;
+    return [{ kind: "typeMismatch", message: `${head} — ${why}`, at: refAt(`arg.${param.name}`) }];
+  }
   switch (binding.kind) {
+    case "articleRef":
+      return [];
     case "discriminator": {
       if (planOptions) return [{ kind: "typeMismatch", message: `${head} — 세목 선택지 목록 인자에는 원천(세목 폼 + 거름)만 댈 수 있습니다`, at: refAt(binding.code) }];
       if (!env.discriminatorType) return [];
@@ -201,6 +255,11 @@ export function checkParams(params: readonly ParamDef[], env: BindingEnv = {}, a
       continue;
     }
     seen.add(name);
+    if (p.type?.kind === "articleRef") {
+      // 조 참조 인자 — 식에 안 들어가 이름 모양 규칙이 없고(공백 허용), 기본 연결이 없다 (ADR-0083 결정 2)
+      if (p.default) issues.push({ kind: "structure", message: `인자 ${name} — 조 참조 인자는 넣는 자리마다 연결합니다(기본 연결을 둘 수 없습니다)`, at: here });
+      continue;
+    }
     if (RESERVED.has(name)) {
       issues.push({ kind: "structure", message: `인자 이름으로 예약어를 쓸 수 없습니다: ${name}`, at: here });
       continue;
@@ -210,7 +269,7 @@ export function checkParams(params: readonly ParamDef[], env: BindingEnv = {}, a
       continue;
     }
     if (!p.type || !MODE_TYPES.has(p.type.kind)) {
-      issues.push({ kind: "typeMismatch", message: `인자 ${name} 의 타입은 참거짓 · 문자 · 숫자 · 날짜 · 열거형 · 열거형 목록 · 세목 선택지 목록 중 하나여야 합니다`, at: here });
+      issues.push({ kind: "typeMismatch", message: `인자 ${name} 의 타입은 참거짓 · 문자 · 숫자 · 날짜 · 열거형 · 열거형 목록 · 세목 선택지 목록 · 조 참조 중 하나여야 합니다`, at: here });
       continue;
     }
     if (p.type.kind === "planOptions" && !planForms.has(p.type.form)) {
@@ -249,7 +308,8 @@ export function checkUsageBindings(clause: Clause, bindings: Bindings | undefine
     const own = bindings?.[p.name];
     const b = own ?? p.default;
     if (!b) {
-      issues.push({ kind: "argUnbound", message: `함수조항 ${clause.code} 의 인자 ${p.name} 이(가) 연결되지 않았습니다 — 기본 연결이 없어 넣는 자리에서 구분자 · 상수를 댄다`, at: { ...at, refPath: `arg.${p.name}` } });
+      const how = p.type?.kind === "articleRef" ? "조 참조 인자는 넣는 자리마다 이 문서의 조 · 항 · 호 · 목을 골라 연결한다" : "기본 연결이 없어 넣는 자리에서 구분자 · 상수를 댄다";
+      issues.push({ kind: "argUnbound", message: `함수조항 ${clause.code} 의 인자 ${p.name} 이(가) 연결되지 않았습니다 — ${how}`, at: { ...at, refPath: `arg.${p.name}` } });
       continue;
     }
     // 기본 연결의 잘못은 정의(검사 ①)가 낸다 — 사용처는 제가 댄 연결만 본다(같은 오류를 사용처마다 되풀이하지 않게). 기본 연결 구분자가 사라진 것은 요구 구분자 검사가 잡는다.

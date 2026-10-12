@@ -164,7 +164,7 @@ export function outsideRefsOf(tree: DocumentNode, base: Coordinate = {}): Outsid
 }
 
 /**
- * 함수조항 하나(본문 · 옵션 선택지 본문)의 보통약관 조 참조 — 범위가 없는 `articleRef`(「이 함수조항」 · 「사용처」는 뺀다).
+ * 함수조항 하나(본문 · 옵션 선택지 본문)의 보통약관 조 참조 — 범위가 없는 `articleRef`(「이 함수조항」 · 조 참조 인자는 뺀다).
  * 정의 모양을 깊이 따라가지 않고 노드를 훑는다 — 본문 · 선택지 · 칸 어디에 있든 같다.
  */
 export function clauseGeneralRefs(clause: { code: string; label?: string; body?: unknown; options?: unknown }): OutsideRef[] {

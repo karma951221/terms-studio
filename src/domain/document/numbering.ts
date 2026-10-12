@@ -340,7 +340,7 @@ export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id,
 
 /**
  * 편집기 색인의 대상 → 저장할 참조 대상 (ADR-0072 결정 3) — 조면 `{ articleId }`, 항 · 호 · 목이면 `{ articleId, code }`.
- * 코드가 없는 자리(함수조항 에디터의 「사용처」 위치 줄 `host:2.1` 등 — 번호만 있는 줄)는 그 줄 id 를 조 자리에 싣는다.
+ * 코드가 없는 자리(번호만 있는 줄)는 그 줄 id 를 조 자리에 싣는다.
  */
 export function refTargetOf(t: ReferenceTarget): RefTarget {
   if (t.kind === "article" || t.kind === "section") return { articleId: t.article.id };

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type * as C from "../clause/nodes";
 import type { Block, Inline } from "../clause/nodes";
-import { CLAUSE_ARTICLE_ID, CLAUSE_LINE_ID, HOST_TARGET_PREFIX, clauseBodyToTree, clauseModelNumbers, clausePositions, clauseSpanBy, clauseSpanOf, clauseScopedRefLabel, optionCarrier, optionCodeOf, treeToClauseBody } from "./clauseTree";
+import { CLAUSE_ARTICLE_ID, CLAUSE_LINE_ID, PARAM_TARGET_PREFIX, clauseBodyToTree, clauseModelNumbers, clausePositions, clauseSpanBy, clauseSpanOf, clauseScopedRefLabel, optionCarrier, optionCodeOf, treeToClauseBody } from "./clauseTree";
 import { analyzeBody, structuralIds } from "../clause/body";
 import { expandClause } from "../clause/reference";
 import { applyEdit, generalRefsOf, type EditEnv } from "./edit";
@@ -85,25 +85,32 @@ describe("함수조항 본문 ↔ 편집 트리", () => {
   });
 });
 
-describe("함수조항 조 참조 범위 — 편집 트리 운반 · 표기 (§3.5)", () => {
+describe("함수조항 조 참조 범위 — 편집 트리 운반 · 표기 (§3.5 · ADR-0083)", () => {
   const body: C.Block[] = [
-    { id: "p1", kind: "paragraph", code: "P0100", children: [{ id: "r1", kind: "articleRef", targets: [{ host: "2.1.3" }], connector: "및", scope: "host" }], items: [{ id: "i1", kind: "item", code: "P0300", children: [] }] },
+    { id: "p1", kind: "paragraph", code: "P0100", children: [{ id: "r1", kind: "articleRef", targets: [{ param: "보험금의 지급사유 조" }], scope: "param" }], items: [{ id: "i1", kind: "item", code: "P0300", children: [] }] },
     { id: "p2", kind: "paragraph", code: "P0200", children: [{ id: "r2", kind: "articleRef", targets: [{ code: "P0100" }, { code: "P0300" }], connector: "및", scope: "clause" }] },
   ];
 
-  it("제 항은 `self` + 자리 조 · P코드, 사용처 위치는 `general` + `host:` 대상으로 싸고 되돌리면 같은 본문이다", () => {
+  it("제 항은 `self` + 자리 조 · P코드, 조 참조 인자는 `general` + 대상 하나 `arg:<이름>` 으로 싸고 되돌리면 같은 본문이다", () => {
     const tree = clauseBodyToTree("block", body);
     const [p1, p2] = (tree.children[0] as { children: { children: unknown[] }[] }).children;
-    expect(p1.children[0]).toMatchObject({ scope: "general", targets: [{ articleId: `${HOST_TARGET_PREFIX}2.1.3` }] });
+    expect(p1.children[0]).toEqual({ id: "r1", kind: "articleRef", scope: "general", targets: [{ articleId: `${PARAM_TARGET_PREFIX}보험금의 지급사유 조` }] });
     expect(p2.children[0]).toMatchObject({ scope: "self", targets: [{ articleId: CLAUSE_ARTICLE_ID, code: "P0100" }, { articleId: CLAUSE_ARTICLE_ID, code: "P0300" }] });
     expect(treeToClauseBody("block", tree)).toEqual({ ok: true, value: body });
   });
 
-  it("표기 — 「사용처 제2조 제1항 제3호」 · 「이 함수조항 제1항 및 제1항 제1호」, 보통약관 참조는 undefined", () => {
+  it("인자 운반체에 다른 대상을 섞으면 되돌리지 않는다", () => {
+    const tree = clauseBodyToTree("block", body);
+    const p1 = (tree.children[0] as { children: { children: { targets: unknown[] }[] }[] }).children[0];
+    p1.children[0].targets.push({ articleId: "g-a1" });
+    expect(treeToClauseBody("block", tree).ok).toBe(false);
+  });
+
+  it("표기 — 「⟨보험금의 지급사유 조⟩」 · 「이 함수조항 제1항 및 제1항 제1호」, 보통약관 참조는 undefined", () => {
     const tree = clauseBodyToTree("block", body);
     const positions = clausePositions(tree);
     const [p1, p2] = (tree.children[0] as { children: { children: InlineNode[] }[] }).children;
-    expect(clauseScopedRefLabel(p1.children[0], positions)).toBe("사용처 제2조 제1항 제3호");
+    expect(clauseScopedRefLabel(p1.children[0], positions)).toBe("⟨보험금의 지급사유 조⟩");
     expect(clauseScopedRefLabel(p2.children[0], positions)).toBe("이 함수조항 제1항 및 제1항 제1호");
     expect(clauseScopedRefLabel({ id: "g", kind: "articleRef", targets: [{ articleId: "g-a1" }], connector: "및", scope: "general" }, positions)).toBeUndefined();
   });
@@ -111,7 +118,7 @@ describe("함수조항 조 참조 범위 — 편집 트리 운반 · 표기 (§3
   it("한 참조에 보통약관 조와 사용처 위치를 섞으면 되돌리기를 거부한다", () => {
     const tree = clauseBodyToTree("block", body);
     const p1 = (tree.children[0] as { children: { children: InlineNode[] }[] }).children[0];
-    p1.children[0] = { id: "r1", kind: "articleRef", targets: [{ articleId: "g-a1" }, { articleId: `${HOST_TARGET_PREFIX}1` }], connector: "및", scope: "general" };
+    p1.children[0] = { id: "r1", kind: "articleRef", targets: [{ articleId: "g-a1" }, { articleId: `${PARAM_TARGET_PREFIX}1` }], connector: "및", scope: "general" };
     expect(treeToClauseBody("block", tree).ok).toBe(false);
   });
 });

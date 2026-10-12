@@ -5,7 +5,7 @@
  *   2026-09-12 이후 부착(노출여부)이 없어 「값 자리가 없어서 미부착」인 경우가 사라졌다 (ADR-0037) —
  *   남는 것은 **카탈로그에 없는 구분자**(깨진 참조)뿐이다. `missing` 은 항상 비어 있고 자리만 남겨 둔다.
  * - `validateOptionSelection` · `resolveOptions` : 옵션 선택 검증 · 오버라이드 해소 (기능/함수조항 §3.2 · 기능/상품 §3.6).
- * - `expandClause` : 인라인화 — 옵션 자리를 선택지 본문으로 치환한 노드 배열 · 제 항 / 사용처 조 참조를 사용처 노드 id 로. 조건은 해소하지 않는다.
+ * - `expandClause` : 인라인화 — 옵션 자리를 선택지 본문으로 치환한 노드 배열 · 조 참조 인자 슬롯을 사용처 연결(사용처 조 참조)로. 조건은 해소하지 않는다.
  * - `recheckUsages` : 정의 수정 후 사용처 전부 재검사 — 옵션 · 인자 연결 · 연결한 구분자 (기능/함수조항 §3.2 · §3.4 · ADR-0076).
  */
 import type { Discriminator } from "../catalog/types";
@@ -105,22 +105,17 @@ export function resolveOptions(
 
 // ───────────────────────────── 인라인화 ─────────────────────────────
 
-/** 사용처 위치 경로(`"2.1.3"`) → 사용처 문서의 참조 대상(조 · 조+코드). 못 찾으면 undefined — 조립이 사용처 트리로 만든다. */
-export type HostLocator = (path: string) => { articleId: Id; code?: Code } | undefined;
-
-/** 풀지 못한 사용처 위치의 표식 — 렌더가 대상을 못 찾아 `articleGone` 이 된다(좌표의 refPath 로 보인다). */
-export const UNRESOLVED_HOST_PREFIX = "host:";
-
 /**
  * 옵션 자리를 선택지 본문으로 치환한 새 노드 배열. 모든 노드 id 는 `${refNodeId}/${원노드id}`. 항 · 호 · 목의 P코드는 그대로 둔다.
- * 「사용처」(`scope: "host"`) 위치는 `host` 가 푼 사용처 대상으로 바꾼다(못 풀면 조 id 자리에 `host:<경로>`). 「이 함수조항」(`scope: "clause"`)
- * 대상은 코드 그대로 둔다 — 사용처 조 · 참조 노드 코드와 짝지어 푸는 것은 조립이다(펼친 노드의 열쇠 = 참조 노드 코드 / 안쪽 코드, ADR-0072 결정 3 개정).
- * 범위 표시는 남는다 — 펼친 뒤에는 둘 다 사용처 문서 안의 대상이다(조립은 문서 자기 참조로 렌더한다).
- * 조건은 해소하지 않는다 — 문맥은 사용처(조립) 몫.
+ * 조 참조 인자 슬롯(`scope: "param"`)은 사용처 연결(`bindings`)의 조 참조 — 대상 + 연결어 + 범위(`self` · `general`) — 로 바꾼다(ADR-0083 결정 4).
+ * 펼친 뒤에는 사용처 자신의 조 참조라 문면 자기 참조와 같은 규칙(계산 번호 · 덩어리 표기 · 분기로 사라짐)을 탄다. 연결이 없으면 `argUnbound` 거부.
+ * 「이 함수조항」(`scope: "clause"`) 대상은 코드 그대로 둔다 — 사용처 조 · 참조 노드 코드와 짝지어 푸는 것은 조립이다
+ * (펼친 노드의 열쇠 = 참조 노드 코드 / 안쪽 코드, ADR-0072 결정 3 개정). 조건은 해소하지 않는다 — 문맥은 사용처(조립) 몫.
  */
-export function expandClause(clause: Clause, selection: OptionSelection, refNodeId: Id, host?: HostLocator): Result<ClauseBody> {
+export function expandClause(clause: Clause, selection: OptionSelection, refNodeId: Id, bindings?: Bindings): Result<ClauseBody> {
   const issues = validateOptionSelection(clause, selection);
   if (issues.length > 0) return reject({ reason: "invalid", issues });
+  const unbound: Issue[] = [];
 
   const nid = (id: Id) => `${refNodeId}/${id}`;
   const valueBody = (optionCode: Code): Inline[] => {
@@ -140,9 +135,18 @@ export function expandClause(clause: Clause, selection: OptionSelection, refNode
       case "inlineSwitch":
         // 값별 분기는 칸째 두고(고르는 것은 사용처 문맥) id 만 유일화한다
         return [{ ...n, id: nid(scope + n.id), cases: n.cases.map((k) => ({ ...k, id: nid(scope + k.id), children: inlines(k.children, scope) })) }];
-      case "articleRef":
-        if (n.scope === "host") return [{ ...n, id: nid(scope + n.id), targets: n.targets.map((t) => host?.(t.host ?? "") ?? { articleId: `${UNRESOLVED_HOST_PREFIX}${t.host ?? ""}` }) }];
-        return [{ ...n, id: nid(scope + n.id) }];
+      case "articleRef": {
+        if (n.scope !== "param") return [{ ...n, id: nid(scope + n.id) }];
+        const name = n.targets[0]?.param ?? "";
+        const b = bindings?.[name];
+        if (b?.kind !== "articleRef") {
+          if (!unbound.some((i) => i.at.refPath === `arg.${name}`)) unbound.push({ kind: "argUnbound", message: `함수조항 ${clause.code} 의 조 참조 인자 ${name} 이(가) 연결되지 않았습니다`, at: { refPath: `arg.${name}` } });
+          return [];
+        }
+        // 펼친 노드는 사용처 조 참조 모양(범위 self · general) — 함수조항 노드 타입 밖이라 단언한다
+        const ref = { id: nid(scope + n.id), kind: "articleRef", targets: b.targets.map((t) => ({ ...t })), ...(b.connector !== undefined ? { connector: b.connector } : {}), scope: b.scope };
+        return [ref as unknown as Inline];
+      }
       default:
         return [{ ...n, id: nid(scope + n.id) }];
     }
@@ -179,16 +183,8 @@ export function expandClause(clause: Clause, selection: OptionSelection, refNode
       ? { ...n, id: nid(n.id), cases: n.cases.map((k) => ({ ...k, id: nid(k.id), children: k.children.map(subitemBody) })) }
       : n.kind === "condBlock" ? { ...n, id: nid(n.id), branches: n.branches.map((br) => ({ ...br, id: nid(br.id), children: br.children.map(subitemBody) })) } : subitem(n);
 
-  switch (clause.mode) {
-    case "inline":
-      return ok(inlines(clause.body));
-    case "block":
-      return ok(clause.body.map(block));
-    case "item":
-      return ok(clause.body.map(itemBody));
-    case "subitem":
-      return ok(clause.body.map(subitemBody));
-  }
+  const body: ClauseBody = clause.mode === "inline" ? inlines(clause.body) : clause.mode === "block" ? clause.body.map(block) : clause.mode === "item" ? clause.body.map(itemBody) : clause.body.map(subitemBody);
+  return unbound.length > 0 ? reject({ reason: "invalid", issues: unbound }) : ok(body);
 }
 
 // ───────────────────────────── 사용처 재검사 ─────────────────────────────

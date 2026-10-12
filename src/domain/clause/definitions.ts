@@ -403,12 +403,31 @@ export function clauseNodeIds(clause: Clause): Code[] {
 export function unitWarnings(clause: Clause, usageCount: number): Issue[] {
   const at = { document: "clause" as const, ownerId: clause.code, ownerName: clause.label };
   const warn = (message: string): Issue => ({ kind: "structure", message, at, severity: "warning" });
-  if (clause.body.length === 0) return [];
-  const out: Issue[] = [];
+  const unused = unusedArticleRefParams(clause).map((name): Issue => ({ ...warn(`조 참조 인자 「${name}」를 본문이 쓰지 않습니다 — 사용처마다 연결해야 하니 본문에 넣거나 지운다`), at: { ...at, refPath: `arg.${name}` } }));
+  if (clause.body.length === 0) return unused;
+  const out: Issue[] = [...unused];
   if (clause.mode !== "block") out.push(warn(`「${MODE_WORD[clause.mode]}」 함수조항 — 조 · 여러 항 단위가 아닙니다`));
   else if (paragraphIds(clause.body).size <= 1) out.push(warn("항이 하나뿐입니다 — 조째(그 조의 항 전부)가 아니면 조 · 여러 항 단위가 아닙니다"));
   if (usageCount === 1) out.push(warn("한 곳에서만 씁니다 — 두 곳 이상에서 되풀이될 때 함수조항으로 딴다"));
   return out;
+}
+
+/**
+ * 선언만 하고 본문(옵션 선택지 문구 포함)의 조 참조 슬롯이 쓰지 않는 조 참조 인자 — 경고 (ADR-0083 결정 5 ①).
+ * 저장은 막지 않는다 — 다만 사용처마다 쓰이지도 않는 인자를 연결해야 한다.
+ */
+export function unusedArticleRefParams(clause: Pick<Clause, "body" | "options" | "params">): string[] {
+  const used = new Set<string>();
+  const visit = (n: unknown) => {
+    if (Array.isArray(n)) return n.forEach(visit);
+    if (!n || typeof n !== "object") return;
+    const node = n as { kind?: string; scope?: string; targets?: { param?: unknown }[] };
+    if (node.kind === "articleRef" && node.scope === "param") for (const t of node.targets ?? []) if (typeof t?.param === "string") used.add(t.param);
+    for (const v of Object.values(n)) if (v && typeof v === "object") visit(v);
+  };
+  visit(clause.body);
+  for (const o of clause.options) for (const v of o.values) visit(v.body);
+  return (clause.params ?? []).filter((p) => p.type?.kind === "articleRef" && !used.has(p.name)).map((p) => p.name);
 }
 
 /** 항 유형 본문의 항 id (조건 블록 안 포함). */

@@ -186,6 +186,13 @@ describe("함수조항 S3 — 수정 시 기존 사용처 재검사", () => {
     { documentId: "doc-2", ownerKind: "coverage", ownerId: "cov-상해사망", ownerName: "일반상해사망", selection: { O01: "V01" } },
     { documentId: "doc-3", ownerKind: "general", ownerId: "gen-1", ownerName: "보통약관 A", selection: { O01: "V02" } },
   ];
+  it("조 참조 인자를 더하면 연결이 없는 사용처가 · 지우거나 이름을 바꾸면 남은 연결이 재검사 목록에 오른다 (ADR-0083 결정 5)", () => {
+    const added: BlockClause = { ...준용규정, params: [{ name: "지급사유 조", type: { kind: "articleRef" } }] };
+    expect(recheckUsages(added, usages, lookup).map((e) => e.issues.map((i) => i.kind))).toEqual([["argUnbound"], ["argUnbound"], ["argUnbound"]]);
+    const bound: Usage[] = [{ ...usages[0], bindings: { "옛 이름": { kind: "articleRef", targets: [{ articleId: "a1" }], scope: "self" } } }];
+    expect(recheckUsages(added, bound, lookup)[0].issues.map((i) => i.kind)).toEqual(["argUnbound", "brokenRef"]);
+  });
+
   it("요구 구분자가 삭제된 코드를 가리키면 모든 사용처가 목록에 오른다", () => {
     const broken: BlockClause = { ...준용규정, params: [{ name: "기준", type: { kind: "string" }, default: { kind: "discriminator", code: "D0099" } }], required: { discriminators: ["D0099"], attributes: [] } };
     const entries = recheckUsages(broken, usages, lookup);
@@ -234,32 +241,34 @@ describe("함수조항 S3 — 수정 시 기존 사용처 재검사", () => {
   });
 });
 
-describe("expandClause — 제 항 · 사용처 위치 조 참조 (§3.5 · ADR-0072)", () => {
+describe("expandClause — 제 항 · 조 참조 인자 (§3.5 · ADR-0072 · ADR-0083)", () => {
   const 소멸: BlockClause = {
     code: "C0009",
     label: "특별약관의 소멸",
     mode: "block",
     options: [],
+    params: [{ name: "지급사유 조", type: { kind: "articleRef" } }],
     required: { discriminators: [], attributes: [] },
     body: [
-      { id: "p1", kind: "paragraph", code: "P0100", children: [{ id: "r1", kind: "articleRef", targets: [{ host: "1" }], connector: "및", scope: "host" }] },
+      { id: "p1", kind: "paragraph", code: "P0100", children: [{ id: "r1", kind: "articleRef", targets: [{ param: "지급사유 조" }], scope: "param" }] },
       { id: "p2", kind: "paragraph", code: "P0200", children: [{ id: "r2", kind: "articleRef", targets: [{ code: "P0100" }], connector: "및", scope: "clause" }] },
       { id: "p3", kind: "paragraph", code: "P0300", children: [{ id: "r3", kind: "articleRef", targets: [{ articleId: "g-a5" }], connector: "및" }] },
     ],
   };
 
-  it("제 항 대상은 코드 그대로(사용처 조 · 참조 노드 코드와 짝짓는 것은 조립) · 사용처 위치는 사용처가 푼 대상 · 보통약관 대상은 그대로 · 항의 P코드는 남는다", () => {
-    const body = unwrap(expandClause(소멸, {}, "ref", (path) => (path === "1" ? { articleId: "s-a1" } : undefined))) as Block[];
+  it("제 항 대상은 코드 그대로 · 인자 슬롯은 사용처 연결(대상 + 연결어 + 범위)로 바뀐다 · 보통약관 대상은 그대로 · 항의 P코드는 남는다", () => {
+    const bindings = { "지급사유 조": { kind: "articleRef" as const, targets: [{ articleId: "s-a1" }, { articleId: "s-a2", code: "P0100" }], connector: "또는" as const, scope: "self" as const } };
+    const body = unwrap(expandClause(소멸, {}, "ref", bindings)) as Block[];
     const refOf = (b: Block) => (b.kind === "paragraph" ? b.children[0] : undefined);
-    expect(refOf(body[0])).toMatchObject({ id: "ref/r1", scope: "host", targets: [{ articleId: "s-a1" }] });
+    expect(refOf(body[0])).toEqual({ id: "ref/r1", kind: "articleRef", targets: [{ articleId: "s-a1" }, { articleId: "s-a2", code: "P0100" }], connector: "또는", scope: "self" });
     expect(refOf(body[1])).toMatchObject({ id: "ref/r2", scope: "clause", targets: [{ code: "P0100" }] });
     expect(body[0]).toMatchObject({ id: "ref/p1", code: "P0100" });
     expect(refOf(body[2])).toEqual({ id: "ref/r3", kind: "articleRef", targets: [{ articleId: "g-a5" }], connector: "및" });
   });
 
-  it("사용처가 위치를 못 풀면 조 자리에 `host:<경로>` — 조립 렌더가 사라진 대상(articleGone)으로 알린다", () => {
-    const body = unwrap(expandClause(소멸, {}, "ref")) as Block[];
-    expect(body[0].kind === "paragraph" && body[0].children[0]).toMatchObject({ targets: [{ articleId: "host:1" }] });
+  it("조 참조 인자가 연결되지 않았으면 펼칠 수 없다 — argUnbound", () => {
+    const r = expandClause(소멸, {}, "ref");
+    expect(r.ok ? [] : r.rejection.reason === "invalid" ? r.rejection.issues.map((i) => [i.kind, i.at.refPath]) : []).toEqual([["argUnbound", "arg.지급사유 조"]]);
   });
 });
 

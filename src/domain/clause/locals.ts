@@ -15,7 +15,7 @@ import { checkTypes, evaluate, extractRefs, parse, refPath, RESERVED_WORDS } fro
 import type { EnumInfo, EvalContext, Expr, ExprType, Literal, Ref, TypeResolver } from "../expression";
 import { findMasterField, formsOfLevel, MASTER, type MasterTree } from "../master";
 import type { Code, Coordinate, Issue, Value } from "../types";
-import type { Binding, Bindings, ParamDef } from "./params";
+import { articleRefReadMessage, valueParamTypes, type Binding, type Bindings, type ParamDef } from "./params";
 
 // ───────────────────────────── 모델 ─────────────────────────────
 
@@ -90,7 +90,8 @@ export function checkLocals(locals: readonly LocalDef[], params: readonly ParamD
   const types = new Map<string, ExprType>();
   const failed = new Set<string>();
   const earlier = new Set<string>();
-  const declaredParams = new Map(params.map((p) => [p.name, p.type as ExprType] as const));
+  const declaredParams = valueParamTypes(params);
+  const articleRefParams = new Set(params.filter((p) => p.type?.kind === "articleRef").map((p) => p.name));
   const all = new Set(locals.map((l) => (typeof l.name === "string" ? l.name : "")));
   const base = opts.coordinate ?? {};
   for (const l of locals) {
@@ -137,6 +138,11 @@ export function checkLocals(locals: readonly LocalDef[], params: readonly ParamD
           issues.push({ kind: "structure", message: `내부 변수 ${name} 이(가) ${path} 를 읽습니다 — 앞에 선언한 내부 변수만 읽는다(${why} · 순환 불가)`, at: here });
           bad = true;
         } else if (failed.has(ref.name)) skipTypes = true;
+      }
+      if (ref.kind === "param" && articleRefParams.has(ref.name)) {
+        issues.push({ kind: "typeMismatch", message: `내부 변수 ${name} — ${articleRefReadMessage(ref.name)}`, at: here });
+        bad = true;
+        continue;
       }
       if (ref.kind === "param" && !declaredParams.has(ref.name) && !opts.resolveType) {
         issues.push({ kind: "brokenRef", message: `내부 변수 ${name} — 선언되지 않은 인자입니다: ${path}`, at: here });
@@ -252,6 +258,7 @@ export function localScope(params: readonly ParamDef[], locals: readonly LocalDe
     const b = bound[ref.name];
     if (!p) return fail("brokenRef", `선언되지 않은 인자입니다: ${ref.name}`, ref);
     if (!b) return fail("argUnbound", `인자 ${ref.name} 이(가) 연결되지 않았습니다`, ref);
+    if (p.type.kind === "articleRef" || b.kind === "articleRef") return fail("typeMismatch", articleRefReadMessage(ref.name), ref);
     switch (b.kind) {
       case "discriminator":
         return fromEval({ kind: "ref", ref: { kind: "discriminator", code: b.code } }, p.type);
