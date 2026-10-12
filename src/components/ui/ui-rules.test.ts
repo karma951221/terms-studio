@@ -21,19 +21,24 @@ const EXPECTED = [
 const FLOATING = ["dialog.tsx", "dropdown-menu.tsx", "popover.tsx", "select.tsx", "tooltip.tsx"];
 
 describe("NativeSelect — cn(twMerge) 를 거쳐도 바탕색이 남는다", () => {
-  it("bg-card 가 class 에 있다 (bg-[right_8px_center] 를 바탕색으로 읽어 지우던 버그)", () => {
+  // 이 파일도 Tailwind 가 훑는다(@source "../") — 테스트 이름 · 문자열에 온전한 임의값 클래스를 쓰면 빌드 CSS 에 실린다.
+  // 그래서 클래스 이름은 조각을 이어 만든다.
+  const URL_PREFIX = "bg-" + "[url(";
+
+  it("bg-card 가 class 에 있다 (위치 임의값을 바탕색으로 읽어 지우던 버그)", () => {
     const html = renderToStaticMarkup(createElement(NativeSelect));
     const cls = html.match(/class="([^"]*)"/)?.[1]?.split(/\s+/) ?? [];
     expect(cls).toContain("bg-card");
     expect(cls).toContain("bg-no-repeat");
   });
 
-  it("화살표 bg-[url(...)] 은 공백 없는 한 토큰이다 — 공백이 있으면 class 가 쪼개져 Tailwind · twMerge 가 엉뚱한 유틸리티로 읽는다", () => {
+  it("화살표 배경 이미지 클래스는 공백 · 따옴표 · 역슬래시 없는 한 토큰이다 — 공백은 class 를 쪼개고, 소스의 \\\" 는 Tailwind 가 그대로 읽어 깨진 url 을 낸다", () => {
     const html = renderToStaticMarkup(createElement(NativeSelect));
     const cls = html.match(/class="([^"]*)"/)?.[1]?.split(/\s+/) ?? [];
-    const url = cls.filter((c) => c.startsWith("bg-[url("));
+    const url = cls.filter((c) => c.startsWith(URL_PREFIX));
     expect(url).toHaveLength(1);
     expect(url[0]).toMatch(/\)\]$/);
+    expect(url[0]).not.toMatch(/&quot;|&#x27;|["'\\]/);
   });
 });
 
