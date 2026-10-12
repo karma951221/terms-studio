@@ -1797,17 +1797,17 @@ input:where(:not([data-slot])).ts-option-title {
   }
 }
 
-.ts-infotip,
+/* .ts-infotip 은 shadcn Tooltip 트리거 — 크기 · 색은 유틸리티가 그리고 여기는 자리(간격)만 */
+.ts-infotip {
+  margin-left: 3px;
+  vertical-align: -2px;
+}
+
 .ts-native-tip {
   display: inline-flex;
   margin-left: 3px;
   vertical-align: -2px;
   color: var(--ts-ink-3);
-}
-
-.ts-infotip .ts-icon {
-  width: 12px;
-  height: 12px;
 }
 
 .ts-detail-head > .ts-iconbtn:last-child {
@@ -4482,59 +4482,6 @@ button:where(:not([data-slot])).ts-ref-fold:hover {
   cursor: pointer;
   font-size: 13px;
   color: var(--ts-ink-2);
-}
-
-.ts-toggle > input:where(:not([data-slot])) {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-  margin: 0;
-}
-
-.ts-toggle-track {
-  position: relative;
-  width: 30px;
-  height: 16px;
-  border-radius: 8px;
-  background: var(--ts-rule-strong);
-  transition: background 120ms;
-  flex: 0 0 auto;
-}
-
-.ts-toggle-track::after {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--ts-surface);
-  transition: transform 120ms;
-}
-
-.ts-toggle > input:where(:not([data-slot])):checked + .ts-toggle-track {
-  background: var(--ts-mark);
-}
-
-.ts-toggle > input:where(:not([data-slot])):checked + .ts-toggle-track::after {
-  transform: translateX(14px);
-}
-
-.ts-toggle > input:where(:not([data-slot])):focus-visible + .ts-toggle-track {
-  outline: 2px solid var(--ts-mark);
-  outline-offset: 2px;
-}
-
-.ts-toggle > input:where(:not([data-slot])):checked ~ .ts-toggle-label {
-  font-weight: 600;
-  color: var(--ts-ink);
-}
-
-.ts-toggle > input:where(:not([data-slot])):disabled ~ * {
-  opacity: 0.6;
-  cursor: default;
 }
 
 /* 목록의 값 칩 — 앞 몇 개만 칩으로, 넘치면 「+N」. 칸 폭을 넘는 칩은 잘린다 (현행 약관시스템 조회 화면 준용, 2026-09-12) */

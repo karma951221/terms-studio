@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { coordinateHref } from "./coordinateHref";
 import { formatCoordinate } from "@/domain/coordinate";
 import type { Impact } from "@/domain/types";
@@ -55,7 +56,7 @@ export function Confirm({
 }) {
   const resolvedTitle = title ?? (targetLabel ? `${targetLabel} ${eul(targetLabel)} 삭제한다` : `${actionLabel ?? "이 작업"}${eun(actionLabel ?? "이 작업")} 되돌릴 수 없다`);
   return (
-    <section className="ts-confirm">
+    <section className="ts-confirm rounded-lg border border-border bg-card p-4">
       <p className="ts-confirm-title">{resolvedTitle}</p>
       <ul className="ts-confirm-loss">
         {impact.valueRowsLost > 0 && <li>사람이 입력한 값 {impact.valueRowsLost}건이 사라진다</li>}
@@ -92,13 +93,15 @@ export function Confirm({
           </li>
         )}
       </ul>
-      <div className="ts-confirm-actions">
+      <div className="ts-confirm-actions flex items-center gap-2">
         <form action={action}>
-          <button type="submit" className="danger">
+          <Button type="submit" variant="destructive">
             {actionLabel ?? "실행"}
-          </button>
+          </Button>
         </form>
-        <a href={cancelHref ?? "?"}>취소</a>
+        <Button asChild variant="ghost">
+          <a href={cancelHref ?? "?"}>취소</a>
+        </Button>
       </div>
     </section>
   );

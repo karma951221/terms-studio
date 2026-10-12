@@ -87,7 +87,7 @@ describe("담보속성 상세 — 유효값 표", () => {
   it("읽기: 코드 · 값 이름 · 상품담보명 표기(ⓘ) — 순서 · 사용 수 없음 · ⊕ · ⊖ 없음", () => {
     const html = detailHtml("read");
     expect(headers(html)).toEqual(["코드", "값 이름", "상품담보명 표기"]);
-    expect(html).toContain('title="상품담보명에 이 값 대신 들어갈 말 — 비우면 붙지 않는다"');
+    expect(html).toContain('aria-label="상품담보명에 이 값 대신 들어갈 말 — 비우면 붙지 않는다"');
     expect(html).not.toMatch(/사용 수|순서|명명/);
     expect(html).not.toMatch(/행 추가|행 삭제|순서 옮기기/);
     expect(bodyRows(html)).toEqual([

@@ -27,7 +27,7 @@ describe("옵션 목록 (기능/함수조항 §4.3)", () => {
 
   it("단 설명은 제목 옆 ⓘ — 제목 아래 안내 줄이 없다", () => {
     const html = renderToStaticMarkup(<OptionsPane options={[option]} editing used={new Set()} onChange={() => undefined} newCode={() => "new:1"} />);
-    expect(html).toMatch(/<h2 class="ts-clause-sec">옵션<span class="ts-infotip"[^>]*툴바 「옵션 자리 ▾」/);
+    expect(html).toMatch(/<h2 class="ts-clause-sec">옵션<span class="ts-infotip[^"]*"[^>]*툴바 「옵션 자리 ▾」/);
     expect(html).not.toContain("ts-clause-sec-note");
   });
 

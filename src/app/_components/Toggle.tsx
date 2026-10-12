@@ -36,20 +36,21 @@ export function Toggle({
   const hint = current ? hintOn : hintOff;
   return (
     <div className="ts-radio-group">
-      <label className="ts-toggle">
+      <label className="ts-toggle inline-flex cursor-pointer items-center gap-2">
         <input
           type="checkbox"
           role="switch"
+          data-slot="switch-native"
           name={name}
           checked={current}
           disabled={disabled}
           aria-checked={current}
+          className="relative h-[18px] w-8 shrink-0 cursor-pointer appearance-none rounded-full border border-input bg-muted outline-none transition-colors duration-150 before:absolute before:top-[2px] before:left-[2px] before:size-3 before:rounded-full before:bg-card before:transition-transform before:duration-150 checked:border-mark checked:bg-mark checked:before:translate-x-[14px] focus-visible:ring-[3px] focus-visible:ring-ring/15 disabled:cursor-not-allowed disabled:opacity-60"
           onChange={(event) => {
             setInner(event.target.checked);
             onChange?.(event.target.checked);
           }}
         />
-        <span className="ts-toggle-track" aria-hidden="true" />
         <span className="ts-toggle-label">{label}</span>
       </label>
       {hint ? <p className="ts-form-hint">{hint}</p> : null}
