@@ -1,0 +1,66 @@
+/* ════════════════════════════════════════════════════════════════════════════
+ * shadcn 위젯 계층 — ADR-0085.
+ *  - Tailwind 는 preflight 없이 theme · utilities 만. 레거시 화면(globals.css)은 그대로 그려진다
+ *  - 색 정본은 globals.css 의 --ts-* 다. 여기서는 이름만 잇는다 → 다크 모드도 따라온다
+ *  - globals.css 는 레이어 밖이라 여기 utilities 를 늘 이긴다. 요소 선택자는 :not([data-slot]) 로 가둬 둔다
+ * ════════════════════════════════════════════════════════════════════════════ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@import "tw-animate-css";
+
+@source "../";
+
+@theme inline {
+  --color-background: var(--ts-paper);
+  --color-foreground: var(--ts-ink);
+  --color-card: var(--ts-surface);
+  --color-card-foreground: var(--ts-ink);
+  --color-popover: var(--ts-surface);
+  --color-popover-foreground: var(--ts-ink);
+  --color-primary: var(--ts-ink);
+  --color-primary-foreground: var(--ts-surface);
+  --color-secondary: var(--ts-surface-2);
+  --color-secondary-foreground: var(--ts-ink);
+  --color-muted: var(--ts-surface-2);
+  --color-muted-foreground: var(--ts-ink-3);
+  --color-accent: var(--ts-surface-2);
+  --color-accent-foreground: var(--ts-ink);
+  --color-destructive: var(--ts-error);
+  --color-destructive-bg: var(--ts-error-bg);
+  --color-mark: var(--ts-mark);
+  --color-mark-bg: var(--ts-mark-bg);
+  --color-border: var(--ts-rule);
+  --color-input: var(--ts-rule-strong);
+  --color-ring: var(--ts-ink-2);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  --font-sans: var(--sans);
+  --font-mono: var(--mono);
+
+  /* 떠 있는 요소(메뉴 · 대화상자 · 팝오버 · 툴팁 · 선택 목록)만 — 디자인원칙 §5 */
+  --shadow-float: 0 4px 16px rgb(26 24 21 / 0.08), 0 1px 3px rgb(26 24 21 / 0.06);
+}
+
+/* preflight 대신 — shadcn 위젯(data-slot) 범위에서만 브라우저 기본 모양을 지운다 */
+@layer base {
+  [data-slot],
+  [data-slot]::before,
+  [data-slot]::after {
+    box-sizing: border-box;
+    border: 0 solid;
+  }
+
+  button[data-slot],
+  input[data-slot],
+  textarea[data-slot],
+  select[data-slot] {
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    background: transparent;
+  }
+}
