@@ -402,7 +402,7 @@
             {
               "id": "s1-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0042",
+              "clauseCode": "C0065",
               "options": {
                 "O01": "V01",
                 "O02": "V01"
@@ -431,7 +431,7 @@
             {
               "id": "s1-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0045",
+              "clauseCode": "C0068",
               "options": {},
               "code": "P0100"
             }
@@ -572,7 +572,7 @@
             {
               "id": "s2-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0037",
+              "clauseCode": "C0060",
               "options": {
                 "O01": "V01"
               },
@@ -600,7 +600,7 @@
             {
               "id": "s2-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0043",
+              "clauseCode": "C0066",
               "options": {
                 "O01": "V01"
               },
@@ -629,7 +629,7 @@
             {
               "id": "s2-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0045",
+              "clauseCode": "C0068",
               "options": {},
               "code": "P0100"
             }
@@ -655,7 +655,7 @@
             {
               "id": "s3-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0033",
+              "clauseCode": "C0056",
               "options": {},
               "code": "P0100"
             }
@@ -669,7 +669,7 @@
             {
               "id": "s3-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0035",
+              "clauseCode": "C0058",
               "options": {},
               "bindings": {
                 "보험금의 지급사유 조": {
@@ -774,7 +774,7 @@
             {
               "id": "s3-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0040",
+              "clauseCode": "C0063",
               "options": {},
               "code": "P0100"
             }
@@ -788,7 +788,7 @@
             {
               "id": "s3-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0045",
+              "clauseCode": "C0068",
               "options": {},
               "code": "P0100"
             }
@@ -929,7 +929,7 @@
             {
               "id": "s4-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0037",
+              "clauseCode": "C0060",
               "options": {
                 "O01": "V02"
               },
@@ -957,7 +957,7 @@
             {
               "id": "s4-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0043",
+              "clauseCode": "C0066",
               "options": {
                 "O01": "V02"
               },
@@ -986,7 +986,7 @@
             {
               "id": "s4-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0045",
+              "clauseCode": "C0068",
               "options": {},
               "code": "P0100"
             }
@@ -1012,7 +1012,7 @@
             {
               "id": "s5-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0034",
+              "clauseCode": "C0057",
               "options": {},
               "code": "P0100"
             }
@@ -1026,7 +1026,7 @@
             {
               "id": "s5-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0036",
+              "clauseCode": "C0059",
               "options": {},
               "bindings": {
                 "보험금의 지급사유 조": {
@@ -1295,7 +1295,7 @@
             {
               "id": "s5-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0040",
+              "clauseCode": "C0063",
               "options": {},
               "code": "P0100"
             }
@@ -1309,7 +1309,7 @@
             {
               "id": "s5-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0045",
+              "clauseCode": "C0068",
               "options": {},
               "code": "P0100"
             }
@@ -1720,7 +1720,7 @@
             {
               "id": "s6-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0041",
+              "clauseCode": "C0064",
               "options": {
                 "O01": "V01"
               },
@@ -1748,7 +1748,7 @@
             {
               "id": "s6-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0045",
+              "clauseCode": "C0068",
               "options": {},
               "code": "P0100"
             }
@@ -1980,36 +1980,16 @@
                   "text": "에서「연간」이라 함은 "
                 },
                 {
-                  "id": "s7-a1-c1",
-                  "kind": "inlineCond",
-                  "branches": [
-                    {
-                      "id": "s7-a1-c1-t",
-                      "when": "exist(attr.A0001) and attr.A0001 = '2'",
-                      "children": [
-                        {
-                          "id": "s7-a1-c1-t-x1",
-                          "kind": "text",
-                          "text": "최초계약일부터"
-                        }
-                      ]
-                    },
-                    {
-                      "id": "s7-a1-c1-e",
-                      "children": [
-                        {
-                          "id": "s7-a1-c1-e-x1",
-                          "kind": "text",
-                          "text": "계약일부터"
-                        }
-                      ]
-                    }
-                  ]
+                  "id": "s7-a1-k1",
+                  "kind": "clauseInlineRef",
+                  "clauseCode": "C0054",
+                  "options": {},
+                  "preset": "S01"
                 },
                 {
                   "id": "s7-a1-p2-x3",
                   "kind": "text",
-                  "text": " 매1년 단위로 도래하는 계약해당일 전일까지의 기간을 말합니다."
+                  "text": "부터 매1년 단위로 도래하는 계약해당일 전일까지의 기간을 말합니다."
                 }
               ],
               "code": "P0300"
@@ -2380,31 +2360,11 @@
                   "cells": [
                     [
                       {
-                        "id": "s7-a1-c2",
-                        "kind": "inlineCond",
-                        "branches": [
-                          {
-                            "id": "s7-a1-c2-t",
-                            "when": "exist(attr.A0001) and attr.A0001 = '2'",
-                            "children": [
-                              {
-                                "id": "s7-a1-c2-t-x1",
-                                "kind": "text",
-                                "text": "최초계약일"
-                              }
-                            ]
-                          },
-                          {
-                            "id": "s7-a1-c2-e",
-                            "children": [
-                              {
-                                "id": "s7-a1-c2-e-x1",
-                                "kind": "text",
-                                "text": "계약일"
-                              }
-                            ]
-                          }
-                        ]
+                        "id": "s7-a1-k2",
+                        "kind": "clauseInlineRef",
+                        "clauseCode": "C0054",
+                        "options": {},
+                        "preset": "S01"
                       }
                     ],
                     [
@@ -2747,31 +2707,11 @@
                   "cells": [
                     [
                       {
-                        "id": "s7-a1-c3",
-                        "kind": "inlineCond",
-                        "branches": [
-                          {
-                            "id": "s7-a1-c3-t",
-                            "when": "exist(attr.A0001) and attr.A0001 = '2'",
-                            "children": [
-                              {
-                                "id": "s7-a1-c3-t-x1",
-                                "kind": "text",
-                                "text": "최초계약일"
-                              }
-                            ]
-                          },
-                          {
-                            "id": "s7-a1-c3-e",
-                            "children": [
-                              {
-                                "id": "s7-a1-c3-e-x1",
-                                "kind": "text",
-                                "text": "계약일"
-                              }
-                            ]
-                          }
-                        ]
+                        "id": "s7-a1-k3",
+                        "kind": "clauseInlineRef",
+                        "clauseCode": "C0054",
+                        "options": {},
+                        "preset": "S01"
                       }
                     ],
                     [
@@ -3531,7 +3471,7 @@
             {
               "id": "s7-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0040",
+              "clauseCode": "C0063",
               "options": {},
               "code": "P0100"
             }
@@ -3545,7 +3485,7 @@
             {
               "id": "s7-a8-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0045",
+              "clauseCode": "C0068",
               "options": {},
               "code": "P0100"
             }
@@ -3571,7 +3511,7 @@
             {
               "id": "s9-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0032",
+              "clauseCode": "C0055",
               "options": {},
               "code": "P0100"
             },
@@ -4059,7 +3999,7 @@
             {
               "id": "s9-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0039",
+              "clauseCode": "C0062",
               "options": {
                 "O01": "V01",
                 "O02": "V01"
@@ -4076,7 +4016,7 @@
             {
               "id": "s9-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0044",
+              "clauseCode": "C0067",
               "options": {},
               "bindings": {
                 "보험금의 지급사유 조 제1항 제3호": {
@@ -4103,7 +4043,7 @@
             {
               "id": "s9-a8-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0045",
+              "clauseCode": "C0068",
               "options": {},
               "code": "P0100"
             }
@@ -4323,7 +4263,7 @@
             {
               "id": "m1-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0038",
+              "clauseCode": "C0061",
               "options": {
                 "O01": "V01",
                 "O02": "V01",
@@ -4353,7 +4293,7 @@
             {
               "id": "m1-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0041",
+              "clauseCode": "C0064",
               "options": {
                 "O01": "V02"
               },
@@ -4381,7 +4321,7 @@
             {
               "id": "m1-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0046",
+              "clauseCode": "C0069",
               "options": {},
               "code": "P0100"
             }
@@ -5968,7 +5908,7 @@
             {
               "id": "m2-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0040",
+              "clauseCode": "C0063",
               "options": {},
               "code": "P0100"
             }
@@ -5982,7 +5922,7 @@
             {
               "id": "m2-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0046",
+              "clauseCode": "C0069",
               "options": {},
               "code": "P0100"
             }
@@ -6008,7 +5948,7 @@
             {
               "id": "m3-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0033",
+              "clauseCode": "C0056",
               "options": {},
               "code": "P0100"
             }
@@ -6022,7 +5962,7 @@
             {
               "id": "m3-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0035",
+              "clauseCode": "C0058",
               "options": {},
               "bindings": {
                 "보험금의 지급사유 조": {
@@ -6127,7 +6067,7 @@
             {
               "id": "m3-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0040",
+              "clauseCode": "C0063",
               "options": {},
               "code": "P0100"
             }
@@ -6141,7 +6081,7 @@
             {
               "id": "m3-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0046",
+              "clauseCode": "C0069",
               "options": {},
               "code": "P0100"
             }
@@ -6167,7 +6107,7 @@
             {
               "id": "m4-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0032",
+              "clauseCode": "C0055",
               "options": {},
               "code": "P0100"
             },
@@ -6655,7 +6595,7 @@
             {
               "id": "m4-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0039",
+              "clauseCode": "C0062",
               "options": {
                 "O01": "V02",
                 "O02": "V02"
@@ -6672,7 +6612,7 @@
             {
               "id": "m4-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0044",
+              "clauseCode": "C0067",
               "options": {},
               "bindings": {
                 "보험금의 지급사유 조 제1항 제3호": {
@@ -6699,7 +6639,7 @@
             {
               "id": "m4-a8-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0046",
+              "clauseCode": "C0069",
               "options": {},
               "code": "P0100"
             }
@@ -6725,7 +6665,7 @@
             {
               "id": "m5-a1-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0034",
+              "clauseCode": "C0057",
               "options": {},
               "code": "P0100"
             }
@@ -6739,7 +6679,7 @@
             {
               "id": "m5-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0036",
+              "clauseCode": "C0059",
               "options": {},
               "bindings": {
                 "보험금의 지급사유 조": {
@@ -7008,7 +6948,7 @@
             {
               "id": "m5-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0040",
+              "clauseCode": "C0063",
               "options": {},
               "code": "P0100"
             }
@@ -7022,7 +6962,7 @@
             {
               "id": "m5-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0046",
+              "clauseCode": "C0069",
               "options": {},
               "code": "P0100"
             }
@@ -7319,7 +7259,7 @@
             {
               "id": "m6-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0042",
+              "clauseCode": "C0065",
               "options": {
                 "O01": "V02",
                 "O02": "V02"
@@ -7675,7 +7615,7 @@
             {
               "id": "m7-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0038",
+              "clauseCode": "C0061",
               "options": {
                 "O01": "V02",
                 "O02": "V02",
@@ -7705,7 +7645,7 @@
             {
               "id": "m7-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0041",
+              "clauseCode": "C0064",
               "options": {
                 "O01": "V02"
               },
@@ -7733,7 +7673,7 @@
             {
               "id": "m7-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0046",
+              "clauseCode": "C0069",
               "options": {},
               "code": "P0100"
             }
@@ -9791,7 +9731,7 @@
             {
               "id": "m8-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0040",
+              "clauseCode": "C0063",
               "options": {},
               "code": "P0100"
             }
@@ -9805,7 +9745,7 @@
             {
               "id": "m8-a7-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0046",
+              "clauseCode": "C0069",
               "options": {},
               "code": "P0100"
             }

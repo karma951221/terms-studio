@@ -8,10 +8,11 @@ import { ALL_GENERAL_ANCESTORS, BASE_BOX_CODES, BASE_CLAUSE_CODES, SEED } from "
  * 모델명세 §4 · 메리츠_모델명세 §4.
  * 함수조항은 두 곳 이상이 되풀이하는 조 · 여러 항이다(2026-09-28) — 조 참조는 범위 셋: 보통약관 · 이 함수조항(「제1항에 따라」) · 인자(「⟨보험금의 지급사유 조⟩에서 정한」 — 조 참조 인자, 사용처가 연결한다 · ADR-0083).
  * 조 참조 · 별표 참조의 대상이 있어야 하므로 보통약관 · 별표(바탕 DB) 뒤, 담보약관 템플릿 앞 (명세 §1 ⑦).
- * 보통약관이 쓰는 박스(BX000001~) · 함수조항(C0001~C0019 — 조째)은 바탕 DB 가 보통약관과 함께 시드로 넣었다 — 그 뒤 코드부터 친다.
+ * 보통약관이 쓰는 박스(BX000001~) · 함수조항(C0001~C0053 — 조째 · 납입면제 사유별 · 역할)은 바탕 DB 가 보통약관과 함께 시드로 넣었다 — 그 뒤 코드부터 친다.
+ * 문구 함수조항 「기준일 문구」(ADR-0086 결정 6)는 인자 갱신 · 문장 안 조건 · 프리셋 ‘담보’까지 친다.
  * 원문의 박스는 모두 정적 마스터 박스다(최종 결정 9) — 박스 화면 「새 박스」에서 이름 · 제목 · 줄(한 줄씩)을 친다. 담보약관 템플릿(④)이 놓으므로 그보다 먼저.
  * 준용규정(알파Plus)의 「갱신형이면」 조건은 조건 머리 줄의 담보속성 줄(있음 AND = 갱신형)로 친다 (2026-09-28 — 기능/문면 §3.3).
- * 준용규정(메리츠)의 조 참조는 메리츠 보통약관 조를 고른다 — 고르기 트리는 보통약관 두 벌을 다 보인다.
+ * 준용규정(통합간편)의 조 참조는 메리츠 보통약관 조를 고른다 — 고르기 트리는 보통약관 두 벌을 다 보인다.
  */
 
 const ancestors = ALL_GENERAL_ANCESTORS;
@@ -45,6 +46,7 @@ test.describe.serial("실물 재현(화면) ③ 함수조항", () => {
       if (spec.params && spec.params.length > 0) await ev.action("실물화면#3.3", `인자 ${spec.params.map((p) => p.name).join(" · ")} — 기본 연결 ${spec.params.map((p) => p.default?.code ?? (p.type.kind === "articleRef" ? "없음(조 참조)" : "없음")).join(" · ")}`, () => driver.params(spec.params!));
       if (spec.options.length > 0) await ev.action("실물화면#3.3", `옵션 ${spec.options.map((o) => o.label).join(" · ")}`, () => driver.options(spec.options));
       await ev.action("실물화면#3.4", "본문을 친다", () => driver.body(spec.mode, spec.body));
+      if (spec.presets && spec.presets.length > 0) await ev.action("실물화면#3.4", `프리셋 ${spec.presets.map((p) => p.name).join(" · ")}`, () => driver.presets(spec.presets!, spec.options));
       await ev.action("실물화면#3.5", `저장 한 번 — ${spec.code} 로 만들어진다`, () => driver.save(spec.code));
     });
   }

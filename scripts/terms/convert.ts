@@ -32,7 +32,8 @@ import type { Discriminator } from "../../src/domain/catalog/types";
 import { applyClauseUse, articleRefParamsOf, clauseFromSource, inlineBody, optionCode, parameterize, placeOptions, reId, valueCode, type ClauseRecord } from "./clauses";
 import { APPENDICES, CLAUSES, PRODUCTS, SEED_DIR, type ClauseUse, type ProductTerms, type SlotOverlay, type SpecialSpec } from "./config";
 import { parseTerms, type ParsedArticle, type ParsedDoc } from "./parse";
-import { applyArticleConds, applyInlineConds, articlesOf } from "./overlay";
+import { applyArticleConds, applyInlineClauses, applyInlineConds, articlesOf } from "./overlay";
+import { basisDateClause } from "./renewal";
 import { inlinesFromText, leftoverReferences, type ArticleEntry, type ArticleIndex, type RefEnv } from "./refs";
 import { applyAlphaWaiver, applyMeritzWaiver, guardAlphaApplication, guardWaiverMentions, resolveWaiverCodes } from "./waiver";
 
@@ -339,7 +340,8 @@ function main(): void {
   const boxes = orderBoxes(planBoxes(sites));
   // 박스 자리 → 박스 참조 (같은 목록 자리)
   for (const plan of boxes) for (const site of plan.sites) replaceBox(site, plan.record.code);
-  const configured = CLAUSES.map((c) => ({ key: c.key, record: buildClause(c, built, products, report) }));
+  // 「기준일 문구」(ADR-0086 결정 6) — 담보약관만 쓰는 문구 함수조항이라 담보약관 함수조항 맨 앞 코드
+  const configured = [basisDateClause(), ...CLAUSES.map((c) => ({ key: c.key, record: buildClause(c, built, products, report) }))];
   // 알파Plus 납입면제 — 역할 함수조항 여섯 + 반복 템플릿(waiver.ts). 박스 참조가 선 뒤에 옮긴다(암 정의 칸 · 그림 박스). 보통약관이 쓰는 함수조항이다
   const alphaWaiver = applyAlphaWaiver(productOf("alpha").general, productOf("meritz").general);
   // 메리츠 납입면제 — 같은 모양으로. 호 · 부활 문구는 알파Plus 것을 함께 쓰고, 정의 · 부가항 · 세부규정 · 무효는 메리츠 전용(글 · 가리키는 조가 다르다)
@@ -348,7 +350,8 @@ function main(): void {
   const generalKeys = new Set([...products.flatMap((p) => (p.product.general.clauses ?? []).map((u) => u.clause)), ...waiver.map((w) => w.key)]);
   const clauses = orderClauses(configured, generalKeys);
   const clauseByKey = new Map(configured.map((c) => [c.key, c.record]));
-  for (const code of ["alpha", "meritz"]) resolveWaiverCodes(productOf(code).general.tree, (key) => clauseByKey.get(key)?.code);
+  // 함수조항 자리표 @key → 코드 — 보통약관의 납입면제 자리 · 담보약관의 문구 함수조항 오버레이
+  for (const tree of [...built.values()].map((b) => b.tree)) resolveWaiverCodes(tree, (key) => clauseByKey.get(key)?.code);
   const applyUses = (b: Built, uses: readonly ClauseUse[], label: string) => {
     const articleOf = (number: string) => [...articlesOf(b.tree)].find((x) => b.numberOf.get(x.id) === number);
     for (const u of uses) {
@@ -548,6 +551,7 @@ function buildSpecial(spec: SpecialSpec, product: ProductTerms, generalParsed: P
     const parsed = parseTerms(read(product, spec.file!));
     built = buildStructure(parsed, spec.idPrefix, spec.title ?? parsed.title);
     applyInlineConds(built.tree, built.numberOf, spec.inlineConds ?? [], report);
+    applyInlineClauses(built.tree, built.numberOf, spec.inlineClauses ?? [], report);
     convertText(built, general.index, product.appendixNumbers, report);
   }
   applySlots(built, spec.slots, report);

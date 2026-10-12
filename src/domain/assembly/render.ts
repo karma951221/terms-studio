@@ -309,7 +309,7 @@ class Renderer {
         // 그렇게 좁힌 것이 0개면 조립 오류다 (ADR-0077 결정 7 — 좌표 = 참조 자리)
         const alive: ReferenceTarget[] = [];
         const dropped: { key: string; articleId: Id }[] = [];
-        const empty: string[] = [];
+        const empty: { key: string; articleId: Id }[] = [];
         let generalPrefix = n.scope === "general";
         let previous = n.scope === "self" ? source : undefined;
         for (const target of n.targets) {
@@ -337,11 +337,14 @@ class Renderer {
               (target.values === undefined || inst.loops.some((l) => l.kind === "enumValue" && target.values!.includes(l.element))),
           );
           if (narrowed.length > 0) alive.push(...narrowed.map((i) => i.target));
-          else if (target.values !== undefined || (found?.length ?? 0) > 0 || repeatBorn(ix, key)) empty.push(key);
+          else if (target.values !== undefined || (found?.length ?? 0) > 0 || repeatBorn(ix, key)) empty.push({ key, articleId: target.articleId });
           else dropped.push({ key, articleId: target.articleId });
         }
-        if (empty.length > 0) {
-          for (const key of empty) {
+        // 펼친 것이 0개인 대상은 참조 하나의 펼친 것 합이 0개일 때만 오류다 — 다른 대상이 살아 있으면 분기로 사라진 대상처럼 남은 대상으로 찍는다
+        // (사유별 함수조항이 그 상품의 사유가 아니라 스스로 꺼진 대상 — 「장해 호 또는 중증화상 호」에서 한쪽만 있는 상품, ADR-0086 결정 2)
+        if (empty.length > 0 && alive.length > 0) dropped.push(...empty);
+        else if (empty.length > 0) {
+          for (const { key } of empty) {
             this.issues.push({ kind: "articleGone", message: `참조 대상 ${key} 을(를) 반복 · 값 한정으로 펼친 것이 0개입니다 — 이 상품에서 그 대상이 생기지 않는다`, at: { ...n.at, refPath: key } });
           }
           return { kind: "error", id: n.id, issue: this.issues.at(-1)! };

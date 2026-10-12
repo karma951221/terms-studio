@@ -1,16 +1,19 @@
 /**
- * 알파Plus 납입면제 재모델링 (개발 도구 — 제품 기능 아님). 근거: 최종 결정 10 · 11 · 13 · 16 · 22 · 23,
- * ADR-0077 템플릿 스케치, 기능/함수조항 §3.7 「역할 함수조항」, QA/실물재현/알파플러스_모델명세 §6.
+ * 납입면제 재모델링 (개발 도구 — 제품 기능 아님). 근거: 최종 결정 10 · 11 · 13 · 16 · 22 · 23, ADR-0077 템플릿 스케치,
+ * ADR-0086(사유별 호 · 정의 함수조항), 기능/함수조항 §3.7 「역할 함수조항」, QA/실물재현/알파플러스_모델명세 §6 · 메리츠_모델명세 §6.
  *
- * 원문의 제27조의1 · 의2 · 의3 · 제22조(무효) · 제30조(부활)를 **변환된 보통약관 트리에서** 역할 함수조항 여섯과 반복 템플릿으로 바꾼다.
- * 문장은 원문 노드를 그대로 옮긴다(참조 · 별표 슬롯 · 박스 참조 포함) — 새로 짓는 글은 원문에 없는 두 칸뿐이다:
+ * 원문의 납입면제 조 · 세부규정 · 정의 조 · 계약의 무효 · 부활 조를 **변환된 보통약관 트리에서** 사유별 · 역할 함수조항과 반복 템플릿으로 바꾼다.
+ * 문장은 원문 노드를 그대로 옮긴다(참조 · 별표 슬롯 · 박스 참조 포함) — 새로 짓는 글은 원문에 없는 두 자리뿐이다:
  * 「암·무면책」 호(암보장개시일 없는 암 호)와 무효 문구의 암보장개시일 항(인수기준 알려진 차이).
  *
- * - 템플릿은 사유 값으로 분기하지 않는다(결정 10) — 제27조의1 ① = [납입면제종마다] 항 › [현재 종의 사유마다] ⟨납입면제 호(사유 ← 현재 사유)⟩,
- *   제27조의3 = [사유 합집합 ∩ 정의조대상마다] ⟨정의(사유 ← 현재 사유)⟩, 나머지 자리는 ⟨역할(종들 ← 적용 납입면제종)⟩ 한 줄.
+ * - 호 · 정의는 사유 값마다 함수조항 하나다(ADR-0086 결정 1) — 인자 종들 + 내부 변수 「해당」으로 본문 전체를 감싸 스스로 켜진다.
+ *   정의 글이 상품군마다 다르면 상품군마다(꼬리표 「(알파Plus)」 · 「(통합간편)」), 같으면 함께 쓴다(결정 3).
+ * - 템플릿은 사유 값으로 분기하지 않는다(결정 10) — 납입면제 조 ① = [납입면제종마다] 항 › 사유별 호 함수조항을 열거형 순서로(종들 ← 현재 종),
+ *   정의 조 = 사유별 정의 함수조항을 열거형 순서로(프리셋 ‘적용 종’), 나머지 자리는 ⟨역할(프리셋 ‘적용 종’)⟩ 한 줄.
  * - 세 조는 「납입면제 있음」(D0002) 조 자리 IF 로 감싼다(결정 16).
- * - 반복으로 생긴 호를 가리키는 참조(「제1항 제1호」 · 「제10호, 제11호」)는 값 한정 참조다(결정 13) — 사유 = 해당 값들.
+ * - 원문 호를 가리키던 참조(「제1항 제1호」 · 「제10호, 제11호」)는 그 사유의 호 함수조항 참조를 가리킨다 — 종마다 펼친 것 전부(값 한정 없음).
  *
+ * 사유 · 정의 묶음 · 상품군은 표(`ITEM_REASONS` · `DEFINITIONS` · `LINE`)로 두고, 상품마다 다른 것(원문 조 번호 · 호 · 항 자리)만 상품 함수에 있다.
  * 조 참조 대상은 변환 중간 모양(노드 id 를 `articleId` 자리에)이다 — convert.ts `codeTargets` · `codeClauseTargets` 가 P코드로 바꾼다.
  */
 import type { Block, Inline, ItemNode as ClauseItem, ParagraphNode as ClauseParagraph } from "../../src/domain/clause/nodes";
@@ -18,11 +21,12 @@ import type { Binding, ParamDef } from "../../src/domain/clause/params";
 import type { LocalDef } from "../../src/domain/clause/locals";
 import type { PresetDef } from "../../src/domain/clause/presets";
 import type { ArticleNode, ArticleRefNode, BlockNode, ClauseBlockRefNode, DocumentNode, ForBlockNode, InlineNode, ItemNode, ParagraphNode, SectionNode } from "../../src/domain/document/nodes";
-import type { Code, Id, RefRestrict } from "../../src/domain/types";
+import type { Code, Id } from "../../src/domain/types";
 
 import type { ClauseRecord } from "./clauses";
 import { allArticles, reId } from "./clauses";
 import { withClauseCodes } from "../../src/domain/clause/pcode";
+import { basisWord, RENEWAL_PARAM } from "./renewal";
 
 /** 역할 함수조항이 읽는 보통약관 한 벌 — 트리와 원문 조 번호. */
 export interface WaiverSource {
@@ -39,31 +43,70 @@ export const WAIVER_PRESENT = "D0002";
  */
 export const SURRENDER_PAYING = "D0004";
 
-/** 부활 문구의 기준일 옵션 — 알파Plus 「계약일」 · 메리츠 「최초계약일」. */
-const REVIVE_OPTION = "O01";
-const REVIVE_VALUE = { 계약일: "V01", 최초계약일: "V02" } as const;
+/** 부활 문구 원문 — 알파Plus 「계약일」 · 통합간편 「최초계약일」(갱신형 상품). */
 const REVIVE_TEXT = (word: string) => `부활(효력회복)시 부활(효력회복)일을 ${word}로 하여 암보장개시일을 적용합니다.`;
 
-/** E0001 납입면제사유 값 코드 (enums.json — 열거형 순서). */
+/** E0001 납입면제사유 값 코드 (enums.json — 열거형 순서). V12 · V13 은 쓰는 상품이 없어 지웠다 (ADR-0086 결정 5). */
 export const REASON = {
   cancerWaiting: "V01",
   cancerNoWaiting: "V02",
   diseases: ["V03", "V04", "V05", "V06", "V07", "V08", "V09", "V10"],
-  disability: ["V11", "V12", "V13"],
-  injuryDisability: ["V11", "V12"],
+  /** 상해및질병80%이상후유장해 — 호 둘(상해 · 질병)을 내는 한 세트. */
+  disability: "V11",
   burn: "V14",
 } as const;
+
+/**
+ * 사유별 호 함수조항의 사유 — 열거형 순서(= 템플릿 호 목록에 늘어놓는 순서 · 원문 호 순서)와 함수조항 이름에 쓰는 값 이름(E0001 값 이름) (ADR-0086 결정 1).
+ * 사유를 더하면 여기 한 줄과 그 호 본문(상품 변환 함수)을 더한다 — 템플릿 · 다른 함수조항은 그대로다.
+ */
+export const ITEM_REASONS: readonly { code: Code; label: string }[] = [
+  { code: "V01", label: "암(유사암제외)·면책" },
+  { code: "V02", label: "암(유사암제외)·무면책" },
+  { code: "V03", label: "뇌졸중" },
+  { code: "V04", label: "급성심근경색증" },
+  { code: "V05", label: "말기폐질환" },
+  { code: "V06", label: "말기간경화" },
+  { code: "V07", label: "말기신부전증" },
+  { code: "V08", label: "양성뇌종양" },
+  { code: "V09", label: "중대한재생불량성빈혈" },
+  { code: "V10", label: "만성당뇨합병증" },
+  { code: "V11", label: "상해및질병80%이상후유장해" },
+  { code: "V14", label: "중증화상및부식" },
+];
+
+/** 정의 함수조항 묶음 하나 — `values` 가 하나라도 있으면 켜진다. `perLine` = 정의 글이 상품군마다 달라 상품군마다 함수조항 (ADR-0086 결정 3). */
+export interface DefinitionSpec {
+  key: string;
+  values: readonly Code[];
+  label: string;
+  perLine: boolean;
+}
+
+/**
+ * 사유별 정의 함수조항 — 정의 문구가 있는 사유마다 하나(열거형 순서 = 정의 조에 늘어놓는 순서). 암은 면책 · 무면책이 같은 정의라 함께,
+ * 장해(V11)는 정의 문구가 없다. 실물: 암 · 뇌졸중 · 급성심근경색증은 상품군마다 글이 달라 상품군마다, 나머지는 두 상품군이 함께 쓴다.
+ */
+export const DEFINITIONS: readonly DefinitionSpec[] = [
+  { key: "cancer", values: [REASON.cancerWaiting, REASON.cancerNoWaiting], label: "암(유사암제외)", perLine: true },
+  { key: "V03", values: ["V03"], label: "뇌졸중", perLine: true },
+  { key: "V04", values: ["V04"], label: "급성심근경색증", perLine: true },
+  ...(["V05", "V06", "V07", "V08", "V09", "V10", "V14"] as const).map((v) => ({ key: v, values: [v], label: ITEM_REASONS.find((r) => r.code === v)!.label, perLine: false })),
+];
+
+/** 상품군 꼬리표 — 함수조항 이름 끝 「(…)」 (ADR-0086 결정 7 — 두 상품 모두 메리츠화재, 갈리는 것은 상품군). */
+export const LINE = { alpha: "알파Plus", meritz: "통합간편" } as const;
+type Line = (typeof LINE)[keyof typeof LINE];
 
 /** 적용 납입면제종 — 세목 waiver 선택지 중 적용여부 = 예 (반복 원천 · 인자 원천 연결이 같은 거름을 쓴다). */
 const APPLIED = { form: "waiver", filter: "waiver.applies = true" } as const;
 const APPLIED_BINDING: Binding = { kind: "source", source: { ...APPLIED } };
 
 /**
- * 납입면제 프리셋 (ADR-0084) — 종들을 받는 역할 함수조항은 사용처마다 「적용 납입면제종」 한 조합이라 프리셋 하나, 부활 문구는 기준일(계약일 · 최초계약일)까지
- * 둘. 사용처는 프리셋을 참조한다. 사유를 받는 호 · 정의는 「반복의 현재 원소」뿐이라 프리셋에 담을 값이 없다.
+ * 납입면제 프리셋 (ADR-0084) — 종들을 받는 정의 · 역할 함수조항은 사용처마다 「적용 납입면제종」 한 조합이라 프리셋 하나. 사용처는 프리셋을 참조한다.
+ * 사유별 호는 「반복의 현재 원소」(현재 종)뿐이라 프리셋에 담을 값이 없다. 부활 문구의 기준일은 데이터(인자 갱신의 기본 연결)가 가른다(ADR-0086 결정 6).
  */
 const APPLIED_PRESETS: PresetDef[] = [{ code: "S01", name: "적용 종", bindings: { 종들: APPLIED_BINDING } }];
-const REVIVE_PRESET = { 계약일: "S01", 최초계약일: "S02" } as const;
 
 function withPresets(clause: WaiverClause, presets: PresetDef[]): WaiverClause {
   return { ...clause, record: { ...clause.record, presets: structuredClone(presets) } };
@@ -72,20 +115,72 @@ function withPresets(clause: WaiverClause, presets: PresetDef[]): WaiverClause {
 /** 프리셋을 쓰는 함수조항 참조 — 옵션 · 연결은 프리셋 값이라 비운다. */
 const presetRef = (id: Id, key: string, preset: Code): ClauseBlockRefNode => ({ id, kind: "clauseBlockRef", clauseCode: `@${key}`, options: {}, preset });
 
-const REASON_PARAM: ParamDef = { name: "사유", type: { kind: "enum", enumCode: "E0001" } };
 const PLANS_PARAM: ParamDef = { name: "종들", type: { kind: "planOptions", form: "waiver" } };
 
 /** 종들 → 사유 묶음 → 판정 (내부 변수, 결정 2 · 22). 암보장개시일 문장은 면책여부(F02) = 예인 사유가 있을 때만 (ADR-0078 「면책 여부」). */
 const REASONS_LOCAL: LocalDef = { name: "사유들", expr: "arg.종들.합치기(waiver.reasons)" };
+const has = (values: readonly Code[]) => `var.사유들.있음(${values.map((v) => `'${v}'`).join(", ")})`;
 const WAITING_LOCAL: LocalDef = { name: "면책있음", expr: "not var.사유들.거르기(F02 = true).비었음" };
-const DISABILITY_LOCAL: LocalDef = { name: "장해있음", expr: `var.사유들.있음(${REASON.disability.map((v) => `'${v}'`).join(", ")})` };
-const DISABILITY_BURN_LOCAL: LocalDef = { name: "장해화상", expr: `var.사유들.있음(${[...REASON.disability, REASON.burn].map((v) => `'${v}'`).join(", ")})` };
-const INJURY_BURN_LOCAL: LocalDef = { name: "상해관련", expr: `var.사유들.있음(${[...REASON.injuryDisability, REASON.burn].map((v) => `'${v}'`).join(", ")})` };
-const INJURY_LOCAL: LocalDef = { name: "상해장해", expr: `var.사유들.있음(${REASON.injuryDisability.map((v) => `'${v}'`).join(", ")})` };
+const DISABILITY_LOCAL: LocalDef = { name: "장해있음", expr: has([REASON.disability]) };
+const DISABILITY_BURN_LOCAL: LocalDef = { name: "장해화상", expr: has([REASON.disability, REASON.burn]) };
+const INJURY_BURN_LOCAL: LocalDef = { name: "상해관련", expr: has([REASON.disability, REASON.burn]) };
+const INJURY_LOCAL: LocalDef = { name: "상해장해", expr: has([REASON.disability]) };
+
+/** 사유별 함수조항의 「해당」 — 넘겨받은 종(들)의 사유에 그 값이 있는가. 함수조항이 스스로 켜진다 — 템플릿은 늘어놓기만 (ADR-0086 결정 2). */
+const reasonLocals = (values: readonly Code[]): LocalDef[] => [REASONS_LOCAL, { name: "해당", expr: has(values) }];
+const onlyIfReason = (children: unknown[]) => [{ id: "c", kind: "condBlock", branches: [{ id: "c-if", when: "var.해당", children }] }];
 
 export interface WaiverClause {
   key: string;
   record: ClauseRecord;
+}
+
+/** 사유별 호 함수조항 key · 템플릿 참조 노드 id. */
+const itemKey = (v: Code) => `waiver-item-${v}`;
+const itemRefId = (articleId: Id, v: Code) => `${articleId}-p1-k-${v}`;
+/** 사유별 정의 함수조항 key — 상품군마다면 꼬리표까지. */
+const definitionKey = (d: DefinitionSpec, line: Line) => (d.perLine ? `waiver-definition-${d.key}-${line}` : `waiver-definition-${d.key}`);
+
+/** 사유별 호 함수조항 — 유형 「호」, 인자 종들, 본문 전체가 IF 해당. */
+function itemClause(v: Code, body: unknown[]): WaiverClause {
+  const label = ITEM_REASONS.find((r) => r.code === v)?.label;
+  if (!label) throw new Error(`납입면제 재모델링: 호 사유 ${v} 가 ITEM_REASONS 에 없다`);
+  return record(
+    itemKey(v),
+    `납입면제 호 — ${label}`,
+    "item",
+    `납입면제 조 ① 의 사유 호 — ${label}(${v}). 넘겨받은 종의 사유에 이 값이 있을 때만 호를 낸다(원문 글 그대로). 템플릿의 [납입면제종마다] 항의 호 목록에 사유별로 늘어놓고 종들 ← 현재 종`,
+    onlyIfReason(body),
+    [PLANS_PARAM],
+    reasonLocals([v]),
+  );
+}
+
+/** 사유별 정의 함수조항 — 유형 「항」, 인자 종들 · 프리셋 ‘적용 종’, 본문 전체가 IF 해당. */
+function definitionClause(d: DefinitionSpec, line: Line, body: Block[]): WaiverClause {
+  const label = `${d.label} 정의 및 진단확정${d.perLine ? `(${line})` : ""}`;
+  return withPresets(
+    record(
+      definitionKey(d, line),
+      label,
+      "block",
+      `「…의 정의 및 진단확정」 조의 ${d.label} 정의 · 진단확정 항 — 적용 종들의 사유에 ${d.values.join(" · ")} 가 있을 때만. ${d.perLine ? `${line} 상품군의 글` : "두 상품군이 같은 글"}. 템플릿은 사유별 정의를 열거형 순서로 늘어놓고 프리셋 ‘적용 종’으로 넣는다`,
+      onlyIfReason(body),
+      [PLANS_PARAM],
+      reasonLocals(d.values),
+    ),
+    APPLIED_PRESETS,
+  );
+}
+
+/** [납입면제종마다] 항의 호 목록 — 사유별 호 함수조항을 열거형 순서로, 종들 ← 반복의 현재 종 (ADR-0086 결정 2). */
+function itemRefs(articleId: Id, outerId: Id): ClauseBlockRefNode[] {
+  return ITEM_REASONS.map((r) => ({ id: itemRefId(articleId, r.code), kind: "clauseBlockRef", clauseCode: `@${itemKey(r.code)}`, options: {}, bindings: { 종들: { kind: "current", loop: outerId } } }));
+}
+
+/** 정의 조 본문 — 사유별 정의 함수조항을 열거형 순서로, 프리셋 ‘적용 종’. 제목은 고정 글(나열 슬롯 미구현 — 인수기준 알려진 차이). */
+function definitionRefs(articleId: Id, line: Line): ClauseBlockRefNode[] {
+  return DEFINITIONS.map((d) => presetRef(`${articleId}-p1-k-${d.key}`, definitionKey(d, line), "S01"));
 }
 
 function articleOf(src: WaiverSource, number: string): ArticleNode {
@@ -114,20 +209,14 @@ function structIds(a: ArticleNode): Set<Id> {
 
 /**
  * 원문 조 참조 → 역할 함수조항 조 참조. `inside` 를 가리키면 「이 함수조항」, 나머지는 보통약관 참조(변환 중간 모양 = 노드 id).
- * `remap` 은 사라지는 원문 노드(제27조의1 의 호)를 반복 템플릿 노드 + 값 한정으로 옮긴다 — 같은 한정으로 모인 대상은 하나로 합친다.
+ * `remap` 은 사라지는 원문 노드(납입면제 조 ① 의 호)를 그 사유의 호 함수조항 참조(템플릿 노드)로 옮긴다 — 종마다 반복 안이라 펼친 것 전부가 대상이고
+ * 값 한정이 필요 없다(ADR-0086 결정 2). 같은 대상(· 안쪽 코드)으로 모인 원문 대상은 하나로 합친다.
  */
-type Remapped = { articleId: Id; innerCode?: Code; restrict?: RefRestrict };
+type Remapped = { articleId: Id; innerCode?: Code };
 type Remap = (id: Id, ref: ArticleRefNode) => Remapped | undefined;
 
-/** 값 한정 둘을 합친다 — 같은 대상(조 · 안쪽 코드)이면 해당 값들의 합(열거형 순서 = 코드 순). */
 function mergeTarget(targets: Remapped[], next: Remapped): void {
-  const same = targets.find((x) => x.articleId === next.articleId && x.innerCode === next.innerCode && !!x.restrict === !!next.restrict);
-  if (!same) {
-    targets.push(next);
-    return;
-  }
-  const values = (r: RefRestrict | undefined) => (r && "values" in r ? r.values : []);
-  if (same.restrict) same.restrict = { values: [...new Set([...values(same.restrict), ...values(next.restrict)])].sort() };
+  if (!targets.some((x) => x.articleId === next.articleId && x.innerCode === next.innerCode)) targets.push(next);
 }
 
 function clauseInline(n: InlineNode, inside: ReadonlySet<Id>, remap: Remap): Inline {
@@ -138,7 +227,7 @@ function clauseInline(n: InlineNode, inside: ReadonlySet<Id>, remap: Remap): Inl
       if (own.length > 0) throw new Error(`납입면제 재모델링: 조 참조 ${n.id} 가 함수조항 안팎을 함께 가리킨다`);
       const targets: Remapped[] = [];
       for (const t of n.targets) mergeTarget(targets, remap(t.articleId, n) ?? { articleId: t.articleId });
-      // 반복 · 값 한정 대상은 하나여도 연결어가 있어야 한다(P3 인계) — 원문의 연결어(변환기 기본 「및」 · 「또는」)를 그대로 둔다
+      // 반복 · 함수조항 참조 대상은 하나여도 연결어가 있어야 한다(P3 인계) — 원문의 연결어(변환기 기본 「및」 · 「또는」)를 그대로 둔다
       return { id: n.id, kind: "articleRef", targets, connector: n.connector ?? "및" };
     }
     case "text":
@@ -196,18 +285,13 @@ function paragraphRun(a: ArticleNode, from: number, to = from): Id[] {
 /** 글 한 줄 문장. */
 const text = (id: Id, value: string): Inline => ({ id, kind: "text", text: value });
 
-function record(key: string, label: string, mode: ClauseRecord["mode"], description: string, body: Block[] | ClauseItem[] | unknown[], params: ParamDef[], locals: LocalDef[] = [], options: ClauseRecord["options"] = []): WaiverClause {
+function record(key: string, label: string, mode: ClauseRecord["mode"], description: string, body: Block[] | ClauseItem[] | unknown[], params: ParamDef[], locals: LocalDef[] = []): WaiverClause {
   // 노드 id 를 결정적으로 다시 매긴다 — 「이 함수조항」 참조 대상도 따라간다 (clauses.ts reId)
   const rebased = reId(body as unknown[], `c-${key}`);
   return {
     key,
-    record: { code: "", label, mode, description, body: rebased as ClauseRecord["body"], options, params, ...(locals.length ? { locals } : {}) },
+    record: { code: "", label, mode, description, body: rebased as ClauseRecord["body"], options: [], params, ...(locals.length ? { locals } : {}) },
   };
-}
-
-/** 값별 분기 칸 — 값 코드 여러 개(열거형 순서), 빈 목록이면 「문구 없음」. */
-function switchCase(id: Id, values: readonly Code[], children: unknown[]): { id: Id; values: Code[]; empty?: true; children: unknown[] } {
-  return { id, values: [...values], ...(children.length === 0 ? { empty: true as const } : {}), children };
 }
 
 /** 같은 블록의 사본 — id 에 접미를 붙여 한 함수조항 안에서 유일하게. */
@@ -227,8 +311,9 @@ function copyWithSuffix<T>(node: T, suffix: string): T {
 }
 
 /**
- * 알파Plus 보통약관의 납입면제 자리를 역할 함수조항 · 반복 템플릿으로 바꾸고, 역할 함수조항 여섯을 돌려준다(적재 순서).
- * `meritz` 는 중증화상및부식 정의 칸의 원문(메리츠 제30조) — 알파Plus 에는 그 사유가 없지만 값마다 칸이 있어야 한다(결정 5).
+ * 알파Plus 보통약관의 납입면제 자리를 사유별 · 역할 함수조항과 반복 템플릿으로 바꾸고, 함수조항을 돌려준다(적재 순서 —
+ * 사유별 호 12 → 정의(알파Plus 상품군 · 두 상품군 공통) → 부가항 · 세부규정 · 무효 · 부활 문구).
+ * `meritz` 는 중증화상및부식의 원문(통합간편 제29조 ② 제6호 · 제30조 ⑨ ⑩) — 알파Plus 에는 그 사유가 없지만 두 상품군이 함께 쓰는 호 · 정의라 여기서 만든다.
  */
 export function applyAlphaWaiver(alpha: WaiverSource, meritz: WaiverSource): WaiverClause[] {
   const a22 = articleOf(alpha, "22");
@@ -238,71 +323,51 @@ export function applyAlphaWaiver(alpha: WaiverSource, meritz: WaiverSource): Wai
   const a30 = articleOf(alpha, "30");
   const m30 = articleOf(meritz, "30");
 
-  // ── 제27조의1 반복 템플릿의 노드 id — 역할 함수조항의 값 한정 참조가 가리킨다
+  // ── 제27조의1 반복 템플릿의 노드 id — 세부규정 · 부가항의 호 참조가 가리킨다
   const p1 = paragraphs(a27)[0];
   const outerId = `${a27.id}-for-plans`;
-  const innerId = `${a27.id}-for-reasons`;
-  const itemRefId = `${a27.id}-p1-k`;
   const items = (p1.items ?? []).filter((it): it is ItemNode => it.kind === "item");
   if (items.length !== 11) throw new Error(`납입면제 재모델링: 제27조의1 ① 호가 11개가 아니다(${items.length})`);
   const cancerItem = items[0].id;
   const disabilityItems = new Set([items[9].id, items[10].id]);
+  // 원문 호를 가리키던 참조 → 그 사유의 호 함수조항 참조(종마다 반복 안 — 펼친 것 전부, 값 한정이 필요 없다)
   const remap: Remap = (id) => {
-    if (id === cancerItem) return { articleId: itemRefId, restrict: { values: [REASON.cancerWaiting] } };
-    if (disabilityItems.has(id)) return { articleId: itemRefId, restrict: { values: [...REASON.disability] } };
+    if (id === cancerItem) return { articleId: itemRefId(a27.id, REASON.cancerWaiting) };
+    if (disabilityItems.has(id)) return { articleId: itemRefId(a27.id, REASON.disability) };
     if (id.startsWith(`${a27.id}-p1-i`)) throw new Error(`납입면제 재모델링: 제27조의1 ① 호 ${id} 를 가리키는 참조를 옮길 곳이 없다`);
     return undefined;
   };
 
-  // ── ① 납입면제 호(사유) — 호 유형, switch 값마다 칸 · 원문 글 그대로(조사 · 암 호 차이). 상해및질병80% 는 호 둘
+  // ── ① 사유별 호 — 원문 글 그대로(조사 · 암 호 차이). 상해및질병80% 는 호 둘. 새로 짓는 글은 암·무면책 호(암보장개시일 없는 암 호)뿐
   const noInside = new Set<Id>();
   const item = (it: ItemNode) => clauseItem(it, noInside, remap);
-  const itemCases = [
-    switchCase("k-cancer", [REASON.cancerWaiting], [item(items[0])]),
-    switchCase("k-cancer-nowait", [REASON.cancerNoWaiting], [{ id: "i-cancer-nowait", kind: "item", children: [text("t-cancer-nowait", "피보험자가「암(유사암제외)」으로 진단확정되었을 경우")] }]),
-    ...REASON.diseases.map((v, i) => switchCase(`k-${v}`, [v], [item(items[1 + i])])),
-    switchCase("k-disability", [REASON.disability[0]], [item(items[9]), item(items[10])]),
-    switchCase("k-injury", [REASON.disability[1]], [copyWithSuffix(item(items[9]), "-injury")]),
-    switchCase("k-illness", [REASON.disability[2]], [copyWithSuffix(item(items[10]), "-illness")]),
-    // 중증화상및부식 — 메리츠 원문 제29조 ② 제6호의 글(알파Plus 에는 없는 사유)
-    switchCase("k-burn", [REASON.burn], [{ id: "i-burn", kind: "item", children: [text("t-burn", "피보험자가 「중증화상및부식」으로 진단확정되었을 경우")] }]),
-  ];
-  const itemClause = record(
-    "waiver-item",
-    "납입면제 호",
-    "item",
-    "납입면제 조 ① 의 사유 호 — 사유(E0001) 값마다 칸, 원문 글 그대로. 상해및질병80%이상후유장해는 호 둘(상해 · 질병). 템플릿의 [현재 종의 사유마다] 반복 안에서 사유 ← 현재 원소",
-    [{ id: "sw", kind: "switchBlock", on: "arg.사유", cases: itemCases }],
-    [REASON_PARAM],
-  );
+  const itemBodies: Record<Code, unknown[]> = {
+    [REASON.cancerWaiting]: [item(items[0])],
+    [REASON.cancerNoWaiting]: [{ id: "i-cancer-nowait", kind: "item", children: [text("t-cancer-nowait", "피보험자가「암(유사암제외)」으로 진단확정되었을 경우")] }],
+    ...Object.fromEntries(REASON.diseases.map((v, i) => [v, [item(items[1 + i])]])),
+    [REASON.disability]: [item(items[9]), item(items[10])],
+    // 중증화상및부식 — 통합간편 원문 제29조 ② 제6호의 글(알파Plus 에는 없는 사유)
+    [REASON.burn]: [{ id: "i-burn", kind: "item", children: [text("t-burn", "피보험자가 「중증화상및부식」으로 진단확정되었을 경우")] }],
+  };
+  const itemClauses = ITEM_REASONS.map((r) => itemClause(r.code, itemBodies[r.code]));
 
-  // ── ② 정의(사유) — 항 유형, switch 값마다 정의 · 진단확정 항. 장해는 「문구 없음」, 암 칸 안에 박스(정적 마스터)
+  // ── ② 사유별 정의 — 정의 · 진단확정 항(암은 【용어풀이】 박스 둘을 품는다). 알파Plus 상품군 몫 + 두 상품군 공통(중증화상및부식은 통합간편 원문)
   const x = a27x;
   const xInside = structIds(x);
   const blocks = (ids: readonly Id[], src: ArticleNode = x, inside: ReadonlySet<Id> = xInside) => takeBlocks(src, ids).map((b) => clauseBlock(b, inside, remap));
-  const m30Blocks = paragraphRun(m30, 9, 10);
-  const definitionCases = [
-    switchCase("k-cancer", [REASON.cancerWaiting, REASON.cancerNoWaiting], blocks(paragraphRun(x, 1, 4))),
-    switchCase("k-V03", ["V03"], blocks(paragraphRun(x, 5, 6))),
-    switchCase("k-V04", ["V04"], blocks(paragraphRun(x, 7, 8))),
-    switchCase("k-V05", ["V05"], blocks(paragraphRun(x, 9))),
-    switchCase("k-V06", ["V06"], blocks(paragraphRun(x, 10))),
-    switchCase("k-V07", ["V07"], blocks(paragraphRun(x, 11, 12))),
-    switchCase("k-V08", ["V08"], blocks(paragraphRun(x, 13, 14))),
-    switchCase("k-V09", ["V09"], blocks(paragraphRun(x, 15, 17))),
-    switchCase("k-V10", ["V10"], blocks(paragraphRun(x, 18, 19))),
-    switchCase("k-disability", [...REASON.disability], []),
-    // 중증화상및부식 — 메리츠 원문 제30조 ⑨ ⑩ (알파Plus 에는 없는 사유)
-    switchCase("k-burn", [REASON.burn], blocks(m30Blocks, m30, structIds(m30))),
-  ];
-  const definitionClause = record(
-    "waiver-definition",
-    "정의 및 진단확정(알파Plus)",
-    "block",
-    "「…의 정의 및 진단확정」 조의 본문 — 사유 값마다 정의 · 진단확정 항(암 칸 안에 【용어풀이】 박스 둘). 장해 값은 문구 없음(정의조대상 = 아니오). 템플릿의 [사유 합집합 ∩ 정의조대상마다] 반복 안에서 사유 ← 현재 원소",
-    [{ id: "sw", kind: "switchBlock", on: "arg.사유", cases: definitionCases }],
-    [REASON_PARAM],
-  );
+  const definitionBodies: Record<string, Block[]> = {
+    cancer: blocks(paragraphRun(x, 1, 4)),
+    V03: blocks(paragraphRun(x, 5, 6)),
+    V04: blocks(paragraphRun(x, 7, 8)),
+    V05: blocks(paragraphRun(x, 9)),
+    V06: blocks(paragraphRun(x, 10)),
+    V07: blocks(paragraphRun(x, 11, 12)),
+    V08: blocks(paragraphRun(x, 13, 14)),
+    V09: blocks(paragraphRun(x, 15, 17)),
+    V10: blocks(paragraphRun(x, 18, 19)),
+    V14: blocks(paragraphRun(m30, 9, 10), m30, structIds(m30)),
+  };
+  const definitionClauses = DEFINITIONS.map((d) => definitionClause(d, LINE.alpha, definitionBodies[d.key]));
 
   // ── ③ 면제 부가항(종들) — 암보장개시일 항 + 【그림】 박스, 면책 사유가 있을 때만
   const addendumBlocks = takeBlocks(a27, paragraphRun(a27, 2)).map((b) => clauseBlock(b, noInside, remap));
@@ -310,7 +375,7 @@ export function applyAlphaWaiver(alpha: WaiverSource, meritz: WaiverSource): Wai
     "waiver-addendum",
     "면제 부가항(알파Plus)",
     "block",
-    "납입면제 조 ② — 적용 종들의 사유에 면책(암보장개시일이 있는) 사유가 있으면 「제1항 제1호의 암보장개시일이라 함은 …」 항과 【그림】 박스. 「제1항 제1호」는 값 한정 참조(사유 = 암·면책)",
+    "납입면제 조 ② — 적용 종들의 사유에 면책(암보장개시일이 있는) 사유가 있으면 「제1항 제1호의 암보장개시일이라 함은 …」 항과 【그림】 박스. 「제1항 제1호」는 암·면책 호 함수조항 참조",
     [{ id: "c", kind: "condBlock", branches: [{ id: "c-if", when: "var.면책있음", children: addendumBlocks }] }],
     [PLANS_PARAM],
     [REASONS_LOCAL, WAITING_LOCAL],
@@ -324,7 +389,7 @@ export function applyAlphaWaiver(alpha: WaiverSource, meritz: WaiverSource): Wai
     "waiver-detail",
     "납입면제 세부규정(알파Plus)",
     "block",
-    "납입면제에 관한 세부규정 조의 본문 — 면책 사유 → ①~③(재발 · 5년 · 부활 청약일), 장해 → ④~⑥ · ⑧~⑪, ⑦ 제3자 합의는 늘, 상해 관련 장해 → ⑫. 「제27조의1 제1항 제1호」 · 「제10호, 제11호」는 값 한정 참조",
+    "납입면제에 관한 세부규정 조의 본문 — 면책 사유 → ①~③(재발 · 5년 · 부활 청약일), 장해 → ④~⑥ · ⑧~⑪, ⑦ 제3자 합의는 늘, 상해 관련 장해 → ⑫. 「제27조의1 제1항 제1호」 · 「제10호, 제11호」는 그 사유의 호 함수조항 참조",
     [iff("c1", "var.면책있음", d(1, 3)), iff("c2", "var.장해있음", d(4, 6)), ...d(7), iff("c3", "var.장해있음", d(8, 11)), iff("c4", "var.상해장해", d(12))],
     [PLANS_PARAM],
     [REASONS_LOCAL, WAITING_LOCAL, DISABILITY_LOCAL, INJURY_LOCAL],
@@ -337,25 +402,14 @@ export function applyAlphaWaiver(alpha: WaiverSource, meritz: WaiverSource): Wai
     "무효 문구(알파Plus)",
     "block",
     "계약의 무효 조 — 적용 종들의 사유에 면책 사유가 있으면 암보장개시일 전일 이전 진단확정 시 무효 항. 알파Plus 원문 제22조에는 없다(원문 누락 — QA/인수기준 알려진 차이)",
-    [
-      {
-        id: "c",
-        kind: "condBlock",
-        branches: [
-          {
-            id: "c-if",
-            when: "var.면책있음",
-            children: [voidParagraph(p22.id)],
-          },
-        ],
-      },
-    ],
+    [{ id: "c", kind: "condBlock", branches: [{ id: "c-if", when: "var.면책있음", children: [voidParagraph(p22.id)] }] }],
     [PLANS_PARAM],
     [REASONS_LOCAL, WAITING_LOCAL],
   );
 
   // ── ⑥ 부활 문구(종들) — 제30조 ④ 「…암보장개시일을 적용합니다」, 면책 사유가 있을 때만. 항 하나라 유형 = 항(문구면 빈 ④ 가 남는다).
-  // 메리츠 제35조 ④ 와 낱말 하나(계약일 ↔ 최초계약일)만 달라 옵션으로 두 상품이 함께 쓴다 — 사용처(보통약관 템플릿)가 고른다 (결정 3)
+  // 통합간편 제35조 ④ 와 낱말 하나(계약일 ↔ 최초계약일)만 달라 두 상품이 함께 쓴다 — 그 낱말은 상품 속성(갱신형여부)이 정해 인자 갱신 + 문장 안 조건이다.
+  // 함수조항 안에는 「기준일 문구」 함수조항을 끼울 수 없다(중첩 금지 — ADR-0086 결정 6)
   const reviveId = paragraphRun(a30, 4);
   const [reviveSource] = takeBlocks(a30, reviveId);
   if (reviveId.length !== 1 || reviveSource.kind !== "paragraph" || JSON.stringify(reviveSource.children) !== JSON.stringify([{ ...reviveSource.children[0], text: REVIVE_TEXT("계약일") }])) throw new Error("납입면제 재모델링: 제30조 ④ 가 부활 문구가 아니다");
@@ -363,18 +417,14 @@ export function applyAlphaWaiver(alpha: WaiverSource, meritz: WaiverSource): Wai
     "waiver-revive",
     "부활 문구",
     "block",
-    "부활(효력회복) 조 — 적용 종들의 사유에 면책 사유가 있으면 「부활(효력회복)시 부활(효력회복)일을 〔기준일〕로 하여 암보장개시일을 적용합니다」. 기준일은 옵션(알파Plus 계약일 · 메리츠 최초계약일)",
-    [{ id: "c", kind: "condBlock", branches: [{ id: "c-if", when: "var.면책있음", children: [{ id: reviveSource.id, kind: "paragraph", children: [text("t1", "부활(효력회복)시 부활(효력회복)일을 "), { id: "o", kind: "optionSlot", optionCode: REVIVE_OPTION }, text("t2", "로 하여 암보장개시일을 적용합니다.")] }] }] }],
-    [PLANS_PARAM],
+    "부활(효력회복) 조 — 적용 종들의 사유에 면책 사유가 있으면 「부활(효력회복)시 부활(효력회복)일을 〔기준일〕로 하여 암보장개시일을 적용합니다」. 기준일은 인자 갱신(기본 연결 = 갱신형 상품) — 연만기(갱신형) 상품은 최초계약일, 세만기는 계약일",
+    [{ id: "c", kind: "condBlock", branches: [{ id: "c-if", when: "var.면책있음", children: [{ id: reviveSource.id, kind: "paragraph", children: [text("t1", "부활(효력회복)시 부활(효력회복)일을 "), basisWord("o"), text("t2", "로 하여 암보장개시일을 적용합니다.")] }] }] }],
+    [PLANS_PARAM, RENEWAL_PARAM],
     [REASONS_LOCAL, WAITING_LOCAL],
-    [{ code: REVIVE_OPTION, label: "기준일", order: 0, values: (["계약일", "최초계약일"] as const).map((word, i) => ({ code: REVIVE_VALUE[word], label: word, order: i, body: [text(`c-waiver-revive-o1v${i + 1}-x1`, word)] })) }] as unknown as ClauseRecord["options"],
   );
 
-  // ── 템플릿 — 사유 값으로 분기하지 않는다(결정 10)
-  const ref = (id: Id, key: string, bindings: Record<string, Binding>): ClauseBlockRefNode => ({ id, kind: "clauseBlockRef", clauseCode: `@${key}`, options: {}, bindings });
-
-  // 제27조의1 — ① [납입면제종마다] 항 › [현재 종의 사유마다] 호, ② 부가항, ③ ④ ⑤ 원문 그대로
-  const inner: ForBlockNode = { id: innerId, kind: "forBlock", source: { kind: "listOfCurrent", loop: outerId, field: "reasons" }, children: [ref(itemRefId, "waiver-item", { 사유: { kind: "current", loop: innerId } })] };
+  // ── 템플릿 — 사유 값으로 분기하지 않는다(결정 10). 사유별 함수조항을 늘어놓기만 하고, 켜고 끄기는 함수조항 안의 「해당」이 한다(ADR-0086 결정 2)
+  // 제27조의1 — ① [납입면제종마다] 항 › 사유별 호, ② 부가항, ③ ④ ⑤ 원문 그대로
   const lead = p1.children[0];
   if (lead?.kind !== "text" || !lead.text.startsWith("회사는 피보험자가 2종(보험료 납입면제형) 가입시 ")) throw new Error("납입면제 재모델링: 제27조의1 ① 첫 문장이 원문과 다르다");
   const repeated: ParagraphNode = {
@@ -388,7 +438,7 @@ export function applyAlphaWaiver(alpha: WaiverSource, meritz: WaiverSource): Wai
       { id: `${p1.id}-x5`, kind: "text", text: `)${lead.text.slice("회사는 피보험자가 2종(보험료 납입면제형)".length)}` },
       ...p1.children.slice(1),
     ],
-    items: [inner],
+    items: itemRefs(a27.id, outerId),
   };
   const outer: ForBlockNode = { id: outerId, kind: "forBlock", source: { kind: "planOptions", ...APPLIED }, children: [repeated] };
   const addendumRef = presetRef(`${a27.id}-p2-k`, "waiver-addendum", "S01");
@@ -403,30 +453,26 @@ export function applyAlphaWaiver(alpha: WaiverSource, meritz: WaiverSource): Wai
   // 제27조의2 — 조 본문 = 세부규정 한 줄
   a27d.children = [presetRef(`${a27d.id}-p1-k`, "waiver-detail", "S01")];
 
-  // 제27조의3 — [사유 합집합 ∩ 정의조대상마다] ⟨정의(사유 ← 현재 사유)⟩. 제목은 고정 글(나열 슬롯 미구현 — 인수기준 알려진 차이)
-  const unionId = `${x.id}-for-reasons`;
-  x.children = [
-    { id: unionId, kind: "forBlock", source: { kind: "union", ...APPLIED, field: "reasons", where: { field: "F03", value: true } }, children: [ref(`${x.id}-p1-k`, "waiver-definition", { 사유: { kind: "current", loop: unionId } })] },
-  ];
+  // 제27조의3 — 사유별 정의를 열거형 순서로 (제목은 고정 글 — 인수기준 알려진 차이)
+  x.children = definitionRefs(x.id, LINE.alpha);
 
   // 제22조 — 원문 두 항 뒤에 무효 문구(③), 제30조 — ④ 를 부활 문구로
   a22.children = [...a22.children, presetRef(`${a22.id}-p3-k`, "waiver-void", "S01")];
   const at30 = a30.children.findIndex((c) => c.id === reviveId[0]);
-  a30.children.splice(at30, reviveId.length, presetRef(`${a30.id}-p4-k`, "waiver-revive", REVIVE_PRESET["계약일"]));
+  a30.children.splice(at30, reviveId.length, presetRef(`${a30.id}-p4-k`, "waiver-revive", "S01"));
 
   // 세 조를 「납입면제 있음」 조 자리 IF 로 감싼다(결정 16) — 관 안의 잇닿은 세 조
   wrapArticles(alpha.tree, [a27.id, a27d.id, x.id], `${a27.id}-if-waiver`);
 
-  const revivePresets: PresetDef[] = (["계약일", "최초계약일"] as const).map((word) => ({ code: REVIVE_PRESET[word], name: `${word} 기준`, options: { [REVIVE_OPTION]: REVIVE_VALUE[word] }, bindings: { 종들: APPLIED_BINDING } }));
-  return [itemClause, definitionClause, withPresets(addendumClause, APPLIED_PRESETS), withPresets(detailClause, APPLIED_PRESETS), withPresets(voidClause, APPLIED_PRESETS), withPresets(reviveClause, revivePresets)];
+  return [...itemClauses, ...definitionClauses, ...[addendumClause, detailClause, voidClause, reviveClause].map((c) => withPresets(c, APPLIED_PRESETS))];
 }
 
 /**
- * 메리츠 보통약관의 납입면제 자리(제29조 · 제30조 · 제31조 · 제22조 무효 · 제35조 부활)를 같은 모양으로 바꾸고, 메리츠 전용 역할 함수조항을 돌려준다.
- * `shared` 는 알파Plus 가 만든 역할 함수조항 — 호(C0022)와 부활 문구는 글이 같아 함께 쓰고, 정의의 알파Plus 전용 사유 칸(말기폐질환 …)은 옮겨 온다.
+ * 통합간편 보통약관의 납입면제 자리(제29조 · 제30조 · 제31조 · 제22조 무효 · 제35조 부활)를 같은 모양으로 바꾸고, 통합간편 상품군 몫의 함수조항을 돌려준다
+ * (정의 — 상품군마다 글이 다른 셋 · 부가항 · 세부규정 · 무효). `shared` 는 알파Plus 가 만든 함수조항 — 사유별 호 · 두 상품군 공통 정의 · 부활 문구는 함께 쓴다.
  *
- * 메리츠 원문은 종마다 항이 따로다 — ① 2종(보험료 납입면제 1형) · ② 3종(보험료 납입면제 2형). [납입면제종마다] 항 하나가 그 둘을 낸다(결정 11).
- * 그래서 「제1항 또는 제2항」은 반복 항 하나를 가리키는 참조(연결어 또는), 「제1항 제1호 및 제2항 제1호」는 값 한정(암·면책) 참조 하나다.
+ * 통합간편 원문은 종마다 항이 따로다 — ① 2종(보험료 납입면제 1형) · ② 3종(보험료 납입면제 2형). [납입면제종마다] 항 하나가 그 둘을 낸다(결정 11).
+ * 그래서 「제1항 또는 제2항」은 반복 항 하나를 가리키는 참조(연결어 또는), 「제1항 제1호 및 제2항 제1호」는 암·면책 호 함수조항 참조 하나다(종마다 펼친 것 전부).
  */
 export function applyMeritzWaiver(meritz: WaiverSource, shared: readonly WaiverClause[]): WaiverClause[] {
   const a2 = articleOf(meritz, "2");
@@ -437,93 +483,57 @@ export function applyMeritzWaiver(meritz: WaiverSource, shared: readonly WaiverC
   const a35 = articleOf(meritz, "35");
   const sharedOf = (key: string) => {
     const c = shared.find((x) => x.key === key);
-    if (!c) throw new Error(`납입면제 재모델링: 공유 역할 함수조항 ${key} 없음`);
+    if (!c) throw new Error(`납입면제 재모델링: 공유 함수조항 ${key} 없음`);
     return c;
   };
 
   // ── 제29조 반복 템플릿의 노드 id
   const [p1, p2, , p4, p5, p6, p7] = paragraphs(a29);
-  if (!p7) throw new Error("납입면제 재모델링: 메리츠 제29조 항이 일곱이 아니다");
+  if (!p7) throw new Error("납입면제 재모델링: 통합간편 제29조 항이 일곱이 아니다");
   const outerId = `${a29.id}-for-plans`;
-  const innerId = `${a29.id}-for-reasons`;
-  const itemRefId = `${a29.id}-p1-k`;
   const itemsOf = (p: ParagraphNode) => (p.items ?? []).filter((it): it is ItemNode => it.kind === "item");
   const i1 = itemsOf(p1);
   const i2 = itemsOf(p2);
-  if (i1.length !== 5 || i2.length !== 6) throw new Error(`납입면제 재모델링: 메리츠 제29조 ① ② 호가 5 · 6 개가 아니다(${i1.length} · ${i2.length})`);
-  // 원문 호 → 사유 (두 항이 같은 순서 — 원문 호 목록 그대로, 세목 사유와 같다)
-  const reasonOfItem = new Map<Id, Code[]>([
-    [i1[0].id, [REASON.cancerWaiting]],
-    [i2[0].id, [REASON.cancerWaiting]],
-    [i1[1].id, ["V03"]],
-    [i2[1].id, ["V03"]],
-    [i1[2].id, ["V04"]],
-    [i2[2].id, ["V04"]],
-    [i1[3].id, [...REASON.disability]],
-    [i1[4].id, [...REASON.disability]],
-    [i2[3].id, [...REASON.disability]],
-    [i2[4].id, [...REASON.disability]],
-    [i2[5].id, [REASON.burn]],
+  if (i1.length !== 5 || i2.length !== 6) throw new Error(`납입면제 재모델링: 통합간편 제29조 ① ② 호가 5 · 6 개가 아니다(${i1.length} · ${i2.length})`);
+  // 원문 호 → 사유 (두 항이 같은 순서 — 원문 호 목록 그대로, 세목 사유와 같다). 장해(V11)는 호 둘(상해 · 질병)
+  const reasonOfItem = new Map<Id, Code>([
+    [i1[0].id, REASON.cancerWaiting],
+    [i2[0].id, REASON.cancerWaiting],
+    [i1[1].id, "V03"],
+    [i2[1].id, "V03"],
+    [i1[2].id, "V04"],
+    [i2[2].id, "V04"],
+    [i1[3].id, REASON.disability],
+    [i1[4].id, REASON.disability],
+    [i2[3].id, REASON.disability],
+    [i2[4].id, REASON.disability],
+    [i2[5].id, REASON.burn],
   ]);
-  // 「제1항 제4호 또는 제2항 제4호 및 제6호의 상해관련」(제31조 ⑫) — 장해 값이 낸 호 둘 중 상해 호만: 호 함수조항 안 첫 자리(칸마다 같은 코드 — ADR-0072 결정 4)
-  // 를 안쪽 코드로, 상해 장해를 내는 값(상해및질병80% · 상해80%)과 중증화상및부식으로 한정한다
-  const itemClause = sharedOf("waiver-item");
-  const firstItemCode = (() => {
-    const body = withClauseCodes(itemClause.record.body);
-    const sw = (body as unknown as { cases: { values: Code[]; children: { code?: Code }[] }[] }[])[0];
-    const code = sw.cases.find((c) => c.values.includes(REASON.disability[0]))?.children[0]?.code;
-    if (!code) throw new Error("납입면제 재모델링: 납입면제 호의 상해 장해 호 코드가 없다");
-    return code;
-  })();
+  // 「제1항 제4호 또는 제2항 제4호 및 제6호의 상해관련」(제31조 ⑫) — 장해 호 함수조항이 낸 호 둘 중 상해 호만: 그 함수조항 안 첫 호의 코드를 안쪽 코드로 건다
+  const firstItemCode = (find(withClauseCodes(sharedOf(itemKey(REASON.disability)).record.body), (x) => x.kind === "item") as { code?: Code } | undefined)?.code;
+  if (!firstItemCode) throw new Error("납입면제 재모델링: 장해 호 함수조항의 상해 호 코드가 없다");
   const injuryRef = (ref: ArticleRefNode) => ref.targets.map((t) => t.articleId).join() === [i1[3].id, i2[3].id, i2[5].id].join();
   const remap: Remap = (id, ref) => {
     if (id === p2.id) return { articleId: p1.id };
-    const values = reasonOfItem.get(id);
-    if (!values) return undefined;
-    if (injuryRef(ref)) return { articleId: itemRefId, innerCode: firstItemCode, restrict: { values: id === i2[5].id ? [REASON.burn] : [...REASON.injuryDisability] } };
-    return { articleId: itemRefId, restrict: { values } };
+    const v = reasonOfItem.get(id);
+    if (!v) return undefined;
+    return { articleId: itemRefId(a29.id, v), ...(v === REASON.disability && injuryRef(ref) ? { innerCode: firstItemCode } : {}) };
   };
   const noInside = new Set<Id>();
 
-  // ── 정의 및 진단확정(메리츠) — 사유 값마다 칸. 메리츠 원문 제30조(암 ①~④ · 뇌졸중 ⑤⑥ · 급성심근경색증 ⑦⑧ · 중증화상및부식 ⑨⑩),
-  // 메리츠에 없는 질병 여섯 칸은 알파Plus 원문 칸을 옮긴다(값마다 정확히 한 칸 — 결정 5, 지어낸 글보다 실물 글), 장해는 문구 없음
+  // ── 정의 — 통합간편 상품군 몫(암 ①~④ · 뇌졸중 ⑤⑥ · 급성심근경색증 ⑦⑧, 「이 계약에 있어」). 나머지(중증화상및부식 ⑨⑩ 포함)는 두 상품군 공통 함수조항
   const xInside = structIds(a30);
   const m = (from: number, to = from) => takeBlocks(a30, paragraphRun(a30, from, to)).map((b) => clauseBlock(b, xInside, remap));
-  const alphaDefinition = find(sharedOf("waiver-definition").record.body, (x) => x.kind === "switchBlock") as { cases: { values: Code[]; children: unknown[] }[] } | undefined;
-  const alphaCase = (v: Code) => {
-    const c = alphaDefinition?.cases.find((k) => k.values.length === 1 && k.values[0] === v);
-    if (!c) throw new Error(`납입면제 재모델링: 알파Plus 정의 칸 ${v} 없음`);
-    return copyWithSuffix(c.children, `-${v}`);
-  };
-  const definitionClause = record(
-    "waiver-definition-meritz",
-    "정의 및 진단확정(메리츠)",
-    "block",
-    "「…의 정의 및 진단확정」 조의 본문(메리츠 — 「이 계약에 있어」) — 사유 값마다 정의 · 진단확정 항(암 칸 안에 【용어풀이】 박스 둘). 메리츠 원문에 없는 질병 여섯은 알파Plus 원문 칸. 장해 값은 문구 없음. 템플릿의 [사유 합집합 ∩ 정의조대상마다] 반복 안에서 사유 ← 현재 원소",
-    [
-      {
-        id: "sw",
-        kind: "switchBlock",
-        on: "arg.사유",
-        cases: [
-          switchCase("k-cancer", [REASON.cancerWaiting, REASON.cancerNoWaiting], m(1, 4)),
-          switchCase("k-V03", ["V03"], m(5, 6)),
-          switchCase("k-V04", ["V04"], m(7, 8)),
-          ...["V05", "V06", "V07", "V08", "V09", "V10"].map((v) => switchCase(`k-${v}`, [v], alphaCase(v))),
-          switchCase("k-disability", [...REASON.disability], []),
-          switchCase("k-burn", [REASON.burn], m(9, 10)),
-        ],
-      },
-    ],
-    [REASON_PARAM],
-  );
+  const definitionBodies: Record<string, Block[]> = { cancer: m(1, 4), V03: m(5, 6), V04: m(7, 8) };
+  const definitionClauses = DEFINITIONS.filter((d) => d.perLine).map((d) => definitionClause(d, LINE.meritz, definitionBodies[d.key]));
+  for (const d of DEFINITIONS.filter((x) => !x.perLine)) sharedOf(definitionKey(d, LINE.meritz));
 
-  // ── 면제 부가항(메리츠) — ③ 「제1항 제1호 및 제2항 제1호의 암보장개시일이라 함은 최초계약일부터 …」 + 【그림】 박스, 면책 사유가 있을 때만
+  // ── 면제 부가항(통합간편) — ③ 「제1항 제1호 및 제2항 제1호의 암보장개시일이라 함은 최초계약일부터 …」 + 【그림】 박스, 면책 사유가 있을 때만
   const addendumClause = record(
     "waiver-addendum-meritz",
-    "면제 부가항(메리츠)",
+    "면제 부가항(통합간편)",
     "block",
-    "납입면제 조 ③(메리츠) — 적용 종들의 사유에 면책 사유가 있으면 「제1항 제1호 및 제2항 제1호의 암보장개시일이라 함은 최초계약일부터 …」 항과 【그림】 박스. 「제1항 제1호 및 제2항 제1호」는 값 한정 참조(사유 = 암·면책) 하나 — 종마다 항이 펼쳐진 만큼 찍힌다",
+    "납입면제 조 ③(통합간편) — 적용 종들의 사유에 면책 사유가 있으면 「제1항 제1호 및 제2항 제1호의 암보장개시일이라 함은 최초계약일부터 …」 항과 【그림】 박스. 「제1항 제1호 및 제2항 제1호」는 암·면책 호 함수조항 참조 하나 — 종마다 항이 펼쳐진 만큼 찍힌다",
     [{ id: "c", kind: "condBlock", branches: [{ id: "c-if", when: "var.면책있음", children: takeBlocks(a29, paragraphRun(a29, 3)).map((b) => clauseBlock(b, noInside, remap)) }] }],
     [PLANS_PARAM],
     [REASONS_LOCAL, WAITING_LOCAL],
@@ -535,37 +545,35 @@ export function applyMeritzWaiver(meritz: WaiverSource, shared: readonly WaiverC
   absorbPlain(d11, [i1[3].id, i1[4].id], " 또는 제2항 제4호부터 제6호까지", [i2[3].id, i2[4].id, i2[5].id]);
   absorbPlain(d12, [i1[3].id, i2[3].id], " 및 제6호", [i2[5].id]);
 
-  // ── 납입면제 세부규정(메리츠) — 면책 ①~③ · 장해 ④~⑥ · ⑦ 제3자 합의 고정 · 장해 ⑧~⑩ · 장해 또는 중증화상 ⑪ · 상해 장해 또는 중증화상 ⑫
+  // ── 납입면제 세부규정(통합간편) — 면책 ①~③ · 장해 ④~⑥ · ⑦ 제3자 합의 고정 · 장해 ⑧~⑩ · 장해 또는 중증화상 ⑪ · 상해 장해 또는 중증화상 ⑫
   const dInside = structIds(a31);
   const d = (from: number, to = from) => takeBlocks(a31, paragraphRun(a31, from, to)).map((b) => clauseBlock(b, dInside, remap));
   const iff = (id: string, when: string, children: Block[]) => ({ id, kind: "condBlock", branches: [{ id: `${id}-if`, when, children }] });
   const detailClause = record(
     "waiver-detail-meritz",
-    "납입면제 세부규정(메리츠)",
+    "납입면제 세부규정(통합간편)",
     "block",
-    "납입면제에 관한 세부규정 조의 본문(메리츠) — 면책 사유 → ①~③, 장해 → ④~⑥ · ⑧~⑩, ⑦ 제3자 합의는 늘, 장해 또는 중증화상및부식 → ⑪ 고의 · 전쟁 제외, 상해 장해 또는 중증화상및부식 → ⑫ 위험 활동 제외. 「제29조 제1항 제1호 또는 제2항 제1호」 등은 값 한정 참조 — 원문의 두 겹 연결어는 연결어 한 칸으로(인수기준 알려진 차이)",
+    "납입면제에 관한 세부규정 조의 본문(통합간편) — 면책 사유 → ①~③, 장해 → ④~⑥ · ⑧~⑩, ⑦ 제3자 합의는 늘, 장해 또는 중증화상및부식 → ⑪ 고의 · 전쟁 제외, 상해 장해 또는 중증화상및부식 → ⑫ 위험 활동 제외. 「제29조 제1항 제1호 또는 제2항 제1호」 등은 그 사유의 호 함수조항 참조(⑫ 상해관련은 장해 호 함수조항의 첫 호) — 원문의 두 겹 연결어는 연결어 한 칸으로(인수기준 알려진 차이)",
     [iff("c1", "var.면책있음", d(1, 3)), iff("c2", "var.장해있음", d(4, 6)), ...d(7), iff("c3", "var.장해있음", d(8, 10)), iff("c4", "var.장해화상", d(11)), iff("c5", "var.상해관련", d(12))],
     [PLANS_PARAM],
     [REASONS_LOCAL, WAITING_LOCAL, DISABILITY_LOCAL, INJURY_LOCAL, DISABILITY_BURN_LOCAL, INJURY_BURN_LOCAL],
   );
 
-  // ── 무효 문구(메리츠) — 알파Plus 무효 문구와 글이 같지만 「제1항」이 제 보통약관의 계약의 무효 조를 가리킨다(보통약관 참조는 템플릿마다 조가 다르다)
+  // ── 무효 문구(통합간편) — 알파Plus 무효 문구와 글이 같지만 「제1항」이 제 보통약관의 계약의 무효 조를 가리킨다(보통약관 참조는 템플릿마다 조가 다르다)
   const voidClause = record(
     "waiver-void-meritz",
-    "무효 문구(메리츠)",
+    "무효 문구(통합간편)",
     "block",
-    "계약의 무효 조(메리츠) — 적용 종들의 사유에 면책 사유가 있으면 암보장개시일 전일 이전 진단확정 시 무효 항. 메리츠 원문 제22조에는 없다(원문 누락 — QA/인수기준 알려진 차이). 글은 무효 문구(알파Plus)와 같다",
+    "계약의 무효 조(통합간편) — 적용 종들의 사유에 면책 사유가 있으면 암보장개시일 전일 이전 진단확정 시 무효 항. 통합간편 원문 제22조에는 없다(원문 누락 — QA/인수기준 알려진 차이). 글은 무효 문구(알파Plus)와 같다",
     [{ id: "c", kind: "condBlock", branches: [{ id: "c-if", when: "var.면책있음", children: [voidParagraph(paragraphs(a22)[0].id)] }] }],
     [PLANS_PARAM],
     [REASONS_LOCAL, WAITING_LOCAL],
   );
 
   // ── 템플릿
-  const ref = (id: Id, key: string, bindings: Record<string, Binding>): ClauseBlockRefNode => ({ id, kind: "clauseBlockRef", clauseCode: `@${key}`, options: {}, bindings });
-  const inner: ForBlockNode = { id: innerId, kind: "forBlock", source: { kind: "listOfCurrent", loop: outerId, field: "reasons" }, children: [ref(itemRefId, itemClause.key, { 사유: { kind: "current", loop: innerId } })] };
   const lead = p1.children[0];
   const LEAD = "회사는 2종(보험료 납입면제 1형)을 가입한 피보험자가 ";
-  if (p1.children.length !== 1 || lead?.kind !== "text" || !lead.text.startsWith(LEAD)) throw new Error("납입면제 재모델링: 메리츠 제29조 ① 첫 문장이 원문과 다르다");
+  if (p1.children.length !== 1 || lead?.kind !== "text" || !lead.text.startsWith(LEAD)) throw new Error("납입면제 재모델링: 통합간편 제29조 ① 첫 문장이 원문과 다르다");
   const repeated: ParagraphNode = {
     id: p1.id,
     kind: "paragraph",
@@ -576,7 +584,7 @@ export function applyMeritzWaiver(meritz: WaiverSource, shared: readonly WaiverC
       { id: `${p1.id}-x4`, kind: "slot", ref: "builtin.plan.name" },
       { id: `${p1.id}-x5`, kind: "text", text: `)을 가입한 피보험자가 ${lead.text.slice(LEAD.length)}` },
     ],
-    items: [inner],
+    items: itemRefs(a29.id, outerId),
   };
   const outer: ForBlockNode = { id: outerId, kind: "forBlock", source: { kind: "planOptions", ...APPLIED }, children: [repeated] };
   const addendumRef = presetRef(`${a29.id}-p3-k`, addendumClause.key, "S01");
@@ -585,16 +593,15 @@ export function applyMeritzWaiver(meritz: WaiverSource, shared: readonly WaiverC
   for (const p of [p4, p5, p6, p7]) remapTemplateRefs(p, (id) => (id === p2.id ? p1.id : id));
   for (const p of [p6, p7]) mergeRanges(p, [p1.id, addendumRef.id, p4.id, p5.id, p6.id, p7.id]);
 
-  // 제31조 — 조 본문 = 세부규정 한 줄, 제30조 — [사유 합집합 ∩ 정의조대상마다] ⟨정의(메리츠)⟩ (제목은 고정 글)
+  // 제31조 — 조 본문 = 세부규정 한 줄, 제30조 — 사유별 정의를 열거형 순서로 (제목은 고정 글)
   a31.children = [presetRef(`${a31.id}-p1-k`, detailClause.key, "S01")];
-  const unionId = `${a30.id}-for-reasons`;
-  a30.children = [{ id: unionId, kind: "forBlock", source: { kind: "union", ...APPLIED, field: "reasons", where: { field: "F03", value: true } }, children: [ref(`${a30.id}-p1-k`, definitionClause.key, { 사유: { kind: "current", loop: unionId } })] }];
+  a30.children = definitionRefs(a30.id, LINE.meritz);
 
-  // 제22조 — 원문 두 항 뒤에 무효 문구(③), 제35조 ④ — 부활 문구(기준일 = 최초계약일). ④ 뒤 【부활(효력회복)】 박스는 조의 것이라 템플릿에 남는다
+  // 제22조 — 원문 두 항 뒤에 무효 문구(③), 제35조 ④ — 부활 문구(기준일은 갱신형 상품이라 최초계약일). ④ 뒤 【부활(효력회복)】 박스는 조의 것이라 템플릿에 남는다
   a22.children = [...a22.children, presetRef(`${a22.id}-p3-k`, voidClause.key, "S01")];
   const r4 = paragraphs(a35)[3];
-  if (!r4 || JSON.stringify(r4.children.map((c) => (c.kind === "text" ? c.text : c.kind))) !== JSON.stringify([REVIVE_TEXT("최초계약일")])) throw new Error("납입면제 재모델링: 메리츠 제35조 ④ 가 부활 문구가 아니다");
-  a35.children.splice(a35.children.indexOf(r4), 1, presetRef(`${a35.id}-p4-k`, "waiver-revive", REVIVE_PRESET["최초계약일"]));
+  if (!r4 || JSON.stringify(r4.children.map((c) => (c.kind === "text" ? c.text : c.kind))) !== JSON.stringify([REVIVE_TEXT("최초계약일")])) throw new Error("납입면제 재모델링: 통합간편 제35조 ④ 가 부활 문구가 아니다");
+  a35.children.splice(a35.children.indexOf(r4), 1, presetRef(`${a35.id}-p4-k`, "waiver-revive", "S01"));
 
   // 제2조 표의 종별 행(2종 · 3종)의 「제29조 제1항」 · 「제2항」은 종 하나를 가리킨다 — 종 한정 참조는 다음 기획이라 글로 굳힌다(원문 표기 그대로).
   // 「제29조 제4항」 · 「제29조 및 제31조」는 참조로 둔다
@@ -606,7 +613,7 @@ export function applyMeritzWaiver(meritz: WaiverSource, shared: readonly WaiverC
   // 세 조를 「납입면제 있음」 조 자리 IF 로 감싼다(결정 16)
   wrapArticles(meritz.tree, [a29.id, a30.id, a31.id], `${a29.id}-if-waiver`);
 
-  return [definitionClause, withPresets(addendumClause, APPLIED_PRESETS), withPresets(detailClause, APPLIED_PRESETS), withPresets(voidClause, APPLIED_PRESETS)];
+  return [...definitionClauses, withPresets(addendumClause, APPLIED_PRESETS), withPresets(detailClause, APPLIED_PRESETS), withPresets(voidClause, APPLIED_PRESETS)];
 }
 
 /**
@@ -824,13 +831,13 @@ function wrapArticles(tree: DocumentNode, ids: readonly Id[], id: Id): void {
   if (!visit(tree)) throw new Error("납입면제 재모델링: 감쌀 조를 찾지 못했다");
 }
 
-/** 템플릿이 가리키는 역할 함수조항 자리표 `@key` → 코드. 코드는 적재 순서로 매긴 뒤에 푼다. */
+/** 문면이 가리키는 함수조항 자리표 `@key` → 코드(납입면제 템플릿 · 문구 함수조항 오버레이). 코드는 적재 순서로 매긴 뒤에 푼다. */
 export function resolveWaiverCodes(tree: DocumentNode, codeOf: (key: string) => Code | undefined): void {
   const visit = (n: unknown) => {
     if (Array.isArray(n)) return n.forEach(visit);
     if (!n || typeof n !== "object") return;
     const o = n as Record<string, unknown>;
-    if (o.kind === "clauseBlockRef" && typeof o.clauseCode === "string" && o.clauseCode.startsWith("@")) {
+    if ((o.kind === "clauseBlockRef" || o.kind === "clauseInlineRef") && typeof o.clauseCode === "string" && o.clauseCode.startsWith("@")) {
       const code = codeOf(o.clauseCode.slice(1));
       if (!code) throw new Error(`납입면제 재모델링: 역할 함수조항 ${o.clauseCode} 코드 없음`);
       o.clauseCode = code;

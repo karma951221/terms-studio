@@ -14,6 +14,10 @@
         "value": "V01"
       },
       {
+        "path": "feature.renewable",
+        "value": false
+      },
+      {
         "path": "feature.fetal",
         "value": false
       },

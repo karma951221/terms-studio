@@ -38,5 +38,25 @@
     "resultType": {
       "kind": "boolean"
     }
+  },
+  {
+    "code": "D0005",
+    "label": "갱신형 담보",
+    "description": "탑재분의 담보속성 갱신유형(A0001)이 갱신형인가 — 담보약관의 「최초계약일」 ↔ 「계약일」(문구 함수조항 「기준일 문구」 프리셋 ‘담보’)이 읽는다 (ADR-0086 결정 6). 속성을 쓰지 않는 탑재분을 위해 exist 가드",
+    "level": "coverage",
+    "expression": "exist(attr.A0001) and attr.A0001 = '2'",
+    "resultType": {
+      "kind": "boolean"
+    }
+  },
+  {
+    "code": "D0006",
+    "label": "갱신형 상품",
+    "description": "상품특성 갱신형여부 — 연만기(갱신형) 상품은 예, 세만기는 아니오. 보통약관의 「최초계약일」 ↔ 「계약일」(부활 문구 · 「기준일 문구」의 인자 갱신 기본 연결)이 읽는다 (ADR-0086 결정 6)",
+    "level": "product",
+    "expression": "feature.renewable",
+    "resultType": {
+      "kind": "boolean"
+    }
   }
 ]

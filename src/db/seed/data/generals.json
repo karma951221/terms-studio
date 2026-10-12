@@ -3199,7 +3199,7 @@
                 {
                   "id": "g-a22-p3-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0026",
+                  "clauseCode": "C0046",
                   "options": {},
                   "preset": "S01",
                   "code": "P0300"
@@ -3681,29 +3681,160 @@
                               ],
                               "items": [
                                 {
-                                  "id": "g-a27_1-for-reasons",
-                                  "kind": "forBlock",
-                                  "source": {
-                                    "kind": "listOfCurrent",
-                                    "loop": "g-a27_1-for-plans",
-                                    "field": "reasons"
-                                  },
-                                  "children": [
-                                    {
-                                      "id": "g-a27_1-p1-k",
-                                      "kind": "clauseBlockRef",
-                                      "clauseCode": "C0022",
-                                      "options": {},
-                                      "bindings": {
-                                        "사유": {
-                                          "kind": "current",
-                                          "loop": "g-a27_1-for-reasons"
-                                        }
-                                      },
-                                      "code": "P0800"
+                                  "id": "g-a27_1-p1-k-V01",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0022",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "g-a27_1-for-plans"
                                     }
-                                  ],
+                                  },
                                   "code": "P0700"
+                                },
+                                {
+                                  "id": "g-a27_1-p1-k-V02",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0023",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "g-a27_1-for-plans"
+                                    }
+                                  },
+                                  "code": "P0800"
+                                },
+                                {
+                                  "id": "g-a27_1-p1-k-V03",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0024",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "g-a27_1-for-plans"
+                                    }
+                                  },
+                                  "code": "P0900"
+                                },
+                                {
+                                  "id": "g-a27_1-p1-k-V04",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0025",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "g-a27_1-for-plans"
+                                    }
+                                  },
+                                  "code": "P1000"
+                                },
+                                {
+                                  "id": "g-a27_1-p1-k-V05",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0026",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "g-a27_1-for-plans"
+                                    }
+                                  },
+                                  "code": "P1100"
+                                },
+                                {
+                                  "id": "g-a27_1-p1-k-V06",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0027",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "g-a27_1-for-plans"
+                                    }
+                                  },
+                                  "code": "P1200"
+                                },
+                                {
+                                  "id": "g-a27_1-p1-k-V07",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0028",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "g-a27_1-for-plans"
+                                    }
+                                  },
+                                  "code": "P1300"
+                                },
+                                {
+                                  "id": "g-a27_1-p1-k-V08",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0029",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "g-a27_1-for-plans"
+                                    }
+                                  },
+                                  "code": "P1400"
+                                },
+                                {
+                                  "id": "g-a27_1-p1-k-V09",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0030",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "g-a27_1-for-plans"
+                                    }
+                                  },
+                                  "code": "P1500"
+                                },
+                                {
+                                  "id": "g-a27_1-p1-k-V10",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0031",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "g-a27_1-for-plans"
+                                    }
+                                  },
+                                  "code": "P1600"
+                                },
+                                {
+                                  "id": "g-a27_1-p1-k-V11",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0032",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "g-a27_1-for-plans"
+                                    }
+                                  },
+                                  "code": "P1700"
+                                },
+                                {
+                                  "id": "g-a27_1-p1-k-V14",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0033",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "g-a27_1-for-plans"
+                                    }
+                                  },
+                                  "code": "P1800"
                                 }
                               ],
                               "code": "P0200"
@@ -3714,7 +3845,7 @@
                         {
                           "id": "g-a27_1-p2-k",
                           "kind": "clauseBlockRef",
-                          "clauseCode": "C0024",
+                          "clauseCode": "C0044",
                           "options": {},
                           "preset": "S01",
                           "code": "P0300"
@@ -3851,7 +3982,7 @@
                         {
                           "id": "g-a27_2-p1-k",
                           "kind": "clauseBlockRef",
-                          "clauseCode": "C0025",
+                          "clauseCode": "C0045",
                           "options": {},
                           "preset": "S01",
                           "code": "P0100"
@@ -3864,34 +3995,84 @@
                       "title": "암(유사암제외), 뇌졸중, 급성심근경색증, 말기폐질환, 말기간경화, 말기신부전증, 양성뇌종양, 중대한재생불량성빈혈, 만성당뇨합병증의 정의 및 진단확정",
                       "children": [
                         {
-                          "id": "g-a27_3-for-reasons",
-                          "kind": "forBlock",
-                          "source": {
-                            "kind": "union",
-                            "form": "waiver",
-                            "filter": "waiver.applies = true",
-                            "field": "reasons",
-                            "where": {
-                              "field": "F03",
-                              "value": true
-                            }
-                          },
-                          "children": [
-                            {
-                              "id": "g-a27_3-p1-k",
-                              "kind": "clauseBlockRef",
-                              "clauseCode": "C0023",
-                              "options": {},
-                              "bindings": {
-                                "사유": {
-                                  "kind": "current",
-                                  "loop": "g-a27_3-for-reasons"
-                                }
-                              },
-                              "code": "P0200"
-                            }
-                          ],
+                          "id": "g-a27_3-p1-k-cancer",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0034",
+                          "options": {},
+                          "preset": "S01",
                           "code": "P0100"
+                        },
+                        {
+                          "id": "g-a27_3-p1-k-V03",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0035",
+                          "options": {},
+                          "preset": "S01",
+                          "code": "P0200"
+                        },
+                        {
+                          "id": "g-a27_3-p1-k-V04",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0036",
+                          "options": {},
+                          "preset": "S01",
+                          "code": "P0300"
+                        },
+                        {
+                          "id": "g-a27_3-p1-k-V05",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0037",
+                          "options": {},
+                          "preset": "S01",
+                          "code": "P0400"
+                        },
+                        {
+                          "id": "g-a27_3-p1-k-V06",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0038",
+                          "options": {},
+                          "preset": "S01",
+                          "code": "P0500"
+                        },
+                        {
+                          "id": "g-a27_3-p1-k-V07",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0039",
+                          "options": {},
+                          "preset": "S01",
+                          "code": "P0600"
+                        },
+                        {
+                          "id": "g-a27_3-p1-k-V08",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0040",
+                          "options": {},
+                          "preset": "S01",
+                          "code": "P0700"
+                        },
+                        {
+                          "id": "g-a27_3-p1-k-V09",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0041",
+                          "options": {},
+                          "preset": "S01",
+                          "code": "P0800"
+                        },
+                        {
+                          "id": "g-a27_3-p1-k-V10",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0042",
+                          "options": {},
+                          "preset": "S01",
+                          "code": "P0900"
+                        },
+                        {
+                          "id": "g-a27_3-p1-k-V14",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0043",
+                          "options": {},
+                          "preset": "S01",
+                          "code": "P1000"
                         }
                       ]
                     }
@@ -4505,7 +4686,7 @@
                 {
                   "id": "g-a30-p4-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0027",
+                  "clauseCode": "C0047",
                   "options": {},
                   "preset": "S01",
                   "code": "P0500"
@@ -8676,7 +8857,7 @@
                 {
                   "id": "m-a22-p3-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0031",
+                  "clauseCode": "C0053",
                   "options": {},
                   "preset": "S01",
                   "code": "P0300"
@@ -9348,29 +9529,160 @@
                               ],
                               "items": [
                                 {
-                                  "id": "m-a29-for-reasons",
-                                  "kind": "forBlock",
-                                  "source": {
-                                    "kind": "listOfCurrent",
-                                    "loop": "m-a29-for-plans",
-                                    "field": "reasons"
-                                  },
-                                  "children": [
-                                    {
-                                      "id": "m-a29-p1-k",
-                                      "kind": "clauseBlockRef",
-                                      "clauseCode": "C0022",
-                                      "options": {},
-                                      "bindings": {
-                                        "사유": {
-                                          "kind": "current",
-                                          "loop": "m-a29-for-reasons"
-                                        }
-                                      },
-                                      "code": "P0900"
+                                  "id": "m-a29-p1-k-V01",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0022",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "m-a29-for-plans"
                                     }
-                                  ],
+                                  },
                                   "code": "P0800"
+                                },
+                                {
+                                  "id": "m-a29-p1-k-V02",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0023",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "m-a29-for-plans"
+                                    }
+                                  },
+                                  "code": "P0900"
+                                },
+                                {
+                                  "id": "m-a29-p1-k-V03",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0024",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "m-a29-for-plans"
+                                    }
+                                  },
+                                  "code": "P1000"
+                                },
+                                {
+                                  "id": "m-a29-p1-k-V04",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0025",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "m-a29-for-plans"
+                                    }
+                                  },
+                                  "code": "P1100"
+                                },
+                                {
+                                  "id": "m-a29-p1-k-V05",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0026",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "m-a29-for-plans"
+                                    }
+                                  },
+                                  "code": "P1200"
+                                },
+                                {
+                                  "id": "m-a29-p1-k-V06",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0027",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "m-a29-for-plans"
+                                    }
+                                  },
+                                  "code": "P1300"
+                                },
+                                {
+                                  "id": "m-a29-p1-k-V07",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0028",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "m-a29-for-plans"
+                                    }
+                                  },
+                                  "code": "P1400"
+                                },
+                                {
+                                  "id": "m-a29-p1-k-V08",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0029",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "m-a29-for-plans"
+                                    }
+                                  },
+                                  "code": "P1500"
+                                },
+                                {
+                                  "id": "m-a29-p1-k-V09",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0030",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "m-a29-for-plans"
+                                    }
+                                  },
+                                  "code": "P1600"
+                                },
+                                {
+                                  "id": "m-a29-p1-k-V10",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0031",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "m-a29-for-plans"
+                                    }
+                                  },
+                                  "code": "P1700"
+                                },
+                                {
+                                  "id": "m-a29-p1-k-V11",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0032",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "m-a29-for-plans"
+                                    }
+                                  },
+                                  "code": "P1800"
+                                },
+                                {
+                                  "id": "m-a29-p1-k-V14",
+                                  "kind": "clauseBlockRef",
+                                  "clauseCode": "C0033",
+                                  "options": {},
+                                  "bindings": {
+                                    "종들": {
+                                      "kind": "current",
+                                      "loop": "m-a29-for-plans"
+                                    }
+                                  },
+                                  "code": "P1900"
                                 }
                               ],
                               "code": "P0200"
@@ -9381,7 +9693,7 @@
                         {
                           "id": "m-a29-p3-k",
                           "kind": "clauseBlockRef",
-                          "clauseCode": "C0029",
+                          "clauseCode": "C0051",
                           "options": {},
                           "preset": "S01",
                           "code": "P0300"
@@ -9548,34 +9860,84 @@
                       "title": "암(유사암제외), 뇌졸중, 급성심근경색증, 중증화상및부식의 정의 및 진단확정",
                       "children": [
                         {
-                          "id": "m-a30-for-reasons",
-                          "kind": "forBlock",
-                          "source": {
-                            "kind": "union",
-                            "form": "waiver",
-                            "filter": "waiver.applies = true",
-                            "field": "reasons",
-                            "where": {
-                              "field": "F03",
-                              "value": true
-                            }
-                          },
-                          "children": [
-                            {
-                              "id": "m-a30-p1-k",
-                              "kind": "clauseBlockRef",
-                              "clauseCode": "C0028",
-                              "options": {},
-                              "bindings": {
-                                "사유": {
-                                  "kind": "current",
-                                  "loop": "m-a30-for-reasons"
-                                }
-                              },
-                              "code": "P0200"
-                            }
-                          ],
+                          "id": "m-a30-p1-k-cancer",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0048",
+                          "options": {},
+                          "preset": "S01",
                           "code": "P0100"
+                        },
+                        {
+                          "id": "m-a30-p1-k-V03",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0049",
+                          "options": {},
+                          "preset": "S01",
+                          "code": "P0200"
+                        },
+                        {
+                          "id": "m-a30-p1-k-V04",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0050",
+                          "options": {},
+                          "preset": "S01",
+                          "code": "P0300"
+                        },
+                        {
+                          "id": "m-a30-p1-k-V05",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0037",
+                          "options": {},
+                          "preset": "S01",
+                          "code": "P0400"
+                        },
+                        {
+                          "id": "m-a30-p1-k-V06",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0038",
+                          "options": {},
+                          "preset": "S01",
+                          "code": "P0500"
+                        },
+                        {
+                          "id": "m-a30-p1-k-V07",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0039",
+                          "options": {},
+                          "preset": "S01",
+                          "code": "P0600"
+                        },
+                        {
+                          "id": "m-a30-p1-k-V08",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0040",
+                          "options": {},
+                          "preset": "S01",
+                          "code": "P0700"
+                        },
+                        {
+                          "id": "m-a30-p1-k-V09",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0041",
+                          "options": {},
+                          "preset": "S01",
+                          "code": "P0800"
+                        },
+                        {
+                          "id": "m-a30-p1-k-V10",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0042",
+                          "options": {},
+                          "preset": "S01",
+                          "code": "P0900"
+                        },
+                        {
+                          "id": "m-a30-p1-k-V14",
+                          "kind": "clauseBlockRef",
+                          "clauseCode": "C0043",
+                          "options": {},
+                          "preset": "S01",
+                          "code": "P1000"
                         }
                       ]
                     },
@@ -9587,7 +9949,7 @@
                         {
                           "id": "m-a31-p1-k",
                           "kind": "clauseBlockRef",
-                          "clauseCode": "C0030",
+                          "clauseCode": "C0052",
                           "options": {},
                           "preset": "S01",
                           "code": "P0100"
@@ -10230,9 +10592,9 @@
                 {
                   "id": "m-a35-p4-k",
                   "kind": "clauseBlockRef",
-                  "clauseCode": "C0027",
+                  "clauseCode": "C0047",
                   "options": {},
-                  "preset": "S02",
+                  "preset": "S01",
                   "code": "P0400"
                 },
                 {
