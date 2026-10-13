@@ -1,6 +1,6 @@
 import { expect, test } from "../_lib/fixtures";
 import { NO_COORD, arrive, login, open, saveEdit } from "./_lib/app";
-import { SEED } from "./_lib/seed";
+import { HUMAN, SEED } from "./_lib/seed";
 
 /**
  * ★ 실물 재현(화면) ② 담보 9 — 담보 › 세부보장 › 급부 구조와 담보 값(보험금명). 모델명세 §3.1.
@@ -9,7 +9,8 @@ import { SEED } from "./_lib/seed";
  */
 
 test.describe.serial("실물 재현(화면) ② 담보", () => {
-  for (const spec of SEED.coverages) {
+  // 사람처럼 넣는 담보(말기신부전증 — 맨 뒤 코드)는 03b-human 이 친다
+  for (const spec of SEED.coverages.filter((c) => c.key !== HUMAN.coverage)) {
     test(`${spec.code} ${spec.name}`, NO_COORD, async ({ page, ev }) => {
       test.setTimeout(180_000);
       await ev.action("실물화면#2.1", "관리자로 로그인한다", () => login(page));
