@@ -139,7 +139,7 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     expect(burn.subCoverages.map((s) => s.benefits.map((b) => b.name))).toEqual(names.map((n) => [n]));
   });
 
-  it("시드 구분자는 원문 모델링이 쓰는 담보명(D0001) · 납입면제 있음(D0002) · 해약환급금 지급형(D0003 · D0004 있음) · 갱신형 담보 · 상품(D0005 · D0006)뿐 — 감액 · 면책 · 최초1회 같은 특성 구분자는 두지 않는다 (알파플러스_모델명세 §2)", async () => {
+  it("시드 구분자는 원문 모델링이 쓰는 담보명(D0001) · 납입면제 있음(D0002) · 해약환급금 지급형(D0003 · D0004 있음) · 갱신형 담보 · 상품(D0005 · D0006) · 해약환급금 미지급형 있음(D0007)뿐 — 감액 · 면책 · 최초1회 같은 특성 구분자는 두지 않는다 (알파플러스_모델명세 §2)", async () => {
     const defs = await services.catalog.list();
     expect(defs.map((d) => [d.code, d.label, d.level, d.expression])).toEqual([
       ["D0001", "담보명", "coverage", "coverage_basic.claim_name"],
@@ -149,6 +149,8 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
       // 계약일 ↔ 최초계약일을 가른다 (ADR-0086 결정 6)
       ["D0005", "갱신형 담보", "coverage", "exist(attr.A0001) and attr.A0001 = '2'"],
       ["D0006", "갱신형 상품", "product", "feature.renewable"],
+      // 형 축 — 1형만이면 2형 문장 · 「1형에 한하여」 문장이 빠진다 (QA/인수기준 보통약관 형 축)
+      ["D0007", "해약환급금 미지급형 있음", "product", "not all(D0003)"],
     ]);
   });
 

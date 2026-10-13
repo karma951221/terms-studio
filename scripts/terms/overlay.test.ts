@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ArticleNode, DocumentNode, InlineCondNode, ParagraphNode, TableNode } from "../../src/domain/document/nodes";
 import { validateTree } from "../../src/domain/document/nodes";
 
-import { applyArticleConds, applyInlineClauses, applyInlineConds, type NumberOf } from "./overlay";
+import { applyArticleConds, applyBoxConds, applyInlineClauses, applyInlineConds, type NumberOf } from "./overlay";
 
 const WHEN = "exist(attr.A0001) and attr.A0001 = '2'";
 
@@ -99,6 +99,43 @@ describe("applyInlineClauses — 어구 자리를 문구 함수조항 참조로 
     const report: string[] = [];
     applyInlineClauses(doc, numberOf, [{ article: "1", find: "없는 말", clause: "basis-date" }], report);
     expect(report).toEqual(["문구 함수조항 오버레이: 조 1 에서 「없는 말」 을 찾지 못함"]);
+  });
+});
+
+describe("applyInlineConds — else 없는 오버레이는 IF 만", () => {
+  it("가지가 참 하나뿐이다 — 거짓이면 그 어구가 통째로 빠진다(형 축 문장, 상품 범위 조건)", () => {
+    const doc = tree();
+    const report: string[] = [];
+    applyInlineConds(doc, numberOf, [{ article: "2", find: "3년으로 ", when: "D0007", then: "3년으로 " }], report);
+    const cond = ((doc.children[1] as ArticleNode).children[0] as ParagraphNode).children[0] as InlineCondNode;
+    expect(cond.branches).toEqual([{ id: "s-a2-c1-t", when: "D0007", children: [{ id: "s-a2-c1-t-x0", kind: "text", text: "3년으로 " }] }]);
+    expect(report).toEqual([]);
+  });
+});
+
+describe("applyBoxConds — 박스 자리를 상품 범위 조건으로", () => {
+  const withBoxes = (): DocumentNode => {
+    const doc = tree();
+    const a = doc.children[1] as ArticleNode;
+    a.children.push({ id: "s-a2-b1", kind: "box", title: "유의사항", lines: ["2형(해약환급금미지급형)은 …"] }, { id: "s-a2-b2", kind: "box", title: "보험연도", lines: ["매1년 단위"] });
+    return doc;
+  };
+
+  it("제목 · 줄에 찾는 글이 든 박스만 조건 블록으로 감싼다 — 같은 자리, 가지는 참 하나뿐", () => {
+    const doc = withBoxes();
+    const report: string[] = [];
+    applyBoxConds(doc, numberOf, [{ article: "2", find: "2형(", when: "D0007" }], report);
+    const a = doc.children[1] as ArticleNode;
+    expect(a.children.map((n) => n.kind)).toEqual(["paragraph", "condBlock", "box"]);
+    expect(a.children[1]).toMatchObject({ id: "s-a2-b1-c", branches: [{ id: "s-a2-b1-c-t", when: "D0007", children: [{ id: "s-a2-b1" }] }] });
+    expect(report).toEqual([]);
+  });
+
+  it("찾는 박스가 없으면 보고한다", () => {
+    const doc = withBoxes();
+    const report: string[] = [];
+    applyBoxConds(doc, numberOf, [{ article: "1", find: "2형(", when: "D0007" }], report);
+    expect(report).toEqual(["박스 조건 오버레이: 조 1 에서 「2형(」 박스를 찾지 못함"]);
   });
 });
 

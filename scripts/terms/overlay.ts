@@ -9,7 +9,7 @@
  */
 import type { ArticleNode, DocumentNode, InlineNode } from "../../src/domain/document/nodes";
 import type { Id } from "../../src/domain/types";
-import type { ArticleCondOverlay, InlineClauseOverlay, InlineCondOverlay } from "./config";
+import type { ArticleCondOverlay, BoxCondOverlay, InlineClauseOverlay, InlineCondOverlay } from "./config";
 
 /** 조 id → 원문 조 번호 (오버레이가 조를 찾는 열쇠). */
 export type NumberOf = ReadonlyMap<Id, string>;
@@ -75,9 +75,26 @@ export function applyInlineConds(tree: DocumentNode, numberOf: NumberOf, conds: 
       kind: "inlineCond",
       branches: [
         { id: `${id}-t`, when: cond.when, children: [{ id: `${id}-t-x0`, kind: "text", text: cond.then }] },
-        { id: `${id}-e`, children: [{ id: `${id}-e-x0`, kind: "text", text: cond.else }] },
+        // ELSE 가 없으면 IF 만 — 거짓이면 그 어구가 통째로 빠진다
+        ...(cond.else !== undefined ? [{ id: `${id}-e`, children: [{ id: `${id}-e-x0`, kind: "text" as const, text: cond.else }] }] : []),
       ],
     });
+  }
+}
+
+/**
+ * 조건 오버레이 ③ — 지정 조 직속 박스 중 제목 · 줄에 `find` 가 든 것을 모두 `condBlock` 으로 감싼다 (**박스 마스터를 만들기 전**에 얹는다 —
+ * 박스 자리 수집이 조건 가지 안까지 보므로 감싼 박스도 박스 참조가 된다). 노드 id 는 박스 id + `-c`.
+ */
+export function applyBoxConds(tree: DocumentNode, numberOf: NumberOf, conds: readonly BoxCondOverlay[], report: string[]): void {
+  for (const cond of conds) {
+    const a = articleByNumber(tree, numberOf, cond.article);
+    const hits = a ? a.children.filter((c) => c.kind === "box" && [c.title ?? "", ...c.lines].some((l) => l.includes(cond.find))) : [];
+    if (!a || hits.length === 0) {
+      report.push(a ? `박스 조건 오버레이: 조 ${cond.article} 에서 「${cond.find}」 박스를 찾지 못함` : `박스 조건 오버레이: 조 ${cond.article} 없음`);
+      continue;
+    }
+    for (const box of hits) a.children.splice(a.children.indexOf(box), 1, { id: `${box.id}-c`, kind: "condBlock", branches: [{ id: `${box.id}-c-t`, when: cond.when, children: [box] }] });
   }
 }
 
