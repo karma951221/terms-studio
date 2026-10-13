@@ -436,5 +436,607 @@
       }
     ],
     "benefitValues": []
+  },
+  {
+    "key": "a7-i11",
+    "code": "COV000024",
+    "name": "상해흉터복원수술비보장",
+    "benefitName": "상해흉터복원수술비보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "상해흉터복원수술비보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i12",
+    "code": "COV000025",
+    "name": "상해수술비보장",
+    "benefitName": "상해수술비보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "상해수술비보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i13",
+    "code": "COV000026",
+    "name": "상해 통합치료비(실속형)보장",
+    "benefitName": "상해 통합치료비(실속형)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "상해 통합치료비(실속형)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i14",
+    "code": "COV000027",
+    "name": "일반상해입원일당(1일이상)보장",
+    "benefitName": "일반상해입원일당(1일이상)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "일반상해입원일당(1일이상)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i16",
+    "code": "COV000028",
+    "name": "일반상해중환자실입원일당(1일이상)보장",
+    "benefitName": "일반상해중환자실입원일당(1일이상)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "일반상해중환자실입원일당(1일이상)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i17",
+    "code": "COV000029",
+    "name": "강력범죄피해(일상생활중)보장",
+    "benefitName": "강력범죄피해(일상생활중)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "강력범죄피해(일상생활중)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i18",
+    "code": "COV000030",
+    "name": "안전사고피해치료비보장(폭력치료비, 유괴･인신매매피해치료비)",
+    "benefitName": "안전사고피해치료비보장(폭력치료비, 유괴･인신매매피해치료비)",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "안전사고피해치료비보장(폭력치료비, 유괴･인신매매피해치료비)"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i19",
+    "code": "COV000031",
+    "name": "일반상해수술입원일당(1일이상 20일한도)보장",
+    "benefitName": "일반상해수술입원일당(1일이상 20일한도)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "일반상해수술입원일당(1일이상 20일한도)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i20",
+    "code": "COV000032",
+    "name": "5대골절진단비보장",
+    "benefitName": "5대골절진단비보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "5대골절진단비보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i21",
+    "code": "COV000033",
+    "name": "5대골절수술비보장",
+    "benefitName": "5대골절수술비보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "5대골절수술비보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i23",
+    "code": "COV000034",
+    "name": "골절(치아파절제외)수술비Ⅱ보장",
+    "benefitName": "골절(치아파절제외)수술비Ⅱ보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "골절(치아파절제외)수술비Ⅱ보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i24",
+    "code": "COV000035",
+    "name": "일반상해50%이상후유장해보장",
+    "benefitName": "일반상해50%이상후유장해보험금",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "일반상해50%이상후유장해보험금"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i25",
+    "code": "COV000036",
+    "name": "대중교통이용중 교통상해후유장해(3-100%)보장",
+    "benefitName": "대중교통이용중 교통상해후유장해(3-100%)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "대중교통이용중 교통상해후유장해(3-100%)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i26",
+    "code": "COV000037",
+    "name": "일반상해후유장해(20-100%)보장",
+    "benefitName": "일반상해후유장해(20-100%)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "일반상해후유장해(20-100%)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i28",
+    "code": "COV000038",
+    "name": "일반상해후유장해(3-100%)보장",
+    "benefitName": "일반상해후유장해(3-100%)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "일반상해후유장해(3-100%)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i29",
+    "code": "COV000039",
+    "name": "종합병원 일반상해입원일당(1일이상)보장",
+    "benefitName": "종합병원 일반상해입원일당(1일이상)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "종합병원 일반상해입원일당(1일이상)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i30",
+    "code": "COV000040",
+    "name": "신골절치료비(치아파절포함)보장",
+    "benefitName": "신골절치료비(치아파절포함)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "신골절치료비(치아파절포함)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i31",
+    "code": "COV000041",
+    "name": "상급종합병원 일반상해입원일당(1일이상)보장",
+    "benefitName": "상급종합병원 일반상해입원일당(1일이상)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "상급종합병원 일반상해입원일당(1일이상)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i36",
+    "code": "COV000042",
+    "name": "골절진단비Ⅱ보장",
+    "benefitName": "골절진단비Ⅱ보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "골절진단비Ⅱ보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i38",
+    "code": "COV000043",
+    "name": "상급병실(1인실) 상급종합병원 일반상해입원일당(1일이상 10일한도)보장",
+    "benefitName": "상급병실(1인실) 상급종합병원 일반상해입원일당(1일이상 10일한도)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "상급병실(1인실) 상급종합병원 일반상해입원일당(1일이상 10일한도)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i39",
+    "code": "COV000044",
+    "name": "상급병실(1인실) 종합병원 일반상해입원일당(1일이상 30일한도)보장",
+    "benefitName": "상급병실(1인실) 종합병원 일반상해입원일당(1일이상 30일한도)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "상급병실(1인실) 종합병원 일반상해입원일당(1일이상 30일한도)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i40",
+    "code": "COV000045",
+    "name": "상급병실(1인실) 종합병원 일반상해수술입원일당(1일이상 10일한도)보장",
+    "benefitName": "상급병실(1인실) 종합병원 일반상해수술입원일당(1일이상 10일한도)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "상급병실(1인실) 종합병원 일반상해수술입원일당(1일이상 10일한도)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i41",
+    "code": "COV000046",
+    "name": "종합병원 상해수술비보장",
+    "benefitName": "종합병원 상해수술비보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "종합병원 상해수술비보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i42",
+    "code": "COV000047",
+    "name": "상급종합병원 상해수술비보장",
+    "benefitName": "상급종합병원 상해수술비보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "상급종합병원 상해수술비보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i45",
+    "code": "COV000048",
+    "name": "일반상해입원일당(181일이상)(요양,정신,한방병원제외)보장",
+    "benefitName": "일반상해입원일당(181일이상)(요양,정신,한방병원제외)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "일반상해입원일당(181일이상)(요양,정신,한방병원제외)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i46",
+    "code": "COV000049",
+    "name": "간병인사용 일반상해입원일당(plus)(181일이상)(요양,정신,한방병원제외)보장",
+    "benefitName": "간병인사용 일반상해입원일당(plus)(181일이상)(요양,정신,한방병원제외)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "간병인사용 일반상해입원일당(plus)(181일이상)(요양,정신,한방병원제외)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i47",
+    "code": "COV000050",
+    "name": "간호·간병통합서비스 사용 일반상해입원일당(181일이상)(요양,정신,한방병원제외)보장",
+    "benefitName": "간호·간병통합서비스 사용 일반상해입원일당(181일이상)(요양,정신,한방병원제외)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "간호·간병통합서비스 사용 일반상해입원일당(181일이상)(요양,정신,한방병원제외)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i48",
+    "code": "COV000051",
+    "name": "간병인사용 일반상해입원일당(plus)(1일이상 180일한도)(요양병원제외)보장",
+    "benefitName": "간병인사용 일반상해입원일당(plus)(1일이상 180일한도)(요양병원제외)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "간병인사용 일반상해입원일당(plus)(1일이상 180일한도)(요양병원제외)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i49",
+    "code": "COV000052",
+    "name": "간병인사용 일반상해입원일당(1일이상 180일한도)(요양병원)보장",
+    "benefitName": "간병인사용 일반상해입원일당(1일이상 180일한도)(요양병원)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "간병인사용 일반상해입원일당(1일이상 180일한도)(요양병원)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i50",
+    "code": "COV000053",
+    "name": "간호·간병통합서비스 사용 일반상해입원일당(1일이상 180일한도)보장",
+    "benefitName": "간호·간병통합서비스 사용 일반상해입원일당(1일이상 180일한도)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "간호·간병통합서비스 사용 일반상해입원일당(1일이상 180일한도)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i51",
+    "code": "COV000054",
+    "name": "간병인사용 일반상해입원일당(plus)(1일이상 180일한도)(요양병원제외)(체증형)보장",
+    "benefitName": "간병인사용 일반상해입원일당(plus)(1일이상 180일한도)(요양병원제외)(체증형)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "간병인사용 일반상해입원일당(plus)(1일이상 180일한도)(요양병원제외)(체증형)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i52",
+    "code": "COV000055",
+    "name": "간병인사용 일반상해입원일당(1일이상 180일한도)(요양병원)(체증형)보장",
+    "benefitName": "간병인사용 일반상해입원일당(1일이상 180일한도)(요양병원)(체증형)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "간병인사용 일반상해입원일당(1일이상 180일한도)(요양병원)(체증형)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i53",
+    "code": "COV000056",
+    "name": "일반상해입원 간병인비용지원(간병인비용 200만원 이상)(요양병원제외)보장",
+    "benefitName": "일반상해입원 간병인비용지원(간병인비용 200만원 이상)(요양병원제외)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "일반상해입원 간병인비용지원(간병인비용 200만원 이상)(요양병원제외)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i54",
+    "code": "COV000057",
+    "name": "일반상해입원 간병인비용지원(간병인비용 500만원 이상)(요양병원제외)보장",
+    "benefitName": "일반상해입원 간병인비용지원(간병인비용 500만원 이상)(요양병원제외)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "일반상해입원 간병인비용지원(간병인비용 500만원 이상)(요양병원제외)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i55",
+    "code": "COV000058",
+    "name": "일반상해입원 간병인비용지원(간병인비용 1,000만원 이상)(요양병원제외)보장",
+    "benefitName": "일반상해입원 간병인비용지원(간병인비용 1,000만원 이상)(요양병원제외)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "일반상해입원 간병인비용지원(간병인비용 1,000만원 이상)(요양병원제외)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i56",
+    "code": "COV000059",
+    "name": "일반상해입원 간병인비용지원(간병인비용 2,000만원 이상)(요양병원제외)보장",
+    "benefitName": "일반상해입원 간병인비용지원(간병인비용 2,000만원 이상)(요양병원제외)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "일반상해입원 간병인비용지원(간병인비용 2,000만원 이상)(요양병원제외)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i57",
+    "code": "COV000060",
+    "name": "2-3인실 상급종합병원일반상해입원일당(1일이상 30일한도)보장",
+    "benefitName": "2-3인실 상급종합병원일반상해입원일당(1일이상 30일한도)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "2-3인실 상급종합병원일반상해입원일당(1일이상 30일한도)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i58",
+    "code": "COV000061",
+    "name": "2-3인실 종합병원 일반상해입원일당(1일이상 30일한도)보장",
+    "benefitName": "2-3인실 종합병원 일반상해입원일당(1일이상 30일한도)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "2-3인실 종합병원 일반상해입원일당(1일이상 30일한도)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i59",
+    "code": "COV000062",
+    "name": "상해특정급여시술치료비보장",
+    "benefitName": "상해특정급여시술치료비보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "상해특정급여시술치료비보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i60",
+    "code": "COV000063",
+    "name": "상해수술비(치아파절및치아탈구제외)보장",
+    "benefitName": "상해수술비(치아파절및치아탈구제외)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "상해수술비(치아파절및치아탈구제외)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i61",
+    "code": "COV000064",
+    "name": "상해 통합생활지원비(월간한도)보장",
+    "benefitName": "상해 통합생활지원비(월간한도)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "상해 통합생활지원비(월간한도)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i62",
+    "code": "COV000065",
+    "name": "상해 1-5종수술비(plus)(연간2회이상)보장",
+    "benefitName": "상해 1-5종수술비(plus)(연간2회이상)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "상해 1-5종수술비(plus)(연간2회이상)보장"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-i63",
+    "code": "COV000066",
+    "name": "통합외상치료비(권역외상센터)보장",
+    "benefitName": "통합외상치료비(권역외상센터)보장",
+    "specialGroup": "V01",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "통합외상치료비(권역외상센터)보장"
+      }
+    ],
+    "benefitValues": []
   }
 ]

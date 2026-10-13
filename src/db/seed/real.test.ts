@@ -11,6 +11,9 @@ import type { Actor, Value } from "@/domain/types";
 import { createTestDb, type TestDb } from "@/db/test-utils";
 import { createServices } from "@/services/container";
 
+import { autoFixtures } from "../../../scripts/terms/auto";
+import { ALPHA2607_AUTO } from "../../../scripts/terms/config";
+
 import { expectedLines, KNOWN_DIFFERENCES } from "./knownDifferences";
 import { loadAlphaPlus } from "./load";
 
@@ -23,6 +26,10 @@ import { loadAlphaPlus } from "./load";
  * 책자는 상품 하나 = 세목 조합 전부를 담는다 — 보통약관 · 특약 문면은 세목 값을 읽지 않아 조합별로 갈리지 않는다.
  * 두 상품이 함수조항을 함께 쓴다(보통약관 조째 같은 조 · 담보약관 문구) — 펼친 결과가 두 원문과 다 같아야 한다.
  */
+
+const FIXTURES = path.join(process.cwd(), "tests/fixtures/terms");
+/** 알파Plus2607 자동 탑재 특약 — 책자 제목(상품담보명 + 「 특별약관」) · 픽스처. */
+const ALPHA2607_FIXTURES = autoFixtures(ALPHA2607_AUTO, (file) => readFileSync(path.join(FIXTURES, "알파2607", file), "utf8").split("\n")[0]);
 
 /** 상품마다 — 상품명 · 세목 조합 수 · 보통약관(픽스처 · 조 수) · 특약 (책자 제목 · 픽스처). */
 const PRODUCTS: { name: string; dir: string; plans: number; general: string; appendices: string[]; specials: [string, string][] }[] = [
@@ -53,7 +60,12 @@ const PRODUCTS: { name: string; dir: string; plans: number; general: string; app
     plans: 4,
     general: "보통약관 52조(관 7)",
     // 2604 와 같은 열 넷 + 5대고액치료비암(9) — 양성뇌종양 · 만성당뇨합병증은 보통약관이 먼저 참조한다
-    appendices: ["AX000002", "AX000001", "AX000004", "AX000007", "AX000008", "AX000010", "AX000011", "AX000020", "AX000012", "AX000014", "AX000021", "AX000003", "AX000013", "AX000015", "AX000009"],
+    // 자동 탑재 특약이 처음 참조한 별표가 책자 순서(특약 그룹 · 상품담보 순)대로 끼어든다 — 5대골절(22) · 1-5종 수술Ⅱ(25) · 중증화상 · 중증외상 산정특례(27 · 28) ·
+    // 특정시술치료(26) · 상해특정급여시술(24) · 신골절 지급률표(23)
+    appendices: [
+      ...["AX000002", "AX000001", "AX000004", "AX000007", "AX000008", "AX000010", "AX000011", "AX000020", "AX000012"],
+      ...["AX000022", "AX000014", "AX000021", "AX000025", "AX000027", "AX000028", "AX000026", "AX000024", "AX000003", "AX000023", "AX000013", "AX000015", "AX000009"],
+    ],
     specials: [
       ["일반상해사망보장 특별약관", "일반상해사망보장.md"],
       ["일반상해사망보장 추가 특별약관", "일반상해사망보장_추가.md"],
@@ -65,11 +77,16 @@ const PRODUCTS: { name: string; dir: string; plans: number; general: string; app
       ["수술비(1-7종, 연간3회한)[상해]보장 특별약관", "수술비(1-7종,_연간3회한)[상해]보장.md"],
       ["갱신형 수술비(1-7종, 연간3회한)[상해]보장 특별약관", "갱신형_수술비(1-7종,_연간3회한)[상해]보장.md"],
       ["신화상치료비보장 특별약관", "신화상치료비보장.md"],
+      // 2604 담보의 갱신형 탑재분 — 템플릿에 갱신형 조건 보험기간 조를 더했다(모델명세 §4)
+      ["갱신형 일반상해사망보장 특별약관", "갱신형_일반상해사망보장.md"],
+      ["갱신형 골절(치아파절 제외)진단비Ⅱ보장 특별약관", "갱신형_골절(치아파절_제외)진단비Ⅱ보장.md"],
       ["5대고액치료비암진단비보장 특별약관", "5대고액치료비암진단비보장.md"],
       ["양성뇌종양진단비Ⅱ보장 특별약관", "양성뇌종양진단비Ⅱ보장.md"],
       ["만성당뇨합병증진단비보장 특별약관", "만성당뇨합병증진단비보장.md"],
       ["중대한재생불량성빈혈진단비보장 특별약관", "중대한재생불량성빈혈진단비보장.md"],
       ["말기신부전증진단비보장 특별약관", "말기신부전증진단비보장.md"],
+      // 자동 탑재 특약 — 원문 「특별약관 Ⅰ ~ Ⅴ」 의 나머지 전부(설정 `ALPHA2607_AUTO`, 갱신형 짝은 두 탑재분)
+      ...ALPHA2607_FIXTURES,
     ],
   },
   {
@@ -92,7 +109,6 @@ const PRODUCTS: { name: string; dir: string; plans: number; general: string; app
   },
 ];
 
-const FIXTURES = path.join(process.cwd(), "tests/fixtures/terms");
 /** 원문 → 기대 줄 — 인수기준 알려진 차이(`knownDifferences.ts`)를 얹는다. 대조기는 완화하지 않는다. */
 const source = (dir: string, file: string) => expectedLines(dir, file, sourceToLines(readFileSync(path.join(FIXTURES, dir, file), "utf8")));
 
@@ -276,7 +292,7 @@ const DISEASE_2607: [string, number][] = [
 ];
 
 /** 탑재분 담보속성 바꾸기 — 상품의 상품담보마다 새 선택(undefined 면 그대로). 상품담보명은 작명 규칙으로 다시 만든다(특약 제목이 따라온다). */
-type AttributeChange = { product: string; select: (pc: ProductCoverage) => AttributeSelection[] | undefined };
+type AttributeChange = { product: string; select: (pc: ProductCoverage, all: readonly ProductCoverage[]) => AttributeSelection[] | undefined };
 
 /** 변형 한 벌 — 실물 시드를 넣고 세목 선택지 값 · 탑재분 담보속성을 바꾼 뒤 상품마다 조립한다. */
 async function previewVariant(changes: { product: string; axis: "type" | "form"; number: number; entries: { path: string; value: Value }[] }[], attributes: AttributeChange[] = []) {
@@ -294,8 +310,9 @@ async function previewVariant(changes: { product: string; axis: "type" | "form";
   }
   for (const c of attributes) {
     const product = products.find((p) => p.name === c.product)!;
-    for (const pc of await services.product.listProductCoverages(product.id)) {
-      const next = c.select(pc);
+    const all = await services.product.listProductCoverages(product.id);
+    for (const pc of all) {
+      const next = c.select(pc, all);
       if (!next) continue;
       const saved = await services.product.setAttributes(actor, pc.id, next, { regenerateName: true });
       if (!saved.ok) throw new Error(`${pc.name}: ${JSON.stringify(saved.rejection)}`);
@@ -439,11 +456,22 @@ describe("★ 실물 재현 변형 — 납입면제 없는 상품은 납입면�
   it("알파Plus보장보험2607 특약 — 준용규정 단서가 「… 및 제38조(중도인출)은 제외합니다.」로 끝나고 조 참조 번호가 맞다", () => {
     const b = booklets.get(ALPHA2607)!;
     const general = articleTitles(renderedToLines(b.general!));
+    const fixtureOf = new Map(PRODUCTS[1].specials);
+    /** 준용규정 첫 항(박스 줄 빼고) — 조 번호는 납입면제 세 조가 빠져 당겨지므로 지운다. */
+    const head = (lines: readonly string[]) => (articleLines(lines, "준용규정").find((l) => /^[=@] /.test(l)) ?? "").replace(/제\d+조/g, "제N조");
+    /** 원문 준용규정에서 납입면제 두 조를 빼면 — 「…은 제외하며, 1종 … 도 제외합니다.」 → 「…은 제외합니다.」 · 「또한, 1종 …」 문장 삭제 · 갱신형 나열에서 두 조 삭제. */
+    const withoutWaiver = (line: string) =>
+      line
+        .replace(/은 제외하며, (?:보통약관 )?1종\(보험료 납입면제 미적용형\)으로 가입한 경우 보통약관 제N조의1\(보험료의 납입면제\) 및 제N조의2\(납입면제에 관한 세부규정\)도 제외합니다\./, "은 제외합니다.")
+        .replace(/ 또한, (?:보통약관 )?1종\(보험료 납입면제 미적용형\)으로 가입한 경우 보통약관 제N조의1\(보험료의 납입면제\) 및 제N조의2\(납입면제에 관한 세부규정\)도 제외합니다\./, "")
+        .replace(/, 제N조의1\(보험료의 납입면제\), 제N조의2\(납입면제에 관한 세부규정\) 및 /, " 및 ")
+        .replace(/제N조의\d/g, "제N조");
     for (const doc of b.specials.flatMap((g) => g.docs)) {
       const lines = renderedToLines(doc);
-      const application = articleLines(lines, "준용규정").filter((l) => !l.startsWith("## ")).join("\n");
-      expect(application, doc.title).toMatch(/제10조\(만기환급금의 지급\) 및 제\d+조\(중도인출\)은 제외합니다\.$/);
-      expect(application.includes("제5조(보험금을 지급하지 않는 사유)"), doc.title).toBe(DISEASE_2607.some(([t]) => t === doc.title));
+      const file = fixtureOf.get(doc.title);
+      expect(file, `${doc.title} 의 픽스처`).toBeDefined();
+      expect(head(lines), doc.title).toBe(withoutWaiver(head(source("알파2607", file!))));
+      expect(head(lines), doc.title).toMatch(/은 제외합니다\.$/);
       expect(referenceNumberIssues(lines, general), doc.title).toEqual([]);
     }
   });
@@ -527,13 +555,19 @@ const SURGERY = "수술비(1-7종, 연간3회한)[상해]보장 특별약관";
 const SURGERY_RENEW_FILE = "갱신형_수술비(1-7종,_연간3회한)[상해]보장.md";
 /** 비갱신 상해 특약 — 2604 탑재 그대로(갱신형 수술비는 이미 갱신형이라 뺀다). */
 const INJURY = PRODUCTS[0].specials.filter(([title]) => !title.startsWith("갱신형 "));
+/** 갱신형 탑재분이면 보험기간 조가 서는 2604 담보(템플릿의 갱신형 조건 조 — 2607 갱신형 원문). */
+const RENEWAL_PERIOD = new Set(["일반상해사망보장 특별약관", "일반상해사망보장 추가 특별약관", "골절(치아파절 제외)진단비Ⅱ보장 특별약관"]);
 const renewedTitle = (title: string) => (title === SURGERY ? "갱신형 수술비(1-7종, 연간3회한)[상해]보장 추가 특별약관" : `갱신형 ${title}`);
-/** 갱신유형이 없거나 비갱신형인 상해 탑재분을 갱신형으로(수술비 비갱신은 「추가」도) — 기본계약 · 질병 · 이미 갱신형인 것은 그대로. */
+/**
+ * 갱신유형이 없거나 비갱신형인 상해 탑재분을 갱신형으로(수술비 비갱신은 「추가」도) — 기본계약 · 질병 · 이미 갱신형인 것은 그대로.
+ * 같은 이름의 갱신형 탑재분이 이미 있으면(알파Plus2607 의 갱신형 일반상해사망 · 골절 — 원문 대조는 위 describe 가 한다) 그대로 둔다.
+ */
 const renewInjury = (product: string): AttributeChange => ({
   product,
-  select: (pc) => {
+  select: (pc, all) => {
     if (pc.attributes.some((a) => a.kindCode === "A0001" && a.valueCode === "2")) return undefined;
     if (!INJURY.some(([title]) => title === `${pc.name} 특별약관`)) return undefined;
+    if (`${pc.name} 특별약관` !== SURGERY && all.some((o) => o.name === `갱신형 ${pc.name}`)) return undefined;
     const surgery = `${pc.name} 특별약관` === SURGERY;
     const rest = pc.attributes.filter((a) => a.kindCode !== "A0001" && !(surgery && a.kindCode === "A0002"));
     return [{ kindCode: "A0001", valueCode: "2" }, ...rest, ...(surgery ? [{ kindCode: "A0002", valueCode: "2" }] : [])];
@@ -574,11 +608,12 @@ describe.each([
     expect(referenceNumberIssues(lines, articleTitles(renderedToLines(booklet.general!)))).toEqual([]);
   });
 
-  it.each(INJURY.filter(([title]) => title !== SURGERY))("「%s」 — 「갱신형 …」 제목 · 준용규정만 갱신형 가지로 바뀌고 나머지 조는 원문 그대로다", (title, file) => {
+  it.each(INJURY.filter(([title]) => title !== SURGERY))("「%s」 — 「갱신형 …」 제목 · 준용규정(일반상해사망 · 골절은 보험기간 조까지)만 갱신형으로 바뀌고 나머지 조는 원문 그대로다", (title, file) => {
     const lines = doc(renewedTitle(title));
     const diff = diffArticlesUnordered(source(dir, file), lines);
     expect(diff.missing.map((c) => c.title)).toEqual(["준용규정"]);
-    expect(diff.extra.map((c) => c.title)).toEqual(["준용규정"]);
+    // 갱신형 원문에만 있는 보험기간 조 — 템플릿에 갱신형 조건으로 넣었다(2607 갱신형 원문 대조는 위 describe)
+    expect(diff.extra.map((c) => c.title).sort()).toEqual(RENEWAL_PERIOD.has(title) ? ["보험기간", "준용규정"] : ["준용규정"]);
     // 준용규정 본문 = 갱신형 수술비(원문과 같다고 위에서 본) 준용규정 본문
     expect(articleLines(lines, "준용규정").slice(1)).toEqual(articleLines(doc(renewedTitle(SURGERY)), "준용규정").slice(1));
     expect(referenceNumberIssues(lines, articleTitles(renderedToLines(booklet.general!)))).toEqual([]);

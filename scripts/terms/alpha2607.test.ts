@@ -3,6 +3,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { ALPHA2607_AUTO } from "./config";
+
 /**
  * 세 번째 실물 재현 상품 알파Plus2607 의 변환 결과(시드 JSON) — 2604 와 **공통화**한 모양 (QA/실물재현/알파플러스2607_모델명세).
  * - 보통약관은 2607 원문 한 벌이지만 조 id 체계를 2604 와 같이 쓴다 — 2604 담보약관 · 준용규정 함수조항이 두 보통약관에서 그대로 풀린다.
@@ -62,7 +64,8 @@ describe("알파Plus2607 함수조항 — 더한 것은 맨 뒤 코드, 앞 상�
   it("질병 특약이 함께 쓰는 둘 — 제3자 합의 세부규정 · 준용규정(알파Plus 질병)이 C0070 · C0071", () => {
     expect(codeOf("보험금 지급에 관한 세부규정(제3자 합의)")).toBe("C0070");
     expect(codeOf("준용규정(알파Plus 질병)")).toBe("C0071");
-    expect(clauses).toHaveLength(71);
+    // 그 뒤는 자동 탑재 특약에서 변환기가 찾아 묶은 함수조항뿐 — 「(알파Plus2607)」 · 「(알파Plus2607 N)」
+    expect(clauses.slice(71).filter((c) => !/\(알파Plus2607( \d+)?\)$/.test(c.label)).map((c) => c.label)).toEqual([]);
   });
 
   it("준용규정(알파Plus 질병)도 「1종 … 제외」를 납입면제 있음 조건으로 감싼다(납입면제 없는 상품이면 빠진다)", () => {
@@ -94,10 +97,15 @@ describe("알파Plus2607 상품 — 상해 특약 10 은 2604 담보 그대로, 
     expect(product?.values.find((v) => v.path === "feature.renewable")?.value).toBe(false);
   });
 
-  it("탑재 = 2604 탑재(기본계약 + 특약 10) + 질병 5", () => {
+  it("탑재 = 2604 탑재(기본계약 + 특약 10) + 2604 담보의 갱신형 둘(일반상해사망 · 골절) + 질병 5 + 자동 탑재 특약(맨 뒤)", () => {
     const alphaMounts = products.find((p) => p.code === "alpha-plus")!.mounts.map((m) => m.coverage);
     const diseaseKeys = DISEASES.map((name) => coverages.find((c) => c.name === name)!.key);
-    expect(product?.mounts.map((m) => m.coverage)).toEqual([...alphaMounts, ...diseaseKeys]);
+    const hand = [...alphaMounts, "death", "fracture", ...diseaseKeys];
+    const mounts = product!.mounts.map((m) => m.coverage);
+    expect(mounts.slice(0, hand.length)).toEqual(hand);
+    const autoKeys = new Set(ALPHA2607_AUTO.map((s) => s.ownerCoverage));
+    expect(mounts.slice(hand.length).filter((k) => !autoKeys.has(k))).toEqual([]);
+    expect(new Set(mounts.slice(hand.length))).toEqual(autoKeys);
   });
 });
 

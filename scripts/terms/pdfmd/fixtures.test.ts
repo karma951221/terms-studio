@@ -11,6 +11,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { ALPHA2607_AUTO } from "../config";
 import { parseTerms, type ParsedDoc } from "../parse";
 
 const ROOT = path.resolve(import.meta.dirname, "../../../tests/fixtures/terms");
@@ -28,8 +29,10 @@ const texts = (doc: ParsedDoc) =>
   articles(doc).flatMap((a) => a.body.flatMap((l) => ("text" in l ? [l.text.replace(/\s+/g, "")] : [])));
 
 describe("알파2607 fixture", () => {
-  it("보통약관 + 상해 10 + 질병 5", () => {
-    expect(files).toHaveLength(16);
+  it("보통약관 + 상해 10 + 질병 5 + 2604 담보의 갱신형 둘 + 자동 탑재 특약(갱신형 짝은 두 벌)", () => {
+    const auto = ALPHA2607_AUTO.flatMap((s) => [s.file!, ...(s.auto?.renewal ? [s.auto.renewal] : [])]);
+    expect(files).toHaveLength(16 + 2 + auto.length);
+    for (const f of auto) expect(files).toContain(f);
     expect(files).toContain("보통약관.md");
   });
 

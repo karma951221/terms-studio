@@ -8,6 +8,10 @@ import { createTestDb, type TestDb } from "@/db/test-utils";
 import { discriminators } from "@/db/schema";
 import { createServices, type Services } from "@/services/container";
 
+import seedBoxes from "./data/boxes.json";
+import seedClauses from "./data/clauses.json";
+import seedDocuments from "./data/documents.json";
+
 import { ALPHA_PLUS_PRODUCT_NAME, seedAlphaPlus } from "./alphaPlus";
 import { MERITZ_PRODUCT_NAME } from "./load";
 
@@ -210,7 +214,11 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
         "준용규정(알파Plus 질병)",
       ].map((label): [string, string] => ["block", label]),
     ];
-    expect(list.map((c) => [c.code, c.mode, c.label])).toEqual(expected.map(([mode, label], i) => [`C${String(i + 1).padStart(4, "0")}`, mode, label]));
+    expect(list.slice(0, expected.length).map((c) => [c.code, c.mode, c.label])).toEqual(expected.map(([mode, label], i) => [`C${String(i + 1).padStart(4, "0")}`, mode, label]));
+    // 그 뒤는 알파Plus2607 자동 탑재 특약에서 변환기가 찾아 묶은 함수조항(조째 같은 글 — 모델명세 §3) — 맨 뒤 코드, 「항」 유형
+    const found = list.slice(expected.length);
+    expect(found).toHaveLength(seedClauses.length - expected.length);
+    expect(found.filter((c) => c.mode !== "block" || !/\(알파Plus2607( \d+)?\)$/.test(c.label)).map((c) => c.label)).toEqual([]);
     const byLabel = (label: string) => list.find((c) => c.label === label)!;
     // 사유별 호 · 정의는 인자 종들 하나 + 내부 변수 사유들 · 해당, 역할 함수조항은 종들 + 내부 변수
     for (const c of list.filter((x) => x.label.startsWith("납입면제 호 — ") || x.label.includes(" 정의 및 진단확정"))) {
@@ -229,11 +237,13 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     expect(JSON.stringify(list[20].body)).toContain('"kind":"boxRef"');
     // 박스 — 원문의 박스 전부(같은 박스는 하나, 낱말만 달라도 따로). 보통약관이 놓는 박스가 앞 코드(BX000001~BX000122 — 2607 보통약관의 박스 포함)
     const boxes = await services.document.listBoxes();
-    expect(boxes).toHaveLength(142);
-    // 같은 박스는 하나 — 신의료기술평가위원회는 수술 담보 다섯 곳이 함께 쓴다
+    expect(boxes).toHaveLength(seedBoxes.length);
+    // 같은 박스는 하나 — 신의료기술평가위원회는 수술 담보 다섯 곳(+ 알파Plus2607 자동 탑재 수술 담보)이 함께 쓴다 — 쓰임 = 시드 문면의 박스 참조 자리 수
     const surgeryBox = boxes.find((b) => b.name === "【신의료기술평가위원회】")!;
     expect(surgeryBox.code).toBe("BX000125");
-    expect((await services.document.boxUsages(surgeryBox.code)).length).toBe(5);
+    const sites = JSON.stringify([seedDocuments, seedClauses]).split('"boxCode":"BX000125"').length - 1;
+    expect(sites).toBeGreaterThanOrEqual(5);
+    expect((await services.document.boxUsages(surgeryBox.code)).length).toBe(sites);
     // 낱말만 다른 박스는 따로 — 계약 전 알릴 의무의 「청약서에서」(알파Plus) · 「서면으로」(메리츠), 이름에 다른 낱말
     expect(boxes.filter((b) => b.name.startsWith("【계약 전 알릴 의무】")).map((b) => [b.code, b.name])).toEqual([
       ["BX000013", "【계약 전 알릴 의무】 — 청약서에서"],
@@ -249,13 +259,19 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     // 지급사유 발생 소멸은 세 담보(중대한특정상해수술비 · 메리츠 상해 · 질병 80%이상후유장해)
     const summaries = await services.clause.summaries();
     const usage = (label: string) => summaries.find((c) => c.code === byLabel(label).code)?.usageCount;
-    expect(usage("특별약관의 소멸(사망)")).toBe(7);
+    // 담보약관 함수조항은 알파Plus2607 자동 탑재 특약도 쓴다 — 손으로 설정한 사용처 수 이상이고, 쓰임 = 시드 문면의 참조 자리 수
+    const seedUses = (label: string) => JSON.stringify(seedDocuments).split(`"clauseCode":"${byLabel(label).code}"`).length - 1;
+    const atLeast = (label: string, hand: number) => {
+      expect(seedUses(label), label).toBeGreaterThanOrEqual(hand);
+      expect(usage(label), label).toBe(seedUses(label));
+    };
+    atLeast("특별약관의 소멸(사망)", 7);
     // 보통약관 조째 · 납입면제 함수조항은 보통약관 세 벌(2607 이 2604 것을 함께 쓴다), 지급사유 발생 소멸은 2607 질병 다섯이 더 쓴다
     expect(usage("예금보험에 의한 지급보장")).toBe(3);
     expect(usage("보험금을 지급하지 않는 사유")).toBe(3);
-    expect(usage("특별약관의 소멸(지급사유 발생)")).toBe(8);
-    expect(usage("보험금 지급에 관한 세부규정(제3자 합의)")).toBe(5);
-    expect(usage("준용규정(알파Plus 질병)")).toBe(5);
+    atLeast("특별약관의 소멸(지급사유 발생)", 8);
+    atLeast("보험금 지급에 관한 세부규정(제3자 합의)", 5);
+    atLeast("준용규정(알파Plus 질병)", 5);
     // 납입면제 — 사유별 호 · 상품군 사이에 같은 정의 · 부활 문구는 두 보통약관이 함께 쓰고, 상품군 꼬리표가 붙은 것은 한 자리씩
     for (const r of reasons) expect(usage(`납입면제 호 — ${r}`), r).toBe(3);
     for (const label of [...sharedDefinitions, "부활 문구"]) expect(usage(label), label).toBe(3);
