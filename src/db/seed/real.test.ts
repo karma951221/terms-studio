@@ -8,7 +8,7 @@ import { articleTitles, diffArticlesUnordered, normalizeLine, referenceNumberIss
 import type { AttributeSelection, ProductCoverage } from "@/domain/product/types";
 import type { Actor, Value } from "@/domain/types";
 
-import { createTestDb, type TestDb } from "@/db/test-utils";
+import { createTestDb, snapshotTestDb, type TestDb } from "@/db/test-utils";
 import { createServices } from "@/services/container";
 
 import { autoFixtures } from "../../../scripts/terms/auto";
@@ -60,12 +60,9 @@ const PRODUCTS: { name: string; dir: string; plans: number; general: string; app
     plans: 4,
     general: "보통약관 52조(관 7)",
     // 2604 와 같은 열 넷 + 5대고액치료비암(9) — 양성뇌종양 · 만성당뇨합병증은 보통약관이 먼저 참조한다
-    // 자동 탑재 특약이 처음 참조한 별표가 책자 순서(특약 그룹 · 상품담보 순)대로 끼어든다 — 5대골절(22) · 1-5종 수술Ⅱ(25) · 중증화상 · 중증외상 산정특례(27 · 28) ·
-    // 특정시술치료(26) · 상해특정급여시술(24) · 신골절 지급률표(23)
-    appendices: [
-      ...["AX000002", "AX000001", "AX000004", "AX000007", "AX000008", "AX000010", "AX000011", "AX000020", "AX000012"],
-      ...["AX000022", "AX000014", "AX000021", "AX000025", "AX000027", "AX000028", "AX000026", "AX000024", "AX000003", "AX000023", "AX000013", "AX000015", "AX000009"],
-    ],
+    // 보통약관이 먼저 참조하는 아홉 뒤로는 특약이 처음 참조한 별표가 책자 순서(특약 그룹 · 상품담보 순)대로 — 자동 탑재 특약이 수십 개를 더해
+    // 목록 대신 「참조한 것만 · 겹치지 않게 · 보통약관 아홉이 먼저」를 본다(아래 it)
+    appendices: ["AX000002", "AX000001", "AX000004", "AX000007", "AX000008", "AX000010", "AX000011", "AX000020", "AX000012"],
     specials: [
       ["일반상해사망보장 특별약관", "일반상해사망보장.md"],
       ["일반상해사망보장 추가 특별약관", "일반상해사망보장_추가.md"],
@@ -112,6 +109,36 @@ const PRODUCTS: { name: string; dir: string; plans: number; general: string; app
 /** 원문 → 기대 줄 — 인수기준 알려진 차이(`knownDifferences.ts`)를 얹는다. 대조기는 완화하지 않는다. */
 const source = (dir: string, file: string) => expectedLines(dir, file, sourceToLines(readFileSync(path.join(FIXTURES, dir, file), "utf8")));
 
+let snapshot: Promise<() => Promise<TestDb>> | undefined;
+/**
+ * 실물 시드를 넣은 새 DB — 시드는 파일에서 한 번만 적재하고 떠 둔 사본에서 연다(`snapshotTestDb`). 알파Plus2607 주계약 특약 전체로 시드가 커져
+ * describe 마다 적재하면 변형 열 벌이 수 분이 걸린다. 사본은 서로 독립이라 변형이 바꾼 값이 다른 describe 로 새지 않는다.
+ */
+async function seededDb(): Promise<TestDb> {
+  snapshot ??= (async () => {
+    const db = await createTestDb();
+    const services = createServices(db.db);
+    const admin = await services.auth.ensureSeedAdmin();
+    await loadAlphaPlus(services, { userId: admin.id, role: admin.role });
+    const open = await snapshotTestDb(db);
+    await db.close();
+    return open;
+  })();
+  return (await snapshot)();
+}
+
+/** 상품이 참조하는 별표 — 보통약관 · 탑재 담보의 템플릿과 그것들이 쓰는 함수조항(두 겹까지)의 별표 참조 (시드 JSON 으로 센다). */
+function referencedAppendices(productCode: string): Set<string> {
+  const data = (file: string) => JSON.parse(readFileSync(path.join(process.cwd(), "src/db/seed/data", file), "utf8")) as Record<string, unknown>[];
+  const product = data("products.json").find((p) => p.code === productCode) as { general: string; mounts: { coverage: string }[] };
+  const docs = [...data("generals.json").filter((g) => g.code === product.general), ...data("documents.json").filter((d) => product.mounts.some((m) => m.coverage === d.ownerCoverage))];
+  const clauses = data("clauses.json");
+  const codesIn = (x: unknown, key: string) => new Set([...JSON.stringify(x).matchAll(new RegExp(`"${key}":"([A-Z]+\\d+)"`, "g"))].map((m) => m[1]));
+  const used = codesIn(docs, "clauseCode");
+  for (const c of clauses.filter((x) => used.has(x.code as string))) for (const k of codesIn(c, "clauseCode")) used.add(k);
+  return codesIn([docs, clauses.filter((x) => used.has(x.code as string))], "appendixCode");
+}
+
 /** 다른 조를 사람이 읽을 수 있게 — 실패 메시지용. */
 function describeDiff(d: UnorderedDiff): string {
   const show = (label: string, cs: UnorderedDiff["missing"]) =>
@@ -127,18 +154,15 @@ describe("★ 실물 재현 — 실물 시드 → 조립 → 원문 대조", () 
   const plans = new Map<string, number>();
 
   beforeAll(async () => {
-    db = await createTestDb();
+    db = await seededDb();
     const services = createServices(db.db);
-    const admin = await services.auth.ensureSeedAdmin();
-    const actor: Actor = { userId: admin.id, role: admin.role };
-    await loadAlphaPlus(services, actor);
     for (const product of await services.product.listProducts()) {
       plans.set(product.name, (await services.product.listPlans(product.id)).length);
       const r = await services.assembly.preview(product.id);
       if (!r.ok) throw new Error(JSON.stringify(r.rejection));
       booklets.set(product.name, r.value);
     }
-  }, 120_000);
+  }, 300_000);
 
   afterAll(async () => {
     await db.close();
@@ -189,7 +213,12 @@ describe("★ 실물 재현 — 실물 시드 → 조립 → 원문 대조", () 
     });
 
     it("별표 — 문면이 참조한 것만 등장 순으로 실린다 (별표 마스터는 두 상품이 이름으로 함께 쓴다)", () => {
-      expect(booklet().appendices.map((a) => a.code)).toEqual(product.appendices);
+      const codes = booklet().appendices.map((a) => a.code);
+      if (product.dir !== "알파2607") return expect(codes).toEqual(product.appendices);
+      // 알파Plus2607 — 보통약관 아홉이 먼저, 겹치지 않고, 상품이 탑재한 문면(+ 그 문면 · 보통약관이 쓰는 함수조항)이 참조한 별표 전부
+      expect(codes.slice(0, product.appendices.length)).toEqual(product.appendices);
+      expect(new Set(codes).size).toBe(codes.length);
+      expect([...codes].sort()).toEqual([...referencedAppendices("alpha2607")].sort());
     });
 
     it("책자의 특약은 표본 전부다 — 빠지거나 더한 것이 없다", () => {
@@ -213,11 +242,10 @@ describe.each([ALPHA, ALPHA2607])("★ 실물 재현 변형 — %s 납입면제 
   let issues: unknown[] = [];
 
   beforeAll(async () => {
-    db = await createTestDb();
+    db = await seededDb();
     const services = createServices(db.db);
     const admin = await services.auth.ensureSeedAdmin();
     const actor: Actor = { userId: admin.id, role: admin.role };
-    await loadAlphaPlus(services, actor);
     const product = (await services.product.listProducts()).find((p) => p.name === productName)!;
     const type2 = (await services.product.listPlanOptions(product.id)).find((o) => o.axis === "type" && o.number === 2)!;
     const saved = await services.product.setPlanOptionValues(actor, type2.id, [{ path: "waiver.reasons", value: ["V02", "V03", "V11"] }]);
@@ -226,7 +254,7 @@ describe.each([ALPHA, ALPHA2607])("★ 실물 재현 변형 — %s 납입면제 
     if (!r.ok) throw new Error(JSON.stringify(r.rejection));
     lines = renderedToLines(r.value.general!);
     issues = r.value.issues;
-  }, 120_000);
+  }, 300_000);
 
   afterAll(async () => {
     await db.close();
@@ -296,11 +324,10 @@ type AttributeChange = { product: string; select: (pc: ProductCoverage, all: rea
 
 /** 변형 한 벌 — 실물 시드를 넣고 세목 선택지 값 · 탑재분 담보속성을 바꾼 뒤 상품마다 조립한다. */
 async function previewVariant(changes: { product: string; axis: "type" | "form"; number: number; entries: { path: string; value: Value }[] }[], attributes: AttributeChange[] = []) {
-  const db = await createTestDb();
+  const db = await seededDb();
   const services = createServices(db.db);
   const admin = await services.auth.ensureSeedAdmin();
   const actor: Actor = { userId: admin.id, role: admin.role };
-  await loadAlphaPlus(services, actor);
   const products = await services.product.listProducts();
   for (const c of changes) {
     const product = products.find((p) => p.name === c.product)!;
@@ -347,7 +374,7 @@ describe.each([ALPHA, ALPHA2607])("★ 실물 재현 변형 — %s 해약환급�
     const v = await previewVariant([{ product: productName, axis: "form", number: 1, entries: [{ path: "no_surrender.type", value: "V02" }] }]);
     db = v.db;
     booklet = v.booklets.get(productName)!;
-  }, 120_000);
+  }, 300_000);
 
   afterAll(async () => {
     await db.close();
@@ -375,7 +402,7 @@ describe("★ 실물 재현 변형 — 메리츠 납입면제종이 하나면 �
     db = v.db;
     booklet = v.booklets.get(MERITZ)!;
     lines = renderedToLines(booklet.general!);
-  }, 120_000);
+  }, 300_000);
 
   afterAll(async () => {
     await db.close();
@@ -428,7 +455,7 @@ describe("★ 실물 재현 변형 — 납입면제 없는 상품은 납입면�
     ]);
     db = v.db;
     booklets = v.booklets;
-  }, 120_000);
+  }, 300_000);
 
   afterAll(async () => {
     await db.close();
@@ -445,7 +472,8 @@ describe("★ 실물 재현 변형 — 납입면제 없는 상품은 납입면�
     for (const doc of b.specials.flatMap((g) => g.docs)) {
       const application = articleLines(renderedToLines(doc), "준용규정").join("\n");
       expect(application, doc.title).not.toContain("납입면제");
-      expect(application, doc.title).toContain("은 제외합니다.");
+      // 원문이 마침표 · 「은」을 빠뜨린 준용규정이 있다(갱신형 2대질환 주요치료비 · 혈전용해치료비Ⅱ — 원문 그대로)
+      expect(application, doc.title).toContain("제외합니다");
     }
   });
 
@@ -462,16 +490,19 @@ describe("★ 실물 재현 변형 — 납입면제 없는 상품은 납입면�
     /** 원문 준용규정에서 납입면제 두 조를 빼면 — 「…은 제외하며, 1종 … 도 제외합니다.」 → 「…은 제외합니다.」 · 「또한, 1종 …」 문장 삭제 · 갱신형 나열에서 두 조 삭제. */
     const withoutWaiver = (line: string) =>
       line
-        .replace(/은 제외하며, (?:보통약관 )?1종\(보험료 납입면제 미적용형\)으로 가입한 경우 보통약관 제N조의1\(보험료의 납입면제\) 및 제N조의2\(납입면제에 관한 세부규정\)도 제외합니다\./, "은 제외합니다.")
+        .replace(/(은)? 제외하며, (?:보통약관 )?1종\(보험료 납입면제 미적용형\)으로 가입한 경우 보통약관 제N조의1\(보험료의 납입면제\) 및 제N조의2\(납입면제에 관한 세부규정\)도 제외합니다\./, (_, eun?: string) => `${eun ?? ""} 제외합니다.`)
         .replace(/ 또한, (?:보통약관 )?1종\(보험료 납입면제 미적용형\)으로 가입한 경우 보통약관 제N조의1\(보험료의 납입면제\) 및 제N조의2\(납입면제에 관한 세부규정\)도 제외합니다\./, "")
+        .replace(/, 제N조의1\(보험료의 납입면제\), 제N조의2\(납입면제에 관한 세부규정\)(?=, )/, "")
         .replace(/, 제N조의1\(보험료의 납입면제\), 제N조의2\(납입면제에 관한 세부규정\) 및 /, " 및 ")
         .replace(/제N조의\d/g, "제N조");
     for (const doc of b.specials.flatMap((g) => g.docs)) {
       const lines = renderedToLines(doc);
       const file = fixtureOf.get(doc.title);
       expect(file, `${doc.title} 의 픽스처`).toBeDefined();
-      expect(head(lines), doc.title).toBe(withoutWaiver(head(source("알파2607", file!))));
-      expect(head(lines), doc.title).toMatch(/은 제외합니다\.$/);
+      // 나열의 연결어는 보지 않는다 — 원문이 연결어를 섞어 쓴 나열(「… 및 제38조, 제27조의1, 제27조의2 및 제38조」)은 참조 하나로 찍혀 쉼표 · 「및」이 달라진다
+      const joint = (x: string) => x.replace(/, | 및 /g, "·");
+      expect(joint(head(lines)), doc.title).toBe(joint(withoutWaiver(head(source("알파2607", file!)))));
+      expect(head(lines), doc.title).toMatch(/제외합니다\.?$/);
       expect(referenceNumberIssues(lines, general), doc.title).toEqual([]);
     }
   });
@@ -511,7 +542,7 @@ describe.each(SINGLE_FORM)("★ 실물 재현 변형 — $name 해약환급금 �
     db = v.db;
     booklet = v.booklets.get(name)!;
     lines = renderedToLines(booklet.general!);
-  }, 120_000);
+  }, 300_000);
 
   afterAll(async () => {
     await db.close();
@@ -591,7 +622,7 @@ describe.each([
     const v = await previewVariant([], [renewInjury(name)]);
     db = v.db;
     booklet = v.booklets.get(name)!;
-  }, 120_000);
+  }, 300_000);
 
   afterAll(async () => {
     await db.close();
@@ -633,7 +664,7 @@ describe.each([ALPHA, ALPHA2607])("★ 실물 재현 변형 — %s 상해 특약
     const v = await previewVariant([{ product: name, axis: "type", number: 2, entries: [{ path: "waiver.applies", value: false }, { path: "waiver.reasons", value: [] }] }], [renewInjury(name)]);
     db = v.db;
     booklet = v.booklets.get(name)!;
-  }, 120_000);
+  }, 300_000);
 
   afterAll(async () => {
     await db.close();
@@ -675,7 +706,7 @@ describe("★ 실물 재현 변형 — 메리츠 특약 8 은 납입면제가 �
     ]);
     db = v.db;
     booklet = v.booklets.get(MERITZ)!;
-  }, 120_000);
+  }, 300_000);
 
   afterAll(async () => {
     await db.close();

@@ -35,6 +35,28 @@ export interface TestDb {
 
 export async function createTestDb(): Promise<TestDb> {
   const client = new PGlite();
+  const t = wrap(client);
+  // pushSchema 의 시그니처는 스키마 없는 PgDatabase<any> 로 선언돼 있어 캐스트가 필요하다.
+  // 런타임은 같은 drizzle 인스턴스다.
+  const { apply } = await pushSchema(schema, t.db as unknown as Parameters<typeof pushSchema>[1]);
+  await apply();
+  return t;
+}
+
+/**
+ * 채운 DB 를 지금 모습으로 떠 두고, 같은 내용의 새 DB 를 여는 함수를 돌려준다 — 무거운 실물 시드를 테스트 파일마다 한 번만 적재하고
+ * 변형마다 사본에서 시작할 때(`real.test.ts`). 뜬 뒤의 원본 변경은 사본에 없고, 사본끼리도 독립이다.
+ */
+export async function snapshotTestDb(source: TestDb): Promise<() => Promise<TestDb>> {
+  const image = await source.client.dumpDataDir("none");
+  return async () => {
+    const client = new PGlite({ loadDataDir: image });
+    await client.waitReady;
+    return wrap(client);
+  };
+}
+
+function wrap(client: PGlite): TestDb {
   let count = 0;
   const db = drizzle(client, {
     schema,
@@ -44,10 +66,6 @@ export async function createTestDb(): Promise<TestDb> {
       },
     },
   });
-  // pushSchema 의 시그니처는 스키마 없는 PgDatabase<any> 로 선언돼 있어 캐스트가 필요하다.
-  // 런타임은 같은 drizzle 인스턴스다.
-  const { apply } = await pushSchema(schema, db as unknown as Parameters<typeof pushSchema>[1]);
-  await apply();
   return {
     db,
     client,

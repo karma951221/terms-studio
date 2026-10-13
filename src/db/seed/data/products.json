@@ -739,7 +739,8 @@
         "code": "a7-i11",
         "coverage": "a7-i11",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i12",
@@ -750,7 +751,8 @@
             "kindCode": "A0001",
             "valueCode": "1"
           }
-        ]
+        ],
+        "auto": true
       },
       {
         "code": "a7-i12-renew",
@@ -761,13 +763,15 @@
             "kindCode": "A0001",
             "valueCode": "2"
           }
-        ]
+        ],
+        "auto": true
       },
       {
         "code": "a7-i13",
         "coverage": "a7-i13",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i14",
@@ -778,7 +782,8 @@
             "kindCode": "A0001",
             "valueCode": "1"
           }
-        ]
+        ],
+        "auto": true
       },
       {
         "code": "a7-i14-renew",
@@ -789,7 +794,8 @@
             "kindCode": "A0001",
             "valueCode": "2"
           }
-        ]
+        ],
+        "auto": true
       },
       {
         "code": "a7-i16",
@@ -800,7 +806,8 @@
             "kindCode": "A0001",
             "valueCode": "1"
           }
-        ]
+        ],
+        "auto": true
       },
       {
         "code": "a7-i16-renew",
@@ -811,73 +818,85 @@
             "kindCode": "A0001",
             "valueCode": "2"
           }
-        ]
+        ],
+        "auto": true
       },
       {
         "code": "a7-i17",
         "coverage": "a7-i17",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i18",
         "coverage": "a7-i18",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i19",
         "coverage": "a7-i19",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i20",
         "coverage": "a7-i20",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i21",
         "coverage": "a7-i21",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i23",
         "coverage": "a7-i23",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i24",
         "coverage": "a7-i24",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i25",
         "coverage": "a7-i25",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i26",
         "coverage": "a7-i26",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i28",
         "coverage": "a7-i28",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i29",
         "coverage": "a7-i29",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i30",
@@ -888,7 +907,8 @@
             "kindCode": "A0001",
             "valueCode": "1"
           }
-        ]
+        ],
+        "auto": true
       },
       {
         "code": "a7-i30-renew",
@@ -899,13 +919,15 @@
             "kindCode": "A0001",
             "valueCode": "2"
           }
-        ]
+        ],
+        "auto": true
       },
       {
         "code": "a7-i31",
         "coverage": "a7-i31",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i36",
@@ -916,7 +938,8 @@
             "kindCode": "A0001",
             "valueCode": "1"
           }
-        ]
+        ],
+        "auto": true
       },
       {
         "code": "a7-i36-renew",
@@ -927,25 +950,29 @@
             "kindCode": "A0001",
             "valueCode": "2"
           }
-        ]
+        ],
+        "auto": true
       },
       {
         "code": "a7-i38",
         "coverage": "a7-i38",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i39",
         "coverage": "a7-i39",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i40",
         "coverage": "a7-i40",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i41",
@@ -956,7 +983,8 @@
             "kindCode": "A0001",
             "valueCode": "1"
           }
-        ]
+        ],
+        "auto": true
       },
       {
         "code": "a7-i41-renew",
@@ -967,7 +995,8 @@
             "kindCode": "A0001",
             "valueCode": "2"
           }
-        ]
+        ],
+        "auto": true
       },
       {
         "code": "a7-i42",
@@ -978,7 +1007,8 @@
             "kindCode": "A0001",
             "valueCode": "1"
           }
-        ]
+        ],
+        "auto": true
       },
       {
         "code": "a7-i42-renew",
@@ -989,97 +1019,113 @@
             "kindCode": "A0001",
             "valueCode": "2"
           }
-        ]
+        ],
+        "auto": true
       },
       {
         "code": "a7-i45",
         "coverage": "a7-i45",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i46",
         "coverage": "a7-i46",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i47",
         "coverage": "a7-i47",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i48",
         "coverage": "a7-i48",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i49",
         "coverage": "a7-i49",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i50",
         "coverage": "a7-i50",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i51",
         "coverage": "a7-i51",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i52",
         "coverage": "a7-i52",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i53",
         "coverage": "a7-i53",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i54",
         "coverage": "a7-i54",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i55",
         "coverage": "a7-i55",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i56",
         "coverage": "a7-i56",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i57",
         "coverage": "a7-i57",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i58",
         "coverage": "a7-i58",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i59",
         "coverage": "a7-i59",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i60",
@@ -1090,7 +1136,8 @@
             "kindCode": "A0001",
             "valueCode": "1"
           }
-        ]
+        ],
+        "auto": true
       },
       {
         "code": "a7-i60-renew",
@@ -1101,25 +1148,29 @@
             "kindCode": "A0001",
             "valueCode": "2"
           }
-        ]
+        ],
+        "auto": true
       },
       {
         "code": "a7-i61",
         "coverage": "a7-i61",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i62",
         "coverage": "a7-i62",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       },
       {
         "code": "a7-i63",
         "coverage": "a7-i63",
         "section": "special",
-        "attributes": []
+        "attributes": [],
+        "auto": true
       }
     ]
   }

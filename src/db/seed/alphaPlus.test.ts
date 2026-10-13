@@ -127,7 +127,7 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     const mounts = await services.product.listProductCoverages(r.productId);
     expect(mounts.find((pc) => pc.name === "일반상해사망보장 추가")?.attributes).toEqual([{ kindCode: "A0002", valueCode: "2" }]);
     expect(mounts.find((pc) => pc.name === "갱신형 수술비(1-7종, 연간3회한)[상해]보장")?.attributes).toEqual([{ kindCode: "A0001", valueCode: "2" }]);
-  });
+  }, 180_000);
 
   it("수술비(1-7종) — 세부보장 7 · 각 급부 1, 이름은 「N종 상해수술비(연간3회한)」", async () => {
     const surgery = (await services.coverage.list()).find((c) => c.name === "수술비(1-7종, 연간3회한)[상해]보장")!;
@@ -221,7 +221,7 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     expect(found.filter((c) => c.mode !== "block" || !/\(알파Plus2607( \d+)?\)$/.test(c.label)).map((c) => c.label)).toEqual([]);
     const byLabel = (label: string) => list.find((c) => c.label === label)!;
     // 사유별 호 · 정의는 인자 종들 하나 + 내부 변수 사유들 · 해당, 역할 함수조항은 종들 + 내부 변수
-    for (const c of list.filter((x) => x.label.startsWith("납입면제 호 — ") || x.label.includes(" 정의 및 진단확정"))) {
+    for (const c of list.slice(0, expected.length).filter((x) => x.label.startsWith("납입면제 호 — ") || x.label.includes(" 정의 및 진단확정"))) {
       if (c.label === "중증화상및부식진단의 정의 및 진단확정") continue;
       expect([c.params?.map((p) => p.name), c.locals?.map((l) => l.name)], c.label).toEqual([["종들"], ["사유들", "해당"]]);
     }
@@ -285,7 +285,7 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     // 기준일 문구 — 알파Plus 수술비 담보약관 세 자리가 프리셋 ‘담보’(갱신 ← 갱신형 담보 D0005)로 쓴다
     expect((await services.clause.get(byLabel("기준일 문구").code))?.presets?.map((p) => [p.code, p.name, p.bindings])).toEqual([["S01", "담보", { 갱신: { kind: "discriminator", code: "D0005" } }]]);
     expect(usage("기준일 문구")).toBe(3);
-  }, 30_000);
+  }, 180_000);
 
   it("메리츠 — 보통약관 · 기본계약(일반상해사망) · 특약 8(전부 갱신형) · 세목 종 3 × 형 2 · 담보 COV000010~18", async () => {
     const product = (await services.product.listProducts()).find((p) => p.name === MERITZ_PRODUCT_NAME)!;

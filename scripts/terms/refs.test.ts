@@ -47,6 +47,29 @@ describe("inlinesFromText — 평문의 조·별표 참조를 슬롯으로", () 
     expect(out[1]).toMatchObject({ scope: "general", targets: [{ articleId: "a27-1" }, { articleId: "a27-2" }] });
   });
 
+  it("`generalFallback` — 접두 없는 조 참조가 제 문서 조와 맞지 않고 보통약관 조와 맞으면 보통약관 범위(원문의 「보통약관」 빠짐)", () => {
+    const self: ArticleIndex = { byNumber: new Map([["9", { id: "s9", title: "준용규정", paragraphIds: [], itemIds: new Map() }]]) };
+    const text = "다만, 제9조(적립부분 적립이율에 관한 사항), 제10조(만기환급금의 지급) 및 제38조(중도인출) 제외하며";
+    const off = inlinesFromText(text, env({ self }), newId);
+    expect(off.every((x) => x.kind === "text")).toBe(true);
+    const on = inlinesFromText(text, env({ self, generalFallback: true }), newId);
+    expect(on.map((x) => x.kind)).toEqual(["text", "articleRef", "text"]);
+    expect(on[1]).toMatchObject({ scope: "general", targets: [{ articleId: "a9" }, { articleId: "a10" }, { articleId: "a38" }] });
+  });
+
+  it("`looseTitles` — 제목의 가운뎃점 변형 · 「의」 차이는 같은 조(번호가 같을 때)", () => {
+    const self: ArticleIndex = {
+      byNumber: new Map([
+        ["6", { id: "s6", title: "항암방사선∙약물치료의 정의", paragraphIds: [], itemIds: new Map() }],
+        ["4", { id: "s4", title: "비급여 항암약물치료 정의", paragraphIds: [], itemIds: new Map() }],
+      ]),
+    };
+    const text = "제6조(항암방사선ㆍ약물치료의 정의)에서 정한 · 제4조(비급여 항암약물치료의 정의)에서 정한";
+    expect(inlinesFromText(text, env({ self }), newId).every((x) => x.kind === "text")).toBe(true);
+    const on = inlinesFromText(text, env({ self, looseTitles: true }), newId).filter((x) => x.kind === "articleRef");
+    expect(on.map((x) => (x as { targets: { articleId: string }[] }).targets[0].articleId)).toEqual(["s6", "s4"]);
+  });
+
   it("법령 인용(의료법 제3조 · 민법 제27조)은 건드리지 않는다", () => {
     const e = env();
     e.self.byNumber.set("3", { id: "a3", title: "의료기관", paragraphIds: [], itemIds: new Map() });

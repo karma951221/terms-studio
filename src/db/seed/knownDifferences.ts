@@ -19,6 +19,8 @@ export interface KnownDifference {
   replace?: true;
   /** 바꾸기 범위 — 기준 줄 앞 · 뒤로 몇 줄까지 함께 바꾸나 [앞, 뒤] (박스 · 표 블록이 통째로 다른 자리). 없으면 기준 줄 하나. */
   span?: [number, number];
+  /** 줄 안 글 바꾸기 — 그 조의 모든 줄에서 `after`(글 조각)를 `lines[0]` 으로 바꾼다(조 참조의 조 명 표기 · 항 표지처럼 같은 조각이 여러 줄에 나오는 자리). */
+  within?: true;
   /** 인수기준의 차이 이름 — 사람이 읽는다. */
   why: string;
 }
@@ -61,7 +63,12 @@ const merged = (file: string, article: string, secondTitle: string): KnownDiffer
   why: "함께 쓰는 2604 템플릿의 박스 하나 — 2607 원문은 같은 글을 박스 둘로 나눴다",
 });
 
+/** 자동 탑재 특약 — 원문이 제 조 · 보통약관 조를 조금 다르게 적은 자리. 조 참조는 대상 조의 조 명 · 「보통약관 」 접두로 찍힌다(변환기 refs.ts looseTitles · generalFallback). */
+export const within = (file: string, article: string, from: string, to: string, why: string): KnownDifference => ({ dir: A7, file, article, after: from, lines: [to], within: true, why });
+const AUTO_DIFFERENCES: KnownDifference[] = [];
+
 const ALPHA2607_DIFFERENCES: KnownDifference[] = [
+  ...AUTO_DIFFERENCES,
   merged("수술비(1-7종,_연간3회한)[상해]보장.md", "수술의 정의와 장소", "【ADRG(Adjacent DRG)】"),
   merged("갱신형_수술비(1-7종,_연간3회한)[상해]보장.md", "수술의 정의와 장소", "【ADRG(Adjacent DRG)】"),
   {
@@ -168,6 +175,16 @@ export function expectedLines(dir: string, file: string, source: readonly string
     if (heading < 0) throw new Error(`알려진 차이 「${d.why}」: 조 「${d.article}」 없음`);
     const next = out.findIndex((l, i) => i > heading && /^##?\s/.test(l));
     const end = next < 0 ? out.length : next;
+    if (d.within) {
+      let hits = 0;
+      for (let i = heading + 1; i < end; i++) {
+        if (!out[i].includes(d.after)) continue;
+        out[i] = out[i].split(d.after).join(d.lines[0]);
+        hits++;
+      }
+      if (hits === 0) throw new Error(`알려진 차이 「${d.why}」: 조 「${d.article}」 안에 「${d.after}」가 없다`);
+      continue;
+    }
     const at = out.findIndex((l, i) => i > heading && i < end && squash(l) === squash(d.after));
     if (at < 0) throw new Error(`알려진 차이 「${d.why}」: 조 「${d.article}」 안에 기준 줄이 없다`);
     const [before, after] = d.span ?? [0, 0];

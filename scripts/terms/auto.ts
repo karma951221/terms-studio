@@ -94,6 +94,8 @@ export interface CanonicalOptions {
   withTitle: boolean;
   /** 자기 조 **밖**을 가리키는 참조 대상 하나의 표기. */
   outside: (id: Id) => string;
+  /** 글을 지운 모양만 — 낱말만 다른 조를 한 무리로 볼 때(옵션 함수조항 후보). */
+  maskText?: boolean;
 }
 
 /** 조 하나의 열쇠 — 글 · 참조 · 슬롯 · 박스 · 표 · 함수조항 블록. 노드 id 는 보지 않는다(조 안 참조는 조 안 경로로). */
@@ -105,7 +107,7 @@ export function canonicalArticle(a: ArticleNode, opts: CanonicalOptions, childre
       .map((n) => {
         switch (n.kind) {
           case "text":
-            return n.text as string;
+            return opts.maskText ? "T" : (n.text as string);
           case "slot":
             return `{${n.ref}}`;
           case "appendixRef":
@@ -313,4 +315,70 @@ export function collapseRenewal(tree: DocumentNode, idPrefix: string, referenced
   }
   tree.children = out;
   return hoisted;
+}
+
+// ───────────────────────────── 낱말만 다른 조 ─────────────────────────────
+
+type InlineOwner = { kind?: string; children?: unknown[]; items?: unknown[]; subitems?: unknown[] };
+
+/** 항 · 호 · 목 글 노드를 문서 순으로 — 문면 블록 · 함수조항 본문 블록이 같은 순서로 걷는다(옵션 자리를 순번으로 맞춘다). */
+export function textNodesOf(blocks: readonly unknown[]): { text: string }[] {
+  const out: { text: string }[] = [];
+  const owner = (n: InlineOwner) => {
+    for (const c of (n.children ?? []) as { kind: string; text?: string }[]) if (c.kind === "text") out.push(c as { text: string });
+    for (const it of (n.items ?? []) as InlineOwner[]) if (it.kind === "item") owner(it);
+    for (const u of (n.subitems ?? []) as InlineOwner[]) if (u.kind === "subitem") owner(u);
+  };
+  for (const b of blocks as InlineOwner[]) if (b.kind === "paragraph") owner(b);
+  return out;
+}
+
+/** 공통 앞 · 뒤를 뗀 구간(낱말 경계로 넓힌다) — 앞 길이와 글마다의 구간. 모두 같으면 undefined. */
+export function wordRegions(texts: readonly string[]): { prefix: number; regions: string[] } | undefined {
+  if (texts.every((t) => t === texts[0])) return undefined;
+  const chars = texts.map((t) => [...t]);
+  const min = Math.min(...chars.map((c) => c.length));
+  let prefix = 0;
+  while (prefix < min && chars.every((c) => c[prefix] === chars[0][prefix])) prefix++;
+  let suffix = 0;
+  while (suffix < min - prefix && chars.every((c) => c[c.length - 1 - suffix] === chars[0][chars[0].length - 1 - suffix])) suffix++;
+  const space = (c: string | undefined) => c === undefined || /\s/.test(c);
+  while (prefix > 0 && !space(chars[0][prefix - 1])) prefix--;
+  while (suffix > 0 && !chars.every((c) => space(c[c.length - suffix]))) suffix--;
+  return { prefix, regions: chars.map((c) => c.slice(prefix, c.length - suffix).join("")) };
+}
+
+/** 낱말 옵션 무리 — 입력 순번 · 옵션 자리(글 노드 순번 · 앞 길이 · 순번마다의 구간). */
+export interface WordCluster {
+  members: number[];
+  places: { at: number; prefix: number; regions: string[] }[];
+}
+
+/**
+ * 같은 모양 조들(글 노드 수가 같다)을 낱말만 다른 무리로 — 다른 글 자리가 `maxPlaces` 이하, 자리마다 구간이 `maxRegion` 자 이하이고 비지 않으며,
+ * 띄어쓰기만 다르지 않을 때(함수조항 규칙 — 띄어쓰기만 다른 곳은 옵션으로 두지 않는다). 먼저 나온 조가 무리의 씨앗이다. 두 조 이상인 무리만 돌려준다 —
+ * 다른 자리가 없는 무리는 조째 같은 글이다(옵션 없는 함수조항).
+ */
+export function wordClusters(texts: readonly string[][], maxRegion = 30, maxPlaces = 3): WordCluster[] {
+  const plan = (members: number[]): WordCluster | undefined => {
+    const places: WordCluster["places"] = [];
+    for (let at = 0; at < texts[members[0]].length; at++) {
+      const column = members.map((m) => texts[m][at]);
+      const r = wordRegions(column);
+      if (!r) continue;
+      if (r.regions.some((x) => [...x].length > maxRegion || x.trim() === "")) return undefined;
+      const distinct = [...new Set(column)];
+      if (new Set(distinct.map((t) => r.regions[column.indexOf(t)].replace(/\s/g, ""))).size !== distinct.length) return undefined;
+      places.push({ at, prefix: r.prefix, regions: r.regions });
+      if (places.length > maxPlaces) return undefined;
+    }
+    return { members, places };
+  };
+  const clusters: number[][] = [];
+  texts.forEach((t, i) => {
+    const home = clusters.find((c) => texts[c[0]].length === t.length && plan([...c, i]) !== undefined);
+    if (home) home.push(i);
+    else clusters.push([i]);
+  });
+  return clusters.filter((c) => c.length > 1).map((c) => plan(c)!);
 }

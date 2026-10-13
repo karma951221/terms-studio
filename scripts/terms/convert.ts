@@ -30,13 +30,13 @@ import type { Id } from "../../src/domain/types";
 import { boxSites, planBoxes, replaceBox, type BoxPlan } from "./boxes";
 import type { Discriminator } from "../../src/domain/catalog/types";
 import { applyClauseUse, articleRefParamsOf, INNER_TARGETS, clauseFromSource, inlineBody, optionCode, parameterize, placeOptions, reId, valueCode, type ClauseRecord } from "./clauses";
-import { articlesDeep, canonicalArticle, claimOf, collapseRenewal, coverageNameOf, localPaths, mergeRenewal } from "./auto";
+import { articlesDeep, canonicalArticle, claimOf, collapseRenewal, coverageNameOf, localPaths, mergeRenewal, textNodesOf, wordClusters } from "./auto";
 import { APPENDED_CLAUSE_KEYS, APPENDICES, CLAUSES, PRODUCTS, RENEWAL, SEED_DIR, type ClauseUse, type ProductTerms, type SlotOverlay, type SpecialSpec } from "./config";
 import { parseTerms, type ParsedArticle, type ParsedDoc } from "./parse";
 import { applyArticleConds, applyBoxConds, applyInlineClauses, applyInlineConds, articlesOf } from "./overlay";
 import { basisDateClause } from "./renewal";
 import { inlinesFromText, leftoverReferences, type ArticleEntry, type ArticleIndex, type RefEnv } from "./refs";
-import { applyAlphaWaiver, applyMeritzWaiver, guardAlphaApplication, guardDiseaseApplication, guardExcludeSentence, guardWaiverMentions, resolveWaiverCodes } from "./waiver";
+import { applyAlphaWaiver, applyMeritzWaiver, guardAlphaApplication, guardDiseaseApplication, guardExcludeSentence, guardWaiverBlocks, guardWaiverMentions, resolveWaiverCodes } from "./waiver";
 
 const root = process.cwd();
 const read = (product: ProductTerms, file: string) => readFileSync(path.join(root, product.fixtureDir, file), "utf8");
@@ -79,8 +79,8 @@ export function buildStructure(doc: ParsedDoc, prefix: string, title: string, ar
         item = undefined;
         continue;
       }
-      if (!paragraph) throw new Error(`항 없이 ${line.kind} 이 왔다: ${a.title}`);
-      if (line.kind === "item") {
+      if (!paragraph && (line.kind === "item" || line.kind === "subitem")) throw new Error(`항 없이 ${line.kind} 이 왔다: ${a.title}`);
+      if (line.kind === "item" && paragraph) {
         // 항 글과 첫 호 사이에 선 표 · 박스(「… 다음 각 호의 사항을 말합니다.」 뒤 표 → 호)는 호 목록 맨 앞에 — 렌더 순서가 원문과 같다
         if (!paragraph.items?.length) {
           const at = children.indexOf(paragraph);
@@ -97,14 +97,15 @@ export function buildStructure(doc: ParsedDoc, prefix: string, title: string, ar
         item = { id: iid };
         continue;
       }
-      if (line.kind === "subitem") {
+      if (line.kind === "subitem" && paragraph) {
         if (!item) throw new Error(`호 없이 목이 왔다: ${a.title}`);
         const owner = (paragraph.items ?? []).find((n): n is Extract<typeof n, { kind: "item" }> => n.kind === "item" && n.id === item!.id)!;
         const uid = `${item.id}-u${(owner.subitems?.length ?? 0) + 1}`;
         (owner.subitems ??= []).push({ id: uid, kind: "subitem", children: [{ id: `${uid}-x0`, kind: "text", text: line.text }] });
         continue;
       }
-      // 표·박스 — 항에 호가 있으면 그 항의 목록 자리에, 아니면 조 직속에 (렌더 순서는 같다)
+      if (line.kind === "item" || line.kind === "subitem") continue;
+      // 표·박스 — 항에 호가 있으면 그 항의 목록 자리에, 아니면 조 직속에 (렌더 순서는 같다). 첫 항 앞(통합형 특약의 세부보장 머리)도 조 직속
       staticSeq += 1;
       const node: TableNode | BoxNode =
         line.kind === "table"
@@ -119,8 +120,11 @@ export function buildStructure(doc: ParsedDoc, prefix: string, title: string, ar
                 return { ...(r.header ? { header: true } : {}), cells: cells.map((text, ci) => textCell(`${aid}-t${staticSeq}-r${ri}c${ci}`, text)) };
               }),
             }
-          : { id: `${aid}-b${staticSeq}`, kind: "box", title: line.title, lines: line.lines };
-      if (paragraph.items && paragraph.items.length > 0) paragraph.items.push(node);
+          : // 제목만 있는 박스(줄 0)는 제목을 줄로 — 박스 마스터는 줄이 하나 이상이어야 하고, 찍히는 글(【제목】 한 줄)은 같다
+            line.lines.length === 0 && line.title !== ""
+            ? { id: `${aid}-b${staticSeq}`, kind: "box", title: "", lines: [`【${line.title}】`] }
+            : { id: `${aid}-b${staticSeq}`, kind: "box", title: line.title, lines: line.lines };
+      if (paragraph?.items && paragraph.items.length > 0) paragraph.items.push(node);
       else children.push(node);
     }
     index.byNumber.set(a.number, entry);
@@ -140,9 +144,9 @@ export function buildStructure(doc: ParsedDoc, prefix: string, title: string, ar
 }
 
 /** 2차 — 항·호·목의 평문을 인라인 노드로. 조건 가지 안의 평문도 같은 규칙으로 (가지 id 기준 채번). */
-export function convertText(built: Built, general: ArticleIndex | undefined, appendixByNumber: Map<number, string>, report: string[]): void {
+export function convertText(built: Built, general: ArticleIndex | undefined, appendixByNumber: Map<number, string>, report: string[], generalFallback = false): void {
   for (const a of articlesOf(built.tree)) {
-    const env: RefEnv = { self: built.index, general, appendixByNumber, currentArticleId: a.id, report };
+    const env: RefEnv = { self: built.index, general, appendixByNumber, currentArticleId: a.id, report, ...(generalFallback ? { generalFallback, looseTitles: true } : {}) };
     /** 이어진 텍스트런은 한 번에 변환하고, 조건 노드는 가지 안을 재귀로 변환한 뒤 그대로 둔다. */
     const convert = (ownerId: Id, children: InlineNode[]): InlineNode[] => {
       let seq = 0;
@@ -276,7 +280,7 @@ function codeTargets(tree: DocumentNode, generalTree: DocumentNode | undefined, 
       if (!ix) throw new Error(`${where}: 대응 보통약관 없이 보통약관 참조가 있다`);
       r.targets = r.targets.map((t) => {
         // 함수조항 블록으로 바뀐 항을 가리키면 (블록 참조 코드, 안쪽 코드) — 펼친 함수조항 안쪽 (ADR-0077 결정 6)
-        const inner = r.scope === "self" && !ix.nodes.has(t.articleId) ? INNER_TARGETS.get(t.articleId) : undefined;
+        const inner = !ix.nodes.has(t.articleId) ? INNER_TARGETS.get(t.articleId) : undefined;
         if (!inner) return targetOfId(ix, t.articleId, where);
         const clause = clauseOf(inner.clauseCode);
         const innerCode = clause && clauseCodeEntries(withClauseCodes(clause.body)).entries.find((x) => x.id === inner.innerId)?.code;
@@ -405,6 +409,7 @@ function main(): void {
   const autoStats = applyAutoClauses(products, CLAUSES.map((c) => clauseByKey.get(c.key)!), clauses, report, isWaiverOf("alpha"));
   for (const p of products) {
     const isWaiver = isWaiverOf(p.product.line);
+    for (const spec of p.product.specials.filter((s) => s.auto)) guardWaiverBlocks(p.specials.get(spec.code)!.tree, isWaiver);
     guardWaiverMentions(p.general.tree, isWaiver, p.product.general.code);
     for (const spec of p.product.specials) guardWaiverMentions(p.specials.get(spec.code)!.tree, isWaiver, spec.code);
   }
@@ -451,7 +456,9 @@ function main(): void {
   const catalog = JSON.parse(readFileSync(path.join(root, SEED_DIR, "discriminators.json"), "utf8")) as Discriminator[];
   const generalIndexes = products.map((p) => indexTree(p.general.tree));
   const finalClauses = clauses.map((c) => codeClauseTargets(parameterize(c, catalog), generalIndexes));
-  const boxRecords = compactBoxes(boxes.map((b) => b.record), [generals, documents, finalClauses]);
+  const generalClauseCodes = new Set(generals.flatMap((g) => [...JSON.stringify(g.tree).matchAll(/"clauseCode":"(C\d+)"/g)].map((m) => m[1])));
+  const plannedFront = new Set(boxes.filter((b) => b.sites.some((x) => x.general)).map((b) => b.record.code));
+  const boxRecords = compactBoxes(boxes.map((b) => b.record), [generals, documents, finalClauses], [generals, finalClauses.filter((c) => generalClauseCodes.has(c.code))], plannedFront);
 
   // ── 출력
   const out = (file: string, data: unknown) => writeFileSync(path.join(root, SEED_DIR, file), `${JSON.stringify(data, null, 2)}\n`);
@@ -541,45 +548,87 @@ function applyAutoClauses(products: readonly BuiltProduct[], candidates: readonl
       if (hit) stats.existingUses++;
     }
   }
-  // 2. 조째 같은 글끼리 — 새 함수조항
-  const groups = new Map<string, { spec: SpecialSpec; b: Built; a: ArticleNode; slice: (ParagraphNode | BoxRefNode)[] }[]>();
+  // 2. 남은 조 — 같은 모양(글을 지운 열쇠)끼리 조째 같은 글이거나 낱말 구간만 다르면 새 함수조항 하나(다른 낱말은 옵션 — 기능/함수조항 §3.2, 선택지 문구는 평문)
+  const shapes = new Map<string, { spec: SpecialSpec; b: Built; a: ArticleNode; slice: (ParagraphNode | BoxRefNode)[] }[]>();
   for (const { spec, b } of docs) {
     for (const a of articlesDeep(b.tree)) {
       if (a.children.some((c) => c.kind === "clauseBlockRef")) continue;
       const slice = clauseSlice(a);
-      if (!slice) continue;
-      const key = canonicalArticle(a, { withTitle: false, outside: () => "OUT" }, slice);
-      groups.set(key, [...(groups.get(key) ?? []), { spec, b, a, slice }]);
+      if (!slice || JSON.stringify(slice).includes('"kind":"inlineCond"')) continue;
+      const key = canonicalArticle(a, { withTitle: false, outside: () => "OUT", maskText: true }, slice);
+      shapes.set(key, [...(shapes.get(key) ?? []), { spec, b, a, slice }]);
     }
   }
-  const shared = [...groups.values()].filter((g) => g.length >= 2);
+  const variants = [...shapes.values()].flatMap((list) => (list.length < 2 ? [] : wordClusters(list.map((m) => textNodesOf(m.slice).map((t) => t.text))).map((c) => ({ c, ms: c.members.map((i) => list[i]) }))));
   const sameTitle = new Map<string, number>();
-  for (const g of shared) sameTitle.set(g[0].a.title, (sameTitle.get(g[0].a.title) ?? 0) + 1);
+  for (const g of variants) sameTitle.set(g.ms[0].a.title, (sameTitle.get(g.ms[0].a.title) ?? 0) + 1);
   const seen = new Map<string, number>();
-  for (const g of shared) {
-    const title = g[0].a.title;
+  for (const { c, ms } of variants) {
+    const title = ms[0].a.title;
     const k = (seen.get(title) ?? 0) + 1;
     seen.set(title, k);
     const label = sameTitle.get(title)! > 1 ? `${title}(알파Plus2607 ${k})` : `${title}(알파Plus2607)`;
     const key = `auto-${clauses.length + 1}`;
-    const blocks = clauseFromSource(g[0].b.tree, g[0].slice, key);
+    const blocks = clauseFromSource(ms[0].b.tree, ms[0].slice, key);
+    // 옵션 자리 — 첫 자리 조의 글 노드 순번 · 앞 길이로 글을 [앞, 옵션 자리, 뒤]로 가른다(함수조항 본문은 원문 자리와 같은 순서의 글 노드를 갖는다)
+    const nodes = textNodesOf(blocks);
+    const options = c.places.map((place, oi) => {
+      const values = [...new Set(place.regions)];
+      const labels = values.map((v) => (v.length > 20 ? `${[...v].slice(0, 20).join("")}…` : v));
+      return {
+        code: optionCode(oi),
+        label: `낱말 ${oi + 1}`,
+        order: oi,
+        values: values.map((v, vi) => ({ code: valueCode(vi), label: labels.indexOf(labels[vi]) === vi ? labels[vi] : `${labels[vi]} ${vi + 1}`, order: vi, body: [{ id: `c-${key}-o${oi + 1}v${vi + 1}-x1`, kind: "text" as const, text: v }] })),
+      };
+    });
+    c.places.forEach((place, oi) => {
+      const node = nodes[place.at];
+      const chars = [...node.text];
+      const region = [...place.regions[0]];
+      const parts = [
+        ...(place.prefix > 0 ? [{ id: `c-${key}-w${oi}a`, kind: "text", text: chars.slice(0, place.prefix).join("") }] : []),
+        { id: `c-${key}-w${oi}`, kind: "optionSlot", optionCode: optionCode(oi) },
+        ...(place.prefix + region.length < chars.length ? [{ id: `c-${key}-w${oi}b`, kind: "text", text: chars.slice(place.prefix + region.length).join("") }] : []),
+      ];
+      const visit = (list: unknown[]): boolean => {
+        const at = list.indexOf(node);
+        if (at >= 0) {
+          list.splice(at, 1, ...parts);
+          return true;
+        }
+        return list.some((n) => {
+          const o = n as { children?: unknown[]; items?: unknown[]; subitems?: unknown[] };
+          return [o.children, o.items, o.subitems].some((x) => Array.isArray(x) && visit(x));
+        });
+      };
+      if (!visit(blocks as unknown[])) throw new Error(`${key}: 옵션 자리 ${oi} 를 함수조항 본문에서 찾지 못했다`);
+    });
     const body = reId(blocks, `c-${key}`);
     const params = articleRefParamsOf(body);
-    const where = [...new Set(g.map((m) => m.spec.code))];
+    // 문장 안 조건으로 가를 수 없는 납입면제 조 참조(특약 자체의 납입면제 조)가 든 조는 함수조항으로 두지 않는다 — 문면에서 호 · 항째 감싼다(guardWaiverBlocks)
+    try {
+      guardClauseWaiver({ code: key, label, mode: "block", description: "", body: structuredClone(body), options: [] }, isWaiver);
+    } catch {
+      seen.set(title, k - 1);
+      continue;
+    }
+    const where = [...new Set(ms.map((m) => m.spec.code))];
     const record: ClauseRecord = {
       code: `C${String(clauses.length + 1).padStart(4, "0")}`,
       label,
       mode: "block",
-      description: `알파Plus2607 특약 ${where.length}곳이 조째 같은 글이다 — 변환기가 찾아 묶었다(첫 자리 ${g[0].spec.code} 「${title}」)`,
+      description: `알파Plus2607 특약 ${where.length}곳이 조째 같은 글이${options.length > 0 ? `고 낱말 ${options.length}자리만 다르다(옵션)` : "다"} — 변환기가 찾아 묶었다(첫 자리 ${ms[0].spec.code} 「${title}」)`,
       body,
-      options: [],
+      options,
       ...(params.length > 0 ? { params } : {}),
     };
     clauses.push(record);
     stats.created.push(record);
-    for (const m of g) {
-      if (applyClauseUse({ article: m.a.title, paragraph: 1, clause: record.code }, record, () => m.a, `[${m.spec.code}]`, report, m.b.tree)) stats.createdUses++;
-    }
+    ms.forEach((m, mi) => {
+      const selection = Object.fromEntries(c.places.map((place, oi) => [optionCode(oi), valueCode(options[oi].values.findIndex((v) => (v.body[0] as { text: string }).text === place.regions[mi]))]));
+      if (applyClauseUse({ article: m.a.title, paragraph: 1, clause: record.code, options: selection }, record, () => m.a, `[${m.spec.code}]`, report, m.b.tree)) stats.createdUses++;
+    });
     guardClauseWaiver(record, isWaiver);
   }
   // 3. 조 일부 — 남은 조의 잇닿은 항이 함수조항(기존 · 새로 찾은 것) 하나와 같으면 그 자리만 함수조항 블록으로(제3자 합의 항 · 사망 시 소멸 항 등). 큰 함수조항부터
@@ -630,12 +679,12 @@ function guardClauseWaiver(record: ClauseRecord, isWaiver: (id: Id) => boolean):
  * 갱신형 짝은 담보 하나 · 탑재 둘(갱신유형 비갱신형 · 갱신형), 갱신형만 있는 특약은 탑재 하나(갱신형).
  */
 function writeAutoSeeds(products: readonly BuiltProduct[], out: (file: string, data: unknown) => void): void {
-  type Coverage = { key: string; code: string; name: string; benefitName: string; specialGroup?: string; coverageValues: { path: string; value: unknown }[]; benefitValues: unknown[] };
-  type Mount = { code: string; coverage: string; section: string; attributes: { kindCode: string; valueCode: string }[] };
+  // 자동 탑재분은 `auto: true` 로 표시한다 — 다시 쓸 때 지난번 자동 탑재분을 모두 지우고 지금 설정으로 새로 쓴다(손으로 쓴 것은 그대로)
+  type Coverage = { key: string; code: string; name: string; benefitName: string; specialGroup?: string; coverageValues: { path: string; value: unknown }[]; benefitValues: unknown[]; auto?: true };
+  type Mount = { code: string; coverage: string; section: string; attributes: { kindCode: string; valueCode: string }[]; auto?: true };
   const coverages = JSON.parse(readFileSync(path.join(root, SEED_DIR, "coverages.json"), "utf8")) as Coverage[];
   const seeded = JSON.parse(readFileSync(path.join(root, SEED_DIR, "products.json"), "utf8")) as { code: string; mounts: Mount[] }[];
-  const autoKeys = new Set(products.flatMap((p) => p.product.specials.filter((s) => s.auto).map((s) => s.ownerCoverage)));
-  const hand = coverages.filter((c) => !autoKeys.has(c.key));
+  const hand = coverages.filter((c) => !c.auto);
   const next: Coverage[] = [...hand];
   for (const p of products) {
     const mounts: Mount[] = [];
@@ -651,13 +700,15 @@ function writeAutoSeeds(products: readonly BuiltProduct[], out: (file: string, d
         specialGroup: spec.auto!.group,
         coverageValues: [{ path: "coverage_basic.claim_name", value: benefit }],
         benefitValues: [],
+        auto: true,
       });
       const attr = (v: string) => [{ kindCode: "A0001", valueCode: v }];
-      if (spec.auto!.renewal) mounts.push({ code: spec.ownerCoverage, coverage: spec.ownerCoverage, section: "special", attributes: attr("1") }, { code: `${spec.ownerCoverage}-renew`, coverage: spec.ownerCoverage, section: "special", attributes: attr("2") });
-      else mounts.push({ code: spec.ownerCoverage, coverage: spec.ownerCoverage, section: "special", attributes: renewal ? attr("2") : [] });
+      const mount = (code: string, attributes: Mount["attributes"]): Mount => ({ code, coverage: spec.ownerCoverage, section: "special", attributes, auto: true });
+      if (spec.auto!.renewal) mounts.push(mount(spec.ownerCoverage, attr("1")), mount(`${spec.ownerCoverage}-renew`, attr("2")));
+      else mounts.push(mount(spec.ownerCoverage, renewal ? attr("2") : []));
     }
     const product = seeded.find((x) => x.code === p.product.code);
-    if (product) product.mounts = [...product.mounts.filter((m) => !autoKeys.has(m.coverage)), ...mounts];
+    if (product) product.mounts = [...product.mounts.filter((m) => !m.auto), ...mounts];
   }
   out("coverages.json", next);
   out("products.json", seeded);
@@ -669,11 +720,17 @@ function canonicalClause(clause: ClauseRecord): string {
 }
 
 /**
- * 쓰지 않는 박스를 빼고 남은 것의 코드를 앞에서부터 다시 매긴다(순서는 그대로 — 보통약관이 놓는 박스가 앞). `holders` 의 박스 참조 코드를 제자리에서 고친다.
+ * 쓰지 않는 박스를 빼고 남은 것의 코드를 앞에서부터 다시 매긴다. `holders` 의 박스 참조 코드를 제자리에서 고친다.
+ * 순서는 그대로이되 `front`(보통약관 · 보통약관이 쓰는 함수조항)가 놓는 박스를 앞으로 — 보통약관 자리가 함수조항으로 바뀌어 보통약관이 더 쓰지 않게 된
+ * 박스를 뒤 특약(자동 탑재)이 함께 쓰면 그 박스는 특약 몫이라 뒤로 간다(보통약관이 놓는 박스는 앞 코드 — 화면 E2E 바탕이 앞에서부터 넣는다).
  */
-export function compactBoxes<T extends { code: string }>(records: readonly T[], holders: unknown[]): T[] {
-  const used = new Set([...JSON.stringify(holders).matchAll(/"boxCode":"(BX\d+)"/g)].map((m) => m[1]));
-  const kept = records.filter((r) => used.has(r.code));
+export function compactBoxes<T extends { code: string }>(records: readonly T[], holders: unknown[], front: unknown[] = [], plannedFront: ReadonlySet<string> = new Set()): T[] {
+  const codesIn = (x: unknown) => new Set([...JSON.stringify(x).matchAll(/"boxCode":"(BX\d+)"/g)].map((m) => m[1]));
+  const used = codesIn(holders);
+  const first = codesIn(front);
+  const rest = records.filter((r) => used.has(r.code) && !first.has(r.code));
+  // 보통약관 몫으로 앞에 두었다가 보통약관이 더 쓰지 않게 된 박스(`plannedFront`)는 맨 뒤 — 그사이 특약 박스의 코드를 밀지 않는다
+  const kept = [...records.filter((r) => first.has(r.code)), ...rest.filter((r) => !plannedFront.has(r.code)), ...rest.filter((r) => plannedFront.has(r.code))];
   const rename = new Map(kept.map((r, i) => [r.code, `BX${String(i + 1).padStart(6, "0")}`]));
   const visit = (n: unknown): void => {
     if (Array.isArray(n)) return n.forEach(visit);
@@ -851,7 +908,8 @@ function buildSpecial(spec: SpecialSpec, product: ProductTerms, generalParsed: P
     built = buildStructure(parsed, spec.idPrefix, spec.title ?? parsed.title);
     applyInlineConds(built.tree, built.numberOf, spec.inlineConds ?? [], report);
     applyInlineClauses(built.tree, built.numberOf, spec.inlineClauses ?? [], report);
-    convertText(built, general.index, product.appendixNumbers, report);
+    // 자동 탑재 특약은 「보통약관 」이 빠진 보통약관 조 참조도 푼다(refs.ts generalFallback)
+    convertText(built, general.index, product.appendixNumbers, report, Boolean(spec.auto));
     for (const extra of spec.extraArticles ?? []) insertExtraArticle(built, extra, general, product, report, spec.code);
     if (spec.auto) {
       built.auto = { title: parsed.title };
@@ -859,7 +917,7 @@ function buildSpecial(spec: SpecialSpec, product: ProductTerms, generalParsed: P
       if (spec.auto.renewal) {
         const renewalParsed = parseTerms(read(product, spec.auto.renewal));
         const renewal = buildStructure(renewalParsed, `${spec.idPrefix}r`, renewalParsed.title);
-        convertText(renewal, general.index, product.appendixNumbers, report);
+        convertText(renewal, general.index, product.appendixNumbers, report, true);
         built.tree = mergeRenewal(built.tree, renewal.tree, RENEWAL, spec.idPrefix);
         for (const [id, n] of renewal.numberOf) built.numberOf.set(id, `r${n}`);
         built.auto.renewalTitle = renewalParsed.title;

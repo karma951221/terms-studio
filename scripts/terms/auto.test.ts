@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { ArticleNode, DocumentNode, InlineNode } from "../../src/domain/document/nodes";
 
-import { articlesDeep, autoFixtures, canonicalArticle, claimOf, collapseRenewal, coverageNameOf, mergeRenewal } from "./auto";
+import { articlesDeep, autoFixtures, canonicalArticle, claimOf, collapseRenewal, coverageNameOf, mergeRenewal, textNodesOf, wordClusters } from "./auto";
 
 const WHEN = "exist(attr.A0001) and attr.A0001 = '2'";
 const text = (id: string, t: string): InlineNode => ({ id, kind: "text", text: t });
@@ -34,6 +34,28 @@ describe("autoFixtures — 자동 탑재 특약의 책자 제목 · fixture", ()
       ["갱신형 질병수술비보장 특별약관", "b.md"],
       ["화재벌금보장 특별약관", "c.md"],
     ]);
+  });
+});
+
+describe("wordClusters — 낱말만 다른 조를 옵션 함수조항 한 무리로", () => {
+  it("다른 자리의 낱말 구간(낱말 경계로 넓힌다)이 짧으면 한 무리 — 자리마다 순번별 구간", () => {
+    const texts = [
+      ["이 특별약관에서 「입원」이라 함은 종합병원에 입원하는 것을 말합니다.", "끝"],
+      ["이 특별약관에서 「입원」이라 함은 상급종합병원에 입원하는 것을 말합니다.", "끝"],
+      ["전혀 다른 글입니다. 길고 긴 설명이 붙어 있어 낱말 차이가 아닙니다.", "끝"],
+    ];
+    expect(wordClusters(texts)).toEqual([{ members: [0, 1], places: [{ at: 0, prefix: 19, regions: ["종합병원에", "상급종합병원에"] }] }]);
+  });
+
+  it("띄어쓰기만 다르면 · 구간이 길면 · 글 노드 수가 다르면 무리가 아니다", () => {
+    expect(wordClusters([["보험금을 지급 합니다."], ["보험금을 지급합니다."]])).toEqual([]);
+    expect(wordClusters([["가 " + "x".repeat(40)], ["가 " + "y".repeat(40)]])).toEqual([]);
+    expect(wordClusters([["가 나"], ["가 다", "더"]])).toEqual([]);
+  });
+
+  it("textNodesOf — 항 · 호 · 목 글을 문서 순으로", () => {
+    const blocks = [{ kind: "paragraph", children: [text("a", "항"), ref("r", "x")], items: [{ kind: "item", children: [text("b", "호")], subitems: [{ kind: "subitem", children: [text("c", "목")] }] }] }, { kind: "boxRef" }];
+    expect(textNodesOf(blocks).map((t) => t.text)).toEqual(["항", "호", "목"]);
   });
 });
 

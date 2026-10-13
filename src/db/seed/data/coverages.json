@@ -449,7 +449,8 @@
         "value": "상해흉터복원수술비보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i12",
@@ -463,7 +464,8 @@
         "value": "상해수술비보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i13",
@@ -477,7 +479,8 @@
         "value": "상해 통합치료비(실속형)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i14",
@@ -491,7 +494,8 @@
         "value": "일반상해입원일당(1일이상)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i16",
@@ -505,7 +509,8 @@
         "value": "일반상해중환자실입원일당(1일이상)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i17",
@@ -519,7 +524,8 @@
         "value": "강력범죄피해(일상생활중)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i18",
@@ -533,7 +539,8 @@
         "value": "안전사고피해치료비보장(폭력치료비, 유괴･인신매매피해치료비)"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i19",
@@ -547,7 +554,8 @@
         "value": "일반상해수술입원일당(1일이상 20일한도)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i20",
@@ -561,7 +569,8 @@
         "value": "5대골절진단비보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i21",
@@ -575,7 +584,8 @@
         "value": "5대골절수술비보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i23",
@@ -589,7 +599,8 @@
         "value": "골절(치아파절제외)수술비Ⅱ보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i24",
@@ -603,7 +614,8 @@
         "value": "일반상해50%이상후유장해보험금"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i25",
@@ -617,7 +629,8 @@
         "value": "대중교통이용중 교통상해후유장해(3-100%)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i26",
@@ -631,7 +644,8 @@
         "value": "일반상해후유장해(20-100%)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i28",
@@ -645,7 +659,8 @@
         "value": "일반상해후유장해(3-100%)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i29",
@@ -659,7 +674,8 @@
         "value": "종합병원 일반상해입원일당(1일이상)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i30",
@@ -673,7 +689,8 @@
         "value": "신골절치료비(치아파절포함)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i31",
@@ -687,7 +704,8 @@
         "value": "상급종합병원 일반상해입원일당(1일이상)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i36",
@@ -701,7 +719,8 @@
         "value": "골절진단비Ⅱ보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i38",
@@ -715,7 +734,8 @@
         "value": "상급병실(1인실) 상급종합병원 일반상해입원일당(1일이상 10일한도)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i39",
@@ -729,7 +749,8 @@
         "value": "상급병실(1인실) 종합병원 일반상해입원일당(1일이상 30일한도)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i40",
@@ -743,7 +764,8 @@
         "value": "상급병실(1인실) 종합병원 일반상해수술입원일당(1일이상 10일한도)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i41",
@@ -757,7 +779,8 @@
         "value": "종합병원 상해수술비보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i42",
@@ -771,7 +794,8 @@
         "value": "상급종합병원 상해수술비보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i45",
@@ -785,7 +809,8 @@
         "value": "일반상해입원일당(181일이상)(요양,정신,한방병원제외)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i46",
@@ -799,7 +824,8 @@
         "value": "간병인사용 일반상해입원일당(plus)(181일이상)(요양,정신,한방병원제외)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i47",
@@ -813,7 +839,8 @@
         "value": "간호·간병통합서비스 사용 일반상해입원일당(181일이상)(요양,정신,한방병원제외)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i48",
@@ -827,7 +854,8 @@
         "value": "간병인사용 일반상해입원일당(plus)(1일이상 180일한도)(요양병원제외)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i49",
@@ -841,7 +869,8 @@
         "value": "간병인사용 일반상해입원일당(1일이상 180일한도)(요양병원)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i50",
@@ -855,7 +884,8 @@
         "value": "간호·간병통합서비스 사용 일반상해입원일당(1일이상 180일한도)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i51",
@@ -869,7 +899,8 @@
         "value": "간병인사용 일반상해입원일당(plus)(1일이상 180일한도)(요양병원제외)(체증형)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i52",
@@ -883,7 +914,8 @@
         "value": "간병인사용 일반상해입원일당(1일이상 180일한도)(요양병원)(체증형)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i53",
@@ -897,7 +929,8 @@
         "value": "일반상해입원 간병인비용지원(간병인비용 200만원 이상)(요양병원제외)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i54",
@@ -911,7 +944,8 @@
         "value": "일반상해입원 간병인비용지원(간병인비용 500만원 이상)(요양병원제외)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i55",
@@ -925,7 +959,8 @@
         "value": "일반상해입원 간병인비용지원(간병인비용 1,000만원 이상)(요양병원제외)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i56",
@@ -939,7 +974,8 @@
         "value": "일반상해입원 간병인비용지원(간병인비용 2,000만원 이상)(요양병원제외)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i57",
@@ -953,7 +989,8 @@
         "value": "2-3인실 상급종합병원일반상해입원일당(1일이상 30일한도)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i58",
@@ -967,7 +1004,8 @@
         "value": "2-3인실 종합병원 일반상해입원일당(1일이상 30일한도)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i59",
@@ -981,7 +1019,8 @@
         "value": "상해특정급여시술치료비보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i60",
@@ -995,7 +1034,8 @@
         "value": "상해수술비(치아파절및치아탈구제외)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i61",
@@ -1009,7 +1049,8 @@
         "value": "상해 통합생활지원비(월간한도)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i62",
@@ -1023,7 +1064,8 @@
         "value": "상해 1-5종수술비(plus)(연간2회이상)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   },
   {
     "key": "a7-i63",
@@ -1037,6 +1079,7 @@
         "value": "통합외상치료비(권역외상센터)보장"
       }
     ],
-    "benefitValues": []
+    "benefitValues": [],
+    "auto": true
   }
 ]

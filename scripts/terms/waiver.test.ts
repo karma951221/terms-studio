@@ -172,7 +172,8 @@ describe("사유별 호 · 정의 함수조항 — 인자 종들 + 내부 변수
   });
 
   it("V12 · V13(열거형에서 지웠다)과 값별 분기는 어느 함수조항에도 없다", () => {
-    expect(JSON.stringify(clauses)).not.toMatch(/'V1[23]'|"V1[23]"/);
+    // 옵션 선택지 코드(V01 …)는 열거값이 아니다 — 낱말 옵션 함수조항(알파Plus2607 자동 탑재)은 선택지가 열둘을 넘기도 한다
+    expect(JSON.stringify(clauses).replace(/"code":"V\d+"/g, "")).not.toMatch(/'V1[23]'|"V1[23]"/);
     expect(all(clauses, (x) => x.kind === "switchBlock" || x.kind === "inlineSwitch")).toEqual([]);
   });
 
@@ -293,6 +294,14 @@ describe("guardExcludeSentence — 준용규정 「…은 제외하며, 1종 …
     expect(p.children.map((c) => (c.kind === "text" ? c.text : c.kind))).toEqual(["다만, 보통약관 ", "articleRef", "은 제외합니다.", "inlineCond"]);
     expect(cond.branches).toHaveLength(1);
     expect(cond.branches[0].children[0].text).toBe(" 또한, 1종(보험료 납입면제 미적용형)으로 가입한 경우 보통약관 ");
+  });
+
+  it("「은」이 빠진 원문(「…[조 참조] 제외하며, …」) — ELSE 도 원문 조사대로 「 제외합니다.」", () => {
+    const p = sentence();
+    (p.children[2] as { text: string }).text = " 제외하며, 보통약관 1종(보험료 납입면제 미적용형)으로 가입한 경우 보통약관 ";
+    expect(guardExcludeSentence(p, 3)).toBe(true);
+    const cond = p.children.at(-1) as unknown as { branches: { children: { text?: string }[] }[] };
+    expect(cond.branches[1].children[0].text).toBe(" 제외합니다.");
   });
 
   it("모양이 아니면 건드리지 않는다", () => {

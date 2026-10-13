@@ -11313,8 +11313,10 @@
             {
               "id": "a7i11-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0072",
-              "options": {},
+              "clauseCode": "C0083",
+              "options": {
+                "O01": "V01"
+              },
               "code": "P0100"
             }
           ]
@@ -11365,16 +11367,15 @@
           "title": "보험금의 지급사유",
           "children": [
             {
-              "id": "a7i12-a1-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i12-a1-p1-x2",
-                  "kind": "text",
-                  "text": "회사는 보험증권에 기재된 피보험자가 이 특별약관의 보험기간 중에 상해의 직접적인 결과로써 "
-                },
-                {
-                  "id": "a7i12-a1-p1-x1",
+              "id": "a7i12-a1-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0084",
+              "options": {
+                "O01": "V01",
+                "O02": "V01"
+              },
+              "bindings": {
+                "수술의 정의와 장소 조": {
                   "kind": "articleRef",
                   "targets": [
                     {
@@ -11383,13 +11384,8 @@
                   ],
                   "connector": "및",
                   "scope": "self"
-                },
-                {
-                  "id": "a7i12-a1-p1-x3",
-                  "kind": "text",
-                  "text": "에서 정한 수술을 받은 경우에는 보험수익자에게 이 특별약관의 보험가입금액을 상해수술비로 지급합니다."
                 }
-              ],
+              },
               "code": "P0100"
             }
           ]
@@ -11400,22 +11396,12 @@
           "title": "보험금 지급에 관한 세부규정",
           "children": [
             {
-              "id": "a7i12-a2-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i12-a2-p1-x1",
-                  "kind": "text",
-                  "text": "같은 상해로 두 종류 이상의 상해수술을 받거나 같은 종류의 상해수술을 2회 이상 받은 경우에는 하나의 상해수술비만 지급합니다."
-                }
-              ],
-              "code": "P0100"
-            },
-            {
-              "id": "a7i12-a2-p2-k",
+              "id": "a7i12-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0070",
-              "options": {},
+              "clauseCode": "C0081",
+              "options": {
+                "O01": "V01"
+              },
               "bindings": {
                 "보험금의 지급사유 조": {
                   "kind": "articleRef",
@@ -11428,7 +11414,7 @@
                   "scope": "self"
                 }
               },
-              "code": "P0200"
+              "code": "P0100"
             }
           ]
         },
@@ -11440,8 +11426,10 @@
             {
               "id": "a7i12-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0072",
-              "options": {},
+              "clauseCode": "C0083",
+              "options": {
+                "O01": "V01"
+              },
               "code": "P0100"
             }
           ]
@@ -11452,93 +11440,13 @@
           "title": "보험금을 지급하지 않는 사유",
           "children": [
             {
-              "id": "a7i12-a4-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i12-a4-p1-x2",
-                  "kind": "text",
-                  "text": "회사는 "
-                },
-                {
-                  "id": "a7i12-a4-p1-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "articleId": "g-a5"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "general"
-                },
-                {
-                  "id": "a7i12-a4-p1-x3",
-                  "kind": "text",
-                  "text": " 및 아래의 목적의 치료를 위한 상해수술비를 지급하지 않습니다."
-                }
-              ],
-              "items": [
-                {
-                  "id": "a7i12-a4-p1-i1",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i12-a4-p1-i1-x1",
-                      "kind": "text",
-                      "text": "건강검진, 예방접종, 인공유산"
-                    }
-                  ],
-                  "code": "P0200"
-                },
-                {
-                  "id": "a7i12-a4-p1-i2",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i12-a4-p1-i2-x1",
-                      "kind": "text",
-                      "text": "영양제, 비타민제, 호르몬 투여, 보신용 투약, 친자 확인을 위한 진단, 불임검사, 불임수술, 불임복원술, 보조생식술(체내, 체외 인공수정을 포함합니다), 성장촉진과 관련된 수술"
-                    }
-                  ],
-                  "code": "P0300"
-                },
-                {
-                  "id": "a7i12-a4-p1-i3",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i12-a4-p1-i3-x1",
-                      "kind": "text",
-                      "text": "신체의 필수 기능개선 목적이 아닌 외모개선 목적의 치료를 위한 수술 ㉠ 쌍꺼풀수술(이중검수술. 다만, 안검하수, 안검내반 등을 치료하기 위한 시력개선 목적의 이중검수술은 보상합니다), 코성형수술(융비술), 유방확대(다만, 유방암 환자의 유방재건술은 보상합니다)․축소술, 지방흡입술(다만, ｢국민건강보험법｣ 및 관련 고시에 따라 요양급여에 해당하는 '여성형 유방증'을 수술하면서 그 일련의 과정으로 시행한 지방흡입술은 보상합니다), 주름살제거술 등 ㉡ 사시교정, 안와격리증(양쪽 눈을 감싸고 있는 뼈와 뼈 사이의 거리가 넓은 증상)의 교정 등 시각계 수술로서 시력개선 목적이 아닌 외모개선 목적의 수술 ㉢ 안경, 콘택트렌즈 등을 대체하기 위한 시력교정술(국민건강보험 요양급여 대상 수술방법 또는 치료재료가 사용되지 않은 경우는 시력교정술로 봅니다) ㉣ 외모개선 목적의 다리정맥류 수술"
-                    }
-                  ],
-                  "code": "P0400"
-                },
-                {
-                  "id": "a7i12-a4-p1-i4",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i12-a4-p1-i4-x1",
-                      "kind": "text",
-                      "text": "위생관리, 미모를 위한 성형수술(다만, 사고전 상태로의 회복을 위한 수술은 보험금을 지급합니다)"
-                    }
-                  ],
-                  "code": "P0500"
-                },
-                {
-                  "id": "a7i12-a4-p1-i5",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i12-a4-p1-i5-x1",
-                      "kind": "text",
-                      "text": "선천적 기형 및 이에 근거한 병상"
-                    }
-                  ],
-                  "code": "P0600"
-                }
-              ],
+              "id": "a7i12-a4-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0085",
+              "options": {
+                "O01": "V01",
+                "O02": "V01"
+              },
               "code": "P0100"
             }
           ]
@@ -11559,7 +11467,7 @@
                     {
                       "id": "a7i12r-a5-p1-k",
                       "kind": "clauseBlockRef",
-                      "clauseCode": "C0073",
+                      "clauseCode": "C0072",
                       "options": {},
                       "code": "P0100"
                     }
@@ -15586,223 +15494,14 @@
           "title": "수술의 정의와 장소",
           "children": [
             {
-              "id": "a7i13-a7-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i13-a7-p1-x2",
-                  "kind": "text",
-                  "text": "이 특별약관에서「수술」이라 함은 의사, 치과의사 또는 한의사의 면허를 가진 자가 피보험자의 상해로 인한 치료를 직접목적으로 필요하다고 인정한 경우로서"
-                },
-                {
-                  "id": "a7i13-a7-p1-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000025"
-                },
-                {
-                  "id": "a7i13-a7-p1-x3",
-                  "kind": "text",
-                  "text": "에서 정한 행위를 받는 경우를 말합니다."
-                }
-              ],
+              "id": "a7i13-a7-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0086",
+              "options": {
+                "O01": "V01",
+                "O02": "V01"
+              },
               "code": "P0100"
-            },
-            {
-              "id": "a7i13-a7-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i13-a7-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "articleId": "a7i13-a7",
-                      "code": "P0100"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "a7i13-a7-p2-x2",
-                  "kind": "text",
-                  "text": "에서「수술」은 기구를 사용하여 생체(生體)에 절단(切斷, 특정부위를 잘라 내는 것), 절제(切除, 특정부위를 잘라 없애는 것) 등의 조작을 가하는 것을 말합니다."
-                }
-              ],
-              "code": "P0200"
-            },
-            {
-              "id": "a7i13-a7-p3",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i13-a7-p3-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "articleId": "a7i13-a7",
-                      "code": "P0100"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "a7i13-a7-p3-x2",
-                  "kind": "text",
-                  "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
-                }
-              ],
-              "code": "P0300"
-            },
-            {
-              "id": "a7i13-a7-p4",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i13-a7-p4-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "articleId": "a7i13-a7",
-                      "code": "P0100"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "a7i13-a7-p4-x2",
-                  "kind": "text",
-                  "text": "의「수술」에는 보건복지부 산하 신의료기술평가위원회 또는 이에 준하는 기관으로부터 안전성과 치료효과를 인정받은 최신 수술기법으로 생체에 절단, 절제 등의 조작을 가하는 수술도 포함됩니다."
-                }
-              ],
-              "code": "P0400"
-            },
-            {
-              "id": "a7i13-a7-b1-k",
-              "kind": "boxRef",
-              "boxCode": "BX000125"
-            },
-            {
-              "id": "a7i13-a7-p5",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i13-a7-p5-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "articleId": "a7i13-a7",
-                      "code": "P0100"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "a7i13-a7-p5-x2",
-                  "kind": "text",
-                  "text": "의「수술」에서 아래에 정한 사항은 제외합니다."
-                }
-              ],
-              "items": [
-                {
-                  "id": "a7i13-a7-p5-i1",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i13-a7-p5-i1-x1",
-                      "kind": "text",
-                      "text": "흡인(吸引, 주사기 등으로 빨아들이는 것)"
-                    }
-                  ],
-                  "code": "P0500"
-                },
-                {
-                  "id": "a7i13-a7-p5-i2",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i13-a7-p5-i2-x1",
-                      "kind": "text",
-                      "text": "천자(穿刺, 바늘 또는 관을 꽂아 체액․조직을 뽑아내거나 약물을 주입하는 것) 등의 조치"
-                    }
-                  ],
-                  "code": "P0700"
-                },
-                {
-                  "id": "a7i13-a7-p5-i3",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i13-a7-p5-i3-x1",
-                      "kind": "text",
-                      "text": "신경(神經)차단(NERVE BLOCK)"
-                    }
-                  ],
-                  "code": "P0800"
-                },
-                {
-                  "id": "a7i13-a7-p5-i4",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i13-a7-p5-i4-x1",
-                      "kind": "text",
-                      "text": "미용성형 목적의 수술"
-                    }
-                  ],
-                  "code": "P0900"
-                },
-                {
-                  "id": "a7i13-a7-p5-i5",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i13-a7-p5-i5-x1",
-                      "kind": "text",
-                      "text": "피임(避妊)목적의 수술, 피임(避妊) 및 불임술 후 가임목적의 수술"
-                    }
-                  ],
-                  "code": "P1000"
-                },
-                {
-                  "id": "a7i13-a7-p5-i6",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i13-a7-p5-i6-x1",
-                      "kind": "text",
-                      "text": "검사 및 진단을 위한 수술(생검(生檢), 복강경검사(腹腔鏡檢査) 등)"
-                    }
-                  ],
-                  "code": "P1100"
-                },
-                {
-                  "id": "a7i13-a7-p5-i7",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i13-a7-p5-i7-x2",
-                      "kind": "text",
-                      "text": "기타"
-                    },
-                    {
-                      "id": "a7i13-a7-p5-i7-x1",
-                      "kind": "appendixRef",
-                      "appendixCode": "AX000025"
-                    },
-                    {
-                      "id": "a7i13-a7-p5-i7-x3",
-                      "kind": "text",
-                      "text": "에 해당하지 않는 시술"
-                    }
-                  ],
-                  "code": "P1200"
-                }
-              ],
-              "code": "P0600"
             }
           ]
         },
@@ -17947,8 +17646,10 @@
             {
               "id": "a7i13-a18-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0074",
-              "options": {},
+              "clauseCode": "C0073",
+              "options": {
+                "O01": "V01"
+              },
               "code": "P0100"
             },
             {
@@ -18400,10 +18101,78 @@
           "title": "준용규정",
           "children": [
             {
-              "id": "a7i13-a24-p1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0075",
-              "options": {},
+              "id": "a7i13-a24-p1",
+              "kind": "paragraph",
+              "children": [
+                {
+                  "id": "a7i13-a24-p1-x3",
+                  "kind": "text",
+                  "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
+                },
+                {
+                  "id": "a7i13-a24-p1-x1",
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "g-a9"
+                    },
+                    {
+                      "articleId": "g-a10"
+                    },
+                    {
+                      "articleId": "g-a38"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "general"
+                },
+                {
+                  "id": "a7i13-a24-p1-x2-if-waiver",
+                  "kind": "inlineCond",
+                  "branches": [
+                    {
+                      "id": "a7i13-a24-p1-x2-if-waiver-b",
+                      "when": "D0002 = true",
+                      "children": [
+                        {
+                          "id": "a7i13-a24-p1-x4-w",
+                          "kind": "text",
+                          "text": "은 제외하며, 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
+                        },
+                        {
+                          "id": "a7i13-a24-p1-x2",
+                          "kind": "articleRef",
+                          "targets": [
+                            {
+                              "articleId": "g-a27_1"
+                            },
+                            {
+                              "articleId": "g-a27_2"
+                            }
+                          ],
+                          "connector": "및",
+                          "scope": "general"
+                        },
+                        {
+                          "id": "a7i13-a24-p1-x5-w",
+                          "kind": "text",
+                          "text": "도 제외합니다."
+                        }
+                      ]
+                    },
+                    {
+                      "id": "a7i13-a24-p1-x2-if-waiver-else",
+                      "children": [
+                        {
+                          "id": "a7i13-a24-p1-x2-if-waiver-else-t",
+                          "kind": "text",
+                          "text": "은 제외합니다."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ],
               "code": "P0100"
             }
           ]
@@ -18434,15 +18203,12 @@
                   "title": "보험금의 지급사유",
                   "children": [
                     {
-                      "id": "a7i14r-a1-p1",
-                      "kind": "paragraph",
-                      "children": [
-                        {
-                          "id": "a7i14r-a1-p1-x1",
-                          "kind": "text",
-                          "text": "회사는 보험증권에 기재된 피보험자가 이 특별약관의 보험기간 중 상해로 생활기능 또는 업무능력에 지장을 가져와 입원하여 치료를 받은 경우에는 보험수익자에게 최초입원일부터 입원 1일당 이 특별약관의 보험가입금액을 일반상해입원일당으로 지급합니다."
-                        }
-                      ],
+                      "id": "a7i14r-a1-p1-k",
+                      "kind": "clauseBlockRef",
+                      "clauseCode": "C0074",
+                      "options": {
+                        "O01": "V01"
+                      },
                       "code": "P0100"
                     }
                   ]
@@ -18558,7 +18324,7 @@
                     {
                       "id": "a7i14r-a3-p1-k",
                       "kind": "clauseBlockRef",
-                      "clauseCode": "C0076",
+                      "clauseCode": "C0075",
                       "options": {},
                       "code": "P0100"
                     }
@@ -18572,7 +18338,7 @@
                     {
                       "id": "a7i14r-a4-p1-k",
                       "kind": "clauseBlockRef",
-                      "clauseCode": "C0073",
+                      "clauseCode": "C0072",
                       "options": {},
                       "code": "P0100"
                     }
@@ -18596,15 +18362,12 @@
                   "title": "보험금의 지급사유",
                   "children": [
                     {
-                      "id": "a7i14-a1-p1",
-                      "kind": "paragraph",
-                      "children": [
-                        {
-                          "id": "a7i14-a1-p1-x1",
-                          "kind": "text",
-                          "text": "회사는 보험증권에 기재된 피보험자가 이 특별약관의 보험기간 중에 상해로 생활기능 또는 업무능력에 지장을 가져와 입원하여 치료를 받은 경우에는 보험수익자에게 최초입원일부터 입원 1일당 이 특별약관의 보험가입금액을 일반상해입원일당으로 지급합니다."
-                        }
-                      ],
+                      "id": "a7i14-a1-p1-k",
+                      "kind": "clauseBlockRef",
+                      "clauseCode": "C0074",
+                      "options": {
+                        "O01": "V02"
+                      },
                       "code": "P0100"
                     }
                   ]
@@ -18720,8 +18483,10 @@
                     {
                       "id": "a7i14-a3-p1-k",
                       "kind": "clauseBlockRef",
-                      "clauseCode": "C0077",
-                      "options": {},
+                      "clauseCode": "C0076",
+                      "options": {
+                        "O01": "V01"
+                      },
                       "code": "P0100"
                     }
                   ]
@@ -18923,8 +18688,10 @@
             {
               "id": "a7i16-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0077",
-              "options": {},
+              "clauseCode": "C0076",
+              "options": {
+                "O01": "V01"
+              },
               "code": "P0100"
             }
           ]
@@ -18945,7 +18712,7 @@
                     {
                       "id": "a7i16r-a4-p1-k",
                       "kind": "clauseBlockRef",
-                      "clauseCode": "C0073",
+                      "clauseCode": "C0072",
                       "options": {},
                       "code": "P0100"
                     }
@@ -20153,8 +19920,11 @@
             {
               "id": "a7i19-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0078",
-              "options": {},
+              "clauseCode": "C0085",
+              "options": {
+                "O01": "V02",
+                "O02": "V01"
+              },
               "code": "P0100"
             }
           ]
@@ -20234,22 +20004,12 @@
           "title": "보험금 지급에 관한 세부규정",
           "children": [
             {
-              "id": "a7i20-a2-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i20-a2-p1-x1",
-                  "kind": "text",
-                  "text": "피보험자가 동일한 상해로 2가지 이상의 골절 상태가 발생한 경우에는 1회에 한하여 5대골절진단비를 지급합니다."
-                }
-              ],
-              "code": "P0100"
-            },
-            {
-              "id": "a7i20-a2-p2-k",
+              "id": "a7i20-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0070",
-              "options": {},
+              "clauseCode": "C0082",
+              "options": {
+                "O01": "V01"
+              },
               "bindings": {
                 "보험금의 지급사유 조": {
                   "kind": "articleRef",
@@ -20262,7 +20022,7 @@
                   "scope": "self"
                 }
               },
-              "code": "P0200"
+              "code": "P0100"
             }
           ]
         },
@@ -20381,8 +20141,10 @@
             {
               "id": "a7i21-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0072",
-              "options": {},
+              "clauseCode": "C0083",
+              "options": {
+                "O01": "V01"
+              },
               "code": "P0100"
             }
           ]
@@ -20563,8 +20325,10 @@
             {
               "id": "a7i23-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0072",
-              "options": {},
+              "clauseCode": "C0083",
+              "options": {
+                "O01": "V01"
+              },
               "code": "P0100"
             }
           ]
@@ -21151,11 +20915,16 @@
           "title": "보험금 지급에 관한 세부규정",
           "children": [
             {
-              "id": "a7i25-a2-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i25-a2-p1-x2",
+              "id": "a7i25-a2-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0087",
+              "options": {
+                "O01": "V01",
+                "O02": "V01",
+                "O03": "V01"
+              },
+              "bindings": {
+                "보험금의 지급사유 조 제1항": {
                   "kind": "articleRef",
                   "targets": [
                     {
@@ -21166,91 +20935,6 @@
                   "connector": "및",
                   "scope": "self"
                 },
-                {
-                  "id": "a7i25-a2-p1-x3",
-                  "kind": "text",
-                  "text": "에서 장해지급률이 상해 발생일부터 180일 이내에 확정되지 않은 경우에는 상해 발생일부터 180일이 되는 날의 의사 진단에 기초하여 고정될 것으로 인정되는 상태를 장해지급률로 결정합니다. 다만,"
-                },
-                {
-                  "id": "a7i25-a2-p1-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "a7i25-a2-p1-x4",
-                  "kind": "text",
-                  "text": "에 장해판정 시기가 별도로 정한 경우에는 그에 따릅니다."
-                }
-              ],
-              "code": "P0100"
-            },
-            {
-              "id": "a7i25-a2-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i25-a2-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "articleId": "a7i25-a2",
-                      "code": "P0100"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "a7i25-a2-p2-x2",
-                  "kind": "text",
-                  "text": "에 따라 장해지급률이 결정되었으나 그 이후 보장받을 수 있는 기간(특별약관의 효력이 없어진 경우에는 보험기간이 10년 이상인 특별약관은 상해 발생일부터 2년 이내로 하고, 보험기간이 10년 미만인 특별약관은 상해 발생일부터 1년 이내)에 장해상태가 더 악화된 때에는 그 악화된 장해상태를 기준으로 장해지급률을 결정합니다."
-                }
-              ],
-              "code": "P0200"
-            },
-            {
-              "id": "a7i25-a2-p3",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i25-a2-p3-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "a7i25-a2-p3-x4",
-                  "kind": "text",
-                  "text": "에 해당되지 않는 후유장해는 피보험자의 직업, 연령, 신분 또는 성별 등에 관계없이 신체의 장해정도에 따라"
-                },
-                {
-                  "id": "a7i25-a2-p3-x2",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "a7i25-a2-p3-x5",
-                  "kind": "text",
-                  "text": "의 구분에 준하여 지급액을 결정합니다. 다만,"
-                },
-                {
-                  "id": "a7i25-a2-p3-x3",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "a7i25-a2-p3-x6",
-                  "kind": "text",
-                  "text": "의 각 장해분류별 최저 지급률 장해정도에 이르지 않는 후유장해에 대하여는 후유장해보험금을 지급하지 않습니다."
-                }
-              ],
-              "code": "P0300"
-            },
-            {
-              "id": "a7i25-a2-p4-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0070",
-              "options": {},
-              "bindings": {
                 "보험금의 지급사유 조": {
                   "kind": "articleRef",
                   "targets": [
@@ -21262,92 +20946,7 @@
                   "scope": "self"
                 }
               },
-              "code": "P0400"
-            },
-            {
-              "id": "a7i25-a2-p5",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i25-a2-p5-x2",
-                  "kind": "text",
-                  "text": "같은 상해로 두 가지 이상의 후유장해가 생긴 경우에는 후유장해 지급률을 합산하여 지급합니다. 다만,"
-                },
-                {
-                  "id": "a7i25-a2-p5-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "a7i25-a2-p5-x3",
-                  "kind": "text",
-                  "text": "의 각 신체부위별 판정기준에 별도로 정한 경우에는 그 기준에 따릅니다."
-                }
-              ],
-              "code": "P0500"
-            },
-            {
-              "id": "a7i25-a2-p6",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i25-a2-p6-x2",
-                  "kind": "text",
-                  "text": "다른 상해로 후유장해가 2회 이상 발생하였을 경우에는 그 때마다 이에 해당하는 후유장해지급률을 결정합니다. 그러나 그 후유장해가 이미 후유장해보험금을 지급받은 동일한 부위에 가중된 때에는 최종 장해상태에 해당하는 후유장해보험금에서 이미 지급받은 후유장해보험금을 차감하여 지급합니다. 다만,"
-                },
-                {
-                  "id": "a7i25-a2-p6-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "a7i25-a2-p6-x3",
-                  "kind": "text",
-                  "text": "의 각 신체부위별 판정기준에서 별도로 정한 경우에는 그 기준에 따릅니다."
-                }
-              ],
-              "code": "P0600"
-            },
-            {
-              "id": "a7i25-a2-p7",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i25-a2-p7-x2",
-                  "kind": "text",
-                  "text": "이미 이 특별약관에서 후유장해보험금 지급사유에 해당되지 않았거나(보장개시 이전의 원인에 의하거나 또는 그 이전에 발생한 후유장해를 포함합니다), 후유장해보험금이 지급되지 않았던 피보험자에게 그 신체의 동일 부위에 또다시 "
-                },
-                {
-                  "id": "a7i25-a2-p7-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "articleId": "a7i25-a2",
-                      "code": "P0600"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "a7i25-a2-p7-x3",
-                  "kind": "text",
-                  "text": "에 규정하는 후유장해상태가 발생하였을 경우에는 직전까지의 후유장해에 대한 후유장해보험금이 지급된 것으로 보고 최종 후유장해 상태에 해당되는 후유장해보험금에서 이를 차감하여 지급합니다."
-                }
-              ],
-              "code": "P0700"
-            },
-            {
-              "id": "a7i25-a2-p8",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i25-a2-p8-x1",
-                  "kind": "text",
-                  "text": "회사가 지급하여야 할 하나의 상해로 인한 후유장해보험금은 이 특별약관의 보험가입금액을 한도로 합니다."
-                }
-              ],
-              "code": "P0800"
+              "code": "P0100"
             },
             {
               "id": "a7i25-a2-b1-k",
@@ -21570,35 +21169,12 @@
           "title": "보험금의 지급사유",
           "children": [
             {
-              "id": "a7i26-a1-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i26-a1-p1-x3",
-                  "kind": "text",
-                  "text": "회사는 보험증권에 기재된 피보험자가 이 특별약관의 보험기간 중에 상해로"
-                },
-                {
-                  "id": "a7i26-a1-p1-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "a7i26-a1-p1-x4",
-                  "kind": "text",
-                  "text": "에서 정한 장해지급률이 20~100%에 해당하는 장해상태가 되었을 때에는 보험수익자에게"
-                },
-                {
-                  "id": "a7i26-a1-p1-x2",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "a7i26-a1-p1-x5",
-                  "kind": "text",
-                  "text": "에서 정한 지급률을 이 특별약관의 보험가입금액에 곱하여 산출한 금액을 후유장해보험금으로 지급합니다."
-                }
-              ],
+              "id": "a7i26-a1-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0088",
+              "options": {
+                "O01": "V01"
+              },
               "code": "P0100"
             }
           ]
@@ -21611,9 +21187,23 @@
             {
               "id": "a7i26-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0079",
-              "options": {},
+              "clauseCode": "C0087",
+              "options": {
+                "O01": "V02",
+                "O02": "V02",
+                "O03": "V02"
+              },
               "bindings": {
+                "보험금의 지급사유 조 제1항": {
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "a7i26-a1"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "self"
+                },
                 "보험금의 지급사유 조": {
                   "kind": "articleRef",
                   "targets": [
@@ -21695,35 +21285,12 @@
           "title": "보험금의 지급사유",
           "children": [
             {
-              "id": "a7i28-a1-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i28-a1-p1-x3",
-                  "kind": "text",
-                  "text": "회사는 보험증권에 기재된 피보험자가 이 특별약관의 보험기간 중에 상해로"
-                },
-                {
-                  "id": "a7i28-a1-p1-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "a7i28-a1-p1-x4",
-                  "kind": "text",
-                  "text": "에서 정한 장해지급률이 3~100%에 해당하는 장해상태가 되었을 때에는 보험수익자에게"
-                },
-                {
-                  "id": "a7i28-a1-p1-x2",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000002"
-                },
-                {
-                  "id": "a7i28-a1-p1-x5",
-                  "kind": "text",
-                  "text": "에서 정한 지급률을 이 특별약관의 보험가입금액에 곱하여 산출한 금액을 후유장해보험금으로 지급합니다."
-                }
-              ],
+              "id": "a7i28-a1-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0088",
+              "options": {
+                "O01": "V02"
+              },
               "code": "P0100"
             }
           ]
@@ -21736,9 +21303,23 @@
             {
               "id": "a7i28-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0079",
-              "options": {},
+              "clauseCode": "C0087",
+              "options": {
+                "O01": "V02",
+                "O02": "V02",
+                "O03": "V02"
+              },
               "bindings": {
+                "보험금의 지급사유 조 제1항": {
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "a7i28-a1"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "self"
+                },
                 "보험금의 지급사유 조": {
                   "kind": "articleRef",
                   "targets": [
@@ -22103,7 +21684,7 @@
             {
               "id": "a7i29-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0076",
+              "clauseCode": "C0075",
               "options": {},
               "code": "P0100"
             }
@@ -22117,8 +21698,10 @@
             {
               "id": "a7i29-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0074",
-              "options": {},
+              "clauseCode": "C0073",
+              "options": {
+                "O01": "V01"
+              },
               "code": "P0100"
             },
             {
@@ -22307,8 +21890,10 @@
             {
               "id": "a7i30-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0072",
-              "options": {},
+              "clauseCode": "C0083",
+              "options": {
+                "O01": "V01"
+              },
               "code": "P0100"
             }
           ]
@@ -22329,7 +21914,7 @@
                     {
                       "id": "a7i30r-a4-p1-k",
                       "kind": "clauseBlockRef",
-                      "clauseCode": "C0073",
+                      "clauseCode": "C0072",
                       "options": {},
                       "code": "P0100"
                     }
@@ -22668,7 +22253,7 @@
             {
               "id": "a7i31-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0076",
+              "clauseCode": "C0075",
               "options": {},
               "code": "P0100"
             }
@@ -22682,7 +22267,7 @@
             {
               "id": "a7i31-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0080",
+              "clauseCode": "C0077",
               "options": {},
               "code": "P0100"
             },
@@ -22768,22 +22353,12 @@
           "title": "보험금 지급에 관한 세부규정",
           "children": [
             {
-              "id": "a7i36-a2-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i36-a2-p1-x1",
-                  "kind": "text",
-                  "text": "피보험자가 동일한 상해로 2가지 이상의 골절 상태가 발생한 경우에는 1회에 한하여 지급합니다."
-                }
-              ],
-              "code": "P0100"
-            },
-            {
-              "id": "a7i36-a2-p2-k",
+              "id": "a7i36-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0070",
-              "options": {},
+              "clauseCode": "C0082",
+              "options": {
+                "O01": "V02"
+              },
               "bindings": {
                 "보험금의 지급사유 조": {
                   "kind": "articleRef",
@@ -22796,7 +22371,7 @@
                   "scope": "self"
                 }
               },
-              "code": "P0200"
+              "code": "P0100"
             }
           ]
         },
@@ -22816,7 +22391,7 @@
                     {
                       "id": "a7i36r-a3-p1-k",
                       "kind": "clauseBlockRef",
-                      "clauseCode": "C0073",
+                      "clauseCode": "C0072",
                       "options": {},
                       "code": "P0100"
                     }
@@ -23167,7 +22742,7 @@
             {
               "id": "a7i38-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0076",
+              "clauseCode": "C0075",
               "options": {},
               "code": "P0100"
             }
@@ -23181,7 +22756,7 @@
             {
               "id": "a7i38-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0080",
+              "clauseCode": "C0077",
               "options": {},
               "code": "P0100"
             },
@@ -23533,7 +23108,7 @@
             {
               "id": "a7i39-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0076",
+              "clauseCode": "C0075",
               "options": {},
               "code": "P0100"
             }
@@ -23547,8 +23122,10 @@
             {
               "id": "a7i39-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0074",
-              "options": {},
+              "clauseCode": "C0073",
+              "options": {
+                "O01": "V01"
+              },
               "code": "P0100"
             },
             {
@@ -24001,7 +23578,7 @@
             {
               "id": "a7i40-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0076",
+              "clauseCode": "C0075",
               "options": {},
               "code": "P0100"
             }
@@ -24197,8 +23774,10 @@
             {
               "id": "a7i40-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0074",
-              "options": {},
+              "clauseCode": "C0073",
+              "options": {
+                "O01": "V01"
+              },
               "code": "P0100"
             },
             {
@@ -24216,8 +23795,11 @@
             {
               "id": "a7i40-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0078",
-              "options": {},
+              "clauseCode": "C0085",
+              "options": {
+                "O01": "V02",
+                "O02": "V01"
+              },
               "code": "P0100"
             }
           ]
@@ -24319,22 +23901,12 @@
           "title": "보험금 지급에 관한 세부규정",
           "children": [
             {
-              "id": "a7i41-a2-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i41-a2-p1-x1",
-                  "kind": "text",
-                  "text": "같은 상해로 두 종류 이상의 상해수술을 받거나 같은 종류의 상해수술을 2회 이상 받은 경우에는 하나의 종합병원 상해수술비만 지급합니다."
-                }
-              ],
-              "code": "P0100"
-            },
-            {
-              "id": "a7i41-a2-p2-k",
+              "id": "a7i41-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0070",
-              "options": {},
+              "clauseCode": "C0081",
+              "options": {
+                "O01": "V02"
+              },
               "bindings": {
                 "보험금의 지급사유 조": {
                   "kind": "articleRef",
@@ -24347,7 +23919,7 @@
                   "scope": "self"
                 }
               },
-              "code": "P0200"
+              "code": "P0100"
             }
           ]
         },
@@ -24357,15 +23929,12 @@
           "title": "종합병원의 정의",
           "children": [
             {
-              "id": "a7i41-a3-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i41-a3-p1-x1",
-                  "kind": "text",
-                  "text": "이 특별약관의「종합병원」이라 함은 의료법 제3조의3(종합병원)에서 정한 종합병원을 말합니다."
-                }
-              ],
+              "id": "a7i41-a3-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0073",
+              "options": {
+                "O01": "V02"
+              },
               "code": "P0100"
             },
             {
@@ -24383,8 +23952,10 @@
             {
               "id": "a7i41-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0081",
-              "options": {},
+              "clauseCode": "C0083",
+              "options": {
+                "O01": "V02"
+              },
               "code": "P0100"
             }
           ]
@@ -24397,8 +23968,11 @@
             {
               "id": "a7i41-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0082",
-              "options": {},
+              "clauseCode": "C0085",
+              "options": {
+                "O01": "V01",
+                "O02": "V02"
+              },
               "code": "P0100"
             }
           ]
@@ -24419,7 +23993,7 @@
                     {
                       "id": "a7i41r-a6-p1-k",
                       "kind": "clauseBlockRef",
-                      "clauseCode": "C0073",
+                      "clauseCode": "C0072",
                       "options": {},
                       "code": "P0100"
                     }
@@ -24529,22 +24103,12 @@
           "title": "보험금 지급에 관한 세부규정",
           "children": [
             {
-              "id": "a7i42-a2-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i42-a2-p1-x1",
-                  "kind": "text",
-                  "text": "같은 상해로 두 종류 이상의 상해수술을 받거나 같은 종류의 상해수술을 2회 이상 받은 경우에는 하나의 상급종합병원 상해수술비만 지급합니다."
-                }
-              ],
-              "code": "P0100"
-            },
-            {
-              "id": "a7i42-a2-p2-k",
+              "id": "a7i42-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0070",
-              "options": {},
+              "clauseCode": "C0081",
+              "options": {
+                "O01": "V03"
+              },
               "bindings": {
                 "보험금의 지급사유 조": {
                   "kind": "articleRef",
@@ -24557,7 +24121,7 @@
                   "scope": "self"
                 }
               },
-              "code": "P0200"
+              "code": "P0100"
             }
           ]
         },
@@ -24577,7 +24141,7 @@
                     {
                       "id": "a7i42r-a3-p1-k",
                       "kind": "clauseBlockRef",
-                      "clauseCode": "C0080",
+                      "clauseCode": "C0077",
                       "options": {},
                       "code": "P0100"
                     },
@@ -24608,7 +24172,7 @@
                     {
                       "id": "a7i42-a3-p1-k",
                       "kind": "clauseBlockRef",
-                      "clauseCode": "C0080",
+                      "clauseCode": "C0077",
                       "options": {},
                       "code": "P0100"
                     },
@@ -24631,8 +24195,10 @@
             {
               "id": "a7i42-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0081",
-              "options": {},
+              "clauseCode": "C0083",
+              "options": {
+                "O01": "V02"
+              },
               "code": "P0100"
             }
           ]
@@ -24645,8 +24211,11 @@
             {
               "id": "a7i42-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0082",
-              "options": {},
+              "clauseCode": "C0085",
+              "options": {
+                "O01": "V01",
+                "O02": "V02"
+              },
               "code": "P0100"
             }
           ]
@@ -24667,7 +24236,7 @@
                     {
                       "id": "a7i42r-a6-p1-k",
                       "kind": "clauseBlockRef",
-                      "clauseCode": "C0073",
+                      "clauseCode": "C0072",
                       "options": {},
                       "code": "P0100"
                     }
@@ -24847,7 +24416,7 @@
             {
               "id": "a7i45-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0083",
+              "clauseCode": "C0078",
               "options": {},
               "code": "P0100"
             }
@@ -25210,7 +24779,7 @@
             {
               "id": "a7i46-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0083",
+              "clauseCode": "C0078",
               "options": {},
               "code": "P0100"
             }
@@ -25299,126 +24868,15 @@
           "title": "보험금의 청구",
           "children": [
             {
-              "id": "a7i46-a5-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i46-a5-p1-x1",
-                  "kind": "text",
-                  "text": "보험수익자는 보험금을 청구할 때에는 다음 서류를 첨부하여 회사에 제출하여야 합니다."
-                }
-              ],
-              "items": [
-                {
-                  "id": "a7i46-a5-p1-i1",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i46-a5-p1-i1-x1",
-                      "kind": "text",
-                      "text": "청구서(회사 양식)"
-                    }
-                  ],
-                  "code": "P0300"
-                },
-                {
-                  "id": "a7i46-a5-p1-i2",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i46-a5-p1-i2-x1",
-                      "kind": "text",
-                      "text": "사고증명서(진단서, 진료비 세부내역서, 진료비계산서, 입원치료확인서, 의사처방전(처방조제비) 등)"
-                    }
-                  ],
-                  "code": "P0400"
-                },
-                {
-                  "id": "a7i46-a5-p1-i3",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i46-a5-p1-i3-x1",
-                      "kind": "text",
-                      "text": "신분증(주민등록증이나 운전면허증 등 사진이 붙은 정부기관발행 신분증, 본인이 아닌 경우에는 본인의 인감증명서, 본인서명사실확인서 또는 안전성과 신뢰성이 확보된 전자적 수단을 활용한 보험수익자 의사표시의 확인방법 포함)"
-                    }
-                  ],
-                  "code": "P0500"
-                },
-                {
-                  "id": "a7i46-a5-p1-i4",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i46-a5-p1-i4-x1",
-                      "kind": "text",
-                      "text": "간병인 사용 기간, 사용 시간 및 금액이 기재된 영수증(사업자등록된 업체가 발행한 영수증으로, 사업자등록번호를 포함하여야 하며, 간이영수증을 제외한 카드전표 또는 국세청에 통보된 현금영수증이어야 합니다) 다만, 해당서류의 제출이 불가능한 경우에는 간이영수증과 거래방법을 추가로 확인할 수 있는 서류(계좌이체내역 등) 및 피보험자가 실제로 유상으로 간병인을 사용했음을 확인할 수 있는 사업자 등록된 업체의 증빙서류 등으로 갈음할 수 있습니다."
-                    }
-                  ],
-                  "code": "P0600"
-                },
-                {
-                  "id": "a7i46-a5-p1-i5",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i46-a5-p1-i5-x1",
-                      "kind": "text",
-                      "text": "사업자등록증을 확인할 수 있는 서류(사업자의 직인 또는 서명이 담겨있어야 합니다.)"
-                    }
-                  ],
-                  "code": "P0700"
-                },
-                {
-                  "id": "a7i46-a5-p1-i6",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i46-a5-p1-i6-x1",
-                      "kind": "text",
-                      "text": "회사는 간병인 필요사유 및 실제 사용여부 확인이 필요한 경우 계약자, 피보험자 또는 보험수익자에게 간병인, 병원종사자 등의 사실관계 확인 또는 추가적인 증빙서류(간병인사용계약서, 간병인사용확인서, 간병 기록을 확인할 수 있는 간병근무일지, 간호기록 등) 제출을 요청할 수 있습니다."
-                    }
-                  ],
-                  "code": "P0800"
-                },
-                {
-                  "id": "a7i46-a5-p1-i7",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i46-a5-p1-i7-x1",
-                      "kind": "text",
-                      "text": "기타 보험수익자가 보험금 등의 수령에 필요하여 제출하는 서류"
-                    }
-                  ],
-                  "code": "P0900"
-                }
-              ],
+              "id": "a7i46-a5-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0090",
+              "options": {
+                "O01": "V01",
+                "O02": "V01",
+                "O03": "V01"
+              },
               "code": "P0100"
-            },
-            {
-              "id": "a7i46-a5-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i46-a5-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "articleId": "a7i46-a5",
-                      "code": "P0400"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "a7i46-a5-p2-x2",
-                  "kind": "text",
-                  "text": "의 사고증명서는 의료법 제3조(의료기관)에서 규정한 국내의 병원 또는 국외의 의료관련법에서 정한 의료기관에서 발급한 것이어야 합니다."
-                }
-              ],
-              "code": "P0200"
             }
           ]
         },
@@ -26088,8 +25546,10 @@
             {
               "id": "a7i48-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0084",
-              "options": {},
+              "clauseCode": "C0079",
+              "options": {
+                "O01": "V01"
+              },
               "code": "P0100"
             }
           ]
@@ -26102,8 +25562,11 @@
             {
               "id": "a7i48-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0085",
-              "options": {},
+              "clauseCode": "C0089",
+              "options": {
+                "O01": "V01",
+                "O02": "V01"
+              },
               "code": "P0100"
             },
             {
@@ -26126,8 +25589,12 @@
             {
               "id": "a7i48-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0086",
-              "options": {},
+              "clauseCode": "C0090",
+              "options": {
+                "O01": "V02",
+                "O02": "V01",
+                "O03": "V02"
+              },
               "code": "P0100"
             }
           ]
@@ -26380,7 +25847,7 @@
             {
               "id": "a7i49-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0087",
+              "clauseCode": "C0080",
               "options": {},
               "code": "P0100"
             }
@@ -26394,8 +25861,11 @@
             {
               "id": "a7i49-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0088",
-              "options": {},
+              "clauseCode": "C0089",
+              "options": {
+                "O01": "V01",
+                "O02": "V02"
+              },
               "code": "P0100"
             },
             {
@@ -26418,8 +25888,12 @@
             {
               "id": "a7i49-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0089",
-              "options": {},
+              "clauseCode": "C0090",
+              "options": {
+                "O01": "V02",
+                "O02": "V02",
+                "O03": "V02"
+              },
               "code": "P0100"
             }
           ]
@@ -27185,8 +26659,10 @@
             {
               "id": "a7i51-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0084",
-              "options": {},
+              "clauseCode": "C0079",
+              "options": {
+                "O01": "V01"
+              },
               "code": "P0100"
             }
           ]
@@ -27199,8 +26675,11 @@
             {
               "id": "a7i51-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0085",
-              "options": {},
+              "clauseCode": "C0089",
+              "options": {
+                "O01": "V01",
+                "O02": "V01"
+              },
               "code": "P0100"
             },
             {
@@ -27223,8 +26702,12 @@
             {
               "id": "a7i51-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0086",
-              "options": {},
+              "clauseCode": "C0090",
+              "options": {
+                "O01": "V02",
+                "O02": "V01",
+                "O03": "V02"
+              },
               "code": "P0100"
             }
           ]
@@ -27607,7 +27090,7 @@
             {
               "id": "a7i52-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0087",
+              "clauseCode": "C0080",
               "options": {},
               "code": "P0100"
             }
@@ -27621,8 +27104,11 @@
             {
               "id": "a7i52-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0088",
-              "options": {},
+              "clauseCode": "C0089",
+              "options": {
+                "O01": "V01",
+                "O02": "V02"
+              },
               "code": "P0100"
             },
             {
@@ -27645,8 +27131,12 @@
             {
               "id": "a7i52-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0089",
-              "options": {},
+              "clauseCode": "C0090",
+              "options": {
+                "O01": "V02",
+                "O02": "V02",
+                "O03": "V02"
+              },
               "code": "P0100"
             }
           ]
@@ -27894,8 +27384,10 @@
             {
               "id": "a7i53-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0090",
-              "options": {},
+              "clauseCode": "C0079",
+              "options": {
+                "O01": "V02"
+              },
               "code": "P0100"
             }
           ]
@@ -27908,8 +27400,11 @@
             {
               "id": "a7i53-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0091",
-              "options": {},
+              "clauseCode": "C0089",
+              "options": {
+                "O01": "V02",
+                "O02": "V01"
+              },
               "code": "P0100"
             },
             {
@@ -27932,8 +27427,12 @@
             {
               "id": "a7i53-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0089",
-              "options": {},
+              "clauseCode": "C0090",
+              "options": {
+                "O01": "V02",
+                "O02": "V02",
+                "O03": "V02"
+              },
               "code": "P0100"
             }
           ]
@@ -28181,8 +27680,10 @@
             {
               "id": "a7i54-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0090",
-              "options": {},
+              "clauseCode": "C0079",
+              "options": {
+                "O01": "V02"
+              },
               "code": "P0100"
             }
           ]
@@ -28195,8 +27696,11 @@
             {
               "id": "a7i54-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0091",
-              "options": {},
+              "clauseCode": "C0089",
+              "options": {
+                "O01": "V02",
+                "O02": "V01"
+              },
               "code": "P0100"
             },
             {
@@ -28219,8 +27723,12 @@
             {
               "id": "a7i54-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0089",
-              "options": {},
+              "clauseCode": "C0090",
+              "options": {
+                "O01": "V02",
+                "O02": "V02",
+                "O03": "V02"
+              },
               "code": "P0100"
             }
           ]
@@ -28468,8 +27976,10 @@
             {
               "id": "a7i55-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0090",
-              "options": {},
+              "clauseCode": "C0079",
+              "options": {
+                "O01": "V02"
+              },
               "code": "P0100"
             }
           ]
@@ -28482,8 +27992,11 @@
             {
               "id": "a7i55-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0091",
-              "options": {},
+              "clauseCode": "C0089",
+              "options": {
+                "O01": "V02",
+                "O02": "V01"
+              },
               "code": "P0100"
             },
             {
@@ -28506,8 +28019,12 @@
             {
               "id": "a7i55-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0089",
-              "options": {},
+              "clauseCode": "C0090",
+              "options": {
+                "O01": "V02",
+                "O02": "V02",
+                "O03": "V02"
+              },
               "code": "P0100"
             }
           ]
@@ -28755,8 +28272,10 @@
             {
               "id": "a7i56-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0090",
-              "options": {},
+              "clauseCode": "C0079",
+              "options": {
+                "O01": "V02"
+              },
               "code": "P0100"
             }
           ]
@@ -28769,8 +28288,11 @@
             {
               "id": "a7i56-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0091",
-              "options": {},
+              "clauseCode": "C0089",
+              "options": {
+                "O01": "V02",
+                "O02": "V01"
+              },
               "code": "P0100"
             },
             {
@@ -28793,8 +28315,12 @@
             {
               "id": "a7i56-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0089",
-              "options": {},
+              "clauseCode": "C0090",
+              "options": {
+                "O01": "V02",
+                "O02": "V02",
+                "O03": "V02"
+              },
               "code": "P0100"
             }
           ]
@@ -29147,7 +28673,7 @@
             {
               "id": "a7i57-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0080",
+              "clauseCode": "C0077",
               "options": {},
               "code": "P0100"
             },
@@ -29485,15 +29011,12 @@
           "title": "입원의 정의와 장소",
           "children": [
             {
-              "id": "a7i58-a3-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i58-a3-p1-x1",
-                  "kind": "text",
-                  "text": "이 특별약관에 있어서「입원」이라 함은 의사, 치과의사 또는 한의사의 면허를 가진 자(이하「의사」라 합니다)가 상해의 치료가 필요하다고 인정한 경우로서, 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에 입실하여 의사의 관리 하에 치료에 전념하는 것을 말합니다."
-                }
-              ],
+              "id": "a7i58-a3-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0076",
+              "options": {
+                "O01": "V02"
+              },
               "code": "P0100"
             }
           ]
@@ -29506,8 +29029,10 @@
             {
               "id": "a7i58-a4-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0074",
-              "options": {},
+              "clauseCode": "C0073",
+              "options": {
+                "O01": "V01"
+              },
               "code": "P0100"
             },
             {
@@ -30032,16 +29557,15 @@
           "title": "보험금의 지급사유",
           "children": [
             {
-              "id": "a7i60-a1-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i60-a1-p1-x2",
-                  "kind": "text",
-                  "text": "회사는 보험증권에 기재된 피보험자가 이 특별약관의 보험기간 중에 상해(치아파절및치아탈구제외)의 직접적인 결과로써 "
-                },
-                {
-                  "id": "a7i60-a1-p1-x1",
+              "id": "a7i60-a1-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0084",
+              "options": {
+                "O01": "V02",
+                "O02": "V02"
+              },
+              "bindings": {
+                "수술의 정의와 장소 조": {
                   "kind": "articleRef",
                   "targets": [
                     {
@@ -30050,13 +29574,8 @@
                   ],
                   "connector": "및",
                   "scope": "self"
-                },
-                {
-                  "id": "a7i60-a1-p1-x3",
-                  "kind": "text",
-                  "text": "에서 정한 수술을 받은 경우에는 보험수익자에게 이 특별약관의 보험가입금액을 상해수술비(치아파절및치아탈구제외)로 지급합니다."
                 }
-              ],
+              },
               "code": "P0100"
             }
           ]
@@ -30067,22 +29586,12 @@
           "title": "보험금 지급에 관한 세부규정",
           "children": [
             {
-              "id": "a7i60-a2-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i60-a2-p1-x1",
-                  "kind": "text",
-                  "text": "같은 상해로 두 종류 이상의 상해수술을 받거나 같은 종류의 상해수술을 2회 이상 받은 경우에는 하나의 상해수술비(치아파절및치아탈구제외)만 지급합니다."
-                }
-              ],
-              "code": "P0100"
-            },
-            {
-              "id": "a7i60-a2-p2-k",
+              "id": "a7i60-a2-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0070",
-              "options": {},
+              "clauseCode": "C0081",
+              "options": {
+                "O01": "V04"
+              },
               "bindings": {
                 "보험금의 지급사유 조": {
                   "kind": "articleRef",
@@ -30095,7 +29604,7 @@
                   "scope": "self"
                 }
               },
-              "code": "P0200"
+              "code": "P0100"
             }
           ]
         },
@@ -30107,8 +29616,10 @@
             {
               "id": "a7i60-a3-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0072",
-              "options": {},
+              "clauseCode": "C0083",
+              "options": {
+                "O01": "V01"
+              },
               "code": "P0100"
             }
           ]
@@ -30238,7 +29749,7 @@
                     {
                       "id": "a7i60r-a5-p1-k",
                       "kind": "clauseBlockRef",
-                      "clauseCode": "C0073",
+                      "clauseCode": "C0072",
                       "options": {},
                       "code": "P0100"
                     }
@@ -31180,7 +30691,7 @@
             {
               "id": "a7i61-a5-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0092",
+              "clauseCode": "C0091",
               "options": {},
               "code": "P0100"
             }
@@ -31527,8 +31038,10 @@
             {
               "id": "a7i61-a8-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0074",
-              "options": {},
+              "clauseCode": "C0073",
+              "options": {
+                "O01": "V01"
+              },
               "code": "P0100"
             },
             {
@@ -32743,223 +32256,14 @@
           "title": "수술의 정의와 장소",
           "children": [
             {
-              "id": "a7i62-a3-p1",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i62-a3-p1-x2",
-                  "kind": "text",
-                  "text": "이 특별약관에서「수술」이라 함은 의사, 치과의사 또는 한의사의 면허를 가진 자(이하「의사」라 합니다)가 피보험자의 상해로 인한 치료를 직접목적으로 필요하다고 인정한 경우로서"
-                },
-                {
-                  "id": "a7i62-a3-p1-x1",
-                  "kind": "appendixRef",
-                  "appendixCode": "AX000025"
-                },
-                {
-                  "id": "a7i62-a3-p1-x3",
-                  "kind": "text",
-                  "text": "에서 정한 행위를 받는 경우를 말합니다."
-                }
-              ],
+              "id": "a7i62-a3-p1-k",
+              "kind": "clauseBlockRef",
+              "clauseCode": "C0086",
+              "options": {
+                "O01": "V02",
+                "O02": "V02"
+              },
               "code": "P0100"
-            },
-            {
-              "id": "a7i62-a3-p2",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i62-a3-p2-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "articleId": "a7i62-a3",
-                      "code": "P0100"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "a7i62-a3-p2-x2",
-                  "kind": "text",
-                  "text": "에서「수술」은 기구를 사용하여 생체(生體)에 절단(切斷, 특정부위를 잘라 내는 것), 절제(切除, 특정부위를 잘라 없애는 것) 등의 조작을 가하는 것을 말합니다."
-                }
-              ],
-              "code": "P0200"
-            },
-            {
-              "id": "a7i62-a3-p3",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i62-a3-p3-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "articleId": "a7i62-a3",
-                      "code": "P0100"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "a7i62-a3-p3-x2",
-                  "kind": "text",
-                  "text": "의「수술」은 자택 등에서의 치료가 곤란하여 의료법 제3조(의료기관) 제2항에 정한 국내의 병원, 의원 또는 국외의 의료관련법에서 정한 의료기관에서 행한 것에 한합니다."
-                }
-              ],
-              "code": "P0300"
-            },
-            {
-              "id": "a7i62-a3-p4",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i62-a3-p4-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "articleId": "a7i62-a3",
-                      "code": "P0100"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "a7i62-a3-p4-x2",
-                  "kind": "text",
-                  "text": "의「수술」에는 보건복지부 산하 신의료기술평가위원회 또는 이에 준하는 기관으로부터 안전성과 치료효과를 인정받은 최신 수술기법으로 생체에 절단, 절제 등의 조작을 가하는 수술도 포함됩니다."
-                }
-              ],
-              "code": "P0400"
-            },
-            {
-              "id": "a7i62-a3-b1-k",
-              "kind": "boxRef",
-              "boxCode": "BX000125"
-            },
-            {
-              "id": "a7i62-a3-p5",
-              "kind": "paragraph",
-              "children": [
-                {
-                  "id": "a7i62-a3-p5-x1",
-                  "kind": "articleRef",
-                  "targets": [
-                    {
-                      "articleId": "a7i62-a3",
-                      "code": "P0100"
-                    }
-                  ],
-                  "connector": "및",
-                  "scope": "self"
-                },
-                {
-                  "id": "a7i62-a3-p5-x2",
-                  "kind": "text",
-                  "text": "의 수술에서 아래에 정한 사항은 제외합니다."
-                }
-              ],
-              "items": [
-                {
-                  "id": "a7i62-a3-p5-i1",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i62-a3-p5-i1-x1",
-                      "kind": "text",
-                      "text": "흡인(吸引, 주사기 등으로 빨아들이는 것)"
-                    }
-                  ],
-                  "code": "P0500"
-                },
-                {
-                  "id": "a7i62-a3-p5-i2",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i62-a3-p5-i2-x1",
-                      "kind": "text",
-                      "text": "천자(穿刺, 바늘 또는 관을 꽂아 체액․조직을 뽑아내거나 약물을 주입하는 것) 등의 조치"
-                    }
-                  ],
-                  "code": "P0700"
-                },
-                {
-                  "id": "a7i62-a3-p5-i3",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i62-a3-p5-i3-x1",
-                      "kind": "text",
-                      "text": "신경(神經)차단(NERVE BLOCK)"
-                    }
-                  ],
-                  "code": "P0800"
-                },
-                {
-                  "id": "a7i62-a3-p5-i4",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i62-a3-p5-i4-x1",
-                      "kind": "text",
-                      "text": "미용성형 목적의 수술"
-                    }
-                  ],
-                  "code": "P0900"
-                },
-                {
-                  "id": "a7i62-a3-p5-i5",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i62-a3-p5-i5-x1",
-                      "kind": "text",
-                      "text": "피임(避妊)목적의 수술, 피임(避妊) 및 불임술 후 가임목적의 수술"
-                    }
-                  ],
-                  "code": "P1000"
-                },
-                {
-                  "id": "a7i62-a3-p5-i6",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i62-a3-p5-i6-x1",
-                      "kind": "text",
-                      "text": "검사 및 진단을 위한 수술(생검(生檢), 복강경검사(腹腔鏡檢査) 등)"
-                    }
-                  ],
-                  "code": "P1100"
-                },
-                {
-                  "id": "a7i62-a3-p5-i7",
-                  "kind": "item",
-                  "children": [
-                    {
-                      "id": "a7i62-a3-p5-i7-x2",
-                      "kind": "text",
-                      "text": "기타"
-                    },
-                    {
-                      "id": "a7i62-a3-p5-i7-x1",
-                      "kind": "appendixRef",
-                      "appendixCode": "AX000025"
-                    },
-                    {
-                      "id": "a7i62-a3-p5-i7-x3",
-                      "kind": "text",
-                      "text": "에 해당하지 않는 시술"
-                    }
-                  ],
-                  "code": "P1200"
-                }
-              ],
-              "code": "P0600"
             }
           ]
         },
@@ -33441,7 +32745,7 @@
             {
               "id": "a7i63-a6-p1-k",
               "kind": "clauseBlockRef",
-              "clauseCode": "C0092",
+              "clauseCode": "C0091",
               "options": {},
               "code": "P0100"
             }
@@ -33589,10 +32893,78 @@
           "title": "준용규정",
           "children": [
             {
-              "id": "a7i63-a9-p1-k",
-              "kind": "clauseBlockRef",
-              "clauseCode": "C0075",
-              "options": {},
+              "id": "a7i63-a9-p1",
+              "kind": "paragraph",
+              "children": [
+                {
+                  "id": "a7i63-a9-p1-x3",
+                  "kind": "text",
+                  "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
+                },
+                {
+                  "id": "a7i63-a9-p1-x1",
+                  "kind": "articleRef",
+                  "targets": [
+                    {
+                      "articleId": "g-a9"
+                    },
+                    {
+                      "articleId": "g-a10"
+                    },
+                    {
+                      "articleId": "g-a38"
+                    }
+                  ],
+                  "connector": "및",
+                  "scope": "general"
+                },
+                {
+                  "id": "a7i63-a9-p1-x2-if-waiver",
+                  "kind": "inlineCond",
+                  "branches": [
+                    {
+                      "id": "a7i63-a9-p1-x2-if-waiver-b",
+                      "when": "D0002 = true",
+                      "children": [
+                        {
+                          "id": "a7i63-a9-p1-x4-w",
+                          "kind": "text",
+                          "text": "은 제외하며, 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
+                        },
+                        {
+                          "id": "a7i63-a9-p1-x2",
+                          "kind": "articleRef",
+                          "targets": [
+                            {
+                              "articleId": "g-a27_1"
+                            },
+                            {
+                              "articleId": "g-a27_2"
+                            }
+                          ],
+                          "connector": "및",
+                          "scope": "general"
+                        },
+                        {
+                          "id": "a7i63-a9-p1-x5-w",
+                          "kind": "text",
+                          "text": "도 제외합니다."
+                        }
+                      ]
+                    },
+                    {
+                      "id": "a7i63-a9-p1-x2-if-waiver-else",
+                      "children": [
+                        {
+                          "id": "a7i63-a9-p1-x2-if-waiver-else-t",
+                          "kind": "text",
+                          "text": "은 제외합니다."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ],
               "code": "P0100"
             }
           ]

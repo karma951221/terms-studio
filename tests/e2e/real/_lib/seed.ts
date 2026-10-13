@@ -7,7 +7,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { ALPHA2607_AUTO } from "../../../../scripts/terms/config";
 import { findMasterField } from "../../../../src/domain/master";
 import type { Clause } from "../../../../src/domain/clause";
 import { numberTree, referenceOutline, referenceTargetIndex, refKey, refTargetOf, type DocumentNode, type InlineNode, type Node } from "../../../../src/domain/document";
@@ -40,6 +39,8 @@ export interface CoverageSpec {
   coverageValues: { path: string; value: string }[];
   /** 특약 그룹 — 열거형 「특약 그룹」(E0008) 값 코드. 없으면 그룹 없음(기본계약 담보) (ADR-0080). */
   specialGroup?: string;
+  /** 변환기가 쓴 자동 탑재 담보(알파Plus2607 주계약 특약 전체) — 화면으로 치지 않는다. */
+  auto?: true;
 }
 /** 정적 마스터 박스 — 코드 · 이름 · 제목 · 줄 (기능/박스 §3.1). */
 export interface BoxSpec {
@@ -74,7 +75,7 @@ export interface ProductSpec {
   values: { path: string; value: unknown }[];
   planOptions: { code: string; axis: "type" | "form"; number: number; name: string; planTypeCode: string; values: { path: string; value: unknown }[] }[];
   plans: string[][];
-  mounts: { code: string; coverage: string; section: "base" | "special"; attributes: { kindCode: string; valueCode: string }[] }[];
+  mounts: { code: string; coverage: string; section: "base" | "special"; attributes: { kindCode: string; valueCode: string }[]; auto?: true }[];
 }
 
 /**
@@ -82,7 +83,9 @@ export interface ProductSpec {
  * 그 담보 · 템플릿 · 탑재와 변환기가 그 특약에서 찾아 묶은 함수조항(사람처럼 넣는 함수조항보다 뒤 코드) · 그 특약만 쓰는 박스(맨 뒤 코드)를 뺀다 —
  * 모두 맨 뒤 코드라 빼도 화면 범위의 채번이 시드 코드와 같다. 전체 특약의 원문 대조는 Vitest 실물 재현(`src/db/seed/real.test.ts`)이 한다.
  */
-const AUTO_COVERAGES = new Set(ALPHA2607_AUTO.map((s) => s.ownerCoverage));
+const RAW_COVERAGES = read<CoverageSpec[]>("coverages.json");
+/** 자동 탑재 담보 — 변환기가 쓴 담보 · 탑재에는 `auto: true` 가 붙는다. */
+const AUTO_COVERAGES = new Set(RAW_COVERAGES.filter((c) => c.auto).map((c) => c.key));
 const RAW_CLAUSES = read<ClauseSpec[]>("clauses.json");
 /** 사람처럼 넣는 함수조항 — 화면 범위 함수조항의 맨 뒤 코드. 그 뒤는 자동 탑재 특약에서 찾아 묶은 것. */
 const HUMAN_CLAUSE_LABEL = "준용규정(알파Plus 질병)";
@@ -100,12 +103,12 @@ export const SEED = {
   enums: read<EnumSpec[]>("enums.json"),
   discriminators: read<DiscriminatorSpec[]>("discriminators.json"),
   attributes: read<AttributeSpec[]>("attributes.json"),
-  coverages: read<CoverageSpec[]>("coverages.json").filter((c) => !AUTO_COVERAGES.has(c.key)),
+  coverages: RAW_COVERAGES.filter((c) => !c.auto),
   boxes: RAW_BOXES.slice(0, SCREEN_BOX_COUNT),
   clauses: SCREEN_CLAUSES,
   documents: SCREEN_DOCUMENTS,
   generals: SCREEN_GENERALS,
-  products: read<ProductSpec[]>("products.json").map((p) => ({ ...p, mounts: p.mounts.filter((m) => !AUTO_COVERAGES.has(m.coverage)) })),
+  products: read<ProductSpec[]>("products.json").map((p) => ({ ...p, mounts: p.mounts.filter((m) => !m.auto) })),
 };
 
 /**
