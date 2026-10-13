@@ -32,6 +32,24 @@ describe("원문 박스 → 정적 마스터 박스 (기능/박스 §3.1 · 최�
     expect(plans[0].record).toEqual({ code: "", name: "【보장개시일】", title: "보장개시일", lines: ["보장을 개시하는 날"] });
   });
 
+  it("뒤에 더한 상품(알파Plus2607)은 앞 상품 박스의 이름을 바꾸지 않는다 — 제 것만 쓰는 박스가 겹치면 그쪽에 상품 이름", () => {
+    const a = doc("a", [box("a-b1", "연단위 복리", ["1년마다 원금에 더한다"]), box("a-b2", "보험연도", ["계약일부터 1년"])]);
+    const m = doc("m", [box("m-b1", "연단위 복리", ["매년 원금에 더한다"]), box("m-b2", "보험금 지급 예시", ["메리츠 예시"])]);
+    // 2607 은 앞 상품과 같은 박스를 함께 쓰고(연단위 복리 · 보험연도), 제 것만 쓰는 박스가 앞 이름과 겹친다(보험금 지급 예시 · 보험연도)
+    const n = doc("n", [
+      box("n-b1", "연단위 복리", ["1년마다 원금에 더한다"]),
+      box("n-b2", "보험연도", ["계약일부터 1년"]),
+      box("n-b3", "보험금 지급 예시", ["그림으로 보여 주는 지급 예시와 용어 풀이가 함께 붙어 있는 아주 긴 설명입니다", "둘째 줄"]),
+      box("n-b4", "보험연도", ["계약일부터 1년간을 말합니다 그리고 아주 긴 다른 설명이 붙습니다 정말로 깁니다"]),
+    ]);
+    const before = planBoxes([...sitesOf(a, "alpha", true), ...sitesOf(m, "meritz")]).map((p) => p.record.name);
+    const plans = planBoxes([...sitesOf(a, "alpha", true), ...sitesOf(m, "meritz"), ...sitesOf(n, "alpha2607", true)]);
+    const names = plans.map((p) => p.record.name);
+    expect(names.slice(0, before.length)).toEqual(before);
+    expect(names.slice(before.length)).toEqual(["【보험금 지급 예시】(알파Plus2607)", "【보험연도】(알파Plus2607)"]);
+    expect(plans[0].sites.map((s) => s.node.id)).toEqual(["a-b1", "n-b1"]);
+  });
+
   it("낱말만 달라도 박스를 따로 만든다 — 이름에 선택지(다른 낱말)를 붙이고, 각 자리는 제 글의 박스를 놓는다", () => {
     const a = doc("a", [box("a-b1", "계약 전 알릴 의무", ["회사가 청약서에서 질문한 사항"])]);
     const m = doc("m", [box("m-b1", "계약 전 알릴 의무", ["회사가 서면으로 질문한 사항"])]);
