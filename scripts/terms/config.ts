@@ -4,7 +4,7 @@
  * 별표 코드는 시스템 채번값(`AX000001`…)과 같아야 한다 — 시드 적재가 채번 순서를 대조한다 (기능/별표 §3.1).
  * 별표 마스터는 **이름이 같으면 한 건**이다 — 상품마다 원문 번호가 달라(알파Plus 별표2 = 메리츠 별표14 = 장해분류표)
  * 상품 설정의 `appendixNumbers`(원문 번호 → 코드)가 잇는다. 책자 번호는 어차피 등장 순 계산값이다 (ADR-0063).
- * 알파Plus 별표 이름은 원문 본문의 참조 표기에서 얻었다. 본문이 참조하지 않는 번호(5·6·9·16~19)는 이름을 모른다 —
+ * 알파Plus 별표 이름은 원문 본문의 참조 표기에서 얻었다(별표 9 는 2607 질병 특약이 참조해 알았다 — 2604 · 2607 번호가 같다). 본문이 참조하지 않는 번호(5·6·16~19)는 이름을 모른다 —
  * 「(미확인 별표 N)」 자리표시로 두고 실물 별표 목록을 확인하면 이름만 고친다 (코드는 불변).
  */
 
@@ -27,7 +27,7 @@ export const APPENDICES: AppendixSpec[] = [
   { number: 6, code: "AX000006", name: "(미확인 별표 6)" },
   { number: 7, code: "AX000007", name: "뇌졸중대상질병 분류표" },
   { number: 8, code: "AX000008", name: "급성심근경색증대상질병 분류표" },
-  { number: 9, code: "AX000009", name: "(미확인 별표 9)" },
+  { number: 9, code: "AX000009", name: "5대고액치료비암분류표" },
   { number: 10, code: "AX000010", name: "말기폐질환" },
   { number: 11, code: "AX000011", name: "말기간경화" },
   { number: 12, code: "AX000012", name: "만성당뇨합병증 분류표" },
@@ -303,10 +303,30 @@ const CLAUSE_DRAFTS: ClauseDraft[] = [
 ];
 
 /**
- * 조 · 여러 항 함수조항 — 코드는 변환기가 적재 순서로 매긴다: 보통약관이 쓰는 것 → 담보약관만 쓰는 것 →
- * 보통약관 조를 가리키는 것(준용규정) — 각각 이 배열 순.
+ * 뒤에 더한 상품(알파Plus2607)이 처음 쓰는 함수조항 — **맨 뒤 코드**다(앞 상품의 코드를 밀지 않는다 — 화면 E2E · 명세가 코드를 쓴다).
+ * 담보약관만 쓰는 것이라 적재 순서 제약(보통약관이 쓰는 것이 앞)과 부딪히지 않는다. 더 넓힐 때(주계약 특약 전체)도 여기 뒤에 붙인다.
  */
-export const CLAUSES: readonly ClauseSpec[] = CLAUSE_DRAFTS;
+const APPENDED_DRAFTS: ClauseDraft[] = [
+  // 질병 진단비 특약의 제2조 — 제3자 합의 한 항(조째). 「제1조(보험금의 지급사유)」는 조 참조 인자
+  specialArticle("third-party", "보험금 지급에 관한 세부규정(제3자 합의)", "a7-kidney-doc", "2", "지급사유 합의가 안 되면 제3자 판정 — 알파Plus2607 질병 진단비 특약이 같은 글이다. 「제1조」는 사용처 위치", { product: "alpha2607" }),
+  // 질병 특약의 준용규정 — 상해 특약 준용규정(알파Plus)의 비갱신 글에 「제5조(보험금을 지급하지 않는 사유)」가 제외 목록에 더 있다.
+  // 다른 것이 조 참조의 대상이라 평문 옵션으로 가를 수 없다(선택지 문구는 평문 — 기능/함수조항 §3.2) — 함수조항을 따로 둔다
+  {
+    key: "alpha-application-disease",
+    label: "준용규정(알파Plus 질병)",
+    mode: "block",
+    description: "질병 특약 — 특별약관에서 정하지 않은 사항은 알파Plus 보통약관을 따른다. 제외 조는 제5조(상해 면책) · 적립이율 · 만기환급금 · 중도인출, 납입면제가 있으면 1종 가입 시 납입면제 두 조도",
+    product: "alpha2607",
+    from: { spec: "a7-kidney-doc", article: "5" },
+  },
+];
+
+/**
+ * 조 · 여러 항 함수조항 — 코드는 변환기가 적재 순서로 매긴다: 보통약관이 쓰는 것 → 담보약관만 쓰는 것 →
+ * 보통약관 조를 가리키는 것(준용규정) — 각각 이 배열 순. 그 뒤에 뒤에 더한 상품의 것(`APPENDED_CLAUSE_KEYS`, 배열 순).
+ */
+export const CLAUSES: readonly ClauseSpec[] = [...CLAUSE_DRAFTS, ...APPENDED_DRAFTS];
+export const APPENDED_CLAUSE_KEYS: ReadonlySet<string> = new Set(APPENDED_DRAFTS.map((c) => c.key));
 
 /** 쓰임 줄임말 — 원문 조 · 첫 항 → 함수조항 key (옵션 선택은 `{ O01: "V02" }` 또는 O01 하나면 선택지 코드 문자열). */
 const at = (article: string, paragraph: number, clause: string, options?: string | Record<string, string>): ClauseUse => ({
@@ -350,6 +370,11 @@ const RENEWAL = "exist(attr.A0001) and attr.A0001 = '2'";
 /** 상품 한 벌의 원문 — 픽스처 폴더 · 별표 번호 표 · 보통약관 · 담보약관. */
 export interface ProductTerms {
   code: string;
+  /**
+   * 상품군 — 납입면제 템플릿 · 준용규정 함수조항이 상품군 것이다(ADR-0086 결정 7). 같은 상품군의 판(2604 · 2607)은
+   * 보통약관 조 id 체계(`general.idPrefix`)를 같이 써서 담보약관 · 준용규정 · 납입면제 함수조항을 함께 쓴다.
+   */
+  line: "alpha" | "meritz";
   /** `tests/fixtures/terms` 아래 폴더 (알파Plus 는 뿌리). */
   fixtureDir: string;
   /** 원문 별표 번호 → 별표 코드. */
@@ -473,6 +498,7 @@ const ALPHA_SPECIALS: SpecialSpec[] = [
 
 export const ALPHA: ProductTerms = {
   code: "alpha",
+  line: "alpha",
   fixtureDir: "tests/fixtures/terms",
   appendixNumbers: new Map(APPENDICES.filter((a) => a.number !== undefined).map((a) => [a.number!, a.code])),
   general: ALPHA_GENERAL,
@@ -590,6 +616,7 @@ const MERITZ_SPECIALS: SpecialSpec[] = [
 
 export const MERITZ: ProductTerms = {
   code: "meritz",
+  line: "meritz",
   fixtureDir: "tests/fixtures/terms/메리츠",
   // 메리츠 원문 번호 → 알파Plus 마스터 (이름이 같은 별표). 1 적립이율 · 3 암 · 7 급성심근경색 · 14 장해 · 16 뇌졸중 · 26 골절(치아파절 제외)Ⅱ · 27 골절Ⅱ · 28 화상 · 29 1-7종 수술
   appendixNumbers: new Map([
@@ -607,5 +634,46 @@ export const MERITZ: ProductTerms = {
   specials: MERITZ_SPECIALS,
 };
 
-export const PRODUCTS: ProductTerms[] = [ALPHA, MERITZ];
+/**
+ * 무배당 알파Plus보장보험2607 — 세 번째 실물 재현 상품 (QA/실물재현/알파플러스2607_모델명세). 2604 와 같은 상품군 · 같은 보통약관 구성이라 **공통화**한다:
+ * - 보통약관은 2607 원문 한 벌이되 조 id 체계(`g`)를 2604 와 같이 쓴다 — 2604 담보약관 · 준용규정 · 납입면제 함수조항이 그대로 풀린다.
+ *   보통약관 함수조항 쓰임은 2604 와 같은 표(`GENERAL_ARTICLES`), 납입면제 템플릿 · 함수조항도 2604 것(convert.ts).
+ * - 상해 특약 10 은 2604 담보 · 템플릿을 그대로 탑재한다(products.json) — 원문이 띄어쓰기 · 예시 표기만 다르다(인수기준 알려진 차이).
+ * - 여기 담보약관 목록은 2604 에 없는 특약만 — 질병 대표 5. 특약을 넓힐 때는 이 목록에 한 줄씩 더한다(`disease` 줄임말).
+ * 별표 번호는 2604 와 같다(장해 2 · 수술 3 · 암 4 · 5대고액치료비암 9 · 만성당뇨합병증 12 · 양성뇌종양 20 …).
+ */
+const ALPHA2607_GENERAL: GeneralSpec = { ...ALPHA_GENERAL, code: "alpha2607-general" };
+
+/**
+ * 질병 진단비 특약 한 벌 — 제1조 보험금명 자리(슬롯 `slotCount` 번) · 제3자 합의 세부규정 · 소멸(지급사유 발생) · 준용규정(알파Plus 질병).
+ * `articles` 는 원문 조 번호 [세부규정, 소멸, 준용규정] (5대고액치료비암은 무효 · 부활 조가 끼어 뒤로 밀린다).
+ */
+const disease = (key: string, file: string, claim: string, slotCount: number, articles: [string, string, string] = ["2", "4", "5"]): SpecialSpec => ({
+  code: `a7-${key}-doc`,
+  ownerCoverage: `a7-${key}`,
+  idPrefix: `a7${key}`,
+  file,
+  // 보험금명은 담보 값(D0001) — 제1조의 자리마다, 소멸 조 ① 은 함수조항 「특별약관의 소멸(지급사유 발생)」 본문의 슬롯과 맞춘다
+  slots: [...Array.from({ length: slotCount }, () => ({ article: "1", find: claim, ref: "D0001" })), { article: articles[1], find: claim, ref: "D0001" }],
+  clauses: [whole(articles[0], "third-party"), whole(articles[1], "lapse-claim", "V01"), whole(articles[2], "alpha-application-disease")],
+});
+
+const ALPHA2607_SPECIALS: SpecialSpec[] = [
+  disease("cancer5", "5대고액치료비암진단비보장.md", "5대고액치료비암진단비", 3, ["2", "5", "7"]),
+  disease("tumor", "양성뇌종양진단비Ⅱ보장.md", "양성뇌종양진단비", 3),
+  disease("diabetes", "만성당뇨합병증진단비보장.md", "만성당뇨합병증진단비", 3),
+  disease("anemia", "중대한재생불량성빈혈진단비보장.md", "중대한재생불량성빈혈진단비", 3),
+  disease("kidney", "말기신부전증진단비보장.md", "말기신부전증진단비", 3),
+];
+
+export const ALPHA2607: ProductTerms = {
+  code: "alpha2607",
+  line: "alpha",
+  fixtureDir: "tests/fixtures/terms/알파2607",
+  appendixNumbers: ALPHA.appendixNumbers,
+  general: ALPHA2607_GENERAL,
+  specials: ALPHA2607_SPECIALS,
+};
+
+export const PRODUCTS: ProductTerms[] = [ALPHA, MERITZ, ALPHA2607];
 export const SEED_DIR = "src/db/seed/data";

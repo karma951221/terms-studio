@@ -706,6 +706,32 @@ export function guardAlphaApplication(clause: ClauseRecord, waiver: (id: Id) => 
   ];
 }
 
+/**
+ * 준용규정(알파Plus 질병) — 갱신 가지가 없는 한 문장 「… [제5조 · 제9조 · 제10조 · 제38조]은 제외하며, 보통약관 1종(…)으로 가입한 경우 [제27조의1 및 제27조의2]도 제외합니다.」의
+ * 첫 참조 뒤를 문장 안 조건으로 나눈다 — 「납입면제 있음」이면 그대로, 아니면 「은 제외합니다.」 (준용규정(알파Plus) 비갱신 가지와 같은 모양).
+ */
+export function guardDiseaseApplication(clause: ClauseRecord, waiver: (id: Id) => boolean): void {
+  const p = clause.body[0] as ClauseParagraph | undefined;
+  const xs = p?.children ?? [];
+  const refs = xs.map((c, i) => [c, i] as const).filter(([c]) => c.kind === "articleRef");
+  const [first, tail] = refs;
+  const isWaiverRef = (n: Inline) => n.kind === "articleRef" && n.targets.every((t) => waiver(t.articleId ?? ""));
+  if (!p || clause.body.length !== 1 || refs.length !== 2 || isWaiverRef(first[0]) || !isWaiverRef(tail[0]) || xs.some((c) => c.kind === "inlineCond")) {
+    throw new Error(`납입면제 재모델링: ${clause.label} 이 「…은 제외하며, 1종 … 도 제외합니다」 한 문장이 아니다`);
+  }
+  const at = first[1] + 1;
+  const id = `${p.id}-if-waiver`;
+  const cond = {
+    id,
+    kind: "inlineCond",
+    branches: [
+      { id: `${id}-b`, when: WAIVER_PRESENT_ROW, children: xs.slice(at) },
+      { id: `${id}-else`, children: [{ id: `${id}-else-t`, kind: "text", text: "은 제외합니다." }] },
+    ],
+  } as unknown as Inline;
+  p.children = [...xs.slice(0, at), cond];
+}
+
 /** 항 안의 참조(대상 `before`) 뒤 글이 `plain` 으로 시작하면 그 글을 떼고 대상 `more` 를 더한다 — 연결어는 「또는」. */
 function absorbPlain(p: ParagraphNode | undefined, before: readonly Id[], plain: string, more: readonly Id[]): void {
   const xs = p?.children ?? [];

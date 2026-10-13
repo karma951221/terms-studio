@@ -533,6 +533,22 @@ function applyBlockUse(
     return false;
   }
   const bindings = bindingsOfUse(clause, match, doc, where, report);
+  // 사라지는 사용처 항 · 호 · 목 → 함수조항 블록 안쪽 노드 (그 자리를 가리키던 문서의 조 참조를 펼친 함수조항 안쪽 코드로 옮긴다 — ADR-0077 결정 6)
+  const refId = `${first.id}-k`;
+  const theirParagraphs = blocks.filter((b): b is ClauseParagraph => b.kind === "paragraph");
+  mineParagraphs.forEach((mp, k) => {
+    const cp = theirParagraphs[k];
+    INNER_TARGETS.set(mp.id, { refId, clauseCode: clause.code, innerId: cp.id });
+    (mp.items ?? []).forEach((it, i) => {
+      const cit = cp.items?.[i];
+      if (it.kind !== "item" || cit?.kind !== "item") return;
+      INNER_TARGETS.set(it.id, { refId, clauseCode: clause.code, innerId: cit.id });
+      (it.subitems ?? []).forEach((u, j) => {
+        const cu = cit.subitems?.[j];
+        if (u.kind === "subitem" && cu) INNER_TARGETS.set(u.id, { refId, clauseCode: clause.code, innerId: cu.id });
+      });
+    });
+  });
   article.children.splice(at, count, { id: `${first.id}-k`, kind: "clauseBlockRef", clauseCode: clause.code, options: { ...selection }, ...(bindings ? { bindings } : {}) });
   return true;
 }
@@ -598,6 +614,12 @@ function matchParagraphs(mineParagraphs: readonly ParagraphNode[], theirs: reado
   }
   return true;
 }
+
+/**
+ * 함수조항 참조로 바뀌어 사라진 사용처 노드 id → 그 함수조항 블록 참조 노드 id · 함수조항 코드 · 본문 안쪽 노드 id.
+ * 문서의 다른 자리가 그 항을 가리키면(「제4조(특별약관의 소멸) 제3항」) 변환기가 (블록 참조 코드, 안쪽 코드)로 옮긴다 — convert.ts `codeTargets`.
+ */
+export const INNER_TARGETS = new Map<Id, { refId: Id; clauseCode: string; innerId: Id }>();
 
 /**
  * 사용처 자리 하나를 함수조항 참조로 바꾼다. 성공하면 true, 못 찾으면 보고하고 false.

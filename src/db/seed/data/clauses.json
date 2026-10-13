@@ -6534,5 +6534,146 @@
         }
       }
     ]
+  },
+  {
+    "code": "C0070",
+    "label": "보험금 지급에 관한 세부규정(제3자 합의)",
+    "mode": "block",
+    "description": "지급사유 합의가 안 되면 제3자 판정 — 알파Plus2607 질병 진단비 특약이 같은 글이다. 「제1조」는 사용처 위치",
+    "body": [
+      {
+        "id": "c-third-party-n1",
+        "kind": "paragraph",
+        "children": [
+          {
+            "id": "c-third-party-n2",
+            "kind": "text",
+            "text": "보험수익자와 회사가 "
+          },
+          {
+            "id": "c-third-party-n3",
+            "kind": "articleRef",
+            "targets": [
+              {
+                "param": "보험금의 지급사유 조"
+              }
+            ],
+            "scope": "param"
+          },
+          {
+            "id": "c-third-party-n4",
+            "kind": "text",
+            "text": "의 보험금 지급사유에 대해 합의하지 못할 때는 보험수익자와 회사가 함께 제3자를 정하고 그 제3자의 의견에 따를 수 있습니다. 제3자는 의료법 제3조(의료기관)에 규정한 종합병원 소속 전문의 중에 정하며, 보험금 지급사유 판정에 드는 의료비용은 회사가 전액 부담합니다."
+          }
+        ],
+        "code": "P0100"
+      }
+    ],
+    "options": [],
+    "params": [
+      {
+        "name": "보험금의 지급사유 조",
+        "type": {
+          "kind": "articleRef"
+        }
+      }
+    ]
+  },
+  {
+    "code": "C0071",
+    "label": "준용규정(알파Plus 질병)",
+    "mode": "block",
+    "description": "질병 특약 — 특별약관에서 정하지 않은 사항은 알파Plus 보통약관을 따른다. 제외 조는 제5조(상해 면책) · 적립이율 · 만기환급금 · 중도인출, 납입면제가 있으면 1종 가입 시 납입면제 두 조도",
+    "body": [
+      {
+        "id": "c-alpha-application-disease-n1",
+        "kind": "paragraph",
+        "children": [
+          {
+            "id": "c-alpha-application-disease-n2",
+            "kind": "text",
+            "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
+          },
+          {
+            "id": "c-alpha-application-disease-n3",
+            "kind": "articleRef",
+            "targets": [
+              {
+                "articleId": "g-a5"
+              },
+              {
+                "articleId": "g-a9"
+              },
+              {
+                "articleId": "g-a10"
+              },
+              {
+                "articleId": "g-a38"
+              }
+            ],
+            "connector": "및"
+          },
+          {
+            "id": "c-alpha-application-disease-n1-if-waiver",
+            "kind": "inlineCond",
+            "branches": [
+              {
+                "id": "c-alpha-application-disease-n1-if-waiver-b",
+                "when": "arg.납입면제_있음 = true",
+                "children": [
+                  {
+                    "id": "c-alpha-application-disease-n4",
+                    "kind": "text",
+                    "text": "은 제외하며, 보통약관 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
+                  },
+                  {
+                    "id": "c-alpha-application-disease-n5",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "g-a27_1"
+                      },
+                      {
+                        "articleId": "g-a27_2"
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-alpha-application-disease-n6",
+                    "kind": "text",
+                    "text": "도 제외합니다."
+                  }
+                ]
+              },
+              {
+                "id": "c-alpha-application-disease-n1-if-waiver-else",
+                "children": [
+                  {
+                    "id": "c-alpha-application-disease-n1-if-waiver-else-t",
+                    "kind": "text",
+                    "text": "은 제외합니다."
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "code": "P0100"
+      }
+    ],
+    "options": [],
+    "params": [
+      {
+        "name": "납입면제_있음",
+        "type": {
+          "kind": "boolean"
+        },
+        "default": {
+          "kind": "discriminator",
+          "code": "D0002"
+        }
+      }
+    ]
   }
 ]
