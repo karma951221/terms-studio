@@ -65,7 +65,17 @@ const merged = (file: string, article: string, secondTitle: string): KnownDiffer
 
 /** 자동 탑재 특약 — 원문이 제 조 · 보통약관 조를 조금 다르게 적은 자리. 조 참조는 대상 조의 조 명 · 「보통약관 」 접두로 찍힌다(변환기 refs.ts looseTitles · generalFallback). */
 export const within = (file: string, article: string, from: string, to: string, why: string): KnownDifference => ({ dir: A7, file, article, after: from, lines: [to], within: true, why });
-const AUTO_DIFFERENCES: KnownDifference[] = [];
+const CANCER_TREATMENT = ["암_통합치료비(기본형)보장.md", "암_통합치료비(기본형)(암중점치료기관(상급종합병원_포함))보장.md", "암_통합치료비(실속형)보장.md", "암_통합치료비(실속형)(암중점치료기관(상급종합병원_포함))보장.md", "암_통합치료비Ⅱ(비급여(전액본인부담_포함))보장.md", "암_통합치료비Ⅱ(비급여(전액본인부담_포함),_암중점치료기관(상급종합병원_포함))보장.md"];
+const AUTO_DIFFERENCES: KnownDifference[] = [
+  ...CANCER_TREATMENT.flatMap((file) =>
+    ["표적항암약물허가치료의 정의", "특정면역항암약물허가치료의 정의"].map((article) =>
+      within(file, article, "조(항암방사선ㆍ약물치료의 정의)", "조(항암방사선∙약물치료의 정의)", "원문 표기 차이 — 조 참조의 가운뎃점(ㆍ)이 그 조 제목(∙)과 다르다: 조 참조는 조 제목으로 찍힌다"),
+    ),
+  ),
+  within("비급여_항암약물치료비(전액본인부담_포함,_연간1회한,_10년간)보장.md", "보험금의 지급사유", "항암약물치료의 정의)", "항암약물치료 정의)", "원문 표기 차이 — 조 참조 「…항암약물치료의 정의」가 그 조 제목 「…항암약물치료 정의」와 다르다: 조 참조는 조 제목으로 찍힌다"),
+  within("혈전용해치료비Ⅱ보장.md", "준용규정", "다만, 제9조(", "다만, 보통약관 제9조(", "원문 누락 — 준용규정의 보통약관 조 나열에 「보통약관 」이 빠졌다: 보통약관 조 참조는 「보통약관 」을 붙여 찍힌다"),
+  within("기타피부암_및_갑상선암_항암방사선약물치료비보장.md", "보험금의 지급사유", "@ 회사는 보험증권에 기재된", "= 회사는 보험증권에 기재된", "원문 항 표지 — 항 하나인 조가 「①」로 적혀 있다: 항 하나인 조는 항 번호 없이(=) 찍힌다"),
+];
 
 const ALPHA2607_DIFFERENCES: KnownDifference[] = [
   ...AUTO_DIFFERENCES,
