@@ -2824,6 +2824,170 @@
         "section": "special",
         "attributes": [],
         "auto": true
+      },
+      {
+        "code": "a7-b1",
+        "coverage": "a7-b1",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-b2",
+        "coverage": "a7-b2",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-b3",
+        "coverage": "a7-b3",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-b4",
+        "coverage": "a7-b4",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-b5",
+        "coverage": "a7-b5",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-b6",
+        "coverage": "a7-b6",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-b7",
+        "coverage": "a7-b7",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-b8",
+        "coverage": "a7-b8",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-b9",
+        "coverage": "a7-b9",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-b10",
+        "coverage": "a7-b10",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-b11",
+        "coverage": "a7-b11",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-b12",
+        "coverage": "a7-b12",
+        "section": "special",
+        "attributes": [
+          {
+            "kindCode": "A0001",
+            "valueCode": "1"
+          }
+        ],
+        "auto": true
+      },
+      {
+        "code": "a7-b12-renew",
+        "coverage": "a7-b12",
+        "section": "special",
+        "attributes": [
+          {
+            "kindCode": "A0001",
+            "valueCode": "2"
+          }
+        ],
+        "auto": true
+      },
+      {
+        "code": "a7-b13",
+        "coverage": "a7-b13",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-b15",
+        "coverage": "a7-b15",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-b16",
+        "coverage": "a7-b16",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-b17",
+        "coverage": "a7-b17",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-b18",
+        "coverage": "a7-b18",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-b19",
+        "coverage": "a7-b19",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-b20",
+        "coverage": "a7-b20",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-b21",
+        "coverage": "a7-b21",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-b22",
+        "coverage": "a7-b22",
+        "section": "special",
+        "attributes": [],
+        "auto": true
       }
     ]
   }

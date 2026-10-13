@@ -11,6 +11,7 @@ import { createServices, type Services } from "@/services/container";
 import seedBoxes from "./data/boxes.json";
 import seedClauses from "./data/clauses.json";
 import seedDocuments from "./data/documents.json";
+import enumsSeed from "./data/enums.json";
 
 import { ALPHA_PLUS_PRODUCT_NAME, seedAlphaPlus } from "./alphaPlus";
 import { MERITZ_PRODUCT_NAME } from "./load";
@@ -104,7 +105,9 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     expect(Object.fromEntries(await services.product.getPlanOptionValues(option("form", 2).id))).toEqual({ "no_surrender.type": { entered: true, value: "V03" } });
 
     // 특약 그룹 — 열거형 「특약 그룹」(E0008) 값 순서 = 책자 순서, 담보마다 하나(기본계약 담보는 없음) (ADR-0080)
-    expect((await services.catalog.getEnum("E0008"))?.values.map((v) => [v.code, v.label])).toEqual([["V01", "상해 관련 특별약관"], ["V02", "질병 관련 특별약관"]]);
+    // 원문 특별약관 Ⅰ ~ Ⅴ 의 묶음 — 알파Plus2607 자동 탑재 특약이 Ⅲ 상해 및 질병 · Ⅳ 비용손해 · Ⅴ 기타를 더했다
+    expect((await services.catalog.getEnum("E0008"))?.values.map((v) => [v.code, v.label])).toEqual(enumsSeed.find((e) => e.code === "E0008")!.values.map((v) => [v.code, v.label]));
+    expect((await services.catalog.getEnum("E0008"))?.values.slice(0, 2).map((v) => [v.code, v.label])).toEqual([["V01", "상해 관련 특별약관"], ["V02", "질병 관련 특별약관"]]);
     expect(preview.value.specials.map((g) => g.title)).toEqual(["상해 관련 특별약관"]);
     const groupOf = new Map((await services.coverage.list()).map((c) => [c.name, c.specialGroup]));
     expect(groupOf.get("일반상해사망보장")).toBe("V01");

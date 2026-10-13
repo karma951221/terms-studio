@@ -34,7 +34,7 @@ export const APPENDICES: AppendixSpec[] = [
   { number: 13, code: "AX000013", name: "화상 분류표" },
   { number: 14, code: "AX000014", name: "골절(치아파절 제외)분류표 Ⅱ" },
   { number: 15, code: "AX000015", name: "중대한 특정상해 분류표" },
-  { number: 16, code: "AX000016", name: "(미확인 별표 16)" },
+  { number: 16, code: "AX000016", name: "유방절제수술 분류표" },
   { number: 17, code: "AX000017", name: "충수염(맹장염) 분류표" },
   { number: 18, code: "AX000018", name: "특정전염병 분류표" },
   { number: 19, code: "AX000019", name: "호흡기관련질병 분류표" },
@@ -103,6 +103,12 @@ export const APPENDICES: AppendixSpec[] = [
   { number: 86, code: "AX000081", name: "백내장 분류표" },
   { number: 87, code: "AX000082", name: "산정특례대상 분류표" },
   { number: 91, code: "AX000083", name: "암전후관련 특정질환 및 양성신생물 분류표" },
+  { number: 62, code: "AX000084", name: "아나필락시스 분류표" },
+  { number: 88, code: "AX000085", name: "중증질환자(뇌혈관질환) 산정특례대상 분류표" },
+  { number: 89, code: "AX000086", name: "중증질환자(심장질환) 산정특례대상 분류표" },
+  { number: 90, code: "AX000087", name: "특정순환계질환(주요손상및질환) 분류표" },
+  { number: 94, code: "AX000088", name: "희귀질환자 산정특례대상 분류표" },
+  { number: 95, code: "AX000089", name: "중증난치질환자(중증치매제외) 산정특례대상 분류표" },
 ];
 
 /** 원문 텍스트의 첫 등장을 값 슬롯으로 바꾼다 (담보 레벨 `담보명` 등). */
@@ -813,6 +819,7 @@ export const autoSpecial =
     auto: { group, ...(renewal ? { renewal } : {}) },
   });
 const injury = autoSpecial("i", "V01");
+const both = autoSpecial("b", "V03");
 const illness = autoSpecial("d", "V02");
 
 /** 알파Plus2607 자동 탑재 — 원문 「특별약관 Ⅰ ~ Ⅴ」 의 특약 중 손으로 설정한 것(2604 담보 탑재 · 질병 대표 5)을 뺀 전부. */
@@ -993,6 +1000,28 @@ export const ALPHA2607_AUTO: SpecialSpec[] = [
   illness(177, "질병_통합치료비보장.md"),
   illness(178, "특정순환계질환_통합치료_생활비보장.md"),
   illness(179, "질병_1-5종수술비(plus)(연간2회이상)보장.md"),
+  // ── Ⅲ 상해 및 질병 관련
+  both(1, "5대장기이식수술비보장.md"),
+  both(2, "유방절제수술복원치료비(부분절제제외)보장.md"),
+  both(3, "인공관절수술비보장.md"),
+  both(4, "각막이식수술비보장.md"),
+  both(5, "깁스치료비보장.md"),
+  both(6, "장기요양급여금(1-4등급)보장.md"),
+  both(7, "장기요양급여금(1-2등급)보장.md"),
+  both(8, "장기요양급여금(1등급)보장.md"),
+  both(9, "중증치매간병비보장.md"),
+  both(10, "응급실내원비(응급)보장.md"),
+  both(11, "경증이상_치매간병비보장.md"),
+  both(12, "신깁스치료비보장.md", "갱신형_신깁스치료비보장.md"),
+  both(13, "중등도이상_치매간병비보장.md"),
+  both(15, "아나필락시스진단비(응급,_연간1회한)보장.md"),
+  both(16, "7대장기이식대기등록보장.md"),
+  both(17, "종합병원_전신마취치료비(급여)보장.md"),
+  both(18, "종합병원_전신마취치료비(급여,_4시간이상)보장.md"),
+  both(19, "종합병원_전신마취치료비(급여,_6시간이상)보장.md"),
+  both(20, "2대질환_통합생활지원비(월간한도)보장.md"),
+  both(21, "특정순환계질환(주요손상및질환)_통합치료비보장.md"),
+  both(22, "질병_통합생활지원비(특정상해산정특례_포함)(월간한도)보장.md"),
 ];
 
 const ALPHA2607_SPECIALS: SpecialSpec[] = [

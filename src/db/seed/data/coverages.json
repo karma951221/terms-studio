@@ -3046,5 +3046,320 @@
     ],
     "benefitValues": [],
     "auto": true
+  },
+  {
+    "key": "a7-b1",
+    "code": "COV000198",
+    "name": "5대장기이식수술비보장",
+    "benefitName": "5대장기이식수술비",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "5대장기이식수술비"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b2",
+    "code": "COV000199",
+    "name": "유방절제수술복원치료비(부분절제제외)보장",
+    "benefitName": "유방절제수술복원치료비",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "유방절제수술복원치료비"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b3",
+    "code": "COV000200",
+    "name": "인공관절수술비보장",
+    "benefitName": "인공관절수술비보장",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "인공관절수술비보장"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b4",
+    "code": "COV000201",
+    "name": "각막이식수술비보장",
+    "benefitName": "각막이식수술비",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "각막이식수술비"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b5",
+    "code": "COV000202",
+    "name": "깁스치료비보장",
+    "benefitName": "깁스치료비보장",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "깁스치료비보장"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b6",
+    "code": "COV000203",
+    "name": "장기요양급여금(1-4등급)보장",
+    "benefitName": "장기요양급여금(1-4등급)",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "장기요양급여금(1-4등급)"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b7",
+    "code": "COV000204",
+    "name": "장기요양급여금(1-2등급)보장",
+    "benefitName": "장기요양급여금(1-2등급)",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "장기요양급여금(1-2등급)"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b8",
+    "code": "COV000205",
+    "name": "장기요양급여금(1등급)보장",
+    "benefitName": "장기요양급여금(1등급)",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "장기요양급여금(1등급)"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b9",
+    "code": "COV000206",
+    "name": "중증치매간병비보장",
+    "benefitName": "중증치매간병비",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "중증치매간병비"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b10",
+    "code": "COV000207",
+    "name": "응급실내원비(응급)보장",
+    "benefitName": "응급실내원비(응급)보장",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "응급실내원비(응급)보장"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b11",
+    "code": "COV000208",
+    "name": "경증이상 치매간병비보장",
+    "benefitName": "경증이상 치매간병비",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "경증이상 치매간병비"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b12",
+    "code": "COV000209",
+    "name": "신깁스치료비보장",
+    "benefitName": "신깁스치료비보장",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "신깁스치료비보장"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b13",
+    "code": "COV000210",
+    "name": "중등도이상 치매간병비보장",
+    "benefitName": "중등도이상 치매간병비",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "중등도이상 치매간병비"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b15",
+    "code": "COV000211",
+    "name": "아나필락시스진단비(응급, 연간1회한)보장",
+    "benefitName": "아나필락시스진단비(응급, 연간1회한)보장",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "아나필락시스진단비(응급, 연간1회한)보장"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b16",
+    "code": "COV000212",
+    "name": "7대장기이식대기등록보장",
+    "benefitName": "7대장기이식대기등록지원금",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "7대장기이식대기등록지원금"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b17",
+    "code": "COV000213",
+    "name": "종합병원 전신마취치료비(급여)보장",
+    "benefitName": "종합병원 전신마취치료비(급여)보장",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "종합병원 전신마취치료비(급여)보장"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b18",
+    "code": "COV000214",
+    "name": "종합병원 전신마취치료비(급여, 4시간이상)보장",
+    "benefitName": "종합병원 전신마취치료비(급여, 4시간이상)보장",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "종합병원 전신마취치료비(급여, 4시간이상)보장"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b19",
+    "code": "COV000215",
+    "name": "종합병원 전신마취치료비(급여, 6시간이상)보장",
+    "benefitName": "종합병원 전신마취치료비(급여, 6시간이상)보장",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "종합병원 전신마취치료비(급여, 6시간이상)보장"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b20",
+    "code": "COV000216",
+    "name": "2대질환 통합생활지원비(월간한도)보장",
+    "benefitName": "2대질환 통합생활지원비(월간한도)보장",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "2대질환 통합생활지원비(월간한도)보장"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b21",
+    "code": "COV000217",
+    "name": "특정순환계질환(주요손상및질환) 통합치료비보장",
+    "benefitName": "특정순환계질환(주요손상및질환) 통합치료비보장",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "특정순환계질환(주요손상및질환) 통합치료비보장"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-b22",
+    "code": "COV000218",
+    "name": "질병 통합생활지원비(특정상해산정특례 포함)(월간한도)보장",
+    "benefitName": "질병 통합생활지원비(특정상해산정특례 포함)(월간한도)보장",
+    "specialGroup": "V03",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "질병 통합생활지원비(특정상해산정특례 포함)(월간한도)보장"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
   }
 ]
