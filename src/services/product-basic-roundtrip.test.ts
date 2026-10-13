@@ -26,7 +26,8 @@ describe("상품 기본정보 저장 왕복 — 명시적 빈 목록 보존 (PGl
     t = await createTestDb();
     services = createServices(t.db);
     productId = (await seedAlphaPlus(services, admin)).productId;
-  });
+    // 실물 시드(알파Plus2607 주계약 특약 전체 포함) 적재는 다른 테스트와 함께 돌면 30초를 넘긴다
+  }, 180_000);
   afterAll(async () => {
     await t.close();
   });

@@ -35,6 +35,21 @@ function article(children: InlineNode[]): ArticleNode {
   return { id: "s-a3", kind: "article", title: "특별약관의 소멸", children: [{ id: "s-a3-p2", kind: "paragraph", children }] };
 }
 
+describe("함수조항 오버레이 — 「항」 자리 대조", () => {
+  it("사용처 항의 호 목록(박스 포함)이 함수조항보다 길면 바꾸지 않고 보고한다(던지지 않는다)", () => {
+    const block: ClauseRecord = { code: "C0009", label: "항", mode: "block", description: "", body: [{ id: "c9-p1", kind: "paragraph", children: [{ id: "c9-x", kind: "text", text: "다음과 같다." }], items: [{ id: "c9-i1", kind: "item", children: [{ id: "c9-i1x", kind: "text", text: "가" }] }] }], options: [] };
+    const a: ArticleNode = {
+      id: "s-a1",
+      kind: "article",
+      title: "정의",
+      children: [{ id: "s-a1-p1", kind: "paragraph", children: [text("t", "다음과 같다.")], items: [{ id: "s-a1-p1-i1", kind: "item", children: [text("u", "가")] }, { id: "s-a1-b1-k", kind: "boxRef", boxCode: "BX000001" }] }],
+    };
+    const report: string[] = [];
+    expect(applyClauseUse({ article: "1", paragraph: 1, clause: "C0009" }, block, () => a, "[t]", report)).toBe(false);
+    expect(report.join()).toContain("호 목록이 다름");
+  });
+});
+
 describe("함수조항 오버레이 — 원문 자리를 참조로", () => {
   it("평문 → 함수조항 인라인: {O01} 은 옵션 자리 · 보통약관 조 참조는 scope 를 뗀다 · 자기 조 참조는 거부", () => {
     const body = inlineBody("가 {O01} 나", "c1", (t, newId) => [text(newId(), t)]);

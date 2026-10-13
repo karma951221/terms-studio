@@ -592,7 +592,7 @@ function matchParagraphs(mineParagraphs: readonly ParagraphNode[], theirs: reado
       const cit = citems[i];
       return it.kind === "boxRef" && cit.kind === "boxRef" && it.boxCode === cit.boxCode;
     };
-    if (items.some((it, i) => it.kind !== "item" && !sameBox(i)) || items.length !== citems.length) {
+    if (items.length !== citems.length || items.some((it, i) => it.kind !== "item" && !sameBox(i))) {
       report.push(`${where}(+${k}) 호 목록이 다름 (표가 끼었거나 박스 · 개수가 다르다)`);
       return false;
     }

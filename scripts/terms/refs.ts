@@ -43,6 +43,16 @@ export interface RefEnv {
   currentParagraphId?: Id;
   /** 변환하지 못한 참조 — 사람이 본다. */
   report: string[];
+  /**
+   * 접두 없는 조 참조가 제 문서 조와 맞지 않으면(번호 없음 · 제목 다름) 보통약관 색인으로 다시 본다 — 원문이 「보통약관 」을 빠뜨린 자리
+   * (자동 탑재 특약의 준용규정 「다만, 제9조(적립부분 …) …」). 자동 탑재 특약만 켠다.
+   */
+  generalFallback?: boolean;
+  /**
+   * 조 제목 대조를 느슨하게 — 공백에 더해 가운뎃점 변형(ㆍ · ∙ · ･ · ‧)과 「의」를 보지 않는다(원문이 제 조 제목을 조금 다르게 적은 자리 —
+   * 「제6조(항암방사선ㆍ약물치료의 정의)」 ↔ 조 「항암방사선∙약물치료의 정의」). 번호가 같아야 한다. 자동 탑재 특약만 켠다.
+   */
+  looseTitles?: boolean;
 }
 
 interface Piece {
@@ -82,6 +92,8 @@ const JOIN = /^(, | 및 | 또는 )/;
 const GENERAL_PREFIX = "보통약관 ";
 
 const squash = (s: string) => s.replace(/\s+/g, "");
+/** 느슨한 제목 — 공백 · 가운뎃점 변형 · 「의」를 지운다(`looseTitles`). */
+const loose = (s: string) => squash(s).replace(/[ㆍ∙･‧·・]/g, "").replace(/의/g, "");
 
 function tokenAt(text: string, pos: number): Token | undefined {
   ARTICLE.lastIndex = pos;
@@ -114,18 +126,27 @@ function tokenAt(text: string, pos: number): Token | undefined {
 function resolve(token: Token, context: RefContext, env: RefEnv, raw: string): Id | undefined {
   if (token.kind === "article") {
     // 덩어리 안 대상은 같은 문서다 (기능/문면 §3.5) — 접두 없는 뒤 멤버도 덩어리의 scope 를 따른다
-    const general = token.general || context.scope === "general";
+    let general = token.general || context.scope === "general";
     const index = general ? env.general : env.self;
     if (!index) {
       env.report.push(`보통약관 색인 없음: ${raw}`);
       return undefined;
     }
-    const entry = index.byNumber.get(token.number);
+    let entry = index.byNumber.get(token.number);
+    if (!general && env.generalFallback && (!entry || squash(entry.title) !== squash(token.title))) {
+      const fallback = env.general?.byNumber.get(token.number);
+      if (fallback && squash(fallback.title) === squash(token.title)) {
+        entry = fallback;
+        general = true;
+      }
+    }
     if (!entry) {
       env.report.push(`조 없음: ${raw}`);
       return undefined;
     }
-    if (squash(entry.title) !== squash(token.title)) {
+    if (entry && env.looseTitles && squash(entry.title) !== squash(token.title) && loose(entry.title) === loose(token.title)) {
+      env.report.push(`조 제목 표기 차이(같은 조로 본다): ${raw} ↔ 색인 「${entry.title}」`);
+    } else if (squash(entry.title) !== squash(token.title)) {
       env.report.push(`조 제목 불일치: ${raw} ↔ 색인 「${entry.title}」`);
       return undefined;
     }

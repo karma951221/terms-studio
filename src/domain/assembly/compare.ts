@@ -233,8 +233,8 @@ export function diffArticlesUnordered(expected: readonly string[], actual: reado
 const HEADING = /^##\s*제(\d+)조\((.*)\)\s*$/;
 /** 본문의 조 참조 「제N조(제목)」 — 제목 안 괄호 한 겹까지 (「골절(치아파절 제외)…」). 가지번호 없음(조립 결과). */
 const ARTICLE_REF = /제(\d+)조\(((?:[^()]|\([^()]*\))*)\)/g;
-/** 직전 낱말이 「…법 」 「…법률 」 「…령 」 「…규칙 」(낫표로 닫혀도) 이면 법령 인용이다 — 「「금융소비자보호에 관한 법률」제2조(정의)」. */
-const LAW_CITATION = /(법|법률|령|규칙)」?\s?$/;
+/** 직전 낱말이 「…법 」 「…법률 」 「…령 」 「…규칙 」 「…고시 」(낫표로 닫혀도) 이면 법령 인용이다 — 「「금융소비자보호에 관한 법률」제2조(정의)」 · 「「…기준」고시 제5조(…)」. */
+const LAW_CITATION = /(법|법률|령|규칙|고시)」?\s?$/;
 
 /** 조 헤딩으로 번호 → 제목 표 (조립 결과 줄). */
 export function articleTitles(lines: readonly string[]): Map<number, string> {
@@ -269,8 +269,14 @@ export function referenceNumberIssues(lines: readonly string[], general?: Readon
       continue;
     }
     if (inBox || HEADING.test(l)) continue;
+    // 법령 인용 뒤에 연결어(「, 」 · 「 및 」 · 「 또는 」)로 바로 이어진 조도 그 법령의 조다 — 「암관리법 제27조(…) 및 제29조(…)」
+    let lawEnd = -1;
     for (const m of l.matchAll(ARTICLE_REF)) {
-      if (LAW_CITATION.test(l.slice(0, m.index))) continue;
+      if (LAW_CITATION.test(l.slice(0, m.index)) || (lawEnd >= 0 && /^(, | 및 | 또는 )$/.test(l.slice(lawEnd, m.index)))) {
+        lawEnd = m.index + m[0].length;
+        continue;
+      }
+      lawEnd = -1;
       const n = Number(m[1]);
       const title = squash(m[2]);
       if (self.get(n) === title || general?.get(n) === title) continue;

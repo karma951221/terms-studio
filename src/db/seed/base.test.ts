@@ -5,6 +5,7 @@ import type { Actor } from "@/domain/types";
 import { createTestDb, type TestDb } from "@/db/test-utils";
 import { createServices, type Services } from "@/services/container";
 
+import appendices from "./data/appendices.json";
 import { boxesUsedByGenerals, clausesUsedByGenerals, loadRealBase } from "./load";
 
 const admin: Actor = { userId: "00000000-0000-4000-8000-000000000001", role: "admin" };
@@ -26,9 +27,9 @@ describe("loadRealBase — 화면 E2E 바탕", () => {
     await t.close();
   });
 
-  it("별표 21 · 열거형 2(E0001 · 필드 셋, E0002 — D0003 이 읽는 무저해지 유형) · 구분자 7(D0001 ~ D0007 — 보통약관 형 축 문장이 읽는 D0007 해약환급금 미지급형 있음까지 앞 코드) · 보통약관이 쓰는 박스 122 · 함수조항 53(앞 코드 — 2607 보통약관도 2604 것을 함께 쓴다) · 보통약관 3 — 담보 · 상품은 없다", async () => {
+  it("별표 전부 · 열거형 2(E0001 · 필드 셋, E0002 — D0003 이 읽는 무저해지 유형) · 구분자 7(D0001 ~ D0007 — 보통약관 형 축 문장이 읽는 D0007 해약환급금 미지급형 있음까지 앞 코드) · 보통약관이 쓰는 박스 122 · 함수조항 53(앞 코드 — 2607 보통약관도 2604 것을 함께 쓴다) · 보통약관 3 — 담보 · 상품은 없다", async () => {
     expect(await loadRealBase(services, admin)).toEqual({ created: true });
-    expect(await services.document.listAppendices()).toHaveLength(21);
+    expect(await services.document.listAppendices()).toHaveLength(appendices.length);
     const clauses = (await services.clause.list()).map((c) => c.code);
     expect(clauses).toEqual([...clausesUsedByGenerals()].sort());
     expect(clauses).toEqual(Array.from({ length: 53 }, (_, i) => `C${String(i + 1).padStart(4, "0")}`));

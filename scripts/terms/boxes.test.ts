@@ -50,6 +50,17 @@ describe("원문 박스 → 정적 마스터 박스 (기능/박스 §3.1 · 최�
     expect(plans[0].sites.map((s) => s.node.id)).toEqual(["a-b1", "n-b1"]);
   });
 
+  it("자동 탑재 특약(`late`)의 박스는 앞 박스와 낱말만 달라도 그 무리에 들지 않는다 — 앞 박스 이름이 그대로고, 겹치는 이름만 제 쪽에서 고친다", () => {
+    const a = doc("a", [box("a-b1", "용어풀이", ["- 강제집행이란 국가의 집행기관이 하는 것"]), box("a-b2", "보험연도", ["계약일부터 1년"])]);
+    const n = doc("n", [box("n-b1", "용어풀이", ["- 강제집행이란 법원의 집행기관이 하는 것"]), box("n-b2", "보험연도", ["계약일부터 1년"])]);
+    const before = planBoxes(sitesOf(a, "alpha", true)).map((p) => p.record.name);
+    const late = boxSites(n, { doc: n.id, product: "alpha2607", general: false, late: true });
+    const plans = planBoxes([...sitesOf(a, "alpha", true), ...late]);
+    expect(plans.slice(0, before.length).map((p) => p.record.name)).toEqual(before);
+    expect(plans.map((p) => p.sites.map((s) => s.node.id))).toEqual([["a-b1"], ["a-b2", "n-b2"], ["n-b1"]]);
+    expect(plans[2].record.name).not.toBe(before[0]);
+  });
+
   it("낱말만 달라도 박스를 따로 만든다 — 이름에 선택지(다른 낱말)를 붙이고, 각 자리는 제 글의 박스를 놓는다", () => {
     const a = doc("a", [box("a-b1", "계약 전 알릴 의무", ["회사가 청약서에서 질문한 사항"])]);
     const m = doc("m", [box("m-b1", "계약 전 알릴 의무", ["회사가 서면으로 질문한 사항"])]);

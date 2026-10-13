@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { codeSequences, users } from "./schema";
-import { createTestDb, type TestDb } from "./test-utils";
+import { createTestDb, snapshotTestDb, type TestDb } from "./test-utils";
 
 describe("createTestDb — 인메모리 PGlite + pushSchema", () => {
   let t: TestDb;
@@ -32,6 +32,26 @@ describe("createTestDb — 인메모리 PGlite + pushSchema", () => {
       expect(await other.db.select().from(users)).toHaveLength(0);
     } finally {
       await other.close();
+    }
+  });
+});
+
+describe("snapshotTestDb — 채운 DB 를 떠 두고 같은 내용의 새 DB 를 여러 벌 연다(무거운 시드를 한 번만 적재)", () => {
+  it("뜬 뒤의 변경은 사본에 없고, 사본끼리도 독립이다", async () => {
+    const source = await createTestDb();
+    await source.db.insert(users).values({ name: "admin", role: "admin" });
+    const open = await snapshotTestDb(source);
+    await source.db.insert(users).values({ name: "later", role: "admin" });
+    await source.close();
+    const a = await open();
+    const b = await open();
+    try {
+      expect((await a.db.select().from(users)).map((u) => u.name)).toEqual(["admin"]);
+      await a.db.insert(users).values({ name: "only-a", role: "admin" });
+      expect(await b.db.select().from(users)).toHaveLength(1);
+    } finally {
+      await a.close();
+      await b.close();
     }
   });
 });

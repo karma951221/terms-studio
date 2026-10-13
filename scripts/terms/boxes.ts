@@ -21,6 +21,8 @@ export interface BoxSite {
   doc: string;
   product: string;
   general: boolean;
+  /** 자동 탑재 특약(맨 뒤에 더한 특약 전체)의 자리 — 앞 박스 무리에 들지 않고 이름도 맨 나중에 짓는다(앞 이름을 바꾸지 않는다). */
+  late?: boolean;
   list: Node[];
   node: BoxNode;
 }
@@ -127,8 +129,10 @@ export function planBoxes(sites: readonly BoxSite[]): BoxPlan[] {
   }
   // 2. 낱말만 다른 박스끼리 — 첫 등장이 무리의 씨앗 (이름 짓기용)
   const clusters: { label: string; variants: { box: BoxNode; sites: BoxSite[] }[] }[] = [];
+  // 자동 탑재 특약만 쓰는 박스는 자동 탑재 특약만 쓰는 무리에만 든다 — 앞 무리에 변형이 늘면 그 무리 이름이 바뀐다
+  const lateOnly = (sites: readonly BoxSite[]) => sites.every((s) => s.late);
   for (const d of distinct) {
-    const home = clusters.find((c) => mergeable([...c.variants.map((v) => v.box), d.box]));
+    const home = clusters.find((c) => lateOnly(c.variants.flatMap((v) => v.sites)) === lateOnly(d.sites) && mergeable([...c.variants.map((v) => v.box), d.box]));
     if (home) home.variants.push(d);
     else clusters.push({ label: "", variants: [d] });
   }
@@ -146,8 +150,9 @@ export function planBoxes(sites: readonly BoxSite[]): BoxPlan[] {
     const all = c.variants.flatMap((v) => v.sites.map((s) => s.product));
     return [...new Set(round === early ? all.filter((p) => !LATER.has(p)) : all)];
   };
-  const early = clusters.filter((c) => c.variants.some((v) => v.sites.some((s) => !LATER.has(s.product))));
-  const later = clusters.filter((c) => !early.includes(c));
+  const early = clusters.filter((c) => c.variants.some((v) => v.sites.some((s) => !LATER.has(s.product) && !s.late)));
+  const latest = clusters.filter((c) => c.variants.every((v) => lateOnly(v.sites)));
+  const later = clusters.filter((c) => !early.includes(c) && !latest.includes(c));
   // 이 차례의 무리 중 이름이 겹치는 것(앞 차례 이름과 겹치는 것 포함)만 고친다 — 고친 이름이 서로 다를 때만
   const dedupe = (round: readonly Cluster[], fixed: readonly Cluster[], pick: (c: Cluster) => string) => {
     const groups = new Map<string, Cluster[]>();
@@ -159,7 +164,7 @@ export function planBoxes(sites: readonly BoxSite[]): BoxPlan[] {
       if (new Set(next).size === next.length && next.every((n) => !taken.has(n))) group.forEach((c, i) => (c.label = next[i]));
     }
   };
-  for (const [round, fixed] of [[early, []], [later, early]] as [Cluster[], Cluster[]][]) {
+  for (const [round, fixed] of [[early, []], [later, early], [latest, [...early, ...later]]] as [Cluster[], Cluster[]][]) {
     dedupe(round, fixed, (c) => {
       const products = productsOf(c, round);
       return products.length === 1 ? `${c.label}(${PRODUCT[products[0]] ?? products[0]})` : c.label;

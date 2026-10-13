@@ -39,6 +39,8 @@ export interface CoverageSpec {
   coverageValues: { path: string; value: string }[];
   /** 특약 그룹 — 열거형 「특약 그룹」(E0008) 값 코드. 없으면 그룹 없음(기본계약 담보) (ADR-0080). */
   specialGroup?: string;
+  /** 변환기가 쓴 자동 탑재 담보(알파Plus2607 주계약 특약 전체) — 화면으로 치지 않는다. */
+  auto?: true;
 }
 /** 정적 마스터 박스 — 코드 · 이름 · 제목 · 줄 (기능/박스 §3.1). */
 export interface BoxSpec {
@@ -73,19 +75,40 @@ export interface ProductSpec {
   values: { path: string; value: unknown }[];
   planOptions: { code: string; axis: "type" | "form"; number: number; name: string; planTypeCode: string; values: { path: string; value: unknown }[] }[];
   plans: string[][];
-  mounts: { code: string; coverage: string; section: "base" | "special"; attributes: { kindCode: string; valueCode: string }[] }[];
+  mounts: { code: string; coverage: string; section: "base" | "special"; attributes: { kindCode: string; valueCode: string }[]; auto?: true }[];
 }
+
+/**
+ * 화면으로 치는 범위 — 알파Plus2607 자동 탑재 특약(설정 `ALPHA2607_AUTO`, 주계약 특별약관 수백 개)은 화면으로 넣지 않는다.
+ * 그 담보 · 템플릿 · 탑재와 변환기가 그 특약에서 찾아 묶은 함수조항(사람처럼 넣는 함수조항보다 뒤 코드) · 그 특약만 쓰는 박스(맨 뒤 코드)를 뺀다 —
+ * 모두 맨 뒤 코드라 빼도 화면 범위의 채번이 시드 코드와 같다. 전체 특약의 원문 대조는 Vitest 실물 재현(`src/db/seed/real.test.ts`)이 한다.
+ */
+const RAW_COVERAGES = read<CoverageSpec[]>("coverages.json");
+/** 자동 탑재 담보 — 변환기가 쓴 담보 · 탑재에는 `auto: true` 가 붙는다. */
+const AUTO_COVERAGES = new Set(RAW_COVERAGES.filter((c) => c.auto).map((c) => c.key));
+const RAW_CLAUSES = read<ClauseSpec[]>("clauses.json");
+/** 사람처럼 넣는 함수조항 — 화면 범위 함수조항의 맨 뒤 코드. 그 뒤는 자동 탑재 특약에서 찾아 묶은 것. */
+const HUMAN_CLAUSE_LABEL = "준용규정(알파Plus 질병)";
+const SCREEN_CLAUSES = RAW_CLAUSES.slice(0, RAW_CLAUSES.findIndex((c) => c.label === HUMAN_CLAUSE_LABEL) + 1);
+const SCREEN_DOCUMENTS = read<DocumentSpec[]>("documents.json").filter((d) => !AUTO_COVERAGES.has(d.ownerCoverage));
+const SCREEN_GENERALS = read<{ code: string; tree: DocumentNode }[]>("generals.json");
+const RAW_BOXES = read<BoxSpec[]>("boxes.json");
+/** 화면 범위가 놓는 박스까지의 앞 코드 — 자동 탑재 특약만 쓰는 박스는 맨 뒤 코드다. */
+const SCREEN_BOX_COUNT = (() => {
+  const used = new Set([...JSON.stringify([SCREEN_GENERALS, SCREEN_DOCUMENTS, SCREEN_CLAUSES]).matchAll(/"boxCode":"(BX\d+)"/g)].map((m) => m[1]));
+  return RAW_BOXES.reduce((at, b, i) => (used.has(b.code) ? i + 1 : at), 0);
+})();
 
 export const SEED = {
   enums: read<EnumSpec[]>("enums.json"),
   discriminators: read<DiscriminatorSpec[]>("discriminators.json"),
   attributes: read<AttributeSpec[]>("attributes.json"),
-  coverages: read<CoverageSpec[]>("coverages.json"),
-  boxes: read<BoxSpec[]>("boxes.json"),
-  clauses: read<ClauseSpec[]>("clauses.json"),
-  documents: read<DocumentSpec[]>("documents.json"),
-  generals: read<{ code: string; tree: DocumentNode }[]>("generals.json"),
-  products: read<ProductSpec[]>("products.json"),
+  coverages: RAW_COVERAGES.filter((c) => !c.auto),
+  boxes: RAW_BOXES.slice(0, SCREEN_BOX_COUNT),
+  clauses: SCREEN_CLAUSES,
+  documents: SCREEN_DOCUMENTS,
+  generals: SCREEN_GENERALS,
+  products: read<ProductSpec[]>("products.json").map((p) => ({ ...p, mounts: p.mounts.filter((m) => !m.auto) })),
 };
 
 /**
@@ -212,7 +235,8 @@ export const REAL_FIXTURES: Record<string, { dir: string; appendices: number; fi
       ["신화상치료비보장 특별약관", "신화상치료비보장.md"],
     ],
   },
-  // 05 는 사람처럼 넣는 말기신부전증(06)을 뺀 특약 14 를 대조한다 — 상해 10 은 2604 템플릿을 그대로 탑재(띄어쓰기 · 예시 표기는 알려진 차이)
+  // 05 는 사람처럼 넣는 말기신부전증(06)을 뺀 특약 16 을 대조한다 — 상해 10 과 그 갱신형 둘(일반상해사망 · 골절)은 2604 템플릿을 그대로 탑재(띄어쓰기 · 예시 표기는 알려진 차이).
+  // 자동 탑재 특약은 화면으로 치지 않는다(SEED 주석)
   alpha2607: {
     dir: "알파2607",
     appendices: 15,
@@ -228,6 +252,8 @@ export const REAL_FIXTURES: Record<string, { dir: string; appendices: number; fi
       ["수술비(1-7종, 연간3회한)[상해]보장 특별약관", "수술비(1-7종,_연간3회한)[상해]보장.md"],
       ["갱신형 수술비(1-7종, 연간3회한)[상해]보장 특별약관", "갱신형_수술비(1-7종,_연간3회한)[상해]보장.md"],
       ["신화상치료비보장 특별약관", "신화상치료비보장.md"],
+      ["갱신형 일반상해사망보장 특별약관", "갱신형_일반상해사망보장.md"],
+      ["갱신형 골절(치아파절 제외)진단비Ⅱ보장 특별약관", "갱신형_골절(치아파절_제외)진단비Ⅱ보장.md"],
       ["5대고액치료비암진단비보장 특별약관", "5대고액치료비암진단비보장.md"],
       ["양성뇌종양진단비Ⅱ보장 특별약관", "양성뇌종양진단비Ⅱ보장.md"],
       ["만성당뇨합병증진단비보장 특별약관", "만성당뇨합병증진단비보장.md"],

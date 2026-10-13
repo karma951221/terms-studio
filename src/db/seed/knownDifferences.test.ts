@@ -17,6 +17,13 @@ describe("expectedLines — 알려진 차이를 원문 줄에 얹는다", () => 
     expect(() => expectedLines("테스트", "a.md", source, [{ dir: "테스트", file: "a.md", article: "보험금의 지급사유", after: "설명: 예시", replace: true, span: [0, 1], lines: [], why: "표기" }])).toThrow(/범위/);
   });
 
+  it("줄 안 글 바꾸기(within) — 그 조의 모든 줄에서 글 조각을 바꾸고, 없으면 던진다", () => {
+    const source = ["## 제1조(정의)", "@ 제6조(항암방사선ㆍ약물치료의 정의)에서 정한", "@ 제6조(항암방사선ㆍ약물치료의 정의)에 따라", "## 제2조(다른 조)", "= 제6조(항암방사선ㆍ약물치료의 정의)"];
+    const swap = { dir: "테스트", file: "a.md", article: "정의", after: "항암방사선ㆍ약물치료", lines: ["항암방사선∙약물치료"], within: true as const, why: "표기" };
+    expect(expectedLines("테스트", "a.md", source, [swap])).toEqual(["## 제1조(정의)", "@ 제6조(항암방사선∙약물치료의 정의)에서 정한", "@ 제6조(항암방사선∙약물치료의 정의)에 따라", "## 제2조(다른 조)", "= 제6조(항암방사선ㆍ약물치료의 정의)"]);
+    expect(() => expectedLines("테스트", "a.md", source, [{ ...swap, after: "없는 글" }])).toThrow(/없다/);
+  });
+
   it("목록의 차이는 모두 제 자리를 찾는다 — 범위는 바꾸기(replace)에만 쓴다", () => {
     for (const d of KNOWN_DIFFERENCES) if (d.span) expect(d.replace, d.why).toBe(true);
   });
