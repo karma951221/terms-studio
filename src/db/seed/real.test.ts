@@ -569,6 +569,10 @@ describe("★ 실물 재현 변형 — 납입면제 없는 상품은 납입면�
     const detail = articleLines(lines, "세부보장에 관한 사항");
     expect(detail.length).toBeGreaterThan(0);
     expect(detail.join("\n")).not.toMatch(/\d\.\(보험료의 납입면제\)|\d\.\(납입면제에 관한 세부규정\)|납입을 면제합니다|\[2종\(보험료 납입면제형\)\]/);
+    // 해약환급금 소제목 머리(「N.(보장의 해약환급금)회사는 …」)는 세부보장마다 남는다 — 원문에 있는 수만큼
+    const heads = (xs: readonly string[]) => xs.filter((l) => /\d\.\(보장의 해약환급금\)회사는/.test(l)).length;
+    expect(heads(detail)).toBe(heads(source("알파2607", file)));
+    expect(heads(detail)).toBeGreaterThan(0);
     // 「다음 중 어느 …」 머리말 뒤에는 호가 선다
     detail.forEach((l, i) => {
       if (/^[@=] .*다음 중 어느/.test(l)) expect(detail[i + 1], l).toMatch(/^ {2}- /);
