@@ -96,7 +96,7 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
         await submit(page, page.getByRole("button", { name: "템플릿 지정" }));
       });
 
-      await ev.action("실물재현#1.4", "세목 선택지 3건을 만든다 — 종 축: 1종 적용여부 아니오 · 2종 예 + 사유(암·면책 · 질병 8 · 상해및질병80%), 형 축: 1형 해약환급금 지급형 — 기본정보 탭", async () => {
+      await ev.action("실물재현#1.4", "세목 선택지 4건을 만든다 — 종 축: 1종 적용여부 아니오 · 2종 예 + 사유(암·면책 · 질병 8 · 상해및질병80%), 형 축: 1형 해약환급금 지급형 · 2형 해약환급금미지급형(납입후50%) — 기본정보 탭", async () => {
         await openTab(page, "기본정보");
         await page.getByRole("button", { name: "편집", exact: true }).click();
         // 상품특성 갱신형여부 = 아니오(세만기) — 부활 문구의 「계약일」 ↔ 「최초계약일」을 가른다(구분자 갱신형 상품, ADR-0086 결정 6 · 알파플러스_모델명세 §8)
@@ -114,22 +114,29 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
           await option.getByRole("radio", { name: reasons ? "예" : "아니오", exact: true }).check();
           for (const reason of reasons ?? []) { await option.getByRole("button", { name: / 값 추가$/ }).click(); await option.getByRole("combobox", { name: / 값 추가$/ }).selectOption({ label: reason }); }
         }
-        // 형 축 — 해약환급금 지급형. 제27조의1 ④ 「1형(해약환급금 지급형)의 경우 …」는 상품에 해약환급금 지급형이 있을 때만 선다(최종 결정 24)
-        await page.getByRole("button", { name: "보험종목 추가" }).click();
-        const form = page.locator("#definitions-panel tbody tr").nth(2);
-        await form.getByLabel("종·형 구분").selectOption("form");
-        await form.getByLabel("번호", { exact: true }).fill("1");
-        await form.getByLabel("보험종목명", { exact: true }).fill("해약환급금 지급형");
-        await form.getByLabel("세목유형").selectOption("no_surrender");
-        await form.locator('[data-path="no_surrender.type"]').last().locator("select").selectOption("V01");
+        // 형 축 — 1형 해약환급금 지급형 · 2형 미지급형. 제27조의1 ④ 「1형(해약환급금 지급형)의 경우 …」는 상품에 해약환급금 지급형이 있을 때만(D0004),
+        // 2형 단서 · 2형 박스 · 「1형(해약환급금 지급형)에 한하여 적용합니다」는 미지급형인 형이 있을 때만(D0007) 선다(최종 결정 24 상품 범위 조건) — 원문은 형 둘
+        for (const [number, name, type] of [
+          [1, "해약환급금 지급형", "V01"],
+          [2, "해약환급금미지급형(납입후50%)", "V03"],
+        ] as const) {
+          await page.getByRole("button", { name: "보험종목 추가" }).click();
+          const form = page.locator("#definitions-panel tbody tr").nth(number + 1);
+          await form.getByLabel("종·형 구분").selectOption("form");
+          await form.getByLabel("번호", { exact: true }).fill(String(number));
+          await form.getByLabel("보험종목명", { exact: true }).fill(name);
+          await form.getByLabel("세목유형").selectOption("no_surrender");
+          await form.locator('[data-path="no_surrender.type"]').last().locator("select").selectOption(type);
+        }
       });
 
-      await ev.action("실물재현#1.5", "유효 조합 2건을 선택하고 기본정보를 한 번에 저장한다", async () => {
+      // 세목 레벨 구분자는 유효 조합에 등장하는 선택지만 모은다(기능/조립산출 §3.2) — 2형이 조합에 있어야 「해약환급금 미지급형 있음」(D0007)이 참이다
+      await ev.action("실물재현#1.5", "유효 조합 4건(원문과 같은 종 2 × 형 2)을 선택하고 기본정보를 한 번에 저장한다", async () => {
         await page.getByRole("tab", { name: "종·형 조합" }).click();
-        for (const label of [/제1종.*제1형.* 사용$/, /제2종.*제1형.* 사용$/]) await page.getByRole("checkbox", { name: label }).check();
+        for (const label of [/제1종.*제1형.* 사용$/, /제2종.*제1형.* 사용$/, /제1종.*제2형.* 사용$/, /제2종.*제2형.* 사용$/]) await page.getByRole("checkbox", { name: label }).check();
         await page.getByRole("button", { name: "저장", exact: true }).click();
         await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
-        await expect(page.locator("#combinations-panel tbody tr")).toHaveCount(2);
+        await expect(page.locator("#combinations-panel tbody tr")).toHaveCount(4);
       });
 
       // 탑재 — 상품담보 탭 편집 하나에 기본계약 1 + 특약 4 (같은 담보 2벌은 부가유형으로 구별), 저장 한 번 (기능/상품 §3.8 · §4.5, 2026-10-04)
