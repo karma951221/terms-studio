@@ -272,8 +272,11 @@ export function clauseFromSource(tree: DocumentNode, taken: readonly (ParagraphN
   };
   const inl = (list: InlineNode[]) => structuredClone(list).map((c) => toClauseInline(c, localize));
   const box = (b: BoxRefNode): ClauseBoxRef => ({ id: b.id, kind: "boxRef", boxCode: b.boxCode });
+  // 항 번호 무리(restart) — 둘째 항부터의 무리 머리는 본문에 남긴다(첫 항의 것은 사용처 참조가 잇는다)
+  const firstParagraph = taken.find((p) => p.kind === "paragraph");
   return taken.map((p): Block => {
     if (p.kind === "boxRef") return box(p);
+    const restart = p !== firstParagraph && p.restart ? { restart: true as const } : {};
     const items = (p.items ?? []).map((it) => {
       if (it.kind === "boxRef") return box(it);
       if (it.kind !== "item") throw new Error(`${code}: 호 목록에 ${it.kind} 이 있는 항은 함수조항 본문이 될 수 없다`);
@@ -283,7 +286,7 @@ export function clauseFromSource(tree: DocumentNode, taken: readonly (ParagraphN
       });
       return { id: it.id, kind: "item" as const, children: inl(it.children), ...(subitems.length ? { subitems } : {}) };
     });
-    return { id: p.id, kind: "paragraph", children: inl(p.children), ...(items.length ? { items } : {}) };
+    return { id: p.id, kind: "paragraph", ...restart, children: inl(p.children), ...(items.length ? { items } : {}) };
   });
 }
 
@@ -523,6 +526,12 @@ function applyBlockUse(
     return false;
   }
   const mineParagraphs = mine.filter((c): c is ParagraphNode => c.kind === "paragraph");
+  // 항 번호 무리(restart — 통합형 특약의 소제목 · 종형 단위): 둘째 항부터의 무리 머리는 함수조항 본문과 같아야 한다. 첫 항의 restart 는 참조가 잇는다
+  const clauseParagraphs = blocks.filter((b): b is ClauseParagraph => b.kind === "paragraph");
+  if (mineParagraphs.some((p, k) => k > 0 && Boolean(p.restart) !== Boolean(clauseParagraphs[k]?.restart))) {
+    report.push(`${where} — 항 번호 무리(소제목 · 종형 머리)가 함수조항 본문과 다르다`);
+    return false;
+  }
   const theirs = localizeClause(blocks.filter((b): b is ClauseParagraph => b.kind === "paragraph"), mineParagraphs);
   const match: UseMatch = { inside: structIdsOf(mineParagraphs), outside: new Map(), bound: new Map() };
   try {
@@ -549,7 +558,7 @@ function applyBlockUse(
       });
     });
   });
-  article.children.splice(at, count, { id: `${first.id}-k`, kind: "clauseBlockRef", clauseCode: clause.code, options: { ...selection }, ...(bindings ? { bindings } : {}) });
+  article.children.splice(at, count, { id: `${first.id}-k`, kind: "clauseBlockRef", clauseCode: clause.code, options: { ...selection }, ...(bindings ? { bindings } : {}), ...(first.restart ? { restart: true as const } : {}) });
   return true;
 }
 

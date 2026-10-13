@@ -148,6 +148,7 @@ class Substituter {
       kind: "paragraph",
       id: n.id,
       ...keyedOf(n),
+      ...(n.restart ? { restart: true as const } : {}),
       children: this.inlines(n.children),
       ...(n.items ? { items: n.items.map((it) => (it.kind === "item" ? this.item(it) : it.kind === "error" ? it : this.static(it))) } : {}),
       ...(n.excludeFromComparison ? { excludeFromComparison: true } : {}),

@@ -46,9 +46,13 @@ export function numberDocument(doc: SubstitutedDoc): NumberedDoc {
   const one = (a: RArticle<SInline>): void => {
     numbers.set(a.id, { n: ++article, label: articleLabel(article) });
     let paragraph = 0;
+    let total = 0;
     let lastParagraph: Id | undefined;
     for (const p of a.children) {
       if (p.kind !== "paragraph") continue;
+      // 통합형 특약의 세부보장 소제목 단위 — restart 항부터 다시 ① (조 전체 항 수는 따로 센다)
+      if (p.restart) paragraph = 0;
+      total += 1;
       numbers.set(p.id, { n: ++paragraph, label: paragraphLabel(paragraph) });
       lastParagraph = p.id;
       let item = 0;
@@ -63,7 +67,7 @@ export function numberDocument(doc: SubstitutedDoc): NumberedDoc {
       }
     }
     // 항이 하나뿐인 조는 마커를 찍지 않는다 (기능/문면 §3.2 — 실물의 단항 조는 전부 번호 없음)
-    if (paragraph === 1 && lastParagraph !== undefined) numbers.set(lastParagraph, { n: 1, label: "" });
+    if (total === 1 && lastParagraph !== undefined) numbers.set(lastParagraph, { n: 1, label: "" });
   };
   for (const c of doc.children) {
     if (c.kind === "error") continue;

@@ -243,6 +243,11 @@ export interface ParagraphNode {
   kind: "paragraph";
   /** P코드 (ADR-0072). */
   code?: Code;
+  /**
+   * 이 항부터 항 번호를 1 부터 다시 센다 — 통합형 특약의 세부보장 소제목(「1.(보험금의 지급사유)」) · 종형 머리(「[2종(…)]」) 단위 번호 (2026-10-14).
+   * 항 참조 표기(「제N항」)도 다시 센 번호를 쓴다. 「항이 하나뿐인 조」 판정은 조 전체의 항 수로 본다.
+   */
+  restart?: true;
   children: InlineNode[];
   items?: (ItemNode | CondBlockNode | TableNode | BoxNode | BulletListNode | BoxRefNode | ClauseBlockRefNode | ForBlockNode)[];
 }
@@ -303,6 +308,8 @@ export interface ClauseBlockRefNode {
   preset?: Code;
   /** 보통약관의 항 단위 준용·생략 판정에서 이 block 참조가 만든 항을 뺀다. */
   excludeFromComparison?: boolean;
+  /** 펼친 첫 항부터 항 번호를 1 부터 다시 센다 — 항의 `restart` 자리를 함수조항이 대신한 곳(통합형 특약의 세부보장 소제목 첫 항, 2026-10-14). */
+  restart?: true;
 }
 
 /**

@@ -474,6 +474,8 @@ const LABELS: Record<NumberKind, (n: number) => string> = {
 
 class Counter {
   private n = 0;
+  /** 다시 센 것과 상관없는 총수 — 단항 판정. */
+  private total = 0;
   private last: Id | undefined;
   constructor(
     private readonly kind: NumberKind,
@@ -483,15 +485,20 @@ class Counter {
   next(id: Id, span = 1): void {
     const n = this.n + 1;
     this.n += Math.max(1, span);
+    this.total += Math.max(1, span);
     this.last = id;
     this.out.set(id, { kind: this.kind, n, label: LABELS[this.kind](n), ...(span > 1 ? { span } : {}) });
   }
   get count(): number {
     return this.n;
   }
+  /** 다음 번호를 1 부터 — 항의 `restart`(통합형 특약의 세부보장 소제목 단위). */
+  restart(): void {
+    this.n = 0;
+  }
   /** 항이 하나뿐인 조는 마커를 찍지 않는다 (실물: 단항 조는 전부 번호 없는 본문 — 기능/문면 §3.2). 센 총수로 본다 — 홀로 선 2항 함수조항은 단항이 아니다. */
   hideIfSingle(): void {
-    if (this.n === 1 && this.last !== undefined) {
+    if (this.total === 1 && this.last !== undefined) {
       const only = this.out.get(this.last);
       if (only) this.out.set(this.last, { ...only, label: "" });
     }
@@ -520,6 +527,7 @@ export function numberTree(doc: DocumentNode, opts: NumberingOptions = {}): Map<
     const paragraphs = new Counter("paragraph", out);
     each(a.children, (n) => {
       if (n.kind === "paragraph") {
+        if (n.restart) paragraphs.restart();
         paragraphs.next(n.id);
         const items = new Counter("item", out);
         each(n.items ?? [], (it) => {
@@ -533,6 +541,7 @@ export function numberTree(doc: DocumentNode, opts: NumberingOptions = {}): Map<
           });
         });
       } else if (n.kind === "clauseBlockRef") {
+        if (n.restart) paragraphs.restart();
         paragraphs.next(n.id, span(n));
       }
     });

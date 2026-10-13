@@ -191,6 +191,21 @@ describe("문면작성 S1·S3 — 번호는 저장하지 않고 현재 트리에
     expect(numberTree(withFront).get("n2")?.n).toBe(3);
   });
 
+  it("restart 항부터 항 번호를 ① 로 다시 센다(통합형 특약의 세부보장 소제목 단위) — 조립 번호와 같다", () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    const doc = b.document("d", [b.article("a", [b.paragraph([]), b.paragraph([]), { ...b.paragraph([]), restart: true }, b.paragraph([])])]);
+    const numbers = numberTree(doc);
+    const labels = (doc.children[0] as ArticleNode).children.map((p) => numbers.get(p.id)?.label);
+    expect(labels).toEqual(["①", "②", "①", "②"]);
+    // 항이 하나뿐인 조 판정은 조 전체 항 수 — restart 가 있어도 단항 조만 마커가 없다
+    const single = b.document("d2", [b.article("s", [{ ...b.paragraph([]), restart: true }])]);
+    expect(numberTree(single).get((single.children[0] as ArticleNode).children[0].id)?.label).toBe("");
+    // 함수조항 block 참조에 단 restart — 그 자리(펼친 첫 항)부터 다시
+    const withClause = b.document("d3", [b.article("c", [b.paragraph([]), { ...b.clauseBlock("C001", {}), restart: true }, b.paragraph([])])]);
+    const ids = (withClause.children[0] as ArticleNode).children.map((p) => p.id);
+    expect(ids.map((id) => numberTree(withClause, { clauseSpan: () => 2 }).get(id)?.label)).toEqual(["①", "①", "③"]);
+  });
+
   it("clauseSpan 을 주지 않으면 함수조항 block 참조는 항 1개로 센다", () => {
     const b = nodeBuilders(sequentialIds("n"));
     const doc = b.document("d", [b.article("a", [b.paragraph([]), b.clauseBlock("C001", {}), b.paragraph([])])]);

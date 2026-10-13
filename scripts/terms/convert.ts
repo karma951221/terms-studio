@@ -35,7 +35,7 @@ import { APPENDED_CLAUSE_KEYS, APPENDICES, CLAUSES, PRODUCTS, RENEWAL, SEED_DIR,
 import { parseTerms, type ParsedArticle, type ParsedDoc } from "./parse";
 import { applyArticleConds, applyBoxConds, applyInlineClauses, applyInlineConds, articlesOf } from "./overlay";
 import { basisDateClause } from "./renewal";
-import { inlinesFromText, leftoverReferences, type ArticleEntry, type ArticleIndex, type RefEnv } from "./refs";
+import { inlinesFromText, leftoverReferences, type ArticleEntry, type ArticleIndex, type ParagraphGroup, type RefEnv } from "./refs";
 import { applyAlphaWaiver, applyMeritzWaiver, guardAlphaApplication, guardDiseaseApplication, guardExcludeSentence, guardWaiverBlocks, guardWaiverMentions, resolveWaiverCodes } from "./waiver";
 
 const root = process.cwd();
@@ -56,8 +56,21 @@ function textCell(id: Id, text: string): InlineNode[] {
   return [{ id, kind: "text", text }];
 }
 
+/** 소제목 머리 박스 — 「**3.(보장의 소멸)**」 · 머리말이 붙은 「5.(보험료의 납입면제)회사는 …」. 소제목 번호. */
+const SUBSECTION_HEAD = /^\**(\d+)\.\(/;
+/** 종형 머리 박스 — 한 줄 「[2종(보험료 납입면제형)]」 · 「[1형(해약환급금 지급형)]」. 안쪽 글. */
+const VARIANT_HEAD = /^\[([^[\]]+)\]$/;
+
+export interface StructureOptions {
+  /**
+   * 통합형 특약의 항 번호 무리 — 소제목 · 종형 머리 박스 다음 항부터 번호를 다시 센다(`ParagraphNode.restart`), 조 색인에 무리(`ArticleEntry.groups`)를 둔다.
+   * 원문이 세부보장마다 「1.(보험금의 지급사유)」부터 다시 매기고 「제N항」이 그 소제목의 N번째 항을 가리킨다. 자동 탑재 특약만 켠다(2604 · 손으로 쓴 특약은 그대로).
+   */
+  restartGroups?: boolean;
+}
+
 /** 1차 — 구조 노드. 텍스트는 아직 평문(text 노드 하나)으로 둔다. */
-export function buildStructure(doc: ParsedDoc, prefix: string, title: string, articleFilter?: (a: ParsedArticle) => boolean): Built {
+export function buildStructure(doc: ParsedDoc, prefix: string, title: string, articleFilter?: (a: ParsedArticle) => boolean, opts: StructureOptions = {}): Built {
   const index: ArticleIndex = { byNumber: new Map() };
   const numberOf = new Map<Id, string>();
   const withSections = doc.sections.length > 1 || doc.sections[0]?.title !== "";
@@ -69,10 +82,30 @@ export function buildStructure(doc: ParsedDoc, prefix: string, title: string, ar
     let paragraph: ParagraphNode | undefined;
     let item: { id: Id } | undefined;
     let staticSeq = 0;
+    // 항 번호 무리 (restartGroups) — 머리 박스가 선 뒤 첫 항이 새 무리를 연다
+    const groups: ParagraphGroup[] = [];
+    let head: { section?: number; variant?: string } | undefined;
     for (const line of a.body) {
+      if (opts.restartGroups && line.kind === "box") {
+        const text = [line.title, ...line.lines].join(" ").trim();
+        const section = SUBSECTION_HEAD.exec(text);
+        const variant = line.title === "" && line.lines.length === 1 ? VARIANT_HEAD.exec(line.lines[0].trim()) : null;
+        if (section) head = { section: Number(section[1]) };
+        else if (variant) head = { ...head, variant: variant[1] };
+      }
       if (line.kind === "paragraph") {
         const pid = `${aid}-p${entry.paragraphIds.length + 1}`;
         paragraph = { id: pid, kind: "paragraph", children: [{ id: `${pid}-x0`, kind: "text", text: line.text }] };
+        if (opts.restartGroups) {
+          const last = groups.at(-1);
+          if (!last || head) {
+            const section = head?.section ?? last?.section;
+            const coverage = !last ? 0 : section !== undefined && last.section !== undefined && section < last.section ? last.coverage + 1 : last.coverage;
+            groups.push({ paragraphIds: [pid], ...(section !== undefined ? { section } : {}), ...(head?.variant !== undefined ? { variant: head.variant } : {}), coverage });
+            if (last) paragraph.restart = true;
+          } else last.paragraphIds.push(pid);
+          head = undefined;
+        }
         entry.paragraphIds.push(pid);
         entry.itemIds.set(pid, []);
         children.push(paragraph);
@@ -127,6 +160,7 @@ export function buildStructure(doc: ParsedDoc, prefix: string, title: string, ar
       if (paragraph?.items && paragraph.items.length > 0) paragraph.items.push(node);
       else children.push(node);
     }
+    if (groups.length > 1) entry.groups = groups;
     index.byNumber.set(a.number, entry);
     numberOf.set(aid, a.number);
     return { id: aid, kind: "article", title: a.title, children };
@@ -905,7 +939,7 @@ function buildSpecial(spec: SpecialSpec, product: ProductTerms, generalParsed: P
     });
   } else {
     const parsed = parseTerms(read(product, spec.file!));
-    built = buildStructure(parsed, spec.idPrefix, spec.title ?? parsed.title);
+    built = buildStructure(parsed, spec.idPrefix, spec.title ?? parsed.title, undefined, { restartGroups: Boolean(spec.auto) });
     applyInlineConds(built.tree, built.numberOf, spec.inlineConds ?? [], report);
     applyInlineClauses(built.tree, built.numberOf, spec.inlineClauses ?? [], report);
     // 자동 탑재 특약은 「보통약관 」이 빠진 보통약관 조 참조도 푼다(refs.ts generalFallback)
@@ -916,7 +950,7 @@ function buildSpecial(spec: SpecialSpec, product: ProductTerms, generalParsed: P
       // 갱신형 짝 — 두 원문을 따로 변환(참조는 제 문서 안에서 풀린다)한 뒤 템플릿 한 벌로 합친다(auto.ts mergeRenewal)
       if (spec.auto.renewal) {
         const renewalParsed = parseTerms(read(product, spec.auto.renewal));
-        const renewal = buildStructure(renewalParsed, `${spec.idPrefix}r`, renewalParsed.title);
+        const renewal = buildStructure(renewalParsed, `${spec.idPrefix}r`, renewalParsed.title, undefined, { restartGroups: true });
         convertText(renewal, general.index, product.appendixNumbers, report, true);
         built.tree = mergeRenewal(built.tree, renewal.tree, RENEWAL, spec.idPrefix);
         for (const [id, n] of renewal.numberOf) built.numberOf.set(id, `r${n}`);

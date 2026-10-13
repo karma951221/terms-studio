@@ -219,6 +219,81 @@ describe("참조 슬롯 렌더", () => {
     });
   });
 
+  describe("항 번호를 다시 세는 항(restart — 통합형 특약의 세부보장 소제목 단위)", () => {
+    /** 조 하나에 무리 둘 — 둘째 무리 첫 항(p3)에 restart. p4 가 p3(「제1항」) · p5(「제3항」)을, p2 가 p1 을 가리킨다. */
+    function source(): DocumentNode {
+      const p = (id: string, extra: object = {}, children: DocumentNode["children"] = []) => ({ kind: "paragraph", id, ...extra, children: children.length ? children : [{ kind: "text", id: `${id}-t`, text: "본문" }] });
+      const ref = (id: string, code: string) => ({ kind: "articleRef", id, targets: [{ articleId: "a", code }], connector: "및", scope: "self" });
+      return {
+        kind: "document",
+        id: "s",
+        title: "특약",
+        children: [
+          {
+            kind: "article",
+            id: "a",
+            title: "세부보장에 관한 사항",
+            children: [p("p1"), p("p2", {}, [ref("r1", "P0100")] as never), p("p3", { restart: true }), p("p4", {}, [ref("r2", "P0300"), ref("r3", "P0500")] as never), p("p5")],
+          },
+          { kind: "article", id: "b", title: "단항", children: [p("q1", { restart: true })] },
+        ],
+      } as unknown as DocumentNode;
+    }
+    function rendered() {
+      const input = alphaPlusFixture();
+      const ctx = buildContexts(input).specials.get("pc-basic")!;
+      const resolved = resolveDocument(source(), ctx, { clauses: new Map(), overrides: new Map(), coordinate: at });
+      const substituted = substituteSlots(resolved.doc, ctx, { catalog: new Map(input.catalog.map((d) => [d.code, d])), enums: new Map(input.enums.map((e) => [e.code, e])), master: input.master });
+      const result = renderDocument(numberDocument(substituted.doc), { document: "special", ownerId: "pc-basic", appendices: [] });
+      expect([...resolved.issues, ...substituted.issues, ...result.issues]).toEqual([]);
+      return result.doc.children;
+    }
+
+    it("restart 항부터 ① 로 다시 — 참조 표기도 다시 센 번호(「제1항」 · 「제3항」)", () => {
+      const [a] = rendered();
+      if (a.kind !== "article") throw new Error("unexpected error");
+      const paragraphs = a.children.filter((c) => c.kind === "paragraph");
+      expect(paragraphs.map((c) => (c.kind === "paragraph" ? c.label : ""))).toEqual(["①", "②", "①", "②", "③"]);
+      const labels = paragraphs.flatMap((c) => (c.kind === "paragraph" ? c.children.filter((x) => x.kind === "articleRef").map((x) => (x as { label: string }).label) : []));
+      expect(labels).toEqual(["제1항", "제1항", "제3항"]);
+    });
+
+    it("restart 를 단 함수조항 block 참조는 펼친 첫 항부터 ① 로 다시 센다(무리 첫 항들이 함수조항이 된 자리)", () => {
+      const 둘: Clause = {
+        code: "C0200",
+        label: "둘",
+        mode: "block",
+        body: [
+          { id: "c1", kind: "paragraph", children: [text("c1-t", "첫")] },
+          { id: "c2", kind: "paragraph", children: [text("c2-t", "둘")] },
+        ],
+        options: [],
+        required: { discriminators: [], attributes: [] },
+      };
+      const p = (id: string) => ({ kind: "paragraph" as const, id, children: [text(`${id}-t`, "본문")] });
+      const doc: DocumentNode = {
+        kind: "document",
+        id: "s",
+        title: "특약",
+        children: [{ kind: "article", id: "a", title: "조", children: [p("p1"), p("p2"), { kind: "clauseBlockRef", id: "r", clauseCode: "C0200", options: {}, restart: true }, p("p3")] }],
+      };
+      const input = alphaPlusFixture();
+      const ctx = buildContexts(input).specials.get("pc-basic")!;
+      const resolved = resolveDocument(doc, ctx, { clauses: new Map([["C0200", 둘]]), overrides: new Map(), coordinate: at });
+      const substituted = substituteSlots(resolved.doc, ctx, { catalog: new Map(input.catalog.map((d) => [d.code, d])), enums: new Map(input.enums.map((e) => [e.code, e])), master: input.master });
+      const result = renderDocument(numberDocument(substituted.doc), { document: "special", ownerId: "pc-basic", appendices: [] });
+      const [a] = result.doc.children;
+      if (a.kind !== "article") throw new Error("unexpected error");
+      expect(a.children.map((c) => (c.kind === "paragraph" ? c.label : "?"))).toEqual(["①", "②", "①", "②", "③"]);
+    });
+
+    it("항이 하나뿐인 조는 restart 가 있어도 마커가 없다", () => {
+      const [, b] = rendered();
+      if (b.kind !== "article" || b.children[0].kind !== "paragraph") throw new Error("unexpected error");
+      expect(b.children[0].label).toBe("");
+    });
+  });
+
   describe("함수조항 인자 연결 — 같은 함수조항을 사용처마다 다른 값으로 (최종 결정 2 · 기능/함수조항 §3.7)", () => {
     /** 인자 조건(boolean) · 이름(string, 기본 연결 D0007 감액기간문구) — 조건이면 「참」 아니면 「거짓」, 뒤에 이름. */
     const 판정: Clause = {
