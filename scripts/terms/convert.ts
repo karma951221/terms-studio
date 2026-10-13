@@ -474,7 +474,7 @@ function main(): void {
   for (const d of documents) console.log(`[special] ${d.tree.title}: ${stats(d.tree)}`);
   for (const b of boxRecords) console.log(`[box] ${b.code} ${b.name}`);
   for (const c of clauses) console.log(`[clause] ${c.code} ${c.label} (${c.mode}) — 쓰임 ${all.reduce((n, d) => n + JSON.stringify(d.tree).split(`"clauseCode":"${c.code}"`).length - 1, 0)}`);
-  console.log(`[auto] 특약 ${autoStats.docs} · 기존 함수조항 쓰임 ${autoStats.existingUses} · 새 함수조항 ${autoStats.created.length}(쓰임 ${autoStats.createdUses}) · 갱신형 짝 가지 합침 ${autoStats.hoisted}`);
+  console.log(`[auto] 특약 ${autoStats.docs} · 기존 함수조항 쓰임 ${autoStats.existingUses} · 새 함수조항 ${autoStats.created.length}(쓰임 ${autoStats.createdUses}) · 조 일부 쓰임 ${autoStats.partialUses} · 갱신형 짝 가지 합침 ${autoStats.hoisted}`);
   for (const line of report) console.log(`[report] ${line}`);
   for (const line of issues) console.log(`[invalid] ${line}`);
   if (issues.length > 0) process.exit(1);
@@ -487,6 +487,8 @@ interface AutoStats {
   existingUses: number;
   created: ClauseRecord[];
   createdUses: number;
+  /** 조 일부(잇닿은 항)만 함수조항 블록이 된 자리. */
+  partialUses: number;
   hoisted: number;
 }
 
@@ -522,11 +524,12 @@ function clauseSlice(a: ArticleNode): (ParagraphNode | BoxRefNode)[] | undefined
  * 1. 조마다 기존 함수조항(설정 `CLAUSES`, 옵션 조합 전부)을 대 본다 — 조의 항 전부가 그 함수조항의 렌더 안에 있으면 그 함수조항 블록으로.
  * 2. 남은 조를 조째 글(조 밖 참조는 대상과 무관 — 조 참조 인자)로 묶어 두 곳 이상이면 새 함수조항 — 본문은 첫 자리에서 따고 코드는 맨 뒤.
  *    납입면제 두 조를 「…은 제외하며, 1종 … 도 제외합니다」로 가리키는 준용규정은 「납입면제 있음」 조건으로 가른다.
- * 3. 갱신형 짝의 조건 블록에서 함수조항을 얹은 뒤 같아진 앞 · 뒤 조는 하나로 꺼낸다.
+ * 3. 그래도 남은 조의 잇닿은 항이 함수조항(기존 · 새로 찾은 것) 하나와 같으면 그 항들만 함수조항 블록으로(조 일부).
+ * 4. 갱신형 짝의 조건 블록에서 함수조항을 얹은 뒤 같아진 앞 · 뒤 조는 하나로 꺼낸다.
  */
 function applyAutoClauses(products: readonly BuiltProduct[], candidates: readonly ClauseRecord[], clauses: ClauseRecord[], report: string[], isWaiver: (id: Id) => boolean): AutoStats {
   const docs = products.flatMap((p) => p.product.specials.filter((s) => s.auto).map((spec) => ({ spec, b: p.specials.get(spec.code)! })));
-  const stats: AutoStats = { docs: docs.length, existingUses: 0, created: [], createdUses: 0, hoisted: 0 };
+  const stats: AutoStats = { docs: docs.length, existingUses: 0, created: [], createdUses: 0, partialUses: 0, hoisted: 0 };
   const paragraphs = (list: readonly { kind: string }[]) => list.filter((c) => c.kind === "paragraph").length;
   const blockCandidates = candidates.filter((c) => c.mode === "block").map((c) => ({ c, n: paragraphs(c.body as { kind: string }[]), sels: selections(c) }));
   // 1. 기존 함수조항
@@ -579,7 +582,21 @@ function applyAutoClauses(products: readonly BuiltProduct[], candidates: readonl
     }
     guardClauseWaiver(record, isWaiver);
   }
-  // 3. 갱신형 짝 — 같아진 가지
+  // 3. 조 일부 — 남은 조의 잇닿은 항이 함수조항(기존 · 새로 찾은 것) 하나와 같으면 그 자리만 함수조항 블록으로(제3자 합의 항 · 사망 시 소멸 항 등). 큰 함수조항부터
+  const everything = [...blockCandidates, ...stats.created.map((c) => ({ c, n: paragraphs(c.body as { kind: string }[]), sels: selections(c) }))].sort((x, y) => y.n - x.n);
+  for (const { spec, b } of docs) {
+    for (const a of articlesDeep(b.tree)) {
+      for (const p of a.children.filter((c): c is ParagraphNode => c.kind === "paragraph")) {
+        if (!a.children.includes(p)) continue;
+        const at = Number(/-p(\d+)$/.exec(p.id)?.[1] ?? 0);
+        if (at === 0) continue;
+        const rest = paragraphs(a.children.slice(a.children.indexOf(p)));
+        const hit = everything.some(({ c, n, sels }) => n <= rest && sels.some((sel) => applyClauseUse({ article: a.title, paragraph: at, clause: c.code, options: sel }, c, () => a, `[${spec.code}]`, [], b.tree)));
+        if (hit) stats.partialUses++;
+      }
+    }
+  }
+  // 4. 갱신형 짝 — 같아진 가지
   for (const { spec, b } of docs) {
     if (!spec.auto?.renewal) continue;
     stats.hoisted += collapseRenewal(b.tree, spec.idPrefix, (art) => referencedArticle(b.tree, art));
