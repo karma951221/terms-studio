@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { Booklet } from "@/domain/assembly";
 import { articleTitles, diffArticlesUnordered, normalizeLine, referenceNumberIssues, renderedToLines, sourceToLines, type UnorderedDiff } from "@/domain/assembly/compare";
+import type { AttributeSelection, ProductCoverage } from "@/domain/product/types";
 import type { Actor, Value } from "@/domain/types";
 
 import { createTestDb, type TestDb } from "@/db/test-utils";
@@ -274,8 +275,11 @@ const DISEASE_2607: [string, number][] = [
   ["말기신부전증진단비보장 특별약관", 4],
 ];
 
-/** 변형 한 벌 — 실물 시드를 넣고 세목 선택지 값을 바꾼 뒤 상품마다 조립한다. */
-async function previewVariant(changes: { product: string; axis: "type" | "form"; number: number; entries: { path: string; value: Value }[] }[]) {
+/** 탑재분 담보속성 바꾸기 — 상품의 상품담보마다 새 선택(undefined 면 그대로). 상품담보명은 작명 규칙으로 다시 만든다(특약 제목이 따라온다). */
+type AttributeChange = { product: string; select: (pc: ProductCoverage) => AttributeSelection[] | undefined };
+
+/** 변형 한 벌 — 실물 시드를 넣고 세목 선택지 값 · 탑재분 담보속성을 바꾼 뒤 상품마다 조립한다. */
+async function previewVariant(changes: { product: string; axis: "type" | "form"; number: number; entries: { path: string; value: Value }[] }[], attributes: AttributeChange[] = []) {
   const db = await createTestDb();
   const services = createServices(db.db);
   const admin = await services.auth.ensureSeedAdmin();
@@ -287,6 +291,15 @@ async function previewVariant(changes: { product: string; axis: "type" | "form";
     const option = (await services.product.listPlanOptions(product.id)).find((o) => o.axis === c.axis && o.number === c.number)!;
     const saved = await services.product.setPlanOptionValues(actor, option.id, c.entries);
     if (!saved.ok) throw new Error(JSON.stringify(saved.rejection));
+  }
+  for (const c of attributes) {
+    const product = products.find((p) => p.name === c.product)!;
+    for (const pc of await services.product.listProductCoverages(product.id)) {
+      const next = c.select(pc);
+      if (!next) continue;
+      const saved = await services.product.setAttributes(actor, pc.id, next, { regenerateName: true });
+      if (!saved.ok) throw new Error(`${pc.name}: ${JSON.stringify(saved.rejection)}`);
+    }
   }
   const out = new Map<string, Booklet>();
   for (const product of products) {
@@ -501,5 +514,148 @@ describe.each(SINGLE_FORM)("★ 실물 재현 변형 — $name 해약환급금 �
     const titles = (cs: UnorderedDiff["missing"]) => cs.map((c) => c.title.replace(/^제\d+조(의\d+)?\(|\)$/g, "")).sort();
     expect(titles(diff.missing)).toEqual([...changed].sort());
     expect(titles(diff.extra)).toEqual([...changed].sort());
+  });
+});
+
+/**
+ * 대표 변형 — 상해 특약의 갱신유형(QA/인수기준 상해 특약 행 · 알파Plus2607 특약 15 의 상해 10). 담보속성 A0001 을 갱신형으로 바꾸면
+ * 같은 담보 문면 한 벌이 따라온다 — 제목 「갱신형 …」 · 준용규정(C0068)이 갱신형 가지(다섯 조 무조건 제외)로. 수술비는 제6조(보험기간) · 「최초계약일」
+ * (기준일 문구 C0054 프리셋 ‘담보’ — D0005)까지 서서 갱신형 원문과 같다. 2604 · 2607 이 같은 담보 · 템플릿을 탑재해 두 상품 문맥에서 같이 돌린다.
+ * 수술비 비갱신 탑재분은 부가유형 「추가」를 함께 줘 이미 있는 갱신형 탑재분과 조합 · 이름이 겹치지 않게 한다.
+ */
+const SURGERY = "수술비(1-7종, 연간3회한)[상해]보장 특별약관";
+const SURGERY_RENEW_FILE = "갱신형_수술비(1-7종,_연간3회한)[상해]보장.md";
+/** 비갱신 상해 특약 — 2604 탑재 그대로(갱신형 수술비는 이미 갱신형이라 뺀다). */
+const INJURY = PRODUCTS[0].specials.filter(([title]) => !title.startsWith("갱신형 "));
+const renewedTitle = (title: string) => (title === SURGERY ? "갱신형 수술비(1-7종, 연간3회한)[상해]보장 추가 특별약관" : `갱신형 ${title}`);
+/** 갱신유형이 없거나 비갱신형인 상해 탑재분을 갱신형으로(수술비 비갱신은 「추가」도) — 기본계약 · 질병 · 이미 갱신형인 것은 그대로. */
+const renewInjury = (product: string): AttributeChange => ({
+  product,
+  select: (pc) => {
+    if (pc.attributes.some((a) => a.kindCode === "A0001" && a.valueCode === "2")) return undefined;
+    if (!INJURY.some(([title]) => title === `${pc.name} 특별약관`)) return undefined;
+    const surgery = `${pc.name} 특별약관` === SURGERY;
+    const rest = pc.attributes.filter((a) => a.kindCode !== "A0001" && !(surgery && a.kindCode === "A0002"));
+    return [{ kindCode: "A0001", valueCode: "2" }, ...rest, ...(surgery ? [{ kindCode: "A0002", valueCode: "2" }] : [])];
+  },
+});
+
+describe.each([
+  [ALPHA, ""],
+  [ALPHA2607, "알파2607"],
+])("★ 실물 재현 변형 — %s 상해 특약을 갱신형으로 바꾸면 제목 · 준용규정(수술비는 보험기간 · 최초계약일까지)이 따라온다", (name, dir) => {
+  let db: TestDb;
+  let booklet: Booklet;
+  const doc = (title: string) => {
+    const docs = booklet.specials.flatMap((g) => g.docs);
+    const d = docs.find((x) => x.title === title);
+    if (!d) throw new Error(`특약 「${title}」 없음 — 있는 것: ${docs.map((x) => x.title).join(" · ")}`);
+    return renderedToLines(d);
+  };
+
+  beforeAll(async () => {
+    const v = await previewVariant([], [renewInjury(name)]);
+    db = v.db;
+    booklet = v.booklets.get(name)!;
+  }, 120_000);
+
+  afterAll(async () => {
+    await db.close();
+  });
+
+  it("오류 0", () => {
+    expect(booklet.issues).toEqual([]);
+  });
+
+  it("수술비 비갱신 탑재분 — 갱신형 원문과 같다(제6조 보험기간 · 「최초계약일」 · 준용규정 다섯 조)", () => {
+    const lines = doc(renewedTitle(SURGERY));
+    const diff = diffArticlesUnordered(source(dir, SURGERY_RENEW_FILE), lines);
+    expect(diff, describeDiff(diff)).toEqual(clean);
+    expect(referenceNumberIssues(lines, articleTitles(renderedToLines(booklet.general!)))).toEqual([]);
+  });
+
+  it.each(INJURY.filter(([title]) => title !== SURGERY))("「%s」 — 「갱신형 …」 제목 · 준용규정만 갱신형 가지로 바뀌고 나머지 조는 원문 그대로다", (title, file) => {
+    const lines = doc(renewedTitle(title));
+    const diff = diffArticlesUnordered(source(dir, file), lines);
+    expect(diff.missing.map((c) => c.title)).toEqual(["준용규정"]);
+    expect(diff.extra.map((c) => c.title)).toEqual(["준용규정"]);
+    // 준용규정 본문 = 갱신형 수술비(원문과 같다고 위에서 본) 준용규정 본문
+    expect(articleLines(lines, "준용규정").slice(1)).toEqual(articleLines(doc(renewedTitle(SURGERY)), "준용규정").slice(1));
+    expect(referenceNumberIssues(lines, articleTitles(renderedToLines(booklet.general!)))).toEqual([]);
+  });
+});
+
+/**
+ * 대표 변형 — 상해 특약 갱신형 × 종 축 1종만(납입면제 없음). 준용규정 갱신형 가지의 다섯 조 나열에서 납입면제 두 조만 빠져 남은 세 조로 찍힌다
+ * (일부 대상이 사라진 참조는 남은 대상으로 — 기능/문면 §3.5). 수술비는 보험기간 · 「최초계약일」이 그대로 선다.
+ */
+describe.each([ALPHA, ALPHA2607])("★ 실물 재현 변형 — %s 상해 특약 갱신형 × 납입면제 없음이면 준용규정이 남은 세 조로 찍힌다", (name) => {
+  let db: TestDb;
+  let booklet: Booklet;
+  const doc = (title: string) => renderedToLines(booklet.specials.flatMap((g) => g.docs).find((d) => d.title === title)!);
+
+  beforeAll(async () => {
+    const v = await previewVariant([{ product: name, axis: "type", number: 2, entries: [{ path: "waiver.applies", value: false }, { path: "waiver.reasons", value: [] }] }], [renewInjury(name)]);
+    db = v.db;
+    booklet = v.booklets.get(name)!;
+  }, 120_000);
+
+  afterAll(async () => {
+    await db.close();
+  });
+
+  it("오류 0 · 상해 특약 전부 준용규정이 「… 제9조 · 제10조 및 제N조(중도인출)은 제외합니다.」 · 조 참조 번호가 맞다", () => {
+    expect(booklet.issues).toEqual([]);
+    const general = articleTitles(renderedToLines(booklet.general!));
+    for (const [title] of INJURY) {
+      const lines = doc(renewedTitle(title));
+      expect(articleLines(lines, "준용규정")[1], title).toMatch(
+        /^= 이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다\. 다만, 보통약관 제9조\(적립부분 적립이율에 관한 사항\), 제10조\(만기환급금의 지급\) 및 제\d+조\(중도인출\)은 제외합니다\.$/,
+      );
+      expect(referenceNumberIssues(lines, general), title).toEqual([]);
+    }
+  });
+
+  it("수술비 — 보험기간 조 · 「최초계약일」이 선다", () => {
+    const lines = doc(renewedTitle(SURGERY));
+    expect(articleLines(lines, "보험기간")).not.toEqual([]);
+    expect(lines.join("\n")).toContain("최초계약일");
+    expect(lines.join("\n")).not.toContain("납입면제");
+  });
+});
+
+/**
+ * 대표 변형 — 메리츠 특약 8 의 종 축(납입면제 없음). 준용규정(C0069 · 질병사망은 문면)의 「또한, 1종(…)으로 가입한 경우 … 은 제외합니다.」가 빠지고
+ * 앞 문장이 그대로 끝난다. 남는 조 참조는 납입면제 세 조가 빠진 조립 순서의 번호다.
+ */
+describe("★ 실물 재현 변형 — 메리츠 특약 8 은 납입면제가 없으면 준용규정의 「또한, 1종 …」 문장이 빠진다", () => {
+  let db: TestDb;
+  let booklet: Booklet;
+  const off = [{ path: "waiver.applies", value: false }, { path: "waiver.reasons", value: [] }];
+
+  beforeAll(async () => {
+    const v = await previewVariant([
+      { product: MERITZ, axis: "type", number: 2, entries: off },
+      { product: MERITZ, axis: "type", number: 3, entries: off },
+    ]);
+    db = v.db;
+    booklet = v.booklets.get(MERITZ)!;
+  }, 120_000);
+
+  afterAll(async () => {
+    await db.close();
+  });
+
+  it.each(PRODUCTS[2].specials)("「%s」 — 오류 0 · 준용규정이 「… 및 제N조(중도인출)은 제외합니다.」로 끝난다 · 나머지 조는 원문 그대로 · 조 참조 번호가 맞다", (title, file) => {
+    expect(booklet.issues).toEqual([]);
+    const lines = renderedToLines(booklet.specials.flatMap((g) => g.docs).find((d) => d.title === title)!);
+    const disease = title.startsWith("갱신형 질병사망");
+    expect(articleLines(lines, "준용규정")[1]).toMatch(
+      new RegExp(`^= 이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다\\. 다만, 보통약관 ${disease ? "제5조\\(보험금을 지급하지 않는 사유\\), " : ""}제9조\\(적립부분 적립이율에 관한 사항\\), 제10조\\(만기환급금의 지급\\) 및 제\\d+조\\(중도인출\\)은 제외합니다\\.$`),
+    );
+    const diff = diffArticlesUnordered(source("메리츠", file), lines);
+    expect(diff.missing.map((c) => c.title)).toEqual(["준용규정"]);
+    expect(diff.extra.map((c) => c.title)).toEqual(["준용규정"]);
+    expect(referenceNumberIssues(lines, articleTitles(renderedToLines(booklet.general!)))).toEqual([]);
   });
 });
