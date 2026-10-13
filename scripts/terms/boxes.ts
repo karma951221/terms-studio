@@ -138,20 +138,34 @@ export function planBoxes(sites: readonly BoxSite[]): BoxPlan[] {
     c.label = first.title ? `【${first.title}】` : `박스 — ${snippet(first.lines[0] ?? "")}`;
   }
   const PRODUCT: Record<string, string> = { alpha: "알파Plus", meritz: "메리츠", alpha2607: "알파Plus2607" };
-  const dedupe = (pick: (c: (typeof clusters)[number]) => string) => {
-    const groups = new Map<string, (typeof clusters)[number][]>();
-    for (const c of clusters) groups.set(c.label, [...(groups.get(c.label) ?? []), c]);
-    for (const group of groups.values()) {
-      if (group.length < 2) continue;
+  type Cluster = (typeof clusters)[number];
+  // 뒤에 더한 상품 — 앞 상품 박스의 이름을 바꾸지 않는다. 앞 상품이 쓰는 무리는 앞 상품 자리만 보고 이름을 짓고(2607 을 더하기 전과 같다),
+  // 뒤 상품만 쓰는 무리는 그다음에 앞 이름과 겹치지 않게 짓는다
+  const LATER = new Set(["alpha2607"]);
+  const productsOf = (c: Cluster, round: readonly Cluster[]) => {
+    const all = c.variants.flatMap((v) => v.sites.map((s) => s.product));
+    return [...new Set(round === early ? all.filter((p) => !LATER.has(p)) : all)];
+  };
+  const early = clusters.filter((c) => c.variants.some((v) => v.sites.some((s) => !LATER.has(s.product))));
+  const later = clusters.filter((c) => !early.includes(c));
+  // 이 차례의 무리 중 이름이 겹치는 것(앞 차례 이름과 겹치는 것 포함)만 고친다 — 고친 이름이 서로 다를 때만
+  const dedupe = (round: readonly Cluster[], fixed: readonly Cluster[], pick: (c: Cluster) => string) => {
+    const groups = new Map<string, Cluster[]>();
+    for (const c of round) groups.set(c.label, [...(groups.get(c.label) ?? []), c]);
+    const taken = new Set(fixed.map((c) => c.label));
+    for (const [label, group] of groups) {
+      if (group.length < 2 && !taken.has(label)) continue;
       const next = group.map(pick);
-      if (new Set(next).size === next.length) group.forEach((c, i) => (c.label = next[i]));
+      if (new Set(next).size === next.length && next.every((n) => !taken.has(n))) group.forEach((c, i) => (c.label = next[i]));
     }
   };
-  dedupe((c) => {
-    const products = [...new Set(c.variants.flatMap((v) => v.sites.map((s) => s.product)))];
-    return products.length === 1 ? `${c.label}(${PRODUCT[products[0]] ?? products[0]})` : c.label;
-  });
-  dedupe((c) => `${c.label} ${snippet(c.variants[0].box.lines[0] ?? "", 16)}`);
+  for (const [round, fixed] of [[early, []], [later, early]] as [Cluster[], Cluster[]][]) {
+    dedupe(round, fixed, (c) => {
+      const products = productsOf(c, round);
+      return products.length === 1 ? `${c.label}(${PRODUCT[products[0]] ?? products[0]})` : c.label;
+    });
+    dedupe(round, fixed, (c) => `${c.label} ${snippet(c.variants[0].box.lines[0] ?? "", 16)}`);
+  }
   // 4. 무리 → 박스 하나씩. 여러 박스인 무리는 이름에 다른 낱말(줄마다의 다른 구간)을 붙인다
   const plans = clusters.flatMap((c, ci) =>
     c.variants.map((v, vi): BoxPlan => {
