@@ -180,7 +180,7 @@ export class Editor {
     if (this.refs.hasScopeSelect) await d.locator(`#${idBase}-scope`).selectOption(choice);
     const tree = d.locator(`#${idBase}-targets`);
     // 대상 모양은 범위마다 — 조 · 조+P코드(보통약관 · 이 템플릿), P코드(이 함수조항) (ADR-0072 결정 3)
-    for (const t of node.targets as { articleId?: string; code?: string }[]) {
+    for (const t of node.targets as { articleId?: string; code?: string; innerCode?: string }[]) {
       let rowId: string;
       if (general) {
         const key = refKey({ articleId: t.articleId ?? "", ...(t.code !== undefined ? { code: t.code } : {}) });
@@ -189,7 +189,8 @@ export class Editor {
         for (const up of row.chain) await this.expandRow(tree, up);
         rowId = row.row;
       } else {
-        const key = this.refs.clauseEditor ? (t.code ?? "") : refKey({ articleId: t.articleId ?? "", ...(t.code !== undefined ? { code: t.code } : {}) });
+        // 펼친 함수조항 안쪽 대상(안쪽 코드)은 함수조항 줄 아래 본문 줄이다 (ADR-0077 결정 6)
+        const key = this.refs.clauseEditor ? (t.code ?? "") : refKey({ articleId: t.articleId ?? "", ...(t.code !== undefined ? { code: t.code } : {}), ...(t.innerCode !== undefined ? { innerCode: t.innerCode } : {}) });
         const labels = this.refs.selfPaths.get(key);
         if (!labels) throw new Error(`조 참조 대상 ${key} 가 이 문서 고르기 트리에 없다`);
         rowId = await this.resolveSelfRow(tree, labels);

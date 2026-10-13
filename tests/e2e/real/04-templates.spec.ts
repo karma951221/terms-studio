@@ -2,7 +2,7 @@ import { pickCombo } from "../_lib/combo";
 import { expect, test } from "../_lib/fixtures";
 import { NO_COORD, arrive, login, open } from "./_lib/app";
 import { DocumentAuthoring } from "./_lib/driver";
-import { SEED, generalAncestors, generalTreeOf, outlinePaths } from "./_lib/seed";
+import { HUMAN, SEED, generalAncestors, generalTreeOf, outlinePaths } from "./_lib/seed";
 
 /**
  * ★ 실물 재현(화면) ④ 담보약관 템플릿 — 담보마다 한 벌. 알파Plus 9벌(수술비 1벌을 비갱신 · 갱신 두 탑재가 함께 쓴다) + 메리츠 9벌. 모델명세 §7 · 메리츠_모델명세 §7.
@@ -15,7 +15,8 @@ const clauseLabels = new Map(SEED.clauses.map((c) => [c.code, c.label]));
 const boxNames = new Map(SEED.boxes.map((b) => [b.code, b.name]));
 
 test.describe.serial("실물 재현(화면) ④ 담보약관 템플릿", () => {
-  for (const spec of SEED.documents) {
+  // 사람처럼 넣는 템플릿(말기신부전증)은 03b-human 이 친다
+  for (const spec of SEED.documents.filter((d) => d.code !== HUMAN.document)) {
     const coverage = SEED.coverages.find((c) => c.key === spec.ownerCoverage)!;
     test(`${coverage.code} ${spec.tree.title}`, NO_COORD, async ({ page, ev }) => {
       test.setTimeout(600_000);

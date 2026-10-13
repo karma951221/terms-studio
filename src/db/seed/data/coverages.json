@@ -366,5 +366,75 @@
       }
     ],
     "benefitValues": []
+  },
+  {
+    "key": "a7-cancer5",
+    "code": "COV000019",
+    "name": "5대고액치료비암진단비보장",
+    "benefitName": "5대고액치료비암진단비",
+    "specialGroup": "V02",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "5대고액치료비암진단비"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-tumor",
+    "code": "COV000020",
+    "name": "양성뇌종양진단비Ⅱ보장",
+    "benefitName": "양성뇌종양진단비",
+    "specialGroup": "V02",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "양성뇌종양진단비"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-diabetes",
+    "code": "COV000021",
+    "name": "만성당뇨합병증진단비보장",
+    "benefitName": "만성당뇨합병증진단비",
+    "specialGroup": "V02",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "만성당뇨합병증진단비"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-anemia",
+    "code": "COV000022",
+    "name": "중대한재생불량성빈혈진단비보장",
+    "benefitName": "중대한재생불량성빈혈진단비",
+    "specialGroup": "V02",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "중대한재생불량성빈혈진단비"
+      }
+    ],
+    "benefitValues": []
+  },
+  {
+    "key": "a7-kidney",
+    "code": "COV000023",
+    "name": "말기신부전증진단비보장",
+    "benefitName": "말기신부전증진단비",
+    "specialGroup": "V02",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "말기신부전증진단비"
+      }
+    ],
+    "benefitValues": []
   }
 ]

@@ -6,7 +6,7 @@ import { pickCombo } from "../_lib/combo";
 import { expect, test } from "../_lib/fixtures";
 import { NO_COORD, arrive, login, open, submit } from "./_lib/app";
 import { renderedLines, sourceLines } from "./_lib/compare";
-import { REAL_FIXTURES, SEED, generalTreeOf, type ProductSpec } from "./_lib/seed";
+import { HUMAN, REAL_FIXTURES, SEED, generalTreeOf, type ProductSpec } from "./_lib/seed";
 
 /**
  * ★ 실물 재현(화면) ⑤ 상품 — 상품마다 상품 → 보통약관 → 세목(종 · 형 · 조합, 세목 값) → 탑재(담보속성, 편집 저장 한 번) → 조립 미리보기 → 원문 대조.
@@ -58,7 +58,9 @@ async function setPlanValue(row: import("@playwright/test").Locator, path: strin
   else await cell.locator("select").selectOption(String(value));
 }
 
-for (const product of SEED.products) {
+for (const seeded of SEED.products) {
+  // 사람처럼 넣는 탑재(알파Plus2607 의 말기신부전증)는 06-human 이 더한다
+  const product: ProductSpec = { ...seeded, mounts: seeded.mounts.filter((m) => m.coverage !== HUMAN.coverage) };
   const fixtures = REAL_FIXTURES[product.code];
   const general = generalTreeOf(product.general);
   const specials = product.mounts.filter((m) => m.section === "special");

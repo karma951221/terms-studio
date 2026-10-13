@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { findMasterField } from "../../../../src/domain/master";
+import type { Clause } from "../../../../src/domain/clause";
 import { numberTree, referenceOutline, referenceTargetIndex, refKey, refTargetOf, type DocumentNode, type InlineNode, type Node } from "../../../../src/domain/document";
 
 const DATA = path.join(process.cwd(), "src/db/seed/data");
@@ -101,8 +102,13 @@ export function outlinePaths(tree: DocumentNode): Map<string, string[]> {
       walk(row.children, p);
     }
   };
-  for (const group of referenceOutline(referenceTargetIndex(tree, numberTree(tree)))) walk(group.rows, []);
+  for (const group of referenceOutline(referenceTargetIndex(tree, numberTree(tree), { clauseOf: seedClauseOf }))) walk(group.rows, []);
   return out;
+}
+
+/** 함수조항 코드 → 시드 함수조항 — 함수조항 블록 아래 본문 줄(펼친 함수조항 안쪽 대상, ADR-0077 결정 6)을 화면 고르기 트리와 같게 짓는다. */
+export function seedClauseOf(code: string): Clause | undefined {
+  return SEED.clauses.find((c) => c.code === code) as unknown as Clause | undefined;
 }
 
 /** 보통약관 참조 대상 → 고를 줄 id · 펴야 할 조상 줄 id. */
@@ -125,7 +131,7 @@ export function generalAncestors(tree: DocumentNode): Map<string, GeneralRow> {
   return out;
 }
 
-/** 보통약관 시드 코드 → 트리 (알파Plus · 메리츠 두 벌 — 바탕 DB 에 시드로 들어 있다). */
+/** 보통약관 시드 코드 → 트리 (알파Plus 2604 · 2607 · 메리츠 세 벌 — 바탕 DB 에 시드로 들어 있다). */
 export const GENERALS = new Map(SEED.generals.map((g) => [g.code, g.tree]));
 
 export function generalTreeOf(code: string): DocumentNode {
@@ -174,6 +180,20 @@ export const BASE_ENUM_CODES = prefixCodes(
 );
 
 /** 상품마다 원문 대조 짝 — 픽스처 폴더 · 특약(책자 제목 → 픽스처) · 미리보기 별표 수와 1번 (real.test.ts 와 같은 짝). */
+/**
+ * 사람처럼 넣는 담보 — 알파Plus2607 질병 특약 「말기신부전증진단비보장」. 화면 E2E 의 시드 따라 치기(02 · 03 · 04 · 05)는 이것을 건너뛰고,
+ * `03b-human` 이 메뉴에서 담보 · 함수조항(준용규정(알파Plus 질병)) · 담보약관 템플릿을, `06-human` 이 상품 탑재 · 원문 대조를 사람이 하듯 친다.
+ * 담보 · 함수조항은 그 시드 코드의 맨 뒤라(COV000023 · C0071) 앞 단계가 다 친 뒤에 만들어도 같은 코드가 나온다.
+ */
+export const HUMAN = {
+  coverage: "a7-kidney",
+  clauseLabel: "준용규정(알파Plus 질병)",
+  document: "a7-kidney-doc",
+  product: "alpha2607",
+  special: ["말기신부전증진단비보장 특별약관", "말기신부전증진단비보장.md"] as [string, string],
+} as const;
+export const HUMAN_CLAUSE_CODE = SEED.clauses.find((c) => c.label === HUMAN.clauseLabel)!.code;
+
 export const REAL_FIXTURES: Record<string, { dir: string; appendices: number; firstAppendix: string; specials: [string, string][] }> = {
   "alpha-plus": {
     dir: "",
@@ -190,6 +210,28 @@ export const REAL_FIXTURES: Record<string, { dir: string; appendices: number; fi
       ["수술비(1-7종, 연간3회한)[상해]보장 특별약관", "수술비(1-7종,_연간3회한)[상해]보장.md"],
       ["갱신형 수술비(1-7종, 연간3회한)[상해]보장 특별약관", "갱신형_수술비(1-7종,_연간3회한)[상해]보장.md"],
       ["신화상치료비보장 특별약관", "신화상치료비보장.md"],
+    ],
+  },
+  // 05 는 사람처럼 넣는 말기신부전증(06)을 뺀 특약 14 를 대조한다 — 상해 10 은 2604 템플릿을 그대로 탑재(띄어쓰기 · 예시 표기는 알려진 차이)
+  alpha2607: {
+    dir: "알파2607",
+    appendices: 15,
+    firstAppendix: "장해분류표",
+    specials: [
+      ["일반상해사망보장 특별약관", "일반상해사망보장.md"],
+      ["일반상해사망보장 추가 특별약관", "일반상해사망보장_추가.md"],
+      ["일반상해80%이상후유장해 생활자금보장 특별약관", "일반상해80%이상후유장해_생활자금보장.md"],
+      ["골절(치아파절 제외)진단비Ⅱ보장 특별약관", "골절(치아파절_제외)진단비Ⅱ보장.md"],
+      ["일반상해50%이상후유장해 생활자금보장 특별약관", "일반상해50%이상후유장해_생활자금보장.md"],
+      ["골절수술비Ⅱ보장 특별약관", "골절수술비Ⅱ보장.md"],
+      ["중대한특정상해수술비보장 특별약관", "중대한특정상해수술비보장.md"],
+      ["수술비(1-7종, 연간3회한)[상해]보장 특별약관", "수술비(1-7종,_연간3회한)[상해]보장.md"],
+      ["갱신형 수술비(1-7종, 연간3회한)[상해]보장 특별약관", "갱신형_수술비(1-7종,_연간3회한)[상해]보장.md"],
+      ["신화상치료비보장 특별약관", "신화상치료비보장.md"],
+      ["5대고액치료비암진단비보장 특별약관", "5대고액치료비암진단비보장.md"],
+      ["양성뇌종양진단비Ⅱ보장 특별약관", "양성뇌종양진단비Ⅱ보장.md"],
+      ["만성당뇨합병증진단비보장 특별약관", "만성당뇨합병증진단비보장.md"],
+      ["중대한재생불량성빈혈진단비보장 특별약관", "중대한재생불량성빈혈진단비보장.md"],
     ],
   },
   meritz: {

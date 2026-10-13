@@ -29,13 +29,13 @@ import type { ArticleRefNode as ClauseArticleRef } from "../../src/domain/clause
 import type { Id } from "../../src/domain/types";
 import { boxSites, planBoxes, replaceBox, type BoxPlan } from "./boxes";
 import type { Discriminator } from "../../src/domain/catalog/types";
-import { applyClauseUse, articleRefParamsOf, clauseFromSource, inlineBody, optionCode, parameterize, placeOptions, reId, valueCode, type ClauseRecord } from "./clauses";
-import { APPENDICES, CLAUSES, PRODUCTS, SEED_DIR, type ClauseUse, type ProductTerms, type SlotOverlay, type SpecialSpec } from "./config";
+import { applyClauseUse, articleRefParamsOf, INNER_TARGETS, clauseFromSource, inlineBody, optionCode, parameterize, placeOptions, reId, valueCode, type ClauseRecord } from "./clauses";
+import { APPENDED_CLAUSE_KEYS, APPENDICES, CLAUSES, PRODUCTS, SEED_DIR, type ClauseUse, type ProductTerms, type SlotOverlay, type SpecialSpec } from "./config";
 import { parseTerms, type ParsedArticle, type ParsedDoc } from "./parse";
 import { applyArticleConds, applyInlineClauses, applyInlineConds, articlesOf } from "./overlay";
 import { basisDateClause } from "./renewal";
 import { inlinesFromText, leftoverReferences, type ArticleEntry, type ArticleIndex, type RefEnv } from "./refs";
-import { applyAlphaWaiver, applyMeritzWaiver, guardAlphaApplication, guardWaiverMentions, resolveWaiverCodes } from "./waiver";
+import { applyAlphaWaiver, applyMeritzWaiver, guardAlphaApplication, guardDiseaseApplication, guardWaiverMentions, resolveWaiverCodes } from "./waiver";
 
 const root = process.cwd();
 const read = (product: ProductTerms, file: string) => readFileSync(path.join(root, product.fixtureDir, file), "utf8");
@@ -255,14 +255,22 @@ function targetOfId(ix: ReturnType<typeof indexTree>, id: Id, where: string): Re
  * 문면의 조 참조 대상을 (조, P코드)로 — 자기 참조는 이 트리, 보통약관 참조는 대응 보통약관. 함수조항 참조의 조 참조 인자 연결도 같다(ADR-0083).
  * P코드를 매긴 뒤에 부른다.
  */
-function codeTargets(tree: DocumentNode, generalTree: DocumentNode | undefined, where: string): void {
+function codeTargets(tree: DocumentNode, generalTree: DocumentNode | undefined, where: string, clauseOf: (code: string) => ClauseRecord | undefined): void {
   const own = indexTree(tree);
   const general = generalTree ? indexTree(generalTree) : undefined;
   for (const e of own.nodes.values()) {
     for (const r of articleRefsOf(e.node)) {
       const ix = r.scope === "self" ? own : general;
       if (!ix) throw new Error(`${where}: 대응 보통약관 없이 보통약관 참조가 있다`);
-      r.targets = r.targets.map((t) => targetOfId(ix, t.articleId, where));
+      r.targets = r.targets.map((t) => {
+        // 함수조항 블록으로 바뀐 항을 가리키면 (블록 참조 코드, 안쪽 코드) — 펼친 함수조항 안쪽 (ADR-0077 결정 6)
+        const inner = r.scope === "self" && !ix.nodes.has(t.articleId) ? INNER_TARGETS.get(t.articleId) : undefined;
+        if (!inner) return targetOfId(ix, t.articleId, where);
+        const clause = clauseOf(inner.clauseCode);
+        const innerCode = clause && clauseCodeEntries(withClauseCodes(clause.body)).entries.find((x) => x.id === inner.innerId)?.code;
+        if (!innerCode) throw new Error(`${where}: 함수조항 ${inner.clauseCode} 안쪽 ${inner.innerId} 의 코드가 없다`);
+        return { ...targetOfId(ix, inner.refId, where), innerCode };
+      });
     }
   }
 }
@@ -344,11 +352,20 @@ function main(): void {
   const configured = [basisDateClause(), ...CLAUSES.map((c) => ({ key: c.key, record: buildClause(c, built, products, report) }))];
   // 알파Plus 납입면제 — 역할 함수조항 여섯 + 반복 템플릿(waiver.ts). 박스 참조가 선 뒤에 옮긴다(암 정의 칸 · 그림 박스). 보통약관이 쓰는 함수조항이다
   const alphaWaiver = applyAlphaWaiver(productOf("alpha").general, productOf("meritz").general);
+  // 같은 상품군의 다른 판(알파Plus2607) — 템플릿만 같은 모양으로 바꾸고 함수조항은 2604 것을 함께 쓴다(조 id 체계가 같아 참조가 그대로 풀린다).
+  // 그 판 원문으로 만든 함수조항은 버리되, 2604 것과 글이 다르면 보고한다(인수기준 알려진 차이로 적는다). 메리츠 변환(정의 원문을 옮긴다) 전에 읽는다
+  for (const p of products.filter((x) => x.product.line === "alpha" && x.product.code !== "alpha")) {
+    for (const own of applyAlphaWaiver(p.general, productOf("meritz").general)) {
+      const shared = alphaWaiver.find((w) => w.key === own.key);
+      if (!shared) throw new Error(`${p.product.code}: 납입면제 함수조항 ${own.key} 이 2604 에 없다`);
+      if (canonicalClause(own.record) !== canonicalClause(shared.record)) report.push(`[${p.product.general.code}] 납입면제 함수조항 「${shared.record.label}」 — 이 판 원문과 글 · 박스가 달라 2604 것을 쓴다(알려진 차이)`);
+    }
+  }
   // 메리츠 납입면제 — 같은 모양으로. 호 · 부활 문구는 알파Plus 것을 함께 쓰고, 정의 · 부가항 · 세부규정 · 무효는 메리츠 전용(글 · 가리키는 조가 다르다)
   const waiver = [...alphaWaiver, ...applyMeritzWaiver(productOf("meritz").general, alphaWaiver)];
   configured.push(...waiver);
   const generalKeys = new Set([...products.flatMap((p) => (p.product.general.clauses ?? []).map((u) => u.clause)), ...waiver.map((w) => w.key)]);
-  const clauses = orderClauses(configured, generalKeys);
+  const clauses = orderClauses(configured, generalKeys, APPENDED_CLAUSE_KEYS);
   const clauseByKey = new Map(configured.map((c) => [c.key, c.record]));
   // 함수조항 자리표 @key → 코드 — 보통약관의 납입면제 자리 · 담보약관의 문구 함수조항 오버레이
   for (const tree of [...built.values()].map((b) => b.tree)) resolveWaiverCodes(tree, (key) => clauseByKey.get(key)?.code);
@@ -366,17 +383,24 @@ function main(): void {
   }
 
   // 납입면제 조를 가리키는 문장 — 「납입면제 있음」 조건으로(납입면제 없는 상품이면 세 조와 함께 빠진다). 사용처 자리 대조(applyUses) 뒤에 고친다
-  const waiverArticles: Record<string, string[]> = { alpha: ["g-a27_1", "g-a27_2", "g-a27_3"], meritz: ["m-a29", "m-a30", "m-a31"] };
+  // 납입면제 세 조의 id — 상품군마다(같은 상품군의 판은 조 id 체계가 같다)
+  const waiverArticles: Record<ProductTerms["line"], string[]> = { alpha: ["g-a27_1", "g-a27_2", "g-a27_3"], meritz: ["m-a29", "m-a30", "m-a31"] };
+  const isWaiverOf = (line: ProductTerms["line"]) => (id: string) => waiverArticles[line].some((a) => id === a || id.startsWith(`${a}-`));
   for (const p of products) {
-    const ids = waiverArticles[p.product.code];
-    const isWaiver = (id: string) => ids.some((a) => id === a || id.startsWith(`${a}-`));
+    const isWaiver = isWaiverOf(p.product.line);
     guardWaiverMentions(p.general.tree, isWaiver, p.product.general.code);
     for (const spec of p.product.specials) guardWaiverMentions(p.specials.get(spec.code)!.tree, isWaiver, spec.code);
-    const application = clauseByKey.get(`${p.product.code}-application`);
-    if (!application) throw new Error(`${p.product.code}-application 함수조항 없음`);
-    if (p.product.code === "alpha") guardAlphaApplication(application, isWaiver);
-    else guardWaiverMentions({ id: application.code, kind: "document", title: "", children: application.body } as unknown as DocumentNode, isWaiver, application.code);
   }
+  // 준용규정 함수조항 — 상품군마다 한 번(같은 상품군의 판이 함께 쓴다)
+  const application = (key: string) => {
+    const c = clauseByKey.get(key);
+    if (!c) throw new Error(`${key} 함수조항 없음`);
+    return c;
+  };
+  guardAlphaApplication(application("alpha-application"), isWaiverOf("alpha"));
+  guardDiseaseApplication(application("alpha-application-disease"), isWaiverOf("alpha"));
+  const meritzApplication = application("meritz-application");
+  guardWaiverMentions({ id: meritzApplication.code, kind: "document", title: "", children: meritzApplication.body } as unknown as DocumentNode, isWaiverOf("meritz"), meritzApplication.code);
 
   // ── 조 자리 조건 · 검증
   const generals: { code: string; tree: DocumentNode }[] = [];
@@ -388,9 +412,10 @@ function main(): void {
     for (const b of p.specials.values()) b.tree = withCodes(b.tree);
   }
   // 조 참조 대상 — 변환 중간의 노드 id 를 (조, P코드)로 (ADR-0072 결정 3 · 10)
+  const clauseOfCode = (code: string) => clauses.find((c) => c.code === code);
   for (const p of products) {
-    codeTargets(p.general.tree, undefined, p.product.general.code);
-    for (const spec of p.product.specials) codeTargets(p.specials.get(spec.code)!.tree, p.general.tree, spec.code);
+    codeTargets(p.general.tree, undefined, p.product.general.code, clauseOfCode);
+    for (const spec of p.product.specials) codeTargets(p.specials.get(spec.code)!.tree, p.general.tree, spec.code, clauseOfCode);
   }
   for (const p of products) {
     issues.push(...validate(p.general.tree, "general").map((l) => `${p.product.general.code}: ${l}`));
@@ -405,17 +430,21 @@ function main(): void {
   }
   checkClauseOrder(clauses, generals);
 
+  // ── 쓰지 않는 박스를 빼고 코드를 다시 매긴다 — 같은 상품군의 판(2607) 보통약관의 박스 중 2604 함수조항이 대신하는 자리(납입면제 정의 · 그림)의 것
+  const catalog = JSON.parse(readFileSync(path.join(root, SEED_DIR, "discriminators.json"), "utf8")) as Discriminator[];
+  const generalIndexes = products.map((p) => indexTree(p.general.tree));
+  const finalClauses = clauses.map((c) => codeClauseTargets(parameterize(c, catalog), generalIndexes));
+  const boxRecords = compactBoxes(boxes.map((b) => b.record), [generals, documents, finalClauses]);
+
   // ── 출력
   const out = (file: string, data: unknown) => writeFileSync(path.join(root, SEED_DIR, file), `${JSON.stringify(data, null, 2)}\n`);
   out("appendices.json", APPENDICES.map((a) => ({ code: a.code, name: a.name })));
   out("generals.json", generals);
   out("documents.json", documents);
-  out("boxes.json", boxes.map((b) => b.record));
+  out("boxes.json", boxRecords);
   // 함수조항은 구분자를 직접 읽지 않고 인자만 읽는다 (최종 결정 2) — 직접 읽기를 「인자 + 기본 연결 = 그 구분자」로 기계 변환한다.
   // 구분자 카탈로그는 손으로 적는 시드(discriminators.json)다. 사용처는 기본 연결을 쓰므로 조립 결과가 그대로다
-  const catalog = JSON.parse(readFileSync(path.join(root, SEED_DIR, "discriminators.json"), "utf8")) as Discriminator[];
-  const generalIndexes = products.map((p) => indexTree(p.general.tree));
-  out("clauses.json", clauses.map((c) => codeClauseTargets(parameterize(c, catalog), generalIndexes)));
+  out("clauses.json", finalClauses);
 
   const stats = (tree: DocumentNode) => {
     const ix = indexTree(tree);
@@ -425,11 +454,34 @@ function main(): void {
   const all = [...generals, ...documents];
   for (const g of generals) console.log(`[general] ${g.tree.title}: ${stats(g.tree)}`);
   for (const d of documents) console.log(`[special] ${d.tree.title}: ${stats(d.tree)}`);
-  for (const b of boxes) console.log(`[box] ${b.record.code} ${b.record.name} — 쓰임 ${b.sites.length}`);
+  for (const b of boxRecords) console.log(`[box] ${b.code} ${b.name}`);
   for (const c of clauses) console.log(`[clause] ${c.code} ${c.label} (${c.mode}) — 쓰임 ${all.reduce((n, d) => n + JSON.stringify(d.tree).split(`"clauseCode":"${c.code}"`).length - 1, 0)}`);
   for (const line of report) console.log(`[report] ${line}`);
   for (const line of issues) console.log(`[invalid] ${line}`);
   if (issues.length > 0) process.exit(1);
+}
+
+/** 함수조항 비교용 정규형 — 공백을 지운 JSON (원문 대조가 공백을 보지 않는다). */
+function canonicalClause(clause: ClauseRecord): string {
+  return JSON.stringify(clause).replace(/\s+/g, "");
+}
+
+/**
+ * 쓰지 않는 박스를 빼고 남은 것의 코드를 앞에서부터 다시 매긴다(순서는 그대로 — 보통약관이 놓는 박스가 앞). `holders` 의 박스 참조 코드를 제자리에서 고친다.
+ */
+export function compactBoxes<T extends { code: string }>(records: readonly T[], holders: unknown[]): T[] {
+  const used = new Set([...JSON.stringify(holders).matchAll(/"boxCode":"(BX\d+)"/g)].map((m) => m[1]));
+  const kept = records.filter((r) => used.has(r.code));
+  const rename = new Map(kept.map((r, i) => [r.code, `BX${String(i + 1).padStart(6, "0")}`]));
+  const visit = (n: unknown): void => {
+    if (Array.isArray(n)) return n.forEach(visit);
+    if (!n || typeof n !== "object") return;
+    const o = n as Record<string, unknown>;
+    if (typeof o.boxCode === "string" && rename.has(o.boxCode)) o.boxCode = rename.get(o.boxCode);
+    Object.values(o).forEach(visit);
+  };
+  visit(holders);
+  return kept.map((r) => ({ ...r, code: rename.get(r.code)! }));
 }
 
 /** 보통약관 조를 가리키는 함수조항인가 — 범위 없는 조 참조가 있다 (제 항 · 사용처 위치 참조는 보통약관 없이도 성립한다). */
@@ -448,11 +500,14 @@ function refsGeneralArticle(clause: ClauseRecord): boolean {
  * 함수조항 코드를 적재 순서로 매긴다 — 보통약관이 쓰는 것 · 담보약관만 쓰는 것 · 보통약관 조를 가리키는 것 (각각 설정 순).
  * 보통약관 가져오기는 쓰는 함수조항이 있어야, 보통약관 조를 가리키는 함수조항은 그 조가 있어야 검사 ① 을 통과한다.
  */
-function orderClauses(configured: readonly { key: string; record: ClauseRecord }[], generalKeys: ReadonlySet<string>): ClauseRecord[] {
+function orderClauses(configured: readonly { key: string; record: ClauseRecord }[], generalKeys: ReadonlySet<string>, appended: ReadonlySet<string>): ClauseRecord[] {
+  const early = configured.filter((c) => !appended.has(c.key) || generalKeys.has(c.key));
   const ordered: ClauseRecord[] = [
-    ...configured.filter((c) => generalKeys.has(c.key)).map((c) => c.record),
-    ...configured.filter((c) => !generalKeys.has(c.key) && !refsGeneralArticle(c.record)).map((c) => c.record),
-    ...configured.filter((c) => !generalKeys.has(c.key) && refsGeneralArticle(c.record)).map((c) => c.record),
+    ...early.filter((c) => generalKeys.has(c.key)).map((c) => c.record),
+    ...early.filter((c) => !generalKeys.has(c.key) && !refsGeneralArticle(c.record)).map((c) => c.record),
+    ...early.filter((c) => !generalKeys.has(c.key) && refsGeneralArticle(c.record)).map((c) => c.record),
+    // 뒤에 더한 상품이 처음 쓰는 함수조항 — 맨 뒤(앞 코드를 밀지 않는다). 담보약관만 쓰므로 보통약관 뒤에 만들어도 된다
+    ...configured.filter((c) => appended.has(c.key) && !generalKeys.has(c.key)).map((c) => c.record),
   ];
   ordered.forEach((c, i) => (c.code = `C${String(i + 1).padStart(4, "0")}`));
   return ordered;

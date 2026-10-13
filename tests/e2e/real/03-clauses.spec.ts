@@ -1,7 +1,7 @@
 import { expect, test } from "../_lib/fixtures";
 import { NO_COORD, arrive, login, open } from "./_lib/app";
 import { ClauseAuthoringDriver } from "./_lib/driver";
-import { ALL_GENERAL_ANCESTORS, BASE_BOX_CODES, BASE_CLAUSE_CODES, SEED } from "./_lib/seed";
+import { ALL_GENERAL_ANCESTORS, BASE_BOX_CODES, BASE_CLAUSE_CODES, HUMAN_CLAUSE_CODE, SEED } from "./_lib/seed";
 
 /**
  * ★ 실물 재현(화면) ③ 박스 · 함수조항 — 정적 마스터 박스(이름 · 제목 · 줄)와 함수조항(유형 · 이름 · 옵션 · 본문(글 · 슬롯 · 별표 참조 · 조 참조 · 옵션 자리 · 문장 안 조건)).
@@ -37,7 +37,8 @@ test.describe.serial("실물 재현(화면) ③ 정적 마스터 박스", () => 
 });
 
 test.describe.serial("실물 재현(화면) ③ 함수조항", () => {
-  for (const spec of SEED.clauses.filter((c) => !BASE_CLAUSE_CODES.has(c.code))) {
+  // 사람처럼 넣는 함수조항(준용규정(알파Plus 질병) — 맨 뒤 코드)은 03b-human 이 친다
+  for (const spec of SEED.clauses.filter((c) => !BASE_CLAUSE_CODES.has(c.code) && c.code !== HUMAN_CLAUSE_CODE)) {
     test(`${spec.code} ${spec.label}`, NO_COORD, async ({ page, ev }) => {
       test.setTimeout(180_000);
       const driver = new ClauseAuthoringDriver(page, ancestors);

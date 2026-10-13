@@ -473,5 +473,246 @@
         ]
       }
     ]
+  },
+  {
+    "code": "alpha2607",
+    "name": "알파Plus보장보험2607",
+    "general": "alpha2607-general",
+    "namingTemplate": "[A0001] [담보명] [A0002]",
+    "values": [
+      {
+        "path": "disclosure.avg_rate",
+        "value": 2.5
+      },
+      {
+        "path": "feature.contract_kind",
+        "value": "V01"
+      },
+      {
+        "path": "feature.renewable",
+        "value": false
+      },
+      {
+        "path": "feature.fetal",
+        "value": false
+      },
+      {
+        "path": "feature.group_contract",
+        "value": false
+      },
+      {
+        "path": "feature.notice_kind",
+        "value": "V01"
+      }
+    ],
+    "planOptions": [
+      {
+        "code": "type-1",
+        "axis": "type",
+        "number": 1,
+        "name": "보험료 납입면제 미적용형",
+        "planTypeCode": "waiver",
+        "values": [
+          {
+            "path": "waiver.applies",
+            "value": false
+          },
+          {
+            "path": "waiver.reasons",
+            "value": []
+          }
+        ]
+      },
+      {
+        "code": "type-2",
+        "axis": "type",
+        "number": 2,
+        "name": "보험료 납입면제형",
+        "planTypeCode": "waiver",
+        "values": [
+          {
+            "path": "waiver.applies",
+            "value": true
+          },
+          {
+            "path": "waiver.reasons",
+            "value": [
+              "V01",
+              "V03",
+              "V04",
+              "V05",
+              "V06",
+              "V07",
+              "V08",
+              "V09",
+              "V10",
+              "V11"
+            ]
+          }
+        ]
+      },
+      {
+        "code": "form-1",
+        "axis": "form",
+        "number": 1,
+        "name": "해약환급금 지급형",
+        "planTypeCode": "no_surrender",
+        "values": [
+          {
+            "path": "no_surrender.type",
+            "value": "V01"
+          }
+        ]
+      },
+      {
+        "code": "form-2",
+        "axis": "form",
+        "number": 2,
+        "name": "해약환급금미지급형(납입후50%)",
+        "planTypeCode": "no_surrender",
+        "values": [
+          {
+            "path": "no_surrender.type",
+            "value": "V03"
+          }
+        ]
+      }
+    ],
+    "plans": [
+      [
+        "type-1",
+        "form-1"
+      ],
+      [
+        "type-1",
+        "form-2"
+      ],
+      [
+        "type-2",
+        "form-1"
+      ],
+      [
+        "type-2",
+        "form-2"
+      ]
+    ],
+    "mounts": [
+      {
+        "code": "base",
+        "coverage": "base-disability80",
+        "section": "base",
+        "attributes": []
+      },
+      {
+        "code": "death-basic",
+        "coverage": "death",
+        "section": "special",
+        "attributes": [
+          {
+            "kindCode": "A0002",
+            "valueCode": "1"
+          }
+        ]
+      },
+      {
+        "code": "death-addon",
+        "coverage": "death",
+        "section": "special",
+        "attributes": [
+          {
+            "kindCode": "A0002",
+            "valueCode": "2"
+          }
+        ]
+      },
+      {
+        "code": "living80",
+        "coverage": "living80",
+        "section": "special",
+        "attributes": []
+      },
+      {
+        "code": "fracture",
+        "coverage": "fracture",
+        "section": "special",
+        "attributes": []
+      },
+      {
+        "code": "living50",
+        "coverage": "living50",
+        "section": "special",
+        "attributes": []
+      },
+      {
+        "code": "fracture-surgery",
+        "coverage": "fracture-surgery",
+        "section": "special",
+        "attributes": []
+      },
+      {
+        "code": "major-injury-surgery",
+        "coverage": "major-injury-surgery",
+        "section": "special",
+        "attributes": []
+      },
+      {
+        "code": "surgery17",
+        "coverage": "surgery17",
+        "section": "special",
+        "attributes": [
+          {
+            "kindCode": "A0001",
+            "valueCode": "1"
+          }
+        ]
+      },
+      {
+        "code": "surgery17-renew",
+        "coverage": "surgery17",
+        "section": "special",
+        "attributes": [
+          {
+            "kindCode": "A0001",
+            "valueCode": "2"
+          }
+        ]
+      },
+      {
+        "code": "burn",
+        "coverage": "burn",
+        "section": "special",
+        "attributes": []
+      },
+      {
+        "code": "a7-cancer5",
+        "coverage": "a7-cancer5",
+        "section": "special",
+        "attributes": []
+      },
+      {
+        "code": "a7-tumor",
+        "coverage": "a7-tumor",
+        "section": "special",
+        "attributes": []
+      },
+      {
+        "code": "a7-diabetes",
+        "coverage": "a7-diabetes",
+        "section": "special",
+        "attributes": []
+      },
+      {
+        "code": "a7-anemia",
+        "coverage": "a7-anemia",
+        "section": "special",
+        "attributes": []
+      },
+      {
+        "code": "a7-kidney",
+        "coverage": "a7-kidney",
+        "section": "special",
+        "attributes": []
+      }
+    ]
   }
 ]

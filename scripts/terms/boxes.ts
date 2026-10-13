@@ -137,7 +137,7 @@ export function planBoxes(sites: readonly BoxSite[]): BoxPlan[] {
     const first = c.variants[0].box;
     c.label = first.title ? `【${first.title}】` : `박스 — ${snippet(first.lines[0] ?? "")}`;
   }
-  const PRODUCT: Record<string, string> = { alpha: "알파Plus", meritz: "메리츠" };
+  const PRODUCT: Record<string, string> = { alpha: "알파Plus", meritz: "메리츠", alpha2607: "알파Plus2607" };
   const dedupe = (pick: (c: (typeof clusters)[number]) => string) => {
     const groups = new Map<string, (typeof clusters)[number][]>();
     for (const c of clusters) groups.set(c.label, [...(groups.get(c.label) ?? []), c]);
