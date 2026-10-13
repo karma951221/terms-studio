@@ -677,10 +677,11 @@ export function guardWaiverMentions(tree: DocumentNode, waiver: (id: Id) => bool
 
 /**
  * 문장 안 조건으로 감쌀 수 없는 납입면제 조 참조(납입면제 조만 가리키는 참조 — 특약 자체의 납입면제 조가 보통약관 제27조의3 정의를 가리키는 호 등)가 든
- * 호 · 항을 통째로 「납입면제 있음」 조 자리 · 호 자리 IF 로 감싼다 — 납입면제 없는 상품이면 그 호 · 항이 빠진다(알려진 한계: 남은 항의 「다음 중 어느 하나」 뒤가 빈다).
+ * 호 · 항을 통째로 「납입면제 있음」 조 자리 · 호 자리 IF 로 감싼다 — 납입면제 없는 상품이면 그 호 · 항이 빠진다.
+ * 특약 자체의 납입면제 조 · 소제목 자리는 `guardOwnWaiver` 가 먼저 통째로 감싸 여기서는 건너뛴다(`skip` — 2026-10-14, 「다음 중 어느 하나」 뒤가 비던 한계를 지웠다).
  * 자동 탑재 특약만 쓴다(`guardWaiverMentions` 앞). 준용규정 꼴(「…은 제외하며, …도 제외합니다」 · 「또한, …」 · 「또는 …」)과 다른 조와 섞인 나열은 건드리지 않는다. 감싼 수를 돌려준다.
  */
-export function guardWaiverBlocks(tree: DocumentNode, waiver: (id: Id) => boolean): number {
+export function guardWaiverBlocks(tree: DocumentNode, waiver: (id: Id) => boolean, skip: (id: Id) => boolean = () => false): number {
   let count = 0;
   const onlyWaiver = (xs: readonly InlineNode[]) => {
     const at = xs.findIndex((c) => c.kind === "articleRef" && c.targets.length > 0 && c.targets.every((t) => waiver(t.articleId)));
@@ -695,7 +696,8 @@ export function guardWaiverBlocks(tree: DocumentNode, waiver: (id: Id) => boolea
     return { id, kind: "condBlock", branches: [{ id: `${id}-b`, when: WAIVER_PRESENT_ROW, children: [node as BlockNode] }] } as CondBlockNode;
   };
   for (const a of allArticles(tree)) {
-    if (waiver(a.id)) continue;
+    // 특약 자체의 납입면제 조(`guardOwnWaiver` 가 조째 감쌌다)는 함께 빠진다
+    if (waiver(a.id) || skip(a.id)) continue;
     a.children = a.children.map((c) => {
       if (c.kind !== "paragraph") return c;
       c.items = c.items?.map((it) => (it.kind === "item" && onlyWaiver(it.children) ? (wrap(it) as unknown as typeof it) : it));
@@ -703,6 +705,51 @@ export function guardWaiverBlocks(tree: DocumentNode, waiver: (id: Id) => boolea
     });
   }
   return count;
+}
+
+/** 특약 자체의 납입면제 조 제목 — 2대질환 주요치료비 · 비급여 암 주요치료비 등(원문 「보험료의 납입면제」 · 「납입면제에 관한 세부규정」). */
+const OWN_WAIVER_TITLES = new Set(["보험료의 납입면제", "납입면제에 관한 세부규정"]);
+
+/**
+ * 특약 자체의 납입면제(자동 탑재 특약) — 납입면제 없는 상품(종 축 1종만)이면 통째로 빠진다(2026-10-14).
+ * - 조째: 제목이 「보험료의 납입면제」 · 「납입면제에 관한 세부규정」인 조를 조 자리 IF 「납입면제 있음」으로.
+ * - 통합형 특약: 세부보장 안 「N.(보험료의 납입면제)」 · 「N.(납입면제에 관한 세부규정)」 소제목 자리(변환기가 표시한 머리 박스 · 항 — `marked`,
+ *   박스 참조 · 함수조항 참조가 된 자리는 원래 노드 id + 「-k」)를 잇닿은 블록째 조 안 IF 로.
+ * 감싼 자리 안 노드(변환 중간 id)인지 가리는 술어를 돌려준다 — 그 자리를 가리키는 다른 문장을 고칠 때(`guardWaiverMentions`) 쓴다.
+ */
+export function guardOwnWaiver(tree: DocumentNode, marked: ReadonlySet<Id>): (id: Id) => boolean {
+  const roots: Id[] = [];
+  const cond = (id: Id, children: unknown[]) => ({ id, kind: "condBlock", branches: [{ id: `${id}-b`, when: WAIVER_PRESENT_ROW, children }] });
+  const base = (id: Id) => id.replace(/-k$/, "");
+  const visit = (list: unknown[]): void => {
+    list.forEach((c, i) => {
+      const o = c as { id: Id; kind: string; title?: string; children?: unknown[]; branches?: { children: unknown[] }[] };
+      if (o.kind === "section") return visit(o.children ?? []);
+      if (o.kind === "condBlock") return o.branches?.forEach((b) => visit(b.children));
+      if (o.kind !== "article") return;
+      if (OWN_WAIVER_TITLES.has(o.title ?? "")) {
+        roots.push(o.id);
+        list[i] = cond(`${o.id}-if-own-waiver`, [o]);
+        return;
+      }
+      const a = o as unknown as ArticleNode;
+      const out: unknown[] = [];
+      for (let k = 0; k < a.children.length; k++) {
+        if (!marked.has(base(a.children[k].id))) {
+          out.push(a.children[k]);
+          continue;
+        }
+        const run: BlockNode[] = [];
+        while (k < a.children.length && marked.has(base(a.children[k].id))) run.push(a.children[k++]);
+        k--;
+        roots.push(...run.map((b) => base(b.id)));
+        out.push(cond(`${run[0].id}-if-own-waiver`, run));
+      }
+      a.children = out as BlockNode[];
+    });
+  };
+  visit(tree.children);
+  return (id) => roots.some((r) => id === r || id.startsWith(`${r}-`));
 }
 
 /**

@@ -4,7 +4,9 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { RENEWABLE_PRODUCT } from "./renewal";
-import { guardExcludeSentence, SURRENDER_PAYING, WAIVER_PRESENT } from "./waiver";
+import type { ArticleNode, DocumentNode } from "../../src/domain/document/nodes";
+
+import { guardExcludeSentence, guardOwnWaiver, SURRENDER_PAYING, WAIVER_PRESENT } from "./waiver";
 
 /**
  * 납입면제 재모델링의 변환 결과(시드 JSON) — 템플릿 모양 · 사유별 호 · 정의 함수조항(ADR-0086) · 역할 함수조항 본문 · 호를 가리키는 참조.
@@ -309,5 +311,46 @@ describe("guardExcludeSentence — 준용규정 「…은 제외하며, 1종 …
     (p.children[4] as { text: string }).text = "은 제외합니다.";
     expect(guardExcludeSentence(p, 3)).toBe(false);
     expect(p.children).toHaveLength(5);
+  });
+});
+
+describe("guardOwnWaiver — 특약 자체의 납입면제(조째 · 통합형 특약의 소제목 자리)를 「납입면제 있음」으로 감싼다", () => {
+  const p = (id: string) => ({ id, kind: "paragraph", children: [{ id: `${id}-x1`, kind: "text", text: id }] });
+  const doc = (): DocumentNode =>
+    ({
+      id: "s-doc",
+      kind: "document",
+      title: "시험 특별약관",
+      children: [
+        { id: "s-a1", kind: "article", title: "보험금의 지급사유", children: [p("s-a1-p1")] },
+        { id: "s-a9", kind: "article", title: "보험료의 납입면제", children: [p("s-a9-p1")] },
+        { id: "s-a10", kind: "article", title: "납입면제에 관한 세부규정", children: [p("s-a10-p1")] },
+        {
+          id: "s-a3",
+          kind: "article",
+          title: "세부보장에 관한 사항",
+          children: [p("s-a3-p1"), { id: "s-a3-b2-k", kind: "boxRef", boxCode: "BX000001" }, p("s-a3-p2"), { id: "s-a3-p3-k", kind: "clauseBlockRef", clauseCode: "C0001", options: {} }, { id: "s-a3-b4-k", kind: "boxRef", boxCode: "BX000002" }, p("s-a3-p4")],
+        },
+      ],
+    }) as unknown as DocumentNode;
+  /** 변환기가 표시한 통합형 특약 납입면제 소제목 자리 — 머리 박스 · 항(함수조항이 된 항은 원래 항 id). */
+  const marked = new Set(["s-a3-b2", "s-a3-p2", "s-a3-p3"]);
+
+  it("조째(제목 「보험료의 납입면제」 · 「납입면제에 관한 세부규정」)는 조 자리 IF, 표시한 소제목 자리는 잇닿은 블록째 IF", () => {
+    const tree = doc();
+    guardOwnWaiver(tree, marked);
+    const kids = tree.children as unknown as { id: string; kind: string; branches?: { when: string; children: { id: string }[] }[] }[];
+    expect(kids.map((c) => c.kind)).toEqual(["article", "condBlock", "condBlock", "article"]);
+    expect(kids[1].branches).toEqual([{ id: "s-a9-if-own-waiver-b", when: `${WAIVER_PRESENT} = true`, children: [expect.objectContaining({ id: "s-a9" })] }]);
+    const integrated = (tree.children[3] as ArticleNode).children as unknown as { id: string; kind: string; branches?: { when: string; children: { id: string }[] }[] }[];
+    expect(integrated.map((c) => c.id)).toEqual(["s-a3-p1", "s-a3-b2-k-if-own-waiver", "s-a3-b4-k", "s-a3-p4"]);
+    expect(integrated[1].branches![0].when).toBe(`${WAIVER_PRESENT} = true`);
+    expect(integrated[1].branches![0].children.map((c) => c.id)).toEqual(["s-a3-b2-k", "s-a3-p2", "s-a3-p3-k"]);
+  });
+
+  it("감싼 자리 안 노드인지 가리는 술어를 돌려준다 — 그 자리를 가리키는 문장을 고칠 때", () => {
+    const inside = guardOwnWaiver(doc(), marked);
+    expect(["s-a9", "s-a9-p1", "s-a10-p1-i2", "s-a3-p2", "s-a3-p3", "s-a3-p3-i1"].every(inside)).toBe(true);
+    expect(["s-a1", "s-a3", "s-a3-p1", "s-a3-p4", "s-a9x", "s-a3-p20"].some(inside)).toBe(false);
   });
 });

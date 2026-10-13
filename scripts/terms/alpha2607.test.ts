@@ -166,6 +166,31 @@ describe("통합형 특약 — 세부보장 안 「제N항」은 그 소제목(�
   });
 });
 
+describe("특약 자체의 납입면제 — 「납입면제 있음」 IF 로 통째 감싼다(납입면제 없는 상품이면 빠진다, 2026-10-14)", () => {
+  const WHEN = "D0002 = true"; // 구분자 「납입면제 있음」
+  const ownIf = (x: Json) => x.kind === "condBlock" && String(x.id).endsWith("-if-own-waiver");
+
+  it("조째 — 「보험료의 납입면제」 · 「납입면제에 관한 세부규정」 조는 모두 조 자리 IF 안에 있다", () => {
+    const docs = documents.filter((d) => all(d.tree, (x) => x.kind === "article" && (x.title === "보험료의 납입면제" || x.title === "납입면제에 관한 세부규정")).length > 0);
+    expect(docs.length).toBe(5);
+    for (const d of docs) {
+      const wrapped = all(d.tree, ownIf);
+      const inside = new Set(wrapped.flatMap((w) => all(w, (x) => x.kind === "article").map((a) => a.id)));
+      for (const a of all(d.tree, (x) => x.kind === "article" && (x.title === "보험료의 납입면제" || x.title === "납입면제에 관한 세부규정"))) expect(inside, `${d.tree.title} ${a.id}`).toContain(a.id);
+      for (const w of wrapped) expect((w.branches as { when: string }[]).map((b) => b.when)).toEqual([WHEN]);
+    }
+  });
+
+  it("통합형 특약 — 세부보장마다 납입면제 소제목 자리(머리 박스부터)가 조 안 IF 하나", () => {
+    const d = documents.find((x) => x.tree.title === "암 주요치료비(연간1회한, 10년간)보장 특별약관")!;
+    const article = all(d.tree, (x) => x.kind === "article" && x.title === "세부보장에 관한 사항")[0];
+    const wrapped = (article.children ?? []).filter(ownIf);
+    // 세부보장 둘 — 소제목 「보험료의 납입면제」 · 「납입면제에 관한 세부규정」이 잇닿아 세부보장마다 IF 하나
+    expect(wrapped).toHaveLength(2);
+    for (const w of wrapped) expect((w.branches as { when: string; children: Json[] }[])[0].children[0].kind).toBe("boxRef");
+  });
+});
+
 describe("박스 — 쓰지 않는 박스가 없다", () => {
   it("모든 박스가 문면 · 함수조항 어딘가에 놓인다", () => {
     const text = JSON.stringify([generals, documents, clauses]);

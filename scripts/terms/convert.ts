@@ -36,7 +36,7 @@ import { parseTerms, type ParsedArticle, type ParsedDoc } from "./parse";
 import { applyArticleConds, applyBoxConds, applyInlineClauses, applyInlineConds, articlesOf } from "./overlay";
 import { basisDateClause } from "./renewal";
 import { inlinesFromText, leftoverReferences, type ArticleEntry, type ArticleIndex, type ParagraphGroup, type RefEnv } from "./refs";
-import { applyAlphaWaiver, applyMeritzWaiver, guardAlphaApplication, guardDiseaseApplication, guardExcludeSentence, guardWaiverBlocks, guardWaiverMentions, resolveWaiverCodes } from "./waiver";
+import { applyAlphaWaiver, applyMeritzWaiver, guardAlphaApplication, guardDiseaseApplication, guardExcludeSentence, guardOwnWaiver, guardWaiverBlocks, guardWaiverMentions, resolveWaiverCodes } from "./waiver";
 
 const root = process.cwd();
 const read = (product: ProductTerms, file: string) => readFileSync(path.join(root, product.fixtureDir, file), "utf8");
@@ -47,6 +47,8 @@ export interface Built {
   index: ArticleIndex;
   /** 조 id → 원문 번호 (슬롯 오버레이가 조를 찾을 때). */
   numberOf: Map<Id, string>;
+  /** 통합형 특약의 특약 자체 납입면제 소제목 자리 — 조 직속 블록(머리 박스 · 항 · 표) id (`restartGroups`). 납입면제 없는 상품이면 빠진다(`guardOwnWaiver`). */
+  waiverBlocks?: Set<Id>;
   /** 자동 탑재 특약 — 원문 제목(갱신형 짝이면 갱신형 쪽도) · 소멸 조에서 읽은 보험금명(담보 값 D0001). */
   auto?: { title: string; renewalTitle?: string; claim?: string };
 }
@@ -57,7 +59,7 @@ function textCell(id: Id, text: string): InlineNode[] {
 }
 
 /** 소제목 머리 박스 — 「**3.(보장의 소멸)**」 · 머리말이 붙은 「5.(보험료의 납입면제)회사는 …」. 소제목 번호. */
-const SUBSECTION_HEAD = /^\**(\d+)\.\(/;
+const SUBSECTION_HEAD = /^\**(\d+)\.\(((?:[^()]|\([^()]*\))*)\)/;
 /** 종형 머리 박스 — 한 줄 「[2종(보험료 납입면제형)]」 · 「[1형(해약환급금 지급형)]」. 안쪽 글. */
 const VARIANT_HEAD = /^\[([^[\]]+)\]$/;
 
@@ -73,6 +75,7 @@ export interface StructureOptions {
 export function buildStructure(doc: ParsedDoc, prefix: string, title: string, articleFilter?: (a: ParsedArticle) => boolean, opts: StructureOptions = {}): Built {
   const index: ArticleIndex = { byNumber: new Map() };
   const numberOf = new Map<Id, string>();
+  const waiverBlocks = new Set<Id>();
   const withSections = doc.sections.length > 1 || doc.sections[0]?.title !== "";
 
   const article = (a: ParsedArticle): ArticleNode => {
@@ -85,13 +88,23 @@ export function buildStructure(doc: ParsedDoc, prefix: string, title: string, ar
     // 항 번호 무리 (restartGroups) — 머리 박스가 선 뒤 첫 항이 새 무리를 연다
     const groups: ParagraphGroup[] = [];
     let head: { section?: number; variant?: string } | undefined;
+    // 특약 자체 납입면제 소제목 자리(「N.(보험료의 납입면제)」 · 「N.(납입면제에 관한 세부규정)」 — 형 머리 [1형(…)] · 다음 소제목에서 끝난다)
+    let inWaiver = false;
+    let isHead = false;
     for (const line of a.body) {
+      isHead = false;
       if (opts.restartGroups && line.kind === "box") {
         const text = [line.title, ...line.lines].join(" ").trim();
         const section = SUBSECTION_HEAD.exec(text);
         const variant = line.title === "" && line.lines.length === 1 ? VARIANT_HEAD.exec(line.lines[0].trim()) : null;
-        if (section) head = { section: Number(section[1]) };
-        else if (variant) head = { ...head, variant: variant[1] };
+        if (section) {
+          head = { section: Number(section[1]) };
+          inWaiver = /납입면제/.test(section[2]);
+        } else if (variant) {
+          head = { ...head, variant: variant[1] };
+          if (/^\d+형/.test(variant[1])) inWaiver = false;
+        }
+        isHead = Boolean(section || variant);
       }
       if (line.kind === "paragraph") {
         const pid = `${aid}-p${entry.paragraphIds.length + 1}`;
@@ -108,6 +121,7 @@ export function buildStructure(doc: ParsedDoc, prefix: string, title: string, ar
         }
         entry.paragraphIds.push(pid);
         entry.itemIds.set(pid, []);
+        if (inWaiver) waiverBlocks.add(pid);
         children.push(paragraph);
         item = undefined;
         continue;
@@ -157,7 +171,9 @@ export function buildStructure(doc: ParsedDoc, prefix: string, title: string, ar
             line.lines.length === 0 && line.title !== ""
             ? { id: `${aid}-b${staticSeq}`, kind: "box", title: "", lines: [`【${line.title}】`] }
             : { id: `${aid}-b${staticSeq}`, kind: "box", title: line.title, lines: line.lines };
-      if (paragraph?.items && paragraph.items.length > 0) paragraph.items.push(node);
+      if (inWaiver) waiverBlocks.add(node.id);
+      // 소제목 · 형 머리 박스는 앞 항의 호 목록에 넣지 않고 조 직속에 — 무리 경계가 항 밖에 선다(찍히는 순서는 같다)
+      if (paragraph?.items && paragraph.items.length > 0 && !isHead) paragraph.items.push(node);
       else children.push(node);
     }
     if (groups.length > 1) entry.groups = groups;
@@ -174,7 +190,7 @@ export function buildStructure(doc: ParsedDoc, prefix: string, title: string, ar
       top.push(section);
     } else top.push(...articles);
   });
-  return { tree: { id: `${prefix}-doc`, kind: "document", title, children: top }, index, numberOf };
+  return { tree: { id: `${prefix}-doc`, kind: "document", title, children: top }, index, numberOf, ...(waiverBlocks.size > 0 ? { waiverBlocks } : {}) };
 }
 
 /** 2차 — 항·호·목의 평문을 인라인 노드로. 조건 가지 안의 평문도 같은 규칙으로 (가지 id 기준 채번). */
@@ -443,9 +459,19 @@ function main(): void {
   const autoStats = applyAutoClauses(products, CLAUSES.map((c) => clauseByKey.get(c.key)!), clauses, report, isWaiverOf("alpha"));
   for (const p of products) {
     const isWaiver = isWaiverOf(p.product.line);
-    for (const spec of p.product.specials.filter((s) => s.auto)) guardWaiverBlocks(p.specials.get(spec.code)!.tree, isWaiver);
+    // 특약 자체의 납입면제(조째 · 통합형 특약의 소제목 자리)는 「납입면제 있음」으로 통째 감싸고, 그 자리를 가리키는 문장도 함께 고친다
+    const own = new Map<string, (id: Id) => boolean>();
+    for (const spec of p.product.specials.filter((s) => s.auto)) {
+      const b = p.specials.get(spec.code)!;
+      const inside = guardOwnWaiver(b.tree, b.waiverBlocks ?? new Set());
+      own.set(spec.code, inside);
+      guardWaiverBlocks(b.tree, isWaiver, inside);
+    }
     guardWaiverMentions(p.general.tree, isWaiver, p.product.general.code);
-    for (const spec of p.product.specials) guardWaiverMentions(p.specials.get(spec.code)!.tree, isWaiver, spec.code);
+    for (const spec of p.product.specials) {
+      const inside = own.get(spec.code);
+      guardWaiverMentions(p.specials.get(spec.code)!.tree, inside ? (id) => isWaiver(id) || inside(id) : isWaiver, spec.code);
+    }
   }
   // 준용규정 함수조항 — 상품군마다 한 번(같은 상품군의 판이 함께 쓴다)
   const application = (key: string) => {
@@ -640,7 +666,7 @@ function applyAutoClauses(products: readonly BuiltProduct[], candidates: readonl
     });
     const body = reId(blocks, `c-${key}`);
     const params = articleRefParamsOf(body);
-    // 문장 안 조건으로 가를 수 없는 납입면제 조 참조(특약 자체의 납입면제 조)가 든 조는 함수조항으로 두지 않는다 — 문면에서 호 · 항째 감싼다(guardWaiverBlocks)
+    // 문장 안 조건으로 가를 수 없는 납입면제 조 참조(특약 자체의 납입면제 조)가 든 조는 함수조항으로 두지 않는다 — 문면에서 조째 · 소제목째(guardOwnWaiver) 또는 호 · 항째(guardWaiverBlocks) 감싼다
     try {
       guardClauseWaiver({ code: key, label, mode: "block", description: "", body: structuredClone(body), options: [] }, isWaiver);
     } catch {
@@ -953,6 +979,7 @@ function buildSpecial(spec: SpecialSpec, product: ProductTerms, generalParsed: P
         const renewal = buildStructure(renewalParsed, `${spec.idPrefix}r`, renewalParsed.title, undefined, { restartGroups: true });
         convertText(renewal, general.index, product.appendixNumbers, report, true);
         built.tree = mergeRenewal(built.tree, renewal.tree, RENEWAL, spec.idPrefix);
+        if (renewal.waiverBlocks) built.waiverBlocks = new Set([...(built.waiverBlocks ?? []), ...renewal.waiverBlocks]);
         for (const [id, n] of renewal.numberOf) built.numberOf.set(id, `r${n}`);
         built.auto.renewalTitle = renewalParsed.title;
       }

@@ -155,6 +155,15 @@ describe("buildStructure · convertText — 통합형 특약의 소제목 · 종
     expect(refs(paragraphs[11])).toEqual([[paragraphs[9].items![1].id]]);
   });
 
+  it("특약 자체 납입면제 소제목(「N.(보험료의 납입면제)」 · 「N.(납입면제에 관한 세부규정)」)의 머리 박스 · 항을 표시한다 — 다음 소제목 · 형 머리([1형])에서 끝난다", () => {
+    // 실물처럼 「7.(보장의 해약환급금)…」 머리는 앞 호에 붙고(pdfmd) 형 머리 [1형] 박스만 선 꼴
+    const withRefund = `${md}\n\`\`\`용어풀이\n[1형(해약환급금 지급형)]\n\`\`\`\n\n@ 해약환급금을 지급합니다.\n\n\`\`\`용어풀이\n[2형(해약환급금미지급형(납입후50%))]\n\`\`\`\n\n@ 해약환급금을 지급하지 않습니다.\n`;
+    const built = buildStructure(parseTerms(withRefund), "t", "시험", undefined, { restartGroups: true });
+    const article = built.tree.children[0] as ArticleNode;
+    const marked = article.children.filter((c) => built.waiverBlocks?.has(c.id)).map((c) => (c.kind === "paragraph" ? `p:${(c.children[0] as { text: string }).text.slice(0, 6)}` : c.kind));
+    expect(marked).toEqual(["box", "p:나 진단확정", "box", "p:다음 중 어", "p:제1항에도 ", "box", "p:5.(보험료"]);
+  });
+
   it("끄면(2604 · 손으로 쓴 특약) 지금처럼 조 전체 번호 — restart 도 없다", () => {
     const { paragraphs, refs } = build(false);
     expect(paragraphs.some((p) => p.restart)).toBe(false);
