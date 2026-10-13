@@ -186,7 +186,11 @@ describe("★ 실물 재현 — 실물 시드 → 조립 → 원문 대조", () 
  * 2종 사유 = 암·무면책 · 뇌졸중 · 상해및질병80% → 호 넷(암 호에 암보장개시일 없음 · 장해는 호 둘) · 면책 사유가 없어 부가항 · 무효 · 부활 문구가 빠진다 ·
  * 세부규정은 장해 · 상해장해 항만, 장해 호 함수조항을 가리키는 참조는 그 호 둘(제3호 · 제4호)로 따라온다 · 정의 조는 암 · 뇌졸중만(사유별 정의 함수조항이 스스로 켜진다 — ADR-0086).
  */
-describe("★ 실물 재현 변형 — 알파Plus 납입면제 사유를 바꾸면 템플릿이 따라온다", () => {
+const ALPHA = "알파Plus보장보험";
+/** 2607 — 보통약관은 2607 원문 한 벌이지만 납입면제 템플릿 · 함수조항은 2604 것을 함께 쓴다(알파플러스2607_모델명세 §2). 같은 변형이 같은 글을 내야 한다. */
+const ALPHA2607 = "알파Plus보장보험2607";
+
+describe.each([ALPHA, ALPHA2607])("★ 실물 재현 변형 — %s 납입면제 사유를 바꾸면 템플릿이 따라온다", (productName) => {
   let db: TestDb;
   let lines: string[] = [];
   let issues: unknown[] = [];
@@ -197,7 +201,7 @@ describe("★ 실물 재현 변형 — 알파Plus 납입면제 사유를 바꾸�
     const admin = await services.auth.ensureSeedAdmin();
     const actor: Actor = { userId: admin.id, role: admin.role };
     await loadAlphaPlus(services, actor);
-    const product = (await services.product.listProducts()).find((p) => p.name === "알파Plus보장보험")!;
+    const product = (await services.product.listProducts()).find((p) => p.name === productName)!;
     const type2 = (await services.product.listPlanOptions(product.id)).find((o) => o.axis === "type" && o.number === 2)!;
     const saved = await services.product.setPlanOptionValues(actor, type2.id, [{ path: "waiver.reasons", value: ["V02", "V03", "V11"] }]);
     if (!saved.ok) throw new Error(JSON.stringify(saved.rejection));
@@ -261,6 +265,14 @@ describe("★ 실물 재현 변형 — 알파Plus 납입면제 사유를 바꾸�
 });
 
 const MERITZ = "메리츠 통합간편건강보험(연만기형)";
+/** 2607 질병 대표 5 — 특약 제목 · 「특별약관의 소멸」 조 번호(5대고액치료비암만 정의 · 무효가 앞에 있어 제5조). */
+const DISEASE_2607: [string, number][] = [
+  ["5대고액치료비암진단비보장 특별약관", 5],
+  ["양성뇌종양진단비Ⅱ보장 특별약관", 4],
+  ["만성당뇨합병증진단비보장 특별약관", 4],
+  ["중대한재생불량성빈혈진단비보장 특별약관", 4],
+  ["말기신부전증진단비보장 특별약관", 4],
+];
 
 /** 변형 한 벌 — 실물 시드를 넣고 세목 선택지 값을 바꾼 뒤 상품마다 조립한다. */
 async function previewVariant(changes: { product: string; axis: "type" | "form"; number: number; entries: { path: string; value: Value }[] }[]) {
@@ -297,14 +309,14 @@ function articleLines(lines: readonly string[], title: string): string[] {
  * 대표 변형 — 1형 적립 중지(최종 결정 24 「상품 범위 조건」). 알파Plus 제27조의1 ④ 「1형(해약환급금 지급형)의 경우 … 적립보험료 납입을 중지합니다」는
  * 상품에 해약환급금 지급형(무저해지 유형 = 해약환급금지급형)인 형이 있을 때만 선다. 뒤 항의 「제1항부터 제4항까지」는 한 참조(대상 넷)라 「제1항부터 제3항까지」로 따라온다.
  */
-describe("★ 실물 재현 변형 — 해약환급금 지급형이 없으면 1형 적립 중지 항이 빠진다", () => {
+describe.each([ALPHA, ALPHA2607])("★ 실물 재현 변형 — %s 해약환급금 지급형이 없으면 1형 적립 중지 항이 빠진다", (productName) => {
   let db: TestDb;
   let booklet: Booklet;
 
   beforeAll(async () => {
-    const v = await previewVariant([{ product: "알파Plus보장보험", axis: "form", number: 1, entries: [{ path: "no_surrender.type", value: "V02" }] }]);
+    const v = await previewVariant([{ product: productName, axis: "form", number: 1, entries: [{ path: "no_surrender.type", value: "V02" }] }]);
     db = v.db;
-    booklet = v.booklets.get("알파Plus보장보험")!;
+    booklet = v.booklets.get(productName)!;
   }, 120_000);
 
   afterAll(async () => {
@@ -379,7 +391,8 @@ describe("★ 실물 재현 변형 — 납입면제 없는 상품은 납입면�
 
   beforeAll(async () => {
     const v = await previewVariant([
-      { product: "알파Plus보장보험", axis: "type", number: 2, entries: off },
+      { product: ALPHA, axis: "type", number: 2, entries: off },
+      { product: ALPHA2607, axis: "type", number: 2, entries: off },
       { product: MERITZ, axis: "type", number: 2, entries: off },
       { product: MERITZ, axis: "type", number: 3, entries: off },
     ]);
@@ -391,7 +404,7 @@ describe("★ 실물 재현 변형 — 납입면제 없는 상품은 납입면�
     await db.close();
   });
 
-  it.each(["알파Plus보장보험", MERITZ])("%s — 오류 0 · 납입면제 조가 없고 어느 문장도 납입면제를 말하지 않는다", (name) => {
+  it.each([ALPHA, ALPHA2607, MERITZ])("%s — 오류 0 · 납입면제 조가 없고 어느 문장도 납입면제를 말하지 않는다", (name) => {
     const b = booklets.get(name)!;
     expect(b.issues).toEqual([]);
     const general = renderedToLines(b.general!);
@@ -404,5 +417,32 @@ describe("★ 실물 재현 변형 — 납입면제 없는 상품은 납입면�
       expect(application, doc.title).not.toContain("납입면제");
       expect(application, doc.title).toContain("은 제외합니다.");
     }
+  });
+
+  /**
+   * 2607 특약 — 준용규정 두 함수조항(상해 C0068 · 질병 C0071)이 「1종 … 제27조의1 및 제27조의2도 제외」를 같은 조건으로 뺀다.
+   * 질병 C0071 은 제외 목록에 제5조가 더 있다(조 참조 대상이 달라 C0068 의 옵션이 아니다 — 모델명세 §3). 남는 조 참조는 조립 순서의 그 조를 가리킨다.
+   */
+  it("알파Plus보장보험2607 특약 — 준용규정 단서가 「… 및 제38조(중도인출)은 제외합니다.」로 끝나고 조 참조 번호가 맞다", () => {
+    const b = booklets.get(ALPHA2607)!;
+    const general = articleTitles(renderedToLines(b.general!));
+    for (const doc of b.specials.flatMap((g) => g.docs)) {
+      const lines = renderedToLines(doc);
+      const application = articleLines(lines, "준용규정").filter((l) => !l.startsWith("## ")).join("\n");
+      expect(application, doc.title).toMatch(/제10조\(만기환급금의 지급\) 및 제\d+조\(중도인출\)은 제외합니다\.$/);
+      expect(application.includes("제5조(보험금을 지급하지 않는 사유)"), doc.title).toBe(DISEASE_2607.some(([t]) => t === doc.title));
+      expect(referenceNumberIssues(lines, general), doc.title).toEqual([]);
+    }
+  });
+
+  /** 질병 5 제1조 ② 「제N조(특별약관의 소멸) 제3항」 — 소멸 함수조항(C0064) 블록 안쪽 셋째 항을 가리키는 참조가 변형에서도 그 조 · 그 항으로 찍힌다. */
+  it.each(DISEASE_2607)("알파Plus보장보험2607 「%s」 — 제1조 ② 가 제%i조(특별약관의 소멸) 제3항을 가리키고 그 항은 계약자적립액 항이다", (title, n) => {
+    const doc = booklets.get(ALPHA2607)!.specials.flatMap((g) => g.docs).find((d) => d.title === title)!;
+    const lines = renderedToLines(doc);
+    const payout = articleLines(lines, "보험금의 지급사유").filter((l) => l.startsWith("@ "));
+    expect(payout[1]).toContain(`다만, 제${n}조(특별약관의 소멸) 제3항에 따라 이 특별약관의 계약자적립액 및 미경과보험료를 지급한 경우에는`);
+    const lapse = lines.slice(lines.findIndex((l) => l === `## 제${n}조(특별약관의 소멸)`));
+    expect(lapse[0]).toBe(`## 제${n}조(특별약관의 소멸)`);
+    expect(lapse.filter((l) => l.startsWith("@ "))[2]).toContain("계약자적립액");
   });
 });
