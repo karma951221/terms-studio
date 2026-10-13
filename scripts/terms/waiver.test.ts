@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { RENEWABLE_PRODUCT } from "./renewal";
-import { SURRENDER_PAYING, WAIVER_PRESENT } from "./waiver";
+import { guardExcludeSentence, SURRENDER_PAYING, WAIVER_PRESENT } from "./waiver";
 
 /**
  * 납입면제 재모델링의 변환 결과(시드 JSON) — 템플릿 모양 · 사유별 호 · 정의 함수조항(ADR-0086) · 역할 함수조항 본문 · 호를 가리키는 참조.
@@ -260,5 +260,45 @@ describe("납입면제 조를 가리키는 문장 — 「납입면제 있음」 
     expect(branch.children.map((c) => (c.kind === "text" ? c.text : c.kind))).toEqual([" 또는 ", "articleRef", "에서 정한 보험료 납입면제 사유의 발생을 알게된 경우"]);
     const definitions = find(tree, (x) => x.kind === "article" && x.title === "용어의 정의")!;
     expect(all(definitions, (x) => x.kind === "inlineCond" && (x.branches as { when: string }[])[0].when === `${WAIVER_PRESENT} = true`)).toHaveLength(rows);
+  });
+});
+
+describe("guardExcludeSentence — 준용규정 「…은 제외하며, 1종 … [납입면제 두 조]도 제외합니다.」를 「납입면제 있음」으로 가른다", () => {
+  const sentence = () =>
+    ({
+      children: [
+        { id: "p-x1", kind: "text", text: "다만, 보통약관 " },
+        { id: "p-x2", kind: "articleRef", scope: "general", targets: [{ articleId: "g-a9" }, { articleId: "g-a38" }], connector: "및" },
+        { id: "p-x3", kind: "text", text: "은 제외하며, 보통약관 1종(보험료 납입면제 미적용형)으로 가입한 경우 보통약관 " },
+        { id: "p-x4", kind: "articleRef", scope: "general", targets: [{ articleId: "g-a27_1" }, { articleId: "g-a27_2" }], connector: "및" },
+        { id: "p-x5", kind: "text", text: "도 제외합니다." },
+      ],
+    }) as unknown as Parameters<typeof guardExcludeSentence>[0];
+
+  it("앞 조 참조 뒤 「은 제외하며, …도 제외합니다.」가 IF 가지, ELSE 는 「은 제외합니다.」", () => {
+    const p = sentence();
+    expect(guardExcludeSentence(p, 3)).toBe(true);
+    expect(p.children.map((c) => c.kind)).toEqual(["text", "articleRef", "inlineCond"]);
+    const cond = p.children[2] as unknown as { branches: { when?: string; children: { kind: string; text?: string }[] }[] };
+    expect(cond.branches[0].when).toBe(`${WAIVER_PRESENT} = true`);
+    expect(cond.branches[0].children.map((c) => c.text ?? c.kind)).toEqual(["은 제외하며, 보통약관 1종(보험료 납입면제 미적용형)으로 가입한 경우 보통약관 ", "articleRef", "도 제외합니다."]);
+    expect(cond.branches[1]).toMatchObject({ children: [{ text: "은 제외합니다." }] });
+  });
+
+  it("「…은 제외합니다. 또한, 1종 … [두 조]도 제외합니다.」 — 뒤 문장만 IF(ELSE 없음)", () => {
+    const p = sentence();
+    (p.children[2] as { text: string }).text = "은 제외합니다. 또한, 1종(보험료 납입면제 미적용형)으로 가입한 경우 보통약관 ";
+    expect(guardExcludeSentence(p, 3)).toBe(true);
+    const cond = p.children.at(-1) as unknown as { branches: { children: { kind: string; text?: string }[] }[] };
+    expect(p.children.map((c) => (c.kind === "text" ? c.text : c.kind))).toEqual(["다만, 보통약관 ", "articleRef", "은 제외합니다.", "inlineCond"]);
+    expect(cond.branches).toHaveLength(1);
+    expect(cond.branches[0].children[0].text).toBe(" 또한, 1종(보험료 납입면제 미적용형)으로 가입한 경우 보통약관 ");
+  });
+
+  it("모양이 아니면 건드리지 않는다", () => {
+    const p = sentence();
+    (p.children[4] as { text: string }).text = "은 제외합니다.";
+    expect(guardExcludeSentence(p, 3)).toBe(false);
+    expect(p.children).toHaveLength(5);
   });
 });

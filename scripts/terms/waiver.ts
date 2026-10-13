@@ -656,8 +656,13 @@ export function guardWaiverMentions(tree: DocumentNode, waiver: (id: Id) => bool
       const before = o.children[refAt - 1];
       const marker = before?.kind === "text" && before.text.endsWith(" 또는 ") ? " 또는 " : before?.kind === "text" && before.text.includes(" 또한, ") ? " 또한, " : undefined;
       const end = marker === " 또는 " ? "에서 정한 보험료 납입면제 사유의 발생을 알게된 경우" : "은 제외합니다.";
-      if (!marker || !guardSpan(o as { children: InlineNode[] }, refAt, marker, end, WAIVER_PRESENT_ROW)) throw new Error(`납입면제 재모델링: ${where} 의 납입면제 조 참조 ${o.children[refAt]?.id} 를 감쌀 문장을 모른다`);
-      count++;
+      if (!marker || !guardSpan(o as { children: InlineNode[] }, refAt, marker, end, WAIVER_PRESENT_ROW)) {
+        // 자동 탑재 특약의 준용규정이 문면에 남은 자리 — 「…은 제외하며, … [납입면제 두 조]도 제외합니다.」(`guardExcludeSentence`).
+        // 갱신형 나열처럼 납입면제 조가 다른 조와 한 참조에 섞이면 일부만 빠져 남은 대상으로 찍히므로 감싸지 않는다(기능/문면 §3.5)
+        const ref = o.children[refAt] as ArticleRefNode;
+        if (guardExcludeSentence(o as { children: InlineNode[] }, refAt)) count++;
+        else if (ref.targets.every((t) => waiver(t.articleId))) throw new Error(`납입면제 재모델링: ${where} 의 납입면제 조 참조 ${o.children[refAt]?.id} 를 감쌀 문장을 모른다`);
+      } else count++;
     }
     for (const key of ["children", "items", "subitems", "branches"]) {
       const v = (o as Record<string, unknown>)[key];
@@ -666,6 +671,37 @@ export function guardWaiverMentions(tree: DocumentNode, waiver: (id: Id) => bool
   };
   visit(tree.children);
   return count;
+}
+
+/**
+ * 「… [조 참조]은 제외하며, 보통약관 1종(…)으로 가입한 경우 보통약관 [제27조의1 및 제27조의2]도 제외합니다.」 — 납입면제 조만 가리키는 참조(`refAt`)를 둘러싼
+ * 「은 제외하며, …도 제외합니다.」를 「납입면제 있음」이면 그대로, 아니면 「은 제외합니다.」로 가른다(문장 안 IF / ELSE — 준용규정(알파Plus 질병)과 같은 모양).
+ * 자동 탑재 특약의 준용규정(문면에 남은 것 · 변환기가 찾은 함수조항)이 쓴다. 모양이 아니면 건드리지 않고 false.
+ */
+export function guardExcludeSentence(p: { children: (InlineNode | Inline)[] }, refAt: number): boolean {
+  const MARK = "은 제외하며, ";
+  const END = "도 제외합니다.";
+  const xs = p.children;
+  const before = xs[refAt - 1];
+  const after = xs[refAt + 1];
+  if (before?.kind !== "text" || after?.kind !== "text" || !after.text.startsWith(END)) return false;
+  // 「…은 제외합니다. 또한, 1종 … [두 조]도 제외합니다.」 — 앞 문장이 끝나 있으면 뒤 문장만 IF(ELSE 없음)
+  const also = before.text.lastIndexOf(" 또한, ");
+  const cut = also >= 0 ? also : before.text.lastIndexOf(MARK);
+  if (cut < 0) return false;
+  const id = `${xs[refAt].id}-if-waiver`;
+  const cond = {
+    id,
+    kind: "inlineCond",
+    branches: [
+      { id: `${id}-b`, when: WAIVER_PRESENT_ROW, children: [{ id: `${before.id}-w`, kind: "text", text: before.text.slice(cut) }, xs[refAt], { id: `${after.id}-w`, kind: "text", text: END }] },
+      ...(also >= 0 ? [] : [{ id: `${id}-else`, children: [{ id: `${id}-else-t`, kind: "text", text: "은 제외합니다." }] }]),
+    ],
+  };
+  const head = before.text.slice(0, cut);
+  const tail = after.text.slice(END.length);
+  p.children = [...xs.slice(0, refAt - 1), ...(head ? [{ ...before, text: head }] : []), cond as InlineNode, ...(tail ? [{ ...after, text: tail }] : []), ...xs.slice(refAt + 2)] as typeof p.children;
+  return true;
 }
 
 /** 문장 안 덩어리 — 참조(`refAt`) 앞 글의 `marker` 부터 뒤 글의 `end` 까지를 문장 안 조건 하나로 감싼다. */

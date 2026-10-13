@@ -164,9 +164,22 @@ export interface SpecialSpec {
   inlineClauses?: InlineClauseOverlay[];
   /** 담보속성 조건 오버레이 — 조 자리 on/off. */
   articleConds?: ArticleCondOverlay[];
+  /**
+   * 다른 원문(`tests/fixtures/terms` 아래 `file`)의 조 하나를 이 문면의 `before` 조 앞에 넣는다 — 같은 담보의 갱신형 원문에만 있는 조(보험기간).
+   * 넣은 조의 원문 번호는 `x<원문 번호>` 다(조 자리 조건 오버레이가 그 번호로 감싼다).
+   */
+  extraArticles?: { file: string; article: string; before: string }[];
   /** 함수조항 쓰임 — 슬롯 오버레이 뒤에 얹는다. */
   clauses?: ClauseUse[];
+  /**
+   * 자동 탑재 특약 — 함수조항 쓰임 · 보험금명 슬롯을 변환기가 찾는다(`auto.ts` · convert.ts). `renewal` 은 같은 담보의 갱신형 원문 —
+   * 두 벌을 템플릿 하나로 합친다(갱신유형 조건 블록). 담보 · 탑재 시드도 변환기가 쓴다(`coverages.json` · `products.json` 의 자동 탑재분).
+   */
+  auto?: { group: SpecialGroup; renewal?: string };
 }
+
+/** 특약 그룹 — 열거형 「특약 그룹」(E0008) 값 코드 (ADR-0080). 원문 파일(특별약관 Ⅰ ~ Ⅴ)이 곧 그룹이다. */
+export type SpecialGroup = "V01" | "V02" | "V03" | "V04" | "V05";
 
 /**
  * 함수조항 — 두 상품(알파Plus · 메리츠)의 원문이 되풀이하는 조 (모델명세 §4 · 메리츠_모델명세 §4 · 기능/함수조항 §6.2).
@@ -376,7 +389,7 @@ const GENERAL_ARTICLES: [string, string, string, number][] = [
 ];
 
 /** 갱신형 탑재분인가 — 담보속성 A0001(갱신유형) = V02. `exist` 가드는 속성을 쓰지 않는 탑재분을 위해 (식언어 §6). */
-const RENEWAL = "exist(attr.A0001) and attr.A0001 = '2'";
+export const RENEWAL = "exist(attr.A0001) and attr.A0001 = '2'";
 
 /** 상품 한 벌의 원문 — 픽스처 폴더 · 별표 번호 표 · 보통약관 · 담보약관. */
 export interface ProductTerms {
@@ -716,12 +729,32 @@ const disease = (key: string, file: string, claim: string, slotCount: number, ar
   clauses: [whole(articles[0], "third-party"), whole(articles[1], "lapse-claim", "V01"), whole(articles[2], "alpha-application-disease")],
 });
 
+/**
+ * 자동 탑재 특약 한 줄 — 원문 목록 번호(`npm run terms:pdfmd -- <원문> --list` 의 #N) · fixture · (있으면) 같은 담보의 갱신형 fixture.
+ * 담보 key 는 `a7-<그룹 글자><번호>`. 갱신형만 있는 특약은 갱신형 fixture 를 `file` 에 둔다(제목에서 갱신형을 읽는다).
+ */
+export const autoSpecial =
+  (letter: string, group: SpecialGroup) =>
+  (no: number, file: string, renewal?: string): SpecialSpec => ({
+    code: `a7-${letter}${no}-doc`,
+    ownerCoverage: `a7-${letter}${no}`,
+    idPrefix: `a7${letter}${no}`,
+    file,
+    slots: [],
+    auto: { group, ...(renewal ? { renewal } : {}) },
+  });
+
+/** 알파Plus2607 자동 탑재 — 원문 「특별약관 Ⅰ ~ Ⅴ」 의 특약 중 손으로 설정한 것(2604 담보 탑재 · 질병 대표 5)을 뺀 전부. */
+export const ALPHA2607_AUTO: SpecialSpec[] = [
+];
+
 const ALPHA2607_SPECIALS: SpecialSpec[] = [
   disease("cancer5", "5대고액치료비암진단비보장.md", "5대고액치료비암진단비", 3, ["2", "5", "7"]),
   disease("tumor", "양성뇌종양진단비Ⅱ보장.md", "양성뇌종양진단비", 3),
   disease("diabetes", "만성당뇨합병증진단비보장.md", "만성당뇨합병증진단비", 3),
   disease("anemia", "중대한재생불량성빈혈진단비보장.md", "중대한재생불량성빈혈진단비", 3),
   disease("kidney", "말기신부전증진단비보장.md", "말기신부전증진단비", 3),
+  ...ALPHA2607_AUTO,
 ];
 
 export const ALPHA2607: ProductTerms = {
