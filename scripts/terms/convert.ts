@@ -32,7 +32,7 @@ import type { Discriminator } from "../../src/domain/catalog/types";
 import { applyClauseUse, articleRefParamsOf, INNER_TARGETS, clauseFromSource, inlineBody, optionCode, parameterize, placeOptions, reId, valueCode, type ClauseRecord } from "./clauses";
 import { APPENDED_CLAUSE_KEYS, APPENDICES, CLAUSES, PRODUCTS, SEED_DIR, type ClauseUse, type ProductTerms, type SlotOverlay, type SpecialSpec } from "./config";
 import { parseTerms, type ParsedArticle, type ParsedDoc } from "./parse";
-import { applyArticleConds, applyInlineClauses, applyInlineConds, articlesOf } from "./overlay";
+import { applyArticleConds, applyBoxConds, applyInlineClauses, applyInlineConds, articlesOf } from "./overlay";
 import { basisDateClause } from "./renewal";
 import { inlinesFromText, leftoverReferences, type ArticleEntry, type ArticleIndex, type RefEnv } from "./refs";
 import { applyAlphaWaiver, applyMeritzWaiver, guardAlphaApplication, guardDiseaseApplication, guardWaiverMentions, resolveWaiverCodes } from "./waiver";
@@ -322,6 +322,9 @@ function main(): void {
   const products: BuiltProduct[] = PRODUCTS.map((product) => {
     const parsed = parseTerms(read(product, product.general.file));
     const general = buildStructure(parsed, product.general.idPrefix, parsed.title);
+    // 형 축 문장 · 박스의 상품 범위 조건 — 참조 변환 · 박스 마스터 전에 (가지 안의 참조도 슬롯이 되고, 감싼 박스도 박스 참조가 된다)
+    applyInlineConds(general.tree, general.numberOf, product.general.inlineConds ?? [], report);
+    applyBoxConds(general.tree, general.numberOf, product.general.boxConds ?? [], report);
     convertText(general, undefined, product.appendixNumbers, report);
     reportLeftovers(general, `[${product.general.code}]`, report);
     for (const a of articlesOf(general.tree)) {

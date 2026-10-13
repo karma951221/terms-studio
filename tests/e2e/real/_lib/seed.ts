@@ -161,7 +161,7 @@ function prefixCodes(list: readonly { code: string }[], codes: ReadonlySet<strin
 /** 보통약관 · 그 함수조항이 놓는 박스 — 바탕 DB 가 보통약관과 함께 시드로 넣는다(BX000001~). 화면 E2E 는 그 뒤 코드부터 박스 화면으로 친다. */
 export const BASE_BOX_CODES = prefixCodes(SEED.boxes, new Set([...BASE_SOURCES.matchAll(/"boxCode":"(BX\d+)"/g)].map((m) => m[1])));
 
-/** 보통약관 · 그 함수조항이 읽는 구분자(D0006 갱신형 상품까지 앞 코드) — 바탕 DB 가 넣는다. 화면 E2E ① 은 그 뒤 코드부터. */
+/** 보통약관 · 그 함수조항이 읽는 구분자(D0007 해약환급금 미지급형 있음까지 앞 코드) — 바탕 DB 가 넣는다. 화면 E2E ① 은 그 뒤 코드부터. */
 export const BASE_DISCRIMINATOR_CODES = prefixCodes(SEED.discriminators, new Set([...BASE_SOURCES.matchAll(/\b(D\d{4})\b/g)].map((m) => m[1])));
 
 /**

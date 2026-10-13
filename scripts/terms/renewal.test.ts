@@ -31,7 +31,7 @@ const products = read<{ code: string; values: { path: string; value: unknown }[]
 
 describe("갱신형 구분자 둘 — 바탕 시드는 보통약관이 쓰는 구분자까지 앞 코드라 담보 → 상품 순", () => {
   it("D0005 갱신형 담보(담보 레벨 · 담보속성 갱신유형 = 갱신형) · D0006 갱신형 상품(상품 레벨 · 상품특성 갱신형여부)", () => {
-    expect(discriminators.slice(4).map((d) => [d.code, d.label, d.level, d.expression, d.resultType])).toEqual([
+    expect(discriminators.slice(4, 6).map((d) => [d.code, d.label, d.level, d.expression, d.resultType])).toEqual([
       [RENEWABLE_COVERAGE, "갱신형 담보", "coverage", "exist(attr.A0001) and attr.A0001 = '2'", { kind: "boolean" }],
       [RENEWABLE_PRODUCT, "갱신형 상품", "product", "feature.renewable", { kind: "boolean" }],
     ]);

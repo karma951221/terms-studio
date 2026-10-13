@@ -446,3 +446,60 @@ describe("★ 실물 재현 변형 — 납입면제 없는 상품은 납입면�
     expect(lapse.filter((l) => l.startsWith("@ "))[2]).toContain("계약자적립액");
   });
 });
+
+/**
+ * 대표 변형 — 형 축 「1형만」(QA/인수기준 보통약관 행 형 축 — 형 하나면 2형 문장 · 「1형(해약환급금 지급형)에 한하여」 어구가 없다).
+ * 형 2 를 해약환급금 지급형으로 바꿔 상품에 미지급형인 형이 없게 한다(D0007 「해약환급금 미지급형 있음」 = 아니오).
+ * 2형을 말하는 문장(제23조 ① 단서 · 해약환급금 조의 2형 박스, 메리츠는 제2조 표 해약환급금 정의 단서 · 해약환급금 ① 단서까지)과
+ * 적립이율 · 만기환급금 · 중도인출 ① 의 첫 문장 「이 계약에서 … 1형(해약환급금 지급형)에 한하여 적용합니다.」가 빠지고, 나머지 조는 원문 그대로다.
+ */
+const SINGLE_FORM_CHANGED = ["적립부분 적립이율에 관한 사항", "만기환급금의 지급", "계약내용의 변경 등", "해약환급금", "중도인출"];
+const SINGLE_FORM: { name: string; dir: string; changed: string[] }[] = [
+  { name: ALPHA, dir: "", changed: SINGLE_FORM_CHANGED },
+  { name: ALPHA2607, dir: "알파2607", changed: SINGLE_FORM_CHANGED },
+  { name: MERITZ, dir: "메리츠", changed: ["용어의 정의", ...SINGLE_FORM_CHANGED] },
+];
+
+describe.each(SINGLE_FORM)("★ 실물 재현 변형 — $name 해약환급금 미지급형이 없으면(1형만) 2형 문장 · 「1형에 한하여」 어구가 빠진다", ({ name, dir, changed }) => {
+  let db: TestDb;
+  let booklet: Booklet;
+  let lines: string[] = [];
+
+  beforeAll(async () => {
+    const v = await previewVariant([{ product: name, axis: "form", number: 2, entries: [{ path: "no_surrender.type", value: "V01" }] }]);
+    db = v.db;
+    booklet = v.booklets.get(name)!;
+    lines = renderedToLines(booklet.general!);
+  }, 120_000);
+
+  afterAll(async () => {
+    await db.close();
+  });
+
+  it("오류 0 · 어느 줄도 2형을 말하지 않고 「1형(해약환급금 지급형)에 한하여」가 없다 · 조 참조 번호가 맞다", () => {
+    expect(booklet.issues).toEqual([]);
+    // 알려진 한계 — 알파Plus 상해보험계약 후 알릴 의무의 박스 【위험변경시 해약환급금 정산】 한 줄에 섞인 2형 문장은 남는다
+    // (박스는 정적 마스터라 안에 조건이 없고, 같은 박스의 다른 줄은 형과 무관해 박스째 감쌀 수 없다)
+    const boxed = "제1항에 따라 위험이 증가⋅감소되는 경우 이후 기간 보장을 위한 재원인 계약자적립액";
+    expect(lines.filter((l) => l.includes("2형(해약환급금") && !l.startsWith(boxed))).toEqual([]);
+    expect(lines.filter((l) => l.includes("1형(해약환급금 지급형)에 한하여"))).toEqual([]);
+    expect(referenceNumberIssues(lines)).toEqual([]);
+  });
+
+  it("적립이율 · 만기환급금 · 중도인출 ① 은 둘째 문장부터 · 계약내용의 변경 ① 은 단서 없이 끝난다 · 해약환급금 조에 박스가 없다", () => {
+    expect(articleLines(lines, "적립부분 적립이율에 관한 사항")[1]).toMatch(/^@ 이 보험의 적립부분 순보험료/);
+    expect(articleLines(lines, "만기환급금의 지급")[1]).toMatch(/^@ 회사는 보험기간이 끝난 때에 만기환급금/);
+    expect(articleLines(lines, "중도인출")[1]).toMatch(/^@ 계약자는 보장개시일부터 2년 이상/);
+    expect(articleLines(lines, "계약내용의 변경 등")[1]).toMatch(/보험증권의 뒷면에 기재하여 드립니다\.$/);
+    const surrender = articleLines(lines, "해약환급금");
+    expect(surrender[1]).toMatch(/산출방법서」에 따라 계산합니다\.$/);
+    expect(surrender.some((l) => l.startsWith("```"))).toBe(false);
+  });
+
+  it(`바뀐 조는 ${changed.length}개뿐 — 나머지 조는 원문과 같다`, () => {
+    const diff = diffArticlesUnordered(source(dir, "보통약관.md"), lines);
+    const titles = (cs: UnorderedDiff["missing"]) => cs.map((c) => c.title.replace(/^제\d+조(의\d+)?\(|\)$/g, "")).sort();
+    expect(titles(diff.missing)).toEqual([...changed].sort());
+    expect(titles(diff.extra)).toEqual([...changed].sort());
+  });
+});

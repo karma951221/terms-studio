@@ -64,9 +64,16 @@ export interface InlineCondOverlay {
   /** 바꿀 평문. 조를 렌더 순서로 훑어 **처음 나오는 곳** 하나만 바꾼다 (바뀐 자리는 다음 오버레이가 다시 찾지 않는다). */
   find: string;
   when: string;
-  /** `when` 이 참일 때 / 거짓일 때의 평문. 참조 평문(제N조 · 별표)은 가지 안에서도 참조 슬롯이 된다. */
+  /** `when` 이 참일 때 / 거짓일 때의 평문. 참조 평문(제N조 · 별표)은 가지 안에서도 참조 슬롯이 된다. `else` 가 없으면 IF 만(거짓이면 어구가 빠진다). */
   then: string;
-  else: string;
+  else?: string;
+}
+
+/** 조건 오버레이 ③ 박스 자리 on/off — 지정 조 직속 박스 중 제목 · 줄에 `find` 가 든 것을 `condBlock` 으로 감싼다 (참일 때만 실린다). */
+export interface BoxCondOverlay {
+  article: string;
+  find: string;
+  when: string;
 }
 
 /**
@@ -135,6 +142,10 @@ export interface GeneralSpec {
    * (실물 제8조 → 제4조 제4항) 편집기가 고를 id 가 있어야 하고, 조립은 순번 별칭으로 기본계약 항에 잇는다.
    */
   emptyArticles: string[];
+  /** 상품 범위 조건 오버레이 — 참조 변환 전에 얹는다 (형 축 문장 · 어구, 최종 결정 24). */
+  inlineConds?: InlineCondOverlay[];
+  /** 상품 범위 조건 오버레이 — 박스 자리 on/off (박스 마스터를 만들기 전). */
+  boxConds?: BoxCondOverlay[];
 }
 
 export interface SpecialSpec {
@@ -383,12 +394,40 @@ export interface ProductTerms {
   specials: SpecialSpec[];
 }
 
+/**
+ * 「해약환급금 미지급형 있음」(D0007 — 상품 레벨 `not all(D0003)`). 형이 해약환급금 지급형뿐이면(1형만) 2형을 말하는 문장 · 박스와
+ * 「1형(해약환급금 지급형)에 한하여 적용합니다」 문장이 빠진다 (QA/인수기준 보통약관 형 축 · 최종 결정 24 「상품 범위 조건」 — 1형 적립 중지 항 D0004 와 같은 꼴).
+ */
+const SURRENDER_UNPAID = "D0007";
+
+/** 형 축 문장 — 적립이율 · 만기환급금 · 중도인출 ① 첫 문장(원문 조 번호), 2형 단서(조 번호 · 원문 글), 2형 박스가 있는 해약환급금 조. */
+function formAxisConds(only: { savings: string; maturity: string; withdrawal: string }, provisos: [string, string][], surrender: string): Pick<GeneralSpec, "inlineConds" | "boxConds"> {
+  const firstSentence = (article: string, subject: string): InlineCondOverlay => {
+    const text = `이 계약에서 ${subject} 1형(해약환급금 지급형)에 한하여 적용합니다. `;
+    return { article, find: text, when: SURRENDER_UNPAID, then: text };
+  };
+  return {
+    inlineConds: [
+      firstSentence(only.savings, "적립부분 적립이율은"),
+      firstSentence(only.maturity, "만기환급금의 지급은"),
+      firstSentence(only.withdrawal, "중도인출은"),
+      ...provisos.map(([article, text]): InlineCondOverlay => ({ article, find: text, when: SURRENDER_UNPAID, then: text })),
+    ],
+    boxConds: [{ article: surrender, find: "2형(", when: SURRENDER_UNPAID }],
+  };
+}
+
 const ALPHA_GENERAL: GeneralSpec = {
   code: "alpha-general",
   file: "보통약관.md",
   idPrefix: "g",
   emptyArticles: [],
   clauses: GENERAL_ARTICLES.map(([key, article, , paragraph]) => at(article, paragraph, key)),
+  ...formAxisConds(
+    { savings: "9", maturity: "10", withdrawal: "38" },
+    [["23", " 다만, 2형(해약환급금 미지급형(납입후50%))의 경우 보험기간, 보험료 납입기간, 피보험자의 변경 및 보험가입금액의 증액은 신청할 수 없습니다."]],
+    "35",
+  ),
 };
 
 const ALPHA_SPECIALS: SpecialSpec[] = [
@@ -515,6 +554,16 @@ const MERITZ_GENERAL: GeneralSpec = {
   idPrefix: "m",
   emptyArticles: [],
   clauses: GENERAL_ARTICLES.map(([key, , article, paragraph]) => at(article, paragraph, key)),
+  // 메리츠는 2형 단서가 셋 — 제2조 표 해약환급금 정의 · 제23조 ① · 제40조(해약환급금) ①
+  ...formAxisConds(
+    { savings: "9", maturity: "10", withdrawal: "43" },
+    [
+      ["2", " 다만, 2형(해약환급금미지급형)은 보험료 납입기간 중 계약이 해지될 경우 해약환급금을 지급하지 않습니다."],
+      ["23", " 다만, 2형(해약환급금미지급형)의 경우 보험기간, 보험료 납입기간, 피보험자의 변경 및 보험가입금액의 증액은 신청할 수 없습니다."],
+      ["40", " 단, 2형(해약환급금미지급형)을 가입한 경우에는 해약환급금을 지급하지 않습니다."],
+    ],
+    "40",
+  ),
 };
 
 const MERITZ_SPECIALS: SpecialSpec[] = [
@@ -642,7 +691,16 @@ export const MERITZ: ProductTerms = {
  * - 여기 담보약관 목록은 2604 에 없는 특약만 — 질병 대표 5. 특약을 넓힐 때는 이 목록에 한 줄씩 더한다(`disease` 줄임말).
  * 별표 번호는 2604 와 같다(장해 2 · 수술 3 · 암 4 · 5대고액치료비암 9 · 만성당뇨합병증 12 · 양성뇌종양 20 …).
  */
-const ALPHA2607_GENERAL: GeneralSpec = { ...ALPHA_GENERAL, code: "alpha2607-general" };
+// 2607 은 제23조 단서의 「해약환급금미지급형」이 붙여 쓰였다(2604 는 띄어 씀) — 형 축 문장은 제 원문 글로
+const ALPHA2607_GENERAL: GeneralSpec = {
+  ...ALPHA_GENERAL,
+  code: "alpha2607-general",
+  ...formAxisConds(
+    { savings: "9", maturity: "10", withdrawal: "38" },
+    [["23", " 다만, 2형(해약환급금미지급형(납입후50%))의 경우 보험기간, 보험료 납입기간, 피보험자의 변경 및 보험가입금액의 증액은 신청할 수 없습니다."]],
+    "35",
+  ),
+};
 
 /**
  * 질병 진단비 특약 한 벌 — 제1조 보험금명 자리(슬롯 `slotCount` 번) · 제3자 합의 세부규정 · 소멸(지급사유 발생) · 준용규정(알파Plus 질병).
