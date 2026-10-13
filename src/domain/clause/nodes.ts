@@ -187,6 +187,8 @@ export interface ParagraphNode {
   kind: "paragraph";
   /** P코드 (ADR-0072). */
   code?: Code;
+  /** 이 항부터 항 번호를 1 부터 다시 센다 — 문면 항의 `restart` 와 같다(원문 자리에서 딴 통합형 특약 본문). */
+  restart?: true;
   children: Inline[];
   items?: (ItemNode | BulletListNode | BoxRefNode)[];
 }

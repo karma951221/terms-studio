@@ -354,6 +354,39 @@ async function previewVariant(changes: { product: string; axis: "type" | "form";
   return { db, booklets: out };
 }
 
+/** 줄 `i` 가 든 조의 제목(헤딩 줄 포함) — 조 밖이면 "". */
+function articleOf(lines: readonly string[], i: number): string {
+  for (let k = i; k >= 0; k--) {
+    const m = /^## 제\d+조(?:의\d+)?\((.*)\)\s*$/.exec(lines[k]);
+    if (m) return m[1];
+    if (/^# /.test(lines[k])) return "";
+  }
+  return "";
+}
+
+/** 알파Plus2607 — 특약 자체의 납입면제 조(「보험료의 납입면제」 · 「납입면제에 관한 세부규정」)를 둔 특약 8(갱신형 짝은 두 탑재분) · 책자 제목 · 픽스처. */
+const OWN_WAIVER_ARTICLES_2607: [string, string][] = [
+  ["2대질환 주요치료비(연간1회한, 10년간)보장 특별약관", "2대질환_주요치료비(연간1회한,_10년간)보장.md"],
+  ["갱신형 2대질환 주요치료비(연간1회한, 10년간)보장 특별약관", "갱신형_2대질환_주요치료비(연간1회한,_10년간)보장.md"],
+  ["상급종합병원 2대질환 주요치료비(연간1회한, 10년간)보장 특별약관", "상급종합병원_2대질환_주요치료비(연간1회한,_10년간)보장.md"],
+  ["갱신형 상급종합병원 2대질환 주요치료비(연간1회한, 10년간)보장 특별약관", "갱신형_상급종합병원_2대질환_주요치료비(연간1회한,_10년간)보장.md"],
+  ["상급종합병원 2대질환 주요치료비(연간1회한, 10년간)(체증형)보장 특별약관", "상급종합병원_2대질환_주요치료비(연간1회한,_10년간)(체증형)보장.md"],
+  ["갱신형 상급종합병원 2대질환 주요치료비(연간1회한, 10년간)(체증형)보장 특별약관", "갱신형_상급종합병원_2대질환_주요치료비(연간1회한,_10년간)(체증형)보장.md"],
+  ["비급여 암 주요치료비(전액본인부담 포함, 연간1회한, 10년간)보장 특별약관", "비급여_암_주요치료비(전액본인부담_포함,_연간1회한,_10년간)보장.md"],
+  ["비급여 항암약물치료비(전액본인부담 포함, 연간1회한, 10년간)보장 특별약관", "비급여_항암약물치료비(전액본인부담_포함,_연간1회한,_10년간)보장.md"],
+];
+/** 알파Plus2607 — 통합형 특약 안 세부보장마다 납입면제 소제목(「N.(보험료의 납입면제)」 · 「N.(납입면제에 관한 세부규정)」)을 둔 특약 8. */
+const OWN_WAIVER_SUBSECTIONS_2607: [string, string][] = [
+  ["암 주요치료비(연간1회한, 10년간)보장 특별약관", "암_주요치료비(연간1회한,_10년간)보장.md"],
+  ["암 주요치료비(연간1회한, 10년간)(체증형)보장 특별약관", "암_주요치료비(연간1회한,_10년간)(체증형)보장.md"],
+  ["상급종합병원,국립암센터 암 주요치료비(연간1회한, 10년간)보장 특별약관", "상급종합병원,국립암센터_암_주요치료비(연간1회한,_10년간)보장.md"],
+  ["상급종합병원,국립암센터 암 주요치료비(연간1회한, 10년간)(체증형)보장 특별약관", "상급종합병원,국립암센터_암_주요치료비(연간1회한,_10년간)(체증형)보장.md"],
+  ["통합암 주요치료비(연간1회한, 10년간)보장 특별약관", "통합암_주요치료비(연간1회한,_10년간)보장.md"],
+  ["통합암 주요치료비(체증형)(연간1회한, 10년간)보장 특별약관", "통합암_주요치료비(체증형)(연간1회한,_10년간)보장.md"],
+  ["상급종합병원,국립암센터 통합암 주요치료비(연간1회한, 10년간)보장 특별약관", "상급종합병원,국립암센터_통합암_주요치료비(연간1회한,_10년간)보장.md"],
+  ["상급종합병원,국립암센터 통합암 주요치료비(체증형)(연간1회한, 10년간)보장 특별약관", "상급종합병원,국립암센터_통합암_주요치료비(체증형)(연간1회한,_10년간)보장.md"],
+];
+
 /** 조립 줄에서 조 하나(헤딩 줄 포함) — 조 명으로. */
 function articleLines(lines: readonly string[], title: string): string[] {
   const at = lines.findIndex((l) => l.startsWith("## ") && l.endsWith(`(${title})`));
@@ -506,6 +539,50 @@ describe("★ 실물 재현 변형 — 납입면제 없는 상품은 납입면�
       if (head(lines).includes("다만,")) expect(head(lines), doc.title).toMatch(/제외합니다\.?$/);
       expect(referenceNumberIssues(lines, general), doc.title).toEqual([]);
     }
+  });
+
+  /**
+   * 특약 자체의 납입면제(2026-10-14) — 조째(「보험료의 납입면제」 · 「납입면제에 관한 세부규정」 — 2대질환 주요치료비 · 비급여 계열 8)와
+   * 통합형 특약의 소제목 자리(「N.(보험료의 납입면제)」 · 「N.(납입면제에 관한 세부규정)」 — 암 · 통합암 주요치료비 계열 8)가 통째로 빠진다.
+   * 「다음 중 어느 하나」 뒤가 비는 머리말이 없고, 조 참조 번호가 맞다. 조째 8 은 나머지 조가 원문 그대로다(번호만 당겨진다).
+   */
+  it.each(OWN_WAIVER_ARTICLES_2607)("알파Plus보장보험2607 「%s」 — 특약 자체 납입면제 조 둘이 빠지고 나머지 조는 원문 그대로", (title, file) => {
+    const b = booklets.get(ALPHA2607)!;
+    const doc = b.specials.flatMap((g) => g.docs).find((d) => d.title === title)!;
+    expect(doc, title).toBeDefined();
+    const lines = renderedToLines(doc);
+    expect(articleLines(lines, "보험료의 납입면제")).toEqual([]);
+    expect(articleLines(lines, "납입면제에 관한 세부규정")).toEqual([]);
+    expect(lines.join("\n")).not.toMatch(/납입을 면제합니다/);
+    const original = source("알파2607", file);
+    const kept = original.filter((_, i) => !["보험료의 납입면제", "납입면제에 관한 세부규정"].includes(articleOf(original, i)));
+    const diff = diffArticlesUnordered(kept, lines);
+    expect(diff, describeDiff(diff)).toEqual(clean);
+    expect(referenceNumberIssues(lines, articleTitles(renderedToLines(b.general!)))).toEqual([]);
+  });
+
+  it.each(OWN_WAIVER_SUBSECTIONS_2607)("알파Plus보장보험2607 「%s」 — 세부보장의 납입면제 소제목 자리가 빠지고 빈 머리말이 없다", (title, file) => {
+    const b = booklets.get(ALPHA2607)!;
+    const doc = b.specials.flatMap((g) => g.docs).find((d) => d.title === title)!;
+    expect(doc, title).toBeDefined();
+    const lines = renderedToLines(doc);
+    const detail = articleLines(lines, "세부보장에 관한 사항");
+    expect(detail.length).toBeGreaterThan(0);
+    expect(detail.join("\n")).not.toMatch(/\d\.\(보험료의 납입면제\)|\d\.\(납입면제에 관한 세부규정\)|납입을 면제합니다|\[2종\(보험료 납입면제형\)\]/);
+    // 해약환급금 소제목 머리(「N.(보장의 해약환급금)회사는 …」)는 세부보장마다 남는다 — 원문에 있는 수만큼
+    const heads = (xs: readonly string[]) => xs.filter((l) => /\d\.\(보장의 해약환급금\)회사는/.test(l)).length;
+    expect(heads(detail)).toBe(heads(source("알파2607", file)));
+    expect(heads(detail)).toBeGreaterThan(0);
+    // 「다음 중 어느 …」 머리말 뒤에는 호가 선다
+    detail.forEach((l, i) => {
+      if (/^[@=] .*다음 중 어느/.test(l)) expect(detail[i + 1], l).toMatch(/^ {2}- /);
+    });
+    // 세부보장 조 밖은 원문 그대로
+    const original = source("알파2607", file);
+    const kept = original.filter((_, i) => articleOf(original, i) !== "세부보장에 관한 사항");
+    const diff = diffArticlesUnordered(kept, lines.filter((_, i) => articleOf(lines, i) !== "세부보장에 관한 사항"));
+    expect(diff, describeDiff(diff)).toEqual(clean);
+    expect(referenceNumberIssues(lines, articleTitles(renderedToLines(b.general!)))).toEqual([]);
   });
 
   /** 질병 5 제1조 ② 「제N조(특별약관의 소멸) 제3항」 — 소멸 함수조항(C0064) 블록 안쪽 셋째 항을 가리키는 참조가 변형에서도 그 조 · 그 항으로 찍힌다. */

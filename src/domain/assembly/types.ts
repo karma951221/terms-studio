@@ -249,6 +249,8 @@ export interface RParagraph<I> extends Keyed {
   id: Id;
   children: I[];
   items?: (RItem<I> | RStatic<I> | ErrorNode)[];
+  /** 이 항부터 항 번호를 1 부터 다시 센다(`ParagraphNode.restart` — 통합형 특약의 세부보장 소제목 단위). */
+  restart?: true;
   /** 보통약관의 block 함수조항 참조에서 펼쳐져 자동 판정 비교 대상에서 빠지는 항. */
   excludeFromComparison?: boolean;
 }

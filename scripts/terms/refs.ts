@@ -26,6 +26,21 @@ export interface ArticleEntry {
   paragraphIds: Id[];
   /** 항 id → 호 id (순서대로). */
   itemIds: Map<Id, Id[]>;
+  /**
+   * 항 번호를 다시 세는 무리 — 통합형 특약의 소제목 · 종형 머리 단위(`ParagraphNode.restart`, convert.ts `restartGroups`). 있으면 조 없는 「제N항」은
+   * 지금 항이 든 무리의 N번째, 「N.(소제목) [종형] 제K항」은 같은 세부보장에서 그 소제목(종형) 무리의 K번째 항이다.
+   */
+  groups?: ParagraphGroup[];
+}
+
+export interface ParagraphGroup {
+  paragraphIds: Id[];
+  /** 소제목 번호(「3.(보장의 소멸)」의 3) — 종형 머리 무리는 앞 무리 것을 잇는다. */
+  section?: number;
+  /** 종형 머리(「[2종(보험료 납입면제형)]」의 안쪽 글). */
+  variant?: string;
+  /** 세부보장 순번 — 소제목 번호가 줄면(「1.」로 돌아가면) 새 세부보장이다. */
+  coverage: number;
 }
 
 export interface ArticleIndex {
@@ -72,6 +87,8 @@ interface RefContext {
   scope: "self" | "general";
   entry?: ArticleEntry;
   paragraphId?: Id;
+  /** 조 없는 「제N항」이 셀 항 — 항 번호를 다시 세는 조(`ArticleEntry.groups`)의 한 무리. 없으면 조의 항 전부. */
+  paragraphs?: Id[];
 }
 
 const ARTICLE = /(보통약관 )?제(\d+)조(?:의(\d+))?\(((?:[^()]|\([^()]*\))*)\)(?:\s*제(\d+)항)?(?:\s*제(\d+)호)?/y;
@@ -88,6 +105,8 @@ const LAW = /(법|법률|령)\s?$/;
  */
 const CITED_ARTICLE = /제\d+조(?:의\d+)?\s*(?:제\d+항\s*)?$/;
 const JOIN = /^(, | 및 | 또는 )/;
+/** 통합형 특약의 소제목 이름 — 「3.(보장의 소멸) 」 · 「5.(보험료의 납입면제) [2종(보험료 납입면제형)] 」 바로 뒤의 「제K항」은 그 소제목(종형)의 항이다. */
+const SUBSECTION = /(\d+)\.\(((?:[^()]|\([^()]*\))*)\)\s*(?:\[([^[\]]*)\]\s*)?$/;
 /** scope 를 가르는 접두 — 덩어리 앞에 붙는다. */
 const GENERAL_PREFIX = "보통약관 ";
 
@@ -153,6 +172,8 @@ function resolve(token: Token, context: RefContext, env: RefEnv, raw: string): I
     context.scope = general ? "general" : context.scope;
     context.entry = entry;
     context.paragraphId = undefined;
+    context.paragraphs = undefined;
+    if (token.paragraph !== undefined && entry.groups) env.report.push(`항 번호를 다시 세는 조의 항을 조 번호로 가리킴 — 조 전체 순번으로 푼다: ${raw}`);
     if (token.paragraph === undefined) return entry.id;
     return resolveParagraph(token.paragraph, token.item, context, env, raw);
   }
@@ -171,7 +192,7 @@ function resolveParagraph(paragraph: string, item: string | undefined, context: 
     env.report.push(`항 참조 미해소 (조 문맥 없음): ${raw}`);
     return undefined;
   }
-  const paragraphId = entry.paragraphIds[Number(paragraph) - 1];
+  const paragraphId = (context.paragraphs ?? entry.paragraphIds)[Number(paragraph) - 1];
   if (!paragraphId) {
     env.report.push(`항 없음: ${raw} (조 「${entry.title}」)`);
     return undefined;
@@ -216,6 +237,12 @@ function readChunk(text: string, start: number, env: RefEnv): Chunk {
     ...(current ? { entry: current } : {}),
     ...(env.currentParagraphId !== undefined ? { paragraphId: env.currentParagraphId } : {}),
   };
+  // 항 번호를 다시 세는 조 — 조 없는 「제N항」은 지금 무리(또는 앞에 이름 댄 소제목 · 종형 무리)의 항
+  if (first.kind === "paragraph" && current?.groups) {
+    const group = localGroup(current.groups, env.currentParagraphId, before, env, text.slice(start, first.end));
+    if (group === null) return { end: first.end };
+    if (group) context.paragraphs = group.paragraphIds;
+  }
   const targets: RefTarget[] = [];
   let connectorWord: string | undefined;
   let token: Token | undefined = first;
@@ -257,6 +284,25 @@ function readChunk(text: string, start: number, env: RefEnv): Chunk {
   // 쉼표로만 이어진 덩어리도 「및」 — 연결어는 둘뿐이다 (기능/문면 §3.5). 대상이 하나면 연결어는 쓰이지 않는다.
   const connector: ReferenceConnector = connectorWord === "또는" ? "또는" : "및";
   return { end, targets, connector, scope: context.scope, ...(skipTo !== undefined ? { skipTo } : {}) };
+}
+
+/**
+ * 조 없는 「제N항」이 셀 무리 — 앞 글이 「N.(소제목) [종형] 」으로 끝나면 같은 세부보장의 그 소제목(종형이 있으면 그 종형) 무리, 아니면 지금 항이 든 무리.
+ * 지금 항을 모르면(표 칸) undefined — 조의 항 전부. 이름 댄 소제목을 찾지 못하면 보고하고 null(참조로 읽지 않는다).
+ */
+function localGroup(groups: readonly ParagraphGroup[], paragraphId: Id | undefined, before: string, env: RefEnv, raw: string): ParagraphGroup | null | undefined {
+  const own = paragraphId === undefined ? undefined : groups.find((g) => g.paragraphIds.includes(paragraphId));
+  if (!own) return undefined;
+  const named = SUBSECTION.exec(before);
+  if (!named) return own;
+  const section = Number(named[1]);
+  const variant = named[3] === undefined ? undefined : squash(named[3]);
+  const hit = groups.find((g) => g.coverage === own.coverage && g.section === section && (variant === undefined || (g.variant !== undefined && squash(g.variant) === variant)));
+  if (!hit) {
+    env.report.push(`소제목 항 참조 미해소 (같은 세부보장에 ${section}.${named[3] ? ` [${named[3]}]` : ""} 없음): ${named[0]}${raw}`);
+    return null;
+  }
+  return hit;
 }
 
 export function inlinesFromText(text: string, env: RefEnv, newId: () => Id): InlineNode[] {

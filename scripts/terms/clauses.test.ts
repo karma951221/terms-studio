@@ -48,6 +48,52 @@ describe("함수조항 오버레이 — 「항」 자리 대조", () => {
     expect(applyClauseUse({ article: "1", paragraph: 1, clause: "C0009" }, block, () => a, "[t]", report)).toBe(false);
     expect(report.join()).toContain("호 목록이 다름");
   });
+
+  describe("항 번호를 다시 세는 항(restart — 통합형 특약의 소제목 단위)", () => {
+    const two: ClauseRecord = {
+      code: "C0012",
+      label: "둘",
+      mode: "block",
+      description: "",
+      body: [
+        { id: "c-p1", kind: "paragraph", children: [{ id: "c-x1", kind: "text", text: "첫째." }] },
+        { id: "c-p2", kind: "paragraph", children: [{ id: "c-x2", kind: "text", text: "둘째." }] },
+      ],
+      options: [],
+    };
+    const art = (restart: [boolean, boolean]): ArticleNode => ({
+      id: "s-a1",
+      kind: "article",
+      title: "세부보장에 관한 사항",
+      children: [
+        { id: "s-a1-p1", kind: "paragraph", ...(restart[0] ? { restart: true as const } : {}), children: [text("a", "첫째.")] },
+        { id: "s-a1-p2", kind: "paragraph", ...(restart[1] ? { restart: true as const } : {}), children: [text("b", "둘째.")] },
+      ],
+    });
+
+    it("무리 첫 항(restart)부터 바꾸면 함수조항 참조가 restart 를 잇는다", () => {
+      const a = art([true, false]);
+      expect(applyClauseUse({ article: "1", paragraph: 1, clause: "C0012" }, two, () => a, "[t]", [])).toBe(true);
+      expect(a.children).toEqual([{ id: "s-a1-p1-k", kind: "clauseBlockRef", clauseCode: "C0012", options: {}, restart: true }]);
+    });
+
+    it("바꿀 항 가운데 무리가 갈리면(둘째 항이 restart) 바꾸지 않는다 — 함수조항 본문은 한 무리로 센다", () => {
+      const a = art([false, true]);
+      const report: string[] = [];
+      expect(applyClauseUse({ article: "1", paragraph: 1, clause: "C0012" }, two, () => a, "[t]", report)).toBe(false);
+      expect(report.join()).toContain("항 번호 무리");
+    });
+
+    it("원문 자리에서 딴 본문은 둘째 항부터의 restart 를 품고(첫 항 것은 뺀다), 같은 무리 모양의 자리만 바꾼다", () => {
+      const source = art([true, true]);
+      const doc: DocumentNode = { id: "d", kind: "document", title: "t", children: [source] };
+      const body = clauseFromSource(doc, source.children as ParagraphNode[], "k");
+      expect(body.map((p) => (p as { restart?: true }).restart ?? false)).toEqual([false, true]);
+      const split: ClauseRecord = { ...two, body };
+      expect(applyClauseUse({ article: "1", paragraph: 1, clause: "C0012" }, split, () => art([false, true]), "[t]", [])).toBe(true);
+      expect(applyClauseUse({ article: "1", paragraph: 1, clause: "C0012" }, split, () => art([false, false]), "[t]", [])).toBe(false);
+    });
+  });
 });
 
 describe("함수조항 오버레이 — 원문 자리를 참조로", () => {

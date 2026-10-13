@@ -596,6 +596,7 @@ class Walker {
       kind: "paragraph",
       id: n.id,
       ...keyOf(n, f),
+      ...(n.restart ? { restart: true as const } : {}),
       children: this.inlines(n.children, inner),
       ...(n.items ? { items: this.items(n.items, inner) } : {}),
       ...(excludeFromComparison ? { excludeFromComparison: true } : {}),
@@ -626,11 +627,15 @@ class Walker {
         case "clauseBlockRef": {
           const r = this.expand(n, ["block"], at, f);
           if (!r.ok) return [r.marker];
-          return this.blocks(
+          const out = this.blocks(
             r.body as ClauseBlock[],
             this.expanded(n, f),
             excludeFromComparison || (this.env.coordinate.document === "general" && n.excludeFromComparison === true),
           );
+          // 항 번호 다시 세기(통합형 특약의 소제목 첫 항이 함수조항이 된 자리) — 펼친 첫 항에 옮긴다
+          const first = n.restart ? out.findIndex((x) => x.kind === "paragraph") : -1;
+          if (first >= 0) out[first] = { ...(out[first] as RParagraph<RInline>), restart: true };
+          return out;
         }
         case "forBlock":
           return this.repeat(n, f, (children, g) => this.blocks(children as AnyBlock[], g, excludeFromComparison));
