@@ -17,6 +17,8 @@ export interface KnownDifference {
   lines: string[];
   /** 기준 줄을 바꾼다(표준화로 달라지는 표기) — 없으면 뒤에 넣는다(원문 누락). */
   replace?: true;
+  /** 바꾸기 범위 — 기준 줄 앞 · 뒤로 몇 줄까지 함께 바꾸나 [앞, 뒤] (박스 · 표 블록이 통째로 다른 자리). 없으면 기준 줄 하나. */
+  span?: [number, number];
   /** 인수기준의 차이 이름 — 사람이 읽는다. */
   why: string;
 }
@@ -63,16 +65,18 @@ export const KNOWN_DIFFERENCES: readonly KnownDifference[] = [
 const squash = (s: string) => s.replace(/\s+/g, "");
 
 /** 원문 줄 → 기대 줄 — 그 파일의 알려진 차이를 적용한다. 자리를 못 찾으면 던진다(목록이 원문과 어긋난 것). */
-export function expectedLines(dir: string, file: string, source: readonly string[]): string[] {
+export function expectedLines(dir: string, file: string, source: readonly string[], list: readonly KnownDifference[] = KNOWN_DIFFERENCES): string[] {
   const out = [...source];
-  for (const d of KNOWN_DIFFERENCES.filter((x) => x.dir === dir && x.file === file)) {
+  for (const d of list.filter((x) => x.dir === dir && x.file === file)) {
     const heading = out.findIndex((l) => /^##\s/.test(l) && squash(l).endsWith(`(${squash(d.article)})`));
     if (heading < 0) throw new Error(`알려진 차이 「${d.why}」: 조 「${d.article}」 없음`);
     const next = out.findIndex((l, i) => i > heading && /^##?\s/.test(l));
     const end = next < 0 ? out.length : next;
     const at = out.findIndex((l, i) => i > heading && i < end && squash(l) === squash(d.after));
     if (at < 0) throw new Error(`알려진 차이 「${d.why}」: 조 「${d.article}」 안에 기준 줄이 없다`);
-    if (d.replace) out.splice(at, 1, ...d.lines);
+    const [before, after] = d.span ?? [0, 0];
+    if (at - before <= heading || at + after >= end) throw new Error(`알려진 차이 「${d.why}」: 바꾸기 범위가 조 「${d.article}」 밖으로 넘친다`);
+    if (d.replace) out.splice(at - before, before + 1 + after, ...d.lines);
     else out.splice(at + 1, 0, ...d.lines);
   }
   return out;
