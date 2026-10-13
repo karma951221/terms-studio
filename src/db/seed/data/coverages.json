@@ -3361,5 +3361,125 @@
     ],
     "benefitValues": [],
     "auto": true
+  },
+  {
+    "key": "a7-c1",
+    "code": "COV000219",
+    "name": "의료사고법률비용보장",
+    "benefitName": "의료사고법률비용보장",
+    "specialGroup": "V04",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "의료사고법률비용보장"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-c2",
+    "code": "COV000220",
+    "name": "화재벌금보장",
+    "benefitName": "화재벌금보장",
+    "specialGroup": "V04",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "화재벌금보장"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-c3",
+    "code": "COV000221",
+    "name": "민사소송법률비용보장",
+    "benefitName": "민사소송법률비용보장",
+    "specialGroup": "V04",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "민사소송법률비용보장"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-c4",
+    "code": "COV000222",
+    "name": "임대차보증금 법률비용보장",
+    "benefitName": "임대차보증금 법률비용보장",
+    "specialGroup": "V04",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "임대차보증금 법률비용보장"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-c5",
+    "code": "COV000223",
+    "name": "부동산소유권 법률비용보장",
+    "benefitName": "부동산소유권 법률비용보장",
+    "specialGroup": "V04",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "부동산소유권 법률비용보장"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-c6",
+    "code": "COV000224",
+    "name": "행정소송법률비용보장",
+    "benefitName": "행정소송법률비용보장",
+    "specialGroup": "V04",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "행정소송법률비용보장"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-e1",
+    "code": "COV000225",
+    "name": "자동갱신",
+    "benefitName": "자동갱신",
+    "specialGroup": "V05",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "자동갱신"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
+  },
+  {
+    "key": "a7-e2",
+    "code": "COV000226",
+    "name": "피보험자추가",
+    "benefitName": "피보험자추가",
+    "specialGroup": "V05",
+    "coverageValues": [
+      {
+        "path": "coverage_basic.claim_name",
+        "value": "피보험자추가"
+      }
+    ],
+    "benefitValues": [],
+    "auto": true
   }
 ]

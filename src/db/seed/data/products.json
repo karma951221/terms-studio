@@ -2988,6 +2988,62 @@
         "section": "special",
         "attributes": [],
         "auto": true
+      },
+      {
+        "code": "a7-c1",
+        "coverage": "a7-c1",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-c2",
+        "coverage": "a7-c2",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-c3",
+        "coverage": "a7-c3",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-c4",
+        "coverage": "a7-c4",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-c5",
+        "coverage": "a7-c5",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-c6",
+        "coverage": "a7-c6",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-e1",
+        "coverage": "a7-e1",
+        "section": "special",
+        "attributes": [],
+        "auto": true
+      },
+      {
+        "code": "a7-e2",
+        "coverage": "a7-e2",
+        "section": "special",
+        "attributes": [],
+        "auto": true
       }
     ]
   }

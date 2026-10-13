@@ -473,7 +473,8 @@ describe("★ 실물 재현 변형 — 납입면제 없는 상품은 납입면�
       const application = articleLines(renderedToLines(doc), "준용규정").join("\n");
       expect(application, doc.title).not.toContain("납입면제");
       // 원문이 마침표 · 「은」을 빠뜨린 준용규정이 있다(갱신형 2대질환 주요치료비 · 혈전용해치료비Ⅱ — 원문 그대로)
-      expect(application, doc.title).toContain("제외합니다");
+      // 제외 조가 없는 준용규정(자동갱신 · 피보험자추가 — 「보통약관 및 해당 특별약관을 따릅니다」)은 단서가 없다
+      if (application.includes("다만,")) expect(application, doc.title).toContain("제외합니다");
     }
   });
 
@@ -502,7 +503,7 @@ describe("★ 실물 재현 변형 — 납입면제 없는 상품은 납입면�
       // 나열의 연결어는 보지 않는다 — 원문이 연결어를 섞어 쓴 나열(「… 및 제38조, 제27조의1, 제27조의2 및 제38조」)은 참조 하나로 찍혀 쉼표 · 「및」이 달라진다
       const joint = (x: string) => x.replace(/, | 및 /g, "·");
       expect(joint(head(lines)), doc.title).toBe(joint(withoutWaiver(head(source("알파2607", file!)))));
-      expect(head(lines), doc.title).toMatch(/제외합니다\.?$/);
+      if (head(lines).includes("다만,")) expect(head(lines), doc.title).toMatch(/제외합니다\.?$/);
       expect(referenceNumberIssues(lines, general), doc.title).toEqual([]);
     }
   });

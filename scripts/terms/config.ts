@@ -109,6 +109,10 @@ export const APPENDICES: AppendixSpec[] = [
   { number: 90, code: "AX000087", name: "특정순환계질환(주요손상및질환) 분류표" },
   { number: 94, code: "AX000088", name: "희귀질환자 산정특례대상 분류표" },
   { number: 95, code: "AX000089", name: "중증난치질환자(중증치매제외) 산정특례대상 분류표" },
+  { number: 37, code: "AX000090", name: "소송목적의 값에 따른 변호사비용" },
+  { number: 38, code: "AX000091", name: "민사소송 등 인지법에 정한 인지액" },
+  { number: 39, code: "AX000092", name: "송달료 규칙에 정한 송달료(민사소송)" },
+  { number: 40, code: "AX000093", name: "송달료 규칙에 정한 송달료(행정소송)" },
 ];
 
 /** 원문 텍스트의 첫 등장을 값 슬롯으로 바꾼다 (담보 레벨 `담보명` 등). */
@@ -819,6 +823,8 @@ export const autoSpecial =
     auto: { group, ...(renewal ? { renewal } : {}) },
   });
 const injury = autoSpecial("i", "V01");
+const etc = autoSpecial("e", "V05");
+const cost = autoSpecial("c", "V04");
 const both = autoSpecial("b", "V03");
 const illness = autoSpecial("d", "V02");
 
@@ -1022,6 +1028,16 @@ export const ALPHA2607_AUTO: SpecialSpec[] = [
   both(20, "2대질환_통합생활지원비(월간한도)보장.md"),
   both(21, "특정순환계질환(주요손상및질환)_통합치료비보장.md"),
   both(22, "질병_통합생활지원비(특정상해산정특례_포함)(월간한도)보장.md"),
+  // ── Ⅳ 비용손해 관련
+  cost(1, "의료사고법률비용보장.md"),
+  cost(2, "화재벌금보장.md"),
+  cost(3, "민사소송법률비용보장.md"),
+  cost(4, "임대차보증금_법률비용보장.md"),
+  cost(5, "부동산소유권_법률비용보장.md"),
+  cost(6, "행정소송법률비용보장.md"),
+  // ── Ⅴ 기타 — 자동갱신 · 피보험자추가(급부가 없는 제도성 특약이지만 원문이 주계약 특별약관으로 묶어 탑재한다)
+  etc(1, "자동갱신.md"),
+  etc(2, "피보험자추가.md"),
 ];
 
 const ALPHA2607_SPECIALS: SpecialSpec[] = [
