@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { type Locator, type Page } from "@playwright/test";
 
 import { expect, test } from "./_lib/fixtures";
@@ -12,6 +15,8 @@ import { expect, test } from "./_lib/fixtures";
  */
 
 const PRODUCT = "알파Plus보장보험";
+/** 시드 담보 수 — 시드 JSON 정본(알파Plus2607 자동 탑재 특약이 더해 수백 건). */
+const SEED_COVERAGES = (JSON.parse(readFileSync(path.join(process.cwd(), "src/db/seed/data/coverages.json"), "utf8")) as unknown[]).length;
 
 async function login(page: Page): Promise<void> {
   await page.goto("/login");
@@ -40,11 +45,15 @@ test(
   async ({ page, ev }) => {
     await ev.action("담보코드#1", "관리자로 로그인한다", () => login(page));
 
-    await ev.action("담보코드#2", "담보 조회 — 1열 헤더가 「코드」이고 시드 담보 23건(알파Plus 9 · 메리츠 9 · 알파Plus2607 질병 5)이 COV000001~COV000023 을 갖는다", async () => {
+    await ev.action("담보코드#2", `담보 조회 — 1열 헤더가 「코드」이고 시드 담보 ${SEED_COVERAGES}건(알파Plus 9 · 메리츠 9 · 알파Plus2607 질병 5 · 자동 탑재 특약)이 COV000001~ 를 갖는다(한 화면 50건)`, async () => {
       await page.goto("/coverages");
       await expect(page.locator("table.ts-table thead th").first()).toHaveText("코드");
+      await expect(page.getByText(new RegExp(`총\\s*${SEED_COVERAGES}\\s*건`))).toBeVisible();
       const codes = await page.locator("table.ts-table tbody td.col-code code").allInnerTexts();
-      expect([...codes].sort()).toEqual(Array.from({ length: 23 }, (_, i) => `COV${String(i + 1).padStart(6, "0")}`));
+      expect(codes).toHaveLength(Math.min(50, SEED_COVERAGES));
+      expect(codes.every((c) => /^COV\d{6}$/.test(c) && Number(c.slice(3)) >= 1 && Number(c.slice(3)) <= SEED_COVERAGES)).toBe(true);
+      expect(new Set(codes).size).toBe(codes.length);
+      await search(page, "q", "일반상해사망보장");
       const row = page.locator("tbody tr", { has: page.getByRole("link", { name: "일반상해사망보장", exact: true }) });
       await expect(row.locator("td.col-code")).toHaveText("COV000002");
     });
