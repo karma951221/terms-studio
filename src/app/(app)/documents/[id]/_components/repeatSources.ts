@@ -8,7 +8,7 @@
  */
 import type { EnumDef } from "@/domain/catalog";
 import type { LoopElementType } from "@/domain/clause";
-import { isRepeatSource, loopElementType, repeatLabel, type ForBlockNode, type RepeatSource, type TreeIndex } from "@/domain/document";
+import { isRepeatSource, loopElementType, loopsOnPath, repeatLabel, type RepeatNode, type RepeatSource, type SlotName, type TreeIndex } from "@/domain/document";
 import { fieldsOfForm, formsOfLevel, MASTER, type MasterTree } from "@/domain/master";
 import type { Id } from "@/domain/types";
 
@@ -31,24 +31,45 @@ export function sourceOfValue(value: string): RepeatSource | undefined {
   }
 }
 
-/** 자리를 감싼 반복 블록 — 바깥 → 안쪽, 자리 자신(반복 블록이면)도 든다. 노드 id 또는 가지 id. */
-export function loopsAround(ix: TreeIndex, id: Id): ForBlockNode[] {
+/**
+ * 자리를 감싼 반복(블록 · 문장 안) — 바깥 → 안쪽, 자리 자신(반복이면)도 든다. 노드 id 또는 가지 id.
+ * 「비었을 때」 칸 안 노드는 그 반복을 빼고 센다 — 칸은 원소 문맥 밖이다(ADR-0088 결정 3). `slot` 이 `fallback` 이면 그 반복의 칸 자리다(자신을 뺀다).
+ */
+export function loopsAround(ix: TreeIndex, id: Id, slot?: SlotName): RepeatNode[] {
   const path = ix.nodes.get(id)?.path ?? ix.branches.get(id)?.path ?? [];
-  return path.map((p) => ix.nodes.get(p)?.node).filter((n): n is ForBlockNode => n?.kind === "forBlock");
+  return loopsOnPath(ix, path, slot === "fallback" ? id : undefined);
 }
 
 /**
  * 「현재 종」 — 감싼 반복 중 세목 선택지(종) 반복이 있으면 그 이름(별칭 또는 원천 이름). 안쪽 사유 반복 안에서도 바깥 종이 커서다.
  * 슬롯 고르기의 「현재 종」 묶음(`builtin.plan.name` · `builtin.plan.number`)이 이것으로 선다 — 합집합 · 반복 밖에는 종 커서가 없다 (ADR-0077 결정 3).
  */
-export function currentPlanOf(loops: readonly ForBlockNode[], opts: { enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree } = {}): { name: string } | undefined {
+export function currentPlanOf(loops: readonly RepeatNode[], opts: { enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree } = {}): { name: string } | undefined {
   const plan = [...loops].reverse().find((f) => isRepeatSource(f.source) && f.source.kind === "planOptions");
   if (!plan) return undefined;
   return { name: plan.alias ?? repeatLabel(plan.source, { ...(opts.master ? { master: opts.master } : {}), ...(opts.enumOf ? { enumOf: opts.enumOf } : {}) }) };
 }
 
-/** 원천 칸 후보 — `outer` 는 이 자리를 감싼 가장 안쪽 반복(없으면 반복 밖). 두 단계 안(반복 안 반복 안)이면 후보가 없다. */
-export function repeatChoices(opts: { outer?: ForBlockNode; depth: number; enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree }): RepeatChoice[] {
+/**
+ * 「현재 값」 — 감싼 반복 중 원소가 열거값인 가장 안쪽 반복의 이름과 그 열거형의 글 필드. 슬롯 고르기의 「현재 값」 묶음(`builtin.value.name` ·
+ * `builtin.value.<필드키>`)이 이것으로 선다 — 열거값 반복 밖에는 없다 (ADR-0088 결정 1). 열거형을 모르면 필드 없이 값 이름만.
+ */
+export function currentValueOf(loops: readonly RepeatNode[], opts: { enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree } = {}): { name: string; fields: { key: string; label: string }[] } | undefined {
+  for (let i = loops.length - 1; i >= 0; i--) {
+    const f = loops[i];
+    if (!isRepeatSource(f.source)) continue;
+    const outer = i > 0 && isRepeatSource(loops[i - 1].source) ? loops[i - 1].source : undefined;
+    const type = loopElementType(f.source, outer, opts.master);
+    if (type?.kind !== "enum") continue;
+    const name = f.alias ?? repeatLabel(f.source, { ...(outer ? { outer } : {}), ...(opts.master ? { master: opts.master } : {}), ...(opts.enumOf ? { enumOf: opts.enumOf } : {}) });
+    const fields = (opts.enumOf?.(type.enumCode)?.fields ?? []).filter((x) => x.type === "string").map((x) => ({ key: x.key, label: x.label }));
+    return { name, fields };
+  }
+  return undefined;
+}
+
+/** 원천 칸 후보 — `outer` 는 이 자리를 감싼 가장 안쪽 반복(없으면 반복 밖). 두 단계 안(반복 안 반복 안)이면 후보가 없다. 블록 · 문장 안 반복 공통. */
+export function repeatChoices(opts: { outer?: RepeatNode; depth: number; enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree }): RepeatChoice[] {
   const master = opts.master ?? MASTER;
   const label = (source: RepeatSource) => repeatLabel(source, { ...(opts.outer && isRepeatSource(opts.outer.source) ? { outer: opts.outer.source } : {}), master, ...(opts.enumOf ? { enumOf: opts.enumOf } : {}) });
   const choice = (source: RepeatSource, suffix = ""): RepeatChoice => ({ value: sourceValue(source), label: `${label(source)}${suffix}`, source });
@@ -77,7 +98,7 @@ export function repeatChoices(opts: { outer?: ForBlockNode; depth: number; enumO
 }
 
 /** 인자 연결 칸의 「반복의 현재 원소」 후보 — 감싼 반복마다 원소 타입 · 이름. */
-export function loopChoices(loops: readonly ForBlockNode[], opts: { enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree } = {}): { id: Id; label: string; type: LoopElementType }[] {
+export function loopChoices(loops: readonly RepeatNode[], opts: { enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree } = {}): { id: Id; label: string; type: LoopElementType }[] {
   return loops.flatMap((f, i) => {
     if (!isRepeatSource(f.source)) return [];
     const outer = i > 0 && isRepeatSource(loops[i - 1].source) ? loops[i - 1].source : undefined;

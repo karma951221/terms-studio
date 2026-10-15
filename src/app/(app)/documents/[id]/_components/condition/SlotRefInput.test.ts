@@ -38,3 +38,15 @@ describe("슬롯 참조 후보 — 검색 입력(콤보박스)", () => {
     expect(slotPathLabel(context, "builtin.plan.number")).toBe("현재 종 › 선택지 번호");
   });
 });
+
+describe("「현재 값」 묶음 (ADR-0088 결정 1)", () => {
+  it("감싼 반복의 원소가 열거값이면 「현재 값」 묶음 — 값 이름 · 열거값 글 필드", () => {
+    const inLoop: ConditionContext = { ...context, value: { name: "납입면제사유마다", fields: [{ key: "F01", label: "약관표시명" }] } };
+    expect(slotOptions(inLoop).slice(0, 2)).toEqual([
+      { value: "builtin.value.name", label: "값 이름", hint: "builtin.value.name", group: "현재 값 — 납입면제사유마다" },
+      { value: "builtin.value.F01", label: "약관표시명", hint: "builtin.value.F01", group: "현재 값 — 납입면제사유마다" },
+    ]);
+    expect(slotPathLabel(inLoop, "builtin.value.F01")).toBe("현재 값 › 약관표시명");
+    expect(slotPathLabel(context, "builtin.value.name")).toBe("현재 값 › 값 이름");
+  });
+});

@@ -22,7 +22,7 @@ import { IconButton, IconRevert } from "@/app/_components/icons";
 import { STRUCT_KEY_CHIP } from "@/app/_lib/labels";
 import type { EnumDef } from "@/domain/catalog";
 import { presetUsage, switchValueLabeler, type Bindings, type Clause } from "@/domain/clause";
-import { foldTitle, particlePreset, refChunkText, referenceChunkLabel, referenceKeyIndex, refKey, type ArticleNode, type Box, type CondBlockNode, type InlineNode, type Node, type NodeNumber, type ReferenceTarget, type TableNode } from "@/domain/document";
+import { foldTitle, particlePreset, refChunkText, repeatLabel, referenceChunkLabel, referenceKeyIndex, refKey, type ArticleNode, type Box, type CondBlockNode, type InlineNode, type Node, type NodeNumber, type ReferenceTarget, type TableNode } from "@/domain/document";
 import { format, parse, refPath } from "@/domain/expression";
 import type { ClauseOptionOverride } from "@/domain/product";
 import type { Code, Id } from "@/domain/types";
@@ -170,7 +170,12 @@ function Inline({ node, ctx }: { node: InlineNode; ctx: Ctx }) {
       );
 
     case "inlineFor":
-      return <span className="ts-muted">(문장 안 반복 — 아직 지원하지 않는다)</span>;
+      // 템플릿 원문 — 원소는 조립 결과 패널에서 본다. 여기는 자리 말(반복 이름) (ADR-0088 결정 6)
+      return (
+        <span className="ts-doc-inline-chip is-repeat" title={`문장 안 반복 — 원소를 쉼표로 잇고 마지막 앞에 「${node.connector ?? "연결어?"}」`}>
+          <span className="ts-doc-inline-head">〔{node.alias ?? repeatLabel(node.source)}〕</span>
+        </span>
+      );
   }
 }
 
@@ -183,7 +188,7 @@ type ClauseInlineRef = Extract<InlineNode, { kind: "clauseInlineRef" }>;
 /** 문장 안 함수조항 참조 — 옵션 박스는 문장 흐름을 끊지 않도록 그 항 **아래**에 모아 선다. */
 function inlineClauseRefs(nodes: readonly InlineNode[]): ClauseInlineRef[] {
   return nodes.flatMap((n) =>
-    n.kind === "clauseInlineRef" ? [n] : n.kind === "inlineCond" ? n.branches.flatMap((br) => inlineClauseRefs(br.children)) : n.kind === "inlineFor" ? inlineClauseRefs(n.children) : [],
+    n.kind === "clauseInlineRef" ? [n] : n.kind === "inlineCond" ? n.branches.flatMap((br) => inlineClauseRefs(br.children)) : n.kind === "inlineFor" ? [...inlineClauseRefs(n.children), ...inlineClauseRefs(n.fallback ?? [])] : [],
   );
 }
 

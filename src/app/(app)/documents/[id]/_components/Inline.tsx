@@ -4,7 +4,8 @@
  * 문장 자리 — 읽기면 명조 글 + 칩, 편집이면 **그 자리 편집기** (기능/문면 §4.3).
  *
  * - 문장 자리 하나(항 · 호 · 목의 문장 · 문장 안 조건의 가지 · 표 셀)가 contentEditable 하나다. 글은 그대로 치고,
- *   칩(슬롯 · 조 참조 · 별표 참조 · 함수조항 · 문장 안 조건 · 구조 표기 · 조사)은 고칠 수 없는 덩어리로 들어 있다 — 누르면 바로 아래에 팝업.
+ *   칩(슬롯 · 조 참조 · 별표 참조 · 함수조항 · 문장 안 조건 · 문장 안 반복 · 구조 표기 · 조사)은 고칠 수 없는 덩어리로 들어 있다 — 누르면 바로 아래에 팝업.
+ *   문장 안 반복은 자리 말 「〔납입면제사유마다〕」 칩 하나 — 눌러 펼치면(팝업) 원천 · 연결어 · 본문 · 「비었을 때」 칸을 고친다 (ADR-0088 결정 6).
  * - 초점이 떠나면 DOM 을 읽어 `setInlines` 한 명령으로 편집본에 넣는다(「적용」 단계 없음). 저장은 바의 `저장` 하나.
  * - Enter 는 아래에 새 항(호 · 목), 빈 칸에서 Backspace 는 그 항을 지운다. 붙여넣기는 글만 — 표 셀에 탭 · 줄로 나뉜 글이면 셀을 채운다.
  * - 목록이 바뀌면(적용 · 다른 조작) 편집기를 새로 그린다(key) — 사용자가 고친 DOM 과 React 가 엇갈리지 않게.
@@ -71,8 +72,21 @@ function chipParts(node: InlineNode, ctx: DocCtx): { className: string; title: s
     case "particle":
       // 저작 화면은 칩 그대로(을/를) — 고른 결과는 미리보기 · 조립 산출에만 (기능/문면 §3.11)
       return { className: "ts-doc-slot", title: "조사 — 앞 글자 받침에 따라 조립 때 고른다", body: particlePreset(node.preset).label };
-    case "inlineFor":
-      return { className: "ts-muted", title: "문장 안 반복 — 아직 지원하지 않는다", body: "(문장 안 반복 — 아직 지원하지 않는다)" };
+    case "inlineFor": {
+      // 상품 문맥이 없어 원소를 모른다 — 자리 말(반복 이름)로 보이고, 본문 · 칸은 펼쳐(팝업) 고친다 (ADR-0088 결정 6)
+      const name = ctx.repeatLabelOf?.(node.id) ?? node.alias ?? "반복";
+      const fallback = (node.fallback ?? []).length > 0 ? " · 「비었을 때」 칸 있음" : "";
+      return {
+        className: "ts-doc-inline-chip is-repeat",
+        title: `문장 안 반복 — ${name} · 원소를 쉼표로 잇고 마지막 앞에 ${node.connector ? `「${node.connector}」` : "연결어(미선택)"}${fallback}`,
+        body: (
+          <>
+            <span className="ts-doc-inline-head">〔{name}〕</span>
+            {!node.connector && <span className="ts-doc-inline-sep"> 〔연결어?〕</span>}
+          </>
+        ),
+      };
+    }
     case "inlineCond":
       if (node.switchOn !== undefined) {
         // 문장 안 값별 분기 — 칩 하나: 대상 + 칸마다 머리(값 · 문구 없음) + 그 칸 문장 (최종 결정 5)
@@ -346,7 +360,7 @@ function InlineEditor({ at, nodes, ctx, owner, focusKey, placeholder }: { at: In
       if (owner) {
         commit();
         edit.enter(owner);
-      } else if (!("tableId" in at) && at.slot === "title") el.blur(); // 조 제목은 한 줄 — Enter 가 마침(초점이 떠나며 적용)
+      } else if (!("tableId" in at) && (at.slot === "title" || at.slot === "fallback")) el.blur(); // 조 제목 · 「비었을 때」 칸은 한 줄 — Enter 가 마침(초점이 떠나며 적용)
       return;
     }
     if (e.key === "Backspace" && owner && (el.textContent ?? "") === "" && !el.querySelector("[data-chip]")) {
@@ -392,7 +406,7 @@ function InlineEditor({ at, nodes, ctx, owner, focusKey, placeholder }: { at: In
             title={`${what ?? CHIP_WHAT[node.kind] ?? node.kind} — 눌러서 고치기 · 풀기 · 삭제는 툴바 (${title})`}
             onClick={(event) => {
               event.preventDefault();
-              if (node.kind !== "structKey" && node.kind !== "inlineFor") edit.popup({ kind: "editChip", nodeId: node.id }, anchorOf(event.currentTarget));
+              if (node.kind !== "structKey") edit.popup({ kind: "editChip", nodeId: node.id }, anchorOf(event.currentTarget));
             }}
           >
             {body}

@@ -7,7 +7,7 @@
  * 조건식에는 팝업이 없다 — 조건 블록 머리 줄에서 그 자리로 고친다(2026-09-28). 문장 안 조건 칩의 팝업만 가지마다 같은 머리 줄(`CondRows`)을 쓴다.
  * 우측 패널에는 입력칸이 없다 — 여기가 입력칸이 뜨는 유일한 자리다.
  */
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, type FocusEvent, type FormEvent, type ReactNode } from "react";
 
 import { Combobox, type ComboOption } from "@/app/_components/Combobox";
 import { IconButton, IconTrash } from "@/app/_components/icons";
@@ -18,6 +18,7 @@ import { unfoldPreset, type Bindings, type Clause } from "@/domain/clause";
 import {
   codeChangeBreaks,
   codeTag,
+  currentValueRef,
   documentCodeEntries,
   indexTree,
   isParticlePreset,
@@ -45,6 +46,7 @@ import {
   type ReferenceTarget,
   type RefRestrict,
   type RefTarget,
+  type RepeatSource,
 } from "@/domain/document";
 import type { Box } from "@/domain/document/box";
 import { ATTACH_LEVEL_LABEL, REFERENCE_CONNECTORS, isReferenceConnector, type Code, type Id, type ReferenceConnector } from "@/domain/types";
@@ -60,7 +62,7 @@ import { runsFromTokens } from "./inlineRuns";
 import { clausesFitting, type PopupSpec } from "./menus";
 import { PopActions, Popover } from "./Popover";
 import { RefTargetTree } from "./RefTargetTree";
-import { loopChoices, loopsAround, repeatChoices, sourceOfValue, sourceValue } from "./repeatSources";
+import { loopChoices, loopsAround, repeatChoices, sourceOfValue, sourceValue, type RepeatChoice } from "./repeatSources";
 import { CaseControls } from "./SwitchControls";
 import { unassignedValues } from "./switchCases";
 
@@ -87,13 +89,17 @@ export interface PopupEnv {
 }
 
 /** 확인이면 FormData → 명령, 적용되면 닫는다. 명령을 못 만들면(빈 칸) 그 사유를 팝업 안에 보인다. */
-function PopForm({ env, onClose, build, children }: { env: PopupEnv; onClose: () => void; build: (fd: FormData) => EditOp[] | string; children: ReactNode }) {
+function PopForm({ env, onClose, build, children, after }: { env: PopupEnv; onClose: () => void; build: (fd: FormData) => EditOp[] | string; children: ReactNode; after?: (ops: readonly EditOp[]) => void }) {
   const [message, setMessage] = useState<string>();
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const built = build(new FormData(event.currentTarget));
     if (typeof built === "string") {
       setMessage(built);
+      return;
+    }
+    if (built.length > 0 && after) {
+      if (env.apply(built)) after(built); // 적용되면 이어서 열 것(넣은 칩의 팝업)으로 — 닫지 않고 바꾼다
       return;
     }
     if (built.length === 0 || env.apply(built)) onClose();
@@ -699,27 +705,164 @@ function RepeatBlockPopup({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
           return [{ type: "insert", node: b.forBlock(source, children, alias || undefined), at: spec.at }];
         }}
       >
-        {choices.length === 0 ? (
-          <p className="ts-muted">이 자리에는 반복 원천이 없다 — 반복 안 반복은 한 단계까지(안쪽은 바깥 종의 목록만).</p>
-        ) : (
-          <div className="ts-form-row">
-            <label htmlFor="pop-repeat-source">반복 원천</label>
-            <select id="pop-repeat-source" name="source" defaultValue={choices.some((c) => c.value === current) ? current : ""}>
-              <option value="">— 고른다 —</option>
-              {choices.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-        <div className="ts-form-row">
-          <label htmlFor="pop-repeat-alias">이름</label>
-          <input id="pop-repeat-alias" type="text" name="alias" defaultValue={node?.alias ?? ""} placeholder="비우면 원천에서 짓는다(예: 납입면제종마다)" />
-        </div>
+        <RepeatSourceFields choices={choices} current={current} alias={node?.alias} />
         <p className="ts-muted">원소마다 본문을 복제한다 — 원소가 0 이면 블록이 없다. 반복 안에서는 현재 원소만 읽는다(함수조항 인자에 「현재 종 · 현재 원소」로 연결).</p>
         <PopActions onCancel={onClose} confirmLabel={node ? "적용" : "넣기"} />
+      </PopForm>
+    </Popover>
+  );
+}
+
+/**
+ * 반복 원천 칸 · 이름 칸 — 블록 반복 · 문장 안 반복 팝업이 같은 모양을 쓴다 (같은 조작군 모양 통일). `onSource` · `onAlias` 를 주면 바꾸는 즉시
+ * (문장 안 반복 칩의 펼친 팝업), 아니면 폼 값(`source` · `alias`)으로 확인 때 읽는다.
+ */
+function RepeatSourceFields({ choices, current, alias, onSource, onAlias, idBase = "pop-repeat" }: { choices: readonly RepeatChoice[]; current: string; alias?: string; onSource?: (value: string) => void; onAlias?: (value: string) => void; idBase?: string }) {
+  const known = choices.some((c) => c.value === current);
+  return (
+    <>
+      {choices.length === 0 ? (
+        <p className="ts-muted">이 자리에는 반복 원천이 없다 — 반복 안 반복은 한 단계까지(안쪽은 바깥 종의 목록만).</p>
+      ) : (
+        <div className="ts-form-row">
+          <label htmlFor={`${idBase}-source`}>반복 원천</label>
+          <select id={`${idBase}-source`} name="source" {...(onSource ? { value: known ? current : "", onChange: (e) => onSource(e.target.value) } : { defaultValue: known ? current : "" })}>
+            <option value="">— 고른다 —</option>
+            {choices.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      <div className="ts-form-row">
+        <label htmlFor={`${idBase}-alias`}>이름</label>
+        <input
+          id={`${idBase}-alias`}
+          type="text"
+          name="alias"
+          defaultValue={alias ?? ""}
+          placeholder="비우면 원천에서 짓는다(예: 납입면제종마다)"
+          {...(onAlias ? { onBlur: (e: FocusEvent<HTMLInputElement>) => (e.target.value !== (alias ?? "") ? onAlias(e.target.value) : undefined) } : {})}
+        />
+      </div>
+    </>
+  );
+}
+
+/** 문장 안 반복의 연결어 — 「및」 · 「또는」, 기본값 없음(조 참조와 같은 규칙 — ADR-0088 결정 2). `onPick` 이면 바꾸는 즉시. */
+function RepeatConnectorField({ value, onPick, idBase = "pop-repeat" }: { value?: ReferenceConnector; onPick?: (c: ReferenceConnector) => void; idBase?: string }) {
+  return (
+    <div className="ts-form-row">
+      <span className="ts-form-label" id={`${idBase}-connector`}>연결어</span>
+      <div>
+        <div className="ts-radio-group" role="radiogroup" aria-labelledby={`${idBase}-connector`}>
+          {REFERENCE_CONNECTORS.map((c) => (
+            <label key={c} className="ts-form-radio">
+              <input type="radio" name="connector" value={c} {...(onPick ? { checked: value === c, onChange: () => onPick(c) } : { defaultChecked: value === c })} />
+              {c}
+            </label>
+          ))}
+        </div>
+        <p className="ts-form-hint">골라야 적용된다 — 기본값이 없다. 원소를 쉼표로 잇고 마지막 원소 앞에만 붙는다(「A, B 및 C」). 원소가 하나면 그 원소만.</p>
+      </div>
+    </div>
+  );
+}
+
+/** 문장 안 반복 본문의 첫 모양 — 원소를 바로 찍는 「현재 …」 슬롯 하나(종이면 종형명, 열거값이면 값 이름). 펼친 팝업에서 고친다. */
+function inlineRepeatBody(source: RepeatSource, b: ReturnType<typeof nodeBuilders>): InlineNode[] {
+  return [b.slot(source.kind === "planOptions" ? "builtin.plan.name" : currentValueRef())];
+}
+
+/**
+ * 문장 안 반복 (ADR-0088 · 기능/문면 §4.3) — 넣기(`repeatInline`)는 원천 · 연결어 · 이름을 고르고 넣으면 그 칩의 펼친 팝업으로 이어진다.
+ * 펼친 팝업(`editChip`)은 원천 · 연결어 · 이름(바꾸는 즉시) + 본문(원소마다 되풀이 — 「현재 …」 슬롯) + 「비었을 때」 칸(원소 0개일 때의 글, 비우면 빈 글)을
+ * 그 자리 편집기로 고친다. 원천 후보는 블록 반복 팝업과 같다(자리에 맞는 것만 — 블록 반복 안이면 바깥 종의 목록).
+ */
+function InlineRepeatPopup({ env, spec, anchor, onClose }: { env: PopupEnv; spec: Extract<PopupSpec, { kind: "repeatInline" }> | { kind: "editChip"; nodeId: Id }; anchor: Anchor; onClose: () => void }) {
+  const ix = indexTree(env.tree);
+  const editing = spec.kind === "editChip" ? ix.nodes.get(spec.nodeId)?.node : undefined;
+  const node = editing?.kind === "inlineFor" ? editing : undefined;
+  const placeId = node ? node.id : spec.kind === "repeatInline" ? ("tableId" in spec.at ? spec.at.tableId : spec.at.parentId) : undefined;
+  const around = placeId !== undefined ? loopsAround(ix, placeId).filter((l) => l.id !== node?.id) : [];
+  const choices = repeatChoices({ ...(around.at(-1) ? { outer: around.at(-1)! } : {}), depth: around.length, ...(env.enumOf ? { enumOf: env.enumOf } : {}) });
+  const current = node && isRepeatSource(node.source) ? sourceValue(node.source) : "";
+  const b = nodeBuilders(env.newId);
+  if (node) {
+    const set = (patch: { source?: RepeatSource; connector?: ReferenceConnector; alias?: string }) => env.apply([{ type: "setFor", nodeId: node.id, ...patch }]);
+    return (
+      <Popover anchor={anchor} label="문장 안 반복" onClose={onClose} wide>
+        <div onContextMenu={env.ctx.edit?.contextMenu}>
+          <RepeatSourceFields
+            choices={choices}
+            current={current}
+            alias={node.alias}
+            idBase="pop-inline-repeat"
+            onSource={(value) => {
+              const source = sourceOfValue(value);
+              if (source) set({ source });
+            }}
+            onAlias={(alias) => set({ alias })}
+          />
+          <RepeatConnectorField value={node.connector} onPick={(connector) => set({ connector })} idBase="pop-inline-repeat" />
+          <div className="ts-pop-branch">
+            <div className="ts-cond-line">
+              <span className="ts-cond-badge">마다</span>
+              <span className="ts-muted">원소마다 되풀이할 글 — 「현재 …」 슬롯이 그 원소를 찍는다</span>
+            </div>
+            <div className="ts-pop-branch-body ts-doc">
+              <InlineSlot at={{ parentId: node.id }} nodes={node.children} ctx={env.ctx} placeholder="원소마다" />
+            </div>
+          </div>
+          <div className="ts-pop-branch">
+            <div className="ts-cond-line">
+              <span className="ts-cond-badge">비었을 때</span>
+              <span className="ts-muted">원소가 하나도 없을 때 이 자리에 나오는 글 — 비우면 빈 글. 현재 원소는 읽지 못한다</span>
+            </div>
+            <div className="ts-pop-branch-body ts-doc">
+              <InlineSlot at={{ parentId: node.id, slot: "fallback" }} nodes={node.fallback ?? []} ctx={env.ctx} placeholder="비었을 때" />
+            </div>
+          </div>
+          <div className="ts-form-actions">
+            <button type="button" className="primary" onClick={onClose}>
+              닫기
+            </button>
+          </div>
+          <p className="ts-muted">원소 순서는 블록 반복과 같다(종은 선택지 순서 · 사유는 열거형 순서). 실제 글은 미리보기 탭에서 본다. 고친 것은 편집본에 들어가고 저장해야 반영된다.</p>
+        </div>
+      </Popover>
+    );
+  }
+  if (spec.kind !== "repeatInline") return null;
+  const at = spec.at;
+  return (
+    <Popover anchor={anchor} label="문장 안 반복 넣기" onClose={onClose}>
+      <PopForm
+        env={env}
+        onClose={onClose}
+        after={(ops) => {
+          const inserted = ops.flatMap((op) => (op.type === "setInlines" ? op.runs : [])).find((r) => "node" in r && r.node.kind === "inlineFor");
+          if (inserted && "node" in inserted) env.ctx.edit?.popup({ kind: "editChip", nodeId: inserted.node.id }, anchor);
+          else onClose();
+        }}
+        build={(fd) => {
+          const source = sourceOfValue(str(fd, "source"));
+          if (!source) return "반복 원천을 고른다.";
+          const connector = str(fd, "connector");
+          if (!isReferenceConnector(connector)) return "연결어(및 · 또는)를 고른다 — 기본값이 없다.";
+          const alias = str(fd, "alias");
+          const repeat = b.inlineFor(source, inlineRepeatBody(source, b), { connector, ...(alias ? { alias } : {}) });
+          const list = inlineListAt(env.latest(), at);
+          if (!list) return "문장 자리를 찾을 수 없다 — 다시 오른쪽 클릭한다.";
+          return [{ type: "setInlines", at, runs: runsFromTokens(list, spec.tokens, env.newId, repeat) }];
+        }}
+      >
+        <RepeatSourceFields choices={choices} current="" idBase="pop-inline-repeat" />
+        <RepeatConnectorField idBase="pop-inline-repeat" />
+        <p className="ts-muted">원소마다 본문을 되풀이해 「A, B 및 C」로 잇는다 — 넣으면 본문 · 「비었을 때」 칸을 고치는 창이 이어서 열린다.</p>
+        <PopActions onCancel={onClose} confirmLabel="넣기" />
       </PopForm>
     </Popover>
   );
@@ -784,6 +927,8 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
       return <CodePopup env={env} spec={spec} anchor={anchor} onClose={onClose} />;
     case "repeatBlock":
       return <RepeatBlockPopup env={env} spec={spec} anchor={anchor} onClose={onClose} />;
+    case "repeatInline":
+      return <InlineRepeatPopup env={env} spec={spec} anchor={anchor} onClose={onClose} />;
 
     case "insertInline": {
       const make = (fd: FormData): InlineNode | string => {
@@ -859,6 +1004,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
       if (!node) return null;
       if (node.kind === "inlineCond" && node.switchOn !== undefined) return <InlineSwitchPopup env={env} nodeId={node.id} anchor={anchor} onClose={onClose} />;
       if (node.kind === "inlineCond") return <InlineCondPopup env={env} nodeId={node.id} anchor={anchor} onClose={onClose} />;
+      if (node.kind === "inlineFor") return <InlineRepeatPopup env={env} spec={{ kind: "editChip", nodeId: node.id }} anchor={anchor} onClose={onClose} />;
       const title =
         node.kind === "slot" ? "치환 슬롯" : node.kind === "articleRef" ? "조 참조" : node.kind === "appendixRef" ? "별표 참조" : node.kind === "particle" ? "조사" : node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef" ? (env.clauses.find((c) => c.code === node.clauseCode)?.params?.length ? "함수조항 옵션 · 인자" : "함수조항 옵션") : "고치기";
       return (

@@ -64,6 +64,7 @@ import {
   repeatElementEnums,
   foldTitle,
   type FoldOptions,
+  type SlotName,
 } from "@/domain/document";
 import type { Box } from "@/domain/document/box";
 import type { Code, Coordinate, Id, Impact, Issue, WorkMark } from "@/domain/types";
@@ -86,7 +87,7 @@ import { marksMenuItem, markSelectionOps, useMarksShown } from "./workMarks";
 import { DOCUMENT_TOOLS, allTools, itemsFor, type ToolId } from "./tools";
 import { useBlockDrag } from "./useBlockDrag";
 import { PopupHost, type PopupEnv } from "./Popups";
-import { currentPlanOf, loopsAround } from "./repeatSources";
+import { currentPlanOf, currentValueOf, loopsAround } from "./repeatSources";
 import { ContextMenu, Popover } from "./Popover";
 import { RemoveCard } from "./RemoveCard";
 import { PreviewTab } from "./PreviewTab";
@@ -217,7 +218,10 @@ export function DocumentEditor(props: EditorProps) {
   const gate = useMemo(() => clauseGateFrom(props.clauses, props.discriminators.map((d) => d.code), catalogTypeResolver(props.discriminators), props.enums), [props.clauses, props.discriminators, props.enums]);
   const enumByCode = useMemo(() => new Map(props.enums.map((e) => [e.code, e] as const)), [props.enums]);
   /** 조 제목 접기 — 슬롯은 구분자 표시명으로 「〔이름〕」 (ADR-0088 결정 6). 목차 · 경로 · 참조 칩 · 삭제 확인이 같은 말을 쓴다. */
-  const titleFold: FoldOptions = useMemo(() => ({ slotLabel: (ref: string) => props.discriminators.find((d) => d.code === ref)?.label }), [props.discriminators]);
+  const titleFold: FoldOptions = useMemo(
+    () => ({ slotLabel: (ref: string) => props.discriminators.find((d) => d.code === ref)?.label, enumOf: (c: Code) => props.enums.find((e) => e.code === c) }),
+    [props.discriminators, props.enums],
+  );
   // 함수조항 상자의 값별 분기 칸 머리(값 이름) — 함수조항마다 한 번 (최종 결정 8)
   const switchLabelers = useMemo(
     () => new Map((props.clauses ?? []).filter((c) => (c.params ?? []).length > 0).map((c) => [c.code, switchValueLabeler(c, props.enums)] as const)),
@@ -691,10 +695,12 @@ export function DocumentEditor(props: EditorProps) {
     const owner = index.branches.get(id)?.ownerId ?? id;
     return repeatScopeOf(tree, owner)?.levels;
   };
-  // 종 반복 안이면 슬롯 고르기에 「현재 종」 묶음 (ADR-0077 결정 3)
-  const withPlan = (c: ConditionContext, id: Id): ConditionContext => {
-    const plan = currentPlanOf(loopsAround(index, id), { enumOf: (x) => enumByCode.get(x) });
-    return plan ? { ...c, plan } : c;
+  // 종 반복 안이면 슬롯 고르기에 「현재 종」 묶음 (ADR-0077 결정 3), 열거값 반복 안이면 「현재 값」 묶음 (ADR-0088) — 「비었을 때」 칸(slot fallback)은 그 반복 밖
+  const withPlan = (c: ConditionContext, id: Id, slot?: SlotName): ConditionContext => {
+    const loops = loopsAround(index, id, slot);
+    const plan = currentPlanOf(loops, { enumOf: (x) => enumByCode.get(x) });
+    const value = currentValueOf(loops, { enumOf: (x) => enumByCode.get(x) });
+    return { ...c, ...(plan ? { plan } : {}), ...(value ? { value } : {}) };
   };
 
   // 블록 반복 이름 — 별칭 또는 원천(목록 원천은 바깥 반복의 폼을 읽는다, ADR-0077)
@@ -741,7 +747,7 @@ export function DocumentEditor(props: EditorProps) {
           const t = index.nodes.get(spec.at.tableId)?.node;
           return withPlan(withRow(t?.kind === "table" && t.repeat && !t.rows[spec.at.row]?.header ? repeatLevels(t) : undefined), spec.at.tableId);
         }
-        return withPlan(withRow(scopeOf(spec.at.parentId)), spec.at.parentId);
+        return withPlan(withRow(scopeOf(spec.at.parentId)), spec.at.parentId, spec.at.slot);
       }
       case "editChip":
         return withPlan(withRow(scopeOf(spec.nodeId)), spec.nodeId);

@@ -94,7 +94,7 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
     const top = b.condBlock([b.branch("D0001 = true", [b.article("나", [])])]);
     const d2 = b.document("D", [top]);
     expect(labels(condMenu(env(d2), top.branches[0].id)).slice(0, 3)).toEqual(["이 가지 삭제(잠김)", "이 가지에 조 추가", "조건 풀기 — 이 가지 내용만 남긴다"]);
-    expect(inlineInsertItems({ parentId: "n2" }, [], { inInlineCond: true, newId: sequentialIds("x") }).map((i) => i.label).slice(0, 5)).toEqual(["치환 슬롯…", "조 참조…", "별표 참조…", "함수조항(문장 안)…", "조사 — 을/를"]);
+    expect(inlineInsertItems({ parentId: "n2" }, [], { inInlineCond: true, newId: sequentialIds("x") }).map((i) => i.label).slice(0, 6)).toEqual(["치환 슬롯…", "조 참조…", "별표 참조…", "함수조항(문장 안)…", "문장 안 반복…", "조사 — 을/를"]);
     expect(inlineInsertItems({ tableId: "t", row: 1, col: 0 }, [], { inInlineCond: false, newId: sequentialIds("x"), structLevels: ["subCoverage"] }).map((i) => i.label)).toContain("구조 표기…");
   });
 
@@ -205,5 +205,47 @@ describe("조 제목 칸 — 제목도 문장 자리다 (ADR-0088 결정 5)", ()
     const items = placeMenu(env(t), { kind: "inline", at: { parentId: branchId } }).flat();
     expect(items.find((i) => i.label === "조 참조…")?.refusal).toBe(TITLE_REFUSAL);
     expect(items.some((i) => i.label === "문장 안 조건")).toBe(false);
+  });
+});
+
+describe("문장 안 반복 넣기 (ADR-0088 결정 1 · 기능/문면 §4.3)", () => {
+  it("문장 자리 · 조 제목에 「문장 안 반복…」 — 툴바 「문장 안 반복」이 맡고 팝업(원천 고르기)을 연다", () => {
+    const t = tree();
+    for (const at of [{ parentId: "n3" }, { parentId: "n4", slot: "title" as const }]) {
+      const sections = placeMenu(env(t), { kind: "inline", at });
+      const item = sections.flat().find((i) => i.label === "문장 안 반복…");
+      expect(item?.refusal).toBeUndefined();
+      expect(item?.action).toMatchObject({ do: "popup", popup: { kind: "repeatInline", at } });
+      expect(toolState(toolFor(DOCUMENT_TOOLS, "문장 안 반복…")!, sections).disabled).toBe(false);
+    }
+  });
+
+  it("문장 안 반복의 본문 · 「비었을 때」 칸 안이면 잠근다(한 겹) — 넣기 목록은 문장 자리 넣기만", () => {
+    const b = nodeBuilders(sequentialIds("x"));
+    const inline = b.inlineFor({ kind: "planOptions", form: "waiver" }, [b.text("a")], { connector: "및" });
+    const t = b.document("D", [b.article("가", [b.paragraph([inline])])]);
+    for (const at of [{ parentId: inline.id }, { parentId: inline.id, slot: "fallback" as const }]) {
+      const items = placeMenu(env(t), { kind: "inline", at }).flat();
+      expect(items.find((i) => i.label === "문장 안 반복…")?.refusal).toContain("한 겹");
+      expect(items.some((i) => i.label === "치환 슬롯…")).toBe(true);
+      expect(items.some((i) => i.label === "아래에 항 추가")).toBe(false);
+    }
+  });
+
+  it("반복 안 반복 안(두 겹)의 문장이면 잠근다", () => {
+    const b = nodeBuilders(sequentialIds("x"));
+    const item = b.item([b.text("호")]);
+    const inner = b.forBlock({ kind: "listOfCurrent", loop: "?", field: "reasons" }, [item]);
+    const outer = b.forBlock({ kind: "planOptions", form: "waiver" }, [b.paragraph([b.text("항")], [inner])]);
+    inner.source = { kind: "listOfCurrent", loop: outer.id, field: "reasons" };
+    const t = b.document("D", [b.article("가", [outer])]);
+    expect(placeMenu(env(t), { kind: "inline", at: { parentId: item.id } }).flat().find((i) => i.label === "문장 안 반복…")?.refusal).toContain("한 단계");
+  });
+
+  it("문장 안 반복 칩의 메뉴 — 고치기(팝업) · 삭제", () => {
+    const b = nodeBuilders(sequentialIds("x"));
+    const inline = b.inlineFor({ kind: "planOptions", form: "waiver" }, [b.text("a")], { connector: "및" });
+    const t = b.document("D", [b.article("가", [b.paragraph([inline])])]);
+    expect(labels(chipMenu(env(t), inline.id))).toEqual(["고치기…", "삭제"]);
   });
 });

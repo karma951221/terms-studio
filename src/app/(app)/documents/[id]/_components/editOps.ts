@@ -139,6 +139,7 @@ export function inlineAtOf(tree: DocumentNode, ix: TreeIndex, nodeId: Id): { at:
   const parent = ix.nodes.get(e.parentId)?.node;
   if (!parent) return undefined;
   if (parent.kind === "article" && e.slot === "title") return { at: { parentId: parent.id, slot: "title" }, list: parent.title };
+  if (parent.kind === "inlineFor" && e.slot === "fallback") return { at: { parentId: parent.id, slot: "fallback" }, list: parent.fallback ?? [] };
   if (parent.kind === "table") {
     for (const [row, r] of parent.rows.entries()) {
       for (const [col, cell] of r.cells.entries()) if (cell.some((n) => n.id === nodeId)) return { at: { tableId: parent.id, row, col }, list: cell };
@@ -159,6 +160,8 @@ export function inlineListAt(tree: DocumentNode, at: InlineAt): InlineNode[] | u
   if (br) return br.branch.children as InlineNode[];
   const n = ix.nodes.get(at.parentId)?.node;
   if (at.slot === "title") return n?.kind === "article" ? n.title : undefined;
+  // 「비었을 때」 칸은 없으면 빈 목록 — 첫 입력이 칸을 만든다(setInlines 의 fallback 자리)
+  if (at.slot === "fallback") return n?.kind === "inlineFor" ? (n.fallback ?? []) : undefined;
   return n && "children" in n ? (n.children as InlineNode[]) : undefined;
 }
 

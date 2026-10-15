@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { EnumDef } from "@/domain/catalog";
 import { indexTree, nodeBuilders, sequentialIds } from "@/domain/document";
 
-import { currentPlanOf, loopChoices, loopsAround, repeatChoices, sourceOfValue, sourceValue } from "./repeatSources";
+import { currentPlanOf, currentValueOf, loopChoices, loopsAround, repeatChoices, sourceOfValue, sourceValue } from "./repeatSources";
 
 const E0001: EnumDef = {
   code: "E0001",
@@ -65,5 +65,42 @@ describe("반복 원천 고르기 (ADR-0077 · 기능/문면 §4.3)", () => {
     expect(currentPlanOf(loopsAround(ix, plain.id))).toBeUndefined();
     outer.alias = "적용종마다";
     expect(currentPlanOf(loopsAround(ix, item.id))).toEqual({ name: "적용종마다" });
+  });
+});
+
+describe("문장 안 반복도 감싼 반복이다 (ADR-0088 결정 1 · 3)", () => {
+  const E9: EnumDef = {
+    code: "E0001",
+    label: "납입면제사유",
+    fields: [
+      { key: "F01", label: "약관표시명", type: "string", order: 1 },
+      { key: "F03", label: "정의조대상", type: "boolean", order: 2 },
+    ],
+    values: [],
+  };
+  it("본문 자리는 그 반복을 감싼 반복으로 센다 — 「비었을 때」 칸 자리(slot fallback)와 칸 안 노드는 빼고 센다", () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    const fb = b.text("없음");
+    const inline = b.inlineFor({ kind: "planOptions", form: "waiver" }, [b.slot("builtin.plan.name")], { connector: "및", fallback: [fb] });
+    const doc = b.document("d", [b.article("a", [b.paragraph([inline])])]);
+    const ix = indexTree(doc);
+    expect(loopsAround(ix, inline.id).map((l) => l.id)).toEqual([inline.id]);
+    expect(loopsAround(ix, inline.id, "fallback")).toEqual([]);
+    expect(loopsAround(ix, fb.id)).toEqual([]);
+    expect(currentPlanOf(loopsAround(ix, inline.id))).toEqual({ name: "납입면제종마다" });
+    expect(currentPlanOf(loopsAround(ix, inline.id, "fallback"))).toBeUndefined();
+  });
+
+  it("「현재 값」 — 감싼 반복 중 원소가 열거값인 가장 안쪽 반복의 이름 · 열거형의 글 필드", () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    const inline = b.inlineFor({ kind: "listOfCurrent", loop: "?", field: "reasons" }, [b.text("x")], { connector: "및" });
+    const outer = b.forBlock({ kind: "planOptions", form: "waiver" }, [b.paragraph([inline])]);
+    inline.source = { kind: "listOfCurrent", loop: outer.id, field: "reasons" };
+    const doc = b.document("d", [b.article("a", [outer])]);
+    const ix = indexTree(doc);
+    const enumOf9 = (c: string) => (c === "E0001" ? E9 : undefined);
+    expect(currentValueOf(loopsAround(ix, inline.id), { enumOf: enumOf9 })).toEqual({ name: "납입면제사유마다", fields: [{ key: "F01", label: "약관표시명" }] });
+    expect(currentValueOf(loopsAround(ix, outer.id), { enumOf: enumOf9 })).toBeUndefined();
+    expect(currentPlanOf(loopsAround(ix, inline.id))).toEqual({ name: "납입면제종마다" });
   });
 });

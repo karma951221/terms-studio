@@ -151,13 +151,14 @@ function displayOf(when: string, refLabel: DisplayName | undefined): string {
 /** 문장 자리 → DOM `data-inline` 값 (오른쪽 클릭이 자리를 되읽는다). */
 export function encodeAt(at: InlineAt): string {
   if ("tableId" in at) return `cell:${at.tableId}:${at.row}:${at.col}`;
-  return at.slot === "title" ? `title:${at.parentId}` : `node:${at.parentId}`;
+  return at.slot === "title" ? `title:${at.parentId}` : at.slot === "fallback" ? `fallback:${at.parentId}` : `node:${at.parentId}`;
 }
 
 export function decodeAt(raw: string): InlineAt | undefined {
   const [kind, id, row, col] = raw.split(":");
   if (kind === "node" && id) return { parentId: id };
   if (kind === "title" && id) return { parentId: id, slot: "title" };
+  if (kind === "fallback" && id) return { parentId: id, slot: "fallback" };
   if (kind === "cell" && id && row !== undefined && col !== undefined) return { tableId: id, row: Number(row), col: Number(col) };
   return undefined;
 }
