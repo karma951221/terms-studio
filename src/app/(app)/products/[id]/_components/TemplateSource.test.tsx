@@ -322,3 +322,15 @@ describe("TemplateSource — 함수조항 자리의 번호 (2026-10-03 사용자
     expect(html).toContain('<ol class="ts-doc-subitems" style="counter-reset:ts-doc-subitem 1">');
   });
 });
+
+describe("TemplateSource — 호 목록 자리의 조건 블록 (hydration, 2026-10-15)", () => {
+  it("가지 <li> 안의 호는 제 목록(<ol>)에 선다 — <li> 안에 <li> 를 바로 두지 않는다", () => {
+    const cond: CondBlockNode = { id: "C", kind: "condBlock", branches: [{ id: "B1", when: "D0009 = true", children: [{ id: "i2", kind: "item", children: [text("i2t", "조건 안 호")] }] }] };
+    const article: ArticleNode = { id: "A1", kind: "article", title: "조", children: [{ id: "P", kind: "paragraph", children: [], items: [{ id: "i1", kind: "item", children: [] }, cond as never] }] };
+    const tree: DocumentNode = { id: "d", kind: "document", title: "", children: [article] };
+    const html = renderToStaticMarkup(<TemplateSource productId="p1" nodes={[article]} numbers={numberTree(tree)} hidden={new Set()} references={new Map()} clauses={[]} overrides={[]} overrideTargets={[]} readOnly />);
+    expect(html).toContain("조건 안 호");
+    expect(html).toMatch(/<li class="ts-doc-cond">[\s\S]*?<ol class="ts-doc-list-cont"><li class="ts-doc-item">/);
+    expect(html).not.toMatch(/<li class="ts-doc-cond">(?:(?!<\/li>|<ol)[\s\S])*<li/);
+  });
+});
