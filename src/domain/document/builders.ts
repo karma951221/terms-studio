@@ -3,7 +3,7 @@
  * 기본 id 는 uuid (`crypto.randomUUID`). 테스트는 `sequentialIds()` 로 결정적 id 를 쓴다.
  */
 
-import type { Code, Id } from "../types";
+import type { Code, Id, ReferenceConnector } from "../types";
 import type { RepeatSource } from "./blockRepeat";
 import type { ParticleNode, ParticlePresetKey } from "./particles";
 import { titleNodes } from "./title";
@@ -120,13 +120,15 @@ export function nodeBuilders(newId: IdSource = randomIds) {
       ...(alias !== undefined ? { alias } : {}),
       children,
     }),
-    inlineFor: (source: string, children: InlineNode[] = [], opts: { alias?: string; separator?: string } = {}): InlineForNode => ({
+    /** 인라인 반복 (ADR-0088) — 연결어는 기본값이 없다(안 주면 싣지 않는다). 「비었을 때」 칸은 주면 싣는다. */
+    inlineFor: (source: RepeatSource, children: InlineNode[] = [], opts: { alias?: string; connector?: ReferenceConnector; fallback?: InlineNode[] } = {}): InlineForNode => ({
       id: newId(),
       kind: "inlineFor",
       source,
       ...(opts.alias !== undefined ? { alias: opts.alias } : {}),
+      ...(opts.connector !== undefined ? { connector: opts.connector } : {}),
       children,
-      ...(opts.separator !== undefined ? { separator: opts.separator } : {}),
+      ...(opts.fallback !== undefined ? { fallback: opts.fallback } : {}),
     }),
     /**
      * 연결어는 기본값이 없다 (결정 14) — 안 주면 싣지 않는다. 대상이 둘 이상이면 저장 전에 골라야 한다.

@@ -377,13 +377,14 @@ describe("텍스트 · 조 명 · 슬롯 · 참조 대상 · 옵션 수정", () 
     expect((cleared.children[0] as ArticleNode).children[1]).not.toHaveProperty("bindings");
   });
 
-  it("반복 노드 속성(소스·별칭·구분 문자열) 은 자리만 저장한다 (P7)", () => {
+  it("인라인 반복의 원천 · 별칭 · 연결어를 setFor 로 고친다 (ADR-0088)", () => {
     const { b, doc } = twoArticles();
+    const source = { kind: "planOptions" as const, form: "waiver" };
     const base = unwrap(
-      applyCommand(doc, { type: "insert", node: b.inlineFor("subCoverage", [b.slot("builtin.subCoverage.name")]), at: { parentId: "n2" } }), // slot n6 · for n7
+      applyCommand(doc, { type: "insert", node: b.inlineFor(source, [b.slot("builtin.plan.name")], { connector: "및" }), at: { parentId: "n2" } }), // slot n6 · for n7
     );
-    const next = unwrap(applyCommand(base, { type: "setFor", nodeId: "n7", alias: "sc", separator: ", " }));
-    expect(((next.children[0] as ArticleNode).children[0] as ParagraphNode).children[1]).toMatchObject({ source: "subCoverage", alias: "sc", separator: ", " });
+    const next = unwrap(applyCommand(base, { type: "setFor", nodeId: "n7", alias: "종들", connector: "또는" }));
+    expect(((next.children[0] as ArticleNode).children[0] as ParagraphNode).children[1]).toMatchObject({ source, alias: "종들", connector: "또는" });
   });
 });
 

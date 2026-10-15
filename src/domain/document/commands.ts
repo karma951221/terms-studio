@@ -14,7 +14,7 @@
 
 import type { Bindings } from "../clause/params";
 import { isWorkMark, ok, reject, WORK_MARK_MESSAGE } from "../types";
-import type { Code, Id, Issue, Result, WorkMark } from "../types";
+import type { Code, Id, Issue, ReferenceConnector, Result, WorkMark } from "../types";
 import type { IdSource } from "./builders";
 import { randomIds } from "./builders";
 import {
@@ -55,8 +55,11 @@ import { codeFormatMessage, codeTreeInPlace, documentCodeIssues, isCodedKind, lo
 
 // ───────────────────────────── 커맨드 ─────────────────────────────
 
-/** 인라인 목록의 자리 — 문장 자리(항 · 호 · 목 · 문장 안 조건 가지) · 조 제목(`slot: "title"` — 조 id, ADR-0088)이거나 표 셀. */
-export type InlineAt = { parentId: Id; slot?: "title" } | { tableId: Id; row: number; col: number };
+/**
+ * 인라인 목록의 자리 — 문장 자리(항 · 호 · 목 · 문장 안 조건 가지 · 인라인 반복 본문) · 조 제목(`slot: "title"` — 조 id, ADR-0088) ·
+ * 인라인 반복의 「비었을 때」 칸(`slot: "fallback"` — 반복 id)이거나 표 셀.
+ */
+export type InlineAt = { parentId: Id; slot?: "title" | "fallback" } | { tableId: Id; row: number; col: number };
 
 /**
  * 인라인 목록을 새로 짤 때의 한 조각 (`setInlines`).
@@ -113,8 +116,11 @@ export type Command =
   | { type: "setParticle"; nodeId: Id; preset: ParticlePresetKey }
   /** 함수조항 참조의 옵션 선택 · 인자 연결. `bindings` 없으면 연결은 그대로, 빈 맵이면 걷는다(모두 기본 연결, 최종 결정 2). */
   | { type: "setClauseOptions"; nodeId: Id; options: Record<Code, Code>; bindings?: Bindings; preset?: Code | null }
-  /** 반복 원천 · 이름 — 블록 반복은 `RepeatSource`(ADR-0077), 인라인 반복(자리만)은 글자. 이름을 빈 글자로 주면 지운다(원천에서 짓는다). */
-  | { type: "setFor"; nodeId: Id; source?: RepeatSource | string; alias?: string; separator?: string }
+  /**
+   * 반복 원천 · 이름 · 연결어 — 원천은 블록 · 인라인 모두 `RepeatSource`(ADR-0077 · ADR-0088). 이름을 빈 글자로 주면 지운다(원천에서 짓는다).
+   * 연결어(「및」·「또는」)는 인라인 반복만 — 고른 뒤 비울 수는 없다(기본값 없음, 미선택은 저장 오류).
+   */
+  | { type: "setFor"; nodeId: Id; source?: RepeatSource; alias?: string; connector?: ReferenceConnector }
   | { type: "addBranch"; condId: Id; branch: BlockBranch | InlineBranch; index?: number }
   /** `when` 없음 = else 로 바꾼다. */
   | { type: "setWhen"; branchId: Id; when?: string }
@@ -642,26 +648,22 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       const n = e.value.node;
       if (n.kind !== "forBlock" && n.kind !== "inlineFor") return structure("반복 노드가 아닙니다", e.value.path);
       if (cmd.source !== undefined) {
-        if (n.kind === "forBlock") {
-          if (!isRepeatSource(cmd.source)) return structure("블록 반복의 원천을 고른다", e.value.path);
-          n.source = structuredClone(cmd.source);
-        } else {
-          if (typeof cmd.source !== "string") return structure("인라인 반복의 원천은 글자입니다", e.value.path);
-          n.source = cmd.source;
-        }
+        if (!isRepeatSource(cmd.source)) return structure(`${n.kind === "forBlock" ? "블록 반복" : "문장 안 반복"}의 원천을 고른다`, e.value.path);
+        n.source = structuredClone(cmd.source);
       }
       if (cmd.alias !== undefined) {
         if (cmd.alias.trim() === "") delete n.alias;
         else n.alias = cmd.alias;
       }
-      if (cmd.separator !== undefined && n.kind === "inlineFor") n.separator = cmd.separator;
-      if (n.kind === "forBlock") {
-        // 원천을 바꾸면 그 자리에서 바로 검사한다(안쪽 반복 · 현재 원소 연결이 기대는 원천) — 넣기와 같은 규칙
-        const wix = indexTree(work, env.coordinate);
-        const entry = wix.nodes.get(n.id);
-        const issues = entry ? checkNodeRefs(entry, wix, env, false) : [];
-        if (issues.length > 0) return invalid(issues);
+      if (cmd.connector !== undefined) {
+        if (n.kind !== "inlineFor") return structure("연결어는 문장 안 반복에만 고릅니다", e.value.path);
+        n.connector = cmd.connector;
       }
+      // 원천을 바꾸면 그 자리에서 바로 검사한다(안쪽 반복 · 현재 원소 연결 · 「현재 값」 슬롯이 기대는 원천) — 넣기와 같은 규칙
+      const wix = indexTree(work, env.coordinate);
+      const entry = wix.nodes.get(n.id);
+      const issues = !entry ? [] : n.kind === "inlineFor" ? refIssuesIn(wix, n, env) : checkNodeRefs(entry, wix, env, false);
+      if (issues.length > 0) return invalid(issues);
       return ok(work);
     }
 

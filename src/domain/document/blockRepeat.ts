@@ -29,7 +29,7 @@ import { checkPlanOptionFilter, type LoopElementType } from "../clause/params";
 import { parse, refPath, type Expr, type ExprType, type Ref, type TypeResolver } from "../expression";
 import { findMasterField, formsOfLevel, MASTER, type MasterTree } from "../master";
 import type { Code, Coordinate, Id, Issue } from "../types";
-import { coordinateOf, indexTree, type DocumentNode, type ForBlockNode, type NodeEntry, type TreeIndex } from "./nodes";
+import { coordinateOf, fallbackPathId, indexTree, isRepeatNode, type DocumentNode, type NodeEntry, type RepeatNode, type TreeIndex } from "./nodes";
 import { clauseCodeEntries, withClauseCodes } from "../clause/pcode";
 import { missingValueMessage } from "../catalog/values";
 import { CODED_KINDS, isCodedKind, nodesOfTarget, refKey } from "./pcode";
@@ -102,15 +102,34 @@ export function loopElementType(source: RepeatSource, outer: RepeatSource | unde
   }
 }
 
-/** 노드(색인 항목)를 감싼 반복 블록들 — 바깥 → 안쪽, 자기 자신 제외. */
-export function enclosingLoops(ix: TreeIndex, e: Pick<NodeEntry, "path" | "node">): ForBlockNode[] {
-  const out: ForBlockNode[] = [];
-  for (const id of e.path) {
-    if (id === e.node.id) continue;
+/**
+ * 경로 위의 반복(블록 · 인라인) — 바깥 → 안쪽. 「비었을 때」 칸 표지가 바로 뒤에 선 반복은 뺀다 — 칸은 그 반복의 원소 문맥 밖이다 (ADR-0088 결정 3).
+ * `self` 는 빼고 센다(자기 자신이 반복이어도 감싼 것이 아니다).
+ */
+export function loopsOnPath(ix: TreeIndex, path: readonly Id[], self?: Id): RepeatNode[] {
+  const out: RepeatNode[] = [];
+  path.forEach((id, i) => {
+    if (id === self) return;
     const n = ix.nodes.get(id)?.node;
-    if (n?.kind === "forBlock") out.push(n);
-  }
+    if (!isRepeatNode(n) || path[i + 1] === fallbackPathId(id)) return;
+    out.push(n);
+  });
   return out;
+}
+
+/** 경로가 지나는 「비었을 때」 칸의 반복 — 칸 안 노드가 그 반복의 현재 원소를 읽으면 저장 오류다 (ADR-0088 결정 3). */
+export function fallbacksOnPath(ix: TreeIndex, path: readonly Id[]): RepeatNode[] {
+  const out: RepeatNode[] = [];
+  path.forEach((id, i) => {
+    const n = ix.nodes.get(id)?.node;
+    if (isRepeatNode(n) && path[i + 1] === fallbackPathId(id)) out.push(n);
+  });
+  return out;
+}
+
+/** 노드(색인 항목)를 감싼 반복들(블록 · 인라인) — 바깥 → 안쪽, 자기 자신 제외 · 「비었을 때」 칸의 주인 제외. */
+export function enclosingLoops(ix: TreeIndex, e: Pick<NodeEntry, "path" | "node">): RepeatNode[] {
+  return loopsOnPath(ix, e.path, e.node.id);
 }
 
 /** 자리를 감싼 반복 블록 id → 현재 원소 타입 — 인자 연결 검사(`BindingEnv.loops`)의 재료. */
@@ -128,14 +147,14 @@ export function loopTypesAt(ix: TreeIndex, e: Pick<NodeEntry, "path" | "node">, 
 // ───────────────────────────── 원천 검사 ─────────────────────────────
 
 /**
- * 반복 블록 원천 검사 (저장) — `outers` = 이 블록을 감싼 반복들(바깥 → 안쪽).
+ * 반복 원천 검사 (저장) — 블록 반복 · 인라인 반복 공통. `outers` = 이 반복을 감싼 반복들(바깥 → 안쪽).
  * 원천 없음 · 세목 폼 아님 · 거름(그 폼 필드만 · 참거짓) · 안쪽 원천은 바로 바깥 반복의 현재 원소의 목록뿐 · 목록 필드는 목록값(복수) · 합집합 거름 필드.
  */
-export function checkRepeatSource(node: ForBlockNode, outers: readonly ForBlockNode[], env: RepeatEnv, at: Coordinate): Issue[] {
+export function checkRepeatSource(node: RepeatNode, outers: readonly RepeatNode[], env: RepeatEnv, at: Coordinate): Issue[] {
   const master = env.master ?? MASTER;
   const source: unknown = node.source;
   const fail = (kind: Issue["kind"], message: string, refPath?: string): Issue[] => [{ kind, message, at: { ...at, ...(refPath !== undefined ? { refPath } : {}) } }];
-  if (!isRepeatSource(source)) return fail("structure", "반복 블록의 원천을 고른다 — 세목 선택지 · 바깥 반복의 현재 원소의 목록 · 목록값의 합집합");
+  if (!isRepeatSource(source)) return fail("structure", `${node.kind === "inlineFor" ? "문장 안 반복" : "반복 블록"}의 원천을 고른다 — 세목 선택지 · 바깥 반복의 현재 원소의 목록 · 목록값의 합집합`);
   const outer = outers.at(-1);
   if (outer && source.kind !== "listOfCurrent") {
     return fail("structure", "안쪽 반복의 원천은 바깥 반복의 현재 원소의 목록뿐입니다 — 「현재 종의 사유마다」처럼 고른다 (ADR-0077 결정 4)");
@@ -167,6 +186,81 @@ export function checkRepeatSource(node: ForBlockNode, outers: readonly ForBlockN
       return [];
     }
   }
+}
+
+// ───────────────────────────── 인라인 반복 · 「현재 값」 슬롯 (ADR-0088) ─────────────────────────────
+
+/** 인라인 반복 연결어 미선택 — 원소 수를 템플릿 시점에 모르므로 늘 고른다 (ADR-0088 결정 2 · 조 참조 규칙). */
+export const INLINE_REPEAT_CONNECTOR_MESSAGE = "문장 안 반복의 연결어를 고르세요 (및 · 또는) — 원소가 몇 개일지 템플릿에서 모릅니다";
+
+/**
+ * 인라인 반복 검사 (저장) — 조 제목이면 원천은 세목 선택지 · 합집합만(조 제목은 반복 블록 안에 서지 않는다), 원천 검사(블록 반복과 같다),
+ * 연결어(「및」·「또는」 — 기본값 없음). 한 겹 · 깊이는 색인(`indexTree`)이 본다.
+ */
+export function inlineRepeatIssues(node: RepeatNode & { kind: "inlineFor" }, e: Pick<NodeEntry, "path" | "node" | "inTitle" | "inInlineFor">, ix: TreeIndex, env: RepeatEnv, at: Coordinate): Issue[] {
+  if (e.inInlineFor) return []; // 한 겹 위반 — 색인이 이미 말했다
+  const source: unknown = node.source;
+  if (e.inTitle && isRepeatSource(source) && source.kind === "listOfCurrent") {
+    return [{ kind: "structure", message: "조 제목의 문장 안 반복은 세목 선택지 · 합집합 원천만 씁니다 — 조 제목은 반복 블록 안에 서지 않습니다 (ADR-0088 결정 1)", at }];
+  }
+  const sourceIssues = checkRepeatSource(node, enclosingLoops(ix, e), env, at);
+  if (sourceIssues.length > 0) return sourceIssues;
+  const connector: unknown = node.connector;
+  if (connector === undefined) return [{ kind: "structure", message: INLINE_REPEAT_CONNECTOR_MESSAGE, at }];
+  if (connector !== "및" && connector !== "또는") return [{ kind: "structure", message: `문장 안 반복의 연결어는 「및」·「또는」 중 하나여야 합니다: ${String(connector)}`, at }];
+  return [];
+}
+
+/** 「현재 값」 슬롯 경로의 머리 — `builtin.value.name`(값 이름) · `builtin.value.<필드키>`(열거값 글 필드). */
+export const CURRENT_VALUE_PREFIX = "builtin.value.";
+
+/** 슬롯 경로 → 「현재 값」의 무엇. 「현재 값」 슬롯이 아니면 undefined. */
+export function currentValueSlot(ref: string): { kind: "name" } | { kind: "field"; field: Code } | undefined {
+  const r = ref.trim();
+  if (!r.startsWith(CURRENT_VALUE_PREFIX)) return undefined;
+  const prop = r.slice(CURRENT_VALUE_PREFIX.length);
+  return prop === "name" ? { kind: "name" } : { kind: "field", field: prop };
+}
+
+/** 「현재 값」 슬롯 경로 — 값 이름(필드 없음) 또는 열거값 필드. */
+export function currentValueRef(field?: Code): string {
+  return `${CURRENT_VALUE_PREFIX}${field ?? "name"}`;
+}
+
+/** 반복 노드의 원소 타입 — 감싼 반복(그 반복 자신을 감싼 것)의 가장 안쪽을 바깥 원천으로. */
+function ownElementType(ix: TreeIndex, loop: RepeatNode, master: MasterTree): LoopElementType | undefined {
+  if (!isRepeatSource(loop.source)) return undefined;
+  const h = ix.nodes.get(loop.id);
+  const outer = h ? enclosingLoops(ix, h).at(-1) : undefined;
+  return loopElementType(loop.source, outer && isRepeatSource(outer.source) ? outer.source : undefined, master);
+}
+
+/**
+ * 현재 원소를 읽는 슬롯의 검사 (저장, ADR-0088 결정 1 · 3) — 「현재 종」(`builtin.plan.*`) · 「현재 값」(`builtin.value.*`).
+ * - 「비었을 때」 칸 안에서 그 반복의 현재 원소를 읽으면 오류 — 칸은 원소 문맥 밖이다(바깥 반복의 원소는 읽는다).
+ * - 「현재 값」은 원소가 열거값인 반복 안에서만 · 필드는 그 열거형의 글 필드만(열거형을 알 때).
+ * 「현재 종」이 반복 밖에 선 것은 여기서 막지 않는다 — 조립의 미입력이다(옛 규칙 그대로).
+ */
+export function currentSlotIssues(ref: string, e: Pick<NodeEntry, "path" | "node">, ix: TreeIndex, env: RepeatEnv, at: Coordinate): Issue[] {
+  const master = env.master ?? MASTER;
+  const value = currentValueSlot(ref);
+  const plan = ref.trim().startsWith("builtin.plan.");
+  if (!value && !plan) return [];
+  const want = value ? "enum" : "planOptions";
+  const here = { ...at, refPath: ref };
+  const hit = [...loopTypesAt(ix, e, master).values()].reverse().find((t) => t.kind === want);
+  if (!hit) {
+    const owner = fallbacksOnPath(ix, e.path).find((l) => ownElementType(ix, l, master)?.kind === want);
+    if (owner) return [{ kind: "structure", message: `「비었을 때」 칸은 원소 문맥 밖이라 ${value ? "「현재 값」" : "「현재 종」"}을 읽을 수 없습니다 — 칸에는 원소가 없을 때의 글을 쓴다 (ADR-0088 결정 3)`, at: here }];
+    return value ? [{ kind: "structure", message: "「현재 값」 슬롯은 원소가 열거값(사유)인 반복 안에서만 씁니다", at: here }] : [];
+  }
+  if (value?.kind !== "field" || hit.kind !== "enum") return [];
+  const def = env.enumOf?.(hit.enumCode);
+  if (!def) return [];
+  const field = def.fields?.find((f) => f.key === value.field);
+  if (!field) return [{ kind: "brokenRef", message: `「현재 값」 필드 ${value.field} 이(가) 열거형 ${def.code} 에 없습니다`, at: here }];
+  if (field.type !== "string") return [{ kind: "typeMismatch", message: `「현재 값」 슬롯은 열거값 글 필드만 찍습니다 — ${field.label} 은(는) 참거짓 필드입니다`, at: here }];
+  return [];
 }
 
 // ───────────────────────────── 이름 ─────────────────────────────
