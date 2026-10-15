@@ -10,12 +10,16 @@ import type { Code, Id } from "../types";
 
 export interface Benefit {
   id: Id;
+  /** 노드 키 `1` · `2` … — 그 세부보장 안 유일 · 불변 · 순서와 무관 (ADR-0087 결정 2, `keys.ts`). */
+  key: string;
   name: string;
   order: number;
 }
 
 export interface SubCoverage {
   id: Id;
+  /** 노드 키 `01` · `02` … — 담보 안 유일 · 불변 · 순서와 무관 (ADR-0087 결정 2, `keys.ts`). */
+  key: string;
   name: string;
   order: number;
   /** order 오름차순. 최소 1개 (최소 구조). */
@@ -59,6 +63,8 @@ export interface CoverageNode extends CoverageNodeRef {
   name: string;
   /** 자기 자신을 뺀 조상들 (담보부터). 담보 노드면 []. */
   ancestors: CoverageNodeRef[];
+  /** 세부보장 `01` · 급부 `01.2`. 담보 뿌리는 없음. */
+  keyPath?: string;
 }
 
 // ───────────────────────────── 생성 입력 ─────────────────────────────

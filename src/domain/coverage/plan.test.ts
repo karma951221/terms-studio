@@ -21,8 +21,8 @@ const tree: Coverage = {
   name: "수술비",
   description: "",
   subCoverages: [
-    { id: "s1", name: "1종수술", order: 0, benefits: [{ id: "b1", name: "수술급여금", order: 0 }, { id: "b2", name: "위로금", order: 1 }] },
-    { id: "s2", name: "2종수술", order: 1, benefits: [{ id: "b3", name: "수술급여금", order: 0 }] },
+    { id: "s1", key: "01", name: "1종수술", order: 0, benefits: [{ id: "b1", key: "1", name: "수술급여금", order: 0 }, { id: "b2", key: "2", name: "위로금", order: 1 }] },
+    { id: "s2", key: "02", name: "2종수술", order: 1, benefits: [{ id: "b3", key: "1", name: "수술급여금", order: 0 }] },
   ],
 };
 
@@ -173,7 +173,7 @@ describe("dryRunStructurePlan — 서비스 호출 전 메모리 검증", () => 
     draft[0]!.benefits = [{ ...draft[0]!.benefits[0]!, name: "위로금" }];
     expect(structureIssues(draft)).toEqual([]);
     const r = dryRunStructurePlan(tree, structurePlan(tree, draft));
-    expect(r.ok && r.value.subCoverages[0]!.benefits).toEqual([{ id: "b1", name: "위로금", order: 0 }]);
+    expect(r.ok && r.value.subCoverages[0]!.benefits).toEqual([{ id: "b1", key: "1", name: "위로금", order: 0 }]);
   });
 
   it("형제 이름 A↔B 맞바꾸기 — 세부보장 · 급부 모두", () => {
@@ -253,8 +253,33 @@ describe("dryRunStructurePlan — 서비스 호출 전 메모리 검증", () => 
     draft.push({ key: "new:1", name: "3종수술", benefits: [{ key: "new:2", name: "급여금" }, { key: "new:3", name: "위로금" }] });
     let seq = 0;
     const r = applyStructurePlanTo(tree, structurePlan(tree, draft), () => `real-${seq++}`);
-    expect(r.ok && r.value.subCoverages[2]).toEqual({ id: "real-0", name: "3종수술", order: 2, benefits: [{ id: "real-1", name: "급여금", order: 0 }, { id: "real-2", name: "위로금", order: 1 }] });
+    expect(r.ok && r.value.subCoverages[2]).toEqual({ id: "real-0", key: "03", name: "3종수술", order: 2, benefits: [{ id: "real-1", key: "1", name: "급여금", order: 0 }, { id: "real-2", key: "2", name: "위로금", order: 1 }] });
     const dry = dryRunStructurePlan(tree, structurePlan(tree, draft));
     expect(dry.ok && dry.value.subCoverages[2]!.id.startsWith("dry:")).toBe(true); // 드라이런의 id 는 가짜 — 검증용
+  });
+});
+
+describe("저장 계획 — 키는 최종 트리 기준 (ADR-0087 결정 2 · 기능/담보 §3.8)", () => {
+  const keyed: Coverage = {
+    id: "cov",
+    name: "암",
+    description: "",
+    subCoverages: [
+      { id: "s1", key: "01", name: "A", order: 0, benefits: [{ id: "b1", key: "1", name: "a", order: 0 }] },
+      { id: "s2", key: "02", name: "B", order: 1, benefits: [{ id: "b2", key: "1", name: "b", order: 0 }] },
+    ],
+  };
+
+  it("같은 저장에서 02 를 빼고 새 세부보장을 더하면 새 노드가 02 를 받는다", () => {
+    const draft: StructureDraftSub[] = structureDraftOf(keyed).filter((s) => s.id !== "s2");
+    draft.push({ key: "new:s0", name: "C", benefits: [{ key: "new:b0", name: "c" }] });
+    const r = dryRunStructurePlan(keyed, structurePlan(keyed, draft));
+    expect(r.ok && r.value.subCoverages.map((s) => [s.name, s.key])).toEqual([["A", "01"], ["C", "02"]]);
+  });
+
+  it("순서만 바꾸면 키는 그대로", () => {
+    const draft = [...structureDraftOf(keyed)].reverse();
+    const r = dryRunStructurePlan(keyed, structurePlan(keyed, draft));
+    expect(r.ok && r.value.subCoverages.map((s) => s.key)).toEqual(["02", "01"]);
   });
 });

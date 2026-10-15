@@ -56,7 +56,7 @@ const 준용: Clause = {
 const 갱신유형: AttributeKind = { code: "A0001", label: "갱신유형", order: 0, values: [{ code: "1", label: "갱신형", fragment: "" }, { code: "2", label: "비갱신형", fragment: "" }] };
 
 const fx = surgeryFixture();
-const 수술비: Coverage = { id: fx.coverageId, name: "수술비", description: "", documentId: "doc-s", subCoverages: [{ id: "sub-1", name: "1종수술", order: 0, benefits: [{ id: "ben-1", name: "수술보험금", order: 0 }] }] };
+const 수술비: Coverage = { id: fx.coverageId, name: "수술비", description: "", documentId: "doc-s", subCoverages: [{ id: "sub-1", key: "01", name: "1종수술", order: 0, benefits: [{ id: "ben-1", key: "1", name: "수술보험금", order: 0 }] }] };
 const 담보약관: DocumentInput = { id: "doc-s", kind: "special", ownerId: fx.coverageId, title: fx.special.title, generalDocumentId: "doc-g", tree: fx.special };
 const 보통약관: DocumentInput = { id: "doc-g", kind: "general", title: fx.general.title, tree: fx.general };
 const 상품: ProductInput = {
@@ -246,7 +246,7 @@ describe("refs 그래프 — 구분자 참조의 노드 한정자 `@노드` (ADR
   });
 
   it("가리킨 노드가 사라지면 구분자 레벨로 키를 만들어 깨진 간선으로 남는다", () => {
-    const 급부없음: Coverage = { ...수술비, subCoverages: [{ id: "sub-1", name: "1종수술", order: 0, benefits: [] }] };
+    const 급부없음: Coverage = { ...수술비, subCoverages: [{ id: "sub-1", key: "01", name: "1종수술", order: 0, benefits: [] }] };
     const g = withQualifiers([급부없음]);
     const es = edgesTo(g, "coverageNode:benefit/ben-1").filter((e) => e.via === "nodeQualifier");
     expect(es).toHaveLength(3);
