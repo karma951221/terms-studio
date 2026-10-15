@@ -3931,12 +3931,17 @@ button:where(:not([data-slot])).ts-ref-fold:hover {
   white-space: nowrap;
 }
 
-/* 코드 표시 — 코드 수정 창의 흐린 글씨 「P0200 · 호」 (기능/문면 §6.2 — 본문에는 넣지 않는다) */
+/* 코드 표시 — 대상 고르기 줄 끝 · 코드 수정 창의 흐린 글씨 「P0200 · 호」 (기능/문면 §6.2 — 본문에는 넣지 않는다) */
+.ts-ref-code,
 .ts-code-tag {
   font-size: 11px;
   color: var(--ts-ink-3);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+.ts-ref-code {
+  margin-left: 8px;
 }
 
 .ts-ref-scope,

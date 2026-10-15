@@ -7,6 +7,7 @@
  * - 조 · 항 · 호 · 목 어느 단계든 고를 수 있고 여럿 고른다. 고른 값은 숨은 `targets` 칸에 참조 대상 열쇠(조 id · 조#P코드)로 문서 순서대로 실린다.
  * - 관은 묶음 머리(좌측 목차와 같은 「제N관 이름」)일 뿐 고를 수 없다.
  * - 키보드: ↑ ↓ 줄 이동 · → 펴기(펴져 있으면 첫 하위) · ← 접기(접혀 있으면 상위) · Space 고르기(체크박스 기본).
+ * - 항 · 호 · 목 줄 끝에 흐린 글씨로 코드 「P0200 · 호」 (ADR-0072 — 본문에는 코드를 넣지 않는다, 기능/문면 §6.2). 검색은 번호 · 제목만 본다.
  * - 위 검색칸에 치면 번호 · 제목이 맞는 줄과 그 조상만 남고 조상은 펴진다. 맞은 글자는 검색 입력(콤보박스)과 같이 강조한다
  *   (디자인원칙 §1.8 — 여럿을 고르는 트리라 콤보박스 대신 같은 거르기 · 강조를 트리에 붙인다). 검색칸에서 ↓ 는 첫 줄로.
  */
@@ -15,7 +16,7 @@ import { useMemo, useState, type KeyboardEvent } from "react";
 import { COMBO_EMPTY_TEXT, Highlight } from "@/app/_components/Combobox";
 import { matchOption, tokensOf } from "@/app/_components/comboModel";
 
-import { referenceAncestorIds, referenceOutline, refKey, refTargetOf, type ReferenceOutlineNode, type ReferenceTarget } from "@/domain/document";
+import { codeTag, referenceAncestorIds, referenceOutline, refKey, refTargetOf, type ReferenceOutlineNode, type ReferenceTarget } from "@/domain/document";
 import type { Id } from "@/domain/types";
 
 export interface RefTargetScope {
@@ -25,6 +26,12 @@ export interface RefTargetScope {
   index: ReadonlyMap<Id, ReferenceTarget>;
   /** 조 줄을 그리지 않고 그 아래(항 · 호 · 목)부터 — 함수조항 에디터의 「이 함수조항」(조는 사용처 소유라 고를 조가 없다). */
   rootless?: boolean;
+}
+
+/** 줄 끝 코드 표시 — 그 줄의 제 단계 코드 「P0200 · 호」. 조 · 코드 없는 줄은 없음. */
+function codeOfRow(t: ReferenceTarget): string | undefined {
+  const part = t.kind === "subitem" ? t.subitem : t.kind === "item" ? t.item : t.kind === "paragraph" ? t.paragraph : undefined;
+  return part?.code !== undefined ? codeTag(part.code, t.kind) : undefined;
 }
 
 export function RefTargetTree({
@@ -160,6 +167,7 @@ export function RefTargetTree({
             <Highlight text={n.label} query={query} />
           </label>
           {hidden > 0 && <span className="ts-ref-hidden">고름 {hidden}</span>}
+          {codeOfRow(n.target) && <span className="ts-ref-code">{codeOfRow(n.target)}</span>}
         </div>
         {rowOpen && (
           <ul role="group" className="ts-ref-list">
