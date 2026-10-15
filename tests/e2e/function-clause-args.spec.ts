@@ -100,7 +100,7 @@ test(
     await ev.action("인자#6", "그 사용처에서만 인자 연결을 새 구분자로 바꾸고 저장", async () => {
       await body.locator("[data-clause-ref] .ts-doc-clause-opt").click();
       const dialog = page.getByRole("dialog", { name: "함수조항 옵션 · 인자", exact: true });
-      await dialog.getByLabel("인자 보험금명").selectOption(`d:${bound}`);
+      await dialog.getByLabel("인자 보험금명", { exact: true }).selectOption(`d:${bound}`);
       await dialog.getByRole("button", { name: "확인", exact: true }).click();
       await expect(dialog).toHaveCount(0);
       await expect(body.locator("[data-clause-ref] .ts-doc-clause-head")).toContainText(`인자: 보험금명 ← 인자연결검증${stamp} (${bound})`);
