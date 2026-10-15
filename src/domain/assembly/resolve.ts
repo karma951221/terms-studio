@@ -663,12 +663,15 @@ class Walker {
 
   article(n: ArticleNode, f: Frame): RArticle<RInline> {
     const inner: Frame = { path: [...f.path, n.id], articleId: n.id, articleTitle: foldTitle(n.title) };
+    // 제목도 본문 문장과 같은 길로 푼다 — 조건은 여기서, 슬롯 · 조사는 치환 단계에서 (ADR-0088 · ADR-0072 결정 2a)
+    const heading = this.inlines(n.title, inner);
     const children = this.blocks(n.children, inner);
     const repeatKeys = this.repeatKeys.get(n.id);
     return {
       kind: "article",
       id: n.id,
       title: foldTitle(n.title),
+      heading,
       ...(n.linkedArticleId !== undefined ? { linkedArticleId: n.linkedArticleId } : {}),
       children,
       ...(repeatKeys && repeatKeys.size > 0 ? { repeatKeys: [...repeatKeys] } : {}),

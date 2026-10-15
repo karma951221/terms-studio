@@ -16,6 +16,8 @@ import type { Code, Coordinate, FieldType, Issue, Value } from "../types";
 import type { AssemblyContext } from "./context";
 import type { ErrorNode, LoopTag, RArticle, RBulletList, RInline, RItem, RParagraph, ResolvedDoc, RStatic, RSubitem, SInline, SubstitutedDoc } from "./types";
 import { mapArticles } from "./walk";
+import { chooseParticle, particlePreset } from "../document/particles";
+import { titleKindMessage } from "../document/title";
 
 export interface SubstituteEnv {
   catalog: ReadonlyMap<Code, Discriminator>;
@@ -156,7 +158,35 @@ class Substituter {
   }
 
   article(n: RArticle<RInline>): RArticle<SInline> {
-    return { ...n, children: n.children.map((p) => (p.kind === "paragraph" ? this.paragraph(p) : p.kind === "error" ? p : this.static(p))) };
+    const { heading, ...rest } = n;
+    return {
+      ...rest,
+      ...(heading ? { title: this.title(this.inlines(heading)) } : {}),
+      children: n.children.map((p) => (p.kind === "paragraph" ? this.paragraph(p) : p.kind === "error" ? p : this.static(p))),
+    };
+  }
+
+  /**
+   * 치환한 제목 인라인 → 글 (ADR-0088). 조사는 렌더와 같은 앞 글 규칙(판정 불가면 병기 + 경고). 오류 마커는 그 자리를 비운다 —
+   * 원인은 이미 오류로 쌓였다. 제목에 설 수 없는 참조(저장 검사가 막는 꼴)는 구조 오류.
+   */
+  title(list: readonly SInline[]): string {
+    let out = "";
+    let afterError = false;
+    for (const n of list) {
+      const wasError = afterError;
+      afterError = n.kind === "error";
+      if (n.kind === "text") out += n.text;
+      else if (n.kind === "particle") {
+        // 바로 앞이 오류면 판정할 글이 없다 — 렌더의 조사 규칙과 같다
+        const chosen = chooseParticle(n.preset, wasError ? "" : out);
+        if (!chosen.resolved) this.issues.push({ kind: "particleUnresolved", severity: "warning", message: `조사 「${particlePreset(n.preset).label}」 — 앞 글자로 받침을 판정할 수 없어 「${chosen.text}」로 병기했습니다`, at: n.at });
+        out += chosen.text;
+      } else if (n.kind === "articleRef" || n.kind === "appendixRef") {
+        this.issues.push({ kind: "structure", message: titleKindMessage(n.kind), at: n.at });
+      }
+    }
+    return out;
   }
 }
 

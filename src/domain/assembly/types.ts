@@ -266,7 +266,13 @@ export interface RParagraph<I> extends Keyed {
 export interface RArticle<I> {
   kind: "article";
   id: Id;
+  /**
+   * 조 명 — 그 상품 문맥에서 푼 글 (ADR-0088 · ADR-0072 결정 2a). 해소 단계에서는 접은 제목(좌표용 자리표시)이고,
+   * 치환 단계가 `heading` 을 글로 접어 채운다 — 목차 · 참조 라벨 · 조 머리가 이 글이다.
+   */
   title: string;
+  /** 해소 단계에만 — 조건을 푼 제목 인라인(슬롯 · 조사가 남아 있다). 치환 단계가 `title` 로 접고 뗀다. */
+  heading?: I[];
   linkedArticleId?: Id;
   children: (RParagraph<I> | RStatic<I> | ErrorNode)[];
   /**
