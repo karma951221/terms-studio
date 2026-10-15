@@ -4,12 +4,12 @@ import type { EnumDef } from "../catalog/types";
 import type { Clause } from "../clause/types";
 import { checkParams } from "../clause/params";
 import type { Issue } from "../types";
-import { cloneForElement, repeatLabel, type RepeatSource } from "./blockRepeat";
+import { checkRepeatSource, cloneForElement, loopElementType, repeatLabel, treeLoopLevelsAt, type RepeatSource } from "./blockRepeat";
 import { nodeBuilders, sequentialIds } from "./builders";
 import { applyCommand } from "./commands";
 import { numberTree, referenceAncestorIds, referenceOutline, referenceTargetIndex, refTargetOf } from "./numbering";
 import type { DocumentNode, ForBlockNode, TreeEnv } from "./nodes";
-import { validateTree } from "./nodes";
+import { indexTree, validateTree } from "./nodes";
 import { catalogTypeResolver, clauseGateFrom, validateDocument } from "./validate";
 
 /**
@@ -414,5 +414,58 @@ describe("반복 · 펼친 함수조항 안 · 값 한정 참조 저장 검사 (
     const outerId = (article.children[0] as { id: string }).id;
     (refNow.targets[0] as { restrict?: unknown }).restrict = { current: outerId };
     expect(validateTree(doc, env)).toEqual([expect.objectContaining({ message: expect.stringContaining("현재 값") })]);
+  });
+});
+
+describe("담보 트리 원천 (ADR-0087 결정 5)", () => {
+  const forBlock = (id: string, source: unknown, children: unknown[] = []) => ({ kind: "forBlock", id, source, children }) as ForBlockNode;
+
+  it("담보약관에서만 — 문맥 담보가 없으면 structure", () => {
+    expect(checkRepeatSource(forBlock("f", { kind: "subCoverages" }), [], { hasCoverage: false }, {})[0]).toMatchObject({ kind: "structure", message: expect.stringContaining("담보약관") });
+    expect(checkRepeatSource(forBlock("f", { kind: "subCoverages" }), [], { hasCoverage: true }, {})).toEqual([]);
+  });
+
+  it("안쪽은 「현재 세부보장의 급부마다」뿐 — 바로 바깥이 세부보장마다", () => {
+    const outer = forBlock("o", { kind: "subCoverages" });
+    expect(checkRepeatSource(forBlock("i", { kind: "benefitsOfCurrent", loop: "o" }), [outer], { hasCoverage: true }, {})).toEqual([]);
+    expect(checkRepeatSource(forBlock("i", { kind: "benefits" }), [outer], { hasCoverage: true }, {})[0].kind).toBe("structure");
+    expect(checkRepeatSource(forBlock("i", { kind: "benefitsOfCurrent", loop: "o" }), [], { hasCoverage: true }, {})[0].kind).toBe("structure");
+  });
+
+  it("세목 반복과 섞어 중첩하면 저장 오류 — 어느 쪽이 바깥이든", () => {
+    const tree = forBlock("t", { kind: "subCoverages" });
+    const plan = forBlock("p", { kind: "planOptions", form: "waiver" });
+    const msg = expect.stringContaining("섞어 중첩하지 않습니다");
+    expect(checkRepeatSource(forBlock("x", { kind: "listOfCurrent", loop: "t", field: "reasons" }), [tree], { hasCoverage: true }, {})[0]).toMatchObject({ kind: "structure", message: msg });
+    expect(checkRepeatSource(forBlock("x", { kind: "benefitsOfCurrent", loop: "p" }), [plan], { hasCoverage: true }, {})[0]).toMatchObject({ kind: "structure", message: msg });
+  });
+
+  it("이름 · 원소 타입", () => {
+    expect(repeatLabel({ kind: "subCoverages" })).toBe("세부보장마다");
+    expect(repeatLabel({ kind: "benefits" })).toBe("세부보장 › 급부마다");
+    expect(repeatLabel({ kind: "benefitsOfCurrent", loop: "o" })).toBe("현재 세부보장의 급부마다");
+    expect(loopElementType({ kind: "benefits" }, undefined)).toEqual({ kind: "coverageNode", level: "benefit" });
+  });
+
+  it("반복 표는 「세부보장마다」 반복 블록 본문에 못 둔다 — 블록 반복 본문은 표를 허용하지 않는다 (사전 판정 ⑦)", () => {
+    const b = make();
+    const repeatTable = { ...b.textTable({ columns: [{}], rows: [{ cells: ["셀"] }] }), repeat: { depth: 1 as const } };
+    const doc = b.document("d", [b.article("a", [b.forBlock({ kind: "subCoverages" } as never, [repeatTable])])]);
+    const issues = validateTree(doc, { ...env, kind: "special" });
+    expect(issues.some((i) => i.at.nodePath?.includes(repeatTable.id) && i.message.includes("table"))).toBe(true);
+  });
+
+  it("treeLoopLevelsAt — 담보 트리 반복만, 바깥 → 안쪽", () => {
+    const b = make();
+    const para = b.paragraph([b.text("항")]);
+    const inner = b.forBlock({ kind: "benefitsOfCurrent", loop: "?" } as never, [para]);
+    const outer = b.forBlock({ kind: "subCoverages" } as never, [inner]);
+    (inner.source as { loop: string }).loop = outer.id;
+    const doc = b.document("d", [b.article("a", [outer])]);
+    const ix = indexTree(doc);
+    expect(treeLoopLevelsAt(ix, ix.nodes.get(para.id)!)).toEqual([
+      { loop: outer.id, level: "subCoverage" },
+      { loop: inner.id, level: "benefit" },
+    ]);
   });
 });

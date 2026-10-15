@@ -142,7 +142,7 @@ export function bindingOptions(
   if (t.kind === "articleRef") return []; // 조 참조 인자 — 대상 트리로 고른다 · 기본 연결 없음 (ADR-0083)
   // 반복의 현재 원소 — 원소 타입이 인자 타입과 같은 감싼 반복만 (종 → 세목 선택지 목록<폼> · 열거값 → enum<E>)
   const current = loops
-    .filter((l) => (l.type.kind === "planOptions" ? t.kind === "planOptions" && t.form === l.type.form : t.kind === "enum" && t.enumCode === l.type.enumCode))
+    .filter((l) => l.type.kind !== "coverageNode" && (l.type.kind === "planOptions" ? t.kind === "planOptions" && t.form === l.type.form : t.kind === "enum" && t.enumCode === l.type.enumCode))
     .map((l) => ({ value: `r:${l.id}`, label: l.label, group: "반복" }));
   if (t.kind === "planOptions") {
     const form = forms.find((f) => f.key === t.form);

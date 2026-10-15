@@ -791,7 +791,7 @@ export function checkNodeRefs(e: NodeEntry, ix: TreeIndex, env: TreeEnv, atSave:
     case "clauseInlineRef":
       return [...clausePlacement(n, e.allowed, gate, at), ...checkClauseRef(n, gate, at, atSave, loopTypesAt(ix, e, env.master)), ...bindingRefIssues(n, e, ix, env, at)];
     case "forBlock":
-      return checkRepeatSource(n, enclosingLoops(ix, e), { ...(env.master ? { master: env.master } : {}), ...(env.enumOf ? { enumOf: env.enumOf } : {}) }, at);
+      return checkRepeatSource(n, enclosingLoops(ix, e), { ...(env.master ? { master: env.master } : {}), ...(env.enumOf ? { enumOf: env.enumOf } : {}), hasCoverage: env.kind === "special" }, at);
     case "condBlock":
     case "inlineCond":
       return n.switchOn !== undefined && !env.switches ? one("structure", "값별 분기는 지금 함수조항 안에서만 쓸 수 있습니다") : [];

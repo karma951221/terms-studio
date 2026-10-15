@@ -59,7 +59,16 @@ export interface UnionRepeatSource {
   where?: { field: Code; value: string | boolean };
 }
 
-export type RepeatSource = PlanOptionsRepeatSource | ListOfCurrentRepeatSource | UnionRepeatSource;
+/** 담보 트리 원천 (ADR-0087 결정 5) — 담보약관 템플릿만. 원소 = 스냅샷 노드(트리 순서). */
+export type TreeRepeatSource = { kind: "subCoverages" } | { kind: "benefits" } | { kind: "benefitsOfCurrent"; loop: Id };
+
+export type RepeatSource = PlanOptionsRepeatSource | ListOfCurrentRepeatSource | UnionRepeatSource | TreeRepeatSource;
+
+const TREE_KINDS = new Set(["subCoverages", "benefits", "benefitsOfCurrent"]);
+
+export function isTreeSource(s: RepeatSource): s is TreeRepeatSource {
+  return TREE_KINDS.has(s.kind);
+}
 
 /** 반복 깊이 한도 — 반복 안 반복 하나 (ADR-0077 결정 4). */
 export const REPEAT_MAX_DEPTH = 2;
@@ -67,13 +76,15 @@ export const REPEAT_MAX_DEPTH = 2;
 export function isRepeatSource(x: unknown): x is RepeatSource {
   if (typeof x !== "object" || x === null) return false;
   const k = (x as { kind?: unknown }).kind;
-  return k === "planOptions" || k === "listOfCurrent" || k === "union";
+  return k === "planOptions" || k === "listOfCurrent" || k === "union" || (typeof k === "string" && TREE_KINDS.has(k));
 }
 
 export interface RepeatEnv {
   master?: MasterTree;
   /** 열거형 정의 — 합집합 거름 필드 · 교차 검사 · 이름. 없으면 그 검사는 건너뛴다. */
   enumOf?: (code: Code) => EnumDef | undefined;
+  /** 문맥 담보가 있는 문서(담보약관)인가 — 담보 트리 원천의 허용. */
+  hasCoverage?: boolean;
 }
 
 function listFieldEnum(form: Code, field: Code, master: MasterTree): Code | undefined {
@@ -99,6 +110,11 @@ export function loopElementType(source: RepeatSource, outer: RepeatSource | unde
       const enumCode = listFieldEnum(source.form, source.field, master);
       return enumCode ? { kind: "enum", enumCode } : undefined;
     }
+    case "subCoverages":
+      return { kind: "coverageNode", level: "subCoverage" };
+    case "benefits":
+    case "benefitsOfCurrent":
+      return { kind: "coverageNode", level: "benefit" };
   }
 }
 
@@ -111,6 +127,14 @@ export function enclosingLoops(ix: TreeIndex, e: Pick<NodeEntry, "path" | "node"
     if (n?.kind === "forBlock") out.push(n);
   }
   return out;
+}
+
+/** 자리를 감싼 담보 트리 반복 — 바깥 → 안쪽, 반복 id · 현재 노드 레벨. 기본 연결 · 반복 안 참조 검사 · 키 한정 검사가 쓴다. */
+export function treeLoopLevelsAt(ix: TreeIndex, e: Pick<NodeEntry, "path" | "node">): { loop: Id; level: "subCoverage" | "benefit" }[] {
+  return enclosingLoops(ix, e).flatMap((f) => {
+    if (!isRepeatSource(f.source) || !isTreeSource(f.source)) return [];
+    return [{ loop: f.id, level: f.source.kind === "subCoverages" ? ("subCoverage" as const) : ("benefit" as const) }];
+  });
 }
 
 /** 자리를 감싼 반복 블록 id → 현재 원소 타입 — 인자 연결 검사(`BindingEnv.loops`)의 재료. */
@@ -137,6 +161,18 @@ export function checkRepeatSource(node: ForBlockNode, outers: readonly ForBlockN
   const fail = (kind: Issue["kind"], message: string, refPath?: string): Issue[] => [{ kind, message, at: { ...at, ...(refPath !== undefined ? { refPath } : {}) } }];
   if (!isRepeatSource(source)) return fail("structure", "반복 블록의 원천을 고른다 — 세목 선택지 · 바깥 반복의 현재 원소의 목록 · 목록값의 합집합");
   const outer = outers.at(-1);
+  if (outer && isRepeatSource(outer.source) && isTreeSource(outer.source) !== isTreeSource(source)) {
+    return fail("structure", "담보 트리 반복과 세목 반복은 섞어 중첩하지 않습니다 — 한 단계 중첩은 같은 계열 안에서만(종 › 사유, 세부보장 › 급부). 종에 따라 갈리는 문장은 조건식으로 쓴다 (ADR-0087 결정 5)");
+  }
+  if (isTreeSource(source)) {
+    if (!env.hasCoverage) return fail("structure", "담보 트리 반복(세부보장마다 · 급부마다)은 담보약관 템플릿에서만 쓸 수 있습니다 — 문맥 담보가 없습니다");
+    if (outer && source.kind !== "benefitsOfCurrent") return fail("structure", "안쪽 담보 트리 반복은 「현재 세부보장의 급부마다」뿐입니다");
+    if (source.kind === "benefitsOfCurrent") {
+      if (!outer || outer.id !== source.loop) return fail("structure", "「현재 세부보장의 급부마다」는 바로 바깥 「세부보장마다」 반복 안에 둔다");
+      if (!isRepeatSource(outer.source) || outer.source.kind !== "subCoverages") return fail("structure", "「현재 세부보장의 급부마다」의 바깥 반복은 「세부보장마다」여야 합니다");
+    }
+    return [];
+  }
   if (outer && source.kind !== "listOfCurrent") {
     return fail("structure", "안쪽 반복의 원천은 바깥 반복의 현재 원소의 목록뿐입니다 — 「현재 종의 사유마다」처럼 고른다 (ADR-0077 결정 4)");
   }
@@ -166,6 +202,8 @@ export function checkRepeatSource(node: ForBlockNode, outers: readonly ForBlockN
       }
       return [];
     }
+    default:
+      return [];
   }
 }
 
@@ -185,6 +223,12 @@ export function repeatLabel(source: RepeatSource | unknown, ctx: { outer?: Repea
       return `${formLabel(source.form)}종마다`;
     case "listOfCurrent":
       return `${ctx.outer?.kind === "planOptions" ? fieldLabel(ctx.outer.form, source.field) : source.field}마다`;
+    case "subCoverages":
+      return "세부보장마다";
+    case "benefits":
+      return "세부보장 › 급부마다";
+    case "benefitsOfCurrent":
+      return "현재 세부보장의 급부마다";
     case "union": {
       const base = `${fieldLabel(source.form, source.field)} 합집합`;
       if (!source.where) return `${base}마다`;
