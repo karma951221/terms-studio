@@ -13,7 +13,11 @@
  * - **블록 반복**(forBlock, ADR-0077)은 원천을 원소로 풀어(`repeatElements` — 세목 선택지 · 바깥 현재 원소의 목록 · 합집합) 본문을 원소마다 복제한다
  *   (`cloneForElement` — id · P코드 끝에 `@원소`, 중첩이면 바깥 → 안쪽 두 번, 함수조항 펼치기 `/` 는 그 뒤). 원소 0 이면 블록째 없다.
  *   종 원소 안에서는 조건 · 슬롯 · 펼친 함수조항이 그 종을 커서로 세운 문맥에서 평가되고(`Frame.plan`), 인자의 현재 원소 연결은 `Frame.loops` 로 푼다.
- *   원천 오류(미입력 목록값 · 없는 원천)는 반복 자리 오류 마커. 인라인 반복(inlineFor)은 MVP 자리만 — 만나면 `structure` 오류 마커.
+ *   원천 오류(미입력 목록값 · 없는 원천)는 반복 자리 오류 마커.
+ * - **인라인 반복**(inlineFor, ADR-0088)은 같은 원천 · 같은 원소 순서 · 같은 현재 원소 문맥으로 본문 인라인을 원소마다 복제해 잇는다 —
+ *   쉼표, 마지막 원소 앞에만 연결어(「A」 · 「A 및 B」 · 「A, B 및 C」). 원소 0 이면 「비었을 때」 칸(원소 문맥 밖), 칸이 없으면 빈 글.
+ *   조 제목도 같은 길(`article` 이 제목을 `inlines` 로 푼다).
+ * - **「현재 값」 슬롯**(`builtin.value.*`)은 감싼 반복의 가장 안쪽 열거값 원소로 여기서 글로 바꾼다 — 값 이름 · 열거값 글 필드(미입력은 오류, 원천 좌표 = 열거형).
  * - **행 반복 표**(ADR-0070 결정 6)는 특약 문맥의 행 원천(`ctx.rows` — 상품담보 스냅샷)으로 펼친다:
  *   key 조합마다 템플릿 행 복제 · 구조 표기 → key 표기 · 바깥 key 세로 병합(spans). 조합이 0 이면 표를 생략한다.
  *   행 안의 조건은 행 노드 문맥에서 해소하고, 슬롯은 행 노드(`RSlot.row`)를 달고 치환 단계로 넘긴다.
@@ -45,7 +49,8 @@ import type {
 import { applyBindings } from "../clause/bind";
 import { presetUsage } from "../clause/presets";
 import type { CurrentValue, LocalEnv } from "../clause/locals";
-import { cloneForElement } from "../document/blockRepeat";
+import { cloneForElement, currentValueSlot } from "../document/blockRepeat";
+import { enumCoordinate, enumFieldValue } from "../catalog/fields";
 import { templateIdOf } from "../document/repeat";
 import { repeatElementId, repeatElements, type RepeatElement } from "./blockRepeat";
 import type { Bindings } from "../clause/params";
@@ -54,7 +59,7 @@ import type { Clause, ClauseMode, OptionSelection } from "../clause/types";
 import type { EnumDef } from "../catalog/types";
 import type { Box } from "../document/box";
 import type { MasterTree } from "../master";
-import type { ArticleNode, BoxNode, BoxRefNode, BulletListNode, BulletNode, ClauseBlockRefNode, CondBlockNode, DocumentNode, ForBlockNode, InlineNode, ItemNode, ParagraphNode, SectionNode, SubitemNode, TableNode } from "../document/nodes";
+import { fallbackPathId, type ArticleNode, type BoxNode, type BoxRefNode, type BulletListNode, type BulletNode, type ClauseBlockRefNode, type CondBlockNode, type DocumentNode, type ForBlockNode, type InlineForNode, type InlineNode, type ItemNode, type ParagraphNode, type RepeatNode, type SectionNode, type SubitemNode, type TableNode } from "../document/nodes";
 import { withCodes } from "../document/pcode";
 import { foldTitle } from "../document/title";
 import { withClauseCodes } from "../clause/pcode";
@@ -229,16 +234,8 @@ class Walker {
    */
   repeat<T>(n: ForBlockNode, f: Frame, each: (children: readonly unknown[], g: Frame) => T[]): (T | ErrorNode)[] {
     const at = this.at(f, n.id);
-    const r = repeatElements(n.source, {
-      options: this.ctx.plans?.options ?? [],
-      optionContext: (id) => this.ctx.plans?.context(id),
-      current: (loop) => f.loops?.[loop],
-      enums: this.env.enums ?? new Map(),
-      ...(this.env.master ? { master: this.env.master } : {}),
-      explain: (reason, where) => this.ctx.explainUndetermined(reason, where),
-    }, at);
+    const r = this.elementsOf(n, f, at);
     if (!r.ok) return [this.error(n.id, r.issue)];
-    const loop = templateIdOf(n.id);
     const via = f.via ?? "";
     // 반복 블록 · 그 안 대상을 가리키는 참조가 원소 0개일 때 「사라짐」이 아니라 「0개」 오류가 되도록 밟은 반복의 코드를 적어 둔다
     if (f.articleId !== undefined) {
@@ -248,15 +245,63 @@ class Walker {
       this.repeatKeys.set(f.articleId, keys);
     }
     const group = n.code !== undefined ? [...(f.groups ?? []), `${via}${n.code}`] : f.groups;
-    return r.value.flatMap((element) =>
-      each(cloneForElement(n.children, repeatElementId(element)), {
-        ...f,
-        path: [...f.path, n.id],
-        loops: { ...f.loops, [loop]: element },
-        ...(element.kind === "planOption" ? { plan: element.id } : {}),
-        ...(group ? { groups: group } : {}),
-      }),
-    );
+    return r.value.flatMap((element) => each(cloneForElement(n.children, repeatElementId(element)), { ...this.elementFrame(n, f, element), ...(group ? { groups: group } : {}) }));
+  }
+
+  /** 반복(블록 · 인라인)의 원소 — 원천을 상품 문맥에서 푼다. 바깥 반복의 현재 원소는 프레임에서. */
+  elementsOf(n: RepeatNode, f: Frame, at: Coordinate): ReturnType<typeof repeatElements> {
+    return repeatElements(n.source, {
+      options: this.ctx.plans?.options ?? [],
+      optionContext: (id) => this.ctx.plans?.context(id),
+      current: (loop) => f.loops?.[loop],
+      enums: this.env.enums ?? new Map(),
+      ...(this.env.master ? { master: this.env.master } : {}),
+      explain: (reason, where) => this.ctx.explainUndetermined(reason, where),
+    }, at);
+  }
+
+  /** 원소 하나의 프레임 — 반복 경로 · 현재 원소 · 종 원소면 그 종을 커서로. */
+  elementFrame(n: RepeatNode, f: Frame, element: RepeatElement): Frame {
+    return { ...f, path: [...f.path, n.id], loops: { ...f.loops, [templateIdOf(n.id)]: element }, ...(element.kind === "planOption" ? { plan: element.id } : {}) };
+  }
+
+  /**
+   * 인라인 반복 (ADR-0088 결정 1 · 2 · 3) — 원소마다 본문 복제본(`@원소`)을 그 원소 문맥으로 풀어 쉼표 · 마지막 앞 연결어로 잇는다.
+   * 원소 0 이면 「비었을 때」 칸(원소 문맥 밖 — 경로에 칸 표지). 원천 오류 · 연결어 없는 둘 이상은 그 자리 오류 마커.
+   */
+  inlineRepeat(n: InlineForNode, f: Frame): RInline[] {
+    const at = this.at(f, n.id);
+    const r = this.elementsOf(n, f, at);
+    if (!r.ok) return [this.error(n.id, r.issue)];
+    if (r.value.length === 0) return this.inlines(n.fallback ?? [], { ...f, path: [...f.path, n.id, fallbackPathId(n.id)] });
+    const connector = n.connector;
+    if (r.value.length > 1 && connector !== "및" && connector !== "또는") {
+      return [this.error(n.id, { kind: "structure", message: "문장 안 반복의 연결어(및 · 또는)가 없습니다 — 편집기에서 고른다", at })];
+    }
+    const out: RInline[] = [];
+    r.value.forEach((element, i) => {
+      if (i > 0) out.push({ kind: "text", id: `${n.id}~sep${i}`, text: i === r.value.length - 1 ? ` ${connector} ` : ", " });
+      out.push(...this.inlines(cloneForElement(n.children, repeatElementId(element)), this.elementFrame(n, f, element)));
+    });
+    return out;
+  }
+
+  /** 「현재 값」 슬롯 → 글 — 감싼 반복의 가장 안쪽 열거값 원소의 값 이름 · 열거값 글 필드 (ADR-0088 결정 1). */
+  currentValueText(n: { id: Id; ref: string }, f: Frame, at: Coordinate): RInline {
+    const want = currentValueSlot(n.ref)!;
+    const here = { ...at, refPath: n.ref };
+    const element = Object.values(f.loops ?? {}).filter((e) => e.kind === "enumValue").at(-1);
+    if (element?.kind !== "enumValue") return this.error(n.id, { kind: "structure", message: "「현재 값」 슬롯이 원소가 열거값인 반복 밖에 있습니다", at: here });
+    const def = this.env.enums?.get(element.enumCode);
+    if (!def) return this.error(n.id, { kind: "brokenRef", message: `열거형 ${element.enumCode} 이(가) 없습니다`, at: here });
+    const value = def.values.find((v) => v.code === element.code);
+    if (!value) return this.error(n.id, { kind: "brokenRef", message: `열거값 ${element.code} 이(가) 열거형 ${def.code} 에 없습니다`, at: here });
+    if (want.kind === "name") return { kind: "text", id: n.id, text: value.label };
+    const read = enumFieldValue(def, element.code, want.field);
+    const label = def.fields?.find((x) => x.key === want.field)?.label ?? want.field;
+    if (read.kind === "notEntered") return this.error(n.id, { kind: "notEntered", message: `열거값 ${value.label} 의 필드 ${label} 이(가) 미입력입니다 — 열거형 ${def.code} 에서 값을 넣는다`, at: here, source: enumCoordinate(def, element.code) });
+    if (read.kind !== "value") return this.error(n.id, { kind: "brokenRef", message: `「현재 값」 필드 ${want.field} 이(가) 열거형 ${def.code} 에 없습니다`, at: here, source: enumCoordinate(def) });
+    return { kind: "text", id: n.id, text: typeof read.value === "boolean" ? (read.value ? "예" : "아니오") : read.value };
   }
 
   /** 함수조항 블록 참조가 펼친 본문의 프레임 — 펼친 노드 열쇠 앞마디 · 곧바로 낸 블록 묶음(그 참조를 가리키면 펼친 것 전부). */
@@ -432,6 +477,7 @@ class Walker {
         // 반복 표 행은 펼칠 때 텍스트로 바뀐다 — 여기 오면 반복 표 밖이다 (저장 검사가 막는 꼴)
         return [this.error(n.id, { kind: "structure", message: "구조 표기는 반복 표 안에서만 쓸 수 있습니다", at })];
       case "slot":
+        if (currentValueSlot(n.ref)) return [this.currentValueText(n, f, at)];
         return [{ kind: "slot", id: n.id, ref: n.ref, at, ...(f.row ? { row: f.row } : {}), ...(f.plan !== undefined ? { plan: f.plan } : {}) }];
       case "articleRef": {
         // 「이 함수조항」 대상(코드)은 사용처 조 + 참조 노드 코드로 짝짓는다 — 펼친 노드의 열쇠와 같은 모양 (ADR-0072 결정 3 개정)
@@ -455,7 +501,7 @@ class Walker {
       case "inlineSwitch":
         return this.switchOf(n, f, (children, g) => this.inlines(children as AnyInline[], g));
       case "inlineFor":
-        return [this.error(n.id, { kind: "structure", message: "인라인 반복은 아직 조립하지 않습니다 (P7)", at })];
+        return this.inlineRepeat(n, f);
       case "clauseInlineRef": {
         const r = this.expand(n, ["inline"], at, f);
         if (!r.ok) return [r.marker];
