@@ -181,8 +181,8 @@ class Builder {
   readonly edges: RefEdge[] = [];
   /** 값 자리 경로 → enum 코드 (enum 값 리터럴 간선용). */
   readonly enumSlots = new Map<string, Code>();
-  /** 담보 노드 id → 레벨 (노드 한정자 키용). */
-  readonly coverageNodeLevels = new Map<Id, CoverageNodeLevel>();
+  /** 담보 id → 키 경로 → 담보 노드 (노드 한정자 간선용, ADR-0087). 키 경로는 문자열 그대로 비교한다. */
+  readonly coverageKeyPaths = new Map<Id, Map<string, { level: CoverageNodeLevel; id: Id }>>();
   /** 구분자 코드 → 레벨 (노드가 사라진 한정자의 키 폴백). */
   readonly discriminatorLevels = new Map<Code, AttachLevel>();
   /** 보통약관 노드 id → 속한 조(documentId·articleId) — 함수조항·문서의 조 참조가 항·호·목을 가리킬 때 조로 올리는 인덱스. 조 자신은 자기 id. */
@@ -201,22 +201,32 @@ class Builder {
     this.edges.push(e);
   }
 
-  /** 노드 한정자 `D@노드` 의 대상 키. 노드 레벨 → 구분자 레벨 순으로 찾고, 둘 다 모르면 undefined (간선 없음). */
-  qualifierKey(code: Code, nodeId: Id): RefNodeKey | undefined {
-    const level = this.coverageNodeLevels.get(nodeId) ?? this.discriminatorLevels.get(code);
+  /**
+   * 노드 한정자 `D@키경로` 의 대상 키 — 그 문서의 담보(문맥 담보)에서 푼다 (ADR-0087). 키 경로는 문서마다 뜻이 다르다(두 담보약관의 `@01`).
+   * 담보에 없는 키면 구분자 레벨로 끊어진 자리 키(`담보id@경로`)를 만든다 — 깨진 간선으로 드러난다.
+   * 담보 문맥이 없거나(함수조항 본문 · 구분자 식 — 쓰는 문서마다 푼다) 구분자 레벨도 모르면 undefined (간선 없음).
+   */
+  qualifierKey(code: Code, path: string, coverageId: Id | undefined): RefNodeKey | undefined {
+    if (coverageId === undefined) return undefined;
+    const hit = this.coverageKeyPaths.get(coverageId)?.get(path);
+    if (hit) return { kind: "coverageNode", level: hit.level, id: hit.id };
+    const level = this.discriminatorLevels.get(code);
     if (level === undefined || !COVERAGE_NODE_LEVELS.includes(level)) return undefined;
-    return { kind: "coverageNode", level: level as CoverageNodeLevel, id: nodeId };
+    return { kind: "coverageNode", level: level as CoverageNodeLevel, id: `${coverageId}@${path}` };
   }
 
-  /** 구분자 참조 하나의 노드 한정자 간선 (있을 때만). */
-  qualifier(from: RefNodeKey, ref: Ref, at: Coordinate): void {
+  /**
+   * 구분자 참조 하나의 노드 한정자 간선 (있을 때만). `at.refPath` 는 사용처 원천이 그 자리를 찾는 열쇠다 —
+   * 키 경로는 마지막 「@」 뒤라(`D0007@01` · 인자 연결 `C0001.arg.감액@01`) 같은 자리의 다른 간선과 같은 refPath 를 쓴다.
+   */
+  qualifier(from: RefNodeKey, ref: Ref, at: Coordinate, coverageId: Id | undefined): void {
     if (ref.kind !== "discriminator" || !ref.node) return;
-    const to = this.qualifierKey(ref.code, ref.node.id);
+    const to = this.qualifierKey(ref.code, ref.node.path, coverageId);
     if (to) this.edge({ from, to, via: "nodeQualifier", at });
   }
 
   /** 식 하나의 참조 간선 전부 — 구분자·필드·담보속성 + 리터럴이 가리키는 유효값·enum 값 + 노드 한정자. */
-  expression(from: RefNodeKey, src: string, via: EdgeVia, at: Coordinate, opts: { slotOnly?: boolean } = {}): void {
+  expression(from: RefNodeKey, src: string, via: EdgeVia, at: Coordinate, opts: { slotOnly?: boolean; coverageId?: Id } = {}): void {
     const parsed = parse(src);
     if (!parsed.ok) return;
     if (opts.slotOnly && parsed.value.kind !== "ref") return;
@@ -224,7 +234,7 @@ class Builder {
       const to = refNodeKey(ref);
       if (!to) continue;
       this.edge({ from, to, via, at: { ...at, refPath: path }, ...(aggregate !== undefined ? { aggregate } : {}) });
-      this.qualifier(from, ref, { ...at, refPath: path });
+      this.qualifier(from, ref, { ...at, refPath: path }, opts.coverageId);
     }
     for (const { ref, literal } of literalCompares(parsed.value)) {
       const path = refPath(ref);
@@ -451,13 +461,15 @@ function addDocument(b: Builder, doc: DocumentInput, master?: MasterTree): Map<I
     anchors.set(e.node.id, anchorOf(doc, e.articleId));
   }
   const generalOf = (id: Id): RefNodeKey => ({ kind: "article", documentId: doc.generalDocumentId ?? "", articleId: id });
+  /** 노드 한정자의 문맥 담보 — 담보약관이면 소유 담보 (ADR-0087). */
+  const coverageId = doc.kind === "special" ? doc.ownerId : undefined;
 
   for (const r of collectRefs(doc.tree, base)) {
     const from = anchorOf(doc, r.at.articleId);
     switch (r.kind) {
       case "discriminator":
         b.edge({ from, to: { kind: "discriminator", code: r.code }, via: r.via, at: r.at });
-        if (r.node) b.qualifier(from, { kind: "discriminator", code: r.code, node: r.node }, r.at);
+        if (r.node) b.qualifier(from, { kind: "discriminator", code: r.code, node: r.node }, r.at, coverageId);
         break;
       case "masterField":
         // 문면은 구분자만 본다 (ADR-0037) — 마스터 직접 참조는 그래프에 남겨 사용처 조회가 보게 한다
@@ -534,11 +546,19 @@ function addDocument(b: Builder, doc: DocumentInput, master?: MasterTree): Map<I
 
 function addCoverage(b: Builder, tree: Coverage): void {
   const root: RefNodeKey = { kind: "coverageNode", level: "coverage", id: tree.id };
+  const paths = new Map<string, { level: CoverageNodeLevel; id: Id }>();
   for (const n of nodesOf(tree)) {
     const parent = n.ancestors.at(-1);
-    b.node({ key: { kind: "coverageNode", level: n.level, id: n.id }, label: n.name, level: n.level, ...(parent ? { parent: { kind: "coverageNode", level: parent.level, id: parent.id } } : {}) });
-    b.coverageNodeLevels.set(n.id, n.level);
+    b.node({
+      key: { kind: "coverageNode", level: n.level, id: n.id },
+      label: n.name,
+      level: n.level,
+      ...(parent ? { parent: { kind: "coverageNode", level: parent.level, id: parent.id } } : {}),
+      ...(n.keyPath !== undefined ? { keyPath: n.keyPath } : {}),
+    });
+    if (n.keyPath !== undefined) paths.set(n.keyPath, { level: n.level, id: n.id });
   }
+  b.coverageKeyPaths.set(tree.id, paths);
   if (tree.documentId !== undefined) {
     b.edge({ from: root, to: { kind: "document", id: tree.documentId }, via: "document", at: { document: "coverageMaster", ownerId: tree.id, ownerName: tree.name } });
   }

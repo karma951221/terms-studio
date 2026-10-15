@@ -13,7 +13,7 @@ import { readSlots, writeSlot } from "@/db/repo/values";
 import { createTestDb, type TestDb } from "@/db/test-utils";
 import { createCatalogService } from "./catalog";
 import { createCoverageService } from "./coverage";
-import { attributeRefSource, catalogImpactSource, clauseUsageSource, coverageUsageSource, createRefsService, documentUsageSource, type RefsService } from "./refs";
+import { attributeRefSource, catalogImpactSource, clauseUsageSource, coverageUsageSource, createRefsService, documentUsageSource, qualifierPathOf, type RefsService } from "./refs";
 import { contextualDb } from "./txContext";
 
 const admin: Actor = { userId: "00000000-0000-4000-8000-000000000001", role: "admin" };
@@ -215,15 +215,27 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
         ben1 = fracture.subCoverages[0].benefits[0].id;
         fracture = unwrap(await coverage.addBenefit(editor, sub, "수술비"));
         ben2 = fracture.subCoverages[0].benefits[1].id;
-        // 진단비(ben1) 한정 조건 + 한정 없는 급부 슬롯
-        const art = b.article("지급", [b.paragraph([b.inlineCond([b.inlineBranch(`D0003@01.1 > 0`, [b.text("진단비 지급")])]), b.slot("D0003")])]);
+        // 진단비(ben1) 한정 조건 + 한정 없는 급부 슬롯 + 본문에 한정자를 둔 함수조항(C003 — 문맥 담보는 쓰는 문서의 담보)
+        await insertClause(db, { code: "C003", label: "한정 문구", mode: "inline", body: [{ id: "c3-c", kind: "inlineCond", branches: [{ id: "c3-b", when: "D0003@01.1 = 1", children: [{ id: "c3-t", kind: "text", text: "전액" }] }] }], options: [], required: { discriminators: ["D0003"], attributes: [] } }, editor.userId);
+        const art = b.article("지급", [b.paragraph([b.inlineCond([b.inlineBranch(`D0003@01.1 > 0`, [b.text("진단비 지급")])]), b.slot("D0003"), b.clauseInline("C003", {})])]);
         const doc = await insertDocument(db, { kind: "special", ownerId: fracture.id, title: "골절 특별약관", generalDocumentId: general.id, tree: b.document("골절 특별약관", [art]) }, editor.userId);
         unwrap(await coverage.setDocument(editor, fracture.id, doc.id));
+        // 다른 담보의 담보약관도 같은 `D0003@01.1` — 키 경로는 문서마다 뜻이 달라 그 담보의 01.1 을 가리킨다 (ADR-0087)
+        const burn = unwrap(await coverage.create(editor, { name: "화상", subCoverageName: "화상진단", benefitName: "진단비" }));
+        const other = await insertDocument(db, { kind: "special", ownerId: burn.id, title: "화상 특별약관", generalDocumentId: general.id, tree: b.document("화상 특별약관", [b.article("지급", [b.paragraph([b.inlineCond([b.inlineBranch(`D0003@01.1 > 0`, [b.text("화상 지급")])])])])]) }, editor.userId);
+        unwrap(await coverage.setDocument(editor, burn.id, other.id));
       });
 
       it("가리킨 급부를 지우면 한정 참조와 한정 없는 급부 참조가 모두 사용처", async () => {
         const u = await src().findUsages({ kind: "deleteNode", coverageId: fracture.id, node: { level: "benefit", id: ben1 } });
-        expect(u.map((c) => c.refPath).sort()).toEqual(["D0003", `D0003@01.1`]);
+        expect(u.map((c) => c.refPath).sort()).toEqual(["D0003", `D0003@01.1`, `D0003@01.1`]);
+        // 담보약관의 한정 조건 · 쓰는 함수조항 본문의 한정 조건 — 다른 담보(화상)의 같은 `@01.1` 은 세지 않는다
+        expect(u.filter((c) => c.refPath === "D0003@01.1").map((c) => c.ownerName)).toEqual(["골절 특별약관", "골절 특별약관"]);
+      });
+
+      it("같은 저장에서 지운 키를 새 노드가 다시 받으면 그 한정 참조는 사용처가 아니다 (survivingPaths · ADR-0087 결정 2)", async () => {
+        const u = await src().findUsages({ kind: "deleteNode", coverageId: fracture.id, node: { level: "benefit", id: ben1 }, survivingPaths: new Set(["01", "01.1"]) });
+        expect(u.map((c) => c.refPath).sort()).toEqual(["D0003"]);
       });
 
       it("다른 급부를 지우면 한정 참조는 사용처가 아니다 — 한정 없는 급부 참조만", async () => {
@@ -233,7 +245,7 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
 
       it("한정 노드의 상위 세부보장을 지우면 한정 참조도 사용처", async () => {
         const u = await src().findUsages({ kind: "deleteNode", coverageId: fracture.id, node: { level: "subCoverage", id: sub } });
-        expect(u.map((c) => c.refPath).sort()).toEqual(["D0003", `D0003@01.1`]);
+        expect(u.map((c) => c.refPath).sort()).toEqual(["D0003", `D0003@01.1`, `D0003@01.1`]);
       });
 
       it("무결성 보고: 한정 노드가 사라지면 nodeQualifier 간선이 깨진 참조로 잡힌다", async () => {
@@ -243,6 +255,14 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
         const after = await refs.integrity();
         expect(after.broken.filter((e) => e.via === "nodeQualifier").map((e) => e.at.refPath)).toEqual([`D0003@01.1`]);
       });
+    });
+  });
+
+  describe("qualifierPathOf — 한정 참조 경로의 키 경로 (ADR-0087)", () => {
+    it("마지막 「@」 뒤가 키 경로다 — 인자 연결 `C0001.arg.감액@01` 도 같은 규칙", () => {
+      expect(qualifierPathOf("D0003@01.1")).toBe("01.1");
+      expect(qualifierPathOf("C0001.arg.감액@01")).toBe("01");
+      expect(qualifierPathOf("x@y@02.3")).toBe("02.3");
     });
   });
 
