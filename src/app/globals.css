@@ -3177,6 +3177,14 @@ label.ts-field > textarea:where(:not([data-slot])) {
   color: var(--ts-ink-2);
 }
 
+/* 호 · 목 목록 자리의 블록(조건 가지 · 값별 칸 · 반복 본문) 안 목록 — 번호를 새로 세지 않고 바깥 번호를 잇는다 */
+.ts-doc-list-cont {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  text-indent: 0;
+}
+
 /* 목 가.나.다. */
 .ts-doc-subitems {
   list-style: none;
