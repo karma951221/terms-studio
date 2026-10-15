@@ -1,10 +1,11 @@
 /**
  * L3 우측 패널 — **보조 정보만** 둔다. 입력칸이 없다 (기능/문면 §4.3).
  *
- * 탭 둘 〔미리보기 | 검증 N〕 (2026-10-10):
+ * 탭 셋(담보약관) 〔미리보기 | 구분자 | 검증 N〕 — 보통약관은 구분자 없이 둘 (2026-10-10):
  * - 미리보기 — 가운데 조 하나를 고른 상품의 조립 문맥으로 (`PreviewTab`, §3.9). 처음 탭.
  * - 검증 — 저장 검증 목록(편집 중이면 편집본, 「고칠 자리로」는 가운데에서 그 조를 열고 그 자리를 강조). 편집 중이면 그 위에 템플릿 이름 · 대응 보통약관.
- * 두 탭 다 그려 두고 숨긴다 — 탭을 오가도 미리보기의 고른 상품 · 받은 재료가 남는다.
+ * 구분자 — 미리보기에서 고른 상품담보의 키 경로 잎과 지금 값 (`LeafPanelTab`, ADR-0087).
+ * 탭 모두 그려 두고 숨긴다 — 탭을 오가도 미리보기의 고른 상품 · 받은 재료가 남는다.
  */
 import { useState, type ReactNode } from "react";
 
@@ -21,6 +22,8 @@ export interface PanelData {
   generalProposed: boolean;
   /** 미리보기 탭 내용 (`PreviewTab`). */
   preview: ReactNode;
+  /** 「구분자」 탭 내용 (`LeafPanelTab`) — 담보약관만. */
+  leaves?: ReactNode;
   /** 「고칠 자리로」 — 가운데에서 그 조를 열고 그 자리를 강조한다. */
   go: (nodeId: Id) => void;
 }
@@ -56,12 +59,13 @@ export function DraftIssues({ go, issues }: { go: (nodeId: Id) => void; issues: 
   );
 }
 
-type PanelTab = "preview" | "issues";
+type PanelTab = "preview" | "leaves" | "issues";
 
 export function SidePanel({ docKind, editing, data }: { docKind: "special" | "general"; editing: boolean; data: PanelData }) {
   const [tab, setTab] = useState<PanelTab>("preview");
   const tabs: { key: PanelTab; label: string }[] = [
     { key: "preview", label: "미리보기" },
+    ...(docKind === "special" ? [{ key: "leaves" as const, label: "구분자" }] : []),
     { key: "issues", label: `검증 ${data.issues.length}` },
   ];
   return (
@@ -76,6 +80,11 @@ export function SidePanel({ docKind, editing, data }: { docKind: "special" | "ge
       <div role="tabpanel" id="ts-side-panel-preview" aria-labelledby="ts-side-tab-preview" hidden={tab !== "preview"}>
         {data.preview}
       </div>
+      {docKind === "special" && (
+        <div role="tabpanel" id="ts-side-panel-leaves" aria-labelledby="ts-side-tab-leaves" hidden={tab !== "leaves"}>
+          {data.leaves}
+        </div>
+      )}
       <div role="tabpanel" id="ts-side-panel-issues" aria-labelledby="ts-side-tab-issues" hidden={tab !== "issues"}>
         {editing && (
           <>

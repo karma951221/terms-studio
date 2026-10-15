@@ -84,7 +84,9 @@ import { PopupHost, type PopupEnv } from "./Popups";
 import { loopsAround } from "./repeatSources";
 import { ContextMenu, Popover } from "./Popover";
 import { RemoveCard } from "./RemoveCard";
+import { LeafPanelTab } from "./LeafPanelTab";
 import { PreviewTab } from "./PreviewTab";
+import { usePreviewSelection } from "./previewSelection";
 import { DraftIssues, SidePanel, type PanelData } from "./SidePanel";
 import { Toc, articlesOf } from "./Toc";
 
@@ -193,6 +195,7 @@ export function DocumentEditor(props: EditorProps) {
   const original: DraftState = useMemo(() => ({ tree: doc.tree, ...(doc.generalDocumentId ? { generalDocumentId: doc.generalDocumentId } : {}) }), [doc.tree, doc.generalDocumentId]);
   const current = mode === "edit" && draft ? draft.state : original;
   const tree = current.tree;
+  const selection = usePreviewSelection(props.previewProducts);
   /** 누르는 순간의 편집본 트리 — 메뉴를 연 뒤 문장 칸이 초점을 잃으며 글이 먼저 적용될 수 있다. */
   const latest = useCallback(() => draftRef.current?.state.tree ?? doc.tree, [doc.tree]);
 
@@ -757,7 +760,8 @@ export function DocumentEditor(props: EditorProps) {
     ...(generalTitle ? { generalTitle } : {}),
     generalProposed: current.generalDocumentId === undefined && props.suggestedGeneralId !== undefined,
     // 가운데와 같은 조를 고른 상품의 조립 문맥으로 — 편집 중이면 편집본 (§3.9)
-    preview: <PreviewTab docKind={doc.kind} products={props.previewProducts} tree={tree} {...(currentArticleId ? { articleId: currentArticleId } : {})} editing={mode === "edit"} />,
+    preview: <PreviewTab docKind={doc.kind} selection={selection} tree={tree} {...(currentArticleId ? { articleId: currentArticleId } : {})} editing={mode === "edit"} />,
+    ...(doc.kind === "special" ? { leaves: <LeafPanelTab selection={selection} tree={tree} go={go} /> } : {}),
     go,
   };
 
