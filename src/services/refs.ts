@@ -79,7 +79,8 @@ export async function loadGraph(db: Db): Promise<RefGraph> {
   for (const p of productRows) {
     const pcs = await productRepo.listProductCoverages(db, p.id);
     const overrides = await productRepo.listOverrides(db, { kind: "product", id: p.id });
-    products.push({ id: p.id, name: p.name, ...(p.generalDocumentId ? { generalDocumentId: p.generalDocumentId } : {}), coverages: pcs, overrides });
+    const articleCopies = (await productRepo.listArticleCopies(db, p.id)).map((c) => ({ articleId: c.articleId, article: c.article }));
+    products.push({ id: p.id, name: p.name, ...(p.generalDocumentId ? { generalDocumentId: p.generalDocumentId } : {}), coverages: pcs, overrides, ...(articleCopies.length > 0 ? { articleCopies } : {}) });
   }
   return buildGraph({
     discriminators,
@@ -145,7 +146,7 @@ export function createRefsService(db: Db): RefsService {
 // ───────────────────────────── 공통 — 문서가 읽는 자리 ─────────────────────────────
 
 /** 「참조」로 치는 형태 — 부착·타입·탑재·조합은 뺀다. */
-const REFERENCE_VIAS: readonly EdgeVia[] = ["when", "slot", "expression", "local", "switchCase", "valueRestrict", "binding", "defaultBinding"];
+const REFERENCE_VIAS: readonly EdgeVia[] = ["when", "slot", "expression", "local", "switchCase", "valueRestrict", "binding", "defaultBinding", "repeatSource"];
 
 /** 문서가 읽는 값 자리 하나 — 직접 또는 함수조항·파생을 거쳐서. 좌표는 문서 쪽 자리다. */
 interface DocumentRead {
@@ -348,15 +349,16 @@ export function documentUsageSource(): DocumentUsageSource {
     },
     async appendixUsages(tx, code) {
       const graph = await loadGraph(tx);
+      // 문서 안 별표 참조는 문서 서비스가 스스로 훑는다 — 여기서는 함수조항 본문 · 상품 조 사본(ADR-0079)의 것만
       return usagesOf(graph, { kind: "appendix", code }, { via: ["appendixRef"] })
-        .filter((e) => e.from.kind === "clause")
+        .filter((e) => e.from.kind === "clause" || e.from.kind === "product")
         .map((e) => e.at);
     },
     async boxUsages(tx, code) {
-      // 문서 안 박스 참조는 문서 서비스가 스스로 훑는다 — 여기서는 함수조항 본문의 것만
+      // 문서 안 박스 참조는 문서 서비스가 스스로 훑는다 — 여기서는 함수조항 본문 · 상품 조 사본(ADR-0079)의 것만
       const graph = await loadGraph(tx);
       return usagesOf(graph, { kind: "box", code }, { via: ["boxRef"] })
-        .filter((e) => e.from.kind === "clause")
+        .filter((e) => e.from.kind === "clause" || e.from.kind === "product")
         .map((e) => e.at);
     },
   };

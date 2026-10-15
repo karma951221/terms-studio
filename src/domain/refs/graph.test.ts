@@ -7,7 +7,7 @@ import { surgeryFixture } from "../document";
 import type { MasterForm } from "../master";
 import type { AttributeKind } from "../product";
 import { buildGraph, nodeKey, type DocumentInput, type ProductInput } from "./graph";
-import { brokenEdges } from "./queries";
+import { brokenEdges, enumFieldReaders } from "./queries";
 
 // ───────── 픽스처 — 관통 1 축약 (공통/기술/아키텍처 「시드와 초기 데이터」) ─────────
 
@@ -406,5 +406,48 @@ describe("refs 그래프 — 정적 마스터 박스 (최종 결정 9)", () => {
   it("없는 박스를 가리키면 깨진 간선이다", () => {
     const g = buildGraph({ boxes: [], documents: [doc] });
     expect(brokenEdges(g).filter((e) => e.via === "boxRef").map((e) => nodeKey(e.to))).toEqual(["box:BX000001"]);
+  });
+});
+
+describe("반복 원천 간선 — 마스터 필드 · 열거값 필드 (ADR-0077 · 기능/문면 §3.7)", () => {
+  it("합집합 반복의 목록 필드 → masterField · where 필드 → enumField, via repeatSource — 열거형 필드 재검사가 그 반복을 본다", () => {
+    const 사유: EnumDef = { code: "E0001", label: "납입면제사유", fields: [{ key: "F03", label: "정의조대상", type: "boolean", order: 1 }], values: [{ code: "V01", label: "암", order: 0 }] };
+    const tree = {
+      kind: "document",
+      id: "g",
+      title: "보통약관",
+      children: [{ kind: "article", id: "a2", title: "정의", children: [{ kind: "forBlock", id: "f3", source: { kind: "union", form: "waiver", filter: "waiver.applies = true", field: "reasons", where: { field: "F03", value: true } }, children: [] }] }],
+    } as unknown as DocumentInput["tree"];
+    const graph = buildGraph({ enums: [사유], documents: [{ id: "g", kind: "general", title: "보통약관", tree }] });
+    const edges = graph.edges.filter((e) => e.via === "repeatSource").map((e) => [nodeKey(e.from), nodeKey(e.to), e.at.nodePath?.at(-1)]);
+    expect(edges).toEqual([
+      ["article:g/a2", "masterField:waiver.reasons", "f3"],
+      ["article:g/a2", "enumField:E0001/F03", "f3"],
+      ["article:g/a2", "masterField:waiver.applies", "f3"],
+    ]);
+    expect(brokenEdges(graph).filter((e) => e.via === "repeatSource")).toEqual([]);
+    expect(enumFieldReaders(graph, "E0001", ["F03"]).map((e) => e.via)).toEqual(["repeatSource"]);
+  });
+});
+
+describe("상품 조 사본 안 박스 · 별표 참조 (ADR-0079 · 기능/박스 §3.3)", () => {
+  it("사본의 boxRef · appendixRef → 상품에서 박스 · 별표로, 좌표는 document product + 조 id (상품 보통약관 탭의 그 조로 간다)", () => {
+    const article = {
+      id: "a10",
+      kind: "article",
+      title: "지급사유",
+      children: [
+        { id: "p1", kind: "paragraph", children: [{ id: "t", kind: "text", text: "별표 " }, { id: "ax", kind: "appendixRef", appendixCode: "AX000001" }] },
+        { id: "bx", kind: "boxRef", boxCode: "BX000001" },
+      ],
+    } as unknown as NonNullable<ProductInput["articleCopies"]>[number]["article"];
+    const product: ProductInput = { id: "P1", name: "상품", coverages: [], overrides: [], articleCopies: [{ articleId: "a10", article }] };
+    const g = buildGraph({ boxes: [{ code: "BX000001", name: "박스", title: "", lines: ["줄"] }], appendices: [{ code: "AX000001", name: "별표" } as never], products: [product] });
+    const edges = g.edges.filter((e) => e.from.kind === "product" && (e.via === "boxRef" || e.via === "appendixRef")).map((e) => [e.via, nodeKey(e.to), e.at]);
+    expect(edges).toEqual([
+      ["appendixRef", "appendix:AX000001", { document: "product", ownerId: "P1", ownerName: "상품", subjectName: "보통약관 조 사본", articleId: "a10", articleTitle: "지급사유" }],
+      ["boxRef", "box:BX000001", { document: "product", ownerId: "P1", ownerName: "상품", subjectName: "보통약관 조 사본", articleId: "a10", articleTitle: "지급사유" }],
+    ]);
+    expect(brokenEdges(g).filter((e) => e.from.kind === "product")).toEqual([]);
   });
 });

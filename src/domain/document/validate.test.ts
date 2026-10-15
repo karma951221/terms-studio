@@ -57,6 +57,16 @@ describe("validateDocument — 저장 검증 한 벌", () => {
     const warning: Issue = { kind: "structure", message: "w", at: {}, severity: "warning" };
     expect(blockingIssues([...issues, warning])).toHaveLength(2);
   });
+
+  it("옛 박스(사본 `box`) 노드는 저장 오류 「옛 박스 — 박스 참조로 바꾼다」 — 좌표는 그 박스 (기능/박스 §3.2)", () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    const old = b.box("용어풀이", ["보험연도란 …"]);
+    const tree = b.document("D", [b.article("조", [b.paragraph([b.text("본문")]), old, b.boxRef("BX000001")])]);
+    const issues = validateDocument(tree, { env: { kind: "general" }, resolve: catalogTypeResolver(catalog), scope: {} });
+    expect(blockingIssues(issues).map((i) => [i.kind, i.message, i.at.nodePath?.at(-1), i.at.articleTitle])).toEqual([["structure", "옛 박스 — 박스 참조로 바꾼다", old.id, "조"]]);
+    // 변환기 · 명령 검사(validateTree)는 그대로 받는다 — 변환 중간 형식이다
+    expect(validateTree(tree, { kind: "general" })).toEqual([]);
+  });
 });
 
 describe("작업용 글자색 — 검증은 모양만 본다 (기능/문면 §3.2 작업 표시)", () => {
