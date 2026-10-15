@@ -105,6 +105,7 @@ export function EditShell<T extends EditData>({
   initialMode = "read",
   cancelHref,
   saveSuccessHref,
+  createLabel,
   onSaved,
   children,
 }: {
@@ -141,6 +142,11 @@ export function EditShell<T extends EditData>({
   initialMode?: "read" | "edit";
   cancelHref?: string;
   saveSuccessHref?: string;
+  /**
+   * 생성 화면 — 저장 버튼 이름(「생성」). 편집으로 열고(`initialMode="edit"`), 고친 것이 없어도(목록 검색어 프리필) 누를 수 있고, ✕ 를 두지 않는다
+   * (다른 생성 화면과 같은 머리 — 나가는 길은 경로, 미저장 확인을 거친다). 갈 곳은 결과의 `href`(채번된 상세).
+   */
+  createLabel?: string;
   /** 저장이 끝난 뒤 — 결과에 실린 후속 안내(열거값 추가의 재검사 목록 등)를 화면이 받는다. */
   onSaved?: (outcome: Extract<EditOutcome, { ok: true }>) => void;
   children: ReactNode;
@@ -167,7 +173,8 @@ export function EditShell<T extends EditData>({
   const router = useRouter();
   const dirty = isDirty(baseline, data);
   const blocked = saveDisabled?.(data) ?? false;
-  const shownTitle = typeof data.label === "string" ? data.label : title;
+  // 생성 화면의 제목은 「새 ○○」 그대로 — 적는 이름을 따라가지 않는다
+  const shownTitle = !createLabel && typeof data.label === "string" ? data.label : title;
 
   const handle = (kind: "save" | "delete", confirmed = false) => {
     startTransition(async () => {
@@ -188,8 +195,8 @@ export function EditShell<T extends EditData>({
         return;
       }
       onSaved?.(outcome);
-      if (saveSuccessHref) {
-        router.replace(saveSuccessHref);
+      if (outcome.href ?? saveSuccessHref) {
+        router.replace((outcome.href ?? saveSuccessHref)!);
         return;
       }
       setBaseline(data);
@@ -219,7 +226,7 @@ export function EditShell<T extends EditData>({
       {mode === "read" && readBadges ? <span className="ts-edit-badges">{readBadges}</span> : null}
       <span className="ts-edit-actions">
         {mode === "edit" ? editActions : null}
-        {mode === "read" ? <Button onClick={() => setMode("edit")} disabled={pending}>편집</Button> : <><IconButton icon={<IconClose />} label="편집 취소" disabled={pending} onClick={() => leave(cancel)} /><Button variant="primary" disabled={!dirty || blocked || pending} onClick={() => handle("save")}>{pending ? "저장 중…" : "저장"}</Button></>}
+        {mode === "read" ? <Button onClick={() => setMode("edit")} disabled={pending}>편집</Button> : <>{createLabel ? null : <IconButton icon={<IconClose />} label="편집 취소" disabled={pending} onClick={() => leave(cancel)} />}<Button variant="primary" disabled={(!dirty && !createLabel) || blocked || pending} onClick={() => handle("save")}>{pending ? `${createLabel ?? "저장"} 중…` : createLabel ?? "저장"}</Button></>}
         {/* 즉시 실행 명령은 편집 모드에서 비활성 — 미저장 변경과 즉시 삭제가 한 화면에 겹치지 않게 (디자인원칙 §2 L2 · 점검 P2) */}
         {deleteAction ? <IconButton icon={<IconTrash />} label={mode === "edit" ? EDIT_MODE_LOCKED_TIP : deleteBlocked ?? deleteTooltip ?? deleteLabel ?? `${shownTitle} 삭제`} danger disabled={pending || mode === "edit" || deleteBlocked !== undefined} onClick={() => handle("delete")} /> : null}
       </span>

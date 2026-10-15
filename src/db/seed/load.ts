@@ -147,8 +147,8 @@ interface EnumSeed {
 }
 
 /**
- * 열거형 — 생성(이름 · 값)은 필드를 받지 않으므로(생성 화면에 필드가 없다 — 기능/열거형 §4) 필드가 있으면 상세 저장(`reviseEnum`)을 한 번 더 한다.
- * 화면으로 치는 순서와 같다: 만든 뒤 상세에서 필드를 정의하고 값마다 채운다. `upTo` 가 있으면 그 개수까지만 만든다.
+ * 열거형 — 생성 한 번에 이름 · 값 · 필드(값별 칸 포함)를 넣는다(생성 화면과 같다 — 기능/열거형 §4.2). `upTo` 가 있으면 그 개수까지만 만든다.
+ * 필드 키는 시스템 채번(F01…)이라 JSON 순서가 곧 키다 — JSON 의 key 를 생성의 필드 ref 로 써서 값 칸이 가리키고, 채번 결과를 대조한다.
  */
 async function loadEnums(services: Services, actor: Actor, upTo?: number): Promise<void> {
   for (const definition of (enums as unknown as EnumSeed[]).slice(0, upTo)) {
@@ -157,24 +157,28 @@ async function loadEnums(services: Services, actor: Actor, upTo?: number): Promi
     const last = Math.max(0, ...definition.values.map((v) => parseCode(v.code)?.seq ?? 0));
     const all = Array.from({ length: last }, (_, i) => formatCode("enumValue", i + 1));
     const gaps = all.filter((code) => !seeded.has(code));
-    const created = unwrap(await services.catalog.createEnum(actor, { label: definition.label, values: all.map((code) => ({ label: seeded.get(code)?.label ?? `(지운 값 ${code})` })) } as NewEnum));
+    const input: NewEnum = {
+      label: definition.label,
+      ...(definition.fields?.length ? { fields: definition.fields.map((f) => ({ ref: f.key, label: f.label, type: f.type })) } : {}),
+      values: all.map((code) => {
+        const value = seeded.get(code);
+        return { label: value?.label ?? `(지운 값 ${code})`, ...(value?.fields ? { fields: value.fields } : {}) };
+      }),
+    };
+    const created = unwrap(await services.catalog.createEnum(actor, input));
     expectCode(created.code, definition.code);
     all.forEach((code, i) => expectCode(created.values[i]?.code ?? "", code));
-    if (!definition.fields?.length && gaps.length === 0) continue;
-    const revised = unwrap(
+    (definition.fields ?? []).forEach((f, i) => expectCode(created.fields?.[i]?.key ?? "", f.key));
+    if (gaps.length === 0) continue;
+    // 자리표시 값을 빼는 상세 저장 — 필드 · 남은 값의 칸은 그대로 둔다(fields 를 주지 않는다)
+    unwrap(
       await services.catalog.reviseEnum(
         actor,
         created.code,
-        {
-          label: created.label,
-          description: created.description ?? "",
-          fields: (definition.fields ?? []).map((f) => ({ ref: f.key, label: f.label, type: f.type })),
-          values: definition.values.map((v) => ({ code: v.code, label: v.label, fields: v.fields ?? {} })),
-        },
-        { confirm: gaps.length > 0 },
+        { label: created.label, description: created.description ?? "", values: definition.values.map((v) => ({ code: v.code, label: v.label })) },
+        { confirm: true },
       ),
     );
-    (definition.fields ?? []).forEach((f, i) => expectCode(revised.fields?.[i]?.key ?? "", f.key));
   }
 }
 

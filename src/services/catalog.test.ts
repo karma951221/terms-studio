@@ -598,6 +598,19 @@ describe("열거형 유저 정의 필드 — 저장 · 권한 (ADR-0078 결정 2
     await t.close();
   });
 
+  it("생성 한 번에 필드 · 값별 칸까지 — 다시 읽어도 그대로 (기능/열거형 §4.2)", async () => {
+    const created = unwrap(
+      await svc.createEnum(editor, {
+        label: "심사유형",
+        fields: [{ ref: "new:1", label: "약관표시명", type: "string" }],
+        values: [{ label: "일반", fields: { "new:1": "일반심사" } }, { label: "간편" }],
+      }),
+    );
+    expect(created.code).toBe("E0002");
+    expect(await svc.getEnum("E0002")).toEqual(created);
+    expect(created.values.map((v) => v.fields)).toEqual([{ F01: "일반심사" }, undefined]);
+  });
+
   it("편집자는 필드를 더하고 값을 넣을 수 있다 — 다시 읽어도 그대로", async () => {
     const r = unwrap(
       await svc.reviseEnum(editor, "E0001", {

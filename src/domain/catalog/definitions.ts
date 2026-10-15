@@ -307,7 +307,7 @@ function checkEnumLabel(label: string, existing: readonly string[], self?: strin
 
 /**
  * enum 값 표시명의 동일성 — 앞뒤 공백 · 연속 공백 · 대소문자를 무시한다. 저장은 적은 그대로, 비교만 이걸로.
- * 생성 화면(EnumValuesInput)의 중복 표시와 서버 거부가 같은 정책이어야 한다 (코덱스 리뷰 2026-09-14 Minor-1).
+ * 편집 · 생성 값 표(EnumTables `duplicateValueCodes`)의 중복 표시와 서버 거부가 같은 정책이어야 한다 (코덱스 리뷰 2026-09-14 Minor-1).
  */
 export function enumValueLabelKey(label: string): string {
   return label.trim().replace(/\s+/g, " ").toLowerCase();
@@ -335,7 +335,11 @@ async function buildEnumValues(
   return ok(values);
 }
 
-/** enum 정의 생성 — E0001 부터, 값은 그 enum 안에서 V01 부터. */
+/**
+ * enum 정의 생성 — E0001 부터, 값은 그 enum 안에서 V01 부터, 필드는 F01 부터.
+ * 이름 · 값 · 필드(값별 칸 포함)를 한 번에 받는다 — 빈 정의에 편집 한 벌(`reviseEnum`)을 얹는 것과 같다. 검사도 같은 규칙
+ * (값 이름 중복 · 필드 이름 중복 · 칸 타입). 칸은 필드 `ref` 로 가리킨다.
+ */
 export async function createEnum(
   input: NewEnum,
   ctx: Pick<CatalogContext, "nextSeq" | "existingEnumLabels">,
@@ -343,9 +347,18 @@ export async function createEnum(
   const labelOk = checkEnumLabel(input.label, ctx.existingEnumLabels ?? []);
   if (!labelOk.ok) return labelOk as Result<EnumDef>;
   const code = await allocateCode("enum", "", ctx.nextSeq);
-  const values = await buildEnumValues(code, input.values ?? [], 0, ctx.nextSeq, []);
-  if (!values.ok) return values as Result<EnumDef>;
-  return ok({ code, label: input.label, description: input.description ?? "", values: values.value });
+  const empty: EnumDef = { code, label: input.label, description: input.description ?? "", values: [] };
+  const revised = await reviseEnum(
+    empty,
+    {
+      label: input.label,
+      description: input.description ?? "",
+      ...(input.fields ? { fields: input.fields.map(({ ref, label, type }) => ({ ref, label, type })) } : {}),
+      values: (input.values ?? []).map((v) => ({ label: v.label, ...(v.fields ? { fields: v.fields } : {}) })),
+    },
+    { existingEnumLabels: [], nextSeq: ctx.nextSeq },
+  );
+  return revised.ok ? ok(revised.value.def) : (revised as Result<EnumDef>);
 }
 
 export function renameEnum(def: EnumDef, label: string, existingEnumLabels: readonly string[]): Result<EnumDef> {

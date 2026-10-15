@@ -6,6 +6,7 @@ import { saveOnce } from "@/app/_lib/saveOnce";
 import type { Result } from "@/domain/types";
 import { currentActor, getServices } from "@/lib/services";
 
+import { enumEditPayload, newEnumPayload } from "./edit-payload";
 import type { EnumEditData } from "./edit-types";
 
 function failed<T>(result: Result<T>, token: string): EditOutcome | undefined {
@@ -30,14 +31,8 @@ export async function saveEnumEditAction(code: string, input: EnumEditData, conf
   return saveOnce(services, async () => {
     const current = await services.catalog.getEnum(code);
     if (!current) return { ok: false, message: "열거형변수를 찾을 수 없습니다." };
-    // 빈 채로 남은 새 필드 행은 버린다 — 새 값 행과 같은 규칙 (디자인원칙 §2 L2). 새 필드는 ref(`new:N`)로, 값의 필드 칸이 같은 키로 가리킨다
-    const fieldRows = input.fields?.filter((field) => field.label.trim() || !isNew(field.key));
-    const fields = fieldRows?.map((field) => (isNew(field.key) ? { ref: field.key, label: field.label, type: field.type } : { key: field.key, label: field.label, type: field.type }));
-    const live = new Set(fieldRows?.map((field) => field.key));
-    const values = input.values.map((value) => {
-      const cells = fields && value.fields ? Object.fromEntries(Object.entries(value.fields).filter(([key]) => live.has(key))) : value.fields;
-      return { ...(isNew(value.code) ? {} : { code: value.code }), label: value.label, ...(cells ? { fields: cells } : {}) };
-    });
+    // 빈 채로 남은 새 행(필드 · 값)은 버린다 (디자인원칙 §2 L2). 새 필드는 ref(`new:N`)로, 값의 필드 칸이 같은 키로 가리킨다
+    const { fieldRows, fields, values } = enumEditPayload(input);
     const result = await services.catalog.reviseEnum(actor, code, { label: input.label, description: input.description, ...(fields ? { fields } : {}), values }, { confirm });
     if (result.ok) {
       // 값을 더했으면 그 열거형 값을 나열해 비교하는 곳(조건식 · 구분자 식 · 함수조항 내부 변수)을 재검사 목록으로 돌려준다 — 저장은 막지 않는다 (ADR-0078 결정 4 · 최종 결정 20).
@@ -82,6 +77,15 @@ export async function saveEnumEditAction(code: string, input: EnumEditData, conf
     }
     return failed(result, "values")!;
   });
+}
+
+/**
+ * 열거형변수 생성 — 이름 · 값 · 필드(값별 칸 포함)를 제출 한 번에 (기능/열거형 §4.2). 빈 새 행은 버린다 — 값 하나만 적어도(0 개여도) 생성된다.
+ * 성공하면 결과에 상세 주소를 실어 화면이 그리로 간다.
+ */
+export async function createEnumEditAction(input: EnumEditData): Promise<EditOutcome> {
+  const result = await getServices().catalog.createEnum(await currentActor(), newEnumPayload(input));
+  return result.ok ? { ok: true, href: `/enums/${result.value.code}` } : { ok: false, message: describeRejection(result.rejection).message };
 }
 
 export async function removeEnumEditAction(code: string, confirm = false): Promise<EditOutcome> {
