@@ -208,11 +208,15 @@ class Builder {
    */
   qualifierKey(code: Code, path: string, coverageId: Id | undefined): RefNodeKey | undefined {
     if (coverageId === undefined) return undefined;
+    const level = this.discriminatorLevels.get(code);
+    return this.keyPathNode(path, coverageId, level !== undefined && COVERAGE_NODE_LEVELS.includes(level) ? (level as CoverageNodeLevel) : undefined);
+  }
+
+  /** 키 경로의 담보 노드 키 — 담보에 없으면 `missingLevel` 로 끊어진 자리 키(`담보id@경로`), 그것도 없으면 undefined. */
+  keyPathNode(path: string, coverageId: Id, missingLevel: CoverageNodeLevel | undefined): RefNodeKey | undefined {
     const hit = this.coverageKeyPaths.get(coverageId)?.get(path);
     if (hit) return { kind: "coverageNode", level: hit.level, id: hit.id };
-    const level = this.discriminatorLevels.get(code);
-    if (level === undefined || !COVERAGE_NODE_LEVELS.includes(level)) return undefined;
-    return { kind: "coverageNode", level: level as CoverageNodeLevel, id: `${coverageId}@${path}` };
+    return missingLevel ? { kind: "coverageNode", level: missingLevel, id: `${coverageId}@${path}` } : undefined;
   }
 
   /**
@@ -518,6 +522,13 @@ function addDocument(b: Builder, doc: DocumentInput, master?: MasterTree): Map<I
         }
         b.edge({ from, to, via: "articleRef", at: r.at });
         restrictEdges(b, from, enumCode, r.values, r.at);
+        // 키 한정(ADR-0087 결정 10)은 고른 키의 담보 노드를 읽는다 — refPath `대상열쇠@키` 라 노드 삭제 영향이 키로 센다(qualifierPathOf)
+        if (r.scope === "self" && coverageId !== undefined) {
+          for (const k of r.keys ?? []) {
+            const node = b.keyPathNode(k, coverageId, k.includes(".") ? "benefit" : "subCoverage");
+            if (node) b.edge({ from, to: node, via: "nodeQualifier", at: { ...r.at, refPath: `${r.at.refPath ?? k}@${k}` } });
+          }
+        }
         break;
       }
       case "appendix":

@@ -33,7 +33,7 @@ export type DocRef =
       at: Coordinate;
     }
   /** 조 참조의 대상 하나 — 조 id · (항 · 호 · 목이면) P코드 (ADR-0072 결정 3). `at.refPath` = 대상 열쇠(`refKey`). */
-  | { kind: "article"; articleId: Id; code?: Code; innerCode?: Code; values?: Code[]; scope: "self" | "general"; at: Coordinate }
+  | { kind: "article"; articleId: Id; code?: Code; innerCode?: Code; values?: Code[]; /** 키 한정의 키 (ADR-0087 결정 10). */ keys?: string[]; scope: "self" | "general"; at: Coordinate }
   | { kind: "appendix"; appendixCode: Code; at: Coordinate }
   /** 정적 마스터 박스 참조 (최종 결정 9). */
   | { kind: "box"; boxCode: Code; at: Coordinate }
@@ -49,12 +49,14 @@ export function collectRefs(doc: DocumentNode, base: Coordinate = {}): DocRef[] 
   const articleRefs = (n: Pick<ArticleRefNode, "targets" | "scope">, at: Coordinate): void => {
     for (const target of n.targets) {
       const values = target.restrict && "values" in target.restrict ? target.restrict.values : undefined;
+      const keys = target.restrict && "keys" in target.restrict ? target.restrict.keys : undefined;
       out.push({
         kind: "article",
         articleId: target.articleId,
         ...(target.code !== undefined ? { code: target.code } : {}),
         ...(target.innerCode !== undefined ? { innerCode: target.innerCode } : {}),
         ...(values ? { values } : {}),
+        ...(keys ? { keys } : {}),
         scope: n.scope,
         at: { ...at, refPath: refKey(target) },
       });

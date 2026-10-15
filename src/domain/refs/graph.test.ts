@@ -487,3 +487,33 @@ describe("인자 연결의 키 경로 — 관계 그래프 (ADR-0087)", () => {
     expect(g.edges.filter((e) => e.via === "clauseRef").map((e) => [e.at.documentId, e.treeLoopLevel])).toEqual([["docA", "subCoverage"], ["docB", undefined]]);
   });
 });
+
+describe("조 참조 키 한정 — 키마다 그 문서 담보의 노드로 가는 nodeQualifier 간선 (ADR-0087 결정 10)", () => {
+  /** 「세부보장마다」 반복 안 항 P0200 + 반복 밖에서 그 항을 키로 좁혀 가리키는 조 참조. */
+  const keyedDoc = (keys: string[]): DocumentInput => ({
+    id: "docK",
+    kind: "special",
+    ownerId: "covK",
+    title: "키 한정",
+    tree: {
+      id: "docK",
+      kind: "document",
+      title: "키 한정",
+      children: [{ id: "art", kind: "article", title: "지급", children: [
+        { id: "loop", kind: "forBlock", code: "P0100", source: { kind: "subCoverages" }, children: [{ id: "p", kind: "paragraph", code: "P0200", children: [{ id: "pt", kind: "text", text: "지급" }] }] },
+        { id: "q", kind: "paragraph", code: "P0300", children: [{ id: "r", kind: "articleRef", scope: "self", connector: "및", targets: [{ articleId: "art", code: "P0200", restrict: { keys } }] }] },
+      ] }],
+    } as never,
+  });
+
+  it("키마다 간선 하나 — refPath `대상열쇠@키` · 없는 키는 끊어진 자리 키(`담보id@키`)로 깨진 간선", () => {
+    const g = buildGraph({ coverages: [coverageTree("covK", [{ id: "s1", key: "01" }, { id: "s2", key: "02" }])], documents: [keyedDoc(["02", "01.1", "09"])] });
+    const es = g.edges.filter((e) => e.via === "nodeQualifier");
+    expect(es.map((e) => [nodeKey(e.to), e.at.refPath])).toEqual([
+      ["coverageNode:subCoverage/s2", "art#P0200@02"],
+      ["coverageNode:benefit/s1-b", "art#P0200@01.1"],
+      ["coverageNode:subCoverage/covK@09", "art#P0200@09"],
+    ]);
+    expect(brokenEdges(g).filter((e) => e.via === "nodeQualifier").map((e) => nodeKey(e.to))).toEqual(["coverageNode:subCoverage/covK@09"]);
+  });
+});

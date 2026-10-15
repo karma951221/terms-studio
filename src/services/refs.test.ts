@@ -379,3 +379,42 @@ describe("인자 연결의 키 경로 — 노드 삭제 영향은 키 경로로 
     expect(del03).toEqual([]);
   });
 });
+
+describe("조 참조 키 한정 — 노드 삭제 영향은 고른 키로 센다 (ADR-0087 결정 10 · M2)", () => {
+  let t: TestDb;
+  let cov: Coverage;
+  const b = nodeBuilders();
+
+  beforeAll(async () => {
+    t = await createTestDb();
+    const db = contextualDb(t.db);
+    const coverage = createCoverageService(db);
+    cov = unwrap(await coverage.create(editor, { name: "골절", subCoverageName: "골절진단", benefitName: "진단비" })); // 01
+    cov = unwrap(await coverage.addSubCoverage(editor, cov.id, { name: "골절수술", benefitName: "수술비" })); // 02
+    cov = unwrap(await coverage.addSubCoverage(editor, cov.id, { name: "골절입원", benefitName: "입원비" })); // 03
+    const body = b.paragraph([b.text("세부보장별 지급")]);
+    body.code = "P0200";
+    const loop = b.forBlock({ kind: "subCoverages" } as never, [body]);
+    loop.code = "P0100";
+    const art = b.article("지급", [loop]);
+    const ref = b.articleRef({ articleId: art.id, code: "P0200", restrict: { keys: ["02"] } } as never);
+    ref.connector = "및";
+    const plain = b.paragraph([ref]);
+    plain.code = "P0300";
+    art.children.push(plain);
+    const doc = await insertDocument(db, { kind: "special", ownerId: cov.id, title: "골절 특별약관", tree: b.document("골절 특별약관", [art]) }, editor.userId);
+    unwrap(await coverage.setDocument(editor, cov.id, doc.id));
+  });
+  afterAll(async () => {
+    await t.close();
+  });
+
+  it("restrict.keys [\"02\"] — 세부보장 02 를 지우면 그 조 참조가 깨질 참조, 03 을 지우면 아니다", async () => {
+    const src = coverageUsageSource(contextualDb(t.db));
+    const subOf = (key: string) => cov.subCoverages.find((s) => s.key === key)!.id;
+    const del02 = await src.findUsages({ kind: "deleteNode", coverageId: cov.id, node: { level: "subCoverage", id: subOf("02") } });
+    expect(del02.map((c) => c.refPath)).toEqual([expect.stringMatching(/#P0200@02$/)]);
+    const del03 = await src.findUsages({ kind: "deleteNode", coverageId: cov.id, node: { level: "subCoverage", id: subOf("03") } });
+    expect(del03).toEqual([]);
+  });
+});

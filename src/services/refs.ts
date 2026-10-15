@@ -157,6 +157,11 @@ interface DocumentRead {
  * 문서(와 조)가 읽는 구분자·필드·담보속성 자리 전부. 함수조항 참조는 그 본문의 참조로, 파생 참조는 그 식의 참조로 펼친다
  * (함수조항 인자에 연결한 구분자는 사용처 문맥에서 해소되므로 사용처의 값 자리를 읽는 것이다 — 사용처 연결 · 기본 연결, ADR-0076).
  */
+/** 읽는 자리의 정체 — 문서 · 노드 경로 · refPath. */
+function spotOf(at: Coordinate): string {
+  return `${at.documentId ?? ""}|${(at.nodePath ?? []).join("/")}|${at.refPath ?? ""}`;
+}
+
 function documentReads(graph: RefGraph, doc: RefNodeKey): DocumentRead[] {
   const out: DocumentRead[] = [];
   const expand = (edge: RefEdge, at: Coordinate, visited: Set<string>): void => {
@@ -179,6 +184,9 @@ function documentReads(graph: RefGraph, doc: RefNodeKey): DocumentRead[] {
       for (const ce of referencesFrom(graph, e.to, { via: ["defaultBinding"] })) if (ce.param === undefined || e.bindings?.[ce.param] === undefined) expand(ce, e.at, new Set());
     }
   }
+  // 조 참조 키 한정(ADR-0087 결정 10)은 담보 노드 간선(nodeQualifier)만 낸다 — 식 · 인자 연결의 한정자는 같은 자리의 구분자 간선으로 이미 셌다
+  const seen = new Set(out.map((r) => spotOf(r.at)));
+  for (const e of referencesFrom(graph, doc, { via: ["nodeQualifier"] })) if (!seen.has(spotOf(e.at))) out.push({ target: e.to, at: e.at });
   return out;
 }
 
