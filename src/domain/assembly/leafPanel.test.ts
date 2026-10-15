@@ -56,6 +56,22 @@ describe("「구분자」 값 패널 (ADR-0087 결정 6)", () => {
     expect(keyed.map((x) => [x.path, x.value])).toEqual([["03", "아니오"]]);
   });
 
+  it("끊어진 급부 키 — 있는 세부보장은 실제 이름, 없는 세부보장은 마디 그대로 (세부보장 마디가 빠지지 않는다)", () => {
+    const r = rows(panel(docOf([para("p", [slot("s1", "D0002@01.9"), slot("s2", "D0002@03.9"), slot("s3", "D0002@09.1")])])));
+    expect(r.map((x) => [x.label, x.problem])).toEqual([
+      ["세부보장 01 · 세부A › 급부 9 › 감액여부", "brokenKey"],
+      ["세부보장 03 · 세부B › 급부 9 › 감액여부", "brokenKey"],
+      ["세부보장 09 › 급부 1 › 감액여부", "brokenKey"],
+    ]);
+  });
+
+  it("반복 밖 한정자 없는 세부보장 레벨 슬롯 — 담보 레벨 한 줄, 값이 아니라 미입력 문제", () => {
+    const r = rows(panel(docOf([para("p", [slot("s1", "D0007")])])));
+    expect(r).toEqual([expect.objectContaining({ code: "D0007", problem: "notEntered" })]);
+    expect(r[0].value).toBeUndefined();
+    expect(r[0].path).toBeUndefined();
+  });
+
   it("상품담보가 없으면 unavailable", () => {
     expect(panel(docOf([]), "없음")).toEqual({ unavailable: expect.any(String) });
   });

@@ -47,12 +47,20 @@ export function leafPanel(master: MasterBundle, product: ProductInput, productCo
     return level === "subCoverage" || level === "benefit" ? level : undefined;
   };
 
+  /** 끊어진 키 경로의 라벨 — 있는 세부보장은 실제 이름으로, 나머지는 마디 그대로. */
+  const brokenHead = (path: string): string => {
+    const [subKey, ...rest] = path.split(".");
+    const sub = snap.subCoverages.find((x) => x.key === subKey);
+    const first = sub ? keyPathLabel(snap, sub.key)! : `세부보장 ${subKey}`;
+    return [first, ...rest.map((k) => `급부 ${k}`)].join(" › ");
+  };
+
   const add = (code: Code, path: string | undefined, at: Coordinate, problem?: LeafRow["problem"]) => {
     const id = `${code}@${path ?? ""}`;
     if (rows.has(id)) return;
     const def = defs.get(code);
     const name = def?.label ?? code;
-    const head = path ? (keyPathLabel(snap, path) ?? `${path.includes(".") ? "급부" : "세부보장"} ${path.split(".").at(-1)}`) : undefined;
+    const head = path ? (keyPathLabel(snap, path) ?? brokenHead(path)) : undefined;
     const row: LeafRow = { label: head ? `${head} › ${name}` : name, code, ...(path ? { path } : {}), ...(def?.description ? { description: def.description } : {}), at };
     if (problem) row.problem = problem;
     else if (path && !nodeByKeyPath(snap, path)) row.problem = "brokenKey";
