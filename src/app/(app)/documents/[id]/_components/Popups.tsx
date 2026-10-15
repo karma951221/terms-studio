@@ -22,7 +22,6 @@ import {
   nodeBuilders,
   paramOfRef,
   paramTargetId,
-  treeLoopLevelsAt,
   treeLoopOfTarget,
   parseRefKey,
   repeatElementEnums,
@@ -57,7 +56,7 @@ import { runsFromTokens } from "./inlineRuns";
 import { clausesFitting, type PopupSpec } from "./menus";
 import { PopActions, Popover } from "./Popover";
 import { RefTargetTree } from "./RefTargetTree";
-import { restrictMode, restrictOfForm } from "./restrict";
+import { restrictMode, restrictOfForm, treeLoopsAt } from "./restrict";
 import { loopChoices, loopsAround, nodeTreeAt, repeatChoices, sourceOfValue, sourceValue } from "./repeatSources";
 import { CaseControls } from "./SwitchControls";
 import { unassignedValues } from "./switchCases";
@@ -164,6 +163,13 @@ function ArticleRefFields({ ctx, node, restrict, prefix = "", idBase = "pop-ref"
         lv = (key !== undefined ? restrict.treeLevelOf(parseRefKey(key)) : undefined) ?? lv;
       }
       setTreeLevel(lv);
+      // 다시 고른 대상에서 없어진 한정 종류면 「없음」으로 되돌린다 (select 가 값 없는 option 을 가리키지 않게)
+      const valid =
+        mode === "" ||
+        (mode === "values" && restrict.values.length > 0) ||
+        (mode === "keys" && lv !== undefined && restrict.keys.some((k) => k.level === lv)) ||
+        (mode.startsWith("current:") && ((restrict.values.length > 0 && restrict.loops.some((l) => `current:${l.id}` === mode)) || (lv !== undefined && restrict.treeLoops.some((l) => l.level === lv && `current:${l.id}` === mode))));
+      if (!valid) setMode("");
     }
     setRepeatedPicked(ids.some((rowId) => {
       const key = keyOfRow(rowId);
@@ -265,7 +271,7 @@ function ArticleRefFields({ ctx, node, restrict, prefix = "", idBase = "pop-ref"
                     ))}
                   {treeLevel !== undefined &&
                     restrict.treeLoops
-                      .filter((l) => treeLevel === "benefit" ? l.level === "benefit" : true)
+                      .filter((l) => l.level === treeLevel)
                       .map((l) => (
                         <option key={l.id} value={`current:${l.id}`}>
                           {l.level === "subCoverage" ? "현재 세부보장" : "현재 급부"}
@@ -766,13 +772,13 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
     return tree ? { tree } : {};
   };
   /** 조 참조 자리의 값 한정 후보 — 감싼 열거값 반복(현재 값) · 반복 원소 열거형의 값(해당 값들, ADR-0077 결정 7). */
-  const restrictAt = (id: Id | undefined): RestrictChoices => {
-    const site = id === undefined ? undefined : ix.nodes.get(id); // 새로 넣는 자리의 부모가 트리에 없을 수 있다(함수조항 편집기)
+  /** `existing` — 이미 있는 노드를 고치는 자리(그 노드 자신은 「감싼 반복」이 아니다). 새로 넣는 자리는 부모(반복 블록 · 가지 포함)를 뺀다. */
+  const restrictAt = (id: Id | undefined, existing = false): RestrictChoices => {
     return {
     loops: id === undefined ? [] : loopsAt(id).filter((l) => l.type.kind === "enum").map((l) => ({ id: l.id, label: l.label })),
     values: [...repeatElementEnums()].flatMap((code) => (env.enumOf?.(code)?.values ?? []).map((v) => ({ code: v.code, label: v.label }))),
     keys: (env.condition.coverage?.nodes ?? []).flatMap((n) => (n.keyPath && (n.level === "subCoverage" || n.level === "benefit") ? [{ path: n.keyPath, label: nodeHead(env.condition.coverage?.nodes ?? [], n), level: n.level }] : [])),
-    treeLoops: site ? treeLoopLevelsAt(ix, site).map((l) => ({ id: l.loop, level: l.level })) : [],
+    treeLoops: treeLoopsAt(ix, id, !existing),
     treeLevelOf: (t) => treeLoopOfTarget(ix, t)?.level,
     };
   };
@@ -891,7 +897,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             )}
             {node.kind === "articleRef" && <ArticleRefFields ctx={ctx} node={node} restrict={restrictAt(node.id)} />}
             {node.kind === "appendixRef" && <AppendixSelect appendices={env.appendices} value={node.appendixCode} />}
-            {(node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && <ClauseFields clauses={env.clauses} code={node.clauseCode} options={node.options} {...(node.bindings ? { bindings: node.bindings } : {})} {...(node.preset !== undefined ? { preset: node.preset } : {})} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(node.id)} {...treeProp(node.id)} refs={{ ctx, restrict: restrictAt(node.id) }} />}
+            {(node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && <ClauseFields clauses={env.clauses} code={node.clauseCode} options={node.options} {...(node.bindings ? { bindings: node.bindings } : {})} {...(node.preset !== undefined ? { preset: node.preset } : {})} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(node.id)} {...treeProp(node.id)} refs={{ ctx, restrict: restrictAt(node.id, true) }} />}
             <PopActions onCancel={onClose} />
           </PopForm>
         </Popover>
