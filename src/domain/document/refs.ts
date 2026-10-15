@@ -9,6 +9,7 @@
 import { extractRefs, parse } from "../expression";
 import type { Bindings } from "../clause/params";
 import type { Code, Coordinate, Id } from "../types";
+import { treeLoopLevelsAt } from "./blockRepeat";
 import { articleRefsOf, coordinateOf, indexTree, type ArticleRefNode, type ClauseGate, type DocumentNode } from "./nodes";
 import { refKey } from "./pcode";
 
@@ -20,7 +21,17 @@ export type DocRef =
   | { kind: "attribute"; code: Code; path: string; at: Coordinate }
   | { kind: "builtin"; path: string; at: Coordinate }
   /** `bindings` = 사용처의 인자 연결(최종 결정 2) — 없으면 기본 연결. */
-  | { kind: "clause"; clauseCode: Code; options: Record<Code, Code>; bindings?: Bindings; preset?: Code; mode: "block" | "inline"; at: Coordinate }
+  | {
+      kind: "clause";
+      clauseCode: Code;
+      options: Record<Code, Code>;
+      bindings?: Bindings;
+      preset?: Code;
+      mode: "block" | "inline";
+      /** 참조 자리를 감싼 가장 안쪽 담보 트리 반복의 레벨 — 재검사가 하위 레벨 기본 연결을 그 반복이 푸는지 본다 (ADR-0087 결정 8). */
+      treeLoopLevel?: "subCoverage" | "benefit";
+      at: Coordinate;
+    }
   /** 조 참조의 대상 하나 — 조 id · (항 · 호 · 목이면) P코드 (ADR-0072 결정 3). `at.refPath` = 대상 열쇠(`refKey`). */
   | { kind: "article"; articleId: Id; code?: Code; innerCode?: Code; values?: Code[]; scope: "self" | "general"; at: Coordinate }
   | { kind: "appendix"; appendixCode: Code; at: Coordinate }
@@ -91,11 +102,13 @@ export function collectRefs(doc: DocumentNode, base: Coordinate = {}): DocRef[] 
         exprRefs(n.ref, "slot", at);
         break;
       case "clauseBlockRef":
-      case "clauseInlineRef":
-        out.push({ kind: "clause", clauseCode: n.clauseCode, options: n.options, ...(n.bindings ? { bindings: n.bindings } : {}), ...(n.preset !== undefined ? { preset: n.preset } : {}), mode: n.kind === "clauseBlockRef" ? "block" : "inline", at });
+      case "clauseInlineRef": {
+        const tree = treeLoopLevelsAt(ix, e).at(-1);
+        out.push({ kind: "clause", clauseCode: n.clauseCode, options: n.options, ...(n.bindings ? { bindings: n.bindings } : {}), ...(n.preset !== undefined ? { preset: n.preset } : {}), mode: n.kind === "clauseBlockRef" ? "block" : "inline", ...(tree ? { treeLoopLevel: tree.level } : {}), at });
         // 조 참조 인자 연결도 이 문서의 조 참조다 — 깨짐 · 관계 간선을 같이 센다 (ADR-0083 결정 4)
         for (const r of articleRefsOf(n)) articleRefs(r, at);
         break;
+      }
       case "articleRef":
         articleRefs(n, at);
         break;

@@ -484,10 +484,16 @@ function addDocument(b: Builder, doc: DocumentInput, master?: MasterTree): Map<I
         // 프리셋이면 그 프리셋 값이 이 사용처의 실제 연결 · 선택이다 (ADR-0084) — 간선 · 재검사 · 삭제 영향이 그것을 본다
         const def = b.clauses.get(r.clauseCode);
         const used = def && r.preset !== undefined ? presetUsage(def, r) : r;
-        b.edge({ from, to: { kind: "clause", code: r.clauseCode }, via: "clauseRef", at: r.at, options: used.options, ...(used.bindings ? { bindings: used.bindings } : {}), ...(r.preset !== undefined ? { preset: r.preset } : {}) });
+        b.edge({ from, to: { kind: "clause", code: r.clauseCode }, via: "clauseRef", at: r.at, options: used.options, ...(used.bindings ? { bindings: used.bindings } : {}), ...(r.preset !== undefined ? { preset: r.preset } : {}), ...(r.treeLoopLevel ? { treeLoopLevel: r.treeLoopLevel } : {}) });
         // 사용처의 인자 연결 → 구분자 (기본 연결을 바꾼 것만 — 기본 연결은 함수조항의 defaultBinding 간선)
         for (const [param, binding] of Object.entries(used.bindings ?? {})) {
-          if (binding.kind === "discriminator") b.edge({ from, to: { kind: "discriminator", code: binding.code }, via: "binding", at: { ...r.at, refPath: `${r.clauseCode}.arg.${param}` }, param });
+          if (binding.kind !== "discriminator") continue;
+          // 키 경로 연결은 그 담보 노드도 읽는다 — binding · nodeQualifier 간선이 같은 refPath(`C.arg.인자@키경로`)를 써서
+          // 노드 삭제 영향이 레벨이 아니라 키 경로로 센다 (ADR-0087 · 사용처 원천의 qualifierPathOf).
+          const path = binding.node && "path" in binding.node ? binding.node.path : undefined;
+          const at = { ...r.at, refPath: `${r.clauseCode}.arg.${param}${path !== undefined ? `@${path}` : ""}` };
+          b.edge({ from, to: { kind: "discriminator", code: binding.code }, via: "binding", at, param });
+          if (path !== undefined) b.qualifier(from, { kind: "discriminator", code: binding.code, node: { path } }, at, coverageId);
         }
         for (const [optionCode, valueCode] of Object.entries(used.options)) {
           b.edge({ from, to: { kind: "clauseOptionValue", clauseCode: r.clauseCode, optionCode, valueCode }, via: "optionSelect", at: { ...r.at, refPath: `${r.clauseCode}.${optionCode}` } });

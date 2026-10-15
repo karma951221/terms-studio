@@ -338,6 +338,7 @@ export function clauseUsageSource(db: Db): ClauseUsageSource {
           selection: e.options ?? {},
           ...(e.bindings ? { bindings: e.bindings } : {}),
           ...(e.preset !== undefined ? { preset: e.preset } : {}),
+          ...(e.treeLoopLevel ? { treeLoopLevel: e.treeLoopLevel } : {}),
         });
       }
       return out;

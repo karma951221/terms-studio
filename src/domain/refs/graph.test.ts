@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Discriminator, EnumDef } from "../catalog";
-import type { Clause } from "../clause";
+import type { Bindings, Clause } from "../clause";
 import type { Coverage } from "../coverage";
 import { surgeryFixture } from "../document";
 import type { MasterForm } from "../master";
@@ -436,5 +436,54 @@ describe("refs 그래프 — 정적 마스터 박스 (최종 결정 9)", () => {
   it("없는 박스를 가리키면 깨진 간선이다", () => {
     const g = buildGraph({ boxes: [], documents: [doc] });
     expect(brokenEdges(g).filter((e) => e.via === "boxRef").map((e) => nodeKey(e.to))).toEqual(["box:BX000001"]);
+  });
+});
+
+/** 인자 하나(boolean, 기본 연결 없음)짜리 블록 함수조항. */
+function clauseWithParam(code: string, param: string): Clause {
+  return {
+    code,
+    label: code,
+    mode: "block",
+    body: [{ id: `${code}-p`, kind: "paragraph", children: [{ id: `${code}-c`, kind: "inlineCond", branches: [{ id: `${code}-b`, when: `arg.${param}`, children: [{ id: `${code}-t`, kind: "text", text: "감액" }] }] }] }],
+    options: [],
+    params: [{ name: param, type: { kind: "boolean" } }],
+    required: { discriminators: [], attributes: [] },
+  };
+}
+
+/** 조 하나에 함수조항 참조(C0001) 하나를 둔 담보약관 — 인자 연결 `bindings`. */
+function specialDocWithClause(id: string, coverageId: string, bindings: Bindings): DocumentInput {
+  return {
+    id,
+    kind: "special",
+    ownerId: coverageId,
+    title: id,
+    tree: { id: `${id}-root`, kind: "document", title: id, children: [{ id: `${id}-art`, kind: "article", title: "감액", children: [{ id: `${id}-ref`, kind: "clauseBlockRef", clauseCode: "C0001", options: {}, bindings }] }] },
+  };
+}
+
+describe("인자 연결의 키 경로 — 관계 그래프 (ADR-0087)", () => {
+  it("키 경로 연결은 구분자 간선과 함께 그 담보 노드로 가는 nodeQualifier 간선을 낸다", () => {
+    const cov = coverageTree("covA", [{ id: "a1", key: "01" }]);
+    const g = buildGraph({ coverages: [cov], clauses: [clauseWithParam("C0001", "감액")], documents: [specialDocWithClause("docA", "covA", { 감액: { kind: "discriminator", code: "D0007", node: { path: "01" } } })], discriminators: [{ code: "D0007", label: "감액", description: "", level: "subCoverage", expression: "true" }] });
+    expect(g.edges.some((e) => e.via === "nodeQualifier" && (e.to as { id: string }).id === "a1")).toBe(true);
+  });
+
+  it("binding 간선과 nodeQualifier 간선은 같은 refPath `C.arg.인자@키경로` 를 쓴다 — 삭제 영향이 키 경로로 센다 (H5)", () => {
+    const cov = coverageTree("covA", [{ id: "a1", key: "01" }]);
+    const g = buildGraph({ coverages: [cov], clauses: [clauseWithParam("C0001", "감액")], documents: [specialDocWithClause("docA", "covA", { 감액: { kind: "discriminator", code: "D0007", node: { path: "01" } } })], discriminators: [{ code: "D0007", label: "감액", description: "", level: "subCoverage", expression: "true" }] });
+    expect(g.edges.filter((e) => e.via === "binding" || e.via === "nodeQualifier").map((e) => [e.via, e.at.refPath])).toEqual([
+      ["binding", "C0001.arg.감액@01"],
+      ["nodeQualifier", "C0001.arg.감액@01"],
+    ]);
+  });
+
+  it("담보 트리 반복 안 함수조항 참조의 clauseRef 간선은 그 반복 레벨(treeLoopLevel)을 싣는다 — 재검사의 재료", () => {
+    const doc = specialDocWithClause("docA", "covA", {});
+    const art = doc.tree.children![0] as { children: unknown[] };
+    art.children = [{ id: "loop", kind: "forBlock", source: { kind: "subCoverages" }, children: art.children }];
+    const g = buildGraph({ coverages: [coverageTree("covA", [{ id: "a1", key: "01" }])], clauses: [clauseWithParam("C0001", "감액")], documents: [doc, specialDocWithClause("docB", "covA", {})] });
+    expect(g.edges.filter((e) => e.via === "clauseRef").map((e) => [e.at.documentId, e.treeLoopLevel])).toEqual([["docA", "subCoverage"], ["docB", undefined]]);
   });
 });

@@ -332,3 +332,34 @@ describe("재검사 — 인자 · 기본 연결 (최종 결정 2 · 기능/함�
     expect(typed[0].issues.map((i) => i.kind)).toEqual(["typeMismatch"]);
   });
 });
+
+describe("재검사 — 하위 레벨 기본 연결 (ADR-0087 결정 8 · 기능/함수조항 §3.4)", () => {
+  const clauseWith = (over: Partial<BlockClause>): BlockClause => ({
+    code: "C0020",
+    label: "감액 판정",
+    mode: "block",
+    body: [{ id: "p1", kind: "paragraph", children: [{ id: "c1", kind: "inlineCond", branches: [{ id: "b1", when: "arg.감액", children: [{ id: "t1", kind: "text", text: "감액" }] }] }] }],
+    options: [],
+    required: { discriminators: [], attributes: [] },
+    ...over,
+  });
+
+  it("기본 연결을 세부보장 레벨 구분자로 바꾸면 반복 밖 사용처가 연결 누락으로 오른다 (ADR-0087 재검사)", () => {
+    const clause = clauseWith({ params: [{ name: "감액", type: { kind: "boolean" }, default: { kind: "discriminator", code: "D0007" } }] });
+    const outside: Usage = { documentId: "d", ownerKind: "coverage", ownerId: "cov" };
+    const inLoop: Usage = { documentId: "d", ownerKind: "coverage", ownerId: "cov", treeLoopLevel: "subCoverage" };
+    const keyed: Usage = { documentId: "d", ownerKind: "coverage", ownerId: "cov", bindings: { 감액: { kind: "discriminator", code: "D0007", node: { path: "01" } } } };
+    const r = recheckUsages(clause, [outside, inLoop, keyed], (code) => ({ code, label: code, description: "", level: "subCoverage", expression: "true" }));
+    expect(r.map((x) => x.usage)).toEqual([outside]);
+    expect(r[0].issues[0].kind).toBe("argUnbound");
+    expect(r[0].issues[0].at.refPath).toBe("arg.감액");
+  });
+
+  it("세부보장 반복 안 사용처도 급부 레벨 기본 연결은 풀지 못한다 — 급부 반복 안이면 풀린다 · 보통약관 사용처는 세지 않는다", () => {
+    const clause = clauseWith({ params: [{ name: "감액", type: { kind: "boolean" }, default: { kind: "discriminator", code: "D0003" } }] });
+    const inSub: Usage = { documentId: "d", ownerKind: "coverage", ownerId: "cov", treeLoopLevel: "subCoverage" };
+    const inBenefit: Usage = { documentId: "d", ownerKind: "coverage", ownerId: "cov", treeLoopLevel: "benefit" };
+    const general: Usage = { documentId: "g", ownerKind: "general", ownerId: "g" };
+    expect(recheckUsages(clause, [inSub, inBenefit, general], lookup).map((x) => x.usage)).toEqual([inSub]);
+  });
+});

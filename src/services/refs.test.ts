@@ -347,3 +347,35 @@ describe("인자 연결 간선 — 기본 연결(함수조항 → 구분자) · 
     expect(u[0].bindings).toEqual({ 갱신형: { kind: "discriminator", code: "D0002" } });
   });
 });
+
+describe("인자 연결의 키 경로 — 노드 삭제 영향은 키 경로로 센다 (ADR-0087 · H5)", () => {
+  let t: TestDb;
+  let cov: Coverage;
+  const b = nodeBuilders();
+
+  beforeAll(async () => {
+    t = await createTestDb();
+    const db = contextualDb(t.db);
+    unwrap(await createCatalogService(db).create(editor, { label: "감액여부", level: "subCoverage", expression: "true" })); // D0001
+    const coverage = createCoverageService(db);
+    cov = unwrap(await coverage.create(editor, { name: "골절", subCoverageName: "골절진단", benefitName: "진단비" })); // 01
+    cov = unwrap(await coverage.addSubCoverage(editor, cov.id, { name: "골절수술", benefitName: "수술비" })); // 02
+    cov = unwrap(await coverage.addSubCoverage(editor, cov.id, { name: "골절입원", benefitName: "입원비" })); // 03
+    await insertClause(db, { code: "C001", label: "감액", mode: "block", body: [{ id: "p", kind: "paragraph", children: [{ id: "c", kind: "inlineCond", branches: [{ id: "c-if", when: "arg.감액", children: [{ id: "t", kind: "text", text: "감액" }] }] }] }], options: [], params: [{ name: "감액", type: { kind: "boolean" } }], required: { discriminators: [], attributes: [] } }, editor.userId);
+    const ref = { ...b.clauseBlock("C001"), bindings: { 감액: { kind: "discriminator" as const, code: "D0001", node: { path: "02" } } } };
+    const doc = await insertDocument(db, { kind: "special", ownerId: cov.id, title: "골절 특별약관", tree: b.document("골절 특별약관", [b.article("감액", [ref])]) }, editor.userId);
+    unwrap(await coverage.setDocument(editor, cov.id, doc.id));
+  });
+  afterAll(async () => {
+    await t.close();
+  });
+
+  it("세부보장 02 를 지우면 `{path:\"02\"}` 연결이 사용처, 03 을 지우면 아니다", async () => {
+    const src = coverageUsageSource(contextualDb(t.db));
+    const subOf = (key: string) => cov.subCoverages.find((s) => s.key === key)!.id;
+    const del02 = await src.findUsages({ kind: "deleteNode", coverageId: cov.id, node: { level: "subCoverage", id: subOf("02") } });
+    expect(del02.map((c) => c.refPath)).toEqual(["C001.arg.감액@02"]);
+    const del03 = await src.findUsages({ kind: "deleteNode", coverageId: cov.id, node: { level: "subCoverage", id: subOf("03") } });
+    expect(del03).toEqual([]);
+  });
+});

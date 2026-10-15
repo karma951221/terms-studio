@@ -132,6 +132,8 @@ export interface RefEdge {
   param?: string;
   /** clauseRef — 참조 노드가 쓰는 프리셋 코드 (ADR-0084). 그때 `options` · `bindings` 는 프리셋 값을 푼 실제 값이다. */
   preset?: Code;
+  /** clauseRef — 참조 자리를 감싼 가장 안쪽 담보 트리 반복의 레벨 (ADR-0087 결정 8 재검사). */
+  treeLoopLevel?: "subCoverage" | "benefit";
   /** override — 오버라이드가 매달린 문서 쪽 노드(조 또는 문서). */
   through?: RefNodeKey;
 }
