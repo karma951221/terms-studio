@@ -25,6 +25,7 @@ const KIND_LABEL: Record<string, string> = {
   boxRef: "박스 참조",
   forBlock: "반복 블록",
   inlineFor: "문장 안 반복",
+  particle: "조사",
 };
 
 /** 노드와 그 아래 전부 (자기 자신 포함) 를 훑는다. 조건 가지 안도 센다. */

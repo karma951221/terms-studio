@@ -17,12 +17,14 @@ import type { EnumDef } from "@/domain/catalog";
 import { unfoldPreset, type Bindings, type Clause } from "@/domain/clause";
 import {
   indexTree,
+  isParticlePreset,
   isRepeatSource,
   multiTarget,
   nodeBuilders,
   paramOfRef,
   paramTargetId,
   parseRefKey,
+  PARTICLE_PRESETS,
   repeatElementEnums,
   referenceKeyIndex,
   referenceTargetLabel,
@@ -787,7 +789,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
       if (node.kind === "inlineCond" && node.switchOn !== undefined) return <InlineSwitchPopup env={env} nodeId={node.id} anchor={anchor} onClose={onClose} />;
       if (node.kind === "inlineCond") return <InlineCondPopup env={env} nodeId={node.id} anchor={anchor} onClose={onClose} />;
       const title =
-        node.kind === "slot" ? "치환 슬롯" : node.kind === "articleRef" ? "조 참조" : node.kind === "appendixRef" ? "별표 참조" : node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef" ? (env.clauses.find((c) => c.code === node.clauseCode)?.params?.length ? "함수조항 옵션 · 인자" : "함수조항 옵션") : "고치기";
+        node.kind === "slot" ? "치환 슬롯" : node.kind === "articleRef" ? "조 참조" : node.kind === "appendixRef" ? "별표 참조" : node.kind === "particle" ? "조사" : node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef" ? (env.clauses.find((c) => c.code === node.clauseCode)?.params?.length ? "함수조항 옵션 · 인자" : "함수조항 옵션") : "고치기";
       return (
         <Popover anchor={anchor} label={title} onClose={onClose} wide={node.kind === "articleRef" || ((node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && hasArticleRefParam(env.clauses, node.clauseCode))}>
           <PopForm
@@ -804,6 +806,10 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
                 }
                 case "appendixRef":
                   return [{ type: "setAppendixRef", nodeId: node.id, appendixCode: str(fd, "appendixCode") }];
+                case "particle": {
+                  const preset = str(fd, "preset");
+                  return isParticlePreset(preset) ? [{ type: "setParticle", nodeId: node.id, preset }] : "조사를 고른다.";
+                }
                 case "clauseInlineRef":
                 case "clauseBlockRef": {
                   const bindings = bindingsOf(fd, env.clauses, node.clauseCode);
@@ -822,8 +828,24 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             )}
             {node.kind === "articleRef" && <ArticleRefFields ctx={ctx} node={node} restrict={restrictAt(node.id)} />}
             {node.kind === "appendixRef" && <AppendixSelect appendices={env.appendices} value={node.appendixCode} />}
+            {node.kind === "particle" && (
+              <div className="ts-form-row">
+                <span className="ts-form-label">조사</span>
+                <div>
+                  <div className="ts-radio-group" role="radiogroup" aria-label="조사">
+                    {PARTICLE_PRESETS.map((p) => (
+                      <label key={p.key} className="ts-form-radio">
+                        <input type="radio" name="preset" value={p.key} defaultChecked={p.key === node.preset} />
+                        {p.label}
+                      </label>
+                    ))}
+                  </div>
+                  <p className="ts-form-hint">조립 때 앞 글자 받침에 따라 한쪽을 고른다 — 판정할 수 없으면 「을(를)」처럼 둘 다 쓰고 경고.</p>
+                </div>
+              </div>
+            )}
             {(node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && <ClauseFields clauses={env.clauses} code={node.clauseCode} options={node.options} {...(node.bindings ? { bindings: node.bindings } : {})} {...(node.preset !== undefined ? { preset: node.preset } : {})} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(node.id)} refs={{ ctx, restrict: restrictAt(node.id) }} />}
-            <PopActions onCancel={onClose} />
+            <PopActions onCancel={onClose} {...(node.kind === "particle" ? { confirmLabel: "조사 적용" } : {})} />
           </PopForm>
         </Popover>
       );

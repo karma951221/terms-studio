@@ -36,6 +36,7 @@ export type ToolId =
   | "appendixRef"
   | "clauseInline"
   | "structKey"
+  | "particle"
   | "optionSlot"
   | "cond"
   | "inlineCond"
@@ -55,7 +56,7 @@ export type ToolId =
   | "remove";
 
 /** 툴바 아이콘 이름 — 그림은 `EditorToolbar` 가 `icons.tsx` 에서 고른다(여기는 순수). */
-export type ToolIcon = "table" | "bulletList" | "clauseBlock" | "box" | "repeat" | "slot" | "link" | "attach" | "branch";
+export type ToolIcon = "table" | "bulletList" | "clauseBlock" | "box" | "repeat" | "slot" | "link" | "attach" | "branch" | "particle";
 
 /** 도구가 서는 곳 — 위 머리말. */
 export type ToolAt = "bar" | "context" | "more" | "block" | "menu";
@@ -137,6 +138,7 @@ export const DOC_TOOLS: ToolGroup[] = [
       { id: "slot", label: "슬롯", icon: "slot", short: "슬롯", title: "슬롯 넣기 — 커서 자리에 구분자 값이 찍힐 자리", match: oneOf("치환 슬롯…") },
       { id: "articleRef", label: "조 참조", icon: "link", short: "참조", title: "조 참조 넣기 — 커서 자리에 다른 조 · 항 · 호 번호", match: oneOf("조 참조…") },
       { id: "appendixRef", label: "별표 참조", icon: "attach", short: "별표", title: "별표 참조 넣기 — 커서 자리에 <별표> 번호", match: oneOf("별표 참조…") },
+      { id: "particle", label: "조사", icon: "particle", short: "조사", title: "조사 넣기 — 커서 자리에, 앞 글자 받침에 따라 을/를처럼 바뀌는 조사", match: (l) => l.startsWith("조사 — "), multi: true },
       { id: "clauseInline", label: "문장 안 함수조항", title: "문장 안 함수조항 넣기 — 커서 자리에 「문구」 함수조항", match: oneOf("함수조항(문장 안)…"), at: "more" },
       { id: "structKey", label: "행 이름", title: "행 이름 넣기 — 반복 표 템플릿 셀의 커서 자리에, 행마다 그 행의 이름이 찍힌다", match: oneOf("구조 표기…"), at: "context" },
       { id: "optionSlot", label: "옵션 자리", title: "옵션 자리 넣기 — 커서 자리에 옵션 하나의 자리", match: (l) => l.startsWith("옵션 자리 — "), multi: true },

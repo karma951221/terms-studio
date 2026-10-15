@@ -22,7 +22,7 @@ import { IconButton, IconRevert } from "@/app/_components/icons";
 import { STRUCT_KEY_CHIP } from "@/app/_lib/labels";
 import type { EnumDef } from "@/domain/catalog";
 import { presetUsage, switchValueLabeler, type Bindings, type Clause } from "@/domain/clause";
-import { refChunkText, referenceChunkLabel, referenceKeyIndex, refKey, type ArticleNode, type Box, type CondBlockNode, type InlineNode, type Node, type NodeNumber, type ReferenceTarget, type TableNode } from "@/domain/document";
+import { particlePreset, refChunkText, referenceChunkLabel, referenceKeyIndex, refKey, type ArticleNode, type Box, type CondBlockNode, type InlineNode, type Node, type NodeNumber, type ReferenceTarget, type TableNode } from "@/domain/document";
 import { format, parse, refPath } from "@/domain/expression";
 import type { ClauseOptionOverride } from "@/domain/product";
 import type { Code, Id } from "@/domain/types";
@@ -140,6 +140,14 @@ function Inline({ node, ctx }: { node: InlineNode; ctx: Ctx }) {
       return (
         <span className="ts-doc-ref" title={`별표 참조 · ${node.appendixCode}`}>
           【별표 {ctx.appendixName(node.appendixCode) ?? node.appendixCode}】
+        </span>
+      );
+
+    case "particle":
+      // 저작 꼴 그대로(을/를) — 고른 결과는 조립 산출에만 (기능/문면 §3.11)
+      return (
+        <span className="ts-doc-slot" title="조사 — 앞 글자 받침에 따라 조립 때 고른다">
+          {particlePreset(node.preset).label}
         </span>
       );
 
