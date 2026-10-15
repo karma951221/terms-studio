@@ -13,12 +13,12 @@ import { useId, useRef, useState } from "react";
 
 import { IconButton, IconMinusCircle, IconPlusCircle } from "@/app/_components/icons";
 import { InfoTip } from "@/app/_components/InfoTip";
-import type { ParamDef } from "@/domain/clause";
+import type { Binding, ParamDef } from "@/domain/clause";
 
 import type { CtxDiscriminator } from "@/app/(app)/documents/[id]/_components/condition/types";
 
 import type { ClauseEditOption, ClauseEditPreset } from "../edit-types";
-import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, type EnumChoice, type PlanFormChoice } from "./params";
+import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, constBindingOfText, constInputOf, constTextOf, type EnumChoice, type PlanFormChoice } from "./params";
 
 const NOTE = "인자 연결 · 옵션 선택을 이름 붙여 둔 조합 — 사용처는 넣기 목록의 프리셋 줄을 눌러 그 조합으로 넣는다. 사용처는 프리셋 값을 덮어쓰지 않는다.";
 
@@ -27,9 +27,55 @@ export const FROM_USAGE = "usage";
 export const FROM_USAGE_LABEL = "사용처가 채움(반복의 현재 원소)";
 
 /** 프리셋 인자 칸의 값 — 연결 · 「사용처가 채움」 · 비움. */
-export function presetArgValue(preset: ClauseEditPreset, name: string): string {
+export function presetArgValue(preset: ClauseEditPreset, name: string, param?: ParamDef): string {
   if (preset.fromUsage.includes(name)) return FROM_USAGE;
+  // 문자 · 숫자 · 날짜 상수는 콤보가 아니라 「상수 직접 입력」 칸에 선다
+  if (param && constTextOf(preset.bindings[name], param.type) !== "") return "";
   return bindingValue(preset.bindings[name]);
+}
+
+/** 프리셋 인자의 연결을 바로 바꾼다 — 「상수 직접 입력」 칸. 비우면 연결 없음. */
+export function withPresetBinding(preset: ClauseEditPreset, param: ParamDef, binding: Binding | undefined): ClauseEditPreset {
+  const { [param.name]: _drop, ...bindings } = preset.bindings;
+  void _drop;
+  const fromUsage = preset.fromUsage.filter((n) => n !== param.name);
+  return { ...preset, bindings: binding ? { ...bindings, [param.name]: binding } : bindings, fromUsage };
+}
+
+/** 「상수 직접 입력」 칸 — 문자 · 숫자 · 날짜 인자. 모양이 맞을 때만 연결을 바꾸고, 틀리면 칸 아래 빨간 글. */
+function ConstField({ param, binding, label, onBinding }: { param: ParamDef; binding: Binding | undefined; label: string; onBinding: (b: Binding | undefined) => void }) {
+  const direct = constInputOf(param.type);
+  const [text, setText] = useState(() => constTextOf(binding, param.type));
+  const [error, setError] = useState<string>();
+  // 연결이 밖에서 바뀌면(콤보로 다른 것을 고름) 칸을 그 연결로 — 이 칸이 보낸 연결이면 그대로 둔다(친 글 · 공백 유지)
+  const [sent, setSent] = useState(binding);
+  if (binding !== sent) {
+    setSent(binding);
+    setText(constTextOf(binding, param.type));
+    setError(undefined);
+  }
+  if (!direct) return null;
+  return (
+    <>
+      <input
+        className="ts-arg-const"
+        aria-label={`${label} — 인자 ${param.name} 상수 직접 입력`}
+        inputMode={direct.inputMode}
+        placeholder={`상수 직접 입력 — ${direct.placeholder}`}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          const r = constBindingOfText(e.target.value, param.type);
+          setError(r.error);
+          if (!r.error) {
+            setSent(r.binding);
+            onBinding(r.binding);
+          }
+        }}
+      />
+      {error ? <span className="ts-form-error" role="alert">{error}</span> : null}
+    </>
+  );
 }
 
 /** 프리셋 인자 칸 값 → 프리셋. */
@@ -173,7 +219,7 @@ export function PresetsPane({
                     {valueParams.map((param) => (
                       <label key={param.name} className="ts-preset-row">
                         <span className="ts-option-caption">인자 {param.name}</span>
-                        <select aria-label={`${label} — 인자 ${param.name}`} value={presetArgValue(p, param.name)} onChange={(e) => patch(p.code, withPresetArg(p, param, e.target.value))}>
+                        <select aria-label={`${label} — 인자 ${param.name}`} value={presetArgValue(p, param.name, param)} onChange={(e) => patch(p.code, withPresetArg(p, param, e.target.value))}>
                           <option value="">{param.default ? `기본 연결 — ${bindingLabel(param.default, param.type, discriminators, enums, forms)}` : "— 비었음 —"}</option>
                           {!param.default && <option value={FROM_USAGE}>{FROM_USAGE_LABEL}</option>}
                           {bindingOptions(param.type, discriminators, enums.filter((e) => "enumCode" in param.type && e.code === param.type.enumCode), forms, true).map((o) => (
@@ -182,6 +228,7 @@ export function PresetsPane({
                             </option>
                           ))}
                         </select>
+                        <ConstField param={param} binding={p.bindings[param.name]} label={label} onBinding={(b) => patch(p.code, withPresetBinding(p, param, b))} />
                       </label>
                     ))}
                   </>

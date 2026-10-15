@@ -2285,6 +2285,13 @@ td.col-act {
   border: 0;
 }
 
+/* 인자 연결 — 콤보 아래 「상수 직접 입력」(문자 · 숫자 · 날짜 인자, 기능/함수조항 §4.4) */
+.ts-form-row > .ts-arg-const,
+.ts-preset-row > .ts-arg-const,
+.ts-preset-row > .ts-form-error {
+  grid-column: 2;
+}
+
 .ts-form-row > label,
 .ts-form-label {
   font-size: 11px;

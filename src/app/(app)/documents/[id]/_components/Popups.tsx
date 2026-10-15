@@ -12,7 +12,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { Combobox, type ComboOption } from "@/app/_components/Combobox";
 import { IconButton, IconTrash } from "@/app/_components/icons";
 import { DOC_KIND_LABEL, REPEAT_DEPTH_LABEL, STRUCT_KEY_CHIP, SWITCH_WORD } from "@/app/_lib/labels";
-import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, planFormChoices, type LoopChoice } from "@/app/(app)/functions/_components/params";
+import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, constBindingOfText, constInputOf, constTextOf, planFormChoices, type LoopChoice } from "@/app/(app)/functions/_components/params";
 import type { EnumDef } from "@/domain/catalog";
 import { unfoldPreset, type Bindings, type Clause } from "@/domain/clause";
 import {
@@ -343,7 +343,7 @@ function ClauseFields({ clauses, code, options, bindings, preset, condition, loo
   const seed = mode === "" && clause && preset !== undefined ? unfoldPreset(clause, { preset, options: options ?? {}, ...(bindings ? { bindings } : {}) }) : { options: options ?? {}, ...(bindings ? { bindings } : {}) };
   const owned = new Set([...(chosen?.fromUsage ?? []), ...(clause?.params ?? []).filter((p) => p.type.kind === "articleRef").map((p) => p.name)]);
   const forms = planFormChoices();
-  // 목록값 인자의 상수 연결 후보 — 그 열거형의 값(기능/함수조항 §5 「상수 연결은 참거짓 · 열거값만」)
+  // 목록값 인자의 상수 연결 후보 — 그 열거형의 값(문자 · 숫자 · 날짜 상수는 「상수 직접 입력」 칸)
   const enumsOf = (t: { kind: string; enumCode?: Code }): EnumDef[] => {
     const def = t.enumCode !== undefined ? enumOf?.(t.enumCode) : undefined;
     return def ? [def] : [];
@@ -401,10 +401,13 @@ function ClauseFields({ clauses, code, options, bindings, preset, condition, loo
             );
           }
           if (chosen && !owned.has(p.name)) return null;
+          // 문자 · 숫자 · 날짜 인자 — 콤보 아래 「상수 직접 입력」(채우면 콤보보다 먼저, 기능/함수조항 §4.4)
+          const direct = constInputOf(p.type);
+          const constText = constTextOf(seed.bindings?.[p.name], p.type);
           return (
             <div key={`${clause!.code}-arg-${p.name}`} className="ts-form-row">
               <label htmlFor={`pop-arg-${p.name}`}>인자 {p.name}</label>
-              <select id={`pop-arg-${p.name}`} name={`arg:${p.name}`} defaultValue={bindingValue(seed.bindings?.[p.name])}>
+              <select id={`pop-arg-${p.name}`} name={`arg:${p.name}`} defaultValue={constText !== "" ? "" : bindingValue(seed.bindings?.[p.name])}>
                 <option value="">{p.default ? `기본 연결 — ${bindingLabel(p.default, p.type, condition.discriminators, enumsOf(p.type), forms)}` : "— 연결 안 함(기본 연결 없음) —"}</option>
                 {bindingOptions(p.type, condition.discriminators, enumsOf(p.type), forms, true, loops).map((o) => (
                   <option key={o.value} value={o.value}>
@@ -412,6 +415,16 @@ function ClauseFields({ clauses, code, options, bindings, preset, condition, loo
                   </option>
                 ))}
               </select>
+              {direct && (
+                <input
+                  className="ts-arg-const"
+                  name={`argc:${p.name}`}
+                  aria-label={`인자 ${p.name} 상수 직접 입력`}
+                  inputMode={direct.inputMode}
+                  placeholder={`상수 직접 입력 — ${direct.placeholder}`}
+                  defaultValue={constText}
+                />
+              )}
             </div>
           );
         })}
@@ -455,11 +468,22 @@ function bindingsOf(fd: FormData, clauses: readonly Clause[], code: Code = str(f
       if (r.targets.length > 0) out[p.name] = { kind: "articleRef", targets: r.targets, ...(r.connector ? { connector: r.connector } : {}), scope: r.scope };
       continue;
     }
+    // 상수 직접 입력이 차 있으면 그것이 연결이다 (문자 · 숫자 · 날짜 — 모양 오류는 `bindingInputProblem` 이 먼저 막는다)
+    const direct = constBindingOfText(String(fd.get(`argc:${p.name}`) ?? ""), p.type).binding;
     const value = fd.get(`arg:${p.name}`);
-    const b = value !== null ? bindingOfValue(String(value), p.type) : undefined;
+    const b = direct ?? (value !== null ? bindingOfValue(String(value), p.type) : undefined);
     if (b) out[p.name] = b;
   }
   return out;
+}
+
+/** 상수 직접 입력의 모양 오류(숫자 아님 · 날짜 모양) — 적용 전에 막는다. */
+function bindingInputProblem(fd: FormData, clauses: readonly Clause[], code: Code = str(fd, "clauseCode")): string | undefined {
+  for (const p of clauses.find((c) => c.code === code)?.params ?? []) {
+    const error = constBindingOfText(String(fd.get(`argc:${p.name}`) ?? ""), p.type).error;
+    if (error) return `인자 ${p.name} — ${error}`;
+  }
+  return undefined;
 }
 
 /** 조 참조 인자 연결의 연결어 미선택 — 조 참조 팝업과 같은 규칙으로 적용 전에 고른다 (ADR-0083 결정 4 · 기능/문면 §3.5). */
@@ -733,7 +757,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             const code = str(fd, "clauseCode");
             if (!code) return "함수조항을 고른다.";
             const bindings = bindingsOf(fd, env.clauses);
-            return bindingConnectorProblem(ctx, bindings) ?? withPreset(withBindings(b.clauseInline(code, optionsOf(fd)), bindings), presetOfForm(fd));
+            return bindingInputProblem(fd, env.clauses) ?? bindingConnectorProblem(ctx, bindings) ?? withPreset(withBindings(b.clauseInline(code, optionsOf(fd)), bindings), presetOfForm(fd));
           }
           case "structKey": {
             const level = str(fd, "structLevel");
@@ -807,7 +831,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
                 case "clauseInlineRef":
                 case "clauseBlockRef": {
                   const bindings = bindingsOf(fd, env.clauses, node.clauseCode);
-                  return bindingConnectorProblem(ctx, bindings) ?? [{ type: "setClauseOptions", nodeId: node.id, options: optionsOf(fd), bindings, preset: presetOfForm(fd) ?? null }];
+                  return bindingInputProblem(fd, env.clauses, node.clauseCode) ?? bindingConnectorProblem(ctx, bindings) ?? [{ type: "setClauseOptions", nodeId: node.id, options: optionsOf(fd), bindings, preset: presetOfForm(fd) ?? null }];
                 }
                 default:
                   return [];
@@ -867,7 +891,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
               const code = str(fd, "clauseCode");
               if (!code) return "함수조항을 고른다.";
               const bindings = bindingsOf(fd, env.clauses);
-              return bindingConnectorProblem(ctx, bindings) ?? [{ type: "insert", node: withPreset(withBindings(b.clauseBlock(code, optionsOf(fd)), bindings), presetOfForm(fd)), at: spec.at }];
+              return bindingInputProblem(fd, env.clauses) ?? bindingConnectorProblem(ctx, bindings) ?? [{ type: "insert", node: withPreset(withBindings(b.clauseBlock(code, optionsOf(fd)), bindings), presetOfForm(fd)), at: spec.at }];
             }}
           >
             <ClauseFields clauses={clausesFitting(env.clauses, spec.fit)} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(spec.at.parentId)} refs={{ ctx, restrict: restrictAt(spec.at.parentId) }} />

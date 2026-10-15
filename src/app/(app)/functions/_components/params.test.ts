@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, newParamNameError, paramEntries, typeLabel, typeOfValue, typeValue } from "./params";
+import { bindingLabel, bindingOfValue, constBindingOfText, constInputOf, constTextOf, bindingOptions, bindingValue, newParamNameError, paramEntries, typeLabel, typeOfValue, typeValue } from "./params";
 
 const discriminators = [
   { code: "D0001", label: "갱신여부", level: "coverage" as const, type: { kind: "boolean" as const }, forms: [] },
@@ -75,5 +75,35 @@ describe("조 참조 인자 (ADR-0083 결정 2 · 7)", () => {
   it("이름에 띄어쓰기를 쓸 수 있다 — 값 인자는 막는다", () => {
     expect(newParamNameError([], "보험금의 지급사유 조", { kind: "articleRef" })).toBeNull();
     expect(newParamNameError([], "보험금의 지급사유 조")).not.toBeNull();
+  });
+});
+
+describe("상수 직접 입력 — 문자 · 숫자 · 날짜 인자만 (기능/함수조항 §4.4 인자 연결)", () => {
+  it("칸이 서는 타입 — 문자 · 숫자 · 날짜, 날짜는 YYYY-MM-DD 안내", () => {
+    expect(constInputOf({ kind: "string" })).toEqual({ inputMode: "text", placeholder: "문자" });
+    expect(constInputOf({ kind: "number" })?.inputMode).toBe("decimal");
+    expect(constInputOf({ kind: "date" })?.placeholder).toBe("YYYY-MM-DD");
+    for (const t of [{ kind: "boolean" as const }, { kind: "enum" as const, enumCode: "E0001" }, { kind: "planOptions" as const, form: "waiver" }, { kind: "articleRef" as const }]) expect(constInputOf(t)).toBeUndefined();
+  });
+
+  it("글 → 상수 연결 — 빈 칸은 연결 없음, 숫자는 수로, 날짜는 모양 · 실제 날짜를 본다", () => {
+    expect(constBindingOfText("", { kind: "string" })).toEqual({});
+    expect(constBindingOfText("  ", { kind: "number" })).toEqual({});
+    expect(constBindingOfText(" 보험금 ", { kind: "string" })).toEqual({ binding: { kind: "const", value: "보험금" } });
+    expect(constBindingOfText("1,000", { kind: "number" })).toEqual({ binding: { kind: "const", value: 1000 } });
+    expect(constBindingOfText("12.5", { kind: "number" })).toEqual({ binding: { kind: "const", value: 12.5 } });
+    expect(constBindingOfText("열", { kind: "number" }).error).toBe("숫자가 아닙니다 — 예: 100");
+    expect(constBindingOfText("2026-10-15", { kind: "date" })).toEqual({ binding: { kind: "const", value: "2026-10-15" } });
+    expect(constBindingOfText("2026-02-30", { kind: "date" }).error).toBe("날짜는 YYYY-MM-DD 로 적는다 — 예: 2026-10-15");
+    expect(constBindingOfText("2026/10/15", { kind: "date" }).error).toBeDefined();
+    expect(constBindingOfText("x", { kind: "boolean" })).toEqual({});
+  });
+
+  it("연결 → 칸 글 — 그 타입의 상수만, 나머지는 빈 칸", () => {
+    expect(constTextOf({ kind: "const", value: 1000 }, { kind: "number" })).toBe("1000");
+    expect(constTextOf({ kind: "const", value: "2026-10-15" }, { kind: "date" })).toBe("2026-10-15");
+    expect(constTextOf({ kind: "discriminator", code: "D0002" }, { kind: "string" })).toBe("");
+    expect(constTextOf({ kind: "const", value: true }, { kind: "boolean" })).toBe("");
+    expect(constTextOf(undefined, { kind: "string" })).toBe("");
   });
 });
