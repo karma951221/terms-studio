@@ -5,6 +5,8 @@ import { surgery } from "@/domain/coverage";
 import { emptyRows, type RowValueRef } from "@/domain/document";
 
 import { buildConditionContext } from "./conditionContext";
+import type { ConditionContext } from "./types";
+import { chipDisplay } from "./display";
 import { addRow, compact, ctxCodeOf, headOf, pickerGroups, refKey, refOfKey, removeRow, setLeft, sourceOf } from "./rows";
 
 const defs: Discriminator[] = [
@@ -75,9 +77,19 @@ describe("조건 머리 줄 — 줄 ⇄ 식 (기능/문면 §4.3, 2026-09-28)", 
     const groups = pickerGroups(ctx);
     expect(groups[0].label).toMatch(/^담보 — /);
     expect(groups[0].options.map((o) => o.key)).toEqual(["D0009", "D0001"]);
-    const sub = groups.find((g) => g.label.startsWith("세부보장 — "))!;
-    expect(sub.options[0].key).toBe(`D0007@${tree.subCoverages[0].id}`);
-    expect(sub.options[0].label).toMatch(/^감액여부 @/);
+    const sub = groups.find((g) => g.label.startsWith("세부보장 01"))!;
+    expect(sub.label).toBe("세부보장 01 · 1종수술");
+    expect(sub.options[0].key).toBe("D0007@01");
+    expect(sub.options[0].label).toBe("세부보장 01 · 1종수술 › 감액여부");
+    // 묶음 순서 = 트리 순서
+    expect(groups.map((g) => g.label)).toEqual([
+      "담보 — 수술비",
+      "세부보장 01 · 1종수술",
+      "세부보장 01 · 1종수술 › 급부 1 · 수술보험금",
+      "세부보장 02 · 2종수술",
+      "세부보장 02 · 2종수술 › 급부 1 · 수술보험금",
+      expect.stringMatching(/^세부보장 02 · 2종수술 › 급부 2 · /),
+    ]);
     const inRow = pickerGroups({ ...ctx, row: { levels: ["subCoverage"], readable: ["product", "plan", "coverage", "subCoverage"] } });
     expect(inRow[0].label).toBe("현재 행 — 세부보장마다");
     expect(inRow[0].options.map((o) => o.key)).toEqual(["D0007", "D0009", "D0001"]);
@@ -145,5 +157,35 @@ describe("인자 줄 (최종 결정 2) — 함수조항 편집기가 넣은 인�
     expect(refOfKey("var.암있음")).toEqual({ kind: "local", name: "암있음" });
     expect(refOfKey("arg.사유.F02")).toEqual({ kind: "field", target: { kind: "param", name: "사유" }, field: "F02" });
     expect(refKey({ kind: "field", target: { kind: "local", name: "대표" }, field: "F01" })).toBe("var.대표.F01");
+  });
+});
+
+describe("키 경로 (ADR-0087 결정 3 · 7)", () => {
+  const context: ConditionContext = {
+    coverage: { id: "cov", name: "암", nodes: [
+      { id: "cov", level: "coverage", name: "암" },
+      { id: "s1", level: "subCoverage", name: "유사암", parentId: "cov", key: "01", keyPath: "01" },
+      { id: "b1", level: "benefit", name: "진단비", parentId: "s1", key: "1", keyPath: "01.1" },
+    ] },
+    discriminators: [{ code: "D0002", label: "감액 여부", level: "benefit", type: { kind: "boolean" }, forms: [] }],
+    openedForms: {},
+    quick: [],
+  };
+
+  it("묶음 머리는 키 + 이름, 급부 하나여도 급부 층 · 값은 D0002@01.1", () => {
+    const g = pickerGroups(context).find((x) => x.label.includes("급부 1"));
+    expect(g?.label).toBe("세부보장 01 · 유사암 › 급부 1 · 진단비");
+    expect(g?.options[0].key).toBe("D0002@01.1");
+    expect(g?.options[0].label).toBe("세부보장 01 · 유사암 › 급부 1 · 진단비 › 감액 여부");
+  });
+
+  it("refKey · refOfKey 가 키 경로를 오간다", () => {
+    expect(refKey({ kind: "discriminator", code: "D0002", node: { path: "01.1" } })).toBe("D0002@01.1");
+    expect(refOfKey("D0002@01.1")).toEqual({ kind: "discriminator", code: "D0002", node: { path: "01.1" } });
+  });
+
+  it("표시 — 「세부보장 01 · 유사암 › 급부 1 · 진단비 › 감액 여부」(경로 › 구분자, L4), 없는 키는 「끊어진 노드」", () => {
+    expect(chipDisplay("D0002@01.1 = true", context)).toBe("세부보장 01 · 유사암 › 급부 1 · 진단비 › 감액 여부 = true");
+    expect(chipDisplay("D0002@09.1 = true", context)).toBe("끊어진 노드 09.1 › 감액 여부 = true");
   });
 });

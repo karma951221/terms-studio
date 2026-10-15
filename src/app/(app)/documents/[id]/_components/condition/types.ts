@@ -14,6 +14,10 @@ export interface CtxNode {
   name: string;
   /** 담보 노드(뿌리)면 없음. */
   parentId?: Id;
+  /** 노드 키 (`01` · `1`) — 세부보장 · 급부만 (ADR-0087). */
+  key?: string;
+  /** 키 경로 (`01` · `01.1`) — `@노드` 저장값. */
+  keyPath?: string;
 }
 
 /** 구분자 하나 — 좌변 칩 · 트리 잎 · 구분자 목록에 쓴다. */
