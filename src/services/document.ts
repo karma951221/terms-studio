@@ -34,8 +34,6 @@ import {
   reviseBox,
   requiredDiscriminators,
   validateDocument,
-  validateExpressions,
-  validateTree,
   withCodes,
   type Appendix,
   type Box,
@@ -444,9 +442,8 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
           const applied = applyCommands(doc.tree, commands, { env, newId });
           if (!applied.ok) return applied;
           const tree = applied.value;
-          const { resolve, scope } = await scopeOf(tx, doc);
-          const issues = validateTree(tree, scope.coverage ? { ...env, coverage: scope.coverage } : env);
-          issues.push(...validateExpressions(tree, resolve, env.coordinate, scope));
+          // 저장(save)과 같은 전체 검사 — 키 경로 연결(nodeBindingIssues) 등 문서 검사가 한 길로 돈다. 경고는 막지 않는다
+          const issues = blockingIssues(await validateDoc(tx, doc, tree));
           if (issues.length > 0) return invalid(issues);
           await repo.saveDocument(tx, id, { tree: withCodes(tree), title: tree.title }, actor.userId);
           return ok((await repo.loadDocument(tx, id))!);
