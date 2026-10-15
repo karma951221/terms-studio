@@ -59,7 +59,16 @@ export function DraftIssues({ go, issues, fixCode }: { go: (nodeId: Id) => void;
               </button>
             )}
             {nodeId && fixCode?.ids.has(nodeId) && (
-              <button type="button" className="ts-doc-pick" onClick={(e) => fixCode.open(nodeId, e.currentTarget.getBoundingClientRect())}>
+              <button
+                type="button"
+                className="ts-doc-pick"
+                onClick={(e) => {
+                  // 그 자리를 가운데에 열고(고칠 자리로와 같은 길) 그 아래에 코드 수정 창
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  go(nodeId);
+                  fixCode.open(nodeId, rect);
+                }}
+              >
                 코드 수정
               </button>
             )}

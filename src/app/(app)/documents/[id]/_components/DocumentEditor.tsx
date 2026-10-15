@@ -53,7 +53,10 @@ import {
   rowReadableLevels,
   validateDocument,
   type Appendix,
+  type ClauseGate,
+  type DocumentNode,
   type DraftState,
+  type GeneralRefs,
   type EditEnv,
   type EditOp,
   type ReferenceTarget,
@@ -85,7 +88,7 @@ import { loopsAround } from "./repeatSources";
 import { ContextMenu, Popover } from "./Popover";
 import { RemoveCard } from "./RemoveCard";
 import { PreviewTab } from "./PreviewTab";
-import { DraftIssues, SidePanel, type PanelData } from "./SidePanel";
+import { DraftIssues, SidePanel, type CodeFix, type PanelData } from "./SidePanel";
 import { Toc, articlesOf } from "./Toc";
 
 export interface EditorDoc {
@@ -157,6 +160,17 @@ function articleOfNode(tree: DraftState["tree"], nodeId: Id): Id | undefined {
   return e?.articleId ?? ix.branches.get(nodeId)?.articleId;
 }
 
+
+/** 대응 보통약관 트리 → 조연결 · 보통약관 조 참조 대상(대상 사실 포함). 편집 명령마다 부르므로 트리 · 게이트가 같으면 다시 짓지 않는다. */
+const generalRefsCache = new WeakMap<DocumentNode, { gate: ClauseGate; refs: GeneralRefs }>();
+function cachedGeneralRefs(tree: DocumentNode, gate: ClauseGate): GeneralRefs {
+  const hit = generalRefsCache.get(tree);
+  if (hit && hit.gate === gate) return hit.refs;
+  const refs = generalRefsOf(tree, gate.clauseOf ? { clauseOf: (c: Code) => gate.clauseOf!(c) } : {});
+  generalRefsCache.set(tree, { gate, refs });
+  return refs;
+}
+
 export function DocumentEditor(props: EditorProps) {
   const { doc } = props;
   const router = useRouter();
@@ -213,8 +227,8 @@ export function DocumentEditor(props: EditorProps) {
       env: { kind: doc.kind, appendixExists: (c: Code) => appendixCodes.has(c), boxExists: (c: Code) => boxByCode.has(c), clauseGate: gate, enumOf: (c: Code) => enumByCode.get(c), coordinate },
       generalRefs: (id: Id) => {
         const g = cache[id];
-        // 대상 사실(안쪽 코드 · 값 한정 열거형)은 서버 저장 검사와 같은 함수조항 게이트로 짓는다
-        return g ? generalRefsOf(g.tree, gate.clauseOf ? { clauseOf: (c: Code) => gate.clauseOf!(c) } : {}) : undefined;
+        // 대상 사실(안쪽 코드 · 값 한정 열거형)은 서버 저장 검사와 같은 함수조항 게이트로 짓는다 — 명령마다 부르므로 트리 · 게이트마다 한 번
+        return g ? cachedGeneralRefs(g.tree, gate) : undefined;
       },
     }),
     [doc.kind, appendixCodes, boxByCode, gate, enumByCode, coordinate],
@@ -742,6 +756,11 @@ export function DocumentEditor(props: EditorProps) {
       ? props.generals.find((g) => g.id === props.suggestedGeneralId)?.title
       : undefined;
 
+  // 코드 충돌(이동 충돌) · 형식 오류 줄의 「코드 수정」 — 코드 수정 창을 추천값으로 (ADR-0072 결정 5). 가운데에 그 자리를 여는 것은 줄의 `go`
+  const fixCode = useMemo(
+    (): CodeFix | undefined => (mode === "edit" ? { ids: codeIssueIds, open: (nodeId: Id, at: DOMRect) => setPop({ spec: { kind: "code", nodeId, suggest: true }, anchor: { x: at.left, y: at.bottom, top: at.top } }) } : undefined),
+    [mode, codeIssueIds],
+  );
   const panel: PanelData = {
     issues,
     documentTitle: tree.title,
@@ -750,18 +769,7 @@ export function DocumentEditor(props: EditorProps) {
     // 가운데와 같은 조를 고른 상품의 조립 문맥으로 — 편집 중이면 편집본 (§3.9)
     preview: <PreviewTab docKind={doc.kind} products={props.previewProducts} tree={tree} {...(currentArticleId ? { articleId: currentArticleId } : {})} editing={mode === "edit"} />,
     go,
-    // 코드 충돌(이동 충돌) · 형식 오류 줄의 「코드 수정」 — 그 자리를 가운데에 열고 코드 수정 창을 추천값으로 (ADR-0072 결정 5)
-    ...(mode === "edit"
-      ? {
-          fixCode: {
-            ids: codeIssueIds,
-            open: (nodeId: Id, at: DOMRect) => {
-              go(nodeId);
-              setPop({ spec: { kind: "code", nodeId, suggest: true }, anchor: { x: at.left, y: at.bottom, top: at.top } });
-            },
-          },
-        }
-      : {}),
+    ...(fixCode ? { fixCode } : {}),
   };
 
   const toolbarPlace = placeIn(index);
@@ -922,7 +930,7 @@ export function DocumentEditor(props: EditorProps) {
         {banner && (
           <div className="ts-error-banner" role="alert">
             <p>{banner.message}</p>
-            {banner.issues && banner.issues.length > 0 && <DraftIssues go={go} issues={banner.issues} {...(panel.fixCode ? { fixCode: panel.fixCode } : {})} />}
+            {banner.issues && banner.issues.length > 0 && <DraftIssues go={go} issues={banner.issues} {...(fixCode ? { fixCode } : {})} />}
           </div>
         )}
         {props.notice}
