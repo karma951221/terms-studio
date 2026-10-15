@@ -4,7 +4,8 @@ import type { EnumDef } from "../catalog/types";
 import type { Clause } from "../clause/types";
 import { checkParams } from "../clause/params";
 import type { Issue } from "../types";
-import { cloneForElement, repeatLabel, type RepeatSource } from "./blockRepeat";
+import { clauseInnerCodes, cloneForElement, repeatLabel, type RepeatSource } from "./blockRepeat";
+import { lostInnerCodeEntries, type RecheckDocument } from "./refs";
 import { nodeBuilders, sequentialIds } from "./builders";
 import { applyCommand } from "./commands";
 import { generalRefsOf } from "./edit";
@@ -473,5 +474,49 @@ describe("대응 보통약관 대상의 안쪽 코드 · 값 한정 열거형 �
   it("값 한정 — 종 반복(열거값 아님)만 감싼 대상 = 오류, 지운 값 = 「없는 값」", () => {
     expect(messages(담보({ code: "P0200", restrict: { values: ["V01"] } }))).toEqual([expect.stringContaining("열거값(사유)")]);
     expect(담보({ code: "P0400", restrict: { values: ["V99"] } })).toEqual([expect.objectContaining({ kind: "brokenRef", message: expect.stringContaining("없는 값 V99") })]);
+  });
+});
+
+describe("함수조항 저장의 외부 참조 영향 — 사라진 안쪽 코드를 가리키는 문서 (관계정보 재검사 목록, ADR-0049)", () => {
+  /** 보통약관(함수조항 참조 P0400 = C0300) 안 자기 참조 하나 + 담보약관의 보통약관 참조 하나 — 둘 다 안쪽 코드 P0100 을 가리킨다. */
+  function 문서들() {
+    const general = 납입면제조();
+    general.outer.code = "P0100";
+    general.paragraph.code = "P0200";
+    general.inner.code = "P0300";
+    general.ref.code = "P0400";
+    const article = general.doc.children[0] as { id: string; children: unknown[] };
+    const b = nodeBuilders(sequentialIds("z"));
+    const own = b.articleRef({ articleId: article.id, code: "P0400", innerCode: "P0100" } as never, "self", "및");
+    const ownPara = b.paragraph([own]);
+    ownPara.code = "P0500";
+    article.children.push(ownPara);
+    const other = b.articleRef({ articleId: article.id, code: "P0400", innerCode: "P0100" } as never, "general", "및");
+    const special = b.document("특약", [b.article("준용", [b.paragraph([other])])]);
+    const docs: RecheckDocument[] = [
+      { id: "g", title: "보통약관", kind: "general", ownerId: "g", tree: general.doc },
+      { id: "s", title: "특약", kind: "special", ownerId: "cov", tree: special, generalDocumentId: "g" },
+    ];
+    const usages = [{ documentId: "g", ownerKind: "general" as const, ownerId: "g", refNodeId: general.ref.id }];
+    return { docs, usages, own, other };
+  }
+
+  it("본문에 그 안쪽 코드가 있으면 항목 없음", () => {
+    const { docs, usages } = 문서들();
+    expect(clauseInnerCodes(면제호)).toEqual(new Set(["P0100"]));
+    expect(lostInnerCodeEntries(면제호, usages, docs)).toEqual([]);
+  });
+
+  it("안쪽 코드가 사라지면 「안쪽 코드 P0100 사라짐 — 참조하는 문서 2곳」 — 같은 문서 · 담보약관(보통약관 참조) 두 자리로 고치러 간다", () => {
+    const { docs, usages, own, other } = 문서들();
+    const changed: Clause = { ...면제호, body: [{ id: "sw", kind: "switchBlock", on: "arg.사유", cases: [{ id: "k1", values: ["V01", "V02", "V03"], children: [{ ...item("i1", "사유 호"), code: "P0200" }] }] }] as never };
+    const entries = lostInnerCodeEntries(changed, usages, docs);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].usage).toMatchObject({ documentId: "g", refNodeId: usages[0].refNodeId });
+    expect(entries[0].issues.map((i) => i.message)).toEqual([expect.stringContaining("안쪽 코드 P0100 사라짐 — 참조하는 문서 2곳"), expect.stringContaining("안쪽 코드 P0100 사라짐 — 참조하는 문서 2곳")]);
+    expect(entries[0].issues.map((i) => [i.kind, i.at.documentId, i.at.nodePath?.at(-1)])).toEqual([
+      ["brokenRef", "g", own.id],
+      ["brokenRef", "s", other.id],
+    ]);
   });
 });

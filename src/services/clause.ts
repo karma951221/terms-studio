@@ -55,7 +55,7 @@ import {
   type Usage,
 } from "@/domain/clause";
 import type { Inline } from "@/domain/clause/nodes";
-import { indexTree, referenceKeys, refTargetFacts, repeatedKeys, unfoldPresetsIn, type RefTargetFact } from "@/domain/document";
+import { indexTree, lostInnerCodeEntries, referenceKeys, refTargetFacts, repeatedKeys, unfoldPresetsIn, type RecheckDocument, type RefTargetFact } from "@/domain/document";
 import type { TypeResolver } from "@/domain/expression";
 import type { Actor, Code, Issue, Result } from "@/domain/types";
 import { ok, reject } from "@/domain/types";
@@ -252,6 +252,26 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
     return recheckUsages(clause, usages, lookupIn(catalog), typeOf);
   }
 
+  /**
+   * 사라진 안쪽 코드를 가리키는 문서 — 사용처(이 함수조항을 넣은 참조 노드)의 펼친 안쪽 코드를 같은 문서 · 담보약관(대응 보통약관)이 가리키는데
+   * 지금 본문에 그 코드가 없으면 재검사 목록에 오른다 (기능/문면 §3.7 · ADR-0049). 같은 사용처의 다른 재검사 줄과 한 항목으로 합친다.
+   */
+  async function withInnerLoss(tx: Db, clause: Clause, usages: readonly Usage[], entries: RecheckEntry[]): Promise<RecheckEntry[]> {
+    if (usages.length === 0) return entries;
+    const docs: RecheckDocument[] = [];
+    for (const summary of await documentRepo.listDocuments(tx)) {
+      const d = await documentRepo.loadDocument(tx, summary.id);
+      if (d) docs.push({ id: d.id, title: d.title, kind: d.kind, ownerId: d.ownerId ?? d.id, tree: d.tree, ...(d.generalDocumentId ? { generalDocumentId: d.generalDocumentId } : {}) });
+    }
+    const out = [...entries];
+    for (const loss of lostInnerCodeEntries(clause, usages, docs)) {
+      const same = out.findIndex((e) => e.usage.documentId === loss.usage.documentId && e.usage.refNodeId === loss.usage.refNodeId);
+      if (same >= 0) out[same] = { ...out[same], issues: [...out[same].issues, ...loss.issues] };
+      else out.push(loss);
+    }
+    return out;
+  }
+
   /** 비파괴 변경 (본문·옵션 무관) — 읽기 → 도메인 → 저장. */
   function edit(actor: Actor, code: Code, change: (def: Clause, ctx: ClauseContext) => Promise<Result<Clause>> | Result<Clause>): Promise<Result<Clause>> {
     return db.transaction((tx) =>
@@ -285,7 +305,8 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
     );
     if (!saved.ok) return saved as Result<SaveOutcome>;
     const usages = await usage.documentsReferencing(saved.value.code);
-    return ok({ clause: saved.value, recheck: recheckOf(saved.value, usages, catalog!), warnings: unitWarnings(saved.value, usages.length) });
+    const recheck = await withInnerLoss(db, saved.value, usages, recheckOf(saved.value, usages, catalog!));
+    return ok({ clause: saved.value, recheck, warnings: unitWarnings(saved.value, usages.length) });
   }
 
   return {
@@ -409,6 +430,10 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
         ok(checkAttachmentForReference(def, await lookupOf(db), { ownerId: owner.id })),
       ),
 
-    recheck: (code) => withClause(db, code, async (def) => ok(recheckOf(def, await usage.documentsReferencing(code), await catalogOf(db)))),
+    recheck: (code) =>
+      withClause(db, code, async (def) => {
+        const usages = await usage.documentsReferencing(code);
+        return ok(await withInnerLoss(db, def, usages, recheckOf(def, usages, await catalogOf(db))));
+      }),
   };
 }

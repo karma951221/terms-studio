@@ -8,7 +8,10 @@
 
 import { extractRefs, parse } from "../expression";
 import type { Bindings } from "../clause/params";
-import type { Code, Coordinate, Id } from "../types";
+import type { Clause } from "../clause/types";
+import type { RecheckEntry, Usage } from "../clause/reference";
+import type { Code, Coordinate, Id, Issue } from "../types";
+import { clauseInnerCodes } from "./blockRepeat";
 import { articleRefsOf, coordinateOf, indexTree, type ArticleRefNode, type ClauseGate, type DocumentNode } from "./nodes";
 import { refKey } from "./pcode";
 
@@ -127,4 +130,66 @@ export function requiredDiscriminators(doc: DocumentNode, gate?: ClauseGate): Co
     else if (r.kind === "clause" && gate) gate.requiredCodes(r.clauseCode, (gate.usageOf?.(r.clauseCode, r) ?? r).bindings).forEach(add);
   }
   return codes;
+}
+
+/** 재검사가 훑는 문서 한 벌 — 관계정보 재검사 목록의 「고치러 가기」 좌표 재료. */
+export interface RecheckDocument {
+  id: Id;
+  title: string;
+  kind: "general" | "special";
+  /** 소유 실체 — 담보약관이면 담보 id, 보통약관이면 문서 id. */
+  ownerId: Id;
+  tree: DocumentNode;
+  /** 담보약관의 대응 보통약관. */
+  generalDocumentId?: Id;
+}
+
+/**
+ * 함수조항 저장의 외부 참조 영향 (기능/문면 §3.7 · 관계정보 재검사 목록, ADR-0049) — 이 함수조항을 넣은 참조 노드(사용처)의 펼친 안쪽 코드를 가리키는
+ * 조 참조 가운데, 그 안쪽 코드가 지금 본문에 없는 것. 같은 문서의 조 참조 · 그 문서를 대응 보통약관으로 둔 담보약관의 보통약관 참조(함수조항 참조의
+ * 조 참조 인자 연결 포함)를 본다. 사용처마다 한 항목, 가리키는 자리마다 한 줄 — 「안쪽 코드 P0100 사라짐 — 참조하는 문서 N곳」.
+ */
+export function lostInnerCodeEntries(clause: Clause, usages: readonly Usage[], documents: readonly RecheckDocument[]): RecheckEntry[] {
+  const inner = clauseInnerCodes(clause);
+  const byId = new Map(documents.map((d) => [d.id, d] as const));
+  const out: RecheckEntry[] = [];
+  for (const usage of usages) {
+    const doc = byId.get(usage.documentId);
+    if (!doc || usage.refNodeId === undefined) continue;
+    const head = indexTree(doc.tree).nodes.get(usage.refNodeId);
+    const code = (head?.node as { code?: Code } | undefined)?.code;
+    if (!head || code === undefined || head.articleId === undefined) continue;
+    const articleId = head.articleId;
+    // 사라진 안쪽 코드 → 가리키는 자리(문서 · 참조 노드 경로)
+    const lost = new Map<Code, { doc: RecheckDocument; path: Id[] }[]>();
+    const scan = (from: RecheckDocument, scope: "self" | "general") => {
+      for (const e of indexTree(from.tree).nodes.values()) {
+        for (const ref of articleRefsOf(e.node)) {
+          if (ref.scope !== scope) continue;
+          for (const t of ref.targets) {
+            if (t.articleId !== articleId || t.code !== code || t.innerCode === undefined || inner.has(t.innerCode)) continue;
+            const list = lost.get(t.innerCode) ?? [];
+            if (!list.some((x) => x.doc.id === from.id && x.path.at(-1) === e.node.id)) list.push({ doc: from, path: e.path });
+            lost.set(t.innerCode, list);
+          }
+        }
+      }
+    };
+    scan(doc, "self");
+    if (doc.kind === "general") for (const d of documents) if (d.kind === "special" && d.generalDocumentId === doc.id) scan(d, "general");
+    if (lost.size === 0) continue;
+    const issues: Issue[] = [];
+    for (const [innerCode, places] of lost) {
+      const count = new Set(places.map((p) => p.doc.id)).size;
+      for (const p of places) {
+        issues.push({
+          kind: "brokenRef",
+          message: `안쪽 코드 ${innerCode} 사라짐 — 참조하는 문서 ${count}곳 · 「${p.doc.title}」의 조 참조가 함수조항 ${clause.code} 본문에 없는 대상을 가리킵니다`,
+          at: { document: p.doc.kind === "general" ? "general" : "coverageMaster", ownerId: p.doc.ownerId, documentId: p.doc.id, ownerName: p.doc.title, nodePath: p.path, refPath: refKey({ articleId, code, innerCode }) },
+        });
+      }
+    }
+    out.push({ usage, missing: [], issues });
+  }
+  return out;
 }
