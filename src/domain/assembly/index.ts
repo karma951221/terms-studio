@@ -20,6 +20,7 @@ export * from "./application";
 export * from "./base";
 export * from "./context";
 export * from "./fixture";
+export * from "./leafPanel";
 export * from "./omission";
 export * from "./render";
 export * from "./resolve";
