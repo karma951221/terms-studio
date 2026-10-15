@@ -92,6 +92,11 @@ export interface ReferenceTarget {
   parentRow?: Id;
   caption?: string;
   via?: Code;
+  /**
+   * 번호가 자리표시인 대상(반복 블록 · 반복 안 · 펼친 함수조항 안)의 제 단계 표기 — 「항 P0200」 · 「반복 P0100」. 있으면 참조 표기가 번호 대신 이것을 쓰고
+   * 구간을 만들지 않는다. 실제 번호는 조립(미리보기 탭)이 펼친 뒤 매긴다 (기능/문면 §3.7).
+   */
+  placeholder?: string;
 }
 
 /** 목 참조 표기 — 「가목」…「하목」 (법령 인용 꼴), 그 너머는 「제N목」. */
@@ -103,6 +108,7 @@ export function subitemRefLabel(n: number): string {
 export function referenceTargetLabel(target: ReferenceTarget, previous?: ReferenceTarget): string {
   const parts: string[] = [];
   const sameArticle = previous?.article.id === target.article.id;
+  if (target.placeholder !== undefined) return sameArticle ? target.placeholder : `${articleRefLabel(target.article.n, target.article.title)} ${target.placeholder}`;
   const sameParagraph = sameArticle && previous?.paragraph?.id === target.paragraph?.id;
   const sameItem = sameParagraph && previous?.item?.id === target.item?.id;
   if (target.kind === "article" || !sameArticle) parts.push(articleRefLabel(target.article.n, target.article.title));
@@ -114,7 +120,7 @@ export function referenceTargetLabel(target: ReferenceTarget, previous?: Referen
 
 /** 두 대상이 같은 상위(조 · 항 · 호) 아래 같은 종류인가 — 연속 구간의 전제. */
 function sameParentAndKind(a: ReferenceTarget, b: ReferenceTarget): boolean {
-  if (a.kind !== b.kind) return false;
+  if (a.kind !== b.kind || a.placeholder !== undefined || b.placeholder !== undefined) return false;
   switch (a.kind) {
     case "article":
       return true;
@@ -207,6 +213,12 @@ export interface ReferenceIndexOptions {
 
 const INNER_WORD: Record<string, string> = { paragraph: "항", item: "호", subitem: "목" };
 
+/** 자리표시 줄의 머리 — 첫 글 「…」, 글이 없으면 단계 이름(「항」 · 「호」). 코드는 줄 끝이 보인다. */
+function headOf(n: unknown, word: string): string {
+  const t = firstText(n);
+  return t ? `「${t}」` : word;
+}
+
 /** 함수조항 본문 첫 글 — 안쪽 줄 머리(값별 분기 칸은 첫 칸 글). */
 function firstText(n: unknown): string {
   const walk = (x: unknown): string | undefined => {
@@ -239,7 +251,7 @@ function firstText(n: unknown): string {
  * 편집기용: 현재 계산 번호를 붙여 문서 안의 조·항·호·목을 참조 대상 id로 색인한다. 문서 순서(전위)대로.
  * 반복 블록 · 함수조항 블록 참조도 줄이 되고(펼친 것 전부), 함수조항 참조 아래에 그 본문의 항 · 호 · 목 줄(같은 코드는 한 줄)이 선다 (ADR-0077 결정 6 · 7).
  * 열쇠(조 · P코드)마다 줄 하나 — 같은 코드의 분기 짝은 첫 노드 줄로 합치고 짝의 하위는 그 아래 코드 기준 합집합이다 (기능/문면 §3.5).
- * 이 줄들의 번호는 자리표시다 — 반복 블록은 첫 본문의 번호, 펼친 본문은 참조 자리 번호부터 센다.
+ * 반복 블록 · 반복 안 · 펼친 본문 줄은 번호가 자리표시라 `placeholder`(단계 + 코드)를 싣고, 줄 머리는 첫 글이다 — 실제 번호는 조립이 펼친 뒤 매긴다.
  */
 export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id, NodeNumber>, opts: ReferenceIndexOptions = {}): Map<Id, ReferenceTarget> {
   const out = new Map<Id, ReferenceTarget>();
@@ -290,7 +302,7 @@ export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id,
         const kind = n.kind === "paragraph" || n.kind === "item" || n.kind === "subitem" ? n.kind : undefined;
         if (!kind || n.code === undefined || n.id === undefined) continue;
         const id = `${refId}/${n.id}`;
-        const t = below(parent, kind, { id, n: start + k, code: n.code }, { parentRow: row, via, caption: `${INNER_WORD[kind]} ${n.code}${firstText(n) ? ` 「${firstText(n)}」` : ""}` });
+        const t = below(parent, kind, { id, n: start + k, code: n.code }, { parentRow: row, via, caption: headOf(n, kind), placeholder: `${INNER_WORD[kind]} ${n.code}` });
         if (!t) continue;
         const placed = place(id, t);
         if (placed.id === id) k += 1;
@@ -312,7 +324,7 @@ export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id,
       let here = row;
       if (parent && parent.kind !== "section" && node.code !== undefined) {
         const kind = parent.kind === "article" ? "paragraph" : parent.kind === "paragraph" ? "item" : undefined;
-        const t = kind ? below(parent, kind, { id: node.id, n: firstNumber(node.children), code: node.code }, { caption: `반복 — ${opts.repeatCaption?.(node, loops.at(-1)) ?? node.alias ?? "반복 블록"}`, ...(row ? { parentRow: row } : {}) }) : undefined;
+        const t = kind ? below(parent, kind, { id: node.id, n: firstNumber(node.children), code: node.code }, { caption: `반복 — ${opts.repeatCaption?.(node, loops.at(-1)) ?? node.alias ?? "반복 블록"}`, placeholder: `반복 ${node.code}`, ...(row ? { parentRow: row } : {}) }) : undefined;
         if (t) here = place(node.id, t).id;
       }
       loops.push(node);
@@ -334,28 +346,32 @@ export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id,
     }
     const code = (node as { code?: Code }).code;
     const part = (n: number): ReferencePart => ({ id: node.id, n, ...(code !== undefined ? { code } : {}) });
-    const rowOf = row ? { parentRow: row } : {};
+    // 반복 안 — 편집기 번호는 반복을 펼치지 않아 자리표시다: 줄 머리는 첫 글, 참조 표기는 단계 + 코드
+    const inLoop = loops.length > 0 && (node.kind === "paragraph" || node.kind === "item" || node.kind === "subitem" || node.kind === "clauseBlockRef");
+    const word = number && (number.kind === "paragraph" || number.kind === "item" || number.kind === "subitem") ? INNER_WORD[number.kind] : "";
+    const rowOf = { ...(row ? { parentRow: row } : {}), ...(inLoop ? { placeholder: code !== undefined ? `${word} ${code}` : word } : {}) };
+    const headOfLoop = inLoop && node.kind !== "clauseBlockRef" ? { caption: headOf(node, word) } : {};
     // 함수조항 블록 참조 — 줄 하나(가리키면 펼친 것 전부) + 그 본문의 항 · 호 · 목 줄(펼친 함수조항 안 노드, ADR-0077 결정 6)
     if (node.kind === "clauseBlockRef" && number && parent && code !== undefined && (number.kind === "paragraph" || number.kind === "item" || number.kind === "subitem")) {
       const clause = opts.clauseOf?.(node.clauseCode);
-      const t = below(parent, number.kind, part(number.n), { caption: `함수조항 「${clause?.label ?? node.clauseCode}」`, ...rowOf });
+      const t = below(parent, number.kind, part(number.n), { ...rowOf, caption: `함수조항 「${clause?.label ?? node.clauseCode}」` });
       if (!t) return;
       const placed = place(node.id, t);
       if (clause) innerRows(withClauseCodes(clause.body) as readonly unknown[], parent, placed.id, placed.id, code, number.n);
       return;
     }
     if (node.kind === "paragraph" && number && parent) {
-      const { target } = place(node.id, below(parent, "paragraph", part(number.n), rowOf)!);
+      const { target } = place(node.id, below(parent, "paragraph", part(number.n), { ...rowOf, ...headOfLoop })!);
       for (const item of node.items ?? []) visit(item, target, section);
       return;
     }
     if (node.kind === "item" && number && parent?.paragraph) {
-      const { target } = place(node.id, below(parent, "item", part(number.n), rowOf)!);
+      const { target } = place(node.id, below(parent, "item", part(number.n), { ...rowOf, ...headOfLoop })!);
       for (const subitem of node.subitems ?? []) visit(subitem, target, section);
       return;
     }
     if (node.kind === "subitem" && number && parent?.paragraph && parent.item) {
-      place(node.id, below(parent, "subitem", part(number.n), rowOf)!);
+      place(node.id, below(parent, "subitem", part(number.n), { ...rowOf, ...headOfLoop })!);
     }
   };
   for (const node of doc.children) visit(node, undefined, undefined);
@@ -428,8 +444,8 @@ export function referenceOutline(index: ReadonlyMap<Id, ReferenceTarget>): Refer
     const parentId = parentIdOf(target);
     const parent = parentId === undefined ? undefined : nodes.get(parentId);
     const own = parent && !target.via ? referenceTargetLabel(target, parent.target) : referenceTargetLabel(target);
-    // 반복 블록 · 함수조항 참조 줄은 번호 뒤에 머리 말, 펼칠 본문 줄은 머리 말만(번호는 조립이 매긴다)
-    const label = target.via !== undefined && target.caption ? target.caption : target.caption ? `${own} · ${target.caption}` : own;
+    // 번호가 자리표시인 줄(반복 블록 · 반복 안 · 펼칠 본문)은 머리 말만(번호는 조립이 매긴다), 함수조항 참조 줄은 번호 뒤에 머리 말
+    const label = target.placeholder !== undefined && target.caption ? target.caption : target.caption ? `${own} · ${target.caption}` : own;
     const node: ReferenceOutlineNode = { id, target, label, children: [] };
     if (target.kind === "article") {
       let group = groups.at(-1);
