@@ -6,7 +6,7 @@
  * - 채번 = 비어 있는 가장 작은 번호. **저장의 최종 트리 기준** — 같은 저장에서 지운 노드의 키도 빈 번호다(지운 키 재사용).
  * - 사람이 고치지 않고, 순서(↑↓)와 무관하다. 키 경로 = `01`(세부보장) · `01.2`(급부).
  */
-import type { Id } from "../types";
+import type { AttachLevel, Id } from "../types";
 import type { Coverage, CoverageNode, CoverageNodeRef } from "./types";
 
 export type KeyedLevel = "subCoverage" | "benefit";
@@ -83,7 +83,13 @@ export function coveredByLoop(level: KeyedLevel, loopLevel: KeyedLevel): boolean
   return TREE_DEPTH[level] <= TREE_DEPTH[loopLevel];
 }
 
-const LEVEL_WORD: Record<KeyedLevel, string> = { subCoverage: "세부보장", benefit: "급부" };
+/** 구분자 레벨이 반복 레벨보다 **아래**인가 — 한정자 없이 읽으면 읽을 노드가 없다. 담보 이상 · 키 없는 레벨은 늘 읽힌다. */
+export function belowLoop(level: AttachLevel, loopLevel: AttachLevel): boolean {
+  if ((level !== "subCoverage" && level !== "benefit") || (loopLevel !== "subCoverage" && loopLevel !== "benefit")) return false;
+  return !coveredByLoop(level, loopLevel);
+}
+
+export const LEVEL_WORD: Record<KeyedLevel, string> = { subCoverage: "세부보장", benefit: "급부" };
 
 export function nodeKeyLabel(level: KeyedLevel, key: string, name?: string): string {
   return name ? `${LEVEL_WORD[level]} ${key} · ${name}` : `${LEVEL_WORD[level]} ${key}`;

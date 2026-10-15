@@ -14,6 +14,7 @@
  */
 
 import { extractRefs, parse } from "../expression";
+import { belowLoop } from "../coverage/keys";
 import { descend, keyLabel, type ChildLevel, type RowKey, type StructNode } from "../structure";
 import { ATTACH_LEVEL_LABEL, ATTACH_LEVELS, type AttachLevel, type Code, type Coordinate, type Id, type Issue } from "../types";
 import { coordinateOf, indexTree, type DocumentNode, type InlineNode, type NodeEntry, type TableNode, type TableRow, type TreeIndex } from "./nodes";
@@ -259,7 +260,7 @@ export function repeatTableIssues(doc: DocumentNode, scope: RepeatScope, base: C
       for (const { ref, path, aggregate } of refsOf(s.src)) {
         if (ref.kind !== "discriminator" || ref.node || aggregate) continue;
         const level = scope.levelOf(ref.code);
-        if (level === undefined || ATTACH_LEVELS.indexOf(level) <= ATTACH_LEVELS.indexOf(row)) continue;
+        if (level === undefined || !belowLoop(level, row)) continue;
         issues.push({ kind: "structure", message: MSG.belowRow, at: { ...s.at, refPath: path }, severity: "error" });
       }
     }

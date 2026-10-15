@@ -16,6 +16,7 @@ import { checkCondition, checkTypes, extractRefs, parse } from "../expression";
 import type { Expr, TypeResolver } from "../expression";
 import { ATTACH_LEVEL_LABEL, type AttachLevel, type Code, type Coordinate, type Issue } from "../types";
 import { coordinateOf, indexTree, type DocumentNode } from "./nodes";
+import { treeLoopRefIssues } from "./blockRepeat";
 import { repeatTableIssues } from "./repeat";
 
 /** 한정자 검사 문맥 — 담보 약관이면 문맥 담보 트리와 구분자 레벨 조회. 보통약관은 둘 다 없음. */
@@ -131,5 +132,7 @@ export function validateExpressions(doc: DocumentNode, resolve: TypeResolver, ba
   }
   // 반복 표 검사 (ADR-0070 · 설계 §2.6) — 저장을 막는 오류만. 경고(「모든 행이 같아집니다」)는 `repeatTableIssues` 로 따로 본다.
   issues.push(...repeatTableIssues(doc, { hasCoverage: scope.coverage !== undefined, levelOf: scope.levelOf }, base).filter((i) => i.severity !== "warning"));
+  // 담보 트리 반복 안의 한정자 없는 하위 레벨 참조 (ADR-0087 결정 8 · 기능/문면 §3.7)
+  if (scope.coverage && scope.levelOf) issues.push(...treeLoopRefIssues(doc, scope.levelOf, base));
   return issues;
 }

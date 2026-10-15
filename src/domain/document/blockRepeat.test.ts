@@ -4,7 +4,7 @@ import type { EnumDef } from "../catalog/types";
 import type { Clause } from "../clause/types";
 import { checkParams } from "../clause/params";
 import type { Issue } from "../types";
-import { checkRepeatSource, cloneForElement, loopElementType, repeatLabel, treeLoopLevelsAt, type RepeatSource } from "./blockRepeat";
+import { checkRepeatSource, cloneForElement, loopElementType, repeatLabel, treeLoopLevelsAt, treeLoopRefIssues, type RepeatSource } from "./blockRepeat";
 import { nodeBuilders, sequentialIds } from "./builders";
 import { applyCommand } from "./commands";
 import { numberTree, referenceAncestorIds, referenceOutline, referenceTargetIndex, refTargetOf } from "./numbering";
@@ -467,5 +467,32 @@ describe("담보 트리 원천 (ADR-0087 결정 5)", () => {
       { loop: outer.id, level: "subCoverage" },
       { loop: inner.id, level: "benefit" },
     ]);
+  });
+});
+
+describe("담보 트리 반복 안 — 반복 레벨보다 아래를 한정자 없이 읽으면 오류 (기능/문면 §3.7)", () => {
+  const levelOf = (c: string) => (c === "D0002" ? "benefit" : c === "D0007" ? "subCoverage" : undefined);
+  const tree = (source: unknown, when: string) => {
+    const b = make();
+    const f = b.forBlock(source as never, [b.condBlock([b.branch(when, [b.paragraph([b.text("x")])])])]);
+    return b.document("d", [b.article("a", [f])]);
+  };
+
+  it("세부보장마다 안의 급부 레벨 D0002 = 오류 · 세부보장 레벨 D0007 · 키 경로 D0002@01.1 은 통과", () => {
+    expect(treeLoopRefIssues(tree({ kind: "subCoverages" }, "D0002 = true"), levelOf)[0]).toMatchObject({ kind: "structure", message: expect.stringContaining("세부보장마다") });
+    expect(treeLoopRefIssues(tree({ kind: "subCoverages" }, "D0007 = true"), levelOf)).toEqual([]);
+    expect(treeLoopRefIssues(tree({ kind: "subCoverages" }, "D0002@01.1 = true"), levelOf)).toEqual([]);
+    expect(treeLoopRefIssues(tree({ kind: "benefits" }, "D0002 = true and D0007 = true"), levelOf)).toEqual([]);
+  });
+
+  it("반복 밖 · 슬롯도 같은 규칙 — 반복 밖은 검사하지 않는다", () => {
+    const b = make();
+    const slot = b.slot("D0002");
+    const f = b.forBlock({ kind: "subCoverages" } as never, [b.paragraph([slot])]);
+    const outside = b.paragraph([b.slot("D0002")]);
+    const doc = b.document("d", [b.article("a", [f, outside])]);
+    const issues = treeLoopRefIssues(doc, levelOf);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].at.nodePath).toContain(slot.id);
   });
 });

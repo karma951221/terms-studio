@@ -26,9 +26,10 @@ import { enumFieldValue } from "../catalog/fields";
 import type { EnumDef } from "../catalog/types";
 import type { Clause } from "../clause/types";
 import { checkPlanOptionFilter, type LoopElementType } from "../clause/params";
-import { parse, refPath, type Expr, type ExprType, type Ref, type TypeResolver } from "../expression";
+import { belowLoop, LEVEL_WORD } from "../coverage/keys";
+import { extractRefs, parse, refPath, type Expr, type ExprType, type Ref, type TypeResolver } from "../expression";
 import { findMasterField, formsOfLevel, MASTER, type MasterTree } from "../master";
-import type { Code, Coordinate, Id, Issue } from "../types";
+import type { AttachLevel, Code, Coordinate, Id, Issue } from "../types";
 import { coordinateOf, indexTree, type DocumentNode, type ForBlockNode, type NodeEntry, type TreeIndex } from "./nodes";
 import { clauseCodeEntries, withClauseCodes } from "../clause/pcode";
 import { missingValueMessage } from "../catalog/values";
@@ -475,5 +476,38 @@ export function definitionCrossCheck(doc: DocumentNode, clauseOf: (code: Code) =
       }
     }
   }
+  return out;
+}
+
+/**
+ * 담보 트리 반복 안의 조건 · 슬롯 — 한정자 없는 세부보장 · 급부 레벨 구분자는 현재 노드(자기 또는 조상)에서 읽힌다.
+ * 반복 레벨보다 아래 레벨(「세부보장마다」 안의 급부 레벨)은 읽을 노드가 없어 저장 오류다 (기능/문면 §3.7 · 반복 표와 같은 규칙 — 공용 술어 `belowLoop`).
+ */
+export function treeLoopRefIssues(doc: DocumentNode, levelOf: (code: Code) => AttachLevel | undefined, base: Coordinate = {}): Issue[] {
+  const ix = indexTree(doc, base);
+  const out: Issue[] = [];
+  const check = (src: string, e: Pick<NodeEntry, "path" | "node">, at: Coordinate) => {
+    const inner = treeLoopLevelsAt(ix, e).at(-1);
+    if (!inner) return;
+    const parsed = parse(src);
+    if (!parsed.ok) return;
+    for (const { ref, path, aggregate } of extractRefs(parsed.value)) {
+      if (ref.kind !== "discriminator" || ref.node || aggregate) continue;
+      const level = levelOf(ref.code);
+      if (level === undefined || !belowLoop(level, inner.level)) continue;
+      const loopWord = inner.level === "subCoverage" ? "세부보장마다" : "급부마다";
+      out.push({
+        kind: "structure",
+        message: `「${loopWord}」 반복 안에서 ${LEVEL_WORD[level as "subCoverage" | "benefit"]} 레벨 구분자 ${ref.code} 를 한정자 없이 읽을 수 없습니다 — 키 경로로 고르거나 「현재 세부보장의 급부마다」 안에 두세요`,
+        at: { ...at, refPath: path },
+      });
+    }
+  };
+  for (const be of ix.branches.values()) {
+    if (be.branch.when === undefined) continue;
+    const owner = ix.nodes.get(be.ownerId);
+    if (owner) check(be.branch.when, { path: be.path, node: owner.node }, coordinateOf(ix, be, base));
+  }
+  for (const e of ix.nodes.values()) if (e.node.kind === "slot") check(e.node.ref, e, coordinateOf(ix, e, base));
   return out;
 }
