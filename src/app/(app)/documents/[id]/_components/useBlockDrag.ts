@@ -41,7 +41,18 @@ interface Over {
   where: DropWhere;
 }
 
-export function useBlockDrag({ latest, apply, enabled }: { latest: () => DocumentNode; apply: (ops: readonly EditOp[]) => boolean; enabled: boolean }): BlockDrag {
+export function useBlockDrag({
+  latest,
+  apply,
+  enabled,
+  hidden,
+}: {
+  latest: () => DocumentNode;
+  apply: (ops: readonly EditOp[]) => boolean;
+  enabled: boolean;
+  /** 화면에 그리지 않는 자리 노드 — 놓을 자리 · 끄는 것이 아니다(함수조항 「호」 · 「목」의 자리 항 · 호, `clauseHiddenIds`). */
+  hidden?: ReadonlySet<Id>;
+}): BlockDrag {
   const [blockSel, setBlockSel] = useState<readonly Id[]>([]);
   const selRef = useRef<readonly Id[]>([]);
   const dragging = useRef<Id[] | undefined>(undefined);
@@ -112,7 +123,7 @@ export function useBlockDrag({ latest, apply, enabled }: { latest: () => Documen
     onDragOver: (e) => {
       if (!dragging.current) return;
       const over = overOf(e);
-      const pos = over && dropPosition(indexTree(latest()), dragging.current, over.id, over.where);
+      const pos = over && dropPosition(indexTree(latest()), dragging.current, over.id, over.where, hidden);
       if (!over || !pos) {
         unmark();
         return;
@@ -125,7 +136,7 @@ export function useBlockDrag({ latest, apply, enabled }: { latest: () => Documen
       const ids = dragging.current;
       const over = ids && overOf(e);
       const tree = latest();
-      const pos = ids && over ? dropPosition(indexTree(tree), ids, over.id, over.where) : undefined;
+      const pos = ids && over ? dropPosition(indexTree(tree), ids, over.id, over.where, hidden) : undefined;
       cleanup();
       if (!ids || !pos) return;
       e.preventDefault();

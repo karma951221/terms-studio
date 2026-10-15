@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { indexTree, nodeBuilders, replayEdits, type DocumentNode, type EditOp } from "@/domain/document";
+import { CLAUSE_HOST_ITEM_ID, CLAUSE_HOST_PARAGRAPH_ID, clauseBodyToTree, indexTree, nodeBuilders, replayEdits, type DocumentNode, type EditOp } from "@/domain/document";
 
-import { dragIds, dropPosition, extendSelection } from "./blockDrag";
+import { clauseHiddenIds, dragIds, dropPosition, extendSelection } from "./blockDrag";
 import { moveRangeOps, moveSelectionOps } from "./editOps";
 
 function run(tree: DocumentNode, ops: readonly EditOp[]): DocumentNode {
@@ -81,5 +81,50 @@ describe("끌어 옮기기 · 여러 블록 고르기 (기능/문면 §4.3, 2026
     expect(kids(run(d, moveSelectionOps(d, ["p2", "p3"], 1)), "a1")).toEqual(["p1", "t1", "p2", "p3"]);
     expect(moveSelectionOps(d, ["p1", "p2"], -1)).toEqual([]);
     expect(moveSelectionOps(d, ["p3", "t1"], 1)).toEqual([]);
+  });
+});
+
+describe("함수조항 「호」 · 「목」 본문 — 자리 항 · 호로 싼 트리 (기능/함수조항 §6.2 · 기능/문면 §4.3)", () => {
+  const t = (s: string) => ({ id: `t-${s}`, kind: "text" as const, text: s });
+  const itemTree = () =>
+    clauseBodyToTree("item", [
+      { id: "h1", kind: "item", children: [t("1")], subitems: [{ id: "m1", kind: "subitem", children: [t("가")] }] },
+      { id: "h2", kind: "item", children: [t("2")] },
+      { id: "h3", kind: "item", children: [t("3")] },
+    ]);
+  const subitemTree = () =>
+    clauseBodyToTree("subitem", [
+      { id: "s1", kind: "subitem", children: [t("가")] },
+      { id: "s2", kind: "subitem", children: [t("나")] },
+    ]);
+
+  it("자리 노드 — 유형마다 화면에 그리지 않는 조 · 자리 항 · 자리 호", () => {
+    expect([...clauseHiddenIds("item")]).toContain(CLAUSE_HOST_PARAGRAPH_ID);
+    expect([...clauseHiddenIds("subitem")]).toEqual(expect.arrayContaining([CLAUSE_HOST_PARAGRAPH_ID, CLAUSE_HOST_ITEM_ID]));
+    expect(clauseHiddenIds("block").has(CLAUSE_HOST_PARAGRAPH_ID)).toBe(false);
+  });
+
+  it("호를 다른 호 앞 · 뒤로 — 자리 항의 호 목록 안에서 옮긴다", () => {
+    const d = itemTree();
+    const hidden = clauseHiddenIds("item");
+    const pos = dropPosition(indexTree(d), ["h3"], "h1", "before", hidden)!;
+    expect(pos).toEqual({ parentId: CLAUSE_HOST_PARAGRAPH_ID, slot: "items", index: 0 });
+    const out = run(d, moveRangeOps(d, ["h3"], pos));
+    expect((indexTree(out).nodes.get(CLAUSE_HOST_PARAGRAPH_ID)!.node as { items: { id: string }[] }).items.map((i) => i.id)).toEqual(["h3", "h1", "h2"]);
+  });
+
+  it("안 보이는 자리 노드는 놓을 자리도 끄는 것도 아니다", () => {
+    const d = subitemTree();
+    const hidden = clauseHiddenIds("subitem");
+    const ix = indexTree(d);
+    expect(dropPosition(ix, ["s2"], CLAUSE_HOST_ITEM_ID, "before", hidden)).toBeUndefined();
+    expect(dropPosition(ix, ["s2"], CLAUSE_HOST_PARAGRAPH_ID, "after", hidden)).toBeUndefined();
+    expect(dropPosition(ix, [CLAUSE_HOST_ITEM_ID], "s1", "before", hidden)).toBeUndefined();
+    expect(dropPosition(ix, ["s2"], "s1", "before", hidden)).toEqual({ parentId: CLAUSE_HOST_ITEM_ID, slot: "subitems", index: 0 });
+  });
+
+  it("호를 목 목록에는 놓지 못한다 — 허용 자식 그대로", () => {
+    const d = itemTree();
+    expect(dropPosition(indexTree(d), ["h2"], "m1", "after", clauseHiddenIds("item"))).toBeUndefined();
   });
 });

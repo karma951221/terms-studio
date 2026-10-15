@@ -38,6 +38,7 @@ import { ContextMenu, PopActions, Popover } from "@/app/(app)/documents/[id]/_co
 import { DraftIssues } from "@/app/(app)/documents/[id]/_components/SidePanel";
 import { CLAUSE_LINE_TOOLS, CLAUSE_TOOLS, allTools, itemsFor, type ToolId } from "@/app/(app)/documents/[id]/_components/tools";
 import { switchSubjectsOf } from "@/app/(app)/documents/[id]/_components/switchCases";
+import { clauseHiddenIds } from "@/app/(app)/documents/[id]/_components/blockDrag";
 import { useBlockDrag } from "@/app/(app)/documents/[id]/_components/useBlockDrag";
 import type { ClauseBody, ClauseMode, LocalDef, ParamDef, RequiredRefs } from "@/domain/clause";
 import { formatCoordinate } from "@/domain/coordinate";
@@ -378,7 +379,10 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     return true;
   };
 
-  const drag = useBlockDrag({ latest, apply, enabled: editing && clauseMode === "block" });
+  // 끌어 옮기기 — 「항」 · 「호」 · 「목」(문구는 한 줄이라 끌 블록이 없다). 호 · 목 본문을 싼 자리 항 · 호는 놓을 자리가 아니다 (§4.3)
+  const draggable = clauseMode !== "inline";
+  const hiddenIds = useMemo(() => clauseHiddenIds(clauseMode), [clauseMode]);
+  const drag = useBlockDrag({ latest, apply, enabled: editing && draggable, hidden: hiddenIds });
 
   const refuse = (message: string) => setBanner({ message: `넣을 수 없다 — ${message}` });
 
@@ -532,7 +536,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     contextMenu: onContextMenu,
     headItems: (branchId) => clauseCondMenu(menuEnv(), branchId).flat(),
     run: (item, anchor) => runMenu(item, anchor),
-    ...(clauseMode === "block" ? { blockSel: drag.blockSel, selectBlock: drag.selectBlock } : {}),
+    ...(draggable ? { blockSel: drag.blockSel, selectBlock: drag.selectBlock } : {}),
     // 블록 오른쪽 위의 복제 · 삭제 — 툴바가 쓰던 길(runTool)을 그 블록 자리로 (「문구」 유형은 블록이 없다)
     ...(clauseMode !== "inline"
       ? {
@@ -790,7 +794,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
               <div
                 className={`ts-clause-editor${editing ? " is-editing" : ""}`}
                 onContextMenu={onContextMenu}
-                {...(editing && clauseMode === "block" ? drag.props : {})}
+                {...(editing && draggable ? drag.props : {})}
                 onPointerDown={(e) => {
                   if (!editing) return;
                   const target = e.target as HTMLElement;
