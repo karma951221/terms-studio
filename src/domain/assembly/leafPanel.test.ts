@@ -72,6 +72,14 @@ describe("「구분자」 값 패널 (ADR-0087 결정 6)", () => {
     expect(r[0].path).toBeUndefined();
   });
 
+  it("값은 있으나 찍을 수 없는 잎(표 값 · 없는 열거값)은 invalid — 서식 오류 문구를 싣는다", () => {
+    const fx = nodeQualFixture();
+    const { coverages, product, ...master } = { ...fx, catalog: [...fx.catalog, { code: "D0050", label: "감액구간", description: "", level: "benefit" as const, expression: "reduction.periods" }] };
+    const r = rows(leafPanel(master, { product, coverages }, "pc-nodequal", docOf([para("p", [slot("s1", "D0050@01.1")])])));
+    expect(r).toEqual([expect.objectContaining({ code: "D0050", problem: "invalid", message: "표 값은 조문에 넣을 수 없습니다" })]);
+    expect(r[0].value).toBeUndefined();
+  });
+
   it("상품담보가 없으면 unavailable", () => {
     expect(panel(docOf([]), "없음")).toEqual({ unavailable: expect.any(String) });
   });

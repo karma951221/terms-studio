@@ -13,7 +13,7 @@ import type { Id } from "@/domain/types";
 
 import type { PreviewSelection } from "./previewSelection";
 
-const PROBLEM: Record<NonNullable<LeafRow["problem"]>, string> = { notEntered: "미입력", brokenKey: "끊어진 키", unbound: "연결이 빈 인자" };
+const PROBLEM: Record<NonNullable<LeafRow["problem"]>, string> = { notEntered: "미입력", brokenKey: "끊어진 키", unbound: "연결이 빈 인자", invalid: "찍을 수 없는 값" };
 
 export function LeafRows({ rows, go }: { rows: readonly LeafRow[]; go: (nodeId: Id) => void }) {
   if (rows.length === 0) return <p className="ts-muted">이 템플릿이 읽는 구분자가 없다.</p>;
@@ -32,6 +32,7 @@ export function LeafRows({ rows, go }: { rows: readonly LeafRow[]; go: (nodeId: 
             )}
             {" — "}
             {r.problem ? <strong>⚠ {PROBLEM[r.problem]}</strong> : <span>{r.value}</span>}
+            {r.message && <span className="ts-muted"> — {r.message}</span>}
             {r.problem && <div className="ts-issue-at">{formatCoordinate(r.at)}</div>}
             {r.problem && nodeId && (
               <button type="button" className="ts-doc-pick" onClick={() => go(nodeId)}>

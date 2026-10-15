@@ -23,7 +23,10 @@ export interface LeafRow {
   path?: string;
   /** 표시 값 — 문제면 없음. */
   value?: string;
-  problem?: "notEntered" | "brokenKey" | "unbound";
+  /** `invalid` — 값은 있으나 찍을 수 없다(표 값 · 없는 열거값 — 조립의 서식 오류와 같은 것). */
+  problem?: "notEntered" | "brokenKey" | "unbound" | "invalid";
+  /** `invalid` 의 서식 오류 문구. */
+  message?: string;
   /** 구분자 주석 (ⓘ). */
   description?: string;
   /** 쓰는 자리 — 첫 자리(조립 오류와 같은 좌표). */
@@ -69,7 +72,10 @@ export function leafPanel(master: MasterBundle, product: ProductInput, productCo
       const r = parsed.ok ? evaluate(parsed.value, { ...ctx, coordinate: at }) : undefined;
       const f = r?.kind === "value" ? formatValue(r.value, def ? discriminatorResultType(def, input.master, defs) : undefined, enums, at) : undefined;
       if (f?.ok) row.value = f.text;
-      else row.problem = "notEntered";
+      else if (f) {
+        row.problem = "invalid";
+        row.message = f.issue.message;
+      } else row.problem = "notEntered";
     }
     rows.set(id, row);
   };
