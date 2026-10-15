@@ -13,6 +13,7 @@ import { definitionCrossCheck, valueBranchWarnings } from "./blockRepeat";
 import type { ExprType, TypeResolver } from "../expression";
 import type { Code, Issue } from "../types";
 import { validateExpressions, type ExpressionScope } from "./expressions";
+import { nodeBindingIssues } from "./nodeBindings";
 import { validateTree, type ClauseGate, type DocumentNode, type TreeEnv } from "./nodes";
 import { repeatTableIssues } from "./repeat";
 
@@ -99,6 +100,7 @@ export function validateDocument(tree: DocumentNode, checks: DocumentChecks): Is
   const { env, resolve, scope } = checks;
   const issues = validateTree(tree, env);
   issues.push(...validateExpressions(tree, resolve, env.coordinate, scope));
+  issues.push(...nodeBindingIssues(tree, env.clauseGate, scope, env.coordinate));
   // 반복 표 경고(저장은 막지 않음) — 검증 목록에만 보인다 (ADR-0070 · 설계 §2.6). 오류는 validateExpressions 가 이미 냈다.
   issues.push(...repeatTableIssues(tree, { hasCoverage: scope.coverage !== undefined }, env.coordinate).filter((i) => i.severity === "warning"));
   // 블록 반복 (ADR-0077) — 사유 값 분기 경고(결정 10) · 정의 조 교차 검사(결정 23 — 「문구 없음」 = 오류 · 펼쳐지지 않는 문장 = 경고)
