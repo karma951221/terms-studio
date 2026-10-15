@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { indexTree, nodeBuilders, replayEdits, sequentialIds, type DocumentNode, type EditOp, type ParagraphNode } from "@/domain/document";
 
 import { particleInsertItems } from "./menus";
-import { backspaceOps, enterOps, inlineAtOf, moveOps, moveRangeOps, newTable, pasteGridOps, removeChipOps, selectionRange, unwrapOps, wrapOps, wrapRangeOps } from "./editOps";
+import { backspaceOps, enterOps, inlineAtOf, insertedChip, moveOps, moveRangeOps, newTable, pasteGridOps, removeChipOps, selectionRange, unwrapOps, wrapOps, wrapRangeOps } from "./editOps";
 
 /** 편집본에 명령 목록을 적용한 트리 — 거부면 던진다. */
 function run(tree: DocumentNode, ops: readonly EditOp[]): DocumentNode {
@@ -237,5 +237,42 @@ describe("조사 칩 넣기 (기능/문면 §3.11)", () => {
     expect(labels).toHaveLength(15);
     expect(labels[0]).toBe("조사 — 을/를");
     expect(labels[4]).toBe("조사 — 으로/로");
+  });
+});
+
+describe("넣은 칩 찾기 — 넣은 뒤 커서를 칩 바로 뒤에 둔다", () => {
+  const pdoc = () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    return b.document("D", [b.article("가", [b.paragraph([b.text("보험금 지급")])])]);
+  };
+
+  it("조사 넣기 → 그 조사 칩 id", () => {
+    const d = pdoc();
+    const item = particleInsertItems({ parentId: "n2" }, [{ text: "보험금" }, { caret: true }, { text: " 지급" }], sequentialIds("q"))[0];
+    if (item.action.do !== "ops") throw new Error("명령이 아니다");
+    const ops = typeof item.action.ops === "function" ? item.action.ops(d) : item.action.ops;
+    const p = indexTree(run(d, ops)).nodes.get("n2")!.node as ParagraphNode;
+    expect(insertedChip(ops)).toBe(p.children[1].id);
+  });
+
+  it("팝업 넣기(슬롯) → 그 슬롯 칩 id", () => {
+    const b = nodeBuilders(sequentialIds("s"));
+    const slot = b.slot("D0001");
+    const ops: EditOp[] = [{ type: "setInlines", at: { parentId: "n2" }, runs: [{ id: "n1", text: "보험금 " }, { node: slot }, { id: "x1", text: " 지급" }] }];
+    run(pdoc(), ops);
+    expect(insertedChip(ops)).toBe(slot.id);
+  });
+
+  it("setInlines 가 없으면 없음", () => {
+    expect(insertedChip(moveOps(doc(), "n3", 1))).toBeUndefined();
+  });
+
+  it("글 · 남기는 칩만이면 없음", () => {
+    expect(insertedChip([{ type: "setInlines", at: { parentId: "n3" }, runs: [{ id: "n1", text: "앞" }, { keep: "n2" }] }])).toBeUndefined();
+  });
+
+  it("새 노드가 둘이면(조건 풀기) 없음", () => {
+    const b = nodeBuilders(sequentialIds("u"));
+    expect(insertedChip([{ type: "setInlines", at: { parentId: "n3" }, runs: [{ node: b.text("갱신") }, { node: b.slot("D0001") }, { node: b.slot("D0002") }] }])).toBeUndefined();
   });
 });

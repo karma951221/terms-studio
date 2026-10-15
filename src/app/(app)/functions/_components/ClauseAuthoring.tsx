@@ -27,7 +27,7 @@ import { anchorOf, type Anchor, type ArticleRefChoice, type DocCtx, type EditHan
 import { Block } from "@/app/(app)/documents/[id]/_components/DocBody";
 import { EditorToolbar } from "@/app/(app)/documents/[id]/_components/EditorToolbar";
 import { marksMenuItem, markSelectionOps, useMarksShown } from "@/app/(app)/documents/[id]/_components/workMarks";
-import { backspaceOps, enterOps, inlineAtOf, inlineListAt, moveSelectionOps } from "@/app/(app)/documents/[id]/_components/editOps";
+import { backspaceOps, enterOps, insertedChip, inlineAtOf, inlineListAt, moveSelectionOps } from "@/app/(app)/documents/[id]/_components/editOps";
 import { InlineSlot, caretFromPoint, tokensOf } from "@/app/(app)/documents/[id]/_components/Inline";
 import { identityRuns, runsFromTokens, runsReplacing, sameRuns, type Token } from "@/app/(app)/documents/[id]/_components/inlineRuns";
 import { boxPickItems, condInsertItem, inlineCondItem, placeBlockId, placeExists, type MenuItem, type MenuSections, type Place, type PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
@@ -503,6 +503,12 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     runMenu(item);
   };
 
+  /** 칩을 넣은 명령이면 커서를 그 칩 바로 뒤로 — 편집기가 새로 그려져 초점이 사라지므로 (조사 · 옵션 자리 · 팝업 넣기). */
+  const focusInserted = (ops: readonly EditOp[]) => {
+    const chip = insertedChip(ops);
+    if (chip) setFocusRequest(chip);
+  };
+
   const runMenu = (item: MenuItem, anchor: Anchor = menuAt.current) => {
     const a = item.action;
     if (a.do === "popup") {
@@ -518,6 +524,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     if (!apply(ops)) return;
     if (a.focus) setFocusRequest(a.focus);
     if (a.openChip) setPop({ spec: { kind: "editChip", nodeId: a.openChip }, anchor });
+    else if (!a.focus) focusInserted(ops);
   };
 
   // 작업용 글자색 — 문면 편집기와 같은 모델 · 같은 도구 (기능/문면 §3.2 작업 표시)
@@ -602,7 +609,11 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     ctx,
     tree,
     latest,
-    apply,
+    apply: (ops) => {
+      if (!apply(ops)) return false;
+      focusInserted(ops);
+      return true;
+    },
     newId: randomIds,
     appendices: data.appendices,
     boxes: data.boxes,

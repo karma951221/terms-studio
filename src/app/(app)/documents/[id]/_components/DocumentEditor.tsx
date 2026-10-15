@@ -73,7 +73,7 @@ import { refLabelOf } from "./condition/display";
 import type { ConditionContext } from "./condition/types";
 import { anchorOf, type Anchor, type CellAt, type DocCtx, type DocMode, type EditHandlers } from "./ctx";
 import { ArticleBody } from "./DocBody";
-import { backspaceOps, enterOps, inlineListAt, moveSelectionOps, pasteGridOps } from "./editOps";
+import { backspaceOps, enterOps, insertedChip, inlineListAt, moveSelectionOps, pasteGridOps } from "./editOps";
 import { caretFromPoint, tokensOf } from "./Inline";
 import { identityRuns, runsFromTokens, sameRuns, type Token } from "./inlineRuns";
 import { boxPickItems, clausePickItems, condInsertItem, condMenu, inlineCondItem, placeBlockId, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
@@ -591,6 +591,12 @@ export function DocumentEditor(props: EditorProps) {
     runMenu(item);
   };
 
+  /** 칩을 넣은 명령이면 커서를 그 칩 바로 뒤로 — 편집기가 새로 그려져 초점이 사라지므로 (조사 · 옵션 자리 · 팝업 넣기). */
+  const focusInserted = (ops: readonly EditOp[]) => {
+    const chip = insertedChip(ops);
+    if (chip) setFocusRequest(chip);
+  };
+
   const runMenu = (item: MenuItem, anchor: Anchor = menuAt.current) => {
     const a = item.action;
     if (a.do === "popup") {
@@ -607,6 +613,7 @@ export function DocumentEditor(props: EditorProps) {
     if (!recorded) return;
     if (a.focus) setFocusRequest(a.focus);
     if (a.openChip) setPop({ spec: { kind: "editChip", nodeId: a.openChip }, anchor });
+    else if (!a.focus) focusInserted(recorded);
     if (a.goArticle) {
       setArt(a.goArticle);
       setPlace({ kind: "article", id: a.goArticle });
@@ -742,7 +749,11 @@ export function DocumentEditor(props: EditorProps) {
     ctx,
     tree,
     latest,
-    apply,
+    apply: (ops) => {
+      if (!apply(ops)) return false;
+      focusInserted(ops);
+      return true;
+    },
     newId: randomIds,
     appendices: props.appendices,
     boxes: props.boxes,
