@@ -38,6 +38,7 @@ import {
   catalogTypeResolver,
   clauseGateFrom,
   envAt,
+  documentCodeIssues,
   generalRefsOf,
   indexTree,
   isRepeatSource,
@@ -227,6 +228,8 @@ export function DocumentEditor(props: EditorProps) {
     [props.coverage, props.discriminators],
   );
   const issues = useMemo(() => validateDocument(tree, { env: envAt(editEnv, current.generalDocumentId), resolve, scope }), [tree, editEnv, current.generalDocumentId, resolve, scope]);
+  /** 코드 오류(공존 중복 — 이동 충돌 · 형식)가 난 자리 — 검증 줄의 「코드 수정」 (ADR-0072 결정 5). */
+  const codeIssueIds = useMemo(() => new Set(documentCodeIssues(tree).map((i) => i.id)), [tree]);
   const errorCount = blockingIssues(issues).length;
 
   // ── 번호 · 참조 표기 ──
@@ -747,6 +750,18 @@ export function DocumentEditor(props: EditorProps) {
     // 가운데와 같은 조를 고른 상품의 조립 문맥으로 — 편집 중이면 편집본 (§3.9)
     preview: <PreviewTab docKind={doc.kind} products={props.previewProducts} tree={tree} {...(currentArticleId ? { articleId: currentArticleId } : {})} editing={mode === "edit"} />,
     go,
+    // 코드 충돌(이동 충돌) · 형식 오류 줄의 「코드 수정」 — 그 자리를 가운데에 열고 코드 수정 창을 추천값으로 (ADR-0072 결정 5)
+    ...(mode === "edit"
+      ? {
+          fixCode: {
+            ids: codeIssueIds,
+            open: (nodeId: Id, at: DOMRect) => {
+              go(nodeId);
+              setPop({ spec: { kind: "code", nodeId, suggest: true }, anchor: { x: at.left, y: at.bottom, top: at.top } });
+            },
+          },
+        }
+      : {}),
   };
 
   const toolbarPlace = placeIn(index);
@@ -907,7 +922,7 @@ export function DocumentEditor(props: EditorProps) {
         {banner && (
           <div className="ts-error-banner" role="alert">
             <p>{banner.message}</p>
-            {banner.issues && banner.issues.length > 0 && <DraftIssues go={go} issues={banner.issues} />}
+            {banner.issues && banner.issues.length > 0 && <DraftIssues go={go} issues={banner.issues} {...(panel.fixCode ? { fixCode: panel.fixCode } : {})} />}
           </div>
         )}
         {props.notice}
