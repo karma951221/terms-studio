@@ -20,7 +20,6 @@ import { planFormScope, type PlanFormScope } from "../catalog/expression";
 import type { Discriminator, EnumDef, SlotPath } from "../catalog/types";
 import { isFormOpened, missingEnumCodes, missingValueMessage } from "../catalog/values";
 import { coverageChildrenProviders, coverageStructNode } from "../coverage/children";
-import { formatNodeKey } from "../coverage/keys";
 import { descendants, findNode, findNodeById, nodeName, nodesOf } from "../coverage/tree";
 import type { Coverage, CoverageNode, CoverageNodeLevel } from "../coverage/types";
 import type { DocumentNode } from "../document/nodes";
@@ -335,13 +334,12 @@ export function snapshotTree(c: AssemblyCoverage): Coverage {
     description: "",
     subCoverages: [...s.subCoverages]
       .sort((a, b) => a.order - b.order)
-      // 키는 스냅샷이 아직 안 싣는다(Task 5 가 SnapshotNode.key 를 더한다) — 그때까지 정렬 순번으로 임시 매긴다.
-      .map((sub, i) => ({
+      .map((sub) => ({
         id: sub.id,
-        key: formatNodeKey("subCoverage", i + 1),
+        key: sub.key,
         name: sub.name,
         order: sub.order,
-        benefits: [...sub.benefits].sort((a, b) => a.order - b.order).map((b, j) => ({ id: b.id, key: formatNodeKey("benefit", j + 1), name: b.name, order: b.order })),
+        benefits: [...sub.benefits].sort((a, b) => a.order - b.order).map((b) => ({ id: b.id, key: b.key, name: b.name, order: b.order })),
       })),
   };
 }

@@ -24,6 +24,8 @@ export interface StructNodeRef {
 export interface StructNode extends StructNodeRef {
   name: string;
   order: number;
+  /** 담보 트리 노드면 노드 키 (ADR-0087) — 표기에는 쓰지 않는다(결정 9). */
+  key?: string;
 }
 
 export interface LevelStructure {

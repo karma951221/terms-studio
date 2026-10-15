@@ -435,20 +435,13 @@ export async function deleteProductCoverage(db: Db, id: Id): Promise<void> {
 type NodeRow = typeof productCoverageNodes.$inferSelect;
 
 function toNode(r: NodeRow): SnapshotNode {
-  return { id: r.id, productCoverageId: r.productCoverageId, kind: r.kind as SnapshotNode["kind"], masterNodeId: r.masterNodeId, ...(r.parentId ? { parentId: r.parentId } : {}), name: r.name, order: r.order };
+  return { id: r.id, productCoverageId: r.productCoverageId, kind: r.kind as SnapshotNode["kind"], masterNodeId: r.masterNodeId, ...(r.parentId ? { parentId: r.parentId } : {}), key: r.key, name: r.name, order: r.order };
 }
 
 export async function insertNode(db: Db, input: Omit<SnapshotNode, "id">, who?: Id): Promise<SnapshotNode> {
-  // 스냅샷 노드의 키는 마스터 노드의 키 (ADR-0087 결정 2). 도메인이 키를 싣게 되기(Task 5) 전까지 저장소가 마스터에서 읽어 채운다.
-  const [master] =
-    input.kind === "sub"
-      ? await db.select({ key: subCoverages.key }).from(subCoverages).where(eq(subCoverages.id, input.masterNodeId))
-      : await db.select({ key: benefits.key }).from(benefits).where(eq(benefits.id, input.masterNodeId));
-  // 마스터를 잃은 노드(테스트 픽스처 · 동기화 직전)는 형제 순서로 채운다 — 0027 의 같은 처리.
-  const fallback = input.kind === "sub" ? String(input.order + 1).padStart(2, "0") : String(input.order + 1);
   const [row] = await db
     .insert(productCoverageNodes)
-    .values({ key: master?.key ?? fallback, productCoverageId: input.productCoverageId, kind: input.kind, masterNodeId: input.masterNodeId, parentId: input.parentId ?? null, name: input.name, order: input.order, createdBy: who, updatedBy: who })
+    .values({ key: input.key, productCoverageId: input.productCoverageId, kind: input.kind, masterNodeId: input.masterNodeId, parentId: input.parentId ?? null, name: input.name, order: input.order, createdBy: who, updatedBy: who })
     .returning();
   return toNode(row);
 }
@@ -489,7 +482,7 @@ export async function listNodesForProduct(db: Db, productId: Id): Promise<Map<Id
   return new Map([...byPc].map(([pcId, list]) => [pcId, arrangeNodes(list)]));
 }
 
-export async function updateNode(db: Db, id: Id, patch: { name: string; order: number }, who?: Id): Promise<void> {
+export async function updateNode(db: Db, id: Id, patch: { name: string; order: number; key?: string }, who?: Id): Promise<void> {
   await db.update(productCoverageNodes).set({ ...patch, updatedAt: new Date(), updatedBy: who }).where(eq(productCoverageNodes.id, id));
 }
 

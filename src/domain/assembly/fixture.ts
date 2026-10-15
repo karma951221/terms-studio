@@ -529,7 +529,7 @@ export interface CoverageSpec {
   coverageName: string;
   attributes: { kindCode: Code; valueCode: Code }[];
   /** 세부보장 → 급부 (마스터 노드 id 는 `${id}` 그대로 쓴다 — 픽스처 단순화). */
-  subCoverages: { id: Id; masterNodeId: Id; name: string; benefits: { id: Id; masterNodeId: Id; name: string }[] }[];
+  subCoverages: { id: Id; key?: string; masterNodeId: Id; name: string; benefits: { id: Id; key?: string; masterNodeId: Id; name: string }[] }[];
   /** owner id → 경로 → 값. */
   values: Record<Id, Record<SlotPath, Value>>;
 }
@@ -547,9 +547,10 @@ export function coverageEntry(spec: CoverageSpec): AssemblyCoverage {
       productCoverageId: spec.id,
       kind: "sub",
       masterNodeId: s.masterNodeId,
+      key: s.key ?? String(i + 1).padStart(2, "0"),
       name: s.name,
       order: i,
-      benefits: s.benefits.map((b, j) => ({ id: b.id, productCoverageId: spec.id, kind: "benefit", masterNodeId: b.masterNodeId, parentId: s.id, name: b.name, order: j })),
+      benefits: s.benefits.map((b, j) => ({ id: b.id, productCoverageId: spec.id, kind: "benefit", masterNodeId: b.masterNodeId, parentId: s.id, key: b.key ?? String(j + 1), name: b.name, order: j })),
     })),
   };
   const values = new Map<Id, Map<SlotPath, ValueSlot>>();

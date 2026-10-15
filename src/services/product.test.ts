@@ -63,8 +63,8 @@ function copyOfA(text: string, extra: ArticleNode["children"] = []): ArticleNode
 }
 
 const trees = new Map<string, CoverageTree>([
-  [DEATH, { id: DEATH, name: "일반상해사망", subCoverages: [{ id: DEATH_SUB, name: "일반상해사망", order: 0, benefits: [{ id: DEATH_BEN, name: "사망보험금", order: 0 }] }] }],
-  [SURGERY, { id: SURGERY, name: "수술비", subCoverages: [{ id: SURGERY_SUB1, name: "1종수술", order: 0, benefits: [{ id: SURGERY_BEN1, name: "1종수술급부", order: 0 }] }] }],
+  [DEATH, { id: DEATH, name: "일반상해사망", subCoverages: [{ id: DEATH_SUB, key: "01", name: "일반상해사망", order: 0, benefits: [{ id: DEATH_BEN, key: "1", name: "사망보험금", order: 0 }] }] }],
+  [SURGERY, { id: SURGERY, name: "수술비", subCoverages: [{ id: SURGERY_SUB1, key: "01", name: "1종수술", order: 0, benefits: [{ id: SURGERY_BEN1, key: "1", name: "1종수술급부", order: 0 }] }] }],
 ]);
 const master: CoverageMasterSource = { tree: async (id) => trees.get(id) };
 
@@ -494,14 +494,16 @@ describe("product 서비스 (PGlite)", () => {
         id: SURGERY,
         name: "수술비",
         subCoverages: [
-          { id: SURGERY_SUB1, name: "1종수술", order: 0, benefits: [{ id: SURGERY_BEN1, name: "1종수술급부", order: 0 }] },
-          { id: SURGERY_SUB2, name: "2종수술", order: 1, benefits: [{ id: SURGERY_BEN2, name: "2종수술급부", order: 0 }] },
+          { id: SURGERY_SUB1, key: "01", name: "1종수술", order: 0, benefits: [{ id: SURGERY_BEN1, key: "1", name: "1종수술급부", order: 0 }] },
+          { id: SURGERY_SUB2, key: "02", name: "2종수술", order: 1, benefits: [{ id: SURGERY_BEN2, key: "1", name: "2종수술급부", order: 0 }] },
         ],
       });
       const r = unwrap(await svc.syncStructure(pcSurgery));
       expect(r.added).toBe(2);
       const snap = unwrap(await svc.getSnapshot(pcSurgery));
       expect(snap.subCoverages.map((s) => s.name)).toEqual(["1종수술", "2종수술"]);
+      expect(snap.subCoverages.map((s) => s.key)).toEqual(["01", "02"]); // 마스터와 같은 키 (ADR-0087 결정 2)
+      expect(snap.subCoverages[0].benefits[0].key).toBe("1");
       const newBen = snap.subCoverages[1].benefits[0];
       expect((await svc.getSnapshotValues(pcSurgery)).get(newBen.id)?.size ?? 0).toBe(0); // 빈 값
       // 완결성: 새 급부는 선택 필드뿐이라 미입력이 없다. 새 급부에 면책 폼을 열면(신규만) 그 폼의 빈 자리가 잡힌다
@@ -518,7 +520,7 @@ describe("product 서비스 (PGlite)", () => {
       expect(summary.missing).toHaveLength(2);
 
       await writeSlot(t.db, { kind: "productBenefit", id: newBen.id }, "pay.exempt", true);
-      trees.set(SURGERY, { id: SURGERY, name: "수술비", subCoverages: [{ id: SURGERY_SUB1, name: "1종수술", order: 0, benefits: [{ id: SURGERY_BEN1, name: "1종수술급부", order: 0 }] }] });
+      trees.set(SURGERY, { id: SURGERY, name: "수술비", subCoverages: [{ id: SURGERY_SUB1, key: "01", name: "1종수술", order: 0, benefits: [{ id: SURGERY_BEN1, key: "1", name: "1종수술급부", order: 0 }] }] });
       const r2 = unwrap(await svc.syncStructure(pcSurgery));
       expect(r2.removed).toBe(2);
       expect((await readSlots(t.db, { kind: "productBenefit", id: newBen.id })).size).toBe(0);
