@@ -22,6 +22,8 @@ import {
   nodeBuilders,
   paramOfRef,
   paramTargetId,
+  treeLoopLevelsAt,
+  treeLoopOfTarget,
   parseRefKey,
   repeatElementEnums,
   referenceKeyIndex,
@@ -45,6 +47,7 @@ import { ATTACH_LEVEL_LABEL, REFERENCE_CONNECTORS, isReferenceConnector, type Co
 
 import { str } from "../../lib";
 import { CondRows } from "./condition/CondRows";
+import { nodeHead } from "./condition/rows";
 import { SlotRefInput } from "./condition/SlotRefInput";
 import type { ConditionContext } from "./condition/types";
 import type { Anchor, DocCtx } from "./ctx";
@@ -54,6 +57,7 @@ import { runsFromTokens } from "./inlineRuns";
 import { clausesFitting, type PopupSpec } from "./menus";
 import { PopActions, Popover } from "./Popover";
 import { RefTargetTree } from "./RefTargetTree";
+import { restrictMode, restrictOfForm } from "./restrict";
 import { loopChoices, loopsAround, nodeTreeAt, repeatChoices, sourceOfValue, sourceValue } from "./repeatSources";
 import { CaseControls } from "./SwitchControls";
 import { unassignedValues } from "./switchCases";
@@ -111,12 +115,12 @@ function PopForm({ env, onClose, build, children }: { env: PopupEnv; onClose: ()
 export interface RestrictChoices {
   loops: readonly { id: Id; label: string }[];
   values: readonly { code: Code; label: string }[];
-}
-
-/** 저장된 값 한정 → 칸 값 (`""` 없음 · `values` 해당 값들 · `current:<반복 id>` 현재 값). */
-function restrictMode(r: RefRestrict | undefined): string {
-  if (!r) return "";
-  return "current" in r ? `current:${r.current}` : "values";
+  /** 문맥 담보의 노드 키 후보 (`01` · `01.2`) — 「해당 키들」 (ADR-0087 결정 10). `level` 로 대상 반복 레벨에 맞는 것만 보인다. */
+  keys: readonly { path: string; label: string; level: "subCoverage" | "benefit" }[];
+  /** 참조 자리를 감싼 담보 트리 반복 — 「현재 세부보장 / 현재 급부」 후보. */
+  treeLoops: readonly { id: Id; level: "subCoverage" | "benefit" }[];
+  /** 대상이 선 담보 트리 반복의 레벨 — 트리 반복 밖이면 undefined (`treeLoopOfTarget`). */
+  treeLevelOf: (t: { articleId: Id; code?: Code }) => "subCoverage" | "benefit" | undefined;
 }
 
 /**
@@ -134,6 +138,7 @@ function ArticleRefFields({ ctx, node, restrict, prefix = "", idBase = "pop-ref"
   const saved = node?.targets.find((t) => t.restrict)?.restrict;
   const [mode, setMode] = useState(() => restrictMode(saved));
   const savedValues = saved && "values" in saved ? saved.values : [];
+  const savedKeys = saved && "keys" in saved ? saved.keys : [];
   const keyOfRow = (rowId: Id): string | undefined => {
     for (const index of [ctx.references.self, ctx.references.general, ...(ctx.articleRefChoices ?? []).map((c) => c.index)]) {
       const t = index.get(rowId);
@@ -141,8 +146,25 @@ function ArticleRefFields({ ctx, node, restrict, prefix = "", idBase = "pop-ref"
     }
     return undefined;
   };
+  // 고른 대상 중 담보 트리 반복 안의 것 — 「해당 키들」 · 「현재 세부보장」 칸을 연다 (ADR-0087 결정 10)
+  const [treeLevel, setTreeLevel] = useState<"subCoverage" | "benefit" | undefined>(() => {
+    if (!node || !restrict) return undefined;
+    for (const t of node.targets) {
+      const lv = restrict.treeLevelOf(t);
+      if (lv) return lv;
+    }
+    return undefined;
+  });
   const onPicked = (n: number, ids: readonly Id[]) => {
     setCount(n);
+    if (restrict) {
+      let lv: "subCoverage" | "benefit" | undefined;
+      for (const rowId of ids) {
+        const key = keyOfRow(rowId);
+        lv = (key !== undefined ? restrict.treeLevelOf(parseRefKey(key)) : undefined) ?? lv;
+      }
+      setTreeLevel(lv);
+    }
     setRepeatedPicked(ids.some((rowId) => {
       const key = keyOfRow(rowId);
       return key !== undefined && multiTarget(parseRefKey(key), ctx.repeatedKeys);
@@ -227,19 +249,41 @@ function ArticleRefFields({ ctx, node, restrict, prefix = "", idBase = "pop-ref"
               }
             />
           </div>
-          {restrict && restrict.values.length > 0 && (
+          {restrict && (restrict.values.length > 0 || treeLevel !== undefined) && (
             <div className="ts-form-row">
-              <label htmlFor={`${idBase}-restrict`}>값 한정</label>
+              <label htmlFor={`${idBase}-restrict`}>{restrict.values.length > 0 ? "값 한정" : "키 한정"}</label>
               <div>
                 <select id={`${idBase}-restrict`} name={field("restrictMode")} value={mode} onChange={(e) => setMode(e.target.value)}>
                   <option value="">없음 — 펼친 것 전부</option>
-                  <option value="values">해당 값들</option>
-                  {restrict.loops.map((l) => (
-                    <option key={l.id} value={`current:${l.id}`}>
-                      현재 값 — {l.label}
-                    </option>
-                  ))}
+                  {restrict.values.length > 0 && <option value="values">해당 값들</option>}
+                  {treeLevel !== undefined && restrict.keys.some((k) => k.level === treeLevel) && <option value="keys">해당 키들</option>}
+                  {restrict.values.length > 0 &&
+                    restrict.loops.map((l) => (
+                      <option key={l.id} value={`current:${l.id}`}>
+                        현재 값 — {l.label}
+                      </option>
+                    ))}
+                  {treeLevel !== undefined &&
+                    restrict.treeLoops
+                      .filter((l) => treeLevel === "benefit" ? l.level === "benefit" : true)
+                      .map((l) => (
+                        <option key={l.id} value={`current:${l.id}`}>
+                          {l.level === "subCoverage" ? "현재 세부보장" : "현재 급부"}
+                        </option>
+                      ))}
                 </select>
+                {mode === "keys" && treeLevel !== undefined && (
+                  <div className="ts-radio-group" role="group" aria-label="한정할 키">
+                    {restrict.keys
+                      .filter((k) => k.level === treeLevel)
+                      .map((k) => (
+                        <label key={k.path} className="ts-form-radio">
+                          <input type="checkbox" name={field("restrictKey")} value={k.path} defaultChecked={savedKeys.includes(k.path)} />
+                          {k.label}
+                        </label>
+                      ))}
+                  </div>
+                )}
                 {mode === "values" && (
                   <div className="ts-radio-group" role="group" aria-label="한정할 값">
                     {restrict.values.map((v) => (
@@ -319,8 +363,7 @@ function articleRefOf(fd: FormData, prefix = ""): { targets: RefTarget[]; connec
   // 고르기 트리가 참조 대상 열쇠(조 id · 조#P코드 · 조#참조코드/안쪽코드)를 싣는다 (ADR-0072 결정 3 · ADR-0077 결정 6)
   const keys = [...new Set(fd.getAll(field("targets")).map((v) => String(v).trim()).filter(Boolean))];
   // 값 한정 — 고른 대상 모두에 같이 (ADR-0077 결정 7). 해당 값들을 하나도 안 고르면 빈 목록(저장 검사가 알린다)
-  const mode = str(fd, field("restrictMode"));
-  const restrict: RefRestrict | undefined = mode === "values" ? { values: fd.getAll(field("restrictValue")).map(String) } : mode.startsWith("current:") ? { current: mode.slice("current:".length) } : undefined;
+  const restrict: RefRestrict | undefined = restrictOfForm(fd, prefix);
   const targets = keys.map((k) => ({ ...parseRefKey(k), ...(restrict ? { restrict } : {}) }));
   // 라디오가 꺼져 있으면(대상 하나 · 반복 밖) 값이 오지 않는다 — 연결어를 싣지 않는다(표기에 안 나온다, 결정 14)
   const connector = str(fd, field("connector"));
@@ -723,10 +766,16 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
     return tree ? { tree } : {};
   };
   /** 조 참조 자리의 값 한정 후보 — 감싼 열거값 반복(현재 값) · 반복 원소 열거형의 값(해당 값들, ADR-0077 결정 7). */
-  const restrictAt = (id: Id | undefined): RestrictChoices => ({
+  const restrictAt = (id: Id | undefined): RestrictChoices => {
+    const site = id === undefined ? undefined : ix.nodes.get(id); // 새로 넣는 자리의 부모가 트리에 없을 수 있다(함수조항 편집기)
+    return {
     loops: id === undefined ? [] : loopsAt(id).filter((l) => l.type.kind === "enum").map((l) => ({ id: l.id, label: l.label })),
     values: [...repeatElementEnums()].flatMap((code) => (env.enumOf?.(code)?.values ?? []).map((v) => ({ code: v.code, label: v.label }))),
-  });
+    keys: (env.condition.coverage?.nodes ?? []).flatMap((n) => (n.keyPath && (n.level === "subCoverage" || n.level === "benefit") ? [{ path: n.keyPath, label: nodeHead(env.condition.coverage?.nodes ?? [], n), level: n.level }] : [])),
+    treeLoops: site ? treeLoopLevelsAt(ix, site).map((l) => ({ id: l.loop, level: l.level })) : [],
+    treeLevelOf: (t) => treeLoopOfTarget(ix, t)?.level,
+    };
+  };
 
   switch (spec.kind) {
     case "repeatBlock":
