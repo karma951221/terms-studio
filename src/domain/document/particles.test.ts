@@ -69,6 +69,11 @@ describe("조사 고르기", () => {
     expect(pick("euroseo-roseo", "1")).toBe("로서");
     expect(pick("eul-reul", "서울")).toBe("을"); // ㄹ 예외가 없는 프리셋은 받침 있음
   });
+  it("별표 표기 【…】 · 〔…〕 는 안쪽 글자로", () => {
+    expect(codaOf("【별표1(장해분류표)】")).toBe("rieul");
+    expect(codaOf("〔보험금〕")).toBe("final");
+    expect(chooseParticle("eul-reul", "【별표1(장해분류표)】").text).toBe("을");
+  });
   it("판정 불가면 병기 · resolved false", () => {
     expect(chooseParticle("eul-reul", "ABC")).toEqual({ text: "을(를)", resolved: false });
     expect(chooseParticle("eul-reul", "보험금")).toEqual({ text: "을", resolved: true });

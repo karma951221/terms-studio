@@ -635,6 +635,18 @@ describe("조사 칩 — 렌더 끝에서 앞 글 받침으로", () => {
     expect(r.issues).toEqual([]);
   });
 
+  it("별표 참조 뒤 — 라벨 끝 】 안쪽(별표1 → 일)으로 고른다", () => {
+    const doc: SubstitutedDoc = {
+      kind: "document",
+      id: "d",
+      title: "t",
+      children: [{ kind: "article", id: "a1", title: "제목", children: [{ kind: "paragraph", id: "p1", children: [text("t1", "…"), { kind: "appendixRef", id: "ar", appendixCode: "APX_A", at }, particle("x", "eul-reul")] }] }],
+    } as SubstitutedDoc;
+    const r = renderDocument(numberDocument(doc), { document: "special", ownerId: "pc", appendices: [{ code: "APX_A", number: 1, name: "장해분류표" }] });
+    expect(line(r)).toContain("】을");
+    expect(r.issues.map((i) => i.kind)).not.toContain("particleUnresolved");
+  });
+
   describe("전체 파이프라인 — 해소 · 치환을 지나 렌더 끝에서", () => {
     function run(source: DocumentNode) {
       const input = alphaPlusFixture();

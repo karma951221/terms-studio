@@ -54,8 +54,8 @@ export type Coda = "final" | "open" | "rieul";
 
 /** 끝자리 1~9 의 읽는 소리 — 일 · 이 · 삼 · 사 · 오 · 육 · 칠 · 팔 · 구. 0 으로 끝나면 십 · 백 · 천 · 만 · 영 — 모두 받침 있음. */
 const DIGIT: Record<string, Coda> = { "0": "final", "1": "rieul", "2": "open", "3": "final", "4": "open", "5": "open", "6": "final", "7": "rieul", "8": "rieul", "9": "open" };
-/** 건너뛰지 않고 그 안 마지막 글자로 보는 닫는 낫표 · 따옴표. */
-const CLOSERS = new Set(["」", "』", "'", '"', "’", "”"]);
+/** 건너뛰지 않고 그 안 마지막 글자로 보는 닫는 낫표 · 괄호표 · 따옴표. */
+const CLOSERS = new Set(["」", "』", "】", "〕", "'", '"', "’", "”"]);
 
 /** 앞 글의 마지막 글자로 받침을 판정한다. 판정할 수 없으면 undefined (기능/문면 §3.11 앞 글자 규칙). */
 export function codaOf(before: string): Coda | undefined {
