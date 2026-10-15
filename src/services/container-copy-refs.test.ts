@@ -87,4 +87,13 @@ describe("container — ADR-0081 관통 (PGlite)", () => {
     expect(await s.document.boxUsages(box.code)).toEqual([expect.objectContaining({ document: "product", ownerId: p.id, ownerName: "관통 상품 3", articleId: "a10" })]);
     expect(await s.document.appendixUsages(appendix.code)).toEqual([expect.objectContaining({ document: "product", ownerId: p.id, articleId: "a10" })]);
   });
+
+  it("상품 조 사본 저장 — 옛 박스(사본 box) 노드는 거부 「옛 박스 — 박스 참조로 바꾼다」 (기능/박스 §3.2)", async () => {
+    const p = unwrap(await s.product.createProduct(editor, { name: "관통 상품 4", generalDocumentId: generalId }));
+    const now = (await s.document.get(generalId))!.tree.children.find((c) => c.id === "a10") as ArticleNode;
+    const copy: ArticleNode = { ...now, children: [...now.children, { id: "old-box", kind: "box", title: "용어", lines: ["줄"] }] };
+    const r = rejection(await s.product.saveGeneralSettings(editor, p.id, { generalDocumentId: generalId, hiddenArticles: [], overrides: [], copies: [{ articleId: "a10", article: copy, templateHash: articleHash(now) }] }));
+    expect(r.reason).toBe("invalid");
+    if (r.reason === "invalid") expect(r.issues.map((i) => [i.message, i.at.document, i.at.articleId])).toEqual([["옛 박스 — 박스 참조로 바꾼다", "product", "a10"]]);
+  });
 });
