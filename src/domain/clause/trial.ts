@@ -10,6 +10,7 @@
  */
 import type { EnumDef } from "../catalog/types";
 import { paragraphLabel, itemLabel, subitemLabel } from "../document/numbering";
+import { chooseParticle, particlePreset } from "../document/particles";
 import { evaluate, parse, type EvalContext, type ExprType, type LookupResult } from "../expression";
 import { formsOfLevel, fieldsOfForm } from "../master";
 import { entered, NOT_ENTERED } from "../types";
@@ -208,8 +209,9 @@ export function runTrial(clause: Clause, input: TrialInput, deps: TrialDeps): Tr
     return hit.empty ? [] : hit.children;
   };
 
-  const inlineText = (list: readonly Inline[]): string => list.map(inline).join("");
-  const inline = (n: Inline): string => {
+  /** 인라인 목록 → 글. 조사 칩은 앞서 찍힌 글(`before` — 감싼 문장 안 조건 앞의 글까지)로 고른다 (기능/문면 §3.11). */
+  const inlineText = (list: readonly Inline[], before = ""): string => list.reduce((acc, n) => acc + inline(n, before + acc), "");
+  const inline = (n: Inline, before: string): string => {
     switch (n.kind) {
       case "text":
         return n.text;
@@ -219,9 +221,9 @@ export function runTrial(clause: Clause, input: TrialInput, deps: TrialDeps): Tr
         return valueText(v, typeOfCode.get(n.ref.trim()), deps.enums);
       }
       case "inlineCond":
-        return inlineText(pickBranch(n.branches));
+        return inlineText(pickBranch(n.branches), before);
       case "inlineSwitch":
-        return inlineText(pickCase(n.on, n.cases));
+        return inlineText(pickCase(n.on, n.cases), before);
       case "articleRef": {
         const target = n.targets[0]?.articleId ?? "";
         if (target.startsWith(PARAM_TARGET)) return `⟨${target.slice(PARAM_TARGET.length)}⟩`;
@@ -231,6 +233,11 @@ export function runTrial(clause: Clause, input: TrialInput, deps: TrialDeps): Tr
         return `〔별표 ${deps.appendixName?.(n.appendixCode) ?? n.appendixCode}〕`;
       case "optionSlot":
         return ""; // 펼치기가 이미 선택지 문구로 바꿨다
+      case "particle": {
+        const { text, resolved } = chooseParticle(n.preset, before);
+        if (!resolved) note(`조사 「${particlePreset(n.preset).label}」 — 앞 글자로 받침을 판정할 수 없어 「${text}」로 병기했습니다`);
+        return text;
+      }
     }
   };
 

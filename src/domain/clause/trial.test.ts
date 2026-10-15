@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { EnumDef } from "../catalog/types";
+import type { Block } from "./nodes";
 import { runTrial, trialDefaults } from "./trial";
 import type { Clause } from "./types";
 
@@ -91,6 +92,25 @@ describe("runTrial — 시험 문맥으로 펼쳐 렌더", () => {
       { kind: "paragraph", label: "③", text: "암 칸" },
       { kind: "paragraph", label: "④", text: "⟨지급사유 조⟩에서 정한 대로 드립니다" },
     ]);
+  });
+
+  it("조사 칩은 앞 글(조건 가지 결과까지)의 받침으로 고른다 — 문장 맨 앞이면 병기", () => {
+    const body: Block[] = [
+      {
+        id: "pp",
+        kind: "paragraph",
+        children: [
+          { id: "c", kind: "inlineCond", branches: [{ id: "b1", when: "arg.갱신", children: [t("b", "최초계약일")] }, { id: "b2", children: [t("e", "회사")] }] },
+          { id: "x1", kind: "particle", preset: "eul-reul" },
+          t("f", " 따릅니다"),
+        ],
+      },
+      { id: "pq", kind: "paragraph", children: [{ id: "x2", kind: "particle", preset: "i-ga" }] },
+    ];
+    const withParticle: Clause = { ...clause, mode: "block", body };
+    const run = (갱신: boolean) => runTrial(withParticle, { values: { 사유: "V01", 갱신, 금액: 0 }, plans: { 종들: { applies: true, reasons: [] } }, options: { O01: "V01" } }, { enums }).lines.map((l) => l.text);
+    expect(run(true)).toEqual(["최초계약일을 따릅니다", "이(가)"]);
+    expect(run(false)).toEqual(["회사를 따릅니다", "이(가)"]);
   });
 
   it("값이 바뀌면 가지 · 칸이 바뀐다 — 사유 없음이면 조건 블록이, 「문구 없음」 칸이면 그 자리가 빠진다", () => {
