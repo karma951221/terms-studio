@@ -16,6 +16,9 @@ import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, constBindin
 import type { EnumDef } from "@/domain/catalog";
 import { unfoldPreset, type Bindings, type Clause } from "@/domain/clause";
 import {
+  codeChangeBreaks,
+  codeTag,
+  documentCodeEntries,
   indexTree,
   isRepeatSource,
   multiTarget,
@@ -28,6 +31,7 @@ import {
   referenceTargetLabel,
   refKey,
   refTargetOf,
+  suggestCode,
   type Appendix,
   type ArticleRefNode,
   type DocumentNode,
@@ -297,7 +301,7 @@ function needsConnector(ctx: DocCtx, targets: readonly RefTarget[]): boolean {
   return targets.length >= 2 || targets.some((t) => multiTarget(t, ctx.repeatedKeys));
 }
 
-/** 저장된 대상 → 고르기 트리의 줄 id (같은 코드의 분기 짝이면 문서 순 첫 줄). 범위의 색인들에서 찾는다. */
+/** 저장된 대상 → 고르기 트리의 줄 id (같은 코드의 분기 짝은 한 줄 — 문서 순 첫 노드). 범위의 색인들에서 찾는다. */
 function selectedIds(node: Pick<ArticleRefNode, "targets">, indexes: readonly ReadonlyMap<Id, ReferenceTarget>[]): Id[] {
   return node.targets.flatMap((t) => {
     for (const index of indexes) {
@@ -720,6 +724,47 @@ function RepeatBlockPopup({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
 }
 
 /** 팝업 하나 — 종류대로. */
+/**
+ * 코드 수정 창 (ADR-0072 결정 5 · 6) — 항 · 호 · 목 · 함수조항 참조 · 반복 블록의 P코드 한 칸. 기본값은 지금 코드(충돌 줄에서 열면 추천값),
+ * 「추천」은 공존 코드를 피한 시스템 추천값을 넣는다. 공존 중복이면 적용이 거부된다(명령 `setCode`). 바꾼 코드는 문서 저장 한 번에 반영된다.
+ * 이 문서 안 참조가 깨지는 값이면 건수를 미리 보인다 — 그 참조를 먼저 고쳐야 저장된다. 다른 문서 몫은 저장 확인 카드가 보인다.
+ */
+function CodePopup({ env, spec, anchor, onClose }: { env: PopupEnv; spec: Extract<PopupSpec, { kind: "code" }>; anchor: Anchor; onClose: () => void }) {
+  const tree = env.tree;
+  const node = indexTree(tree).nodes.get(spec.nodeId)?.node as (Node & { code?: Code }) | undefined;
+  const suggested = suggestCode(documentCodeEntries(tree), spec.nodeId);
+  const [value, setValue] = useState(() => (spec.suggest ? suggested : node?.code) ?? suggested ?? "");
+  if (!node) return null;
+  const level = env.ctx.numbers.get(node.id)?.kind ?? node.kind;
+  const code = value.trim();
+  const breaks = code === "" ? 0 : codeChangeBreaks(tree, node.id, code);
+  return (
+    <Popover anchor={anchor} label="코드" onClose={onClose}>
+      <PopForm env={env} onClose={onClose} build={() => (code === "" ? "코드를 쓴다." : code === node.code ? [] : [{ type: "setCode", nodeId: node.id, code }])}>
+        <div className="ts-form-row">
+          <label htmlFor="pop-code">코드</label>
+          <span className="ts-form-control">
+            <input id="pop-code" type="text" name="code" className="ts-mono" value={value} onChange={(e) => setValue(e.target.value)} autoComplete="off" spellCheck={false} />
+            {suggested && suggested !== code && (
+              <button type="button" className="ts-doc-pick" onClick={() => setValue(suggested)}>
+                추천 {suggested}
+              </button>
+            )}
+          </span>
+        </div>
+        <p className="ts-code-tag">지금 {node.code ? codeTag(node.code, level) : "코드 없음 — 저장 때 매긴다"}</p>
+        {breaks > 0 && (
+          <p className="ts-form-issues" role="alert">
+            이 문서 {breaks}건 — 이 코드를 가리키는 참조가 깨집니다. 먼저 고쳐야 저장됩니다.
+          </p>
+        )}
+        <p className="ts-muted">같은 조의 공존하는 항 · 호 · 목과 겹치면 거부된다(같은 조건 블록의 다른 가지만 같은 코드). 참조는 코드를 따라가지 않는다 — 다른 문서가 가리키면 저장 때 확인을 받는다.</p>
+        <PopActions onCancel={onClose} />
+      </PopForm>
+    </Popover>
+  );
+}
+
 export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec: PopupSpec; anchor: Anchor; onClose: () => void }) {
   const { ctx } = env;
   const ix = indexTree(env.tree);
@@ -733,6 +778,8 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
   });
 
   switch (spec.kind) {
+    case "code":
+      return <CodePopup env={env} spec={spec} anchor={anchor} onClose={onClose} />;
     case "repeatBlock":
       return <RepeatBlockPopup env={env} spec={spec} anchor={anchor} onClose={onClose} />;
 

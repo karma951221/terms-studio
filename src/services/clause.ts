@@ -55,7 +55,7 @@ import {
   type Usage,
 } from "@/domain/clause";
 import type { Inline } from "@/domain/clause/nodes";
-import { indexTree, referenceKeys, renameBindingsIn, repeatedKeys, unfoldPresetsIn } from "@/domain/document";
+import { indexTree, lostInnerCodeEntries, referenceKeys, refTargetFacts, renameBindingsIn, repeatedKeys, unfoldPresetsIn, type RecheckDocument, type RefTargetFact } from "@/domain/document";
 import type { TypeResolver } from "@/domain/expression";
 import type { Actor, Code, Issue, Result } from "@/domain/types";
 import { ok, reject } from "@/domain/types";
@@ -195,23 +195,27 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
    * 조 참조 대상 열쇠 — 보통약관 마스터의 조 id · 조#P코드 (기능/함수조항 §3.5 · ADR-0072). 보통약관이 여러 벌이면 합집합
    * (MVP 는 1벌 — 2벌 이상은 기능/함수조항 §5 미결). 문서 서비스 `envOf` 의 `generalReferenceKeys` 와 같은 기준.
    */
-  async function generalReferenceKeysOf(tx: Db): Promise<{ keys: ReadonlySet<string>; repeated: ReadonlySet<string> }> {
+  async function generalReferenceKeysOf(tx: Db): Promise<{ keys: ReadonlySet<string>; repeated: ReadonlySet<string>; targets: ReadonlyMap<string, RefTargetFact> }> {
     const keys = new Set<string>();
     const repeated = new Set<string>();
+    const targets = new Map<string, RefTargetFact>();
+    const clauses = new Map((await repo.listClauses(tx)).map((c) => [c.code, c]));
     for (const summary of await documentRepo.listDocuments(tx, "general")) {
       const doc = await documentRepo.loadDocument(tx, summary.id);
       if (!doc) continue;
       const ix = indexTree(doc.tree);
       for (const k of referenceKeys(ix)) keys.add(k);
       for (const k of repeatedKeys(ix)) repeated.add(k); // 반복 블록 안 대상 — 대상 하나여도 연결어 필수 (결정 14 확장)
+      // 대상 사실 — 안쪽 코드 존재 · 값 한정 열거형 (문서 저장의 대응 보통약관 검사와 같은 재료)
+      for (const [k, f] of refTargetFacts(ix, { clauseOf: (c) => clauses.get(c) })) targets.set(k, f);
     }
-    return { keys, repeated };
+    return { keys, repeated, targets };
   }
 
   async function context(tx: Db, catalog?: ReadonlyMap<Code, Discriminator>): Promise<ClauseContext> {
     const cat = catalog ?? (await catalogOf(tx));
     const existing = (await repo.listClauses(tx)).map((c) => ({ code: c.code, label: c.label }));
-    const { keys: generalReferenceKeys, repeated: generalRepeatedKeys } = await generalReferenceKeysOf(tx);
+    const { keys: generalReferenceKeys, repeated: generalRepeatedKeys, targets: generalTargets } = await generalReferenceKeysOf(tx);
     const appendixCodes = new Set((await documentRepo.listAppendices(tx)).map((a) => a.code));
     const boxCodes = new Set((await documentRepo.listBoxes(tx)).map((x) => x.code));
     const enumDefs = new Map((await listEnums(tx)).map((e) => [e.code, e]));
@@ -223,6 +227,8 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
         resolveType: typeResolverFrom(cat),
         generalReferenceKeys,
         generalRepeatedKeys,
+        generalTargets,
+        enumOf: (c) => enumDefs.get(c),
         appendixExists: (c) => appendixCodes.has(c),
         boxExists: (c) => boxCodes.has(c),
         enumValues: (c) => enumValues.get(c),
@@ -249,6 +255,26 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
       return def ? discriminatorResultType(def, undefined, catalog) : undefined;
     };
     return recheckUsages(clause, usages, lookupIn(catalog), typeOf);
+  }
+
+  /**
+   * 사라진 안쪽 코드를 가리키는 문서 — 사용처(이 함수조항을 넣은 참조 노드)의 펼친 안쪽 코드를 같은 문서 · 담보약관(대응 보통약관)이 가리키는데
+   * 지금 본문에 그 코드가 없으면 재검사 목록에 오른다 (기능/문면 §3.7 · ADR-0049). 같은 사용처의 다른 재검사 줄과 한 항목으로 합친다.
+   */
+  async function withInnerLoss(tx: Db, clause: Clause, usages: readonly Usage[], entries: RecheckEntry[]): Promise<RecheckEntry[]> {
+    if (usages.length === 0) return entries;
+    const docs: RecheckDocument[] = [];
+    for (const summary of await documentRepo.listDocuments(tx)) {
+      const d = await documentRepo.loadDocument(tx, summary.id);
+      if (d) docs.push({ id: d.id, title: d.title, kind: d.kind, ownerId: d.ownerId ?? d.id, tree: d.tree, ...(d.generalDocumentId ? { generalDocumentId: d.generalDocumentId } : {}) });
+    }
+    const out = [...entries];
+    for (const loss of lostInnerCodeEntries(clause, usages, docs)) {
+      const same = out.findIndex((e) => e.usage.documentId === loss.usage.documentId && e.usage.refNodeId === loss.usage.refNodeId);
+      if (same >= 0) out[same] = { ...out[same], issues: [...out[same].issues, ...loss.issues] };
+      else out.push(loss);
+    }
+    return out;
   }
 
   /** 비파괴 변경 (본문·옵션 무관) — 읽기 → 도메인 → 저장. */
@@ -284,7 +310,8 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
     );
     if (!saved.ok) return saved as Result<SaveOutcome>;
     const usages = await usage.documentsReferencing(saved.value.code);
-    return ok({ clause: saved.value, recheck: recheckOf(saved.value, usages, catalog!), warnings: unitWarnings(saved.value, usages.length) });
+    const recheck = await withInnerLoss(db, saved.value, usages, recheckOf(saved.value, usages, catalog!));
+    return ok({ clause: saved.value, recheck, warnings: unitWarnings(saved.value, usages.length) });
   }
 
   return {
@@ -429,6 +456,10 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
         ok(checkAttachmentForReference(def, await lookupOf(db), { ownerId: owner.id })),
       ),
 
-    recheck: (code) => withClause(db, code, async (def) => ok(recheckOf(def, await usage.documentsReferencing(code), await catalogOf(db)))),
+    recheck: (code) =>
+      withClause(db, code, async (def) => {
+        const usages = await usage.documentsReferencing(code);
+        return ok(await withInnerLoss(db, def, usages, recheckOf(def, usages, await catalogOf(db))));
+      }),
   };
 }

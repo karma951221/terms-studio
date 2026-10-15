@@ -52,6 +52,7 @@ import {
   clauseScopedRefLabel,
   paramTargetId,
   generalRefsOf,
+  type RefTargetFact,
   indexTree,
   numberTree,
   optionCarrier,
@@ -172,13 +173,16 @@ function unionRefs(generals: ClauseEditorData["generals"], articleRefParams: rea
   const articleIds = new Set<Id>();
   const referenceKeys = new Set<string>(articleRefParams.map(paramTargetId));
   const repeatedKeys = new Set<string>();
+  // 대상 사실 — 값 한정 열거형(이 편집기는 함수조항 본문을 받지 않아 안쪽 코드 존재는 서버 저장 검사가 본다)
+  const targets = new Map<string, RefTargetFact>();
   for (const g of generals) {
     const refs = generalRefsOf(g.tree);
     refs.articleIds.forEach((id) => articleIds.add(id));
     refs.referenceKeys.forEach((k) => referenceKeys.add(k));
     refs.repeatedKeys?.forEach((k) => repeatedKeys.add(k)); // 반복 블록 안 대상 — 대상 하나여도 연결어 (결정 14 확장)
+    refs.targets?.forEach((f, k) => targets.set(k, f));
   }
-  return { articleIds, referenceKeys, repeatedKeys };
+  return { articleIds, referenceKeys, repeatedKeys, targets };
 }
 
 /**

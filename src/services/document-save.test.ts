@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { nodeBuilders, sequentialIds, type ArticleNode, type ClauseGate, type EditOp } from "@/domain/document";
 import type { Actor, Id, Result } from "@/domain/types";
 
+import { insertClause } from "@/db/repo/clause";
 import { createTestDb, type TestDb } from "@/db/test-utils";
 import { createDocumentService, type DocumentService } from "./document";
 
@@ -197,5 +198,66 @@ describe("document.save — 편집본 저장 (ADR-0074)", () => {
     expect(v3.version).toBe(3);
     const v4 = unwrap(await svc.importTree(editor, g.id, { ...v3.tree, children: [] }));
     expect(v4.version).toBe(4);
+  });
+});
+
+describe("코드 변경의 다른 문서 영향 — 확인 카드 (ADR-0072 결정 6)", () => {
+  let t: TestDb;
+  let svc: DocumentService;
+  const b = nodeBuilders(sequentialIds("c"));
+
+  beforeAll(async () => {
+    t = await createTestDb();
+    svc = createDocumentService(t.db, { clauseGate: async () => gate, newId: sequentialIds("cv") });
+  });
+  afterAll(async () => {
+    await t.close();
+  });
+
+  it("함수조항 본문의 보통약관 참조 · 담보약관의 안쪽 코드 참조도 깨질 참조로 센다 — 확인하면 저장", async () => {
+    const g = unwrap(await svc.createGeneral(editor, "코드 바꾸는 보통약관"));
+    const para = b.paragraph([b.text("항")]);
+    para.code = "P0100";
+    const ref = b.clauseBlock("C001", { tone: "T1" });
+    ref.code = "P0200";
+    const gArt = b.article("지급사유", [para, ref]);
+    const g1 = unwrap(await svc.save(editor, g.id, { baseVersion: 1, ops: [{ type: "insert", node: gArt, at: { parentId: g.tree.id } }] }));
+    // 담보약관 — 함수조항 참조 P0200 의 안쪽 P0100 을 가리킨다
+    const s = unwrap(await svc.createSpecial(editor, cov, "안쪽 참조 특별약관"));
+    const inner = b.articleRef({ articleId: gArt.id, code: "P0200", innerCode: "P0100" }, "general", "및");
+    unwrap(
+      await svc.save(editor, s.id, {
+        baseVersion: 1,
+        ops: [
+          { type: "setGeneralDocument", generalDocumentId: g.id },
+          { type: "insert", node: b.article("준용", [b.paragraph([inner])]), at: { parentId: s.tree.id } },
+        ],
+      }),
+    );
+    // 함수조항 본문 — 보통약관 항 P0100 을 가리킨다
+    await insertClause(
+      t.db,
+      { code: "C0700", label: "가리키는 함수조항", mode: "inline", body: [{ id: "r1", kind: "articleRef", targets: [{ articleId: gArt.id, code: "P0100" }] }] as never, options: [], params: [], required: { discriminators: [], attributes: [] } },
+      editor.userId,
+    );
+
+    const first = rejection(
+      await svc.save(editor, g.id, {
+        baseVersion: g1.version,
+        ops: [
+          { type: "setCode", nodeId: para.id, code: "P0700" },
+          { type: "setCode", nodeId: ref.id, code: "P0800" },
+        ],
+      }),
+    );
+    expect(first.reason).toBe("needsConfirmation");
+    if (first.reason === "needsConfirmation") {
+      expect(first.impact.brokenRefs.map((c) => [c.document, c.ownerId]).sort()).toEqual([
+        ["clause", "C0700"],
+        ["special", cov],
+      ]);
+    }
+    const saved = unwrap(await svc.save(editor, g.id, { baseVersion: g1.version, ops: [{ type: "setCode", nodeId: para.id, code: "P0700" }, { type: "setCode", nodeId: ref.id, code: "P0800" }], confirm: true }));
+    expect(saved.version).toBe(g1.version + 1);
   });
 });
