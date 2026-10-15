@@ -27,6 +27,7 @@ import type { Code, Id } from "@/domain/types";
 import {
   attributeKinds,
   attributeValues,
+  benefits,
   clauseOptionOverrides,
   codeSequences,
   namingTemplates,
@@ -41,6 +42,7 @@ import {
   productPlanOptions,
   productPlans,
   products,
+  subCoverages,
 } from "../schema";
 import type { Db } from "./types";
 
@@ -437,9 +439,16 @@ function toNode(r: NodeRow): SnapshotNode {
 }
 
 export async function insertNode(db: Db, input: Omit<SnapshotNode, "id">, who?: Id): Promise<SnapshotNode> {
+  // 스냅샷 노드의 키는 마스터 노드의 키 (ADR-0087 결정 2). 도메인이 키를 싣게 되기(Task 5) 전까지 저장소가 마스터에서 읽어 채운다.
+  const [master] =
+    input.kind === "sub"
+      ? await db.select({ key: subCoverages.key }).from(subCoverages).where(eq(subCoverages.id, input.masterNodeId))
+      : await db.select({ key: benefits.key }).from(benefits).where(eq(benefits.id, input.masterNodeId));
+  // 마스터를 잃은 노드(테스트 픽스처 · 동기화 직전)는 형제 순서로 채운다 — 0027 의 같은 처리.
+  const fallback = input.kind === "sub" ? String(input.order + 1).padStart(2, "0") : String(input.order + 1);
   const [row] = await db
     .insert(productCoverageNodes)
-    .values({ productCoverageId: input.productCoverageId, kind: input.kind, masterNodeId: input.masterNodeId, parentId: input.parentId ?? null, name: input.name, order: input.order, createdBy: who, updatedBy: who })
+    .values({ key: master?.key ?? fallback, productCoverageId: input.productCoverageId, kind: input.kind, masterNodeId: input.masterNodeId, parentId: input.parentId ?? null, name: input.name, order: input.order, createdBy: who, updatedBy: who })
     .returning();
   return toNode(row);
 }

@@ -33,9 +33,10 @@ function toCoverage(row: CoverageRow, subs: SubRow[], bens: BenefitRow[]): Cover
     ...(row.specialGroup ? { specialGroup: row.specialGroup } : {}),
     subCoverages: subs.map<SubCoverage>((s) => ({
       id: s.id,
+      key: s.key,
       name: s.name,
       order: s.order,
-      benefits: (bySub.get(s.id) ?? []).map((b) => ({ id: b.id, name: b.name, order: b.order })),
+      benefits: (bySub.get(s.id) ?? []).map((b) => ({ id: b.id, key: b.key, name: b.name, order: b.order })),
     })),
   };
 }
@@ -188,6 +189,7 @@ export async function insertCoverage(db: Db, tree: Coverage, who: Id): Promise<v
  * 기존 트리 덮어쓰기 — 코드는 쓰지 않는다(불변). 트리에서 빠진 세부보장·급부 삭제 → 남는 노드의 이름을 자리표로 비움 → 노드 upsert.
  * 형제 이름은 유일 인덱스(`sub_coverages_sibling_name` · `benefits_sibling_name`)라, 이름 A↔B 맞바꾸기를 한 행씩 쓰면
  * 첫 행에서 걸린다. 도메인은 최종 트리로 검사하므로(점검 2026-09-27 H2 ③) 저장도 최종 이름만 인덱스에 닿게 한다.
+ * 지운 노드를 먼저 지우므로 같은 저장에서 지운 키를 새 노드가 받아도 `*_sibling_key` 유일 인덱스에 걸리지 않는다 (ADR-0087).
  */
 export async function saveCoverage(db: Db, tree: Coverage, who: Id): Promise<void> {
   const now = new Date();
@@ -228,18 +230,18 @@ async function upsertChildren(db: Db, tree: Coverage, who: Id, now: Date): Promi
   for (const s of tree.subCoverages) {
     await db
       .insert(subCoverages)
-      .values({ id: s.id, coverageId: tree.id, name: s.name, order: s.order, createdBy: who, updatedBy: who })
+      .values({ id: s.id, coverageId: tree.id, key: s.key, name: s.name, order: s.order, createdBy: who, updatedBy: who })
       .onConflictDoUpdate({
         target: subCoverages.id,
-        set: { name: s.name, order: s.order, updatedAt: now, updatedBy: who },
+        set: { key: s.key, name: s.name, order: s.order, updatedAt: now, updatedBy: who },
       });
     for (const b of s.benefits) {
       await db
         .insert(benefits)
-        .values({ id: b.id, subCoverageId: s.id, name: b.name, order: b.order, createdBy: who, updatedBy: who })
+        .values({ id: b.id, subCoverageId: s.id, key: b.key, name: b.name, order: b.order, createdBy: who, updatedBy: who })
         .onConflictDoUpdate({
           target: benefits.id,
-          set: { name: b.name, order: b.order, updatedAt: now, updatedBy: who },
+          set: { key: b.key, name: b.name, order: b.order, updatedAt: now, updatedBy: who },
         });
     }
   }
