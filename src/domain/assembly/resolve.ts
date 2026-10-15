@@ -268,23 +268,25 @@ class Walker {
   }
 
   /**
-   * 조 참조 대상 → 조립 대상 — 안쪽 코드 · 값 한정을 싣는다. 「현재 값」 한정은 참조 자리를 감싼 반복의 원소(열거값)로 바꾼다 —
-   * 반복 밖이거나 원소가 종이면 오류.
+   * 조 참조 대상 → 조립 대상 — 안쪽 코드 · 값 한정 · 키 한정을 싣는다. 「현재」 한정은 참조 자리를 감싼 반복의 원소로 바꾼다 —
+   * 열거값이면 값 한정, 담보 트리 노드면 그 키 경로의 키 한정(ADR-0087 결정 10). 반복 밖이거나 원소가 종이면 오류.
    */
   refTargets(n: { targets: readonly { articleId?: Id; code?: Code; innerCode?: Code; restrict?: unknown }[] }, f: Frame, at: Coordinate, map: (t: { articleId?: Id; code?: Code }) => { articleId: Id; code?: Code }): { ok: true; targets: RArticleRef["targets"] } | { ok: false; issue: Issue } {
     const out: RArticleRef["targets"] = [];
     for (const t of n.targets) {
       const base = map(t);
       const target: RArticleRef["targets"][number] = { ...base, ...(t.innerCode !== undefined ? { innerCode: t.innerCode } : {}) };
-      const r = t.restrict as { values?: unknown; current?: unknown } | undefined;
+      const r = t.restrict as { values?: unknown; current?: unknown; keys?: unknown } | undefined;
       if (r !== undefined) {
         if (Array.isArray(r.values)) target.values = r.values.filter((v): v is string => typeof v === "string");
+        else if (Array.isArray(r.keys)) target.keys = r.keys.filter((v): v is string => typeof v === "string");
         else if (typeof r.current === "string") {
           const e = f.loops?.[r.current];
-          if (!e) return { ok: false, issue: { kind: "structure", message: `값 한정 「현재 값」의 반복 ${r.current} 이(가) 이 참조를 감싸지 않습니다 — 그 반복 블록 안에서만 쓴다`, at } };
-          if (e.kind !== "enumValue") return { ok: false, issue: { kind: "typeMismatch", message: "값 한정 「현재 값」은 원소가 열거값(사유)인 반복에만 쓴다", at } };
-          target.values = [e.code];
-        } else return { ok: false, issue: { kind: "structure", message: "값 한정의 모양이 잘못됐습니다 — 값들 또는 현재 값", at } };
+          if (!e) return { ok: false, issue: { kind: "structure", message: `한정 「현재」의 반복 ${r.current} 이(가) 이 참조를 감싸지 않습니다 — 그 반복 블록 안에서만 쓴다`, at } };
+          if (e.kind === "coverageNode") target.keys = [e.path];
+          else if (e.kind !== "enumValue") return { ok: false, issue: { kind: "typeMismatch", message: "값 한정 「현재 값」은 원소가 열거값(사유)인 반복에만 쓴다", at } };
+          else target.values = [e.code];
+        } else return { ok: false, issue: { kind: "structure", message: "한정의 모양이 잘못됐습니다 — 값들 · 키들 · 현재", at } };
       }
       out.push(target);
     }

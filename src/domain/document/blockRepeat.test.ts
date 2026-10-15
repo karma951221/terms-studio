@@ -534,6 +534,17 @@ describe("키 한정 (ADR-0087 결정 10)", () => {
     expect(refTargetIssues({ articleId: "a1", code: "P0200", restrict: { current: "f" } }, ix.nodes.get("r")!, ix, { coverage })[0]).toMatchObject({ kind: "structure", message: expect.stringContaining("현재") });
   });
 
+  it("「현재」가 급부 반복인데 대상이 「세부보장마다」 = 오류 — 급부 키 경로는 세부보장 원소를 고르지 못한다(바깥 세부보장 반복의 「현재」는 통과)", () => {
+    const inner = { kind: "forBlock", id: "g", code: "P0500", source: { kind: "benefitsOfCurrent", loop: "f" }, children: [codedPara("q", "P0600", "급부 회차")] };
+    const d = docOf([{ kind: "forBlock", id: "f", code: "P0100", source: { kind: "subCoverages" }, children: [codedPara("p", "P0200", "본문"), inner] }]);
+    const ix = indexTree(d);
+    expect(refTargetIssues({ articleId: "a1", code: "P0200", restrict: { current: "f" } }, ix.nodes.get("q")!, ix, { coverage })).toEqual([]);
+    expect(refTargetIssues({ articleId: "a1", code: "P0200", restrict: { current: "g" } }, ix.nodes.get("q")!, ix, { coverage })[0]).toMatchObject({ kind: "structure", message: expect.stringContaining("세부보장마다") });
+    // 급부 반복 대상은 급부 「현재」 · 세부보장 「현재」 둘 다 통과
+    expect(refTargetIssues({ articleId: "a1", code: "P0600", restrict: { current: "g" } }, ix.nodes.get("q")!, ix, { coverage })).toEqual([]);
+    expect(refTargetIssues({ articleId: "a1", code: "P0600", restrict: { current: "f" } }, ix.nodes.get("q")!, ix, { coverage })).toEqual([]);
+  });
+
   it("문서 저장 검사 — validateDocument 가 scope.coverage 로 없는 키를 잡는다 · 연결어 규칙은 그대로", () => {
     const ref = (restrict: unknown, connector?: string) => ({ id: "r", kind: "articleRef", scope: "self", targets: [{ articleId: "a1", code: "P0200", restrict }], ...(connector ? { connector } : {}) });
     const d = (restrict: unknown, connector?: string) => docOf([{ kind: "forBlock", id: "f", code: "P0100", source: { kind: "subCoverages" }, children: [codedPara("p", "P0200", "본문")] }, { id: "q", kind: "paragraph", code: "P0300", children: [ref(restrict, connector)] }]);

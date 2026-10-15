@@ -309,7 +309,7 @@ class Renderer {
           return this.error(n.id, { kind: "brokenRef", message: "보통약관 템플릿이 없어 보통약관 참조를 해소할 수 없습니다", at: { ...n.at, ...(n.targets[0] ? { refPath: refKey(n.targets[0]) } : {}) } });
         }
         // 사라짐 판정 = 「살아남은 트리에 그 조의 그 코드가 없다」 — 같은 코드를 공유한 분기 짝 중 살아남은 것으로 해소한다 (ADR-0072 결정 9).
-        // 반복 · 함수조항 블록이 만든 노드는 원형 열쇠 하나에 여럿 — 펼친 것 전부, 같은 반복 회차 안의 참조면 그 회차의 사본, 값 한정이면 그 값이 낸 것만.
+        // 반복 · 함수조항 블록이 만든 노드는 원형 열쇠 하나에 여럿 — 펼친 것 전부, 같은 반복 회차 안의 참조면 그 회차의 사본, 값 한정이면 그 값이 낸 것만, 키 한정이면 그 키의 담보 트리 원소가 낸 것만.
         // 그렇게 좁힌 것이 0개면 조립 오류다 (ADR-0077 결정 7 — 좌표 = 참조 자리)
         const alive: ReferenceTarget[] = [];
         const dropped: { key: string; articleId: Id }[] = [];
@@ -335,13 +335,16 @@ class Renderer {
               }
             }
           }
+          // 키 한정 — 원소 키 경로가 키와 같거나 「키.」로 시작(문자열 정확 · 「.」 경계: 01 은 01 · 01.x 만, 010 은 아니다)
+          const keyHit = (l: LoopTag) => l.kind === "coverageNode" && l.path !== undefined && target.keys!.some((k) => l.path === k || l.path!.startsWith(`${k}.`));
           const narrowed = (found ?? []).filter(
             (inst) =>
               inst.loops.every((l) => n.within?.[l.loop] === undefined || n.within[l.loop] === l.element) &&
-              (target.values === undefined || inst.loops.some((l) => l.kind === "enumValue" && target.values!.includes(l.element))),
+              (target.values === undefined || inst.loops.some((l) => l.kind === "enumValue" && target.values!.includes(l.element))) &&
+              (target.keys === undefined || inst.loops.some(keyHit)),
           );
           if (narrowed.length > 0) alive.push(...narrowed.map((i) => i.target));
-          else if (target.values !== undefined || (found?.length ?? 0) > 0 || repeatBorn(ix, key)) empty.push({ key, articleId: target.articleId });
+          else if (target.values !== undefined || target.keys !== undefined || (found?.length ?? 0) > 0 || repeatBorn(ix, key)) empty.push({ key, articleId: target.articleId });
           else dropped.push({ key, articleId: target.articleId });
         }
         // 펼친 것이 0개인 대상은 참조 하나의 펼친 것 합이 0개일 때만 오류다 — 다른 대상이 살아 있으면 분기로 사라진 대상처럼 남은 대상으로 찍는다
@@ -349,7 +352,7 @@ class Renderer {
         if (empty.length > 0 && alive.length > 0) dropped.push(...empty);
         else if (empty.length > 0) {
           for (const { key } of empty) {
-            this.issues.push({ kind: "articleGone", message: `참조 대상 ${key} 을(를) 반복 · 값 한정으로 펼친 것이 0개입니다 — 이 상품에서 그 대상이 생기지 않는다`, at: { ...n.at, refPath: key } });
+            this.issues.push({ kind: "articleGone", message: `참조 대상 ${key} 을(를) 반복 · 값 · 키 한정으로 펼친 것이 0개입니다 — 이 상품에서 그 대상이 생기지 않는다`, at: { ...n.at, refPath: key } });
           }
           return { kind: "error", id: n.id, issue: this.issues.at(-1)! };
         }

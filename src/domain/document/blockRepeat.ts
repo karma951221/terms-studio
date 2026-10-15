@@ -349,7 +349,7 @@ export function treeLoopOfTarget(ix: TreeIndex, t: { articleId: Id; code?: Code 
  * - 값 한정: 대상(안쪽 코드면 그 참조 노드)이 원소가 열거값인 반복 안(또는 그 반복 블록)이어야 한다. 해당 값들 = 비지 않은 그 열거형의 값,
  *   현재 값 = 참조 자리를 감싼 열거값 반복.
  * - 키 한정 (ADR-0087 결정 10): 대상이 담보 트리 반복 안(또는 그 반복 블록)이어야 한다. 키는 하나 이상 · 「세부보장마다」 대상엔 세부보장 키만 ·
- *   문맥 담보에 없는 키 = 「없는 키」. 트리 반복 대상의 「현재」 = 참조 자리를 감싼 담보 트리 반복.
+ *   문맥 담보에 없는 키 = 「없는 키」. 트리 반복 대상의 「현재」 = 참조 자리를 감싼 담보 트리 반복 — 대상이 「세부보장마다」면 급부 반복은 안 된다.
  */
 export function refTargetIssues(t: { articleId: Id; code?: Code; innerCode?: Code; restrict?: unknown }, refEntry: Pick<NodeEntry, "path" | "node">, ix: TreeIndex, env: RefTargetEnv): { kind: Issue["kind"]; message: string }[] {
   const out: { kind: Issue["kind"]; message: string }[] = [];
@@ -377,7 +377,10 @@ export function refTargetIssues(t: { articleId: Id; code?: Code; innerCode?: Cod
     return out;
   }
   if (typeof r.current === "string" && tree) {
-    if (!treeLoopLevelsAt(ix, refEntry).some((l) => l.loop === r.current)) out.push({ kind: "structure", message: "키 한정 「현재」의 반복이 이 참조를 감싸지 않습니다 — 그 담보 트리 반복 안에서만 쓴다" });
+    const cur = treeLoopLevelsAt(ix, refEntry).find((l) => l.loop === r.current);
+    if (!cur) out.push({ kind: "structure", message: "키 한정 「현재」의 반복이 이 참조를 감싸지 않습니다 — 그 담보 트리 반복 안에서만 쓴다" });
+    // 급부 원소의 키 경로(01.1)는 세부보장 원소(01)를 고르지 못한다 — 조립에서 0개가 된다 (위 「세부보장마다 대상엔 세부보장 키만」과 같은 규칙)
+    else if (cur.level === "benefit" && tree.level === "subCoverage") out.push({ kind: "structure", message: "「세부보장마다」 반복 대상의 「현재」는 세부보장 반복이다 — 급부 반복의 「현재」는 세부보장을 고르지 못한다" });
     return out;
   }
   const enumCode = valueLoopEnum(ix, t, master);
