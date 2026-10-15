@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyStructurePlanTo,
+  draftNodeKeys,
   dryRunStructurePlan,
   hasRemoves,
   hasStructuralChange,
@@ -35,8 +36,8 @@ describe("structureDraftOf", () => {
   it("트리 순서대로 · 키는 encodeNodeKey · id 를 품는다", () => {
     const draft = structureDraftOf(tree);
     expect(draft).toEqual([
-      { id: "s1", key: "subCoverage:s1", name: "1종수술", benefits: [{ id: "b1", key: "benefit:b1", name: "수술급여금" }, { id: "b2", key: "benefit:b2", name: "위로금" }] },
-      { id: "s2", key: "subCoverage:s2", name: "2종수술", benefits: [{ id: "b3", key: "benefit:b3", name: "수술급여금" }] },
+      { id: "s1", key: "subCoverage:s1", nodeKey: "01", name: "1종수술", benefits: [{ id: "b1", key: "benefit:b1", nodeKey: "1", name: "수술급여금" }, { id: "b2", key: "benefit:b2", nodeKey: "2", name: "위로금" }] },
+      { id: "s2", key: "subCoverage:s2", nodeKey: "02", name: "2종수술", benefits: [{ id: "b3", key: "benefit:b3", nodeKey: "1", name: "수술급여금" }] },
     ]);
   });
 
@@ -281,5 +282,25 @@ describe("저장 계획 — 키는 최종 트리 기준 (ADR-0087 결정 2 · �
     const draft = [...structureDraftOf(keyed)].reverse();
     const r = dryRunStructurePlan(keyed, structurePlan(keyed, draft));
     expect(r.ok && r.value.subCoverages.map((s) => s.key)).toEqual(["02", "01"]);
+  });
+});
+
+describe("draftNodeKeys — 편집 중 새 카드에도 같은 규칙으로 미리 (기능/담보 §3.8)", () => {
+  it("저장 노드는 제 키, 새 행은 남은 형제 키를 피한 빈 가장 작은 키", () => {
+    const draft: StructureDraftSub[] = [
+      { id: "s3", key: "subCoverage:s3", nodeKey: "03", name: "C", benefits: [{ id: "b3", key: "benefit:b3", nodeKey: "2", name: "c" }, { key: "new:b1", name: "새" }] },
+      { key: "new:s1", name: "새", benefits: [{ key: "new:b2", name: "새급부" }] },
+    ];
+    const keys = draftNodeKeys(draft);
+    expect(keys.get("subCoverage:s3")).toBe("03");
+    expect(keys.get("new:s1")).toBe("01");
+    expect(keys.get("benefit:b3")).toBe("2");
+    expect(keys.get("new:b1")).toBe("1");
+    expect(keys.get("new:b2")).toBe("1");
+  });
+
+  it("structureDraftOf 는 저장 노드의 키를 싣는다", () => {
+    const tree: Coverage = { id: "c", name: "c", description: "", subCoverages: [{ id: "s", key: "02", name: "s", order: 0, benefits: [{ id: "b", key: "3", name: "b", order: 0 }] }] };
+    expect(structureDraftOf(tree)[0]).toMatchObject({ nodeKey: "02", benefits: [{ nodeKey: "3" }] });
   });
 });
