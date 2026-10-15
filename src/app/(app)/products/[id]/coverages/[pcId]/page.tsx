@@ -91,19 +91,19 @@ export default async function ProductCoverageDetailPage({ params }: { params: Pr
         <div className="ts-cov-card-body">
           {valueForm("coverage", pc.id, "productCoverage", `${pc.coverageName} (마스터)`)}
           <div className="ts-cov-grid">
-            {pc.subCoverages.map((s, subIndex) => (
+            {pc.subCoverages.map((s) => (
               <section key={s.id} className="ts-cov-card" data-level="subCoverage" aria-label={`세부보장 ${s.name}`}>
                 <div className="ts-cov-card-head">
-                  <span className="ts-cov-card-level">세부보장 {subIndex + 1}</span>
+                  <span className="ts-cov-card-level">세부보장 {s.key}</span>
                   <span className="ts-cov-card-name">{s.name}</span>
                 </div>
                 <div className="ts-cov-card-body">
                   {valueForm("subCoverage", s.id, "productSubCoverage", `${s.name} (마스터)`)}
                   <div className="ts-cov-benefits">
-                    {s.benefits.map((b, benefitIndex) => (
+                    {s.benefits.map((b) => (
                       <section key={b.id} className="ts-cov-card" data-level="benefit" aria-label={`급부 ${b.name}`}>
                         <div className="ts-cov-card-head">
-                          <span className="ts-cov-card-level">급부 {benefitIndex + 1}</span>
+                          <span className="ts-cov-card-level">급부 {b.key}</span>
                           <span className="ts-cov-card-name">{b.name}</span>
                         </div>
                         <div className="ts-cov-card-body">{valueForm("benefit", b.id, "productBenefit", `${b.name} (마스터)`)}</div>
