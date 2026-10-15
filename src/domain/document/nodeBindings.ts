@@ -38,6 +38,8 @@ export function nodeBindingIssues(doc: DocumentNode, gate: ClauseGate | undefine
       const here = { ...at, refPath: `arg.${name}` };
       const level = scope.levelOf(b.code);
       const own = used.bindings?.[name] !== undefined;
+      // 레벨을 모르면(없는 구분자) 건너뛴다 — 없는 구분자는 식 · 게이트 검사가 알린다
+      if (level === undefined) continue;
       if (level !== "subCoverage" && level !== "benefit") {
         if (b.node) out.push({ kind: "typeMismatch", message: `인자 ${name} — ${b.code} 는 ${level === "coverage" ? "담보" : "상품 · 세목"} 레벨 구분자라 키 경로가 없습니다`, at: here });
         continue;

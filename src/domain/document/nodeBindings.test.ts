@@ -46,6 +46,15 @@ describe("키 경로 연결 저장 검사 (ADR-0087 결정 4 · 8)", () => {
     expect(nodeBindingIssues(docOf([ref({ 감액: { kind: "discriminator", code: "D0007", node: { path: "01" } } })]), gate(clause()), { levelOf })[0].message).toContain("보통약관");
     expect(nodeBindingIssues(docOf([ref()]), gate(clause("D0100")), { coverage, levelOf })).toEqual([]);
   });
+
+  it("레벨을 모르는 구분자(없는 코드)에 키 경로를 붙여도 「상품 · 세목 레벨」이라 하지 않는다 — 없는 구분자는 다른 검사가 알린다", () => {
+    const unknown = ref({ 감액: { kind: "discriminator", code: "D9999", node: { path: "01" } } });
+    expect(nodeBindingIssues(docOf([unknown]), gate(clause()), { coverage, levelOf })).toEqual([]);
+    // 레벨을 아는 상품 · 세목 레벨은 그대로 typeMismatch
+    const planLevel = (c: string) => (c === "D0001" ? "plan" : levelOf(c)) as never;
+    const plan = ref({ 감액: { kind: "discriminator", code: "D0001", node: { path: "01" } } });
+    expect(nodeBindingIssues(docOf([plan]), gate(clause()), { coverage, levelOf: planLevel })[0].message).toContain("상품 · 세목 레벨");
+  });
 });
 
 describe("한정 없는 하위 레벨 연결의 빈칸 판정 (값 패널 공용)", () => {
