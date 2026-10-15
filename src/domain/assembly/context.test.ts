@@ -5,7 +5,7 @@ import { type EvalContext, type EvalResult, evaluate, parse } from "../expressio
 import type { MasterForm } from "../master";
 import type { Value } from "../types";
 import { buildContexts, snapshotNodeContext, specialContext } from "./context";
-import { alphaMaster, alphaPlanOptions, alphaPlusFixture, coverageEntry, planOption } from "./fixture";
+import { alphaMaster, alphaPlanOptions, alphaPlusFixture, coverageEntry, nodeQualFixture, planOption } from "./fixture";
 import type { AssemblyInput, AssemblyPlanOption } from "./types";
 
 function run(expression: string, ctx: EvalContext): EvalResult {
@@ -220,43 +220,19 @@ describe("여는 폼(optional) — 급부의 감액 폼을 안 열면 exist 가 
   });
 });
 
-describe("노드 한정자 — 조립 문맥은 스냅샷 masterNodeId 역조회로 그 노드에서 평가 (ADR-0066 §1)", () => {
-  const reductionMaster: MasterForm[] = [
-    {
-      key: "reduction",
-      label: "감액",
-      level: "benefit",
-      optional: true,
-      fields: [{ key: "periods", label: "구간", type: { kind: "table", columns: [{ key: "end", label: "기간", type: "period" }] } }],
-    },
-  ];
-  const 급부감액여부: Discriminator = { code: "D0002", label: "감액여부", description: "", level: "benefit", expression: "exist(reduction.periods)" };
-  const 세부감액여부: Discriminator = { code: "D0007", label: "감액여부", description: "", level: "subCoverage", expression: "any(D0002)" };
+describe("노드 한정자 — 조립 문맥은 스냅샷 노드 키로 그 노드에서 평가 (ADR-0087 결정 3)", () => {
+  it("D0007@01 은 참 · D0007@03 은 거짓 — 순번(2번째)이 아니라 키로 찾는다", () => {
+    const input = nodeQualFixture();
+    const ctx = specialContext(input, input.coverages[0]).eval;
+    expect(value("D0007@01", ctx)).toBe(true);
+    expect(value("D0007@03", ctx)).toBe(false);
+    expect(value("D0002@03.1", ctx)).toBe(false);
+  });
 
-  /** 세부A(급부A: 감액 있음) · 세부B(급부B: 감액 없음) — 마스터 세부보장 id 로 한정자가 갈린다. */
-  function withTwoSubCoverages(): AssemblyInput {
-    const input = alphaPlusFixture();
-    const coverage = coverageEntry({
-      id: "pc-nodequal",
-      name: "노드한정자테스트",
-      coverageId: "cov-nodequal",
-      coverageName: "노드한정자테스트",
-      attributes: [],
-      subCoverages: [
-        { id: "s-a", masterNodeId: "master-sub-a", name: "세부A", benefits: [{ id: "b-a", masterNodeId: "master-ben-a", name: "급부A" }] },
-        { id: "s-b", masterNodeId: "master-sub-b", name: "세부B", benefits: [{ id: "b-b", masterNodeId: "master-ben-b", name: "급부B" }] },
-      ],
-      values: { "b-a": { "reduction.periods": [{ end: 12 }] } },
-    });
-    return { ...input, master: reductionMaster, catalog: [급부감액여부, 세부감액여부], coverages: [coverage] };
-  }
-
-  it("D0007@마스터세부A 는 참 · D0007@마스터세부B 는 거짓", () => {
-    const input = withTwoSubCoverages();
-    const c = input.coverages[0];
-    const ctx = specialContext(input, c).eval;
-    expect(value("D0007@master-sub-a", ctx)).toBe(true);
-    expect(value("D0007@master-sub-b", ctx)).toBe(false);
+  it("스냅샷에 없는 키는 깨진 참조", () => {
+    const input = nodeQualFixture();
+    const r = run("D0007@02", specialContext(input, input.coverages[0]).eval);
+    expect(r).toMatchObject({ kind: "error", issue: { kind: "brokenRef" } });
   });
 });
 

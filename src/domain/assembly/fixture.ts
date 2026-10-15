@@ -560,6 +560,42 @@ export function coverageEntry(spec: CoverageSpec): AssemblyCoverage {
   return { snapshot, values, plans: [] };
 }
 
+/** 노드 키 픽스처의 급부 레벨 감액 폼 · 구분자 (D0002 급부 · D0007 세부보장 — 세부 = any(급부)). */
+export const nodeQualMaster: MasterForm[] = [
+  {
+    key: "reduction",
+    label: "감액",
+    level: "benefit",
+    optional: true,
+    fields: [{ key: "periods", label: "구간", type: { kind: "table", columns: [{ key: "end", label: "기간", type: "period" }] } }],
+  },
+];
+export const nodeQualCatalog: Discriminator[] = [
+  { code: "D0002", label: "감액여부", description: "", level: "benefit", expression: "exist(reduction.periods)" },
+  { code: "D0007", label: "감액여부", description: "", level: "subCoverage", expression: "any(D0002)" },
+];
+
+/**
+ * 세부보장 둘의 담보 하나 (ADR-0087) — 세부A(키 `01` · 급부A 키 `1`: 감액 있음) · 세부B(키 `03` — 순번과 다른 키 ·
+ * 급부B 키 `1`: 감액 없음). 노드 한정자 `@01` · `@03.1` 처럼 키로 노드를 찾는 테스트가 공유한다.
+ */
+export function nodeQualFixture(): AssemblyInput {
+  const input = alphaPlusFixture();
+  const coverage = coverageEntry({
+    id: "pc-nodequal",
+    name: "노드한정자테스트",
+    coverageId: "cov-nodequal",
+    coverageName: "노드한정자테스트",
+    attributes: [],
+    subCoverages: [
+      { id: "s-a", key: "01", masterNodeId: "master-sub-a", name: "세부A", benefits: [{ id: "b-a", key: "1", masterNodeId: "master-ben-a", name: "급부A" }] },
+      { id: "s-b", key: "03", masterNodeId: "master-sub-b", name: "세부B", benefits: [{ id: "b-b", key: "1", masterNodeId: "master-ben-b", name: "급부B" }] },
+    ],
+    values: { "b-a": { "reduction.periods": [{ end: 12 }] } },
+  });
+  return { ...input, master: nodeQualMaster, catalog: nodeQualCatalog, coverages: [coverage] };
+}
+
 /** 일반상해사망 탑재분 하나 — 스냅샷 값은 마스터와 같다 (갱신여부 false · 면책 true · 지급률 100 · 감액기간 24). */
 export function deathCoverage(id: Id, name: string, attributes: CoverageSpec["attributes"]): AssemblyCoverage {
   return coverageEntry({
