@@ -12,7 +12,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { Combobox, type ComboOption } from "@/app/_components/Combobox";
 import { IconButton, IconTrash } from "@/app/_components/icons";
 import { DOC_KIND_LABEL, REPEAT_DEPTH_LABEL, STRUCT_KEY_CHIP, SWITCH_WORD } from "@/app/_lib/labels";
-import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, constBindingOfText, constInputOf, constTextOf, planFormChoices, type LoopChoice, type NodeTree } from "@/app/(app)/functions/_components/params";
+import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, constBindingOfText, constInputOf, constTextOf, planFormChoices, staleBindingOption, type LoopChoice, type NodeTree } from "@/app/(app)/functions/_components/params";
 import type { EnumDef } from "@/domain/catalog";
 import { unfoldPreset, type Bindings, type Clause } from "@/domain/clause";
 import {
@@ -474,13 +474,21 @@ function ClauseFields({ clauses, code, options, bindings, preset, condition, loo
           // 문자 · 숫자 · 날짜 인자 — 콤보 아래 「상수 직접 입력」(채우면 콤보보다 먼저, 기능/함수조항 §4.4)
           const direct = constInputOf(p.type);
           const constText = constTextOf(seed.bindings?.[p.name], p.type);
+          // 후보에 없는 지금 연결 — 고를 수 없는 줄로 보이고, 고른 채 두면 그대로 지킨다(고르지 못한 줄은 폼에 안 실려 argkeep 으로 넘긴다)
+          const stale = staleBindingOption(seed.bindings?.[p.name], p.type, condition.discriminators, enumsOf(p.type), forms, loops, tree);
           return (
             <div key={`${clause!.code}-arg-${p.name}`} className="ts-form-row">
               <label htmlFor={`pop-arg-${p.name}`}>인자 {p.name}</label>
               <select id={`pop-arg-${p.name}`} name={`arg:${p.name}`} defaultValue={constText !== "" ? "" : bindingValue(seed.bindings?.[p.name])}>
                 <option value="">{p.default ? `기본 연결 — ${bindingLabel(p.default, p.type, condition.discriminators, enumsOf(p.type), forms, loops, tree)}` : "— 연결 안 함(기본 연결 없음) —"}</option>
+                {stale && (
+                  <option value={stale.value} disabled>
+                    {stale.label}
+                  </option>
+                )}
                 {groupedOptions(bindingOptions(p.type, condition.discriminators, enumsOf(p.type), forms, true, loops, tree))}
               </select>
+              {stale && <input type="hidden" name={`argkeep:${p.name}`} value={stale.value} />}
               {direct && (
                 <input
                   className="ts-arg-const"
@@ -536,7 +544,8 @@ function bindingsOf(fd: FormData, clauses: readonly Clause[], code: Code = str(f
     }
     // 상수 직접 입력이 차 있으면 그것이 연결이다 (문자 · 숫자 · 날짜 — 모양 오류는 `bindingInputProblem` 이 먼저 막는다)
     const direct = constBindingOfText(String(fd.get(`argc:${p.name}`) ?? ""), p.type).binding;
-    const value = fd.get(`arg:${p.name}`);
+    // 고를 수 없는 「(지금 연결 — 고칠 것)」 줄을 고른 채면 칸 값이 폼에 없다 — 지금 연결 그대로
+    const value = fd.get(`arg:${p.name}`) ?? fd.get(`argkeep:${p.name}`);
     const b = direct ?? (value !== null ? bindingOfValue(String(value), p.type) : undefined);
     if (b) out[p.name] = b;
   }

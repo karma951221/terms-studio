@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { CtxDiscriminator, CtxNode } from "@/app/(app)/documents/[id]/_components/condition/types";
 
-import { bindingLabel, bindingOfValue, constBindingOfText, constInputOf, constTextOf, bindingOptions, bindingValue, newParamNameError, paramEntries, typeLabel, typeOfValue, typeValue } from "./params";
+import { bindingLabel, bindingOfValue, constBindingOfText, constInputOf, constTextOf, bindingOptions, bindingValue, newParamNameError, paramEntries, staleBindingOption, typeLabel, typeOfValue, typeValue } from "./params";
 
 const discriminators = [
   { code: "D0001", label: "갱신여부", level: "coverage" as const, type: { kind: "boolean" as const }, forms: [] },
@@ -114,6 +114,15 @@ describe("키 경로 연결 칸 (ADR-0087 결정 4 · 7)", () => {
     const opts = bindingOptions({ kind: "boolean" }, discs, [], [], false, [], { nodes, loops: [{ id: "g", level: "benefit" }] });
     expect(opts.map((o) => o.value)).toEqual(expect.arrayContaining(["d:D0007@cur:g", "d:D0008@cur:g"]));
     expect(bindingOptions({ kind: "boolean" }, discs, [], [], false).map((o) => o.value)).toEqual(["d:D0007", "d:D0008"]);
+  });
+  it("저장된 연결이 후보에 없으면(하위 레벨 평면 · 낡은 「현재」) 「(지금 연결 — 고칠 것)」 줄 — 팝업 저장이 기본 연결로 몰래 되돌리지 않는다", () => {
+    const tree = { nodes, loops: [{ id: "f", level: "subCoverage" as const }] };
+    expect(staleBindingOption({ kind: "discriminator", code: "D0007" }, { kind: "boolean" }, discs, [], [], [], tree)).toEqual({ value: "d:D0007", label: "감액 여부 (D0007) (지금 연결 — 고칠 것)" });
+    expect(staleBindingOption({ kind: "discriminator", code: "D0007", node: { current: "gone" } }, { kind: "boolean" }, discs, [], [], [], tree)).toEqual({ value: "d:D0007@cur:gone", label: "현재 노드 › 감액 여부 (지금 연결 — 고칠 것)" });
+    // 후보에 있는 연결 · 연결 없음 · 상수 직접 입력 칸 연결은 줄을 더하지 않는다
+    expect(staleBindingOption({ kind: "discriminator", code: "D0007", node: { path: "01" } }, { kind: "boolean" }, discs, [], [], [], tree)).toBeUndefined();
+    expect(staleBindingOption(undefined, { kind: "boolean" }, discs, [], [], [], tree)).toBeUndefined();
+    expect(staleBindingOption({ kind: "const", value: "x" }, { kind: "string" }, discs, [], [], [], tree)).toBeUndefined();
   });
 });
 

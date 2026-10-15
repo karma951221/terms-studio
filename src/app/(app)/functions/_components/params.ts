@@ -248,6 +248,18 @@ export function bindingLabel(b: Binding | undefined, t: ParamType, discriminator
   return "반복의 현재 원소";
 }
 
+/**
+ * 저장된 연결이 지금 후보에 없을 때의 줄 — 담보약관의 하위 레벨 평면 연결(키 없음) · 감싸지 않는 반복의 「현재」 등.
+ * 칸이 그 값을 모르면 첫 줄(기본 연결)로 떨어져 팝업 저장이 몰래 되돌린다 — 고를 수 없는 「(지금 연결 — 고칠 것)」 줄로 지금 값을 보이고 지킨다(저장 검사가 고칠 곳을 알린다).
+ * 연결 없음 · 상수 직접 입력 칸 연결 · 조 참조 연결은 없음.
+ */
+export function staleBindingOption(b: Binding | undefined, t: ParamType, discriminators: readonly CtxDiscriminator[], enums: readonly EnumChoice[], forms: readonly PlanFormChoice[], loops: readonly LoopChoice[] = [], tree?: NodeTree): { value: string; label: string } | undefined {
+  if (!b || b.kind === "articleRef" || constTextOf(b, t) !== "") return undefined;
+  const value = bindingValue(b);
+  if (value === "" || bindingOptions(t, discriminators, enums, forms, true, loops, tree).some((o) => o.value === value)) return undefined;
+  return { value, label: `${bindingLabel(b, t, discriminators, enums, forms, loops, tree)} (지금 연결 — 고칠 것)` };
+}
+
 /** 인자 → 조건 · 슬롯 고르기의 「인자」 칸 (코드 `arg.<이름>`). 세목 선택지 목록은 조건 · 슬롯에 서지 않아 타입 없이(고를 수 없게) 둔다. */
 export function paramEntries(params: readonly ParamDef[], enums: readonly EnumChoice[]): CtxDiscriminator[] {
   return params
