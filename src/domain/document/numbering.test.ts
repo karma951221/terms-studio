@@ -177,9 +177,9 @@ describe("대상 고르기의 분기 짝 — 같은 열쇠(조 · P코드)는 �
     const elseP = b.paragraph([b.text("나")], [b.item([b.text("호1")], [b.subitem([b.text("목")])]), b.item([b.text("호3")])]);
     thenP.code = "P0100";
     elseP.code = "P0100";
-    thenP.items![0].code = "P0200";
+    (thenP.items![0] as { code?: string }).code = "P0200";
     (thenP.items![1] as { code?: string }).code = "P0300";
-    elseP.items![0].code = "P0200";
+    (elseP.items![0] as { code?: string }).code = "P0200";
     (elseP.items![0] as { subitems: { code?: string }[] }).subitems[0].code = "P0500";
     (elseP.items![1] as { code?: string }).code = "P0400";
     const article = b.article("짝", [b.condBlock([b.branch("D0001", [thenP]), b.branch(undefined, [elseP])])]);
