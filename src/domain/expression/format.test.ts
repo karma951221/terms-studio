@@ -70,16 +70,16 @@ describe("format — AST → 소스 문자열", () => {
   });
 });
 
-describe("노드 한정자 — 코드@id (ADR-0066 §1)", () => {
-  it("노드 한정자는 코드@id 로 찍히고 다시 파싱하면 같다", () => {
-    const src = "D0002@n1 = true and any(D0004@n2)";
+describe("노드 한정자 — 코드@키 경로 (ADR-0087 결정 3)", () => {
+  it("노드 한정자는 코드@키 경로 로 찍히고 다시 파싱하면 같다", () => {
+    const src = "D0007@01.2 = true and any(D0004@02)";
     const parsed = ast(src);
     expect(format(parsed)).toBe(src);
     expect(parse(format(parsed))).toEqual(parse(src));
   });
 
   it("displayName 훅이 참조 전체(한정자 포함)를 받는다", () => {
-    const parsed = ast("D0002@n1 = true");
+    const parsed = ast("D0002@01 = true");
     expect(
       format(parsed, (ref) => (ref.kind === "discriminator" ? `${ref.code}${ref.node ? "@유사암" : ""}` : refPath(ref))),
     ).toBe("D0002@유사암 = true");

@@ -216,14 +216,14 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
         fracture = unwrap(await coverage.addBenefit(editor, sub, "수술비"));
         ben2 = fracture.subCoverages[0].benefits[1].id;
         // 진단비(ben1) 한정 조건 + 한정 없는 급부 슬롯
-        const art = b.article("지급", [b.paragraph([b.inlineCond([b.inlineBranch(`D0003@${ben1} > 0`, [b.text("진단비 지급")])]), b.slot("D0003")])]);
+        const art = b.article("지급", [b.paragraph([b.inlineCond([b.inlineBranch(`D0003@01.1 > 0`, [b.text("진단비 지급")])]), b.slot("D0003")])]);
         const doc = await insertDocument(db, { kind: "special", ownerId: fracture.id, title: "골절 특별약관", generalDocumentId: general.id, tree: b.document("골절 특별약관", [art]) }, editor.userId);
         unwrap(await coverage.setDocument(editor, fracture.id, doc.id));
       });
 
       it("가리킨 급부를 지우면 한정 참조와 한정 없는 급부 참조가 모두 사용처", async () => {
         const u = await src().findUsages({ kind: "deleteNode", coverageId: fracture.id, node: { level: "benefit", id: ben1 } });
-        expect(u.map((c) => c.refPath).sort()).toEqual(["D0003", `D0003@${ben1}`]);
+        expect(u.map((c) => c.refPath).sort()).toEqual(["D0003", `D0003@01.1`]);
       });
 
       it("다른 급부를 지우면 한정 참조는 사용처가 아니다 — 한정 없는 급부 참조만", async () => {
@@ -233,7 +233,7 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
 
       it("한정 노드의 상위 세부보장을 지우면 한정 참조도 사용처", async () => {
         const u = await src().findUsages({ kind: "deleteNode", coverageId: fracture.id, node: { level: "subCoverage", id: sub } });
-        expect(u.map((c) => c.refPath).sort()).toEqual(["D0003", `D0003@${ben1}`]);
+        expect(u.map((c) => c.refPath).sort()).toEqual(["D0003", `D0003@01.1`]);
       });
 
       it("무결성 보고: 한정 노드가 사라지면 nodeQualifier 간선이 깨진 참조로 잡힌다", async () => {
@@ -241,7 +241,7 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
         expect(before.broken.filter((e) => e.via === "nodeQualifier")).toEqual([]);
         unwrap(await createCoverageService(contextualDb(t.db)).removeBenefit(admin, ben1, { confirm: true }));
         const after = await refs.integrity();
-        expect(after.broken.filter((e) => e.via === "nodeQualifier").map((e) => e.at.refPath)).toEqual([`D0003@${ben1}`]);
+        expect(after.broken.filter((e) => e.via === "nodeQualifier").map((e) => e.at.refPath)).toEqual([`D0003@01.1`]);
       });
     });
   });

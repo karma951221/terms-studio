@@ -211,7 +211,7 @@ describe("refs 그래프 — 구분자 참조의 노드 한정자 `@노드` (ADR
           id: "q-art",
           kind: "article",
           title: "지급",
-          children: [{ id: "q-par", kind: "paragraph", children: [{ id: "q-cond", kind: "inlineCond", branches: [{ id: "q-if", when: "D0003@ben-1 > 0", children: [{ id: "q-t", kind: "text", text: "지급" }] }] }] }],
+          children: [{ id: "q-par", kind: "paragraph", children: [{ id: "q-cond", kind: "inlineCond", branches: [{ id: "q-if", when: "D0003@01.1 > 0", children: [{ id: "q-t", kind: "text", text: "지급" }] }] }] }],
         },
       ],
     },
@@ -220,11 +220,11 @@ describe("refs 그래프 — 구분자 참조의 노드 한정자 `@노드` (ADR
     code: "C009",
     label: "한정자 문구",
     mode: "inline",
-    body: [{ id: "c9-cond", kind: "inlineCond", branches: [{ id: "c9-b1", when: "D0003@ben-1 > 0", children: [{ id: "c9-t", kind: "text", text: "지급" }] }] }],
+    body: [{ id: "c9-cond", kind: "inlineCond", branches: [{ id: "c9-b1", when: "D0003@01.1 > 0", children: [{ id: "c9-t", kind: "text", text: "지급" }] }] }],
     options: [],
     required: { discriminators: ["D0003"], attributes: [] },
   };
-  const 파생_한정자: Discriminator = { code: "D0010", label: "1종 지급률", description: "", level: "coverage", expression: "D0003@ben-1" };
+  const 파생_한정자: Discriminator = { code: "D0010", label: "1종 지급률", description: "", level: "coverage", expression: "D0003@01.1" };
 
   const withQualifiers = (coverages: Coverage[] = [수술비]) =>
     buildGraph({ discriminators: [지급률, 파생_한정자], clauses: [공용_한정자], documents: [담보약관_한정자], coverages, master });
@@ -233,7 +233,7 @@ describe("refs 그래프 — 구분자 참조의 노드 한정자 `@노드` (ADR
     const g = withQualifiers();
     const es = edgesTo(g, "coverageNode:benefit/ben-1").filter((e) => e.via === "nodeQualifier");
     expect(es.map((e) => nodeKey(e.from)).sort()).toEqual(["article:doc-q/q-art", "clause:C009", "discriminator:D0010"].sort());
-    for (const e of es) expect(e.at.refPath).toBe("D0003@ben-1");
+    for (const e of es) expect(e.at.refPath).toBe("D0003@01.1");
     // 구분자 간선은 그대로
     expect(edgesTo(g, "discriminator:D0003").map((e) => nodeKey(e.from)).sort()).toEqual(["article:doc-q/q-art", "clause:C009", "discriminator:D0010"].sort());
   });
@@ -241,7 +241,7 @@ describe("refs 그래프 — 구분자 참조의 노드 한정자 `@노드` (ADR
   it("문서 한정자 간선의 좌표는 조건식 자리 그대로다 (문서·조·가지 경로)", () => {
     const g = withQualifiers();
     const e = edgesTo(g, "coverageNode:benefit/ben-1").find((x) => x.via === "nodeQualifier" && x.from.kind === "article")!;
-    expect(e.at).toMatchObject({ document: "special", ownerId: fx.coverageId, articleId: "q-art", refPath: "D0003@ben-1" });
+    expect(e.at).toMatchObject({ document: "special", ownerId: fx.coverageId, articleId: "q-art", refPath: "D0003@01.1" });
     expect(e.at.nodePath).toContain("q-if");
   });
 

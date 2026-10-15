@@ -67,7 +67,7 @@ describe("arg.<이름> 파싱 · 표기", () => {
   });
 
   it("노드 한정자는 인자에 붙지 않는다", () => {
-    expect(syntaxError("arg.갱신형@n1")).toMatch(/노드 한정자/);
+    expect(syntaxError("arg.갱신형@01")).toMatch(/노드 한정자/);
   });
 });
 

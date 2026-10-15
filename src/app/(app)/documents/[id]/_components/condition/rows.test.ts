@@ -22,7 +22,7 @@ describe("조건 머리 줄 — 줄 ⇄ 식 (기능/문면 §4.3, 2026-09-28)", 
   });
 
   it("줄로 풀고 다시 묶으면 같은 식 — AND · OR · 노드 한정자 · 문자열", () => {
-    for (const source of ["D0009 = true", "D0009 = true and D0001 = '수술비'", "D0007@n1 = true or D0009 = false", "D0001 ≠ '암'"]) {
+    for (const source of ["D0009 = true", "D0009 = true and D0001 = '수술비'", "D0007@01 = true or D0009 = false", "D0001 ≠ '암'"]) {
       const head = headOf(source);
       expect(head.kind).toBe("rows");
       expect(sourceOf(head)).toBe(source);
@@ -63,7 +63,7 @@ describe("조건 머리 줄 — 줄 ⇄ 식 (기능/문면 §4.3, 2026-09-28)", 
     const typeOf = (ref: RowValueRef) => ctx.discriminators.find((d) => d.code === ctxCodeOf(ref))?.type;
     const head = headOf("D0009 = true");
     if (head.kind !== "rows") throw new Error("rows");
-    const same = setLeft(head.rows, 0, { kind: "discriminator", code: "D0007", node: { id: "x" } }, typeOf);
+    const same = setLeft(head.rows, 0, { kind: "discriminator", code: "D0007", node: { path: "01" } }, typeOf);
     expect(same.rows[0].right).toEqual(head.rows.rows[0].right);
     const other = setLeft(head.rows, 0, { kind: "discriminator", code: "D0001" }, typeOf);
     expect(other.rows[0]).toEqual({ left: { kind: "discriminator", code: "D0001" }, op: "=" });
@@ -88,8 +88,8 @@ describe("조건 머리 줄 — 줄 ⇄ 식 (기능/문면 §4.3, 2026-09-28)", 
   });
 
   it("목록 값 ⇄ 참조", () => {
-    expect(refOfKey("D0007@n9")).toEqual({ kind: "discriminator", code: "D0007", node: { id: "n9" } });
-    expect(refKey({ kind: "discriminator", code: "D0007", node: { id: "n9" } })).toBe("D0007@n9");
+    expect(refOfKey("D0007@01.2")).toEqual({ kind: "discriminator", code: "D0007", node: { path: "01.2" } });
+    expect(refKey({ kind: "discriminator", code: "D0007", node: { path: "01.2" } })).toBe("D0007@01.2");
     expect(refOfKey("")).toBeUndefined();
   });
 });
