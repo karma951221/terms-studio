@@ -342,6 +342,8 @@ export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id,
       loops.push(node);
       for (const child of node.children) visit(child, parent, section, here);
       loops.pop();
+      // 「비었을 때」 칸 — 원소 문맥 밖이지만 반복 줄 아래에 선다. 본문과 같은 코드면 본문 줄로 합친다(분기 짝 한 줄, ADR-0088 결정 4)
+      for (const child of node.fallback ?? []) visit(child, parent, section, here);
       return;
     }
     const number = numbers.get(node.id);
@@ -553,7 +555,9 @@ export function numberTree(doc: DocumentNode, opts: NumberingOptions = {}): Map<
       if (node.kind === "condBlock") {
         for (const br of node.branches) each(br.children, fn);
       } else if (node.kind === "forBlock") {
+        // 「비었을 때」 칸도 센다 — 본문과 그 밖의 경우 가지 짝처럼 전체 뷰 번호다(ADR-0088 결정 4)
         each(node.children, fn);
+        each(node.fallback ?? [], fn);
       } else {
         fn(node);
       }

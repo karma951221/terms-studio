@@ -320,6 +320,11 @@ export interface ForBlockNode {
   /** P코드 — 반복 블록을 가리키는 참조(조립 뒤 펼쳐진 것 전부, ADR-0077 결정 7)의 대상 정체성. */
   code?: Code;
   children: BlockNode[];
+  /**
+   * 「비었을 때」 칸 (ADR-0088 결정 4) — 원소 0개일 때 그 자리에 나오는 블록 내용(본문과 같은 허용 집합). 없거나 비면 아무것도 없다.
+   * 원소 문맥 밖이고, 본문과는 IF / 그 밖의 경우 분기 짝이다 — 같은 P코드를 쓸 수 있고 `@원소` 접미사를 받지 않는다.
+   */
+  fallback?: BlockNode[];
 }
 
 /**
@@ -444,7 +449,7 @@ export const allowedListChildren = {
 
 /**
  * `title` = 조 제목의 인라인 목록 (ADR-0088) — 조의 블록 자리(`slotsOf`)가 아니다. 색인 · 삽입 · 이동이 같은 길로 다룬다.
- * `fallback` = 반복의 「비었을 때」 칸 (ADR-0088 결정 3 — 지금은 인라인 반복만).
+ * `fallback` = 반복의 「비었을 때」 칸 (ADR-0088 결정 3 · 4) — 인라인 반복은 인라인 목록, 블록 반복은 블록 목록.
  */
 export type SlotName = "children" | "items" | "subitems" | "title" | "fallback";
 
@@ -456,6 +461,7 @@ export function slotsOf(kind: NodeKind): readonly SlotName[] {
     case "item":
       return ["children", "subitems"];
     case "inlineFor":
+    case "forBlock":
       return ["children", "fallback"];
     case "condBlock":
     case "inlineCond":
@@ -481,13 +487,13 @@ export function allowedIn(parentKind: NodeKind, slot: SlotName): readonly NodeKi
   if (slot === "children") return slotsOf(parentKind).includes("children") ? allowedChildren[parentKind] : undefined;
   if (slot === "items") return parentKind === "paragraph" ? allowedListChildren["paragraph.items"] : undefined;
   if (slot === "title") return parentKind === "article" ? TITLE_INLINE : undefined;
-  if (slot === "fallback") return parentKind === "inlineFor" ? allowedChildren.inlineFor : undefined;
+  if (slot === "fallback") return parentKind === "inlineFor" || parentKind === "forBlock" ? allowedChildren[parentKind] : undefined;
   return parentKind === "item" ? allowedListChildren["item.subitems"] : undefined;
 }
 
 /** 색인 항목(부모)의 목록 자리의 허용 집합 — 블록 반복은 투명(서 있는 자리에서 표 · 옛 박스를 뺀 것), 나머지는 규칙 테이블. */
 export function allowedAtSlot(parent: { node: Node; allowed: readonly NodeKind[] }, slot: SlotName): readonly NodeKind[] | undefined {
-  if (parent.node.kind === "forBlock") return slot === "children" ? forBodyAllowed(parent.allowed) : undefined;
+  if (parent.node.kind === "forBlock") return slot === "children" || slot === "fallback" ? forBodyAllowed(parent.allowed) : undefined;
   if (parent.node.kind === "inlineFor") return slot === "children" || slot === "fallback" ? inlineForBodyAllowed(parent.allowed) : undefined;
   return allowedIn(parent.node.kind, slot);
 }
@@ -504,7 +510,7 @@ export function listOf(node: Node, slot: SlotName): Node[] | undefined {
     case "title":
       return node.kind === "article" ? node.title : undefined;
     case "fallback":
-      return node.kind === "inlineFor" ? node.fallback : undefined;
+      return node.kind === "inlineFor" || node.kind === "forBlock" ? (node.fallback as Node[] | undefined) : undefined;
   }
 }
 
@@ -738,10 +744,23 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
       return;
     }
 
+    // 블록 반복 — 본문은 원소 문맥(inFor), 「비었을 때」 칸은 원소 문맥 밖(경로에 칸 표지). 둘 다 투명(표 · 옛 박스 제외) (ADR-0077 · ADR-0088 결정 4)
+    // 칸도 반복 블록 안이라 중첩 단계(forDepth)에는 센다 — 칸 안 반복은 바깥 원소 없이 서는 반복이지만 두 겹 이상을 열지 않는다
+    if (node.kind === "forBlock") {
+      const allowed = forBodyAllowed(f.allowed);
+      node.children.forEach((child, ci) =>
+        visit(child, { parentId: node.id, slot: "children", index: ci, path, articleId, allowed, inInlineCond, inFor: true, ...inInlineFor, forDepth }),
+      );
+      (node.fallback ?? []).forEach((child, ci) =>
+        visit(child, { parentId: node.id, slot: "fallback", index: ci, path: [...path, fallbackPathId(node.id)], articleId, allowed, inInlineCond, inFor: f.inFor, ...inInlineFor, forDepth }),
+      );
+      return;
+    }
+
     for (const slot of slotsOf(node.kind)) {
       const list = listOf(node, slot);
       if (!list) continue;
-      const allowed = node.kind === "forBlock" ? forBodyAllowed(f.allowed) : (allowedIn(node.kind, slot) ?? []);
+      const allowed = allowedIn(node.kind, slot) ?? [];
       list.forEach((child, ci) =>
         visit(child, { parentId: node.id, slot, index: ci, path, articleId, allowed, inInlineCond, inFor, ...inInlineFor, forDepth }),
       );

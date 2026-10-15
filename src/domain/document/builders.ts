@@ -113,12 +113,14 @@ export function nodeBuilders(newId: IdSource = randomIds) {
       ...(when !== undefined ? { when } : {}),
       children,
     }),
-    forBlock: (source: RepeatSource, children: BlockNode[] = [], alias?: string): ForBlockNode => ({
+    /** 블록 반복 — 「비었을 때」 칸(ADR-0088 결정 4)은 주면 싣는다. */
+    forBlock: (source: RepeatSource, children: BlockNode[] = [], alias?: string, fallback?: BlockNode[]): ForBlockNode => ({
       id: newId(),
       kind: "forBlock",
       source,
       ...(alias !== undefined ? { alias } : {}),
       children,
+      ...(fallback !== undefined ? { fallback } : {}),
     }),
     /** 인라인 반복 (ADR-0088) — 연결어는 기본값이 없다(안 주면 싣지 않는다). 「비었을 때」 칸은 주면 싣는다. */
     inlineFor: (source: RepeatSource, children: InlineNode[] = [], opts: { alias?: string; connector?: ReferenceConnector; fallback?: InlineNode[] } = {}): InlineForNode => ({
