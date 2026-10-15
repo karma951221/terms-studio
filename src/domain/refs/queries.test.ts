@@ -205,6 +205,13 @@ describe("describeKey — 표시명 표기 (기능/조립산출 §3.4 · 리뷰 
     expect(describeKey({ kind: "coverageNode", level: "benefit", id: "ben-1" }, g)).toBe("수술비 › 1종수술 › 수술보험금");
   });
 
+  it("끊어진 노드 한정자(담보id@키경로)는 「담보명 끊어진 노드 09.1」 — 담보를 모르면 담보 id 로 (ADR-0087)", () => {
+    const g = surgeryGraph();
+    expect(describeKey({ kind: "coverageNode", level: "benefit", id: `${fx.coverageId}@09.1` }, g)).toBe("수술비 끊어진 노드 09.1");
+    expect(describeKey({ kind: "coverageNode", level: "subCoverage", id: "cov-gone@09" }, g)).toBe("담보 cov-gone 끊어진 노드 09");
+    expect(describeKey({ kind: "coverageNode", level: "subCoverage", id: `${fx.coverageId}@09` })).toBe(`담보 ${fx.coverageId} 끊어진 노드 09`);
+  });
+
   it("선언되지 않은 대상(깨진 참조)은 상위 이름 아래 「…(없음)」으로, 상위도 없으면 id 표기로 돌아간다", () => {
     const g = surgeryGraph();
     expect(describeKey({ kind: "clause", code: "C999" }, g)).toBe("함수조항 C999");
