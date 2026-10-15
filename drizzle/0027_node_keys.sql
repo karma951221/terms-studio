@@ -1,5 +1,7 @@
 -- 노드 키 (ADR-0087 결정 2 · 11) — 기존 담보는 지금 형제 순서(order, 동률이면 이름 · id)대로 키를 채운다.
 -- 세부보장 01 · 02 …(두 자리, 99 를 넘으면 그대로 늘린다), 급부 1 · 2 …(그 세부보장 안). 스냅샷 노드는 마스터 노드의 키를 옮긴다.
+-- 주의: 마스터를 잃은 스냅샷 노드(한 번도 동기화되지 않은 옛 행)는 형제 순서로 채우므로, 살아 있는 형제 노드의 키와 같은 키를 받을 수 있다
+-- (스냅샷 노드엔 형제 키 유일 색인이 없다). 다음 구조 동기화가 그 행을 지운다 — 이미 적용된 이행이라 동작은 바꾸지 않고 이 주석만 더한다.
 ALTER TABLE "sub_coverages" ADD COLUMN "key" text;--> statement-breakpoint
 UPDATE "sub_coverages" AS s SET "key" = CASE WHEN r.n < 100 THEN lpad(r.n::text, 2, '0') ELSE r.n::text END
   FROM (SELECT "id", row_number() OVER (PARTITION BY "coverage_id" ORDER BY "order", "name", "id") AS n FROM "sub_coverages") AS r
