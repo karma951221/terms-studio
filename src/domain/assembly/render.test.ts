@@ -537,6 +537,27 @@ describe("참조 슬롯 렌더", () => {
   });
 });
 
+describe("별칭으로 푼 반복 대상의 「0개」 판정 (ADR-0088 결정 4 · 기본계약 대치)", () => {
+  it("별칭 열쇠가 반복이 낼 수 있던 열쇠면 「사라짐」이 아니라 「0개」 오류", () => {
+    const doc: SubstitutedDoc = {
+      kind: "document",
+      id: "g",
+      title: "보통약관",
+      children: [
+        {
+          kind: "article",
+          id: "g-pay",
+          title: "지급사유",
+          repeatKeys: ["b-pay:P0800"],
+          children: [{ kind: "paragraph", id: "p", key: "b-pay:P0100", children: [{ kind: "articleRef", id: "ref", targets: [{ articleId: "b-pay", code: "P0800" }], connector: "및", scope: "self", at }] }],
+        },
+      ],
+    };
+    const result = renderDocument(numberDocument(doc), { document: "general", ownerId: "g", aliases: new Map([["b-pay#P0800", "g-pay#b-pay:P0800"]]), appendices: [] });
+    expect(result.issues).toEqual([expect.objectContaining({ kind: "articleGone", message: expect.stringContaining("0개") })]);
+  });
+});
+
 describe("별표는 책자 등장 순으로 자동 수집한다 (ADR-0063)", () => {
   const master = [
     { code: "APX_A", name: "A", description: "" },

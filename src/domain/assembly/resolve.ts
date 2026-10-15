@@ -11,7 +11,8 @@
  *   「문구 없음」 칸은 비운다. 칸이 없는 값(열거값 추가로 생긴 미배정)은 **그 값이 실제로 닿은 자리만** `unassignedValue` 오류 마커다
  *   (좌표 = 분기 노드 · refPath 값, 문구에 함수조항 코드 — 그 값을 안 쓰는 상품 · 사용처는 영향 없음).
  * - **블록 반복**(forBlock, ADR-0077)은 원천을 원소로 풀어(`repeatElements` — 세목 선택지 · 바깥 현재 원소의 목록 · 합집합) 본문을 원소마다 복제한다
- *   (`cloneForElement` — id · P코드 끝에 `@원소`, 중첩이면 바깥 → 안쪽 두 번, 함수조항 펼치기 `/` 는 그 뒤). 원소 0 이면 블록째 없다.
+ *   (`cloneForElement` — id · P코드 끝에 `@원소`, 중첩이면 바깥 → 안쪽 두 번, 함수조항 펼치기 `/` 는 그 뒤). 원소 0 이면 「비었을 때」 칸을
+ *   그 자리에 편다(원소 문맥 밖 · 접미사 없음 — 본문과 칸은 분기 짝, ADR-0088 결정 4). 칸이 없으면 블록째 없다.
  *   종 원소 안에서는 조건 · 슬롯 · 펼친 함수조항이 그 종을 커서로 세운 문맥에서 평가되고(`Frame.plan`), 인자의 현재 원소 연결은 `Frame.loops` 로 푼다.
  *   원천 오류(미입력 목록값 · 없는 원천)는 반복 자리 오류 마커.
  * - **인라인 반복**(inlineFor, ADR-0088)은 같은 원천 · 같은 원소 순서 · 같은 현재 원소 문맥으로 본문 인라인을 원소마다 복제해 잇는다 —
@@ -229,7 +230,7 @@ class Walker {
   }
 
   /**
-   * 블록 반복 (ADR-0077) — 원소마다 본문 복제본을 자리 규칙(`each`)으로 편다. 원소 0 이면 빈 목록, 원천 오류면 마커 하나.
+   * 블록 반복 (ADR-0077) — 원소마다 본문 복제본을 자리 규칙(`each`)으로 편다. 원소 0 이면 「비었을 때」 칸(없으면 빈 목록), 원천 오류면 마커 하나.
    * 복제본 경로 = 반복 노드 id 다음에 복제 id(`원id@원소`). 종 원소면 프레임 커서를 그 종으로 바꾼다.
    */
   repeat<T>(n: ForBlockNode, f: Frame, each: (children: readonly unknown[], g: Frame) => T[]): (T | ErrorNode)[] {
@@ -238,13 +239,21 @@ class Walker {
     if (!r.ok) return [this.error(n.id, r.issue)];
     const via = f.via ?? "";
     // 반복 블록 · 그 안 대상을 가리키는 참조가 원소 0개일 때 「사라짐」이 아니라 「0개」 오류가 되도록 밟은 반복의 코드를 적어 둔다
+    // — 「비었을 때」 칸 쪽 코드도(원소가 있는 상품에서 칸에만 있는 대상을 가리키면 「0개」, ADR-0088 결정 4)
     if (f.articleId !== undefined) {
       const keys = this.repeatKeys.get(f.articleId) ?? new Set<string>();
       if (n.code !== undefined) keys.add(keyBase(`${via}${n.code}`));
       for (const c of codesIn(n.children, via)) keys.add(c);
+      for (const c of codesIn(n.fallback ?? [], via)) keys.add(c);
       this.repeatKeys.set(f.articleId, keys);
     }
     const group = n.code !== undefined ? [...(f.groups ?? []), `${via}${n.code}`] : f.groups;
+    // 원소 0개 — 「비었을 때」 칸을 그 자리에 편다: 원소 문맥 밖(바깥 프레임) · 경로에 칸 표지 · 복제 접미사 없음.
+    // 칸이 낸 블록도 반복 블록의 묶음이라 반복 블록 자신을 가리키는 참조는 칸이 낸 것 전부다 (ADR-0088 결정 4)
+    if (r.value.length === 0) {
+      const fallback = n.fallback ?? [];
+      return fallback.length === 0 ? [] : each(fallback, { ...f, path: [...f.path, n.id, fallbackPathId(n.id)], ...(group ? { groups: group } : {}) });
+    }
     return r.value.flatMap((element) => each(cloneForElement(n.children, repeatElementId(element)), { ...this.elementFrame(n, f, element), ...(group ? { groups: group } : {}) }));
   }
 
