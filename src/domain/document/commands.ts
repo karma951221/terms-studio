@@ -50,7 +50,7 @@ import {
 } from "./nodes";
 import { isRepeatSource, type RepeatSource } from "./blockRepeat";
 import type { ParticlePresetKey } from "./particles";
-import { codeFormatMessage,codeTreeInPlace, documentCodeIssues, isCodedKind, lostRefKeys, refKey, refLabel } from "./pcode";
+import { codeFormatMessage, codeTreeInPlace, documentCodeIssues, isCodedKind, lostRefKeys, refKey, refLabel } from "./pcode";
 
 // ───────────────────────────── 커맨드 ─────────────────────────────
 
