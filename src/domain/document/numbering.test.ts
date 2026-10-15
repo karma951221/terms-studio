@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { Clause } from "../clause/types";
 import { nodeBuilders, sequentialIds } from "./builders";
 import { surgeryFixture } from "./fixture";
 import type { ArticleNode, DocumentNode, Node } from "./nodes";
@@ -13,6 +14,7 @@ import {
   paragraphLabel,
   referenceAncestorIds,
   referenceChunkLabel,
+  referenceKeyIndex,
   referenceOutline,
   referenceTargetIndex,
   referenceTargetLabel,
@@ -164,6 +166,69 @@ describe("조 참조 대상 고르기 트리 — 관 › 조 › 항 › 호 ›
     const subitem = total.rows[0].children[0].children[0].children[1];
     const article = total.rows[1];
     expect([...referenceAncestorIds(index, [subitem.id, article.id, "없는 id"])]).toEqual([total.rows[0].id, total.rows[0].children[0].id, total.rows[0].children[0].children[0].id]);
+  });
+});
+
+describe("대상 고르기의 분기 짝 — 같은 열쇠(조 · P코드)는 한 줄 (ADR-0072 결정 4 · 기능/문면 §3.5)", () => {
+  /** 조 › IF [항 P0100 › 호 P0200 · P0300] / 그 밖의 경우 [항 P0100 › 호 P0200 · P0400 › 목 P0500]. */
+  const build = () => {
+    const b = nodeBuilders(sequentialIds("q"));
+    const thenP = b.paragraph([b.text("가")], [b.item([b.text("호1")]), b.item([b.text("호2")])]);
+    const elseP = b.paragraph([b.text("나")], [b.item([b.text("호1")], [b.subitem([b.text("목")])]), b.item([b.text("호3")])]);
+    thenP.code = "P0100";
+    elseP.code = "P0100";
+    thenP.items![0].code = "P0200";
+    (thenP.items![1] as { code?: string }).code = "P0300";
+    elseP.items![0].code = "P0200";
+    (elseP.items![0] as { subitems: { code?: string }[] }).subitems[0].code = "P0500";
+    (elseP.items![1] as { code?: string }).code = "P0400";
+    const article = b.article("짝", [b.condBlock([b.branch("D0001", [thenP]), b.branch(undefined, [elseP])])]);
+    const doc = b.document("d", [article]);
+    return { doc, article, thenP, elseP, index: referenceTargetIndex(doc, numberTree(doc)) };
+  };
+
+  it("분기 짝의 항은 한 줄 — 번호는 첫 가지 기준(제1항)이고, 하위 줄은 코드 기준 합집합", () => {
+    const { index } = build();
+    const [group] = referenceOutline(index);
+    const rows = group.rows[0].children;
+    expect(rows.map((r) => r.label)).toEqual(["제1항"]);
+    expect(rows[0].children.map((r) => r.target.item?.code)).toEqual(["P0200", "P0300", "P0400"]);
+    // 짝 호(P0200)의 목은 둘째 가지에만 있어도 합친 줄 아래에 선다
+    expect(rows[0].children[0].children.map((r) => r.target.subitem?.code)).toEqual(["P0500"]);
+  });
+
+  it("열쇠마다 줄이 하나라 저장된 대상을 다시 열면 그 줄이 체크된다 — 색인에 짝 둘째 노드 줄이 없다", () => {
+    const { index, thenP, elseP } = build();
+    expect(index.has(thenP.id)).toBe(true);
+    expect(index.has(elseP.id)).toBe(false);
+    const keys = [...index.values()].filter((t) => t.kind === "paragraph");
+    expect(keys).toHaveLength(1);
+    const article = [...index.values()].find((t) => t.kind === "article")!.article.id;
+    expect(referenceKeyIndex(index).get(`${article}#P0100`)?.id).toBe(thenP.id);
+  });
+
+  it("함수조항 본문 줄도 짝의 하위를 코드 기준 합집합으로 싣는다 — 첫 칸 하위만 걷지 않는다", () => {
+    const b = nodeBuilders(sequentialIds("w"));
+    const ref = b.clauseBlock("C0900");
+    ref.code = "P0100";
+    const doc = b.document("d", [b.article("함수", [ref])]);
+    const body = [
+      {
+        id: "sw",
+        kind: "switchBlock",
+        on: "arg.x",
+        cases: [
+          { id: "c1", values: ["V01"], children: [{ id: "h1", kind: "paragraph", code: "P0100", children: [], items: [{ id: "i1", kind: "item", code: "P0200", children: [] }] }] },
+          { id: "c2", values: ["V02"], children: [{ id: "h2", kind: "paragraph", code: "P0100", children: [], items: [{ id: "i2", kind: "item", code: "P0300", children: [] }] }] },
+        ],
+      },
+    ];
+    const clause = { code: "C0900", label: "짝 함수", mode: "block", body, options: [], params: [], required: { discriminators: [], attributes: [] } } as unknown as Clause;
+    const index = referenceTargetIndex(doc, numberTree(doc), { clauseOf: () => clause });
+    const [group] = referenceOutline(index);
+    const refRow = group.rows[0].children[0];
+    expect(refRow.children).toHaveLength(1);
+    expect(refRow.children[0].children.map((r) => r.target.item?.code)).toEqual(["P0200", "P0300"]);
   });
 });
 

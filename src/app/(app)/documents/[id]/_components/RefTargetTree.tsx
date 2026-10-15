@@ -194,7 +194,7 @@ export function RefTargetTree({
       )}
       <div id={id} className="ts-ref-tree" role="tree" aria-multiselectable="true" aria-label="참조 대상" onKeyDown={onKeyDown}>
         {outlines.map((s) =>
-          // 숨은 칸 — 문서 순서대로, 값은 참조 대상 열쇠(조 · 조#P코드, ADR-0072). 같은 코드의 분기 짝을 둘 다 골라도 대상은 하나다
+          // 숨은 칸 — 문서 순서대로, 값은 참조 대상 열쇠(조 · 조#P코드, ADR-0072). 같은 코드의 분기 짝은 색인에서 이미 한 줄이다
           [...new Set([...s.index].filter(([nodeId]) => selected.has(nodeId)).map(([, t]) => refKey(refTargetOf(t))))].map((key) => (
             <input key={`${s.key}:v:${key}`} type="hidden" name={name} value={key} />
           )),

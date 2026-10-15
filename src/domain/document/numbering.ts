@@ -238,6 +238,7 @@ function firstText(n: unknown): string {
 /**
  * 편집기용: 현재 계산 번호를 붙여 문서 안의 조·항·호·목을 참조 대상 id로 색인한다. 문서 순서(전위)대로.
  * 반복 블록 · 함수조항 블록 참조도 줄이 되고(펼친 것 전부), 함수조항 참조 아래에 그 본문의 항 · 호 · 목 줄(같은 코드는 한 줄)이 선다 (ADR-0077 결정 6 · 7).
+ * 열쇠(조 · P코드)마다 줄 하나 — 같은 코드의 분기 짝은 첫 노드 줄로 합치고 짝의 하위는 그 아래 코드 기준 합집합이다 (기능/문면 §3.5).
  * 이 줄들의 번호는 자리표시다 — 반복 블록은 첫 본문의 번호, 펼친 본문은 참조 자리 번호부터 센다.
  */
 export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id, NodeNumber>, opts: ReferenceIndexOptions = {}): Map<Id, ReferenceTarget> {
@@ -262,9 +263,22 @@ export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id,
     if (kind === "subitem" && parent.paragraph && parent.item) return { kind, ...up, article: parent.article, paragraph: parent.paragraph, item: parent.item, subitem: part, ...extra };
     return undefined;
   };
-  /** 함수조항 본문의 항 · 호 · 목 줄 — 같은 코드(칸 · 가지 짝)는 한 줄, 번호는 참조 자리부터 센 자리표시. */
+  /**
+   * 열쇠(조 · P코드 — `refTargetOf`)마다 줄 하나 (ADR-0072 결정 4). 같은 코드의 분기 짝 · 칸 짝은 처음 선 줄로 합치고, 짝의 하위는 그 줄 아래에
+   * 코드 기준 합집합으로 선다 — 번호 · 머리 말은 첫 줄(편집기 번호의 첫 가지) 것이다.
+   */
+  const rowOfKey = new Map<string, Id>();
+  const place = (id: Id, t: ReferenceTarget): { id: Id; target: ReferenceTarget } => {
+    const key = refKey(refTargetOf(t));
+    const existing = rowOfKey.get(key);
+    const hit = existing === undefined ? undefined : out.get(existing);
+    if (existing !== undefined && hit) return { id: existing, target: hit };
+    out.set(id, t);
+    rowOfKey.set(key, id);
+    return { id, target: t };
+  };
+  /** 함수조항 본문의 항 · 호 · 목 줄 — 같은 코드(칸 · 가지 짝)는 한 줄 · 하위는 코드 기준 합집합, 번호는 참조 자리부터 센 자리표시. */
   const innerRows = (list: readonly unknown[], parent: ReferenceTarget, row: Id, refId: Id, via: Code, start: number): void => {
-    const seen = new Set<Code>();
     let k = 0;
     const walk = (xs: readonly unknown[]): void => {
       for (const x of xs) {
@@ -274,14 +288,14 @@ export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id,
           continue;
         }
         const kind = n.kind === "paragraph" || n.kind === "item" || n.kind === "subitem" ? n.kind : undefined;
-        if (!kind || n.code === undefined || n.id === undefined || seen.has(n.code)) continue;
-        seen.add(n.code);
+        if (!kind || n.code === undefined || n.id === undefined) continue;
         const id = `${refId}/${n.id}`;
-        const t = below(parent, kind, { id, n: start + k++, code: n.code }, { parentRow: row, via, caption: `${INNER_WORD[kind]} ${n.code}${firstText(n) ? ` 「${firstText(n)}」` : ""}` });
+        const t = below(parent, kind, { id, n: start + k, code: n.code }, { parentRow: row, via, caption: `${INNER_WORD[kind]} ${n.code}${firstText(n) ? ` 「${firstText(n)}」` : ""}` });
         if (!t) continue;
-        out.set(id, t);
+        const placed = place(id, t);
+        if (placed.id === id) k += 1;
         const children = kind === "paragraph" ? n.items : kind === "item" ? n.subitems : undefined;
-        if (children) innerRows(children, t, id, refId, via, 1);
+        if (children) innerRows(children, placed.target, placed.id, refId, via, 1);
       }
     };
     walk(list);
@@ -299,10 +313,7 @@ export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id,
       if (parent && parent.kind !== "section" && node.code !== undefined) {
         const kind = parent.kind === "article" ? "paragraph" : parent.kind === "paragraph" ? "item" : undefined;
         const t = kind ? below(parent, kind, { id: node.id, n: firstNumber(node.children), code: node.code }, { caption: `반복 — ${opts.repeatCaption?.(node, loops.at(-1)) ?? node.alias ?? "반복 블록"}`, ...(row ? { parentRow: row } : {}) }) : undefined;
-        if (t) {
-          out.set(node.id, t);
-          here = node.id;
-        }
+        if (t) here = place(node.id, t).id;
       }
       loops.push(node);
       for (const child of node.children) visit(child, parent, section, here);
@@ -329,24 +340,22 @@ export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id,
       const clause = opts.clauseOf?.(node.clauseCode);
       const t = below(parent, number.kind, part(number.n), { caption: `함수조항 「${clause?.label ?? node.clauseCode}」`, ...rowOf });
       if (!t) return;
-      out.set(node.id, t);
-      if (clause) innerRows(withClauseCodes(clause.body) as readonly unknown[], parent, node.id, node.id, code, number.n);
+      const placed = place(node.id, t);
+      if (clause) innerRows(withClauseCodes(clause.body) as readonly unknown[], parent, placed.id, placed.id, code, number.n);
       return;
     }
     if (node.kind === "paragraph" && number && parent) {
-      const target = below(parent, "paragraph", part(number.n), rowOf)!;
-      out.set(node.id, target);
+      const { target } = place(node.id, below(parent, "paragraph", part(number.n), rowOf)!);
       for (const item of node.items ?? []) visit(item, target, section);
       return;
     }
     if (node.kind === "item" && number && parent?.paragraph) {
-      const target = below(parent, "item", part(number.n), rowOf)!;
-      out.set(node.id, target);
+      const { target } = place(node.id, below(parent, "item", part(number.n), rowOf)!);
       for (const subitem of node.subitems ?? []) visit(subitem, target, section);
       return;
     }
     if (node.kind === "subitem" && number && parent?.paragraph && parent.item) {
-      out.set(node.id, below(parent, "subitem", part(number.n), rowOf)!);
+      place(node.id, below(parent, "subitem", part(number.n), rowOf)!);
     }
   };
   for (const node of doc.children) visit(node, undefined, undefined);
@@ -365,8 +374,8 @@ export function refTargetOf(t: ReferenceTarget): RefTarget {
 }
 
 /**
- * 참조 대상 → 편집기 색인의 노드 id · 대상 (문서 순 첫 노드 — 같은 코드의 분기 짝 중 앞의 것). 편집기 전체 뷰는 분기를 풀지 않아
- * 짝 중 첫 노드의 번호로 보인다.
+ * 참조 대상 → 편집기 색인의 노드 id · 대상. 색인은 열쇠마다 줄 하나(같은 코드의 분기 짝은 문서 순 첫 노드)라 열쇠가 곧 줄이다.
+ * 편집기 전체 뷰는 분기를 풀지 않아 짝 중 첫 노드의 번호로 보인다.
  */
 export function referenceKeyIndex(index: ReadonlyMap<Id, ReferenceTarget>): ReadonlyMap<string, { id: Id; target: ReferenceTarget }> {
   const cached = keyIndexCache.get(index);

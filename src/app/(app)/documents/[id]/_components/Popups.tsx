@@ -297,7 +297,7 @@ function needsConnector(ctx: DocCtx, targets: readonly RefTarget[]): boolean {
   return targets.length >= 2 || targets.some((t) => multiTarget(t, ctx.repeatedKeys));
 }
 
-/** 저장된 대상 → 고르기 트리의 줄 id (같은 코드의 분기 짝이면 문서 순 첫 줄). 범위의 색인들에서 찾는다. */
+/** 저장된 대상 → 고르기 트리의 줄 id (같은 코드의 분기 짝은 한 줄 — 문서 순 첫 노드). 범위의 색인들에서 찾는다. */
 function selectedIds(node: Pick<ArticleRefNode, "targets">, indexes: readonly ReadonlyMap<Id, ReferenceTarget>[]): Id[] {
   return node.targets.flatMap((t) => {
     for (const index of indexes) {
