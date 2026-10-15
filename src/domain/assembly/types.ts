@@ -227,11 +227,13 @@ interface Keyed {
   groups?: string[];
 }
 
-/** 반복 원소 표지 — 템플릿 반복 id · 원소 id(종 = 세목 선택지 id, 열거값 = 값 코드). */
+/** 반복 원소 표지 — 템플릿 반복 id · 원소 id(종 = 세목 선택지 id, 열거값 = 값 코드, 담보 트리 노드 = 복제 접미사 원소). */
 export interface LoopTag {
   loop: Id;
   element: string;
-  kind: "planOption" | "enumValue";
+  kind: "planOption" | "enumValue" | "coverageNode";
+  /** 담보 트리 원소의 키 경로 (`01` · `01.2`) — 키 한정 해소(ADR-0087 결정 10)가 읽는다. */
+  path?: string;
 }
 export interface RSubitem<I> extends Keyed {
   kind: "subitem";

@@ -144,7 +144,7 @@ function viaOf(n: { id: Id; code?: Code }): string {
  * 반복 안 대상 · 반복 블록 · 함수조항 참조 · 값 한정 참조는 렌더가 이 셋으로 푼다 (ADR-0077 결정 7).
  */
 function keyOf(n: { code?: Code }, f: Frame): { key?: string; loops?: LoopTag[]; groups?: string[] } {
-  const loops = f.loops ? Object.entries(f.loops).map(([loop, e]): LoopTag => ({ loop, element: repeatElementId(e), kind: e.kind })) : [];
+  const loops = f.loops ? Object.entries(f.loops).map(([loop, e]): LoopTag => ({ loop, element: repeatElementId(e), kind: e.kind, ...(e.kind === "coverageNode" ? { path: e.path } : {}) })) : [];
   return {
     ...(n.code !== undefined ? { key: `${f.via ?? ""}${n.code}` } : {}),
     ...(loops.length > 0 ? { loops } : {}),
@@ -224,7 +224,7 @@ class Walker {
 
   /**
    * 블록 반복 (ADR-0077) — 원소마다 본문 복제본을 자리 규칙(`each`)으로 편다. 원소 0 이면 빈 목록, 원천 오류면 마커 하나.
-   * 복제본 경로 = 반복 노드 id 다음에 복제 id(`원id@원소`). 종 원소면 프레임 커서를 그 종으로 바꾼다.
+   * 복제본 경로 = 반복 노드 id 다음에 복제 id(`원id@원소`). 종 원소면 프레임 커서를 그 종으로, 담보 트리 노드면 행 노드(`row`)를 그 노드로 바꾼다.
    */
   repeat<T>(n: ForBlockNode, f: Frame, each: (children: readonly unknown[], g: Frame) => T[]): (T | ErrorNode)[] {
     const at = this.at(f, n.id);
@@ -234,6 +234,7 @@ class Walker {
       current: (loop) => f.loops?.[loop],
       enums: this.env.enums ?? new Map(),
       ...(this.env.master ? { master: this.env.master } : {}),
+      ...(this.ctx.rows ? { rows: this.ctx.rows } : {}),
       explain: (reason, where) => this.ctx.explainUndetermined(reason, where),
     }, at);
     if (!r.ok) return [this.error(n.id, r.issue)];
@@ -253,6 +254,8 @@ class Walker {
         path: [...f.path, n.id],
         loops: { ...f.loops, [loop]: element },
         ...(element.kind === "planOption" ? { plan: element.id } : {}),
+        // 담보 트리 원소 — 반복 표 행과 같은 현재 노드 문맥: 한정자 없는 참조는 이 노드의 자기-또는-조상에서 읽힌다 (ADR-0087 결정 8)
+        ...(element.kind === "coverageNode" ? { row: { level: element.level, id: element.id } } : {}),
         ...(group ? { groups: group } : {}),
       }),
     );
@@ -401,6 +404,7 @@ class Walker {
     const e = f.loops?.[loop];
     if (!e) return undefined;
     if (e.kind === "enumValue") return { kind: "enum", code: e.code };
+    if (e.kind === "coverageNode") return undefined; // 노드는 값 인자에 대지 않는다
     const ctx = this.ctx.plans?.context(e.id);
     return ctx ? { kind: "options", form: e.form, contexts: [ctx] } : undefined;
   }

@@ -6,22 +6,29 @@
  * - 바깥 현재 원소의 목록(`listOfCurrent`): 바깥 반복의 현재 종이 가진 목록값(복수) — **열거형 순서**. 원소 = 열거값 코드.
  * - 합집합(`union`): 거른 종들의 목록값을 합친 것(같은 값 한 번 · 열거형 순서) ∩ 열거값 필드 거름. 원소 = 열거값 코드.
  * - 목록값 · 필드가 미입력이면 오류(조용한 거짓 없음 — ADR-0004). 지운 열거값은 읽을 때 「없는 값」 오류다(context.ts `checkEnum`).
+ * - 담보 트리(`subCoverages` · `benefits` · `benefitsOfCurrent`, ADR-0087 결정 5): 특약 문맥의 행 원천(`deps.rows` — 스냅샷 트리)의 노드 —
+ *   **트리 순서**(키 순 아님). 원소 = 스냅샷 노드, 복제 접미사 = 노드 키(평평한 급부는 키 경로 `01.2`) — 인쇄 표기는 트리 순번 그대로(결정 9).
  */
 
 import { enumFieldValue } from "../catalog/fields";
 import type { EnumDef } from "../catalog/types";
-import type { RepeatSource } from "../document/blockRepeat";
+import { isRepeatSource, type RepeatSource } from "../document/blockRepeat";
 import { evaluate, parse, type EvalContext } from "../expression";
 import { findMasterField, MASTER, type MasterTree } from "../master";
+import type { RowSource, StructNode } from "../structure";
 import type { Code, Coordinate, Id, Issue } from "../types";
 import type { AssemblyPlanOption } from "./types";
 
-/** 반복의 원소 — 종(세목 선택지) 또는 열거값. `repeatElementId` 가 복제 접미사다. */
-export type RepeatElement = { kind: "planOption"; id: Id; form: Code } | { kind: "enumValue"; code: Code; enumCode: Code };
+/** 반복의 원소 — 종(세목 선택지) · 열거값 · 담보 트리 노드. `repeatElementId` 가 복제 접미사다. */
+export type RepeatElement =
+  | { kind: "planOption"; id: Id; form: Code }
+  | { kind: "enumValue"; code: Code; enumCode: Code }
+  /** 담보 트리 원소 — 스냅샷 노드 (ADR-0087 결정 5). `path` = 키 경로, `suffix` = 복제 접미사 원소(세부보장 `01` · 평평한 급부 `01.2` · 현재 세부보장의 급부 `2`). */
+  | { kind: "coverageNode"; level: "subCoverage" | "benefit"; id: Id; path: string; suffix: string };
 
-/** 복제 접미사에 쓰는 원소 id — 종이면 세목 선택지 id, 열거값이면 값 코드(중첩이면 바깥 종 접미사와 이어져 유일하다). */
+/** 복제 접미사에 쓰는 원소 id — 종이면 세목 선택지 id, 열거값이면 값 코드, 담보 트리 노드면 노드 키(중첩이면 바깥 접미사와 이어져 유일하다). */
 export function repeatElementId(e: RepeatElement): string {
-  return e.kind === "planOption" ? e.id : e.code;
+  return e.kind === "planOption" ? e.id : e.kind === "enumValue" ? e.code : e.suffix;
 }
 
 export interface RepeatDeps {
@@ -32,6 +39,8 @@ export interface RepeatDeps {
   current(loop: Id): RepeatElement | undefined;
   enums: ReadonlyMap<Code, EnumDef>;
   master?: MasterTree;
+  /** 특약 문맥의 행 원천(스냅샷 트리) — 담보 트리 원천의 재료. 없으면(보통약관) 담보 트리 원천은 오류. */
+  rows?: RowSource<EvalContext>;
   /** 미결 → 조립 오류. */
   explain(reason: string, at: Coordinate): Issue;
 }
@@ -42,7 +51,7 @@ export function repeatElements(source: RepeatSource | unknown, deps: RepeatDeps,
   const master = deps.master ?? MASTER;
   const fail = (kind: Issue["kind"], message: string, refPath?: string): Outcome<never> => ({ ok: false, issue: { kind, message, at: { ...at, ...(refPath !== undefined ? { refPath } : {}) } } });
   const s = source as RepeatSource;
-  if (typeof source !== "object" || source === null || !["planOptions", "listOfCurrent", "union"].includes(s.kind)) {
+  if (!isRepeatSource(source)) {
     return fail("structure", "반복 블록의 원천이 없습니다 — 편집기에서 원천을 고른다");
   }
 
@@ -125,6 +134,22 @@ export function repeatElements(source: RepeatSource | unknown, deps: RepeatDeps,
         elements = out;
       }
       return { ok: true, value: elements };
+    }
+    case "subCoverages":
+    case "benefits":
+    case "benefitsOfCurrent": {
+      if (!deps.rows) return fail("structure", "담보 트리 반복은 문맥 담보가 있는 문서(담보약관)에서만 펼칩니다");
+      const { root, providers } = deps.rows;
+      // 제공자는 order 순으로 낸다 — 트리 순서
+      const subsOf = (): StructNode[] => providers.coverage?.children(root) ?? [];
+      const bensOf = (sub: StructNode): StructNode[] => providers.subCoverage?.children(sub) ?? [];
+      const node = (level: "subCoverage" | "benefit", n: StructNode, path: string, suffix: string): RepeatElement => ({ kind: "coverageNode", level, id: n.id, path, suffix });
+      if (s.kind === "subCoverages") return { ok: true, value: subsOf().map((sub) => node("subCoverage", sub, sub.key!, sub.key!)) };
+      if (s.kind === "benefits") return { ok: true, value: subsOf().flatMap((sub) => bensOf(sub).map((b) => node("benefit", b, `${sub.key}.${b.key}`, `${sub.key}.${b.key}`))) };
+      const cur = deps.current(s.loop);
+      if (!cur || cur.kind !== "coverageNode" || cur.level !== "subCoverage") return fail("structure", "「현재 세부보장의 급부마다」가 「세부보장마다」 반복 밖에 있습니다");
+      const sub = subsOf().find((x) => x.id === cur.id);
+      return { ok: true, value: sub ? bensOf(sub).map((b) => node("benefit", b, `${cur.path}.${b.key}`, b.key!)) : [] };
     }
   }
 }
