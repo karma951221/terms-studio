@@ -22,6 +22,7 @@ import {
   collectRefs,
   createAppendix,
   createBox,
+  generalEnvOf,
   generalRefsOf,
   numberTree,
   removedIds,
@@ -195,7 +196,10 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
   /** 보통약관 템플릿 한 벌의 조연결 · 보통약관 조 참조 대상. 없거나 보통약관이 아니면 undefined. */
   async function generalRefsFor(tx: Db, generalDocumentId: Id): Promise<GeneralRefs | undefined> {
     const g = await repo.loadDocument(tx, generalDocumentId);
-    return g && g.kind === "general" ? generalRefsOf(g.tree) : undefined;
+    if (!g || g.kind !== "general") return undefined;
+    // 대상 사실(안쪽 코드 · 값 한정 열거형)은 함수조항 본문을 알아야 한다 — 저장 검사의 게이트와 같은 함수조항
+    const gate = deps.clauseGate ? await deps.clauseGate(tx) : undefined;
+    return generalRefsOf(g.tree, gate?.clauseOf ? { clauseOf: (c) => gate.clauseOf!(c) } : {});
   }
 
   /** 대응 보통약관을 뺀 검증 환경 — 종류 · 별표 존재 · 함수조항 게이트 · 좌표. */
@@ -219,7 +223,7 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
     const env = await baseEnvOf(tx, doc);
     if (doc.kind !== "special") return env;
     const refs = doc.generalDocumentId ? await generalRefsFor(tx, doc.generalDocumentId) : undefined;
-    return { ...env, generalArticleIds: refs?.articleIds ?? new Set(), generalReferenceKeys: refs?.referenceKeys ?? new Set(), ...(refs?.repeatedKeys ? { generalRepeatedKeys: refs.repeatedKeys } : {}) };
+    return { ...env, ...generalEnvOf(refs) };
   }
 
   /** 식 검사 재료 — 타입 조회 + 한정자 검사 문맥(담보 약관이면 문맥 담보 트리 · 구분자 레벨). */

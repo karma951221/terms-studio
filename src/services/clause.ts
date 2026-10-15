@@ -55,7 +55,7 @@ import {
   type Usage,
 } from "@/domain/clause";
 import type { Inline } from "@/domain/clause/nodes";
-import { indexTree, referenceKeys, repeatedKeys, unfoldPresetsIn } from "@/domain/document";
+import { indexTree, referenceKeys, refTargetFacts, repeatedKeys, unfoldPresetsIn, type RefTargetFact } from "@/domain/document";
 import type { TypeResolver } from "@/domain/expression";
 import type { Actor, Code, Issue, Result } from "@/domain/types";
 import { ok, reject } from "@/domain/types";
@@ -190,23 +190,27 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
    * 조 참조 대상 열쇠 — 보통약관 마스터의 조 id · 조#P코드 (기능/함수조항 §3.5 · ADR-0072). 보통약관이 여러 벌이면 합집합
    * (MVP 는 1벌 — 2벌 이상은 기능/함수조항 §5 미결). 문서 서비스 `envOf` 의 `generalReferenceKeys` 와 같은 기준.
    */
-  async function generalReferenceKeysOf(tx: Db): Promise<{ keys: ReadonlySet<string>; repeated: ReadonlySet<string> }> {
+  async function generalReferenceKeysOf(tx: Db): Promise<{ keys: ReadonlySet<string>; repeated: ReadonlySet<string>; targets: ReadonlyMap<string, RefTargetFact> }> {
     const keys = new Set<string>();
     const repeated = new Set<string>();
+    const targets = new Map<string, RefTargetFact>();
+    const clauses = new Map((await repo.listClauses(tx)).map((c) => [c.code, c]));
     for (const summary of await documentRepo.listDocuments(tx, "general")) {
       const doc = await documentRepo.loadDocument(tx, summary.id);
       if (!doc) continue;
       const ix = indexTree(doc.tree);
       for (const k of referenceKeys(ix)) keys.add(k);
       for (const k of repeatedKeys(ix)) repeated.add(k); // 반복 블록 안 대상 — 대상 하나여도 연결어 필수 (결정 14 확장)
+      // 대상 사실 — 안쪽 코드 존재 · 값 한정 열거형 (문서 저장의 대응 보통약관 검사와 같은 재료)
+      for (const [k, f] of refTargetFacts(ix, { clauseOf: (c) => clauses.get(c) })) targets.set(k, f);
     }
-    return { keys, repeated };
+    return { keys, repeated, targets };
   }
 
   async function context(tx: Db, catalog?: ReadonlyMap<Code, Discriminator>): Promise<ClauseContext> {
     const cat = catalog ?? (await catalogOf(tx));
     const existing = (await repo.listClauses(tx)).map((c) => ({ code: c.code, label: c.label }));
-    const { keys: generalReferenceKeys, repeated: generalRepeatedKeys } = await generalReferenceKeysOf(tx);
+    const { keys: generalReferenceKeys, repeated: generalRepeatedKeys, targets: generalTargets } = await generalReferenceKeysOf(tx);
     const appendixCodes = new Set((await documentRepo.listAppendices(tx)).map((a) => a.code));
     const boxCodes = new Set((await documentRepo.listBoxes(tx)).map((x) => x.code));
     const enumDefs = new Map((await listEnums(tx)).map((e) => [e.code, e]));
@@ -218,6 +222,8 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
         resolveType: typeResolverFrom(cat),
         generalReferenceKeys,
         generalRepeatedKeys,
+        generalTargets,
+        enumOf: (c) => enumDefs.get(c),
         appendixExists: (c) => appendixCodes.has(c),
         boxExists: (c) => boxCodes.has(c),
         enumValues: (c) => enumValues.get(c),

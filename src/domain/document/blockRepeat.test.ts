@@ -7,6 +7,7 @@ import type { Issue } from "../types";
 import { cloneForElement, repeatLabel, type RepeatSource } from "./blockRepeat";
 import { nodeBuilders, sequentialIds } from "./builders";
 import { applyCommand } from "./commands";
+import { generalRefsOf } from "./edit";
 import { numberTree, referenceAncestorIds, referenceChunkLabel, referenceOutline, referenceTargetIndex, referenceTargetLabel, refTargetOf } from "./numbering";
 import type { DocumentNode, ForBlockNode, TreeEnv } from "./nodes";
 import { validateTree } from "./nodes";
@@ -437,5 +438,40 @@ describe("반복 · 펼친 함수조항 안 · 값 한정 참조 저장 검사 (
     const outerId = (article.children[0] as { id: string }).id;
     (refNow.targets[0] as { restrict?: unknown }).restrict = { current: outerId };
     expect(validateTree(doc, env)).toEqual([expect.objectContaining({ message: expect.stringContaining("현재 값") })]);
+  });
+});
+
+describe("대응 보통약관 대상의 안쪽 코드 · 값 한정 열거형 — 담보약관 저장도 본다 (기능/문면 §3.7 ②)", () => {
+  /** 보통약관 = 납입면제조(바깥 반복 P0100 · 항 P0200 · 사유 반복 P0300 · 함수조항 참조 P0400 — 본문 호 P0100), 담보약관 = 보통약관 참조 하나. */
+  function 담보(target: Record<string, unknown>) {
+    const general = 납입면제조();
+    general.outer.code = "P0100";
+    general.paragraph.code = "P0200";
+    general.inner.code = "P0300";
+    general.ref.code = "P0400";
+    const generalArticle = (general.doc.children[0] as { id: string }).id;
+    const refs = generalRefsOf(general.doc, { clauseOf: (c) => [면제호, 부가항, 정의].find((x) => x.code === c) });
+    const b = nodeBuilders(sequentialIds("s"));
+    const ref = b.articleRef({ articleId: generalArticle, ...target } as never, "general", "및");
+    const doc = b.document("특약", [b.article("준용", [b.paragraph([ref])])]);
+    const treeEnv: TreeEnv = { ...env, kind: "special", generalArticleIds: refs.articleIds, generalReferenceKeys: refs.referenceKeys, ...(refs.repeatedKeys ? { generalRepeatedKeys: refs.repeatedKeys } : {}), ...(refs.targets ? { generalTargets: refs.targets } : {}) };
+    return validateTree(doc, treeEnv);
+  }
+
+  it("맞는 안쪽 코드 · 사유 반복 안 대상의 값 한정 = 통과", () => {
+    expect(담보({ code: "P0400", innerCode: "P0100", restrict: { values: ["V01"] } })).toEqual([]);
+  });
+
+  it("함수조항 본문에 없는 안쪽 코드 = 깨진 참조", () => {
+    expect(담보({ code: "P0400", innerCode: "P9900" })).toEqual([expect.objectContaining({ kind: "brokenRef", message: expect.stringContaining("P9900") })]);
+  });
+
+  it("함수조항 참조가 아닌 대상에 안쪽 코드 = 오류", () => {
+    expect(messages(담보({ code: "P0200", innerCode: "P0100" }))).toEqual([expect.stringContaining("함수조항 블록 참조를 가리킬 때만")]);
+  });
+
+  it("값 한정 — 종 반복(열거값 아님)만 감싼 대상 = 오류, 지운 값 = 「없는 값」", () => {
+    expect(messages(담보({ code: "P0200", restrict: { values: ["V01"] } }))).toEqual([expect.stringContaining("열거값(사유)")]);
+    expect(담보({ code: "P0400", restrict: { values: ["V99"] } })).toEqual([expect.objectContaining({ kind: "brokenRef", message: expect.stringContaining("없는 값 V99") })]);
   });
 });

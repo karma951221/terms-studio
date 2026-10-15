@@ -212,7 +212,8 @@ export function DocumentEditor(props: EditorProps) {
       env: { kind: doc.kind, appendixExists: (c: Code) => appendixCodes.has(c), boxExists: (c: Code) => boxByCode.has(c), clauseGate: gate, enumOf: (c: Code) => enumByCode.get(c), coordinate },
       generalRefs: (id: Id) => {
         const g = cache[id];
-        return g ? generalRefsOf(g.tree) : undefined;
+        // 대상 사실(안쪽 코드 · 값 한정 열거형)은 서버 저장 검사와 같은 함수조항 게이트로 짓는다
+        return g ? generalRefsOf(g.tree, gate.clauseOf ? { clauseOf: (c: Code) => gate.clauseOf!(c) } : {}) : undefined;
       },
     }),
     [doc.kind, appendixCodes, boxByCode, gate, enumByCode, coordinate],
