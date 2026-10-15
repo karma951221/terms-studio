@@ -63,7 +63,7 @@ export function applyBindings(clause: Clause, bindings: Bindings | undefined, fo
     }
     switch (b.kind) {
       case "discriminator":
-        return { kind: "ref", ref: { kind: "discriminator", code: b.code } };
+        return { kind: "ref", ref: { kind: "discriminator", code: b.code, ...(b.node && "path" in b.node ? { node: { path: b.node.path } } : {}) } };
       case "const":
         return { kind: "literal", literal: literalOf(b.value, param) };
       case "source":

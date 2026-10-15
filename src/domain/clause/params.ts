@@ -41,10 +41,13 @@ export interface PlanOptionSource {
   filter?: string;
 }
 
+/** 구분자 연결의 노드 — 담보약관에서만 (ADR-0087 결정 4). 키 경로(「세부보장 01 › …」) 또는 감싼 담보 트리 반복의 현재 노드(「현재 세부보장 › …」). */
+export type BindingNode = { path: string } | { current: Id };
+
 /** 인자 연결 하나. */
 export type Binding =
-  /** 사용처 문맥에서 평가하는 구분자 — 늦은 바인딩(구분자는 사용처 문맥에서 푼다). */
-  | { kind: "discriminator"; code: Code }
+  /** 사용처 문맥에서 평가하는 구분자 — 늦은 바인딩(구분자는 사용처 문맥에서 푼다). `node` 가 있으면 그 노드(키 경로) · 현재 노드에서 평가한다. */
+  | { kind: "discriminator"; code: Code; node?: BindingNode }
   /** 상수 — 스칼라 인자만. enum 은 값 코드, date 는 `YYYY-MM-DD`. */
   | { kind: "const"; value: ScalarValue }
   /** 반복의 현재 원소 — `loop` = 넣는 자리를 감싼 반복 블록(템플릿) id. 조립이 원소(열거값 코드 · 종)로 바꿔 댄다. */
