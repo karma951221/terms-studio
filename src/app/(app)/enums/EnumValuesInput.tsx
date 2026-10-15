@@ -12,7 +12,8 @@ import { enumValueLabelKey } from "@/domain/catalog";
  *
  * 현행 약관시스템의 「Enum 변수 추가」 화면을 준용한다 (2026-09-12): 따로 입력칸이 없고 ⊕ 가
  * 빈 행을 표에 바로 넣는다 — 값을 표 안에서 적는다. 처음부터 빈 행 둘이 서 있어 「여러 개 넣는 자리」 로 읽힌다.
- * 빈 행은 `required` 로, 중복은 `setCustomValidity` 로 막아 헤더의 「생성」 이 브라우저 검증에 걸리게 한다.
+ * 빈 행은 막지 않는다 — 제출 때 서버 액션이 버린다(디자인원칙 §2 L2 「빈 새 행은 생성 · 편집 모두 저장 때 버린다」, 값 0 개여도 생성된다).
+ * 중복만 `setCustomValidity` 로 막아 헤더의 「생성」 이 브라우저 검증에 걸리게 한다 — 빈 칸끼리는 중복이 아니다(`duplicateKeys`).
  * 서버 액션에는 순서대로 `values` 입력으로 넘긴다.
  */
 export function EnumValuesInput({ initial = ["", ""] }: { initial?: string[] }) {
@@ -43,7 +44,7 @@ export function EnumValuesInput({ initial = ["", ""] }: { initial?: string[] }) 
       rowClassName={(value) => (duplicates.has(value.key) ? "is-error" : undefined)}
       empty="값을 추가하세요."
       columns={[{ key: "label", header: FIELD_LABEL.valueName, className: "col-flex", cell: (value, index) => <>
-        <input name="values" value={value.label} required ref={(el) => { if (el) inputs.current.set(value.key, el); else inputs.current.delete(value.key); }} aria-label={`${index + 1}번 ${FIELD_LABEL.valueName}`} placeholder={index === 0 ? "예: 일반심사" : undefined} onChange={(event) => setValues(values.map((item) => item.key === value.key ? { ...item, label: event.target.value } : item))} onKeyDown={(event) => { if (event.key !== "Enter" || event.nativeEvent.isComposing) return; event.preventDefault(); if (index === values.length - 1) add(); else inputs.current.get(values[index + 1]!.key)?.focus(); }} className="ts-field-direct" />
+        <input name="values" value={value.label} ref={(el) => { if (el) inputs.current.set(value.key, el); else inputs.current.delete(value.key); }} aria-label={`${index + 1}번 ${FIELD_LABEL.valueName}`} placeholder={index === 0 ? "예: 일반심사" : undefined} onChange={(event) => setValues(values.map((item) => item.key === value.key ? { ...item, label: event.target.value } : item))} onKeyDown={(event) => { if (event.key !== "Enter" || event.nativeEvent.isComposing) return; event.preventDefault(); if (index === values.length - 1) add(); else inputs.current.get(values[index + 1]!.key)?.focus(); }} className="ts-field-direct" />
         {duplicates.has(value.key) ? <p className="ts-form-error">중복된 값입니다.</p> : null}
       </> }]}
     />
