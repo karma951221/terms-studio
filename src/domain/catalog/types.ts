@@ -85,11 +85,22 @@ export interface NewDiscriminator {
 
 export interface NewEnumValue {
   label: string;
+  /** 생성에서만 — 필드 ref(`NewEnumField.ref`) → 값. 빈 칸 · null 은 미입력(키를 두지 않는다). */
+  fields?: Readonly<Record<string, EnumFieldValue | null | undefined>>;
+}
+
+/** 생성 화면의 필드 한 행 — 코드는 생성 때 채번(`F01` …), 같은 생성의 값 칸이 `ref` 로 가리킨다 (ADR-0078 결정 2). */
+export interface NewEnumField {
+  ref: string;
+  label: string;
+  type: EnumFieldType;
 }
 
 export interface NewEnum {
   label: string;
   description?: string;
+  /** 필드 정의 — 이름 · 값 · 필드를 생성 한 번에 (기능/열거형 §4.2). */
+  fields?: NewEnumField[];
   values?: NewEnumValue[];
 }
 

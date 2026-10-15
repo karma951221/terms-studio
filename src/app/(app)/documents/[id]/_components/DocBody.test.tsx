@@ -304,3 +304,46 @@ describe("함수조항 머리 띠 — 조 참조 인자 연결 「인자: 이름
     expect(renderLapse(false)).toContain("인자: 보험금의 지급사유 조 ← 연결 없음");
   });
 });
+
+describe("호 목록 자리의 조건 · 값별 분기 · 반복 블록 — <li> 안에 <li> 를 바로 두지 않는다 (hydration, 2026-10-15)", () => {
+  const b = nodeBuilders(sequentialIds("L"));
+  /** <li> 의 부모가 늘 <ol>/<ul> 인지 — 아니면 그 자리를 돌려준다. */
+  const badLi = (html: string): string | null => {
+    const stack: string[] = [];
+    for (const m of html.matchAll(/<(\/?)(li|ol|ul)\b[^>]*>/g)) {
+      if (m[1]) stack.pop();
+      else {
+        if (m[2] === "li" && stack.at(-1) !== "ol" && stack.at(-1) !== "ul") return html.slice(Math.max(0, m.index - 80), m.index + 40);
+        stack.push(m[2]);
+      }
+    }
+    return null;
+  };
+  const tree = (extra: DocumentNode["children"][number][]) => {
+    const cond = b.condBlock([b.branch("D0009 = true", [b.item([b.text("조건 안 호")])]), b.branch(undefined, [b.item([b.text("아니면 호")])])]);
+    const sw = { ...b.condBlock([b.branch("D0001 = '수술비'", [b.item([b.text("값 칸 호")])])]), switchOn: "D0001" };
+    const rep = b.forBlock({ kind: "discriminator", code: "D0001" } as never, [b.item([b.text("반복 호")])]);
+    const sub = b.condBlock([b.branch("D0009 = true", [b.subitem([b.text("조건 안 목")])])]);
+    const items = [b.item([b.text("앞 호")], [b.subitem([b.text("앞 목")]), sub] as never), cond, sw, rep, b.item([b.text("뒤 호")]), ...extra];
+    return b.document("D", [b.article("가", [b.paragraph([b.text("항")], items as never)])]);
+  };
+
+  for (const edit of [false, true]) {
+    it(`${edit ? "편집" : "읽기"} 모드 — 조건 · 값별 분기 · 반복 블록 안의 호 · 목도 목록(<ol>) 안에 선다`, () => {
+      const t = tree([]);
+      const html = renderToStaticMarkup(<Block nodes={(t.children[0] as { children: DocumentNode["children"] }).children} ctx={ctxOf(t, edit)} />);
+      expect(html).toContain("조건 안 호");
+      expect(html).toContain("값 칸 호");
+      expect(html).toContain("반복 호");
+      expect(html).toContain("조건 안 목");
+      expect(badLi(html)).toBeNull();
+    });
+  }
+
+  it("블록 안 목록은 번호를 새로 세지 않는다 — 바깥 호 번호를 이어 센다(counter-reset 없는 ts-doc-list-cont)", () => {
+    const t = tree([]);
+    const html = renderToStaticMarkup(<Block nodes={(t.children[0] as { children: DocumentNode["children"] }).children} ctx={ctxOf(t, false)} />);
+    expect(html).toMatch(/<li[^>]*class="ts-doc-cond[^"]*"[^>]*>[\s\S]*?<ol class="ts-doc-list-cont">/);
+    expect(html).toMatch(/<li[^>]*class="ts-doc-repeat[^"]*"[^>]*>[\s\S]*?<ol class="ts-doc-list-cont">/);
+  });
+});

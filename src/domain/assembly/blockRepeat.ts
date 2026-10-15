@@ -10,7 +10,7 @@
  *   **트리 순서**(키 순 아님). 원소 = 스냅샷 노드, 복제 접미사 = 노드 키(평평한 급부는 키 경로 `01.2`) — 인쇄 표기는 트리 순번 그대로(결정 9).
  */
 
-import { enumFieldValue } from "../catalog/fields";
+import { enumCoordinate, enumFieldValue } from "../catalog/fields";
 import type { EnumDef } from "../catalog/types";
 import { isRepeatSource, type RepeatSource } from "../document/blockRepeat";
 import { evaluate, parse, type EvalContext } from "../expression";
@@ -46,6 +46,9 @@ export interface RepeatDeps {
 }
 
 type Outcome<T> = { ok: true; value: T } | { ok: false; issue: Issue };
+
+/** 실패에 원천 좌표를 얹는다 — 열거형이 고치는 곳인 오류(필드 미입력 · 없는 필드). */
+const withEnumSource = (o: Outcome<never>, source: Coordinate): Outcome<never> => (o.ok ? o : { ok: false, issue: { ...o.issue, source } });
 
 export function repeatElements(source: RepeatSource | unknown, deps: RepeatDeps, at: Coordinate): Outcome<RepeatElement[]> {
   const master = deps.master ?? MASTER;
@@ -127,8 +130,9 @@ export function repeatElements(source: RepeatSource | unknown, deps: RepeatDeps,
         for (const e of elements) {
           const code = (e as { code: Code }).code;
           const f = enumFieldValue(def.value, code, s.where.field);
-          if (f.kind === "notEntered") return fail("notEntered", `열거값 ${code} 의 필드 ${def.value.fields?.find((x) => x.key === s.where!.field)?.label ?? s.where.field} 이(가) 미입력입니다 — 열거형 ${def.value.code} 에서 값을 넣는다`, code);
-          if (f.kind !== "value") return fail("brokenRef", `합집합 거름 필드 ${s.where.field} 이(가) 열거형 ${def.value.code} 에 없습니다`, s.where.field);
+          // 고치는 곳은 그 열거형 — 원천 좌표를 실어 「고치러 가기」가 /enums/<코드> 로 간다
+          if (f.kind === "notEntered") return withEnumSource(fail("notEntered", `열거값 ${code} 의 필드 ${def.value.fields?.find((x) => x.key === s.where!.field)?.label ?? s.where.field} 이(가) 미입력입니다 — 열거형 ${def.value.code} 에서 값을 넣는다`, code), enumCoordinate(def.value, code));
+          if (f.kind !== "value") return withEnumSource(fail("brokenRef", `합집합 거름 필드 ${s.where.field} 이(가) 열거형 ${def.value.code} 에 없습니다`, s.where.field), enumCoordinate(def.value));
           if (f.value === s.where.value) out.push(e);
         }
         elements = out;

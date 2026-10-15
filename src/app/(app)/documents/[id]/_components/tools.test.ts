@@ -70,6 +70,15 @@ describe("약관 에디터 툴바 (기능/문면 §4.3)", () => {
     }
   });
 
+  it("「조사」 도구는 multi — 문면 · 함수조항 툴바 둘 다에 있다", () => {
+    for (const groups of [DOCUMENT_TOOLS, CLAUSE_TOOLS, CLAUSE_LINE_TOOLS]) {
+      const t = allTools(groups).find((x) => x.id === "particle");
+      expect(t).toBeDefined();
+      expect(t!.multi).toBe(true);
+      expect(t!.match("조사 — 을/를")).toBe(true);
+    }
+  });
+
   it("버튼 구성 — 구조 넣기 · 문장에 넣기 · 조건 넣기 · 조건 편집 · 고른 것 속성 · 배치, id 는 겹치지 않는다", () => {
     expect(DOCUMENT_TOOLS.map((g) => g.name)).toEqual(["구조 넣기", "문장에 넣기", "조건 넣기", "조건 편집", "고른 것 속성", "배치"]);
     const ids = allTools(DOCUMENT_TOOLS).map((t) => t.id);
@@ -92,7 +101,7 @@ describe("약관 에디터 툴바 (기능/문면 §4.3)", () => {
     const core = DOCUMENT_TOOLS[0].tools.filter((t) => (t.at ?? "bar") === "bar").map((t) => t.label);
     expect(core).toEqual(["조", "항", "호", "목", "표", "글머리 목록", "함수조항", "박스", "반복"]);
     // 모양이 분명한 넣기는 아이콘
-    expect(allTools(DOCUMENT_TOOLS).filter((t) => t.icon).map((t) => t.id)).toEqual(["table", "bulletList", "clauseBlock", "box", "forBlock", "slot", "articleRef", "appendixRef", "inlineCond"]);
+    expect(allTools(DOCUMENT_TOOLS).filter((t) => t.icon).map((t) => t.id)).toEqual(["table", "bulletList", "clauseBlock", "box", "forBlock", "slot", "articleRef", "appendixRef", "particle", "inlineCond"]);
     // 아이콘만은 누구나 아는 모양(표 · 글머리 목록)뿐 — 나머지는 짧은 글자를 붙인다 (2026-10-01 유저 피드백)
     expect(allTools(DOCUMENT_TOOLS).filter((t) => t.icon && !t.short).map((t) => t.id)).toEqual(["table", "bulletList"]);
   });
@@ -102,13 +111,18 @@ describe("약관 에디터 툴바 (기능/문면 §4.3)", () => {
     const barIds = (sections: MenuSections) => allTools(DOCUMENT_TOOLS).filter((t) => onBar(t, toolState(t, sections))).map((t) => t.id);
     const para = barIds(placeMenu(env(s.tree), { kind: "block", id: s.paragraph.id }));
     expect(para).toEqual(expect.arrayContaining(["article", "paragraph", "cond", "slot"]));
-    for (const id of ["elif", "else", "unwrap", "removeBranch", "edit", "repeat", "link", "up", "down", "duplicate", "remove", "section", "clauseInline", "structKey"]) expect(para, id).not.toContain(id);
+    for (const id of ["elif", "else", "unwrap", "removeBranch", "repeat", "link", "up", "down", "duplicate", "remove", "section", "clauseInline", "structKey"]) expect(para, id).not.toContain(id);
+    // 항 · 호 · 목을 고르면 「속성」이 켜져 코드 수정 창을 연다 (ADR-0072 결정 5)
+    expect(para).toContain("edit");
     const head = barIds(placeMenu(env(s.tree), { kind: "head", id: s.cond.branches[0].id }));
     expect(head).toEqual(expect.arrayContaining(["elif", "else", "unwrap"]));
     // 「속성」 하나가 칩 · 표 · 함수조항 참조 · 반복 블록의 속성 창을 맡는다
     const edit = allTools(DOCUMENT_TOOLS).find((t) => t.id === "edit")!;
     expect(itemsFor(edit, placeMenu(env(s.tree), { kind: "block", id: s.table.id })).map((i) => i.label)).toEqual(["표 속성…"]);
     expect(itemsFor(edit, placeMenu(env(s.tree), { kind: "chip", id: s.slot.id })).map((i) => i.label)).toEqual(["고치기…"]);
+    for (const id of [s.paragraph.id, s.item.id, s.subitem.id]) {
+      expect(itemsFor(edit, placeMenu(env(s.tree), { kind: "block", id })).map((i) => i.action)).toEqual([{ do: "popup", popup: { kind: "code", nodeId: id } }]);
+    }
     const cell = barIds(placeMenu(env(s.tree), { kind: "inline", at: { tableId: s.table.id, row: 1, col: 0 } }));
     expect(cell).toEqual(expect.arrayContaining(["structKey", "edit", "repeat"]));
   });
@@ -305,6 +319,19 @@ describe("함수조항 툴바 (기능/함수조항 §4.3)", () => {
     const option = allTools(CLAUSE_TOOLS).find((t) => t.id === "optionSlot")!;
     expect(itemsFor(option, clausePlaceMenu(e, { kind: "inline", at: { parentId: "p1" } })).map((i) => i.label)).toEqual(["옵션 자리 — 기일", "옵션 자리 — 사유"]);
     expect(allTools(CLAUSE_TOOLS).map((t) => t.id)).not.toContain("table");
+  });
+
+  it("「조사」 — 함수조항 문장 자리(항 · 「문구」 한 줄)에서도 프리셋 15줄이 켜지고, 고르면 칩이 선다", () => {
+    const particle = allTools(CLAUSE_TOOLS).find((t) => t.id === "particle")!;
+    for (const [mode, at] of [["block", { parentId: "p1" }], ["inline", { parentId: CLAUSE_LINE_ID }]] as const) {
+      const e = clauseEnv(mode);
+      const sections = withClauseRefusals(e, clausePlaceMenu(e, { kind: "inline", at }, [{ caret: true }]));
+      const items = itemsFor(particle, sections);
+      expect(items, mode).toHaveLength(15);
+      expect(toolState(particle, sections).disabled, mode).toBe(false);
+      const out = runItem(e.tree, items[0]);
+      expect([...indexTree(out.tree).nodes.values()].some((n) => n.node.kind === "particle"), mode).toBe(true);
+    }
   });
 
   it("조 · 관 · 함수조항 참조는 어느 자리에서든 잠기고 사유를 보인다", () => {

@@ -156,7 +156,7 @@ export function codeConflicts(entries: readonly CodedEntry[]): CodeConflict[] {
   return out;
 }
 
-/** 코드 충돌 문구 — 추천값을 함께 (코드 수정 창은 다음 작업 — 기능/문면 §5). */
+/** 코드 충돌 문구 — 추천값을 함께. 편집기 검증 줄의 「코드 수정」이 이 자리의 코드 수정 창을 추천값으로 연다(기능/문면 §3.5). */
 export function conflictMessage(c: CodeConflict, suggestion: Code | undefined): string {
   return `코드 ${c.code} 가 같은 조의 다른 항 · 호 · 목과 겹칩니다 — 같은 조건 블록의 다른 가지에서만 같은 코드를 쓸 수 있습니다${suggestion ? ` (추천 ${suggestion})` : ""}`;
 }

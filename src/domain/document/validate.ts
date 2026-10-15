@@ -14,7 +14,7 @@ import type { ExprType, TypeResolver } from "../expression";
 import type { Code, Issue } from "../types";
 import { validateExpressions, type ExpressionScope } from "./expressions";
 import { nodeBindingIssues } from "./nodeBindings";
-import { validateTree, type ClauseGate, type DocumentNode, type TreeEnv } from "./nodes";
+import { coordinateOf, indexTree, validateTree, type ClauseGate, type DocumentNode, type TreeEnv } from "./nodes";
 import { repeatTableIssues } from "./repeat";
 
 /**
@@ -95,12 +95,24 @@ export interface DocumentChecks {
   scope: ExpressionScope;
 }
 
+/**
+ * 옛 박스(사본 `box` 노드 — 제목 + 줄 인라인 사본)는 저장하지 않는다 (기능/박스 §3.2 · 2026-10-15). 박스 마스터를 가리키는 박스 참조로 바꾼다.
+ * 노드 타입 · 렌더러는 남는다 — 변환기(scripts/terms)가 중간 형식으로 쓰고, 옛 트리를 읽어 보일 수는 있어야 한다. 그래서 `validateTree` 가 아니라 저장 검증 한 벌에만 둔다.
+ */
+export function legacyBoxIssues(tree: DocumentNode, base?: TreeEnv["coordinate"]): Issue[] {
+  const ix = indexTree(tree, base);
+  const out: Issue[] = [];
+  for (const e of ix.nodes.values()) if (e.node.kind === "box") out.push({ kind: "structure", message: "옛 박스 — 박스 참조로 바꾼다", at: coordinateOf(ix, e, base) });
+  return out;
+}
+
 /** 문서 전체 검증 — 오류 + 반복 표 경고. */
 export function validateDocument(tree: DocumentNode, checks: DocumentChecks): Issue[] {
   const { resolve, scope } = checks;
   // 문맥 담보는 식 검사(scope)와 조 참조 키 한정 검사(env)가 같이 쓴다 — 한 번 실어 준다 (ADR-0087 결정 10)
   const env = scope.coverage && !checks.env.coverage ? { ...checks.env, coverage: scope.coverage } : checks.env;
   const issues = validateTree(tree, env);
+  issues.push(...legacyBoxIssues(tree, env.coordinate));
   issues.push(...validateExpressions(tree, resolve, env.coordinate, scope));
   issues.push(...nodeBindingIssues(tree, env.clauseGate, scope, env.coordinate));
   // 반복 표 경고(저장은 막지 않음) — 검증 목록에만 보인다 (ADR-0070 · 설계 §2.6). 오류는 validateExpressions 가 이미 냈다.

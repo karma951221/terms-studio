@@ -22,6 +22,8 @@ import {
   collectRefs,
   createAppendix,
   createBox,
+  clauseGeneralRefs,
+  generalEnvOf,
   generalRefsOf,
   numberTree,
   removedIds,
@@ -55,6 +57,7 @@ import type { Actor, Code, Coordinate, Id, Impact, Issue, Result } from "@/domai
 import { ok, reject } from "@/domain/types";
 
 import * as catalogRepo from "@/db/repo/catalog";
+import * as clauseRepo from "@/db/repo/clause";
 import * as coverageRepo from "@/db/repo/coverage";
 import * as repo from "@/db/repo/document";
 import type { DocumentKind, DocumentRecord, DocumentSummary } from "@/db/repo/document";
@@ -193,9 +196,12 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
   }
 
   /** 보통약관 템플릿 한 벌의 조연결 · 보통약관 조 참조 대상. 없거나 보통약관이 아니면 undefined. */
-  async function generalRefsFor(tx: Db, generalDocumentId: Id): Promise<GeneralRefs | undefined> {
+  async function generalRefsFor(tx: Db, generalDocumentId: Id, knownGate?: ClauseGate): Promise<GeneralRefs | undefined> {
     const g = await repo.loadDocument(tx, generalDocumentId);
-    return g && g.kind === "general" ? generalRefsOf(g.tree) : undefined;
+    if (!g || g.kind !== "general") return undefined;
+    // 대상 사실(안쪽 코드 · 값 한정 열거형)은 함수조항 본문을 알아야 한다 — 저장 검사의 게이트와 같은 함수조항
+    const gate = knownGate ?? (deps.clauseGate ? await deps.clauseGate(tx) : undefined);
+    return generalRefsOf(g.tree, gate?.clauseOf ? { clauseOf: (c) => gate.clauseOf!(c) } : {});
   }
 
   /** 대응 보통약관을 뺀 검증 환경 — 종류 · 별표 존재 · 함수조항 게이트 · 좌표. */
@@ -218,8 +224,8 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
   async function envOf(tx: Db, doc: DocumentRecord): Promise<TreeEnv> {
     const env = await baseEnvOf(tx, doc);
     if (doc.kind !== "special") return env;
-    const refs = doc.generalDocumentId ? await generalRefsFor(tx, doc.generalDocumentId) : undefined;
-    return { ...env, generalArticleIds: refs?.articleIds ?? new Set(), generalReferenceKeys: refs?.referenceKeys ?? new Set(), ...(refs?.repeatedKeys ? { generalRepeatedKeys: refs.repeatedKeys } : {}) };
+    const refs = doc.generalDocumentId ? await generalRefsFor(tx, doc.generalDocumentId, env.clauseGate) : undefined;
+    return { ...env, ...generalEnvOf(refs) };
   }
 
   /** 식 검사 재료 — 타입 조회 + 한정자 검사 문맥(담보 약관이면 문맥 담보 트리 · 구분자 레벨). */
@@ -242,16 +248,26 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
   }
 
   /**
-   * `documentId` 에서 사라진 것을 가리키던 다른 문서의 조연결(지운 조 id) · 보통약관 조 참조(사라진 대상 열쇠 — 같은 코드의 분기 짝이 남으면 산다, ADR-0072).
+   * `documentId` 에서 사라진 것을 가리키던 다른 문서의 조연결(지운 조 id) · 보통약관 조 참조(사라진 대상 열쇠 — 같은 코드의 분기 짝이 남으면 산다, ADR-0072)
+   * · 함수조항 본문의 보통약관 참조. 펼친 함수조항 안 노드를 가리키는 참조(`조#참조코드/안쪽코드`)는 그 참조 노드의 열쇠(`조#참조코드`)가 사라지면 깨진다 —
+   * 코드 변경 · 삭제 모두 (ADR-0072 결정 6 — 다른 문서 몫은 확인 카드).
    */
   async function brokenByRemoval(tx: Db, documentId: Id, removed: ReadonlySet<Id>, removedKeys: ReadonlySet<string>): Promise<Coordinate[]> {
     if (removed.size === 0 && removedKeys.size === 0) return [];
+    const gone = (t: { articleId: Id; code?: Code }) => removedKeys.has(refKey({ articleId: t.articleId, ...(t.code !== undefined ? { code: t.code } : {}) }));
     const out: Coordinate[] = [];
     for (const d of await repo.listDocumentRecords(tx)) {
       if (d.id === documentId || d.generalDocumentId !== documentId) continue;
       for (const r of collectRefs(d.tree, coordinateOf(d))) {
         if (r.kind === "link" && removed.has(r.linkedArticleId)) out.push(r.at);
-        else if (r.kind === "article" && r.scope === "general" && removedKeys.has(refKey(r))) out.push(r.at);
+        else if (r.kind === "article" && r.scope === "general" && gone(r)) out.push(r.at);
+      }
+    }
+    // 함수조항 본문의 보통약관 참조 — 범위 없는 조 참조는 보통약관 마스터를 가리킨다(기능/함수조항 §3.5)
+    const self = await repo.loadDocument(tx, documentId);
+    if (self?.kind === "general") {
+      for (const clause of await clauseRepo.listClauses(tx)) {
+        for (const r of clauseGeneralRefs(clause)) if (gone(r)) out.push({ document: "clause", ownerId: clause.code, ownerName: clause.label, nodePath: r.nodePath, refPath: refKey(r) });
       }
     }
     return out;
@@ -446,15 +462,16 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
           // 편집 중 지정할 수 있는 보통약관은 명령 목록에 나온 것 + 지금 것 — 미리 읽어 순수 재적용에 넘긴다
           const generalIds = new Set<Id>(doc.generalDocumentId ? [doc.generalDocumentId] : []);
           for (const op of input.ops) if (op.type === "setGeneralDocument" && op.generalDocumentId) generalIds.add(op.generalDocumentId);
+          const baseEnv = await baseEnvOf(tx, doc);
           const generals = new Map<Id, GeneralRefs>();
           for (const gid of generalIds) {
-            const refs = await generalRefsFor(tx, gid);
+            const refs = await generalRefsFor(tx, gid, baseEnv.clauseGate);
             if (refs) generals.set(gid, refs);
           }
           const replayed = replayEdits(
             { tree: doc.tree, ...(doc.generalDocumentId ? { generalDocumentId: doc.generalDocumentId } : {}) },
             input.ops,
-            { env: await baseEnvOf(tx, doc), generalRefs: (gid) => generals.get(gid), newId },
+            { env: baseEnv, generalRefs: (gid) => generals.get(gid), newId },
           );
           if (!replayed.ok) return replayed;
           const { tree, generalDocumentId } = replayed.value;

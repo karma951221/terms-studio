@@ -16,7 +16,7 @@
 import { Fragment, type ReactNode } from "react";
 
 import type { ArticleRefNode, Block, BulletListNode, Clause, Inline, ItemBodyNode, SubitemBodyNode } from "@/domain/clause";
-import { clauseBodyToTree, clauseInlineToTree, clauseModelNumbers, clausePositions, clauseScopedRefLabel, referenceChunkLabel, referenceKeyIndex, refKey, type NodeNumber, type ReferenceTarget } from "@/domain/document";
+import { clauseBodyToTree, clauseInlineToTree, clauseModelNumbers, clausePositions, clauseScopedRefLabel, particlePreset, referenceChunkLabel, referenceKeyIndex, refKey, type NodeNumber, type ReferenceTarget } from "@/domain/document";
 import type { Box } from "@/domain/document/box";
 import type { Code, Id } from "@/domain/types";
 
@@ -195,6 +195,13 @@ function Inlines({ nodes, ctx }: { nodes: readonly Inline[]; ctx: Ctx }): ReactN
         return (
           <span key={node.id} className="ts-doc-ref ts-clause-model-chip" title={`별표 참조 · ${node.appendixCode}`}>
             【별표 {ctx.appendixName?.(node.appendixCode) ?? node.appendixCode}】
+          </span>
+        );
+      case "particle":
+        // 저작 꼴 그대로(을/를) — 고른 결과는 조립 산출에만 (기능/문면 §3.11)
+        return (
+          <span key={node.id} className="ts-doc-slot ts-clause-model-chip" title="조사 — 앞 글자 받침에 따라 조립 때 고른다">
+            {particlePreset(node.preset).label}
           </span>
         );
       case "optionSlot":

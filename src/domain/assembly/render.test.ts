@@ -11,7 +11,8 @@ import { alphaPlusFixture, coverageEntry } from "./fixture";
 import { collectAppendices, numberDocument, renderDocument } from "./render";
 import { resolveDocument } from "./resolve";
 import { substituteSlots } from "./substitute";
-import type { AssemblyCoverage, AssemblyInput, RenderedInline, SubstitutedDoc } from "./types";
+import type { ParticlePresetKey } from "../document/particles";
+import type { AssemblyCoverage, AssemblyInput, RParagraph, RenderedInline, SInline, SubstitutedDoc } from "./types";
 
 /** 픽스처를 한 객체로 다루는 테스트 진입 — 조립 서명 `assemble(master, product)` 에 같은 객체를 두 번 넘긴다 (AssemblyInput = MasterBundle & ProductInput). */
 const assembleInput = (input: AssemblyInput) => assemble(input, input);
@@ -586,5 +587,120 @@ describe("별표는 책자 등장 순으로 자동 수집한다 (ADR-0063)", () 
     expect(booklet.issues.map((i) => i.kind)).toContain("brokenRef");
     expect(booklet.issues[0].message).toMatch(/별표 마스터에 없습니다/);
     expect(booklet.appendices).toEqual([{ code: "APX_DISABILITY", name: "(없는 별표)", number: 1 }]);
+  });
+});
+
+describe("조사 칩 — 렌더 끝에서 앞 글 받침으로", () => {
+  const particle = (id: string, preset: ParticlePresetKey) => ({ kind: "particle" as const, id, preset, at: { ...at, articleId: "a1", nodePath: [id] } });
+  const render = (children: SInline[], extra: Partial<RParagraph<SInline>> = {}) => {
+    const doc: SubstitutedDoc = { kind: "document", id: "d", title: "t", children: [{ kind: "article", id: "a1", title: "제목", children: [{ kind: "paragraph", id: "p1", children, ...extra }] }] } as SubstitutedDoc;
+    return renderDocument(numberDocument(doc), { document: "special", ownerId: "pc", appendices: [] });
+  };
+  const paragraphOf = (r: ReturnType<typeof render>) => {
+    const article = r.doc.children[0];
+    if (article.kind !== "article" || article.children[0].kind !== "paragraph") throw new Error("unexpected error");
+    return article.children[0];
+  };
+  const join = (list: readonly RenderedInline[]) => list.map((c) => (c.kind === "text" ? c.text : c.kind === "error" ? "⟦오류⟧" : c.label)).join("");
+  const line = (r: ReturnType<typeof render>) => join(paragraphOf(r).children);
+
+  it("앞 글 받침으로 고른다 — 텍스트 조각이 갈라져도 이어서 본다", () => {
+    const r = render([text("t1", "사망"), text("t2", "보험금"), particle("x", "eul-reul"), text("t3", " 지급합니다")]);
+    expect(line(r)).toBe("사망보험금을 지급합니다");
+    expect(r.issues).toEqual([]);
+  });
+  it("판정 불가(문장 맨 앞)면 병기 + particleUnresolved 경고", () => {
+    const r = render([particle("x", "eul-reul"), text("t1", " 뒤")]);
+    expect(line(r)).toBe("을(를) 뒤");
+    expect(r.issues).toMatchObject([{ kind: "particleUnresolved", severity: "warning", at: { articleId: "a1" } }]);
+  });
+  it("오류 노드 바로 뒤면 판정 불가", () => {
+    const err: SInline = { kind: "error", id: "e", issue: { kind: "brokenRef", message: "x", at } };
+    const r = render([err, particle("x", "i-ga")]);
+    expect(r.issues.map((i) => i.kind)).toContain("particleUnresolved");
+  });
+  it("표 셀 · 박스 줄도 그 목록 안의 앞 글로 고른다", () => {
+    const r = render([text("t0", "본문")], {
+      items: [
+        { kind: "table", id: "tb", columns: [{}], rows: [{ cells: [[text("c1", "회사"), particle("x1", "eul-reul")]] }] },
+        { kind: "box", id: "bx", title: "", lines: [[text("b1", "서울"), particle("x2", "euro-ro")]] },
+      ],
+    });
+    const items = paragraphOf(r).items!;
+    const table = items[0];
+    const box = items[1];
+    if (table.kind !== "table" || box.kind !== "box") throw new Error("unexpected error");
+    expect(join(table.rows[0].cells[0])).toBe("회사를");
+    expect(box.lines).toEqual(["서울로"]);
+    expect(r.issues).toEqual([]);
+  });
+
+  it("별표 참조 뒤 — 라벨 끝 】 안쪽(별표1 → 일)으로 고른다", () => {
+    const doc: SubstitutedDoc = {
+      kind: "document",
+      id: "d",
+      title: "t",
+      children: [{ kind: "article", id: "a1", title: "제목", children: [{ kind: "paragraph", id: "p1", children: [text("t1", "…"), { kind: "appendixRef", id: "ar", appendixCode: "APX_A", at }, particle("x", "eul-reul")] }] }],
+    } as SubstitutedDoc;
+    const r = renderDocument(numberDocument(doc), { document: "special", ownerId: "pc", appendices: [{ code: "APX_A", number: 1, name: "장해분류표" }] });
+    expect(line(r)).toContain("】을");
+    expect(r.issues.map((i) => i.kind)).not.toContain("particleUnresolved");
+  });
+
+  describe("전체 파이프라인 — 해소 · 치환을 지나 렌더 끝에서", () => {
+    function run(source: DocumentNode) {
+      const input = alphaPlusFixture();
+      const ctx = buildContexts(input).specials.get("pc-basic")!;
+      const resolved = resolveDocument(source, ctx, { clauses: new Map(), overrides: new Map(), coordinate: at });
+      const substituted = substituteSlots(resolved.doc, ctx, { catalog: new Map(input.catalog.map((d) => [d.code, d])), enums: new Map(input.enums.map((e) => [e.code, e])), master: input.master });
+      const result = renderDocument(numberDocument(substituted.doc), { document: "special", ownerId: "pc-basic", appendices: [] });
+      expect([...resolved.issues, ...substituted.issues, ...result.issues]).toEqual([]);
+      return result;
+    }
+    const firstLine = (r: ReturnType<typeof run>, index: number) => {
+      const article = r.doc.children[index];
+      if (article.kind !== "article" || article.children[0].kind !== "paragraph") throw new Error("unexpected error");
+      return join(article.children[0].children);
+    };
+
+    it("조 참조 뒤 — 라벨의 끝(닫는 괄호면 짝 앞 글자)으로 고른다", () => {
+      const r = run({
+        kind: "document",
+        id: "s",
+        title: "특약",
+        children: [
+          { kind: "article", id: "a1", title: "목적", children: [{ kind: "paragraph", id: "a1-p", children: [{ kind: "text", id: "a1-t", text: "본문" }] }] },
+          { kind: "article", id: "a2", title: "준용", children: [{ kind: "paragraph", id: "a2-p", children: [{ kind: "articleRef", id: "ref", targets: [{ articleId: "a1" }], connector: "및", scope: "self" }, { kind: "particle", id: "x", preset: "eul-reul" }, { kind: "text", id: "a2-t", text: " 따릅니다" }] }] },
+        ],
+      });
+      expect(firstLine(r, 1)).toMatch(/^제1조(\(.*\))?를 따릅니다$/);
+    });
+
+    it("문장 안 조건 뒤 — 참 가지 글로 고른다", () => {
+      const r = run({
+        kind: "document",
+        id: "s",
+        title: "특약",
+        children: [
+          {
+            kind: "article",
+            id: "a1",
+            title: "지급",
+            children: [
+              {
+                kind: "paragraph",
+                id: "a1-p",
+                children: [
+                  { kind: "text", id: "t1", text: "보험" },
+                  { kind: "inlineCond", id: "c", branches: [{ id: "c-if", when: "D0005 = true", children: [{ kind: "text", id: "t2", text: "금" }] }, { id: "c-else", children: [{ kind: "text", id: "t3", text: "료" }] }] },
+                  { kind: "particle", id: "x", preset: "eul-reul" },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+      expect(firstLine(r, 0)).toBe("보험금을");
+    });
   });
 });

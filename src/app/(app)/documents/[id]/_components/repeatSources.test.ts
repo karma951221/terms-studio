@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { EnumDef } from "@/domain/catalog";
 import { indexTree, nodeBuilders, sequentialIds, type ForBlockNode } from "@/domain/document";
 
-import { loopChoices, loopsAround, repeatChoices, sourceOfValue, sourceValue } from "./repeatSources";
+import { currentPlanOf, loopChoices, loopsAround, repeatChoices, sourceOfValue, sourceValue } from "./repeatSources";
 
 const E0001: EnumDef = {
   code: "E0001",
@@ -45,6 +45,26 @@ describe("반복 원천 고르기 (ADR-0077 · 기능/문면 §4.3)", () => {
       { id: inner.id, label: "현재 원소 — 납입면제사유마다", type: { kind: "enum", enumCode: "E0001" } },
     ]);
     expect(sourceValue(outer.source)).toBe(JSON.stringify(outer.source));
+  });
+
+  it("「현재 종」 — 감싼 반복 중 세목 선택지 반복(안쪽 사유 반복 안에서도 바깥 종), 합집합 · 반복 밖이면 없음 (ADR-0077 결정 3)", () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    const item = b.item([b.text("호")]);
+    const inner = b.forBlock({ kind: "listOfCurrent", loop: "?", field: "reasons" }, [item]);
+    const head = b.paragraph([b.text("항")], [inner]);
+    const outer = b.forBlock({ kind: "planOptions", form: "waiver", filter: "waiver.applies = true" }, [head]);
+    inner.source = { kind: "listOfCurrent", loop: outer.id, field: "reasons" };
+    const defItem = b.item([b.text("정의")]);
+    const union = b.forBlock({ kind: "union", form: "waiver", field: "reasons", filter: "waiver.applies = true" }, [b.paragraph([b.text("정의")], [defItem])]);
+    const plain = b.paragraph([b.text("밖")]);
+    const doc = b.document("d", [b.article("a", [outer]), b.article("c", [union, plain])]);
+    const ix = indexTree(doc);
+    expect(currentPlanOf(loopsAround(ix, item.id))).toEqual({ name: "납입면제종마다" });
+    expect(currentPlanOf(loopsAround(ix, head.id))).toEqual({ name: "납입면제종마다" });
+    expect(currentPlanOf(loopsAround(ix, defItem.id))).toBeUndefined();
+    expect(currentPlanOf(loopsAround(ix, plain.id))).toBeUndefined();
+    outer.alias = "적용종마다";
+    expect(currentPlanOf(loopsAround(ix, item.id))).toEqual({ name: "적용종마다" });
   });
 });
 

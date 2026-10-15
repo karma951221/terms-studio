@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { nodeBuilders, sequentialIds } from "./builders";
-import { allowedChildren, allowedIn, allowedListChildren, checkClauseRef, indexTree, PERMISSIVE_GATE, slotsOf, validateTree, type ArticleNode, type ClauseGate, type DocumentNode } from "./nodes";
+import { allowedChildren, allowedIn, allowedListChildren, checkClauseRef, indexTree, PARTICLE_PRESET_MESSAGE, PERMISSIVE_GATE, slotsOf, validateTree, type ArticleNode, type ClauseGate, type DocumentNode, type InlineNode } from "./nodes";
 
 /** 결정적 id 로 만든 빌더 — 스냅샷·기대값에 id 가 그대로 나온다. */
 function make() {
@@ -36,9 +36,20 @@ describe("허용 자식 규칙 테이블 (ADR-0012 — 문서>조>항>호>목, �
   });
 
   it("잎 노드(텍스트·슬롯·참조)는 자식이 없다", () => {
-    for (const k of ["text", "slot", "articleRef", "appendixRef", "clauseInlineRef", "clauseBlockRef", "boxRef"] as const) {
+    for (const k of ["text", "slot", "articleRef", "appendixRef", "particle", "clauseInlineRef", "clauseBlockRef", "boxRef"] as const) {
       expect(allowedChildren[k]).toEqual([]);
     }
+  });
+});
+
+describe("조사 칩 노드", () => {
+  it("조사 칩 — 문장 자리에 서고, 모르는 프리셋은 저장 검증이 거부한다", () => {
+    const b = make();
+    const ok = b.particle("eul-reul");
+    const bad = { ...b.particle("eul-reul"), preset: "nope" } as unknown as InlineNode;
+    const doc = (inl: InlineNode) => b.document("t", [b.article("제목", [b.paragraph([b.text("보험금"), inl])])]);
+    expect(kinds(validateTree(doc(ok)))).toEqual([]);
+    expect(validateTree(doc(bad)).map((i) => i.message)).toContain(PARTICLE_PRESET_MESSAGE);
   });
 });
 

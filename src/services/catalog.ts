@@ -20,9 +20,9 @@ import {
   createDiscriminator,
   createEnum,
   discriminatorResultType,
+  enumRemovalBlock,
   discriminatorWarnings,
   ENUM_FIELD_TYPE_LABEL,
-  enumReferences,
   inspectExpression,
   NO_VALUE_STORE,
   removeEnumValue,
@@ -338,8 +338,7 @@ export function createCatalogService(db: Db, deps: CatalogServiceDeps = {}): Cat
           },
           computeImpact: () => computeImpact(target, impact, { cascade: cascadeOf(loaded!) }),
           execute: async () => {
-            await repo.deleteDiscriminator(tx, code);
-            await impact.purgeValueRows(target);
+            await repo.deleteDiscriminator(tx, code); // 구분자는 식이라 값 행이 없다 (ADR-0037)
             return ok(undefined);
           },
         });
@@ -426,16 +425,16 @@ export function createCatalogService(db: Db, deps: CatalogServiceDeps = {}): Cat
           confirm: opts.confirm,
           precheck: async () => {
             loaded = await repo.loadEnum(tx, code);
-            return loaded ? ok(undefined) : notFound(`enum ${code}`);
+            if (!loaded) return notFound(`enum ${code}`);
+            // 코드가 가리키는 열거형(마스터 필드 타입 · 특약 그룹)은 관리자 확인으로도 지우지 않는다 (ADR-0049 〔D-P1-17〕)
+            const blocked = enumRemovalBlock(code);
+            return blocked ? reject({ reason: "inUse", what: blocked }) : ok(undefined);
           },
-          computeImpact: async () =>
-            computeImpact(target, impact, {
-              cascade: cascadeOf(loaded!),
-              brokenRefs: enumReferences(code),
-            }),
+          // 남은 참조(값을 비교하는 조건식 · 함수조항 식 · 값별 분기 등)는 깨질 참조로 보이고, 지운 뒤 깨진 참조로 남는다 — 값 삭제의 「없는 값」과 같은 결
+          computeImpact: async () => computeImpact(target, impact, { cascade: cascadeOf(loaded!) }),
           execute: async () => {
+            // 값 행은 없다 — 값 행이 생기는 자리(마스터 필드 타입)를 쓰는 열거형은 precheck 가 막았다
             await repo.deleteEnum(tx, code);
-            await impact.purgeValueRows(target);
             return ok(undefined);
           },
         });

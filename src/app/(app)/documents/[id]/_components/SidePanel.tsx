@@ -4,6 +4,7 @@
  * 탭 셋(담보약관) 〔미리보기 | 구분자 | 검증 N〕 — 보통약관은 구분자 없이 둘 (2026-10-10):
  * - 미리보기 — 가운데 조 하나를 고른 상품의 조립 문맥으로 (`PreviewTab`, §3.9). 처음 탭.
  * - 검증 — 저장 검증 목록(편집 중이면 편집본, 「고칠 자리로」는 가운데에서 그 조를 열고 그 자리를 강조). 편집 중이면 그 위에 템플릿 이름 · 대응 보통약관.
+ *   코드 충돌(이동 충돌) · 형식 오류 줄에는 「코드 수정」 — 그 자리의 코드 수정 창을 추천값으로 연다(ADR-0072 결정 5).
  * 구분자 — 미리보기에서 고른 상품담보의 키 경로 잎과 지금 값 (`LeafPanelTab`, ADR-0087).
  * 탭 모두 그려 두고 숨긴다 — 탭을 오가도 미리보기의 고른 상품 · 받은 재료가 남는다.
  */
@@ -26,13 +27,21 @@ export interface PanelData {
   leaves?: ReactNode;
   /** 「고칠 자리로」 — 가운데에서 그 조를 열고 그 자리를 강조한다. */
   go: (nodeId: Id) => void;
+  /** 코드 충돌 · 형식 오류 줄의 「코드 수정」 — 그 자리의 코드 수정 창을 추천값으로 연다(편집 중만, ADR-0072 결정 5). */
+  fixCode?: CodeFix;
+}
+
+/** 「코드 수정」 — 코드 오류가 난 자리 · 버튼 자리를 받아 코드 수정 창을 연다. */
+export interface CodeFix {
+  ids: ReadonlySet<Id>;
+  open: (nodeId: Id, at: DOMRect) => void;
 }
 
 /**
  * 검증 목록 — 편집본의 오류 · 경고. 「고칠 자리로」는 가운데에 그 자리를 연다(화면을 떠나지 않는다).
  * 오류가 하나라도 있으면 저장은 서버가 거부한다 (서버가 최종 검증자).
  */
-export function DraftIssues({ go, issues }: { go: (nodeId: Id) => void; issues: readonly Issue[] }) {
+export function DraftIssues({ go, issues, fixCode }: { go: (nodeId: Id) => void; issues: readonly Issue[]; fixCode?: CodeFix }) {
   return (
     <ul className="ts-issues" role="alert">
       {issues.map((issue, i) => {
@@ -50,6 +59,20 @@ export function DraftIssues({ go, issues }: { go: (nodeId: Id) => void; issues: 
             {nodeId && (
               <button type="button" className="ts-doc-pick" onClick={() => go(nodeId)}>
                 고칠 자리로
+              </button>
+            )}
+            {nodeId && fixCode?.ids.has(nodeId) && (
+              <button
+                type="button"
+                className="ts-doc-pick"
+                onClick={(e) => {
+                  // 그 자리를 가운데에 열고(고칠 자리로와 같은 길) 그 아래에 코드 수정 창
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  go(nodeId);
+                  fixCode.open(nodeId, rect);
+                }}
+              >
+                코드 수정
               </button>
             )}
           </li>
@@ -104,7 +127,7 @@ export function SidePanel({ docKind, editing, data }: { docKind: "special" | "ge
             <p className="ts-muted">이름 · 대응 보통약관은 바의 더보기에서 바꾼다.</p>
           </>
         )}
-        {data.issues.length === 0 ? <p className="ts-ok">문제 없음.</p> : <DraftIssues go={data.go} issues={data.issues} />}
+        {data.issues.length === 0 ? <p className="ts-ok">문제 없음.</p> : <DraftIssues go={data.go} issues={data.issues} {...(data.fixCode ? { fixCode: data.fixCode } : {})} />}
       </div>
     </aside>
   );

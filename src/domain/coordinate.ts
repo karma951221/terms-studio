@@ -8,6 +8,7 @@ const DOCUMENT_LABEL: Record<NonNullable<Coordinate["document"]>, string> = {
   coverageMaster: "담보 마스터",
   product: "상품모델링",
   catalog: "구분자",
+  enum: "열거형",
 };
 
 const NODE_LABEL: Record<string, string> = {

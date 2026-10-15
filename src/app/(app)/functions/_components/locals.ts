@@ -7,19 +7,25 @@
 import { checkLocals, enumInfoOf, planFieldType, type LocalDef, type ParamDef } from "@/domain/clause";
 import type { EnumDef } from "@/domain/catalog";
 import { format, inferType, parse, type EnumReadTypes, type Expr, type ExprType } from "@/domain/expression";
+import { fieldsOfForm, formsOfLevel } from "@/domain/master";
 
 import type { CtxDiscriminator } from "@/app/(app)/documents/[id]/_components/condition/types";
 
 import { fieldEntries, type EnumChoice } from "./params";
 
-/** 화면 재료(EnumChoice) → 도메인 모양 — 검사 · 추론이 쓴다. */
+/** 화면 재료(EnumChoice) → 도메인 모양 — 검사 · 추론 · 단독 시험이 쓴다. */
 function enumDefOf(e: EnumChoice): EnumDef {
   return {
     code: e.code,
     label: e.label,
-    values: e.values.map((v, i) => ({ code: v.code, label: v.label, order: i })),
+    values: e.values.map((v, i) => ({ code: v.code, label: v.label, order: i, ...(v.fields ? { fields: v.fields } : {}) })),
     fields: (e.fields ?? []).map((f, i) => ({ key: f.key, label: f.label, type: f.type, order: i + 1 })),
   } as EnumDef;
+}
+
+/** 열거형 코드 → 도메인 정의 (단독 시험 `runTrial` 재료). */
+export function enumDefsOf(enums: readonly EnumChoice[]): Map<string, EnumDef> {
+  return new Map(enums.map((e) => [e.code, enumDefOf(e)] as const));
 }
 
 /** 앞에서부터 쌓은 내부 변수 타입 (관대 — 검사가 아니다). `upTo` 앞까지만. */
@@ -103,4 +109,73 @@ export function localEntries(params: readonly ParamDef[], locals: readonly Local
       }
       return [out];
     });
+}
+
+/** 넣기 패널 항목 하나 — 더블클릭 · Enter 로 식 칸 커서 자리에 (`useExpressionInsert`). */
+export interface LocalInsertItem {
+  label: string;
+  text: string;
+  /** 넣은 글 안 커서 자리 — 괄호 연산은 괄호 안. 없으면 끝. */
+  caret?: number;
+  hint: string;
+}
+
+export interface LocalInsertGroup {
+  group: "인자" | "내부 변수" | "연산" | "필드";
+  items: LocalInsertItem[];
+}
+
+/** 연산 — 함수조항 전용 연산(기능/식언어 §12)과 논리 · 비교. 개수 연산은 없다. */
+const LOCAL_OPS: readonly LocalInsertItem[] = [
+  { label: ".합치기(폼.필드)", text: ".합치기()", caret: 5, hint: "세목 선택지 목록 — 선택지들의 열거형 필드 값을 모은다(사유합치기, 열거형 순서 · 중복 없음)" },
+  { label: ".있음('값', …)", text: ".있음()", caret: 4, hint: "열거형 목록 — 값 하나라도 들었나(참거짓)" },
+  { label: ".거르기(필드 = 값)", text: ".거르기()", caret: 5, hint: "열거형 목록 — 필드가 그 값인 것만 남긴다" },
+  { label: ".비었음", text: ".비었음", hint: "열거형 목록 — 하나도 없나(참거짓)" },
+  { label: "and", text: "and", hint: "둘 다 참" },
+  { label: "or", text: "or", hint: "하나라도 참" },
+  { label: "not", text: "not", hint: "부정" },
+  { label: "=", text: "=", hint: "같다 — 열거값은 = 'V01'" },
+];
+
+/**
+ * 내부 변수 식 넣기 패널의 재료 — `index` 번째 내부 변수 식을 쓸 때 (기능/함수조항 §4.3).
+ * 인자(조 참조 인자 빼고) · 그 줄보다 **앞** 내부 변수만(뒤 이름은 검사 ① 오류) · 연산 · 필드(열거값 대상은 `경로.필드 이름`,
+ * 열거형 목록 대상은 `.거르기(…)` 안에 쓸 필드 이름, 세목 폼의 열거형 필드는 `.합치기(…)` 재료). 필드는 이름으로 적는다(저장은 키).
+ */
+export function localInsertGroups(params: readonly ParamDef[], locals: readonly LocalDef[], index: number, enums: readonly EnumChoice[]): LocalInsertGroup[] {
+  const shownParams = params.filter((p) => p.name.trim() !== "" && p.type.kind !== "articleRef");
+  const before = locals.slice(0, index).filter((l) => l.name.trim() !== "");
+  const types = typesOf(params, locals, index);
+  const fields: LocalInsertItem[] = [];
+  const seen = new Set<string>();
+  const push = (item: LocalInsertItem) => {
+    if (seen.has(item.text)) return;
+    seen.add(item.text);
+    fields.push(item);
+  };
+  const enumFields = (t: ExprType | undefined, path: string) => {
+    if (!t || !("enumCode" in t)) return;
+    const def = enums.find((e) => e.code === t.enumCode);
+    for (const f of def?.fields ?? []) {
+      if (t.kind === "enum") push({ label: `${path}.${f.label}`, text: `${path}.${f.label}`, hint: `${def!.label} 값의 필드` });
+      else push({ label: f.label, text: f.label, hint: `${def!.label} 필드 — ${path}.거르기(${f.label} = 값) 안에` });
+    }
+  };
+  for (const p of shownParams) enumFields(p.type as ExprType, `arg.${p.name}`);
+  for (const l of before) enumFields(types.locals?.(l.name.trim()), `var.${l.name.trim()}`);
+  // 합치기 재료 — 세목 폼의 열거형 · 열거형 목록 필드 (`arg.종들.합치기(waiver.reasons)`)
+  if (shownParams.some((p) => p.type.kind === "planOptions")) {
+    for (const form of formsOfLevel("plan")) {
+      for (const x of fieldsOfForm(form)) {
+        const k = x.field.type.kind;
+        if (k === "enum" || k === "list<enum>") push({ label: `${form.label} · ${x.field.label}`, text: `${form.key}.${x.field.key}`, hint: "세목 폼 필드 — .합치기(…) 안에" });
+      }
+    }
+  }
+  return [
+    { group: "인자", items: shownParams.map((p) => ({ label: p.name, text: `arg.${p.name}`, hint: "인자" })) },
+    { group: "내부 변수", items: before.map((l) => ({ label: l.name.trim(), text: `var.${l.name.trim()}`, hint: "앞에 선언한 내부 변수" })) },
+    { group: "연산", items: [...LOCAL_OPS] },
+    { group: "필드", items: fields },
+  ];
 }

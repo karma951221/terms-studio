@@ -34,6 +34,8 @@ export function describeRejection(r: Rejection): RejectionView {
       return { message: "되돌릴 수 없는 작업입니다 — 아래 영향을 확인하고 실행하세요.", impact: r.impact };
     case "conflict":
       return { message: `다른 사람이 먼저 저장했습니다 — ${r.what}` };
+    case "inUse":
+      return { message: r.what };
     case "failed":
       return { message: `실행에 실패했습니다 — ${r.message}` };
   }

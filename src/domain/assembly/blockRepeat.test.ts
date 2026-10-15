@@ -110,6 +110,15 @@ describe("합집합 원천 — 정의 조 (결정 23)", () => {
   });
 });
 
+describe("합집합 거름 필드가 미입력 — 원천 좌표 = 그 열거형", () => {
+  it("정의조대상이 빈 값이면 notEntered · 원천 { document: enum, ownerId: 열거형 코드, refPath: 값 코드 }", () => {
+    const input = waiverFixture(waiverTemplate(), { "opt-type-1": { applies: true, reasons: ["V02"] } });
+    input.enums = input.enums.map((e) => (e.code === "E0009" ? { ...e, values: e.values.map((v) => (v.code === "V02" ? { ...v, fields: { F01: "뇌졸중" } } : v)) } : e));
+    const issue = assemble(input, input).issues.find((i) => i.kind === "notEntered" && i.message.includes("정의조대상"));
+    expect(issue?.source).toEqual({ document: "enum", ownerId: "E0009", ownerName: "납입면제사유", refPath: "V02" });
+  });
+});
+
 describe("복제 id · 열쇠 합성과 오류 좌표 — 두 단계 (위험 4)", () => {
   it("복제 노드 id 는 `원id@종[@사유]`, 펼친 함수조항 노드는 그 뒤 `/` · 열쇠도 같은 순서 — 문서 안에서 유일", () => {
     const r = resolved({ "opt-type-1": { applies: true, reasons: ["V01", "V03"] }, "opt-type-2": { applies: true, reasons: ["V01"] } });

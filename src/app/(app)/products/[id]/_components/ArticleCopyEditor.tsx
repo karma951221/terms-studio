@@ -23,7 +23,7 @@ import { refLabelOf } from "@/app/(app)/documents/[id]/_components/condition/dis
 import type { ConditionContext } from "@/app/(app)/documents/[id]/_components/condition/types";
 import { anchorOf, type Anchor, type CellAt, type DocCtx, type EditHandlers } from "@/app/(app)/documents/[id]/_components/ctx";
 import { ArticleBody } from "@/app/(app)/documents/[id]/_components/DocBody";
-import { backspaceOps, enterOps, inlineListAt, moveSelectionOps, pasteGridOps } from "@/app/(app)/documents/[id]/_components/editOps";
+import { backspaceOps, enterOps, insertedChip, inlineListAt, moveSelectionOps, pasteGridOps } from "@/app/(app)/documents/[id]/_components/editOps";
 import { EditorToolbar } from "@/app/(app)/documents/[id]/_components/EditorToolbar";
 import { caretFromPoint, tokensOf } from "@/app/(app)/documents/[id]/_components/Inline";
 import { identityRuns, runsFromTokens, sameRuns, type Token } from "@/app/(app)/documents/[id]/_components/inlineRuns";
@@ -33,7 +33,7 @@ import { usePlaceGate } from "@/app/(app)/documents/[id]/_components/placeGate";
 import { ContextMenu, Popover } from "@/app/(app)/documents/[id]/_components/Popover";
 import { PopupHost, type PopupEnv } from "@/app/(app)/documents/[id]/_components/Popups";
 import { RemoveCard } from "@/app/(app)/documents/[id]/_components/RemoveCard";
-import { loopsAround } from "@/app/(app)/documents/[id]/_components/repeatSources";
+import { currentPlanOf, loopsAround } from "@/app/(app)/documents/[id]/_components/repeatSources";
 import { DraftIssues } from "@/app/(app)/documents/[id]/_components/SidePanel";
 import { articlesOf } from "@/app/(app)/documents/[id]/_components/Toc";
 import { DOCUMENT_TOOLS, allTools, itemsFor, type ToolId } from "@/app/(app)/documents/[id]/_components/tools";
@@ -267,6 +267,12 @@ export function ArticleCopyEditor({ data, articleId, label }: { data: CopyEditor
     setMenu({ x: event.clientX, y: event.clientY, sections: scoped(env, at, tokens) });
   };
 
+  /** 칩을 넣은 명령이면 커서를 그 칩 바로 뒤로 — 편집기가 새로 그려져 초점이 사라지므로 (조사 · 옵션 자리 · 팝업 넣기). */
+  const focusInserted = (ops: readonly EditOp[]) => {
+    const chip = insertedChip(ops);
+    if (chip) setFocusRequest(chip);
+  };
+
   const runMenu = (item: MenuItem, anchor: Anchor = menuAt.current) => {
     if (item.refusal) {
       setBanner(`적용하지 못했다 — ${item.refusal}`);
@@ -285,6 +291,7 @@ export function ArticleCopyEditor({ data, articleId, label }: { data: CopyEditor
     if (ops.length === 0 || !apply(ops)) return;
     if (a.focus) setFocusRequest(a.focus);
     if (a.openChip) setPop({ spec: { kind: "editChip", nodeId: a.openChip }, anchor });
+    else if (!a.focus) focusInserted(ops);
   };
 
   const pickMenu = (item: MenuItem) => {
@@ -403,6 +410,11 @@ export function ArticleCopyEditor({ data, articleId, label }: { data: CopyEditor
 
   const withRow = (levels: ReturnType<typeof repeatLevels> | undefined): ConditionContext => (levels && levels.length > 0 ? { ...data.condition, row: { levels, readable: rowReadableLevels(levels) } } : data.condition);
   const scopeOf = (id: Id) => repeatScopeOf(tree, index.branches.get(id)?.ownerId ?? id)?.levels;
+  // 종 반복 안이면 슬롯 고르기에 「현재 종」 묶음 (ADR-0077 결정 3)
+  const withPlan = (c: ConditionContext, id: Id): ConditionContext => {
+    const plan = currentPlanOf(loopsAround(index, id), { enumOf: (x) => enumByCode.get(x) });
+    return plan ? { ...c, plan } : c;
+  };
   const repeatLabelOf = (nodeId: Id): string => {
     const loops = loopsAround(index, nodeId);
     const self = loops.at(-1);
@@ -434,7 +446,7 @@ export function ArticleCopyEditor({ data, articleId, label }: { data: CopyEditor
     },
     enumOf: (c: Code) => enumByCode.get(c),
     switchValueLabel: (clause, on, code) => switchLabelers.get(clause.code)?.(on, code),
-    conditionFor: (nodeId) => withRow(scopeOf(nodeId)),
+    conditionFor: (nodeId) => withPlan(withRow(scopeOf(nodeId)), nodeId),
     ...(flashId ? { flashId } : {}),
   };
   const ctx: DocCtx = { ...ctxBase, edit: handlers };
@@ -443,17 +455,21 @@ export function ArticleCopyEditor({ data, articleId, label }: { data: CopyEditor
     if (spec.kind === "insertInline") {
       if ("tableId" in spec.at) {
         const t = index.nodes.get(spec.at.tableId)?.node;
-        return withRow(t?.kind === "table" && t.repeat && !t.rows[spec.at.row]?.header ? repeatLevels(t) : undefined);
+        return withPlan(withRow(t?.kind === "table" && t.repeat && !t.rows[spec.at.row]?.header ? repeatLevels(t) : undefined), spec.at.tableId);
       }
-      return withRow(scopeOf(spec.at.parentId));
+      return withPlan(withRow(scopeOf(spec.at.parentId)), spec.at.parentId);
     }
-    return spec.kind === "editChip" ? withRow(scopeOf(spec.nodeId)) : data.condition;
+    return spec.kind === "editChip" ? withPlan(withRow(scopeOf(spec.nodeId)), spec.nodeId) : data.condition;
   };
   const popupEnv: PopupEnv = {
     ctx,
     tree,
     latest,
-    apply,
+    apply: (ops) => {
+      if (!apply(ops)) return false;
+      focusInserted(ops);
+      return true;
+    },
     newId: randomIds,
     appendices: data.appendices,
     boxes: data.boxes,

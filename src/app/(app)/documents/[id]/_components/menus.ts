@@ -12,7 +12,7 @@
 import type { DocumentNode, EditOp, IdSource, InlineAt, NodeKind, Position, TreeIndex } from "@/domain/document";
 import type { AttachLevel, Id } from "@/domain/types";
 
-import { allowedIn, nodeBuilders, repeatLevels as repeatLevelsOf } from "@/domain/document";
+import { allowedIn, isCodedKind, nodeBuilders, PARTICLE_PRESETS, repeatLevels as repeatLevelsOf } from "@/domain/document";
 
 import { afterOf, emptyNode, inlineListAt, moveOps, removeChipOps, selectionRange, siblingPlace, unwrapOps, wrapOps, wrapRangeOps } from "./editOps";
 import { runsFromTokens, type Token } from "./inlineRuns";
@@ -32,6 +32,11 @@ export type PopupSpec =
   /** 블록 반복 — `at` 이면 넣기(원천 고르기 → 빈 항 · 호 하나를 든 반복), `nodeId` 면 그 반복의 원천 · 이름 고치기 (ADR-0077). */
   | { kind: "repeatBlock"; at?: Position; nodeId?: Id }
   | { kind: "tableProps"; tableId: Id }
+  /**
+   * 코드 수정 창 (ADR-0072 결정 5) — 항 · 호 · 목 · 함수조항 참조 · 반복 블록의 P코드. `suggest` 면 입력칸이 추천값에서 시작한다
+   * (검증 탭의 코드 충돌 줄 「코드 수정」), 아니면 지금 코드에서.
+   */
+  | { kind: "code"; nodeId: Id; suggest?: boolean }
   | { kind: "repeat"; tableId: Id }
   | { kind: "link"; articleId: Id }
   | { kind: "docTitle" }
@@ -172,6 +177,8 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
   }
   if (e.node.kind === "clauseBlockRef") own.push({ label: "옵션 고치기…", action: { do: "popup", popup: { kind: "editChip", nodeId } } });
   if (e.node.kind === "forBlock") own.push({ label: "반복 원천…", action: { do: "popup", popup: { kind: "repeatBlock", nodeId } } });
+  // 코드 — 항 · 호 · 목 · 함수조항 참조 · 반복 블록 (툴바 「속성」, ADR-0072 결정 5). 바꾼 코드는 문서 저장 한 번에 반영된다
+  if (isCodedKind(e.node.kind)) own.push({ label: "코드 고치기…", action: { do: "popup", popup: { kind: "code", nodeId } } });
   if (e.allowed.includes("condBlock")) own.push(wrapItem(env, nodeId));
 
   return [add, own, arrangeItems(ix, nodeId)];
@@ -389,7 +396,25 @@ export function inlineCondItem(at: InlineAt, tokens: Token[], newId: IdSource, c
 }
 
 /**
- * 문장 속(커서 자리)의 넣기 — 슬롯 · 조 참조 · 별표 참조 · 함수조항(문장 안) · 문장 안 조건 (+ 반복 표 템플릿 셀이면 구조 표기).
+ * 조사 칩 넣기 — 프리셋마다 한 줄(메뉴 순서 = 프리셋 순서), 팝업 없이 커서 자리에 칩 (기능/문면 §3.11).
+ * 칩 노드는 `ops` 를 부를 때마다 새로 만든다 — 같은 줄을 두 번 돌려도 id 가 겹치지 않는다.
+ */
+export function particleInsertItems(at: InlineAt, tokens: Token[], newId: IdSource): MenuItem[] {
+  const b = nodeBuilders(newId);
+  return PARTICLE_PRESETS.map((p) => ({
+    label: `조사 — ${p.label}`,
+    action: {
+      do: "ops",
+      ops: (tree): EditOp[] => {
+        const list = inlineListAt(tree, at);
+        return list ? [{ type: "setInlines", at, runs: runsFromTokens(list, tokens, newId, b.particle(p.key)) }] : [];
+      },
+    },
+  }));
+}
+
+/**
+ * 문장 속(커서 자리)의 넣기 — 슬롯 · 조 참조 · 별표 참조 · 함수조항(문장 안) · 문장 안 조건 (+ 반복 표 템플릿 셀이면 구조 표기) · 조사.
  * 문장 안 조건의 가지 안이면 문장 안 조건은 싣지 않는다 (중첩 금지 §3.2).
  */
 export function inlineInsertItems(at: InlineAt, tokens: Token[], opts: { inInlineCond: boolean; newId: IdSource; structLevels?: readonly Exclude<AttachLevel, "product">[] }): MenuItem[] {
@@ -400,6 +425,7 @@ export function inlineInsertItems(at: InlineAt, tokens: Token[], opts: { inInlin
   const items = [pop("slot", "치환 슬롯…"), pop("articleRef", "조 참조…"), pop("appendixRef", "별표 참조…"), pop("clauseInlineRef", "함수조항(문장 안)…")];
   if (!opts.inInlineCond) items.push(inlineCondItem(at, tokens, opts.newId));
   if (opts.structLevels && opts.structLevels.length > 0) items.push(pop("structKey", "구조 표기…"));
+  items.push(...particleInsertItems(at, tokens, opts.newId));
   return items;
 }
 

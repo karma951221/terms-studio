@@ -28,6 +28,8 @@ import type { ExprType } from "../expression";
 import { allocateCode, type NextSeq } from "./codes";
 import { checkDiscriminatorExpression, checkReferenceCycle, checkResultType, type DiscriminatorCatalog } from "./expression";
 import { fieldValuesFor, planFields, type EnumFieldInput, type EnumFieldRevision } from "./fields";
+import { enumReferences } from "./impact";
+import { SPECIAL_GROUP_ENUM } from "../coverage/specialGroup";
 import type {
   Discriminator,
   DiscriminatorResultType,
@@ -305,7 +307,7 @@ function checkEnumLabel(label: string, existing: readonly string[], self?: strin
 
 /**
  * enum 값 표시명의 동일성 — 앞뒤 공백 · 연속 공백 · 대소문자를 무시한다. 저장은 적은 그대로, 비교만 이걸로.
- * 생성 화면(EnumValuesInput)의 중복 표시와 서버 거부가 같은 정책이어야 한다 (코덱스 리뷰 2026-09-14 Minor-1).
+ * 편집 · 생성 값 표(EnumTables `duplicateValueCodes`)의 중복 표시와 서버 거부가 같은 정책이어야 한다 (코덱스 리뷰 2026-09-14 Minor-1).
  */
 export function enumValueLabelKey(label: string): string {
   return label.trim().replace(/\s+/g, " ").toLowerCase();
@@ -333,7 +335,11 @@ async function buildEnumValues(
   return ok(values);
 }
 
-/** enum 정의 생성 — E0001 부터, 값은 그 enum 안에서 V01 부터. */
+/**
+ * enum 정의 생성 — E0001 부터, 값은 그 enum 안에서 V01 부터, 필드는 F01 부터.
+ * 이름 · 값 · 필드(값별 칸 포함)를 한 번에 받는다 — 빈 정의에 편집 한 벌(`reviseEnum`)을 얹는 것과 같다. 검사도 같은 규칙
+ * (값 이름 중복 · 필드 이름 중복 · 칸 타입). 칸은 필드 `ref` 로 가리킨다.
+ */
 export async function createEnum(
   input: NewEnum,
   ctx: Pick<CatalogContext, "nextSeq" | "existingEnumLabels">,
@@ -341,9 +347,18 @@ export async function createEnum(
   const labelOk = checkEnumLabel(input.label, ctx.existingEnumLabels ?? []);
   if (!labelOk.ok) return labelOk as Result<EnumDef>;
   const code = await allocateCode("enum", "", ctx.nextSeq);
-  const values = await buildEnumValues(code, input.values ?? [], 0, ctx.nextSeq, []);
-  if (!values.ok) return values as Result<EnumDef>;
-  return ok({ code, label: input.label, description: input.description ?? "", values: values.value });
+  const empty: EnumDef = { code, label: input.label, description: input.description ?? "", values: [] };
+  const revised = await reviseEnum(
+    empty,
+    {
+      label: input.label,
+      description: input.description ?? "",
+      ...(input.fields ? { fields: input.fields.map(({ ref, label, type }) => ({ ref, label, type })) } : {}),
+      values: (input.values ?? []).map((v) => ({ label: v.label, ...(v.fields ? { fields: v.fields } : {}) })),
+    },
+    { existingEnumLabels: [], nextSeq: ctx.nextSeq },
+  );
+  return revised.ok ? ok(revised.value.def) : (revised as Result<EnumDef>);
 }
 
 export function renameEnum(def: EnumDef, label: string, existingEnumLabels: readonly string[]): Result<EnumDef> {
@@ -464,6 +479,19 @@ export async function reviseEnum(
     removedFields: plan.value.removedFields,
     retypedFields: plan.value.retypedFields,
   });
+}
+
+/**
+ * 열거형변수 정의 삭제를 막는 이유 (ADR-0049 §2 표 〔D-P1-17〕 · 기능/열거형 §3.2) — 없으면 undefined(지울 수 있다).
+ * 코드가 가리키는 열거형만 막는다: **코드 마스터 필드의 타입**(그 참조는 배포로만 끊긴다)과 **특약 그룹**(코드가 E0008 을 직접 가리킨다).
+ * 데이터가 가리키는 것(구분자 명시 결과 타입 · 함수조항 인자 타입 · 조건식)은 막지 않는다 — 지우고 남은 참조를 깨진 참조로 드러낸다
+ * (값 삭제의 「없는 값」과 같은 결, ADR-0078 결정 5). — 왜: 데이터 참조는 편집자가 고칠 수 있지만, 코드 참조는 고칠 길이 화면에 없다.
+ */
+export function enumRemovalBlock(enumCode: Code): string | undefined {
+  const fields = enumReferences(enumCode).map((c) => `「${c.ownerName}」`);
+  if (fields.length > 0) return `코드 마스터 필드 ${fields.join(" · ")}이(가) 타입으로 쓰는 열거형변수는 지울 수 없습니다`;
+  if (enumCode === SPECIAL_GROUP_ENUM) return "담보의 특약 그룹이 코드로 가리키는 열거형변수(「특약 그룹」)는 지울 수 없습니다";
+  return undefined;
 }
 
 /** 값 순서 변경 (D-P1-8) — 전체 값 코드를 새 순서로. */

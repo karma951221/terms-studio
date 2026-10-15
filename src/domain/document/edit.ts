@@ -15,7 +15,7 @@ import { randomIds } from "./builders";
 import { applyCommand, type Command } from "./commands";
 import { branchesOf, cellNodesOf, indexTree, listOf, slotsOf, type DocumentNode, type Node, type TreeEnv } from "./nodes";
 import { referenceKeys } from "./pcode";
-import { repeatedKeys } from "./blockRepeat";
+import { refTargetFacts, repeatedKeys, type RefTargetEnv, type RefTargetFact } from "./blockRepeat";
 import { collectRefs } from "./refs";
 
 /** 편집 명령 — 트리 명령 또는 대응 보통약관 지정(`generalDocumentId` 없음 = 해제). */
@@ -35,6 +35,8 @@ export interface GeneralRefs {
   referenceKeys: ReadonlySet<string>;
   /** 반복 블록 안 대상 열쇠 — 대상이 하나여도 연결어가 필요하다 (결정 14 확장). */
   repeatedKeys?: ReadonlySet<string>;
+  /** 대상 열쇠(조#코드)마다 머리의 사실 — 안쪽 코드 · 값 한정 열거형 검사 (기능/문면 §3.7). */
+  targets?: ReadonlyMap<string, RefTargetFact>;
 }
 
 export interface EditEnv {
@@ -46,18 +48,24 @@ export interface EditEnv {
   newId?: IdSource;
 }
 
-export function generalRefsOf(tree: DocumentNode): GeneralRefs {
+/** `env` = 대상 사실의 재료(함수조항 본문 — 안쪽 코드 · 마스터). 함수조항을 주지 않으면 안쪽 코드 존재는 보지 않는다. */
+export function generalRefsOf(tree: DocumentNode, env: RefTargetEnv = {}): GeneralRefs {
   const ix = indexTree(tree);
   const articleIds = new Set<Id>();
   for (const e of ix.nodes.values()) if (e.node.kind === "article") articleIds.add(e.node.id);
-  return { articleIds, referenceKeys: referenceKeys(ix), repeatedKeys: repeatedKeys(ix) };
+  return { articleIds, referenceKeys: referenceKeys(ix), repeatedKeys: repeatedKeys(ix), targets: refTargetFacts(ix, env) };
+}
+
+/** 보통약관 대상 → 검증 환경의 보통약관 칸 (`envAt` · 서버 `envOf` 공용). */
+export function generalEnvOf(refs: GeneralRefs | undefined): Pick<TreeEnv, "generalArticleIds" | "generalReferenceKeys" | "generalRepeatedKeys" | "generalTargets"> {
+  return { generalArticleIds: refs?.articleIds ?? new Set(), generalReferenceKeys: refs?.referenceKeys ?? new Set(), ...(refs?.repeatedKeys ? { generalRepeatedKeys: refs.repeatedKeys } : {}), ...(refs?.targets ? { generalTargets: refs.targets } : {}) };
 }
 
 /** 대응 보통약관이 `generalDocumentId` 일 때의 검증 환경. 담보약관이 아직 안 골랐으면 조연결 대상은 빈 집합이다. */
 export function envAt(edit: EditEnv, generalDocumentId: Id | undefined): TreeEnv {
   if (edit.env.kind !== "special") return edit.env;
   const refs = generalDocumentId !== undefined ? edit.generalRefs(generalDocumentId) : undefined;
-  return { ...edit.env, generalArticleIds: refs?.articleIds ?? new Set(), generalReferenceKeys: refs?.referenceKeys ?? new Set(), ...(refs?.repeatedKeys ? { generalRepeatedKeys: refs.repeatedKeys } : {}) };
+  return { ...edit.env, ...generalEnvOf(refs) };
 }
 
 function invalid<T>(message: string): Result<T> {

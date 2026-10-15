@@ -15,6 +15,8 @@ export function coordinateHref(coordinate: Coordinate | undefined): string | und
   if (coordinate.document === "clause") return `/functions/${coordinate.ownerId}${node ? `?node=${node}` : ""}`;
   // 구분자 식이 깨진 원천은 구분자 편집기, 그 구분자다 — 문면 편집기가 아니다 (ADR-0049 §4)
   if (coordinate.document === "catalog") return `/catalog/${coordinate.ownerId}`;
+  // 열거값 필드 미입력 · 없는 값의 원천은 그 열거형 상세 — refPath 는 값 코드, 그 값 행을 강조한다
+  if (coordinate.document === "enum") return `/enums/${coordinate.ownerId}${coordinate.refPath ? `?value=${encodeURIComponent(coordinate.refPath)}` : ""}`;
   // 담보 마스터 · 담보약관 좌표의 ownerId 는 **담보 id** 다 (문서 id 가 아니다 — `Coordinate` 주석).
   //   문서를 아는 생산자는 `documentId` 를 실어 준다 → 그 문서 화면의 그 노드로 (문면 오류는 문면에서 고친다).
   //   값 소유 노드를 아는 생산자는 `node` 를 실어 준다 → 담보 상세의 그 노드 카드로(펼치고 스크롤 · 강조)

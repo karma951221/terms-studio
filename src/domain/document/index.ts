@@ -30,6 +30,7 @@ export * from "./fixture";
 export * from "./nodeBindings";
 export * from "./nodes";
 export * from "./numbering";
+export * from "./particles";
 export * from "./pcode";
 export * from "./refs";
 export * from "./repeat";

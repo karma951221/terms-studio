@@ -202,6 +202,14 @@ describe("함수조항 S1 — 조 참조 · 별표 참조 검사 (기능/함수�
     ({ id: "a1", kind: "articleRef", targets, ...(connector === null ? {} : { connector }) } as Inline);
   const 별표참조 = (appendixCode: string): Inline => ({ id: "x1", kind: "appendixRef", appendixCode });
 
+  it("함수조항 본문의 조사 칩 — 모르는 프리셋은 structure 오류", () => {
+    const 칩 = (preset: string) => ({ id: "p", kind: "particle", preset }) as unknown as Inline;
+    const issues = issuesOf(analyzeBody("inline", [칩("nope")], []));
+    expect(issues.map((i) => i.kind)).toEqual(["structure"]);
+    expect(issues[0]!.message).toBe("조사 칩의 프리셋을 알 수 없습니다");
+    expect(analyzeBody("inline", [칩("eul-reul")], []).ok).toBe(true);
+  });
+
   it("조 참조 슬롯에 대상이 없으면 거부한다 (structure)", () => {
     const issues = issuesOf(analyzeBody("inline", [조참조([])], []));
     expect(issues.map((i) => i.kind)).toEqual(["structure"]);
@@ -247,6 +255,22 @@ describe("함수조항 S1 — 조 참조 · 별표 참조 검사 (기능/함수�
     const keys = new Set(["g-art-1", "g-art-1#P0400"]);
     const keyed = [조참조([{ articleId: "g-art-1", code: "P0400", restrict: { keys: ["01"] } } as never], "및")];
     expect(issuesOf(analyzeBody("inline", keyed, [], { generalReferenceKeys: keys, generalRepeatedKeys: new Set(["g-art-1#P0400"]) })).map((i) => i.message)).toEqual(["함수조항 본문에는 반복이 없어 키 한정을 쓸 수 없습니다"]);
+  });
+
+  it("보통약관 대상 사실(generalTargets)이 있으면 안쪽 코드 존재 · 값 한정의 지운 값을 본다 — 문서 저장과 같은 규칙 (기능/문면 §3.7)", () => {
+    const keys = new Set(["g-art-1", "g-art-1#P0400", "g-art-1#P0200"]);
+    const repeated = new Set(["g-art-1#P0400", "g-art-1#P0400/*", "g-art-1#P0200"]);
+    const generalTargets = new Map([
+      ["g-art-1#P0400", { headKind: "clauseBlockRef", clauseCode: "C0300", innerCodes: new Set(["P0100"]), valueEnum: "E0001" }],
+      ["g-art-1#P0200", { headKind: "paragraph" }],
+    ]);
+    const enumOf = (c: string) => (c === "E0001" ? { code: "E0001", label: "납입면제사유", values: [{ code: "V01", label: "암", order: 0 }] } : undefined);
+    const opts = { generalReferenceKeys: keys, generalRepeatedKeys: repeated, generalTargets, enumOf };
+    const ref = (t: Record<string, unknown>) => [조참조([{ articleId: "g-art-1", ...t } as never], "및")];
+    expect(analyzeBody("inline", ref({ code: "P0400", innerCode: "P0100", restrict: { values: ["V01"] } }), [], opts).ok).toBe(true);
+    expect(issuesOf(analyzeBody("inline", ref({ code: "P0400", innerCode: "P9900" }), [], opts)).map((i) => [i.kind, i.message])).toEqual([["brokenRef", expect.stringContaining("P9900")]]);
+    expect(issuesOf(analyzeBody("inline", ref({ code: "P0400", restrict: { values: ["V99"] } }), [], opts)).map((i) => i.message)).toEqual([expect.stringContaining("없는 값 V99")]);
+    expect(issuesOf(analyzeBody("inline", ref({ code: "P0200", restrict: { values: ["V01"] } }), [], opts)).map((i) => i.message)).toEqual([expect.stringContaining("열거값(사유)")]);
   });
 
   it("별표 코드가 비어 있으면 거부한다 (structure)", () => {

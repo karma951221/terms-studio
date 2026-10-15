@@ -156,10 +156,11 @@ export interface Actor {
 export interface Coordinate {
   /**
    * 문서 종류: 보통약관 / 특별약관(상품담보) / 함수조항 정의 / 담보 마스터 / 상품 /
-   * 구분자 정의 — 고치는 자리는 구분자 편집기 (ADR-0049 §4 「원천은 고치면 사라지는 곳」)
+   * 구분자 정의 — 고치는 자리는 구분자 편집기 (ADR-0049 §4 「원천은 고치면 사라지는 곳」) /
+   * 열거형변수 — 열거값 필드 미입력 · 없는 값의 고치는 자리 (`refPath` = 값 코드)
    */
-  document?: "general" | "special" | "clause" | "coverageMaster" | "product" | "catalog";
-  /** 문서를 소유한 실체 — 보통약관 템플릿 id · 상품담보 id · 함수조항 id · 담보 id · 상품 id · 구분자 코드 */
+  document?: "general" | "special" | "clause" | "coverageMaster" | "product" | "catalog" | "enum";
+  /** 문서를 소유한 실체 — 보통약관 템플릿 id · 상품담보 id · 함수조항 id · 담보 id · 상품 id · 구분자 코드 · 열거형 코드 */
   ownerId?: Id;
   /**
    * 문면 문서 id — 담보약관(`coverageMaster`·`special`)의 오류를 담보 상세가 아니라 그 문서 화면으로 바로 보내기 위한 것.
@@ -214,6 +215,7 @@ export type IssueKind =
   | "unlinkedBaseArticle" // 1개 모드 기본계약 조에 조연결 없음 (warning)
   | "omissionUndecided" // 조연결 자동 판정 보류 — 원문 유지 + 검토 경고 (기능/조립산출 §3.5)
   | "syntax" // 식 문법 오류
+  | "particleUnresolved" // (warning) 조사 칩 앞 글자로 받침을 판정할 수 없어 병기
   | "structure" // 문면 트리 규칙 위반 (허용 자식 · 인라인 조건 중첩 · 노드 id 중복 · else 위치 등, ADR-0012)
   | "alias"; // 별칭 — 값 하나에 이름 둘, 허용하되 경고 (기능/구분자 §3.2)
 
@@ -239,6 +241,8 @@ export type Rejection =
   | { reason: "notFound"; what: string }
   /** 판 충돌 — 편집을 시작한 판과 지금 원본의 판이 다르다 (ADR-0074 결정 4). 잠금은 없다. */
   | { reason: "conflict"; what: string }
+  /** 코드가 가리키는 실체라 지울 수 없다 — 관리자 확인으로도 (열거형변수 정의 삭제 〔D-P1-17〕). `what` = 이유 문장 */
+  | { reason: "inUse"; what: string }
   | { reason: "failed"; message: string }; // 건별 실행 실패 — 다중 산출에서 한 건의 예외를 그 건의 거부로 (ADR-0034 결정 7). 검증 거부가 아니다
 
 /** 탑재 상품담보 하나 — 구조 정정이 미치는 상품 (ADR-0075 결정 2). */

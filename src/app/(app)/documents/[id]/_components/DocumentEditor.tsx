@@ -38,6 +38,7 @@ import {
   catalogTypeResolver,
   clauseGateFrom,
   envAt,
+  documentCodeIssues,
   generalRefsOf,
   indexTree,
   isRepeatSource,
@@ -53,7 +54,10 @@ import {
   rowReadableLevels,
   validateDocument,
   type Appendix,
+  type ClauseGate,
+  type DocumentNode,
   type DraftState,
+  type GeneralRefs,
   type EditEnv,
   type EditOp,
   type ReferenceTarget,
@@ -70,7 +74,7 @@ import { refLabelOf } from "./condition/display";
 import type { ConditionContext } from "./condition/types";
 import { anchorOf, type Anchor, type CellAt, type DocCtx, type DocMode, type EditHandlers } from "./ctx";
 import { ArticleBody } from "./DocBody";
-import { backspaceOps, enterOps, inlineListAt, moveSelectionOps, pasteGridOps } from "./editOps";
+import { backspaceOps, enterOps, insertedChip, inlineListAt, moveSelectionOps, pasteGridOps } from "./editOps";
 import { caretFromPoint, tokensOf } from "./Inline";
 import { identityRuns, runsFromTokens, sameRuns, type Token } from "./inlineRuns";
 import { boxPickItems, clausePickItems, condInsertItem, condMenu, inlineCondItem, placeBlockId, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
@@ -81,13 +85,13 @@ import { marksMenuItem, markSelectionOps, useMarksShown } from "./workMarks";
 import { DOCUMENT_TOOLS, allTools, itemsFor, type ToolId } from "./tools";
 import { useBlockDrag } from "./useBlockDrag";
 import { PopupHost, type PopupEnv } from "./Popups";
-import { loopsAround } from "./repeatSources";
+import { currentPlanOf, loopsAround } from "./repeatSources";
 import { ContextMenu, Popover } from "./Popover";
 import { RemoveCard } from "./RemoveCard";
 import { LeafPanelTab } from "./LeafPanelTab";
 import { PreviewTab } from "./PreviewTab";
 import { usePreviewSelection } from "./previewSelection";
-import { DraftIssues, SidePanel, type PanelData } from "./SidePanel";
+import { DraftIssues, SidePanel, type CodeFix, type PanelData } from "./SidePanel";
 import { Toc, articlesOf } from "./Toc";
 
 export interface EditorDoc {
@@ -159,6 +163,17 @@ function articleOfNode(tree: DraftState["tree"], nodeId: Id): Id | undefined {
   return e?.articleId ?? ix.branches.get(nodeId)?.articleId;
 }
 
+
+/** 대응 보통약관 트리 → 조연결 · 보통약관 조 참조 대상(대상 사실 포함). 편집 명령마다 부르므로 트리 · 게이트가 같으면 다시 짓지 않는다. */
+const generalRefsCache = new WeakMap<DocumentNode, { gate: ClauseGate; refs: GeneralRefs }>();
+function cachedGeneralRefs(tree: DocumentNode, gate: ClauseGate): GeneralRefs {
+  const hit = generalRefsCache.get(tree);
+  if (hit && hit.gate === gate) return hit.refs;
+  const refs = generalRefsOf(tree, gate.clauseOf ? { clauseOf: (c: Code) => gate.clauseOf!(c) } : {});
+  generalRefsCache.set(tree, { gate, refs });
+  return refs;
+}
+
 export function DocumentEditor(props: EditorProps) {
   const { doc } = props;
   const router = useRouter();
@@ -216,7 +231,8 @@ export function DocumentEditor(props: EditorProps) {
       env: { kind: doc.kind, appendixExists: (c: Code) => appendixCodes.has(c), boxExists: (c: Code) => boxByCode.has(c), clauseGate: gate, enumOf: (c: Code) => enumByCode.get(c), coordinate },
       generalRefs: (id: Id) => {
         const g = cache[id];
-        return g ? generalRefsOf(g.tree) : undefined;
+        // 대상 사실(안쪽 코드 · 값 한정 열거형)은 서버 저장 검사와 같은 함수조항 게이트로 짓는다 — 명령마다 부르므로 트리 · 게이트마다 한 번
+        return g ? cachedGeneralRefs(g.tree, gate) : undefined;
       },
     }),
     [doc.kind, appendixCodes, boxByCode, gate, enumByCode, coordinate],
@@ -230,6 +246,8 @@ export function DocumentEditor(props: EditorProps) {
     [props.coverage, props.discriminators],
   );
   const issues = useMemo(() => validateDocument(tree, { env: envAt(editEnv, current.generalDocumentId), resolve, scope }), [tree, editEnv, current.generalDocumentId, resolve, scope]);
+  /** 코드 오류(공존 중복 — 이동 충돌 · 형식)가 난 자리 — 검증 줄의 「코드 수정」 (ADR-0072 결정 5). */
+  const codeIssueIds = useMemo(() => new Set(documentCodeIssues(tree).map((i) => i.id)), [tree]);
   const errorCount = blockingIssues(issues).length;
 
   // ── 번호 · 참조 표기 ──
@@ -577,6 +595,12 @@ export function DocumentEditor(props: EditorProps) {
     runMenu(item);
   };
 
+  /** 칩을 넣은 명령이면 커서를 그 칩 바로 뒤로 — 편집기가 새로 그려져 초점이 사라지므로 (조사 · 옵션 자리 · 팝업 넣기). */
+  const focusInserted = (ops: readonly EditOp[]) => {
+    const chip = insertedChip(ops);
+    if (chip) setFocusRequest(chip);
+  };
+
   const runMenu = (item: MenuItem, anchor: Anchor = menuAt.current) => {
     const a = item.action;
     if (a.do === "popup") {
@@ -593,6 +617,7 @@ export function DocumentEditor(props: EditorProps) {
     if (!recorded) return;
     if (a.focus) setFocusRequest(a.focus);
     if (a.openChip) setPop({ spec: { kind: "editChip", nodeId: a.openChip }, anchor });
+    else if (!a.focus) focusInserted(recorded);
     if (a.goArticle) {
       setArt(a.goArticle);
       setPlace({ kind: "article", id: a.goArticle });
@@ -677,6 +702,11 @@ export function DocumentEditor(props: EditorProps) {
     const owner = index.branches.get(id)?.ownerId ?? id;
     return repeatScopeOf(tree, owner)?.levels;
   };
+  // 종 반복 안이면 슬롯 고르기에 「현재 종」 묶음 (ADR-0077 결정 3)
+  const withPlan = (c: ConditionContext, id: Id): ConditionContext => {
+    const plan = currentPlanOf(loopsAround(index, id), { enumOf: (x) => enumByCode.get(x) });
+    return plan ? { ...c, plan } : c;
+  };
 
   // 블록 반복 이름 — 별칭 또는 원천(목록 원천은 바깥 반복의 폼을 읽는다, ADR-0077)
   const repeatLabelOf = (nodeId: Id): string => {
@@ -710,7 +740,7 @@ export function DocumentEditor(props: EditorProps) {
     },
     enumOf: (c: Code) => enumByCode.get(c),
     switchValueLabel: (clause, on, code) => switchLabelers.get(clause.code)?.(on, code),
-    conditionFor: (nodeId) => withRow(scopeOf(nodeId), nodeId),
+    conditionFor: (nodeId) => withPlan(withRow(scopeOf(nodeId), nodeId), nodeId),
     ...(flashId ? { flashId } : {}),
     ...(mode === "edit" ? { edit } : {}),
   };
@@ -720,12 +750,12 @@ export function DocumentEditor(props: EditorProps) {
       case "insertInline": {
         if ("tableId" in spec.at) {
           const t = index.nodes.get(spec.at.tableId)?.node;
-          return withRow(t?.kind === "table" && t.repeat && !t.rows[spec.at.row]?.header ? repeatLevels(t) : undefined);
+          return withPlan(withRow(t?.kind === "table" && t.repeat && !t.rows[spec.at.row]?.header ? repeatLevels(t) : undefined), spec.at.tableId);
         }
-        return withRow(scopeOf(spec.at.parentId), spec.at.parentId);
+        return withPlan(withRow(scopeOf(spec.at.parentId), spec.at.parentId), spec.at.parentId);
       }
       case "editChip":
-        return withRow(scopeOf(spec.nodeId), spec.nodeId);
+        return withPlan(withRow(scopeOf(spec.nodeId), spec.nodeId), spec.nodeId);
       default:
         return props.condition;
     }
@@ -735,7 +765,11 @@ export function DocumentEditor(props: EditorProps) {
     ctx,
     tree,
     latest,
-    apply,
+    apply: (ops) => {
+      if (!apply(ops)) return false;
+      focusInserted(ops);
+      return true;
+    },
     newId: randomIds,
     appendices: props.appendices,
     boxes: props.boxes,
@@ -754,6 +788,11 @@ export function DocumentEditor(props: EditorProps) {
       ? props.generals.find((g) => g.id === props.suggestedGeneralId)?.title
       : undefined;
 
+  // 코드 충돌(이동 충돌) · 형식 오류 줄의 「코드 수정」 — 코드 수정 창을 추천값으로 (ADR-0072 결정 5). 가운데에 그 자리를 여는 것은 줄의 `go`
+  const fixCode = useMemo(
+    (): CodeFix | undefined => (mode === "edit" ? { ids: codeIssueIds, open: (nodeId: Id, at: DOMRect) => setPop({ spec: { kind: "code", nodeId, suggest: true }, anchor: { x: at.left, y: at.bottom, top: at.top } }) } : undefined),
+    [mode, codeIssueIds],
+  );
   const panel: PanelData = {
     issues,
     documentTitle: tree.title,
@@ -763,6 +802,7 @@ export function DocumentEditor(props: EditorProps) {
     preview: <PreviewTab docKind={doc.kind} selection={selection} tree={tree} {...(currentArticleId ? { articleId: currentArticleId } : {})} editing={mode === "edit"} />,
     ...(doc.kind === "special" ? { leaves: <LeafPanelTab selection={selection} tree={tree} go={go} /> } : {}),
     go,
+    ...(fixCode ? { fixCode } : {}),
   };
 
   const toolbarPlace = placeIn(index);
@@ -923,7 +963,7 @@ export function DocumentEditor(props: EditorProps) {
         {banner && (
           <div className="ts-error-banner" role="alert">
             <p>{banner.message}</p>
-            {banner.issues && banner.issues.length > 0 && <DraftIssues go={go} issues={banner.issues} />}
+            {banner.issues && banner.issues.length > 0 && <DraftIssues go={go} issues={banner.issues} {...(fixCode ? { fixCode } : {})} />}
           </div>
         )}
         {props.notice}

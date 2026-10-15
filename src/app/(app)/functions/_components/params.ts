@@ -2,7 +2,7 @@
  * 함수조항 인자 화면의 순수 재료 (최종 결정 2 · 기능/함수조항 §4.3) — 인자 표 칸 값 ⇄ 인자 선언, 조건 · 슬롯 고르기의 「인자」 칸, 사용처 연결 칸.
  *
  * 고르기 칸의 값은 글자 하나다 — 타입 `boolean` · `enum:E0001` · `list<enum>:E0001` · `planOptions:waiver` · `articleRef`(조 참조 인자, ADR-0083),
- * 연결 `""`(없음 · 기본 연결) · `d:D0001`(구분자) · `c:true` · `c:false` · `c:V01`(상수 — 참거짓 · 열거값) · `s:waiver` · `s:waiver:applies`(원천 — 폼 전체 · 참거짓 필드 = 예) ·
+ * 연결 `""`(없음 · 기본 연결) · `d:D0001`(구분자) · `c:true` · `c:false` · `c:V01`(상수 — 참거짓 · 열거값. 문자 · 숫자 · 날짜 상수는 콤보가 아니라 「상수 직접 입력」 칸 — `constBindingOfText`) · `s:waiver` · `s:waiver:applies`(원천 — 폼 전체 · 참거짓 필드 = 예) ·
  * `r:<반복 블록 id>`(반복의 현재 원소 — 넣는 자리를 감싼 반복만, ADR-0077 결정 3),
  * `d:D0007@01`(키 경로 — 담보 노드의 구분자) · `d:D0007@cur:<반복 블록 id>`(감싼 담보 트리 반복의 현재 노드, ADR-0087 결정 4 · 7).
  */
@@ -17,7 +17,8 @@ import type { CtxDiscriminator, CtxNode } from "@/app/(app)/documents/[id]/_comp
 export interface EnumChoice {
   code: string;
   label: string;
-  values: { code: string; label: string }[];
+  /** 값 — `fields` 는 그 값의 필드 값(필드 키 → 값, 키 없음 = 미입력) · 단독 시험이 필드 읽기를 푼다. */
+  values: { code: string; label: string; fields?: Record<string, string | boolean> }[];
   /** 유저 정의 필드(ADR-0078) — 필드 읽기 칸(`arg.사유.F01`) · 내부 변수 식의 이름 ⇄ 키. 없으면 빈 목록. */
   fields?: { key: string; label: string; type: "string" | "boolean" }[];
 }
@@ -188,6 +189,45 @@ export function bindingOptions(
   if (t.kind === "boolean") out.push({ value: "c:true", label: "예(상수)", group: "상수" }, { value: "c:false", label: "아니오(상수)", group: "상수" });
   if (t.kind === "enum") for (const v of enums.find((e) => e.code === t.enumCode)?.values ?? []) out.push({ value: `c:${v.code}`, label: `${v.label}(상수)`, group: "상수" });
   return out;
+}
+
+/**
+ * 상수 직접 입력 칸 — 문자 · 숫자 · 날짜 인자만 연결 칸(콤보) 아래에 선다 (기능/함수조항 §4.4).
+ * 참거짓 · 열거값 상수는 콤보 후보로 고르고, 목록 · 세목 선택지 목록 · 조 참조는 상수가 없다. 날짜는 `YYYY-MM-DD`(모델 `Binding.const` 그대로).
+ */
+export function constInputOf(t: ParamType): { inputMode: "text" | "decimal"; placeholder: string } | undefined {
+  if (t.kind === "string") return { inputMode: "text", placeholder: "문자" };
+  if (t.kind === "number") return { inputMode: "decimal", placeholder: "숫자" };
+  if (t.kind === "date") return { inputMode: "text", placeholder: "YYYY-MM-DD" };
+  return undefined;
+}
+
+const DATE_TEXT = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** 날짜 글이 실제 날짜인가 (2026-02-30 은 아니다). */
+function isRealDate(text: string): boolean {
+  const m = DATE_TEXT.exec(text);
+  if (!m) return false;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const at = new Date(Date.UTC(y, mo - 1, d));
+  return at.getUTCFullYear() === y && at.getUTCMonth() === mo - 1 && at.getUTCDate() === d;
+}
+
+/** 상수 칸 글 → 연결. 빈 칸 · 칸이 없는 타입이면 연결 없음(`{}`), 모양이 틀리면 `error`(칸 아래 빨간 글 — 저장 전에 막는다). */
+export function constBindingOfText(text: string, t: ParamType): { binding?: Binding; error?: string } {
+  const v = text.trim();
+  if (v === "" || !constInputOf(t)) return {};
+  if (t.kind === "number") {
+    const n = Number(v.replaceAll(",", ""));
+    return Number.isFinite(n) ? { binding: { kind: "const", value: n } } : { error: "숫자가 아닙니다 — 예: 100" };
+  }
+  if (t.kind === "date") return isRealDate(v) ? { binding: { kind: "const", value: v } } : { error: "날짜는 YYYY-MM-DD 로 적는다 — 예: 2026-10-15" };
+  return { binding: { kind: "const", value: v } };
+}
+
+/** 연결 → 상수 칸 글 — 칸이 서는 타입의 상수 연결일 때만, 아니면 빈 칸. */
+export function constTextOf(b: Binding | undefined, t: ParamType): string {
+  return b?.kind === "const" && constInputOf(t) ? String(b.value) : "";
 }
 
 /** 연결 표시 — 「갱신여부(D0001)」 · 「예」 · 「납입면제 — 적용여부 = 예인 선택지」. */

@@ -5,7 +5,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { ClauseMeta, returnTypeOf, type ClauseMetaProps } from "./ClauseMeta";
+import { ClauseMeta, RequiredList, resolveContextOf, returnTypeOf, type ClauseMetaProps } from "./ClauseMeta";
 
 const p = { kind: "paragraph" };
 const i = { kind: "item" };
@@ -32,6 +32,18 @@ describe("returnTypeOf — 유형 + 본문이 펴는 단위 수", () => {
     expect(returnTypeOf("item", [i])).toBe("호");
     expect(returnTypeOf("item", [i, i])).toBe("호 목록");
     expect(returnTypeOf("subitem", [{ kind: "subitem" }])).toBe("목");
+  });
+});
+
+describe("resolveContextOf — 요구 구분자가 어느 문맥에서 해소되나 (§3.3 · 조립산출 §3.2)", () => {
+  it("상품 · 세목 레벨은 조립 때", () => {
+    expect(resolveContextOf("product")).toBe("조립 때 — 상품 값");
+    expect(resolveContextOf("plan")).toBe("조립 때 — 상품의 세목 범위");
+  });
+  it("담보 · 세부보장 · 급부 레벨은 사용처 문서 — 담보약관은 문서 자신, 보통약관은 기본계약", () => {
+    for (const level of ["coverage", "subCoverage", "benefit"] as const) {
+      expect(resolveContextOf(level)).toBe("담보약관은 문서 자신 · 보통약관은 기본계약");
+    }
   });
 });
 
@@ -66,5 +78,28 @@ describe("ClauseMeta", () => {
     expect(html).toContain('role="radiogroup"');
     expect(html).not.toMatch(/요구 구분자|>코드</);
     expect(html.indexOf("clause-label")).toBeLessThan(html.indexOf("반환 타입"));
+  });
+
+});
+
+describe("RequiredList — 요구 구분자 줄", () => {
+  const discs = [
+    { code: "D0001", label: "갱신형 상품", level: "product" as const },
+    { code: "D0009", label: "감액 여부", level: "coverage" as const },
+  ];
+  it("줄마다 코드 · 표시명 · 해소 문맥", () => {
+    const html = renderToStaticMarkup(<RequiredList codes={["D0001", "D0009"]} discriminators={discs} />);
+    expect(html).toMatch(/D0001[\s\S]*갱신형 상품[\s\S]*조립 때 — 상품 값/);
+    expect(html).toMatch(/D0009[\s\S]*감액 여부[\s\S]*담보약관은 문서 자신 · 보통약관은 기본계약/);
+  });
+  it("모르는 코드는 코드만 — 해소 문맥 없이", () => {
+    const html = renderToStaticMarkup(<RequiredList codes={["D0404"]} discriminators={discs} />);
+    expect(html).toContain("D0404");
+    expect(html).not.toContain("조립 때");
+  });
+  it("비었으면 「없음」 — 요구 구분자는 읽는 인자의 기본 연결이다", () => {
+    const html = renderToStaticMarkup(<RequiredList codes={[]} discriminators={discs} />);
+    expect(html).toContain("없음 — 본문이 읽는 인자에 기본 연결 구분자가 없다");
+    expect(html).not.toContain("식에서 뽑는다");
   });
 });

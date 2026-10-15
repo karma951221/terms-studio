@@ -182,7 +182,8 @@ export function insertAt(value: string, cursor: number, text: string, caret: num
   const at = Math.max(0, Math.min(cursor, value.length));
   const before = value.slice(0, at);
   const after = value.slice(at);
-  const padBefore = before.length > 0 && !NO_PAD_BEFORE.test(before) ? " " : "";
+  // 점으로 시작하는 연산 · 필드(함수조항 내부 변수의 `.있음()` · `.약관표시명`)는 앞 토큰에 붙인다
+  const padBefore = before.length > 0 && !NO_PAD_BEFORE.test(before) && !text.startsWith(".") ? " " : "";
   const padAfter = after.length > 0 && !NO_PAD_AFTER.test(after) ? " " : "";
   const inserted = `${padBefore}${text}${padAfter}`;
   return { value: `${before}${inserted}${after}`, cursor: before.length + padBefore.length + caret };

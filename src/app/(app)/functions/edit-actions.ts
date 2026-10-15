@@ -69,6 +69,12 @@ export async function saveClauseEditAction(code: string, input: ClauseEditData):
         if (error) return error;
       }
 
+      // 인자 이름 바꾸기 — 사용처 연결 키도 같은 저장에서 (기능/함수조항 §3.7, 출력 불변이라 재검사 없음)
+      if (input.paramRenames && Object.keys(input.paramRenames).length > 0) {
+        const error = failed(await services.clause.renameUsageBindings(actor, code, input.paramRenames));
+        if (error) return error;
+      }
+
       const optionError = await syncOptions(actor, services, code, before, input.options);
       if (optionError) return optionError;
 

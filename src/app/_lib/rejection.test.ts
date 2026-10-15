@@ -17,6 +17,11 @@ describe("describeRejection — Rejection → 사람이 읽을 문장", () => {
     expect(describeRejection(r).message).toContain("사용자 이름 「admin」");
   });
 
+  it("inUse — 이유 문장(what)을 그대로 보인다 (지울 수 없는 열거형변수 〔D-P1-17〕)", () => {
+    const r: Rejection = { reason: "inUse", what: "담보의 특약 그룹이 코드로 가리키는 열거형변수(「특약 그룹」)는 지울 수 없습니다" };
+    expect(describeRejection(r).message).toBe(r.what);
+  });
+
   it("minimumStructure — what 을 그대로 싣는다", () => {
     const r: Rejection = { reason: "minimumStructure", what: "급부는 최소 1개" };
     expect(describeRejection(r).message).toContain("급부는 최소 1개");

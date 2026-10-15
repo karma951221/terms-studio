@@ -4,7 +4,6 @@ import { createTestDb, type TestDb } from "../test-utils";
 import {
   copySlots,
   countPathRows,
-  purgePathRows,
   readSlots,
   readSlotsMany,
   valuesImpactSource,
@@ -61,13 +60,9 @@ describe("entity_values — 실체 × 마스터 필드 값 자리 (공용 값 �
     expect((await readSlots(t.db, pc)).get("pay.rate")).toEqual({ entered: true, value: 70 });
   });
 
-  it("경로 단위로 값 행을 세고 지운다 — enum 삭제 영향의 재료", async () => {
+  it("경로 단위로 값 행을 센다 — enum 삭제 영향의 재료 (값 행을 지우는 삭제는 없다)", async () => {
     expect(await countPathRows(t.db, ["waiver.applies"])).toBe(2);
     expect(await countPathRows(t.db, [])).toBe(0);
-    await purgePathRows(t.db, ["waiver.applies"]);
-    expect((await readSlots(t.db, cov)).has("waiver.applies")).toBe(false);
-    expect((await readSlots(t.db, pc)).has("waiver.applies")).toBe(false);
-    expect((await readSlots(t.db, pc)).has("pay.rate")).toBe(true);
   });
 
   it("readSlotsMany — 소유자 순서는 요청 순, 자리 순서는 경로 순 (쓴 순서와 무관 · 조립 결정성의 재료, ADR-0034 결정 4)", async () => {
@@ -89,7 +84,6 @@ describe("entity_values — 실체 × 마스터 필드 값 자리 (공용 값 �
   it("구분자 삭제는 값 행을 지우지 않는다 — 구분자는 식이라 값이 없다 (ADR-0037)", async () => {
     const src = valuesImpactSource(t.db);
     expect(await src.countValueRows({ kind: "discriminator", code: "D0001" })).toBe(0);
-    await src.purgeValueRows({ kind: "discriminator", code: "D0001" });
     expect((await readSlots(t.db, pc)).has("pay.rate")).toBe(true);
   });
 });

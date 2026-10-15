@@ -48,7 +48,7 @@ export async function loadClauseEditorData(): Promise<ClauseEditorData> {
     enums: enums.map((e) => ({
       code: e.code,
       label: e.label,
-      values: [...e.values].sort((a, b) => a.order - b.order).map((v) => ({ code: v.code, label: v.label })),
+      values: [...e.values].sort((a, b) => a.order - b.order).map((v) => ({ code: v.code, label: v.label, ...(v.fields ? { fields: v.fields } : {}) })),
       // 유저 정의 필드 — 필드 읽기 칸 · 내부 변수 식의 이름 ⇄ 키 (ADR-0078)
       fields: [...(e.fields ?? [])].sort((a, b) => a.order - b.order).map((f) => ({ key: f.key, label: f.label, type: f.type })),
     })),

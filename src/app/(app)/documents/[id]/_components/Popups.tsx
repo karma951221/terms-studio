@@ -12,11 +12,15 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { Combobox, type ComboOption } from "@/app/_components/Combobox";
 import { IconButton, IconTrash } from "@/app/_components/icons";
 import { DOC_KIND_LABEL, REPEAT_DEPTH_LABEL, STRUCT_KEY_CHIP, SWITCH_WORD } from "@/app/_lib/labels";
-import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, planFormChoices, type LoopChoice, type NodeTree } from "@/app/(app)/functions/_components/params";
+import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, constBindingOfText, constInputOf, constTextOf, planFormChoices, type LoopChoice, type NodeTree } from "@/app/(app)/functions/_components/params";
 import type { EnumDef } from "@/domain/catalog";
 import { unfoldPreset, type Bindings, type Clause } from "@/domain/clause";
 import {
+  codeChangeBreaks,
+  codeTag,
+  documentCodeEntries,
   indexTree,
+  isParticlePreset,
   isRepeatSource,
   multiTarget,
   nodeBuilders,
@@ -24,11 +28,13 @@ import {
   paramTargetId,
   treeLoopOfTarget,
   parseRefKey,
+  PARTICLE_PRESETS,
   repeatElementEnums,
   referenceKeyIndex,
   referenceTargetLabel,
   refKey,
   refTargetOf,
+  suggestCode,
   type Appendix,
   type ArticleRefNode,
   type DocumentNode,
@@ -347,7 +353,7 @@ function needsConnector(ctx: DocCtx, targets: readonly RefTarget[]): boolean {
   return targets.length >= 2 || targets.some((t) => multiTarget(t, ctx.repeatedKeys));
 }
 
-/** 저장된 대상 → 고르기 트리의 줄 id (같은 코드의 분기 짝이면 문서 순 첫 줄). 범위의 색인들에서 찾는다. */
+/** 저장된 대상 → 고르기 트리의 줄 id (같은 코드의 분기 짝은 한 줄 — 문서 순 첫 노드). 범위의 색인들에서 찾는다. */
 function selectedIds(node: Pick<ArticleRefNode, "targets">, indexes: readonly ReadonlyMap<Id, ReferenceTarget>[]): Id[] {
   return node.targets.flatMap((t) => {
     for (const index of indexes) {
@@ -411,7 +417,7 @@ function ClauseFields({ clauses, code, options, bindings, preset, condition, loo
   const seed = mode === "" && clause && preset !== undefined ? unfoldPreset(clause, { preset, options: options ?? {}, ...(bindings ? { bindings } : {}) }) : { options: options ?? {}, ...(bindings ? { bindings } : {}) };
   const owned = new Set([...(chosen?.fromUsage ?? []), ...(clause?.params ?? []).filter((p) => p.type.kind === "articleRef").map((p) => p.name)]);
   const forms = planFormChoices();
-  // 목록값 인자의 상수 연결 후보 — 그 열거형의 값(기능/함수조항 §5 「상수 연결은 참거짓 · 열거값만」)
+  // 목록값 인자의 상수 연결 후보 — 그 열거형의 값(문자 · 숫자 · 날짜 상수는 「상수 직접 입력」 칸)
   const enumsOf = (t: { kind: string; enumCode?: Code }): EnumDef[] => {
     const def = t.enumCode !== undefined ? enumOf?.(t.enumCode) : undefined;
     return def ? [def] : [];
@@ -469,13 +475,26 @@ function ClauseFields({ clauses, code, options, bindings, preset, condition, loo
             );
           }
           if (chosen && !owned.has(p.name)) return null;
+          // 문자 · 숫자 · 날짜 인자 — 콤보 아래 「상수 직접 입력」(채우면 콤보보다 먼저, 기능/함수조항 §4.4)
+          const direct = constInputOf(p.type);
+          const constText = constTextOf(seed.bindings?.[p.name], p.type);
           return (
             <div key={`${clause!.code}-arg-${p.name}`} className="ts-form-row">
               <label htmlFor={`pop-arg-${p.name}`}>인자 {p.name}</label>
-              <select id={`pop-arg-${p.name}`} name={`arg:${p.name}`} defaultValue={bindingValue(seed.bindings?.[p.name])}>
+              <select id={`pop-arg-${p.name}`} name={`arg:${p.name}`} defaultValue={constText !== "" ? "" : bindingValue(seed.bindings?.[p.name])}>
                 <option value="">{p.default ? `기본 연결 — ${bindingLabel(p.default, p.type, condition.discriminators, enumsOf(p.type), forms, loops, tree)}` : "— 연결 안 함(기본 연결 없음) —"}</option>
                 {groupedOptions(bindingOptions(p.type, condition.discriminators, enumsOf(p.type), forms, true, loops, tree))}
               </select>
+              {direct && (
+                <input
+                  className="ts-arg-const"
+                  name={`argc:${p.name}`}
+                  aria-label={`인자 ${p.name} 상수 직접 입력`}
+                  inputMode={direct.inputMode}
+                  placeholder={`상수 직접 입력 — ${direct.placeholder}`}
+                  defaultValue={constText}
+                />
+              )}
             </div>
           );
         })}
@@ -519,11 +538,22 @@ function bindingsOf(fd: FormData, clauses: readonly Clause[], code: Code = str(f
       if (r.targets.length > 0) out[p.name] = { kind: "articleRef", targets: r.targets, ...(r.connector ? { connector: r.connector } : {}), scope: r.scope };
       continue;
     }
+    // 상수 직접 입력이 차 있으면 그것이 연결이다 (문자 · 숫자 · 날짜 — 모양 오류는 `bindingInputProblem` 이 먼저 막는다)
+    const direct = constBindingOfText(String(fd.get(`argc:${p.name}`) ?? ""), p.type).binding;
     const value = fd.get(`arg:${p.name}`);
-    const b = value !== null ? bindingOfValue(String(value), p.type) : undefined;
+    const b = direct ?? (value !== null ? bindingOfValue(String(value), p.type) : undefined);
     if (b) out[p.name] = b;
   }
   return out;
+}
+
+/** 상수 직접 입력의 모양 오류(숫자 아님 · 날짜 모양) — 적용 전에 막는다. */
+function bindingInputProblem(fd: FormData, clauses: readonly Clause[], code: Code = str(fd, "clauseCode")): string | undefined {
+  for (const p of clauses.find((c) => c.code === code)?.params ?? []) {
+    const error = constBindingOfText(String(fd.get(`argc:${p.name}`) ?? ""), p.type).error;
+    if (error) return `인자 ${p.name} — ${error}`;
+  }
+  return undefined;
 }
 
 /** 조 참조 인자 연결의 연결어 미선택 — 조 참조 팝업과 같은 규칙으로 적용 전에 고른다 (ADR-0083 결정 4 · 기능/문면 §3.5). */
@@ -760,6 +790,47 @@ function RepeatBlockPopup({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
 }
 
 /** 팝업 하나 — 종류대로. */
+/**
+ * 코드 수정 창 (ADR-0072 결정 5 · 6) — 항 · 호 · 목 · 함수조항 참조 · 반복 블록의 P코드 한 칸. 기본값은 지금 코드(충돌 줄에서 열면 추천값),
+ * 「추천」은 공존 코드를 피한 시스템 추천값을 넣는다. 공존 중복이면 적용이 거부된다(명령 `setCode`). 바꾼 코드는 문서 저장 한 번에 반영된다.
+ * 이 문서 안 참조가 깨지는 값이면 건수를 미리 보인다 — 그 참조를 먼저 고쳐야 저장된다. 다른 문서 몫은 저장 확인 카드가 보인다.
+ */
+function CodePopup({ env, spec, anchor, onClose }: { env: PopupEnv; spec: Extract<PopupSpec, { kind: "code" }>; anchor: Anchor; onClose: () => void }) {
+  const tree = env.tree;
+  const node = indexTree(tree).nodes.get(spec.nodeId)?.node as (Node & { code?: Code }) | undefined;
+  const suggested = suggestCode(documentCodeEntries(tree), spec.nodeId);
+  const [value, setValue] = useState(() => (spec.suggest ? suggested : node?.code) ?? suggested ?? "");
+  if (!node) return null;
+  const level = env.ctx.numbers.get(node.id)?.kind ?? node.kind;
+  const code = value.trim();
+  const breaks = code === "" ? 0 : codeChangeBreaks(tree, node.id, code);
+  return (
+    <Popover anchor={anchor} label="코드" onClose={onClose}>
+      <PopForm env={env} onClose={onClose} build={() => (code === "" ? "코드를 쓴다." : code === node.code ? [] : [{ type: "setCode", nodeId: node.id, code }])}>
+        <div className="ts-form-row">
+          <label htmlFor="pop-code">코드</label>
+          <span className="ts-form-control">
+            <input id="pop-code" type="text" name="code" className="ts-mono" value={value} onChange={(e) => setValue(e.target.value)} autoComplete="off" spellCheck={false} />
+            {suggested && suggested !== code && (
+              <button type="button" className="ts-doc-pick" onClick={() => setValue(suggested)}>
+                추천 {suggested}
+              </button>
+            )}
+          </span>
+        </div>
+        <p className="ts-code-tag">지금 {node.code ? codeTag(node.code, level) : "코드 없음 — 저장 때 매긴다"}</p>
+        {breaks > 0 && (
+          <p className="ts-form-issues" role="alert">
+            이 문서 {breaks}건 — 이 코드를 가리키는 참조가 깨집니다. 먼저 고쳐야 저장됩니다.
+          </p>
+        )}
+        <p className="ts-muted">같은 조의 공존하는 항 · 호 · 목과 겹치면 거부된다(같은 조건 블록의 다른 가지만 같은 코드). 참조는 코드를 따라가지 않는다 — 다른 문서가 가리키면 저장 때 확인을 받는다.</p>
+        <PopActions onCancel={onClose} />
+      </PopForm>
+    </Popover>
+  );
+}
+
 export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec: PopupSpec; anchor: Anchor; onClose: () => void }) {
   const { ctx } = env;
   const ix = indexTree(env.tree);
@@ -784,6 +855,8 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
   };
 
   switch (spec.kind) {
+    case "code":
+      return <CodePopup env={env} spec={spec} anchor={anchor} onClose={onClose} />;
     case "repeatBlock":
       return <RepeatBlockPopup env={env} spec={spec} anchor={anchor} onClose={onClose} />;
 
@@ -808,7 +881,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             const code = str(fd, "clauseCode");
             if (!code) return "함수조항을 고른다.";
             const bindings = bindingsOf(fd, env.clauses);
-            return bindingConnectorProblem(ctx, bindings) ?? withPreset(withBindings(b.clauseInline(code, optionsOf(fd)), bindings), presetOfForm(fd));
+            return bindingInputProblem(fd, env.clauses) ?? bindingConnectorProblem(ctx, bindings) ?? withPreset(withBindings(b.clauseInline(code, optionsOf(fd)), bindings), presetOfForm(fd));
           }
           case "structKey": {
             const level = str(fd, "structLevel");
@@ -862,7 +935,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
       if (node.kind === "inlineCond" && node.switchOn !== undefined) return <InlineSwitchPopup env={env} nodeId={node.id} anchor={anchor} onClose={onClose} />;
       if (node.kind === "inlineCond") return <InlineCondPopup env={env} nodeId={node.id} anchor={anchor} onClose={onClose} />;
       const title =
-        node.kind === "slot" ? "치환 슬롯" : node.kind === "articleRef" ? "조 참조" : node.kind === "appendixRef" ? "별표 참조" : node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef" ? (env.clauses.find((c) => c.code === node.clauseCode)?.params?.length ? "함수조항 옵션 · 인자" : "함수조항 옵션") : "고치기";
+        node.kind === "slot" ? "치환 슬롯" : node.kind === "articleRef" ? "조 참조" : node.kind === "appendixRef" ? "별표 참조" : node.kind === "particle" ? "조사" : node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef" ? (env.clauses.find((c) => c.code === node.clauseCode)?.params?.length ? "함수조항 옵션 · 인자" : "함수조항 옵션") : "고치기";
       return (
         <Popover anchor={anchor} label={title} onClose={onClose} wide={node.kind === "articleRef" || ((node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && hasArticleRefParam(env.clauses, node.clauseCode))}>
           <PopForm
@@ -879,10 +952,14 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
                 }
                 case "appendixRef":
                   return [{ type: "setAppendixRef", nodeId: node.id, appendixCode: str(fd, "appendixCode") }];
+                case "particle": {
+                  const preset = str(fd, "preset");
+                  return isParticlePreset(preset) ? [{ type: "setParticle", nodeId: node.id, preset }] : "조사를 고른다.";
+                }
                 case "clauseInlineRef":
                 case "clauseBlockRef": {
                   const bindings = bindingsOf(fd, env.clauses, node.clauseCode);
-                  return bindingConnectorProblem(ctx, bindings) ?? [{ type: "setClauseOptions", nodeId: node.id, options: optionsOf(fd), bindings, preset: presetOfForm(fd) ?? null }];
+                  return bindingInputProblem(fd, env.clauses, node.clauseCode) ?? bindingConnectorProblem(ctx, bindings) ?? [{ type: "setClauseOptions", nodeId: node.id, options: optionsOf(fd), bindings, preset: presetOfForm(fd) ?? null }];
                 }
                 default:
                   return [];
@@ -897,8 +974,24 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             )}
             {node.kind === "articleRef" && <ArticleRefFields ctx={ctx} node={node} restrict={restrictAt(node.id)} />}
             {node.kind === "appendixRef" && <AppendixSelect appendices={env.appendices} value={node.appendixCode} />}
+            {node.kind === "particle" && (
+              <div className="ts-form-row">
+                <span className="ts-form-label">조사</span>
+                <div>
+                  <div className="ts-radio-group" role="radiogroup" aria-label="조사">
+                    {PARTICLE_PRESETS.map((p) => (
+                      <label key={p.key} className="ts-form-radio">
+                        <input type="radio" name="preset" value={p.key} defaultChecked={p.key === node.preset} />
+                        {p.label}
+                      </label>
+                    ))}
+                  </div>
+                  <p className="ts-form-hint">조립 때 앞 글자 받침에 따라 한쪽을 고른다 — 판정할 수 없으면 「을(를)」처럼 둘 다 쓰고 경고.</p>
+                </div>
+              </div>
+            )}
             {(node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && <ClauseFields clauses={env.clauses} code={node.clauseCode} options={node.options} {...(node.bindings ? { bindings: node.bindings } : {})} {...(node.preset !== undefined ? { preset: node.preset } : {})} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(node.id)} {...treeProp(node.id)} refs={{ ctx, restrict: restrictAt(node.id, true) }} />}
-            <PopActions onCancel={onClose} />
+            <PopActions onCancel={onClose} {...(node.kind === "particle" ? { confirmLabel: "조사 적용" } : {})} />
           </PopForm>
         </Popover>
       );
@@ -942,7 +1035,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
               const code = str(fd, "clauseCode");
               if (!code) return "함수조항을 고른다.";
               const bindings = bindingsOf(fd, env.clauses);
-              return bindingConnectorProblem(ctx, bindings) ?? [{ type: "insert", node: withPreset(withBindings(b.clauseBlock(code, optionsOf(fd)), bindings), presetOfForm(fd)), at: spec.at }];
+              return bindingInputProblem(fd, env.clauses) ?? bindingConnectorProblem(ctx, bindings) ?? [{ type: "insert", node: withPreset(withBindings(b.clauseBlock(code, optionsOf(fd)), bindings), presetOfForm(fd)), at: spec.at }];
             }}
           >
             <ClauseFields clauses={clausesFitting(env.clauses, spec.fit)} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(spec.at.parentId)} {...treeProp(spec.at.parentId)} refs={{ ctx, restrict: restrictAt(spec.at.parentId) }} />

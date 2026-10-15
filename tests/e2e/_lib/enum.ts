@@ -7,9 +7,9 @@ import type { Page } from "@playwright/test";
 export async function createEnum(page: Page, label: string, values: readonly string[]): Promise<string> {
   await page.goto("/enums/new");
   await page.getByLabel("열거형변수 이름").fill(label);
-  // 생성 화면은 빈 값 두 줄로 시작한다
+  // 생성 화면은 빈 값 두 줄로 시작한다 — 남는 빈 행은 생성 때 버린다. 새 값 행의 입력칸은 모두 「값 이름」(상세 값 표와 같은 표)
   for (let i = 2; i < values.length; i++) await page.getByRole("button", { name: "행 추가 · 값", exact: true }).click();
-  for (const [i, value] of values.entries()) await page.getByRole("textbox", { name: `${i + 1}번 값 이름`, exact: true }).fill(value);
+  for (const [i, value] of values.entries()) await page.getByRole("textbox", { name: "값 이름", exact: true }).nth(i).fill(value);
   await page.getByRole("button", { name: "생성", exact: true }).click();
   await page.waitForURL(/\/enums\/E\d{4}$/);
   return decodeURIComponent(page.url().split("/").at(-1)!);

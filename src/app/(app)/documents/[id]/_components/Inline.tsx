@@ -4,7 +4,7 @@
  * 문장 자리 — 읽기면 명조 글 + 칩, 편집이면 **그 자리 편집기** (기능/문면 §4.3).
  *
  * - 문장 자리 하나(항 · 호 · 목의 문장 · 문장 안 조건의 가지 · 표 셀)가 contentEditable 하나다. 글은 그대로 치고,
- *   칩(슬롯 · 조 참조 · 별표 참조 · 함수조항 · 문장 안 조건 · 구조 표기)은 고칠 수 없는 덩어리로 들어 있다 — 누르면 바로 아래에 팝업.
+ *   칩(슬롯 · 조 참조 · 별표 참조 · 함수조항 · 문장 안 조건 · 구조 표기 · 조사)은 고칠 수 없는 덩어리로 들어 있다 — 누르면 바로 아래에 팝업.
  * - 초점이 떠나면 DOM 을 읽어 `setInlines` 한 명령으로 편집본에 넣는다(「적용」 단계 없음). 저장은 바의 `저장` 하나.
  * - Enter 는 아래에 새 항(호 · 목), 빈 칸에서 Backspace 는 그 항을 지운다. 붙여넣기는 글만 — 표 셀에 탭 · 줄로 나뉜 글이면 셀을 채운다.
  * - 목록이 바뀌면(적용 · 다른 조작) 편집기를 새로 그린다(key) — 사용자가 고친 DOM 과 React 가 엇갈리지 않게.
@@ -12,7 +12,7 @@
 import { Fragment, useEffect, useRef, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
 
 import { STRUCT_KEY_CHIP, SWITCH_WORD } from "@/app/_lib/labels";
-import { referenceChunkLabel, referenceKeyIndex, refKey, type ArticleRefNode, type InlineAt, type InlineNode, type ReferenceTarget } from "@/domain/document";
+import { particlePreset, referenceChunkLabel, referenceKeyIndex, refKey, type ArticleRefNode, type InlineAt, type InlineNode, type ReferenceTarget } from "@/domain/document";
 import type { Id, WorkMark } from "@/domain/types";
 
 import { nodeHead } from "./condition/rows";
@@ -54,6 +54,7 @@ const CHIP_WHAT: Record<string, string> = {
   inlineCond: "문장 안 조건",
   inlineFor: "문장 안 반복",
   structKey: "구조 표기",
+  particle: "조사",
 };
 
 /** 칩 하나의 글자 · 모양 · tooltip. 읽기와 편집이 같이 쓴다. */
@@ -76,6 +77,9 @@ function chipParts(node: InlineNode, ctx: DocCtx): { className: string; title: s
       };
     case "structKey":
       return { className: "ts-doc-ref", title: "구조 표기 — 행마다 그 행의 노드 이름이 찍힌다", body: STRUCT_KEY_CHIP[node.level] };
+    case "particle":
+      // 저작 화면은 칩 그대로(을/를) — 고른 결과는 미리보기 · 조립 산출에만 (기능/문면 §3.11)
+      return { className: "ts-doc-slot", title: "조사 — 앞 글자 받침에 따라 조립 때 고른다", body: particlePreset(node.preset).label };
     case "inlineFor":
       return { className: "ts-muted", title: "문장 안 반복 — 아직 지원하지 않는다", body: "(문장 안 반복 — 아직 지원하지 않는다)" };
     case "inlineCond":
@@ -285,6 +289,17 @@ function caretToEnd(el: HTMLElement) {
   sel?.addRange(range);
 }
 
+/** 칩 바로 뒤에 커서 — 칩을 넣은 직후 (편집기가 새로 그려져 초점이 사라지므로). */
+export function caretAfter(el: HTMLElement, chip: Element) {
+  el.focus();
+  const range = document.createRange();
+  range.setStartAfter(chip);
+  range.collapse(true);
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+}
+
 /**
  * 문장 자리 하나 — 읽기면 `InlineView`, 편집이면 contentEditable 편집기.
  * `owner` 는 Enter · Backspace 가 다루는 항 · 호 · 목 (가지 · 셀이면 없다). `focusKey` 는 초점 요청을 알아볼 이름(보통 owner).
@@ -315,11 +330,19 @@ function InlineEditor({ at, nodes, ctx, owner, focusKey, placeholder }: { at: In
   const active = cell && edit.activeCell?.tableId === cell.tableId && edit.activeCell.row === cell.row && edit.activeCell.col === cell.col;
 
   useEffect(() => {
-    if (focusKey && edit.focusRequest === focusKey && ref.current) {
+    const want = edit.focusRequest;
+    if (!want || !ref.current) return;
+    if (focusKey && want === focusKey) {
       caretToEnd(ref.current);
       edit.focusDone();
+      return;
     }
-  }, [edit, focusKey]);
+    // 방금 넣은 칩이 이 문장 자리에 있으면 그 칩 바로 뒤에 커서 (칩 넣기 → 이어서 치기)
+    if (!nodes.some((n) => n.kind !== "text" && n.id === want)) return;
+    const chip = [...ref.current.children].find((c) => c instanceof HTMLElement && c.dataset.chip === want);
+    if (chip) caretAfter(ref.current, chip);
+    edit.focusDone();
+  }, [edit, focusKey, nodes]);
 
   const commit = () => {
     if (ref.current) edit.commitInline(at, tokensOf(ref.current));

@@ -142,8 +142,8 @@ function usageLink(issue: Issue): IssueLink | undefined {
 }
 
 /**
- * 함수조항의 검사 ② 재검사 목록 (기능/함수조항 §3.4 · §4.4) — 함수조항을 고친 뒤 사용처마다 요구 구분자 존재 · 옵션 선택을
- * 다시 본 결과. 함수조항 화면에는 두지 않고 여기서만 본다 (사용처 · 영향 반경은 관계정보의 질문이다).
+ * 함수조항의 검사 ② 재검사 목록 (기능/함수조항 §3.4 · §4.4) — 함수조항을 고친 뒤 사용처마다 요구 구분자 존재 · 옵션 선택 ·
+ * 사라진 안쪽 코드를 가리키는 참조(기능/문면 §3.7)를 다시 본 결과. 함수조항 화면에는 두지 않고 여기서만 본다 (사용처 · 영향 반경은 관계정보의 질문이다).
  */
 function ClauseRecheck({ entries, usageCount, documentTitle }: { entries: readonly RecheckEntry[]; usageCount: number; documentTitle: ReadonlyMap<string, string> }) {
   return (
@@ -154,7 +154,7 @@ function ClauseRecheck({ entries, usageCount, documentTitle }: { entries: readon
           문제 <b>{entries.length}</b> / 사용처 {usageCount}건
         </span>
       </h2>
-      <p className="ts-muted">함수조항을 고친 뒤 사용처마다 다시 검사한다 — 요구 구분자가 지금 있는가 · 고른 옵션이 유효 선택지인가. 저장은 막지 않는다.</p>
+      <p className="ts-muted">함수조항을 고친 뒤 사용처마다 다시 검사한다 — 요구 구분자가 지금 있는가 · 고른 옵션이 유효 선택지인가 · 펼친 안쪽 항 · 호 · 목을 가리키는 다른 참조의 대상이 본문에 남았는가. 저장은 막지 않는다.</p>
       {entries.length === 0 ? (
         <p className="ts-ok">사용처 {usageCount}건 모두 문제 없음.</p>
       ) : (

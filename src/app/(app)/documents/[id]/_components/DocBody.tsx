@@ -417,6 +417,19 @@ function CaseHead({ ctx, node, branch, subject }: { ctx: DocCtx; node: Node & { 
   );
 }
 
+/**
+ * 블록(조건 가지 · 값별 칸 · 반복 본문) 안의 본문. 호 · 목 목록 자리(`as="li"`)면 안쪽 호 · 목을 제 목록으로 감싼다 — <li> 안에 <li> 를 바로 두지 않는다(hydration 오류).
+ * 감싸는 목록은 번호를 새로 세지 않는다(`ts-doc-list-cont`, counter-reset 없음) — 바깥 호 · 목 번호를 이어 센다.
+ */
+function BlockIn({ nodes, ctx, as }: { nodes: readonly Node[]; ctx: DocCtx; as: "div" | "li" }) {
+  if (as === "div") return <Block nodes={nodes} ctx={ctx} />;
+  return (
+    <ol className="ts-doc-list-cont">
+      <Block nodes={nodes} ctx={ctx} inList />
+    </ol>
+  );
+}
+
 /** 값별 분기 — 조건 블록과 같은 상자: 첫 칸 위에 대상 줄, 칸마다 머리 줄 + 그 칸 내용(「문구 없음」 칸은 내용 없음). */
 function SwitchBlock({ node, ctx, as }: { node: Node & { kind: "condBlock" }; ctx: DocCtx; as: "div" | "li" }) {
   const Tag = as;
@@ -433,7 +446,7 @@ function SwitchBlock({ node, ctx, as }: { node: Node & { kind: "condBlock" }; ct
           {i === 0 && <DragHandle id={node.id} what={SWITCH_WORD.switch} ctx={ctx} acts={false} />}
           {i === 0 && <SwitchHead node={node} ctx={ctx} subject={subject} />}
           <CaseHead ctx={ctx} node={node} branch={br} subject={subject} />
-          {!br.empty && <Block nodes={br.children} ctx={ctx} inList={as === "li"} />}
+          {!br.empty && <BlockIn nodes={br.children} ctx={ctx} as={as} />}
         </Tag>
       ))}
     </>
@@ -456,7 +469,7 @@ function CondBlock({ node, ctx, as }: { node: Node & { kind: "condBlock" }; ctx:
           >
             {i === 0 && <DragHandle id={node.id} what="조건 블록" ctx={ctx} acts={false} />}
             <CondHead ctx={ctx} branch={br} label={branchLabel(node.branches, i)} first={i === 0} ownerId={node.id} />
-            <Block nodes={br.children} ctx={ctx} inList={as === "li"} />
+            <BlockIn nodes={br.children} ctx={ctx} as={as} />
           </Tag>
         );
       })}
@@ -485,14 +498,7 @@ function RepeatBlock({ node, ctx, as }: { node: Node & { kind: "forBlock" }; ctx
         )}
         <BlockActs id={node.id} what="반복 블록" ctx={ctx} inline />
       </p>
-      {/* 호 목록 자리면 본문 호들을 제 목록으로 감싼다 — <li> 안에 <li> 를 바로 두지 않는다 */}
-      {as === "li" ? (
-        <ol className="ts-doc-items">
-          <Block nodes={node.children} ctx={ctx} inList />
-        </ol>
-      ) : (
-        <Block nodes={node.children} ctx={ctx} />
-      )}
+      <BlockIn nodes={node.children} ctx={ctx} as={as} />
     </Tag>
   );
 }

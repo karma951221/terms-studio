@@ -449,6 +449,8 @@ class Walker {
       }
       case "appendixRef":
         return [{ kind: "appendixRef", id: n.id, appendixCode: n.appendixCode, at }];
+      case "particle":
+        return [{ kind: "particle", id: n.id, preset: n.preset, at }];
       case "inlineCond": {
         const r = this.select(n.branches, f, n.id);
         if (r.kind === "error") return [this.error(n.id, r.issue)];
