@@ -198,6 +198,7 @@ export const REFERENCE_VIA_LABEL = {
   override: "옵션 오버라이드",
   articleRef: "조 참조",
   link: "조연결",
+  repeatSource: "반복 원천",
   appendixRef: "별표 참조",
   boxRef: "박스 참조",
   defaultBinding: "인자 기본 연결",

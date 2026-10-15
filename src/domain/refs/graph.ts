@@ -5,7 +5,8 @@
  * - 입력 마스터 → 마스터 필드 노드 · enum 타입 간선(`type`)
  * - 카탈로그 정의 → 구분자 노드 · 식 참조(`expression`) — 마스터 필드 · 담보속성으로 간다
  * - 함수조항 → 옵션·선택지 노드 · 본문/선택지 본문의 식 참조(`when`·`slot`) · 별표 참조
- * - 문서 → 조 노드 · `collectRefs` 의 참조 전부 (구분자 · 담보속성 · 함수조항+옵션 선택 · 조 참조 · 별표 · 조연결) ·
+ * - 문서 → 조 노드 · `collectRefs` 의 참조 전부 (구분자 · 담보속성 · 함수조항+옵션 선택 · 조 참조 · 별표 · 조연결 ·
+ *   반복 원천 — 목록 · 거름 마스터 필드 · 합집합 거름 열거값 필드, `repeatSource`) ·
  *   대응 보통약관(`generalDocument`)
  * - 담보 트리 → 담보 노드 · 문서 연결(`document`)
  * - 상품 → 상품담보 노드 · 탑재(`mount`) · 조합(`combination`) · 옵션 오버라이드(`override`) · 템플릿(`generalDocument`)
@@ -511,6 +512,13 @@ function addDocument(b: Builder, doc: DocumentInput, master?: MasterTree): Map<I
       case "link":
         b.edge({ from, to: generalOf(r.linkedArticleId), via: "link", at: r.at });
         break;
+      case "repeatSource": {
+        // 반복 원천 (ADR-0077) — 목록 · 거름이 읽는 마스터 필드, 합집합 거름은 그 목록 필드 열거형의 필드
+        b.edge({ from, to: { kind: "masterField", path: r.path }, via: "repeatSource", at: r.at });
+        const enumCode = r.where !== undefined ? b.enumSlots.get(r.path) : undefined;
+        if (enumCode !== undefined && r.where !== undefined) b.edge({ from, to: { kind: "enumField", enumCode, key: r.where }, via: "repeatSource", at: r.at });
+        break;
+      }
     }
   }
   // 조건식의 리터럴 비교 (유효값 · enum 값 간선) — collectRefs 는 리터럴을 주지 않으므로 가지를 한 번 더 훑는다.

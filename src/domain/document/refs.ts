@@ -1,14 +1,16 @@
 /**
  * 참조 추출 — 문서가 읽는 참조 전부를 좌표와 함께 (기능/관계정보 §3 「참조 그래프」).
  *
- * C1(refs) 역인덱스의 재료다: 구분자(식 안 · 슬롯) · 담보속성 · 내장 경로 · 함수조항 · 조(자기·보통약관) · 별표 · 박스 · 조연결.
+ * C1(refs) 역인덱스의 재료다: 구분자(식 안 · 슬롯) · 담보속성 · 내장 경로 · 함수조항 · 조(자기·보통약관) · 별표 · 박스 · 조연결 ·
+ * 반복 원천이 읽는 마스터 필드 · 열거값 필드(ADR-0077 — 문면 식이 아니라 반복 장치의 선언이라 구분자를 거치지 않는다).
  * 문법이 깨진 식은 참조를 내지 않는다 (문법 오류는 `validateExpressions` 가 보고한다).
  * 참조 대상의 존재 검증은 `validateTree` (nodes.ts) 몫이다.
  */
 
-import { extractRefs, parse } from "../expression";
+import { extractRefs, parse, refPath } from "../expression";
 import type { Bindings } from "../clause/params";
 import type { Code, Coordinate, Id } from "../types";
+import { isRepeatSource } from "./blockRepeat";
 import { articleRefsOf, coordinateOf, indexTree, type ArticleRefNode, type ClauseGate, type DocumentNode } from "./nodes";
 import { refKey } from "./pcode";
 
@@ -26,6 +28,11 @@ export type DocRef =
   | { kind: "appendix"; appendixCode: Code; at: Coordinate }
   /** 정적 마스터 박스 참조 (최종 결정 9). */
   | { kind: "box"; boxCode: Code; at: Coordinate }
+  /**
+   * 반복 원천이 읽는 마스터 필드(`폼.필드`) — 목록 필드(사유 반복은 바깥 종 반복의 폼) · 거름 식의 필드 (ADR-0077).
+   * `where` = 합집합 거름의 열거값 필드 키 — 그 목록 필드의 열거형 필드다. 좌표는 반복 블록 · refPath = 마스터 경로.
+   */
+  | { kind: "repeatSource"; path: string; where?: Code; at: Coordinate }
   /** 조연결 — `at.articleId` 의 조가 보통약관 조 `linkedArticleId` 를 가리킨다. */
   | { kind: "link"; linkedArticleId: Id; at: Coordinate };
 
@@ -105,6 +112,22 @@ export function collectRefs(doc: DocumentNode, base: Coordinate = {}): DocRef[] 
       case "boxRef":
         out.push({ kind: "box", boxCode: n.boxCode, at });
         break;
+      case "forBlock": {
+        const src = n.source;
+        if (!isRepeatSource(src)) break;
+        const field = (path: string, where?: Code) => out.push({ kind: "repeatSource", path, ...(where !== undefined ? { where } : {}), at: { ...at, refPath: path } });
+        if (src.kind === "listOfCurrent") {
+          const outer = ix.nodes.get(src.loop)?.node;
+          if (outer?.kind === "forBlock" && isRepeatSource(outer.source) && outer.source.kind !== "listOfCurrent") field(`${outer.source.form}.${src.field}`);
+          break;
+        }
+        if (src.kind === "union") field(`${src.form}.${src.field}`, src.where?.field);
+        if (src.filter !== undefined) {
+          const parsed = parse(src.filter);
+          if (parsed.ok) for (const { ref } of extractRefs(parsed.value)) if (ref.kind === "master") field(refPath(ref));
+        }
+        break;
+      }
       default:
         break;
     }

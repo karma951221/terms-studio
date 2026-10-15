@@ -91,3 +91,36 @@ describe("조 참조 인자 연결도 문서의 조 참조로 센다 (ADR-0083 �
     expect(refs).toEqual([expect.objectContaining({ kind: "article", articleId: "a1", scope: "self", at: expect.objectContaining({ nodePath: ["d", "a2", "k"], refPath: "a1" }) })]);
   });
 });
+
+describe("반복 원천이 읽는 마스터 필드 · 열거값 필드 (ADR-0077 · 기능/문면 §3.7)", () => {
+  it("종 반복의 거름 · 사유 반복의 바깥 폼 목록 필드 · 합집합의 필드 · 거름 · 열거값 필드 — 좌표는 반복 블록", () => {
+    const doc = {
+      kind: "document",
+      id: "d",
+      title: "보통약관",
+      children: [
+        {
+          kind: "article",
+          id: "a1",
+          title: "납입면제",
+          children: [
+            {
+              kind: "forBlock",
+              id: "f1",
+              source: { kind: "planOptions", form: "waiver", filter: "waiver.applies = true" },
+              children: [{ kind: "paragraph", id: "p1", children: [], items: [{ kind: "forBlock", id: "f2", source: { kind: "listOfCurrent", loop: "f1", field: "reasons" }, children: [] }] }],
+            },
+          ],
+        },
+        { kind: "article", id: "a2", title: "정의", children: [{ kind: "forBlock", id: "f3", source: { kind: "union", form: "waiver", filter: "waiver.applies = true", field: "reasons", where: { field: "F03", value: true } }, children: [] }] },
+      ],
+    } as unknown as DocumentNode;
+    const refs = collectRefs(doc).flatMap((r) => (r.kind === "repeatSource" ? [[r.path, r.where, r.at.nodePath?.at(-1), r.at.refPath]] : []));
+    expect(refs).toEqual([
+      ["waiver.applies", undefined, "f1", "waiver.applies"],
+      ["waiver.reasons", undefined, "f2", "waiver.reasons"],
+      ["waiver.reasons", "F03", "f3", "waiver.reasons"],
+      ["waiver.applies", undefined, "f3", "waiver.applies"],
+    ]);
+  });
+});
