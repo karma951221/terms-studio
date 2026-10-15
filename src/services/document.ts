@@ -22,6 +22,7 @@ import {
   collectRefs,
   createAppendix,
   createBox,
+  clauseGeneralRefs,
   generalEnvOf,
   generalRefsOf,
   numberTree,
@@ -56,6 +57,7 @@ import type { Actor, Code, Coordinate, Id, Impact, Issue, Result } from "@/domai
 import { ok, reject } from "@/domain/types";
 
 import * as catalogRepo from "@/db/repo/catalog";
+import * as clauseRepo from "@/db/repo/clause";
 import * as coverageRepo from "@/db/repo/coverage";
 import * as repo from "@/db/repo/document";
 import type { DocumentKind, DocumentRecord, DocumentSummary } from "@/db/repo/document";
@@ -246,16 +248,26 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
   }
 
   /**
-   * `documentId` 에서 사라진 것을 가리키던 다른 문서의 조연결(지운 조 id) · 보통약관 조 참조(사라진 대상 열쇠 — 같은 코드의 분기 짝이 남으면 산다, ADR-0072).
+   * `documentId` 에서 사라진 것을 가리키던 다른 문서의 조연결(지운 조 id) · 보통약관 조 참조(사라진 대상 열쇠 — 같은 코드의 분기 짝이 남으면 산다, ADR-0072)
+   * · 함수조항 본문의 보통약관 참조. 펼친 함수조항 안 노드를 가리키는 참조(`조#참조코드/안쪽코드`)는 그 참조 노드의 열쇠(`조#참조코드`)가 사라지면 깨진다 —
+   * 코드 변경 · 삭제 모두 (ADR-0072 결정 6 — 다른 문서 몫은 확인 카드).
    */
   async function brokenByRemoval(tx: Db, documentId: Id, removed: ReadonlySet<Id>, removedKeys: ReadonlySet<string>): Promise<Coordinate[]> {
     if (removed.size === 0 && removedKeys.size === 0) return [];
+    const gone = (t: { articleId: Id; code?: Code }) => removedKeys.has(refKey({ articleId: t.articleId, ...(t.code !== undefined ? { code: t.code } : {}) }));
     const out: Coordinate[] = [];
     for (const d of await repo.listDocumentRecords(tx)) {
       if (d.id === documentId || d.generalDocumentId !== documentId) continue;
       for (const r of collectRefs(d.tree, coordinateOf(d))) {
         if (r.kind === "link" && removed.has(r.linkedArticleId)) out.push(r.at);
-        else if (r.kind === "article" && r.scope === "general" && removedKeys.has(refKey(r))) out.push(r.at);
+        else if (r.kind === "article" && r.scope === "general" && gone(r)) out.push(r.at);
+      }
+    }
+    // 함수조항 본문의 보통약관 참조 — 범위 없는 조 참조는 보통약관 마스터를 가리킨다(기능/함수조항 §3.5)
+    const self = await repo.loadDocument(tx, documentId);
+    if (self?.kind === "general") {
+      for (const clause of await clauseRepo.listClauses(tx)) {
+        for (const r of clauseGeneralRefs(clause)) if (gone(r)) out.push({ document: "clause", ownerId: clause.code, ownerName: clause.label, nodePath: r.nodePath, refPath: refKey(r) });
       }
     }
     return out;

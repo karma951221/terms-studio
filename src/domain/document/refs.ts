@@ -193,3 +193,28 @@ export function lostInnerCodeEntries(clause: Clause, usages: readonly Usage[], d
   }
   return out;
 }
+
+/**
+ * 함수조항 본문(과 옵션 선택지 문구)의 보통약관 참조 대상 — 범위 없는 조 참조(기능/함수조항 §3.5)의 대상마다 한 줄, 그 참조 노드까지의 id 경로와 함께.
+ * 「이 함수조항」 · 조 참조 인자 슬롯은 사용처마다 대상이 달라 들지 않는다. 보통약관 저장의 깨질 참조(확인 카드)가 쓴다.
+ */
+export function clauseGeneralRefs(clause: Pick<Clause, "body" | "options">): { articleId: Id; code?: Code; innerCode?: Code; nodePath: Id[] }[] {
+  const out: { articleId: Id; code?: Code; innerCode?: Code; nodePath: Id[] }[] = [];
+  const walk = (x: unknown, path: Id[]): void => {
+    if (Array.isArray(x)) return x.forEach((v) => walk(v, path));
+    if (typeof x !== "object" || x === null) return;
+    const o = x as { id?: unknown; kind?: unknown; scope?: unknown; targets?: unknown };
+    const here = typeof o.id === "string" ? [...path, o.id] : path;
+    if (o.kind === "articleRef" && o.scope === undefined && Array.isArray(o.targets)) {
+      for (const t of o.targets as { articleId?: unknown; code?: unknown; innerCode?: unknown }[]) {
+        if (typeof t?.articleId !== "string") continue;
+        out.push({ articleId: t.articleId, ...(typeof t.code === "string" ? { code: t.code } : {}), ...(typeof t.innerCode === "string" ? { innerCode: t.innerCode } : {}), nodePath: here });
+      }
+      return;
+    }
+    for (const [k, v] of Object.entries(o)) if (k !== "targets" && k !== "bindings") walk(v, here);
+  };
+  walk(clause.body, []);
+  for (const option of clause.options ?? []) for (const value of option.values) walk(value.body, [option.code, value.code]);
+  return out;
+}
