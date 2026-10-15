@@ -437,7 +437,14 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
           const body = (
             <>
               <span className="ts-doc-cond-head">{br.when === undefined ? "그 밖의 경우 (else)" : ctx.exprText(br.when)}</span>
-              <Block nodes={br.children} ctx={ctx} inList={inList} gathered={gathered} />
+              {/* 호 · 목 목록 자리면 가지 안 호 · 목을 제 목록으로 감싼다 — <li> 안에 <li> 를 바로 두지 않는다. 번호는 바깥을 잇는다(ts-doc-list-cont) */}
+              {inList ? (
+                <ol className="ts-doc-list-cont">
+                  <Block nodes={br.children} ctx={ctx} inList gathered={gathered} />
+                </ol>
+              ) : (
+                <Block nodes={br.children} ctx={ctx} gathered={gathered} />
+              )}
             </>
           );
           const className = i === 0 ? "ts-doc-cond" : "ts-doc-cond is-alt";
