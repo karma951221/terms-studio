@@ -37,6 +37,16 @@ export function loopsAround(ix: TreeIndex, id: Id): ForBlockNode[] {
   return path.map((p) => ix.nodes.get(p)?.node).filter((n): n is ForBlockNode => n?.kind === "forBlock");
 }
 
+/**
+ * 「현재 종」 — 감싼 반복 중 세목 선택지(종) 반복이 있으면 그 이름(별칭 또는 원천 이름). 안쪽 사유 반복 안에서도 바깥 종이 커서다.
+ * 슬롯 고르기의 「현재 종」 묶음(`builtin.plan.name` · `builtin.plan.number`)이 이것으로 선다 — 합집합 · 반복 밖에는 종 커서가 없다 (ADR-0077 결정 3).
+ */
+export function currentPlanOf(loops: readonly ForBlockNode[], opts: { enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree } = {}): { name: string } | undefined {
+  const plan = [...loops].reverse().find((f) => isRepeatSource(f.source) && f.source.kind === "planOptions");
+  if (!plan) return undefined;
+  return { name: plan.alias ?? repeatLabel(plan.source, { ...(opts.master ? { master: opts.master } : {}), ...(opts.enumOf ? { enumOf: opts.enumOf } : {}) }) };
+}
+
 /** 원천 칸 후보 — `outer` 는 이 자리를 감싼 가장 안쪽 반복(없으면 반복 밖). 두 단계 안(반복 안 반복 안)이면 후보가 없다. */
 export function repeatChoices(opts: { outer?: ForBlockNode; depth: number; enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree }): RepeatChoice[] {
   const master = opts.master ?? MASTER;

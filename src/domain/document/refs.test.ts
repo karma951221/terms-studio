@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { nodeBuilders, sequentialIds } from "./builders";
 import { surgeryFixture } from "./fixture";
 import type { DocumentNode } from "./nodes";
-import { collectRefs, requiredDiscriminators } from "./refs";
+import { codeChangeBreaks, collectRefs, requiredDiscriminators } from "./refs";
 
 describe("기능/관계정보 §3 참조 그래프 — collectRefs 는 문서가 읽는 참조 전부를 좌표와 함께 뽑는다 (C1 역인덱스 재료)", () => {
   it("다중 조 참조를 대상 단위 간선으로 수집한다", () => {
@@ -89,5 +89,72 @@ describe("조 참조 인자 연결도 문서의 조 참조로 센다 (ADR-0083 �
     } as DocumentNode;
     const refs = collectRefs(doc).filter((r) => r.kind === "article");
     expect(refs).toEqual([expect.objectContaining({ kind: "article", articleId: "a1", scope: "self", at: expect.objectContaining({ nodePath: ["d", "a2", "k"], refPath: "a1" }) })]);
+  });
+});
+
+describe("반복 원천이 읽는 마스터 필드 · 열거값 필드 (ADR-0077 · 기능/문면 §3.7)", () => {
+  it("종 반복의 거름 · 사유 반복의 바깥 폼 목록 필드 · 합집합의 필드 · 거름 · 열거값 필드 — 좌표는 반복 블록", () => {
+    const doc = {
+      kind: "document",
+      id: "d",
+      title: "보통약관",
+      children: [
+        {
+          kind: "article",
+          id: "a1",
+          title: "납입면제",
+          children: [
+            {
+              kind: "forBlock",
+              id: "f1",
+              source: { kind: "planOptions", form: "waiver", filter: "waiver.applies = true" },
+              children: [{ kind: "paragraph", id: "p1", children: [], items: [{ kind: "forBlock", id: "f2", source: { kind: "listOfCurrent", loop: "f1", field: "reasons" }, children: [] }] }],
+            },
+          ],
+        },
+        { kind: "article", id: "a2", title: "정의", children: [{ kind: "forBlock", id: "f3", source: { kind: "union", form: "waiver", filter: "waiver.applies = true", field: "reasons", where: { field: "F03", value: true } }, children: [] }] },
+      ],
+    } as unknown as DocumentNode;
+    const refs = collectRefs(doc).flatMap((r) => (r.kind === "repeatSource" ? [[r.path, r.where, r.at.nodePath?.at(-1), r.at.refPath]] : []));
+    expect(refs).toEqual([
+      ["waiver.applies", undefined, "f1", "waiver.applies"],
+      ["waiver.reasons", undefined, "f2", "waiver.reasons"],
+      ["waiver.reasons", "F03", "f3", "waiver.reasons"],
+      ["waiver.applies", undefined, "f3", "waiver.applies"],
+    ]);
+  });
+});
+
+describe("코드 수정 창의 영향 건수 — 이 문서 안에서 깨지는 참조 (ADR-0072 결정 6 · 수용 기준 5)", () => {
+  /** 조 › IF [항 P0100] / 그 밖의 경우 [항 P0100], 항 P0200, 그 뒤 항이 P0100 둘 · P0200 하나를 가리킨다(조 참조 인자 연결 포함). */
+  const build = () => {
+    const b = nodeBuilders(sequentialIds("k"));
+    const a = b.paragraph([b.text("가")]);
+    const c = b.paragraph([b.text("나")]);
+    const plain = b.paragraph([b.text("다")]);
+    a.code = "P0100";
+    c.code = "P0100";
+    plain.code = "P0200";
+    const article = b.article("조", [b.condBlock([b.branch("D0001", [a]), b.branch(undefined, [c])]), plain]);
+    const ref1 = b.articleRef({ articleId: article.id, code: "P0100" }, "self");
+    const ref2 = b.articleRef([{ articleId: article.id, code: "P0100" }, { articleId: article.id, code: "P0200" }], "self", "및");
+    const clause = b.clauseBlock("C0001");
+    clause.bindings = { 지급사유: { kind: "articleRef", targets: [{ articleId: article.id, code: "P0200" }], scope: "self" } };
+    const refs = b.paragraph([ref1, ref2]);
+    refs.code = "P0300";
+    clause.code = "P0400";
+    article.children.push(refs, clause);
+    return { doc: b.document("d", [article]), a, plain };
+  };
+
+  it("짝이 남는 코드를 바꾸면 0건 — 짝으로 해소된다", () => {
+    const { doc, a } = build();
+    expect(codeChangeBreaks(doc, a.id, "P0900")).toBe(0);
+  });
+
+  it("짝 없는 코드를 바꾸면 그 코드를 가리키는 대상 수 — 조 참조 인자 연결도 센다, 같은 코드면 0", () => {
+    const { doc, plain } = build();
+    expect(codeChangeBreaks(doc, plain.id, "P0900")).toBe(2);
+    expect(codeChangeBreaks(doc, plain.id, "P0200")).toBe(0);
   });
 });

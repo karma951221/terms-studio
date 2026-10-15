@@ -90,6 +90,7 @@ export const EDGE_STYLE = {
   optionSelect: "dashed",
   articleRef: "dashed",
   link: "dashed",
+  repeatSource: "solid",
   appendixRef: "dashed",
   boxRef: "dashed",
   defaultBinding: "solid",

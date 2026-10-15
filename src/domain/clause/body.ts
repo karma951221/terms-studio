@@ -25,6 +25,8 @@ import { checkLocals, planFieldType, type LocalDef } from "./locals";
 import { articleRefReadMessage, checkParams, valueParamTypes, type ParamDef } from "./params";
 import { clauseCodeEntries, clauseCodeIssues } from "./pcode";
 import { multiTarget, refKey } from "../document/pcode";
+import { refTargetFactIssues, type RefTargetFact } from "../document/blockRepeat";
+import type { EnumDef } from "../catalog/types";
 import type { ClauseBody, ClauseMode, OptionDef, RequiredRefs } from "./types";
 
 // ───────────────────────────── 식 수집 ─────────────────────────────
@@ -151,6 +153,10 @@ export interface AnalyzeOptions {
   generalReferenceKeys?: ReadonlySet<string>;
   /** 보통약관의 반복 블록 안 대상 열쇠 — 대상이 하나여도 연결어가 필요하다(결정 14 확장 · ADR-0077 결정 7). */
   generalRepeatedKeys?: ReadonlySet<string>;
+  /** 보통약관의 대상 열쇠마다 머리의 사실 — 있으면 안쪽 코드 존재 · 값 한정 열거형(지운 값)을 문서 저장과 같은 규칙으로 본다 (기능/문면 §3.7). */
+  generalTargets?: ReadonlyMap<string, RefTargetFact>;
+  /** 열거형 정의 — 값 한정의 「없는 값」 문구. */
+  enumOf?: (code: Code) => EnumDef | undefined;
   /** 별표 존재 조회 — 있으면 별표 참조 대상 존재를 검사한다. */
   appendixExists?: (code: Code) => boolean;
   /** 정적 마스터 박스 존재 조회 — 있으면 박스 참조 대상 존재를 검사한다. */
@@ -317,10 +323,17 @@ export function analyzeBody(
           if (multiTarget(t as { articleId: string; code?: string; innerCode?: string; restrict?: unknown }, opts.generalRepeatedKeys)) repeated = true;
           if (t.innerCode !== undefined && (typeof t.innerCode !== "string" || t.code === undefined)) report("structure", "안쪽 코드는 보통약관의 함수조항 블록 참조(코드)와 함께 쓴다", here, key);
           const restrict = t.restrict as { values?: unknown; current?: unknown } | undefined;
+          let restrictOk = restrict === undefined;
           if (restrict !== undefined) {
             if (restrict.current !== undefined) report("structure", "함수조항 본문에는 반복이 없어 값 한정 「현재 값」을 쓸 수 없습니다 — 해당 값들로 고른다", here, key);
             else if (!Array.isArray(restrict.values) || restrict.values.length === 0) report("structure", "값 한정의 값을 하나 이상 고른다", here, key);
             else if (opts.generalRepeatedKeys && !opts.generalRepeatedKeys.has(key)) report("structure", "값 한정은 반복으로 생긴 노드에만 건다 — 이 보통약관 대상은 반복 안이 아닙니다", here, key);
+            else restrictOk = true;
+          }
+          // 안쪽 코드 존재 · 값 한정 열거형 — 보통약관이 넘긴 대상 사실로 문서 저장과 같은 검사 (위에서 이미 거른 값 한정은 다시 보지 않는다)
+          if (opts.generalTargets && (opts.generalReferenceKeys?.has(key) ?? true)) {
+            const target = { ...(typeof t.innerCode === "string" ? { innerCode: t.innerCode } : {}), ...(restrictOk && restrict !== undefined ? { restrict } : {}) };
+            for (const i of refTargetFactIssues(target, opts.generalTargets.get(key), () => new Map(), opts.enumOf ? { enumOf: opts.enumOf } : {}, typeof t.code === "string" ? t.code : undefined)) report(i.kind, i.message, here, key);
           }
         }
         if (repeated && node.connector === undefined && node.targets.length < 2) report("structure", CONNECTOR_REPEAT_MESSAGE, here);

@@ -33,17 +33,21 @@ function RecheckList({ items, onClose }: { items: readonly RefEdge[]; onClose: (
   </section>;
 }
 
-type EditorProps = { item: EnumDef };
+/**
+ * `highlight` — 강조할 값 코드(`?value=`, 오류 좌표의 「고치러 가기」).
+ * `removalBlock` — 정의를 지울 수 없는 이유(코드 마스터 필드 타입 · 특약 그룹, `enumRemovalBlock`). 있으면 🗑 이 꺼지고 tooltip 이 이유다.
+ */
+type EditorProps = { item: EnumDef; highlight?: string; removalBlock?: string };
 
-function EnumEditorBody({ item, onSaved }: EditorProps & { onSaved: (recheck: RefEdge[]) => void }) {
+function EnumEditorBody({ item, highlight, removalBlock, onSaved }: EditorProps & { onSaved: (recheck: RefEdge[]) => void }) {
   const values = [...item.values].sort((a, b) => a.order - b.order).map(({ code, label, fields }) => ({ code, label, fields: { ...fields } }));
   const fields = [...(item.fields ?? [])].sort((a, b) => a.order - b.order).map(({ key, label, type }) => ({ key, label, type }));
   const initial: EnumEditData = { label: item.label, description: item.description ?? "", fields, values };
-  return <EditShell initial={initial} title={item.label} code={item.code} path={[menuCrumb(ENUMS_MENU)]} saveAction={(input, confirm) => saveEnumEditAction(item.code, { ...input, values: input.values.filter((value) => value.label.trim() || !value.code.startsWith("new:")) }, confirm)} onSaved={(outcome) => onSaved(outcome.recheck ?? [])} deleteAction={removeEnumEditAction.bind(null, item.code)} deleteLabel={`${item.label} 삭제`} deleteTooltip={`${ENTITY_LABEL.enum} ${item.label}(${item.code}) 삭제`} deleteSuccessHref="/enums">
+  return <EditShell initial={initial} title={item.label} code={item.code} path={[menuCrumb(ENUMS_MENU)]} saveAction={(input, confirm) => saveEnumEditAction(item.code, { ...input, values: input.values.filter((value) => value.label.trim() || !value.code.startsWith("new:")) }, confirm)} onSaved={(outcome) => onSaved(outcome.recheck ?? [])} deleteAction={removeEnumEditAction.bind(null, item.code)} deleteLabel={`${item.label} 삭제`} deleteTooltip={`${ENTITY_LABEL.enum} ${item.label}(${item.code}) 삭제`} deleteSuccessHref="/enums" deleteBlocked={removalBlock}>
     <div className="ts-l2-main">
       <Field name="label" label={NAME_LABEL.enum} />
       <FieldsEditor />
-      <ValuesEditor />
+      <ValuesEditor highlight={highlight} />
     </div>
   </EditShell>;
 }

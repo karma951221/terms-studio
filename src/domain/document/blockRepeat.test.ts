@@ -4,10 +4,12 @@ import type { EnumDef } from "../catalog/types";
 import type { Clause } from "../clause/types";
 import { checkParams } from "../clause/params";
 import type { Issue } from "../types";
-import { cloneForElement, repeatLabel, type RepeatSource } from "./blockRepeat";
+import { clauseInnerCodes, cloneForElement, repeatLabel, type RepeatSource } from "./blockRepeat";
+import { lostInnerCodeEntries, type RecheckDocument } from "./refs";
 import { nodeBuilders, sequentialIds } from "./builders";
 import { applyCommand } from "./commands";
-import { numberTree, referenceAncestorIds, referenceOutline, referenceTargetIndex, refTargetOf } from "./numbering";
+import { generalRefsOf } from "./edit";
+import { numberTree, referenceAncestorIds, referenceChunkLabel, referenceOutline, referenceTargetIndex, referenceTargetLabel, refTargetOf } from "./numbering";
 import type { DocumentNode, ForBlockNode, TreeEnv } from "./nodes";
 import { validateTree } from "./nodes";
 import { catalogTypeResolver, clauseGateFrom, validateDocument } from "./validate";
@@ -344,8 +346,31 @@ describe("조 참조 고르기 색인 — 반복 블록 · 함수조항 참조 �
     expect(innerLoop.id).toBe(inner.id);
     expect(innerLoop.children[0].id).toBe(ref.id);
     expect(innerLoop.children[0].label).toContain("납입면제 호");
-    expect(innerLoop.children[0].children.map((r) => r.label)).toEqual([expect.stringContaining("P0100")]);
+    expect(innerLoop.children[0].children.map((r) => r.target.item?.code)).toEqual(["P0100"]);
     expect(referenceAncestorIds(index, [innerRow![0]])).toEqual(new Set([article, outer.id, paragraph.id, inner.id, ref.id]));
+  });
+
+  it("반복 안 · 펼친 함수조항 안 줄은 가짜 번호 없이 머리 말 — 본문 칩 표기도 단계 + 코드(실제 번호는 미리보기 탭이 조립해 매긴다)", () => {
+    const { doc, outer, inner, ref, paragraph } = 납입면제조();
+    outer.code = "P0100";
+    paragraph.code = "P0200";
+    inner.code = "P0300";
+    ref.code = "P0400";
+    const index = referenceTargetIndex(doc, numberTree(doc), { clauseOf: (c) => [면제호, 부가항, 정의].find((x) => x.code === c), repeatCaption: () => "납입면제종마다" });
+    const [group] = referenceOutline(index);
+    const loopRow = group.rows[0].children[0];
+    expect(loopRow.label).toBe("반복 — 납입면제종마다");
+    const paraRow = loopRow.children[0];
+    expect(paraRow.label).toBe("「으로 가입한 경우」");
+    expect(paraRow.children[0].label).toBe("반복 — 납입면제종마다"); // 머리 말 함수가 고정 글
+    expect(paraRow.children[0].children[0].label).toBe("함수조항 「납입면제 호」");
+    expect(paraRow.children[0].children[0].children[0].label).toBe("「사유 호」");
+    // 본문 칩 — 반복 블록 · 반복 안 대상은 번호 대신 단계 + 코드, 조가 다르면 조 표기 앞에
+    expect(referenceTargetLabel(index.get(paragraph.id)!)).toBe("제1조(보험료의 납입면제) 항 P0200");
+    expect(referenceTargetLabel(index.get(outer.id)!)).toBe("제1조(보험료의 납입면제) 반복 P0100");
+    expect(referenceTargetLabel(index.get(ref.id)!, index.get(paragraph.id))).toBe("호 P0400");
+    // 자리표시끼리는 구간을 만들지 않는다
+    expect(referenceChunkLabel([index.get(outer.id)!, index.get(paragraph.id)!, index.get(inner.id)!], "및")).toBe("제1조(보험료의 납입면제) 반복 P0100, 항 P0200 및 반복 P0300");
   });
 
   it("반복 줄 머리는 바깥 반복을 알고 이름을 짓는다 — 안쪽 목록 반복은 「납입면제사유마다」(필드 키 「reasons마다」가 아니다)", () => {
@@ -414,5 +439,84 @@ describe("반복 · 펼친 함수조항 안 · 값 한정 참조 저장 검사 (
     const outerId = (article.children[0] as { id: string }).id;
     (refNow.targets[0] as { restrict?: unknown }).restrict = { current: outerId };
     expect(validateTree(doc, env)).toEqual([expect.objectContaining({ message: expect.stringContaining("현재 값") })]);
+  });
+});
+
+describe("대응 보통약관 대상의 안쪽 코드 · 값 한정 열거형 — 담보약관 저장도 본다 (기능/문면 §3.7 ②)", () => {
+  /** 보통약관 = 납입면제조(바깥 반복 P0100 · 항 P0200 · 사유 반복 P0300 · 함수조항 참조 P0400 — 본문 호 P0100), 담보약관 = 보통약관 참조 하나. */
+  function 담보(target: Record<string, unknown>) {
+    const general = 납입면제조();
+    general.outer.code = "P0100";
+    general.paragraph.code = "P0200";
+    general.inner.code = "P0300";
+    general.ref.code = "P0400";
+    const generalArticle = (general.doc.children[0] as { id: string }).id;
+    const refs = generalRefsOf(general.doc, { clauseOf: (c) => [면제호, 부가항, 정의].find((x) => x.code === c) });
+    const b = nodeBuilders(sequentialIds("s"));
+    const ref = b.articleRef({ articleId: generalArticle, ...target } as never, "general", "및");
+    const doc = b.document("특약", [b.article("준용", [b.paragraph([ref])])]);
+    const treeEnv: TreeEnv = { ...env, kind: "special", generalArticleIds: refs.articleIds, generalReferenceKeys: refs.referenceKeys, ...(refs.repeatedKeys ? { generalRepeatedKeys: refs.repeatedKeys } : {}), ...(refs.targets ? { generalTargets: refs.targets } : {}) };
+    return validateTree(doc, treeEnv);
+  }
+
+  it("맞는 안쪽 코드 · 사유 반복 안 대상의 값 한정 = 통과", () => {
+    expect(담보({ code: "P0400", innerCode: "P0100", restrict: { values: ["V01"] } })).toEqual([]);
+  });
+
+  it("함수조항 본문에 없는 안쪽 코드 = 깨진 참조", () => {
+    expect(담보({ code: "P0400", innerCode: "P9900" })).toEqual([expect.objectContaining({ kind: "brokenRef", message: expect.stringContaining("P9900") })]);
+  });
+
+  it("함수조항 참조가 아닌 대상에 안쪽 코드 = 오류", () => {
+    expect(messages(담보({ code: "P0200", innerCode: "P0100" }))).toEqual([expect.stringContaining("함수조항 블록 참조를 가리킬 때만")]);
+  });
+
+  it("값 한정 — 종 반복(열거값 아님)만 감싼 대상 = 오류, 지운 값 = 「없는 값」", () => {
+    expect(messages(담보({ code: "P0200", restrict: { values: ["V01"] } }))).toEqual([expect.stringContaining("열거값(사유)")]);
+    expect(담보({ code: "P0400", restrict: { values: ["V99"] } })).toEqual([expect.objectContaining({ kind: "brokenRef", message: expect.stringContaining("없는 값 V99") })]);
+  });
+});
+
+describe("함수조항 저장의 외부 참조 영향 — 사라진 안쪽 코드를 가리키는 문서 (관계정보 재검사 목록, ADR-0049)", () => {
+  /** 보통약관(함수조항 참조 P0400 = C0300) 안 자기 참조 하나 + 담보약관의 보통약관 참조 하나 — 둘 다 안쪽 코드 P0100 을 가리킨다. */
+  function 문서들() {
+    const general = 납입면제조();
+    general.outer.code = "P0100";
+    general.paragraph.code = "P0200";
+    general.inner.code = "P0300";
+    general.ref.code = "P0400";
+    const article = general.doc.children[0] as { id: string; children: unknown[] };
+    const b = nodeBuilders(sequentialIds("z"));
+    const own = b.articleRef({ articleId: article.id, code: "P0400", innerCode: "P0100" } as never, "self", "및");
+    const ownPara = b.paragraph([own]);
+    ownPara.code = "P0500";
+    article.children.push(ownPara);
+    const other = b.articleRef({ articleId: article.id, code: "P0400", innerCode: "P0100" } as never, "general", "및");
+    const special = b.document("특약", [b.article("준용", [b.paragraph([other])])]);
+    const docs: RecheckDocument[] = [
+      { id: "g", title: "보통약관", kind: "general", ownerId: "g", tree: general.doc },
+      { id: "s", title: "특약", kind: "special", ownerId: "cov", tree: special, generalDocumentId: "g" },
+    ];
+    const usages = [{ documentId: "g", ownerKind: "general" as const, ownerId: "g", refNodeId: general.ref.id }];
+    return { docs, usages, own, other };
+  }
+
+  it("본문에 그 안쪽 코드가 있으면 항목 없음", () => {
+    const { docs, usages } = 문서들();
+    expect(clauseInnerCodes(면제호)).toEqual(new Set(["P0100"]));
+    expect(lostInnerCodeEntries(면제호, usages, docs)).toEqual([]);
+  });
+
+  it("안쪽 코드가 사라지면 「안쪽 코드 P0100 사라짐 — 참조하는 문서 2곳」 — 같은 문서 · 담보약관(보통약관 참조) 두 자리로 고치러 간다", () => {
+    const { docs, usages, own, other } = 문서들();
+    const changed: Clause = { ...면제호, body: [{ id: "sw", kind: "switchBlock", on: "arg.사유", cases: [{ id: "k1", values: ["V01", "V02", "V03"], children: [{ ...item("i1", "사유 호"), code: "P0200" }] }] }] as never };
+    const entries = lostInnerCodeEntries(changed, usages, docs);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].usage).toMatchObject({ documentId: "g", refNodeId: usages[0].refNodeId });
+    expect(entries[0].issues.map((i) => i.message)).toEqual([expect.stringContaining("안쪽 코드 P0100 사라짐 — 참조하는 문서 2곳"), expect.stringContaining("안쪽 코드 P0100 사라짐 — 참조하는 문서 2곳")]);
+    expect(entries[0].issues.map((i) => [i.kind, i.at.documentId, i.at.nodePath?.at(-1)])).toEqual([
+      ["brokenRef", "g", own.id],
+      ["brokenRef", "s", other.id],
+    ]);
   });
 });

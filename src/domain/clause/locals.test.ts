@@ -191,6 +191,16 @@ describe("펼칠 때 사용처 문맥에서 평가", () => {
     if (!empty.ok && empty.rejection.reason === "invalid") expect(empty.rejection.issues[0]).toMatchObject({ kind: "notEntered", message: expect.stringMatching(/약관표시명/) });
   });
 
+  it("필드 미입력 · 없는 값 오류의 원천 = 그 열거형(값 코드) — 「고치러 가기」가 /enums/<코드> 로 간다", () => {
+    const c = clauseWith([], [{ id: "s1", kind: "slot", ref: "arg.사유.F01" }]);
+    const empty = applyBindings(c, undefined, plainConst, {}, env({ D0002: "V02" }));
+    if (empty.ok || empty.rejection.reason !== "invalid") throw new Error("미입력 오류 기대");
+    expect(empty.rejection.issues[0]?.source).toEqual({ document: "enum", ownerId: "E0001", ownerName: "납입면제사유", refPath: "V02" });
+    const gone = applyBindings(c, undefined, plainConst, {}, env({ D0002: "V09" }));
+    if (gone.ok || gone.rejection.reason !== "invalid") throw new Error("없는 값 오류 기대");
+    expect(gone.rejection.issues[0]).toMatchObject({ kind: "brokenRef", source: { document: "enum", ownerId: "E0001", refPath: "V09" } });
+  });
+
   it("평가 재료가 없으면(편집기 미리보기) 함수조항 전용 식은 손대지 않는다", () => {
     const c = clauseWith([{ name: "암", expr: "arg.사유들.있음('V01')" }], condition("var.암 and arg.사유 = 'V01'"));
     const r = applyBindings(c, undefined, plainConst);

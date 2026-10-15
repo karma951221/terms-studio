@@ -161,6 +161,11 @@ describe("catalog lib — 넣기 패널 (기능/구분자 §4.3)", () => {
     expect(insertAt("(x)", 1, "not")).toEqual({ value: "(not x)", cursor: 4 });
   });
 
+  it("insertAt — 점으로 시작하는 연산(.있음() · 필드)은 앞 토큰에 붙인다 (함수조항 내부 변수)", () => {
+    expect(insertAt("var.사유들", 7, ".있음()", 4)).toEqual({ value: "var.사유들.있음()", cursor: 11 });
+    expect(insertAt("arg.사유 = 'V01'", 6, ".약관표시명")).toEqual({ value: "arg.사유.약관표시명 = 'V01'", cursor: 12 });
+  });
+
   it("insertAt — caret 을 주면 넣은 텍스트 안 그 자리에 커서 (집계 괄호 안)", () => {
     expect(insertAt("", 0, "any()", 4)).toEqual({ value: "any()", cursor: 4 });
     expect(insertAt("D0001 and", 9, "any()", 4)).toEqual({ value: "D0001 and any()", cursor: 14 });

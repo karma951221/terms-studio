@@ -25,21 +25,19 @@ export type ImpactTarget =
   | { kind: "enumField"; enumCode: Code; key: Code };
 
 /**
- * 값 저장소 · 참조 역인덱스가 구현하는 인터페이스.
- * - countValueRows / findBrokenRefs: 1차 호출(확인 요청)에 쓴다.
- * - purgeValueRows: confirm 후 실행 단계에서 값 행 연쇄 삭제.
+ * 값 저장소 · 참조 역인덱스가 구현하는 인터페이스 — 1차 호출(확인 요청)에 쓴다.
+ * 값 행을 지우는 단계는 없다: 구분자는 값 행이 없고, 열거값 삭제는 코드를 남겨 「없는 값」으로 드러내며(ADR-0078 결정 5),
+ * 열거형변수 정의 삭제는 값 행이 생기는 자리(마스터 필드 타입)를 쓰는 열거형이면 거부한다(〔D-P1-17〕 · `enumRemovalBlock`).
  */
 export interface ImpactSource {
   countValueRows(target: ImpactTarget): Promise<number>;
   findBrokenRefs(target: ImpactTarget): Promise<Coordinate[]>;
-  purgeValueRows(target: ImpactTarget): Promise<void>;
 }
 
 /** 값 저장소가 아직 없을 때의 기본 구현. */
 export const NO_VALUE_STORE: ImpactSource = {
   countValueRows: async () => 0,
   findBrokenRefs: async () => [],
-  purgeValueRows: async () => {},
 };
 
 export interface ImpactExtras {
@@ -72,7 +70,7 @@ export function cascadeOf(def: EnumDef | { code: Code }): string[] {
 
 /**
  * enum 을 타입으로 쓰는 **마스터 필드**의 좌표. refPath = 값 자리 경로.
- * 마스터는 코드라 이 참조는 삭제로 끊을 수 없다 — enum 삭제 확인 다이얼로그가 그 사실을 보여준다.
+ * 마스터는 코드라 이 참조는 삭제로 끊을 수 없다 — 그래서 이 목록이 비지 않으면 enum 정의 삭제를 거부한다(`enumRemovalBlock`).
  */
 export function enumReferences(enumCode: Code): Coordinate[] {
   return allMasterFields()

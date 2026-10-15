@@ -21,7 +21,7 @@ import type { ClauseMode } from "../clause/types";
 import { isParticlePreset, PARTICLE_PRESET_MESSAGE, type ParticleNode } from "./particles";
 import type { Bindings } from "../clause/params";
 import { documentCodeIssues, multiTarget, referenceKeys, refKey, refLabel } from "./pcode";
-import { checkRepeatSource, enclosingLoops, loopTypesAt, refTargetIssues, REPEAT_MAX_DEPTH, repeatedKeys, type RepeatSource } from "./blockRepeat";
+import { checkRepeatSource, enclosingLoops, loopTypesAt, refTargetFactIssues, refTargetIssues, REPEAT_MAX_DEPTH, repeatedKeys, type RefTargetFact, type RepeatSource } from "./blockRepeat";
 import type { EnumDef } from "../catalog/types";
 import type { LoopElementType } from "../clause/params";
 import type { Clause } from "../clause/types";
@@ -719,6 +719,8 @@ export interface TreeEnv {
   clauseGate?: ClauseGate;
   /** 대응 보통약관의 반복 블록 안 대상 열쇠 — 대상이 하나여도 여러 번호가 될 수 있어 연결어가 필요하다(결정 14 확장). */
   generalRepeatedKeys?: ReadonlySet<string>;
+  /** 대응 보통약관의 대상 열쇠마다 머리의 사실 — 안쪽 코드 존재 · 값 한정 열거형 검사(`refTargetFactIssues`). 없으면 그 검사를 건너뛴다. */
+  generalTargets?: ReadonlyMap<string, RefTargetFact>;
   /** 반복 원천 검사의 마스터 (기본 MVP 정본). */
   master?: MasterTree;
   /** 열거형 정의 — 합집합 거름 필드 · 정의 조 교차 검사. 없으면 그 검사를 건너뛴다. */
@@ -842,8 +844,9 @@ function articleRefIssues(n: Pick<ArticleRefNode, "targets" | "connector" | "sco
     if (exists) {
       const here = { ...at, refPath: refKey(target) };
       if (n.scope === "self") return refTargetIssues(target, e, ix, { ...(gate.clauseOf ? { clauseOf: (c: Code) => gate.clauseOf!(c) } : {}), ...(env.enumOf ? { enumOf: env.enumOf } : {}), ...(env.master ? { master: env.master } : {}) }).map((i) => ({ ...i, at: here }));
-      // 대응 보통약관 대상 — 값 한정은 반복 안 대상에만(열거형 · 안쪽 코드는 그 문서를 열 때 본다)
+      // 대응 보통약관 대상 — 값 한정은 반복 안 대상에만, 안쪽 코드 · 값 한정 열거형은 보통약관이 넘긴 대상 사실로 이 문서와 같은 검사
       if (target.restrict !== undefined && env.generalRepeatedKeys && !env.generalRepeatedKeys.has(key)) return [{ kind: "structure" as const, message: "값 한정은 반복으로 생긴 노드에만 건다 — 이 보통약관 대상은 반복 안이 아닙니다", at: here }];
+      if (env.generalTargets) return refTargetFactIssues(target, env.generalTargets.get(key), () => loopTypesAt(ix, e, env.master), env, target.code).map((i) => ({ ...i, at: here }));
       const current = (target.restrict as { current?: unknown } | undefined)?.current;
       if (typeof current === "string" && !loopTypesAt(ix, e, env.master).has(current)) return [{ kind: "structure" as const, message: "값 한정 「현재 값」의 반복이 이 참조를 감싸지 않습니다 — 그 반복 블록 안에서만 쓴다", at: here }];
       return [];

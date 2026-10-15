@@ -331,4 +331,18 @@ describe("clause 서비스 (PGlite)", () => {
       expect(after?.version).toBe(doc.version + 1);
     });
   });
+  describe("renameUsageBindings — 인자 이름 바꾸기의 사용처 몫 (기능/함수조항 §3.7)", () => {
+    it("그 함수조항을 쓰는 문서 참조의 연결 키를 새 이름으로 — 고친 참조 수", async () => {
+      const c = unwrap(await svc.create(editor, { label: "이름 바꾸기 사용처", mode: "block", body: [], params: [{ name: "새이름", type: { kind: "boolean" } }] }));
+      const b = nodeBuilders(() => crypto.randomUUID());
+      const ref = { ...b.clauseBlock(c.code, {}), bindings: { 옛이름: { kind: "const" as const, value: true } } };
+      const doc = await insertDocument(t.db, { kind: "general", title: "이름 바꾸기 사용처", tree: b.document("이름 바꾸기 사용처", [b.article("조", [ref])]) }, admin.userId);
+      const out = unwrap(await svc.renameUsageBindings(editor, c.code, { 옛이름: "새이름" }));
+      expect(out.count).toBe(1);
+      const after = await loadDocument(t.db, doc.id);
+      const node = (after?.tree.children[0] as { children: unknown[] }).children[0];
+      expect(node).toMatchObject({ bindings: { 새이름: { kind: "const", value: true } } });
+      expect(JSON.stringify(after?.tree)).not.toContain("옛이름");
+    });
+  });
 });

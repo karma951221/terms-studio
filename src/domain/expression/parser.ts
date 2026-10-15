@@ -579,6 +579,37 @@ function checkAttributeCompare(left: Expr, op: CompareOp, right: Expr, pos: numb
  * 소스 문자열 → AST. 문법 오류는 `Rejection{reason:'invalid', issues:[{kind:'syntax'}]}`.
  * 오류 메시지에 0-기반 문자 위치가 들어간다. `coordinate` 는 Issue 의 좌표로 그대로 실린다.
  */
+/**
+ * 인자 · 내부 변수 이름 바꾸기 — `arg.<옛>` · `var.<옛>` 의 이름 토막만 바꾼 식 글 (기능/함수조항 §3.7 이름 변경).
+ * 글자 자리(토큰 위치)로 바꿔 나머지 모양(띄어쓰기 · 필드 · 문자열)은 그대로 둔다. 맞바꾸기도 한 번에(차례로 바꾸지 않는다).
+ * 토큰으로 안 읽히는 식은 그대로 돌려준다 — 저장 검사가 오류 자리를 알린다.
+ */
+export function renameExprRefs(src: string, renames: { params?: ReadonlyMap<string, string>; locals?: ReadonlyMap<string, string> }): string {
+  let tokens: Token[];
+  try {
+    tokens = tokenize(src);
+  } catch (e) {
+    if (e instanceof SyntaxFailure) return src;
+    throw e;
+  }
+  const edits: { pos: number; end: number; text: string }[] = [];
+  for (let k = 2; k < tokens.length; k += 1) {
+    const head = tokens[k - 2];
+    const dot = tokens[k - 1];
+    const name = tokens[k];
+    if (head.type !== "ident" || dot.type !== "punct" || dot.text !== "." || name.type !== "ident") continue;
+    // 머리가 맨 앞이거나 점 뒤가 아니어야 한다 — `x.arg.y` 같은 꼬리 토막은 경로 머리가 아니다
+    const before = tokens[k - 3];
+    if (before && before.type === "punct" && before.text === ".") continue;
+    const map = head.text === "arg" ? renames.params : head.text === "var" ? renames.locals : undefined;
+    const next = map?.get(name.text);
+    if (next !== undefined) edits.push({ pos: name.pos, end: name.pos + name.text.length, text: next });
+  }
+  let out = src;
+  for (const e of edits.reverse()) out = out.slice(0, e.pos) + e.text + out.slice(e.end);
+  return out;
+}
+
 export function parse(src: string, coordinate: Coordinate = {}): Result<Expr> {
   try {
     if (src.trim() === "") throw new SyntaxFailure("빈 식입니다", 0);

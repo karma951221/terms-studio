@@ -38,8 +38,9 @@ import { ContextMenu, PopActions, Popover } from "@/app/(app)/documents/[id]/_co
 import { DraftIssues } from "@/app/(app)/documents/[id]/_components/SidePanel";
 import { CLAUSE_LINE_TOOLS, CLAUSE_TOOLS, allTools, itemsFor, type ToolId } from "@/app/(app)/documents/[id]/_components/tools";
 import { switchSubjectsOf } from "@/app/(app)/documents/[id]/_components/switchCases";
+import { clauseHiddenIds } from "@/app/(app)/documents/[id]/_components/blockDrag";
 import { useBlockDrag } from "@/app/(app)/documents/[id]/_components/useBlockDrag";
-import type { ClauseBody, ClauseMode, LocalDef, ParamDef, RequiredRefs } from "@/domain/clause";
+import { normalizeRenames, renameInBody, renameInLocals, renameInPresets, type Clause, type ClauseBody, type ClauseMode, type LocalDef, type ParamDef, type RequiredRefs } from "@/domain/clause";
 import { formatCoordinate } from "@/domain/coordinate";
 import {
   CLAUSE_HOST_ITEM_ID,
@@ -51,6 +52,7 @@ import {
   clauseScopedRefLabel,
   paramTargetId,
   generalRefsOf,
+  type RefTargetFact,
   indexTree,
   numberTree,
   optionCarrier,
@@ -70,17 +72,20 @@ import {
 import type { Id, Impact, Issue, WorkMark } from "@/domain/types";
 
 import { createClauseAction } from "../actions";
+import { textBody } from "../lib";
 import { removeClauseEditAction, saveClauseEditAction } from "../edit-actions";
 import type { ClauseEditOption, ClauseEditPreset } from "../edit-types";
 import type { ClauseEditorData } from "../editorData";
 import { clauseCanHold, clauseCondMenu, clauseDefaultPlace, clausePlaceMenu, withClauseRefusals, type ClauseMenuEnv } from "./clauseMenus";
 import { ClauseMeta } from "./ClauseMeta";
 import { OptionsPane } from "./OptionsPane";
-import { localEntries, localsForSave } from "./locals";
+import { enumDefsOf, localEntries, localsForSave } from "./locals";
 import { LocalsPane } from "./LocalsPane";
 import { paramEntries } from "./params";
 import { ParamsPane } from "./ParamsPane";
 import { PresetsPane } from "./PresetsPane";
+import { originsOf, renamesFrom, trackOrigins } from "./renames";
+import { TrialPane } from "./TrialPane";
 
 export interface ClauseAuthoringProps {
   /** 없으면 생성 화면(`/functions/new`). */
@@ -101,6 +106,8 @@ export interface ClauseAuthoringProps {
   /** 단위 규칙 경고 — 조 · 여러 항 단위가 아님 · 한 곳에서만 씀. 저장은 막지 않고 정보 칸에 보인다 (기능/함수조항 §3.1). */
   warnings?: readonly string[];
   data: ClauseEditorData;
+  /** 들어오면 스크롤 · 잠깐 강조할 본문 노드 — `?node=<id>` (재검사 줄 · 오류 좌표 「고치러 가기」, `coordinateHref`). */
+  initialNode?: Id;
   /** 생성 화면 — 「항」 유형의 첫 빈 항 id. 서버가 정해 넘긴다(서버 · 브라우저 렌더가 같은 id 를 써야 한다). */
   startId?: string;
 }
@@ -166,13 +173,16 @@ function unionRefs(generals: ClauseEditorData["generals"], articleRefParams: rea
   const articleIds = new Set<Id>();
   const referenceKeys = new Set<string>(articleRefParams.map(paramTargetId));
   const repeatedKeys = new Set<string>();
+  // 대상 사실 — 값 한정 열거형(이 편집기는 함수조항 본문을 받지 않아 안쪽 코드 존재는 서버 저장 검사가 본다)
+  const targets = new Map<string, RefTargetFact>();
   for (const g of generals) {
     const refs = generalRefsOf(g.tree);
     refs.articleIds.forEach((id) => articleIds.add(id));
     refs.referenceKeys.forEach((k) => referenceKeys.add(k));
     refs.repeatedKeys?.forEach((k) => repeatedKeys.add(k)); // 반복 블록 안 대상 — 대상 하나여도 연결어 (결정 14 확장)
+    refs.targets?.forEach((f, k) => targets.set(k, f));
   }
-  return { articleIds, referenceKeys, repeatedKeys };
+  return { articleIds, referenceKeys, repeatedKeys, targets };
 }
 
 /**
@@ -229,7 +239,10 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   };
   const [params, setParamsState] = useState<ParamDef[]>(props.params);
   const paramsRef = useRef(params);
+  // 인자 · 내부 변수 줄마다 저장된 옛 이름 — 저장 때 「옛 → 새」 표가 된다 (이름 바꾸기 자동 수정, 기능/함수조항 §3.7)
+  const paramOrigins = useRef(originsOf(props.params));
   const setParams = (next: ParamDef[]) => {
+    paramOrigins.current = trackOrigins(paramsRef.current, next, paramOrigins.current, props.params.map((p) => p.name));
     paramsRef.current = next;
     setParamsState(next);
   };
@@ -242,7 +255,9 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   };
   const [locals, setLocalsState] = useState<LocalDef[]>(props.locals);
   const localsRef = useRef(locals);
+  const localOrigins = useRef(originsOf(props.locals));
   const setLocals = (next: LocalDef[]) => {
+    localOrigins.current = trackOrigins(localsRef.current, next, localOrigins.current, props.locals.map((l) => l.name));
     localsRef.current = next;
     setLocalsState(next);
   };
@@ -255,7 +270,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   const [menu, setMenu] = useState<{ x: number; y: number; sections: MenuSections }>();
   const [pop, setPop] = useState<{ spec: PopupSpec; anchor: Anchor }>();
   const [focusRequest, setFocusRequest] = useState<Id>();
-  const [flashId, setFlashId] = useState<Id>();
+  const [flashId, setFlashId] = useState<Id | undefined>(props.initialNode);
   const [banner, setBanner] = useState<Banner>();
   const [discard, setDiscard] = useState<{ go: () => void }>();
   const [removal, setRemoval] = useState<Impact>();
@@ -275,6 +290,22 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     () => ({ ...data.condition, discriminators: [...paramEntries(shownParams, data.enums), ...localEntries(shownParams, localsForSave(shownParams, shownLocals, data.enums), data.enums)], quick: [] }),
     [data.condition, data.enums, shownParams, shownLocals],
   );
+  // 단독 시험 (§3.7 · 「시험」 탭) — 지금 보이는 정의(편집 중이면 편집본)를 시험 문맥으로 펼친다. 시험 값은 화면 상태
+  const enumDefs = useMemo(() => enumDefsOf(data.enums), [data.enums]);
+  const trial = useMemo((): { clause: Clause; problem?: string } => {
+    const body = treeToClauseBody(clauseMode, tree);
+    const clause = {
+      code: code ?? "새 함수조항",
+      label: (editing ? label : props.label) || "새 함수조항",
+      mode: clauseMode,
+      body: body.ok ? body.value : [],
+      options: shownOptions.map((o, i) => ({ code: o.code, label: o.label, order: i + 1, values: o.values.map((v, j) => ({ code: v.code, label: v.label, order: j + 1, body: textBody(v.text, `${v.code}-text`) })) })),
+      params: shownParams.filter((p) => p.name.trim() !== ""),
+      locals: localsForSave(shownParams, shownLocals, data.enums),
+      required: { discriminators: [], attributes: [] },
+    } as Clause;
+    return body.ok ? { clause } : { clause, problem: `본문을 읽을 수 없어 시험하지 못했다 — ${body.rejection.reason === "invalid" ? (body.rejection.issues[0]?.message ?? "") : body.rejection.reason}` };
+  }, [clauseMode, tree, code, editing, label, props.label, shownOptions, shownParams, shownLocals, data.enums]);
   /** 값별 분기 대상 후보 — 목록값 인자 · 내부 변수(최종 결정 5). 칸 머리 · 「값별 분기 넣기」가 쓴다. */
   const switchSubjects = useMemo(() => switchSubjectsOf(condition.discriminators), [condition]);
   const latest = useCallback((): DocumentNode => draftRef.current.state.tree, []);
@@ -376,7 +407,10 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     return true;
   };
 
-  const drag = useBlockDrag({ latest, apply, enabled: editing && clauseMode === "block" });
+  // 끌어 옮기기 — 「항」 · 「호」 · 「목」(문구는 한 줄이라 끌 블록이 없다). 호 · 목 본문을 싼 자리 항 · 호는 놓을 자리가 아니다 (§4.3)
+  const draggable = clauseMode !== "inline";
+  const hiddenIds = useMemo(() => clauseHiddenIds(clauseMode), [clauseMode]);
+  const drag = useBlockDrag({ latest, apply, enabled: editing && draggable, hidden: hiddenIds });
 
   const refuse = (message: string) => setBanner({ message: `넣을 수 없다 — ${message}` });
 
@@ -530,7 +564,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     contextMenu: onContextMenu,
     headItems: (branchId) => clauseCondMenu(menuEnv(), branchId).flat(),
     run: (item, anchor) => runMenu(item, anchor),
-    ...(clauseMode === "block" ? { blockSel: drag.blockSel, selectBlock: drag.selectBlock } : {}),
+    ...(draggable ? { blockSel: drag.blockSel, selectBlock: drag.selectBlock } : {}),
     // 블록 오른쪽 위의 복제 · 삭제 — 툴바가 쓰던 길(runTool)을 그 블록 자리로 (「문구」 유형은 블록이 없다)
     ...(clauseMode !== "inline"
       ? {
@@ -586,6 +620,8 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     setOptions(props.options);
     setParams(props.params);
     setLocals(props.locals);
+    paramOrigins.current = originsOf(props.params);
+    localOrigins.current = originsOf(props.locals);
     setPresets(savedPresets);
     setEditing(true);
     setBanner(undefined);
@@ -609,7 +645,21 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     }
     // 쓴 것이 없는 본문(처음 빈 항 하나)은 빈 본문으로 — 빈 항을 저장하지 않는다
     const params = paramsRef.current.map((p) => ({ ...p, name: p.name.trim() }));
-    const payload = { label: label.trim(), body: blankBody(body.value) ? [] : body.value, options: optionsRef.current, params, locals: localsForSave(params, localsRef.current, data.enums), presets: presetsKeepingParams(presetsRef.current, params) };
+    // 이름 바꾸기 — 본문 식 · 슬롯 · 분기 대상 · 조 참조 인자 슬롯, 뒤 내부 변수, 프리셋을 새 이름으로 고쳐 보내고, 사용처 연결 키는 저장이 고친다 (§3.7)
+    const renames = normalizeRenames(
+      { params: renamesFrom(paramOrigins.current, paramsRef.current), locals: renamesFrom(localOrigins.current, localsRef.current) },
+      { params: params.map((p) => p.name), locals: localsRef.current.map((l) => l.name.trim()) },
+    );
+    const renamedBody = renameInBody(blankBody(body.value) ? [] : body.value, renames);
+    const payload = {
+      label: label.trim(),
+      body: renamedBody,
+      options: optionsRef.current,
+      params,
+      locals: localsForSave(params, renameInLocals(localsRef.current, renames), data.enums),
+      presets: presetsKeepingParams(renameInPresets(presetsRef.current, renames), params),
+      ...(Object.keys(renames.params).length > 0 ? { paramRenames: renames.params } : {}),
+    };
     startTransition(async () => {
       const out = code === undefined ? await createClauseAction({ ...payload, mode: clauseMode }) : await saveClauseEditAction(code, payload);
       if (!out.ok) {
@@ -776,6 +826,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
               onMode={changeMode}
               unitNodes={clauseMode === "block" ? blockNodes : listNodes}
               required={props.required}
+              discriminators={props.data.condition.discriminators.filter((d) => !d.param && !d.local)}
               warnings={props.warnings}
             />
 
@@ -787,7 +838,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
               <div
                 className={`ts-clause-editor${editing ? " is-editing" : ""}`}
                 onContextMenu={onContextMenu}
-                {...(editing && clauseMode === "block" ? drag.props : {})}
+                {...(editing && draggable ? drag.props : {})}
                 onPointerDown={(e) => {
                   if (!editing) return;
                   const target = e.target as HTMLElement;
@@ -839,7 +890,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
             before={
               <>
                 <ParamsPane params={shownParams} editing={editing} onChange={setParams} discriminators={data.condition.discriminators} enums={data.enums} forms={data.planForms} />
-                <LocalsPane locals={shownLocals} editing={editing} onChange={setLocals} />
+                <LocalsPane locals={shownLocals} editing={editing} onChange={setLocals} params={shownParams} enums={data.enums} />
               </>
             }
             after={
@@ -856,6 +907,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
                 forms={data.planForms}
               />
             }
+            trial={<TrialPane clause={trial.clause} enums={enumDefs} {...(trial.problem ? { problem: trial.problem } : {})} boxName={(c) => boxByCode.get(c)?.name} appendixName={(c) => appendixName.get(c)} />}
             options={shownOptions}
             editing={editing}
             used={used}

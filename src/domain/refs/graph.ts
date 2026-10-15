@@ -5,10 +5,12 @@
  * - 입력 마스터 → 마스터 필드 노드 · enum 타입 간선(`type`)
  * - 카탈로그 정의 → 구분자 노드 · 식 참조(`expression`) — 마스터 필드 · 담보속성으로 간다
  * - 함수조항 → 옵션·선택지 노드 · 본문/선택지 본문의 식 참조(`when`·`slot`) · 별표 참조
- * - 문서 → 조 노드 · `collectRefs` 의 참조 전부 (구분자 · 담보속성 · 함수조항+옵션 선택 · 조 참조 · 별표 · 조연결) ·
+ * - 문서 → 조 노드 · `collectRefs` 의 참조 전부 (구분자 · 담보속성 · 함수조항+옵션 선택 · 조 참조 · 별표 · 조연결 ·
+ *   반복 원천 — 목록 · 거름 마스터 필드 · 합집합 거름 열거값 필드, `repeatSource`) ·
  *   대응 보통약관(`generalDocument`)
  * - 담보 트리 → 담보 노드 · 문서 연결(`document`)
- * - 상품 → 상품담보 노드 · 탑재(`mount`) · 조합(`combination`) · 옵션 오버라이드(`override`) · 템플릿(`generalDocument`)
+ * - 상품 → 상품담보 노드 · 탑재(`mount`) · 조합(`combination`) · 옵션 오버라이드(`override`) · 템플릿(`generalDocument`) ·
+ *   보통약관 조 사본 안 박스 · 별표 참조(`boxRef` · `appendixRef`, ADR-0079)
  *
  * 식 안의 `attr.X = '값'` · `<enum 자리> = '코드'` 비교는 리터럴까지 읽어 유효값·enum 값 간선을 낸다
  * (담보속성 유효값 · enum 값 삭제 영향의 재료). 문법이 깨진 식은 간선을 내지 않는다.
@@ -33,7 +35,7 @@ import type { Clause, ClauseBody } from "../clause/types";
 import { SPECIAL_GROUP_ENUM } from "../coverage/specialGroup";
 import { nodesOf } from "../coverage/tree";
 import type { Coverage, CoverageNodeLevel } from "../coverage/types";
-import { coordinateOf, indexTree } from "../document/nodes";
+import { coordinateOf, indexTree, type DocumentNode } from "../document/nodes";
 import { articleRefLabel, numberTree } from "../document/numbering";
 import { valueLoopEnum } from "../document/blockRepeat";
 import { collectRefs } from "../document/refs";
@@ -511,6 +513,13 @@ function addDocument(b: Builder, doc: DocumentInput, master?: MasterTree): Map<I
       case "link":
         b.edge({ from, to: generalOf(r.linkedArticleId), via: "link", at: r.at });
         break;
+      case "repeatSource": {
+        // 반복 원천 (ADR-0077) — 목록 · 거름이 읽는 마스터 필드, 합집합 거름은 그 목록 필드 열거형의 필드
+        b.edge({ from, to: { kind: "masterField", path: r.path }, via: "repeatSource", at: r.at });
+        const enumCode = r.where !== undefined ? b.enumSlots.get(r.path) : undefined;
+        if (enumCode !== undefined && r.where !== undefined) b.edge({ from, to: { kind: "enumField", enumCode, key: r.where }, via: "repeatSource", at: r.at });
+        break;
+      }
     }
   }
   // 조건식의 리터럴 비교 (유효값 · enum 값 간선) — collectRefs 는 리터럴을 주지 않으므로 가지를 한 번 더 훑는다.
@@ -561,6 +570,15 @@ function addProduct(b: Builder, p: ProductInput, anchors: Map<Id, RefNodeKey>): 
     b.edge({ from: pkey, to: { kind: "coverageNode", level: "coverage", id: pc.coverageId }, via: "mount", at });
     for (const a of pc.attributes) {
       b.edge({ from: pkey, to: { kind: "attributeValue", code: a.kindCode, valueCode: a.valueCode }, via: "combination", at: { ...at, refPath: `attr.${a.kindCode}` } });
+    }
+  }
+  // 조 사본 안 박스 · 별표 참조 (ADR-0079) — 좌표는 상품 + 조 (nodePath 를 싣지 않는다 — 상품 좌표의 nodePath[0] 은 상품담보 자리다)
+  for (const c of p.articleCopies ?? []) {
+    const at: Coordinate = { ...base, subjectName: "보통약관 조 사본", articleId: c.articleId, articleTitle: c.article.title };
+    const wrapped: DocumentNode = { id: `${p.id}/copy`, kind: "document", title: p.name, children: [c.article] };
+    for (const r of collectRefs(wrapped)) {
+      if (r.kind === "box") b.edge({ from: key, to: { kind: "box", code: r.boxCode }, via: "boxRef", at });
+      else if (r.kind === "appendix") b.edge({ from: key, to: { kind: "appendix", code: r.appendixCode }, via: "appendixRef", at });
     }
   }
   for (const o of p.overrides) {

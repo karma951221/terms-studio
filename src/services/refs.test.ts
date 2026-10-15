@@ -172,7 +172,6 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
       expect(await src.countValueRows({ kind: "enumValue", enumCode: "E0002", valueCode: "V02" })).toBe(1);
       expect(await src.countValueRows({ kind: "enumValue", enumCode: "E0002", valueCode: "V01" })).toBe(0);
       expect(await src.countValueRows({ kind: "enum", enumCode: "E0002" })).toBe(1);
-      await src.purgeValueRows({ kind: "enumValue", enumCode: "E0002", valueCode: "V02" });
       expect((await readSlots(t.db, { kind: "plan", id: productId })).get("no_surrender.type")).toEqual({ entered: true, value: "V02" });
     });
 

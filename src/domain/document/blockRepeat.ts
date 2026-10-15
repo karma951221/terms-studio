@@ -32,7 +32,7 @@ import type { Code, Coordinate, Id, Issue } from "../types";
 import { coordinateOf, indexTree, type DocumentNode, type ForBlockNode, type NodeEntry, type TreeIndex } from "./nodes";
 import { clauseCodeEntries, withClauseCodes } from "../clause/pcode";
 import { missingValueMessage } from "../catalog/values";
-import { CODED_KINDS, nodesOfTarget, refKey } from "./pcode";
+import { CODED_KINDS, isCodedKind, nodesOfTarget, refKey } from "./pcode";
 
 // ───────────────────────────── 모델 ─────────────────────────────
 
@@ -266,8 +266,13 @@ export function clauseInnerCodes(clause: Clause): Set<Code> {
  */
 export function valueLoopEnum(ix: TreeIndex, t: { articleId: Id; code?: Code }, master: MasterTree = MASTER): Code | undefined {
   if (t.code === undefined) return undefined;
+  return valueLoopEnumOf(ix, nodesOfTarget(ix, { articleId: t.articleId, code: t.code }), master);
+}
+
+/** `valueLoopEnum` 의 몸 — 대상 코드의 노드들을 이미 안 때(`refTargetFacts` 가 한 번에 모은다). */
+function valueLoopEnumOf(ix: TreeIndex, ids: readonly Id[], master: MasterTree): Code | undefined {
   let enumCode: Code | undefined;
-  for (const id of nodesOfTarget(ix, { articleId: t.articleId, code: t.code })) {
+  for (const id of ids) {
     const h = ix.nodes.get(id);
     if (!h) continue;
     const types = loopTypesAt(ix, h, master);
@@ -282,27 +287,95 @@ export function valueLoopEnum(ix: TreeIndex, t: { articleId: Id; code?: Code }, 
 }
 
 /**
- * 이 문서 안 참조 대상 하나의 검사 (ADR-0077 결정 6 · 7) — 존재는 호출부(`referenceKeys`)가 본다.
+ * 참조 대상 머리(대상 코드의 노드)의 사실 — 안쪽 코드 · 값 한정 검사 재료 (ADR-0077 결정 6 · 7). 이 문서 대상은 그 자리에서 짓고,
+ * 대응 보통약관 대상은 보통약관 한 벌이 열쇠마다 지어 넘긴다(`GeneralRefs.targets`) — 담보약관 · 함수조항 저장이 그 문서를 열지 않고 같은 검사를 한다.
+ */
+export interface RefTargetFact {
+  /** 대상 코드의 첫 노드 종류. */
+  headKind: string;
+  /** 함수조항 블록 참조면 그 함수조항 코드. */
+  clauseCode?: Code;
+  /** 그 함수조항 본문의 안쪽 코드 — 함수조항을 알 때만. */
+  innerCodes?: ReadonlySet<Code>;
+  /** 대상(또는 그 반복 블록 자신)을 감싼 원소가 열거값인 반복의 열거형 — 없으면 값 한정을 걸 수 없다. */
+  valueEnum?: Code;
+}
+
+/** 대상 열쇠의 사실 — 그 코드의 노드가 없으면 undefined. */
+export function refTargetFact(ix: TreeIndex, t: { articleId: Id; code?: Code }, env: RefTargetEnv): RefTargetFact | undefined {
+  if (t.code === undefined) return undefined;
+  return factOf(ix, nodesOfTarget(ix, { articleId: t.articleId, code: t.code }), env, (c) => {
+    const clause = env.clauseOf?.(c);
+    return clause ? clauseInnerCodes(clause) : undefined;
+  });
+}
+
+function factOf(ix: TreeIndex, ids: readonly Id[], env: RefTargetEnv, innerOf: (clauseCode: Code) => ReadonlySet<Code> | undefined): RefTargetFact | undefined {
+  const head = ids.map((id) => ix.nodes.get(id)).find(Boolean);
+  if (!head) return undefined;
+  const innerCodes = head.node.kind === "clauseBlockRef" ? innerOf(head.node.clauseCode) : undefined;
+  const valueEnum = valueLoopEnumOf(ix, ids, env.master ?? MASTER);
+  return {
+    headKind: head.node.kind,
+    ...(head.node.kind === "clauseBlockRef" ? { clauseCode: head.node.clauseCode } : {}),
+    ...(innerCodes ? { innerCodes } : {}),
+    ...(valueEnum !== undefined ? { valueEnum } : {}),
+  };
+}
+
+/**
+ * 문서 한 벌의 대상 열쇠(조#코드)마다 사실 — 대응 보통약관으로 넘길 표. 열쇠마다 노드를 한 번에 모으고 함수조항 안쪽 코드는 함수조항마다 한 번 짓는다
+ * (문서 저장마다 대응 보통약관 전체를 훑는다 — 열쇠마다 트리를 다시 걷지 않는다).
+ */
+export function refTargetFacts(ix: TreeIndex, env: RefTargetEnv): Map<string, RefTargetFact> {
+  const groups = new Map<string, Id[]>();
+  for (const e of ix.nodes.values()) {
+    const code = (e.node as { code?: Code }).code;
+    if (code === undefined || !isCodedKind(e.node.kind) || e.articleId === undefined) continue;
+    const key = refKey({ articleId: e.articleId, code });
+    const list = groups.get(key);
+    if (list) list.push(e.node.id);
+    else groups.set(key, [e.node.id]);
+  }
+  const inner = new Map<Code, ReadonlySet<Code> | undefined>();
+  const innerOf = (c: Code) => {
+    if (!inner.has(c)) {
+      const clause = env.clauseOf?.(c);
+      inner.set(c, clause ? clauseInnerCodes(clause) : undefined);
+    }
+    return inner.get(c);
+  };
+  const out = new Map<string, RefTargetFact>();
+  for (const [key, ids] of groups) {
+    const fact = factOf(ix, ids, env, innerOf);
+    if (fact) out.set(key, fact);
+  }
+  return out;
+}
+
+/**
+ * 참조 대상 하나의 검사 (ADR-0077 결정 6 · 7) — 존재는 호출부가 본다. `fact` 는 대상 머리의 사실(없으면 머리를 모른다 — 그 검사는 건너뛴다),
+ * `currentTypes` 는 참조 자리를 감싼 반복의 원소 타입(「현재 값」 검사).
  * - 안쪽 코드: 대상 코드가 함수조항 블록 참조여야 하고, 그 함수조항 본문에 그 코드가 있어야 한다.
  * - 값 한정: 대상(안쪽 코드면 그 참조 노드)이 원소가 열거값인 반복 안(또는 그 반복 블록)이어야 한다. 해당 값들 = 비지 않은 그 열거형의 값,
  *   현재 값 = 참조 자리를 감싼 열거값 반복.
  */
-export function refTargetIssues(t: { articleId: Id; code?: Code; innerCode?: Code; restrict?: unknown }, refEntry: Pick<NodeEntry, "path" | "node">, ix: TreeIndex, env: RefTargetEnv): { kind: Issue["kind"]; message: string }[] {
+export function refTargetFactIssues(
+  t: { innerCode?: Code; restrict?: unknown },
+  fact: RefTargetFact | undefined,
+  currentTypes: () => ReadonlyMap<Id, LoopElementType>,
+  env: Pick<RefTargetEnv, "enumOf">,
+  code?: Code,
+): { kind: Issue["kind"]; message: string }[] {
   const out: { kind: Issue["kind"]; message: string }[] = [];
-  const master = env.master ?? MASTER;
-  const heads = t.code === undefined ? [] : nodesOfTarget(ix, { articleId: t.articleId, code: t.code }).map((id) => ix.nodes.get(id)!).filter(Boolean);
-  if (t.innerCode !== undefined && heads.length > 0) {
-    const head = heads[0].node;
-    if (head.kind !== "clauseBlockRef") out.push({ kind: "structure", message: `안쪽 코드 ${t.innerCode} 는 함수조항 블록 참조를 가리킬 때만 쓴다 — ${t.code} 는 함수조항 참조가 아닙니다` });
-    else {
-      const clause = env.clauseOf?.(head.clauseCode);
-      if (clause && !clauseInnerCodes(clause).has(t.innerCode)) out.push({ kind: "brokenRef", message: `함수조항 ${head.clauseCode} 본문에 참조 대상 ${t.innerCode} 가 없습니다` });
-    }
+  if (t.innerCode !== undefined && fact) {
+    if (fact.clauseCode === undefined) out.push({ kind: "structure", message: `안쪽 코드 ${t.innerCode} 는 함수조항 블록 참조를 가리킬 때만 쓴다 — ${code ?? "대상"} 는 함수조항 참조가 아닙니다` });
+    else if (fact.innerCodes && !fact.innerCodes.has(t.innerCode)) out.push({ kind: "brokenRef", message: `함수조항 ${fact.clauseCode} 본문에 참조 대상 ${t.innerCode} 가 없습니다` });
   }
   if (t.restrict === undefined) return out;
   const r = t.restrict as { values?: unknown; current?: unknown };
-  const enumCode = valueLoopEnum(ix, t, master);
-  if (heads.length > 0 && enumCode === undefined) {
+  const enumCode = fact?.valueEnum;
+  if (fact && enumCode === undefined) {
     out.push({ kind: "structure", message: "값 한정은 원소가 열거값(사유)인 반복으로 생긴 노드에만 건다 — 이 대상은 그런 반복 안이 아닙니다" });
     return out;
   }
@@ -313,13 +386,17 @@ export function refTargetIssues(t: { articleId: Id; code?: Code; innerCode?: Cod
     const missing = def ? values.filter((v) => !def.values.some((x) => x.code === v)) : [];
     if (def && missing.length > 0) out.push({ kind: "brokenRef", message: missingValueMessage(def, missing) });
   } else if (typeof r.current === "string") {
-    const types = loopTypesAt(ix, refEntry, master);
-    const lt = types.get(r.current);
+    const lt = currentTypes().get(r.current);
     if (!lt) out.push({ kind: "structure", message: `값 한정 「현재 값」의 반복이 이 참조를 감싸지 않습니다 — 그 반복 블록 안에서만 쓴다` });
     else if (lt.kind !== "enum") out.push({ kind: "structure", message: "값 한정 「현재 값」은 원소가 열거값(사유)인 반복에만 쓴다 — 종 반복은 안 된다" });
     else if (enumCode !== undefined && lt.enumCode !== enumCode) out.push({ kind: "typeMismatch", message: `값 한정 「현재 값」의 열거형(${lt.enumCode})이 대상 반복의 열거형(${enumCode})과 다릅니다` });
   } else out.push({ kind: "structure", message: "값 한정은 값들 또는 현재 값 중 하나다" });
   return out;
+}
+
+/** 이 문서 안 참조 대상 하나의 검사 — `refTargetFactIssues` 를 이 문서의 대상 머리 · 참조 자리로. */
+export function refTargetIssues(t: { articleId: Id; code?: Code; innerCode?: Code; restrict?: unknown }, refEntry: Pick<NodeEntry, "path" | "node">, ix: TreeIndex, env: RefTargetEnv): { kind: Issue["kind"]; message: string }[] {
+  return refTargetFactIssues(t, refTargetFact(ix, t, env), () => loopTypesAt(ix, refEntry, env.master ?? MASTER), env, t.code);
 }
 
 // ───────────────────────────── 경고 · 교차 검사 ─────────────────────────────

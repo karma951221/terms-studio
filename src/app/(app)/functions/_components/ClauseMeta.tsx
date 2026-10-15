@@ -4,7 +4,7 @@
  * 함수조항 「기본정보」 — 접히는 구획 (기능/함수조항 §4.3, 2026-10-01 사용자 결정).
  *
  * - 접힌 줄이 곧 펼침 단추다: 쉐브론 · 코드 · 함수조항명 한 줄. 반환 타입 경고가 있으면 줄 끝에 경고 아이콘(건수는 tooltip).
- * - 펼치면 코드 → 함수조항명 → 반환 타입 → 요구 구분자.
+ * - 펼치면 코드 → 함수조항명 → 반환 타입 → 요구 구분자(줄마다 해소 문맥 — `resolveContextOf`).
  * - 열림은 브라우저마다 기억한다(저장소가 막혀 있으면 이 탭 안에서만). 기본 — 상세는 접힘(본문이 주인공), 생성은 늘 펼침(이름 · 유형을 정해야 한다).
  * - 「반환 타입」은 유형(문구 · 항 · 호 · 목)과 본문이 펴는 단위 수로 정한다(`returnTypeOf`) — 「유형」 · 「단위」 두 줄을 한 줄로 합쳤다.
  *   단위 규칙 경고(§3.1)는 그 값 아래 경고 줄로 붙는다. 저장은 막지 않는다.
@@ -15,6 +15,7 @@ import { useSyncExternalStore } from "react";
 import { IconChevron, IconWarn } from "@/app/_components/icons";
 import { MODE_LABEL, MODE_OPTIONS, NAME_LABEL } from "@/app/_lib/labels";
 import type { ClauseMode, RequiredRefs } from "@/domain/clause";
+import type { AttachLevel, Code } from "@/domain/types";
 
 /** 반환 타입을 셀 때 보는 노드 모양 — 편집 트리(`DocumentNode`)의 블록 목록. */
 type UnitNode = { kind: string; branches?: readonly { children: readonly UnitNode[] }[]; children?: readonly UnitNode[] };
@@ -43,6 +44,47 @@ export function returnTypeOf(mode: ClauseMode, nodes: readonly UnitNode[]): stri
   if (mode === "inline") return MODE_LABEL.inline;
   const word = MODE_LABEL[mode];
   return maxUnits(nodes, UNIT_KIND[mode]) > 1 ? `${word} 목록` : word;
+}
+
+/**
+ * 요구 구분자가 어느 문맥에서 해소되나 — 레벨마다 고정 문구 (기능/함수조항 §3.3 · 조립산출 §3.2 평가 문맥).
+ * 함수조항은 평가 문맥이 없다 — 연결한 구분자는 사용처 문서의 문맥에서 풀린다.
+ */
+export function resolveContextOf(level: AttachLevel): string {
+  if (level === "product") return "조립 때 — 상품 값";
+  if (level === "plan") return "조립 때 — 상품의 세목 범위";
+  return "담보약관은 문서 자신 · 보통약관은 기본계약";
+}
+
+/** 요구 구분자 칸이 쓰는 구분자 — 표시명 · 레벨. */
+export interface RequiredDiscriminator {
+  code: Code;
+  label: string;
+  level: AttachLevel;
+}
+
+/** 요구 구분자 줄 — 줄마다 코드 · 표시명 · 해소 문맥. 비었으면 「없음」(요구 구분자 = 읽는 인자의 기본 연결, §3.3). */
+export function RequiredList({ codes, discriminators }: { codes: readonly Code[]; discriminators: readonly RequiredDiscriminator[] }) {
+  if (codes.length === 0) return <span className="ts-muted">없음 — 본문이 읽는 인자에 기본 연결 구분자가 없다</span>;
+  const byCode = new Map(discriminators.map((d) => [d.code, d]));
+  return (
+    <ul className="ts-clause-required" aria-label="요구 구분자">
+      {codes.map((c) => {
+        const d = byCode.get(c);
+        return (
+          <li key={c}>
+            <span className="ts-mono">{c}</span>
+            {d ? (
+              <>
+                {" "}
+                {d.label} <span className="ts-muted">— {resolveContextOf(d.level)}</span>
+              </>
+            ) : null}
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 // ── 열림 기억 — 브라우저마다. 저장소가 막혀 있으면 이 탭 안에서만 ──
@@ -96,6 +138,8 @@ export interface ClauseMetaProps {
   /** 반환 타입을 셀 자리 목록 (`returnTypeOf`). */
   unitNodes: readonly UnitNode[];
   required?: RequiredRefs;
+  /** 요구 구분자의 표시명 · 레벨 (해소 문맥 문구). */
+  discriminators?: readonly RequiredDiscriminator[];
   /** 단위 규칙 경고 (저장된 정의 기준, §3.1). */
   warnings?: readonly string[];
 }
@@ -173,9 +217,9 @@ export function ClauseMeta(props: ClauseMetaProps) {
           {!isNew && (
             <div className="ts-form-row">
               <span className="ts-form-label">요구 구분자</span>
-              <span className="ts-clause-meta-value ts-mono">
-                {props.required && props.required.discriminators.length > 0 ? props.required.discriminators.join(" · ") : <span className="ts-muted">없음 — 저장 때 식에서 뽑는다</span>}
-              </span>
+              <div className="ts-clause-meta-value">
+                <RequiredList codes={props.required?.discriminators ?? []} discriminators={props.discriminators ?? []} />
+              </div>
             </div>
           )}
         </div>

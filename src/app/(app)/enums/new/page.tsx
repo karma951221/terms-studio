@@ -1,20 +1,7 @@
-import { ErrorBanner } from "@/app/_components/ErrorBanner";
-import { CreateHead, FormRow } from "@/app/_components/FormRow";
-import { ENTITY_LABEL, FIELD_LABEL, NAME_LABEL, newLabel } from "@/app/_lib/labels";
-import { ENUMS_MENU, menuCrumb } from "@/app/_lib/menu";
-import { createTypeEnumAction } from "../actions";
-import { EnumValuesInput } from "../EnumValuesInput";
+import { EnumCreator } from "./EnumCreator";
 
-const FORM_ID = "create-enum";
-
-export default async function NewEnumPage({ searchParams }: { searchParams: Promise<{ error?: string; q?: string }> }) {
+/** 열거형변수 생성 — 이름 · 필드 · 값을 한 번에 (기능/열거형 §4.2). 목록 검색어(`?q=`)는 이름 칸에 프리필한다. */
+export default async function NewEnumPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const sp = await searchParams;
-  const suggested = (sp.q ?? "").trim();
-  return <div>
-    <CreateHead title={newLabel(ENTITY_LABEL.enum)} formId={FORM_ID} path={[menuCrumb(ENUMS_MENU)]} banner={<ErrorBanner message={sp.error} />} />
-    <form id={FORM_ID} action={createTypeEnumAction} className="ts-create-form">
-      <FormRow label={NAME_LABEL.enum} htmlFor="enum-label"><input id="enum-label" name="label" defaultValue={suggested} required autoFocus />{suggested ? <span className="ts-badge proposed">{FIELD_LABEL.suggested}</span> : null}</FormRow>
-      <FormRow label={FIELD_LABEL.values}><EnumValuesInput /></FormRow>
-    </form>
-  </div>;
+  return <div><EnumCreator suggested={(sp.q ?? "").trim()} /></div>;
 }

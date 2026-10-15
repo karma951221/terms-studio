@@ -59,4 +59,9 @@ export interface ConditionContext {
    * 트리 맨 위 「현재 행」 가지의 재료다 (ADR-0070 · 설계 §3.1). 반복 밖이면 없음 → 트리는 지금과 같다.
    */
   row?: { levels: Exclude<AttachLevel, "product">[]; readable: AttachLevel[] };
+  /**
+   * 세목 선택지(종) 반복 안에서 열었을 때만 — 감싼 종 반복의 이름. 슬롯 고르기 맨 앞 「현재 종」 묶음(종형명 · 선택지 번호)의 재료다
+   * (ADR-0077 결정 3 · 기능/문면 §3.7). 종 반복 밖이면 없음.
+   */
+  plan?: { name: string };
 }

@@ -8,7 +8,7 @@
  *
  * 뒤 페이즈(함수조항 내부 변수 · 슬롯 — `사유.약관표시명`)는 `enumFieldValue` 로 값을 읽는다.
  */
-import type { Code, Issue, Result } from "../types";
+import type { Code, Coordinate, Issue, Result } from "../types";
 import { ok, reject } from "../types";
 import { ENUM_FIELD_TYPES, type EnumDef, type EnumFieldDef, type EnumFieldType, type EnumFieldValue } from "./types";
 
@@ -39,6 +39,14 @@ export function enumFieldValue(def: EnumDef, valueCode: Code, fieldKey: Code): E
   if (!value) return { kind: "unknownValue" };
   const read = value.fields?.[fieldKey];
   return read === undefined ? { kind: "notEntered" } : { kind: "value", value: read };
+}
+
+/**
+ * 열거값 · 열거값 필드 오류(필드 미입력 · 없는 필드 · 없는 값)의 원천 좌표 — 고치는 곳은 그 열거형 상세(`/enums/<코드>`)다
+ * (기능/조립산출 §3 「고치러 가기」 표). `refPath` = 값 코드(알 때) — 상세가 그 값 행을 강조한다.
+ */
+export function enumCoordinate(def: Pick<EnumDef, "code" | "label">, valueCode?: Code): Coordinate {
+  return { document: "enum", ownerId: def.code, ownerName: def.label, ...(valueCode !== undefined ? { refPath: valueCode } : {}) };
 }
 
 // ───────────────────────────── 편집 저장 ─────────────────────────────

@@ -111,13 +111,18 @@ describe("약관 에디터 툴바 (기능/문면 §4.3)", () => {
     const barIds = (sections: MenuSections) => allTools(DOCUMENT_TOOLS).filter((t) => onBar(t, toolState(t, sections))).map((t) => t.id);
     const para = barIds(placeMenu(env(s.tree), { kind: "block", id: s.paragraph.id }));
     expect(para).toEqual(expect.arrayContaining(["article", "paragraph", "cond", "slot"]));
-    for (const id of ["elif", "else", "unwrap", "removeBranch", "edit", "repeat", "link", "up", "down", "duplicate", "remove", "section", "clauseInline", "structKey"]) expect(para, id).not.toContain(id);
+    for (const id of ["elif", "else", "unwrap", "removeBranch", "repeat", "link", "up", "down", "duplicate", "remove", "section", "clauseInline", "structKey"]) expect(para, id).not.toContain(id);
+    // 항 · 호 · 목을 고르면 「속성」이 켜져 코드 수정 창을 연다 (ADR-0072 결정 5)
+    expect(para).toContain("edit");
     const head = barIds(placeMenu(env(s.tree), { kind: "head", id: s.cond.branches[0].id }));
     expect(head).toEqual(expect.arrayContaining(["elif", "else", "unwrap"]));
     // 「속성」 하나가 칩 · 표 · 함수조항 참조 · 반복 블록의 속성 창을 맡는다
     const edit = allTools(DOCUMENT_TOOLS).find((t) => t.id === "edit")!;
     expect(itemsFor(edit, placeMenu(env(s.tree), { kind: "block", id: s.table.id })).map((i) => i.label)).toEqual(["표 속성…"]);
     expect(itemsFor(edit, placeMenu(env(s.tree), { kind: "chip", id: s.slot.id })).map((i) => i.label)).toEqual(["고치기…"]);
+    for (const id of [s.paragraph.id, s.item.id, s.subitem.id]) {
+      expect(itemsFor(edit, placeMenu(env(s.tree), { kind: "block", id })).map((i) => i.action)).toEqual([{ do: "popup", popup: { kind: "code", nodeId: id } }]);
+    }
     const cell = barIds(placeMenu(env(s.tree), { kind: "inline", at: { tableId: s.table.id, row: 1, col: 0 } }));
     expect(cell).toEqual(expect.arrayContaining(["structKey", "edit", "repeat"]));
   });

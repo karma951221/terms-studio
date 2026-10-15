@@ -30,9 +30,9 @@ describe("EditorToolbar — 본문 위 버튼 줄 (기능/문면 §4.3, 2026-10-
     // 복제 · 삭제 · 위로 · 아래로는 툴바에 없다(블록 곁 · 오른쪽 클릭 메뉴), 관은 더보기 안(닫혀 있으면 그리지 않는다)
     for (const id of ["up", "down", "duplicate", "remove", "section", "clauseInline"]) expect(ids).not.toContain(id);
     for (const g of ["구조 넣기", "문장에 넣기", "조건 넣기"]) expect(html).toContain(`role="group" aria-label="${g}"`);
-    // 조건 편집 · 고른 것 속성은 항 자리에서 켜질 것이 없으니 묶음째 없다
+    // 조건 편집은 항 자리에서 켜질 것이 없으니 묶음째 없다 · 고른 것 속성은 항의 코드 수정 창으로 선다
     expect(html).not.toContain('aria-label="조건 편집"');
-    expect(html).not.toContain('aria-label="고른 것 속성"');
+    expect(html).toContain('aria-label="고른 것 속성"');
     expect(html).toContain('aria-haspopup="menu" aria-expanded="false"');
     expect(html).toContain("자리 — 항");
   });
