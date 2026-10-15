@@ -1,6 +1,6 @@
 /**
  * 0027(노드 키 백필) 회귀 — 옛 모양 행에 실제 SQL 을 적용한다 (migrations.test.ts 와 같은 방식).
- * 0028(문면 @노드 id → 키 경로, Task 11) 케이스는 그 태스크가 이 파일에 더한다.
+ * 0028(문면 @노드 id → 키 경로)도 같은 방식으로 검증한다.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -59,5 +59,23 @@ describe("0027_node_keys — 지금 형제 순서대로 키를 채운다 (ADR-00
   it("형제 키는 유일하다 — 같은 담보에 같은 키를 넣으면 거부", async () => {
     await apply(client, 27);
     await expect(client.exec(`INSERT INTO sub_coverages (coverage_id, name, "order", key) VALUES ('${COV}', '셋째', 2, '01')`)).rejects.toThrow();
+  });
+});
+
+describe("0028_node_key_paths — 담보약관의 @<노드id> 를 키 경로로 (ADR-0087 결정 11)", () => {
+  const DOC = "66666666-6666-4666-8666-666666666666";
+  const OTHER = "77777777-7777-4777-8777-777777777777";
+  it("제 담보의 노드만 바꾸고 문서 판을 1 올린다 — 다른 담보 문서 · 끊어진 옛 id 는 그대로", async () => {
+    await apply(client, 27);
+    const tree = { kind: "document", id: "d", title: "t", children: [{ kind: "article", id: "a", title: "제1조", children: [{ kind: "condBlock", id: "c", branches: [{ id: "br", when: `D0007@${S2} = true and D0002@${B3} = false and D0007@99999999-0000-4000-8000-000000000000 = true`, children: [] }] }] }] };
+    await client.query(`INSERT INTO documents (id, kind, owner_id, title, tree) VALUES ($1, 'special', $2, 't', $3::jsonb)`, [DOC, COV, JSON.stringify(tree)]);
+    await client.query(`INSERT INTO documents (id, kind, owner_id, title, tree) VALUES ($1, 'general', NULL, 'g', $2::jsonb)`, [OTHER, JSON.stringify({ ...tree, id: "g" })]);
+    await apply(client, 28);
+    const row = await client.query<{ tree: { children: { children: { branches: { when: string }[] }[] }[] }; version: number }>(`SELECT tree, version FROM documents WHERE id = $1`, [DOC]);
+    expect(row.rows[0].tree.children[0].children[0].branches[0].when).toBe("D0007@02 = true and D0002@01.2 = false and D0007@99999999-0000-4000-8000-000000000000 = true");
+    expect(row.rows[0].version).toBe(2); // 바뀐 노드가 둘이어도 문서 판은 1만 오른다
+    const general = await client.query<{ tree: unknown; version: number }>(`SELECT tree, version FROM documents WHERE id = $1`, [OTHER]);
+    expect(JSON.stringify(general.rows[0].tree)).toContain(`@${S2}`);
+    expect(general.rows[0].version).toBe(1);
   });
 });
