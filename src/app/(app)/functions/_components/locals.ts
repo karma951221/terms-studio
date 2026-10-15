@@ -13,14 +13,19 @@ import type { CtxDiscriminator } from "@/app/(app)/documents/[id]/_components/co
 
 import { fieldEntries, type EnumChoice } from "./params";
 
-/** 화면 재료(EnumChoice) → 도메인 모양 — 검사 · 추론이 쓴다. */
+/** 화면 재료(EnumChoice) → 도메인 모양 — 검사 · 추론 · 단독 시험이 쓴다. */
 function enumDefOf(e: EnumChoice): EnumDef {
   return {
     code: e.code,
     label: e.label,
-    values: e.values.map((v, i) => ({ code: v.code, label: v.label, order: i })),
+    values: e.values.map((v, i) => ({ code: v.code, label: v.label, order: i, ...(v.fields ? { fields: v.fields } : {}) })),
     fields: (e.fields ?? []).map((f, i) => ({ key: f.key, label: f.label, type: f.type, order: i + 1 })),
   } as EnumDef;
+}
+
+/** 열거형 코드 → 도메인 정의 (단독 시험 `runTrial` 재료). */
+export function enumDefsOf(enums: readonly EnumChoice[]): Map<string, EnumDef> {
+  return new Map(enums.map((e) => [e.code, enumDefOf(e)] as const));
 }
 
 /** 앞에서부터 쌓은 내부 변수 타입 (관대 — 검사가 아니다). `upTo` 앞까지만. */

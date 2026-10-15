@@ -40,7 +40,7 @@ import { CLAUSE_LINE_TOOLS, CLAUSE_TOOLS, allTools, itemsFor, type ToolId } from
 import { switchSubjectsOf } from "@/app/(app)/documents/[id]/_components/switchCases";
 import { clauseHiddenIds } from "@/app/(app)/documents/[id]/_components/blockDrag";
 import { useBlockDrag } from "@/app/(app)/documents/[id]/_components/useBlockDrag";
-import { normalizeRenames, renameInBody, renameInLocals, renameInPresets, type ClauseBody, type ClauseMode, type LocalDef, type ParamDef, type RequiredRefs } from "@/domain/clause";
+import { normalizeRenames, renameInBody, renameInLocals, renameInPresets, type Clause, type ClauseBody, type ClauseMode, type LocalDef, type ParamDef, type RequiredRefs } from "@/domain/clause";
 import { formatCoordinate } from "@/domain/coordinate";
 import {
   CLAUSE_HOST_ITEM_ID,
@@ -71,18 +71,20 @@ import {
 import type { Id, Impact, Issue, WorkMark } from "@/domain/types";
 
 import { createClauseAction } from "../actions";
+import { textBody } from "../lib";
 import { removeClauseEditAction, saveClauseEditAction } from "../edit-actions";
 import type { ClauseEditOption, ClauseEditPreset } from "../edit-types";
 import type { ClauseEditorData } from "../editorData";
 import { clauseCanHold, clauseCondMenu, clauseDefaultPlace, clausePlaceMenu, withClauseRefusals, type ClauseMenuEnv } from "./clauseMenus";
 import { ClauseMeta } from "./ClauseMeta";
 import { OptionsPane } from "./OptionsPane";
-import { localEntries, localsForSave } from "./locals";
+import { enumDefsOf, localEntries, localsForSave } from "./locals";
 import { LocalsPane } from "./LocalsPane";
 import { paramEntries } from "./params";
 import { ParamsPane } from "./ParamsPane";
 import { PresetsPane } from "./PresetsPane";
 import { originsOf, renamesFrom, trackOrigins } from "./renames";
+import { TrialPane } from "./TrialPane";
 
 export interface ClauseAuthoringProps {
   /** 없으면 생성 화면(`/functions/new`). */
@@ -284,6 +286,22 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     () => ({ ...data.condition, discriminators: [...paramEntries(shownParams, data.enums), ...localEntries(shownParams, localsForSave(shownParams, shownLocals, data.enums), data.enums)], quick: [] }),
     [data.condition, data.enums, shownParams, shownLocals],
   );
+  // 단독 시험 (§3.7 · 「시험」 탭) — 지금 보이는 정의(편집 중이면 편집본)를 시험 문맥으로 펼친다. 시험 값은 화면 상태
+  const enumDefs = useMemo(() => enumDefsOf(data.enums), [data.enums]);
+  const trial = useMemo((): { clause: Clause; problem?: string } => {
+    const body = treeToClauseBody(clauseMode, tree);
+    const clause = {
+      code: code ?? "새 함수조항",
+      label: (editing ? label : props.label) || "새 함수조항",
+      mode: clauseMode,
+      body: body.ok ? body.value : [],
+      options: shownOptions.map((o, i) => ({ code: o.code, label: o.label, order: i + 1, values: o.values.map((v, j) => ({ code: v.code, label: v.label, order: j + 1, body: textBody(v.text, `${v.code}-text`) })) })),
+      params: shownParams.filter((p) => p.name.trim() !== ""),
+      locals: localsForSave(shownParams, shownLocals, data.enums),
+      required: { discriminators: [], attributes: [] },
+    } as Clause;
+    return body.ok ? { clause } : { clause, problem: `본문을 읽을 수 없어 시험하지 못했다 — ${body.rejection.reason === "invalid" ? (body.rejection.issues[0]?.message ?? "") : body.rejection.reason}` };
+  }, [clauseMode, tree, code, editing, label, props.label, shownOptions, shownParams, shownLocals, data.enums]);
   /** 값별 분기 대상 후보 — 목록값 인자 · 내부 변수(최종 결정 5). 칸 머리 · 「값별 분기 넣기」가 쓴다. */
   const switchSubjects = useMemo(() => switchSubjectsOf(condition.discriminators), [condition]);
   const latest = useCallback((): DocumentNode => draftRef.current.state.tree, []);
@@ -885,6 +903,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
                 forms={data.planForms}
               />
             }
+            trial={<TrialPane clause={trial.clause} enums={enumDefs} {...(trial.problem ? { problem: trial.problem } : {})} boxName={(c) => boxByCode.get(c)?.name} appendixName={(c) => appendixName.get(c)} />}
             options={shownOptions}
             editing={editing}
             used={used}

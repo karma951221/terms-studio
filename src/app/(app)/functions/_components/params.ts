@@ -14,7 +14,8 @@ import type { CtxDiscriminator } from "@/app/(app)/documents/[id]/_components/co
 export interface EnumChoice {
   code: string;
   label: string;
-  values: { code: string; label: string }[];
+  /** 값 — `fields` 는 그 값의 필드 값(필드 키 → 값, 키 없음 = 미입력) · 단독 시험이 필드 읽기를 푼다. */
+  values: { code: string; label: string; fields?: Record<string, string | boolean> }[];
   /** 유저 정의 필드(ADR-0078) — 필드 읽기 칸(`arg.사유.F01`) · 내부 변수 식의 이름 ⇄ 키. 없으면 빈 목록. */
   fields?: { key: string; label: string; type: "string" | "boolean" }[];
 }

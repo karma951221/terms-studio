@@ -1234,6 +1234,71 @@ button:where(:not([data-slot])).danger:focus-visible {
   margin: 0 0 2px;
 }
 
+/* 오른쪽 단 탭 — 「인자 · 옵션」 · 「시험」 (기능/함수조항 §4.3) */
+.ts-clause-side-tabs {
+  margin-bottom: 10px;
+}
+
+/* 단독 시험 — 값 칸 · 출력(본문 글꼴) · 문제 줄 (기능/함수조항 §3.7) */
+.ts-trial-inputs {
+  margin-bottom: 12px;
+}
+
+.ts-trial-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.ts-trial-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.ts-trial-plan {
+  margin: 0;
+  padding: 2px 0;
+  border: 0;
+}
+
+.ts-trial-plan-note {
+  margin: 4px 0;
+  font-size: 12px;
+}
+
+.ts-trial-plan-field {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 6px;
+  align-items: start;
+  margin-bottom: 4px;
+}
+
+.ts-trial-out {
+  border-top: 1px solid var(--ts-rule);
+  padding-top: 10px;
+}
+
+.ts-trial-line {
+  margin: 0 0 4px;
+}
+
+.ts-trial-line.is-item,
+.ts-trial-line.is-bullet,
+.ts-trial-line.is-box {
+  padding-left: 1.2em;
+}
+
+.ts-trial-line.is-subitem {
+  padding-left: 2.4em;
+}
+
+.ts-trial-label {
+  margin-right: 0.4em;
+}
+
 /* 요구 구분자 — 줄마다 코드 · 표시명 · 해소 문맥 (기능/함수조항 §3.4) */
 .ts-clause-required {
   margin: 0;
