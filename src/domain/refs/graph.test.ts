@@ -429,3 +429,25 @@ describe("반복 원천 간선 — 마스터 필드 · 열거값 필드 (ADR-007
     expect(enumFieldReaders(graph, "E0001", ["F03"]).map((e) => e.via)).toEqual(["repeatSource"]);
   });
 });
+
+describe("상품 조 사본 안 박스 · 별표 참조 (ADR-0079 · 기능/박스 §3.3)", () => {
+  it("사본의 boxRef · appendixRef → 상품에서 박스 · 별표로, 좌표는 document product + 조 id (상품 보통약관 탭의 그 조로 간다)", () => {
+    const article = {
+      id: "a10",
+      kind: "article",
+      title: "지급사유",
+      children: [
+        { id: "p1", kind: "paragraph", children: [{ id: "t", kind: "text", text: "별표 " }, { id: "ax", kind: "appendixRef", appendixCode: "AX000001" }] },
+        { id: "bx", kind: "boxRef", boxCode: "BX000001" },
+      ],
+    } as unknown as NonNullable<ProductInput["articleCopies"]>[number]["article"];
+    const product: ProductInput = { id: "P1", name: "상품", coverages: [], overrides: [], articleCopies: [{ articleId: "a10", article }] };
+    const g = buildGraph({ boxes: [{ code: "BX000001", name: "박스", title: "", lines: ["줄"] }], appendices: [{ code: "AX000001", name: "별표" } as never], products: [product] });
+    const edges = g.edges.filter((e) => e.from.kind === "product" && (e.via === "boxRef" || e.via === "appendixRef")).map((e) => [e.via, nodeKey(e.to), e.at]);
+    expect(edges).toEqual([
+      ["appendixRef", "appendix:AX000001", { document: "product", ownerId: "P1", ownerName: "상품", subjectName: "보통약관 조 사본", articleId: "a10", articleTitle: "지급사유" }],
+      ["boxRef", "box:BX000001", { document: "product", ownerId: "P1", ownerName: "상품", subjectName: "보통약관 조 사본", articleId: "a10", articleTitle: "지급사유" }],
+    ]);
+    expect(brokenEdges(g).filter((e) => e.from.kind === "product")).toEqual([]);
+  });
+});

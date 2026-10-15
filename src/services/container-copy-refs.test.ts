@@ -76,4 +76,15 @@ describe("container — ADR-0081 관통 (PGlite)", () => {
     // 다음 보통약관 탭 저장은 고치기 전까지 거부된다
     expect(rejection(await s.product.saveGeneralSettings(editor, p.id, { generalDocumentId: generalId, hiddenArticles: [], overrides: [], copies: [{ articleId: "a11", article: own11, templateHash: articleHash(a11()) }] })).reason).toBe("invalid");
   });
+
+  it("상품 조 사본 안 박스 · 별표 참조도 사용처 · 삭제 영향에 선다 — 좌표는 상품 + 조 (기능/박스 §3.3)", async () => {
+    const box = unwrap(await s.document.createBox(editor, { name: "사본 박스", title: "용어", lines: ["줄"] }));
+    const appendix = unwrap(await s.document.createAppendix(editor, { name: "사본 별표" }));
+    const p = unwrap(await s.product.createProduct(editor, { name: "관통 상품 3", generalDocumentId: generalId }));
+    const now = (await s.document.get(generalId))!.tree.children.find((c) => c.id === "a10") as ArticleNode;
+    const copy: ArticleNode = { ...now, children: [...now.children, para("pz10", "PZ0100", text("t10", "별표 "), { id: "ax10", kind: "appendixRef", appendixCode: appendix.code }), { id: "bx10", kind: "boxRef", boxCode: box.code }] };
+    unwrap(await s.product.saveGeneralSettings(editor, p.id, { generalDocumentId: generalId, hiddenArticles: [], overrides: [], copies: [{ articleId: "a10", article: copy, templateHash: articleHash(now) }] }));
+    expect(await s.document.boxUsages(box.code)).toEqual([expect.objectContaining({ document: "product", ownerId: p.id, ownerName: "관통 상품 3", articleId: "a10" })]);
+    expect(await s.document.appendixUsages(appendix.code)).toEqual([expect.objectContaining({ document: "product", ownerId: p.id, articleId: "a10" })]);
+  });
 });

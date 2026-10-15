@@ -17,7 +17,7 @@ import type { Clause } from "../clause/types";
 import type { CoverageNodeLevel, Coverage } from "../coverage/types";
 import type { Appendix } from "../document/appendix";
 import type { Box } from "../document/box";
-import type { DocumentNode } from "../document/nodes";
+import type { ArticleNode, DocumentNode } from "../document/nodes";
 import type { AggregateOp } from "../expression";
 import type { MasterTree } from "../master";
 import type { AttributeKind, ClauseOptionOverride, ProductCoverage } from "../product/types";
@@ -163,6 +163,11 @@ export interface ProductInput {
   generalDocumentId?: Id;
   coverages: readonly ProductCoverage[];
   overrides: readonly ClauseOptionOverride[];
+  /**
+   * 보통약관 조 사본 (ADR-0079) — 사본 안 박스 · 별표 참조가 상품에서 박스 · 별표로 가는 간선이 된다(사용처 · 삭제 영향, 기능/박스 §3.3).
+   * 좌표는 `document: "product"` + 조 id — 상품 보통약관 탭의 그 조로 간다. 나머지 참조(구분자 · 함수조항 …)는 아직 싣지 않는다.
+   */
+  articleCopies?: readonly { articleId: Id; article: ArticleNode }[];
 }
 
 /** 주지 않은 종류는 「선언된 실체 없음」 — 그쪽으로 가는 간선은 깨진 것으로 본다. */
