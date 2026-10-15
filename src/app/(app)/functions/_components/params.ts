@@ -3,13 +3,16 @@
  *
  * 고르기 칸의 값은 글자 하나다 — 타입 `boolean` · `enum:E0001` · `list<enum>:E0001` · `planOptions:waiver` · `articleRef`(조 참조 인자, ADR-0083),
  * 연결 `""`(없음 · 기본 연결) · `d:D0001`(구분자) · `c:true` · `c:false` · `c:V01`(상수 — 참거짓 · 열거값) · `s:waiver` · `s:waiver:applies`(원천 — 폼 전체 · 참거짓 필드 = 예) ·
- * `r:<반복 블록 id>`(반복의 현재 원소 — 넣는 자리를 감싼 반복만, ADR-0077 결정 3).
+ * `r:<반복 블록 id>`(반복의 현재 원소 — 넣는 자리를 감싼 반복만, ADR-0077 결정 3),
+ * `d:D0007@01`(키 경로 — 담보 노드의 구분자) · `d:D0007@cur:<반복 블록 id>`(감싼 담보 트리 반복의 현재 노드, ADR-0087 결정 4 · 7).
  */
+import { coveredByLoop, LEVEL_WORD, type KeyedLevel } from "@/domain/coverage/keys";
 import { checkParams, type Binding, type LoopElementType, type ParamDef, type ParamType } from "@/domain/clause";
 import { fieldsOfForm, formsOfLevel } from "@/domain/master";
 import type { FieldType } from "@/domain/types";
 
-import type { CtxDiscriminator } from "@/app/(app)/documents/[id]/_components/condition/types";
+import { nodeHead } from "@/app/(app)/documents/[id]/_components/condition/rows";
+import type { CtxDiscriminator, CtxNode } from "@/app/(app)/documents/[id]/_components/condition/types";
 
 export interface EnumChoice {
   code: string;
@@ -87,7 +90,7 @@ export function bindingValue(b: Binding | undefined): string {
   if (!b) return "";
   switch (b.kind) {
     case "discriminator":
-      return `d:${b.code}`;
+      return b.node ? `d:${b.code}@${"path" in b.node ? b.node.path : `cur:${b.node.current}`}` : `d:${b.code}`;
     case "const":
       return `c:${String(b.value)}`;
     case "source": {
@@ -113,7 +116,13 @@ export function bindingOfValue(value: string, type: ParamType): Binding | undefi
   if (value === "") return undefined;
   const [kind, ...rest] = value.split(":");
   const arg = rest.join(":");
-  if (kind === "d") return { kind: "discriminator", code: arg };
+  if (kind === "d") {
+    const at = arg.indexOf("@");
+    if (at < 0) return { kind: "discriminator", code: arg };
+    const code = arg.slice(0, at);
+    const tail = arg.slice(at + 1);
+    return tail.startsWith("cur:") ? { kind: "discriminator", code, node: { current: tail.slice(4) } } : { kind: "discriminator", code, node: { path: tail } };
+  }
   if (kind === "c") return { kind: "const", value: type.kind === "boolean" ? arg === "true" : type.kind === "number" ? Number(arg) : arg };
   if (kind === "r" && arg) return { kind: "current", loop: arg };
   if (kind === "s") {
@@ -130,6 +139,12 @@ function sameType(a: FieldType | undefined, t: ParamType): boolean {
   return true;
 }
 
+/** 담보약관의 키 경로 후보 재료 — 담보 구분자 트리와 넣는 자리를 감싼 담보 트리 반복(바깥 → 안쪽). 없으면 하위 레벨도 평면 후보(프리셋 · 보통약관). */
+export interface NodeTree {
+  nodes: readonly CtxNode[];
+  loops: readonly { id: string; level: KeyedLevel }[];
+}
+
 /** 연결 칸 후보 — 타입이 같은 구분자 · 참거짓/열거값 상수 · (세목 선택지 목록이면) 원천. */
 export function bindingOptions(
   t: ParamType,
@@ -138,6 +153,7 @@ export function bindingOptions(
   forms: readonly PlanFormChoice[],
   withConst: boolean,
   loops: readonly LoopChoice[] = [],
+  tree?: NodeTree,
 ): { value: string; label: string; group: string }[] {
   if (t.kind === "articleRef") return []; // 조 참조 인자 — 대상 트리로 고른다 · 기본 연결 없음 (ADR-0083)
   // 반복의 현재 원소 — 원소 타입이 인자 타입과 같은 감싼 반복만 (종 → 세목 선택지 목록<폼> · 열거값 → enum<E>)
@@ -153,7 +169,21 @@ export function bindingOptions(
       ...form.booleanFields.map((f) => ({ value: `s:${form.key}:${f.key}`, label: `${form.label} — ${f.label} = 예인 선택지`, group: "원천" })),
     ];
   }
-  const out = [...current, ...discriminators.filter((d) => !d.param && sameType(d.type, t)).map((d) => ({ value: `d:${d.code}`, label: `${d.label} (${d.code})`, group: "구분자" }))];
+  // 담보약관 — 세부보장 · 급부 레벨 구분자는 키 경로 · 「현재」로만 고른다(키 없이 고르는 길을 닫는다, ADR-0087 결정 4)
+  const lower = (d: CtxDiscriminator): d is CtxDiscriminator & { level: KeyedLevel } => d.level === "subCoverage" || d.level === "benefit";
+  const typed = discriminators.filter((d) => !d.param && sameType(d.type, t));
+  const out = [...current, ...typed.filter((d) => !(tree && lower(d))).map((d) => ({ value: `d:${d.code}`, label: `${d.label} (${d.code})`, group: "구분자" }))];
+  if (tree) {
+    const keyed = typed.filter(lower);
+    for (const loop of tree.loops) {
+      for (const d of keyed.filter((x) => coveredByLoop(x.level, loop.level))) out.push({ value: `d:${d.code}@cur:${loop.id}`, label: `현재 ${LEVEL_WORD[d.level]} › ${d.label}`, group: `현재 ${LEVEL_WORD[loop.level]}` });
+    }
+    for (const node of tree.nodes) {
+      if (node.level === "coverage" || !node.keyPath) continue;
+      const head = nodeHead(tree.nodes, node);
+      for (const d of keyed.filter((x) => x.level === node.level)) out.push({ value: `d:${d.code}@${node.keyPath}`, label: `${head} › ${d.label}`, group: head });
+    }
+  }
   if (!withConst) return out;
   if (t.kind === "boolean") out.push({ value: "c:true", label: "예(상수)", group: "상수" }, { value: "c:false", label: "아니오(상수)", group: "상수" });
   if (t.kind === "enum") for (const v of enums.find((e) => e.code === t.enumCode)?.values ?? []) out.push({ value: `c:${v.code}`, label: `${v.label}(상수)`, group: "상수" });
@@ -161,12 +191,18 @@ export function bindingOptions(
 }
 
 /** 연결 표시 — 「갱신여부(D0001)」 · 「예」 · 「납입면제 — 적용여부 = 예인 선택지」. */
-export function bindingLabel(b: Binding | undefined, t: ParamType, discriminators: readonly CtxDiscriminator[], enums: readonly EnumChoice[], forms: readonly PlanFormChoice[], loops: readonly LoopChoice[] = []): string {
+export function bindingLabel(b: Binding | undefined, t: ParamType, discriminators: readonly CtxDiscriminator[], enums: readonly EnumChoice[], forms: readonly PlanFormChoice[], loops: readonly LoopChoice[] = [], tree?: NodeTree): string {
   if (!b) return t.kind === "articleRef" ? ARTICLE_REF_PARAM_NOTE : "없음";
   if (b.kind === "articleRef") return "조 참조 연결";
-  const found = bindingOptions(t, discriminators, enums, forms, true, loops).find((o) => o.value === bindingValue(b));
+  const found = bindingOptions(t, discriminators, enums, forms, true, loops, tree).find((o) => o.value === bindingValue(b));
   if (found) return found.label;
-  if (b.kind === "discriminator") return `${b.code}(없는 구분자)`;
+  if (b.kind === "discriminator") {
+    // 담보약관에선 하위 레벨 후보를 평면으로 내지 않고 반복 목록도 없는 화면(문서 본문 표시)이 있다 — 이름으로 풀어 쓴다
+    const d = discriminators.find((x) => x.code === b.code);
+    if (d && !b.node) return `${d.label} (${d.code})`;
+    if (d && "current" in (b.node ?? {})) return `현재 노드 › ${d.label}`;
+  }
+  if (b.kind === "discriminator") return b.node ? `${b.code}${"path" in b.node ? `@${b.node.path}(끊어진 노드)` : "(현재 노드)"}` : `${b.code}(없는 구분자)`;
   if (b.kind === "const") return String(b.value);
   if (b.kind === "source") return `${b.source.form}${b.source.filter ? ` — ${b.source.filter}` : ""}`;
   return "반복의 현재 원소";

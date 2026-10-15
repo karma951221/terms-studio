@@ -271,7 +271,9 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
   const label = ctx.clauseLabel.get(node.clauseCode) ?? clause?.label;
   // 인자 연결 (최종 결정 2) — 「인자 ← 연결」, 사용처가 대지 않은 인자는 기본 연결
   const params = clause?.params ?? [];
-  const discriminators = ctx.conditionFor?.(node.id).discriminators ?? [];
+  const condition = ctx.conditionFor?.(node.id);
+  const discriminators = condition?.discriminators ?? [];
+  const tree = condition?.coverage ? { nodes: condition.coverage.nodes, loops: [] } : undefined;
   const enumChoicesOf = (t: { kind: string; enumCode?: Code }) => {
     const def = t.enumCode !== undefined ? ctx.enumOf?.(t.enumCode) : undefined;
     return def ? [def] : [];
@@ -290,7 +292,7 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
         : b?.kind === "articleRef"
           ? `${b.scope === "general" ? "보통약관 " : ""}${refChunkText(b, b.scope === "general" ? ctx.references.general : ctx.references.self)}`
           : b
-            ? bindingLabel(b, p.type, discriminators, enumChoicesOf(p.type), [])
+            ? bindingLabel(b, p.type, discriminators, enumChoicesOf(p.type), [], [], tree)
             : "연결 없음";
     return `${p.name} ← ${what}${own || !b ? "" : "(기본)"}`;
   });

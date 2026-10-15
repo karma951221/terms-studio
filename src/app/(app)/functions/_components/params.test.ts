@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import type { CtxDiscriminator, CtxNode } from "@/app/(app)/documents/[id]/_components/condition/types";
+
 import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, newParamNameError, paramEntries, typeLabel, typeOfValue, typeValue } from "./params";
 
 const discriminators = [
@@ -75,5 +77,42 @@ describe("조 참조 인자 (ADR-0083 결정 2 · 7)", () => {
   it("이름에 띄어쓰기를 쓸 수 있다 — 값 인자는 막는다", () => {
     expect(newParamNameError([], "보험금의 지급사유 조", { kind: "articleRef" })).toBeNull();
     expect(newParamNameError([], "보험금의 지급사유 조")).not.toBeNull();
+  });
+});
+
+describe("키 경로 연결 칸 (ADR-0087 결정 4 · 7)", () => {
+  const discs: CtxDiscriminator[] = [
+    { code: "D0007", label: "감액 여부", level: "subCoverage", type: { kind: "boolean" }, forms: [] },
+    { code: "D0008", label: "급부 여부", level: "benefit", type: { kind: "boolean" }, forms: [] },
+  ];
+  const nodes: CtxNode[] = [
+    { id: "cov", level: "coverage", name: "암" },
+    { id: "s1", level: "subCoverage", name: "유사암", parentId: "cov", key: "01", keyPath: "01" },
+    { id: "b1", level: "benefit", name: "진단", parentId: "s1", key: "1", keyPath: "01.1" },
+  ];
+  it("노드 묶음 · 현재 묶음 · 값 인코딩", () => {
+    const opts = bindingOptions({ kind: "boolean" }, discs, [], [], false, [], { nodes, loops: [{ id: "f", level: "subCoverage" }] });
+    expect(opts).toContainEqual({ value: "d:D0007@01", label: "세부보장 01 · 유사암 › 감액 여부", group: "세부보장 01 · 유사암" });
+    expect(opts).toContainEqual({ value: "d:D0007@cur:f", label: "현재 세부보장 › 감액 여부", group: "현재 세부보장" });
+    expect(opts).toContainEqual({ value: "d:D0008@01.1", label: "세부보장 01 · 유사암 › 급부 1 · 진단 › 급부 여부", group: "세부보장 01 · 유사암 › 급부 1 · 진단" });
+    expect(opts.some((o) => o.value === "d:D0007" || o.value === "d:D0008")).toBe(false);
+    // 세부보장마다 안에서는 급부 레벨 구분자를 「현재」로 내지 않는다
+    expect(opts.some((o) => o.value === "d:D0008@cur:f")).toBe(false);
+    expect(bindingOfValue("d:D0007@01", { kind: "boolean" })).toEqual({ kind: "discriminator", code: "D0007", node: { path: "01" } });
+    expect(bindingOfValue("d:D0007@cur:f", { kind: "boolean" })).toEqual({ kind: "discriminator", code: "D0007", node: { current: "f" } });
+    expect(bindingValue({ kind: "discriminator", code: "D0007", node: { path: "01" } })).toBe("d:D0007@01");
+    expect(bindingValue({ kind: "discriminator", code: "D0007", node: { current: "f" } })).toBe("d:D0007@cur:f");
+    expect(bindingLabel({ kind: "discriminator", code: "D0007", node: { path: "01" } }, { kind: "boolean" }, discs, [], [], [], { nodes, loops: [] })).toBe("세부보장 01 · 유사암 › 감액 여부");
+  });
+  it("하위 레벨 기본 연결(한정 없음)의 표시는 담보약관에서도 이름으로", () => {
+    expect(bindingLabel({ kind: "discriminator", code: "D0007" }, { kind: "boolean" }, discs, [], [], [], { nodes, loops: [] })).toBe("감액 여부 (D0007)");
+  });
+  it("반복 목록이 없는 화면(문서 본문 표시)의 현재 노드 연결은 이름으로", () => {
+    expect(bindingLabel({ kind: "discriminator", code: "D0007", node: { current: "f" } }, { kind: "boolean" }, discs, [], [], [], { nodes, loops: [] })).toBe("현재 노드 › 감액 여부");
+  });
+  it("급부 반복은 세부보장 · 급부 레벨 모두 현재로 낸다 · 트리 없으면(프리셋 · 일반) 평면 후보", () => {
+    const opts = bindingOptions({ kind: "boolean" }, discs, [], [], false, [], { nodes, loops: [{ id: "g", level: "benefit" }] });
+    expect(opts.map((o) => o.value)).toEqual(expect.arrayContaining(["d:D0007@cur:g", "d:D0008@cur:g"]));
+    expect(bindingOptions({ kind: "boolean" }, discs, [], [], false).map((o) => o.value)).toEqual(["d:D0007", "d:D0008"]);
   });
 });

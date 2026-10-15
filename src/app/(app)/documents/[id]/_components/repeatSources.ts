@@ -8,7 +8,9 @@
  */
 import type { EnumDef } from "@/domain/catalog";
 import type { LoopElementType } from "@/domain/clause";
-import { isRepeatSource, loopElementType, repeatLabel, type ForBlockNode, type RepeatSource, type TreeIndex } from "@/domain/document";
+import type { ConditionContext } from "./condition/types";
+import type { NodeTree } from "@/app/(app)/functions/_components/params";
+import { isRepeatSource, isTreeSource, loopElementType, repeatLabel, type ForBlockNode, type RepeatSource, type TreeIndex } from "@/domain/document";
 import { fieldsOfForm, formsOfLevel, MASTER, type MasterTree } from "@/domain/master";
 import type { Id } from "@/domain/types";
 
@@ -35,6 +37,13 @@ export function sourceOfValue(value: string): RepeatSource | undefined {
 export function loopsAround(ix: TreeIndex, id: Id): ForBlockNode[] {
   const path = ix.nodes.get(id)?.path ?? ix.branches.get(id)?.path ?? [];
   return path.map((p) => ix.nodes.get(p)?.node).filter((n): n is ForBlockNode => n?.kind === "forBlock");
+}
+
+/** 담보약관의 인자 칸 키 경로 후보 재료 — 담보 구분자 트리 + 자리를 감싼 담보 트리 반복(자리 자신 포함). 담보 문맥이 없으면(보통약관 · 함수조항) 없음 (ADR-0087 결정 4 · 7). */
+export function nodeTreeAt(condition: ConditionContext, ix: TreeIndex, id: Id): NodeTree | undefined {
+  if (!condition.coverage) return undefined;
+  const loops = loopsAround(ix, id).flatMap((f) => (isRepeatSource(f.source) && isTreeSource(f.source) ? [{ id: f.id, level: f.source.kind === "subCoverages" ? ("subCoverage" as const) : ("benefit" as const) }] : []));
+  return { nodes: condition.coverage.nodes, loops };
 }
 
 /** 원천 칸 후보 — `outer` 는 이 자리를 감싼 가장 안쪽 반복(없으면 반복 밖). 두 단계 안(반복 안 반복 안)이면 후보가 없다. */

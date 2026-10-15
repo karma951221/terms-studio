@@ -12,7 +12,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { Combobox, type ComboOption } from "@/app/_components/Combobox";
 import { IconButton, IconTrash } from "@/app/_components/icons";
 import { DOC_KIND_LABEL, REPEAT_DEPTH_LABEL, STRUCT_KEY_CHIP, SWITCH_WORD } from "@/app/_lib/labels";
-import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, planFormChoices, type LoopChoice } from "@/app/(app)/functions/_components/params";
+import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, planFormChoices, type LoopChoice, type NodeTree } from "@/app/(app)/functions/_components/params";
 import type { EnumDef } from "@/domain/catalog";
 import { unfoldPreset, type Bindings, type Clause } from "@/domain/clause";
 import {
@@ -54,7 +54,7 @@ import { runsFromTokens } from "./inlineRuns";
 import { clausesFitting, type PopupSpec } from "./menus";
 import { PopActions, Popover } from "./Popover";
 import { RefTargetTree } from "./RefTargetTree";
-import { loopChoices, loopsAround, repeatChoices, sourceOfValue, sourceValue } from "./repeatSources";
+import { loopChoices, loopsAround, nodeTreeAt, repeatChoices, sourceOfValue, sourceValue } from "./repeatSources";
 import { CaseControls } from "./SwitchControls";
 import { unassignedValues } from "./switchCases";
 
@@ -332,7 +332,26 @@ function articleRefOf(fd: FormData, prefix = ""): { targets: RefTarget[]; connec
  * 인자 연결 칸은 「기본 연결」(비움 — 선언의 기본을 쓴다)이 처음 값이다. 기본 연결이 없으면 골라야 저장된다(연결 누락 = 저장 오류).
  * 조 참조 인자 칸은 조 참조 팝업과 같은 부품(대상 트리 + 연결어 + 값 한정) — 이 문서의 조 · 항 · 호 · 목을 고른다 (ADR-0083 결정 7).
  */
-function ClauseFields({ clauses, code, options, bindings, preset, condition, loops = [], enumOf, refs }: { clauses: readonly Clause[]; code?: Code; options?: Record<Code, Code>; bindings?: Bindings; preset?: Code; condition: ConditionContext; loops?: readonly LoopChoice[]; enumOf?: (code: Code) => EnumDef | undefined; refs: { ctx: DocCtx; restrict: RestrictChoices } }) {
+/** 연결 칸 후보 → `<option>` — 묶음(group)이 이어지는 동안 `<optgroup>` 하나(배열 순서 = 화면 순서). 키 경로 후보는 노드마다 묶음이다. */
+function groupedOptions(options: readonly { value: string; label: string; group: string }[]): ReactNode {
+  const runs: { group: string; items: typeof options[number][] }[] = [];
+  for (const o of options) {
+    const last = runs.at(-1);
+    if (last && last.group === o.group) last.items.push(o);
+    else runs.push({ group: o.group, items: [o] });
+  }
+  return runs.map((r) => (
+    <optgroup key={`${r.group}-${r.items[0].value}`} label={r.group}>
+      {r.items.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </optgroup>
+  ));
+}
+
+function ClauseFields({ clauses, code, options, bindings, preset, condition, loops = [], tree, enumOf, refs }: { clauses: readonly Clause[]; code?: Code; options?: Record<Code, Code>; bindings?: Bindings; preset?: Code; condition: ConditionContext; loops?: readonly LoopChoice[]; tree?: NodeTree; enumOf?: (code: Code) => EnumDef | undefined; refs: { ctx: DocCtx; restrict: RestrictChoices } }) {
   const [picked, setPicked] = useState<Code>(code ?? "");
   // 프리셋 (ADR-0084 결정 8) — 맨 위 「프리셋: 상해 ▾ / 직접 연결」. 프리셋이면 그 값은 읽기 전용, 사용처는 조 참조 · 「사용처가 채움」 인자만 댄다
   const [mode, setMode] = useState<Code>(preset ?? "");
@@ -387,7 +406,7 @@ function ClauseFields({ clauses, code, options, bindings, preset, condition, loo
       <div key={`${picked}:${mode}`} className="ts-clause-fields">
         {chosen && (
           <p className="ts-form-hint">
-            프리셋 ‘{chosen.name}’ 값 그대로 — {[...(clause?.options ?? []).map((o) => `${o.label}: ${o.values.find((v) => v.code === chosen.options?.[o.code])?.label ?? "미선택"}`), ...(clause?.params ?? []).filter((p) => !owned.has(p.name)).map((p) => `${p.name} ← ${chosen.bindings?.[p.name] ? bindingLabel(chosen.bindings[p.name], p.type, condition.discriminators, enumsOf(p.type), forms) : p.default ? "기본 연결" : "없음"}`)].join(" · ") || "값 없음"}. 다르게 쓰려면 「직접 연결」로 바꾼다.
+            프리셋 ‘{chosen.name}’ 값 그대로 — {[...(clause?.options ?? []).map((o) => `${o.label}: ${o.values.find((v) => v.code === chosen.options?.[o.code])?.label ?? "미선택"}`), ...(clause?.params ?? []).filter((p) => !owned.has(p.name)).map((p) => `${p.name} ← ${chosen.bindings?.[p.name] ? bindingLabel(chosen.bindings[p.name], p.type, condition.discriminators, enumsOf(p.type), forms, loops, tree) : p.default ? "기본 연결" : "없음"}`)].join(" · ") || "값 없음"}. 다르게 쓰려면 「직접 연결」로 바꾼다.
           </p>
         )}
         {(clause?.params ?? []).map((p, i) => {
@@ -405,12 +424,8 @@ function ClauseFields({ clauses, code, options, bindings, preset, condition, loo
             <div key={`${clause!.code}-arg-${p.name}`} className="ts-form-row">
               <label htmlFor={`pop-arg-${p.name}`}>인자 {p.name}</label>
               <select id={`pop-arg-${p.name}`} name={`arg:${p.name}`} defaultValue={bindingValue(seed.bindings?.[p.name])}>
-                <option value="">{p.default ? `기본 연결 — ${bindingLabel(p.default, p.type, condition.discriminators, enumsOf(p.type), forms)}` : "— 연결 안 함(기본 연결 없음) —"}</option>
-                {bindingOptions(p.type, condition.discriminators, enumsOf(p.type), forms, true, loops).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
+                <option value="">{p.default ? `기본 연결 — ${bindingLabel(p.default, p.type, condition.discriminators, enumsOf(p.type), forms, loops, tree)}` : "— 연결 안 함(기본 연결 없음) —"}</option>
+                {groupedOptions(bindingOptions(p.type, condition.discriminators, enumsOf(p.type), forms, true, loops, tree))}
               </select>
             </div>
           );
@@ -702,6 +717,11 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
   const b = nodeBuilders(env.newId);
   /** 자리를 감싼 반복 → 인자 연결 칸의 「반복의 현재 원소」 후보 (ADR-0077 결정 3). */
   const loopsAt = (id: Id) => loopChoices(loopsAround(ix, id), env.enumOf ? { enumOf: env.enumOf } : {});
+  /** 담보약관이면 인자 칸의 키 경로 · 「현재 …」 후보 재료 (ADR-0087 결정 4 · 7). */
+  const treeProp = (id: Id): { tree?: NodeTree } => {
+    const tree = nodeTreeAt(env.condition, ix, id);
+    return tree ? { tree } : {};
+  };
   /** 조 참조 자리의 값 한정 후보 — 감싼 열거값 반복(현재 값) · 반복 원소 열거형의 값(해당 값들, ADR-0077 결정 7). */
   const restrictAt = (id: Id | undefined): RestrictChoices => ({
     loops: id === undefined ? [] : loopsAt(id).filter((l) => l.type.kind === "enum").map((l) => ({ id: l.id, label: l.label })),
@@ -762,7 +782,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             )}
             {spec.what === "articleRef" && <ArticleRefFields ctx={ctx} restrict={restrictAt("tableId" in spec.at ? undefined : spec.at.parentId)} />}
             {spec.what === "appendixRef" && <AppendixSelect appendices={env.appendices} />}
-            {spec.what === "clauseInlineRef" && <ClauseFields clauses={env.clauses} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={"tableId" in spec.at ? [] : loopsAt(spec.at.parentId)} refs={{ ctx, restrict: restrictAt("tableId" in spec.at ? undefined : spec.at.parentId) }} />}
+            {spec.what === "clauseInlineRef" && <ClauseFields clauses={env.clauses} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={"tableId" in spec.at ? [] : loopsAt(spec.at.parentId)} {...("tableId" in spec.at ? {} : treeProp(spec.at.parentId))} refs={{ ctx, restrict: restrictAt("tableId" in spec.at ? undefined : spec.at.parentId) }} />}
             {spec.what === "structKey" && (
               <div className="ts-form-row">
                 <label htmlFor="pop-struct">구조 표기</label>
@@ -822,7 +842,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             )}
             {node.kind === "articleRef" && <ArticleRefFields ctx={ctx} node={node} restrict={restrictAt(node.id)} />}
             {node.kind === "appendixRef" && <AppendixSelect appendices={env.appendices} value={node.appendixCode} />}
-            {(node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && <ClauseFields clauses={env.clauses} code={node.clauseCode} options={node.options} {...(node.bindings ? { bindings: node.bindings } : {})} {...(node.preset !== undefined ? { preset: node.preset } : {})} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(node.id)} refs={{ ctx, restrict: restrictAt(node.id) }} />}
+            {(node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && <ClauseFields clauses={env.clauses} code={node.clauseCode} options={node.options} {...(node.bindings ? { bindings: node.bindings } : {})} {...(node.preset !== undefined ? { preset: node.preset } : {})} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(node.id)} {...treeProp(node.id)} refs={{ ctx, restrict: restrictAt(node.id) }} />}
             <PopActions onCancel={onClose} />
           </PopForm>
         </Popover>
@@ -870,7 +890,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
               return bindingConnectorProblem(ctx, bindings) ?? [{ type: "insert", node: withPreset(withBindings(b.clauseBlock(code, optionsOf(fd)), bindings), presetOfForm(fd)), at: spec.at }];
             }}
           >
-            <ClauseFields clauses={clausesFitting(env.clauses, spec.fit)} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(spec.at.parentId)} refs={{ ctx, restrict: restrictAt(spec.at.parentId) }} />
+            <ClauseFields clauses={clausesFitting(env.clauses, spec.fit)} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(spec.at.parentId)} {...treeProp(spec.at.parentId)} refs={{ ctx, restrict: restrictAt(spec.at.parentId) }} />
             <PopActions onCancel={onClose} confirmLabel="넣기" />
           </PopForm>
         </Popover>
