@@ -196,11 +196,11 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
   }
 
   /** 보통약관 템플릿 한 벌의 조연결 · 보통약관 조 참조 대상. 없거나 보통약관이 아니면 undefined. */
-  async function generalRefsFor(tx: Db, generalDocumentId: Id): Promise<GeneralRefs | undefined> {
+  async function generalRefsFor(tx: Db, generalDocumentId: Id, knownGate?: ClauseGate): Promise<GeneralRefs | undefined> {
     const g = await repo.loadDocument(tx, generalDocumentId);
     if (!g || g.kind !== "general") return undefined;
     // 대상 사실(안쪽 코드 · 값 한정 열거형)은 함수조항 본문을 알아야 한다 — 저장 검사의 게이트와 같은 함수조항
-    const gate = deps.clauseGate ? await deps.clauseGate(tx) : undefined;
+    const gate = knownGate ?? (deps.clauseGate ? await deps.clauseGate(tx) : undefined);
     return generalRefsOf(g.tree, gate?.clauseOf ? { clauseOf: (c) => gate.clauseOf!(c) } : {});
   }
 
@@ -224,7 +224,7 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
   async function envOf(tx: Db, doc: DocumentRecord): Promise<TreeEnv> {
     const env = await baseEnvOf(tx, doc);
     if (doc.kind !== "special") return env;
-    const refs = doc.generalDocumentId ? await generalRefsFor(tx, doc.generalDocumentId) : undefined;
+    const refs = doc.generalDocumentId ? await generalRefsFor(tx, doc.generalDocumentId, env.clauseGate) : undefined;
     return { ...env, ...generalEnvOf(refs) };
   }
 
@@ -462,15 +462,16 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
           // 편집 중 지정할 수 있는 보통약관은 명령 목록에 나온 것 + 지금 것 — 미리 읽어 순수 재적용에 넘긴다
           const generalIds = new Set<Id>(doc.generalDocumentId ? [doc.generalDocumentId] : []);
           for (const op of input.ops) if (op.type === "setGeneralDocument" && op.generalDocumentId) generalIds.add(op.generalDocumentId);
+          const baseEnv = await baseEnvOf(tx, doc);
           const generals = new Map<Id, GeneralRefs>();
           for (const gid of generalIds) {
-            const refs = await generalRefsFor(tx, gid);
+            const refs = await generalRefsFor(tx, gid, baseEnv.clauseGate);
             if (refs) generals.set(gid, refs);
           }
           const replayed = replayEdits(
             { tree: doc.tree, ...(doc.generalDocumentId ? { generalDocumentId: doc.generalDocumentId } : {}) },
             input.ops,
-            { env: await baseEnvOf(tx, doc), generalRefs: (gid) => generals.get(gid), newId },
+            { env: baseEnv, generalRefs: (gid) => generals.get(gid), newId },
           );
           if (!replayed.ok) return replayed;
           const { tree, generalDocumentId } = replayed.value;

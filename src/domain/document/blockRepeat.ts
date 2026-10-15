@@ -266,8 +266,13 @@ export function clauseInnerCodes(clause: Clause): Set<Code> {
  */
 export function valueLoopEnum(ix: TreeIndex, t: { articleId: Id; code?: Code }, master: MasterTree = MASTER): Code | undefined {
   if (t.code === undefined) return undefined;
+  return valueLoopEnumOf(ix, nodesOfTarget(ix, { articleId: t.articleId, code: t.code }), master);
+}
+
+/** `valueLoopEnum` 의 몸 — 대상 코드의 노드들을 이미 안 때(`refTargetFacts` 가 한 번에 모은다). */
+function valueLoopEnumOf(ix: TreeIndex, ids: readonly Id[], master: MasterTree): Code | undefined {
   let enumCode: Code | undefined;
-  for (const id of nodesOfTarget(ix, { articleId: t.articleId, code: t.code })) {
+  for (const id of ids) {
     const h = ix.nodes.get(id);
     if (!h) continue;
     const types = loopTypesAt(ix, h, master);
@@ -299,27 +304,50 @@ export interface RefTargetFact {
 /** 대상 열쇠의 사실 — 그 코드의 노드가 없으면 undefined. */
 export function refTargetFact(ix: TreeIndex, t: { articleId: Id; code?: Code }, env: RefTargetEnv): RefTargetFact | undefined {
   if (t.code === undefined) return undefined;
-  const head = nodesOfTarget(ix, { articleId: t.articleId, code: t.code }).map((id) => ix.nodes.get(id)).find(Boolean);
+  return factOf(ix, nodesOfTarget(ix, { articleId: t.articleId, code: t.code }), env, (c) => {
+    const clause = env.clauseOf?.(c);
+    return clause ? clauseInnerCodes(clause) : undefined;
+  });
+}
+
+function factOf(ix: TreeIndex, ids: readonly Id[], env: RefTargetEnv, innerOf: (clauseCode: Code) => ReadonlySet<Code> | undefined): RefTargetFact | undefined {
+  const head = ids.map((id) => ix.nodes.get(id)).find(Boolean);
   if (!head) return undefined;
-  const clause = head.node.kind === "clauseBlockRef" ? env.clauseOf?.(head.node.clauseCode) : undefined;
-  const valueEnum = valueLoopEnum(ix, t, env.master ?? MASTER);
+  const innerCodes = head.node.kind === "clauseBlockRef" ? innerOf(head.node.clauseCode) : undefined;
+  const valueEnum = valueLoopEnumOf(ix, ids, env.master ?? MASTER);
   return {
     headKind: head.node.kind,
     ...(head.node.kind === "clauseBlockRef" ? { clauseCode: head.node.clauseCode } : {}),
-    ...(clause ? { innerCodes: clauseInnerCodes(clause) } : {}),
+    ...(innerCodes ? { innerCodes } : {}),
     ...(valueEnum !== undefined ? { valueEnum } : {}),
   };
 }
 
-/** 문서 한 벌의 대상 열쇠(조#코드)마다 사실 — 대응 보통약관으로 넘길 표. */
+/**
+ * 문서 한 벌의 대상 열쇠(조#코드)마다 사실 — 대응 보통약관으로 넘길 표. 열쇠마다 노드를 한 번에 모으고 함수조항 안쪽 코드는 함수조항마다 한 번 짓는다
+ * (문서 저장마다 대응 보통약관 전체를 훑는다 — 열쇠마다 트리를 다시 걷지 않는다).
+ */
 export function refTargetFacts(ix: TreeIndex, env: RefTargetEnv): Map<string, RefTargetFact> {
-  const out = new Map<string, RefTargetFact>();
+  const groups = new Map<string, Id[]>();
   for (const e of ix.nodes.values()) {
     const code = (e.node as { code?: Code }).code;
     if (code === undefined || !isCodedKind(e.node.kind) || e.articleId === undefined) continue;
     const key = refKey({ articleId: e.articleId, code });
-    if (out.has(key)) continue;
-    const fact = refTargetFact(ix, { articleId: e.articleId, code }, env);
+    const list = groups.get(key);
+    if (list) list.push(e.node.id);
+    else groups.set(key, [e.node.id]);
+  }
+  const inner = new Map<Code, ReadonlySet<Code> | undefined>();
+  const innerOf = (c: Code) => {
+    if (!inner.has(c)) {
+      const clause = env.clauseOf?.(c);
+      inner.set(c, clause ? clauseInnerCodes(clause) : undefined);
+    }
+    return inner.get(c);
+  };
+  const out = new Map<string, RefTargetFact>();
+  for (const [key, ids] of groups) {
+    const fact = factOf(ix, ids, env, innerOf);
     if (fact) out.set(key, fact);
   }
   return out;
