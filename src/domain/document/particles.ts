@@ -88,3 +88,6 @@ export function chooseParticle(key: ParticlePresetKey, before: string): { text: 
   if (coda === undefined) return { text: `${p.final}(${p.open})`, resolved: false };
   return { text: coda === "open" ? p.open : coda === "rieul" ? (p.rieul ?? p.final) : p.final, resolved: true };
 }
+
+/** 저장 검증 메시지 — 모르는 프리셋 키 (문면 · 함수조항 공통). */
+export const PARTICLE_PRESET_MESSAGE = "조사 칩의 프리셋을 알 수 없습니다";

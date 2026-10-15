@@ -5,7 +5,7 @@
  * 노드는 세 부류다:
  *   - 구조   : document · article(조) · paragraph(항) · item(호) · subitem(목)
  *   - 블록 동적: condBlock(if/elif/else) · forBlock(블록 반복 — 원천 원소마다 복제, ADR-0077) · clauseBlockRef(함수조항 블록 참조 — 항 · 호 · 목 유형) · boxRef(정적 마스터 박스 참조)
- *   - 인라인  : text · slot · inlineCond · inlineFor(자리만) · articleRef · appendixRef · clauseInlineRef
+ *   - 인라인  : text · slot · inlineCond · inlineFor(자리만) · articleRef · appendixRef · 조사(particle) · clauseInlineRef
  *
  * - 조의 메타는 조 명 · 조연결(`linkedArticleId`) 뿐. 번호는 저장하지 않는다 (계산값 — numbering.ts).
  * - 식이 들어가는 자리(`when` · `slot.ref`)는 코드 기반 소스 문자열 — 파싱·검사는 expression 모듈.
@@ -18,6 +18,7 @@
 
 import { CONNECTOR_REPEAT_MESSAGE, CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, isWorkMark, WORK_MARK_MESSAGE, type AttachLevel, type Code, type Coordinate, type Id, type Issue, type ReferenceConnector, type RefRestrict, type WorkMark } from "../types";
 import type { ClauseMode } from "../clause/types";
+import { isParticlePreset, PARTICLE_PRESET_MESSAGE, type ParticleNode } from "./particles";
 import type { Bindings } from "../clause/params";
 import { documentCodeIssues, multiTarget, referenceKeys, refKey, refLabel } from "./pcode";
 import { checkRepeatSource, enclosingLoops, loopTypesAt, refTargetIssues, REPEAT_MAX_DEPTH, repeatedKeys, type RepeatSource } from "./blockRepeat";
@@ -25,6 +26,9 @@ import type { EnumDef } from "../catalog/types";
 import type { LoopElementType } from "../clause/params";
 import type { Clause } from "../clause/types";
 import type { MasterTree } from "../master";
+
+export type { ParticleNode } from "./particles";
+export { PARTICLE_PRESET_MESSAGE } from "./particles";
 
 // ───────────────────────────── 인라인 ─────────────────────────────
 
@@ -152,7 +156,8 @@ export type InlineNode =
   | InlineForNode
   | ArticleRefNode
   | AppendixRefNode
-  | ClauseInlineRefNode;
+  | ClauseInlineRefNode
+  | ParticleNode;
 
 // ───────────────────────────── 실물 재현 노드 (기능/문면 §3.2) ─────────────────────────────
 
@@ -368,7 +373,7 @@ export type NodeKind = Node["kind"];
 
 // ───────────────────────────── 허용 자식 규칙 ─────────────────────────────
 
-const INLINE: readonly NodeKind[] = ["text", "structKey", "slot", "inlineCond", "inlineFor", "articleRef", "appendixRef", "clauseInlineRef"];
+const INLINE: readonly NodeKind[] = ["text", "structKey", "slot", "inlineCond", "inlineFor", "articleRef", "appendixRef", "clauseInlineRef", "particle"];
 
 /**
  * 종류별 `children` 자리의 허용 자식. 규칙의 확장(그룹 노드·표)은 여기만 고친다 (ADR-0012).
@@ -397,6 +402,7 @@ export const allowedChildren: Record<NodeKind, readonly NodeKind[]> = {
   inlineFor: INLINE.filter((k) => k !== "inlineFor" && k !== "inlineCond"),
   articleRef: [],
   appendixRef: [],
+  particle: [],
   clauseInlineRef: [],
 };
 
@@ -424,6 +430,7 @@ export function slotsOf(kind: NodeKind): readonly SlotName[] {
     case "slot":
     case "articleRef":
     case "appendixRef":
+    case "particle":
     case "clauseInlineRef":
     case "table":
     case "box":
@@ -610,6 +617,7 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
 
     // 작업용 글자색 — 네 색 중 하나거나 없다 (뜻은 없고 모양만 검사한다)
     if (node.kind === "text" && node.mark !== undefined && !isWorkMark(node.mark)) structure(WORK_MARK_MESSAGE, path, articleId);
+    if (node.kind === "particle" && !isParticlePreset(node.preset)) structure(PARTICLE_PRESET_MESSAGE, path, articleId);
     if (node.kind === "bulletList" && node.children.length === 0) structure("글머리 목록에는 항목이 하나 이상 있어야 합니다", path, articleId);
     if (node.kind === "table") {
       // 표 불변식 — 열이 하나 이상, 행마다 셀 수 = 열 수, 너비는 1~100 정수 (setTable · importTree 공통)

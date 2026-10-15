@@ -16,6 +16,7 @@
  */
 import { checkTypes, extractRefs, parse } from "../expression";
 import type { EnumInfo, Expr, ExprType, Ref, TypeResolver } from "../expression";
+import { isParticlePreset, PARTICLE_PRESET_MESSAGE } from "../document/particles";
 import { CONNECTOR_REPEAT_MESSAGE, CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, isWorkMark, ok, reject, WORK_MARK_MESSAGE } from "../types";
 import type { Code, Coordinate, Id, Issue, Result } from "../types";
 import { BLOCK_KINDS, INLINE_KINDS } from "./nodes";
@@ -323,6 +324,9 @@ export function analyzeBody(
           }
         }
         if (repeated && node.connector === undefined && node.targets.length < 2) report("structure", CONNECTOR_REPEAT_MESSAGE, here);
+        return;
+      case "particle":
+        if (!isParticlePreset(node.preset)) report("structure", PARTICLE_PRESET_MESSAGE, here);
         return;
       case "appendixRef":
         if (typeof node.appendixCode !== "string" || node.appendixCode.length === 0) {

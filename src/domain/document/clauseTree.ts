@@ -228,6 +228,7 @@ function inlineFromTree(node: InlineNode): C.Inline {
     case "text":
     case "slot":
     case "appendixRef":
+    case "particle":
       return node;
     case "articleRef": {
       const { scope, targets, ...rest } = node;

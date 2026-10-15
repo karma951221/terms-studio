@@ -202,6 +202,14 @@ describe("함수조항 S1 — 조 참조 · 별표 참조 검사 (기능/함수�
     ({ id: "a1", kind: "articleRef", targets, ...(connector === null ? {} : { connector }) } as Inline);
   const 별표참조 = (appendixCode: string): Inline => ({ id: "x1", kind: "appendixRef", appendixCode });
 
+  it("함수조항 본문의 조사 칩 — 모르는 프리셋은 structure 오류", () => {
+    const 칩 = (preset: string) => ({ id: "p", kind: "particle", preset }) as unknown as Inline;
+    const issues = issuesOf(analyzeBody("inline", [칩("nope")], []));
+    expect(issues.map((i) => i.kind)).toEqual(["structure"]);
+    expect(issues[0]!.message).toBe("조사 칩의 프리셋을 알 수 없습니다");
+    expect(analyzeBody("inline", [칩("eul-reul")], []).ok).toBe(true);
+  });
+
   it("조 참조 슬롯에 대상이 없으면 거부한다 (structure)", () => {
     const issues = issuesOf(analyzeBody("inline", [조참조([])], []));
     expect(issues.map((i) => i.kind)).toEqual(["structure"]);

@@ -8,6 +8,7 @@
  */
 
 import type { Appendix } from "../document/appendix";
+import { particlePreset } from "../document/particles";
 import { refKey } from "../document/pcode";
 import { appendixRefLabel, articleLabel, itemLabel, paragraphLabel, referenceChunkLabel, referenceTargetLabel, sectionLabel, subitemLabel, type ReferenceTarget } from "../document/numbering";
 import type { Code, Coordinate, Id, Issue } from "../types";
@@ -378,6 +379,9 @@ class Renderer {
           ...(dropped.length > 0 ? { dropped: dropped.map((d) => d.key) } : {}),
         };
       }
+      case "particle":
+        // 목록 밖 — 앞 글 없이 칩 표기 그대로
+        return { kind: "text", id: n.id, text: particlePreset(n.preset).label };
       case "appendixRef": {
         const a = this.appendices.get(n.appendixCode);
         if (!a || a.name === "(없는 별표)") {

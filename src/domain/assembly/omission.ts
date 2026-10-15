@@ -38,6 +38,8 @@ function serializer(refInsensitive: boolean) {
         return refInsensitive ? "a(?)" : `a(${n.scope}:${n.targets.map((target) => refKey(target)).join(",")}:${n.connector})`;
       case "appendixRef":
         return `x(${n.appendixCode})`;
+      case "particle":
+        return `p(${n.preset})`;
       case "error":
         return `e(${n.id})`;
     }

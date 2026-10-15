@@ -5,6 +5,7 @@
 
 import type { Code, Id } from "../types";
 import type { RepeatSource } from "./blockRepeat";
+import type { ParticleNode, ParticlePresetKey } from "./particles";
 import type {
   AppendixRefNode,
   BoxRefNode,
@@ -134,6 +135,8 @@ export function nodeBuilders(newId: IdSource = randomIds) {
       scope,
     }),
     appendixRef: (appendixCode: Code): AppendixRefNode => ({ id: newId(), kind: "appendixRef", appendixCode }),
+    /** 조사 칩 — 프리셋 키만. 글은 조립 렌더 끝에서 정해진다. */
+    particle: (preset: ParticlePresetKey): ParticleNode => ({ id: newId(), kind: "particle", preset }),
     /** 정적 마스터 박스 참조 — 코드만. */
     boxRef: (boxCode: Code): BoxRefNode => ({ id: newId(), kind: "boxRef", boxCode }),
     clauseBlock: (clauseCode: Code, options: Record<Code, Code> = {}, excludeFromComparison?: boolean): ClauseBlockRefNode => ({
