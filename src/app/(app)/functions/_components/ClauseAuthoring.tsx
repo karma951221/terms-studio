@@ -776,6 +776,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
               onMode={changeMode}
               unitNodes={clauseMode === "block" ? blockNodes : listNodes}
               required={props.required}
+              discriminators={props.data.condition.discriminators.filter((d) => !d.param && !d.local)}
               warnings={props.warnings}
             />
 
