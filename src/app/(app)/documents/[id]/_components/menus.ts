@@ -12,7 +12,7 @@
 import type { DocumentNode, EditOp, IdSource, InlineAt, NodeKind, Position, TreeIndex } from "@/domain/document";
 import type { AttachLevel, Id } from "@/domain/types";
 
-import { allowedIn, nodeBuilders, repeatLevels as repeatLevelsOf } from "@/domain/document";
+import { allowedIn, isCodedKind, nodeBuilders, repeatLevels as repeatLevelsOf } from "@/domain/document";
 
 import { afterOf, emptyNode, inlineListAt, moveOps, removeChipOps, selectionRange, siblingPlace, unwrapOps, wrapOps, wrapRangeOps } from "./editOps";
 import { runsFromTokens, type Token } from "./inlineRuns";
@@ -32,6 +32,11 @@ export type PopupSpec =
   /** 블록 반복 — `at` 이면 넣기(원천 고르기 → 빈 항 · 호 하나를 든 반복), `nodeId` 면 그 반복의 원천 · 이름 고치기 (ADR-0077). */
   | { kind: "repeatBlock"; at?: Position; nodeId?: Id }
   | { kind: "tableProps"; tableId: Id }
+  /**
+   * 코드 수정 창 (ADR-0072 결정 5) — 항 · 호 · 목 · 함수조항 참조 · 반복 블록의 P코드. `suggest` 면 입력칸이 추천값에서 시작한다
+   * (검증 탭의 코드 충돌 줄 「코드 수정」), 아니면 지금 코드에서.
+   */
+  | { kind: "code"; nodeId: Id; suggest?: boolean }
   | { kind: "repeat"; tableId: Id }
   | { kind: "link"; articleId: Id }
   | { kind: "docTitle" }
@@ -172,6 +177,8 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
   }
   if (e.node.kind === "clauseBlockRef") own.push({ label: "옵션 고치기…", action: { do: "popup", popup: { kind: "editChip", nodeId } } });
   if (e.node.kind === "forBlock") own.push({ label: "반복 원천…", action: { do: "popup", popup: { kind: "repeatBlock", nodeId } } });
+  // 코드 — 항 · 호 · 목 · 함수조항 참조 · 반복 블록 (툴바 「속성」, ADR-0072 결정 5). 바꾼 코드는 문서 저장 한 번에 반영된다
+  if (isCodedKind(e.node.kind)) own.push({ label: "코드 고치기…", action: { do: "popup", popup: { kind: "code", nodeId } } });
   if (e.allowed.includes("condBlock")) own.push(wrapItem(env, nodeId));
 
   return [add, own, arrangeItems(ix, nodeId)];

@@ -99,6 +99,15 @@ export interface ReferenceTarget {
   placeholder?: string;
 }
 
+/**
+ * 코드 표시 — 「P0200 · 호」 (ADR-0072 버린 안 C — 단계는 코드가 아니라 트리 위치라 화면이 붙여 보인다). 대상 고르기 줄 끝 · 코드 수정 창의 흐린 글씨.
+ * 본문에는 넣지 않는다(기능/문면 §6.2). 항 · 호 · 목이 아닌 단계는 코드만.
+ */
+export function codeTag(code: Code, kind: string): string {
+  const word = ({ paragraph: "항", item: "호", subitem: "목" } as Record<string, string>)[kind];
+  return word ? `${code} · ${word}` : code;
+}
+
 /** 목 참조 표기 — 「가목」…「하목」 (법령 인용 꼴), 그 너머는 「제N목」. */
 export function subitemRefLabel(n: number): string {
   return n >= 1 && n <= HANGUL.length ? `${HANGUL[n - 1]}목` : `제${n}목`;

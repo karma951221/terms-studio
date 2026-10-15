@@ -13,7 +13,7 @@ import type { RecheckEntry, Usage } from "../clause/reference";
 import type { Code, Coordinate, Id, Issue } from "../types";
 import { clauseInnerCodes } from "./blockRepeat";
 import { articleRefsOf, coordinateOf, indexTree, type ArticleRefNode, type ClauseGate, type DocumentNode } from "./nodes";
-import { refKey } from "./pcode";
+import { refKey, removedRefKeys } from "./pcode";
 
 export type DocRef =
   /** `node` = 노드 한정자 `D@노드` (ADR-0066) — 담보 마스터 노드 id. */
@@ -217,4 +217,21 @@ export function clauseGeneralRefs(clause: Pick<Clause, "body" | "options">): { a
   walk(clause.body, []);
   for (const option of clause.options ?? []) for (const value of option.values) walk(value.body, [option.code, value.code]);
   return out;
+}
+
+/**
+ * 코드 수정 창의 영향 건수 (ADR-0072 결정 6 · 수용 기준 5) — 자리 `nodeId` 의 코드를 `code` 로 바꾸면 이 문서 안에서 깨지는 조 참조 대상 수.
+ * 같은 코드의 분기 짝이 남으면 짝으로 해소되어 깨지지 않는다. 조 참조 인자 연결 · 펼친 함수조항 안을 가리키는 대상(그 참조 노드의 코드)도 센다.
+ * 깨지는 변경은 문서 저장 오류(`brokenRef`)다 — 창이 「먼저 고쳐야 저장됩니다」로 미리 보인다. 다른 문서 몫은 저장 확인 카드가 센다.
+ */
+export function codeChangeBreaks(doc: DocumentNode, nodeId: Id, code: Code): number {
+  const after = structuredClone(doc);
+  const e = indexTree(after).nodes.get(nodeId);
+  if (!e) return 0;
+  const node = e.node as { code?: Code };
+  if (node.code === code) return 0;
+  node.code = code;
+  const lost = removedRefKeys(doc, after);
+  if (lost.size === 0) return 0;
+  return collectRefs(doc).filter((r) => r.kind === "article" && r.scope === "self" && lost.has(refKey({ articleId: r.articleId, ...(r.code !== undefined ? { code: r.code } : {}) }))).length;
 }

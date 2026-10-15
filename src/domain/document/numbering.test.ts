@@ -9,6 +9,7 @@ import {
   appendixRefLabel,
   articleLabel,
   articleRefLabel,
+  codeTag,
   itemLabel,
   numberTree,
   paragraphLabel,
@@ -229,6 +230,15 @@ describe("대상 고르기의 분기 짝 — 같은 열쇠(조 · P코드)는 �
     const refRow = group.rows[0].children[0];
     expect(refRow.children).toHaveLength(1);
     expect(refRow.children[0].children.map((r) => r.target.item?.code)).toEqual(["P0200", "P0300"]);
+  });
+});
+
+describe("코드 표시 — 흐린 글씨 「P0200 · 호」 (ADR-0072 결정 3 · 버린 안 C — 단계는 트리 위치로)", () => {
+  it("코드 + 단계 이름 — 항 · 호 · 목, 그 밖의 줄은 코드만", () => {
+    expect(codeTag("P0200", "item")).toBe("P0200 · 호");
+    expect(codeTag("P0100", "paragraph")).toBe("P0100 · 항");
+    expect(codeTag("PZ0300", "subitem")).toBe("PZ0300 · 목");
+    expect(codeTag("P0400", "article")).toBe("P0400");
   });
 });
 
