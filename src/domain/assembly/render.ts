@@ -8,7 +8,7 @@
  */
 
 import type { Appendix } from "../document/appendix";
-import { particlePreset } from "../document/particles";
+import { chooseParticle, particlePreset } from "../document/particles";
 import { refKey } from "../document/pcode";
 import { appendixRefLabel, articleLabel, itemLabel, paragraphLabel, referenceChunkLabel, referenceTargetLabel, sectionLabel, subitemLabel, type ReferenceTarget } from "../document/numbering";
 import type { Code, Coordinate, Id, Issue } from "../types";
@@ -26,12 +26,14 @@ import type {
   RenderedParagraph,
   RenderedSection,
   RenderedStatic,
+  RenderedText,
   RenderedSubitem,
   RArticle,
   RBulletList,
   RStatic,
   RItem,
   RParagraph,
+  RParticle,
   RSubitem,
   SInline,
   SubstitutedDoc,
@@ -225,6 +227,7 @@ function issueNodeKind(issue: Issue): string | undefined {
   if (issue.kind === "unusedAttribute" || issue.kind === "syntax" || issue.kind === "typeMismatch") return "condition";
   if (issue.kind === "articleGone" || issue.kind === "articleHidden") return "articleRef";
   if (issue.kind === "optionInvalid" || issue.kind === "optionUnselected") return "option";
+  if (issue.kind === "particleUnresolved") return "particle";
   return undefined;
 }
 
@@ -296,6 +299,24 @@ class Renderer {
   number(id: Id): { number: number; label: string } {
     const n: NumberedNode = this.numbered.numbers.get(id) ?? { n: 0, label: "" };
     return { number: n.n, label: n.label };
+  }
+
+  /** 인라인 목록 — 왼쪽부터 렌더하고, 조사 칩은 앞서 찍힌 글로 고른다 (기능/문면 §3.11). */
+  inlines(list: readonly SInline[], source: ReferenceTarget): RenderedInline[] {
+    const out: RenderedInline[] = [];
+    for (const n of list) out.push(n.kind === "particle" ? this.particle(n, out) : this.inline(n, source));
+    return out;
+  }
+
+  /** 조사 칩 → 글. 바로 앞이 오류 · 목록 맨 앞이면 판정 불가 — 병기 + 경고. */
+  particle(n: RParticle, before: readonly RenderedInline[]): RenderedText {
+    const last = before.at(-1);
+    const prev = last === undefined || last.kind === "error" ? "" : before.map((r) => (r.kind === "text" ? r.text : r.kind === "error" ? "" : r.label)).join("");
+    const { text, resolved } = chooseParticle(n.preset, prev);
+    if (!resolved) {
+      this.issues.push({ kind: "particleUnresolved", severity: "warning", message: `조사 「${particlePreset(n.preset).label}」 — 앞 글자로 받침을 판정할 수 없어 「${text}」로 병기했습니다`, at: n.at });
+    }
+    return { kind: "text", id: n.id, text };
   }
 
   inline(n: SInline, source: ReferenceTarget): RenderedInline {
@@ -380,8 +401,8 @@ class Renderer {
         };
       }
       case "particle":
-        // 목록 밖 — 앞 글 없이 칩 표기 그대로
-        return { kind: "text", id: n.id, text: particlePreset(n.preset).label };
+        // 목록 밖에서 불리면 앞 글이 없다
+        return this.particle(n, []);
       case "appendixRef": {
         const a = this.appendices.get(n.appendixCode);
         if (!a || a.name === "(없는 별표)") {
@@ -394,7 +415,7 @@ class Renderer {
   }
 
   subitem(n: RSubitem<SInline>): RenderedSubitem {
-    return { kind: "subitem", id: n.id, ...this.number(n.id), children: n.children.map((c) => this.inline(c, this.self.get(n.id)!)) };
+    return { kind: "subitem", id: n.id, ...this.number(n.id), children: this.inlines(n.children, this.self.get(n.id)!) };
   }
 
   item(n: RItem<SInline>): RenderedItem {
@@ -402,20 +423,20 @@ class Renderer {
       kind: "item",
       id: n.id,
       ...this.number(n.id),
-      children: n.children.map((c) => this.inline(c, this.self.get(n.id)!)),
+      children: this.inlines(n.children, this.self.get(n.id)!),
       ...(n.subitems ? { subitems: n.subitems.map((s) => (s.kind === "error" ? s : s.kind === "bulletList" ? this.bullets(s, this.self.get(n.id)!) : this.subitem(s))) } : {}),
     };
   }
 
   bullets(n: RBulletList<SInline>, source: ReferenceTarget): RBulletList<RenderedInline> {
-    return { ...n, items: n.items.map((b) => ({ id: b.id, children: b.children.map((c) => this.inline(c, source)) })) };
+    return { ...n, items: n.items.map((b) => ({ id: b.id, children: this.inlines(b.children, source) })) };
   }
 
   /** 표 셀 · 글머리 목록 항목의 조·별표 참조도 계산 번호로 찍는다. 박스 줄은 글 하나로 접는다(슬롯은 치환됐다). */
   static(n: RStatic<SInline>, source: ReferenceTarget): RenderedStatic {
-    if (n.kind === "box") return { kind: "box", id: n.id, title: n.title, lines: n.lines.map((line) => line.map((c) => boxText(this.inline(c, source))).join("")) };
+    if (n.kind === "box") return { kind: "box", id: n.id, title: n.title, lines: n.lines.map((line) => this.inlines(line, source).map(boxText).join("")) };
     if (n.kind === "bulletList") return this.bullets(n, source);
-    return { ...n, rows: n.rows.map((row) => ({ ...row, cells: row.cells.map((cell) => cell.map((c) => this.inline(c, source))) })) };
+    return { ...n, rows: n.rows.map((row) => ({ ...row, cells: row.cells.map((cell) => this.inlines(cell, source)) })) };
   }
 
   paragraph(n: RParagraph<SInline>): RenderedParagraph {
@@ -423,7 +444,7 @@ class Renderer {
       kind: "paragraph",
       id: n.id,
       ...this.number(n.id),
-      children: n.children.map((c) => this.inline(c, this.self.get(n.id)!)),
+      children: this.inlines(n.children, this.self.get(n.id)!),
       ...(n.items ? { items: n.items.map((it) => (it.kind === "item" ? this.item(it) : it.kind === "error" ? it : this.static(it, this.self.get(n.id)!))) } : {}),
     };
   }

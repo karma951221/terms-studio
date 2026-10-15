@@ -212,6 +212,7 @@ export type IssueKind =
   | "unlinkedBaseArticle" // 1개 모드 기본계약 조에 조연결 없음 (warning)
   | "omissionUndecided" // 조연결 자동 판정 보류 — 원문 유지 + 검토 경고 (기능/조립산출 §3.5)
   | "syntax" // 식 문법 오류
+  | "particleUnresolved" // (warning) 조사 칩 앞 글자로 받침을 판정할 수 없어 병기
   | "structure" // 문면 트리 규칙 위반 (허용 자식 · 인라인 조건 중첩 · 노드 id 중복 · else 위치 등, ADR-0012)
   | "alias"; // 별칭 — 값 하나에 이름 둘, 허용하되 경고 (기능/구분자 §3.2)
 
