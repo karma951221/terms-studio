@@ -88,7 +88,7 @@ export function findNode(tree: Coverage, ref: CoverageNodeRef): CoverageNode | u
   return nodesOf(tree).find((n) => n.level === ref.level && n.id === ref.id);
 }
 
-/** 레벨 없이 id 로 — 문면의 노드 한정자(`@id`)는 레벨을 모른다 (ADR-0066 §1). */
+/** 레벨 없이 id 로 — 관계 · 화면 · 조립이 노드 id 로 찾을 때. 문면의 노드 한정자는 키 경로다(`keys.ts` `nodeByKeyPath`). */
 export function findNodeById(tree: Coverage, id: Id): CoverageNode | undefined {
   return nodesOf(tree).find((n) => n.id === id);
 }

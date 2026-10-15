@@ -126,7 +126,7 @@ export const ATTACH_LEVEL_LABEL: Record<AttachLevel, string> = {
 
 // ───────────────────────────── dict — 구조 읽기 규칙 (ADR-0070) ─────────────────────────────
 
-/** dict 의 key 규칙 — 구조 key 는 문맥 트리의 자식 노드(id). enum 은 자리만 (ADR-0070 결정 7). */
+/** dict 의 key 규칙 — 구조 key 는 문맥 트리의 자식 노드(노드 키 — ADR-0087). enum 은 자리만 (ADR-0070 결정 7). */
 export type DictKeyRule =
   | { kind: "node"; level: Exclude<AttachLevel, "product"> }
   | { kind: "enum"; enumCode: Code };

@@ -9,7 +9,7 @@
  *   unary    := 'not' unary | primary
  *   primary  := literal | aggregate | ref | '(' expr ')'
  *   aggregate:= aggOp '(' path ')'
- *   path     := ident ('@' keyPath)?                    — 구분자 코드 (문면이 쓰는 참조). '@' 는 구분자에만 (ADR-0066 §1)
+ *   path     := ident ('@' keyPath)?                    — 구분자 코드 (문면이 쓰는 참조). '@' 는 구분자에만 (ADR-0066 §1 · 키 경로 ADR-0087 결정 3)
  *             | ident '.' ident                        — 마스터 필드 (폼키.필드키 · 구분자 식이 쓰는 참조)
  *             | 'builtin' '.' level '.' ident
  *             | 'attr' '.' ident
