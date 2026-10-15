@@ -98,6 +98,7 @@ export function EditShell<T extends EditData>({
   deleteLabel,
   deleteTooltip,
   deleteSuccessHref,
+  deleteBlocked,
   editActions,
   readBadges,
   saveDisabled,
@@ -122,6 +123,8 @@ export function EditShell<T extends EditData>({
   deleteLabel?: string;
   deleteTooltip?: string;
   deleteSuccessHref?: string;
+  /** 지울 수 없는 실체의 이유 — 있으면 🗑 이 꺼지고 그 이유가 tooltip 이 된다 (코드가 가리키는 열거형변수 〔D-P1-17〕). 서버도 거부한다. */
+  deleteBlocked?: string;
   /**
    * 편집 모드 조작 줄의 왼쪽에 붙는 버튼 — 저장의 일부인 조작만 (구분자의 「검사」: 저장 전 검사, 기능/구분자 §3.3).
    * 저장 · 취소 말고 다른 일을 여기 두지 않는다.
@@ -218,7 +221,7 @@ export function EditShell<T extends EditData>({
         {mode === "edit" ? editActions : null}
         {mode === "read" ? <Button onClick={() => setMode("edit")} disabled={pending}>편집</Button> : <><IconButton icon={<IconClose />} label="편집 취소" disabled={pending} onClick={() => leave(cancel)} /><Button variant="primary" disabled={!dirty || blocked || pending} onClick={() => handle("save")}>{pending ? "저장 중…" : "저장"}</Button></>}
         {/* 즉시 실행 명령은 편집 모드에서 비활성 — 미저장 변경과 즉시 삭제가 한 화면에 겹치지 않게 (디자인원칙 §2 L2 · 점검 P2) */}
-        {deleteAction ? <IconButton icon={<IconTrash />} label={mode === "edit" ? EDIT_MODE_LOCKED_TIP : deleteTooltip ?? deleteLabel ?? `${shownTitle} 삭제`} danger disabled={pending || mode === "edit"} onClick={() => handle("delete")} /> : null}
+        {deleteAction ? <IconButton icon={<IconTrash />} label={mode === "edit" ? EDIT_MODE_LOCKED_TIP : deleteBlocked ?? deleteTooltip ?? deleteLabel ?? `${shownTitle} 삭제`} danger disabled={pending || mode === "edit" || deleteBlocked !== undefined} onClick={() => handle("delete")} /> : null}
       </span>
     </div>
     {error ? <p className="ts-error-banner">{error}</p> : null}

@@ -16,6 +16,7 @@ import {
   setExpression,
   setResultType,
   dependentsOf,
+  enumRemovalBlock,
 } from "./definitions";
 import type { Discriminator, EnumDef, NewDiscriminator } from "./types";
 
@@ -455,5 +456,21 @@ describe("reviseEnum — 편집 화면 한 벌을 최종 상태로 한 번에 �
     const r = unwrap(await reviseEnum(고지유형, { label: "고지유형", description: "메모", values: [] }, { existingEnumLabels: [], nextSeq: memorySeq() }));
     expect(r.def.description).toBe("메모");
     expect(r.removed).toEqual(["V01", "V02"]);
+  });
+});
+
+describe("enumRemovalBlock — 열거형변수 정의 삭제를 막는 곳 (ADR-0049 〔D-P1-17〕)", () => {
+  it("코드 마스터 필드가 타입으로 쓰는 열거형은 삭제 거부 — 이유에 그 필드 이름", () => {
+    expect(enumRemovalBlock("E0001")).toMatch(/세목 · 납입면제 › 납입면제사유/);
+    expect(enumRemovalBlock("E0005")).toMatch(/고지유형/);
+  });
+
+  it("특약 그룹(E0008)은 코드가 직접 가리키므로 거부", () => {
+    expect(enumRemovalBlock("E0008")).toMatch(/특약 그룹/);
+  });
+
+  it("그 밖(구분자 결과 타입 · 함수조항 인자 타입이 쓰는 열거형 포함)은 지울 수 있다 — 남은 참조는 깨진 참조로 드러난다", () => {
+    expect(enumRemovalBlock("E0009")).toBeUndefined();
+    expect(enumRemovalBlock("E0123")).toBeUndefined();
   });
 });

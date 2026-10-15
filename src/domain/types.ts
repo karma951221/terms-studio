@@ -238,6 +238,8 @@ export type Rejection =
   | { reason: "notFound"; what: string }
   /** 판 충돌 — 편집을 시작한 판과 지금 원본의 판이 다르다 (ADR-0074 결정 4). 잠금은 없다. */
   | { reason: "conflict"; what: string }
+  /** 코드가 가리키는 실체라 지울 수 없다 — 관리자 확인으로도 (열거형변수 정의 삭제 〔D-P1-17〕). `what` = 이유 문장 */
+  | { reason: "inUse"; what: string }
   | { reason: "failed"; message: string }; // 건별 실행 실패 — 다중 산출에서 한 건의 예외를 그 건의 거부로 (ADR-0034 결정 7). 검증 거부가 아니다
 
 /** 탑재 상품담보 하나 — 구조 정정이 미치는 상품 (ADR-0075 결정 2). */

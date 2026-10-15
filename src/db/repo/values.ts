@@ -148,12 +148,6 @@ export async function countPathRows(db: Db, paths: readonly SlotPath[]): Promise
   return row?.n ?? 0;
 }
 
-/** 주어진 마스터 경로들의 값 행 삭제. */
-export async function purgePathRows(db: Db, paths: readonly SlotPath[]): Promise<void> {
-  if (paths.length === 0) return;
-  await db.delete(entityValues).where(inArray(entityValues.fieldPath, [...paths]));
-}
-
 /**
  * 값 저장소의 ImpactSource 구현. findBrokenRefs 는 참조 역인덱스(C1 refs)가 담당하므로
  * 여기서는 빈 목록 — refs 가 생기면 합성(`{...valuesImpactSource(db), findBrokenRefs}`)한다.
@@ -168,11 +162,6 @@ export function valuesImpactSource(db: Db): ImpactSource {
     },
     async findBrokenRefs() {
       return [];
-    },
-    async purgeValueRows(target) {
-      const where = targetFilter(target);
-      if (!where) return;
-      await db.delete(entityValues).where(where);
     },
   };
 }

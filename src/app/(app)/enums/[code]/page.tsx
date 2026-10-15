@@ -1,4 +1,5 @@
 import { Breadcrumb } from "@/app/_components/Breadcrumb";
+import { enumRemovalBlock } from "@/domain/catalog";
 import { getServices } from "@/lib/services";
 
 import { ENUMS_MENU, menuCrumb } from "@/app/_lib/menu";
@@ -11,5 +12,5 @@ export default async function EnumDetailPage({ params, searchParams }: { params:
   const { value } = await searchParams;
   const item = await getServices().catalog.getEnum(code);
   if (!item) return <div><Breadcrumb items={[menuCrumb(ENUMS_MENU), { label: code }]} /><p className="ts-error-banner">찾을 수 없습니다.</p></div>;
-  return <div><EnumEditor key={code} item={item} highlight={value} /></div>;
+  return <div><EnumEditor key={code} item={item} highlight={value} removalBlock={enumRemovalBlock(code)} /></div>;
 }
