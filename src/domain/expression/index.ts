@@ -34,7 +34,7 @@ export type {
 } from "./ast";
 export { AGGREGATE_OPS, COMPARE_OPS, METHOD_OPS, refPath, sameRef } from "./ast";
 
-export { parse, RESERVED_WORDS } from "./parser";
+export { parse, renameExprRefs, RESERVED_WORDS } from "./parser";
 
 export type { DisplayName, MemberName } from "./format";
 export { format, formatLiteral } from "./format";

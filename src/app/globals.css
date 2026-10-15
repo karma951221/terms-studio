@@ -1234,6 +1234,82 @@ button:where(:not([data-slot])).danger:focus-visible {
   margin: 0 0 2px;
 }
 
+/* 오른쪽 단 탭 — 「인자 · 옵션」 · 「시험」 (기능/함수조항 §4.3) */
+.ts-clause-side-tabs {
+  margin-bottom: 10px;
+}
+
+/* 단독 시험 — 값 칸 · 출력(본문 글꼴) · 문제 줄 (기능/함수조항 §3.7) */
+.ts-trial-inputs {
+  margin-bottom: 12px;
+}
+
+.ts-trial-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.ts-trial-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.ts-trial-plan {
+  margin: 0;
+  padding: 2px 0;
+  border: 0;
+}
+
+.ts-trial-plan-note {
+  margin: 4px 0;
+  font-size: 12px;
+}
+
+.ts-trial-plan-field {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 6px;
+  align-items: start;
+  margin-bottom: 4px;
+}
+
+.ts-trial-out {
+  border-top: 1px solid var(--ts-rule);
+  padding-top: 10px;
+}
+
+.ts-trial-line {
+  margin: 0 0 4px;
+}
+
+.ts-trial-line.is-item,
+.ts-trial-line.is-bullet,
+.ts-trial-line.is-box {
+  padding-left: 1.2em;
+}
+
+.ts-trial-line.is-subitem {
+  padding-left: 2.4em;
+}
+
+.ts-trial-label {
+  margin-right: 0.4em;
+}
+
+/* 요구 구분자 — 줄마다 코드 · 표시명 · 해소 문맥 (기능/함수조항 §3.4) */
+.ts-clause-required {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ts-clause-required li {
+  margin: 0 0 2px;
+}
+
 /* 유형 — 카드 라디오(두 칸씩 — 문구 · 항 / 호 · 목), 이름 + 뜻풀이 */
 .ts-clause-mode {
   display: grid;
@@ -2274,6 +2350,13 @@ td.col-act {
   border: 0;
 }
 
+/* 인자 연결 — 콤보 아래 「상수 직접 입력」(문자 · 숫자 · 날짜 인자, 기능/함수조항 §4.4) */
+.ts-form-row > .ts-arg-const,
+.ts-preset-row > .ts-arg-const,
+.ts-preset-row > .ts-form-error {
+  grid-column: 2;
+}
+
 .ts-form-row > label,
 .ts-form-label {
   font-size: 11px;
@@ -2956,6 +3039,19 @@ label.ts-field > textarea:where(:not([data-slot])) {
 .ts-insert-detail {
   font-size: 11px;
   color: var(--ts-ink-3);
+}
+
+/* 함수조항 내부 변수 식 넣기 패널 — 표 아래, 마지막에 누른 식 칸(굵은 왼쪽 선)에 넣는다 (기능/함수조항 §4.3) */
+.ts-local-insert {
+  margin-top: 10px;
+}
+
+.ts-local-insert .ts-insert-body {
+  max-height: 240px;
+}
+
+.ts-clause-params-table tr.is-active > td:first-child {
+  box-shadow: inset 2px 0 0 var(--ts-mark);
 }
 
 .ts-insert-operators {

@@ -55,7 +55,7 @@ import {
   type Usage,
 } from "@/domain/clause";
 import type { Inline } from "@/domain/clause/nodes";
-import { indexTree, referenceKeys, repeatedKeys, unfoldPresetsIn } from "@/domain/document";
+import { indexTree, referenceKeys, renameBindingsIn, repeatedKeys, unfoldPresetsIn } from "@/domain/document";
 import type { TypeResolver } from "@/domain/expression";
 import type { Actor, Code, Issue, Result } from "@/domain/types";
 import { ok, reject } from "@/domain/types";
@@ -115,6 +115,11 @@ export interface ClauseService {
    */
   setPresets(actor: Actor, code: Code, presets: PresetInput[]): Promise<Result<SaveOutcome & { unfolded: number }>>;
   duplicate(actor: Actor, code: Code): Promise<Result<Clause>>;
+  /**
+   * 인자 이름 바꾸기의 사용처 몫 (기능/함수조항 §3.7) — 이 함수조항을 쓰는 문면 템플릿 · 상품 조 사본의 참조 연결 키를 「옛 → 새」로 고친다.
+   * 함수조항 저장과 같은 트랜잭션에서 부른다(편집 저장 액션). 출력이 바뀌지 않아 재검사하지 않는다. `count` = 고친 참조 수.
+   */
+  renameUsageBindings(actor: Actor, code: Code, renames: Record<string, string>): Promise<Result<{ count: number }>>;
 
   // 옵션 — 비파괴 (선택지·옵션 삭제의 사용처 영향은 recheck 로)
   addOption(actor: Actor, code: Code, input: NewOption): Promise<Result<SaveOutcome>>;
@@ -349,6 +354,27 @@ export function createClauseService(db: Db, deps: ClauseServiceDeps = {}): Claus
       });
       return saved.ok ? ok({ ...saved.value, unfolded }) : (saved as Result<SaveOutcome & { unfolded: number }>);
     },
+    renameUsageBindings: (actor, code, renames) =>
+      db.transaction(async (tx) => {
+        const map = new Map(Object.entries(renames).filter(([from, to]) => from !== to));
+        let count = 0;
+        if (map.size === 0) return ok({ count });
+        for (const rec of await documentRepo.listDocumentRecords(tx)) {
+          const u = renameBindingsIn(rec.tree, code, map);
+          if (u.count === 0) continue;
+          await documentRepo.saveDocument(tx, rec.id, { tree: u.node }, actor.userId);
+          count += u.count;
+        }
+        for (const product of await productRepo.listProducts(tx)) {
+          for (const copy of await productRepo.listArticleCopies(tx, product.id)) {
+            const u = renameBindingsIn(copy.article, code, map);
+            if (u.count === 0) continue;
+            await productRepo.upsertArticleCopy(tx, product.id, { ...copy, article: u.node }, actor.userId);
+            count += u.count;
+          }
+        }
+        return ok({ count });
+      }),
     duplicate: (actor, code) =>
       db.transaction((tx) =>
         withClause(tx, code, async (def) => {

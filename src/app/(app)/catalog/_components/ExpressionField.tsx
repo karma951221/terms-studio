@@ -49,6 +49,6 @@ export function useExpressionInsert(value: string, setValue: (next: string) => v
 }
 
 /** 식 `<input>` — 코드 글꼴. 제어형이며 ref 로 커서를 다룬다. */
-export function ExpressionInput({ inputRef, value, onChange, id, name, className, placeholder, required }: { inputRef: RefObject<HTMLInputElement | null>; value: string; onChange: (next: string) => void; id?: string; name?: string; className?: string; placeholder?: string; required?: boolean }) {
-  return <input ref={inputRef} id={id} name={name} type="text" value={value} onChange={(event) => onChange(event.target.value)} className={`ts-mono ${className ?? ""}`} placeholder={placeholder} required={required} autoComplete="off" spellCheck={false} />;
+export function ExpressionInput({ inputRef, value, onChange, id, name, className, placeholder, required, ariaLabel }: { inputRef: RefObject<HTMLInputElement | null>; value: string; onChange: (next: string) => void; id?: string; name?: string; className?: string; placeholder?: string; required?: boolean; ariaLabel?: string }) {
+  return <input ref={inputRef} id={id} name={name} type="text" value={value} onChange={(event) => onChange(event.target.value)} className={`ts-mono ${className ?? ""}`} placeholder={placeholder} required={required} aria-label={ariaLabel} autoComplete="off" spellCheck={false} />;
 }

@@ -40,6 +40,11 @@ export interface ClauseEditData {
   locals?: LocalDef[];
   /** 프리셋 (ADR-0084). 없으면 건드리지 않는다(생성이면 0개). */
   presets?: ClauseEditPreset[];
+  /**
+   * 인자 이름 바꾸기 「옛 → 새」 (기능/함수조항 §3.7) — 본문 · 내부 변수 · 프리셋은 화면이 이미 고쳐 보낸다.
+   * 저장은 같은 트랜잭션에서 사용처 문서의 연결 키를 이 표로 고친다. 없으면 바꾼 이름이 없다.
+   */
+  paramRenames?: Record<string, string>;
 }
 
 export interface ClauseCreateData extends ClauseEditData {

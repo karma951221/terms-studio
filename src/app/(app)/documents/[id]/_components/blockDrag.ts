@@ -4,9 +4,12 @@
  * - 끄는 것 = 블록 하나, 또는 **고른 잇닿은 형제 블록 여럿**(`blockSel`) — 고른 것 가운데 하나를 끌면 고른 것 전부가 간다.
  * - 놓는 자리 = 다른 블록의 앞 · 뒤(그 블록과 같은 목록), 조 제목 위(그 조 맨 앞), 목차의 조(그 조 끝). 조 · 관은 목차에서 끈다.
  * - 허용 자식 규칙(§3.2)에 맞지 않는 자리 · 끄는 블록 자신과 그 하위에는 놓을 수 없다 — 그 자리에서는 놓기 표시가 서지 않는다.
+ * - 함수조항 편집기는 본문을 보이지 않는 자리(조 · 「호」의 자리 항 · 「목」의 자리 항 · 호)로 싼다(기능/함수조항 §6.2) —
+ *   그 자리 노드(`hidden`)는 놓을 자리도 끄는 것도 아니다. 그 안의 호 · 목 목록끼리는 문면과 같은 규칙으로 옮긴다.
  * 명령은 `editOps.moveRangeOps`(옮기기 전 트리 자리 → 차례로 적용해도 순서가 어긋나지 않는 `move` 들).
  */
-import { allowedIn, type NodeKind, type Position, type TreeIndex } from "@/domain/document";
+import type { ClauseMode } from "@/domain/clause";
+import { allowedIn, CLAUSE_ARTICLE_ID, CLAUSE_DOCUMENT_ID, CLAUSE_HOST_ITEM_ID, CLAUSE_HOST_PARAGRAPH_ID, CLAUSE_LINE_ID, type NodeKind, type Position, type TreeIndex } from "@/domain/document";
 import type { Id } from "@/domain/types";
 
 import { selectionRange } from "./editOps";
@@ -31,6 +34,15 @@ export function extendSelection(ix: TreeIndex, blockSel: readonly Id[], id: Id, 
   return range.ids;
 }
 
+/** 함수조항 편집 트리에서 화면에 그리지 않는 자리 노드 — 유형마다 (`clauseBodyToTree`). */
+export function clauseHiddenIds(mode: ClauseMode): ReadonlySet<Id> {
+  const ids: Id[] = [CLAUSE_DOCUMENT_ID, CLAUSE_ARTICLE_ID];
+  if (mode === "inline") ids.push(CLAUSE_LINE_ID);
+  if (mode === "item" || mode === "subitem") ids.push(CLAUSE_HOST_PARAGRAPH_ID);
+  if (mode === "subitem") ids.push(CLAUSE_HOST_ITEM_ID);
+  return new Set(ids);
+}
+
 /** 노드가 끄는 블록 자신이거나 그 하위인가. */
 function inside(ix: TreeIndex, dragging: readonly Id[], id: Id): boolean {
   const path = ix.nodes.get(id)?.path ?? ix.branches.get(id)?.path ?? [];
@@ -39,10 +51,11 @@ function inside(ix: TreeIndex, dragging: readonly Id[], id: Id): boolean {
 
 /**
  * 놓을 자리 — 놓을 수 없으면 undefined. `overId` 는 포인터 아래의 블록(조 제목 · 목차면 조).
- * 앞 · 뒤는 그 블록의 목록에, 맨 앞 · 끝은 그 조의 본문에. 끄는 블록 종류가 모두 그 목록의 허용 자식이어야 한다.
+ * 앞 · 뒤는 그 블록의 목록에, 맨 앞 · 끝은 그 조의 본문에. `hidden`(보이지 않는 자리 노드)은 대상도 끄는 것도 될 수 없다. 끄는 블록 종류가 모두 그 목록의 허용 자식이어야 한다.
  */
-export function dropPosition(ix: TreeIndex, dragging: readonly Id[], overId: Id, where: DropWhere): Position | undefined {
+export function dropPosition(ix: TreeIndex, dragging: readonly Id[], overId: Id, where: DropWhere, hidden: ReadonlySet<Id> = new Set()): Position | undefined {
   if (dragging.length === 0 || inside(ix, dragging, overId)) return undefined;
+  if (hidden.has(overId) || dragging.some((id) => hidden.has(id))) return undefined;
   const kinds = dragging.map((id) => ix.nodes.get(id)?.node.kind).filter((k): k is NodeKind => k !== undefined);
   if (kinds.length !== dragging.length) return undefined;
   const over = ix.nodes.get(overId);
