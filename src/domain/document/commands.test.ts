@@ -317,6 +317,23 @@ describe("텍스트 · 조 명 · 슬롯 · 참조 대상 · 옵션 수정", () 
     expect(rejection(applyCommand(base, { type: "setArticleRef", nodeId: "n8", targets: [{ articleId: "ghost" }], connector: "및", scope: "self" })).reason).toBe("invalid");
   });
 
+  it("setParticle — 조사 칩의 프리셋을 바꾼다, 조사 칩이 아니면 거부", () => {
+    const { b, doc } = twoArticles();
+    const base = unwrap(
+      applyCommand(doc, {
+        type: "insert",
+        node: b.paragraph([b.text("보험금"), b.particle("eul-reul")]), // text n6 · particle n7 · paragraph n8
+        at: { parentId: "n3" },
+      }),
+    );
+    const next = unwrap(applyCommand(base, { type: "setParticle", nodeId: "n7", preset: "i-ga" }));
+    const p = (next.children[0] as ArticleNode).children[1] as ParagraphNode;
+    expect(p.children[1]).toMatchObject({ kind: "particle", preset: "i-ga" });
+    const rej = rejection(applyCommand(base, { type: "setParticle", nodeId: "n6", preset: "i-ga" }));
+    expect(rej.reason).toBe("invalid");
+    if (rej.reason === "invalid") expect(rej.issues[0].message).toBe("조사 칩이 아닙니다");
+  });
+
   it("함수조항 참조 — 게이트가 코드를 모르면 삽입 실패 · 옵션 미선택은 삽입 시 통과(기능/함수조항 §3.2) · 옵션 변경", () => {
     const { b, doc } = twoArticles();
     const gate = {
