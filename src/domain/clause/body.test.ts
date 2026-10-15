@@ -243,6 +243,12 @@ describe("함수조항 S1 — 조 참조 · 별표 참조 검사 (기능/함수�
     expect(issuesOf(analyzeBody("inline", now, [], { generalReferenceKeys: keys, generalRepeatedKeys: repeated }))[0]!.message).toContain("현재 값");
   });
 
+  it("함수조항 본문에는 반복이 없어 키 한정을 쓸 수 없다 (ADR-0087 결정 10)", () => {
+    const keys = new Set(["g-art-1", "g-art-1#P0400"]);
+    const keyed = [조참조([{ articleId: "g-art-1", code: "P0400", restrict: { keys: ["01"] } } as never], "및")];
+    expect(issuesOf(analyzeBody("inline", keyed, [], { generalReferenceKeys: keys, generalRepeatedKeys: new Set(["g-art-1#P0400"]) })).map((i) => i.message)).toEqual(["함수조항 본문에는 반복이 없어 키 한정을 쓸 수 없습니다"]);
+  });
+
   it("별표 코드가 비어 있으면 거부한다 (structure)", () => {
     const issues = issuesOf(analyzeBody("inline", [별표참조("")], []));
     expect(issues.map((i) => i.kind)).toEqual(["structure"]);

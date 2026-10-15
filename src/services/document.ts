@@ -428,8 +428,8 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
           const applied = applyCommands(doc.tree, commands, { env, newId });
           if (!applied.ok) return applied;
           const tree = applied.value;
-          const issues = validateTree(tree, env);
           const { resolve, scope } = await scopeOf(tx, doc);
+          const issues = validateTree(tree, scope.coverage ? { ...env, coverage: scope.coverage } : env);
           issues.push(...validateExpressions(tree, resolve, env.coordinate, scope));
           if (issues.length > 0) return invalid(issues);
           await repo.saveDocument(tx, id, { tree: withCodes(tree), title: tree.title }, actor.userId);

@@ -97,7 +97,9 @@ export interface DocumentChecks {
 
 /** 문서 전체 검증 — 오류 + 반복 표 경고. */
 export function validateDocument(tree: DocumentNode, checks: DocumentChecks): Issue[] {
-  const { env, resolve, scope } = checks;
+  const { resolve, scope } = checks;
+  // 문맥 담보는 식 검사(scope)와 조 참조 키 한정 검사(env)가 같이 쓴다 — 한 번 실어 준다 (ADR-0087 결정 10)
+  const env = scope.coverage && !checks.env.coverage ? { ...checks.env, coverage: scope.coverage } : checks.env;
   const issues = validateTree(tree, env);
   issues.push(...validateExpressions(tree, resolve, env.coordinate, scope));
   issues.push(...nodeBindingIssues(tree, env.clauseGate, scope, env.coordinate));

@@ -26,7 +26,8 @@ import { enumFieldValue } from "../catalog/fields";
 import type { EnumDef } from "../catalog/types";
 import type { Clause } from "../clause/types";
 import { checkPlanOptionFilter, type LoopElementType } from "../clause/params";
-import { belowLoop, LEVEL_WORD } from "../coverage/keys";
+import { belowLoop, LEVEL_WORD, nodeByKeyPath } from "../coverage/keys";
+import type { Coverage } from "../coverage/types";
 import { extractRefs, parse, refPath, type Expr, type ExprType, type Ref, type TypeResolver } from "../expression";
 import { findMasterField, formsOfLevel, MASTER, type MasterTree } from "../master";
 import type { AttachLevel, Code, Coordinate, Id, Issue } from "../types";
@@ -296,6 +297,8 @@ export interface RefTargetEnv {
   clauseOf?: (code: Code) => Clause | undefined;
   enumOf?: (code: Code) => EnumDef | undefined;
   master?: MasterTree;
+  /** 문맥 담보 — 키 한정의 키 존재 검사 (ADR-0087 결정 10). 없으면 건너뛴다. */
+  coverage?: Coverage;
 }
 
 /** 함수조항 본문이 내놓는 참조 대상 코드(항 · 호 · 목) — 코드 없는 자리는 저장 · 펼치기 채번과 같은 규칙으로 채운 뒤. */
@@ -326,11 +329,27 @@ export function valueLoopEnum(ix: TreeIndex, t: { articleId: Id; code?: Code }, 
   return enumCode;
 }
 
+/** 대상(안쪽 코드면 그 참조 노드)이 선 담보 트리 반복 — 안쪽 것. 대상이 트리 반복 블록 자신이면 그 블록. 없으면 undefined (ADR-0087 결정 10). */
+export function treeLoopOfTarget(ix: TreeIndex, t: { articleId: Id; code?: Code }): { loop: Id; level: "subCoverage" | "benefit" } | undefined {
+  if (t.code === undefined) return undefined;
+  let found: { loop: Id; level: "subCoverage" | "benefit" } | undefined;
+  for (const id of nodesOfTarget(ix, { articleId: t.articleId, code: t.code })) {
+    const h = ix.nodes.get(id);
+    if (!h) continue;
+    const loops = treeLoopLevelsAt(ix, h);
+    if (h.node.kind === "forBlock" && isRepeatSource(h.node.source) && isTreeSource(h.node.source)) loops.push({ loop: h.node.id, level: h.node.source.kind === "subCoverages" ? "subCoverage" : "benefit" });
+    if (loops.length > 0) found = loops.at(-1);
+  }
+  return found;
+}
+
 /**
  * 이 문서 안 참조 대상 하나의 검사 (ADR-0077 결정 6 · 7) — 존재는 호출부(`referenceKeys`)가 본다.
  * - 안쪽 코드: 대상 코드가 함수조항 블록 참조여야 하고, 그 함수조항 본문에 그 코드가 있어야 한다.
  * - 값 한정: 대상(안쪽 코드면 그 참조 노드)이 원소가 열거값인 반복 안(또는 그 반복 블록)이어야 한다. 해당 값들 = 비지 않은 그 열거형의 값,
  *   현재 값 = 참조 자리를 감싼 열거값 반복.
+ * - 키 한정 (ADR-0087 결정 10): 대상이 담보 트리 반복 안(또는 그 반복 블록)이어야 한다. 키는 하나 이상 · 「세부보장마다」 대상엔 세부보장 키만 ·
+ *   문맥 담보에 없는 키 = 「없는 키」. 트리 반복 대상의 「현재」 = 참조 자리를 감싼 담보 트리 반복.
  */
 export function refTargetIssues(t: { articleId: Id; code?: Code; innerCode?: Code; restrict?: unknown }, refEntry: Pick<NodeEntry, "path" | "node">, ix: TreeIndex, env: RefTargetEnv): { kind: Issue["kind"]; message: string }[] {
   const out: { kind: Issue["kind"]; message: string }[] = [];
@@ -345,7 +364,22 @@ export function refTargetIssues(t: { articleId: Id; code?: Code; innerCode?: Cod
     }
   }
   if (t.restrict === undefined) return out;
-  const r = t.restrict as { values?: unknown; current?: unknown };
+  const r = t.restrict as { values?: unknown; current?: unknown; keys?: unknown };
+  const tree = treeLoopOfTarget(ix, t);
+  if (Array.isArray(r.keys)) {
+    if (heads.length > 0 && !tree) return [...out, { kind: "structure", message: "키 한정은 담보 트리 반복으로 생긴 노드에만 건다 — 이 대상은 그런 반복 안이 아닙니다" }];
+    const keys = r.keys.filter((k): k is string => typeof k === "string");
+    if (keys.length === 0) return [...out, { kind: "structure", message: "키 한정의 키를 하나 이상 고른다" }];
+    if (tree?.level === "subCoverage" && keys.some((k) => k.includes("."))) out.push({ kind: "structure", message: "「세부보장마다」 반복 대상에는 세부보장 키만 고른다" });
+    const coverage = env.coverage;
+    const missing = coverage ? keys.filter((k) => !nodeByKeyPath(coverage, k)) : [];
+    if (missing.length > 0) out.push({ kind: "brokenRef", message: `없는 키 ${missing.join(" · ")} — 문맥 담보에 그 세부보장 · 급부가 없습니다` });
+    return out;
+  }
+  if (typeof r.current === "string" && tree) {
+    if (!treeLoopLevelsAt(ix, refEntry).some((l) => l.loop === r.current)) out.push({ kind: "structure", message: "키 한정 「현재」의 반복이 이 참조를 감싸지 않습니다 — 그 담보 트리 반복 안에서만 쓴다" });
+    return out;
+  }
   const enumCode = valueLoopEnum(ix, t, master);
   if (heads.length > 0 && enumCode === undefined) {
     out.push({ kind: "structure", message: "값 한정은 원소가 열거값(사유)인 반복으로 생긴 노드에만 건다 — 이 대상은 그런 반복 안이 아닙니다" });
