@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { articleHash } from "../product/articleCopies";
+import type { EnumDef } from "../catalog/types";
+import type { RepeatSource } from "./blockRepeat";
+import { nodeBuilders, sequentialIds } from "./builders";
 import { applyCommand } from "./commands";
 import { numberTree, referenceTargetIndex } from "./numbering";
-import { validateTree, type ArticleNode, type DocumentNode, type InlineNode } from "./nodes";
+import { validateTree, type ArticleNode, type DocumentNode, type InlineForNode, type InlineNode, type TreeEnv } from "./nodes";
 import { foldTitle, normalizeArticle, normalizeTitle, relabelTitle, textOnlyTitle, titleKindMessage, titleNodes, TITLE_INLINE, withInlineTitles } from "./title";
 
 const text = (id: string, t: string): InlineNode => ({ id, kind: "text", text: t });
@@ -70,7 +73,7 @@ describe("조 제목 = 인라인 노드 목록 (ADR-0088 결정 1 ①)", () => {
 
 describe("조 제목에 서는 인라인 (ADR-0088 결정 5)", () => {
   it("글 · 인라인 조건 · 슬롯 · 조사만 — 조 참조 · 별표 · 함수조항 · 구조 표기는 막는다", () => {
-    expect([...TITLE_INLINE].sort()).toEqual(["inlineCond", "particle", "slot", "text"]);
+    expect([...TITLE_INLINE].sort()).toEqual(["inlineCond", "inlineFor", "particle", "slot", "text"]);
   });
 });
 
@@ -180,3 +183,55 @@ describe("편집기 대상 고르기 · 참조 칩의 조 명은 접은 제목 (
     expect(referenceTargetIndex(s, numberTree(s), { fold: { slotLabel: () => "감액기간문구" } }).get("a1")).toMatchObject({ article: { title: "〔감액기간문구〕" } });
   });
 });
+
+const 종마다: RepeatSource = { kind: "planOptions", form: "waiver", filter: "waiver.applies = true" };
+const 정의조대상마다: RepeatSource = { kind: "union", form: "waiver", filter: "waiver.applies = true", field: "reasons", where: { field: "F03", value: true } };
+const E0001: EnumDef = {
+  code: "E0001",
+  label: "납입면제사유",
+  fields: [
+    { key: "F01", label: "약관표시명", type: "string", order: 1 },
+    { key: "F03", label: "정의조대상", type: "boolean", order: 2 },
+  ],
+  values: [{ code: "V01", label: "암", order: 0, fields: { F01: "암(유사암제외)", F03: true } }],
+};
+const env: TreeEnv = { enumOf: (c) => (c === "E0001" ? E0001 : undefined) };
+const make = () => nodeBuilders(sequentialIds("n"));
+const messages = (issues: { message: string }[]) => issues.map((i) => i.message);
+
+describe("조 제목의 인라인 반복 (ADR-0088 결정 1 · 5 · 6)", () => {
+  it("제목 허용 인라인에 든다 — 원천은 세목 선택지 · 합집합만", () => {
+    expect(TITLE_INLINE).toContain("inlineFor");
+    const b = make();
+    const ok = b.document("d", [b.article([b.inlineFor(정의조대상마다, [b.slot("builtin.value.F01")], { connector: "및" }), b.text("의 정의 및 진단확정")], [])]);
+    expect(validateTree(ok, env)).toEqual([]);
+    const bad = b.document("d", [b.article([b.inlineFor({ kind: "listOfCurrent", loop: "x", field: "reasons" }, [b.text("x")], { connector: "및" })], [])]);
+    expect(messages(validateTree(bad, env))).toEqual([expect.stringContaining("조 제목")]);
+  });
+
+  it("제목 반복 본문 · 칸 안의 조 참조는 막는다", () => {
+    const b = make();
+    const doc = b.document("d", [
+      b.article("x", []),
+      b.article([b.inlineFor(종마다, [b.text("a")], { connector: "및", fallback: [b.articleRef("n1")] })], []),
+    ]);
+    expect(messages(validateTree(doc, env))).toEqual([expect.stringContaining("조 제목에는")]);
+  });
+
+  it("접은 제목은 반복 이름 — 「〔납입면제사유 합집합(정의조대상 = 예)마다〕의 정의 및 진단확정」, 별칭이 있으면 별칭", () => {
+    const b = make();
+    const title = [b.inlineFor(정의조대상마다, [b.slot("builtin.value.F01")], { connector: "및" }), b.text("의 정의 및 진단확정")];
+    expect(foldTitle(title, { enumOf: env.enumOf })).toBe("〔납입면제사유 합집합(정의조대상 = 예)마다〕의 정의 및 진단확정");
+    expect(foldTitle([b.inlineFor(종마다, [], { connector: "및", alias: "납입면제사유마다" })])).toBe("〔납입면제사유마다〕");
+  });
+
+  it("제목 id 다시 짓기는 반복 본문 · 칸까지", () => {
+    const b = make();
+    const title = [b.inlineFor(종마다, [b.text("a")], { connector: "및", fallback: [b.text("b")] })];
+    const out = relabelTitle(title, "a9");
+    expect(JSON.stringify(out)).toBe(
+      JSON.stringify([{ ...title[0], id: "a9.title", children: [{ ...(title[0] as InlineForNode).children[0], id: "a9.title1" }], fallback: [{ ...(title[0] as InlineForNode).fallback![0], id: "a9.title2" }] }]),
+    );
+  });
+});
+
