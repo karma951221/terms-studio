@@ -2976,6 +2976,19 @@ label.ts-field > textarea:where(:not([data-slot])) {
   color: var(--ts-ink-3);
 }
 
+/* 함수조항 내부 변수 식 넣기 패널 — 표 아래, 마지막에 누른 식 칸(굵은 왼쪽 선)에 넣는다 (기능/함수조항 §4.3) */
+.ts-local-insert {
+  margin-top: 10px;
+}
+
+.ts-local-insert .ts-insert-body {
+  max-height: 240px;
+}
+
+.ts-clause-params-table tr.is-active > td:first-child {
+  box-shadow: inset 2px 0 0 var(--ts-mark);
+}
+
 .ts-insert-operators {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

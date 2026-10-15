@@ -846,7 +846,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
             before={
               <>
                 <ParamsPane params={shownParams} editing={editing} onChange={setParams} discriminators={data.condition.discriminators} enums={data.enums} forms={data.planForms} />
-                <LocalsPane locals={shownLocals} editing={editing} onChange={setLocals} />
+                <LocalsPane locals={shownLocals} editing={editing} onChange={setLocals} params={shownParams} enums={data.enums} />
               </>
             }
             after={
