@@ -2350,6 +2350,8 @@ td.col-act {
   border: 0;
 }
 
+/* 조 참조 대상 트리 — 검색칸 아래 값 열에 (라벨 열 120px 로 떨어지면 깊은 줄의 체크박스가 가려진다) */
+.ts-form-row > .ts-ref-search + .ts-ref-tree,
 /* 인자 연결 — 콤보 아래 「상수 직접 입력」(문자 · 숫자 · 날짜 인자, 기능/함수조항 §4.4) */
 .ts-form-row > .ts-arg-const,
 .ts-preset-row > .ts-arg-const,
@@ -3173,6 +3175,14 @@ label.ts-field > textarea:where(:not([data-slot])) {
 .ts-doc-item::before {
   content: counter(ts-doc-item) ". ";
   color: var(--ts-ink-2);
+}
+
+/* 호 · 목 목록 자리의 블록(조건 가지 · 값별 칸 · 반복 본문) 안 목록 — 번호를 새로 세지 않고 바깥 번호를 잇는다 */
+.ts-doc-list-cont {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  text-indent: 0;
 }
 
 /* 목 가.나.다. */
@@ -4037,6 +4047,11 @@ button:where(:not([data-slot])).ts-ref-fold:hover {
 }
 
 .ts-ref-code {
+  /* 좁은 줄에서도 체크박스가 가려지지 않게 코드가 먼저 줄어든다 (기능/문면 §4.3 — 줄마다 체크박스) */
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   margin-left: 8px;
 }
 
