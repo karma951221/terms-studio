@@ -114,7 +114,9 @@ export function collectRefs(doc: DocumentNode, base: Coordinate = {}): DocRef[] 
       case "boxRef":
         out.push({ kind: "box", boxCode: n.boxCode, at });
         break;
-      case "forBlock": {
+      // 반복 원천이 읽는 마스터 필드 — 블록 반복 · 인라인 반복(ADR-0088 — 같은 RepeatSource) 공통
+      case "forBlock":
+      case "inlineFor": {
         const src = n.source;
         if (!isRepeatSource(src)) break;
         const field = (path: string, where?: Code) => out.push({ kind: "repeatSource", path, ...(where !== undefined ? { where } : {}), at: { ...at, refPath: path } });

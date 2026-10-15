@@ -159,3 +159,27 @@ describe("코드 수정 창의 영향 건수 — 이 문서 안에서 깨지는 
     expect(codeChangeBreaks(doc, plain.id, "P0200")).toBe(0);
   });
 });
+
+describe("참조 그래프 — 인라인 반복 원천 간선 (기능/문면 §3.7 · ADR-0088)", () => {
+  it("합집합 원천 필드 · 거름 필드 · 거름 식의 마스터 필드가 repeatSource 로 난다 — 블록 반복과 같은 간선", () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    const source = { kind: "union" as const, form: "waiver", filter: "waiver.applies = true", field: "reasons", where: { field: "F03", value: true } };
+    const doc = b.document("d", [b.article("a", [b.paragraph([b.inlineFor(source, [b.text("a")], { connector: "및" })])])]);
+    const refs = collectRefs(doc).flatMap((r) => (r.kind === "repeatSource" ? [[r.path, r.where]] : []));
+    expect(refs).toEqual([
+      ["waiver.reasons", "F03"],
+      ["waiver.applies", undefined],
+    ]);
+  });
+
+  it("블록 반복 안 목록 원천은 바깥 종 반복의 폼 필드로 · 조 제목의 반복도 수집한다", () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    const inline = b.inlineFor({ kind: "listOfCurrent", loop: "?", field: "reasons" }, [b.text("a")], { connector: "및" });
+    const outer = b.forBlock({ kind: "planOptions", form: "waiver" }, [b.paragraph([inline])]);
+    inline.source = { kind: "listOfCurrent", loop: outer.id, field: "reasons" };
+    const title = b.inlineFor({ kind: "union", form: "waiver", field: "reasons" }, [b.text("t")], { connector: "및" });
+    const doc = b.document("d", [b.article([title], [outer])]);
+    const refs = collectRefs(doc).flatMap((r) => (r.kind === "repeatSource" ? [`${r.path}@${r.at.nodePath?.at(-1)}`] : []));
+    expect(refs).toEqual([`waiver.reasons@${title.id}`, `waiver.reasons@${inline.id}`]);
+  });
+});
