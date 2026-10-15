@@ -10,7 +10,7 @@
  * 타입 조회(`TypeResolver`)는 카탈로그 정의로 서비스가 만든다.
  */
 
-import { findNodeById } from "../coverage/tree";
+import { nodeByKeyPath } from "../coverage/keys";
 import type { Coverage } from "../coverage/types";
 import { checkCondition, checkTypes, extractRefs, parse } from "../expression";
 import type { Expr, TypeResolver } from "../expression";
@@ -24,7 +24,7 @@ export interface ExpressionScope {
   levelOf?: (code: Code) => AttachLevel | undefined;
 }
 
-/** `@노드` 규칙 (ADR-0066 §2 · §3): 담보 약관에서만 · 노드가 트리에 있어야 · 노드 레벨 = 구분자 레벨. */
+/** `@키경로` 규칙 (ADR-0066 §2 · §3, ADR-0087): 담보 약관에서만 · 키 경로가 트리에 있어야 · 노드 레벨 = 구분자 레벨. */
 function checkNodeQualifiers(expr: Expr, scope: ExpressionScope, at: Coordinate): Issue[] {
   const issues: Issue[] = [];
   for (const { ref, path } of extractRefs(expr)) {
@@ -34,16 +34,16 @@ function checkNodeQualifiers(expr: Expr, scope: ExpressionScope, at: Coordinate)
       issues.push({ kind: "brokenRef", message: `노드 한정자 ${path} 는 담보 약관 문서에서만 쓸 수 있습니다 (문맥 담보 없음)`, at: here });
       continue;
     }
-    const node = findNodeById(scope.coverage, ref.node.id);
+    const node = nodeByKeyPath(scope.coverage, ref.node.path);
     if (!node) {
-      issues.push({ kind: "brokenRef", message: `문맥 담보에 노드 ${ref.node.id} 가 없습니다 — 끊어진 참조`, at: here });
+      issues.push({ kind: "brokenRef", message: `문맥 담보에 키 경로 ${ref.node.path} 가 없습니다 — 끊어진 참조`, at: here });
       continue;
     }
     const level = scope.levelOf?.(ref.code);
     if (level !== undefined && level !== node.level) {
       issues.push({
         kind: "typeMismatch",
-        message: `${ATTACH_LEVEL_LABEL[level]} 레벨 구분자 ${ref.code} 를 ${ATTACH_LEVEL_LABEL[node.level]} 「${node.name}」 에 붙일 수 없습니다`,
+        message: `${ATTACH_LEVEL_LABEL[level]} 레벨 구분자 ${ref.code} 를 ${ATTACH_LEVEL_LABEL[node.level]} ${node.keyPath} 「${node.name}」 에 붙일 수 없습니다`,
         at: here,
       });
     }

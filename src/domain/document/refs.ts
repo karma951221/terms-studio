@@ -13,8 +13,8 @@ import { articleRefsOf, coordinateOf, indexTree, type ArticleRefNode, type Claus
 import { refKey } from "./pcode";
 
 export type DocRef =
-  /** `node` = 노드 한정자 `D@노드` (ADR-0066) — 담보 마스터 노드 id. */
-  | { kind: "discriminator"; code: Code; node?: { id: Id }; path: string; via: "when" | "slot"; at: Coordinate }
+  /** `node` = 노드 한정자 `D@키경로` (ADR-0087) — 담보 노드 키 경로. */
+  | { kind: "discriminator"; code: Code; node?: { path: string }; path: string; via: "when" | "slot"; at: Coordinate }
   /** 마스터 필드 직접 참조 — 문면에서는 금지다 (ADR-0037). 나와도 그래프에 깨진 참조로 남긴다. */
   | { kind: "masterField"; path: string; via: "when" | "slot"; at: Coordinate }
   | { kind: "attribute"; code: Code; path: string; at: Coordinate }
@@ -58,7 +58,7 @@ export function collectRefs(doc: DocumentNode, base: Coordinate = {}): DocRef[] 
       const here = { ...at, refPath: path };
       switch (ref.kind) {
         case "discriminator":
-          out.push({ kind: "discriminator", code: ref.code, ...(ref.node ? { node: { id: ref.node.id } } : {}), path, via, at: here });
+          out.push({ kind: "discriminator", code: ref.code, ...(ref.node ? { node: { path: ref.node.path } } : {}), path, via, at: here });
           break;
         case "master":
           out.push({ kind: "masterField", path, via, at: here });

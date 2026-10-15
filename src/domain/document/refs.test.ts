@@ -90,4 +90,12 @@ describe("조 참조 인자 연결도 문서의 조 참조로 센다 (ADR-0083 �
     const refs = collectRefs(doc).filter((r) => r.kind === "article");
     expect(refs).toEqual([expect.objectContaining({ kind: "article", articleId: "a1", scope: "self", at: expect.objectContaining({ nodePath: ["d", "a2", "k"], refPath: "a1" }) })]);
   });
+
+  it("노드 한정자 D0007@01 은 키 경로로 수집된다 (ADR-0087)", () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    const doc = b.document("d", [b.condBlock([b.branch("D0007@01 = true", [b.article("x", [])])])]);
+    expect(collectRefs(doc).filter((r) => r.kind === "discriminator")).toEqual([
+      expect.objectContaining({ kind: "discriminator", code: "D0007", node: { path: "01" } }),
+    ]);
+  });
 });
