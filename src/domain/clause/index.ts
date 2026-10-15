@@ -10,6 +10,7 @@
  * - params.ts      : 인자 · 인자 연결 · 기본 연결 (검사 ① 인자 표 · 검사 ② 사용처 연결)
  * - bind.ts        : applyBindings — 펼치기 전에 arg.X 를 연결로 바꿔 쓴다
  * - locals.ts      : 내부 변수 (검사 ① 내부 변수 표 · 펼칠 때 사용처 문맥 평가 localScope)
+ * - rename.ts      : 인자 · 내부 변수 이름 바꾸기 — 본문 · 내부 변수 · 프리셋 안쪽을 한 번에
  */
 export * from "./bind";
 export * from "./body";
@@ -21,4 +22,5 @@ export * from "./params";
 export * from "./pcode";
 export * from "./presets";
 export * from "./reference";
+export * from "./rename";
 export * from "./types";

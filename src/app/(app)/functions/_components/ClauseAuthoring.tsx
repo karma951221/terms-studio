@@ -40,7 +40,7 @@ import { CLAUSE_LINE_TOOLS, CLAUSE_TOOLS, allTools, itemsFor, type ToolId } from
 import { switchSubjectsOf } from "@/app/(app)/documents/[id]/_components/switchCases";
 import { clauseHiddenIds } from "@/app/(app)/documents/[id]/_components/blockDrag";
 import { useBlockDrag } from "@/app/(app)/documents/[id]/_components/useBlockDrag";
-import type { ClauseBody, ClauseMode, LocalDef, ParamDef, RequiredRefs } from "@/domain/clause";
+import { normalizeRenames, renameInBody, renameInLocals, renameInPresets, type ClauseBody, type ClauseMode, type LocalDef, type ParamDef, type RequiredRefs } from "@/domain/clause";
 import { formatCoordinate } from "@/domain/coordinate";
 import {
   CLAUSE_HOST_ITEM_ID,
@@ -82,6 +82,7 @@ import { LocalsPane } from "./LocalsPane";
 import { paramEntries } from "./params";
 import { ParamsPane } from "./ParamsPane";
 import { PresetsPane } from "./PresetsPane";
+import { originsOf, renamesFrom, trackOrigins } from "./renames";
 
 export interface ClauseAuthoringProps {
   /** 없으면 생성 화면(`/functions/new`). */
@@ -232,7 +233,10 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   };
   const [params, setParamsState] = useState<ParamDef[]>(props.params);
   const paramsRef = useRef(params);
+  // 인자 · 내부 변수 줄마다 저장된 옛 이름 — 저장 때 「옛 → 새」 표가 된다 (이름 바꾸기 자동 수정, 기능/함수조항 §3.7)
+  const paramOrigins = useRef(originsOf(props.params));
   const setParams = (next: ParamDef[]) => {
+    paramOrigins.current = trackOrigins(paramsRef.current, next, paramOrigins.current, props.params.map((p) => p.name));
     paramsRef.current = next;
     setParamsState(next);
   };
@@ -245,7 +249,9 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   };
   const [locals, setLocalsState] = useState<LocalDef[]>(props.locals);
   const localsRef = useRef(locals);
+  const localOrigins = useRef(originsOf(props.locals));
   const setLocals = (next: LocalDef[]) => {
+    localOrigins.current = trackOrigins(localsRef.current, next, localOrigins.current, props.locals.map((l) => l.name));
     localsRef.current = next;
     setLocalsState(next);
   };
@@ -592,6 +598,8 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     setOptions(props.options);
     setParams(props.params);
     setLocals(props.locals);
+    paramOrigins.current = originsOf(props.params);
+    localOrigins.current = originsOf(props.locals);
     setPresets(savedPresets);
     setEditing(true);
     setBanner(undefined);
@@ -615,7 +623,21 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
     }
     // 쓴 것이 없는 본문(처음 빈 항 하나)은 빈 본문으로 — 빈 항을 저장하지 않는다
     const params = paramsRef.current.map((p) => ({ ...p, name: p.name.trim() }));
-    const payload = { label: label.trim(), body: blankBody(body.value) ? [] : body.value, options: optionsRef.current, params, locals: localsForSave(params, localsRef.current, data.enums), presets: presetsKeepingParams(presetsRef.current, params) };
+    // 이름 바꾸기 — 본문 식 · 슬롯 · 분기 대상 · 조 참조 인자 슬롯, 뒤 내부 변수, 프리셋을 새 이름으로 고쳐 보내고, 사용처 연결 키는 저장이 고친다 (§3.7)
+    const renames = normalizeRenames(
+      { params: renamesFrom(paramOrigins.current, paramsRef.current), locals: renamesFrom(localOrigins.current, localsRef.current) },
+      { params: params.map((p) => p.name), locals: localsRef.current.map((l) => l.name.trim()) },
+    );
+    const renamedBody = renameInBody(blankBody(body.value) ? [] : body.value, renames);
+    const payload = {
+      label: label.trim(),
+      body: renamedBody,
+      options: optionsRef.current,
+      params,
+      locals: localsForSave(params, renameInLocals(localsRef.current, renames), data.enums),
+      presets: presetsKeepingParams(renameInPresets(presetsRef.current, renames), params),
+      ...(Object.keys(renames.params).length > 0 ? { paramRenames: renames.params } : {}),
+    };
     startTransition(async () => {
       const out = code === undefined ? await createClauseAction({ ...payload, mode: clauseMode }) : await saveClauseEditAction(code, payload);
       if (!out.ok) {
