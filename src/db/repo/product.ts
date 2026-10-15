@@ -27,7 +27,6 @@ import type { Code, Id } from "@/domain/types";
 import {
   attributeKinds,
   attributeValues,
-  benefits,
   clauseOptionOverrides,
   codeSequences,
   namingTemplates,
@@ -42,7 +41,6 @@ import {
   productPlanOptions,
   productPlans,
   products,
-  subCoverages,
 } from "../schema";
 import type { Db } from "./types";
 
