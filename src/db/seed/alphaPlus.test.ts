@@ -104,6 +104,13 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     expect(Object.fromEntries(await services.product.getPlanOptionValues(option("form", 1).id))).toEqual({ "no_surrender.type": { entered: true, value: "V01" } });
     expect(Object.fromEntries(await services.product.getPlanOptionValues(option("form", 2).id))).toEqual({ "no_surrender.type": { entered: true, value: "V03" } });
 
+    // 열거형 전부가 시드 JSON 그대로 — 생성 한 번에 이름 · 값 · 필드를 넣어도(빈자리 값만 상세 저장) 결과가 같다 (기능/열거형 §4.2)
+    for (const seed of enumsSeed as unknown as Array<{ code: string; label: string; fields?: Array<{ key: string; label: string; type: string }>; values: Array<{ code: string; label: string; fields?: Record<string, unknown> }> }>) {
+      const got = await services.catalog.getEnum(seed.code);
+      expect([got?.label, got?.fields?.map((f) => [f.key, f.label, f.type]) ?? []]).toEqual([seed.label, (seed.fields ?? []).map((f) => [f.key, f.label, f.type])]);
+      expect(got?.values.map((v) => [v.code, v.label, v.fields ?? {}])).toEqual(seed.values.map((v) => [v.code, v.label, v.fields ?? {}]));
+    }
+
     // 특약 그룹 — 열거형 「특약 그룹」(E0008) 값 순서 = 책자 순서, 담보마다 하나(기본계약 담보는 없음) (ADR-0080)
     // 원문 특별약관 Ⅰ ~ Ⅴ 의 묶음 — 알파Plus2607 자동 탑재 특약이 Ⅲ 상해 및 질병 · Ⅳ 비용손해 · Ⅴ 기타를 더했다
     expect((await services.catalog.getEnum("E0008"))?.values.map((v) => [v.code, v.label])).toEqual(enumsSeed.find((e) => e.code === "E0008")!.values.map((v) => [v.code, v.label]));

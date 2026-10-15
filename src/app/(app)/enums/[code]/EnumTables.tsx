@@ -5,13 +5,23 @@ import { useRef } from "react";
 import { useEditField } from "@/app/_components/EditShell";
 import { ADD_ROW_LABEL, ValueRowsTable, moveItem, type ValueRowsColumn } from "@/app/_components/ValueRowsTable";
 import { FIELD_LABEL, TYPE_LABEL } from "@/app/_lib/labels";
-import { ENUM_FIELD_TYPES, type EnumFieldType, type EnumFieldValue } from "@/domain/catalog";
+import { ENUM_FIELD_TYPES, enumValueLabelKey, type EnumFieldType, type EnumFieldValue } from "@/domain/catalog";
 
 import type { EnumEditField, EnumEditValue } from "../edit-types";
 
 const isNew = (key: string) => key.startsWith("new:");
 
 const NEW_FIELD = "새 필드";
+/** 같은 값 이름이 둘 이상인 행의 코드 — 동일성은 서버와 같은 `enumValueLabelKey`(공백 · 대소문자 무시). 빈 칸끼리는 중복이 아니다. */
+export function duplicateValueCodes(values: readonly EnumEditValue[]): Set<string> {
+  const counts = new Map<string, number>();
+  for (const value of values) {
+    const key = enumValueLabelKey(value.label);
+    if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return new Set(values.filter((value) => (counts.get(enumValueLabelKey(value.label)) ?? 0) > 1).map((value) => value.code));
+}
+
 const NEW_VALUE = "새 값";
 
 /** 읽기 칸 — 참거짓은 예 · 아니오, 빈 칸(미입력)은 「—」. */
@@ -96,15 +106,21 @@ function FieldCell({ value, field, onChange, disabled }: { value: EnumEditValue;
  * 저장된 값 행도 ⊖ 로 초안에서 뺀다 — 서버 삭제는 저장 때, 영향 확인도 그때 한 번 (디자인원칙 §2 L2 표 · 점검 2026-09-27 D2).
  * 빈 채로 남은 새 행은 저장 때 버린다. 빼는 값의 영향은 저장 확인이 말한다 — 사용 수 열은 두지 않는다(사용처는 관계정보 메뉴, 2026-10-01).
  * 입력률 카운트는 두지 않는다 (화면 편집 원칙) — 빈 칸은 「—」로 보일 뿐이다.
+ * `highlight` — 오류의 「고치러 가기」(`/enums/<코드>?value=V03`)가 가리킨 값 행을 강조한다.
+ * 편집 중 같은 이름이 둘 이상이면 그 행들에 「중복된 값입니다.」 — 서버도 거부한다(생성 화면은 그동안 「생성」을 잠근다).
+ * 상세 편집과 생성 화면이 같이 쓴다(기능/열거형 §4.2 · §4.3).
  */
-export function ValuesEditor() {
+export function ValuesEditor({ highlight }: { highlight?: string } = {}) {
   const field = useEditField<EnumEditValue[]>("values");
   const fieldDefs = useEditField<EnumEditField[] | undefined>("fields").value ?? [];
   const next = useRef(1);
   const inputs = useRef(new Map<string, HTMLInputElement>());
   const edit = field.mode === "edit";
+  const duplicates = edit ? duplicateValueCodes(field.value) : new Set<string>();
   const add = () => {
-    const code = `new:${next.current++}`;
+    // 생성 화면은 빈 새 행(`new:1` · `new:2`)으로 시작한다 — 겹치지 않는 키를 고른다
+    let code = `new:${next.current++}`;
+    while (field.value.some((value) => value.code === code)) code = `new:${next.current++}`;
     field.update((current) => [...current, { code, label: "" }]);
   };
   const setCell = (code: string, key: string, cell: EnumFieldValue | undefined) =>
@@ -118,7 +134,8 @@ export function ValuesEditor() {
   const columns: ValueRowsColumn<EnumEditValue>[] = [
     { key: "label", header: FIELD_LABEL.valueName, className: "col-flex", cell: (value, index) => !edit
       ? <span className="ts-field-locked">{value.label}</span>
-      : <input value={value.label} aria-label={`${FIELD_LABEL.valueName}${isNew(value.code) ? "" : ` ${value.code}`}`} ref={(el) => { if (el) inputs.current.set(value.code, el); else inputs.current.delete(value.code); }} onChange={(event) => field.update((current) => current.map((item) => item.code === value.code ? { ...item, label: event.target.value } : item))} onKeyDown={(event) => { if (event.key !== "Enter" || event.nativeEvent.isComposing) return; event.preventDefault(); if (index === field.value.length - 1) add(); else inputs.current.get(field.value[index + 1]!.code)?.focus(); }} className="ts-field-direct" /> },
+      : <><input value={value.label} aria-invalid={duplicates.has(value.code) || undefined} aria-label={`${FIELD_LABEL.valueName}${isNew(value.code) ? "" : ` ${value.code}`}`} ref={(el) => { if (el) inputs.current.set(value.code, el); else inputs.current.delete(value.code); }} onChange={(event) => field.update((current) => current.map((item) => item.code === value.code ? { ...item, label: event.target.value } : item))} onKeyDown={(event) => { if (event.key !== "Enter" || event.nativeEvent.isComposing) return; event.preventDefault(); if (index === field.value.length - 1) add(); else inputs.current.get(field.value[index + 1]!.code)?.focus(); }} className="ts-field-direct" placeholder={index === 0 ? "예: 일반심사" : undefined} />
+        {duplicates.has(value.code) ? <p className="ts-form-error">중복된 값입니다.</p> : null}</> },
     ...fieldDefs.map((def): ValueRowsColumn<EnumEditValue> => ({ key: `f:${def.key}`, header: def.label || NEW_FIELD, className: "col-fixed-md", cell: (value) => edit ? <FieldCell value={value} field={def} disabled={field.pending} onChange={(cell) => setCell(value.code, def.key, cell)} /> : cellText(value.fields?.[def.key]) })),
   ];
   return <ValueRowsTable
@@ -132,6 +149,7 @@ export function ValuesEditor() {
     onAdd={add}
     onRemove={(value) => field.update((current) => current.filter((item) => item.code !== value.code))}
     onMove={(from, to) => field.update((current) => moveItem(current, from, to))}
+    rowClassName={(value) => (duplicates.has(value.code) ? "is-error" : highlight !== undefined && value.code === highlight ? "is-highlighted" : undefined)}
     columns={columns}
   />;
 }

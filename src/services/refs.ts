@@ -239,20 +239,6 @@ export function catalogImpactSource(db: Db): ImpactSource {
       const graph = await loadGraph(db);
       return usagesOf(graph, impactKey(target), { via: REFERENCE_VIAS }).map((e) => e.at);
     },
-    async purgeValueRows(target) {
-      switch (target.kind) {
-        case "discriminator":
-          return values.purgeValueRows(target);
-        case "enum":
-          return valuesRepo.purgePathRows(db, enumSlots(target.enumCode).map((s) => s.path));
-        case "enumValue":
-          // 값 삭제는 값 행을 남긴다 — 코드가 남아 「없는 값」 오류가 된다 (ADR-0078 결정 5). 서비스도 부르지 않는다.
-          return;
-        case "enumField":
-          return; // 값 행이 없다
-
-      }
-    },
   };
 }
 

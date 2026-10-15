@@ -9,7 +9,7 @@
  *   그 자리에서 값으로 바꾸고(리터럴 · 슬롯 글), 나머지 인자 참조는 연결로 바꿔 쓴다(bind.ts — 늦은 바인딩 그대로).
  *   내부 변수는 읽힐 때 한 번 평가한다(사용처마다). 빈 필드 값 = 미입력 → notEntered 오류(조용한 거짓 없음, ADR-0004).
  */
-import { enumFieldValue } from "../catalog/fields";
+import { enumCoordinate, enumFieldValue } from "../catalog/fields";
 import type { EnumDef } from "../catalog/types";
 import { checkTypes, evaluate, extractRefs, parse, refPath, RESERVED_WORDS } from "../expression";
 import type { EnumInfo, EvalContext, Expr, ExprType, Literal, Ref, TypeResolver } from "../expression";
@@ -296,17 +296,22 @@ export function localScope(params: readonly ParamDef[], locals: readonly LocalDe
     return okv({ codes: v.value.filter((c): c is string => typeof c === "string"), def, type: v.type });
   };
 
+  /** 열거값 필드 읽기 — 미입력 · 없는 필드 · 없는 값은 그 열거형에서 고친다: 원천 좌표 = 열거형(값 코드) → `/enums/<코드>`. */
   const fieldOf = (def: EnumDef, code: string, key: Code): Outcome<string | boolean> => {
     const r = enumFieldValue(def, code, key);
+    const atEnum = (kind: Issue["kind"], message: string, valueCode?: Code): Outcome<never> => {
+      const out = fail(kind, message);
+      return out.ok ? out : { ok: false, issue: { ...out.issue, source: enumCoordinate(def, valueCode) } };
+    };
     switch (r.kind) {
       case "value":
         return okv(r.value);
       case "notEntered":
-        return fail("notEntered", `열거값 ${code} 의 필드 ${def.fields?.find((f) => f.key === key)?.label ?? key} 이(가) 미입력입니다 — 열거형 ${def.code} 에서 값을 넣는다`);
+        return atEnum("notEntered", `열거값 ${code} 의 필드 ${def.fields?.find((f) => f.key === key)?.label ?? key} 이(가) 미입력입니다 — 열거형 ${def.code} 에서 값을 넣는다`, code);
       case "unknownField":
-        return fail("brokenRef", `열거형 ${def.code} 에 필드 ${key} 이(가) 없습니다`);
+        return atEnum("brokenRef", `열거형 ${def.code} 에 필드 ${key} 이(가) 없습니다`);
       case "unknownValue":
-        return fail("brokenRef", `없는 값 ${code} — 열거형 ${def.code} 에 없습니다`);
+        return atEnum("brokenRef", `없는 값 ${code} — 열거형 ${def.code} 에 없습니다`, code);
     }
   };
 

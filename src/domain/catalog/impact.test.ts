@@ -24,7 +24,6 @@ describe("구분자정의 S6 · 역할권한 S3 — 영향(Impact) 계산", () =
     const source: ImpactSource = {
       countValueRows: async () => 7,
       findBrokenRefs: async () => [ref],
-      purgeValueRows: async () => {},
     };
     const impact = await computeImpact({ kind: "enumValue", enumCode: "E0001", valueCode: "V01" }, source);
     expect(impact).toEqual({ valueRowsLost: 7, brokenRefs: [ref], cascade: [] });
@@ -49,7 +48,6 @@ describe("구분자정의 S6 · 역할권한 S3 — 영향(Impact) 계산", () =
     const source: ImpactSource = {
       countValueRows: async () => 2,
       findBrokenRefs: async () => [{ refPath: "D0009", document: "clause" }],
-      purgeValueRows: async () => {},
     };
     const impact = await computeImpact({ kind: "enum", enumCode: "E0001" }, source, {
       cascade: cascadeOf(납입면제사유),

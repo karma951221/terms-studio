@@ -19,9 +19,9 @@ test.describe.serial("실물 재현(화면) ① 카탈로그", () => {
       await ev.action(`실물화면#1.2 ${spec.code}`, `열거형 「${spec.label}」 값 ${spec.values.length}개를 만든다`, async () => {
         await open(page, "/enums/new");
         await page.getByLabel("열거형변수 이름").fill(spec.label);
-        // 생성 화면은 빈 값 두 줄로 시작한다
+        // 생성 화면은 빈 값 두 줄로 시작한다 — 남는 빈 행은 생성 때 버린다. 새 값 행의 입력칸은 모두 「값 이름」(상세 값 표와 같은 표)
         for (let i = 2; i < spec.values.length; i++) await page.getByRole("button", { name: "행 추가 · 값", exact: true }).click();
-        for (const [i, value] of spec.values.entries()) await page.getByRole("textbox", { name: `${i + 1}번 값 이름`, exact: true }).fill(value.label);
+        for (const [i, value] of spec.values.entries()) await page.getByRole("textbox", { name: "값 이름", exact: true }).nth(i).fill(value.label);
         await page.getByRole("button", { name: "생성", exact: true }).click();
         await arrive(page, new RegExp(`/enums/${spec.code}$`));
       });

@@ -5156,6 +5156,8 @@ button:where(:not([data-slot])).ts-ref-fold:hover {
 .ts-basic-table tr.is-highlighted > td,
 .ts-basic-table tr.is-highlighted > th,
 .ts-basic-table td.is-highlighted { background: var(--ts-mark-bg); box-shadow: inset 0 0 0 1px var(--ts-mark); }
+/* 열거형 상세 — 오류의 「고치러 가기」(?value=)가 가리킨 값 행 */
+.ts-vrows tr.is-highlighted > td { background: var(--ts-mark-bg); box-shadow: inset 0 1px 0 var(--ts-mark), inset 0 -1px 0 var(--ts-mark); }
 
 @media (max-width: 680px) {
   .ts-basic-name { grid-template-columns: 1fr; gap: 6px; }
