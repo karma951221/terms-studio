@@ -43,6 +43,13 @@ describe("함수조항 본문 ↔ 편집 트리", () => {
     expect(treeToClauseBody("block", tree)).toEqual({ ok: true, value: block });
   });
 
+  it("조사 칩은 함수조항 본문으로 넘어간다 (NotClause 아님)", () => {
+    const body: Inline[] = [{ id: "t1", kind: "text", text: "보험금" }, { id: "p1", kind: "particle", preset: "i-ga" }];
+    const r = treeToClauseBody("inline", clauseBodyToTree("inline", body));
+    expect(r).toEqual({ ok: true, value: body });
+    expect(r.ok && r.value[1]).toMatchObject({ kind: "particle", preset: "i-ga" });
+  });
+
   it("「문구」 본문은 항 하나의 문장이다 — 인라인 조건 안의 옵션 자리도 되돌아온다", () => {
     const tree = clauseBodyToTree("inline", inline);
     const article = tree.children[0];

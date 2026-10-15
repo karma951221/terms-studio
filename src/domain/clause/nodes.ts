@@ -6,7 +6,7 @@
  *
  * - 유형 = 출력 모양 (최종 결정 4): inline 본문 = `Inline[]` (문장 안 문구) · block 본문 = `Block[]` (항 목록) ·
  *   item 본문 = `ItemBodyNode[]` (호 목록 — 조건 블록 가지 안도 호 목록) · subitem 본문 = `SubitemBodyNode[]` (목 목록). 빈 목록도 된다.
- * - 인라인 종류: `text · slot · inlineCond · articleRef · appendixRef · optionSlot`.
+ * - 인라인 종류: `text · slot · inlineCond · articleRef · appendixRef · optionSlot · particle`.
  *   **함수조항 참조(clauseInlineRef · clauseBlockRef)는 없다** — 중첩 금지(MVP, 기능/함수조항 §3.1).
  *   반복(forBlock · inlineFor)도 MVP 이후라 없다.
  * - 블록 종류: `paragraph(항) · condBlock(조건 블록) · bulletList(글머리 목록) · boxRef(정적 마스터 박스 참조)`. 조(article)는 항상 사용처 소유라 없다.
@@ -27,6 +27,7 @@
  * DB·React import 금지 (순수층).
  */
 
+import type { ParticleNode } from "../document/particles";
 import type { Code, Id, ReferenceConnector, RefRestrict, WorkMark } from "../types";
 
 // ───────────────────────────── 인라인 ─────────────────────────────
@@ -135,7 +136,8 @@ export type Inline =
   | InlineSwitchNode
   | ArticleRefNode
   | AppendixRefNode
-  | OptionSlotNode;
+  | OptionSlotNode
+  | ParticleNode;
 
 export type InlineKind = Inline["kind"];
 
@@ -289,6 +291,7 @@ export const INLINE_KINDS: readonly InlineKind[] = [
   "articleRef",
   "appendixRef",
   "optionSlot",
+  "particle",
 ];
 
 export const BLOCK_KINDS: readonly BlockKind[] = ["paragraph", "condBlock", "switchBlock", "bulletList", "boxRef"];

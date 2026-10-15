@@ -94,7 +94,7 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
     const top = b.condBlock([b.branch("D0001 = true", [b.article("나", [])])]);
     const d2 = b.document("D", [top]);
     expect(labels(condMenu(env(d2), top.branches[0].id)).slice(0, 3)).toEqual(["이 가지 삭제(잠김)", "이 가지에 조 추가", "조건 풀기 — 이 가지 내용만 남긴다"]);
-    expect(inlineInsertItems({ parentId: "n2" }, [], { inInlineCond: true, newId: sequentialIds("x") }).map((i) => i.label)).toEqual(["치환 슬롯…", "조 참조…", "별표 참조…", "함수조항(문장 안)…"]);
+    expect(inlineInsertItems({ parentId: "n2" }, [], { inInlineCond: true, newId: sequentialIds("x") }).map((i) => i.label).slice(0, 5)).toEqual(["치환 슬롯…", "조 참조…", "별표 참조…", "함수조항(문장 안)…", "조사 — 을/를"]);
     expect(inlineInsertItems({ tableId: "t", row: 1, col: 0 }, [], { inInlineCond: false, newId: sequentialIds("x"), structLevels: ["subCoverage"] }).map((i) => i.label)).toContain("구조 표기…");
   });
 

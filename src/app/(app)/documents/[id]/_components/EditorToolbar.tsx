@@ -3,7 +3,7 @@
 /**
  * 약관 에디터 툴바 — 본문 위에 늘 서 있는 넣기 버튼 줄 (기능/문면 §4.3, 2026-10-01 정리). 버튼 규칙 · 서는 곳은 `tools.ts`.
  *
- * - 누구나 아는 모양(표 · 글머리 목록 · 더보기)만 아이콘뿐이고, 이 시스템에만 있는 넣기(함수조항 · 박스 · 반복 · 슬롯 · 조 참조 · 별표 참조 ·
+ * - 누구나 아는 모양(표 · 글머리 목록 · 더보기)만 아이콘뿐이고, 이 시스템에만 있는 넣기(함수조항 · 박스 · 반복 · 슬롯 · 조 참조 · 별표 참조 · 조사 ·
  *   문장 안 조건)는 아이콘 + 짧은 글자(`short`), 조 · 항 · 호 · 목은 한 글자, 「조건식」은 강조 글자 버튼이다. 온전한 이름은 aria-label,
  *   무엇을 · 어디에 하는지는 tooltip (디자인원칙 §1.6, 2026-10-01 유저 피드백).
  * - 조건 편집 · 고른 것 속성 묶음은 그 자리에서 켜질 때만 선다(`onBar`) — 꺼진 버튼이 줄줄이 서지 않는다.
@@ -14,7 +14,7 @@
  */
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
-import { IconAttach, IconBox, IconBranch, IconBulletList, IconClauseBlock, IconLink, IconMore, IconRepeat, IconSlot, IconTable } from "@/app/_components/icons";
+import { IconAttach, IconBox, IconBranch, IconBulletList, IconClauseBlock, IconLink, IconMore, IconParticle, IconRepeat, IconSlot, IconTable } from "@/app/_components/icons";
 
 import type { WorkMark } from "@/domain/types";
 
@@ -32,6 +32,7 @@ const ICONS: Record<ToolIcon, ReactNode> = {
   link: <IconLink />,
   attach: <IconAttach />,
   branch: <IconBranch />,
+  particle: <IconParticle />,
 };
 
 export function EditorToolbar({

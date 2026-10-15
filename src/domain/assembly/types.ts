@@ -29,6 +29,7 @@ import type { Discriminator, EnumDef, SlotPath } from "../catalog/types";
 import type { Clause } from "../clause/types";
 import type { Appendix } from "../document/appendix";
 import type { Box } from "../document/box";
+import type { ParticlePresetKey } from "../document/particles";
 import type { ArticleNode, DocumentNode, TableColumn } from "../document/nodes";
 import type { AttributeKind, ClauseOptionOverride, PlanAxis, ProductCoverageSnapshot, ProductPlan } from "../product/types";
 import type { MasterTree } from "../master";
@@ -180,8 +181,16 @@ export interface RAppendixRef {
   at: Coordinate;
 }
 
+/** 조사 칩 — 렌더 끝에서 앞 글 받침으로 글이 된다 (기능/문면 §3.11). */
+export interface RParticle {
+  kind: "particle";
+  id: Id;
+  preset: ParticlePresetKey;
+  at: Coordinate;
+}
+
 /** 해소 단계(ResolvedDoc)의 인라인 노드. */
-export type RInline = RText | RSlot | RArticleRef | RAppendixRef | ErrorNode;
+export type RInline = RText | RSlot | RArticleRef | RAppendixRef | RParticle | ErrorNode;
 /** 치환 단계(SubstitutedDoc)의 인라인 노드 — 슬롯이 사라졌다. */
 export type SInline = Exclude<RInline, RSlot>;
 

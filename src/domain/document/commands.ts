@@ -49,6 +49,7 @@ import {
   type TreeIndex,
 } from "./nodes";
 import { isRepeatSource, type RepeatSource } from "./blockRepeat";
+import type { ParticlePresetKey } from "./particles";
 import { codeFormatMessage, codeTreeInPlace, documentCodeIssues, isCodedKind, lostRefKeys, refKey, refLabel } from "./pcode";
 
 // ───────────────────────────── 커맨드 ─────────────────────────────
@@ -108,6 +109,7 @@ export type Command =
   | { type: "insertCell"; tableId: Id; row: number; col: number; node: InlineNode; index?: number }
   | { type: "setArticleRef"; nodeId: Id; targets: RefTarget[]; connector: ArticleRefNode["connector"]; scope: ArticleRefNode["scope"] }
   | { type: "setAppendixRef"; nodeId: Id; appendixCode: Code }
+  | { type: "setParticle"; nodeId: Id; preset: ParticlePresetKey }
   /** 함수조항 참조의 옵션 선택 · 인자 연결. `bindings` 없으면 연결은 그대로, 빈 맵이면 걷는다(모두 기본 연결, 최종 결정 2). */
   | { type: "setClauseOptions"; nodeId: Id; options: Record<Code, Code>; bindings?: Bindings; preset?: Code | null }
   /** 반복 원천 · 이름 — 블록 반복은 `RepeatSource`(ADR-0077), 인라인 반복(자리만)은 글자. 이름을 빈 글자로 주면 지운다(원천에서 짓는다). */
@@ -573,6 +575,7 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
 
     case "setArticleRef":
     case "setAppendixRef":
+    case "setParticle":
     case "setClauseOptions": {
       const e = entryOf(ix, cmd.nodeId);
       if (!e.ok) return e;
@@ -586,6 +589,10 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       } else if (cmd.type === "setAppendixRef") {
         if (n.kind !== "appendixRef") return structure("별표 참조 슬롯이 아닙니다", e.value.path);
         n.appendixCode = cmd.appendixCode;
+      } else if (cmd.type === "setParticle") {
+        if (n.kind !== "particle") return structure("조사 칩이 아닙니다", e.value.path);
+        n.preset = cmd.preset;
+        return ok(work);
       } else {
         if (n.kind !== "clauseBlockRef" && n.kind !== "clauseInlineRef") return structure("함수조항 참조가 아닙니다", e.value.path);
         n.options = { ...cmd.options };

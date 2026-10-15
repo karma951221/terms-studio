@@ -328,6 +328,17 @@ export function IconAttach(props: IconProps) {
   );
 }
 
+/** 조사 — 받침 있음 · 없음 두 꼴 사이의 사선(을/를). */
+export function IconParticle(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="1.5" y="4" width="4.5" height="8" rx="1" />
+      <path d="M9.5 13 6.5 3" />
+      <rect x="10" y="4" width="4.5" height="8" rx="1" />
+    </Svg>
+  );
+}
+
 /** 문장 안 조건 — 한 줄이 두 갈래로 나뉜다. */
 export function IconBranch(props: IconProps) {
   return (
