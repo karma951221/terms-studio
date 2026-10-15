@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { indexTree, nodeBuilders, sequentialIds } from "@/domain/document";
 
-import { restrictMode, restrictOfForm, treeLoopsAt } from "./restrict";
+import { keyChoicesFor, restrictMode, restrictOfForm, treeLoopChoicesFor, treeLoopsAt } from "./restrict";
 
 describe("키 한정 칸 (ADR-0087 결정 10)", () => {
   it("「해당 키들」 체크 → { keys }, 「현재 세부보장」 → { current }", () => {
@@ -50,5 +50,34 @@ describe("treeLoopsAt — 참조 자리를 감싼 담보 트리 반복", () => {
   it("트리에 없는 자리 · 자리 없음 → 빈 목록 (함수조항 편집기)", () => {
     expect(treeLoopsAt(ix, "없는-id", true)).toEqual([]);
     expect(treeLoopsAt(ix, undefined, true)).toEqual([]);
+  });
+});
+
+describe("키 한정 후보 — 대상 반복 레벨에 맞춰 (ADR-0087 결정 10)", () => {
+  const keys = [
+    { path: "01", label: "세부보장 01 · 암진단", level: "subCoverage" as const },
+    { path: "01.1", label: "세부보장 01 · 암진단 › 급부 1 · 일반암", level: "benefit" as const },
+    { path: "02", label: "세부보장 02 · 뇌졸중", level: "subCoverage" as const },
+  ];
+  it("「세부보장마다」 대상은 세부보장 키만", () => {
+    expect(keyChoicesFor(keys, "subCoverage")).toEqual([
+      { path: "01", label: "세부보장 01 · 암진단" },
+      { path: "02", label: "세부보장 02 · 뇌졸중" },
+    ]);
+  });
+  it("급부 반복 대상은 급부 키 + 세부보장 키(그 아래 급부 전부를 고른다)", () => {
+    expect(keyChoicesFor(keys, "benefit")).toEqual([
+      { path: "01", label: "세부보장 01 · 암진단 (급부 전부)" },
+      { path: "01.1", label: "세부보장 01 · 암진단 › 급부 1 · 일반암" },
+      { path: "02", label: "세부보장 02 · 뇌졸중 (급부 전부)" },
+    ]);
+  });
+  it("「현재」 후보 — 급부 반복 대상은 현재 세부보장도, 세부보장 대상은 현재 급부를 빼고", () => {
+    const loops = [
+      { id: "s", level: "subCoverage" as const },
+      { id: "b", level: "benefit" as const },
+    ];
+    expect(treeLoopChoicesFor(loops, "benefit")).toEqual(loops);
+    expect(treeLoopChoicesFor(loops, "subCoverage")).toEqual([loops[0]]);
   });
 });

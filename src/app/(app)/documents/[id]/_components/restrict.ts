@@ -29,3 +29,21 @@ export function treeLoopsAt(ix: TreeIndex, id: Id | undefined, includeSelf: bool
   if (id === undefined) return [];
   return loopsAround(ix, id).flatMap((f) => (isRepeatSource(f.source) && isTreeSource(f.source) && (includeSelf || f.id !== id) ? [{ id: f.id, level: f.source.kind === "subCoverages" ? ("subCoverage" as const) : ("benefit" as const) }] : []));
 }
+
+type TreeLevel = "subCoverage" | "benefit";
+
+/**
+ * 「해당 키들」 후보 — 대상 반복 레벨에 맞춘다 (ADR-0087 결정 10). 「세부보장마다」 대상은 세부보장 키만,
+ * 급부 반복 대상은 급부 키 + 세부보장 키(그 아래 급부 전부를 고른다 — 「(급부 전부)」).
+ */
+export function keyChoicesFor(keys: readonly { path: string; label: string; level: TreeLevel }[], target: TreeLevel): { path: string; label: string }[] {
+  return keys.flatMap((k) => {
+    if (k.level === target) return [{ path: k.path, label: k.label }];
+    return target === "benefit" && k.level === "subCoverage" ? [{ path: k.path, label: `${k.label} (급부 전부)` }] : [];
+  });
+}
+
+/** 「현재 세부보장 / 현재 급부」 후보 — 급부 반복 대상은 감싼 세부보장 반복의 「현재」도 받는다(그 세부보장의 급부 전부). 세부보장 대상엔 급부 반복의 「현재」를 뺀다. */
+export function treeLoopChoicesFor<T extends { level: TreeLevel }>(loops: readonly T[], target: TreeLevel): T[] {
+  return loops.filter((l) => target === "benefit" || l.level === "subCoverage");
+}

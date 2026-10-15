@@ -62,7 +62,7 @@ import { runsFromTokens } from "./inlineRuns";
 import { clausesFitting, type PopupSpec } from "./menus";
 import { PopActions, Popover } from "./Popover";
 import { RefTargetTree } from "./RefTargetTree";
-import { restrictMode, restrictOfForm, treeLoopsAt } from "./restrict";
+import { keyChoicesFor, restrictMode, restrictOfForm, treeLoopChoicesFor, treeLoopsAt } from "./restrict";
 import { loopChoices, loopsAround, nodeTreeAt, repeatChoices, sourceOfValue, sourceValue } from "./repeatSources";
 import { CaseControls } from "./SwitchControls";
 import { unassignedValues } from "./switchCases";
@@ -268,7 +268,7 @@ function ArticleRefFields({ ctx, node, restrict, prefix = "", idBase = "pop-ref"
                 <select id={`${idBase}-restrict`} name={field("restrictMode")} value={mode} onChange={(e) => setMode(e.target.value)}>
                   <option value="">없음 — 펼친 것 전부</option>
                   {restrict.values.length > 0 && <option value="values">해당 값들</option>}
-                  {treeLevel !== undefined && restrict.keys.some((k) => k.level === treeLevel) && <option value="keys">해당 키들</option>}
+                  {treeLevel !== undefined && keyChoicesFor(restrict.keys, treeLevel).length > 0 && <option value="keys">해당 키들</option>}
                   {restrict.values.length > 0 &&
                     restrict.loops.map((l) => (
                       <option key={l.id} value={`current:${l.id}`}>
@@ -276,24 +276,20 @@ function ArticleRefFields({ ctx, node, restrict, prefix = "", idBase = "pop-ref"
                       </option>
                     ))}
                   {treeLevel !== undefined &&
-                    restrict.treeLoops
-                      .filter((l) => l.level === treeLevel)
-                      .map((l) => (
-                        <option key={l.id} value={`current:${l.id}`}>
-                          {l.level === "subCoverage" ? "현재 세부보장" : "현재 급부"}
-                        </option>
-                      ))}
+                    treeLoopChoicesFor(restrict.treeLoops, treeLevel).map((l) => (
+                      <option key={l.id} value={`current:${l.id}`}>
+                        {l.level === "subCoverage" ? "현재 세부보장" : "현재 급부"}
+                      </option>
+                    ))}
                 </select>
                 {mode === "keys" && treeLevel !== undefined && (
                   <div className="ts-radio-group" role="group" aria-label="한정할 키">
-                    {restrict.keys
-                      .filter((k) => k.level === treeLevel)
-                      .map((k) => (
-                        <label key={k.path} className="ts-form-radio">
-                          <input type="checkbox" name={field("restrictKey")} value={k.path} defaultChecked={savedKeys.includes(k.path)} />
-                          {k.label}
-                        </label>
-                      ))}
+                    {keyChoicesFor(restrict.keys, treeLevel).map((k) => (
+                      <label key={k.path} className="ts-form-radio">
+                        <input type="checkbox" name={field("restrictKey")} value={k.path} defaultChecked={savedKeys.includes(k.path)} />
+                        {k.label}
+                      </label>
+                    ))}
                   </div>
                 )}
                 {mode === "values" && (
