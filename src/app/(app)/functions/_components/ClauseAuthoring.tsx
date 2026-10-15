@@ -101,6 +101,8 @@ export interface ClauseAuthoringProps {
   /** 단위 규칙 경고 — 조 · 여러 항 단위가 아님 · 한 곳에서만 씀. 저장은 막지 않고 정보 칸에 보인다 (기능/함수조항 §3.1). */
   warnings?: readonly string[];
   data: ClauseEditorData;
+  /** 들어오면 스크롤 · 잠깐 강조할 본문 노드 — `?node=<id>` (재검사 줄 · 오류 좌표 「고치러 가기」, `coordinateHref`). */
+  initialNode?: Id;
   /** 생성 화면 — 「항」 유형의 첫 빈 항 id. 서버가 정해 넘긴다(서버 · 브라우저 렌더가 같은 id 를 써야 한다). */
   startId?: string;
 }
@@ -255,7 +257,7 @@ export function ClauseAuthoring(props: ClauseAuthoringProps) {
   const [menu, setMenu] = useState<{ x: number; y: number; sections: MenuSections }>();
   const [pop, setPop] = useState<{ spec: PopupSpec; anchor: Anchor }>();
   const [focusRequest, setFocusRequest] = useState<Id>();
-  const [flashId, setFlashId] = useState<Id>();
+  const [flashId, setFlashId] = useState<Id | undefined>(props.initialNode);
   const [banner, setBanner] = useState<Banner>();
   const [discard, setDiscard] = useState<{ go: () => void }>();
   const [removal, setRemoval] = useState<Impact>();

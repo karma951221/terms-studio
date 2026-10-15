@@ -13,8 +13,10 @@ import { valueText } from "../lib";
 
 export const dynamic = "force-dynamic";
 
-export default async function ClauseDetailPage({ params }: { params: Promise<{ code: string }> }) {
+export default async function ClauseDetailPage({ params, searchParams }: { params: Promise<{ code: string }>; searchParams: Promise<{ node?: string }> }) {
   const { code } = await params;
+  // 좌표 링크(`coordinateHref` — 재검사 줄 · 오류 「고치러 가기」)가 싣는 본문 노드 — 그 자리로 스크롤 · 강조
+  const { node } = await searchParams;
   const clause = await getServices().clause.get(code);
   if (!clause) {
     return (
@@ -48,6 +50,7 @@ export default async function ClauseDetailPage({ params }: { params: Promise<{ c
       required={clause.required}
       warnings={warnings.map((w) => w.message)}
       data={data}
+      {...(node ? { initialNode: node } : {})}
     />
   );
 }
