@@ -5,6 +5,7 @@ import type { Id } from "../types";
 import { assemble } from "./booklet";
 import { waiverFixture, waiverTemplate, type WaiverPlan } from "./fixture";
 import type { RenderedDoc, RenderedInline } from "./types";
+import { titleNodes } from "@/domain/document/title";
 
 /**
  * 반복 · 펼친 함수조항 안 참조 · 값 한정 참조 (최종 결정 12 · 13 · ADR-0077 결정 5 · 6 · 7 · 기능/문면 §3.5).
@@ -43,7 +44,7 @@ function refArticle(targets: RefTarget[], connector: "및" | "또는" | undefine
   return {
     id: "z",
     kind: "article",
-    title: "참조",
+    title: titleNodes("참조", "z"),
     children: [{ id: "zp", kind: "paragraph", code: "P0100", children: [{ id: "zr", kind: "articleRef", scope: "self", ...(connector ? { connector } : {}), targets }, { id: "zt", kind: "text", text: "를 본다" }] }],
   };
 }

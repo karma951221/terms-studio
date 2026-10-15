@@ -50,12 +50,13 @@ import {
 } from "./nodes";
 import { isRepeatSource, type RepeatSource } from "./blockRepeat";
 import type { ParticlePresetKey } from "./particles";
+import { relabelTitle, titleTextId } from "./title";
 import { codeFormatMessage, codeTreeInPlace, documentCodeIssues, isCodedKind, lostRefKeys, refKey, refLabel } from "./pcode";
 
 // ───────────────────────────── 커맨드 ─────────────────────────────
 
-/** 인라인 목록의 자리 — 문장 자리(항 · 호 · 목 · 문장 안 조건 가지)이거나 표 셀. */
-export type InlineAt = { parentId: Id } | { tableId: Id; row: number; col: number };
+/** 인라인 목록의 자리 — 문장 자리(항 · 호 · 목 · 문장 안 조건 가지) · 조 제목(`slot: "title"` — 조 id, ADR-0088)이거나 표 셀. */
+export type InlineAt = { parentId: Id; slot?: "title" } | { tableId: Id; row: number; col: number };
 
 /**
  * 인라인 목록을 새로 짤 때의 한 조각 (`setInlines`).
@@ -169,6 +170,26 @@ function idsIn(node: Node): Set<Id> {
   };
   walk(node);
   return out;
+}
+
+/** 복제가 공급원에서 받는 id 수 — 노드 + 가지, 조 제목 노드는 빼고(새 조 id 에서 짓는다 — `cloneSubtree`). */
+function cloneIdCount(node: Node): number {
+  let k = 0;
+  const walk = (n: Node) => {
+    k++;
+    const brs = branchesOf(n);
+    if (brs) {
+      for (const br of brs) {
+        k++;
+        (br.children as Node[]).forEach(walk);
+      }
+      return;
+    }
+    for (const slot of slotsOf(n.kind)) listOf(n, slot)?.forEach(walk);
+    if (n.kind !== "article") cellNodesOf(n).forEach(walk);
+  };
+  walk(node);
+  return k;
 }
 
 /** 하위 트리의 노드들 (자기 포함, 전위 순). */
@@ -295,7 +316,9 @@ function cloneSubtree<T extends Node>(root: T, newId: IdSource): T {
       return;
     }
     for (const slot of slotsOf(n.kind)) listOf(n, slot)?.forEach(relabel);
-    cellNodesOf(n).forEach(relabel);
+    // 조 제목 노드는 새 조 id 에서 짓는다 — 공급원을 쓰지 않아 사본 id 순서가 제목 모양에 흔들리지 않는다 (title.ts `relabelTitle`)
+    if (n.kind === "article") n.title = relabelTitle(n.title, id);
+    else cellNodesOf(n).forEach(relabel);
   };
   relabel(copy);
   // 사본 안의 조를 가리키는 자기 참조는 사본의 조로 — 코드는 조 안에서만 유일하므로 조째 복사한 사본은 코드가 그대로다
@@ -373,7 +396,8 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       if (e.value.parentId === undefined) return structure("문서 루트는 복제할 수 없습니다 (문서 복제는 서비스 몫)", e.value.path);
       let source = opts.newId ?? randomIds;
       if (cmd.ids) {
-        if (cmd.ids.length !== idsIn(e.value.node).size) return structure(`사본 id 가 ${idsIn(e.value.node).size}개 필요한데 ${cmd.ids.length}개입니다`, e.value.path);
+        const need = cloneIdCount(e.value.node);
+        if (cmd.ids.length !== need) return structure(`사본 id 가 ${need}개 필요한데 ${cmd.ids.length}개입니다`, e.value.path);
         const queue = [...cmd.ids];
         source = () => queue.shift()!;
       }
@@ -402,7 +426,11 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       if (e.value.node.kind !== "article" && e.value.node.kind !== "document" && e.value.node.kind !== "section") {
         return structure("제목은 문서 · 관 · 조에만 둘 수 있습니다", e.value.path);
       }
-      e.value.node.title = cmd.title;
+      // 조 명은 인라인 목록 — 글로 주면 [글 하나]로 갈아 끼운다(첫 글의 id 를 잇는다). 칩이 든 제목은 `setInlines`(자리 `title`)로 고친다 (ADR-0088)
+      if (e.value.node.kind === "article") {
+        const first = e.value.node.title.find((n) => n.kind === "text");
+        e.value.node.title = cmd.title === "" ? [] : [{ id: first?.id ?? titleTextId(e.value.node.id), kind: "text", text: cmd.title }];
+      } else e.value.node.title = cmd.title;
       return ok(work);
     }
 
@@ -505,7 +533,7 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
         allowed = allowedChildren.paragraph;
         path = e.value.path;
       } else {
-        const c = containerOf(ix, { parentId: cmd.at.parentId });
+        const c = containerOf(ix, { parentId: cmd.at.parentId, ...(cmd.at.slot ? { slot: cmd.at.slot } : {}) });
         if (!c.ok) return c;
         if (!c.value.allowed.includes("text")) return structure("문장 자리가 아닙니다", c.value.path);
         list = c.value.list;

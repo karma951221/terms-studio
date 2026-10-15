@@ -9,6 +9,7 @@ import { alphaPlusFixture } from "./fixture";
 import { numberDocument, renderDocument } from "./render";
 import { resolveDocument } from "./resolve";
 import type { SubstitutedDoc } from "./types";
+import { titleNodes } from "@/domain/document/title";
 
 /**
  * 조째 함수조항의 조 참조 (기능/함수조항 §3.5 · ADR-0083) — 「제1조(보험금의 지급사유)에서 정한」(조 참조 인자 — 사용처가 연결) ·
@@ -41,15 +42,15 @@ const 연결 = {
 };
 
 function doc(bindings: object = 연결, gone = false): DocumentNode {
-  const 지급사유 = { kind: "article", id: "a1", title: "보험금의 지급사유", children: [{ kind: "paragraph", id: "a1-p", children: [{ kind: "text", id: "a1-t", text: "지급" }] }] };
+  const 지급사유 = { kind: "article", id: "a1", title: titleNodes("보험금의 지급사유", "a1"), children: [{ kind: "paragraph", id: "a1-p", children: [{ kind: "text", id: "a1-t", text: "지급" }] }] };
   return {
     kind: "document",
     id: "s",
     title: "특약",
     children: [
       gone ? { kind: "condBlock", id: "c", branches: [{ id: "cb", when: "1 = 2", children: [지급사유] }] } : 지급사유,
-      { kind: "article", id: "a2", title: "세부규정", children: [{ kind: "paragraph", id: "a2-p", code: "P0100", children: [{ kind: "text", id: "a2-t", text: "세부" }] }, { kind: "paragraph", id: "a2-q", code: "P0200", children: [] }] },
-      { kind: "article", id: "a3", title: "특별약관의 소멸", children: [{ kind: "clauseBlockRef", id: "k", clauseCode: "C0009", options: {}, bindings }] },
+      { kind: "article", id: "a2", title: titleNodes("세부규정", "a2"), children: [{ kind: "paragraph", id: "a2-p", code: "P0100", children: [{ kind: "text", id: "a2-t", text: "세부" }] }, { kind: "paragraph", id: "a2-q", code: "P0200", children: [] }] },
+      { kind: "article", id: "a3", title: titleNodes("특별약관의 소멸", "a3"), children: [{ kind: "clauseBlockRef", id: "k", clauseCode: "C0009", options: {}, bindings }] },
     ],
   } as DocumentNode;
 }
@@ -93,7 +94,7 @@ describe("호 목록 자리(항 · 호 뒤)의 함수조항 참조 — 박스는
       {
         kind: "article",
         id: "a1",
-        title: "보장",
+        title: titleNodes("보장", "a1"),
         children: [{ kind: "paragraph", id: "p1", children: [{ kind: "text", id: "t1", text: "다음과 같다." }], items: [{ kind: "item", id: "i1", children: [{ kind: "text", id: "t2", text: "하나" }] }, { kind: "clauseBlockRef", id: "k1", clauseCode: "C0100", options: {} }] }],
       },
     ],
@@ -132,7 +133,7 @@ describe("호 유형 함수조항 — 항의 호 목록 자리에서 펼쳐 사�
         {
           kind: "article",
           id: "a1",
-          title: "납입면제",
+          title: titleNodes("납입면제", "a1"),
           children: [
             {
               kind: "paragraph",
@@ -186,7 +187,7 @@ describe("원문 모델 번호(clauseSpan)는 조립 번호와 같다 (2026-10-0
       {
         kind: "article",
         id: "a1",
-        title: "약관의 해석",
+        title: titleNodes("약관의 해석", "a1"),
         children: [
           { kind: "paragraph", id: "h1", children: [{ kind: "text", id: "h1t", text: "앞 항" }] },
           { kind: "clauseBlockRef", id: "k", clauseCode: "C0013", options: {} },
@@ -225,7 +226,7 @@ describe("프리셋을 쓰는 함수조항 참조 — 프리셋 값으로 펼치
     body: [{ id: "p1", kind: "paragraph", children: [{ id: "o1", kind: "optionSlot", optionCode: "O01" }, { id: "t1", kind: "text", text: "부터 부활합니다." }] }],
   };
   const tree = (ref: object): DocumentNode =>
-    ({ kind: "document", id: "s", title: "특약", children: [{ kind: "article", id: "a1", title: "부활", children: [{ kind: "clauseBlockRef", id: "k", clauseCode: "C0027", options: {}, ...ref }] }] }) as DocumentNode;
+    ({ kind: "document", id: "s", title: "특약", children: [{ kind: "article", id: "a1", title: titleNodes("부활", "a1"), children: [{ kind: "clauseBlockRef", id: "k", clauseCode: "C0027", options: {}, ...ref }] }] }) as DocumentNode;
   const text = (ref: object, overrides = new Map()) => {
     const input = alphaPlusFixture();
     const ctx = specialContext(input, input.coverages[0]);

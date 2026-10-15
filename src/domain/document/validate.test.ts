@@ -6,6 +6,7 @@ import type { Issue } from "../types";
 import { nodeBuilders, sequentialIds } from "./builders";
 import { checkClauseRef, PERMISSIVE_GATE, validateTree, type DocumentNode } from "./nodes";
 import { blockingIssues, catalogTypeResolver, clauseGateFrom, validateDocument } from "./validate";
+import { titleNodes } from "@/domain/document/title";
 
 const catalog: Discriminator[] = [
   { code: "D0001", label: "갱신여부", description: "", level: "coverage", expression: "coverage.renewal", resultType: { kind: "boolean" } },
@@ -187,8 +188,8 @@ describe("조 참조 인자 연결 — 사용처가 제 조를 골라 연결한�
       id: "D",
       title: "특약",
       children: [
-        { kind: "article", id: "a1", title: "보험금의 지급사유", children: [{ kind: "paragraph", id: "a1p", code: "P0100", children: [] }, { kind: "paragraph", id: "a1q", code: "P0200", children: [] }] },
-        { kind: "article", id: "a2", title: "소멸", children: [{ kind: "clauseBlockRef", id: "k", code: "P0100", clauseCode: "C0009", options: {}, ...(binding ? { bindings: { "지급사유 조": binding } } : {}) }] },
+        { kind: "article", id: "a1", title: titleNodes("보험금의 지급사유", "a1"), children: [{ kind: "paragraph", id: "a1p", code: "P0100", children: [] }, { kind: "paragraph", id: "a1q", code: "P0200", children: [] }] },
+        { kind: "article", id: "a2", title: titleNodes("소멸", "a2"), children: [{ kind: "clauseBlockRef", id: "k", code: "P0100", clauseCode: "C0009", options: {}, ...(binding ? { bindings: { "지급사유 조": binding } } : {}) }] },
       ],
     }) as DocumentNode;
   const issues = (t: DocumentNode, env: object = {}) => validateTree(t, { clauseGate: gate, ...env }).map((i) => [i.kind, i.message]);
@@ -230,7 +231,7 @@ describe("프리셋을 쓰는 함수조항 참조 — 실제 값 = 프리셋, �
   };
   const gate = clauseGateFrom([호], ["D0001"], catalogTypeResolver(catalog));
   const tree = (ref: object): DocumentNode =>
-    ({ kind: "document", id: "D", title: "특약", children: [{ kind: "article", id: "a1", title: "면제", children: [{ kind: "clauseBlockRef", id: "k", clauseCode: "C0022", options: {}, ...ref }] }] }) as DocumentNode;
+    ({ kind: "document", id: "D", title: "특약", children: [{ kind: "article", id: "a1", title: titleNodes("면제", "a1"), children: [{ kind: "clauseBlockRef", id: "k", clauseCode: "C0022", options: {}, ...ref }] }] }) as DocumentNode;
 
   it("프리셋이면 옵션 · 인자를 사용처가 대지 않아도 저장된다", () => {
     expect(validateTree(tree({ preset: "S01" }), { clauseGate: gate })).toEqual([]);

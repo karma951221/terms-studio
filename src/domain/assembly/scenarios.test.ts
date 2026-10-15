@@ -10,6 +10,7 @@ import { formatCoordinate } from "../coordinate";
 import { assemble, assembleSpecial, executionBasedFilter } from "./booklet";
 import { alphaPlusFixture, alphaGeneralDocument, baseDeathCoverage, coverageEntry, deathCoverage, waiverFixture, waiverTemplate } from "./fixture";
 import type { AssemblyCoverage, AssemblyInput, RenderedDoc, RenderedInline } from "./types";
+import { titleNodes } from "@/domain/document/title";
 
 /** 픽스처를 한 객체로 다루는 테스트 진입 — 조립 서명 `assemble(master, product)` 에 같은 객체를 두 번 넘긴다 (AssemblyInput = MasterBundle & ProductInput). */
 const assembleInput = (input: AssemblyInput) => assemble(input, input);
@@ -117,7 +118,7 @@ function withSurgery(coverages: AssemblyCoverage[], patch: Partial<AssemblyInput
 
 function tinyDoc(id: Id, title: string, text: string, appendixCode?: Code): DocumentNode {
   const par: ParagraphNode = { id: `${id}-p`, kind: "paragraph", children: [{ id: `${id}-t`, kind: "text", text }, ...(appendixCode ? [{ id: `${id}-x`, kind: "appendixRef" as const, appendixCode }] : [])] };
-  return { id, kind: "document", title, children: [{ id: `${id}-a`, kind: "article", title: "보장", children: [par] }] };
+  return { id, kind: "document", title, children: [{ id: `${id}-a`, kind: "article", title: titleNodes("보장", `${id}-a`), children: [par] }] };
 }
 
 // ───────────────────────────── 조립오류 시나리오 ─────────────────────────────
@@ -188,7 +189,7 @@ describe("조립오류 S3 — 미사용 담보속성 참조 (exist 가드 없음
       {
         id: "a-art",
         kind: "article",
-        title: "보험금의 지급사유",
+        title: titleNodes("보험금의 지급사유", "a-art"),
         children: [
           {
             id: "a-par",
@@ -283,15 +284,15 @@ describe("조립오류 S6 — 생략 자동 판정: 리터럴 비교 · 탑재�
     id: "g6",
     kind: "document",
     title: "보통약관",
-    children: [{ id: "g6-apply", kind: "article", title: "준용규정", children: [{ id: "g6-p", kind: "paragraph", children: [{ id: "g6-c", kind: "clauseInlineRef", clauseCode: "C002", options: {} }] }] }],
+    children: [{ id: "g6-apply", kind: "article", title: titleNodes("준용규정", "g6-apply"), children: [{ id: "g6-p", kind: "paragraph", children: [{ id: "g6-c", kind: "clauseInlineRef", clauseCode: "C002", options: {} }] }] }],
   };
   const special = (body: ParagraphNode["children"]): DocumentNode => ({
     id: "s6",
     kind: "document",
     title: "수술비 특별약관",
     children: [
-      { id: "s6-pay", kind: "article", title: "보험금의 지급사유", children: [{ id: "s6-p1", kind: "paragraph", children: [{ id: "s6-t1", kind: "text", text: "수술을 보장합니다." }] }] },
-      { id: "s6-apply", kind: "article", title: "준용규정", linkedArticleId: "g6-apply", children: [{ id: "s6-p2", kind: "paragraph", children: body }] },
+      { id: "s6-pay", kind: "article", title: titleNodes("보험금의 지급사유", "s6-pay"), children: [{ id: "s6-p1", kind: "paragraph", children: [{ id: "s6-t1", kind: "text", text: "수술을 보장합니다." }] }] },
+      { id: "s6-apply", kind: "article", title: titleNodes("준용규정", "s6-apply"), linkedArticleId: "g6-apply", children: [{ id: "s6-p2", kind: "paragraph", children: body }] },
     ],
   });
   const viaClause: ParagraphNode["children"] = [{ id: "s6-c", kind: "clauseInlineRef", clauseCode: "C002", options: {} }];
@@ -326,7 +327,7 @@ describe("조립오류 S6 — 생략 자동 판정: 리터럴 비교 · 탑재�
         {
           id: "g6-apply",
           kind: "article",
-          title: "준용규정",
+          title: titleNodes("준용규정", "g6-apply"),
           children: [
             { id: "g6-p1", kind: "paragraph", children: [{ id: "g6-t1", kind: "text", text: "첫째 항." }] },
             { id: "g6-p2", kind: "paragraph", children: [{ id: "g6-t2", kind: "text", text: "둘째 항." }] },
@@ -341,7 +342,7 @@ describe("조립오류 S6 — 생략 자동 판정: 리터럴 비교 · 탑재�
         {
           id: "s6-apply",
           kind: "article",
-          title: "준용규정",
+          title: titleNodes("준용규정", "s6-apply"),
           linkedArticleId: "g6-apply",
           children: [
             { id: "s6-p1", kind: "paragraph", children: [{ id: "s6-t1", kind: "text", text: "둘째 항." }] },
@@ -687,7 +688,7 @@ describe("블록 반복 · 밟은 자리 원칙", () => {
 describe("조 사본 (ADR-0079 · 기능/상품 §3.10) — 고친 조는 이 상품의 사본, 나머지는 템플릿", () => {
   const copyOf = (id: Id, text: string, title?: string): ArticleNode => {
     const original = alphaGeneralDocument().children.find((c) => c.kind === "article" && c.id === id) as ArticleNode;
-    return { ...original, ...(title ? { title } : {}), children: [{ id: `${id}-copy-par`, kind: "paragraph", children: [{ id: `${id}-copy-txt`, kind: "text", text }] }] };
+    return { ...original, ...(title ? { title: titleNodes(title, id) } : {}), children: [{ id: `${id}-copy-par`, kind: "paragraph", children: [{ id: `${id}-copy-txt`, kind: "text", text }] }] };
   };
   const withCopies = (...copies: ArticleNode[]) => {
     const input = alphaPlusFixture();
@@ -713,7 +714,7 @@ describe("조 사본 (ADR-0079 · 기능/상품 §3.10) — 고친 조는 이 �
   });
 
   it("템플릿에 없는 조의 사본은 쓰이지 않는다 · 숨긴 조의 사본도 빠진다", () => {
-    const orphan: ArticleNode = { id: "g-art-gone", kind: "article", title: "사라진 조", children: [] };
+    const orphan: ArticleNode = { id: "g-art-gone", kind: "article", title: titleNodes("사라진 조", "g-art-gone"), children: [] };
     expect(generalText(withCopies(orphan).general!)).not.toContain("사라진 조");
     const input = alphaPlusFixture();
     const hidden = assembleInput({ ...input, product: { ...input.product, hiddenArticleIds: new Set(["g-art-def"]), articleCopies: new Map([["g-art-def", copyOf("g-art-def", "숨긴 사본")]]) } });

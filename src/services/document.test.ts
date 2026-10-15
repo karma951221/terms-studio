@@ -7,6 +7,7 @@ import { createTestDb, type TestDb } from "@/db/test-utils";
 import { createCatalogService } from "./catalog";
 import { createCoverageService } from "./coverage";
 import { createDocumentService, type DocumentService } from "./document";
+import { titleNodes } from "@/domain/document/title";
 
 const admin: Actor = { userId: "00000000-0000-4000-8000-000000000001", role: "admin" };
 const editor: Actor = { userId: "00000000-0000-4000-8000-000000000002", role: "editor" };
@@ -358,8 +359,8 @@ describe("importTree — 트리 통째 적재 (시드 · E2E)", () => {
       kind: "document",
       title: "무시되는 제목",
       children: [
-        { id: "x-s1", kind: "section", title: "목적", children: [{ id: "x-a1", kind: "article", title: "목적", children: [{ id: "x-a1-p1", kind: "paragraph", children: [{ id: "x-a1-p1-r", kind: "articleRef", targets: [{ articleId: "x-a2" }], connector: "및", scope: "self" }] }] }] },
-        { id: "x-s2", kind: "section", title: "지급", children: [{ id: "x-a2", kind: "article", title: "지급", children: [{ id: "x-a2-p1", kind: "paragraph", children: [{ id: "x-a2-p1-t", kind: "text", text: "본문" }] }] }] },
+        { id: "x-s1", kind: "section", title: "목적", children: [{ id: "x-a1", kind: "article", title: titleNodes("목적", "x-a1"), children: [{ id: "x-a1-p1", kind: "paragraph", children: [{ id: "x-a1-p1-r", kind: "articleRef", targets: [{ articleId: "x-a2" }], connector: "및", scope: "self" }] }] }] },
+        { id: "x-s2", kind: "section", title: "지급", children: [{ id: "x-a2", kind: "article", title: titleNodes("지급", "x-a2"), children: [{ id: "x-a2-p1", kind: "paragraph", children: [{ id: "x-a2-p1-t", kind: "text", text: "본문" }] }] }] },
       ],
     };
     const saved = unwrap(await svc.importTree(editor, g.id, tree));
@@ -377,7 +378,7 @@ describe("importTree — 트리 통째 적재 (시드 · E2E)", () => {
       id: "y-doc",
       kind: "document",
       title: "y",
-      children: [{ id: "y-a1", kind: "article", title: "a", children: [{ id: "y-p", kind: "paragraph", children: [{ id: "y-r", kind: "articleRef", targets: [{ articleId: "없음" }], connector: "및", scope: "self" }] }] }],
+      children: [{ id: "y-a1", kind: "article", title: titleNodes("a", "y-a1"), children: [{ id: "y-p", kind: "paragraph", children: [{ id: "y-r", kind: "articleRef", targets: [{ articleId: "없음" }], connector: "및", scope: "self" }] }] }],
     });
     expect(rejection(r).reason).toBe("invalid");
     await t.close();

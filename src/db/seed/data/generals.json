@@ -14,7 +14,13 @@
             {
               "id": "g-a1",
               "kind": "article",
-              "title": "목적",
+              "title": [
+                {
+                  "id": "g-a1.title",
+                  "kind": "text",
+                  "text": "목적"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a1-p1-k",
@@ -28,7 +34,13 @@
             {
               "id": "g-a2",
               "kind": "article",
-              "title": "용어의 정의",
+              "title": [
+                {
+                  "id": "g-a2.title",
+                  "kind": "text",
+                  "text": "용어의 정의"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a2-p1",
@@ -715,7 +727,13 @@
             {
               "id": "g-a3",
               "kind": "article",
-              "title": "보험금의 지급사유",
+              "title": [
+                {
+                  "id": "g-a3.title",
+                  "kind": "text",
+                  "text": "보험금의 지급사유"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a3-p1",
@@ -744,7 +762,13 @@
             {
               "id": "g-a4",
               "kind": "article",
-              "title": "보험금 지급에 관한 세부규정",
+              "title": [
+                {
+                  "id": "g-a4.title",
+                  "kind": "text",
+                  "text": "보험금 지급에 관한 세부규정"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a4-p1",
@@ -951,7 +975,13 @@
             {
               "id": "g-a5",
               "kind": "article",
-              "title": "보험금을 지급하지 않는 사유",
+              "title": [
+                {
+                  "id": "g-a5.title",
+                  "kind": "text",
+                  "text": "보험금을 지급하지 않는 사유"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a5-p1-k",
@@ -977,7 +1007,13 @@
             {
               "id": "g-a6",
               "kind": "article",
-              "title": "보험금 지급사유 등의 통지",
+              "title": [
+                {
+                  "id": "g-a6.title",
+                  "kind": "text",
+                  "text": "보험금 지급사유 등의 통지"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a6-p1",
@@ -1050,7 +1086,13 @@
             {
               "id": "g-a7",
               "kind": "article",
-              "title": "보험금 등의 청구",
+              "title": [
+                {
+                  "id": "g-a7.title",
+                  "kind": "text",
+                  "text": "보험금 등의 청구"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a7-p1-k",
@@ -1064,7 +1106,13 @@
             {
               "id": "g-a8",
               "kind": "article",
-              "title": "보험금의 지급절차",
+              "title": [
+                {
+                  "id": "g-a8.title",
+                  "kind": "text",
+                  "text": "보험금의 지급절차"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a8-p1",
@@ -1417,7 +1465,13 @@
             {
               "id": "g-a9",
               "kind": "article",
-              "title": "적립부분 적립이율에 관한 사항",
+              "title": [
+                {
+                  "id": "g-a9.title",
+                  "kind": "text",
+                  "text": "적립부분 적립이율에 관한 사항"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a9-p1",
@@ -1623,7 +1677,13 @@
             {
               "id": "g-a10",
               "kind": "article",
-              "title": "만기환급금의 지급",
+              "title": [
+                {
+                  "id": "g-a10.title",
+                  "kind": "text",
+                  "text": "만기환급금의 지급"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a10-p1",
@@ -1772,7 +1832,13 @@
             {
               "id": "g-a11",
               "kind": "article",
-              "title": "보험금 받는 방법의 변경",
+              "title": [
+                {
+                  "id": "g-a11.title",
+                  "kind": "text",
+                  "text": "보험금 받는 방법의 변경"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a11-p1",
@@ -1825,7 +1891,13 @@
             {
               "id": "g-a12",
               "kind": "article",
-              "title": "주소변경통지",
+              "title": [
+                {
+                  "id": "g-a12.title",
+                  "kind": "text",
+                  "text": "주소변경통지"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a12-p1-k",
@@ -1839,7 +1911,13 @@
             {
               "id": "g-a13",
               "kind": "article",
-              "title": "보험수익자의 지정",
+              "title": [
+                {
+                  "id": "g-a13.title",
+                  "kind": "text",
+                  "text": "보험수익자의 지정"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a13-p1-k",
@@ -1858,7 +1936,13 @@
             {
               "id": "g-a14",
               "kind": "article",
-              "title": "대표자의 지정",
+              "title": [
+                {
+                  "id": "g-a14.title",
+                  "kind": "text",
+                  "text": "대표자의 지정"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a14-p1-k",
@@ -1884,7 +1968,13 @@
             {
               "id": "g-a15",
               "kind": "article",
-              "title": "계약 전 알릴 의무",
+              "title": [
+                {
+                  "id": "g-a15.title",
+                  "kind": "text",
+                  "text": "계약 전 알릴 의무"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a15-p1-k",
@@ -1903,7 +1993,13 @@
             {
               "id": "g-a16",
               "kind": "article",
-              "title": "상해보험계약 후 알릴 의무",
+              "title": [
+                {
+                  "id": "g-a16.title",
+                  "kind": "text",
+                  "text": "상해보험계약 후 알릴 의무"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a16-p1",
@@ -2179,7 +2275,13 @@
             {
               "id": "g-a17",
               "kind": "article",
-              "title": "알릴 의무 위반의 효과",
+              "title": [
+                {
+                  "id": "g-a17.title",
+                  "kind": "text",
+                  "text": "알릴 의무 위반의 효과"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a17-p1",
@@ -2550,7 +2652,13 @@
             {
               "id": "g-a18",
               "kind": "article",
-              "title": "사기에 의한 계약",
+              "title": [
+                {
+                  "id": "g-a18.title",
+                  "kind": "text",
+                  "text": "사기에 의한 계약"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a18-p1-k",
@@ -2571,7 +2679,13 @@
             {
               "id": "g-a19",
               "kind": "article",
-              "title": "보험계약의 성립",
+              "title": [
+                {
+                  "id": "g-a19.title",
+                  "kind": "text",
+                  "text": "보험계약의 성립"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a19-p1",
@@ -2745,7 +2859,13 @@
             {
               "id": "g-a20",
               "kind": "article",
-              "title": "청약의 철회",
+              "title": [
+                {
+                  "id": "g-a20.title",
+                  "kind": "text",
+                  "text": "청약의 철회"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a20-p1",
@@ -2853,7 +2973,13 @@
             {
               "id": "g-a21",
               "kind": "article",
-              "title": "약관교부 및 설명의무 등",
+              "title": [
+                {
+                  "id": "g-a21.title",
+                  "kind": "text",
+                  "text": "약관교부 및 설명의무 등"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a21-p1",
@@ -3117,7 +3243,13 @@
             {
               "id": "g-a22",
               "kind": "article",
-              "title": "계약의 무효",
+              "title": [
+                {
+                  "id": "g-a22.title",
+                  "kind": "text",
+                  "text": "계약의 무효"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a22-p1",
@@ -3243,7 +3375,13 @@
             {
               "id": "g-a23",
               "kind": "article",
-              "title": "계약내용의 변경 등",
+              "title": [
+                {
+                  "id": "g-a23.title",
+                  "kind": "text",
+                  "text": "계약내용의 변경 등"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a23-p1",
@@ -3455,7 +3593,13 @@
             {
               "id": "g-a24",
               "kind": "article",
-              "title": "보험나이 등",
+              "title": [
+                {
+                  "id": "g-a24.title",
+                  "kind": "text",
+                  "text": "보험나이 등"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a24-p1",
@@ -3532,7 +3676,13 @@
             {
               "id": "g-a25",
               "kind": "article",
-              "title": "계약의 소멸",
+              "title": [
+                {
+                  "id": "g-a25.title",
+                  "kind": "text",
+                  "text": "계약의 소멸"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a25-p1",
@@ -3626,7 +3776,13 @@
             {
               "id": "g-a26",
               "kind": "article",
-              "title": "제1회 보험료 및 회사의 보장개시",
+              "title": [
+                {
+                  "id": "g-a26.title",
+                  "kind": "text",
+                  "text": "제1회 보험료 및 회사의 보장개시"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a26-p1-k",
@@ -3662,7 +3818,13 @@
             {
               "id": "g-a27",
               "kind": "article",
-              "title": "제2회 이후 보험료의 납입",
+              "title": [
+                {
+                  "id": "g-a27.title",
+                  "kind": "text",
+                  "text": "제2회 이후 보험료의 납입"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a27-p1-k",
@@ -3689,7 +3851,13 @@
                     {
                       "id": "g-a27_1",
                       "kind": "article",
-                      "title": "보험료의 납입면제",
+                      "title": [
+                        {
+                          "id": "g-a27_1.title",
+                          "kind": "text",
+                          "text": "보험료의 납입면제"
+                        }
+                      ],
                       "children": [
                         {
                           "id": "g-a27_1-for-plans",
@@ -4028,7 +4196,13 @@
                     {
                       "id": "g-a27_2",
                       "kind": "article",
-                      "title": "납입면제에 관한 세부규정",
+                      "title": [
+                        {
+                          "id": "g-a27_2.title",
+                          "kind": "text",
+                          "text": "납입면제에 관한 세부규정"
+                        }
+                      ],
                       "children": [
                         {
                           "id": "g-a27_2-p1-k",
@@ -4043,7 +4217,13 @@
                     {
                       "id": "g-a27_3",
                       "kind": "article",
-                      "title": "암(유사암제외), 뇌졸중, 급성심근경색증, 말기폐질환, 말기간경화, 말기신부전증, 양성뇌종양, 중대한재생불량성빈혈, 만성당뇨합병증의 정의 및 진단확정",
+                      "title": [
+                        {
+                          "id": "g-a27_3.title",
+                          "kind": "text",
+                          "text": "암(유사암제외), 뇌졸중, 급성심근경색증, 말기폐질환, 말기간경화, 말기신부전증, 양성뇌종양, 중대한재생불량성빈혈, 만성당뇨합병증의 정의 및 진단확정"
+                        }
+                      ],
                       "children": [
                         {
                           "id": "g-a27_3-p1-k-cancer",
@@ -4134,7 +4314,13 @@
             {
               "id": "g-a28",
               "kind": "article",
-              "title": "보험료의 자동대출납입",
+              "title": [
+                {
+                  "id": "g-a28.title",
+                  "kind": "text",
+                  "text": "보험료의 자동대출납입"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a28-p1",
@@ -4301,7 +4487,13 @@
             {
               "id": "g-a29",
               "kind": "article",
-              "title": "보험료의 납입이 연체되는 경우 납입최고(독촉)와 계약의 해지",
+              "title": [
+                {
+                  "id": "g-a29.title",
+                  "kind": "text",
+                  "text": "보험료의 납입이 연체되는 경우 납입최고(독촉)와 계약의 해지"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a29-p1",
@@ -4596,7 +4788,13 @@
             {
               "id": "g-a30",
               "kind": "article",
-              "title": "보험료의 납입을 연체하여 해지된 계약의 부활(효력회복)",
+              "title": [
+                {
+                  "id": "g-a30.title",
+                  "kind": "text",
+                  "text": "보험료의 납입을 연체하여 해지된 계약의 부활(효력회복)"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a30-p1",
@@ -4747,7 +4945,13 @@
             {
               "id": "g-a31",
               "kind": "article",
-              "title": "강제집행 등으로 인하여 해지된 계약의 특별부활(효력회복)",
+              "title": [
+                {
+                  "id": "g-a31.title",
+                  "kind": "text",
+                  "text": "강제집행 등으로 인하여 해지된 계약의 특별부활(효력회복)"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a31-p1",
@@ -4945,7 +5149,13 @@
             {
               "id": "g-a32",
               "kind": "article",
-              "title": "계약자의 임의해지 및 피보험자의 서면동의 철회",
+              "title": [
+                {
+                  "id": "g-a32.title",
+                  "kind": "text",
+                  "text": "계약자의 임의해지 및 피보험자의 서면동의 철회"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a32-p1",
@@ -5021,7 +5231,13 @@
             {
               "id": "g-a32_1",
               "kind": "article",
-              "title": "위법계약의 해지",
+              "title": [
+                {
+                  "id": "g-a32_1.title",
+                  "kind": "text",
+                  "text": "위법계약의 해지"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a32_1-p1",
@@ -5160,7 +5376,13 @@
             {
               "id": "g-a33",
               "kind": "article",
-              "title": "중대사유로 인한 해지",
+              "title": [
+                {
+                  "id": "g-a33.title",
+                  "kind": "text",
+                  "text": "중대사유로 인한 해지"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a33-p1",
@@ -5256,7 +5478,13 @@
             {
               "id": "g-a34",
               "kind": "article",
-              "title": "회사의 파산선고와 해지",
+              "title": [
+                {
+                  "id": "g-a34.title",
+                  "kind": "text",
+                  "text": "회사의 파산선고와 해지"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a34-p1",
@@ -5357,7 +5585,13 @@
             {
               "id": "g-a35",
               "kind": "article",
-              "title": "해약환급금",
+              "title": [
+                {
+                  "id": "g-a35.title",
+                  "kind": "text",
+                  "text": "해약환급금"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a35-p1",
@@ -5450,7 +5684,13 @@
             {
               "id": "g-a36",
               "kind": "article",
-              "title": "보험계약대출",
+              "title": [
+                {
+                  "id": "g-a36.title",
+                  "kind": "text",
+                  "text": "보험계약대출"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a36-p1",
@@ -5550,7 +5790,13 @@
             {
               "id": "g-a37",
               "kind": "article",
-              "title": "배당금의 지급",
+              "title": [
+                {
+                  "id": "g-a37.title",
+                  "kind": "text",
+                  "text": "배당금의 지급"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a37-p1-k",
@@ -5564,7 +5810,13 @@
             {
               "id": "g-a38",
               "kind": "article",
-              "title": "중도인출",
+              "title": [
+                {
+                  "id": "g-a38.title",
+                  "kind": "text",
+                  "text": "중도인출"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a38-p1",
@@ -5665,7 +5917,13 @@
             {
               "id": "g-a39",
               "kind": "article",
-              "title": "분쟁의 조정",
+              "title": [
+                {
+                  "id": "g-a39.title",
+                  "kind": "text",
+                  "text": "분쟁의 조정"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a39-p1-k",
@@ -5679,7 +5937,13 @@
             {
               "id": "g-a40",
               "kind": "article",
-              "title": "관할법원",
+              "title": [
+                {
+                  "id": "g-a40.title",
+                  "kind": "text",
+                  "text": "관할법원"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a40-p1-k",
@@ -5693,7 +5957,13 @@
             {
               "id": "g-a41",
               "kind": "article",
-              "title": "소멸시효",
+              "title": [
+                {
+                  "id": "g-a41.title",
+                  "kind": "text",
+                  "text": "소멸시효"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a41-p1-k",
@@ -5712,7 +5982,13 @@
             {
               "id": "g-a42",
               "kind": "article",
-              "title": "약관의 해석",
+              "title": [
+                {
+                  "id": "g-a42.title",
+                  "kind": "text",
+                  "text": "약관의 해석"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a42-p1",
@@ -5743,7 +6019,13 @@
             {
               "id": "g-a43",
               "kind": "article",
-              "title": "설명서 교부 및 보험안내자료 등의 효력",
+              "title": [
+                {
+                  "id": "g-a43.title",
+                  "kind": "text",
+                  "text": "설명서 교부 및 보험안내자료 등의 효력"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a43-p1-k",
@@ -5762,7 +6044,13 @@
             {
               "id": "g-a44",
               "kind": "article",
-              "title": "법령 등의 개정에 따른 계약내용의 변경",
+              "title": [
+                {
+                  "id": "g-a44.title",
+                  "kind": "text",
+                  "text": "법령 등의 개정에 따른 계약내용의 변경"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a44-p1-k",
@@ -5776,7 +6064,13 @@
             {
               "id": "g-a45",
               "kind": "article",
-              "title": "회사의 손해배상책임",
+              "title": [
+                {
+                  "id": "g-a45.title",
+                  "kind": "text",
+                  "text": "회사의 손해배상책임"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a45-p1-k",
@@ -5795,7 +6089,13 @@
             {
               "id": "g-a46",
               "kind": "article",
-              "title": "개인정보보호",
+              "title": [
+                {
+                  "id": "g-a46.title",
+                  "kind": "text",
+                  "text": "개인정보보호"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a46-p1-k",
@@ -5809,7 +6109,13 @@
             {
               "id": "g-a47",
               "kind": "article",
-              "title": "준거법",
+              "title": [
+                {
+                  "id": "g-a47.title",
+                  "kind": "text",
+                  "text": "준거법"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a47-p1-k",
@@ -5823,7 +6129,13 @@
             {
               "id": "g-a48",
               "kind": "article",
-              "title": "예금보험에 의한 지급보장",
+              "title": [
+                {
+                  "id": "g-a48.title",
+                  "kind": "text",
+                  "text": "예금보험에 의한 지급보장"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a48-p1-k",
@@ -5859,7 +6171,13 @@
             {
               "id": "m-a1",
               "kind": "article",
-              "title": "목적",
+              "title": [
+                {
+                  "id": "m-a1.title",
+                  "kind": "text",
+                  "text": "목적"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a1-p1-k",
@@ -5873,7 +6191,13 @@
             {
               "id": "m-a2",
               "kind": "article",
-              "title": "용어의 정의",
+              "title": [
+                {
+                  "id": "m-a2.title",
+                  "kind": "text",
+                  "text": "용어의 정의"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a2-p1",
@@ -6619,7 +6943,13 @@
             {
               "id": "m-a3",
               "kind": "article",
-              "title": "보험금의 지급사유",
+              "title": [
+                {
+                  "id": "m-a3.title",
+                  "kind": "text",
+                  "text": "보험금의 지급사유"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a3-p1",
@@ -6638,7 +6968,13 @@
             {
               "id": "m-a4",
               "kind": "article",
-              "title": "보험금 지급에 관한 세부규정",
+              "title": [
+                {
+                  "id": "m-a4.title",
+                  "kind": "text",
+                  "text": "보험금 지급에 관한 세부규정"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a4-p1",
@@ -6760,7 +7096,13 @@
             {
               "id": "m-a5",
               "kind": "article",
-              "title": "보험금을 지급하지 않는 사유",
+              "title": [
+                {
+                  "id": "m-a5.title",
+                  "kind": "text",
+                  "text": "보험금을 지급하지 않는 사유"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a5-p1-k",
@@ -6786,7 +7128,13 @@
             {
               "id": "m-a6",
               "kind": "article",
-              "title": "보험금 지급사유 등의 통지",
+              "title": [
+                {
+                  "id": "m-a6.title",
+                  "kind": "text",
+                  "text": "보험금 지급사유 등의 통지"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a6-p1",
@@ -6859,7 +7207,13 @@
             {
               "id": "m-a7",
               "kind": "article",
-              "title": "보험금 등의 청구",
+              "title": [
+                {
+                  "id": "m-a7.title",
+                  "kind": "text",
+                  "text": "보험금 등의 청구"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a7-p1-k",
@@ -6873,7 +7227,13 @@
             {
               "id": "m-a8",
               "kind": "article",
-              "title": "보험금의 지급절차",
+              "title": [
+                {
+                  "id": "m-a8.title",
+                  "kind": "text",
+                  "text": "보험금의 지급절차"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a8-p1",
@@ -7226,7 +7586,13 @@
             {
               "id": "m-a9",
               "kind": "article",
-              "title": "적립부분 적립이율에 관한 사항",
+              "title": [
+                {
+                  "id": "m-a9.title",
+                  "kind": "text",
+                  "text": "적립부분 적립이율에 관한 사항"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a9-p1",
@@ -7388,7 +7754,13 @@
             {
               "id": "m-a10",
               "kind": "article",
-              "title": "만기환급금의 지급",
+              "title": [
+                {
+                  "id": "m-a10.title",
+                  "kind": "text",
+                  "text": "만기환급금의 지급"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a10-p1",
@@ -7537,7 +7909,13 @@
             {
               "id": "m-a11",
               "kind": "article",
-              "title": "보험금 받는 방법의 변경",
+              "title": [
+                {
+                  "id": "m-a11.title",
+                  "kind": "text",
+                  "text": "보험금 받는 방법의 변경"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a11-p1",
@@ -7590,7 +7968,13 @@
             {
               "id": "m-a12",
               "kind": "article",
-              "title": "주소변경통지",
+              "title": [
+                {
+                  "id": "m-a12.title",
+                  "kind": "text",
+                  "text": "주소변경통지"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a12-p1-k",
@@ -7604,7 +7988,13 @@
             {
               "id": "m-a13",
               "kind": "article",
-              "title": "보험수익자의 지정",
+              "title": [
+                {
+                  "id": "m-a13.title",
+                  "kind": "text",
+                  "text": "보험수익자의 지정"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a13-p1-k",
@@ -7623,7 +8013,13 @@
             {
               "id": "m-a14",
               "kind": "article",
-              "title": "대표자의 지정",
+              "title": [
+                {
+                  "id": "m-a14.title",
+                  "kind": "text",
+                  "text": "대표자의 지정"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a14-p1-k",
@@ -7649,7 +8045,13 @@
             {
               "id": "m-a15",
               "kind": "article",
-              "title": "계약 전 알릴 의무",
+              "title": [
+                {
+                  "id": "m-a15.title",
+                  "kind": "text",
+                  "text": "계약 전 알릴 의무"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a15-p1-k",
@@ -7668,7 +8070,13 @@
             {
               "id": "m-a16",
               "kind": "article",
-              "title": "상해보험계약 후 알릴 의무",
+              "title": [
+                {
+                  "id": "m-a16.title",
+                  "kind": "text",
+                  "text": "상해보험계약 후 알릴 의무"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a16-p1",
@@ -7944,7 +8352,13 @@
             {
               "id": "m-a17",
               "kind": "article",
-              "title": "알릴 의무 위반의 효과",
+              "title": [
+                {
+                  "id": "m-a17.title",
+                  "kind": "text",
+                  "text": "알릴 의무 위반의 효과"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a17-p1",
@@ -8315,7 +8729,13 @@
             {
               "id": "m-a18",
               "kind": "article",
-              "title": "사기에 의한 계약",
+              "title": [
+                {
+                  "id": "m-a18.title",
+                  "kind": "text",
+                  "text": "사기에 의한 계약"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a18-p1-k",
@@ -8336,7 +8756,13 @@
             {
               "id": "m-a19",
               "kind": "article",
-              "title": "보험계약의 성립",
+              "title": [
+                {
+                  "id": "m-a19.title",
+                  "kind": "text",
+                  "text": "보험계약의 성립"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a19-p1",
@@ -8505,7 +8931,13 @@
             {
               "id": "m-a20",
               "kind": "article",
-              "title": "청약의 철회",
+              "title": [
+                {
+                  "id": "m-a20.title",
+                  "kind": "text",
+                  "text": "청약의 철회"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a20-p1",
@@ -8613,7 +9045,13 @@
             {
               "id": "m-a21",
               "kind": "article",
-              "title": "약관교부 및 설명의무 등",
+              "title": [
+                {
+                  "id": "m-a21.title",
+                  "kind": "text",
+                  "text": "약관교부 및 설명의무 등"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a21-p1",
@@ -8877,7 +9315,13 @@
             {
               "id": "m-a22",
               "kind": "article",
-              "title": "계약의 무효",
+              "title": [
+                {
+                  "id": "m-a22.title",
+                  "kind": "text",
+                  "text": "계약의 무효"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a22-p1",
@@ -8998,7 +9442,13 @@
             {
               "id": "m-a23",
               "kind": "article",
-              "title": "계약내용의 변경 등",
+              "title": [
+                {
+                  "id": "m-a23.title",
+                  "kind": "text",
+                  "text": "계약내용의 변경 등"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a23-p1",
@@ -9210,7 +9660,13 @@
             {
               "id": "m-a24",
               "kind": "article",
-              "title": "보험나이 등",
+              "title": [
+                {
+                  "id": "m-a24.title",
+                  "kind": "text",
+                  "text": "보험나이 등"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a24-p1",
@@ -9286,7 +9742,13 @@
             {
               "id": "m-a25",
               "kind": "article",
-              "title": "계약의 자동갱신",
+              "title": [
+                {
+                  "id": "m-a25.title",
+                  "kind": "text",
+                  "text": "계약의 자동갱신"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a25-p1",
@@ -9477,7 +9939,13 @@
             {
               "id": "m-a26",
               "kind": "article",
-              "title": "계약의 소멸",
+              "title": [
+                {
+                  "id": "m-a26.title",
+                  "kind": "text",
+                  "text": "계약의 소멸"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a26-p1",
@@ -9571,7 +10039,13 @@
             {
               "id": "m-a27",
               "kind": "article",
-              "title": "제1회 보험료 및 회사의 보장개시",
+              "title": [
+                {
+                  "id": "m-a27.title",
+                  "kind": "text",
+                  "text": "제1회 보험료 및 회사의 보장개시"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a27-p1-k",
@@ -9607,7 +10081,13 @@
             {
               "id": "m-a28",
               "kind": "article",
-              "title": "제2회 이후 보험료의 납입",
+              "title": [
+                {
+                  "id": "m-a28.title",
+                  "kind": "text",
+                  "text": "제2회 이후 보험료의 납입"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a28-p1-k",
@@ -9634,7 +10114,13 @@
                     {
                       "id": "m-a29",
                       "kind": "article",
-                      "title": "보험료의 납입면제",
+                      "title": [
+                        {
+                          "id": "m-a29.title",
+                          "kind": "text",
+                          "text": "보험료의 납입면제"
+                        }
+                      ],
                       "children": [
                         {
                           "id": "m-a29-for-plans",
@@ -10005,7 +10491,13 @@
                     {
                       "id": "m-a30",
                       "kind": "article",
-                      "title": "암(유사암제외), 뇌졸중, 급성심근경색증, 중증화상및부식의 정의 및 진단확정",
+                      "title": [
+                        {
+                          "id": "m-a30.title",
+                          "kind": "text",
+                          "text": "암(유사암제외), 뇌졸중, 급성심근경색증, 중증화상및부식의 정의 및 진단확정"
+                        }
+                      ],
                       "children": [
                         {
                           "id": "m-a30-p1-k-cancer",
@@ -10092,7 +10584,13 @@
                     {
                       "id": "m-a31",
                       "kind": "article",
-                      "title": "납입면제에 관한 세부규정",
+                      "title": [
+                        {
+                          "id": "m-a31.title",
+                          "kind": "text",
+                          "text": "납입면제에 관한 세부규정"
+                        }
+                      ],
                       "children": [
                         {
                           "id": "m-a31-p1-k",
@@ -10111,7 +10609,13 @@
             {
               "id": "m-a32",
               "kind": "article",
-              "title": "보험료의 자동대출납입",
+              "title": [
+                {
+                  "id": "m-a32.title",
+                  "kind": "text",
+                  "text": "보험료의 자동대출납입"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a32-p1",
@@ -10278,7 +10782,13 @@
             {
               "id": "m-a33",
               "kind": "article",
-              "title": "갱신계약 제1회 보험료의 납입연체와 계약의 해제",
+              "title": [
+                {
+                  "id": "m-a33.title",
+                  "kind": "text",
+                  "text": "갱신계약 제1회 보험료의 납입연체와 계약의 해제"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a33-p1",
@@ -10309,7 +10819,13 @@
             {
               "id": "m-a34",
               "kind": "article",
-              "title": "보험료의 납입이 연체되는 경우 납입최고(독촉)와 계약의 해지",
+              "title": [
+                {
+                  "id": "m-a34.title",
+                  "kind": "text",
+                  "text": "보험료의 납입이 연체되는 경우 납입최고(독촉)와 계약의 해지"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a34-p1",
@@ -10604,7 +11120,13 @@
             {
               "id": "m-a35",
               "kind": "article",
-              "title": "보험료의 납입을 연체하여 해지된 계약의 부활(효력회복)",
+              "title": [
+                {
+                  "id": "m-a35.title",
+                  "kind": "text",
+                  "text": "보험료의 납입을 연체하여 해지된 계약의 부활(효력회복)"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a35-p1",
@@ -10755,7 +11277,13 @@
             {
               "id": "m-a36",
               "kind": "article",
-              "title": "강제집행 등으로 인하여 해지된 계약의 특별부활(효력회복)",
+              "title": [
+                {
+                  "id": "m-a36.title",
+                  "kind": "text",
+                  "text": "강제집행 등으로 인하여 해지된 계약의 특별부활(효력회복)"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a36-p1",
@@ -10953,7 +11481,13 @@
             {
               "id": "m-a37",
               "kind": "article",
-              "title": "계약자의 임의해지 및 피보험자의 서면동의 철회",
+              "title": [
+                {
+                  "id": "m-a37.title",
+                  "kind": "text",
+                  "text": "계약자의 임의해지 및 피보험자의 서면동의 철회"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a37-p1",
@@ -11029,7 +11563,13 @@
             {
               "id": "m-a37_1",
               "kind": "article",
-              "title": "위법계약의 해지",
+              "title": [
+                {
+                  "id": "m-a37_1.title",
+                  "kind": "text",
+                  "text": "위법계약의 해지"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a37_1-p1",
@@ -11168,7 +11708,13 @@
             {
               "id": "m-a38",
               "kind": "article",
-              "title": "중대사유로 인한 해지",
+              "title": [
+                {
+                  "id": "m-a38.title",
+                  "kind": "text",
+                  "text": "중대사유로 인한 해지"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a38-p1",
@@ -11264,7 +11810,13 @@
             {
               "id": "m-a39",
               "kind": "article",
-              "title": "회사의 파산선고와 해지",
+              "title": [
+                {
+                  "id": "m-a39.title",
+                  "kind": "text",
+                  "text": "회사의 파산선고와 해지"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a39-p1",
@@ -11365,7 +11917,13 @@
             {
               "id": "m-a40",
               "kind": "article",
-              "title": "해약환급금",
+              "title": [
+                {
+                  "id": "m-a40.title",
+                  "kind": "text",
+                  "text": "해약환급금"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a40-p1",
@@ -11475,7 +12033,13 @@
             {
               "id": "m-a41",
               "kind": "article",
-              "title": "보험계약대출",
+              "title": [
+                {
+                  "id": "m-a41.title",
+                  "kind": "text",
+                  "text": "보험계약대출"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a41-p1",
@@ -11575,7 +12139,13 @@
             {
               "id": "m-a42",
               "kind": "article",
-              "title": "배당금의 지급",
+              "title": [
+                {
+                  "id": "m-a42.title",
+                  "kind": "text",
+                  "text": "배당금의 지급"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a42-p1-k",
@@ -11589,7 +12159,13 @@
             {
               "id": "m-a43",
               "kind": "article",
-              "title": "중도인출",
+              "title": [
+                {
+                  "id": "m-a43.title",
+                  "kind": "text",
+                  "text": "중도인출"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a43-p1",
@@ -11690,7 +12266,13 @@
             {
               "id": "m-a44",
               "kind": "article",
-              "title": "분쟁의 조정",
+              "title": [
+                {
+                  "id": "m-a44.title",
+                  "kind": "text",
+                  "text": "분쟁의 조정"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a44-p1-k",
@@ -11704,7 +12286,13 @@
             {
               "id": "m-a45",
               "kind": "article",
-              "title": "관할법원",
+              "title": [
+                {
+                  "id": "m-a45.title",
+                  "kind": "text",
+                  "text": "관할법원"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a45-p1-k",
@@ -11718,7 +12306,13 @@
             {
               "id": "m-a46",
               "kind": "article",
-              "title": "소멸시효",
+              "title": [
+                {
+                  "id": "m-a46.title",
+                  "kind": "text",
+                  "text": "소멸시효"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a46-p1-k",
@@ -11737,7 +12331,13 @@
             {
               "id": "m-a47",
               "kind": "article",
-              "title": "약관의 해석",
+              "title": [
+                {
+                  "id": "m-a47.title",
+                  "kind": "text",
+                  "text": "약관의 해석"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a47-p1",
@@ -11768,7 +12368,13 @@
             {
               "id": "m-a48",
               "kind": "article",
-              "title": "설명서 교부 및 보험안내자료 등의 효력",
+              "title": [
+                {
+                  "id": "m-a48.title",
+                  "kind": "text",
+                  "text": "설명서 교부 및 보험안내자료 등의 효력"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a48-p1-k",
@@ -11787,7 +12393,13 @@
             {
               "id": "m-a49",
               "kind": "article",
-              "title": "법령 등의 개정에 따른 계약내용의 변경",
+              "title": [
+                {
+                  "id": "m-a49.title",
+                  "kind": "text",
+                  "text": "법령 등의 개정에 따른 계약내용의 변경"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a49-p1-k",
@@ -11801,7 +12413,13 @@
             {
               "id": "m-a50",
               "kind": "article",
-              "title": "회사의 손해배상책임",
+              "title": [
+                {
+                  "id": "m-a50.title",
+                  "kind": "text",
+                  "text": "회사의 손해배상책임"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a50-p1-k",
@@ -11820,7 +12438,13 @@
             {
               "id": "m-a51",
               "kind": "article",
-              "title": "개인정보보호",
+              "title": [
+                {
+                  "id": "m-a51.title",
+                  "kind": "text",
+                  "text": "개인정보보호"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a51-p1-k",
@@ -11834,7 +12458,13 @@
             {
               "id": "m-a52",
               "kind": "article",
-              "title": "준거법",
+              "title": [
+                {
+                  "id": "m-a52.title",
+                  "kind": "text",
+                  "text": "준거법"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a52-p1-k",
@@ -11848,7 +12478,13 @@
             {
               "id": "m-a53",
               "kind": "article",
-              "title": "예금보험에 의한 지급보장",
+              "title": [
+                {
+                  "id": "m-a53.title",
+                  "kind": "text",
+                  "text": "예금보험에 의한 지급보장"
+                }
+              ],
               "children": [
                 {
                   "id": "m-a53-p1-k",
@@ -11884,7 +12520,13 @@
             {
               "id": "g-a1",
               "kind": "article",
-              "title": "목적",
+              "title": [
+                {
+                  "id": "g-a1.title",
+                  "kind": "text",
+                  "text": "목적"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a1-p1-k",
@@ -11898,7 +12540,13 @@
             {
               "id": "g-a2",
               "kind": "article",
-              "title": "용어의 정의",
+              "title": [
+                {
+                  "id": "g-a2.title",
+                  "kind": "text",
+                  "text": "용어의 정의"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a2-p1",
@@ -12585,7 +13233,13 @@
             {
               "id": "g-a3",
               "kind": "article",
-              "title": "보험금의 지급사유",
+              "title": [
+                {
+                  "id": "g-a3.title",
+                  "kind": "text",
+                  "text": "보험금의 지급사유"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a3-p1",
@@ -12614,7 +13268,13 @@
             {
               "id": "g-a4",
               "kind": "article",
-              "title": "보험금 지급에 관한 세부규정",
+              "title": [
+                {
+                  "id": "g-a4.title",
+                  "kind": "text",
+                  "text": "보험금 지급에 관한 세부규정"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a4-p1",
@@ -12821,7 +13481,13 @@
             {
               "id": "g-a5",
               "kind": "article",
-              "title": "보험금을 지급하지 않는 사유",
+              "title": [
+                {
+                  "id": "g-a5.title",
+                  "kind": "text",
+                  "text": "보험금을 지급하지 않는 사유"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a5-p1-k",
@@ -12847,7 +13513,13 @@
             {
               "id": "g-a6",
               "kind": "article",
-              "title": "보험금 지급사유 등의 통지",
+              "title": [
+                {
+                  "id": "g-a6.title",
+                  "kind": "text",
+                  "text": "보험금 지급사유 등의 통지"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a6-p1",
@@ -12920,7 +13592,13 @@
             {
               "id": "g-a7",
               "kind": "article",
-              "title": "보험금 등의 청구",
+              "title": [
+                {
+                  "id": "g-a7.title",
+                  "kind": "text",
+                  "text": "보험금 등의 청구"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a7-p1-k",
@@ -12934,7 +13612,13 @@
             {
               "id": "g-a8",
               "kind": "article",
-              "title": "보험금의 지급절차",
+              "title": [
+                {
+                  "id": "g-a8.title",
+                  "kind": "text",
+                  "text": "보험금의 지급절차"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a8-p1",
@@ -13287,7 +13971,13 @@
             {
               "id": "g-a9",
               "kind": "article",
-              "title": "적립부분 적립이율에 관한 사항",
+              "title": [
+                {
+                  "id": "g-a9.title",
+                  "kind": "text",
+                  "text": "적립부분 적립이율에 관한 사항"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a9-p1",
@@ -13454,7 +14144,13 @@
             {
               "id": "g-a10",
               "kind": "article",
-              "title": "만기환급금의 지급",
+              "title": [
+                {
+                  "id": "g-a10.title",
+                  "kind": "text",
+                  "text": "만기환급금의 지급"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a10-p1",
@@ -13603,7 +14299,13 @@
             {
               "id": "g-a11",
               "kind": "article",
-              "title": "보험금 받는 방법의 변경",
+              "title": [
+                {
+                  "id": "g-a11.title",
+                  "kind": "text",
+                  "text": "보험금 받는 방법의 변경"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a11-p1",
@@ -13829,7 +14531,13 @@
             {
               "id": "g-a12",
               "kind": "article",
-              "title": "주소변경통지",
+              "title": [
+                {
+                  "id": "g-a12.title",
+                  "kind": "text",
+                  "text": "주소변경통지"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a12-p1-k",
@@ -13843,7 +14551,13 @@
             {
               "id": "g-a13",
               "kind": "article",
-              "title": "보험수익자의 지정",
+              "title": [
+                {
+                  "id": "g-a13.title",
+                  "kind": "text",
+                  "text": "보험수익자의 지정"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a13-p1-k",
@@ -13862,7 +14576,13 @@
             {
               "id": "g-a14",
               "kind": "article",
-              "title": "대표자의 지정",
+              "title": [
+                {
+                  "id": "g-a14.title",
+                  "kind": "text",
+                  "text": "대표자의 지정"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a14-p1-k",
@@ -13893,7 +14613,13 @@
             {
               "id": "g-a15",
               "kind": "article",
-              "title": "계약 전 알릴 의무",
+              "title": [
+                {
+                  "id": "g-a15.title",
+                  "kind": "text",
+                  "text": "계약 전 알릴 의무"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a15-p1-k",
@@ -13927,7 +14653,13 @@
             {
               "id": "g-a16",
               "kind": "article",
-              "title": "상해보험계약 후 알릴 의무",
+              "title": [
+                {
+                  "id": "g-a16.title",
+                  "kind": "text",
+                  "text": "상해보험계약 후 알릴 의무"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a16-p1",
@@ -14213,7 +14945,13 @@
             {
               "id": "g-a17",
               "kind": "article",
-              "title": "알릴 의무 위반의 효과",
+              "title": [
+                {
+                  "id": "g-a17.title",
+                  "kind": "text",
+                  "text": "알릴 의무 위반의 효과"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a17-p1",
@@ -14584,7 +15322,13 @@
             {
               "id": "g-a18",
               "kind": "article",
-              "title": "사기에 의한 계약",
+              "title": [
+                {
+                  "id": "g-a18.title",
+                  "kind": "text",
+                  "text": "사기에 의한 계약"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a18-p1-k",
@@ -14605,7 +15349,13 @@
             {
               "id": "g-a19",
               "kind": "article",
-              "title": "보험계약의 성립",
+              "title": [
+                {
+                  "id": "g-a19.title",
+                  "kind": "text",
+                  "text": "보험계약의 성립"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a19-p1",
@@ -14789,7 +15539,13 @@
             {
               "id": "g-a20",
               "kind": "article",
-              "title": "청약의 철회",
+              "title": [
+                {
+                  "id": "g-a20.title",
+                  "kind": "text",
+                  "text": "청약의 철회"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a20-p1",
@@ -14902,7 +15658,13 @@
             {
               "id": "g-a21",
               "kind": "article",
-              "title": "약관교부 및 설명의무 등",
+              "title": [
+                {
+                  "id": "g-a21.title",
+                  "kind": "text",
+                  "text": "약관교부 및 설명의무 등"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a21-p1",
@@ -15171,7 +15933,13 @@
             {
               "id": "g-a22",
               "kind": "article",
-              "title": "계약의 무효",
+              "title": [
+                {
+                  "id": "g-a22.title",
+                  "kind": "text",
+                  "text": "계약의 무효"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a22-p1",
@@ -15297,7 +16065,13 @@
             {
               "id": "g-a23",
               "kind": "article",
-              "title": "계약내용의 변경 등",
+              "title": [
+                {
+                  "id": "g-a23.title",
+                  "kind": "text",
+                  "text": "계약내용의 변경 등"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a23-p1",
@@ -15509,7 +16283,13 @@
             {
               "id": "g-a24",
               "kind": "article",
-              "title": "보험나이 등",
+              "title": [
+                {
+                  "id": "g-a24.title",
+                  "kind": "text",
+                  "text": "보험나이 등"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a24-p1",
@@ -15591,7 +16371,13 @@
             {
               "id": "g-a25",
               "kind": "article",
-              "title": "계약의 소멸",
+              "title": [
+                {
+                  "id": "g-a25.title",
+                  "kind": "text",
+                  "text": "계약의 소멸"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a25-p1",
@@ -15685,7 +16471,13 @@
             {
               "id": "g-a26",
               "kind": "article",
-              "title": "제1회 보험료 및 회사의 보장개시",
+              "title": [
+                {
+                  "id": "g-a26.title",
+                  "kind": "text",
+                  "text": "제1회 보험료 및 회사의 보장개시"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a26-p1-k",
@@ -15721,7 +16513,13 @@
             {
               "id": "g-a27",
               "kind": "article",
-              "title": "제2회 이후 보험료의 납입",
+              "title": [
+                {
+                  "id": "g-a27.title",
+                  "kind": "text",
+                  "text": "제2회 이후 보험료의 납입"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a27-p1-k",
@@ -15748,7 +16546,13 @@
                     {
                       "id": "g-a27_1",
                       "kind": "article",
-                      "title": "보험료의 납입면제",
+                      "title": [
+                        {
+                          "id": "g-a27_1.title",
+                          "kind": "text",
+                          "text": "보험료의 납입면제"
+                        }
+                      ],
                       "children": [
                         {
                           "id": "g-a27_1-for-plans",
@@ -16087,7 +16891,13 @@
                     {
                       "id": "g-a27_2",
                       "kind": "article",
-                      "title": "납입면제에 관한 세부규정",
+                      "title": [
+                        {
+                          "id": "g-a27_2.title",
+                          "kind": "text",
+                          "text": "납입면제에 관한 세부규정"
+                        }
+                      ],
                       "children": [
                         {
                           "id": "g-a27_2-p1-k",
@@ -16102,7 +16912,13 @@
                     {
                       "id": "g-a27_3",
                       "kind": "article",
-                      "title": "암(유사암제외), 뇌졸중, 급성심근경색증, 말기폐질환, 말기간경화, 말기신부전증, 양성뇌종양, 중대한재생불량성빈혈, 만성당뇨합병증의 정의 및 진단확정",
+                      "title": [
+                        {
+                          "id": "g-a27_3.title",
+                          "kind": "text",
+                          "text": "암(유사암제외), 뇌졸중, 급성심근경색증, 말기폐질환, 말기간경화, 말기신부전증, 양성뇌종양, 중대한재생불량성빈혈, 만성당뇨합병증의 정의 및 진단확정"
+                        }
+                      ],
                       "children": [
                         {
                           "id": "g-a27_3-p1-k-cancer",
@@ -16193,7 +17009,13 @@
             {
               "id": "g-a28",
               "kind": "article",
-              "title": "보험료의 자동대출납입",
+              "title": [
+                {
+                  "id": "g-a28.title",
+                  "kind": "text",
+                  "text": "보험료의 자동대출납입"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a28-p1",
@@ -16360,7 +17182,13 @@
             {
               "id": "g-a29",
               "kind": "article",
-              "title": "보험료의 납입이 연체되는 경우 납입최고(독촉)와 계약의 해지",
+              "title": [
+                {
+                  "id": "g-a29.title",
+                  "kind": "text",
+                  "text": "보험료의 납입이 연체되는 경우 납입최고(독촉)와 계약의 해지"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a29-p1",
@@ -16655,7 +17483,13 @@
             {
               "id": "g-a30",
               "kind": "article",
-              "title": "보험료의 납입을 연체하여 해지된 계약의 부활(효력회복)",
+              "title": [
+                {
+                  "id": "g-a30.title",
+                  "kind": "text",
+                  "text": "보험료의 납입을 연체하여 해지된 계약의 부활(효력회복)"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a30-p1",
@@ -16806,7 +17640,13 @@
             {
               "id": "g-a31",
               "kind": "article",
-              "title": "강제집행 등으로 인하여 해지된 계약의 특별부활(효력회복)",
+              "title": [
+                {
+                  "id": "g-a31.title",
+                  "kind": "text",
+                  "text": "강제집행 등으로 인하여 해지된 계약의 특별부활(효력회복)"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a31-p1",
@@ -17004,7 +17844,13 @@
             {
               "id": "g-a32",
               "kind": "article",
-              "title": "계약자의 임의해지 및 피보험자의 서면동의 철회",
+              "title": [
+                {
+                  "id": "g-a32.title",
+                  "kind": "text",
+                  "text": "계약자의 임의해지 및 피보험자의 서면동의 철회"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a32-p1",
@@ -17080,7 +17926,13 @@
             {
               "id": "g-a32_1",
               "kind": "article",
-              "title": "위법계약의 해지",
+              "title": [
+                {
+                  "id": "g-a32_1.title",
+                  "kind": "text",
+                  "text": "위법계약의 해지"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a32_1-p1",
@@ -17224,7 +18076,13 @@
             {
               "id": "g-a33",
               "kind": "article",
-              "title": "중대사유로 인한 해지",
+              "title": [
+                {
+                  "id": "g-a33.title",
+                  "kind": "text",
+                  "text": "중대사유로 인한 해지"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a33-p1",
@@ -17320,7 +18178,13 @@
             {
               "id": "g-a34",
               "kind": "article",
-              "title": "회사의 파산선고와 해지",
+              "title": [
+                {
+                  "id": "g-a34.title",
+                  "kind": "text",
+                  "text": "회사의 파산선고와 해지"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a34-p1",
@@ -17421,7 +18285,13 @@
             {
               "id": "g-a35",
               "kind": "article",
-              "title": "해약환급금",
+              "title": [
+                {
+                  "id": "g-a35.title",
+                  "kind": "text",
+                  "text": "해약환급금"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a35-p1",
@@ -17531,7 +18401,13 @@
             {
               "id": "g-a36",
               "kind": "article",
-              "title": "보험계약대출",
+              "title": [
+                {
+                  "id": "g-a36.title",
+                  "kind": "text",
+                  "text": "보험계약대출"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a36-p1",
@@ -17631,7 +18507,13 @@
             {
               "id": "g-a37",
               "kind": "article",
-              "title": "배당금의 지급",
+              "title": [
+                {
+                  "id": "g-a37.title",
+                  "kind": "text",
+                  "text": "배당금의 지급"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a37-p1-k",
@@ -17645,7 +18527,13 @@
             {
               "id": "g-a38",
               "kind": "article",
-              "title": "중도인출",
+              "title": [
+                {
+                  "id": "g-a38.title",
+                  "kind": "text",
+                  "text": "중도인출"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a38-p1",
@@ -17746,7 +18634,13 @@
             {
               "id": "g-a39",
               "kind": "article",
-              "title": "분쟁의 조정",
+              "title": [
+                {
+                  "id": "g-a39.title",
+                  "kind": "text",
+                  "text": "분쟁의 조정"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a39-p1-k",
@@ -17760,7 +18654,13 @@
             {
               "id": "g-a40",
               "kind": "article",
-              "title": "관할법원",
+              "title": [
+                {
+                  "id": "g-a40.title",
+                  "kind": "text",
+                  "text": "관할법원"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a40-p1-k",
@@ -17774,7 +18674,13 @@
             {
               "id": "g-a41",
               "kind": "article",
-              "title": "소멸시효",
+              "title": [
+                {
+                  "id": "g-a41.title",
+                  "kind": "text",
+                  "text": "소멸시효"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a41-p1-k",
@@ -17793,7 +18699,13 @@
             {
               "id": "g-a42",
               "kind": "article",
-              "title": "약관의 해석",
+              "title": [
+                {
+                  "id": "g-a42.title",
+                  "kind": "text",
+                  "text": "약관의 해석"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a42-p1",
@@ -17829,7 +18741,13 @@
             {
               "id": "g-a43",
               "kind": "article",
-              "title": "설명서 교부 및 보험안내자료 등의 효력",
+              "title": [
+                {
+                  "id": "g-a43.title",
+                  "kind": "text",
+                  "text": "설명서 교부 및 보험안내자료 등의 효력"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a43-p1-k",
@@ -17848,7 +18766,13 @@
             {
               "id": "g-a44",
               "kind": "article",
-              "title": "법령 등의 개정에 따른 계약내용의 변경",
+              "title": [
+                {
+                  "id": "g-a44.title",
+                  "kind": "text",
+                  "text": "법령 등의 개정에 따른 계약내용의 변경"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a44-p1-k",
@@ -17862,7 +18786,13 @@
             {
               "id": "g-a45",
               "kind": "article",
-              "title": "회사의 손해배상책임",
+              "title": [
+                {
+                  "id": "g-a45.title",
+                  "kind": "text",
+                  "text": "회사의 손해배상책임"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a45-p1-k",
@@ -17881,7 +18811,13 @@
             {
               "id": "g-a46",
               "kind": "article",
-              "title": "개인정보보호",
+              "title": [
+                {
+                  "id": "g-a46.title",
+                  "kind": "text",
+                  "text": "개인정보보호"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a46-p1-k",
@@ -17895,7 +18831,13 @@
             {
               "id": "g-a47",
               "kind": "article",
-              "title": "준거법",
+              "title": [
+                {
+                  "id": "g-a47.title",
+                  "kind": "text",
+                  "text": "준거법"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a47-p1-k",
@@ -17909,7 +18851,13 @@
             {
               "id": "g-a48",
               "kind": "article",
-              "title": "예금보험에 의한 지급보장",
+              "title": [
+                {
+                  "id": "g-a48.title",
+                  "kind": "text",
+                  "text": "예금보험에 의한 지급보장"
+                }
+              ],
               "children": [
                 {
                   "id": "g-a48-p1-k",

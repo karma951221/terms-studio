@@ -45,6 +45,13 @@ describe("documents — 문서 1건 = 트리 jsonb 1건 (ADR-0012)", () => {
     expect((await findByOwner(t.db, cov))?.id).toBe(s.id);
   });
 
+  it("옛 글 조 제목은 읽을 때 [글 하나]로 이행한다 — 마이그레이션 없이 (ADR-0088 결정 1 · 수용 기준 1)", async () => {
+    const old = { ...general, children: [{ id: "old-a1", kind: "article", title: "목적", children: [] }] } as unknown as typeof general;
+    const g = await insertDocument(t.db, { kind: "general", title: "옛 제목 문서", tree: old }, who);
+    expect((await loadDocument(t.db, g.id))!.tree.children[0]).toMatchObject({ id: "old-a1", title: [{ id: "old-a1.title", kind: "text", text: "목적" }] });
+    await deleteDocument(t.db, g.id);
+  });
+
   it("담보 1 : 문서 1 — 같은 담보로 두 번 넣으면 DB 가 막는다", async () => {
     await expect(insertDocument(t.db, { kind: "special", ownerId: cov, title: "x", tree: special }, who)).rejects.toThrow();
   });

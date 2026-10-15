@@ -22,7 +22,7 @@ import { IconButton, IconRevert } from "@/app/_components/icons";
 import { STRUCT_KEY_CHIP } from "@/app/_lib/labels";
 import type { EnumDef } from "@/domain/catalog";
 import { presetUsage, switchValueLabeler, type Bindings, type Clause } from "@/domain/clause";
-import { particlePreset, refChunkText, referenceChunkLabel, referenceKeyIndex, refKey, type ArticleNode, type Box, type CondBlockNode, type InlineNode, type Node, type NodeNumber, type ReferenceTarget, type TableNode } from "@/domain/document";
+import { foldTitle, particlePreset, refChunkText, referenceChunkLabel, referenceKeyIndex, refKey, type ArticleNode, type Box, type CondBlockNode, type InlineNode, type Node, type NodeNumber, type ReferenceTarget, type TableNode } from "@/domain/document";
 import { format, parse, refPath } from "@/domain/expression";
 import type { ClauseOptionOverride } from "@/domain/product";
 import type { Code, Id } from "@/domain/types";
@@ -553,7 +553,7 @@ function ArticleNodes({ nodes, ctx }: { nodes: readonly Node[]; ctx: Ctx }) {
   return nodes.map((node) => {
     if (node.kind === "article") {
       const isHidden = edit ? edit.current.hidden.includes(node.id) : ctx.hidden.has(node.id);
-      const label = `${ctx.numbers.get(node.id)?.label ?? "조"}(${node.title})`;
+      const label = `${ctx.numbers.get(node.id)?.label ?? "조"}(${foldTitle(node.title)})`;
       return (
         <section key={node.id} id={`art-${node.id}`} className={isHidden ? "ts-doc-article is-hidden-article" : "ts-doc-article"}>
           <h4 className="ts-doc-article-title">

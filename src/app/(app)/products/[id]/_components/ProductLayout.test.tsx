@@ -26,6 +26,7 @@ import { CoveragesTab } from "./CoveragesTab";
 import { GeneralTab } from "./GeneralTab";
 import { findForm } from "@/domain/master";
 import { ProductEditProvider } from "./ProductEdit";
+import { titleNodes } from "@/domain/document/title";
 
 const enums = [
   { code: "E0003", label: "간편심사유형", values: [{ code: "V01", label: "3.0.5", order: 0 }, { code: "V02", label: "3.5.5", order: 1 }] },
@@ -134,7 +135,7 @@ describe("보통약관 탭 — 템플릿 한 줄 + 세 패널, 다른 것은 없
       {
         id: "A1",
         kind: "article",
-        title: "목적",
+        title: titleNodes("목적", "A1"),
         children: [{ id: "P1", kind: "paragraph", children: [{ id: "t", kind: "text", text: "이 계약은" }, { id: "R1", kind: "clauseInlineRef", clauseCode: "C0001", options: { O01: "V01" } }] }],
       },
     ],

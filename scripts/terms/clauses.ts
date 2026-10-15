@@ -19,6 +19,7 @@
  */
 import type { ArticleRefNode as ClauseArticleRef, Block, BoxRefNode as ClauseBoxRef, Inline, ParagraphNode as ClauseParagraph } from "../../src/domain/clause/nodes";
 import type { ArticleNode, ArticleRefNode, BoxRefNode, DocumentNode, InlineNode, ParagraphNode } from "../../src/domain/document/nodes";
+import { foldTitle } from "../../src/domain/document/title";
 import type { Id } from "../../src/domain/types";
 import { discriminatorResultType } from "../../src/domain/catalog/expression";
 import type { Discriminator } from "../../src/domain/catalog/types";
@@ -211,7 +212,7 @@ function paramNameOf(positions: ReadonlyMap<Id, { article: ArticleNode; at: numb
   if (!pos) return undefined;
   const [p, i, u] = pos.at;
   const parts = [p !== undefined ? `제${p}항` : "", i !== undefined ? `제${i}호` : "", u !== undefined ? (SUBITEM_NAMES[u - 1] ? `${SUBITEM_NAMES[u - 1]}목` : `제${u}목`) : ""].filter(Boolean);
-  return [`${pos.article.title} 조`, ...parts].join(" ");
+  return [`${foldTitle(pos.article.title)} 조`, ...parts].join(" ");
 }
 
 /** 함수조항 본문(과 옵션 선택지 문구)의 조 참조 인자 슬롯 → 인자 선언(처음 나온 순, 같은 이름은 하나). */

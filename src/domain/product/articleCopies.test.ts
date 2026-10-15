@@ -6,10 +6,11 @@ import { describe, expect, it } from "vitest";
 import type { ArticleNode, DocumentNode } from "@/domain/document";
 
 import { applyArticleCopies, articleCopyStates, articleHash, articleOnlyChange, liveArticleCopies, sameArticle, stableStringify } from "./articleCopies";
+import { foldTitle, titleNodes } from "@/domain/document/title";
 
 const text = (id: string, t: string) => ({ id, kind: "text" as const, text: t });
 const para = (id: string, t: string) => ({ id, kind: "paragraph" as const, children: [text(`${id}-t`, t)] });
-const art = (id: string, title: string, body: string): ArticleNode => ({ id, kind: "article", title, children: [para(`${id}-p1`, body)] });
+const art = (id: string, title: string, body: string): ArticleNode => ({ id, kind: "article", title: titleNodes(title, id), children: [para(`${id}-p1`, body)] });
 
 /** 관 하나 · 관 밖 조 하나 · 조건 블록 안 조 하나. */
 const template = (): DocumentNode => ({
@@ -59,7 +60,8 @@ describe("applyArticleCopies — 고친 조만 사본, 나머지는 템플릿 �
       { articleId: "a1", article: { ...art("엉뚱", "목적", "고침"), id: "엉뚱" } },
       { articleId: "없는조", article: art("없는조", "x", "y") },
     ]);
-    expect(out.children[0]).toMatchObject({ id: "a1", title: "목적" });
+    expect(out.children[0]).toMatchObject({ id: "a1" });
+    expect(foldTitle((out.children[0] as ArticleNode).title)).toBe("목적");
     expect(JSON.stringify(out)).not.toContain("없는조");
     const t = template();
     expect(applyArticleCopies(t, [])).toBe(t);

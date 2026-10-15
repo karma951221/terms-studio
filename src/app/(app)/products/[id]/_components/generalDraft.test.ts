@@ -4,6 +4,7 @@ import type { ArticleNode } from "@/domain/document";
 import { articleHash } from "@/domain/product";
 
 import { generalDraftChanges, generalDraftDirty, generalDraftReducer, initGeneralDraft, issuesByPlace, toGeneralSettings } from "./generalDraft";
+import { titleNodes } from "@/domain/document/title";
 
 const BASE = { style: "A", tone: "T1" };
 const saved = initGeneralDraft(["a1"], [{ id: "o1", scope: { kind: "product", id: "p" }, nodeId: "n1", clauseCode: "C0001", options: { style: "B" } }]);
@@ -70,8 +71,8 @@ describe("보통약관 탭 초안 (기능/상품 §3.8 · §4.6)", () => {
 });
 
 describe("조 사본 초안 (ADR-0079 · 기능/상품 §3.10)", () => {
-  const template: ArticleNode = { id: "a1", kind: "article", title: "목적", children: [{ id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text: "원문" }] }] };
-  const edited = (text: string, title = "목적"): ArticleNode => ({ ...template, title, children: [{ id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text }] }] });
+  const template: ArticleNode = { id: "a1", kind: "article", title: titleNodes("목적", "a1"), children: [{ id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text: "원문" }] }] };
+  const edited = (text: string, title = "목적"): ArticleNode => ({ ...template, title: titleNodes(title, "a1"), children: [{ id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text }] }] });
   const base = initGeneralDraft([], []);
 
   it("조를 고치면 사본 — 지문은 고칠 때의 템플릿 조 지문, 다시 고쳐도 처음 지문을 지킨다(노랑을 조용히 지우지 않는다)", () => {

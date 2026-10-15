@@ -26,6 +26,7 @@ import type { EnumDef } from "../catalog/types";
 import type { LoopElementType } from "../clause/params";
 import type { Clause } from "../clause/types";
 import type { MasterTree } from "../master";
+import { foldTitle, TITLE_INLINE, titleKindMessage } from "./title";
 
 export type { ParticleNode } from "./particles";
 export { PARTICLE_PRESET_MESSAGE } from "./particles";
@@ -335,11 +336,14 @@ export interface SectionNode {
   children: (ArticleNode | CondBlockNode)[];
 }
 
-/** 조. 메타는 조 명 · 조연결뿐. */
+/**
+ * 조. 메타는 조 명 · 조연결뿐.
+ * 조 명(`title`)은 인라인 노드 목록이다 — 글 · 문장 안 조건 · 치환 슬롯 · 조사(ADR-0088 · title.ts `TITLE_INLINE`). 옛 글 제목은 읽을 때 [글 하나]로 이행한다.
+ */
 export interface ArticleNode {
   id: Id;
   kind: "article";
-  title: string;
+  title: InlineNode[];
   /** 조연결 — 대응 보통약관 조 id (담보약관에서만, 조당 최대 1개 — D-P4-21·22). */
   linkedArticleId?: Id;
   children: BlockNode[];
@@ -413,7 +417,8 @@ export const allowedListChildren = {
   "item.subitems": ["subitem", "condBlock", "bulletList", "clauseBlockRef"],
 } as const satisfies Record<string, readonly NodeKind[]>;
 
-export type SlotName = "children" | "items" | "subitems";
+/** `title` = 조 제목의 인라인 목록 (ADR-0088) — 조의 블록 자리(`slotsOf`)가 아니다. 색인 · 삽입 · 이동이 같은 길로 다룬다. */
+export type SlotName = "children" | "items" | "subitems" | "title";
 
 /** 노드 종류가 가진 목록 자리들 (순서 = 렌더 순서). */
 export function slotsOf(kind: NodeKind): readonly SlotName[] {
@@ -445,6 +450,7 @@ export function slotsOf(kind: NodeKind): readonly SlotName[] {
 export function allowedIn(parentKind: NodeKind, slot: SlotName): readonly NodeKind[] | undefined {
   if (slot === "children") return slotsOf(parentKind).includes("children") ? allowedChildren[parentKind] : undefined;
   if (slot === "items") return parentKind === "paragraph" ? allowedListChildren["paragraph.items"] : undefined;
+  if (slot === "title") return parentKind === "article" ? TITLE_INLINE : undefined;
   return parentKind === "item" ? allowedListChildren["item.subitems"] : undefined;
 }
 
@@ -463,12 +469,17 @@ export function listOf(node: Node, slot: SlotName): Node[] | undefined {
       return node.kind === "paragraph" ? (node.items as Node[] | undefined) : undefined;
     case "subitems":
       return node.kind === "item" ? (node.subitems as Node[] | undefined) : undefined;
+    case "title":
+      return node.kind === "article" ? node.title : undefined;
   }
 }
 
-/** 표 셀의 인라인 노드 전부 (평탄화). 표가 아니면 빈 배열 — 순회기들이 셀 안을 빠뜨리지 않게 한다. */
+/**
+ * 블록 자리(`slotsOf`) 밖에 붙은 인라인 노드 전부 — 표 셀(평탄화) · 조 제목(ADR-0088). 순회기들이 셀 · 제목 안을 빠뜨리지 않게 한다.
+ */
 export function cellNodesOf(node: Node): InlineNode[] {
-  return node.kind === "table" ? node.rows.flatMap((row) => row.cells.flat()) : [];
+  if (node.kind === "table") return node.rows.flatMap((row) => row.cells.flat());
+  return node.kind === "article" ? node.title : [];
 }
 
 /** 조건 노드(블록·인라인)의 가지 목록. */
@@ -495,6 +506,8 @@ export interface NodeEntry {
   inFor: boolean;
   /** 조상 블록 반복 수 (자기 제외) — 한 단계 중첩 검사 · 반복 안 대상 판정. */
   forDepth: number;
+  /** 조 제목 안 노드 (제목 안 인라인 조건 가지까지, ADR-0088). */
+  inTitle?: true;
 }
 
 export interface BranchEntry {
@@ -526,6 +539,7 @@ interface Frame {
   inInlineCond: boolean;
   inFor: boolean;
   forDepth: number;
+  inTitle?: true;
 }
 
 /** 블록 반복 본문의 허용 집합 — 서 있는 자리의 집합에서 표 · 옛 박스를 뺀다(반복 표와 겹치는 문맥을 만들지 않는다). */
@@ -581,10 +595,12 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
   const visit = (node: Node, f: Frame): void => {
     const path = [...f.path, node.id];
     const articleId = node.kind === "article" ? node.id : f.articleId;
-    if (node.kind === "article") titles.set(node.id, node.title);
+    if (node.kind === "article") titles.set(node.id, foldTitle(node.title));
     if (seen(node.id, path, articleId)) return;
 
-    if (f.parentId !== undefined && !f.allowed.includes(node.kind)) {
+    if (f.inTitle && !f.allowed.includes(node.kind)) {
+      structure(titleKindMessage(node.kind), path, articleId);
+    } else if (f.parentId !== undefined && !f.allowed.includes(node.kind)) {
       const parentKind = nodes.get(f.parentId)?.node.kind ?? "condBlock";
       structure(`${parentKind} 의 ${f.slot} 자리에 ${node.kind} 은(는) 올 수 없습니다`, path, articleId);
     }
@@ -609,6 +625,7 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
       inInlineCond: f.inInlineCond,
       inFor: f.inFor,
       forDepth: f.forDepth,
+      ...(f.inTitle ? { inTitle: true as const } : {}),
     });
 
     const inInlineCond = f.inInlineCond || node.kind === "inlineCond";
@@ -632,6 +649,13 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
       );
     }
 
+    // 조 제목의 인라인 — 본문 문장과 같은 규칙(id 유일 · 문장 안 조건 중첩 · 참조 검사)에 제목 허용 집합을 더한다 (ADR-0088 결정 5)
+    if (node.kind === "article") {
+      node.title.forEach((child, xi) =>
+        visit(child, { parentId: node.id, slot: "title", index: xi, path, articleId, allowed: TITLE_INLINE, inInlineCond: false, inFor, forDepth, inTitle: true }),
+      );
+    }
+
     const brs = branchesOf(node);
     if (brs !== undefined) {
       if (brs.length === 0) structure("조건 노드에는 가지가 하나 이상 있어야 합니다", path, articleId);
@@ -648,7 +672,7 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
         branches.set(br.id, { branch: br, ownerId: node.id, index: i, path: bpath, articleId, allowed: f.allowed });
         // 가지 안의 허용 집합 = 조건 노드가 서 있는 자리의 허용 집합 (투명)
         (br.children as Node[]).forEach((child, ci) =>
-          visit(child, { parentId: br.id, slot: "children", index: ci, path: bpath, articleId, allowed: f.allowed, inInlineCond, inFor, forDepth }),
+          visit(child, { parentId: br.id, slot: "children", index: ci, path: bpath, articleId, allowed: f.allowed, inInlineCond, inFor, forDepth, ...(f.inTitle ? { inTitle: true as const } : {}) }),
         );
       });
       return;
@@ -763,12 +787,18 @@ export function validateTree(doc: DocumentNode, env: TreeEnv = {}): Issue[] {
   return issues;
 }
 
+/** 좌표의 조 명 — 상품 문맥이 없으니 접은 제목 (ADR-0088 결정 6). */
+function articleTitleOf(ix: TreeIndex, articleId: Id): string | undefined {
+  const a = ix.nodes.get(articleId)?.node;
+  return a?.kind === "article" ? foldTitle(a.title) : undefined;
+}
+
 /** 색인 항목의 좌표 (문서 기본 좌표 + 조 + 노드 경로). */
 export function coordinateOf(ix: TreeIndex, e: { path: Id[]; articleId?: Id }, base: Coordinate = {}): Coordinate {
   return {
     ...base,
     ...(e.articleId !== undefined
-      ? { articleId: e.articleId, articleTitle: (ix.nodes.get(e.articleId)?.node as ArticleNode | undefined)?.title }
+      ? { articleId: e.articleId, articleTitle: articleTitleOf(ix, e.articleId) }
       : {}),
     nodePath: e.path,
   };

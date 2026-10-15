@@ -27,6 +27,8 @@ import {
   generalRefsOf,
   numberTree,
   removedIds,
+  foldTitle,
+  withInlineTitles,
   removedRefKeys,
   refKey,
   renameAppendix,
@@ -495,7 +497,8 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
     importTree: (actor, id, incoming) =>
       db.transaction((tx) =>
         withDoc(tx, id, async (doc) => {
-          const tree: DocumentNode = { ...incoming, id: doc.tree.id, title: doc.title };
+          // 밖에서 온 트리(시드 · 변환기 출력)의 옛 글 조 제목은 [글 하나]로 이행해 새 모양으로 쓴다 (ADR-0088 결정 1)
+          const tree: DocumentNode = { ...withInlineTitles(incoming), id: doc.tree.id, title: doc.title };
           const issues = await validateDoc(tx, doc, tree);
           if (issues.length > 0) return invalid(issues);
           await repo.saveDocument(tx, id, { tree: withCodes(tree), title: doc.title }, actor.userId);
@@ -620,7 +623,7 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
 
 /** 관·조건 블록(중첩 포함) 안의 조 제목을 등장 순으로 모은다 — 삭제 영향도 표시용. */
 function collectArticleTitles(node: DocumentNode | DocumentNode["children"][number]): string[] {
-  if (node.kind === "article") return [node.title];
+  if (node.kind === "article") return [foldTitle(node.title)];
   if (node.kind === "section" || node.kind === "document") return node.children.flatMap(collectArticleTitles);
   return node.branches.flatMap((branch) => (branch.children as DocumentNode["children"]).flatMap(collectArticleTitles));
 }

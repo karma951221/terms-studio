@@ -5,6 +5,7 @@ import { previewArticle } from "./articlePreview";
 import { assemble } from "./booklet";
 import { alphaBaseDocument, alphaDeathDocument, alphaGeneralDocument, alphaPlusFixture } from "./fixture";
 import type { AssemblyInput, RenderedArticle, RenderedDoc, RenderedInline } from "./types";
+import { titleNodes } from "@/domain/document/title";
 
 /** 렌더 조 → 사람이 읽는 줄 (번호 · 본문). */
 function lines(a: RenderedArticle): string[] {
@@ -106,7 +107,7 @@ describe("previewArticle — 저작 화면 미리보기: 고른 상품 문맥으
 
   it("보통약관 — 상품의 조 사본을 쓰는 조는 사본 본문 + 사본 표시", () => {
     const input = fx();
-    const copy: DocumentNode["children"][number] = { id: "g-art-def", kind: "article", title: "용어의 정의", children: [{ id: "g-par-def", kind: "paragraph", children: [{ id: "g-txt-def-copy", kind: "text", text: "이 상품의 용어 정의." }] }] };
+    const copy: DocumentNode["children"][number] = { id: "g-art-def", kind: "article", title: titleNodes("용어의 정의", "g-art-def"), children: [{ id: "g-par-def", kind: "paragraph", children: [{ id: "g-txt-def-copy", kind: "text", text: "이 상품의 용어 정의." }] }] };
     if (copy.kind !== "article") throw new Error("모양");
     const withCopy: AssemblyInput = { ...input, product: { ...input.product, articleCopies: new Map([["g-art-def", copy]]) } };
     const r = run(withCopy, { document: "general", tree: alphaGeneralDocument() }, "g-art-def");

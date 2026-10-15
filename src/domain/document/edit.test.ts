@@ -5,6 +5,7 @@ import { nodeBuilders, sequentialIds } from "./builders";
 import { applyCommand } from "./commands";
 import { applyEdit, envAt, generalRefsOf, removedIds, replayEdits, type DraftState, type EditEnv, type EditOp } from "./edit";
 import type { ArticleNode, DocumentNode } from "./nodes";
+import { foldTitle } from "./title";
 
 function unwrap<T>(r: Result<T>): T {
   if (!r.ok) throw new Error(`기대: ok, 실제: ${JSON.stringify(r.rejection)}`);
@@ -47,7 +48,7 @@ describe("ADR-0074 편집본 — 명령을 편집본에 적용하고 명령 목�
     expect(r.state.tree).toEqual(unwrap(applyCommand(special, op)));
     expect(r.op).toEqual(op);
     // 원본(시작 상태)은 바뀌지 않는다
-    expect((special.children[1] as ArticleNode).title).toBe("보험기간");
+    expect(foldTitle((special.children[1] as ArticleNode).title)).toBe("보험기간");
     void b;
   });
 
@@ -61,7 +62,7 @@ describe("ADR-0074 편집본 — 명령을 편집본에 적용하고 명령 목�
     const serverEnv: EditEnv = { ...env, newId: sequentialIds("zz") };
     const replayed = unwrap(replayEdits({ tree: special }, [r.op, { type: "setTitle", nodeId: "c1", title: "사본 조" }], serverEnv));
     expect(replayed.tree.children.map((c) => c.id)).toEqual(["n3", "c1", "n4"]);
-    expect((replayed.tree.children[1] as ArticleNode).title).toBe("사본 조");
+    expect(foldTitle((replayed.tree.children[1] as ArticleNode).title)).toBe("사본 조");
   });
 
   it("실린 사본 id 수가 하위 트리와 다르면 거부한다", () => {
@@ -154,6 +155,7 @@ describe("removedIds — 원본에 있고 결과에 없는 노드", () => {
   it("지운 조와 그 하위 id", () => {
     const { special, env } = fixture();
     const after = unwrap(replayEdits({ tree: special }, [{ type: "remove", nodeId: "n3" }], env));
-    expect([...removedIds(special, after.tree)].sort()).toEqual(["n1", "n2", "n3"]);
+    // 조 제목 노드(`n3.title`, ADR-0088)도 트리 노드다
+    expect([...removedIds(special, after.tree)].sort()).toEqual(["n1", "n2", "n3", "n3.title"]);
   });
 });

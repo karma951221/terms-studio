@@ -6,6 +6,7 @@
 import type { Code, Id } from "../types";
 import type { RepeatSource } from "./blockRepeat";
 import type { ParticleNode, ParticlePresetKey } from "./particles";
+import { titleNodes } from "./title";
 import type {
   AppendixRefNode,
   BoxRefNode,
@@ -69,13 +70,17 @@ export function nodeBuilders(newId: IdSource = randomIds) {
       columns: input.columns,
       rows: input.rows.map((row) => ({ ...(row.header ? { header: true } : {}), cells: row.cells.map((text): InlineNode[] => [{ id: newId(), kind: "text", text }]) })),
     }),
-    article: (title: string, children: BlockNode[] = [], opts: { linkedArticleId?: Id } = {}): ArticleNode => ({
-      id: newId(),
-      kind: "article",
-      title,
-      ...(opts.linkedArticleId !== undefined ? { linkedArticleId: opts.linkedArticleId } : {}),
-      children,
-    }),
+    /** 조 — 제목을 글로 주면 [글 하나](id 는 조 id 에서 — `titleNodes`, 공급원을 쓰지 않는다), 인라인 목록이면 그대로 (ADR-0088). */
+    article: (title: string | InlineNode[], children: BlockNode[] = [], opts: { linkedArticleId?: Id } = {}): ArticleNode => {
+      const id = newId();
+      return {
+        id,
+        kind: "article",
+        title: typeof title === "string" ? titleNodes(title, id) : title,
+        ...(opts.linkedArticleId !== undefined ? { linkedArticleId: opts.linkedArticleId } : {}),
+        children,
+      };
+    },
     paragraph: (children: InlineNode[] = [], items?: ParagraphNode["items"]): ParagraphNode => ({
       id: newId(),
       kind: "paragraph",

@@ -10,6 +10,7 @@
  * 노드 id 는 결정적이다: 짝 조건 블록 `<접두>-m<순번>` · 가지 `-t` / `-e`.
  */
 import type { ArticleNode, BlockNode, DocumentNode } from "../../src/domain/document/nodes";
+import { foldTitle } from "../../src/domain/document/title";
 import type { Id } from "../../src/domain/types";
 
 // ───────────────────────────── 이름 ─────────────────────────────
@@ -155,7 +156,7 @@ export function canonicalArticle(a: ArticleNode, opts: CanonicalOptions, childre
         return `[${n.kind}]`;
     }
   };
-  return `${opts.withTitle ? `§${a.title}` : ""}${(children as AnyNode[]).map(block).join("")}`;
+  return `${opts.withTitle ? `§${foldTitle(a.title)}` : ""}${(children as AnyNode[]).map(block).join("")}`;
 }
 
 // ───────────────────────────── 갱신형 짝 ─────────────────────────────
@@ -224,7 +225,7 @@ export function mergeRenewal(base: DocumentNode, renewal: DocumentNode, when: st
   const rs = flat(renewal);
   const keysOf = (tree: DocumentNode, list: ArticleNode[]) => {
     const pos = documentPaths(tree);
-    return list.map((a) => canonicalArticle(a, { withTitle: true, outside: (id) => (pos.has(id) ? `${pos.get(id)!.article.title}#${pos.get(id)!.path}` : `?${id}`) }));
+    return list.map((a) => canonicalArticle(a, { withTitle: true, outside: (id) => (pos.has(id) ? `${foldTitle(pos.get(id)!.article.title)}#${pos.get(id)!.path}` : `?${id}`) }));
   };
   const matched = lcs(keysOf(base, bs), keysOf(renewal, rs));
   const move = new Map<Id, Id>();
@@ -234,7 +235,7 @@ export function mergeRenewal(base: DocumentNode, renewal: DocumentNode, when: st
   const kept = new Set(matched.map(([i]) => bs[i]));
   const bPos = documentPaths(base);
   const rByTitlePath = new Map<string, Id>();
-  for (const [id, { article, path }] of documentPaths(renewal)) if (!matched.some(([, j]) => rs[j] === article)) rByTitlePath.set(`${article.title}#${path}`, id);
+  for (const [id, { article, path }] of documentPaths(renewal)) if (!matched.some(([, j]) => rs[j] === article)) rByTitlePath.set(`${foldTitle(article.title)}#${path}`, id);
   for (const a of kept) {
     const visit = (n: unknown) => {
       if (Array.isArray(n)) return n.forEach(visit);
@@ -244,7 +245,7 @@ export function mergeRenewal(base: DocumentNode, renewal: DocumentNode, when: st
         o.targets = (o.targets as { articleId: Id }[]).flatMap((t) => {
           const at = bPos.get(t.articleId);
           if (!at || kept.has(at.article)) return [t];
-          const twin = rByTitlePath.get(`${at.article.title}#${at.path}`);
+          const twin = rByTitlePath.get(`${foldTitle(at.article.title)}#${at.path}`);
           return twin ? [t, { ...t, articleId: twin }] : [t];
         });
       }
@@ -280,7 +281,7 @@ type ArticleIfNode = { id: Id; kind: string; branches: { id: Id; when?: string; 
  */
 export function collapseRenewal(tree: DocumentNode, idPrefix: string, referenced: (article: ArticleNode) => boolean): number {
   const pos = documentPaths(tree);
-  const key = (a: ArticleNode) => canonicalArticle(a, { withTitle: true, outside: (id) => (pos.has(id) ? `${pos.get(id)!.article.title}#${pos.get(id)!.path}` : `?${id}`) });
+  const key = (a: ArticleNode) => canonicalArticle(a, { withTitle: true, outside: (id) => (pos.has(id) ? `${foldTitle(pos.get(id)!.article.title)}#${pos.get(id)!.path}` : `?${id}`) });
   const isPair = (c: unknown, suffix: "" | "n") => {
     const o = c as ArticleIfNode | undefined;
     return o?.kind === "condBlock" && new RegExp(`^${idPrefix}-m\\d+${suffix}$`).test(o.id);

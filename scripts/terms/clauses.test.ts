@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ArticleNode, DocumentNode, InlineNode, ParagraphNode } from "../../src/domain/document/nodes";
 
 import { applyClauseUse, articleRefParamsOf, clauseFromSource, inlineBody, parameterize, placeOptions, reId, renderings, replaceInlineRun, toClauseInline, type ClauseRecord } from "./clauses";
+import { titleNodes } from "../../src/domain/document/title";
 
 const text = (id: string, t: string): InlineNode => ({ id, kind: "text", text: t });
 /** 변환 중간 모양의 조 참조 — 대상 노드 id 를 `articleId` 자리에 싣는다(clauses.ts 머리 주석). */
@@ -32,7 +33,7 @@ const INLINE: ClauseRecord = {
 };
 
 function article(children: InlineNode[]): ArticleNode {
-  return { id: "s-a3", kind: "article", title: "특별약관의 소멸", children: [{ id: "s-a3-p2", kind: "paragraph", children }] };
+  return { id: "s-a3", kind: "article", title: titleNodes("특별약관의 소멸", "s-a3"), children: [{ id: "s-a3-p2", kind: "paragraph", children }] };
 }
 
 describe("함수조항 오버레이 — 「항」 자리 대조", () => {
@@ -41,7 +42,7 @@ describe("함수조항 오버레이 — 「항」 자리 대조", () => {
     const a: ArticleNode = {
       id: "s-a1",
       kind: "article",
-      title: "정의",
+      title: titleNodes("정의", "s-a1"),
       children: [{ id: "s-a1-p1", kind: "paragraph", children: [text("t", "다음과 같다.")], items: [{ id: "s-a1-p1-i1", kind: "item", children: [text("u", "가")] }, { id: "s-a1-b1-k", kind: "boxRef", boxCode: "BX000001" }] }],
     };
     const report: string[] = [];
@@ -64,7 +65,7 @@ describe("함수조항 오버레이 — 「항」 자리 대조", () => {
     const art = (restart: [boolean, boolean]): ArticleNode => ({
       id: "s-a1",
       kind: "article",
-      title: "세부보장에 관한 사항",
+      title: titleNodes("세부보장에 관한 사항", "s-a1"),
       children: [
         { id: "s-a1-p1", kind: "paragraph", ...(restart[0] ? { restart: true as const } : {}), children: [text("a", "첫째.")] },
         { id: "s-a1-p2", kind: "paragraph", ...(restart[1] ? { restart: true as const } : {}), children: [text("b", "둘째.")] },
@@ -150,7 +151,7 @@ describe("함수조항 오버레이 — 원문 자리를 참조로", () => {
       ...(items.length ? { items: items.map((it, i) => ({ id: `${id}-i${i + 1}`, kind: "item" as const, children: [text(`${id}-i${i + 1}-x`, it)] })) } : {}),
     });
     const block: ClauseRecord = { ...INLINE, code: "C0003", mode: "block", options: [], body: [para("c-p1", "가.", ["하나", "둘"]), para("c-p2", "나.")] as ClauseRecord["body"] };
-    const a: ArticleNode = { id: "g-a14", kind: "article", title: "대표자의 지정", children: [para("g-a14-p1", "가.", ["하나", "둘"]), para("g-a14-p2", "나."), { id: "g-a14-b1", kind: "box", title: "연대", lines: ["…"] }] };
+    const a: ArticleNode = { id: "g-a14", kind: "article", title: titleNodes("대표자의 지정", "g-a14"), children: [para("g-a14-p1", "가.", ["하나", "둘"]), para("g-a14-p2", "나."), { id: "g-a14-b1", kind: "box", title: "연대", lines: ["…"] }] };
     const report: string[] = [];
     expect(applyClauseUse({ article: "14", paragraph: 1, clause: "g" }, block, () => a, "[t]", report)).toBe(true);
     expect(report).toEqual([]);
@@ -165,7 +166,7 @@ describe("함수조항 오버레이 — 원문 자리를 참조로", () => {
     const a: ArticleNode = {
       id: "s-a4",
       kind: "article",
-      title: "보험금을 지급하지 않는 사유",
+      title: titleNodes("보험금을 지급하지 않는 사유", "s-a4"),
       children: [{ id: "s-a4-p1", kind: "paragraph", children: [text("p", "다음:")], items: [{ id: "s-a4-p1-i1", kind: "item", children: [text("i", "이 특별약관이 소멸된 경우에는 지급하지 않습니다.")] }] }],
     };
     expect(applyClauseUse({ article: "4", paragraph: 1, item: 1, clause: "C0004", options: { O01: "V01" } }, INLINE, () => a, "[t]", [])).toBe(true);
@@ -183,12 +184,12 @@ describe("함수조항 오버레이 — 원문 자리를 참조로", () => {
         kind: "document",
         title: "특약",
         children: [
-          { id: `${prefix}-a1`, kind: "article", title, children: [p(`${prefix}-a1-p1`, [text(`${prefix}-a1-x`, "지급")])] },
-          { id: `${prefix}-a2`, kind: "article", title: "세부규정", children: [p(`${prefix}-a2-p1`, [text(`${prefix}-a2-x`, "세부")])] },
+          { id: `${prefix}-a1`, kind: "article", title: titleNodes(title, `${prefix}-a1`), children: [p(`${prefix}-a1-p1`, [text(`${prefix}-a1-x`, "지급")])] },
+          { id: `${prefix}-a2`, kind: "article", title: titleNodes("세부규정", `${prefix}-a2`), children: [p(`${prefix}-a2-p1`, [text(`${prefix}-a2-x`, "세부")])] },
           {
             id: `${prefix}-a3`,
             kind: "article",
-            title: "특별약관의 소멸",
+            title: titleNodes("특별약관의 소멸", `${prefix}-a3`),
             children: [
               p(`${prefix}-a3-p1`, [ref(`${prefix}-r1`, `${prefix}-a1`), text(`${prefix}-t1`, `에서 정한 지급사유가 발생하면 ${lapse}.`)]),
               p(`${prefix}-a3-p2`, [ref(`${prefix}-r2`, `${prefix}-a3-p1`), text(`${prefix}-t2`, "에 따라 소멸되면 지급하지 않습니다.")]),
@@ -260,7 +261,7 @@ describe("함수조항 오버레이 — 원문 자리를 참조로", () => {
       const withBoxes = (prefix: string, box: string): ArticleNode => ({
         id: `${prefix}-a5`,
         kind: "article",
-        title: "보험금을 지급하지 않는 사유",
+        title: titleNodes("보험금을 지급하지 않는 사유", `${prefix}-a5`),
         children: [
           { id: `${prefix}-a5-p1`, kind: "paragraph", children: [text(`${prefix}-x1`, "다음:")], items: [{ id: `${prefix}-a5-p1-i1`, kind: "item", children: [text(`${prefix}-x2`, "고의")] }, { id: `${prefix}-a5-p1-b1-k`, kind: "boxRef", boxCode: "BX000005" }] },
           { id: `${prefix}-a5-p2`, kind: "paragraph", children: [text(`${prefix}-x3`, "둘째")] },

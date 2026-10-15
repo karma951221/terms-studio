@@ -8,6 +8,7 @@ import type { Issue } from "@/domain/types";
 
 import { applyArticleCopies } from "./articleCopies";
 import { clauseGeneralRefs, copyCodeIssues, copyRefBreaks, newIssuesOnly, outsideRefsOf, productRefIssues, refBreakIssues } from "./copyRefIntegrity";
+import { titleNodes } from "@/domain/document/title";
 
 const text = (id: string, t: string) => ({ id, kind: "text" as const, text: t });
 const para = (id: string, code: string, ...children: ParagraphNode["children"]): ParagraphNode => ({ id, kind: "paragraph", code, children: children.length > 0 ? children : [text(`${id}-t`, "글")] });
@@ -19,10 +20,10 @@ const template = (): DocumentNode => ({
   kind: "document",
   title: "보통약관",
   children: [
-    { id: "a10", kind: "article", title: "지급사유", children: [para("p10-1", "P0100"), para("p10-2", "P0200")] },
-    { id: "a11", kind: "article", title: "지급제한", children: [para("p11-1", "P0100", text("t11", "제1조 제1항에 따라 "), ref("r11", "a10", "P0100")), para("p11-2", "P0200")] },
-    { id: "a12", kind: "article", title: "청구", children: [para("p12-1", "P0100", ref("r12", "a10"))] },
-    { id: "a13", kind: "article", title: "옛 깨짐", children: [para("p13-1", "P0100", ref("r13", "a10", "P0900"))] },
+    { id: "a10", kind: "article", title: titleNodes("지급사유", "a10"), children: [para("p10-1", "P0100"), para("p10-2", "P0200")] },
+    { id: "a11", kind: "article", title: titleNodes("지급제한", "a11"), children: [para("p11-1", "P0100", text("t11", "제1조 제1항에 따라 "), ref("r11", "a10", "P0100")), para("p11-2", "P0200")] },
+    { id: "a12", kind: "article", title: titleNodes("청구", "a12"), children: [para("p12-1", "P0100", ref("r12", "a10"))] },
+    { id: "a13", kind: "article", title: titleNodes("옛 깨짐", "a13"), children: [para("p13-1", "P0100", ref("r13", "a10", "P0900"))] },
   ],
 });
 const a10 = () => template().children[0] as ArticleNode;
@@ -95,7 +96,7 @@ describe("outsideRefsOf · clauseGeneralRefs — 템플릿 밖에서 이 템플�
         {
           id: "s1",
           kind: "article",
-          title: "보험금",
+          title: titleNodes("보험금", "s1"),
           linkedArticleId: "a10",
           children: [para("sp1", "P0100", { id: "g1", kind: "articleRef", scope: "general", targets: [{ articleId: "a10", code: "P0100" }] }, ref("self1", "s1"))],
         },

@@ -25,6 +25,7 @@ import type { AttributeKind, ProductCoverageSnapshot } from "../product/types";
 import type { PlanAxis } from "../product/types";
 import { type Code, entered, type Id, type Value, type ValueSlot } from "../types";
 import type { AssemblyCoverage, AssemblyInput, AssemblyPlanOption } from "./types";
+import { titleNodes } from "@/domain/document/title";
 
 // ───────────────────────────── 카탈로그 ─────────────────────────────
 
@@ -222,11 +223,11 @@ export function alphaGeneralDocumentLegacy(): DocumentNode {
     kind: "document",
     title: "알파Plus 보통약관",
     children: [
-      { id: "g-art-def", kind: "article", title: "용어의 정의", children: [{ id: "g-par-def", kind: "paragraph", children: [{ id: "g-txt-def", kind: "text", text: "이 계약에서 사용하는 용어의 정의는 다음과 같습니다." }] }] },
+      { id: "g-art-def", kind: "article", title: titleNodes("용어의 정의", "g-art-def"), children: [{ id: "g-par-def", kind: "paragraph", children: [{ id: "g-txt-def", kind: "text", text: "이 계약에서 사용하는 용어의 정의는 다음과 같습니다." }] }] },
       {
         id: "g-art-pay",
         kind: "article",
-        title: "보험금의 지급사유",
+        title: titleNodes("보험금의 지급사유", "g-art-pay"),
         children: [
           {
             id: "g-par-pay-1",
@@ -270,7 +271,7 @@ export function alphaGeneralDocumentLegacy(): DocumentNode {
       {
         id: "g-art-disability",
         kind: "article",
-        title: "장해의 분류",
+        title: titleNodes("장해의 분류", "g-art-disability"),
         children: [
           {
             id: "g-par-dis",
@@ -283,7 +284,7 @@ export function alphaGeneralDocumentLegacy(): DocumentNode {
           },
         ],
       },
-      { id: "g-art-apply", kind: "article", title: "준용규정", children: [{ id: "g-par-apply", kind: "paragraph", children: [{ id: "g-clause-apply", kind: "clauseInlineRef", clauseCode: "C0002", options: {} }] }] },
+      { id: "g-art-apply", kind: "article", title: titleNodes("준용규정", "g-art-apply"), children: [{ id: "g-par-apply", kind: "paragraph", children: [{ id: "g-clause-apply", kind: "clauseInlineRef", clauseCode: "C0002", options: {} }] }] },
     ],
   };
 }
@@ -297,7 +298,7 @@ export function alphaDeathDocumentLegacy(): DocumentNode {
       {
         id: "s-art-pay",
         kind: "article",
-        title: "보험금의 지급사유",
+        title: titleNodes("보험금의 지급사유", "s-art-pay"),
         children: [
           {
             id: "s-par-pay-1",
@@ -337,7 +338,7 @@ export function alphaDeathDocumentLegacy(): DocumentNode {
               {
                 id: "s-art-exempt",
                 kind: "article",
-                title: "보험금을 지급하지 않는 사유",
+                title: titleNodes("보험금을 지급하지 않는 사유", "s-art-exempt"),
                 children: [
                   {
                     id: "s-par-exempt",
@@ -362,7 +363,7 @@ export function alphaDeathDocumentLegacy(): DocumentNode {
       {
         id: "s-art-reduce",
         kind: "article",
-        title: "보험금의 감액지급",
+        title: titleNodes("보험금의 감액지급", "s-art-reduce"),
         children: [
           {
             id: "s-par-reduce",
@@ -378,7 +379,7 @@ export function alphaDeathDocumentLegacy(): DocumentNode {
       {
         id: "s-art-lapse",
         kind: "article",
-        title: "특별약관의 소멸",
+        title: titleNodes("특별약관의 소멸", "s-art-lapse"),
         children: [
           { id: "s-par-lapse", kind: "paragraph", children: [{ id: "s-txt-lapse", kind: "text", text: "이 특별약관은 다음의 경우 소멸합니다." }] },
           { id: "s-clause-lapse", kind: "clauseBlockRef", clauseCode: "C0001", options: { O01: "V02" } },
@@ -387,7 +388,7 @@ export function alphaDeathDocumentLegacy(): DocumentNode {
       {
         id: "s-art-apply",
         kind: "article",
-        title: "준용규정",
+        title: titleNodes("준용규정", "s-art-apply"),
         linkedArticleId: "g-art-apply",
         children: [{ id: "s-par-apply", kind: "paragraph", children: [{ id: "s-clause-apply", kind: "clauseInlineRef", clauseCode: "C0002", options: {} }] }],
       },
@@ -402,13 +403,13 @@ export function alphaGeneralDocument(): DocumentNode {
     kind: "document",
     title: "알파Plus 보통약관",
     children: [
-      { id: "g-art-def", kind: "article", title: "용어의 정의", children: [{ id: "g-par-def", kind: "paragraph", children: [{ id: "g-txt-def", kind: "text", text: "이 계약에서 사용하는 용어의 정의는 다음과 같습니다." }] }] },
-      { id: "g-art-pay", kind: "article", title: "보험금의 지급사유", children: [] },
-      { id: "g-art-detail", kind: "article", title: "보험금 지급에 관한 세부규정", children: [] },
+      { id: "g-art-def", kind: "article", title: titleNodes("용어의 정의", "g-art-def"), children: [{ id: "g-par-def", kind: "paragraph", children: [{ id: "g-txt-def", kind: "text", text: "이 계약에서 사용하는 용어의 정의는 다음과 같습니다." }] }] },
+      { id: "g-art-pay", kind: "article", title: titleNodes("보험금의 지급사유", "g-art-pay"), children: [] },
+      { id: "g-art-detail", kind: "article", title: titleNodes("보험금 지급에 관한 세부규정", "g-art-detail"), children: [] },
       {
         id: "g-art-exempt",
         kind: "article",
-        title: "보험금을 지급하지 않는 사유",
+        title: titleNodes("보험금을 지급하지 않는 사유", "g-art-exempt"),
         children: [
           { id: "g-par-exempt", kind: "paragraph", children: [{ id: "g-txt-exempt", kind: "text", text: "고의로 사고를 일으킨 경우에는 보험금을 지급하지 않습니다." }] },
           { id: "g-clause-exempt-extra", kind: "clauseBlockRef", clauseCode: "C0003", options: {}, excludeFromComparison: true },
@@ -417,13 +418,13 @@ export function alphaGeneralDocument(): DocumentNode {
       {
         id: "g-art-disability",
         kind: "article",
-        title: "장해의 분류",
+        title: titleNodes("장해의 분류", "g-art-disability"),
         children: [{ id: "g-par-dis", kind: "paragraph", children: [{ id: "g-txt-dis-1", kind: "text", text: "장해의 분류는 " }, { id: "g-apx-disability", kind: "appendixRef", appendixCode: "APX_DISABILITY" }, { id: "g-txt-dis-2", kind: "text", text: " 에 따릅니다." }] }],
       },
       {
         id: "g-art-refund",
         kind: "article",
-        title: "해약환급금",
+        title: titleNodes("해약환급금", "g-art-refund"),
         children: [
           { id: "g-par-refund-1", kind: "paragraph", code: "P0100", children: [{ id: "g-txt-refund-1", kind: "text", text: "계약이 해지된 경우 해약환급금을 지급합니다." }] },
           { id: "g-par-refund-2", kind: "paragraph", code: "P0200", children: [{ id: "g-txt-refund-2", kind: "text", text: "해약환급금은 산출방법서에 따라 계산합니다." }] },
@@ -443,14 +444,14 @@ export function alphaBaseDocument(): DocumentNode {
       {
         id: "b-art-pay",
         kind: "article",
-        title: "보험금의 지급사유",
+        title: titleNodes("보험금의 지급사유", "b-art-pay"),
         linkedArticleId: "g-art-pay",
         children: [{ id: "b-par-pay", kind: "paragraph", children: [{ id: "b-txt-pay", kind: "text", text: "피보험자가 보험기간 중 상해로 사망한 경우 보험금을 지급합니다." }] }],
       },
       {
         id: "b-art-detail",
         kind: "article",
-        title: "보험금 지급에 관한 세부규정",
+        title: titleNodes("보험금 지급에 관한 세부규정", "b-art-detail"),
         linkedArticleId: "g-art-detail",
         children: [{ id: "b-par-detail", kind: "paragraph", children: [{ id: "b-txt-detail", kind: "text", text: "보험금 지급에 관한 세부사항은 산출방법서에 따릅니다." }] }],
       },
@@ -468,7 +469,7 @@ export function alphaDeathDocument(): DocumentNode {
       {
         id: "s-art-pay",
         kind: "article",
-        title: "보험금의 지급사유",
+        title: titleNodes("보험금의 지급사유", "s-art-pay"),
         linkedArticleId: "g-art-pay",
         children: [
           {
@@ -487,12 +488,12 @@ export function alphaDeathDocument(): DocumentNode {
       {
         id: "s-cond-exempt",
         kind: "condBlock",
-        branches: [{ id: "s-cond-exempt-if", when: "D0005 = true", children: [{ id: "s-art-exempt", kind: "article", title: "보험금을 지급하지 않는 사유", linkedArticleId: "g-art-exempt", children: [{ id: "s-par-exempt", kind: "paragraph", children: [{ id: "s-txt-exempt", kind: "text", text: "고의로 사고를 일으킨 경우에는 보험금을 지급하지 않습니다." }] }] }] }],
+        branches: [{ id: "s-cond-exempt-if", when: "D0005 = true", children: [{ id: "s-art-exempt", kind: "article", title: titleNodes("보험금을 지급하지 않는 사유", "s-art-exempt"), linkedArticleId: "g-art-exempt", children: [{ id: "s-par-exempt", kind: "paragraph", children: [{ id: "s-txt-exempt", kind: "text", text: "고의로 사고를 일으킨 경우에는 보험금을 지급하지 않습니다." }] }] }] }],
       },
       {
         id: "s-art-reduce",
         kind: "article",
-        title: "보험금의 감액지급",
+        title: titleNodes("보험금의 감액지급", "s-art-reduce"),
         linkedArticleId: "g-art-refund",
         children: [
           { id: "s-par-refund-1", kind: "paragraph", children: [{ id: "s-txt-refund-1", kind: "text", text: "계약이 해지된 경우 해약환급금을 지급합니다." }] },
@@ -513,7 +514,7 @@ export function alphaDeathDocument(): DocumentNode {
       {
         id: "s-art-lapse",
         kind: "article",
-        title: "특별약관의 소멸",
+        title: titleNodes("특별약관의 소멸", "s-art-lapse"),
         children: [{ id: "s-clause-lapse", kind: "clauseBlockRef", clauseCode: "C0001", options: { O01: "V02" } }],
       },
     ],
@@ -742,7 +743,7 @@ export function waiverTemplate(extra: DocumentNode["children"] = []): DocumentNo
       {
         id: "a",
         kind: "article",
-        title: "보험료의 납입면제",
+        title: titleNodes("보험료의 납입면제", "a"),
         children: [
           {
             id: "fo",
@@ -756,7 +757,7 @@ export function waiverTemplate(extra: DocumentNode["children"] = []): DocumentNo
       {
         id: "d",
         kind: "article",
-        title: "정의 및 진단확정",
+        title: titleNodes("정의 및 진단확정", "d"),
         children: [
           {
             id: "fu",

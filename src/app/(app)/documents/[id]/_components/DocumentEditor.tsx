@@ -62,6 +62,8 @@ import {
   type ReferenceTarget,
   type ForBlockNode,
   repeatElementEnums,
+  foldTitle,
+  type FoldOptions,
 } from "@/domain/document";
 import type { Box } from "@/domain/document/box";
 import type { Code, Coordinate, Id, Impact, Issue, WorkMark } from "@/domain/types";
@@ -214,6 +216,8 @@ export function DocumentEditor(props: EditorProps) {
   const coordinate: Coordinate = useMemo(() => ({ document: doc.kind, ownerId: doc.ownerId ?? doc.id, documentId: doc.id, ownerName: doc.title }), [doc.kind, doc.ownerId, doc.id, doc.title]);
   const gate = useMemo(() => clauseGateFrom(props.clauses, props.discriminators.map((d) => d.code), catalogTypeResolver(props.discriminators), props.enums), [props.clauses, props.discriminators, props.enums]);
   const enumByCode = useMemo(() => new Map(props.enums.map((e) => [e.code, e] as const)), [props.enums]);
+  /** 조 제목 접기 — 슬롯은 구분자 표시명으로 「〔이름〕」 (ADR-0088 결정 6). 목차 · 경로 · 참조 칩 · 삭제 확인이 같은 말을 쓴다. */
+  const titleFold: FoldOptions = useMemo(() => ({ slotLabel: (ref: string) => props.discriminators.find((d) => d.code === ref)?.label }), [props.discriminators]);
   // 함수조항 상자의 값별 분기 칸 머리(값 이름) — 함수조항마다 한 번 (최종 결정 8)
   const switchLabelers = useMemo(
     () => new Map((props.clauses ?? []).filter((c) => (c.params ?? []).length > 0).map((c) => [c.code, switchValueLabeler(c, props.enums)] as const)),
@@ -253,8 +257,8 @@ export function DocumentEditor(props: EditorProps) {
   const currentGeneral = current.generalDocumentId ? renderCache[current.generalDocumentId] : undefined;
   // 대상 고르기 색인 — 반복 블록 · 함수조항 참조 줄과 그 본문의 항 · 호 · 목 줄까지 (ADR-0077 결정 6 · 7)
   const indexOpts = useMemo(
-    () => ({ clauseOf: (c: Code) => props.clauses.find((x) => x.code === c), repeatCaption: (n: ForBlockNode, outer?: ForBlockNode) => n.alias ?? repeatLabel(n.source, { ...(outer && isRepeatSource(outer.source) ? { outer: outer.source } : {}), enumOf: (c) => enumByCode.get(c) }) }),
-    [props.clauses, enumByCode],
+    () => ({ fold: titleFold, clauseOf: (c: Code) => props.clauses.find((x) => x.code === c), repeatCaption: (n: ForBlockNode, outer?: ForBlockNode) => n.alias ?? repeatLabel(n.source, { ...(outer && isRepeatSource(outer.source) ? { outer: outer.source } : {}), enumOf: (c) => enumByCode.get(c) }) }),
+    [props.clauses, enumByCode, titleFold],
   );
   const generalTargets = useMemo(() => (currentGeneral ? referenceTargetIndex(currentGeneral.tree, numberTree(currentGeneral.tree, { clauseSpan }), indexOpts) : new Map<Id, ReferenceTarget>()), [currentGeneral, indexOpts, clauseSpan]);
   const references = useMemo(() => ({ self: referenceTargetIndex(tree, numbers, indexOpts), general: generalTargets }), [tree, numbers, generalTargets, indexOpts]);
@@ -811,7 +815,7 @@ export function DocumentEditor(props: EditorProps) {
       const num = numbers.get(entry.node.id);
       const ordinal = num && ["paragraph", "item", "subitem"].includes(entry.node.kind) ? `제${num.n}` : "";
       const what =
-        entry.node.kind === "article" ? `${num?.label ?? "조"}(${(entry.node as { title: string }).title})` : entry.node.kind === "section" ? `${num?.label ?? "관"} ${(entry.node as { title: string }).title}` : `${ordinal}${NODE_WHAT[entry.node.kind] ?? entry.node.kind}`.trim();
+        entry.node.kind === "article" ? `${num?.label ?? "조"}(${foldTitle(entry.node.title, titleFold)})` : entry.node.kind === "section" ? `${num?.label ?? "관"} ${(entry.node as { title: string }).title}` : `${ordinal}${NODE_WHAT[entry.node.kind] ?? entry.node.kind}`.trim();
       removeCard = (
         <Popover anchor={removing.anchor} label={`${what} 삭제`} onClose={() => setRemoving(undefined)}>
           <RemoveCard
@@ -898,6 +902,7 @@ export function DocumentEditor(props: EditorProps) {
       <Toc
         tree={tree}
         numbers={numbers}
+        fold={titleFold}
         {...(mode === "edit" ? { drag } : {})}
         {...(currentArticleId ? { currentArticleId } : {})}
         onPick={(id) => {

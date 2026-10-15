@@ -8,6 +8,7 @@ import type { MasterForm } from "../master";
 import type { AttributeKind } from "../product";
 import { buildGraph, nodeKey, type DocumentInput, type ProductInput } from "./graph";
 import { brokenEdges, enumFieldReaders } from "./queries";
+import { titleNodes } from "@/domain/document/title";
 
 // ───────── 픽스처 — 관통 1 축약 (공통/기술/아키텍처 「시드와 초기 데이터」) ─────────
 
@@ -210,7 +211,7 @@ describe("refs 그래프 — 구분자 참조의 노드 한정자 `@노드` (ADR
         {
           id: "q-art",
           kind: "article",
-          title: "지급",
+          title: titleNodes("지급", "q-art"),
           children: [{ id: "q-par", kind: "paragraph", children: [{ id: "q-cond", kind: "inlineCond", branches: [{ id: "q-if", when: "D0003@ben-1 > 0", children: [{ id: "q-t", kind: "text", text: "지급" }] }] }] }],
         },
       ],
@@ -321,11 +322,11 @@ describe("refs 그래프 — 조 참조(articleRef)를 속한 조로 잇는다",
         kind: "document",
         title: "자기 항 참조 문서",
         children: [
-          { id: "sp-art-1", kind: "article", title: "1조", children: [{ id: "sp-par-1", kind: "paragraph", code: "P0100", children: [{ id: "sp-txt-1", kind: "text", text: "본문" }] }] },
+          { id: "sp-art-1", kind: "article", title: titleNodes("1조", "sp-art-1"), children: [{ id: "sp-par-1", kind: "paragraph", code: "P0100", children: [{ id: "sp-txt-1", kind: "text", text: "본문" }] }] },
           {
             id: "sp-art-2",
             kind: "article",
-            title: "2조",
+            title: titleNodes("2조", "sp-art-2"),
             children: [{ id: "sp-par-2", kind: "paragraph", children: [{ id: "sp-aref", kind: "articleRef", targets: [{ articleId: "sp-art-1", code: "P0100" }], connector: "및", scope: "self" }] }],
           },
         ],
@@ -360,7 +361,7 @@ describe("refs 그래프 — 조 참조(articleRef)를 속한 조로 잇는다",
           {
             id: "gp-art-1",
             kind: "article",
-            title: "1조",
+            title: titleNodes("1조", "gp-art-1"),
             children: [{ id: "gp-par-1", kind: "paragraph", children: [{ id: "gp-aref", kind: "articleRef", targets: [{ articleId: "g-art-pay", code: "P0100" }], connector: "및", scope: "general" }] }],
           },
         ],
@@ -389,7 +390,7 @@ describe("refs 그래프 — 정적 마스터 박스 (최종 결정 9)", () => {
     id: "doc-b",
     kind: "general",
     title: "보통약관",
-    tree: { id: "root", kind: "document", title: "보통약관", children: [{ id: "a1", kind: "article", title: "용어", children: [{ id: "p", kind: "paragraph", children: [] }, { id: "bx-doc", kind: "boxRef", boxCode: "BX000001" }] }] },
+    tree: { id: "root", kind: "document", title: "보통약관", children: [{ id: "a1", kind: "article", title: titleNodes("용어", "a1"), children: [{ id: "p", kind: "paragraph", children: [] }, { id: "bx-doc", kind: "boxRef", boxCode: "BX000001" }] }] },
   };
 
   it("박스는 선언된 실체(box:코드)이고, 문서 · 함수조항 본문의 박스 참조가 boxRef 간선을 낸다", () => {
@@ -416,7 +417,7 @@ describe("반복 원천 간선 — 마스터 필드 · 열거값 필드 (ADR-007
       kind: "document",
       id: "g",
       title: "보통약관",
-      children: [{ kind: "article", id: "a2", title: "정의", children: [{ kind: "forBlock", id: "f3", source: { kind: "union", form: "waiver", filter: "waiver.applies = true", field: "reasons", where: { field: "F03", value: true } }, children: [] }] }],
+      children: [{ kind: "article", id: "a2", title: titleNodes("정의", "a2"), children: [{ kind: "forBlock", id: "f3", source: { kind: "union", form: "waiver", filter: "waiver.applies = true", field: "reasons", where: { field: "F03", value: true } }, children: [] }] }],
     } as unknown as DocumentInput["tree"];
     const graph = buildGraph({ enums: [사유], documents: [{ id: "g", kind: "general", title: "보통약관", tree }] });
     const edges = graph.edges.filter((e) => e.via === "repeatSource").map((e) => [nodeKey(e.from), nodeKey(e.to), e.at.nodePath?.at(-1)]);
@@ -435,7 +436,7 @@ describe("상품 조 사본 안 박스 · 별표 참조 (ADR-0079 · 기능/박�
     const article = {
       id: "a10",
       kind: "article",
-      title: "지급사유",
+      title: titleNodes("지급사유", "a10"),
       children: [
         { id: "p1", kind: "paragraph", children: [{ id: "t", kind: "text", text: "별표 " }, { id: "ax", kind: "appendixRef", appendixCode: "AX000001" }] },
         { id: "bx", kind: "boxRef", boxCode: "BX000001" },

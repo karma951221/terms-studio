@@ -11,7 +11,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 
-import type { ArticleNode, DocumentNode, Node, NodeNumber, SectionNode } from "@/domain/document";
+import { foldTitle, type ArticleNode, type DocumentNode, type FoldOptions, type Node, type NodeNumber, type SectionNode } from "@/domain/document";
 import type { Id } from "@/domain/types";
 
 import type { BlockDrag } from "./useBlockDrag";
@@ -52,6 +52,7 @@ export function Toc({
   currentArticleId,
   onPick,
   drag,
+  fold,
 }: {
   tree: DocumentNode;
   numbers: ReadonlyMap<Id, NodeNumber>;
@@ -60,6 +61,8 @@ export function Toc({
   onPick: (articleId: Id) => void;
   /** 편집 모드 — 조 · 관 끌어 옮기기 · 여러 조 고르기. */
   drag?: BlockDrag;
+  /** 조 제목 접기의 슬롯 이름 (ADR-0088 결정 6 — 상품 문맥 없는 화면은 자리 말로 접는다). */
+  fold?: FoldOptions;
 }) {
   const entries = tocOf(tree);
   const [folded, setFolded] = useState<ReadonlySet<Id>>(new Set());
@@ -92,7 +95,7 @@ export function Toc({
   };
 
   const articleRow = (a: ArticleNode, nested: boolean) => {
-    const label = `${numbers.get(a.id)?.label ?? "조"}(${a.title})`;
+    const label = `${numbers.get(a.id)?.label ?? "조"}(${foldTitle(a.title, fold)})`;
     return (
       <button
         key={a.id}

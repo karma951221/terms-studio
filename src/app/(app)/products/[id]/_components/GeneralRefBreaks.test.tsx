@@ -14,6 +14,7 @@ import { GeneralPanels, type GeneralPane } from "./GeneralPanels";
 import type { TocSection } from "./GeneralToc";
 import { refBreakRefusal } from "./generalDraft";
 import { ProductEditProvider } from "./ProductEdit";
+import { titleNodes } from "@/domain/document/title";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => undefined, push: () => undefined, replace: () => undefined }) }));
 vi.mock("../../actions", () => ({ saveProductGeneralAction: async () => ({ ok: true }), setProductGeneralDocumentAction: async () => undefined }));
@@ -30,8 +31,8 @@ const template: DocumentNode = {
       kind: "section",
       title: "보험금",
       children: [
-        { id: "A1", kind: "article", title: "지급사유", children: [{ id: "A1-1", kind: "paragraph", code: "P0100", children: [text("A1-1t", "첫 항")] }, { id: "A1-2", kind: "paragraph", code: "P0200", children: [text("A1-2t", "둘째 항")] }] },
-        { id: "A2", kind: "article", title: "지급제한", children: [{ id: "A2-1", kind: "paragraph", code: "P0100", children: [text("A2-t", "제1조 제1항에 따라"), { id: "R2", kind: "articleRef", scope: "self", targets: [{ articleId: "A1", code: "P0100" }] }] }] },
+        { id: "A1", kind: "article", title: titleNodes("지급사유", "A1"), children: [{ id: "A1-1", kind: "paragraph", code: "P0100", children: [text("A1-1t", "첫 항")] }, { id: "A1-2", kind: "paragraph", code: "P0200", children: [text("A1-2t", "둘째 항")] }] },
+        { id: "A2", kind: "article", title: titleNodes("지급제한", "A2"), children: [{ id: "A2-1", kind: "paragraph", code: "P0100", children: [text("A2-t", "제1조 제1항에 따라"), { id: "R2", kind: "articleRef", scope: "self", targets: [{ articleId: "A1", code: "P0100" }] }] }] },
       ],
     },
   ],

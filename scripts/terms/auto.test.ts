@@ -3,13 +3,14 @@ import { describe, expect, it } from "vitest";
 import type { ArticleNode, DocumentNode, InlineNode } from "../../src/domain/document/nodes";
 
 import { articlesDeep, autoFixtures, canonicalArticle, claimOf, collapseRenewal, coverageNameOf, mergeRenewal, textNodesOf, wordClusters } from "./auto";
+import { foldTitle, titleNodes } from "../../src/domain/document/title";
 
 const WHEN = "exist(attr.A0001) and attr.A0001 = '2'";
 const text = (id: string, t: string): InlineNode => ({ id, kind: "text", text: t });
 const article = (id: string, title: string, ...paragraphs: InlineNode[][]): ArticleNode => ({
   id,
   kind: "article",
-  title,
+  title: titleNodes(title, id),
   children: paragraphs.map((children, i) => ({ id: `${id}-p${i + 1}`, kind: "paragraph", children })),
 });
 const doc = (id: string, ...children: ArticleNode[]): DocumentNode => ({ id: `${id}-doc`, kind: "document", title: id, children });
@@ -153,7 +154,7 @@ describe("collapseRenewal — 함수조항을 얹은 뒤 같은 글이 된 두 �
       "m",
     );
     // 함수조항을 얹은 모양 — 두 준용규정이 같은 함수조항 블록 하나가 된다
-    for (const a of articlesDeep(merged).filter((x) => x.title === "준용규정")) a.children = [{ id: `${a.id}-p1-k`, kind: "clauseBlockRef", clauseCode: "C0068", options: {} }];
+    for (const a of articlesDeep(merged).filter((x) => foldTitle(x.title) === "준용규정")) a.children = [{ id: `${a.id}-p1-k`, kind: "clauseBlockRef", clauseCode: "C0068", options: {} }];
     expect(collapseRenewal(merged, "m", () => false)).toBe(1);
     expect(merged.children.map((c) => c.id)).toEqual(["b-a1", "m-m1", "b-a2"]);
     const kept = mergeRenewal(

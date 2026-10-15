@@ -7,6 +7,7 @@ import { buildContexts } from "./context";
 import { alphaCatalog, alphaPlusFixture, coverageEntry, type CoverageSpec } from "./fixture";
 import { resolveDocument } from "./resolve";
 import type { AssemblyInput, RenderedArticle, RenderedParagraph, RenderedStatic } from "./types";
+import { titleNodes } from "@/domain/document/title";
 
 /** 수술비 — 1종수술{수술보험금} · 2종수술{수술보험금, 입원보험금}. 마스터 노드 id 는 m-*, 스냅샷 id 는 pc-surg-*. */
 function surgerySpec(overrides: Partial<CoverageSpec> = {}): CoverageSpec {
@@ -47,7 +48,7 @@ function surgeryDocument(table: TableNode): DocumentNode {
     id: "surg-doc",
     kind: "document",
     title: "수술비 특별약관",
-    children: [{ id: "surg-art", kind: "article", title: "보장내용", children: [{ id: "surg-p", kind: "paragraph", children: [text("surg-t", "다음과 같습니다.")], items: [table] }] }],
+    children: [{ id: "surg-art", kind: "article", title: titleNodes("보장내용", "surg-art"), children: [{ id: "surg-p", kind: "paragraph", children: [text("surg-t", "다음과 같습니다.")], items: [table] }] }],
   };
 }
 

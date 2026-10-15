@@ -56,6 +56,7 @@ import type { Box } from "../document/box";
 import type { MasterTree } from "../master";
 import type { ArticleNode, BoxNode, BoxRefNode, BulletListNode, BulletNode, ClauseBlockRefNode, CondBlockNode, DocumentNode, ForBlockNode, InlineNode, ItemNode, ParagraphNode, SectionNode, SubitemNode, TableNode } from "../document/nodes";
 import { withCodes } from "../document/pcode";
+import { foldTitle } from "../document/title";
 import { withClauseCodes } from "../clause/pcode";
 import { evaluate, parse, type EvalContext } from "../expression";
 import { expandRepeatTable } from "../document/repeat";
@@ -661,13 +662,13 @@ class Walker {
   }
 
   article(n: ArticleNode, f: Frame): RArticle<RInline> {
-    const inner: Frame = { path: [...f.path, n.id], articleId: n.id, articleTitle: n.title };
+    const inner: Frame = { path: [...f.path, n.id], articleId: n.id, articleTitle: foldTitle(n.title) };
     const children = this.blocks(n.children, inner);
     const repeatKeys = this.repeatKeys.get(n.id);
     return {
       kind: "article",
       id: n.id,
-      title: n.title,
+      title: foldTitle(n.title),
       ...(n.linkedArticleId !== undefined ? { linkedArticleId: n.linkedArticleId } : {}),
       children,
       ...(repeatKeys && repeatKeys.size > 0 ? { repeatKeys: [...repeatKeys] } : {}),

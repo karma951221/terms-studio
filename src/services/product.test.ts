@@ -9,6 +9,7 @@ import { readSlots, writeSlot } from "@/db/repo/values";
 import { createTestDb, type TestDb } from "@/db/test-utils";
 import { createCatalogService } from "./catalog";
 import { createProductService, type ProductService } from "./product";
+import { titleNodes } from "@/domain/document/title";
 
 const admin: Actor = { userId: "00000000-0000-4000-8000-000000000001", role: "admin" };
 const editor: Actor = { userId: "00000000-0000-4000-8000-000000000002", role: "editor" };
@@ -46,13 +47,13 @@ function generalTree(): DocumentNode {
     kind: "document",
     title: "보통약관",
     children: [
-      { id: ART_A, kind: "article", title: "목적", children: [{ id: "par-a", kind: "paragraph", children: [{ id: "txt-a", kind: "text", text: "원문 A" }] }, { id: NODE, kind: "clauseBlockRef", clauseCode: "C0001", options: MASTER_OPTIONS }] },
-      { id: ART_B, kind: "article", title: "지급", children: [{ id: SEED_NODE, kind: "clauseBlockRef", clauseCode: "C0001", options: MASTER_OPTIONS }] },
+      { id: ART_A, kind: "article", title: titleNodes("목적", ART_A), children: [{ id: "par-a", kind: "paragraph", children: [{ id: "txt-a", kind: "text", text: "원문 A" }] }, { id: NODE, kind: "clauseBlockRef", clauseCode: "C0001", options: MASTER_OPTIONS }] },
+      { id: ART_B, kind: "article", title: titleNodes("지급", ART_B), children: [{ id: SEED_NODE, kind: "clauseBlockRef", clauseCode: "C0001", options: MASTER_OPTIONS }] },
     ],
   };
 }
 function otherTree(): DocumentNode {
-  return { id: OTHER_DOC, kind: "document", title: "다른 보통약관", children: [{ id: ART_OTHER, kind: "article", title: "다른 조", children: [] }] };
+  return { id: OTHER_DOC, kind: "document", title: "다른 보통약관", children: [{ id: ART_OTHER, kind: "article", title: titleNodes("다른 조", ART_OTHER), children: [] }] };
 }
 /** GENERAL_DOC 의 지금 판 — 테스트가 올려 「템플릿이 바뀜」을 만든다. */
 let generalVersion = 3;
@@ -878,8 +879,8 @@ describe("product 서비스 (PGlite)", () => {
         hiddenArticles: [ART_B],
         copies: [
           { articleId: ART_A, article: copyOfA("깨짐이 든 글"), templateHash: hashA() },
-          { articleId: ART_OTHER, article: { id: ART_OTHER, kind: "article", title: "x", children: [] }, templateHash: "h" },
-          { articleId: ART_B, article: { id: "엉뚱한 id", kind: "article", title: "x", children: [] }, templateHash: "h" },
+          { articleId: ART_OTHER, article: { id: ART_OTHER, kind: "article", title: titleNodes("x", ART_OTHER), children: [] }, templateHash: "h" },
+          { articleId: ART_B, article: { id: "엉뚱한 id", kind: "article", title: titleNodes("x", "엉뚱한 id"), children: [] }, templateHash: "h" },
         ],
       });
       if (bad.ok || bad.rejection.reason !== "invalid") throw new Error("기대: invalid");

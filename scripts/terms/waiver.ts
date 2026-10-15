@@ -21,6 +21,7 @@ import type { Binding, ParamDef } from "../../src/domain/clause/params";
 import type { LocalDef } from "../../src/domain/clause/locals";
 import type { PresetDef } from "../../src/domain/clause/presets";
 import type { ArticleNode, ArticleRefNode, BlockNode, ClauseBlockRefNode, CondBlockNode, DocumentNode, ForBlockNode, InlineNode, ItemNode, ParagraphNode, SectionNode } from "../../src/domain/document/nodes";
+import { foldTitle } from "../../src/domain/document/title";
 import type { Code, Id } from "../../src/domain/types";
 
 import type { ClauseRecord } from "./clauses";
@@ -723,11 +724,11 @@ export function guardOwnWaiver(tree: DocumentNode, marked: ReadonlySet<Id>): (id
   const base = (id: Id) => id.replace(/-k$/, "");
   const visit = (list: unknown[]): void => {
     list.forEach((c, i) => {
-      const o = c as { id: Id; kind: string; title?: string; children?: unknown[]; branches?: { children: unknown[] }[] };
+      const o = c as { id: Id; kind: string; title?: InlineNode[]; children?: unknown[]; branches?: { children: unknown[] }[] };
       if (o.kind === "section") return visit(o.children ?? []);
       if (o.kind === "condBlock") return o.branches?.forEach((b) => visit(b.children));
       if (o.kind !== "article") return;
-      if (OWN_WAIVER_TITLES.has(o.title ?? "")) {
+      if (OWN_WAIVER_TITLES.has(foldTitle(o.title ?? []))) {
         roots.push(o.id);
         list[i] = cond(`${o.id}-if-own-waiver`, [o]);
         return;

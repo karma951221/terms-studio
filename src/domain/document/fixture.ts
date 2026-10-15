@@ -10,6 +10,7 @@
 
 import type { Appendix } from "./appendix";
 import type { DocumentNode } from "./nodes";
+import { titleNodes } from "@/domain/document/title";
 
 export interface SurgeryFixture {
   coverageId: string;
@@ -27,7 +28,7 @@ export function surgeryFixture(): SurgeryFixture {
       {
         id: "s-art-pay",
         kind: "article",
-        title: "보험금의 지급사유",
+        title: titleNodes("보험금의 지급사유", "s-art-pay"),
         children: [
           {
             id: "s-par-pay-1",
@@ -69,7 +70,7 @@ export function surgeryFixture(): SurgeryFixture {
               {
                 id: "s-art-term",
                 kind: "article",
-                title: "보험기간",
+                title: titleNodes("보험기간", "s-art-term"),
                 children: [{ id: "s-par-term-1", kind: "paragraph", children: [{ id: "s-txt-9", kind: "text", text: "이 특별약관의 보험기간은 갱신형입니다." }] }],
               },
             ],
@@ -87,7 +88,7 @@ export function surgeryFixture(): SurgeryFixture {
               {
                 id: "s-art-exempt",
                 kind: "article",
-                title: "보험금을 지급하지 않는 사유",
+                title: titleNodes("보험금을 지급하지 않는 사유", "s-art-exempt"),
                 children: [
                   {
                     id: "s-par-exempt-1",
@@ -107,7 +108,7 @@ export function surgeryFixture(): SurgeryFixture {
       {
         id: "s-art-lapse",
         kind: "article",
-        title: "특별약관의 소멸",
+        title: titleNodes("특별약관의 소멸", "s-art-lapse"),
         children: [
           { id: "s-par-lapse-1", kind: "paragraph", children: [{ id: "s-txt-12", kind: "text", text: "이 특별약관은 다음의 경우 소멸합니다." }] },
           { id: "s-clause-lapse", kind: "clauseBlockRef", clauseCode: "C001", options: { tone: "death" } },
@@ -116,7 +117,7 @@ export function surgeryFixture(): SurgeryFixture {
       {
         id: "s-art-apply",
         kind: "article",
-        title: "준용규정",
+        title: titleNodes("준용규정", "s-art-apply"),
         linkedArticleId: "g-art-apply",
         children: [
           {
@@ -143,12 +144,12 @@ export function surgeryFixture(): SurgeryFixture {
     kind: "document",
     title: "알파Plus 보통약관",
     children: [
-      { id: "g-art-def", kind: "article", title: "용어의 정의", children: [{ id: "g-par-def-1", kind: "paragraph", children: [{ id: "g-txt-1", kind: "text", text: "이 계약에서 사용하는 용어의 정의는 다음과 같습니다." }] }] },
-      { id: "g-art-pay", kind: "article", title: "보험금의 지급사유", children: [{ id: "g-par-pay-1", kind: "paragraph", code: "P0100", children: [{ id: "g-txt-2", kind: "text", text: "회사는 기본계약의 지급사유에 따라 보험금을 지급합니다." }] }] },
+      { id: "g-art-def", kind: "article", title: titleNodes("용어의 정의", "g-art-def"), children: [{ id: "g-par-def-1", kind: "paragraph", children: [{ id: "g-txt-1", kind: "text", text: "이 계약에서 사용하는 용어의 정의는 다음과 같습니다." }] }] },
+      { id: "g-art-pay", kind: "article", title: titleNodes("보험금의 지급사유", "g-art-pay"), children: [{ id: "g-par-pay-1", kind: "paragraph", code: "P0100", children: [{ id: "g-txt-2", kind: "text", text: "회사는 기본계약의 지급사유에 따라 보험금을 지급합니다." }] }] },
       {
         id: "g-art-disability",
         kind: "article",
-        title: "장해의 분류",
+        title: titleNodes("장해의 분류", "g-art-disability"),
         children: [
           {
             id: "g-par-dis-1",
@@ -161,7 +162,7 @@ export function surgeryFixture(): SurgeryFixture {
           },
         ],
       },
-      { id: "g-art-apply", kind: "article", title: "준용규정", children: [{ id: "g-par-apply-1", kind: "paragraph", children: [{ id: "g-txt-5", kind: "text", text: "이 약관에서 정하지 않은 사항은 관계 법령을 따릅니다." }] }] },
+      { id: "g-art-apply", kind: "article", title: titleNodes("준용규정", "g-art-apply"), children: [{ id: "g-par-apply-1", kind: "paragraph", children: [{ id: "g-txt-5", kind: "text", text: "이 약관에서 정하지 않은 사항은 관계 법령을 따릅니다." }] }] },
     ],
   };
 

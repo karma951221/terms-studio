@@ -6,6 +6,7 @@ import type { MasterForm } from "../master";
 import { surgeryFixture } from "../document";
 import { buildGraph, nodeKey, type DocumentInput } from "./graph";
 import { affectedProducts, brokenEdges, cycles, dependentDiscriminators, describeKey, enumValueListers, orphans, refStats, relationView, transitiveUsages, usagesOf } from "./queries";
+import { titleNodes } from "@/domain/document/title";
 
 /** 픽스처 마스터 — 담보 기본{갱신여부} · 급부 보험금지급{면책여부 · 지급률}. 경로는 `폼키.필드키`. */
 const master: MasterForm[] = [
@@ -109,7 +110,7 @@ describe("cycles — 파생식 순환 · 조 참조 순환", () => {
       id: `${id}-root`,
       kind: "document" as const,
       title: id,
-      children: refs.map(([art, target]) => ({ id: art, kind: "article" as const, title: art, children: [{ id: `${art}-p`, kind: "paragraph" as const, children: [{ id: `${art}-r`, kind: "articleRef" as const, targets: [{ articleId: target }], connector: "및" as const, scope: "self" as const }] }] })),
+      children: refs.map(([art, target]) => ({ id: art, kind: "article" as const, title: titleNodes(art, art), children: [{ id: `${art}-p`, kind: "paragraph" as const, children: [{ id: `${art}-r`, kind: "articleRef" as const, targets: [{ articleId: target }], connector: "및" as const, scope: "self" as const }] }] })),
     });
     const g = buildGraph({ documents: [{ id: "d", kind: "general", title: "d", tree: tree("d", [["a1", "a2"], ["a2", "a1"], ["a3", "a3"]]) }] });
     expect(cycles(g).map((c) => c.nodes.map((n) => (n.kind === "article" ? n.articleId : "?")).sort())).toEqual([["a1", "a2"], ["a3"]]);
@@ -236,7 +237,7 @@ function chainDocument(id: string, title: string, article: { id: string; when?: 
   const children = article.when
     ? [{ id: `${article.id}-cb`, kind: "condBlock" as const, branches: [{ id: `${article.id}-br`, when: article.when, children: [{ id: `${article.id}-p`, kind: "paragraph" as const, children: [] }] }] }]
     : [{ id: `${article.id}-cr`, kind: "clauseBlockRef" as const, clauseCode: article.clause!, options: {} }];
-  return { id: `${id}-root`, kind: "document", title, children: [{ id: article.id, kind: "article", title: `${article.id} 조`, children }] };
+  return { id: `${id}-root`, kind: "document", title, children: [{ id: article.id, kind: "article", title: titleNodes(`${article.id} 조`, article.id), children }] };
 }
 
 function chainGraph(opts: { brokenMount?: boolean } = {}) {
@@ -519,7 +520,7 @@ describe("값 한정 참조의 값 — valueRestrict 간선 (최종 결정 13 ·
       {
         id: "a",
         kind: "article",
-        title: "납입면제",
+        title: titleNodes("납입면제", "a"),
         children: [
           {
             id: "fo",
@@ -530,7 +531,7 @@ describe("값 한정 참조의 값 — valueRestrict 간선 (최종 결정 13 ·
           },
         ],
       },
-      { id: "z", kind: "article", title: "참조", children: [{ id: "zp", kind: "paragraph", code: "P0100", children: [{ id: "zr", kind: "articleRef", scope: "self", connector: "및", targets: [{ articleId: "a", code: "P0400", restrict: { values: ["V01", "V09"] } }] }] }] },
+      { id: "z", kind: "article", title: titleNodes("참조", "z"), children: [{ id: "zp", kind: "paragraph", code: "P0100", children: [{ id: "zr", kind: "articleRef", scope: "self", connector: "및", targets: [{ articleId: "a", code: "P0400", restrict: { values: ["V01", "V09"] } }] }] }] },
     ],
   } as unknown as DocumentInput["tree"];
   const graph = () => buildGraph({ enums: [사유], documents: [{ id: "doc-g", kind: "general", title: "보통약관", tree }] });
