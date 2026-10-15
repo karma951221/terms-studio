@@ -183,3 +183,23 @@ describe("참조 그래프 — 인라인 반복 원천 간선 (기능/문면 §3
     expect(refs).toEqual([`waiver.reasons@${title.id}`, `waiver.reasons@${inline.id}`]);
   });
 });
+
+describe("참조 그래프 — 블록 반복의 「비었을 때」 칸 안 (ADR-0088 결정 4)", () => {
+  it("칸 안의 슬롯 · 조 참조 · 함수조항 참조 · 칸 안 반복의 원천도 간선이 난다 — 좌표 경로에 칸 표지", () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    const target = b.paragraph([b.text("대상")]);
+    target.code = "P0100";
+    const inner = b.forBlock({ kind: "union", form: "waiver", field: "reasons" }, [b.paragraph([b.text("사유")])]);
+    const loop = b.forBlock({ kind: "planOptions", form: "waiver", filter: "waiver.applies = true" }, [b.paragraph([b.text("본문")])], undefined, [
+      b.paragraph([b.slot("D0001"), b.articleRef({ articleId: "x", code: "P0100" }), b.clauseInline("C0001")]),
+      inner,
+    ]);
+    const article = b.article("조", [loop, target]);
+    const doc: DocumentNode = b.document("d", [{ ...article, id: "x" }]);
+    const refs = collectRefs(doc);
+    expect(refs.filter((r) => r.kind === "discriminator").map((r) => r.at.nodePath?.includes(`${loop.id}~empty`))).toEqual([true]);
+    expect(refs.some((r) => r.kind === "article" && r.code === "P0100")).toBe(true);
+    expect(refs.some((r) => r.kind === "clause" && r.clauseCode === "C0001")).toBe(true);
+    expect(refs.flatMap((r) => (r.kind === "repeatSource" && r.at.nodePath?.at(-1) === inner.id ? [r.path] : []))).toEqual(["waiver.reasons"]);
+  });
+});
