@@ -647,7 +647,7 @@ function RepeatBlockPopup({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
   const node = editing?.kind === "forBlock" ? editing : undefined;
   const placeId = node ? node.id : spec.at?.parentId;
   const around = placeId !== undefined ? loopsAround(ix, placeId).filter((l) => l.id !== node?.id) : [];
-  const choices = repeatChoices({ ...(around.at(-1) ? { outer: around.at(-1)! } : {}), depth: around.length, ...(env.enumOf ? { enumOf: env.enumOf } : {}) });
+  const choices = repeatChoices({ ...(around.at(-1) ? { outer: around.at(-1)! } : {}), depth: around.length, hasCoverage: env.ctx.docKind === "special", ...(env.enumOf ? { enumOf: env.enumOf } : {}) });
   const current = node && isRepeatSource(node.source) ? sourceValue(node.source) : "";
   const b = nodeBuilders(env.newId);
   // 호 목록 자리인가 — 항의 호 목록 · 호 목록 자리의 반복 블록 · 가지 안

@@ -86,7 +86,7 @@ export function pickerGroups(context: ConditionContext): PickerGroup[] {
   const row = context.row;
   if (row) {
     const readable = context.discriminators.filter((d) => TREE_LEVELS.has(d.level) && row.readable.includes(d.level));
-    if (readable.length > 0) groups.push({ label: `현재 행 — ${row.levels.map((l) => ATTACH_LEVEL_LABEL[l]).join(" › ")}마다`, options: readable.map((d) => at(d)) });
+    if (readable.length > 0) groups.push({ label: `${row.label ?? "현재 행"} — ${row.levels.map((l) => ATTACH_LEVEL_LABEL[l]).join(" › ")}마다`, options: readable.map((d) => at(d)) });
   }
   // 트리 순서 — 뿌리부터 깊이 우선
   const ordered: typeof nodes = [];

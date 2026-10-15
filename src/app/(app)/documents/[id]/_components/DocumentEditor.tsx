@@ -41,6 +41,7 @@ import {
   generalRefsOf,
   indexTree,
   isRepeatSource,
+  isTreeSource,
   clauseSpanBy,
   numberTree,
   randomIds,
@@ -655,8 +656,20 @@ export function DocumentEditor(props: EditorProps) {
   };
 
   // 조건 머리 줄 · 팝업의 조건 · 슬롯 문맥 — 반복 표 템플릿 셀 안이면 「현재 행」 가지 (ADR-0070 · 설계 §3.1). 담보약관만.
-  const withRow = (levels: ReturnType<typeof repeatLevels> | undefined): ConditionContext =>
-    props.condition.coverage && levels && levels.length > 0 ? { ...props.condition, row: { levels, readable: rowReadableLevels(levels) } } : props.condition;
+  // 담보 트리 반복 안이면 그 가장 안쪽 레벨이 「현재 세부보장 / 현재 급부」 (ADR-0087 결정 5) — 반복 표 셀이 우선.
+  const withRow = (levels: ReturnType<typeof repeatLevels> | undefined, at?: Id): ConditionContext => {
+    if (!props.condition.coverage) return props.condition;
+    if (levels && levels.length > 0) return { ...props.condition, row: { levels, readable: rowReadableLevels(levels) } };
+    const inner = at === undefined ? undefined : loopsAround(index, at).filter((f) => isRepeatSource(f.source) && isTreeSource(f.source)).at(-1);
+    if (!inner || !isRepeatSource(inner.source)) return props.condition;
+    const benefit = inner.source.kind !== "subCoverages";
+    return {
+      ...props.condition,
+      row: benefit
+        ? { levels: ["benefit"], readable: ["coverage", "subCoverage", "benefit"], label: "현재 급부" }
+        : { levels: ["subCoverage"], readable: ["coverage", "subCoverage"], label: "현재 세부보장" },
+    };
+  };
   const scopeOf = (id: Id) => {
     const owner = index.branches.get(id)?.ownerId ?? id;
     return repeatScopeOf(tree, owner)?.levels;
@@ -694,7 +707,7 @@ export function DocumentEditor(props: EditorProps) {
     },
     enumOf: (c: Code) => enumByCode.get(c),
     switchValueLabel: (clause, on, code) => switchLabelers.get(clause.code)?.(on, code),
-    conditionFor: (nodeId) => withRow(scopeOf(nodeId)),
+    conditionFor: (nodeId) => withRow(scopeOf(nodeId), nodeId),
     ...(flashId ? { flashId } : {}),
     ...(mode === "edit" ? { edit } : {}),
   };
@@ -706,10 +719,10 @@ export function DocumentEditor(props: EditorProps) {
           const t = index.nodes.get(spec.at.tableId)?.node;
           return withRow(t?.kind === "table" && t.repeat && !t.rows[spec.at.row]?.header ? repeatLevels(t) : undefined);
         }
-        return withRow(scopeOf(spec.at.parentId));
+        return withRow(scopeOf(spec.at.parentId), spec.at.parentId);
       }
       case "editChip":
-        return withRow(scopeOf(spec.nodeId));
+        return withRow(scopeOf(spec.nodeId), spec.nodeId);
       default:
         return props.condition;
     }

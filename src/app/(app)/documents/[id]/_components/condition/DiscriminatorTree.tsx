@@ -94,7 +94,7 @@ export function DiscriminatorTree({
   const rowBranch = row ? (
     <li key="__row" className="ts-cond-tree-row">
       <div className="ts-cond-tree-node" title="행마다 그 행의 노드에서 읽는다 — 한정자 없음">
-        <span>현재 행</span>
+        <span>{row.label ?? "현재 행"}</span>
         <span className="ts-badge">{rowLabel}마다</span>
       </div>
       {rowGroups.length === 0 ? (
@@ -109,7 +109,7 @@ export function DiscriminatorTree({
               <ul className="ts-cond-tree-leaves">
                 {g.leaves.map((d) => (
                   <li key={d.code}>
-                    <button type="button" className="ts-cond-tree-leaf" aria-label={`현재 행 ${d.label}`} onDoubleClick={() => onPick({ kind: "discriminator", code: d.code })}>
+                    <button type="button" className="ts-cond-tree-leaf" aria-label={`${row.label ?? "현재 행"} ${d.label}`} onDoubleClick={() => onPick({ kind: "discriminator", code: d.code })}>
                       {d.label}
                     </button>
                   </li>

@@ -62,5 +62,8 @@ export interface ConditionContext {
    * 반복 표 템플릿 셀 안에서 열었을 때만 — 행 레벨 사슬(`levels`, 바깥 → 안쪽)과 한정자 없이 읽을 수 있는 레벨(`readable`).
    * 트리 맨 위 「현재 행」 가지의 재료다 (ADR-0070 · 설계 §3.1). 반복 밖이면 없음 → 트리는 지금과 같다.
    */
-  row?: { levels: Exclude<AttachLevel, "product">[]; readable: AttachLevel[] };
+  row?: { levels: Exclude<AttachLevel, "product">[]; readable: AttachLevel[];
+    /** 「현재 행」 대신 쓸 이름 — 담보 트리 반복이면 「현재 세부보장」 · 「현재 급부」 (ADR-0087 결정 5). */
+    label?: string;
+  };
 }

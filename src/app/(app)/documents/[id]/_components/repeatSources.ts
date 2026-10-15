@@ -38,18 +38,19 @@ export function loopsAround(ix: TreeIndex, id: Id): ForBlockNode[] {
 }
 
 /** 원천 칸 후보 — `outer` 는 이 자리를 감싼 가장 안쪽 반복(없으면 반복 밖). 두 단계 안(반복 안 반복 안)이면 후보가 없다. */
-export function repeatChoices(opts: { outer?: ForBlockNode; depth: number; enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree }): RepeatChoice[] {
+export function repeatChoices(opts: { outer?: ForBlockNode; depth: number; hasCoverage?: boolean; enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree }): RepeatChoice[] {
   const master = opts.master ?? MASTER;
   const label = (source: RepeatSource) => repeatLabel(source, { ...(opts.outer && isRepeatSource(opts.outer.source) ? { outer: opts.outer.source } : {}), master, ...(opts.enumOf ? { enumOf: opts.enumOf } : {}) });
   const choice = (source: RepeatSource, suffix = ""): RepeatChoice => ({ value: sourceValue(source), label: `${label(source)}${suffix}`, source });
   if (opts.depth >= 2) return [];
   if (opts.outer) {
     const outer = opts.outer.source;
+    if (isRepeatSource(outer) && outer.kind === "subCoverages") return [choice({ kind: "benefitsOfCurrent", loop: opts.outer.id })];
     if (!isRepeatSource(outer) || outer.kind !== "planOptions") return [];
     const form = formsOfLevel("plan", master).find((f) => f.key === outer.form);
     return (form ? fieldsOfForm(form) : []).filter((x) => x.field.type.kind === "list<enum>").map((x) => choice({ kind: "listOfCurrent", loop: opts.outer!.id, field: x.field.key }, " — 현재 종의 목록"));
   }
-  const out: RepeatChoice[] = [];
+  const out: RepeatChoice[] = opts.hasCoverage ? [choice({ kind: "subCoverages" }), choice({ kind: "benefits" })] : [];
   for (const form of formsOfLevel("plan", master)) {
     const fields = fieldsOfForm(form);
     const booleans = fields.filter((x) => x.field.type.kind === "boolean");
