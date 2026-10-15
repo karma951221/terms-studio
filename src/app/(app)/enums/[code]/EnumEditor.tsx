@@ -33,9 +33,10 @@ function RecheckList({ items, onClose }: { items: readonly RefEdge[]; onClose: (
   </section>;
 }
 
-type EditorProps = { item: EnumDef };
+/** `highlight` — 강조할 값 코드(`?value=`, 오류 좌표의 「고치러 가기」). */
+type EditorProps = { item: EnumDef; highlight?: string };
 
-function EnumEditorBody({ item, onSaved }: EditorProps & { onSaved: (recheck: RefEdge[]) => void }) {
+function EnumEditorBody({ item, highlight, onSaved }: EditorProps & { onSaved: (recheck: RefEdge[]) => void }) {
   const values = [...item.values].sort((a, b) => a.order - b.order).map(({ code, label, fields }) => ({ code, label, fields: { ...fields } }));
   const fields = [...(item.fields ?? [])].sort((a, b) => a.order - b.order).map(({ key, label, type }) => ({ key, label, type }));
   const initial: EnumEditData = { label: item.label, description: item.description ?? "", fields, values };
@@ -43,7 +44,7 @@ function EnumEditorBody({ item, onSaved }: EditorProps & { onSaved: (recheck: Re
     <div className="ts-l2-main">
       <Field name="label" label={NAME_LABEL.enum} />
       <FieldsEditor />
-      <ValuesEditor />
+      <ValuesEditor highlight={highlight} />
     </div>
   </EditShell>;
 }

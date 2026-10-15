@@ -35,6 +35,16 @@ function render(mode: "read" | "edit", initial: EnumEditData = data) {
 }
 
 describe("열거형 상세 — 필드 · 값 × 필드 표", () => {
+  it("?value= 로 온 값 행을 강조한다 — 오류 좌표의 「고치러 가기」 (필드 미입력 · 없는 값)", () => {
+    const html = renderToStaticMarkup(
+      <EditShell initial={data} title="납입면제사유" path={[]} saveAction={async () => ({ ok: true })}>
+        <ValuesEditor highlight="V02" />
+      </EditShell>,
+    );
+    expect(html.match(/<tr class="is-highlighted"/g)).toHaveLength(1);
+    expect(html).toMatch(/<tr class="is-highlighted"[^]*?뇌졸중/);
+  });
+
   it("읽기: 필드 표는 이름 · 타입, 값 표 머리에 필드 이름이 서고 칸은 값 · 예 · 아니오 · —", () => {
     const html = render("read");
     expect(html).toContain("약관표시명");

@@ -96,8 +96,9 @@ function FieldCell({ value, field, onChange, disabled }: { value: EnumEditValue;
  * 저장된 값 행도 ⊖ 로 초안에서 뺀다 — 서버 삭제는 저장 때, 영향 확인도 그때 한 번 (디자인원칙 §2 L2 표 · 점검 2026-09-27 D2).
  * 빈 채로 남은 새 행은 저장 때 버린다. 빼는 값의 영향은 저장 확인이 말한다 — 사용 수 열은 두지 않는다(사용처는 관계정보 메뉴, 2026-10-01).
  * 입력률 카운트는 두지 않는다 (화면 편집 원칙) — 빈 칸은 「—」로 보일 뿐이다.
+ * `highlight` — 오류의 「고치러 가기」(`/enums/<코드>?value=V03`)가 가리킨 값 행을 강조한다.
  */
-export function ValuesEditor() {
+export function ValuesEditor({ highlight }: { highlight?: string } = {}) {
   const field = useEditField<EnumEditValue[]>("values");
   const fieldDefs = useEditField<EnumEditField[] | undefined>("fields").value ?? [];
   const next = useRef(1);
@@ -132,6 +133,7 @@ export function ValuesEditor() {
     onAdd={add}
     onRemove={(value) => field.update((current) => current.filter((item) => item.code !== value.code))}
     onMove={(from, to) => field.update((current) => moveItem(current, from, to))}
+    rowClassName={(value) => (highlight !== undefined && value.code === highlight ? "is-highlighted" : undefined)}
     columns={columns}
   />;
 }

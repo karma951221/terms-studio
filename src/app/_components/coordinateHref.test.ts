@@ -64,3 +64,10 @@ describe("coordinateHref — 담보 마스터 · 담보약관 좌표 (ownerId �
     expect(coordinateHref({ document: "general", ownerId: "doc-g" })).toBe("/documents/doc-g");
   });
 });
+
+describe("coordinateHref — 열거형 좌표 (필드 미입력 · 없는 값의 원천)", () => {
+  it("열거형 상세로 — 값 코드를 알면 ?value= 로 그 값 행을 강조한다", () => {
+    expect(coordinateHref({ document: "enum", ownerId: "E0001", ownerName: "납입면제사유", refPath: "V02" })).toBe("/enums/E0001?value=V02");
+    expect(coordinateHref({ document: "enum", ownerId: "E0001" })).toBe("/enums/E0001");
+  });
+});
