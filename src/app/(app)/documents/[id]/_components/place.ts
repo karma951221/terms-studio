@@ -17,12 +17,14 @@ export function placeOf(target: Element): Place | undefined {
   if (chip) return { kind: "chip", id: chip };
   const head = data("[data-cond-head]", "condHead");
   if (head) return { kind: "head", id: head };
+  const inline = data("[data-inline]", "inline");
+  const at = inline ? decodeAt(inline) : undefined;
+  // 조 제목 칸 안 — 제목도 문장 자리다(칩 넣기 · 커서 자리, ADR-0088). 칸 밖(「제N조(」 글자)는 조 제목 자리
+  if (at && !("tableId" in at) && at.slot === "title") return { kind: "inline", at };
   const articleTitle = data("[data-article-title]", "articleTitle");
   if (articleTitle) return { kind: "articleTitle", id: articleTitle };
   const sectionTitle = data("[data-section-title]", "sectionTitle");
   if (sectionTitle) return { kind: "sectionTitle", id: sectionTitle };
-  const inline = data("[data-inline]", "inline");
-  const at = inline ? decodeAt(inline) : undefined;
   if (at) return { kind: "inline", at };
   const block = data("[data-block]", "block");
   if (block) return { kind: "block", id: block };

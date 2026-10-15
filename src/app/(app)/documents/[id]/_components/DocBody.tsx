@@ -21,7 +21,6 @@ import { IconButton, IconCopy, IconTrash } from "@/app/_components/icons";
 import { StaticTable } from "@/app/_components/StaticNodes";
 import { REPEAT_DEPTH_LABEL, SWITCH_WORD } from "@/app/_lib/labels";
 import {
-  foldTitle,
   refChunkText,
   referenceTargetLabel,
   repeatLabel,
@@ -693,7 +692,7 @@ function Article({ node, ctx }: { node: ArticleNode; ctx: DocCtx }) {
     <section id={`art-${node.id}`} className="ts-doc-article" data-article={node.id}>
       {node.linkedArticleId !== undefined && <ArticleLink article={node} ctx={ctx} />}
       <h3 className={`ts-doc-article-title${flash(ctx, node.id)}`} data-article-title={node.id} data-node={node.id}>
-        {label}(<EditableText value={foldTitle(node.title)} editing={!!ctx.edit} label="조 제목" onCommit={(title) => ctx.edit?.setTitle(node.id, title)} />)
+        {label}(<InlineSlot at={{ parentId: node.id, slot: "title" }} nodes={node.title} ctx={ctx} placeholder="조 제목" />)
         <BlockActs id={node.id} what={label} ctx={ctx} />
       </h3>
       {node.children.length === 0 && ctx.edit ? (

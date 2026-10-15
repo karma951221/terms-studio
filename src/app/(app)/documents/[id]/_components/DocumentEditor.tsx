@@ -576,6 +576,7 @@ export function DocumentEditor(props: EditorProps) {
       }
       case "inline": {
         if ("tableId" in p.at) return `표 ${p.at.row + 1}행 ${p.at.col + 1}열`;
+        if (p.at.slot === "title") return `${num(p.at.parentId) ?? "조"} 제목`;
         const kind = index.nodes.get(p.at.parentId)?.node.kind;
         return kind ? `${num(p.at.parentId) ?? ""} ${NODE_WHAT[kind] ?? ""} 문장`.trim() : "조건 가지 문장";
       }

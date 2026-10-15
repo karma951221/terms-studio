@@ -138,6 +138,7 @@ export function inlineAtOf(tree: DocumentNode, ix: TreeIndex, nodeId: Id): { at:
   if (branch) return { at: { parentId: e.parentId }, list: branch.branch.children as InlineNode[] };
   const parent = ix.nodes.get(e.parentId)?.node;
   if (!parent) return undefined;
+  if (parent.kind === "article" && e.slot === "title") return { at: { parentId: parent.id, slot: "title" }, list: parent.title };
   if (parent.kind === "table") {
     for (const [row, r] of parent.rows.entries()) {
       for (const [col, cell] of r.cells.entries()) if (cell.some((n) => n.id === nodeId)) return { at: { tableId: parent.id, row, col }, list: cell };
@@ -157,6 +158,7 @@ export function inlineListAt(tree: DocumentNode, at: InlineAt): InlineNode[] | u
   const br = ix.branches.get(at.parentId);
   if (br) return br.branch.children as InlineNode[];
   const n = ix.nodes.get(at.parentId)?.node;
+  if (at.slot === "title") return n?.kind === "article" ? n.title : undefined;
   return n && "children" in n ? (n.children as InlineNode[]) : undefined;
 }
 

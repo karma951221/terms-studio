@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { indexTree, nodeBuilders, sequentialIds, type DocumentNode } from "@/domain/document";
 
-import { DOCUMENT_TOOLS, toolFor } from "./tools";
-import { articleMenu, blockMenu, boxPickItems, chipMenu, clausePickItems, clausesFitting, condMenu, inlineInsertItems, type MenuSections } from "./menus";
+import { DOCUMENT_TOOLS, toolFor, toolState } from "./tools";
+import { articleMenu, blockMenu, boxPickItems, chipMenu, clausePickItems, clausesFitting, condMenu, inlineInsertItems, placeMenu, TITLE_REFUSAL, type MenuSections } from "./menus";
 
 const labels = (s: MenuSections) => s.flat().map((i) => `${i.label}${i.disabled ? "(잠김)" : ""}`);
 
@@ -177,5 +177,33 @@ describe("블록 반복 메뉴 (ADR-0077 — 조 자리 · 호 목록, 한 단�
     expect(labels(blockMenu(env(doc), inner.id))).toEqual(expect.arrayContaining(["이 반복에 호 추가", "이 반복에 함수조항(호) 추가…"]));
     expect(labels(blockMenu(env(doc), inner.id))).not.toContain("이 반복에 반복 블록 추가…");
     expect(labels(blockMenu(env(doc), item.id))).not.toContain("아래에 반복 블록 추가…");
+  });
+});
+
+describe("조 제목 칸 — 제목도 문장 자리다 (ADR-0088 결정 5)", () => {
+  it("넣기는 슬롯 · 문장 안 조건 · 조사만 켜지고 참조 · 함수조항은 잠긴다 — 조 제목 자리의 조작(아래에 조 · 항 추가)은 그대로", () => {
+    const t = tree();
+    const sections = placeMenu(env(t), { kind: "inline", at: { parentId: "n4", slot: "title" } });
+    const items = sections.flat();
+    const refusal = (label: string) => items.find((i) => i.label === label)?.refusal;
+    expect(refusal("치환 슬롯…")).toBeUndefined();
+    expect(refusal("조 참조…")).toBe(TITLE_REFUSAL);
+    expect(refusal("별표 참조…")).toBe(TITLE_REFUSAL);
+    expect(refusal("함수조항(문장 안)…")).toBe(TITLE_REFUSAL);
+    expect(items.some((i) => i.label === "문장 안 조건")).toBe(true);
+    expect(items.some((i) => i.label.startsWith("조사 — "))).toBe(true);
+    expect(items.some((i) => i.label === "아래에 조 추가")).toBe(true);
+    expect(toolState(toolFor(DOCUMENT_TOOLS, "조 참조…")!, sections).disabled).toBe(true);
+    expect(toolState(toolFor(DOCUMENT_TOOLS, "치환 슬롯…")!, sections).disabled).toBe(false);
+  });
+
+  it("제목 안 문장 안 조건의 가지도 같은 집합이다", () => {
+    const b = nodeBuilders(sequentialIds("x"));
+    const cond = b.inlineCond([b.inlineBranch("D0001 = true", [b.text("등")])]);
+    const t = b.document("D", [b.article([b.text("보험금 "), cond], [])]);
+    const branchId = cond.branches[0].id;
+    const items = placeMenu(env(t), { kind: "inline", at: { parentId: branchId } }).flat();
+    expect(items.find((i) => i.label === "조 참조…")?.refusal).toBe(TITLE_REFUSAL);
+    expect(items.some((i) => i.label === "문장 안 조건")).toBe(false);
   });
 });

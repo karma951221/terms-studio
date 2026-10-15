@@ -347,3 +347,28 @@ describe("호 목록 자리의 조건 · 값별 분기 · 반복 블록 — <li>
     expect(html).toMatch(/<li[^>]*class="ts-doc-repeat[^"]*"[^>]*>[\s\S]*?<ol class="ts-doc-list-cont">/);
   });
 });
+
+describe("조 제목 칸 — 본문 문장처럼 칩과 함께 그 자리에서 고친다 (ADR-0088)", () => {
+  function titled() {
+    const b = nodeBuilders(sequentialIds("t"));
+    const tree: DocumentNode = b.document("D", [b.article([b.text("보험금"), b.particle("eul-reul"), b.slot("D0001")], [b.paragraph([b.text("본문")])])]);
+    return { tree, article: tree.children[0] };
+  }
+
+  it("편집 모드 — 제목 자리(`title:<조 id>`) 문장 편집기, 칩은 칩", () => {
+    const { tree, article } = titled();
+    const html = renderToStaticMarkup(<Block nodes={[article]} ctx={ctxOf(tree, true)} />);
+    expect(html).toContain(`data-inline="title:${article.id}"`);
+    expect(html).toMatch(/contentEditable="plaintext-only"[^>]*aria-label="조 제목"/);
+    expect(html).toContain("을/를");
+    expect(html).toContain("data-chip=");
+  });
+
+  it("읽기 모드 — 글과 칩으로 그린다(입력칸 없음)", () => {
+    const { tree, article } = titled();
+    const html = renderToStaticMarkup(<Block nodes={[article]} ctx={ctxOf(tree, false)} />);
+    expect(html).not.toContain(`data-inline="title:${article.id}"`);
+    expect(html).toContain("보험금");
+    expect(html).toContain("을/를");
+  });
+});

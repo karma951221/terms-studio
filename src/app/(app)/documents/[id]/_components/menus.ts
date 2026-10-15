@@ -417,10 +417,12 @@ export function particleInsertItems(at: InlineAt, tokens: Token[], newId: IdSour
  * 문장 속(커서 자리)의 넣기 — 슬롯 · 조 참조 · 별표 참조 · 함수조항(문장 안) · 문장 안 조건 (+ 반복 표 템플릿 셀이면 구조 표기) · 조사.
  * 문장 안 조건의 가지 안이면 문장 안 조건은 싣지 않는다 (중첩 금지 §3.2).
  */
-export function inlineInsertItems(at: InlineAt, tokens: Token[], opts: { inInlineCond: boolean; newId: IdSource; structLevels?: readonly Exclude<AttachLevel, "product">[] }): MenuItem[] {
+export function inlineInsertItems(at: InlineAt, tokens: Token[], opts: { inInlineCond: boolean; newId: IdSource; structLevels?: readonly Exclude<AttachLevel, "product">[]; title?: boolean }): MenuItem[] {
   const pop = (what: InlineInsertKind, label: string): MenuItem => ({
     label,
     action: { do: "popup", popup: { kind: "insertInline", what, at, tokens, ...(what === "structKey" && opts.structLevels ? { structLevels: opts.structLevels } : {}) } },
+    // 조 제목(그 안 문장 안 조건 가지까지)에는 글 · 슬롯 · 문장 안 조건 · 조사만 — 참조 · 함수조항은 잠근다 (ADR-0088 결정 5)
+    ...(opts.title && what !== "slot" ? { refusal: TITLE_REFUSAL } : {}),
   });
   const items = [pop("slot", "치환 슬롯…"), pop("articleRef", "조 참조…"), pop("appendixRef", "별표 참조…"), pop("clauseInlineRef", "함수조항(문장 안)…")];
   if (!opts.inInlineCond) items.push(inlineCondItem(at, tokens, opts.newId));
@@ -428,6 +430,9 @@ export function inlineInsertItems(at: InlineAt, tokens: Token[], opts: { inInlin
   items.push(...particleInsertItems(at, tokens, opts.newId));
   return items;
 }
+
+/** 조 제목에서 잠그는 넣기의 사유 — 제목은 목차 · 참조 라벨에 찍혀 참조가 서면 라벨이 다른 조 라벨을 부른다 (ADR-0088 결정 5). */
+export const TITLE_REFUSAL = "조 제목에는 글 · 슬롯 · 문장 안 조건 · 조사만 넣는다 — 참조 · 함수조항은 목차 · 참조 라벨에서 순환한다";
 
 /**
  * 조작의 자리 — 가운데서 마지막으로 누르거나 초점이 간 곳. 툴바 · 오른쪽 클릭 메뉴가 이 자리로 목록을 짓는다.
@@ -451,7 +456,12 @@ function inlineSections(env: MenuEnv, at: InlineAt, tokens: Token[]): MenuSectio
     return [inlineInsertItems(at, tokens, { inInlineCond: false, newId: env.newId, ...(template ? { structLevels: template } : {}) }), ...blockMenu(env, at.tableId)];
   }
   const branch = env.ix.branches.get(at.parentId);
-  if (branch) return [inlineInsertItems(at, tokens, { inInlineCond: env.ix.nodes.get(branch.ownerId)?.node.kind === "inlineCond", newId: env.newId })];
+  if (branch) {
+    const cond = env.ix.nodes.get(branch.ownerId);
+    return [inlineInsertItems(at, tokens, { inInlineCond: cond?.node.kind === "inlineCond", newId: env.newId, ...(cond?.inTitle ? { title: true } : {}) })];
+  }
+  // 조 제목 — 넣기는 제목 허용 집합만, 조작은 조 제목 자리의 것 그대로(아래에 조 · 항 추가 · 조건으로 감싸기 …)
+  if (at.slot === "title") return [inlineInsertItems(at, tokens, { inInlineCond: false, newId: env.newId, title: true }), ...articleMenu(env, at.parentId)];
   const owner = env.ix.nodes.get(at.parentId);
   return [inlineInsertItems(at, tokens, { inInlineCond: owner?.inInlineCond ?? false, newId: env.newId }), ...(owner ? blockMenu(env, at.parentId) : [])];
 }

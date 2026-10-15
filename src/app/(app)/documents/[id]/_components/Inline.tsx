@@ -346,7 +346,7 @@ function InlineEditor({ at, nodes, ctx, owner, focusKey, placeholder }: { at: In
       if (owner) {
         commit();
         edit.enter(owner);
-      }
+      } else if (!("tableId" in at) && at.slot === "title") el.blur(); // 조 제목은 한 줄 — Enter 가 마침(초점이 떠나며 적용)
       return;
     }
     if (e.key === "Backspace" && owner && (el.textContent ?? "") === "" && !el.querySelector("[data-chip]")) {

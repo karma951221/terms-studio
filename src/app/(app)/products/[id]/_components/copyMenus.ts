@@ -17,6 +17,8 @@ const ARRANGE = new Set(["위로", "아래로", "복제", "삭제", "조건으�
 const OUTER: ReadonlySet<Place["kind"]> = new Set(["article", "articleTitle", "sectionTitle", "document"]);
 
 export function copyScopeMenu(sections: MenuSections, place: Place, articleId: Id): MenuSections {
-  const refuse = (item: MenuItem): boolean => STRUCTURE.has(item.label) || item.wrapTarget === articleId || (OUTER.has(place.kind) && ARRANGE.has(item.label));
+  // 조 제목 칸(문장 자리 `title`, ADR-0088)도 조 자리다 — 그 목록에 조 자체의 이동 · 복제 · 삭제가 실린다
+  const outer = OUTER.has(place.kind) || (place.kind === "inline" && !("tableId" in place.at) && place.at.slot === "title");
+  const refuse = (item: MenuItem): boolean => STRUCTURE.has(item.label) || item.wrapTarget === articleId || (outer && ARRANGE.has(item.label));
   return sections.map((section) => section.map((item) => (refuse(item) ? { ...item, refusal: COPY_REFUSAL } : item)));
 }
