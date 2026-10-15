@@ -23,7 +23,7 @@ import { refLabelOf } from "@/app/(app)/documents/[id]/_components/condition/dis
 import type { ConditionContext } from "@/app/(app)/documents/[id]/_components/condition/types";
 import { anchorOf, type Anchor, type CellAt, type DocCtx, type EditHandlers } from "@/app/(app)/documents/[id]/_components/ctx";
 import { ArticleBody } from "@/app/(app)/documents/[id]/_components/DocBody";
-import { backspaceOps, enterOps, inlineListAt, moveSelectionOps, pasteGridOps } from "@/app/(app)/documents/[id]/_components/editOps";
+import { backspaceOps, enterOps, insertedChip, inlineListAt, moveSelectionOps, pasteGridOps } from "@/app/(app)/documents/[id]/_components/editOps";
 import { EditorToolbar } from "@/app/(app)/documents/[id]/_components/EditorToolbar";
 import { caretFromPoint, tokensOf } from "@/app/(app)/documents/[id]/_components/Inline";
 import { identityRuns, runsFromTokens, sameRuns, type Token } from "@/app/(app)/documents/[id]/_components/inlineRuns";
@@ -267,6 +267,12 @@ export function ArticleCopyEditor({ data, articleId, label }: { data: CopyEditor
     setMenu({ x: event.clientX, y: event.clientY, sections: scoped(env, at, tokens) });
   };
 
+  /** 칩을 넣은 명령이면 커서를 그 칩 바로 뒤로 — 편집기가 새로 그려져 초점이 사라지므로 (조사 · 옵션 자리 · 팝업 넣기). */
+  const focusInserted = (ops: readonly EditOp[]) => {
+    const chip = insertedChip(ops);
+    if (chip) setFocusRequest(chip);
+  };
+
   const runMenu = (item: MenuItem, anchor: Anchor = menuAt.current) => {
     if (item.refusal) {
       setBanner(`적용하지 못했다 — ${item.refusal}`);
@@ -285,6 +291,7 @@ export function ArticleCopyEditor({ data, articleId, label }: { data: CopyEditor
     if (ops.length === 0 || !apply(ops)) return;
     if (a.focus) setFocusRequest(a.focus);
     if (a.openChip) setPop({ spec: { kind: "editChip", nodeId: a.openChip }, anchor });
+    else if (!a.focus) focusInserted(ops);
   };
 
   const pickMenu = (item: MenuItem) => {
@@ -458,7 +465,11 @@ export function ArticleCopyEditor({ data, articleId, label }: { data: CopyEditor
     ctx,
     tree,
     latest,
-    apply,
+    apply: (ops) => {
+      if (!apply(ops)) return false;
+      focusInserted(ops);
+      return true;
+    },
     newId: randomIds,
     appendices: data.appendices,
     boxes: data.boxes,

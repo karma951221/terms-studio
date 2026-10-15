@@ -280,6 +280,17 @@ function caretToEnd(el: HTMLElement) {
   sel?.addRange(range);
 }
 
+/** 칩 바로 뒤에 커서 — 칩을 넣은 직후 (편집기가 새로 그려져 초점이 사라지므로). */
+export function caretAfter(el: HTMLElement, chip: Element) {
+  el.focus();
+  const range = document.createRange();
+  range.setStartAfter(chip);
+  range.collapse(true);
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+}
+
 /**
  * 문장 자리 하나 — 읽기면 `InlineView`, 편집이면 contentEditable 편집기.
  * `owner` 는 Enter · Backspace 가 다루는 항 · 호 · 목 (가지 · 셀이면 없다). `focusKey` 는 초점 요청을 알아볼 이름(보통 owner).
@@ -310,11 +321,19 @@ function InlineEditor({ at, nodes, ctx, owner, focusKey, placeholder }: { at: In
   const active = cell && edit.activeCell?.tableId === cell.tableId && edit.activeCell.row === cell.row && edit.activeCell.col === cell.col;
 
   useEffect(() => {
-    if (focusKey && edit.focusRequest === focusKey && ref.current) {
+    const want = edit.focusRequest;
+    if (!want || !ref.current) return;
+    if (focusKey && want === focusKey) {
       caretToEnd(ref.current);
       edit.focusDone();
+      return;
     }
-  }, [edit, focusKey]);
+    // 방금 넣은 칩이 이 문장 자리에 있으면 그 칩 바로 뒤에 커서 (칩 넣기 → 이어서 치기)
+    if (!nodes.some((n) => n.kind !== "text" && n.id === want)) return;
+    const chip = [...ref.current.children].find((c) => c instanceof HTMLElement && c.dataset.chip === want);
+    if (chip) caretAfter(ref.current, chip);
+    edit.focusDone();
+  }, [edit, focusKey, nodes]);
 
   const commit = () => {
     if (ref.current) edit.commitInline(at, tokensOf(ref.current));

@@ -23,6 +23,19 @@ import type { Id } from "@/domain/types";
 import { moveTarget } from "../../lib";
 import { parseGrid, runsReplacing, runsWithout } from "./inlineRuns";
 
+/**
+ * 명령 목록이 칩 하나를 문장에 넣는 것이면 그 칩 id — 넣은 뒤 커서를 칩 바로 뒤에 두려고 (조사 · 옵션 자리 · 팝업 넣기).
+ * `setInlines` 의 새 노드 조각이 정확히 하나이고 글이 아닐 때만. 조건 풀기처럼 여럿을 꺼내거나 글만 고치면 undefined.
+ */
+export function insertedChip(ops: readonly EditOp[]): Id | undefined {
+  for (const op of ops) {
+    if (op.type !== "setInlines") continue;
+    const added = op.runs.flatMap((r) => ("node" in r ? [r.node] : []));
+    if (added.length === 1 && added[0].kind !== "text") return added[0].id;
+  }
+  return undefined;
+}
+
 /** 노드 바로 뒤 자리 (같은 부모 · 같은 목록). 루트면 undefined. */
 export function afterOf(ix: TreeIndex, nodeId: Id): Position | undefined {
   const e = ix.nodes.get(nodeId);
