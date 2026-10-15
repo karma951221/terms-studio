@@ -5,6 +5,7 @@
  * 후보는 조건 문맥의 구분자 중 결과가 string · enum 인 것 (기능/문면 §3.4), 붙는 레벨로 묶는다.
  * 반복 표 템플릿 셀 안(`context.row`)이면 그 아래에 트리가 붙는다: 맨 위 「현재 행」 가지(한정자 없음) · 그 아래 실제 노드 트리(`@노드` 고정).
  * 잎을 더블클릭하면 입력칸에 그 참조 경로가 들어간다 (ADR-0070 · 설계 §3.1).
+ * 종 반복 안(`context.plan`)이면 맨 앞에 「현재 종」 묶음 — 종형명(`builtin.plan.name`) · 선택지 번호(`builtin.plan.number`) (ADR-0077 결정 3).
  */
 import { useState } from "react";
 
@@ -17,12 +18,20 @@ import type { ConditionContext, CtxDiscriminator } from "./types";
 
 const slotable = (d: CtxDiscriminator) => d.type?.kind === "string" || d.type?.kind === "enum";
 
+/** 「현재 종」 묶음의 내장 경로 — 원문 표기 「2종(보험료 납입면제형)」 = 번호 슬롯 + 「종(」 + 이름 슬롯 + 「)」 (기능/문면 §3.7). */
+const PLAN_SLOTS: readonly { path: string; label: string }[] = [
+  { path: "builtin.plan.name", label: "종형명" },
+  { path: "builtin.plan.number", label: "선택지 번호" },
+];
+
 /** 후보 — 구분자 코드 하나씩, 붙는 레벨 순으로 묶는다. */
 export function slotOptions(context: ConditionContext): ComboOption[] {
   // 함수조항 본문 — 인자(`arg.<이름>` · 필드 `arg.<이름>.F01`) · 내부 변수(`var.<이름>`)가 맨 앞 묶음 (최종 결정 2 · 18)
   const params = context.discriminators.filter((d) => d.param && slotable(d)).map((d) => ({ value: d.code, label: d.label, hint: d.code, group: "인자" }));
   const locals = context.discriminators.filter((d) => d.local && slotable(d)).map((d) => ({ value: d.code, label: d.label, hint: d.code, group: "내부 변수" }));
+  const plan = context.plan ? PLAN_SLOTS.map((p) => ({ value: p.path, label: p.label, hint: p.path, group: `현재 종 — ${context.plan!.name}` })) : [];
   return [
+    ...plan,
     ...params,
     ...locals,
     ...ATTACH_LEVELS.flatMap((level) =>
@@ -33,6 +42,8 @@ export function slotOptions(context: ConditionContext): ComboOption[] {
 
 /** 후보에 없는 경로(트리에서 고른 `코드@노드`)의 이름 — 「이름 @노드이름」. 모르는 코드면 undefined(경로 그대로 보인다). */
 export function slotPathLabel(context: ConditionContext, path: string): string | undefined {
+  const builtin = PLAN_SLOTS.find((p) => p.path === path);
+  if (builtin) return `현재 종 › ${builtin.label}`;
   const [code, nodeId] = path.split("@");
   const d = context.discriminators.find((x) => x.code === code);
   if (!d) return undefined;

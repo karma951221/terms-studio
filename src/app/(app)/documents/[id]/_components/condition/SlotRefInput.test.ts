@@ -27,4 +27,14 @@ describe("슬롯 참조 후보 — 검색 입력(콤보박스)", () => {
     expect(slotPathLabel(context, "D0002")).toBe("갱신유형");
     expect(slotPathLabel(context, "D9999")).toBeUndefined();
   });
+  it("감싼 반복이 종 반복이면 맨 앞 「현재 종」 묶음 — 종형명 · 선택지 번호 (ADR-0077 결정 3)", () => {
+    const inLoop: ConditionContext = { ...context, plan: { name: "납입면제종마다" } };
+    expect(slotOptions(inLoop).slice(0, 2)).toEqual([
+      { value: "builtin.plan.name", label: "종형명", hint: "builtin.plan.name", group: "현재 종 — 납입면제종마다" },
+      { value: "builtin.plan.number", label: "선택지 번호", hint: "builtin.plan.number", group: "현재 종 — 납입면제종마다" },
+    ]);
+    expect(slotOptions(context).some((o) => o.value.startsWith("builtin."))).toBe(false);
+    expect(slotPathLabel(inLoop, "builtin.plan.name")).toBe("현재 종 › 종형명");
+    expect(slotPathLabel(context, "builtin.plan.number")).toBe("현재 종 › 선택지 번호");
+  });
 });
