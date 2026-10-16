@@ -246,6 +246,32 @@ describe("담보 트리 반복 조립 — 현재 노드 문맥 · 복제 접미�
     expect(paras.map((p) => (p.kind === "paragraph" ? (p.items ?? []).map((i) => (i.kind === "item" ? `${i.id} ${inlineText(i.children)}` : i.kind)) : []))).toEqual([["i@01@1 급부 감액"], ["i@03@1 급부 그대로"]]);
   });
 
+  it("트리 반복도 「비었을 때」 칸을 받는다 — 세부보장이 있으면 본문만, 없으면 칸 항 (ADR-0088 결정 4 × ADR-0087 결정 5)", () => {
+    const withFallback = {
+      kind: "article",
+      id: "a",
+      title: titleNodes("감액", "a"),
+      children: [
+        {
+          kind: "forBlock",
+          id: "f",
+          source: { kind: "subCoverages" },
+          children: [{ kind: "paragraph", id: "p", children: [{ kind: "text", id: "pt", text: "세부보장 항" }] }],
+          fallback: [{ kind: "paragraph", id: "q", children: [{ kind: "text", id: "qt", text: "세부보장 없음" }] }],
+        },
+      ],
+    } as unknown as DocumentNode["children"][number];
+    const texts = (input: AssemblyInput) => {
+      const r = assembleSpecial(input, input, "pc-nodequal");
+      const art = r.ok ? r.value.doc.children[0] : undefined;
+      return (art?.kind === "article" ? art.children : []).map((p) => (p.kind === "paragraph" ? inlineText(p.children) : p.kind));
+    };
+    const input = withDoc(withFallback);
+    expect(texts(input)).toEqual(["세부보장 항", "세부보장 항"]);
+    const empty = { ...input, coverages: input.coverages.map((c) => ({ ...c, snapshot: { ...c.snapshot, subCoverages: [] } })) };
+    expect(texts(empty)).toEqual(["세부보장 없음"]);
+  });
+
   it("P코드 열쇠 접미사는 노드 키(@01 · 중첩 @01@1), 반복 표지에 키 경로", () => {
     const input = withDoc(article);
     const doc = input.specialDocuments.get("cov-nodequal")!;
