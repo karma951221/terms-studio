@@ -180,6 +180,37 @@ describe("블록 반복 메뉴 (ADR-0077 — 조 자리 · 호 목록, 한 단�
   });
 });
 
+describe("블록 반복 「비었을 때」 칸 메뉴 (ADR-0088 결정 4)", () => {
+  function fallbackTree() {
+    const b = nodeBuilders(sequentialIds("f"));
+    const inFallback = b.paragraph([]);
+    const loop = b.forBlock({ kind: "planOptions", form: "waiver", filter: "waiver.applies = true" }, [b.paragraph([])], undefined, [inFallback]);
+    const items = b.forBlock({ kind: "planOptions", form: "waiver" }, [b.item([])]);
+    const doc = b.document("D", [b.article("가", [loop, b.paragraph([], [items])])]);
+    return { doc, loop, inFallback, items };
+  }
+
+  it("반복 블록 자리 — 칸에 항 · 함수조항 넣기(호 목록 반복이면 호), 모든 항목에 툴바 버튼 · 툴바 「비었을 때」는 고른 반복 블록에서만", () => {
+    const { doc, loop, items } = fallbackTree();
+    const got = labels(blockMenu(env(doc), loop.id));
+    expect(got).toEqual(expect.arrayContaining(["「비었을 때」 칸에 항 추가", "「비었을 때」 칸에 함수조항(조 단위) 추가…"]));
+    expect(labels(blockMenu(env(doc), items.id))).toEqual(expect.arrayContaining(["「비었을 때」 칸에 호 추가", "「비었을 때」 칸에 함수조항(호) 추가…"]));
+    for (const l of blockMenu(env(doc), loop.id).flat().map((i) => i.label)) expect(toolFor(DOCUMENT_TOOLS, l), l).toBeDefined();
+    const tool = toolFor(DOCUMENT_TOOLS, "「비었을 때」 칸에 항 추가")!;
+    expect(tool.at).toBe("context");
+    expect(toolState(tool, blockMenu(env(doc), loop.id)).disabled).toBe(false);
+    expect(toolState(tool, blockMenu(env(doc), doc.children[0].id)).disabled).toBe(true);
+    const add = blockMenu(env(doc), loop.id).flat().find((i) => i.label === "「비었을 때」 칸에 항 추가")!;
+    expect(add.action).toMatchObject({ do: "ops", ops: [{ type: "insert", at: { parentId: loop.id, slot: "fallback" } }] });
+  });
+
+  it("칸 안 항 — 아래에 항 추가는 칸 자리 안에서(같은 블록 편집)", () => {
+    const { doc, loop, inFallback } = fallbackTree();
+    const add = blockMenu(env(doc), inFallback.id).flat().find((i) => i.label === "아래에 항 추가")!;
+    expect(add.action).toMatchObject({ do: "ops", ops: [{ type: "insert", at: { parentId: loop.id, slot: "fallback", index: 1 } }] });
+  });
+});
+
 describe("조 제목 칸 — 제목도 문장 자리다 (ADR-0088 결정 5)", () => {
   it("넣기는 슬롯 · 문장 안 조건 · 조사만 켜지고 참조 · 함수조항은 잠긴다 — 조 제목 자리의 조작(아래에 조 · 항 추가)은 그대로", () => {
     const t = tree();

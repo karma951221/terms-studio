@@ -170,7 +170,7 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
   // 블록 반복 — 조 자리 · 호 목록 자리, 반복 안 반복은 한 단계까지 (ADR-0077)
   if (after && e.allowed.includes("forBlock") && e.forDepth < MAX_REPEAT_DEPTH) add.push({ label: "아래에 반복 블록 추가…", action: { do: "popup", popup: { kind: "repeatBlock", at: after } } });
   if (e.node.kind === "paragraph" && e.forDepth < MAX_REPEAT_DEPTH) add.push({ label: "반복 블록(호) 추가…", action: { do: "popup", popup: { kind: "repeatBlock", at: { parentId: nodeId, slot: "items" } } } });
-  if (e.node.kind === "forBlock") add.push(...repeatIntoItems(env, nodeId, e.allowed, e.forDepth + 1));
+  if (e.node.kind === "forBlock") add.push(...repeatIntoItems(env, nodeId, e.allowed, e.forDepth + 1), ...repeatFallbackItems(env, nodeId, e.allowed));
 
   const own: MenuItem[] = [];
   if (e.node.kind === "table") {
@@ -203,6 +203,26 @@ function repeatIntoItems(env: MenuEnv, forId: Id, allowed: readonly NodeKind[], 
     out.push({ label: `이 반복에 함수조항(${FIT_WORD[fit]}) 추가…`, action: { do: "popup", popup: { kind: "clauseBlock", at, ...(fit === "block" ? {} : { fit }) } } });
   }
   if (allowed.includes("forBlock") && depth < MAX_REPEAT_DEPTH) out.push({ label: "이 반복에 반복 블록 추가…", action: { do: "popup", popup: { kind: "repeatBlock", at } } });
+  return out;
+}
+
+/**
+ * 블록 반복의 「비었을 때」 칸 끝에 넣기 (ADR-0088 결정 4) — 칸 = 본문과 같은 허용 집합(조 자리면 항 · 함수조항(조 단위), 호 목록이면 호 · 함수조항(호)).
+ * 칸이 없으면 첫 넣기가 칸을 만든다. 칸 안 블록의 그다음 편집(아래에 추가 · 끌기 · 이동)은 본문과 같은 블록 메뉴다.
+ * 본문 첫 줄 하나만 — 칸 안 반복은 넣지 않는다(칸은 원소가 없을 때의 글이다).
+ */
+export function repeatFallbackItems(env: MenuEnv, forId: Id, allowed: readonly NodeKind[]): MenuItem[] {
+  const at: Position = { parentId: forId, slot: "fallback" };
+  const out: MenuItem[] = [];
+  for (const k of ["paragraph", "item"] as const) {
+    if (!allowed.includes(k)) continue;
+    const node = emptyNode(k, env.newId);
+    out.push({ label: `「비었을 때」 칸에 ${KIND_WORD[k]} 추가`, action: { do: "ops", ops: [{ type: "insert", node, at }], focus: node.id } });
+  }
+  if (allowed.includes("clauseBlockRef")) {
+    const fit = fitOf(allowed);
+    out.push({ label: `「비었을 때」 칸에 함수조항(${FIT_WORD[fit]}) 추가…`, action: { do: "popup", popup: { kind: "clauseBlock", at, ...(fit === "block" ? {} : { fit }) } } });
+  }
   return out;
 }
 

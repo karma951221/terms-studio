@@ -31,6 +31,7 @@ export type ToolId =
   | "clauseBlock"
   | "box"
   | "forBlock"
+  | "forFallback"
   | "slot"
   | "articleRef"
   | "appendixRef"
@@ -131,6 +132,14 @@ export const DOC_TOOLS: ToolGroup[] = [
         match: oneOf("아래에 반복 블록 추가…", "반복 블록 추가…", "반복 블록(호) 추가…", "이 반복에 반복 블록 추가…"),
         multi: true,
       },
+      {
+        id: "forFallback",
+        label: "비었을 때",
+        title: "「비었을 때」 칸에 넣기 — 고른 반복 블록에, 원소가 0개일 때 그 자리에 나올 항 · 호 · 함수조항(본문과 같은 코드면 분기 짝)",
+        match: (l) => l.startsWith("「비었을 때」 칸에 "),
+        multi: true,
+        at: "context",
+      },
     ],
   },
   {
@@ -196,7 +205,7 @@ export const DOC_TOOLS: ToolGroup[] = [
 ];
 
 /** 함수조항 본문에 없는 도구 — 함수조항 툴바에서 빠진다 (기능/함수조항 §4.3). 조 · 관 · 함수조항은 남고 잠긴다(사유 tooltip). */
-const CLAUSE_HIDDEN = new Set<ToolId>(["table", "structKey", "repeat", "link", "forBlock", "inlineFor"]);
+const CLAUSE_HIDDEN = new Set<ToolId>(["table", "structKey", "repeat", "link", "forBlock", "forFallback", "inlineFor"]);
 
 export const CLAUSE_TOOLS: ToolGroup[] = DOC_TOOLS.map((g) => ({ ...g, tools: g.tools.filter((t) => !CLAUSE_HIDDEN.has(t.id)) })).filter((g) => g.tools.length > 0);
 
