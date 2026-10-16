@@ -33,7 +33,7 @@ import type { ParticlePresetKey } from "../document/particles";
 import type { ArticleNode, DocumentNode, TableColumn } from "../document/nodes";
 import type { AttributeKind, ClauseOptionOverride, PlanAxis, ProductCoverageSnapshot, ProductPlan } from "../product/types";
 import type { MasterTree } from "../master";
-import type { Code, Coordinate, Id, Issue, ReferenceConnector, ValueSlot } from "../types";
+import type { Code, Coordinate, Id, InlineRepeatConnector, Issue, ReferenceConnector, ValueSlot } from "../types";
 
 // ───────────────────────────── 입력 ─────────────────────────────
 
@@ -190,10 +190,22 @@ export interface RParticle {
   at: Coordinate;
 }
 
+/**
+ * 해소 단계의 인라인 반복 묶음 (ADR-0088 · 문면 §3.12) — 원소마다 푼 본문. 치환 단계가 슬롯을 글로 바꾼 뒤
+ * **같은 글은 첫 번째만 남기고**(2026-10-17 사용자 결정) 쉼표 · 마지막 앞 연결어로 펴서 사라진다. 원소는 1 이상.
+ */
+export interface RInlineRepeat {
+  kind: "inlineRepeat";
+  id: Id;
+  /** 원소가 하나면 없을 수 있다(옛 트리) — 둘 이상인데 없으면 해소 단계가 이미 오류 마커로 바꿨다. */
+  connector?: InlineRepeatConnector;
+  elements: RInline[][];
+}
+
 /** 해소 단계(ResolvedDoc)의 인라인 노드. */
-export type RInline = RText | RSlot | RArticleRef | RAppendixRef | RParticle | ErrorNode;
-/** 치환 단계(SubstitutedDoc)의 인라인 노드 — 슬롯이 사라졌다. */
-export type SInline = Exclude<RInline, RSlot>;
+export type RInline = RText | RSlot | RArticleRef | RAppendixRef | RParticle | RInlineRepeat | ErrorNode;
+/** 치환 단계(SubstitutedDoc)의 인라인 노드 — 슬롯 · 인라인 반복 묶음이 사라졌다. */
+export type SInline = Exclude<RInline, RSlot | RInlineRepeat>;
 
 /** 정적 표 — 셀은 인라인 노드 목록이라 슬롯·참조가 단계마다 함께 해소된다 (기능/문면 §3.2). */
 export interface RTable<I> {

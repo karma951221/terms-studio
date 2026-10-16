@@ -12,9 +12,9 @@ import { discriminatorResultType } from "../catalog/expression";
 import { missingValueMessage, slotType } from "../catalog/values";
 import { evaluate, parse, refPath, type ValueRef } from "../expression";
 import { findMasterField, type MasterTree } from "../master";
-import type { Code, Coordinate, FieldType, Issue, Value } from "../types";
+import { inlineRepeatSeparator, type Code, type Coordinate, type FieldType, type Issue, type Value } from "../types";
 import type { AssemblyContext } from "./context";
-import type { ErrorNode, LoopTag, RArticle, RBulletList, RInline, RItem, RParagraph, ResolvedDoc, RStatic, RSubitem, SInline, SubstitutedDoc } from "./types";
+import type { ErrorNode, LoopTag, RArticle, RBulletList, RInline, RInlineRepeat, RItem, RParagraph, ResolvedDoc, RStatic, RSubitem, SInline, SubstitutedDoc } from "./types";
 import { mapArticles } from "./walk";
 import { chooseParticle, particlePreset } from "../document/particles";
 import { titleKindMessage } from "../document/title";
@@ -117,7 +117,23 @@ class Substituter {
   }
 
   inlines(list: readonly RInline[]): SInline[] {
-    return list.map((n) => (n.kind === "slot" ? this.slot(n) : n));
+    return list.flatMap((n) => (n.kind === "slot" ? [this.slot(n)] : n.kind === "inlineRepeat" ? this.repeatInline(n) : [n]));
+  }
+
+  /**
+   * 인라인 반복 묶음 → 인라인 (문면 §3.12, 2026-10-17 사용자 결정) — 원소마다 슬롯을 글로 바꾼 뒤 **같은 글은 첫 번째만** 남기고(순서 유지)
+   * 남은 개수로 쉼표 · 마지막 앞 연결어를 잇는다. 오류가 든 원소는 거르지 않는다. 조 제목도 이 길이라 조 머리 · 참조 라벨 · 목차에 같이 선다.
+   */
+  repeatInline(n: RInlineRepeat): SInline[] {
+    const seen = new Set<string>();
+    const kept = n.elements.map((e) => this.inlines(e)).filter((e) => {
+      const key = foldedKey(e);
+      if (key === undefined) return true;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return kept.flatMap((e, i) => (i === 0 ? e : [{ kind: "text" as const, id: `${n.id}~sep${i}`, text: inlineRepeatSeparator(n.connector ?? ",", i, kept.length) }, ...e]));
   }
 
   subitem(n: RSubitem<RInline>): RSubitem<SInline> {
@@ -193,6 +209,22 @@ class Substituter {
 export function substituteSlots(doc: ResolvedDoc, ctx: AssemblyContext, env: SubstituteEnv): SubstituteOutcome {
   const s = new Substituter(ctx, env);
   return { doc: mapArticles(doc, (a) => s.article(a)), issues: s.issues };
+}
+
+/**
+ * 원소의 접힌 글 열쇠 — 글은 글 그대로, 조 참조 · 별표 참조 · 조사는 렌더가 정하는 글이라 대상 · 프리셋으로 대신한다
+ * (같은 대상 · 같은 앞 글이면 같은 글). 오류가 들었으면 `undefined` — 거르지 않는다.
+ */
+function foldedKey(list: readonly SInline[]): string | undefined {
+  let key = "";
+  for (const n of list) {
+    if (n.kind === "error") return undefined;
+    if (n.kind === "text") key += n.text;
+    else if (n.kind === "particle") key += `\u0000p:${n.preset}\u0000`;
+    else if (n.kind === "appendixRef") key += `\u0000b:${n.appendixCode}\u0000`;
+    else key += `\u0000a:${JSON.stringify([n.targets, n.within ?? null, n.connector ?? null, n.scope])}\u0000`;
+  }
+  return key;
 }
 
 /** 참조 열쇠 · 반복 원소 표지 · 블록 묶음 (`Keyed`) — 단계를 건너도 그대로 싣는다. */

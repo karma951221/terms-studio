@@ -16,7 +16,8 @@
  *   종 원소 안에서는 조건 · 슬롯 · 펼친 함수조항이 그 종을 커서로 세운 문맥에서 평가되고(`Frame.plan`), 인자의 현재 원소 연결은 `Frame.loops` 로 푼다.
  *   원천 오류(미입력 목록값 · 없는 원천)는 반복 자리 오류 마커.
  * - **인라인 반복**(inlineFor, ADR-0088)은 같은 원천 · 같은 원소 순서 · 같은 현재 원소 문맥으로 본문 인라인을 원소마다 복제해 잇는다 —
- *   쉼표, 마지막 원소 앞에만 연결어(「A」 · 「A 및 B」 · 「A, B 및 C」). 원소 0 이면 「비었을 때」 칸(원소 문맥 밖), 칸이 없으면 빈 글.
+ *   쉼표, 마지막 원소 앞에만 연결어(「A」 · 「A 및 B」 · 「A, B 및 C」) — 잇기는 치환 단계가 같은 글을 거른 뒤(`inlineRepeat` 묶음, 문면 §3.12).
+ *   원소 0 이면 「비었을 때」 칸(원소 문맥 밖), 칸이 없으면 빈 글.
  *   조 제목도 같은 길(`article` 이 제목을 `inlines` 로 푼다).
  * - **「현재 값」 슬롯**(`builtin.value.*`)은 감싼 반복의 가장 안쪽 열거값 원소로 여기서 글로 바꾼다 — 그 열거형의 문자 필드(미입력은 오류, 원천 좌표 = 열거형). 값 이름(`builtin.value.name`)은 그 자리 오류(관리용 이름 — 2026-10-17).
  * - **행 반복 표**(ADR-0070 결정 6)는 특약 문맥의 행 원천(`ctx.rows` — 상품담보 스냅샷)으로 펼친다:
@@ -67,7 +68,7 @@ import { withClauseCodes } from "../clause/pcode";
 import { evaluate, parse, type EvalContext } from "../expression";
 import { expandRepeatTable } from "../document/repeat";
 import { descend, enumerateRows, type StructNodeRef } from "../structure";
-import { inlineRepeatSeparator, isInlineRepeatConnector, type Code, type Coordinate, type Id, type Issue } from "../types";
+import { isInlineRepeatConnector, type Code, type Coordinate, type Id, type Issue } from "../types";
 import type { AssemblyContext } from "./context";
 import { formatValue } from "./substitute";
 import type { ErrorNode, LoopTag, RArticle, RArticleRef, RBulletList, RInline, RItem, RParagraph, ResolvedDoc, RSection, RStatic, RSubitem } from "./types";
@@ -283,7 +284,8 @@ class Walker {
   }
 
   /**
-   * 인라인 반복 (ADR-0088 결정 1 · 2 · 3) — 원소마다 본문 복제본(`@원소`)을 그 원소 문맥으로 풀어 쉼표 · 마지막 앞 연결어로 잇는다.
+   * 인라인 반복 (ADR-0088 결정 1 · 2 · 3) — 원소마다 본문 복제본(`@원소`)을 그 원소 문맥으로 풀어 묶음(`inlineRepeat`)으로 넘긴다 —
+   * 치환 단계가 같은 글을 거르고 쉼표 · 마지막 앞 연결어로 잇는다(문면 §3.12).
    * 원소 0 이면 「비었을 때」 칸(원소 문맥 밖 — 경로에 칸 표지). 원천 오류 · 연결어 없는 둘 이상은 그 자리 오류 마커.
    */
   inlineRepeat(n: InlineForNode, f: Frame): RInline[] {
@@ -295,12 +297,9 @@ class Walker {
     if (r.value.length > 1 && !isInlineRepeatConnector(connector)) {
       return [this.error(n.id, { kind: "structure", message: "문장 안 반복의 연결어(및 · 또는 · 쉼표만)가 없습니다 — 편집기에서 고른다", at })];
     }
-    const out: RInline[] = [];
-    r.value.forEach((element, i) => {
-      if (i > 0) out.push({ kind: "text", id: `${n.id}~sep${i}`, text: inlineRepeatSeparator(connector!, i, r.value.length) });
-      out.push(...this.inlines(cloneForElement(n.children, repeatElementId(element)), this.elementFrame(n, f, element)));
-    });
-    return out;
+    // 잇기 · 같은 글 거르기는 슬롯이 글이 된 뒤(치환 단계 `repeatInline`)
+    const elements = r.value.map((element) => this.inlines(cloneForElement(n.children, repeatElementId(element)), this.elementFrame(n, f, element)));
+    return [{ kind: "inlineRepeat", id: n.id, ...(isInlineRepeatConnector(connector) ? { connector } : {}), elements }];
   }
 
   /** 「현재 값」 슬롯 → 글 — 감싼 반복의 가장 안쪽 열거값 원소의 문자 필드 (ADR-0088 결정 1). 값 이름은 찍지 않고 그 자리 오류(관리용 이름). */
