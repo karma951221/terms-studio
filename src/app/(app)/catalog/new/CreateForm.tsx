@@ -5,8 +5,8 @@
  *
  * 2026-09-12 — 구분자가 식 하나가 되면서 유형 선택·타입 선택·노출·상수값 칸이 사라졌다 (ADR-0037).
  * 남는 칸은 구분자명 · 레벨 · 식 · 주석 넷이다.
- * 2026-09-17 — 선택인 「결과 타입」 칸이 붙었다 (기능/구분자 §3.1). 미지정이면 식에서 추론한 타입을 쓴다.
- *   입력 모양은 마스터 필드 타입과 같다 — 종류 셀렉트 + 목록값일 때만 복수 토글 · 열거형변수 셀렉트.
+ * 2026-09-17 — 「결과 타입」 칸이 붙었다 (기능/구분자 §3.1). 입력 모양은 마스터 필드 타입과 같다 — 종류 셀렉트 + 목록값일 때만 복수 토글 · 열거형변수 셀렉트.
+ * 2026-10-17 — 결과 타입은 필수. 식(· 레벨)을 바꾸면 아직 고르지 않은 동안 식의 추론 타입이 기본값으로 채워진다 (`useAutoResultType`).
  *
  * 2026-09-17 — 헤더에 「검사」 (저장 전 검사 · 오류/경고 두 등급, 기능/구분자 §3.3). 결과는 폼 아래 「검사 결과」 블록.
  * 2026-09-17 — 오른쪽에 넣기 패널(마스터 필드 · 구분자 · 연산) 상시, 식 입력은 커서 자리 삽입 (기능/구분자 §4.3).
@@ -22,13 +22,14 @@ import { RadioGroup } from "@/app/_components/RadioGroup";
 import { Toggle } from "@/app/_components/Toggle";
 import { ENTITY_LABEL, FIELD_LABEL, LEVEL_OPTIONS, NAME_LABEL, newLabel, TYPE_LABEL } from "@/app/_lib/labels";
 import { DISCRIMINATORS_MENU, menuCrumb } from "@/app/_lib/menu";
-import type { EnumDef } from "@/domain/catalog/types";
+import type { Discriminator, EnumDef } from "@/domain/catalog/types";
 import type { AttachLevel } from "@/domain/types";
 
 import { ExpressionInput, useExpressionInsert } from "../_components/ExpressionField";
 import { InsertPanel } from "../_components/InsertPanel";
 import { InspectButton, InspectionResult, type InspectionState } from "../_components/InspectionPanel";
-import { inspectInputFrom, RESULT_TYPE_HINT, RESULT_TYPE_OPTIONS, type InsertPanelData } from "../lib";
+import { useAutoResultType } from "../_components/useAutoResultType";
+import { inspectInputFrom, RESULT_TYPE_HINT, resultTypeOptions, type InsertPanelData } from "../lib";
 
 const FORM_ID = "create-discriminator";
 
@@ -38,6 +39,7 @@ export function CreateForm({
   initialLevel,
   enums,
   panel,
+  catalog,
 }: {
   action: (formData: FormData) => void | Promise<void>;
   /** 오류 배너 등 헤더 바로 아래에 들어갈 것. */
@@ -47,6 +49,8 @@ export function CreateForm({
   enums: readonly EnumDef[];
   /** 넣기 패널 재료 — 마스터 필드 트리 · 구분자 목록 (서버가 직렬화). */
   panel: InsertPanelData;
+  /** 구분자 목록 — 식의 추론 타입(결과 타입 기본값)을 화면에서 바로 구할 때 구분자 참조를 푼다. */
+  catalog: readonly Discriminator[];
 }) {
   const [level, setLevel] = useState<AttachLevel>(initialLevel);
   // 식 · 결과 타입은 제어형 — 「검사」가 지금 값을 읽어야 한다 (제출은 여전히 name 으로 formData 에 실린다).
@@ -55,7 +59,26 @@ export function CreateForm({
   const [resultTypeMulti, setResultTypeMulti] = useState(false);
   const [resultTypeEnum, setResultTypeEnum] = useState("");
   const [inspection, setInspection] = useState<InspectionState>();
-  const { ref: expressionRef, insert, insertReference } = useExpressionInsert(expression, setExpression);
+  const follow = useAutoResultType({
+    catalog,
+    initial: { expression: "", level: initialLevel },
+    read: () => ({ kind: resultTypeKind, multi: resultTypeMulti, enumCode: resultTypeEnum }),
+    write: (form) => {
+      setResultTypeKind(form.kind);
+      setResultTypeMulti(form.multi);
+      setResultTypeEnum(form.enumCode);
+    },
+  });
+  // 식을 바꾸는 두 길(직접 입력 · 패널 삽입)과 레벨 바꾸기가 모두 결과 타입 기본값을 따라가게 한다
+  const changeExpression = (next: string) => {
+    setExpression(next);
+    follow(next, level);
+  };
+  const changeLevel = (next: AttachLevel) => {
+    setLevel(next);
+    follow(expression, next);
+  };
+  const { ref: expressionRef, insert, insertReference } = useExpressionInsert(expression, changeExpression);
   // 생성은 아직 코드가 없다 — 자기 참조 · 순환 · 사용처 판정은 수정에서만 (기능/구분자 §3.3)
   const inspectInput = inspectInputFrom(undefined, level, { expression, resultTypeKind, resultTypeMulti, resultTypeEnum });
 
@@ -78,19 +101,19 @@ export function CreateForm({
 
             {/* 레벨은 채번 뒤 못 고친다 — 식의 참조 규칙이 레벨에 매여 있다 (ADR-0037). */}
             <FormRow label={FIELD_LABEL.level}>
-              <RadioGroup name="level" label={FIELD_LABEL.level} options={LEVEL_OPTIONS} value={level} onChange={(value) => setLevel(value as AttachLevel)} />
+              <RadioGroup name="level" label={FIELD_LABEL.level} options={LEVEL_OPTIONS} value={level} onChange={(value) => changeLevel(value as AttachLevel)} />
               <p className="ts-form-hint">식이 평가되는 자리다. 채번 뒤에는 고칠 수 없다.</p>
             </FormRow>
 
             <FormRow label={FIELD_LABEL.expression} htmlFor="new-expr">
-              <ExpressionInput inputRef={expressionRef} id="new-expr" name="expression" required placeholder="예: coverage_basic.claim_name · any(pay.exempt)" value={expression} onChange={setExpression} />
+              <ExpressionInput inputRef={expressionRef} id="new-expr" name="expression" required placeholder="예: coverage_basic.claim_name · any(pay.exempt)" value={expression} onChange={changeExpression} />
               <p className="ts-form-hint">입력 항목과 다른 구분자를 부른다 — 같은 레벨은 그대로, 하위 레벨은 집계 안에서.</p>
             </FormRow>
 
-            {/* 결과 타입은 선택 — 고르면 저장 시 식의 추론 타입과 대조돼 거부될 수 있다 (기능/구분자 §3.1). */}
+            {/* 결과 타입은 필수 — 식의 추론 타입이 기본값, 저장 시 추론 타입과 대조돼 다르면 거부된다 (기능/구분자 §3.1). */}
             <FormRow label={FIELD_LABEL.resultType} htmlFor="new-result-type">
-              <select id="new-result-type" name="resultTypeKind" value={resultTypeKind} onChange={(event) => setResultTypeKind(event.target.value)}>
-                {RESULT_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              <select id="new-result-type" name="resultTypeKind" required value={resultTypeKind} onChange={(event) => setResultTypeKind(event.target.value)}>
+                {resultTypeOptions(resultTypeKind).map((option) => <option key={option.value} value={option.value} disabled={option.value === ""}>{option.label}</option>)}
               </select>
               {resultTypeKind === "enum" ? (
                 <>

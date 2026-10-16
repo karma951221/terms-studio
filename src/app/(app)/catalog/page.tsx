@@ -3,7 +3,7 @@
  *
  * 2026-09-12 — 구분자가 식 하나가 되면서 「유형」 컬럼·필터가 사라졌다 (ADR-0037).
  * 남는 것은 코드 · 구분자명 · 레벨 · 최종수정 · 수정자다.
- * 2026-09-17 — 「결과 타입」 열이 붙었다 (기능/구분자 §3.1) — 명시한 것만 보이고 미지정은 `—` 다 (추론은 상세에서).
+ * 2026-09-17 — 「결과 타입」 열이 붙었다 (기능/구분자 §3.1) — 2026-10-17 부터 필수라 비는 칸이 없다.
  * 2026-09-17 — 「경고」 열 + 필터 「경고 있는 구분자」 (기능/구분자 §3.3). 목록의 경고는 별칭뿐이다.
  *
  * 2026-09-27 — 5층 모양 트리(ADR-0070 결정 8)를 같은 날 다시 평면 표로 되돌렸다 — 가지가 다섯 겹이라 훑기 어렵다(UI 검토).
@@ -67,7 +67,7 @@ export default async function CatalogListPage({ searchParams }: { searchParams: 
     { filter: FILTERS[0], width: "sm", cell: (d) => LEVEL_LABEL[d.level] },
     codeCol((d) => d.code),
     nameCol(NAME_LABEL.discriminator, (d) => d.label, (d) => `/catalog/${d.code}`),
-    { header: FIELD_LABEL.resultType, width: "sm", cell: (d) => (d.resultType ? resultTypeLabel(d.resultType, (code) => enumName.get(code)) : "—") },
+    { header: FIELD_LABEL.resultType, width: "sm", cell: (d) => resultTypeLabel(d.resultType, (code) => enumName.get(code)) }, // 필수라 비는 칸이 없다 (2026-10-17)
     { filter: FILTERS[1], width: "sm", cell: (d) => { const badges = warningBadges(warnings.get(d.code) ?? []); return badges.length === 0 ? "—" : badges.map((b) => <span key={b.label} className="ts-badge warning" title={b.title}>{b.label}</span>); } },
     { header: FIELD_LABEL.updatedAt, width: "md", mono: true, cell: (d) => { const audit = audits.get(d.code); return audit ? formatDate(audit.updatedAt) : "—"; } },
     { header: FIELD_LABEL.updatedBy, width: "md", cell: (d) => { const by = audits.get(d.code)?.updatedBy; return (by && userName.get(by)) ?? "—"; } },
