@@ -29,6 +29,20 @@ const 상해: PresetDef = { code: "S01", name: "상해", options: { O01: "V01" }
 const env = { enumValues: (code: string) => (code === "E0001" ? ["V01", "V02"] : undefined) };
 
 describe("검사 ① — 프리셋 (결정 1 · 3 · 6)", () => {
+  it("프리셋은 키 경로 · 「현재」 연결을 담지 않는다 (ADR-0087 결정 4)", () => {
+    const 감액: ParamDef = { name: "감액", type: { kind: "boolean" } };
+    for (const node of [{ path: "01" }, { current: "loop-1" }]) {
+      const c = clause([{ code: "S01", name: "기본", options: { O01: "V01" }, bindings: { 감액: { kind: "discriminator", code: "D0007", node } } }], [감액]);
+      expect(checkPresets(c, env)).toContainEqual(expect.objectContaining({ kind: "structure", message: expect.stringContaining("키 경로") }));
+    }
+  });
+
+  it("한정 없는 하위 레벨 구분자 연결은 막지 않는다 (사용처 검사가 잡는다)", () => {
+    const 감액: ParamDef = { name: "감액", type: { kind: "boolean" } };
+    const c = clause([{ code: "S01", name: "기본", options: { O01: "V01" }, bindings: { 감액: { kind: "discriminator", code: "D0007" } } }], [감액]);
+    expect(checkPresets(c, env).filter((i) => i.kind === "structure")).toEqual([]);
+  });
+
   it("옵션마다 선택 · 기본 연결 없는 값 인자마다 연결이 있으면 통과 — 기본 연결 있는 인자 · 조 참조 인자는 비워 둔다", () => {
     expect(checkPresets(clause([상해]), env)).toEqual([]);
   });

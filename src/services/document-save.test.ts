@@ -190,6 +190,14 @@ describe("document.save — 편집본 저장 (ADR-0074)", () => {
     expect(await svc.validateTree(g.id, { ...g.tree, children: [art] })).toEqual([]);
   });
 
+  it("담보 트리 반복(세부보장마다)은 담보약관 저장이 받고 보통약관 저장은 거부한다 — 저장 검증 환경의 문서 종류 (ADR-0087 결정 5)", async () => {
+    const tree = (): ArticleNode => b.article("감액", [b.forBlock({ kind: "subCoverages" }, [b.paragraph([b.text("세부보장마다")])])]);
+    const s = unwrap(await svc.createSpecial(editor, "87878787-8787-4787-8787-878787878787", "트리 반복 특별약관"));
+    expect(unwrap(await svc.save(editor, s.id, { baseVersion: 1, ops: [{ type: "insert", node: tree(), at: { parentId: s.tree.id } }] })).version).toBe(2);
+    const g = unwrap(await svc.createGeneral(editor, "트리 반복 보통약관"));
+    expect(rejection(await svc.save(editor, g.id, { baseVersion: 1, ops: [{ type: "insert", node: tree(), at: { parentId: g.tree.id } }] })).reason).toBe("invalid");
+  });
+
   it("원본을 바꾸는 다른 경로(이름 수정 · 명령 적용 · 트리 적재)도 판을 올린다", async () => {
     const g = unwrap(await svc.createGeneral(editor, "다른 경로 보통약관"));
     const v2 = unwrap(await svc.setTitle(editor, g.id, "다른 경로 보통약관 2"));

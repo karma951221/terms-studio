@@ -311,3 +311,45 @@ describe("하위 트리 열거 헬퍼 — 식 언어 집계 · 삭제 영향에 
     expect(findNodeById(tree, "없음")).toBeUndefined();
   });
 });
+
+describe("노드 키 — 편집이 매긴다 (ADR-0087 결정 2)", () => {
+  let seq = 0;
+  const newId = () => `id-${seq++}`;
+  const base = () => {
+    const r = createCoverageTree({ name: "암진단비" }, newId, []);
+    if (!r.ok) throw new Error("fixture");
+    return r.value;
+  };
+
+  it("생성은 세부보장 01 · 급부 1", () => {
+    const t = base();
+    expect(t.subCoverages[0].key).toBe("01");
+    expect(t.subCoverages[0].benefits[0].key).toBe("1");
+  });
+
+  it("추가는 빈 가장 작은 키, 순서 바꾸기는 키를 바꾸지 않는다", () => {
+    let t = base();
+    for (const name of ["둘", "셋"]) {
+      const r = addSubCoverage(t, { name }, newId);
+      if (!r.ok) throw new Error(name);
+      t = r.value;
+    }
+    expect(t.subCoverages.map((s) => s.key)).toEqual(["01", "02", "03"]);
+    const reordered = reorderSubCoverages(t, [t.subCoverages[2].id, t.subCoverages[0].id, t.subCoverages[1].id]);
+    if (!reordered.ok) throw new Error("reorder");
+    expect(reordered.value.subCoverages.map((s) => s.key)).toEqual(["03", "01", "02"]);
+    const removed = removeSubCoverage(reordered.value, t.subCoverages[1].id);
+    if (!removed.ok) throw new Error("remove");
+    const again = addSubCoverage(removed.value, { name: "다시" }, newId);
+    if (!again.ok) throw new Error("again");
+    expect(again.value.subCoverages.map((s) => s.key)).toEqual(["03", "01", "02"]);
+    const ben = addBenefit(again.value, again.value.subCoverages[1].id, "급부2", newId);
+    if (!ben.ok) throw new Error("benefit");
+    expect(ben.value.subCoverages[1].benefits.map((b) => b.key)).toEqual(["1", "2"]);
+  });
+
+  it("nodesOf 는 세부보장 · 급부에 키 경로를 싣는다", () => {
+    const t = base();
+    expect(nodesOf(t).map((n) => n.keyPath)).toEqual([undefined, "01", "01.1"]);
+  });
+});

@@ -299,8 +299,22 @@ function cloneSubtree<T extends Node>(root: T, newId: IdSource): T {
   };
   relabel(copy);
   // 사본 안의 조를 가리키는 자기 참조는 사본의 조로 — 코드는 조 안에서만 유일하므로 조째 복사한 사본은 코드가 그대로다
+  // 사본 안의 반복 블록을 쥔 참조(바깥 반복 · 「현재」)도 사본 반복으로 — 원본 반복은 사본을 감싸지 않는다 (ADR-0077 결정 3 · ADR-0087 결정 5 · 10)
+  const loopOf = (id: Id) => map.get(id) ?? id;
   for (const n of nodesIn(copy)) {
-    for (const r of articleRefsOf(n)) if (r.scope === "self") r.targets = r.targets.map((t) => ({ ...t, articleId: map.get(t.articleId) ?? t.articleId }));
+    for (const r of articleRefsOf(n)) {
+      r.targets = r.targets.map((t) => {
+        const restrict = t.restrict && "current" in t.restrict ? { restrict: { current: loopOf(t.restrict.current) } } : {};
+        return { ...t, ...(r.scope === "self" ? { articleId: map.get(t.articleId) ?? t.articleId } : {}), ...restrict };
+      });
+    }
+    if (n.kind === "forBlock" && typeof n.source === "object" && n.source !== null && "loop" in n.source && typeof n.source.loop === "string") n.source = { ...n.source, loop: loopOf(n.source.loop) };
+    if ((n.kind === "clauseBlockRef" || n.kind === "clauseInlineRef") && n.bindings) {
+      for (const [name, b] of Object.entries(n.bindings)) {
+        if (b.kind === "current") n.bindings[name] = { ...b, loop: loopOf(b.loop) };
+        else if (b.kind === "discriminator" && b.node && "current" in b.node) n.bindings[name] = { ...b, node: { current: loopOf(b.node.current) } };
+      }
+    }
   }
   return copy;
 }
@@ -763,7 +777,7 @@ function followRenumbered(copy: Node, sourceArticleId: Id | undefined, moved: Re
   for (const n of nodesIn(copy)) {
     for (const r of articleRefsOf(n)) {
       if (r.scope !== "self") continue;
-      r.targets = r.targets.map((t) => (t.articleId === sourceArticleId && t.code !== undefined && moved.has(t.code) ? { ...moved.get(t.code)! } : t));
+      r.targets = r.targets.map((t) => (t.articleId === sourceArticleId && t.code !== undefined && moved.has(t.code) ? { ...t, ...moved.get(t.code)! } : t)); // 안쪽 코드 · 한정은 그대로
     }
   }
 }

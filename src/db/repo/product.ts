@@ -433,13 +433,13 @@ export async function deleteProductCoverage(db: Db, id: Id): Promise<void> {
 type NodeRow = typeof productCoverageNodes.$inferSelect;
 
 function toNode(r: NodeRow): SnapshotNode {
-  return { id: r.id, productCoverageId: r.productCoverageId, kind: r.kind as SnapshotNode["kind"], masterNodeId: r.masterNodeId, ...(r.parentId ? { parentId: r.parentId } : {}), name: r.name, order: r.order };
+  return { id: r.id, productCoverageId: r.productCoverageId, kind: r.kind as SnapshotNode["kind"], masterNodeId: r.masterNodeId, ...(r.parentId ? { parentId: r.parentId } : {}), key: r.key, name: r.name, order: r.order };
 }
 
 export async function insertNode(db: Db, input: Omit<SnapshotNode, "id">, who?: Id): Promise<SnapshotNode> {
   const [row] = await db
     .insert(productCoverageNodes)
-    .values({ productCoverageId: input.productCoverageId, kind: input.kind, masterNodeId: input.masterNodeId, parentId: input.parentId ?? null, name: input.name, order: input.order, createdBy: who, updatedBy: who })
+    .values({ key: input.key, productCoverageId: input.productCoverageId, kind: input.kind, masterNodeId: input.masterNodeId, parentId: input.parentId ?? null, name: input.name, order: input.order, createdBy: who, updatedBy: who })
     .returning();
   return toNode(row);
 }
@@ -480,7 +480,7 @@ export async function listNodesForProduct(db: Db, productId: Id): Promise<Map<Id
   return new Map([...byPc].map(([pcId, list]) => [pcId, arrangeNodes(list)]));
 }
 
-export async function updateNode(db: Db, id: Id, patch: { name: string; order: number }, who?: Id): Promise<void> {
+export async function updateNode(db: Db, id: Id, patch: { name: string; order: number; key?: string }, who?: Id): Promise<void> {
   await db.update(productCoverageNodes).set({ ...patch, updatedAt: new Date(), updatedBy: who }).where(eq(productCoverageNodes.id, id));
 }
 

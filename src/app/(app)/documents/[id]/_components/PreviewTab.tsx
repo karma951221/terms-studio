@@ -9,7 +9,7 @@
  * - 산출물 꼴로 그린다 — 작업용 글자색 · 칩 · 조건 상자 없음(조립 결과 렌더 `RenderedArticleView`).
  */
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { RenderedArticleView } from "@/app/_components/RenderedDoc";
 import { previewArticle, type ArticlePreview } from "@/domain/assembly";
@@ -17,19 +17,18 @@ import type { DocumentNode } from "@/domain/document";
 import type { Id } from "@/domain/types";
 import type { PreviewProduct } from "@/services/assembly";
 
-import { loadPreviewMaterialAction, type PreviewMaterialOutcome } from "../../preview-actions";
+import { previewKeyOf as keyOf, type PreviewSelection } from "./previewSelection";
 
 export interface PreviewTabProps {
   docKind: "special" | "general";
-  products: readonly PreviewProduct[];
+  /** 고른 상품 · 재료 — 「구분자」 탭과 함께 쓴다 (`usePreviewSelection`). */
+  selection: PreviewSelection;
   /** 조립할 트리 — 편집 중이면 편집본. */
   tree: DocumentNode;
   /** 가운데에 연 조. 없으면(조 없는 문서) 안내. */
   articleId?: Id;
   editing: boolean;
 }
-
-const keyOf = (p: PreviewProduct) => p.productCoverageId ?? p.productId;
 
 /** 한 상품을 여러 상품담보로 탑재했으면 「상품 — 상품담보」, 아니면 상품 이름. */
 function labelOf(p: PreviewProduct, all: readonly PreviewProduct[]): string {
@@ -78,25 +77,8 @@ function Result({ preview }: { preview: ArticlePreview }) {
   );
 }
 
-export function PreviewTab({ docKind, products, tree, articleId, editing }: PreviewTabProps) {
-  const [picked, setPicked] = useState<Id | undefined>(products[0] ? keyOf(products[0]) : undefined);
-  const [materials, setMaterials] = useState<Record<Id, PreviewMaterialOutcome>>({});
-  const selected = products.find((p) => keyOf(p) === picked) ?? products[0];
-  const productId = selected?.productId;
-  const outcome = productId ? materials[productId] : undefined;
-
-  // 고른 상품의 재료가 없으면 한 번 받는다 — 상품마다 기억한다
-  useEffect(() => {
-    if (!productId || materials[productId]) return;
-    let live = true;
-    loadPreviewMaterialAction(productId).then(
-      (r) => live && setMaterials((m) => ({ ...m, [productId]: r })),
-      (e: unknown) => live && setMaterials((m) => ({ ...m, [productId]: { ok: false, message: e instanceof Error ? e.message : String(e) } })),
-    );
-    return () => {
-      live = false;
-    };
-  }, [productId, materials]);
+export function PreviewTab({ docKind, selection, tree, articleId, editing }: PreviewTabProps) {
+  const { products, selected, outcome } = selection;
 
   const preview = useMemo((): ArticlePreview | undefined => {
     if (!selected || !articleId || !outcome?.ok) return undefined;
@@ -128,7 +110,7 @@ export function PreviewTab({ docKind, products, tree, articleId, editing }: Prev
     <div className="ts-preview-tab">
       <div className="ts-form-row">
         <label htmlFor="ts-preview-product">상품</label>
-        <select id="ts-preview-product" value={selected ? keyOf(selected) : ""} onChange={(e) => setPicked(e.target.value)}>
+        <select id="ts-preview-product" value={selected ? keyOf(selected) : ""} onChange={(e) => selection.pick(e.target.value)}>
           {products.map((p) => (
             <option key={keyOf(p)} value={keyOf(p)}>
               {labelOf(p, products)}

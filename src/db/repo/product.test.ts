@@ -72,8 +72,8 @@ describe("product repo (PGlite) — 스키마 · 채번 · 매핑", () => {
       { productId: product.id, coverageId: cov, coverageName: "일반상해사망", name: "일반상해사망 추가", attributes: [{ kindCode: "A0001", valueCode: "2" }], combinationKey: `${cov}|A0001=2` },
       who,
     );
-    const sub = await repo.insertNode(t.db, { productCoverageId: pc.id, kind: "sub", masterNodeId: "22222222-2222-4222-8222-222222222222", name: "세부보장", order: 0 }, who);
-    await repo.insertNode(t.db, { productCoverageId: pc.id, kind: "benefit", masterNodeId: "33333333-3333-4333-8333-333333333333", parentId: sub.id, name: "급부", order: 0 }, who);
+    const sub = await repo.insertNode(t.db, { productCoverageId: pc.id, kind: "sub", masterNodeId: "22222222-2222-4222-8222-222222222222", key: "01", name: "세부보장", order: 0 }, who);
+    await repo.insertNode(t.db, { productCoverageId: pc.id, kind: "benefit", masterNodeId: "33333333-3333-4333-8333-333333333333", parentId: sub.id, key: "1", name: "급부", order: 0 }, who);
     const loaded = await repo.loadProductCoverage(t.db, pc.id);
     expect(loaded).toEqual({ id: pc.id, productId: product.id, coverageId: cov, name: "일반상해사망 추가", attributes: [{ kindCode: "A0001", valueCode: "2" }] });
     const nodes = await repo.listNodes(t.db, pc.id);
@@ -128,14 +128,14 @@ describe("product repo (PGlite) — 스키마 · 채번 · 매핑", () => {
       pcB = (await mk("B")).id;
       pcEmpty = (await mk("E")).id;
       // A: 세부보장 2(순서 역순 삽입) · 급부는 첫 세부보장 아래 2 · 고아 급부 1 — listNodes 의 정렬 규칙(세부보장 order → 소속 급부 order → 고아 급부)이 그대로여야 한다
-      const subA2 = await repo.insertNode(t.db, { productCoverageId: pcA, kind: "sub", masterNodeId: "a2000000-0000-4000-8000-000000000000", name: "A-세부2", order: 1 }, who);
-      const subA1 = await repo.insertNode(t.db, { productCoverageId: pcA, kind: "sub", masterNodeId: "a1000000-0000-4000-8000-000000000000", name: "A-세부1", order: 0 }, who);
-      await repo.insertNode(t.db, { productCoverageId: pcA, kind: "benefit", masterNodeId: "a1200000-0000-4000-8000-000000000000", parentId: subA1.id, name: "A-급부1-2", order: 1 }, who);
-      await repo.insertNode(t.db, { productCoverageId: pcA, kind: "benefit", masterNodeId: "a1100000-0000-4000-8000-000000000000", parentId: subA1.id, name: "A-급부1-1", order: 0 }, who);
-      await repo.insertNode(t.db, { productCoverageId: pcA, kind: "benefit", masterNodeId: "a2100000-0000-4000-8000-000000000000", parentId: subA2.id, name: "A-급부2-1", order: 0 }, who);
-      await repo.insertNode(t.db, { productCoverageId: pcA, kind: "benefit", masterNodeId: "a0900000-0000-4000-8000-000000000000", name: "A-고아급부", order: 0 }, who);
-      const subB = await repo.insertNode(t.db, { productCoverageId: pcB, kind: "sub", masterNodeId: "b1000000-0000-4000-8000-000000000000", name: "B-세부1", order: 0 }, who);
-      await repo.insertNode(t.db, { productCoverageId: pcB, kind: "benefit", masterNodeId: "b1100000-0000-4000-8000-000000000000", parentId: subB.id, name: "B-급부1-1", order: 0 }, who);
+      const subA2 = await repo.insertNode(t.db, { productCoverageId: pcA, kind: "sub", masterNodeId: "a2000000-0000-4000-8000-000000000000", key: "02", name: "A-세부2", order: 1 }, who);
+      const subA1 = await repo.insertNode(t.db, { productCoverageId: pcA, kind: "sub", masterNodeId: "a1000000-0000-4000-8000-000000000000", key: "01", name: "A-세부1", order: 0 }, who);
+      await repo.insertNode(t.db, { productCoverageId: pcA, kind: "benefit", masterNodeId: "a1200000-0000-4000-8000-000000000000", parentId: subA1.id, key: "2", name: "A-급부1-2", order: 1 }, who);
+      await repo.insertNode(t.db, { productCoverageId: pcA, kind: "benefit", masterNodeId: "a1100000-0000-4000-8000-000000000000", parentId: subA1.id, key: "1", name: "A-급부1-1", order: 0 }, who);
+      await repo.insertNode(t.db, { productCoverageId: pcA, kind: "benefit", masterNodeId: "a2100000-0000-4000-8000-000000000000", parentId: subA2.id, key: "1", name: "A-급부2-1", order: 0 }, who);
+      await repo.insertNode(t.db, { productCoverageId: pcA, kind: "benefit", masterNodeId: "a0900000-0000-4000-8000-000000000000", key: "1", name: "A-고아급부", order: 0 }, who);
+      const subB = await repo.insertNode(t.db, { productCoverageId: pcB, kind: "sub", masterNodeId: "b1000000-0000-4000-8000-000000000000", key: "01", name: "B-세부1", order: 0 }, who);
+      await repo.insertNode(t.db, { productCoverageId: pcB, kind: "benefit", masterNodeId: "b1100000-0000-4000-8000-000000000000", parentId: subB.id, key: "1", name: "B-급부1-1", order: 0 }, who);
       // 세목 2 (조합 키 순 K1 < K2) — A 에는 둘 다(2 를 먼저 부착) · B 에는 1 · E 는 없음
       const o1 = await repo.insertPlanOption(t.db, productId, { axis: "type", number: 1, name: "1종", planTypeCode: "waiver" }, who);
       const o2 = await repo.insertPlanOption(t.db, productId, { axis: "type", number: 2, name: "2종", planTypeCode: "waiver" }, who);

@@ -2,8 +2,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { Coverage, CoverageNodeRef, StructureDraftSub, UsageQuery } from "@/domain/coverage";
 import { structureDraftOf } from "@/domain/coverage";
+import { nodeBuilders } from "@/domain/document";
 import type { Actor, Coordinate, Id, Impact } from "@/domain/types";
 
+import { insertDocument } from "@/db/repo/document";
 import { readSlots, type ValueOwner } from "@/db/repo/values";
 import { createTestDb, type TestDb } from "@/db/test-utils";
 import { createCatalogService } from "./catalog";
@@ -503,5 +505,41 @@ describe("담보의 특약 그룹 — 열거형 「특약 그룹」(E0008) 값 �
     draft[0]!.name = "골절진단 세부";
     const next = unwrap(await s.coverage.applyStructurePlan(editor, coverage.id, draft));
     expect(next.specialGroup).toBe("V01");
+  });
+});
+
+describe("coverage 서비스 — 구조 저장 영향은 최종 트리의 키 경로로 센다 (ADR-0087 결정 2)", () => {
+  let t: TestDb;
+  let s: Services;
+  beforeAll(async () => {
+    t = await createTestDb();
+    s = createServices(t.db);
+  });
+  afterAll(async () => {
+    await t.close();
+  });
+
+  /** 세부보장 01 · 02 를 둔 담보 + 담보약관 조건 하나(`when` 안의 `D` 는 세부보장 레벨 구분자 코드로 바뀐다). */
+  async function coverageWithDocument(when: string): Promise<{ coverage: Coverage }> {
+    const disc = unwrap(await s.catalog.create(editor, { label: "감액", level: "subCoverage", expression: "true" }));
+    let coverage = unwrap(await s.coverage.create(editor, { name: "감액담보", subCoverageName: "일반", benefitName: "일반급부" }));
+    coverage = unwrap(await s.coverage.addSubCoverage(editor, coverage.id, { name: "특수", benefitName: "특수급부" }));
+    expect(coverage.subCoverages.map((x) => x.key)).toEqual(["01", "02"]);
+    const b = nodeBuilders();
+    const tree = b.document("감액 특별약관", [b.article("지급", [b.paragraph([b.inlineCond([b.inlineBranch(when.replace("D0007", disc.code), [b.text("감액")])])])])]);
+    const doc = await insertDocument(t.db, { kind: "special", ownerId: coverage.id, title: "감액 특별약관", tree }, editor.userId);
+    coverage = unwrap(await s.coverage.setDocument(editor, coverage.id, doc.id));
+    return { coverage };
+  }
+
+  it("같은 저장에서 02 를 빼고 새 세부보장을 더하면 @02 참조는 깨질 참조가 아니다 (ADR-0087 결정 2)", async () => {
+    const { coverage } = await coverageWithDocument("D0007@02 = true"); // 세부보장 01 · 02, 담보약관 조건에 @02
+    const draft: StructureDraftSub[] = structureDraftOf(coverage).filter((x) => x.nodeKey !== "02");
+    draft.push({ key: "new:s0", name: "다시", benefits: [{ key: "new:b0", name: "다시급부" }] });
+    const preview = unwrap(await s.coverage.previewStructurePlan(admin, coverage.id, draft));
+    expect(preview.brokenRefs).toEqual([]);
+    const removeOnly = structureDraftOf(coverage).filter((x) => x.nodeKey !== "02");
+    const broken = unwrap(await s.coverage.previewStructurePlan(admin, coverage.id, removeOnly));
+    expect(broken.brokenRefs).toHaveLength(1);
   });
 });

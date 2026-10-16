@@ -6,14 +6,14 @@
  * - 줄로 풀 수 없는 식(괄호 중첩 · not · 집계 직접 사용)은 원문(`raw`) 읽기 전용 + 「줄로 다시 만들기」 (ADR-0066 결정 8).
  * - 변수 고르기는 목록 하나 — 담보약관이면 문맥 담보 트리의 노드마다 그 레벨 구분자(`@노드`), 반복 표 셀이면 「현재 행」,
  *   담보 문맥이 없으면(보통약관 · 함수조항) 레벨별 한정자 없는 구분자, 그 밖(상품 · 세목 레벨)은 「구분자」 묶음.
- *   값은 `코드` 또는 `코드@노드id` 글자다. 끝에 「담보속성」 묶음(값 `attr.코드`) — 있음 · 없음 · = · ≠ (2026-09-28).
+ *   값은 `코드` 또는 `코드@키경로`(`D0007@01.2`, ADR-0087 결정 3) 글자다. 노드 묶음 머리는 「세부보장 01 · 이름 › 급부 1 · 이름」. 끝에 「담보속성」 묶음(값 `attr.코드`) — 있음 · 없음 · = · ≠ (2026-09-28).
  */
-import { COVERAGE_NODE_LEVELS } from "@/domain/coverage";
+import { COVERAGE_NODE_LEVELS, nodeKeyLabel } from "@/domain/coverage";
 import { ATTRIBUTE_OPS, emptyRows, operatorsFor, rowRefPath, toRows, toSource, type ConditionRows, type Join, type RowOp, type RowValueRef } from "@/domain/document";
 import { parse, type AttributeRef } from "@/domain/expression";
 import { ATTACH_LEVEL_LABEL } from "@/domain/types";
 
-import type { ConditionContext, CtxDiscriminator } from "./types";
+import type { ConditionContext, CtxDiscriminator, CtxNode } from "./types";
 
 const TREE_LEVELS = new Set<string>(COVERAGE_NODE_LEVELS);
 
@@ -30,7 +30,7 @@ export const VAR_KEY = "var.";
 export function refKey(ref: LeftRef): string {
   if (ref.kind === "attr") return `${ATTR_KEY}${ref.code}`;
   if (ref.kind !== "discriminator") return rowRefPath(ref);
-  return ref.node ? `${ref.code}@${ref.node.id}` : ref.code;
+  return ref.node ? `${ref.code}@${ref.node.path}` : ref.code;
 }
 
 /** 값 참조 → 조건 문맥의 칸 코드 — 구분자는 코드, 함수조항 칸은 경로 글. */
@@ -48,7 +48,22 @@ export function refOfKey(key: string): LeftRef | undefined {
     return field ? { kind: "field", target, field } : target;
   }
   const at = key.indexOf("@");
-  return at < 0 ? { kind: "discriminator", code: key } : { kind: "discriminator", code: key.slice(0, at), node: { id: key.slice(at + 1) } };
+  return at < 0 ? { kind: "discriminator", code: key } : { kind: "discriminator", code: key.slice(0, at), node: { path: key.slice(at + 1) } };
+}
+
+/** 노드 머리 — 「세부보장 01 · 이름」 · 「세부보장 01 · 이름 › 급부 1 · 이름」(ADR-0087 결정 3). 담보 뿌리는 이름 그대로. */
+export function nodeHead(nodes: readonly CtxNode[], node: CtxNode): string {
+  if (node.level === "coverage") return node.name;
+  const self = nodeKeyLabel(node.level, node.key ?? "?", node.name);
+  const parent = node.level === "benefit" && node.parentId ? nodes.find((n) => n.id === node.parentId) : undefined;
+  return parent && parent.level === "subCoverage" ? `${nodeKeyLabel("subCoverage", parent.key ?? "?", parent.name)} › ${self}` : self;
+}
+
+/** `@키경로` 한정 구분자의 표시 — 「노드 머리 › 구분자」(결정 3 표기, 조건 칩 · 슬롯 칸 공용). 없는 키 경로면 「끊어진 노드 09.1 › 구분자」. */
+export function qualifiedLabel(context: ConditionContext, label: string, path: string): string {
+  const nodes = context.coverage?.nodes ?? [];
+  const node = nodes.find((n) => n.keyPath === path);
+  return `${node ? nodeHead(nodes, node) : `끊어진 노드 ${path}`} › ${label}`;
 }
 
 export interface PickerGroup {
@@ -59,7 +74,8 @@ export interface PickerGroup {
 /** 변수(구분자) 고르기 목록 — 묶음 순서가 곧 화면 순서. */
 export function pickerGroups(context: ConditionContext): PickerGroup[] {
   const groups: PickerGroup[] = [];
-  const at = (d: CtxDiscriminator, node?: { id: string; name: string }) => ({ key: node ? `${d.code}@${node.id}` : d.code, label: node ? `${d.label} @${node.name}` : d.label });
+  const nodes = context.coverage?.nodes ?? [];
+  const at = (d: CtxDiscriminator, node?: CtxNode) => (node?.keyPath ? { key: `${d.code}@${node.keyPath}`, label: `${nodeHead(nodes, node)} › ${d.label}` } : { key: d.code, label: d.label });
   // 함수조항 본문 — 인자가 맨 앞 묶음이다(본문은 인자만 읽는다, 최종 결정 2). 인자 칸은 아래 레벨 묶음에 섞지 않는다
   const params = context.discriminators.filter((d) => d.param);
   if (params.length > 0) groups.push({ label: "인자", options: params.map((d) => at(d)) });
@@ -70,9 +86,8 @@ export function pickerGroups(context: ConditionContext): PickerGroup[] {
   const row = context.row;
   if (row) {
     const readable = context.discriminators.filter((d) => TREE_LEVELS.has(d.level) && row.readable.includes(d.level));
-    if (readable.length > 0) groups.push({ label: `현재 행 — ${row.levels.map((l) => ATTACH_LEVEL_LABEL[l]).join(" › ")}마다`, options: readable.map((d) => at(d)) });
+    if (readable.length > 0) groups.push({ label: `${row.label ?? "현재 행"} — ${row.levels.map((l) => ATTACH_LEVEL_LABEL[l]).join(" › ")}마다`, options: readable.map((d) => at(d)) });
   }
-  const nodes = context.coverage?.nodes ?? [];
   // 트리 순서 — 뿌리부터 깊이 우선
   const ordered: typeof nodes = [];
   const walk = (parentId: string | undefined) => {
@@ -85,8 +100,9 @@ export function pickerGroups(context: ConditionContext): PickerGroup[] {
   for (const node of ordered) {
     const leaves = context.discriminators.filter((d) => d.level === node.level);
     if (leaves.length === 0) continue;
-    // 담보 뿌리 아래 잎은 한정자 없음, 세부보장 · 급부 아래 잎은 `@노드`
-    groups.push({ label: `${ATTACH_LEVEL_LABEL[node.level]} — ${node.name}`, options: leaves.map((d) => (node.level === "coverage" ? at(d) : at(d, node))) });
+    // 담보 뿌리 아래 잎은 한정자 없음, 세부보장 · 급부 아래 잎은 `@키경로` — 급부가 하나여도 급부 층을 둔다
+    if (node.level === "coverage") groups.push({ label: `${ATTACH_LEVEL_LABEL.coverage} — ${node.name}`, options: leaves.map((d) => at(d)) });
+    else if (node.keyPath) groups.push({ label: nodeHead(nodes, node), options: leaves.map((d) => at(d, node)) });
   }
   // 담보 문맥이 없으면(보통약관 · 함수조항) 트리 레벨 구분자도 한정자 없이 레벨별로 — 사용처의 담보에서 읽힌다
   if (!context.coverage) {

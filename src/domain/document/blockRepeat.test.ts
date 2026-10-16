@@ -3,15 +3,16 @@ import { describe, expect, it } from "vitest";
 import type { EnumDef } from "../catalog/types";
 import type { Clause } from "../clause/types";
 import { checkParams } from "../clause/params";
+import type { Coverage } from "../coverage/types";
 import type { Issue } from "../types";
-import { clauseInnerCodes, cloneForElement, repeatLabel, type RepeatSource } from "./blockRepeat";
+import { checkRepeatSource, clauseInnerCodes, cloneForElement, loopElementType, refTargetIssues, repeatLabel, treeLoopLevelsAt, treeLoopRefIssues, type RepeatSource } from "./blockRepeat";
 import { lostInnerCodeEntries, type RecheckDocument } from "./refs";
 import { nodeBuilders, sequentialIds } from "./builders";
 import { applyCommand } from "./commands";
 import { generalRefsOf } from "./edit";
 import { numberTree, referenceAncestorIds, referenceChunkLabel, referenceOutline, referenceTargetIndex, referenceTargetLabel, refTargetOf } from "./numbering";
 import type { DocumentNode, ForBlockNode, TreeEnv } from "./nodes";
-import { validateTree } from "./nodes";
+import { indexTree, validateTree } from "./nodes";
 import { catalogTypeResolver, clauseGateFrom, validateDocument } from "./validate";
 
 /**
@@ -439,6 +440,155 @@ describe("반복 · 펼친 함수조항 안 · 값 한정 참조 저장 검사 (
     const outerId = (article.children[0] as { id: string }).id;
     (refNow.targets[0] as { restrict?: unknown }).restrict = { current: outerId };
     expect(validateTree(doc, env)).toEqual([expect.objectContaining({ message: expect.stringContaining("현재 값") })]);
+  });
+});
+
+describe("담보 트리 원천 (ADR-0087 결정 5)", () => {
+  const forBlock = (id: string, source: unknown, children: unknown[] = []) => ({ kind: "forBlock", id, source, children }) as ForBlockNode;
+
+  it("담보약관에서만 — 문맥 담보가 없으면 structure", () => {
+    expect(checkRepeatSource(forBlock("f", { kind: "subCoverages" }), [], { hasCoverage: false }, {})[0]).toMatchObject({ kind: "structure", message: expect.stringContaining("담보약관") });
+    expect(checkRepeatSource(forBlock("f", { kind: "subCoverages" }), [], { hasCoverage: true }, {})).toEqual([]);
+  });
+
+  it("안쪽은 「현재 세부보장의 급부마다」뿐 — 바로 바깥이 세부보장마다", () => {
+    const outer = forBlock("o", { kind: "subCoverages" });
+    expect(checkRepeatSource(forBlock("i", { kind: "benefitsOfCurrent", loop: "o" }), [outer], { hasCoverage: true }, {})).toEqual([]);
+    expect(checkRepeatSource(forBlock("i", { kind: "benefits" }), [outer], { hasCoverage: true }, {})[0].kind).toBe("structure");
+    expect(checkRepeatSource(forBlock("i", { kind: "benefitsOfCurrent", loop: "o" }), [], { hasCoverage: true }, {})[0].kind).toBe("structure");
+  });
+
+  it("세목 반복과 섞어 중첩하면 저장 오류 — 어느 쪽이 바깥이든", () => {
+    const tree = forBlock("t", { kind: "subCoverages" });
+    const plan = forBlock("p", { kind: "planOptions", form: "waiver" });
+    const msg = expect.stringContaining("섞어 중첩하지 않습니다");
+    expect(checkRepeatSource(forBlock("x", { kind: "listOfCurrent", loop: "t", field: "reasons" }), [tree], { hasCoverage: true }, {})[0]).toMatchObject({ kind: "structure", message: msg });
+    expect(checkRepeatSource(forBlock("x", { kind: "benefitsOfCurrent", loop: "p" }), [plan], { hasCoverage: true }, {})[0]).toMatchObject({ kind: "structure", message: msg });
+  });
+
+  it("이름 · 원소 타입", () => {
+    expect(repeatLabel({ kind: "subCoverages" })).toBe("세부보장마다");
+    expect(repeatLabel({ kind: "benefits" })).toBe("세부보장 › 급부마다");
+    expect(repeatLabel({ kind: "benefitsOfCurrent", loop: "o" })).toBe("현재 세부보장의 급부마다");
+    expect(loopElementType({ kind: "benefits" }, undefined)).toEqual({ kind: "coverageNode", level: "benefit" });
+  });
+
+  it("반복 표는 「세부보장마다」 반복 블록 본문에 못 둔다 — 블록 반복 본문은 표를 허용하지 않는다 (사전 판정 ⑦)", () => {
+    const b = make();
+    const repeatTable = { ...b.textTable({ columns: [{}], rows: [{ cells: ["셀"] }] }), repeat: { depth: 1 as const } };
+    const doc = b.document("d", [b.article("a", [b.forBlock({ kind: "subCoverages" } as never, [repeatTable])])]);
+    const issues = validateTree(doc, { ...env, kind: "special" });
+    expect(issues.some((i) => i.at.nodePath?.includes(repeatTable.id) && i.message.includes("table"))).toBe(true);
+  });
+
+  it("treeLoopLevelsAt — 담보 트리 반복만, 바깥 → 안쪽", () => {
+    const b = make();
+    const para = b.paragraph([b.text("항")]);
+    const inner = b.forBlock({ kind: "benefitsOfCurrent", loop: "?" } as never, [para]);
+    const outer = b.forBlock({ kind: "subCoverages" } as never, [inner]);
+    (inner.source as { loop: string }).loop = outer.id;
+    const doc = b.document("d", [b.article("a", [outer])]);
+    const ix = indexTree(doc);
+    expect(treeLoopLevelsAt(ix, ix.nodes.get(para.id)!)).toEqual([
+      { loop: outer.id, level: "subCoverage" },
+      { loop: inner.id, level: "benefit" },
+    ]);
+  });
+});
+
+describe("담보 트리 반복 안 — 반복 레벨보다 아래를 한정자 없이 읽으면 오류 (기능/문면 §3.7)", () => {
+  const levelOf = (c: string) => (c === "D0002" ? "benefit" : c === "D0007" ? "subCoverage" : undefined);
+  const tree = (source: unknown, when: string) => {
+    const b = make();
+    const f = b.forBlock(source as never, [b.condBlock([b.branch(when, [b.paragraph([b.text("x")])])])]);
+    return b.document("d", [b.article("a", [f])]);
+  };
+
+  it("세부보장마다 안의 급부 레벨 D0002 = 오류 · 세부보장 레벨 D0007 · 키 경로 D0002@01.1 은 통과", () => {
+    expect(treeLoopRefIssues(tree({ kind: "subCoverages" }, "D0002 = true"), levelOf)[0]).toMatchObject({ kind: "structure", message: expect.stringContaining("세부보장마다") });
+    expect(treeLoopRefIssues(tree({ kind: "subCoverages" }, "D0007 = true"), levelOf)).toEqual([]);
+    expect(treeLoopRefIssues(tree({ kind: "subCoverages" }, "D0002@01.1 = true"), levelOf)).toEqual([]);
+    expect(treeLoopRefIssues(tree({ kind: "benefits" }, "D0002 = true and D0007 = true"), levelOf)).toEqual([]);
+  });
+
+  it("반복 밖 · 슬롯도 같은 규칙 — 반복 밖은 검사하지 않는다", () => {
+    const b = make();
+    const slot = b.slot("D0002");
+    const f = b.forBlock({ kind: "subCoverages" } as never, [b.paragraph([slot])]);
+    const outside = b.paragraph([b.slot("D0002")]);
+    const doc = b.document("d", [b.article("a", [f, outside])]);
+    const issues = treeLoopRefIssues(doc, levelOf);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].at.nodePath).toContain(slot.id);
+  });
+});
+
+describe("키 한정 (ADR-0087 결정 10)", () => {
+  const coverage: Coverage = { id: "c", name: "암", description: "", subCoverages: [{ id: "s1", key: "01", name: "유사암", order: 0, benefits: [{ id: "b1", key: "1", name: "진단", order: 0 }] }] };
+  const codedPara = (id: string, code: string, text: string) => ({ id, kind: "paragraph" as const, code, children: [{ id: `${id}t`, kind: "text" as const, text }] });
+  const docOf = (children: unknown[]): DocumentNode => ({ id: "d", kind: "document", title: "특약", children: [{ id: "a1", kind: "article", title: "제1조", children }] }) as DocumentNode;
+  const docWithLoop = (source: object) => docOf([{ kind: "forBlock", id: "f", code: "P0100", source, children: [codedPara("p", "P0200", "본문")] }, codedPara("q", "P0300", "참조 자리")]);
+
+  it("트리 반복 안 대상에 있는 키 = 통과 · 없는 키 = 「없는 키」 · 빈 키 = 오류", () => {
+    const ix = indexTree(docWithLoop({ kind: "subCoverages" }));
+    const refEntry = ix.nodes.get("q")!;
+    expect(refTargetIssues({ articleId: "a1", code: "P0200", restrict: { keys: ["01"] } }, refEntry, ix, { coverage })).toEqual([]);
+    expect(refTargetIssues({ articleId: "a1", code: "P0200", restrict: { keys: ["02"] } }, refEntry, ix, { coverage })[0]).toMatchObject({ kind: "brokenRef", message: expect.stringContaining("없는 키") });
+    expect(refTargetIssues({ articleId: "a1", code: "P0200", restrict: { keys: [] } }, refEntry, ix, { coverage })[0].kind).toBe("structure");
+    // 반복 블록 자신도 대상이다 · 문맥 담보가 없으면 키 존재는 건너뛴다
+    expect(refTargetIssues({ articleId: "a1", code: "P0100", restrict: { keys: ["01"] } }, refEntry, ix, { coverage })).toEqual([]);
+    expect(refTargetIssues({ articleId: "a1", code: "P0200", restrict: { keys: ["02"] } }, refEntry, ix, {})).toEqual([]);
+  });
+
+  it("급부 반복 대상은 세부보장 키(그 아래 급부 전부) · 급부 키 경로 둘 다", () => {
+    const ix = indexTree(docWithLoop({ kind: "benefits" }));
+    expect(refTargetIssues({ articleId: "a1", code: "P0200", restrict: { keys: ["01", "01.1"] } }, ix.nodes.get("q")!, ix, { coverage })).toEqual([]);
+    expect(refTargetIssues({ articleId: "a1", code: "P0200", restrict: { keys: ["01.2"] } }, ix.nodes.get("q")!, ix, { coverage })[0]).toMatchObject({ kind: "brokenRef", message: expect.stringContaining("01.2") });
+  });
+
+  it("세부보장마다 대상에 급부 키 경로 · 트리 반복 밖 대상에 키 한정 = 오류", () => {
+    const ix = indexTree(docWithLoop({ kind: "subCoverages" }));
+    expect(refTargetIssues({ articleId: "a1", code: "P0200", restrict: { keys: ["01.1"] } }, ix.nodes.get("q")!, ix, { coverage })[0].kind).toBe("structure");
+    expect(refTargetIssues({ articleId: "a1", code: "P0300", restrict: { keys: ["01"] } }, ix.nodes.get("q")!, ix, { coverage })[0].kind).toBe("structure");
+  });
+
+  it("「현재」는 감싼 트리 반복이면 통과 · 감싸지 않으면 오류", () => {
+    const d = docOf([{ kind: "forBlock", id: "f", code: "P0100", source: { kind: "subCoverages" }, children: [codedPara("p", "P0200", "본문"), codedPara("q", "P0300", "같은 회차")] }, codedPara("r", "P0400", "반복 밖")]);
+    const ix = indexTree(d);
+    expect(refTargetIssues({ articleId: "a1", code: "P0200", restrict: { current: "f" } }, ix.nodes.get("q")!, ix, { coverage })).toEqual([]);
+    expect(refTargetIssues({ articleId: "a1", code: "P0200", restrict: { current: "f" } }, ix.nodes.get("r")!, ix, { coverage })[0]).toMatchObject({ kind: "structure", message: expect.stringContaining("현재") });
+  });
+
+  it("「현재」가 급부 반복인데 대상이 「세부보장마다」 = 오류 — 급부 키 경로는 세부보장 원소를 고르지 못한다(바깥 세부보장 반복의 「현재」는 통과)", () => {
+    const inner = { kind: "forBlock", id: "g", code: "P0500", source: { kind: "benefitsOfCurrent", loop: "f" }, children: [codedPara("q", "P0600", "급부 회차")] };
+    const d = docOf([{ kind: "forBlock", id: "f", code: "P0100", source: { kind: "subCoverages" }, children: [codedPara("p", "P0200", "본문"), inner] }]);
+    const ix = indexTree(d);
+    expect(refTargetIssues({ articleId: "a1", code: "P0200", restrict: { current: "f" } }, ix.nodes.get("q")!, ix, { coverage })).toEqual([]);
+    expect(refTargetIssues({ articleId: "a1", code: "P0200", restrict: { current: "g" } }, ix.nodes.get("q")!, ix, { coverage })[0]).toMatchObject({ kind: "structure", message: expect.stringContaining("세부보장마다") });
+    // 급부 반복 대상은 급부 「현재」 · 세부보장 「현재」 둘 다 통과
+    expect(refTargetIssues({ articleId: "a1", code: "P0600", restrict: { current: "g" } }, ix.nodes.get("q")!, ix, { coverage })).toEqual([]);
+    expect(refTargetIssues({ articleId: "a1", code: "P0600", restrict: { current: "f" } }, ix.nodes.get("q")!, ix, { coverage })).toEqual([]);
+  });
+
+  it("문서 저장 검사 — validateDocument 가 scope.coverage 로 없는 키를 잡는다 · 연결어 규칙은 그대로", () => {
+    const ref = (restrict: unknown, connector?: string) => ({ id: "r", kind: "articleRef", scope: "self", targets: [{ articleId: "a1", code: "P0200", restrict }], ...(connector ? { connector } : {}) });
+    const d = (restrict: unknown, connector?: string) => docOf([{ kind: "forBlock", id: "f", code: "P0100", source: { kind: "subCoverages" }, children: [codedPara("p", "P0200", "본문")] }, { id: "q", kind: "paragraph", code: "P0300", children: [ref(restrict, connector)] }]);
+    const check = (tree: DocumentNode) => errors(validateDocument(tree, { env: { ...env, kind: "special" }, resolve: catalogTypeResolver([]), scope: { coverage } }));
+    expect(check(d({ keys: ["01"] }, "및"))).toEqual([]);
+    expect(check(d({ keys: ["02"] }, "및"))).toEqual([expect.objectContaining({ kind: "brokenRef", message: expect.stringContaining("없는 키 02") })]);
+    expect(messages(check(d({ keys: ["01"] })))).toEqual([expect.stringContaining("연결어")]);
+  });
+
+  it("보통약관 대상 — 「현재」는 감싼 트리 반복이면 통과(loopTypesAt 에 트리 반복도 있다) · 키 한정은 못 건다", () => {
+    const ref = (restrict: unknown) => ({ id: "r", kind: "articleRef", scope: "general", connector: "및", targets: [{ articleId: "g-a", code: "P0100", restrict }] });
+    const d = (restrict: unknown, inLoop: boolean) => {
+      const para = { id: "q", kind: "paragraph", children: [ref(restrict)] };
+      return docOf(inLoop ? [{ kind: "forBlock", id: "f", source: { kind: "subCoverages" }, children: [para] }] : [para]);
+    };
+    const generals = { ...env, kind: "special" as const, generalArticleIds: new Set(["g-a"]), generalReferenceKeys: new Set(["g-a", "g-a#P0100"]), generalRepeatedKeys: new Set(["g-a#P0100"]) };
+    expect(errors(validateTree(d({ current: "f" }, true), generals))).toEqual([]);
+    expect(messages(validateTree(d({ current: "f" }, false), generals))).toEqual([expect.stringContaining("현재 값")]);
+    expect(messages(validateTree(d({ keys: ["01"] }, true), generals))).toEqual([expect.stringContaining("키 한정")]);
   });
 });
 

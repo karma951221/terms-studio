@@ -424,6 +424,13 @@ function namedPath(graph: RefGraph, key: RefNodeKey): string | undefined {
  * 그래프가 없거나 대상이 선언돼 있지 않으면(삭제된 대상) id·코드 표기로 돌아간다.
  */
 export function describeKey(key: RefNodeKey, graph?: RefGraph): string {
+  // 끊어진 노드 한정자 — 담보에 없는 키 경로의 자리 키 `담보id@경로` (graph.keyPathNode, ADR-0087)
+  if (key.kind === "coverageNode" && key.level !== "coverage" && key.id.includes("@")) {
+    const at = key.id.indexOf("@");
+    const coverageId = key.id.slice(0, at);
+    const name = graph?.nodes.get(nodeKey({ kind: "coverageNode", level: "coverage", id: coverageId }))?.label;
+    return `${name ?? `담보 ${coverageId}`} 끊어진 노드 ${key.id.slice(at + 1)}`;
+  }
   if (graph) {
     const named = namedPath(graph, key);
     if (named !== undefined) {

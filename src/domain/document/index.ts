@@ -10,6 +10,7 @@
  * - numbering.ts   : numberTree · 표기 함수 (임시 규칙)
  * - refs.ts        : collectRefs · requiredDiscriminators
  * - expressions.ts : validateExpressions (저장 시점 식 검사)
+ * - nodeBindings.ts : nodeBindingIssues (함수조항 인자의 키 경로 연결 저장 검사 · ADR-0087)
  * - repeat.ts      : 행 반복 표 펼침 · 병합 · 저장 검사 (ADR-0070)
  * - appendix.ts    : 별표 마스터 규칙
  * - fixture.ts     : 관통 1 축약 픽스처
@@ -26,6 +27,7 @@ export * from "./conditionRows";
 export * from "./edit";
 export * from "./expressions";
 export * from "./fixture";
+export * from "./nodeBindings";
 export * from "./nodes";
 export * from "./numbering";
 export * from "./particles";

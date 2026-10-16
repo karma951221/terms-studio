@@ -13,6 +13,7 @@ import { ok, reject } from "../types";
 import type { Code, Coordinate, Id, Issue, Result } from "../types";
 import type { Block, BlockBranch, BulletListNode, Inline, InlineBranch, ItemBodyNode, ItemNode, SubitemBodyNode, SubitemNode } from "./nodes";
 import type { ExprType } from "../expression";
+import { coveredByLoop, LEVEL_WORD, type KeyedLevel } from "../coverage/keys";
 import { boundDiscriminators, checkUsageBindings, definitionDiscriminators, type Bindings } from "./params";
 import type { Clause, ClauseBody, OptionSelection } from "./types";
 
@@ -206,6 +207,8 @@ export interface Usage {
   bindings?: Bindings;
   /** 그 참조가 쓰는 프리셋 코드 (ADR-0084) — 프리셋별 사용 수 · 삭제 확인의 재료. */
   preset?: Code;
+  /** 참조 자리를 감싼 가장 안쪽 담보 트리 반복의 레벨 — 그 레벨(이상)의 한정 없는 기본 연결은 현재 노드로 풀린다 (ADR-0087 결정 8). */
+  treeLoopLevel?: KeyedLevel;
 }
 
 export interface RecheckEntry {
@@ -230,6 +233,8 @@ export function usageCoordinate(u: Usage): Coordinate {
 /**
  * 사용처 전부를 훑어 문제가 있는 것만 돌려준다 — 그 사용처가 읽는 구분자 존재(본문 직접 읽기 + 실제 연결) + 옵션 선택 + 인자 연결.
  * 인자를 더하거나(연결 누락) 기본 연결을 바꾸면(구분자가 사라짐 · 타입) 여기서 사용처가 오른다 (최종 결정 2). `typeOf` 를 주면 연결 구분자의 타입까지 본다.
+ * 기본 연결을 세부보장 · 급부 레벨 구분자로 바꾸면 키 경로가 없어, 사용처 연결도 없고 감싼 담보 트리 반복이 그 레벨을 풀지 못하는
+ * 담보약관 사용처가 연결 누락으로 오른다 (ADR-0087 결정 4 · 8 — 구분자 레벨은 `lookup` 이 준다).
  */
 export function recheckUsages(
   clause: Clause,
@@ -245,7 +250,23 @@ export function recheckUsages(
     const issues: Issue[] = [...r.issues];
     if (usage.selection) issues.push(...validateOptionSelection(clause, usage.selection, at));
     issues.push(...checkUsageBindings(clause, usage.bindings, env, at));
+    issues.push(...unqualifiedDefaultIssues(clause, usage, lookup, at));
     if (issues.length > 0) out.push({ usage, missing: r.missing, issues });
+  }
+  return out;
+}
+
+/** 사용처가 바꾸지 않은 인자의 기본 연결이 한정 없는 하위 레벨 구분자인데 감싼 트리 반복이 풀지 못하면 `argUnbound`. 보통약관은 문맥 담보가 없어 저장 검사가 따로 본다. */
+function unqualifiedDefaultIssues(clause: Clause, usage: Usage, lookup: DiscriminatorLookup, at: Coordinate): Issue[] {
+  if (usage.ownerKind !== "coverage") return [];
+  const out: Issue[] = [];
+  for (const p of clause.params ?? []) {
+    const d = usage.bindings?.[p.name] ?? p.default;
+    if (d?.kind !== "discriminator" || d.node) continue;
+    const level = lookup(d.code)?.level;
+    if (level !== "subCoverage" && level !== "benefit") continue;
+    if (usage.treeLoopLevel && coveredByLoop(level, usage.treeLoopLevel)) continue;
+    out.push({ kind: "argUnbound", message: `함수조항 ${clause.code} 의 인자 ${p.name} 이(가) ${LEVEL_WORD[level]} 레벨 구분자 ${d.code} 에 연결돼 키 경로가 필요합니다`, at: { ...at, refPath: `arg.${p.name}` } });
   }
   return out;
 }

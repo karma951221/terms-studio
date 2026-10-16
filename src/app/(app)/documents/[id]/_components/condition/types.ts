@@ -14,6 +14,10 @@ export interface CtxNode {
   name: string;
   /** 담보 노드(뿌리)면 없음. */
   parentId?: Id;
+  /** 노드 키 (`01` · `1`) — 세부보장 · 급부만 (ADR-0087). */
+  key?: string;
+  /** 키 경로 (`01` · `01.1`) — `@노드` 저장값. */
+  keyPath?: string;
 }
 
 /** 구분자 하나 — 좌변 칩 · 트리 잎 · 구분자 목록에 쓴다. */
@@ -58,7 +62,10 @@ export interface ConditionContext {
    * 반복 표 템플릿 셀 안에서 열었을 때만 — 행 레벨 사슬(`levels`, 바깥 → 안쪽)과 한정자 없이 읽을 수 있는 레벨(`readable`).
    * 트리 맨 위 「현재 행」 가지의 재료다 (ADR-0070 · 설계 §3.1). 반복 밖이면 없음 → 트리는 지금과 같다.
    */
-  row?: { levels: Exclude<AttachLevel, "product">[]; readable: AttachLevel[] };
+  row?: { levels: Exclude<AttachLevel, "product">[]; readable: AttachLevel[];
+    /** 「현재 행」 대신 쓸 이름 — 담보 트리 반복이면 「현재 세부보장」 · 「현재 급부」 (ADR-0087 결정 5). */
+    label?: string;
+  };
   /**
    * 세목 선택지(종) 반복 안에서 열었을 때만 — 감싼 종 반복의 이름. 슬롯 고르기 맨 앞 「현재 종」 묶음(종형명 · 선택지 번호)의 재료다
    * (ADR-0077 결정 3 · 기능/문면 §3.7). 종 반복 밖이면 없음.

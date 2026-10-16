@@ -45,12 +45,14 @@ export const subCoverages = pgTable(
     coverageId: uuid("coverage_id")
       .notNull()
       .references(() => coverages.id, { onDelete: "cascade" }),
+    /** 노드 키 `01` · `02` … — 담보 안 유일 · 불변 · 순서와 무관 (ADR-0087 결정 2). 0027 이 형제 순서로 채웠다. */
+    key: text("key").notNull(),
     name: text("name").notNull(),
     /** 형제 순서 (0부터) — 문면 수록·반복 순회 순서. */
     order: integer("order").notNull(),
     ...audit,
   },
-  (t) => [uniqueIndex("sub_coverages_sibling_name").on(t.coverageId, t.name)],
+  (t) => [uniqueIndex("sub_coverages_sibling_name").on(t.coverageId, t.name), uniqueIndex("sub_coverages_sibling_key").on(t.coverageId, t.key)],
 );
 
 export const benefits = pgTable(
@@ -60,9 +62,11 @@ export const benefits = pgTable(
     subCoverageId: uuid("sub_coverage_id")
       .notNull()
       .references(() => subCoverages.id, { onDelete: "cascade" }),
+    /** 노드 키 `1` · `2` … — 세부보장 안 유일 · 불변 (ADR-0087 결정 2). */
+    key: text("key").notNull(),
     name: text("name").notNull(),
     order: integer("order").notNull(),
     ...audit,
   },
-  (t) => [uniqueIndex("benefits_sibling_name").on(t.subCoverageId, t.name)],
+  (t) => [uniqueIndex("benefits_sibling_name").on(t.subCoverageId, t.name), uniqueIndex("benefits_sibling_key").on(t.subCoverageId, t.key)],
 );

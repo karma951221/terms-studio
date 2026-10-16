@@ -19,7 +19,7 @@ import { IconButton, IconMinusCircle, IconPlusCircle } from "@/app/_components/i
 import { emptyRows, isUnaryOp, joinParens, rowIssues, type ConditionRow, type ConditionRows, type Join, type RowOp, type RowValueRef } from "@/domain/document";
 import type { Literal } from "@/domain/expression";
 
-import { OP_LABEL, addRow, ctxCodeOf, headOf, opsOf, pickerGroups, refKey, refOfKey, removeRow, setLeft, sourceOf, type HeadModel } from "./rows";
+import { OP_LABEL, addRow, ctxCodeOf, headOf, opsOf, pickerGroups, qualifiedLabel, refKey, refOfKey, removeRow, setLeft, sourceOf, type HeadModel } from "./rows";
 import type { ConditionContext, CtxAttribute, CtxDiscriminator } from "./types";
 
 /** 값 칸 — 좌변 타입대로. 우변이 구분자 참조면 칩 + 비우기. 담보속성이면 유효값 목록(있음 · 없음은 값 없음). */
@@ -166,8 +166,11 @@ export function CondRows({
   }, [focus, onFocused]);
 
   const defOf = (ref: RowValueRef): CtxDiscriminator | undefined => context.discriminators.find((d) => d.code === ctxCodeOf(ref));
-  const nodeName = (id: string) => context.coverage?.nodes.find((n) => n.id === id)?.name;
-  const refText = (ref: RowValueRef) => (ref.kind !== "discriminator" ? (defOf(ref)?.label ?? ctxCodeOf(ref)) : `${defOf(ref)?.label ?? ref.code}${ref.node ? ` @${nodeName(ref.node.id) ?? "끊어진 노드"}` : ""}`);
+  const refText = (ref: RowValueRef) => {
+    if (ref.kind !== "discriminator") return defOf(ref)?.label ?? ctxCodeOf(ref);
+    const label = defOf(ref)?.label ?? ref.code;
+    return ref.node ? qualifiedLabel(context, label, ref.node.path) : label;
+  };
   const attributeOf = (code: string): CtxAttribute | undefined => context.attributes?.find((a) => a.code === code);
   const leftText = (ref: NonNullable<ConditionRow["left"]>) => (ref.kind === "attr" ? (attributeOf(ref.code)?.label ?? `attr.${ref.code}`) : refText(ref));
   const groups = pickerGroups(context);
@@ -227,7 +230,8 @@ export function CondRows({
         const ops = opsOf(row.left, typeOf);
         const key = row.left ? refKey(row.left) : "";
         const issue = row.left ? issues.find((m) => m.startsWith(`${i + 1}번 줄:`)) : undefined;
-        const opened = discriminator?.node ? (context.openedForms[discriminator.node.id] ?? []) : [];
+        const qualified = discriminator?.node ? context.coverage?.nodes.find((n) => n.keyPath === discriminator.node!.path) : undefined;
+        const opened = qualified ? (context.openedForms[qualified.id] ?? []) : [];
         const alwaysFalse = discriminator?.node && def && def.forms.length > 0 && !def.forms.some((f) => opened.includes(f));
         return (
           <div key={i} className="ts-cond-line">

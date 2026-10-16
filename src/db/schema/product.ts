@@ -215,6 +215,8 @@ export const productCoverageNodes = pgTable(
     masterNodeId: uuid("master_node_id").notNull(),
     /** 급부의 소속 세부보장 스냅샷 노드. 세부보장은 null. */
     parentId: uuid("parent_id"),
+    /** 마스터 노드의 키 — 이름처럼 뼈대 속성 (ADR-0087 결정 2). */
+    key: text("key").notNull(),
     name: text("name").notNull(),
     order: integer("order").notNull(),
     ...audit,

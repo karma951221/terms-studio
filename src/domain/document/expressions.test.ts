@@ -143,26 +143,26 @@ describe("문면작성 S2 경계 — 조건식 자리는 문법 검사 + boolean
   });
 });
 
-describe("노드 한정자 검사 (ADR-0066 §3)", () => {
-  const { tree, b11 } = surgeryTree();
-  const s1 = tree.subCoverages[0].id;
+describe("노드 한정자 검사 — @노드 = 키 경로 (ADR-0087 결정 3)", () => {
+  const { tree } = surgeryTree(); // 01 1종수술{01.1} · 02 2종수술{02.1, 02.2}
   const levelOf = (code: string): AttachLevel | undefined => (code === "D0007" ? "subCoverage" : code === "D0002" ? "benefit" : undefined);
   const resolveBool: TypeResolver = (ref) => (ref.kind === "discriminator" ? { kind: "boolean" } : undefined);
   const docWith = (when: string) => documentWithCondition(when);
 
   it("문맥 담보가 없는 문서(보통약관)에서는 오류", () => {
-    const issues = validateExpressions(docWith(`D0007@${s1} = true`), resolveBool, {}, {});
+    const issues = validateExpressions(docWith("D0007@01 = true"), resolveBool, {}, {});
     expect(issues).toMatchObject([{ kind: "brokenRef", message: expect.stringContaining("담보 약관 문서에서만") }]);
   });
-  it("트리에 없는 노드는 끊어진 참조", () => {
-    const issues = validateExpressions(docWith("D0007@nope = true"), resolveBool, {}, { coverage: tree, levelOf });
-    expect(issues).toMatchObject([{ kind: "brokenRef", at: { refPath: "D0007@nope" } }]);
+  it("트리에 없는 키 경로는 끊어진 참조", () => {
+    const issues = validateExpressions(docWith("D0007@09 = true"), resolveBool, {}, { coverage: tree, levelOf });
+    expect(issues).toMatchObject([{ kind: "brokenRef", message: expect.stringContaining("키 경로 09"), at: { refPath: "D0007@09" } }]);
   });
   it("노드 레벨 ≠ 구분자 레벨이면 typeMismatch", () => {
-    const issues = validateExpressions(docWith(`D0007@${b11} = true`), resolveBool, {}, { coverage: tree, levelOf });
-    expect(issues).toMatchObject([{ kind: "typeMismatch", message: expect.stringContaining("세부보장") }]);
+    const issues = validateExpressions(docWith("D0007@01.1 = true"), resolveBool, {}, { coverage: tree, levelOf });
+    expect(issues).toMatchObject([{ kind: "typeMismatch", message: expect.stringContaining("01.1") }]);
   });
   it("맞으면 통과", () => {
-    expect(validateExpressions(docWith(`D0007@${s1} = true`), resolveBool, {}, { coverage: tree, levelOf })).toEqual([]);
+    expect(validateExpressions(docWith("D0007@01 = true"), resolveBool, {}, { coverage: tree, levelOf })).toEqual([]);
+    expect(validateExpressions(docWith("D0002@02.2 = true"), resolveBool, {}, { coverage: tree, levelOf })).toEqual([]);
   });
 });
