@@ -101,8 +101,8 @@ export const DOC_TOOLS: ToolGroup[] = [
     tools: [
       { id: "article", label: "조", title: "조 넣기 — 지금 조 아래(관 머리면 그 관 끝)", match: oneOf("아래에 조 추가", "이 관에 조 추가", "조 추가", "이 가지에 조 추가") },
       { id: "section", label: "관", title: "관 넣기 — 지금 조 · 관 아래에 새 관", match: oneOf("아래에 관 추가", "관 추가"), at: "more" },
-      { id: "paragraph", label: "항", title: "항 넣기 — 지금 항 아래(조 제목이면 그 조 끝)", match: oneOf("아래에 항 추가", "항 추가", "이 가지에 항 추가", "이 반복에 항 추가") },
-      { id: "item", label: "호", title: "호 넣기 — 지금 호 아래(항이면 그 항 안)", match: oneOf("아래에 호 추가", "호 추가", "이 가지에 호 추가", "이 반복에 호 추가") },
+      { id: "paragraph", label: "항", title: "항 넣기 — 지금 항 아래(조 제목이면 그 조 끝, 반복 블록이면 그 반복 끝)", match: oneOf("아래에 항 추가", "항 추가", "이 가지에 항 추가", "이 반복에 항 추가") },
+      { id: "item", label: "호", title: "호 넣기 — 지금 호 아래(항이면 그 항 안, 반복 블록이면 그 반복 끝)", match: oneOf("아래에 호 추가", "호 추가", "이 가지에 호 추가", "이 반복에 호 추가") },
       { id: "subitem", label: "목", title: "목 넣기 — 지금 목 아래(호면 그 호 안)", match: oneOf("아래에 목 추가", "목 추가", "이 가지에 목 추가") },
       { id: "table", label: "표", icon: "table", title: "표 넣기 — 지금 블록 아래", match: oneOf("아래에 표 추가…", "이 가지에 표 추가…") },
       {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { indexTree, nodeBuilders, sequentialIds } from "@/domain/document";
 
-import { keyChoicesFor, restrictMode, restrictOfForm, treeLoopChoicesFor, treeLoopsAt } from "./restrict";
+import { keyChoicesFor, restrictHint, restrictMode, restrictOfForm, treeLoopChoicesFor, treeLoopsAt } from "./restrict";
 
 describe("키 한정 칸 (ADR-0087 결정 10)", () => {
   it("「해당 키들」 체크 → { keys }, 「현재 세부보장」 → { current }", () => {
@@ -79,5 +79,21 @@ describe("키 한정 후보 — 대상 반복 레벨에 맞춰 (ADR-0087 결정 
     ];
     expect(treeLoopChoicesFor(loops, "benefit")).toEqual(loops);
     expect(treeLoopChoicesFor(loops, "subCoverage")).toEqual([loops[0]]);
+  });
+});
+
+describe("한정 칸 안내문 — 고른 한정 종류에 맞춰", () => {
+  const trees = new Set(["t"]);
+  it("해당 값들 · 현재 값 = 값 한정 설명, 해당 키들 · 현재 세부보장 · 급부 = 키 한정 설명", () => {
+    expect(restrictHint("values", trees, true)).toContain("사유");
+    expect(restrictHint("current:v", trees, true)).toContain("현재 값");
+    expect(restrictHint("keys", trees, true)).toContain("세부보장 · 급부 키");
+    expect(restrictHint("keys", trees, true)).not.toContain("사유");
+    expect(restrictHint("current:t", trees, true)).toContain("감싼 담보 트리 반복");
+    expect(restrictHint("current:t", trees, true)).not.toContain("사유");
+  });
+  it("없음 — 칸이 내는 한정 쪽(값 후보가 있으면 값, 아니면 키) 설명", () => {
+    expect(restrictHint("", trees, true)).toContain("사유");
+    expect(restrictHint("", trees, false)).toContain("세부보장 · 급부 키");
   });
 });

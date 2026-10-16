@@ -441,6 +441,20 @@ describe("반복 · 펼친 함수조항 안 · 값 한정 참조 저장 검사 (
     (refNow.targets[0] as { restrict?: unknown }).restrict = { current: outerId };
     expect(validateTree(doc, env)).toEqual([expect.objectContaining({ message: expect.stringContaining("현재 값") })]);
   });
+
+  it("값 한정(현재) — 감싼 반복이 담보 트리 반복인데 대상이 사유 반복 안 = 트리 반복 문구(종 반복 문구 아님)", () => {
+    const { doc, article, b } = 참조({ code: "P0400" }, "및");
+    const refNow = b.articleRef({ articleId: article.id, code: "P0400" });
+    refNow.connector = "및";
+    const holder = b.paragraph([refNow]);
+    const tree = b.forBlock({ kind: "subCoverages" }, [holder]);
+    article.children.push(tree);
+    (refNow.targets[0] as { restrict?: unknown }).restrict = { current: tree.id };
+    const ix = indexTree(doc);
+    const issues = refTargetIssues(refNow.targets[0] as never, ix.nodes.get(holder.id)!, ix, {});
+    expect(issues).toEqual([expect.objectContaining({ kind: "structure", message: expect.stringContaining("담보 트리 반복") })]);
+    expect(issues[0].message).not.toContain("종 반복");
+  });
 });
 
 describe("담보 트리 원천 (ADR-0087 결정 5)", () => {
@@ -579,14 +593,14 @@ describe("키 한정 (ADR-0087 결정 10)", () => {
     expect(messages(check(d({ keys: ["01"] })))).toEqual([expect.stringContaining("연결어")]);
   });
 
-  it("보통약관 대상 — 「현재」는 감싼 트리 반복이면 통과(loopTypesAt 에 트리 반복도 있다) · 키 한정은 못 건다", () => {
+  it("보통약관 대상 — 감싼 트리 반복의 「현재」 · 키 한정은 못 건다(보통약관에는 담보 트리 반복이 없다)", () => {
     const ref = (restrict: unknown) => ({ id: "r", kind: "articleRef", scope: "general", connector: "및", targets: [{ articleId: "g-a", code: "P0100", restrict }] });
     const d = (restrict: unknown, inLoop: boolean) => {
       const para = { id: "q", kind: "paragraph", children: [ref(restrict)] };
       return docOf(inLoop ? [{ kind: "forBlock", id: "f", source: { kind: "subCoverages" }, children: [para] }] : [para]);
     };
     const generals = { ...env, kind: "special" as const, generalArticleIds: new Set(["g-a"]), generalReferenceKeys: new Set(["g-a", "g-a#P0100"]), generalRepeatedKeys: new Set(["g-a#P0100"]) };
-    expect(errors(validateTree(d({ current: "f" }, true), generals))).toEqual([]);
+    expect(messages(validateTree(d({ current: "f" }, true), generals))).toEqual([expect.stringContaining("보통약관에는 담보 트리 반복이 없어")]);
     expect(messages(validateTree(d({ current: "f" }, false), generals))).toEqual([expect.stringContaining("현재 값")]);
     expect(messages(validateTree(d({ keys: ["01"] }, true), generals))).toEqual([expect.stringContaining("키 한정")]);
   });
@@ -594,7 +608,7 @@ describe("키 한정 (ADR-0087 결정 10)", () => {
 
 describe("대응 보통약관 대상의 안쪽 코드 · 값 한정 열거형 — 담보약관 저장도 본다 (기능/문면 §3.7 ②)", () => {
   /** 보통약관 = 납입면제조(바깥 반복 P0100 · 항 P0200 · 사유 반복 P0300 · 함수조항 참조 P0400 — 본문 호 P0100), 담보약관 = 보통약관 참조 하나. */
-  function 담보(target: Record<string, unknown>) {
+  function 담보(target: Record<string, unknown>, inTree = false) {
     const general = 납입면제조();
     general.outer.code = "P0100";
     general.paragraph.code = "P0200";
@@ -604,7 +618,9 @@ describe("대응 보통약관 대상의 안쪽 코드 · 값 한정 열거형 �
     const refs = generalRefsOf(general.doc, { clauseOf: (c) => [면제호, 부가항, 정의].find((x) => x.code === c) });
     const b = nodeBuilders(sequentialIds("s"));
     const ref = b.articleRef({ articleId: generalArticle, ...target } as never, "general", "및");
-    const doc = b.document("특약", [b.article("준용", [b.paragraph([ref])])]);
+    const tree = b.forBlock({ kind: "subCoverages" }, [b.paragraph([ref])]);
+    if (inTree) (ref.targets[0] as { restrict?: unknown }).restrict = { current: tree.id };
+    const doc = b.document("특약", [b.article("준용", [inTree ? tree : b.paragraph([ref])])]);
     const treeEnv: TreeEnv = { ...env, kind: "special", generalArticleIds: refs.articleIds, generalReferenceKeys: refs.referenceKeys, ...(refs.repeatedKeys ? { generalRepeatedKeys: refs.repeatedKeys } : {}), ...(refs.targets ? { generalTargets: refs.targets } : {}) };
     return validateTree(doc, treeEnv);
   }
@@ -619,6 +635,12 @@ describe("대응 보통약관 대상의 안쪽 코드 · 값 한정 열거형 �
 
   it("함수조항 참조가 아닌 대상에 안쪽 코드 = 오류", () => {
     expect(messages(담보({ code: "P0200", innerCode: "P0100" }))).toEqual([expect.stringContaining("함수조항 블록 참조를 가리킬 때만")]);
+  });
+
+  it("값 한정 「현재」가 감싼 담보 트리 반복(세부보장마다) = 보통약관엔 트리 반복이 없다는 오류 — 종 반복 문구가 아니다", () => {
+    const issues = 담보({ code: "P0400" }, true).filter((i) => i.severity !== "warning");
+    expect(issues.map((i) => i.message)).toEqual([expect.stringContaining("보통약관에는 담보 트리 반복이 없어")]);
+    expect(issues[0].message).not.toContain("종 반복");
   });
 
   it("값 한정 — 종 반복(열거값 아님)만 감싼 대상 = 오류, 지운 값 = 「없는 값」", () => {

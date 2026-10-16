@@ -480,6 +480,7 @@ export function refTargetFactIssues(
   } else if (typeof r.current === "string") {
     const lt = currentTypes().get(r.current);
     if (!lt) out.push({ kind: "structure", message: `값 한정 「현재 값」의 반복이 이 참조를 감싸지 않습니다 — 그 반복 블록 안에서만 쓴다` });
+    else if (lt.kind === "coverageNode") out.push({ kind: "structure", message: "담보 트리 반복의 「현재 세부보장 · 급부」 한정은 담보 트리 반복으로 생긴 대상에만 건다 — 이 대상은 그런 반복 안이 아닙니다" });
     else if (lt.kind !== "enum") out.push({ kind: "structure", message: "값 한정 「현재 값」은 원소가 열거값(사유)인 반복에만 쓴다 — 종 반복은 안 된다" });
     else if (enumCode !== undefined && lt.enumCode !== enumCode) out.push({ kind: "typeMismatch", message: `값 한정 「현재 값」의 열거형(${lt.enumCode})이 대상 반복의 열거형(${enumCode})과 다릅니다` });
   } else out.push({ kind: "structure", message: "값 한정은 값들 또는 현재 값 중 하나다" });

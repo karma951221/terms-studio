@@ -10,6 +10,21 @@ export function restrictMode(r: RefRestrict | undefined): string {
   return "keys" in r ? "keys" : "values";
 }
 
+/**
+ * 한정 칸 안내문 — 고른 한정 종류(`restrictMode` 값)에 맞춘다. `treeLoopIds` = 「현재 세부보장 · 급부」 후보 반복 id,
+ * `hasValues` = 값 후보가 있는가(없음일 때 칸이 값 한정인지 키 한정인지).
+ */
+export function restrictHint(mode: string, treeLoopIds: ReadonlySet<string>, hasValues: boolean): string {
+  const VALUES = "반복(사유)으로 생긴 노드를 그 값이 낸 것만으로 좁힌다 — 펼친 뒤 0개면 조립 오류다. 대상은 사유 반복 안의 노드여야 한다.";
+  const CURRENT_VALUE = "「현재 값」 — 이 참조를 감싼 사유 반복의 지금 원소 값이 낸 노드만 가리킨다. 대상은 같은 열거형의 사유 반복 안 노드다.";
+  const KEYS = "담보 트리 반복(세부보장마다 · 급부마다)으로 생긴 노드를 고른 세부보장 · 급부 키의 것만으로 좁힌다 — 세부보장 키는 그 아래 급부 전부, 펼친 뒤 0개면 조립 오류다.";
+  const CURRENT_TREE = "「현재」 — 이 참조를 감싼 담보 트리 반복의 지금 세부보장 · 급부의 노드만 가리킨다. 급부 반복의 「현재」는 세부보장마다 대상에 못 건다.";
+  if (mode.startsWith("current:")) return treeLoopIds.has(mode.slice("current:".length)) ? CURRENT_TREE : CURRENT_VALUE;
+  if (mode === "keys") return KEYS;
+  if (mode === "values") return VALUES;
+  return hasValues ? VALUES : KEYS;
+}
+
 /** 폼 → 한정 (ADR-0077 결정 7 · ADR-0087 결정 10). `prefix` 는 인자 칸의 `arg:<이름>:`. */
 export function restrictOfForm(fd: FormData, prefix: string): RefRestrict | undefined {
   const mode = String(fd.get(`${prefix}restrictMode`) ?? "");

@@ -12,7 +12,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { Combobox, type ComboOption } from "@/app/_components/Combobox";
 import { IconButton, IconTrash } from "@/app/_components/icons";
 import { DOC_KIND_LABEL, REPEAT_DEPTH_LABEL, STRUCT_KEY_CHIP, SWITCH_WORD } from "@/app/_lib/labels";
-import { bindingLabel, bindingOfValue, bindingOptions, bindingValue, constBindingOfText, constInputOf, constTextOf, planFormChoices, staleBindingOption, type LoopChoice, type NodeTree } from "@/app/(app)/functions/_components/params";
+import { bindingLabel, bindingOptions, constBindingOfText, planFormChoices, staleBindingOption, type LoopChoice, type NodeTree } from "@/app/(app)/functions/_components/params";
 import type { EnumDef } from "@/domain/catalog";
 import { unfoldPreset, type Bindings, type Clause } from "@/domain/clause";
 import {
@@ -57,12 +57,13 @@ import { SlotRefInput } from "./condition/SlotRefInput";
 import type { ConditionContext } from "./condition/types";
 import type { Anchor, DocCtx } from "./ctx";
 import { emptyNode, inlineListAt, newTable } from "./editOps";
+import { ScalarArgField, scalarBindingOf } from "./ArgField";
 import { InlineSlot } from "./Inline";
 import { runsFromTokens } from "./inlineRuns";
 import { clausesFitting, type PopupSpec } from "./menus";
 import { PopActions, Popover } from "./Popover";
 import { RefTargetTree } from "./RefTargetTree";
-import { keyChoicesFor, restrictMode, restrictOfForm, treeLoopChoicesFor, treeLoopsAt } from "./restrict";
+import { keyChoicesFor, restrictHint, restrictMode, restrictOfForm, treeLoopChoicesFor, treeLoopsAt } from "./restrict";
 import { loopChoices, loopsAround, nodeTreeAt, repeatChoices, sourceOfValue, sourceValue } from "./repeatSources";
 import { CaseControls } from "./SwitchControls";
 import { unassignedValues } from "./switchCases";
@@ -302,7 +303,7 @@ function ArticleRefFields({ ctx, node, restrict, prefix = "", idBase = "pop-ref"
                     ))}
                   </div>
                 )}
-                <p className="ts-form-hint">반복(사유)으로 생긴 노드를 그 값이 낸 것만으로 좁힌다 — 펼친 뒤 0개면 조립 오류다. 대상은 사유 반복 안의 노드여야 한다.</p>
+                <p className="ts-form-hint">{restrictHint(mode, new Set(restrict.treeLoops.map((l) => l.id)), restrict.values.length > 0)}</p>
               </div>
             </div>
           )}
@@ -383,25 +384,6 @@ function articleRefOf(fd: FormData, prefix = ""): { targets: RefTarget[]; connec
  * 인자 연결 칸은 「기본 연결」(비움 — 선언의 기본을 쓴다)이 처음 값이다. 기본 연결이 없으면 골라야 저장된다(연결 누락 = 저장 오류).
  * 조 참조 인자 칸은 조 참조 팝업과 같은 부품(대상 트리 + 연결어 + 값 한정) — 이 문서의 조 · 항 · 호 · 목을 고른다 (ADR-0083 결정 7).
  */
-/** 연결 칸 후보 → `<option>` — 묶음(group)이 이어지는 동안 `<optgroup>` 하나(배열 순서 = 화면 순서). 키 경로 후보는 노드마다 묶음이다. */
-function groupedOptions(options: readonly { value: string; label: string; group: string }[]): ReactNode {
-  const runs: { group: string; items: typeof options[number][] }[] = [];
-  for (const o of options) {
-    const last = runs.at(-1);
-    if (last && last.group === o.group) last.items.push(o);
-    else runs.push({ group: o.group, items: [o] });
-  }
-  return runs.map((r) => (
-    <optgroup key={`${r.group}-${r.items[0].value}`} label={r.group}>
-      {r.items.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </optgroup>
-  ));
-}
-
 function ClauseFields({ clauses, code, options, bindings, preset, condition, loops = [], tree, enumOf, refs }: { clauses: readonly Clause[]; code?: Code; options?: Record<Code, Code>; bindings?: Bindings; preset?: Code; condition: ConditionContext; loops?: readonly LoopChoice[]; tree?: NodeTree; enumOf?: (code: Code) => EnumDef | undefined; refs: { ctx: DocCtx; restrict: RestrictChoices } }) {
   const [picked, setPicked] = useState<Code>(code ?? "");
   // 프리셋 (ADR-0084 결정 8) — 맨 위 「프리셋: 상해 ▾ / 직접 연결」. 프리셋이면 그 값은 읽기 전용, 사용처는 조 참조 · 「사용처가 채움」 인자만 댄다
@@ -471,35 +453,17 @@ function ClauseFields({ clauses, code, options, bindings, preset, condition, loo
             );
           }
           if (chosen && !owned.has(p.name)) return null;
-          // 문자 · 숫자 · 날짜 인자 — 콤보 아래 「상수 직접 입력」(채우면 콤보보다 먼저, 기능/함수조항 §4.4)
-          const direct = constInputOf(p.type);
-          const constText = constTextOf(seed.bindings?.[p.name], p.type);
-          // 후보에 없는 지금 연결 — 고를 수 없는 줄로 보이고, 고른 채 두면 그대로 지킨다(고르지 못한 줄은 폼에 안 실려 argkeep 으로 넘긴다)
-          const stale = staleBindingOption(seed.bindings?.[p.name], p.type, condition.discriminators, enumsOf(p.type), forms, loops, tree);
+          // 문자 · 숫자 · 날짜 인자 — 콤보 아래 「상수 직접 입력」(채우면 콤보보다 먼저, 기능/함수조항 §4.4) · 후보에 없는 지금 연결은 「(지금 연결 — 고칠 것)」 줄
+          const labelArgs = [p.type, condition.discriminators, enumsOf(p.type), forms, loops, tree] as const;
           return (
-            <div key={`${clause!.code}-arg-${p.name}`} className="ts-form-row">
-              <label htmlFor={`pop-arg-${p.name}`}>인자 {p.name}</label>
-              <select id={`pop-arg-${p.name}`} name={`arg:${p.name}`} defaultValue={constText !== "" ? "" : bindingValue(seed.bindings?.[p.name])}>
-                <option value="">{p.default ? `기본 연결 — ${bindingLabel(p.default, p.type, condition.discriminators, enumsOf(p.type), forms, loops, tree)}` : "— 연결 안 함(기본 연결 없음) —"}</option>
-                {stale && (
-                  <option value={stale.value} disabled>
-                    {stale.label}
-                  </option>
-                )}
-                {groupedOptions(bindingOptions(p.type, condition.discriminators, enumsOf(p.type), forms, true, loops, tree))}
-              </select>
-              {stale && <input type="hidden" name={`argkeep:${p.name}`} value={stale.value} />}
-              {direct && (
-                <input
-                  className="ts-arg-const"
-                  name={`argc:${p.name}`}
-                  aria-label={`인자 ${p.name} 상수 직접 입력`}
-                  inputMode={direct.inputMode}
-                  placeholder={`상수 직접 입력 — ${direct.placeholder}`}
-                  defaultValue={constText}
-                />
-              )}
-            </div>
+            <ScalarArgField
+              key={`${clause!.code}-arg-${p.name}`}
+              param={p}
+              seed={seed.bindings?.[p.name]}
+              defaultLabel={p.default ? `기본 연결 — ${bindingLabel(p.default, ...labelArgs)}` : "— 연결 안 함(기본 연결 없음) —"}
+              options={bindingOptions(p.type, condition.discriminators, enumsOf(p.type), forms, true, loops, tree)}
+              stale={staleBindingOption(seed.bindings?.[p.name], ...labelArgs)}
+            />
           );
         })}
         {!chosen &&
@@ -542,11 +506,7 @@ function bindingsOf(fd: FormData, clauses: readonly Clause[], code: Code = str(f
       if (r.targets.length > 0) out[p.name] = { kind: "articleRef", targets: r.targets, ...(r.connector ? { connector: r.connector } : {}), scope: r.scope };
       continue;
     }
-    // 상수 직접 입력이 차 있으면 그것이 연결이다 (문자 · 숫자 · 날짜 — 모양 오류는 `bindingInputProblem` 이 먼저 막는다)
-    const direct = constBindingOfText(String(fd.get(`argc:${p.name}`) ?? ""), p.type).binding;
-    // 고를 수 없는 「(지금 연결 — 고칠 것)」 줄을 고른 채면 칸 값이 폼에 없다 — 지금 연결 그대로
-    const value = fd.get(`arg:${p.name}`) ?? fd.get(`argkeep:${p.name}`);
-    const b = direct ?? (value !== null ? bindingOfValue(String(value), p.type) : undefined);
+    const b = scalarBindingOf(fd, p);
     if (b) out[p.name] = b;
   }
   return out;

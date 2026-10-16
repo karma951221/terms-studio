@@ -239,8 +239,9 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
    * 저장 시점 전체 검증 (경고 포함) — 브라우저 편집본의 검증 목록과 같은 `validateDocument`.
    * `copyCodes` = 상품 조 사본 트리 검사(`validateTree`) — PZ 코드를 받는다. 문서 저장은 PZ 를 거부한다 (ADR-0081 결정 4).
    */
-  async function validateDoc(tx: Db, doc: DocumentRecord, tree: DocumentNode, copyCodes = false): Promise<Issue[]> {
-    const env = { ...(await envOf(tx, doc)), ...(copyCodes ? { copyCodes } : {}) };
+  /** `base` = 이미 읽은 문서 환경(apply 가 명령 적용에 쓴 것) — 주면 다시 읽지 않는다. */
+  async function validateDoc(tx: Db, doc: DocumentRecord, tree: DocumentNode, { copyCodes = false, base }: { copyCodes?: boolean; base?: TreeEnv } = {}): Promise<Issue[]> {
+    const env = { ...(base ?? (await envOf(tx, doc))), ...(copyCodes ? { copyCodes } : {}) };
     const { resolve, scope } = await scopeOf(tx, doc);
     return validateDocument(tree, { env, resolve, scope });
   }
@@ -361,7 +362,7 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
     validateTree: (id, tree) =>
       db.transaction(async (tx) => {
         const doc = await repo.loadDocument(tx, id);
-        return doc ? validateDoc(tx, doc, tree, true) : [];
+        return doc ? validateDoc(tx, doc, tree, { copyCodes: true }) : [];
       }),
 
     unresolvedOptionCount: (id) =>
@@ -443,7 +444,7 @@ export function createDocumentService(db: Db, deps: DocumentServiceDeps = {}): D
           if (!applied.ok) return applied;
           const tree = applied.value;
           // 저장(save)과 같은 전체 검사 — 키 경로 연결(nodeBindingIssues) 등 문서 검사가 한 길로 돈다. 경고는 막지 않는다
-          const issues = blockingIssues(await validateDoc(tx, doc, tree));
+          const issues = blockingIssues(await validateDoc(tx, doc, tree, { base: env }));
           if (issues.length > 0) return invalid(issues);
           await repo.saveDocument(tx, id, { tree: withCodes(tree), title: tree.title }, actor.userId);
           return ok((await repo.loadDocument(tx, id))!);

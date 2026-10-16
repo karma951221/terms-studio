@@ -535,10 +535,11 @@ export function DocumentEditor(props: EditorProps) {
       return;
     }
     // 「함수조항」 — 버튼 아래 작은 메뉴에서 함수조항을 고른다(모달 없음). 자리마다(아래에 · 호 목록 · 목 목록) 그 유형의 함수조항을 한 묶음씩,
-    // 「아래에」(같은 자리) 묶음이 먼저. 맞는 함수조항이 하나도 없으면 그 사유를 보이는 팝업
+    // 「아래에」(같은 자리) 묶음이 먼저 — 반복 블록이면 「이 반복에」(본문 끝)가 그보다 먼저(항 · 호 버튼과 같은 결). 맞는 함수조항이 하나도 없으면 그 사유를 보이는 팝업
     const first = items[0].action;
     if (toolId === "clauseBlock") {
-      const ordered = [...items.filter((i) => i.label.startsWith("아래에")), ...items.filter((i) => !i.label.startsWith("아래에"))];
+      const rank = (label: string) => (label.startsWith("이 반복에") ? 0 : label.startsWith("아래에") ? 1 : 2);
+      const ordered = [...items].sort((a, b) => rank(a.label) - rank(b.label));
       const groups = ordered.flatMap((i) => (i.action.do === "popup" && i.action.popup.kind === "clauseBlock" ? [clausePickItems(props.clauses, i.action.popup.at, randomIds, i.action.popup.fit)] : [])).filter((g) => g.length > 0);
       if (groups.length > 0) {
         setMenu({ x: anchor.x, y: anchor.y, sections: groups });
