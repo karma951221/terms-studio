@@ -46,13 +46,18 @@ describe("인라인 반복 — 원천 · 연결어 (ADR-0088 결정 1 · 2)", ()
     expect(validateTree(sentence(b.inlineFor(정의조대상마다, [b.slot("builtin.value.F01")], { connector: "또는" })), env)).toEqual([]);
   });
 
+  it("「쉼표만」(`,`) 연결어도 통과 — 실물 정의 조 제목 「A, B, C의 정의 및 진단확정」", () => {
+    const b = make();
+    expect(validateTree(sentence(b.inlineFor(정의조대상마다, [b.slot("builtin.value.F01")], { connector: "," })), env)).toEqual([]);
+  });
+
   it("연결어 미선택 = 저장 오류 (기본값 없음) · 그 밖의 값도 오류", () => {
     const b = make();
     const none = validateTree(sentence(b.inlineFor(종마다, [b.slot("builtin.plan.name")])), env);
     expect(messages(none)).toEqual([expect.stringContaining("연결어")]);
     const bad = b.inlineFor(종마다, [b.slot("builtin.plan.name")]);
     (bad as { connector?: unknown }).connector = "쉼표";
-    expect(messages(validateTree(sentence(bad), env))).toEqual([expect.stringContaining("「및」·「또는」")]);
+    expect(messages(validateTree(sentence(bad), env))).toEqual([expect.stringContaining("「및」·「또는」·「,」")]);
   });
 
   it("원천이 없거나 옛 모양(글자 원천)이면 오류", () => {

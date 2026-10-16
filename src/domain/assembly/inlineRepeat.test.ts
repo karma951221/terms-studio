@@ -66,6 +66,13 @@ describe("인라인 반복 조립 — 원소 수 · 연결어 (수용 기준 3)"
     expect(run(two, fields).lines).toEqual(["제1조(적용)", "  암(유사암제외), 뇌졸중 또는 장해의 경우"]);
   });
 
+  it("「쉼표만」(`,`) — 마지막 앞에도 쉼표: 3개 「A, B, C」 · 2개 「A, B」 · 1개 「A」", () => {
+    const doc = sentenceDoc([repeat("r", 사유합집합, [slot("s", "builtin.value.name")], { connector: "," }), text("t", "의 경우")]);
+    expect(run(two, doc)).toEqual({ lines: ["제1조(적용)", "  암, 뇌졸중, 장해의 경우"], issues: [] });
+    expect(run({ "opt-type-1": { applies: true, reasons: ["V03", "V01"] } }, doc).lines[1]).toBe("  암, 장해의 경우");
+    expect(run({ "opt-type-1": { applies: true, reasons: ["V01"] } }, doc).lines[1]).toBe("  암의 경우");
+  });
+
   it("반복 뒤 조사는 펼친 뒤의 앞 글로 고른다 — 「…장해를」 · 칸이면 칸 글로 「해당 없음을」", () => {
     const doc = sentenceDoc([repeat("r", 사유합집합, [slot("s", "builtin.value.name")], { fallback: [text("f", "해당 없음")] }), { id: "pp", kind: "particle", preset: "eul-reul" }, text("t", " 본다")]);
     expect(run(two, doc).lines[1]).toBe("  암, 뇌졸중 및 장해를 본다");

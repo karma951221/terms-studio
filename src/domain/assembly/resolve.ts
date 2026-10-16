@@ -67,7 +67,7 @@ import { withClauseCodes } from "../clause/pcode";
 import { evaluate, parse, type EvalContext } from "../expression";
 import { expandRepeatTable } from "../document/repeat";
 import { descend, enumerateRows, type StructNodeRef } from "../structure";
-import type { Code, Coordinate, Id, Issue } from "../types";
+import { inlineRepeatSeparator, isInlineRepeatConnector, type Code, type Coordinate, type Id, type Issue } from "../types";
 import type { AssemblyContext } from "./context";
 import { formatValue } from "./substitute";
 import type { ErrorNode, LoopTag, RArticle, RArticleRef, RBulletList, RInline, RItem, RParagraph, ResolvedDoc, RSection, RStatic, RSubitem } from "./types";
@@ -284,12 +284,12 @@ class Walker {
     if (!r.ok) return [this.error(n.id, r.issue)];
     if (r.value.length === 0) return this.inlines(n.fallback ?? [], { ...f, path: [...f.path, n.id, fallbackPathId(n.id)] });
     const connector = n.connector;
-    if (r.value.length > 1 && connector !== "및" && connector !== "또는") {
-      return [this.error(n.id, { kind: "structure", message: "문장 안 반복의 연결어(및 · 또는)가 없습니다 — 편집기에서 고른다", at })];
+    if (r.value.length > 1 && !isInlineRepeatConnector(connector)) {
+      return [this.error(n.id, { kind: "structure", message: "문장 안 반복의 연결어(및 · 또는 · 쉼표만)가 없습니다 — 편집기에서 고른다", at })];
     }
     const out: RInline[] = [];
     r.value.forEach((element, i) => {
-      if (i > 0) out.push({ kind: "text", id: `${n.id}~sep${i}`, text: i === r.value.length - 1 ? ` ${connector} ` : ", " });
+      if (i > 0) out.push({ kind: "text", id: `${n.id}~sep${i}`, text: inlineRepeatSeparator(connector!, i, r.value.length) });
       out.push(...this.inlines(cloneForElement(n.children, repeatElementId(element)), this.elementFrame(n, f, element)));
     });
     return out;

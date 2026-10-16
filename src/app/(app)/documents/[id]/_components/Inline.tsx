@@ -78,7 +78,7 @@ function chipParts(node: InlineNode, ctx: DocCtx): { className: string; title: s
       const fallback = (node.fallback ?? []).length > 0 ? " · 「비었을 때」 칸 있음" : "";
       return {
         className: "ts-doc-inline-chip is-repeat",
-        title: `문장 안 반복 — ${name} · 원소를 쉼표로 잇고 마지막 앞에 ${node.connector ? `「${node.connector}」` : "연결어(미선택)"}${fallback}`,
+        title: `문장 안 반복 — ${name} · ${node.connector === "," ? "원소를 쉼표로만 잇는다" : `원소를 쉼표로 잇고 마지막 앞에 ${node.connector ? `「${node.connector}」` : "연결어(미선택)"}`}${fallback}`,
         body: (
           <>
             <span className="ts-doc-inline-head">〔{name}〕</span>

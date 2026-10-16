@@ -38,6 +38,21 @@ export function isReferenceConnector(value: unknown): value is ReferenceConnecto
   return (REFERENCE_CONNECTORS as readonly unknown[]).includes(value);
 }
 
+/**
+ * 문장 안 반복의 연결어 (ADR-0088 결정 2) — 조 참조의 둘(및 · 또는) + 「,」(쉼표만 — 마지막 원소 앞에도 쉼표, 연결어 없음).
+ * — 왜: 실물 정의 조 제목은 「암(유사암제외), 뇌졸중, …, 만성당뇨합병증의 정의 및 진단확정」처럼 쉼표로만 잇는다(알파Plus · 메리츠 원문 모두).
+ * 조 참조에는 「,」가 없다(위 `REFERENCE_CONNECTORS`).
+ */
+export const INLINE_REPEAT_CONNECTORS = [...REFERENCE_CONNECTORS, ","] as const;
+export type InlineRepeatConnector = (typeof INLINE_REPEAT_CONNECTORS)[number];
+export function isInlineRepeatConnector(value: unknown): value is InlineRepeatConnector {
+  return (INLINE_REPEAT_CONNECTORS as readonly unknown[]).includes(value);
+}
+/** 원소 `i`(1 부터) 앞 잇는 글 — 마지막 앞만 연결어, 「,」면 모두 쉼표. */
+export function inlineRepeatSeparator(connector: InlineRepeatConnector, i: number, count: number): string {
+  return i === count - 1 && connector !== "," ? ` ${connector} ` : ", ";
+}
+
 // ───────────────────────────── 값의 체계 ─────────────────────────────
 
 /** 표 열의 스칼라 타입. period = 개월(정수 · 입력 `3M`/`1Y`) · percent = 0~100 정수. */

@@ -28,7 +28,7 @@ import type { Clause } from "../clause/types";
 import { checkPlanOptionFilter, type LoopElementType } from "../clause/params";
 import { parse, refPath, type Expr, type ExprType, type Ref, type TypeResolver } from "../expression";
 import { findMasterField, formsOfLevel, MASTER, type MasterTree } from "../master";
-import type { Code, Coordinate, Id, Issue } from "../types";
+import { isInlineRepeatConnector, type Code, type Coordinate, type Id, type Issue } from "../types";
 import { coordinateOf, fallbackPathId, indexTree, isRepeatNode, type DocumentNode, type NodeEntry, type RepeatNode, type TreeIndex } from "./nodes";
 import { clauseCodeEntries, withClauseCodes } from "../clause/pcode";
 import { missingValueMessage } from "../catalog/values";
@@ -191,11 +191,11 @@ export function checkRepeatSource(node: RepeatNode, outers: readonly RepeatNode[
 // ───────────────────────────── 인라인 반복 · 「현재 값」 슬롯 (ADR-0088) ─────────────────────────────
 
 /** 인라인 반복 연결어 미선택 — 원소 수를 템플릿 시점에 모르므로 늘 고른다 (ADR-0088 결정 2 · 조 참조 규칙). */
-export const INLINE_REPEAT_CONNECTOR_MESSAGE = "문장 안 반복의 연결어를 고르세요 (및 · 또는) — 원소가 몇 개일지 템플릿에서 모릅니다";
+export const INLINE_REPEAT_CONNECTOR_MESSAGE = "문장 안 반복의 연결어를 고르세요 (및 · 또는 · 쉼표만) — 원소가 몇 개일지 템플릿에서 모릅니다";
 
 /**
  * 인라인 반복 검사 (저장) — 조 제목이면 원천은 세목 선택지 · 합집합만(조 제목은 반복 블록 안에 서지 않는다), 원천 검사(블록 반복과 같다),
- * 연결어(「및」·「또는」 — 기본값 없음). 한 겹 · 깊이는 색인(`indexTree`)이 본다.
+ * 연결어(「및」·「또는」·「,」 — 기본값 없음). 한 겹 · 깊이는 색인(`indexTree`)이 본다.
  */
 export function inlineRepeatIssues(node: RepeatNode & { kind: "inlineFor" }, e: Pick<NodeEntry, "path" | "node" | "inTitle" | "inInlineFor">, ix: TreeIndex, env: RepeatEnv, at: Coordinate): Issue[] {
   if (e.inInlineFor) return []; // 한 겹 위반 — 색인이 이미 말했다
@@ -207,7 +207,7 @@ export function inlineRepeatIssues(node: RepeatNode & { kind: "inlineFor" }, e: 
   if (sourceIssues.length > 0) return sourceIssues;
   const connector: unknown = node.connector;
   if (connector === undefined) return [{ kind: "structure", message: INLINE_REPEAT_CONNECTOR_MESSAGE, at }];
-  if (connector !== "및" && connector !== "또는") return [{ kind: "structure", message: `문장 안 반복의 연결어는 「및」·「또는」 중 하나여야 합니다: ${String(connector)}`, at }];
+  if (!isInlineRepeatConnector(connector)) return [{ kind: "structure", message: `문장 안 반복의 연결어는 「및」·「또는」·「,」 중 하나여야 합니다: ${String(connector)}`, at }];
   return [];
 }
 

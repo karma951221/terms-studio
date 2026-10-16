@@ -16,7 +16,7 @@
  * DB·React import 금지 (순수층).
  */
 
-import { CONNECTOR_REPEAT_MESSAGE, CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, isWorkMark, WORK_MARK_MESSAGE, type AttachLevel, type Code, type Coordinate, type Id, type Issue, type ReferenceConnector, type RefRestrict, type WorkMark } from "../types";
+import { CONNECTOR_REPEAT_MESSAGE, CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, isWorkMark, WORK_MARK_MESSAGE, type AttachLevel, type Code, type Coordinate, type Id, type InlineRepeatConnector, type Issue, type ReferenceConnector, type RefRestrict, type WorkMark } from "../types";
 import type { ClauseMode } from "../clause/types";
 import { isParticlePreset, PARTICLE_PRESET_MESSAGE, type ParticleNode } from "./particles";
 import type { Bindings } from "../clause/params";
@@ -77,7 +77,7 @@ export interface InlineCondNode {
 /**
  * 인라인 반복 (ADR-0088 결정 1 ② · 2 · 3 · 기능/문면 §3.12) — 문장 흐름 안에서 본문(인라인 노드 목록)을 원천의 원소마다 복제해 잇는다.
  * - 원천은 블록 반복과 같은 `RepeatSource`(세목 선택지 · 바깥 블록 반복의 현재 원소의 목록 · 합집합) — 저장 모양 · 거름 · 원소 순서 · 이름이 같다.
- * - 잇기는 조 참조 규칙 그대로 — 쉼표, 마지막 원소 앞에만 연결어(「및」·「또는」, 기본값 없음 — 미선택은 저장 오류).
+ * - 잇기는 조 참조 규칙 그대로 — 쉼표, 마지막 원소 앞에만 연결어(「및」·「또는」, 기본값 없음 — 미선택은 저장 오류). 「,」(쉼표만)면 마지막 앞도 쉼표(실물 정의 조 제목).
  * - 원소가 0개면 「비었을 때」 칸(`fallback`)의 내용이 나온다. 칸이 비거나 없으면 빈 글. 칸은 원소 문맥 밖이다(현재 원소를 읽으면 저장 오류).
  * - 한 겹만 — 인라인 반복 안(본문 · 칸)에 인라인 반복은 두지 않는다. 블록 반복 안이면 블록 반복의 한 단계 중첩에 같이 센다.
  * 본문 · 칸 자리는 **투명**(문장 안 조건 가지처럼 서 있는 자리의 허용 집합).
@@ -88,7 +88,7 @@ export interface InlineForNode {
   source: RepeatSource;
   /** 화면 이름 — 없으면 원천에서 짓는다(`repeatLabel`). */
   alias?: string;
-  connector?: ReferenceConnector;
+  connector?: InlineRepeatConnector;
   children: InlineNode[];
   /** 「비었을 때」 칸 — 원소 0개일 때 나오는 인라인. 없으면 빈 글. */
   fallback?: InlineNode[];

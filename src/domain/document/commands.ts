@@ -14,7 +14,7 @@
 
 import type { Bindings } from "../clause/params";
 import { isWorkMark, ok, reject, WORK_MARK_MESSAGE } from "../types";
-import type { Code, Id, Issue, ReferenceConnector, Result, WorkMark } from "../types";
+import type { Code, Id, InlineRepeatConnector, Issue, Result, WorkMark } from "../types";
 import type { IdSource } from "./builders";
 import { randomIds } from "./builders";
 import {
@@ -118,9 +118,9 @@ export type Command =
   | { type: "setClauseOptions"; nodeId: Id; options: Record<Code, Code>; bindings?: Bindings; preset?: Code | null }
   /**
    * 반복 원천 · 이름 · 연결어 — 원천은 블록 · 인라인 모두 `RepeatSource`(ADR-0077 · ADR-0088). 이름을 빈 글자로 주면 지운다(원천에서 짓는다).
-   * 연결어(「및」·「또는」)는 인라인 반복만 — 고른 뒤 비울 수는 없다(기본값 없음, 미선택은 저장 오류).
+   * 연결어(「및」·「또는」·「,」)는 인라인 반복만 — 고른 뒤 비울 수는 없다(기본값 없음, 미선택은 저장 오류).
    */
-  | { type: "setFor"; nodeId: Id; source?: RepeatSource; alias?: string; connector?: ReferenceConnector }
+  | { type: "setFor"; nodeId: Id; source?: RepeatSource; alias?: string; connector?: InlineRepeatConnector }
   | { type: "addBranch"; condId: Id; branch: BlockBranch | InlineBranch; index?: number }
   /** `when` 없음 = else 로 바꾼다. */
   | { type: "setWhen"; branchId: Id; when?: string }

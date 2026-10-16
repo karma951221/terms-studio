@@ -172,7 +172,7 @@ function Inline({ node, ctx }: { node: InlineNode; ctx: Ctx }) {
     case "inlineFor":
       // 템플릿 원문 — 원소는 조립 결과 패널에서 본다. 여기는 자리 말(반복 이름) (ADR-0088 결정 6)
       return (
-        <span className="ts-doc-inline-chip is-repeat" title={`문장 안 반복 — 원소를 쉼표로 잇고 마지막 앞에 「${node.connector ?? "연결어?"}」`}>
+        <span className="ts-doc-inline-chip is-repeat" title={node.connector === "," ? "문장 안 반복 — 원소를 쉼표로만 잇는다" : `문장 안 반복 — 원소를 쉼표로 잇고 마지막 앞에 「${node.connector ?? "연결어?"}」`}>
           <span className="ts-doc-inline-head">〔{node.alias ?? repeatLabel(node.source)}〕</span>
         </span>
       );

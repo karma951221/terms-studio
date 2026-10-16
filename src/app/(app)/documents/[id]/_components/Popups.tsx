@@ -49,7 +49,7 @@ import {
   type RepeatSource,
 } from "@/domain/document";
 import type { Box } from "@/domain/document/box";
-import { ATTACH_LEVEL_LABEL, REFERENCE_CONNECTORS, isReferenceConnector, type Code, type Id, type ReferenceConnector } from "@/domain/types";
+import { ATTACH_LEVEL_LABEL, INLINE_REPEAT_CONNECTORS, REFERENCE_CONNECTORS, isInlineRepeatConnector, isReferenceConnector, type Code, type Id, type InlineRepeatConnector, type ReferenceConnector } from "@/domain/types";
 
 import { str } from "../../lib";
 import { CondRows } from "./condition/CondRows";
@@ -756,21 +756,24 @@ function RepeatSourceFields({ choices, current, alias, onSource, onAlias, idBase
   );
 }
 
-/** 문장 안 반복의 연결어 — 「및」 · 「또는」, 기본값 없음(조 참조와 같은 규칙 — ADR-0088 결정 2). `onPick` 이면 바꾸는 즉시. */
-function RepeatConnectorField({ value, onPick, idBase = "pop-repeat" }: { value?: ReferenceConnector; onPick?: (c: ReferenceConnector) => void; idBase?: string }) {
+/** 문장 안 반복 연결어의 화면 이름 — 「,」는 「쉼표만」. */
+const INLINE_REPEAT_CONNECTOR_LABEL: Record<InlineRepeatConnector, string> = { 및: "및", 또는: "또는", ",": "쉼표만" };
+
+/** 문장 안 반복의 연결어 — 「및」 · 「또는」 · 「쉼표만」, 기본값 없음(조 참조와 같은 규칙 + 쉼표만 — ADR-0088 결정 2). `onPick` 이면 바꾸는 즉시. */
+function RepeatConnectorField({ value, onPick, idBase = "pop-repeat" }: { value?: InlineRepeatConnector; onPick?: (c: InlineRepeatConnector) => void; idBase?: string }) {
   return (
     <div className="ts-form-row">
       <span className="ts-form-label" id={`${idBase}-connector`}>연결어</span>
       <div>
         <div className="ts-radio-group" role="radiogroup" aria-labelledby={`${idBase}-connector`}>
-          {REFERENCE_CONNECTORS.map((c) => (
+          {INLINE_REPEAT_CONNECTORS.map((c) => (
             <label key={c} className="ts-form-radio">
               <input type="radio" name="connector" value={c} {...(onPick ? { checked: value === c, onChange: () => onPick(c) } : { defaultChecked: value === c })} />
-              {c}
+              {INLINE_REPEAT_CONNECTOR_LABEL[c]}
             </label>
           ))}
         </div>
-        <p className="ts-form-hint">골라야 적용된다 — 기본값이 없다. 원소를 쉼표로 잇고 마지막 원소 앞에만 붙는다(「A, B 및 C」). 원소가 하나면 그 원소만.</p>
+        <p className="ts-form-hint">골라야 적용된다 — 기본값이 없다. 원소를 쉼표로 잇고 마지막 원소 앞에만 붙는다(「A, B 및 C」) — 쉼표만이면 「A, B, C」. 원소가 하나면 그 원소만.</p>
       </div>
     </div>
   );
@@ -796,7 +799,7 @@ function InlineRepeatPopup({ env, spec, anchor, onClose }: { env: PopupEnv; spec
   const current = node && isRepeatSource(node.source) ? sourceValue(node.source) : "";
   const b = nodeBuilders(env.newId);
   if (node) {
-    const set = (patch: { source?: RepeatSource; connector?: ReferenceConnector; alias?: string }) => env.apply([{ type: "setFor", nodeId: node.id, ...patch }]);
+    const set = (patch: { source?: RepeatSource; connector?: InlineRepeatConnector; alias?: string }) => env.apply([{ type: "setFor", nodeId: node.id, ...patch }]);
     return (
       <Popover anchor={anchor} label="문장 안 반복" onClose={onClose} wide>
         <div onContextMenu={env.ctx.edit?.contextMenu}>
@@ -856,7 +859,7 @@ function InlineRepeatPopup({ env, spec, anchor, onClose }: { env: PopupEnv; spec
           const source = sourceOfValue(str(fd, "source"));
           if (!source) return "반복 원천을 고른다.";
           const connector = str(fd, "connector");
-          if (!isReferenceConnector(connector)) return "연결어(및 · 또는)를 고른다 — 기본값이 없다.";
+          if (!isInlineRepeatConnector(connector)) return "연결어(및 · 또는 · 쉼표만)를 고른다 — 기본값이 없다.";
           const alias = str(fd, "alias");
           const repeat = b.inlineFor(source, inlineRepeatBody(source, b), { connector, ...(alias ? { alias } : {}) });
           const list = inlineListAt(env.latest(), at);
