@@ -180,7 +180,7 @@ function itemRefs(articleId: Id, outerId: Id): ClauseBlockRefNode[] {
   return ITEM_REASONS.map((r) => ({ id: itemRefId(articleId, r.code), kind: "clauseBlockRef", clauseCode: `@${itemKey(r.code)}`, options: {}, bindings: { 종들: { kind: "current", loop: outerId } } }));
 }
 
-/** 정의 조 본문 — 사유별 정의 함수조항을 열거형 순서로, 프리셋 ‘적용 종’. 제목은 같은 사유의 인라인 반복(`definitionTitle`). */
+/** 정의 조 본문 — 사유별 정의 함수조항을 열거형 순서로, 프리셋 ‘적용 종’. 제목은 지금 같은 사유의 인라인 반복(`definitionTitle` — 일반 고정 제목으로 바꿀 예정, ADR-0088 결정 7). */
 function definitionRefs(articleId: Id, line: Line): ClauseBlockRefNode[] {
   return DEFINITIONS.map((d) => presetRef(`${articleId}-p1-k-${d.key}`, definitionKey(d, line), "S01"));
 }
