@@ -18,7 +18,7 @@ import { pickCombo } from "../../_lib/combo";
 import { SEED, type ClauseSpec, type GeneralRow } from "./seed";
 
 import { parse } from "../../../../src/domain/expression";
-import { refKey, rowRefPath, toRows, type ConditionRow, type DocumentNode, type InlineNode, type Node } from "../../../../src/domain/document";
+import { foldTitle, normalizeTitle, refKey, rowRefPath, toRows, type ConditionRow, type DocumentNode, type InlineNode, type Node } from "../../../../src/domain/document";
 
 /** 문장 칸의 커서를 끝으로 — 칸이 여러 줄로 접혀도 맨 끝. */
 const END = process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End";
@@ -389,7 +389,10 @@ function blocksOf(article: Node): BlockEntry[] {
   return out;
 }
 
-/** 조 안 문장 칸의 전위 목록 — 화면의 `[data-inline]` 순서와 같다(항 · 호 · 목 문장, 표 셀은 행 우선). */
+/** 조 본문의 문장 칸 — 조 제목 칸(`data-inline="title:<조id>"`, ADR-0088)은 뺀다. 제목은 뼈대 단계에서 따로 친다. */
+const BODY_INLINE = '[data-inline]:not([data-inline^="title:"])';
+
+/** 조 안 문장 칸의 전위 목록 — 화면의 본문 문장 칸(`BODY_INLINE`) 순서와 같다(항 · 호 · 목 문장, 표 셀은 행 우선). */
 function inlineSlotsOf(article: Node): SeedInline[][] {
   const out: SeedInline[][] = [];
   for (const { node } of blocksOf(article)) {
@@ -446,7 +449,7 @@ export class DocumentAuthoring {
   }
 
   private inlineAt(index: number): Locator {
-    return this.article.locator("[data-inline]").nth(index);
+    return this.article.locator(BODY_INLINE).nth(index);
   }
 
   /** 목차에서 조를 연다. */
@@ -476,10 +479,14 @@ export class DocumentAuthoring {
         await this.openArticle(i - 1);
         await this.editor.runTool("조");
       }
+      // 조 제목 = 인라인 노드 목록(ADR-0088) — 담보약관 템플릿 시드 제목은 글뿐이라 그 글을 친다. 글 아닌 노드가 있으면 이 운전기로는 못 친다
+      const titleNodes = normalizeTitle((article as { title: unknown }).title, article.id);
+      if (titleNodes.some((n) => n.kind !== "text")) throw new Error(`조 ${article.id} 제목에 글 아닌 노드 — 운전기가 칠 수 없다`);
+      const titleText = foldTitle(titleNodes);
       const title = this.article.getByRole("textbox", { name: "조 제목" });
-      await title.fill((article as { title: string }).title);
+      await title.fill(titleText);
       await title.press("Enter");
-      await expect(this.article.locator("h3")).toContainText(`(${(article as { title: string }).title})`);
+      await expect(this.article.locator("h3")).toContainText(`(${titleText})`);
       await this.buildBlocks(article);
       const linked = (article as { linkedArticleId?: string }).linkedArticleId;
       if (linked) {
@@ -590,7 +597,7 @@ export class DocumentAuthoring {
     for (const [i, { article }] of articles.entries()) {
       await this.openArticle(i);
       const slots = inlineSlotsOf(article);
-      await expect(this.article.locator("[data-inline]")).toHaveCount(slots.length);
+      await expect(this.article.locator(BODY_INLINE)).toHaveCount(slots.length);
       for (const [k, nodes] of slots.entries()) {
         if (nodes.length === 0) continue;
         await this.editor.fillInline(this.inlineAt(k), nodes);
