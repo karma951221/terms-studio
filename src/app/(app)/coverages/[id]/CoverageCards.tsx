@@ -20,7 +20,7 @@ import { useEditField } from "@/app/_components/EditShell";
 import { InfoTip } from "@/app/_components/InfoTip";
 import { IconButton, IconDown, IconMinusCircle, IconPlus, IconUp } from "@/app/_components/icons";
 import { NAME_LABEL } from "@/app/_lib/labels";
-import { structureIssues, structureRemovals, type StructureDraftBenefit, type StructureDraftSub, type StructureSavedSub } from "@/domain/coverage";
+import { draftNodeKeys, structureIssues, structureRemovals, type StructureDraftBenefit, type StructureDraftSub, type StructureSavedSub } from "@/domain/coverage";
 import { StructForm, type FormModel, type Submission } from "@/forms";
 
 import { formKeyOf, formSessionReducer, initFormSession } from "./value-drafts";
@@ -45,10 +45,12 @@ interface SiblingControls {
   onRemove: () => void;
 }
 
-function Card({ editing, level, nodeKey, name, onName, issue, sibling, isTarget, scrollToCard, children, body }: {
+function Card({ editing, level, nodeKey, treeKey, name, onName, issue, sibling, isTarget, scrollToCard, children, body }: {
   editing: boolean;
   level: Level;
   nodeKey: string;
+  /** 노드 키(ADR-0087) — 머리 라벨 「세부보장 01」. `nodeKey` 는 행 열쇠 `<level>:<id>` 라 이름을 달리 둔다. */
+  treeKey?: string;
   name: string;
   onName: (value: string) => void;
   issue?: string;
@@ -67,14 +69,14 @@ function Card({ editing, level, nodeKey, name, onName, issue, sibling, isTarget,
 
   const what = LEVEL_LABEL[level];
   const shown = name.trim() || what;
-  const ariaName = level === "coverage" ? NAME_LABEL.coverage : `${what}명 · ${(sibling?.index ?? 0) + 1}번`;
+  const ariaName = level === "coverage" ? NAME_LABEL.coverage : `${what}명 · ${treeKey ?? ""}`;
   return (
     <section ref={ref} className={`ts-cov-card${isTarget ? " is-target" : ""}`} data-level={level} data-node={nodeKey} aria-label={`${what} ${shown}`}>
       <div className="ts-cov-card-head">
         {editing && sibling ? (
           <IconButton className="ts-cov-remove" icon={<IconMinusCircle />} label={sibling.count <= 1 ? MIN_STRUCTURE : `${shown} 빼기`} danger disabled={sibling.count <= 1} onClick={sibling.onRemove} />
         ) : null}
-        <span className="ts-cov-card-level">{sibling ? `${what} ${sibling.index + 1}` : what}</span>
+        <span className="ts-cov-card-level">{treeKey ? `${what} ${treeKey}` : what}</span>
         {editing ? (
           <input value={name} onChange={(e) => onName(e.target.value)} className="ts-field-direct ts-cov-card-input" aria-label={ariaName} aria-invalid={issue ? true : undefined} autoFocus={name === "" && level !== "coverage"} />
         ) : (
@@ -162,6 +164,7 @@ export function CoverageCards({ coverageKey, formByNode, original, attributeValu
   const nextKey = useRef(0);
   const fresh = (prefix: string) => `new:${prefix}${nextKey.current++}`;
   const subs = structure.value;
+  const treeKeys = draftNodeKeys(subs);
   const update = (next: StructureDraftSub[]) => structure.setValue(next);
   const updateSub = (key: string, change: (sub: StructureDraftSub) => StructureDraftSub) => update(subs.map((sub) => (sub.key === key ? change(sub) : sub)));
   const addSub = () => update([...subs, { key: fresh("s"), name: "", benefits: [{ key: fresh("b"), name: "" }] }]);
@@ -204,6 +207,7 @@ export function CoverageCards({ coverageKey, formByNode, original, attributeValu
       editing={editing}
       level="benefit"
       nodeKey={benefit.key}
+      treeKey={treeKeys.get(benefit.key)}
       name={benefit.name}
       onName={(name) => updateSub(sub.key, (s) => ({ ...s, benefits: s.benefits.map((b) => (b.key === benefit.key ? { ...b, name } : b)) }))}
       issue={issueOf(benefit.key)}
@@ -225,6 +229,7 @@ export function CoverageCards({ coverageKey, formByNode, original, attributeValu
       editing={editing}
       level="subCoverage"
       nodeKey={sub.key}
+      treeKey={treeKeys.get(sub.key)}
       name={sub.name}
       onName={(name) => updateSub(sub.key, (s) => ({ ...s, name }))}
       issue={issueOf(sub.key)}

@@ -81,6 +81,7 @@ export function buildConditionContext(input: {
       level: n.level,
       name: n.name,
       ...(n.ancestors.length > 0 ? { parentId: n.ancestors[n.ancestors.length - 1]!.id } : {}),
+      ...(n.keyPath ? { keyPath: n.keyPath, key: n.keyPath.split(".").at(-1)! } : {}),
     }));
     ctx.coverage = { id: input.coverage.id, name: input.coverage.name, nodes };
   }

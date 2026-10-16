@@ -61,6 +61,7 @@ export interface NodeToAdd {
   kind: "sub" | "benefit";
   masterNodeId: Id;
   parentMasterId?: Id;
+  key: string;
   name: string;
   order: number;
 }
@@ -71,7 +72,7 @@ export interface StructureDiff {
   /** 마스터에서 사라진 노드 (값 행 연쇄 삭제 대상). */
   remove: SnapshotNode[];
   /** 이름·순서가 달라진 노드. */
-  update: { id: Id; name: string; order: number }[];
+  update: { id: Id; name: string; order: number; key: string }[];
 }
 
 export function diffStructure(tree: CoverageTree, nodes: readonly SnapshotNode[]): StructureDiff {
@@ -80,16 +81,16 @@ export function diffStructure(tree: CoverageTree, nodes: readonly SnapshotNode[]
   const add: NodeToAdd[] = [];
   const update: StructureDiff["update"] = [];
 
-  const visit = (kind: "sub" | "benefit", id: Id, name: string, order: number, parentMasterId?: Id) => {
+  const visit = (kind: "sub" | "benefit", id: Id, key: string, name: string, order: number, parentMasterId?: Id) => {
     seen.add(id);
     const existing = byMaster.get(id);
-    if (!existing) add.push({ kind, masterNodeId: id, parentMasterId, name, order });
-    else if (existing.name !== name || existing.order !== order) update.push({ id: existing.id, name, order });
+    if (!existing) add.push({ kind, masterNodeId: id, parentMasterId, key, name, order });
+    else if (existing.name !== name || existing.order !== order || existing.key !== key) update.push({ id: existing.id, name, order, key });
   };
 
   for (const sub of tree.subCoverages) {
-    visit("sub", sub.id, sub.name, sub.order);
-    for (const b of sub.benefits) visit("benefit", b.id, b.name, b.order, sub.id);
+    visit("sub", sub.id, sub.key, sub.name, sub.order);
+    for (const b of sub.benefits) visit("benefit", b.id, b.key, b.name, b.order, sub.id);
   }
   const remove = nodes.filter((n) => !seen.has(n.masterNodeId));
   return { add, remove, update };

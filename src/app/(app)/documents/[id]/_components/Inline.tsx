@@ -15,9 +15,18 @@ import { STRUCT_KEY_CHIP, SWITCH_WORD } from "@/app/_lib/labels";
 import { particlePreset, referenceChunkLabel, referenceKeyIndex, refKey, type ArticleRefNode, type InlineAt, type InlineNode, type ReferenceTarget } from "@/domain/document";
 import type { Id, WorkMark } from "@/domain/types";
 
+import { nodeHead } from "./condition/rows";
 import { anchorOf, chipText, encodeAt, type DocCtx } from "./ctx";
 import type { Token } from "./inlineRuns";
 import { caseValueLabel } from "./SwitchControls";
+
+/** 키 경로 → 「세부보장 01 · 이름」 (조건 문맥이 있을 때). 없는 키는 「끊어진 노드 09」 — 문맥이 없으면(읽기 화면) 키 그대로. */
+function keyHead(node: ArticleRefNode, path: string, ctx: DocCtx): string {
+  const nodes = ctx.conditionFor?.(node.id).coverage?.nodes;
+  if (!nodes) return path;
+  const found = nodes.find((n) => n.keyPath === path);
+  return found ? nodeHead(nodes, found) : `끊어진 노드 ${path}`;
+}
 
 function articleRefText(node: ArticleRefNode, ctx: DocCtx): string {
   // 편집기 미리보기 — 조립과 같은 덩어리 규칙(기능/문면 §3.5). 전체 뷰 번호라 분기 결과는 반영되지 않는다.
@@ -33,7 +42,7 @@ function articleRefText(node: ArticleRefNode, ctx: DocCtx): string {
   const joined = alive.length === 0 ? (broken > 0 ? "없는 조(연결 끊김)" : "대상 없음") : referenceChunkLabel(alive, node.connector);
   // 값 한정 — 반복(사유)으로 생긴 노드 중 그 값이 낸 것만 (ADR-0077 결정 7). 번호는 조립이 펼친 뒤 매긴다
   const restrict = node.targets.find((t) => t.restrict)?.restrict;
-  const narrowed = !restrict ? "" : "current" in restrict ? ` ⟨현재 값 — ${ctx.repeatLabelOf?.(restrict.current) ?? "반복"}⟩` : ` ⟨값 = ${restrict.values.map((v) => ctx.enumValueLabel?.(v) ?? v).join(" · ")}⟩`;
+  const narrowed = !restrict ? "" : "current" in restrict ? ` ⟨현재 값 — ${ctx.repeatLabelOf?.(restrict.current) ?? "반복"}⟩` : "keys" in restrict ? ` ⟨해당 키 — ${restrict.keys.map((k) => keyHead(node, k, ctx)).join(" · ")}⟩` : ` ⟨값 = ${restrict.values.map((v) => ctx.enumValueLabel?.(v) ?? v).join(" · ")}⟩`;
   return `${node.scope === "general" ? "보통약관 " : ""}${joined}${narrowed}${alive.length > 0 && broken > 0 ? ` (연결 끊김 ${broken}건)` : ""}`;
 }
 

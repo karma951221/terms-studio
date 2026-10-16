@@ -41,10 +41,13 @@ export interface PlanOptionSource {
   filter?: string;
 }
 
+/** 구분자 연결의 노드 — 담보약관에서만 (ADR-0087 결정 4). 키 경로(「세부보장 01 › …」) 또는 감싼 담보 트리 반복의 현재 노드(「현재 세부보장 › …」). */
+export type BindingNode = { path: string } | { current: Id };
+
 /** 인자 연결 하나. */
 export type Binding =
-  /** 사용처 문맥에서 평가하는 구분자 — 늦은 바인딩(구분자는 사용처 문맥에서 푼다). */
-  | { kind: "discriminator"; code: Code }
+  /** 사용처 문맥에서 평가하는 구분자 — 늦은 바인딩(구분자는 사용처 문맥에서 푼다). `node` 가 있으면 그 노드(키 경로) · 현재 노드에서 평가한다. */
+  | { kind: "discriminator"; code: Code; node?: BindingNode }
   /** 상수 — 스칼라 인자만. enum 은 값 코드, date 는 `YYYY-MM-DD`. */
   | { kind: "const"; value: ScalarValue }
   /** 반복의 현재 원소 — `loop` = 넣는 자리를 감싼 반복 블록(템플릿) id. 조립이 원소(열거값 코드 · 종)로 바꿔 댄다. */
@@ -93,9 +96,10 @@ export interface BindingEnv {
 }
 
 /** 반복의 현재 원소 타입 — 세목 선택지 원천이면 종(세목 선택지 목록<폼> 인자에 댄다), 목록값 원천이면 열거값. */
-export type LoopElementType = { kind: "planOptions"; form: Code } | { kind: "enum"; enumCode: Code };
+export type LoopElementType = { kind: "planOptions"; form: Code } | { kind: "enum"; enumCode: Code } | { kind: "coverageNode"; level: "subCoverage" | "benefit" };
 
 function describeElement(t: LoopElementType): string {
+  if (t.kind === "coverageNode") return t.level === "subCoverage" ? "현재 세부보장(노드)" : "현재 급부(노드)";
   return t.kind === "planOptions" ? `종(세목 선택지 ${t.form})` : `열거값 enum<${t.enumCode}>`;
 }
 
@@ -204,7 +208,8 @@ export function checkBinding(param: ParamDef, binding: Binding, env: BindingEnv,
       const element = env.loops.get(binding.loop);
       const here = refAt(`arg.${param.name}`);
       if (!element) return [{ kind: "structure", message: `${head} — 반복 밖에서 반복의 현재 원소를 연결했습니다 — 그 반복 블록 안에서만 댈 수 있습니다`, at: here }];
-      if (!sameType(element, param.type)) {
+      // 노드는 값이 아니다 — 값 연결은 키 경로 · 「현재 …」 구분자 연결(Phase 4)로 한다
+      if (element.kind === "coverageNode" || !sameType(element, param.type)) {
         return [{ kind: "typeMismatch", message: `${head} — 반복의 현재 원소는 ${describeElement(element)} 라 인자 타입 ${describeParamType(param.type)} 과 다릅니다`, at: here }];
       }
       return [];

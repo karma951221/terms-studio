@@ -79,9 +79,9 @@ describe("masterFieldPaths — 구분자 식이 읽는 입력 항목 (역인덱�
 
 describe("노드 한정자 — 다른 노드는 다른 참조다 (ADR-0066 §1)", () => {
   it("extractRefs 의 path 에 한정자가 들어가고, 같은 코드 다른 노드는 다른 참조다", () => {
-    const expr = ast("D0002@n1 = true and D0002@n2 = true and D0002 = true");
-    expect(extractRefs(expr).map((r) => r.path)).toEqual(["D0002@n1", "D0002@n2", "D0002"]);
-    expect(requiredDiscriminatorCodes(expr)).toEqual(["D0002"]);
+    const expr = ast("D0007@01 = true and D0007@02 = true and D0007 = true");
+    expect(extractRefs(expr).map((r) => r.path)).toEqual(["D0007@01", "D0007@02", "D0007"]);
+    expect(requiredDiscriminatorCodes(expr)).toEqual(["D0007"]);
   });
 });
 

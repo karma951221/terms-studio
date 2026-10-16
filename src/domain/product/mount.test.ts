@@ -61,8 +61,8 @@ describe("ADR-0002 — 스냅샷 구조 대조 (마스터 트리 ↔ 스냅샷 �
     id: "cov1",
     name: "수술비",
     subCoverages: [
-      { id: "s1", name: "1종수술", order: 0, benefits: [{ id: "b1", name: "1종수술급부", order: 0 }] },
-      { id: "s2", name: "2종수술", order: 1, benefits: [{ id: "b2", name: "2종수술급부", order: 0 }] },
+      { id: "s1", key: "01", name: "1종수술", order: 0, benefits: [{ id: "b1", key: "1", name: "1종수술급부", order: 0 }] },
+      { id: "s2", key: "02", name: "2종수술", order: 1, benefits: [{ id: "b2", key: "1", name: "2종수술급부", order: 0 }] },
     ],
   };
 
@@ -79,24 +79,37 @@ describe("ADR-0002 — 스냅샷 구조 대조 (마스터 트리 ↔ 스냅샷 �
 
   it("마스터에 노드가 추가되면 스냅샷에 빈 대응 노드가 생기고, 사라진 노드는 삭제 대상 · 이름/순서 변경은 갱신", () => {
     const nodes: SnapshotNode[] = [
-      { id: "n1", productCoverageId: "pc1", kind: "sub", masterNodeId: "s1", name: "1종수술(구)", order: 0 },
-      { id: "n2", productCoverageId: "pc1", kind: "benefit", masterNodeId: "b1", parentId: "n1", name: "1종수술급부", order: 0 },
-      { id: "n3", productCoverageId: "pc1", kind: "sub", masterNodeId: "s9", name: "옛 세부보장", order: 1 },
-      { id: "n4", productCoverageId: "pc1", kind: "benefit", masterNodeId: "b9", parentId: "n3", name: "옛 급부", order: 0 },
+      { id: "n1", productCoverageId: "pc1", kind: "sub", masterNodeId: "s1", key: "01", name: "1종수술(구)", order: 0 },
+      { id: "n2", productCoverageId: "pc1", kind: "benefit", masterNodeId: "b1", parentId: "n1", key: "1", name: "1종수술급부", order: 0 },
+      { id: "n3", productCoverageId: "pc1", kind: "sub", masterNodeId: "s9", key: "02", name: "옛 세부보장", order: 1 },
+      { id: "n4", productCoverageId: "pc1", kind: "benefit", masterNodeId: "b9", parentId: "n3", key: "1", name: "옛 급부", order: 0 },
     ];
     const d = diffStructure(tree, nodes);
     expect(d.add.map((n) => n.masterNodeId)).toEqual(["s2", "b2"]);
     expect(d.remove.map((n) => n.id).sort()).toEqual(["n3", "n4"]);
-    expect(d.update).toEqual([{ id: "n1", name: "1종수술", order: 0 }]);
+    expect(d.update).toEqual([{ id: "n1", name: "1종수술", order: 0, key: "01" }]);
   });
 
   it("완전히 일치하면 아무것도 바뀌지 않는다", () => {
     const nodes: SnapshotNode[] = [
-      { id: "n1", productCoverageId: "pc1", kind: "sub", masterNodeId: "s1", name: "1종수술", order: 0 },
-      { id: "n2", productCoverageId: "pc1", kind: "benefit", masterNodeId: "b1", parentId: "n1", name: "1종수술급부", order: 0 },
-      { id: "n3", productCoverageId: "pc1", kind: "sub", masterNodeId: "s2", name: "2종수술", order: 1 },
-      { id: "n4", productCoverageId: "pc1", kind: "benefit", masterNodeId: "b2", parentId: "n3", name: "2종수술급부", order: 0 },
+      { id: "n1", productCoverageId: "pc1", kind: "sub", masterNodeId: "s1", key: "01", name: "1종수술", order: 0 },
+      { id: "n2", productCoverageId: "pc1", kind: "benefit", masterNodeId: "b1", parentId: "n1", key: "1", name: "1종수술급부", order: 0 },
+      { id: "n3", productCoverageId: "pc1", kind: "sub", masterNodeId: "s2", key: "02", name: "2종수술", order: 1 },
+      { id: "n4", productCoverageId: "pc1", kind: "benefit", masterNodeId: "b2", parentId: "n3", key: "1", name: "2종수술급부", order: 0 },
     ];
     expect(diffStructure(tree, nodes)).toEqual({ add: [], remove: [], update: [] });
+  });
+});
+
+describe("스냅샷 구조 대조 — 키는 뼈대 속성 (ADR-0087 결정 2)", () => {
+  const keyed: CoverageTree = {
+    id: "cov", name: "암",
+    subCoverages: [{ id: "s1", key: "02", name: "A", order: 0, benefits: [{ id: "b1", key: "3", name: "a", order: 0 }] }],
+  };
+  it("새 노드는 마스터 키로 더하고, 키가 다른 기존 노드는 갱신한다", () => {
+    const added = diffStructure(keyed, []);
+    expect(added.add.map((n) => n.key)).toEqual(["02", "3"]);
+    const nodes: SnapshotNode[] = [{ id: "p1", productCoverageId: "pc", kind: "sub", masterNodeId: "s1", key: "01", name: "A", order: 0 }];
+    expect(diffStructure(keyed, nodes).update).toContainEqual({ id: "p1", name: "A", order: 0, key: "02" });
   });
 });

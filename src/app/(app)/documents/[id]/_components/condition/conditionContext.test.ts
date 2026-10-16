@@ -22,6 +22,19 @@ describe("buildConditionContext — 담보 트리 · 구분자(타입 · 읽는 
     expect(ctx.quick).toEqual([{ label: "감액여부 = 참", source: "D0009 = true" }]);
   });
 
+  it("세부보장 · 급부 노드에 키와 키 경로를 싣는다 — 담보 뿌리는 없음 (ADR-0087 결정 3)", () => {
+    const { tree } = surgery();
+    const ctx = buildConditionContext({ coverage: tree, discriminators: [], enums: [] });
+    expect(ctx.coverage?.nodes.map((n) => [n.level, n.key, n.keyPath])).toEqual([
+      ["coverage", undefined, undefined],
+      ["subCoverage", "01", "01"],
+      ["benefit", "1", "01.1"],
+      ["subCoverage", "02", "02"],
+      ["benefit", "1", "02.1"],
+      ["benefit", "2", "02.2"],
+    ]);
+  });
+
   it("하위 급부의 열린 폼을 조상에 모으되 형제에게 전파하지 않는다", () => {
     const { tree, b11, b21, b22 } = surgery();
     const values: MasterValues = { slots: new Map([

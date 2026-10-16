@@ -119,6 +119,10 @@ export function checkPresets(clause: Clause, env: BindingEnv = {}, base: Coordin
         fail("brokenRef", `${head} 없는 인자에 연결했습니다: ${pname}`);
         continue;
       }
+      if (b.kind === "discriminator" && b.node) {
+        fail("structure", `${head} 인자 ${pname} — 프리셋은 키 경로 · 「현재 세부보장」 연결을 담지 않습니다(함수조항은 담보를 모른다 — 하위 레벨 구분자 인자는 「사용처가 채움」으로 둔다)`);
+        continue;
+      }
       if (b.kind === "articleRef" || b.kind === "current") {
         fail("structure", `${head} 인자 ${pname} — 프리셋은 ${b.kind === "articleRef" ? "조 참조 인자 연결" : "반복의 현재 원소"}을 담지 않습니다(사용처가 넣을 때 채운다)`);
         continue;

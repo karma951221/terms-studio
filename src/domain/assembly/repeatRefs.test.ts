@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import type { ArticleNode, DocumentNode, ForBlockNode, ParagraphNode, RefTarget } from "../document/nodes";
-import type { Id } from "../types";
-import { assemble } from "./booklet";
-import { waiverFixture, waiverTemplate, type WaiverPlan } from "./fixture";
+import type { Id, RefRestrict } from "../types";
+import { assemble, assembleSpecial } from "./booklet";
+import { nodeQualFixture, waiverFixture, waiverTemplate, type WaiverPlan } from "./fixture";
 import type { RenderedDoc, RenderedInline } from "./types";
 
 /**
@@ -178,5 +178,124 @@ describe("값 한정 참조 — 사유 = 해당 값들 / 현재 값 (결정 13)"
       "  ③ 뇌졸중의 정의",
       "  ④ 제1조(보험료의 납입면제) 제1항 제2호",
     ]);
+  });
+});
+
+describe("키 한정 해소 (ADR-0087 결정 10)", () => {
+  /**
+   * 노드 키 픽스처(`nodeQualFixture` — 세부A 키 01 · 세부B 키 03, 각 급부 키 1)에 담보약관 한 벌:
+   * 제1조 = 「세부보장마다」 반복 블록(P0100) 안 항(P0200) — 그 안에 현재 세부보장의 급부마다 호(P0400 블록 · 호 P0500) — + 반복 밖 참조 항(P0300).
+   * 표기 = 렌더된 담보약관의 참조 항 인라인을 이 파일의 `inlineText` 로 이은 글(값 한정 테스트와 같은 추출).
+   */
+  function treeRepeatDoc(refPara: ParagraphNode, extra: ArticleNode[] = []): DocumentNode {
+    const body: ForBlockNode = {
+      id: "f",
+      kind: "forBlock",
+      code: "P0100",
+      source: { kind: "subCoverages" },
+      children: [
+        {
+          id: "p",
+          kind: "paragraph",
+          code: "P0200",
+          children: [{ id: "pt", kind: "text", text: "세부보장 항" }],
+          items: [{ id: "g", kind: "forBlock", code: "P0400", source: { kind: "benefitsOfCurrent", loop: "f" }, children: [{ id: "i", kind: "item", code: "P0500", children: [{ id: "it", kind: "text", text: "급부 호" }] }] }],
+        },
+      ],
+    } as unknown as ForBlockNode;
+    return { id: "nq-doc", kind: "document", title: "노드한정자 특별약관", children: [{ id: "a1", kind: "article", title: "감액", children: [body, refPara] }, ...extra] } as DocumentNode;
+  }
+  function assembleDoc(doc: DocumentNode) {
+    const base = nodeQualFixture();
+    const input = { ...base, specialDocuments: new Map([...base.specialDocuments, ["cov-nodequal", doc]]) };
+    const r = assembleSpecial(input, input, "pc-nodequal");
+    if (!r.ok) throw new Error("조립 거부");
+    return { doc: r.value.doc, issues: r.value.issues.filter((i) => (i.severity ?? "error") === "error") };
+  }
+  function assembleTreeRepeatDoc(ref: { restrict: RefRestrict; connector?: "및" | "또는"; code?: string }) {
+    const refPara = {
+      id: "rp",
+      kind: "paragraph",
+      code: "P0300",
+      children: [{ id: "rr", kind: "articleRef", scope: "self", ...(ref.connector ? { connector: ref.connector } : {}), targets: [{ articleId: "a1", code: ref.code ?? "P0200", restrict: ref.restrict }] }],
+    } as unknown as ParagraphNode;
+    const out = assembleDoc(treeRepeatDoc(refPara));
+    const art = out.doc.children[0];
+    const last = art?.kind === "article" ? art.children.at(-1) : undefined;
+    return { refText: last?.kind === "paragraph" ? inlineText(last.children) : undefined, issues: out.issues };
+  }
+
+  it("「세부보장 = 03 인 것」 — 그 세부보장 회차의 항만 「제2항」", () => {
+    const out = assembleTreeRepeatDoc({ restrict: { keys: ["03"] } });
+    expect(out.issues).toEqual([]);
+    expect(out.refText).toBe("제2항");
+  });
+  it("「01 · 03」 — 둘 다", () => {
+    expect(assembleTreeRepeatDoc({ restrict: { keys: ["01", "03"] }, connector: "및" }).refText).toBe("제1항 및 제2항");
+  });
+  it("스냅샷에 없는 키 — 조용히 비지 않고 articleGone 「펼친 것이 0개」", () => {
+    const out = assembleTreeRepeatDoc({ restrict: { keys: ["02"] } });
+    expect(out.issues).toContainEqual(expect.objectContaining({ kind: "articleGone", message: expect.stringContaining("0개") }));
+  });
+  it("세부보장 키는 그 아래 급부 원소까지 — 급부 호 대상에 키 03 이면 세부B 급부의 호만", () => {
+    const out = assembleTreeRepeatDoc({ restrict: { keys: ["03"] }, code: "P0500" });
+    expect(out.issues).toEqual([]);
+    expect(out.refText).toBe("제2항 제1호");
+  });
+  it("급부 키 경로는 정확히 — 01.1 은 세부A 급부의 호만", () => {
+    expect(assembleTreeRepeatDoc({ restrict: { keys: ["01.1"] }, code: "P0500" }).refText).toBe("제1항 제1호");
+  });
+  it("키 비교는 문자열 정확 · 「.」 경계 — 0 은 01 · 03 을 고르지 않는다", () => {
+    const out = assembleTreeRepeatDoc({ restrict: { keys: ["0"] } });
+    expect(out.issues).toContainEqual(expect.objectContaining({ kind: "articleGone", message: expect.stringContaining("0개") }));
+  });
+  it("「현재」 = 감싼 트리 반복의 현재 노드 키 — 다른 조의 세부보장 회차마다 그 세부보장의 항", () => {
+    const other = {
+      id: "b1",
+      kind: "article",
+      title: "참조",
+      children: [
+        {
+          id: "h",
+          kind: "forBlock",
+          code: "P0100",
+          source: { kind: "subCoverages" },
+          children: [{ id: "hp", kind: "paragraph", code: "P0200", children: [{ id: "hr", kind: "articleRef", scope: "self", targets: [{ articleId: "a1", code: "P0200", restrict: { current: "h" } }] }] }],
+        },
+      ],
+    } as unknown as ArticleNode;
+    const refPara = { id: "rp", kind: "paragraph", code: "P0300", children: [{ id: "rt", kind: "text", text: "끝" }] } as unknown as ParagraphNode;
+    const out = assembleDoc(treeRepeatDoc(refPara, [other]));
+    expect(out.issues).toEqual([]);
+    const art = out.doc.children[1];
+    const paras = art?.kind === "article" ? art.children : [];
+    expect(paras.map((p) => (p.kind === "paragraph" ? inlineText(p.children) : p.kind))).toEqual(["제1조(감액) 제1항", "제1조(감액) 제2항"]);
+  });
+  it("「현재」가 급부 반복인데 대상이 세부보장 회차 항 — 조용히 비지 않고 articleGone 「0개」(저장 검사가 막는 꼴이 들어와도)", () => {
+    const other = {
+      id: "b1",
+      kind: "article",
+      title: "참조",
+      children: [
+        {
+          id: "h",
+          kind: "forBlock",
+          code: "P0100",
+          source: { kind: "subCoverages" },
+          children: [
+            {
+              id: "hp",
+              kind: "paragraph",
+              code: "P0200",
+              children: [{ id: "ht", kind: "text", text: "회차" }],
+              items: [{ id: "k", kind: "forBlock", code: "P0400", source: { kind: "benefitsOfCurrent", loop: "h" }, children: [{ id: "ki", kind: "item", code: "P0500", children: [{ id: "kr", kind: "articleRef", scope: "self", targets: [{ articleId: "a1", code: "P0200", restrict: { current: "k" } }] }] }] }],
+            },
+          ],
+        },
+      ],
+    } as unknown as ArticleNode;
+    const refPara = { id: "rp", kind: "paragraph", code: "P0300", children: [{ id: "rt", kind: "text", text: "끝" }] } as unknown as ParagraphNode;
+    const out = assembleDoc(treeRepeatDoc(refPara, [other]));
+    expect(out.issues).toContainEqual(expect.objectContaining({ kind: "articleGone", message: expect.stringContaining("0개") }));
   });
 });

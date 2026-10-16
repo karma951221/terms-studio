@@ -144,7 +144,7 @@ function viaOf(n: { id: Id; code?: Code }): string {
  * 반복 안 대상 · 반복 블록 · 함수조항 참조 · 값 한정 참조는 렌더가 이 셋으로 푼다 (ADR-0077 결정 7).
  */
 function keyOf(n: { code?: Code }, f: Frame): { key?: string; loops?: LoopTag[]; groups?: string[] } {
-  const loops = f.loops ? Object.entries(f.loops).map(([loop, e]): LoopTag => ({ loop, element: repeatElementId(e), kind: e.kind })) : [];
+  const loops = f.loops ? Object.entries(f.loops).map(([loop, e]): LoopTag => ({ loop, element: repeatElementId(e), kind: e.kind, ...(e.kind === "coverageNode" ? { path: e.path } : {}) })) : [];
   return {
     ...(n.code !== undefined ? { key: `${f.via ?? ""}${n.code}` } : {}),
     ...(loops.length > 0 ? { loops } : {}),
@@ -224,7 +224,7 @@ class Walker {
 
   /**
    * 블록 반복 (ADR-0077) — 원소마다 본문 복제본을 자리 규칙(`each`)으로 편다. 원소 0 이면 빈 목록, 원천 오류면 마커 하나.
-   * 복제본 경로 = 반복 노드 id 다음에 복제 id(`원id@원소`). 종 원소면 프레임 커서를 그 종으로 바꾼다.
+   * 복제본 경로 = 반복 노드 id 다음에 복제 id(`원id@원소`). 종 원소면 프레임 커서를 그 종으로, 담보 트리 노드면 행 노드(`row`)를 그 노드로 바꾼다.
    */
   repeat<T>(n: ForBlockNode, f: Frame, each: (children: readonly unknown[], g: Frame) => T[]): (T | ErrorNode)[] {
     const at = this.at(f, n.id);
@@ -234,6 +234,7 @@ class Walker {
       current: (loop) => f.loops?.[loop],
       enums: this.env.enums ?? new Map(),
       ...(this.env.master ? { master: this.env.master } : {}),
+      ...(this.ctx.rows ? { rows: this.ctx.rows } : {}),
       explain: (reason, where) => this.ctx.explainUndetermined(reason, where),
     }, at);
     if (!r.ok) return [this.error(n.id, r.issue)];
@@ -253,6 +254,8 @@ class Walker {
         path: [...f.path, n.id],
         loops: { ...f.loops, [loop]: element },
         ...(element.kind === "planOption" ? { plan: element.id } : {}),
+        // 담보 트리 원소 — 반복 표 행과 같은 현재 노드 문맥: 한정자 없는 참조는 이 노드의 자기-또는-조상에서 읽힌다 (ADR-0087 결정 8)
+        ...(element.kind === "coverageNode" ? { row: { level: element.level, id: element.id } } : {}),
         ...(group ? { groups: group } : {}),
       }),
     );
@@ -265,23 +268,25 @@ class Walker {
   }
 
   /**
-   * 조 참조 대상 → 조립 대상 — 안쪽 코드 · 값 한정을 싣는다. 「현재 값」 한정은 참조 자리를 감싼 반복의 원소(열거값)로 바꾼다 —
-   * 반복 밖이거나 원소가 종이면 오류.
+   * 조 참조 대상 → 조립 대상 — 안쪽 코드 · 값 한정 · 키 한정을 싣는다. 「현재」 한정은 참조 자리를 감싼 반복의 원소로 바꾼다 —
+   * 열거값이면 값 한정, 담보 트리 노드면 그 키 경로의 키 한정(ADR-0087 결정 10). 반복 밖이거나 원소가 종이면 오류.
    */
   refTargets(n: { targets: readonly { articleId?: Id; code?: Code; innerCode?: Code; restrict?: unknown }[] }, f: Frame, at: Coordinate, map: (t: { articleId?: Id; code?: Code }) => { articleId: Id; code?: Code }): { ok: true; targets: RArticleRef["targets"] } | { ok: false; issue: Issue } {
     const out: RArticleRef["targets"] = [];
     for (const t of n.targets) {
       const base = map(t);
       const target: RArticleRef["targets"][number] = { ...base, ...(t.innerCode !== undefined ? { innerCode: t.innerCode } : {}) };
-      const r = t.restrict as { values?: unknown; current?: unknown } | undefined;
+      const r = t.restrict as { values?: unknown; current?: unknown; keys?: unknown } | undefined;
       if (r !== undefined) {
         if (Array.isArray(r.values)) target.values = r.values.filter((v): v is string => typeof v === "string");
+        else if (Array.isArray(r.keys)) target.keys = r.keys.filter((v): v is string => typeof v === "string");
         else if (typeof r.current === "string") {
           const e = f.loops?.[r.current];
-          if (!e) return { ok: false, issue: { kind: "structure", message: `값 한정 「현재 값」의 반복 ${r.current} 이(가) 이 참조를 감싸지 않습니다 — 그 반복 블록 안에서만 쓴다`, at } };
-          if (e.kind !== "enumValue") return { ok: false, issue: { kind: "typeMismatch", message: "값 한정 「현재 값」은 원소가 열거값(사유)인 반복에만 쓴다", at } };
-          target.values = [e.code];
-        } else return { ok: false, issue: { kind: "structure", message: "값 한정의 모양이 잘못됐습니다 — 값들 또는 현재 값", at } };
+          if (!e) return { ok: false, issue: { kind: "structure", message: `한정 「현재」의 반복 ${r.current} 이(가) 이 참조를 감싸지 않습니다 — 그 반복 블록 안에서만 쓴다`, at } };
+          if (e.kind === "coverageNode") target.keys = [e.path];
+          else if (e.kind !== "enumValue") return { ok: false, issue: { kind: "typeMismatch", message: "값 한정 「현재 값」은 원소가 열거값(사유)인 반복에만 쓴다", at } };
+          else target.values = [e.code];
+        } else return { ok: false, issue: { kind: "structure", message: "한정의 모양이 잘못됐습니다 — 값들 · 키들 · 현재", at } };
       }
       out.push(target);
     }
@@ -401,6 +406,7 @@ class Walker {
     const e = f.loops?.[loop];
     if (!e) return undefined;
     if (e.kind === "enumValue") return { kind: "enum", code: e.code };
+    if (e.kind === "coverageNode") return undefined; // 노드는 값 인자에 대지 않는다
     const ctx = this.ctx.plans?.context(e.id);
     return ctx ? { kind: "options", form: e.form, contexts: [ctx] } : undefined;
   }

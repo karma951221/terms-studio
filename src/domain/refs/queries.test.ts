@@ -37,7 +37,7 @@ function surgeryGraph() {
     clauses: [clause("C001", "특별약관의 소멸"), clause("C002", "준용규정"), clause("C003", "고아 조항")],
     documents: [special, general],
     appendices: [...fx.appendices, { code: "APX_ORPHAN", name: "고아 별표" }],
-    coverages: [{ id: fx.coverageId, name: "수술비", description: "", documentId: "doc-s", subCoverages: [{ id: "sub-1", name: "1종수술", order: 0, benefits: [{ id: "ben-1", name: "수술보험금", order: 0 }] }] }],
+    coverages: [{ id: fx.coverageId, name: "수술비", description: "", documentId: "doc-s", subCoverages: [{ id: "sub-1", key: "01", name: "1종수술", order: 0, benefits: [{ id: "ben-1", key: "1", name: "수술보험금", order: 0 }] }] }],
     master,
   });
 }
@@ -203,6 +203,13 @@ describe("describeKey — 표시명 표기 (기능/조립산출 §3.4 · 리뷰 
   it("담보 노드는 담보 › 세부보장 › 급부 로 이어 부른다", () => {
     const g = surgeryGraph();
     expect(describeKey({ kind: "coverageNode", level: "benefit", id: "ben-1" }, g)).toBe("수술비 › 1종수술 › 수술보험금");
+  });
+
+  it("끊어진 노드 한정자(담보id@키경로)는 「담보명 끊어진 노드 09.1」 — 담보를 모르면 담보 id 로 (ADR-0087)", () => {
+    const g = surgeryGraph();
+    expect(describeKey({ kind: "coverageNode", level: "benefit", id: `${fx.coverageId}@09.1` }, g)).toBe("수술비 끊어진 노드 09.1");
+    expect(describeKey({ kind: "coverageNode", level: "subCoverage", id: "cov-gone@09" }, g)).toBe("담보 cov-gone 끊어진 노드 09");
+    expect(describeKey({ kind: "coverageNode", level: "subCoverage", id: `${fx.coverageId}@09` })).toBe(`담보 ${fx.coverageId} 끊어진 노드 09`);
   });
 
   it("선언되지 않은 대상(깨진 참조)은 상위 이름 아래 「…(없음)」으로, 상위도 없으면 id 표기로 돌아간다", () => {

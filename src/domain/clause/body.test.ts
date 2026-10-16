@@ -251,6 +251,12 @@ describe("함수조항 S1 — 조 참조 · 별표 참조 검사 (기능/함수�
     expect(issuesOf(analyzeBody("inline", now, [], { generalReferenceKeys: keys, generalRepeatedKeys: repeated }))[0]!.message).toContain("현재 값");
   });
 
+  it("함수조항 본문에는 반복이 없어 키 한정을 쓸 수 없다 (ADR-0087 결정 10)", () => {
+    const keys = new Set(["g-art-1", "g-art-1#P0400"]);
+    const keyed = [조참조([{ articleId: "g-art-1", code: "P0400", restrict: { keys: ["01"] } } as never], "및")];
+    expect(issuesOf(analyzeBody("inline", keyed, [], { generalReferenceKeys: keys, generalRepeatedKeys: new Set(["g-art-1#P0400"]) })).map((i) => i.message)).toEqual(["함수조항 본문에는 반복이 없어 키 한정을 쓸 수 없습니다"]);
+  });
+
   it("보통약관 대상 사실(generalTargets)이 있으면 안쪽 코드 존재 · 값 한정의 지운 값을 본다 — 문서 저장과 같은 규칙 (기능/문면 §3.7)", () => {
     const keys = new Set(["g-art-1", "g-art-1#P0400", "g-art-1#P0200"]);
     const repeated = new Set(["g-art-1#P0400", "g-art-1#P0400/*", "g-art-1#P0200"]);

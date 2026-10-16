@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { EnumDef } from "@/domain/catalog";
-import { indexTree, nodeBuilders, sequentialIds } from "@/domain/document";
+import { indexTree, nodeBuilders, sequentialIds, type ForBlockNode } from "@/domain/document";
 
 import { currentPlanOf, loopChoices, loopsAround, repeatChoices, sourceOfValue, sourceValue } from "./repeatSources";
 
@@ -65,5 +65,20 @@ describe("반복 원천 고르기 (ADR-0077 · 기능/문면 §4.3)", () => {
     expect(currentPlanOf(loopsAround(ix, plain.id))).toBeUndefined();
     outer.alias = "적용종마다";
     expect(currentPlanOf(loopsAround(ix, item.id))).toEqual({ name: "적용종마다" });
+  });
+});
+
+describe("담보 트리 원천 고르기 (ADR-0087 결정 5)", () => {
+  it("담보약관 반복 밖이면 트리 원천 둘이 맨 앞, 보통약관에는 없다", () => {
+    const special = repeatChoices({ depth: 0, hasCoverage: true }).map((c) => c.label);
+    expect(special.slice(0, 2)).toEqual(["세부보장마다", "세부보장 › 급부마다"]);
+    expect(repeatChoices({ depth: 0 }).some((c) => c.label === "세부보장마다")).toBe(false);
+  });
+
+  it("세부보장마다 안에는 「현재 세부보장의 급부마다」만 · 종 반복 안에는 트리 원천이 없다", () => {
+    const outer = { kind: "forBlock", id: "o", source: { kind: "subCoverages" }, children: [] } as unknown as ForBlockNode;
+    expect(repeatChoices({ outer, depth: 1, hasCoverage: true }).map((c) => c.label)).toEqual(["현재 세부보장의 급부마다"]);
+    const plan = { kind: "forBlock", id: "p", source: { kind: "planOptions", form: "waiver" }, children: [] } as unknown as ForBlockNode;
+    expect(repeatChoices({ outer: plan, depth: 1, hasCoverage: true }).some((c) => c.source.kind === "benefitsOfCurrent")).toBe(false);
   });
 });

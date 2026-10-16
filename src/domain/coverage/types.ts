@@ -1,7 +1,7 @@
 /**
  * 담보 트리 도메인 타입 — 담보 > 세부보장 > 급부 (도메인모델 §1 · 기능/담보 §3.1).
  *
- * - 실체는 **뼈대만** 갖는다: id · 관계(부모) · 순서 · 이름. 그 외 입력값은 전부 구분자 값(공용 값 저장소).
+ * - 실체는 **뼈대만** 갖는다: id · 관계(부모) · 순서 · 이름 · 노드 키(세부보장 `01` · 급부 `1` — 문면이 가리키는 정체, ADR-0087). 그 외 입력값은 전부 구분자 값(공용 값 저장소).
  * - 이름은 뼈대 속성 — 스냅샷 비대상, 식에서는 내장 경로 `builtin.<레벨>.name` 으로 읽는다.
  * - 순서(order)는 데이터다 — 형제 배열의 순서 = 문면 수록 순서 = 반복·집계 순회 순서. 0부터 빈틈 없이.
  * - 문면(담보약관) 문서는 B3 document 영역 소유 — 여기에는 `documentId` 자리만 둔다.
@@ -10,12 +10,16 @@ import type { Code, Id } from "../types";
 
 export interface Benefit {
   id: Id;
+  /** 노드 키 `1` · `2` … — 그 세부보장 안 유일 · 불변 · 순서와 무관 (ADR-0087 결정 2, `keys.ts`). */
+  key: string;
   name: string;
   order: number;
 }
 
 export interface SubCoverage {
   id: Id;
+  /** 노드 키 `01` · `02` … — 담보 안 유일 · 불변 · 순서와 무관 (ADR-0087 결정 2, `keys.ts`). */
+  key: string;
   name: string;
   order: number;
   /** order 오름차순. 최소 1개 (최소 구조). */
@@ -59,6 +63,8 @@ export interface CoverageNode extends CoverageNodeRef {
   name: string;
   /** 자기 자신을 뺀 조상들 (담보부터). 담보 노드면 []. */
   ancestors: CoverageNodeRef[];
+  /** 세부보장 `01` · 급부 `01.2`. 담보 뿌리는 없음. */
+  keyPath?: string;
 }
 
 // ───────────────────────────── 생성 입력 ─────────────────────────────

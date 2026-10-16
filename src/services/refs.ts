@@ -158,6 +158,11 @@ interface DocumentRead {
  * 문서(와 조)가 읽는 구분자·필드·담보속성 자리 전부. 함수조항 참조는 그 본문의 참조로, 파생 참조는 그 식의 참조로 펼친다
  * (함수조항 인자에 연결한 구분자는 사용처 문맥에서 해소되므로 사용처의 값 자리를 읽는 것이다 — 사용처 연결 · 기본 연결, ADR-0076).
  */
+/** 읽는 자리의 정체 — 문서 · 노드 경로 · refPath. */
+function spotOf(at: Coordinate): string {
+  return `${at.documentId ?? ""}|${(at.nodePath ?? []).join("/")}|${at.refPath ?? ""}`;
+}
+
 function documentReads(graph: RefGraph, doc: RefNodeKey): DocumentRead[] {
   const out: DocumentRead[] = [];
   const expand = (edge: RefEdge, at: Coordinate, visited: Set<string>): void => {
@@ -180,10 +185,26 @@ function documentReads(graph: RefGraph, doc: RefNodeKey): DocumentRead[] {
       for (const ce of referencesFrom(graph, e.to, { via: ["defaultBinding"] })) if (ce.param === undefined || e.bindings?.[ce.param] === undefined) expand(ce, e.at, new Set());
     }
   }
+  // 조 참조 키 한정(ADR-0087 결정 10)은 담보 노드 간선(nodeQualifier)만 낸다 — 식 · 인자 연결의 한정자는 같은 자리의 구분자 간선으로 이미 셌다
+  const seen = new Set(out.map((r) => spotOf(r.at)));
+  for (const e of referencesFrom(graph, doc, { via: ["nodeQualifier"] })) if (!seen.has(spotOf(e.at))) out.push({ target: e.to, at: e.at });
   return out;
 }
 
 /** 담보의 문서 노드들 (담보 1 : 문서 1 이지만 구조상 목록). */
+/** 한정 참조 경로(refPath)의 키 경로 — 마지막 「@」 뒤 (`D0007@01.2` · 인자 연결 `C0001.arg.감액@01`, ADR-0087). */
+export function qualifierPathOf(refPath: string): string {
+  return refPath.slice(refPath.lastIndexOf("@") + 1);
+}
+
+/** 담보 하나의 키 경로 → 세부보장 · 급부 노드 키. 키 경로는 문자열 그대로 비교한다. */
+function coverageKeyPaths(graph: RefGraph, coverageId: Id): Map<string, RefNodeKey> {
+  const root = nodeKey({ kind: "coverageNode", level: "coverage", id: coverageId });
+  const out = new Map<string, RefNodeKey>();
+  for (const n of graph.nodes.values()) if (n.key.kind === "coverageNode" && n.keyPath !== undefined && ancestorKeys(graph, n.key).includes(root)) out.set(n.keyPath, n.key);
+  return out;
+}
+
 function documentsOfCoverage(graph: RefGraph, coverageId: Id): RefNodeKey[] {
   const out: RefNodeKey[] = [];
   for (const n of graph.nodes.values()) if (n.key.kind === "document" && n.detail === "special" && n.ownerId === coverageId) out.push(n.key);
@@ -265,18 +286,20 @@ export function coverageUsageSource(db: Db): CoverageUsageSource {
         return out;
       }
       // 세부보장·급부 삭제 — 그 레벨(이하) 값 자리를 읽는 곳 (담보 문맥의 집계·조건식·슬롯).
-      // 노드 한정자 `D@노드`(ADR-0066)는 그 노드 문맥에서만 평가하므로, 가리킨 노드가 지우는 노드(또는 그 하위)일 때만 사용처다.
+      // 노드 한정자 `D@키경로`(ADR-0066 · ADR-0087)는 그 노드 문맥에서만 평가하므로, 가리킨 노드가 지우는 노드(또는 그 하위)일 때만 사용처다.
+      // 키 경로는 문서마다 뜻이 달라(두 담보약관의 `@01`) 문서의 담보에서 푼다 — 여기 문서는 모두 이 담보의 담보약관이라 이 담보의 키 경로 표 하나로 푼다.
+      // 문서 조건식뿐 아니라 그 문서가 쓰는 함수조항 본문 · 파생 구분자 식의 한정자도 이 문맥이다 (그래프의 nodeQualifier 간선은 문서 자리에만 난다).
       const levels = LEVELS_BELOW[query.node.level];
       const deleted = nodeKey({ kind: "coverageNode", level: query.node.level, id: query.node.id });
-      /** 한정 참조 경로(`D@노드`) → 그래프가 정한 담보 노드 키. 간선이 없으면(노드·구분자 둘 다 미상) 사용처로 치지 않는다. */
-      const qualifierTargets = new Map<string, RefNodeKey>();
-      for (const e of graph.edges) if (e.via === "nodeQualifier" && e.at.refPath !== undefined) qualifierTargets.set(e.at.refPath, e.to);
+      const byPath = coverageKeyPaths(graph, query.coverageId);
       const isQualified = (refPath: string | undefined) => refPath !== undefined && refPath.includes("@");
       return docs.flatMap((d) =>
         documentReads(graph, d)
           .filter((r) => {
             if (isQualified(r.at.refPath)) {
-              const target = qualifierTargets.get(r.at.refPath!);
+              const path = qualifierPathOf(r.at.refPath!);
+              if (query.survivingPaths?.has(path)) return false; // 같은 저장의 새 노드가 그 키를 다시 받는다 (ADR-0087 결정 2)
+              const target = byPath.get(path);
               return target !== undefined && ancestorKeys(graph, target).includes(deleted);
             }
             const level = graph.nodes.get(nodeKey(r.target))?.level;
@@ -310,6 +333,7 @@ export function clauseUsageSource(db: Db): ClauseUsageSource {
           selection: e.options ?? {},
           ...(e.bindings ? { bindings: e.bindings } : {}),
           ...(e.preset !== undefined ? { preset: e.preset } : {}),
+          ...(e.treeLoopLevel ? { treeLoopLevel: e.treeLoopLevel } : {}),
         });
       }
       return out;

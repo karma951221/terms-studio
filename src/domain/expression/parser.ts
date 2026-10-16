@@ -9,7 +9,7 @@
  *   unary    := 'not' unary | primary
  *   primary  := literal | aggregate | ref | '(' expr ')'
  *   aggregate:= aggOp '(' path ')'
- *   path     := ident ('@' nodeId)?                    — 구분자 코드 (문면이 쓰는 참조). '@' 는 구분자에만 (ADR-0066 §1)
+ *   path     := ident ('@' keyPath)?                    — 구분자 코드 (문면이 쓰는 참조). '@' 는 구분자에만 (ADR-0066 §1 · 키 경로 ADR-0087 결정 3)
  *             | ident '.' ident                        — 마스터 필드 (폼키.필드키 · 구분자 식이 쓰는 참조)
  *             | 'builtin' '.' level '.' ident
  *             | 'attr' '.' ident
@@ -26,6 +26,7 @@
  * `exist/notexist(attr.X)` 와 `attr.X = / ≠ '문자열'` 두 형태만 남는다.
  */
 
+import { NODE_KEY_PATH } from "../coverage/keys";
 import { ATTACH_LEVELS, reject, ok } from "../types";
 import type { AttachLevel, Coordinate, Issue, Result } from "../types";
 import { AGGREGATE_OPS, METHOD_OPS, refPath } from "./ast";
@@ -67,7 +68,7 @@ type Token =
   | { type: "date"; value: string; pos: number }
   | { type: "op"; text: CompareOp; pos: number }
   | { type: "punct"; text: "(" | ")" | "." | ","; pos: number }
-  | { type: "node"; id: string; pos: number }
+  | { type: "node"; path: string; pos: number }
   | { type: "eof"; pos: number };
 
 /** 문법 오류. 파서 내부에서만 던지고 `parse` 가 Result 로 바꾼다. */
@@ -163,12 +164,16 @@ function tokenize(src: string): Token[] {
       i = j;
       continue;
     }
-    // 노드 한정자 @<id> — id 는 uuid 모양(영숫자 · 밑줄 · 하이픈). 구분자 참조 뒤에만 뜻이 있다 (파서가 본다).
+    // 노드 한정자 @<키 경로> — 세부보장 01 · 급부 01.2 (ADR-0087 결정 3). 구분자 참조 뒤에만 뜻이 있다 (파서가 본다).
     if (ch === "@") {
       let j = i + 1;
-      while (j < src.length && /[A-Za-z0-9_-]/.test(src[j])) j += 1;
-      if (j === i + 1) throw new SyntaxFailure("'@' 뒤에는 노드 id 가 와야 합니다", i);
-      tokens.push({ type: "node", id: src.slice(i + 1, j), pos: i });
+      while (j < src.length && /[A-Za-z0-9_.-]/.test(src[j])) j += 1;
+      const path = src.slice(i + 1, j);
+      if (path === "") throw new SyntaxFailure("'@' 뒤에는 노드 키 경로(세부보장 01 · 급부 01.2)가 와야 합니다", i);
+      if (!NODE_KEY_PATH.test(path)) {
+        throw new SyntaxFailure(`'@${path}' 는 노드 키 경로가 아닙니다 — 세부보장 01 · 급부 01.2 꼴 (옛 노드 id 면 조건을 다시 고른다)`, i);
+      }
+      tokens.push({ type: "node", path, pos: i });
       i = j;
       continue;
     }
@@ -318,7 +323,7 @@ class Parser {
       case "eof":
         throw new SyntaxFailure("식이 끝나기 전에 피연산자가 필요합니다", t.pos);
       case "node":
-        throw new SyntaxFailure(`노드 한정자 '@${t.id}' 는 구분자 참조 뒤에만 올 수 있습니다`, t.pos);
+        throw new SyntaxFailure(`노드 한정자 '@${t.path}' 는 구분자 참조 뒤에만 올 수 있습니다`, t.pos);
       case "ident":
         return this.parseIdentStart(t);
     }
@@ -453,9 +458,9 @@ class Parser {
     if (q.type === "node") {
       this.next();
       if (ref.kind !== "discriminator") {
-        throw new SyntaxFailure(`노드 한정자 @${q.id} 는 구분자 참조에만 붙일 수 있습니다 (${refPath(ref)} 불가)`, q.pos);
+        throw new SyntaxFailure(`노드 한정자 @${q.path} 는 구분자 참조에만 붙일 수 있습니다 (${refPath(ref)} 불가)`, q.pos);
       }
-      return { ...ref, node: { id: q.id } };
+      return { ...ref, node: { path: q.path } };
     }
     return ref;
   }
@@ -475,7 +480,7 @@ function describe(t: Token): string {
     case "punct":
       return `'${t.text}'`;
     case "node":
-      return `'@${t.id}'`;
+      return `'@${t.path}'`;
     case "eof":
       return "식의 끝";
   }

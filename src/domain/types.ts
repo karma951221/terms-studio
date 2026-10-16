@@ -30,8 +30,10 @@ export const CONNECTOR_REQUIRED_MESSAGE = "조 참조 대상이 둘 이상이면
 /**
  * 값 한정 참조 (ADR-0077 결정 7) — 「사유 = 해당 값들」(`values` — 고른 열거값 코드) · 「사유 = 현재 값」(`current` — 참조 자리를 감싼
  * 반복 블록 id, 원소가 열거값인 반복). 대상은 열거값 원소 반복 안(또는 그 반복 블록)의 노드여야 하고, 조립 뒤 0개면 오류다.
+ * `keys` = 담보 트리 반복으로 생긴 노드를 노드 키로 좁힌다 — 세부보장 키(`01`)는 그 아래 급부 전부, 급부는 키 경로(`01.2`) (ADR-0087 결정 10).
+ * 담보 트리 반복의 같은 회차는 `current`(감싼 담보 트리 반복 id)로 쓴다.
  */
-export type RefRestrict = { values: Code[] } | { current: Id };
+export type RefRestrict = { values: Code[] } | { current: Id } | { keys: string[] };
 
 export const CONNECTOR_REPEAT_MESSAGE = "반복 블록 안 대상은 펼치면 여러 번호가 될 수 있어 연결어를 고르세요 (및 · 또는)";
 export function isReferenceConnector(value: unknown): value is ReferenceConnector {
@@ -124,7 +126,7 @@ export const ATTACH_LEVEL_LABEL: Record<AttachLevel, string> = {
 
 // ───────────────────────────── dict — 구조 읽기 규칙 (ADR-0070) ─────────────────────────────
 
-/** dict 의 key 규칙 — 구조 key 는 문맥 트리의 자식 노드(id). enum 은 자리만 (ADR-0070 결정 7). */
+/** dict 의 key 규칙 — 구조 key 는 문맥 트리의 자식 노드(노드 키 — ADR-0087). enum 은 자리만 (ADR-0070 결정 7). */
 export type DictKeyRule =
   | { kind: "node"; level: Exclude<AttachLevel, "product"> }
   | { kind: "enum"; enumCode: Code };

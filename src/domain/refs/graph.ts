@@ -14,8 +14,8 @@
  *
  * 식 안의 `attr.X = '값'` · `<enum 자리> = '코드'` 비교는 리터럴까지 읽어 유효값·enum 값 간선을 낸다
  * (담보속성 유효값 · enum 값 삭제 영향의 재료). 문법이 깨진 식은 간선을 내지 않는다.
- * 구분자 참조의 노드 한정자 `D@노드`(ADR-0066)는 구분자 간선에 더해 담보 노드로 가는 `nodeQualifier` 간선을 낸다 —
- * 노드 삭제 영향·끊어진 참조의 재료. 키의 레벨은 담보 트리에서 찾고, 노드가 사라졌으면 구분자 레벨로 둔다
+ * 구분자 참조의 노드 한정자 `D@<키 경로>`(ADR-0066 · ADR-0087 결정 3)는 구분자 간선에 더해 담보 노드로 가는 `nodeQualifier` 간선을 낸다 —
+ * 노드 삭제 영향·끊어진 참조의 재료. 키 경로는 문서의 담보 트리에서 노드로 풀고 키의 레벨도 거기서 찾으며, 노드가 사라졌으면 구분자 레벨로 둔다
  * (ADR-0066 §3: 둘은 같아야 한다).
  *
  * 조 참조(articleRef)의 대상은 조 또는 조 + 항·호·목의 P코드(ADR-0072 결정 3 · 8)이고, 문서에는 **조만** `article:` 노드로
@@ -183,8 +183,8 @@ class Builder {
   readonly edges: RefEdge[] = [];
   /** 값 자리 경로 → enum 코드 (enum 값 리터럴 간선용). */
   readonly enumSlots = new Map<string, Code>();
-  /** 담보 노드 id → 레벨 (노드 한정자 키용). */
-  readonly coverageNodeLevels = new Map<Id, CoverageNodeLevel>();
+  /** 담보 id → 키 경로 → 담보 노드 (노드 한정자 간선용, ADR-0087). 키 경로는 문자열 그대로 비교한다. */
+  readonly coverageKeyPaths = new Map<Id, Map<string, { level: CoverageNodeLevel; id: Id }>>();
   /** 구분자 코드 → 레벨 (노드가 사라진 한정자의 키 폴백). */
   readonly discriminatorLevels = new Map<Code, AttachLevel>();
   /** 보통약관 노드 id → 속한 조(documentId·articleId) — 함수조항·문서의 조 참조가 항·호·목을 가리킬 때 조로 올리는 인덱스. 조 자신은 자기 id. */
@@ -203,22 +203,36 @@ class Builder {
     this.edges.push(e);
   }
 
-  /** 노드 한정자 `D@노드` 의 대상 키. 노드 레벨 → 구분자 레벨 순으로 찾고, 둘 다 모르면 undefined (간선 없음). */
-  qualifierKey(code: Code, nodeId: Id): RefNodeKey | undefined {
-    const level = this.coverageNodeLevels.get(nodeId) ?? this.discriminatorLevels.get(code);
-    if (level === undefined || !COVERAGE_NODE_LEVELS.includes(level)) return undefined;
-    return { kind: "coverageNode", level: level as CoverageNodeLevel, id: nodeId };
+  /**
+   * 노드 한정자 `D@키경로` 의 대상 키 — 그 문서의 담보(문맥 담보)에서 푼다 (ADR-0087). 키 경로는 문서마다 뜻이 다르다(두 담보약관의 `@01`).
+   * 담보에 없는 키면 구분자 레벨로 끊어진 자리 키(`담보id@경로`)를 만든다 — 깨진 간선으로 드러난다.
+   * 담보 문맥이 없거나(함수조항 본문 · 구분자 식 — 쓰는 문서마다 푼다) 구분자 레벨도 모르면 undefined (간선 없음).
+   */
+  qualifierKey(code: Code, path: string, coverageId: Id | undefined): RefNodeKey | undefined {
+    if (coverageId === undefined) return undefined;
+    const level = this.discriminatorLevels.get(code);
+    return this.keyPathNode(path, coverageId, level !== undefined && COVERAGE_NODE_LEVELS.includes(level) ? (level as CoverageNodeLevel) : undefined);
   }
 
-  /** 구분자 참조 하나의 노드 한정자 간선 (있을 때만). */
-  qualifier(from: RefNodeKey, ref: Ref, at: Coordinate): void {
+  /** 키 경로의 담보 노드 키 — 담보에 없으면 `missingLevel` 로 끊어진 자리 키(`담보id@경로`), 그것도 없으면 undefined. */
+  keyPathNode(path: string, coverageId: Id, missingLevel: CoverageNodeLevel | undefined): RefNodeKey | undefined {
+    const hit = this.coverageKeyPaths.get(coverageId)?.get(path);
+    if (hit) return { kind: "coverageNode", level: hit.level, id: hit.id };
+    return missingLevel ? { kind: "coverageNode", level: missingLevel, id: `${coverageId}@${path}` } : undefined;
+  }
+
+  /**
+   * 구분자 참조 하나의 노드 한정자 간선 (있을 때만). `at.refPath` 는 사용처 원천이 그 자리를 찾는 열쇠다 —
+   * 키 경로는 마지막 「@」 뒤라(`D0007@01` · 인자 연결 `C0001.arg.감액@01`) 같은 자리의 다른 간선과 같은 refPath 를 쓴다.
+   */
+  qualifier(from: RefNodeKey, ref: Ref, at: Coordinate, coverageId: Id | undefined): void {
     if (ref.kind !== "discriminator" || !ref.node) return;
-    const to = this.qualifierKey(ref.code, ref.node.id);
+    const to = this.qualifierKey(ref.code, ref.node.path, coverageId);
     if (to) this.edge({ from, to, via: "nodeQualifier", at });
   }
 
   /** 식 하나의 참조 간선 전부 — 구분자·필드·담보속성 + 리터럴이 가리키는 유효값·enum 값 + 노드 한정자. */
-  expression(from: RefNodeKey, src: string, via: EdgeVia, at: Coordinate, opts: { slotOnly?: boolean } = {}): void {
+  expression(from: RefNodeKey, src: string, via: EdgeVia, at: Coordinate, opts: { slotOnly?: boolean; coverageId?: Id } = {}): void {
     const parsed = parse(src);
     if (!parsed.ok) return;
     if (opts.slotOnly && parsed.value.kind !== "ref") return;
@@ -226,7 +240,7 @@ class Builder {
       const to = refNodeKey(ref);
       if (!to) continue;
       this.edge({ from, to, via, at: { ...at, refPath: path }, ...(aggregate !== undefined ? { aggregate } : {}) });
-      this.qualifier(from, ref, { ...at, refPath: path });
+      this.qualifier(from, ref, { ...at, refPath: path }, opts.coverageId);
     }
     for (const { ref, literal } of literalCompares(parsed.value)) {
       const path = refPath(ref);
@@ -453,13 +467,15 @@ function addDocument(b: Builder, doc: DocumentInput, master?: MasterTree): Map<I
     anchors.set(e.node.id, anchorOf(doc, e.articleId));
   }
   const generalOf = (id: Id): RefNodeKey => ({ kind: "article", documentId: doc.generalDocumentId ?? "", articleId: id });
+  /** 노드 한정자의 문맥 담보 — 담보약관이면 소유 담보 (ADR-0087). */
+  const coverageId = doc.kind === "special" ? doc.ownerId : undefined;
 
   for (const r of collectRefs(doc.tree, base)) {
     const from = anchorOf(doc, r.at.articleId);
     switch (r.kind) {
       case "discriminator":
         b.edge({ from, to: { kind: "discriminator", code: r.code }, via: r.via, at: r.at });
-        if (r.node) b.qualifier(from, { kind: "discriminator", code: r.code, node: r.node }, r.at);
+        if (r.node) b.qualifier(from, { kind: "discriminator", code: r.code, node: r.node }, r.at, coverageId);
         break;
       case "masterField":
         // 문면은 구분자만 본다 (ADR-0037) — 마스터 직접 참조는 그래프에 남겨 사용처 조회가 보게 한다
@@ -474,10 +490,16 @@ function addDocument(b: Builder, doc: DocumentInput, master?: MasterTree): Map<I
         // 프리셋이면 그 프리셋 값이 이 사용처의 실제 연결 · 선택이다 (ADR-0084) — 간선 · 재검사 · 삭제 영향이 그것을 본다
         const def = b.clauses.get(r.clauseCode);
         const used = def && r.preset !== undefined ? presetUsage(def, r) : r;
-        b.edge({ from, to: { kind: "clause", code: r.clauseCode }, via: "clauseRef", at: r.at, options: used.options, ...(used.bindings ? { bindings: used.bindings } : {}), ...(r.preset !== undefined ? { preset: r.preset } : {}) });
+        b.edge({ from, to: { kind: "clause", code: r.clauseCode }, via: "clauseRef", at: r.at, options: used.options, ...(used.bindings ? { bindings: used.bindings } : {}), ...(r.preset !== undefined ? { preset: r.preset } : {}), ...(r.treeLoopLevel ? { treeLoopLevel: r.treeLoopLevel } : {}) });
         // 사용처의 인자 연결 → 구분자 (기본 연결을 바꾼 것만 — 기본 연결은 함수조항의 defaultBinding 간선)
         for (const [param, binding] of Object.entries(used.bindings ?? {})) {
-          if (binding.kind === "discriminator") b.edge({ from, to: { kind: "discriminator", code: binding.code }, via: "binding", at: { ...r.at, refPath: `${r.clauseCode}.arg.${param}` }, param });
+          if (binding.kind !== "discriminator") continue;
+          // 키 경로 연결은 그 담보 노드도 읽는다 — binding · nodeQualifier 간선이 같은 refPath(`C.arg.인자@키경로`)를 써서
+          // 노드 삭제 영향이 레벨이 아니라 키 경로로 센다 (ADR-0087 · 사용처 원천의 qualifierPathOf).
+          const path = binding.node && "path" in binding.node ? binding.node.path : undefined;
+          const at = { ...r.at, refPath: `${r.clauseCode}.arg.${param}${path !== undefined ? `@${path}` : ""}` };
+          b.edge({ from, to: { kind: "discriminator", code: binding.code }, via: "binding", at, param });
+          if (path !== undefined) b.qualifier(from, { kind: "discriminator", code: binding.code, node: { path } }, at, coverageId);
         }
         for (const [optionCode, valueCode] of Object.entries(used.options)) {
           b.edge({ from, to: { kind: "clauseOptionValue", clauseCode: r.clauseCode, optionCode, valueCode }, via: "optionSelect", at: { ...r.at, refPath: `${r.clauseCode}.${optionCode}` } });
@@ -502,6 +524,13 @@ function addDocument(b: Builder, doc: DocumentInput, master?: MasterTree): Map<I
         }
         b.edge({ from, to, via: "articleRef", at: r.at });
         restrictEdges(b, from, enumCode, r.values, r.at);
+        // 키 한정(ADR-0087 결정 10)은 고른 키의 담보 노드를 읽는다 — refPath `대상열쇠@키` 라 노드 삭제 영향이 키로 센다(qualifierPathOf)
+        if (r.scope === "self" && coverageId !== undefined) {
+          for (const k of r.keys ?? []) {
+            const node = b.keyPathNode(k, coverageId, k.includes(".") ? "benefit" : "subCoverage");
+            if (node) b.edge({ from, to: node, via: "nodeQualifier", at: { ...r.at, refPath: `${r.at.refPath ?? k}@${k}` } });
+          }
+        }
         break;
       }
       case "appendix":
@@ -543,11 +572,19 @@ function addDocument(b: Builder, doc: DocumentInput, master?: MasterTree): Map<I
 
 function addCoverage(b: Builder, tree: Coverage): void {
   const root: RefNodeKey = { kind: "coverageNode", level: "coverage", id: tree.id };
+  const paths = new Map<string, { level: CoverageNodeLevel; id: Id }>();
   for (const n of nodesOf(tree)) {
     const parent = n.ancestors.at(-1);
-    b.node({ key: { kind: "coverageNode", level: n.level, id: n.id }, label: n.name, level: n.level, ...(parent ? { parent: { kind: "coverageNode", level: parent.level, id: parent.id } } : {}) });
-    b.coverageNodeLevels.set(n.id, n.level);
+    b.node({
+      key: { kind: "coverageNode", level: n.level, id: n.id },
+      label: n.name,
+      level: n.level,
+      ...(parent ? { parent: { kind: "coverageNode", level: parent.level, id: parent.id } } : {}),
+      ...(n.keyPath !== undefined ? { keyPath: n.keyPath } : {}),
+    });
+    if (n.keyPath !== undefined) paths.set(n.keyPath, { level: n.level, id: n.id });
   }
+  b.coverageKeyPaths.set(tree.id, paths);
   if (tree.documentId !== undefined) {
     b.edge({ from: root, to: { kind: "document", id: tree.documentId }, via: "document", at: { document: "coverageMaster", ownerId: tree.id, ownerName: tree.name } });
   }

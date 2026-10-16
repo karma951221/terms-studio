@@ -105,3 +105,29 @@ describe("coverage repo — 담보 · 세부보장 · 급부 (PGlite)", () => {
     expect(await coverageIdOfNode(t.db, { level: "subCoverage", id: surgery.subCoverages[0].id })).toBeUndefined();
   });
 });
+
+describe("노드 키 저장 (ADR-0087)", () => {
+  it("저장한 키를 그대로 읽고, 지운 키를 새 노드가 같은 저장에서 다시 받을 수 있다", async () => {
+    const t = await createTestDb();
+    try {
+      const tree: Coverage = {
+        id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", code: "COV000001", name: "암", description: "",
+        subCoverages: [
+          { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1", key: "01", name: "A", order: 0, benefits: [{ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaab1", key: "1", name: "a", order: 0 }] },
+          { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2", key: "02", name: "B", order: 1, benefits: [{ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaab2", key: "1", name: "b", order: 0 }] },
+        ],
+      };
+      await insertCoverage(t.db, tree, who);
+      const next: Coverage = {
+        ...tree,
+        subCoverages: [tree.subCoverages[0], { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3", key: "02", name: "C", order: 1, benefits: [{ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaab3", key: "1", name: "c", order: 0 }] }],
+      };
+      await saveCoverage(t.db, next, who);
+      const loaded = await loadCoverage(t.db, tree.id);
+      expect(loaded?.subCoverages.map((s) => [s.name, s.key])).toEqual([["A", "01"], ["C", "02"]]);
+      expect(loaded?.subCoverages[1].benefits[0].key).toBe("1");
+    } finally {
+      await t.close();
+    }
+  });
+});

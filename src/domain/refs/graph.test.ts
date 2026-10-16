@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Discriminator, EnumDef } from "../catalog";
-import type { Clause } from "../clause";
+import type { Bindings, Clause } from "../clause";
 import type { Coverage } from "../coverage";
 import { surgeryFixture } from "../document";
 import type { MasterForm } from "../master";
@@ -56,7 +56,7 @@ const 준용: Clause = {
 const 갱신유형: AttributeKind = { code: "A0001", label: "갱신유형", order: 0, values: [{ code: "1", label: "갱신형", fragment: "" }, { code: "2", label: "비갱신형", fragment: "" }] };
 
 const fx = surgeryFixture();
-const 수술비: Coverage = { id: fx.coverageId, name: "수술비", description: "", documentId: "doc-s", subCoverages: [{ id: "sub-1", name: "1종수술", order: 0, benefits: [{ id: "ben-1", name: "수술보험금", order: 0 }] }] };
+const 수술비: Coverage = { id: fx.coverageId, name: "수술비", description: "", documentId: "doc-s", subCoverages: [{ id: "sub-1", key: "01", name: "1종수술", order: 0, benefits: [{ id: "ben-1", key: "1", name: "수술보험금", order: 0 }] }] };
 const 담보약관: DocumentInput = { id: "doc-s", kind: "special", ownerId: fx.coverageId, title: fx.special.title, generalDocumentId: "doc-g", tree: fx.special };
 const 보통약관: DocumentInput = { id: "doc-g", kind: "general", title: fx.general.title, tree: fx.general };
 const 상품: ProductInput = {
@@ -211,7 +211,7 @@ describe("refs 그래프 — 구분자 참조의 노드 한정자 `@노드` (ADR
           id: "q-art",
           kind: "article",
           title: "지급",
-          children: [{ id: "q-par", kind: "paragraph", children: [{ id: "q-cond", kind: "inlineCond", branches: [{ id: "q-if", when: "D0003@ben-1 > 0", children: [{ id: "q-t", kind: "text", text: "지급" }] }] }] }],
+          children: [{ id: "q-par", kind: "paragraph", children: [{ id: "q-cond", kind: "inlineCond", branches: [{ id: "q-if", when: "D0003@01.1 > 0", children: [{ id: "q-t", kind: "text", text: "지급" }] }] }] }],
         },
       ],
     },
@@ -220,20 +220,20 @@ describe("refs 그래프 — 구분자 참조의 노드 한정자 `@노드` (ADR
     code: "C009",
     label: "한정자 문구",
     mode: "inline",
-    body: [{ id: "c9-cond", kind: "inlineCond", branches: [{ id: "c9-b1", when: "D0003@ben-1 > 0", children: [{ id: "c9-t", kind: "text", text: "지급" }] }] }],
+    body: [{ id: "c9-cond", kind: "inlineCond", branches: [{ id: "c9-b1", when: "D0003@01.1 > 0", children: [{ id: "c9-t", kind: "text", text: "지급" }] }] }],
     options: [],
     required: { discriminators: ["D0003"], attributes: [] },
   };
-  const 파생_한정자: Discriminator = { code: "D0010", label: "1종 지급률", description: "", level: "coverage", expression: "D0003@ben-1" };
+  const 파생_한정자: Discriminator = { code: "D0010", label: "1종 지급률", description: "", level: "coverage", expression: "D0003@01.1" };
 
   const withQualifiers = (coverages: Coverage[] = [수술비]) =>
     buildGraph({ discriminators: [지급률, 파생_한정자], clauses: [공용_한정자], documents: [담보약관_한정자], coverages, master });
 
-  it("문서 조건식 · 함수조항 본문 · 구분자 식의 `D@노드` 는 구분자 간선에 더해 담보 노드로 가는 nodeQualifier 간선을 낸다", () => {
+  it("문서 조건식의 `D@키경로` 는 구분자 간선에 더해 그 문서 담보의 노드로 가는 nodeQualifier 간선을 낸다 — 담보 문맥이 없는 함수조항 본문 · 구분자 식은 내지 않는다 (ADR-0087)", () => {
     const g = withQualifiers();
-    const es = edgesTo(g, "coverageNode:benefit/ben-1").filter((e) => e.via === "nodeQualifier");
-    expect(es.map((e) => nodeKey(e.from)).sort()).toEqual(["article:doc-q/q-art", "clause:C009", "discriminator:D0010"].sort());
-    for (const e of es) expect(e.at.refPath).toBe("D0003@ben-1");
+    const es = g.edges.filter((e) => e.via === "nodeQualifier");
+    expect(es.map((e) => [nodeKey(e.from), nodeKey(e.to)])).toEqual([["article:doc-q/q-art", "coverageNode:benefit/ben-1"]]);
+    expect(es[0].at.refPath).toBe("D0003@01.1");
     // 구분자 간선은 그대로
     expect(edgesTo(g, "discriminator:D0003").map((e) => nodeKey(e.from)).sort()).toEqual(["article:doc-q/q-art", "clause:C009", "discriminator:D0010"].sort());
   });
@@ -241,22 +241,52 @@ describe("refs 그래프 — 구분자 참조의 노드 한정자 `@노드` (ADR
   it("문서 한정자 간선의 좌표는 조건식 자리 그대로다 (문서·조·가지 경로)", () => {
     const g = withQualifiers();
     const e = edgesTo(g, "coverageNode:benefit/ben-1").find((x) => x.via === "nodeQualifier" && x.from.kind === "article")!;
-    expect(e.at).toMatchObject({ document: "special", ownerId: fx.coverageId, articleId: "q-art", refPath: "D0003@ben-1" });
+    expect(e.at).toMatchObject({ document: "special", ownerId: fx.coverageId, documentId: "doc-q", articleId: "q-art", refPath: "D0003@01.1" });
     expect(e.at.nodePath).toContain("q-if");
   });
 
-  it("가리킨 노드가 사라지면 구분자 레벨로 키를 만들어 깨진 간선으로 남는다", () => {
-    const 급부없음: Coverage = { ...수술비, subCoverages: [{ id: "sub-1", name: "1종수술", order: 0, benefits: [] }] };
+  it("가리킨 키가 담보에 없으면 구분자 레벨로 끊어진 자리 키(`담보id@경로`)를 만들어 깨진 간선으로 남는다", () => {
+    const 급부없음: Coverage = { ...수술비, subCoverages: [{ id: "sub-1", key: "01", name: "1종수술", order: 0, benefits: [] }] };
     const g = withQualifiers([급부없음]);
-    const es = edgesTo(g, "coverageNode:benefit/ben-1").filter((e) => e.via === "nodeQualifier");
-    expect(es).toHaveLength(3);
-    expect(g.nodes.has("coverageNode:benefit/ben-1")).toBe(false);
+    const missing = `coverageNode:benefit/${fx.coverageId}@01.1`;
+    expect(edgesTo(g, missing).filter((e) => e.via === "nodeQualifier")).toHaveLength(1);
+    expect(brokenEdges(g).filter((e) => e.via === "nodeQualifier").map((e) => nodeKey(e.to))).toEqual([missing]);
   });
 
   it("노드도 구분자도 모르면 한정자 간선을 내지 않는다 (구분자 간선이 이미 깨져서 드러난다)", () => {
     const g = buildGraph({ documents: [담보약관_한정자], master });
     expect(g.edges.filter((e) => e.via === "nodeQualifier")).toEqual([]);
     expect(edgesTo(g, "discriminator:D0003")).toHaveLength(1);
+  });
+});
+
+/** 세부보장만 둔 담보 트리 — 세부보장마다 급부 하나(키 1). */
+function coverageTree(id: string, subs: { id: string; key: string }[]): Coverage {
+  return { id, name: id, description: "", subCoverages: subs.map((s, i) => ({ id: s.id, key: s.key, name: s.id, order: i, benefits: [{ id: `${s.id}-b`, key: "1", name: `${s.id} 급부`, order: 0 }] })) };
+}
+
+/** 조 하나 · 조건 항 하나짜리 담보약관. */
+function specialDoc(id: string, coverageId: string, when: string): DocumentInput {
+  return {
+    id,
+    kind: "special",
+    ownerId: coverageId,
+    title: id,
+    tree: { id: `${id}-root`, kind: "document", title: id, children: [{ id: `${id}-art`, kind: "article", title: "지급", children: [{ id: `${id}-par`, kind: "paragraph", children: [{ id: `${id}-cond`, kind: "inlineCond", branches: [{ id: `${id}-if`, when, children: [{ id: `${id}-t`, kind: "text", text: "지급" }] }] }] }] }] },
+  };
+}
+
+describe("노드 한정자 간선 — 문서의 담보에서 키 경로를 푼다 (ADR-0087)", () => {
+  it("두 담보약관의 D0007@01 은 각자 제 담보의 01 을 가리킨다", () => {
+    const covA = coverageTree("covA", [{ id: "a1", key: "01" }]);
+    const covB = coverageTree("covB", [{ id: "b1", key: "01" }]);
+    const g = buildGraph({
+      coverages: [covA, covB],
+      documents: [specialDoc("docA", "covA", "D0007@01 = true"), specialDoc("docB", "covB", "D0007@01 = true")],
+      discriminators: [{ code: "D0007", label: "감액", description: "", level: "subCoverage", expression: "true" }],
+    });
+    const targets = g.edges.filter((e) => e.via === "nodeQualifier").map((e) => [e.at.documentId, (e.to as { id: string }).id]);
+    expect(targets).toEqual([["docA", "a1"], ["docB", "b1"]]);
   });
 });
 
@@ -406,6 +436,85 @@ describe("refs 그래프 — 정적 마스터 박스 (최종 결정 9)", () => {
   it("없는 박스를 가리키면 깨진 간선이다", () => {
     const g = buildGraph({ boxes: [], documents: [doc] });
     expect(brokenEdges(g).filter((e) => e.via === "boxRef").map((e) => nodeKey(e.to))).toEqual(["box:BX000001"]);
+  });
+});
+
+/** 인자 하나(boolean, 기본 연결 없음)짜리 블록 함수조항. */
+function clauseWithParam(code: string, param: string): Clause {
+  return {
+    code,
+    label: code,
+    mode: "block",
+    body: [{ id: `${code}-p`, kind: "paragraph", children: [{ id: `${code}-c`, kind: "inlineCond", branches: [{ id: `${code}-b`, when: `arg.${param}`, children: [{ id: `${code}-t`, kind: "text", text: "감액" }] }] }] }],
+    options: [],
+    params: [{ name: param, type: { kind: "boolean" } }],
+    required: { discriminators: [], attributes: [] },
+  };
+}
+
+/** 조 하나에 함수조항 참조(C0001) 하나를 둔 담보약관 — 인자 연결 `bindings`. */
+function specialDocWithClause(id: string, coverageId: string, bindings: Bindings): DocumentInput {
+  return {
+    id,
+    kind: "special",
+    ownerId: coverageId,
+    title: id,
+    tree: { id: `${id}-root`, kind: "document", title: id, children: [{ id: `${id}-art`, kind: "article", title: "감액", children: [{ id: `${id}-ref`, kind: "clauseBlockRef", clauseCode: "C0001", options: {}, bindings }] }] },
+  };
+}
+
+describe("인자 연결의 키 경로 — 관계 그래프 (ADR-0087)", () => {
+  it("키 경로 연결은 구분자 간선과 함께 그 담보 노드로 가는 nodeQualifier 간선을 낸다", () => {
+    const cov = coverageTree("covA", [{ id: "a1", key: "01" }]);
+    const g = buildGraph({ coverages: [cov], clauses: [clauseWithParam("C0001", "감액")], documents: [specialDocWithClause("docA", "covA", { 감액: { kind: "discriminator", code: "D0007", node: { path: "01" } } })], discriminators: [{ code: "D0007", label: "감액", description: "", level: "subCoverage", expression: "true" }] });
+    expect(g.edges.some((e) => e.via === "nodeQualifier" && (e.to as { id: string }).id === "a1")).toBe(true);
+  });
+
+  it("binding 간선과 nodeQualifier 간선은 같은 refPath `C.arg.인자@키경로` 를 쓴다 — 삭제 영향이 키 경로로 센다 (H5)", () => {
+    const cov = coverageTree("covA", [{ id: "a1", key: "01" }]);
+    const g = buildGraph({ coverages: [cov], clauses: [clauseWithParam("C0001", "감액")], documents: [specialDocWithClause("docA", "covA", { 감액: { kind: "discriminator", code: "D0007", node: { path: "01" } } })], discriminators: [{ code: "D0007", label: "감액", description: "", level: "subCoverage", expression: "true" }] });
+    expect(g.edges.filter((e) => e.via === "binding" || e.via === "nodeQualifier").map((e) => [e.via, e.at.refPath])).toEqual([
+      ["binding", "C0001.arg.감액@01"],
+      ["nodeQualifier", "C0001.arg.감액@01"],
+    ]);
+  });
+
+  it("담보 트리 반복 안 함수조항 참조의 clauseRef 간선은 그 반복 레벨(treeLoopLevel)을 싣는다 — 재검사의 재료", () => {
+    const doc = specialDocWithClause("docA", "covA", {});
+    const art = doc.tree.children![0] as { children: unknown[] };
+    art.children = [{ id: "loop", kind: "forBlock", source: { kind: "subCoverages" }, children: art.children }];
+    const g = buildGraph({ coverages: [coverageTree("covA", [{ id: "a1", key: "01" }])], clauses: [clauseWithParam("C0001", "감액")], documents: [doc, specialDocWithClause("docB", "covA", {})] });
+    expect(g.edges.filter((e) => e.via === "clauseRef").map((e) => [e.at.documentId, e.treeLoopLevel])).toEqual([["docA", "subCoverage"], ["docB", undefined]]);
+  });
+});
+
+describe("조 참조 키 한정 — 키마다 그 문서 담보의 노드로 가는 nodeQualifier 간선 (ADR-0087 결정 10)", () => {
+  /** 「세부보장마다」 반복 안 항 P0200 + 반복 밖에서 그 항을 키로 좁혀 가리키는 조 참조. */
+  const keyedDoc = (keys: string[]): DocumentInput => ({
+    id: "docK",
+    kind: "special",
+    ownerId: "covK",
+    title: "키 한정",
+    tree: {
+      id: "docK",
+      kind: "document",
+      title: "키 한정",
+      children: [{ id: "art", kind: "article", title: "지급", children: [
+        { id: "loop", kind: "forBlock", code: "P0100", source: { kind: "subCoverages" }, children: [{ id: "p", kind: "paragraph", code: "P0200", children: [{ id: "pt", kind: "text", text: "지급" }] }] },
+        { id: "q", kind: "paragraph", code: "P0300", children: [{ id: "r", kind: "articleRef", scope: "self", connector: "및", targets: [{ articleId: "art", code: "P0200", restrict: { keys } }] }] },
+      ] }],
+    } as never,
+  });
+
+  it("키마다 간선 하나 — refPath `대상열쇠@키` · 없는 키는 끊어진 자리 키(`담보id@키`)로 깨진 간선", () => {
+    const g = buildGraph({ coverages: [coverageTree("covK", [{ id: "s1", key: "01" }, { id: "s2", key: "02" }])], documents: [keyedDoc(["02", "01.1", "09"])] });
+    const es = g.edges.filter((e) => e.via === "nodeQualifier");
+    expect(es.map((e) => [nodeKey(e.to), e.at.refPath])).toEqual([
+      ["coverageNode:subCoverage/s2", "art#P0200@02"],
+      ["coverageNode:benefit/s1-b", "art#P0200@01.1"],
+      ["coverageNode:subCoverage/covK@09", "art#P0200@09"],
+    ]);
+    expect(brokenEdges(g).filter((e) => e.via === "nodeQualifier").map((e) => nodeKey(e.to))).toEqual(["coverageNode:subCoverage/covK@09"]);
   });
 });
 

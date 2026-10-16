@@ -11,10 +11,10 @@ describe("toRows — 팝업이 열 수 있는 모양만 (ADR-0066 §8)", () => {
     expect(toRows(ok("D0009 = true"))).toEqual({ rows: [{ left: { kind: "discriminator", code: "D0009" }, op: "=", right: { kind: "literal", literal: { type: "boolean", value: true } } }], joins: [] });
   });
   it("왼쪽 결합 체인 → 줄 + 접속", () => {
-    const rows = toRows(ok("D0009@n1 = true and D0006 = false or D0005 >= 3"));
+    const rows = toRows(ok("D0009@01 = true and D0006 = false or D0005 >= 3"));
     expect(rows?.rows).toHaveLength(3);
     expect(rows?.joins).toEqual(["and", "or"]);
-    expect(rows?.rows[0].left).toEqual({ kind: "discriminator", code: "D0009", node: { id: "n1" } });
+    expect(rows?.rows[0].left).toEqual({ kind: "discriminator", code: "D0009", node: { path: "01" } });
   });
   it("우변이 구분자여도 된다", () => {
     expect(toRows(ok("D0005 = D0003"))?.rows[0].right).toEqual({ kind: "ref", ref: { kind: "discriminator", code: "D0003" } });
@@ -28,7 +28,7 @@ describe("toRows — 팝업이 열 수 있는 모양만 (ADR-0066 §8)", () => {
 
 describe("toExpr / toSource — 왼쪽 결합 · 왕복", () => {
   it("줄 → 식 → 줄 이 같다", () => {
-    const src = "D0009@n1 = true and D0006 = false or D0005 >= 3";
+    const src = "D0009@01 = true and D0006 = false or D0005 >= 3";
     const rows = toRows(ok(src))!;
     expect(toSource(rows)).toBe(src);
     expect(toRows(toExpr(rows)!)).toEqual(rows);

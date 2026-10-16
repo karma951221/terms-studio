@@ -14,6 +14,7 @@ import { refPath } from "@/domain/expression";
 import { ATTACH_LEVELS, ATTACH_LEVEL_LABEL } from "@/domain/types";
 
 import { DiscriminatorTree } from "./DiscriminatorTree";
+import { qualifiedLabel } from "./rows";
 import type { ConditionContext, CtxDiscriminator } from "./types";
 
 const slotable = (d: CtxDiscriminator) => d.type?.kind === "string" || d.type?.kind === "enum";
@@ -40,15 +41,15 @@ export function slotOptions(context: ConditionContext): ComboOption[] {
   ];
 }
 
-/** 후보에 없는 경로(트리에서 고른 `코드@노드`)의 이름 — 「이름 @노드이름」. 모르는 코드면 undefined(경로 그대로 보인다). */
+/** 후보에 없는 경로(트리에서 고른 `코드@키경로`)의 이름 — 「세부보장 01 · 이름 › 급부 1 · 이름 › 구분자」. 모르는 코드면 undefined(경로 그대로 보인다). */
 export function slotPathLabel(context: ConditionContext, path: string): string | undefined {
   const builtin = PLAN_SLOTS.find((p) => p.path === path);
   if (builtin) return `현재 종 › ${builtin.label}`;
-  const [code, nodeId] = path.split("@");
+  const [code, keyPath] = path.split("@");
   const d = context.discriminators.find((x) => x.code === code);
   if (!d) return undefined;
-  if (!nodeId) return d.label;
-  return `${d.label} @${context.coverage?.nodes.find((n) => n.id === nodeId)?.name ?? "끊어진 노드"}`;
+  if (!keyPath) return d.label;
+  return qualifiedLabel(context, d.label, keyPath);
 }
 
 export function SlotRefInput({ id, name, initial, context }: { id?: string; name: string; initial?: string; context: ConditionContext }) {
