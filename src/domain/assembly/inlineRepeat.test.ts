@@ -123,3 +123,56 @@ describe("인라인 반복 — 블록 반복 안 · 조 제목", () => {
     expect(run({ "opt-type-1": { applies: true, reasons: ["V02"] } }, doc).lines[0]).toBe("제1조(뇌졸중의 정의 및 진단확정)");
   });
 });
+
+describe("인라인 반복 — 같은 글은 한 번만 (2026-10-17 사용자 결정 · 문면 §3.12)", () => {
+  /** V02 의 약관표시명을 V01 과 같은 「암(유사암제외)」로 — E0001 V01 · V02 꼴. */
+  function runSame(plans: Record<Id, WaiverPlan>, doc: DocumentNode) {
+    const base = waiverFixture(doc, plans);
+    const input = {
+      ...base,
+      enums: base.enums.map((e) => (e.code === "E0009" ? { ...e, values: e.values.map((v) => (v.code === "V02" ? { ...v, fields: { ...v.fields, F01: "암(유사암제외)" } } : v)) } : e)),
+    };
+    const booklet = assemble(input, input);
+    return { lines: lines(booklet.general), issues: booklet.issues.filter((i) => i.at.document === "general" && i.severity !== "warning") };
+  }
+  const only = (reasons: string[]) => ({ "opt-type-1": { applies: true, reasons } });
+
+  it("둘이 같은 글이면 하나 — 연결어 없이 「A」", () => {
+    const doc = sentenceDoc([repeat("r", 사유합집합, [slot("s", "builtin.value.F01")]), text("t", "의 경우")]);
+    expect(runSame(only(["V01", "V02"]), doc)).toEqual({ lines: ["제1조(적용)", "  암(유사암제외)의 경우"], issues: [] });
+  });
+
+  it("셋 중 둘이 같으면 「A 및 B」 — 첫 번째 자리를 남기고 순서 유지 · 「또는」 · 「쉼표만」도 같다", () => {
+    const body = (connector: InlineForNode["connector"]) => sentenceDoc([repeat("r", 사유합집합, [slot("s", "builtin.value.F01")], { connector }), text("t", "의 경우")]);
+    expect(runSame(only(["V01", "V02", "V03"]), body("및")).lines[1]).toBe("  암(유사암제외) 및 장해의 경우");
+    expect(runSame(only(["V01", "V02", "V03"]), body("또는")).lines[1]).toBe("  암(유사암제외) 또는 장해의 경우");
+    expect(runSame(only(["V01", "V02", "V03"]), body(",")).lines[1]).toBe("  암(유사암제외), 장해의 경우");
+  });
+
+  it("비교는 조립이 끝난 글 — 본문 글 · 「현재 값」 · 슬롯이 합쳐 같으면 같다, 다르면 둘 다 남는다", () => {
+    const doc = sentenceDoc([repeat("r", 사유합집합, [slot("s", "builtin.value.F01"), text("k", " 진단")]), text("t", "의 경우")]);
+    expect(runSame(only(["V01", "V02", "V03"]), doc).lines[1]).toBe("  암(유사암제외) 진단 및 장해 진단의 경우");
+    expect(run(only(["V01", "V02"]), doc).lines[1]).toBe("  암(유사암제외) 진단 및 뇌졸중 진단의 경우");
+    // 치환 단계에서 글이 되는 슬롯(종마다 같은 값)도 접힌 글로 비교한다
+    const plans = sentenceDoc([repeat("r", 종마다, [slot("s", "waiver.applies")]), text("t", "의 경우")]);
+    expect(run(two, plans).lines[1]).toBe("  예의 경우");
+  });
+
+  it("조 제목도 같은 길 — 조 머리와 그 조를 가리키는 조 참조 라벨에 한 번만", () => {
+    const title: InlineNode[] = [repeat("tr", 정의조대상마다, [slot("ts", "builtin.value.F01")]), text("tt", "의 정의")];
+    const doc: DocumentNode = {
+      ...waiverTemplate(),
+      children: [
+        { id: "x", kind: "article", title, children: [{ id: "xp", kind: "paragraph", code: "P0100", children: [text("b", "본문")] }] },
+        { id: "y", kind: "article", title: titleNodes("준용", "y"), children: [{ id: "yp", kind: "paragraph", code: "P0100", children: [{ id: "ref", kind: "articleRef", targets: [{ articleId: "x" }], scope: "self" }] }] },
+      ],
+    };
+    expect(runSame(only(["V01", "V02"]), doc)).toEqual({ lines: ["제1조(암(유사암제외)의 정의)", "  본문", "제2조(준용)", "  제1조(암(유사암제외)의 정의)"], issues: [] });
+  });
+
+  it("블록 반복에는 적용하지 않는다 — 같은 글의 항도 원소마다 남는다", () => {
+    const outer: ForBlockNode = { id: "fo", kind: "forBlock", source: 사유합집합, children: [{ id: "p", kind: "paragraph", code: "P0100", children: [slot("ps", "builtin.value.F01")] }] };
+    const doc: DocumentNode = { ...waiverTemplate(), children: [{ id: "x", kind: "article", title: titleNodes("사유", "x"), children: [outer] }] };
+    expect(runSame(only(["V01", "V02"]), doc).lines).toEqual(["제1조(사유)", "  ① 암(유사암제외)", "  ② 암(유사암제외)"]);
+  });
+});
