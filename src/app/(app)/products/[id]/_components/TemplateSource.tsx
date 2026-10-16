@@ -213,7 +213,7 @@ function blockClauseRefs(nodes: readonly Node[]): ClauseInlineRef[] {
       case "condBlock":
         return n.branches.flatMap((br) => blockClauseRefs(br.children));
       case "forBlock":
-        return blockClauseRefs(n.children);
+        return [...blockClauseRefs(n.children), ...blockClauseRefs(n.fallback ?? [])];
       default:
         return [];
     }
@@ -540,8 +540,36 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
       }
 
       // 블록 반복 — 템플릿 원문은 본문 한 벌 그대로 낸다(원소마다 복제는 조립 · 미리보기가 한다, ADR-0077).
-      case "forBlock":
-        return <Block key={node.id} nodes={node.children} ctx={ctx} inList={inList} gathered={gathered} />;
+      // 「비었을 때」 칸(ADR-0088 결정 4)은 그 밖의 경우 가지처럼 파선 상자로 뒤에 — 원소가 0 이면 이 내용이 나온다
+      case "forBlock": {
+        const fallback = node.fallback ?? [];
+        const body = <Block key={node.id} nodes={node.children} ctx={ctx} inList={inList} gathered={gathered} />;
+        if (fallback.length === 0) return body;
+        const empty = (
+          <>
+            <span className="ts-doc-cond-head">비었을 때 — 원소가 없으면</span>
+            {inList ? (
+              <ol className="ts-doc-list-cont">
+                <Block nodes={fallback} ctx={ctx} inList gathered={gathered} />
+              </ol>
+            ) : (
+              <Block nodes={fallback} ctx={ctx} gathered={gathered} />
+            )}
+          </>
+        );
+        return [
+          body,
+          inList ? (
+            <li key={`${node.id}~empty`} className="ts-doc-cond is-alt">
+              {empty}
+            </li>
+          ) : (
+            <div key={`${node.id}~empty`} className="ts-doc-cond is-alt">
+              {empty}
+            </div>
+          ),
+        ];
+      }
 
       default:
         return null;
