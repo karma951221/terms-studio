@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { indexTree, nodeBuilders, sequentialIds, type DocumentNode } from "@/domain/document";
 
-import { DOCUMENT_TOOLS, toolFor } from "./tools";
+import { DOCUMENT_TOOLS, toolFor, toolState } from "./tools";
 import { articleMenu, blockMenu, boxPickItems, chipMenu, clausePickItems, clausesFitting, condMenu, inlineInsertItems, type MenuSections } from "./menus";
 
 const labels = (s: MenuSections) => s.flat().map((i) => `${i.label}${i.disabled ? "(잠김)" : ""}`);
@@ -170,6 +170,21 @@ describe("블록 반복 메뉴 (ADR-0077 — 조 자리 · 호 목록, 한 단�
     expect(got).toEqual(expect.arrayContaining(["이 반복에 항 추가", "이 반복에 함수조항(조 단위) 추가…", "이 반복에 반복 블록 추가…", "반복 원천…"]));
     for (const l of blockMenu(env(doc), outer.id).flat().map((i) => i.label)) expect(toolFor(DOCUMENT_TOOLS, l), l).toBeDefined();
     expect(labels(articleMenu(env(doc), doc.children[0].id))).toContain("반복 블록 추가…");
+  });
+
+  it("반복 블록을 고른 채 툴바 항 · 호 = 반복 본문 끝에(조 제목 → 조 끝과 같은 결) — 블록 뒤(반복 밖)가 아니다", () => {
+    const { doc, outer, inner } = repeatTree();
+    const firstAt = (nodeId: string, toolId: "paragraph" | "item") => {
+      const tool = DOCUMENT_TOOLS.flatMap((g) => g.tools).find((t) => t.id === toolId)!;
+      const action = toolState(tool, blockMenu(env(doc), nodeId)).items[0]?.action;
+      const op = action?.do === "ops" && Array.isArray(action.ops) ? action.ops[0] : undefined;
+      return op?.type === "insert" ? op.at : undefined;
+    };
+    expect(firstAt(outer.id, "paragraph")).toEqual({ parentId: outer.id });
+    expect(firstAt(inner.id, "item")).toEqual({ parentId: inner.id });
+    // 오른쪽 클릭 메뉴에는 둘 다 — 「이 반복에」가 먼저, 「아래에」(반복 밖)도 남는다
+    const got = labels(blockMenu(env(doc), outer.id));
+    expect(got.indexOf("이 반복에 항 추가")).toBeLessThan(got.indexOf("아래에 항 추가"));
   });
 
   it("두 단계 안에서는 반복을 더 넣지 않는다 — 안쪽 반복 · 그 안 호", () => {

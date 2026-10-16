@@ -138,7 +138,8 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
   const e = ix.nodes.get(nodeId);
   if (!e) return [];
   const after = afterOf(ix, nodeId);
-  const add: MenuItem[] = [];
+  // 반복 블록이면 「이 반복에 …」(본문 끝)가 먼저 — 툴바 항 · 호는 첫 항목을 돌린다. 조 제목 → 조 끝과 같은 결, 「아래에 …」(반복 밖)는 메뉴에 남는다
+  const add: MenuItem[] = e.node.kind === "forBlock" ? repeatIntoItems(env, nodeId, e.allowed, e.forDepth + 1) : [];
   if (after) {
     for (const k of ["paragraph", "item", "subitem", "bullet"] as const) {
       if (!e.allowed.includes(k)) continue;
@@ -168,7 +169,6 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
   // 블록 반복 — 조 자리 · 호 목록 자리, 반복 안 반복은 한 단계까지 (ADR-0077)
   if (after && e.allowed.includes("forBlock") && e.forDepth < MAX_REPEAT_DEPTH) add.push({ label: "아래에 반복 블록 추가…", action: { do: "popup", popup: { kind: "repeatBlock", at: after } } });
   if (e.node.kind === "paragraph" && e.forDepth < MAX_REPEAT_DEPTH) add.push({ label: "반복 블록(호) 추가…", action: { do: "popup", popup: { kind: "repeatBlock", at: { parentId: nodeId, slot: "items" } } } });
-  if (e.node.kind === "forBlock") add.push(...repeatIntoItems(env, nodeId, e.allowed, e.forDepth + 1));
 
   const own: MenuItem[] = [];
   if (e.node.kind === "table") {
