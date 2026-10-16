@@ -849,10 +849,14 @@ function articleRefIssues(n: Pick<ArticleRefNode, "targets" | "connector" | "sco
       if (n.scope === "self") return refTargetIssues(target, e, ix, { ...(gate.clauseOf ? { clauseOf: (c: Code) => gate.clauseOf!(c) } : {}), ...(env.enumOf ? { enumOf: env.enumOf } : {}), ...(env.master ? { master: env.master } : {}), ...(env.coverage ? { coverage: env.coverage } : {}) }).map((i) => ({ ...i, at: here }));
       // 대응 보통약관 대상 — 보통약관엔 담보 트리 반복이 없어 키 한정을 못 건다 (ADR-0087 결정 10)
       if (target.restrict !== undefined && "keys" in target.restrict) return [{ kind: "structure" as const, message: "키 한정은 이 문서의 담보 트리 반복으로 생긴 노드에만 건다 — 보통약관 대상에는 쓸 수 없습니다", at: here }];
+      // 「현재」가 감싼 담보 트리 반복이면 조립에서 키 한정이 된다 — 같은 이유로 거부, 종 반복 문구가 아니라 트리 반복 문구로
+      const current = (target.restrict as { current?: unknown } | undefined)?.current;
+      if (typeof current === "string" && loopTypesAt(ix, e, env.master).get(current)?.kind === "coverageNode") {
+        return [{ kind: "structure" as const, message: "보통약관에는 담보 트리 반복이 없어 「현재 세부보장 · 급부」 한정을 쓸 수 없습니다 — 보통약관 대상에는 값 한정(사유)만 건다", at: here }];
+      }
       // 값 한정은 반복 안 대상에만, 안쪽 코드 · 값 한정 열거형은 보통약관이 넘긴 대상 사실로 이 문서와 같은 검사
       if (target.restrict !== undefined && env.generalRepeatedKeys && !env.generalRepeatedKeys.has(key)) return [{ kind: "structure" as const, message: "값 한정은 반복으로 생긴 노드에만 건다 — 이 보통약관 대상은 반복 안이 아닙니다", at: here }];
       if (env.generalTargets) return refTargetFactIssues(target, env.generalTargets.get(key), () => loopTypesAt(ix, e, env.master), env, target.code).map((i) => ({ ...i, at: here }));
-      const current = (target.restrict as { current?: unknown } | undefined)?.current;
       if (typeof current === "string" && !loopTypesAt(ix, e, env.master).has(current)) return [{ kind: "structure" as const, message: "값 한정 「현재 값」의 반복이 이 참조를 감싸지 않습니다 — 그 반복 블록 안에서만 쓴다", at: here }];
       return [];
     }

@@ -284,7 +284,7 @@ class Walker {
           const e = f.loops?.[r.current];
           if (!e) return { ok: false, issue: { kind: "structure", message: `한정 「현재」의 반복 ${r.current} 이(가) 이 참조를 감싸지 않습니다 — 그 반복 블록 안에서만 쓴다`, at } };
           if (e.kind === "coverageNode") target.keys = [e.path];
-          else if (e.kind !== "enumValue") return { ok: false, issue: { kind: "typeMismatch", message: "값 한정 「현재 값」은 원소가 열거값(사유)인 반복에만 쓴다", at } };
+          else if (e.kind !== "enumValue") return { ok: false, issue: { kind: "typeMismatch", message: "한정 「현재」는 원소가 열거값(사유)이나 담보 트리 노드(세부보장 · 급부)인 반복에만 쓴다 — 종 반복은 안 된다", at } };
           else target.values = [e.code];
         } else return { ok: false, issue: { kind: "structure", message: "한정의 모양이 잘못됐습니다 — 값들 · 키들 · 현재", at } };
       }
