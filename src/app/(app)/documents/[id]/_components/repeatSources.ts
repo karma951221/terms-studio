@@ -8,7 +8,9 @@
  */
 import type { EnumDef } from "@/domain/catalog";
 import type { LoopElementType } from "@/domain/clause";
-import { isRepeatSource, loopElementType, loopsOnPath, repeatLabel, type RepeatNode, type RepeatSource, type SlotName, type TreeIndex } from "@/domain/document";
+import type { ConditionContext } from "./condition/types";
+import type { NodeTree } from "@/app/(app)/functions/_components/params";
+import { isRepeatSource, isTreeSource, loopElementType, loopsOnPath, repeatLabel, type RepeatNode, type RepeatSource, type SlotName, type TreeIndex } from "@/domain/document";
 import { fieldsOfForm, formsOfLevel, MASTER, type MasterTree } from "@/domain/master";
 import type { Id } from "@/domain/types";
 
@@ -40,6 +42,13 @@ export function loopsAround(ix: TreeIndex, id: Id, slot?: SlotName): RepeatNode[
   return loopsOnPath(ix, path, slot === "fallback" ? id : undefined);
 }
 
+/** 담보약관의 인자 칸 키 경로 후보 재료 — 담보 구분자 트리 + 자리를 감싼 담보 트리 반복(자리 자신 포함). 담보 문맥이 없으면(보통약관 · 함수조항) 없음 (ADR-0087 결정 4 · 7). */
+export function nodeTreeAt(condition: ConditionContext, ix: TreeIndex, id: Id): NodeTree | undefined {
+  if (!condition.coverage) return undefined;
+  const loops = loopsAround(ix, id).flatMap((f) => (isRepeatSource(f.source) && isTreeSource(f.source) ? [{ id: f.id, level: f.source.kind === "subCoverages" ? ("subCoverage" as const) : ("benefit" as const) }] : []));
+  return { nodes: condition.coverage.nodes, loops };
+}
+
 /**
  * 「현재 종」 — 감싼 반복 중 세목 선택지(종) 반복이 있으면 그 이름(별칭 또는 원천 이름). 안쪽 사유 반복 안에서도 바깥 종이 커서다.
  * 슬롯 고르기의 「현재 종」 묶음(`builtin.plan.name` · `builtin.plan.number`)이 이것으로 선다 — 합집합 · 반복 밖에는 종 커서가 없다 (ADR-0077 결정 3).
@@ -69,18 +78,22 @@ export function currentValueOf(loops: readonly RepeatNode[], opts: { enumOf?: (c
 }
 
 /** 원천 칸 후보 — `outer` 는 이 자리를 감싼 가장 안쪽 반복(없으면 반복 밖). 두 단계 안(반복 안 반복 안)이면 후보가 없다. 블록 · 문장 안 반복 공통. */
-export function repeatChoices(opts: { outer?: RepeatNode; depth: number; enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree }): RepeatChoice[] {
+/**
+ * 원천 칸 후보 — `outer` 는 이 자리를 감싼 가장 안쪽 반복(없으면 반복 밖). 두 단계 안(반복 안 반복 안)이면 후보가 없다. 블록 · 문장 안 반복 공통.
+ */
+export function repeatChoices(opts: { outer?: RepeatNode; depth: number; hasCoverage?: boolean; enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree }): RepeatChoice[] {
   const master = opts.master ?? MASTER;
   const label = (source: RepeatSource) => repeatLabel(source, { ...(opts.outer && isRepeatSource(opts.outer.source) ? { outer: opts.outer.source } : {}), master, ...(opts.enumOf ? { enumOf: opts.enumOf } : {}) });
   const choice = (source: RepeatSource, suffix = ""): RepeatChoice => ({ value: sourceValue(source), label: `${label(source)}${suffix}`, source });
   if (opts.depth >= 2) return [];
   if (opts.outer) {
     const outer = opts.outer.source;
+    if (isRepeatSource(outer) && outer.kind === "subCoverages") return [choice({ kind: "benefitsOfCurrent", loop: opts.outer.id })];
     if (!isRepeatSource(outer) || outer.kind !== "planOptions") return [];
     const form = formsOfLevel("plan", master).find((f) => f.key === outer.form);
     return (form ? fieldsOfForm(form) : []).filter((x) => x.field.type.kind === "list<enum>").map((x) => choice({ kind: "listOfCurrent", loop: opts.outer!.id, field: x.field.key }, " — 현재 종의 목록"));
   }
-  const out: RepeatChoice[] = [];
+  const out: RepeatChoice[] = opts.hasCoverage ? [choice({ kind: "subCoverages" }), choice({ kind: "benefits" })] : [];
   for (const form of formsOfLevel("plan", master)) {
     const fields = fieldsOfForm(form);
     const booleans = fields.filter((x) => x.field.type.kind === "boolean");

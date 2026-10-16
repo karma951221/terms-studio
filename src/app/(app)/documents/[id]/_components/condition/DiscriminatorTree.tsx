@@ -2,7 +2,7 @@
 
 /**
  * 조건 팝업의 「담보 구분자」 탭 — 담보 뿌리 → 세부보장 → 급부, 노드마다 그 레벨 구분자를 잎으로 (ADR-0066 §6).
- * 잎을 더블클릭하면 좌변이면 그 구분자, 우변이면 같은 참조를 노드 한정자(`@id`)로 문맥에 담아 고른다.
+ * 잎을 더블클릭하면 좌변이면 그 구분자, 우변이면 같은 참조를 노드 한정자(`@키경로`, ADR-0087)로 문맥에 담아 고른다. 노드 머리는 「세부보장 01 · 이름 › 급부 1 · 이름」.
  *
  * 반복 표 템플릿 셀에서 열면(`context.row`) 맨 위에 **「현재 행」** 가지가 선다 (ADR-0070 · 설계 §3.1) —
  * 행 레벨과 그 위 레벨의 구분자를 **한정자 없이** 고른다(행마다 그 행 노드에서 읽힌다). 그 아래 실제 노드 트리는 그대로(`@노드` 고정).
@@ -14,6 +14,7 @@ import type { DiscriminatorRef } from "@/domain/expression";
 import { findForm } from "@/domain/master";
 import { ATTACH_LEVEL_LABEL } from "@/domain/types";
 
+import { nodeHead } from "./rows";
 import type { ConditionContext, CtxDiscriminator, CtxNode } from "./types";
 
 function matches(text: string, query: string): boolean {
@@ -55,7 +56,7 @@ export function DiscriminatorTree({
     return (
       <li key={node.id}>
         <div className="ts-cond-tree-node">
-          <span>{node.name}</span>
+          <span>{nodeHead(nodes, node)}</span>
           {badgesOf(node).map((b) => (
             <span key={b} className="ts-badge">
               {b}
@@ -69,7 +70,7 @@ export function DiscriminatorTree({
                 <button
                   type="button"
                   className="ts-cond-tree-leaf"
-                  onDoubleClick={() => onPick(node.level === "coverage" ? { kind: "discriminator", code: d.code } : { kind: "discriminator", code: d.code, node: { id: node.id } })}
+                  onDoubleClick={() => onPick(node.level === "coverage" ? { kind: "discriminator", code: d.code } : { kind: "discriminator", code: d.code, node: { path: node.keyPath! } })}
                 >
                   {d.label}
                 </button>
@@ -93,7 +94,7 @@ export function DiscriminatorTree({
   const rowBranch = row ? (
     <li key="__row" className="ts-cond-tree-row">
       <div className="ts-cond-tree-node" title="행마다 그 행의 노드에서 읽는다 — 한정자 없음">
-        <span>현재 행</span>
+        <span>{row.label ?? "현재 행"}</span>
         <span className="ts-badge">{rowLabel}마다</span>
       </div>
       {rowGroups.length === 0 ? (
@@ -108,7 +109,7 @@ export function DiscriminatorTree({
               <ul className="ts-cond-tree-leaves">
                 {g.leaves.map((d) => (
                   <li key={d.code}>
-                    <button type="button" className="ts-cond-tree-leaf" aria-label={`현재 행 ${d.label}`} onDoubleClick={() => onPick({ kind: "discriminator", code: d.code })}>
+                    <button type="button" className="ts-cond-tree-leaf" aria-label={`${row.label ?? "현재 행"} ${d.label}`} onDoubleClick={() => onPick({ kind: "discriminator", code: d.code })}>
                       {d.label}
                     </button>
                   </li>

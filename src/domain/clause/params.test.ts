@@ -125,6 +125,14 @@ describe("조립 — 연결로 바꿔 쓰기 (applyBindings)", () => {
     expect(r.ok && JSON.stringify(r.value.body)).toContain('"when":"D0003 and attr.A0001 = \'2\'"');
   });
 
+  it("키 경로 연결은 D@키경로 로, 「현재」 연결은 한정자 없는 참조로 바꿔 쓴다 (ADR-0087 결정 4)", () => {
+    const c = clause([{ name: "감액", type: { kind: "boolean" } }], [{ id: "p", kind: "paragraph", children: [{ id: "c", kind: "inlineCond", branches: [{ id: "b", when: "arg.감액 = true", children: [{ id: "t", kind: "text", text: "있음" }] }] }] }] as Clause["body"]);
+    const keyed = applyBindings(c, { 감액: { kind: "discriminator", code: "D0007", node: { path: "01" } } }, fmt);
+    expect(keyed.ok && JSON.stringify(keyed.value.body)).toContain("D0007@01 = true");
+    const current = applyBindings(c, { 감액: { kind: "discriminator", code: "D0007", node: { current: "loop-1" } } }, fmt);
+    expect(current.ok && JSON.stringify(current.value.body)).toContain('"D0007 = true"');
+  });
+
   it("상수 연결 — 조건은 리터럴, 슬롯은 그 값의 글", () => {
     const r = applyBindings(clause([담보명, 갱신형], body), { 담보명: { kind: "const", value: "골절진단비" }, 갱신형: { kind: "const", value: false } }, fmt);
     const text = r.ok ? JSON.stringify(r.value.body) : "";

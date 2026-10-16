@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { Coverage } from "../coverage";
 import type { Result } from "../types";
 import { nodeBuilders, sequentialIds } from "./builders";
 import { applyCommand, applyCommands, cloneTree, type Command } from "./commands";
@@ -418,6 +419,84 @@ describe("복제 (D-P4-9) — 하위 트리·조연결·참조 대상 id 를 그
     const refs = (copy.children[1] as ParagraphNode).children.filter((node) => node.kind === "articleRef");
     expect(refs.map((r) => r.targets[0]?.articleId)).toEqual(["c1", "n4"]);
     expect(legacyTitles(next)).toMatchSnapshot();
+  });
+});
+
+describe("반복 블록 복제 — 사본 안의 반복 id 참조는 사본 반복을 가리킨다 (ADR-0087)", () => {
+  /** 조 a 안 「세부보장마다」 s › 「현재 세부보장의 급부마다」 g · 종 반복 p › 사유 반복 l — 안쪽 참조가 모두 바깥 반복 id 를 쥔다. */
+  const doc = (): DocumentNode =>
+    ({
+      kind: "document",
+      id: "d",
+      title: "담보약관",
+      children: [
+        {
+          kind: "article",
+          id: "a",
+          title: titleNodes("지급사유", "a"),
+          children: [
+            {
+              kind: "forBlock",
+              id: "s",
+              code: "P0100",
+              source: { kind: "subCoverages" },
+              children: [
+                { kind: "paragraph", id: "sp", code: "P0200", children: [{ kind: "text", id: "st", text: "세부" }] },
+                {
+                  kind: "forBlock",
+                  id: "g",
+                  code: "P0300",
+                  source: { kind: "benefitsOfCurrent", loop: "s" },
+                  children: [
+                    {
+                      kind: "paragraph",
+                      id: "gp",
+                      code: "P0400",
+                      children: [
+                        { kind: "articleRef", id: "r", scope: "self", connector: "및", targets: [{ articleId: "a", code: "P0200", restrict: { current: "s" } }] },
+                        { kind: "clauseInlineRef", id: "c", clauseCode: "C0001", options: {}, bindings: { 감액: { kind: "discriminator", code: "D0007", node: { current: "s" } }, 원소: { kind: "current", loop: "g" } } },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              kind: "forBlock",
+              id: "p",
+              code: "P0500",
+              source: { kind: "planOptions", form: "waiver" },
+              children: [{ kind: "forBlock", id: "l", code: "P0600", source: { kind: "listOfCurrent", loop: "p", field: "reasons" }, children: [] }],
+            },
+          ],
+        },
+      ],
+    }) as unknown as DocumentNode;
+
+  const treeEnv = { kind: "special" as const, coverage: { id: "cov", name: "암", description: "", subCoverages: [{ id: "s1", key: "01", name: "유사암", order: 0, benefits: [{ id: "b1", key: "1", name: "진단", order: 0 }] }] } as Coverage };
+
+  it("세부보장마다 블록 복제 — benefitsOfCurrent.loop · 인자 연결 node.current · current.loop · restrict.current 가 사본 반복으로", () => {
+    const next = unwrap(applyCommand(doc(), { type: "duplicate", nodeId: "s" }, { env: treeEnv, newId: sequentialIds("c") }));
+    const art = next.children[0] as ArticleNode;
+    const copy = art.children[1] as unknown as { id: string; children: { id: string; source?: { loop?: string }; children: { children: Record<string, unknown>[] }[] }[] };
+    expect(copy.id).not.toBe("s");
+    const inner = copy.children[1];
+    expect(inner.source?.loop).toBe(copy.id);
+    const [ref, call] = inner.children[0].children as [{ targets: { restrict: unknown }[] }, { bindings: Record<string, unknown> }];
+    expect(ref.targets[0].restrict).toEqual({ current: copy.id });
+    expect(call.bindings.감액).toEqual({ kind: "discriminator", code: "D0007", node: { current: copy.id } });
+    expect(call.bindings.원소).toEqual({ kind: "current", loop: inner.id });
+    // 원본은 그대로
+    const orig = art.children[0] as unknown as { children: { source?: { loop?: string } }[] };
+    expect(orig.children[1].source?.loop).toBe("s");
+    // 사본이 저장 검사를 통과한다 — 반복 「현재」가 감싸지 않는다는 오류가 없다
+    expect(validateTree(next, treeEnv).filter((i) => /감싸지 않|반복 밖/.test(i.message))).toEqual([]);
+  });
+
+  it("목록 반복의 바깥 반복(listOfCurrent.loop)도 사본 반복으로", () => {
+    const next = unwrap(applyCommand(doc(), { type: "duplicate", nodeId: "p" }, { newId: sequentialIds("c") }));
+    const copy = (next.children[0] as ArticleNode).children[2] as unknown as { id: string; children: { source: { loop: string } }[] };
+    expect(copy.children[0].source.loop).toBe(copy.id);
   });
 });
 

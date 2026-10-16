@@ -13,6 +13,7 @@ import { definitionCrossCheck, valueBranchWarnings } from "./blockRepeat";
 import type { ExprType, TypeResolver } from "../expression";
 import type { Code, Issue } from "../types";
 import { validateExpressions, type ExpressionScope } from "./expressions";
+import { nodeBindingIssues } from "./nodeBindings";
 import { coordinateOf, indexTree, validateTree, type ClauseGate, type DocumentNode, type TreeEnv } from "./nodes";
 import { repeatTableIssues } from "./repeat";
 
@@ -107,10 +108,13 @@ export function legacyBoxIssues(tree: DocumentNode, base?: TreeEnv["coordinate"]
 
 /** 문서 전체 검증 — 오류 + 반복 표 경고. */
 export function validateDocument(tree: DocumentNode, checks: DocumentChecks): Issue[] {
-  const { env, resolve, scope } = checks;
+  const { resolve, scope } = checks;
+  // 문맥 담보는 식 검사(scope)와 조 참조 키 한정 검사(env)가 같이 쓴다 — 한 번 실어 준다 (ADR-0087 결정 10)
+  const env = scope.coverage && !checks.env.coverage ? { ...checks.env, coverage: scope.coverage } : checks.env;
   const issues = validateTree(tree, env);
   issues.push(...legacyBoxIssues(tree, env.coordinate));
   issues.push(...validateExpressions(tree, resolve, env.coordinate, scope));
+  issues.push(...nodeBindingIssues(tree, env.clauseGate, scope, env.coordinate));
   // 반복 표 경고(저장은 막지 않음) — 검증 목록에만 보인다 (ADR-0070 · 설계 §2.6). 오류는 validateExpressions 가 이미 냈다.
   issues.push(...repeatTableIssues(tree, { hasCoverage: scope.coverage !== undefined }, env.coordinate).filter((i) => i.severity === "warning"));
   // 블록 반복 (ADR-0077) — 사유 값 분기 경고(결정 10) · 정의 조 교차 검사(결정 23 — 「문구 없음」 = 오류 · 펼쳐지지 않는 문장 = 경고)

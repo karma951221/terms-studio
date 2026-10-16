@@ -33,8 +33,8 @@ test.describe.serial("실물 재현(화면) ② 담보", () => {
           const n = i + 2;
           await page.getByRole("button", { name: "세부보장 추가", exact: true }).click();
           const card = page.locator("section.ts-cov-card[data-level='subCoverage']").nth(n - 1);
-          await card.getByRole("textbox", { name: `세부보장명 · ${n}번`, exact: true }).fill(sub.name);
-          await card.getByRole("textbox", { name: "급부명 · 1번", exact: true }).fill(sub.benefitName);
+          await card.getByRole("textbox", { name: `세부보장명 · ${String(n).padStart(2, "0")}`, exact: true }).fill(sub.name);
+          await card.getByRole("textbox", { name: "급부명 · 1", exact: true }).fill(sub.benefitName);
         }
         for (const value of spec.coverageValues) await page.locator(`section.ts-cov-card[data-level='coverage'] input[name="${value.path}"]`).fill(value.value);
         if (spec.specialGroup) await page.getByRole("combobox", { name: "특약 그룹", exact: true }).selectOption(spec.specialGroup);

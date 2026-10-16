@@ -341,22 +341,25 @@ describe("문법 오류 형태", () => {
   });
 });
 
-describe("노드 한정자 @<노드id> (ADR-0066 §1)", () => {
-  it("구분자 뒤 @id 를 읽어 node 에 담는다 — id 는 uuid 모양(하이픈 포함)", () => {
-    const r = parse("D0002@3f1a-b2 = true");
-    expect(r.ok && r.value).toEqual({
-      kind: "compare",
-      op: "=",
-      left: { kind: "ref", ref: { kind: "discriminator", code: "D0002", node: { id: "3f1a-b2" } } },
-      right: { kind: "literal", literal: { type: "boolean", value: true } },
-    });
+describe("노드 한정자 @<키 경로> (ADR-0087 결정 3)", () => {
+  it("세부보장 키 · 급부 키 경로 · 세 자리 세부보장", () => {
+    const sub = parse("D0007@01");
+    expect(sub.ok && sub.value).toEqual({ kind: "ref", ref: { kind: "discriminator", code: "D0007", node: { path: "01" } } });
+    const r = parse("D0002@01.2 = true");
+    expect(r.ok && r.value).toMatchObject({ kind: "compare", left: { kind: "ref", ref: { code: "D0002", node: { path: "01.2" } } } });
+    expect(parse("D0002@100.3").ok).toBe(true);
+    expect(parse("any(D0002@01.2)").ok).toBe(true);
   });
-  it("집계 안에서도 된다", () => {
-    const r = parse("any(D0002@n1)");
-    expect(r.ok && r.value).toEqual({ kind: "aggregate", op: "any", ref: { kind: "discriminator", code: "D0002", node: { id: "n1" } } });
+  it("옛 노드 id · 모양이 틀린 키는 구문 오류 — 「노드 키 경로가 아닙니다」", () => {
+    const old = parse("D0007@3f1a9c2e-0b1d-4a5e-8f00-123456789abc");
+    expect(old.ok).toBe(false);
+    expect(!old.ok && old.rejection.reason === "invalid" && old.rejection.issues[0].message).toContain("노드 키 경로가 아닙니다");
+    for (const bad of ["D0007@1", "D0007@001", "D0007@01.0", "D0007@01.02", "D0007@01.2.3", "D0007@n1", "D0007@"]) {
+      expect(parse(bad).ok, bad).toBe(false);
+    }
   });
   it("마스터 필드 · builtin · attr 에는 못 붙는다", () => {
-    for (const bad of ["pay.rate@n1", "builtin.benefit.name@n1", "exist(attr.X@n1)"]) {
+    for (const bad of ["pay.rate@01", "builtin.benefit.name@01", "exist(attr.X@01)"]) {
       const r = parse(bad);
       expect(r.ok).toBe(false);
       expect(!r.ok && r.rejection.reason === "invalid" && r.rejection.issues[0].message).toContain("구분자 참조에만");
@@ -367,6 +370,6 @@ describe("노드 한정자 @<노드id> (ADR-0066 §1)", () => {
     expect(r.ok).toBe(false);
   });
   it("한정자가 참조 없이 홀로 오면 문법 오류", () => {
-    expect(syntaxError("@n1")).toContain("구분자 참조 뒤에만");
+    expect(syntaxError("@01")).toContain("구분자 참조 뒤에만");
   });
 });

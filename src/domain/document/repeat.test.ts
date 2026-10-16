@@ -56,7 +56,6 @@ describe("반복 표 저장 검사 — 설계 §2.6 다섯 줄", () => {
   });
 
   it("③ 행 레벨보다 아래 레벨의 한정자 없는 참조 → 오류 · 집계 · @노드 · 위 레벨은 통과", () => {
-    const { b11 } = surgery();
     const row = (cells: InlineNode[][]): TableRow => ({ cells });
     const bad = doc(table(1, [header, row([[key("k1", "subCoverage")], [slot("s1", "D0103")]])]));
     const issues = repeatTableIssues(bad, scope);
@@ -69,7 +68,7 @@ describe("반복 표 저장 검사 — 설계 §2.6 다섯 줄", () => {
         header,
         row([
           [key("k1", "subCoverage"), slot("s2", "D0101"), slot("s3", "D0102")],
-          [slot("s4", `D0103@${b11}`), { id: "c2", kind: "inlineCond", branches: [{ id: "c2-if", when: "count(D0103) > 1", children: [text("y", "예")] }] }],
+          [slot("s4", `D0103@01.1`), { id: "c2", kind: "inlineCond", branches: [{ id: "c2-if", when: "count(D0103) > 1", children: [text("y", "예")] }] }],
         ]),
       ]),
     );

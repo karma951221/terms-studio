@@ -340,8 +340,11 @@ export function createCoverageService(db: Db, deps: CoverageServiceDeps = {}): C
     const impact: Impact = { valueRowsLost: 0, brokenRefs: [], cascade: [], mounts: await mountImpacts(tx, tree, plan) };
     if (!hasRemoves(plan)) return impact;
     const masterValues = await loadMasterValues(tx, tree);
+    // 한정 참조는 최종 트리의 키 경로로 센다 — 지운 키를 같은 저장의 새 노드가 다시 받으면 깨지지 않는다 (ADR-0087 결정 2)
+    const final = dryRunStructurePlan(tree, plan);
+    const surviving = final.ok ? new Set(nodesOf(final.value).flatMap((n) => (n.keyPath !== undefined ? [n.keyPath] : []))) : undefined;
     for (const target of plan.removes) {
-      const one = await nodeDeleteImpact(tree, { level: target.level, id: target.id }, masterValues, usage);
+      const one = await nodeDeleteImpact(tree, { level: target.level, id: target.id }, masterValues, usage, surviving);
       impact.valueRowsLost += one.valueRowsLost;
       impact.brokenRefs.push(...one.brokenRefs);
       impact.cascade.push(...one.cascade);

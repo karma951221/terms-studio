@@ -322,10 +322,11 @@ export function analyzeBody(
           if (opts.generalReferenceKeys && !opts.generalReferenceKeys.has(key)) report("brokenRef", `보통약관 참조 대상 ${key} 가 보통약관 마스터에 없습니다`, here, key);
           if (multiTarget(t as { articleId: string; code?: string; innerCode?: string; restrict?: unknown }, opts.generalRepeatedKeys)) repeated = true;
           if (t.innerCode !== undefined && (typeof t.innerCode !== "string" || t.code === undefined)) report("structure", "안쪽 코드는 보통약관의 함수조항 블록 참조(코드)와 함께 쓴다", here, key);
-          const restrict = t.restrict as { values?: unknown; current?: unknown } | undefined;
+          const restrict = t.restrict as { values?: unknown; current?: unknown; keys?: unknown } | undefined;
           let restrictOk = restrict === undefined;
           if (restrict !== undefined) {
-            if (restrict.current !== undefined) report("structure", "함수조항 본문에는 반복이 없어 값 한정 「현재 값」을 쓸 수 없습니다 — 해당 값들로 고른다", here, key);
+            if (restrict.keys !== undefined) report("structure", "함수조항 본문에는 반복이 없어 키 한정을 쓸 수 없습니다", here, key);
+            else if (restrict.current !== undefined) report("structure", "함수조항 본문에는 반복이 없어 값 한정 「현재 값」을 쓸 수 없습니다 — 해당 값들로 고른다", here, key);
             else if (!Array.isArray(restrict.values) || restrict.values.length === 0) report("structure", "값 한정의 값을 하나 이상 고른다", here, key);
             else if (opts.generalRepeatedKeys && !opts.generalRepeatedKeys.has(key)) report("structure", "값 한정은 반복으로 생긴 노드에만 건다 — 이 보통약관 대상은 반복 안이 아닙니다", here, key);
             else restrictOk = true;

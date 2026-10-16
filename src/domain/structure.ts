@@ -1,7 +1,7 @@
 /**
  * 구조 상수 — 문맥 트리를 dict 로 읽는 규칙 (ADR-0070 결정 1 · 2).
  *
- * dict 는 실체가 아니다. **가지 = 부착 레벨**, **key = 문맥 트리의 실제 노드**, **잎 = 그 레벨의 구분자**.
+ * dict 는 실체가 아니다. **가지 = 부착 레벨**, **key = 문맥 트리의 실제 노드**(담보 트리는 노드 키 — ADR-0087), **잎 = 그 레벨의 구분자**.
  * 여기에는 레벨 → 자식 레벨 · key 표기 규칙(다섯 층 상수)과 레벨별 자식 제공자 인터페이스만 둔다.
  * 제공자 구현은 문맥을 아는 쪽이 댄다 — MVP 는 담보 트리(coverage · subCoverage, `coverage/children.ts`).
  * plan · product 제공자(종·형 조합의 탑재)는 인터페이스만 있다 — 없으면 「제공자 없음」.
@@ -24,6 +24,8 @@ export interface StructNodeRef {
 export interface StructNode extends StructNodeRef {
   name: string;
   order: number;
+  /** 담보 트리 노드면 노드 키 (ADR-0087) — 표기에는 쓰지 않는다(결정 9). */
+  key?: string;
 }
 
 export interface LevelStructure {

@@ -9,6 +9,7 @@
  *
  * 탑재 여부와 상관없이 담보 상세 저장 하나가 이 계획을 쓴다 (ADR-0075 결정 1) — 탑재된 담보는 저장이 먼저 영향을 확인시킨다(결정 2).
  */
+import { assignNodeKeys, fillKeys } from "./keys";
 import { ok, reject, type Id, type Result } from "../types";
 import {
   addBenefit,
@@ -43,12 +44,15 @@ export function decodeNodeKey(key: string | undefined): { level: CoverageNodeLev
 export interface StructureDraftBenefit {
   id?: Id;
   key: string;
+  /** 저장된 노드의 노드 키(ADR-0087). 새 행은 없음 — 화면은 `draftNodeKeys` 로 미리 본다. 행 열쇠 `key` 와 다르다. */
+  nodeKey?: string;
   name: string;
 }
 
 export interface StructureDraftSub {
   id?: Id;
   key: string;
+  nodeKey?: string;
   name: string;
   /** 배열 순서 = 화면 순서 = 저장될 order. */
   benefits: StructureDraftBenefit[];
@@ -69,9 +73,26 @@ export function structureDraftOf(tree: Coverage): StructureSavedSub[] {
   return tree.subCoverages.map((sub) => ({
     id: sub.id,
     key: encodeNodeKey("subCoverage", sub.id),
+    nodeKey: sub.key,
     name: sub.name,
-    benefits: sub.benefits.map((benefit) => ({ id: benefit.id, key: encodeNodeKey("benefit", benefit.id), name: benefit.name })),
+    benefits: sub.benefits.map((benefit) => ({ id: benefit.id, key: encodeNodeKey("benefit", benefit.id), nodeKey: benefit.key, name: benefit.name })),
   }));
+}
+
+type DraftKeyRow = { key: string; nodeKey?: string; id?: Id };
+
+/** 행 열쇠 → 노드 키 — 저장 노드는 제 키, 새 행은 최종 초안의 형제 키를 피한 빈 가장 작은 키(저장과 같은 규칙, `fillKeys`). */
+export function draftNodeKeys(draft: readonly StructureDraftSub[]): Map<string, string> {
+  const out = new Map<string, string>();
+  const fill = (level: "subCoverage" | "benefit", rows: readonly DraftKeyRow[]) => {
+    // fillKeys 의 id 자리에 행 열쇠를 넣는다 — 저장 노드(id 와 nodeKey 가 있는 행)만 키를 지킨다.
+    const kept = new Set(rows.filter((r) => r.id && r.nodeKey).map((r) => r.key));
+    const keyed = rows.map((r) => ({ id: r.key, key: r.nodeKey ?? "" }));
+    for (const r of fillKeys(level, keyed, (id) => kept.has(id))) out.set(r.id, r.key);
+  };
+  fill("subCoverage", draft);
+  for (const sub of draft) fill("benefit", sub.benefits);
+  return out;
 }
 
 export interface StructureIssue {
@@ -284,7 +305,9 @@ export function applyStructurePlanTo(original: Coverage, plan: StructurePlan, ne
     const bad = step(reorder.level === "subCoverage" ? reorderSubCoverages(tree, order) : reorderBenefits(tree, reorder.subCoverageId, order));
     if (bad) return bad;
   }
-  return ok(tree);
+  // 키는 최종 트리 기준 (ADR-0087 결정 2) — 추가가 삭제보다 먼저라 새 노드가 받은 임시 키를 지운 노드의 키까지 빈 번호로 보고 다시 매긴다.
+  const originalIds = new Set(original.subCoverages.flatMap((s) => [s.id, ...s.benefits.map((b) => b.id)]));
+  return ok(assignNodeKeys(tree, (id) => originalIds.has(id)));
 }
 
 /** 계획을 가짜 id 로 끝까지 돌려 본다 — 서비스를 부르기 전 첫 거부 찾기. 결과 트리는 검증용이지 저장용이 아니다. */

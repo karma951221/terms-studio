@@ -12,9 +12,14 @@ import type { Coverage, CoverageNodeRef } from "./types";
 import { slotsOfNode, type MasterValues } from "./values";
 
 /** 사용처 질의 — 「그 담보 문맥에서 이 자리를 읽는 곳」. */
-export type UsageQuery =
+export type UsageQuery = {
   /** 노드 삭제 — 그 노드(와 하위)를 순회·참조하는 사용처 (반복문·집계·조건식) */
-  { kind: "deleteNode"; coverageId: Id; node: CoverageNodeRef };
+  kind: "deleteNode";
+  coverageId: Id;
+  node: CoverageNodeRef;
+  /** 저장 뒤 최종 트리에 남는 키 경로 — 지운 키를 같은 저장의 새 노드가 다시 받으면 그 한정 참조는 깨지지 않는다 (ADR-0087 결정 2). 없으면 모두 사라진 것으로 본다. */
+  survivingPaths?: ReadonlySet<string>;
+};
 
 /** 참조 역인덱스(C1 refs)가 구현한다. 결과는 깨질 참조의 좌표 목록. */
 export interface UsageSource {
@@ -32,6 +37,7 @@ export async function nodeDeleteImpact(
   node: CoverageNodeRef,
   values: MasterValues,
   usage: UsageSource,
+  survivingPaths?: ReadonlySet<string>,
 ): Promise<Impact> {
   const affected = [
     ...descendants(tree, node, node.level),
@@ -44,7 +50,7 @@ export async function nodeDeleteImpact(
   }
   return {
     valueRowsLost,
-    brokenRefs: await usage.findUsages({ kind: "deleteNode", coverageId: tree.id, node }),
+    brokenRefs: await usage.findUsages({ kind: "deleteNode", coverageId: tree.id, node, ...(survivingPaths ? { survivingPaths } : {}) }),
     cascade: cascadeNames(tree, node),
   };
 }

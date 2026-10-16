@@ -19,6 +19,7 @@ import type {
   NewSubCoverage,
   SubCoverage,
 } from "./types";
+import { keyPathOf, smallestFreeKey } from "./keys";
 
 // ───────────────────────────── 공통 ─────────────────────────────
 
@@ -75,9 +76,9 @@ export function nodesOf(tree: Coverage): CoverageNode[] {
   const out: CoverageNode[] = [{ ...root, name: tree.name, ancestors: [] }];
   for (const s of tree.subCoverages) {
     const subRef: CoverageNodeRef = { level: "subCoverage", id: s.id };
-    out.push({ ...subRef, name: s.name, ancestors: [root] });
+    out.push({ ...subRef, name: s.name, ancestors: [root], keyPath: s.key });
     for (const b of s.benefits) {
-      out.push({ level: "benefit", id: b.id, name: b.name, ancestors: [root, subRef] });
+      out.push({ level: "benefit", id: b.id, name: b.name, ancestors: [root, subRef], keyPath: keyPathOf(s, b) });
     }
   }
   return out;
@@ -87,7 +88,7 @@ export function findNode(tree: Coverage, ref: CoverageNodeRef): CoverageNode | u
   return nodesOf(tree).find((n) => n.level === ref.level && n.id === ref.id);
 }
 
-/** 레벨 없이 id 로 — 문면의 노드 한정자(`@id`)는 레벨을 모른다 (ADR-0066 §1). */
+/** 레벨 없이 id 로 — 관계 · 화면 · 조립이 노드 id 로 찾을 때. 문면의 노드 한정자는 키 경로다(`keys.ts` `nodeByKeyPath`). */
 export function findNodeById(tree: Coverage, id: Id): CoverageNode | undefined {
   return nodesOf(tree).find((n) => n.id === id);
 }
@@ -126,16 +127,17 @@ export function cascadeNames(tree: Coverage, ref: CoverageNodeRef): string[] {
 
 // ───────────────────────────── 생성 ─────────────────────────────
 
-function newBenefit(name: string, order: number, newId: NewId): Benefit {
-  return { id: newId(), name, order };
+function newBenefit(name: string, order: number, key: string, newId: NewId): Benefit {
+  return { id: newId(), key, name, order };
 }
 
-function newSubCoverage(input: NewSubCoverage, order: number, newId: NewId): SubCoverage {
+function newSubCoverage(input: NewSubCoverage, order: number, key: string, newId: NewId): SubCoverage {
   return {
     id: newId(),
+    key,
     name: input.name,
     order,
-    benefits: [newBenefit(input.benefitName ?? input.name, 0, newId)],
+    benefits: [newBenefit(input.benefitName ?? input.name, 0, "1", newId)],
   };
 }
 
@@ -160,7 +162,7 @@ export function createCoverageTree(
     id: newId(),
     name: name.value,
     description: input.description ?? "",
-    subCoverages: [newSubCoverage({ name: subName.value, benefitName: benefitName.value }, 0, newId)],
+    subCoverages: [newSubCoverage({ name: subName.value, benefitName: benefitName.value }, 0, "01", newId)],
   });
 }
 
@@ -172,7 +174,7 @@ export function addSubCoverage(tree: Coverage, input: NewSubCoverage, newId: New
   if (dup) return dup;
   const benefitName = checkName(input.benefitName ?? name.value, "급부명");
   if (!benefitName.ok) return benefitName as Result<Coverage>;
-  const sub = newSubCoverage({ name: name.value, benefitName: benefitName.value }, tree.subCoverages.length, newId);
+  const sub = newSubCoverage({ name: name.value, benefitName: benefitName.value }, tree.subCoverages.length, smallestFreeKey("subCoverage", tree.subCoverages.map((s) => s.key)), newId);
   return ok({ ...tree, subCoverages: [...tree.subCoverages, sub] });
 }
 
@@ -184,7 +186,7 @@ export function addBenefit(tree: Coverage, subCoverageId: Id, benefitName: strin
   if (!name.ok) return name as Result<Coverage>;
   const dup = siblingDuplicate<Coverage>(sub.benefits, name.value, "급부명");
   if (dup) return dup;
-  const next: SubCoverage = { ...sub, benefits: [...sub.benefits, newBenefit(name.value, sub.benefits.length, newId)] };
+  const next: SubCoverage = { ...sub, benefits: [...sub.benefits, newBenefit(name.value, sub.benefits.length, smallestFreeKey("benefit", sub.benefits.map((b) => b.key)), newId)] };
   return ok(replaceSubCoverage(tree, next));
 }
 

@@ -9,9 +9,9 @@ import type { AttachLevel, Code } from "../types";
 
 // ───────────────────────────── 참조 ─────────────────────────────
 
-/** 노드 한정자 — 구분자를 문맥 담보가 아니라 **이 노드** 문맥에서 평가한다 (ADR-0066 §1). id 는 담보 마스터 노드 id. */
+/** 노드 한정자 — 구분자를 문맥 담보가 아니라 **이 노드** 문맥에서 평가한다. `path` = 담보 노드 키 경로(세부보장 `01` · 급부 `01.2`, ADR-0087 결정 3). */
 export interface NodeQualifier {
-  id: string;
+  path: string;
 }
 
 /**
@@ -21,7 +21,7 @@ export interface NodeQualifier {
 export interface DiscriminatorRef {
   kind: "discriminator";
   code: Code;
-  /** 소스 표기 `<코드>@<노드id>`. 없으면 문맥 담보 문맥. */
+  /** 소스 표기 `<코드>@<키 경로>`. 없으면 문맥 담보 문맥. */
   node?: NodeQualifier;
 }
 
@@ -153,7 +153,7 @@ export type ExprKind = Expr["kind"];
 export function refPath(ref: Ref): string {
   switch (ref.kind) {
     case "discriminator":
-      return ref.node ? `${ref.code}@${ref.node.id}` : ref.code;
+      return ref.node ? `${ref.code}@${ref.node.path}` : ref.code;
     case "master":
       return `${ref.form}.${ref.field}`;
     case "builtin":

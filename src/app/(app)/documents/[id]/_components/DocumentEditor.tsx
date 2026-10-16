@@ -42,6 +42,7 @@ import {
   generalRefsOf,
   indexTree,
   isRepeatSource,
+  isTreeSource,
   clauseSpanBy,
   numberTree,
   randomIds,
@@ -90,7 +91,9 @@ import { PopupHost, type PopupEnv } from "./Popups";
 import { currentPlanOf, currentValueOf, loopsAround } from "./repeatSources";
 import { ContextMenu, Popover } from "./Popover";
 import { RemoveCard } from "./RemoveCard";
+import { LeafPanelTab } from "./LeafPanelTab";
 import { PreviewTab } from "./PreviewTab";
+import { usePreviewSelection } from "./previewSelection";
 import { DraftIssues, SidePanel, type CodeFix, type PanelData } from "./SidePanel";
 import { Toc, articlesOf } from "./Toc";
 
@@ -210,6 +213,7 @@ export function DocumentEditor(props: EditorProps) {
   const original: DraftState = useMemo(() => ({ tree: doc.tree, ...(doc.generalDocumentId ? { generalDocumentId: doc.generalDocumentId } : {}) }), [doc.tree, doc.generalDocumentId]);
   const current = mode === "edit" && draft ? draft.state : original;
   const tree = current.tree;
+  const selection = usePreviewSelection(props.previewProducts);
   /** 누르는 순간의 편집본 트리 — 메뉴를 연 뒤 문장 칸이 초점을 잃으며 글이 먼저 적용될 수 있다. */
   const latest = useCallback(() => draftRef.current?.state.tree ?? doc.tree, [doc.tree]);
 
@@ -539,10 +543,11 @@ export function DocumentEditor(props: EditorProps) {
       return;
     }
     // 「함수조항」 — 버튼 아래 작은 메뉴에서 함수조항을 고른다(모달 없음). 자리마다(아래에 · 호 목록 · 목 목록) 그 유형의 함수조항을 한 묶음씩,
-    // 「아래에」(같은 자리) 묶음이 먼저. 맞는 함수조항이 하나도 없으면 그 사유를 보이는 팝업
+    // 「아래에」(같은 자리) 묶음이 먼저 — 반복 블록이면 「이 반복에」(본문 끝)가 그보다 먼저(항 · 호 버튼과 같은 결). 맞는 함수조항이 하나도 없으면 그 사유를 보이는 팝업
     const first = items[0].action;
     if (toolId === "clauseBlock") {
-      const ordered = [...items.filter((i) => i.label.startsWith("아래에")), ...items.filter((i) => !i.label.startsWith("아래에"))];
+      const rank = (label: string) => (label.startsWith("이 반복에") ? 0 : label.startsWith("아래에") ? 1 : 2);
+      const ordered = [...items].sort((a, b) => rank(a.label) - rank(b.label));
       const groups = ordered.flatMap((i) => (i.action.do === "popup" && i.action.popup.kind === "clauseBlock" ? [clausePickItems(props.clauses, i.action.popup.at, randomIds, i.action.popup.fit)] : [])).filter((g) => g.length > 0);
       if (groups.length > 0) {
         setMenu({ x: anchor.x, y: anchor.y, sections: groups });
@@ -690,8 +695,21 @@ export function DocumentEditor(props: EditorProps) {
   };
 
   // 조건 머리 줄 · 팝업의 조건 · 슬롯 문맥 — 반복 표 템플릿 셀 안이면 「현재 행」 가지 (ADR-0070 · 설계 §3.1). 담보약관만.
-  const withRow = (levels: ReturnType<typeof repeatLevels> | undefined): ConditionContext =>
-    props.condition.coverage && levels && levels.length > 0 ? { ...props.condition, row: { levels, readable: rowReadableLevels(levels) } } : props.condition;
+  // 담보 트리 반복 안이면 그 가장 안쪽 레벨이 「현재 세부보장 / 현재 급부」 (ADR-0087 결정 5) — 반복 표 셀이 우선.
+  const withRow = (levels: ReturnType<typeof repeatLevels> | undefined, at?: Id, slot?: SlotName): ConditionContext => {
+    if (!props.condition.coverage) return props.condition;
+    if (levels && levels.length > 0) return { ...props.condition, row: { levels, readable: rowReadableLevels(levels) } };
+    // 「비었을 때」 칸 자리는 그 반복의 원소 문맥 밖 — 현재 세부보장 / 급부를 세우지 않는다 (ADR-0088 결정 3)
+    const inner = at === undefined ? undefined : loopsAround(index, at, slot).filter((f) => isRepeatSource(f.source) && isTreeSource(f.source)).at(-1);
+    if (!inner || !isRepeatSource(inner.source)) return props.condition;
+    const benefit = inner.source.kind !== "subCoverages";
+    return {
+      ...props.condition,
+      row: benefit
+        ? { levels: ["benefit"], readable: ["coverage", "subCoverage", "benefit"], label: "현재 급부" }
+        : { levels: ["subCoverage"], readable: ["coverage", "subCoverage"], label: "현재 세부보장" },
+    };
+  };
   const scopeOf = (id: Id) => {
     const owner = index.branches.get(id)?.ownerId ?? id;
     return repeatScopeOf(tree, owner)?.levels;
@@ -736,7 +754,7 @@ export function DocumentEditor(props: EditorProps) {
     },
     enumOf: (c: Code) => enumByCode.get(c),
     switchValueLabel: (clause, on, code) => switchLabelers.get(clause.code)?.(on, code),
-    conditionFor: (nodeId) => withPlan(withRow(scopeOf(nodeId)), nodeId),
+    conditionFor: (nodeId) => withPlan(withRow(scopeOf(nodeId), nodeId), nodeId),
     ...(flashId ? { flashId } : {}),
     ...(mode === "edit" ? { edit } : {}),
   };
@@ -748,10 +766,10 @@ export function DocumentEditor(props: EditorProps) {
           const t = index.nodes.get(spec.at.tableId)?.node;
           return withPlan(withRow(t?.kind === "table" && t.repeat && !t.rows[spec.at.row]?.header ? repeatLevels(t) : undefined), spec.at.tableId);
         }
-        return withPlan(withRow(scopeOf(spec.at.parentId)), spec.at.parentId, spec.at.slot);
+        return withPlan(withRow(scopeOf(spec.at.parentId), spec.at.parentId, spec.at.slot), spec.at.parentId, spec.at.slot);
       }
       case "editChip":
-        return withPlan(withRow(scopeOf(spec.nodeId)), spec.nodeId);
+        return withPlan(withRow(scopeOf(spec.nodeId), spec.nodeId), spec.nodeId);
       default:
         return props.condition;
     }
@@ -795,7 +813,8 @@ export function DocumentEditor(props: EditorProps) {
     ...(generalTitle ? { generalTitle } : {}),
     generalProposed: current.generalDocumentId === undefined && props.suggestedGeneralId !== undefined,
     // 가운데와 같은 조를 고른 상품의 조립 문맥으로 — 편집 중이면 편집본 (§3.9)
-    preview: <PreviewTab docKind={doc.kind} products={props.previewProducts} tree={tree} {...(currentArticleId ? { articleId: currentArticleId } : {})} editing={mode === "edit"} />,
+    preview: <PreviewTab docKind={doc.kind} selection={selection} tree={tree} {...(currentArticleId ? { articleId: currentArticleId } : {})} editing={mode === "edit"} />,
+    ...(doc.kind === "special" ? { leaves: <LeafPanelTab selection={selection} tree={tree} go={go} /> } : {}),
     go,
     ...(fixCode ? { fixCode } : {}),
   };

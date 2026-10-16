@@ -589,12 +589,12 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
     const snapIdOf = new Map(nodes.map((n) => [n.masterNodeId, n.id]));
     for (const n of diff.add) {
       const parentId = n.parentMasterId ? snapIdOf.get(n.parentMasterId) : undefined;
-      const row = await repo.insertNode(tx, { productCoverageId: pc.id, kind: n.kind, masterNodeId: n.masterNodeId, parentId, name: n.name, order: n.order }, who);
+      const row = await repo.insertNode(tx, { productCoverageId: pc.id, kind: n.kind, masterNodeId: n.masterNodeId, parentId, key: n.key, name: n.name, order: n.order }, who);
       snapIdOf.set(n.masterNodeId, row.id);
     }
     for (const n of diff.remove) await clearOwner(tx, { kind: n.kind === "sub" ? "productSubCoverage" : "productBenefit", id: n.id });
     await repo.deleteNodes(tx, diff.remove.map((n) => n.id));
-    for (const u of diff.update) await repo.updateNode(tx, u.id, { name: u.name, order: u.order }, who);
+    for (const u of diff.update) await repo.updateNode(tx, u.id, { name: u.name, order: u.order, key: u.key }, who);
     return ok({ added: diff.add.length, removed: diff.remove.length, updated: diff.update.length });
   }
 
@@ -641,10 +641,10 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
     if (section === "base") await repo.insertBaseContract(tx, productId, pc.id, actor.userId);
     await snapshotFrom(tx, { kind: "coverage", id: tree.id }, { kind: "productCoverage", id: pc.id }, actor.userId);
     for (const sub of tree.subCoverages) {
-      const s = await repo.insertNode(tx, { productCoverageId: pc.id, kind: "sub", masterNodeId: sub.id, name: sub.name, order: sub.order }, actor.userId);
+      const s = await repo.insertNode(tx, { productCoverageId: pc.id, kind: "sub", masterNodeId: sub.id, key: sub.key, name: sub.name, order: sub.order }, actor.userId);
       await snapshotFrom(tx, { kind: "subCoverage", id: sub.id }, { kind: "productSubCoverage", id: s.id }, actor.userId);
       for (const b of sub.benefits) {
-        const bn = await repo.insertNode(tx, { productCoverageId: pc.id, kind: "benefit", masterNodeId: b.id, parentId: s.id, name: b.name, order: b.order }, actor.userId);
+        const bn = await repo.insertNode(tx, { productCoverageId: pc.id, kind: "benefit", masterNodeId: b.id, parentId: s.id, key: b.key, name: b.name, order: b.order }, actor.userId);
         await snapshotFrom(tx, { kind: "benefit", id: b.id }, { kind: "productBenefit", id: bn.id }, actor.userId);
       }
     }

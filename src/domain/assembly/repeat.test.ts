@@ -18,14 +18,15 @@ function surgerySpec(overrides: Partial<CoverageSpec> = {}): CoverageSpec {
     coverageName: "수술비",
     attributes: [],
     subCoverages: [
-      { id: "pc-surg-s1", masterNodeId: "m-s1", name: "1종수술", benefits: [{ id: "pc-surg-b11", masterNodeId: "m-b11", name: "수술보험금" }] },
+      { id: "pc-surg-s1", masterNodeId: "m-s1", key: "01", name: "1종수술", benefits: [{ id: "pc-surg-b11", masterNodeId: "m-b11", key: "1", name: "수술보험금" }] },
       {
         id: "pc-surg-s2",
         masterNodeId: "m-s2",
+        key: "02",
         name: "2종수술",
         benefits: [
-          { id: "pc-surg-b21", masterNodeId: "m-b21", name: "수술보험금" },
-          { id: "pc-surg-b22", masterNodeId: "m-b22", name: "입원보험금" },
+          { id: "pc-surg-b21", masterNodeId: "m-b21", key: "1", name: "수술보험금" },
+          { id: "pc-surg-b22", masterNodeId: "m-b22", key: "2", name: "입원보험금" },
         ],
       },
     ],
@@ -97,7 +98,7 @@ describe("조립 — 행 반복 표 (ADR-0070 결정 6)", () => {
     expect(t.rows.map((row) => row.spans)).toEqual([undefined, [1, 1, 1], [2, 1, 1], [0, 1, 1]]);
   });
 
-  it("행 안 조건은 행 노드 문맥 · @노드(마스터 id) 고정 참조는 그 스냅샷 노드", () => {
+  it("행 안 조건은 행 노드 문맥 · @키 경로 고정 참조는 그 스냅샷 노드", () => {
     const cond: InlineNode = {
       id: "c1",
       kind: "inlineCond",
@@ -106,7 +107,7 @@ describe("조립 — 행 반복 표 (ADR-0070 결정 6)", () => {
         { id: "c1-else", children: [text("c1-b", "지급")] },
       ],
     };
-    const inp = input(repeatTable(1, [[key("k1", "subCoverage")], [cond], [slot("s1", "D0003@m-b22")]]));
+    const inp = input(repeatTable(1, [[key("k1", "subCoverage")], [cond], [slot("s1", "D0003@02.2")]]));
     const r = assembleSpecial(inp, inp, "pc-surg");
     if (!r.ok) throw new Error(JSON.stringify(r.rejection));
     const t = tableOf(r.value.doc);

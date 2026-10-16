@@ -128,6 +128,8 @@ export interface SnapshotNode {
   masterNodeId: Id;
   /** 급부면 소속 세부보장 스냅샷 노드 id. 세부보장이면 undefined. */
   parentId?: Id;
+  /** 마스터 노드의 키 (ADR-0087 결정 2) — 조립 · 상품담보 화면이 이 키로 노드를 찾는다. */
+  key: string;
   name: string;
   order: number;
 }
@@ -192,9 +194,10 @@ export interface CoverageTree {
   name: string;
   subCoverages: {
     id: Id;
+    key: string;
     name: string;
     order: number;
-    benefits: { id: Id; name: string; order: number }[];
+    benefits: { id: Id; key: string; name: string; order: number }[];
   }[];
 }
 

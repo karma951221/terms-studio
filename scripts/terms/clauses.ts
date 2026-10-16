@@ -719,7 +719,7 @@ export function parameterize(record: ClauseRecord, catalog: readonly Discriminat
     switch (e.kind) {
       case "ref":
         if (e.ref.kind !== "discriminator") return e;
-        if (e.ref.node) throw new Error(`${record.code}: 노드 한정자 ${e.ref.code}@${e.ref.node.id} 는 인자로 바꾸지 않는다`);
+        if (e.ref.node) throw new Error(`${record.code}: 노드 한정자 ${e.ref.code}@${e.ref.node.path} 는 인자로 바꾸지 않는다`);
         return { kind: "ref", ref: { kind: "param", name: paramFor(e.ref.code) } };
       case "not":
         return { ...e, operand: rewriteExpr(e.operand) };

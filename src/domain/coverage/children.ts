@@ -21,12 +21,12 @@ export function coverageChildrenProviders(tree: Coverage): ChildrenProviders {
   return {
     coverage: {
       children: (node: StructNodeRef) =>
-        node.id === tree.id ? byOrder(tree.subCoverages).map((s) => ({ level: "subCoverage" as const, id: s.id, name: s.name, order: s.order })) : [],
+        node.id === tree.id ? byOrder(tree.subCoverages).map((s) => ({ level: "subCoverage" as const, id: s.id, key: s.key, name: s.name, order: s.order })) : [],
     },
     subCoverage: {
       children: (node: StructNodeRef) => {
         const sub = tree.subCoverages.find((s) => s.id === node.id);
-        return sub ? byOrder(sub.benefits).map((b) => ({ level: "benefit" as const, id: b.id, name: b.name, order: b.order })) : [];
+        return sub ? byOrder(sub.benefits).map((b) => ({ level: "benefit" as const, id: b.id, key: b.key, name: b.name, order: b.order })) : [];
       },
     },
   };

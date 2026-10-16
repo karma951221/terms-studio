@@ -10,12 +10,13 @@
  * 타입 조회(`TypeResolver`)는 카탈로그 정의로 서비스가 만든다.
  */
 
-import { findNodeById } from "../coverage/tree";
+import { nodeByKeyPath } from "../coverage/keys";
 import type { Coverage } from "../coverage/types";
 import { checkCondition, checkTypes, extractRefs, parse } from "../expression";
 import type { Expr, TypeResolver } from "../expression";
 import { ATTACH_LEVEL_LABEL, type AttachLevel, type Code, type Coordinate, type Issue } from "../types";
 import { coordinateOf, indexTree, type DocumentNode } from "./nodes";
+import { treeLoopRefIssues } from "./blockRepeat";
 import { repeatTableIssues } from "./repeat";
 
 /** 한정자 검사 문맥 — 담보 약관이면 문맥 담보 트리와 구분자 레벨 조회. 보통약관은 둘 다 없음. */
@@ -24,7 +25,7 @@ export interface ExpressionScope {
   levelOf?: (code: Code) => AttachLevel | undefined;
 }
 
-/** `@노드` 규칙 (ADR-0066 §2 · §3): 담보 약관에서만 · 노드가 트리에 있어야 · 노드 레벨 = 구분자 레벨. */
+/** `@키경로` 규칙 (ADR-0066 §2 · §3, ADR-0087): 담보 약관에서만 · 키 경로가 트리에 있어야 · 노드 레벨 = 구분자 레벨. */
 function checkNodeQualifiers(expr: Expr, scope: ExpressionScope, at: Coordinate): Issue[] {
   const issues: Issue[] = [];
   for (const { ref, path } of extractRefs(expr)) {
@@ -34,16 +35,16 @@ function checkNodeQualifiers(expr: Expr, scope: ExpressionScope, at: Coordinate)
       issues.push({ kind: "brokenRef", message: `노드 한정자 ${path} 는 담보 약관 문서에서만 쓸 수 있습니다 (문맥 담보 없음)`, at: here });
       continue;
     }
-    const node = findNodeById(scope.coverage, ref.node.id);
+    const node = nodeByKeyPath(scope.coverage, ref.node.path);
     if (!node) {
-      issues.push({ kind: "brokenRef", message: `문맥 담보에 노드 ${ref.node.id} 가 없습니다 — 끊어진 참조`, at: here });
+      issues.push({ kind: "brokenRef", message: `문맥 담보에 키 경로 ${ref.node.path} 가 없습니다 — 끊어진 참조`, at: here });
       continue;
     }
     const level = scope.levelOf?.(ref.code);
     if (level !== undefined && level !== node.level) {
       issues.push({
         kind: "typeMismatch",
-        message: `${ATTACH_LEVEL_LABEL[level]} 레벨 구분자 ${ref.code} 를 ${ATTACH_LEVEL_LABEL[node.level]} 「${node.name}」 에 붙일 수 없습니다`,
+        message: `${ATTACH_LEVEL_LABEL[level]} 레벨 구분자 ${ref.code} 를 ${ATTACH_LEVEL_LABEL[node.level]} ${node.keyPath} 「${node.name}」 에 붙일 수 없습니다`,
         at: here,
       });
     }
@@ -131,5 +132,7 @@ export function validateExpressions(doc: DocumentNode, resolve: TypeResolver, ba
   }
   // 반복 표 검사 (ADR-0070 · 설계 §2.6) — 저장을 막는 오류만. 경고(「모든 행이 같아집니다」)는 `repeatTableIssues` 로 따로 본다.
   issues.push(...repeatTableIssues(doc, { hasCoverage: scope.coverage !== undefined, levelOf: scope.levelOf }, base).filter((i) => i.severity !== "warning"));
+  // 담보 트리 반복 안의 한정자 없는 하위 레벨 참조 (ADR-0087 결정 8 · 기능/문면 §3.7)
+  if (scope.coverage && scope.levelOf) issues.push(...treeLoopRefIssues(doc, scope.levelOf, base));
   return issues;
 }

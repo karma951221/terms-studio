@@ -4,7 +4,11 @@ import { slotOptions, slotPathLabel } from "./SlotRefInput";
 import type { ConditionContext } from "./types";
 
 const context: ConditionContext = {
-  coverage: { id: "cov", name: "암진단", nodes: [{ id: "cov", level: "coverage", name: "암진단" }, { id: "b1", level: "benefit", name: "급부1", parentId: "cov" }] },
+  coverage: { id: "cov", name: "암진단", nodes: [
+    { id: "cov", level: "coverage", name: "암진단" },
+    { id: "s1", level: "subCoverage", name: "유사암", parentId: "cov", key: "01", keyPath: "01" },
+    { id: "b1", level: "benefit", name: "진단비", parentId: "s1", key: "1", keyPath: "01.1" },
+  ] },
   discriminators: [
     { code: "D0003", label: "지급사유", level: "benefit", type: { kind: "string" }, forms: [] },
     { code: "D0001", label: "갱신여부", level: "coverage", type: { kind: "boolean" }, forms: [] },
@@ -21,9 +25,9 @@ describe("슬롯 참조 후보 — 검색 입력(콤보박스)", () => {
       { value: "D0003", label: "지급사유", hint: "D0003", group: "급부" },
     ]);
   });
-  it("트리에서 고른 `코드@노드` 경로는 「이름 @노드이름」으로 보인다 — 모르는 코드는 경로 그대로(undefined)", () => {
-    expect(slotPathLabel(context, "D0003@b1")).toBe("지급사유 @급부1");
-    expect(slotPathLabel(context, "D0003@gone")).toBe("지급사유 @끊어진 노드");
+  it("트리에서 고른 `코드@키경로` 는 「세부보장 01 · 이름 › 급부 1 · 이름 › 구분자」로 보인다 — 모르는 코드는 경로 그대로(undefined)", () => {
+    expect(slotPathLabel(context, "D0003@01.1")).toBe("세부보장 01 · 유사암 › 급부 1 · 진단비 › 지급사유");
+    expect(slotPathLabel(context, "D0003@09.9")).toBe("끊어진 노드 09.9 › 지급사유");
     expect(slotPathLabel(context, "D0002")).toBe("갱신유형");
     expect(slotPathLabel(context, "D9999")).toBeUndefined();
   });

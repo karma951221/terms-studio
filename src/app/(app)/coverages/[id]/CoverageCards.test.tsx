@@ -28,8 +28,9 @@ function subs(n: number): StructureDraftSub[] {
   return Array.from({ length: n }, (_, i) => ({
     id: `s${i + 1}`,
     key: encodeNodeKey("subCoverage", `s${i + 1}`),
+    nodeKey: String(i + 1).padStart(2, "0"),
     name: `세부보장${i + 1}`,
-    benefits: [{ id: `b${i + 1}`, key: encodeNodeKey("benefit", `b${i + 1}`), name: `급부${i + 1}` }],
+    benefits: [{ id: `b${i + 1}`, key: encodeNodeKey("benefit", `b${i + 1}`), nodeKey: "1", name: `급부${i + 1}` }],
   }));
 }
 
@@ -226,5 +227,21 @@ describe("CoverageCards — 담보 카드의 「특약 그룹」 칸 (ADR-0080 �
 
   it("세부보장 · 급부 카드에는 그룹 칸이 없다 — 담보 카드에 한 번", () => {
     expect((renderGroup("edit", "V01").match(/data-path="specialGroup"/g) ?? []).length).toBe(1);
+  });
+});
+
+describe("CoverageCards — 레벨 라벨은 노드 키 (ADR-0087 · 기능/담보 §3.6)", () => {
+  it("순서를 바꿔도 키가 그대로 — 둘째 자리의 03 은 「세부보장 03」", () => {
+    const structure = subs(2);
+    structure[1] = { ...structure[1]!, nodeKey: "03" };
+    const html = renderToStaticMarkup(
+      <EditShell initial={{ label: "수술비", structure, values: {} }} title="수술비" path={[{ label: "담보", href: "/coverages" }]} saveAction={async () => ({ ok: true })} initialMode="read">
+        <CoverageCards coverageKey={COVERAGE_KEY} formByNode={{}} original={savedOf(structure)} attributeValueLabels={[]} />
+      </EditShell>,
+    );
+    expect(html).toContain("세부보장 01");
+    expect(html).toContain("세부보장 03");
+    expect(html).not.toContain("세부보장 2<");
+    expect(html).toContain("급부 1");
   });
 });

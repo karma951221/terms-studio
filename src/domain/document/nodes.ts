@@ -21,11 +21,12 @@ import type { ClauseMode } from "../clause/types";
 import { isParticlePreset, PARTICLE_PRESET_MESSAGE, type ParticleNode } from "./particles";
 import type { Bindings } from "../clause/params";
 import { documentCodeIssues, multiTarget, referenceKeys, refKey, refLabel } from "./pcode";
-import { checkRepeatSource, currentSlotIssues, enclosingLoops, inlineRepeatIssues, loopTypesAt, refTargetFactIssues, refTargetIssues, REPEAT_MAX_DEPTH, repeatedKeys, type RefTargetFact, type RepeatSource } from "./blockRepeat";
+import { checkRepeatSource, currentSlotIssues, enclosingLoops, inlineRepeatIssues, loopTypesAt, refTargetFactIssues, refTargetIssues, REPEAT_MAX_DEPTH, repeatedKeys, type RefTargetFact, type RepeatEnv, type RepeatSource } from "./blockRepeat";
 import type { EnumDef } from "../catalog/types";
 import type { LoopElementType } from "../clause/params";
 import type { Clause } from "../clause/types";
 import type { MasterTree } from "../master";
+import type { Coverage } from "../coverage/types";
 import { foldTitle, TITLE_INLINE, titleKindMessage } from "./title";
 
 export type { ParticleNode } from "./particles";
@@ -842,6 +843,8 @@ export interface TreeEnv {
    * 템플릿에서 온 자리는 옮겨도 코드를 바꾸지 않는다. 템플릿 · 담보약관 · 함수조항 저작은 끄고 PZ 를 거부한다.
    */
   copyCodes?: boolean;
+  /** 문맥 담보(담보약관) — 조 참조 키 한정의 키 존재 검사 (ADR-0087 결정 10). 없으면 건너뛴다. */
+  coverage?: Coverage;
 }
 
 /**
@@ -923,8 +926,8 @@ export function checkNodeRefs(e: NodeEntry, ix: TreeIndex, env: TreeEnv, atSave:
   }
 }
 
-function repeatEnvOf(env: TreeEnv): { master?: MasterTree; enumOf?: (code: Code) => EnumDef | undefined } {
-  return { ...(env.master ? { master: env.master } : {}), ...(env.enumOf ? { enumOf: env.enumOf } : {}) };
+function repeatEnvOf(env: TreeEnv): RepeatEnv {
+  return { ...(env.master ? { master: env.master } : {}), ...(env.enumOf ? { enumOf: env.enumOf } : {}), hasCoverage: env.kind === "special" };
 }
 
 /**
@@ -960,11 +963,17 @@ function articleRefIssues(n: Pick<ArticleRefNode, "targets" | "connector" | "sco
       : env.generalReferenceKeys ? env.generalReferenceKeys.has(key) : !env.generalArticleIds || env.generalArticleIds.has(target.articleId);
     if (exists) {
       const here = { ...at, refPath: refKey(target) };
-      if (n.scope === "self") return refTargetIssues(target, e, ix, { ...(gate.clauseOf ? { clauseOf: (c: Code) => gate.clauseOf!(c) } : {}), ...(env.enumOf ? { enumOf: env.enumOf } : {}), ...(env.master ? { master: env.master } : {}) }).map((i) => ({ ...i, at: here }));
-      // 대응 보통약관 대상 — 값 한정은 반복 안 대상에만, 안쪽 코드 · 값 한정 열거형은 보통약관이 넘긴 대상 사실로 이 문서와 같은 검사
+      if (n.scope === "self") return refTargetIssues(target, e, ix, { ...(gate.clauseOf ? { clauseOf: (c: Code) => gate.clauseOf!(c) } : {}), ...(env.enumOf ? { enumOf: env.enumOf } : {}), ...(env.master ? { master: env.master } : {}), ...(env.coverage ? { coverage: env.coverage } : {}) }).map((i) => ({ ...i, at: here }));
+      // 대응 보통약관 대상 — 보통약관엔 담보 트리 반복이 없어 키 한정을 못 건다 (ADR-0087 결정 10)
+      if (target.restrict !== undefined && "keys" in target.restrict) return [{ kind: "structure" as const, message: "키 한정은 이 문서의 담보 트리 반복으로 생긴 노드에만 건다 — 보통약관 대상에는 쓸 수 없습니다", at: here }];
+      // 「현재」가 감싼 담보 트리 반복이면 조립에서 키 한정이 된다 — 같은 이유로 거부, 종 반복 문구가 아니라 트리 반복 문구로
+      const current = (target.restrict as { current?: unknown } | undefined)?.current;
+      if (typeof current === "string" && loopTypesAt(ix, e, env.master).get(current)?.kind === "coverageNode") {
+        return [{ kind: "structure" as const, message: "보통약관에는 담보 트리 반복이 없어 「현재 세부보장 · 급부」 한정을 쓸 수 없습니다 — 보통약관 대상에는 값 한정(사유)만 건다", at: here }];
+      }
+      // 값 한정은 반복 안 대상에만, 안쪽 코드 · 값 한정 열거형은 보통약관이 넘긴 대상 사실로 이 문서와 같은 검사
       if (target.restrict !== undefined && env.generalRepeatedKeys && !env.generalRepeatedKeys.has(key)) return [{ kind: "structure" as const, message: "값 한정은 반복으로 생긴 노드에만 건다 — 이 보통약관 대상은 반복 안이 아닙니다", at: here }];
       if (env.generalTargets) return refTargetFactIssues(target, env.generalTargets.get(key), () => loopTypesAt(ix, e, env.master), env, target.code).map((i) => ({ ...i, at: here }));
-      const current = (target.restrict as { current?: unknown } | undefined)?.current;
       if (typeof current === "string" && !loopTypesAt(ix, e, env.master).has(current)) return [{ kind: "structure" as const, message: "값 한정 「현재 값」의 반복이 이 참조를 감싸지 않습니다 — 그 반복 블록 안에서만 쓴다", at: here }];
       return [];
     }

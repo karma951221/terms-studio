@@ -26,9 +26,11 @@ import { enumFieldValue } from "../catalog/fields";
 import type { EnumDef } from "../catalog/types";
 import type { Clause } from "../clause/types";
 import { checkPlanOptionFilter, type LoopElementType } from "../clause/params";
-import { parse, refPath, type Expr, type ExprType, type Ref, type TypeResolver } from "../expression";
+import { belowLoop, LEVEL_WORD, nodeByKeyPath } from "../coverage/keys";
+import type { Coverage } from "../coverage/types";
+import { extractRefs, parse, refPath, type Expr, type ExprType, type Ref, type TypeResolver } from "../expression";
 import { findMasterField, formsOfLevel, MASTER, type MasterTree } from "../master";
-import { isInlineRepeatConnector, type Code, type Coordinate, type Id, type Issue } from "../types";
+import { isInlineRepeatConnector, type AttachLevel, type Code, type Coordinate, type Id, type Issue } from "../types";
 import { coordinateOf, fallbackPathId, indexTree, isRepeatNode, type DocumentNode, type NodeEntry, type RepeatNode, type TreeIndex } from "./nodes";
 import { clauseCodeEntries, withClauseCodes } from "../clause/pcode";
 import { missingValueMessage } from "../catalog/values";
@@ -59,7 +61,16 @@ export interface UnionRepeatSource {
   where?: { field: Code; value: string | boolean };
 }
 
-export type RepeatSource = PlanOptionsRepeatSource | ListOfCurrentRepeatSource | UnionRepeatSource;
+/** 담보 트리 원천 (ADR-0087 결정 5) — 담보약관 템플릿만. 원소 = 스냅샷 노드(트리 순서). */
+export type TreeRepeatSource = { kind: "subCoverages" } | { kind: "benefits" } | { kind: "benefitsOfCurrent"; loop: Id };
+
+export type RepeatSource = PlanOptionsRepeatSource | ListOfCurrentRepeatSource | UnionRepeatSource | TreeRepeatSource;
+
+const TREE_KINDS = new Set(["subCoverages", "benefits", "benefitsOfCurrent"]);
+
+export function isTreeSource(s: RepeatSource): s is TreeRepeatSource {
+  return TREE_KINDS.has(s.kind);
+}
 
 /** 반복 깊이 한도 — 반복 안 반복 하나 (ADR-0077 결정 4). */
 export const REPEAT_MAX_DEPTH = 2;
@@ -67,13 +78,15 @@ export const REPEAT_MAX_DEPTH = 2;
 export function isRepeatSource(x: unknown): x is RepeatSource {
   if (typeof x !== "object" || x === null) return false;
   const k = (x as { kind?: unknown }).kind;
-  return k === "planOptions" || k === "listOfCurrent" || k === "union";
+  return k === "planOptions" || k === "listOfCurrent" || k === "union" || (typeof k === "string" && TREE_KINDS.has(k));
 }
 
 export interface RepeatEnv {
   master?: MasterTree;
   /** 열거형 정의 — 합집합 거름 필드 · 교차 검사 · 이름. 없으면 그 검사는 건너뛴다. */
   enumOf?: (code: Code) => EnumDef | undefined;
+  /** 문맥 담보가 있는 문서(담보약관)인가 — 담보 트리 원천의 허용. */
+  hasCoverage?: boolean;
 }
 
 function listFieldEnum(form: Code, field: Code, master: MasterTree): Code | undefined {
@@ -99,6 +112,11 @@ export function loopElementType(source: RepeatSource, outer: RepeatSource | unde
       const enumCode = listFieldEnum(source.form, source.field, master);
       return enumCode ? { kind: "enum", enumCode } : undefined;
     }
+    case "subCoverages":
+      return { kind: "coverageNode", level: "subCoverage" };
+    case "benefits":
+    case "benefitsOfCurrent":
+      return { kind: "coverageNode", level: "benefit" };
   }
 }
 
@@ -132,6 +150,14 @@ export function enclosingLoops(ix: TreeIndex, e: Pick<NodeEntry, "path" | "node"
   return loopsOnPath(ix, e.path, e.node.id);
 }
 
+/** 자리를 감싼 담보 트리 반복 — 바깥 → 안쪽, 반복 id · 현재 노드 레벨. 기본 연결 · 반복 안 참조 검사 · 키 한정 검사가 쓴다. */
+export function treeLoopLevelsAt(ix: TreeIndex, e: Pick<NodeEntry, "path" | "node">): { loop: Id; level: "subCoverage" | "benefit" }[] {
+  return enclosingLoops(ix, e).flatMap((f) => {
+    if (!isRepeatSource(f.source) || !isTreeSource(f.source)) return [];
+    return [{ loop: f.id, level: f.source.kind === "subCoverages" ? ("subCoverage" as const) : ("benefit" as const) }];
+  });
+}
+
 /** 자리를 감싼 반복 블록 id → 현재 원소 타입 — 인자 연결 검사(`BindingEnv.loops`)의 재료. */
 export function loopTypesAt(ix: TreeIndex, e: Pick<NodeEntry, "path" | "node">, master: MasterTree = MASTER): Map<Id, LoopElementType> {
   const out = new Map<Id, LoopElementType>();
@@ -156,6 +182,18 @@ export function checkRepeatSource(node: RepeatNode, outers: readonly RepeatNode[
   const fail = (kind: Issue["kind"], message: string, refPath?: string): Issue[] => [{ kind, message, at: { ...at, ...(refPath !== undefined ? { refPath } : {}) } }];
   if (!isRepeatSource(source)) return fail("structure", `${node.kind === "inlineFor" ? "문장 안 반복" : "반복 블록"}의 원천을 고른다 — 세목 선택지 · 바깥 반복의 현재 원소의 목록 · 목록값의 합집합`);
   const outer = outers.at(-1);
+  if (outer && isRepeatSource(outer.source) && isTreeSource(outer.source) !== isTreeSource(source)) {
+    return fail("structure", "담보 트리 반복과 세목 반복은 섞어 중첩하지 않습니다 — 한 단계 중첩은 같은 계열 안에서만(종 › 사유, 세부보장 › 급부). 종에 따라 갈리는 문장은 조건식으로 쓴다 (ADR-0087 결정 5)");
+  }
+  if (isTreeSource(source)) {
+    if (!env.hasCoverage) return fail("structure", "담보 트리 반복(세부보장마다 · 급부마다)은 담보약관 템플릿에서만 쓸 수 있습니다 — 문맥 담보가 없습니다");
+    if (outer && source.kind !== "benefitsOfCurrent") return fail("structure", "안쪽 담보 트리 반복은 「현재 세부보장의 급부마다」뿐입니다");
+    if (source.kind === "benefitsOfCurrent") {
+      if (!outer || outer.id !== source.loop) return fail("structure", "「현재 세부보장의 급부마다」는 바로 바깥 「세부보장마다」 반복 안에 둔다");
+      if (!isRepeatSource(outer.source) || outer.source.kind !== "subCoverages") return fail("structure", "「현재 세부보장의 급부마다」의 바깥 반복은 「세부보장마다」여야 합니다");
+    }
+    return [];
+  }
   if (outer && source.kind !== "listOfCurrent") {
     return fail("structure", "안쪽 반복의 원천은 바깥 반복의 현재 원소의 목록뿐입니다 — 「현재 종의 사유마다」처럼 고른다 (ADR-0077 결정 4)");
   }
@@ -185,6 +223,8 @@ export function checkRepeatSource(node: RepeatNode, outers: readonly RepeatNode[
       }
       return [];
     }
+    default:
+      return [];
   }
 }
 
@@ -279,6 +319,12 @@ export function repeatLabel(source: RepeatSource | unknown, ctx: { outer?: Repea
       return `${formLabel(source.form)}종마다`;
     case "listOfCurrent":
       return `${ctx.outer?.kind === "planOptions" ? fieldLabel(ctx.outer.form, source.field) : source.field}마다`;
+    case "subCoverages":
+      return "세부보장마다";
+    case "benefits":
+      return "세부보장 › 급부마다";
+    case "benefitsOfCurrent":
+      return "현재 세부보장의 급부마다";
     case "union": {
       const base = `${fieldLabel(source.form, source.field)} 합집합`;
       if (!source.where) return `${base}마다`;
@@ -345,6 +391,8 @@ export interface RefTargetEnv {
   clauseOf?: (code: Code) => Clause | undefined;
   enumOf?: (code: Code) => EnumDef | undefined;
   master?: MasterTree;
+  /** 문맥 담보 — 키 한정의 키 존재 검사 (ADR-0087 결정 10). 없으면 건너뛴다. */
+  coverage?: Coverage;
 }
 
 /** 함수조항 본문이 내놓는 참조 대상 코드(항 · 호 · 목) — 코드 없는 자리는 저장 · 펼치기 채번과 같은 규칙으로 채운 뒤. */
@@ -380,6 +428,25 @@ function valueLoopEnumOf(ix: TreeIndex, ids: readonly Id[], master: MasterTree):
   return enumCode;
 }
 
+/** 대상(안쪽 코드면 그 참조 노드)이 선 담보 트리 반복 — 안쪽 것. 대상이 트리 반복 블록 자신이면 그 블록. 없으면 undefined (ADR-0087 결정 10). */
+export function treeLoopOfTarget(ix: TreeIndex, t: { articleId: Id; code?: Code }): { loop: Id; level: "subCoverage" | "benefit" } | undefined {
+  if (t.code === undefined) return undefined;
+  return treeLoopOfIds(ix, nodesOfTarget(ix, { articleId: t.articleId, code: t.code }));
+}
+
+/** `treeLoopOfTarget` 의 몸 — 대상 코드의 노드들을 이미 안 때(`refTargetFacts` 가 한 번에 모은다). */
+function treeLoopOfIds(ix: TreeIndex, ids: readonly Id[]): { loop: Id; level: "subCoverage" | "benefit" } | undefined {
+  let found: { loop: Id; level: "subCoverage" | "benefit" } | undefined;
+  for (const id of ids) {
+    const h = ix.nodes.get(id);
+    if (!h) continue;
+    const loops = treeLoopLevelsAt(ix, h);
+    if (h.node.kind === "forBlock" && isRepeatSource(h.node.source) && isTreeSource(h.node.source)) loops.push({ loop: h.node.id, level: h.node.source.kind === "subCoverages" ? "subCoverage" : "benefit" });
+    if (loops.length > 0) found = loops.at(-1);
+  }
+  return found;
+}
+
 /**
  * 참조 대상 머리(대상 코드의 노드)의 사실 — 안쪽 코드 · 값 한정 검사 재료 (ADR-0077 결정 6 · 7). 이 문서 대상은 그 자리에서 짓고,
  * 대응 보통약관 대상은 보통약관 한 벌이 열쇠마다 지어 넘긴다(`GeneralRefs.targets`) — 담보약관 · 함수조항 저장이 그 문서를 열지 않고 같은 검사를 한다.
@@ -393,6 +460,8 @@ export interface RefTargetFact {
   innerCodes?: ReadonlySet<Code>;
   /** 대상(또는 그 반복 블록 자신)을 감싼 원소가 열거값인 반복의 열거형 — 없으면 값 한정을 걸 수 없다. */
   valueEnum?: Code;
+  /** 대상(또는 그 반복 블록 자신)을 감싼 담보 트리 반복의 레벨 — 안쪽 것. 없으면 키 한정을 걸 수 없다 (ADR-0087 결정 10). */
+  treeLevel?: "subCoverage" | "benefit";
 }
 
 /** 대상 열쇠의 사실 — 그 코드의 노드가 없으면 undefined. */
@@ -409,11 +478,13 @@ function factOf(ix: TreeIndex, ids: readonly Id[], env: RefTargetEnv, innerOf: (
   if (!head) return undefined;
   const innerCodes = head.node.kind === "clauseBlockRef" ? innerOf(head.node.clauseCode) : undefined;
   const valueEnum = valueLoopEnumOf(ix, ids, env.master ?? MASTER);
+  const treeLevel = treeLoopOfIds(ix, ids)?.level;
   return {
     headKind: head.node.kind,
     ...(head.node.kind === "clauseBlockRef" ? { clauseCode: head.node.clauseCode } : {}),
     ...(innerCodes ? { innerCodes } : {}),
     ...(valueEnum !== undefined ? { valueEnum } : {}),
+    ...(treeLevel !== undefined ? { treeLevel } : {}),
   };
 }
 
@@ -453,13 +524,16 @@ export function refTargetFacts(ix: TreeIndex, env: RefTargetEnv): Map<string, Re
  * - 안쪽 코드: 대상 코드가 함수조항 블록 참조여야 하고, 그 함수조항 본문에 그 코드가 있어야 한다.
  * - 값 한정: 대상(안쪽 코드면 그 참조 노드)이 원소가 열거값인 반복 안(또는 그 반복 블록)이어야 한다. 해당 값들 = 비지 않은 그 열거형의 값,
  *   현재 값 = 참조 자리를 감싼 열거값 반복.
+ * - 키 한정 (ADR-0087 결정 10): 대상이 담보 트리 반복 안(또는 그 반복 블록)이어야 한다. 키는 하나 이상 · 「세부보장마다」 대상엔 세부보장 키만 ·
+ *   문맥 담보에 없는 키 = 「없는 키」. 트리 반복 대상의 「현재」 = 참조 자리를 감싼 담보 트리 반복 — 대상이 「세부보장마다」면 급부 반복은 안 된다.
  */
 export function refTargetFactIssues(
   t: { innerCode?: Code; restrict?: unknown },
   fact: RefTargetFact | undefined,
   currentTypes: () => ReadonlyMap<Id, LoopElementType>,
-  env: Pick<RefTargetEnv, "enumOf">,
+  env: Pick<RefTargetEnv, "enumOf" | "coverage">,
   code?: Code,
+  treeLevelsAt: () => readonly { loop: Id; level: "subCoverage" | "benefit" }[] = () => [],
 ): { kind: Issue["kind"]; message: string }[] {
   const out: { kind: Issue["kind"]; message: string }[] = [];
   if (t.innerCode !== undefined && fact) {
@@ -467,7 +541,25 @@ export function refTargetFactIssues(
     else if (fact.innerCodes && !fact.innerCodes.has(t.innerCode)) out.push({ kind: "brokenRef", message: `함수조항 ${fact.clauseCode} 본문에 참조 대상 ${t.innerCode} 가 없습니다` });
   }
   if (t.restrict === undefined) return out;
-  const r = t.restrict as { values?: unknown; current?: unknown };
+  const r = t.restrict as { values?: unknown; current?: unknown; keys?: unknown };
+  const tree = fact?.treeLevel;
+  if (Array.isArray(r.keys)) {
+    if (fact && !tree) return [...out, { kind: "structure", message: "키 한정은 담보 트리 반복으로 생긴 노드에만 건다 — 이 대상은 그런 반복 안이 아닙니다" }];
+    const keys = r.keys.filter((k): k is string => typeof k === "string");
+    if (keys.length === 0) return [...out, { kind: "structure", message: "키 한정의 키를 하나 이상 고른다" }];
+    if (tree === "subCoverage" && keys.some((k) => k.includes("."))) out.push({ kind: "structure", message: "「세부보장마다」 반복 대상에는 세부보장 키만 고른다" });
+    const coverage = env.coverage;
+    const missing = coverage ? keys.filter((k) => !nodeByKeyPath(coverage, k)) : [];
+    if (missing.length > 0) out.push({ kind: "brokenRef", message: `없는 키 ${missing.join(" · ")} — 문맥 담보에 그 세부보장 · 급부가 없습니다` });
+    return out;
+  }
+  if (typeof r.current === "string" && tree) {
+    const cur = treeLevelsAt().find((l) => l.loop === r.current);
+    if (!cur) out.push({ kind: "structure", message: "키 한정 「현재」의 반복이 이 참조를 감싸지 않습니다 — 그 담보 트리 반복 안에서만 쓴다" });
+    // 급부 원소의 키 경로(01.1)는 세부보장 원소(01)를 고르지 못한다 — 조립에서 0개가 된다 (위 「세부보장마다 대상엔 세부보장 키만」과 같은 규칙)
+    else if (cur.level === "benefit" && tree === "subCoverage") out.push({ kind: "structure", message: "「세부보장마다」 반복 대상의 「현재」는 세부보장 반복이다 — 급부 반복의 「현재」는 세부보장을 고르지 못한다" });
+    return out;
+  }
   const enumCode = fact?.valueEnum;
   if (fact && enumCode === undefined) {
     out.push({ kind: "structure", message: "값 한정은 원소가 열거값(사유)인 반복으로 생긴 노드에만 건다 — 이 대상은 그런 반복 안이 아닙니다" });
@@ -482,6 +574,7 @@ export function refTargetFactIssues(
   } else if (typeof r.current === "string") {
     const lt = currentTypes().get(r.current);
     if (!lt) out.push({ kind: "structure", message: `값 한정 「현재 값」의 반복이 이 참조를 감싸지 않습니다 — 그 반복 블록 안에서만 쓴다` });
+    else if (lt.kind === "coverageNode") out.push({ kind: "structure", message: "담보 트리 반복의 「현재 세부보장 · 급부」 한정은 담보 트리 반복으로 생긴 대상에만 건다 — 이 대상은 그런 반복 안이 아닙니다" });
     else if (lt.kind !== "enum") out.push({ kind: "structure", message: "값 한정 「현재 값」은 원소가 열거값(사유)인 반복에만 쓴다 — 종 반복은 안 된다" });
     else if (enumCode !== undefined && lt.enumCode !== enumCode) out.push({ kind: "typeMismatch", message: `값 한정 「현재 값」의 열거형(${lt.enumCode})이 대상 반복의 열거형(${enumCode})과 다릅니다` });
   } else out.push({ kind: "structure", message: "값 한정은 값들 또는 현재 값 중 하나다" });
@@ -490,7 +583,7 @@ export function refTargetFactIssues(
 
 /** 이 문서 안 참조 대상 하나의 검사 — `refTargetFactIssues` 를 이 문서의 대상 머리 · 참조 자리로. */
 export function refTargetIssues(t: { articleId: Id; code?: Code; innerCode?: Code; restrict?: unknown }, refEntry: Pick<NodeEntry, "path" | "node">, ix: TreeIndex, env: RefTargetEnv): { kind: Issue["kind"]; message: string }[] {
-  return refTargetFactIssues(t, refTargetFact(ix, t, env), () => loopTypesAt(ix, refEntry, env.master ?? MASTER), env, t.code);
+  return refTargetFactIssues(t, refTargetFact(ix, t, env), () => loopTypesAt(ix, refEntry, env.master ?? MASTER), env, t.code, () => treeLoopLevelsAt(ix, refEntry));
 }
 
 // ───────────────────────────── 경고 · 교차 검사 ─────────────────────────────
@@ -602,5 +695,38 @@ export function definitionCrossCheck(doc: DocumentNode, clauseOf: (code: Code) =
       }
     }
   }
+  return out;
+}
+
+/**
+ * 담보 트리 반복 안의 조건 · 슬롯 — 한정자 없는 세부보장 · 급부 레벨 구분자는 현재 노드(자기 또는 조상)에서 읽힌다.
+ * 반복 레벨보다 아래 레벨(「세부보장마다」 안의 급부 레벨)은 읽을 노드가 없어 저장 오류다 (기능/문면 §3.7 · 반복 표와 같은 규칙 — 공용 술어 `belowLoop`).
+ */
+export function treeLoopRefIssues(doc: DocumentNode, levelOf: (code: Code) => AttachLevel | undefined, base: Coordinate = {}): Issue[] {
+  const ix = indexTree(doc, base);
+  const out: Issue[] = [];
+  const check = (src: string, e: Pick<NodeEntry, "path" | "node">, at: Coordinate) => {
+    const inner = treeLoopLevelsAt(ix, e).at(-1);
+    if (!inner) return;
+    const parsed = parse(src);
+    if (!parsed.ok) return;
+    for (const { ref, path, aggregate } of extractRefs(parsed.value)) {
+      if (ref.kind !== "discriminator" || ref.node || aggregate) continue;
+      const level = levelOf(ref.code);
+      if (level === undefined || !belowLoop(level, inner.level)) continue;
+      const loopWord = inner.level === "subCoverage" ? "세부보장마다" : "급부마다";
+      out.push({
+        kind: "structure",
+        message: `「${loopWord}」 반복 안에서 ${LEVEL_WORD[level as "subCoverage" | "benefit"]} 레벨 구분자 ${ref.code} 를 한정자 없이 읽을 수 없습니다 — 키 경로로 고르거나 「현재 세부보장의 급부마다」 안에 두세요`,
+        at: { ...at, refPath: path },
+      });
+    }
+  };
+  for (const be of ix.branches.values()) {
+    if (be.branch.when === undefined) continue;
+    const owner = ix.nodes.get(be.ownerId);
+    if (owner) check(be.branch.when, { path: be.path, node: owner.node }, coordinateOf(ix, be, base));
+  }
+  for (const e of ix.nodes.values()) if (e.node.kind === "slot") check(e.node.ref, e, coordinateOf(ix, e, base));
   return out;
 }

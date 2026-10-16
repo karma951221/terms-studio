@@ -91,6 +91,14 @@ describe("조 참조 인자 연결도 문서의 조 참조로 센다 (ADR-0083 �
     const refs = collectRefs(doc).filter((r) => r.kind === "article");
     expect(refs).toEqual([expect.objectContaining({ kind: "article", articleId: "a1", scope: "self", at: expect.objectContaining({ nodePath: ["d", "a2", "k"], refPath: "a1" }) })]);
   });
+
+  it("노드 한정자 D0007@01 은 키 경로로 수집된다 (ADR-0087)", () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    const doc = b.document("d", [b.condBlock([b.branch("D0007@01 = true", [b.article("x", [])])])]);
+    expect(collectRefs(doc).filter((r) => r.kind === "discriminator")).toEqual([
+      expect.objectContaining({ kind: "discriminator", code: "D0007", node: { path: "01" } }),
+    ]);
+  });
 });
 
 describe("반복 원천이 읽는 마스터 필드 · 열거값 필드 (ADR-0077 · 기능/문면 §3.7)", () => {
@@ -123,6 +131,33 @@ describe("반복 원천이 읽는 마스터 필드 · 열거값 필드 (ADR-0077
       ["waiver.reasons", "F03", "f3", "waiver.reasons"],
       ["waiver.applies", undefined, "f3", "waiver.applies"],
     ]);
+  });
+
+  it("담보 트리 반복(세부보장마다 · 현재 세부보장의 급부마다)은 폼 · 거름이 없어 간선이 없다 — 트리 반복을 바깥으로 둔 목록 반복도 「undefined.필드」를 내지 않는다 (ADR-0087)", () => {
+    const doc = {
+      kind: "document",
+      id: "d",
+      title: "담보약관",
+      children: [
+        {
+          kind: "article",
+          id: "a1",
+          title: titleNodes("지급사유", "a1"),
+          children: [
+            {
+              kind: "forBlock",
+              id: "t1",
+              source: { kind: "subCoverages" },
+              children: [
+                { kind: "forBlock", id: "t2", source: { kind: "benefitsOfCurrent", loop: "t1" }, children: [] },
+                { kind: "forBlock", id: "t3", source: { kind: "listOfCurrent", loop: "t1", field: "reasons" }, children: [] },
+              ],
+            },
+          ],
+        },
+      ],
+    } as unknown as DocumentNode;
+    expect(collectRefs(doc).filter((r) => r.kind === "repeatSource")).toEqual([]);
   });
 });
 

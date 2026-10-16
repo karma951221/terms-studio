@@ -164,9 +164,10 @@ export interface RArticleRef {
   id: Id;
   /**
    * 대상 — 조 · 조+코드 · 조+참조코드+안쪽코드(펼친 함수조항 안 노드). `values` = 값 한정(현재 값은 해소 단계가 원소 코드로 바꿔 둔다 —
-   * 열거값 원소 반복으로 생긴 노드 중 그 값이 낸 것만, ADR-0077 결정 7).
+   * 열거값 원소 반복으로 생긴 노드 중 그 값이 낸 것만, ADR-0077 결정 7). `keys` = 키 한정 — 담보 트리 원소의 키 경로로 거른다
+   * (세부보장 키는 그 아래 급부 원소까지, 「현재」는 감싼 트리 반복의 현재 노드 키 — ADR-0087 결정 10).
    */
-  targets: { articleId: Id; code?: string; innerCode?: string; values?: string[] }[];
+  targets: { articleId: Id; code?: string; innerCode?: string; values?: string[]; keys?: string[] }[];
   /** 참조 자리를 감싼 블록 반복의 현재 원소 — 템플릿 반복 id → 원소 id. 같은 반복 안 대상은 이 회차의 사본으로 좁힌다. */
   within?: Readonly<Record<Id, string>>;
   connector?: ReferenceConnector;
@@ -236,11 +237,13 @@ interface Keyed {
   groups?: string[];
 }
 
-/** 반복 원소 표지 — 템플릿 반복 id · 원소 id(종 = 세목 선택지 id, 열거값 = 값 코드). */
+/** 반복 원소 표지 — 템플릿 반복 id · 원소 id(종 = 세목 선택지 id, 열거값 = 값 코드, 담보 트리 노드 = 복제 접미사 원소). */
 export interface LoopTag {
   loop: Id;
   element: string;
-  kind: "planOption" | "enumValue";
+  kind: "planOption" | "enumValue" | "coverageNode";
+  /** 담보 트리 원소의 키 경로 (`01` · `01.2`) — 키 한정 해소(ADR-0087 결정 10)가 읽는다. */
+  path?: string;
 }
 export interface RSubitem<I> extends Keyed {
   kind: "subitem";

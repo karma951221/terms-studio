@@ -102,8 +102,8 @@ interface Env {
   master?: MasterTree;
   /** owner id → 값 소유자 종류·마스터 id (추적용). */
   owners: ReadonlyMap<Id, { kind: ReadRecord["owner"]["kind"]; masterId: Id }>;
-  /** 마스터 노드 id → 스냅샷 노드 id — 문면의 @노드 한정자를 이 트리로 옮긴다. */
-  snapshotOf: ReadonlyMap<Id, Id>;
+  /** 노드 키 경로(`01` · `01.2`) → 스냅샷 노드 id — 문면의 @노드 한정자 · 키 경로 연결을 이 트리에서 찾는다 (ADR-0087 결정 3). */
+  keyPaths: ReadonlyMap<string, Id>;
   trace?: ContextTrace;
   /** 평가 중인 파생 코드 — 순환 가드. */
   evaluating: ReadonlySet<Code>;
@@ -168,7 +168,7 @@ function lookupDiscriminator(env: Env, node: CoverageNode | undefined, plan: Pla
   } else {
     if (!env.tree) return UNDETERMINED;
     if (ref.node) {
-      const sid = env.snapshotOf.get(ref.node.id);
+      const sid = env.keyPaths.get(ref.node.path);
       const found = sid ? findNodeById(env.tree, sid) : undefined;
       if (!found || found.level !== def.level) return BROKEN;
       target = found;
@@ -337,9 +337,10 @@ export function snapshotTree(c: AssemblyCoverage): Coverage {
       .sort((a, b) => a.order - b.order)
       .map((sub) => ({
         id: sub.id,
+        key: sub.key,
         name: sub.name,
         order: sub.order,
-        benefits: [...sub.benefits].sort((a, b) => a.order - b.order).map((b) => ({ id: b.id, name: b.name, order: b.order })),
+        benefits: [...sub.benefits].sort((a, b) => a.order - b.order).map((b) => ({ id: b.id, key: b.key, name: b.name, order: b.order })),
       })),
   };
 }
@@ -364,12 +365,12 @@ function ownersOf(c: AssemblyCoverage, product: AssemblyProduct): Owners {
   return out;
 }
 
-/** 마스터 노드 id → 스냅샷 노드 id (담보 자신 포함). */
-function snapshotIndex(c: AssemblyCoverage): Map<Id, Id> {
-  const out = new Map<Id, Id>([[c.snapshot.coverageId, c.snapshot.id]]);
+/** 키 경로 → 스냅샷 노드 id. 키는 정규형 문자열 그대로 비교한다 — 저장 모양(`01`). */
+function keyPathIndex(c: AssemblyCoverage): Map<string, Id> {
+  const out = new Map<string, Id>();
   for (const sub of c.snapshot.subCoverages) {
-    out.set(sub.masterNodeId, sub.id);
-    for (const b of sub.benefits) out.set(b.masterNodeId, b.id);
+    out.set(sub.key, sub.id);
+    for (const b of sub.benefits) out.set(`${sub.key}.${b.key}`, b.id);
   }
   return out;
 }
@@ -408,7 +409,7 @@ function envOf(input: AssemblyInput, catalog: ReadonlyMap<Code, Discriminator>, 
     values,
     attributes: new Map(c ? c.snapshot.attributes.map((a) => [a.kindCode, a.valueCode]) : []),
     owners: c ? ownersOf(c, product) : productOwners(product),
-    snapshotOf: c ? snapshotIndex(c) : new Map(),
+    keyPaths: c ? keyPathIndex(c) : new Map(),
     trace,
     evaluating: new Set(),
   };

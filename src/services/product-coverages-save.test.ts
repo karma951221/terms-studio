@@ -36,8 +36,8 @@ const MISSING = "aaaaaaaa-0000-4000-8000-0000000000ff";
 const GENERAL_DOC = "dddddddd-0000-4000-8000-000000000001";
 
 const trees = new Map<string, CoverageTree>([
-  [DEATH, { id: DEATH, name: "일반상해사망", subCoverages: [{ id: DEATH_SUB, name: "일반상해사망", order: 0, benefits: [{ id: DEATH_BEN, name: "사망보험금", order: 0 }] }] }],
-  [SURGERY, { id: SURGERY, name: "수술비", subCoverages: [{ id: SURGERY_SUB, name: "1종수술", order: 0, benefits: [{ id: SURGERY_BEN, name: "수술보험금", order: 0 }] }] }],
+  [DEATH, { id: DEATH, name: "일반상해사망", subCoverages: [{ id: DEATH_SUB, key: "01", name: "일반상해사망", order: 0, benefits: [{ id: DEATH_BEN, key: "1", name: "사망보험금", order: 0 }] }] }],
+  [SURGERY, { id: SURGERY, name: "수술비", subCoverages: [{ id: SURGERY_SUB, key: "01", name: "1종수술", order: 0, benefits: [{ id: SURGERY_BEN, key: "1", name: "수술보험금", order: 0 }] }] }],
 ]);
 const master: CoverageMasterSource = { tree: async (id) => trees.get(id) };
 

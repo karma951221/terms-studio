@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { nodeBuilders, sequentialIds, type ClauseGate, type Command, type DocumentNode } from "@/domain/document";
+import type { Clause } from "@/domain/clause";
 import type { Actor, Id, Result } from "@/domain/types";
 
 import { createTestDb, type TestDb } from "@/db/test-utils";
@@ -158,22 +159,33 @@ describe("document 서비스 (PGlite)", () => {
   });
 
   describe("노드 한정자 @노드 — 담보 약관은 문맥 담보 트리로 검증 (ADR-0066 §2 §3)", () => {
-    it("세부보장 노드 id 는 통과, 없는 id 는 brokenRef", async () => {
+    it("세부보장 노드 키 경로는 통과, 없는 키는 brokenRef", async () => {
       const coverageSvc = createCoverageService(t.db);
       const coverage = unwrap(await coverageSvc.create(editor, { name: "노드한정자테스트", subCoverageName: "세부보장A", benefitName: "급부A" }));
-      const subCoverageId = coverage.subCoverages[0].id;
-      const disc = unwrap(await createCatalogService(t.db).create(editor, { label: "한정자테스트", level: "subCoverage", expression: "any(pay.exempt)" }));
+            const disc = unwrap(await createCatalogService(t.db).create(editor, { label: "한정자테스트", level: "subCoverage", expression: "any(pay.exempt)" }));
       const doc = unwrap(await svc.createSpecial(editor, coverage.id, "노드한정자 특별약관"));
       const root = doc.tree.id;
 
-      const okBranch = b.condBlock([b.branch(`${disc.code}@${subCoverageId} = true`, [b.article("x", [])])]);
+      const okBranch = b.condBlock([b.branch(`${disc.code}@01 = true`, [b.article("x", [])])]);
       const saved = unwrap(await svc.apply(editor, doc.id, [{ type: "insert", node: okBranch, at: { parentId: root } }]));
       expect(saved.tree.children.map((c) => c.kind)).toEqual(["condBlock"]);
 
-      const brokenBranch = b.condBlock([b.branch(`${disc.code}@nope = true`, [b.article("y", [])])]);
+      const brokenBranch = b.condBlock([b.branch(`${disc.code}@99 = true`, [b.article("y", [])])]);
       const rej = rejection(await svc.apply(editor, doc.id, [{ type: "insert", node: brokenBranch, at: { parentId: root } }]));
       if (rej.reason !== "invalid") throw new Error("invalid 기대");
       expect(rej.issues[0].kind).toBe("brokenRef");
+    });
+
+    it("apply 도 저장과 같은 전체 검사 — 세부보장 레벨 기본 연결에 키가 없으면 argUnbound (ADR-0087 결정 8)", async () => {
+      const coverage = unwrap(await createCoverageService(t.db).create(editor, { name: "키연결테스트", subCoverageName: "세부보장A", benefitName: "급부A" }));
+      const disc = unwrap(await createCatalogService(t.db).create(editor, { label: "키연결감액", level: "subCoverage", expression: "any(pay.exempt)" }));
+      const clause = { code: "C002", label: "감액", mode: "block", options: [], body: [], required: { discriminators: [] }, params: [{ name: "감액", type: { kind: "boolean" }, default: { kind: "discriminator", code: disc.code } }] } as unknown as Clause;
+      const keyed: ClauseGate = { ...gate, clauseExists: (c) => c === "C002", requiredCodes: () => [], validateOptions: () => [], clauseOf: (c) => (c === "C002" ? clause : undefined) };
+      const svc2 = createDocumentService(t.db, { clauseGate: async () => keyed });
+      const doc = unwrap(await svc2.createSpecial(editor, coverage.id, "키연결 특별약관"));
+      const rej = rejection(await svc2.apply(editor, doc.id, [{ type: "insert", node: b.article("감액", [b.clauseBlock("C002", {})]), at: { parentId: doc.tree.id } }]));
+      if (rej.reason !== "invalid") throw new Error("invalid 기대");
+      expect(rej.issues.map((i) => i.kind)).toContain("argUnbound");
     });
   });
 
