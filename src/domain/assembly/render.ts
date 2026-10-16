@@ -342,9 +342,11 @@ class Renderer {
           const key = refKey(target);
           let ix = n.scope === "self" || this.env.document === "general" ? this.own : this.general;
           let found = lookup(ix, key);
+          let aliased: string | undefined;
           if (!found && n.scope === "self") {
             // 별칭 — 생략된 특약 조(→ 보통약관 조) 또는 대치된 기본계약 조 · 그 항 · 호 · 목(→ 이 문서의 대치 노드).
             const alias = this.env.aliases?.get(key);
+            aliased = alias;
             if (alias) {
               found = lookup(this.own, alias);
               if (!found) {
@@ -366,7 +368,7 @@ class Renderer {
               (target.keys === undefined || inst.loops.some(keyHit)),
           );
           if (narrowed.length > 0) alive.push(...narrowed.map((i) => i.target));
-          else if (target.values !== undefined || target.keys !== undefined || (found?.length ?? 0) > 0 || repeatBorn(ix, key)) empty.push({ key, articleId: target.articleId });
+          else if (target.values !== undefined || target.keys !== undefined || (found?.length ?? 0) > 0 || repeatBorn(ix, key) || (aliased !== undefined && repeatBorn(this.own, aliased))) empty.push({ key, articleId: target.articleId });
           else dropped.push({ key, articleId: target.articleId });
         }
         // 펼친 것이 0개인 대상은 참조 하나의 펼친 것 합이 0개일 때만 오류다 — 다른 대상이 살아 있으면 분기로 사라진 대상처럼 남은 대상으로 찍는다

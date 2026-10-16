@@ -5,7 +5,7 @@
  * 노드는 세 부류다:
  *   - 구조   : document · article(조) · paragraph(항) · item(호) · subitem(목)
  *   - 블록 동적: condBlock(if/elif/else) · forBlock(블록 반복 — 원천 원소마다 복제, ADR-0077) · clauseBlockRef(함수조항 블록 참조 — 항 · 호 · 목 유형) · boxRef(정적 마스터 박스 참조)
- *   - 인라인  : text · slot · inlineCond · inlineFor(자리만) · articleRef · appendixRef · 조사(particle) · clauseInlineRef
+ *   - 인라인  : text · slot · inlineCond · inlineFor(인라인 반복 — ADR-0088) · articleRef · appendixRef · 조사(particle) · clauseInlineRef
  *
  * - 조의 메타는 조 명 · 조연결(`linkedArticleId`) 뿐. 번호는 저장하지 않는다 (계산값 — numbering.ts).
  * - 식이 들어가는 자리(`when` · `slot.ref`)는 코드 기반 소스 문자열 — 파싱·검사는 expression 모듈.
@@ -16,17 +16,18 @@
  * DB·React import 금지 (순수층).
  */
 
-import { CONNECTOR_REPEAT_MESSAGE, CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, isWorkMark, WORK_MARK_MESSAGE, type AttachLevel, type Code, type Coordinate, type Id, type Issue, type ReferenceConnector, type RefRestrict, type WorkMark } from "../types";
+import { CONNECTOR_REPEAT_MESSAGE, CONNECTOR_REQUIRED_MESSAGE, isReferenceConnector, isWorkMark, WORK_MARK_MESSAGE, type AttachLevel, type Code, type Coordinate, type Id, type InlineRepeatConnector, type Issue, type ReferenceConnector, type RefRestrict, type WorkMark } from "../types";
 import type { ClauseMode } from "../clause/types";
 import { isParticlePreset, PARTICLE_PRESET_MESSAGE, type ParticleNode } from "./particles";
 import type { Bindings } from "../clause/params";
 import { documentCodeIssues, multiTarget, referenceKeys, refKey, refLabel } from "./pcode";
-import { checkRepeatSource, enclosingLoops, loopTypesAt, refTargetFactIssues, refTargetIssues, REPEAT_MAX_DEPTH, repeatedKeys, type RefTargetFact, type RepeatSource } from "./blockRepeat";
+import { checkRepeatSource, currentSlotIssues, enclosingLoops, inlineRepeatIssues, loopTypesAt, refTargetFactIssues, refTargetIssues, REPEAT_MAX_DEPTH, repeatedKeys, type RefTargetFact, type RepeatEnv, type RepeatSource } from "./blockRepeat";
 import type { EnumDef } from "../catalog/types";
 import type { LoopElementType } from "../clause/params";
 import type { Clause } from "../clause/types";
 import type { MasterTree } from "../master";
 import type { Coverage } from "../coverage/types";
+import { foldTitle, TITLE_INLINE, titleKindMessage } from "./title";
 
 export type { ParticleNode } from "./particles";
 export { PARTICLE_PRESET_MESSAGE } from "./particles";
@@ -74,14 +75,39 @@ export interface InlineCondNode {
   switchOn?: string;
 }
 
-/** 인라인 반복 — 자리만 (구현 P7). `source` 는 순회 소스(`subCoverage` · `benefit`), `separator` 는 원소 구분 문자열 (D-P4-17). */
+/**
+ * 인라인 반복 (ADR-0088 결정 1 ② · 2 · 3 · 기능/문면 §3.12) — 문장 흐름 안에서 본문(인라인 노드 목록)을 원천의 원소마다 복제해 잇는다.
+ * - 원천은 블록 반복과 같은 `RepeatSource`(세목 선택지 · 바깥 블록 반복의 현재 원소의 목록 · 합집합) — 저장 모양 · 거름 · 원소 순서 · 이름이 같다.
+ * - 잇기는 조 참조 규칙 그대로 — 쉼표, 마지막 원소 앞에만 연결어(「및」·「또는」, 기본값 없음 — 미선택은 저장 오류). 「,」(쉼표만)면 마지막 앞도 쉼표(실물 정의 조 제목).
+ * - 원소가 0개면 「비었을 때」 칸(`fallback`)의 내용이 나온다. 칸이 비거나 없으면 빈 글. 칸은 원소 문맥 밖이다(현재 원소를 읽으면 저장 오류).
+ * - 한 겹만 — 인라인 반복 안(본문 · 칸)에 인라인 반복은 두지 않는다. 블록 반복 안이면 블록 반복의 한 단계 중첩에 같이 센다.
+ * 본문 · 칸 자리는 **투명**(문장 안 조건 가지처럼 서 있는 자리의 허용 집합).
+ */
 export interface InlineForNode {
   id: Id;
   kind: "inlineFor";
-  source: string;
+  source: RepeatSource;
+  /** 화면 이름 — 없으면 원천에서 짓는다(`repeatLabel`). */
   alias?: string;
+  connector?: InlineRepeatConnector;
   children: InlineNode[];
-  separator?: string;
+  /** 「비었을 때」 칸 — 원소 0개일 때 나오는 인라인. 없으면 빈 글. */
+  fallback?: InlineNode[];
+}
+
+/** 반복 노드 — 블록 반복 · 인라인 반복. 원천 · 현재 원소 · 이름 규칙이 같다. */
+export type RepeatNode = ForBlockNode | InlineForNode;
+
+export function isRepeatNode(n: { kind: string } | undefined): n is RepeatNode {
+  return n?.kind === "forBlock" || n?.kind === "inlineFor";
+}
+
+/**
+ * 「비었을 때」 칸 안 노드의 경로 표지 — 반복 노드 id 다음에 선다(표 셀의 `-r0c0` 같은 가짜 마디). 감싼 반복을 셀 때 이 표지 앞 반복은 뺀다 —
+ * 칸은 원소 문맥 밖이다 (ADR-0088 결정 3).
+ */
+export function fallbackPathId(repeatId: Id): Id {
+  return `${repeatId}~empty`;
 }
 
 /**
@@ -295,6 +321,11 @@ export interface ForBlockNode {
   /** P코드 — 반복 블록을 가리키는 참조(조립 뒤 펼쳐진 것 전부, ADR-0077 결정 7)의 대상 정체성. */
   code?: Code;
   children: BlockNode[];
+  /**
+   * 「비었을 때」 칸 (ADR-0088 결정 4) — 원소 0개일 때 그 자리에 나오는 블록 내용(본문과 같은 허용 집합). 없거나 비면 아무것도 없다.
+   * 원소 문맥 밖이고, 본문과는 IF / 그 밖의 경우 분기 짝이다 — 같은 P코드를 쓸 수 있고 `@원소` 접미사를 받지 않는다.
+   */
+  fallback?: BlockNode[];
 }
 
 /**
@@ -336,11 +367,14 @@ export interface SectionNode {
   children: (ArticleNode | CondBlockNode)[];
 }
 
-/** 조. 메타는 조 명 · 조연결뿐. */
+/**
+ * 조. 메타는 조 명 · 조연결뿐.
+ * 조 명(`title`)은 인라인 노드 목록이다 — 글 · 문장 안 조건 · 치환 슬롯 · 조사(ADR-0088 · title.ts `TITLE_INLINE`). 옛 글 제목은 읽을 때 [글 하나]로 이행한다.
+ */
 export interface ArticleNode {
   id: Id;
   kind: "article";
-  title: string;
+  title: InlineNode[];
   /** 조연결 — 대응 보통약관 조 id (담보약관에서만, 조당 최대 1개 — D-P4-21·22). */
   linkedArticleId?: Id;
   children: BlockNode[];
@@ -379,7 +413,7 @@ const INLINE: readonly NodeKind[] = ["text", "structKey", "slot", "inlineCond", 
 /**
  * 종류별 `children` 자리의 허용 자식. 규칙의 확장(그룹 노드·표)은 여기만 고친다 (ADR-0012).
  * - condBlock 은 **투명** — 서 있는 자리의 허용 집합을 가지에 물려준다 (여기 값은 쓰이지 않는다). forBlock 도 투명하되 표 · 옛 박스는 뺀다.
- * - 인라인 조건 안에 인라인 조건 없음. 블록 반복 안에 블록 반복은 한 단계까지, 인라인 반복은 자리만(반복 안에 두지 않는다 · 인라인 반복 안에는 인라인 조건도 두지 않는다).
+ * - 인라인 조건 안에 인라인 조건 없음. 블록 반복 안에 블록 반복은 한 단계까지, 인라인 반복은 한 겹(인라인 반복 안에 인라인 반복 없음 — ADR-0088).
  */
 export const allowedChildren: Record<NodeKind, readonly NodeKind[]> = {
   document: ["article", "section", "condBlock"],
@@ -400,7 +434,7 @@ export const allowedChildren: Record<NodeKind, readonly NodeKind[]> = {
   structKey: [],
   slot: [],
   inlineCond: INLINE.filter((k) => k !== "inlineCond"),
-  inlineFor: INLINE.filter((k) => k !== "inlineFor" && k !== "inlineCond"),
+  inlineFor: [], // 투명 — 본문 · 「비었을 때」 칸은 서 있는 자리의 허용 집합에서 인라인 반복을 뺀 것 (indexTree · allowedAtSlot)
   articleRef: [],
   appendixRef: [],
   particle: [],
@@ -414,7 +448,11 @@ export const allowedListChildren = {
   "item.subitems": ["subitem", "condBlock", "bulletList", "clauseBlockRef"],
 } as const satisfies Record<string, readonly NodeKind[]>;
 
-export type SlotName = "children" | "items" | "subitems";
+/**
+ * `title` = 조 제목의 인라인 목록 (ADR-0088) — 조의 블록 자리(`slotsOf`)가 아니다. 색인 · 삽입 · 이동이 같은 길로 다룬다.
+ * `fallback` = 반복의 「비었을 때」 칸 (ADR-0088 결정 3 · 4) — 인라인 반복은 인라인 목록, 블록 반복은 블록 목록.
+ */
+export type SlotName = "children" | "items" | "subitems" | "title" | "fallback";
 
 /** 노드 종류가 가진 목록 자리들 (순서 = 렌더 순서). */
 export function slotsOf(kind: NodeKind): readonly SlotName[] {
@@ -423,6 +461,9 @@ export function slotsOf(kind: NodeKind): readonly SlotName[] {
       return ["children", "items"];
     case "item":
       return ["children", "subitems"];
+    case "inlineFor":
+    case "forBlock":
+      return ["children", "fallback"];
     case "condBlock":
     case "inlineCond":
     case "clauseBlockRef":
@@ -446,12 +487,15 @@ export function slotsOf(kind: NodeKind): readonly SlotName[] {
 export function allowedIn(parentKind: NodeKind, slot: SlotName): readonly NodeKind[] | undefined {
   if (slot === "children") return slotsOf(parentKind).includes("children") ? allowedChildren[parentKind] : undefined;
   if (slot === "items") return parentKind === "paragraph" ? allowedListChildren["paragraph.items"] : undefined;
+  if (slot === "title") return parentKind === "article" ? TITLE_INLINE : undefined;
+  if (slot === "fallback") return parentKind === "inlineFor" || parentKind === "forBlock" ? allowedChildren[parentKind] : undefined;
   return parentKind === "item" ? allowedListChildren["item.subitems"] : undefined;
 }
 
 /** 색인 항목(부모)의 목록 자리의 허용 집합 — 블록 반복은 투명(서 있는 자리에서 표 · 옛 박스를 뺀 것), 나머지는 규칙 테이블. */
 export function allowedAtSlot(parent: { node: Node; allowed: readonly NodeKind[] }, slot: SlotName): readonly NodeKind[] | undefined {
-  if (parent.node.kind === "forBlock") return slot === "children" ? forBodyAllowed(parent.allowed) : undefined;
+  if (parent.node.kind === "forBlock") return slot === "children" || slot === "fallback" ? forBodyAllowed(parent.allowed) : undefined;
+  if (parent.node.kind === "inlineFor") return slot === "children" || slot === "fallback" ? inlineForBodyAllowed(parent.allowed) : undefined;
   return allowedIn(parent.node.kind, slot);
 }
 
@@ -464,12 +508,19 @@ export function listOf(node: Node, slot: SlotName): Node[] | undefined {
       return node.kind === "paragraph" ? (node.items as Node[] | undefined) : undefined;
     case "subitems":
       return node.kind === "item" ? (node.subitems as Node[] | undefined) : undefined;
+    case "title":
+      return node.kind === "article" ? node.title : undefined;
+    case "fallback":
+      return node.kind === "inlineFor" || node.kind === "forBlock" ? (node.fallback as Node[] | undefined) : undefined;
   }
 }
 
-/** 표 셀의 인라인 노드 전부 (평탄화). 표가 아니면 빈 배열 — 순회기들이 셀 안을 빠뜨리지 않게 한다. */
+/**
+ * 블록 자리(`slotsOf`) 밖에 붙은 인라인 노드 전부 — 표 셀(평탄화) · 조 제목(ADR-0088). 순회기들이 셀 · 제목 안을 빠뜨리지 않게 한다.
+ */
 export function cellNodesOf(node: Node): InlineNode[] {
-  return node.kind === "table" ? node.rows.flatMap((row) => row.cells.flat()) : [];
+  if (node.kind === "table") return node.rows.flatMap((row) => row.cells.flat());
+  return node.kind === "article" ? node.title : [];
 }
 
 /** 조건 노드(블록·인라인)의 가지 목록. */
@@ -491,11 +542,15 @@ export interface NodeEntry {
   articleId?: Id;
   /** 이 노드가 실제로 서 있는 자리의 허용 집합 (조건 블록의 투명성을 반영). */
   allowed: readonly NodeKind[];
-  /** 조상 중 인라인 조건 · 반복이 있는가 (중첩 금지 검사용). */
+  /** 조상 중 인라인 조건 · 반복이 있는가 (중첩 금지 검사용). `inFor` 는 반복 본문 안(원소 문맥) — 「비었을 때」 칸은 들지 않는다. */
   inInlineCond: boolean;
   inFor: boolean;
+  /** 인라인 반복 안(본문 · 「비었을 때」 칸) — 한 겹 검사 · 넣기 메뉴. */
+  inInlineFor?: true;
   /** 조상 블록 반복 수 (자기 제외) — 한 단계 중첩 검사 · 반복 안 대상 판정. */
   forDepth: number;
+  /** 조 제목 안 노드 (제목 안 인라인 조건 가지까지, ADR-0088). */
+  inTitle?: true;
 }
 
 export interface BranchEntry {
@@ -526,7 +581,14 @@ interface Frame {
   allowed: readonly NodeKind[];
   inInlineCond: boolean;
   inFor: boolean;
+  inInlineFor?: true;
   forDepth: number;
+  inTitle?: true;
+}
+
+/** 인라인 반복 본문 · 「비었을 때」 칸의 허용 집합 — 서 있는 자리의 집합에서 인라인 반복을 뺀다(한 겹, ADR-0088 결정 1). */
+export function inlineForBodyAllowed(allowed: readonly NodeKind[]): readonly NodeKind[] {
+  return allowed.filter((k) => k !== "inlineFor");
 }
 
 /** 블록 반복 본문의 허용 집합 — 서 있는 자리의 집합에서 표 · 옛 박스를 뺀다(반복 표와 겹치는 문맥을 만들지 않는다). */
@@ -582,18 +644,22 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
   const visit = (node: Node, f: Frame): void => {
     const path = [...f.path, node.id];
     const articleId = node.kind === "article" ? node.id : f.articleId;
-    if (node.kind === "article") titles.set(node.id, node.title);
+    if (node.kind === "article") titles.set(node.id, foldTitle(node.title));
     if (seen(node.id, path, articleId)) return;
 
-    if (f.parentId !== undefined && !f.allowed.includes(node.kind)) {
+    if (f.inTitle && !f.allowed.includes(node.kind)) {
+      structure(titleKindMessage(node.kind), path, articleId);
+    } else if (f.parentId !== undefined && !f.allowed.includes(node.kind)) {
       const parentKind = nodes.get(f.parentId)?.node.kind ?? "condBlock";
       structure(`${parentKind} 의 ${f.slot} 자리에 ${node.kind} 은(는) 올 수 없습니다`, path, articleId);
     }
     if (node.kind === "inlineCond" && f.inInlineCond) {
       structure("인라인 조건 안에 인라인 조건을 둘 수 없습니다 — 항을 쪼개 블록 조건으로 푸세요", path, articleId);
     }
-    if (node.kind === "inlineFor" && f.inFor) {
-      structure("반복 안에 반복을 둘 수 없습니다 (MVP)", path, articleId);
+    if (node.kind === "inlineFor" && f.inInlineFor) {
+      structure("인라인 반복 안에 인라인 반복을 둘 수 없습니다 — 한 겹만 (ADR-0088 결정 1)", path, articleId);
+    } else if (node.kind === "inlineFor" && f.forDepth + 1 > REPEAT_MAX_DEPTH) {
+      structure("반복은 한 단계까지만 중첩합니다 — 반복 안 반복 안에는 인라인 반복을 둘 수 없습니다 (ADR-0088 결정 1)", path, articleId);
     }
     if (node.kind === "forBlock" && f.forDepth + 1 > REPEAT_MAX_DEPTH) {
       structure("반복은 한 단계까지만 중첩합니다 — 반복 안에 반복 하나 (ADR-0077 결정 4)", path, articleId);
@@ -609,11 +675,15 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
       allowed: f.allowed,
       inInlineCond: f.inInlineCond,
       inFor: f.inFor,
+      ...(f.inInlineFor ? { inInlineFor: true as const } : {}),
       forDepth: f.forDepth,
+      ...(f.inTitle ? { inTitle: true as const } : {}),
     });
 
     const inInlineCond = f.inInlineCond || node.kind === "inlineCond";
     const inFor = f.inFor || node.kind === "forBlock" || node.kind === "inlineFor";
+    const inInlineFor = f.inInlineFor ? ({ inInlineFor: true } as const) : {};
+    const inTitle = f.inTitle ? ({ inTitle: true } as const) : {};
     const forDepth = f.forDepth + (node.kind === "forBlock" ? 1 : 0);
 
     // 작업용 글자색 — 네 색 중 하나거나 없다 (뜻은 없고 모양만 검사한다)
@@ -627,9 +697,16 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
       node.rows.forEach((row, ri) =>
         row.cells.forEach((cell, ci) =>
           cell.forEach((child, xi) =>
-            visit(child, { parentId: node.id, slot: "children", index: xi, path: [...path, `${node.id}-r${ri}c${ci}`], articleId, allowed: INLINE, inInlineCond, inFor, forDepth }),
+            visit(child, { parentId: node.id, slot: "children", index: xi, path: [...path, `${node.id}-r${ri}c${ci}`], articleId, allowed: INLINE, inInlineCond, inFor, ...inInlineFor, forDepth }),
           ),
         ),
+      );
+    }
+
+    // 조 제목의 인라인 — 본문 문장과 같은 규칙(id 유일 · 문장 안 조건 중첩 · 참조 검사)에 제목 허용 집합을 더한다 (ADR-0088 결정 5)
+    if (node.kind === "article") {
+      node.title.forEach((child, xi) =>
+        visit(child, { parentId: node.id, slot: "title", index: xi, path, articleId, allowed: TITLE_INLINE, inInlineCond: false, inFor, forDepth, inTitle: true }),
       );
     }
 
@@ -649,18 +726,44 @@ export function indexTree(doc: DocumentNode, base: Coordinate = {}): TreeIndex {
         branches.set(br.id, { branch: br, ownerId: node.id, index: i, path: bpath, articleId, allowed: f.allowed });
         // 가지 안의 허용 집합 = 조건 노드가 서 있는 자리의 허용 집합 (투명)
         (br.children as Node[]).forEach((child, ci) =>
-          visit(child, { parentId: br.id, slot: "children", index: ci, path: bpath, articleId, allowed: f.allowed, inInlineCond, inFor, forDepth }),
+          visit(child, { parentId: br.id, slot: "children", index: ci, path: bpath, articleId, allowed: f.allowed, inInlineCond, inFor, ...inInlineFor, forDepth, ...inTitle }),
         );
       });
+      return;
+    }
+
+    // 인라인 반복 — 본문은 원소 문맥(inFor), 「비었을 때」 칸은 원소 문맥 밖(경로에 칸 표지). 둘 다 투명 · 한 겹 (ADR-0088 결정 1 · 3)
+    // (허용 집합은 서 있는 자리 그대로 — 안쪽 인라인 반복은 한 겹 검사가 한 번만 말한다. 넣기 자리는 `allowedAtSlot` 이 뺀다)
+    if (node.kind === "inlineFor") {
+      const allowed = f.allowed;
+      node.children.forEach((child, ci) =>
+        visit(child, { parentId: node.id, slot: "children", index: ci, path, articleId, allowed, inInlineCond, inFor: true, inInlineFor: true, forDepth, ...inTitle }),
+      );
+      (node.fallback ?? []).forEach((child, ci) =>
+        visit(child, { parentId: node.id, slot: "fallback", index: ci, path: [...path, fallbackPathId(node.id)], articleId, allowed, inInlineCond, inFor: f.inFor, inInlineFor: true, forDepth, ...inTitle }),
+      );
+      return;
+    }
+
+    // 블록 반복 — 본문은 원소 문맥(inFor), 「비었을 때」 칸은 원소 문맥 밖(경로에 칸 표지). 둘 다 투명(표 · 옛 박스 제외) (ADR-0077 · ADR-0088 결정 4)
+    // 칸도 반복 블록 안이라 중첩 단계(forDepth)에는 센다 — 칸 안 반복은 바깥 원소 없이 서는 반복이지만 두 겹 이상을 열지 않는다
+    if (node.kind === "forBlock") {
+      const allowed = forBodyAllowed(f.allowed);
+      node.children.forEach((child, ci) =>
+        visit(child, { parentId: node.id, slot: "children", index: ci, path, articleId, allowed, inInlineCond, inFor: true, ...inInlineFor, forDepth }),
+      );
+      (node.fallback ?? []).forEach((child, ci) =>
+        visit(child, { parentId: node.id, slot: "fallback", index: ci, path: [...path, fallbackPathId(node.id)], articleId, allowed, inInlineCond, inFor: f.inFor, ...inInlineFor, forDepth }),
+      );
       return;
     }
 
     for (const slot of slotsOf(node.kind)) {
       const list = listOf(node, slot);
       if (!list) continue;
-      const allowed = node.kind === "forBlock" ? forBodyAllowed(f.allowed) : (allowedIn(node.kind, slot) ?? []);
+      const allowed = allowedIn(node.kind, slot) ?? [];
       list.forEach((child, ci) =>
-        visit(child, { parentId: node.id, slot, index: ci, path, articleId, allowed, inInlineCond, inFor, forDepth }),
+        visit(child, { parentId: node.id, slot, index: ci, path, articleId, allowed, inInlineCond, inFor, ...inInlineFor, forDepth }),
       );
     }
   };
@@ -766,12 +869,18 @@ export function validateTree(doc: DocumentNode, env: TreeEnv = {}): Issue[] {
   return issues;
 }
 
+/** 좌표의 조 명 — 상품 문맥이 없으니 접은 제목 (ADR-0088 결정 6). */
+function articleTitleOf(ix: TreeIndex, articleId: Id): string | undefined {
+  const a = ix.nodes.get(articleId)?.node;
+  return a?.kind === "article" ? foldTitle(a.title) : undefined;
+}
+
 /** 색인 항목의 좌표 (문서 기본 좌표 + 조 + 노드 경로). */
 export function coordinateOf(ix: TreeIndex, e: { path: Id[]; articleId?: Id }, base: Coordinate = {}): Coordinate {
   return {
     ...base,
     ...(e.articleId !== undefined
-      ? { articleId: e.articleId, articleTitle: (ix.nodes.get(e.articleId)?.node as ArticleNode | undefined)?.title }
+      ? { articleId: e.articleId, articleTitle: articleTitleOf(ix, e.articleId) }
       : {}),
     nodePath: e.path,
   };
@@ -804,13 +913,21 @@ export function checkNodeRefs(e: NodeEntry, ix: TreeIndex, env: TreeEnv, atSave:
     case "clauseInlineRef":
       return [...clausePlacement(n, e.allowed, gate, at), ...checkClauseRef(n, gate, at, atSave, loopTypesAt(ix, e, env.master)), ...bindingRefIssues(n, e, ix, env, at)];
     case "forBlock":
-      return checkRepeatSource(n, enclosingLoops(ix, e), { ...(env.master ? { master: env.master } : {}), ...(env.enumOf ? { enumOf: env.enumOf } : {}), hasCoverage: env.kind === "special" }, at);
+      return checkRepeatSource(n, enclosingLoops(ix, e), repeatEnvOf(env), at);
+    case "inlineFor":
+      return inlineRepeatIssues(n, e, ix, repeatEnvOf(env), at);
+    case "slot":
+      return currentSlotIssues(n.ref, e, ix, repeatEnvOf(env), at);
     case "condBlock":
     case "inlineCond":
       return n.switchOn !== undefined && !env.switches ? one("structure", "값별 분기는 지금 함수조항 안에서만 쓸 수 있습니다") : [];
     default:
       return [];
   }
+}
+
+function repeatEnvOf(env: TreeEnv): RepeatEnv {
+  return { ...(env.master ? { master: env.master } : {}), ...(env.enumOf ? { enumOf: env.enumOf } : {}), hasCoverage: env.kind === "special" };
 }
 
 /**

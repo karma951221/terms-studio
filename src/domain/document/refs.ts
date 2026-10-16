@@ -128,7 +128,9 @@ export function collectRefs(doc: DocumentNode, base: Coordinate = {}): DocRef[] 
       case "boxRef":
         out.push({ kind: "box", boxCode: n.boxCode, at });
         break;
-      case "forBlock": {
+      // 반복 원천이 읽는 마스터 필드 — 블록 반복 · 인라인 반복(ADR-0088 — 같은 RepeatSource) 공통
+      case "forBlock":
+      case "inlineFor": {
         const src = n.source;
         // 담보 트리 반복(세부보장마다 · 급부마다)은 폼 · 필터가 없다 — 반복 원천 간선이 없다 (ADR-0087)
         if (!isRepeatSource(src) || isTreeSource(src)) break;

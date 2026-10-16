@@ -101,7 +101,7 @@ describe("약관 에디터 툴바 (기능/문면 §4.3)", () => {
     const core = DOCUMENT_TOOLS[0].tools.filter((t) => (t.at ?? "bar") === "bar").map((t) => t.label);
     expect(core).toEqual(["조", "항", "호", "목", "표", "글머리 목록", "함수조항", "박스", "반복"]);
     // 모양이 분명한 넣기는 아이콘
-    expect(allTools(DOCUMENT_TOOLS).filter((t) => t.icon).map((t) => t.id)).toEqual(["table", "bulletList", "clauseBlock", "box", "forBlock", "slot", "articleRef", "appendixRef", "particle", "inlineCond"]);
+    expect(allTools(DOCUMENT_TOOLS).filter((t) => t.icon).map((t) => t.id)).toEqual(["table", "bulletList", "clauseBlock", "box", "forBlock", "slot", "articleRef", "appendixRef", "particle", "inlineFor", "inlineCond"]);
     // 아이콘만은 누구나 아는 모양(표 · 글머리 목록)뿐 — 나머지는 짧은 글자를 붙인다 (2026-10-01 유저 피드백)
     expect(allTools(DOCUMENT_TOOLS).filter((t) => t.icon && !t.short).map((t) => t.id)).toEqual(["table", "bulletList"]);
   });

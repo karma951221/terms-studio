@@ -28,16 +28,22 @@ const KIND_LABEL: Record<string, string> = {
   particle: "조사",
 };
 
-/** 노드와 그 아래 전부 (자기 자신 포함) 를 훑는다. 조건 가지 안도 센다. */
-export function walkSubtree(node: Node, visit: (n: Node) => void): void {
-  visit(node);
+/** 노드 바로 아래 — 목록 자리 · 조건 가지 · 표 셀 · 반복의 「비었을 때」 칸(인라인 · 블록, ADR-0088). */
+function childrenOf(node: Node): Node[] {
   const children: Node[] = [];
   if ("children" in node && Array.isArray(node.children)) children.push(...(node.children as Node[]));
   if ("items" in node && Array.isArray(node.items)) children.push(...(node.items as Node[]));
   if ("subitems" in node && Array.isArray(node.subitems)) children.push(...(node.subitems as Node[]));
   if ("branches" in node) for (const br of node.branches) children.push(...(br.children as Node[]));
   if (node.kind === "table") for (const row of node.rows) for (const cell of row.cells) children.push(...cell);
-  for (const c of children) walkSubtree(c, visit);
+  if (node.kind === "inlineFor" || node.kind === "forBlock") children.push(...((node.fallback ?? []) as Node[]));
+  return children;
+}
+
+/** 노드와 그 아래 전부 (자기 자신 포함) 를 훑는다. 조건 가지 · 「비었을 때」 칸 안도 센다. */
+export function walkSubtree(node: Node, visit: (n: Node) => void): void {
+  visit(node);
+  for (const c of childrenOf(node)) walkSubtree(c, visit);
 }
 
 /** 삭제 대상의 모든 id (참조 검사용). */
@@ -78,12 +84,7 @@ export function internalReferrers(tree: DocumentNode, targets: ReadonlySet<Id>):
     if (node.kind === "article" && node.linkedArticleId !== undefined && targets.has(node.linkedArticleId)) {
       out.push({ articleId: node.id, what: "조연결" });
     }
-    const children: Node[] = [];
-    if ("children" in node && Array.isArray(node.children)) children.push(...(node.children as Node[]));
-    if ("items" in node && Array.isArray(node.items)) children.push(...(node.items as Node[]));
-    if ("subitems" in node && Array.isArray(node.subitems)) children.push(...(node.subitems as Node[]));
-    if ("branches" in node) for (const br of node.branches) children.push(...(br.children as Node[]));
-    for (const c of children) visit(c, here);
+    for (const c of childrenOf(node)) visit(c, here);
   };
   visit(tree);
   return out;

@@ -55,6 +55,11 @@ export function replaceGeneralWithBase(general: SubstitutedDoc, base: Substitute
     replacements.set(node.linkedArticleId, node);
     aliases.set(node.id, node.linkedArticleId);
     for (const key of articleKeys(node)) aliases.set(refKey({ articleId: node.id, code: key }), refKey({ articleId: node.linkedArticleId, code: baseKey(node.id, key) }));
+    // 반복이 낼 수 있던 열쇠(원소 0개라 안 난 본문 · 칸 쪽 코드)도 — 기본계약 문면의 참조가 「사라짐」 대신 「0개」로 갈린다 (ADR-0088 결정 4)
+    for (const key of node.repeatKeys ?? []) {
+      const from = refKey({ articleId: node.id, code: key });
+      if (!aliases.has(from)) aliases.set(from, refKey({ articleId: node.linkedArticleId, code: baseKey(node.id, key) }));
+    }
   }
   return {
     doc: mapArticles(general, (node) => {

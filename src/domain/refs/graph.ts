@@ -39,6 +39,7 @@ import { coordinateOf, indexTree, type DocumentNode } from "../document/nodes";
 import { articleRefLabel, numberTree } from "../document/numbering";
 import { valueLoopEnum } from "../document/blockRepeat";
 import { collectRefs } from "../document/refs";
+import { foldTitle } from "../document/title";
 import { referenceKeys, refKey, targetOfNode } from "../document/pcode";
 import { enumReads, extractRefs, inferType, parse, refPath, type EnumReadTypes, type Expr, type ExprType, type Ref } from "../expression";
 import type { AttachLevel, Code, Coordinate, FieldType, Id } from "../types";
@@ -462,7 +463,7 @@ function addDocument(b: Builder, doc: DocumentInput, master?: MasterTree): Map<I
   for (const e of ix.nodes.values()) {
     if (e.node.kind === "article") {
       const n = numbers.get(e.node.id);
-      b.node({ key: { kind: "article", documentId: doc.id, articleId: e.node.id }, label: n ? articleRefLabel(n.n, e.node.title) : e.node.title, parent: key });
+      b.node({ key: { kind: "article", documentId: doc.id, articleId: e.node.id }, label: n ? articleRefLabel(n.n, foldTitle(e.node.title)) : foldTitle(e.node.title), parent: key });
     }
     anchors.set(e.node.id, anchorOf(doc, e.articleId));
   }
@@ -611,7 +612,7 @@ function addProduct(b: Builder, p: ProductInput, anchors: Map<Id, RefNodeKey>): 
   }
   // 조 사본 안 박스 · 별표 참조 (ADR-0079) — 좌표는 상품 + 조 (nodePath 를 싣지 않는다 — 상품 좌표의 nodePath[0] 은 상품담보 자리다)
   for (const c of p.articleCopies ?? []) {
-    const at: Coordinate = { ...base, subjectName: "보통약관 조 사본", articleId: c.articleId, articleTitle: c.article.title };
+    const at: Coordinate = { ...base, subjectName: "보통약관 조 사본", articleId: c.articleId, articleTitle: foldTitle(c.article.title) };
     const wrapped: DocumentNode = { id: `${p.id}/copy`, kind: "document", title: p.name, children: [c.article] };
     for (const r of collectRefs(wrapped)) {
       if (r.kind === "box") b.edge({ from: key, to: { kind: "box", code: r.boxCode }, via: "boxRef", at });

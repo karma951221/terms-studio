@@ -13,6 +13,7 @@ import { createCoverageService, type CoverageService } from "./coverage";
 import { createDocumentService, type DocumentService } from "./document";
 import { createProductService, type ProductService } from "./product";
 import { contextualDb } from "./txContext";
+import { titleNodes } from "@/domain/document/title";
 
 const editor: Actor = { userId: "00000000-0000-4000-8000-000000000002", role: "editor" };
 const admin: Actor = { userId: "00000000-0000-4000-8000-000000000001", role: "admin" };
@@ -128,11 +129,11 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
         editor,
         g.id,
         insertAll(g.tree.id, [
-          { id: "g-art-def", kind: "article", title: "용어의 정의", children: [{ id: "g-par-def", kind: "paragraph", children: [{ id: "g-txt-def", kind: "text", text: "이 계약에서 사용하는 용어의 정의는 다음과 같습니다." }] }] },
+          { id: "g-art-def", kind: "article", title: titleNodes("용어의 정의", "g-art-def"), children: [{ id: "g-par-def", kind: "paragraph", children: [{ id: "g-txt-def", kind: "text", text: "이 계약에서 사용하는 용어의 정의는 다음과 같습니다." }] }] },
           {
             id: "g-art-pay",
             kind: "article",
-            title: "보험금의 지급사유",
+            title: titleNodes("보험금의 지급사유", "g-art-pay"),
             children: [
               {
                 id: "g-par-pay-1",
@@ -146,9 +147,9 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
               { id: "g-par-pay-2", kind: "paragraph", children: [{ id: "g-txt-pay-5", kind: "text", text: "이 계약은 " }, { id: "g-slot-notice", kind: "slot", ref: "D0002" }, { id: "g-txt-pay-6", kind: "text", text: " 계약입니다." }] },
             ],
           },
-          { id: "g-art-detail", kind: "article", title: "보험금 지급에 관한 세부규정", children: [] },
-          { id: "g-art-disability", kind: "article", title: "장해의 분류", children: [{ id: "g-par-dis", kind: "paragraph", children: [{ id: "g-txt-dis-1", kind: "text", text: "장해의 분류는 " }, { id: "g-apx-disability", kind: "appendixRef", appendixCode: "AX000001" }, { id: "g-txt-dis-2", kind: "text", text: " 에 따릅니다." }] }] },
-          { id: "g-art-apply", kind: "article", title: "준용규정", children: [{ id: "g-par-apply", kind: "paragraph", children: [{ id: "g-clause-apply", kind: "clauseInlineRef", clauseCode: "C0002", options: {} }] }] },
+          { id: "g-art-detail", kind: "article", title: titleNodes("보험금 지급에 관한 세부규정", "g-art-detail"), children: [] },
+          { id: "g-art-disability", kind: "article", title: titleNodes("장해의 분류", "g-art-disability"), children: [{ id: "g-par-dis", kind: "paragraph", children: [{ id: "g-txt-dis-1", kind: "text", text: "장해의 분류는 " }, { id: "g-apx-disability", kind: "appendixRef", appendixCode: "AX000001" }, { id: "g-txt-dis-2", kind: "text", text: " 에 따릅니다." }] }] },
+          { id: "g-art-apply", kind: "article", title: titleNodes("준용규정", "g-art-apply"), children: [{ id: "g-par-apply", kind: "paragraph", children: [{ id: "g-clause-apply", kind: "clauseInlineRef", clauseCode: "C0002", options: {} }] }] },
         ]),
       ),
     );
@@ -171,7 +172,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
           {
             id: "b-art-pay",
             kind: "article",
-            title: "보험금의 지급사유",
+            title: titleNodes("보험금의 지급사유", "b-art-pay"),
             linkedArticleId: "g-art-pay",
             children: [
               { id: "b-par-pay-1", kind: "paragraph", children: [{ id: "b-txt-pay-1", kind: "text", text: "회사는 피보험자가 계약일 이후 기본계약의 보험금 지급사유가 발생한 때 보험금을 지급합니다." }] },
@@ -181,7 +182,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
           {
             id: "b-art-detail",
             kind: "article",
-            title: "보험금 지급에 관한 세부규정",
+            title: titleNodes("보험금 지급에 관한 세부규정", "b-art-detail"),
             linkedArticleId: "g-art-detail",
             children: [{ id: "b-par-detail", kind: "paragraph", children: [{ id: "b-txt-detail", kind: "text", text: "보험금 지급에 관한 세부사항은 산출방법서에 따릅니다." }] }],
           },
@@ -200,7 +201,7 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
           {
             id: "s-art-pay",
             kind: "article",
-            title: "보험금의 지급사유",
+            title: titleNodes("보험금의 지급사유", "s-art-pay"),
             children: [
               {
                 id: "s-par-pay-1",
@@ -217,11 +218,11 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
           {
             id: "s-cond-exempt",
             kind: "condBlock",
-            branches: [{ id: "s-cond-exempt-if", when: "D0005 = true", children: [{ id: "s-art-exempt", kind: "article", title: "보험금을 지급하지 않는 사유", children: [{ id: "s-par-exempt", kind: "paragraph", children: [{ id: "s-txt-exempt", kind: "text", text: "고의 사고에는 지급하지 않습니다." }] }] }] }],
+            branches: [{ id: "s-cond-exempt-if", when: "D0005 = true", children: [{ id: "s-art-exempt", kind: "article", title: titleNodes("보험금을 지급하지 않는 사유", "s-art-exempt"), children: [{ id: "s-par-exempt", kind: "paragraph", children: [{ id: "s-txt-exempt", kind: "text", text: "고의 사고에는 지급하지 않습니다." }] }] }] }],
           },
-          { id: "s-art-reduce", kind: "article", title: "보험금의 감액지급", children: [{ id: "s-par-reduce", kind: "paragraph", children: [{ id: "s-txt-reduce-1", kind: "text", text: "계약일부터 " }, { id: "s-slot-reduce", kind: "slot", ref: "D0006" }, { id: "s-txt-reduce-2", kind: "text", text: " 이내의 사망은 감액 지급합니다." }] }] },
-          { id: "s-art-lapse", kind: "article", title: "특별약관의 소멸", children: [{ id: "s-par-lapse", kind: "paragraph", children: [{ id: "s-txt-lapse", kind: "text", text: "이 특별약관은 다음의 경우 소멸합니다." }] }, { id: "s-clause-lapse", kind: "clauseBlockRef", clauseCode: "C0001", options: { O01: "V02" } }] },
-          { id: "s-art-apply", kind: "article", title: "준용규정", linkedArticleId: "g-art-apply", children: [{ id: "s-par-apply", kind: "paragraph", children: [{ id: "s-clause-apply", kind: "clauseInlineRef", clauseCode: "C0002", options: {} }] }] },
+          { id: "s-art-reduce", kind: "article", title: titleNodes("보험금의 감액지급", "s-art-reduce"), children: [{ id: "s-par-reduce", kind: "paragraph", children: [{ id: "s-txt-reduce-1", kind: "text", text: "계약일부터 " }, { id: "s-slot-reduce", kind: "slot", ref: "D0006" }, { id: "s-txt-reduce-2", kind: "text", text: " 이내의 사망은 감액 지급합니다." }] }] },
+          { id: "s-art-lapse", kind: "article", title: titleNodes("특별약관의 소멸", "s-art-lapse"), children: [{ id: "s-par-lapse", kind: "paragraph", children: [{ id: "s-txt-lapse", kind: "text", text: "이 특별약관은 다음의 경우 소멸합니다." }] }, { id: "s-clause-lapse", kind: "clauseBlockRef", clauseCode: "C0001", options: { O01: "V02" } }] },
+          { id: "s-art-apply", kind: "article", title: titleNodes("준용규정", "s-art-apply"), linkedArticleId: "g-art-apply", children: [{ id: "s-par-apply", kind: "paragraph", children: [{ id: "s-clause-apply", kind: "clauseInlineRef", clauseCode: "C0002", options: {} }] }] },
         ]),
       ),
     );

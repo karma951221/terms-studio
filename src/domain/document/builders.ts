@@ -3,9 +3,10 @@
  * 기본 id 는 uuid (`crypto.randomUUID`). 테스트는 `sequentialIds()` 로 결정적 id 를 쓴다.
  */
 
-import type { Code, Id } from "../types";
+import type { Code, Id, InlineRepeatConnector } from "../types";
 import type { RepeatSource } from "./blockRepeat";
 import type { ParticleNode, ParticlePresetKey } from "./particles";
+import { titleNodes } from "./title";
 import type {
   AppendixRefNode,
   BoxRefNode,
@@ -69,13 +70,17 @@ export function nodeBuilders(newId: IdSource = randomIds) {
       columns: input.columns,
       rows: input.rows.map((row) => ({ ...(row.header ? { header: true } : {}), cells: row.cells.map((text): InlineNode[] => [{ id: newId(), kind: "text", text }]) })),
     }),
-    article: (title: string, children: BlockNode[] = [], opts: { linkedArticleId?: Id } = {}): ArticleNode => ({
-      id: newId(),
-      kind: "article",
-      title,
-      ...(opts.linkedArticleId !== undefined ? { linkedArticleId: opts.linkedArticleId } : {}),
-      children,
-    }),
+    /** 조 — 제목을 글로 주면 [글 하나](id 는 조 id 에서 — `titleNodes`, 공급원을 쓰지 않는다), 인라인 목록이면 그대로 (ADR-0088). */
+    article: (title: string | InlineNode[], children: BlockNode[] = [], opts: { linkedArticleId?: Id } = {}): ArticleNode => {
+      const id = newId();
+      return {
+        id,
+        kind: "article",
+        title: typeof title === "string" ? titleNodes(title, id) : title,
+        ...(opts.linkedArticleId !== undefined ? { linkedArticleId: opts.linkedArticleId } : {}),
+        children,
+      };
+    },
     paragraph: (children: InlineNode[] = [], items?: ParagraphNode["items"]): ParagraphNode => ({
       id: newId(),
       kind: "paragraph",
@@ -108,20 +113,24 @@ export function nodeBuilders(newId: IdSource = randomIds) {
       ...(when !== undefined ? { when } : {}),
       children,
     }),
-    forBlock: (source: RepeatSource, children: BlockNode[] = [], alias?: string): ForBlockNode => ({
+    /** 블록 반복 — 「비었을 때」 칸(ADR-0088 결정 4)은 주면 싣는다. */
+    forBlock: (source: RepeatSource, children: BlockNode[] = [], alias?: string, fallback?: BlockNode[]): ForBlockNode => ({
       id: newId(),
       kind: "forBlock",
       source,
       ...(alias !== undefined ? { alias } : {}),
       children,
+      ...(fallback !== undefined ? { fallback } : {}),
     }),
-    inlineFor: (source: string, children: InlineNode[] = [], opts: { alias?: string; separator?: string } = {}): InlineForNode => ({
+    /** 인라인 반복 (ADR-0088) — 연결어는 기본값이 없다(안 주면 싣지 않는다). 「비었을 때」 칸은 주면 싣는다. */
+    inlineFor: (source: RepeatSource, children: InlineNode[] = [], opts: { alias?: string; connector?: InlineRepeatConnector; fallback?: InlineNode[] } = {}): InlineForNode => ({
       id: newId(),
       kind: "inlineFor",
       source,
       ...(opts.alias !== undefined ? { alias: opts.alias } : {}),
+      ...(opts.connector !== undefined ? { connector: opts.connector } : {}),
       children,
-      ...(opts.separator !== undefined ? { separator: opts.separator } : {}),
+      ...(opts.fallback !== undefined ? { fallback: opts.fallback } : {}),
     }),
     /**
      * 연결어는 기본값이 없다 (결정 14) — 안 주면 싣지 않는다. 대상이 둘 이상이면 저장 전에 골라야 한다.

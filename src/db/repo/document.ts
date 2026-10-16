@@ -9,6 +9,7 @@ import type { Appendix } from "@/domain/document/appendix";
 import type { Box } from "@/domain/document/box";
 import type { DocumentNode } from "@/domain/document/nodes";
 import { withCodes } from "@/domain/document/pcode";
+import { withInlineTitles } from "@/domain/document/title";
 import type { Code, Id } from "@/domain/types";
 
 import { appendices, boxes, codeSequences, documents } from "../schema";
@@ -61,8 +62,9 @@ function toSummary(r: Row): DocumentSummary {
 }
 
 function toRecord(r: Row): DocumentRecord {
-  // P코드 없는 옛 트리는 읽을 때 채운다 — 편집기의 참조 대상이 코드다 (ADR-0072 결정 10, 저장이 같은 규칙으로 채운다)
-  return { ...toSummary(r), tree: withCodes(r.tree) };
+  // P코드 없는 옛 트리는 읽을 때 채운다 — 편집기의 참조 대상이 코드다 (ADR-0072 결정 10, 저장이 같은 규칙으로 채운다).
+  // 옛 글 조 제목도 읽을 때 [글 하나]로 이행한다 — jsonb 한 덩어리라 마이그레이션 없이 다음 저장부터 새 모양 (ADR-0088 결정 1)
+  return { ...toSummary(r), tree: withCodes(withInlineTitles(r.tree)) };
 }
 
 // ───────────────────────────── 문서 ─────────────────────────────

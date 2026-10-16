@@ -10,6 +10,7 @@ import type { Actor, Id, Rejection } from "@/domain/types";
 
 import { createTestDb, type TestDb } from "@/db/test-utils";
 import { createServices, type Services } from "./container";
+import { titleNodes } from "@/domain/document/title";
 
 const editor: Actor = { userId: "00000000-0000-4000-8000-000000000002", role: "editor" };
 function unwrap<T>(r: { ok: true; value: T } | { ok: false; rejection: unknown }): T {
@@ -24,8 +25,8 @@ function rejection(r: { ok: boolean; rejection?: Rejection }): Rejection {
 const text = (id: string, t = "글") => ({ id, kind: "text" as const, text: t });
 const para = (id: string, code: string, ...children: ParagraphNode["children"]): ParagraphNode => ({ id, kind: "paragraph", code, children: children.length > 0 ? children : [text(`${id}-t`)] });
 const ref = (id: string, articleId: string, code?: string) => ({ id, kind: "articleRef" as const, scope: "self" as const, targets: [{ articleId, ...(code ? { code } : {}) }] });
-const a10 = (): ArticleNode => ({ id: "a10", kind: "article", title: "지급사유", children: [para("p10-1", "P0100"), para("p10-2", "P0200")] });
-const a11 = (code = "P0100"): ArticleNode => ({ id: "a11", kind: "article", title: "지급제한", children: [para("p11-1", "P0100", text("t11", "제1조에 따라 "), ref("r11", "a10", code)), para("p11-2", "P0200")] });
+const a10 = (): ArticleNode => ({ id: "a10", kind: "article", title: titleNodes("지급사유", "a10"), children: [para("p10-1", "P0100"), para("p10-2", "P0200")] });
+const a11 = (code = "P0100"): ArticleNode => ({ id: "a11", kind: "article", title: titleNodes("지급제한", "a11"), children: [para("p11-1", "P0100", text("t11", "제1조에 따라 "), ref("r11", "a10", code)), para("p11-2", "P0200")] });
 
 describe("container — ADR-0081 관통 (PGlite)", () => {
   let t: TestDb;

@@ -34,4 +34,5 @@ export * from "./particles";
 export * from "./pcode";
 export * from "./refs";
 export * from "./repeat";
+export * from "./title";
 export * from "./validate";

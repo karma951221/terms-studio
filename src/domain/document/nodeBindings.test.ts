@@ -5,6 +5,7 @@ import type { Clause } from "../clause";
 import type { Coverage } from "../coverage";
 import { PERMISSIVE_GATE, type ClauseGate, type DocumentNode } from "./nodes";
 import { nodeBindingIssues, unqualifiedNodeArgUnbound } from "./nodeBindings";
+import { titleNodes } from "./title";
 
 const coverage: Coverage = {
   id: "cov", name: "암", description: "",
@@ -18,7 +19,7 @@ const clause = (def?: string): Clause => ({
 } as unknown as Clause);
 const gate = (c: Clause): ClauseGate => ({ ...PERMISSIVE_GATE, clauseOf: () => c, usageOf: (_code, node) => ({ options: node.options, ...(node.bindings ? { bindings: node.bindings } : {}), issues: [] }) });
 const ref = (bindings?: object) => ({ kind: "clauseBlockRef", id: "r", clauseCode: "C0001", options: {}, ...(bindings ? { bindings } : {}) });
-const docOf = (children: unknown[]): DocumentNode => ({ kind: "document", id: "d", title: "t", children: [{ kind: "article", id: "a", title: "제1조", children }] } as unknown as DocumentNode);
+const docOf = (children: unknown[]): DocumentNode => ({ kind: "document", id: "d", title: "t", children: [{ kind: "article", id: "a", title: titleNodes("제1조", "a"), children }] } as unknown as DocumentNode);
 const inLoop = (source: object, child: unknown) => ({ kind: "forBlock", id: "f", source, children: [child] });
 
 describe("키 경로 연결 저장 검사 (ADR-0087 결정 4 · 8)", () => {

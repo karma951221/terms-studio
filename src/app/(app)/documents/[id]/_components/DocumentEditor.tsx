@@ -63,6 +63,9 @@ import {
   type ReferenceTarget,
   type ForBlockNode,
   repeatElementEnums,
+  foldTitle,
+  type FoldOptions,
+  type SlotName,
 } from "@/domain/document";
 import type { Box } from "@/domain/document/box";
 import type { Code, Coordinate, Id, Impact, Issue, WorkMark } from "@/domain/types";
@@ -77,7 +80,7 @@ import { ArticleBody } from "./DocBody";
 import { backspaceOps, enterOps, insertedChip, inlineListAt, moveSelectionOps, pasteGridOps } from "./editOps";
 import { caretFromPoint, tokensOf } from "./Inline";
 import { identityRuns, runsFromTokens, sameRuns, type Token } from "./inlineRuns";
-import { boxPickItems, clausePickItems, condInsertItem, condMenu, inlineCondItem, placeBlockId, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
+import { blockMenu, boxPickItems, clausePickItems, condInsertItem, condMenu, inlineCondItem, placeBlockId, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
 import { condInput, placeOf, readInline } from "./place";
 import { usePlaceGate } from "./placeGate";
 import { EditorToolbar } from "./EditorToolbar";
@@ -85,7 +88,7 @@ import { marksMenuItem, markSelectionOps, useMarksShown } from "./workMarks";
 import { DOCUMENT_TOOLS, allTools, itemsFor, type ToolId } from "./tools";
 import { useBlockDrag } from "./useBlockDrag";
 import { PopupHost, type PopupEnv } from "./Popups";
-import { currentPlanOf, loopsAround } from "./repeatSources";
+import { currentPlanOf, currentValueOf, loopsAround } from "./repeatSources";
 import { ContextMenu, Popover } from "./Popover";
 import { RemoveCard } from "./RemoveCard";
 import { LeafPanelTab } from "./LeafPanelTab";
@@ -218,6 +221,11 @@ export function DocumentEditor(props: EditorProps) {
   const coordinate: Coordinate = useMemo(() => ({ document: doc.kind, ownerId: doc.ownerId ?? doc.id, documentId: doc.id, ownerName: doc.title }), [doc.kind, doc.ownerId, doc.id, doc.title]);
   const gate = useMemo(() => clauseGateFrom(props.clauses, props.discriminators.map((d) => d.code), catalogTypeResolver(props.discriminators), props.enums), [props.clauses, props.discriminators, props.enums]);
   const enumByCode = useMemo(() => new Map(props.enums.map((e) => [e.code, e] as const)), [props.enums]);
+  /** 조 제목 접기 — 슬롯은 구분자 표시명으로 「〔이름〕」 (ADR-0088 결정 6). 목차 · 경로 · 참조 칩 · 삭제 확인이 같은 말을 쓴다. */
+  const titleFold: FoldOptions = useMemo(
+    () => ({ slotLabel: (ref: string) => props.discriminators.find((d) => d.code === ref)?.label, enumOf: (c: Code) => props.enums.find((e) => e.code === c) }),
+    [props.discriminators, props.enums],
+  );
   // 함수조항 상자의 값별 분기 칸 머리(값 이름) — 함수조항마다 한 번 (최종 결정 8)
   const switchLabelers = useMemo(
     () => new Map((props.clauses ?? []).filter((c) => (c.params ?? []).length > 0).map((c) => [c.code, switchValueLabeler(c, props.enums)] as const)),
@@ -257,8 +265,8 @@ export function DocumentEditor(props: EditorProps) {
   const currentGeneral = current.generalDocumentId ? renderCache[current.generalDocumentId] : undefined;
   // 대상 고르기 색인 — 반복 블록 · 함수조항 참조 줄과 그 본문의 항 · 호 · 목 줄까지 (ADR-0077 결정 6 · 7)
   const indexOpts = useMemo(
-    () => ({ clauseOf: (c: Code) => props.clauses.find((x) => x.code === c), repeatCaption: (n: ForBlockNode, outer?: ForBlockNode) => n.alias ?? repeatLabel(n.source, { ...(outer && isRepeatSource(outer.source) ? { outer: outer.source } : {}), enumOf: (c) => enumByCode.get(c) }) }),
-    [props.clauses, enumByCode],
+    () => ({ fold: titleFold, clauseOf: (c: Code) => props.clauses.find((x) => x.code === c), repeatCaption: (n: ForBlockNode, outer?: ForBlockNode) => n.alias ?? repeatLabel(n.source, { ...(outer && isRepeatSource(outer.source) ? { outer: outer.source } : {}), enumOf: (c) => enumByCode.get(c) }) }),
+    [props.clauses, enumByCode, titleFold],
   );
   const generalTargets = useMemo(() => (currentGeneral ? referenceTargetIndex(currentGeneral.tree, numberTree(currentGeneral.tree, { clauseSpan }), indexOpts) : new Map<Id, ReferenceTarget>()), [currentGeneral, indexOpts, clauseSpan]);
   const references = useMemo(() => ({ self: referenceTargetIndex(tree, numbers, indexOpts), general: generalTargets }), [tree, numbers, generalTargets, indexOpts]);
@@ -577,6 +585,7 @@ export function DocumentEditor(props: EditorProps) {
       }
       case "inline": {
         if ("tableId" in p.at) return `표 ${p.at.row + 1}행 ${p.at.col + 1}열`;
+        if (p.at.slot === "title") return `${num(p.at.parentId) ?? "조"} 제목`;
         const kind = index.nodes.get(p.at.parentId)?.node.kind;
         return kind ? `${num(p.at.parentId) ?? ""} ${NODE_WHAT[kind] ?? ""} 문장`.trim() : "조건 가지 문장";
       }
@@ -672,6 +681,7 @@ export function DocumentEditor(props: EditorProps) {
     focusDone: () => setFocusRequest(undefined),
     contextMenu: onContextMenu,
     headItems: (branchId) => condMenu(menuEnv(), branchId).flat(),
+    blockItems: (nodeId) => blockMenu(menuEnv(), nodeId).flat(),
     run: (item, anchor) => runMenu(item, anchor),
     blockSel: drag.blockSel,
     selectBlock: drag.selectBlock,
@@ -686,10 +696,11 @@ export function DocumentEditor(props: EditorProps) {
 
   // 조건 머리 줄 · 팝업의 조건 · 슬롯 문맥 — 반복 표 템플릿 셀 안이면 「현재 행」 가지 (ADR-0070 · 설계 §3.1). 담보약관만.
   // 담보 트리 반복 안이면 그 가장 안쪽 레벨이 「현재 세부보장 / 현재 급부」 (ADR-0087 결정 5) — 반복 표 셀이 우선.
-  const withRow = (levels: ReturnType<typeof repeatLevels> | undefined, at?: Id): ConditionContext => {
+  const withRow = (levels: ReturnType<typeof repeatLevels> | undefined, at?: Id, slot?: SlotName): ConditionContext => {
     if (!props.condition.coverage) return props.condition;
     if (levels && levels.length > 0) return { ...props.condition, row: { levels, readable: rowReadableLevels(levels) } };
-    const inner = at === undefined ? undefined : loopsAround(index, at).filter((f) => isRepeatSource(f.source) && isTreeSource(f.source)).at(-1);
+    // 「비었을 때」 칸 자리는 그 반복의 원소 문맥 밖 — 현재 세부보장 / 급부를 세우지 않는다 (ADR-0088 결정 3)
+    const inner = at === undefined ? undefined : loopsAround(index, at, slot).filter((f) => isRepeatSource(f.source) && isTreeSource(f.source)).at(-1);
     if (!inner || !isRepeatSource(inner.source)) return props.condition;
     const benefit = inner.source.kind !== "subCoverages";
     return {
@@ -703,10 +714,12 @@ export function DocumentEditor(props: EditorProps) {
     const owner = index.branches.get(id)?.ownerId ?? id;
     return repeatScopeOf(tree, owner)?.levels;
   };
-  // 종 반복 안이면 슬롯 고르기에 「현재 종」 묶음 (ADR-0077 결정 3)
-  const withPlan = (c: ConditionContext, id: Id): ConditionContext => {
-    const plan = currentPlanOf(loopsAround(index, id), { enumOf: (x) => enumByCode.get(x) });
-    return plan ? { ...c, plan } : c;
+  // 종 반복 안이면 슬롯 고르기에 「현재 종」 묶음 (ADR-0077 결정 3), 열거값 반복 안이면 「현재 값」 묶음 (ADR-0088) — 「비었을 때」 칸(slot fallback)은 그 반복 밖
+  const withPlan = (c: ConditionContext, id: Id, slot?: SlotName): ConditionContext => {
+    const loops = loopsAround(index, id, slot);
+    const plan = currentPlanOf(loops, { enumOf: (x) => enumByCode.get(x) });
+    const value = currentValueOf(loops, { enumOf: (x) => enumByCode.get(x) });
+    return { ...c, ...(plan ? { plan } : {}), ...(value ? { value } : {}) };
   };
 
   // 블록 반복 이름 — 별칭 또는 원천(목록 원천은 바깥 반복의 폼을 읽는다, ADR-0077)
@@ -753,7 +766,7 @@ export function DocumentEditor(props: EditorProps) {
           const t = index.nodes.get(spec.at.tableId)?.node;
           return withPlan(withRow(t?.kind === "table" && t.repeat && !t.rows[spec.at.row]?.header ? repeatLevels(t) : undefined), spec.at.tableId);
         }
-        return withPlan(withRow(scopeOf(spec.at.parentId), spec.at.parentId), spec.at.parentId);
+        return withPlan(withRow(scopeOf(spec.at.parentId), spec.at.parentId, spec.at.slot), spec.at.parentId, spec.at.slot);
       }
       case "editChip":
         return withPlan(withRow(scopeOf(spec.nodeId), spec.nodeId), spec.nodeId);
@@ -829,7 +842,7 @@ export function DocumentEditor(props: EditorProps) {
       const num = numbers.get(entry.node.id);
       const ordinal = num && ["paragraph", "item", "subitem"].includes(entry.node.kind) ? `제${num.n}` : "";
       const what =
-        entry.node.kind === "article" ? `${num?.label ?? "조"}(${(entry.node as { title: string }).title})` : entry.node.kind === "section" ? `${num?.label ?? "관"} ${(entry.node as { title: string }).title}` : `${ordinal}${NODE_WHAT[entry.node.kind] ?? entry.node.kind}`.trim();
+        entry.node.kind === "article" ? `${num?.label ?? "조"}(${foldTitle(entry.node.title, titleFold)})` : entry.node.kind === "section" ? `${num?.label ?? "관"} ${(entry.node as { title: string }).title}` : `${ordinal}${NODE_WHAT[entry.node.kind] ?? entry.node.kind}`.trim();
       removeCard = (
         <Popover anchor={removing.anchor} label={`${what} 삭제`} onClose={() => setRemoving(undefined)}>
           <RemoveCard
@@ -916,6 +929,7 @@ export function DocumentEditor(props: EditorProps) {
       <Toc
         tree={tree}
         numbers={numbers}
+        fold={titleFold}
         {...(mode === "edit" ? { drag } : {})}
         {...(currentArticleId ? { currentArticleId } : {})}
         onPick={(id) => {

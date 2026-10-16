@@ -13,6 +13,7 @@ import { resolveDocument } from "./resolve";
 import { substituteSlots } from "./substitute";
 import type { ParticlePresetKey } from "../document/particles";
 import type { AssemblyCoverage, AssemblyInput, RParagraph, RenderedInline, SInline, SubstitutedDoc } from "./types";
+import { titleNodes } from "@/domain/document/title";
 
 /** 픽스처를 한 객체로 다루는 테스트 진입 — 조립 서명 `assemble(master, product)` 에 같은 객체를 두 번 넘긴다 (AssemblyInput = MasterBundle & ProductInput). */
 const assembleInput = (input: AssemblyInput) => assemble(input, input);
@@ -164,13 +165,13 @@ describe("참조 슬롯 렌더", () => {
   describe("조건식을 실제로 태운 참조 — 분기 결과에 따라 같은 슬롯이 다르게 찍힌다", () => {
     /** 제1조 참조 슬롯 → [a2, a3, a4, a5]. a3 는 `D0005 = true`(면책여부합) 가지 안에 있다. */
     function source(): DocumentNode {
-      const article = (id: string, title: string): DocumentNode["children"][number] => ({ kind: "article", id, title, children: [{ kind: "paragraph", id: `${id}-p`, children: [{ kind: "text", id: `${id}-t`, text: "본문" }] }] });
+      const article = (id: string, title: string): DocumentNode["children"][number] => ({ kind: "article", id, title: titleNodes(title, id), children: [{ kind: "paragraph", id: `${id}-p`, children: [{ kind: "text", id: `${id}-t`, text: "본문" }] }] });
       return {
         kind: "document",
         id: "s",
         title: "특약",
         children: [
-          { kind: "article", id: "a1", title: "준용", children: [{ kind: "paragraph", id: "a1-p", children: [{ kind: "articleRef", id: "ref", targets: [{ articleId: "a2" }, { articleId: "a3" }, { articleId: "a4" }, { articleId: "a5" }], connector: "및", scope: "self" }] }] },
+          { kind: "article", id: "a1", title: titleNodes("준용", "a1"), children: [{ kind: "paragraph", id: "a1-p", children: [{ kind: "articleRef", id: "ref", targets: [{ articleId: "a2" }, { articleId: "a3" }, { articleId: "a4" }, { articleId: "a5" }], connector: "및", scope: "self" }] }] },
           article("a2", "둘"),
           { kind: "condBlock", id: "cond", branches: [{ id: "cond-if", when: "D0005 = true", children: [article("a3", "면책")] }] },
           article("a4", "넷"),
@@ -233,10 +234,10 @@ describe("참조 슬롯 렌더", () => {
           {
             kind: "article",
             id: "a",
-            title: "세부보장에 관한 사항",
+            title: titleNodes("세부보장에 관한 사항", "a"),
             children: [p("p1"), p("p2", {}, [ref("r1", "P0100")] as never), p("p3", { restart: true }), p("p4", {}, [ref("r2", "P0300"), ref("r3", "P0500")] as never), p("p5")],
           },
-          { kind: "article", id: "b", title: "단항", children: [p("q1", { restart: true })] },
+          { kind: "article", id: "b", title: titleNodes("단항", "b"), children: [p("q1", { restart: true })] },
         ],
       } as unknown as DocumentNode;
     }
@@ -276,7 +277,7 @@ describe("참조 슬롯 렌더", () => {
         kind: "document",
         id: "s",
         title: "특약",
-        children: [{ kind: "article", id: "a", title: "조", children: [p("p1"), p("p2"), { kind: "clauseBlockRef", id: "r", clauseCode: "C0200", options: {}, restart: true }, p("p3")] }],
+        children: [{ kind: "article", id: "a", title: titleNodes("조", "a"), children: [p("p1"), p("p2"), { kind: "clauseBlockRef", id: "r", clauseCode: "C0200", options: {}, restart: true }, p("p3")] }],
       };
       const input = alphaPlusFixture();
       const ctx = buildContexts(input).specials.get("pc-basic")!;
@@ -331,7 +332,7 @@ describe("참조 슬롯 렌더", () => {
         values: { "pc-z": { "coverage_basic.renewal": false, "coverage_basic.reduction_months": 24, "coverage_basic.reduction_text": "24개월" }, "pc-z-ben": { "pay.exempt": true, "pay.rate": 100 } },
       });
       const ctx = specialContext(input, coverage);
-      const doc: DocumentNode = { kind: "document", id: "s", title: "특약", children: [{ kind: "article", id: "a", title: "조", children: bindings.map((b, i) => ({ kind: "clauseBlockRef", id: `r${i}`, clauseCode: "C0100", options: {}, bindings: b })) }] };
+      const doc: DocumentNode = { kind: "document", id: "s", title: "특약", children: [{ kind: "article", id: "a", title: titleNodes("조", "a"), children: bindings.map((b, i) => ({ kind: "clauseBlockRef", id: `r${i}`, clauseCode: "C0100", options: {}, bindings: b })) }] };
       const enums = new Map(input.enums.map((e) => [e.code, e]));
       const resolved = resolveDocument(doc, ctx, { clauses: new Map([["C0100", 판정]]), overrides: new Map(), coordinate: at, enums });
       const substituted = substituteSlots(resolved.doc, ctx, { catalog: new Map(input.catalog.map((d) => [d.code, d])), enums, master: input.master });
@@ -352,7 +353,7 @@ describe("참조 슬롯 렌더", () => {
     it("연결이 빠지면 그 자리가 argUnbound 오류 마커다", () => {
       const input = alphaPlusFixture();
       const ctx = buildContexts(input).specials.get("pc-basic")!;
-      const doc: DocumentNode = { kind: "document", id: "s", title: "특약", children: [{ kind: "article", id: "a", title: "조", children: [{ kind: "clauseBlockRef", id: "r", clauseCode: "C0100", options: {} }] }] };
+      const doc: DocumentNode = { kind: "document", id: "s", title: "특약", children: [{ kind: "article", id: "a", title: titleNodes("조", "a"), children: [{ kind: "clauseBlockRef", id: "r", clauseCode: "C0100", options: {} }] }] };
       const resolved = resolveDocument(doc, ctx, { clauses: new Map([["C0100", 판정]]), overrides: new Map(), coordinate: at });
       expect(resolved.issues.map((i) => [i.kind, i.at.refPath])).toEqual([["argUnbound", "arg.조건"]]);
     });
@@ -402,7 +403,7 @@ describe("참조 슬롯 렌더", () => {
         },
       };
       const ctx = buildContexts(input).general;
-      const doc: DocumentNode = { kind: "document", id: "g", title: "보통약관", children: [{ kind: "article", id: "a", title: "조", children: [{ kind: "clauseBlockRef", id: "r", clauseCode: "C0200", options: {} }] }] };
+      const doc: DocumentNode = { kind: "document", id: "g", title: "보통약관", children: [{ kind: "article", id: "a", title: titleNodes("조", "a"), children: [{ kind: "clauseBlockRef", id: "r", clauseCode: "C0200", options: {} }] }] };
       const enums = new Map(input.enums.map((e) => [e.code, e]));
       const resolved = resolveDocument(doc, ctx, { clauses: new Map([["C0200", 부가항]]), overrides: new Map(), coordinate: at, enums, master: input.master });
       const article = resolved.doc.children[0];
@@ -465,7 +466,7 @@ describe("참조 슬롯 렌더", () => {
     const withItems = (r: string, i: number): DocumentNode["children"][number] => ({
       kind: "article",
       id: `a${i}`,
-      title: "조",
+      title: titleNodes("조", `a${i}`),
       children: [{ kind: "paragraph", id: `p${i}`, children: [text(`t${i}`, "다음의 경우")], items: [{ kind: "clauseBlockRef", id: `r${i}`, clauseCode: "C0300", options: {}, bindings: { 사유: { kind: "const", value: r } } }] as never }],
     });
     const itemTexts = (doc: ReturnType<typeof run>["doc"]) =>
@@ -499,7 +500,7 @@ describe("참조 슬롯 렌더", () => {
       const r = run(["V02", "V03"], (v, i) => ({
         kind: "article",
         id: `a${i}`,
-        title: "조",
+        title: titleNodes("조", `a${i}`),
         children: [{ kind: "paragraph", id: `p${i}`, children: [{ kind: "clauseInlineRef", id: `r${i}`, clauseCode: "C0301", options: {}, bindings: { 사유: { kind: "const", value: v } } }] }],
       }));
       expect(r.issues).toEqual([]);
@@ -515,7 +516,7 @@ describe("참조 슬롯 렌더", () => {
       };
       const input = alphaPlusFixture();
       const ctx = buildContexts(input).general;
-      const doc: DocumentNode = { kind: "document", id: "g", title: "보통약관", children: [{ kind: "article", id: "a", title: "조", children: [{ kind: "clauseBlockRef", id: "r", clauseCode: "C0302", options: {}, bindings: { 사유: { kind: "const", value: "V01" } } }] }] };
+      const doc: DocumentNode = { kind: "document", id: "g", title: "보통약관", children: [{ kind: "article", id: "a", title: titleNodes("조", "a"), children: [{ kind: "clauseBlockRef", id: "r", clauseCode: "C0302", options: {}, bindings: { 사유: { kind: "const", value: "V01" } } }] }] };
       const resolved = resolveDocument(doc, ctx, { clauses: new Map([["C0302", 항분기]]), overrides: new Map(), coordinate: at });
       expect(resolved.issues).toEqual([]);
       expect(dropEmptyArticles(resolved.doc as unknown as SubstitutedDoc, authoredEmptyArticleIds(doc)).dropped).toEqual(["a"]);
@@ -533,6 +534,27 @@ describe("참조 슬롯 렌더", () => {
     const article = result.doc.children[0];
     if (article.kind !== "article" || article.children[0].kind !== "paragraph") throw new Error("unexpected error");
     expect(article.children[0].children[0]).toMatchObject({ label: "보통약관 제1조(해약환급금)" });
+  });
+});
+
+describe("별칭으로 푼 반복 대상의 「0개」 판정 (ADR-0088 결정 4 · 기본계약 대치)", () => {
+  it("별칭 열쇠가 반복이 낼 수 있던 열쇠면 「사라짐」이 아니라 「0개」 오류", () => {
+    const doc: SubstitutedDoc = {
+      kind: "document",
+      id: "g",
+      title: "보통약관",
+      children: [
+        {
+          kind: "article",
+          id: "g-pay",
+          title: "지급사유",
+          repeatKeys: ["b-pay:P0800"],
+          children: [{ kind: "paragraph", id: "p", key: "b-pay:P0100", children: [{ kind: "articleRef", id: "ref", targets: [{ articleId: "b-pay", code: "P0800" }], connector: "및", scope: "self", at }] }],
+        },
+      ],
+    };
+    const result = renderDocument(numberDocument(doc), { document: "general", ownerId: "g", aliases: new Map([["b-pay#P0800", "g-pay#b-pay:P0800"]]), appendices: [] });
+    expect(result.issues).toEqual([expect.objectContaining({ kind: "articleGone", message: expect.stringContaining("0개") })]);
   });
 });
 
@@ -669,8 +691,8 @@ describe("조사 칩 — 렌더 끝에서 앞 글 받침으로", () => {
         id: "s",
         title: "특약",
         children: [
-          { kind: "article", id: "a1", title: "목적", children: [{ kind: "paragraph", id: "a1-p", children: [{ kind: "text", id: "a1-t", text: "본문" }] }] },
-          { kind: "article", id: "a2", title: "준용", children: [{ kind: "paragraph", id: "a2-p", children: [{ kind: "articleRef", id: "ref", targets: [{ articleId: "a1" }], connector: "및", scope: "self" }, { kind: "particle", id: "x", preset: "eul-reul" }, { kind: "text", id: "a2-t", text: " 따릅니다" }] }] },
+          { kind: "article", id: "a1", title: titleNodes("목적", "a1"), children: [{ kind: "paragraph", id: "a1-p", children: [{ kind: "text", id: "a1-t", text: "본문" }] }] },
+          { kind: "article", id: "a2", title: titleNodes("준용", "a2"), children: [{ kind: "paragraph", id: "a2-p", children: [{ kind: "articleRef", id: "ref", targets: [{ articleId: "a1" }], connector: "및", scope: "self" }, { kind: "particle", id: "x", preset: "eul-reul" }, { kind: "text", id: "a2-t", text: " 따릅니다" }] }] },
         ],
       });
       expect(firstLine(r, 1)).toMatch(/^제1조(\(.*\))?를 따릅니다$/);
@@ -685,7 +707,7 @@ describe("조사 칩 — 렌더 끝에서 앞 글 받침으로", () => {
           {
             kind: "article",
             id: "a1",
-            title: "지급",
+            title: titleNodes("지급", "a1"),
             children: [
               {
                 kind: "paragraph",

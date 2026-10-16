@@ -21,6 +21,7 @@ import type { Binding, ParamDef } from "../../src/domain/clause/params";
 import type { LocalDef } from "../../src/domain/clause/locals";
 import type { PresetDef } from "../../src/domain/clause/presets";
 import type { ArticleNode, ArticleRefNode, BlockNode, ClauseBlockRefNode, CondBlockNode, DocumentNode, ForBlockNode, InlineNode, ItemNode, ParagraphNode, SectionNode } from "../../src/domain/document/nodes";
+import { foldTitle } from "../../src/domain/document/title";
 import type { Code, Id } from "../../src/domain/types";
 
 import type { ClauseRecord } from "./clauses";
@@ -178,9 +179,23 @@ function itemRefs(articleId: Id, outerId: Id): ClauseBlockRefNode[] {
   return ITEM_REASONS.map((r) => ({ id: itemRefId(articleId, r.code), kind: "clauseBlockRef", clauseCode: `@${itemKey(r.code)}`, options: {}, bindings: { 종들: { kind: "current", loop: outerId } } }));
 }
 
-/** 정의 조 본문 — 사유별 정의 함수조항을 열거형 순서로, 프리셋 ‘적용 종’. 제목은 고정 글(일반 고정 제목으로 바꿀 예정 — ADR-0088 결정 7, 인수기준 알려진 차이). */
+/** 정의 조 본문 — 사유별 정의 함수조항을 열거형 순서로, 프리셋 ‘적용 종’. 제목은 일반 고정 제목(`definitionTitle`, ADR-0088 결정 7). */
 function definitionRefs(articleId: Id, line: Line): ClauseBlockRefNode[] {
   return DEFINITIONS.map((d) => presetRef(`${articleId}-p1-k-${d.key}`, definitionKey(d, line), "S01"));
+}
+
+/** 정의 조 제목 — 사유를 나열하지 않는 일반 고정 제목 (ADR-0088 결정 7, 2026-10-17). 원문(사유 나열)과의 문구 차이는 허용 차이(`src/db/seed/knownDifferences.ts`). */
+export const DEFINITION_TITLE = "보험료 납입면제 사유의 정의 및 진단확정";
+
+/**
+ * 정의 조 제목 — 일반 고정 제목 [글 하나]. 제목과 본문이 같은 사유 목록을 각자 반복하면 원천이 두 벌이 되므로 제목은 나열하지 않는다(ADR-0088 결정 7).
+ * 원문 제목은 그 상품의 사유 나열(원문 순서 = 열거형 순서)이어야 한다 — 다르면 던진다(원문 · 열거형이 어긋난 것, 허용 차이 목록도 그 원문 제목을 쓴다).
+ */
+function definitionTitle(a: ArticleNode, labels: readonly string[]): InlineNode[] {
+  const original = foldTitle(a.title);
+  const expected = `${labels.join(", ")}의 정의 및 진단확정`;
+  if (original !== expected) throw new Error(`납입면제 재모델링: 정의 조 제목 「${original}」이 사유 나열 「${expected}」과 다르다`);
+  return [{ id: `${a.id}.title`, kind: "text", text: DEFINITION_TITLE }];
 }
 
 function articleOf(src: WaiverSource, number: string): ArticleNode {
@@ -453,8 +468,9 @@ export function applyAlphaWaiver(alpha: WaiverSource, meritz: WaiverSource): Wai
   // 제27조의2 — 조 본문 = 세부규정 한 줄
   a27d.children = [presetRef(`${a27d.id}-p1-k`, "waiver-detail", "S01")];
 
-  // 제27조의3 — 사유별 정의를 열거형 순서로 (제목은 고정 글 — 인수기준 알려진 차이)
+  // 제27조의3 — 사유별 정의를 열거형 순서로, 제목은 일반 고정 제목 (ADR-0088 결정 7)
   x.children = definitionRefs(x.id, LINE.alpha);
+  x.title = definitionTitle(x, ["암(유사암제외)", "뇌졸중", "급성심근경색증", "말기폐질환", "말기간경화", "말기신부전증", "양성뇌종양", "중대한재생불량성빈혈", "만성당뇨합병증"]);
 
   // 제22조 — 원문 두 항 뒤에 무효 문구(③), 제30조 — ④ 를 부활 문구로
   a22.children = [...a22.children, presetRef(`${a22.id}-p3-k`, "waiver-void", "S01")];
@@ -593,9 +609,10 @@ export function applyMeritzWaiver(meritz: WaiverSource, shared: readonly WaiverC
   for (const p of [p4, p5, p6, p7]) remapTemplateRefs(p, (id) => (id === p2.id ? p1.id : id));
   for (const p of [p6, p7]) mergeRanges(p, [p1.id, addendumRef.id, p4.id, p5.id, p6.id, p7.id]);
 
-  // 제31조 — 조 본문 = 세부규정 한 줄, 제30조 — 사유별 정의를 열거형 순서로 (제목은 고정 글)
+  // 제31조 — 조 본문 = 세부규정 한 줄, 제30조 — 사유별 정의를 열거형 순서로, 제목은 일반 고정 제목 (ADR-0088 결정 7)
   a31.children = [presetRef(`${a31.id}-p1-k`, detailClause.key, "S01")];
   a30.children = definitionRefs(a30.id, LINE.meritz);
+  a30.title = definitionTitle(a30, ["암(유사암제외)", "뇌졸중", "급성심근경색증", "중증화상및부식"]);
 
   // 제22조 — 원문 두 항 뒤에 무효 문구(③), 제35조 ④ — 부활 문구(기준일은 갱신형 상품이라 최초계약일). ④ 뒤 【부활(효력회복)】 박스는 조의 것이라 템플릿에 남는다
   a22.children = [...a22.children, presetRef(`${a22.id}-p3-k`, voidClause.key, "S01")];
@@ -723,11 +740,11 @@ export function guardOwnWaiver(tree: DocumentNode, marked: ReadonlySet<Id>): (id
   const base = (id: Id) => id.replace(/-k$/, "");
   const visit = (list: unknown[]): void => {
     list.forEach((c, i) => {
-      const o = c as { id: Id; kind: string; title?: string; children?: unknown[]; branches?: { children: unknown[] }[] };
+      const o = c as { id: Id; kind: string; title?: InlineNode[]; children?: unknown[]; branches?: { children: unknown[] }[] };
       if (o.kind === "section") return visit(o.children ?? []);
       if (o.kind === "condBlock") return o.branches?.forEach((b) => visit(b.children));
       if (o.kind !== "article") return;
-      if (OWN_WAIVER_TITLES.has(o.title ?? "")) {
+      if (OWN_WAIVER_TITLES.has(foldTitle(o.title ?? []))) {
         roots.push(o.id);
         list[i] = cond(`${o.id}-if-own-waiver`, [o]);
         return;

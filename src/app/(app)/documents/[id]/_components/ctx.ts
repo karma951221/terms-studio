@@ -119,6 +119,8 @@ export interface EditHandlers {
   contextMenu: (event: MouseEvent<HTMLElement>) => void;
   /** 조건 머리 줄 끝의 작은 버튼(가지 추가 · ELSE · 풀기 · 가지 삭제 · 블록 삭제)이 쓰는 목록 — 툴바의 그 자리 목록과 같다. */
   headItems: (branchId: Id) => MenuItem[];
+  /** 블록 자리의 메뉴 목록(오른쪽 클릭 메뉴와 같다) — 반복 블록의 「+ 비었을 때 내용」 입구가 쓴다. 없으면 입구가 잠긴다. */
+  blockItems?: (nodeId: Id) => MenuItem[];
   /** 목록 항목 하나를 돌린다 — 툴바 · 오른쪽 클릭 메뉴와 같은 길. 함수조항 블록의 🗑 도 이 길(삭제 확인). */
   run: (item: MenuItem, anchor: Anchor) => void;
   /** 고른 잇닿은 형제 블록(끌어 옮기기 · 위로/아래로가 한꺼번에 옮긴다). 없으면 블록 손잡이도 없다 (`useBlockDrag`). */
@@ -150,12 +152,15 @@ function displayOf(when: string, refLabel: DisplayName | undefined): string {
 
 /** 문장 자리 → DOM `data-inline` 값 (오른쪽 클릭이 자리를 되읽는다). */
 export function encodeAt(at: InlineAt): string {
-  return "tableId" in at ? `cell:${at.tableId}:${at.row}:${at.col}` : `node:${at.parentId}`;
+  if ("tableId" in at) return `cell:${at.tableId}:${at.row}:${at.col}`;
+  return at.slot === "title" ? `title:${at.parentId}` : at.slot === "fallback" ? `fallback:${at.parentId}` : `node:${at.parentId}`;
 }
 
 export function decodeAt(raw: string): InlineAt | undefined {
   const [kind, id, row, col] = raw.split(":");
   if (kind === "node" && id) return { parentId: id };
+  if (kind === "title" && id) return { parentId: id, slot: "title" };
+  if (kind === "fallback" && id) return { parentId: id, slot: "fallback" };
   if (kind === "cell" && id && row !== undefined && col !== undefined) return { tableId: id, row: Number(row), col: Number(col) };
   return undefined;
 }

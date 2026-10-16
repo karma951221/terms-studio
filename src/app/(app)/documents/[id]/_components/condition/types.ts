@@ -71,4 +71,9 @@ export interface ConditionContext {
    * (ADR-0077 결정 3 · 기능/문면 §3.7). 종 반복 밖이면 없음.
    */
   plan?: { name: string };
+  /**
+   * 원소가 열거값인 반복(블록 · 문장 안) 안에서 열었을 때만 — 그 반복 이름과 열거형의 문자 필드. 슬롯 고르기의 「현재 〈반복 이름〉」 묶음
+   * (그 열거형의 문자 필드 `builtin.value.<필드키>` — 값 이름 · 참거짓 필드 없음, 문자 필드가 없으면 이것도 없다)의 재료다 (ADR-0088 결정 1 · 2026-10-17). 「비었을 때」 칸 안에는 없다.
+   */
+  value?: { name: string; fields: readonly { key: string; label: string }[] };
 }

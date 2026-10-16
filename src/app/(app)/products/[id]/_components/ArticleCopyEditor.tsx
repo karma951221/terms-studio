@@ -27,13 +27,13 @@ import { backspaceOps, enterOps, insertedChip, inlineListAt, moveSelectionOps, p
 import { EditorToolbar } from "@/app/(app)/documents/[id]/_components/EditorToolbar";
 import { caretFromPoint, tokensOf } from "@/app/(app)/documents/[id]/_components/Inline";
 import { identityRuns, runsFromTokens, sameRuns, type Token } from "@/app/(app)/documents/[id]/_components/inlineRuns";
-import { boxPickItems, clausePickItems, condInsertItem, condMenu, inlineCondItem, placeBlockId, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
+import { blockMenu, boxPickItems, clausePickItems, condInsertItem, condMenu, inlineCondItem, placeBlockId, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
 import { condInput, placeOf, readInline } from "@/app/(app)/documents/[id]/_components/place";
 import { usePlaceGate } from "@/app/(app)/documents/[id]/_components/placeGate";
 import { ContextMenu, Popover } from "@/app/(app)/documents/[id]/_components/Popover";
 import { PopupHost, type PopupEnv } from "@/app/(app)/documents/[id]/_components/Popups";
 import { RemoveCard } from "@/app/(app)/documents/[id]/_components/RemoveCard";
-import { currentPlanOf, loopsAround } from "@/app/(app)/documents/[id]/_components/repeatSources";
+import { currentPlanOf, currentValueOf, loopsAround } from "@/app/(app)/documents/[id]/_components/repeatSources";
 import { DraftIssues } from "@/app/(app)/documents/[id]/_components/SidePanel";
 import { articlesOf } from "@/app/(app)/documents/[id]/_components/Toc";
 import { DOCUMENT_TOOLS, allTools, itemsFor, type ToolId } from "@/app/(app)/documents/[id]/_components/tools";
@@ -65,6 +65,7 @@ import {
   type EditOp,
   type ForBlockNode,
   type Node,
+  type SlotName,
 } from "@/domain/document";
 import type { Box } from "@/domain/document/box";
 import { applyArticleCopies, articleHash, articleOnlyChange, articlesById } from "@/domain/product";
@@ -396,6 +397,7 @@ export function ArticleCopyEditor({ data, articleId, label }: { data: CopyEditor
     focusDone: () => setFocusRequest(undefined),
     contextMenu: onContextMenu,
     headItems: (branchId) => condMenu(menuEnv(), branchId).flat(),
+    blockItems: (nodeId) => blockMenu(menuEnv(), nodeId).flat(),
     run: (item, anchor) => runMenu(item, anchor),
     blockSel: drag.blockSel,
     selectBlock: drag.selectBlock,
@@ -410,10 +412,12 @@ export function ArticleCopyEditor({ data, articleId, label }: { data: CopyEditor
 
   const withRow = (levels: ReturnType<typeof repeatLevels> | undefined): ConditionContext => (levels && levels.length > 0 ? { ...data.condition, row: { levels, readable: rowReadableLevels(levels) } } : data.condition);
   const scopeOf = (id: Id) => repeatScopeOf(tree, index.branches.get(id)?.ownerId ?? id)?.levels;
-  // 종 반복 안이면 슬롯 고르기에 「현재 종」 묶음 (ADR-0077 결정 3)
-  const withPlan = (c: ConditionContext, id: Id): ConditionContext => {
-    const plan = currentPlanOf(loopsAround(index, id), { enumOf: (x) => enumByCode.get(x) });
-    return plan ? { ...c, plan } : c;
+  // 종 반복 안이면 슬롯 고르기에 「현재 종」 묶음 (ADR-0077 결정 3), 열거값 반복 안이면 「현재 값」 묶음 (ADR-0088) — 「비었을 때」 칸은 그 반복 밖
+  const withPlan = (c: ConditionContext, id: Id, slot?: SlotName): ConditionContext => {
+    const loops = loopsAround(index, id, slot);
+    const plan = currentPlanOf(loops, { enumOf: (x) => enumByCode.get(x) });
+    const value = currentValueOf(loops, { enumOf: (x) => enumByCode.get(x) });
+    return { ...c, ...(plan ? { plan } : {}), ...(value ? { value } : {}) };
   };
   const repeatLabelOf = (nodeId: Id): string => {
     const loops = loopsAround(index, nodeId);
@@ -457,7 +461,7 @@ export function ArticleCopyEditor({ data, articleId, label }: { data: CopyEditor
         const t = index.nodes.get(spec.at.tableId)?.node;
         return withPlan(withRow(t?.kind === "table" && t.repeat && !t.rows[spec.at.row]?.header ? repeatLevels(t) : undefined), spec.at.tableId);
       }
-      return withPlan(withRow(scopeOf(spec.at.parentId)), spec.at.parentId);
+      return withPlan(withRow(scopeOf(spec.at.parentId)), spec.at.parentId, spec.at.slot);
     }
     return spec.kind === "editChip" ? withPlan(withRow(scopeOf(spec.nodeId)), spec.nodeId) : data.condition;
   };
@@ -490,6 +494,7 @@ export function ArticleCopyEditor({ data, articleId, label }: { data: CopyEditor
     }
     if (p.kind === "inline") {
       if ("tableId" in p.at) return `표 ${p.at.row + 1}행 ${p.at.col + 1}열`;
+      if (p.at.slot === "title") return `${num(p.at.parentId) ?? "조"} 제목`;
       const kind = index.nodes.get(p.at.parentId)?.node.kind;
       return kind ? `${num(p.at.parentId) ?? ""} ${NODE_WHAT[kind] ?? ""} 문장`.trim() : "조건 가지 문장";
     }

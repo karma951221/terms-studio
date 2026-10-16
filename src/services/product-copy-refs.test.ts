@@ -10,6 +10,7 @@ import type { Actor, Issue } from "@/domain/types";
 
 import { createTestDb, type TestDb } from "@/db/test-utils";
 import { createProductService, type ProductService } from "./product";
+import { titleNodes } from "@/domain/document/title";
 
 const editor: Actor = { userId: "00000000-0000-4000-8000-000000000002", role: "editor" };
 function unwrap<T>(r: { ok: true; value: T } | { ok: false; rejection: unknown }): T {
@@ -35,9 +36,9 @@ function template(): DocumentNode {
     kind: "document",
     title: "보통약관",
     children: [
-      { id: "a10", kind: "article", title: "지급사유", children: [para("p10-1", "P0100"), para("p10-2", "P0200")] },
-      { id: "a11", kind: "article", title: "지급제한", children: [para("p11-1", "P0100", text("t11", "제1조 제1항에 따라 "), ref("r11", "a10", "P0100")), para("p11-2", "P0200")] },
-      { id: "a12", kind: "article", title: "청구", children: [{ id: "cl12", kind: "clauseBlockRef", clauseCode: "C0009", options: {} }] },
+      { id: "a10", kind: "article", title: titleNodes("지급사유", "a10"), children: [para("p10-1", "P0100"), para("p10-2", "P0200")] },
+      { id: "a11", kind: "article", title: titleNodes("지급제한", "a11"), children: [para("p11-1", "P0100", text("t11", "제1조 제1항에 따라 "), ref("r11", "a10", "P0100")), para("p11-2", "P0200")] },
+      { id: "a12", kind: "article", title: titleNodes("청구", "a12"), children: [{ id: "cl12", kind: "clauseBlockRef", clauseCode: "C0009", options: {} }] },
     ],
   };
 }
@@ -54,7 +55,7 @@ function dependents(): GeneralDependents {
     id: `doc-${coverageId}`,
     kind: "document",
     title,
-    children: [{ id: `s-${coverageId}`, kind: "article", title: "보험금", children: [para(`sp-${coverageId}`, "P0100", { id: `g-${coverageId}`, kind: "articleRef", scope: "general", targets: [{ articleId: "a10", code: "P0100" }] })] }],
+    children: [{ id: `s-${coverageId}`, kind: "article", title: titleNodes("보험금", `s-${coverageId}`), children: [para(`sp-${coverageId}`, "P0100", { id: `g-${coverageId}`, kind: "articleRef", scope: "general", targets: [{ articleId: "a10", code: "P0100" }] })] }],
   });
   return {
     documents: [

@@ -4,6 +4,7 @@ import type { ArticleNode, DocumentNode, InlineCondNode, ParagraphNode, TableNod
 import { validateTree } from "../../src/domain/document/nodes";
 
 import { applyArticleConds, applyBoxConds, applyInlineClauses, applyInlineConds, type NumberOf } from "./overlay";
+import { titleNodes } from "../../src/domain/document/title";
 
 const WHEN = "exist(attr.A0001) and attr.A0001 = '2'";
 
@@ -20,11 +21,11 @@ function tree(): DocumentNode {
     columns: [{}, {}],
     rows: [{ cells: [[{ id: "s-a1-t1-r0c0", kind: "text", text: "최초계약일" }], [{ id: "s-a1-t1-r0c1", kind: "text", text: "2023.4.10" }]] }],
   };
-  const first: ArticleNode = { id: "s-a1", kind: "article", title: "보험금의 지급사유", children: [paragraph, table] };
+  const first: ArticleNode = { id: "s-a1", kind: "article", title: titleNodes("보험금의 지급사유", "s-a1"), children: [paragraph, table] };
   const second: ArticleNode = {
     id: "s-a2",
     kind: "article",
-    title: "보험기간",
+    title: titleNodes("보험기간", "s-a2"),
     children: [{ id: "s-a2-p1", kind: "paragraph", children: [{ id: "s-a2-p1-x0", kind: "text", text: "3년으로 합니다." }] }],
   };
   return { id: "s-doc", kind: "document", title: "수술비 특별약관", children: [first, second] };

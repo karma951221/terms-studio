@@ -23,6 +23,7 @@ import { pathToFileURL } from "node:url";
 import type { ArticleNode, BlockNode, BoxNode, BoxRefNode, DocumentNode, InlineNode, ParagraphNode, SectionNode, TableNode } from "../../src/domain/document/nodes";
 import { articleRefsOf, indexTree, validateTree } from "../../src/domain/document/nodes";
 import { referenceKeysOf, targetOfNode, withCodes } from "../../src/domain/document/pcode";
+import { foldTitle, titleNodes } from "../../src/domain/document/title";
 import type { RefTarget } from "../../src/domain/document/nodes";
 import { clauseCodeEntries, withClauseCodes } from "../../src/domain/clause/pcode";
 import type { ArticleRefNode as ClauseArticleRef } from "../../src/domain/clause/nodes";
@@ -179,7 +180,7 @@ export function buildStructure(doc: ParsedDoc, prefix: string, title: string, ar
     if (groups.length > 1) entry.groups = groups;
     index.byNumber.set(a.number, entry);
     numberOf.set(aid, a.number);
-    return { id: aid, kind: "article", title: a.title, children };
+    return { id: aid, kind: "article", title: titleNodes(a.title, aid), children };
   };
 
   const top: DocumentNode["children"] = [];
@@ -249,7 +250,7 @@ function reportLeftovers(built: Built, label: string, report: string[]): void {
           continue;
         }
         if (n.kind !== "text") continue;
-        for (const found of leftoverReferences(n.text)) report.push(`${label} 조 「${a.title}」 에 조 참조 평문이 남음: ${found}…`);
+        for (const found of leftoverReferences(n.text)) report.push(`${label} 조 「${foldTitle(a.title)}」 에 조 참조 평문이 남음: ${found}…`);
       }
     };
     for (const p of a.children) {
@@ -604,7 +605,7 @@ function applyAutoClauses(products: readonly BuiltProduct[], candidates: readonl
     for (const a of articlesDeep(b.tree)) {
       if (!clauseSlice(a) && !a.children.some((c) => c.kind === "paragraph")) continue;
       const n = paragraphs(a.children);
-      const hit = blockCandidates.some(({ c, n: m, sels }) => m === n && sels.some((sel) => applyClauseUse({ article: a.title, paragraph: 1, clause: c.code, options: sel }, c, () => a, `[${spec.code}]`, [], b.tree)));
+      const hit = blockCandidates.some(({ c, n: m, sels }) => m === n && sels.some((sel) => applyClauseUse({ article: foldTitle(a.title), paragraph: 1, clause: c.code, options: sel }, c, () => a, `[${spec.code}]`, [], b.tree)));
       if (hit) stats.existingUses++;
     }
   }
@@ -621,10 +622,10 @@ function applyAutoClauses(products: readonly BuiltProduct[], candidates: readonl
   }
   const variants = [...shapes.values()].flatMap((list) => (list.length < 2 ? [] : wordClusters(list.map((m) => textNodesOf(m.slice).map((t) => t.text))).map((c) => ({ c, ms: c.members.map((i) => list[i]) }))));
   const sameTitle = new Map<string, number>();
-  for (const g of variants) sameTitle.set(g.ms[0].a.title, (sameTitle.get(g.ms[0].a.title) ?? 0) + 1);
+  for (const g of variants) sameTitle.set(foldTitle(g.ms[0].a.title), (sameTitle.get(foldTitle(g.ms[0].a.title)) ?? 0) + 1);
   const seen = new Map<string, number>();
   for (const { c, ms } of variants) {
-    const title = ms[0].a.title;
+    const title = foldTitle(ms[0].a.title);
     const k = (seen.get(title) ?? 0) + 1;
     seen.set(title, k);
     const label = sameTitle.get(title)! > 1 ? `${title}(알파Plus2607 ${k})` : `${title}(알파Plus2607)`;
@@ -687,7 +688,7 @@ function applyAutoClauses(products: readonly BuiltProduct[], candidates: readonl
     stats.created.push(record);
     ms.forEach((m, mi) => {
       const selection = Object.fromEntries(c.places.map((place, oi) => [optionCode(oi), valueCode(options[oi].values.findIndex((v) => (v.body[0] as { text: string }).text === place.regions[mi]))]));
-      if (applyClauseUse({ article: m.a.title, paragraph: 1, clause: record.code, options: selection }, record, () => m.a, `[${m.spec.code}]`, report, m.b.tree)) stats.createdUses++;
+      if (applyClauseUse({ article: foldTitle(m.a.title), paragraph: 1, clause: record.code, options: selection }, record, () => m.a, `[${m.spec.code}]`, report, m.b.tree)) stats.createdUses++;
     });
     guardClauseWaiver(record, isWaiver);
   }
@@ -700,7 +701,7 @@ function applyAutoClauses(products: readonly BuiltProduct[], candidates: readonl
         const at = Number(/-p(\d+)$/.exec(p.id)?.[1] ?? 0);
         if (at === 0) continue;
         const rest = paragraphs(a.children.slice(a.children.indexOf(p)));
-        const hit = everything.some(({ c, n, sels }) => n <= rest && sels.some((sel) => applyClauseUse({ article: a.title, paragraph: at, clause: c.code, options: sel }, c, () => a, `[${spec.code}]`, [], b.tree)));
+        const hit = everything.some(({ c, n, sels }) => n <= rest && sels.some((sel) => applyClauseUse({ article: foldTitle(a.title), paragraph: at, clause: c.code, options: sel }, c, () => a, `[${spec.code}]`, [], b.tree)));
         if (hit) stats.partialUses++;
       }
     }
@@ -912,7 +913,7 @@ function buildClause(spec: (typeof CLAUSES)[number], built: Map<string, Built>, 
 function applyClaimSlots(tree: DocumentNode, report: string[], where: string): string | undefined {
   let claim: string | undefined;
   for (const a of articlesDeep(tree)) {
-    if (a.title !== "특별약관의 소멸") continue;
+    if (foldTitle(a.title) !== "특별약관의 소멸") continue;
     const p = a.children.find((c): c is ParagraphNode => c.kind === "paragraph");
     if (!p) continue;
     const at = p.children.findIndex((n, i) => n.kind === "text" && i > 0 && p.children[i - 1].kind === "articleRef" && claimOf(n.text) !== undefined);

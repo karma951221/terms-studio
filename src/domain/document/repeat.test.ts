@@ -7,6 +7,7 @@ import type { AttachLevel } from "../types";
 import { validateExpressions } from "./expressions";
 import type { DocumentNode, InlineNode, TableNode, TableRow } from "./nodes";
 import { expandRepeatTable, repeatScopeOf, repeatTableIssues, rowReadableLevels, templateIdOf } from "./repeat";
+import { titleNodes } from "@/domain/document/title";
 
 const defs: Discriminator[] = [
   { code: "D0101", label: "담보명", description: "", level: "coverage", expression: "coverage_basic.claim_name" },
@@ -24,7 +25,7 @@ function doc(table: TableNode, extra: InlineNode[] = []): DocumentNode {
     id: "doc",
     kind: "document",
     title: "수술비",
-    children: [{ id: "art", kind: "article", title: "보장내용", children: [{ id: "p1", kind: "paragraph", children: [text("t0", "표"), ...extra], items: [table] }] }],
+    children: [{ id: "art", kind: "article", title: titleNodes("보장내용", "art"), children: [{ id: "p1", kind: "paragraph", children: [text("t0", "표"), ...extra], items: [table] }] }],
   };
 }
 

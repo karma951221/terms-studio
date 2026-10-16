@@ -10,7 +10,7 @@ import type { EnumDef } from "@/domain/catalog";
 import type { LoopElementType } from "@/domain/clause";
 import type { ConditionContext } from "./condition/types";
 import type { NodeTree } from "@/app/(app)/functions/_components/params";
-import { isRepeatSource, isTreeSource, loopElementType, repeatLabel, type ForBlockNode, type RepeatSource, type TreeIndex } from "@/domain/document";
+import { isRepeatSource, isTreeSource, loopElementType, loopsOnPath, repeatLabel, type RepeatNode, type RepeatSource, type SlotName, type TreeIndex } from "@/domain/document";
 import { fieldsOfForm, formsOfLevel, MASTER, type MasterTree } from "@/domain/master";
 import type { Id } from "@/domain/types";
 
@@ -33,10 +33,13 @@ export function sourceOfValue(value: string): RepeatSource | undefined {
   }
 }
 
-/** 자리를 감싼 반복 블록 — 바깥 → 안쪽, 자리 자신(반복 블록이면)도 든다. 노드 id 또는 가지 id. */
-export function loopsAround(ix: TreeIndex, id: Id): ForBlockNode[] {
+/**
+ * 자리를 감싼 반복(블록 · 문장 안) — 바깥 → 안쪽, 자리 자신(반복이면)도 든다. 노드 id 또는 가지 id.
+ * 「비었을 때」 칸 안 노드는 그 반복을 빼고 센다 — 칸은 원소 문맥 밖이다(ADR-0088 결정 3). `slot` 이 `fallback` 이면 그 반복의 칸 자리다(자신을 뺀다).
+ */
+export function loopsAround(ix: TreeIndex, id: Id, slot?: SlotName): RepeatNode[] {
   const path = ix.nodes.get(id)?.path ?? ix.branches.get(id)?.path ?? [];
-  return path.map((p) => ix.nodes.get(p)?.node).filter((n): n is ForBlockNode => n?.kind === "forBlock");
+  return loopsOnPath(ix, path, slot === "fallback" ? id : undefined);
 }
 
 /** 담보약관의 인자 칸 키 경로 후보 재료 — 담보 구분자 트리 + 자리를 감싼 담보 트리 반복(자리 자신 포함). 담보 문맥이 없으면(보통약관 · 함수조항) 없음 (ADR-0087 결정 4 · 7). */
@@ -50,21 +53,44 @@ export function nodeTreeAt(condition: ConditionContext, ix: TreeIndex, id: Id): 
  * 「현재 종」 — 감싼 반복 중 세목 선택지(종) 반복이 있으면 그 이름(별칭 또는 원천 이름). 안쪽 사유 반복 안에서도 바깥 종이 커서다.
  * 슬롯 고르기의 「현재 종」 묶음(`builtin.plan.name` · `builtin.plan.number`)이 이것으로 선다 — 합집합 · 반복 밖에는 종 커서가 없다 (ADR-0077 결정 3).
  */
-export function currentPlanOf(loops: readonly ForBlockNode[], opts: { enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree } = {}): { name: string } | undefined {
+export function currentPlanOf(loops: readonly RepeatNode[], opts: { enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree } = {}): { name: string } | undefined {
   const plan = [...loops].reverse().find((f) => isRepeatSource(f.source) && f.source.kind === "planOptions");
   if (!plan) return undefined;
   return { name: plan.alias ?? repeatLabel(plan.source, { ...(opts.master ? { master: opts.master } : {}), ...(opts.enumOf ? { enumOf: opts.enumOf } : {}) }) };
 }
 
-/** 원천 칸 후보 — `outer` 는 이 자리를 감싼 가장 안쪽 반복(없으면 반복 밖). 두 단계 안(반복 안 반복 안)이면 후보가 없다. */
-export function repeatChoices(opts: { outer?: ForBlockNode; depth: number; hasCoverage?: boolean; enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree }): RepeatChoice[] {
+/**
+ * 「현재 값」 — 감싼 반복 중 원소가 열거값인 가장 안쪽 반복의 이름과 그 열거형의 문자 필드(참거짓 필드 · 값 이름 빼고). 슬롯 고르기의
+ * 「현재 〈반복 이름〉」 묶음(`builtin.value.<필드키>`)이 이것으로 선다 — 열거값 반복 밖에는 없고, 문자 필드가 없으면(열거형을 모를 때도) 서지 않는다
+ * (ADR-0088 결정 1 · 2026-10-17).
+ */
+export function currentValueOf(loops: readonly RepeatNode[], opts: { enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree } = {}): { name: string; fields: { key: string; label: string }[] } | undefined {
+  for (let i = loops.length - 1; i >= 0; i--) {
+    const f = loops[i];
+    if (!isRepeatSource(f.source)) continue;
+    const outer = i > 0 && isRepeatSource(loops[i - 1].source) ? loops[i - 1].source : undefined;
+    const type = loopElementType(f.source, outer, opts.master);
+    if (type?.kind !== "enum") continue;
+    const name = f.alias ?? repeatLabel(f.source, { ...(outer ? { outer } : {}), ...(opts.master ? { master: opts.master } : {}), ...(opts.enumOf ? { enumOf: opts.enumOf } : {}) });
+    const fields = (opts.enumOf?.(type.enumCode)?.fields ?? []).filter((x) => x.type === "string").map((x) => ({ key: x.key, label: x.label }));
+    return fields.length > 0 ? { name, fields } : undefined;
+  }
+  return undefined;
+}
+
+/** 원천 칸 후보 — `outer` 는 이 자리를 감싼 가장 안쪽 반복(없으면 반복 밖). 두 단계 안(반복 안 반복 안)이면 후보가 없다. 블록 · 문장 안 반복 공통. */
+/**
+ * 원천 칸 후보 — `outer` 는 이 자리를 감싼 가장 안쪽 반복(없으면 반복 밖). 두 단계 안(반복 안 반복 안)이면 후보가 없다. 블록 · 문장 안 반복 공통.
+ * 담보 트리 원천은 `hasCoverage`(담보약관의 블록 반복)일 때만 — 문장 안 반복은 넘기지 않는다(ADR-0088 결정 1 범위 밖).
+ */
+export function repeatChoices(opts: { outer?: RepeatNode; depth: number; hasCoverage?: boolean; enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree }): RepeatChoice[] {
   const master = opts.master ?? MASTER;
   const label = (source: RepeatSource) => repeatLabel(source, { ...(opts.outer && isRepeatSource(opts.outer.source) ? { outer: opts.outer.source } : {}), master, ...(opts.enumOf ? { enumOf: opts.enumOf } : {}) });
   const choice = (source: RepeatSource, suffix = ""): RepeatChoice => ({ value: sourceValue(source), label: `${label(source)}${suffix}`, source });
   if (opts.depth >= 2) return [];
   if (opts.outer) {
     const outer = opts.outer.source;
-    if (isRepeatSource(outer) && outer.kind === "subCoverages") return [choice({ kind: "benefitsOfCurrent", loop: opts.outer.id })];
+    if (isRepeatSource(outer) && outer.kind === "subCoverages") return opts.hasCoverage ? [choice({ kind: "benefitsOfCurrent", loop: opts.outer.id })] : [];
     if (!isRepeatSource(outer) || outer.kind !== "planOptions") return [];
     const form = formsOfLevel("plan", master).find((f) => f.key === outer.form);
     return (form ? fieldsOfForm(form) : []).filter((x) => x.field.type.kind === "list<enum>").map((x) => choice({ kind: "listOfCurrent", loop: opts.outer!.id, field: x.field.key }, " — 현재 종의 목록"));
@@ -87,7 +113,7 @@ export function repeatChoices(opts: { outer?: ForBlockNode; depth: number; hasCo
 }
 
 /** 인자 연결 칸의 「반복의 현재 원소」 후보 — 감싼 반복마다 원소 타입 · 이름. */
-export function loopChoices(loops: readonly ForBlockNode[], opts: { enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree } = {}): { id: Id; label: string; type: LoopElementType }[] {
+export function loopChoices(loops: readonly RepeatNode[], opts: { enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree } = {}): { id: Id; label: string; type: LoopElementType }[] {
   return loops.flatMap((f, i) => {
     if (!isRepeatSource(f.source)) return [];
     const outer = i > 0 && isRepeatSource(loops[i - 1].source) ? loops[i - 1].source : undefined;

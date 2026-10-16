@@ -13,6 +13,7 @@ import { generalRefsOf } from "./edit";
 import { numberTree, referenceAncestorIds, referenceChunkLabel, referenceOutline, referenceTargetIndex, referenceTargetLabel, refTargetOf } from "./numbering";
 import type { DocumentNode, ForBlockNode, TreeEnv } from "./nodes";
 import { indexTree, validateTree } from "./nodes";
+import { titleNodes } from "./title";
 import { catalogTypeResolver, clauseGateFrom, validateDocument } from "./validate";
 
 /**
@@ -540,7 +541,7 @@ describe("담보 트리 반복 안 — 반복 레벨보다 아래를 한정자 �
 describe("키 한정 (ADR-0087 결정 10)", () => {
   const coverage: Coverage = { id: "c", name: "암", description: "", subCoverages: [{ id: "s1", key: "01", name: "유사암", order: 0, benefits: [{ id: "b1", key: "1", name: "진단", order: 0 }] }] };
   const codedPara = (id: string, code: string, text: string) => ({ id, kind: "paragraph" as const, code, children: [{ id: `${id}t`, kind: "text" as const, text }] });
-  const docOf = (children: unknown[]): DocumentNode => ({ id: "d", kind: "document", title: "특약", children: [{ id: "a1", kind: "article", title: "제1조", children }] }) as DocumentNode;
+  const docOf = (children: unknown[]): DocumentNode => ({ id: "d", kind: "document", title: "특약", children: [{ id: "a1", kind: "article", title: titleNodes("제1조", "a1"), children }] }) as DocumentNode;
   const docWithLoop = (source: object) => docOf([{ kind: "forBlock", id: "f", code: "P0100", source, children: [codedPara("p", "P0200", "본문")] }, codedPara("q", "P0300", "참조 자리")]);
 
   it("트리 반복 안 대상에 있는 키 = 통과 · 없는 키 = 「없는 키」 · 빈 키 = 오류", () => {

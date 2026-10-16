@@ -5,10 +5,11 @@ import type { Clause } from "../clause/types";
 import type { DocumentNode } from "../document/nodes";
 import { nodeQualFixture } from "./fixture";
 import { leafPanel } from "./leafPanel";
+import { titleNodes } from "../document/title";
 
 const slot = (id: string, ref: string) => ({ id, kind: "slot", ref });
 const para = (id: string, children: unknown[]) => ({ id, kind: "paragraph", children });
-const docOf = (children: unknown[]): DocumentNode => ({ id: "d", kind: "document", title: "t", children: [{ id: "a1", kind: "article", title: "감액", children }] }) as unknown as DocumentNode;
+const docOf = (children: unknown[]): DocumentNode => ({ id: "d", kind: "document", title: "t", children: [{ id: "a1", kind: "article", title: titleNodes("감액", "a1"), children }] }) as unknown as DocumentNode;
 const loop = (source: object, children: unknown[]) => ({ id: "f", kind: "forBlock", source, children });
 const clause = (def: string): Clause =>
   ({ code: "C0100", label: "감액", mode: "block", options: [], body: [], required: { discriminators: [] }, params: [{ name: "감액", type: { kind: "boolean" }, default: { kind: "discriminator", code: def } }] }) as unknown as Clause;

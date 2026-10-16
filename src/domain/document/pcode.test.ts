@@ -7,6 +7,7 @@ import { nodeBuilders, sequentialIds } from "./builders";
 import { applyCommand, applyCommands, type Command } from "./commands";
 import { indexTree, validateTree, type DocumentNode, type Node } from "./nodes";
 import { documentCodeEntries, documentCodeIssues, fillCodes, formatPCode, nextCode, suggestCode, withCodes } from "./pcode";
+import { titleNodes } from "@/domain/document/title";
 
 function unwrap<T>(r: Result<T>): T {
   if (!r.ok) throw new Error(`기대: ok, 실제: ${JSON.stringify(r.rejection)}`);
@@ -282,7 +283,7 @@ describe("PZ 코드 — 상품 조 사본에서 새로 생긴 자리 (ADR-0081 �
       id: "d",
       kind: "document",
       title: "t",
-      children: [{ id: "a", kind: "article", title: "조", children: [{ id: "p1", kind: "paragraph", code: "PZ0100", children: [] }, { id: "p2", kind: "paragraph", code: "PZ0100", children: [] }] }],
+      children: [{ id: "a", kind: "article", title: titleNodes("조", "a"), children: [{ id: "p1", kind: "paragraph", code: "PZ0100", children: [] }, { id: "p2", kind: "paragraph", code: "PZ0100", children: [] }] }],
     };
     expect(documentCodeIssues(doc).map((i) => i.message)).toContain("코드 PZ0100 는 상품 조 사본 전용(PZ)이다 — 템플릿 · 담보약관 · 함수조항에는 쓸 수 없다");
     const inCopy = documentCodeIssues(doc, undefined, { copyCodes: true });

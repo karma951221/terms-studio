@@ -63,3 +63,31 @@ describe("기본계약 대치 조의 반복 묶음 — 원형 열쇠 · 묶음 �
     expect(art.repeatKeys).toEqual(["b-pay:P0100", "b-pay:P0200"]);
   });
 });
+
+describe("기본계약 대치 조의 「비었을 때」 칸 — 칸이 낸 열쇠 · 원소 0개 판정 열쇠도 별칭 (ADR-0088 결정 4)", () => {
+  /** 기본계약 조: 반복 블록 P0900 이 원소 0개라 칸 항 P0100(본문과 같은 코드)만 냈다. 칸 쪽 P0800 은 이 상품에서 안 났다. */
+  const build = () => {
+    const baseArticle: RArticle<SInline> = {
+      kind: "article",
+      id: "b-pay",
+      title: "기본계약 지급사유",
+      linkedArticleId: "g-pay",
+      children: [{ ...p("e1", "칸 항"), key: "P0100", groups: ["P0900"] }],
+      repeatKeys: ["P0900", "P0100", "P0800"],
+    };
+    const general = d("g", [a("g-pay", "보험금의 지급사유", "보통약관")]);
+    return replaceGeneralWithBase(general, d("b", [baseArticle]), { productCoverageId: "pc-base", productCoverageName: "상해사망(기본계약)" });
+  };
+
+  it("칸이 낸 항의 열쇠 · 반복 블록 묶음 열쇠가 따라온다", () => {
+    const { aliases, doc } = build();
+    expect(aliases.get("b-pay#P0100")).toBe("g-pay#b-pay:P0100");
+    expect(aliases.get("b-pay#P0900")).toBe("g-pay#b-pay:P0900");
+    expect((doc.children[0] as RArticle<SInline>).children.map((c) => (c as RParagraph<SInline>).groups)).toEqual([["b-pay:P0900"]]);
+  });
+
+  it("나지 않은 반복 코드(원소 0개 판정 열쇠)에도 별칭 — 기본계약 문면의 참조가 「사라짐」 대신 「0개」로 갈린다", () => {
+    const { aliases } = build();
+    expect(aliases.get("b-pay#P0800")).toBe("g-pay#b-pay:P0800");
+  });
+});

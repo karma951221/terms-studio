@@ -15,6 +15,7 @@ import { withClauseCodes } from "../clause/pcode";
 import type { Clause } from "../clause/types";
 import type { ArticleNode, BlockNode, ClauseBlockRefNode, DocumentNode, ForBlockNode, Node, RefTarget } from "./nodes";
 import { refKey } from "./pcode";
+import { foldTitle, type FoldOptions } from "./title";
 
 export type NumberKind = "section" | "article" | "paragraph" | "item" | "subitem";
 
@@ -218,6 +219,8 @@ export interface ReferenceIndexOptions {
   clauseOf?: (code: Code) => Clause | undefined;
   /** 반복 블록 줄 머리 — `outer` 는 감싼 바깥 반복(목록 원천의 이름이 바깥 폼의 필드 이름을 읽는다, ADR-0077). */
   repeatCaption?: (node: ForBlockNode, outer?: ForBlockNode) => string;
+  /** 조 제목 접기의 슬롯 이름 — 대상 줄 · 참조 칩의 조 명 (ADR-0088 결정 6). */
+  fold?: FoldOptions;
 }
 
 const INNER_WORD: Record<string, string> = { paragraph: "항", item: "호", subitem: "목" };
@@ -339,6 +342,8 @@ export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id,
       loops.push(node);
       for (const child of node.children) visit(child, parent, section, here);
       loops.pop();
+      // 「비었을 때」 칸 — 원소 문맥 밖이지만 반복 줄 아래에 선다. 본문과 같은 코드면 본문 줄로 합친다(분기 짝 한 줄, ADR-0088 결정 4)
+      for (const child of node.fallback ?? []) visit(child, parent, section, here);
       return;
     }
     const number = numbers.get(node.id);
@@ -348,7 +353,7 @@ export function referenceTargetIndex(doc: DocumentNode, numbers: ReadonlyMap<Id,
       return;
     }
     if (node.kind === "article" && number) {
-      const target: ReferenceTarget = { kind: "article", ...(section ? { section } : {}), article: { id: node.id, n: number.n, title: node.title } };
+      const target: ReferenceTarget = { kind: "article", ...(section ? { section } : {}), article: { id: node.id, n: number.n, title: foldTitle(node.title, opts.fold) } };
       out.set(node.id, target);
       for (const child of node.children) visit(child, target, section);
       return;
@@ -550,7 +555,9 @@ export function numberTree(doc: DocumentNode, opts: NumberingOptions = {}): Map<
       if (node.kind === "condBlock") {
         for (const br of node.branches) each(br.children, fn);
       } else if (node.kind === "forBlock") {
+        // 「비었을 때」 칸도 센다 — 본문과 그 밖의 경우 가지 짝처럼 전체 뷰 번호다(ADR-0088 결정 4)
         each(node.children, fn);
+        each(node.fallback ?? [], fn);
       } else {
         fn(node);
       }

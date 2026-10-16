@@ -7,6 +7,7 @@ import { analyzeBody, structuralIds } from "../clause/body";
 import { expandClause } from "../clause/reference";
 import { applyEdit, generalRefsOf, type EditEnv } from "./edit";
 import type { DocumentNode, InlineNode } from "./nodes";
+import { titleNodes } from "@/domain/document/title";
 
 const block: Block[] = [
   {
@@ -67,7 +68,7 @@ describe("함수조항 본문 ↔ 편집 트리", () => {
     const base = clauseBodyToTree("block", block);
     const withTable: DocumentNode = {
       ...base,
-      children: [{ id: CLAUSE_ARTICLE_ID, kind: "article", title: "", children: [{ id: "tb", kind: "table", columns: [{}], rows: [{ cells: [[]] }] }] }],
+      children: [{ id: CLAUSE_ARTICLE_ID, kind: "article", title: titleNodes("", CLAUSE_ARTICLE_ID), children: [{ id: "tb", kind: "table", columns: [{}], rows: [{ cells: [[]] }] }] }],
     };
     expect(treeToClauseBody("block", withTable).ok).toBe(false);
     const nested = clauseBodyToTree("inline", []);
@@ -75,12 +76,12 @@ describe("함수조항 본문 ↔ 편집 트리", () => {
     if (line?.kind === "paragraph") line.children.push({ id: "cr", kind: "clauseInlineRef", clauseCode: "C0002", options: {} });
     const r = treeToClauseBody("inline", nested);
     expect(!r.ok && r.rejection.reason === "invalid" && r.rejection.issues[0]?.message).toContain("중첩 금지");
-    const twoArticles: DocumentNode = { ...base, children: [...base.children, { id: "a2", kind: "article", title: "", children: [] }] };
+    const twoArticles: DocumentNode = { ...base, children: [...base.children, { id: "a2", kind: "article", title: titleNodes("", "a2"), children: [] }] };
     expect(treeToClauseBody("block", twoArticles).ok).toBe(false);
   });
 
   it("문면 편집 명령이 그대로 먹는다 — 항을 넣고 보통약관 조 참조 대상은 보통약관 한 벌로 검사된다", () => {
-    const general: DocumentNode = { id: "g", kind: "document", title: "보통약관", children: [{ id: "g-a1", kind: "article", title: "목적", children: [] }] };
+    const general: DocumentNode = { id: "g", kind: "document", title: "보통약관", children: [{ id: "g-a1", kind: "article", title: titleNodes("목적", "g-a1"), children: [] }] };
     const env: EditEnv = { env: { kind: "special" }, generalRefs: (id) => (id === "g" ? generalRefsOf(general) : undefined) };
     const state = { tree: clauseBodyToTree("block", block), generalDocumentId: "g" };
     const added = applyEdit(state, { type: "insert", node: { id: "p3", kind: "paragraph", children: [] }, at: { parentId: CLAUSE_ARTICLE_ID } }, env);

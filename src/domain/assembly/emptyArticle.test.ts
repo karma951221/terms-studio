@@ -5,6 +5,7 @@ import { assemble } from "./booklet";
 import { authoredEmptyArticleIds, dropEmptyArticles } from "./emptyArticle";
 import { alphaPlusFixture } from "./fixture";
 import type { AssemblyInput, RArticle, RenderedArticle, SInline, SubstitutedDoc } from "./types";
+import { titleNodes } from "@/domain/document/title";
 
 /**
  * 빈 조 — 펼친 뒤 본문(항 · 표 · 박스 · 글머리 목록)이 0개인 조는 조립이 조째 뺀다 (결정 15 · 기능/문면 §3.2 · 기능/조립산출 §3.1).
@@ -48,10 +49,10 @@ describe("dropEmptyArticles — 본문 0개인 조를 조째 뺀다", () => {
       id: "d",
       title: "d",
       children: [
-        { kind: "article", id: "a1", title: "a1", children: [] },
-        { kind: "article", id: "a2", title: "a2", children: [{ kind: "paragraph", id: "p", children: [] }] },
-        { kind: "section", id: "s", title: "s", children: [{ kind: "article", id: "a3", title: "a3", children: [] }] },
-        { kind: "condBlock", id: "c", branches: [{ id: "c-if", when: "D0001 = true", children: [{ kind: "article", id: "a4", title: "a4", children: [] }] }] },
+        { kind: "article", id: "a1", title: titleNodes("a1", "a1"), children: [] },
+        { kind: "article", id: "a2", title: titleNodes("a2", "a2"), children: [{ kind: "paragraph", id: "p", children: [] }] },
+        { kind: "section", id: "s", title: "s", children: [{ kind: "article", id: "a3", title: titleNodes("a3", "a3"), children: [] }] },
+        { kind: "condBlock", id: "c", branches: [{ id: "c-if", when: "D0001 = true", children: [{ kind: "article", id: "a4", title: titleNodes("a4", "a4"), children: [] }] }] },
       ] as DocumentNode["children"],
     };
     expect([...authoredEmptyArticleIds(src)]).toEqual(["a1", "a3", "a4"]);
@@ -71,7 +72,7 @@ describe("조립 — 조건으로 항이 전부 빠진 조는 조째 빠진다",
     const empty: ArticleNode = {
       kind: "article",
       id: "g-art-empty",
-      title: "일반심사 특칙",
+      title: titleNodes("일반심사 특칙", "g-art-empty"),
       children: [
         {
           kind: "condBlock",
@@ -83,7 +84,7 @@ describe("조립 — 조건으로 항이 전부 빠진 조는 조째 빠진다",
     const refer: ArticleNode = {
       kind: "article",
       id: "g-art-refer",
-      title: "특칙의 준용",
+      title: titleNodes("특칙의 준용", "g-art-refer"),
       children: [{ kind: "paragraph", id: "g-par-refer", children: [{ kind: "articleRef", id: "g-ref-empty", targets: [{ articleId: "g-art-empty" }], scope: "self" }, { kind: "text", id: "g-txt-refer", text: "을 준용합니다." }] }],
     };
     const doc: DocumentNode = { ...general, children: [empty, ...general.children, refer] as DocumentNode["children"] };

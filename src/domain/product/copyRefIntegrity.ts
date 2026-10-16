@@ -14,6 +14,7 @@ import { indexTree, type ArticleNode, type DocumentNode, type TreeIndex } from "
 import { numberTree, type NodeNumber } from "../document/numbering";
 import { documentCodeEntries, fillCodes, isPZCode, nodesOfTarget, parseRefKey, refKey, refLabel, referenceKeys } from "../document/pcode";
 import { collectRefs } from "../document/refs";
+import { foldTitle } from "../document/title";
 import type { Code, Coordinate, Id, Issue } from "../types";
 import { applyArticleCopies, type ArticleCopy } from "./articleCopies";
 import type { GeneralDependents } from "./types";
@@ -258,7 +259,7 @@ export function copyCodeIssues(original: ArticleNode, copy: ArticleNode, saved: 
     out.push({
       kind: "structure",
       message: `사본에 새로 넣은 자리의 코드 ${e.code} 은 PZ 코드여야 한다 — 템플릿 코드(P)와 갈라 둔다${suggestion ? ` (추천 ${suggestion})` : ""}`,
-      at: { ...coordinate, articleId: copy.id, articleTitle: copy.title, nodePath: [e.id] },
+      at: { ...coordinate, articleId: copy.id, articleTitle: foldTitle(copy.title), nodePath: [e.id] },
     });
   }
   return out;

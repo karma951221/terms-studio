@@ -15,6 +15,7 @@
 import type { OptionSelection } from "../clause/types";
 import type { ArticleNode, BlockNode, DocumentNode, SectionNode } from "../document/nodes";
 import { refKey, withCodes } from "../document/pcode";
+import { foldTitle } from "../document/title";
 import type { CompletenessFilter } from "../coverage/values";
 import { CONTRACT_KIND_PATH, isStandaloneContract } from "../master";
 import { baseContractCountIssue } from "../product/completeness";
@@ -216,7 +217,7 @@ function buildGeneral(input: AssemblyInput, contexts: AssemblyContexts, s: Share
   // 노출 끔 (기능/상품 §3.6) — **번호 계산 전에** 마스터에서 뺀다. 번호 순연은 numberDocument 의 귀결이다.
   // 뺀 조의 명은 남겨 둔다: 이 조를 가리키던 참조·조연결이 `articleHidden` 오류 메시지에 쓴다.
   const hiddenTitles = new Map<Id, string>();
-  for (const [id, a] of masterArticles(master)) if (input.product.hiddenArticleIds.has(id)) hiddenTitles.set(id, a.title);
+  for (const [id, a] of masterArticles(master)) if (input.product.hiddenArticleIds.has(id)) hiddenTitles.set(id, foldTitle(a.title));
   const hidden = hiddenTitles.size > 0 ? hiddenTitles : undefined;
   const g = hidden ? hideArticles(master, input.product.hiddenArticleIds) : master;
   if (input.product.baseContractIds.length === 1) {

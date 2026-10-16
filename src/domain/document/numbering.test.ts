@@ -5,6 +5,7 @@ import { nodeBuilders, sequentialIds } from "./builders";
 import { surgeryFixture } from "./fixture";
 import type { ArticleNode, DocumentNode, Node } from "./nodes";
 import { withCodes } from "./pcode";
+import { titleNodes } from "./title";
 import {
   appendixRefLabel,
   articleLabel,
@@ -296,7 +297,7 @@ describe("함수조항 참조는 펼칠 항 · 호 · 목 수만큼 센다 (clau
   const item = (id: string, subitems?: Node[]): Node => ({ id, kind: "item", children: [], ...(subitems ? { subitems } : {}) }) as Node;
   const sub = (id: string): Node => ({ id, kind: "subitem", children: [] });
   const ref = (id: string, clauseCode: string): Node => ({ id, kind: "clauseBlockRef", clauseCode, options: {} });
-  const doc = (children: Node[]): DocumentNode => ({ id: "d", kind: "document", title: "", children: [{ id: "a", kind: "article", title: "조", children } as unknown as ArticleNode] });
+  const doc = (children: Node[]): DocumentNode => ({ id: "d", kind: "document", title: "", children: [{ id: "a", kind: "article", title: titleNodes("조", "a"), children } as unknown as ArticleNode] });
   const spans: Record<string, number> = { C2: 2, C3: 3, C1: 1 };
   const clauseSpan = (r: { clauseCode: string }) => spans[r.clauseCode];
 

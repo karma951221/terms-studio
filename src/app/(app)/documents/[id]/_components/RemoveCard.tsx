@@ -13,7 +13,7 @@ import { useEffect, useState } from "react";
 
 import { coordinateHref } from "@/app/_components/coordinateHref";
 import { formatCoordinate } from "@/domain/coordinate";
-import type { ArticleNode, DocumentNode, Node } from "@/domain/document";
+import { foldTitle, type ArticleNode, type DocumentNode, type Node } from "@/domain/document";
 import type { Coordinate, Id } from "@/domain/types";
 
 import { articleUsagesAction } from "../../edit-actions";
@@ -61,7 +61,10 @@ export function RemoveCard({
 
   const cascade = cascadeOf(node);
   const blockers = internalReferrers(tree, subtreeIds(node));
-  const titleOf = (id: Id | undefined) => articles.find((a) => a.id === id)?.title;
+  const titleOf = (id: Id | undefined) => {
+    const a = articles.find((x) => x.id === id);
+    return a ? foldTitle(a.title) : undefined;
+  };
 
   return (
     <section className="ts-confirm" aria-label={`${what} 삭제 확인`}>

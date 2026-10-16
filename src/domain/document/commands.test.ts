@@ -5,6 +5,23 @@ import type { Result } from "../types";
 import { nodeBuilders, sequentialIds } from "./builders";
 import { applyCommand, applyCommands, cloneTree, type Command } from "./commands";
 import { indexTree, validateTree, type ArticleNode, type CondBlockNode, type DocumentNode, type Node, type ParagraphNode, type SectionNode } from "./nodes";
+import { textOnlyTitle, titleNodes } from "./title";
+
+/**
+ * 스냅샷용 — 글로만 된 조 제목을 옛 글 제목으로 접어 비교한다. 제목 타입 이행(ADR-0088)은 제목 모양만 바꾸고 명령 결과는 그대로여야 한다 —
+ * 스냅샷은 이행 전 그대로 두고, 제목 모양은 title.test.ts 가 본다.
+ */
+function legacyTitles(doc: DocumentNode): unknown {
+  const visit = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(visit);
+    if (!v || typeof v !== "object") return v;
+    const o = v as Record<string, unknown>;
+    const out = Object.fromEntries(Object.entries(o).map(([k, x]) => [k, visit(x)]));
+    if (o.kind === "article" && Array.isArray(o.title)) out.title = textOnlyTitle(o.title as ArticleNode["title"]) ?? o.title;
+    return out;
+  };
+  return visit(doc);
+}
 
 function make() {
   return nodeBuilders(sequentialIds("n"));
@@ -74,7 +91,7 @@ describe("문면작성 S1 — 조·항·호·목 추가 (insert)", () => {
 
   it("이미 있는 id 를 가진 노드는 못 넣는다 (id 유일)", () => {
     const { doc } = twoArticles();
-    const r = applyCommand(doc, { type: "insert", node: { id: "n4", kind: "article", title: "dup", children: [] }, at: { parentId: "n5" } });
+    const r = applyCommand(doc, { type: "insert", node: { id: "n4", kind: "article", title: titleNodes("dup", "n4"), children: [] }, at: { parentId: "n5" } });
     expect(rejection(r).reason).toBe("invalid");
   });
 });
@@ -86,7 +103,7 @@ describe("문면작성 S2 — 인라인 조건 삽입", () => {
     const next = unwrap(applyCommand(doc, { type: "insert", node: chip, at: { parentId: "n2", index: 1 } }));
     const p = next.children[0] as ArticleNode;
     expect((p.children[0] as ParagraphNode).children.map((c) => c.kind)).toEqual(["text", "inlineCond"]);
-    expect(next).toMatchSnapshot();
+    expect(legacyTitles(next)).toMatchSnapshot();
   });
 
   it("인라인 조건 안에 다시 인라인 조건 → 거부 (중첩 금지)", () => {
@@ -115,7 +132,7 @@ describe("문면작성 S3 — 조건 블록과 가지 편집", () => {
     expect(c.branches.map((br) => [br.id, br.when])).toEqual([["n6", "D0001 = true"]]);
     expect(rejection(applyCommand(next, { type: "addBranch", condId: "n7", branch: b.branch("D0002 = 'V01'", []) })).reason).toBe("invalid");
     expect(rejection(applyCommand(next, { type: "addBranch", condId: "n7", branch: b.branch(undefined, [b.article("그 외", [])]) })).reason).toBe("invalid");
-    expect(next).toMatchSnapshot();
+    expect(legacyTitles(next)).toMatchSnapshot();
   });
 
   /** 항 자리(조 안)의 조건 블록 — IF · ELIF · ELSE 가지 편집. 제1조(n3)의 항 n2 뒤에 선다. */
@@ -226,8 +243,8 @@ describe("노드 삭제 — 참조되는 조는 삭제 거부 (D-P4-7 · 참조 
       kind: "document",
       title: "보통약관",
       children: [
-        { id: "a1", kind: "article", title: "지급", children: [{ id: "p1", kind: "paragraph", code: "P0100", children: [{ id: "t1", kind: "text", text: "가" }] }] },
-        { id: "a2", kind: "article", title: "제한", children: [{ id: "p2", kind: "paragraph", code: "P0100", children: [{ id: "r2", kind: "articleRef", scope: "self", targets: [{ articleId: "a1", code: "P0100" }] }] }] },
+        { id: "a1", kind: "article", title: titleNodes("지급", "a1"), children: [{ id: "p1", kind: "paragraph", code: "P0100", children: [{ id: "t1", kind: "text", text: "가" }] }] },
+        { id: "a2", kind: "article", title: titleNodes("제한", "a2"), children: [{ id: "p2", kind: "paragraph", code: "P0100", children: [{ id: "r2", kind: "articleRef", scope: "self", targets: [{ articleId: "a1", code: "P0100" }] }] }] },
       ],
     };
     expect(rejection(applyCommand(doc, { type: "remove", nodeId: "p1" })).reason).toBe("invalid");
@@ -241,7 +258,7 @@ describe("상품 조 사본의 새 코드 — PZ 영역 (ADR-0081 결정 4)", ()
     kind: "document",
     title: "보통약관",
     // 사본 — 템플릿 원본 조(P0100 · P0200)에서 ①(P0100)을 지운 뒤
-    children: [{ id: "a1", kind: "article", title: "지급", children: [{ id: "p2", kind: "paragraph", code: "P0200", children: [{ id: "t2", kind: "text", text: "나" }] }, { id: "p3", kind: "paragraph", code: "P0300", children: [] }] }],
+    children: [{ id: "a1", kind: "article", title: titleNodes("지급", "a1"), children: [{ id: "p2", kind: "paragraph", code: "P0200", children: [{ id: "t2", kind: "text", text: "나" }] }, { id: "p3", kind: "paragraph", code: "P0300", children: [] }] }],
   });
   const fresh = (id: string): ParagraphNode => ({ id, kind: "paragraph", children: [{ id: `${id}-t`, kind: "text", text: "새" }] });
   const codeOf = (d: DocumentNode, id: string) => (indexTree(d).nodes.get(id)!.node as ParagraphNode).code;
@@ -285,7 +302,7 @@ describe("텍스트 · 조 명 · 슬롯 · 참조 대상 · 옵션 수정", () 
       ]),
     );
     expect(next.title).toBe("수술비 특별약관");
-    expect((next.children[0] as ArticleNode).title).toBe("보험금의 지급사유(개정)");
+    expect(next.children[0]).toMatchObject({ title: [{ id: "n3.title", kind: "text", text: "보험금의 지급사유(개정)" }] });
     expect(((next.children[0] as ArticleNode).children[0] as ParagraphNode).children[0]).toMatchObject({ text: "회사는 피보험자가 " });
     expect(rejection(applyCommand(doc, { type: "setText", nodeId: "n3", text: "x" })).reason).toBe("invalid");
     expect(rejection(applyCommand(doc, { type: "setTitle", nodeId: "n2", title: "x" })).reason).toBe("invalid");
@@ -361,13 +378,14 @@ describe("텍스트 · 조 명 · 슬롯 · 참조 대상 · 옵션 수정", () 
     expect((cleared.children[0] as ArticleNode).children[1]).not.toHaveProperty("bindings");
   });
 
-  it("반복 노드 속성(소스·별칭·구분 문자열) 은 자리만 저장한다 (P7)", () => {
+  it("인라인 반복의 원천 · 별칭 · 연결어를 setFor 로 고친다 (ADR-0088)", () => {
     const { b, doc } = twoArticles();
+    const source = { kind: "planOptions" as const, form: "waiver" };
     const base = unwrap(
-      applyCommand(doc, { type: "insert", node: b.inlineFor("subCoverage", [b.slot("builtin.subCoverage.name")]), at: { parentId: "n2" } }), // slot n6 · for n7
+      applyCommand(doc, { type: "insert", node: b.inlineFor(source, [b.slot("builtin.plan.name")], { connector: "및" }), at: { parentId: "n2" } }), // slot n6 · for n7
     );
-    const next = unwrap(applyCommand(base, { type: "setFor", nodeId: "n7", alias: "sc", separator: ", " }));
-    expect(((next.children[0] as ArticleNode).children[0] as ParagraphNode).children[1]).toMatchObject({ source: "subCoverage", alias: "sc", separator: ", " });
+    const next = unwrap(applyCommand(base, { type: "setFor", nodeId: "n7", alias: "종들", connector: "또는" }));
+    expect(((next.children[0] as ArticleNode).children[0] as ParagraphNode).children[1]).toMatchObject({ source, alias: "종들", connector: "또는" });
   });
 });
 
@@ -400,7 +418,7 @@ describe("복제 (D-P4-9) — 하위 트리·조연결·참조 대상 id 를 그
     expect(copy.linkedArticleId).toBe("g1");
     const refs = (copy.children[1] as ParagraphNode).children.filter((node) => node.kind === "articleRef");
     expect(refs.map((r) => r.targets[0]?.articleId)).toEqual(["c1", "n4"]);
-    expect(next).toMatchSnapshot();
+    expect(legacyTitles(next)).toMatchSnapshot();
   });
 });
 
@@ -415,7 +433,7 @@ describe("반복 블록 복제 — 사본 안의 반복 id 참조는 사본 반�
         {
           kind: "article",
           id: "a",
-          title: "지급사유",
+          title: titleNodes("지급사유", "a"),
           children: [
             {
               kind: "forBlock",
@@ -695,8 +713,8 @@ describe("함수조항 참조의 조 참조 인자 연결도 조 참조다 — �
       id: "d",
       title: "특약",
       children: [
-        { kind: "article", id: "a1", title: "보험금의 지급사유", children: [] },
-        { kind: "article", id: "a2", title: "소멸", children: [{ kind: "clauseBlockRef", id: "k", clauseCode: "C0009", options: {}, bindings: { "지급사유 조": { kind: "articleRef", targets: [{ articleId: "a1" }], scope: "self" } } }] },
+        { kind: "article", id: "a1", title: titleNodes("보험금의 지급사유", "a1"), children: [] },
+        { kind: "article", id: "a2", title: titleNodes("소멸", "a2"), children: [{ kind: "clauseBlockRef", id: "k", clauseCode: "C0009", options: {}, bindings: { "지급사유 조": { kind: "articleRef", targets: [{ articleId: "a1" }], scope: "self" } } }] },
       ],
     }) as DocumentNode;
 

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { indexTree, nodeBuilders, sequentialIds, type DocumentNode } from "@/domain/document";
 
 import { DOCUMENT_TOOLS, toolFor, toolState } from "./tools";
-import { articleMenu, blockMenu, boxPickItems, chipMenu, clausePickItems, clausesFitting, condMenu, inlineInsertItems, type MenuSections } from "./menus";
+import { articleMenu, blockMenu, boxPickItems, chipMenu, clausePickItems, clausesFitting, condMenu, inlineInsertItems, placeMenu, TITLE_REFUSAL, type MenuSections } from "./menus";
 
 const labels = (s: MenuSections) => s.flat().map((i) => `${i.label}${i.disabled ? "(잠김)" : ""}`);
 
@@ -94,7 +94,7 @@ describe("오른쪽 클릭 메뉴 — 허용 자식 규칙대로 (기능/문면 
     const top = b.condBlock([b.branch("D0001 = true", [b.article("나", [])])]);
     const d2 = b.document("D", [top]);
     expect(labels(condMenu(env(d2), top.branches[0].id)).slice(0, 3)).toEqual(["이 가지 삭제(잠김)", "이 가지에 조 추가", "조건 풀기 — 이 가지 내용만 남긴다"]);
-    expect(inlineInsertItems({ parentId: "n2" }, [], { inInlineCond: true, newId: sequentialIds("x") }).map((i) => i.label).slice(0, 5)).toEqual(["치환 슬롯…", "조 참조…", "별표 참조…", "함수조항(문장 안)…", "조사 — 을/를"]);
+    expect(inlineInsertItems({ parentId: "n2" }, [], { inInlineCond: true, newId: sequentialIds("x") }).map((i) => i.label).slice(0, 6)).toEqual(["치환 슬롯…", "조 참조…", "별표 참조…", "함수조항(문장 안)…", "문장 안 반복…", "조사 — 을/를"]);
     expect(inlineInsertItems({ tableId: "t", row: 1, col: 0 }, [], { inInlineCond: false, newId: sequentialIds("x"), structLevels: ["subCoverage"] }).map((i) => i.label)).toContain("구조 표기…");
   });
 
@@ -192,5 +192,106 @@ describe("블록 반복 메뉴 (ADR-0077 — 조 자리 · 호 목록, 한 단�
     expect(labels(blockMenu(env(doc), inner.id))).toEqual(expect.arrayContaining(["이 반복에 호 추가", "이 반복에 함수조항(호) 추가…"]));
     expect(labels(blockMenu(env(doc), inner.id))).not.toContain("이 반복에 반복 블록 추가…");
     expect(labels(blockMenu(env(doc), item.id))).not.toContain("아래에 반복 블록 추가…");
+  });
+});
+
+describe("블록 반복 「비었을 때」 칸 메뉴 (ADR-0088 결정 4)", () => {
+  function fallbackTree() {
+    const b = nodeBuilders(sequentialIds("f"));
+    const inFallback = b.paragraph([]);
+    const loop = b.forBlock({ kind: "planOptions", form: "waiver", filter: "waiver.applies = true" }, [b.paragraph([])], undefined, [inFallback]);
+    const items = b.forBlock({ kind: "planOptions", form: "waiver" }, [b.item([])]);
+    const doc = b.document("D", [b.article("가", [loop, b.paragraph([], [items])])]);
+    return { doc, loop, inFallback, items };
+  }
+
+  it("반복 블록 자리 — 칸에 항 · 함수조항 넣기(호 목록 반복이면 호), 모든 항목에 툴바 버튼 · 툴바 「비었을 때」는 고른 반복 블록에서만", () => {
+    const { doc, loop, items } = fallbackTree();
+    const got = labels(blockMenu(env(doc), loop.id));
+    expect(got).toEqual(expect.arrayContaining(["「비었을 때」 칸에 항 추가", "「비었을 때」 칸에 함수조항(조 단위) 추가…"]));
+    expect(labels(blockMenu(env(doc), items.id))).toEqual(expect.arrayContaining(["「비었을 때」 칸에 호 추가", "「비었을 때」 칸에 함수조항(호) 추가…"]));
+    for (const l of blockMenu(env(doc), loop.id).flat().map((i) => i.label)) expect(toolFor(DOCUMENT_TOOLS, l), l).toBeDefined();
+    const tool = toolFor(DOCUMENT_TOOLS, "「비었을 때」 칸에 항 추가")!;
+    expect(tool.at).toBe("context");
+    expect(toolState(tool, blockMenu(env(doc), loop.id)).disabled).toBe(false);
+    expect(toolState(tool, blockMenu(env(doc), doc.children[0].id)).disabled).toBe(true);
+    const add = blockMenu(env(doc), loop.id).flat().find((i) => i.label === "「비었을 때」 칸에 항 추가")!;
+    expect(add.action).toMatchObject({ do: "ops", ops: [{ type: "insert", at: { parentId: loop.id, slot: "fallback" } }] });
+  });
+
+  it("칸 안 항 — 아래에 항 추가는 칸 자리 안에서(같은 블록 편집)", () => {
+    const { doc, loop, inFallback } = fallbackTree();
+    const add = blockMenu(env(doc), inFallback.id).flat().find((i) => i.label === "아래에 항 추가")!;
+    expect(add.action).toMatchObject({ do: "ops", ops: [{ type: "insert", at: { parentId: loop.id, slot: "fallback", index: 1 } }] });
+  });
+});
+
+describe("조 제목 칸 — 제목도 문장 자리다 (ADR-0088 결정 5)", () => {
+  it("넣기는 슬롯 · 문장 안 조건 · 조사만 켜지고 참조 · 함수조항은 잠긴다 — 조 제목 자리의 조작(아래에 조 · 항 추가)은 그대로", () => {
+    const t = tree();
+    const sections = placeMenu(env(t), { kind: "inline", at: { parentId: "n4", slot: "title" } });
+    const items = sections.flat();
+    const refusal = (label: string) => items.find((i) => i.label === label)?.refusal;
+    expect(refusal("치환 슬롯…")).toBeUndefined();
+    expect(refusal("조 참조…")).toBe(TITLE_REFUSAL);
+    expect(refusal("별표 참조…")).toBe(TITLE_REFUSAL);
+    expect(refusal("함수조항(문장 안)…")).toBe(TITLE_REFUSAL);
+    expect(items.some((i) => i.label === "문장 안 조건")).toBe(true);
+    expect(items.some((i) => i.label.startsWith("조사 — "))).toBe(true);
+    expect(items.some((i) => i.label === "아래에 조 추가")).toBe(true);
+    expect(toolState(toolFor(DOCUMENT_TOOLS, "조 참조…")!, sections).disabled).toBe(true);
+    expect(toolState(toolFor(DOCUMENT_TOOLS, "치환 슬롯…")!, sections).disabled).toBe(false);
+  });
+
+  it("제목 안 문장 안 조건의 가지도 같은 집합이다", () => {
+    const b = nodeBuilders(sequentialIds("x"));
+    const cond = b.inlineCond([b.inlineBranch("D0001 = true", [b.text("등")])]);
+    const t = b.document("D", [b.article([b.text("보험금 "), cond], [])]);
+    const branchId = cond.branches[0].id;
+    const items = placeMenu(env(t), { kind: "inline", at: { parentId: branchId } }).flat();
+    expect(items.find((i) => i.label === "조 참조…")?.refusal).toBe(TITLE_REFUSAL);
+    expect(items.some((i) => i.label === "문장 안 조건")).toBe(false);
+  });
+});
+
+describe("문장 안 반복 넣기 (ADR-0088 결정 1 · 기능/문면 §4.3)", () => {
+  it("문장 자리 · 조 제목에 「문장 안 반복…」 — 툴바 「문장 안 반복」이 맡고 팝업(원천 고르기)을 연다", () => {
+    const t = tree();
+    for (const at of [{ parentId: "n3" }, { parentId: "n4", slot: "title" as const }]) {
+      const sections = placeMenu(env(t), { kind: "inline", at });
+      const item = sections.flat().find((i) => i.label === "문장 안 반복…");
+      expect(item?.refusal).toBeUndefined();
+      expect(item?.action).toMatchObject({ do: "popup", popup: { kind: "repeatInline", at } });
+      expect(toolState(toolFor(DOCUMENT_TOOLS, "문장 안 반복…")!, sections).disabled).toBe(false);
+    }
+  });
+
+  it("문장 안 반복의 본문 · 「비었을 때」 칸 안이면 잠근다(한 겹) — 넣기 목록은 문장 자리 넣기만", () => {
+    const b = nodeBuilders(sequentialIds("x"));
+    const inline = b.inlineFor({ kind: "planOptions", form: "waiver" }, [b.text("a")], { connector: "및" });
+    const t = b.document("D", [b.article("가", [b.paragraph([inline])])]);
+    for (const at of [{ parentId: inline.id }, { parentId: inline.id, slot: "fallback" as const }]) {
+      const items = placeMenu(env(t), { kind: "inline", at }).flat();
+      expect(items.find((i) => i.label === "문장 안 반복…")?.refusal).toContain("한 겹");
+      expect(items.some((i) => i.label === "치환 슬롯…")).toBe(true);
+      expect(items.some((i) => i.label === "아래에 항 추가")).toBe(false);
+    }
+  });
+
+  it("반복 안 반복 안(두 겹)의 문장이면 잠근다", () => {
+    const b = nodeBuilders(sequentialIds("x"));
+    const item = b.item([b.text("호")]);
+    const inner = b.forBlock({ kind: "listOfCurrent", loop: "?", field: "reasons" }, [item]);
+    const outer = b.forBlock({ kind: "planOptions", form: "waiver" }, [b.paragraph([b.text("항")], [inner])]);
+    inner.source = { kind: "listOfCurrent", loop: outer.id, field: "reasons" };
+    const t = b.document("D", [b.article("가", [outer])]);
+    expect(placeMenu(env(t), { kind: "inline", at: { parentId: item.id } }).flat().find((i) => i.label === "문장 안 반복…")?.refusal).toContain("한 단계");
+  });
+
+  it("문장 안 반복 칩의 메뉴 — 고치기(팝업) · 삭제", () => {
+    const b = nodeBuilders(sequentialIds("x"));
+    const inline = b.inlineFor({ kind: "planOptions", form: "waiver" }, [b.text("a")], { connector: "및" });
+    const t = b.document("D", [b.article("가", [b.paragraph([inline])])]);
+    expect(labels(chipMenu(env(t), inline.id))).toEqual(["고치기…", "삭제"]);
   });
 });

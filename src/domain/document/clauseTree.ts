@@ -151,7 +151,7 @@ function articleChildrenOf(mode: ClauseMode, body: ClauseBody): BlockNode[] {
 /** 함수조항 본문을 편집 트리로 — 제목은 함수조항명(화면에는 그리지 않는다). */
 export function clauseBodyToTree(mode: ClauseMode, body: ClauseBody, title = ""): DocumentNode {
   const children = articleChildrenOf(mode, body);
-  const article: ArticleNode = { id: CLAUSE_ARTICLE_ID, kind: "article", title: "", children };
+  const article: ArticleNode = { id: CLAUSE_ARTICLE_ID, kind: "article", title: [], children };
   return { id: CLAUSE_DOCUMENT_ID, kind: "document", title, children: [article] };
 }
 

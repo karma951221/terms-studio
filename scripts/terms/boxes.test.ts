@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { BoxNode, DocumentNode, Node } from "../../src/domain/document/nodes";
 
 import { boxSites, diffRegion, planBoxes, replaceBox, type BoxSite } from "./boxes";
+import { titleNodes } from "../../src/domain/document/title";
 
 const box = (id: string, title: string, lines: string[]): BoxNode => ({ id, kind: "box", title, lines });
 
@@ -11,7 +12,7 @@ function doc(id: string, boxes: BoxNode[]): DocumentNode {
     id,
     kind: "document",
     title: id,
-    children: [{ id: `${id}-a1`, kind: "article", title: "조", children: [{ id: `${id}-p1`, kind: "paragraph", children: [], items: [{ id: `${id}-i1`, kind: "item", children: [] }, ...boxes] }] }],
+    children: [{ id: `${id}-a1`, kind: "article", title: titleNodes("조", `${id}-a1`), children: [{ id: `${id}-p1`, kind: "paragraph", children: [], items: [{ id: `${id}-i1`, kind: "item", children: [] }, ...boxes] }] }],
   };
 }
 

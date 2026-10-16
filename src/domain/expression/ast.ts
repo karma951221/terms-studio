@@ -43,7 +43,11 @@ export interface MasterRef {
  */
 export interface BuiltinRef {
   kind: "builtin";
-  level: AttachLevel;
+  /**
+   * 부착 레벨 — 또는 `value`: 반복의 「현재 값」(열거값 원소 — `builtin.value.<필드키>` = 그 열거형의 문자 필드만, 값 이름 `builtin.value.name` 은 오류 —
+   * ADR-0088 결정 1). 「현재 값」은 문면 반복 안 슬롯만 쓴다 — 조립이 감싼 반복의 원소로 바로 푼다(평가 문맥에는 없다).
+   */
+  level: AttachLevel | "value";
   prop: string;
 }
 

@@ -5,6 +5,7 @@ import type { Id, RefRestrict } from "../types";
 import { assemble, assembleSpecial } from "./booklet";
 import { nodeQualFixture, waiverFixture, waiverTemplate, type WaiverPlan } from "./fixture";
 import type { RenderedDoc, RenderedInline } from "./types";
+import { titleNodes } from "@/domain/document/title";
 
 /**
  * 반복 · 펼친 함수조항 안 참조 · 값 한정 참조 (최종 결정 12 · 13 · ADR-0077 결정 5 · 6 · 7 · 기능/문면 §3.5).
@@ -43,7 +44,7 @@ function refArticle(targets: RefTarget[], connector: "및" | "또는" | undefine
   return {
     id: "z",
     kind: "article",
-    title: "참조",
+    title: titleNodes("참조", "z"),
     children: [{ id: "zp", kind: "paragraph", code: "P0100", children: [{ id: "zr", kind: "articleRef", scope: "self", ...(connector ? { connector } : {}), targets }, { id: "zt", kind: "text", text: "를 본다" }] }],
   };
 }
@@ -203,7 +204,7 @@ describe("키 한정 해소 (ADR-0087 결정 10)", () => {
         },
       ],
     } as unknown as ForBlockNode;
-    return { id: "nq-doc", kind: "document", title: "노드한정자 특별약관", children: [{ id: "a1", kind: "article", title: "감액", children: [body, refPara] }, ...extra] } as DocumentNode;
+    return { id: "nq-doc", kind: "document", title: "노드한정자 특별약관", children: [{ id: "a1", kind: "article", title: titleNodes("감액", "a1"), children: [body, refPara] }, ...extra] } as DocumentNode;
   }
   function assembleDoc(doc: DocumentNode) {
     const base = nodeQualFixture();
@@ -253,7 +254,7 @@ describe("키 한정 해소 (ADR-0087 결정 10)", () => {
     const other = {
       id: "b1",
       kind: "article",
-      title: "참조",
+      title: titleNodes("참조", "b1"),
       children: [
         {
           id: "h",
@@ -275,7 +276,7 @@ describe("키 한정 해소 (ADR-0087 결정 10)", () => {
     const other = {
       id: "b1",
       kind: "article",
-      title: "참조",
+      title: titleNodes("참조", "b1"),
       children: [
         {
           id: "h",

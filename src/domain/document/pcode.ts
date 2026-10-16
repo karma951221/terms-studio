@@ -17,7 +17,7 @@
  */
 
 import type { Code, Id } from "../types";
-import { indexTree, type DocumentNode, type Node, type NodeKind, type TreeIndex } from "./nodes";
+import { fallbackPathId, indexTree, type DocumentNode, type Node, type NodeKind, type TreeIndex } from "./nodes";
 
 /** P코드 형식 — `P` + 숫자 4자리 이상. */
 export const PCODE_PATTERN = /^P\d{4,}$/;
@@ -163,18 +163,28 @@ export function conflictMessage(c: CodeConflict, suggestion: Code | undefined): 
 
 // ───────────────────────────── 문면 트리 ─────────────────────────────
 
+/**
+ * 블록 반복 안 자리의 가지 표지 — 본문(`~body`) · 「비었을 때」 칸(`~empty`, 경로의 칸 표지)을 IF / 그 밖의 경우 가지처럼 배타 짝으로 본다
+ * (ADR-0088 결정 4). 조립에는 둘 중 하나만 나오므로 본문과 칸 사이에 같은 코드를 허용한다. `next` = 경로에서 반복 다음 마디.
+ */
+export function repeatArm(repeatId: Id, next: Id): readonly [Id, Id] {
+  return [repeatId, next === fallbackPathId(repeatId) ? next : `${repeatId}~body`];
+}
+
 /** 문면 트리의 코드 자리 — 색인 순(전위 = 문서 순). 조 밖(없음)은 뺀다. */
 export function documentCodeEntries(doc: DocumentNode, ix: TreeIndex = indexTree(doc)): CodedEntry[] {
   const out: CodedEntry[] = [];
   for (const e of ix.nodes.values()) {
     if (!isCodedKind(e.node.kind) || e.articleId === undefined) continue;
-    const branches: [Id, Id][] = [];
+    const branches: (readonly [Id, Id])[] = [];
     let depth = 0;
-    for (const id of e.path.slice(0, -1)) {
+    const up = e.path.slice(0, -1);
+    up.forEach((id, i) => {
       const br = ix.branches.get(id);
       if (br) branches.push([br.ownerId, id]);
-      else if (isCodedKind(ix.nodes.get(id)?.node.kind ?? "") && ix.nodes.get(id)?.node.kind !== "forBlock") depth += 1; // 반복 블록은 단계가 아니다(투명)
-    }
+      else if (ix.nodes.get(id)?.node.kind === "forBlock") branches.push(repeatArm(id, up[i + 1] ?? e.node.id)); // 반복 본문 ↔ 「비었을 때」 칸은 배타 짝 · 단계가 아니다(투명)
+      else if (isCodedKind(ix.nodes.get(id)?.node.kind ?? "")) depth += 1;
+    });
     out.push({ id: e.node.id, code: (e.node as { code?: Code }).code, scope: e.articleId, branches, position: e.index + 1, depth });
   }
   return out;

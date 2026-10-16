@@ -31,6 +31,8 @@ export type PopupSpec =
   | { kind: "boxPick"; at: Position }
   /** 블록 반복 — `at` 이면 넣기(원천 고르기 → 빈 항 · 호 하나를 든 반복), `nodeId` 면 그 반복의 원천 · 이름 고치기 (ADR-0077). */
   | { kind: "repeatBlock"; at?: Position; nodeId?: Id }
+  /** 문장 안 반복 넣기 — 커서 자리에 원천 · 연결어를 고른 반복 칩을 세우고 그 칩의 팝업(본문 · 「비었을 때」 칸)을 연다 (ADR-0088). 고치기는 `editChip`. */
+  | { kind: "repeatInline"; at: InlineAt; tokens: Token[] }
   | { kind: "tableProps"; tableId: Id }
   /**
    * 코드 수정 창 (ADR-0072 결정 5) — 항 · 호 · 목 · 함수조항 참조 · 반복 블록의 P코드. `suggest` 면 입력칸이 추천값에서 시작한다
@@ -169,6 +171,7 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
   // 블록 반복 — 조 자리 · 호 목록 자리, 반복 안 반복은 한 단계까지 (ADR-0077)
   if (after && e.allowed.includes("forBlock") && e.forDepth < MAX_REPEAT_DEPTH) add.push({ label: "아래에 반복 블록 추가…", action: { do: "popup", popup: { kind: "repeatBlock", at: after } } });
   if (e.node.kind === "paragraph" && e.forDepth < MAX_REPEAT_DEPTH) add.push({ label: "반복 블록(호) 추가…", action: { do: "popup", popup: { kind: "repeatBlock", at: { parentId: nodeId, slot: "items" } } } });
+  if (e.node.kind === "forBlock") add.push(...repeatFallbackItems(env, nodeId, e.allowed));
 
   const own: MenuItem[] = [];
   if (e.node.kind === "table") {
@@ -201,6 +204,26 @@ function repeatIntoItems(env: MenuEnv, forId: Id, allowed: readonly NodeKind[], 
     out.push({ label: `이 반복에 함수조항(${FIT_WORD[fit]}) 추가…`, action: { do: "popup", popup: { kind: "clauseBlock", at, ...(fit === "block" ? {} : { fit }) } } });
   }
   if (allowed.includes("forBlock") && depth < MAX_REPEAT_DEPTH) out.push({ label: "이 반복에 반복 블록 추가…", action: { do: "popup", popup: { kind: "repeatBlock", at } } });
+  return out;
+}
+
+/**
+ * 블록 반복의 「비었을 때」 칸 끝에 넣기 (ADR-0088 결정 4) — 칸 = 본문과 같은 허용 집합(조 자리면 항 · 함수조항(조 단위), 호 목록이면 호 · 함수조항(호)).
+ * 칸이 없으면 첫 넣기가 칸을 만든다. 칸 안 블록의 그다음 편집(아래에 추가 · 끌기 · 이동)은 본문과 같은 블록 메뉴다.
+ * 본문 첫 줄 하나만 — 칸 안 반복은 넣지 않는다(칸은 원소가 없을 때의 글이다).
+ */
+export function repeatFallbackItems(env: MenuEnv, forId: Id, allowed: readonly NodeKind[]): MenuItem[] {
+  const at: Position = { parentId: forId, slot: "fallback" };
+  const out: MenuItem[] = [];
+  for (const k of ["paragraph", "item"] as const) {
+    if (!allowed.includes(k)) continue;
+    const node = emptyNode(k, env.newId);
+    out.push({ label: `「비었을 때」 칸에 ${KIND_WORD[k]} 추가`, action: { do: "ops", ops: [{ type: "insert", node, at }], focus: node.id } });
+  }
+  if (allowed.includes("clauseBlockRef")) {
+    const fit = fitOf(allowed);
+    out.push({ label: `「비었을 때」 칸에 함수조항(${FIT_WORD[fit]}) 추가…`, action: { do: "popup", popup: { kind: "clauseBlock", at, ...(fit === "block" ? {} : { fit }) } } });
+  }
   return out;
 }
 
@@ -417,17 +440,34 @@ export function particleInsertItems(at: InlineAt, tokens: Token[], newId: IdSour
  * 문장 속(커서 자리)의 넣기 — 슬롯 · 조 참조 · 별표 참조 · 함수조항(문장 안) · 문장 안 조건 (+ 반복 표 템플릿 셀이면 구조 표기) · 조사.
  * 문장 안 조건의 가지 안이면 문장 안 조건은 싣지 않는다 (중첩 금지 §3.2).
  */
-export function inlineInsertItems(at: InlineAt, tokens: Token[], opts: { inInlineCond: boolean; newId: IdSource; structLevels?: readonly Exclude<AttachLevel, "product">[] }): MenuItem[] {
+export function inlineInsertItems(
+  at: InlineAt,
+  tokens: Token[],
+  opts: { inInlineCond: boolean; newId: IdSource; structLevels?: readonly Exclude<AttachLevel, "product">[]; title?: boolean; inInlineFor?: boolean; forDepth?: number },
+): MenuItem[] {
   const pop = (what: InlineInsertKind, label: string): MenuItem => ({
     label,
     action: { do: "popup", popup: { kind: "insertInline", what, at, tokens, ...(what === "structKey" && opts.structLevels ? { structLevels: opts.structLevels } : {}) } },
+    // 조 제목(그 안 문장 안 조건 가지까지)에는 글 · 슬롯 · 문장 안 조건 · 조사만 — 참조 · 함수조항은 잠근다 (ADR-0088 결정 5)
+    ...(opts.title && what !== "slot" ? { refusal: TITLE_REFUSAL } : {}),
   });
   const items = [pop("slot", "치환 슬롯…"), pop("articleRef", "조 참조…"), pop("appendixRef", "별표 참조…"), pop("clauseInlineRef", "함수조항(문장 안)…")];
   if (!opts.inInlineCond) items.push(inlineCondItem(at, tokens, opts.newId));
+  // 문장 안 반복 — 한 겹 · 블록 반복 한 단계 중첩에 같이 센다 (ADR-0088 결정 1). 막힌 자리는 잠그고 사유를 보인다
+  const repeatRefusal = opts.inInlineFor ? INLINE_REPEAT_NESTED : (opts.forDepth ?? 0) >= 2 ? INLINE_REPEAT_DEEP : undefined;
+  items.push({ label: "문장 안 반복…", action: { do: "popup", popup: { kind: "repeatInline", at, tokens } }, ...(repeatRefusal ? { refusal: repeatRefusal } : {}) });
   if (opts.structLevels && opts.structLevels.length > 0) items.push(pop("structKey", "구조 표기…"));
   items.push(...particleInsertItems(at, tokens, opts.newId));
   return items;
 }
+
+/** 문장 안 반복 안에서 잠그는 사유 — 한 겹만 (ADR-0088 결정 1). */
+export const INLINE_REPEAT_NESTED = "문장 안 반복 안에는 문장 안 반복을 둘 수 없다 — 한 겹만";
+/** 반복 블록 두 겹 안에서 잠그는 사유 — 블록 반복 한 단계 중첩에 같이 센다. */
+export const INLINE_REPEAT_DEEP = "반복은 한 단계까지만 중첩한다 — 반복 안 반복 안에는 문장 안 반복을 둘 수 없다";
+
+/** 조 제목에서 잠그는 넣기의 사유 — 제목은 목차 · 참조 라벨에 찍혀 참조가 서면 라벨이 다른 조 라벨을 부른다 (ADR-0088 결정 5). */
+export const TITLE_REFUSAL = "조 제목에는 글 · 슬롯 · 문장 안 조건 · 조사만 넣는다 — 참조 · 함수조항은 목차 · 참조 라벨에서 순환한다";
 
 /**
  * 조작의 자리 — 가운데서 마지막으로 누르거나 초점이 간 곳. 툴바 · 오른쪽 클릭 메뉴가 이 자리로 목록을 짓는다.
@@ -448,12 +488,20 @@ function inlineSections(env: MenuEnv, at: InlineAt, tokens: Token[]): MenuSectio
   if ("tableId" in at) {
     const t = env.ix.nodes.get(at.tableId)?.node;
     const template = t?.kind === "table" && t.repeat !== undefined && !t.rows[at.row]?.header ? repeatLevelsOf(t) : undefined;
-    return [inlineInsertItems(at, tokens, { inInlineCond: false, newId: env.newId, ...(template ? { structLevels: template } : {}) }), ...blockMenu(env, at.tableId)];
+    const table = env.ix.nodes.get(at.tableId);
+    return [inlineInsertItems(at, tokens, { inInlineCond: false, newId: env.newId, forDepth: table?.forDepth ?? 0, ...(template ? { structLevels: template } : {}) }), ...blockMenu(env, at.tableId)];
   }
   const branch = env.ix.branches.get(at.parentId);
-  if (branch) return [inlineInsertItems(at, tokens, { inInlineCond: env.ix.nodes.get(branch.ownerId)?.node.kind === "inlineCond", newId: env.newId })];
+  if (branch) {
+    const cond = env.ix.nodes.get(branch.ownerId);
+    return [inlineInsertItems(at, tokens, { inInlineCond: cond?.node.kind === "inlineCond", newId: env.newId, inInlineFor: cond?.inInlineFor === true, forDepth: cond?.forDepth ?? 0, ...(cond?.inTitle ? { title: true } : {}) })];
+  }
+  // 조 제목 — 넣기는 제목 허용 집합만, 조작은 조 제목 자리의 것 그대로(아래에 조 · 항 추가 · 조건으로 감싸기 …)
+  if (at.slot === "title") return [inlineInsertItems(at, tokens, { inInlineCond: false, newId: env.newId, title: true }), ...articleMenu(env, at.parentId)];
   const owner = env.ix.nodes.get(at.parentId);
-  return [inlineInsertItems(at, tokens, { inInlineCond: owner?.inInlineCond ?? false, newId: env.newId }), ...(owner ? blockMenu(env, at.parentId) : [])];
+  // 문장 안 반복의 본문 · 「비었을 때」 칸 — 넣기만(블록 조작은 그 반복이 선 문장의 주인 몫)
+  if (owner?.node.kind === "inlineFor") return [inlineInsertItems(at, tokens, { inInlineCond: owner.inInlineCond, newId: env.newId, inInlineFor: true, forDepth: owner.forDepth, ...(owner.inTitle ? { title: true } : {}) })];
+  return [inlineInsertItems(at, tokens, { inInlineCond: owner?.inInlineCond ?? false, newId: env.newId, inInlineFor: owner?.inInlineFor === true, forDepth: owner?.forDepth ?? 0 }), ...(owner ? blockMenu(env, at.parentId) : [])];
 }
 
 /** 자리가 편집본에 아직 있는가 — 지워졌으면 툴바는 기본 자리(지금 조 · 문서)로 돌아간다. */

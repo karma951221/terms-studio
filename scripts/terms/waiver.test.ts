@@ -7,6 +7,7 @@ import { RENEWABLE_PRODUCT } from "./renewal";
 import type { ArticleNode, DocumentNode } from "../../src/domain/document/nodes";
 
 import { guardExcludeSentence, guardOwnWaiver, SURRENDER_PAYING, WAIVER_PRESENT } from "./waiver";
+import { foldTitle, titleNodes } from "../../src/domain/document/title";
 
 /**
  * 납입면제 재모델링의 변환 결과(시드 JSON) — 템플릿 모양 · 사유별 호 · 정의 함수조항(ADR-0086) · 역할 함수조항 본문 · 호를 가리키는 참조.
@@ -74,8 +75,15 @@ const definitionLabels = (line: string) => [
   ...["V05", "V06", "V07", "V08", "V09", "V10", "V14"].map((v) => `${REASON_LABEL[v]} 정의 및 진단확정`),
 ];
 const labelOf = (code: unknown) => clauses.find((c) => c.code === code)?.label;
-const articleOf = (tree: Json, title: string) => find(tree, (x) => x.kind === "article" && x.title === title)!;
+/** 조 제목 글 — 시드는 인라인 노드 목록이다 (ADR-0088). */
+const titleOf = (x: object): string => {
+  const t = (x as { title?: unknown }).title;
+  return Array.isArray(t) ? foldTitle(t as ArticleNode["title"]) : String(t ?? "");
+};
+const articleOf = (tree: Json, title: string) => find(tree, (x) => x.kind === "article" && titleOf(x) === title)!;
 const APPLIED_SOURCE = { kind: "source", source: { form: "waiver", filter: "waiver.applies = true" } };
+/** 정의 조 제목 — 사유를 나열하지 않는 일반 고정 제목 (ADR-0088 결정 7, 2026-10-17). 원문(사유 나열)과의 차이는 허용 차이(knownDifferences.ts). */
+const DEFINITION_FOLDED = "보험료 납입면제 사유의 정의 및 진단확정";
 
 /** 템플릿 [납입면제종마다] 항의 호 목록 — 함수조항 참조의 (조, P코드) → 사유 (조 참조 대상 대조용). 참조 노드 id = `<조 id>-p1-k-<사유>`. */
 function itemRefsOf(tree: Json): { outer: Json; refs: Json[]; reasonOfCode: Map<string, string> } {
@@ -94,14 +102,14 @@ function itemRefShapes(label: string, reasonOfCode: Map<string, string>): string
 
 describe("알파Plus 납입면제 템플릿 — 사유 값으로 분기하지 않고 사유별 함수조항을 늘어놓는다 (결정 10 · 11 · 16 · ADR-0086 결정 2)", () => {
   it("납입면제 세 조는 「납입면제 있음」 조 자리 IF 하나로 감싼다", () => {
-    const wrap = find(alpha, (x) => x.kind === "condBlock" && JSON.stringify(x).includes('"title":"보험료의 납입면제"'))!;
+    const wrap = find(alpha, (x) => x.kind === "condBlock" && /"(?:title|text)":"보험료의 납입면제"/.test(JSON.stringify(x)))!;
     const branches = wrap.branches as { when: string; children: Json[] }[];
     expect(branches).toHaveLength(1);
     expect(branches[0].when).toBe(WAIVER_PRESENT);
-    expect(branches[0].children.map((a) => a.title)).toEqual([
+    expect(branches[0].children.map((a) => titleOf(a))).toEqual([
       "보험료의 납입면제",
       "납입면제에 관한 세부규정",
-      "암(유사암제외), 뇌졸중, 급성심근경색증, 말기폐질환, 말기간경화, 말기신부전증, 양성뇌종양, 중대한재생불량성빈혈, 만성당뇨합병증의 정의 및 진단확정",
+      DEFINITION_FOLDED,
     ]);
   });
 
@@ -127,7 +135,7 @@ describe("알파Plus 납입면제 템플릿 — 사유 값으로 분기하지 �
   });
 
   it("정의 조 = 사유별 정의 함수조항을 열거형 순서로 늘어놓는다 — 프리셋 ‘적용 종’", () => {
-    const article = articleOf(alpha, "암(유사암제외), 뇌졸중, 급성심근경색증, 말기폐질환, 말기간경화, 말기신부전증, 양성뇌종양, 중대한재생불량성빈혈, 만성당뇨합병증의 정의 및 진단확정");
+    const article = articleOf(alpha, DEFINITION_FOLDED);
     expect(article.children!.map((r) => [r.kind, labelOf(r.clauseCode), r.preset, r.bindings])).toEqual(definitionLabels("알파Plus").map((label) => ["clauseBlockRef", label, "S01", undefined]));
   });
 
@@ -189,10 +197,10 @@ describe("사유별 호 · 정의 함수조항 — 인자 종들 + 내부 변수
 
 describe("통합간편 납입면제 템플릿 — 알파Plus 와 같은 모양, 호 · 상품군 사이에 같은 정의 · 부활 문구는 함께 쓴다", () => {
   it("세 조(납입면제 · 정의 · 세부규정)를 「납입면제 있음」 IF 로, 제29조 ① ② = [납입면제종마다] 항 하나(번호 · 이름 슬롯) › 사유별 호 함수조항 12", () => {
-    const wrap = find(meritz, (x) => x.kind === "condBlock" && JSON.stringify(x).includes('"title":"보험료의 납입면제"'))!;
+    const wrap = find(meritz, (x) => x.kind === "condBlock" && /"(?:title|text)":"보험료의 납입면제"/.test(JSON.stringify(x)))!;
     const [branch] = wrap.branches as { when: string; children: Json[] }[];
     expect(branch.when).toBe(WAIVER_PRESENT);
-    expect(branch.children.map((a) => a.title)).toEqual(["보험료의 납입면제", "암(유사암제외), 뇌졸중, 급성심근경색증, 중증화상및부식의 정의 및 진단확정", "납입면제에 관한 세부규정"]);
+    expect(branch.children.map((a) => titleOf(a))).toEqual(["보험료의 납입면제", DEFINITION_FOLDED, "납입면제에 관한 세부규정"]);
     const { outer, refs } = itemRefsOf(branch.children[0]);
     const p = outer.children![0];
     expect((p.children as Json[]).map((c) => (c.kind === "text" ? c.text : c.ref))[4]).toMatch(/^\)을 가입한 피보험자가 보험료 납입기간 중에/);
@@ -244,10 +252,20 @@ describe("통합간편 납입면제 템플릿 — 알파Plus 와 같은 모양, 
   });
 
   it("정의 조 = 사유별 정의 함수조항(통합간편 셋 + 함께 쓰는 일곱), 제2조 표의 종 한 항 참조는 글로 굳힌다(종 한정 참조는 다음 기획)", () => {
-    const article = articleOf(meritz, "암(유사암제외), 뇌졸중, 급성심근경색증, 중증화상및부식의 정의 및 진단확정");
+    const article = articleOf(meritz, DEFINITION_FOLDED);
     expect(article.children!.map((r) => [labelOf(r.clauseCode), r.preset])).toEqual(definitionLabels("통합간편").map((label) => [label, "S01"]));
     const definitions = articleOf(meritz, "용어의 정의");
     expect(JSON.stringify(definitions)).toContain('"text":"제29조(보험료의 납입면제) 제2항"');
+  });
+});
+
+describe("정의 조 제목 — 일반 고정 제목 (ADR-0088 결정 7, 2026-10-17)", () => {
+  it.each(["alpha-general", "alpha2607-general", "meritz-general"])("%s: 제목 = 글 하나 「보험료 납입면제 사유의 정의 및 진단확정」 — 사유를 나열하지 않는다(문장 안 반복 없음)", (code) => {
+    const tree = generals.find((g) => g.code === code)!.tree;
+    expect(all(tree, (x) => x.kind === "article" && Array.isArray(x.title) && (x.title as Json[]).some((n) => n.kind === "inlineFor"))).toEqual([]);
+    const titled = all(tree, (x) => x.kind === "article" && titleOf(x) === DEFINITION_FOLDED);
+    expect(titled).toHaveLength(1);
+    expect(titled[0].title).toEqual([{ id: `${titled[0].id}.title`, kind: "text", text: DEFINITION_FOLDED }]);
   });
 });
 
@@ -256,12 +274,12 @@ describe("납입면제 조를 가리키는 문장 — 「납입면제 있음」 
     ["알파Plus", alpha, 2],
     ["메리츠", meritz, 3],
   ] as const)("%s — 제6조 「또는 … 납입면제 사유의 발생을 알게된 경우」는 문장 안 조건, 제2조 표 종 행의 정의 칸은 칸째 조건", (_, tree, rows) => {
-    const notice = find(tree, (x) => x.kind === "article" && x.title === "보험금 지급사유 등의 통지")!;
+    const notice = find(tree, (x) => x.kind === "article" && titleOf(x) === "보험금 지급사유 등의 통지")!;
     const cond = find(notice, (x) => x.kind === "inlineCond")!;
     const [branch] = cond.branches as { when: string; children: Json[] }[];
     expect(branch.when).toBe(`${WAIVER_PRESENT} = true`);
     expect(branch.children.map((c) => (c.kind === "text" ? c.text : c.kind))).toEqual([" 또는 ", "articleRef", "에서 정한 보험료 납입면제 사유의 발생을 알게된 경우"]);
-    const definitions = find(tree, (x) => x.kind === "article" && x.title === "용어의 정의")!;
+    const definitions = find(tree, (x) => x.kind === "article" && titleOf(x) === "용어의 정의")!;
     expect(all(definitions, (x) => x.kind === "inlineCond" && (x.branches as { when: string }[])[0].when === `${WAIVER_PRESENT} = true`)).toHaveLength(rows);
   });
 });
@@ -322,13 +340,13 @@ describe("guardOwnWaiver — 특약 자체의 납입면제(조째 · 통합형 �
       kind: "document",
       title: "시험 특별약관",
       children: [
-        { id: "s-a1", kind: "article", title: "보험금의 지급사유", children: [p("s-a1-p1")] },
-        { id: "s-a9", kind: "article", title: "보험료의 납입면제", children: [p("s-a9-p1")] },
-        { id: "s-a10", kind: "article", title: "납입면제에 관한 세부규정", children: [p("s-a10-p1")] },
+        { id: "s-a1", kind: "article", title: titleNodes("보험금의 지급사유", "s-a1"), children: [p("s-a1-p1")] },
+        { id: "s-a9", kind: "article", title: titleNodes("보험료의 납입면제", "s-a9"), children: [p("s-a9-p1")] },
+        { id: "s-a10", kind: "article", title: titleNodes("납입면제에 관한 세부규정", "s-a10"), children: [p("s-a10-p1")] },
         {
           id: "s-a3",
           kind: "article",
-          title: "세부보장에 관한 사항",
+          title: titleNodes("세부보장에 관한 사항", "s-a3"),
           children: [p("s-a3-p1"), { id: "s-a3-b2-k", kind: "boxRef", boxCode: "BX000001" }, p("s-a3-p2"), { id: "s-a3-p3-k", kind: "clauseBlockRef", clauseCode: "C0001", options: {} }, { id: "s-a3-b4-k", kind: "boxRef", boxCode: "BX000002" }, p("s-a3-p4")],
         },
       ],

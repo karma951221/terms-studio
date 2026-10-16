@@ -27,7 +27,8 @@ describe("허용 자식 규칙 테이블 (ADR-0012 — 문서>조>항>호>목, �
     expect(allowedChildren.paragraph).toContain("text");
     expect(allowedChildren.paragraph).toContain("inlineCond");
     expect(allowedChildren.inlineCond).not.toContain("inlineCond");
-    expect(allowedChildren.inlineFor).not.toContain("inlineFor");
+    // 인라인 반복은 투명 — 서 있는 자리의 허용 집합에서 인라인 반복을 뺀 것 (ADR-0088 · allowedAtSlot)
+    expect(allowedChildren.inlineFor).toEqual([]);
   });
 
   it("호는 항의 items 에, 목은 호의 subitems 에 선다 (조건 블록 · 호 · 목 유형 함수조항 참조도 그 자리에 설 수 있다)", () => {
@@ -133,16 +134,16 @@ describe("문면작성 S2 경계 — 인라인 조건 중첩 금지", () => {
     expect(issues[0].message).toContain("인라인 조건");
   });
 
-  it("블록 반복 안의 인라인 반복은 거부 (D-P4-16 — 인라인 반복은 자리만)", () => {
+  it("인라인 반복 안의 인라인 반복은 거부 — 조건 블록을 거쳐도 (ADR-0088 결정 1 — 한 겹)", () => {
     const b = make();
+    const source = { kind: "planOptions" as const, form: "waiver" };
     const doc = b.document("d", [
-      b.article("a", [b.forBlock({ kind: "planOptions", form: "waiver" }, [b.condBlock([b.branch("D0001", [b.paragraph([b.inlineFor("benefit", [b.text("x")])])])])])]),
+      b.article("a", [b.paragraph([b.inlineFor(source, [b.inlineCond([b.inlineBranch("D0001", [b.inlineFor(source, [b.text("x")], { connector: "및" })])])], { connector: "및" })])]),
     ]);
-    // 조건 블록을 거쳐도 조상에 반복이 있으면 거부 (허용 자식 테이블만으로는 못 잡는 경우)
     const issues = validateTree(doc);
     expect(issues.length).toBeGreaterThan(0);
     expect(issues.every((i) => i.kind === "structure")).toBe(true);
-    expect(issues.some((i) => i.message.includes("반복 안에 반복"))).toBe(true);
+    expect(issues.some((i) => i.message.includes("인라인 반복 안에 인라인 반복"))).toBe(true);
   });
 });
 

@@ -14,6 +14,7 @@
  */
 import { Fragment, useState, type ReactNode } from "react";
 
+import { foldTitle } from "@/domain/document";
 import type { Id, Issue } from "@/domain/types";
 
 import { generalArticlePath } from "../../lib";
@@ -113,7 +114,7 @@ export function GeneralPanels({
     const articleId = current && pane?.articleIds.includes(current) ? current : pane?.articleIds[0];
     const entry = toc.flatMap((s) => s.articles).find((a) => a.id === articleId);
     const copy = articleId ? edit?.current.copies[articleId] : undefined;
-    const articleLabel = entry ? (copy ? `${entry.number}(${copy.article.title})` : `${entry.number}(${entry.templateTitle})`) : "조";
+    const articleLabel = entry ? (copy ? `${entry.number}(${foldTitle(copy.article.title)})` : `${entry.number}(${entry.templateTitle})`) : "조";
     return (
       <div className="ts-terms-panels is-editing">
         <section className="ts-terms-panel" aria-label="목차">

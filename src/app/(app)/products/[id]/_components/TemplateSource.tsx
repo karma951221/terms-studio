@@ -22,7 +22,7 @@ import { IconButton, IconRevert } from "@/app/_components/icons";
 import { STRUCT_KEY_CHIP } from "@/app/_lib/labels";
 import type { EnumDef } from "@/domain/catalog";
 import { presetUsage, switchValueLabeler, type Bindings, type Clause } from "@/domain/clause";
-import { particlePreset, refChunkText, referenceChunkLabel, referenceKeyIndex, refKey, type ArticleNode, type Box, type CondBlockNode, type InlineNode, type Node, type NodeNumber, type ReferenceTarget, type TableNode } from "@/domain/document";
+import { foldTitle, particlePreset, refChunkText, repeatLabel, referenceChunkLabel, referenceKeyIndex, refKey, type ArticleNode, type Box, type CondBlockNode, type InlineNode, type Node, type NodeNumber, type ReferenceTarget, type TableNode } from "@/domain/document";
 import { format, parse, refPath } from "@/domain/expression";
 import type { ClauseOptionOverride } from "@/domain/product";
 import type { Code, Id } from "@/domain/types";
@@ -170,7 +170,12 @@ function Inline({ node, ctx }: { node: InlineNode; ctx: Ctx }) {
       );
 
     case "inlineFor":
-      return <span className="ts-muted">(문장 안 반복 — 아직 지원하지 않는다)</span>;
+      // 템플릿 원문 — 원소는 조립 결과 패널에서 본다. 여기는 자리 말(반복 이름) (ADR-0088 결정 6)
+      return (
+        <span className="ts-doc-inline-chip is-repeat" title={node.connector === "," ? "문장 안 반복 — 원소를 쉼표로만 잇는다" : `문장 안 반복 — 원소를 쉼표로 잇고 마지막 앞에 「${node.connector ?? "연결어?"}」`}>
+          <span className="ts-doc-inline-head">〔{node.alias ?? repeatLabel(node.source)}〕</span>
+        </span>
+      );
   }
 }
 
@@ -183,7 +188,7 @@ type ClauseInlineRef = Extract<InlineNode, { kind: "clauseInlineRef" }>;
 /** 문장 안 함수조항 참조 — 옵션 박스는 문장 흐름을 끊지 않도록 그 항 **아래**에 모아 선다. */
 function inlineClauseRefs(nodes: readonly InlineNode[]): ClauseInlineRef[] {
   return nodes.flatMap((n) =>
-    n.kind === "clauseInlineRef" ? [n] : n.kind === "inlineCond" ? n.branches.flatMap((br) => inlineClauseRefs(br.children)) : n.kind === "inlineFor" ? inlineClauseRefs(n.children) : [],
+    n.kind === "clauseInlineRef" ? [n] : n.kind === "inlineCond" ? n.branches.flatMap((br) => inlineClauseRefs(br.children)) : n.kind === "inlineFor" ? [...inlineClauseRefs(n.children), ...inlineClauseRefs(n.fallback ?? [])] : [],
   );
 }
 
@@ -208,7 +213,7 @@ function blockClauseRefs(nodes: readonly Node[]): ClauseInlineRef[] {
       case "condBlock":
         return n.branches.flatMap((br) => blockClauseRefs(br.children));
       case "forBlock":
-        return blockClauseRefs(n.children);
+        return [...blockClauseRefs(n.children), ...blockClauseRefs(n.fallback ?? [])];
       default:
         return [];
     }
@@ -535,8 +540,36 @@ function Block({ nodes, ctx, inList, gathered }: { nodes: readonly Node[]; ctx: 
       }
 
       // 블록 반복 — 템플릿 원문은 본문 한 벌 그대로 낸다(원소마다 복제는 조립 · 미리보기가 한다, ADR-0077).
-      case "forBlock":
-        return <Block key={node.id} nodes={node.children} ctx={ctx} inList={inList} gathered={gathered} />;
+      // 「비었을 때」 칸(ADR-0088 결정 4)은 그 밖의 경우 가지처럼 파선 상자로 뒤에 — 원소가 0 이면 이 내용이 나온다
+      case "forBlock": {
+        const fallback = node.fallback ?? [];
+        const body = <Block key={node.id} nodes={node.children} ctx={ctx} inList={inList} gathered={gathered} />;
+        if (fallback.length === 0) return body;
+        const empty = (
+          <>
+            <span className="ts-doc-cond-head">비었을 때 — 원소가 없으면</span>
+            {inList ? (
+              <ol className="ts-doc-list-cont">
+                <Block nodes={fallback} ctx={ctx} inList gathered={gathered} />
+              </ol>
+            ) : (
+              <Block nodes={fallback} ctx={ctx} gathered={gathered} />
+            )}
+          </>
+        );
+        return [
+          body,
+          inList ? (
+            <li key={`${node.id}~empty`} className="ts-doc-cond is-alt">
+              {empty}
+            </li>
+          ) : (
+            <div key={`${node.id}~empty`} className="ts-doc-cond is-alt">
+              {empty}
+            </div>
+          ),
+        ];
+      }
 
       default:
         return null;
@@ -553,7 +586,7 @@ function ArticleNodes({ nodes, ctx }: { nodes: readonly Node[]; ctx: Ctx }) {
   return nodes.map((node) => {
     if (node.kind === "article") {
       const isHidden = edit ? edit.current.hidden.includes(node.id) : ctx.hidden.has(node.id);
-      const label = `${ctx.numbers.get(node.id)?.label ?? "조"}(${node.title})`;
+      const label = `${ctx.numbers.get(node.id)?.label ?? "조"}(${foldTitle(node.title)})`;
       return (
         <section key={node.id} id={`art-${node.id}`} className={isHidden ? "ts-doc-article is-hidden-article" : "ts-doc-article"}>
           <h4 className="ts-doc-article-title">

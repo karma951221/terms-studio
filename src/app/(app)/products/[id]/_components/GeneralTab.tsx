@@ -5,7 +5,7 @@ import { RenderedDoc } from "@/app/_components/RenderedDoc";
 import type { Booklet } from "@/domain/assembly";
 import type { EnumDef } from "@/domain/catalog";
 import type { Clause } from "@/domain/clause";
-import { clauseSpanBy, numberTree, referenceTargetIndex, type Box, type DocumentNode, type NodeNumber } from "@/domain/document";
+import { clauseSpanBy, foldTitle, numberTree, referenceTargetIndex, type Box, type DocumentNode, type NodeNumber } from "@/domain/document";
 import { applyArticleCopies, articleHash, articlesById, productRefIssues, type ArticleCopy, type ClauseOptionOverride, type GeneralDependents, type ProductCoverage } from "@/domain/product";
 import type { Id } from "@/domain/types";
 
@@ -119,7 +119,7 @@ export function GeneralTab({
     articles: s.articles.map((a) => {
       const number = generalNumbers.get(a.id)?.label ?? "조";
       const original = templateArticles.get(a.id);
-      return { id: a.id, label: `${number}(${a.title})`, number, templateTitle: original?.title ?? a.title, hidden: hidden.has(a.id), templateHash: original ? articleHash(original) : "" };
+      return { id: a.id, label: `${number}(${foldTitle(a.title)})`, number, templateTitle: foldTitle(original?.title ?? a.title), hidden: hidden.has(a.id), templateHash: original ? articleHash(original) : "" };
     }),
   }));
 

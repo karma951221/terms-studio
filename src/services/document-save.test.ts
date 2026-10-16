@@ -9,6 +9,7 @@ import type { Actor, Id, Result } from "@/domain/types";
 import { insertClause } from "@/db/repo/clause";
 import { createTestDb, type TestDb } from "@/db/test-utils";
 import { createDocumentService, type DocumentService } from "./document";
+import { foldTitle, titleNodes } from "@/domain/document/title";
 
 const editor: Actor = { userId: "00000000-0000-4000-8000-000000000002", role: "editor" };
 const cov: Id = "11111111-1111-4111-8111-111111111111";
@@ -55,7 +56,7 @@ describe("document.save — 편집본 저장 (ADR-0074)", () => {
     ];
     const saved = unwrap(await svc.save(editor, g.id, { baseVersion: 1, ops }));
     expect(saved.version).toBe(2);
-    expect(saved.tree.children.map((c) => [c.id, (c as ArticleNode).title])).toEqual([
+    expect(saved.tree.children.map((c) => [c.id, foldTitle((c as ArticleNode).title)])).toEqual([
       [art.id, "목적"],
       ["d1", "용어의 정의"],
     ]);
@@ -70,7 +71,7 @@ describe("document.save — 편집본 저장 (ADR-0074)", () => {
     expect(rejection(r).reason).toBe("conflict");
     const now = (await svc.get(g.id))!;
     expect(now.version).toBe(2);
-    expect(now.tree.children.map((c) => (c as ArticleNode).title)).toEqual(["먼저"]);
+    expect(now.tree.children.map((c) => foldTitle((c as ArticleNode).title))).toEqual(["먼저"]);
   });
 
   it("전체 검증 오류면 저장을 거부한다 — 명령 단위로는 통과한 옵션 미선택 (서버가 최종 검증자)", async () => {
@@ -163,7 +164,7 @@ describe("document.save — 편집본 저장 (ADR-0074)", () => {
       clauseGate: async () => gate,
       newId: sequentialIds("srv-p"),
       productImpact: async (_tx, templateId, tree) => {
-        seen.push({ templateId, titles: tree.children.map((c) => (c as ArticleNode).title) });
+        seen.push({ templateId, titles: tree.children.map((c) => foldTitle((c as ArticleNode).title)) });
         return [{ document: "product", ownerId: "prod-a", ownerName: "상품 A", articleId: "a12", subjectName: "제12조 ② — 지운 제10조 ①을 가리킴" }];
       },
     });
@@ -182,7 +183,7 @@ describe("document.save — 편집본 저장 (ADR-0074)", () => {
 
   it("템플릿에 PZ 코드는 저장이 거부한다 — 상품 조 사본 전용 (ADR-0081 결정 4) · 상품 사본 검사(validateTree)는 받는다", async () => {
     const g = unwrap(await svc.createGeneral(editor, "PZ 거부 보통약관"));
-    const art: ArticleNode = { id: "pz-a", kind: "article", title: "조", children: [{ id: "pz-p", kind: "paragraph", code: "PZ0100", children: [{ id: "pz-t", kind: "text", text: "글" }] }] };
+    const art: ArticleNode = { id: "pz-a", kind: "article", title: titleNodes("조", "pz-a"), children: [{ id: "pz-p", kind: "paragraph", code: "PZ0100", children: [{ id: "pz-t", kind: "text", text: "글" }] }] };
     const r = rejection(await svc.save(editor, g.id, { baseVersion: 1, ops: [{ type: "insert", node: art, at: { parentId: g.tree.id } }] }));
     expect(r.reason).toBe("invalid");
     if (r.reason === "invalid") expect(r.issues.map((i) => i.message)).toContain("코드 PZ0100 는 상품 조 사본 전용(PZ)이다 — 템플릿 · 담보약관 · 함수조항에는 쓸 수 없다");

@@ -42,3 +42,20 @@ describe("슬롯 참조 후보 — 검색 입력(콤보박스)", () => {
     expect(slotPathLabel(context, "builtin.plan.number")).toBe("현재 종 › 선택지 번호");
   });
 });
+
+describe("「현재 값」 묶음 (ADR-0088 결정 1)", () => {
+  it("감싼 반복의 원소가 열거값이면 「현재 〈반복 이름〉」 묶음 — 그 열거형의 문자 필드만, 값 이름 없음 (2026-10-17)", () => {
+    const inLoop: ConditionContext = { ...context, value: { name: "납입면제사유마다", fields: [{ key: "F01", label: "약관표시명" }] } };
+    const current = slotOptions(inLoop).filter((o) => o.value.startsWith("builtin.value."));
+    expect(current).toEqual([{ value: "builtin.value.F01", label: "약관표시명", hint: "builtin.value.F01", group: "현재 납입면제사유" }]);
+    expect(slotOptions(inLoop)[0]).toEqual(current[0]);
+    expect(slotPathLabel(inLoop, "builtin.value.F01")).toBe("현재 납입면제사유 › 약관표시명");
+    expect(slotPathLabel(context, "builtin.value.F01")).toBe("현재 값 › F01");
+    expect(slotPathLabel(inLoop, "builtin.value.name")).toBeUndefined();
+  });
+
+  it("별칭이 있으면 그 이름 — 「…마다」 꼬리만 뗀다", () => {
+    const alias: ConditionContext = { ...context, value: { name: "정의 사유", fields: [{ key: "F01", label: "약관표시명" }] } };
+    expect(slotOptions(alias)[0].group).toBe("현재 정의 사유");
+  });
+});

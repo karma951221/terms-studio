@@ -16,6 +16,7 @@ import type { Id } from "@/domain/types";
 import { GeneralEditProvider, type OverrideTarget } from "./GeneralEdit";
 import { ProductEditProvider } from "./ProductEdit";
 import { TemplateSource } from "./TemplateSource";
+import { titleNodes } from "@/domain/document/title";
 
 /** 보통약관 탭의 편집 상태 안에서 — `editing` 이면 편집 모드로 시작한다. */
 function inTab(editing: boolean, node: ReactNode, overrides: Parameters<typeof GeneralEditProvider>[0]["overrides"] = [], hidden: string[] = []) {
@@ -56,7 +57,7 @@ const clauses: Clause[] = [
 const article: ArticleNode = {
   id: "A1",
   kind: "article",
-  title: "지급사유",
+  title: titleNodes("지급사유", "A1"),
   children: [
     {
       id: "P1",
@@ -150,7 +151,7 @@ describe("TemplateSource — 함수조항 상자 안에 모델을 편다 (2026-0
       { id: "cc", kind: "condBlock", branches: [{ id: "cb", when: "D0001 = '입원'", children: [{ id: "cp2", kind: "paragraph", children: [{ id: "ct2", kind: "text", text: "입원 조건 항" }] }] }] },
     ],
   };
-  const host: ArticleNode = { id: "A1", kind: "article", title: "대표자", children: [{ id: "R1", kind: "clauseBlockRef", clauseCode: "C0002", options: { O01: "V01" } }] };
+  const host: ArticleNode = { id: "A1", kind: "article", title: titleNodes("대표자", "A1"), children: [{ id: "R1", kind: "clauseBlockRef", clauseCode: "C0002", options: { O01: "V01" } }] };
 
   it("머리 띠 「[코드] 이름」(함수조항 화면 링크 없음) · 슬롯 · 옵션 자리(고른 것 ✓) · 조건 · 오버라이드가 모델에 반영", () => {
     const html = renderToStaticMarkup(
@@ -204,7 +205,7 @@ describe("TemplateSource — 읽기 전용 (특별약관 탭 가운데, 2026-10-
 });
 
 describe("TemplateSource — 조를 감싼 조건 블록 (Important-3)", () => {
-  const plain = (id: string, title: string): ArticleNode => ({ id, kind: "article", title, children: [] });
+  const plain = (id: string, title: string): ArticleNode => ({ id, kind: "article", title: titleNodes(title, id), children: [] });
   const cond: CondBlockNode = {
     id: "C1",
     kind: "condBlock",
@@ -266,7 +267,7 @@ describe("TemplateSource — 인자 있는 함수조항 상자는 접힌다 (최
       },
     ],
   };
-  const host: ArticleNode = { id: "A9", kind: "article", title: "납입면제", children: [{ id: "CB1", kind: "clauseBlockRef", clauseCode: "C0200", options: {} }] };
+  const host: ArticleNode = { id: "A9", kind: "article", title: titleNodes("납입면제", "A9"), children: [{ id: "CB1", kind: "clauseBlockRef", clauseCode: "C0200", options: {} }] };
 
   it("머리 줄 「인자 ← 연결(기본)」 · 칸 머리 = 값 이름 · 칸은 접힌 <details> (묶음 = 상자 id)", () => {
     const html = renderToStaticMarkup(
@@ -306,18 +307,18 @@ describe("TemplateSource — 함수조항 자리의 번호 (2026-10-03 사용자
   const nums = (html: string) => [...html.matchAll(/<span class="ts-doc-num">([^<]*?) ?<\/span>/g)].map((m) => m[1]);
 
   it("항 — 자리 번호 ②는 찍지 않고, 함수조항 안이 ②③, 뒤 항이 ④", () => {
-    const html = render({ id: "A1", kind: "article", title: "약관의 해석", children: [para("h1", "앞 항"), { id: "K", kind: "clauseBlockRef", clauseCode: "C0013", options: {} }, para("h2", "뒤 항")] });
+    const html = render({ id: "A1", kind: "article", title: titleNodes("약관의 해석", "A1"), children: [para("h1", "앞 항"), { id: "K", kind: "clauseBlockRef", clauseCode: "C0013", options: {} }, para("h2", "뒤 항")] });
     expect(nums(html)).toEqual(["①", "②", "③", "④"]);
   });
 
   it("호 — 함수조항 자리 <li> 가 호 2개만큼 세고, 안 목록은 2.부터", () => {
-    const html = render({ id: "A1", kind: "article", title: "조", children: [{ id: "P", kind: "paragraph", children: [], items: [item("h1"), { id: "K", kind: "clauseBlockRef", clauseCode: "C0200", options: {} }, item("h2")] }] });
+    const html = render({ id: "A1", kind: "article", title: titleNodes("조", "A1"), children: [{ id: "P", kind: "paragraph", children: [], items: [item("h1"), { id: "K", kind: "clauseBlockRef", clauseCode: "C0200", options: {} }, item("h2")] }] });
     expect(html).toContain('<li class="ts-doc-static-item" style="counter-increment:ts-doc-item 2">');
     expect(html).toContain('<ol class="ts-doc-items" style="counter-reset:ts-doc-item 1">');
   });
 
   it("목 — 함수조항 자리 <li> 가 목 2개만큼 세고, 안 목록은 나.부터", () => {
-    const html = render({ id: "A1", kind: "article", title: "조", children: [{ id: "P", kind: "paragraph", children: [], items: [{ id: "I", kind: "item", children: [], subitems: [sub("s1"), { id: "K", kind: "clauseBlockRef", clauseCode: "C0300", options: {} } as unknown as ReturnType<typeof sub>, sub("s2")] }] }] });
+    const html = render({ id: "A1", kind: "article", title: titleNodes("조", "A1"), children: [{ id: "P", kind: "paragraph", children: [], items: [{ id: "I", kind: "item", children: [], subitems: [sub("s1"), { id: "K", kind: "clauseBlockRef", clauseCode: "C0300", options: {} } as unknown as ReturnType<typeof sub>, sub("s2")] }] }] });
     expect(html).toContain('<li class="ts-doc-static-item" style="counter-increment:ts-doc-subitem 2">');
     expect(html).toContain('<ol class="ts-doc-subitems" style="counter-reset:ts-doc-subitem 1">');
   });
@@ -326,7 +327,7 @@ describe("TemplateSource — 함수조항 자리의 번호 (2026-10-03 사용자
 describe("TemplateSource — 호 목록 자리의 조건 블록 (hydration, 2026-10-15)", () => {
   it("가지 <li> 안의 호는 제 목록(<ol>)에 선다 — <li> 안에 <li> 를 바로 두지 않는다", () => {
     const cond: CondBlockNode = { id: "C", kind: "condBlock", branches: [{ id: "B1", when: "D0009 = true", children: [{ id: "i2", kind: "item", children: [text("i2t", "조건 안 호")] }] }] };
-    const article: ArticleNode = { id: "A1", kind: "article", title: "조", children: [{ id: "P", kind: "paragraph", children: [], items: [{ id: "i1", kind: "item", children: [] }, cond as never] }] };
+    const article: ArticleNode = { id: "A1", kind: "article", title: titleNodes("조", "A1"), children: [{ id: "P", kind: "paragraph", children: [], items: [{ id: "i1", kind: "item", children: [] }, cond as never] }] };
     const tree: DocumentNode = { id: "d", kind: "document", title: "", children: [article] };
     const html = renderToStaticMarkup(<TemplateSource productId="p1" nodes={[article]} numbers={numberTree(tree)} hidden={new Set()} references={new Map()} clauses={[]} overrides={[]} overrideTargets={[]} readOnly />);
     expect(html).toContain("조건 안 호");

@@ -1,4 +1,4 @@
-import { withCodes, type DocumentNode } from "../../../src/domain/document";
+import { withCodes, withInlineTitles, type DocumentNode } from "../../../src/domain/document";
 import { pickCombo } from "../_lib/combo";
 import { expect, test } from "../_lib/fixtures";
 import { NO_COORD, arrive, login, open, saveEdit } from "./_lib/app";
@@ -109,7 +109,8 @@ test.describe.serial("실물 재현(화면) ③b 사람처럼 — 말기신부�
     const a = (n: number) => `h-a${n}`;
     // 원문을 보고 친 글 — 제1조 보험금명은 담보 값 슬롯(D0001), 제2조 · 제4조 · 제5조는 함수조항 블록(조 참조 인자 「보험금의 지급사유 조」 ← 제1조)
     const firstArticle = { articleId: a(1) };
-    const tree = withCodes({
+    // 손으로 친 트리의 조 제목은 글 — 읽을 때처럼 [글 하나]로 이행해 둔다(조 제목 = 인라인 노드 목록, ADR-0088)
+    const tree = withCodes(withInlineTitles({
       id: "h-doc",
       kind: "document",
       title: `${NAME} 특별약관`,
@@ -152,7 +153,7 @@ test.describe.serial("실물 재현(화면) ③b 사람처럼 — 말기신부�
           { id: "h-a5-k", kind: "clauseBlockRef", clauseCode: HUMAN_CLAUSE_CODE, options: {} },
         ] },
       ],
-    } as unknown as DocumentNode);
+    } as unknown as DocumentNode));
     const clauseLabels = new Map(SEED.clauses.map((c) => [c.code, c.label]));
     const boxNames = new Map(SEED.boxes.map((b) => [b.code, b.name]));
     const authoring = new DocumentAuthoring(page, tree, { selfPaths: outlinePaths(tree), generalAncestors: generalAncestors(general) }, clauseLabels, boxNames);

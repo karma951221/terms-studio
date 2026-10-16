@@ -4,6 +4,8 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { ALPHA2607_AUTO } from "./config";
+import type { InlineNode } from "../../src/domain/document/nodes";
+import { foldTitle } from "../../src/domain/document/title";
 
 /**
  * 세 번째 실물 재현 상품 알파Plus2607 의 변환 결과(시드 JSON) — 2604 와 **공통화**한 모양 (QA/실물재현/알파플러스2607_모델명세).
@@ -17,6 +19,8 @@ import { ALPHA2607_AUTO } from "./config";
 const DATA = path.join(process.cwd(), "src/db/seed/data");
 const read = <T>(file: string): T => JSON.parse(readFileSync(path.join(DATA, file), "utf8")) as T;
 type Json = Record<string, unknown> & { id?: string; kind?: string; children?: Json[] };
+/** 조 제목 글 — 시드는 인라인 노드 목록이다 (ADR-0088). */
+const titleOf = (x: Json): string => (Array.isArray(x.title) ? foldTitle(x.title as InlineNode[]) : String(x.title ?? ""));
 
 const generals = read<{ code: string; tree: Json }[]>("generals.json");
 const documents = read<{ code: string; ownerCoverage: string; general: string; tree: Json }[]>("documents.json");
@@ -129,7 +133,7 @@ describe("통합형 특약 — 세부보장 안 「제N항」은 그 소제목(�
 
   it("4대양성종양(갱신형 가지) — 둘째 세부보장 1.③ 의 「제1항 및 제2항」 · 「3.(보장의 소멸) 제3항」이 둘째 세부보장의 1.① · 1.② · 3.③ 을 가리킨다", () => {
     const d = documents.find((x) => x.tree.title === "4대양성종양진단비보장 특별약관")!;
-    const a = all(d.tree, (x) => x.kind === "article" && x.title === "세부보장에 관한 사항" && String(x.id).endsWith("r-a3"))[0];
+    const a = all(d.tree, (x) => x.kind === "article" && titleOf(x) === "세부보장에 관한 사항" && String(x.id).endsWith("r-a3"))[0];
     const groups = groupsOf(a);
     // 세부보장 넷 × 소제목 셋(1. 지급사유 · 2. 정의 · 3. 소멸) — 무리 열둘
     expect(groups).toHaveLength(12);
@@ -171,19 +175,19 @@ describe("특약 자체의 납입면제 — 「납입면제 있음」 IF 로 통
   const ownIf = (x: Json) => x.kind === "condBlock" && String(x.id).endsWith("-if-own-waiver");
 
   it("조째 — 「보험료의 납입면제」 · 「납입면제에 관한 세부규정」 조는 모두 조 자리 IF 안에 있다", () => {
-    const docs = documents.filter((d) => all(d.tree, (x) => x.kind === "article" && (x.title === "보험료의 납입면제" || x.title === "납입면제에 관한 세부규정")).length > 0);
+    const docs = documents.filter((d) => all(d.tree, (x) => x.kind === "article" && (titleOf(x) === "보험료의 납입면제" || titleOf(x) === "납입면제에 관한 세부규정")).length > 0);
     expect(docs.length).toBe(5);
     for (const d of docs) {
       const wrapped = all(d.tree, ownIf);
       const inside = new Set(wrapped.flatMap((w) => all(w, (x) => x.kind === "article").map((a) => a.id)));
-      for (const a of all(d.tree, (x) => x.kind === "article" && (x.title === "보험료의 납입면제" || x.title === "납입면제에 관한 세부규정"))) expect(inside, `${d.tree.title} ${a.id}`).toContain(a.id);
+      for (const a of all(d.tree, (x) => x.kind === "article" && (titleOf(x) === "보험료의 납입면제" || titleOf(x) === "납입면제에 관한 세부규정"))) expect(inside, `${d.tree.title} ${a.id}`).toContain(a.id);
       for (const w of wrapped) expect((w.branches as { when: string }[]).map((b) => b.when)).toEqual([WHEN]);
     }
   });
 
   it("통합형 특약 — 세부보장마다 납입면제 소제목 자리(머리 박스부터)가 조 안 IF 하나", () => {
     const d = documents.find((x) => x.tree.title === "암 주요치료비(연간1회한, 10년간)보장 특별약관")!;
-    const article = all(d.tree, (x) => x.kind === "article" && x.title === "세부보장에 관한 사항")[0];
+    const article = all(d.tree, (x) => x.kind === "article" && titleOf(x) === "세부보장에 관한 사항")[0];
     const wrapped = (article.children ?? []).filter(ownIf);
     // 세부보장 둘 — 소제목 「보험료의 납입면제」 · 「납입면제에 관한 세부규정」이 잇닿아 세부보장마다 IF 하나
     expect(wrapped).toHaveLength(2);

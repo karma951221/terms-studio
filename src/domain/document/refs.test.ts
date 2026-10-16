@@ -4,6 +4,7 @@ import { nodeBuilders, sequentialIds } from "./builders";
 import { surgeryFixture } from "./fixture";
 import type { DocumentNode } from "./nodes";
 import { codeChangeBreaks, collectRefs, requiredDiscriminators } from "./refs";
+import { titleNodes } from "@/domain/document/title";
 
 describe("기능/관계정보 §3 참조 그래프 — collectRefs 는 문서가 읽는 참조 전부를 좌표와 함께 뽑는다 (C1 역인덱스 재료)", () => {
   it("다중 조 참조를 대상 단위 간선으로 수집한다", () => {
@@ -83,8 +84,8 @@ describe("조 참조 인자 연결도 문서의 조 참조로 센다 (ADR-0083 �
       id: "d",
       title: "특약",
       children: [
-        { kind: "article", id: "a1", title: "지급사유", children: [] },
-        { kind: "article", id: "a2", title: "소멸", children: [{ kind: "clauseBlockRef", id: "k", clauseCode: "C0009", options: {}, bindings: { "지급사유 조": { kind: "articleRef", targets: [{ articleId: "a1" }], scope: "self" } } }] },
+        { kind: "article", id: "a1", title: titleNodes("지급사유", "a1"), children: [] },
+        { kind: "article", id: "a2", title: titleNodes("소멸", "a2"), children: [{ kind: "clauseBlockRef", id: "k", clauseCode: "C0009", options: {}, bindings: { "지급사유 조": { kind: "articleRef", targets: [{ articleId: "a1" }], scope: "self" } } }] },
       ],
     } as DocumentNode;
     const refs = collectRefs(doc).filter((r) => r.kind === "article");
@@ -110,7 +111,7 @@ describe("반복 원천이 읽는 마스터 필드 · 열거값 필드 (ADR-0077
         {
           kind: "article",
           id: "a1",
-          title: "납입면제",
+          title: titleNodes("납입면제", "a1"),
           children: [
             {
               kind: "forBlock",
@@ -120,7 +121,7 @@ describe("반복 원천이 읽는 마스터 필드 · 열거값 필드 (ADR-0077
             },
           ],
         },
-        { kind: "article", id: "a2", title: "정의", children: [{ kind: "forBlock", id: "f3", source: { kind: "union", form: "waiver", filter: "waiver.applies = true", field: "reasons", where: { field: "F03", value: true } }, children: [] }] },
+        { kind: "article", id: "a2", title: titleNodes("정의", "a2"), children: [{ kind: "forBlock", id: "f3", source: { kind: "union", form: "waiver", filter: "waiver.applies = true", field: "reasons", where: { field: "F03", value: true } }, children: [] }] },
       ],
     } as unknown as DocumentNode;
     const refs = collectRefs(doc).flatMap((r) => (r.kind === "repeatSource" ? [[r.path, r.where, r.at.nodePath?.at(-1), r.at.refPath]] : []));
@@ -141,7 +142,7 @@ describe("반복 원천이 읽는 마스터 필드 · 열거값 필드 (ADR-0077
         {
           kind: "article",
           id: "a1",
-          title: "지급사유",
+          title: titleNodes("지급사유", "a1"),
           children: [
             {
               kind: "forBlock",
@@ -191,5 +192,49 @@ describe("코드 수정 창의 영향 건수 — 이 문서 안에서 깨지는 
     const { doc, plain } = build();
     expect(codeChangeBreaks(doc, plain.id, "P0900")).toBe(2);
     expect(codeChangeBreaks(doc, plain.id, "P0200")).toBe(0);
+  });
+});
+
+describe("참조 그래프 — 인라인 반복 원천 간선 (기능/문면 §3.7 · ADR-0088)", () => {
+  it("합집합 원천 필드 · 거름 필드 · 거름 식의 마스터 필드가 repeatSource 로 난다 — 블록 반복과 같은 간선", () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    const source = { kind: "union" as const, form: "waiver", filter: "waiver.applies = true", field: "reasons", where: { field: "F03", value: true } };
+    const doc = b.document("d", [b.article("a", [b.paragraph([b.inlineFor(source, [b.text("a")], { connector: "및" })])])]);
+    const refs = collectRefs(doc).flatMap((r) => (r.kind === "repeatSource" ? [[r.path, r.where]] : []));
+    expect(refs).toEqual([
+      ["waiver.reasons", "F03"],
+      ["waiver.applies", undefined],
+    ]);
+  });
+
+  it("블록 반복 안 목록 원천은 바깥 종 반복의 폼 필드로 · 조 제목의 반복도 수집한다", () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    const inline = b.inlineFor({ kind: "listOfCurrent", loop: "?", field: "reasons" }, [b.text("a")], { connector: "및" });
+    const outer = b.forBlock({ kind: "planOptions", form: "waiver" }, [b.paragraph([inline])]);
+    inline.source = { kind: "listOfCurrent", loop: outer.id, field: "reasons" };
+    const title = b.inlineFor({ kind: "union", form: "waiver", field: "reasons" }, [b.text("t")], { connector: "및" });
+    const doc = b.document("d", [b.article([title], [outer])]);
+    const refs = collectRefs(doc).flatMap((r) => (r.kind === "repeatSource" ? [`${r.path}@${r.at.nodePath?.at(-1)}`] : []));
+    expect(refs).toEqual([`waiver.reasons@${title.id}`, `waiver.reasons@${inline.id}`]);
+  });
+});
+
+describe("참조 그래프 — 블록 반복의 「비었을 때」 칸 안 (ADR-0088 결정 4)", () => {
+  it("칸 안의 슬롯 · 조 참조 · 함수조항 참조 · 칸 안 반복의 원천도 간선이 난다 — 좌표 경로에 칸 표지", () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    const target = b.paragraph([b.text("대상")]);
+    target.code = "P0100";
+    const inner = b.forBlock({ kind: "union", form: "waiver", field: "reasons" }, [b.paragraph([b.text("사유")])]);
+    const loop = b.forBlock({ kind: "planOptions", form: "waiver", filter: "waiver.applies = true" }, [b.paragraph([b.text("본문")])], undefined, [
+      b.paragraph([b.slot("D0001"), b.articleRef({ articleId: "x", code: "P0100" }), b.clauseInline("C0001")]),
+      inner,
+    ]);
+    const article = b.article("조", [loop, target]);
+    const doc: DocumentNode = b.document("d", [{ ...article, id: "x" }]);
+    const refs = collectRefs(doc);
+    expect(refs.filter((r) => r.kind === "discriminator").map((r) => r.at.nodePath?.includes(`${loop.id}~empty`))).toEqual([true]);
+    expect(refs.some((r) => r.kind === "article" && r.code === "P0100")).toBe(true);
+    expect(refs.some((r) => r.kind === "clause" && r.clauseCode === "C0001")).toBe(true);
+    expect(refs.flatMap((r) => (r.kind === "repeatSource" && r.at.nodePath?.at(-1) === inner.id ? [r.path] : []))).toEqual(["waiver.reasons"]);
   });
 });

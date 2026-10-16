@@ -128,3 +128,31 @@ describe("함수조항 「호」 · 「목」 본문 — 자리 항 · 호로 �
     expect(dropPosition(indexTree(d), ["h2"], "m1", "after", clauseHiddenIds("item"))).toBeUndefined();
   });
 });
+
+describe("반복 블록의 「비었을 때」 칸 — 본문과 같은 블록 편집 (ADR-0088 결정 4)", () => {
+  /** 조 가(반복 r[본문 항 b1 · 칸 항 f1 · f2] · 항 p1). */
+  function loopDoc(): DocumentNode {
+    let n = 0;
+    const b = nodeBuilders(() => `y${++n}`);
+    const as = <T extends { id: string }>(node: T, id: string): T => ({ ...node, id });
+    const loop = as(b.forBlock({ kind: "planOptions", form: "waiver" }, [as(b.paragraph([b.text("본문")]), "b1")], undefined, [as(b.paragraph([b.text("칸1")]), "f1"), as(b.paragraph([b.text("칸2")]), "f2")]), "r");
+    return as(b.document("D", [as(b.article("가", [loop, as(b.paragraph([b.text("밖")]), "p1")]), "a1")]), "d");
+  }
+
+  it("칸 안 블록 앞 · 뒤에 놓으면 칸 자리(slot fallback) — 본문 항을 칸으로, 반복 밖 항을 칸으로 옮긴다", () => {
+    const tree = loopDoc();
+    const ix = indexTree(tree);
+    expect(dropPosition(ix, ["p1"], "f1", "after")).toEqual({ parentId: "r", slot: "fallback", index: 1 });
+    const moved = run(tree, moveRangeOps(tree, ["b1"], { parentId: "r", slot: "fallback", index: 2 }));
+    const loop = indexTree(moved).nodes.get("r")!.node as { children: { id: string }[]; fallback?: { id: string }[] };
+    expect(loop.children.map((c) => c.id)).toEqual([]);
+    expect(loop.fallback?.map((c) => c.id)).toEqual(["f1", "f2", "b1"]);
+  });
+
+  it("칸 안에서 위로 · 아래로 한 칸 — 칸 목록 안에서만", () => {
+    const tree = loopDoc();
+    const moved = run(tree, moveSelectionOps(tree, ["f2"], -1));
+    const loop = indexTree(moved).nodes.get("r")!.node as { fallback?: { id: string }[] };
+    expect(loop.fallback?.map((c) => c.id)).toEqual(["f2", "f1"]);
+  });
+});

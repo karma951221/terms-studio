@@ -9,6 +9,7 @@ import { alphaPlusFixture } from "./fixture";
 import { numberDocument, renderDocument } from "./render";
 import { resolveDocument } from "./resolve";
 import type { RenderedArticleRef, RenderedDoc, SubstitutedDoc } from "./types";
+import { titleNodes } from "@/domain/document/title";
 
 /**
  * 참조 대상 = 조 uuid + 조 안 P코드 (ADR-0072 결정 3 · 4 · 6 · 9 · 최종 결정 12) — 조립이 살아남은 트리에서 코드로 푼다.
@@ -55,7 +56,7 @@ function branchDoc(when: string): DocumentNode {
       {
         kind: "article",
         id: "a1",
-        title: "보험금의 지급사유",
+        title: titleNodes("보험금의 지급사유", "a1"),
         children: [
           {
             kind: "condBlock",
@@ -96,7 +97,7 @@ describe("수용 기준 5 — 코드 변경 (참조는 따라가지 않는다 ·
         {
           kind: "article",
           id: "a1",
-          title: "보험금의 지급사유",
+          title: titleNodes("보험금의 지급사유", "a1"),
           children: [
             { kind: "paragraph", id: "p1", code: "P0100", children: [text("t1", "다음과 같다.")], items: [{ kind: "item", id: "i1", code: "P0300", children: [text("ti", "첫 호")] }] },
             { kind: "paragraph", id: "p2", code: "P0200", children: [{ id: "r", kind: "articleRef", targets: [{ articleId: "a1", code: "P0300" }], scope: "self" }] },
@@ -141,13 +142,13 @@ describe("수용 기준 6 — 다른 항으로 옮겨도(들여쓰기 대신) �
         {
           kind: "article",
           id: "a1",
-          title: "보험금의 지급사유",
+          title: titleNodes("보험금의 지급사유", "a1"),
           children: [
             { kind: "paragraph", id: "p1", code: "P0100", children: [text("t1", "1항")], items: [{ kind: "item", id: "i1", code: "P0300", children: [text("ti", "호")] }] },
             { kind: "paragraph", id: "p2", code: "P0200", children: [text("t2", "2항")] },
           ],
         },
-        { kind: "article", id: "a2", title: "다른 조", children: [{ kind: "paragraph", id: "q1", code: "P0100", children: [{ id: "r", kind: "articleRef", targets: [{ articleId: "a1", code: "P0300" }], scope: "self" }] }] },
+        { kind: "article", id: "a2", title: titleNodes("다른 조", "a2"), children: [{ kind: "paragraph", id: "q1", code: "P0100", children: [{ id: "r", kind: "articleRef", targets: [{ articleId: "a1", code: "P0300" }], scope: "self" }] }] },
       ],
     };
     expect(refsOf(assembleDoc(doc).doc).map((x) => x.label)).toEqual(["제1조(보험금의 지급사유) 제1항 제1호"]);
@@ -197,7 +198,7 @@ describe("함수조항 — 값별 분기 칸의 같은 자리 항은 코드를 �
     children: ["V01", "V03"].map((value, i) => ({
       kind: "article" as const,
       id: `a${i + 1}`,
-      title: `정의 ${value}`,
+      title: titleNodes(`정의 ${value}`, `a${i + 1}`),
       children: [{ kind: "clauseBlockRef" as const, id: `k${i + 1}`, code: "P0100", clauseCode: "C0400", options: {}, bindings: { 사유: { kind: "const" as const, value } } }],
     })),
   };

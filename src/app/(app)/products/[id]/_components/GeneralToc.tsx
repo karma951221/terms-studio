@@ -13,6 +13,7 @@
  * - 조 제목은 진짜 주소(`…&art=<조 id>`)를 가진 링크지만 누르면 **서버로 가지 않는다** — 고른 조만 바꾸고 주소는
  *   `replaceState` 로 맞춘다 (`selectArticleOnClick` · 2026-09-28 사용자 QA「목차를 누르면 새로고침된다」).
  */
+import { foldTitle } from "@/domain/document";
 import type { Id } from "@/domain/types";
 
 import { generalArticlePath } from "../../lib";
@@ -78,7 +79,7 @@ export function GeneralToc({
             // 저장 거부 + 지금 상태의 참조 깨짐(가리키는 조 · 밖의 참조면 원인 조, ADR-0081) — 같은 문구는 한 번
             const errors = [...new Set([...(edit?.errors.articles.get(a.id) ?? []), ...(edit?.breaks ?? []).filter((i) => i.at.articleId === a.id).map((i) => i.message)])];
             const copy = edit?.current.copies[a.id];
-            const label = copy ? `${a.number}(${copy.article.title})` : edit ? `${a.number}(${a.templateTitle})` : a.label;
+            const label = copy ? `${a.number}(${foldTitle(copy.article.title)})` : edit ? `${a.number}(${a.templateTitle})` : a.label;
             const state = edit ? copyStateOf(copy, a.templateHash) : undefined;
             return (
               <div key={a.id} id={`toc-${a.id}`} className={hidden ? "ts-toc-row is-hidden-article" : "ts-toc-row"}>

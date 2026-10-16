@@ -7,14 +7,15 @@ import { placeMenu, type MenuEnv } from "@/app/(app)/documents/[id]/_components/
 import { indexTree, type DocumentNode } from "@/domain/document";
 
 import { COPY_REFUSAL, copyScopeMenu } from "./copyMenus";
+import { titleNodes } from "@/domain/document/title";
 
 const tree: DocumentNode = {
   id: "doc",
   kind: "document",
   title: "보통약관",
   children: [
-    { id: "a1", kind: "article", title: "목적", children: [{ id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text: "본문" }] }] },
-    { id: "a2", kind: "article", title: "지급", children: [] },
+    { id: "a1", kind: "article", title: titleNodes("목적", "a1"), children: [{ id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text: "본문" }] }] },
+    { id: "a2", kind: "article", title: titleNodes("지급", "a2"), children: [] },
   ],
 };
 let n = 0;

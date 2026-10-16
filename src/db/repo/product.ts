@@ -7,6 +7,7 @@ import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { type AttributeCodeKind, type AttributeSeq, sortAttributeValues } from "@/domain/product/attributes";
 import type { ArticleCopy } from "@/domain/product/articleCopies";
+import { normalizeArticle } from "@/domain/document/title";
 import type {
   AttributeKind,
   AttributeSelection,
@@ -230,7 +231,8 @@ export async function listArticleCopies(db: Db, productId: Id): Promise<ArticleC
     .from(productArticleCopies)
     .where(eq(productArticleCopies.productId, productId))
     .orderBy(asc(productArticleCopies.createdAt), asc(productArticleCopies.articleId));
-  return rows;
+  // 옛 글 조 제목은 읽을 때 [글 하나]로 (ADR-0088 결정 1) — 지문(`templateHash`)은 글 제목과 같은 뜻으로 세어 그대로 맞는다(articleHash)
+  return rows.map((r) => ({ ...r, article: normalizeArticle(r.article) }));
 }
 
 export async function upsertArticleCopy(db: Db, productId: Id, copy: ArticleCopy, who: Id): Promise<void> {

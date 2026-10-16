@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Clause } from "../clause/types";
 import { presetUses, renameBindingsIn, unfoldPresetsIn } from "./clausePresets";
 import type { DocumentNode } from "./nodes";
+import { titleNodes } from "@/domain/document/title";
 
 /** 프리셋 삭제 = 사용처를 직접 연결로 풀고 지운다 (ADR-0084 결정 7) · 관계정보 프리셋별 사용 수 (결정 8). */
 const 호: Clause = {
@@ -25,8 +26,8 @@ const tree = (): DocumentNode =>
     id: "d",
     title: "특약",
     children: [
-      { kind: "article", id: "a1", title: "면제", children: [{ kind: "clauseBlockRef", id: "k1", clauseCode: "C0022", options: {}, preset: "S01" }, { kind: "clauseBlockRef", id: "k2", clauseCode: "C0022", options: {}, preset: "S02" }] },
-      { kind: "article", id: "a2", title: "다른", children: [{ kind: "clauseBlockRef", id: "k3", clauseCode: "C0099", options: {}, preset: "S01" }] },
+      { kind: "article", id: "a1", title: titleNodes("면제", "a1"), children: [{ kind: "clauseBlockRef", id: "k1", clauseCode: "C0022", options: {}, preset: "S01" }, { kind: "clauseBlockRef", id: "k2", clauseCode: "C0022", options: {}, preset: "S02" }] },
+      { kind: "article", id: "a2", title: titleNodes("다른", "a2"), children: [{ kind: "clauseBlockRef", id: "k3", clauseCode: "C0099", options: {}, preset: "S01" }] },
     ],
   }) as DocumentNode;
 

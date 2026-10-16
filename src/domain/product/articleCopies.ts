@@ -9,6 +9,7 @@
  *   변경 감지용이지 보안용이 아니다.
  */
 import { indexTree, type ArticleNode, type BlockNode, type DocumentNode, type SectionNode } from "../document/nodes";
+import { textOnlyTitle } from "../document/title";
 import type { Id } from "../types";
 
 /** 상품의 조 사본 한 건 — 자리(템플릿 조 id) · 내용 · 만들 때(또는 「사본 유지」 때)의 템플릿 조 지문. */
@@ -47,14 +48,25 @@ function cyrb53(str: string): string {
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16).padStart(14, "0");
 }
 
+/**
+ * 지문 · 같음 비교의 조 모양 — 글로만 된 제목(작업용 글자색 없음)은 옛 글 제목과 같은 글로 센다 (ADR-0088 결정 1).
+ * 옛 글 제목으로 만든 사본의 지문이 제목 이행(읽을 때 [글 하나]) 뒤에도 그대로 맞고, 이행한 글의 id 에 흔들리지 않는다.
+ */
+function hashView(article: ArticleNode): unknown {
+  const raw: unknown = article.title;
+  if (!Array.isArray(raw)) return article;
+  const text = textOnlyTitle(article.title);
+  return text === undefined ? article : { ...article, title: text };
+}
+
 /** 조 하나의 내용 지문 — 제목 · 본문 · 하위 노드 id 까지. */
 export function articleHash(article: ArticleNode): string {
-  return cyrb53(stableStringify(article));
+  return cyrb53(stableStringify(hashView(article)));
 }
 
 /** 내용이 같은 조인가 (키 순서 무관). */
 export function sameArticle(a: ArticleNode, b: ArticleNode): boolean {
-  return stableStringify(a) === stableStringify(b);
+  return stableStringify(hashView(a)) === stableStringify(hashView(b));
 }
 
 /** 트리의 조 — 관 · 조건 블록 가지 안까지, 문서 순. */

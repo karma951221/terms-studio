@@ -13,6 +13,7 @@ import type { Result } from "@/domain/types";
 
 import { resolveSpecialSelection, specialCoverageGroups } from "../../lib";
 import { SpecialPreviewTab } from "./SpecialPreviewTab";
+import { titleNodes } from "@/domain/document/title";
 
 vi.mock("../../actions", () => ({ setOptionOverrideAction: () => {}, removeOptionOverrideAction: () => {} }));
 
@@ -41,7 +42,7 @@ const tree: DocumentNode = {
     {
       id: "A1",
       kind: "article",
-      title: "보험금의 지급사유",
+      title: titleNodes("보험금의 지급사유", "A1"),
       children: [
         { id: "P1", kind: "paragraph", children: [{ id: "t1", kind: "text", text: "회사는 상해로 사망한 경우" }] },
         { id: "R1", kind: "clauseBlockRef", clauseCode: "C0002", options: { O01: "V01" } },

@@ -31,12 +31,14 @@ export type ToolId =
   | "clauseBlock"
   | "box"
   | "forBlock"
+  | "forFallback"
   | "slot"
   | "articleRef"
   | "appendixRef"
   | "clauseInline"
   | "structKey"
   | "particle"
+  | "inlineFor"
   | "optionSlot"
   | "cond"
   | "inlineCond"
@@ -130,6 +132,14 @@ export const DOC_TOOLS: ToolGroup[] = [
         match: oneOf("아래에 반복 블록 추가…", "반복 블록 추가…", "반복 블록(호) 추가…", "이 반복에 반복 블록 추가…"),
         multi: true,
       },
+      {
+        id: "forFallback",
+        label: "비었을 때",
+        title: "「비었을 때」 칸에 넣기 — 고른 반복 블록에, 원소가 0개일 때 그 자리에 나올 항 · 호 · 함수조항(본문과 같은 코드면 분기 짝)",
+        match: (l) => l.startsWith("「비었을 때」 칸에 "),
+        multi: true,
+        at: "context",
+      },
     ],
   },
   {
@@ -139,6 +149,14 @@ export const DOC_TOOLS: ToolGroup[] = [
       { id: "articleRef", label: "조 참조", icon: "link", short: "참조", title: "조 참조 넣기 — 커서 자리에 다른 조 · 항 · 호 번호", match: oneOf("조 참조…") },
       { id: "appendixRef", label: "별표 참조", icon: "attach", short: "별표", title: "별표 참조 넣기 — 커서 자리에 <별표> 번호", match: oneOf("별표 참조…") },
       { id: "particle", label: "조사", icon: "particle", short: "조사", title: "조사 넣기 — 커서 자리에, 앞 글자 받침에 따라 을/를처럼 바뀌는 조사", match: (l) => l.startsWith("조사 — "), multi: true },
+      {
+        id: "inlineFor",
+        label: "문장 안 반복",
+        icon: "repeat",
+        short: "문장 반복",
+        title: "문장 안 반복 넣기 — 커서 자리에, 무엇마다(종 · 사유 · 합집합) 되풀이해 「A, B 및 C」로 잇는다. 원소가 없으면 「비었을 때」 칸. 한 겹만",
+        match: oneOf("문장 안 반복…"),
+      },
       { id: "clauseInline", label: "문장 안 함수조항", title: "문장 안 함수조항 넣기 — 커서 자리에 「문구」 함수조항", match: oneOf("함수조항(문장 안)…"), at: "more" },
       { id: "structKey", label: "행 이름", title: "행 이름 넣기 — 반복 표 템플릿 셀의 커서 자리에, 행마다 그 행의 이름이 찍힌다", match: oneOf("구조 표기…"), at: "context" },
       { id: "optionSlot", label: "옵션 자리", title: "옵션 자리 넣기 — 커서 자리에 옵션 하나의 자리", match: (l) => l.startsWith("옵션 자리 — "), multi: true },
@@ -187,7 +205,7 @@ export const DOC_TOOLS: ToolGroup[] = [
 ];
 
 /** 함수조항 본문에 없는 도구 — 함수조항 툴바에서 빠진다 (기능/함수조항 §4.3). 조 · 관 · 함수조항은 남고 잠긴다(사유 tooltip). */
-const CLAUSE_HIDDEN = new Set<ToolId>(["table", "structKey", "repeat", "link", "forBlock"]);
+const CLAUSE_HIDDEN = new Set<ToolId>(["table", "structKey", "repeat", "link", "forBlock", "forFallback", "inlineFor"]);
 
 export const CLAUSE_TOOLS: ToolGroup[] = DOC_TOOLS.map((g) => ({ ...g, tools: g.tools.filter((t) => !CLAUSE_HIDDEN.has(t.id)) })).filter((g) => g.tools.length > 0);
 

@@ -7,7 +7,8 @@
  *
  * DB·React import 금지 (순수층).
  */
-import { codeConflicts, codeFormatMessage, conflictMessage, fillCodes, suggestCode, type CodedEntry } from "../document/pcode";
+import { fallbackPathId } from "../document/nodes";
+import { codeConflicts, codeFormatMessage, conflictMessage, fillCodes, repeatArm, suggestCode, type CodedEntry } from "../document/pcode";
 import type { Code, Id } from "../types";
 import type { ClauseBody } from "./types";
 
@@ -23,6 +24,7 @@ type Loose = {
   subitems?: unknown[];
   branches?: { id?: Id; children?: unknown[] }[];
   cases?: { id?: Id; children?: unknown[] }[];
+  fallback?: unknown[];
 };
 
 /** 본문의 코드 자리 — 등장 순. 검증을 거치지 않은 입력도 견딘다. `nodes` 는 id → 노드(제자리 수정용). */
@@ -39,6 +41,13 @@ export function clauseCodeEntries(body: ClauseBody): { entries: CodedEntry[]; no
     const arms = n.kind === "condBlock" ? n.branches : n.kind === "switchBlock" ? n.cases : undefined;
     if (arms) {
       for (const arm of arms) list(arm?.children, [...branches, [String(n.id), String(arm?.id)] as const], depth, [...here, String(arm?.id)]);
+      return;
+    }
+    // 블록 반복 — 본문 ↔ 「비었을 때」 칸은 배타 짝 (ADR-0088 결정 4 — 문면 `repeatArm` 과 같은 규칙). 지금 함수조항 본문에는 반복이 서지 않는다(입력을 견딘다)
+    if (n.kind === "forBlock") {
+      const id = String(n.id);
+      list(n.children, [...branches, repeatArm(id, `${id}~body`)], depth, here);
+      list(n.fallback, [...branches, repeatArm(id, fallbackPathId(id))], depth, [...here, fallbackPathId(id)]);
       return;
     }
     if (!CODED.has(String(n.kind)) || typeof n.id !== "string") return;

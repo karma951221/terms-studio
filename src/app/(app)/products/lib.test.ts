@@ -37,6 +37,7 @@ import {
   specialPreviewPath,
   str,
 } from "./lib";
+import { titleNodes } from "@/domain/document/title";
 
 describe("products lib — 순수 파싱", () => {
   it("str — trim", () => {
@@ -89,7 +90,7 @@ describe("products lib — 상세 탭 좌표", () => {
 
 // ───────────────────────────── 보통약관의 관 ─────────────────────────────
 
-const art = (id: string, title = id): ArticleNode => ({ id, kind: "article", title, children: [] });
+const art = (id: string, title = id): ArticleNode => ({ id, kind: "article", title: titleNodes(title, id), children: [] });
 const sec = (id: string, title: string, children: SectionNode["children"]): SectionNode => ({ id, kind: "section", title, children });
 const doc = (children: DocumentNode["children"]): DocumentNode => ({ id: "D", kind: "document", title: "보통약관", children });
 
@@ -334,7 +335,7 @@ describe("products lib — 조립 미리보기의 조연결 판정 절 (기능/�
       id: "g",
       kind: "document",
       title: "보통약관",
-      children: [{ id: "g-a", kind: "article", title: "조", children: [{ id: "g-clause", kind: "clauseBlockRef", clauseCode: "C0003", options: {}, excludeFromComparison: true }] }],
+      children: [{ id: "g-a", kind: "article", title: titleNodes("조", "g-a"), children: [{ id: "g-clause", kind: "clauseBlockRef", clauseCode: "C0003", options: {}, excludeFromComparison: true }] }],
     };
     const labelOf = (code: string) => (code === "C0003" ? "면책 추가" : undefined);
     expect(excludedClauseLabel(tree, "g-clause", labelOf)).toBe("함수조항 C0003(면책 추가)");
