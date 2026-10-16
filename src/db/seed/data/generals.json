@@ -4219,31 +4219,9 @@
                       "kind": "article",
                       "title": [
                         {
-                          "id": "g-a27_3-title-for",
-                          "kind": "inlineFor",
-                          "source": {
-                            "kind": "union",
-                            "form": "waiver",
-                            "filter": "waiver.applies = true",
-                            "field": "reasons",
-                            "where": {
-                              "field": "F03",
-                              "value": true
-                            }
-                          },
-                          "connector": ",",
-                          "children": [
-                            {
-                              "id": "g-a27_3-title-for-v",
-                              "kind": "slot",
-                              "ref": "builtin.value.F01"
-                            }
-                          ]
-                        },
-                        {
-                          "id": "g-a27_3-title-tail",
+                          "id": "g-a27_3.title",
                           "kind": "text",
-                          "text": "의 정의 및 진단확정"
+                          "text": "보험료 납입면제 사유의 정의 및 진단확정"
                         }
                       ],
                       "children": [
@@ -10515,31 +10493,9 @@
                       "kind": "article",
                       "title": [
                         {
-                          "id": "m-a30-title-for",
-                          "kind": "inlineFor",
-                          "source": {
-                            "kind": "union",
-                            "form": "waiver",
-                            "filter": "waiver.applies = true",
-                            "field": "reasons",
-                            "where": {
-                              "field": "F03",
-                              "value": true
-                            }
-                          },
-                          "connector": ",",
-                          "children": [
-                            {
-                              "id": "m-a30-title-for-v",
-                              "kind": "slot",
-                              "ref": "builtin.value.F01"
-                            }
-                          ]
-                        },
-                        {
-                          "id": "m-a30-title-tail",
+                          "id": "m-a30.title",
                           "kind": "text",
-                          "text": "의 정의 및 진단확정"
+                          "text": "보험료 납입면제 사유의 정의 및 진단확정"
                         }
                       ],
                       "children": [
@@ -16958,31 +16914,9 @@
                       "kind": "article",
                       "title": [
                         {
-                          "id": "g-a27_3-title-for",
-                          "kind": "inlineFor",
-                          "source": {
-                            "kind": "union",
-                            "form": "waiver",
-                            "filter": "waiver.applies = true",
-                            "field": "reasons",
-                            "where": {
-                              "field": "F03",
-                              "value": true
-                            }
-                          },
-                          "connector": ",",
-                          "children": [
-                            {
-                              "id": "g-a27_3-title-for-v",
-                              "kind": "slot",
-                              "ref": "builtin.value.F01"
-                            }
-                          ]
-                        },
-                        {
-                          "id": "g-a27_3-title-tail",
+                          "id": "g-a27_3.title",
                           "kind": "text",
-                          "text": "의 정의 및 진단확정"
+                          "text": "보험료 납입면제 사유의 정의 및 진단확정"
                         }
                       ],
                       "children": [

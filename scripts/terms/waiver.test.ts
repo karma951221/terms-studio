@@ -82,10 +82,8 @@ const titleOf = (x: object): string => {
 };
 const articleOf = (tree: Json, title: string) => find(tree, (x) => x.kind === "article" && titleOf(x) === title)!;
 const APPLIED_SOURCE = { kind: "source", source: { form: "waiver", filter: "waiver.applies = true" } };
-/** 정의 조 제목의 인라인 반복 원천 — 적용 종들의 사유 합집합 ∩ 정의조대상(F03) = 예 (ADR-0088 결정 7). 본문 정의 함수조항들의 프리셋 ‘적용 종’과 같은 거름. */
-const DEFINITION_TITLE_SOURCE = { kind: "union", form: "waiver", filter: "waiver.applies = true", field: "reasons", where: { field: "F03", value: true } };
-/** 정의 조 제목을 접은 글 — 상품 문맥 없이는 반복 이름(ADR-0088 결정 6). 실제 글(원문 제목)은 real.test.ts 가 조립해 본다. */
-const DEFINITION_FOLDED = "〔납입면제사유 합집합(F03 = 예)마다〕의 정의 및 진단확정";
+/** 정의 조 제목 — 사유를 나열하지 않는 일반 고정 제목 (ADR-0088 결정 7, 2026-10-17). 원문(사유 나열)과의 차이는 허용 차이(knownDifferences.ts). */
+const DEFINITION_FOLDED = "보험료 납입면제 사유의 정의 및 진단확정";
 
 /** 템플릿 [납입면제종마다] 항의 호 목록 — 함수조항 참조의 (조, P코드) → 사유 (조 참조 대상 대조용). 참조 노드 id = `<조 id>-p1-k-<사유>`. */
 function itemRefsOf(tree: Json): { outer: Json; refs: Json[]; reasonOfCode: Map<string, string> } {
@@ -261,17 +259,13 @@ describe("통합간편 납입면제 템플릿 — 알파Plus 와 같은 모양, 
   });
 });
 
-describe("정의 조 제목 — 인라인 반복으로 재저작 (ADR-0088 결정 7)", () => {
-  it.each(["alpha-general", "alpha2607-general", "meritz-general"])("%s: 제목 = [사유 합집합(정의조대상 = 예)마다 〔약관표시명〕 · 쉼표만] + 「의 정의 및 진단확정」", (code) => {
+describe("정의 조 제목 — 일반 고정 제목 (ADR-0088 결정 7, 2026-10-17)", () => {
+  it.each(["alpha-general", "alpha2607-general", "meritz-general"])("%s: 제목 = 글 하나 「보험료 납입면제 사유의 정의 및 진단확정」 — 사유를 나열하지 않는다(문장 안 반복 없음)", (code) => {
     const tree = generals.find((g) => g.code === code)!.tree;
-    const titled = all(tree, (x) => x.kind === "article" && Array.isArray(x.title) && (x.title as Json[]).some((n) => n.kind === "inlineFor"));
+    expect(all(tree, (x) => x.kind === "article" && Array.isArray(x.title) && (x.title as Json[]).some((n) => n.kind === "inlineFor"))).toEqual([]);
+    const titled = all(tree, (x) => x.kind === "article" && titleOf(x) === DEFINITION_FOLDED);
     expect(titled).toHaveLength(1);
-    const title = titled[0].title as Json[];
-    expect(title.map((n) => n.kind)).toEqual(["inlineFor", "text"]);
-    expect(title[0]).toMatchObject({ kind: "inlineFor", source: DEFINITION_TITLE_SOURCE, connector: "," });
-    expect((title[0].children as Json[]).map((n) => [n.kind, n.ref])).toEqual([["slot", "builtin.value.F01"]]);
-    expect(title[0].fallback).toBeUndefined();
-    expect(title[1].text).toBe("의 정의 및 진단확정");
+    expect(titled[0].title).toEqual([{ id: `${titled[0].id}.title`, kind: "text", text: DEFINITION_FOLDED }]);
   });
 });
 

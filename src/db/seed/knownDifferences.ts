@@ -21,6 +21,11 @@ export interface KnownDifference {
   span?: [number, number];
   /** 줄 안 글 바꾸기 — 그 조의 모든 줄에서 `after`(글 조각)를 `lines[0]` 으로 바꾼다(조 참조의 조 명 표기 · 항 표지처럼 같은 조각이 여러 줄에 나오는 자리). */
   within?: true;
+  /**
+   * 파일 전체 글 바꾸기 — 그 파일의 모든 줄(조 헤딩 포함)에서 `after`(글 조각)를 `lines[0]` 으로 바꾼다. `article` 은 쓰지 않는다(「*」).
+   * 조 명 자체가 다른 자리(조 헤딩 + 그 조를 가리키는 조 참조 라벨이 어느 조 · 어느 파일에든 있다). 조 단위 차이(옛 조 명으로 찾는다)를 모두 얹은 뒤에 바꾼다.
+   */
+  everywhere?: true;
   /** 인수기준의 차이 이름 — 사람이 읽는다. */
   why: string;
 }
@@ -84,6 +89,45 @@ const AUTO_DIFFERENCES: KnownDifference[] = [
     why: "원문 오기(가능) — 갱신형 원문의 준용규정이 비갱신형 글이다: 같은 담보 템플릿의 준용규정(알파Plus)이 갱신형 탑재분에 갱신형 가지(다섯 조 무조건 제외)로 찍힌다",
   },
   within("기타피부암_및_갑상선암_항암방사선약물치료비보장.md", "보험금의 지급사유", "@ 회사는 보험증권에 기재된", "= 회사는 보험증권에 기재된", "원문 항 표지 — 항 하나인 조가 「①」로 적혀 있다: 항 하나인 조는 항 번호 없이(=) 찍힌다"),
+];
+
+/**
+ * 정의 조 제목 — 일반 고정 제목 (ADR-0088 결정 7, 2026-10-17 사용자 결정 · 허용 차이). 원문 「…의 정의 및 진단확정」은 사유를 나열하고,
+ * 모델은 사유를 나열하지 않는 「보험료 납입면제 사유의 정의 및 진단확정」이다. 조 참조 라벨은 대상 조의 제목으로 찍혀(조립이 푼 제목) 그 조를 가리키는 줄도 함께 바뀐다.
+ */
+const DEFINITION_TITLE = "보험료 납입면제 사유의 정의 및 진단확정";
+const ALPHA_DEFINITION_TITLE = "암(유사암제외), 뇌졸중, 급성심근경색증, 말기폐질환, 말기간경화, 말기신부전증, 양성뇌종양, 중대한재생불량성빈혈, 만성당뇨합병증의 정의 및 진단확정";
+const MERITZ_DEFINITION_TITLE = "암(유사암제외), 뇌졸중, 급성심근경색증, 중증화상및부식의 정의 및 진단확정";
+const definitionTitle = (dir: string, file: string, original: string): KnownDifference => ({
+  dir,
+  file,
+  article: "*",
+  after: original,
+  lines: [DEFINITION_TITLE],
+  everywhere: true,
+  why: "허용 차이 — 정의 조 제목은 사유를 나열하지 않는 일반 고정 제목(ADR-0088 결정 7): 원문은 사유 나열, 그 조를 가리키는 조 참조 라벨도 일반 제목으로 찍힌다",
+});
+/** 알파Plus2607 — 보통약관 제27조의3 을 「보통약관 제27조의3(…)」으로 가리키는 자동 탑재 특약(원문 사유 나열 그대로). */
+const ALPHA2607_DEFINITION_REFERRERS = [
+  "2대질환_주요치료비(연간1회한,_10년간)보장.md",
+  "비급여_암_주요치료비(전액본인부담_포함,_연간1회한,_10년간)보장.md",
+  "비급여_항암약물치료비(전액본인부담_포함,_연간1회한,_10년간)보장.md",
+  "상급종합병원,국립암센터_암_주요치료비(연간1회한,_10년간)(체증형)보장.md",
+  "상급종합병원,국립암센터_암_주요치료비(연간1회한,_10년간)보장.md",
+  "상급종합병원,국립암센터_통합암_주요치료비(연간1회한,_10년간)보장.md",
+  "상급종합병원,국립암센터_통합암_주요치료비(체증형)(연간1회한,_10년간)보장.md",
+  "상급종합병원_2대질환_주요치료비(연간1회한,_10년간)(체증형)보장.md",
+  "상급종합병원_2대질환_주요치료비(연간1회한,_10년간)보장.md",
+  "암_주요치료비(연간1회한,_10년간)(체증형)보장.md",
+  "암_주요치료비(연간1회한,_10년간)보장.md",
+  "통합암_주요치료비(연간1회한,_10년간)보장.md",
+  "통합암_주요치료비(체증형)(연간1회한,_10년간)보장.md",
+];
+const DEFINITION_TITLE_DIFFERENCES: KnownDifference[] = [
+  definitionTitle("", "보통약관.md", ALPHA_DEFINITION_TITLE),
+  definitionTitle("메리츠", "보통약관.md", MERITZ_DEFINITION_TITLE),
+  definitionTitle(A7, "보통약관.md", ALPHA_DEFINITION_TITLE),
+  ...ALPHA2607_DEFINITION_REFERRERS.map((file) => definitionTitle(A7, file, ALPHA_DEFINITION_TITLE)),
 ];
 
 const ALPHA2607_DIFFERENCES: KnownDifference[] = [
@@ -182,6 +226,7 @@ export const KNOWN_DIFFERENCES: readonly KnownDifference[] = [
     why: "표준화로 달라지는 표기 — 두 겹 연결어(「A 및 B 또는 C 및 D」)는 연결어 한 칸(마지막 앞에만, 결정 14): 값 한정 참조가 펼친 호를 한 참조로 나열한다 (제31조 ⑫ — 상해 장해 호 · 중증화상및부식)",
   },
   ...ALPHA2607_DIFFERENCES,
+  ...DEFINITION_TITLE_DIFFERENCES,
 ];
 
 const squash = (s: string) => s.replace(/\s+/g, "");
@@ -189,7 +234,8 @@ const squash = (s: string) => s.replace(/\s+/g, "");
 /** 원문 줄 → 기대 줄 — 그 파일의 알려진 차이를 적용한다. 자리를 못 찾으면 던진다(목록이 원문과 어긋난 것). */
 export function expectedLines(dir: string, file: string, source: readonly string[], list: readonly KnownDifference[] = KNOWN_DIFFERENCES): string[] {
   const out = [...source];
-  for (const d of list.filter((x) => x.dir === dir && x.file === file)) {
+  const mine = list.filter((x) => x.dir === dir && x.file === file);
+  for (const d of mine.filter((x) => !x.everywhere)) {
     const heading = out.findIndex((l) => /^##\s/.test(l) && squash(l).endsWith(`(${squash(d.article)})`));
     if (heading < 0) throw new Error(`알려진 차이 「${d.why}」: 조 「${d.article}」 없음`);
     const next = out.findIndex((l, i) => i > heading && /^##?\s/.test(l));
@@ -210,6 +256,15 @@ export function expectedLines(dir: string, file: string, source: readonly string
     if (at - before <= heading || at + after >= end) throw new Error(`알려진 차이 「${d.why}」: 바꾸기 범위가 조 「${d.article}」 밖으로 넘친다`);
     if (d.replace) out.splice(at - before, before + 1 + after, ...d.lines);
     else out.splice(at + 1, 0, ...d.lines);
+  }
+  for (const d of mine.filter((x) => x.everywhere)) {
+    let hits = 0;
+    for (let i = 0; i < out.length; i++) {
+      if (!out[i].includes(d.after)) continue;
+      out[i] = out[i].split(d.after).join(d.lines[0]);
+      hits++;
+    }
+    if (hits === 0) throw new Error(`알려진 차이 「${d.why}」: 파일 「${file}」 안에 「${d.after}」가 없다`);
   }
   return out;
 }

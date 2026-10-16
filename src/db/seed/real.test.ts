@@ -205,6 +205,12 @@ describe("★ 실물 재현 — 실물 시드 → 조립 → 원문 대조", () 
       const lines = renderedToLines(booklet().general!).map(normalizeLine);
       const raw = sourceToLines(readFileSync(path.join(FIXTURES, product.dir, "보통약관.md"), "utf8")).map(normalizeLine);
       for (const d of KNOWN_DIFFERENCES.filter((x) => x.dir === product.dir && x.file === "보통약관.md")) {
+        if (d.everywhere || d.within) {
+          // 줄 안 글 바꾸기 — 조립 어느 줄엔가 그 글이 있고, 원문 어느 줄에도 없다
+          expect(lines.some((l) => l.includes(normalizeLine(d.lines[0]))), d.why).toBe(true);
+          expect(raw.some((l) => l.includes(normalizeLine(d.lines[0]))), d.why).toBe(false);
+          continue;
+        }
         for (const l of d.lines) {
           expect(lines, d.why).toContain(normalizeLine(l));
           expect(raw, d.why).not.toContain(normalizeLine(l));
@@ -297,9 +303,8 @@ describe.each([ALPHA, ALPHA2607])("★ 실물 재현 변형 — %s 납입면제 
     expect(detail.find((l) => l.startsWith("@ 회사는 다른 약정이 없으면"))).toBeDefined();
   });
 
-  it("정의 조 — 사유 합집합 ∩ 정의조대상 = 암 · 뇌졸중만, 제목(인라인 반복)도 본문과 같은 두 사유 (ADR-0088 수용 기준 6)", () => {
-    expect(lines.some((l) => l.startsWith("## ") && l.includes("급성심근경색증, 말기폐질환"))).toBe(false);
-    const definition = article("암(유사암제외), 뇌졸중의 정의 및 진단확정");
+  it("정의 조 — 사유 합집합 ∩ 정의조대상 = 암 · 뇌졸중만, 제목은 사유와 무관한 일반 고정 제목 (ADR-0088 결정 7)", () => {
+    const definition = article("보험료 납입면제 사유의 정의 및 진단확정");
     expect(definition.filter((l) => l.startsWith("@ "))).toHaveLength(6);
     expect(definition.some((l) => l.includes("「급성심근경색증」"))).toBe(false);
   });
@@ -464,9 +469,8 @@ describe("★ 실물 재현 변형 — 메리츠 납입면제종이 하나면 �
     expect(detail.find((l) => l.startsWith("@ 회사는 다른 약정이 없으면"))).toContain("제29조(보험료의 납입면제) 제1항 제4호의 상해관련");
   });
 
-  it("정의 조 — 중증화상및부식이 빠진다(암 · 뇌졸중 · 급성심근경색증) — 제목(인라인 반복)도 따라온다 (ADR-0088 수용 기준 6)", () => {
-    expect(articleLines(lines, "암(유사암제외), 뇌졸중, 급성심근경색증, 중증화상및부식의 정의 및 진단확정")).toEqual([]);
-    const definition = articleLines(lines, "암(유사암제외), 뇌졸중, 급성심근경색증의 정의 및 진단확정");
+  it("정의 조 — 중증화상및부식이 빠진다(암 · 뇌졸중 · 급성심근경색증), 제목은 일반 고정 제목 그대로 (ADR-0088 결정 7)", () => {
+    const definition = articleLines(lines, "보험료 납입면제 사유의 정의 및 진단확정");
     expect(definition.filter((l) => l.startsWith("@ "))).toHaveLength(8);
     expect(definition.some((l) => l.includes("중증화상및부식(화학약품"))).toBe(false);
   });

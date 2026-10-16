@@ -24,6 +24,14 @@ describe("expectedLines — 알려진 차이를 원문 줄에 얹는다", () => 
     expect(() => expectedLines("테스트", "a.md", source, [{ ...swap, after: "없는 글" }])).toThrow(/없다/);
   });
 
+  it("파일 전체 글 바꾸기(everywhere) — 조 헤딩까지 모든 줄에서 바꾸고, 조 단위 차이(옛 조 명으로 찾는다)를 먼저 얹은 뒤에 바꾼다", () => {
+    const source = ["## 제1조(A, B의 정의)", "@ 첫 항", "## 제2조(다른 조)", "= 제1조(A, B의 정의)에 따라"];
+    const retitle = { dir: "테스트", file: "a.md", article: "*", after: "A, B의 정의", lines: ["사유의 정의"], everywhere: true as const, why: "제목" };
+    const split = { dir: "테스트", file: "a.md", article: "A, B의 정의", after: "@ 첫 항", lines: ["@ 첫", "항"], replace: true as const, why: "줄 나눔" };
+    expect(expectedLines("테스트", "a.md", source, [retitle, split])).toEqual(["## 제1조(사유의 정의)", "@ 첫", "항", "## 제2조(다른 조)", "= 제1조(사유의 정의)에 따라"]);
+    expect(() => expectedLines("테스트", "a.md", source, [{ ...retitle, after: "없는 글" }])).toThrow(/없다/);
+  });
+
   it("목록의 차이는 모두 제 자리를 찾는다 — 범위는 바꾸기(replace)에만 쓴다", () => {
     for (const d of KNOWN_DIFFERENCES) if (d.span) expect(d.replace, d.why).toBe(true);
   });

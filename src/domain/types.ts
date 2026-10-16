@@ -42,7 +42,8 @@ export function isReferenceConnector(value: unknown): value is ReferenceConnecto
 
 /**
  * 문장 안 반복의 연결어 (ADR-0088 결정 2) — 조 참조의 둘(및 · 또는) + 「,」(쉼표만 — 마지막 원소 앞에도 쉼표, 연결어 없음).
- * — 왜: 실물 정의 조 제목은 「암(유사암제외), 뇌졸중, …, 만성당뇨합병증의 정의 및 진단확정」처럼 쉼표로만 잇는다(알파Plus · 메리츠 원문 모두).
+ * — 왜: 실물 나열에는 쉼표로만 잇는 꼴이 있다(정의 조 제목 원문 「암(유사암제외), 뇌졸중, …, 만성당뇨합병증의 정의 및 진단확정」).
+ *   정의 조 제목은 일반 고정 제목이라(ADR-0088 결정 7, 2026-10-17) 나열하지 않지만 연결어는 남긴다.
  * 조 참조에는 「,」가 없다(위 `REFERENCE_CONNECTORS`).
  */
 export const INLINE_REPEAT_CONNECTORS = [...REFERENCE_CONNECTORS, ","] as const;
