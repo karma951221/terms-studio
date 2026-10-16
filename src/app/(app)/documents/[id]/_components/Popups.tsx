@@ -63,7 +63,7 @@ import { runsFromTokens } from "./inlineRuns";
 import { clausesFitting, type PopupSpec } from "./menus";
 import { PopActions, Popover } from "./Popover";
 import { RefTargetTree } from "./RefTargetTree";
-import { keyChoicesFor, restrictMode, restrictOfForm, treeLoopChoicesFor, treeLoopsAt } from "./restrict";
+import { keyChoicesFor, restrictHint, restrictMode, restrictOfForm, treeLoopChoicesFor, treeLoopsAt } from "./restrict";
 import { loopChoices, loopsAround, nodeTreeAt, repeatChoices, sourceOfValue, sourceValue } from "./repeatSources";
 import { CaseControls } from "./SwitchControls";
 import { unassignedValues } from "./switchCases";
@@ -303,7 +303,7 @@ function ArticleRefFields({ ctx, node, restrict, prefix = "", idBase = "pop-ref"
                     ))}
                   </div>
                 )}
-                <p className="ts-form-hint">반복(사유)으로 생긴 노드를 그 값이 낸 것만으로 좁힌다 — 펼친 뒤 0개면 조립 오류다. 대상은 사유 반복 안의 노드여야 한다.</p>
+                <p className="ts-form-hint">{restrictHint(mode, new Set(restrict.treeLoops.map((l) => l.id)), restrict.values.length > 0)}</p>
               </div>
             </div>
           )}
