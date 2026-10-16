@@ -7,7 +7,7 @@ import { expect, test } from "./_lib/fixtures";
  * 문장 안 반복 — 원천 · 연결어 · 「비었을 때」 칸 (ADR-0088 결정 1 · 2 · 3 · 수용 기준 3, 기능/문면 §3.12).
  *
  * 새 보통약관 템플릿의 항 문장에 툴바 「문장 안 반복」으로 「납입면제사유 합집합(적용여부 = 예인 선택지)마다」 반복을 넣는다 — 연결어 「및」,
- * 본문은 「현재 값」의 값 이름, 「비었을 때」 칸은 「해당 사유 없음」. 편집기 본문에는 자리 말 「〔…마다〕」 칩 하나만 선다.
+ * 본문은 「현재 값」의 약관표시명(열거형의 첫 문자 필드 — 값 이름은 찍지 않는다, ADR-0088 결정 1 · 2026-10-17), 「비었을 때」 칸은 「해당 사유 없음」. 편집기 본문에는 자리 말 「〔…마다〕」 칩 하나만 선다.
  * 사유 셋인 상품의 조립 미리보기는 「A, B 및 C」, 적용 종이 없는 상품은 칸 글이다. 시드는 건드리지 않는다 — 새 템플릿 · 새 상품만 쓴다.
  */
 
@@ -98,10 +98,12 @@ test(
       await expect(dialog).toHaveCount(0);
     });
 
-    await ev.action("문장반복#4", "이어 열린 반복 창 — 본문은 「현재 값」 슬롯, 「비었을 때」 칸에 「해당 사유 없음」을 쓰고 닫는다", async () => {
+    await ev.action("문장반복#4", "이어 열린 반복 창 — 본문은 「현재 값」의 약관표시명 슬롯(값 이름 아님), 「비었을 때」 칸에 「해당 사유 없음」을 쓰고 닫는다", async () => {
       const dialog = page.getByRole("dialog", { name: "문장 안 반복", exact: true });
       await expect(dialog).toBeVisible();
-      await expect(dialog.getByRole("textbox", { name: "원소마다", exact: true })).toContainText("builtin.value.name");
+      const each = dialog.getByRole("textbox", { name: "원소마다", exact: true });
+      await expect(each).toContainText("builtin.value.F01");
+      await expect(each).not.toContainText("builtin.value.name");
       const fallback = dialog.getByRole("textbox", { name: "비었을 때", exact: true });
       await fallback.click();
       await fallback.fill("해당 사유 없음");

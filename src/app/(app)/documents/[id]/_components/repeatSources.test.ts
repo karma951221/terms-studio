@@ -91,7 +91,7 @@ describe("문장 안 반복도 감싼 반복이다 (ADR-0088 결정 1 · 3)", ()
     expect(currentPlanOf(loopsAround(ix, inline.id, "fallback"))).toBeUndefined();
   });
 
-  it("「현재 값」 — 감싼 반복 중 원소가 열거값인 가장 안쪽 반복의 이름 · 열거형의 글 필드", () => {
+  it("「현재 값」 — 감싼 반복 중 원소가 열거값인 가장 안쪽 반복의 이름 · 열거형의 문자 필드(참거짓 필드 빼고)", () => {
     const b = nodeBuilders(sequentialIds("n"));
     const inline = b.inlineFor({ kind: "listOfCurrent", loop: "?", field: "reasons" }, [b.text("x")], { connector: "및" });
     const outer = b.forBlock({ kind: "planOptions", form: "waiver" }, [b.paragraph([inline])]);
@@ -102,6 +102,15 @@ describe("문장 안 반복도 감싼 반복이다 (ADR-0088 결정 1 · 3)", ()
     expect(currentValueOf(loopsAround(ix, inline.id), { enumOf: enumOf9 })).toEqual({ name: "납입면제사유마다", fields: [{ key: "F01", label: "약관표시명" }] });
     expect(currentValueOf(loopsAround(ix, outer.id), { enumOf: enumOf9 })).toBeUndefined();
     expect(currentPlanOf(loopsAround(ix, inline.id))).toEqual({ name: "납입면제종마다" });
+  });
+
+  it("「현재 값」 — 문자 필드가 없는 열거형 · 열거형을 모르면 묶음이 서지 않는다 (2026-10-17)", () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    const inline = b.inlineFor({ kind: "union", form: "waiver", field: "reasons" }, [b.text("x")], { connector: "및" });
+    const ix = indexTree(b.document("d", [b.article("a", [b.paragraph([inline])])]));
+    expect(currentValueOf(loopsAround(ix, inline.id), { enumOf })).toBeUndefined();
+    expect(currentValueOf(loopsAround(ix, inline.id))).toBeUndefined();
+    expect(currentValueOf(loopsAround(ix, inline.id), { enumOf: (c) => (c === "E0001" ? E9 : undefined) })?.fields).toEqual([{ key: "F01", label: "약관표시명" }]);
   });
 });
 

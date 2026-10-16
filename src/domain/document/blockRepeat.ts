@@ -254,10 +254,16 @@ export function inlineRepeatIssues(node: RepeatNode & { kind: "inlineFor" }, e: 
   return [];
 }
 
-/** 「현재 값」 슬롯 경로의 머리 — `builtin.value.name`(값 이름) · `builtin.value.<필드키>`(열거값 글 필드). */
+/**
+ * 「현재 값」 슬롯 경로의 머리 — `builtin.value.<필드키>`(그 열거형의 문자 필드만, ADR-0088 결정 1 · 2026-10-17).
+ * `builtin.value.name`(값 이름)은 알아보되 쓰면 오류다 — 값 이름은 관리용이라 약관에 새면 틀린 글이 된다.
+ */
 export const CURRENT_VALUE_PREFIX = "builtin.value.";
 
-/** 슬롯 경로 → 「현재 값」의 무엇. 「현재 값」 슬롯이 아니면 undefined. */
+/** 「현재 값」에 값 이름을 찍으려 할 때의 오류 (저장 검사 · 조립 공통). */
+export const CURRENT_VALUE_NAME_MESSAGE = "「현재 값」 슬롯은 열거형의 문자 필드만 찍습니다 — 값 이름은 관리용이라 약관에 찍지 않습니다 (ADR-0088 결정 1)";
+
+/** 슬롯 경로 → 「현재 값」의 무엇(`name` 은 금지 — 알아보기만 한다). 「현재 값」 슬롯이 아니면 undefined. */
 export function currentValueSlot(ref: string): { kind: "name" } | { kind: "field"; field: Code } | undefined {
   const r = ref.trim();
   if (!r.startsWith(CURRENT_VALUE_PREFIX)) return undefined;
@@ -265,9 +271,9 @@ export function currentValueSlot(ref: string): { kind: "name" } | { kind: "field
   return prop === "name" ? { kind: "name" } : { kind: "field", field: prop };
 }
 
-/** 「현재 값」 슬롯 경로 — 값 이름(필드 없음) 또는 열거값 필드. */
-export function currentValueRef(field?: Code): string {
-  return `${CURRENT_VALUE_PREFIX}${field ?? "name"}`;
+/** 「현재 값」 슬롯 경로 — 열거형의 문자 필드. */
+export function currentValueRef(field: Code): string {
+  return `${CURRENT_VALUE_PREFIX}${field}`;
 }
 
 /** 반복 노드의 원소 타입 — 감싼 반복(그 반복 자신을 감싼 것)의 가장 안쪽을 바깥 원천으로. */
@@ -281,7 +287,7 @@ function ownElementType(ix: TreeIndex, loop: RepeatNode, master: MasterTree): Lo
 /**
  * 현재 원소를 읽는 슬롯의 검사 (저장, ADR-0088 결정 1 · 3) — 「현재 종」(`builtin.plan.*`) · 「현재 값」(`builtin.value.*`).
  * - 「비었을 때」 칸 안에서 그 반복의 현재 원소를 읽으면 오류 — 칸은 원소 문맥 밖이다(바깥 반복의 원소는 읽는다).
- * - 「현재 값」은 원소가 열거값인 반복 안에서만 · 필드는 그 열거형의 글 필드만(열거형을 알 때).
+ * - 「현재 값」은 원소가 열거값인 반복 안에서만 · 그 열거형의 문자 필드만(값 이름은 늘 오류, 없는 필드 · 참거짓 필드는 열거형을 알 때).
  * 「현재 종」이 반복 밖에 선 것은 여기서 막지 않는다 — 조립의 미입력이다(옛 규칙 그대로).
  */
 export function currentSlotIssues(ref: string, e: Pick<NodeEntry, "path" | "node">, ix: TreeIndex, env: RepeatEnv, at: Coordinate): Issue[] {
@@ -297,12 +303,13 @@ export function currentSlotIssues(ref: string, e: Pick<NodeEntry, "path" | "node
     if (owner) return [{ kind: "structure", message: `「비었을 때」 칸은 원소 문맥 밖이라 ${value ? "「현재 값」" : "「현재 종」"}을 읽을 수 없습니다 — 칸에는 원소가 없을 때의 글을 쓴다 (ADR-0088 결정 3)`, at: here }];
     return value ? [{ kind: "structure", message: "「현재 값」 슬롯은 원소가 열거값(사유)인 반복 안에서만 씁니다", at: here }] : [];
   }
+  if (value?.kind === "name") return [{ kind: "typeMismatch", message: CURRENT_VALUE_NAME_MESSAGE, at: here }];
   if (value?.kind !== "field" || hit.kind !== "enum") return [];
   const def = env.enumOf?.(hit.enumCode);
   if (!def) return [];
   const field = def.fields?.find((f) => f.key === value.field);
   if (!field) return [{ kind: "brokenRef", message: `「현재 값」 필드 ${value.field} 이(가) 열거형 ${def.code} 에 없습니다`, at: here }];
-  if (field.type !== "string") return [{ kind: "typeMismatch", message: `「현재 값」 슬롯은 열거값 글 필드만 찍습니다 — ${field.label} 은(는) 참거짓 필드입니다`, at: here }];
+  if (field.type !== "string") return [{ kind: "typeMismatch", message: `「현재 값」 슬롯은 열거형의 문자 필드만 찍습니다 — ${field.label} 은(는) 참거짓 필드입니다`, at: here }];
   return [];
 }
 

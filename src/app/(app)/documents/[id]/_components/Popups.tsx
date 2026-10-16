@@ -23,6 +23,7 @@ import {
   indexTree,
   isParticlePreset,
   isRepeatSource,
+  loopElementType,
   multiTarget,
   nodeBuilders,
   paramOfRef,
@@ -808,9 +809,15 @@ function RepeatConnectorField({ value, onPick, idBase = "pop-repeat" }: { value?
   );
 }
 
-/** 문장 안 반복 본문의 첫 모양 — 원소를 바로 찍는 「현재 …」 슬롯 하나(종이면 종형명, 열거값이면 값 이름). 펼친 팝업에서 고친다. */
-function inlineRepeatBody(source: RepeatSource, b: ReturnType<typeof nodeBuilders>): InlineNode[] {
-  return [b.slot(source.kind === "planOptions" ? "builtin.plan.name" : currentValueRef())];
+/**
+ * 문장 안 반복 본문의 첫 모양 — 원소를 바로 찍는 「현재 …」 슬롯 하나(종이면 종형명, 열거값이면 그 열거형의 첫 문자 필드). 펼친 팝업에서 고친다.
+ * 열거값의 값 이름은 관리용이라 찍지 않는다 — 문자 필드가 없으면 본문을 비워 둔다 (ADR-0088 결정 1 · 2026-10-17).
+ */
+function inlineRepeatBody(source: RepeatSource, outer: RepeatSource | undefined, b: ReturnType<typeof nodeBuilders>, enumOf?: (code: Code) => EnumDef | undefined): InlineNode[] {
+  if (source.kind === "planOptions") return [b.slot("builtin.plan.name")];
+  const type = loopElementType(source, outer);
+  const field = type?.kind === "enum" ? enumOf?.(type.enumCode)?.fields?.find((f) => f.type === "string") : undefined;
+  return field ? [b.slot(currentValueRef(field.key))] : [];
 }
 
 /**
@@ -890,7 +897,8 @@ function InlineRepeatPopup({ env, spec, anchor, onClose }: { env: PopupEnv; spec
           const connector = str(fd, "connector");
           if (!isInlineRepeatConnector(connector)) return "연결어(및 · 또는 · 쉼표만)를 고른다 — 기본값이 없다.";
           const alias = str(fd, "alias");
-          const repeat = b.inlineFor(source, inlineRepeatBody(source, b), { connector, ...(alias ? { alias } : {}) });
+          const outer = around.at(-1)?.source;
+          const repeat = b.inlineFor(source, inlineRepeatBody(source, outer && isRepeatSource(outer) ? outer : undefined, b, env.enumOf), { connector, ...(alias ? { alias } : {}) });
           const list = inlineListAt(env.latest(), at);
           if (!list) return "문장 자리를 찾을 수 없다 — 다시 오른쪽 클릭한다.";
           return [{ type: "setInlines", at, runs: runsFromTokens(list, spec.tokens, env.newId, repeat) }];

@@ -69,7 +69,7 @@ describe("인라인 반복 — 원천 · 연결어 (ADR-0088 결정 1 · 2)", ()
 
   it("목록 필드 원천은 바깥 블록 반복이 있을 때만 — 그 바깥의 현재 종", () => {
     const b = make();
-    const inline = b.inlineFor({ kind: "listOfCurrent", loop: "?", field: "reasons" }, [b.slot("builtin.value.name")], { connector: "및" });
+    const inline = b.inlineFor({ kind: "listOfCurrent", loop: "?", field: "reasons" }, [b.slot("builtin.value.F01")], { connector: "및" });
     const outer = b.forBlock(종마다, [b.paragraph([inline])]);
     inline.source = { kind: "listOfCurrent", loop: outer.id, field: "reasons" };
     const doc = b.document("d", [b.article("a", [outer])]);
@@ -128,13 +128,13 @@ describe("「비었을 때」 칸 (ADR-0088 결정 3)", () => {
     const b = make();
     const plan = validateTree(sentence(b.inlineFor(종마다, [b.slot("builtin.plan.name")], { connector: "및", fallback: [b.slot("builtin.plan.name")] })), env);
     expect(messages(plan)).toEqual([expect.stringContaining("「비었을 때」 칸")]);
-    const value = validateTree(sentence(b.inlineFor(정의조대상마다, [b.slot("builtin.value.F01")], { connector: "및", fallback: [b.slot("builtin.value.name")] })), env);
+    const value = validateTree(sentence(b.inlineFor(정의조대상마다, [b.slot("builtin.value.F01")], { connector: "및", fallback: [b.slot("builtin.value.F01")] })), env);
     expect(messages(value)).toEqual([expect.stringContaining("「비었을 때」 칸")]);
   });
 
   it("칸 안이라도 바깥 블록 반복의 현재 종은 읽는다", () => {
     const b = make();
-    const inline = b.inlineFor({ kind: "listOfCurrent", loop: "?", field: "reasons" }, [b.slot("builtin.value.name")], { connector: "및", fallback: [b.slot("builtin.plan.name"), b.text(" 사유 없음")] });
+    const inline = b.inlineFor({ kind: "listOfCurrent", loop: "?", field: "reasons" }, [b.slot("builtin.value.F01")], { connector: "및", fallback: [b.slot("builtin.plan.name"), b.text(" 사유 없음")] });
     const outer = b.forBlock(종마다, [b.paragraph([inline])]);
     inline.source = { kind: "listOfCurrent", loop: outer.id, field: "reasons" };
     expect(validateTree(b.document("d", [b.article("a", [outer])]), env)).toEqual([]);
@@ -144,16 +144,25 @@ describe("「비었을 때」 칸 (ADR-0088 결정 3)", () => {
 describe("「현재 값」 슬롯 (ADR-0088 결정 1)", () => {
   it("열거값 반복 밖이면 오류 · 종 반복 안이어도 오류", () => {
     const b = make();
-    const outside = validateTree(b.document("d", [b.article("a", [b.paragraph([b.slot("builtin.value.name")])])]), env);
+    const outside = validateTree(b.document("d", [b.article("a", [b.paragraph([b.slot("builtin.value.F01")])])]), env);
     expect(messages(outside)).toEqual([expect.stringContaining("「현재 값」")]);
-    const inPlan = validateTree(sentence(b.inlineFor(종마다, [b.slot("builtin.value.name")], { connector: "및" })), env);
+    const inPlan = validateTree(sentence(b.inlineFor(종마다, [b.slot("builtin.value.F01")], { connector: "및" })), env);
     expect(messages(inPlan)).toEqual([expect.stringContaining("「현재 값」")]);
   });
 
-  it("열거값 글 필드만 — 없는 필드 · 참거짓 필드는 오류", () => {
+  it("열거형의 문자 필드만 — 없는 필드 · 참거짓 필드는 오류", () => {
     const b = make();
     expect(messages(validateTree(sentence(b.inlineFor(정의조대상마다, [b.slot("builtin.value.F09")], { connector: "및" })), env))).toEqual([expect.stringContaining("F09")]);
-    expect(messages(validateTree(sentence(b.inlineFor(정의조대상마다, [b.slot("builtin.value.F03")], { connector: "및" })), env))).toEqual([expect.stringContaining("글 필드")]);
+    expect(messages(validateTree(sentence(b.inlineFor(정의조대상마다, [b.slot("builtin.value.F03")], { connector: "및" })), env))).toEqual([expect.stringContaining("문자 필드")]);
+  });
+
+  it("값 이름(`builtin.value.name`)은 저장 오류 — 관리용이라 약관에 찍지 않는다 (2026-10-17 사용자 결정)", () => {
+    const b = make();
+    const inline = validateTree(sentence(b.inlineFor(정의조대상마다, [b.slot("builtin.value.name")], { connector: "및" })), env);
+    expect(inline.map((i) => i.kind)).toEqual(["typeMismatch"]);
+    expect(messages(inline)).toEqual([expect.stringContaining("값 이름")]);
+    const block = validateTree(b.document("d", [b.article("a", [b.forBlock(정의조대상마다, [b.paragraph([b.slot("builtin.value.name")])])])]), env);
+    expect(messages(block)).toEqual([expect.stringContaining("값 이름")]);
   });
 
   it("블록 반복(열거값 원소) 안에서도 읽는다", () => {
@@ -164,7 +173,7 @@ describe("「현재 값」 슬롯 (ADR-0088 결정 1)", () => {
 
   it("식 검사(문서 저장)도 통과한다 — 내장 경로", () => {
     const b = make();
-    const doc = sentence(b.inlineFor(정의조대상마다, [b.slot("builtin.value.F01"), b.text("·"), b.slot("builtin.value.name")], { connector: "및" }));
+    const doc = sentence(b.inlineFor(정의조대상마다, [b.slot("builtin.value.F01"), b.text("·"), b.slot("builtin.value.F01")], { connector: "및" }));
     expect(validateDocument(doc, { env, resolve: catalogTypeResolver([]), scope: {} })).toEqual([]);
   });
 });

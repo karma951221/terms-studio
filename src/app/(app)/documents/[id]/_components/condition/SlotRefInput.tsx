@@ -6,7 +6,7 @@
  * 반복 표 템플릿 셀 안(`context.row`)이면 그 아래에 트리가 붙는다: 맨 위 「현재 행」 가지(한정자 없음) · 그 아래 실제 노드 트리(`@노드` 고정).
  * 잎을 더블클릭하면 입력칸에 그 참조 경로가 들어간다 (ADR-0070 · 설계 §3.1).
  * 종 반복 안(`context.plan`)이면 맨 앞에 「현재 종」 묶음 — 종형명(`builtin.plan.name`) · 선택지 번호(`builtin.plan.number`) (ADR-0077 결정 3).
- * 열거값 반복 안(`context.value`)이면 그 앞에 「현재 값」 묶음 — 값 이름(`builtin.value.name`) · 열거값 글 필드(`builtin.value.<필드키>`) (ADR-0088 결정 1).
+ * 열거값 반복 안(`context.value`)이면 그 앞에 「현재 〈반복 이름〉」 묶음 — 그 열거형의 문자 필드(`builtin.value.<필드키>`)만, 값 이름은 없다 (ADR-0088 결정 1 · 2026-10-17).
  */
 import { useState } from "react";
 
@@ -27,8 +27,8 @@ const PLAN_SLOTS: readonly { path: string; label: string }[] = [
   { path: "builtin.plan.number", label: "선택지 번호" },
 ];
 
-/** 「현재 값」 묶음의 값 이름 줄. */
-const VALUE_NAME = "값 이름";
+/** 「현재 값」 묶음 이름 — 「현재 〈반복 이름〉」(「납입면제사유마다」 → 「현재 납입면제사유」, 「현재 종」 묶음과 같은 결). */
+const currentValueGroup = (loopName: string) => `현재 ${loopName.replace(/마다$/, "")}`;
 
 /** 후보 — 구분자 코드 하나씩, 붙는 레벨 순으로 묶는다. */
 export function slotOptions(context: ConditionContext): ComboOption[] {
@@ -37,7 +37,7 @@ export function slotOptions(context: ConditionContext): ComboOption[] {
   const locals = context.discriminators.filter((d) => d.local && slotable(d)).map((d) => ({ value: d.code, label: d.label, hint: d.code, group: "내부 변수" }));
   const plan = context.plan ? PLAN_SLOTS.map((p) => ({ value: p.path, label: p.label, hint: p.path, group: `현재 종 — ${context.plan!.name}` })) : [];
   const value = context.value
-    ? [{ key: undefined, label: VALUE_NAME }, ...context.value.fields].map((f) => ({ value: currentValueRef(f.key), label: f.label, hint: currentValueRef(f.key), group: `현재 값 — ${context.value!.name}` }))
+    ? context.value.fields.map((f) => ({ value: currentValueRef(f.key), label: f.label, hint: currentValueRef(f.key), group: currentValueGroup(context.value!.name) }))
     : [];
   return [
     ...value,
@@ -55,7 +55,8 @@ export function slotPathLabel(context: ConditionContext, path: string): string |
   const builtin = PLAN_SLOTS.find((p) => p.path === path);
   if (builtin) return `현재 종 › ${builtin.label}`;
   const current = currentValueSlot(path);
-  if (current) return `현재 값 › ${current.kind === "name" ? VALUE_NAME : (context.value?.fields.find((f) => f.key === current.field)?.label ?? current.field)}`;
+  if (current?.kind === "name") return undefined; // 값 이름은 찍지 않는다 — 경로 그대로 보이고 저장 검사가 잡는다
+  if (current) return `${context.value ? currentValueGroup(context.value.name) : "현재 값"} › ${context.value?.fields.find((f) => f.key === current.field)?.label ?? current.field}`;
   const [code, keyPath] = path.split("@");
   const d = context.discriminators.find((x) => x.code === code);
   if (!d) return undefined;

@@ -71,13 +71,13 @@ describe("블록 반복 「비었을 때」 칸 — 모양 · 색인 (ADR-0088 �
     const b = make();
     const plan = withRepeat(b, [b.paragraph([b.slot("builtin.plan.name")])], [b.paragraph([b.slot("builtin.plan.name")])]);
     expect(messages(validateTree(plan.doc, env))).toEqual([expect.stringContaining("「비었을 때」 칸")]);
-    const value = withRepeat(b, [b.paragraph([b.slot("builtin.value.F01")])], [b.paragraph([b.slot("builtin.value.name")])], 정의조대상마다);
+    const value = withRepeat(b, [b.paragraph([b.slot("builtin.value.F01")])], [b.paragraph([b.slot("builtin.value.F01")])], 정의조대상마다);
     expect(messages(validateTree(value.doc, env))).toEqual([expect.stringContaining("「비었을 때」 칸")]);
   });
 
   it("안쪽 반복의 칸 안이라도 바깥 반복의 현재 종은 읽는다", () => {
     const b = make();
-    const inner = b.forBlock({ kind: "listOfCurrent", loop: "?", field: "reasons" }, [b.item([b.slot("builtin.value.name")])], undefined, [b.item([b.slot("builtin.plan.name"), b.text(" — 사유 없음")])]);
+    const inner = b.forBlock({ kind: "listOfCurrent", loop: "?", field: "reasons" }, [b.item([b.slot("builtin.value.F01")])], undefined, [b.item([b.slot("builtin.plan.name"), b.text(" — 사유 없음")])]);
     const outer = b.forBlock(종마다, [b.paragraph([b.text("항")], [inner])]);
     inner.source = { kind: "listOfCurrent", loop: outer.id, field: "reasons" };
     expect(validateTree(b.document("d", [b.article("a", [outer])]), env)).toEqual([]);

@@ -18,7 +18,7 @@
  * - **인라인 반복**(inlineFor, ADR-0088)은 같은 원천 · 같은 원소 순서 · 같은 현재 원소 문맥으로 본문 인라인을 원소마다 복제해 잇는다 —
  *   쉼표, 마지막 원소 앞에만 연결어(「A」 · 「A 및 B」 · 「A, B 및 C」). 원소 0 이면 「비었을 때」 칸(원소 문맥 밖), 칸이 없으면 빈 글.
  *   조 제목도 같은 길(`article` 이 제목을 `inlines` 로 푼다).
- * - **「현재 값」 슬롯**(`builtin.value.*`)은 감싼 반복의 가장 안쪽 열거값 원소로 여기서 글로 바꾼다 — 값 이름 · 열거값 글 필드(미입력은 오류, 원천 좌표 = 열거형).
+ * - **「현재 값」 슬롯**(`builtin.value.*`)은 감싼 반복의 가장 안쪽 열거값 원소로 여기서 글로 바꾼다 — 그 열거형의 문자 필드(미입력은 오류, 원천 좌표 = 열거형). 값 이름(`builtin.value.name`)은 그 자리 오류(관리용 이름 — 2026-10-17).
  * - **행 반복 표**(ADR-0070 결정 6)는 특약 문맥의 행 원천(`ctx.rows` — 상품담보 스냅샷)으로 펼친다:
  *   key 조합마다 템플릿 행 복제 · 구조 표기 → key 표기 · 바깥 key 세로 병합(spans). 조합이 0 이면 표를 생략한다.
  *   행 안의 조건은 행 노드 문맥에서 해소하고, 슬롯은 행 노드(`RSlot.row`)를 달고 치환 단계로 넘긴다.
@@ -50,7 +50,7 @@ import type {
 import { applyBindings } from "../clause/bind";
 import { presetUsage } from "../clause/presets";
 import type { CurrentValue, LocalEnv } from "../clause/locals";
-import { cloneForElement, currentValueSlot } from "../document/blockRepeat";
+import { cloneForElement, CURRENT_VALUE_NAME_MESSAGE, currentValueSlot } from "../document/blockRepeat";
 import { enumCoordinate, enumFieldValue } from "../catalog/fields";
 import { templateIdOf } from "../document/repeat";
 import { repeatElementId, repeatElements, type RepeatElement } from "./blockRepeat";
@@ -303,7 +303,7 @@ class Walker {
     return out;
   }
 
-  /** 「현재 값」 슬롯 → 글 — 감싼 반복의 가장 안쪽 열거값 원소의 값 이름 · 열거값 글 필드 (ADR-0088 결정 1). */
+  /** 「현재 값」 슬롯 → 글 — 감싼 반복의 가장 안쪽 열거값 원소의 문자 필드 (ADR-0088 결정 1). 값 이름은 찍지 않고 그 자리 오류(관리용 이름). */
   currentValueText(n: { id: Id; ref: string }, f: Frame, at: Coordinate): RInline {
     const want = currentValueSlot(n.ref)!;
     const here = { ...at, refPath: n.ref };
@@ -313,7 +313,7 @@ class Walker {
     if (!def) return this.error(n.id, { kind: "brokenRef", message: `열거형 ${element.enumCode} 이(가) 없습니다`, at: here });
     const value = def.values.find((v) => v.code === element.code);
     if (!value) return this.error(n.id, { kind: "brokenRef", message: `열거값 ${element.code} 이(가) 열거형 ${def.code} 에 없습니다`, at: here });
-    if (want.kind === "name") return { kind: "text", id: n.id, text: value.label };
+    if (want.kind === "name") return this.error(n.id, { kind: "typeMismatch", message: CURRENT_VALUE_NAME_MESSAGE, at: here });
     const read = enumFieldValue(def, element.code, want.field);
     const label = def.fields?.find((x) => x.key === want.field)?.label ?? want.field;
     if (read.kind === "notEntered") return this.error(n.id, { kind: "notEntered", message: `열거값 ${value.label} 의 필드 ${label} 이(가) 미입력입니다 — 열거형 ${def.code} 에서 값을 넣는다`, at: here, source: enumCoordinate(def, element.code) });

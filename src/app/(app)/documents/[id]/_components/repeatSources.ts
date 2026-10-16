@@ -60,8 +60,9 @@ export function currentPlanOf(loops: readonly RepeatNode[], opts: { enumOf?: (co
 }
 
 /**
- * 「현재 값」 — 감싼 반복 중 원소가 열거값인 가장 안쪽 반복의 이름과 그 열거형의 글 필드. 슬롯 고르기의 「현재 값」 묶음(`builtin.value.name` ·
- * `builtin.value.<필드키>`)이 이것으로 선다 — 열거값 반복 밖에는 없다 (ADR-0088 결정 1). 열거형을 모르면 필드 없이 값 이름만.
+ * 「현재 값」 — 감싼 반복 중 원소가 열거값인 가장 안쪽 반복의 이름과 그 열거형의 문자 필드(참거짓 필드 · 값 이름 빼고). 슬롯 고르기의
+ * 「현재 〈반복 이름〉」 묶음(`builtin.value.<필드키>`)이 이것으로 선다 — 열거값 반복 밖에는 없고, 문자 필드가 없으면(열거형을 모를 때도) 서지 않는다
+ * (ADR-0088 결정 1 · 2026-10-17).
  */
 export function currentValueOf(loops: readonly RepeatNode[], opts: { enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree } = {}): { name: string; fields: { key: string; label: string }[] } | undefined {
   for (let i = loops.length - 1; i >= 0; i--) {
@@ -72,7 +73,7 @@ export function currentValueOf(loops: readonly RepeatNode[], opts: { enumOf?: (c
     if (type?.kind !== "enum") continue;
     const name = f.alias ?? repeatLabel(f.source, { ...(outer ? { outer } : {}), ...(opts.master ? { master: opts.master } : {}), ...(opts.enumOf ? { enumOf: opts.enumOf } : {}) });
     const fields = (opts.enumOf?.(type.enumCode)?.fields ?? []).filter((x) => x.type === "string").map((x) => ({ key: x.key, label: x.label }));
-    return { name, fields };
+    return fields.length > 0 ? { name, fields } : undefined;
   }
   return undefined;
 }

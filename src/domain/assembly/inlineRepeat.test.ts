@@ -59,23 +59,30 @@ describe("인라인 반복 조립 — 원소 수 · 연결어 (수용 기준 3)"
     expect(r).toEqual({ lines: ["제1조(적용)", "  1종 및 2종에 적용"], issues: [] });
   });
 
-  it("합집합: 3개 「A, B 및 C」(열거형 순서 · 같은 값 한 번) · 「또는」이면 그 자리 · 「현재 값」의 값 이름 · 글 필드", () => {
+  it("합집합: 3개 「A, B 및 C」(열거형 순서 · 같은 값 한 번) · 「또는」이면 그 자리 · 「현재 값」의 문자 필드", () => {
+    const fields = sentenceDoc([repeat("r", 사유합집합, [slot("s", "builtin.value.F01")]), text("t", "의 경우")]);
+    expect(run(two, fields)).toEqual({ lines: ["제1조(적용)", "  암(유사암제외), 뇌졸중 및 장해의 경우"], issues: [] });
+    const or = sentenceDoc([repeat("r", 사유합집합, [slot("s", "builtin.value.F01")], { connector: "또는" }), text("t", "의 경우")]);
+    expect(run(two, or).lines).toEqual(["제1조(적용)", "  암(유사암제외), 뇌졸중 또는 장해의 경우"]);
+  });
+
+  it("「현재 값」의 값 이름(`builtin.value.name`)은 글로 찍지 않고 그 자리 오류 — 관리용 이름이 약관에 새지 않는다 (2026-10-17)", () => {
     const names = sentenceDoc([repeat("r", 사유합집합, [slot("s", "builtin.value.name")]), text("t", "의 경우")]);
-    expect(run(two, names)).toEqual({ lines: ["제1조(적용)", "  암, 뇌졸중 및 장해의 경우"], issues: [] });
-    const fields = sentenceDoc([repeat("r", 사유합집합, [slot("s", "builtin.value.F01")], { connector: "또는" }), text("t", "의 경우")]);
-    expect(run(two, fields).lines).toEqual(["제1조(적용)", "  암(유사암제외), 뇌졸중 또는 장해의 경우"]);
+    const r = run(two, names);
+    expect(r.lines[1]).not.toContain("암, 뇌졸중");
+    expect(r.issues.map((i) => i.kind)).toEqual(["typeMismatch", "typeMismatch", "typeMismatch"]);
   });
 
   it("「쉼표만」(`,`) — 마지막 앞에도 쉼표: 3개 「A, B, C」 · 2개 「A, B」 · 1개 「A」", () => {
-    const doc = sentenceDoc([repeat("r", 사유합집합, [slot("s", "builtin.value.name")], { connector: "," }), text("t", "의 경우")]);
-    expect(run(two, doc)).toEqual({ lines: ["제1조(적용)", "  암, 뇌졸중, 장해의 경우"], issues: [] });
-    expect(run({ "opt-type-1": { applies: true, reasons: ["V03", "V01"] } }, doc).lines[1]).toBe("  암, 장해의 경우");
-    expect(run({ "opt-type-1": { applies: true, reasons: ["V01"] } }, doc).lines[1]).toBe("  암의 경우");
+    const doc = sentenceDoc([repeat("r", 사유합집합, [slot("s", "builtin.value.F01")], { connector: "," }), text("t", "의 경우")]);
+    expect(run(two, doc)).toEqual({ lines: ["제1조(적용)", "  암(유사암제외), 뇌졸중, 장해의 경우"], issues: [] });
+    expect(run({ "opt-type-1": { applies: true, reasons: ["V03", "V01"] } }, doc).lines[1]).toBe("  암(유사암제외), 장해의 경우");
+    expect(run({ "opt-type-1": { applies: true, reasons: ["V01"] } }, doc).lines[1]).toBe("  암(유사암제외)의 경우");
   });
 
   it("반복 뒤 조사는 펼친 뒤의 앞 글로 고른다 — 「…장해를」 · 칸이면 칸 글로 「해당 없음을」", () => {
-    const doc = sentenceDoc([repeat("r", 사유합집합, [slot("s", "builtin.value.name")], { fallback: [text("f", "해당 없음")] }), { id: "pp", kind: "particle", preset: "eul-reul" }, text("t", " 본다")]);
-    expect(run(two, doc).lines[1]).toBe("  암, 뇌졸중 및 장해를 본다");
+    const doc = sentenceDoc([repeat("r", 사유합집합, [slot("s", "builtin.value.F01")], { fallback: [text("f", "해당 없음")] }), { id: "pp", kind: "particle", preset: "eul-reul" }, text("t", " 본다")]);
+    expect(run(two, doc).lines[1]).toBe("  암(유사암제외), 뇌졸중 및 장해를 본다");
     expect(run({ "opt-type-1": { applies: true, reasons: [] } }, doc).lines[1]).toBe("  해당 없음을 본다");
   });
 
@@ -94,7 +101,7 @@ describe("인라인 반복 조립 — 원소 수 · 연결어 (수용 기준 3)"
   });
 
   it("원천 오류(미입력 목록값)는 반복 자리 오류 마커", () => {
-    const doc = sentenceDoc([repeat("r", 사유합집합, [slot("s", "builtin.value.name")])]);
+    const doc = sentenceDoc([repeat("r", 사유합집합, [slot("s", "builtin.value.F01")])]);
     const r = run({ "opt-type-1": { applies: true }, "opt-type-2": { applies: false } }, doc);
     expect(r.issues.map((i) => i.kind)).toEqual(["notEntered"]);
   });
@@ -102,14 +109,14 @@ describe("인라인 반복 조립 — 원소 수 · 연결어 (수용 기준 3)"
 
 describe("인라인 반복 — 블록 반복 안 · 조 제목", () => {
   it("블록 반복(종마다) 안의 목록 원천 — 현재 종의 사유만 · 열거형 순서", () => {
-    const inline = repeat("ri", { kind: "listOfCurrent", loop: "fo", field: "reasons" }, [slot("s", "builtin.value.name")], { fallback: [text("f", "없음")] });
+    const inline = repeat("ri", { kind: "listOfCurrent", loop: "fo", field: "reasons" }, [slot("s", "builtin.value.F01")], { fallback: [text("f", "없음")] });
     const outer: ForBlockNode = { id: "fo", kind: "forBlock", source: 종마다, children: [{ id: "p", kind: "paragraph", code: "P0100", children: [slot("ps", "builtin.plan.name"), text("pt", " — "), inline] }] };
     const doc: DocumentNode = { ...waiverTemplate(), children: [{ id: "x", kind: "article", title: titleNodes("사유", "x"), children: [outer] }] };
     const r = run({ "opt-type-1": { applies: true, reasons: ["V03", "V01"] }, "opt-type-2": { applies: true, reasons: [] } }, doc);
-    expect(r).toEqual({ lines: ["제1조(사유)", "  ① 1종 — 암 및 장해", "  ② 2종 — 없음"], issues: [] });
+    expect(r).toEqual({ lines: ["제1조(사유)", "  ① 1종 — 암(유사암제외) 및 장해", "  ② 2종 — 없음"], issues: [] });
   });
 
-  it("조 제목의 인라인 반복 — 정의조대상 사유의 약관표시명을 잇는다 (ADR-0088 결정 7 모양)", () => {
+  it("조 제목의 인라인 반복 — 사유의 약관표시명을 잇는다 (ADR-0088 결정 5 — 정의 조 제목은 일반 고정 제목이지만 제목 안 반복 기능은 남는다)", () => {
     const title: InlineNode[] = [repeat("tr", 정의조대상마다, [slot("ts", "builtin.value.F01")]), text("tt", "의 정의 및 진단확정")];
     const doc = sentenceDoc([text("b", "본문")], title);
     expect(run(two, doc)).toEqual({ lines: ["제1조(암(유사암제외) 및 뇌졸중의 정의 및 진단확정)", "  본문"], issues: [] });
