@@ -27,7 +27,7 @@ import { backspaceOps, enterOps, insertedChip, inlineListAt, moveSelectionOps, p
 import { EditorToolbar } from "@/app/(app)/documents/[id]/_components/EditorToolbar";
 import { caretFromPoint, tokensOf } from "@/app/(app)/documents/[id]/_components/Inline";
 import { identityRuns, runsFromTokens, sameRuns, type Token } from "@/app/(app)/documents/[id]/_components/inlineRuns";
-import { boxPickItems, clausePickItems, condInsertItem, condMenu, inlineCondItem, placeBlockId, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
+import { blockMenu, boxPickItems, clausePickItems, condInsertItem, condMenu, inlineCondItem, placeBlockId, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "@/app/(app)/documents/[id]/_components/menus";
 import { condInput, placeOf, readInline } from "@/app/(app)/documents/[id]/_components/place";
 import { usePlaceGate } from "@/app/(app)/documents/[id]/_components/placeGate";
 import { ContextMenu, Popover } from "@/app/(app)/documents/[id]/_components/Popover";
@@ -397,6 +397,7 @@ export function ArticleCopyEditor({ data, articleId, label }: { data: CopyEditor
     focusDone: () => setFocusRequest(undefined),
     contextMenu: onContextMenu,
     headItems: (branchId) => condMenu(menuEnv(), branchId).flat(),
+    blockItems: (nodeId) => blockMenu(menuEnv(), nodeId).flat(),
     run: (item, anchor) => runMenu(item, anchor),
     blockSel: drag.blockSel,
     selectBlock: drag.selectBlock,

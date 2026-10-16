@@ -3347,6 +3347,17 @@ label.ts-field > textarea:where(:not([data-slot])) {
   text-indent: 0;
 }
 
+/* 블록 반복의 「비었을 때」 칸 — 본문 아래 그 밖의 경우 가지 같은 파선 상자(ADR-0088 결정 4). 비었으면 편집 중에만 입구 버튼 한 줄 */
+.ts-doc-repeat-empty {
+  margin: 6px 0 0;
+}
+
+.ts-doc-repeat-empty-add {
+  margin: 2px 0 0;
+  font-family: var(--sans);
+  font-size: 12px;
+}
+
 /* 함수조항(조 단위) 블록 — 머리 띠 「함수조항 (이름)」 · 옵션 · 🗑, 그 아래 함수조항 본문(읽기 전용) */
 .ts-doc-clause {
   border: 1px solid var(--ts-clause-line);

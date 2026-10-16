@@ -706,7 +706,12 @@ function RepeatBlockPopup({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
         }}
       >
         <RepeatSourceFields choices={choices} current={current} alias={node?.alias} />
-        <p className="ts-muted">원소마다 본문을 복제한다 — 원소가 0 이면 블록이 없다. 반복 안에서는 현재 원소만 읽는다(함수조항 인자에 「현재 종 · 현재 원소」로 연결).</p>
+        <p className="ts-muted">원소마다 본문을 복제한다 — 반복 안에서는 현재 원소만 읽는다(함수조항 인자에 「현재 종 · 현재 원소」로 연결).</p>
+        <p className="ts-muted" data-fallback-note>
+          {(node?.fallback ?? []).length > 0
+            ? `「비었을 때」 칸 있음(블록 ${node!.fallback!.length}개) — 원소가 0 이면 반복 대신 칸 내용이 나온다. 칸은 본문 아래에서 고친다.`
+            : "「비었을 때」 칸 없음 — 원소가 0 이면 아무것도 없다. 넣으려면 블록 아래 「+ 비었을 때 내용」 · 툴바 「비었을 때」."}
+        </p>
         <PopActions onCancel={onClose} confirmLabel={node ? "적용" : "넣기"} />
       </PopForm>
     </Popover>

@@ -15,7 +15,7 @@
  * - 함수조항(조 단위)은 머리 띠 「함수조항 (이름)」 + 🗑 · 그 아래 함수조항의 **모델**(슬롯 · 옵션 자리 · 조건 · 참조, 읽기 전용)을 든 상자다.
  * - 노드 id·8자리 접두를 화면에 내보내지 않는다 (리뷰 #25).
  */
-import type { MouseEvent, ReactNode } from "react";
+import { useState, type MouseEvent, type ReactNode } from "react";
 
 import { IconButton, IconCopy, IconTrash } from "@/app/_components/icons";
 import { StaticTable } from "@/app/_components/StaticNodes";
@@ -494,10 +494,51 @@ function RepeatBlock({ node, ctx, as }: { node: Node & { kind: "forBlock" }; ctx
         ) : (
           <>⟳ {label}</>
         )}
+        {(node.fallback ?? []).length > 0 && <span className="ts-muted"> · 비었을 때 칸 있음</span>}
         <BlockActs id={node.id} what="반복 블록" ctx={ctx} inline />
       </p>
       <BlockIn nodes={node.children} ctx={ctx} as={as} />
+      <RepeatFallback node={node} ctx={ctx} as={as} />
     </Tag>
+  );
+}
+
+/**
+ * 블록 반복의 「비었을 때」 칸 (ADR-0088 결정 4 · 기능/문면 §3.12) — 본문 아래 그 밖의 경우 가지 같은 파선 상자. 원소가 0개면 조립이 이 내용을 그 자리에 편다.
+ * 칸 안 블록은 본문과 같은 블록 편집(블록 메뉴 · 끌기 · 위로/아래로 — 자리는 slot fallback). 접을 수 있다(편집기 표시만 — 저장되지 않는다).
+ * 칸이 비면 읽기에는 없고, 편집에는 입구 「+ 비었을 때 내용」 — 블록 메뉴의 「「비었을 때」 칸에 항 · 호 추가」와 같은 명령.
+ */
+function RepeatFallback({ node, ctx, as }: { node: Node & { kind: "forBlock" }; ctx: DocCtx; as: "div" | "li" }) {
+  const [open, setOpen] = useState(true);
+  const fallback = node.fallback ?? [];
+  const edit = ctx.edit;
+  if (fallback.length === 0) {
+    if (!edit) return null;
+    const add = edit.blockItems?.(node.id).find((i) => i.label.startsWith("「비었을 때」 칸에 ") && i.action.do === "ops" && !i.disabled);
+    return (
+      <p className="ts-doc-repeat-empty-add">
+        <button
+          type="button"
+          className="ts-doc-cond-btn"
+          disabled={!add}
+          title="「비었을 때」 칸 — 원소가 0개일 때 이 반복 자리에 나올 내용(비우면 아무것도 없다)"
+          onClick={(e) => add && edit.run(add, anchorOf(e.currentTarget))}
+        >
+          + 비었을 때 내용
+        </button>
+      </p>
+    );
+  }
+  return (
+    <div className={`ts-doc-cond is-alt ts-doc-repeat-empty${flash(ctx, node.id)}`} data-fallback={node.id}>
+      <p className="ts-doc-cond-head">
+        <button type="button" className="ts-doc-cond-btn" aria-expanded={open} aria-label={open ? "「비었을 때」 칸 접기" : "「비었을 때」 칸 펼치기"} onClick={() => setOpen(!open)}>
+          {open ? "▾" : "▸"}
+        </button>{" "}
+        <span className="ts-cond-badge">비었을 때</span> <span className="ts-muted">원소가 하나도 없으면 반복 대신 이 내용이 나온다{open ? "" : ` — ${fallback.length}개 블록`}</span>
+      </p>
+      {open && <BlockIn nodes={fallback} ctx={ctx} as={as} />}
+    </div>
   );
 }
 

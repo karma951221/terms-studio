@@ -79,7 +79,7 @@ import { ArticleBody } from "./DocBody";
 import { backspaceOps, enterOps, insertedChip, inlineListAt, moveSelectionOps, pasteGridOps } from "./editOps";
 import { caretFromPoint, tokensOf } from "./Inline";
 import { identityRuns, runsFromTokens, sameRuns, type Token } from "./inlineRuns";
-import { boxPickItems, clausePickItems, condInsertItem, condMenu, inlineCondItem, placeBlockId, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
+import { blockMenu, boxPickItems, clausePickItems, condInsertItem, condMenu, inlineCondItem, placeBlockId, placeExists, placeMenu, type MenuEnv, type MenuItem, type MenuSections, type Place, type PopupSpec } from "./menus";
 import { condInput, placeOf, readInline } from "./place";
 import { usePlaceGate } from "./placeGate";
 import { EditorToolbar } from "./EditorToolbar";
@@ -676,6 +676,7 @@ export function DocumentEditor(props: EditorProps) {
     focusDone: () => setFocusRequest(undefined),
     contextMenu: onContextMenu,
     headItems: (branchId) => condMenu(menuEnv(), branchId).flat(),
+    blockItems: (nodeId) => blockMenu(menuEnv(), nodeId).flat(),
     run: (item, anchor) => runMenu(item, anchor),
     blockSel: drag.blockSel,
     selectBlock: drag.selectBlock,

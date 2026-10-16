@@ -372,3 +372,39 @@ describe("조 제목 칸 — 본문 문장처럼 칩과 함께 그 자리에서 
     expect(html).toContain("을/를");
   });
 });
+
+describe("블록 반복의 「비었을 때」 칸 — 본문 아래 접을 수 있는 칸 (ADR-0088 결정 4)", () => {
+  function loopTree(withFallback: boolean) {
+    const b = nodeBuilders(sequentialIds("r"));
+    const loop = b.forBlock({ kind: "planOptions", form: "waiver" }, [b.paragraph([b.text("본문 항")])], "납입면제종마다", withFallback ? [b.paragraph([b.text("칸 항")])] : undefined);
+    const tree = b.document("D", [b.article("가", [loop])]);
+    return { tree, loop, nodes: (tree.children[0] as { children: DocumentNode["children"] }).children };
+  }
+
+  it("칸이 있으면 읽기 · 편집 모두 본문 아래에 「비었을 때」 칸과 그 블록 — 접기 버튼, 칸 안 항도 블록 자리(data-block)", () => {
+    const { tree, nodes } = loopTree(true);
+    for (const edit of [false, true]) {
+      const html = renderToStaticMarkup(<Block nodes={nodes} ctx={ctxOf(tree, edit)} />);
+      expect(html).toContain("data-fallback=");
+      expect(html).toContain("비었을 때");
+      expect(html).toContain("칸 항");
+      expect(html.indexOf("본문 항")).toBeLessThan(html.indexOf("칸 항"));
+      expect(html).toContain('aria-expanded="true"');
+    }
+  });
+
+  it("칸이 없으면 읽기에는 아무것도 없고, 편집에는 입구 「+ 비었을 때 내용」 하나", () => {
+    const { tree, nodes } = loopTree(false);
+    expect(renderToStaticMarkup(<Block nodes={nodes} ctx={ctxOf(tree, false)} />)).not.toContain("비었을 때");
+    const html = renderToStaticMarkup(<Block nodes={nodes} ctx={ctxOf(tree, true)} />);
+    expect(html).toContain("+ 비었을 때 내용");
+    expect(html).not.toContain("data-fallback=");
+  });
+
+  it("반복 머리 줄은 칸이 있음을 표시한다", () => {
+    const { tree, nodes } = loopTree(true);
+    expect(renderToStaticMarkup(<Block nodes={nodes} ctx={ctxOf(tree, false)} />)).toContain("· 비었을 때 칸 있음");
+    const none = loopTree(false);
+    expect(renderToStaticMarkup(<Block nodes={none.nodes} ctx={ctxOf(none.tree, false)} />)).not.toContain("칸 있음");
+  });
+});
