@@ -118,4 +118,9 @@ describe("담보 트리 원천 고르기 (ADR-0087 결정 5)", () => {
     const plan = { kind: "forBlock", id: "p", source: { kind: "planOptions", form: "waiver" }, children: [] } as unknown as ForBlockNode;
     expect(repeatChoices({ outer: plan, depth: 1, hasCoverage: true }).some((c) => c.source.kind === "benefitsOfCurrent")).toBe(false);
   });
+
+  it("문장 안 반복(hasCoverage 없음)은 「세부보장마다」 안에서도 트리 원천을 받지 않는다 (ADR-0088 결정 1 범위 밖)", () => {
+    const outer = { kind: "forBlock", id: "o", source: { kind: "subCoverages" }, children: [] } as unknown as ForBlockNode;
+    expect(repeatChoices({ outer, depth: 1 })).toEqual([]);
+  });
 });

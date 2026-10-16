@@ -197,3 +197,27 @@ describe("편집 명령 — 인라인 반복 (ADR-0088)", () => {
   });
 });
 
+
+describe("인라인 반복 — 담보 트리 원천은 범위 밖 (ADR-0088 결정 1 · ADR-0087 결정 5)", () => {
+  const special: TreeEnv = { ...env, kind: "special" };
+
+  it("담보약관이어도 「세부보장마다」 · 「세부보장 › 급부마다」 원천의 문장 안 반복 = 저장 오류", () => {
+    const b = make();
+    for (const source of [{ kind: "subCoverages" }, { kind: "benefits" }] as RepeatSource[]) {
+      const issues = validateTree(sentence(b.inlineFor(source, [b.text("x")], { connector: "및" })), special);
+      expect(messages(issues)).toEqual([expect.stringContaining("담보 트리")]);
+    }
+  });
+
+  it("「세부보장마다」 블록 반복 안의 문장 안 반복도 트리 원천(현재 세부보장의 급부마다)은 거부 · 세목 원천은 섞인 중첩으로 거부", () => {
+    const b = make();
+    const inline = b.inlineFor({ kind: "benefitsOfCurrent", loop: "?" }, [b.text("x")], { connector: "및" });
+    const outer = b.forBlock({ kind: "subCoverages" }, [b.paragraph([inline])]);
+    inline.source = { kind: "benefitsOfCurrent", loop: outer.id };
+    expect(messages(validateTree(b.document("d", [b.article("a", [outer])]), special))).toEqual([expect.stringContaining("담보 트리")]);
+    const b2 = make();
+    const plan = b2.inlineFor(종마다, [b2.text("x")], { connector: "및" });
+    const tree = b2.forBlock({ kind: "subCoverages" }, [b2.paragraph([plan])]);
+    expect(messages(validateTree(b2.document("d", [b2.article("a", [tree])]), special))).toEqual([expect.stringContaining("섞어 중첩")]);
+  });
+});

@@ -80,6 +80,7 @@ export function currentValueOf(loops: readonly RepeatNode[], opts: { enumOf?: (c
 /** 원천 칸 후보 — `outer` 는 이 자리를 감싼 가장 안쪽 반복(없으면 반복 밖). 두 단계 안(반복 안 반복 안)이면 후보가 없다. 블록 · 문장 안 반복 공통. */
 /**
  * 원천 칸 후보 — `outer` 는 이 자리를 감싼 가장 안쪽 반복(없으면 반복 밖). 두 단계 안(반복 안 반복 안)이면 후보가 없다. 블록 · 문장 안 반복 공통.
+ * 담보 트리 원천은 `hasCoverage`(담보약관의 블록 반복)일 때만 — 문장 안 반복은 넘기지 않는다(ADR-0088 결정 1 범위 밖).
  */
 export function repeatChoices(opts: { outer?: RepeatNode; depth: number; hasCoverage?: boolean; enumOf?: (code: string) => EnumDef | undefined; master?: MasterTree }): RepeatChoice[] {
   const master = opts.master ?? MASTER;
@@ -88,7 +89,7 @@ export function repeatChoices(opts: { outer?: RepeatNode; depth: number; hasCove
   if (opts.depth >= 2) return [];
   if (opts.outer) {
     const outer = opts.outer.source;
-    if (isRepeatSource(outer) && outer.kind === "subCoverages") return [choice({ kind: "benefitsOfCurrent", loop: opts.outer.id })];
+    if (isRepeatSource(outer) && outer.kind === "subCoverages") return opts.hasCoverage ? [choice({ kind: "benefitsOfCurrent", loop: opts.outer.id })] : [];
     if (!isRepeatSource(outer) || outer.kind !== "planOptions") return [];
     const form = formsOfLevel("plan", master).find((f) => f.key === outer.form);
     return (form ? fieldsOfForm(form) : []).filter((x) => x.field.type.kind === "list<enum>").map((x) => choice({ kind: "listOfCurrent", loop: opts.outer!.id, field: x.field.key }, " — 현재 종의 목록"));

@@ -243,6 +243,9 @@ export function inlineRepeatIssues(node: RepeatNode & { kind: "inlineFor" }, e: 
   if (e.inTitle && isRepeatSource(source) && source.kind === "listOfCurrent") {
     return [{ kind: "structure", message: "조 제목의 문장 안 반복은 세목 선택지 · 합집합 원천만 씁니다 — 조 제목은 반복 블록 안에 서지 않습니다 (ADR-0088 결정 1)", at }];
   }
+  if (isRepeatSource(source) && isTreeSource(source)) {
+    return [{ kind: "structure", message: "문장 안 반복은 담보 트리(세부보장마다 · 급부마다) 원천을 쓰지 않습니다 — 담보 트리 반복은 블록 반복으로 쓴다 (ADR-0088 결정 1 범위 밖)", at }];
+  }
   const sourceIssues = checkRepeatSource(node, enclosingLoops(ix, e), env, at);
   if (sourceIssues.length > 0) return sourceIssues;
   const connector: unknown = node.connector;
