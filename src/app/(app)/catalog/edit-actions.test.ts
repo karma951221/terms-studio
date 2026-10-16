@@ -33,17 +33,30 @@ describe("saveDiscriminatorEditAction — 부분 저장 없음", () => {
   });
 
   it("구분자명 · 주석을 바꾸고 식이 거부되면 구분자명 · 주석도 저장되지 않는다", async () => {
-    const def = unwrap(await s.catalog.create(editor, { label: "면책여부", level: "benefit", expression: "any(pay.exempt)" }));
-    const r = await saveDiscriminatorEditAction(def.code, { label: "면책 여부", description: "메모", expression: "any(pay.exempt", resultTypeKind: "", resultTypeMulti: false, resultTypeEnum: "" });
+    const def = unwrap(await s.catalog.create(editor, { label: "면책여부", level: "benefit", expression: "any(pay.exempt)", resultType: { kind: "boolean" } }));
+    const r = await saveDiscriminatorEditAction(def.code, { label: "면책 여부", description: "메모", expression: "any(pay.exempt", resultTypeKind: "boolean", resultTypeMulti: false, resultTypeEnum: "" });
     expect(r.ok).toBe(false);
     expect(await s.catalog.get(def.code)).toEqual(def);
   });
 
-  it("결과 타입과 식을 함께 고칠 때 식이 순환으로 거부되면 — 먼저 해제한 명시 타입도 되살아 있다", async () => {
+  it("결과 타입과 식을 함께 고칠 때 식이 순환으로 거부되면 — 구분자명 · 결과 타입 모두 그대로다", async () => {
     const def = unwrap(await s.catalog.create(editor, { label: "면책구분", level: "benefit", expression: "any(pay.exempt)", resultType: { kind: "boolean" } }));
-    // 해제 → 식 → 지정 순서 (resultTypeSavePlan clearThenSet). 식이 자기 참조라 「식 저장」 단계에서 거부된다.
-    const r = await saveDiscriminatorEditAction(def.code, { label: "면책구분", description: "", expression: `${def.code} and any(pay.exempt)`, resultTypeKind: "", resultTypeMulti: false, resultTypeEnum: "" });
+    const r = await saveDiscriminatorEditAction(def.code, { label: "면책구분2", description: "", expression: `${def.code} and any(pay.exempt)`, resultTypeKind: "number", resultTypeMulti: false, resultTypeEnum: "" });
     expect(r.ok).toBe(false);
+    expect(await s.catalog.get(def.code)).toEqual(def);
+  });
+
+  it("식과 결과 타입을 함께 바꾸면 한 번에 저장된다 — 해제 단계 없이 새 식 · 새 타입을 서로 대조한다", async () => {
+    const def = unwrap(await s.catalog.create(editor, { label: "면책월수", level: "benefit", expression: "reduction.new_only", resultType: { kind: "boolean" } }));
+    const r = await saveDiscriminatorEditAction(def.code, { label: "면책월수", description: "", expression: "exemption.months", resultTypeKind: "number", resultTypeMulti: false, resultTypeEnum: "" });
+    expect(r).toEqual({ ok: true });
+    expect(await s.catalog.get(def.code)).toMatchObject({ expression: "exemption.months", resultType: { kind: "number" } });
+  });
+
+  it("결과 타입을 비워 저장하면 거부 — 필수다 (폼 변조 · 추론 실패로 빈 셀렉트)", async () => {
+    const def = unwrap(await s.catalog.create(editor, { label: "빈타입", level: "benefit", expression: "reduction.new_only", resultType: { kind: "boolean" } }));
+    const r = await saveDiscriminatorEditAction(def.code, { label: "빈타입2", description: "", expression: "reduction.new_only", resultTypeKind: "", resultTypeMulti: false, resultTypeEnum: "" });
+    expect(r).toMatchObject({ ok: false, message: expect.stringContaining("결과 타입을 고르세요") });
     expect(await s.catalog.get(def.code)).toEqual(def);
   });
 });

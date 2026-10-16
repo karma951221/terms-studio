@@ -95,7 +95,7 @@ describe("product 서비스 (PGlite)", () => {
     unwrap(await catalog.createEnum(editor, { label: "고지유형", values: [{ label: "일반심사" }, { label: "간편심사" }, { label: "건강고지" }] })); // E0005
     unwrap(await catalog.createEnum(editor, { label: "간편심사구분", values: [{ label: "단일심사" }, { label: "통합간편심사" }] })); // E0006
     unwrap(await catalog.createEnum(editor, { label: "계약형태", values: [{ label: "주계약" }, { label: "독립특약" }] })); // E0007 — 독립특약이면 기본계약 없음
-    unwrap(await catalog.create(editor, { label: "담보명", level: "coverage", expression: "coverage_basic.claim_name" })); // D0001
+    unwrap(await catalog.create(editor, { label: "담보명", level: "coverage", expression: "coverage_basic.claim_name", resultType: { kind: "string" } })); // D0001
 
     // 담보 마스터 값 (B1 이 공용 저장소에 넣는 것과 같은 자리)
     await writeSlot(t.db, { kind: "coverage", id: SURGERY }, "coverage_basic.claim_name", "수술보험금");

@@ -34,7 +34,7 @@ describe("master 서비스 (PGlite)", () => {
     // MVP 마스터가 가리키는 열거형변수 둘 — 없으면 마스터 필드의 타입 간선이 깨진 참조가 된다
     unwrap(await s.catalog.createEnum(editor, { label: "납입면제사유", values: [{ label: "질병" }, { label: "상해" }] }));
     unwrap(await s.catalog.createEnum(editor, { label: "해약환급금유형", values: [{ label: "지급형" }, { label: "미지급형" }] }));
-    unwrap(await s.catalog.create(editor, { label: "담보명", level: "coverage", expression: "coverage_basic.claim_name" })); // D0001
+    unwrap(await s.catalog.create(editor, { label: "담보명", level: "coverage", expression: "coverage_basic.claim_name", resultType: { kind: "string" } })); // D0001
   });
   afterAll(async () => {
     await t.close();

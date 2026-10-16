@@ -53,10 +53,10 @@ describe("clause 서비스 (PGlite)", () => {
   beforeAll(async () => {
     t = await createTestDb();
     svc = createClauseService(t.db, { usage: usageSource });
-    // 카탈로그: 구분자는 전부 식 하나다 (ADR-0037). 결과 타입은 식에서 추론된다 — D0001 boolean · D0002·D0003 string.
-    await insertDiscriminator(t.db, { code: "D0001", label: "갱신여부", description: "", level: "coverage", expression: "coverage_basic.claim_name ≠ ''" }, admin.userId);
-    await insertDiscriminator(t.db, { code: "D0002", label: "수술급여기준", description: "", level: "coverage", expression: "coverage_basic.claim_name" }, admin.userId);
-    await insertDiscriminator(t.db, { code: "D0003", label: "고지유형", description: "", level: "product", expression: "'V01'" }, admin.userId);
+    // 카탈로그: 구분자는 전부 식 하나다 (ADR-0037). 결과 타입(필수)은 식의 추론과 같다 — D0001 boolean · D0002·D0003 string.
+    await insertDiscriminator(t.db, { code: "D0001", label: "갱신여부", description: "", level: "coverage", expression: "coverage_basic.claim_name ≠ ''", resultType: { kind: "boolean" } }, admin.userId);
+    await insertDiscriminator(t.db, { code: "D0002", label: "수술급여기준", description: "", level: "coverage", expression: "coverage_basic.claim_name", resultType: { kind: "string" } }, admin.userId);
+    await insertDiscriminator(t.db, { code: "D0003", label: "고지유형", description: "", level: "product", expression: "'V01'", resultType: { kind: "string" } }, admin.userId);
   });
   afterAll(async () => {
     await t.close();

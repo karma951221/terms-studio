@@ -35,8 +35,8 @@ export const discriminators = pgTable("discriminators", {
   description: text("description").notNull().default(""),
   /** 식 원문 — 파싱은 expression 모듈. 데이터로 저장한다 (기능/구분자 §3.1). */
   expression: text("expression").notNull(),
-  /** 명시 결과 타입 (기능/구분자 §3.1). null = 미지정(과도기) — 추론 타입만 쓴다. */
-  resultType: jsonb("result_type").$type<DiscriminatorResultType>(),
+  /** 결과 타입 (기능/구분자 §3.1) — 필수 (2026-10-17, 0029). 미지정 기존분은 시드 스크립트가 추론 타입으로 이행한 뒤 NOT NULL. */
+  resultType: jsonb("result_type").$type<DiscriminatorResultType>().notNull(),
   ...audit,
 });
 

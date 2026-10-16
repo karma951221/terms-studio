@@ -5,7 +5,7 @@
  *
  * **구분자는 식 하나다.** 종류(scalar · struct · const · derived)는 없다 —
  * 필드를 그대로 잇든(`담보명 = coverage_basic.claim_name`) 계산하든(`면책구분 = any(pay.exempt)`)
- * 같은 자리에 쓰고, 결과 타입은 식에서 나온다.
+ * 같은 자리에 쓰고, 결과 타입은 식에서 추론되며 저장 때 명시 타입(필수)과 대조한다.
  *
  * 구분자는 **값 행을 갖지 않는다.** 값 자리는 노드 × 마스터 필드고 (domain/master),
  * 구분자의 부착 레벨은 「식이 평가되는 자리 = 집계의 뿌리」다.
@@ -30,7 +30,11 @@ export interface Discriminator {
   /** 식 원문 (코드 기반 경로). 파싱·검증은 expression 모듈 + `checkDiscriminatorExpression`. */
   expression: string;
   description: string;
-  /** 명시 결과 타입 (기능/구분자 §3.1). 없으면 미지정 — 추론 타입만 쓴다(과도기). */
+  /**
+   * 결과 타입 (기능/구분자 §3.1) — 저장 규칙상 **필수** (2026-10-17): 만들 때 · 식을 바꿀 때 검사가 비면 거부하고,
+   * DB 열도 NOT NULL 이다. 타입이 optional 인 것은 식 추론만 보는 조립 · 참조 고정물이 가벼운 정의를 쓰기 때문이다 —
+   * 없으면 읽는 쪽(`discriminatorResultType`)이 추론 타입으로 푼다.
+   */
   resultType?: DiscriminatorResultType;
 }
 
@@ -79,8 +83,8 @@ export interface NewDiscriminator {
   level: AttachLevel;
   expression: string;
   description?: string;
-  /** 명시 결과 타입 (기능/구분자 §3.1). 없으면 미지정 — 추론 타입만 쓴다(과도기). */
-  resultType?: DiscriminatorResultType;
+  /** 결과 타입 (기능/구분자 §3.1) — **필수** (2026-10-17). 식의 추론 타입과 같아야 한다 — 저장 검사가 대조한다. */
+  resultType: DiscriminatorResultType;
 }
 
 export interface NewEnumValue {

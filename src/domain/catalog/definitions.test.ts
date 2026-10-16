@@ -65,6 +65,7 @@ const 면책구분: Discriminator = {
   description: "",
   level: "coverage",
   expression: "any(pay.exempt)",
+  resultType: { kind: "boolean" },
 };
 
 function catalogOf(...defs: Discriminator[]): ReadonlyMap<string, Discriminator> {
@@ -75,6 +76,7 @@ const 담보명: NewDiscriminator = {
   label: "담보명",
   level: "coverage",
   expression: "coverage_basic.claim_name",
+  resultType: { kind: "string" },
 };
 
 describe("구분자정의 S1 — 채번: 코드 불변 + 표시명 가변", () => {
@@ -86,9 +88,10 @@ describe("구분자정의 S1 — 채번: 코드 불변 + 표시명 가변", () =
       description: "",
       level: "coverage",
       expression: "coverage_basic.claim_name",
+      resultType: { kind: "string" },
     });
     const second = unwrap(
-      await createDiscriminator({ label: "납입면제적용", level: "plan", expression: "waiver.applies" }, c),
+      await createDiscriminator({ label: "납입면제적용", level: "plan", expression: "waiver.applies", resultType: { kind: "boolean" } }, c),
     );
     expect(second.code).toBe("D0002");
   });
@@ -125,7 +128,7 @@ describe("구분자정의 S1 — 채번: 코드 불변 + 표시명 가변", () =
     expect(
       unwrap(
         await createDiscriminator(
-          { label: "담보명", level: "plan", expression: "waiver.applies" },
+          { label: "담보명", level: "plan", expression: "waiver.applies", resultType: { kind: "boolean" } },
           ctx({ existing }),
         ),
       ).code,
@@ -148,13 +151,13 @@ describe("구분자정의 — 식은 저장 시 검증한다 (ADR-0037)", () => 
 
   it("카탈로그를 주면 같은 레벨 구분자를 참조할 수 있다 (기능/구분자 §3.2)", async () => {
     const c = ctx({ catalog: catalogOf(면책구분), existing: [면책구분] });
-    const created = unwrap(await createDiscriminator({ ...담보명, label: "면책아님", expression: "not D0002" }, c));
+    const created = unwrap(await createDiscriminator({ ...담보명, label: "면책아님", expression: "not D0002", resultType: { kind: "boolean" } }, c));
     expect(created.expression).toBe("not D0002");
   });
 
   it("식 수정은 비파괴이고 같은 검증을 거친다", async () => {
     const def = unwrap(await createDiscriminator(담보명, ctx()));
-    expect(unwrap(setExpression(def, "coverage_basic.claim_name ≠ ''")).expression).toBe(
+    expect(unwrap(setExpression(def, "coverage_basic.claim_name ≠ ''", {}, { resultType: { kind: "boolean" } })).expression).toBe(
       "coverage_basic.claim_name ≠ ''",
     );
     expect(rejection(setExpression(def, "D0009"))).toBe("invalid");
@@ -170,9 +173,9 @@ describe("구분자정의 — 식은 저장 시 검증한다 (ADR-0037)", () => 
   });
 
   it("순환(A → B → A)은 저장 시 거부한다 — 카탈로그 전체를 따라간다", () => {
-    const A: Discriminator = { code: "D0010", label: "A", description: "", level: "coverage", expression: "D0011" };
-    const B: Discriminator = { code: "D0011", label: "B", description: "", level: "coverage", expression: "any(pay.exempt)" };
-    const C: Discriminator = { code: "D0012", label: "C", description: "", level: "coverage", expression: "D0011 or D0002" };
+    const A: Discriminator = { code: "D0010", label: "A", description: "", level: "coverage", expression: "D0011", resultType: { kind: "boolean" } };
+    const B: Discriminator = { code: "D0011", label: "B", description: "", level: "coverage", expression: "any(pay.exempt)", resultType: { kind: "boolean" } };
+    const C: Discriminator = { code: "D0012", label: "C", description: "", level: "coverage", expression: "D0011 or D0002", resultType: { kind: "boolean" } };
     const catalog = catalogOf(면책구분, A, B, C);
     // B 가 A 를 부르면 A → B → A
     const direct = setExpression(B, "not D0010", { catalog });
@@ -187,9 +190,9 @@ describe("구분자정의 — 식은 저장 시 검증한다 (ADR-0037)", () => 
   });
 
   it("참조받는 구분자를 고치면 참조하는 정의를 바뀐 카탈로그로 다시 검사한다 (코덱스 리뷰 2026-09-14 Important-1)", () => {
-    const A: Discriminator = { code: "D0001", label: "납입면제적용", description: "", level: "plan", expression: "waiver.applies" };
-    const B: Discriminator = { code: "D0002", label: "장기면제", description: "", level: "plan", expression: "D0001 and waiver.applies" };
-    const C: Discriminator = { code: "D0003", label: "C", description: "", level: "plan", expression: "not D0002" };
+    const A: Discriminator = { code: "D0001", label: "납입면제적용", description: "", level: "plan", expression: "waiver.applies", resultType: { kind: "boolean" } };
+    const B: Discriminator = { code: "D0002", label: "장기면제", description: "", level: "plan", expression: "D0001 and waiver.applies", resultType: { kind: "boolean" } };
+    const C: Discriminator = { code: "D0003", label: "C", description: "", level: "plan", expression: "not D0002", resultType: { kind: "boolean" } };
     const catalog = catalogOf(A, B, C);
     // A 가 무저해지 폼을 읽게 되면 B 는 두 폼(no_surrender · waiver)을 읽는 식이 된다 — 결과 타입은 그대로 boolean 인데도 거부
     const r = setExpression(A, "no_surrender.type = 'V01'", { catalog });
@@ -200,7 +203,7 @@ describe("구분자정의 — 식은 저장 시 검증한다 (ADR-0037)", () => 
     // 좌표는 「어느 구분자를 고쳐야 하나」 — 구분자 편집기(catalog) · refPath 는 그 식 안에서 바뀐 쪽을 읽는 참조 (ADR-0049 §4)
     expect(r.rejection.issues[0].at).toEqual({ document: "catalog", ownerId: "D0002", ownerName: "장기면제", refPath: "D0001" });
     // 전이적으로도 본다 — A 의 결과 타입이 string 이 되면 B(and) 가 깨지고, B 를 참조하는 C 는 B 가 깨져 brokenRef
-    const r2 = setExpression(A, "waiver.reasons", { catalog });
+    const r2 = setExpression(A, "waiver.reasons", { catalog }, { resultType: { kind: "list<enum>", enumCode: "E0001" } });
     expect(rejection(r2)).toBe("invalid");
     if (r2.ok || r2.rejection.reason !== "invalid") throw new Error("기대: invalid");
     // C 는 B 를 거쳐 깨진다 — 좌표는 C 의 편집기, refPath 는 C 가 직접 읽는 B
@@ -227,21 +230,24 @@ describe("구분자정의 — 식은 저장 시 검증한다 (ADR-0037)", () => 
       description: "",
       level: "coverage",
       expression: "coverage_basic.claim_name",
+      resultType: { kind: "string" },
     };
     expect(Object.keys(def)).not.toContain("setLevel");
   });
 });
 
 describe("구분자정의 — 명시 결과 타입 resultType (기능/구분자 §3.1)", () => {
-  it("resultType 을 안 주면 저장 정의에 키 자체가 없다", async () => {
-    const created = unwrap(await createDiscriminator(담보명, ctx()));
-    expect(created).not.toHaveProperty("resultType");
+  it("결과 타입은 필수 — 안 주면 invalid(결과 타입을 고르세요) (2026-10-17)", async () => {
+    const { resultType: _omit, ...untyped } = 담보명;
+    void _omit;
+    const r = await createDiscriminator(untyped as NewDiscriminator, ctx());
+    expect(rejection(r)).toBe("invalid");
+    if (r.ok || r.rejection.reason !== "invalid") throw new Error("기대: invalid");
+    expect(r.rejection.issues[0]).toMatchObject({ kind: "typeMismatch", message: "결과 타입을 고르세요" });
   });
 
   it("식과 일치하는 resultType 은 저장 정의에 실린다", async () => {
-    const created = unwrap(
-      await createDiscriminator({ ...담보명, resultType: { kind: "string" } }, ctx()),
-    );
+    const created = unwrap(await createDiscriminator(담보명, ctx()));
     expect(created.resultType).toEqual({ kind: "string" });
   });
 
@@ -267,7 +273,7 @@ describe("구분자정의 — 명시 결과 타입 resultType (기능/구분자 
     expect(r.rejection.issues[0].kind).toBe("brokenRef");
   });
 
-  it("resultType 이 있는 정의를 setExpression 으로 타입이 바뀌는 식으로 바꾸면 invalid", async () => {
+  it("setExpression 으로 타입이 바뀌는 식으로 바꾸면 invalid — 저장된 결과 타입과 대조한다", async () => {
     const def = unwrap(
       await createDiscriminator(
         { label: "납입면제여부", level: "plan", expression: "waiver.applies", resultType: { kind: "boolean" } },
@@ -277,28 +283,39 @@ describe("구분자정의 — 명시 결과 타입 resultType (기능/구분자 
     expect(rejection(setExpression(def, "no_surrender.type"))).toBe("invalid");
   });
 
-  it("resultType 없는 정의는 setExpression 이 기존처럼 통과한다", async () => {
-    const def = unwrap(await createDiscriminator(담보명, ctx()));
-    expect(unwrap(setExpression(def, "coverage_basic.claim_name ≠ ''")).expression).toBe(
-      "coverage_basic.claim_name ≠ ''",
+  it("setExpression 에 새 결과 타입을 함께 주면 새 식과 새 타입을 대조해 한 번에 바꾼다 — 해제 단계가 없다", async () => {
+    const def = unwrap(
+      await createDiscriminator(
+        { label: "납입면제여부", level: "plan", expression: "waiver.applies", resultType: { kind: "boolean" } },
+        ctx(),
+      ),
     );
+    const c = ctx({ findEnum: (code) => (code === "E0002" ? { ...고지유형, code } : undefined) });
+    const next = unwrap(setExpression(def, "no_surrender.type", c, { resultType: { kind: "enum", enumCode: "E0002" } }));
+    expect(next).toMatchObject({ expression: "no_surrender.type", resultType: { kind: "enum", enumCode: "E0002" } });
+    // 새 타입이 새 식과 어긋나면 거부 · 없는 열거형변수면 거부 · 타입을 비우면 거부
+    expect(rejection(setExpression(def, "no_surrender.type", c, { resultType: { kind: "boolean" } }))).toBe("invalid");
+    expect(rejection(setExpression(def, "no_surrender.type", c, { resultType: { kind: "enum", enumCode: "E9999" } }))).toBe("invalid");
+    expect(rejection(setExpression(def, "waiver.applies", c, { resultType: undefined }))).toBe("invalid");
   });
 
-  it("setResultType — 맞으면 ok, 틀리면 invalid, undefined 면 키를 제거한다", async () => {
+  it("setResultType — 맞으면 ok, 틀리면 invalid, 비우기(undefined)는 invalid — 필수다", async () => {
     const def = unwrap(await createDiscriminator(담보명, ctx()));
     const c = ctx();
-    const set = unwrap(setResultType(def, { kind: "string" }, c));
-    expect(set.resultType).toEqual({ kind: "string" });
-
+    expect(unwrap(setResultType(def, { kind: "string" }, c)).resultType).toEqual({ kind: "string" });
     expect(rejection(setResultType(def, { kind: "boolean" }, c))).toBe("invalid");
-
-    const cleared = unwrap(setResultType(set, undefined, c));
-    expect(cleared).not.toHaveProperty("resultType");
+    const cleared = setResultType(def, undefined as never, c);
+    expect(rejection(cleared)).toBe("invalid");
+    if (cleared.ok || cleared.rejection.reason !== "invalid") throw new Error("기대: invalid");
+    expect(cleared.rejection.issues[0].message).toBe("결과 타입을 고르세요");
   });
 
   it("setResultType 이 enum 계열인데 없는 enumCode 면 invalid + brokenRef", async () => {
     const def = unwrap(
-      await createDiscriminator({ label: "무저해지유형2", level: "plan", expression: "no_surrender.type" }, ctx()),
+      await createDiscriminator(
+        { label: "무저해지유형2", level: "plan", expression: "no_surrender.type", resultType: { kind: "enum", enumCode: "E0002" } },
+        ctx({ findEnum: (code) => (code === "E0002" ? { ...고지유형, code } : undefined) }),
+      ),
     );
     const r = setResultType(def, { kind: "enum", enumCode: "E9999" }, ctx());
     expect(rejection(r)).toBe("invalid");
@@ -324,9 +341,9 @@ describe("구분자정의 — 명시 결과 타입 resultType (기능/구분자 
 
 describe("구분자정의 — 참조된 구분자의 식이 바뀌면 의존 구분자의 명시 타입도 대조한다 (final-review fix)", () => {
   it("의존 구분자의 식 검사는 통과해도 명시 결과 타입과 어긋나면 거부한다", () => {
-    // D0005(미지정, boolean 추론) ← D0011 = `D0005`(명시 boolean). D0005 를 number 추론 식으로 바꾸면
+    // D0005(boolean) ← D0011 = `D0005`(명시 boolean). D0005 를 number 식 · number 타입으로 함께 바꾸면
     // checkDependents 의 타입검사 자체는 통과하지만(둘 다 bare 참조라 타입 제약이 없다) D0011 의 명시 boolean 과 어긋난다.
-    const D0005: Discriminator = { code: "D0005", label: "D5", description: "", level: "coverage", expression: "any(pay.exempt)" };
+    const D0005: Discriminator = { code: "D0005", label: "D5", description: "", level: "coverage", expression: "any(pay.exempt)", resultType: { kind: "boolean" } };
     const D0011: Discriminator = {
       code: "D0011",
       label: "D11",
@@ -336,18 +353,11 @@ describe("구분자정의 — 참조된 구분자의 식이 바뀌면 의존 구
       resultType: { kind: "boolean" },
     };
     const catalog = catalogOf(D0005, D0011);
-    const r = setExpression(D0005, "sum(pay.rate)", { catalog });
+    const r = setExpression(D0005, "sum(pay.rate)", ctx({ catalog }), { resultType: { kind: "number" } });
     expect(rejection(r)).toBe("invalid");
     if (r.ok || r.rejection.reason !== "invalid") throw new Error("기대: invalid");
     expect(r.rejection.issues[0].kind).toBe("typeMismatch");
     expect(r.rejection.issues[0].message).toContain("D0011");
-  });
-
-  it("의존 구분자에 명시 타입이 없으면 기존처럼 통과한다", () => {
-    const D0005: Discriminator = { code: "D0005", label: "D5", description: "", level: "coverage", expression: "any(pay.exempt)" };
-    const D0011: Discriminator = { code: "D0011", label: "D11", description: "", level: "coverage", expression: "D0005" };
-    const catalog = catalogOf(D0005, D0011);
-    expect(unwrap(setExpression(D0005, "sum(pay.rate)", { catalog })).expression).toBe("sum(pay.rate)");
   });
 });
 

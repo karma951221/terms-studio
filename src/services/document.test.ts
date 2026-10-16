@@ -47,10 +47,10 @@ describe("document 서비스 (PGlite)", () => {
     // 카탈로그 — 구분자는 전부 식 하나다 (ADR-0037). 결과 타입은 식에서 추론된다.
     // D0001 갱신여부(boolean) · D0002 지급률(number) · D0003 면책구분(boolean) · D0004 평균공시이율(string 리터럴)
     const cat = createCatalogService(t.db);
-    unwrap(await cat.create(editor, { label: "갱신여부", level: "coverage", expression: "attr.A0001 = '2'" }));
-    unwrap(await cat.create(editor, { label: "지급률", level: "benefit", expression: "pay.rate" }));
-    unwrap(await cat.create(editor, { label: "면책구분", level: "coverage", expression: "any(pay.exempt)" }));
-    unwrap(await cat.create(editor, { label: "평균공시이율", level: "product", expression: "'2.5%'" }));
+    unwrap(await cat.create(editor, { label: "갱신여부", level: "coverage", expression: "attr.A0001 = '2'", resultType: { kind: "boolean" } }));
+    unwrap(await cat.create(editor, { label: "지급률", level: "benefit", expression: "pay.rate", resultType: { kind: "number" } }));
+    unwrap(await cat.create(editor, { label: "면책구분", level: "coverage", expression: "any(pay.exempt)", resultType: { kind: "boolean" } }));
+    unwrap(await cat.create(editor, { label: "평균공시이율", level: "product", expression: "'2.5%'", resultType: { kind: "string" } }));
     svc = createDocumentService(t.db, { clauseGate: async () => gate });
   });
   afterAll(async () => {
@@ -162,7 +162,7 @@ describe("document 서비스 (PGlite)", () => {
     it("세부보장 노드 키 경로는 통과, 없는 키는 brokenRef", async () => {
       const coverageSvc = createCoverageService(t.db);
       const coverage = unwrap(await coverageSvc.create(editor, { name: "노드한정자테스트", subCoverageName: "세부보장A", benefitName: "급부A" }));
-            const disc = unwrap(await createCatalogService(t.db).create(editor, { label: "한정자테스트", level: "subCoverage", expression: "any(pay.exempt)" }));
+            const disc = unwrap(await createCatalogService(t.db).create(editor, { label: "한정자테스트", level: "subCoverage", expression: "any(pay.exempt)", resultType: { kind: "boolean" } }));
       const doc = unwrap(await svc.createSpecial(editor, coverage.id, "노드한정자 특별약관"));
       const root = doc.tree.id;
 
@@ -178,7 +178,7 @@ describe("document 서비스 (PGlite)", () => {
 
     it("apply 도 저장과 같은 전체 검사 — 세부보장 레벨 기본 연결에 키가 없으면 argUnbound (ADR-0087 결정 8)", async () => {
       const coverage = unwrap(await createCoverageService(t.db).create(editor, { name: "키연결테스트", subCoverageName: "세부보장A", benefitName: "급부A" }));
-      const disc = unwrap(await createCatalogService(t.db).create(editor, { label: "키연결감액", level: "subCoverage", expression: "any(pay.exempt)" }));
+      const disc = unwrap(await createCatalogService(t.db).create(editor, { label: "키연결감액", level: "subCoverage", expression: "any(pay.exempt)", resultType: { kind: "boolean" } }));
       const clause = { code: "C002", label: "감액", mode: "block", options: [], body: [], required: { discriminators: [] }, params: [{ name: "감액", type: { kind: "boolean" }, default: { kind: "discriminator", code: disc.code } }] } as unknown as Clause;
       const keyed: ClauseGate = { ...gate, clauseExists: (c) => c === "C002", requiredCodes: () => [], validateOptions: () => [], clauseOf: (c) => (c === "C002" ? clause : undefined) };
       const svc2 = createDocumentService(t.db, { clauseGate: async () => keyed });

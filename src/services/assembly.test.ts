@@ -89,12 +89,12 @@ describe("assembly 서비스 (PGlite) — 관통 1 통합", () => {
     // E0003 ~ E0007 자리 — 여덟째가 「특약 그룹」(E0008, ADR-0080). 코드는 채번이라 순서로 맞춘다
     for (let i = 3; i <= 7; i++) unwrap(await catalog.createEnum(editor, { label: `열거형${i}`, values: [{ label: "값" }] }));
     unwrap(await catalog.createEnum(editor, { label: "특약 그룹", values: [{ label: "상해 관련 특별약관" }, { label: "기타 특별약관" }] }));
-    unwrap(await catalog.create(editor, { label: "갱신여부", level: "coverage", expression: "coverage_basic.claim_name = '갱신'" }));
-    unwrap(await catalog.create(editor, { label: "고지유형", level: "product", expression: "'간편심사'" }));
-    unwrap(await catalog.create(editor, { label: "지급률", level: "benefit", expression: "pay.rate" }));
-    unwrap(await catalog.create(editor, { label: "평균공시이율", level: "product", expression: "'2.5%'" }));
-    unwrap(await catalog.create(editor, { label: "면책여부합", level: "coverage", expression: "any(pay.exempt)" }));
-    unwrap(await catalog.create(editor, { label: "감액기간문구", level: "coverage", expression: "coverage_basic.claim_name" }));
+    unwrap(await catalog.create(editor, { label: "갱신여부", level: "coverage", expression: "coverage_basic.claim_name = '갱신'", resultType: { kind: "boolean" } }));
+    unwrap(await catalog.create(editor, { label: "고지유형", level: "product", expression: "'간편심사'", resultType: { kind: "string" } }));
+    unwrap(await catalog.create(editor, { label: "지급률", level: "benefit", expression: "pay.rate", resultType: { kind: "number" } }));
+    unwrap(await catalog.create(editor, { label: "평균공시이율", level: "product", expression: "'2.5%'", resultType: { kind: "string" } }));
+    unwrap(await catalog.create(editor, { label: "면책여부합", level: "coverage", expression: "any(pay.exempt)", resultType: { kind: "boolean" } }));
+    unwrap(await catalog.create(editor, { label: "감액기간문구", level: "coverage", expression: "coverage_basic.claim_name", resultType: { kind: "string" } }));
 
     // 담보 마스터 — 일반상해사망 (세부보장 1 · 급부 1) + 값
     const tree = unwrap(await coverage.create(editor, { name: "일반상해사망", benefitName: "사망보험금" }));

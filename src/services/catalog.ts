@@ -101,9 +101,13 @@ export interface CatalogService {
   create(actor: Actor, input: NewDiscriminator): Promise<Result<Discriminator>>;
   rename(actor: Actor, code: Code, label: string): Promise<Result<Discriminator>>;
   setDescription(actor: Actor, code: Code, description: string): Promise<Result<Discriminator>>;
-  setExpression(actor: Actor, code: Code, expression: string): Promise<Result<Discriminator>>;
-  /** 명시 결과 타입 지정/해제 — 현재 식의 추론 타입과 대조 (기능/구분자 §3.1). */
-  setResultType(actor: Actor, code: Code, resultType: DiscriminatorResultType | undefined): Promise<Result<Discriminator>>;
+  /**
+   * 식 바꾸기 — `retype` 을 주면 결과 타입도 함께 바꾼다(새 식 · 새 타입을 서로 대조, 기능/구분자 §3.1).
+   * 결과 타입이 필수라 「해제 → 식 → 지정」 같은 비운 단계가 없다.
+   */
+  setExpression(actor: Actor, code: Code, expression: string, retype?: { resultType: DiscriminatorResultType | undefined }): Promise<Result<Discriminator>>;
+  /** 결과 타입 바꾸기 — 현재 식의 추론 타입과 대조 (기능/구분자 §3.1). 필수라 비우기는 거부된다. */
+  setResultType(actor: Actor, code: Code, resultType: DiscriminatorResultType): Promise<Result<Discriminator>>;
   /** 저장 전 식 검사 — 편집기가 미리 부르는 자리. 통과하면 추론된 결과 타입 (화면이 표시에 쓴다). */
   checkExpression(expression: string, level: AttachLevel): Promise<Result<ExprType>>;
   /**
@@ -321,7 +325,7 @@ export function createCatalogService(db: Db, deps: CatalogServiceDeps = {}): Cat
 
     rename: (actor, code, label) => edit(actor, code, (def, ctx) => renameDiscriminator(def, label, ctx.existing)),
     setDescription: (actor, code, description) => edit(actor, code, (def) => setDescription(def, description)),
-    setExpression: (actor, code, expression) => edit(actor, code, (def, ctx) => setExpression(def, expression, ctx)),
+    setExpression: (actor, code, expression, retype) => edit(actor, code, (def, ctx) => setExpression(def, expression, ctx, retype)),
     setResultType: (actor, code, resultType) => edit(actor, code, (def, ctx) => setResultType(def, resultType, ctx)),
 
     remove: (actor, code, opts = {}) =>

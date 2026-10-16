@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { describeRejection, errorRedirectPath } from "@/app/_lib/rejection";
+import type { DiscriminatorResultType } from "@/domain/catalog/types";
 import type { AttachLevel, Code } from "@/domain/types";
 import { currentActor, getServices } from "@/lib/services";
 
@@ -21,7 +22,7 @@ function msg(r: Parameters<typeof describeRejection>[0]): string {
 
 /**
  * 새 구분자 — 구분자명 · 레벨 · 식 · 주석 (ADR-0037: 종류·타입·노출·상수값이 없다)
- * + 선택인 결과 타입 (기능/구분자 §3.1: 미지정이면 키를 싣지 않는다 — 추론 타입만 쓴다).
+ * + 필수인 결과 타입 (기능/구분자 §3.1, 2026-10-17). 비어 오면(폼 변조) 그대로 넘겨 서비스가 「결과 타입을 고르세요」로 거부한다.
  */
 export async function createDiscriminatorAction(formData: FormData): Promise<void> {
   const actor = await currentActor();
@@ -31,7 +32,7 @@ export async function createDiscriminatorAction(formData: FormData): Promise<voi
     level: str(formData, "level") as AttachLevel,
     expression: str(formData, "expression"),
     description: str(formData, "description"),
-    ...(resultType ? { resultType } : {}),
+    resultType: resultType as DiscriminatorResultType,
   });
   if (!r.ok) redirect(errorRedirectPath(`${BASE}/new`, msg(r.rejection)));
   redirect(detailPath(r.value.code));
