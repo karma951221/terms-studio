@@ -92,7 +92,7 @@ test(
       const dialog = page.getByRole("dialog", { name: "문장 안 반복 넣기", exact: true });
       await dialog.getByLabel("반복 원천").selectOption({ label: "납입면제사유 합집합마다 — 적용여부 = 예인 선택지" });
       await dialog.getByRole("button", { name: "넣기", exact: true }).click();
-      await expect(dialog).toContainText("연결어(및 · 또는)를 고른다");
+      await expect(dialog).toContainText("연결어(및 · 또는 · 쉼표만)를 고른다");
       await dialog.getByRole("radio", { name: "및", exact: true }).check();
       await dialog.getByRole("button", { name: "넣기", exact: true }).click();
       await expect(dialog).toHaveCount(0);
