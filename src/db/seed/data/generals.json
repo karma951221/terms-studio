@@ -4219,9 +4219,31 @@
                       "kind": "article",
                       "title": [
                         {
-                          "id": "g-a27_3.title",
+                          "id": "g-a27_3-title-for",
+                          "kind": "inlineFor",
+                          "source": {
+                            "kind": "union",
+                            "form": "waiver",
+                            "filter": "waiver.applies = true",
+                            "field": "reasons",
+                            "where": {
+                              "field": "F03",
+                              "value": true
+                            }
+                          },
+                          "connector": ",",
+                          "children": [
+                            {
+                              "id": "g-a27_3-title-for-v",
+                              "kind": "slot",
+                              "ref": "builtin.value.F01"
+                            }
+                          ]
+                        },
+                        {
+                          "id": "g-a27_3-title-tail",
                           "kind": "text",
-                          "text": "암(유사암제외), 뇌졸중, 급성심근경색증, 말기폐질환, 말기간경화, 말기신부전증, 양성뇌종양, 중대한재생불량성빈혈, 만성당뇨합병증의 정의 및 진단확정"
+                          "text": "의 정의 및 진단확정"
                         }
                       ],
                       "children": [
@@ -10493,9 +10515,31 @@
                       "kind": "article",
                       "title": [
                         {
-                          "id": "m-a30.title",
+                          "id": "m-a30-title-for",
+                          "kind": "inlineFor",
+                          "source": {
+                            "kind": "union",
+                            "form": "waiver",
+                            "filter": "waiver.applies = true",
+                            "field": "reasons",
+                            "where": {
+                              "field": "F03",
+                              "value": true
+                            }
+                          },
+                          "connector": ",",
+                          "children": [
+                            {
+                              "id": "m-a30-title-for-v",
+                              "kind": "slot",
+                              "ref": "builtin.value.F01"
+                            }
+                          ]
+                        },
+                        {
+                          "id": "m-a30-title-tail",
                           "kind": "text",
-                          "text": "암(유사암제외), 뇌졸중, 급성심근경색증, 중증화상및부식의 정의 및 진단확정"
+                          "text": "의 정의 및 진단확정"
                         }
                       ],
                       "children": [
@@ -16914,9 +16958,31 @@
                       "kind": "article",
                       "title": [
                         {
-                          "id": "g-a27_3.title",
+                          "id": "g-a27_3-title-for",
+                          "kind": "inlineFor",
+                          "source": {
+                            "kind": "union",
+                            "form": "waiver",
+                            "filter": "waiver.applies = true",
+                            "field": "reasons",
+                            "where": {
+                              "field": "F03",
+                              "value": true
+                            }
+                          },
+                          "connector": ",",
+                          "children": [
+                            {
+                              "id": "g-a27_3-title-for-v",
+                              "kind": "slot",
+                              "ref": "builtin.value.F01"
+                            }
+                          ]
+                        },
+                        {
+                          "id": "g-a27_3-title-tail",
                           "kind": "text",
-                          "text": "암(유사암제외), 뇌졸중, 급성심근경색증, 말기폐질환, 말기간경화, 말기신부전증, 양성뇌종양, 중대한재생불량성빈혈, 만성당뇨합병증의 정의 및 진단확정"
+                          "text": "의 정의 및 진단확정"
                         }
                       ],
                       "children": [

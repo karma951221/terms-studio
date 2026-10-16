@@ -82,6 +82,10 @@ const titleOf = (x: object): string => {
 };
 const articleOf = (tree: Json, title: string) => find(tree, (x) => x.kind === "article" && titleOf(x) === title)!;
 const APPLIED_SOURCE = { kind: "source", source: { form: "waiver", filter: "waiver.applies = true" } };
+/** 정의 조 제목의 인라인 반복 원천 — 적용 종들의 사유 합집합 ∩ 정의조대상(F03) = 예 (ADR-0088 결정 7). 본문 정의 함수조항들의 프리셋 ‘적용 종’과 같은 거름. */
+const DEFINITION_TITLE_SOURCE = { kind: "union", form: "waiver", filter: "waiver.applies = true", field: "reasons", where: { field: "F03", value: true } };
+/** 정의 조 제목을 접은 글 — 상품 문맥 없이는 반복 이름(ADR-0088 결정 6). 실제 글(원문 제목)은 real.test.ts 가 조립해 본다. */
+const DEFINITION_FOLDED = "〔납입면제사유 합집합(F03 = 예)마다〕의 정의 및 진단확정";
 
 /** 템플릿 [납입면제종마다] 항의 호 목록 — 함수조항 참조의 (조, P코드) → 사유 (조 참조 대상 대조용). 참조 노드 id = `<조 id>-p1-k-<사유>`. */
 function itemRefsOf(tree: Json): { outer: Json; refs: Json[]; reasonOfCode: Map<string, string> } {
@@ -107,7 +111,7 @@ describe("알파Plus 납입면제 템플릿 — 사유 값으로 분기하지 �
     expect(branches[0].children.map((a) => titleOf(a))).toEqual([
       "보험료의 납입면제",
       "납입면제에 관한 세부규정",
-      "암(유사암제외), 뇌졸중, 급성심근경색증, 말기폐질환, 말기간경화, 말기신부전증, 양성뇌종양, 중대한재생불량성빈혈, 만성당뇨합병증의 정의 및 진단확정",
+      DEFINITION_FOLDED,
     ]);
   });
 
@@ -133,7 +137,7 @@ describe("알파Plus 납입면제 템플릿 — 사유 값으로 분기하지 �
   });
 
   it("정의 조 = 사유별 정의 함수조항을 열거형 순서로 늘어놓는다 — 프리셋 ‘적용 종’", () => {
-    const article = articleOf(alpha, "암(유사암제외), 뇌졸중, 급성심근경색증, 말기폐질환, 말기간경화, 말기신부전증, 양성뇌종양, 중대한재생불량성빈혈, 만성당뇨합병증의 정의 및 진단확정");
+    const article = articleOf(alpha, DEFINITION_FOLDED);
     expect(article.children!.map((r) => [r.kind, labelOf(r.clauseCode), r.preset, r.bindings])).toEqual(definitionLabels("알파Plus").map((label) => ["clauseBlockRef", label, "S01", undefined]));
   });
 
@@ -198,7 +202,7 @@ describe("통합간편 납입면제 템플릿 — 알파Plus 와 같은 모양, 
     const wrap = find(meritz, (x) => x.kind === "condBlock" && /"(?:title|text)":"보험료의 납입면제"/.test(JSON.stringify(x)))!;
     const [branch] = wrap.branches as { when: string; children: Json[] }[];
     expect(branch.when).toBe(WAIVER_PRESENT);
-    expect(branch.children.map((a) => titleOf(a))).toEqual(["보험료의 납입면제", "암(유사암제외), 뇌졸중, 급성심근경색증, 중증화상및부식의 정의 및 진단확정", "납입면제에 관한 세부규정"]);
+    expect(branch.children.map((a) => titleOf(a))).toEqual(["보험료의 납입면제", DEFINITION_FOLDED, "납입면제에 관한 세부규정"]);
     const { outer, refs } = itemRefsOf(branch.children[0]);
     const p = outer.children![0];
     expect((p.children as Json[]).map((c) => (c.kind === "text" ? c.text : c.ref))[4]).toMatch(/^\)을 가입한 피보험자가 보험료 납입기간 중에/);
@@ -250,10 +254,24 @@ describe("통합간편 납입면제 템플릿 — 알파Plus 와 같은 모양, 
   });
 
   it("정의 조 = 사유별 정의 함수조항(통합간편 셋 + 함께 쓰는 일곱), 제2조 표의 종 한 항 참조는 글로 굳힌다(종 한정 참조는 다음 기획)", () => {
-    const article = articleOf(meritz, "암(유사암제외), 뇌졸중, 급성심근경색증, 중증화상및부식의 정의 및 진단확정");
+    const article = articleOf(meritz, DEFINITION_FOLDED);
     expect(article.children!.map((r) => [labelOf(r.clauseCode), r.preset])).toEqual(definitionLabels("통합간편").map((label) => [label, "S01"]));
     const definitions = articleOf(meritz, "용어의 정의");
     expect(JSON.stringify(definitions)).toContain('"text":"제29조(보험료의 납입면제) 제2항"');
+  });
+});
+
+describe("정의 조 제목 — 인라인 반복으로 재저작 (ADR-0088 결정 7)", () => {
+  it.each(["alpha-general", "alpha2607-general", "meritz-general"])("%s: 제목 = [사유 합집합(정의조대상 = 예)마다 〔약관표시명〕 · 쉼표만] + 「의 정의 및 진단확정」", (code) => {
+    const tree = generals.find((g) => g.code === code)!.tree;
+    const titled = all(tree, (x) => x.kind === "article" && Array.isArray(x.title) && (x.title as Json[]).some((n) => n.kind === "inlineFor"));
+    expect(titled).toHaveLength(1);
+    const title = titled[0].title as Json[];
+    expect(title.map((n) => n.kind)).toEqual(["inlineFor", "text"]);
+    expect(title[0]).toMatchObject({ kind: "inlineFor", source: DEFINITION_TITLE_SOURCE, connector: "," });
+    expect((title[0].children as Json[]).map((n) => [n.kind, n.ref])).toEqual([["slot", "builtin.value.F01"]]);
+    expect(title[0].fallback).toBeUndefined();
+    expect(title[1].text).toBe("의 정의 및 진단확정");
   });
 });
 
