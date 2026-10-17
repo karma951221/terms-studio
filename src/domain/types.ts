@@ -229,6 +229,13 @@ export type IssueKind =
   | "noBaseContract" // 기본계약 미지정
   | "noBlock" // 독립특약에 블록(문면이 있는 탑재 상품담보 — 조건 해소 · 빈 조 빼기 뒤)이 없다 (ADR-0082 결정 2)
   | "generalReadsCoverage" // 절 형태의 제1절(템플릿 조)이 담보 값을 읽는다 — 블록이 여럿이라 어느 값인지 정할 수 없다 (기능/조립산출 §3.2)
+  | "partialLinkOption" // (warning) 준용하기 옵션이 「없음」이 아닌 템플릿 조에 일부 블록만 연결 — 옵션 미적용 · 특칙 (ADR-0082 결정 3)
+  | "joinPlainText" // (warning) 전체항 모으기 조에 연결한 블록 조에 일반 글 항 — 합쳐지지 않고 블록마다 따로 실린다 (ADR-0082 결정 15)
+  | "linkedSpecialRule" // (warning) 블록 조가 자기 연결 대상 템플릿 조를 보통약관 참조로도 가리킨다 — 특칙을 연결함 (ADR-0082 결정 15)
+  | "duplicateLink" // 한 블록의 두 조가 같은 템플릿 조에 조연결 (ADR-0082 결정 7)
+  | "linkTargetGone" // 조연결한 템플릿 조가 이 상품의 최종 트리에 없다 — 조건 · 노출 끔 (기능/조립산출 §3.12)
+  | "wrongGeneral" // 블록 담보약관의 대응 보통약관 ≠ 상품 템플릿 — 셈에서 빼지 않고 막는다 (기능/조립산출 §3.12)
+  | "compositeBlock" // (warning) 복합 블록 — 판정 분모에서 뺀다 (ADR-0082 결정 2 · 후속 기획)
   | "noPlan" // 세목 선택지는 있는데 유효 조합이 없다 — 집계 범위가 비어 조건부 조문이 조용히 빠진다
   | "notAttached" // 요구 구분자 미부착 (값 자리 없음)
   | "typeMismatch" // 조건 자리에 boolean 아님 등

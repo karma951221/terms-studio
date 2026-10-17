@@ -34,6 +34,7 @@ import type { ArticleNode, DocumentNode, TableColumn } from "../document/nodes";
 import type { AttributeKind, ClauseOptionOverride, PlanAxis, ProductCoverageSnapshot, ProductPlan } from "../product/types";
 import type { MasterTree } from "../master";
 import type { ProductGroupSetting } from "../product/groups";
+import type { BlockTreatment, JoinOption, VerdictKind, VerdictReason } from "./section";
 import type { Code, Coordinate, Id, InlineRepeatConnector, Issue, ReferenceConnector, ValueSlot } from "../types";
 
 // ───────────────────────────── 입력 ─────────────────────────────
@@ -128,6 +129,11 @@ export interface MasterBundle {
   coverageCategories?: ReadonlyMap<Id, Code>;
   /** 담보 id → 담보코드 — 그룹 안 1차 정렬 키 (ADR-0090 결정 6). 없는 담보는 담보명 순으로 뒤에. */
   coverageCodes?: ReadonlyMap<Id, Code>;
+  /**
+   * 담보 id → 그 담보약관 문서의 대응 보통약관 문서 id. 절 형태 블록의 대응 보통약관 ≠ 상품 템플릿이면 `wrongGeneral`(기능/조립산출 §3.12).
+   * 없는 담보는 검사하지 않는다.
+   */
+  coverageGenerals?: ReadonlyMap<Id, Id>;
 }
 
 /** 상품 고유분 — 상품 값 · 세목 · 탑재 스냅샷/값/부착 · 오버라이드 · 숨김 · 특약 그룹 설정 (ADR-0034 결정 2). 상품마다 적재한다. */
@@ -285,6 +291,16 @@ export interface RParagraph<I> extends Keyed {
   restart?: true;
   /** 보통약관의 block 함수조항 참조에서 펼쳐져 자동 판정 비교 대상에서 빠지는 항. */
   excludeFromComparison?: boolean;
+  /**
+   * 「항」 함수조항 참조가 펼친 항 — 제1절 판정의 「같다」 단위(ADR-0082 결정 4 · 함수조항 §3.8). 함수조항 코드 · 고른 옵션(키 순 직렬화) ·
+   * 그 참조가 펼친 항 안의 순번. 인자는 해소 뒤 글로 견준다(`sameness.ts`). 문장 안 「문구」 함수조항만 든 항 · 일반 글 항에는 없다.
+   */
+  clauseUse?: ClauseUse;
+}
+export interface ClauseUse {
+  code: Code;
+  options: string;
+  index: number;
 }
 export interface RArticle<I> {
   kind: "article";
@@ -550,6 +566,30 @@ export interface Booklet {
   baseContracts: BaseContractRecord[];
   /** 상품담보별 실행이 읽은 값 (보통약관이 기본계약 값을 읽은 것은 기본계약 상품담보에 실린다). */
   trace: ContextTrace[];
+  /** 절 형태의 제1절 판정 기록 — 판정 대상 템플릿 조마다(템플릿 조 순). 저장하지 않는 계산값이다(ADR-0082 결정 11). 대치 형태 · 옛 산출본엔 없다. */
+  firstSection?: FirstSectionRecord[];
+}
+
+/**
+ * 제1절 판정 기록 한 줄 (ADR-0082 결정 11 · 기능/조립산출 §3.9 「판정 기록」) — 배지 · 판정 패널 · 영향 카드 · 인수 기대값의 원천.
+ * 연결 k/N · 연결한 · 안 한 블록 · 준용하기 옵션 · 결과 · 사유 · 블록별 처리 · 참조 대치 내역.
+ */
+export interface FirstSectionRecord {
+  /** 템플릿 조 id · 제1절의 조 제목 · 번호(최종 트리에 없으면 없음). */
+  articleId: Id;
+  title: string;
+  number?: number;
+  k: number;
+  n: number;
+  option: JoinOption;
+  result: VerdictKind;
+  reason: VerdictReason;
+  linked: { productCoverageId: Id; name: string }[];
+  unlinked: { productCoverageId: Id; name: string }[];
+  /** 블록별 처리 — 기재 · 생략 · 분리 · 통째 (결정 6). 연결한 블록만. */
+  blocks: { productCoverageId: Id; name: string; treatment: BlockTreatment["kind"] }[];
+  /** 참조 대치 — 블록 조 안의 자기 블록 조 참조를 조연결한 템플릿 조로 바꿔 끼운 것 (결정 9). 비교한 조(k = N ≥ 2)만. */
+  substitutions: { productCoverageId: Id; refId: Id; from: Id; to: Id }[];
 }
 
 /** 상품담보 미리보기 — 담보약관 하나를 특정 상품담보 문맥으로 조립한 결과 (기능/상품 §4 「상품담보 값」). */
