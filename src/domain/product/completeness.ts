@@ -7,7 +7,7 @@
  * - 기본계약 검사(기능/상품 §3.5): 보통약관이 요구하는 **구분자**가 카탈로그에 있는가.
  *   2026-09-12 이전에는 「기본계약 스냅샷에 부착됐는가」였다 — 부착이 사라지면서 존재 검사만 남았다.
  *   실패는 거부가 아니라 이슈 목록 (D-P5-13).
- * - 기본계약 수 규칙(기능/상품 §3.5 · MVP 정확히 1개): 0 · 2+ 의 읽기 판정과 「두 번째 지정 거부」를 한 곳에 —
+ * - 기본계약 수 규칙(기능/상품 §3.5 — 주계약 1개 이상 · 독립특약 0개): 읽기 판정과 지정 거부를 한 곳에 —
  *   서비스(checkBaseContract · designateBaseContract · mount) 와 조립(booklet) 이 같은 문구·좌표를 낸다.
  */
 import { missingSlots, type SlotReader, valueSlotsOf } from "../catalog/values";
@@ -73,7 +73,7 @@ export function checkGeneralAttachment(
   return issues;
 }
 
-// ───────────────────────────── 기본계약 수 규칙 (기능/상품 §3.5 · MVP 정확히 1개) ─────────────────────────────
+// ───────────────────────────── 기본계약 수 규칙 (기능/상품 §3.5 — 주계약 1개 이상 · 독립특약 0개) ─────────────────────────────
 
 /**
  * 기본계약 오류 좌표의 `refPath` — 상품 좌표에 이 값이 있으면 링크가 **고치는 자리**(보통약관 탭의 기본계약 블록
@@ -81,15 +81,14 @@ export function checkGeneralAttachment(
  */
 export const BASE_CONTRACT_REF = "baseContract";
 
-function baseContractCoordinate(product: { id: Id; name: string }): Coordinate {
+export function baseContractCoordinate(product: { id: Id; name: string }): Coordinate {
   return { document: "product", ownerId: product.id, ownerName: product.name, refPath: BASE_CONTRACT_REF };
 }
 
 /**
- * 읽기 시점 판정 — 0 → `noBaseContract` · 2+ → `unsupported`(복구 동선 「하나만 남기고 해제」) · 1 → 없음.
- * 2+ 는 서비스가 두 번째 지정을 막으므로 기존 데이터·우회 저장에서만 생긴다 — 그래도 조립은 이 오류로 멈춘다.
+ * 읽기 시점 판정 — 주계약: 0 → `noBaseContract` · 1 (대치 형태) · 2+ (절 형태) → 없음 (ADR-0021 결정 1 · 2026-10-17 ① 기본계약 2+ 허용).
  * 독립특약(`standalone`, 계약형태 E0007 · 기능/상품 §3.1 · 2026-10-01)은 거꾸로 0 이 정상이고 1+ 가 오류다 —
- * 서비스가 탑재 · 지정 · 전환 저장에서 막으므로 이것도 우회 저장에서만 생긴다.
+ * 서비스가 탑재 · 지정 · 전환 저장에서 막으므로 우회 저장에서만 생긴다.
  */
 export function baseContractCountIssue(count: number, product: { id: Id; name: string }, standalone = false): Issue | undefined {
   const at = baseContractCoordinate(product);
@@ -97,17 +96,14 @@ export function baseContractCountIssue(count: number, product: { id: Id; name: s
     return count === 0 ? undefined : { kind: "unsupported", severity: "error", message: "독립특약 상품은 기본계약을 두지 않습니다 — 기본계약을 해제하세요", at, source: at };
   }
   if (count === 0) return { kind: "noBaseContract", severity: "error", message: "기본계약이 지정되지 않았습니다", at, source: at };
-  if (count > 1) return { kind: "unsupported", severity: "error", message: `기본계약이 ${count}개입니다 — 하나만 남기고 해제하세요 (MVP 는 1개)`, at, source: at };
   return undefined;
 }
 
 /**
- * 지정 전 검사 — 이미 기본계약이 있으면 거부한다 (기능/상품 §3 「기본계약」 · MVP 정확히 1개).
- * 같은 상품담보를 다시 지정하는 것도 「이미 기본계약」이므로 같은 거부다. 바꾸려면 해제 → 지정.
+ * 지정 전 검사 — 주계약은 몇 개째든 통과한다(2개 이상 = 절 형태, ADR-0021 결정 1). 같은 상품담보의 재지정(중복)은 서비스가 거부한다.
  * 독립특약 상품은 수와 무관하게 거부한다 (기능/상품 §3.1 · 2026-10-01).
  */
-export function baseContractDesignationIssues(existingCount: number, product: { id: Id; name: string }, standalone = false): Issue[] {
+export function baseContractDesignationIssues(product: { id: Id; name: string }, standalone = false): Issue[] {
   if (standalone) return [{ kind: "unsupported", message: "독립특약 상품은 기본계약을 두지 않습니다", at: baseContractCoordinate(product) }];
-  if (existingCount === 0) return [];
-  return [{ kind: "unsupported", message: "기본계약은 하나만 지정할 수 있습니다 — 먼저 현재 기본계약을 해제하세요 (MVP)", at: baseContractCoordinate(product) }];
+  return [];
 }

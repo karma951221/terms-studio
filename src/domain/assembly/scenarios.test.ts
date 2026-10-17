@@ -521,7 +521,7 @@ describe("그룹핑별표 S1·S2 — 기본 그룹 = 담보분류 · 사용자 �
   });
 });
 
-describe("그룹 제목 표시 — 절 형태(독립특약)의 블록 번호 머리 (ADR-0090 결정 8 · 잠정: 제2절 골격 없이 특약 자리에)", () => {
+describe("그룹 제목 표시 — 절 형태(독립특약)의 블록 번호 머리 (ADR-0090 결정 8 — 제2절 블록 그룹 `Booklet.blocks`)", () => {
   const groupEnum: EnumDef = {
     code: "E0009",
     label: "담보분류",
@@ -549,7 +549,7 @@ describe("그룹 제목 표시 — 절 형태(독립특약)의 블록 번호 머
       ...patch,
     };
   };
-  const shape = (b: ReturnType<typeof assembleInput>) => b.specials.map((g) => [g.head, g.title, g.docs.map((d) => [d.head, d.title])]);
+  const shape = (b: ReturnType<typeof assembleInput>) => (b.blocks ?? []).map((g) => [g.head, g.title, g.docs.map((d) => [d.head, d.title])]);
 
   it("켜면 그룹 제목 줄 「Ⅰ. 수술 관련 특별약관」 아래 「Ⅰ-1.」, 다음 그룹 「Ⅱ.」 아래 「Ⅱ-1.」", () => {
     expect(shape(assembleInput(standalone(true)))).toEqual([
@@ -569,10 +569,12 @@ describe("그룹 제목 표시 — 절 형태(독립특약)의 블록 번호 머
 
   it("끄면 그룹 제목을 찍지 않으니 빈 「그룹 제목」도 오류가 아니다 — 켜면 제목 자리 notEntered 이고 번호는 센다", () => {
     const disease = { coverageCategories: new Map([["cov-death", "V02"], ["cov-surgery", "V01"]]) };
-    expect(assembleInput(standalone(false, disease)).issues).toEqual([]);
+    // 그룹 제목 오류만 본다 — 일반상해사망 블록이 위임된 해약환급금 조의 항을 가리키는 articleGone(ADR-0082 결정 8)은 이 테스트 밖
+    const titleIssues = (b: ReturnType<typeof assembleInput>) => b.issues.filter((i) => i.message.startsWith("그룹 제목이 비었습니다"));
+    expect(titleIssues(assembleInput(standalone(false, disease)))).toEqual([]);
     const on = assembleInput(standalone(true, disease));
-    expect(on.issues.map((i) => i.kind)).toEqual(["notEntered"]);
-    expect(on.specials.map((g) => [g.head, g.title, g.titleError?.issue.kind])).toEqual([["Ⅰ.", "수술 관련 특별약관", undefined], ["Ⅱ.", undefined, "notEntered"]]);
+    expect(titleIssues(on).map((i) => i.kind)).toEqual(["notEntered"]);
+    expect(on.blocks!.map((g) => [g.head, g.title, g.titleError?.issue.kind])).toEqual([["Ⅰ.", "수술 관련 특별약관", undefined], ["Ⅱ.", undefined, "notEntered"]]);
   });
 
   it("그룹 없는 자리(담보분류 지운 값)의 블록 — 켜면 세지 않고 머리 없음, 끄면 이어 센다", () => {
@@ -601,7 +603,7 @@ describe("그룹 제목 표시 — 절 형태(독립특약)의 블록 번호 머
     const values = new Map(main.product.values);
     values.set("feature.contract_kind", { entered: true, value: "V01" });
     const b = assembleInput({ ...main, coverages: [baseDeathCoverage(), ...main.coverages], product: { ...main.product, values, baseContractIds: ["pc-base"] } });
-    expect(shape(b)).toEqual([
+    expect(b.specials.map((g) => [g.head, g.title, g.docs.map((d) => [d.head, d.title])])).toEqual([
       [undefined, "수술 관련 특별약관", [[undefined, "수술비 특별약관"]]],
       [undefined, "상해 관련 특별약관", [[undefined, "일반상해사망보장 특별약관"]]],
     ]);
@@ -680,8 +682,10 @@ describe("기능/조립산출 §3.2 — 기본계약을 지정하지 않아도 �
     values.set("feature.contract_kind", { entered: true, value: "V02" });
     const b = assembleInput({ ...input, product: { ...input.product, values, baseContractIds: [] } });
     expect(kinds(b.issues)).not.toContain("noBaseContract");
-    // 기본계약이던 상품담보는 제 담보의 담보분류 그룹에 든다 (ADR-0090)
-    expect(b.specials.flatMap((g) => g.docs.map((d) => d.ownerId))).toContain("pc-base");
+    // 독립특약은 절 형태 — 탑재 상품담보는 특약이 아니라 제2절 블록이다 (ADR-0082 · 2026-10-17 ①). 형태 세부는 sectioned.test.ts
+    expect(b.form).toBe("sectioned");
+    expect(b.specials).toEqual([]);
+    expect((b.blocks ?? []).flatMap((g) => g.docs.map((x) => x.ownerId))).toContain("pc-base");
   });
 
   it("기본계약 문면을 바꾸면 연결된 보통약관 조 본문도 따라간다", () => {
@@ -703,14 +707,14 @@ describe("기능/조립산출 §3.2 — 기본계약을 지정하지 않아도 �
     expect(b.issues[1].message).toContain("보통약관 템플릿이 없어");
   });
 
-  it("기본계약 2개 이상 — unsupported 오류를 남기고 기본계약들은 특약·미산출 목록에서 제외한다", () => {
+  it("기본계약 2개 이상 — 절 형태(수 오류 없음) · 기본계약들은 특약·미산출 목록에서 제외되고 제2절 블록이 된다", () => {
     const input = alphaPlusFixture();
     const b = assembleInput({ ...input, product: { ...input.product, baseContractIds: ["pc-base", "pc-basic"] } });
-    expect(b.issues[0]).toMatchObject({ kind: "unsupported", severity: "error", message: "기본계약이 2개입니다 — 하나만 남기고 해제하세요 (MVP 는 1개)", at: { document: "product", ownerId: "prod-alpha", refPath: "baseContract" } });
+    expect(kinds(b.issues)).not.toContain("unsupported");
+    expect(b.form).toBe("sectioned");
     expect(b.specials.flatMap((group) => group.docs.map((doc) => doc.ownerId))).toEqual(["pc-addon"]);
     expect(b.baseContracts.map((record) => record.productCoverageId)).toEqual(["pc-base", "pc-basic"]);
     expect(b.undocumented).toEqual([]);
-    expect(b.complete).toBe(false);
   });
 });
 

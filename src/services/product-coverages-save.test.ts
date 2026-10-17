@@ -153,12 +153,15 @@ describe("saveCoverages — 상품담보 탭 저장 한 번 (PGlite)", () => {
     expect(again!.name).toBe("수술비");
   });
 
-  it("기본계약 규칙 — 이미 있으면 둘째 추가는 그 행에서 거부, 지우고 새로 넣으면 바꾼다(관리자 · 확인) · 독립특약은 기본계약 추가 거부", async () => {
+  it("기본계약 규칙 — 주계약은 둘째 기본계약도 추가된다(절 형태, ADR-0021 결정 1) · 지우고 새로 넣으면 바꾼다(관리자 · 확인) · 독립특약은 기본계약 추가 거부", async () => {
     const id = await product("기본계약 교체");
     unwrap(await svc.saveCoverages(editor, id, { ...NONE, added: [{ key: "new:1", coverageId: SURGERY, attributes: [], section: "base", plans: [] }] }));
     const [base] = await svc.listProductCoverages(id);
-    const second = rejected(await svc.saveCoverages(editor, id, { ...NONE, added: [{ key: "new:2", coverageId: DEATH, attributes: [], section: "base", plans: [] }] }));
-    expect(second.issues!.map((i) => [i.at.ownerId, i.at.refPath, i.message])).toEqual([["new:2", "section", "기본계약은 하나만 지정할 수 있습니다 — 먼저 현재 기본계약을 해제하세요 (MVP)"]]);
+    // 둘째 기본계약 — 거부하지 않는다(2026-10-17 ① 기본계약 2+ 허용). 되돌려 하나로 돌아간 뒤 교체를 본다
+    unwrap(await svc.saveCoverages(editor, id, { ...NONE, added: [{ key: "new:2", coverageId: DEATH, attributes: [], section: "base", plans: [] }] }));
+    expect((await svc.listBaseContractIds(id)).length).toBe(2);
+    const death = (await svc.listProductCoverages(id)).find((pc) => pc.id !== base!.id)!;
+    unwrap(await svc.saveCoverages(admin, id, { ...NONE, removed: [death.id] }, { confirm: true }));
 
     const swap = { added: [{ key: "new:2", coverageId: DEATH, attributes: [], section: "base" as const, plans: [] }], updated: [], removed: [base!.id] };
     const first = rejected(await svc.saveCoverages(admin, id, swap));

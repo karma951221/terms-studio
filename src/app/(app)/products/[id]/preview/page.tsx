@@ -2,7 +2,8 @@ import { AssemblyCheckLine } from "@/app/_components/AssemblyCheckLine";
 import { Breadcrumb } from "@/app/_components/Breadcrumb";
 import { ErrorBanner } from "@/app/_components/ErrorBanner";
 import { IssueList } from "@/app/_components/IssueList";
-import { RenderedDoc, RenderedGroupView } from "@/app/_components/RenderedDoc";
+import { RenderedBlocksView, RenderedDoc, RenderedGroupView } from "@/app/_components/RenderedDoc";
+import { bookletForm, FIRST_SECTION_NAME } from "@/domain/assembly";
 import { ENTITY_LABEL, OMISSION_LABEL } from "@/app/_lib/labels";
 import { formatDateTime } from "@/app/_lib/list";
 import { currentActor, getServices } from "@/lib/services";
@@ -21,6 +22,8 @@ export const dynamic = "force-dynamic";
  * - 머리의 두 줄: 규모(먼저 읽히는 숫자는 전체 규모 — 디자인원칙 §9.6) · 조립 검사/내용 검토(디자인원칙 §9.2).
  * - 「조연결 판정」 절(기능/조립산출 §4.1): 조연결된 조마다 판정 배지 · 미합의 사유, 펼치면 항별 대조 표와 비교 제외 함수조항.
  *   생략된 조는 본문에서 사라지므로 근거는 여기서만 열린다.
+ * - 절 형태(주계약 기본계약 2+ · 독립특약 — `bookletForm`)면 본문이 책자 제목 → 「제1절 일반조항」 → 「제2절 보장조항」(그룹 머리 · 블록 머리 · 블록 조)
+ *   → (특약 그룹) → 별표다. 형태가 없는 옛 산출본은 대치 형태로 읽는다. 판정 패널 · 배지는 ⑤.
  */
 export default async function ProductPreviewPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
   const { id } = await params;
@@ -68,6 +71,8 @@ export default async function ProductPreviewPage({ params, searchParams }: { par
 
   const specialDocs = booklet.specials.flatMap((g) => g.docs);
   const generalArticles = articleCount(booklet.general);
+  const sectioned = bookletForm(booklet) === "sectioned";
+  const blockCount = (booklet.blocks ?? []).reduce((n, g) => n + g.docs.length, 0);
   // 조연결 판정 절(기능/조립산출 §4.1)이 생기기 전에 저장된 산출본의 판정 기록에는 pairs · excludedClauseNodeIds 가 없다 — 입력이 안 바뀌면 stale 도 아니라서
   // 「다시 실행」 전까지는 근거 없는 행으로 그린다 (화면이 죽지 않게).
   const records = booklet.omitted.map((o) => ({ ...o, pairs: o.pairs ?? [], excludedClauseNodeIds: o.excludedClauseNodeIds ?? [] }));
@@ -82,7 +87,7 @@ export default async function ProductPreviewPage({ params, searchParams }: { par
   return (
     <div>
       <p className="ts-count">
-        규모: 보통약관 {generalArticles}조 · 특약 {specialDocs.length}건 · 별표 {booklet.appendices.length}
+        규모: {sectioned ? <>제1절 {generalArticles}조 · 블록 {blockCount}</> : <>보통약관 {generalArticles}조</>} · 특약 {specialDocs.length}건 · 별표 {booklet.appendices.length}
         {records.length > 0 && <> · 생략 {counts.omitted}조</>}
       </p>
       <AssemblyCheckLine issues={booklet.issues} />
@@ -154,17 +159,34 @@ export default async function ProductPreviewPage({ params, searchParams }: { par
         </section>
       )}
 
-      <h2 className="ts-h2">
-        보통약관 <span className="ts-count">{generalArticles}조</span>
-      </h2>
-      {booklet.general ? <RenderedDoc doc={booklet.general} /> : <p className="ts-muted">보통약관 템플릿이 없습니다.</p>}
+      {sectioned ? (
+        <>
+          <h2 className="ts-h2">
+            {booklet.title} <span className="ts-count">제1절 {generalArticles}조 · 블록 {blockCount}</span>
+          </h2>
+          {booklet.general ? <RenderedDoc doc={booklet.general} heading={FIRST_SECTION_NAME} /> : <p className="ts-muted">보통약관 템플릿이 없습니다.</p>}
+          <RenderedBlocksView groups={booklet.blocks ?? []} />
+        </>
+      ) : (
+        <>
+          <h2 className="ts-h2">
+            보통약관 <span className="ts-count">{generalArticles}조</span>
+          </h2>
+          {booklet.general ? <RenderedDoc doc={booklet.general} /> : <p className="ts-muted">보통약관 템플릿이 없습니다.</p>}
+        </>
+      )}
 
-      <h2 className="ts-h2">
-        특약 그룹 <span className="ts-count">{specialDocs.length}건</span>
-      </h2>
-      {booklet.specials.map((g) => (
-        <RenderedGroupView key={g.id} group={g} />
-      ))}
+      {/* 독립특약은 탑재 상품담보가 모두 블록이라 특약 그룹이 없다 */}
+      {(!sectioned || specialDocs.length > 0) && (
+        <>
+          <h2 className="ts-h2">
+            특약 그룹 <span className="ts-count">{specialDocs.length}건</span>
+          </h2>
+          {booklet.specials.map((g) => (
+            <RenderedGroupView key={g.id} group={g} />
+          ))}
+        </>
+      )}
 
       <h2 className="ts-h2">
         별표 <span className="ts-count">{booklet.appendices.length}건</span>

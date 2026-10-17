@@ -119,10 +119,9 @@ describe("addRowProblem — 「+ 담보 추가」 줄의 화면 검사(서버가
     expect(addRowProblem(added, newRow(), opts)).toBe("이미 탑재한 조합입니다 — 「사망 추가」");
   });
 
-  it("기본계약은 하나만(MVP) — 남는 기본계약이 있으면 거부, 지우는 중이면 된다 · 독립특약은 기본계약 없음", () => {
+  it("주계약은 기본계약을 더 둘 수 있다(2개 이상 = 절 형태) · 독립특약은 기본계약 없음", () => {
     const row = newRow({ section: "base", coverageId: "c-x", attributes: [] });
-    expect(addRowProblem(saved(), row, opts)).toBe("기본계약은 하나만 둘 수 있습니다 — 지금 기본계약을 삭제한 뒤 추가하세요 (MVP)");
-    expect(addRowProblem(coveragesDraftReducer(saved(), { type: "remove", key: "b1" }), row, opts)).toBeUndefined();
+    expect(addRowProblem(saved(), row, opts)).toBeUndefined();
     expect(addRowProblem(initCoveragesDraft([], special, {}), row, { kinds, standalone: true })).toBe("독립특약 상품은 기본계약을 두지 않습니다");
   });
 });

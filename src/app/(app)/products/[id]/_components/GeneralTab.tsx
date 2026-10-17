@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
 import { IssueList } from "@/app/_components/IssueList";
-import { RenderedDoc } from "@/app/_components/RenderedDoc";
-import type { Booklet } from "@/domain/assembly";
+import { RenderedBlocksView, RenderedDoc } from "@/app/_components/RenderedDoc";
+import { bookletForm, type Booklet } from "@/domain/assembly";
 import type { EnumDef } from "@/domain/catalog";
 import type { Clause } from "@/domain/clause";
 import { clauseSpanBy, foldTitle, numberTree, referenceTargetIndex, type Box, type DocumentNode, type NodeNumber } from "@/domain/document";
@@ -111,6 +111,8 @@ export function GeneralTab({
   const refBreakCount = templateTree ? productRefIssues({ template: templateTree, copies: articleCopies, hidden: hiddenArticles, ...(dependents ? { dependents } : {}) }).length : 0;
   const appendixCount = booklet?.appendices.length ?? 0;
   const baseCoverageIds = new Set(baseCoverages.map((pc) => pc.id));
+  // 절 형태(기본계약 2+ · 독립특약) — 미리보기는 제1절(위임 문구가 든 판정 결과)이고, 제2절 블록은 세 패널 아래에 읽기로 붙인다 (기능/상품 §4.6 · 조립산출 §3.8)
+  const sectioned = booklet !== undefined && bookletForm(booklet) === "sectioned";
 
   // ── 목차 — 관 제목 · 조(템플릿 번호 + 제목 · 노출) ─────────────────────────
   const toc: TocSection[] = sections.map((s, i) => ({
@@ -132,7 +134,7 @@ export function GeneralTab({
     const previewNodeIds = renderedNodeIds(previewDoc);
     return {
       key: section.id ?? `loose-${i}`,
-      label: generalSectionLabel(sections, section, generalNumbers),
+      label: `${sectioned ? "제1절 · " : ""}${generalSectionLabel(sections, section, generalNumbers)}`,
       articleIds: section.articles.map((a) => a.id),
       center: (
         <TemplateSource
@@ -188,6 +190,11 @@ export function GeneralTab({
           requestedArticleId={articleId}
           {...(copyEditorData && generalDocumentId && templateTree ? { copyEditor: { ...copyEditorData, templateId: generalDocumentId, template: templateTree } } : {})}
         />
+      )}
+      {sectioned && generalTree !== undefined && (
+        <section className="ts-section ts-general-blocks" aria-label="제2절 보장조항 미리보기">
+          <RenderedBlocksView groups={booklet.blocks ?? []} />
+        </section>
       )}
     </>
   );
