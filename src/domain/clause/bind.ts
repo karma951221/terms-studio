@@ -10,6 +10,9 @@
  *
  * 계획은 「평가 문맥(EvalContext) 래퍼」를 적었으나, 슬롯은 치환 단계(substitute)가 따로 평가하므로 펼칠 때 소스를 바꿔 쓰는 편이
  * 조립 파이프 뒤쪽(치환 · 렌더 · 원문 대조)을 건드리지 않는다 — 결과는 같다.
+ *
+ * 바꿔 쓰는 기계(`createRewriter`)는 함수조항 본문과 동적표 템플릿(기능/동적표 §3.6 — 인자 연결을 바꿔 쓰는 자리가 함수조항과 같다)이
+ * 함께 쓴다 — `applyBindings` 는 함수조항 한 벌을, `rewriteInlines` 는 인라인 목록 하나를 바꿔 쓴다.
  */
 import { evaluate, format, parse, refPath, type Expr, type Literal, type Ref } from "../expression";
 import { ok, reject } from "../types";
@@ -17,6 +20,7 @@ import type { Coordinate, Issue, Result, ScalarValue, Value } from "../types";
 import { hasClauseOnly, localScope, type LocalEnv } from "./locals";
 import type { ClauseNode, Inline } from "./nodes";
 import { effectiveBindings, type Binding, type Bindings, type ParamDef } from "./params";
+import type { LocalDef } from "./locals";
 import type { Clause, ClauseBody } from "./types";
 
 /** 상수 → 슬롯 글. 타입은 인자 선언 타입(enum 이면 표시명을 찍는 쪽이 안다). */
@@ -31,12 +35,18 @@ function literalOf(value: ScalarValue, param: ParamDef): Literal {
   return { type: "string", value };
 }
 
-export function applyBindings(clause: Clause, bindings: Bindings | undefined, formatConst: ConstFormatter, at: Coordinate = {}, env?: LocalEnv): Result<Clause> {
-  const params = clause.params ?? [];
-  const locals = clause.locals ?? [];
-  if (params.length === 0 && locals.length === 0) return ok(clause);
+/** 바꿔 쓰는 기계 — 노드 하나를 바꿔 쓰는 `node` 와 그동안 난 오류 `issues`(같은 자리 같은 종류는 한 번). */
+interface Rewriter {
+  node: (n: ClauseNode) => ClauseNode;
+  issues: Issue[];
+}
+
+/**
+ * 인자 연결을 바꿔 쓰는 기계를 만든다. `owner` 는 오류 문구의 머리(「함수조항 C0001」 · 「동적표 T0001」). `bound` 는 실제 연결(사용처 > 기본).
+ * 평가 재료(`env`)가 있으면 조립처럼 지연 평가(밟을 가지만) · 내부 변수(`locals`) 평가까지, 없으면(미리보기 · 동적표) 모든 가지를 바꿔 쓴다.
+ */
+function createRewriter(owner: string, params: readonly ParamDef[], bound: Bindings, formatConst: ConstFormatter, at: Coordinate, env?: LocalEnv, locals: readonly LocalDef[] = []): Rewriter {
   const byName = new Map(params.map((p) => [p.name, p] as const));
-  const bound = effectiveBindings(clause, bindings);
   const scope = env ? localScope(params, locals, bound, env, at) : undefined;
   const isSource = (name: string) => bound[name]?.kind === "source" || bound[name]?.kind === "current";
   const issues: Issue[] = [];
@@ -54,11 +64,11 @@ export function applyBindings(clause: Clause, bindings: Bindings | undefined, fo
     const b: Binding | undefined = bound[ref.name];
     const here: Coordinate = { ...at, refPath: refPath(ref) };
     if (!param) {
-      fail({ kind: "brokenRef", message: `함수조항 ${clause.code} 에 선언되지 않은 인자입니다: ${ref.name}`, at: here });
+      fail({ kind: "brokenRef", message: `${owner} 에 선언되지 않은 인자입니다: ${ref.name}`, at: here });
       return undefined;
     }
     if (!b) {
-      fail({ kind: "argUnbound", message: `함수조항 ${clause.code} 의 인자 ${ref.name} 이(가) 연결되지 않았습니다`, at: here });
+      fail({ kind: "argUnbound", message: `${owner} 의 인자 ${ref.name} 이(가) 연결되지 않았습니다`, at: here });
       return undefined;
     }
     switch (b.kind) {
@@ -70,6 +80,8 @@ export function applyBindings(clause: Clause, bindings: Bindings | undefined, fo
         return undefined; // 원천은 값으로만 읽힌다 — 평가 재료가 있으면 localScope 가, 없으면(미리보기) 그대로 둔다
       case "current":
         return undefined; // 현재 원소도 값으로만 읽힌다 — 조립(재료 있음)은 localScope 가 원소 값으로, 미리보기는 그대로 둔다
+      case "articleRef":
+        return undefined; // 조 참조 인자는 식에서 읽지 않는다 — 저장 검사가 막는다
     }
   };
 
@@ -182,10 +194,34 @@ export function applyBindings(clause: Clause, bindings: Bindings | undefined, fo
     return out as unknown as ClauseNode;
   };
 
+  return { node, issues };
+}
+
+export function applyBindings(clause: Clause, bindings: Bindings | undefined, formatConst: ConstFormatter, at: Coordinate = {}, env?: LocalEnv): Result<Clause> {
+  const params = clause.params ?? [];
+  const locals = clause.locals ?? [];
+  if (params.length === 0 && locals.length === 0) return ok(clause);
+  const { node, issues } = createRewriter(`함수조항 ${clause.code}`, params, effectiveBindings(clause, bindings), formatConst, at, env, locals);
   const body = (clause.body as ClauseNode[]).map(node) as ClauseBody;
   const options = clause.options.map((o) => ({ ...o, values: o.values.map((v) => ({ ...v, body: v.body.map(node) as Inline[] })) }));
   if (issues.length > 0) return reject({ reason: "invalid", issues });
   return ok({ ...clause, body, options } as Clause);
+}
+
+/** 인라인 목록 하나를 바꿔 쓴 결과 — 오류가 나도 바꿀 수 있는 데까지 바꾼 목록을 함께 준다(동적표는 표 구조를 그대로 내고 호출처가 정한다). */
+export interface RewrittenInlines {
+  inlines: Inline[];
+  issues: Issue[];
+}
+
+/**
+ * 인라인 목록 하나의 `arg.<이름>` 을 연결로 바꿔 쓴다 — 동적표 템플릿(기능/동적표 §3.6) 등 함수조항 밖의 인라인 본문용.
+ * `bound` 는 실제 연결(사용처 > 기본 — `effectiveBindings`). 연결이 없는 인자를 읽으면 `argUnbound`(문구 머리 = `owner`).
+ * 평가 재료(`env`)는 `applyBindings` 와 같은 뜻 — 없으면 모든 가지 · 칸을 바꿔 쓴다.
+ */
+export function rewriteInlines(inlines: readonly Inline[], params: readonly ParamDef[], bound: Bindings, formatConst: ConstFormatter, at: Coordinate = {}, owner = "함수조항", env?: LocalEnv): RewrittenInlines {
+  const { node, issues } = createRewriter(owner, params, bound, formatConst, at, env);
+  return { inlines: inlines.map((n) => node(n) as Inline), issues };
 }
 
 /** 기본 상수 표기 — 숫자는 천 단위 쉼표, 참거짓은 예/아니오, 나머지는 글 그대로(enum 은 코드 — 조립은 표시명 표기를 넘긴다). */
