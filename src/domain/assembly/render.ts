@@ -113,6 +113,11 @@ export interface RenderEnv {
    * 대상 열쇠(`refKey`) 별칭 — 생략된 특약 조 id → 연결된 보통약관 조 id, 대치된 기본계약 조 · 그 항 · 호 · 목(`조#코드`) → 이 문서의 대치 노드 열쇠.
    */
   aliases?: ReadonlyMap<string, string>;
+  /**
+   * 보통약관의 대치 별칭(`general` 을 만든 조립의 `aliases` — 대치된 조의 마스터 항 · 호 · 목 → 같은 자리 기본계약 노드 열쇠, `positionAliases`).
+   * 담보약관의 `scope:'general'` 참조가 대치된 조의 항을 가리키면 보통약관 안 참조처럼 이것을 따른다 (ADR-0089 결정 7).
+   */
+  generalAliases?: ReadonlyMap<string, string>;
   /** 상품이 노출을 끈 보통약관 조 id → 조 명 (기능/상품 §3.6). 사라진 참조 대상이 이 중에 있으면 `articleHidden` 오류다. */
   hiddenArticles?: ReadonlyMap<Id, string>;
   appendices: readonly BookletAppendix[];
@@ -343,6 +348,14 @@ class Renderer {
           let ix = n.scope === "self" || this.env.document === "general" ? this.own : this.general;
           let found = lookup(ix, key);
           let aliased: string | undefined;
+          let aliasIx = this.own;
+          if (!found && n.scope === "general" && this.env.document !== "general") {
+            // 대치된 보통약관 조의 항 · 호 · 목 — 보통약관 안 참조와 같은 자리 별칭 (ADR-0089 결정 7). 항 구성이 다르면 별칭이 없어 오류 그대로
+            const alias = this.env.generalAliases?.get(key);
+            aliased = alias;
+            aliasIx = this.general;
+            if (alias) found = lookup(this.general, alias);
+          }
           if (!found && n.scope === "self") {
             // 별칭 — 생략된 특약 조(→ 보통약관 조) 또는 대치된 기본계약 조 · 그 항 · 호 · 목(→ 이 문서의 대치 노드).
             const alias = this.env.aliases?.get(key);
@@ -368,7 +381,7 @@ class Renderer {
               (target.keys === undefined || inst.loops.some(keyHit)),
           );
           if (narrowed.length > 0) alive.push(...narrowed.map((i) => i.target));
-          else if (target.values !== undefined || target.keys !== undefined || (found?.length ?? 0) > 0 || repeatBorn(ix, key) || (aliased !== undefined && repeatBorn(this.own, aliased))) empty.push({ key, articleId: target.articleId });
+          else if (target.values !== undefined || target.keys !== undefined || (found?.length ?? 0) > 0 || repeatBorn(ix, key) || (aliased !== undefined && repeatBorn(aliasIx, aliased))) empty.push({ key, articleId: target.articleId });
           else dropped.push({ key, articleId: target.articleId });
         }
         // 펼친 것이 0개인 대상은 참조 하나의 펼친 것 합이 0개일 때만 오류다 — 다른 대상이 살아 있으면 분기로 사라진 대상처럼 남은 대상으로 찍는다

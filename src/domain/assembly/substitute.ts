@@ -84,6 +84,8 @@ function typeOf(env: SubstituteEnv, ref: ValueRef | OutputRef): FieldType | unde
 
 class Substituter {
   readonly issues: Issue[] = [];
+  /** 빈 글로 찍힌 범위 낱말 슬롯(대치) — 앞뒤 공백 하나를 접는다 (ADR-0089 결정 3). */
+  private readonly emptyScope = new Set<string>();
   constructor(
     private readonly ctx: AssemblyContext,
     private readonly env: SubstituteEnv,
@@ -113,11 +115,32 @@ class Substituter {
     if (r.kind === "undetermined") return this.error(n.id, this.ctx.explainUndetermined(r.reason, n.at));
     const f = formatValue(r.value, typeOf(this.env, parsed.value.ref), this.env.enums, at);
     if (!f.ok) return this.error(n.id, f.issue);
+    if (parsed.value.ref.kind === "output" && f.text === "") this.emptyScope.add(n.id);
     return { kind: "text", id: n.id, text: f.text };
   }
 
   inlines(list: readonly RInline[]): SInline[] {
-    return list.flatMap((n) => (n.kind === "slot" ? [this.slot(n)] : n.kind === "inlineRepeat" ? this.repeatInline(n) : [n]));
+    return this.foldEmptyScope(list.flatMap((n) => (n.kind === "slot" ? [this.slot(n)] : n.kind === "inlineRepeat" ? this.repeatInline(n) : [n])));
+  }
+
+  /**
+   * 빈 범위 낱말(대치 — 「〔이 약관의〕 보험기간」 → 「보험기간」)은 자리째 빼고 공백 하나를 접는다 — 뒤 글의 머리 공백, 없으면 앞 글의 꼬리 공백.
+   * 자리를 빼므로 뒤 조사 칩은 그 앞 글자로 판정한다(기능/문면 §3.11 — 렌더 끝 판정).
+   */
+  private foldEmptyScope(list: SInline[]): SInline[] {
+    if (!list.some((n) => this.emptyScope.has(n.id))) return list;
+    const out = [...list];
+    for (let i = 0; i < out.length; i++) {
+      const n = out[i];
+      if (n.kind !== "text" || n.text !== "" || !this.emptyScope.has(n.id)) continue;
+      const next = out[i + 1];
+      const prev = out[i - 1];
+      if (next?.kind === "text" && next.text.startsWith(" ")) out[i + 1] = { ...next, text: next.text.slice(1) };
+      else if (prev?.kind === "text" && prev.text.endsWith(" ")) out[i - 1] = { ...prev, text: prev.text.slice(0, -1) };
+      out.splice(i, 1);
+      i--;
+    }
+    return out;
   }
 
   /**
