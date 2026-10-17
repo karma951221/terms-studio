@@ -1,0 +1,286 @@
+[
+  {
+    "code": "DT000001",
+    "label": "감액 지급금액 표",
+    "params": [
+      {
+        "name": "갱신형",
+        "type": {
+          "kind": "boolean"
+        }
+      }
+    ],
+    "columnBasis": "reduction",
+    "rowHeader": "구 분",
+    "headers": {
+      "first": [
+        {
+          "id": "first-base",
+          "kind": "inlineCond",
+          "branches": [
+            {
+              "id": "first-base-b1",
+              "when": "arg.갱신형",
+              "children": [
+                {
+                  "id": "first-base-b1-t",
+                  "kind": "text",
+                  "text": "최초계약일"
+                }
+              ]
+            },
+            {
+              "id": "first-base-b2",
+              "children": [
+                {
+                  "id": "first-base-b2-t",
+                  "kind": "text",
+                  "text": "계약일"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "first-t1",
+          "kind": "text",
+          "text": "부터 "
+        },
+        {
+          "id": "first-boundary",
+          "kind": "slot",
+          "ref": "builtin.table.boundary"
+        },
+        {
+          "id": "first-t2",
+          "kind": "text",
+          "text": "경과시점 전일 이전"
+        }
+      ],
+      "middle": [
+        {
+          "id": "middle-base1",
+          "kind": "inlineCond",
+          "branches": [
+            {
+              "id": "middle-base1-b1",
+              "when": "arg.갱신형",
+              "children": [
+                {
+                  "id": "middle-base1-b1-t",
+                  "kind": "text",
+                  "text": "최초계약일"
+                }
+              ]
+            },
+            {
+              "id": "middle-base1-b2",
+              "children": [
+                {
+                  "id": "middle-base1-b2-t",
+                  "kind": "text",
+                  "text": "계약일"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "middle-t1",
+          "kind": "text",
+          "text": "부터 "
+        },
+        {
+          "id": "middle-prev",
+          "kind": "slot",
+          "ref": "builtin.table.prevBoundary"
+        },
+        {
+          "id": "middle-t2",
+          "kind": "text",
+          "text": "경과시점 이후 "
+        },
+        {
+          "id": "middle-base2",
+          "kind": "inlineCond",
+          "branches": [
+            {
+              "id": "middle-base2-b1",
+              "when": "arg.갱신형",
+              "children": [
+                {
+                  "id": "middle-base2-b1-t",
+                  "kind": "text",
+                  "text": "최초계약일"
+                }
+              ]
+            },
+            {
+              "id": "middle-base2-b2",
+              "children": [
+                {
+                  "id": "middle-base2-b2-t",
+                  "kind": "text",
+                  "text": "계약일"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "middle-t3",
+          "kind": "text",
+          "text": "부터 "
+        },
+        {
+          "id": "middle-boundary",
+          "kind": "slot",
+          "ref": "builtin.table.boundary"
+        },
+        {
+          "id": "middle-t4",
+          "kind": "text",
+          "text": "경과시점 전일 이전"
+        }
+      ],
+      "last": [
+        {
+          "id": "last-base",
+          "kind": "inlineCond",
+          "branches": [
+            {
+              "id": "last-base-b1",
+              "when": "arg.갱신형",
+              "children": [
+                {
+                  "id": "last-base-b1-t",
+                  "kind": "text",
+                  "text": "최초계약일"
+                }
+              ]
+            },
+            {
+              "id": "last-base-b2",
+              "children": [
+                {
+                  "id": "last-base-b2-t",
+                  "kind": "text",
+                  "text": "계약일"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "last-t1",
+          "kind": "text",
+          "text": "부터 "
+        },
+        {
+          "id": "last-boundary",
+          "kind": "slot",
+          "ref": "builtin.table.boundary"
+        },
+        {
+          "id": "last-t2",
+          "kind": "text",
+          "text": "경과시점 이후"
+        }
+      ],
+      "single": [
+        {
+          "id": "single-t1",
+          "kind": "text",
+          "text": "지급금액"
+        }
+      ]
+    },
+    "cell": [
+      {
+        "id": "cell-prefix",
+        "kind": "inlineCond",
+        "branches": [
+          {
+            "id": "cell-prefix-b1",
+            "when": "count(builtin.subCoverage.name) >= 2",
+            "children": [
+              {
+                "id": "cell-prefix-b1-t",
+                "kind": "text",
+                "text": "해당보장의 "
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "cell-t1",
+        "kind": "text",
+        "text": "보험가입금액의 "
+      },
+      {
+        "id": "cell-rate",
+        "kind": "slot",
+        "ref": "builtin.table.rate"
+      },
+      {
+        "id": "cell-t2",
+        "kind": "text",
+        "text": "%"
+      }
+    ]
+  },
+  {
+    "code": "DT000002",
+    "label": "(갱신) 지급금액 표",
+    "params": [],
+    "columnBasis": "none",
+    "rowHeader": "구 분",
+    "headers": {
+      "first": [],
+      "middle": [],
+      "last": [],
+      "single": [
+        {
+          "id": "single-t1",
+          "kind": "text",
+          "text": "지급금액"
+        }
+      ]
+    },
+    "cell": [
+      {
+        "id": "cell-prefix",
+        "kind": "inlineCond",
+        "branches": [
+          {
+            "id": "cell-prefix-b1",
+            "when": "count(builtin.subCoverage.name) >= 2",
+            "children": [
+              {
+                "id": "cell-prefix-b1-t",
+                "kind": "text",
+                "text": "해당보장의 "
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "cell-t1",
+        "kind": "text",
+        "text": "보험가입금액의 "
+      },
+      {
+        "id": "cell-rate",
+        "kind": "slot",
+        "ref": "builtin.table.rate"
+      },
+      {
+        "id": "cell-t2",
+        "kind": "text",
+        "text": "%"
+      }
+    ]
+  }
+]
