@@ -105,6 +105,15 @@ describe("buildForm — 마스터 메타만으로 폼 모델이 만들어진다 
     expect("description" in model.cards[1]).toBe(false);
   });
 
+  it("buildForm — 필드 설명은 마스터가 infoTip 으로 표시한 필드만 싣는다 (그룹 제목 표시 ○ · 평균공시이율 ×, 2026-10-17)", () => {
+    const model = buildForm("product", () => undefined, new Map());
+    const field = (path: string) => model.fields.find((f) => f.path === path);
+    expect(field("booklet.group_titles")?.description).toMatch(/^절 형태의 제2절/);
+    expect(field("disclosure.avg_rate")).toBeDefined();
+    expect("description" in field("disclosure.avg_rate")!).toBe(false);
+    expect(model.fields.filter((f) => f.description !== undefined).map((f) => f.path)).toEqual(["booklet.group_titles"]);
+  });
+
   it("buildForm — 폼이 없는 레벨은 카드 0 · 필드 0", () => {
     const model = buildForm("subCoverage", () => undefined, new Map());
     expect(model.cards).toEqual([]);
