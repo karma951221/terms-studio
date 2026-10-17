@@ -193,6 +193,7 @@ class Substituter {
       children: this.inlines(n.children),
       ...(n.items ? { items: n.items.map((it) => (it.kind === "item" ? this.item(it) : it.kind === "error" ? it : this.static(it))) } : {}),
       ...(n.excludeFromComparison ? { excludeFromComparison: true } : {}),
+      ...(n.clauseUse ? { clauseUse: n.clauseUse } : {}),
     };
   }
 

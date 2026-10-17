@@ -414,6 +414,31 @@ describe("문면작성 S6 — 조연결", () => {
   });
 });
 
+describe("준용하기 옵션 (ADR-0082 결정 5 · 기능/문면 §3.10) — 보통약관 템플릿 조의 메타", () => {
+  it("joinMode 로 공통항 · 전체항 모으기를 저장 · 「없음」은 속성을 지운다 · 담보약관 문서 · 조 아닌 노드 · 모르는 값은 거부", () => {
+    const { doc } = twoArticles();
+    const env = { kind: "general" as const };
+    const common = unwrap(applyCommand(doc, { type: "joinMode", articleId: "n3", mode: "common" }, { env }));
+    expect((common.children[0] as ArticleNode).joinMode).toBe("common");
+    const all = unwrap(applyCommand(common, { type: "joinMode", articleId: "n3", mode: "all" }, { env }));
+    expect((all.children[0] as ArticleNode).joinMode).toBe("all");
+    const none = unwrap(applyCommand(all, { type: "joinMode", articleId: "n3", mode: "none" }, { env }));
+    expect("joinMode" in (none.children[0] as ArticleNode)).toBe(false);
+    expect(rejection(applyCommand(doc, { type: "joinMode", articleId: "n3", mode: "common" }, { env: { kind: "special" } })).reason).toBe("invalid");
+    expect(rejection(applyCommand(doc, { type: "joinMode", articleId: "n2", mode: "common" }, { env })).reason).toBe("invalid");
+    expect(rejection(applyCommand(doc, { type: "joinMode", articleId: "n3", mode: "both" as never }, { env })).reason).toBe("invalid");
+  });
+
+  it("저장 검사(validateTree) — 담보약관의 조에 joinMode 가 있거나 값이 모르는 것이면 structure", () => {
+    const { doc } = twoArticles();
+    const marked = { ...doc, children: [{ ...(doc.children[0] as ArticleNode), joinMode: "common" as const }, ...doc.children.slice(1)] } as DocumentNode;
+    expect(validateTree(marked, { kind: "general" })).toEqual([]);
+    expect(validateTree(marked, { kind: "special" }).map((i) => i.kind)).toEqual(["structure"]);
+    const bad = { ...doc, children: [{ ...(doc.children[0] as ArticleNode), joinMode: "both" }, ...doc.children.slice(1)] } as unknown as DocumentNode;
+    expect(validateTree(bad, { kind: "general" }).map((i) => i.kind)).toEqual(["structure"]);
+  });
+});
+
 describe("복제 (D-P4-9) — 하위 트리·조연결·참조 대상 id 를 그대로, 노드 id 는 새로", () => {
   it("조 복제 → 바로 뒤에 사본, 사본 안의 자기 조 참조는 사본을 가리킨다", () => {
     const { b, doc } = twoArticles();

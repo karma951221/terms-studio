@@ -5,9 +5,9 @@
  *   → judgeOmission → dropEmptyArticles → numberDocument → placeSpecials → collectAppendices → renderDocument
  *
  * 절 형태(주계약 기본계약 2+ · 독립특약 — `planForm`, ADR-0021 결정 1 · ADR-0082):
- *   블록(그룹 순)마다 resolve → substitute → 블록 빈 조 빼기(블록 수 · 연결 수는 이 뒤에 센다) → judgeFirstSection(①잠정 — 연결 조 위임)
- *   → 제1절: 위임 조 비우기 → resolve → substitute → 위임 문구 → dropEmptyArticles → numberDocument
- *   → 블록: ensureApplicationArticle → numberDocument (특약 조 판정을 타지 않는다) → (주계약이면 특약) → collectAppendices → renderDocument
+ *   블록(그룹 순)마다 resolve → substitute → 블록 빈 조 빼기(블록 수 · 연결 수는 이 뒤에 센다) → 제1절 판정(planFirstSection — 연결 k/N · 함수조항 동일 가드 · 준용하기 옵션)
+ *   → 제1절: 위임 · 오르는 조 비우기 → resolve → substitute → 위임 문구 · 블록에서 오른 항 → dropEmptyArticles → numberDocument
+ *   → 블록: 판정대로 조 생략 · 분리(treatBlock) → ensureApplicationArticle → numberDocument (특약 조 판정을 타지 않는다) → (주계약이면 특약) → collectAppendices → renderDocument
  *
  * - 부분 조립: 오류는 마커로 심고 끝까지 간다. `issues` 는 책자 등장 순 (D-P6-12). error가 있으면 `complete=false`, warning만 있으면 완성본이다.
  * - 특약 그룹 (ADR-0090) — 상품담보마다 그 담보가 이 상품의 사용자 그룹에 들었으면 그 그룹, 아니면 담보분류의 기본 그룹.
@@ -38,10 +38,11 @@ import { baseKey, replaceGeneralWithBase } from "./base";
 import { judgeOmission } from "./omission";
 import { collectAppendices, locateIssues, numberDocument, renderDocument } from "./render";
 import { resolveDocument } from "./resolve";
-import { blockCoordinate, fillDelegation, FIRST_SECTION_COORDINATE, type FirstSectionVerdict, type FormPlan, judgeFirstSection, planForm, withDelegation } from "./section";
+import { firstSectionRecords, planFirstSection, raisedArticles, treatBlock, type SectionBlock, type SectionEnv, type SectionPlan } from "./firstSection";
+import { blockCoordinate, fillDelegation, FIRST_SECTION_COORDINATE, type FormPlan, type JoinOption, planForm, withDelegation } from "./section";
 import { substituteSlots } from "./substitute";
-import type { AssemblyCoverage, AssemblyInput, Booklet, BookletAppendix, BookletForm, MasterBundle, NumberedDoc, OmissionRecord, ProductInput, RArticle, RenderedDoc, RenderedGroup, SInline, SpecialPreview, SubstitutedDoc, UndocumentedCoverage } from "./types";
-import { articlesOf } from "./walk";
+import type { AssemblyCoverage, AssemblyInput, Booklet, FirstSectionRecord, BookletAppendix, BookletForm, MasterBundle, NumberedDoc, OmissionRecord, ProductInput, RArticle, RenderedDoc, RenderedGroup, SInline, SpecialPreview, SubstitutedDoc, UndocumentedCoverage } from "./types";
+import { articlesOf, mapArticles } from "./walk";
 
 /**
  * 대치되는 보통약관 조의 항·호·목 → 같은 자리(순번)의 기본계약 항·호·목 별칭.
@@ -284,19 +285,55 @@ function buildGeneral(input: AssemblyInput, contexts: AssemblyContexts, s: Share
 }
 
 /**
- * 절 형태의 제1절 일반조항 — 최종 트리(템플릿 + 쓰이는 사본 · 노출 끔)에 제1절 판정을 얹는다 (ADR-0082 결정 1 · ADR-0021 결정 2).
- * ①은 판정 결과가 위임뿐이다(잠정 — ② 판정에서 바뀜): 위임 조는 마스터 본문을 비운 뒤 해소하고(실행 경로가 아니다) 위임 문구 한 항을 둔다.
- * 판정 대상이 아닌 조는 마스터 그대로다.
+ * 절 형태의 제1절 일반조항 — 최종 트리(템플릿 + 쓰이는 사본 · 노출 끔)에 제1절 판정을 얹는다 (ADR-0082 결정 1 · 5 · 6 · ADR-0021 결정 2).
+ * 위임 · 공통 · 공통항 분리 · 전체항 합침 조는 마스터 본문을 비운 뒤 해소하고(실행 경로가 아니다) — 위임은 위임 문구 한 항, 나머지는 블록에서 오른 항을 싣는다.
+ * 마스터 · 특칙 조는 마스터 그대로다. 조 제목은 템플릿 조 제목(조립산출 §3.9).
  */
-function buildFirstSection(input: AssemblyInput, contexts: AssemblyContexts, s: Shared, verdicts: ReadonlyMap<Id, FirstSectionVerdict>): Built | undefined {
+function buildFirstSection(input: AssemblyInput, contexts: AssemblyContexts, s: Shared, plan: SectionPlan, raised: ReadonlyMap<Id, RArticle<SInline>["children"]>): Built | undefined {
   const general = generalTree(input);
   if (!general) return undefined;
   const { master, tree: g, hidden } = general;
   const present = masterArticles(g);
-  const delegated = new Set([...verdicts].filter(([id, v]) => v.kind === "delegate" && present.has(id)).map(([id]) => id));
-  const prepared = prepare(emptyArticles(g, delegated), contexts.general, s, { coordinate: generalCoordinate(input.product, master), overrides: input.product.overrides, ...prepareCoordinates(input, g) });
-  const numbered = numberDocument(dropEmptyArticles(withDelegation(prepared.doc, delegated), authoredEmptyArticleIds(g)).doc);
-  return { numbered: fillDelegation(numbered, delegated), issues: prepared.issues, omitted: [], ...(hidden ? { hidden } : {}) };
+  const delegated = new Set([...plan.verdicts].filter(([id, v]) => v.kind === "delegate" && present.has(id)).map(([id]) => id));
+  const lifted = new Set([...raised.keys()].filter((id) => present.has(id)));
+  const prepared = prepare(emptyArticles(g, new Set([...delegated, ...lifted])), contexts.general, s, { coordinate: generalCoordinate(input.product, master), overrides: input.product.overrides, ...prepareCoordinates(input, g) });
+  const judged = mapArticles(withDelegation(prepared.doc, delegated), (a): RArticle<SInline> => (lifted.has(a.id) ? { ...a, children: raised.get(a.id)! } : a));
+  const numbered = numberDocument(dropEmptyArticles(judged, authoredEmptyArticleIds(g)).doc);
+  return { numbered: fillDelegation(numbered, delegated), issues: [...prepared.issues, ...plan.firstIssues], omitted: [], ...(hidden ? { hidden } : {}) };
+}
+
+/**
+ * 제1절 판정의 문맥 — 최종 트리에 있는 템플릿 조(조건 해소 · 노출 끔 뒤 — 본문은 비우고 해소해 오류 · 조회 흔적을 남기지 않는다) ·
+ * 조 명 · 준용하기 옵션(템플릿 원본 — 사본의 속성은 읽지 않는다) · 대응 보통약관 검사.
+ */
+function sectionEnv(input: AssemblyInput, contexts: AssemblyContexts, s: Shared): SectionEnv & { order: Id[] } {
+  const general = generalTree(input);
+  const coordinate = generalCoordinate(input.product, general?.master);
+  const titles = new Map<Id, string>();
+  const order: Id[] = [];
+  for (const [id, a] of general ? masterArticles(general.master) : []) {
+    titles.set(id, foldTitle(a.title));
+    order.push(id);
+  }
+  const template = input.product.generalDocumentId === undefined ? undefined : input.generalDocuments.get(input.product.generalDocumentId);
+  const options = new Map<Id, JoinOption>([...(template ? masterArticles(template) : [])].flatMap(([id, a]) => (a.joinMode ? [[id, a.joinMode] as [Id, JoinOption]] : [])));
+  let present = new Set<Id>();
+  if (general) {
+    const skeleton = emptyArticles(general.tree, new Set(titles.keys()));
+    present = new Set(articlesOf(prepare(skeleton, contexts.general, s, { coordinate, overrides: input.product.overrides, ...prepareCoordinates(input, general.tree) }).doc).map((a) => a.id));
+  }
+  return {
+    present,
+    ...(general?.hidden ? { hidden: general.hidden } : {}),
+    titles,
+    options,
+    order,
+    wrongGeneral: (c) => {
+      const g = input.coverageGenerals?.get(c.snapshot.coverageId);
+      return g !== undefined && g !== input.product.generalDocumentId;
+    },
+    generalAt: coordinate,
+  };
 }
 
 function buildSpecial(input: AssemblyInput, contexts: AssemblyContexts, s: Shared, c: AssemblyCoverage, general: Built | undefined): Built | undefined {
@@ -434,13 +471,11 @@ interface PreparedBlock {
   title: string;
   doc: SubstitutedDoc;
   issues: Issue[];
-  /** 이 블록이 조연결한 템플릿 조 — 조건 해소 · 블록 빈 조 빼기 뒤 (ADR-0082 결정 2). */
-  linked: Set<Id>;
 }
 
 /**
  * 블록 하나 — 블록 문맥(작성위치 = 블록)으로 해소하고 블록 빈 조를 뺀다. 조가 하나도 안 남으면 블록이 아니다(ADR-0082 결정 2).
- * 블록 조는 특약 조 판정(ADR-0020)을 타지 않는다 — ①은 연결 조가 모두 위임이라 블록마다 자기 조 그대로(결정 6).
+ * 블록 조는 특약 조 판정(ADR-0020)을 타지 않는다 — 제1절 판정 결과(결정 6)만 블록 조를 생략 · 분리한다(`treatBlock`).
  */
 function prepareBlock(input: AssemblyInput, contexts: AssemblyContexts, s: Shared, c: AssemblyCoverage, standalone: boolean): PreparedBlock | undefined {
   const doc = input.specialDocuments.get(c.snapshot.coverageId);
@@ -452,20 +487,25 @@ function prepareBlock(input: AssemblyInput, contexts: AssemblyContexts, s: Share
   const dropped = dropEmptyArticles(prepared.doc, authoredEmptyArticleIds(doc)).doc;
   const articles = articlesOf(dropped);
   if (articles.length === 0) return undefined;
-  return { c, title, doc: dropped, issues: prepared.issues, linked: new Set(articles.flatMap((a) => (a.linkedArticleId ? [a.linkedArticleId] : []))) };
+  return { c, title, doc: dropped, issues: prepared.issues };
 }
 
 interface SectionedBuild {
   general: Built | undefined;
-  /** 블록 그룹 — `head` = 그룹 머리(켤 때 「Ⅰ.」), 블록 `head` = 블록 머리(「Ⅰ-1.」 · 「1.」 — 켤 때 제목 없는 자리의 블록은 없다). */
-  groups: { id: Id; title?: string; titleIssue?: Issue; head?: string; blocks: { prepared: PreparedBlock; numbered: NumberedDoc; head?: string }[] }[];
+  /**
+   * 블록 그룹 — `head` = 그룹 머리(켤 때 「Ⅰ.」), 블록 `head` = 블록 머리(「Ⅰ-1.」 · 「1.」 — 켤 때 제목 없는 자리의 블록은 없다).
+   * 블록 `aliases` = 블록에 남은 조가 제1절로 오른 조 · 항을 가리킬 때의 렌더 별칭(C4).
+   */
+  groups: { id: Id; title?: string; titleIssue?: Issue; head?: string; blocks: { prepared: PreparedBlock; numbered: NumberedDoc; head?: string; aliases: ReadonlyMap<string, string> }[] }[];
+  /** 제1절 판정 기록 (ADR-0082 결정 11). */
+  firstSection: FirstSectionRecord[];
   groupIssues: ReadonlyMap<Id, Issue>;
   /** 상품 자리의 오류 — 독립특약 블록 0 이면 `noBlock`. */
   productIssues: Issue[];
 }
 
 /**
- * 절 형태 — 블록(그룹 순)을 해소해 세고, 블록의 조연결로 제1절을 판정(①잠정 — 전부 위임)해 제1절을 만든다.
+ * 절 형태 — 블록(그룹 순)을 해소해 세고, 블록의 조연결로 제1절을 판정해(ADR-0082 — `planFirstSection`) 제1절을 만들고 블록 조를 처리한다.
  * 블록 번호 머리는 「그룹 제목 표시」 옵션이 정한다 — 끔 「1.」 · 켬 「Ⅰ-1.」(`blockHeads` — 제목 줄이 서는 그룹만 센다, ADR-0090 결정 8).
  * 끄면 그룹 제목을 찍지 않는다(제목 · 빈 제목 오류 없음).
  */
@@ -474,8 +514,12 @@ function buildSectioned(input: AssemblyInput, contexts: AssemblyContexts, s: Sha
   const prepared = placed.groups
     .map((g) => ({ ...g, blocks: g.members.flatMap((c) => prepareBlock(input, contexts, s, c, form.standalone) ?? []) }))
     .filter((g) => g.blocks.length > 0);
-  const verdicts = judgeFirstSection(prepared.flatMap((g) => g.blocks.map((b) => ({ productCoverageId: b.c.snapshot.id, linkedArticleIds: b.linked }))));
-  const general = buildFirstSection(input, contexts, s, verdicts);
+  // 복합 블록 판별은 후속 기획(조립산출 §5) — 지금은 늘 아니다
+  const sectionBlocks: SectionBlock[] = prepared.flatMap((g) => g.blocks.map((b) => ({ c: b.c, doc: b.doc, composite: false })));
+  const env = sectionEnv(input, contexts, s);
+  const plan = planFirstSection(sectionBlocks, env);
+  const general = buildFirstSection(input, contexts, s, plan, raisedArticles(plan, sectionBlocks));
+  const sectionBlockOf = new Map(sectionBlocks.map((b) => [b.c.snapshot.id, b]));
   const showTitles = showsGroupTitles(input.product.values.get(GROUP_TITLES_PATH));
   const heads = blockHeads(prepared.map((g) => ({ id: g.id, titled: g.id !== UNGROUPED_ID, members: g.blocks.map((b) => b.c.snapshot.id) })), showTitles);
   const productIssues: Issue[] = [];
@@ -495,12 +539,15 @@ function buildSectioned(input: AssemblyInput, contexts: AssemblyContexts, s: Sha
         ...(head !== undefined ? { head } : {}),
         blocks: g.blocks.map((b) => {
           const blockHead = heads.blocks.get(b.c.snapshot.id);
-          return { prepared: b, numbered: numberDocument(ensureApplicationArticle(b.doc)), ...(blockHead !== undefined ? { head: blockHead } : {}) };
+          const treated = treatBlock(sectionBlockOf.get(b.c.snapshot.id)!, plan, general?.numbered);
+          const issues = [...b.issues, ...(plan.blockIssues.get(b.c.snapshot.id) ?? [])];
+          return { prepared: { ...b, issues }, numbered: numberDocument(ensureApplicationArticle(treated.doc)), aliases: treated.aliases, ...(blockHead !== undefined ? { head: blockHead } : {}) };
         }),
       };
     }),
     groupIssues: placed.groupIssues,
     productIssues,
+    firstSection: firstSectionRecords(plan, sectionBlocks, general?.numbered, env.titles, env.order),
   };
 }
 
@@ -518,8 +565,8 @@ function renderGeneral(input: AssemblyInput, general: Built, appendices: readonl
 
 /** 블록 하나의 렌더 — 문서 제목 = 블록 제목, `head` = 블록 머리. 블록 안 오류는 「제2절 {블록 머리}」 이름공간. */
 function renderBlock(block: SectionedBuild["groups"][number]["blocks"][number], general: Built | undefined, appendices: readonly BookletAppendix[], groupIssue: Issue | undefined): { doc: RenderedDoc; issues: Issue[] } {
-  const { prepared, numbered, head } = block;
-  const r = renderDocument(numbered, { document: "special", ownerId: prepared.c.snapshot.id, general: general?.numbered, appendices, ...(general?.hidden ? { hiddenArticles: general.hidden } : {}) });
+  const { prepared, numbered, head, aliases } = block;
+  const r = renderDocument(numbered, { document: "special", ownerId: prepared.c.snapshot.id, general: general?.numbered, aliases, appendices, ...(general?.hidden ? { hiddenArticles: general.hidden } : {}) });
   const issues = inSection([...(groupIssue ? [groupIssue] : []), ...locateIssues(prepared.issues, numbered), ...r.issues], blockCoordinate(head));
   return { doc: head === undefined ? r.doc : { ...r.doc, head }, issues };
 }
@@ -638,6 +685,7 @@ export function assemble(master: MasterBundle, product: ProductInput): Booklet {
     undocumented: placement.undocumented,
     baseContracts: placement.baseContracts,
     trace: contexts.traces,
+    ...(sectioned ? { firstSection: sectioned.firstSection } : {}),
   };
 }
 

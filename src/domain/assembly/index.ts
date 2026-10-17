@@ -8,7 +8,9 @@
  * - omission.ts   : 5. judgeOmission — 조연결 + 리터럴 비교 생략
  * - render.ts     : 6. numberDocument · 8. collectAppendices · 7. renderDocument(조·별표 참조 해소)
  * - booklet.ts    : assemble(master, product) · assembleSpecial(상품담보 미리보기) · placeSpecials · executionBasedFilter
- * - section.ts    : 절 형태 — 형태 판별(planForm) · 제1절 판정(①잠정 — 연결 조 위임) · 위임 문구 · 블록 번호 머리
+ * - section.ts    : 절 형태 — 형태 판별(planForm) · 제1절 판정(judgeFirstSection — 6종) · 위임 문구 · 블록 번호 머리
+ * - firstSection.ts : 제1절 판정의 조립 쪽 — 연결 검사 · 제1절로 오르는 항 · 블록 조 처리 · 준용 문구 · 판정 기록
+ * - sameness.ts   : 「같다」 — 함수조항 동일 가드 · 항 단위 · 참조 대치
  * - articlePreview.ts : previewArticle — 문면 저작 화면 미리보기(고른 상품 문맥으로 조 하나)
  * - fixture.ts    : 관통 1 축약 픽스처 (AssemblyInput)
  *
@@ -26,5 +28,6 @@ export * from "./omission";
 export * from "./render";
 export * from "./resolve";
 export * from "./section";
+export * from "./firstSection";
 export * from "./substitute";
 export * from "./types";

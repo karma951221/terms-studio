@@ -391,7 +391,19 @@ export interface ArticleNode {
   title: InlineNode[];
   /** 조연결 — 대응 보통약관 조 id (담보약관에서만, 조당 최대 1개 — D-P4-21·22). */
   linkedArticleId?: Id;
+  /**
+   * 준용하기 옵션 — 보통약관 템플릿 조에만 (ADR-0082 결정 5 · 기능/문면 §3.10). 없음(기본)이면 속성이 없다.
+   * `common` 공통항 모으기 · `all` 전체항 모으기 — 절 형태에서 모든 블록이 이 조에 조연결했을 때만(k = N ≥ 2) 작동한다.
+   */
+  joinMode?: JoinMode;
   children: BlockNode[];
+}
+
+/** 준용하기 옵션의 저장 값 — 「없음」은 속성 없음 (ADR-0082 결정 5). */
+export type JoinMode = "common" | "all";
+export const JOIN_MODES: readonly JoinMode[] = ["common", "all"];
+export function isJoinMode(v: unknown): v is JoinMode {
+  return v === "common" || v === "all";
 }
 
 export type BlockNode =
@@ -929,6 +941,10 @@ export function checkNodeRefs(e: NodeEntry, ix: TreeIndex, env: TreeEnv, atSave:
   const one = (kind: Issue["kind"], message: string): Issue[] => [{ kind, message, at }];
   switch (n.kind) {
     case "article":
+      if (n.joinMode !== undefined) {
+        if (!isJoinMode(n.joinMode)) return one("structure", `준용하기 옵션은 「공통항 모으기」 · 「전체항 모으기」 중 하나여야 합니다: ${String(n.joinMode)}`);
+        if (env.kind === "special") return one("structure", "준용하기 옵션은 보통약관 템플릿의 조에만 둘 수 있습니다");
+      }
       if (n.linkedArticleId === undefined) return [];
       if (env.kind === "general") return one("structure", "보통약관 문서의 조에는 조연결을 둘 수 없습니다");
       if (env.generalArticleIds && !env.generalArticleIds.has(n.linkedArticleId)) {
