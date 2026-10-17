@@ -25,12 +25,18 @@ const TAB: ProductTab = "coverages";
 export const MOUNT_QUERY_KEYS = { base: { query: "bq", page: "bpage" }, special: { query: "mq", page: "mpage" } } as const;
 const PAGE_SIZE = 50;
 
-/** 담보 마스터 한 줄 — 행의 담보코드 · 담보명 · 특약 그룹 이름(그 담보의 「특약 그룹」 값, ADR-0080). */
+/** 담보 마스터 한 줄 — 행의 담보코드 · 담보명 · 담보분류(기본 특약 그룹의 재료, ADR-0090). */
 export interface CoverageRef {
   id: Id;
   code?: string;
   name: string;
-  group?: string;
+  category?: string;
+}
+
+/** 특별약관 표 「그룹」 칸의 글자 · tooltip — 그 담보가 드는 그룹 제목(`CoveragesTab` 이 초안으로 짓는다). 글자가 없으면 「—」. */
+export interface GroupCellLabel {
+  text?: string;
+  tip?: string;
 }
 
 /** 편집 상태 — 편집 중일 때만 준다. 초안 · 저장본(「변경」 판정) · 행별 저장 거부 문구. */
@@ -64,6 +70,8 @@ export interface CoverageMountSectionProps {
   edit?: MountSectionEdit;
   /** 처음부터 「+ 담보 추가」 줄을 펼쳐 둔다 — 렌더 검사용. */
   initialAddOpen?: boolean;
+  /** 특별약관 표 「그룹」 칸 — 담보 id → 그룹 제목 (ADR-0090). 없으면 「—」. */
+  groupLabel?: (coverageId: Id) => GroupCellLabel;
 }
 
 const planLabel = (plans: readonly ProductPlan[], id: Id) => {
@@ -80,7 +88,7 @@ const planLabel = (plans: readonly ProductPlan[], id: Id) => {
  *   되돌리기, 더한 행은 빠진다). 바뀐 행에 「추가」 · 「변경」 · 「삭제」. 표 아래 「+ 담보 추가」 → 그 자리에 펼쳐지는 줄(담보 찾기 · 담보속성 → 추가 · 닫기).
  *   저장 거부는 그 행 아래에. 오른쪽에 떠 있던 탑재 폼은 없다 — 표와 겹쳤다(2026-10-04 사용자 QA).
  */
-export function CoverageMountSection({ productId, section, items, coverages, attributeKinds, plans, attachedPlans, suggestedNames, query = "", page, keepQuery = {}, edit, initialAddOpen = false }: CoverageMountSectionProps) {
+export function CoverageMountSection({ productId, section, items, coverages, attributeKinds, plans, attachedPlans, suggestedNames, query = "", page, keepQuery = {}, edit, initialAddOpen = false, groupLabel }: CoverageMountSectionProps) {
   const title = SECTION_TITLE[section];
   const keys = MOUNT_QUERY_KEYS[section];
   const withGroup = section === "special";
@@ -97,13 +105,16 @@ export function CoverageMountSection({ productId, section, items, coverages, att
       {edit && <th className="col-act">조작</th>}
     </tr>
   );
-  // 그룹은 담보 마스터의 것 — 읽기 전용, 상품에서 못 바꾼다 (ADR-0080). 없으면 책자에서 그룹 제목 없이 찍힌다
-  const groupCell = (coverageId: Id) =>
-    withGroup ? (
-      <td className="col-fixed-md" title={byId.get(coverageId)?.group ? undefined : "그룹 없음 — 책자에서 그룹 제목 없이 찍힌다 (담보 화면에서 고른다)"}>
-        {byId.get(coverageId)?.group ?? <span className="ts-muted">—</span>}
+  // 그룹 — 읽기 전용, 바꾸는 곳은 「특약 그룹」 섹션 (ADR-0090). 사용자 그룹이 아니면 담보분류의 기본 그룹
+  const groupCell = (coverageId: Id) => {
+    if (!withGroup) return null;
+    const label = groupLabel?.(coverageId) ?? {};
+    return (
+      <td className="col-fixed-md" title={label.tip}>
+        {label.text ?? <span className="ts-muted">—</span>}
       </td>
-    ) : null;
+    );
+  };
   const codeCell = (groupStart: boolean, coverageId: Id, code: string | undefined, name: string | undefined) => (
     <>
       <td className="col-code">

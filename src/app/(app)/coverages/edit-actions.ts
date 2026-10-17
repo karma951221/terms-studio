@@ -96,10 +96,10 @@ export async function saveCoverageEditAction(id: Id, input: CoverageEditData, co
       const error = failed(await services.coverage.setDescription(actor, id, input.description), "description");
       if (error) return error;
     }
-    // 특약 그룹 (ADR-0080) — 빈 문자열 = 없음. 열거형에 없는 값은 서비스가 거부한다(롤백)
-    const group = input.specialGroup || undefined;
-    if (group !== current.specialGroup) {
-      const error = failed(await services.coverage.setSpecialGroup(actor, id, group), "specialGroup");
+    // 담보분류 (ADR-0090) — 필수. 비었거나(옛 데이터의 미입력 포함) 열거형에 없는 값은 서비스가 거부한다(롤백)
+    const category = input.category || undefined;
+    if (category === undefined || category !== current.category) {
+      const error = failed(await services.coverage.setCategory(actor, id, category), "category");
       if (error) return error;
     }
 

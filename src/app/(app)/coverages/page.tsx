@@ -3,13 +3,15 @@
  *
  * 디자인원칙 §2 L1 「담보 조회의 컬럼」은 코드·담보명·담보분류·상태·최종수정 5컬럼을 정했다.
  * 담보코드(`COV000001`, 시스템 채번 — 기능/담보 §3.1)는 2026-09-27 에 생겨 1열에 선다. 검색은 코드 · 담보명 둘 다 본다.
- * 담보분류(담보 레벨 enum 구분자) · 상태(미사용/적용/확정)는 아직 도메인에 없다 — 도메인에 없는 값을 화면이 지어내지 않는다.
+ * 담보분류(열거형 「담보분류」 값 — 담보의 뼈대 칸, ADR-0090)는 코드 · 담보명 다음 열이다(값 이름, 지운 값은 「없는 값 V03」, 미입력은 「—」).
+ * 상태(미사용/적용/확정)는 도메인에 없다 — 도메인에 없는 값을 화면이 지어내지 않는다.
  */
 import { EmptyState } from "@/app/_components/EmptyState";
 import { ListPage, codeCol, dateCol, nameCol, type ListColumn } from "@/app/_components/ListPage";
 import { includesQuery, paginate } from "@/app/_lib/list";
 import { ENTITY_LABEL, FIELD_LABEL, NAME_LABEL, newLabel, searchPlaceholder } from "@/app/_lib/labels";
 import type { CoverageSummary } from "@/db/repo/coverage";
+import { COVERAGE_CATEGORY_ENUM, coverageCategoryLabel } from "@/domain/coverage";
 import { getServices } from "@/lib/services";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +24,7 @@ export default async function CoveragesPage({
   searchParams: Promise<{ error?: string; q?: string; page?: string }>;
 }) {
   const sp = await searchParams;
-  const summaries = await getServices().coverage.listSummaries();
+  const [summaries, categoryEnum] = await Promise.all([getServices().coverage.listSummaries(), getServices().catalog.getEnum(COVERAGE_CATEGORY_ENUM)]);
 
   const q = (sp.q ?? "").trim();
   const filtered = summaries.filter((c) => includesQuery(q, [c.code, c.name]));
@@ -31,6 +33,7 @@ export default async function CoveragesPage({
   const columns: readonly ListColumn<CoverageSummary>[] = [
     codeCol((c) => c.code),
     nameCol(NAME_LABEL.coverage, (c) => c.name, (c) => `/coverages/${c.id}`),
+    { header: "담보분류", width: "md", cell: (c) => coverageCategoryLabel(c.category, categoryEnum) ?? <span className="ts-muted">—</span> },
     dateCol(FIELD_LABEL.updatedAt, (c) => c.updatedAt),
   ];
 

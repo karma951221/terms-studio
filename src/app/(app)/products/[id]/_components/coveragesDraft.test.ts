@@ -1,17 +1,22 @@
 import { describe, expect, it } from "vitest";
 
-import type { AttributeKind, ProductCoverage } from "@/domain/product";
+import type { AttributeKind, ProductCoverage, ProductGroupSetting } from "@/domain/product";
 import type { Issue } from "@/domain/types";
 
 import {
   addRowProblem,
   coveragesDraftDirty,
   coveragesDraftReducer,
+  displayGroups,
+  freeCoverages,
+  groupCoverages,
+  groupOfCoverage,
   initCoveragesDraft,
   issuesByRow,
   rowStatus,
   toCoveragesInput,
   type CoveragesDraft,
+  type GroupContext,
   type NewRowInput,
 } from "./coveragesDraft";
 
@@ -133,5 +138,71 @@ describe("issuesByRow — 저장 거부 이슈를 그 행으로", () => {
     expect(byRow.rows.get("s1")).toEqual(["상품담보명은 비울 수 없습니다"]);
     expect(byRow.rows.get("new:1")).toEqual(["이미 탑재한 조합입니다"]);
     expect(byRow.other).toEqual(["그 밖"]);
+  });
+});
+
+describe("coveragesDraft — 특약 그룹 섹션 (ADR-0090 · 기능/상품 §3.7 · §4.5)", () => {
+  // 사망 · 기본계약 = 상해, 수술비 = 질병. 기본계약은 특약 그룹에 들지 않는다
+  const category: Record<string, string> = { "c-death": "V01", "c-surgery": "V02", "c-base": "V01" };
+  const ctx: GroupContext = { categoryOf: (id) => category[id], categoryOrder: ["V01", "V02", "V03"] };
+  const keys = (d: CoveragesDraft) => displayGroups(d, ctx).map((g) => g.key);
+
+  it("저장한 적 없으면 이 상품 특약 담보의 기본 그룹만 열거값 순서 — 그룹을 고치지 않으면 저장 입력에 groups 가 없다", () => {
+    const d = saved();
+    expect(keys(d)).toEqual(["category:V01", "category:V02"]);
+    expect(groupCoverages(d, ctx, displayGroups(d, ctx)[1]!)).toEqual(["c-surgery"]);
+    expect(coveragesDraftDirty(saved(), d, ctx)).toBe(false);
+    expect(toCoveragesInput(saved(), d, ctx)).toEqual({ added: [], updated: [], removed: [] });
+  });
+
+  it("「+ 그룹」은 목록 끝 · 담보를 넣으면 그 담보의 상품담보 전부가 그 그룹 · 표의 그룹 열도 초안을 따른다 → 저장 입력의 groups", () => {
+    let d = coveragesDraftReducer(saved(), { type: "addGroup", ctx });
+    d = coveragesDraftReducer(d, { type: "renameGroup", key: "newgroup:1", name: "수술 관련 특별약관" });
+    d = coveragesDraftReducer(d, { type: "joinGroup", key: "newgroup:1", coverageId: "c-surgery" });
+    expect(keys(d)).toEqual(["category:V01", "category:V02", "newgroup:1"]);
+    expect(groupOfCoverage(d, ctx, "c-surgery")?.key).toBe("newgroup:1");
+    expect(groupOfCoverage(d, ctx, "c-death")?.key).toBe("category:V01");
+    expect(freeCoverages(d)).toEqual(["c-death"]);
+    expect(coveragesDraftDirty(saved(), d, ctx)).toBe(true);
+    expect(toCoveragesInput(saved(), d, ctx).groups).toEqual({
+      list: [{ kind: "category", code: "V01" }, { kind: "category", code: "V02" }, { kind: "user", key: "newgroup:1", name: "수술 관련 특별약관" }],
+      memberships: [{ coverageId: "c-surgery", group: "newgroup:1" }],
+    });
+  });
+
+  it("▲▼ — 기본 · 사용자 그룹을 섞어 전체 순서 · 빼면 든 담보는 기본 그룹으로 · 칩 ✕ 도 기본 그룹으로", () => {
+    let d = coveragesDraftReducer(saved(), { type: "addGroup", ctx });
+    d = coveragesDraftReducer(d, { type: "moveGroup", key: "newgroup:1", dir: -1, ctx });
+    expect(keys(d)).toEqual(["category:V01", "newgroup:1", "category:V02"]);
+    d = coveragesDraftReducer(d, { type: "moveGroup", key: "category:V01", dir: 1, ctx });
+    expect(keys(d)).toEqual(["newgroup:1", "category:V01", "category:V02"]);
+    d = coveragesDraftReducer(d, { type: "joinGroup", key: "newgroup:1", coverageId: "c-death" });
+    d = coveragesDraftReducer(d, { type: "leaveGroup", coverageId: "c-death" });
+    expect(groupOfCoverage(d, ctx, "c-death")?.key).toBe("category:V01");
+    d = coveragesDraftReducer(d, { type: "joinGroup", key: "newgroup:1", coverageId: "c-death" });
+    d = coveragesDraftReducer(d, { type: "removeGroup", key: "newgroup:1" });
+    expect(keys(d)).toEqual(["category:V01", "category:V02"]);
+    expect(d.members).toEqual({});
+  });
+
+  it("저장된 그룹으로 시작 — 사용자 그룹 열쇠는 그 id · 탑재 해제로 담보가 빠지면 소속과 비게 된 기본 그룹이 목록에서 빠지고, 되돌리면 제자리", () => {
+    const groups: ProductGroupSetting = { groups: [{ kind: "category", code: "V02" }, { kind: "user", id: "g1", name: "사망" }, { kind: "category", code: "V01" }], memberships: [{ coverageId: "c-death", groupId: "g1" }] };
+    const start = () => initCoveragesDraft(base, special, {}, groups);
+    expect(keys(start())).toEqual(["category:V02", "g1", "category:V01"]);
+    expect(toCoveragesInput(start(), start(), ctx)).toEqual({ added: [], updated: [], removed: [] });
+    let d = coveragesDraftReducer(start(), { type: "remove", key: "s2" }); // 수술비(질병) 탑재 해제
+    expect(keys(d)).toEqual(["g1", "category:V01"]);
+    d = coveragesDraftReducer(d, { type: "remove", key: "s1" }); // 사망 탑재 해제 — 소속도 빠진다
+    expect(groupCoverages(d, ctx, displayGroups(d, ctx)[0]!)).toEqual([]);
+    expect(toCoveragesInput(start(), d, ctx).groups?.memberships).toEqual([]);
+    d = coveragesDraftReducer(coveragesDraftReducer(d, { type: "restore", key: "s2" }), { type: "restore", key: "s1" });
+    expect(keys(d)).toEqual(["category:V02", "g1", "category:V01"]);
+    expect(coveragesDraftDirty(start(), d, ctx)).toBe(false);
+  });
+
+  it("탑재로 새로 생긴 기본 그룹은 목록 끝", () => {
+    const groups: ProductGroupSetting = { groups: [{ kind: "category", code: "V02" }, { kind: "user", id: "g1", name: "사망" }], memberships: [] };
+    const d = coveragesDraftReducer(initCoveragesDraft([], [pc("s2", "c-surgery", "수술비")], {}, groups), { type: "add", row: newRow({ coverageId: "c-death" }) });
+    expect(keys(d)).toEqual(["category:V02", "g1", "category:V01"]);
   });
 });

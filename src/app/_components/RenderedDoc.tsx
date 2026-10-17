@@ -201,11 +201,19 @@ export function RenderedDoc({ doc }: { doc: RenderedDocType }) {
   );
 }
 
-/** 책자의 특약 그룹 하나 — 제목 = 담보의 「특약 그룹」 값 이름. 그룹 없는 상품담보의 자리는 제목 줄이 없다 (ADR-0080). */
+/**
+ * 책자의 특약 그룹 하나 (ADR-0090) — 제목 = 사용자 그룹 이름 · 담보분류 값의 「그룹 제목」. 「그룹 제목」이 비었으면 제목 자리에 오류 마커.
+ * 담보분류를 정할 수 없는 상품담보(미입력 · 지운 값)의 자리는 제목 줄이 없다.
+ */
 export function RenderedGroupView({ group }: { group: RenderedGroup }) {
   return (
-    <section className="ts-doc-group" aria-label={group.title ?? "그룹 없는 특별약관"}>
+    <section className="ts-doc-group" aria-label={group.title ?? (group.titleError ? "그룹 제목 없는 특별약관" : "그룹 없는 특별약관")}>
       {group.title !== undefined && <h2 className="ts-doc-group-title">{group.title}</h2>}
+      {group.title === undefined && group.titleError && (
+        <h2 className="ts-doc-group-title">
+          <ErrorMark node={group.titleError} />
+        </h2>
+      )}
       {group.docs.map((d, i) => (
         <RenderedDoc key={`${d.ownerId ?? d.id}-${i}`} doc={d} />
       ))}

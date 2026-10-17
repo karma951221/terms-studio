@@ -37,12 +37,18 @@ describe("항 번호를 생략한 항 — 내어쓰기 없음 (기능/문면 §3
   });
 });
 
-describe("책자의 특약 그룹 (ADR-0080) — 그룹 제목은 담보의 「특약 그룹」 값, 그룹 없는 상품담보는 제목 없이", () => {
+describe("책자의 특약 그룹 (ADR-0090) — 제목은 사용자 그룹 이름 · 담보분류의 「그룹 제목」, 담보분류를 정할 수 없는 상품담보는 제목 없이", () => {
+  const special = { ...doc([{ label: "", text: "보장합니다." }]), document: "special" as const, title: "골절 특별약관" };
   it("제목이 있으면 그룹 제목 줄, 없으면 제목 줄을 그리지 않는다", () => {
-    const special = { ...doc([{ label: "", text: "보장합니다." }]), document: "special" as const, title: "골절 특별약관" };
-    expect(renderToStaticMarkup(<RenderedGroupView group={{ id: "V01", title: "상해 관련 특별약관", docs: [special] }} />)).toContain('<h2 class="ts-doc-group-title">상해 관련 특별약관</h2>');
+    expect(renderToStaticMarkup(<RenderedGroupView group={{ id: "category:V01", title: "상해 관련 특별약관", docs: [special] }} />)).toContain('<h2 class="ts-doc-group-title">상해 관련 특별약관</h2>');
     const html = renderToStaticMarkup(<RenderedGroupView group={{ id: "ungrouped", docs: [special] }} />);
     expect(html).not.toContain("ts-doc-group-title");
     expect(html).toContain("골절 특별약관");
+  });
+
+  it("「그룹 제목」이 비었으면 제목 줄 자리에 오류 마커(앵커 · 메시지)", () => {
+    const issue = { kind: "notEntered" as const, message: "그룹 제목이 비었습니다 — 담보분류 「상해」의 「그룹 제목」", at: {} };
+    const html = renderToStaticMarkup(<RenderedGroupView group={{ id: "category:V01", titleError: { kind: "error", id: "group-title-category:V01", issue }, docs: [special] }} />);
+    expect(html).toMatch(/<h2 class="ts-doc-group-title"><span id="node-group-title-category:V01" class="ts-doc-error" role="alert"/);
   });
 });

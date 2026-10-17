@@ -237,10 +237,17 @@ const coveragesSchema = z.object({
   added: z.array(z.object({ key: z.string().min(1), coverageId: z.string().uuid(), attributes: z.array(selection), section: z.enum(["base", "special"]), name: z.string().optional(), plans: z.array(z.string().uuid()) })),
   updated: z.array(z.object({ id: z.string().uuid(), name: z.string(), plans: z.array(z.string().uuid()) })),
   removed: z.array(z.string().uuid()),
+  // 특약 그룹 (ADR-0090) — 그룹을 고친 저장에만. 사용자 그룹 열쇠는 저장된 id 또는 화면의 newgroup:N
+  groups: z
+    .object({
+      list: z.array(z.union([z.object({ kind: z.literal("category"), code: z.string().min(1) }), z.object({ kind: z.literal("user"), key: z.string().min(1), id: z.string().uuid().optional(), name: z.string() })])),
+      memberships: z.array(z.object({ coverageId: z.string().uuid(), group: z.string().min(1) })),
+    })
+    .optional(),
 });
 
 /**
- * 상품담보 탭 저장 한 번 (기능/상품 §3.8 · §4.5) — 탑재 추가 · 상품담보명 · 세목 부착/해제 · 탑재 해제를 한 서비스 호출 · 한 트랜잭션으로.
+ * 상품담보 탭 저장 한 번 (기능/상품 §3.8 · §4.5) — 탑재 추가 · 상품담보명 · 세목 부착/해제 · 탑재 해제 · 특약 그룹을 한 서비스 호출 · 한 트랜잭션으로.
  * redirect 하지 않는다 — 탭 첫 줄의 `저장`(ProductEditProvider)이 부르고, 성공하면 읽기로 돌아가 refresh 한다.
  * 탑재 해제 · 세목 부착 해제가 있으면 1차는 `confirm`(영향) — 화면이 저장 확인 모달을 띄우고 `confirm = true` 로 다시 부른다.
  */
