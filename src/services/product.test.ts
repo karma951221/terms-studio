@@ -728,7 +728,7 @@ describe("product 서비스 (PGlite)", () => {
       unwrap(await svc.setArticleHidden(editor, p.id, ART_B, true));
       unwrap(await svc.setGeneralDocument(editor, p.id, GENERAL_DOC)); // 같은 템플릿 — 유지 (확인도 안 묻는다)
       expect(await svc.listHiddenArticles(p.id)).toEqual([ART_A, ART_B]);
-      unwrap(await svc.setGeneralDocument(editor, p.id, OTHER_DOC, { confirm: true })); // 교체 — 비운다
+      unwrap(await svc.setGeneralDocument(admin, p.id, OTHER_DOC, { confirm: true })); // 교체 — 비운다 (잃을 것이 있어 관리자)
       expect(await svc.listHiddenArticles(p.id)).toEqual([]);
     });
 
@@ -740,7 +740,7 @@ describe("product 서비스 (PGlite)", () => {
       unwrap(await svc.setOptionOverride(editor, scope, NODE, "C0001", { style: "B" }));
 
       // 1차 호출 — 잃는 것을 세어 거부하고 아무것도 바꾸지 않는다 (예전: 숨김은 조용히 소실 · 오버라이드는 교체 거부)
-      const first = await svc.setGeneralDocument(editor, p.id, OTHER_DOC);
+      const first = await svc.setGeneralDocument(admin, p.id, OTHER_DOC);
       expect(first.ok).toBe(false);
       if (first.ok || first.rejection.reason !== "needsConfirmation") throw new Error("기대: needsConfirmation");
       expect(first.rejection.impact).toEqual({ valueRowsLost: 0, brokenRefs: [], cascade: ["숨긴 조 2", "옵션 오버라이드 1"] });
@@ -754,15 +754,44 @@ describe("product 서비스 (PGlite)", () => {
       expect((await svc.listOptionOverrides(scope)).length).toBe(1);
 
       // 한 트랜잭션 — 교체가 거부되면 둘 다 그대로다 (한쪽만 비워진 상태로 끝나지 않는다)
-      expect(reason(await svc.setGeneralDocument(editor, p.id, "dddddddd-0000-4000-8000-000000000099", { confirm: true }))).toBe("notFound");
+      expect(reason(await svc.setGeneralDocument(admin, p.id, "dddddddd-0000-4000-8000-000000000099", { confirm: true }))).toBe("notFound");
       expect(await svc.listHiddenArticles(p.id)).toEqual([ART_A, ART_B]);
       expect((await svc.listOptionOverrides(scope)).length).toBe(1);
 
       // 확인 후 — 둘 다 비우고 교체한다
-      unwrap(await svc.setGeneralDocument(editor, p.id, OTHER_DOC, { confirm: true }));
+      unwrap(await svc.setGeneralDocument(admin, p.id, OTHER_DOC, { confirm: true }));
       expect((await svc.getProduct(p.id))?.generalDocumentId).toBe(OTHER_DOC);
       expect(await svc.listHiddenArticles(p.id)).toEqual([]);
       expect(await svc.listOptionOverrides(scope)).toEqual([]);
+    });
+
+    it("잃을 것이 있는 교체 · 해제는 관리자만 — 편집자는 확인 카드 전에 · confirm 이어도 · dryRun 도 거부, 잃을 것이 없으면 편집자도 한다 (2026-10-17, ADR-0019)", async () => {
+      const p = unwrap(await svc.createProduct(editor, { name: "교체 역할 상품", generalDocumentId: GENERAL_DOC }));
+      const scope = { kind: "product", id: p.id } as const;
+      unwrap(await svc.setArticleHidden(editor, p.id, ART_A, true));
+      unwrap(await svc.setOptionOverride(editor, scope, NODE, "C0001", { style: "B" }));
+
+      const message = (r: Awaited<ReturnType<typeof svc.setGeneralDocument>>) => {
+        if (r.ok || r.rejection.reason !== "invalid") throw new Error(`기대: invalid, 실제: ${JSON.stringify(r)}`);
+        return r.rejection.issues.map((i) => i.message);
+      };
+      const replace = ["템플릿 교체는 관리자만 할 수 있습니다 — 숨긴 조 1 · 옵션 오버라이드 1 가 초기화됩니다"];
+      expect(message(await svc.setGeneralDocument(editor, p.id, OTHER_DOC))).toEqual(replace);
+      expect(message(await svc.setGeneralDocument(editor, p.id, OTHER_DOC, { confirm: true }))).toEqual(replace);
+      expect(message(await svc.setGeneralDocument(editor, p.id, OTHER_DOC, { dryRun: true }))).toEqual(replace);
+      expect(message(await svc.setGeneralDocument(editor, p.id, undefined, { confirm: true }))).toEqual(["템플릿 해제는 관리자만 할 수 있습니다 — 숨긴 조 1 · 옵션 오버라이드 1 가 초기화됩니다"]);
+      expect((await svc.getProduct(p.id))?.generalDocumentId).toBe(GENERAL_DOC);
+      expect(await svc.listHiddenArticles(p.id)).toEqual([ART_A]);
+      expect((await svc.listOptionOverrides(scope)).length).toBe(1);
+
+      // 같은 템플릿 다시 고르기 — 잃는 것이 없어 편집자도
+      unwrap(await svc.setGeneralDocument(editor, p.id, GENERAL_DOC));
+      // 설정을 다 걷으면 잃을 것이 없다 — 편집자도 바꾸고 · 해제하고 · 처음 고른다
+      unwrap(await svc.setArticleHidden(editor, p.id, ART_A, false));
+      unwrap(await svc.removeOptionOverride(editor, scope, NODE, "C0001"));
+      expect(unwrap(await svc.setGeneralDocument(editor, p.id, OTHER_DOC)).generalDocumentId).toBe(OTHER_DOC);
+      expect(unwrap(await svc.setGeneralDocument(editor, p.id, undefined)).generalDocumentId).toBeUndefined();
+      expect(unwrap(await svc.setGeneralDocument(editor, p.id, GENERAL_DOC)).generalDocumentId).toBe(GENERAL_DOC);
     });
 
     it("dryRun — 같은 판정을 주고 아무것도 쓰지 않는다 (화면이 술어를 베끼지 않게 · 코덱스 리뷰 후속)", async () => {
@@ -772,7 +801,7 @@ describe("product 서비스 (PGlite)", () => {
       unwrap(await svc.setOptionOverride(editor, scope, NODE, "C0001", { style: "B" }));
 
       // 잃을 것이 있는 교체 — 진짜 호출과 같은 거부, 상품은 그대로
-      const dry = await svc.setGeneralDocument(editor, p.id, OTHER_DOC, { dryRun: true });
+      const dry = await svc.setGeneralDocument(admin, p.id, OTHER_DOC, { dryRun: true });
       if (dry.ok || dry.rejection.reason !== "needsConfirmation") throw new Error("기대: needsConfirmation");
       expect(dry.rejection.impact.cascade).toEqual(["숨긴 조 1", "옵션 오버라이드 1"]);
       expect((await svc.getProduct(p.id))?.generalDocumentId).toBe(GENERAL_DOC);
@@ -933,11 +962,13 @@ describe("product 서비스 (PGlite)", () => {
     it("템플릿 교체 — 확인 카드에 「조 사본 N」, 실행하면 사본도 지운다", async () => {
       const p = unwrap(await svc.createProduct(editor, { name: "조 사본 교체", generalDocumentId: GENERAL_DOC }));
       unwrap(await save(p.id, { copies: [{ articleId: ART_A, article: copyOfA("사본"), templateHash: hashA() }] }));
-      const dry = await svc.setGeneralDocument(editor, p.id, OTHER_DOC, { dryRun: true });
+      const dry = await svc.setGeneralDocument(admin, p.id, OTHER_DOC, { dryRun: true });
       if (dry.ok || dry.rejection.reason !== "needsConfirmation") throw new Error("기대: needsConfirmation");
       expect(dry.rejection.impact.cascade).toEqual(["조 사본 1"]);
       expect((await svc.listArticleCopies(p.id)).length).toBe(1);
-      unwrap(await svc.setGeneralDocument(editor, p.id, OTHER_DOC, { confirm: true }));
+      // 조 사본만 있어도 잃을 것이 있다 — 편집자는 거부, 관리자가 실행
+      expect(reason(await svc.setGeneralDocument(editor, p.id, OTHER_DOC, { confirm: true }))).toBe("invalid");
+      unwrap(await svc.setGeneralDocument(admin, p.id, OTHER_DOC, { confirm: true }));
       expect(await svc.listArticleCopies(p.id)).toEqual([]);
     });
   });
