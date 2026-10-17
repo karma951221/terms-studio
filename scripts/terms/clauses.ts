@@ -48,6 +48,21 @@ export interface ClauseRecord {
   presets?: PresetDef[];
 }
 
+/**
+ * 준용규정 함수조항(조 제목이 「준용규정」으로 시작하는 「항」 함수조항)의 본문을 작성위치 조건(`builtin.output ≠ 'replace'`)으로 감싼다
+ * (ADR-0089 결정 5 · 기능/함수조항 §3.7) — 담보약관 한 벌이 기본계약으로 대치될 때 준용규정 조는 빈 조가 되어 빠진다. 이미 감쌌으면 그대로.
+ * 사용처 대조(`applyClauseUse` · 자동 묶음)가 끝난 뒤에 부른다 — 대조는 특약 원문(특약 자리)과 맞춘다.
+ */
+export function guardApplicationOutput(clauses: ClauseRecord[]): void {
+  for (const c of clauses) {
+    if (c.mode !== "block" || !c.label.startsWith("준용규정")) continue;
+    const body = c.body as Block[];
+    if (body.length === 1 && body[0].kind === "condBlock") continue;
+    const id = `${body[0]?.id ?? c.code}-output`;
+    c.body = [{ id, kind: "condBlock", branches: [{ id: `${id}-b`, when: "builtin.output ≠ 'replace'", children: body }] } as unknown as Block];
+  }
+}
+
 /** 실물 변환이 내는 함수조항 유형 — 도메인 유형 넷 중 「문구」(inline) · 「항」(block). */
 export type ConvertedClauseMode = Extract<ClauseMode, "inline" | "block">;
 

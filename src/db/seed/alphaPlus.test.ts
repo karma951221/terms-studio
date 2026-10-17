@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { clauseReadsOutput } from "@/domain/clause";
 import { planCombinationLabel, planTypeOptions } from "@/domain/product";
 import type { Actor } from "@/domain/types";
 
@@ -272,6 +273,10 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     // 「1종 … 납입면제 조도 제외」 문장은 「납입면제 있음」 인자(기본 연결 D0002)로 가른다 — 납입면제 없는 상품이면 빠진다
     expect((await services.clause.get(byLabel("준용규정(알파Plus)").code))?.required).toEqual({ discriminators: ["D0002"], attributes: ["A0001"] });
     expect(byLabel("준용규정(통합간편)").params?.map((p) => [p.name, p.default])).toEqual([["납입면제_있음", { kind: "discriminator", code: "D0002" }]]);
+    // 준용규정 함수조항은 작성위치 = 대치이면 빈 출력 (ADR-0089 결정 5) — 자동 묶음이 만든 판까지 전부 작성위치를 읽는다
+    const applications = list.filter((c) => c.label.startsWith("준용규정"));
+    expect(applications.length).toBeGreaterThanOrEqual(7);
+    for (const c of applications) expect(clauseReadsOutput((await services.clause.get(c.code))!), c.label).toBe(true);
     // 쓰임 수 = 참조 자리 수 — 특별약관의 소멸(사망)은 소멸 급부 없는 특약 7벌(알파Plus 3 · 메리츠 4), 보통약관 조째 함수조항은 보통약관 두 벌,
     // 지급사유 발생 소멸은 세 담보(중대한특정상해수술비 · 메리츠 상해 · 질병 80%이상후유장해)
     const summaries = await services.clause.summaries();
