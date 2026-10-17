@@ -1,7 +1,8 @@
 import { formatCode, parseCode, type EnumFieldType, type EnumFieldValue, type NewDiscriminator, type NewEnum } from "@/domain/catalog";
 import type { ClauseBody, NewClause, PresetDef } from "@/domain/clause";
-import type { DocumentNode } from "@/domain/document";
+import type { ArticleNode, DocumentNode } from "@/domain/document";
 import { findMasterField } from "@/domain/master";
+import { articleHash, articlesById } from "@/domain/product";
 import type { Actor, Code, Id, Result, Value } from "@/domain/types";
 import type { Services } from "@/services/container";
 
@@ -15,6 +16,7 @@ import documents from "./data/documents.json";
 import enums from "./data/enums.json";
 import generals from "./data/generals.json";
 import products from "./data/products.json";
+import samples from "./data/samples.json";
 
 export const ALPHA_PLUS_PRODUCT_NAME = "알파Plus보장보험";
 export const MERITZ_PRODUCT_NAME = "메리츠 통합간편건강보험(연만기형)";
@@ -140,6 +142,26 @@ async function loadBoxes(services: Services, actor: Actor, upTo?: number): Promi
 
 /** 상품의 특약 그룹 목록 한 줄 — 기본 그룹(담보분류 값 코드) 또는 사용자 그룹(이름 + 담보 시드 키) (ADR-0090). */
 type SeedGroup = { category: Code } | { name: string; coverages: string[] };
+/**
+ * 상품 조 사본 (ADR-0079) — 템플릿 조를 통째로 베끼고 노드 몇 개의 칸만 고친다(`patch` — 노드 id → 덮어쓸 칸).
+ * 합성 표본이 쓴다: 절 형태에서 위임된 조의 항을 가리키는 조를 조 단위 참조로 고친다(ADR-0082 결정 8 · 결정 15 저작 기준 ④).
+ */
+type SeedCopy = { article: Id; patch: { node: Id; with: Record<string, unknown> }[] };
+
+function patchedArticle(article: ArticleNode, patch: SeedCopy["patch"]): ArticleNode {
+  const copy = structuredClone(article);
+  const visit = (n: unknown): void => {
+    if (Array.isArray(n)) return n.forEach(visit);
+    if (!n || typeof n !== "object") return;
+    const node = n as Record<string, unknown>;
+    const hit = patch.find((p) => p.node === node.id);
+    if (hit) Object.assign(node, hit.with);
+    Object.values(node).forEach(visit);
+  };
+  visit(copy);
+  for (const p of patch) if (!JSON.stringify(copy).includes(`"id":"${p.node}"`)) throw new Error(`[seed:alphaPlus] 조 사본 「${article.id}」에 노드 ${p.node} 이(가) 없음`);
+  return copy;
+}
 
 interface EnumSeed {
   code: Code;
@@ -351,7 +373,8 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
 
   let seededProductId: Id | undefined;
   const productIds: Id[] = [];
-  for (const specification of products) {
+  // 실물 재현 상품(products.json) 뒤에 합성 표본(samples.json — 절 형태 ①, 실물 대조 대상 아님 · 이름에 「표본」)
+  for (const specification of [...products, ...samples]) {
     const generalId = generalIds.get(specification.general);
     if (!generalId) throw new Error(`[seed:alphaPlus] 보통약관 참조를 찾을 수 없음: ${specification.general}`);
     unwrap(await services.product.setNamingTemplate(actor, specification.namingTemplate));
@@ -394,6 +417,18 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
             }),
       );
       unwrap(await services.product.saveCoverages(actor, productId, { added: [], updated: [], removed: [], groups: { list, memberships } }));
+    }
+    const copies = (specification as { copies?: SeedCopy[] }).copies;
+    if (copies) {
+      const template = await services.document.get(generalId);
+      if (!template) throw new Error(`[seed:alphaPlus] 보통약관을 읽을 수 없음: ${specification.general}`);
+      const articles = articlesById(template.tree);
+      const list = copies.map((c) => {
+        const original = articles.get(c.article);
+        if (!original) throw new Error(`[seed:alphaPlus] 조 사본의 템플릿 조를 찾을 수 없음: ${c.article}`);
+        return { articleId: c.article, article: patchedArticle(original, c.patch), templateHash: articleHash(original) };
+      });
+      unwrap(await services.product.saveGeneralSettings(actor, productId, { generalDocumentId: generalId, hiddenArticles: [], overrides: [], copies: list }));
     }
   }
 
