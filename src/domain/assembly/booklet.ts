@@ -377,7 +377,7 @@ export function assemble(master: MasterBundle, product: ProductInput): Booklet {
   const issues: Issue[] = [];
   const omitted: OmissionRecord[] = [];
 
-  // 기본계약 0 · 2+ — 서비스 checkBaseContract 와 같은 판정·문구 (도메인 한 곳 · 기능/상품 §3.5 MVP 정확히 1개).
+  // 기본계약 수 — 서비스 checkBaseContract 와 같은 판정·문구 (도메인 한 곳 · 기능/상품 §3.5 — 주계약 0 은 noBaseContract).
   // 독립특약은 0 이 정상 (기능/상품 §3.1 · 2026-10-01)
   const standalone = isStandaloneContract(input.product.values.get(CONTRACT_KIND_PATH));
   const baseCountIssue = baseContractCountIssue(input.product.baseContractIds.length, input.product, standalone);

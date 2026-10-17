@@ -26,6 +26,7 @@ import {
   type GeneralDependents,
   sameArticle,
   type ArticleCopy,
+  baseContractCoordinate,
   baseContractCountIssue,
   baseContractDesignationIssues,
   checkGeneralAttachment,
@@ -702,7 +703,6 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
       // ── 더하기 — 탑재(mount)와 같은 검사. 조합은 남는 것 + 같은 저장에서 먼저 더한 것과 겹치면 안 된다
       const taken = new Map(current.filter((pc) => !removed.has(pc.id)).map((pc) => [combinationKey(pc.coverageId, normalizeSelections(pc.attributes, kinds)), pc.name]));
       const standalone = await isStandalone(tx, productId);
-      let baseCount = [...baseIds].filter((id) => !removed.has(id)).length;
       const template = await repo.loadNamingTemplate(tx);
       const adds: { key: string; tree: CoverageTree; attributes: AttributeSelection[]; combination: string; section: CoverageSection; name: string; plans: Id[] }[] = [];
       for (const a of input.added) {
@@ -711,10 +711,7 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
         if (!tree) issues.push(rowIssue("brokenRef", "담보 마스터에 없는 담보입니다", a.key, "coverage"));
         const selectionIssues = validateSelections(a.attributes, kinds);
         for (const i of selectionIssues) issues.push(rowIssue(i.kind, i.message, a.key, "attributes"));
-        if (a.section === "base") {
-          for (const i of baseContractDesignationIssues(baseCount, product, standalone)) issues.push(rowIssue(i.kind, i.message, a.key, "section"));
-          baseCount += 1;
-        }
+        if (a.section === "base") for (const i of baseContractDesignationIssues(product, standalone)) issues.push(rowIssue(i.kind, i.message, a.key, "section"));
         const name = a.name === undefined ? undefined : cleanName(a.name);
         if (a.name !== undefined && !name) issues.push(rowIssue("typeMismatch", "상품담보명은 비울 수 없습니다", a.key, "name"));
         if (a.plans.some((planId) => !plans.has(planId))) issues.push(rowIssue("brokenRef", "이 상품의 종·형 조합이 아닙니다", a.key, "plans"));
@@ -1358,9 +1355,9 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
         withProduct(tx, productId, async (product) => {
           const tree = await master.tree(coverageId);
           if (!tree) return notFound(`담보 마스터 ${coverageId}`);
-          // 기본계약으로 탑재 = 탑재 + 지정 — 지정 규칙(MVP 정확히 1개)을 먼저 본다. 상품담보를 만들고 나서 거부하면 반쪽이 남는다.
+          // 기본계약으로 탑재 = 탑재 + 지정 — 지정 규칙(독립특약은 기본계약 없음)을 먼저 본다. 상품담보를 만들고 나서 거부하면 반쪽이 남는다.
           if (section === "base") {
-            const blocked = baseContractDesignationIssues((await repo.listBaseContractIds(tx, productId)).length, product, await isStandalone(tx, productId));
+            const blocked = baseContractDesignationIssues(product, await isStandalone(tx, productId));
             if (blocked.length > 0) return invalid(blocked);
           }
           const kinds = await repo.listAttributeKinds(tx);
@@ -1546,10 +1543,10 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
         withProduct(tx, productId, (product) =>
           withCoverage(tx, productCoverageId, async (pc) => {
             if (pc.productId !== productId) return notFound(`상품 ${productId} 의 상품담보 ${productCoverageId}`);
-            // 이미 기본계약이 있으면 거부 — 같은 상품담보의 재지정도 (기능/상품 §3 「기본계약」 · MVP 정확히 1개)
-            // DB 유일성 제약 없음 — pg 드라이버 도입 시 부분 유일 인덱스 검토 (기존 2행 데이터가 있어 지금 마이그레이션은 못 건다)
-            const blocked = baseContractDesignationIssues((await repo.listBaseContractIds(tx, productId)).length, product, await isStandalone(tx, productId));
+            // 주계약은 기본계약을 여럿 둔다(2개 이상 = 절 형태, ADR-0021 결정 1) — 거부는 독립특약과 같은 상품담보의 재지정뿐 (기능/상품 §3.5)
+            const blocked = baseContractDesignationIssues(product, await isStandalone(tx, productId));
             if (blocked.length > 0) return invalid(blocked);
+            if ((await repo.listBaseContractIds(tx, productId)).includes(productCoverageId)) return invalid([issue("unsupported", "이미 기본계약입니다", baseContractCoordinate(product))]);
             if (!product.generalDocumentId) return invalid([issue("brokenRef", "보통약관 템플릿이 선택되지 않았습니다", { document: "product", ownerId: productId })]);
             await repo.insertBaseContract(tx, productId, productCoverageId, actor.userId);
             return checkOne(tx, product, pc); // 부착 검사 — 실패는 거부가 아니라 오류 목록 (D-P5-13)

@@ -186,8 +186,8 @@ export function CoverageMountSection({ productId, section, items, coverages, att
   const rows = withGroupStarts(mountRows(asItems, refs, attributeKinds));
   const rowOf = new Map(draftRows.map((r) => [r.key, r]));
   const cols = withGroup ? 7 : 6;
-  const hasBase = edit.draft.rows.some((r) => r.section === "base" && !r.removed);
-  const blocked = section === "base" ? (edit.standalone ? "독립특약 상품은 기본계약을 두지 않습니다" : hasBase ? "기본계약은 하나만 둘 수 있다 (MVP) — 바꾸려면 지금 기본계약을 탑재 해제(휴지통)한 뒤 추가한다" : undefined) : undefined;
+  // 주계약은 기본계약을 여럿 둔다 — 2개 이상이면 절 형태(제2절 블록, ADR-0021 결정 1). 막는 것은 독립특약뿐
+  const blocked = section === "base" && edit.standalone ? "독립특약 상품은 기본계약을 두지 않습니다" : undefined;
 
   return (
     <section className="ts-section ts-mount-section" aria-label={title}>

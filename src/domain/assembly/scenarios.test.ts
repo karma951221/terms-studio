@@ -605,14 +605,13 @@ describe("기능/조립산출 §3.2 — 기본계약을 지정하지 않아도 �
     expect(b.issues[1].message).toContain("보통약관 템플릿이 없어");
   });
 
-  it("기본계약 2개 이상 — unsupported 오류를 남기고 기본계약들은 특약·미산출 목록에서 제외한다", () => {
+  it("기본계약 2개 이상 — 수 오류(unsupported)는 없다 · 기본계약들은 특약·미산출 목록에서 제외한다", () => {
     const input = alphaPlusFixture();
     const b = assembleInput({ ...input, product: { ...input.product, baseContractIds: ["pc-base", "pc-basic"] } });
-    expect(b.issues[0]).toMatchObject({ kind: "unsupported", severity: "error", message: "기본계약이 2개입니다 — 하나만 남기고 해제하세요 (MVP 는 1개)", at: { document: "product", ownerId: "prod-alpha", refPath: "baseContract" } });
+    expect(kinds(b.issues)).not.toContain("unsupported");
     expect(b.specials.flatMap((group) => group.docs.map((doc) => doc.ownerId))).toEqual(["pc-addon"]);
     expect(b.baseContracts.map((record) => record.productCoverageId)).toEqual(["pc-base", "pc-basic"]);
     expect(b.undocumented).toEqual([]);
-    expect(b.complete).toBe(false);
   });
 });
 

@@ -4,7 +4,6 @@ import { indexTree, type ArticleNode, type DocumentNode } from "@/domain/documen
 import { articleHash, type CoverageMasterSource, type CoverageTree, type ProductPlan, type RequiredCoverageRef } from "@/domain/product";
 import { entered, type Actor, type Issue, type Value } from "@/domain/types";
 
-import { insertBaseContract } from "@/db/repo/product";
 import { readSlots, writeSlot } from "@/db/repo/values";
 import { createTestDb, type TestDb } from "@/db/test-utils";
 import { createCatalogService } from "./catalog";
@@ -577,7 +576,7 @@ describe("product 서비스 (PGlite)", () => {
       expect((await svc.listPlans(productId)).length).toBe(2);
     });
 
-    it("기본계약 지정 → 보통약관 부착 검사 · 두 번째 지정은 거부 (기능/상품 §3 「기본계약」 · MVP 정확히 1개)", async () => {
+    it("기본계약 지정 → 보통약관 부착 검사 · 둘째 지정도 된다(절 형태) · 같은 상품담보의 재지정만 거부 (기능/상품 §3.5 · ADR-0021 결정 1)", async () => {
       // 보통약관이 요구하는 구분자 중 D0009 는 카탈로그에 없다 — 값 자리가 아니라 정의가 없는 것이다 (ADR-0037)
       required = [
         { level: "coverage", discriminatorCode: "D0001" },
@@ -586,54 +585,24 @@ describe("product 서비스 (PGlite)", () => {
       const r = unwrap(await svc.designateBaseContract(editor, productId, pcBasic));
       expect(r.productCoverageId).toBe(pcBasic);
       expect(r.issues.map((i) => [i.kind, i.at.refPath])).toEqual([["brokenRef", "D0009"]]);
-      // 이미 기본계약이 있으면 두 번째 지정은 거부 — 다른 상품담보든 같은 상품담보든 (이미 기본계약이므로 같은 문구)
-      const second = await svc.designateBaseContract(editor, productId, pcAddon);
-      expect(reason(second)).toBe("invalid");
-      if (!second.ok && second.rejection.reason === "invalid") {
-        expect(second.rejection.issues).toHaveLength(1);
-        expect(second.rejection.issues[0]).toMatchObject({ kind: "unsupported", message: "기본계약은 하나만 지정할 수 있습니다 — 먼저 현재 기본계약을 해제하세요 (MVP)", at: { document: "product", ownerId: productId, refPath: "baseContract" } });
-      }
+      // 같은 상품담보를 다시 지정하면 거부 — 이미 기본계약이다
       const again = await svc.designateBaseContract(editor, productId, pcBasic);
       expect(reason(again)).toBe("invalid");
-      if (!again.ok && again.rejection.reason === "invalid") expect(again.rejection.issues[0].kind).toBe("unsupported");
-      expect(await svc.listBaseContractIds(productId)).toEqual([pcBasic]);
-      // 탑재하면서 기본계약으로 넣는 경로(mount section:"base")도 같은 규칙 — 상품담보도 만들어지지 않는다
-      const countBefore = (await svc.listProductCoverages(productId)).length;
-      const mounted = await svc.mount(editor, productId, SURGERY, [{ kindCode: "A0002", valueCode: "1" }], "base");
-      expect(reason(mounted)).toBe("invalid");
-      if (!mounted.ok && mounted.rejection.reason === "invalid") expect(mounted.rejection.issues[0].kind).toBe("unsupported");
-      expect((await svc.listProductCoverages(productId)).length).toBe(countBefore);
-      expect(await svc.listBaseContractIds(productId)).toEqual([pcBasic]);
-      // 해제 후에는 다시 지정할 수 있다
-      unwrap(await svc.releaseBaseContract(editor, productId, pcBasic));
+      if (!again.ok && again.rejection.reason === "invalid") expect(again.rejection.issues[0]).toMatchObject({ kind: "unsupported", message: "이미 기본계약입니다", at: { document: "product", ownerId: productId, refPath: "baseContract" } });
+      // 다른 상품담보는 둘째 기본계약이 된다 — 2개 이상 = 절 형태 (2026-10-17 ①)
       unwrap(await svc.designateBaseContract(editor, productId, pcAddon));
-      expect(await svc.listBaseContractIds(productId)).toEqual([pcAddon]);
-      unwrap(await svc.releaseBaseContract(editor, productId, pcAddon));
-      unwrap(await svc.designateBaseContract(editor, productId, pcBasic));
-      expect(unwrap(await svc.checkBaseContract(productId)).map((c) => c.productCoverageId)).toEqual([pcBasic]);
+      expect(await svc.listBaseContractIds(productId)).toEqual([pcBasic, pcAddon]);
+      // 탑재하면서 기본계약으로 넣는 경로(mount section:"base")도 같은 규칙 — 셋째도 된다
+      const mounted = unwrap(await svc.mount(editor, productId, SURGERY, [{ kindCode: "A0002", valueCode: "1" }], "base"));
+      expect(await svc.listBaseContractIds(productId)).toEqual([pcBasic, pcAddon, mounted.id]);
+      // 검사는 기본계약마다 부착 검사 결과를 낸다 — 수 오류는 없다
+      expect(unwrap(await svc.checkBaseContract(productId)).map((c) => c.productCoverageId)).toEqual([pcBasic, pcAddon, mounted.id]);
       // 기본계약인 상품담보의 탑재 해제는 거부 (D-P5-7)
       expect(reason(await svc.unmount(admin, pcBasic, { confirm: true }))).toBe("invalid");
-    });
-
-    it("기존 데이터에 기본계약이 2행이면 읽기 검사가 unsupported 로 잡는다 — 좌표 refPath baseContract · 「하나만 남기고 해제하세요」", async () => {
-      // 서비스는 두 번째 지정을 막으므로 2행은 리포로 직접 만든다 (기존 데이터 · 우회 저장을 흉내)
-      await insertBaseContract(t.db, productId, pcAddon, editor.userId);
-      expect(await svc.listBaseContractIds(productId)).toEqual([pcBasic, pcAddon]);
-      const multiple = await svc.checkBaseContract(productId);
-      expect(reason(multiple)).toBe("invalid");
-      if (!multiple.ok && multiple.rejection.reason === "invalid") {
-        expect(multiple.rejection.issues).toHaveLength(1);
-        expect(multiple.rejection.issues[0]).toMatchObject({
-          kind: "unsupported",
-          message: "기본계약이 2개입니다 — 하나만 남기고 해제하세요 (MVP 는 1개)",
-          at: { document: "product", ownerId: productId, refPath: "baseContract" },
-          source: { document: "product", ownerId: productId, refPath: "baseContract" },
-        });
-      }
-      // 2행 상태에서도 지정은 거부 (이미 있으므로)
-      expect(reason(await svc.designateBaseContract(editor, productId, pcSurgery))).toBe("invalid");
       unwrap(await svc.releaseBaseContract(editor, productId, pcAddon));
-      expect(unwrap(await svc.checkBaseContract(productId)).map((c) => c.productCoverageId)).toEqual([pcBasic]);
+      unwrap(await svc.releaseBaseContract(editor, productId, mounted.id));
+      unwrap(await svc.unmount(admin, mounted.id, { confirm: true })); // 다음 시나리오는 탑재 셋 그대로를 본다
+      expect(await svc.listBaseContractIds(productId)).toEqual([pcBasic]);
     });
 
     it("기본계약 해제 → 미지정 상태(noBaseContract) · 다른 상품의 상품담보는 지정 불가", async () => {

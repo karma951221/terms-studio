@@ -92,7 +92,7 @@ describe("기능/상품 §3.5 — 기본계약 지정 순간 보통약관 요구
   });
 });
 
-describe("기본계약 수 규칙 — MVP 정확히 1개 (기능/상품 §3.5)", () => {
+describe("기본계약 수 규칙 — 주계약 1개 이상 (기능/상품 §3.5 · ADR-0021 결정 1)", () => {
   const product = { id: "prod-1", name: "알파플러스" };
   const at = { document: "product", ownerId: "prod-1", ownerName: "알파플러스", refPath: BASE_CONTRACT_REF };
 
@@ -100,24 +100,19 @@ describe("기본계약 수 규칙 — MVP 정확히 1개 (기능/상품 §3.5)",
     expect(baseContractCountIssue(0, product)).toEqual({ kind: "noBaseContract", severity: "error", message: "기본계약이 지정되지 않았습니다", at, source: at });
   });
 
-  it("2개 이상 → unsupported · 「하나만 남기고 해제하세요」 — 복구 동선을 문구가 말한다", () => {
-    expect(baseContractCountIssue(2, product)).toEqual({ kind: "unsupported", severity: "error", message: "기본계약이 2개입니다 — 하나만 남기고 해제하세요 (MVP 는 1개)", at, source: at });
-    expect(baseContractCountIssue(3, product)?.message).toBe("기본계약이 3개입니다 — 하나만 남기고 해제하세요 (MVP 는 1개)");
-  });
-
-  it("1개면 오류 없음", () => {
+  it("1개 = 대치 형태 · 2개 이상 = 절 형태 — 둘 다 오류 없음 (2026-10-17 ① 기본계약 2+ 허용)", () => {
     expect(baseContractCountIssue(1, product)).toBeUndefined();
+    expect(baseContractCountIssue(2, product)).toBeUndefined();
+    expect(baseContractCountIssue(3, product)).toBeUndefined();
   });
 
-  it("두 번째 지정은 거부 — 이미 하나 있으면 unsupported 「먼저 현재 기본계약을 해제하세요」 · 없으면 통과", () => {
-    expect(baseContractDesignationIssues(0, product)).toEqual([]);
-    expect(baseContractDesignationIssues(1, product)).toEqual([{ kind: "unsupported", message: "기본계약은 하나만 지정할 수 있습니다 — 먼저 현재 기본계약을 해제하세요 (MVP)", at }]);
-    expect(baseContractDesignationIssues(2, product)).toHaveLength(1);
+  it("주계약은 몇 개째든 지정할 수 있다 — 같은 상품담보의 재지정은 서비스가 따로 거부한다", () => {
+    expect(baseContractDesignationIssues(product)).toEqual([]);
   });
 
   it("독립특약(계약형태 E0007) — 0개가 정상, 1개 이상은 unsupported · 지정은 수와 무관하게 거부 (기능/상품 §3.1 · 2026-10-01)", () => {
     expect(baseContractCountIssue(0, product, true)).toBeUndefined();
     expect(baseContractCountIssue(1, product, true)).toEqual({ kind: "unsupported", severity: "error", message: "독립특약 상품은 기본계약을 두지 않습니다 — 기본계약을 해제하세요", at, source: at });
-    expect(baseContractDesignationIssues(0, product, true)).toEqual([{ kind: "unsupported", message: "독립특약 상품은 기본계약을 두지 않습니다", at }]);
+    expect(baseContractDesignationIssues(product, true)).toEqual([{ kind: "unsupported", message: "독립특약 상품은 기본계약을 두지 않습니다", at }]);
   });
 });

@@ -262,14 +262,11 @@ export function toCoveragesInput(saved: CoveragesDraft, draft: CoveragesDraft, c
 
 /**
  * 「+ 담보 추가」 줄의 화면 검사 — 문제가 있으면 그 줄에 보일 한 줄, 없으면 undefined. 서비스의 탑재 검사와 같은 규칙이다
- * (조합 = 담보 × 담보속성, 지울 행의 조합은 비어 있다 · 기본계약은 남는 것이 없을 때 하나 · 독립특약은 기본계약 없음).
+ * (조합 = 담보 × 담보속성, 지울 행의 조합은 비어 있다 · 주계약은 기본계약 여럿(2개 이상 = 절 형태) · 독립특약은 기본계약 없음).
  */
 export function addRowProblem(draft: CoveragesDraft, row: Pick<NewRowInput, "section" | "coverageId" | "attributes">, opts: { kinds: readonly AttributeKind[]; standalone: boolean }): string | undefined {
   if (!row.coverageId) return "담보를 고르세요";
-  if (row.section === "base") {
-    if (opts.standalone) return "독립특약 상품은 기본계약을 두지 않습니다";
-    if (draft.rows.some((r) => r.section === "base" && !r.removed)) return "기본계약은 하나만 둘 수 있습니다 — 지금 기본계약을 삭제한 뒤 추가하세요 (MVP)";
-  }
+  if (row.section === "base" && opts.standalone) return "독립특약 상품은 기본계약을 두지 않습니다";
   const key = combinationKey(row.coverageId, normalizeSelections(row.attributes, opts.kinds));
   const clash = draft.rows.find((r) => !r.removed && combinationKey(r.coverageId, normalizeSelections(r.attributes, opts.kinds)) === key);
   return clash ? `이미 탑재한 조합입니다 — 「${clash.name}」` : undefined;

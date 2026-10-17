@@ -131,8 +131,8 @@ describe("상품담보 탭 — 편집", () => {
   });
 
   it("두 표 아래 모두 「+ 담보 추가」 줄 — 떠 있는 탑재 폼은 없다 · 검색은 편집 중에 없다", () => {
-    expect(section(html, "기본계약")).not.toContain("담보 추가"); // 기본계약이 이미 있다 — 대신 안내
-    expect(section(html, "기본계약")).toContain("기본계약은 하나만");
+    // 기본계약이 이미 있어도 더 추가한다 — 2개 이상 = 절 형태 (2026-10-17 ①)
+    expect(section(html, "기본계약")).toMatch(/ 담보 추가<\/button>/);
     expect(section(html, "특별약관")).toMatch(/ 담보 추가<\/button>/);
     expect(html).not.toContain("에 탑재");
     expect(section(html, "특별약관")).not.toContain("담보 검색");
