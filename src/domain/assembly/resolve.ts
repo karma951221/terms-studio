@@ -421,7 +421,7 @@ class Walker {
     modes: readonly ClauseMode[],
     at: Coordinate,
     f: Frame,
-  ): { ok: true; mode: ClauseMode; body: (ClauseInline | ClauseBlock)[] } | { ok: false; marker: ErrorNode } {
+  ): { ok: true; mode: ClauseMode; body: (ClauseInline | ClauseBlock)[]; selection: OptionSelection } | { ok: false; marker: ErrorNode } {
     const defined = this.env.clauses.get(node.clauseCode);
     if (!defined) return { ok: false, marker: this.error(node.id, { kind: "brokenRef", message: `함수조항 ${node.clauseCode} 이(가) 없습니다`, at }) };
     // 프리셋이면 옵션 · 연결은 프리셋 값 (ADR-0084 결정 2) — 없는 프리셋은 깨진 참조. 덮어쓰기는 문서 저장 검사가 막는다(여기서는 프리셋 값을 쓴다)
@@ -457,7 +457,7 @@ class Walker {
       const issue: Issue = expanded.rejection.reason === "invalid" ? expanded.rejection.issues[0] : { kind: "optionInvalid", message: "함수조항을 펼칠 수 없습니다", at };
       return { ok: false, marker: this.error(node.id, { ...issue, at: { ...at, ...issue.at } }) };
     }
-    return { ok: true, mode: clause.mode, body: expanded.value as (ClauseInline | ClauseBlock)[] };
+    return { ok: true, mode: clause.mode, body: expanded.value as (ClauseInline | ClauseBlock)[], selection };
   }
 
   /** 인자의 현재 원소 연결 → 값 (열거값 코드 · 종 하나를 커서로 세운 문맥). 감싼 반복이 아니면 undefined. */
@@ -700,6 +700,10 @@ class Walker {
             this.expanded(n, f),
             excludeFromComparison || (this.env.coordinate.document === "general" && n.excludeFromComparison === true),
           );
+          // 제1절 판정의 「같다」 단위 — 이 참조가 펼친 항마다 함수조항 · 옵션 · 순번 (ADR-0082 결정 4)
+          const options = JSON.stringify(Object.keys(r.selection).sort().map((k) => [k, r.selection[k]]));
+          let index = 0;
+          for (const [i, x] of out.entries()) if (x.kind === "paragraph" && !x.clauseUse) out[i] = { ...x, clauseUse: { code: n.clauseCode, options, index: index++ } };
           // 항 번호 다시 세기(통합형 특약의 소제목 첫 항이 함수조항이 된 자리) — 펼친 첫 항에 옮긴다
           const first = n.restart ? out.findIndex((x) => x.kind === "paragraph") : -1;
           if (first >= 0) out[first] = { ...(out[first] as RParagraph<RInline>), restart: true };

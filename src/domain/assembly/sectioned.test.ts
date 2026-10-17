@@ -3,7 +3,7 @@
  *
  * - 형태 판별: 주계약 기본계약 0 → noBaseContract · 1 → 대치 형태(single) · 2+ → 절 형태(sectioned).
  *   독립특약: 기본계약 지정 → unsupported · 블록 0 → noBlock · 1+ → 절 형태. 블록 수는 조건 해소 · 블록 빈 조 빼기 뒤에 센다.
- * - 제1절 = 최종 트리. ①은 판정 없이 블록이 하나라도 조연결한 템플릿 조를 **위임** — 잠정, ② 판정에서 바뀐다.
+ * - 제1절 = 최종 트리 + 템플릿 조별 판정(② — 판정 6종의 세부는 `firstSection.test.ts`). 여기 픽스처는 일반 글뿐이라 전부 연결 = 위임 · 일부 연결 = 특칙(마스터).
  * - 제2절 = 블록을 그룹 순서대로, 블록마다 제1조부터. 블록 머리 = 「그룹 제목 표시」 옵션(끔 「1.」 · 켬 「Ⅰ-1.」).
  */
 import { describe, expect, it } from "vitest";
@@ -132,39 +132,48 @@ describe("형태 판별 — 계약형태 + 블록 수 (ADR-0021 결정 1 · ADR-
   });
 });
 
-describe("제1절 일반조항 — 연결 조는 위임 (①잠정: ADR-0082 결정 7 의 블록 하나 규칙을 전부에 — ② 판정에서 바뀜)", () => {
+describe("제1절 일반조항 — 판정 (ADR-0082 결정 3 · 4 · 5 — 일반 글만이라 전부 연결은 위임, 일부 연결은 특칙)", () => {
   const b = assembleInput(mainTwoBase());
   const first = lines(b.general!);
 
-  it("블록이 조연결한 템플릿 조 = 위임 문구 한 항 「제N조(조 제목)는 제2절 보장조항에서 정합니다.」 — N 은 그 조 자신의 제1절 번호 · 연결 없는 조는 마스터", () => {
+  it("전부 연결(2/2)한 일반 글 조 = 위임 문구 한 항 「제N조(조 제목)는 제2절 보장조항에서 정합니다.」 · 일부 연결(1/2) = 특칙 — 마스터 그대로 · 연결 없는 조는 마스터", () => {
     expect(first).toEqual([
       "제1조(용어의 정의)",
       "   이 계약에서 사용하는 용어의 정의는 다음과 같습니다.",
       "제2조(보험금의 지급사유)",
       "   제2조(보험금의 지급사유)는 제2절 보장조항에서 정합니다.",
       "제3조(보험금 지급에 관한 세부규정)",
-      "   제3조(보험금 지급에 관한 세부규정)는 제2절 보장조항에서 정합니다.",
       "제4조(보험금을 지급하지 않는 사유)",
-      "   제4조(보험금을 지급하지 않는 사유)는 제2절 보장조항에서 정합니다.",
+      "  ① 고의로 사고를 일으킨 경우에는 보험금을 지급하지 않습니다.",
+      "  ② 법령에 따라 보험금 지급이 제한되는 경우에는 보험금을 지급하지 않습니다.",
       "제5조(장해의 분류)",
       "   장해의 분류는 【별표1(장해분류표)】 에 따릅니다.",
       "제6조(해약환급금)",
-      "   제6조(해약환급금)는 제2절 보장조항에서 정합니다.",
+      "  ① 계약이 해지된 경우 해약환급금을 지급합니다.",
+      "  ② 해약환급금은 산출방법서에 따라 계산합니다.",
+    ]);
+    expect(b.firstSection!.map((r) => [r.title, r.result, `${r.k}/${r.n}`, r.reason])).toEqual([
+      ["보험금의 지급사유", "delegate", "2/2", "differentNoCommon"],
+      ["보험금 지급에 관한 세부규정", "special", "1/2", "partial"],
+      ["보험금을 지급하지 않는 사유", "special", "1/2", "partial"],
+      ["해약환급금", "special", "1/2", "partial"],
     ]);
   });
 
   it("위임 문구 항의 열쇠는 P · PZ 밖 예약 열쇠 — 위임된 조의 항을 가리키는 참조는 articleGone, 조 단위 참조는 유효 (ADR-0082 결정 8)", () => {
-    const art = b.general!.children.find((c) => c.id === "g-art-refund");
+    // 같은 담보약관을 둘 탑재한 독립특약 — 해약환급금 조도 2/2 위임
+    const r = assembleInput(standalone(["pc-basic", "pc-addon"]));
+    const art = r.general!.children.find((c) => c.id === "g-art-refund");
     expect(art?.kind === "article" && art.children.map((p) => p.id)).toEqual(["g-art-refund::delegation"]);
-    // 블록(일반상해사망)의 감액 조가 템플릿 해약환급금 조의 ① · ② 를 가리킨다 — 위임됐으니 사라짐
-    const gone = b.issues.filter((i) => i.kind === "articleGone" && i.at.ownerId === "pc-basic");
+    // 블록의 감액 조가 템플릿 해약환급금 조의 ① · ② 를 가리킨다 — 위임됐으니 사라짐
+    const gone = r.issues.filter((i) => i.kind === "articleGone" && i.at.ownerId === "pc-addon");
     expect(gone.map((i) => i.at.refPath)).toEqual(["g-art-refund#P0100", "g-art-refund#P0200"]);
   });
 
   it("위임된 조의 마스터 본문은 실행 경로가 아니다 — 그 안의 미입력 슬롯이 오류를 내지 않는다", () => {
     const input = mainTwoBase({ values: new Map() }); // D0002(product_basic.notice) 미입력
     const flat = alphaGeneralDocument();
-    const withSlot = flat.children.map((a) => (a.kind === "article" && a.id === "g-art-refund" ? ({ ...a, children: [{ id: "g-par-r", kind: "paragraph", children: [{ id: "g-slot-r", kind: "slot", ref: "D0002" }] }] } as ArticleNode) : a));
+    const withSlot = flat.children.map((a) => (a.kind === "article" && a.id === "g-art-pay" ? ({ ...a, children: [{ id: "g-par-r", kind: "paragraph", children: [{ id: "g-slot-r", kind: "slot", ref: "D0002" }] }] } as ArticleNode) : a));
     const r = assembleInput({ ...input, generalDocuments: new Map([["g-doc", { ...flat, children: withSlot }]]) });
     expect(r.issues.filter((i) => i.kind === "notEntered")).toEqual([]);
   });
@@ -196,7 +205,7 @@ describe("제2절 보장조항 — 블록마다 제1조부터 · 블록 조는 �
     ]);
     expect(lines(basic.doc)[0]).toBe("제1조(보험금의 지급사유)");
     expect(basic.doc.title).toBe("일반상해사망");
-    // 마스터와 같은 글의 면책 조도 생략되지 않는다 — 블록 조는 위임이라 블록마다 자기 조
+    // 마스터와 같은 글의 면책 조도 생략되지 않는다 — 블록 조는 특칙(1/2)이라 자기 조 그대로(특약 조 판정을 타지 않는다)
     expect(lines(basic.doc)).toContain("제2조(보험금을 지급하지 않는 사유)");
   });
 
@@ -211,11 +220,11 @@ describe("제2절 보장조항 — 블록마다 제1조부터 · 블록 조는 �
     expect(lines(blocksOf(r)[0].doc)).toContain("제3조(블록 전용)");
   });
 
-  it("주계약 기본계약 2+ 의 특약은 지금처럼 판정한다 — 실제로 찍힌 제1절(위임 문구)과 비교되어 위임된 조에 연결한 특약 조는 통째 (현 상태 고정 — 판정 대상 정리는 ④)", () => {
+  it("주계약 기본계약 2+ 의 특약은 지금처럼 판정한다 — 실제로 찍힌 제1절과 비교: 위임된 조는 통째 · 마스터로 남은 조는 생략 · 준용 (현 상태 고정 — 판정 대상 정리는 ④)", () => {
     expect(b.omitted.map((o) => [o.productCoverageId, o.linkedArticleId, o.disposition])).toEqual([
       ["pc-addon", "g-art-pay", "full"],
-      ["pc-addon", "g-art-exempt", "full"],
-      ["pc-addon", "g-art-refund", "full"],
+      ["pc-addon", "g-art-exempt", "omitted"],
+      ["pc-addon", "g-art-refund", "applied"],
     ]);
   });
 
@@ -265,18 +274,18 @@ describe("블록 번호 머리 · 그룹 제목 표시 (ADR-0090 결정 7 · 8)"
 
 describe("오류 좌표 — Coordinate.section 블록 이름공간 (기능/조립산출 §3.4)", () => {
   it("블록 안 오류는 「제2절 {블록 머리}」 · 제1절 오류는 「제1절」 — 조 번호가 블록마다 재시작해도 자리가 갈린다", () => {
-    const b = assembleInput(mainTwoBase());
-    const gone = b.issues.find((i) => i.kind === "articleGone" && i.at.ownerId === "pc-basic")!;
+    const b = assembleInput(standalone(["pc-basic", "pc-addon"]));
+    const gone = b.issues.find((i) => i.kind === "articleGone" && i.at.ownerId === "pc-addon")!;
     expect(gone.at.section).toEqual({ kind: "benefit", label: "제2절 2." });
     expect(formatCoordinate(gone.at)).toContain("제2절 2. › 제3조(보험금의 감액지급)");
   });
 
   it("그룹 제목 표시면 블록 머리도 「제2절 Ⅰ-1.」", () => {
-    const input = mainTwoBase();
+    const input = standalone(["pc-basic", "pc-addon"]);
     const values = new Map(input.product.values);
     values.set("booklet.group_titles", entered(true));
     const b = assembleInput({ ...input, product: { ...input.product, values } });
-    const gone = b.issues.find((i) => i.kind === "articleGone" && i.at.ownerId === "pc-basic")!;
+    const gone = b.issues.find((i) => i.kind === "articleGone" && i.at.ownerId === "pc-addon")!;
     expect(gone.at.section?.label).toBe("제2절 Ⅰ-2.");
   });
 });
@@ -301,7 +310,7 @@ describe("미리보기 진입점 — 보통약관 · 상품담보 미리보기�
   it("assembleSpecial — 주계약 2+ 의 특약은 지금처럼 특약 조립 (제1절과 비교)", () => {
     const input = mainTwoBase();
     const r = assembleSpecial(input, input, "pc-addon");
-    expect(r.ok && r.value.omitted.map((o) => o.disposition)).toEqual(["full", "full", "full"]);
+    expect(r.ok && r.value.omitted.map((o) => o.disposition)).toEqual(["full", "omitted", "applied"]);
   });
 
   it("문면 저작 미리보기(previewArticle) — 주계약 2+ 의 기본계약은 블록이라 조 하나를 보인다(대치 형태의 기본계약만 「특약으로 찍히지 않는다」)", () => {
