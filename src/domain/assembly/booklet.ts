@@ -128,6 +128,7 @@ function overrideMap(overrides: readonly ClauseOptionOverride[]): Map<Id, Option
 interface Shared {
   clauses: Map<string, AssemblyInput["clauses"][number]>;
   boxes: Map<string, NonNullable<AssemblyInput["boxes"]>[number]>;
+  dynTables: Map<string, NonNullable<AssemblyInput["dynTables"]>[number]>;
   catalog: Map<string, AssemblyInput["catalog"][number]>;
   enums: Map<string, AssemblyInput["enums"][number]>;
   master?: AssemblyInput["master"];
@@ -137,6 +138,7 @@ function shared(input: AssemblyInput): Shared {
   return {
     clauses: new Map(input.clauses.map((c) => [c.code, c])),
     boxes: new Map((input.boxes ?? []).map((x) => [x.code, x])),
+    dynTables: new Map((input.dynTables ?? []).map((t) => [t.code, t])),
     catalog: new Map(input.catalog.map((d) => [d.code, d])),
     enums: new Map(input.enums.map((e) => [e.code, e])),
     master: input.master,
@@ -170,7 +172,7 @@ function prepare(
   s: Shared,
   opts: { coordinate: ReturnType<typeof specialCoordinate>; overrides?: readonly ClauseOptionOverride[]; source: Coordinate; valueSource: Coordinate; title?: string },
 ): Prepared {
-  const resolved = resolveDocument({ ...doc, ...(opts.title !== undefined ? { title: opts.title } : {}) }, ctx, { clauses: s.clauses, boxes: s.boxes, overrides: overrideMap(opts.overrides ?? []), coordinate: opts.coordinate, enums: s.enums, ...(s.master ? { master: s.master } : {}) });
+  const resolved = resolveDocument({ ...doc, ...(opts.title !== undefined ? { title: opts.title } : {}) }, ctx, { clauses: s.clauses, boxes: s.boxes, dynTables: s.dynTables, overrides: overrideMap(opts.overrides ?? []), coordinate: opts.coordinate, enums: s.enums, ...(s.master ? { master: s.master } : {}) });
   const substituted = substituteSlots(resolved.doc, ctx, { catalog: s.catalog, enums: s.enums, master: s.master });
   const issues = [...resolved.issues, ...substituted.issues].map((issue): Issue => {
     if (issue.source) return issue;

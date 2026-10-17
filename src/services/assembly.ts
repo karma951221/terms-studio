@@ -33,6 +33,7 @@
 import { assemble, assembleSpecial, type AssemblyCoverage, type AssemblyInput, type AssemblyPlanOption, type Booklet, type MasterBundle, type ProductInput, type SpecialPreview } from "@/domain/assembly";
 import type { SlotPath } from "@/domain/catalog";
 import type { DocumentNode } from "@/domain/document";
+import type { DynTable } from "@/domain/dyntable";
 import { PLAN_AXES, type PlanOption } from "@/domain/product";
 import type { Actor, Id, Result, ValueSlot } from "@/domain/types";
 import { ok, reject } from "@/domain/types";
@@ -90,6 +91,8 @@ export interface AssemblyServices {
   clause: ClauseService;
   document: DocumentService;
   product: ProductService;
+  /** 동적표 정의 적재 — 동적표 서비스가 생기기 전까지 선택 (없으면 정의 없음 = 모든 동적표 참조가 brokenRef). */
+  dynTables?: () => Promise<readonly DynTable[]>;
 }
 
 export interface AssemblyService {
@@ -121,10 +124,11 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
   const { catalog, clause, document, product } = services;
 
   async function loadMaster(): Promise<MasterBundle> {
-    const [clauses, appendices, boxes, defs, enums, attributeKinds, docs, coverageMeta] = await Promise.all([
+    const [clauses, appendices, boxes, dynTables, defs, enums, attributeKinds, docs, coverageMeta] = await Promise.all([
       clause.list(),
       document.listAppendices(),
       document.listBoxes(),
+      services.dynTables ? services.dynTables() : Promise.resolve([] as readonly DynTable[]),
       catalog.list(),
       catalog.listEnums(),
       product.listAttributeKinds(),
@@ -138,7 +142,7 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
       if (d.kind === "general") generalDocuments.set(d.id, d.tree);
       else if (d.ownerId) specialDocuments.set(d.ownerId, d.tree);
     }
-    return { catalog: defs, enums, attributeKinds, clauses, appendices, boxes, generalDocuments, specialDocuments, coverageCategories: coverageMeta.categories, coverageCodes: coverageMeta.codes };
+    return { catalog: defs, enums, attributeKinds, clauses, appendices, boxes, dynTables, generalDocuments, specialDocuments, coverageCategories: coverageMeta.categories, coverageCodes: coverageMeta.codes };
   }
 
   /** 유효 조합에 등장하는 선택지 합집합 — 축 순(종 → 형) · 번호 순. 값은 한 번에 읽는다. */
