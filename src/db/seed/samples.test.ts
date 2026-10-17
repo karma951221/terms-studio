@@ -1,14 +1,15 @@
 /**
  * 합성 표본 상품 (samples.json) — 절 형태 ① 뼈대의 세 모양 (2026-10-17 사용자 결정: 실물 원문이 없어 합성 표본).
  * 실물 대조 대상이 아니다(`real.test.ts` 와 분리). 이후 단계(② 판정 · 위임 · 일부 연결)를 칠 수 있게 조연결 구성을 갈랐다 —
- *   ⓐ 주계약 기본계약 2개 — 일반상해80%이상후유장해(지급사유 · 세부규정 조연결) + 일반상해사망보장(연결 없음) → 일부 연결 1/2
- *   ⓑ 독립특약 블록 2개 — 일반상해80%이상후유장해 (기본) · 추가(같은 담보약관 — 둘 다 연결) → 전부 연결 2/2 · 그룹 제목 표시 켬
+ *   ⓐ 주계약 기본계약 2개 — 일반상해80%이상후유장해(지급사유 · 세부규정 조연결) + 일반상해사망보장(연결 없음) → 일부 연결 1/2 = 특칙(제1절 마스터)
+ *   ⓑ 독립특약 블록 2개 — 일반상해80%이상후유장해 (기본) · 추가(같은 담보약관 — 둘 다 연결) → 전부 연결 2/2 · 일반 글이라 「다르다」 = 위임 · 그룹 제목 표시 켬
  *   ⓒ 독립특약 블록 1개 — 일반상해80%이상후유장해 → 위임 1/1
- * ①은 판정 없이 연결 조를 모두 위임한다(잠정 — ② 판정에서 바뀜).
+ * ② 판정(ADR-0082): 연결 수 k/N → 함수조항 동일 가드 → 준용하기 옵션. 옵션은 템플릿 저장(importTree)으로 넣어 다시 조립한다.
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { Booklet } from "@/domain/assembly";
+import type { BlockNode, DocumentNode } from "@/domain/document/nodes";
 import type { Actor } from "@/domain/types";
 
 import { createTestDb, type TestDb } from "@/db/test-utils";
@@ -52,11 +53,14 @@ describe("합성 표본 — 절 형태 세 상품 (PGlite)", () => {
     }
   });
 
-  it("ⓐ 주계약 기본계약 2개 — 블록 = 기본계약 둘(담보코드 순) · 연결 조 위임 · 특약은 특약 그룹에", () => {
+  const verdicts = (b: Booklet) => (b.firstSection ?? []).map((r) => `${r.title} ${r.result} ${r.k}/${r.n}`);
+
+  it("ⓐ 주계약 기본계약 2개 — 블록 = 기본계약 둘(담보코드 순) · 일부 연결 1/2 = 특칙(위임 없음 · 제1절 마스터) · 특약은 특약 그룹에", () => {
     const b = booklets.get("표본 — 기본계약 2개(주계약)")!;
     expect(b.title).toBe("무배당 알파Plus보장보험2604 보통약관");
     expect(blocks(b)).toEqual(["1. 일반상해80%이상후유장해", "2. 일반상해사망보장"]);
-    expect(delegated(b)).toEqual(["보험금의 지급사유", "보험금 지급에 관한 세부규정"]);
+    expect(delegated(b)).toEqual([]);
+    expect(verdicts(b)).toEqual(["보험금의 지급사유 special 1/2", "보험금 지급에 관한 세부규정 special 1/2"]);
     expect(b.specials.flatMap((g) => g.docs.map((d) => d.title))).toEqual(["골절(치아파절 제외)진단비Ⅱ보장 특별약관", "신화상치료비보장 특별약관"]);
   });
 
@@ -65,7 +69,9 @@ describe("합성 표본 — 절 형태 세 상품 (PGlite)", () => {
     expect(b.title).toBe("표본 — 독립특약 블록 2개");
     expect(b.blocks!.map((g) => [g.head, g.title])).toEqual([["Ⅰ.", "상해 관련 특별약관"]]);
     expect(blocks(b)).toEqual(["Ⅰ-1. 일반상해80%이상후유장해 특별약관", "Ⅰ-2. 일반상해80%이상후유장해 추가 특별약관"]);
+    // 같은 담보약관이어도 일반 글은 「다르다」 — 위임 2/2 (ADR-0082 결정 4)
     expect(delegated(b)).toEqual(["보험금의 지급사유", "보험금 지급에 관한 세부규정"]);
+    expect(verdicts(b)).toEqual(["보험금의 지급사유 delegate 2/2", "보험금 지급에 관한 세부규정 delegate 2/2"]);
     expect(b.specials).toEqual([]);
   });
 
@@ -73,5 +79,30 @@ describe("합성 표본 — 절 형태 세 상품 (PGlite)", () => {
     const b = booklets.get("표본 — 독립특약 블록 1개")!;
     expect(blocks(b)).toEqual(["1. 일반상해80%이상후유장해 특별약관"]);
     expect(delegated(b)).toEqual(["보험금의 지급사유", "보험금 지급에 관한 세부규정"]);
+    expect(verdicts(b)).toEqual(["보험금의 지급사유 delegate 1/1", "보험금 지급에 관한 세부규정 delegate 1/1"]);
+  });
+
+  it("템플릿 세부규정 조에 준용하기 옵션 「공통항 모으기」 저장 — ⓐ 일부 연결이라 옵션 미적용 경고(partialLinkOption) · ⓑ 공통 항 없음 = 위임 · ⓒ 블록 하나 = 위임(경고 없음)", async () => {
+    const general = (await services.document.list("general")).find((d) => d.title === "무배당 알파Plus보장보험2604 보통약관")!;
+    const record = (await services.document.get(general.id))!;
+    // 조는 관 안에 있다 — 관 · 조 자리를 따라가 그 조에만 옵션을 단다
+    const mark = (nodes: readonly BlockNode[]): BlockNode[] =>
+      nodes.map((c) => (c.kind === "article" && c.id === "g-a4" ? { ...c, joinMode: "common" as const } : c.kind === "section" ? ({ ...c, children: mark(c.children) } as BlockNode) : c));
+    const tree = { ...record.tree, children: mark(record.tree.children) as DocumentNode["children"] };
+    const saved = await services.document.importTree(admin, general.id, tree);
+    expect(saved.ok).toBe(true);
+    const again = new Map<string, Booklet>();
+    for (const p of await services.product.listProducts()) {
+      if (!p.name.startsWith("표본")) continue;
+      const r = await services.assembly.preview(p.id);
+      if (r.ok) again.set(p.name, r.value);
+    }
+    const a = again.get("표본 — 기본계약 2개(주계약)")!;
+    expect(a.issues.filter((i) => i.kind === "partialLinkOption").map((i) => i.message)).toEqual([expect.stringContaining("연결하지 않은 담보: 일반상해사망보장")]);
+    expect(a.firstSection!.find((r) => r.articleId === "g-a4")).toMatchObject({ option: "common", result: "special", reason: "partialOption" });
+    expect(again.get("표본 — 독립특약 블록 2개")!.firstSection!.find((r) => r.articleId === "g-a4")).toMatchObject({ option: "common", result: "delegate", reason: "differentNoCommon" });
+    const c = again.get("표본 — 독립특약 블록 1개")!;
+    expect(c.firstSection!.find((r) => r.articleId === "g-a4")).toMatchObject({ result: "delegate", reason: "single" });
+    expect(c.issues.filter((i) => i.kind === "partialLinkOption")).toEqual([]);
   });
 });
