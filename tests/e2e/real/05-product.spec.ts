@@ -10,7 +10,7 @@ import { HUMAN, REAL_FIXTURES, SEED, generalTreeOf, type ProductSpec } from "./_
 
 /**
  * ★ 실물 재현(화면) ⑤ 상품 — 상품마다 상품 → 보통약관 → 세목(종 · 형 · 조합, 세목 값) → 탑재(담보속성, 편집 저장 한 번) → 조립 미리보기 → 원문 대조.
- * 알파Plus(종 2 · 형 2 · 조합 4 · 탑재 11)와 메리츠(종 3 · 형 2 · 조합 6 · 탑재 9) 두 상품. 특약 그룹은 담보의 것이라 ② 담보에서 골랐다(ADR-0080).
+ * 알파Plus(종 2 · 형 2 · 조합 4 · 탑재 11)와 메리츠(종 3 · 형 2 · 조합 6 · 탑재 9) 두 상품. 특약 그룹은 기본 그룹(② 담보에서 고른 담보분류)이라 상품에서 그룹을 만들지 않는다(ADR-0090 — 두 상품의 원문 묶음은 「상해 관련 · 질병 관련」).
  * 대조는 Vitest 실물 재현(`src/db/seed/real.test.ts`)과 같은 대조기 — 조 순서는 허용(다중집합), 조 번호 · 조 참조 번호는 조립 순서와 맞아야 한다
  * ([[QA/인수기준]] 허용 차이 ⑥ · ⑦). 미리보기 화면(DOM)을 파싱양식 줄로 되돌려 넣는다(`_lib/compare.ts`).
  */
@@ -141,14 +141,14 @@ for (const seeded of SEED.products) {
         });
       }
 
-      await ev.action("실물화면#5.7", `저장 한 번 — 특약 ${specials.length} · 그룹 열은 담보의 「특약 그룹」(상품에서 만들지 않는다, ADR-0080)`, async () => {
+      await ev.action("실물화면#5.7", `저장 한 번 — 특약 ${specials.length} · 그룹 열은 담보분류의 기본 그룹(「그룹 제목」, ADR-0090)`, async () => {
         await page.getByRole("button", { name: "저장", exact: true }).click();
         await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
         const region = page.getByRole("region", { name: "특별약관", exact: true });
         await expect(region.locator("tbody tr")).toHaveCount(specials.length);
-        const groups = SEED.enums.find((e) => e.code === "E0008")!.values;
+        const categories = SEED.enums.find((e) => e.code === "E0009")!.values;
         for (const mount of specials) {
-          const group = groups.find((v) => v.code === coverageOf(mount.coverage).specialGroup)?.label ?? "—";
+          const group = String(categories.find((v) => v.code === coverageOf(mount.coverage).category)?.fields?.F01 ?? "—");
           const row = region.locator("tbody tr").filter({ has: page.locator("td.col-flex").getByText(mountName(mount), { exact: true }) });
           await expect(row.locator("td").nth(4)).toHaveText(group);
         }

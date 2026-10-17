@@ -34,7 +34,7 @@ export function productTabOf(value: string | undefined): ProductTab {
  * - 옛 약관 탭(2026-09-28 ~ 10-03: `?tab=terms&sub=general|special`) → `?tab=general` · `?tab=special` (하위 탭이 없거나 모르면 보통약관).
  * - 옛 탑재 해제 · 세목 부착 해제 · 그룹 삭제 확인 카드 주소(`confirm=pc:|detach:|group:`)는 상품담보 탭으로 보낸다 — 2026-09-28 이전의
  *   `?tab=general|special&confirm=…` 북마크도. 그 탭은 이제 그 카드를 그리지 않는다: 탑재 해제 · 부착 해제는 편집 저장의 확인 모달이고
- *   (2026-10-04), 그룹은 담보의 것이다(ADR-0080). 그래서 옛 주소는 상품담보 탭 읽기로 열릴 뿐이다.
+ *   (2026-10-04), 그룹은 상품담보 탭 편집의 「특약 그룹」 섹션이다(ADR-0090). 그래서 옛 주소는 상품담보 탭 읽기로 열릴 뿐이다.
  */
 export function legacyProductTabRedirect(id: string, sp: Readonly<Record<string, string | undefined>>): string | undefined {
   if (sp.tab !== "terms" && sp.tab !== "general" && sp.tab !== "special") return undefined;
@@ -395,8 +395,6 @@ export interface MountRow {
   coverageName?: string;
   /** `attributeComboLabel` 결과. */
   attributes: string;
-  /** 특약 그룹 — 그 담보의 「특약 그룹」 값 이름(읽기 전용 · 상품이 못 바꾼다, ADR-0080). 그룹 없는 담보는 undefined. */
-  group?: string;
 }
 
 /**
@@ -405,7 +403,7 @@ export interface MountRow {
  */
 export function mountRows(
   items: readonly ProductCoverage[],
-  coverages: readonly { id: Id; code?: string; name: string; group?: string }[],
+  coverages: readonly { id: Id; code?: string; name: string }[],
   kinds: readonly AttributeKind[],
 ): MountRow[] {
   const byId = new Map(coverages.map((c) => [c.id, c]));
@@ -416,7 +414,7 @@ export function mountRows(
     .sort((a, b) => firstSeen.get(a.pc.coverageId)! - firstSeen.get(b.pc.coverageId)! || a.i - b.i)
     .map(({ pc }) => {
       const coverage = byId.get(pc.coverageId);
-      return { pc, coverageCode: coverage?.code, coverageName: coverage?.name, attributes: attributeComboLabel(pc.attributes, kinds), group: coverage?.group };
+      return { pc, coverageCode: coverage?.code, coverageName: coverage?.name, attributes: attributeComboLabel(pc.attributes, kinds) };
     });
 }
 

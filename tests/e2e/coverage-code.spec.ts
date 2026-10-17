@@ -98,7 +98,7 @@ test(
     // 읽기 표 — 상품담보명은 글자 칸(4열)
     const rowOf = (name: string) => section.locator("tbody tr").filter({ has: page.locator("td.col-flex").getByText(name, { exact: true }) });
 
-    await ev.action("탑재표#4", "특별약관 표 — 상품담보 10행, 같은 담보의 두 벌은 이어 놓고 코드 · 담보명은 묶음 첫 행에만 · 그룹 열은 담보의 「특약 그룹」(읽기 전용)", async () => {
+    await ev.action("탑재표#4", "특별약관 표 — 상품담보 10행, 같은 담보의 두 벌은 이어 놓고 코드 · 담보명은 묶음 첫 행에만 · 그룹 열은 담보분류의 기본 그룹(읽기 전용, ADR-0090)", async () => {
       await expect(section.locator("thead th")).toHaveText(["담보코드", "담보명", "담보속성", "상품담보명", "그룹", "세목 부착"]);
       await expect(section.locator("tbody tr")).toHaveCount(10);
       await expect(rowOf("일반상해사망보장").locator("td").nth(4)).toHaveText("상해 관련 특별약관");

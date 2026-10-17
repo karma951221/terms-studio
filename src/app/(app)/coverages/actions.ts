@@ -25,11 +25,15 @@ function detailPath(id: Id): string {
 
 export async function createCoverageAction(formData: FormData): Promise<void> {
   const actor = await currentActor();
+  // 담보분류는 필수 (ADR-0090 · 기능/담보 §4 생성) — 서비스는 옛 호출(시드 밖 테스트)을 위해 비어도 받으므로 생성 화면이 막는다
+  const category = str(formData, "category");
+  if (!category) redirect(errorRedirectPath(`${BASE}/new`, "담보분류를 고르세요"));
   const r = await getServices().coverage.create(actor, {
     name: str(formData, "name"),
     description: str(formData, "description"),
     subCoverageName: str(formData, "subCoverageName") || undefined,
     benefitName: str(formData, "benefitName") || undefined,
+    category,
   });
   if (!r.ok) redirect(errorRedirectPath(`${BASE}/new`, msg(r.rejection)));
   redirect(detailPath(r.value.id));

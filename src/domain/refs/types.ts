@@ -113,8 +113,8 @@ export type EdgeVia =
   | "type"
   /** 상품담보 → 담보 마스터 (탑재) */
   | "mount"
-  /** 담보 마스터 → 「특약 그룹」 열거값 (ADR-0080) */
-  | "specialGroup"
+  /** 담보 마스터 → 「담보분류」 열거값 (ADR-0090) */
+  | "category"
   /** 상품담보 → 담보속성 유효값 (조합) */
   | "combination";
 

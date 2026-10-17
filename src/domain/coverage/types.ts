@@ -39,10 +39,10 @@ export interface Coverage {
   /** 담보약관 마스터 문서 id (B3 소유). 문면 없는 담보 허용. */
   documentId?: Id;
   /**
-   * 특약 그룹 — 열거형 「특약 그룹」(E0008)의 값 코드. 없으면 그룹 없음(책자에서 그룹 제목 없이 찍힌다).
-   * 뼈대 속성이라 스냅샷 대상이 아니다 — 탑재한 상품은 지금 담보의 그룹을 따른다 (ADR-0080 · `specialGroup.ts`).
+   * 담보분류 — 열거형 「담보분류」(E0009)의 값 코드. 필수지만 옛 데이터 · 우회 저장이면 없을 수 있다(조립 `notEntered`).
+   * 기본 특약 그룹의 재료다. 뼈대 속성이라 스냅샷 대상이 아니다 — 탑재한 상품은 지금 담보의 담보분류를 따른다 (ADR-0090 · `category.ts`).
    */
-  specialGroup?: Code;
+  category?: Code;
   /** order 오름차순. 최소 1개 (최소 구조). */
   subCoverages: SubCoverage[];
 }
@@ -75,6 +75,8 @@ export interface NewCoverage {
   description?: string;
   subCoverageName?: string;
   benefitName?: string;
+  /** 담보분류 값 코드 (ADR-0090) — 주면 서비스가 열거형으로 검사해 함께 저장한다. 생성 화면은 필수로 보낸다. */
+  category?: Code;
 }
 
 /** 세부보장 추가 — 급부 1 이 함께 태어난다. 급부명을 안 주면 세부보장명을 쓴다. */

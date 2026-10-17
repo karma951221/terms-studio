@@ -5,8 +5,9 @@
  *   → judgeOmission → dropEmptyArticles → numberDocument → placeSpecials → collectAppendices → renderDocument
  *
  * - 부분 조립: 오류는 마커로 심고 끝까지 간다. `issues` 는 책자 등장 순 (D-P6-12). error가 있으면 `complete=false`, warning만 있으면 완성본이다.
- * - 특약 그룹은 담보 마스터의 「특약 그룹」 열거값이다 (ADR-0080) — 그룹 순서 = 열거값 순서, 제목 = 값 이름. 그룹 없는 담보의 상품담보는
- *   그룹들 뒤에 제목 없이 찍힌다(오류 아님). 열거형에서 지워진 값이면 「없는 값」 brokenRef + 제목 없이.
+ * - 특약 그룹 (ADR-0090) — 상품담보마다 그 담보가 이 상품의 사용자 그룹에 들었으면 그 그룹, 아니면 담보분류의 기본 그룹.
+ *   그룹 순서 = 상품의 그룹 목록(`effectiveGroups`), 제목 = 사용자 그룹 이름 · 담보분류 값의 「그룹 제목」(비면 notEntered + 제목 자리 오류 마커).
+ *   담보분류 미입력(notEntered) · 지운 값(brokenRef 「없는 값」)인 담보의 상품담보는 그룹들 뒤 제목 없는 자리. 그룹 안은 담보코드 → 담보속성.
  * - 문면 없는 담보의 탑재분은 오류가 아니라 `undocumented` (D-P6-9).
  * - 특약 문서 제목 = 상품담보명 + 「 특별약관」 (임시 규칙 — 실물 조사 후 확정).
  * - `assembleSpecial` = 상품담보 미리보기 (기능/상품 §4 「상품담보 값」): 담보약관 하나를 그 상품담보 문맥으로, 보통약관과 함께.
@@ -19,8 +20,9 @@ import { foldTitle } from "../document/title";
 import type { CompletenessFilter } from "../coverage/values";
 import { CONTRACT_KIND_PATH, isStandaloneContract } from "../master";
 import { baseContractCountIssue } from "../product/completeness";
-import { SPECIAL_GROUP_ENUM } from "../coverage/specialGroup";
-import { sortInGroup } from "../product/groups";
+import { enumCoordinate } from "../catalog/fields";
+import { COVERAGE_CATEGORY_ENUM, categoryGroupTitle } from "../coverage/category";
+import { effectiveGroups, groupKey, sortInGroup } from "../product/groups";
 import type { ClauseOptionOverride, ProductCoverage } from "../product/types";
 import { type Coordinate, type Id, type Issue, ok, reject, type Result } from "../types";
 import { buildContexts, generalCoordinate, generalDocumentOf, specialCoordinate, type AssemblyContext, type AssemblyContexts } from "./context";
@@ -270,15 +272,16 @@ function buildSpecial(input: AssemblyInput, contexts: AssemblyContexts, s: Share
 
 // ───────────────────────────── 9. 특약 배치 ─────────────────────────────
 
-/** 그룹 없는 상품담보를 모은 자리의 id — 책자에서 제목 없이 그룹들 뒤에 선다. */
+/** 담보분류를 정할 수 없는 상품담보(미입력 · 지운 값)를 모은 자리의 id — 책자에서 제목 없이 그룹들 뒤에 선다. */
 export const UNGROUPED_ID = "ungrouped";
 
 export interface Placement {
   /**
-   * 열거값 순 → 그룹 안 자동 정렬 순. 상품담보가 없는 그룹은 없다. 그룹 없는 상품담보는 마지막 한 자리(`title` 없음 · id `ungrouped`).
+   * 상품 그룹 목록 순 → 그룹 안 자동 정렬 순. 상품담보가 없는 그룹은 없다. 담보분류를 정할 수 없는 상품담보는 마지막 한 자리(`title` 없음 · id `ungrouped`).
+   * `titleIssue` — 기본 그룹의 「그룹 제목」이 비었다(제목 자리 오류 마커).
    */
-  groups: { id: Id; title?: string; members: AssemblyCoverage[] }[];
-  /** 상품담보 id → 그 담보의 그룹 값이 열거형에 없다는 오류 (ADR-0080 · 기능/열거형 §3.2 「없는 값」). */
+  groups: { id: Id; title?: string; titleIssue?: Issue; members: AssemblyCoverage[] }[];
+  /** 상품담보 id → 그 담보의 담보분류를 정할 수 없다는 오류 (미입력 notEntered · 지운 값 brokenRef, ADR-0090 결정 9). */
   groupIssues: ReadonlyMap<Id, Issue>;
   undocumented: UndocumentedCoverage[];
   baseContracts: Booklet["baseContracts"];
@@ -294,35 +297,65 @@ export function placeSpecials(input: AssemblyInput): Placement {
   const undocumented = specials
     .filter((c) => !input.specialDocuments.has(c.snapshot.coverageId))
     .map((c) => ({ productCoverageId: c.snapshot.id, name: c.snapshot.name, coverageId: c.snapshot.coverageId }));
-  // 담보 순서 = 담보명 순 (B1 마스터 순서는 통합 때 어댑터로)
-  const names = [...new Set(documented.map((c) => c.snapshot.coverageName))].sort((a, b) => a.localeCompare(b));
+  // 그룹 안 1차 키 = 담보코드 (ADR-0090 결정 6). 코드가 없는 담보(픽스처)는 코드 있는 것 뒤에 담보명 순
+  const codeOf = (id: Id) => input.coverageCodes?.get(id);
   const nameOf = new Map(documented.map((c) => [c.snapshot.coverageId, c.snapshot.coverageName]));
-  const coverageOrder = (id: Id) => names.indexOf(nameOf.get(id) ?? "");
+  const ordered = [...new Set(documented.map((c) => c.snapshot.coverageId))].sort((a, b) => {
+    const ca = codeOf(a);
+    const cb = codeOf(b);
+    if (ca !== undefined && cb !== undefined) return ca.localeCompare(cb);
+    if (ca !== undefined || cb !== undefined) return ca !== undefined ? -1 : 1;
+    return (nameOf.get(a) ?? "").localeCompare(nameOf.get(b) ?? "");
+  });
+  const coverageOrder = (id: Id) => ordered.indexOf(id);
   const byId = new Map(documented.map((c) => [c.snapshot.id, c]));
   const sorted = (members: readonly AssemblyCoverage[]) => sortInGroup(members.map((c) => c.snapshot as ProductCoverage), input.attributeKinds, coverageOrder).map((m) => byId.get(m.id)!);
 
-  // 그룹 = 담보의 「특약 그룹」 열거값 (ADR-0080). 값 순서가 책자 순서, 값 이름이 그룹 제목.
-  const groupEnum = input.enums.find((e) => e.code === SPECIAL_GROUP_ENUM);
+  // 그룹 = 사용자 그룹(상품) 또는 담보분류의 기본 그룹 (ADR-0090). 순서 = 상품 그룹 목록, 제목 = 이름 · 「그룹 제목」 필드
+  const categoryEnum = input.enums.find((e) => e.code === COVERAGE_CATEGORY_ENUM);
+  const categoryOrder = (categoryEnum?.values ?? []).map((v) => v.code);
+  const setting = input.product.groups;
+  const userGroups = new Set((setting?.groups ?? []).flatMap((g) => (g.kind === "user" ? [g.id] : [])));
+  const userGroupOf = new Map((setting?.memberships ?? []).filter((m) => userGroups.has(m.groupId)).map((m) => [m.coverageId, m.groupId]));
   const groupIssues = new Map<Id, Issue>();
-  const groupOf = (c: AssemblyCoverage): Id | undefined => {
-    const code = input.coverageGroups?.get(c.snapshot.coverageId);
-    if (code === undefined) return undefined;
-    if (groupEnum?.values.some((v) => v.code === code)) return code;
+  const groupOf = (c: AssemblyCoverage): string => {
+    const user = userGroupOf.get(c.snapshot.coverageId);
+    if (user !== undefined) return user; // 사용자 그룹에 든 담보는 담보분류를 읽지 않는다
+    const code = input.coverageCategories?.get(c.snapshot.coverageId);
+    const source: Coordinate = { document: "coverageMaster", ownerId: c.snapshot.coverageId, ownerName: c.snapshot.coverageName, refPath: "category" };
+    if (code === undefined) {
+      groupIssues.set(c.snapshot.id, { kind: "notEntered", message: `담보분류가 입력되지 않았습니다 · 담보 「${c.snapshot.coverageName}」`, at: specialCoordinate(c), source });
+      return UNGROUPED_ID;
+    }
+    if (categoryOrder.includes(code)) return groupKey({ kind: "category", code });
     groupIssues.set(c.snapshot.id, {
       kind: "brokenRef",
-      message: `없는 값 ${code} — 특약 그룹(${SPECIAL_GROUP_ENUM})에서 지워진 값입니다 · 담보 「${c.snapshot.coverageName}」의 특약 그룹`,
+      message: `없는 값 ${code} — 담보분류(${COVERAGE_CATEGORY_ENUM})에서 지워진 값입니다 · 담보 「${c.snapshot.coverageName}」의 담보분류`,
       at: specialCoordinate(c),
+      source,
     });
-    return undefined;
+    return UNGROUPED_ID;
   };
-  const membersOf = new Map<Id, AssemblyCoverage[]>();
+  const membersOf = new Map<string, AssemblyCoverage[]>();
   for (const c of documented) {
-    const key = groupOf(c) ?? UNGROUPED_ID;
+    const key = groupOf(c);
     membersOf.set(key, [...(membersOf.get(key) ?? []), c]);
   }
-  const groups: Placement["groups"] = (groupEnum?.values ?? [])
-    .filter((v) => membersOf.has(v.code))
-    .map((v) => ({ id: v.code, title: v.label, members: sorted(membersOf.get(v.code)!) }));
+  // 이 상품의 기본 그룹 = 특약 담보들의 담보분류 (기능/상품 §3.7 — 상품담보 탭 「특약 그룹」 섹션과 같은 기준)
+  const present = new Set(specials.flatMap((c) => input.coverageCategories?.get(c.snapshot.coverageId) ?? []));
+  const productAt: Coordinate = { document: "product", ownerId: input.product.id, ownerName: input.product.name };
+  const groups: Placement["groups"] = effectiveGroups(setting?.groups ?? [], present, categoryOrder)
+    .filter((g) => membersOf.has(groupKey(g)))
+    .map((g) => {
+      const key = groupKey(g);
+      const members = sorted(membersOf.get(key)!);
+      if (g.kind === "user") return { id: key, title: g.name, members };
+      const title = categoryGroupTitle(categoryEnum, g.code);
+      if (title !== undefined) return { id: key, title, members };
+      const label = categoryEnum?.values.find((v) => v.code === g.code)?.label ?? g.code;
+      const titleIssue: Issue = { kind: "notEntered", message: `그룹 제목이 비었습니다 — 담보분류 「${label}」의 「그룹 제목」`, at: productAt, source: enumCoordinate(categoryEnum!, g.code) };
+      return { id: key, titleIssue, members };
+    });
   const ungrouped = membersOf.get(UNGROUPED_ID);
   if (ungrouped) groups.push({ id: UNGROUPED_ID, members: sorted(ungrouped) });
   return { groups, groupIssues, undocumented, baseContracts };
@@ -378,18 +411,23 @@ export function assemble(master: MasterBundle, product: ProductInput): Booklet {
     renderedGeneral = r.doc;
     issues.push(...locateIssues(general.issues, general.numbered), ...r.issues);
   }
-  const specials: RenderedGroup[] = builtGroups.map((g) => ({
-    id: g.id,
-    ...(g.title !== undefined ? { title: g.title } : {}),
-    docs: g.docs.map(({ c, b }) => {
-      const groupIssue = placement.groupIssues.get(c.snapshot.id);
-      if (groupIssue) issues.push(groupIssue);
-      const r = renderDocument(b.numbered, { document: "special", ownerId: c.snapshot.id, general: general?.numbered, aliases: omissionAliases(b.omitted), appendices, ...(general?.hidden ? { hiddenArticles: general.hidden } : {}) });
-      issues.push(...locateIssues(b.issues, b.numbered), ...r.issues);
-      omitted.push(...b.omitted);
-      return r.doc;
-    }),
-  }));
+  const specials: RenderedGroup[] = builtGroups.map((g) => {
+    // 그룹 제목 자리의 오류가 그 그룹 문서들보다 먼저 — 책자 등장 순 (D-P6-12)
+    if (g.titleIssue) issues.push(g.titleIssue);
+    return {
+      id: g.id,
+      ...(g.title !== undefined ? { title: g.title } : {}),
+      ...(g.titleIssue ? { titleError: { kind: "error" as const, id: `group-title-${g.id}`, issue: g.titleIssue } } : {}),
+      docs: g.docs.map(({ c, b }) => {
+        const groupIssue = placement.groupIssues.get(c.snapshot.id);
+        if (groupIssue) issues.push(groupIssue);
+        const r = renderDocument(b.numbered, { document: "special", ownerId: c.snapshot.id, general: general?.numbered, aliases: omissionAliases(b.omitted), appendices, ...(general?.hidden ? { hiddenArticles: general.hidden } : {}) });
+        issues.push(...locateIssues(b.issues, b.numbered), ...r.issues);
+        omitted.push(...b.omitted);
+        return r.doc;
+      }),
+    };
+  });
 
   return { general: renderedGeneral, specials, appendices, issues, complete: !issues.some((item) => (item.severity ?? "error") === "error"), omitted, undocumented: placement.undocumented, baseContracts: placement.baseContracts, trace: contexts.traces };
 }

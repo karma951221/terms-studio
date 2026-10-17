@@ -2,7 +2,7 @@
  * 상품·탑재 서비스 — 모든 쓰기의 진입점. actor 검사 · 도메인 규칙 · repo 호출 · 트랜잭션.
  *
  * - 비파괴 액션(채번 · 표시명 · 작명 규칙 · 순서 · 상품 생성 · 값 입력 · 선택지 · 조합 등록 · 탑재 ·
- *   세목 부착 · 기본계약 지정/해제 · 오버라이드)은 editor 도 가능. 특약 그룹은 상품 것이 아니다 — 담보 마스터의 열거값(ADR-0080).
+ *   세목 부착 · 기본계약 지정/해제 · 오버라이드)은 editor 도 가능. 특약 그룹(사용자 그룹 · 그룹 목록)은 상품담보 탭 저장(`saveCoverages`)이 함께 쓴다 — 기본 그룹은 담보의 담보분류(ADR-0090).
  * - 파괴적 액션은 `destructive()` 2단 (ADR-0019): editor → forbidden · admin 1차 → needsConfirmation(Impact) ·
  *   `{ confirm: true }` → 실행. 여기서 쓰는 액션: `product.delete` · `product.unmount` · `product.detachPlan`
  *   (세목 부착 해제 · 유효 조합 삭제 · 선택지 삭제 — 셋 다 「세목 조합 제거」 결) · `attribute.delete` · `attribute.deleteValue`.
@@ -13,7 +13,7 @@
  */
 import { can, destructive, type DestructiveAction } from "@/domain/auth";
 import { countedSlotsOf, slotType, validateValue, type Discriminator, type SlotPath } from "@/domain/catalog";
-import { validateSlotValue } from "@/domain/coverage";
+import { COVERAGE_CATEGORY_ENUM, categoryGroupTitle, validateSlotValue } from "@/domain/coverage";
 import { blockingIssues, indexTree, type ArticleNode, type DocumentNode } from "@/domain/document";
 import {
   addAttributeValue,
@@ -71,6 +71,9 @@ import {
   type ProductCoverageSnapshot,
   type ProductPlan,
   type SnapshotNode,
+  planProductGroups,
+  type ProductGroupSetting,
+  type ProductGroupsInput,
 } from "@/domain/product";
 import { CONTRACT_KIND_PATH, findForm, findMasterField, formRuleIssues, formsOfLevel, isStandaloneContract, type MasterForm } from "@/domain/master";
 import type { Actor, AttachLevel, Code, Coordinate, Id, Impact, Issue, Result, Value, ValueSlot } from "@/domain/types";
@@ -164,6 +167,11 @@ export interface ProductCoveragesInput {
   added: { key: string; coverageId: Id; attributes: AttributeSelection[]; section: CoverageSection; name?: string; plans: Id[] }[];
   updated: { id: Id; name: string; plans: Id[] }[];
   removed: Id[];
+  /**
+   * 특약 그룹 — 「특약 그룹」 섹션의 최종 그룹 목록(순서) + 사용자 그룹 소속 (ADR-0090 · 기능/상품 §3.7). 그룹을 고치지 않았으면 보내지 않는다 —
+   * 그래도 저장은 탑재 해제로 빠진 담보의 소속 · 이 상품에 없게 된 기본 그룹을 정리한다.
+   */
+  groups?: ProductGroupsInput;
 }
 
 export interface ProductBasicInput {
@@ -286,6 +294,8 @@ export interface ProductService {
    * 관리자 1차는 `needsConfirmation`(값 행 · 줄), `{ confirm: true }` 면 실행.
    */
   saveCoverages(actor: Actor, productId: Id, input: ProductCoveragesInput, opts?: Confirmable): Promise<Result<void>>;
+  /** 상품의 특약 그룹 설정 — 저장된 그룹 목록(순서) + 사용자 그룹 소속 (ADR-0090). 저장한 적 없으면 빈 목록(기본 그룹만 열거값 순). */
+  listGroups(productId: Id): Promise<ProductGroupSetting>;
   getProductCoverage(id: Id): Promise<ProductCoverage | undefined>;
   listProductCoverages(productId: Id): Promise<ProductCoverage[]>;
   getSnapshot(id: Id): Promise<Result<ProductCoverageSnapshot>>;
@@ -722,6 +732,31 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
         if (issues.length === before) adds.push({ key: a.key, tree, attributes, combination, section: a.section, name: finalName, plans: [...new Set(a.plans)] });
       }
 
+      // ── 특약 그룹 (ADR-0090) — 최종 탑재(특약 절)로 검사 · 정리. 탑재 해제로 빠진 담보의 소속은 같은 저장에서 지운다
+      const specialCoverageIds = (pcs: readonly { coverageId: Id }[]) => new Set(pcs.map((pc) => pc.coverageId));
+      const mountedBefore = specialCoverageIds(current.filter((pc) => !baseIds.has(pc.id)));
+      const mountedAfter = specialCoverageIds([...current.filter((pc) => !baseIds.has(pc.id) && !removed.has(pc.id)), ...adds.filter((a) => a.section === "special").map((a) => ({ coverageId: a.tree.id }))]);
+      const categoryEnum = await catalog.loadEnum(tx, COVERAGE_CATEGORY_ENUM);
+      const categoryOrder = (categoryEnum?.values ?? []).map((v) => v.code);
+      const categories = await repo.listCoverageCategoriesOf(tx, [...mountedAfter]);
+      const present = new Set([...mountedAfter].flatMap((id) => categories.get(id) ?? []).filter((code) => categoryOrder.includes(code)));
+      const savedGroups = await repo.listProductGroups(tx, productId);
+      const groupPlan = planProductGroups(input.groups, {
+        saved: savedGroups,
+        mountedBefore,
+        mountedAfter,
+        present,
+        categoryOrder,
+        categoryTitle: (code) => categoryGroupTitle(categoryEnum, code),
+        newId: () => crypto.randomUUID(),
+      });
+      if (!groupPlan.ok) {
+        if (groupPlan.rejection.reason === "invalid") issues.push(...groupPlan.rejection.issues);
+        else return groupPlan as Result<never>;
+      }
+      const nextGroups = groupPlan.ok ? groupPlan.value : savedGroups;
+      const groupsChanged = JSON.stringify(nextGroups) !== JSON.stringify(savedGroups);
+
       // ── 잃는 것 — 탑재 해제 · 세목 부착 해제는 관리자만 (ADR-0019). 편집자는 그 행에서 거부한다
       const detaching = updates.filter((u) => u.detach.length > 0);
       if (!can(actor, "product.unmount")) for (const id of removed) issues.push(rowIssue("unsupported", "탑재 해제는 관리자만 할 수 있습니다 — 저장하지 않았습니다", id, undefined, byId.get(id)!.name));
@@ -742,6 +777,7 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
           const pc = await mountIn(tx, actor, productId, a.tree, a.attributes, a.combination, a.section, a.name);
           for (const planId of a.plans) await repo.attachPlan(tx, pc.id, planId, actor.userId);
         }
+        if (groupsChanged) await repo.replaceProductGroups(tx, productId, nextGroups, actor.userId);
         return ok(undefined);
       };
       if (removed.size === 0 && detaching.length === 0) return execute();
@@ -977,6 +1013,7 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
     // 상품
     saveBasic,
     saveCoverages,
+    listGroups: (productId) => repo.listProductGroups(db, productId),
     listProducts: () => repo.listProducts(db),
     getProduct: (id) => repo.loadProduct(db, id),
     productAudit: (id) => repo.productAudit(db, id),
@@ -1403,7 +1440,9 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
           computeImpact: async () => ({ valueRowsLost: await countSlots(tx, owners), brokenRefs: [], cascade }),
           execute: async () => {
             for (const o of owners) await clearOwner(tx, o);
+            const pc = await repo.loadProductCoverage(tx, id);
             await repo.deleteProductCoverage(tx, id);
+            if (pc) await repo.pruneGroupMemberships(tx, pc.productId); // 상품에서 빠진 담보의 사용자 그룹 소속 (ADR-0090)
             return ok(undefined);
           },
         });

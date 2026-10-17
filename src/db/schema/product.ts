@@ -1,6 +1,6 @@
 /**
- * 상품 스키마 — 담보속성 카탈로그 · 상품 · 조 사본 · 세목 · 상품담보(탑재 스냅샷) · 기본계약 · 옵션 오버라이드.
- * 특약 그룹은 상품 것이 아니다 — 담보 마스터의 「특약 그룹」 열거값이다 (`coverages.special_group`, ADR-0080).
+ * 상품 스키마 — 담보속성 카탈로그 · 상품 · 조 사본 · 특약 그룹 · 세목 · 상품담보(탑재 스냅샷) · 기본계약 · 옵션 오버라이드.
+ * 특약 그룹은 기본 그룹(담보의 담보분류 — `coverages.category`)과 상품의 사용자 그룹이다 (ADR-0090).
  *
  * 근거: docs/기능/상품/상품.md (§3.5 · §3.6) · docs/기능/조립산출/조립산출.md · ADR-0002 · ADR-0006 · ADR-0015.
  *
@@ -115,6 +115,48 @@ export const productArticleCopies = pgTable(
     ...audit,
   },
   (t) => [primaryKey({ columns: [t.productId, t.articleId] })],
+);
+
+// ───────────────────────────── 특약 그룹 (ADR-0090) ─────────────────────────────
+
+/**
+ * 상품의 그룹 목록 — 한 행 = 목록 한 줄. `order` 0부터 = 책자의 그룹 순서(블록 순서도 이것 — 절 형태, 미구현).
+ * `kind` `category` = 기본 그룹(`category_code` = 담보분류 값 코드 — 열거형은 데이터라 FK 없음), `user` = 사용자 그룹(`name` = 책자의 그룹 제목).
+ * 목록에 자리가 없는 기본 그룹은 조립 · 화면이 저장된 목록 뒤에 열거값 순서로 세운다(`effectiveGroups`). 저장은 상품담보 탭 저장이 통째로 다시 쓴다.
+ */
+export const productGroups = pgTable(
+  "product_groups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    order: integer("order").notNull(),
+    kind: text("kind").$type<"category" | "user">().notNull(),
+    categoryCode: text("category_code"),
+    name: text("name"),
+    ...audit,
+  },
+  (t) => [uniqueIndex("product_groups_category").on(t.productId, t.categoryCode)],
+);
+
+/**
+ * 사용자 그룹 소속 — 상품 × 담보 하나에 그룹 하나 (담보 단위, ADR-0090 결정 4). 넣지 않은 담보는 담보분류의 기본 그룹이다.
+ * 담보 id 는 다른 영역이라 FK 를 걸지 않는다 — 탑재 해제 · 담보 삭제 때 서비스가 지운다. 그룹을 지우면 소속도 cascade.
+ */
+export const productGroupCoverages = pgTable(
+  "product_group_coverages",
+  {
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    coverageId: uuid("coverage_id").notNull(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => productGroups.id, { onDelete: "cascade" }),
+    ...audit,
+  },
+  (t) => [primaryKey({ columns: [t.productId, t.coverageId] })],
 );
 
 // ───────────────────────────── 세목 (ADR-0006) ─────────────────────────────

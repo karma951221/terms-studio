@@ -159,14 +159,14 @@ test.describe.serial("★ 실물 재현 — 상품모델링을 화면으로 수�
       await mount(10, "특별약관", "일반상해80%이상후유장해 생활자금보장");
       await mount(11, "특별약관", "골절(치아파절 제외)진단비Ⅱ보장");
 
-      await ev.action("실물재현#1.12", "저장 한 번 — 읽기로 돌아와 기본계약 1 · 특약 4, 그룹 열은 담보의 「특약 그룹」(시드)", async () => {
+      await ev.action("실물재현#1.12", "저장 한 번 — 읽기로 돌아와 기본계약 1 · 특약 4, 그룹 열은 담보분류(시드)의 기본 그룹", async () => {
         await page.getByRole("button", { name: "저장", exact: true }).click();
         await expect(page.getByRole("button", { name: "편집", exact: true })).toBeVisible();
         // 기본계약 표에 얹은 것이 곧 기본계약이다 — 탑재 표는 상품담보 한 건 = 한 행
         await expect(page.getByRole("region", { name: "기본계약", exact: true }).locator("tbody tr")).toHaveCount(1);
         const specials = page.getByRole("region", { name: "특별약관", exact: true });
         await expect(specials.locator("tbody tr")).toHaveCount(4);
-        // 그룹은 상품에서 만들지 않는다 — 담보 마스터의 그룹(ADR-0080)
+        // 사용자 그룹을 만들지 않으면 담보분류의 기본 그룹 — 제목은 열거형 「담보분류」 값의 「그룹 제목」(ADR-0090)
         await expect(specials.getByText("상해 관련 특별약관", { exact: true })).toHaveCount(4);
       });
 

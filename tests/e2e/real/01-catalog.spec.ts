@@ -13,15 +13,47 @@ const RESULT_TYPE_LABEL: Record<string, string> = { string: "문자열" };
 
 test.describe.serial("실물 재현(화면) ① 카탈로그", () => {
   const enums = SEED.enums.filter((e) => !BASE_ENUM_CODES.has(e.code));
-  test(`열거형 ${enums.map((e) => e.code).join(" · ")} — 이름과 값을 생성 화면에서`, NO_COORD, async ({ page, ev }) => {
+  test(`열거형 ${enums.map((e) => e.code).join(" · ")} — 이름 · 필드 · 값을 생성 화면에서`, NO_COORD, async ({ page, ev }) => {
     await ev.action("실물화면#1.1", "관리자로 로그인한다", () => login(page));
+    let next = BASE_ENUM_CODES.size + 1;
     for (const spec of enums) {
-      await ev.action(`실물화면#1.2 ${spec.code}`, `열거형 「${spec.label}」 값 ${spec.values.length}개를 만든다`, async () => {
+      // 없앤 열거형의 코드 빈자리(옛 「특약 그룹」 E0008 — ADR-0090 결정 3)는 채번이라 건너뛸 수 없다 — 자리표시 열거형을 만들고 상세의 🗑 로 지운다(시드와 같다)
+      for (; next < Number(spec.code.slice(1)); next++) {
+        const gap = `E${String(next).padStart(4, "0")}`;
+        await ev.action(`실물화면#1.2 ${gap}`, `코드 빈자리 ${gap} — 자리표시 열거형을 만들고 지운다`, async () => {
+          const label = `(지운 열거형 ${gap})`;
+          await open(page, "/enums/new");
+          await page.getByLabel("열거형변수 이름").fill(label);
+          await page.getByRole("textbox", { name: "값 이름", exact: true }).first().fill("값");
+          await page.getByRole("button", { name: "생성", exact: true }).click();
+          await arrive(page, new RegExp(`/enums/${gap}$`));
+          await page.getByRole("button", { name: `열거형변수 ${label}(${gap}) 삭제`, exact: true }).click();
+          await page.getByRole("dialog").getByRole("button", { name: `${label} 삭제`, exact: true }).click();
+          await arrive(page, /\/enums$/);
+        });
+      }
+      next++;
+      await ev.action(`실물화면#1.2 ${spec.code}`, `열거형 「${spec.label}」 필드 ${spec.fields?.length ?? 0}개 · 값 ${spec.values.length}개를 만든다`, async () => {
         await open(page, "/enums/new");
         await page.getByLabel("열거형변수 이름").fill(spec.label);
+        // 필드(ADR-0078) — 「행 추가 · 필드」 → 이름 · 타입. 담보분류의 「그룹 제목」(기본 특약 그룹 제목, ADR-0090)
+        for (const field of spec.fields ?? []) {
+          await page.getByRole("button", { name: "행 추가 · 필드", exact: true }).click();
+          await page.getByRole("textbox", { name: /^필드 이름/ }).last().fill(field.label);
+          if (field.type === "boolean") await page.getByRole("combobox", { name: `${field.label} 타입` }).selectOption({ label: "참거짓" });
+        }
         // 생성 화면은 빈 값 두 줄로 시작한다 — 남는 빈 행은 생성 때 버린다. 새 값 행의 입력칸은 모두 「값 이름」(상세 값 표와 같은 표)
         for (let i = 2; i < spec.values.length; i++) await page.getByRole("button", { name: "행 추가 · 값", exact: true }).click();
         for (const [i, value] of spec.values.entries()) await page.getByRole("textbox", { name: "값 이름", exact: true }).nth(i).fill(value.label);
+        // 값 × 필드 칸 — 「{값 이름} {필드 이름}」
+        for (const value of spec.values) {
+          for (const field of spec.fields ?? []) {
+            const cell = value.fields?.[field.key];
+            if (cell === undefined) continue;
+            if (field.type === "boolean") await page.getByRole("combobox", { name: `${value.label} ${field.label}`, exact: true }).selectOption({ label: cell ? "예" : "아니오" });
+            else await page.getByRole("textbox", { name: `${value.label} ${field.label}`, exact: true }).fill(String(cell));
+          }
+        }
         await page.getByRole("button", { name: "생성", exact: true }).click();
         await arrive(page, new RegExp(`/enums/${spec.code}$`));
       });

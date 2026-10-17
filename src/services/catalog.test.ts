@@ -544,21 +544,21 @@ describe("열거값 삭제 = 「없는 값」 · 열거값 추가 = 재검사 �
   });
 });
 
-describe("열거형변수 정의 삭제 — 마스터 필드 · 특약 그룹만 거부, 나머지는 확인 뒤 지우고 남은 참조는 깨진 참조 (ADR-0049 〔D-P1-17〕)", () => {
+describe("열거형변수 정의 삭제 — 마스터 필드 · 담보분류만 거부, 나머지는 확인 뒤 지우고 남은 참조는 깨진 참조 (ADR-0049 〔D-P1-17〕)", () => {
   let t: TestDb;
   let s: Services;
 
   beforeAll(async () => {
     t = await createTestDb();
     s = createServices(t.db);
-    for (let i = 1; i <= 9; i++) unwrap(await s.catalog.createEnum(editor, { label: i === 8 ? "특약 그룹" : `열거형${i}`, values: [{ label: "가" }, { label: "나" }] })); // E0001 ~ E0009
+    for (let i = 1; i <= 10; i++) unwrap(await s.catalog.createEnum(editor, { label: i === 9 ? "담보분류" : `열거형${i}`, values: [{ label: "가" }, { label: "나" }] })); // E0001 ~ E0010
     await writeSlot(t.db, { kind: "plan", id: "11111111-1111-4111-8111-111111111111" }, "waiver.reasons", ["V01"]);
-    // E0009 값을 비교하는 함수조항 내부 변수 — 지우면 깨진 참조로 남는다
+    // E0010 값을 비교하는 함수조항 내부 변수 — 지우면 깨진 참조로 남는다
     unwrap(
       await s.clause.create(editor, {
         label: "임시 분류 문구",
         mode: "block",
-        params: [{ name: "분류", type: { kind: "enum", enumCode: "E0009" } }],
+        params: [{ name: "분류", type: { kind: "enum", enumCode: "E0010" } }],
         locals: [{ name: "가임", expr: "arg.분류 = 'V01'" }],
         body: [],
       } as never),
@@ -568,8 +568,8 @@ describe("열거형변수 정의 삭제 — 마스터 필드 · 특약 그룹만
     await t.close();
   });
 
-  it("특약 그룹(E0008)은 코드가 가리키므로 거부 · 마스터 필드 열거형(E0001)도 거부 — 값 행은 그대로", async () => {
-    for (const code of ["E0001", "E0008"]) {
+  it("담보분류(E0009)는 코드가 가리키므로 거부 · 마스터 필드 열거형(E0001)도 거부 — 값 행은 그대로", async () => {
+    for (const code of ["E0001", "E0009"]) {
       const r = await s.catalog.removeEnum(admin, code, { confirm: true });
       expect(r.ok === false && r.rejection.reason).toBe("inUse");
       expect(await s.catalog.getEnum(code)).toBeDefined();
@@ -577,15 +577,15 @@ describe("열거형변수 정의 삭제 — 마스터 필드 · 특약 그룹만
     expect((await readSlots(t.db, { kind: "plan", id: "11111111-1111-4111-8111-111111111111" })).get("waiver.reasons")).toEqual({ entered: true, value: ["V01"] });
   });
 
-  it("코드가 가리키지 않는 열거형(E0009)은 관리자 확인 뒤 지운다 — 영향에 값(cascade)과 그 값을 읽는 곳(깨질 참조)", async () => {
-    expect((await s.catalog.removeEnum(editor, "E0009")).ok).toBe(false);
-    const first = await s.catalog.removeEnum(admin, "E0009");
+  it("코드가 가리키지 않는 열거형(E0010)은 관리자 확인 뒤 지운다 — 영향에 값(cascade)과 그 값을 읽는 곳(깨질 참조)", async () => {
+    expect((await s.catalog.removeEnum(editor, "E0010")).ok).toBe(false);
+    const first = await s.catalog.removeEnum(admin, "E0010");
     if (first.ok || first.rejection.reason !== "needsConfirmation") throw new Error(`needsConfirmation 기대: ${JSON.stringify(first)}`);
     expect(first.rejection.impact.cascade).toEqual(["값 가(V01)", "값 나(V02)"]);
     expect(first.rejection.impact.valueRowsLost).toBe(0);
     expect(first.rejection.impact.brokenRefs).toEqual([expect.objectContaining({ document: "clause", ownerId: "C0001", refPath: "var.가임" })]);
-    unwrap(await s.catalog.removeEnum(admin, "E0009", { confirm: true }));
-    expect(await s.catalog.getEnum("E0009")).toBeUndefined();
+    unwrap(await s.catalog.removeEnum(admin, "E0010", { confirm: true }));
+    expect(await s.catalog.getEnum("E0010")).toBeUndefined();
     expect(await s.clause.get("C0001")).toBeDefined(); // 참조하던 함수조항은 남는다 — 깨진 참조로 드러난다
   });
 });

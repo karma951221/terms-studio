@@ -16,8 +16,8 @@
 import { assertCan, destructive, type DestructiveAction } from "@/domain/auth";
 import type { EnumLookup, SlotPath } from "@/domain/catalog";
 import {
-  SPECIAL_GROUP_ENUM,
-  setCoverageSpecialGroup,
+  COVERAGE_CATEGORY_ENUM,
+  setCoverageCategory,
   addBenefit,
   addSubCoverage,
   applyStructurePlanTo,
@@ -139,10 +139,10 @@ export interface CoverageService {
   setDescription(actor: Actor, id: Id, description: string): Promise<Result<Coverage>>;
   setDocument(actor: Actor, id: Id, documentId: Id | undefined): Promise<Result<Coverage>>;
   /**
-   * 특약 그룹 — 열거형 「특약 그룹」(E0008)의 값 코드 하나, undefined 면 그룹 없음 (ADR-0080). 열거형에 없는 값은 invalid.
-   * 비파괴(편집자 가능). 탑재 상품담보는 스냅샷이 아니라 지금 담보의 그룹을 따르므로 동기화할 것이 없다.
+   * 담보분류 — 열거형 「담보분류」(E0009)의 값 코드 하나 (ADR-0090 결정 1). 비울 수 없고(notEntered) 열거형에 없는 값은 brokenRef — 둘 다 invalid.
+   * 비파괴(편집자 가능). 탑재 상품담보는 스냅샷이 아니라 지금 담보의 담보분류를 따르므로 동기화할 것이 없다.
    */
-  setSpecialGroup(actor: Actor, id: Id, code: Code | undefined): Promise<Result<Coverage>>;
+  setCategory(actor: Actor, id: Id, code: Code | undefined): Promise<Result<Coverage>>;
 
   // 세부보장 · 급부 — 비파괴
   addSubCoverage(actor: Actor, coverageId: Id, input: NewSubCoverage): Promise<Result<Coverage>>;
@@ -295,7 +295,10 @@ export function createCoverageService(db: Db, deps: CoverageServiceDeps = {}): C
             for (const n of descendants(tree, ref, level)) await values.clearOwner(tx, { kind: level, id: n.id });
           }
           if (next) await repo.saveCoverage(tx, next, actor.userId);
-          else await repo.deleteCoverage(tx, tree.id);
+          else {
+            await productRepo.deleteGroupMembershipsOfCoverage(tx, tree.id); // 상품의 사용자 그룹 소속도 (ADR-0090)
+            await repo.deleteCoverage(tx, tree.id);
+          }
           return ok(done(next));
         },
       });
@@ -426,16 +429,22 @@ export function createCoverageService(db: Db, deps: CoverageServiceDeps = {}): C
     create: (actor, input) =>
       db.transaction(async (tx) => {
         // 이름 검사 뒤에만 채번한다 — 거절된 생성이 순번을 태우지 않게 (기능/담보 §3.1 담보코드).
+        // 담보분류(ADR-0090)는 채번 전에 검사한다 — 거절된 생성이 순번을 태우지 않게
+        if (input.category !== undefined) {
+          const checked = setCoverageCategory({ id: "", name: input.name, description: "", subCoverages: [] }, input.category, await catalogRepo.loadEnum(tx, COVERAGE_CATEGORY_ENUM));
+          if (!checked.ok) return checked;
+        }
         const r = await createCoverage(input, newId, await repo.listCoverageNames(tx), () => repo.nextCoverageSeq(tx));
         if (!r.ok) return r;
-        await repo.insertCoverage(tx, r.value, actor.userId);
-        return r;
+        const tree = input.category !== undefined ? { ...r.value, category: input.category } : r.value;
+        await repo.insertCoverage(tx, tree, actor.userId);
+        return ok(tree);
       }),
     rename: (actor, id, name) => editCoverage(actor, id, async (tree, tx) => renameCoverage(tree, name, await repo.listCoverageNames(tx))),
     setDescription: (actor, id, description) => editCoverage(actor, id, (tree) => setCoverageDescription(tree, description)),
     setDocument: (actor, id, documentId) => editCoverage(actor, id, (tree) => setCoverageDocument(tree, documentId)),
-    setSpecialGroup: (actor, id, code) =>
-      editCoverage(actor, id, async (tree, tx) => setCoverageSpecialGroup(tree, code, await catalogRepo.loadEnum(tx, SPECIAL_GROUP_ENUM))),
+    setCategory: (actor, id, code) =>
+      editCoverage(actor, id, async (tree, tx) => setCoverageCategory(tree, code, await catalogRepo.loadEnum(tx, COVERAGE_CATEGORY_ENUM))),
 
     addSubCoverage: (actor, coverageId, input) => editCoverage(actor, coverageId, (tree) => addSubCoverage(tree, input, newId)),
     addBenefit: (actor, subCoverageId, name) =>

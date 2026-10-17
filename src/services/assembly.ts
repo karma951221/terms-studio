@@ -24,8 +24,9 @@
  *   자동 재실행은 없다 (기능/조립산출 §3.6).
  * - `Booklet` 은 순수 데이터(Map/Set/Date 없음)라 jsonb 에 그대로 넣고 그대로 꺼낸다 — 변환 함수 없음.
  * - 서비스 조회 메서드에 없는 일괄 조회만 repo 로 직접 읽는다 (`readSlotsMany` · `listBaseContractIds` ·
- *   `listAttachedPlansForProduct` · `listDocumentRecords` · `listCoverageGroups`).
- * - 특약 그룹은 담보 마스터의 「특약 그룹」 열거값이라 공유 마스터로 싣는다(`coverageGroups`, ADR-0080).
+ *   `listAttachedPlansForProduct` · `listDocumentRecords` · `listCoverageCategories`).
+ * - 특약 그룹 (ADR-0090) — 기본 그룹의 재료(담보의 담보분류 · 담보코드)는 담보 마스터라 공유 마스터로(`coverageCategories` · `coverageCodes`),
+ *   사용자 그룹 · 그룹 목록은 상품 고유분으로(`product.groups`) 싣는다.
  * - 세목 선택지는 **유효 조합에 등장하는 것**만 (기능/조립산출 §3.2) — 값은 `readSlotsMany(db, "plan", ids)` 한 번.
  * - 컨테이너(C1 동시 작업)는 쓰지 않는다 — 호출자가 서비스 5개를 넘긴다.
  */
@@ -38,7 +39,7 @@ import { ok, reject } from "@/domain/types";
 
 import { listDocumentRecords } from "@/db/repo/document";
 import { assemblyInputStamp, loadPreview, type PreviewGrade, savePreview } from "@/db/repo/preview";
-import { listCoverageGroups } from "@/db/repo/coverage";
+import { listCoverageCategories } from "@/db/repo/coverage";
 import { listAttachedPlansForProduct, listBaseContractIds, listProductsByGeneralDocument, listSpecialMountsOfCoverage } from "@/db/repo/product";
 import type { Db } from "@/db/repo/types";
 import { readSlotsMany } from "@/db/repo/values";
@@ -120,7 +121,7 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
   const { catalog, clause, document, product } = services;
 
   async function loadMaster(): Promise<MasterBundle> {
-    const [clauses, appendices, boxes, defs, enums, attributeKinds, docs, coverageGroups] = await Promise.all([
+    const [clauses, appendices, boxes, defs, enums, attributeKinds, docs, coverageMeta] = await Promise.all([
       clause.list(),
       document.listAppendices(),
       document.listBoxes(),
@@ -128,7 +129,7 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
       catalog.listEnums(),
       product.listAttributeKinds(),
       listDocumentRecords(db),
-      listCoverageGroups(db),
+      listCoverageCategories(db),
     ]);
     // 문서는 통째로 1회 — 보통약관은 id 로, 담보약관은 담보 id 로 (담보 1 : 문서 1)
     const generalDocuments = new Map<Id, DocumentNode>();
@@ -137,7 +138,7 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
       if (d.kind === "general") generalDocuments.set(d.id, d.tree);
       else if (d.ownerId) specialDocuments.set(d.ownerId, d.tree);
     }
-    return { catalog: defs, enums, attributeKinds, clauses, appendices, boxes, generalDocuments, specialDocuments, coverageGroups };
+    return { catalog: defs, enums, attributeKinds, clauses, appendices, boxes, generalDocuments, specialDocuments, coverageCategories: coverageMeta.categories, coverageCodes: coverageMeta.codes };
   }
 
   /** 유효 조합에 등장하는 선택지 합집합 — 축 순(종 → 형) · 번호 순. 값은 한 번에 읽는다. */
@@ -172,7 +173,7 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
     const p = await product.getProduct(productId);
     if (!p) return reject({ reason: "notFound", what: `상품 ${productId}` });
 
-    const [coverages, baseContractIds, productValues, planOptions, definedPlanOptions, productOverrides, hiddenArticleIds, articleCopies] = await Promise.all([
+    const [coverages, baseContractIds, productValues, planOptions, definedPlanOptions, productOverrides, hiddenArticleIds, articleCopies, groups] = await Promise.all([
       loadCoverages(productId),
       listBaseContractIds(db, productId),
       product.getProductValues(productId),
@@ -181,6 +182,7 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
       product.listOptionOverrides({ kind: "product", id: productId }),
       product.listHiddenArticles(productId),
       product.listArticleCopies(productId),
+      product.listGroups(productId),
     ]);
     // 가리키는 문서가 마스터에 없으면 「템플릿 미선택」과 같다 — id 를 싣지 않는다
     const generalDocumentId = p.generalDocumentId && master.generalDocuments.has(p.generalDocumentId) ? p.generalDocumentId : undefined;
@@ -198,6 +200,8 @@ export function createAssemblyService(db: Db, services: AssemblyServices): Assem
         hiddenArticleIds: new Set(hiddenArticleIds),
         // 조 사본 (ADR-0079) — 템플릿에 자리가 없는 사본은 조립이 쓰지 않는다(generalDocumentOf)
         ...(articleCopies.length > 0 ? { articleCopies: new Map(articleCopies.map((c) => [c.articleId, c.article] as const)) } : {}),
+        // 특약 그룹 설정 (ADR-0090) — 저장한 적 없으면 싣지 않는다(기본 그룹만 열거값 순)
+        ...(groups.groups.length > 0 || groups.memberships.length > 0 ? { groups } : {}),
       },
       coverages,
     });

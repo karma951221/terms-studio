@@ -7,6 +7,7 @@ import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { type AttributeCodeKind, type AttributeSeq, sortAttributeValues } from "@/domain/product/attributes";
 import type { ArticleCopy } from "@/domain/product/articleCopies";
+import type { ProductGroup, ProductGroupSetting } from "@/domain/product/groups";
 import { normalizeArticle } from "@/domain/document/title";
 import type {
   AttributeKind,
@@ -30,6 +31,7 @@ import {
   attributeValues,
   clauseOptionOverrides,
   codeSequences,
+  coverages,
   namingTemplates,
   planOptions,
   productArticleCopies,
@@ -38,6 +40,8 @@ import {
   productCoverageNodes,
   productCoveragePlans,
   productCoverages,
+  productGroupCoverages,
+  productGroups,
   productHiddenArticles,
   productPlanOptions,
   productPlans,
@@ -251,6 +255,73 @@ export async function deleteArticleCopy(db: Db, productId: Id, articleId: Id): P
 
 export async function clearArticleCopies(db: Db, productId: Id): Promise<void> {
   await db.delete(productArticleCopies).where(eq(productArticleCopies.productId, productId));
+}
+
+// ───────────────────────────── 특약 그룹 (ADR-0090) ─────────────────────────────
+
+/** 상품의 그룹 설정 — 저장된 목록(order 순) + 사용자 그룹 소속. 저장한 적 없으면 빈 목록. */
+export async function listProductGroups(db: Db, productId: Id): Promise<ProductGroupSetting> {
+  const rows = await db.select().from(productGroups).where(eq(productGroups.productId, productId)).orderBy(asc(productGroups.order));
+  const members = await db
+    .select({ coverageId: productGroupCoverages.coverageId, groupId: productGroupCoverages.groupId })
+    .from(productGroupCoverages)
+    .where(eq(productGroupCoverages.productId, productId))
+    .orderBy(asc(productGroupCoverages.createdAt), asc(productGroupCoverages.coverageId));
+  const groups = rows.flatMap((r): ProductGroup[] => {
+    if (r.kind === "category") return r.categoryCode ? [{ kind: "category", code: r.categoryCode }] : [];
+    return [{ kind: "user", id: r.id, name: r.name ?? "" }];
+  });
+  return { groups, memberships: members };
+}
+
+/**
+ * 그룹 설정을 통째로 다시 쓴다 — 사용자 그룹은 id 를 그대로 두고(같은 그룹의 행은 갱신), 목록에서 빠진 그룹 · 소속은 지운다.
+ * 상품담보 탭 저장 한 번이 부른다(서비스가 `planProductGroups` 로 검사 · 정리한 뒤).
+ */
+export async function replaceProductGroups(db: Db, productId: Id, setting: ProductGroupSetting, who: Id): Promise<void> {
+  const now = new Date();
+  await db.delete(productGroupCoverages).where(eq(productGroupCoverages.productId, productId));
+  const keep = setting.groups.flatMap((g) => (g.kind === "user" ? [g.id] : []));
+  const old = await db.select({ id: productGroups.id, kind: productGroups.kind }).from(productGroups).where(eq(productGroups.productId, productId));
+  const drop = old.filter((r) => r.kind === "category" || !keep.includes(r.id)).map((r) => r.id);
+  if (drop.length) await db.delete(productGroups).where(inArray(productGroups.id, drop));
+  const existing = new Set(old.map((r) => r.id));
+  for (const [order, g] of setting.groups.entries()) {
+    if (g.kind === "category") {
+      await db.insert(productGroups).values({ productId, order, kind: "category", categoryCode: g.code, createdBy: who, updatedBy: who });
+    } else if (existing.has(g.id)) {
+      await db.update(productGroups).set({ order, name: g.name, updatedAt: now, updatedBy: who }).where(eq(productGroups.id, g.id));
+    } else {
+      await db.insert(productGroups).values({ id: g.id, productId, order, kind: "user", name: g.name, createdBy: who, updatedBy: who });
+    }
+  }
+  for (const m of setting.memberships) {
+    await db.insert(productGroupCoverages).values({ productId, coverageId: m.coverageId, groupId: m.groupId, createdBy: who, updatedBy: who });
+  }
+}
+
+/** 이 상품에 특약으로 탑재된 상품담보가 하나도 남지 않은 담보의 소속을 지운다 — 탑재 해제 한 건(\`unmount\`) 뒤. */
+export async function pruneGroupMemberships(db: Db, productId: Id): Promise<void> {
+  await db.execute(sql`
+    delete from ${productGroupCoverages} m
+    where m.product_id = ${productId}
+      and not exists (
+        select 1 from ${productCoverages} pc
+        where pc.product_id = ${productId} and pc.coverage_id = m.coverage_id
+          and pc.id not in (select ${productBaseContracts.productCoverageId} from ${productBaseContracts} where ${productBaseContracts.productId} = ${productId})
+      )`);
+}
+
+/** 담보 id → 담보분류 값 코드 — 상품담보 탭 저장의 기본 그룹 판정(ADR-0090). 담보분류 미입력 담보는 없다. */
+export async function listCoverageCategoriesOf(db: Db, coverageIds: readonly Id[]): Promise<Map<Id, Code>> {
+  if (coverageIds.length === 0) return new Map();
+  const rows = await db.select({ id: coverages.id, category: coverages.category }).from(coverages).where(inArray(coverages.id, [...coverageIds]));
+  return new Map(rows.flatMap((r) => (r.category ? [[r.id, r.category] as const] : [])));
+}
+
+/** 담보 삭제 — 모든 상품에서 그 담보의 사용자 그룹 소속을 지운다 (ADR-0090 결과). */
+export async function deleteGroupMembershipsOfCoverage(db: Db, coverageId: Id): Promise<void> {
+  await db.delete(productGroupCoverages).where(eq(productGroupCoverages.coverageId, coverageId));
 }
 
 /** 이 상품의 보통약관 설정이 기준으로 삼은 템플릿 판 — 모르면 undefined. */

@@ -42,25 +42,26 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     if (!preview.ok) throw new Error(JSON.stringify(preview.rejection));
     expect(preview.value.issues).toEqual([]);
     expect(preview.value.complete).toBe(true);
-    // 순서 = 담보명 순 → 담보속성 순 (groups.ts). 수술비 두 벌은 담보 하나의 탑재분이라 붙어 나온다 (비갱신형 → 갱신형).
+    // 순서 = 담보코드 순 → 담보속성 순 (ADR-0090 결정 6 · groups.ts) — 시드 담보코드가 원문 순서라 실물 책자 순서와 같다.
+    // 같은 담보의 탑재분은 붙어 나온다 (기본 → 추가 · 비갱신형 → 갱신형)
     expect(preview.value.specials[0].docs.map((d) => d.title)).toEqual([
+      "일반상해사망보장 특별약관",
+      "일반상해사망보장 추가 특별약관",
+      "일반상해80%이상후유장해 생활자금보장 특별약관",
       "골절(치아파절 제외)진단비Ⅱ보장 특별약관",
+      "일반상해50%이상후유장해 생활자금보장 특별약관",
       "골절수술비Ⅱ보장 특별약관",
+      "중대한특정상해수술비보장 특별약관",
       "수술비(1-7종, 연간3회한)[상해]보장 특별약관",
       "갱신형 수술비(1-7종, 연간3회한)[상해]보장 특별약관",
       "신화상치료비보장 특별약관",
-      "일반상해50%이상후유장해 생활자금보장 특별약관",
-      "일반상해80%이상후유장해 생활자금보장 특별약관",
-      "일반상해사망보장 특별약관",
-      "일반상해사망보장 추가 특별약관",
-      "중대한특정상해수술비보장 특별약관",
     ]);
     // 별표 마스터는 21건이지만 책자에 실리는 것은 문면이 참조한 것뿐 — 번호는 등장 순 (ADR-0063)
     expect(preview.value.appendices.map((a) => a.code)).toEqual([
       // 장해 · 적립이율 · 암 · 뇌졸중 · 급성심근경색 · 말기폐질환 · 말기간경화 · 양성뇌종양 · 만성당뇨합병증
       "AX000002", "AX000001", "AX000004", "AX000007", "AX000008", "AX000010", "AX000011", "AX000020", "AX000012",
-      // 골절(치아파절 제외)Ⅱ · 골절Ⅱ · 1-7종 수술 · 화상 · 중대한 특정상해
-      "AX000014", "AX000021", "AX000003", "AX000013", "AX000015",
+      // 골절(치아파절 제외)Ⅱ · 골절Ⅱ · 중대한 특정상해 · 1-7종 수술 · 화상 — 특약 책자 순(담보코드 순)
+      "AX000014", "AX000021", "AX000015", "AX000003", "AX000013",
     ]);
     expect(preview.value.appendices[0]).toMatchObject({ code: "AX000002", number: 1, name: "장해분류표" });
     expect(preview.value.baseContracts.map((b) => b.name)).toEqual(["일반상해80%이상후유장해"]);
@@ -111,15 +112,21 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
       expect(got?.values.map((v) => [v.code, v.label, v.fields ?? {}])).toEqual(seed.values.map((v) => [v.code, v.label, v.fields ?? {}]));
     }
 
-    // 특약 그룹 — 열거형 「특약 그룹」(E0008) 값 순서 = 책자 순서, 담보마다 하나(기본계약 담보는 없음) (ADR-0080)
-    // 원문 특별약관 Ⅰ ~ Ⅴ 의 묶음 — 알파Plus2607 자동 탑재 특약이 Ⅲ 상해 및 질병 · Ⅳ 비용손해 · Ⅴ 기타를 더했다
-    expect((await services.catalog.getEnum("E0008"))?.values.map((v) => [v.code, v.label])).toEqual(enumsSeed.find((e) => e.code === "E0008")!.values.map((v) => [v.code, v.label]));
-    expect((await services.catalog.getEnum("E0008"))?.values.slice(0, 2).map((v) => [v.code, v.label])).toEqual([["V01", "상해 관련 특별약관"], ["V02", "질병 관련 특별약관"]]);
+    // 특약 그룹 (ADR-0090) — 기본 그룹 = 담보분류(E0009, 값의 「그룹 제목」 · 값 순서). 옛 「특약 그룹」 E0008 은 없다(코드는 다시 쓰지 않는다)
+    expect(await services.catalog.getEnum("E0008")).toBeUndefined();
+    expect((await services.catalog.getEnum("E0009"))?.values.map((v) => [v.code, v.label, v.fields?.F01])).toEqual([
+      ["V01", "상해", "상해 관련 특별약관"],
+      ["V02", "질병", "질병 관련 특별약관"],
+      ["V03", "비용손해", "비용손해 관련 특별약관"],
+      ["V04", "배상책임", "배상책임 관련 특별약관"],
+      ["V05", "재물손해", "재물손해 관련 특별약관"],
+    ]);
     expect(preview.value.specials.map((g) => g.title)).toEqual(["상해 관련 특별약관"]);
-    const groupOf = new Map((await services.coverage.list()).map((c) => [c.name, c.specialGroup]));
-    expect(groupOf.get("일반상해사망보장")).toBe("V01");
-    expect(groupOf.get("일반상해80%이상후유장해")).toBeUndefined();
-    expect(groupOf.get("질병사망(통합간편가입)보장")).toBe("V02");
+    const categoryOf = new Map((await services.coverage.list()).map((c) => [c.name, c.category]));
+    expect(categoryOf.get("일반상해사망보장")).toBe("V01");
+    expect(categoryOf.get("일반상해80%이상후유장해")).toBe("V01"); // 기본계약 담보도 담보분류는 필수
+    expect(categoryOf.get("질병사망(통합간편가입)보장")).toBe("V02");
+    expect([...categoryOf.values()].every((c) => c !== undefined)).toBe(true);
     const meritz = (await services.product.listProducts()).find((p) => p.name === MERITZ_PRODUCT_NAME)!;
     const meritzPreview = await services.assembly.preview(meritz.id);
     if (!meritzPreview.ok) throw new Error(JSON.stringify(meritzPreview.rejection));

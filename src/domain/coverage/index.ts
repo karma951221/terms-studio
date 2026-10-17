@@ -10,19 +10,19 @@
  * - values.ts      : MasterValues · 값 쓰기 검사 · 폼 프리필 · 완결성(CompletenessFilter 주입)
  * - impact.ts      : UsageSource(주입) · 노드 삭제 영향
  * - plan.ts        : 구조 초안(StructureDraft*) · 저장 계획(structurePlan) · 메모리 드라이런 (ADR-0075)
- * - specialGroup.ts : 담보의 특약 그룹 — 열거형 「특약 그룹」(E0008) 값 하나 또는 없음 (ADR-0080)
+ * - category.ts    : 담보의 담보분류 — 열거형 「담보분류」(E0009) 값 하나(필수) · 기본 그룹 제목 (ADR-0090)
  * - keys.ts        : 노드 키 — 빈 가장 작은 번호 채번 · 키 경로(`01` · `01.2`) 찾기 · 표기 (ADR-0087)
  * - children.ts    : coverageStructNode · coverageChildrenProviders — 반복 표 · 반복 블록의 담보 트리 열거 (ADR-0070)
  * - traits.ts      : 급부 특성(감액 · 면책) 값 규칙 · validateSlotValue · 동적 표 창구 reductionPeriods
  * - fixture.ts     : 관통 축약 픽스처 — surgery() (children.test · 문면 조건 팝업 test 공유)
  */
+export * from "./category";
 export * from "./code";
 export * from "./children";
 export * from "./fixture";
 export * from "./impact";
 export * from "./keys";
 export * from "./plan";
-export * from "./specialGroup";
 export * from "./traits";
 export * from "./tree";
 export * from "./types";

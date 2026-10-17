@@ -335,33 +335,55 @@
     ]
   },
   {
-    "code": "E0008",
-    "label": "특약 그룹",
+    "code": "E0009",
+    "label": "담보분류",
+    "fields": [
+      {
+        "key": "F01",
+        "label": "그룹 제목",
+        "type": "string"
+      }
+    ],
     "values": [
       {
         "code": "V01",
-        "label": "상해 관련 특별약관",
-        "order": 0
+        "label": "상해",
+        "order": 0,
+        "fields": {
+          "F01": "상해 관련 특별약관"
+        }
       },
       {
         "code": "V02",
-        "label": "질병 관련 특별약관",
-        "order": 1
+        "label": "질병",
+        "order": 1,
+        "fields": {
+          "F01": "질병 관련 특별약관"
+        }
       },
       {
         "code": "V03",
-        "label": "상해 및 질병 관련 특별약관",
-        "order": 2
+        "label": "비용손해",
+        "order": 2,
+        "fields": {
+          "F01": "비용손해 관련 특별약관"
+        }
       },
       {
         "code": "V04",
-        "label": "비용손해 관련 특별약관",
-        "order": 3
+        "label": "배상책임",
+        "order": 3,
+        "fields": {
+          "F01": "배상책임 관련 특별약관"
+        }
       },
       {
         "code": "V05",
-        "label": "기타 특별약관",
-        "order": 4
+        "label": "재물손해",
+        "order": 4,
+        "fields": {
+          "F01": "재물손해 관련 특별약관"
+        }
       }
     ]
   }

@@ -31,10 +31,11 @@ export const coverages = pgTable("coverages", {
   /** 담보약관 마스터 문서 id (B3). 문면 없는 담보 허용 → nullable. */
   documentId: uuid("document_id"),
   /**
-   * 특약 그룹 — 열거형 「특약 그룹」(E0008)의 값 코드. null = 그룹 없음. 열거형은 데이터라 FK 를 걸지 않는다 — 지운 값의 코드는 남아
-   * 「없는 값」 오류가 된다 (ADR-0080 · 기능/열거형 §3.2). 뼈대 속성이라 스냅샷 대상이 아니다.
+   * 담보분류 — 열거형 「담보분류」(E0009)의 값 코드 (ADR-0090 결정 1). 기본 특약 그룹의 재료. 필수지만 열은 null 을 받는다 — 옛 데이터 ·
+   * 우회 저장은 미입력(조립 notEntered)이다. 열거형은 데이터라 FK 를 걸지 않는다 — 지운 값의 코드는 남아 「없는 값」이 된다(기능/열거형 §3.2).
+   * 뼈대 속성이라 스냅샷 대상이 아니다.
    */
-  specialGroup: text("special_group"),
+  category: text("category"),
   ...audit,
 });
 

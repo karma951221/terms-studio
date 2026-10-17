@@ -76,6 +76,7 @@ test(
       await page.locator("#cov-name").fill(COVERAGE);
       await page.locator("#cov-sub").fill("납입면제");
       await page.locator("#cov-benefit").fill("납입면제");
+      await page.locator("#cov-category").selectOption({ label: "상해" }); // 담보분류는 필수 (ADR-0090)
       await page.getByRole("button", { name: "생성" }).first().click();
       await page.waitForURL(/\/coverages\/[0-9a-f-]+$/);
       await page.goto("/documents/new?kind=coverage");

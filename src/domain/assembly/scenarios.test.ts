@@ -9,6 +9,7 @@ import type { Code, Id, Issue } from "../types";
 import { formatCoordinate } from "../coordinate";
 import { assemble, assembleSpecial, executionBasedFilter } from "./booklet";
 import { alphaPlusFixture, alphaGeneralDocument, baseDeathCoverage, coverageEntry, deathCoverage, waiverFixture, waiverTemplate } from "./fixture";
+import type { ProductGroupSetting } from "../product/groups";
 import type { AssemblyCoverage, AssemblyInput, RenderedDoc, RenderedInline } from "./types";
 import { titleNodes } from "@/domain/document/title";
 
@@ -377,26 +378,33 @@ describe("조립오류 S6 — 생략 자동 판정: 리터럴 비교 · 탑재�
 
 // ───────────────────────────── 그룹핑·별표 시나리오 ─────────────────────────────
 
-describe("그룹핑별표 S1·S2 — 그룹은 담보의 「특약 그룹」 열거값 · 그룹 순서 = 열거값 순서 · 그룹 안 자동 정렬(담보 → 속성 종류 → 값) (ADR-0080)", () => {
-  // 열거값 순서가 코드 순과 다르다 — 책자 순서는 열거값 순서(수술 → 상해)
-  const groupEnum: EnumDef = {
-    code: "E0008",
-    label: "특약 그룹",
+describe("그룹핑별표 S1·S2 — 기본 그룹 = 담보분류 · 사용자 그룹은 상품에서 · 그룹 순서 = 상품 그룹 목록 · 그룹 안 담보코드 → 속성 종류 → 값 (ADR-0090)", () => {
+  // 열거값 순서가 코드 순과 다르다 — 기본 순서는 열거값 순서(질병 → 상해)
+  const categoryEnum: EnumDef = {
+    code: "E0009",
+    label: "담보분류",
+    fields: [{ key: "F01", label: "그룹 제목", type: "string", order: 0 }],
     values: [
-      { code: "V02", label: "수술 관련 특별약관", order: 0 },
-      { code: "V01", label: "상해 관련 특별약관", order: 1 },
-      { code: "V03", label: "쓰이지 않는 그룹", order: 2 },
+      { code: "V02", label: "질병", order: 0, fields: { F01: "질병 관련 특별약관" } },
+      { code: "V01", label: "상해", order: 1, fields: { F01: "상해 관련 특별약관" } },
+      { code: "V03", label: "비용손해", order: 2, fields: { F01: "쓰이지 않는 그룹" } },
     ],
   } as EnumDef;
   const base = alphaPlusFixture();
   const input: AssemblyInput = {
     ...base,
-    enums: [...base.enums.filter((e) => e.code !== "E0008"), groupEnum],
-    // 기본계약 담보에도 그룹이 있지만 기본계약은 특약 그룹에 들지 않는다
-    coverageGroups: new Map([
+    enums: [...base.enums.filter((e) => e.code !== "E0009"), categoryEnum],
+    // 기본계약 담보에도 담보분류가 있지만 기본계약은 특약 그룹에 들지 않는다
+    coverageCategories: new Map([
       ["cov-death", "V01"],
       ["cov-surgery", "V02"],
       ["cov-base-death", "V01"],
+    ]),
+    // 담보코드 순(사망 → 수술)은 담보명 순(수술 → 사망)과 다르다
+    coverageCodes: new Map([
+      ["cov-base-death", "COV000001"],
+      ["cov-death", "COV000002"],
+      ["cov-surgery", "COV000003"],
     ]),
     specialDocuments: new Map([...base.specialDocuments, ["cov-surgery", tinyDoc("t-surgery", "수술비", "수술을 보장합니다.")]]),
     coverages: [
@@ -407,12 +415,13 @@ describe("그룹핑별표 S1·S2 — 그룹은 담보의 「특약 그룹」 열
       deathCoverage("pc-basic", "일반상해사망보장", [{ kindCode: "A0002", valueCode: "1" }]),
     ],
   };
+  const withGroups = (groups: ProductGroupSetting, over: Partial<AssemblyInput> = {}): AssemblyInput => ({ ...input, ...over, product: { ...input.product, groups } });
   const booklet = assembleInput(input);
 
-  it("책자 = 보통약관 → 그룹(열거값 순서) → 별표. 그룹 제목 = 열거값 이름, 상품담보가 없는 그룹은 찍지 않는다", () => {
+  it("그룹을 만들지 않은 상품 — 기본 그룹(담보분류)만 열거값 순서, 제목 = 값의 「그룹 제목」, 상품담보가 없는 그룹은 찍지 않는다", () => {
     expect(booklet.specials.map((g) => [g.id, g.title, g.docs.map((d) => d.title)])).toEqual([
-      ["V02", "수술 관련 특별약관", ["수술비 특별약관", "갱신형 수술비 특별약관"]],
-      ["V01", "상해 관련 특별약관", ["일반상해사망보장 특별약관", "일반상해사망보장 추가 특별약관"]],
+      ["category:V02", "질병 관련 특별약관", ["수술비 특별약관", "갱신형 수술비 특별약관"]],
+      ["category:V01", "상해 관련 특별약관", ["일반상해사망보장 특별약관", "일반상해사망보장 추가 특별약관"]],
     ]);
     expect(booklet.complete).toBe(true);
   });
@@ -422,30 +431,75 @@ describe("그룹핑별표 S1·S2 — 그룹은 담보의 「특약 그룹」 열
     expect(booklet.specials[1].docs.map((d) => d.ownerId)).toEqual(["pc-basic", "pc-addon"]);
   });
 
-  it("기본계약은 담보에 그룹이 있어도 특약 그룹에 들지 않는다", () => {
+  it("기본계약은 담보에 담보분류가 있어도 특약 그룹에 들지 않는다", () => {
     expect(booklet.specials.flatMap((g) => g.docs.map((d) => d.ownerId))).not.toContain("pc-base");
   });
 
-  it("그룹 없는 담보의 상품담보 — 오류가 아니다. 그룹들 뒤에 그룹 제목 없이 찍힌다", () => {
-    const b = assembleInput({ ...input, coverageGroups: new Map([["cov-surgery", "V02"]]) });
+  it("사용자 그룹 — 담보 단위로 넣고(그 담보의 상품담보 전부) · 그룹 목록 순서대로 · 그룹 안은 담보코드 순(담보명 순 아님) · 빈 사용자 그룹은 찍지 않는다", () => {
+    const b = assembleInput(
+      withGroups({
+        groups: [{ kind: "category", code: "V01" }, { kind: "user", id: "g-empty", name: "빈 그룹" }, { kind: "user", id: "g1", name: "보장 관련 특별약관" }],
+        memberships: [{ coverageId: "cov-surgery", groupId: "g1" }, { coverageId: "cov-death", groupId: "g1" }],
+      }),
+    );
+    expect(b.specials.map((g) => [g.id, g.title, g.docs.map((d) => d.ownerId)])).toEqual([["g1", "보장 관련 특별약관", ["pc-basic", "pc-addon", "pc-surgery", "pc-renew"]]]);
     expect(b.issues).toEqual([]);
-    expect(b.specials.map((g) => [g.title, g.docs.map((d) => d.ownerId)])).toEqual([
-      ["수술 관련 특별약관", ["pc-surgery", "pc-renew"]],
-      [undefined, ["pc-basic", "pc-addon"]],
-    ]);
-    expect(b.complete).toBe(true);
   });
 
-  it("열거형에서 지워진 그룹 값 — 「없는 값」 brokenRef(좌표 = 그 상품담보) + 그룹 제목 없이 찍힌다", () => {
-    const b = assembleInput({ ...input, coverageGroups: new Map([["cov-surgery", "V02"], ["cov-death", "V09"]]) });
+  it("기본 그룹과 사용자 그룹이 한 목록 — 목록에 자리가 없는 기본 그룹은 저장된 목록 뒤 열거값 순서", () => {
+    const b = assembleInput(withGroups({ groups: [{ kind: "category", code: "V01" }, { kind: "user", id: "g1", name: "수술 관련 특별약관" }], memberships: [{ coverageId: "cov-surgery", groupId: "g1" }] }));
+    expect(b.specials.map((g) => [g.id, g.title])).toEqual([["category:V01", "상해 관련 특별약관"], ["g1", "수술 관련 특별약관"]]);
+    const c = assembleInput(withGroups({ groups: [{ kind: "user", id: "g1", name: "앞 그룹" }], memberships: [{ coverageId: "cov-death", groupId: "g1" }] }));
+    expect(c.specials.map((g) => g.id)).toEqual(["g1", "category:V02"]);
+  });
+
+  it("담보분류 미입력 — notEntered(원천 = 담보의 담보분류 칸) · 그룹들 뒤 제목 없는 자리", () => {
+    const b = assembleInput({ ...input, coverageCategories: new Map([["cov-surgery", "V02"]]) });
+    const message = "담보분류가 입력되지 않았습니다 · 담보 「일반상해사망」";
+    const source = { document: "coverageMaster", ownerId: "cov-death", ownerName: "일반상해사망", refPath: "category" };
     expect(b.issues).toEqual([
-      { kind: "brokenRef", message: "없는 값 V09 — 특약 그룹(E0008)에서 지워진 값입니다 · 담보 「일반상해사망」의 특약 그룹", at: { document: "special", ownerId: "pc-basic", ownerName: "일반상해사망보장" } },
-      { kind: "brokenRef", message: "없는 값 V09 — 특약 그룹(E0008)에서 지워진 값입니다 · 담보 「일반상해사망」의 특약 그룹", at: { document: "special", ownerId: "pc-addon", ownerName: "일반상해사망보장 추가" } },
+      { kind: "notEntered", message, at: { document: "special", ownerId: "pc-basic", ownerName: "일반상해사망보장" }, source },
+      { kind: "notEntered", message, at: { document: "special", ownerId: "pc-addon", ownerName: "일반상해사망보장 추가" }, source },
+    ]);
+    expect(b.specials.map((g) => [g.title, g.docs.map((d) => d.ownerId)])).toEqual([
+      ["질병 관련 특별약관", ["pc-surgery", "pc-renew"]],
+      [undefined, ["pc-basic", "pc-addon"]],
+    ]);
+    expect(b.complete).toBe(false);
+  });
+
+  it("열거형에서 지워진 담보분류 값 — 「없는 값」 brokenRef(좌표 = 그 상품담보) + 제목 없는 자리", () => {
+    const b = assembleInput({ ...input, coverageCategories: new Map([["cov-surgery", "V02"], ["cov-death", "V09"]]) });
+    expect(b.issues.map((i) => [i.kind, i.message, i.at.ownerId])).toEqual([
+      ["brokenRef", "없는 값 V09 — 담보분류(E0009)에서 지워진 값입니다 · 담보 「일반상해사망」의 담보분류", "pc-basic"],
+      ["brokenRef", "없는 값 V09 — 담보분류(E0009)에서 지워진 값입니다 · 담보 「일반상해사망」의 담보분류", "pc-addon"],
     ]);
     expect(b.specials.at(-1)!.title).toBeUndefined();
     expect(b.specials.at(-1)!.docs.map((d) => d.ownerId)).toEqual(["pc-basic", "pc-addon"]);
   });
 
+  it("사용자 그룹에 든 담보는 담보분류를 읽지 않는다 — 지운 값이어도 오류가 없다", () => {
+    const b = assembleInput(withGroups({ groups: [{ kind: "user", id: "g1", name: "사망" }], memberships: [{ coverageId: "cov-death", groupId: "g1" }] }, { coverageCategories: new Map([["cov-surgery", "V02"], ["cov-death", "V09"]]) }));
+    expect(b.issues).toEqual([]);
+    expect(b.specials.map((g) => g.id)).toEqual(["g1", "category:V02"]);
+  });
+
+  it("기본 그룹의 「그룹 제목」이 비었으면 notEntered(원천 = 그 열거값) — 그 그룹은 제목 자리에 오류 마커를 두고 찍는다", () => {
+    const blank = { ...categoryEnum, values: categoryEnum.values.map((v) => (v.code === "V01" ? { ...v, fields: {} } : v)) } as EnumDef;
+    const b = assembleInput({ ...input, enums: [...base.enums.filter((e) => e.code !== "E0009"), blank] });
+    expect(b.issues).toEqual([
+      {
+        kind: "notEntered",
+        message: "그룹 제목이 비었습니다 — 담보분류 「상해」의 「그룹 제목」",
+        at: { document: "product", ownerId: "prod-alpha", ownerName: "알파Plus(축약)" },
+        source: { document: "enum", ownerId: "E0009", ownerName: "담보분류", refPath: "V01" },
+      },
+    ]);
+    const group = b.specials.find((g) => g.id === "category:V01")!;
+    expect(group.title).toBeUndefined();
+    expect(group.titleError?.issue.message).toBe("그룹 제목이 비었습니다 — 담보분류 「상해」의 「그룹 제목」");
+    expect(group.docs.map((d) => d.ownerId)).toEqual(["pc-basic", "pc-addon"]);
+  });
   it("문면 없는 담보의 탑재분은 오류가 아니라 「미산출 탑재분」 (D-P6-9)", () => {
     const b = assembleInput({ ...input, specialDocuments: base.specialDocuments });
     expect(b.undocumented).toEqual([
@@ -457,7 +511,12 @@ describe("그룹핑별표 S1·S2 — 그룹은 담보의 「특약 그룹」 열
 });
 
 describe("그룹핑별표 S3·S4 — 별표 번호는 등장 순 자동 (ADR-0063)", () => {
-  const groupEnum: EnumDef = { code: "E0008", label: "특약 그룹", values: [{ code: "V01", label: "A", order: 0 }, { code: "V02", label: "B", order: 1 }] } as EnumDef;
+  const categoryEnum: EnumDef = {
+    code: "E0009",
+    label: "담보분류",
+    fields: [{ key: "F01", label: "그룹 제목", type: "string", order: 0 }],
+    values: [{ code: "V01", label: "상해", order: 0, fields: { F01: "A" } }, { code: "V02", label: "질병", order: 1, fields: { F01: "B" } }],
+  } as EnumDef;
   /** 보통약관이 장해분류표를, 그룹 A 특약이 `burn` 을, 그룹 B 특약이 다시 장해분류표를 참조한다. */
   const make = (burn: Code): AssemblyInput => {
     const base = alphaPlusFixture();
@@ -465,8 +524,8 @@ describe("그룹핑별표 S3·S4 — 별표 번호는 등장 순 자동 (ADR-006
       ...base,
       generalDocuments: new Map([["g-plain", tinyDoc("g-plain", "보통약관", "장해의 분류는 ", "APX_DISABILITY")]]),
       product: { ...base.product, generalDocumentId: "g-plain" },
-      enums: [...base.enums.filter((e) => e.code !== "E0008"), groupEnum],
-      coverageGroups: new Map([["cov-burn", "V01"], ["cov-dis", "V02"]]),
+      enums: [...base.enums.filter((e) => e.code !== "E0009"), categoryEnum],
+      coverageCategories: new Map([["cov-burn", "V01"], ["cov-dis", "V02"], ["cov-base-death", "V01"]]),
       specialDocuments: new Map([
         ["cov-burn", tinyDoc("t-burn", "화상", "화상의 분류는 ", burn)],
         ["cov-dis", tinyDoc("t-dis", "장해", "장해의 분류는 ", "APX_DISABILITY")],
@@ -507,15 +566,13 @@ describe("그룹핑별표 S3·S4 — 별표 번호는 등장 순 자동 (ADR-006
 // ───────────────────────────── 기본계약 · 함수조항 옵션 · 반복 자리 ─────────────────────────────
 
 describe("기능/조립산출 §3.2 — 기본계약을 지정하지 않아도 오류를 남기고 부분 조립", () => {
-  it("기본계약 없음 — noBaseContract 를 알리고 특약은 정상 조립 (기본계약이던 상품담보는 제 담보 그룹대로 — 그룹이 없으면 제목 없이)", () => {
+  it("기본계약 없음 — noBaseContract 를 알리고 특약은 정상 조립 (기본계약이던 상품담보는 제 담보의 담보분류 그룹에 든다 — 담보코드 순)", () => {
     const input = alphaPlusFixture();
     const b = assembleInput({ ...input, product: { ...input.product, baseContractIds: [] } });
     expect(kinds(b.issues)).toEqual(["noBaseContract"]);
-    expect(b.specials.at(-1)!.title).toBeUndefined();
-    expect(b.specials.at(-1)!.docs.map((d) => d.ownerId)).toEqual(["pc-base"]);
+    expect(b.specials.map((g) => [g.title, g.docs.map((d) => d.ownerId)])).toEqual([["상해 관련 특별약관", ["pc-base", "pc-basic", "pc-addon"]]]);
     expect(b.issues[0]).toMatchObject({ kind: "noBaseContract", severity: "error", at: { document: "product", ownerId: "prod-alpha", refPath: "baseContract" } });
     expect(b.general!.children.find((node) => node.id === "g-art-pay")).toMatchObject({ kind: "article", children: [] });
-    expect(b.specials[0].docs).toHaveLength(2);
     expect(b.complete).toBe(false);
   });
 
@@ -525,7 +582,7 @@ describe("기능/조립산출 §3.2 — 기본계약을 지정하지 않아도 �
     values.set("feature.contract_kind", { entered: true, value: "V02" });
     const b = assembleInput({ ...input, product: { ...input.product, values, baseContractIds: [] } });
     expect(kinds(b.issues)).not.toContain("noBaseContract");
-    // 기본계약이던 상품담보는 제 담보에 그룹이 없어 그룹 제목 없이 찍힌다 — 오류가 아니다 (ADR-0080)
+    // 기본계약이던 상품담보는 제 담보의 담보분류 그룹에 든다 (ADR-0090)
     expect(b.specials.flatMap((g) => g.docs.map((d) => d.ownerId))).toContain("pc-base");
   });
 
@@ -675,9 +732,9 @@ describe("블록 반복 · 밟은 자리 원칙", () => {
     expect(filter(items, { ...tree, id: "cov-other" })).toEqual([]);
   });
 
-  it("상품담보 미리보기는 그룹과 무관 — 그룹 없는 담보의 탑재분도 미리보기 가능, 문면 없는 담보는 notFound", () => {
+  it("상품담보 미리보기는 그룹과 무관 — 담보분류 없는 담보의 탑재분도 미리보기 가능, 문면 없는 담보는 notFound", () => {
     const input = alphaPlusFixture();
-    const r = assembleSpecialInput({ ...input, coverageGroups: new Map() }, "pc-basic");
+    const r = assembleSpecialInput({ ...input, coverageCategories: new Map() }, "pc-basic");
     expect(r.ok && r.value.complete).toBe(true);
     const none = assembleSpecialInput({ ...input, specialDocuments: new Map() }, "pc-basic");
     expect(!none.ok && none.rejection.reason).toBe("notFound");

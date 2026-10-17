@@ -211,6 +211,13 @@
       "when": 1792171470498,
       "tag": "0029_discriminator_result_type_required",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1792206993811,
+      "tag": "0030_product_groups_coverage_category",
+      "breakpoints": true
     }
   ]
 }

@@ -26,7 +26,7 @@ const generals = read<{ code: string; tree: Json }[]>("generals.json");
 const documents = read<{ code: string; ownerCoverage: string; general: string; tree: Json }[]>("documents.json");
 const clauses = read<(Json & { code: string; label: string })[]>("clauses.json");
 const boxes = read<{ code: string }[]>("boxes.json");
-const coverages = read<{ key: string; code: string; name: string; specialGroup?: string }[]>("coverages.json");
+const coverages = read<{ key: string; code: string; name: string; category?: string }[]>("coverages.json");
 const products = read<{ code: string; name: string; general: string; values: { path: string; value: unknown }[]; mounts: { coverage: string }[] }[]>("products.json");
 
 const all = (n: unknown, pred: (x: Json) => boolean, out: Json[] = []): Json[] => {
@@ -83,9 +83,9 @@ describe("알파Plus2607 함수조항 — 더한 것은 맨 뒤 코드, 앞 상�
 });
 
 describe("알파Plus2607 질병 대표 5 — 새 담보 · 템플릿(대응 보통약관 = 2607), 소멸 · 세부규정 · 준용규정은 함수조항", () => {
-  it.each(DISEASES)("%s — 담보(특약 그룹 질병) · 템플릿", (name) => {
+  it.each(DISEASES)("%s — 담보(담보분류 질병) · 템플릿", (name) => {
     const coverage = coverages.find((c) => c.name === name);
-    expect(coverage?.specialGroup).toBe("V02");
+    expect(coverage?.category).toBe("V02");
     const doc = documents.find((d) => d.ownerCoverage === coverage!.key)!;
     expect(doc.general).toBe("alpha2607-general");
     const used = clauseCodes(doc.tree);

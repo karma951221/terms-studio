@@ -89,7 +89,7 @@ describe("기본정보 — 상품정보(상품명 · 평균공시이율 · 상�
 
 const pc = (id: string, coverageId: string, name: string): ProductCoverage => ({ id, productId: "p1", coverageId, name, attributes: [] });
 
-describe("상품담보 — 기본계약 · 특별약관 표가 한 탭에 (특약 그룹 섹션은 없다 — 그룹은 담보의 것, ADR-0080)", () => {
+describe("상품담보 — 기본계약 · 특별약관 표가 한 탭에 · 표들 아래 「특약 그룹」 섹션 (ADR-0090)", () => {
   it("두 표(각자 검색 쿼리) · 기본계약 · 특별약관 표의 읽기 전용 「그룹」 열 — 상품담보 행에 미리보기 링크는 없다", () => {
     const html = renderToStaticMarkup(
       <ProductEditProvider canEdit>
@@ -99,8 +99,9 @@ describe("상품담보 — 기본계약 · 특별약관 표가 한 탭에 (특�
           specialCoverages={[pc("s1", "c2", "특약 A"), pc("s2", "c2", "특약 A 추가")]}
           coverages={[
             { id: "c1", code: "COV000001", name: "일반상해사망" },
-            { id: "c2", code: "COV000002", name: "수술비", group: "상해 관련 특별약관" },
+            { id: "c2", code: "COV000002", name: "수술비", category: "V01" },
           ]}
+          categories={[{ code: "V01", label: "상해", title: "상해 관련 특별약관" }]}
           attributeKinds={[]}
           plans={[]}
           attachedPlans={{}}
@@ -114,8 +115,7 @@ describe("상품담보 — 기본계약 · 특별약관 표가 한 탭에 (특�
     expect(html).toContain(">기본계약</h2>");
     expect(html).toContain('id="base-contract"');
     expect(html).toContain(">특별약관</h2>");
-    expect(html).not.toContain("특약 그룹");
-    expect(html).not.toContain("새 그룹 제목");
+    expect(html).toContain(">특약 그룹</h2>");
     expect(html).not.toContain("confirm=group:");
     // 그룹 열은 특별약관 표에만 — 값 이름 글자(고르기 칸 없음)
     expect(html.split("<th class=\"col-fixed-md\">그룹</th>").length - 1).toBe(1);

@@ -4,6 +4,7 @@ import type { CoverageMasterSource, CoverageTree } from "@/domain/product";
 import type { Actor, Id, Impact, Issue } from "@/domain/types";
 
 import { readSlots, writeSlot } from "@/db/repo/values";
+import { coverages } from "@/db/schema";
 import { createTestDb, type TestDb } from "@/db/test-utils";
 import { createCatalogService } from "./catalog";
 import { createProductService, type ProductCoveragesInput, type ProductService } from "./product";
@@ -237,5 +238,101 @@ describe("saveCoverages — 상품담보 탭 저장 한 번 (PGlite)", () => {
     const id = await product("빈 저장");
     unwrap(await svc.saveCoverages(editor, id, NONE));
     expect(await svc.listProductCoverages(id)).toEqual([]);
+  });
+});
+
+describe("saveCoverages — 특약 그룹 (ADR-0090 · 기능/상품 §3.7 · §4.5): 그룹 목록 · 소속도 같은 저장 한 번", () => {
+  let t: TestDb;
+  let svc: ProductService;
+
+  beforeAll(async () => {
+    t = await createTestDb();
+    const catalog = createCatalogService(t.db);
+    for (let i = 1; i <= 8; i++) unwrap(await catalog.createEnum(editor, { label: `열거형${i}`, values: [{ label: "값" }] }));
+    const categories = unwrap(
+      await catalog.createEnum(editor, {
+        label: "담보분류",
+        fields: [{ ref: "title", label: "그룹 제목", type: "string" }],
+        values: [{ label: "상해", fields: { title: "상해 관련 특별약관" } }, { label: "질병", fields: { title: "질병 관련 특별약관" } }],
+      }),
+    );
+    expect(categories.code).toBe("E0009");
+    // 담보 마스터 행 — 담보분류는 담보의 뼈대 칸(coverages.category)이라 서비스가 그 열을 읽는다
+    await t.db.insert(coverages).values([
+      { id: DEATH, code: "COV000001", name: "일반상해사망", category: "V01" },
+      { id: SURGERY, code: "COV000002", name: "수술비", category: "V02" },
+    ]);
+    svc = createProductService(t.db, { coverageMaster: master, generalDocuments: { exists: async (id) => id === GENERAL_DOC, articleIds: async () => [], clauseRef: async () => undefined } });
+  });
+  afterAll(async () => {
+    await t.close();
+  });
+
+  async function mounted(name: string): Promise<Id> {
+    const p = unwrap(await svc.createProduct(editor, { name, generalDocumentId: GENERAL_DOC }));
+    unwrap(await svc.saveCoverages(editor, p.id, { added: [{ key: "new:1", coverageId: DEATH, attributes: [], section: "special", plans: [] }, { key: "new:2", coverageId: SURGERY, attributes: [], section: "special", plans: [] }], updated: [], removed: [] }));
+    return p.id;
+  }
+
+  it("저장한 적 없으면 빈 목록 — 사용자 그룹을 만들고 담보를 넣고 순서를 정하면 다시 읽어도 그대로(새 그룹은 id 를 받는다)", async () => {
+    const id = await mounted("그룹 저장");
+    expect(await svc.listGroups(id)).toEqual({ groups: [], memberships: [] });
+    unwrap(
+      await svc.saveCoverages(editor, id, {
+        ...NONE,
+        groups: { list: [{ kind: "user", key: "newgroup:1", name: "수술 관련 특별약관" }, { kind: "category", code: "V01" }], memberships: [{ coverageId: SURGERY, group: "newgroup:1" }] },
+      }),
+    );
+    const saved = await svc.listGroups(id);
+    const user = saved.groups[0] as { kind: "user"; id: Id; name: string };
+    expect(saved.groups).toEqual([{ kind: "user", id: user.id, name: "수술 관련 특별약관" }, { kind: "category", code: "V01" }]);
+    expect(user.id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(saved.memberships).toEqual([{ coverageId: SURGERY, groupId: user.id }]);
+    // 이름 바꾸기 · 순서 바꾸기 — 같은 그룹 id 를 지킨다
+    unwrap(await svc.saveCoverages(editor, id, { ...NONE, groups: { list: [{ kind: "category", code: "V01" }, { kind: "user", key: user.id, id: user.id, name: "수술 특별약관" }], memberships: [{ coverageId: SURGERY, group: user.id }] } }));
+    expect(await svc.listGroups(id)).toEqual({ groups: [{ kind: "category", code: "V01" }, { kind: "user", id: user.id, name: "수술 특별약관" }], memberships: [{ coverageId: SURGERY, groupId: user.id }] });
+  });
+
+  it("빈 이름 · 기본 그룹 제목과 같은 이름은 그 그룹 줄에서 거부 — 같은 저장의 탑재 추가도 쓰지 않는다", async () => {
+    const id = await mounted("그룹 거부");
+    const r = rejected(
+      await svc.saveCoverages(editor, id, {
+        added: [{ key: "new:9", coverageId: DEATH, attributes: [{ kindCode: "A0001", valueCode: "1" }], section: "special", plans: [] }],
+        updated: [],
+        removed: [],
+        groups: { list: [{ kind: "user", key: "newgroup:1", name: " " }, { kind: "user", key: "newgroup:2", name: "질병 관련 특별약관" }], memberships: [] },
+      }),
+    );
+    expect(r.issues?.map((i) => [i.at.ownerId, i.message])).toEqual(
+      expect.arrayContaining([
+        ["newgroup:1", "그룹 이름은 비울 수 없습니다"],
+        ["newgroup:2", "이 상품의 다른 그룹 제목과 같습니다 — 「질병 관련 특별약관」"],
+      ]),
+    );
+    expect(await svc.listGroups(id)).toEqual({ groups: [], memberships: [] });
+    expect(await svc.listProductCoverages(id)).toHaveLength(2);
+  });
+
+  it("탑재 해제로 상품에서 빠지는 담보의 소속은 같은 저장에서 지운다 — 그룹을 고치지 않은 저장도 · 이 상품에 없게 된 기본 그룹도", async () => {
+    const id = await mounted("그룹 정리");
+    unwrap(await svc.saveCoverages(editor, id, { ...NONE, groups: { list: [{ kind: "category", code: "V02" }, { kind: "user", key: "newgroup:1", name: "사망" }], memberships: [{ coverageId: DEATH, group: "newgroup:1" }] } }));
+    const pcs = await svc.listProductCoverages(id);
+    const death = pcs.find((pc) => pc.coverageId === DEATH)!;
+    const surgery = pcs.find((pc) => pc.coverageId === SURGERY)!;
+    unwrap(await svc.saveCoverages(admin, id, { ...NONE, removed: [death.id, surgery.id] }, { confirm: true }));
+    const saved = await svc.listGroups(id);
+    expect(saved.memberships).toEqual([]);
+    expect(saved.groups.map((g) => g.kind)).toEqual(["user"]); // 빈 사용자 그룹은 남는다 — 책자에 찍지 않을 뿐
+  });
+
+  it("이 상품에 특약으로 탑재된 적 없는 담보 · 다른 상품의 그룹 id 는 거부", async () => {
+    const id = await mounted("그룹 남의 것");
+    const r = rejected(
+      await svc.saveCoverages(editor, id, {
+        ...NONE,
+        groups: { list: [{ kind: "user", key: "g", id: "00000000-0000-4000-8000-0000000000aa", name: "남의 그룹" }, { kind: "user", key: "newgroup:1", name: "새 그룹" }], memberships: [{ coverageId: MISSING, group: "newgroup:1" }] },
+      }),
+    );
+    expect(r.issues?.map((i) => [i.at.ownerId, i.kind])).toEqual([["g", "brokenRef"], ["newgroup:1", "brokenRef"]]);
   });
 });

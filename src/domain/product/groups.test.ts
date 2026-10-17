@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { sortInGroup } from "./groups";
+import { effectiveGroups, groupKey, planProductGroups, sortInGroup, type GroupPlanContext, type ProductGroup } from "./groups";
 import type { AttributeKind, ProductCoverage } from "./types";
 
 const renewal: AttributeKind = {
@@ -55,5 +55,96 @@ describe("기능/상품 §3.7 특약 그룹 — 그룹 안 자동 정렬", () =>
   it("미사용 속성은 사용한 것보다 앞 — 「일반상해사망」이 「일반상해사망 추가」보다 먼저", () => {
     const members = [pc("b", "cov", "일반상해사망 추가", [{ kindCode: "A0002", valueCode: "2" }]), pc("a", "cov", "일반상해사망", [])];
     expect(sortInGroup(members, kinds).map((m) => m.id)).toEqual(["a", "b"]);
+  });
+});
+
+describe("상품 그룹 목록 (ADR-0090 결정 5) — 기본 그룹(담보분류) · 사용자 그룹이 한 목록", () => {
+  const order = ["V01", "V02", "V03"];
+  it("아무것도 저장하지 않은 상품은 이 상품에 있는 기본 그룹만 열거형 값 순서", () => {
+    expect(effectiveGroups([], new Set(["V02", "V01"]), order)).toEqual([{ kind: "category", code: "V01" }, { kind: "category", code: "V02" }]);
+  });
+
+  it("저장된 순서를 따르고, 목록에 자리가 없는 기본 그룹은 그 뒤 열거형 값 순서 · 이 상품에 없는 기본 그룹은 빠진다", () => {
+    const saved: ProductGroup[] = [{ kind: "category", code: "V02" }, { kind: "user", id: "g1", name: "뇌 관련 특별약관" }, { kind: "category", code: "V03" }];
+    expect(effectiveGroups(saved, new Set(["V01", "V02"]), order).map(groupKey)).toEqual(["category:V02", "g1", "category:V01"]);
+  });
+
+  it("열거형에 없는 담보분류(지운 값)는 기본 그룹이 되지 않는다", () => {
+    expect(effectiveGroups([{ kind: "category", code: "V09" }], new Set(["V09", "V01"]), order).map(groupKey)).toEqual(["category:V01"]);
+  });
+});
+
+describe("상품 그룹 저장 계획 (ADR-0090 결정 4 · 5 · 기능/상품 §4.5) — 검사 · 정리", () => {
+  let n = 0;
+  const ctx = (over: Partial<GroupPlanContext> = {}): GroupPlanContext => ({
+    saved: { groups: [{ kind: "user", id: "g1", name: "뇌 관련 특별약관" }], memberships: [{ coverageId: "cov-stroke", groupId: "g1" }] },
+    mountedBefore: new Set(["cov-stroke", "cov-heart", "cov-death"]),
+    mountedAfter: new Set(["cov-stroke", "cov-heart", "cov-death"]),
+    present: new Set(["V01", "V02"]),
+    categoryOrder: ["V01", "V02"],
+    categoryTitle: (code) => ({ V01: "상해 관련 특별약관", V02: "질병 관련 특별약관" } as Record<string, string>)[code],
+    newId: () => `new-id-${++n}`,
+    ...over,
+  });
+
+  it("입력이 없으면 저장본 — 탑재 해제로 빠진 담보의 소속 · 이 상품에 없는 기본 그룹을 지운다", () => {
+    const r = planProductGroups(undefined, ctx({ saved: { groups: [{ kind: "category", code: "V03" }, { kind: "user", id: "g1", name: "뇌" }], memberships: [{ coverageId: "cov-stroke", groupId: "g1" }] }, mountedAfter: new Set(["cov-heart"]) }));
+    expect(r).toEqual({ ok: true, value: { groups: [{ kind: "user", id: "g1", name: "뇌" }], memberships: [] } });
+  });
+
+  it("새 사용자 그룹은 id 를 받고, 소속은 그 그룹 열쇠로 가리킨다 · 이름은 앞뒤 공백을 지운다", () => {
+    const r = planProductGroups(
+      {
+        list: [{ kind: "category", code: "V01" }, { kind: "user", key: "g1", id: "g1", name: "뇌 관련 특별약관" }, { kind: "user", key: "newgroup:1", name: " 심장 관련 특별약관 " }, { kind: "category", code: "V02" }],
+        memberships: [{ coverageId: "cov-stroke", group: "g1" }, { coverageId: "cov-heart", group: "newgroup:1" }],
+      },
+      ctx(),
+    );
+    if (!r.ok) throw new Error(JSON.stringify(r.rejection));
+    const heart = r.value.groups[2];
+    expect(heart).toMatchObject({ kind: "user", name: "심장 관련 특별약관" });
+    expect(r.value.groups.map((g) => (g.kind === "category" ? g.code : g.name))).toEqual(["V01", "뇌 관련 특별약관", "심장 관련 특별약관", "V02"]);
+    expect(r.value.memberships).toEqual([{ coverageId: "cov-stroke", groupId: "g1" }, { coverageId: "cov-heart", groupId: (heart as { id: string }).id }]);
+  });
+
+  it("빈 이름 · 다른 그룹 제목(기본 그룹의 「그룹 제목」 포함)과 같은 이름은 거부 — 좌표는 그 그룹 줄", () => {
+    const r = planProductGroups(
+      {
+        list: [{ kind: "category", code: "V01" }, { kind: "user", key: "newgroup:1", name: "  " }, { kind: "user", key: "newgroup:2", name: "상해 관련 특별약관" }, { kind: "user", key: "g1", id: "g1", name: "뇌" }, { kind: "user", key: "newgroup:3", name: "뇌" }],
+        memberships: [],
+      },
+      ctx(),
+    );
+    if (r.ok || r.rejection.reason !== "invalid") throw new Error("기대: invalid");
+    expect(r.rejection.issues.map((i) => [i.at.ownerId, i.message])).toEqual([
+      ["newgroup:1", "그룹 이름은 비울 수 없습니다"],
+      ["newgroup:2", "이 상품의 다른 그룹 제목과 같습니다 — 「상해 관련 특별약관」"],
+      ["newgroup:3", "이 상품의 다른 그룹 제목과 같습니다 — 「뇌」"],
+    ]);
+  });
+
+  it("담보 하나는 사용자 그룹 하나에만 · 없는 그룹 · 이 상품 특약이 아닌 담보 · 다른 상품의 그룹 id 는 거부", () => {
+    const r = planProductGroups(
+      {
+        list: [{ kind: "user", key: "g1", id: "g1", name: "뇌" }, { kind: "user", key: "g9", id: "g9", name: "남의 그룹" }],
+        memberships: [{ coverageId: "cov-stroke", group: "g1" }, { coverageId: "cov-stroke", group: "g1" }, { coverageId: "cov-heart", group: "newgroup:7" }, { coverageId: "cov-other", group: "g1" }],
+      },
+      ctx(),
+    );
+    if (r.ok || r.rejection.reason !== "invalid") throw new Error("기대: invalid");
+    expect(r.rejection.issues.map((i) => [i.at.ownerId, i.kind])).toEqual([
+      ["g9", "brokenRef"],
+      ["g1", "typeMismatch"],
+      ["newgroup:7", "brokenRef"],
+      ["g1", "brokenRef"],
+    ]);
+  });
+
+  it("같은 저장에서 탑재 해제한 담보의 소속 · 이 상품에 없게 된 기본 그룹은 조용히 빠진다", () => {
+    const r = planProductGroups(
+      { list: [{ kind: "category", code: "V02" }, { kind: "user", key: "g1", id: "g1", name: "뇌" }, { kind: "category", code: "V01" }], memberships: [{ coverageId: "cov-stroke", group: "g1" }] },
+      ctx({ mountedAfter: new Set(["cov-heart"]), present: new Set(["V01"]) }),
+    );
+    expect(r).toEqual({ ok: true, value: { groups: [{ kind: "user", id: "g1", name: "뇌" }, { kind: "category", code: "V01" }], memberships: [] } });
   });
 });

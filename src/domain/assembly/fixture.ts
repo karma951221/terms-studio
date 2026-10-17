@@ -628,11 +628,34 @@ export function baseDeathCoverage(): AssemblyCoverage {
   });
 }
 
-/** 열거형 「특약 그룹」(E0008) — 그룹 제목 · 책자 순서 (ADR-0080). 담보의 그룹은 `alphaCoverageGroups`. */
-export const alphaSpecialGroupEnum: EnumDef = { code: "E0008", label: "특약 그룹", values: [{ code: "V01", label: "상해 관련 특별약관", order: 0 }] };
+/** 열거형 「담보분류」(E0009) — 값의 「그룹 제목」(F01)이 기본 그룹 제목, 값 순서가 기본 순서 (ADR-0090). 담보의 담보분류는 `alphaCoverageCategories`. */
+export const alphaCategoryEnum: EnumDef = {
+  code: "E0009",
+  label: "담보분류",
+  fields: [{ key: "F01", label: "그룹 제목", type: "string", order: 0 }],
+  values: [
+    { code: "V01", label: "상해", order: 0, fields: { F01: "상해 관련 특별약관" } },
+    { code: "V02", label: "질병", order: 1, fields: { F01: "질병 관련 특별약관" } },
+  ],
+};
 
-/** 담보 id → 특약 그룹 값 코드 — 담보 마스터의 그룹 칸. 기본계약 담보(cov-base-death)는 그룹이 없다. */
-export const alphaCoverageGroups: ReadonlyMap<Id, Code> = new Map([["cov-death", "V01"]]);
+/** 담보 id → 담보분류 값 코드 — 담보 마스터의 뼈대 칸(필수). */
+export const alphaCoverageCategories: ReadonlyMap<Id, Code> = new Map([
+  ["cov-base-death", "V01"],
+  ["cov-death", "V01"],
+  // 시나리오가 더하는 담보 — 담보분류는 필수라 픽스처가 미리 정해 둔다
+  ["cov-surgery", "V01"],
+  ["cov-surg", "V01"],
+  ["cov-nodequal", "V01"],
+  ["cov-burn", "V01"],
+  ["cov-dis", "V01"],
+]);
+
+/** 담보 id → 담보코드 — 그룹 안 1차 정렬 키 (ADR-0090 결정 6). */
+export const alphaCoverageCodes: ReadonlyMap<Id, Code> = new Map([
+  ["cov-base-death", "COV000001"],
+  ["cov-death", "COV000002"],
+]);
 
 // ───────────────────────────── 진입점 ─────────────────────────────
 
@@ -659,9 +682,10 @@ export function alphaPlusFixture(): AssemblyInput {
     clauses: alphaClauses,
     appendices: alphaAppendices,
     catalog: alphaCatalog,
-    enums: [...alphaEnums, alphaSpecialGroupEnum],
+    enums: [...alphaEnums, alphaCategoryEnum],
     attributeKinds: alphaAttributeKinds,
-    coverageGroups: alphaCoverageGroups,
+    coverageCategories: alphaCoverageCategories,
+    coverageCodes: alphaCoverageCodes,
     master: alphaMaster,
   };
 }

@@ -10,7 +10,7 @@ import { ENTITY_LABEL } from "@/app/_lib/labels";
 import { previewOutcome, rejectionMessage } from "@/app/_lib/rejection";
 import { articleRefLabel, collectRefs, indexTree, type NodeNumber } from "@/domain/document";
 import type { Id } from "@/domain/types";
-import { SPECIAL_GROUP_ENUM, specialGroupLabel } from "@/domain/coverage";
+import { CATEGORY_TITLE_FIELD, COVERAGE_CATEGORY_ENUM } from "@/domain/coverage";
 import { CONTRACT_KIND_PATH, findForm, isStandaloneContract } from "@/domain/master";
 import { applyArticleCopies, defaultCoverageName, liveArticleCopies, planOptionLabel, planTypeOptions, type ProductCoverage } from "@/domain/product";
 import { buildForm } from "@/forms";
@@ -94,9 +94,13 @@ export default async function ProductDetailPage({
   const baseCheck = await services.product.checkBaseContract(id);
   const baseContractSet = new Set(baseContractIds);
   const coverageName = new Map(coverages.map((c) => [c.id, c.name]));
-  // 특약 그룹은 담보의 것 (ADR-0080) — 특별약관 표의 「그룹」 열(읽기 전용)이 그 담보의 「특약 그룹」 값 이름을 보인다
-  const groupEnum = enumLookup(SPECIAL_GROUP_ENUM);
-  const coverageRows = coverages.map((c) => ({ id: c.id, code: c.code, name: c.name, group: specialGroupLabel(c.specialGroup, groupEnum) }));
+  // 특약 그룹 (ADR-0090) — 기본 그룹은 담보의 담보분류, 그 제목은 열거형 「담보분류」 값의 「그룹 제목」. 사용자 그룹은 이 상품의 설정
+  const coverageRows = coverages.map((c) => ({ id: c.id, code: c.code, name: c.name, ...(c.category ? { category: c.category } : {}) }));
+  const categories = (enumLookup(COVERAGE_CATEGORY_ENUM)?.values ?? []).map((v) => {
+    const title = v.fields?.[CATEGORY_TITLE_FIELD];
+    return { code: v.code, label: v.label, ...(typeof title === "string" && title.trim() ? { title } : {}) };
+  });
+  const productGroups = tab === "coverages" ? await services.product.listGroups(id) : undefined;
   const baseCoverages = productCoverages.filter((coverage) => baseContractSet.has(coverage.id));
   const specialCoverages = productCoverages.filter((coverage) => !baseContractSet.has(coverage.id));
 
@@ -283,6 +287,8 @@ export default async function ProductDetailPage({
           baseCoverages={baseCoverages}
           specialCoverages={specialCoverages}
           coverages={coverageRows}
+          categories={categories}
+          {...(productGroups ? { groups: productGroups } : {})}
           attributeKinds={attributeKinds}
           plans={plans}
           attachedPlans={attachedPlans}
