@@ -8,6 +8,7 @@
 import type {
   ErrorNode,
   RenderedArticle,
+  RenderedBlockGroup,
   RenderedDoc as RenderedDocType,
   RenderedGroup,
   RenderedInline,
@@ -190,10 +191,11 @@ export function RenderedArticleView({ node }: { node: RenderedArticle }) {
   return <Article node={node} />;
 }
 
-export function RenderedDoc({ doc }: { doc: RenderedDocType }) {
+/** `heading` — 문서 제목 대신 찍을 머리(절 형태의 「제1절 일반조항」 · 블록 머리 「1. {제목}」). */
+export function RenderedDoc({ doc, heading }: { doc: RenderedDocType; heading?: string }) {
   return (
     <article className="ts-doc" data-owner={doc.ownerId}>
-      <h2 className="ts-doc-title">{doc.title}</h2>
+      <h2 className="ts-doc-title">{heading ?? doc.title}</h2>
       {doc.children.map((a, i) => (
         <Article key={i} node={a} />
       ))}
@@ -216,6 +218,31 @@ export function RenderedGroupView({ group }: { group: RenderedGroup }) {
       )}
       {group.docs.map((d, i) => (
         <RenderedDoc key={`${d.ownerId ?? d.id}-${i}`} doc={d} />
+      ))}
+    </section>
+  );
+}
+
+/**
+ * 절 형태의 제2절 보장조항 (기능/조립산출 §3.8 · §4.1) — 블록을 그룹 순서대로. 그룹 제목 표시를 켰으면 그룹 머리 줄 「Ⅰ. {그룹 제목}」
+ * (제목이 빈 기본 그룹은 그 자리에 오류 마커), 블록마다 머리 「{블록 머리} {블록 제목}」 + 블록 조(제1조부터).
+ */
+export function RenderedBlocksView({ groups }: { groups: readonly RenderedBlockGroup[] }) {
+  return (
+    <section className="ts-doc-part" aria-label="제2절 보장조항">
+      <h2 className="ts-doc-title">제2절 보장조항</h2>
+      {groups.length === 0 && <p className="ts-muted">블록이 없다.</p>}
+      {groups.map((g) => (
+        <section key={g.id} className="ts-doc-group" aria-label={g.label !== undefined ? `${g.label} ${g.title ?? ""}`.trim() : "블록"}>
+          {g.label !== undefined && (
+            <h3 className="ts-doc-group-title">
+              {g.label} {g.title ?? (g.titleError ? <ErrorMark node={g.titleError} /> : null)}
+            </h3>
+          )}
+          {g.blocks.map((b) => (
+            <RenderedDoc key={b.productCoverageId} doc={b.doc} heading={`${b.label} ${b.title}`} />
+          ))}
+        </section>
       ))}
     </section>
   );
