@@ -12,7 +12,7 @@ describe("메뉴 구성 (ADR-0073 — 항목 하나 = 기능 하나 = route 하�
     ]);
   });
 
-  it("약관 조문에는 별표가 없다 — 함수조항 · 보통약관 템플릿 · 담보약관 템플릿", () => {
-    expect(MENU_FLOW.find((g) => g.title === "약관 조문")!.items.map((i) => i.href)).toEqual(["/functions", "/documents?kind=general", "/documents?kind=coverage"]);
+  it("약관 조문에는 별표가 없다 — 함수조항 · 동적표 · 보통약관 템플릿 · 담보약관 템플릿", () => {
+    expect(MENU_FLOW.find((g) => g.title === "약관 조문")!.items.map((i) => i.href)).toEqual(["/functions", "/dyntables", "/documents?kind=general", "/documents?kind=coverage"]);
   });
 });

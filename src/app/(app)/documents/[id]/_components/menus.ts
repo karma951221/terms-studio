@@ -29,6 +29,8 @@ export type PopupSpec =
   | { kind: "clauseBlock"; at: Position; fit?: ClauseFit }
   /** 정적 마스터 박스 고르기 — 고르면 그 자리에 박스 참조 (기능/박스 §4.4). */
   | { kind: "boxPick"; at: Position }
+  /** 동적표 넣기 — 정의를 고르고 인자마다 연결(함수조항과 같은 칸), 담보약관만 (기능/동적표 §3.5). */
+  | { kind: "dynTable"; at: Position }
   /** 블록 반복 — `at` 이면 넣기(원천 고르기 → 빈 항 · 호 하나를 든 반복), `nodeId` 면 그 반복의 원천 · 이름 고치기 (ADR-0077). */
   | { kind: "repeatBlock"; at?: Position; nodeId?: Id }
   /** 문장 안 반복 넣기 — 커서 자리에 원천 · 연결어를 고른 반복 칩을 세우고 그 칩의 팝업(본문 · 「비었을 때」 칸)을 연다 (ADR-0088). 고치기는 `editChip`. */
@@ -78,7 +80,7 @@ export function forContextMenu(sections: MenuSections): MenuSections {
 /** 메뉴는 구획(구분선으로 나뉜 묶음)의 목록이다. 빈 구획은 그리지 않는다. */
 export type MenuSections = MenuItem[][];
 
-const KIND_WORD: Partial<Record<NodeKind, string>> = { paragraph: "항", item: "호", subitem: "목", bullet: "항목", bulletList: "글머리 목록", article: "조", section: "관", table: "표", box: "박스", clauseBlockRef: "함수조항", boxRef: "박스", forBlock: "반복 블록" };
+const KIND_WORD: Partial<Record<NodeKind, string>> = { paragraph: "항", item: "호", subitem: "목", bullet: "항목", bulletList: "글머리 목록", article: "조", section: "관", table: "표", box: "박스", clauseBlockRef: "함수조항", boxRef: "박스", forBlock: "반복 블록", dynTableRef: "동적표" };
 
 /** 반복 깊이 한도 — 반복 안 반복 하나 (ADR-0077 결정 4). 도메인 `REPEAT_MAX_DEPTH` 와 같다. */
 const MAX_REPEAT_DEPTH = 2;
@@ -168,6 +170,8 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
   }
   // 정적 마스터 박스 — 조 자리 · 항 · 호 뒤(호 목록 자리). 박스는 잎이라 함수조항 본문에서도 같다 (기능/박스 §3.2)
   if (after && e.allowed.includes("boxRef")) add.push({ label: "아래에 박스 추가…", action: { do: "popup", popup: { kind: "boxPick", at: after } } });
+  // 동적표 — 담보약관(상품담보 문맥)만, 함수조항 옆(기능/동적표 §3.5). 보통약관에는 싣지 않는다(저장 검사가 거부한다)
+  if (after && env.docKind === "special" && e.allowed.includes("dynTableRef")) add.push({ label: "아래에 동적표 추가…", action: { do: "popup", popup: { kind: "dynTable", at: after } } });
   // 블록 반복 — 조 자리 · 호 목록 자리, 반복 안 반복은 한 단계까지 (ADR-0077)
   if (after && e.allowed.includes("forBlock") && e.forDepth < MAX_REPEAT_DEPTH) add.push({ label: "아래에 반복 블록 추가…", action: { do: "popup", popup: { kind: "repeatBlock", at: after } } });
   if (e.node.kind === "paragraph" && e.forDepth < MAX_REPEAT_DEPTH) add.push({ label: "반복 블록(호) 추가…", action: { do: "popup", popup: { kind: "repeatBlock", at: { parentId: nodeId, slot: "items" } } } });
@@ -179,6 +183,7 @@ export function blockMenu(env: MenuEnv, nodeId: Id): MenuSections {
     if (env.docKind === "special") own.push({ label: "행 반복…", action: { do: "popup", popup: { kind: "repeat", tableId: nodeId } } });
   }
   if (e.node.kind === "clauseBlockRef") own.push({ label: "옵션 고치기…", action: { do: "popup", popup: { kind: "editChip", nodeId } } });
+  if (e.node.kind === "dynTableRef") own.push({ label: "인자 연결 고치기…", action: { do: "popup", popup: { kind: "editChip", nodeId } } });
   if (e.node.kind === "forBlock") own.push({ label: "반복 원천…", action: { do: "popup", popup: { kind: "repeatBlock", nodeId } } });
   // 코드 — 항 · 호 · 목 · 함수조항 참조 · 반복 블록 (툴바 「속성」, ADR-0072 결정 5). 바꾼 코드는 문서 저장 한 번에 반영된다
   if (isCodedKind(e.node.kind)) own.push({ label: "코드 고치기…", action: { do: "popup", popup: { kind: "code", nodeId } } });
@@ -292,6 +297,7 @@ export function articleMenu(env: MenuEnv, articleId: Id, title = true): MenuSect
   // 조 끝에 함수조항(조 단위) — 조의 첫 자리가 함수조항인 조(「준용규정」 = 〔항 함수조항〕 하나)를 항 없이 세운다 (2026-09-28, 실물재현 E2E)
   add.push({ label: "함수조항 참조 추가…", action: { do: "popup", popup: { kind: "clauseBlock", at: { parentId: articleId } } } });
   add.push({ label: "박스 추가…", action: { do: "popup", popup: { kind: "boxPick", at: { parentId: articleId } } } });
+  if (env.docKind === "special") add.push({ label: "동적표 추가…", action: { do: "popup", popup: { kind: "dynTable", at: { parentId: articleId } } } });
   add.push({ label: "반복 블록 추가…", action: { do: "popup", popup: { kind: "repeatBlock", at: { parentId: articleId } } } });
   add.push(bulletListItem("글머리 목록 추가", { parentId: articleId }, env.newId));
 

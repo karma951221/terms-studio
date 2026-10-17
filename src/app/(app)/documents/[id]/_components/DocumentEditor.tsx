@@ -160,6 +160,7 @@ const NODE_WHAT: Record<string, string> = {
   clauseBlockRef: "함수조항 참조",
   forBlock: "반복 블록",
   boxRef: "박스",
+  dynTableRef: "동적표",
 };
 
 /** 노드가 든 조 — 조면 자기, 관이면 그 첫 조. */
@@ -757,6 +758,7 @@ export function DocumentEditor(props: EditorProps) {
     repeatedKeys: repeated,
     refLabel,
     clauses: props.clauses,
+    ...(props.dynTables ? { dynTables: props.dynTables } : {}),
     boxOf: (code) => boxByCode.get(code),
     repeatLabelOf,
     enumValueLabel: (code: Code) => {
@@ -802,6 +804,7 @@ export function DocumentEditor(props: EditorProps) {
     appendices: props.appendices,
     boxes: props.boxes,
     clauses: props.clauses,
+    ...(props.dynTables ? { dynTables: props.dynTables } : {}),
     generals: props.generals,
     ...(current.generalDocumentId ? { generalDocumentId: current.generalDocumentId } : {}),
     ...(props.suggestedGeneralId ? { suggestedGeneralId: props.suggestedGeneralId } : {}),

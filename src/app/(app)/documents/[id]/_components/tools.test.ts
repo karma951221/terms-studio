@@ -99,7 +99,7 @@ describe("약관 에디터 툴바 (기능/문면 §4.3)", () => {
     for (const g of DOCUMENT_TOOLS.filter((g) => g.name === "조건 편집" || g.name === "고른 것 속성")) for (const t of g.tools) expect(at(t.id), t.id).toBe("context");
     // 구조 넣기 핵심 묶음은 늘 선다 — 조 · 항 · 호 · 목 · 표 · 목록 · 함수조항 · 박스 · 반복
     const core = DOCUMENT_TOOLS[0].tools.filter((t) => (t.at ?? "bar") === "bar").map((t) => t.label);
-    expect(core).toEqual(["조", "항", "호", "목", "표", "글머리 목록", "함수조항", "박스", "반복"]);
+    expect(core).toEqual(["조", "항", "호", "목", "표", "글머리 목록", "함수조항", "박스", "동적표", "반복"]);
     // 모양이 분명한 넣기는 아이콘
     expect(allTools(DOCUMENT_TOOLS).filter((t) => t.icon).map((t) => t.id)).toEqual(["table", "bulletList", "clauseBlock", "box", "forBlock", "slot", "articleRef", "appendixRef", "particle", "inlineFor", "inlineCond"]);
     // 아이콘만은 누구나 아는 모양(표 · 글머리 목록)뿐 — 나머지는 짧은 글자를 붙인다 (2026-10-01 유저 피드백)

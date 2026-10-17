@@ -43,6 +43,7 @@ export const MENU_FLOW: MenuGroup[] = [
     title: "약관 조문",
     items: [
       { href: "/functions", label: ENTITY_LABEL.clause, desc: "여러 약관이 함께 쓰는 조항" },
+      { href: "/dyntables", label: ENTITY_LABEL.dynTable, desc: "급부 · 감액 값으로 펼치는 지급금액 표" },
       { href: "/documents?kind=general", label: ENTITY_LABEL.generalTemplate, desc: "보통약관 조문 작성" },
       { href: "/documents?kind=coverage", label: ENTITY_LABEL.coverageTemplate, desc: "담보별 특별약관 조문 작성" },
     ],

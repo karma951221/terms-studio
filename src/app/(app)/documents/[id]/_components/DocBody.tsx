@@ -27,6 +27,7 @@ import {
   type ArticleNode,
   type BlockBranch,
   type ClauseBlockRefNode,
+  type DynTableRefNode,
   type Node,
   type TableNode,
   type TreeIndex,
@@ -343,6 +344,50 @@ function ClauseBlock({ node, ctx }: { node: ClauseBlockRefNode; ctx: DocCtx }) {
   );
 }
 
+/**
+ * 동적표 참조 띠 (기능/동적표 §3.5) — 「[코드] 동적표명 · 인자 ← 연결 …」. 표 자체는 조립이 그 상품담보의 급부로 펼친다 — 여기서는 띠만(미리보기 탭이 펼친 표를 보인다).
+ * 편집이면 연결 글자를 눌러 인자 연결 팝업, 오른쪽 위 복제 · 삭제는 다른 잎 블록과 같다.
+ */
+function DynTableBand({ node, ctx }: { node: DynTableRefNode; ctx: DocCtx }) {
+  const edit = ctx.edit;
+  const def = ctx.dynTables?.find((t) => t.code === node.tableCode);
+  const condition = ctx.conditionFor?.(node.id);
+  const discriminators = condition?.discriminators ?? [];
+  const tree = condition?.coverage ? { nodes: condition.coverage.nodes, loops: [] } : undefined;
+  const enumChoicesOf = (t: { kind: string; enumCode?: Code }) => {
+    const d = t.enumCode !== undefined ? ctx.enumOf?.(t.enumCode) : undefined;
+    return d ? [d] : [];
+  };
+  const args = (def?.params ?? []).map((p) => {
+    const own = node.bindings?.[p.name];
+    const b = own ?? p.default;
+    const what = b?.kind === "current" ? `현재 ⟳ ${ctx.repeatLabelOf?.(b.loop) ?? "반복"}` : b ? bindingLabel(b, p.type, discriminators, enumChoicesOf(p.type), [], [], tree) : "연결 없음";
+    return `${p.name} ← ${what}${own || !b ? "" : "(기본)"}`;
+  });
+  const words = def ? (args.length > 0 ? `인자: ${args.join(" · ")}` : "인자 없음") : "없는 동적표 — 깨진 참조";
+  return (
+    <div className={`ts-doc-clause is-dyntable${flash(ctx, node.id)}`} data-block={node.id} data-node={node.id}>
+      <DragHandle id={node.id} what="동적표" ctx={ctx} acts={false} />
+      <div className="ts-doc-clause-head">
+        <span className="ts-doc-clause-name" title={`동적표 · ${node.tableCode}`}>
+          <span className="ts-doc-clause-code">[{node.tableCode}]</span> 동적표 {def?.label ?? "없는 동적표"}
+        </span>
+        {edit && def ? (
+          <button type="button" className="ts-doc-clause-opt" title="인자 연결 고치기" onClick={(e) => edit.popup({ kind: "editChip", nodeId: node.id }, anchorOf(e.currentTarget))}>
+            {words}
+          </button>
+        ) : (
+          <span className="ts-doc-clause-opt">{words}</span>
+        )}
+        <BlockActs id={node.id} what={`동적표 ${def?.label ?? node.tableCode}`} ctx={ctx} inline />
+      </div>
+      <p className="ts-muted ts-doc-clause-body">
+        {def ? `열 기준 ${def.columnBasis === "reduction" ? "감액 구간" : "없음"} · 조립이 이 상품담보의 급부를 급부명 · 지급률 · 감액 구간으로 펼쳐 표로 낸다 — 미리보기 탭에서 본다.` : "약관 조문 › 동적표에서 정의를 확인한다."}
+      </p>
+    </div>
+  );
+}
+
 /** 값별 분기의 대상 줄 — 읽기: 「값별 분기 대상」 + 칸 없는 값. 편집: 대상 고르기 · 칸 없는 값 · 칸 추가 · 분기 삭제. */
 function SwitchHead({ node, ctx, subject }: { node: Node & { kind: "condBlock" }; ctx: DocCtx; subject: SwitchSubject | undefined }) {
   const edit = ctx.edit;
@@ -626,6 +671,16 @@ export function Block({ nodes, ctx, inList }: { nodes: readonly Node[]; ctx: Doc
           <ClauseBlock key={node.id} node={node} ctx={ctx} />
         );
       }
+
+      case "dynTableRef":
+        // 동적표 — 표처럼 번호 없는 잎 블록. 목록 자리면 <li> 로 감싼다 (기능/동적표 §3.5)
+        return inList ? (
+          <li key={node.id} className="ts-doc-static-item">
+            <DynTableBand node={node} ctx={ctx} />
+          </li>
+        ) : (
+          <DynTableBand key={node.id} node={node} ctx={ctx} />
+        );
 
       case "condBlock":
         return <CondBlock key={node.id} node={node} ctx={ctx} as={inList ? "li" : "div"} />;

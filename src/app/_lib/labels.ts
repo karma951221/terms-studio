@@ -38,6 +38,7 @@ export const NAME_LABEL = {
   clause: "함수조항명",
   appendix: "별표 이름",
   box: "박스 이름",
+  dynTable: "동적표명",
   coverage: "담보명",
   product: "상품명",
   attribute: "담보속성명",
