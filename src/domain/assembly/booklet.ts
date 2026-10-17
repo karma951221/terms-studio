@@ -22,7 +22,7 @@ import { CONTRACT_KIND_PATH, isStandaloneContract } from "../master";
 import { baseContractCountIssue } from "../product/completeness";
 import { enumCoordinate } from "../catalog/fields";
 import { COVERAGE_CATEGORY_ENUM, categoryGroupTitle } from "../coverage/category";
-import { effectiveGroups, groupKey, sortInGroup } from "../product/groups";
+import { effectiveGroups, groupedCoverageIds, groupKey, sortInGroup } from "../product/groups";
 import type { ClauseOptionOverride, ProductCoverage } from "../product/types";
 import { type Coordinate, type Id, type Issue, ok, reject, type Result } from "../types";
 import { buildContexts, generalCoordinate, generalDocumentOf, specialCoordinate, type AssemblyContext, type AssemblyContexts } from "./context";
@@ -290,16 +290,16 @@ export interface Placement {
   baseContracts: Booklet["baseContracts"];
 }
 
-export function placeSpecials(input: AssemblyInput): Placement {
+/** 그룹으로 묶은 상품담보 — `Placement` 의 그룹 부분. */
+export type Grouped = Pick<Placement, "groups" | "groupIssues">;
+
+/**
+ * 상품담보를 이 상품의 그룹 순서로 묶는다 (ADR-0090 결정 4 · 5 · 6 · 7) — 특약 배치와 절 형태의 블록 순서가 같은 함수다:
+ * **블록 순서 = 그룹 순서 → 그룹 안 자동 순서**(담보코드 → 담보속성). 이 상품의 기본 그룹은 그룹을 읽는 담보(`groupedCoverageIds` —
+ * 특약 담보 + 기본계약 2+ 의 기본계약 담보)의 담보분류다. 상품담보가 없는 그룹은 없다.
+ */
+export function orderInGroups(input: AssemblyInput, documented: readonly AssemblyCoverage[]): Grouped {
   const baseIds = new Set(input.product.baseContractIds);
-  const baseContracts = input.coverages
-    .filter((c) => baseIds.has(c.snapshot.id))
-    .map((c) => ({ productCoverageId: c.snapshot.id, name: c.snapshot.name, coverageId: c.snapshot.coverageId }));
-  const specials = input.coverages.filter((c) => !baseIds.has(c.snapshot.id));
-  const documented = specials.filter((c) => input.specialDocuments.has(c.snapshot.coverageId));
-  const undocumented = specials
-    .filter((c) => !input.specialDocuments.has(c.snapshot.coverageId))
-    .map((c) => ({ productCoverageId: c.snapshot.id, name: c.snapshot.name, coverageId: c.snapshot.coverageId }));
   // 그룹 안 1차 키 = 담보코드 (ADR-0090 결정 6). 코드가 없는 담보(픽스처)는 코드 있는 것 뒤에 담보명 순
   const codeOf = (id: Id) => input.coverageCodes?.get(id);
   const nameOf = new Map(documented.map((c) => [c.snapshot.coverageId, c.snapshot.coverageName]));
@@ -344,8 +344,9 @@ export function placeSpecials(input: AssemblyInput): Placement {
     const key = groupOf(c);
     membersOf.set(key, [...(membersOf.get(key) ?? []), c]);
   }
-  // 이 상품의 기본 그룹 = 특약 담보들의 담보분류 (기능/상품 §3.7 — 상품담보 탭 「특약 그룹」 섹션과 같은 기준)
-  const present = new Set(specials.flatMap((c) => input.coverageCategories?.get(c.snapshot.coverageId) ?? []));
+  // 이 상품의 기본 그룹 = 그룹을 읽는 담보들의 담보분류 (기능/상품 §3.7 — 상품담보 탭 「특약 그룹」 섹션 · 저장과 같은 기준)
+  const grouped = groupedCoverageIds(input.coverages.map((c) => ({ coverageId: c.snapshot.coverageId, base: baseIds.has(c.snapshot.id) })));
+  const present = new Set(grouped.flatMap((id) => input.coverageCategories?.get(id) ?? []));
   const productAt: Coordinate = { document: "product", ownerId: input.product.id, ownerName: input.product.name };
   const groups: Placement["groups"] = effectiveGroups(setting?.groups ?? [], present, categoryOrder)
     .filter((g) => membersOf.has(groupKey(g)))
@@ -361,7 +362,25 @@ export function placeSpecials(input: AssemblyInput): Placement {
     });
   const ungrouped = membersOf.get(UNGROUPED_ID);
   if (ungrouped) groups.push({ id: UNGROUPED_ID, members: sorted(ungrouped) });
-  return { groups, groupIssues, undocumented, baseContracts };
+  return { groups, groupIssues };
+}
+
+/**
+ * ⑨ 특약 배치 — 특약 절의 문면 있는 상품담보를 `orderInGroups` 로 묶는다. 기본계약은 그룹 밖(대치 형태 — 보통약관 조 자리).
+ * 절 형태(ADR-0082)의 제2절 블록도 같은 함수로 줄 선다 — 제2절 출력은 미구현이라 기본계약 2+ 는 지금 `unsupported`,
+ * 독립특약의 탑재 상품담보(블록)는 이 배치로 특약 자리에 그룹마다 찍힌다(블록 번호 머리는 `assemble`).
+ */
+export function placeSpecials(input: AssemblyInput): Placement {
+  const baseIds = new Set(input.product.baseContractIds);
+  const baseContracts = input.coverages
+    .filter((c) => baseIds.has(c.snapshot.id))
+    .map((c) => ({ productCoverageId: c.snapshot.id, name: c.snapshot.name, coverageId: c.snapshot.coverageId }));
+  const specials = input.coverages.filter((c) => !baseIds.has(c.snapshot.id));
+  const documented = specials.filter((c) => input.specialDocuments.has(c.snapshot.coverageId));
+  const undocumented = specials
+    .filter((c) => !input.specialDocuments.has(c.snapshot.coverageId))
+    .map((c) => ({ productCoverageId: c.snapshot.id, name: c.snapshot.name, coverageId: c.snapshot.coverageId }));
+  return { ...orderInGroups(input, documented), undocumented, baseContracts };
 }
 
 // ───────────────────────────── 조립 ─────────────────────────────

@@ -7,7 +7,7 @@ import type { MissingSlot } from "../coverage/values";
 import type { EnumDef } from "../catalog/types";
 import type { Code, Id, Issue } from "../types";
 import { formatCoordinate } from "../coordinate";
-import { assemble, assembleSpecial, executionBasedFilter } from "./booklet";
+import { assemble, assembleSpecial, executionBasedFilter, orderInGroups } from "./booklet";
 import { alphaPlusFixture, alphaGeneralDocument, baseDeathCoverage, coverageEntry, deathCoverage, waiverFixture, waiverTemplate } from "./fixture";
 import type { ProductGroupSetting } from "../product/groups";
 import type { AssemblyCoverage, AssemblyInput, RenderedDoc, RenderedInline } from "./types";
@@ -500,6 +500,17 @@ describe("그룹핑별표 S1·S2 — 기본 그룹 = 담보분류 · 사용자 �
     expect(group.titleError?.issue.message).toBe("그룹 제목이 비었습니다 — 담보분류 「상해」의 「그룹 제목」");
     expect(group.docs.map((d) => d.ownerId)).toEqual(["pc-basic", "pc-addon"]);
   });
+  it("블록 순서 = 그룹 순서 → 그룹 안 자동 순서 — 기본계약 2+ 의 기본계약 담보도 같은 그룹 목록을 읽는다 (결정 7 · orderInGroups)", () => {
+    // 기본계약 담보(cov-base-death)만 비용손해(V03) — 기본계약이 둘 이상이면 그 담보분류도 이 상품의 기본 그룹이 된다
+    const two = withGroups(
+      { groups: [{ kind: "user", id: "g-surgery", name: "수술 관련 특별약관" }], memberships: [{ coverageId: "cov-surgery", groupId: "g-surgery" }] },
+      { coverageCategories: new Map([["cov-death", "V01"], ["cov-surgery", "V02"], ["cov-base-death", "V03"]]) },
+    );
+    const product = { ...two.product, baseContractIds: ["pc-base", "pc-surgery"] };
+    const blocks = orderInGroups({ ...two, product }, two.coverages.filter((c) => product.baseContractIds.includes(c.snapshot.id)));
+    expect(blocks.groups.map((g) => [g.id, g.members.map((c) => c.snapshot.id)])).toEqual([["g-surgery", ["pc-surgery"]], ["category:V03", ["pc-base"]]]);
+  });
+
   it("문면 없는 담보의 탑재분은 오류가 아니라 「미산출 탑재분」 (D-P6-9)", () => {
     const b = assembleInput({ ...input, specialDocuments: base.specialDocuments });
     expect(b.undocumented).toEqual([

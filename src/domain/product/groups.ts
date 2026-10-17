@@ -3,7 +3,7 @@
  *
  * - **기본 그룹 = 담보분류** — 상품이 따로 정하지 않은 담보는 그 담보의 담보분류 값(`coverage/category.ts`)대로 묶인다.
  * - **사용자 그룹은 상품 안에서** 만든다(이름 = 책자의 그룹 제목). **담보 단위로** 넣는다 — 그 담보의 상품담보는 모두 같은 그룹이다.
- * - **그룹 순서 = 상품의 그룹 목록 하나**(`effectiveGroups`) — 기본 그룹(이 상품에 그 담보분류의 특약 담보가 있는 것만)과 사용자 그룹이 함께 선다.
+ * - **그룹 순서 = 상품의 그룹 목록 하나**(`effectiveGroups`) — 기본 그룹(이 상품에 그 담보분류의 그룹을 읽는 담보가 있는 것만 — `groupedCoverageIds`)과 사용자 그룹이 함께 선다.
  *   목록에 자리가 없는 기본 그룹은 저장된 목록 뒤에 열거형 값 순서. 아무것도 저장하지 않은 상품은 기본 그룹만 열거형 값 순서다.
  * - 그룹 안 순서는 자동(`sortInGroup`): **담보코드 → 담보속성 종류(order) → 유효값(코드 순) 오름차순.**
  *   담보가 1차 키라 같은 담보의 탑재분 뭉침은 정렬의 귀결. 미사용 속성은 사용한 것보다 앞.
@@ -37,7 +37,7 @@ export function groupKey(group: ProductGroup): string {
 
 /**
  * 이 상품의 그룹 목록 — 저장된 순서(이 상품에 없는 기본 그룹 · 열거형에 없는 값은 뺀다) 뒤에 자리가 없는 기본 그룹을 열거형 값 순서로.
- * `present` = 이 상품 특약 담보들의 담보분류, `categoryOrder` = 열거형 「담보분류」의 값 순서.
+ * `present` = 이 상품에서 그룹을 읽는 담보들(`groupedCoverageIds`)의 담보분류, `categoryOrder` = 열거형 「담보분류」의 값 순서.
  */
 export function effectiveGroups(saved: readonly ProductGroup[], present: ReadonlySet<Code>, categoryOrder: readonly Code[]): ProductGroup[] {
   const known = new Set(categoryOrder);
@@ -54,6 +54,18 @@ export function effectiveGroups(saved: readonly ProductGroup[], present: Readonl
   return out;
 }
 
+/**
+ * 그룹을 읽는 담보 (ADR-0090 결정 7) — 특약 담보, 그리고 기본계약이 둘 이상(케이스 2 — 절 형태의 제2절 블록)이면 기본계약 담보도.
+ * 같은 그룹 목록이 블록과 특약 그룹 둘 다의 순서라서다. 기본계약 하나(대치 형태)의 기본계약은 보통약관 조 자리라 그룹을 읽지 않는다.
+ * `mounts` = 탑재 상품담보마다 한 줄(담보 id · 기본계약인가). 처음 나온 순 · 중복 없음.
+ * 서비스 저장(`saveCoverages` — 소속 대상 · 기본 그룹) · 화면 초안 · 조립(`orderInGroups` — 이 상품의 기본 그룹)이 같이 쓴다.
+ * 독립특약(케이스 3)의 블록은 탑재 상품담보 = 특약 절이라 따로 넓힐 것이 없다.
+ */
+export function groupedCoverageIds(mounts: readonly { coverageId: Id; base: boolean }[]): Id[] {
+  const blocks = mounts.filter((m) => m.base).length >= 2;
+  return [...new Set(mounts.filter((m) => !m.base || blocks).map((m) => m.coverageId))];
+}
+
 /** 상품담보 탭 저장의 그룹 입력 — 화면의 최종 목록(순서대로) + 소속. 새 사용자 그룹은 `id` 없이 화면 열쇠(`key`)만. */
 export interface ProductGroupsInput {
   list: ({ kind: "category"; code: Code } | { kind: "user"; key: string; id?: Id; name: string })[];
@@ -63,11 +75,11 @@ export interface ProductGroupsInput {
 
 export interface GroupPlanContext {
   saved: ProductGroupSetting;
-  /** 저장 전 이 상품에 특약으로 탑재돼 있던 담보 — 같은 저장의 탑재 해제로 빠진 담보의 소속은 조용히 지운다. */
+  /** 저장 전 이 상품에서 그룹을 읽던 담보(`groupedCoverageIds`) — 같은 저장의 탑재 해제로 빠진 담보의 소속은 조용히 지운다. */
   mountedBefore: ReadonlySet<Id>;
-  /** 저장 뒤 이 상품에 특약으로 탑재된 담보. */
+  /** 저장 뒤 이 상품에서 그룹을 읽는 담보(`groupedCoverageIds` — 특약 담보 + 기본계약 2+ 의 기본계약 담보). */
   mountedAfter: ReadonlySet<Id>;
-  /** 저장 뒤 이 상품의 기본 그룹 — 특약 담보들의 담보분류(열거형에 있는 값). */
+  /** 저장 뒤 이 상품의 기본 그룹 — 그룹을 읽는 담보들의 담보분류(열거형에 있는 값). */
   present: ReadonlySet<Code>;
   categoryOrder: readonly Code[];
   /** 기본 그룹 제목(담보분류 값의 「그룹 제목」) — 이름 중복 검사용. */

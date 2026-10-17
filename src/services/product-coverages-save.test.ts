@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { CoverageMasterSource, CoverageTree } from "@/domain/product";
 import type { Actor, Id, Impact, Issue } from "@/domain/types";
 
+import { insertBaseContract } from "@/db/repo/product";
 import { readSlots, writeSlot } from "@/db/repo/values";
 import { coverages } from "@/db/schema";
 import { createTestDb, type TestDb } from "@/db/test-utils";
@@ -334,5 +335,32 @@ describe("saveCoverages — 특약 그룹 (ADR-0090 · 기능/상품 §3.7 · §
       }),
     );
     expect(r.issues?.map((i) => [i.at.ownerId, i.kind])).toEqual([["g", "brokenRef"], ["newgroup:1", "brokenRef"]]);
+  });
+
+  it("기본계약이 둘 이상(케이스 2)이면 기본계약 담보도 그룹을 읽는다 — 소속을 받고, 단건 탑재 해제의 소속 정리도 기본계약 담보를 남긴다 (결정 7)", async () => {
+    unwrap(await svc.createAttributeKind(editor, { label: "부가유형" })); // A0001 — 같은 담보를 기본계약 · 특약 두 벌로
+    unwrap(await svc.addAttributeValue(editor, "A0001", { label: "기본" }));
+    const p = unwrap(await svc.createProduct(editor, { name: "기본계약 둘", generalDocumentId: GENERAL_DOC }));
+    unwrap(
+      await svc.saveCoverages(editor, p.id, {
+        ...NONE,
+        added: [
+          { key: "new:b", coverageId: DEATH, attributes: [], section: "base", plans: [] },
+          { key: "new:s", coverageId: SURGERY, attributes: [], section: "special", plans: [] },
+          { key: "new:d", coverageId: DEATH, attributes: [{ kindCode: "A0001", valueCode: "1" }], section: "special", plans: [] },
+        ],
+      }),
+    );
+    // 기본계약 둘은 MVP 저장 검사가 막는다(기능/상품 §3.5) — 우회 저장으로 수술비를 둘째 기본계약으로 지정한다
+    const pcs = await svc.listProductCoverages(p.id);
+    const surgery = pcs.find((pc) => pc.coverageId === SURGERY)!;
+    const deathSpecial = pcs.find((pc) => pc.coverageId === DEATH && pc.attributes.length > 0)!;
+    await insertBaseContract(t.db, p.id, surgery.id, editor.userId);
+    // 수술비는 이제 기본계약에만 있다 — 기본계약 2+ 라 그룹을 읽으니 사용자 그룹에 넣을 수 있다
+    unwrap(await svc.saveCoverages(editor, p.id, { ...NONE, groups: { list: [{ kind: "user", key: "newgroup:1", name: "수술 관련" }], memberships: [{ coverageId: SURGERY, group: "newgroup:1" }, { coverageId: DEATH, group: "newgroup:1" }] } }));
+    expect((await svc.listGroups(p.id)).memberships.map((m) => m.coverageId).sort()).toEqual([DEATH, SURGERY].sort());
+    // 사망의 특약 탑재분을 해제해도 사망은 기본계약(2+)으로 남아 그룹을 읽는다 — 소속을 지우지 않는다
+    unwrap(await svc.unmount(admin, deathSpecial.id, { confirm: true }));
+    expect((await svc.listGroups(p.id)).memberships.map((m) => m.coverageId).sort()).toEqual([DEATH, SURGERY].sort());
   });
 });
