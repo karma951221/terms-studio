@@ -10,6 +10,7 @@ import { ok, reject } from "../types";
 import type { Code, Coordinate, FieldType, Issue, Result } from "../types";
 import { refPath } from "./ast";
 import type { CompareOp, Expr, Literal, Ref } from "./ast";
+import { isOutputPosition, OUTPUT_POSITIONS } from "./output";
 
 // ───────────────────────────── 타입 ─────────────────────────────
 
@@ -50,6 +51,11 @@ export interface CheckOptions {
   locals?: LocalTypes;
   /** 열거형 모양 — 필드 읽기 · 있음 · 거르기가 쓴다. */
   enums?: EnumInfo;
+  /**
+   * **문맥 플래그** — 작성위치(`builtin.output` · 범위 낱말 `builtin.output.scope`)를 읽을 수 있는 문맥(담보약관 템플릿 · 함수조항, ADR-0089).
+   * 없으면 structure 오류 — 보통약관 템플릿 · 상품 조 사본 · 구분자 파생식에는 작성위치가 없다(기능/식언어 §3).
+   */
+  output?: boolean;
   /** 세목 폼 필드 타입 — `합치기(폼.필드)` 가 쓴다. */
   planField?: (form: Code, field: Code) => ExprType | undefined;
 }
@@ -111,8 +117,43 @@ export function checkTypes(
     });
   };
 
+  /** 작성위치를 읽을 수 있는 문맥인가 — 아니면 structure 를 보고한다. */
+  const outputAllowed = (ref: Ref): boolean => {
+    if (options.output) return true;
+    report("structure", `작성위치 ${refPath(ref)} 는 담보약관 템플릿 · 함수조항에서만 쓸 수 있습니다 (보통약관 · 조 사본 · 구분자 식에는 작성위치가 없다)`, ref);
+    return false;
+  };
+
+  /** 작성위치 비교(ADR-0089): LHS `builtin.output` · = ≠ 만 · RHS 는 세 코드 중 하나의 문자열 리터럴. */
+  const checkOutputCompare = (ref: Ref & { kind: "output" }, op: CompareOp, right: Expr): ExprType | undefined => {
+    if (!outputAllowed(ref)) return undefined;
+    if (ref.prop === "scope") {
+      report("typeMismatch", `범위 낱말 ${refPath(ref)} 는 슬롯 전용입니다 — 조건은 builtin.output 으로 가른다`, ref);
+      return undefined;
+    }
+    if (op !== "=" && op !== "≠") {
+      report("typeMismatch", `작성위치에는 = 와 ≠ 만 쓸 수 있습니다 ('${op}' 불가)`, ref);
+      return undefined;
+    }
+    if (right.kind !== "literal" || right.literal.type !== "string") {
+      report("typeMismatch", `작성위치의 비교 대상은 ${OUTPUT_POSITIONS.join("·")} 중 하나의 문자열 리터럴이어야 합니다`, ref);
+      return undefined;
+    }
+    if (!isOutputPosition(right.literal.value)) {
+      report("brokenRef", `'${right.literal.value}' 는 작성위치 값이 아닙니다 (${OUTPUT_POSITIONS.join("·")})`, ref);
+      return undefined;
+    }
+    return BOOLEAN;
+  };
+
   /** 참조 타입 조회. 없으면 brokenRef 보고 후 undefined. */
   const typeOfRef = (ref: Ref): ExprType | undefined => {
+    if (ref.kind === "output") {
+      if (!outputAllowed(ref)) return undefined;
+      if (ref.prop === "scope") return { kind: "string" };
+      report("typeMismatch", `작성위치 ${refPath(ref)} 는 builtin.output = '값' · builtin.output ≠ '값' 형태로만 쓸 수 있습니다`, ref);
+      return undefined;
+    }
     if (ref.kind === "local") {
       if (!options.locals) {
         report("structure", `내부 변수 ${refPath(ref)} 는 함수조항 안에서만 쓸 수 있습니다`, ref);
@@ -314,6 +355,9 @@ export function checkTypes(
         if (e.left.kind === "ref" && e.left.ref.kind === "attr") {
           return checkAttributeCompare(e.left.ref, e.op, e.right);
         }
+        if (e.left.kind === "ref" && e.left.ref.kind === "output") {
+          return checkOutputCompare(e.left.ref, e.op, e.right);
+        }
         const l = walk(e.left);
         const r = walk(e.right);
         if (l === undefined || r === undefined) return undefined;
@@ -333,6 +377,10 @@ export function checkTypes(
       case "aggregate": {
         if (e.op === "count" && options.params) {
           report("typeMismatch", "함수조항 식에는 개수 연산(count)이 없습니다 — 목록은 있음 · 비었음 · 거르기로 가공한다", e.ref);
+          return undefined;
+        }
+        if (e.ref.kind === "output") {
+          if (outputAllowed(e.ref)) report("typeMismatch", `작성위치 ${refPath(e.ref)} 는 집계할 수 없습니다`, e.ref);
           return undefined;
         }
         const t = typeOfRef(e.ref);
@@ -377,6 +425,7 @@ export function checkCondition(
   resolve: TypeResolver,
   coordinate?: Coordinate,
   params?: ParamTypes,
+  output?: boolean,
 ): Result<ExprType> {
-  return checkTypes(expr, resolve, { coordinate, expect: "boolean", ...(params ? { params } : {}) });
+  return checkTypes(expr, resolve, { coordinate, expect: "boolean", ...(params ? { params } : {}), ...(output ? { output } : {}) });
 }

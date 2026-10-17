@@ -165,6 +165,7 @@ export function checkLocals(locals: readonly LocalDef[], params: readonly ParamD
         locals: (n) => (earlier.has(n) ? types.get(n) : undefined),
         ...(opts.enums ? { enums: opts.enums } : {}),
         planField: planFieldType(opts.master),
+        output: true, // 함수조항은 작성위치를 직접 읽는다 (ADR-0089)
       });
       if (r.ok) types.set(name, r.value);
       else {

@@ -10,7 +10,7 @@
 import type { Discriminator, EnumDef } from "../catalog/types";
 import { discriminatorResultType } from "../catalog/expression";
 import { missingValueMessage, slotType } from "../catalog/values";
-import { evaluate, parse, refPath, type ValueRef } from "../expression";
+import { evaluate, parse, refPath, type OutputRef, type ValueRef } from "../expression";
 import { findMasterField, type MasterTree } from "../master";
 import { inlineRepeatSeparator, type Code, type Coordinate, type FieldType, type Issue, type Value } from "../types";
 import type { AssemblyContext } from "./context";
@@ -70,8 +70,8 @@ export function formatValue(value: Value, type: FieldType | undefined, enums: Re
  * 구분자는 **식에서 추론한다** (ADR-0037 — 정의에 결과 타입 표기가 없다).
  * enum 결과를 표시명으로 찍으려면 어떤 열거형변수인지 알아야 하므로 여기서 추론이 필요하다.
  */
-function typeOf(env: SubstituteEnv, ref: ValueRef): FieldType | undefined {
-  if (ref.kind === "builtin") return { kind: "string" };
+function typeOf(env: SubstituteEnv, ref: ValueRef | OutputRef): FieldType | undefined {
+  if (ref.kind === "builtin" || ref.kind === "output") return { kind: "string" };
   if (ref.kind === "discriminator") {
     const def = env.catalog.get(ref.code);
     return def ? discriminatorResultType(def, env.master, env.catalog) : undefined;

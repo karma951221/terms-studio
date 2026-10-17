@@ -28,11 +28,15 @@ export type {
   MasterRef,
   MethodOp,
   NodeQualifier,
+  OutputRef,
   ParamRef,
   Ref,
   ValueRef,
 } from "./ast";
 export { AGGREGATE_OPS, COMPARE_OPS, METHOD_OPS, refPath, sameRef } from "./ast";
+
+export type { OutputPosition } from "./output";
+export { isOutputPosition, OUTPUT_DISPLAY, OUTPUT_LABEL, OUTPUT_PATH, OUTPUT_POSITIONS, SCOPE_WORD_CHIP, SCOPE_WORD_PATH, SCOPE_WORDS } from "./output";
 
 export { parse, renameExprRefs, RESERVED_WORDS } from "./parser";
 

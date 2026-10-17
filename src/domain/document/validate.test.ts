@@ -243,3 +243,42 @@ describe("프리셋을 쓰는 함수조항 참조 — 실제 값 = 프리셋, �
     expect(validateTree(tree({ preset: "S09" }), { clauseGate: gate }).map((i) => i.kind)).toContain("brokenRef");
   });
 });
+
+describe("작성위치 · 범위 낱말 — 문서 저장 검사 (ADR-0089 · 기능/식언어 §3)", () => {
+  const application: BlockClause = {
+    code: "C0002",
+    label: "준용규정",
+    mode: "block",
+    body: [{ id: "c1", kind: "condBlock", branches: [{ id: "c1b", when: "builtin.output ≠ 'replace'", children: [{ id: "p1", kind: "paragraph", children: [{ id: "t1", kind: "text", text: "준용" }] }] }] }],
+    options: [],
+    params: [],
+    required: { discriminators: [], attributes: [] },
+  };
+  const tree = () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    return b.document("D", [
+      b.condBlock([b.branch("builtin.output ≠ 'replace'", [b.article("조", [b.paragraph([b.slot("builtin.output.scope"), b.text(" 보험기간")])])])]),
+      b.article("준용", [b.clauseBlock("C0002")]),
+    ]);
+  };
+  const run = (kind: "general" | "special") =>
+    validateDocument(tree(), { env: { kind, clauseGate: clauseGateFrom([application], []) }, resolve: catalogTypeResolver(catalog), scope: {} });
+
+  it("담보약관 템플릿은 조건 · 범위 낱말 슬롯 · 작성위치를 읽는 함수조항을 받는다", () => {
+    expect(run("special")).toEqual([]);
+  });
+
+  it("보통약관 템플릿 · 조 사본은 structure — 조건 · 슬롯 · 작성위치를 읽는 함수조항 자리", () => {
+    expect(run("general").map((i) => [i.kind, i.at.refPath])).toEqual([
+      ["structure", "builtin.output"],
+      ["structure", "builtin.output.scope"],
+      ["structure", "builtin.output"],
+    ]);
+  });
+
+  it("작성위치 우변은 세 코드 — 그 밖은 깨진 참조", () => {
+    const b = nodeBuilders(sequentialIds("n"));
+    const doc = b.document("D", [b.condBlock([b.branch("builtin.output = 'base'", [b.article("조", [])])])]);
+    expect(validateDocument(doc, { env: { kind: "special" }, resolve: catalogTypeResolver(catalog), scope: {} }).map((i) => i.kind)).toEqual(["brokenRef"]);
+  });
+});

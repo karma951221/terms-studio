@@ -51,6 +51,16 @@ export interface BuiltinRef {
   prop: string;
 }
 
+/**
+ * 작성위치 — 소스 표기 `builtin.output`(레벨 없는 한 토막, ADR-0089 결정 4). 이 담보약관이 찍히는 출력 위치(`output.ts` 값 셋).
+ * 담보속성처럼 문맥이 주는 값이라 값 자리가 없다 — `= ≠` 와 세 코드 리터럴로만 비교한다.
+ * `prop: "scope"` = 범위 낱말 `builtin.output.scope`(ADR-0089 결정 3) — 작성위치로 찍는 렌더 상수, 슬롯 전용.
+ */
+export interface OutputRef {
+  kind: "output";
+  prop?: "scope";
+}
+
 /** 담보속성 참조 — `attr.<속성종류코드>` (ADR-0015). exist · = · ≠ 에서만 쓸 수 있다. */
 export interface AttributeRef {
   kind: "attr";
@@ -79,7 +89,7 @@ export interface LocalRef {
 /** 값 자리를 갖는 참조 (담보속성 · 인자 · 내부 변수 제외). 문맥의 lookup/children 이 받는 것. */
 export type ValueRef = DiscriminatorRef | MasterRef | BuiltinRef;
 
-export type Ref = ValueRef | AttributeRef | ParamRef | LocalRef;
+export type Ref = ValueRef | AttributeRef | OutputRef | ParamRef | LocalRef;
 
 // ───────────────────────────── 리터럴 ─────────────────────────────
 
@@ -160,6 +170,8 @@ export function refPath(ref: Ref): string {
       return `builtin.${ref.level}.${ref.prop}`;
     case "attr":
       return `attr.${ref.code}`;
+    case "output":
+      return ref.prop ? `builtin.output.${ref.prop}` : "builtin.output";
     case "param":
       return `arg.${ref.name}`;
     case "local":
