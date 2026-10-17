@@ -14,7 +14,7 @@
  *     │ 5. 최소 준용규정 생성    ensureApplicationArticle
  *     │ 6. 항 단위 준용 판정     judgeOmission        → SubstitutedDoc + OmissionRecord[]
  *     │ 7. 번호 계산            numberDocument       → NumberedDoc      (조·항·호·목 번호)
- *     │ 8. 특약 배치            placeSpecials        → 담보의 특약 그룹(열거값 순)별 정렬된 문서 목록 — 그룹 없는 것은 끝에 제목 없이
+ *     │ 8. 특약 배치            placeSpecials        → 상품 그룹 목록 순(사용자 그룹 · 담보분류 기본 그룹)별 정렬된 문서 목록 — 담보분류를 정할 수 없는 것은 끝에 제목 없이
  *     │ 9. 별표 번호            collectAppendices    → BookletAppendix[] (책자 등장 순 = 번호, ADR-0063)
  *     │ 10. 참조 슬롯 해소      renderDocument       → RenderedDoc      (조·별표 참조가 표기 문자열로)
  *     ▼
@@ -33,6 +33,7 @@ import type { ParticlePresetKey } from "../document/particles";
 import type { ArticleNode, DocumentNode, TableColumn } from "../document/nodes";
 import type { AttributeKind, ClauseOptionOverride, PlanAxis, ProductCoverageSnapshot, ProductPlan } from "../product/types";
 import type { MasterTree } from "../master";
+import type { ProductGroupSetting } from "../product/groups";
 import type { Code, Coordinate, Id, InlineRepeatConnector, Issue, ReferenceConnector, ValueSlot } from "../types";
 
 // ───────────────────────────── 입력 ─────────────────────────────
@@ -85,6 +86,11 @@ export interface AssemblyProduct {
    * 템플릿에 없는 조의 사본은 쓰이지 않는다.
    */
   articleCopies?: ReadonlyMap<Id, ArticleNode>;
+  /**
+   * 이 상품의 특약 그룹 설정 — 그룹 목록(순서) + 사용자 그룹 소속 (ADR-0090 결정 4 · 5). 없으면 기본 그룹(담보분류)만 열거값 순서.
+   * 사용자 그룹에 넣지 않은 담보는 담보분류의 기본 그룹이다.
+   */
+  groups?: ProductGroupSetting;
 }
 
 /** 상품담보(탑재분) — 스냅샷 구조·값 · 세목 부착. */
@@ -116,13 +122,15 @@ export interface MasterBundle {
   /** 값 자리를 정하는 마스터 트리 (ADR-0037). 없으면 MVP 정본. */
   master?: MasterTree;
   /**
-   * 담보 id → 특약 그룹 열거값 코드 (ADR-0080) — 담보 마스터의 그룹 칸. 없는 담보는 그룹 없음(책자에서 제목 없이).
-   * 그룹 제목 · 순서는 `enums` 의 「특약 그룹」(E0008)에서 읽는다.
+   * 담보 id → 담보분류 값 코드 (ADR-0090) — 담보 마스터의 뼈대 칸, 기본 특약 그룹의 재료. 없는 담보는 미입력(`notEntered`).
+   * 기본 그룹 제목 · 순서는 `enums` 의 「담보분류」(E0009 — 값의 「그룹 제목」 필드 · 값 순서)에서 읽는다.
    */
-  coverageGroups?: ReadonlyMap<Id, Code>;
+  coverageCategories?: ReadonlyMap<Id, Code>;
+  /** 담보 id → 담보코드 — 그룹 안 1차 정렬 키 (ADR-0090 결정 6). 없는 담보는 담보명 순으로 뒤에. */
+  coverageCodes?: ReadonlyMap<Id, Code>;
 }
 
-/** 상품 고유분 — 상품 값 · 세목 · 탑재 스냅샷/값/부착 · 오버라이드 · 숨김 (ADR-0034 결정 2). 상품마다 적재한다. 특약 그룹은 담보 마스터 것이다(ADR-0080). */
+/** 상품 고유분 — 상품 값 · 세목 · 탑재 스냅샷/값/부착 · 오버라이드 · 숨김 · 특약 그룹 설정 (ADR-0034 결정 2). 상품마다 적재한다. */
 export interface ProductInput {
   product: AssemblyProduct;
   coverages: readonly AssemblyCoverage[];
@@ -422,8 +430,12 @@ export interface RenderedDoc {
 
 /** 책자의 특약 그룹 하나 — id 는 「특약 그룹」 열거값 코드. 그룹 없는 상품담보의 자리는 id `ungrouped` · 제목 없음(제목을 찍지 않는다). */
 export interface RenderedGroup {
+  /** 그룹 열쇠 — 기본 그룹 `category:V01` · 사용자 그룹 id · 제목 없는 자리 `ungrouped` (`product/groups.ts` `groupKey`). */
   id: Id;
+  /** 그룹 제목 — 사용자 그룹 이름 · 담보분류 값의 「그룹 제목」. 제목 없는 자리 · 제목 미입력이면 없다. */
   title?: string;
+  /** 기본 그룹의 「그룹 제목」이 비었다 — 제목 자리의 오류 마커 (ADR-0090 결정 2). */
+  titleError?: ErrorNode;
   docs: RenderedDoc[];
 }
 

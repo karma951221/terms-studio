@@ -504,12 +504,13 @@ describe("enumRemovalBlock — 열거형변수 정의 삭제를 막는 곳 (ADR-
     expect(enumRemovalBlock("E0005")).toMatch(/고지유형/);
   });
 
-  it("특약 그룹(E0008)은 코드가 직접 가리키므로 거부", () => {
-    expect(enumRemovalBlock("E0008")).toMatch(/특약 그룹/);
+  it("담보분류(E0009)는 코드가 직접 가리키므로 거부 — 옛 특약 그룹(E0008)은 없앴다", () => {
+    expect(enumRemovalBlock("E0009")).toMatch(/담보분류/);
+    expect(enumRemovalBlock("E0008")).toBeUndefined();
   });
 
   it("그 밖(구분자 결과 타입 · 함수조항 인자 타입이 쓰는 열거형 포함)은 지울 수 있다 — 남은 참조는 깨진 참조로 드러난다", () => {
-    expect(enumRemovalBlock("E0009")).toBeUndefined();
+    expect(enumRemovalBlock("E0010")).toBeUndefined();
     expect(enumRemovalBlock("E0123")).toBeUndefined();
   });
 });

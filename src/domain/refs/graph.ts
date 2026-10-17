@@ -32,7 +32,7 @@ import { collectExpressions, switchEnumCode } from "../clause/body";
 import { valueParamTypes } from "../clause/params";
 import { presetUsage } from "../clause/presets";
 import type { Clause, ClauseBody } from "../clause/types";
-import { SPECIAL_GROUP_ENUM } from "../coverage/specialGroup";
+import { COVERAGE_CATEGORY_ENUM } from "../coverage/category";
 import { nodesOf } from "../coverage/tree";
 import type { Coverage, CoverageNodeLevel } from "../coverage/types";
 import { coordinateOf, indexTree, type DocumentNode } from "../document/nodes";
@@ -589,9 +589,9 @@ function addCoverage(b: Builder, tree: Coverage): void {
   if (tree.documentId !== undefined) {
     b.edge({ from: root, to: { kind: "document", id: tree.documentId }, via: "document", at: { document: "coverageMaster", ownerId: tree.id, ownerName: tree.name } });
   }
-  // 특약 그룹 = 「특약 그룹」 열거값 (ADR-0080) — 값을 지우면 이 간선이 깨진 참조로 남는다(「없는 값」)
-  if (tree.specialGroup !== undefined) {
-    b.edge({ from: root, to: { kind: "enumValue", enumCode: SPECIAL_GROUP_ENUM, valueCode: tree.specialGroup }, via: "specialGroup", at: { document: "coverageMaster", ownerId: tree.id, ownerName: tree.name, refPath: "specialGroup" } });
+  // 담보분류 = 「담보분류」 열거값 (ADR-0090) — 값을 지우면 이 간선이 깨진 참조로 남는다(「없는 값」)
+  if (tree.category !== undefined) {
+    b.edge({ from: root, to: { kind: "enumValue", enumCode: COVERAGE_CATEGORY_ENUM, valueCode: tree.category }, via: "category", at: { document: "coverageMaster", ownerId: tree.id, ownerName: tree.name, refPath: "category" } });
   }
 }
 

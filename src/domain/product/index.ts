@@ -8,7 +8,7 @@
  * - naming.ts       : default 상품담보명 (작명 문법 확정 주석)
  * - plans.ts        : 세목유형·선택지·유효 조합 규칙
  * - mount.ts        : 조합 키·선택 검증·스냅샷 구조 대조(diffStructure)
- * - groups.ts       : sortInGroup — 특약 그룹 안 자동 정렬 (그룹 자체는 담보의 열거값, ADR-0080)
+ * - groups.ts       : 특약 그룹 — 상품 그룹 목록(기본 그룹 = 담보분류 · 사용자 그룹) · 저장 계획 · 그룹 안 자동 정렬 (ADR-0090)
  * - completeness.ts : 노출 구분자 · 미입력 목록 · 기본계약 부착 검사
  */
 export * from "./articleCopies";

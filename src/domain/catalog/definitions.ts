@@ -29,7 +29,7 @@ import { allocateCode, type NextSeq } from "./codes";
 import { checkDiscriminatorExpression, checkReferenceCycle, checkResultType, type DiscriminatorCatalog } from "./expression";
 import { fieldValuesFor, planFields, type EnumFieldInput, type EnumFieldRevision } from "./fields";
 import { enumReferences } from "./impact";
-import { SPECIAL_GROUP_ENUM } from "../coverage/specialGroup";
+import { COVERAGE_CATEGORY_ENUM } from "../coverage/category";
 import type {
   Discriminator,
   DiscriminatorResultType,
@@ -487,14 +487,14 @@ export async function reviseEnum(
 
 /**
  * 열거형변수 정의 삭제를 막는 이유 (ADR-0049 §2 표 〔D-P1-17〕 · 기능/열거형 §3.2) — 없으면 undefined(지울 수 있다).
- * 코드가 가리키는 열거형만 막는다: **코드 마스터 필드의 타입**(그 참조는 배포로만 끊긴다)과 **특약 그룹**(코드가 E0008 을 직접 가리킨다).
+ * 코드가 가리키는 열거형만 막는다: **코드 마스터 필드의 타입**(그 참조는 배포로만 끊긴다)과 **담보분류**(코드가 E0009 를 직접 가리킨다, ADR-0090).
  * 데이터가 가리키는 것(구분자 명시 결과 타입 · 함수조항 인자 타입 · 조건식)은 막지 않는다 — 지우고 남은 참조를 깨진 참조로 드러낸다
  * (값 삭제의 「없는 값」과 같은 결, ADR-0078 결정 5). — 왜: 데이터 참조는 편집자가 고칠 수 있지만, 코드 참조는 고칠 길이 화면에 없다.
  */
 export function enumRemovalBlock(enumCode: Code): string | undefined {
   const fields = enumReferences(enumCode).map((c) => `「${c.ownerName}」`);
   if (fields.length > 0) return `코드 마스터 필드 ${fields.join(" · ")}이(가) 타입으로 쓰는 열거형변수는 지울 수 없습니다`;
-  if (enumCode === SPECIAL_GROUP_ENUM) return "담보의 특약 그룹이 코드로 가리키는 열거형변수(「특약 그룹」)는 지울 수 없습니다";
+  if (enumCode === COVERAGE_CATEGORY_ENUM) return "담보의 담보분류가 코드로 가리키는 열거형변수(「담보분류」)는 지울 수 없습니다";
   return undefined;
 }
 
