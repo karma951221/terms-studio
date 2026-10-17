@@ -79,6 +79,20 @@ export async function setProductGeneralDocumentAction(id: Id, formData: FormData
   redirect(productDetailPath(id, "general"));
 }
 
+/**
+ * 편집 중 「템플릿 바꾸기…」 고르기 줄의 액션 (기능/상품 §4.6, `useActionState`). 흐름은 위와 같고 거부만 다르다 —
+ * 잃을 것이 있는데 편집자면 서비스가 「템플릿 교체(해제)는 관리자만 …」으로 거부하는데(2026-10-17), 그 문장을
+ * 고르기 줄 아래에 보이도록 주소를 옮기지 않고 돌려준다. 다른 거부도 같은 자리다.
+ */
+export async function pickProductGeneralDocumentAction(id: Id, _previous: { message?: string }, formData: FormData): Promise<{ message?: string }> {
+  const actor = await currentActor();
+  const generalDocumentId = str(formData, "generalDocumentId") || undefined;
+  const r = await getServices().product.setGeneralDocument(actor, id, generalDocumentId);
+  if (!r.ok && r.rejection.reason === "needsConfirmation") redirect(`${productDetailPath(id, "general")}&confirm=template:${encodeURIComponent(generalDocumentId ?? "")}`);
+  if (!r.ok) return { message: msg(r.rejection) };
+  redirect(productDetailPath(id, "general"));
+}
+
 /** 확인 카드의 실행 버튼 — 같은 교체를 `confirm` 으로 다시 부른다 (폼에는 필드가 없어 여기서 짠다). */
 export async function confirmProductGeneralDocumentAction(id: Id, generalDocumentId: Id | undefined): Promise<void> {
   const fd = new FormData();

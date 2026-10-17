@@ -17,7 +17,7 @@ import { ProductEditProvider } from "./ProductEdit";
 import { titleNodes } from "@/domain/document/title";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => undefined, push: () => undefined, replace: () => undefined }) }));
-vi.mock("../../actions", () => ({ saveProductGeneralAction: async () => ({ ok: true }), setProductGeneralDocumentAction: async () => undefined }));
+vi.mock("../../actions", () => ({ saveProductGeneralAction: async () => ({ ok: true }), setProductGeneralDocumentAction: async () => undefined, pickProductGeneralDocumentAction: async () => ({}) }));
 
 const text = (id: string, t: string) => ({ id, kind: "text" as const, text: t });
 /** 제1조(A1) ① ② · 제2조(A2)가 제1조 ①을 가리킨다. */

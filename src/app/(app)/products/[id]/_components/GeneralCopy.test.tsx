@@ -17,7 +17,7 @@ import { ProductEditProvider } from "./ProductEdit";
 import { titleNodes } from "@/domain/document/title";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => undefined, push: () => undefined, replace: () => undefined }) }));
-vi.mock("../../actions", () => ({ saveProductGeneralAction: async () => ({ ok: true }), setProductGeneralDocumentAction: async () => undefined }));
+vi.mock("../../actions", () => ({ saveProductGeneralAction: async () => ({ ok: true }), setProductGeneralDocumentAction: async () => undefined, pickProductGeneralDocumentAction: async () => ({}) }));
 
 const art = (id: string, title: string, body: string): ArticleNode => ({ id, kind: "article", title: titleNodes(title, id), children: [{ id: `${id}-p`, kind: "paragraph", children: [{ id: `${id}-t`, kind: "text", text: body }] }] });
 const template: DocumentNode = {
