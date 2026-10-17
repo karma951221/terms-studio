@@ -28,31 +28,31 @@ async function menu(page: import("@playwright/test").Page, label: string): Promi
 }
 
 test.describe.serial("실물 재현(화면) ③b 사람처럼 — 말기신부전증진단비보장", () => {
-  test("담보 — 메뉴 「담보」 → + → 담보명 · 세부보장 · 급부 → 생성 → 편집: 보험금명 · 특약 그룹(질병) → 저장", NO_COORD, async ({ page, ev }) => {
+  test("담보 — 메뉴 「담보」 → + → 담보명 · 세부보장 · 급부 · 담보분류(질병) → 생성 → 편집: 보험금명 → 저장", NO_COORD, async ({ page, ev }) => {
     await ev.action("실물사람#1.1", "관리자로 로그인하고 홈에서 메뉴 「담보」로 들어간다", async () => {
       await login(page);
       await open(page, "/");
       await menu(page, "담보");
       await expect(page).toHaveURL(/\/coverages/);
     });
-    await ev.action("실물사람#1.2", `「+」 — 담보명 「${NAME}」 · 세부보장명 · 급부명 「${CLAIM}」 → 생성`, async () => {
+    await ev.action("실물사람#1.2", `「+」 — 담보명 「${NAME}」 · 세부보장명 · 급부명 「${CLAIM}」 · 담보분류 「질병」 → 생성`, async () => {
       await page.getByRole("link", { name: "새 담보", exact: true }).click();
       await arrive(page, /\/coverages\/new/);
       await page.getByLabel("담보명").fill(NAME);
       await page.getByLabel("세부보장명").fill(NAME);
       await page.getByLabel("급부명").fill(CLAIM);
+      await page.getByLabel("담보분류").selectOption({ label: "질병" });
       await page.getByRole("button", { name: "생성", exact: true }).click();
       await arrive(page, /\/coverages\/[0-9a-f-]{36}$/);
       await expect(page.locator(".ts-count code").first()).toHaveText("COV000023");
     });
-    await ev.action("실물사람#1.3", `편집 — 보험금명 「${CLAIM}」 · 특약 그룹 「질병 관련 특별약관」 → 저장`, async () => {
+    await ev.action("실물사람#1.3", `편집 — 보험금명 「${CLAIM}」 → 저장 · 담보 카드 맨 위 담보분류 「질병」`, async () => {
       await page.getByRole("button", { name: "편집", exact: true }).click();
       await page.locator(`section.ts-cov-card[data-level='coverage'] input[name="coverage_basic.claim_name"]`).fill(CLAIM);
-      await page.getByRole("combobox", { name: "특약 그룹", exact: true }).selectOption({ label: "질병 관련 특별약관" });
       await saveEdit(page);
       await page.reload();
       await expect(page.locator(`input[name="coverage_basic.claim_name"]`)).toHaveValue(CLAIM);
-      await expect(page.locator('[data-path="specialGroup"] .ts-form-control')).toHaveText("질병 관련 특별약관");
+      await expect(page.locator('[data-path="category"] .ts-form-control')).toHaveText("질병");
     });
   });
 

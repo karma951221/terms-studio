@@ -17,7 +17,9 @@ const read = <T>(file: string): T => JSON.parse(readFileSync(path.join(DATA, fil
 export interface EnumSpec {
   code: string;
   label: string;
-  values: { code: string; label: string }[];
+  /** 유저 정의 필드 (ADR-0078) — 키는 채번(F01…)이라 순서대로. */
+  fields?: { key: string; label: string; type: "string" | "boolean" }[];
+  values: { code: string; label: string; fields?: Record<string, string | boolean> }[];
 }
 export interface DiscriminatorSpec {
   code: string;
@@ -37,8 +39,8 @@ export interface CoverageSpec {
   benefitName: string;
   subCoverages?: { name: string; benefitName: string }[];
   coverageValues: { path: string; value: string }[];
-  /** 특약 그룹 — 열거형 「특약 그룹」(E0008) 값 코드. 없으면 그룹 없음(기본계약 담보) (ADR-0080). */
-  specialGroup?: string;
+  /** 담보분류 — 열거형 「담보분류」(E0009) 값 코드, 필수 (ADR-0090). */
+  category: string;
   /** 변환기가 쓴 자동 탑재 담보(알파Plus2607 주계약 특약 전체) — 화면으로 치지 않는다. */
   auto?: true;
 }

@@ -5,7 +5,7 @@ import { HUMAN, SEED } from "./_lib/seed";
 /**
  * ★ 실물 재현(화면) ② 담보 9 — 담보 › 세부보장 › 급부 구조와 담보 값(보험금명). 모델명세 §3.1.
  * 생성 화면에서 담보명 · 첫 세부보장명 · 첫 급부명, 세부보장이 여럿이면 상세 편집의 「+ 세부보장」으로 나머지를 더한다.
- * 보험금명(`coverage_basic.claim_name`) · 특약 그룹(열거형 E0008 값 — 담보 카드 맨 위, ADR-0080)은 같은 편집에서 — 편집 한 번 = 저장 한 번.
+ * 담보분류(열거형 E0009 값 — 필수, ADR-0090)는 생성 화면에서 고르고, 보험금명(`coverage_basic.claim_name`)은 상세 편집에서 — 편집 한 번 = 저장 한 번.
  */
 
 test.describe.serial("실물 재현(화면) ② 담보", () => {
@@ -16,18 +16,19 @@ test.describe.serial("실물 재현(화면) ② 담보", () => {
       await ev.action("실물화면#2.1", "관리자로 로그인한다", () => login(page));
       const [first, ...rest] = spec.subCoverages ?? [{ name: spec.name, benefitName: spec.benefitName }];
 
-      await ev.action("실물화면#2.2", `담보를 만든다 — 세부보장 「${first.name}」 › 급부 「${first.benefitName}」`, async () => {
+      const categoryLabel = SEED.enums.find((e) => e.code === "E0009")!.values.find((v) => v.code === spec.category)!.label;
+      await ev.action("실물화면#2.2", `담보를 만든다 — 세부보장 「${first.name}」 › 급부 「${first.benefitName}」 · 담보분류 「${categoryLabel}」`, async () => {
         await open(page, "/coverages/new");
         await page.getByLabel("담보명").fill(spec.name);
         await page.getByLabel("세부보장명").fill(first.name);
         await page.getByLabel("급부명").fill(first.benefitName);
+        await page.getByLabel("담보분류").selectOption(spec.category);
         await page.getByRole("button", { name: "생성", exact: true }).click();
         await arrive(page, /\/coverages\/[0-9a-f-]{36}$/);
         await expect(page.locator(".ts-count code").first()).toHaveText(spec.code);
       });
 
-      const groupLabel = spec.specialGroup ? SEED.enums.find((e) => e.code === "E0008")!.values.find((v) => v.code === spec.specialGroup)!.label : undefined;
-      await ev.action("실물화면#2.3", `편집 — 세부보장 ${rest.length}개 더하기 · 보험금명 「${spec.coverageValues[0]?.value}」 · 특약 그룹 「${groupLabel ?? "없음"}」 · 저장 한 번`, async () => {
+      await ev.action("실물화면#2.3", `편집 — 세부보장 ${rest.length}개 더하기 · 보험금명 「${spec.coverageValues[0]?.value}」 · 저장 한 번`, async () => {
         await page.getByRole("button", { name: "편집", exact: true }).click();
         for (const [i, sub] of rest.entries()) {
           const n = i + 2;
@@ -37,7 +38,6 @@ test.describe.serial("실물 재현(화면) ② 담보", () => {
           await card.getByRole("textbox", { name: "급부명 · 1", exact: true }).fill(sub.benefitName);
         }
         for (const value of spec.coverageValues) await page.locator(`section.ts-cov-card[data-level='coverage'] input[name="${value.path}"]`).fill(value.value);
-        if (spec.specialGroup) await page.getByRole("combobox", { name: "특약 그룹", exact: true }).selectOption(spec.specialGroup);
         await saveEdit(page);
       });
 
@@ -51,7 +51,7 @@ test.describe.serial("실물 재현(화면) ② 담보", () => {
           await expect(page.locator(".ts-cov-card-name", { hasText: sub.benefitName }).first()).toBeVisible();
         }
         for (const value of spec.coverageValues) await expect(page.locator(`input[name="${value.path}"]`)).toHaveValue(value.value);
-        await expect(page.locator('[data-path="specialGroup"] .ts-form-control')).toHaveText(groupLabel ?? "—");
+        await expect(page.locator('[data-path="category"] .ts-form-control')).toHaveText(categoryLabel);
       });
     });
   }

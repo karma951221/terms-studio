@@ -248,11 +248,15 @@ export interface SpecialSpec {
    * 자동 탑재 특약 — 함수조항 쓰임 · 보험금명 슬롯을 변환기가 찾는다(`auto.ts` · convert.ts). `renewal` 은 같은 담보의 갱신형 원문 —
    * 두 벌을 템플릿 하나로 합친다(갱신유형 조건 블록). 담보 · 탑재 시드도 변환기가 쓴다(`coverages.json` · `products.json` 의 자동 탑재분).
    */
-  auto?: { group: SpecialGroup; renewal?: string };
+  auto?: { category: CoverageCategory; group?: string; renewal?: string };
 }
 
-/** 특약 그룹 — 열거형 「특약 그룹」(E0008) 값 코드 (ADR-0080). 원문 파일(특별약관 Ⅰ ~ Ⅴ)이 곧 그룹이다. */
-export type SpecialGroup = "V01" | "V02" | "V03" | "V04" | "V05";
+/**
+ * 담보분류 — 열거형 「담보분류」(E0009) 값 코드: V01 상해 · V02 질병 · V03 비용손해 · V04 배상책임 · V05 재물손해 (ADR-0090).
+ * 원문 파일(특별약관 Ⅰ ~ Ⅴ)이 곧 책자의 그룹이다 — 담보분류의 기본 그룹(「상해 관련 특별약관」 …)과 맞지 않는 파일(「상해 및 질병 관련」 · 「기타」)은
+ * 그 상품의 사용자 그룹(`group` = 그룹 이름)으로 묶는다. 그룹 목록 순서는 원문 파일 순서(설정의 특약 순서)다.
+ */
+export type CoverageCategory = "V01" | "V02" | "V03" | "V04" | "V05";
 
 /**
  * 함수조항 — 두 상품(알파Plus · 메리츠)의 원문이 되풀이하는 조 (모델명세 §4 · 메리츠_모델명세 §4 · 기능/함수조항 §6.2).
@@ -813,19 +817,20 @@ const disease = (key: string, file: string, claim: string, slotCount: number, ar
  * 담보 key 는 `a7-<그룹 글자><번호>`. 갱신형만 있는 특약은 갱신형 fixture 를 `file` 에 둔다(제목에서 갱신형을 읽는다).
  */
 export const autoSpecial =
-  (letter: string, group: SpecialGroup) =>
+  (letter: string, category: CoverageCategory, group?: string) =>
   (no: number, file: string, renewal?: string): SpecialSpec => ({
     code: `a7-${letter}${no}-doc`,
     ownerCoverage: `a7-${letter}${no}`,
     idPrefix: `a7${letter}${no}`,
     file,
     slots: [],
-    auto: { group, ...(renewal ? { renewal } : {}) },
+    auto: { category, ...(group ? { group } : {}), ...(renewal ? { renewal } : {}) },
   });
 const injury = autoSpecial("i", "V01");
-const etc = autoSpecial("e", "V05");
-const cost = autoSpecial("c", "V04");
-const both = autoSpecial("b", "V03");
+// 「기타 특별약관」(자동갱신 · 피보험자추가) · 「상해 및 질병 관련 특별약관」은 기본 그룹이 없다 — 담보분류는 질병, 묶음은 사용자 그룹 (ADR-0090)
+const etc = autoSpecial("e", "V02", "기타 특별약관");
+const cost = autoSpecial("c", "V03");
+const both = autoSpecial("b", "V02", "상해 및 질병 관련 특별약관");
 const illness = autoSpecial("d", "V02");
 
 /** 알파Plus2607 자동 탑재 — 원문 「특별약관 Ⅰ ~ Ⅴ」 의 특약 중 손으로 설정한 것(2604 담보 탑재 · 질병 대표 5)을 뺀 전부. */

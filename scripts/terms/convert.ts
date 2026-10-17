@@ -736,20 +736,29 @@ function guardClauseWaiver(record: ClauseRecord, isWaiver: (id: Id) => boolean):
 
 /**
  * 자동 탑재 특약의 담보 · 탑재 시드 — `coverages.json` 은 손으로 쓴 것 뒤에(코드는 이어서), `products.json` 은 그 상품의 손으로 쓴 탑재 뒤에.
- * 담보명 · 갱신유형은 원문 제목, 보험금명은 소멸 조에서 읽은 것(없으면 담보명), 특약 그룹은 원문 파일(특별약관 Ⅰ ~ Ⅴ).
+ * 담보명 · 갱신유형은 원문 제목, 보험금명은 소멸 조에서 읽은 것(없으면 담보명), 담보분류 · 특약 그룹은 원문 파일(특별약관 Ⅰ ~ Ⅴ) —
+ * 기본 그룹(담보분류)과 맞지 않는 파일은 그 상품의 사용자 그룹이고, 상품의 그룹 목록(`groups`)은 원문 파일 순서다 (ADR-0090).
  * 갱신형 짝은 담보 하나 · 탑재 둘(갱신유형 비갱신형 · 갱신형), 갱신형만 있는 특약은 탑재 하나(갱신형).
  */
 function writeAutoSeeds(products: readonly BuiltProduct[], out: (file: string, data: unknown) => void): void {
   // 자동 탑재분은 `auto: true` 로 표시한다 — 다시 쓸 때 지난번 자동 탑재분을 모두 지우고 지금 설정으로 새로 쓴다(손으로 쓴 것은 그대로)
-  type Coverage = { key: string; code: string; name: string; benefitName: string; specialGroup?: string; coverageValues: { path: string; value: unknown }[]; benefitValues: unknown[]; auto?: true };
+  type Coverage = { key: string; code: string; name: string; benefitName: string; category?: string; coverageValues: { path: string; value: unknown }[]; benefitValues: unknown[]; auto?: true };
+  type Group = { category: string } | { name: string; coverages: string[] };
   type Mount = { code: string; coverage: string; section: string; attributes: { kindCode: string; valueCode: string }[]; auto?: true };
   const coverages = JSON.parse(readFileSync(path.join(root, SEED_DIR, "coverages.json"), "utf8")) as Coverage[];
-  const seeded = JSON.parse(readFileSync(path.join(root, SEED_DIR, "products.json"), "utf8")) as { code: string; mounts: Mount[] }[];
+  const seeded = JSON.parse(readFileSync(path.join(root, SEED_DIR, "products.json"), "utf8")) as { code: string; mounts: Mount[]; groups?: Group[] }[];
   const hand = coverages.filter((c) => !c.auto);
   const next: Coverage[] = [...hand];
   for (const p of products) {
     const mounts: Mount[] = [];
+    const groups: Group[] = [];
     for (const spec of p.product.specials.filter((s) => s.auto)) {
+      const { category, group } = spec.auto!;
+      const user = group === undefined ? undefined : groups.find((g): g is Extract<Group, { name: string }> => "name" in g && g.name === group);
+      if (group !== undefined) {
+        if (user) user.coverages.push(spec.ownerCoverage);
+        else groups.push({ name: group, coverages: [spec.ownerCoverage] });
+      } else if (!groups.some((g) => "category" in g && g.category === category)) groups.push({ category });
       const meta = p.specials.get(spec.code)!.auto!;
       const { name, renewal } = coverageNameOf(meta.title);
       const benefit = meta.claim ?? name;
@@ -758,7 +767,7 @@ function writeAutoSeeds(products: readonly BuiltProduct[], out: (file: string, d
         code: `COV${String(next.length + 1).padStart(6, "0")}`,
         name,
         benefitName: benefit,
-        specialGroup: spec.auto!.group,
+        category: spec.auto!.category,
         coverageValues: [{ path: "coverage_basic.claim_name", value: benefit }],
         benefitValues: [],
         auto: true,
@@ -769,7 +778,11 @@ function writeAutoSeeds(products: readonly BuiltProduct[], out: (file: string, d
       else mounts.push(mount(spec.ownerCoverage, renewal ? attr("2") : []));
     }
     const product = seeded.find((x) => x.code === p.product.code);
-    if (product) product.mounts = [...product.mounts.filter((m) => !m.auto), ...mounts];
+    if (product) {
+      product.mounts = [...product.mounts.filter((m) => !m.auto), ...mounts];
+      if (groups.some((g) => "name" in g)) product.groups = groups;
+      else delete product.groups;
+    }
   }
   out("coverages.json", next);
   out("products.json", seeded);

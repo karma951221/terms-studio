@@ -138,6 +138,9 @@ async function loadBoxes(services: Services, actor: Actor, upTo?: number): Promi
   }
 }
 
+/** 상품의 특약 그룹 목록 한 줄 — 기본 그룹(담보분류 값 코드) 또는 사용자 그룹(이름 + 담보 시드 키) (ADR-0090). */
+type SeedGroup = { category: Code } | { name: string; coverages: string[] };
+
 interface EnumSeed {
   code: Code;
   label: string;
@@ -151,7 +154,15 @@ interface EnumSeed {
  * 필드 키는 시스템 채번(F01…)이라 JSON 순서가 곧 키다 — JSON 의 key 를 생성의 필드 ref 로 써서 값 칸이 가리키고, 채번 결과를 대조한다.
  */
 async function loadEnums(services: Services, actor: Actor, upTo?: number): Promise<void> {
+  let next = 1;
   for (const definition of (enums as unknown as EnumSeed[]).slice(0, upTo)) {
+    // 없앤 열거형의 코드 빈자리(옛 「특약 그룹」 E0008 — ADR-0090 결정 3)는 채번값이라 건너뛸 수 없다 — 자리표시 열거형을 만들고 지운다(화면에서 지우는 것과 같다)
+    for (const seq = parseCode(definition.code)?.seq ?? next; next < seq; next++) {
+      const gap = unwrap(await services.catalog.createEnum(actor, { label: `(지운 열거형 ${formatCode("enum", next)})`, values: [{ label: "값" }] }));
+      expectCode(gap.code, formatCode("enum", next));
+      unwrap(await services.catalog.removeEnum(actor, gap.code, { confirm: true }));
+    }
+    next++;
     // 지운 값(코드 빈자리 — E0001 의 V12 · V13, ADR-0086 결정 5)은 채번값이라 건너뛸 수 없다 — 자리표시 값으로 만들고 상세 저장에서 지운다(화면에서 지우는 것과 같다)
     const seeded = new Map(definition.values.map((v) => [v.code, v]));
     const last = Math.max(0, ...definition.values.map((v) => parseCode(v.code)?.seq ?? 0));
@@ -291,8 +302,8 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
     subCoverages?: { name: string; benefitName: string }[];
     coverageValues: { path: string; value: unknown }[];
     benefitValues: { path: string; value: unknown }[];
-    /** 특약 그룹 — 열거형 「특약 그룹」(E0008) 값 코드. 없으면 그룹 없음(기본계약 담보) (ADR-0080). */
-    specialGroup?: string;
+    /** 담보분류 — 열거형 「담보분류」(E0009) 값 코드, 필수 (ADR-0090). */
+    category: string;
   }
   const coverageIds = new Map<string, Id>();
   for (const specification of coverages as unknown as CoverageSpec[]) {
@@ -302,12 +313,12 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
         name: specification.name,
         subCoverageName: first?.name,
         benefitName: first?.benefitName ?? specification.benefitName,
+        category: specification.category,
       }),
     );
     expectCode(tree.code ?? "", specification.code);
     for (const sub of rest) tree = unwrap(await services.coverage.addSubCoverage(actor, tree.id, sub));
     coverageIds.set(specification.key, tree.id);
-    if (specification.specialGroup) unwrap(await services.coverage.setSpecialGroup(actor, tree.id, specification.specialGroup));
     const benefitId = tree.subCoverages[0].benefits[0].id;
     for (const entry of specification.coverageValues) unwrap(await services.coverage.writeValue(actor, { level: "coverage", id: tree.id }, entry.path, entry.value as Value));
     for (const entry of specification.benefitValues) unwrap(await services.coverage.writeValue(actor, { level: "benefit", id: benefitId }, entry.path, entry.value as Value));
@@ -368,6 +379,21 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
       if (!coverageId) throw new Error(`[seed:alphaPlus] 담보 참조를 찾을 수 없음: ${mount.coverage}`);
       const mounted = unwrap(await services.product.mount(actor, productId, coverageId, mount.attributes, mount.section as "base" | "special"));
       mountIds.set(mount.code, mounted.id);
+    }
+    // 특약 그룹 목록 (ADR-0090) — 기본 그룹(담보분류)의 자리 · 사용자 그룹(이름 + 담보). 상품담보 탭 저장과 같은 서비스로 넣는다
+    const groups = (specification as { groups?: SeedGroup[] }).groups;
+    if (groups) {
+      const list = groups.map((g, i) => ("category" in g ? { kind: "category" as const, code: g.category } : { kind: "user" as const, key: `seed:${i}`, name: g.name }));
+      const memberships = groups.flatMap((g, i) =>
+        "category" in g
+          ? []
+          : g.coverages.map((key) => {
+              const coverageId = coverageIds.get(key);
+              if (!coverageId) throw new Error(`[seed:alphaPlus] 그룹 「${g.name}」의 담보 참조를 찾을 수 없음: ${key}`);
+              return { coverageId, group: `seed:${i}` };
+            }),
+      );
+      unwrap(await services.product.saveCoverages(actor, productId, { added: [], updated: [], removed: [], groups: { list, memberships } }));
     }
   }
 
