@@ -61,7 +61,7 @@ import type { Clause, ClauseMode, OptionSelection } from "../clause/types";
 import type { EnumDef } from "../catalog/types";
 import type { Box } from "../document/box";
 import type { MasterTree } from "../master";
-import { fallbackPathId, type ArticleNode, type BoxNode, type BoxRefNode, type BulletListNode, type BulletNode, type ClauseBlockRefNode, type CondBlockNode, type DocumentNode, type ForBlockNode, type InlineForNode, type InlineNode, type ItemNode, type ParagraphNode, type RepeatNode, type SectionNode, type SubitemNode, type TableNode } from "../document/nodes";
+import { fallbackPathId, type ArticleNode, type BoxNode, type BoxRefNode, type BulletListNode, type BulletNode, type ClauseBlockRefNode, type CondBlockNode, type DocumentNode, type DynTableRefNode, type ForBlockNode, type InlineForNode, type InlineNode, type ItemNode, type ParagraphNode, type RepeatNode, type SectionNode, type SubitemNode, type TableNode } from "../document/nodes";
 import { withCodes } from "../document/pcode";
 import { foldTitle } from "../document/title";
 import { withClauseCodes } from "../clause/pcode";
@@ -104,10 +104,10 @@ type AnyCond = CondBlockNode | ClauseCondBlockNode;
 type AnySubitem = ClauseSubitemNode | SubitemNode;
 type AnyItem = ItemNode | ClauseItemNode;
 type AnyParagraph = ParagraphNode | ClauseParagraphNode;
-type AnyBlock = AnyParagraph | AnyCond | ClauseSwitchBlockNode | ClauseBlockRefNode | ForBlockNode | ClauseBlock | ItemNode | SubitemNode | ArticleNode | SectionNode | TableNode | BoxNode | BulletListNode | BulletNode | BoxRefNode;
+type AnyBlock = AnyParagraph | AnyCond | ClauseSwitchBlockNode | ClauseBlockRefNode | ForBlockNode | ClauseBlock | ItemNode | SubitemNode | ArticleNode | SectionNode | TableNode | BoxNode | BulletListNode | BulletNode | BoxRefNode | DynTableRefNode;
 type AnyStatic = TableNode | BoxNode | BulletListNode | ClauseBulletListNode;
 /** 호 목록 자리 — 호 · 조건 블록 · 정적 블록 · 박스 참조 · 「호」 함수조항 참조 (펼친 호 유형 본문도 같은 자리). */
-type AnyItemSlot = AnyItem | AnyCond | AnyStatic | BoxRefNode | ClauseBlockRefNode | ClauseItemCondBlockNode | ClauseItemSwitchBlockNode | ForBlockNode;
+type AnyItemSlot = AnyItem | AnyCond | AnyStatic | BoxRefNode | DynTableRefNode | ClauseBlockRefNode | ClauseItemCondBlockNode | ClauseItemSwitchBlockNode | ForBlockNode;
 /** 목 목록 자리 — 목 · 조건 블록 · 글머리 목록 · 「목」 함수조항 참조 (펼친 목 유형 본문도 같은 자리). */
 type AnySubitemSlot = AnySubitem | AnyCond | BulletListNode | ClauseBlockRefNode | ClauseSubitemCondBlockNode | ClauseSubitemSwitchBlockNode;
 /** 가지 — 블록·인라인·함수조항 쪽 모두 이 모양이다. children 은 자리에 맞게 캐스팅한다. */
@@ -640,6 +640,8 @@ class Walker {
     return list.flatMap((n): (RItem<RInline> | RStatic<RInline> | ErrorNode)[] => {
       if (n.kind === "item") return [this.item(n, f)];
       if (n.kind === "boxRef") return [this.boxRef(n, f)];
+      // 동적표 펼침은 다음 단계 — 지금은 구조 오류 마커 (기능/동적표 §3.6)
+      if (n.kind === "dynTableRef") return [this.error(n.id, { kind: "structure", message: `${n.kind} 은(는) 아직 조립하지 않습니다`, at: this.at(f, n.id) })];
       if (n.kind === "table" || n.kind === "box" || n.kind === "bulletList") return this.static(n, f);
       if (n.kind === "clauseBlockRef") {
         // 「호」 함수조항 — 호 목록(빈 목록 · 여러 호 가능)을 이 자리에 펴고 번호는 사용처에서 이어 매긴다 (최종 결정 4).

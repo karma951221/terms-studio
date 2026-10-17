@@ -338,7 +338,7 @@ function cloneSubtree<T extends Node>(root: T, newId: IdSource): T {
       });
     }
     if (n.kind === "forBlock" && typeof n.source === "object" && n.source !== null && "loop" in n.source && typeof n.source.loop === "string") n.source = { ...n.source, loop: loopOf(n.source.loop) };
-    if ((n.kind === "clauseBlockRef" || n.kind === "clauseInlineRef") && n.bindings) {
+    if ((n.kind === "clauseBlockRef" || n.kind === "clauseInlineRef" || n.kind === "dynTableRef") && n.bindings) {
       for (const [name, b] of Object.entries(n.bindings)) {
         if (b.kind === "current") n.bindings[name] = { ...b, loop: loopOf(b.loop) };
         else if (b.kind === "discriminator" && b.node && "current" in b.node) n.bindings[name] = { ...b, node: { current: loopOf(b.node.current) } };

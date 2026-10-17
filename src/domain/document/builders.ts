@@ -3,6 +3,7 @@
  * 기본 id 는 uuid (`crypto.randomUUID`). 테스트는 `sequentialIds()` 로 결정적 id 를 쓴다.
  */
 
+import type { Bindings } from "../clause/params";
 import type { Code, Id, InlineRepeatConnector } from "../types";
 import type { RepeatSource } from "./blockRepeat";
 import type { ParticleNode, ParticlePresetKey } from "./particles";
@@ -10,6 +11,7 @@ import { titleNodes } from "./title";
 import type {
   AppendixRefNode,
   BoxRefNode,
+  DynTableRefNode,
   ArticleNode,
   ArticleRefNode,
   BlockBranch,
@@ -148,6 +150,8 @@ export function nodeBuilders(newId: IdSource = randomIds) {
     particle: (preset: ParticlePresetKey): ParticleNode => ({ id: newId(), kind: "particle", preset }),
     /** 정적 마스터 박스 참조 — 코드만. */
     boxRef: (boxCode: Code): BoxRefNode => ({ id: newId(), kind: "boxRef", boxCode }),
+    /** 동적표 참조 — 코드 + 인자 연결 (기능/동적표 §3.5). 연결이 비면 키를 싣지 않는다. */
+    dynTableRef: (tableCode: Code, bindings?: Bindings): DynTableRefNode => ({ id: newId(), kind: "dynTableRef", tableCode, ...(bindings && Object.keys(bindings).length > 0 ? { bindings } : {}) }),
     clauseBlock: (clauseCode: Code, options: Record<Code, Code> = {}, excludeFromComparison?: boolean): ClauseBlockRefNode => ({
       id: newId(),
       kind: "clauseBlockRef",

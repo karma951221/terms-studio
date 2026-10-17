@@ -64,8 +64,8 @@ function positionAliases(master: ArticleNode, base: RArticle<SInline>): [string,
 
 function positionPairs(master: ArticleNode, base: RArticle<SInline>): [{ code?: string }, { key?: string }][] {
   // 마스터에 동적 노드(조건 블록 · 함수조항 참조 · 반복)가 있으면 항이 몇 개로 펼쳐질지 알 수 없다 — 별칭을 만들지 않는다.
-  // 박스 참조(boxRef)는 항을 펼치지 않는다 — 정적 박스와 같다 (기능/박스 §3.2)
-  const dynamicNode = (c: { kind: string }) => c.kind === "condBlock" || c.kind === "forBlock" || c.kind === "clauseBlockRef";
+  // 박스 참조(boxRef)는 항을 펼치지 않는다 — 정적 박스와 같다 (기능/박스 §3.2). 동적표 참조는 담보마다 다른 표를 펼친다 — 동적이다 (기능/동적표 §3.6)
+  const dynamicNode = (c: { kind: string }) => c.kind === "condBlock" || c.kind === "forBlock" || c.kind === "clauseBlockRef" || c.kind === "dynTableRef";
   const masterParagraphs = master.children.filter((c) => c.kind === "paragraph");
   if (master.children.some((c) => dynamicNode(c))) return [];
   // 정적 표·박스는 대응에 영향을 주지 않는다. 오류 마커가 있으면 신뢰할 수 없다.

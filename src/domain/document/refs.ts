@@ -40,6 +40,8 @@ export type DocRef =
   | { kind: "appendix"; appendixCode: Code; at: Coordinate }
   /** 정적 마스터 박스 참조 (최종 결정 9). */
   | { kind: "box"; boxCode: Code; at: Coordinate }
+  /** 동적표 참조 (기능/동적표 §3.5) — `bindings` = 사용처의 인자 연결, 없으면 기본 연결. */
+  | { kind: "dynTable"; tableCode: Code; bindings?: Bindings; at: Coordinate }
   /**
    * 반복 원천이 읽는 마스터 필드(`폼.필드`) — 목록 필드(사유 반복은 바깥 종 반복의 폼) · 거름 식의 필드 (ADR-0077).
    * `where` = 합집합 거름의 열거값 필드 키 — 그 목록 필드의 열거형 필드다. 좌표는 반복 블록 · refPath = 마스터 경로.
@@ -128,6 +130,9 @@ export function collectRefs(doc: DocumentNode, base: Coordinate = {}): DocRef[] 
       case "boxRef":
         out.push({ kind: "box", boxCode: n.boxCode, at });
         break;
+      case "dynTableRef":
+        out.push({ kind: "dynTable", tableCode: n.tableCode, ...(n.bindings ? { bindings: n.bindings } : {}), at });
+        break;
       // 반복 원천이 읽는 마스터 필드 — 블록 반복 · 인라인 반복(ADR-0088 — 같은 RepeatSource) 공통
       case "forBlock":
       case "inlineFor": {
@@ -151,6 +156,13 @@ export function collectRefs(doc: DocumentNode, base: Coordinate = {}): DocRef[] 
         break;
     }
   }
+  return out;
+}
+
+/** 문서가 참조하는 동적표 코드 — 등장 순 · 중복 없이 (관계정보 · 동적표 삭제 영향). */
+export function dynTableCodesIn(doc: DocumentNode): Set<Code> {
+  const out = new Set<Code>();
+  for (const r of collectRefs(doc)) if (r.kind === "dynTable") out.add(r.tableCode);
   return out;
 }
 
