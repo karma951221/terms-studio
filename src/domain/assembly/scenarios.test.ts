@@ -582,8 +582,10 @@ describe("기능/조립산출 §3.2 — 기본계약을 지정하지 않아도 �
     values.set("feature.contract_kind", { entered: true, value: "V02" });
     const b = assembleInput({ ...input, product: { ...input.product, values, baseContractIds: [] } });
     expect(kinds(b.issues)).not.toContain("noBaseContract");
-    // 기본계약이던 상품담보는 제 담보의 담보분류 그룹에 든다 (ADR-0090)
-    expect(b.specials.flatMap((g) => g.docs.map((d) => d.ownerId))).toContain("pc-base");
+    // 독립특약은 절 형태 — 탑재 상품담보는 특약이 아니라 제2절 블록이다 (ADR-0082 · 2026-10-17 ①). 형태 세부는 sectioned.test.ts
+    expect(b.form).toBe("sectioned");
+    expect(b.specials).toEqual([]);
+    expect((b.blocks ?? []).flatMap((g) => g.blocks.map((x) => x.productCoverageId))).toContain("pc-base");
   });
 
   it("기본계약 문면을 바꾸면 연결된 보통약관 조 본문도 따라간다", () => {
@@ -605,10 +607,11 @@ describe("기능/조립산출 §3.2 — 기본계약을 지정하지 않아도 �
     expect(b.issues[1].message).toContain("보통약관 템플릿이 없어");
   });
 
-  it("기본계약 2개 이상 — 수 오류(unsupported)는 없다 · 기본계약들은 특약·미산출 목록에서 제외한다", () => {
+  it("기본계약 2개 이상 — 절 형태(수 오류 없음) · 기본계약들은 특약·미산출 목록에서 제외되고 제2절 블록이 된다", () => {
     const input = alphaPlusFixture();
     const b = assembleInput({ ...input, product: { ...input.product, baseContractIds: ["pc-base", "pc-basic"] } });
     expect(kinds(b.issues)).not.toContain("unsupported");
+    expect(b.form).toBe("sectioned");
     expect(b.specials.flatMap((group) => group.docs.map((doc) => doc.ownerId))).toEqual(["pc-addon"]);
     expect(b.baseContracts.map((record) => record.productCoverageId)).toEqual(["pc-base", "pc-basic"]);
     expect(b.undocumented).toEqual([]);

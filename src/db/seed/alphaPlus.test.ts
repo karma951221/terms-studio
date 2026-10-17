@@ -357,12 +357,11 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     await t.db.update(discriminators).set({ label: "담보명" }).where(eq(discriminators.code, "D0001"));
   });
 
-  it("두 번째 기본계약 지정은 거부되고(기능/상품 §3 「기본계약」 · MVP 정확히 1개), 기존 상품은 시드 재실행으로 바뀌지 않는다", async () => {
+  it("같은 기본계약의 재지정은 거부되고(기능/상품 §3.5), 기존 상품은 시드 재실행으로 바뀌지 않는다", async () => {
     const product = (await services.product.listProducts()).find((p) => p.name === ALPHA_PLUS_PRODUCT_NAME)!;
     const baseIds = await services.product.listBaseContractIds(product.id);
     expect(baseIds).toHaveLength(1);
-    const extra = (await services.product.listProductCoverages(product.id)).find((pc) => !baseIds.includes(pc.id))!;
-    const second = await services.product.designateBaseContract(admin, product.id, extra.id);
+    const second = await services.product.designateBaseContract(admin, product.id, baseIds[0]);
     expect(second.ok).toBe(false);
     if (!second.ok && second.rejection.reason === "invalid") expect(second.rejection.issues[0].kind).toBe("unsupported");
     const before = await services.product.listBaseContractIds(product.id);

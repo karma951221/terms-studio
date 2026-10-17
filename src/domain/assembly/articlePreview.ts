@@ -3,13 +3,14 @@
  *
  * 조립과 같은 결과여야 하므로 조립 함수를 그대로 부르고 그 조만 꺼낸다 — 규칙을 따로 두지 않는다.
  * - 담보약관: 넘긴 트리(편집본)를 그 담보의 문서 자리에 끼워 `assembleSpecial` (그 상품담보 문맥 · 그 특약 한 벌 번호).
- *   기본계약 상품담보는 특약으로 찍히지 않으므로(보통약관 조를 대치한다) 미리보기 대상이 아니다.
+ *   대치 형태의 기본계약 상품담보는 특약으로 찍히지 않으므로(보통약관 조를 대치한다) 미리보기 대상이 아니다. 절 형태의 블록은 그 블록이다.
  * - 보통약관: 넘긴 트리를 그 상품의 보통약관 자리에 끼워 `assembleGeneral` (기본계약 문맥 · 조 사본 · 노출 끔 · 대치 그대로).
  * - 조립이 그 조를 내지 않으면 까닭 하나 — 생략 판정(보통약관 조와 같음) · 노출 끔 · 그 밖(조건으로 빠짐 · 빈 조).
  */
 import type { DocumentNode } from "../document/nodes";
 import type { Id, Issue } from "../types";
 import { assembleGeneral, assembleSpecial } from "./booklet";
+import { planForm } from "./section";
 import type { MasterBundle, ProductInput, RenderedArticle, RenderedDoc } from "./types";
 
 export type ArticlePreviewTarget =
@@ -48,7 +49,8 @@ export function previewArticle(master: MasterBundle, product: ProductInput, targ
   if (target.document === "special") {
     const pc = product.coverages.find((c) => c.snapshot.id === target.productCoverageId);
     if (!pc) return { kind: "unavailable", message: "그 상품담보를 찾을 수 없다" };
-    if (product.product.baseContractIds.includes(pc.snapshot.id)) return { kind: "unavailable", message: "기본계약 상품담보는 특약으로 찍히지 않는다 — 보통약관 조를 대치한다" };
+    // 대치 형태의 기본계약만 — 절 형태의 기본계약(주계약 2+)은 제2절 블록으로 찍힌다
+    if (planForm(product).form === "single" && product.product.baseContractIds.includes(pc.snapshot.id)) return { kind: "unavailable", message: "기본계약 상품담보는 특약으로 찍히지 않는다 — 보통약관 조를 대치한다" };
     const specialDocuments = new Map(master.specialDocuments);
     specialDocuments.set(pc.snapshot.coverageId, target.tree);
     const r = assembleSpecial({ ...master, specialDocuments }, product, pc.snapshot.id);

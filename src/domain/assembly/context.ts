@@ -10,8 +10,10 @@
  *     집계 범위는 참조가 읽는 폼의 선택지 (선택지는 유형 하나), 선택지 하나가 **세목 커서**로 문맥에 실린다.
  *     커서 없이 세목 필드를 직접 읽는 식은 정의 시점에 거부된다 (상위 → 하위는 집계만) — 만나면 자리 없음.
  *     보통약관 · 담보약관 문맥이 같은 범위를 쓴다 — 부착 세목(`AssemblyCoverage.plans`)은 읽지 않는다 (기능/조립산출 §3.2).
- * 보통약관 문맥 = 상품 레벨 + **기본계약 상품담보의 담보 레벨** (기능/조립산출 §3.2). 기본계약이 없으면 담보 레벨 참조는
+ * 보통약관 문맥 = 상품 레벨 + **기본계약 상품담보의 담보 레벨** (기능/조립산출 §3.2 — 대치 형태). 기본계약이 없으면 담보 레벨 참조는
  * 미결로 두고 조립이 `noBaseContract` 오류로 바꾼다 (`explainUndetermined`).
+ * 절 형태(주계약 기본계약 2+ · 독립특약 — `planForm`)의 제1절 문맥은 담보가 없다 — 담보 레벨 참조는 `generalReadsCoverage` 오류
+ * (블록이 여럿이라 어느 값인지 정할 수 없다 · 「첫 기본계약」 문맥은 없앴다). 블록(제2절) 상품담보의 작성위치는 블록이다.
  *
  * 실행이 읽은 값 자리는 `ReadRecord` 로 남긴다 — 조립 문맥 조회(D-P6-7)·실행 기반 완결성 필터의 재료.
  */
@@ -29,6 +31,7 @@ import { evaluate, parse, refPath } from "../expression";
 import { findMasterField, isMasterPathShape, type MasterFieldRef, type MasterTree } from "../master";
 import type { RowSource } from "../structure";
 import { type AttachLevel, type Code, type Coordinate, entered, type Id, type Issue, NOT_ENTERED, type Value, type ValueSlot } from "../types";
+import { type FormPlan, planForm } from "./section";
 import type { AssemblyCoverage, AssemblyInput, AssemblyPlanOption, AssemblyProduct, ContextTrace, ReadRecord } from "./types";
 
 // ───────────────────────────── 계약 ─────────────────────────────
@@ -108,10 +111,12 @@ interface Env {
   /** 평가 중인 파생 코드 — 순환 가드. */
   evaluating: ReadonlySet<Code>;
   /**
-   * 작성위치 (ADR-0089 · 기능/식언어 §3) — 기본계약 상품담보 = 대치, 그 밖의 상품담보 = 특약. 보통약관 문맥 · 구분자 파생식은 `none`(읽으면 structure 오류).
-   * 블록(절 형태 제2절)은 절 형태와 함께 — 지금 조립은 내지 않는다.
+   * 작성위치 (ADR-0089 · 기능/식언어 §3) — 대치 형태의 기본계약 상품담보 = 대치, 절 형태의 블록 = 블록, 그 밖의 상품담보 = 특약.
+   * 보통약관 문맥 · 구분자 파생식은 `none`(읽으면 structure 오류).
    */
   output: OutputPosition | "none";
+  /** 절 형태의 제1절 문맥 — 담보가 없어 담보 레벨 참조가 `generalReadsCoverage` 다(대치 형태는 `noBaseContract`). */
+  sectioned?: true;
 }
 
 const EMPTY_SLOTS: ReadonlyMap<SlotPath, ValueSlot> = new Map();
@@ -316,6 +321,7 @@ function explain(env: Env, reason: string, at: Coordinate): Issue {
   const here = { ...at, refPath: reason };
   const level = levelOfPath(env, reason);
   if (!env.tree && level !== undefined && isTreeLevel(level)) {
+    if (env.sectioned) return { kind: "generalReadsCoverage", message: `제1절 일반조항은 담보 값을 읽지 않습니다 — 담보 레벨 참조 ${reason} (블록이 여럿이라 어느 담보의 값인지 정할 수 없다)`, at: here };
     return { kind: "noBaseContract", message: `기본계약이 지정되지 않아 담보 레벨 참조 ${reason} 을(를) 해소할 수 없습니다`, at: here };
   }
   const def = env.catalog.get(reason);
@@ -401,13 +407,17 @@ export function generalCoordinate(product: AssemblyProduct, general: DocumentNod
   return { document: "general", ownerId: product.generalDocumentId ?? general?.id ?? product.id, ownerName: general?.title ?? product.name };
 }
 
-/** 상품담보의 작성위치 — 기본계약이면 대치(보통약관 조를 대치한다), 아니면 특약 (ADR-0089). 상품담보가 없으면(보통약관 문맥) 없음. */
-function outputOf(input: AssemblyInput, c: AssemblyCoverage | undefined): Env["output"] {
+/**
+ * 상품담보의 작성위치 (ADR-0089) — 절 형태의 블록이면 블록, 대치 형태의 기본계약이면 대치(보통약관 조를 대치한다), 아니면 특약.
+ * 상품담보가 없으면(보통약관 문맥) 없음.
+ */
+function outputOf(input: AssemblyInput, form: FormPlan, c: AssemblyCoverage | undefined): Env["output"] {
   if (!c) return "none";
+  if (form.form === "sectioned") return form.candidates.has(c.snapshot.id) ? "block" : "special";
   return input.product.baseContractIds.includes(c.snapshot.id) ? "replace" : "special";
 }
 
-function envOf(input: AssemblyInput, catalog: ReadonlyMap<Code, Discriminator>, c: AssemblyCoverage | undefined, trace: ContextTrace | undefined): Env {
+function envOf(input: AssemblyInput, catalog: ReadonlyMap<Code, Discriminator>, c: AssemblyCoverage | undefined, trace: ContextTrace | undefined, form: FormPlan = planForm(input)): Env {
   const product = input.product;
   const values = new Map<Id, ReadonlyMap<SlotPath, ValueSlot>>(c ? c.values : []);
   values.set(product.id, product.values);
@@ -425,7 +435,7 @@ function envOf(input: AssemblyInput, catalog: ReadonlyMap<Code, Discriminator>, 
     keyPaths: c ? keyPathIndex(c) : new Map(),
     trace,
     evaluating: new Set(),
-    output: outputOf(input, c),
+    output: outputOf(input, form, c),
   };
 }
 
@@ -473,22 +483,27 @@ export function snapshotNodeContext(input: AssemblyInput, c: AssemblyCoverage, n
   return node ? contextFor(env, node, { ...specialCoordinate(c), ownerName: nodeName(env.tree!, node) }) : undefined;
 }
 
-/** 전 상품담보 + 보통약관 문맥. 보통약관은 기본계약 상품담보의 환경을 좌표만 바꿔 쓴다 (읽은 값은 기본계약 추적에 실린다). */
+/**
+ * 전 상품담보 + 보통약관 문맥. 대치 형태의 보통약관은 기본계약 상품담보의 환경을 좌표만 바꿔 쓴다 (읽은 값은 기본계약 추적에 실린다).
+ * 절 형태의 제1절은 담보 없는 문맥이다 — 담보 레벨 참조는 `generalReadsCoverage`.
+ */
 export function buildContexts(input: AssemblyInput): AssemblyContexts {
   const catalog = new Map(input.catalog.map((d) => [d.code, d]));
+  const form = planForm(input);
   const specials = new Map<Id, AssemblyContext>();
   const traces: ContextTrace[] = [];
   const envs = new Map<Id, Env>();
   for (const c of input.coverages) {
     const trace: ContextTrace = { productCoverageId: c.snapshot.id, productCoverageName: c.snapshot.name, coverageId: c.snapshot.coverageId, reads: [] };
     traces.push(trace);
-    const env = envOf(input, catalog, c, trace);
+    const env = envOf(input, catalog, c, trace, form);
     envs.set(c.snapshot.id, env);
     specials.set(c.snapshot.id, contextOf(env, specialCoordinate(c), true));
   }
-  // 2개 이상은 조립 계층에서 unsupported로 보고하되 부분 조립 문맥은 첫 등록분으로 계속 만든다.
-  const base = input.product.baseContractIds.length > 0 ? envs.get(input.product.baseContractIds[0]) : undefined;
+  // 대치 형태(기본계약 하나)만 보통약관 문맥에 기본계약 담보를 준다. 기본계약 0 이면 담보 없는 문맥(noBaseContract)
+  const base = form.form === "single" && input.product.baseContractIds.length > 0 ? envs.get(input.product.baseContractIds[0]) : undefined;
   // 보통약관 문맥에는 작성위치가 없다 — 기본계약 환경을 빌려 써도 작성위치는 없음 (기능/식언어 §3)
-  const general = contextOf({ ...(base ?? envOf(input, catalog, undefined, undefined)), output: "none" }, generalCoordinate(input.product, generalDocumentOf(input)));
+  const bare = envOf(input, catalog, undefined, undefined, form);
+  const general = contextOf({ ...(base ?? bare), output: "none", ...(form.form === "sectioned" ? { sectioned: true as const } : {}) }, generalCoordinate(input.product, generalDocumentOf(input)));
   return { general, specials, traces };
 }

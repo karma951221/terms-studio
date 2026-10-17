@@ -192,7 +192,10 @@ export interface Coordinate {
   ownerName?: string;
   /** 상품모델링 좌표에서 상품 아래 선택된 상품담보 등 하위 실체 이름. */
   subjectName?: string;
-  /** 0·2+ 모드에서 조 번호가 다시 시작되는 절/보장조항 블록 이름공간. */
+  /**
+   * 절 형태(기본계약 2+ · 독립특약)에서 조 번호가 다시 시작되는 이름공간 — 제1절 일반조항(`general` · 「제1절」) ·
+   * 제2절 블록(`benefit` · 「제2절 1.」 · 그룹 제목 표시면 「제2절 Ⅰ-1.」) (기능/조립산출 §3.4).
+   */
   section?: { kind: "general" | "benefit"; label: string };
   /** 조 노드 id */
   articleId?: Id;
@@ -224,6 +227,8 @@ export type IssueKind =
   | "argUnbound" // 함수조항 인자 연결 누락 — 사용처 연결도 기본 연결도 없음 (최종 결정 2)
   | "unassignedValue" // 값별 분기(switch)에 칸이 없는 값 — 함수조항 저장 오류 · 조립에서는 그 값이 실제로 닿을 때만 (최종 결정 5)
   | "noBaseContract" // 기본계약 미지정
+  | "noBlock" // 독립특약에 블록(문면이 있는 탑재 상품담보 — 조건 해소 · 빈 조 빼기 뒤)이 없다 (ADR-0082 결정 2)
+  | "generalReadsCoverage" // 절 형태의 제1절(템플릿 조)이 담보 값을 읽는다 — 블록이 여럿이라 어느 값인지 정할 수 없다 (기능/조립산출 §3.2)
   | "noPlan" // 세목 선택지는 있는데 유효 조합이 없다 — 집계 범위가 비어 조건부 조문이 조용히 빠진다
   | "notAttached" // 요구 구분자 미부착 (값 자리 없음)
   | "typeMismatch" // 조건 자리에 boolean 아님 등

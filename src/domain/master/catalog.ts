@@ -32,6 +32,15 @@ export const CONTRACT_KIND_PATH = "feature.contract_kind";
 export function isStandaloneContract(slot: ValueSlot | undefined): boolean {
   return slot?.entered === true && slot.value === CONTRACT_KIND.standalone;
 }
+/**
+ * 「그룹 제목 표시」 값 자리 경로 — 상품 기본정보의 책자 폼 (ADR-0090 결정 8 · 기능/상품 §3.1). 절 형태 제2절의 블록 번호 머리를 정한다 —
+ * 끔(기본 · 미입력) 「1.」 「2.」, 켬 「Ⅰ. {그룹 제목}」 아래 「Ⅰ-1.」.
+ */
+export const GROUP_TITLES_PATH = "booklet.group_titles";
+/** 그룹 제목을 보이는가 — 미입력은 기본값(끔)으로 본다. */
+export function showsGroupTitles(slot: ValueSlot | undefined): boolean {
+  return slot?.entered === true && slot.value === true;
+}
 /** 간편심사구분 E0006 값 코드. */
 export const REVIEW_SCOPE = { single: "V01", combined: "V02" } as const;
 

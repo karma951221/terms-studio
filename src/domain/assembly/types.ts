@@ -517,9 +517,44 @@ export interface ContextTrace {
   reads: ReadRecord[];
 }
 
+/** 보통약관 형태 (ADR-0021 결정 1) — 대치 형태(절 없음) · 절 형태(제1절 일반조항 / 제2절 보장조항). */
+export type BookletForm = "single" | "sectioned";
+
+/** 제2절의 블록 하나 — 블록마다 제1조부터 (기능/조립산출 §3.8). */
+export interface RenderedBlock {
+  productCoverageId: Id;
+  /** 블록 번호 머리 — 그룹 제목 표시 끔 「1.」, 켬 「Ⅰ-1.」 (ADR-0090 결정 8). */
+  label: string;
+  /** 블록 제목 — 독립특약 「{상품담보명} 특별약관」, 주계약 기본계약 2+ 는 상품담보명. 본문 문서 제목과 같다. */
+  title: string;
+  doc: RenderedDoc;
+}
+
+/**
+ * 제2절의 블록 그룹 — 그룹 순서 그대로(ADR-0090 결정 7). 블록이 있는 그룹만.
+ * 그룹 제목 표시를 켰을 때만 `label`(「Ⅰ.」) · `title`(사용자 그룹 이름 · 담보분류 「그룹 제목」)이 있다. 제목 없는 자리(담보분류를 정할 수 없는 담보)는 `title` 이 없다.
+ */
+export interface RenderedBlockGroup {
+  /** 그룹 열쇠 — 특약 그룹과 같다(`category:V01` · 사용자 그룹 id · `ungrouped`). */
+  id: Id;
+  label?: string;
+  title?: string;
+  /** 그룹 제목 표시를 켰는데 기본 그룹의 「그룹 제목」이 비었다 — 제목 자리의 오류 마커. */
+  titleError?: ErrorNode;
+  blocks: RenderedBlock[];
+}
+
 export interface Booklet {
-  /** 보통약관 템플릿이 없으면 undefined (+ issues 에 brokenRef). */
+  /**
+   * 형태 — 없으면(옛 산출본) `single` 로 읽는다(`bookletForm`). 절 형태면 `general` 이 제1절 일반조항이고 `blocks` 가 제2절이다.
+   */
+  form?: BookletForm;
+  /** 책자 제목 — 대치 형태 · 주계약 기본계약 2+ 는 템플릿 제목, 독립특약은 상품명 (기능/조립산출 §3.8). 옛 산출본엔 없다. */
+  title?: string;
+  /** 보통약관 템플릿이 없으면 undefined (+ issues 에 brokenRef). 절 형태면 제1절 일반조항. */
   general: RenderedDoc | undefined;
+  /** 절 형태의 제2절 보장조항 — 블록 그룹(그룹 순). 대치 형태엔 없다. */
+  blocks?: RenderedBlockGroup[];
   /** 그룹 순 → 그룹 안 자동 정렬 순. */
   specials: RenderedGroup[];
   appendices: BookletAppendix[];
@@ -537,7 +572,7 @@ export interface Booklet {
 /** 상품담보 미리보기 — 담보약관 하나를 특정 상품담보 문맥으로 조립한 결과 (기능/상품 §4 「상품담보 값」). */
 export interface SpecialPreview {
   doc: RenderedDoc;
-  /** 보통약관 (조 참조 해소·생략 판정의 상대). */
+  /** 보통약관 (조 참조 해소·생략 판정의 상대). 절 형태면 상품 전체 판정의 제1절. */
   general: RenderedDoc | undefined;
   appendices: BookletAppendix[];
   issues: Issue[];
