@@ -106,6 +106,8 @@ export function relabelTitle(title: readonly InlineNode[], articleId: Id): Inlin
 const BUILTIN_SLOT_LABEL: Record<string, string> = {
   "builtin.plan.name": "종형명",
   "builtin.plan.number": "선택지 번호",
+  // 범위 낱말 (ADR-0089 결정 3) — 칩 〔이 약관의〕
+  "builtin.output.scope": "이 약관의",
 };
 
 export interface FoldOptions {

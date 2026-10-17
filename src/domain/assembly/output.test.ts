@@ -72,7 +72,7 @@ function unifiedDocument(): DocumentNode {
 
 function fixture(edit?: (input: AssemblyInput) => void): AssemblyInput {
   const input = alphaPlusFixture();
-  input.specialDocuments.set("cov-base-death", unifiedDocument());
+  input.specialDocuments = new Map([...input.specialDocuments, ["cov-base-death", unifiedDocument()]]);
   input.clauses = [...input.clauses, applicationClause];
   // 같은 담보 · 다른 속성 조합 — 특약으로 실린다 (ADR-0089 결정 6 · ADR-0015)
   input.coverages = [
@@ -145,7 +145,7 @@ describe("보통약관 문맥에는 작성위치가 없다", () => {
       fixture((input) => {
         const g = alphaGeneralDocument();
         g.children.push({ id: "g-cond", kind: "condBlock", branches: [{ id: "g-cond-if", when: "builtin.output = 'replace'", children: [{ id: "g-art-x", kind: "article", title: titleNodes("x", "g-art-x"), children: [] }] }] });
-        input.generalDocuments.set("g-doc", g);
+        input.generalDocuments = new Map([["g-doc", g]]);
       }),
     );
     expect(b.issues.filter((i) => i.kind === "structure").map((i) => i.at.refPath)).toEqual(["builtin.output"]);
@@ -158,7 +158,7 @@ describe("특약의 보통약관 참조가 대치된 조의 항을 가리키면 
     const g = alphaGeneralDocument();
     const pay = g.children.find((c) => c.id === "g-art-pay");
     if (pay?.kind === "article") pay.children = Array.from({ length: count }, (_, i) => ({ id: `g-par-pay-${i + 1}`, kind: "paragraph" as const, code: `P0${i + 1}00`, children: [t(`g-txt-pay-${i + 1}`, `마스터 ${i + 1}`)] }));
-    input.generalDocuments.set("g-doc", g);
+    input.generalDocuments = new Map([["g-doc", g]]);
     const death = input.specialDocuments.get("cov-death")!;
     death.children.push({
       id: "s-art-refpay",

@@ -13,9 +13,11 @@
  * 인자 줄 (2026-09-30, 최종 결정 2) — 함수조항 본문에서는 좌변 · 우변에 인자(`arg.X`)도 온다. 구분자 줄과 같은 규칙(타입대로 연산자)이다.
  * 내부 변수 · 열거값 필드 줄 (2026-09-30, 최종 결정 2 · 18) — `var.X` 와 `arg.X.F01` · `var.X.F01`(필드 읽기) 도 좌변 · 우변에 온다.
  * 목록 연산(`.있음(…)` · `.비었음` …)은 줄이 아니다 — 원문 읽기 전용(내부 변수로 이름을 붙여 줄에서 읽는다).
+ *
+ * 작성위치 줄 (2026-10-17, ADR-0089 · 기능/문면 §3.3) — 좌변 `builtin.output`, 연산자 `=` · `≠`, 우변은 세 값(대치 · 블록 · 특약) 중 하나의 코드 리터럴.
  */
-import { COMPARE_OPS, format, refPath } from "../expression";
-import type { AttributeRef, CompareOp, DiscriminatorRef, Expr, Literal, LocalRef, ParamRef } from "../expression";
+import { COMPARE_OPS, format, isOutputPosition, OUTPUT_LABEL, OUTPUT_POSITIONS, refPath } from "../expression";
+import type { AttributeRef, CompareOp, DiscriminatorRef, Expr, Literal, LocalRef, OutputRef, ParamRef } from "../expression";
 import type { FieldType, FieldTypeKind } from "../types";
 
 /** 열거값 필드 읽기 — 인자 · 내부 변수의 `.필드키` (함수조항 전용). */
@@ -40,7 +42,7 @@ function rowRefOf(e: Expr): RowValueRef | undefined {
   return undefined;
 }
 
-function exprOfRef(ref: RowValueRef | AttributeRef): Expr {
+function exprOfRef(ref: RowValueRef | AttributeRef | OutputRef): Expr {
   return ref.kind === "field" ? { kind: "member", target: { kind: "ref", ref: ref.target }, field: ref.field } : { kind: "ref", ref };
 }
 
@@ -52,8 +54,11 @@ export type RowOp = CompareOp | "exist" | "notexist";
 /** 담보속성 좌변의 연산자 — 식 언어가 허용하는 것만 (ADR-0015). */
 export const ATTRIBUTE_OPS: readonly RowOp[] = ["=", "≠", "exist", "notexist"];
 
+/** 작성위치 좌변의 연산자 (ADR-0089). */
+export const OUTPUT_OPS: readonly RowOp[] = ["=", "≠"];
+
 export interface ConditionRow {
-  left?: RowValueRef | AttributeRef;
+  left?: RowValueRef | AttributeRef | OutputRef;
   op?: RowOp;
   right?: RowRight;
 }
@@ -99,7 +104,7 @@ export function emptyRows(): ConditionRows {
 function rowOf(e: Expr): ConditionRow | undefined {
   if (e.kind === "aggregate" && (e.op === "exist" || e.op === "notexist") && e.ref.kind === "attr") return { left: e.ref, op: e.op };
   if (e.kind !== "compare") return undefined;
-  if (e.left.kind === "ref" && e.left.ref.kind === "attr") {
+  if (e.left.kind === "ref" && (e.left.ref.kind === "attr" || (e.left.ref.kind === "output" && e.left.ref.prop === undefined))) {
     if (e.right.kind !== "literal" || e.right.literal.type !== "string" || (e.op !== "=" && e.op !== "≠")) return undefined;
     return { left: e.left.ref, op: e.op, right: { kind: "literal", literal: e.right.literal } };
   }
@@ -191,6 +196,12 @@ export function rowIssues(
     const n = `${i + 1}번 줄`;
     if (!row.left) {
       out.push(`${n}: 좌변이 비어 있다`);
+      return;
+    }
+    if (row.left.kind === "output") {
+      if (!row.op || !OUTPUT_OPS.includes(row.op)) out.push(`${n}: 연산자를 고르지 않았다`);
+      else if (!row.right || row.right.kind !== "literal" || row.right.literal.type !== "string") out.push(`${n}: 우변이 비어 있다`);
+      else if (!isOutputPosition(row.right.literal.value)) out.push(`${n}: '${row.right.literal.value}' 는 작성위치 값이 아니다 (${OUTPUT_POSITIONS.map((p) => OUTPUT_LABEL[p]).join(" · ")})`);
       return;
     }
     if (row.left.kind === "attr") {

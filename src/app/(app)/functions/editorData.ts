@@ -43,7 +43,8 @@ export async function loadClauseEditorData(): Promise<ClauseEditorData> {
   return {
     appendices,
     boxes,
-    condition: buildConditionContext({ discriminators, enums, attributes }),
+    // 함수조항 본문은 작성위치를 직접 읽는다 (ADR-0089 · 기능/함수조항 §3.3)
+    condition: buildConditionContext({ discriminators, enums, attributes, output: true }),
     generals,
     enums: enums.map((e) => ({
       code: e.code,
