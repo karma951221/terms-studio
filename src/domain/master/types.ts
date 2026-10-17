@@ -21,7 +21,13 @@ export interface MasterField {
   type: FieldType;
   /** 기본값 — 폼 프리필 전용 (ADR-0004). 저장소로 자동 유입되지 않는다. */
   defaultValue?: Value;
+  /** 필드 설명 — 마스터 화면(필드 상세)에 보인다. 입력 화면에는 `infoTip` 일 때만 라벨 옆 ⓘ 로 선다. */
   description?: string;
+  /**
+   * 입력 화면 라벨 옆 ⓘ 로 `description` 을 보인다 — 칸 이름만으로 뜻이 안 보이는 필드에만 마스터 코드가 붙인다
+   * (「그룹 제목 표시」, 2026-10-17 사용자 결정). 없으면 설명은 마스터 화면에만 있다.
+   */
+  infoTip?: true;
   /** 단위 — 숫자 필드의 입력칸 뒤 · 읽기 값 뒤에 붙는다 (「2.5 %」). 저장 값에는 들어가지 않는다. */
   unit?: string;
   /**

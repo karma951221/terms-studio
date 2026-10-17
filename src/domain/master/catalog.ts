@@ -119,7 +119,7 @@ export const MASTER: readonly MasterForm[] = [
     key: "booklet",
     label: "책자",
     level: "product",
-    fields: [{ key: "group_titles", label: "그룹 제목 표시", type: { kind: "boolean" }, defaultValue: false, description: "절 형태의 제2절 블록에 그룹 제목 줄 · 「Ⅰ-1.」 번호 — 끄면 「1.」 「2.」. 주계약의 특약 그룹과는 무관하다" }],
+    fields: [{ key: "group_titles", label: "그룹 제목 표시", type: { kind: "boolean" }, defaultValue: false, infoTip: true, description: "절 형태의 제2절 블록에 그룹 제목 줄 · 「Ⅰ-1.」 번호 — 끄면 「1.」 「2.」. 주계약의 특약 그룹과는 무관하다" }],
   },
   {
     key: "waiver",
