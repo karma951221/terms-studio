@@ -15,6 +15,7 @@ import { Fragment, useEffect, useId, useState } from "react";
 
 import { PLAN_AXIS_LABEL, planCombinationKey, planOptionLabel, type PlanAxis, type PlanOption, type ProductPlan } from "@/domain/product";
 import { draftValueOf, FieldInput, FieldReadValue, formReducer, initFormState, isViewShown, isViewSingle, savedValueOf, toSubmission, type FieldView, type FormAction, type FormModel, type FormState } from "@/forms";
+import { InfoTip } from "@/app/_components/InfoTip";
 import type { EditOutcome } from "@/app/_lib/edit";
 import type { ProductBasicInput } from "@/services/product";
 
@@ -188,7 +189,7 @@ export function BasicTab(props: BasicTabProps) {
     ? candidates
     : shownCombinations.map((ids) => ids.map((id) => shownOptions.find((o) => o.id === id)).filter((o): o is OptionDraft => !!o)).filter((items) => items.length > 0);
   const showPlanType = editing && planTypeForms.length > 1;
-  /** 상품 레벨 필드를 폼(공시이율 · 상품특성 · 책자)별로 — 선언 순서 그대로. */
+  /** 상품 레벨 필드를 폼(공시이율 · 상품특성)별로 — 선언 순서 그대로. */
   const productGroups = productForm.fields.reduce<{ key: string; label: string; fields: FieldView[] }[]>((groups, field) => {
     const last = groups.at(-1);
     if (last && last.key === field.form.key) last.fields.push(field);
@@ -285,10 +286,10 @@ export function BasicTab(props: BasicTabProps) {
                     </span>
                   </td>
                 </tr>
-                {/* 상품 레벨 마스터 폼마다 — 공시이율 · 상품특성 · 책자 (기능/상품 §3.1 · 2026-09-28). 둘째 폼부터 폼 이름 줄을 끼운다(첫 폼 공시이율은 상품명 바로 아래 한 칸) */}
-                {productGroups.map((group, i) => (
+                {/* 상품 레벨 마스터 폼마다 — 공시이율 · 상품특성 (기능/상품 §3.1 · 2026-09-28). 폼이 둘 이상이면 폼 이름 줄을 끼운다 */}
+                {productGroups.map((group) => (
                   <Fragment key={group.key}>
-                    {i > 0 && (
+                    {productGroups.length > 1 && group.fields.length > 1 && (
                       <tr className="ts-basic-group">
                         <th scope="rowgroup" colSpan={2}>
                           {group.label}
@@ -297,7 +298,10 @@ export function BasicTab(props: BasicTabProps) {
                     )}
                     {group.fields.filter((field) => isViewShown(field, editing ? draftValueOf(productState) : savedValueOf(productForm))).map((field) => (
                       <tr key={field.path} className={field.path === productHighlight ? "is-highlighted" : undefined} data-path={field.path}>
-                        <th scope="row">{field.label}</th>
+                        <th scope="row">
+                          {field.label}
+                          {field.description && <InfoTip text={field.description} />}
+                        </th>
                         <td className="col-flex">{editing ? productCell(field.path, field.label) : <FieldReadValue field={field} />}</td>
                       </tr>
                     ))}

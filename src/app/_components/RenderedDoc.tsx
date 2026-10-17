@@ -8,7 +8,6 @@
 import type {
   ErrorNode,
   RenderedArticle,
-  RenderedBlockGroup,
   RenderedDoc as RenderedDocType,
   RenderedGroup,
   RenderedInline,
@@ -191,11 +190,11 @@ export function RenderedArticleView({ node }: { node: RenderedArticle }) {
   return <Article node={node} />;
 }
 
-/** `heading` — 문서 제목 대신 찍을 머리(절 형태의 「제1절 일반조항」 · 블록 머리 「1. {제목}」). */
+/** `heading` — 문서 제목 대신 찍을 머리(절 형태의 「제1절 일반조항」). 블록은 `doc.head`(「Ⅰ-1.」)가 제목 앞에 선다. */
 export function RenderedDoc({ doc, heading }: { doc: RenderedDocType; heading?: string }) {
   return (
     <article className="ts-doc" data-owner={doc.ownerId}>
-      <h2 className="ts-doc-title">{heading ?? doc.title}</h2>
+      <h2 className="ts-doc-title">{heading ?? (doc.head !== undefined ? `${doc.head} ${doc.title}` : doc.title)}</h2>
       {doc.children.map((a, i) => (
         <Article key={i} node={a} />
       ))}
@@ -206,13 +205,15 @@ export function RenderedDoc({ doc, heading }: { doc: RenderedDocType; heading?: 
 /**
  * 책자의 특약 그룹 하나 (ADR-0090) — 제목 = 사용자 그룹 이름 · 담보분류 값의 「그룹 제목」. 「그룹 제목」이 비었으면 제목 자리에 오류 마커.
  * 담보분류를 정할 수 없는 상품담보(미입력 · 지운 값)의 자리는 제목 줄이 없다.
+ * 절 형태 블록이면 번호 머리가 제목 앞에 선다 — 그룹 「Ⅰ.」 · 블록 「Ⅰ-1.」 / 「1.」 (ADR-0090 결정 8).
  */
 export function RenderedGroupView({ group }: { group: RenderedGroup }) {
   return (
     <section className="ts-doc-group" aria-label={group.title ?? (group.titleError ? "그룹 제목 없는 특별약관" : "그룹 없는 특별약관")}>
-      {group.title !== undefined && <h2 className="ts-doc-group-title">{group.title}</h2>}
+      {group.title !== undefined && <h2 className="ts-doc-group-title">{group.head !== undefined ? `${group.head} ${group.title}` : group.title}</h2>}
       {group.title === undefined && group.titleError && (
         <h2 className="ts-doc-group-title">
+          {group.head !== undefined && `${group.head} `}
           <ErrorMark node={group.titleError} />
         </h2>
       )}
@@ -224,25 +225,16 @@ export function RenderedGroupView({ group }: { group: RenderedGroup }) {
 }
 
 /**
- * 절 형태의 제2절 보장조항 (기능/조립산출 §3.8 · §4.1) — 블록을 그룹 순서대로. 그룹 제목 표시를 켰으면 그룹 머리 줄 「Ⅰ. {그룹 제목}」
- * (제목이 빈 기본 그룹은 그 자리에 오류 마커), 블록마다 머리 「{블록 머리} {블록 제목}」 + 블록 조(제1조부터).
+ * 절 형태의 제2절 보장조항 (기능/조립산출 §3.8 · §4.1) — 블록 그룹을 그룹 순서대로, 특약 그룹과 같은 부품(`RenderedGroupView`)으로.
+ * 그룹 제목 표시를 켰으면 그룹 머리 줄 「Ⅰ. {그룹 제목}」(빈 제목이면 오류 마커), 블록 문서 제목 앞에 블록 머리 「Ⅰ-1.」 · 「1.」.
  */
-export function RenderedBlocksView({ groups }: { groups: readonly RenderedBlockGroup[] }) {
+export function RenderedBlocksView({ groups }: { groups: readonly RenderedGroup[] }) {
   return (
     <section className="ts-doc-part" aria-label="제2절 보장조항">
       <h2 className="ts-doc-title">제2절 보장조항</h2>
       {groups.length === 0 && <p className="ts-muted">블록이 없다.</p>}
       {groups.map((g) => (
-        <section key={g.id} className="ts-doc-group" aria-label={g.label !== undefined ? `${g.label} ${g.title ?? ""}`.trim() : "블록"}>
-          {g.label !== undefined && (
-            <h3 className="ts-doc-group-title">
-              {g.label} {g.title ?? (g.titleError ? <ErrorMark node={g.titleError} /> : null)}
-            </h3>
-          )}
-          {g.blocks.map((b) => (
-            <RenderedDoc key={b.productCoverageId} doc={b.doc} heading={`${b.label} ${b.title}`} />
-          ))}
-        </section>
+        <RenderedGroupView key={g.id} group={g} />
       ))}
     </section>
   );

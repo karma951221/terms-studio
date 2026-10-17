@@ -425,6 +425,8 @@ export interface RenderedDoc {
   document: "general" | "special";
   ownerId: Id;
   title: string;
+  /** 절 형태 블록의 번호 머리(「Ⅰ-1.」 · 「1.」 — ADR-0090 결정 8). 제목 앞에 찍는다. 대치 형태 · 주계약 특약은 없다. */
+  head?: string;
   children: (RenderedArticle | RenderedSection | ErrorNode)[];
 }
 
@@ -432,7 +434,9 @@ export interface RenderedDoc {
 export interface RenderedGroup {
   /** 그룹 열쇠 — 기본 그룹 `category:V01` · 사용자 그룹 id · 제목 없는 자리 `ungrouped` (`product/groups.ts` `groupKey`). */
   id: Id;
-  /** 그룹 제목 — 사용자 그룹 이름 · 담보분류 값의 「그룹 제목」. 제목 없는 자리 · 제목 미입력이면 없다. */
+  /** 절 형태 · 그룹 제목 표시를 켰을 때 그룹 머리(「Ⅰ.」 — ADR-0090 결정 8). */
+  head?: string;
+  /** 그룹 제목 — 사용자 그룹 이름 · 담보분류 값의 「그룹 제목」. 제목 없는 자리 · 제목 미입력이면 없다. 절 형태에서 그룹 제목 표시를 끄면 없다. */
   title?: string;
   /** 기본 그룹의 「그룹 제목」이 비었다 — 제목 자리의 오류 마커 (ADR-0090 결정 2). */
   titleError?: ErrorNode;
@@ -520,30 +524,6 @@ export interface ContextTrace {
 /** 보통약관 형태 (ADR-0021 결정 1) — 대치 형태(절 없음) · 절 형태(제1절 일반조항 / 제2절 보장조항). */
 export type BookletForm = "single" | "sectioned";
 
-/** 제2절의 블록 하나 — 블록마다 제1조부터 (기능/조립산출 §3.8). */
-export interface RenderedBlock {
-  productCoverageId: Id;
-  /** 블록 번호 머리 — 그룹 제목 표시 끔 「1.」, 켬 「Ⅰ-1.」 (ADR-0090 결정 8). */
-  label: string;
-  /** 블록 제목 — 독립특약 「{상품담보명} 특별약관」, 주계약 기본계약 2+ 는 상품담보명. 본문 문서 제목과 같다. */
-  title: string;
-  doc: RenderedDoc;
-}
-
-/**
- * 제2절의 블록 그룹 — 그룹 순서 그대로(ADR-0090 결정 7). 블록이 있는 그룹만.
- * 그룹 제목 표시를 켰을 때만 `label`(「Ⅰ.」) · `title`(사용자 그룹 이름 · 담보분류 「그룹 제목」)이 있다. 제목 없는 자리(담보분류를 정할 수 없는 담보)는 `title` 이 없다.
- */
-export interface RenderedBlockGroup {
-  /** 그룹 열쇠 — 특약 그룹과 같다(`category:V01` · 사용자 그룹 id · `ungrouped`). */
-  id: Id;
-  label?: string;
-  title?: string;
-  /** 그룹 제목 표시를 켰는데 기본 그룹의 「그룹 제목」이 비었다 — 제목 자리의 오류 마커. */
-  titleError?: ErrorNode;
-  blocks: RenderedBlock[];
-}
-
 export interface Booklet {
   /**
    * 형태 — 없으면(옛 산출본) `single` 로 읽는다(`bookletForm`). 절 형태면 `general` 이 제1절 일반조항이고 `blocks` 가 제2절이다.
@@ -553,8 +533,11 @@ export interface Booklet {
   title?: string;
   /** 보통약관 템플릿이 없으면 undefined (+ issues 에 brokenRef). 절 형태면 제1절 일반조항. */
   general: RenderedDoc | undefined;
-  /** 절 형태의 제2절 보장조항 — 블록 그룹(그룹 순). 대치 형태엔 없다. */
-  blocks?: RenderedBlockGroup[];
+  /**
+   * 절 형태의 제2절 보장조항 — 블록 그룹(그룹 순, 특약 그룹과 같은 모양). 그룹 제목 표시를 켜면 그룹 `head`(「Ⅰ.」) · `title`,
+   * 블록 문서는 `head`(「Ⅰ-1.」 · 「1.」) · `title`(블록 제목) · `ownerId`(상품담보 id). 대치 형태엔 없다.
+   */
+  blocks?: RenderedGroup[];
   /** 그룹 순 → 그룹 안 자동 정렬 순. */
   specials: RenderedGroup[];
   appendices: BookletAppendix[];

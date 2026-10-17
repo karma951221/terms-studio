@@ -60,7 +60,7 @@ test(
       await name.fill(`${originalName} 수정`);
       // 상품정보 — 평균공시이율 · 상품특성(갱신형여부 · 고지유형 + 딸린 칸)도 같은 저장 하나에 실린다 (기능/상품 §3.1, 2026-10-01)
       const info = page.getByRole("region", { name: "상품정보" });
-      // 책자 폼 「그룹 제목 표시」 — 절 형태 제2절 블록 번호 머리 (ADR-0090 결정 8, 2026-10-17)
+      // 책자 — 그룹 제목 표시(ADR-0090 결정 8)가 상품특성 뒤에 선다
       await expect(info.locator("th[scope=row]")).toHaveText(["상품명", "평균공시이율", "계약형태", "갱신형여부", "태아보장여부", "단체계약여부", "고지유형", "그룹 제목 표시"]);
       await info.locator('tr[data-path="disclosure.avg_rate"] input').fill("2.5");
       await info.locator('tr[data-path="feature.renewable"]').getByRole("radio", { name: "예", exact: true }).check();

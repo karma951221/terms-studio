@@ -300,7 +300,10 @@ export async function replaceProductGroups(db: Db, productId: Id, setting: Produ
   }
 }
 
-/** 이 상품에 특약으로 탑재된 상품담보가 하나도 남지 않은 담보의 소속을 지운다 — 탑재 해제 한 건(\`unmount\`) 뒤. */
+/**
+ * 그룹을 읽는 상품담보가 하나도 남지 않은 담보의 소속을 지운다 — 탑재 해제 한 건(\`unmount\`) 뒤.
+ * 그룹을 읽는 것은 특약 상품담보, 기본계약이 둘 이상이면 기본계약 상품담보도다(도메인 `groupedCoverageIds` · ADR-0090 결정 7).
+ */
 export async function pruneGroupMemberships(db: Db, productId: Id): Promise<void> {
   await db.execute(sql`
     delete from ${productGroupCoverages} m
@@ -308,7 +311,10 @@ export async function pruneGroupMemberships(db: Db, productId: Id): Promise<void
       and not exists (
         select 1 from ${productCoverages} pc
         where pc.product_id = ${productId} and pc.coverage_id = m.coverage_id
-          and pc.id not in (select ${productBaseContracts.productCoverageId} from ${productBaseContracts} where ${productBaseContracts.productId} = ${productId})
+          and (
+            pc.id not in (select ${productBaseContracts.productCoverageId} from ${productBaseContracts} where ${productBaseContracts.productId} = ${productId})
+            or (select count(*) from ${productBaseContracts} where ${productBaseContracts.productId} = ${productId}) >= 2
+          )
       )`);
 }
 

@@ -15,7 +15,7 @@ import { entered, type Id } from "../types";
 import { assemble, assembleGeneral, assembleSpecial, bookletForm } from "./booklet";
 import { previewArticle } from "./articlePreview";
 import { alphaGeneralDocument, alphaPlusFixture, deathCoverage } from "./fixture";
-import type { AssemblyInput, Booklet, RenderedBlock, RenderedDoc, RenderedInline } from "./types";
+import type { AssemblyInput, Booklet, RenderedDoc, RenderedInline } from "./types";
 
 const assembleInput = (input: AssemblyInput) => assemble(input, input);
 
@@ -36,7 +36,8 @@ function lines(doc: RenderedDoc): string[] {
   return out;
 }
 
-const blocksOf = (b: Booklet): RenderedBlock[] => (b.blocks ?? []).flatMap((g) => g.blocks);
+/** 제2절 블록 — 블록 문서의 머리(`head`) · 제목 · 상품담보(`ownerId`). */
+const blocksOf = (b: Booklet) => (b.blocks ?? []).flatMap((g) => g.docs.map((doc) => ({ label: doc.head, title: doc.title, productCoverageId: doc.ownerId, doc })));
 const kinds = (b: Booklet) => b.issues.map((i) => i.kind);
 
 /** 주계약 · 기본계약 둘 — 상해사망(기본계약 문면) · 일반상해사망(담보약관). 특약은 일반상해사망 추가. */
@@ -228,7 +229,7 @@ describe("블록 번호 머리 · 그룹 제목 표시 (ADR-0090 결정 7 · 8)"
 
   it("끔(기본) — 그룹 제목 없이 그룹 순서대로 「1.」 「2.」 「3.」", () => {
     const b = assembleInput(standalone(undefined, { groups }));
-    expect(b.blocks!.map((g) => [g.label, g.title])).toEqual([
+    expect(b.blocks!.map((g) => [g.head, g.title])).toEqual([
       [undefined, undefined],
       [undefined, undefined],
     ]);
@@ -244,7 +245,7 @@ describe("블록 번호 머리 · 그룹 제목 표시 (ADR-0090 결정 7 · 8)"
     const values = new Map(input.product.values);
     values.set("booklet.group_titles", entered(true));
     const b = assembleInput({ ...input, product: { ...input.product, values } });
-    expect(b.blocks!.map((g) => [g.label, g.title, g.blocks.map((x) => x.label)])).toEqual([
+    expect(b.blocks!.map((g) => [g.head, g.title, g.docs.map((x) => x.head)])).toEqual([
       ["Ⅰ.", "사망 관련 보장", ["Ⅰ-1.", "Ⅰ-2."]],
       ["Ⅱ.", "상해 관련 특별약관", ["Ⅱ-1."]],
     ]);

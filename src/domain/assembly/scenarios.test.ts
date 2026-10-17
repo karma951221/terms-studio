@@ -7,7 +7,7 @@ import type { MissingSlot } from "../coverage/values";
 import type { EnumDef } from "../catalog/types";
 import type { Code, Id, Issue } from "../types";
 import { formatCoordinate } from "../coordinate";
-import { assemble, assembleSpecial, executionBasedFilter } from "./booklet";
+import { assemble, assembleSpecial, executionBasedFilter, orderInGroups } from "./booklet";
 import { alphaPlusFixture, alphaGeneralDocument, baseDeathCoverage, coverageEntry, deathCoverage, waiverFixture, waiverTemplate } from "./fixture";
 import type { ProductGroupSetting } from "../product/groups";
 import type { AssemblyCoverage, AssemblyInput, RenderedDoc, RenderedInline } from "./types";
@@ -500,6 +500,17 @@ describe("그룹핑별표 S1·S2 — 기본 그룹 = 담보분류 · 사용자 �
     expect(group.titleError?.issue.message).toBe("그룹 제목이 비었습니다 — 담보분류 「상해」의 「그룹 제목」");
     expect(group.docs.map((d) => d.ownerId)).toEqual(["pc-basic", "pc-addon"]);
   });
+  it("블록 순서 = 그룹 순서 → 그룹 안 자동 순서 — 기본계약 2+ 의 기본계약 담보도 같은 그룹 목록을 읽는다 (결정 7 · orderInGroups)", () => {
+    // 기본계약 담보(cov-base-death)만 비용손해(V03) — 기본계약이 둘 이상이면 그 담보분류도 이 상품의 기본 그룹이 된다
+    const two = withGroups(
+      { groups: [{ kind: "user", id: "g-surgery", name: "수술 관련 특별약관" }], memberships: [{ coverageId: "cov-surgery", groupId: "g-surgery" }] },
+      { coverageCategories: new Map([["cov-death", "V01"], ["cov-surgery", "V02"], ["cov-base-death", "V03"]]) },
+    );
+    const product = { ...two.product, baseContractIds: ["pc-base", "pc-surgery"] };
+    const blocks = orderInGroups({ ...two, product }, two.coverages.filter((c) => product.baseContractIds.includes(c.snapshot.id)));
+    expect(blocks.groups.map((g) => [g.id, g.members.map((c) => c.snapshot.id)])).toEqual([["g-surgery", ["pc-surgery"]], ["category:V03", ["pc-base"]]]);
+  });
+
   it("문면 없는 담보의 탑재분은 오류가 아니라 「미산출 탑재분」 (D-P6-9)", () => {
     const b = assembleInput({ ...input, specialDocuments: base.specialDocuments });
     expect(b.undocumented).toEqual([
@@ -507,6 +518,95 @@ describe("그룹핑별표 S1·S2 — 기본 그룹 = 담보분류 · 사용자 �
       { productCoverageId: "pc-surgery", name: "수술비", coverageId: "cov-surgery" },
     ]);
     expect(b.complete).toBe(true);
+  });
+});
+
+describe("그룹 제목 표시 — 절 형태(독립특약)의 블록 번호 머리 (ADR-0090 결정 8 — 제2절 블록 그룹 `Booklet.blocks`)", () => {
+  const groupEnum: EnumDef = {
+    code: "E0009",
+    label: "담보분류",
+    fields: [{ key: "F01", label: "그룹 제목", type: "string", order: 0 }],
+    values: [
+      { code: "V01", label: "상해", order: 0, fields: { F01: "상해 관련 특별약관" } },
+      { code: "V02", label: "질병", order: 1 },
+    ],
+  } as EnumDef;
+  const base = alphaPlusFixture();
+  const standalone = (showTitles: boolean | undefined, patch: Partial<AssemblyInput> = {}): AssemblyInput => {
+    const values = new Map(base.product.values);
+    values.set("feature.contract_kind", { entered: true, value: "V02" });
+    if (showTitles !== undefined) values.set("booklet.group_titles", { entered: true, value: showTitles });
+    return {
+      ...base,
+      enums: [...base.enums.filter((e) => e.code !== "E0009"), groupEnum],
+      coverageCategories: new Map([["cov-death", "V01"], ["cov-surgery", "V01"]]),
+      specialDocuments: new Map([...base.specialDocuments, ["cov-surgery", tinyDoc("t-surgery", "수술비", "수술을 보장합니다.")]]),
+      coverages: [
+        deathCoverage("pc-basic", "일반상해사망보장", [{ kindCode: "A0002", valueCode: "1" }]),
+        surgeryCoverage("pc-surgery", "수술비", { renew: false, attributes: [{ kindCode: "A0001", valueCode: "1" }] }),
+      ],
+      product: { ...base.product, values, baseContractIds: [], groups: { groups: [{ kind: "user", id: "g-surgery", name: "수술 관련 특별약관" }, { kind: "category", code: "V01" }], memberships: [{ coverageId: "cov-surgery", groupId: "g-surgery" }] } },
+      ...patch,
+    };
+  };
+  const shape = (b: ReturnType<typeof assembleInput>) => (b.blocks ?? []).map((g) => [g.head, g.title, g.docs.map((d) => [d.head, d.title])]);
+
+  it("켜면 그룹 제목 줄 「Ⅰ. 수술 관련 특별약관」 아래 「Ⅰ-1.」, 다음 그룹 「Ⅱ.」 아래 「Ⅱ-1.」", () => {
+    expect(shape(assembleInput(standalone(true)))).toEqual([
+      ["Ⅰ.", "수술 관련 특별약관", [["Ⅰ-1.", "수술비 특별약관"]]],
+      ["Ⅱ.", "상해 관련 특별약관", [["Ⅱ-1.", "일반상해사망보장 특별약관"]]],
+    ]);
+  });
+
+  it("끄면(기본 — 미입력도) 그룹 제목 없이 같은 순서로 「1.」 「2.」", () => {
+    for (const option of [false, undefined]) {
+      expect(shape(assembleInput(standalone(option)))).toEqual([
+        [undefined, undefined, [["1.", "수술비 특별약관"]]],
+        [undefined, undefined, [["2.", "일반상해사망보장 특별약관"]]],
+      ]);
+    }
+  });
+
+  it("끄면 그룹 제목을 찍지 않으니 빈 「그룹 제목」도 오류가 아니다 — 켜면 제목 자리 notEntered 이고 번호는 센다", () => {
+    const disease = { coverageCategories: new Map([["cov-death", "V02"], ["cov-surgery", "V01"]]) };
+    // 그룹 제목 오류만 본다 — 일반상해사망 블록이 위임된 해약환급금 조의 항을 가리키는 articleGone(ADR-0082 결정 8)은 이 테스트 밖
+    const titleIssues = (b: ReturnType<typeof assembleInput>) => b.issues.filter((i) => i.message.startsWith("그룹 제목이 비었습니다"));
+    expect(titleIssues(assembleInput(standalone(false, disease)))).toEqual([]);
+    const on = assembleInput(standalone(true, disease));
+    expect(titleIssues(on).map((i) => i.kind)).toEqual(["notEntered"]);
+    expect(on.blocks!.map((g) => [g.head, g.title, g.titleError?.issue.kind])).toEqual([["Ⅰ.", "수술 관련 특별약관", undefined], ["Ⅱ.", undefined, "notEntered"]]);
+  });
+
+  it("그룹 없는 자리(담보분류 지운 값)의 블록 — 켜면 세지 않고 머리 없음, 끄면 이어 센다", () => {
+    const broken = { coverageCategories: new Map([["cov-death", "V09"], ["cov-surgery", "V01"]]) };
+    expect(shape(assembleInput(standalone(true, broken)))).toEqual([
+      ["Ⅰ.", "수술 관련 특별약관", [["Ⅰ-1.", "수술비 특별약관"]]],
+      [undefined, undefined, [[undefined, "일반상해사망보장 특별약관"]]],
+    ]);
+    expect(shape(assembleInput(standalone(false, broken))).map((g) => g[2])).toEqual([[["1.", "수술비 특별약관"]], [["2.", "일반상해사망보장 특별약관"]]]);
+  });
+
+  it("오류 좌표 표시에 블록 머리 — 「제2절 Ⅰ-1.」 · 「제2절 1.」 (기능/조립산출 §3.4)", () => {
+    const withError = (option: boolean) => {
+      const input = standalone(option);
+      // 수술비 문서에 없는 별표를 참조시켜 블록 안 오류를 하나 만든다
+      return assembleInput({ ...input, specialDocuments: new Map([...input.specialDocuments, ["cov-surgery", tinyDoc("t-surgery", "수술비", "분류는 ", "APX_MISSING")]]) });
+    };
+    const label = (b: ReturnType<typeof assembleInput>) => b.issues.filter((i) => i.at.ownerId === "pc-surgery").map((i) => i.at.section?.label);
+    expect(label(withError(true))).toEqual(["제2절 Ⅰ-1."]);
+    expect(label(withError(false))).toEqual(["제2절 1."]);
+    expect(formatCoordinate(withError(false).issues.find((i) => i.at.ownerId === "pc-surgery")!.at)).toContain("제2절 1.");
+  });
+
+  it("주계약의 특약 그룹은 옵션과 무관 — 켜도 그룹 제목 그대로, 번호 머리 없음", () => {
+    const main = standalone(true);
+    const values = new Map(main.product.values);
+    values.set("feature.contract_kind", { entered: true, value: "V01" });
+    const b = assembleInput({ ...main, coverages: [baseDeathCoverage(), ...main.coverages], product: { ...main.product, values, baseContractIds: ["pc-base"] } });
+    expect(b.specials.map((g) => [g.head, g.title, g.docs.map((d) => [d.head, d.title])])).toEqual([
+      [undefined, "수술 관련 특별약관", [[undefined, "수술비 특별약관"]]],
+      [undefined, "상해 관련 특별약관", [[undefined, "일반상해사망보장 특별약관"]]],
+    ]);
   });
 });
 
@@ -585,7 +685,7 @@ describe("기능/조립산출 §3.2 — 기본계약을 지정하지 않아도 �
     // 독립특약은 절 형태 — 탑재 상품담보는 특약이 아니라 제2절 블록이다 (ADR-0082 · 2026-10-17 ①). 형태 세부는 sectioned.test.ts
     expect(b.form).toBe("sectioned");
     expect(b.specials).toEqual([]);
-    expect((b.blocks ?? []).flatMap((g) => g.blocks.map((x) => x.productCoverageId))).toContain("pc-base");
+    expect((b.blocks ?? []).flatMap((g) => g.docs.map((x) => x.ownerId))).toContain("pc-base");
   });
 
   it("기본계약 문면을 바꾸면 연결된 보통약관 조 본문도 따라간다", () => {

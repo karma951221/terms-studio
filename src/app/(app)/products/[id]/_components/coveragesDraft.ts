@@ -7,7 +7,7 @@
  * 「특약 그룹」 섹션(ADR-0090 · §3.7)의 그룹 목록 · 소속도 같은 초안에 쌓여 같은 저장에 실린다(`groups`).
  * 순수 함수만 둔다(React 없음).
  */
-import { combinationKey, effectiveGroups, normalizeSelections, type AttributeKind, type AttributeSelection, type ProductCoverage, type ProductGroupSetting, type ProductGroupsInput } from "@/domain/product";
+import { combinationKey, effectiveGroups, groupedCoverageIds as domainGroupedCoverageIds, normalizeSelections, type AttributeKind, type AttributeSelection, type ProductCoverage, type ProductGroupSetting, type ProductGroupsInput } from "@/domain/product";
 import type { Code, Id, Issue } from "@/domain/types";
 import type { CoverageSection, ProductCoveragesInput } from "@/services/product";
 
@@ -106,14 +106,17 @@ export function initCoveragesDraft(base: readonly ProductCoverage[], special: re
 
 // ───────────────────────────── 특약 그룹 섹션 (ADR-0090) ─────────────────────────────
 
-/** 이 초안에서 특약으로 탑재된 담보 — 지울 행은 빼고, 처음 나온 행 순서. 기본계약 절은 그룹을 읽지 않는다. */
-export function specialCoverageIds(draft: CoveragesDraft): Id[] {
-  return [...new Set(draft.rows.filter((r) => r.section === "special" && !r.removed).map((r) => r.coverageId))];
+/**
+ * 이 초안에서 그룹을 읽는 담보 — 지울 행은 빼고, 처음 나온 행 순서. 특약 절의 담보, 기본계약이 둘 이상(케이스 2 — 제2절 블록)이면
+ * 기본계약 담보도(도메인 `groupedCoverageIds` — 서비스 저장 · 조립과 같은 기준, ADR-0090 결정 7). 기본계약 하나의 기본계약은 그룹을 읽지 않는다.
+ */
+export function groupedCoverageIds(draft: CoveragesDraft): Id[] {
+  return domainGroupedCoverageIds(draft.rows.filter((r) => !r.removed).map((r) => ({ coverageId: r.coverageId, base: r.section === "base" })));
 }
 
 /** 보이는 그룹 목록 — 저장된 순서(이 상품에 없게 된 기본 그룹은 뺀다) 뒤에 자리가 없는 기본 그룹을 열거값 순서로 (도메인 `effectiveGroups` 와 같다). */
 export function displayGroups(draft: CoveragesDraft, ctx: GroupContext): DraftGroup[] {
-  const present = new Set(specialCoverageIds(draft).flatMap((id) => ctx.categoryOf(id) ?? []));
+  const present = new Set(groupedCoverageIds(draft).flatMap((id) => ctx.categoryOf(id) ?? []));
   const byKey = new Map(draft.groups.map((g) => [g.key, g]));
   const asDomain = draft.groups.map((g) => (g.kind === "category" ? { kind: "category" as const, code: g.code } : { kind: "user" as const, id: g.key, name: g.name }));
   return effectiveGroups(asDomain, present, ctx.categoryOrder).map((g) => (g.kind === "category" ? { key: `category:${g.code}`, kind: "category", code: g.code } : byKey.get(g.id)!));
@@ -122,7 +125,7 @@ export function displayGroups(draft: CoveragesDraft, ctx: GroupContext): DraftGr
 /** 그 그룹에 든 담보(탑재된 것만, 행 순서) — 사용자 그룹은 소속, 기본 그룹은 그 담보분류에서 사용자 그룹에 들지 않은 것. */
 export function groupCoverages(draft: CoveragesDraft, ctx: GroupContext, group: DraftGroup): Id[] {
   const users = new Set(draft.groups.flatMap((g) => (g.kind === "user" ? [g.key] : [])));
-  return specialCoverageIds(draft).filter((id) => {
+  return groupedCoverageIds(draft).filter((id) => {
     const member = draft.members[id];
     const inUser = member !== undefined && users.has(member);
     return group.kind === "user" ? inUser && member === group.key : !inUser && ctx.categoryOf(id) === group.code;
@@ -138,17 +141,17 @@ export function groupOfCoverage(draft: CoveragesDraft, ctx: GroupContext, covera
   return code !== undefined && ctx.categoryOrder.includes(code) ? { key: `category:${code}`, kind: "category", code } : undefined;
 }
 
-/** 「+ 담보」 고르기의 후보 — 특약으로 탑재된 담보 중 사용자 그룹에 들지 않은 것. */
+/** 「+ 담보」 고르기의 후보 — 그룹을 읽는 담보(`groupedCoverageIds`) 중 사용자 그룹에 들지 않은 것. */
 export function freeCoverages(draft: CoveragesDraft): Id[] {
   const users = new Set(draft.groups.flatMap((g) => (g.kind === "user" ? [g.key] : [])));
-  return specialCoverageIds(draft).filter((id) => !(draft.members[id] !== undefined && users.has(draft.members[id]!)));
+  return groupedCoverageIds(draft).filter((id) => !(draft.members[id] !== undefined && users.has(draft.members[id]!)));
 }
 
 /** 저장 입력의 그룹 — 보이는 목록 + 탑재된 담보의 소속. */
 function groupsOf(draft: CoveragesDraft, ctx: GroupContext): ProductGroupsInput {
   const list = displayGroups(draft, ctx).map((g) => (g.kind === "category" ? { kind: "category" as const, code: g.code } : { kind: "user" as const, key: g.key, ...(g.id ? { id: g.id } : {}), name: g.name }));
   const users = new Set(list.flatMap((g) => (g.kind === "user" ? [g.key] : [])));
-  const mounted = specialCoverageIds(draft);
+  const mounted = groupedCoverageIds(draft);
   const memberships = mounted.flatMap((coverageId) => {
     const group = draft.members[coverageId];
     return group !== undefined && users.has(group) ? [{ coverageId, group }] : [];

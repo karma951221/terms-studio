@@ -72,6 +72,7 @@ import {
   type ProductCoverageSnapshot,
   type ProductPlan,
   type SnapshotNode,
+  groupedCoverageIds,
   planProductGroups,
   type ProductGroupSetting,
   type ProductGroupsInput,
@@ -729,10 +730,14 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
         if (issues.length === before) adds.push({ key: a.key, tree, attributes, combination, section: a.section, name: finalName, plans: [...new Set(a.plans)] });
       }
 
-      // ── 특약 그룹 (ADR-0090) — 최종 탑재(특약 절)로 검사 · 정리. 탑재 해제로 빠진 담보의 소속은 같은 저장에서 지운다
-      const specialCoverageIds = (pcs: readonly { coverageId: Id }[]) => new Set(pcs.map((pc) => pc.coverageId));
-      const mountedBefore = specialCoverageIds(current.filter((pc) => !baseIds.has(pc.id)));
-      const mountedAfter = specialCoverageIds([...current.filter((pc) => !baseIds.has(pc.id) && !removed.has(pc.id)), ...adds.filter((a) => a.section === "special").map((a) => ({ coverageId: a.tree.id }))]);
+      // ── 특약 그룹 (ADR-0090) — 최종 탑재 중 그룹을 읽는 담보(`groupedCoverageIds` — 특약 담보, 기본계약이 둘 이상이면 기본계약 담보도 —
+      // 결정 7)로 검사 · 정리. 기본계약 하나의 기본계약은 보통약관 조 자리라 그룹을 읽지 않는다. 그룹을 읽지 않게 된 담보의 소속은 같은 저장에서 지운다
+      const groupedOf = (pcs: readonly { coverageId: Id; base: boolean }[]) => new Set(groupedCoverageIds(pcs));
+      const mountedBefore = groupedOf(current.map((pc) => ({ coverageId: pc.coverageId, base: baseIds.has(pc.id) })));
+      const mountedAfter = groupedOf([
+        ...current.filter((pc) => !removed.has(pc.id)).map((pc) => ({ coverageId: pc.coverageId, base: baseIds.has(pc.id) })),
+        ...adds.map((a) => ({ coverageId: a.tree.id, base: a.section === "base" })),
+      ]);
       const categoryEnum = await catalog.loadEnum(tx, COVERAGE_CATEGORY_ENUM);
       const categoryOrder = (categoryEnum?.values ?? []).map((v) => v.code);
       const categories = await repo.listCoverageCategoriesOf(tx, [...mountedAfter]);

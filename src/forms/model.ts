@@ -75,6 +75,8 @@ export interface FieldView {
   singleWhen?: ViewCondition;
   /** 단위 — 입력칸 뒤 · 읽기 값 뒤 (마스터 `unit`). */
   unit?: string;
+  /** 필드 설명 — 라벨 옆 ⓘ (마스터 `description`, `infoTip` 필드만). */
+  description?: string;
   /** 선택 필드 — 값이 없으면 자리를 보이지 않고 「⊕ {라벨}」로 더한다 (`isFieldAbsent`, 2026-09-27). */
   optional?: true;
 }
@@ -139,7 +141,7 @@ function fieldView(
   defaultValue: Value | undefined,
   hiddenByDefault: boolean,
   optional: boolean,
-  field: Pick<MasterField, "unit" | "visibleWhen" | "singleWhen">,
+  field: Pick<MasterField, "unit" | "visibleWhen" | "singleWhen" | "description" | "infoTip">,
   form: FormRef,
   enums: EnumLookup,
   current: Map<SlotPath, ValueSlot>,
@@ -161,6 +163,7 @@ function fieldView(
   if (hiddenByDefault) view.hiddenByDefault = true;
   if (optional) view.optional = true;
   if (field.unit !== undefined) view.unit = field.unit;
+  if (field.infoTip && field.description !== undefined) view.description = field.description;
   if (field.visibleWhen) view.visibleWhen = { path: masterPath(form.key, field.visibleWhen.field), equals: field.visibleWhen.equals };
   if (field.singleWhen) view.singleWhen = { path: masterPath(form.key, field.singleWhen.field), equals: field.singleWhen.equals };
   // 탑재 스냅샷을 손댄 자리만 「스냅샷 · 변경됨」 — 마스터와 같으면 평범한 직접값이다 (§1.2)

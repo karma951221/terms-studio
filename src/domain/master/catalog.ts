@@ -32,12 +32,9 @@ export const CONTRACT_KIND_PATH = "feature.contract_kind";
 export function isStandaloneContract(slot: ValueSlot | undefined): boolean {
   return slot?.entered === true && slot.value === CONTRACT_KIND.standalone;
 }
-/**
- * 「그룹 제목 표시」 값 자리 경로 — 상품 기본정보의 책자 폼 (ADR-0090 결정 8 · 기능/상품 §3.1). 절 형태 제2절의 블록 번호 머리를 정한다 —
- * 끔(기본 · 미입력) 「1.」 「2.」, 켬 「Ⅰ. {그룹 제목}」 아래 「Ⅰ-1.」.
- */
+/** 「그룹 제목 표시」 값 자리 — 상품 레벨 책자 폼, 절 형태의 제2절 블록 번호 머리를 정한다 (ADR-0090 결정 8 · 기능/상품 §4.4). */
 export const GROUP_TITLES_PATH = "booklet.group_titles";
-/** 그룹 제목을 보이는가 — 미입력은 기본값(끔)으로 본다. */
+/** 그룹 제목 표시를 켰나 — 미입력은 기본값(끔)으로 본다. */
 export function showsGroupTitles(slot: ValueSlot | undefined): boolean {
   return slot?.entered === true && slot.value === true;
 }
@@ -118,11 +115,11 @@ export const MASTER: readonly MasterForm[] = [
     ],
   },
   {
-    // 책자 모양 — 상품특성(문면 조건이 읽는 상품 사실)과 섞지 않는다 (기능/상품 §3.1 · ADR-0090 결정 8)
+    // 책자 모양 — 절 형태(독립특약 · 기본계약 2+)의 제2절에만 작용한다. 켜면 그룹 제목 줄 + 「Ⅰ-1.」, 끄면 「1.」 (ADR-0090 결정 8)
     key: "booklet",
     label: "책자",
     level: "product",
-    fields: [{ key: "group_titles", label: "그룹 제목 표시", type: { kind: "boolean" }, optional: true, defaultValue: false, description: "절 형태의 제2절 블록에 그룹 제목 줄 · 「Ⅰ-1.」 번호 (끄면 「1.」)" }],
+    fields: [{ key: "group_titles", label: "그룹 제목 표시", type: { kind: "boolean" }, defaultValue: false, infoTip: true, description: "절 형태의 제2절 블록에 그룹 제목 줄 · 「Ⅰ-1.」 번호 — 끄면 「1.」 「2.」. 주계약의 특약 그룹과는 무관하다" }],
   },
   {
     key: "waiver",

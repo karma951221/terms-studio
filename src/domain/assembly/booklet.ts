@@ -27,19 +27,20 @@ import { CONTRACT_KIND_PATH, GROUP_TITLES_PATH, isStandaloneContract, showsGroup
 import { baseContractCoordinate, baseContractCountIssue } from "../product/completeness";
 import { enumCoordinate } from "../catalog/fields";
 import { COVERAGE_CATEGORY_ENUM, categoryGroupTitle } from "../coverage/category";
-import { effectiveGroups, groupKey, sortInGroup } from "../product/groups";
+import { effectiveGroups, groupedCoverageIds, groupKey, sortInGroup } from "../product/groups";
 import type { ClauseOptionOverride, ProductCoverage } from "../product/types";
-import { type Code, type Coordinate, type Id, type Issue, ok, reject, type Result } from "../types";
+import { type Coordinate, type Id, type Issue, ok, reject, type Result } from "../types";
 import { buildContexts, generalCoordinate, generalDocumentOf, specialCoordinate, type AssemblyContext, type AssemblyContexts } from "./context";
 import { ensureApplicationArticle } from "./application";
+import { blockHeads } from "./blockHeads";
 import { authoredEmptyArticleIds, dropEmptyArticles } from "./emptyArticle";
 import { baseKey, replaceGeneralWithBase } from "./base";
 import { judgeOmission } from "./omission";
 import { collectAppendices, locateIssues, numberDocument, renderDocument } from "./render";
 import { resolveDocument } from "./resolve";
-import { blockCoordinate, blockHeads, fillDelegation, FIRST_SECTION_COORDINATE, type FirstSectionVerdict, type FormPlan, judgeFirstSection, planForm, withDelegation } from "./section";
+import { blockCoordinate, fillDelegation, FIRST_SECTION_COORDINATE, type FirstSectionVerdict, type FormPlan, judgeFirstSection, planForm, withDelegation } from "./section";
 import { substituteSlots } from "./substitute";
-import type { AssemblyCoverage, AssemblyInput, Booklet, BookletAppendix, BookletForm, MasterBundle, NumberedDoc, OmissionRecord, ProductInput, RArticle, RenderedBlock, RenderedBlockGroup, RenderedDoc, RenderedGroup, SInline, SpecialPreview, SubstitutedDoc, UndocumentedCoverage } from "./types";
+import type { AssemblyCoverage, AssemblyInput, Booklet, BookletAppendix, BookletForm, MasterBundle, NumberedDoc, OmissionRecord, ProductInput, RArticle, RenderedDoc, RenderedGroup, SInline, SpecialPreview, SubstitutedDoc, UndocumentedCoverage } from "./types";
 import { articlesOf } from "./walk";
 
 /**
@@ -315,7 +316,8 @@ function buildSpecial(input: AssemblyInput, contexts: AssemblyContexts, s: Share
 /** 담보분류를 정할 수 없는 상품담보(미입력 · 지운 값)를 모은 자리의 id — 책자에서 제목 없이 그룹들 뒤에 선다. */
 export const UNGROUPED_ID = "ungrouped";
 
-interface Grouped {
+/** 그룹으로 묶은 상품담보 — `Placement` 의 그룹 부분. */
+export interface Grouped {
   /**
    * 상품 그룹 목록 순 → 그룹 안 자동 정렬 순. 상품담보가 없는 그룹은 없다. 담보분류를 정할 수 없는 상품담보는 마지막 한 자리(`title` 없음 · id `ungrouped`).
    * `titleIssue` — 기본 그룹의 「그룹 제목」이 비었다(제목 자리 오류 마커).
@@ -331,10 +333,12 @@ export interface Placement extends Grouped {
 }
 
 /**
- * 상품담보를 그룹으로 묶는다 (ADR-0090) — 특약과 절 형태의 블록이 같은 규칙이다(결정 7).
- * 그룹 = 사용자 그룹(상품) 또는 담보분류의 기본 그룹. 순서 = 상품 그룹 목록(`present` = 이 묶음의 담보분류), 제목 = 이름 · 「그룹 제목」 필드. 그룹 안은 담보코드 → 담보속성.
+ * 상품담보를 이 상품의 그룹 순서로 묶는다 (ADR-0090 결정 4 · 5 · 6 · 7) — 특약 배치와 절 형태의 블록 순서가 같은 함수다:
+ * **블록 순서 = 그룹 순서 → 그룹 안 자동 순서**(담보코드 → 담보속성). 이 상품의 기본 그룹은 그룹을 읽는 담보(`groupedCoverageIds` —
+ * 특약 담보 + 기본계약 2+ 의 기본계약 담보)의 담보분류다. 상품담보가 없는 그룹은 없다.
  */
-function groupCoverages(input: AssemblyInput, documented: readonly AssemblyCoverage[], present: ReadonlySet<Code>): Grouped {
+export function orderInGroups(input: AssemblyInput, documented: readonly AssemblyCoverage[]): Grouped {
+  const baseIds = new Set(input.product.baseContractIds);
   // 그룹 안 1차 키 = 담보코드 (ADR-0090 결정 6). 코드가 없는 담보(픽스처)는 코드 있는 것 뒤에 담보명 순
   const codeOf = (id: Id) => input.coverageCodes?.get(id);
   const nameOf = new Map(documented.map((c) => [c.snapshot.coverageId, c.snapshot.coverageName]));
@@ -378,6 +382,9 @@ function groupCoverages(input: AssemblyInput, documented: readonly AssemblyCover
     const key = groupOf(c);
     membersOf.set(key, [...(membersOf.get(key) ?? []), c]);
   }
+  // 이 상품의 기본 그룹 = 그룹을 읽는 담보들의 담보분류 (기능/상품 §3.7 — 상품담보 탭 「특약 그룹」 섹션 · 저장과 같은 기준)
+  const grouped = groupedCoverageIds(input.coverages.map((c) => ({ coverageId: c.snapshot.coverageId, base: baseIds.has(c.snapshot.id) })));
+  const present = new Set(grouped.flatMap((id) => input.coverageCategories?.get(id) ?? []));
   const productAt: Coordinate = { document: "product", ownerId: input.product.id, ownerName: input.product.name };
   const groups: Grouped["groups"] = effectiveGroups(setting?.groups ?? [], present, categoryOrder)
     .filter((g) => membersOf.has(groupKey(g)))
@@ -396,8 +403,6 @@ function groupCoverages(input: AssemblyInput, documented: readonly AssemblyCover
   return { groups, groupIssues };
 }
 
-const categoriesOf = (input: AssemblyInput, coverages: readonly AssemblyCoverage[]) => new Set(coverages.flatMap((c) => input.coverageCategories?.get(c.snapshot.coverageId) ?? []));
-
 /** 특약 배치 — 기본계약이 아닌 상품담보. 독립특약은 탑재 상품담보가 모두 블록이라 특약이 없다 (ADR-0082 · 기능/조립산출 §3.8). */
 export function placeSpecials(input: AssemblyInput, form: FormPlan = planForm(input)): Placement {
   const baseIds = new Set(input.product.baseContractIds);
@@ -411,15 +416,13 @@ export function placeSpecials(input: AssemblyInput, form: FormPlan = planForm(in
   const undocumented = pool
     .filter((c) => !input.specialDocuments.has(c.snapshot.coverageId))
     .map((c) => ({ productCoverageId: c.snapshot.id, name: c.snapshot.name, coverageId: c.snapshot.coverageId }));
-  // 이 상품의 기본 그룹 = 특약 담보들의 담보분류 (기능/상품 §3.7 — 상품담보 탭 「특약 그룹」 섹션과 같은 기준)
-  const grouped = groupCoverages(input, specials.filter((c) => input.specialDocuments.has(c.snapshot.coverageId)), categoriesOf(input, specials));
-  return { ...grouped, undocumented, baseContracts };
+  return { ...orderInGroups(input, specials.filter((c) => input.specialDocuments.has(c.snapshot.coverageId))), undocumented, baseContracts };
 }
 
 /** 블록 순서 = 그룹 순서 → 그룹 안 자동 순서 (ADR-0090 결정 7). 블록 후보 중 문면이 있는 것. */
 function placeBlocks(input: AssemblyInput, candidates: ReadonlySet<Id>): Grouped {
   const pool = input.coverages.filter((c) => candidates.has(c.snapshot.id));
-  return groupCoverages(input, pool.filter((c) => input.specialDocuments.has(c.snapshot.coverageId)), categoriesOf(input, pool));
+  return orderInGroups(input, pool.filter((c) => input.specialDocuments.has(c.snapshot.coverageId)));
 }
 
 // ───────────────────────────── 절 형태 — 제2절 블록 ─────────────────────────────
@@ -452,7 +455,8 @@ function prepareBlock(input: AssemblyInput, contexts: AssemblyContexts, s: Share
 
 interface SectionedBuild {
   general: Built | undefined;
-  groups: { id: Id; title?: string; titleIssue?: Issue; label?: string; blocks: { prepared: PreparedBlock; numbered: NumberedDoc; label: string }[] }[];
+  /** 블록 그룹 — `head` = 그룹 머리(켤 때 「Ⅰ.」), 블록 `head` = 블록 머리(「Ⅰ-1.」 · 「1.」 — 켤 때 제목 없는 자리의 블록은 없다). */
+  groups: { id: Id; title?: string; titleIssue?: Issue; head?: string; blocks: { prepared: PreparedBlock; numbered: NumberedDoc; head?: string }[] }[];
   groupIssues: ReadonlyMap<Id, Issue>;
   /** 상품 자리의 오류 — 독립특약 블록 0 이면 `noBlock`. */
   productIssues: Issue[];
@@ -460,7 +464,8 @@ interface SectionedBuild {
 
 /**
  * 절 형태 — 블록(그룹 순)을 해소해 세고, 블록의 조연결로 제1절을 판정(①잠정 — 전부 위임)해 제1절을 만든다.
- * 블록 번호 머리는 「그룹 제목 표시」 옵션이 정한다 — 끔 「1.」 · 켬 「Ⅰ-1.」(블록이 있는 그룹만 센다, ADR-0090 결정 8).
+ * 블록 번호 머리는 「그룹 제목 표시」 옵션이 정한다 — 끔 「1.」 · 켬 「Ⅰ-1.」(`blockHeads` — 제목 줄이 서는 그룹만 센다, ADR-0090 결정 8).
+ * 끄면 그룹 제목을 찍지 않는다(제목 · 빈 제목 오류 없음).
  */
 function buildSectioned(input: AssemblyInput, contexts: AssemblyContexts, s: Shared, form: Extract<FormPlan, { form: "sectioned" }>): SectionedBuild {
   const placed = placeBlocks(input, form.candidates);
@@ -470,7 +475,7 @@ function buildSectioned(input: AssemblyInput, contexts: AssemblyContexts, s: Sha
   const verdicts = judgeFirstSection(prepared.flatMap((g) => g.blocks.map((b) => ({ productCoverageId: b.c.snapshot.id, linkedArticleIds: b.linked }))));
   const general = buildFirstSection(input, contexts, s, verdicts);
   const showTitles = showsGroupTitles(input.product.values.get(GROUP_TITLES_PATH));
-  const heads = blockHeads(prepared.map((g) => g.blocks.length), showTitles);
+  const heads = blockHeads(prepared.map((g) => ({ id: g.id, titled: g.id !== UNGROUPED_ID, members: g.blocks.map((b) => b.c.snapshot.id) })), showTitles);
   const productIssues: Issue[] = [];
   if (form.standalone && prepared.length === 0) {
     const at = baseContractCoordinate(input.product);
@@ -478,14 +483,20 @@ function buildSectioned(input: AssemblyInput, contexts: AssemblyContexts, s: Sha
   }
   return {
     general,
-    groups: prepared.map((g, i) => ({
-      id: g.id,
-      ...(g.title !== undefined ? { title: g.title } : {}),
-      // 그룹 제목을 찍지 않으면(끔) 비어 있어도 오류가 아니다
-      ...(showTitles && g.titleIssue ? { titleIssue: g.titleIssue } : {}),
-      ...(heads[i].group !== undefined ? { label: heads[i].group } : {}),
-      blocks: g.blocks.map((b, j) => ({ prepared: b, numbered: numberDocument(ensureApplicationArticle(b.doc)), label: heads[i].blocks[j] })),
-    })),
+    groups: prepared.map((g) => {
+      const head = heads.groups.get(g.id);
+      return {
+        id: g.id,
+        // 그룹 제목을 찍지 않으면(끔) 제목도, 빈 제목 오류도 없다
+        ...(showTitles && g.title !== undefined ? { title: g.title } : {}),
+        ...(showTitles && g.titleIssue ? { titleIssue: g.titleIssue } : {}),
+        ...(head !== undefined ? { head } : {}),
+        blocks: g.blocks.map((b) => {
+          const blockHead = heads.blocks.get(b.c.snapshot.id);
+          return { prepared: b, numbered: numberDocument(ensureApplicationArticle(b.doc)), ...(blockHead !== undefined ? { head: blockHead } : {}) };
+        }),
+      };
+    }),
     groupIssues: placed.groupIssues,
     productIssues,
   };
@@ -503,11 +514,12 @@ function renderGeneral(input: AssemblyInput, general: Built, appendices: readonl
   return { doc: r.doc, issues: sectioned ? inSection(issues, FIRST_SECTION_COORDINATE) : issues };
 }
 
-function renderBlock(block: SectionedBuild["groups"][number]["blocks"][number], general: Built | undefined, appendices: readonly BookletAppendix[], groupIssue: Issue | undefined): { block: RenderedBlock; issues: Issue[] } {
-  const { prepared, numbered, label } = block;
+/** 블록 하나의 렌더 — 문서 제목 = 블록 제목, `head` = 블록 머리. 블록 안 오류는 「제2절 {블록 머리}」 이름공간. */
+function renderBlock(block: SectionedBuild["groups"][number]["blocks"][number], general: Built | undefined, appendices: readonly BookletAppendix[], groupIssue: Issue | undefined): { doc: RenderedDoc; issues: Issue[] } {
+  const { prepared, numbered, head } = block;
   const r = renderDocument(numbered, { document: "special", ownerId: prepared.c.snapshot.id, general: general?.numbered, appendices, ...(general?.hidden ? { hiddenArticles: general.hidden } : {}) });
-  const issues = inSection([...(groupIssue ? [groupIssue] : []), ...locateIssues(prepared.issues, numbered), ...r.issues], blockCoordinate(label));
-  return { block: { productCoverageId: prepared.c.snapshot.id, label, title: prepared.title, doc: r.doc }, issues };
+  const issues = inSection([...(groupIssue ? [groupIssue] : []), ...locateIssues(prepared.issues, numbered), ...r.issues], blockCoordinate(head));
+  return { doc: head === undefined ? r.doc : { ...r.doc, head }, issues };
 }
 
 /** 특약 하나의 렌더 — 보통약관(제1절) 조 참조 · 생략 별칭과 함께. */
@@ -574,20 +586,23 @@ export function assemble(master: MasterBundle, product: ProductInput): Booklet {
     renderedGeneral = r.doc;
     issues.push(...r.issues);
   }
-  const blocks: RenderedBlockGroup[] | undefined = sectioned?.groups.map((g) => {
+  // 절 형태의 제2절 — 블록 그룹(특약 그룹과 같은 모양 `RenderedGroup` · 그룹 머리 `head` · 블록 문서 `head`)
+  const blocks: RenderedGroup[] | undefined = sectioned?.groups.map((g) => {
     // 그룹 제목 자리의 오류가 그 그룹 블록들보다 먼저 — 책자 등장 순 (D-P6-12)
     if (g.titleIssue) issues.push(g.titleIssue);
     return {
       id: g.id,
-      ...(g.label !== undefined ? { label: g.label, ...(g.title !== undefined ? { title: g.title } : {}) } : {}),
+      ...(g.head !== undefined ? { head: g.head } : {}),
+      ...(g.title !== undefined ? { title: g.title } : {}),
       ...(g.titleIssue ? { titleError: { kind: "error" as const, id: `block-group-title-${g.id}`, issue: g.titleIssue } } : {}),
-      blocks: g.blocks.map((b) => {
+      docs: g.blocks.map((b) => {
         const r = renderBlock(b, general, appendices, sectioned.groupIssues.get(b.prepared.c.snapshot.id));
         issues.push(...r.issues);
-        return r.block;
+        return r.doc;
       }),
     };
   });
+  // 특약 그룹 — 주계약의 특약(대치 형태 · 기본계약 2+). 그룹 제목 표시 옵션과 무관하다 (ADR-0090 결정 8). 독립특약은 특약이 없다(블록)
   const specials: RenderedGroup[] = builtGroups.map((g) => {
     // 그룹 제목 자리의 오류가 그 그룹 문서들보다 먼저 — 책자 등장 순 (D-P6-12)
     if (g.titleIssue) issues.push(g.titleIssue);
@@ -666,7 +681,7 @@ export function assembleSpecial(master: MasterBundle, product: ProductInput, pro
   }
   const rendered = block ? { ...renderBlock(block, general, appendices, sectioned!.groupIssues.get(productCoverageId)), omitted: [] } : { ...renderSpecial(c, special!, general, appendices), omitted: special!.omitted };
   issues.push(...rendered.issues);
-  return ok({ doc: "block" in rendered ? rendered.block.doc : rendered.doc, general: renderedGeneral, appendices, issues, complete: completeOf(issues), omitted: rendered.omitted, trace });
+  return ok({ doc: rendered.doc, general: renderedGeneral, appendices, issues, complete: completeOf(issues), omitted: rendered.omitted, trace });
 }
 
 /** 보통약관 미리보기 — 그 상품의 보통약관 한 벌만 조립한다 (문면 저작 화면 미리보기, 기능/문면 §3.9). 템플릿을 고르지 않았으면 undefined. 절 형태면 제1절. */

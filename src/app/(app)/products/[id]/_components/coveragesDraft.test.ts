@@ -199,6 +199,18 @@ describe("coveragesDraft — 특약 그룹 섹션 (ADR-0090 · 기능/상품 §3
     expect(coveragesDraftDirty(start(), d, ctx)).toBe(false);
   });
 
+  it("기본계약이 둘 이상(케이스 2)이면 기본계약 담보도 그룹을 읽는다 — 기본 그룹을 만들고 사용자 그룹에 넣을 수 있다 (결정 7)", () => {
+    const heart: Record<string, string> = { ...category, "c-heart": "V03" };
+    const two = initCoveragesDraft([pc("b1", "c-base", "기본계약"), pc("b2", "c-heart", "심근경색 기본")], [pc("s1", "c-death", "사망")], {});
+    const ctx3: GroupContext = { categoryOf: (id) => heart[id], categoryOrder: ["V01", "V02", "V03"] };
+    expect(displayGroups(two, ctx3).map((g) => g.key)).toEqual(["category:V01", "category:V03"]);
+    expect(freeCoverages(two)).toEqual(["c-base", "c-heart", "c-death"]);
+    // 기본계약 하나면 기본계약은 그룹을 읽지 않는다 — 지우면(되돌리기 전까지) 심근경색의 기본 그룹이 빠진다
+    const one = coveragesDraftReducer(two, { type: "remove", key: "b2" });
+    expect(displayGroups(one, ctx3).map((g) => g.key)).toEqual(["category:V01"]);
+    expect(freeCoverages(one)).toEqual(["c-death"]);
+  });
+
   it("탑재로 새로 생긴 기본 그룹은 목록 끝", () => {
     const groups: ProductGroupSetting = { groups: [{ kind: "category", code: "V02" }, { kind: "user", id: "g1", name: "사망" }], memberships: [] };
     const d = coveragesDraftReducer(initCoveragesDraft([], [pc("s2", "c-surgery", "수술비")], {}, groups), { type: "add", row: newRow({ coverageId: "c-death" }) });

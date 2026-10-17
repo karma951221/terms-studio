@@ -7,7 +7,7 @@
  *   (ADR-0082 결정 7 의 블록 하나 규칙을 잠정으로 전부에 — ② 판정에서 연결 수 k/N · 함수조항 동일 가드 · 준용하기 옵션으로 바뀐다).
  * - 위임 문구 「제N조(조 제목)는 제2절 보장조항에서 정합니다.」(ADR-0082 결정 8) — N 은 그 조 자신의 제1절 번호. 항 열쇠는 P · PZ 밖 예약 열쇠라
  *   위임된 조의 항을 가리키는 참조는 `articleGone`, 조 단위 참조는 유효하다(조립산출 §6.2 결정 메모).
- * - 블록 번호 머리(`blockHeads`) — 「그룹 제목 표시」 끔: 블록 순서대로 「1.」 「2.」. 켬: 그룹 「Ⅰ.」 아래 「Ⅰ-1.」 — 로마 숫자는 블록이 있는 그룹만 센다.
+ * - 블록 번호 머리는 `blockHeads.ts`(ADR-0090 결정 8) — 여기는 오류 좌표의 절 이름공간만.
  *
  * DB·React import 금지 (순수층).
  */
@@ -99,38 +99,9 @@ export function fillDelegation(numbered: NumberedDoc, delegated: ReadonlySet<Id>
   return { ...numbered, doc };
 }
 
-// ───────────────────────────── 블록 번호 머리 ─────────────────────────────
-
-const ROMAN = ["Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ", "Ⅴ", "Ⅵ", "Ⅶ", "Ⅷ", "Ⅸ", "Ⅹ", "Ⅺ", "Ⅻ"];
-
-/** 로마 숫자 — 1 ~ 12 는 한 글자(Ⅰ ~ Ⅻ), 그 너머는 라틴 문자 조합. */
-export function romanNumeral(n: number): string {
-  if (n >= 1 && n <= ROMAN.length) return ROMAN[n - 1];
-  const table: [number, string][] = [[1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"], [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
-  let rest = n;
-  let out = "";
-  for (const [value, letters] of table) while (rest >= value) {
-    out += letters;
-    rest -= value;
-  }
-  return out;
-}
-
-/**
- * 블록 번호 머리 — 그룹(블록이 있는 것만, 그룹 순) × 블록 수 → 그룹 머리 · 블록 머리.
- * 끔: 그룹 머리 없음 · 블록은 전체 순번 「1.」. 켬: 그룹 「Ⅰ.」 · 블록 「Ⅰ-1.」(그룹마다 1 부터).
- */
-export function blockHeads(blockCounts: readonly number[], showGroupTitles: boolean): { group?: string; blocks: string[] }[] {
-  let serial = 0;
-  return blockCounts.map((count, g) => {
-    if (!showGroupTitles) return { blocks: Array.from({ length: count }, () => `${++serial}.`) };
-    const roman = romanNumeral(g + 1);
-    return { group: `${roman}.`, blocks: Array.from({ length: count }, (_, i) => `${roman}-${i + 1}.`) };
-  });
-}
-
 /** 오류 좌표의 절 이름공간 (기능/조립산출 §3.4) — 「제1절」 · 「제2절 {블록 머리}」. */
 export const FIRST_SECTION_COORDINATE = { kind: "general", label: "제1절" } as const;
-export function blockCoordinate(head: string): { kind: "benefit"; label: string } {
-  return { kind: "benefit", label: `제2절 ${head}` };
+/** 블록 머리가 없으면(그룹 제목 표시 켬 · 제목 없는 자리의 블록) 「제2절」만. */
+export function blockCoordinate(head: string | undefined): { kind: "benefit"; label: string } {
+  return { kind: "benefit", label: head === undefined ? "제2절" : `제2절 ${head}` };
 }

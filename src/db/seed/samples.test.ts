@@ -38,7 +38,7 @@ describe("합성 표본 — 절 형태 세 상품 (PGlite)", () => {
     await t.close();
   });
 
-  const blocks = (b: Booklet) => (b.blocks ?? []).flatMap((g) => g.blocks.map((x) => `${x.label} ${x.title}`));
+  const blocks = (b: Booklet) => (b.blocks ?? []).flatMap((g) => g.docs.map((x) => `${x.head} ${x.title}`));
   const delegated = (b: Booklet) =>
     (b.general?.children ?? [])
       .flatMap((c) => (c.kind === "section" ? c.children : [c]))
@@ -63,7 +63,7 @@ describe("합성 표본 — 절 형태 세 상품 (PGlite)", () => {
   it("ⓑ 독립특약 블록 2개 — 제목 = 상품명 · 그룹 제목 표시 「Ⅰ. 상해 관련 특별약관」 아래 「Ⅰ-1.」 「Ⅰ-2.」 · 특약 그룹 없음", () => {
     const b = booklets.get("표본 — 독립특약 블록 2개")!;
     expect(b.title).toBe("표본 — 독립특약 블록 2개");
-    expect(b.blocks!.map((g) => [g.label, g.title])).toEqual([["Ⅰ.", "상해 관련 특별약관"]]);
+    expect(b.blocks!.map((g) => [g.head, g.title])).toEqual([["Ⅰ.", "상해 관련 특별약관"]]);
     expect(blocks(b)).toEqual(["Ⅰ-1. 일반상해80%이상후유장해 특별약관", "Ⅰ-2. 일반상해80%이상후유장해 추가 특별약관"]);
     expect(delegated(b)).toEqual(["보험금의 지급사유", "보험금 지급에 관한 세부규정"]);
     expect(b.specials).toEqual([]);

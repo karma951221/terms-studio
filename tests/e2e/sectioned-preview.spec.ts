@@ -2,7 +2,7 @@ import { expect, test } from "./_lib/fixtures";
 
 /**
  * 절 형태 ① 뼈대 (ADR-0021 결정 1 · ADR-0082 결정 7 · 8 · ADR-0090 결정 8 · 기능/조립산출 §3.8) — 합성 표본 상품의 조립 미리보기.
- * 시드 표본(samples.json): 「표본 — 독립특약 블록 2개」(그룹 제목 표시 켬) · 「표본 — 기본계약 2개(주계약)」(끔).
+ * 시드 표본(samples.json): 「표본 — 독립특약 블록 2개」 · 「표본 — 기본계약 2개(주계약)」. 그룹 제목 표시 켬 · 끔의 머리 모양은 `special-groups-booklet.spec.ts`.
  * 본문 = 책자 제목 → 「제1절 일반조항」(연결 조는 위임 문구 — ①잠정, ② 판정에서 바뀐다) → 「제2절 보장조항」(그룹 머리 · 블록 머리 · 블록마다 제1조부터).
  */
 async function openPreview(page: import("@playwright/test").Page, productName: string): Promise<void> {
@@ -16,7 +16,7 @@ async function openPreview(page: import("@playwright/test").Page, productName: s
 }
 
 test(
-  "절 형태: 표본 상품 미리보기 — 제1절(위임 문구) · 제2절 블록 머리(그룹 제목 표시 켬 「Ⅰ-1.」 · 끔 「1.」)",
+  "절 형태: 표본 상품 미리보기 — 제1절(위임 문구) · 제2절 블록(독립특약 · 주계약 기본계약 2개)",
   {
     annotation: {
       type: "좌표없음",
@@ -39,8 +39,8 @@ test(
     await expect(first).toContainText("는 제2절 보장조항에서 정합니다.");
     const second = page.getByRole("region", { name: "제2절 보장조항" });
     await expect(second.locator(":scope > .ts-doc-title")).toHaveText("제2절 보장조항");
-    await expect(second.locator(".ts-doc-group-title")).toHaveText(["Ⅰ. 상해 관련 특별약관"]);
-    await expect(second.locator("article.ts-doc > .ts-doc-title")).toHaveText(["Ⅰ-1. 일반상해80%이상후유장해 특별약관", "Ⅰ-2. 일반상해80%이상후유장해 추가 특별약관"]);
+    // 그룹 제목 표시 켬 · 끔의 머리 모양은 special-groups-booklet.spec.ts 가 본다 — 여기는 블록이 제2절 아래에 서는지만
+    await expect(second.locator("article.ts-doc")).toHaveCount(2);
     // 블록마다 제1조부터
     for (const block of await second.locator("article.ts-doc").all()) await expect(block.locator(".ts-doc-article").first()).toContainText("제1조");
     // 독립특약은 특약 그룹이 없다

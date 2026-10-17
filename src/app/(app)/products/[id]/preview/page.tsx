@@ -72,7 +72,7 @@ export default async function ProductPreviewPage({ params, searchParams }: { par
   const specialDocs = booklet.specials.flatMap((g) => g.docs);
   const generalArticles = articleCount(booklet.general);
   const sectioned = bookletForm(booklet) === "sectioned";
-  const blockCount = (booklet.blocks ?? []).reduce((n, g) => n + g.blocks.length, 0);
+  const blockCount = (booklet.blocks ?? []).reduce((n, g) => n + g.docs.length, 0);
   // 조연결 판정 절(기능/조립산출 §4.1)이 생기기 전에 저장된 산출본의 판정 기록에는 pairs · excludedClauseNodeIds 가 없다 — 입력이 안 바뀌면 stale 도 아니라서
   // 「다시 실행」 전까지는 근거 없는 행으로 그린다 (화면이 죽지 않게).
   const records = booklet.omitted.map((o) => ({ ...o, pairs: o.pairs ?? [], excludedClauseNodeIds: o.excludedClauseNodeIds ?? [] }));
