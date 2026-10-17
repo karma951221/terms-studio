@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { effectiveGroups, groupKey, planProductGroups, sortInGroup, type GroupPlanContext, type ProductGroup } from "./groups";
+import { effectiveGroups, groupedCoverageIds, groupKey, planProductGroups, sortInGroup, type GroupPlanContext, type ProductGroup } from "./groups";
 import type { AttributeKind, ProductCoverage } from "./types";
 
 const renewal: AttributeKind = {
@@ -71,6 +71,15 @@ describe("상품 그룹 목록 (ADR-0090 결정 5) — 기본 그룹(담보분�
 
   it("열거형에 없는 담보분류(지운 값)는 기본 그룹이 되지 않는다", () => {
     expect(effectiveGroups([{ kind: "category", code: "V09" }], new Set(["V09", "V01"]), order).map(groupKey)).toEqual(["category:V01"]);
+  });
+});
+
+describe("그룹을 읽는 담보 (ADR-0090 결정 7) — 특약 담보 + 기본계약 2+ 의 기본계약 담보", () => {
+  it("기본계약 하나(대치 형태)의 기본계약은 보통약관 조 자리라 그룹을 읽지 않는다 — 특약 담보만, 처음 나온 순 · 중복 없음", () => {
+    expect(groupedCoverageIds([{ coverageId: "c-base", base: true }, { coverageId: "c1", base: false }, { coverageId: "c2", base: false }, { coverageId: "c1", base: false }])).toEqual(["c1", "c2"]);
+  });
+  it("기본계약이 둘 이상(케이스 2 — 제2절 블록)이면 기본계약 담보도 — 같은 그룹 목록이 블록과 특약 그룹 둘 다의 순서다", () => {
+    expect(groupedCoverageIds([{ coverageId: "c-b1", base: true }, { coverageId: "c1", base: false }, { coverageId: "c-b2", base: true }])).toEqual(["c-b1", "c1", "c-b2"]);
   });
 });
 

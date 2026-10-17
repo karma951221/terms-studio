@@ -46,6 +46,16 @@ describe("책자의 특약 그룹 (ADR-0090) — 제목은 사용자 그룹 이�
     expect(html).toContain("골절 특별약관");
   });
 
+  it("절 형태 블록 번호 머리 — 그룹 「Ⅰ. 뇌 관련 특별약관」 · 블록 「Ⅰ-1. 뇌졸중 특별약관」, 끄면 블록 「1.」만 (ADR-0090 결정 8)", () => {
+    const block = { ...special, title: "뇌졸중 특별약관", head: "Ⅰ-1." };
+    const html = renderToStaticMarkup(<RenderedGroupView group={{ id: "g1", head: "Ⅰ.", title: "뇌 관련 특별약관", docs: [block] }} />);
+    expect(html).toContain('<h2 class="ts-doc-group-title">Ⅰ. 뇌 관련 특별약관</h2>');
+    expect(html).toContain('<h2 class="ts-doc-title">Ⅰ-1. 뇌졸중 특별약관</h2>');
+    const off = renderToStaticMarkup(<RenderedGroupView group={{ id: "g1", docs: [{ ...block, head: "1." }] }} />);
+    expect(off).not.toContain("ts-doc-group-title");
+    expect(off).toContain('<h2 class="ts-doc-title">1. 뇌졸중 특별약관</h2>');
+  });
+
   it("「그룹 제목」이 비었으면 제목 줄 자리에 오류 마커(앵커 · 메시지)", () => {
     const issue = { kind: "notEntered" as const, message: "그룹 제목이 비었습니다 — 담보분류 「상해」의 「그룹 제목」", at: {} };
     const html = renderToStaticMarkup(<RenderedGroupView group={{ id: "category:V01", titleError: { kind: "error", id: "group-title-category:V01", issue }, docs: [special] }} />);

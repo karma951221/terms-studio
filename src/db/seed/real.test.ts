@@ -243,6 +243,28 @@ describe("★ 실물 재현 — 실물 시드 → 조립 → 원문 대조", () 
       expect(booklet().specials.flatMap((g) => g.docs.map((d) => d.title)).sort()).toEqual(product.specials.map(([title]) => title).sort());
     });
   });
+
+  /**
+   * 알파Plus2607 특약 그룹의 소속 — 원문 「특별약관 Ⅰ ~ Ⅴ」(알파플러스2607_원문구조 §2.1)의 묶음마다 원문 그 묶음의 특약이 든다.
+   * 기본 그룹(상해 · 질병 · 비용손해 — 담보분류)과 이 상품의 사용자 그룹(상해 및 질병 · 기타)이 한 목록에 섞여 선다 (ADR-0090 결정 4 · 5).
+   * 묶음은 자동 탑재 담보 key 의 글자(`a7-<글자>N` — i 상해 · d 질병 · b 상해 및 질병 · c 비용손해 · e 기타).
+   */
+  it("알파Plus보장보험2607 특약 그룹 — 원문 Ⅰ 상해 → Ⅱ 질병 → Ⅲ 상해 및 질병 → Ⅳ 비용손해 → Ⅴ 기타, 묶음마다 원문 그 묶음의 특약", () => {
+    const b = booklets.get("알파Plus보장보험2607")!;
+    expect(b.specials.map((g) => g.title)).toEqual(["상해 관련 특별약관", "질병 관련 특별약관", "상해 및 질병 관련 특별약관", "비용손해 관련 특별약관", "기타 특별약관"]);
+    expect(b.specials.map((g) => g.id.startsWith("category:"))).toEqual([true, true, false, true, false]);
+    // 원문 목록 번호 순(설정 순) — 갱신형 짝은 비갱신형 바로 뒤(같은 담보의 탑재분 뭉침, 결정 6)
+    const titlesOf = (letter: string) => autoFixtures(ALPHA2607_AUTO.filter((spec) => spec.ownerCoverage.startsWith(`a7-${letter}`)), (file) => readFileSync(path.join(FIXTURES, "알파2607", file), "utf8").split("\n")[0]).map(([title]) => title);
+    const docsOf = (i: number) => b.specials[i]!.docs.map((d) => d.title);
+    expect(docsOf(0)).toEqual(expect.arrayContaining(titlesOf("i")));
+    expect(docsOf(1)).toEqual(expect.arrayContaining(titlesOf("d")));
+    // 사용자 그룹 · 비용손해 — 그룹 안 순서 = 담보코드 순 = 원문 목록 번호 순
+    expect(docsOf(2)).toEqual(titlesOf("b"));
+    expect(docsOf(3)).toEqual(titlesOf("c"));
+    expect(docsOf(4)).toEqual(titlesOf("e"));
+    // Ⅰ = 2604 상해 10 + 그 갱신형 2 + 자동 탑재 상해, Ⅱ = 질병 대표 5 + 자동 탑재 질병
+    expect([docsOf(0).length - titlesOf("i").length, docsOf(1).length - titlesOf("d").length]).toEqual([12, 5]);
+  });
 });
 
 /**

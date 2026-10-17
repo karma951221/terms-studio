@@ -132,6 +132,15 @@ describe("seedAlphaPlus — 실물 시드 두 상품(알파Plus · 메리츠) (P
     const meritzPreview = await services.assembly.preview(meritz.id);
     if (!meritzPreview.ok) throw new Error(JSON.stringify(meritzPreview.rejection));
     expect(meritzPreview.value.specials.map((g) => [g.title, g.docs.length])).toEqual([["상해 관련 특별약관", 5], ["질병 관련 특별약관", 3]]);
+    // 상품 특약 그룹(ADR-0090 결정 4 · 5) — 2604 · 메리츠는 실물 묶음이 기본 그룹 그대로라 저장된 목록이 없고,
+    // 2607 은 원문 Ⅰ ~ Ⅴ 순서의 목록 하나에 사용자 그룹 둘(상해 및 질병 21 담보 · 기타 2 담보)이 섞여 선다
+    expect(await services.product.listGroups(r.productId)).toEqual({ groups: [], memberships: [] });
+    expect(await services.product.listGroups(meritz.id)).toEqual({ groups: [], memberships: [] });
+    const alpha2607 = (await services.product.listProducts()).find((p) => p.name === "알파Plus보장보험2607")!;
+    const groups2607 = await services.product.listGroups(alpha2607.id);
+    expect(groups2607.groups.map((g) => (g.kind === "user" ? g.name : g.code))).toEqual(["V01", "V02", "상해 및 질병 관련 특별약관", "V03", "기타 특별약관"]);
+    const memberCount = (name: string) => groups2607.memberships.filter((m) => groups2607.groups.some((g) => g.kind === "user" && g.id === m.groupId && g.name === name)).length;
+    expect([memberCount("상해 및 질병 관련 특별약관"), memberCount("기타 특별약관")]).toEqual([21, 2]);
 
     // 담보코드 — JSON 순서대로 시스템 채번 (기능/담보 §3.1)
     expect((await services.coverage.listSummaries()).find((c) => c.name === "일반상해80%이상후유장해")?.code).toBe("COV000001");

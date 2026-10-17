@@ -4,7 +4,7 @@
  * 여기 있는 것이 전부다 — 시드가 실제로 쓰는 폼만 옮겼다. 폼을 더하는 것은 배포 + 마이그레이션이다.
  *
  * 레벨 배치의 근거:
- * - 공시이율{평균공시이율} · 상품특성{갱신형여부 · 태아보장여부 · 단체계약여부 · 간편심사유형 · 건강고지유형}은 **상품(product)** —
+ * - 공시이율{평균공시이율} · 상품특성{갱신형여부 · 태아보장여부 · 단체계약여부 · 간편심사유형 · 건강고지유형} · 책자{그룹 제목 표시}는 **상품(product)** —
  *   상품 한 권에 하나인 사실이라 세목 축을 타지 않는다. 기본정보 탭의 상품정보에서 상품명과 함께 편집 한 번 · 저장 한 번 (2026-09-28).
  *   고지유형을 상품 레벨 enum 으로 둔 결정(ADR-0006)의 구현이다. 계약은 일반심사 · 간편심사 · 건강고지 중 하나라
  *   고지유형 E0005 하나를 고르고, 그에 딸린 칸만 연다 (2026-10-01): 간편심사 → 간편심사구분 E0006(단일 · 통합) + 간편심사유형 E0003
@@ -31,6 +31,12 @@ export const CONTRACT_KIND_PATH = "feature.contract_kind";
 /** 독립특약인가 — 미입력은 기본값(주계약)으로 본다. */
 export function isStandaloneContract(slot: ValueSlot | undefined): boolean {
   return slot?.entered === true && slot.value === CONTRACT_KIND.standalone;
+}
+/** 「그룹 제목 표시」 값 자리 — 상품 레벨 책자 폼, 절 형태의 제2절 블록 번호 머리를 정한다 (ADR-0090 결정 8 · 기능/상품 §4.4). */
+export const GROUP_TITLES_PATH = "booklet.group_titles";
+/** 그룹 제목 표시를 켰나 — 미입력은 기본값(끔)으로 본다. */
+export function showsGroupTitles(slot: ValueSlot | undefined): boolean {
+  return slot?.entered === true && slot.value === true;
 }
 /** 간편심사구분 E0006 값 코드. */
 export const REVIEW_SCOPE = { single: "V01", combined: "V02" } as const;
@@ -107,6 +113,13 @@ export const MASTER: readonly MasterForm[] = [
         },
       },
     ],
+  },
+  {
+    // 책자 모양 — 절 형태(독립특약 · 기본계약 2+)의 제2절에만 작용한다. 켜면 그룹 제목 줄 + 「Ⅰ-1.」, 끄면 「1.」 (ADR-0090 결정 8)
+    key: "booklet",
+    label: "책자",
+    level: "product",
+    fields: [{ key: "group_titles", label: "그룹 제목 표시", type: { kind: "boolean" }, defaultValue: false, description: "절 형태의 제2절 블록에 그룹 제목 줄 · 「Ⅰ-1.」 번호 — 끄면 「1.」 「2.」. 주계약의 특약 그룹과는 무관하다" }],
   },
   {
     key: "waiver",
