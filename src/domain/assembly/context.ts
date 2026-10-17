@@ -154,7 +154,8 @@ function lookupBuiltin(env: Env, node: CoverageNode | undefined, plan: PlanCurso
   // 세목 선택지는 번호도 뼈대다 — 종형명 표기 「2종(보험료 납입면제형)」 = `builtin.plan.number` + 「종(」 + `builtin.plan.name` + 「)」 (기능/상품 §3.2)
   if (ref.level === "plan" && ref.prop === "number") return plan ? slotOf(String(plan.number)) : MISSING;
   // 「현재 값」은 문면 반복 안 슬롯만 — 조립(resolve)이 감싼 반복의 원소로 먼저 푼다. 식에서 읽는 길은 없다 (ADR-0088)
-  if (ref.level === "value" || ref.prop !== "name") return BROKEN;
+  // 표 슬롯(`builtin.table.*`)은 동적표 펼침이 글로 바꾼 뒤라 여기 오면 깨진 참조다
+  if (ref.level === "value" || ref.level === "table" || ref.prop !== "name") return BROKEN;
   if (ref.level === "product") return slotOf(env.product.name);
   if (ref.level === "plan") return plan ? slotOf(plan.name) : MISSING;
   if (!env.tree) return UNDETERMINED; // 기본계약 없음
@@ -241,7 +242,7 @@ function checkEnum(env: Env, field: MasterFieldRef, r: LookupResult, source: Coo
 function levelOfRef(env: Env, ref: ValueRef): AttachLevel | null {
   switch (ref.kind) {
     case "builtin":
-      return ref.level === "value" ? null : ref.level;
+      return ref.level === "value" || ref.level === "table" ? null : ref.level;
     case "master":
       return findMasterField(refPath(ref), env.master)?.level ?? null;
     case "discriminator":

@@ -292,8 +292,8 @@ export function checkParams(params: readonly ParamDef[], env: BindingEnv = {}, a
 
 // ───────────────────────────── 검사 ② 사용처 연결 ─────────────────────────────
 
-/** 사용처가 실제로 쓰는 연결 — 사용처 연결 > 기본 연결. 둘 다 없는 인자는 빠진다. */
-export function effectiveBindings(clause: Clause, bindings: Bindings | undefined): Bindings {
+/** 사용처가 실제로 쓰는 연결 — 사용처 연결 > 기본 연결. 둘 다 없는 인자는 빠진다. 인자 표를 가진 것(함수조항 · 동적표)이면 무엇이든. */
+export function effectiveBindings(clause: { params?: readonly ParamDef[] }, bindings: Bindings | undefined): Bindings {
   const out: Bindings = {};
   for (const p of clause.params ?? []) {
     const b = bindings?.[p.name] ?? p.default;

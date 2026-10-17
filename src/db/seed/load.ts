@@ -1,6 +1,7 @@
 import { formatCode, parseCode, type EnumFieldType, type EnumFieldValue, type NewDiscriminator, type NewEnum } from "@/domain/catalog";
 import type { ClauseBody, NewClause, PresetDef } from "@/domain/clause";
 import type { ArticleNode, DocumentNode } from "@/domain/document";
+import type { NewDynTable } from "@/domain/dyntable/types";
 import { findMasterField } from "@/domain/master";
 import { articleHash, articlesById } from "@/domain/product";
 import type { Actor, Code, Id, Result, Value } from "@/domain/types";
@@ -13,6 +14,7 @@ import clauses from "./data/clauses.json";
 import coverages from "./data/coverages.json";
 import discriminators from "./data/discriminators.json";
 import documents from "./data/documents.json";
+import dynTables from "./data/dyntables.json";
 import enums from "./data/enums.json";
 import generals from "./data/generals.json";
 import products from "./data/products.json";
@@ -223,6 +225,18 @@ async function loadDiscriminators(services: Services, actor: Actor, upTo?: numbe
   }
 }
 
+/**
+ * 동적표 (기능/동적표) — 감액 지급금액 표 A(DT000001) · (갱신) 지급금액 표 R(DT000002). 정의는 `src/domain/dyntable/fixture.ts` 와 같다(노드 id 고정).
+ * 코드는 시스템 채번이라 JSON 순서가 곧 코드다 — 담보약관이 참조하기 전에 있어야 한다.
+ */
+async function loadDynTables(services: Services, actor: Actor): Promise<void> {
+  for (const raw of dynTables as unknown as Array<{ code: string } & NewDynTable>) {
+    const { code, ...definition } = raw;
+    const created = unwrap(await services.dynTable.create(actor, definition));
+    expectCode(created.code, code);
+  }
+}
+
 async function loadAppendices(services: Services, actor: Actor): Promise<void> {
   // 코드는 시스템 채번(AX000001…) — JSON 의 code 는 채번 순서가 어긋나지 않았는지 대조용 (기능/별표 §3.1).
   for (const appendix of appendices) {
@@ -358,6 +372,7 @@ export async function loadAlphaPlus(services: Services, actor: Actor): Promise<S
   // 별표 · 박스 → 함수조항(보통약관이 쓰는 것 · 조 참조 없는 것) → 보통약관 → 보통약관 조를 가리키는 함수조항 (기능/함수조항 §3.4)
   await loadAppendices(services, actor);
   await loadBoxes(services, actor);
+  await loadDynTables(services, actor);
   const generalIds = await loadClausesAndGenerals(services, actor);
 
   const documentIds = new Map<string, Id>();

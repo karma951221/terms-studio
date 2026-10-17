@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 
 import type { EnumDef } from "@/domain/catalog";
 import type { Clause } from "@/domain/clause";
+import type { DynTable } from "@/domain/dyntable/types";
 import type { EditOp, InlineAt, InlineNode, NodeNumber, ReferenceTarget } from "@/domain/document";
 import { format, parse, type DisplayName, type MemberName } from "@/domain/expression";
 import type { Box } from "@/domain/document/box";
@@ -76,6 +77,8 @@ export interface DocCtx {
   conditionFor?: (nodeId: Id) => ConditionContext;
   /** 함수조항 블록이 본문을 그리는 재료 — 코드로 찾는다. 없으면 이름만. */
   clauses?: readonly Clause[];
+  /** 동적표 띠가 이름 · 인자 연결을 그리는 재료 — 코드로 찾는다. 없으면 코드만 (기능/동적표 §3.5). */
+  dynTables?: readonly DynTable[];
   /** 정적 마스터 박스 조회 — 박스 참조를 내용째 그린다(함수조항 블록 안도). 없으면 코드만. */
   boxOf?: (code: Code) => Box | undefined;
   /** 블록 반복의 머리 줄 이름 — 별칭 또는 원천에서 지은 이름(「납입면제종마다」 · 「납입면제사유마다」, ADR-0077). 없으면 원천만으로. */

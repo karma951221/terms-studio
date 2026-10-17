@@ -30,6 +30,7 @@ export type ToolId =
   | "bulletList"
   | "clauseBlock"
   | "box"
+  | "dynTable"
   | "forBlock"
   | "forFallback"
   | "slot"
@@ -123,6 +124,8 @@ export const DOC_TOOLS: ToolGroup[] = [
         match: oneOf("아래에 함수조항(조 단위) 추가…", "아래에 함수조항(호) 추가…", "아래에 함수조항(목) 추가…", "함수조항(호) 추가…", "함수조항(목) 추가…", "아래에 함수조항 참조 추가…", "함수조항 참조 추가…", "이 반복에 함수조항(조 단위) 추가…", "이 반복에 함수조항(호) 추가…"),
       },
       { id: "box", label: "박스", icon: "box", short: "박스", title: "박스 넣기 — 정적 마스터 박스를 골라 지금 블록 아래(조 제목이면 그 조 끝)에", match: oneOf("아래에 박스 추가…", "박스 추가…", "이 가지에 박스 추가…") },
+      // 동적표 (기능/동적표 §3.5) — 담보약관만 켜진다(보통약관 자리 목록에는 없다)
+      { id: "dynTable", label: "동적표", title: "동적표 넣기 — 동적표 정의를 골라 인자를 연결하고 지금 블록 아래(조 제목이면 그 조 끝)에. 담보약관만", match: oneOf("아래에 동적표 추가…", "동적표 추가…") },
       {
         id: "forBlock",
         label: "반복",
@@ -187,7 +190,7 @@ export const DOC_TOOLS: ToolGroup[] = [
     // 고른 것(칩 · 함수조항 참조 · 표 · 반복 블록 · 조)에 속성이 있을 때만 선다
     name: "고른 것 속성",
     tools: [
-      { id: "edit", label: "속성", title: "속성 — 고른 칩 · 함수조항 참조(옵션 · 인자) · 표 · 반복 블록(무엇마다 · 이름) · 항 · 호 · 목(코드)의 속성 창", match: oneOf("고치기…", "옵션 고치기…", "표 속성…", "반복 원천…", "코드 고치기…"), at: "context" },
+      { id: "edit", label: "속성", title: "속성 — 고른 칩 · 함수조항 참조(옵션 · 인자) · 동적표(인자) · 표 · 반복 블록(무엇마다 · 이름) · 항 · 호 · 목(코드)의 속성 창", match: oneOf("고치기…", "옵션 고치기…", "인자 연결 고치기…", "표 속성…", "반복 원천…", "코드 고치기…"), at: "context" },
       { id: "repeat", label: "행 반복", title: "행 반복 — 고른 표의 행을 무엇마다 되풀이할지(담보약관)", match: oneOf("행 반복…"), at: "context" },
       { id: "link", label: "보통약관 조 연결", title: "보통약관 조 연결 — 고른 조가 대응 보통약관의 어느 조를 따라가는가(담보약관)", match: oneOf("조연결…"), at: "context" },
     ],
@@ -205,7 +208,7 @@ export const DOC_TOOLS: ToolGroup[] = [
 ];
 
 /** 함수조항 본문에 없는 도구 — 함수조항 툴바에서 빠진다 (기능/함수조항 §4.3). 조 · 관 · 함수조항은 남고 잠긴다(사유 tooltip). */
-const CLAUSE_HIDDEN = new Set<ToolId>(["table", "structKey", "repeat", "link", "forBlock", "forFallback", "inlineFor"]);
+const CLAUSE_HIDDEN = new Set<ToolId>(["table", "structKey", "repeat", "link", "forBlock", "forFallback", "inlineFor", "dynTable"]);
 
 export const CLAUSE_TOOLS: ToolGroup[] = DOC_TOOLS.map((g) => ({ ...g, tools: g.tools.filter((t) => !CLAUSE_HIDDEN.has(t.id)) })).filter((g) => g.tools.length > 0);
 

@@ -519,13 +519,14 @@ function toRef(segments: string[], pos: number): Ref {
     if (segments.length !== 3) {
       throw new SyntaxFailure("내장 경로는 builtin.<레벨>.<속성> 세 단계입니다", pos);
     }
-    if (!LEVELS.has(segments[1]) && segments[1] !== "value") {
+    // `value` = 반복의 「현재 값」(ADR-0088) · `table` = 동적표의 표 슬롯(기능/동적표 §3.3) — 부착 레벨은 아니지만 내장 경로의 둘째 토막에 선다
+    if (!LEVELS.has(segments[1]) && segments[1] !== "value" && segments[1] !== "table") {
       throw new SyntaxFailure(
         `내장 경로의 레벨은 ${ATTACH_LEVELS.join("·")} 중 하나여야 합니다: '${segments[1]}'`,
         pos,
       );
     }
-    return { kind: "builtin", level: segments[1] as AttachLevel | "value", prop: segments[2] };
+    return { kind: "builtin", level: segments[1] as AttachLevel | "value" | "table", prop: segments[2] };
   }
   if (segments.length === 2) {
     assertCode(segments[0], pos);

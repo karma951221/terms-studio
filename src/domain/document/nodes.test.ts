@@ -18,7 +18,7 @@ describe("허용 자식 규칙 테이블 (ADR-0012 — 문서>조>항>호>목, �
   });
 
   it("조 아래에는 항 · 조건 블록 · 함수조항 block 참조 · 반복 블록이 선다 (조는 반복 본문에 못 들어간다)", () => {
-    expect(allowedChildren.article).toEqual(["paragraph", "condBlock", "clauseBlockRef", "forBlock", "table", "box", "bulletList", "boxRef"]);
+    expect(allowedChildren.article).toEqual(["paragraph", "condBlock", "clauseBlockRef", "forBlock", "table", "box", "bulletList", "boxRef", "dynTableRef"]);
     // 반복 블록은 투명 — 서 있는 자리의 허용 집합(표 · 옛 박스 제외)을 본문에 물려준다 (ADR-0077)
     expect(allowedChildren.forBlock).toEqual([]);
   });
@@ -32,12 +32,12 @@ describe("허용 자식 규칙 테이블 (ADR-0012 — 문서>조>항>호>목, �
   });
 
   it("호는 항의 items 에, 목은 호의 subitems 에 선다 (조건 블록 · 호 · 목 유형 함수조항 참조도 그 자리에 설 수 있다)", () => {
-    expect(allowedListChildren["paragraph.items"]).toEqual(["item", "condBlock", "table", "box", "bulletList", "boxRef", "clauseBlockRef", "forBlock"]);
+    expect(allowedListChildren["paragraph.items"]).toEqual(["item", "condBlock", "table", "box", "bulletList", "boxRef", "clauseBlockRef", "forBlock", "dynTableRef"]);
     expect(allowedListChildren["item.subitems"]).toEqual(["subitem", "condBlock", "bulletList", "clauseBlockRef"]);
   });
 
   it("잎 노드(텍스트·슬롯·참조)는 자식이 없다", () => {
-    for (const k of ["text", "slot", "articleRef", "appendixRef", "particle", "clauseInlineRef", "clauseBlockRef", "boxRef"] as const) {
+    for (const k of ["text", "slot", "articleRef", "appendixRef", "particle", "clauseInlineRef", "clauseBlockRef", "boxRef", "dynTableRef"] as const) {
       expect(allowedChildren[k]).toEqual([]);
     }
   });
@@ -350,7 +350,7 @@ describe("실물 재현 노드 (기능/문면 §3.2) — 관 · 정적 표 · �
     expect(allowedChildren.section).toEqual(["article", "condBlock"]);
     expect(allowedChildren.article).toContain("table");
     expect(allowedChildren.article).toContain("box");
-    expect(allowedIn("paragraph", "items")).toEqual(["item", "condBlock", "table", "box", "bulletList", "boxRef", "clauseBlockRef", "forBlock"]);
+    expect(allowedIn("paragraph", "items")).toEqual(["item", "condBlock", "table", "box", "bulletList", "boxRef", "clauseBlockRef", "forBlock", "dynTableRef"]);
     expect(allowedIn("item", "subitems")).toEqual(["subitem", "condBlock", "bulletList", "clauseBlockRef"]);
     expect(slotsOf("table")).toEqual([]);
     expect(slotsOf("box")).toEqual([]);

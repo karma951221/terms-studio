@@ -6,7 +6,8 @@
  *              graph = refs 그래프 (「검사」의 깨질 사용처)
  * - coverage ← UsageSource = `coverageUsageSource` (노드 삭제의 문면 사용처) · MountSync = product.syncStructureIn (구조 정정 뒤 탑재 스냅샷)
  * - clause   ← UsageSource = `clauseUsageSource` (참조 문서)
- * - document ← ClauseGate = 함수조항 정의(존재·요구 구분자·옵션 검증) · TypeResolver = 카탈로그 정의 + 담보속성 유효값 ·
+ * - dynTable ← DynTableUsageSource = `dynTableUsageSource` (참조 담보약관 — 기능/동적표)
+ * - document ← ClauseGate = 함수조항 정의(존재·요구 구분자·옵션 검증) · DynTableGate = 동적표 정의(존재 · 인자 연결) · TypeResolver = 카탈로그 정의 + 담보속성 유효값 ·
  *              productImpact = product.templateImpact (템플릿 저장의 상품 영향 — ADR-0081) ·
  *              UsageSource = `documentUsageSource` (상품 템플릿 · 담보 문서 연결 · 옵션 오버라이드 · 함수조항의 별표 참조)
  * - product  ← CoverageMasterSource = coverage.get (구조적 상위집합) · GeneralDocumentGate = document.get 이 general 인가 ·
@@ -24,7 +25,7 @@
  */
 import type { Discriminator } from "@/domain/catalog";
 import { presetUsage, validateOptionSelection } from "@/domain/clause";
-import { catalogTypeResolver, clauseGateFrom, collectRefs, indexTree, type ClauseGate } from "@/domain/document";
+import { catalogTypeResolver, clauseGateFrom, collectRefs, dynTableGateFrom, indexTree, type ClauseGate, type DynTableGate } from "@/domain/document";
 import { checkTypes, parse, type TypeResolver } from "@/domain/expression";
 import { clauseGeneralRefs, outsideRefsOf, type GeneralDependents, type RequiredCoverageRef } from "@/domain/product";
 import type { Code, Id } from "@/domain/types";
@@ -32,6 +33,7 @@ import type { Code, Id } from "@/domain/types";
 import * as catalogRepo from "@/db/repo/catalog";
 import * as clauseRepo from "@/db/repo/clause";
 import * as documentRepo from "@/db/repo/document";
+import * as dynTableRepo from "@/db/repo/dyntable";
 import * as productRepo from "@/db/repo/product";
 import type { Db } from "@/db/repo/types";
 
@@ -41,9 +43,10 @@ import { createCatalogService, type CatalogService } from "./catalog";
 import { createClauseService, type ClauseService } from "./clause";
 import { createCoverageService, type CoverageService } from "./coverage";
 import { createDocumentService, type DocumentService } from "./document";
+import { createDynTableService, type DynTableService } from "./dyntable";
 import { createMasterService, type MasterService } from "./master";
 import { createProductService, type ProductService } from "./product";
-import { attributeRefSource, catalogImpactSource, clauseUsageSource, coverageUsageSource, createRefsService, documentUsageSource, type RefsService } from "./refs";
+import { attributeRefSource, catalogImpactSource, clauseUsageSource, coverageUsageSource, createRefsService, documentUsageSource, dynTableUsageSource, type RefsService } from "./refs";
 import { contextualDb } from "./txContext";
 
 export interface Services {
@@ -53,6 +56,7 @@ export interface Services {
   catalog: CatalogService;
   coverage: CoverageService;
   clause: ClauseService;
+  dynTable: DynTableService;
   document: DocumentService;
   product: ProductService;
   refs: RefsService;
@@ -76,6 +80,22 @@ async function clauseGateOf(tx: Db): Promise<ClauseGate> {
   const [clauses, defs, enums] = await Promise.all([clauseRepo.listClauses(tx), catalogRepo.listDiscriminators(tx), catalogRepo.listEnums(tx)]);
   // 브라우저 편집본도 같은 정의로 같은 게이트를 만든다 (ADR-0074) — 구성은 도메인 한 벌
   return clauseGateFrom(clauses, defs.map((d) => d.code), catalogTypeResolver(defs), enums);
+}
+
+/**
+ * 문서 검증용 동적표 게이트 — 정의 존재 · 인자 연결 검증 (기능/동적표 §3.6 삽입 검사). 연결 검사 재료는 함수조항 게이트와 같은 카탈로그
+ * (구분자 결과 타입 · 열거형 값). 동적표 서비스의 저장 검사(`bindingEnvOf`)와 같은 재료다.
+ */
+async function dynTableGateOf(tx: Db): Promise<DynTableGate> {
+  const [defs, discriminators, enums] = await Promise.all([dynTableRepo.listDynTables(tx), catalogRepo.listDiscriminators(tx), catalogRepo.listEnums(tx)]);
+  const resolve = catalogTypeResolver(discriminators);
+  const codes = new Set(discriminators.map((d) => d.code));
+  const enumValues = new Map(enums.map((e) => [e.code, e.values.map((v) => v.code)]));
+  return dynTableGateFrom(defs, {
+    discriminatorType: (c) => resolve({ kind: "discriminator", code: c }),
+    discriminatorExists: (c) => codes.has(c),
+    enumValues: (c) => enumValues.get(c),
+  });
 }
 
 /** 식 타입 조회 — 카탈로그 정의 + 담보속성 카탈로그(`attr.X` 의 유효값). 없는 담보속성은 깨진 참조. */
@@ -142,8 +162,10 @@ export function createServices(root: Db, opts: ContainerOptions = {}): Services 
   // 구조 정정 뒤 탑재 스냅샷 동기화 — product 가 coverage 를 마스터로 보므로 지연 참조 (coverage ↔ product).
   const coverage = createCoverageService(db, { usage: coverageUsageSource(db), newId, mountSync: { syncStructure: (tx, pcId, who) => services.product.syncStructureIn(tx, pcId, who) } });
   const clause = createClauseService(db, { usage: clauseUsageSource(db) });
+  const dynTable = createDynTableService(db, { usage: dynTableUsageSource(db) });
   const document = createDocumentService(db, {
     clauseGate: clauseGateOf,
+    dynTableGate: dynTableGateOf,
     typeResolver: typeResolverOf,
     usages: documentUsageSource(),
     newId,
@@ -194,9 +216,9 @@ export function createServices(root: Db, opts: ContainerOptions = {}): Services 
   });
   const auth = createAuthService(db, opts.auth);
   const master = createMasterService(db, { refs, catalog, coverage, product });
-  const assembly = createAssemblyService(db, { catalog, coverage, clause, document, product });
+  const assembly = createAssemblyService(db, { catalog, coverage, clause, document, product, dynTables: () => dynTable.list() });
 
-  Object.assign(services, { db, auth, catalog, coverage, clause, document, product, refs, master, assembly });
+  Object.assign(services, { db, auth, catalog, coverage, clause, dynTable, document, product, refs, master, assembly });
   return services;
 }
 

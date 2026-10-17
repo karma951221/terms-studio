@@ -74,6 +74,8 @@ export function nodeKey(key: RefNodeKey): string {
       return `appendix:${key.code}`;
     case "box":
       return `box:${key.code}`;
+    case "dynTable":
+      return `dynTable:${key.code}`;
     case "coverageNode":
       return `coverageNode:${key.level}/${key.id}`;
     case "attribute":
@@ -540,6 +542,18 @@ function addDocument(b: Builder, doc: DocumentInput, master?: MasterTree): Map<I
       case "box":
         b.edge({ from, to: { kind: "box", code: r.boxCode }, via: "boxRef", at: r.at });
         break;
+      case "dynTable": {
+        // 동적표 참조 (기능/동적표 §3.5) — 간선에 인자 연결을 싣고, 구분자 연결은 함수조항 참조와 같은 `binding` 간선으로
+        b.edge({ from, to: { kind: "dynTable", code: r.tableCode }, via: "dynTableRef", at: r.at, ...(r.bindings ? { bindings: r.bindings } : {}) });
+        for (const [param, binding] of Object.entries(r.bindings ?? {})) {
+          if (binding.kind !== "discriminator") continue;
+          const path = binding.node && "path" in binding.node ? binding.node.path : undefined;
+          const at = { ...r.at, refPath: `${r.tableCode}.arg.${param}${path !== undefined ? `@${path}` : ""}` };
+          b.edge({ from, to: { kind: "discriminator", code: binding.code }, via: "binding", at, param });
+          if (path !== undefined) b.qualifier(from, { kind: "discriminator", code: binding.code, node: { path } }, at, coverageId);
+        }
+        break;
+      }
       case "link":
         b.edge({ from, to: generalOf(r.linkedArticleId), via: "link", at: r.at });
         break;
@@ -649,6 +663,7 @@ export function buildGraph(inputs: GraphInputs): RefGraph {
   }
   for (const a of inputs.appendices ?? []) b.node({ key: { kind: "appendix", code: a.code }, label: a.name });
   for (const x of inputs.boxes ?? []) b.node({ key: { kind: "box", code: x.code }, label: x.name });
+  for (const d of inputs.dynTables ?? []) b.node({ key: { kind: "dynTable", code: d.code }, label: d.label });
   for (const k of inputs.attributeKinds ?? []) {
     const key: RefNodeKey = { kind: "attribute", code: k.code };
     b.node({ key, label: k.label });

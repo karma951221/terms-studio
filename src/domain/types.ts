@@ -245,7 +245,8 @@ export type IssueKind =
   | "syntax" // 식 문법 오류
   | "particleUnresolved" // (warning) 조사 칩 앞 글자로 받침을 판정할 수 없어 병기
   | "structure" // 문면 트리 규칙 위반 (허용 자식 · 인라인 조건 중첩 · 노드 id 중복 · else 위치 등, ADR-0012)
-  | "alias"; // 별칭 — 값 하나에 이름 둘, 허용하되 경고 (기능/구분자 §3.2)
+  | "alias" // 별칭 — 값 하나에 이름 둘, 허용하되 경고 (기능/구분자 §3.2)
+  | "dynTableMergeConflict"; // (warning) 동적표 — 급부명이 같은데 어느 열의 셀 비율이 달라 한 행으로 묶지 않고 따로 찍음 (기능/동적표 §3.4)
 
 export interface Issue {
   kind: IssueKind;

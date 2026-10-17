@@ -81,4 +81,9 @@ export interface ConditionContext {
    * 슬롯 고르기 맨 앞에 「범위 낱말」(〔이 약관의〕). 보통약관 템플릿 · 상품 조 사본은 없다.
    */
   output?: true;
+  /**
+   * 동적표 템플릿 편집기에서 열었을 때만 (기능/동적표 §3.3) — 그 템플릿에서 쓸 수 있는 표 슬롯 경로(`builtin.table.boundary` 경계 · `prevBoundary` 앞경계 · `rate` 비율).
+   * 슬롯 고르기 맨 앞 「표 슬롯」 묶음의 재료다. 비면 묶음이 없다(단일 열 템플릿).
+   */
+  table?: { slots: readonly string[] };
 }

@@ -7,14 +7,15 @@
  * 검증 재료(함수조항 게이트 · 식 타입 조회)도 여기서 만든다 — 서버는 DB 에서 읽은 정의로, 브라우저는 서버가 넘긴 같은 정의로.
  */
 import { discriminatorResultType, type Discriminator } from "../catalog";
-import { boundDiscriminators, checkUsageBindings, clauseReadsOutput, presetUsage, validateOptionSelection, type BindingEnv, type Clause } from "../clause";
+import { boundDiscriminators, checkBinding, checkUsageBindings, clauseReadsOutput, presetUsage, validateOptionSelection, type BindingEnv, type Clause } from "../clause";
+import type { DynTable } from "../dyntable/types";
 import type { EnumDef } from "../catalog/types";
 import { definitionCrossCheck, valueBranchWarnings } from "./blockRepeat";
 import type { ExprType, TypeResolver } from "../expression";
 import type { Code, Issue } from "../types";
 import { validateExpressions, type ExpressionScope } from "./expressions";
 import { nodeBindingIssues } from "./nodeBindings";
-import { coordinateOf, indexTree, validateTree, type ClauseGate, type DocumentNode, type TreeEnv } from "./nodes";
+import { coordinateOf, indexTree, validateTree, type ClauseGate, type DocumentNode, type DynTableGate, type TreeEnv } from "./nodes";
 import { repeatTableIssues } from "./repeat";
 
 /**
@@ -85,6 +86,38 @@ export function clauseGateFrom(clauses: readonly Clause[], catalogCodes: Iterabl
     usageOf: (code, node) => {
       const clause = byCode.get(code);
       return clause ? presetUsage(clause, node) : { options: node.options, ...(node.bindings ? { bindings: node.bindings } : {}), issues: [] };
+    },
+  };
+}
+
+/**
+ * 동적표 게이트 — 정의 존재 · 인자 연결 검증 (기능/동적표 §3.6 삽입 검사 — 함수조항 참조의 문서 저장 검사와 같은 결).
+ * 인자마다 연결(없으면 기본 연결)이 있어야 하고(`argUnbound`), 댄 것이 인자 타입에 맞아야 하며(`checkBinding`), 선언에 없는 이름에 연결하면 brokenRef.
+ * `env` 는 연결 검사 재료(구분자 타입 · 열거형 값) — 자리의 반복(`loops`)은 호출마다 덧댄다.
+ */
+export function dynTableGateFrom(defs: readonly DynTable[], env: BindingEnv = {}): DynTableGate {
+  const byCode = new Map(defs.map((d) => [d.code, d]));
+  return {
+    exists: (code) => byCode.has(code),
+    validateBindings: (code, bindings, loops) => {
+      const def = byCode.get(code);
+      if (!def) return [];
+      const issues: Issue[] = [];
+      const bindingEnv: BindingEnv = { ...env, ...(loops ? { loops } : {}) };
+      for (const p of def.params) {
+        const own = bindings?.[p.name];
+        if (!own && !p.default) {
+          issues.push({ kind: "argUnbound", message: `동적표 ${def.code} 의 인자 ${p.name} 이(가) 연결되지 않았습니다 — 기본 연결이 없어 넣는 자리에서 구분자 · 상수를 댄다`, at: { refPath: `arg.${p.name}` } });
+          continue;
+        }
+        // 기본 연결의 잘못은 정의 저장 검사가 낸다 — 사용처는 제가 댄 연결만 본다
+        if (own) issues.push(...checkBinding(p, own, bindingEnv, {}));
+      }
+      const declared = new Set(def.params.map((p) => p.name));
+      for (const name of Object.keys(bindings ?? {})) {
+        if (!declared.has(name)) issues.push({ kind: "brokenRef", message: `동적표 ${def.code} 에 없는 인자에 연결했습니다: ${name}`, at: { refPath: `arg.${name}` } });
+      }
+      return issues;
     },
   };
 }

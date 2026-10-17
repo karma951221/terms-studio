@@ -14,7 +14,8 @@ import { IconButton, IconTrash } from "@/app/_components/icons";
 import { DOC_KIND_LABEL, REPEAT_DEPTH_LABEL, STRUCT_KEY_CHIP, SWITCH_WORD } from "@/app/_lib/labels";
 import { bindingLabel, bindingOptions, constBindingOfText, planFormChoices, staleBindingOption, type LoopChoice, type NodeTree } from "@/app/(app)/functions/_components/params";
 import type { EnumDef } from "@/domain/catalog";
-import { unfoldPreset, type Bindings, type Clause } from "@/domain/clause";
+import { unfoldPreset, type Bindings, type Clause, type ParamDef } from "@/domain/clause";
+import type { DynTable } from "@/domain/dyntable/types";
 import {
   codeChangeBreaks,
   codeTag,
@@ -83,6 +84,8 @@ export interface PopupEnv {
   /** 정적 마스터 박스 — 「박스」 고르기 팝업. */
   boxes: readonly Box[];
   clauses: readonly Clause[];
+  /** 동적표 정의 — 「동적표 넣기」 고르기 · 인자 연결 칸 (기능/동적표 §3.5). 없으면 넣을 수 없다. */
+  dynTables?: readonly DynTable[];
   generals: readonly { id: Id; title: string }[];
   generalDocumentId?: Id;
   suggestedGeneralId?: Id;
@@ -492,6 +495,57 @@ function ClauseFields({ clauses, code, options, bindings, preset, condition, loo
   );
 }
 
+/**
+ * 동적표 칸 (기능/동적표 §3.5) — 정의를 고르면 그 인자마다 연결(함수조항 인자 칸과 같은 `ScalarArgField` — 구분자 · 상수). 동적표 인자는 값 인자뿐이라
+ * 조 참조 칸 · 프리셋 · 옵션이 없다. 「기본 연결」(비움)이 처음 값, 기본 연결이 없으면 골라야 저장된다(연결 누락 = 저장 오류).
+ */
+function DynTableFields({ tables, code, bindings, condition, loops = [], tree, enumOf }: { tables: readonly DynTable[]; code?: Code; bindings?: Bindings; condition: ConditionContext; loops?: readonly LoopChoice[]; tree?: NodeTree; enumOf?: (code: Code) => EnumDef | undefined }) {
+  const [picked, setPicked] = useState<Code>(code ?? "");
+  const table = tables.find((t) => t.code === picked);
+  const forms = planFormChoices();
+  const enumsOf = (t: { kind: string; enumCode?: Code }): EnumDef[] => {
+    const def = t.enumCode !== undefined ? enumOf?.(t.enumCode) : undefined;
+    return def ? [def] : [];
+  };
+  return (
+    <>
+      {code === undefined ? (
+        <div className="ts-form-row">
+          <label htmlFor="pop-dyntable">동적표</label>
+          <Combobox
+            id="pop-dyntable"
+            name="tableCode"
+            value={picked}
+            onChange={setPicked}
+            options={tables.map((t) => ({ value: t.code, label: t.label, hint: t.code }))}
+            placeholder={tables.length === 0 ? "동적표 없음 — 약관 조문 › 동적표에서 만든다" : "이름 · 코드로 찾기"}
+            disabled={tables.length === 0}
+          />
+        </div>
+      ) : (
+        !table && <p className="ts-error-banner">동적표 {code} 이(가) 없다 — 깨진 참조다.</p>
+      )}
+      {table && table.params.length === 0 && <p className="ts-muted">연결할 인자가 없는 동적표다 — 급부 · 감액 값으로만 펼친다.</p>}
+      <div key={picked} className="ts-clause-fields">
+        {(table?.params ?? []).map((p) => {
+          const labelArgs = [p.type, condition.discriminators, enumsOf(p.type), forms, loops, tree] as const;
+          return (
+            <ScalarArgField
+              key={`${table!.code}-arg-${p.name}`}
+              param={p}
+              seed={bindings?.[p.name]}
+              defaultLabel={p.default ? `기본 연결 — ${bindingLabel(p.default, ...labelArgs)}` : "— 연결 안 함(기본 연결 없음) —"}
+              options={bindingOptions(p.type, condition.discriminators, enumsOf(p.type), forms, true, loops, tree)}
+              stale={staleBindingOption(bindings?.[p.name], ...labelArgs)}
+            />
+          );
+        })}
+      </div>
+      {table && <p className="ts-form-hint">조립이 이 상품담보의 급부 전부를 급부명 · 지급률 · 감액 구간으로 펼친다 — 표 모양은 동적표 정의에서 고친다.</p>}
+    </>
+  );
+}
+
 /** 프리셋을 노드에 — 없으면 키 없음. */
 function withPreset<T extends object>(node: T, preset: Code | undefined): T {
   return preset === undefined ? node : { ...node, preset };
@@ -505,9 +559,13 @@ function presetOfForm(fd: FormData): Code | undefined {
 
 /** 인자 연결 칸 → 연결 맵. 비운 칸(기본 연결) · 대상을 안 고른 조 참조 인자는 싣지 않는다(저장 검사가 연결 누락을 알린다). */
 function bindingsOf(fd: FormData, clauses: readonly Clause[], code: Code = str(fd, "clauseCode")): Bindings {
-  const clause = clauses.find((c) => c.code === code);
+  return bindingsOfParams(fd, clauses.find((c) => c.code === code)?.params ?? []);
+}
+
+/** 인자 표 하나의 연결 칸 → 연결 맵 — 함수조항 · 동적표가 같은 칸(`ScalarArgField`)을 쓴다. */
+function bindingsOfParams(fd: FormData, params: readonly ParamDef[]): Bindings {
   const out: Bindings = {};
-  for (const p of clause?.params ?? []) {
+  for (const p of params) {
     if (p.type.kind === "articleRef") {
       const r = articleRefOf(fd, `arg:${p.name}:`);
       if (r.targets.length > 0) out[p.name] = { kind: "articleRef", targets: r.targets, ...(r.connector ? { connector: r.connector } : {}), scope: r.scope };
@@ -521,7 +579,11 @@ function bindingsOf(fd: FormData, clauses: readonly Clause[], code: Code = str(f
 
 /** 상수 직접 입력의 모양 오류(숫자 아님 · 날짜 모양) — 적용 전에 막는다. */
 function bindingInputProblem(fd: FormData, clauses: readonly Clause[], code: Code = str(fd, "clauseCode")): string | undefined {
-  for (const p of clauses.find((c) => c.code === code)?.params ?? []) {
+  return paramInputProblem(fd, clauses.find((c) => c.code === code)?.params ?? []);
+}
+
+function paramInputProblem(fd: FormData, params: readonly ParamDef[]): string | undefined {
+  for (const p of params) {
     const error = constBindingOfText(String(fd.get(`argc:${p.name}`) ?? ""), p.type).error;
     if (error) return `인자 ${p.name} — ${error}`;
   }
@@ -1061,7 +1123,9 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
       if (node.kind === "inlineCond" && node.switchOn !== undefined) return <InlineSwitchPopup env={env} nodeId={node.id} anchor={anchor} onClose={onClose} />;
       if (node.kind === "inlineCond") return <InlineCondPopup env={env} nodeId={node.id} anchor={anchor} onClose={onClose} />;
       if (node.kind === "inlineFor") return <InlineRepeatPopup env={env} spec={{ kind: "editChip", nodeId: node.id }} anchor={anchor} onClose={onClose} />;
+      const dynTable = node.kind === "dynTableRef" ? (env.dynTables ?? []).find((t) => t.code === node.tableCode) : undefined;
       const title =
+        node.kind === "dynTableRef" ? "동적표 인자 연결" :
         node.kind === "slot" ? "치환 슬롯" : node.kind === "articleRef" ? "조 참조" : node.kind === "appendixRef" ? "별표 참조" : node.kind === "particle" ? "조사" : node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef" ? (env.clauses.find((c) => c.code === node.clauseCode)?.params?.length ? "함수조항 옵션 · 인자" : "함수조항 옵션") : "고치기";
       return (
         <Popover anchor={anchor} label={title} onClose={onClose} wide={node.kind === "articleRef" || ((node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && hasArticleRefParam(env.clauses, node.clauseCode))}>
@@ -1087,6 +1151,10 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
                 case "clauseBlockRef": {
                   const bindings = bindingsOf(fd, env.clauses, node.clauseCode);
                   return bindingInputProblem(fd, env.clauses, node.clauseCode) ?? bindingConnectorProblem(ctx, bindings) ?? [{ type: "setClauseOptions", nodeId: node.id, options: optionsOf(fd), bindings, preset: presetOfForm(fd) ?? null }];
+                }
+                case "dynTableRef": {
+                  const params = dynTable?.params ?? [];
+                  return paramInputProblem(fd, params) ?? [{ type: "setDynTableBindings", nodeId: node.id, bindings: bindingsOfParams(fd, params) }];
                 }
                 default:
                   return [];
@@ -1117,6 +1185,7 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
                 </div>
               </div>
             )}
+            {node.kind === "dynTableRef" && <DynTableFields tables={env.dynTables ?? []} code={node.tableCode} {...(node.bindings ? { bindings: node.bindings } : {})} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(node.id)} {...treeProp(node.id)} />}
             {(node.kind === "clauseInlineRef" || node.kind === "clauseBlockRef") && <ClauseFields clauses={env.clauses} code={node.clauseCode} options={node.options} {...(node.bindings ? { bindings: node.bindings } : {})} {...(node.preset !== undefined ? { preset: node.preset } : {})} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(node.id)} {...treeProp(node.id)} refs={{ ctx, restrict: restrictAt(node.id, true) }} />}
             <PopActions onCancel={onClose} {...(node.kind === "particle" ? { confirmLabel: "조사 적용" } : {})} />
           </PopForm>
@@ -1166,6 +1235,25 @@ export function PopupHost({ env, spec, anchor, onClose }: { env: PopupEnv; spec:
             }}
           >
             <ClauseFields clauses={clausesFitting(env.clauses, spec.fit)} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(spec.at.parentId)} {...treeProp(spec.at.parentId)} refs={{ ctx, restrict: restrictAt(spec.at.parentId) }} />
+            <PopActions onCancel={onClose} confirmLabel="넣기" />
+          </PopForm>
+        </Popover>
+      );
+
+    case "dynTable":
+      return (
+        <Popover anchor={anchor} label="동적표 넣기" onClose={onClose}>
+          <PopForm
+            env={env}
+            onClose={onClose}
+            build={(fd) => {
+              const code = str(fd, "tableCode");
+              if (!code) return "동적표를 고른다.";
+              const params = (env.dynTables ?? []).find((t) => t.code === code)?.params ?? [];
+              return paramInputProblem(fd, params) ?? [{ type: "insert", node: b.dynTableRef(code, bindingsOfParams(fd, params)), at: spec.at }];
+            }}
+          >
+            <DynTableFields tables={env.dynTables ?? []} condition={env.condition} {...(env.enumOf ? { enumOf: env.enumOf } : {})} loops={loopsAt(spec.at.parentId)} {...treeProp(spec.at.parentId)} />
             <PopActions onCancel={onClose} confirmLabel="넣기" />
           </PopForm>
         </Popover>

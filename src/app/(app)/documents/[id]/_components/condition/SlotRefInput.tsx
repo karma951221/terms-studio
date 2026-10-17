@@ -13,6 +13,7 @@ import { useState } from "react";
 
 import { Combobox, type ComboOption } from "@/app/_components/Combobox";
 import { currentValueRef, currentValueSlot } from "@/domain/document";
+import { DYN_TABLE_SLOT_LABEL, isDynTableSlotRef } from "@/domain/dyntable/types";
 import { refPath, SCOPE_WORD_CHIP, SCOPE_WORD_PATH } from "@/domain/expression";
 import { ATTACH_LEVELS, ATTACH_LEVEL_LABEL } from "@/domain/types";
 
@@ -30,6 +31,9 @@ const PLAN_SLOTS: readonly { path: string; label: string }[] = [
 
 const SCOPE_GROUP = "범위 낱말";
 
+/** 동적표 템플릿의 표 슬롯 묶음 — 경계 · 앞경계 · 비율 (기능/동적표 §3.3). */
+const TABLE_GROUP = "표 슬롯";
+
 /** 「현재 값」 묶음 이름 — 「현재 〈반복 이름〉」(「납입면제사유마다」 → 「현재 납입면제사유」, 「현재 종」 묶음과 같은 결). */
 const currentValueGroup = (loopName: string) => `현재 ${loopName.replace(/마다$/, "")}`;
 
@@ -44,7 +48,10 @@ export function slotOptions(context: ConditionContext): ComboOption[] {
     : [];
   // 범위 낱말 — 조립이 작성위치로 찍는 시스템 슬롯 (특약 「이 특별약관의」 · 대치 빈 글 · 블록 「이 보장조항의」)
   const scope = context.output ? [{ value: SCOPE_WORD_PATH, label: SCOPE_WORD_CHIP, hint: "특약 「이 특별약관의」 · 대치 빈 글", group: SCOPE_GROUP }] : [];
+  // 표 슬롯 — 동적표 템플릿 편집기만, 그 템플릿에서 쓸 수 있는 것만
+  const table = (context.table?.slots ?? []).filter(isDynTableSlotRef).map((path) => ({ value: path, label: DYN_TABLE_SLOT_LABEL[path], hint: path, group: TABLE_GROUP }));
   return [
+    ...table,
     ...scope,
     ...value,
     ...plan,
@@ -59,6 +66,7 @@ export function slotOptions(context: ConditionContext): ComboOption[] {
 /** 후보에 없는 경로(트리에서 고른 `코드@키경로`)의 이름 — 「세부보장 01 · 이름 › 급부 1 · 이름 › 구분자」. 모르는 코드면 undefined(경로 그대로 보인다). */
 export function slotPathLabel(context: ConditionContext, path: string): string | undefined {
   if (path === SCOPE_WORD_PATH) return `${SCOPE_GROUP} › ${SCOPE_WORD_CHIP}`;
+  if (isDynTableSlotRef(path)) return `${TABLE_GROUP} › ${DYN_TABLE_SLOT_LABEL[path]}`;
   const builtin = PLAN_SLOTS.find((p) => p.path === path);
   if (builtin) return `현재 종 › ${builtin.label}`;
   const current = currentValueSlot(path);

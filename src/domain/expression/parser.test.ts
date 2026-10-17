@@ -118,6 +118,11 @@ describe("참조 경로", () => {
     });
   });
 
+  it("builtin.table.<슬롯> 은 동적표 표 슬롯이다 (기능/동적표 §3.3)", () => {
+    expect(ast("builtin.table.rate")).toEqual({ kind: "ref", ref: { kind: "builtin", level: "table", prop: "rate" } });
+    expect(ast("builtin.table.prevBoundary")).toMatchObject({ ref: { level: "table", prop: "prevBoundary" } });
+  });
+
   it("builtin 의 레벨은 5개 부착 레벨 중 하나여야 한다", () => {
     expect(syntaxError("builtin.foo.name")).toContain("레벨");
   });
