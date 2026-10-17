@@ -47,6 +47,7 @@ import {
   type TextNode,
   type TreeEnv,
   type TreeIndex,
+  type JoinMode,
 } from "./nodes";
 import { isRepeatSource, type RepeatSource } from "./blockRepeat";
 import type { ParticlePresetKey } from "./particles";
@@ -132,6 +133,8 @@ export type Command =
   | { type: "moveBranch"; branchId: Id; index: number }
   /** 조연결 설정(`linkedArticleId`) 또는 해제(undefined). */
   | { type: "link"; articleId: Id; linkedArticleId?: Id }
+  /** 준용하기 옵션 (보통약관 템플릿 조만 — ADR-0082 결정 5). `none` 은 속성을 지운다. */
+  | { type: "joinMode"; articleId: Id; mode: JoinMode | "none" }
   /**
    * P코드 직접 수정 (ADR-0072 결정 5) — 형식(`P` + 숫자 4자리 이상)이 아니거나 공존하는 노드의 코드와 겹치면 거부.
    * 참조는 따라가지 않는다(결정 6) — 같은 코드의 분기 짝이 있으면 그리로, 없으면 깨진다. 수정 창 · 영향 건수는 다음 작업.
@@ -772,6 +775,16 @@ export function applyCommand(doc: DocumentNode, cmd: Command, opts: ApplyOptions
       if (e.value.node.kind !== "article") return structure("조연결은 조에만 둘 수 있습니다", e.value.path);
       if (cmd.linkedArticleId === undefined) delete e.value.node.linkedArticleId;
       else e.value.node.linkedArticleId = cmd.linkedArticleId;
+      const issues = checkNodeRefs(e.value, ix, env, false);
+      return issues.length > 0 ? invalid(issues) : ok(work);
+    }
+
+    case "joinMode": {
+      const e = entryOf(ix, cmd.articleId);
+      if (!e.ok) return e;
+      if (e.value.node.kind !== "article") return structure("준용하기 옵션은 조에만 둘 수 있습니다", e.value.path);
+      if (cmd.mode === "none") delete e.value.node.joinMode;
+      else e.value.node.joinMode = cmd.mode;
       const issues = checkNodeRefs(e.value, ix, env, false);
       return issues.length > 0 ? invalid(issues) : ok(work);
     }
