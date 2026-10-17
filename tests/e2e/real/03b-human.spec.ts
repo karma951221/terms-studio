@@ -72,8 +72,8 @@ test.describe.serial("실물 재현(화면) ③b 사람처럼 — 말기신부�
     await ev.action("실물사람#2.2", "인자 「납입면제_있음」(참거짓 · 기본 연결 D0002 납입면제 있음) — 1종 가입 시 제외 문장을 가른다", () =>
       driver.params([{ name: "납입면제_있음", type: { kind: "boolean" }, default: { kind: "discriminator", code: "D0002" } }]),
     );
-    await ev.action("실물사람#2.3", "본문 — 「… 다만, 보통약관 제5조 · 제9조 · 제10조 및 제38조」 + 문장 안 조건(납입면제 있음이면 1종 가입 시 납입면제 두 조도 제외)", () =>
-      driver.body("block", [
+    await ev.action("실물사람#2.3", "본문 — 「… 다만, 보통약관 제5조 · 제9조 · 제10조 및 제38조」 + 문장 안 조건(납입면제 있음이면 1종 가입 시 납입면제 두 조도 제외) · 항을 작성위치 ≠ 대치 조건으로 감싼다(준용규정은 대치에서 빈 출력, ADR-0089 결정 5)", () =>
+      driver.body("block", [{ id: "w", kind: "condBlock", branches: [{ id: "wb", when: "builtin.output ≠ 'replace'", children: [
         {
           id: "p",
           kind: "paragraph",
@@ -98,7 +98,7 @@ test.describe.serial("실물 재현(화면) ③b 사람처럼 — 말기신부�
             },
           ],
         },
-      ] as never),
+      ] }] }] as never),
     );
     await ev.action("실물사람#2.4", `저장 — ${HUMAN_CLAUSE_CODE} 로 만들어진다(맨 뒤 코드)`, () => driver.save(HUMAN_CLAUSE_CODE));
   });
