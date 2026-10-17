@@ -116,10 +116,21 @@ function expressionCheck(ctx: Pick<CatalogContext, "checkExpression" | "catalog"
  * enumCode 가 비어있으면(고르지 않음) 「없는 참조」(brokenRef)가 아니라 「아직 안 골랐다」(typeMismatch) —
  * 둘은 원인이 다르다: 전자는 화면이 있는 코드를 가리키게 하면 되고, 후자는 사용자가 값을 채워야 한다.
  */
-function checkResultTypeEnum(resultType: DiscriminatorResultType, findEnum: EnumLookup): Issue[] {
+function checkResultTypeEnum(resultType: DiscriminatorResultType, findEnum: EnumLookup | undefined): Issue[] {
   if (resultType.kind !== "enum" && resultType.kind !== "list<enum>") return [];
   if (resultType.enumCode === "") return [issue("typeMismatch", "열거형변수를 고르세요")];
+  if (!findEnum) return [];
   return findEnum(resultType.enumCode) ? [] : [issue("brokenRef", `열거형변수 ${resultType.enumCode} 이(가) 없습니다`)];
+}
+
+/**
+ * 결과 타입은 필수다 (기능/구분자 §3.1, 2026-10-17) — 타입은 막아도 시드 JSON · 폼 변조는 런타임에 비어 올 수 있다.
+ * 있으면 열거형변수(enum 계열) → 식의 추론 타입 대조 순으로 본다.
+ */
+function checkDeclaredResultType(resultType: DiscriminatorResultType | undefined, inferred: ExprType, findEnum: EnumLookup | undefined): Issue[] {
+  if (!resultType) return [issue("typeMismatch", "결과 타입을 고르세요")];
+  const enumIssues = checkResultTypeEnum(resultType, findEnum);
+  return enumIssues.length > 0 ? enumIssues : checkResultType(resultType, inferred);
 }
 
 /**
@@ -164,9 +175,8 @@ function dependentAt(dep: Discriminator, through: Code): Coordinate {
  *
  * 저장(`setExpression`)이 거부 사유로 쓰고, 저장 전 검사(`services/catalog` `inspect`)도 같은 오류를 미리 보인다.
  * 식 검사 자체는 통과해도(예: 의존 구분자가 참조 하나뿐인 bare 식이면 타입 제약이 없다) 의존 구분자에
- * 명시 결과 타입(`dep.resultType`)이 있으면 새로 추론된 타입과 대조한다 — 아니면 D0005 의 식이 바뀌어
- * 추론 타입이 조용히 달라져도 D0005 를 참조하는 D0011 의 명시 타입만 옛 값인 채 남는다
- * (final-review fix: setExpression(D0005) 는 D0005 자신에 명시 타입이 없으면 이 대조를 건너뛰므로 여기서 잡는다).
+ * 의존 구분자의 결과 타입(`dep.resultType`, 필수)은 새로 추론된 타입과 대조한다 — 아니면 D0005 의 식 · 타입을 함께
+ * 바꿨을 때 D0005 를 참조하는 D0011 의 결과 타입만 옛 값인 채 남는다 (final-review fix).
  */
 export function checkDependents(next: Discriminator, ctx: Pick<CatalogContext, "checkExpression" | "catalog">): Issue[] {
   if (!ctx.catalog) return [];
@@ -181,7 +191,7 @@ export function checkDependents(next: Discriminator, ctx: Pick<CatalogContext, "
       issues.push({ kind: "typeMismatch", message: `이 식으로 바꾸면 참조하는 구분자 ${dep.code}(${dep.label}) 가 깨집니다: ${why}`, at: dependentAt(dep, through) });
       continue;
     }
-    if (!dep.resultType) continue;
+    if (!dep.resultType) continue; // 저장된 구분자는 늘 있다 (필수) — 식 추론만 보는 가벼운 고정물만 없다
     const mismatch = checkResultType(dep.resultType, r.value as ExprType);
     if (mismatch.length === 0) continue;
     const why = mismatch.map((i) => i.message).join(" · ");
@@ -206,13 +216,8 @@ export async function createDiscriminator(
   const checked = expressionCheck(ctx)(input.expression, input.level);
   if (!checked.ok) return checked as Result<Discriminator>;
 
-  if (input.resultType) {
-    const resultIssues = [
-      ...checkResultTypeEnum(input.resultType, ctx.findEnum),
-      ...checkResultType(input.resultType, checked.value as ExprType),
-    ];
-    if (resultIssues.length > 0) return invalid(resultIssues);
-  }
+  const resultIssues = checkDeclaredResultType(input.resultType, checked.value as ExprType, ctx.findEnum);
+  if (resultIssues.length > 0) return invalid(resultIssues);
 
   const code = await allocateCode("discriminator", "", ctx.nextSeq);
   return ok({
@@ -221,7 +226,7 @@ export async function createDiscriminator(
     description: input.description ?? "",
     level: input.level,
     expression: input.expression,
-    ...(input.resultType ? { resultType: input.resultType } : {}),
+    resultType: input.resultType,
   });
 }
 
@@ -248,43 +253,42 @@ export function setDescription(def: Discriminator, description: string): Result<
  * 식 수정 — 비파괴 (D-P1-12). 채번과 같은 검증 + 자기 참조 · 순환 거부 (기능/구분자 §3.2).
  * 생성 시점에는 코드가 아직 없어 아무도 새 구분자를 부를 수 없다 — 순환은 수정에서만 생긴다.
  * 이 구분자를 참조하는 구분자들은 바뀐 카탈로그로 다시 검사한다 (`checkDependents`).
- * `resultType` 이 있으면 새 식의 추론 타입과 대조한다 — 식을 바꿔 결과 타입이 조용히 바뀌어
- * 슬롯이 깨지는 것을 저장 시점에 잡는 게 기능/구분자 §3.1 이 명시 타입을 둔 이유다.
+ * 새 식의 추론 타입은 결과 타입과 대조한다 — 식을 바꿔 결과 타입이 조용히 바뀌어
+ * 슬롯이 깨지는 것을 저장 시점에 잡는 게 기능/구분자 §3.1 이 결과 타입을 필수로 둔 이유다.
+ * 결과 타입도 함께 바꾸려면 `retype.resultType` 에 새 타입을 준다 — 새 식 · 새 타입을 서로 대조해 한 번에 바꾼다
+ * (결과 타입이 필수라 「해제 → 식 → 지정」처럼 비워 두는 단계가 없다). `retype` 을 안 주면 저장된 타입 그대로,
+ * 주었는데 비었으면(폼 변조) 거부 — 그래서 기본값 인자가 아니라 객체로 받는다.
  * (그 외 문면 사용처가 깨지는지는 서비스가 사용처 검사로 본다 — 기능/구분자 §3.4.)
  */
 export function setExpression(
   def: Discriminator,
   expression: string,
-  ctx: Pick<CatalogContext, "checkExpression" | "catalog"> = {},
+  ctx: Pick<CatalogContext, "checkExpression" | "catalog"> & Partial<Pick<CatalogContext, "findEnum">> = {},
+  retype?: { resultType: DiscriminatorResultType | undefined },
 ): Result<Discriminator> {
+  const resultType = retype ? retype.resultType : def.resultType;
   const checked = expressionCheck(ctx)(expression, def.level);
   if (!checked.ok) return checked as Result<Discriminator>;
-  if (def.resultType) {
-    const mismatch = checkResultType(def.resultType, checked.value as ExprType);
-    if (mismatch.length > 0) return invalid(mismatch);
-  }
+  const typeIssues = checkDeclaredResultType(resultType, checked.value as ExprType, ctx.findEnum);
+  if (typeIssues.length > 0) return invalid(typeIssues);
   const cycle = checkReferenceCycle(def.code, expression, ctx.catalog);
   if (cycle.length > 0) return invalid(cycle);
-  const next = { ...def, expression };
+  const next = { ...def, expression, resultType: resultType! };
   const dependents = checkDependents(next, ctx);
   if (dependents.length > 0) return invalid(dependents);
   return ok(next);
 }
 
 /**
- * 명시 결과 타입 설정·해제 (기능/구분자 §3.1). `undefined` 를 주면 미지정으로 되돌린다(키 제거).
- * 있으면 열거형변수 존재 → 현재 식의 추론 타입과 대조 순으로 본다. 식 검사 자체가 실패하면 그 거부를 그대로 돌려준다.
+ * 결과 타입 바꾸기 (기능/구분자 §3.1). 필수라 비우기는 없다 — 비어 오면(폼 변조) 「결과 타입을 고르세요」.
+ * 열거형변수 존재 → 현재 식의 추론 타입과 대조 순으로 본다. 식 검사 자체가 실패하면 그 거부를 그대로 돌려준다.
  */
 export function setResultType(
   def: Discriminator,
-  resultType: DiscriminatorResultType | undefined,
+  resultType: DiscriminatorResultType,
   ctx: Pick<CatalogContext, "checkExpression" | "catalog" | "findEnum">,
 ): Result<Discriminator> {
-  if (resultType === undefined) {
-    const { resultType: _dropped, ...rest } = def;
-    void _dropped;
-    return ok(rest);
-  }
+  if (!resultType) return invalid([issue("typeMismatch", "결과 타입을 고르세요")]);
   const enumIssues = checkResultTypeEnum(resultType, ctx.findEnum);
   if (enumIssues.length > 0) return invalid(enumIssues);
   const checked = expressionCheck(ctx)(def.expression, def.level);

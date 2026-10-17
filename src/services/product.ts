@@ -1006,17 +1006,22 @@ export function createProductService(db: Db, deps: ProductServiceDeps = {}): Pro
         withProduct(tx, id, async (p) => {
           if (generalDocumentId && !(await gate.exists(generalDocumentId))) return notFound(`보통약관 템플릿 ${generalDocumentId}`);
           const changes = p.generalDocumentId !== generalDocumentId;
-          // 조 노출·오버라이드는 템플릿의 노드에 매달린 설정이다 — 교체(해제 포함)면 **둘 다** 초기화된다.
-          // 잃는 것이 있으면 세어 확인부터 받는다 (기능/상품 §3 「보통약관」).
+          // 조 노출 · 오버라이드 · 조 사본은 템플릿의 노드에 매달린 설정이다 — 교체(해제 포함)면 **셋 다** 초기화된다.
+          // 잃는 것이 있으면 파괴적 액션이다 — 관리자만(2026-10-17, ADR-0019 · 기능/상품 §3.6), 세어 확인부터 받는다.
+          // 편집자는 확인 카드 전에(confirm · dryRun 이어도) 그 수를 담은 문장으로 거부한다 — 탑재 해제와 같은 방식.
           if (changes) {
             const [hidden, overrides, copies] = await Promise.all([repo.listHiddenArticles(tx, id), repo.listOverrides(tx, { kind: "product", id }), repo.listArticleCopies(tx, id)]);
-            if (!opts.confirm && hidden.length + overrides.length + copies.length > 0) {
+            if (hidden.length + overrides.length + copies.length > 0) {
               const cascade = [
                 ...(hidden.length > 0 ? [`숨긴 조 ${hidden.length}`] : []),
                 ...(overrides.length > 0 ? [`옵션 오버라이드 ${overrides.length}`] : []),
                 ...(copies.length > 0 ? [`조 사본 ${copies.length}`] : []),
               ];
-              return reject({ reason: "needsConfirmation", impact: { valueRowsLost: 0, brokenRefs: [], cascade } });
+              if (!can(actor, "product.resetGeneral")) {
+                const what = generalDocumentId ? "템플릿 교체" : "템플릿 해제";
+                return invalid([issue("unsupported", `${what}는 관리자만 할 수 있습니다 — ${cascade.join(" · ")} 가 초기화됩니다`, { document: "product", ownerId: id })]);
+              }
+              if (!opts.confirm) return reject({ reason: "needsConfirmation", impact: { valueRowsLost: 0, brokenRefs: [], cascade } });
             }
           }
           const { generalDocumentId: _old, ...rest } = p;

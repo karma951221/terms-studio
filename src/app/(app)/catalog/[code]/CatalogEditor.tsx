@@ -5,7 +5,8 @@
  *
  * 2026-09-12 — 구분자가 식 하나가 되면서 유형 · 타입 · 노출 · 상수값 · 구조체 필드 표가 사라졌다 (ADR-0037).
  * 레벨은 정적이다 — 식의 참조 규칙(같은 레벨 · 하위는 집계 안)이 레벨에 매여 있어 바꾸면 사용처의 의미가 조용히 달라진다.
- * 2026-09-17 — 선택인 「결과 타입」이 붙었다 (기능/구분자 §3.1). 읽기 모드는 명시 타입을, 미지정이면 「미지정 (추론: …)」을 보인다.
+ * 2026-09-17 — 「결과 타입」이 붙었다 (기능/구분자 §3.1). 2026-10-17 부터 필수 — 읽기 모드는 타입 한 줄,
+ *   편집 모드에서 식을 고치면 아직 타입을 고르지 않은 동안 식의 추론 타입을 따라간다 (`useAutoResultType`).
  * 2026-09-17 — 편집 모드 헤더에 「검사」(저장 전 검사 · 오류/경고 두 등급), 읽기 모드 제목 옆에 경고 배지 (기능/구분자 §3.3).
  * 2026-09-17 — 편집 모드 오른쪽에 넣기 패널(마스터 필드 · 구분자 · 연산), 식 입력은 커서 자리 삽입 (기능/구분자 §4.3).
  */
@@ -16,16 +17,16 @@ import { InfoTip } from "@/app/_components/InfoTip";
 import { ENTITY_LABEL, FIELD_LABEL, LEVEL_LABEL, TYPE_LABEL } from "@/app/_lib/labels";
 import { DISCRIMINATORS_MENU, menuCrumb } from "@/app/_lib/menu";
 import type { Discriminator, EnumDef } from "@/domain/catalog";
-import type { ExprType } from "@/domain/expression";
 import type { AttachLevel, Code, Issue } from "@/domain/types";
 import type { InspectInput } from "@/services/catalog";
 
 import { ExpressionInput, useExpressionInsert } from "../_components/ExpressionField";
 import { InsertPanel } from "../_components/InsertPanel";
 import { InspectButton, InspectionResult, type InspectionState } from "../_components/InspectionPanel";
+import { useAutoResultType } from "../_components/useAutoResultType";
 import { removeDiscriminatorEditAction, saveDiscriminatorEditAction } from "../edit-actions";
 import type { CatalogEditData } from "../edit-types";
-import { inferredLabel, inspectInputFrom, RESULT_TYPE_HINT, RESULT_TYPE_OPTIONS, resultTypeFromForm, resultTypeLabel, resultTypeToForm, warningBadges, type InsertPanelData } from "../lib";
+import { inspectInputFrom, RESULT_TYPE_HINT, resultTypeFromForm, resultTypeLabel, resultTypeOptions, resultTypeToForm, warningBadges, type InsertPanelData } from "../lib";
 
 const LEVEL_INFO = "식이 평가되는 자리. 같은 레벨 입력 항목은 그대로, 하위 레벨은 집계 안에서만 부른다 — 채번 뒤에는 못 고친다";
 const EXPR_INFO = "입력 항목(`폼.필드`)과 다른 구분자를 부른다 — 같은 레벨은 그대로, 하위 레벨은 집계 안에서";
@@ -45,13 +46,46 @@ function EditInspectButton({ code, level, onResult }: { code: Code; level: Attac
   return <InspectButton input={input} onResult={onResult} disabled={pending} />;
 }
 
+/** 읽기 · 편집이 바뀔 때마다 본문을 새로 띄운다 — 결과 타입 따라가기가 그 편집의 처음 식에서 시작한다. */
+function EditorBody(props: EditorBodyProps) {
+  const { mode } = useEditField("expression");
+  return <EditorFields key={mode} {...props} />;
+}
+
+interface EditorBodyProps {
+  def: Discriminator;
+  enums: readonly EnumDef[];
+  catalog: readonly Discriminator[];
+  panel: InsertPanelData;
+  inspection: InspectionState | undefined;
+  onClear: () => void;
+}
+
 /**
  * 본문 — 왼쪽 필드, 편집 모드에서는 오른쪽에 넣기 패널 (기능/구분자 §4.3 상시 패널). 읽기 모드는 필드만.
  * 식 입력은 커서 자리 삽입이 되는 `ExpressionInput` — 패널의 더블클릭이 `insert` 로 들어온다.
+ * 식을 바꾸는 두 길(직접 입력 · 패널 삽입) 모두 `setExpression` 을 거쳐 결과 타입 기본값을 따라가게 한다.
  */
-function EditorBody({ def, enums, inferred, panel, inspection, onClear }: { def: Discriminator; enums: readonly EnumDef[]; inferred: ExprType | undefined; panel: InsertPanelData; inspection: InspectionState | undefined; onClear: () => void }) {
+function EditorFields({ def, enums, catalog, panel, inspection, onClear }: EditorBodyProps) {
   const expression = useEditField<string>("expression");
-  const { ref, insert, insertReference } = useExpressionInsert(expression.value ?? "", expression.setValue);
+  const kind = useEditField<string>("resultTypeKind");
+  const multi = useEditField<boolean>("resultTypeMulti");
+  const enumCode = useEditField<string>("resultTypeEnum");
+  const follow = useAutoResultType({
+    catalog,
+    initial: { expression: expression.value ?? "", level: def.level },
+    read: () => ({ kind: kind.value, multi: multi.value, enumCode: enumCode.value }),
+    write: (form) => {
+      kind.setValue(form.kind);
+      multi.setValue(form.multi);
+      enumCode.setValue(form.enumCode);
+    },
+  });
+  const setExpression = (next: string) => {
+    expression.setValue(next);
+    follow(next, def.level);
+  };
+  const { ref, insert, insertReference } = useExpressionInsert(expression.value ?? "", setExpression);
   const editing = expression.mode === "edit";
   const fields = (
     <div className="ts-l2-main">
@@ -73,10 +107,10 @@ function EditorBody({ def, enums, inferred, panel, inspection, onClear }: { def:
       <div className="ts-form-row">
         <label>식 <InfoTip text={EXPR_INFO} /></label>
         <div className="ts-form-control">
-          {editing ? <ExpressionInput inputRef={ref} value={expression.value ?? ""} onChange={expression.setValue} className="ts-field-direct" /> : <span className="ts-field-locked ts-mono">{expression.value || "없음"}</span>}
+          {editing ? <ExpressionInput inputRef={ref} value={expression.value ?? ""} onChange={setExpression} className="ts-field-direct" /> : <span className="ts-field-locked ts-mono">{expression.value || "없음"}</span>}
         </div>
       </div>
-      <ResultTypeFields enums={enums} inferred={inferred} />
+      <ResultTypeFields enums={enums} />
       <Field name="description" label="주석" />
       <EditInspectionResult code={def.code} level={def.level} enums={enums} inspection={inspection} onClear={onClear} />
     </div>
@@ -104,22 +138,22 @@ function EditInspectionResult({ code, level, enums, inspection, onClear }: { cod
 }
 
 /**
- * 결과 타입 세 필드 — 종류 · (목록값일 때만) 복수 · 열거형변수.
+ * 결과 타입 세 필드 — 종류 · (목록값일 때만) 복수 · 열거형변수. 필수라 「미지정」 고르기가 없다.
  * 읽기 모드는 종류 한 줄에 합쳐 보이고(`목록값(복수) · 해약환급금유형`), 복수·열거형변수 줄은 숨긴다.
  */
-function ResultTypeFields({ enums, inferred }: { enums: readonly EnumDef[]; inferred: ExprType | undefined }) {
+function ResultTypeFields({ enums }: { enums: readonly EnumDef[] }) {
   const kind = useEditField<string>("resultTypeKind");
   const multi = useEditField<boolean>("resultTypeMulti");
   const enumCode = useEditField<string>("resultTypeEnum");
   const enumLabel = (code: string) => enums.find((e) => e.code === code)?.label;
   const readValue = () => {
-    const explicit = resultTypeFromForm(kind.value, multi.value, enumCode.value);
-    return explicit ? resultTypeLabel(explicit, enumLabel) : `미지정 (추론: ${inferredLabel(inferred, enumLabel)})`;
+    const type = resultTypeFromForm(kind.value, multi.value, enumCode.value);
+    return type ? resultTypeLabel(type, enumLabel) : "없음";
   };
   const enumOptions = enums.map((e) => ({ value: e.code, label: e.label, hint: e.code }));
   return (
     <>
-      <Field name="resultTypeKind" label={FIELD_LABEL.resultType} type="select" options={RESULT_TYPE_OPTIONS} readValue={readValue} info={RESULT_TYPE_HINT} />
+      <Field name="resultTypeKind" label={FIELD_LABEL.resultType} type="select" options={resultTypeOptions(kind.value)} readValue={readValue} info={RESULT_TYPE_HINT} />
       {kind.mode === "edit" && kind.value === "enum" ? (
         <>
           <Field name="resultTypeMulti" label="복수" type="toggle" toggle={{ label: "복수", hintOn: `여러 값을 한꺼번에 담는다 (${TYPE_LABEL["list<enum>"]}).`, hintOff: `값 하나를 담는다 (${TYPE_LABEL.enum}).` }} />
@@ -133,15 +167,15 @@ function ResultTypeFields({ enums, inferred }: { enums: readonly EnumDef[]; infe
 export function CatalogEditor({
   def,
   enums,
-  inferred,
+  catalog,
   warnings,
   panel,
 }: {
   def: Discriminator;
   /** 결과 타입이 목록값일 때 고를 열거형변수 · 읽기 표시명. */
   enums: readonly EnumDef[];
-  /** 서버가 식에서 추론한 타입 — 식 오류면 undefined (미지정일 때 괄호 안에 보인다). */
-  inferred: ExprType | undefined;
+  /** 구분자 목록 — 편집 중 식의 추론 타입(결과 타입 기본값)을 화면에서 바로 구할 때 구분자 참조를 푼다. */
+  catalog: readonly Discriminator[];
   /** 저장된 정의에 남은 경고 (별칭 · 깨진 사용처) — 읽기 모드 제목 옆 배지 (기능/구분자 §3.3). 저장하지 않고 읽을 때 계산한다. */
   warnings: readonly Issue[];
   /** 넣기 패널 재료 — 마스터 필드 트리 · 구분자 목록 (서버가 직렬화). */
@@ -172,7 +206,7 @@ export function CatalogEditor({
       deleteTooltip={`구분자 ${def.label}(${def.code}) 삭제`}
       deleteSuccessHref="/catalog"
     >
-      <EditorBody def={def} enums={enums} inferred={inferred} panel={panel} inspection={inspection} onClear={clearInspection} />
+      <EditorBody def={def} enums={enums} catalog={catalog} panel={panel} inspection={inspection} onClear={clearInspection} />
     </EditShell>
   );
 }

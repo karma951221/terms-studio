@@ -2,6 +2,7 @@
  * 시드 스크립트 — `npm run db:seed`.
  *
  * 1. 마이그레이션 적용 (`drizzle/` 의 SQL 을 `.data/pgdata`, 또는 `PGLITE_DATA_DIR` 로 지정한 파일 DB 에).
+ *    그 전에 결과 타입 미지정 구분자를 추론 타입으로 채운다 (`backfillDiscriminatorResultTypes` — 0029 NOT NULL 의 전제).
  *    PGlite 드라이버가 아니면(향후 프로덕션 pg) 건너뛴다 — drizzle-kit migrate CLI 몫.
  * 2. `ensureSeedAdmin()` 으로 관리자 확보 → 그 actor 로 실물 시드 두 상품(알파Plus · 메리츠, `seedAlphaPlus`) 실행.
  *    `SEED_PROFILE=base` 면 별표 · 보통약관 두 벌 · 보통약관이 쓰는 함수조항만(`loadRealBase`) — 실물 화면 E2E 의 바탕 DB (docs/QA/시나리오/실물재현_E2E_시나리오.md §4).
@@ -15,6 +16,7 @@ import { migrate } from "drizzle-orm/pglite/migrator";
 
 import type { Actor } from "@/domain/types";
 
+import { backfillDiscriminatorResultTypes } from "@/db/backfill-result-types";
 import { getDb, PGLITE_DATA_DIR, resolveDriver } from "@/db/client";
 import { createServices } from "@/services/container";
 
@@ -27,6 +29,12 @@ async function seed() {
 
   if (driver === "pglite") {
     console.log(`[seed] dataDir=${PGLITE_DATA_DIR}`);
+    // 0029(결과 타입 NOT NULL) 전에 미지정 구분자를 추론 타입으로 채운다 — 추론은 식 언어라 SQL 마이그레이션이 못 한다
+    const backfill = await backfillDiscriminatorResultTypes(getDb());
+    if (backfill.filled.length > 0) console.log(`[seed] 구분자 결과 타입 이행 — 추론 타입으로 채움: ${backfill.filled.join(", ")}`);
+    if (backfill.unresolved.length > 0) {
+      throw new Error(`결과 타입을 추론할 수 없는 구분자가 있어 마이그레이션 0029(결과 타입 필수)를 적용할 수 없습니다: ${backfill.unresolved.join(", ")} — 식을 고치거나 지운 뒤 다시 시드하세요`);
+    }
     console.log("[seed] 마이그레이션 적용 중...");
     await migrate(getDb(), { migrationsFolder: path.join(process.cwd(), "drizzle") });
     console.log("[seed] 마이그레이션 적용 완료");

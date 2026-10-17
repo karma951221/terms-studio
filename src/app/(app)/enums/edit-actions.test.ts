@@ -109,7 +109,7 @@ describe("saveEnumEditAction", () => {
   it("새 값을 더해 저장하면 그 열거형 값을 비교하는 식이 재검사 목록으로 결과에 실린다 · 값을 더하지 않으면 목록이 없다 (ADR-0078 결정 4)", async () => {
     actor = editor;
     const e5 = (await s.catalog.getEnum("E0005"))!; // 가입형태 — 마스터 feature.notice_kind(고지유형)가 E0005 를 쓴다
-    unwrap(await s.catalog.create(editor, { label: "첫값여부", level: "product", expression: "feature.notice_kind = 'V01'" }));
+    unwrap(await s.catalog.create(editor, { label: "첫값여부", level: "product", expression: "feature.notice_kind = 'V01'", resultType: { kind: "boolean" } }));
     const rows = (def: typeof e5) => [...def.values].sort((a, b) => a.order - b.order).map((v) => ({ code: v.code, label: v.label }));
     const r = await saveEnumEditAction("E0005", { label: e5.label, description: "", values: [...rows(e5), { code: "new:1", label: "법인" }] });
     if (r.ok !== true) throw new Error("저장 기대");

@@ -49,8 +49,8 @@ describe("coverage 서비스 (PGlite)", () => {
     // 카탈로그 픽스처 — 값 자리는 MVP 마스터가 정한다 (담보 claim_name · 급부 pay.exempt · pay.rate).
     // 구분자는 문면이 보는 이름일 뿐이다: D0001 담보명(투영) · D0002 면책구분(집계).
     const catalog = createCatalogService(t.db);
-    unwrap(await catalog.create(editor, { label: "담보명", level: "coverage", expression: "coverage_basic.claim_name" }));
-    unwrap(await catalog.create(editor, { label: "면책구분", level: "coverage", expression: "any(pay.exempt)" }));
+    unwrap(await catalog.create(editor, { label: "담보명", level: "coverage", expression: "coverage_basic.claim_name", resultType: { kind: "string" } }));
+    unwrap(await catalog.create(editor, { label: "면책구분", level: "coverage", expression: "any(pay.exempt)", resultType: { kind: "boolean" } }));
   });
   afterAll(async () => {
     await t.close();
@@ -521,7 +521,7 @@ describe("coverage 서비스 — 구조 저장 영향은 최종 트리의 키 �
 
   /** 세부보장 01 · 02 를 둔 담보 + 담보약관 조건 하나(`when` 안의 `D` 는 세부보장 레벨 구분자 코드로 바뀐다). */
   async function coverageWithDocument(when: string): Promise<{ coverage: Coverage }> {
-    const disc = unwrap(await s.catalog.create(editor, { label: "감액", level: "subCoverage", expression: "true" }));
+    const disc = unwrap(await s.catalog.create(editor, { label: "감액", level: "subCoverage", expression: "true", resultType: { kind: "boolean" } }));
     let coverage = unwrap(await s.coverage.create(editor, { name: "감액담보", subCoverageName: "일반", benefitName: "일반급부" }));
     coverage = unwrap(await s.coverage.addSubCoverage(editor, coverage.id, { name: "특수", benefitName: "특수급부" }));
     expect(coverage.subCoverages.map((x) => x.key)).toEqual(["01", "02"]);

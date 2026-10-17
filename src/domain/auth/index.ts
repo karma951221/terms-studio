@@ -42,6 +42,8 @@ export const DESTRUCTIVE_ACTIONS = [
   // catalog — 열거형 유저 정의 필드 (ADR-0078 결정 2)
   "enum.deleteField", // 열거형 필드 삭제 — 값마다 넣은 그 필드 값 · 읽는 곳 재검사
   "enum.changeFieldType", // 열거형 필드 타입 변경 — 옛 타입 값 삭제 · 읽는 곳 재검사
+  // product — 보통약관 템플릿 (기능/상품 §3.6, 2026-10-17)
+  "product.resetGeneral", // 템플릿 교체 · 해제 — 숨긴 조 · 옵션 오버라이드 · 조 사본 초기화 (잃을 것이 있을 때만)
 ] as const;
 
 export type DestructiveAction = (typeof DESTRUCTIVE_ACTIONS)[number];

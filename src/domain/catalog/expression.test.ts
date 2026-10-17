@@ -9,6 +9,7 @@ import {
   checkResultType,
   discriminatorResultType,
   discriminatorWarnings,
+  inferMissingResultTypes,
   inspectExpression,
   planFormOf,
   planFormScope,
@@ -413,5 +414,32 @@ describe("inspectExpression — 오류 · 경고 · 추론 타입을 한 번에 
     const r = inspectExpression({ expression: "D9999", level: "coverage" }, { catalog: CATALOG });
     expect(r.errors.map((i) => i.kind)).toEqual(["brokenRef"]);
     expect(r.warnings).toEqual([]);
+  });
+});
+
+describe("inferMissingResultTypes — 결과 타입 미지정 기존분 이행 (기능/구분자 §3.1, 2026-10-17)", () => {
+  it("미지정인 것만 추론 타입으로 채운다 — 구분자 참조는 카탈로그로 풀고, 이미 있는 타입은 건드리지 않는다", () => {
+    const rows = [
+      { code: "D0001", level: "coverage" as const, expression: "coverage_basic.claim_name" },
+      { code: "D0002", level: "coverage" as const, expression: "D0001 ≠ ''" },
+      { code: "D0003", level: "plan" as const, expression: "no_surrender.type", resultType: { kind: "enum" as const, enumCode: "E0002" } },
+      { code: "D0004", level: "plan" as const, expression: "no_surrender.type" },
+    ];
+    expect(inferMissingResultTypes(rows)).toEqual(
+      new Map([
+        ["D0001", { kind: "string" }],
+        ["D0002", { kind: "boolean" }],
+        ["D0004", { kind: "enum", enumCode: "E0002" }],
+      ]),
+    );
+  });
+
+  it("추론이 안 서는 식(문법 · 순환 · 담보속성 값)은 undefined — 이행이 사람에게 넘긴다", () => {
+    const rows = [
+      { code: "D0001", level: "coverage" as const, expression: "any(" },
+      { code: "D0002", level: "product" as const, expression: "D0003" },
+      { code: "D0003", level: "product" as const, expression: "D0002" },
+    ];
+    expect(inferMissingResultTypes(rows)).toEqual(new Map([["D0001", undefined], ["D0002", undefined], ["D0003", undefined]]));
   });
 });

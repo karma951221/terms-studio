@@ -4,7 +4,7 @@
  */
 import { baseKind, isMulti, resolveType } from "@/app/_lib/fieldType";
 import { ENTITY_LABEL, TYPE_LABEL, TYPE_OPTIONS } from "@/app/_lib/labels";
-import { discriminatorResultType } from "@/domain/catalog/expression";
+import { checkDiscriminatorExpression, discriminatorResultType, type DiscriminatorCatalog } from "@/domain/catalog/expression";
 import type { Discriminator, DiscriminatorResultType } from "@/domain/catalog/types";
 import type { ExprType } from "@/domain/expression";
 import { allMasterFields, levelDepth, masterFieldFullLabel, type MasterTree } from "@/domain/master";
@@ -61,9 +61,16 @@ export function valueFromInput(type: FieldType, raw: string): Value | undefined 
 
 // ───────────────────────────── 결과 타입 (기능/구분자 §3.1) ─────────────────────────────
 
-/** 종류 셀렉트의 선택지 — 결과 타입은 선택이라 첫 옵션이 「미지정」(`""`)이다. 생성 폼과 상세 편집이 같이 쓴다. */
-export const RESULT_TYPE_OPTIONS = [{ value: "", label: "미지정" }, ...TYPE_OPTIONS] as const;
-export const RESULT_TYPE_HINT = "식에서 추론한 타입과 다르면 저장이 거부된다. 미지정이면 추론 타입을 쓴다.";
+/**
+ * 종류 셀렉트의 선택지 — 결과 타입은 필수다 (2026-10-17). 생성 폼과 상세 편집이 같이 쓴다.
+ * 값이 비었을 때(식이 아직 안 서 추론 기본값이 없다)만 맨 앞에 「고르세요」 자리를 둔다 — `resultTypeOptions`.
+ */
+export const RESULT_TYPE_OPTIONS = TYPE_OPTIONS;
+const RESULT_TYPE_PLACEHOLDER = { value: "", label: "고르세요" } as const;
+export function resultTypeOptions(kind: string): readonly { value: string; label: string }[] {
+  return kind === "" ? [RESULT_TYPE_PLACEHOLDER, ...RESULT_TYPE_OPTIONS] : RESULT_TYPE_OPTIONS;
+}
+export const RESULT_TYPE_HINT = "필수. 식에서 추론한 타입이 기본값으로 채워진다 — 추론 타입과 다르면 저장이 거부된다.";
 
 /**
  * 결과 타입으로 받을 수 있는 종류 — `table` 은 뺀다(값 타입이 아니다). 화면 셀렉트엔 없지만 이미 저장된
@@ -71,7 +78,7 @@ export const RESULT_TYPE_HINT = "식에서 추론한 타입과 다르면 저장�
  */
 const RESULT_TYPE_KINDS: ReadonlySet<string> = new Set(Object.keys(TYPE_LABEL).filter((k) => k !== "table"));
 
-/** 화면의 결과 타입 입력 모양 — 종류 셀렉트(`""` = 미지정) + 복수 토글 + 열거형변수 셀렉트. */
+/** 화면의 결과 타입 입력 모양 — 종류 셀렉트(`""` = 아직 안 고름) + 복수 토글 + 열거형변수 셀렉트. */
 export interface ResultTypeForm {
   kind: string;
   multi: boolean;
@@ -79,7 +86,7 @@ export interface ResultTypeForm {
 }
 
 /**
- * 폼 입력 → 명시 결과 타입. `kind === ""` 는 미지정(undefined).
+ * 폼 입력 → 명시 결과 타입. `kind === ""` 는 비어 있음(undefined — 필수라 서비스가 거부한다).
  * `kind` 가 `RESULT_TYPE_KINDS`(즉 `table` 이거나 폼 변조로 들어온 값)에 없으면 마찬가지로 undefined —
  * 화면 옵션 밖의 값이 도메인까지 닿지 않게 여기서 막는다.
  *
@@ -98,34 +105,46 @@ export function resultTypeToForm(t: DiscriminatorResultType | undefined): Result
   return { kind: baseKind(t.kind), multi: isMulti(t.kind), enumCode: "enumCode" in t ? t.enumCode : "" };
 }
 
-/** 읽기 표시 — `참거짓` · `목록값 · 해약환급금유형` · `목록값(복수) · …`. 미지정이면 `미지정`. */
+/** 읽기 표시 — `참거짓` · `목록값 · 해약환급금유형` · `목록값(복수) · …`. 결과 타입은 필수라 늘 있다 — 비면(이행 전 옛 행) `없음`. */
 export function resultTypeLabel(t: DiscriminatorResultType | undefined, enumLabel: (code: string) => string | undefined): string {
-  if (!t) return "미지정";
+  if (!t) return "없음";
   const base = TYPE_LABEL[t.kind];
   return "enumCode" in t ? `${base} · ${enumLabel(t.enumCode) ?? t.enumCode}` : base;
-}
-
-/**
- * 저장 순서 결정 — 명시 타입과 식을 한 화면에서 함께 고칠 수 있어서다.
- *
- * - `none`: 타입이 같다 → 건드리지 않는다.
- * - `set`: 타입만 바뀌었다 → 식 저장 뒤 지정.
- * - `clearThenSet`: 타입도 식도 바뀌었다 → **해제 → 식 저장 → 지정**. 옛 명시 타입이 새 식을
- *   막거나(setExpression 이 명시 타입과 대조한다) 새 명시 타입이 옛 식에 걸려 거부되지 않도록.
- */
-export function resultTypeSavePlan(
-  before: DiscriminatorResultType | undefined,
-  after: DiscriminatorResultType | undefined,
-  expressionChanged: boolean,
-): "none" | "set" | "clearThenSet" {
-  if (sameResultType(before, after)) return "none";
-  return expressionChanged ? "clearThenSet" : "set";
 }
 
 function sameResultType(a: DiscriminatorResultType | undefined, b: DiscriminatorResultType | undefined): boolean {
   if (!a || !b) return a === b;
   if (a.kind !== b.kind) return false;
   return ("enumCode" in a ? a.enumCode : undefined) === ("enumCode" in b ? b.enumCode : undefined);
+}
+
+/**
+ * 식의 추론 타입 → 폼 모양 (결과 타입 기본값, 기능/구분자 §4.2 · §4.4). 순수 — 화면이 타이핑마다 부른다(서버 왕복 없음).
+ * 마스터는 정본(`MASTER`), 구분자 참조는 `catalog` 로 푼다. 식이 안 서거나 결과 타입 후보가 아니면(담보속성 · 표) undefined.
+ */
+export function inferResultTypeForm(expression: string, level: AttachLevel, catalog: DiscriminatorCatalog): ResultTypeForm | undefined {
+  const source = expression.trim();
+  if (source === "") return undefined;
+  const r = checkDiscriminatorExpression(source, level, { catalog });
+  if (!r.ok || !RESULT_TYPE_KINDS.has(r.value.kind)) return undefined;
+  return resultTypeToForm(r.value as DiscriminatorResultType);
+}
+
+/**
+ * 결과 타입 기본값 따라가기 — 지금 값이 **직전 식의 추론 타입**과 같으면(= 사람이 아직 안 골랐다) 새 식의 추론 타입으로 바꾼다.
+ * 새로 만들 때는 빈 값 = 직전 추론 없음이라 채워지고, 상세 편집은 저장된 타입 = 저장된 식의 추론(저장 검사가 지킨다)이라
+ * 식을 고치면 따라간다. 사람이 다른 값을 고른 뒤로는 건드리지 않는다. 새 식이 안 서면 그대로.
+ * 「사람이 골랐나」를 따로 기억하지 않는다 — 값 비교 하나라 생성 · 상세가 같은 규칙을 쓴다.
+ */
+export function autoResultTypeForm(current: ResultTypeForm, previousInferred: ResultTypeForm | undefined, nextInferred: ResultTypeForm | undefined): ResultTypeForm {
+  if (!nextInferred) return current;
+  return sameForm(current, previousInferred ?? EMPTY_RESULT_TYPE_FORM) ? nextInferred : current;
+}
+
+const EMPTY_RESULT_TYPE_FORM: ResultTypeForm = { kind: "", multi: false, enumCode: "" };
+
+function sameForm(a: ResultTypeForm, b: ResultTypeForm): boolean {
+  return a.kind === b.kind && (a.kind !== "enum" || (a.multi === b.multi && a.enumCode === b.enumCode));
 }
 
 /** 추론 타입 표시 — 결과 타입 후보(`DiscriminatorResultType`)면 그 표시명, 담보속성 · 표는 이름만, 없으면 「추론 불가」. */

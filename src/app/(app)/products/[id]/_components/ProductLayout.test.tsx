@@ -13,6 +13,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("../../actions", () => ({
   saveProductCoveragesAction: async () => ({ ok: true }),
   setProductGeneralDocumentAction: () => {},
+  pickProductGeneralDocumentAction: async () => ({}),
   saveProductGeneralAction: async () => ({ ok: true }),
   saveProductBasicAction: async () => ({ ok: true }),
 }));

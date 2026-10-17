@@ -318,6 +318,25 @@ export function discriminatorResultType(
   return type === undefined || type.kind === "attribute" || type.kind === "planOptions" ? undefined : type;
 }
 
+/**
+ * 결과 타입 미지정 기존분의 이행 (기능/구분자 §3.1, 2026-10-17 — 결과 타입 필수) — 미지정인 구분자마다 식의 추론 타입.
+ * 구분자 참조는 같은 목록으로 푼다. 추론이 안 서면(문법 · 순환 · 담보속성 값 · 표) undefined — 이행이 사람에게 넘긴다.
+ * 이미 타입이 있는 구분자는 결과에 없다.
+ */
+export function inferMissingResultTypes(
+  defs: readonly { code: Code; level: AttachLevel; expression: string; resultType?: DiscriminatorResultType }[],
+  master?: MasterTree,
+): Map<Code, DiscriminatorResultType | undefined> {
+  const catalog: DiscriminatorCatalog = new Map(defs.map((d) => [d.code, { label: d.code, description: "", ...d }]));
+  const out = new Map<Code, DiscriminatorResultType | undefined>();
+  for (const def of defs) {
+    if (def.resultType) continue;
+    const type = discriminatorResultType(def, master, catalog);
+    out.set(def.code, type && type.kind !== "table" ? type : undefined);
+  }
+  return out;
+}
+
 // ───────────────────────────── 자기 참조 · 순환 ─────────────────────────────
 
 /**

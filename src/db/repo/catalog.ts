@@ -49,7 +49,7 @@ function toDiscriminator(row: DiscriminatorRow): Discriminator {
     description: row.description,
     level: row.level as AttachLevel,
     expression: row.expression,
-    ...(row.resultType !== null ? { resultType: row.resultType } : {}),
+    resultType: row.resultType,
   };
 }
 
@@ -60,7 +60,8 @@ function toRow(def: Discriminator) {
     description: def.description,
     level: def.level,
     expression: def.expression,
-    resultType: def.resultType ?? null,
+    // 서비스가 비면 거부한다(필수) — 열도 NOT NULL 이라 여기까지 비어 오면 DB 가 막는다
+    resultType: def.resultType!,
   };
 }
 

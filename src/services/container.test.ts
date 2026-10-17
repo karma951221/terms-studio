@@ -73,15 +73,15 @@ describe("container — createServices 관통 (PGlite)", () => {
     unwrap(await s.catalog.createEnum(editor, { label: "고지유형", values: [{ label: "일반심사" }, { label: "간편심사" }, { label: "건강고지" }] }));
     unwrap(await s.catalog.createEnum(editor, { label: "간편심사구분", values: [{ label: "단일심사" }, { label: "통합간편심사" }] }));
     unwrap(await s.catalog.createEnum(editor, { label: "계약형태", values: [{ label: "주계약" }, { label: "독립특약" }] })); // E0007
-    expect(unwrap(await s.catalog.create(editor, { label: "갱신여부", level: "coverage", expression: "coverage_basic.claim_name = '갱신'" })).code).toBe("D0001");
-    expect(unwrap(await s.catalog.create(editor, { label: "수술급여기준", level: "coverage", expression: "coverage_basic.claim_name" })).code).toBe("D0002");
-    unwrap(await s.catalog.create(editor, { label: "지급률", level: "benefit", expression: "pay.rate" }));
-    unwrap(await s.catalog.create(editor, { label: "평균공시이율", level: "product", expression: "'2.5%'" }));
-    unwrap(await s.catalog.create(editor, { label: "면책여부합", level: "coverage", expression: "any(pay.exempt)" }));
+    expect(unwrap(await s.catalog.create(editor, { label: "갱신여부", level: "coverage", expression: "coverage_basic.claim_name = '갱신'", resultType: { kind: "boolean" } })).code).toBe("D0001");
+    expect(unwrap(await s.catalog.create(editor, { label: "수술급여기준", level: "coverage", expression: "coverage_basic.claim_name", resultType: { kind: "string" } })).code).toBe("D0002");
+    unwrap(await s.catalog.create(editor, { label: "지급률", level: "benefit", expression: "pay.rate", resultType: { kind: "number" } }));
+    unwrap(await s.catalog.create(editor, { label: "평균공시이율", level: "product", expression: "'2.5%'", resultType: { kind: "string" } }));
+    unwrap(await s.catalog.create(editor, { label: "면책여부합", level: "coverage", expression: "any(pay.exempt)", resultType: { kind: "boolean" } }));
     // 구분자 → 구분자 참조는 마스터 필드와 같은 레벨 규칙이다 (기능/구분자 §3.2) — 상위(상품 D0004) · 집계 없는 하위(급부 D0003)는 거부
-    expect(rejection(await s.catalog.create(editor, { label: "상위참조", level: "coverage", expression: "(D0004)" })).reason).toBe("invalid");
-    expect(rejection(await s.catalog.create(editor, { label: "하위직접", level: "coverage", expression: "D0003 > 0" })).reason).toBe("invalid");
-    unwrap(await s.catalog.create(editor, { label: "무저해지유형", level: "plan", expression: "no_surrender.type" }));
+    expect(rejection(await s.catalog.create(editor, { label: "상위참조", level: "coverage", expression: "(D0004)", resultType: { kind: "string" } })).reason).toBe("invalid");
+    expect(rejection(await s.catalog.create(editor, { label: "하위직접", level: "coverage", expression: "D0003 > 0", resultType: { kind: "boolean" } })).reason).toBe("invalid");
+    unwrap(await s.catalog.create(editor, { label: "무저해지유형", level: "plan", expression: "no_surrender.type", resultType: { kind: "enum", enumCode: "E0002" } }));
   });
 
   it("담보트리·담보값입력 — 담보 「일반상해사망」 생성 · 담보 값 · 급부 값", async () => {

@@ -65,13 +65,13 @@ describe("refs 서비스 · 주입 소스 (PGlite)", () => {
     unwrap(await catalog.createEnum(editor, { label: "고지유형", values: [{ label: "일반심사" }, { label: "간편심사" }, { label: "건강고지" }] })); // E0005 — 상품특성
     unwrap(await catalog.createEnum(editor, { label: "간편심사구분", values: [{ label: "단일심사" }, { label: "통합간편심사" }] })); // E0006 — 상품특성
     unwrap(await catalog.createEnum(editor, { label: "계약형태", values: [{ label: "주계약" }, { label: "독립특약" }] })); // E0007 — 상품특성
-    unwrap(await catalog.create(editor, { label: "갱신여부", level: "coverage", expression: "coverage_basic.claim_name = '갱신'" })); // D0001
-    unwrap(await catalog.create(editor, { label: "무저해지유형", level: "plan", expression: "no_surrender.type" })); // D0002
-    unwrap(await catalog.create(editor, { label: "지급률", level: "benefit", expression: "pay.rate" })); // D0003
-    unwrap(await catalog.create(editor, { label: "평균공시이율", level: "product", expression: "'2.5%'" })); // D0004
-    unwrap(await catalog.create(editor, { label: "면책여부합", level: "coverage", expression: "any(pay.exempt)" })); // D0005
-    unwrap(await catalog.create(editor, { label: "수술급여기준", level: "coverage", expression: "coverage_basic.claim_name" })); // D0006
-    unwrap(await catalog.create(editor, { label: "아무도 안 쓰는 것", level: "coverage", expression: "coverage_basic.claim_name" })); // D0007
+    unwrap(await catalog.create(editor, { label: "갱신여부", level: "coverage", expression: "coverage_basic.claim_name = '갱신'", resultType: { kind: "boolean" } })); // D0001
+    unwrap(await catalog.create(editor, { label: "무저해지유형", level: "plan", expression: "no_surrender.type", resultType: { kind: "enum", enumCode: "E0002" } })); // D0002
+    unwrap(await catalog.create(editor, { label: "지급률", level: "benefit", expression: "pay.rate", resultType: { kind: "number" } })); // D0003
+    unwrap(await catalog.create(editor, { label: "평균공시이율", level: "product", expression: "'2.5%'", resultType: { kind: "string" } })); // D0004
+    unwrap(await catalog.create(editor, { label: "면책여부합", level: "coverage", expression: "any(pay.exempt)", resultType: { kind: "boolean" } })); // D0005
+    unwrap(await catalog.create(editor, { label: "수술급여기준", level: "coverage", expression: "coverage_basic.claim_name", resultType: { kind: "string" } })); // D0006
+    unwrap(await catalog.create(editor, { label: "아무도 안 쓰는 것", level: "coverage", expression: "coverage_basic.claim_name", resultType: { kind: "string" } })); // D0007
 
     const coverage = createCoverageService(db);
     surgery = unwrap(await coverage.create(editor, { name: "수술비", subCoverageName: "1종수술", benefitName: "수술보험금" }));
@@ -308,8 +308,8 @@ describe("인자 연결 간선 — 기본 연결(함수조항 → 구분자) · 
     t = await createTestDb();
     const db = contextualDb(t.db);
     const catalog = createCatalogService(db);
-    unwrap(await catalog.create(editor, { label: "갱신여부", level: "coverage", expression: "coverage_basic.claim_name = '갱신'" })); // D0001
-    unwrap(await catalog.create(editor, { label: "갱신여부2", level: "coverage", expression: "coverage_basic.claim_name = '갱신2'" })); // D0002
+    unwrap(await catalog.create(editor, { label: "갱신여부", level: "coverage", expression: "coverage_basic.claim_name = '갱신'", resultType: { kind: "boolean" } })); // D0001
+    unwrap(await catalog.create(editor, { label: "갱신여부2", level: "coverage", expression: "coverage_basic.claim_name = '갱신2'", resultType: { kind: "boolean" } })); // D0002
     const clause: Clause = {
       code: "C010",
       label: "판정",
@@ -355,7 +355,7 @@ describe("인자 연결의 키 경로 — 노드 삭제 영향은 키 경로로 
   beforeAll(async () => {
     t = await createTestDb();
     const db = contextualDb(t.db);
-    unwrap(await createCatalogService(db).create(editor, { label: "감액여부", level: "subCoverage", expression: "true" })); // D0001
+    unwrap(await createCatalogService(db).create(editor, { label: "감액여부", level: "subCoverage", expression: "true", resultType: { kind: "boolean" } })); // D0001
     const coverage = createCoverageService(db);
     cov = unwrap(await coverage.create(editor, { name: "골절", subCoverageName: "골절진단", benefitName: "진단비" })); // 01
     cov = unwrap(await coverage.addSubCoverage(editor, cov.id, { name: "골절수술", benefitName: "수술비" })); // 02

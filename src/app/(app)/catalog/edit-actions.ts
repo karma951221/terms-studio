@@ -9,7 +9,7 @@ import { currentActor, getServices } from "@/lib/services";
 import type { InspectInput, InspectResult } from "@/services/catalog";
 
 import type { CatalogEditData } from "./edit-types";
-import { resultTypeFromForm, resultTypeSavePlan } from "./lib";
+import { resultTypeFromForm } from "./lib";
 
 function failed<T>(result: Result<T>, token: string): EditOutcome | undefined {
   if (result.ok) return undefined;
@@ -21,10 +21,9 @@ function failed<T>(result: Result<T>, token: string): EditOutcome | undefined {
  * 구분자는 {구분자명 · 식 · 주석 · 결과 타입} 을 고친다 — 레벨은 채번 뒤 불변이다 (ADR-0037).
  *
  * 기존 단일 서비스들을 순서대로 부르고 첫 거부에서 멈춘다 — 새 규칙을 여기서 만들지 않는다 (규칙은 서비스에 있다).
- * 전체가 한 트랜잭션이다 (`saveOnce`, 점검 2026-09-27 H1 · D1) — 어느 단계가 거부되든 앞 단계(구분자명 · 주석 · 타입 해제)까지 롤백된다.
- * 결과 타입과 식을 함께 고쳤으면 **해제 → 식 저장 → 지정** 순이다 (`resultTypeSavePlan`): setExpression 은
- * 저장된 명시 타입과 새 식을 대조하고 setResultType 은 새 타입과 저장된 식을 대조하므로, 어느 쪽을 먼저 해도
- * 옛 값이 새 값을 막는다 (기능/구분자 §3.3).
+ * 전체가 한 트랜잭션이다 (`saveOnce`, 점검 2026-09-27 H1 · D1) — 어느 단계가 거부되든 앞 단계(구분자명 · 주석)까지 롤백된다.
+ * 식 · 결과 타입은 `setExpression` 한 번에 함께 싣는다 — 새 식과 새 타입을 서로 대조한다. 결과 타입이 필수라
+ * (기능/구분자 §3.1, 2026-10-17) 옛 「해제 → 식 → 지정」 순서가 없다. 빈 타입은 서비스가 「결과 타입을 고르세요」로 거부한다.
  */
 export async function saveDiscriminatorEditAction(code: string, input: CatalogEditData): Promise<EditOutcome> {
   const actor = await currentActor();
@@ -33,7 +32,6 @@ export async function saveDiscriminatorEditAction(code: string, input: CatalogEd
   if (!def) return { ok: false, message: `찾을 수 없습니다 — 구분자 ${code}` };
 
   const resultType = resultTypeFromForm(input.resultTypeKind, input.resultTypeMulti, input.resultTypeEnum);
-  const plan = resultTypeSavePlan(def.resultType, resultType, input.expression !== def.expression);
 
   return saveOnce(services, async () => {
     const rename = await services.catalog.rename(actor, code, input.label);
@@ -42,21 +40,9 @@ export async function saveDiscriminatorEditAction(code: string, input: CatalogEd
     const description = await services.catalog.setDescription(actor, code, input.description);
     error = failed(description, "description");
     if (error) return error;
-    if (plan === "clearThenSet") {
-      // 명시 타입을 먼저 푼다 — 새 식이 거부되면(문법 · 타입 · 순환) 이 해제도 함께 롤백된다.
-      const cleared = await services.catalog.setResultType(actor, code, undefined);
-      error = failed(cleared, "resultTypeKind");
-      if (error) return error;
-    }
-    const expression = await services.catalog.setExpression(actor, code, input.expression);
-    error = failed(expression, "expression");
+    const expression = await services.catalog.setExpression(actor, code, input.expression, { resultType });
+    error = failed(expression, resultType ? "expression" : "resultTypeKind");
     if (error) return error;
-    // 해제→식 뒤에 새 타입이 미지정이면 이미 해제됐다 — 같은 값을 두 번 쓰지 않는다.
-    if (plan === "set" || (plan === "clearThenSet" && resultType)) {
-      const typed = await services.catalog.setResultType(actor, code, resultType);
-      error = failed(typed, "resultTypeKind");
-      if (error) return error;
-    }
     return { ok: true };
   });
 }

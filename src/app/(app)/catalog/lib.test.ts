@@ -5,7 +5,7 @@ import type { Issue } from "@/domain/types";
 import type { Discriminator } from "@/domain/catalog/types";
 import type { MasterForm } from "@/domain/master";
 
-import { bool, fieldTypeFrom, insertAt, insertPanelData, insideAggregate, inspectInputFrom, OPERATOR_TOKENS, referenceToken, resultTypeFromForm, resultTypeLabel, resultTypeSavePlan, resultTypeToForm, sameInspectInput, str, valueFromInput, warningBadges } from "./lib";
+import { autoResultTypeForm, bool, fieldTypeFrom, inferResultTypeForm, insertAt, insertPanelData, insideAggregate, inspectInputFrom, OPERATOR_TOKENS, referenceToken, resultTypeFromForm, resultTypeLabel, resultTypeToForm, sameInspectInput, str, valueFromInput, warningBadges } from "./lib";
 
 describe("catalog lib — FormData 파싱 (순수)", () => {
   it("str — trim 된 문자열, 없으면 빈 문자열", () => {
@@ -88,28 +88,35 @@ describe("catalog lib — 결과 타입 폼 ↔ DiscriminatorResultType (기능/
     }
   });
 
+  it("inferResultTypeForm — 식의 추론 타입을 폼 모양으로 (카탈로그로 구분자 참조를 푼다) · 안 서면 undefined", () => {
+    const catalog = new Map([["D0001", { code: "D0001", label: "담보명", description: "", level: "coverage" as const, expression: "coverage_basic.claim_name", resultType: { kind: "string" as const } }]]);
+    expect(inferResultTypeForm("D0001 ≠ ''", "coverage", catalog)).toEqual({ kind: "boolean", multi: false, enumCode: "" });
+    expect(inferResultTypeForm(" no_surrender.type ", "plan", catalog)).toEqual({ kind: "enum", multi: false, enumCode: "E0002" });
+    expect(inferResultTypeForm("any(", "coverage", catalog)).toBeUndefined();
+    expect(inferResultTypeForm("", "coverage", catalog)).toBeUndefined();
+  });
+
+  it("autoResultTypeForm — 지금 값이 직전 식의 추론 타입(=아직 사람이 안 고름)일 때만 새 추론으로 바꾼다", () => {
+    const empty = { kind: "", multi: false, enumCode: "" };
+    const bool = { kind: "boolean", multi: false, enumCode: "" };
+    const num = { kind: "number", multi: false, enumCode: "" };
+    // 새로 만들 때 — 비어 있고 직전 추론도 없다 → 채운다
+    expect(autoResultTypeForm(empty, undefined, bool)).toEqual(bool);
+    // 식을 바꿨고 아직 안 골랐다(지금 값 = 직전 추론) → 바꾼다
+    expect(autoResultTypeForm(bool, bool, num)).toEqual(num);
+    // 사람이 고른 값(직전 추론과 다르다)은 건드리지 않는다
+    expect(autoResultTypeForm(num, bool, bool)).toEqual(num);
+    // 새 식이 안 서면 그대로
+    expect(autoResultTypeForm(bool, bool, undefined)).toEqual(bool);
+  });
+
   it("resultTypeLabel — 한글 타입명, enum 이면 열거형변수 표시명(없으면 코드)을 붙인다", () => {
     const enumLabel = (code: string) => (code === "E0001" ? "해약환급금유형" : undefined);
-    expect(resultTypeLabel(undefined, enumLabel)).toBe("미지정");
+    expect(resultTypeLabel(undefined, enumLabel)).toBe("없음");
     expect(resultTypeLabel({ kind: "boolean" }, enumLabel)).toBe("참거짓");
     expect(resultTypeLabel({ kind: "enum", enumCode: "E0001" }, enumLabel)).toBe("목록값 · 해약환급금유형");
     expect(resultTypeLabel({ kind: "list<enum>", enumCode: "E0001" }, enumLabel)).toBe("목록값(복수) · 해약환급금유형");
     expect(resultTypeLabel({ kind: "enum", enumCode: "E9999" }, enumLabel)).toBe("목록값 · E9999");
-  });
-
-  it("resultTypeSavePlan — 같으면 none (깊은 비교)", () => {
-    expect(resultTypeSavePlan(undefined, undefined, true)).toBe("none");
-    expect(resultTypeSavePlan({ kind: "boolean" }, { kind: "boolean" }, true)).toBe("none");
-    expect(resultTypeSavePlan({ kind: "enum", enumCode: "E0001" }, { kind: "enum", enumCode: "E0001" }, false)).toBe("none");
-  });
-
-  it("resultTypeSavePlan — 다르고 식은 그대로면 set, 식도 바뀌었으면 clearThenSet", () => {
-    expect(resultTypeSavePlan(undefined, { kind: "boolean" }, false)).toBe("set");
-    expect(resultTypeSavePlan({ kind: "boolean" }, undefined, false)).toBe("set");
-    expect(resultTypeSavePlan({ kind: "enum", enumCode: "E0001" }, { kind: "enum", enumCode: "E0002" }, false)).toBe("set");
-    expect(resultTypeSavePlan({ kind: "boolean" }, { kind: "number" }, true)).toBe("clearThenSet");
-    expect(resultTypeSavePlan(undefined, { kind: "number" }, true)).toBe("clearThenSet");
-    expect(resultTypeSavePlan({ kind: "number" }, undefined, true)).toBe("clearThenSet");
   });
 });
 

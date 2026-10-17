@@ -7,17 +7,18 @@
  *   누르면 이 줄 아래에 고르기(콤보박스)가 열린다. 교체는 저장 한 번의 예외다 — 조 노출 · 오버라이드를 초기화하므로
  *   기존 확인 카드(`?confirm=template:<id>`)를 거쳐 그 자리에서 실행된다. 저장하지 않은 고친 것은 버린다고 미리 말하고,
  *   템플릿이 실제로 바뀌어 돌아오면 편집을 묻지 않고 끝낸다(`end` — 초안의 노드는 옛 템플릿 것이다).
+ *   잃을 것이 있으면 관리자만이다(2026-10-17) — 편집자가 누르면 확인 카드 대신 고르기 줄 아래에 서버 문장이 선다(`TemplatePicker`).
  * - 템플릿이 없으면(미지정) 편집할 것이 없다 — 이 줄이 곧 고르기(잃을 것이 없으면 바로 지정)다.
  * - 오른쪽 끝은 집계 한 줄 + 이 탭의 편집 조작(`ProductEditButtons`) — 헤더가 아니라 탭 안이다 (2026-10-03 사용자 QA).
  * - 이 상품의 보통약관 설정을 마지막으로 저장한 뒤 템플릿이 고쳐졌으면(템플릿 판 > 기준 판) 줄 아래에 경고 한 줄 — 다음 저장에서 사라진다
  *   (ADR-0079). 새 조는 템플릿을 따라 저절로 들어오므로 알리기만 한다.
  */
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useActionState, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Combobox } from "@/app/_components/Combobox";
 import type { Id } from "@/domain/types";
 
-import { setProductGeneralDocumentAction } from "../../actions";
+import { pickProductGeneralDocumentAction, setProductGeneralDocumentAction } from "../../actions";
 import { useGeneralEdit } from "./GeneralEdit";
 import { ProductEditButtons, useProductEdit } from "./ProductEdit";
 
@@ -94,22 +95,15 @@ export function GeneralTemplateLine({
         </span>
       </div>
       {picking && (
-        // 교체는 확인 카드에서 실행된다 — 잃을 것이 있으면 액션이 `?confirm=template:<id>` 로 보낸다
-        <form action={action} className="ts-terms-template ts-terms-template-pick">
-          <label>
-            <span>바꿀 템플릿</span>
-            <Combobox name="generalDocumentId" value={choice} onChange={setChoice} placeholder="이름으로 찾기" options={[{ value: "", label: "미지정 (템플릿 해제)" }, ...options]} />
-          </label>
-          <button type="submit" disabled={choice === generalDocumentId}>
-            바꾸기
-          </button>
-          <button type="button" onClick={() => setPicking(false)}>
-            닫기
-          </button>
-          <span className="ts-muted">
-            바꾸면 조 노출 · 옵션 오버라이드 · 조 사본이 초기화된다{unsaved > 0 ? ` — 저장하지 않은 변경 ${unsaved}건도 버려진다` : ""}.
-          </span>
-        </form>
+        <TemplatePicker
+          productId={productId}
+          current={generalDocumentId}
+          choice={choice}
+          onChoice={setChoice}
+          options={options}
+          unsaved={unsaved}
+          onClose={() => setPicking(false)}
+        />
       )}
       {templateChanged && (
         <p role="status" className="ts-warn ts-terms-template-warn">
@@ -119,6 +113,56 @@ export function GeneralTemplateLine({
       {edit?.message && (
         <p role="alert" className="ts-error-banner">
           {edit.message}
+        </p>
+      )}
+    </>
+  );
+}
+
+/**
+ * 「템플릿 바꾸기…」 고르기 줄 — 열 때마다 새로 선다(지난 거부 문장이 남지 않게).
+ * 교체는 확인 카드에서 실행된다 — 잃을 것이 있으면 액션이 `?confirm=template:<id>` 로 보낸다.
+ * 잃을 것이 있는데 편집자면 바꾸지 않고 서버 문장(「템플릿 교체는 관리자만 할 수 있습니다 — 숨긴 조 N · …」)을
+ * 이 줄 아래에 보인다 (2026-10-17, 기능/상품 §3.6 · §4.6) — 수는 서버가 센다.
+ */
+function TemplatePicker({
+  productId,
+  current,
+  choice,
+  onChoice,
+  options,
+  unsaved,
+  onClose,
+}: {
+  productId: Id;
+  current: Id;
+  choice: string;
+  onChoice: (value: string) => void;
+  options: readonly { value: string; label: string }[];
+  unsaved: number;
+  onClose: () => void;
+}) {
+  const [state, action, pending] = useActionState(pickProductGeneralDocumentAction.bind(null, productId), {});
+  return (
+    <>
+      <form action={action} className="ts-terms-template ts-terms-template-pick">
+        <label>
+          <span>바꿀 템플릿</span>
+          <Combobox name="generalDocumentId" value={choice} onChange={onChoice} placeholder="이름으로 찾기" options={[{ value: "", label: "미지정 (템플릿 해제)" }, ...options]} />
+        </label>
+        <button type="submit" disabled={choice === current || pending}>
+          바꾸기
+        </button>
+        <button type="button" onClick={onClose}>
+          닫기
+        </button>
+        <span className="ts-muted">
+          바꾸면 조 노출 · 옵션 오버라이드 · 조 사본이 초기화된다{unsaved > 0 ? ` — 저장하지 않은 변경 ${unsaved}건도 버려진다` : ""}.
+        </span>
+      </form>
+      {state.message && (
+        <p role="alert" className="ts-error-banner">
+          {state.message}
         </p>
       )}
     </>
