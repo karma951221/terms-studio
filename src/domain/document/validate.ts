@@ -7,7 +7,7 @@
  * 검증 재료(함수조항 게이트 · 식 타입 조회)도 여기서 만든다 — 서버는 DB 에서 읽은 정의로, 브라우저는 서버가 넘긴 같은 정의로.
  */
 import { discriminatorResultType, type Discriminator } from "../catalog";
-import { boundDiscriminators, checkUsageBindings, presetUsage, validateOptionSelection, type BindingEnv, type Clause } from "../clause";
+import { boundDiscriminators, checkUsageBindings, clauseReadsOutput, presetUsage, validateOptionSelection, type BindingEnv, type Clause } from "../clause";
 import type { EnumDef } from "../catalog/types";
 import { definitionCrossCheck, valueBranchWarnings } from "./blockRepeat";
 import type { ExprType, TypeResolver } from "../expression";
@@ -108,13 +108,16 @@ export function legacyBoxIssues(tree: DocumentNode, base?: TreeEnv["coordinate"]
 
 /** 문서 전체 검증 — 오류 + 반복 표 경고. */
 export function validateDocument(tree: DocumentNode, checks: DocumentChecks): Issue[] {
-  const { resolve, scope } = checks;
+  const { resolve } = checks;
+  // 작성위치는 담보약관 템플릿에만 있다 — 보통약관 템플릿 · 상품 조 사본은 쓰면 structure (ADR-0089 · 기능/식언어 §3)
+  const scope: ExpressionScope = { ...checks.scope, output: checks.scope.output ?? checks.env.kind === "special" };
   // 문맥 담보는 식 검사(scope)와 조 참조 키 한정 검사(env)가 같이 쓴다 — 한 번 실어 준다 (ADR-0087 결정 10)
   const env = scope.coverage && !checks.env.coverage ? { ...checks.env, coverage: scope.coverage } : checks.env;
   const issues = validateTree(tree, env);
   issues.push(...legacyBoxIssues(tree, env.coordinate));
   issues.push(...validateExpressions(tree, resolve, env.coordinate, scope));
   issues.push(...nodeBindingIssues(tree, env.clauseGate, scope, env.coordinate));
+  if (!scope.output) issues.push(...outputClauseIssues(tree, env.clauseGate, env.coordinate));
   // 반복 표 경고(저장은 막지 않음) — 검증 목록에만 보인다 (ADR-0070 · 설계 §2.6). 오류는 validateExpressions 가 이미 냈다.
   issues.push(...repeatTableIssues(tree, { hasCoverage: scope.coverage !== undefined }, env.coordinate).filter((i) => i.severity === "warning"));
   // 블록 반복 (ADR-0077) — 사유 값 분기 경고(결정 10) · 정의 조 교차 검사(결정 23 — 「문구 없음」 = 오류 · 펼쳐지지 않는 문장 = 경고)
@@ -122,6 +125,26 @@ export function validateDocument(tree: DocumentNode, checks: DocumentChecks): Is
   const clauseOf = env.clauseGate?.clauseOf?.bind(env.clauseGate);
   if (clauseOf && env.enumOf) issues.push(...definitionCrossCheck(tree, clauseOf, env.enumOf, env.master, env.coordinate));
   return issues;
+}
+
+/** 작성위치를 읽는 함수조항을 작성위치가 없는 문서(보통약관 · 조 사본)에 넣은 자리 — structure (ADR-0089 · 기능/식언어 §3). */
+function outputClauseIssues(tree: DocumentNode, gate: TreeEnv["clauseGate"], base?: TreeEnv["coordinate"]): Issue[] {
+  const clauseOf = gate?.clauseOf?.bind(gate);
+  if (!clauseOf) return [];
+  const ix = indexTree(tree, base);
+  const out: Issue[] = [];
+  for (const e of ix.nodes.values()) {
+    const n = e.node;
+    if (n.kind !== "clauseBlockRef" && n.kind !== "clauseInlineRef") continue;
+    const clause = clauseOf(n.clauseCode);
+    if (!clause || !clauseReadsOutput(clause)) continue;
+    out.push({
+      kind: "structure",
+      message: `함수조항 ${n.clauseCode} 「${clause.label}」 은(는) 작성위치를 읽습니다 — 보통약관에는 작성위치가 없어 쓸 수 없습니다`,
+      at: { ...coordinateOf(ix, e, base), refPath: "builtin.output" },
+    });
+  }
+  return out;
 }
 
 /** 저장을 막는 것만 — 경고를 뺀다. */

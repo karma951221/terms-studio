@@ -66,8 +66,10 @@ export default async function DocumentDetailPage({ params, searchParams }: { par
     : doc.kind === "general"
       ? await services.assembly.previewProducts({ kind: "general", documentId: doc.id })
       : [];
+  // 작성위치(「작성위치」 줄 · 「범위 낱말」 슬롯)는 담보약관 템플릿만 — 보통약관에는 없다 (ADR-0089 · 기능/문면 §3.3 · §3.4)
+  const output = doc.kind === "special";
   const condition = buildConditionContext(
-    mv?.ok ? { coverage: mv.value.tree, values: mv.value.values, discriminators, enums, attributes: attributeKinds } : { discriminators, enums, attributes: attributeKinds },
+    mv?.ok ? { coverage: mv.value.tree, values: mv.value.values, discriminators, enums, attributes: attributeKinds, output } : { discriminators, enums, attributes: attributeKinds, output },
   );
 
   const generalDocument = doc.kind === "special" && doc.generalDocumentId ? await services.document.get(doc.generalDocumentId) : undefined;

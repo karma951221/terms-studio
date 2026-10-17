@@ -9,16 +9,16 @@
  *   값은 `코드` 또는 `코드@키경로`(`D0007@01.2`, ADR-0087 결정 3) 글자다. 노드 묶음 머리는 「세부보장 01 · 이름 › 급부 1 · 이름」. 끝에 「담보속성」 묶음(값 `attr.코드`) — 있음 · 없음 · = · ≠ (2026-09-28).
  */
 import { COVERAGE_NODE_LEVELS, nodeKeyLabel } from "@/domain/coverage";
-import { ATTRIBUTE_OPS, emptyRows, operatorsFor, rowRefPath, toRows, toSource, type ConditionRows, type Join, type RowOp, type RowValueRef } from "@/domain/document";
-import { parse, type AttributeRef } from "@/domain/expression";
+import { ATTRIBUTE_OPS, OUTPUT_OPS, emptyRows, operatorsFor, rowRefPath, toRows, toSource, type ConditionRows, type Join, type RowOp, type RowValueRef } from "@/domain/document";
+import { OUTPUT_DISPLAY, OUTPUT_PATH, parse, type AttributeRef, type OutputRef } from "@/domain/expression";
 import { ATTACH_LEVEL_LABEL } from "@/domain/types";
 
 import type { ConditionContext, CtxDiscriminator, CtxNode } from "./types";
 
 const TREE_LEVELS = new Set<string>(COVERAGE_NODE_LEVELS);
 
-/** 줄 좌변 — 구분자 · 담보속성 · 인자(함수조항 본문, 최종 결정 2). */
-export type LeftRef = RowValueRef | AttributeRef;
+/** 줄 좌변 — 구분자 · 담보속성 · 인자(함수조항 본문, 최종 결정 2) · 작성위치(ADR-0089). */
+export type LeftRef = RowValueRef | AttributeRef | OutputRef;
 
 const ATTR_KEY = "attr.";
 /** 인자 목록 값의 머리 — 조건 문맥의 인자 칸(`CtxDiscriminator.param`)은 코드가 `arg.<이름>` 이다. */
@@ -29,6 +29,7 @@ export const VAR_KEY = "var.";
 /** 참조 → 목록 값. 함수조항 칸(인자 · 내부 변수 · 필드 읽기)은 경로 글 그대로(`arg.X` · `var.X` · `arg.X.F01`). */
 export function refKey(ref: LeftRef): string {
   if (ref.kind === "attr") return `${ATTR_KEY}${ref.code}`;
+  if (ref.kind === "output") return OUTPUT_PATH;
   if (ref.kind !== "discriminator") return rowRefPath(ref);
   return ref.node ? `${ref.code}@${ref.node.path}` : ref.code;
 }
@@ -41,6 +42,7 @@ export function ctxCodeOf(ref: RowValueRef): string {
 /** 목록 값 → 참조. 빈 값이면 undefined. */
 export function refOfKey(key: string): LeftRef | undefined {
   if (key === "") return undefined;
+  if (key === OUTPUT_PATH) return { kind: "output" };
   if (key.startsWith(ATTR_KEY)) return { kind: "attr", code: key.slice(ATTR_KEY.length) };
   if (key.startsWith(ARG_KEY) || key.startsWith(VAR_KEY)) {
     const [head, name, field] = key.split(".");
@@ -115,6 +117,8 @@ export function pickerGroups(context: ConditionContext): PickerGroup[] {
   if (flat.length > 0) groups.push({ label: "구분자", options: flat.map((d) => at(d)) });
   const attributes = context.attributes ?? [];
   if (attributes.length > 0) groups.push({ label: "담보속성", options: attributes.map((a) => ({ key: `${ATTR_KEY}${a.code}`, label: a.label })) });
+  // 작성위치 — 목록 끝 (ADR-0089 · 기능/문면 §3.3). 담보약관 템플릿 · 함수조항만
+  if (context.output) groups.push({ label: OUTPUT_DISPLAY, options: [{ key: OUTPUT_PATH, label: OUTPUT_DISPLAY }] });
   return groups;
 }
 
@@ -169,6 +173,7 @@ export function removeRow(rows: ConditionRows, i: number): ConditionRows {
 export function opsOf(ref: LeftRef | undefined, typeOf: (ref: RowValueRef) => CtxDiscriminator["type"]): readonly RowOp[] {
   if (!ref) return [];
   if (ref.kind === "attr") return ATTRIBUTE_OPS;
+  if (ref.kind === "output") return OUTPUT_OPS;
   const t = typeOf(ref);
   return t ? operatorsFor(t.kind) : [];
 }
@@ -180,7 +185,7 @@ export function setLeft(rows: ConditionRows, i: number, ref: LeftRef | undefined
     rows: rows.rows.map((r, idx) => {
       if (idx !== i) return r;
       if (!ref) return {};
-      if (ref.kind === "attr" || r.left?.kind === "attr") {
+      if (ref.kind === "attr" || ref.kind === "output" || r.left?.kind === "attr" || r.left?.kind === "output") {
         const ops = opsOf(ref, typeOf);
         return { left: ref, ...(ops[0] ? { op: ops[0] } : {}) };
       }

@@ -38,6 +38,8 @@ export function buildConditionContext(input: {
   /** 담보속성 — 조건 머리 줄의 `attr.X` 후보 (기능/문면 §3.3). */
   attributes?: readonly CtxAttribute[];
   master?: MasterTree;
+  /** 작성위치를 아는 문서(담보약관 템플릿 · 함수조항, ADR-0089) — 「작성위치」 줄 · 「범위 낱말」 슬롯. */
+  output?: boolean;
 }): ConditionContext {
   const master = input.master ?? MASTER;
   const byCode = new Map(input.discriminators.map((d) => [d.code, d]));
@@ -75,6 +77,7 @@ export function buildConditionContext(input: {
     .map((d) => ({ label: `${d.label} = 참`, source: `${d.code} = true` }));
 
   const ctx: ConditionContext = { discriminators, openedForms, quick, ...(input.attributes && input.attributes.length > 0 ? { attributes: input.attributes.map((a) => ({ code: a.code, label: a.label, values: a.values.map((v) => ({ code: v.code, label: v.label })) })) } : {}) };
+  if (input.output) ctx.output = true;
   if (input.coverage) {
     const nodes = nodesOf(input.coverage).map((n) => ({
       id: n.id,

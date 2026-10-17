@@ -7,12 +7,13 @@
  * 잎을 더블클릭하면 입력칸에 그 참조 경로가 들어간다 (ADR-0070 · 설계 §3.1).
  * 종 반복 안(`context.plan`)이면 맨 앞에 「현재 종」 묶음 — 종형명(`builtin.plan.name`) · 선택지 번호(`builtin.plan.number`) (ADR-0077 결정 3).
  * 열거값 반복 안(`context.value`)이면 그 앞에 「현재 〈반복 이름〉」 묶음 — 그 열거형의 문자 필드(`builtin.value.<필드키>`)만, 값 이름은 없다 (ADR-0088 결정 1 · 2026-10-17).
+ * 작성위치를 아는 문서(`context.output` — 담보약관 템플릿 · 함수조항)면 맨 앞에 「범위 낱말」 묶음 — 〔이 약관의〕(`builtin.output.scope`, ADR-0089 결정 3).
  */
 import { useState } from "react";
 
 import { Combobox, type ComboOption } from "@/app/_components/Combobox";
 import { currentValueRef, currentValueSlot } from "@/domain/document";
-import { refPath } from "@/domain/expression";
+import { refPath, SCOPE_WORD_CHIP, SCOPE_WORD_PATH } from "@/domain/expression";
 import { ATTACH_LEVELS, ATTACH_LEVEL_LABEL } from "@/domain/types";
 
 import { DiscriminatorTree } from "./DiscriminatorTree";
@@ -27,6 +28,8 @@ const PLAN_SLOTS: readonly { path: string; label: string }[] = [
   { path: "builtin.plan.number", label: "선택지 번호" },
 ];
 
+const SCOPE_GROUP = "범위 낱말";
+
 /** 「현재 값」 묶음 이름 — 「현재 〈반복 이름〉」(「납입면제사유마다」 → 「현재 납입면제사유」, 「현재 종」 묶음과 같은 결). */
 const currentValueGroup = (loopName: string) => `현재 ${loopName.replace(/마다$/, "")}`;
 
@@ -39,7 +42,10 @@ export function slotOptions(context: ConditionContext): ComboOption[] {
   const value = context.value
     ? context.value.fields.map((f) => ({ value: currentValueRef(f.key), label: f.label, hint: currentValueRef(f.key), group: currentValueGroup(context.value!.name) }))
     : [];
+  // 범위 낱말 — 조립이 작성위치로 찍는 시스템 슬롯 (특약 「이 특별약관의」 · 대치 빈 글 · 블록 「이 보장조항의」)
+  const scope = context.output ? [{ value: SCOPE_WORD_PATH, label: SCOPE_WORD_CHIP, hint: "특약 「이 특별약관의」 · 대치 빈 글", group: SCOPE_GROUP }] : [];
   return [
+    ...scope,
     ...value,
     ...plan,
     ...params,
@@ -52,6 +58,7 @@ export function slotOptions(context: ConditionContext): ComboOption[] {
 
 /** 후보에 없는 경로(트리에서 고른 `코드@키경로`)의 이름 — 「세부보장 01 · 이름 › 급부 1 · 이름 › 구분자」. 모르는 코드면 undefined(경로 그대로 보인다). */
 export function slotPathLabel(context: ConditionContext, path: string): string | undefined {
+  if (path === SCOPE_WORD_PATH) return `${SCOPE_GROUP} › ${SCOPE_WORD_CHIP}`;
   const builtin = PLAN_SLOTS.find((p) => p.path === path);
   if (builtin) return `현재 종 › ${builtin.label}`;
   const current = currentValueSlot(path);

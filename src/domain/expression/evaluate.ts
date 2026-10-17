@@ -15,6 +15,7 @@
 import type { Code, Coordinate, Issue, IssueKind, Value, ValueSlot } from "../types";
 import { refPath } from "./ast";
 import type { AggregateOp, CompareOp, Expr, Ref, ValueRef } from "./ast";
+import { SCOPE_WORDS, type OutputPosition } from "./output";
 
 // ───────────────────────────── 문맥 계약 ─────────────────────────────
 
@@ -59,6 +60,11 @@ export interface EvalContext {
   attribute(code: Code): AttributeResult;
   children(ref: ValueRef): EvalContext[] | undefined;
   coordinate?: Coordinate;
+  /**
+   * 작성위치 (ADR-0089 · 기능/식언어 §3) — 조립 중인 담보약관이면 그 출력 위치. 없으면 미결(담보약관 저장 검사 · 담보 마스터 편집 문맥),
+   * `"none"` 이면 작성위치가 없는 문맥(보통약관 · 구분자 파생식) — 읽으면 structure 오류.
+   */
+  output?: OutputPosition | "none";
 }
 
 // ───────────────────────────── 결과 ─────────────────────────────
@@ -170,6 +176,13 @@ function compareAttribute(
     case "undetermined":
       return undetermined(ref);
   }
+}
+
+/** 작성위치 · 범위 낱말 — 문맥이 주는 값(코드 · 찍을 글). 비교는 보통 비교(문자열 = 문자열)로 간다. */
+function readOutput(ctx: EvalContext, ref: Ref & { kind: "output" }): EvalResult {
+  if (ctx.output === undefined) return undetermined(ref);
+  if (ctx.output === "none") return error(ctx, "structure", `작성위치 ${refPath(ref)} 는 보통약관 · 구분자 식에서 쓸 수 없습니다`, ref);
+  return val(ref.prop === "scope" ? SCOPE_WORDS[ctx.output] : ctx.output);
 }
 
 // ───────────────────────────── 논리 ─────────────────────────────
@@ -309,6 +322,7 @@ export function evaluate(expr: Expr, ctx: EvalContext): EvalResult {
         return error(ctx, "typeMismatch", `담보속성 attr.${expr.ref.code} 는 exist · = · ≠ 로만 쓸 수 있습니다`, expr.ref);
       }
       if (expr.ref.kind === "local") return clauseOnly(ctx, `내부 변수 ${refPath(expr.ref)}`, expr.ref);
+      if (expr.ref.kind === "output") return readOutput(ctx, expr.ref);
       if (expr.ref.kind === "param") {
         // 인자는 함수조항을 펼칠 때 연결(구분자 · 상수)로 바뀐다(clause/bind.ts) — 평가까지 남았으면 연결이 빠진 것이다
         return error(ctx, "structure", `인자 ${refPath(expr.ref)} 가 연결되지 않은 채 평가에 닿았습니다`, expr.ref);
@@ -345,6 +359,7 @@ export function evaluate(expr: Expr, ctx: EvalContext): EvalResult {
     case "aggregate":
       if (expr.ref.kind === "attr") return aggregateAttribute(ctx, expr.op, expr.ref);
       if (expr.ref.kind === "param" || expr.ref.kind === "local") return error(ctx, "structure", `${refPath(expr.ref)} 는 집계할 수 없습니다`, expr.ref);
+      if (expr.ref.kind === "output") return error(ctx, "typeMismatch", `작성위치 ${refPath(expr.ref)} 는 집계할 수 없습니다`, expr.ref);
       return aggregate(ctx, expr.op, expr.ref);
 
     case "member":

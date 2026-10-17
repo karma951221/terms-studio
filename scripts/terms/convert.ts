@@ -30,7 +30,7 @@ import type { ArticleRefNode as ClauseArticleRef } from "../../src/domain/clause
 import type { Id } from "../../src/domain/types";
 import { boxSites, planBoxes, replaceBox, type BoxPlan } from "./boxes";
 import type { Discriminator } from "../../src/domain/catalog/types";
-import { applyClauseUse, articleRefParamsOf, INNER_TARGETS, clauseFromSource, inlineBody, optionCode, parameterize, placeOptions, reId, valueCode, type ClauseRecord } from "./clauses";
+import { applyClauseUse, articleRefParamsOf, guardApplicationOutput, INNER_TARGETS, clauseFromSource, inlineBody, optionCode, parameterize, placeOptions, reId, valueCode, type ClauseRecord } from "./clauses";
 import { articlesDeep, canonicalArticle, claimOf, collapseRenewal, coverageNameOf, localPaths, mergeRenewal, textNodesOf, wordClusters } from "./auto";
 import { APPENDED_CLAUSE_KEYS, APPENDICES, CLAUSES, PRODUCTS, RENEWAL, SEED_DIR, type ClauseUse, type ProductTerms, type SlotOverlay, type SpecialSpec } from "./config";
 import { parseTerms, type ParsedArticle, type ParsedDoc } from "./parse";
@@ -484,6 +484,8 @@ function main(): void {
   guardDiseaseApplication(application("alpha-application-disease"), isWaiverOf("alpha"));
   const meritzApplication = application("meritz-application");
   guardWaiverMentions({ id: meritzApplication.code, kind: "document", title: "", children: meritzApplication.body } as unknown as DocumentNode, isWaiverOf("meritz"), meritzApplication.code);
+  // 준용규정은 작성위치 = 대치이면 빈 출력 (ADR-0089 결정 5) — 자동 묶음이 만든 준용규정까지
+  guardApplicationOutput(clauses);
 
   // ── 조 자리 조건 · 검증
   const generals: { code: string; tree: DocumentNode }[] = [];

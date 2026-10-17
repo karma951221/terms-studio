@@ -23,6 +23,11 @@ import { repeatTableIssues } from "./repeat";
 export interface ExpressionScope {
   coverage?: Coverage;
   levelOf?: (code: Code) => AttachLevel | undefined;
+  /**
+   * 작성위치(`builtin.output` · 범위 낱말 `builtin.output.scope`)를 쓸 수 있는가 — 담보약관 템플릿만 (ADR-0089 · 기능/식언어 §3).
+   * 보통약관 템플릿 · 상품 조 사본은 false — 쓰면 structure. `validateDocument` 가 문서 종류로 채운다.
+   */
+  output?: boolean;
 }
 
 /** `@키경로` 규칙 (ADR-0066 §2 · §3, ADR-0087): 담보 약관에서만 · 키 경로가 트리에 있어야 · 노드 레벨 = 구분자 레벨. */
@@ -83,7 +88,7 @@ export function validateExpressions(doc: DocumentNode, resolve: TypeResolver, ba
       issues.push(...q);
       return;
     }
-    const checked = checkCondition(parsed.value, resolve, at);
+    const checked = checkCondition(parsed.value, resolve, at, undefined, scope.output);
     if (!checked.ok && checked.rejection.reason === "invalid") issues.push(...checked.rejection.issues);
   };
 
@@ -107,7 +112,7 @@ export function validateExpressions(doc: DocumentNode, resolve: TypeResolver, ba
       issues.push(...q);
       return;
     }
-    const checked = checkTypes(parsed.value, resolve, { coordinate: at });
+    const checked = checkTypes(parsed.value, resolve, { coordinate: at, ...(scope.output ? { output: true } : {}) });
     if (!checked.ok && checked.rejection.reason === "invalid") {
       issues.push(...checked.rejection.issues);
     } else if (checked.ok && checked.value.kind !== "string" && checked.value.kind !== "enum") {

@@ -4,7 +4,7 @@
  * `format` 이 소스 문법(연산자 · and/or · 리터럴)을 그대로 내므로 여기서는 바꾸지 않는다 —
  * 참조 자리의 표시명만 한글로 간다. 파싱에 실패하면(팝업이 못 여는 식 포함) 원문을 그대로 보인다.
  */
-import { format, parse, refPath, type DisplayName, type MemberName, type Ref } from "@/domain/expression";
+import { format, OUTPUT_DISPLAY, parse, refPath, SCOPE_WORD_CHIP, type DisplayName, type MemberName, type Ref } from "@/domain/expression";
 
 import { qualifiedLabel } from "./rows";
 import type { ConditionContext } from "./types";
@@ -19,6 +19,8 @@ function refOnly(context: ConditionContext): DisplayName {
   return (ref: Ref) => {
     // 함수조항 인자 — 편집기가 문맥에 `arg.<이름>` 칸으로 넣었으면 그 표시명(없으면 경로 그대로)
     if (ref.kind === "param" || ref.kind === "local") return context.discriminators.find((d) => (d.param || d.local) && d.code === refPath(ref))?.label ?? refPath(ref);
+    // 작성위치 · 범위 낱말 (ADR-0089) — 화면 말
+    if (ref.kind === "output") return ref.prop === "scope" ? SCOPE_WORD_CHIP : OUTPUT_DISPLAY;
     if (ref.kind !== "discriminator") return refPath(ref);
     const label = labelOf(ref.code);
     return ref.node ? qualifiedLabel(context, label, ref.node.path) : label;

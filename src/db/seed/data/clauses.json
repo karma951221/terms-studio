@@ -6310,126 +6310,138 @@
     "description": "특별약관에서 정하지 않은 사항은 보통약관을 따른다 — 알파Plus 보통약관 조를 가리킨다. 제외 조 목록은 갱신형(담보속성 A0001 = 2)이면 다섯 조 무조건, 아니면 세 조 + 1종 가입 시 두 조",
     "body": [
       {
-        "id": "c-alpha-application-n1",
-        "kind": "paragraph",
-        "children": [
+        "id": "c-alpha-application-n1-output",
+        "kind": "condBlock",
+        "branches": [
           {
-            "id": "c-alpha-application-n2",
-            "kind": "text",
-            "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
-          },
-          {
-            "id": "c-alpha-application-n3",
-            "kind": "inlineCond",
-            "branches": [
+            "id": "c-alpha-application-n1-output-b",
+            "when": "builtin.output ≠ 'replace'",
+            "children": [
               {
-                "id": "c-alpha-application-n4",
-                "when": "exist(attr.A0001) and attr.A0001 = '2'",
+                "id": "c-alpha-application-n1",
+                "kind": "paragraph",
                 "children": [
                   {
-                    "id": "c-alpha-application-n5",
-                    "kind": "articleRef",
-                    "targets": [
-                      {
-                        "articleId": "g-a9"
-                      },
-                      {
-                        "articleId": "g-a10"
-                      },
-                      {
-                        "articleId": "g-a27_1"
-                      },
-                      {
-                        "articleId": "g-a27_2"
-                      },
-                      {
-                        "articleId": "g-a38"
-                      }
-                    ],
-                    "connector": "및"
-                  },
-                  {
-                    "id": "c-alpha-application-n6",
+                    "id": "c-alpha-application-n2",
                     "kind": "text",
-                    "text": "은 제외합니다."
-                  }
-                ]
-              },
-              {
-                "id": "c-alpha-application-n7",
-                "children": [
+                    "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
+                  },
                   {
-                    "id": "c-alpha-application-n8",
-                    "kind": "articleRef",
-                    "targets": [
+                    "id": "c-alpha-application-n3",
+                    "kind": "inlineCond",
+                    "branches": [
                       {
-                        "articleId": "g-a9"
+                        "id": "c-alpha-application-n4",
+                        "when": "exist(attr.A0001) and attr.A0001 = '2'",
+                        "children": [
+                          {
+                            "id": "c-alpha-application-n5",
+                            "kind": "articleRef",
+                            "targets": [
+                              {
+                                "articleId": "g-a9"
+                              },
+                              {
+                                "articleId": "g-a10"
+                              },
+                              {
+                                "articleId": "g-a27_1"
+                              },
+                              {
+                                "articleId": "g-a27_2"
+                              },
+                              {
+                                "articleId": "g-a38"
+                              }
+                            ],
+                            "connector": "및"
+                          },
+                          {
+                            "id": "c-alpha-application-n6",
+                            "kind": "text",
+                            "text": "은 제외합니다."
+                          }
+                        ]
                       },
                       {
-                        "articleId": "g-a10"
+                        "id": "c-alpha-application-n7",
+                        "children": [
+                          {
+                            "id": "c-alpha-application-n8",
+                            "kind": "articleRef",
+                            "targets": [
+                              {
+                                "articleId": "g-a9"
+                              },
+                              {
+                                "articleId": "g-a10"
+                              },
+                              {
+                                "articleId": "g-a38"
+                              }
+                            ],
+                            "connector": "및"
+                          },
+                          {
+                            "id": "c-alpha-application-n9",
+                            "kind": "text",
+                            "text": "은 제외하며, 보통약관 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
+                          },
+                          {
+                            "id": "c-alpha-application-n10",
+                            "kind": "articleRef",
+                            "targets": [
+                              {
+                                "articleId": "g-a27_1"
+                              },
+                              {
+                                "articleId": "g-a27_2"
+                              }
+                            ],
+                            "connector": "및"
+                          },
+                          {
+                            "id": "c-alpha-application-n11",
+                            "kind": "text",
+                            "text": "도 제외합니다."
+                          }
+                        ],
+                        "when": "arg.납입면제_있음 = true"
                       },
                       {
-                        "articleId": "g-a38"
+                        "id": "c-alpha-application-n7-else",
+                        "children": [
+                          {
+                            "id": "c-alpha-application-n8-else",
+                            "kind": "articleRef",
+                            "targets": [
+                              {
+                                "articleId": "g-a9"
+                              },
+                              {
+                                "articleId": "g-a10"
+                              },
+                              {
+                                "articleId": "g-a38"
+                              }
+                            ],
+                            "connector": "및"
+                          },
+                          {
+                            "id": "c-alpha-application-n7-else-t",
+                            "kind": "text",
+                            "text": "은 제외합니다."
+                          }
+                        ]
                       }
-                    ],
-                    "connector": "및"
-                  },
-                  {
-                    "id": "c-alpha-application-n9",
-                    "kind": "text",
-                    "text": "은 제외하며, 보통약관 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
-                  },
-                  {
-                    "id": "c-alpha-application-n10",
-                    "kind": "articleRef",
-                    "targets": [
-                      {
-                        "articleId": "g-a27_1"
-                      },
-                      {
-                        "articleId": "g-a27_2"
-                      }
-                    ],
-                    "connector": "및"
-                  },
-                  {
-                    "id": "c-alpha-application-n11",
-                    "kind": "text",
-                    "text": "도 제외합니다."
+                    ]
                   }
                 ],
-                "when": "arg.납입면제_있음 = true"
-              },
-              {
-                "id": "c-alpha-application-n7-else",
-                "children": [
-                  {
-                    "id": "c-alpha-application-n8-else",
-                    "kind": "articleRef",
-                    "targets": [
-                      {
-                        "articleId": "g-a9"
-                      },
-                      {
-                        "articleId": "g-a10"
-                      },
-                      {
-                        "articleId": "g-a38"
-                      }
-                    ],
-                    "connector": "및"
-                  },
-                  {
-                    "id": "c-alpha-application-n7-else-t",
-                    "kind": "text",
-                    "text": "은 제외합니다."
-                  }
-                ]
+                "code": "P0100"
               }
             ]
           }
-        ],
-        "code": "P0100"
+        ]
       }
     ],
     "options": [],
@@ -6453,72 +6465,84 @@
     "description": "특별약관에서 정하지 않은 사항은 보통약관을 따른다 — 메리츠 보통약관 조를 가리킨다(적립이율 · 만기환급금 · 중도인출 제외, 1종이면 납입면제 두 조도 제외). 질병사망은 제5조까지 빼는 다른 글이라 쓰지 않는다",
     "body": [
       {
-        "id": "c-meritz-application-n1",
-        "kind": "paragraph",
-        "children": [
+        "id": "c-meritz-application-n1-output",
+        "kind": "condBlock",
+        "branches": [
           {
-            "id": "c-meritz-application-n2",
-            "kind": "text",
-            "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
-          },
-          {
-            "id": "c-meritz-application-n3",
-            "kind": "articleRef",
-            "targets": [
+            "id": "c-meritz-application-n1-output-b",
+            "when": "builtin.output ≠ 'replace'",
+            "children": [
               {
-                "articleId": "m-a9"
-              },
-              {
-                "articleId": "m-a10"
-              },
-              {
-                "articleId": "m-a43"
-              }
-            ],
-            "connector": "및"
-          },
-          {
-            "id": "c-meritz-application-n4",
-            "kind": "text",
-            "text": "은 제외합니다."
-          },
-          {
-            "id": "c-meritz-application-n5-if-waiver",
-            "kind": "inlineCond",
-            "branches": [
-              {
-                "id": "c-meritz-application-n5-if-waiver-b",
-                "when": "arg.납입면제_있음 = true",
+                "id": "c-meritz-application-n1",
+                "kind": "paragraph",
                 "children": [
                   {
-                    "id": "c-meritz-application-n4-w",
+                    "id": "c-meritz-application-n2",
                     "kind": "text",
-                    "text": " 또한, 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
+                    "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
                   },
                   {
-                    "id": "c-meritz-application-n5",
+                    "id": "c-meritz-application-n3",
                     "kind": "articleRef",
                     "targets": [
                       {
-                        "articleId": "m-a29"
+                        "articleId": "m-a9"
                       },
                       {
-                        "articleId": "m-a31"
+                        "articleId": "m-a10"
+                      },
+                      {
+                        "articleId": "m-a43"
                       }
                     ],
                     "connector": "및"
                   },
                   {
-                    "id": "c-meritz-application-n6-w",
+                    "id": "c-meritz-application-n4",
                     "kind": "text",
                     "text": "은 제외합니다."
+                  },
+                  {
+                    "id": "c-meritz-application-n5-if-waiver",
+                    "kind": "inlineCond",
+                    "branches": [
+                      {
+                        "id": "c-meritz-application-n5-if-waiver-b",
+                        "when": "arg.납입면제_있음 = true",
+                        "children": [
+                          {
+                            "id": "c-meritz-application-n4-w",
+                            "kind": "text",
+                            "text": " 또한, 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
+                          },
+                          {
+                            "id": "c-meritz-application-n5",
+                            "kind": "articleRef",
+                            "targets": [
+                              {
+                                "articleId": "m-a29"
+                              },
+                              {
+                                "articleId": "m-a31"
+                              }
+                            ],
+                            "connector": "및"
+                          },
+                          {
+                            "id": "c-meritz-application-n6-w",
+                            "kind": "text",
+                            "text": "은 제외합니다."
+                          }
+                        ]
+                      }
+                    ]
                   }
-                ]
+                ],
+                "code": "P0100"
               }
             ]
           }
-        ],
-        "code": "P0100"
+        ]
       }
     ],
     "options": [],
@@ -6586,80 +6610,92 @@
     "description": "질병 특약 — 특별약관에서 정하지 않은 사항은 알파Plus 보통약관을 따른다. 제외 조는 제5조(상해 면책) · 적립이율 · 만기환급금 · 중도인출, 납입면제가 있으면 1종 가입 시 납입면제 두 조도",
     "body": [
       {
-        "id": "c-alpha-application-disease-n1",
-        "kind": "paragraph",
-        "children": [
+        "id": "c-alpha-application-disease-n1-output",
+        "kind": "condBlock",
+        "branches": [
           {
-            "id": "c-alpha-application-disease-n2",
-            "kind": "text",
-            "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
-          },
-          {
-            "id": "c-alpha-application-disease-n3",
-            "kind": "articleRef",
-            "targets": [
+            "id": "c-alpha-application-disease-n1-output-b",
+            "when": "builtin.output ≠ 'replace'",
+            "children": [
               {
-                "articleId": "g-a5"
-              },
-              {
-                "articleId": "g-a9"
-              },
-              {
-                "articleId": "g-a10"
-              },
-              {
-                "articleId": "g-a38"
-              }
-            ],
-            "connector": "및"
-          },
-          {
-            "id": "c-alpha-application-disease-n1-if-waiver",
-            "kind": "inlineCond",
-            "branches": [
-              {
-                "id": "c-alpha-application-disease-n1-if-waiver-b",
-                "when": "arg.납입면제_있음 = true",
+                "id": "c-alpha-application-disease-n1",
+                "kind": "paragraph",
                 "children": [
                   {
-                    "id": "c-alpha-application-disease-n4",
+                    "id": "c-alpha-application-disease-n2",
                     "kind": "text",
-                    "text": "은 제외하며, 보통약관 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
+                    "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
                   },
                   {
-                    "id": "c-alpha-application-disease-n5",
+                    "id": "c-alpha-application-disease-n3",
                     "kind": "articleRef",
                     "targets": [
                       {
-                        "articleId": "g-a27_1"
+                        "articleId": "g-a5"
                       },
                       {
-                        "articleId": "g-a27_2"
+                        "articleId": "g-a9"
+                      },
+                      {
+                        "articleId": "g-a10"
+                      },
+                      {
+                        "articleId": "g-a38"
                       }
                     ],
                     "connector": "및"
                   },
                   {
-                    "id": "c-alpha-application-disease-n6",
-                    "kind": "text",
-                    "text": "도 제외합니다."
+                    "id": "c-alpha-application-disease-n1-if-waiver",
+                    "kind": "inlineCond",
+                    "branches": [
+                      {
+                        "id": "c-alpha-application-disease-n1-if-waiver-b",
+                        "when": "arg.납입면제_있음 = true",
+                        "children": [
+                          {
+                            "id": "c-alpha-application-disease-n4",
+                            "kind": "text",
+                            "text": "은 제외하며, 보통약관 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
+                          },
+                          {
+                            "id": "c-alpha-application-disease-n5",
+                            "kind": "articleRef",
+                            "targets": [
+                              {
+                                "articleId": "g-a27_1"
+                              },
+                              {
+                                "articleId": "g-a27_2"
+                              }
+                            ],
+                            "connector": "및"
+                          },
+                          {
+                            "id": "c-alpha-application-disease-n6",
+                            "kind": "text",
+                            "text": "도 제외합니다."
+                          }
+                        ]
+                      },
+                      {
+                        "id": "c-alpha-application-disease-n1-if-waiver-else",
+                        "children": [
+                          {
+                            "id": "c-alpha-application-disease-n1-if-waiver-else-t",
+                            "kind": "text",
+                            "text": "은 제외합니다."
+                          }
+                        ]
+                      }
+                    ]
                   }
-                ]
-              },
-              {
-                "id": "c-alpha-application-disease-n1-if-waiver-else",
-                "children": [
-                  {
-                    "id": "c-alpha-application-disease-n1-if-waiver-else-t",
-                    "kind": "text",
-                    "text": "은 제외합니다."
-                  }
-                ]
+                ],
+                "code": "P0100"
               }
             ]
           }
-        ],
-        "code": "P0100"
+        ]
       }
     ],
     "options": [],
@@ -7347,26 +7383,38 @@
     "description": "알파Plus2607 특약 2곳이 조째 같은 글이고 낱말 1자리만 다르다(옵션) — 변환기가 찾아 묶었다(첫 자리 a7-e1-doc 「준용규정」)",
     "body": [
       {
-        "id": "c-auto-87-n1",
-        "kind": "paragraph",
-        "children": [
+        "id": "c-auto-87-n1-output",
+        "kind": "condBlock",
+        "branches": [
           {
-            "id": "c-auto-87-n2",
-            "kind": "text",
-            "text": "이 "
-          },
-          {
-            "id": "c-auto-87-n3",
-            "kind": "optionSlot",
-            "optionCode": "O01"
-          },
-          {
-            "id": "c-auto-87-n4",
-            "kind": "text",
-            "text": " 정하지 않은 사항은 보통약관 및 해당 특별약관을 따릅니다."
+            "id": "c-auto-87-n1-output-b",
+            "when": "builtin.output ≠ 'replace'",
+            "children": [
+              {
+                "id": "c-auto-87-n1",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-auto-87-n2",
+                    "kind": "text",
+                    "text": "이 "
+                  },
+                  {
+                    "id": "c-auto-87-n3",
+                    "kind": "optionSlot",
+                    "optionCode": "O01"
+                  },
+                  {
+                    "id": "c-auto-87-n4",
+                    "kind": "text",
+                    "text": " 정하지 않은 사항은 보통약관 및 해당 특별약관을 따릅니다."
+                  }
+                ],
+                "code": "P0100"
+              }
+            ]
           }
-        ],
-        "code": "P0100"
+        ]
       }
     ],
     "options": [
@@ -11244,80 +11292,92 @@
     "description": "알파Plus2607 특약 3곳이 조째 같은 글이다 — 변환기가 찾아 묶었다(첫 자리 a7-i18-doc 「준용규정」)",
     "body": [
       {
-        "id": "c-auto-114-n1",
-        "kind": "paragraph",
-        "children": [
+        "id": "c-auto-114-n1-output",
+        "kind": "condBlock",
+        "branches": [
           {
-            "id": "c-auto-114-n2",
-            "kind": "text",
-            "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
-          },
-          {
-            "id": "c-auto-114-n3",
-            "kind": "articleRef",
-            "targets": [
+            "id": "c-auto-114-n1-output-b",
+            "when": "builtin.output ≠ 'replace'",
+            "children": [
               {
-                "articleId": "g-a4"
-              },
-              {
-                "articleId": "g-a9"
-              },
-              {
-                "articleId": "g-a10"
-              },
-              {
-                "articleId": "g-a38"
-              }
-            ],
-            "connector": "및"
-          },
-          {
-            "id": "c-auto-114-n5-if-waiver",
-            "kind": "inlineCond",
-            "branches": [
-              {
-                "id": "c-auto-114-n5-if-waiver-b",
-                "when": "arg.납입면제_있음 = true",
+                "id": "c-auto-114-n1",
+                "kind": "paragraph",
                 "children": [
                   {
-                    "id": "c-auto-114-n4-w",
+                    "id": "c-auto-114-n2",
                     "kind": "text",
-                    "text": "은 제외하며, 보통약관 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
+                    "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
                   },
                   {
-                    "id": "c-auto-114-n5",
+                    "id": "c-auto-114-n3",
                     "kind": "articleRef",
                     "targets": [
                       {
-                        "articleId": "g-a27_1"
+                        "articleId": "g-a4"
                       },
                       {
-                        "articleId": "g-a27_2"
+                        "articleId": "g-a9"
+                      },
+                      {
+                        "articleId": "g-a10"
+                      },
+                      {
+                        "articleId": "g-a38"
                       }
                     ],
                     "connector": "및"
                   },
                   {
-                    "id": "c-auto-114-n6-w",
-                    "kind": "text",
-                    "text": "도 제외합니다."
+                    "id": "c-auto-114-n5-if-waiver",
+                    "kind": "inlineCond",
+                    "branches": [
+                      {
+                        "id": "c-auto-114-n5-if-waiver-b",
+                        "when": "arg.납입면제_있음 = true",
+                        "children": [
+                          {
+                            "id": "c-auto-114-n4-w",
+                            "kind": "text",
+                            "text": "은 제외하며, 보통약관 1종(보험료 납입면제 미적용형)으로 가입한 경우 "
+                          },
+                          {
+                            "id": "c-auto-114-n5",
+                            "kind": "articleRef",
+                            "targets": [
+                              {
+                                "articleId": "g-a27_1"
+                              },
+                              {
+                                "articleId": "g-a27_2"
+                              }
+                            ],
+                            "connector": "및"
+                          },
+                          {
+                            "id": "c-auto-114-n6-w",
+                            "kind": "text",
+                            "text": "도 제외합니다."
+                          }
+                        ]
+                      },
+                      {
+                        "id": "c-auto-114-n5-if-waiver-else",
+                        "children": [
+                          {
+                            "id": "c-auto-114-n5-if-waiver-else-t",
+                            "kind": "text",
+                            "text": "은 제외합니다."
+                          }
+                        ]
+                      }
+                    ]
                   }
-                ]
-              },
-              {
-                "id": "c-auto-114-n5-if-waiver-else",
-                "children": [
-                  {
-                    "id": "c-auto-114-n5-if-waiver-else-t",
-                    "kind": "text",
-                    "text": "은 제외합니다."
-                  }
-                ]
+                ],
+                "code": "P0100"
               }
             ]
           }
-        ],
-        "code": "P0100"
+        ]
       }
     ],
     "options": [],
@@ -12940,46 +13000,58 @@
     "description": "알파Plus2607 특약 10곳이 조째 같은 글이다 — 변환기가 찾아 묶었다(첫 자리 a7-d1-doc 「준용규정」)",
     "body": [
       {
-        "id": "c-auto-125-n1",
-        "kind": "paragraph",
-        "children": [
+        "id": "c-auto-125-n1-output",
+        "kind": "condBlock",
+        "branches": [
           {
-            "id": "c-auto-125-n2",
-            "kind": "text",
-            "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
-          },
-          {
-            "id": "c-auto-125-n3",
-            "kind": "articleRef",
-            "targets": [
+            "id": "c-auto-125-n1-output-b",
+            "when": "builtin.output ≠ 'replace'",
+            "children": [
               {
-                "articleId": "g-a5"
-              },
-              {
-                "articleId": "g-a9"
-              },
-              {
-                "articleId": "g-a10"
-              },
-              {
-                "articleId": "g-a27_1"
-              },
-              {
-                "articleId": "g-a27_2"
-              },
-              {
-                "articleId": "g-a38"
+                "id": "c-auto-125-n1",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-auto-125-n2",
+                    "kind": "text",
+                    "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
+                  },
+                  {
+                    "id": "c-auto-125-n3",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "g-a5"
+                      },
+                      {
+                        "articleId": "g-a9"
+                      },
+                      {
+                        "articleId": "g-a10"
+                      },
+                      {
+                        "articleId": "g-a27_1"
+                      },
+                      {
+                        "articleId": "g-a27_2"
+                      },
+                      {
+                        "articleId": "g-a38"
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-auto-125-n4",
+                    "kind": "text",
+                    "text": "은 제외합니다."
+                  }
+                ],
+                "code": "P0100"
               }
-            ],
-            "connector": "및"
-          },
-          {
-            "id": "c-auto-125-n4",
-            "kind": "text",
-            "text": "은 제외합니다."
+            ]
           }
-        ],
-        "code": "P0100"
+        ]
       }
     ],
     "options": []
@@ -21727,42 +21799,54 @@
     "description": "알파Plus2607 특약 13곳이 조째 같은 글이고 낱말 1자리만 다르다(옵션) — 변환기가 찾아 묶었다(첫 자리 a7-d125-doc 「준용규정」)",
     "body": [
       {
-        "id": "c-auto-195-n1",
-        "kind": "paragraph",
-        "children": [
+        "id": "c-auto-195-n1-output",
+        "kind": "condBlock",
+        "branches": [
           {
-            "id": "c-auto-195-n2",
-            "kind": "text",
-            "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
-          },
-          {
-            "id": "c-auto-195-n3",
-            "kind": "articleRef",
-            "targets": [
+            "id": "c-auto-195-n1-output-b",
+            "when": "builtin.output ≠ 'replace'",
+            "children": [
               {
-                "articleId": "g-a9"
-              },
-              {
-                "articleId": "g-a10"
-              },
-              {
-                "articleId": "g-a38"
+                "id": "c-auto-195-n1",
+                "kind": "paragraph",
+                "children": [
+                  {
+                    "id": "c-auto-195-n2",
+                    "kind": "text",
+                    "text": "이 특별약관에서 정하지 않은 사항은 보통약관을 따릅니다. 다만, "
+                  },
+                  {
+                    "id": "c-auto-195-n3",
+                    "kind": "articleRef",
+                    "targets": [
+                      {
+                        "articleId": "g-a9"
+                      },
+                      {
+                        "articleId": "g-a10"
+                      },
+                      {
+                        "articleId": "g-a38"
+                      }
+                    ],
+                    "connector": "및"
+                  },
+                  {
+                    "id": "c-auto-195-n4",
+                    "kind": "text",
+                    "text": "은 "
+                  },
+                  {
+                    "id": "c-auto-195-n5",
+                    "kind": "optionSlot",
+                    "optionCode": "O01"
+                  }
+                ],
+                "code": "P0100"
               }
-            ],
-            "connector": "및"
-          },
-          {
-            "id": "c-auto-195-n4",
-            "kind": "text",
-            "text": "은 "
-          },
-          {
-            "id": "c-auto-195-n5",
-            "kind": "optionSlot",
-            "optionCode": "O01"
+            ]
           }
-        ],
-        "code": "P0100"
+        ]
       }
     ],
     "options": [

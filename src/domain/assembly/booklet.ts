@@ -227,7 +227,10 @@ function buildGeneral(input: AssemblyInput, contexts: AssemblyContexts, s: Share
     const doc = base && input.specialDocuments.get(base.snapshot.coverageId);
     const ctx = base && contexts.specials.get(base.snapshot.id);
     if (base && doc && ctx) {
-      const basePrepared = prepare(doc, ctx, s, { coordinate: specialCoordinate(base), ...prepareCoordinates(input, doc, base) });
+      const prepared = prepare(doc, ctx, s, { coordinate: specialCoordinate(base), ...prepareCoordinates(input, doc, base) });
+      // 기본계약 문면의 빈 조(작성위치 = 대치로 빈 출력이 된 준용규정 · 특약 전용 조)를 **먼저** 뺀다 — 그 뒤 대치가 조연결 경고를 검사하므로
+      // 의도대로 빠진 조에 「조연결 없는 기본계약 조」가 서지 않는다. 본문 없이 쓴 조는 남아 지금처럼 경고 (ADR-0089 결정 5)
+      const basePrepared = { ...prepared, doc: dropEmptyArticles(prepared.doc, authoredEmptyArticleIds(doc)).doc };
       const replacedArticleIds = new Set(articlesOf(basePrepared.doc).flatMap((node) => (node.linkedArticleId ? [node.linkedArticleId] : [])));
       // 대치될 보통약관 본문은 실행 경로가 아니다. 먼저 비운 뒤 해소해야 사라질 슬롯의 오류·조회 흔적이 남지 않는다.
       // 조 자리는 문서 · 관 · 조건 블록 가지 어디에나 있다 — 숨김 필터(withoutHidden)와 **같은 순회**로 비운다
@@ -421,7 +424,7 @@ export function assemble(master: MasterBundle, product: ProductInput): Booklet {
       docs: g.docs.map(({ c, b }) => {
         const groupIssue = placement.groupIssues.get(c.snapshot.id);
         if (groupIssue) issues.push(groupIssue);
-        const r = renderDocument(b.numbered, { document: "special", ownerId: c.snapshot.id, general: general?.numbered, aliases: omissionAliases(b.omitted), appendices, ...(general?.hidden ? { hiddenArticles: general.hidden } : {}) });
+        const r = renderDocument(b.numbered, { document: "special", ownerId: c.snapshot.id, general: general?.numbered, aliases: omissionAliases(b.omitted), ...(general?.aliases ? { generalAliases: general.aliases } : {}), appendices, ...(general?.hidden ? { hiddenArticles: general.hidden } : {}) });
         issues.push(...locateIssues(b.issues, b.numbered), ...r.issues);
         omitted.push(...b.omitted);
         return r.doc;
@@ -452,7 +455,7 @@ export function assembleSpecial(master: MasterBundle, product: ProductInput, pro
     renderedGeneral = r.doc;
     issues.push(...locateIssues(general.issues, general.numbered), ...r.issues);
   }
-  const r = renderDocument(b.numbered, { document: "special", ownerId: c.snapshot.id, general: general?.numbered, aliases: omissionAliases(b.omitted), appendices, ...(general?.hidden ? { hiddenArticles: general.hidden } : {}) });
+  const r = renderDocument(b.numbered, { document: "special", ownerId: c.snapshot.id, general: general?.numbered, aliases: omissionAliases(b.omitted), ...(general?.aliases ? { generalAliases: general.aliases } : {}), appendices, ...(general?.hidden ? { hiddenArticles: general.hidden } : {}) });
   issues.push(...locateIssues(b.issues, b.numbered), ...r.issues);
   const trace = contexts.traces.filter((t) => t.productCoverageId === productCoverageId || input.product.baseContractIds.includes(t.productCoverageId));
   return ok({ doc: r.doc, general: renderedGeneral, appendices, issues, complete: !issues.some((item) => (item.severity ?? "error") === "error"), omitted: b.omitted, trace });

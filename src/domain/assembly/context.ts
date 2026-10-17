@@ -24,7 +24,7 @@ import { descendants, findNode, findNodeById, nodeName, nodesOf } from "../cover
 import type { Coverage, CoverageNode, CoverageNodeLevel } from "../coverage/types";
 import type { DocumentNode } from "../document/nodes";
 import { applyArticleCopies } from "../product/articleCopies";
-import type { EvalContext, LookupResult, ValueRef } from "../expression";
+import type { EvalContext, LookupResult, OutputPosition, ValueRef } from "../expression";
 import { evaluate, parse, refPath } from "../expression";
 import { findMasterField, isMasterPathShape, type MasterFieldRef, type MasterTree } from "../master";
 import type { RowSource } from "../structure";
@@ -107,6 +107,11 @@ interface Env {
   trace?: ContextTrace;
   /** 평가 중인 파생 코드 — 순환 가드. */
   evaluating: ReadonlySet<Code>;
+  /**
+   * 작성위치 (ADR-0089 · 기능/식언어 §3) — 기본계약 상품담보 = 대치, 그 밖의 상품담보 = 특약. 보통약관 문맥 · 구분자 파생식은 `none`(읽으면 structure 오류).
+   * 블록(절 형태 제2절)은 절 형태와 함께 — 지금 조립은 내지 않는다.
+   */
+  output: OutputPosition | "none";
 }
 
 const EMPTY_SLOTS: ReadonlyMap<SlotPath, ValueSlot> = new Map();
@@ -159,7 +164,8 @@ function lookupDiscriminator(env: Env, node: CoverageNode | undefined, plan: Pla
   if (env.evaluating.has(def.code)) return brokenDefinition(def); // 순환 — 정의 저장이 거부하지만(기능/구분자 §3.2) 평가도 스스로 멈춘다
   const parsed = parse(def.expression);
   if (!parsed.ok) return brokenDefinition(def);
-  const next: Env = { ...env, evaluating: new Set([...env.evaluating, def.code]) };
+  // 구분자 파생식은 문면 문맥을 모른다 — 작성위치 없음 (기능/식언어 §3)
+  const next: Env = { ...env, evaluating: new Set([...env.evaluating, def.code]), output: "none" };
   let target: CoverageNode | undefined;
   if (def.level === "product") target = undefined;
   else if (def.level === "plan") {
@@ -272,6 +278,7 @@ function planChildren(env: Env, node: CoverageNode | undefined, coordinate: Coor
 function contextFor(env: Env, node: CoverageNode | undefined, coordinate: Coordinate, plan?: AssemblyPlanOption): EvalContext {
   return {
     coordinate,
+    output: env.output,
     lookup: (ref) => {
       switch (ref.kind) {
         case "builtin":
@@ -394,6 +401,12 @@ export function generalCoordinate(product: AssemblyProduct, general: DocumentNod
   return { document: "general", ownerId: product.generalDocumentId ?? general?.id ?? product.id, ownerName: general?.title ?? product.name };
 }
 
+/** 상품담보의 작성위치 — 기본계약이면 대치(보통약관 조를 대치한다), 아니면 특약 (ADR-0089). 상품담보가 없으면(보통약관 문맥) 없음. */
+function outputOf(input: AssemblyInput, c: AssemblyCoverage | undefined): Env["output"] {
+  if (!c) return "none";
+  return input.product.baseContractIds.includes(c.snapshot.id) ? "replace" : "special";
+}
+
 function envOf(input: AssemblyInput, catalog: ReadonlyMap<Code, Discriminator>, c: AssemblyCoverage | undefined, trace: ContextTrace | undefined): Env {
   const product = input.product;
   const values = new Map<Id, ReadonlyMap<SlotPath, ValueSlot>>(c ? c.values : []);
@@ -412,6 +425,7 @@ function envOf(input: AssemblyInput, catalog: ReadonlyMap<Code, Discriminator>, 
     keyPaths: c ? keyPathIndex(c) : new Map(),
     trace,
     evaluating: new Set(),
+    output: outputOf(input, c),
   };
 }
 
@@ -474,6 +488,7 @@ export function buildContexts(input: AssemblyInput): AssemblyContexts {
   }
   // 2개 이상은 조립 계층에서 unsupported로 보고하되 부분 조립 문맥은 첫 등록분으로 계속 만든다.
   const base = input.product.baseContractIds.length > 0 ? envs.get(input.product.baseContractIds[0]) : undefined;
-  const general = contextOf(base ?? envOf(input, catalog, undefined, undefined), generalCoordinate(input.product, generalDocumentOf(input)));
+  // 보통약관 문맥에는 작성위치가 없다 — 기본계약 환경을 빌려 써도 작성위치는 없음 (기능/식언어 §3)
+  const general = contextOf({ ...(base ?? envOf(input, catalog, undefined, undefined)), output: "none" }, generalCoordinate(input.product, generalDocumentOf(input)));
   return { general, specials, traces };
 }

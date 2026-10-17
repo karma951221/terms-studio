@@ -17,7 +17,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties, type
 import { Combobox, type ComboOption } from "@/app/_components/Combobox";
 import { IconButton, IconMinusCircle, IconPlusCircle } from "@/app/_components/icons";
 import { emptyRows, isUnaryOp, joinParens, rowIssues, type ConditionRow, type ConditionRows, type Join, type RowOp, type RowValueRef } from "@/domain/document";
-import type { Literal } from "@/domain/expression";
+import { OUTPUT_DISPLAY, OUTPUT_LABEL, OUTPUT_POSITIONS, type Literal } from "@/domain/expression";
 
 import { OP_LABEL, addRow, ctxCodeOf, headOf, opsOf, pickerGroups, qualifiedLabel, refKey, refOfKey, removeRow, setLeft, sourceOf, type HeadModel } from "./rows";
 import type { ConditionContext, CtxAttribute, CtxDiscriminator } from "./types";
@@ -41,6 +41,20 @@ function ValueInput({
   onDone: () => void;
 }) {
   const label = `${name} 값`;
+  if (row.left?.kind === "output") {
+    // 작성위치 — 세 값 (ADR-0089). 저장은 코드(replace · block · special), 화면은 대치 · 블록 · 특약
+    const chosen = row.right?.kind === "literal" && row.right.literal.type === "string" ? row.right.literal.value : "";
+    return (
+      <select className="ts-cond-value" aria-label={label} value={chosen} onChange={(e) => onChange(e.target.value === "" ? undefined : { kind: "literal", literal: { type: "string", value: e.target.value } }, true)}>
+        <option value="">값</option>
+        {OUTPUT_POSITIONS.map((p) => (
+          <option key={p} value={p}>
+            {OUTPUT_LABEL[p]}
+          </option>
+        ))}
+      </select>
+    );
+  }
   if (row.left?.kind === "attr") {
     if (isUnaryOp(row.op)) return <span className="ts-cond-value ts-muted" aria-label={label}>—</span>;
     const chosen = row.right?.kind === "literal" && row.right.literal.type === "string" ? row.right.literal.value : "";
@@ -172,7 +186,7 @@ export function CondRows({
     return ref.node ? qualifiedLabel(context, label, ref.node.path) : label;
   };
   const attributeOf = (code: string): CtxAttribute | undefined => context.attributes?.find((a) => a.code === code);
-  const leftText = (ref: NonNullable<ConditionRow["left"]>) => (ref.kind === "attr" ? (attributeOf(ref.code)?.label ?? `attr.${ref.code}`) : refText(ref));
+  const leftText = (ref: NonNullable<ConditionRow["left"]>) => (ref.kind === "output" ? OUTPUT_DISPLAY : ref.kind === "attr" ? (attributeOf(ref.code)?.label ?? `attr.${ref.code}`) : refText(ref));
   const groups = pickerGroups(context);
   const known = new Set(groups.flatMap((g) => g.options.map((o) => o.key)));
   // 변수 후보 — 묶음 머리 그대로, 보조 글자는 코드(한정자 앞)
@@ -226,7 +240,7 @@ export function CondRows({
       {rows.rows.map((row, i) => {
         const name = `${label} ${i + 1}번 줄`;
         const discriminator = row.left?.kind === "discriminator" ? row.left : undefined;
-        const def = row.left && row.left.kind !== "attr" ? defOf(row.left) : undefined;
+        const def = row.left && row.left.kind !== "attr" && row.left.kind !== "output" ? defOf(row.left) : undefined;
         const ops = opsOf(row.left, typeOf);
         const key = row.left ? refKey(row.left) : "";
         const issue = row.left ? issues.find((m) => m.startsWith(`${i + 1}번 줄:`)) : undefined;

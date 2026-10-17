@@ -89,6 +89,22 @@ export function collectExpressions(body: ClauseBody, basePath: Id[] = []): Colle
   return out;
 }
 
+/**
+ * 함수조항이 작성위치(`builtin.output` · 범위 낱말 슬롯)를 읽는가 — 본문 · 옵션 선택지 본문 · 내부 변수 식 (ADR-0089).
+ * 보통약관 문서가 이런 함수조항을 넣으면 그 문서 저장 검사가 structure 오류를 낸다(보통약관에는 작성위치가 없다, 기능/식언어 §3).
+ */
+export function clauseReadsOutput(clause: { body: ClauseBody; options?: readonly OptionDef[]; locals?: readonly LocalDef[] }): boolean {
+  const sources = [
+    ...collectExpressions(clause.body).map((e) => e.source),
+    ...(clause.options ?? []).flatMap((o) => o.values.flatMap((v) => collectExpressions(v.body).map((e) => e.source))),
+    ...(clause.locals ?? []).map((l) => l.expr),
+  ];
+  return sources.some((src) => {
+    const p = parse(src);
+    return p.ok && extractRefs(p.value).some((r) => r.ref.kind === "output");
+  });
+}
+
 /** 본문의 모든 노드 id (가지 id 포함) — 등장 순. 검증을 거치지 않은 입력도 견딘다. */
 export function allNodeIds(body: ClauseBody): Id[] {
   const ids: Id[] = [];
@@ -545,7 +561,8 @@ export function analyzeBody(
 
   // 5. 참조 존재·타입 (조회가 있을 때만 — 구분자 직접 읽기가 있으면 그 오류가 먼저다) — 조건은 boolean 이어야, 슬롯은 참조가 존재해야 한다. 인자는 선언 타입으로(문맥 플래그)
   if (resolveType && !direct) {
-    const clauseCtx = { params: paramTypes, locals: (n: string) => lc.types.get(n), ...(opts.enums ? { enums: opts.enums } : {}), planField: planFieldType() };
+    // 함수조항 본문은 작성위치를 직접 읽는다(인자 없이 — ADR-0089 · 기능/함수조항 §3.3). 보통약관에 넣으면 그 문서 검사가 막는다
+    const clauseCtx = { params: paramTypes, locals: (n: string) => lc.types.get(n), ...(opts.enums ? { enums: opts.enums } : {}), planField: planFieldType(), output: true };
     for (const e of exprs) {
       if (tainted.has(e)) continue;
       const at = { ...base, nodePath: e.path };

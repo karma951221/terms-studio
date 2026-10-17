@@ -510,6 +510,12 @@ function toRef(segments: string[], pos: number): Ref {
     return { kind: "local", name: segments[1] };
   }
   if (head === "builtin") {
+    // 작성위치 · 범위 낱말 (ADR-0089) — 레벨 없는 한 토막
+    if (segments[1] === "output") {
+      if (segments.length === 2) return { kind: "output" };
+      if (segments.length === 3 && segments[2] === "scope") return { kind: "output", prop: "scope" };
+      throw new SyntaxFailure("작성위치는 builtin.output, 범위 낱말은 builtin.output.scope 입니다", pos);
+    }
     if (segments.length !== 3) {
       throw new SyntaxFailure("내장 경로는 builtin.<레벨>.<속성> 세 단계입니다", pos);
     }

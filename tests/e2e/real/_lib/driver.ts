@@ -261,7 +261,7 @@ export class Editor {
 
   private async fillRow(head: Locator, name: string, row: ConditionRow): Promise<void> {
     const left = row.left!;
-    const key = left.kind === "attr" ? `attr.${left.code}` : left.kind !== "discriminator" ? rowRefPath(left) : left.node ? `${left.code}@${left.node.path}` : left.code;
+    const key = left.kind === "attr" ? `attr.${left.code}` : left.kind === "output" ? "builtin.output" : left.kind !== "discriminator" ? rowRefPath(left) : left.node ? `${left.code}@${left.node.path}` : left.code;
     await pickCombo(head.getByRole("combobox", { name: `${name} 변수`, exact: true }), { value: key });
     await head.getByRole("combobox", { name: `${name} 연산자`, exact: true }).selectOption(row.op!);
     const right = row.right;
@@ -687,6 +687,20 @@ export class ClauseAuthoringDriver {
     const root = this.editor.root;
     if (mode === "inline") {
       await this.editor.fillInline(root.getByRole("textbox", { name: "문구", exact: true }), body as SeedInline[]);
+      return;
+    }
+    // 본문 전체가 조건 블록 하나(가지 하나)면 — 준용규정의 작성위치 조건(ADR-0089 결정 5) — 항을 친 뒤 그 글을 골라 「조건식」으로 감싼다
+    const only = body.length === 1 ? (body[0] as { kind: string; branches?: { when?: string; children: unknown[] }[] }) : undefined;
+    if (only?.kind === "condBlock" && only.branches?.length === 1 && only.branches[0].when !== undefined) {
+      const { when, children } = only.branches[0];
+      if (children.length !== 1) throw new Error("이 E2E 의 조건 블록 본문은 항 하나뿐이다");
+      await this.body(mode, children);
+      await root.getByRole("textbox", { name: "항", exact: true }).first().focus();
+      await this.page.keyboard.press(SELECT_ALL);
+      await this.editor.runTool("조건식");
+      const head = root.locator("[data-cond-head]").first();
+      await expect(head).toBeVisible();
+      await this.editor.fillHead(head, "IF", when);
       return;
     }
     // 「이 함수조항」 조 참조의 줄 표기 — 본문 k 번째 항(P코드로 가리킨다) = 「제k항」 (고르기 트리는 조 줄 없이 항부터)

@@ -76,4 +76,9 @@ export interface ConditionContext {
    * (그 열거형의 문자 필드 `builtin.value.<필드키>` — 값 이름 · 참거짓 필드 없음, 문자 필드가 없으면 이것도 없다)의 재료다 (ADR-0088 결정 1 · 2026-10-17). 「비었을 때」 칸 안에는 없다.
    */
   value?: { name: string; fields: readonly { key: string; label: string }[] };
+  /**
+   * 작성위치를 아는 문서 — 담보약관 템플릿 · 함수조항 (ADR-0089 · 기능/문면 §3.3 · §3.4). 있으면 조건 변수 목록 끝에 「작성위치」 줄,
+   * 슬롯 고르기 맨 앞에 「범위 낱말」(〔이 약관의〕). 보통약관 템플릿 · 상품 조 사본은 없다.
+   */
+  output?: true;
 }
