@@ -17,6 +17,7 @@ import type { Clause } from "../clause/types";
 import type { CoverageNodeLevel, Coverage } from "../coverage/types";
 import type { Appendix } from "../document/appendix";
 import type { Box } from "../document/box";
+import type { DynTable } from "../dyntable/types";
 import type { ArticleNode, DocumentNode } from "../document/nodes";
 import type { AggregateOp } from "../expression";
 import type { MasterTree } from "../master";
@@ -41,6 +42,8 @@ export type RefNodeKey =
   | { kind: "appendix"; code: Code }
   /** 정적 마스터 박스 (최종 결정 9). */
   | { kind: "box"; code: Code }
+  /** 동적표 정의 (기능/동적표). */
+  | { kind: "dynTable"; code: Code }
   | { kind: "coverageNode"; level: CoverageNodeLevel; id: Id }
   | { kind: "attribute"; code: Code }
   | { kind: "attributeValue"; code: Code; valueCode: Code }
@@ -101,6 +104,8 @@ export type EdgeVia =
   | "appendixRef"
   /** 박스 참조 — 정적 마스터 박스를 그 자리에 편다 */
   | "boxRef"
+  /** 동적표 참조 — 담보약관의 동적표 자리 (기능/동적표 §3.5). 인자 연결은 `binding` 간선 */
+  | "dynTableRef"
   /** 함수조항 → 구분자 — 인자의 기본 연결 (최종 결정 2). 그 구분자를 지우면 정의가 깨진다 */
   | "defaultBinding"
   /** 문서(조) → 구분자 — 함수조항 참조 노드의 인자 연결 (사용처가 기본 연결을 바꿈) */
@@ -182,6 +187,7 @@ export interface GraphInputs {
   documents?: readonly DocumentInput[];
   appendices?: readonly Appendix[];
   boxes?: readonly Box[];
+  dynTables?: readonly DynTable[];
   coverages?: readonly Coverage[];
   attributeKinds?: readonly AttributeKind[];
   products?: readonly ProductInput[];

@@ -7,6 +7,7 @@
  *     enum·enum 값 타깃은 정의로 자리를 구해 discriminator/field 로 바꿔 값 행을 세고 지운다 (enum 값은 그 값을 고른 행만).
  *   - `coverageUsageSource(db)`   : coverage `UsageSource.findUsages` — 부착 해제·노드 삭제가 깨뜨릴 문면 사용처.
  *   - `clauseUsageSource(db)`     : clause `UsageSource.documentsReferencing` — 참조 문서(ownerKind coverage/general) + 옵션 선택.
+ *   - `dynTableUsageSource(db)`   : dynTable `DynTableUsageSource.documentsReferencing` — 동적표를 넣은 담보약관(참조 노드 · 인자 연결).
  *   - `documentUsageSource(db)`   : document `UsageSource` — 문서 서비스가 스스로 못 보는 외부 사용처(상품 템플릿 · 담보 문서 연결 ·
  *     옵션 오버라이드 · 함수조항 본문의 별표 참조).
  *   - `attributeRefSource(db)`    : product `AttributeRefSource.findExpressionRefs` — 식이 읽는 담보속성(유효값) 사용처.
@@ -49,6 +50,7 @@ import * as catalogRepo from "@/db/repo/catalog";
 import * as clauseRepo from "@/db/repo/clause";
 import * as coverageRepo from "@/db/repo/coverage";
 import * as documentRepo from "@/db/repo/document";
+import * as dynTableRepo from "@/db/repo/dyntable";
 import * as productRepo from "@/db/repo/product";
 import * as refsRepo from "@/db/repo/refs";
 import type { Db } from "@/db/repo/types";
@@ -59,18 +61,20 @@ import { findMasterField } from "@/domain/master";
 
 import type { UsageSource as ClauseUsageSource } from "./clause";
 import type { UsageSource as DocumentUsageSource } from "./document";
+import type { DynTableUsageSource } from "./dyntable";
 
 // ───────────────────────────── 그래프 로딩 ─────────────────────────────
 
 /** DB 전체를 재료로 그래프를 만든다. 주어진 핸들(db 또는 tx)로만 읽는다. */
 export async function loadGraph(db: Db): Promise<RefGraph> {
-  const [discriminators, enums, clauses, documents, appendices, boxes, coverages, attributeKinds, productRows] = await Promise.all([
+  const [discriminators, enums, clauses, documents, appendices, boxes, dynTables, coverages, attributeKinds, productRows] = await Promise.all([
     catalogRepo.listDiscriminators(db),
     catalogRepo.listEnums(db),
     clauseRepo.listClauses(db),
     documentRepo.listDocumentRecords(db),
     documentRepo.listAppendices(db),
     documentRepo.listBoxes(db),
+    dynTableRepo.listDynTables(db),
     coverageRepo.listCoverages(db),
     productRepo.listAttributeKinds(db),
     productRepo.listProducts(db),
@@ -89,6 +93,7 @@ export async function loadGraph(db: Db): Promise<RefGraph> {
     documents: documents.map((d) => ({ id: d.id, kind: d.kind, ...(d.ownerId ? { ownerId: d.ownerId } : {}), title: d.title, ...(d.generalDocumentId ? { generalDocumentId: d.generalDocumentId } : {}), tree: d.tree })),
     appendices,
     boxes,
+    dynTables,
     coverages,
     attributeKinds,
     products,
@@ -334,6 +339,33 @@ export function clauseUsageSource(db: Db): ClauseUsageSource {
           ...(e.bindings ? { bindings: e.bindings } : {}),
           ...(e.preset !== undefined ? { preset: e.preset } : {}),
           ...(e.treeLoopLevel ? { treeLoopLevel: e.treeLoopLevel } : {}),
+        });
+      }
+      return out;
+    },
+  };
+}
+
+// ───────────────────────────── dynTable: UsageSource ─────────────────────────────
+
+export function dynTableUsageSource(db: Db): DynTableUsageSource {
+  return {
+    async documentsReferencing(tableCode: Code): Promise<Usage[]> {
+      const graph = await loadGraph(db);
+      const out: Usage[] = [];
+      for (const e of usagesOf(graph, { kind: "dynTable", code: tableCode }, { via: ["dynTableRef"] })) {
+        const documentId = documentIdOf(e.from);
+        if (documentId === undefined) continue;
+        const info = graph.nodes.get(nodeKey({ kind: "document", id: documentId }));
+        const ownerKind: UsageOwnerKind = info?.detail === "special" ? "coverage" : "general";
+        const refNodeId = e.at.nodePath?.at(-1);
+        out.push({
+          documentId,
+          ownerKind,
+          ownerId: info?.ownerId ?? documentId,
+          ...(e.at.ownerName !== undefined ? { ownerName: e.at.ownerName } : {}),
+          ...(refNodeId !== undefined ? { refNodeId } : {}),
+          ...(e.bindings ? { bindings: e.bindings } : {}),
         });
       }
       return out;

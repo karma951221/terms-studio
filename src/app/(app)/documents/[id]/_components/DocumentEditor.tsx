@@ -37,6 +37,7 @@ import {
   blockingIssues,
   catalogTypeResolver,
   clauseGateFrom,
+  dynTableGateFrom,
   envAt,
   documentCodeIssues,
   generalRefsOf,
@@ -68,6 +69,7 @@ import {
   type SlotName,
 } from "@/domain/document";
 import type { Box } from "@/domain/document/box";
+import type { DynTable } from "@/domain/dyntable";
 import type { Code, Coordinate, Id, Impact, Issue, WorkMark } from "@/domain/types";
 import type { PreviewProduct } from "@/services/assembly";
 
@@ -117,6 +119,8 @@ export interface EditorProps {
   /** 정적 마스터 박스 — 박스 참조 검사 · 그리기 · 「박스」 고르기 (기능/박스 §4.4). */
   boxes: readonly Box[];
   clauses: readonly Clause[];
+  /** 동적표 정의 — 담보약관의 동적표 참조 검증(존재 · 인자 연결) 재료. 서버 저장 검사와 같은 게이트(`dynTableGateFrom`). */
+  dynTables?: readonly DynTable[];
   discriminators: readonly Discriminator[];
   /** 열거형 — 반복 원천 거름 필드 · 정의 조 교차 검사 · 반복 이름 · 현재 원소 연결 (ADR-0077). */
   enums: readonly EnumDef[];
@@ -220,6 +224,16 @@ export function DocumentEditor(props: EditorProps) {
   // ── 검증 재료 — 서버 저장 검증과 같은 한 벌(validateDocument)을 서버가 넘긴 정의로 짓는다 ──
   const coordinate: Coordinate = useMemo(() => ({ document: doc.kind, ownerId: doc.ownerId ?? doc.id, documentId: doc.id, ownerName: doc.title }), [doc.kind, doc.ownerId, doc.id, doc.title]);
   const gate = useMemo(() => clauseGateFrom(props.clauses, props.discriminators.map((d) => d.code), catalogTypeResolver(props.discriminators), props.enums), [props.clauses, props.discriminators, props.enums]);
+  const resolveForGate = useMemo(() => catalogTypeResolver(props.discriminators), [props.discriminators]);
+  const dynTableGate = useMemo(() => {
+    const codes = new Set(props.discriminators.map((d) => d.code));
+    const enumValues = new Map(props.enums.map((e) => [e.code, e.values.map((v) => v.code)] as const));
+    return dynTableGateFrom(props.dynTables ?? [], {
+      discriminatorType: (c: Code) => resolveForGate({ kind: "discriminator", code: c }),
+      discriminatorExists: (c: Code) => codes.has(c),
+      enumValues: (c: Code) => enumValues.get(c),
+    });
+  }, [props.dynTables, props.discriminators, props.enums, resolveForGate]);
   const enumByCode = useMemo(() => new Map(props.enums.map((e) => [e.code, e] as const)), [props.enums]);
   /** 조 제목 접기 — 슬롯은 구분자 표시명으로 「〔이름〕」 (ADR-0088 결정 6). 목차 · 경로 · 참조 칩 · 삭제 확인이 같은 말을 쓴다. */
   const titleFold: FoldOptions = useMemo(
@@ -236,14 +250,14 @@ export function DocumentEditor(props: EditorProps) {
   /** 보통약관 캐시 → 편집 환경. 렌더는 상태의 캐시로, 명령 적용은 방금 받은 것까지 든 ref 의 캐시로 만든다. */
   const makeEditEnv = useCallback(
     (cache: Readonly<Record<Id, GeneralForEdit>>): EditEnv => ({
-      env: { kind: doc.kind, appendixExists: (c: Code) => appendixCodes.has(c), boxExists: (c: Code) => boxByCode.has(c), clauseGate: gate, enumOf: (c: Code) => enumByCode.get(c), coordinate },
+      env: { kind: doc.kind, appendixExists: (c: Code) => appendixCodes.has(c), boxExists: (c: Code) => boxByCode.has(c), clauseGate: gate, dynTableGate, enumOf: (c: Code) => enumByCode.get(c), coordinate },
       generalRefs: (id: Id) => {
         const g = cache[id];
         // 대상 사실(안쪽 코드 · 값 한정 열거형)은 서버 저장 검사와 같은 함수조항 게이트로 짓는다 — 명령마다 부르므로 트리 · 게이트마다 한 번
         return g ? cachedGeneralRefs(g.tree, gate) : undefined;
       },
     }),
-    [doc.kind, appendixCodes, boxByCode, gate, enumByCode, coordinate],
+    [doc.kind, appendixCodes, boxByCode, gate, dynTableGate, enumByCode, coordinate],
   );
   // 읽기 모드는 서버가 방금 넘긴 대응 보통약관이 기준이다 (편집 중에는 편집 시작 때 받은 것 · 새로 고른 것)
   const renderCache = useMemo(() => (mode === "read" && props.general ? { ...generalCache, [props.general.id]: props.general } : generalCache), [mode, props.general, generalCache]);
