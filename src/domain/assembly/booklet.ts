@@ -18,7 +18,7 @@ import type { ArticleNode, BlockNode, DocumentNode, SectionNode } from "../docum
 import { refKey, withCodes } from "../document/pcode";
 import { foldTitle } from "../document/title";
 import type { CompletenessFilter } from "../coverage/values";
-import { CONTRACT_KIND_PATH, isStandaloneContract } from "../master";
+import { CONTRACT_KIND_PATH, GROUP_TITLES_PATH, isStandaloneContract, showsGroupTitles } from "../master";
 import { baseContractCountIssue } from "../product/completeness";
 import { enumCoordinate } from "../catalog/fields";
 import { COVERAGE_CATEGORY_ENUM, categoryGroupTitle } from "../coverage/category";
@@ -27,6 +27,7 @@ import type { ClauseOptionOverride, ProductCoverage } from "../product/types";
 import { type Coordinate, type Id, type Issue, ok, reject, type Result } from "../types";
 import { buildContexts, generalCoordinate, generalDocumentOf, specialCoordinate, type AssemblyContext, type AssemblyContexts } from "./context";
 import { ensureApplicationArticle } from "./application";
+import { blockHeads } from "./blockHeads";
 import { authoredEmptyArticleIds, dropEmptyArticles } from "./emptyArticle";
 import { baseKey, replaceGeneralWithBase } from "./base";
 import { judgeOmission } from "./omission";
@@ -433,20 +434,31 @@ export function assemble(master: MasterBundle, product: ProductInput): Booklet {
     renderedGeneral = r.doc;
     issues.push(...locateIssues(general.issues, general.numbered), ...r.issues);
   }
+  // 절 형태(독립특약)의 탑재 상품담보는 제2절 블록이다 (ADR-0082 · 기능/조립산출 §3.8) — 제2절 골격은 아직 없어 특약 자리에 그룹마다 찍되(잠정),
+  // 블록 번호 머리 · 그룹 제목 표시는 블록 규칙을 따른다 (ADR-0090 결정 8). 주계약의 특약 그룹은 옵션과 무관하다.
+  // 그룹 없는 자리(담보분류 미입력 · 지운 값)의 블록은 켜면 머리 없음 · 끄면 이어 센다.
+  const showTitles = showsGroupTitles(input.product.values.get(GROUP_TITLES_PATH));
+  const heads = standalone ? blockHeads(builtGroups.map((g) => ({ id: g.id, titled: g.id !== UNGROUPED_ID, members: g.docs.map(({ c }) => c.snapshot.id) })), showTitles) : undefined;
+  const titled = !heads || showTitles;
   const specials: RenderedGroup[] = builtGroups.map((g) => {
-    // 그룹 제목 자리의 오류가 그 그룹 문서들보다 먼저 — 책자 등장 순 (D-P6-12)
-    if (g.titleIssue) issues.push(g.titleIssue);
+    // 그룹 제목 자리의 오류가 그 그룹 문서들보다 먼저 — 책자 등장 순 (D-P6-12). 그룹 제목을 찍지 않으면(끔) 빈 제목도 오류가 아니다
+    if (g.titleIssue && titled) issues.push(g.titleIssue);
+    const groupHead = heads?.groups.get(g.id);
     return {
       id: g.id,
-      ...(g.title !== undefined ? { title: g.title } : {}),
-      ...(g.titleIssue ? { titleError: { kind: "error" as const, id: `group-title-${g.id}`, issue: g.titleIssue } } : {}),
+      ...(groupHead !== undefined ? { head: groupHead } : {}),
+      ...(g.title !== undefined && titled ? { title: g.title } : {}),
+      ...(g.titleIssue && titled ? { titleError: { kind: "error" as const, id: `group-title-${g.id}`, issue: g.titleIssue } } : {}),
       docs: g.docs.map(({ c, b }) => {
+        const head = heads?.blocks.get(c.snapshot.id);
+        // 블록 안 오류의 좌표 표시에 블록 머리 — 「제2절 Ⅰ-1.」 · 「제2절 1.」 (기능/조립산출 §3.4)
+        const inBlock = (list: readonly Issue[]): Issue[] => (head === undefined ? [...list] : list.map((issue) => ({ ...issue, at: { ...issue.at, section: { kind: "benefit" as const, label: `제2절 ${head}` } } })));
         const groupIssue = placement.groupIssues.get(c.snapshot.id);
-        if (groupIssue) issues.push(groupIssue);
+        if (groupIssue) issues.push(...inBlock([groupIssue]));
         const r = renderDocument(b.numbered, { document: "special", ownerId: c.snapshot.id, general: general?.numbered, aliases: omissionAliases(b.omitted), ...(general?.aliases ? { generalAliases: general.aliases } : {}), appendices, ...(general?.hidden ? { hiddenArticles: general.hidden } : {}) });
-        issues.push(...locateIssues(b.issues, b.numbered), ...r.issues);
+        issues.push(...inBlock([...locateIssues(b.issues, b.numbered), ...r.issues]));
         omitted.push(...b.omitted);
-        return r.doc;
+        return head === undefined ? r.doc : { ...r.doc, head };
       }),
     };
   });

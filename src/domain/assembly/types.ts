@@ -425,6 +425,8 @@ export interface RenderedDoc {
   document: "general" | "special";
   ownerId: Id;
   title: string;
+  /** 절 형태 블록의 번호 머리(「Ⅰ-1.」 · 「1.」 — ADR-0090 결정 8). 제목 앞에 찍는다. 대치 형태 · 주계약 특약은 없다. */
+  head?: string;
   children: (RenderedArticle | RenderedSection | ErrorNode)[];
 }
 
@@ -432,7 +434,9 @@ export interface RenderedDoc {
 export interface RenderedGroup {
   /** 그룹 열쇠 — 기본 그룹 `category:V01` · 사용자 그룹 id · 제목 없는 자리 `ungrouped` (`product/groups.ts` `groupKey`). */
   id: Id;
-  /** 그룹 제목 — 사용자 그룹 이름 · 담보분류 값의 「그룹 제목」. 제목 없는 자리 · 제목 미입력이면 없다. */
+  /** 절 형태 · 그룹 제목 표시를 켰을 때 그룹 머리(「Ⅰ.」 — ADR-0090 결정 8). */
+  head?: string;
+  /** 그룹 제목 — 사용자 그룹 이름 · 담보분류 값의 「그룹 제목」. 제목 없는 자리 · 제목 미입력이면 없다. 절 형태에서 그룹 제목 표시를 끄면 없다. */
   title?: string;
   /** 기본 그룹의 「그룹 제목」이 비었다 — 제목 자리의 오류 마커 (ADR-0090 결정 2). */
   titleError?: ErrorNode;

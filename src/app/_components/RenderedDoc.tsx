@@ -193,7 +193,7 @@ export function RenderedArticleView({ node }: { node: RenderedArticle }) {
 export function RenderedDoc({ doc }: { doc: RenderedDocType }) {
   return (
     <article className="ts-doc" data-owner={doc.ownerId}>
-      <h2 className="ts-doc-title">{doc.title}</h2>
+      <h2 className="ts-doc-title">{doc.head !== undefined ? `${doc.head} ${doc.title}` : doc.title}</h2>
       {doc.children.map((a, i) => (
         <Article key={i} node={a} />
       ))}
@@ -204,13 +204,15 @@ export function RenderedDoc({ doc }: { doc: RenderedDocType }) {
 /**
  * 책자의 특약 그룹 하나 (ADR-0090) — 제목 = 사용자 그룹 이름 · 담보분류 값의 「그룹 제목」. 「그룹 제목」이 비었으면 제목 자리에 오류 마커.
  * 담보분류를 정할 수 없는 상품담보(미입력 · 지운 값)의 자리는 제목 줄이 없다.
+ * 절 형태 블록이면 번호 머리가 제목 앞에 선다 — 그룹 「Ⅰ.」 · 블록 「Ⅰ-1.」 / 「1.」 (ADR-0090 결정 8).
  */
 export function RenderedGroupView({ group }: { group: RenderedGroup }) {
   return (
     <section className="ts-doc-group" aria-label={group.title ?? (group.titleError ? "그룹 제목 없는 특별약관" : "그룹 없는 특별약관")}>
-      {group.title !== undefined && <h2 className="ts-doc-group-title">{group.title}</h2>}
+      {group.title !== undefined && <h2 className="ts-doc-group-title">{group.head !== undefined ? `${group.head} ${group.title}` : group.title}</h2>}
       {group.title === undefined && group.titleError && (
         <h2 className="ts-doc-group-title">
+          {group.head !== undefined && `${group.head} `}
           <ErrorMark node={group.titleError} />
         </h2>
       )}

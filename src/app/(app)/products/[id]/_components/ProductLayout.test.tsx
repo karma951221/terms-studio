@@ -58,13 +58,16 @@ describe("기본정보 — 상품정보(상품명 · 평균공시이율 · 상�
     const html = render();
     expect(html).toContain("<h3>상품정보</h3>");
     const rows = [...html.matchAll(/<th scope="row">(?:<label[^>]*>)?([^<]+)/g)].map((m) => m[1]);
-    expect(rows).toEqual(["상품명", "평균공시이율", "계약형태", "갱신형여부", "태아보장여부", "단체계약여부", "고지유형", "간편심사구분", "간편심사유형"]);
+    expect(rows).toEqual(["상품명", "평균공시이율", "계약형태", "갱신형여부", "태아보장여부", "단체계약여부", "고지유형", "간편심사구분", "간편심사유형", "그룹 제목 표시"]);
     expect(html).toContain(">상품특성</th>");
   });
 
   it("읽기 — 저장된 값(2.5% · 예 · 통합간편심사), 없는 값은 「—」, 상품명은 읽기 전용", () => {
     const html = render();
-    expect(html).toMatch(/data-path="disclosure.avg_rate"[^>]*><th scope="row">평균공시이율<\/th><td class="col-flex">2.5%</);
+    expect(html).toMatch(/data-path="disclosure.avg_rate"[^>]*><th scope="row">평균공시이율(?:<span[^>]*ts-infotip[\s\S]*?<\/span>)?<\/th><td class="col-flex">2.5%</);
+    // 책자 — 그룹 제목 표시(기본 끔, ADR-0090 결정 8). 마스터 필드 설명은 라벨 옆 ⓘ
+    expect(html).toMatch(/data-path="booklet.group_titles"[^>]*><th scope="row">그룹 제목 표시<span[^>]*aria-label="절 형태[^"]*"/);
+    expect(html).toMatch(/data-path="booklet.group_titles"[\s\S]*?<td class="col-flex">—</); // 미입력 = 기본 끔
     expect(html).toMatch(/data-path="feature.renewable"[\s\S]*?>예</);
     expect(html).toMatch(/data-path="feature.review_scope"[\s\S]*?>통합간편심사</);
     expect(html).toMatch(/data-path="feature.review_type"[\s\S]*?>3.0.5/);

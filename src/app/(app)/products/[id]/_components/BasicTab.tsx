@@ -15,6 +15,7 @@ import { Fragment, useEffect, useId, useState } from "react";
 
 import { PLAN_AXIS_LABEL, planCombinationKey, planOptionLabel, type PlanAxis, type PlanOption, type ProductPlan } from "@/domain/product";
 import { draftValueOf, FieldInput, FieldReadValue, formReducer, initFormState, isViewShown, isViewSingle, savedValueOf, toSubmission, type FieldView, type FormAction, type FormModel, type FormState } from "@/forms";
+import { InfoTip } from "@/app/_components/InfoTip";
 import type { EditOutcome } from "@/app/_lib/edit";
 import type { ProductBasicInput } from "@/services/product";
 
@@ -297,7 +298,10 @@ export function BasicTab(props: BasicTabProps) {
                     )}
                     {group.fields.filter((field) => isViewShown(field, editing ? draftValueOf(productState) : savedValueOf(productForm))).map((field) => (
                       <tr key={field.path} className={field.path === productHighlight ? "is-highlighted" : undefined} data-path={field.path}>
-                        <th scope="row">{field.label}</th>
+                        <th scope="row">
+                          {field.label}
+                          {field.description && <InfoTip text={field.description} />}
+                        </th>
                         <td className="col-flex">{editing ? productCell(field.path, field.label) : <FieldReadValue field={field} />}</td>
                       </tr>
                     ))}
